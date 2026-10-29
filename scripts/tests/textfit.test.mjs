@@ -104,10 +104,10 @@ it("text fits: the dialogs", () => {
 it("text fits: the Click casting page's menu-click notice and its buttons (KB1-3)", () => {
   // TEST-ONLY saved list in the old layouts' shape: a spell on Right click, the Unit menu on Middle click.
   const old = 'VanguardCharDB = { clickcast = { [0] = { { key = "BUTTON2", action = "spell", value = "Flash Heal" }, { key = "BUTTON3", action = "menu" } } } }';
-  const addon = createAddon({ savedVariables: SETUP_DONE + old, textFit: true, client: GAME_CLICKS_LUA });
+  const addon = createAddon({ savedVariables: SETUP_DONE + old, textFit: true, client: `${GAME_CLICKS_LUA} __wfgWorld.specGroup = 1` });
   addon.login();
   addon.eval('ns.Options.Show("clickcast")');
-  expect(addon.eval('return ns.GetModule("ClickCast").MenuClickNeedsFix()'), "the page has the notice to audit").toBe(true);
+  expect(addon.eval('return #ns.GetModule("ClickCast").MenuFixKeys()'), "both talent groups have the shape: the longer notice is the one audited").toBe(2);
   expect(addon.frames('w.fix ~= nil and w.dismiss ~= nil and w:IsVisible()').length, "the notice row is on the page").toBe(1);
   expect(addon.textFit("Vanguard_Options"), "its text and both buttons fit, with every string a third longer").toEqual([]);
 });

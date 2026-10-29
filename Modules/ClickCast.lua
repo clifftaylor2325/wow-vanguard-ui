@@ -105,17 +105,48 @@ local function copyList(list)
   return out
 end
 
--- On a client with talent groups, gives each group that has no bindings a copy of the list saved before the lists
--- were kept per group (under the specialization index, else 0), once. The old list stays where it is, so the change
--- can be reversed for a version. Until the client names a talent group nothing is done or stamped.
+-- The talent groups as a set of keys, to tell the lists that predate them from the groups' own.
+local IS_GROUP = { [1] = true, [2] = true }
+
+-- The keys of the saved lists that predate the talent groups, in the order they are tried: the specialization index
+-- (what the older version used), 0, then any other number that isn't a talent group, lowest first.
+local function legacyKeys(lists)
+  local keys, others = { ns.SpecIndex() or 0, 0 }, {}
+  for key in pairs(lists) do
+    if type(key) == "number" and key ~= 0 and not IS_GROUP[key] then others[#others + 1] = key end
+  end
+  table.sort(others)
+  for _, key in ipairs(others) do keys[#keys + 1] = key end
+  return keys
+end
+
+-- The list saved before the lists were kept per group: the first of legacyKeys that holds a binding, or nil.
+local function legacyList(lists)
+  for _, key in ipairs(legacyKeys(lists)) do
+    if hasBindings(lists[key]) then return lists[key] end
+  end
+end
+
+-- Whether any talent group's list holds a binding (a character that already uses the groups).
+local function groupsInUse(lists)
+  for _, group in ipairs(CC.TALENT_GROUPS) do
+    if hasBindings(lists[group]) then return true end
+  end
+  return false
+end
+
+-- On a client with talent groups, gives each group that has no bindings a copy of the list saved before the lists were
+-- kept per group (legacyList), once. The old list is left where it was, so an older Vanguard still finds it (edits made
+-- there are not carried forward, and where the older version used key 1 that list is Primary's own). Until the client
+-- names a talent group, and while there is neither an old list nor a group in use, nothing is stamped.
 local function migrateTalentGroups()
   if CC.Stamped("talentGroups") or not ns.TalentGroup() then return end
   local lists = savedLists()
-  local old = lists[ns.SpecIndex() or 0]
+  local old = legacyList(lists)
   for _, group in ipairs(CC.TALENT_GROUPS) do
-    if hasBindings(old) and not hasBindings(lists[group]) then lists[group] = copyList(old) end
+    if old and not hasBindings(lists[group]) then lists[group] = copyList(old) end
   end
-  CC.Stamp("talentGroups")
+  if old or groupsInUse(lists) then CC.Stamp("talentGroups") end
 end
 
 -- The key this character's bindings are kept under now: the talent group on WoW Forever, which is remembered
@@ -126,6 +157,17 @@ local function currentKey()
   if group and VanguardCharDB.clickcastGroup ~= group then VanguardCharDB.clickcastGroup = group end
   if group or not CC.Stamped("talentGroups") then return group or ns.SpecIndex() or 0 end
   return VanguardCharDB.clickcastGroup or CC.TALENT_GROUPS[1]
+end
+
+-- The key of the list the page and the commands show and edit now (see currentKey); 0 where the client has no
+-- specializations.
+function CC.CurrentKey()
+  return currentKey()
+end
+
+-- Whether this character's lists are kept per talent group: the client names one, or the character was moved to them.
+function CC.PerGroup()
+  return ns.TalentGroup() ~= nil or CC.Stamped("talentGroups")
 end
 
 -- This character's bindings for a spec key (the current one by default), created empty.
@@ -217,9 +259,10 @@ function CC.ApplyLayout(layout)
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
--- Copies the current spec's bindings over another spec's.
+-- Copies the current spec's bindings over another spec's (a list copied onto itself is left alone).
 function CC.CopyToSpec(spec)
   local from, to = CC.Bindings(), CC.Bindings(spec)
+  if from == to then return end
   clearList(to)
   for i, b in ipairs(from) do to[i] = copyOf(b) end
 end
@@ -349,8 +392,9 @@ local WONT_RUN = {
   key = L["the game won't run it from a key"],
   click = L["the game runs it only on a click its own Click Casting window binds"],
   override = L["the game's own Click Casting window binds a spell or macro to this click, and that runs instead"],
-  remap = L["the game's own Click Casting window puts Target or the unit menu on this click, so your binding for the click it stands for runs instead"],
 }
+-- What the game's Target and Open menu interactions are called in the remap reason, with the button each stands for.
+local INTERACTION_NAMES = { [1] = { L["Target"], L["Left click"] }, [2] = { L["the unit menu"], L["Right click"] } }
 -- A mouse button's number from the game's name for it (its profile may use either name).
 local GAME_BUTTONS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button1 = 1, Button2 = 2, Button3 = 3, Button4 = 4, Button5 = 5 }
 
@@ -445,7 +489,7 @@ local function verdictOf(entry, n)
 end
 
 -- How the game's profile treats a click (a mouse prefix and button number), by the exact modifiers of its entries:
--- verdictOf for the entry on it, "unsure" when no entry is exact but one on that button has modifiers this can't read
+-- verdictOf for the entry on it (and the entry), "unsure" when no entry is exact but one on that button has modifiers this can't read
 -- (it may be the one), else "unbound". Only a sure answer gives a warning.
 local function gameVerdict(profile, prefix, n)
   local unsure = false
@@ -453,15 +497,19 @@ local function gameVerdict(profile, prefix, n)
     local entry = plainEntry(info)
     if entry and entry.n == n then
       local own = modifierPrefix(entry.modifiers)
-      if own == prefix then return verdictOf(entry, n) end
+      if own == prefix then return verdictOf(entry, n), entry end
       unsure = unsure or own == nil
     end
   end
   return unsure and "unsure" or "unbound"
 end
 
--- The reasons a click's verdict gives a binding of any action (the Target and Unit menu "unbound" reason is by action).
-local VERDICT_REASONS = { override = WONT_RUN.override, remap = WONT_RUN.remap }
+-- The reason a remapped click gives a binding of any action: which interaction the game put there, and the click it
+-- stands for, whose binding runs instead.
+local function remapReason(entry)
+  local name = INTERACTION_NAMES[entry.action]
+  return ns.Format(L["the game's own Click Casting window puts {action} on this click, so it runs your {button} binding instead"], { action = name[1], button = name[2] })
+end
 
 -- Why a binding does nothing on this client, or nil when it works (or the client can't say). Where the game has
 -- click bindings of its own, a Spell, Macro or PetAction it binds to the same click runs instead of a mouse binding,
@@ -473,9 +521,10 @@ function CC.WontRun(b)
   if not profile then return nil end
   local prefix, n = CC.MouseParts(b.key)
   if not prefix then return GAME_GATED[b.action] and WONT_RUN.key or nil end
-  local verdict = gameVerdict(profile, prefix, n)
+  local verdict, entry = gameVerdict(profile, prefix, n)
   if verdict == "unbound" and GAME_GATED[b.action] then return WONT_RUN.click end
-  return VERDICT_REASONS[verdict]
+  if verdict == "remap" then return remapReason(entry) end
+  return verdict == "override" and WONT_RUN.override or nil
 end
 
 -- The menu click of the old starter layouts ------------------------------------------------------
@@ -487,14 +536,17 @@ local function inList(list, key)
   end
 end
 
--- Whether a list has a spell on plain Right click and the Unit menu on Middle click, the shape the starter layouts had
+-- What may sit on plain Right click for the swap to be offered: a spell or a macro (a heal either way).
+local SWAPPABLE = { spell = true, macro = true }
+
+-- Whether a list has a spell or macro on plain Right click and the Unit menu on Middle click, the shape the starter layouts had
 -- before "Click to select", where the menu on Middle fails only because the game's profile doesn't cover that click
 -- (the units' click handler drops it) and, once the two are swapped, both clicks would run.
 local function oldShape(list)
   local right, middle = inList(list, "BUTTON2"), inList(list, "BUTTON3")
-  if not (right and middle and right.action == "spell" and middle.action == "menu") then return false end
+  if not (right and middle and SWAPPABLE[right.action] and middle.action == "menu") then return false end
   if CC.WontRun(middle) ~= WONT_RUN.click then return false end
-  return CC.WontRun({ key = "BUTTON2", action = "menu" }) == nil and CC.WontRun({ key = "BUTTON3", action = "spell" }) == nil
+  return CC.WontRun({ key = "BUTTON2", action = "menu" }) == nil and CC.WontRun({ key = "BUTTON3", action = right.action }) == nil
 end
 
 -- Whether the current list has the old shape (see oldShape), so the Click casting page offers the swap.
@@ -510,16 +562,25 @@ local function swapMenu(list)
   put(list, { key = "BUTTON2", action = "menu" })
 end
 
--- Swaps the menu and the spell in the current list and, on WoW Forever, in the other talent group's if it has the old
--- shape too (the migration gave both the same list), then applies (when the fight ends, in one). Nothing else in a
--- list changes. False, changing nothing, when the current list doesn't have the shape CC.MenuClickNeedsFix describes.
-function CC.FixMenuClick()
-  if not CC.MenuClickNeedsFix() then return false end
-  for _, key in ipairs(ns.TalentGroup() and CC.TALENT_GROUPS or { currentKey() }) do
-    if oldShape(CC.Bindings(key)) then swapMenu(CC.Bindings(key)) end
+-- The keys of the lists the swap changes: the current one when it has the old shape and, where the lists are kept per
+-- talent group, the other group's when it has the shape too (the migration gave both the same list). None otherwise.
+function CC.MenuFixKeys()
+  local keys = {}
+  if not CC.MenuClickNeedsFix() then return keys end
+  for _, key in ipairs(CC.PerGroup() and CC.TALENT_GROUPS or { currentKey() }) do
+    if oldShape(CC.Bindings(key)) then keys[#keys + 1] = key end
   end
-  ns.OutOfCombat(CC.ApplyAll, "clickcast")
-  return true
+  return keys
+end
+
+-- Swaps the menu and the Right click binding in every list CC.MenuFixKeys names, then applies (when the fight ends, in
+-- one). Nothing else in a list changes. Returns those keys; none, and changes nothing, when the current list doesn't
+-- have the shape CC.MenuClickNeedsFix describes.
+function CC.FixMenuClick()
+  local keys = CC.MenuFixKeys()
+  for _, key in ipairs(keys) do swapMenu(CC.Bindings(key)) end
+  if #keys > 0 then ns.OutOfCombat(CC.ApplyAll, "clickcast") end
+  return keys
 end
 
 -- Applying ---------------------------------------------------------------------------------
@@ -643,6 +704,26 @@ function CC.SetUseGame(on)
   ns.OutOfCombat(CC.ApplyAll, "clickcast")
 end
 
+-- Applies the bindings out of combat (a spec or talent group change, or a group named after login).
+local function reapply()
+  ns.OutOfCombat(CC.ApplyAll, "clickcast")
+end
+
+-- Tells a healer once, in chat, that the Click casting page has the menu-click swap to offer: the page opens on the tab
+-- it showed last, which may not be the one the notice is on, and a healer who never opens it would not see it.
+local function tellMenuNotice()
+  if CC.Stamped("menuNotice") or CC.Stamped("menuNoticeTold") or not CC.MenuClickNeedsFix() then return end
+  CC.Stamp("menuNoticeTold")
+  ns.Chat(L["Click casting: Middle click can't open the unit menu on your raid frames. /vg > Click casting can move the menu to Right click."])
+end
+
+-- Entering the world: a client that names the talent group only after login gets that group's list now, and a healer
+-- with the old layouts' menu click is told once.
+local function enteringWorld()
+  if CC.appliedKey ~= currentKey() then reapply() end
+  tellMenuNotice()
+end
+
 -- Module entry point (Core/Modules.lua): a secure handler, the talent-group migration, the frames, spec changes.
 function CC.Enable(settings)
   CC.settings = settings
@@ -650,9 +731,7 @@ function CC.Enable(settings)
   migrateTalentGroups()
   ns.OutOfCombat(function() registerFrames(settings) end)
   -- A new spec has its own bindings: apply them (spec changes happen out of combat).
-  local function reapply() ns.OutOfCombat(CC.ApplyAll, "clickcast") end
   ns.On("PLAYER_SPECIALIZATION_CHANGED", reapply)
   ns.On("ACTIVE_TALENT_GROUP_CHANGED", reapply)
-  -- A client that names the talent group only after login: apply that group's list once it does.
-  ns.On("PLAYER_ENTERING_WORLD", function() if CC.appliedKey ~= currentKey() then reapply() end end)
+  ns.On("PLAYER_ENTERING_WORLD", enteringWorld)
 end

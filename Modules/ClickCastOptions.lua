@@ -765,9 +765,15 @@ local function toggleMore()
   O.RebuildPage(PAGE)
 end
 
+-- The Clear all question: it names the talent group where the lists are kept per group.
+local function clearQuestion()
+  if not CC.PerGroup() then return L["Clear every click-casting binding for this spec? This can't be undone."] end
+  return ns.Format(L["Clear every click-casting binding for {talents}? This can't be undone."], { talents = ns.TalentsName(CC.CurrentKey()) })
+end
+
 -- Clear all asks first: it empties this spec's bindings for good.
 local function askClear()
-  ns.Ask(L["Clear every click-casting binding for this spec? This can't be undone."], L["Clear"], function()
+  ns.Ask(clearQuestion(), L["Clear"], function()
     CC.Clear()
     changed()
   end, nil, "danger")
@@ -792,9 +798,17 @@ end
 -- Where the notice sits in the page's rows (under the card's title and the line over the grid), and its buttons' width.
 local NOTICE_AT, NOTICE_BUTTON_W = 3, 130
 
--- Swaps the menu and the spell to where the game runs them (when the fight ends, in one), then re-reads the page.
+-- Says in chat that a list's menu and Right click binding were swapped: which talent group's, where the lists are
+-- kept per group (the swap may have changed the other group's too).
+local function sayMoved(key)
+  if not CC.PerGroup() then return ns.Chat(L["Unit menu moved to Right click, and what was on Right click to Middle click."]) end
+  ns.Chat(ns.Format(L["Unit menu moved to Right click, and what was on Right click to Middle click ({talents})."], { talents = ns.TalentsName(key) }))
+end
+
+-- Swaps the menu and the Right click binding to where the game runs them (when the fight ends, in one), says which
+-- lists it changed, then re-reads the page.
 local function fixMenuClick()
-  CC.FixMenuClick()
+  for _, key in ipairs(CC.FixMenuClick()) do sayMoved(key) end
   changed()
 end
 
@@ -804,13 +818,23 @@ local function dismissNotice()
   changed()
 end
 
+-- The notice's words: the question, with a second sentence when the other talent group's list would be swapped too.
+local function noticeWords()
+  for _, key in ipairs(CC.MenuFixKeys()) do
+    if key ~= CC.CurrentKey() then
+      return ns.Format(L["Middle click can't open the unit menu on your raid frames: the game only runs it on a click its own Click Casting window binds. Put the menu on Right click and what is on Right click now on Middle click? This also fixes {talents}, which has the same bindings."], { talents = ns.TalentsName(key) })
+    end
+  end
+  return L["Middle click can't open the unit menu on your raid frames: the game only runs it on a click its own Click Casting window binds. Put the menu on Right click and what is on Right click now on Middle click?"]
+end
+
 -- The notice's text, wrapped across the row.
 local function noticeText(r, width)
   r.text = T.Text(r:CreateFontString(nil, "OVERLAY"), "label", "warn")
   r.text:SetPoint("TOPLEFT", T.SPACE.gap, -T.SPACE.tight)
   r.text:SetWidth(width - 2 * T.SPACE.gap)
   r.text:SetJustifyH("LEFT")
-  r.text:SetText(L["Middle click won't open the unit menu here: the game only runs it on the clicks its own Click Casting window covers. Put the menu on Right click and your Right click spell on Middle click?"])
+  r.text:SetText(noticeWords())
 end
 
 -- The notice's buttons under its text: Swap them (the fix, in the accent) and Dismiss.
@@ -845,10 +869,10 @@ local function importText(text)
   if n then ns.HideText() changed() end
 end
 
--- The keys bindings are kept under on this client: the talent groups on WoW Forever, else the specializations (none
--- where the client has none).
+-- The keys bindings are kept under on this client: the talent groups where the lists are kept per group, else the
+-- specializations (none where the client has none).
 local function specKeys()
-  if ns.TalentGroup() then return CC.TALENT_GROUPS end
+  if CC.PerGroup() then return CC.TALENT_GROUPS end
   local out, n = {}, type(GetNumSpecializations) == "function" and GetNumSpecializations() or 0
   for i = 1, n do out[i] = i end
   return out
@@ -856,29 +880,43 @@ end
 
 -- "Copy to Secondary talents" for a talent group, "Copy to spec 2" for a specialization.
 local function copyLabel(key)
-  if ns.TalentGroup() then return ns.Format(L["Copy to {talents}"], { talents = ns.TalentsName(key) }) end
+  if CC.PerGroup() then return ns.Format(L["Copy to {talents}"], { talents = ns.TalentsName(key) }) end
   return ns.Format(L["Copy to spec {spec}"], { spec = key })
 end
 
--- The other talent groups or specs (as { key, "Copy to ..." } choices), where the client has them.
+-- The other talent groups or specs (as { key, "Copy to ..." } choices), where the client has them: never the list the
+-- page shows, whatever the client answers.
 local function otherSpecs()
   local out = {}
   for _, key in ipairs(specKeys()) do
-    if key ~= ns.SpecKey() then out[#out + 1] = { key, copyLabel(key) } end
+    if key ~= CC.CurrentKey() then out[#out + 1] = { key, copyLabel(key) } end
   end
   return out
 end
 
 -- Copies the bindings to another talent group or spec and says so.
-local function copyToSpec(key)
+local function doCopy(key)
   CC.CopyToSpec(key)
-  if not ns.TalentGroup() then return ns.Chat(ns.Format(L["Click-casting bindings copied to spec {spec}."], { spec = key })) end
+  if not CC.PerGroup() then return ns.Chat(ns.Format(L["Click-casting bindings copied to spec {spec}."], { spec = key })) end
   ns.Chat(ns.Format(L["Click-casting bindings copied to {talents}."], { talents = ns.TalentsName(key) }))
 end
 
--- Shows the copy dropdown's caption, and the dropdown only while there is another spec.
+-- The question before a copy replaces a list that has bindings.
+local function replaceQuestion(key)
+  if not CC.PerGroup() then return ns.Format(L["Replace the bindings of spec {spec} with these?"], { spec = key }) end
+  return ns.Format(L["Replace the bindings of {talents} with these?"], { talents = ns.TalentsName(key) })
+end
+
+-- Copies the bindings to another talent group or spec, asking first when that one has bindings of its own.
+local function copyToSpec(key)
+  if #CC.Bindings(key) == 0 then return doCopy(key) end
+  ns.Ask(replaceQuestion(key), L["Replace"], function() doCopy(key) changed() end, nil, "danger")
+end
+
+-- Shows the copy dropdown's caption (the group or spec it copies to is in the choices), and the dropdown only while
+-- there is another one.
 local function refreshCopy(d)
-  d.text:SetText(L["Copy to spec..."])
+  d.text:SetText(CC.PerGroup() and L["Copy to..."] or L["Copy to spec..."])
   d:SetShown(#otherSpecs() > 0)
 end
 
@@ -906,8 +944,8 @@ end
 
 -- The line over the grid, for whose bindings these are: this character's, the talent group's or the spec's.
 local function scopeLine(key)
-  if not key then return L["Bindings for this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."] end
-  if ns.TalentGroup() then
+  if key == 0 then return L["Bindings for this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."] end
+  if CC.PerGroup() then
     return ns.Format(L["Bindings for {talents} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { talents = ns.TalentsName(key) })
   end
   return ns.Format(L["Bindings for spec {spec} on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it."], { spec = key })
@@ -917,7 +955,7 @@ end
 local function title()
   if ns.InCombat() then return L["In combat: changes are kept and apply when the fight ends."] end
   if CC.UsesGame() then return L["The game's click bindings are in use: these are kept for when you switch back."] end
-  return scopeLine(ns.SpecKey())
+  return scopeLine(CC.CurrentKey())
 end
 
 -- Whether click casting also covers the unit frames.

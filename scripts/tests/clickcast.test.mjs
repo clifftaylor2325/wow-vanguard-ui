@@ -798,7 +798,7 @@ it("on WoW Forever the Click casting page speaks of talent groups, and Copy to g
   addon.eval('ns.Options.Show("clickcast")');
   const sentence = " on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it.";
   expect(addon.texts(`Bindings for Primary talents${sentence}`).length, "the line over the grid names the talent group").toBe(1);
-  const copy = widget(addon, 'w.choices ~= nil and w.text ~= nil and w.text.__text == "Copy to spec..."');
+  const copy = widget(addon, 'w.choices ~= nil and w.text ~= nil and w.text.__text == "Copy to..."');
   expect(addon.eval(`return __wfgStub.frames[${copy}].choices()`), "the other talent group, not the client's specializations").toEqual([[2, "Copy to Secondary talents"]]);
   addon.clearChat();
   addon.eval(`__wfgStub.frames[${copy}].set(2)`);
@@ -827,7 +827,7 @@ it("with a game Spell on the same click, the page marks the binding the game's r
 });
 
 // The menu-click notice's text, and the shape of the old starter layouts (Flash Heal on Right, the menu on Middle).
-const MENU_NOTICE = "Middle click won't open the unit menu here: the game only runs it on the clicks its own Click Casting window covers. Put the menu on Right click and your Right click spell on Middle click?";
+const MENU_NOTICE = "Middle click can't open the unit menu on your raid frames: the game only runs it on a click its own Click Casting window binds. Put the menu on Right click and what is on Right click now on Middle click?";
 const OLD_SHAPE = `${CC}.Add("BUTTON2", "spell", "Flash Heal", 2061) ${CC}.Add("BUTTON3", "menu")`;
 
 it("the Click casting page offers to fix the old layouts' dead menu click, and Swap them moves the menu and the spell", () => {
@@ -839,7 +839,7 @@ it("the Click casting page offers to fix the old layouts' dead menu click, and S
   expect(bindings(addon)["shift-BUTTON2"], "nothing else changes").toBe("spell:Renew:139:nil");
   expect(addon.texts(MENU_NOTICE).length, "the notice goes").toBe(0);
   expect(addon.eval(`return ${CC}.MenuClickNeedsFix()`)).toBe(false);
-  expect(addon.eval(`return ${CC}.FixMenuClick()`), "with nothing to fix it does nothing").toBe(false);
+  expect(addon.eval(`return #${CC}.FixMenuClick()`), "with nothing to fix it does nothing").toBe(0);
   expect(bindings(addon).BUTTON2, "and changes nothing").toBe("menu:nil:nil:nil");
 });
 
@@ -878,7 +878,9 @@ it("the menu-click notice shows only for the old shape, where the game won't run
   addon.eval(`${CC}.Add("BUTTON3", "menu") ns.Options.RebuildPage("clickcast")`);
   expect(offered(), "a spell on Right and the menu on Middle is the old shape").toBe(true);
   addon.eval(`${CC}.Add("BUTTON2", "macro", "/cast Flash Heal") ns.Options.RebuildPage("clickcast")`);
-  expect(offered(), "a macro on Right is not a spell").toBe(false);
+  expect(offered(), "a macro on Right is a heal too: offered").toBe(true);
+  addon.eval(`${CC}.Add("BUTTON2", "focus") ns.Options.RebuildPage("clickcast")`);
+  expect(offered(), "Focus on Right is not").toBe(false);
   addon.eval(`${CC}.Add("BUTTON2", "spell", "Flash Heal", 2061) ns.Options.RebuildPage("clickcast")`);
   expect(offered()).toBe(true);
   addon.eval(`${CC}.settings.useGame = true ns.Options.RebuildPage("clickcast")`);
@@ -954,4 +956,102 @@ it("Swap them fixes every talent group that has the old shape, and Dismiss is fo
   // A talent group's two bindings as "Right/Middle".
   const pair = (group) => addon.eval(`local l = ${CC}.Bindings(${group}) local out = {} for _, b in ipairs(l) do out[b.key] = b.action end return out.BUTTON2 .. "/" .. out.BUTTON3`);
   expect([pair(1), pair(2)], "Primary and Secondary both have the menu on Right and the spell on Middle").toEqual(["menu/spell", "menu/spell"]);
+});
+
+// TEST-ONLY saved lists of a character already moved to talent groups: Flash Heal on Middle and the menu on Right in
+// Primary (key 1), Smite on Right in Secondary (key 2) when asked, and the last group the client named.
+const groupLists = (remembered, secondary = "") => `VanguardCharDB = { clickcastStamps = { talentGroups = true }, clickcastGroup = ${remembered}, clickcast = {
+  [1] = { { key = "BUTTON2", action = "menu" }, { key = "BUTTON3", action = "spell", value = "Flash Heal", spellID = 2061 } }${secondary} } }`;
+
+it("Copy to never copies a list onto itself, and the page names the list it shows even when the client names no group", () => {
+  const addon = priest("GetNumSpecializations = function() return 1 end", { savedVariables: groupLists(1) });
+  addon.eval('ns.Options.Show("clickcast")');
+  const copy = widget(addon, 'w.choices ~= nil and w.text ~= nil and w.text.__text == "Copy to..."');
+  expect(addon.eval(`return __wfgStub.frames[${copy}].choices()`), "the remembered group is not offered").toEqual([[2, "Copy to Secondary talents"]]);
+  expect(addon.texts("Bindings for Primary talents on this character. Click a cell to pick a spell, right-click to clear, or drop a spell on it.").length, "the line names the list on screen").toBe(1);
+  addon.eval(`${CC}.CopyToSpec(1)`);
+  expect(savedKeys(addon, 1), "copying a list onto itself leaves it").toEqual(["BUTTON2", "BUTTON3"]);
+});
+
+it("Copy to asks before it replaces a list that has bindings, and not before it fills an empty one", () => {
+  const secondary = ', [2] = { { key = "BUTTON2", action = "spell", value = "Smite" } }';
+  const addon = priest("__wfgWorld.specGroup = 1", { savedVariables: groupLists(1, secondary) });
+  addon.eval('ns.Options.Show("clickcast")');
+  const copy = widget(addon, 'w.choices ~= nil and w.text ~= nil and w.text.__text == "Copy to..."');
+  addon.clearChat();
+  addon.eval(`__wfgStub.frames[${copy}].set(2)`);
+  expect([addon.eval("return Vanguard_Question:IsShown()"), addon.texts("Replace the bindings of Secondary talents with these?").length], "it asks, naming the group").toEqual([true, 1]);
+  expect(savedKeys(addon, 2), "and replaces nothing yet").toEqual(["BUTTON2"]);
+  addon.click("Vanguard_Question.no");
+  expect(savedKeys(addon, 2), "No keeps the list").toEqual(["BUTTON2"]);
+  addon.eval(`__wfgStub.frames[${copy}].set(2)`);
+  addon.click("Vanguard_Question.confirm");
+  expect([savedKeys(addon, 2), chatHas(addon, /copied to Secondary talents\./)], "Replace copies and says so").toEqual([["BUTTON2", "BUTTON3"], true]);
+  addon.eval("__wfgWorld.specGroup = 2");
+  addon.eval(`${CC}.Clear()`);
+  addon.eval("__wfgWorld.specGroup = 1 ns.Options.Refresh()");
+  addon.clearChat();
+  addon.eval(`__wfgStub.frames[${copy}].set(2)`);
+  expect([addon.eval("return Vanguard_Question:IsShown()"), savedKeys(addon, 2)], "an empty list is filled without a question").toEqual([false, ["BUTTON2", "BUTTON3"]]);
+});
+
+it("on WoW Forever the Clear all question, /vg binds and the Copy caption name the talent group, not the spec", () => {
+  const addon = priest("__wfgWorld.specGroup = 1", { savedVariables: groupLists(1) });
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.eval('return __click("Clear all")');
+  expect(addon.texts("Clear every click-casting binding for Primary talents? This can't be undone.").length).toBe(1);
+  addon.click("Vanguard_Question.no");
+  addon.clearChat();
+  addon.slash("binds");
+  expect(chatHas(addon, /Click casting \(Primary talents\):/), "/vg binds names the group").toBe(true);
+  addon.eval(`${CC}.Clear()`);
+  addon.clearChat();
+  addon.slash("binds");
+  expect(chatHas(addon, /No click-casting bindings for Primary talents\./), "and so does its empty line").toBe(true);
+  const plain = priest("");
+  plain.slash("binds");
+  expect(chatHas(plain, /No click-casting bindings for this spec\./), "without talent groups it says spec").toBe(true);
+  plain.eval('ns.Options.Show("clickcast") return __click("Clear all")');
+  expect(plain.texts("Clear every click-casting binding for this spec? This can't be undone.").length).toBe(1);
+});
+
+it("the talent-group migration finds the old list under the specialization index, 0 or any other key, and stamps only when it has something to go by", () => {
+  // The old list under a key, the client answering a specialization index (or none), and the saved lists after the first read.
+  const after = (key, index) => {
+    const addon = priest(`__wfgWorld.specGroup = 1 ${index === null ? "" : `__wfgWorld.spec = ${index}`}`, { savedVariables: oldList(key) });
+    return [savedKeys(addon, 1), savedKeys(addon, 2), migrated(addon)];
+  };
+  const both = [["BUTTON2", "BUTTON1"], ["BUTTON2", "BUTTON1"], true];
+  expect(after(0, 5), "the list at 0 while the client now answers specialization 5").toEqual(both);
+  expect(after(5, null), "the list at 5 while the client now answers none").toEqual(both);
+  expect(after(3, 3), "the list at the answered index").toEqual(both);
+  const fresh = priest("__wfgWorld.specGroup = 1", { savedVariables: "VanguardCharDB = {}" });
+  expect([savedKeys(fresh, 1), migrated(fresh)], "nothing saved and no group in use: nothing stamped").toEqual([{}, false]);
+  fresh.eval(`${CC}.Add("BUTTON4", "focus")`);
+  fresh.eval(`${CC}.Bindings()`);
+  expect(migrated(fresh), "once a group holds bindings the character is moved over").toBe(true);
+});
+
+it("Swap them says in chat which lists it changed, the notice says when it also fixes the other talent group, and a macro on Right click is swapped too", () => {
+  const both = 'VanguardCharDB = { clickcast = { [0] = { { key = "BUTTON2", action = "macro", value = "/cast Flash Heal" }, { key = "BUTTON3", action = "menu" } } } }';
+  const addon = priest(GAME_CLICKS_LUA + "__wfgWorld.specGroup = 1", { savedVariables: both });
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(addon.texts(`${MENU_NOTICE} This also fixes Secondary talents, which has the same bindings.`).length, "the notice names the other group").toBe(1);
+  addon.clearChat();
+  addon.eval('__click("Swap them")');
+  expect([chatHas(addon, /Unit menu moved to Right click, and what was on Right click to Middle click \(Primary talents\)\./), chatHas(addon, /\(Secondary talents\)\./)], "one line for each list changed").toEqual([true, true]);
+  expect(addon.eval(`local out = {} for _, b in ipairs(${CC}.Bindings(2)) do out[b.key] = b.action end return out.BUTTON2 .. "/" .. out.BUTTON3`), "the macro went to Middle in Secondary too").toBe("menu/macro");
+});
+
+it("a healer with the old layouts' menu click is told once in chat at login, and not once it is swapped or dismissed", () => {
+  const old = 'VanguardCharDB = { clickcast = { [0] = { { key = "BUTTON2", action = "spell", value = "Flash Heal" }, { key = "BUTTON3", action = "menu" } } } }';
+  const told = /Middle click can't open the unit menu on your raid frames\. \/vg > Click casting/;
+  const addon = priest(GAME_CLICKS_LUA, { savedVariables: old });
+  expect(chatHas(addon, told), "told at login").toBe(true);
+  addon.clearChat();
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(chatHas(addon, told), "and only once").toBe(false);
+  const dismissed = priest(GAME_CLICKS_LUA, { savedVariables: old + ' VanguardCharDB.clickcastStamps = { menuNotice = true }' });
+  expect(chatHas(dismissed, told), "not after a dismissal").toBe(false);
+  expect(chatHas(priest(GAME_CLICKS_LUA), told), "not for a list that doesn't have the shape").toBe(false);
 });

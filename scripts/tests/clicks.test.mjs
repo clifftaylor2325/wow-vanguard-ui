@@ -249,11 +249,17 @@ function bindingClicks(adds, setup = "") {
 }
 
 it("an interaction the game moved to another click remaps that click: Vanguard says so, and the engine runs the other button's binding", () => {
-  const remap = "the game's own Click Casting window puts Target or the unit menu on this click, so your binding for the click it stands for runs instead";
+  const remap = "the game's own Click Casting window puts the unit menu on this click, so it runs your Right click binding instead";
   const { why, click } = bindingClicks('CC.Add("BUTTON2", "spell", "TEST-ONLY Renew") CC.Add("BUTTON3", "menu")',
     'table.remove(__gameClicks, 2) table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 2, button = "MiddleButton", modifiers = 0 })');
   expect(click("MiddleButton"), "the engine reads the Right click's binding for a Middle click: the heal, not the menu").toBe("spell");
   expect([why("BUTTON3"), why("BUTTON2")], "the Middle menu is flagged as remapped; the Right click is no longer the game's, and it casts only if it is bound").toEqual([remap, null]);
+});
+
+it("the remap reason names what the game put on the click and the button whose binding runs", () => {
+  const { why } = bindingClicks('CC.Add("BUTTON3", "focus") CC.Add("BUTTON1", "assist")',
+    'table.remove(__gameClicks, 1) table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 1, button = "MiddleButton", modifiers = 0 })');
+  expect(why("BUTTON3"), "Target moved to Middle").toBe("the game's own Click Casting window puts Target on this click, so it runs your Left click binding instead");
 });
 
 it("the game's coverage is by the exact modifiers: a Target on Ctrl + Left does not cover Shift + Left", () => {
