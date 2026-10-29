@@ -92,6 +92,8 @@
     "scripts/tests/chatwatch.test.mjs": [],
     "scripts/tests/chatwindows.test.mjs": [],
     "scripts/tests/chrome.test.mjs": [],
+    "scripts/tests/clickcast-groups.test.mjs": [],
+    "scripts/tests/clickcast-notice.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
       "a name-bound spell made in another client language casts by the name this client gives its id",
       "bindings carry spell ids and ranks, move, copy, export and import",

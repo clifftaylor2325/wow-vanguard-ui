@@ -3,41 +3,10 @@
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
-
-const CS = "ns.ClickCastSpells";
-const CC = 'ns.GetModule("ClickCast")';
-
-// A priest's spellbook: ranks, a passive, an off-spec entry and a damage spell.
-const PRIEST = [
-  [2061, { name: "Flash Heal", rank: 1, helpful: true, icon: "Interface\\Icons\\TEST-ONLY-FH" }],
-  [9472, { name: "Flash Heal", rank: 2, helpful: true, icon: "Interface\\Icons\\TEST-ONLY-FH2" }],
-  [139, { name: "Renew", rank: 1, helpful: true }],
-  [17, { name: "Power Word: Shield", rank: 1, helpful: true }],
-  [527, { name: "Dispel Magic", rank: 1, helpful: true }],
-  [1243, { name: "Power Word: Fortitude", rank: 1, helpful: true }],
-  [2006, { name: "Resurrection", rank: 1, helpful: true }],
-  [585, { name: "Smite", rank: 1, helpful: false }],
-  [15270, { name: "Spirit Tap", passive: true, helpful: false }],
-  [2651, { name: "Elune's Grace", offSpec: true, helpful: true }],
-  [2050, { name: "Lesser Heal", rank: 1, helpful: true }],
-  [2054, { name: "Heal", rank: 1, helpful: true }],
-  [2060, { name: "Greater Heal", rank: 1, helpful: true }],
-  [528, { name: "Cure Disease", rank: 1, helpful: true }],
-];
+import { CC, CS, applies, bindings, cell, priestly, widget } from "./clickcast-helpers.mjs";
 
 // A logged-in priest with the spellbook above, on the click-casting page when asked.
-function priest(extra = "", opts = {}) {
-  const addon = loggedIn(CLICK_LUA + extra, opts);
-  addon.eval('__wfgWorld.units.player.class = "PRIEST" __wfgWorld.units.player.className = "Priest"');
-  for (const [id, fields] of PRIEST) addon.world.learn(id, fields);
-  return addon;
-}
-
-// The first widget passing a Lua predicate on `w`, as its id.
-const widget = (addon, predicate) => addon.frames(predicate)[0]?.id;
-
-// The grid cell for a binding key.
-const cell = (addon, key) => widget(addon, `w.key == "${key}" and w.iconFrame ~= nil and w.empty ~= nil`);
+const priest = (extra = "", opts = {}) => priestly(loggedIn(CLICK_LUA + extra, opts));
 
 // The visible picker row whose text reads exactly `text`.
 const pickerRow = (addon, text) => widget(addon, `w.item ~= nil and w.chevron ~= nil and w:IsShown() and w.text.__text == "${text}"`);
@@ -54,9 +23,6 @@ const textsIn = (addon, id) => addon.eval(`local out = {} for _, c in ipairs(__w
 // Saved variables with click casting on the unit frames too, so bindings have frames to land on.
 const WITH_FRAMES = "VanguardDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } }";
 
-// The current spec's bindings as { key: "action:value:spellID:rank" }.
-const bindings = (addon) => addon.eval(`local out = {} for _, b in ipairs(${CC}.Bindings()) do out[b.key] = b.action .. ":" .. tostring(b.value) .. ":" .. tostring(b.spellID) .. ":" .. tostring(b.rank) end return out`);
-
 it("the spell catalog folds ranks and sorts the spellbook into healer groups", () => {
   const addon = priest();
   const fh = addon.eval(`local s = ${CS}.Spell("Flash Heal") return { id = s.spellID, max = s.maxRank, ranks = #s.ranks, first = s.ranks[1].rank, icon = s.icon }`);
@@ -70,7 +36,7 @@ it("the spell catalog folds ranks and sorts the spellbook into healer groups", (
   addon.eval("C_Spell.IsSpellHelpful = nil");
   expect(addon.eval(`local out = {} for i, s in ipairs(${CS}.Groups().other) do out[i] = s.name end return out`), "without IsSpellHelpful the class table alone decides, and the rest is Other").toEqual(["Resurrection", "Smite"]);
   const layout = addon.eval(`local l, out = ${CS}.Layout(), {} for k, b in pairs(l) do out[k] = b.action .. ":" .. tostring(b.value) end return out`);
-  expect(layout).toMatchObject({ BUTTON1: "target:nil", BUTTON3: "menu:nil", BUTTON2: "spell:Flash Heal", "alt-BUTTON2": "spell:Resurrection" });
+  expect(layout).toMatchObject({ BUTTON1: "target:nil", BUTTON2: "menu:nil", BUTTON3: "spell:Flash Heal", "alt-BUTTON2": "spell:Resurrection" });
   expect(addon.eval(`return ${CS}.HasLayout(), ${CS}.ClassName()`)).toBe(true);
   expect(addon.eval(`return ${CS}.ClassName()`)).toBe("Priest");
   addon.world.learn(596, { name: "Prayer of Healing", rank: 1, helpful: true });
@@ -110,10 +76,10 @@ it("on a German client the groups and the starter layout find the spells by id, 
   expect(groups.buffs).toEqual(["Machtwort: Seelenstärke"]);
   expect(groups.other, "Resurrection is in no class group; the damage spell is left out").toEqual(["Auferstehung"]);
   const layout = addon.eval(`local l, out = ${CS}.Layout(), {} for k, b in pairs(l) do out[k] = b.action .. ":" .. tostring(b.value) end return out`);
-  expect(layout, "the layout binds the German names").toMatchObject({ BUTTON2: "spell:Blitzheilung", "shift-BUTTON1": "spell:Große Heilung", "alt-BUTTON2": "spell:Auferstehung" });
+  expect(layout, "the layout binds the German names").toMatchObject({ BUTTON3: "spell:Blitzheilung", "shift-BUTTON1": "spell:Große Heilung", "alt-BUTTON2": "spell:Auferstehung" });
   expect(addon.eval(`return ${CS}.ClassName()`), "the button names the class as the client does").toBe("Priester");
   addon.eval(`${CC}.ApplyLayout(${CS}.Layout())`);
-  expect(bindings(addon).BUTTON2, "applied, it binds the spell's German name and its id").toBe("spell:Blitzheilung:2061:nil");
+  expect(bindings(addon).BUTTON3, "applied, it binds the spell's German name and its id").toBe("spell:Blitzheilung:2061:nil");
 });
 
 it("a name-bound spell made in another client language casts by the name this client gives its id", () => {
@@ -133,7 +99,7 @@ it("a layout spell the client can't name is left out, not bound under an English
   const addon = priest();
   addon.eval("__wfgWorld.spells[2061] = nil");
   const layout = addon.eval(`local l, out = ${CS}.Layout(), {} for k, b in pairs(l) do out[k] = b.action .. ":" .. tostring(b.value) end return out`);
-  expect([layout.BUTTON2, layout["alt-BUTTON2"]], "Flash Heal unknown: no right-click binding; the rest stay").toEqual([undefined, "spell:Resurrection"]);
+  expect([layout.BUTTON3, layout["alt-BUTTON2"]], "Flash Heal unknown: no middle-click binding; the rest stay").toEqual([undefined, "spell:Resurrection"]);
 });
 
 it("ns.SpellName: the client's name for an id through C_Spell, else the old global; nil when hidden or unknown", () => {
@@ -183,8 +149,8 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   const odd = addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = { { key = 1 }, { key = "BUTTON4", action = "target" } } })`);
   expect(addon.eval(`return ${CC}.Import(${JSON.stringify(odd)})`), "malformed entries are skipped").toBe(1);
   addon.eval(`${CC}.ApplyLayout(${CS}.Layout())`);
-  expect(bindings(addon)).toMatchObject({ BUTTON1: "target:nil:nil:nil", BUTTON3: "menu:nil:nil:nil", "alt-BUTTON2": "spell:Resurrection:2006:nil" });
-  expect(bindings(addon).BUTTON2.startsWith("spell:Flash Heal:"), "the layout's spells bind by name").toBe(true);
+  expect(bindings(addon)).toMatchObject({ BUTTON1: "target:nil:nil:nil", BUTTON2: "menu:nil:nil:nil", "alt-BUTTON2": "spell:Resurrection:2006:nil" });
+  expect(bindings(addon).BUTTON3.startsWith("spell:Flash Heal:"), "the layout's spells bind by name").toBe(true);
   addon.eval('__wfgWorld.bindings.TOGGLEGAMEMENU = { "ESCAPE" }');
   expect(addon.eval(`return ${CC}.Collision("1") .. "|" .. tostring(${CC}.Collision("SHIFT-Q")) .. "|" .. ${CC}.Collision("ESCAPE") .. "|" .. tostring(${CC}.Collision("ctrl-BUTTON2"))`)).toBe("Action bar 1 slot 1|nil|togglegamemenu|nil");
   addon.eval('__wfgWorld.bindings.MULTIACTIONBAR1BUTTON2 = { "F" }');
@@ -330,7 +296,7 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   expect(addon.eval('return __click("Priest healing layout")')).toBe(true);
   addon.eval('ns.Options.ShowTab("Keys while hovering a frame")');
   expect(bindings(addon)).toMatchObject({ BUTTON1: "target:nil:nil:nil", "ctrl-BUTTON1": "spell:Dispel Magic:527:nil" });
-  expect(bindings(addon).BUTTON2.startsWith("spell:Flash Heal:")).toBe(true);
+  expect(bindings(addon).BUTTON3.startsWith("spell:Flash Heal:")).toBe(true);
   const add = widget(addon, 'w.caption == "Add key" and w.onKey ~= nil');
   expect(addon.texts("No hover keys yet. Add one, press the key, pick the spell.").length).toBe(1);
   addon.click(add);
@@ -364,8 +330,10 @@ it("the starter layout, hover keys with collision notes, and the test tile", () 
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "a lone modifier waits").toBe("Press a key or click...");
   addon.key(tile, "F1");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("F1 -> Target on Tester");
+  addon.click(tile, "MiddleButton");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("Middle click -> Flash Heal on Tester");
   addon.click(tile, "RightButton");
-  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`)).toBe("Right click -> Flash Heal on Tester");
+  expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "the layout's right click is the unit menu").toBe("Right click -> Unit menu on Tester");
   addon.click(tile, "Button9");
   expect(addon.eval(`return __wfgStub.frames[${tile}].result:GetText()`), "an unknown mouse button reads as the left one").toBe("Left click -> Target on Tester");
   addon.wheel(tile, 1);
@@ -532,11 +500,11 @@ it("the hover keys card: its key rows are list rows; the empty line is label tex
 it("with the game's own click bindings, the page marks a Target or Unit menu binding the game won't run, and says why", () => {
   const addon = priest(GAME_CLICKS_LUA);
   addon.eval('ns.Options.Show("clickcast")');
-  addon.eval(`${CC}.ApplyLayout(ns.ClickCastSpells.Layout()) ${CC}.Add("SHIFT-Q", "menu") ${CC}.Add("SHIFT-E", "spell", "Renew", 139) ns.Options.Refresh()`);
+  addon.eval(`${CC}.ApplyLayout(ns.ClickCastSpells.Layout()) ${CC}.Add("BUTTON3", "menu") ${CC}.Add("SHIFT-Q", "menu") ${CC}.Add("SHIFT-E", "spell", "Renew", 139) ns.Options.Refresh()`);
   // A cell's name: its text and whether it is drawn in a colour token.
   const name = (key, token) => addon.eval(`local c = __wfgStub.frames[${cell(addon, key)}] return { c.name:GetText(), c.name.__textColor }`)
     .map((v, i) => (i === 1 ? isTok(addon, v, token) : v));
-  expect([name("BUTTON3", "warn"), name("BUTTON1", "text")], "the middle-click menu is in the warning colour; the game's own Left click isn't").toEqual([["Unit menu", true], ["Target", true]]);
+  expect([name("BUTTON3", "warn"), name("BUTTON1", "text"), name("BUTTON2", "text")], "the middle-click menu is in the warning colour; the layout's own Left and Right clicks (the game's) aren't").toEqual([["Unit menu", true], ["Target", true], ["Unit menu", true]]);
   addon.hover(cell(addon, "BUTTON3"));
   expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "hovering it says why").toEqual(
     ["Unit menu", "Does nothing: the game runs it only on a click its own Click Casting window binds."]);
@@ -553,14 +521,6 @@ it("with the game's own click bindings, the page marks a Target or Unit menu bin
 
 // A click-casting string for a list of Lua binding tables (as written in Lua source).
 const encoded = (addon, list) => addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = ${list} })`);
-
-// How many times the bindings were applied to the frames while fn ran (the module's ApplyAll, counted).
-function applies(addon, fn) {
-  addon.eval(`__applies, __realApply = 0, ${CC}.ApplyAll ${CC}.ApplyAll = function(...) __applies = __applies + 1 return __realApply(...) end`);
-  const result = fn();
-  addon.eval(`${CC}.ApplyAll = __realApply`);
-  return [result, addon.eval("return __applies")];
-}
 
 it("import: a good string replaces the bindings and applies them once, however many it holds", () => {
   const addon = priest("", { savedVariables: WITH_FRAMES });
@@ -615,7 +575,7 @@ it("import: the options window says why a string was refused, and the layout app
   expect([chatHas(addon, /Can't import: no usable bindings in it\./), bindings(addon).BUTTON4], "empty string: told, and BUTTON4 is still bound").toEqual([true, "target:nil:nil:nil"]);
   const [, count] = applies(addon, () => addon.eval(`${CC}.ApplyLayout(${CS}.Layout())`));
   expect(count, "a layout of many keys applies once").toBe(1);
-  expect(bindings(addon).BUTTON3, "and still binds them").toBe("menu:nil:nil:nil");
+  expect(bindings(addon).BUTTON2, "and still binds them").toBe("menu:nil:nil:nil");
 });
 
 it("the test tile keeps the keys it reads from the game, and passes Escape and modifiers on", () => {

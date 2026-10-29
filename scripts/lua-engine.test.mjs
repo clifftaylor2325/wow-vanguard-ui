@@ -10,6 +10,7 @@ import fengari from "fengari";
 import { expect, it } from "vitest";
 import { expectErrors } from "./lib/error-guard.mjs";
 import { createAddon, hasCachedChunk, pushFileChunk, root, tocFiles } from "./lib/lua-harness.mjs";
+import { GAME_CLICKS_LUA, GAME_ENGINE_LUA } from "./tests/helpers.mjs";
 
 const { lua, lauxlib, lualib } = fengari;
 
@@ -209,6 +210,29 @@ it("input: clicks, hover, the wheel and keys reach the frame's scripts", () => {
   addon.keys({ shift: true });
   expect(addon.eval("return __log")).toEqual(["click:RightButton", "enter", "wheel:-1", "key:ESCAPE", "leave", "text:hi", "enter-key"]);
   expect(addon.eval("return IsShiftKeyDown()")).toBe(true);
+});
+
+it("GetStringFromModifiers reads a mask, not the keys held; the bits and the words are the world's", () => {
+  const addon = loggedIn();
+  addon.keys({ ctrl: true });
+  expect(addon.eval("return { GetStringFromModifiers(0), GetStringFromModifiers(4), GetStringFromModifiers(1 + 4), GetStringFromModifiers(7) }"), "the held Ctrl key is not read").toEqual(["", "SHIFT-", "ALT-SHIFT-", "ALT-CTRL-SHIFT-"]);
+  addon.eval('__wfgWorld.modifierBits = { alt = 8, ctrl = 4, shift = 2 } __wfgWorld.modifierNames.shift = "Umschalt"');
+  expect(addon.eval("return { GetStringFromModifiers(2), GetStringFromModifiers(6) }"), "another bit layout and another word").toEqual(["Umschalt-", "CTRL-Umschalt-"]);
+});
+
+it("the click engine model (GAME_ENGINE_LUA) runs a game Spell first, maps an Interaction to its default button and drops a Target click the profile doesn't bind", () => {
+  const addon = loggedIn();
+  addon.eval(GAME_CLICKS_LUA + GAME_ENGINE_LUA);
+  addon.eval(`f = CreateFrame("Button", "TEST_ONLY_Engine") f:SetAttribute("*type1", "target") f:SetAttribute("*type2", "togglemenu")
+    f:SetAttribute("*type3", "focus") f:SetAttribute("*type-vg1", "target") f:SetAttribute("*type-vg2", "spell")`);
+  // What a click on the frame does: the button's name and the held modifiers ("shift-").
+  const click = (button, prefix = "") => addon.eval(`return __engineClick(TEST_ONLY_Engine, "${button}", "${prefix}")`);
+  expect([click("LeftButton"), click("Button1"), click("RightButton"), click("MiddleButton")], "the default profile: Target on Left (either name), the menu on Right, Middle has no entry and no gated type").toEqual(["target", "target", "togglemenu", "focus"]);
+  expect([click("LeftButton", "shift-"), click("vg1"), click("vg2")], "a Target click with no profile entry is dropped, a hover key's virtual button has none ever").toEqual(["dropped", "dropped", "spell"]);
+  addon.eval(`table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 1, button = "Button2", modifiers = __wfgWorld.modifierBits.shift })`);
+  expect(click("RightButton", "shift-"), "a game Spell runs first, whichever name its button has").toBe("game:1");
+  addon.eval('table.remove(__gameClicks, 2) table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 2, button = "MiddleButton", modifiers = 0 })');
+  expect(click("MiddleButton"), "an Interaction on Middle reads the attribute of the button it defaults to").toBe("togglemenu");
 });
 
 it("inspectors: a frame's snapshot, text search and the top-level screen", () => {

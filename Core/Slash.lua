@@ -496,12 +496,28 @@ local function bindLine(CC, b)
   return "  " .. CC.KeyText(b.key) .. "  ->  " .. CC.ActionText(b) .. note
 end
 
--- /vg binds: this spec's click-casting bindings, one per line.
+-- The /vg binds heading: the talent group's name where the lists are kept per group, else "this spec".
+local function bindsHeading(CC)
+  return CC.ListSentence({
+    spec = L["Click casting (this spec):"],
+    talents = L["Click casting ({talents}):"],
+  }, CC.CurrentKey())
+end
+
+-- The /vg binds line for a list with nothing in it, named the same way.
+local function noBindsLine(CC)
+  return CC.ListSentence({
+    spec = L["No click-casting bindings for this spec. /vg > Click casting to add some."],
+    talents = L["No click-casting bindings for {talents}. /vg > Click casting to add some."],
+  }, CC.CurrentKey())
+end
+
+-- /vg binds: this spec's (on WoW Forever, this talent group's) click-casting bindings, one per line.
 local function bindsCommand()
   local CC = ns.GetModule("ClickCast")
-  local list = CC and CC.Bindings() or {}
-  if CC and CC.UsesGame() then chat(L["The game's click bindings are in use; Vanguard's below rest until you switch back."]) end
-  chat(#list == 0 and L["No click-casting bindings for this spec. /vg > Click casting to add some."] or L["Click casting (this spec):"])
+  local list = CC.Bindings()
+  if CC.UsesGame() then chat(L["The game's click bindings are in use; Vanguard's below rest until you switch back."]) end
+  chat(#list == 0 and noBindsLine(CC) or bindsHeading(CC))
   for _, b in ipairs(list) do chat(bindLine(CC, b)) end
 end
 

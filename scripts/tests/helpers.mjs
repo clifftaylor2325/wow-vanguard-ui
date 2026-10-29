@@ -268,6 +268,50 @@ export const GAME_CLICKS_LUA = `
   C_ClickBindings = { GetProfileInfo = function() return __gameClicks end }
 `;
 
+// TEST-ONLY model of what the client's SecureUnitButton_OnClick does with a click on a unit button (from the forever
+// branch's SecureTemplates.lua), over GAME_CLICKS_LUA's profile. UNVERIFIED: only the order of the checks is from
+// SecureTemplates.lua; the profile's modifier mask is built from the world's modifierBits, which is an unverified model
+// too (wow-world.lua), so a test that has this agree with the addon on a modified click shows the two models agree. __engineClick(frame, button, prefix) answers what
+// the click does: "game:<kind>" when the game's own Spell, Macro or PetAction binding for it runs (and returns before
+// the frame's attribute is read), "dropped" when the frame's type is target, menu or togglemenu and the game's profile
+// has no binding for the click, else the frame's type attribute (an Interaction binding first maps the click to the
+// button its action defaults to: Target to Left, Open menu to Right). prefix is the held modifiers ("shift-").
+// button is a mouse button's name (LeftButton, Button2 and the other name for it are one button) or a hover key's
+// virtual button ("vg3"), whose attributes carry the suffix "-vg3" and which no profile entry ever names.
+// Not modelled: the attribute lookup's "*" forms for the modifier prefix and the ATTRIBUTE_NOOP rule (Vanguard sets none).
+export const GAME_ENGINE_LUA = `
+  local BUTTON_NUMBERS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button1 = 1, Button2 = 2, Button3 = 3, Button4 = 4, Button5 = 5 }
+  local function maskOf(prefix)
+    local mask = 0
+    for name, bit in pairs(__wfgWorld.modifierBits) do
+      if prefix:find(name .. "-", 1, true) then mask = mask + bit end
+    end
+    return mask
+  end
+  local function boundTo(button, mask)
+    for _, info in ipairs(C_ClickBindings.GetProfileInfo()) do
+      if BUTTON_NUMBERS[info.button] == BUTTON_NUMBERS[button] and info.modifiers == mask then return info end
+    end
+  end
+  local function suffixOf(button)
+    return BUTTON_NUMBERS[button] and tostring(BUTTON_NUMBERS[button]) or "-" .. button
+  end
+  local function typeOf(frame, prefix, button)
+    local suffix = suffixOf(button)
+    return frame:GetAttribute(prefix .. "type" .. suffix) or frame:GetAttribute("*type" .. suffix) or frame:GetAttribute("type" .. suffix)
+  end
+  function __engineClick(frame, button, prefix)
+    prefix = prefix or ""
+    local bound = BUTTON_NUMBERS[button] and boundTo(button, maskOf(prefix))
+    local kind, Kinds = bound and bound.type or 0, Enum.ClickBindingType
+    if kind == Kinds.Spell or kind == Kinds.Macro or kind == Kinds.PetAction then return "game:" .. kind end
+    if kind == Kinds.Interaction then button = bound.actionID == 1 and "LeftButton" or "RightButton" end
+    local type = typeOf(frame, prefix, button)
+    if (type == "target" or type == "menu" or type == "togglemenu") and kind == Kinds.None then return "dropped" end
+    return type
+  end
+`;
+
 // TEST-ONLY raid: three members; raid2 is you. The stub has no secure
 // header, so tests create buttons the way the header would and call its setup.
 export const RAID_ENV = `
