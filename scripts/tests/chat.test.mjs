@@ -98,6 +98,12 @@ it("chat tabs: the alert glow is the accent colour and keeps the game's own alph
   addon.slash("accent ember");
   expect(isTok(addon, addon.eval("local g = ChatFrame1Tab.glow return g.__vertexColor or { g:GetVertexColor() }"), "accent"), "and follows accent changes").toBe(true);
 });
+it("chat tabs: the alert glow goes back to the accent when the game colours the tab again (FCFTab_UpdateColors paints it in the tab's own colour)", () => {
+  const addon = loggedIn(UI_ENV + `ChatFrame1Tab.glow = ChatFrame1Tab:CreateTexture()
+    function FCFTab_UpdateColors(tab, selected) tab:GetFontString():SetTextColor(1, 0.5, 0.25) tab.glow:SetVertexColor(1, 0.5, 0.25) end`);
+  addon.eval("ns.GetModule('Chat').SkinAll() FCFTab_UpdateColors(ChatFrame1Tab, true)");
+  expect(isTok(addon, addon.eval("local g = ChatFrame1Tab.glow return g.__vertexColor or { g:GetVertexColor() }"), "accent"), "the glow is the accent, not the game's orange").toBe(true);
+});
 // How many shown pieces of corner art `art` a frame carries (four arcs on a rounded border).
 const arcs = (addon, name, art = "CornerLine") => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
 it("chat frame: one rounded panel round the text, the scroll column and a 24-tall tab bar, shown with the background; Copy and Find are glyph tiles at the bar's right end, in a fixed order", () => {
@@ -246,6 +252,34 @@ it("minimap: the game's emptied cluster takes no mouse and its zone button is hi
   expect(addon.eval("return { MinimapCluster.__mouse, MinimapCluster.ZoneTextButton:IsShown() }"), "no mouse on the cluster, the zone button hidden (not just faded)").toEqual([false, false]);
   expect(addon.eval("return { MinimapCluster.BorderTop.__alpha, Vanguard_Minimap:IsShown() }"), "the border art is still faded, the map still shows").toEqual([0, true]);
   expect(loggedIn(UI_ENV + "MinimapCluster = nil").eval("return Vanguard_Minimap ~= nil"), "a client without the cluster still gets the map").toBe(true);
+});
+it("minimap: the game's own coordinates line (the container's PlayerCoords) is faded, since Vanguard has its own", () => {
+  const addon = loggedIn(UI_ENV + `MinimapCluster.MinimapContainer = CreateFrame("Frame", nil, MinimapCluster)
+    MinimapCluster.MinimapContainer.PlayerCoords = CreateFrame("Frame", nil, MinimapCluster.MinimapContainer)`);
+  expect(addon.eval("return MinimapCluster.MinimapContainer.PlayerCoords.__alpha"), "faded").toBe(0);
+  expect(loggedIn(UI_ENV + "MinimapCluster.MinimapContainer = CreateFrame('Frame', nil, MinimapCluster)").eval("return #ns.errors"), "a container without the line is fine").toBe(0);
+});
+// TEST-ONLY: Blizzard_HybridMinimap's frame (a child of Minimap, BACKGROUND strata, hidden until the game shows it).
+const HYBRID_ENV = `HybridMinimap = CreateFrame("Frame", "HybridMinimap", Minimap) HybridMinimap:SetFrameStrata("BACKGROUND") HybridMinimap:SetFrameLevel(100) HybridMinimap:Hide()`;
+// The hybrid map's strata and level, the minimap's strata and level, the holder's level.
+const hybridLevels = (addon) => addon.eval("return { HybridMinimap:GetFrameStrata(), HybridMinimap:GetFrameLevel(), Minimap:GetFrameStrata(), Minimap:GetFrameLevel(), Vanguard_Minimap:GetFrameLevel() }");
+it("minimap: the hybrid map, already loaded, goes on the map's strata one level under the map and over the holder, not reparented", () => {
+  const addon = loggedIn(UI_ENV + HYBRID_ENV);
+  const [strata, level, mapStrata, mapLevel, holderLevel] = hybridLevels(addon);
+  expect([strata === mapStrata, level, mapLevel - holderLevel], "the same strata, a level between the holder and the map").toEqual([true, mapLevel - 1, 2]);
+  expect(addon.eval("return HybridMinimap:GetParent() == Minimap"), "still the minimap's child").toBe(true);
+});
+it("minimap: the hybrid map the game loads later is raised when its part of the game loads, and again when it shows", () => {
+  const addon = loggedIn(UI_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_SomethingElse");
+  addon.eval(HYBRID_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_HybridMinimap");
+  const [strata, level, mapStrata, mapLevel] = hybridLevels(addon);
+  expect([strata === mapStrata, level], "raised on load").toEqual([true, mapLevel - 1]);
+  addon.eval("HybridMinimap:SetFrameStrata('BACKGROUND') HybridMinimap:Show()");
+  expect(hybridLevels(addon)[0], "and again on show").toBe(hybridLevels(addon)[2]);
+  addon.fire("ADDON_LOADED", "Blizzard_HybridMinimap");
+  expect(addon.eval("return #ns.errors"), "a second load notice hooks nothing twice and no errors").toBe(0);
 });
 it("minimap: a free-for-all zone (arena) is named in the hostile colour, with a free-for-all territory line", () => {
   const addon = loggedIn(UI_ENV + `GetZonePVPInfo = nil C_PvP = { GetZonePVPInfo = function() return "arena" end }`);

@@ -169,12 +169,25 @@ function QT.LevelLine()
   return ns.Format(L["Quests: {percent}% of the XP to level"], { percent = math.floor(total / need * 100) })
 end
 
+-- Whether the game's own tracker would watch a quest that was just accepted: it leaves bounty and task
+-- (world) quests out of the watch list.
+local function watchedOnAccept(id)
+  return not (ns.IsTrue(ns.CallIf(C_QuestLog, "IsQuestBounty", id)) or ns.IsTrue(ns.CallIf(C_QuestLog, "IsQuestTask", id)))
+end
+
 -- A quest was accepted: watch it unless it is watched already (the game may have; adding is safe either way,
--- and the game itself refuses past its watch limit). Older clients send the log index before the id.
+-- and the game itself refuses past its watch limit) or the game would not (a world or bounty quest). Older
+-- clients send the log index before the id.
 function QT.AutoTrack(_, first, second)
   local id = ns.PlainNumber(second or first)
-  if not (QT.settings.autoTrack and id) or QT.IsWatched(id) then return end
+  if not (QT.settings.autoTrack and id) or QT.IsWatched(id) or not watchedOnAccept(id) then return end
   ns.CallIf(C_QuestLog, "AddQuestWatch", id)
+end
+
+-- The watch list put in the game's order again on a new area, as the game's own tracker did (its events are
+-- off while this tracker shows). With the nearest-first order the tracker sorts itself.
+function QT.SortWatches()
+  if QT.settings.order == "game" then ns.CallIf(C_QuestLog, "SortQuestWatches") end
 end
 
 -- The achievement type of the content tracker (Enum.ContentTrackingType.Achievement), or nil without it.
@@ -356,5 +369,6 @@ function QT.Enable(settings)
   for _, event in ipairs(QT.EVENTS) do ns.On(event, refreshSoon) end
   followRecipes()
   ns.On("QUEST_ACCEPTED", QT.AutoTrack)
+  ns.On("ZONE_CHANGED_NEW_AREA", QT.SortWatches)
   ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)
 end

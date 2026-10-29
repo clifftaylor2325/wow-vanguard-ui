@@ -191,3 +191,53 @@ it("more tooltips: the client's other tooltips get the panel with the menus grou
   expect(moreTips(off), "with the menus group off they are the game's").toEqual(MORE_TIPS.map(() => false));
   expect(off.eval("return ns.FrameState('vgSkinned')[GameTooltip]"), "the main tooltips still are skinned").toBe(true);
 });
+
+// TEST-ONLY: tooltips with the parts the client's XML gives them (SharedTooltipTemplates.xml, GameTooltip.xml,
+// ItemRef.xml, FloatingPetBattleTooltip.xml): the overlay textures, the compare header frame with its art and
+// Label, the Links window's close button, and the two battle pet tooltips on a TooltipBackdropTemplate.
+const PARTS_ENV = `
+  local function tip(name)
+    local tt = CreateFrame("Frame", name, UIParent)
+    tt.NineSlice = CreateFrame("Frame", nil, tt)
+    tt.TopOverlay, tt.BottomOverlay = tt:CreateTexture(nil, "OVERLAY"), tt:CreateTexture(nil, "OVERLAY")
+    return tt
+  end
+  local link = tip("ItemRefTooltip")
+  link.CloseButton = CreateFrame("Button", nil, link)
+  local shop = tip("ShoppingTooltip1")
+  shop.CompareHeader = CreateFrame("Frame", nil, shop)
+  shop.CompareHeader:CreateTexture(nil, "BACKGROUND"):SetAtlas("tooltip-compare-label")
+  shop.CompareHeader.Label = shop.CompareHeader:CreateFontString(nil, "ARTWORK")
+  shop.CompareHeader.Label:SetTextColor(1, 0.82, 0)
+  for _, name in ipairs({ "BattlePetTooltip", "FloatingBattlePetTooltip" }) do
+    CreateFrame("Frame", name, UIParent).NineSlice = CreateFrame("Frame", nil, _G[name])
+  end
+  FloatingBattlePetTooltip.CloseButton = CreateFrame("Button", nil, FloatingBattlePetTooltip)
+`;
+
+it("tooltips: the Links window's close button and a floating pet tooltip's are the theme's close cross", () => {
+  const addon = loggedIn(PARTS_ENV);
+  expect(addon.eval("return { ns.Theme.ControlGlyph(ItemRefTooltip.CloseButton):GetTexture(), ns.Theme.ControlGlyph(FloatingBattlePetTooltip.CloseButton):GetTexture() }").map((t) => t.match(/CloseMark$/) !== null), "both take the cross").toEqual([true, true]);
+  expect(addon.eval("return ns.Theme.ControlGlyph(GameTooltip)"), "a tooltip with no close button is fine").toBeNull();
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("tooltips: the edge overlays stay invisible when the game shows them or sets their alpha again", () => {
+  const addon = loggedIn(PARTS_ENV);
+  addon.eval("ItemRefTooltip.TopOverlay:SetAtlas('overlay-top', true) ItemRefTooltip.TopOverlay:Show() ItemRefTooltip.BottomOverlay:Show() ItemRefTooltip.BottomOverlay:SetAlpha(1)");
+  expect(addon.eval("return { ItemRefTooltip.TopOverlay:GetAlpha(), ItemRefTooltip.BottomOverlay:GetAlpha(), ShoppingTooltip1.TopOverlay:GetAlpha() }"), "faded, and faded again after the game's SetAlpha").toEqual([0, 0, 0]);
+});
+it("tooltips: the compare header's art is gone under a flat panel and its label takes the light text colour", () => {
+  const addon = loggedIn(PARTS_ENV);
+  const header = addon.eval(`local h = ShoppingTooltip1.CompareHeader
+    local art for _, r in ipairs({ h:GetRegions() }) do if r.__atlas == "tooltip-compare-label" then art = r end end
+    return { art:GetAlpha(), ns.Theme.PaintedCount() > 0, h.Label.__textColor }`);
+  expect([header[0], header[1]], "the label art is faded, a panel painted").toEqual([0, true]);
+  expect(isTok(addon, addon.eval("return ShoppingTooltip1.CompareHeader.Label.__textColor"), "text"), "the label is no longer the game's gold").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("tooltips: the battle pet tooltips are skinned where the client has them", () => {
+  const addon = loggedIn(PARTS_ENV);
+  expect(addon.eval("return { ns.FrameState('vgSkinned')[BattlePetTooltip], BattlePetTooltip.NineSlice:GetAlpha(), FloatingBattlePetTooltip.NineSlice:GetAlpha() }"), "their backdrop (a NineSlice) is faded under the panel").toEqual([true, 0, 0]);
+  const off = loggedIn(PARTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { menus = false } } }" });
+  expect(off.eval("return ns.FrameState('vgSkinned')[BattlePetTooltip]"), "with the menus group off they are the game's").toBeNull();
+});

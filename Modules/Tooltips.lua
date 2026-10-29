@@ -29,15 +29,44 @@ TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingToolt
 TT.MORE_NAMES = {
   "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "GameNoHeaderTooltip", "GameSmallHeaderTooltip", "BuffFrameTooltip",
   "QuickKeybindTooltip", "SettingsTooltip", "PartyMemberBuffTooltip", "AutoCompleteBox",
+  "BattlePetTooltip", "FloatingBattlePetTooltip",
 }
 
 -- Skinning ---------------------------------------------------------------------------------
+
+-- The close button some tooltips carry (the Links window's, a floating pet tooltip's) as the theme's close
+-- cross, left where the game put it: the Links window sizes its title against that spot.
+local function skinClose(tt)
+  local close = tt.CloseButton
+  if type(close) == "table" and close.CreateTexture then T.CloseButton(close) end
+end
+
+-- The "comparing with equipped" label over a shopping tooltip: its art gone under a flat panel like the
+-- tooltip's, its text in the theme's light colour instead of the game's gold.
+local function skinCompareHeader(tt)
+  local header = tt.CompareHeader
+  if type(header) ~= "table" or not header.GetRegions then return end
+  T.FadeRegions(header)
+  T.Tooltip(header)
+  if type(header.Label) == "table" and header.Label.SetTextColor then T.Color(header.Label, "text") end
+end
+
+-- The decorative edge art some tooltip styles show (their TopOverlay and BottomOverlay textures) kept
+-- invisible, whenever the game shows it again or sets its atlas for the next style.
+local function fadeOverlays(tt)
+  local windows = ns.GetModule("Windows")
+  windows.KeepFaded(tt.TopOverlay)
+  windows.KeepFaded(tt.BottomOverlay)
+end
 
 -- Flat panel on one tooltip, its default art hidden (alpha only, so the client's layout is untouched).
 local function skin(tt)
   if type(tt) ~= "table" or vgSkinned[tt] then return end
   vgSkinned[tt] = true
   T.Tooltip(tt)
+  fadeOverlays(tt)
+  skinClose(tt)
+  skinCompareHeader(tt)
 end
 
 -- The unit health bar under the default tooltip: flat texture.
