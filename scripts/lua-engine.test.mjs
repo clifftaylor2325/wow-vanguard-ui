@@ -211,6 +211,14 @@ it("input: clicks, hover, the wheel and keys reach the frame's scripts", () => {
   expect(addon.eval("return IsShiftKeyDown()")).toBe(true);
 });
 
+it("GetStringFromModifiers reads a mask, not the keys held; the bits and the words are the world's", () => {
+  const addon = loggedIn();
+  addon.keys({ ctrl: true });
+  expect(addon.eval("return { GetStringFromModifiers(0), GetStringFromModifiers(4), GetStringFromModifiers(1 + 4), GetStringFromModifiers(7) }"), "the held Ctrl key is not read").toEqual(["", "SHIFT-", "ALT-SHIFT-", "ALT-CTRL-SHIFT-"]);
+  addon.eval('__wfgWorld.modifierBits = { alt = 8, ctrl = 4, shift = 2 } __wfgWorld.modifierNames.shift = "Umschalt"');
+  expect(addon.eval("return { GetStringFromModifiers(2), GetStringFromModifiers(6) }"), "another bit layout and another word").toEqual(["Umschalt-", "CTRL-Umschalt-"]);
+});
+
 it("inspectors: a frame's snapshot, text search and the top-level screen", () => {
   const addon = loggedIn();
   addon.world.setUnit("target", { name: "TEST-ONLY Pillager", hp: 640, maxhp: 800, reaction: 2 });

@@ -85,6 +85,8 @@ read_globals = {
   "C_VignetteInfo",
   -- P3.10 Click casting: the game's click bindings and its Click Casting window.
   "C_ClickBindings", "ToggleClickBindingFrame",
+  -- The game's click bindings' modifier masks as text (the Input documentation), and Blizzard's key texts (Alt, Ctrl, Shift) that text may use.
+  "GetStringFromModifiers", "ALT_KEY_TEXT", "CTRL_KEY_TEXT", "SHIFT_KEY_TEXT",
   -- P3.12 Error badge: the game's addons button by the minimap.
   "AddonCompartmentFrame",
   -- P3.14 Profiles: switching the game's Edit Mode layout with the profile.

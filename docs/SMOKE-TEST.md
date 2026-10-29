@@ -899,6 +899,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the line reads "Bindings for Primary talents on this character..." (and "Secondary talents" on the other group); the Secondary grid starts with its own list (empty, or a copy of what you had before this version on a character that used click casting first), and each group casts its own spell; **Copy to...** offers only the other talent group ("Copy to Secondary talents"), chat says "Click-casting bindings copied to Secondary talents.", and `/vg binds` then lists the same bindings on both. [Needs in game: that `/vg spec`'s talent group is what the client reports on each swap, and that a character that had bindings before shows them on both groups the first time.]
 - If it fails, paste: `/vg binds` on each group, `/vg spec` and `/vg errors`.
 
+### 10.1f A binding the game's own Spell click runs over says so
+
+- Do: `/vg` > Click casting, bind a spell (say Renew) to Shift + Right click. Open the game's Click Casting window (the page's **Open the game's click bindings** button), bind a spell or macro to Shift + Right click there, save, and come back to `/vg` > Click casting. Hover the Shift / Right click cell and type `/vg binds`. Then in the game's window move that binding to another button or clear it, and look again; click a raid or party tile with Shift + Right once with the game's binding in place.
+- Expect: with the game's binding in place the cell is in the warning colour and its tooltip says "Does nothing: the game's own Click Casting window binds a spell or macro to this click, and that runs instead."; `/vg binds` adds "(does nothing: ...)" with that reason to the Shift + Right click line; the click casts the game's spell, not Vanguard's. After moving or clearing it the warning goes. On the game's default profile (Target on Left, the menu on Right) none of your bindings carry it. [Needs in game: that `GetStringFromModifiers` gives text made of the Alt, Ctrl and Shift names for the game's modifier masks (type `/run print(GetStringFromModifiers(1), GetStringFromModifiers(2), GetStringFromModifiers(4))` and paste what it prints), and that the game runs its own Spell binding over a frame attribute on a Forever raid tile.]
+- If it fails, paste: the `/run` line's output, the `/vg binds` output and `/vg errors`.
+
 ### 10.2 Use it
 
 - Do: out of combat, hover a party or raid tile (or your own frame) and press the key or click.

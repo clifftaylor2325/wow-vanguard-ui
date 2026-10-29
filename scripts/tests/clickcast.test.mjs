@@ -807,3 +807,19 @@ it("on WoW Forever the Click casting page speaks of talent groups, and Copy to g
   expect(addon.texts(`Bindings for Secondary talents${sentence}`).length, "the line follows the group").toBe(1);
   expect(addon.eval(`return __wfgStub.frames[${copy}].choices()`), "and the copy goes back to Primary").toEqual([[1, "Copy to Primary talents"]]);
 });
+
+it("with a game Spell on the same click, the page marks the binding the game's runs over, and says why", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 139, button = "RightButton", modifiers = __wfgWorld.modifierBits.shift })
+    ${CC}.ApplyLayout(ns.ClickCastSpells.Layout()) ns.Options.Show("clickcast")`);
+  const why = "the game's own Click Casting window binds a spell or macro to this click, and that runs instead";
+  // A cell's name colour as a token.
+  const colour = (key, token) => isTok(addon, addon.eval(`return __wfgStub.frames[${cell(addon, key)}].name.__textColor`), token);
+  expect([colour("shift-BUTTON2", "warn"), colour("shift-BUTTON1", "text")], "Shift + Right click (Renew) is in the warning colour, the neighbouring cell is not").toEqual([true, true]);
+  addon.hover(cell(addon, "shift-BUTTON2"));
+  expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "hovering it says why").toEqual(["Renew", `Does nothing: ${why}.`]);
+  addon.hover(null);
+  addon.clearChat();
+  addon.slash("binds");
+  expect(chatHas(addon, new RegExp(`Shift \\+ Right click  ->  Renew .*\\(does nothing: ${why.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)`)), "/vg binds adds the reason").toBe(true);
+});

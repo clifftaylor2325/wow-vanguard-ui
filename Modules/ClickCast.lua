@@ -332,11 +332,14 @@ function CC.Collision(key)
 end
 
 -- The actions the units' click handler (SecureUnitButton_OnClick) runs only on a click the game's own click
--- bindings cover, and why such a binding does nothing, by where it is (player words, read after "does nothing: ").
+-- bindings cover, and why a binding does nothing on this client, by where it is (player words, read after
+-- "does nothing: "). A mouse binding is also overridden where the game binds a Spell, Macro or PetAction to the
+-- same click: the handler runs that first and returns before it reads the frame's attribute.
 local GAME_GATED = { target = true, menu = true }
 local WONT_RUN = {
   key = L["the game won't run it from a key"],
   click = L["the game runs it only on a click its own Click Casting window binds"],
+  override = L["the game's own Click Casting window binds a spell or macro to this click, and that runs instead"],
 }
 -- A mouse button's number from the game's name for it (its profile may use either name).
 local GAME_BUTTONS = { LeftButton = 1, RightButton = 2, MiddleButton = 3, Button1 = 1, Button2 = 2, Button3 = 3, Button4 = 4, Button5 = 5 }
@@ -360,16 +363,82 @@ local function gameCovers(profile, prefix, n)
   return false
 end
 
+-- The words each modifier may be written as in the game's modifier text, in lower case: English names. The client's own
+-- key text (Blizzard's ALT_KEY_TEXT and so on, read when needed) is added to them.
+local MODIFIER_WORDS = { alt = { "alt" }, ctrl = { "ctrl", "control" }, shift = { "shift" } }
+local KEY_TEXTS = { alt = "ALT_KEY_TEXT", ctrl = "CTRL_KEY_TEXT", shift = "SHIFT_KEY_TEXT" }
+
+-- Every word a modifier may be written as, as { word, modifier }, longest first so that a word hiding another (German
+-- "Umschalt" holds "alt") is taken out before the one inside it.
+local function modifierWords()
+  local words = {}
+  for _, modifier in ipairs(MODIFIER_ORDER) do
+    local own = _G[KEY_TEXTS[modifier]]
+    for _, word in ipairs(MODIFIER_WORDS[modifier]) do words[#words + 1] = { word, modifier } end
+    if type(own) == "string" and own ~= "" then words[#words + 1] = { ns.Lower(own), modifier } end
+  end
+  table.sort(words, function(a, b) return #a[1] > #b[1] or (#a[1] == #b[1] and a[1] < b[1]) end)
+  return words
+end
+
+-- Takes each modifier's words out of a lower-case text; returns the modifiers found ({ shift = true }) and what is left.
+local function stripWords(text)
+  local found = {}
+  for _, entry in ipairs(modifierWords()) do
+    local from, to = text:find(entry[1], 1, true)
+    if from then found[entry[2]], text = true, text:sub(1, from - 1) .. " " .. text:sub(to + 1) end
+  end
+  return found, text
+end
+
+-- A set of modifiers as the mouse prefix the secure attributes use ("alt-ctrl-shift-" order, "" for none).
+local function prefixOf(found)
+  local out = ""
+  for _, modifier in ipairs(MODIFIER_ORDER) do out = out .. (found[modifier] and (modifier .. "-") or "") end
+  return out
+end
+
+-- The game's modifier text as a mouse prefix, or nil when it holds more than the Alt, Ctrl and Shift names and
+-- separators. Its format isn't documented, so a text this can't read is no basis for a warning.
+local function readModifierText(text)
+  local found, rest = stripWords(ns.Lower(text))
+  if rest:gsub("[%s%-%+_%.]", "") ~= "" then return nil end
+  return prefixOf(found)
+end
+
+-- The mouse prefix for the modifier mask of a game click binding, or nil when this client can't say or its text isn't
+-- one this can read. The mask is decoded by GetStringFromModifiers, never MakeModifiers (which reads the keys held now).
+local function modifierPrefix(modifiers)
+  if modifiers == 0 then return "" end
+  if type(modifiers) ~= "number" or type(GetStringFromModifiers) ~= "function" then return nil end
+  local text = GetStringFromModifiers(modifiers)
+  if ns.IsSecret(text) or type(text) ~= "string" then return nil end
+  return readModifierText(text)
+end
+
+-- Whether the game's profile binds a Spell, Macro or PetAction to a click (a mouse prefix and button number): the
+-- units' click handler runs that and returns, so a Vanguard binding on the same click never runs.
+local function gameOverrides(profile, prefix, n)
+  local kind = Enum.ClickBindingType
+  for _, info in ipairs(profile) do
+    local runs = info.type == kind.Spell or info.type == kind.Macro or info.type == kind.PetAction
+    if runs and GAME_BUTTONS[info.button] == n and modifierPrefix(info.modifiers) == prefix then return true end
+  end
+  return false
+end
+
 -- Why a binding does nothing on this client, or nil when it works (or the client can't say). Where the game has
--- click bindings of its own, the units' click handler drops Target and Unit menu on a click those don't cover,
--- and a hover key's virtual button is never covered. While the game's bindings are in use, Vanguard's rest.
+-- click bindings of its own, a Spell, Macro or PetAction it binds to the same click runs instead of a mouse binding,
+-- and the units' click handler drops Target and Unit menu on a click its own bindings don't cover (a hover key's
+-- virtual button is never covered). While the game's bindings are in use, Vanguard's rest.
 function CC.WontRun(b)
-  local profile = GAME_GATED[b.action] and not CC.UsesGame() and gameProfile()
+  local profile = not CC.UsesGame() and gameProfile()
   if not profile then return nil end
   local prefix, n = CC.MouseParts(b.key)
+  if prefix and gameOverrides(profile, prefix, n) then return WONT_RUN.override end
+  if not GAME_GATED[b.action] then return nil end
   if not prefix then return WONT_RUN.key end
-  if gameCovers(profile, prefix, n) then return nil end
-  return WONT_RUN.click
+  if not gameCovers(profile, prefix, n) then return WONT_RUN.click end
 end
 
 -- Applying ---------------------------------------------------------------------------------
