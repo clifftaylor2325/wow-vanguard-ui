@@ -79,6 +79,19 @@ for _, row in ipairs(MS.ROWS) do row.scale = (MS.TILE + MS.GAP) / (row.button + 
 MS.TRACKER_W, MS.TRACKER_H = 260, 174
 -- The game's bag buttons (backpack, bags, reagent bag, and the key ring Forever adds), framed where the client has them.
 MS.BAGS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterReagentBag0Slot", "KeyRingButton" }
+-- The bags row counts the bag buttons the bar shows (the bar's own width lags
+-- behind: the game measures its bag buttons before Vanguard gives each a bag's
+-- size, and retail's bar holds its fold arrow too).
+MS.ROWS[1].buttons = MS.BAGS
+-- The backpack's icon on a client that draws its backpack as button art and
+-- leaves the icon blank (retail): the game's backpack item icon.
+MS.BACKPACK_ICON = "Interface\\Icons\\INV_Misc_Bag_08"
+-- The backpack's own free-slot count (retail's Count, Forever's FreeSlots),
+-- faded: Vanguard's count stands in its corner.
+MS.GAME_COUNTS = { "Count", "FreeSlots" }
+-- The arrow retail's bag bar has between the backpack and the bags, that
+-- folds the bags away (Forever hides it): the room it takes is in the row.
+MS.FOLD = "BagBarExpandToggle"
 -- The key ring holds keys, not bag space, so its slot has no fill.
 MS.NO_FILL = { KeyRingButton = true }
 -- The bags counted in the backpack's free count (the backpack and bags 1 to 4).
@@ -159,17 +172,42 @@ local function seat(f, row)
   f:SetPoint("RIGHT", row.anchor, "TOPRIGHT", overhang(row) / row.scale, -row.y / row.scale)
 end
 
--- How many buttons the game laid out in a row (from its bar's width); 0 for a bar the client lacks.
+-- Whether a button is on the bar, or on a cluster of slots on it (Forever's bags).
+local function onBar(b, f)
+  local parent = b:GetParent()
+  return parent == f or (parent ~= nil and parent:GetParent() == f)
+end
+
+-- How many of a row's named buttons its bar shows.
+local function shownButtons(row, f)
+  local n = 0
+  for _, name in ipairs(row.buttons) do
+    local b = _G[name]
+    if type(b) == "table" and b:IsShown() and onBar(b, f) then n = n + 1 end
+  end
+  return n
+end
+
+-- How many buttons the game laid out in a row (its named buttons shown, or from
+-- its bar's width); 0 for a bar the client lacks.
 local function rowCount(row)
   local f = _G[row.bar]
   if type(f) ~= "table" or f:GetParent() ~= MS.strip then return 0 end
+  if row.buttons then return shownButtons(row, f) end
   return math.max(0, math.floor(((f:GetWidth() or 0) + row.pad) / (row.button + row.pad) + 0.5))
+end
+
+-- The room retail's fold arrow takes in the bags row, while it shows (pixels).
+local function foldRoom(row)
+  local fold = row.buttons and _G[MS.FOLD]
+  if not (type(fold) == "table" and fold:IsShown() and fold:GetParent() == _G[row.bar]) then return 0 end
+  return fold:GetWidth() * row.scale
 end
 
 -- How wide a row's slots are (pixels): its slots and the gaps between them.
 function MS.RowWidth(row)
   local n = rowCount(row)
-  return n > 0 and n * MS.TILE + (n - 1) * MS.GAP or 0
+  return n > 0 and n * MS.TILE + (n - 1) * MS.GAP + foldRoom(row) or 0
 end
 
 -- Sizes the bar to hug its rows, MS.MARGIN on every side, and places each
@@ -201,6 +239,14 @@ local function watchBar(f)
   if type(f.Layout) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(f, "Layout", ns.Guard("hook Layout", MS.Refit)) end
 end
 
+-- A row laid out with its bar's own padding between buttons, where the bar
+-- has one (the bag bar: Forever's 2, retail's 0), so its buttons still sit one slot and a gap apart.
+local function padRow(row, f)
+  local pad = f.bagPadding
+  if type(pad) ~= "number" then return end
+  row.pad, row.scale = pad, (MS.TILE + MS.GAP) / (row.button + pad)
+end
+
 -- Pins one of the game's bars into its row (on the row's own anchor, a frame
 -- of ours the bar is fitted around), then fits the bar and the slots around
 -- it, now and at every re-fit. Every row's anchor is made before the first
@@ -208,6 +254,7 @@ end
 local function pinInto(row)
   local f = _G[row.bar]
   if type(f) ~= "table" or not f.SetPoint then return end
+  padRow(row, f)
   ns.Pin(f, function(bar)
     seat(bar, row)
     MS.FitStrip()
@@ -600,14 +647,24 @@ local function bagIcon(b)
 end
 
 -- A bag button's icon, shown and cropped, the one art fitted in its slot; and
--- a button narrower than a bag (Forever's key ring, 33 units to a bag's 45)
--- widened to a bag's width, so it gets the same slot at the same pitch. The
--- game anchors each bag button's right edge, so it grows away from its neighbor.
+-- a button of another size (Forever's key ring, 33 units wide; retail's bags,
+-- 30, and backpack, 48) made a bag's 45 square, so every bag gets the same slot
+-- at the same pitch. The game anchors each bag button's right edge, so it grows away from its neighbor.
 local function fitBag(b, icon)
+  local side = MS.ROWS[1].button
   vgIcon[b] = T.Crop(icon)
   vgArt[b] = { vgIcon[b] }
   icon:SetAlpha(1)
-  if b:GetWidth() < MS.ROWS[1].button then b:SetWidth(MS.ROWS[1].button) end
+  if b:GetWidth() ~= side or b:GetHeight() ~= side then b:SetSize(side, side) end
+end
+
+-- The backpack as the other bags: its icon where the client leaves it blank,
+-- and the game's own free count faded under Vanguard's.
+local function fitBackpack(b, icon)
+  if not icon:GetTexture() then icon:SetTexture(MS.BACKPACK_ICON) end
+  for _, key in ipairs(MS.GAME_COUNTS) do
+    if type(b[key]) == "table" then b[key]:SetAlpha(0) end
+  end
 end
 
 -- One of the game's bag buttons on a slot: its art faded, the bag's icon
@@ -618,6 +675,7 @@ function MS.SkinBag(b)
   if vgSlot[b] or not icon then return end
   T.FadeRegions(b, alerts(b))
   fadeStates(b)
+  if b == _G.MainMenuBarBackpackButton then fitBackpack(b, icon) end
   fitBag(b, icon)
   addSlot(b, MS.ROWS[1])
   if not MS.NO_FILL[b:GetName() or ""] and type(b.GetBagID) == "function" then addFill(b) end

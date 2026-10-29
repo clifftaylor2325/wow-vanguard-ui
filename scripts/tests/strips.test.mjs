@@ -738,9 +738,9 @@ it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip
   expect(isTok(addon, addon.eval("return ns.FrameState('vgGlyph')[AddonCompartmentFrame].__vertexColor"), "accent"), "a slot button's icon lights in the accent under the mouse").toBe(true);
   expect([pinned(addon, "BagsBar", "Vanguard_MenuStrip"), pinned(addon, "MicroMenuContainer", "Vanguard_MenuStrip")], "the bag bar and the micro menu ride in one bar, each at its row's right end").toEqual([[true, "RIGHT"], [true, "RIGHT"]]);
   expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text:find('pin ') then return e.text end end return 'none'"), "pinning the first row fits both rows with no error: every row's anchor is made first").toBe("none");
-  addon.eval("BagsBar:SetSize(600, 45) ns.PausePins(false)");
-  expect(barSize(addon), "a bag bar 600 units wide holds 13 bags: the bar hugs their slots inside a 12-unit margin (two rows tall)").toEqual([barW(13), BAR_H]);
-  addon.eval("BagsBar:SetSize(50, 20) ns.PausePins(false)");
+  addon.eval("CreateFrame('Button', 'CharacterBag0Slot', BagsBar) CreateFrame('Button', 'CharacterBag1Slot', BagsBar) for i = 1, 11 do CreateFrame('Button', nil, BagsBar) end ns.PausePins(false)");
+  expect(barSize(addon), "the bags row counts the bag buttons on the bar, not its other frames: the bar hugs their two slots inside a 12-unit margin (two rows tall)").toEqual([barW(2), BAR_H]);
+  addon.eval("CharacterBag1Slot:Hide() ns.PausePins(false)");
   expect([...barSize(addon), addon.eval("return Vanguard_BagStrip == nil")], "one bag: the bar shrinks to hug its one slot, and there is no separate bag strip").toEqual([barW(1), BAR_H, true]);
   expect(addon.eval("local s = Vanguard_MenuStrip return { s:GetAlpha(), s.__mouseMotion == nil }"), "the bar is always shown by default (P2.18), nothing watching the mouse").toEqual([1, true]);
   expect(addon.eval("return { Vanguard_QuestTracker:GetWidth(), Vanguard_QuestTracker:GetHeight(), next(ObjectiveTrackerFrame.__points) == nil }"), "Vanguard's tracker is on: its spot is made (260 by 174) and the game's tracker is not pinned").toEqual([260, 174, true]);
@@ -884,13 +884,13 @@ it("bag and menu bar: every row's anchor has a size, so the bars get a rect to d
   // The client gives a zero-sized frame no rect and draws nothing anchored to one: the bar showed its panel and divider with nothing in it (seen in game).
   const rects = (names) => addon.eval(`local out = {} for _, n in ipairs({ ${names.map((n) => JSON.stringify(n)).join(", ")} }) do out[#out + 1] = _G[n]:IsRectValid() end return out`);
   expect(addon.eval("local MS = ns.GetModule('MenuStrip') local out = {} for i, row in ipairs(MS.ROWS) do out[i] = { row.anchor:GetWidth(), row.anchor:GetHeight(), row.anchor:IsRectValid() } end return out"),
-    "each row's anchor is its row's box: as wide as the row, a slot tall, with a rect").toEqual([[7 * 28 - 4, 24, true], [8 * 28 - 4, 24, true]]);
+    "each row's anchor is its row's box: as wide as the row, a slot tall, with a rect").toEqual([[2 * 28 - 4, 24, true], [8 * 28 - 4, 24, true]]);
   expect(rects(["Vanguard_MenuStrip", "BagsBar", "MicroMenuContainer"]), "the bar and both of the game's bars have rects").toEqual([true, true, true]);
   addon.eval("local MS = ns.GetModule('MenuStrip') Probe = CreateFrame('Frame', 'Probe', UIParent) Probe:SetSize(10, 10) Probe:SetPoint('RIGHT', MS.ROWS[1].anchor, 'TOPRIGHT') Empty = CreateFrame('Frame', 'Empty', UIParent) Empty:SetPoint('CENTER')");
   expect(rects(["Probe"]), "the harness lays out what hangs on a row's anchor").toEqual([true]);
   addon.eval("Probe:SetPoint('RIGHT', Empty, 'TOPRIGHT')");
   expect(rects(["Empty", "Probe"]), "and, like the client, gives nothing hung on a zero-sized frame a rect").toEqual([false, false]);
-  addon.eval("BagsBar:SetSize(0, 45) MicroMenuContainer:SetSize(0, 30) ns.PausePins(false)");
+  addon.eval("MainMenuBarBackpackButton:Hide() KeyRingButton:Hide() MicroMenuContainer:SetSize(0, 30) ns.PausePins(false)");
   expect(addon.eval("local MS = ns.GetModule('MenuStrip') return { MS.ROWS[1].anchor:GetWidth(), MS.ROWS[2].anchor:GetWidth(), Vanguard_MenuStrip:GetWidth() }"),
     "rows with no buttons keep a unit-wide anchor (the bar hugs its margins)").toEqual([1, 1, 24]);
 });
@@ -913,7 +913,7 @@ it("bag and menu bar: the bags and menu the game hides on an input switch come b
 const seatOf = (addon, bar, k, scale) => addon.eval(`local p = ${bar}.__points.RIGHT return { p.rel == ns.GetModule("MenuStrip").ROWS[${k}].anchor, p.relPoint, p.x, p.y }`).map((v, i) => (i > 1 ? r3(v * scale) : v));
 it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes them", () => {
   const addon = strips();
-  expect(barSize(addon), "before the game lays them out, the bar is its margins only, a bags row, a gap and a menu row tall").toEqual([24, BAR_H]);
+  expect(barSize(addon), "before the game lays the menu out, the bar hugs the bags row's two slots, a bags row, a gap and a menu row tall").toEqual([barW(2), BAR_H]);
   addon.eval("MicroMenuContainer:Layout()");
   expect(barSize(addon), "the bar grows around the laid-out micro menu").toEqual([menuBarW(378), BAR_H]);
   // Each row's last slot sits at its anchor (its button reaches past it by half the difference), its middle on the row's.
@@ -1006,7 +1006,7 @@ it("bag and menu bar: one mover keeps the menu strip's saved spot; the bag strip
 it("bag and menu bar: no re-fit while pins are paused or in combat, and one queued entry per bar", () => {
   const addon = strips();
   addon.eval("ns.PausePins(true) __menuW = 600 MicroMenuContainer:Layout()");
-  expect(barSize(addon)[0], "Edit Mode open: the bar waits").toBe(barW(0));
+  expect(barSize(addon)[0], "Edit Mode open: the bar waits").toBe(barW(2));
   addon.eval("ns.PausePins(false)");
   expect(barSize(addon)[0], "and fits when it closes").toBe(menuBarW(600));
   setCombat(addon, true);
@@ -1084,6 +1084,31 @@ it("bag and menu bar: line icons are 20 screen pixels on their slot, accent unde
   addon.eval("CharacterMicroButton.__scripts.OnLeave(CharacterMicroButton)");
   expect(isTok(addon, color(), "text"), "text once the mouse leaves").toBe(true);
   expect(r3(addon.eval("return MainMenuBarBackpackButton:GetWidth() * BagsBar:GetEffectiveScale() / UIParent:GetEffectiveScale()")), "bag buttons sit one slot and a gap apart (28 screen pixels with their padding)").toBe(r3(45 * BAGS));
+});
+// TEST-ONLY retail bag bar (Blizzard_MainMenuBarBagButtons, Mainline): a 48-unit backpack with its own
+// free count and no icon (its art is a button texture), the fold arrow left of it, and 30-unit bags
+// with no padding between them.
+const RETAIL_BAGS_ENV = `
+  BagsBar.bagPadding = 0
+  BagsBar:SetSize(48 + 10 + 5 * 30, 47)
+  local pack = CreateFrame("Button", "MainMenuBarBackpackButton", BagsBar) pack:SetSize(48, 48) pack:SetPoint("RIGHT", BagsBar, "RIGHT")
+  pack.icon = pack:CreateTexture() pack.Count = pack:CreateFontString() function pack:GetBagID() return 0 end
+  local fold = CreateFrame("Button", "BagBarExpandToggle", BagsBar) fold:SetSize(10, 16) fold:SetPoint("RIGHT", pack, "LEFT")
+  local prev = fold
+  for _, name in ipairs({ "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot", "CharacterBag3Slot", "CharacterReagentBag0Slot" }) do
+    local b = CreateFrame("Button", name, BagsBar) b:SetSize(30, 30) b:SetPoint("RIGHT", prev, "LEFT") b.icon = b:CreateTexture() b.icon:SetTexture("TEST-ONLY-BAG")
+    prev = b
+  end
+`;
+it("bag and menu bar on retail: every bag a bag's square, one slot pitch, the backpack's icon and one free count", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + RETAIL_BAGS_ENV);
+  const sizes = addon.eval(`local out = {} for _, n in ipairs({ "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterReagentBag0Slot" }) do out[#out + 1] = _G[n]:GetWidth() .. "x" .. _G[n]:GetHeight() end return out`);
+  expect(sizes, "the 48-unit backpack and the 30-unit bags are all a bag's 45").toEqual(["45x45", "45x45", "45x45"]);
+  expect(r3(addon.eval("return MainMenuBarBackpackButton:GetWidth() * BagsBar:GetEffectiveScale() / UIParent:GetEffectiveScale()")), "with no padding the bar's scale puts them one slot and a gap apart").toBe(28);
+  expect(barSize(addon)[0], "the row holds six slots and the fold arrow between the backpack and the bags").toBe(r3(barW(6) + 10 * 28 / 45));
+  const pack = addon.eval("local b = MainMenuBarBackpackButton return { b.icon:GetTexture(), b.Count:GetAlpha(), ns.FrameState('vgFree')[b] ~= nil }");
+  expect(pack, "the blank backpack gets the game's backpack icon, and its own count fades under Vanguard's").toEqual(["Interface\\Icons\\INV_Misc_Bag_08", 0, true]);
+  expect(addon.eval("return CharacterBag0Slot.icon:GetTexture()"), "a bag keeps its own icon").toBe("TEST-ONLY-BAG");
 });
 // TEST-ONLY bags: the backpack (16 slots, 4 free), bag 1 empty (no bag in it), bag 2 full,
 // bag 3 a soul bag (20 slots, 5 free, family 256); their buttons, with the game's bag IDs.
