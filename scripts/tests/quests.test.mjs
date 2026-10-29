@@ -1427,6 +1427,47 @@ it("game windows: quest and gossip text stays readable on the dark panel", () =>
   expect(off.eval("return QuestInfoDescriptionText.__textColor[1]"), "with game windows off, the game's colors stay").toBeCloseTo(0.2);
   expect(loggedIn("").eval("return ns.GetModule('Windows').LightGossip() == nil"), "a client without these windows is fine").toBe(true);
 });
+// TEST-ONLY the shared quest texts QuestInfo_Display colours for parchment (QuestInfo.xml): the named strings, the keys of
+// QuestInfoRewardsFrame, and the lines of QuestInfoObjectivesFrame.Objectives (the second one marked done by the game with
+// " (Complete)", the third one hidden).
+const QUEST_INFO_ENV = PARCHMENT_ENV + `
+  COMPLETE = "Complete"
+  local named = { "QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText", "QuestInfoSpellObjectiveLearnLabel" }
+  for _, name in ipairs(named) do QuestFrame:CreateFontString(name) end
+  local rewards = CreateFrame("Frame", "QuestInfoRewardsFrame", QuestFrame)
+  for _, key in ipairs({ "Header", "ItemChooseText", "ItemReceiveText", "PlayerTitleText", "QuestSessionBonusReward" }) do rewards[key] = rewards:CreateFontString() end
+  rewards.XPFrame = CreateFrame("Frame", nil, rewards) rewards.XPFrame.ReceiveText = rewards.XPFrame:CreateFontString()
+  local box = CreateFrame("Frame", "QuestInfoObjectivesFrame", QuestFrame) box.Objectives = {}
+  local texts = { "0/8 Boars slain", "Find the key (Complete)", "Hidden line" }
+  for i, text in ipairs(texts) do
+    local fs = box:CreateFontString("QuestInfoObjective" .. i) fs:SetFont("TEST-ONLY-GAME", 12, "") fs:SetText(text) box.Objectives[i] = fs
+  end
+  box.Objectives[3]:Hide()
+  function QuestInfo_Display()
+    for _, name in ipairs(named) do _G[name]:SetTextColor(0.2, 0.1, 0) end
+    for _, key in ipairs({ "Header", "ItemChooseText", "ItemReceiveText", "PlayerTitleText", "QuestSessionBonusReward" }) do rewards[key]:SetTextColor(0.2, 0.1, 0) end
+    rewards.XPFrame.ReceiveText:SetTextColor(0.2, 0.1, 0)
+    for _, fs in ipairs(box.Objectives) do fs:SetTextColor(0.2, 0.1, 0) end
+  end
+`;
+it("game windows: the quest's rewards heading, reward lines, objective lines, timer and money line go light on the dark panel", () => {
+  const off = { savedVariables: "VanguardDB.profiles.Default = { modules = { QuestDialog = false } }" };
+  const addon = loggedIn(QUEST_INFO_ENV, off);
+  addon.eval("QuestInfo_Display()");
+  // Whether a font string (a Lua expression) ended in a theme text colour.
+  const tok = (expr, name) => isTok(addon, addon.eval(`return ${expr}.__textColor`), name);
+  const named = ["QuestInfoQuestType", "QuestInfoGroupSize", "QuestInfoTimerText", "QuestInfoRequiredMoneyText", "QuestInfoSpellObjectiveLearnLabel"];
+  expect(named.map((n) => tok(n, "text")), "the type, group size, timer, money and learn lines are the text colour").toEqual([true, true, true, true, true]);
+  const keys = ["Header", "ItemChooseText", "ItemReceiveText", "PlayerTitleText", "QuestSessionBonusReward", "XPFrame.ReceiveText"];
+  expect(keys.map((k) => tok(`QuestInfoRewardsFrame.${k}`, "text")), "the rewards frame's heading and lines are the text colour").toEqual([true, true, true, true, true, true]);
+  expect([tok("QuestInfoObjective1", "text"), tok("QuestInfoObjective2", "muted")], "an open objective is the text colour, a done one (its text says Complete) the muted one").toEqual([true, true]);
+  expect(addon.eval("return QuestInfoObjective3.__textColor[1]"), "a hidden line is left as the game coloured it").toBeCloseTo(0.2);
+  addon.eval("QuestInfoObjective1:SetText(nil) QuestInfoObjective2:SetText(nil) COMPLETE = nil QuestInfo_Display()");
+  expect([tok("QuestInfoObjective1", "text"), tok("QuestInfoObjective2", "text"), addon.eval("return #ns.errors")], "a line with no text, or a client without the Complete word, is plain text, no error").toEqual([true, true, 0]);
+  const parchment = loggedIn(QUEST_INFO_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { QuestDialog = false }, Windows = { windows = false } }" });
+  parchment.eval("QuestInfo_Display()");
+  expect([parchment.eval("return QuestInfoRewardsFrame.Header.__textColor[1]"), parchment.eval("return QuestInfoObjective1.__textColor[1]")], "with game windows off, the game's parchment colours stay").toEqual([expect.closeTo(0.2), expect.closeTo(0.2)]);
+});
 // TEST-ONLY: the map's quest panel with its details, where QuestInfo_Display moves the shared quest text (as the game
 // parents each element to the panel it shows in) and colours it for parchment.
 const MAP_DETAILS_ENV = PARCHMENT_ENV + `

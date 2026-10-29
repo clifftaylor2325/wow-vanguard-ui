@@ -424,6 +424,14 @@ it("game tabs: art faded, icon kept, a panel, and the selected tab raised while 
     tab:Enable() local after = __raised(tab)
     return { tab.Left.__alpha, tab.RightActive.__alpha, tab.Icon.__alpha == nil, before, selected, after }`);
   expect(panelTab, "a panel tab: art faded, icon left, raised only while the game has it disabled (selected)").toEqual([0, 0, true, false, true, false]);
+  const greyedTab = addon.eval(`
+    local tab = __tab({ "Left", "Middle", "Right" })
+    ns.Theme.Tab(tab)
+    tab.isDisabled = 1 tab:Disable() local greyed = __raised(tab)
+    tab.isDisabled = nil tab:Enable() tab:Disable() local selected = __raised(tab)
+    tab:Enable() tab.isDisabled = 1 tab:Disable() tab.isDisabled = nil tab:Enable()
+    return { greyed, selected, __raised(tab) }`);
+  expect(greyedTab, "a tab the game disabled with PanelTemplates_DisableTab (isDisabled set) is not raised, the selected one is, and it is inset again once enabled").toEqual([false, true, false]);
   const sideTab = addon.eval(`
     local tab = __tab({ "Background", "SelectedTexture", "HighlightTexture" })
     function tab:SetChecked(on) self.SelectedTexture:SetShown(on) end

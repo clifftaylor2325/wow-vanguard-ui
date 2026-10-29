@@ -271,16 +271,28 @@ GW.ROW_BARS = { "ReputationBar", "SkillsBar" }
 -- What is watched once: a frame the dressers hook or dress for good (side panes, the flyout, the appearances grid).
 local watched = setmetatable({}, { __mode = "k" })
 
+-- The frame art the retail reputation bar (ReputationBarTemplate, a real StatusBar) draws around its fill: the two
+-- end caps and the black backdrop. A bar without them (the pet's, the stable's) skips each key.
+GW.STATUS_BAR_ART = { "LeftTexture", "RightTexture", "Background" }
+
+-- A real StatusBar in the theme: the game's frame art faded, the theme's bar texture on the fill (the game's colour
+-- stays: a reputation bar's says the standing) and an inset panel behind it, as the other kind gets.
+local function skinStatusBar(bar)
+  GW.FadeParts(bar, GW.STATUS_BAR_ART)
+  T.StyleBar(bar)
+  T.Panel(bar, { inset = true, noSheen = true })
+end
+
 -- A reputation or skill bar in the theme. The game's (ColoredProgressBarTemplate) is a frame with a
 -- Fill texture it sizes and colours itself: its backdrop is faded and an inset panel put behind the
--- Fill, which stays the game's (its colour says the standing). A real StatusBar gets the theme's bar texture.
+-- Fill, which stays the game's (its colour says the standing). A real StatusBar gets skinStatusBar.
 function GW.SkinBar(bar)
   if type(bar) ~= "table" then return end
   if type(bar.Fill) == "table" then
     T.Panel(bar, { inset = true, noSheen = true })
     T.FadeRegions(bar, GW.KeepKeys(bar, { "Fill" }))
   elseif type(bar.SetStatusBarTexture) == "function" then
-    T.StyleBar(bar)
+    skinStatusBar(bar)
   end
 end
 
@@ -667,12 +679,20 @@ local function flattenLists()
   end
 end
 
+-- The retail sidebar tab strip's two bronze corner pieces (PaperDollSidebarTabs, a child of the right inset that the
+-- pane hosts don't reach) faded; the tabs it holds stay. Camelot's strip has none, so it is skipped there.
+local function fadeSidebarDecor()
+  local strip = _G.PaperDollSidebarTabs
+  if type(strip) == "table" then GW.FadeParts(strip, { "DecorLeft", "DecorRight" }) end
+end
+
 -- The pane's flat look: its hosts' art faded, each list in a flat inset panel, and the currency list's empty note.
 local function flattenPane()
   local frame = _G.CharacterFrame
   if type(frame) == "table" then
     for _, key in ipairs(GW.PANE_HOSTS) do fadeHost(frame[key]) end
   end
+  fadeSidebarDecor()
   flattenLists()
   flattenStatBoxes()
   if boxOf("TokenFrame") then GW.WatchEmpty(boxOf("TokenFrame"), GW.CURRENCY_EMPTY) end
@@ -708,10 +728,14 @@ GW.EQUIP_SLOTS = {
   "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo",
 }
 
--- A gear slot's other frame (BorderFrame, the Camelot pane's bronze slot frame, a child that holds its own texture) faded.
+-- A gear slot's bronze plate faded: the Camelot pane's BorderFrame (a child that holds its own texture) and the retail
+-- pane's texture named after the button ("CharacterHeadSlotFrame"); one the client lacks is skipped.
 local function fadeSlotFrame(button)
-  local frame = type(button) == "table" and button.BorderFrame
+  if type(button) ~= "table" then return end
+  local frame = button.BorderFrame
   if type(frame) == "table" and frame.GetRegions then T.FadeRegions(frame) end
+  local name = button.GetName and button:GetName()
+  if name then GW.FadeNamed({ name .. "Frame" }) end
 end
 
 -- The ammo slot's small bronze plate (an unnamed background texture on the button) faded; its icon, count, pressed and
@@ -738,7 +762,8 @@ local function skinSlots()
 end
 
 -- The model area's art: the strip above the model (its rock tile and edge) and the model scene's backdrop
--- textures faded, with a flat inset panel behind the model. The model and its controls stay the game's.
+-- textures faded (the retail scene's dark overlay stays faded when the game sets its alpha for the race), with a flat
+-- inset panel behind the model. The model and its controls stay the game's.
 local function skinModelArea()
   local paper = _G.PaperDollFrame
   if type(paper) ~= "table" then return end
@@ -746,6 +771,7 @@ local function skinModelArea()
   local scene = paper.CharacterModelScene
   if type(scene) == "table" and scene.GetRegions then
     T.FadeRegions(scene)
+    GW.KeepFaded(scene.BackgroundOverlay)
     T.Panel(scene, { inset = true, noSheen = true })
   end
 end
@@ -772,6 +798,7 @@ end
 local function skinTitleRow(row)
   if type(row) ~= "table" then return end
   GW.DressRow(row, { "Check" })
+  GW.KeepFaded(row.Stripe)
   GW.FollowMark(row, row.SelectedBar)
   colorText(row.text, "text")
 end
@@ -790,6 +817,7 @@ end
 local function skinSetRow(row)
   if type(row) ~= "table" or not row.GetRegions then return end
   GW.DressRow(row, GW.SET_ROW_KEEP)
+  GW.KeepFaded(row.Stripe)
   GW.FollowMark(row, row.SelectedBar)
   if not setLost(row) then colorText(row.text, "text") end
 end

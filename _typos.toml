@@ -24,6 +24,7 @@ hander = "hander" # a two-hander: a two-handed weapon
 varian = "varian" # Varian Wrynn, quoted on the AFK screen
 lok = "lok" # "Lok'tar ogar", the Horde's battle cry, quoted on the AFK screen
 overlayed = "overlayed" # the client's IsSpellOverlayed (a spell's proc glow)
+criterias = "criterias" # the achievement window's list of criteria frames (AchievementsObjectivesMixin.criterias)
 strat = "strat" # Stratholme, as LFG chat shortens it (the group board reads it)
 ony = "ony" # Onyxia's Lair, as LFG chat shortens it (the group board reads it)
 maintenant = "maintenant" # French "now", the group board's age cell in a frFR test

@@ -1358,9 +1358,10 @@ const ALERTS_ENV = `
   LossOfControlFrame.TimeLeft.NumberText = LossOfControlFrame.TimeLeft:CreateFontString()
   TalkingHeadFrame = CreateFrame("Frame", "TalkingHeadFrame", UIParent)
   TalkingHeadFrame.BackgroundFrame = CreateFrame("Frame", nil, TalkingHeadFrame)
-  TalkingHeadFrame.MainFrame = CreateFrame("Frame", nil, TalkingHeadFrame)
-  TalkingHeadFrame.MainFrame.Name = TalkingHeadFrame.MainFrame:CreateFontString()
-  TalkingHeadFrame.MainFrame.Text = TalkingHeadFrame.MainFrame:CreateFontString()
+  TalkingHeadFrame.NameFrame = CreateFrame("Frame", nil, TalkingHeadFrame)
+  TalkingHeadFrame.NameFrame.Name = TalkingHeadFrame.NameFrame:CreateFontString()
+  TalkingHeadFrame.TextFrame = CreateFrame("Frame", nil, TalkingHeadFrame)
+  TalkingHeadFrame.TextFrame.Text = TalkingHeadFrame.TextFrame:CreateFontString()
 `;
 it("more game windows: friends, books and letters, and windows that load later", () => {
   const addon = loggedIn(ALERTS_ENV);
@@ -1838,6 +1839,12 @@ it("R2.9 the mail window: inbox rows and arrows, the send page's letter, boxes, 
   expect(mailState(addon).painted, "a second show paints nothing new").toBe(first.painted);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+it("R2.9 the mail window on retail: the page arrows are only the globals InboxPrevPageButton and InboxNextPageButton, and are themed", () => {
+  const addon = loggedIn(`${MAIL_ENV} InboxPrevPageButton, InboxNextPageButton = InboxFrame.PrevPageButton, InboxFrame.NextPageButton
+    InboxFrame.PrevPageButton, InboxFrame.NextPageButton = nil, nil`);
+  addon.eval("MailFrame:Show()");
+  expect(addon.eval("return { ns.Theme.ArrowParts(InboxPrevPageButton) ~= nil, ns.Theme.ArrowParts(InboxNextPageButton) ~= nil, #ns.errors }"), "both arrows are found by their global names and are theme arrows").toEqual([true, true, 0]);
+});
 it("R2.9 the mail window: a picture that arrives later is kept; the windows group off leaves it the game's; a bare or odd mail window loads cleanly", () => {
   const addon = loggedIn(MAIL_ENV);
   addon.eval("MailFrame:Show() local b = SendMailAttachment5 b.picture = b:CreateTexture() b.GetNormalTexture = function() return b.picture end MailFrame:Hide() MailFrame:Show()");
@@ -2024,6 +2031,11 @@ it("R2.11 the ready check: the listener's tile and border faded, the portrait ke
   noTitle.eval("ReadyCheckFrame:Show()");
   expect([bare, noTitle].map((a) => a.eval("return #ns.errors")), "a holder without its listener, or a listener without title or border, is no error").toEqual([0, 0]);
 });
+it("R2.11 the ready check on retail: Yes and No are only the globals ReadyCheckFrameYesButton and ReadyCheckFrameNoButton, and are themed", () => {
+  const addon = loggedIn(`${POPUP_ENV} local l = ReadyCheckListenerFrame ReadyCheckFrameYesButton, ReadyCheckFrameNoButton = l.YesButton, l.NoButton l.YesButton, l.NoButton = nil, nil`);
+  addon.eval("ReadyCheckFrame:Show()");
+  expect(addon.eval("return { select('#', ReadyCheckFrameYesButton:GetRegions()) > 0, select('#', ReadyCheckFrameNoButton:GetRegions()) > 0, #ns.errors }"), "both buttons found by their global names and themed").toEqual([true, true, 0]);
+});
 it("R2.11 the loot window's close button, the breath bars' caption and the guild bank's portrait", () => {
   const env = `${LOOT_ROWS_ENV}${INSIDES_LUA} LootFrame.ClosePanelButton = CreateFrame("Button", nil, LootFrame)
     __window("GuildBankFrame").Portrait = __art(GuildBankFrame) __art(GuildBankFrame)`;
@@ -2081,6 +2093,11 @@ it("R2.12 group loot rolls: the four buttons on tiles, the countdown a flat trac
   odd.eval("GroupLootFrame1:Show()");
   expect(odd.eval("return #ns.errors"), "a roll window without its buttons, bar or icon is no error").toBe(0);
 });
+it("R2.12 group loot rolls on retail: the four buttons are keys of the roll window itself, and get their tiles", () => {
+  const addon = loggedIn(`${INNER_ENV} local r = GroupLootFrame1 for _, key in ipairs(ns.GetModule("Windows").LOOT_ROLLS) do r[key] = r.LootButtonContainer[key] end r.LootButtonContainer = nil`);
+  addon.eval("GroupLootFrame1:Show()");
+  expect(addon.eval(`local n = 0 for _, key in ipairs(ns.GetModule("Windows").LOOT_ROLLS) do if __tiled(GroupLootFrame1[key]) then n = n + 1 end end return { n, #ns.errors }`), "four tiles, no error").toEqual([4, 0]);
+});
 it("R2.12 the dressing room: the model an inset, the outfit controls and side panels in the theme", () => {
   const addon = loggedIn(INNER_ENV);
   addon.eval("DressUpFrame:Show()");
@@ -2106,6 +2123,7 @@ it("R2.12 books and letters: the page area an inset, flat page arrows, a flat re
     painted = ns.Theme.PaintedCount(), errors = #ns.errors }`);
   const first = read();
   expect(first, "all themed").toMatchObject({ page: true, arrows: true, captions: true, bar: true, count: true, errors: 0 });
+  expect(addon.eval("return { ItemTextStatusBar.__barColor[1] == ns.Theme.RGB('accentDim'), select(2, ns.Theme.RGB('accentDim')) == ItemTextStatusBar.__barColor[2] }"), "the reading bar's fill is the dim accent, not the game's green").toEqual([true, true]);
   addon.eval("ItemTextFrame:Hide() ItemTextFrame:Show()");
   expect(read().painted, "a second show paints nothing new").toBe(first.painted);
   const bare = loggedIn(`${WINDOWS_ENV} __window("ItemTextFrame")`);

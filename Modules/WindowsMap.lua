@@ -237,11 +237,22 @@ local function floorDropdown(map)
   end
 end
 
+-- One of the map's overlay buttons: the key the game sets on the map (Forever), else the first of the map's overlay
+-- frames with the method only that button's template has (retail adds them without a key).
+local function overlayButton(map, key, method)
+  if type(map[key]) == "table" then return map[key] end
+  if type(map.overlayFrames) ~= "table" then return nil end
+  for _, frame in ipairs(map.overlayFrames) do
+    if type(frame[method]) == "function" then return frame end
+  end
+end
+
 -- The map's overlay buttons: the floor dropdown (its arrow kept), the tracking filter and the tracking pin (its disc
 -- and ring faded), the last two on a control tile each, their yellow icons swapped for theme ones (a filter, a pin).
 local function skinMapButtons(map)
   GW.SkinDropdown(floorDropdown(map))
-  local filter, pin = map.WorldMapTrackingOptionsButton, map.WorldMapTrackingPinButton
+  local filter = overlayButton(map, "WorldMapTrackingOptionsButton", "GetActiveFilters")
+  local pin = overlayButton(map, "WorldMapTrackingPinButton", "SetActive")
   if type(pin) == "table" then GW.FadeParts(pin, { "Background", "Border" }) end
   GW.SkinPlate(filter)
   GW.SkinPlate(pin)
@@ -311,21 +322,35 @@ end
 
 -- The plates behind a reward tile's name and the XP tile's figure (the dark boxes with a gold edge): faded.
 GW.QUEST_REWARD_PLATES = { "NameFrame", "ReputationBG" }
--- How many reward tiles (QuestInfoItem1-10) the quest panels can show.
-GW.QUEST_REWARD_TILES = 10
+-- The named tiles both rewards frames (the quest window's and the map's) have besides their item tiles.
+GW.QUEST_REWARD_EXTRAS = { "XPFrame", "HonorFrame", "ArtifactXPFrame", "WarModeBonusFrame", "SkillPointFrame" }
+-- The map's own extra tiles: its money and title rewards are item tiles there (the quest window's are a money line and a
+-- title plate, left as they are).
+GW.MAP_REWARD_EXTRAS = { "MoneyFrame", "TitleFrame" }
 
--- One reward tile (an item the quest gives or lets you choose): its plate faded, the item look on its icon.
+-- One reward tile (an item the quest gives or lets you choose): its plate faded, the item look on its icon; only in a
+-- window Vanguard dressed (a tile on the game's parchment is left as it is).
 local function skinRewardTile(tile)
-  if not isFrame(tile) then return end
+  if not isFrame(tile) or not GW.InDressedWindow(tile) then return end
   GW.FadeParts(tile, GW.QUEST_REWARD_PLATES)
   if tile.CreateTexture and tile.Icon then GW.SkinItem(tile) end
 end
 
--- Every reward tile the game has made so far, and the XP tile (QuestInfoXPFrame), flat like the item slots (the game
--- makes them as a quest is shown, so this runs after QuestInfo_Display).
+-- One rewards frame's tiles: the item tiles the game has made so far (its RewardButtons list) and the named extras.
+local function skinRewardsFrame(frame)
+  if type(frame) ~= "table" then return end
+  if type(frame.RewardButtons) == "table" then
+    for _, tile in ipairs(frame.RewardButtons) do skinRewardTile(tile) end
+  end
+  GW.EachKey(frame, GW.QUEST_REWARD_EXTRAS, skinRewardTile)
+end
+
+-- Every reward tile of the quest window's and the map's rewards frames, flat like the item slots (the game makes item
+-- tiles as a quest is shown, so this runs after QuestInfo_Display).
 function GW.SkinQuestRewards()
-  for i = 1, GW.QUEST_REWARD_TILES do skinRewardTile(_G["QuestInfoItem" .. i]) end
-  skinRewardTile(_G.QuestInfoXPFrame)
+  skinRewardsFrame(_G.QuestInfoRewardsFrame)
+  skinRewardsFrame(_G.MapQuestInfoRewardsFrame)
+  GW.EachKey(_G.MapQuestInfoRewardsFrame, GW.MAP_REWARD_EXTRAS, skinRewardTile)
 end
 
 -- Keeps the reward tiles dressed after each QuestInfo_Display, hooked once.

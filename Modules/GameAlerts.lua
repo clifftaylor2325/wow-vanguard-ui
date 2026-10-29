@@ -87,14 +87,19 @@ end
 
 -- Talking head -----------------------------------------------------------------------------------
 
+-- A string of the talking head, kept in a holder frame of its own (NameFrame.Name, TextFrame.Text), or nil.
+local function headString(f, holder, key)
+  local box = f[holder]
+  return type(box) == "table" and type(box[key]) == "table" and box[key] or nil
+end
+
 -- The talking head in the theme: its parchment faded, a flat panel, the name and text in the theme font.
 function GA.SkinTalkingHead(f)
   if type(f.BackgroundFrame) == "table" then f.BackgroundFrame:SetAlpha(0) end
   T.Panel(f, { alpha = 0.92, shadow = true })
-  local main = f.MainFrame
-  if type(main) ~= "table" then return end
-  if type(main.Name) == "table" then T.Text(main.Name, "heading", false) end
-  if type(main.Text) == "table" then T.Text(main.Text, "label", false) end
+  local name, text = headString(f, "NameFrame", "Name"), headString(f, "TextFrame", "Text")
+  if name then T.Text(name, "heading", false) end
+  if text then T.Text(text, "label", false) end
 end
 
 -- The talking head, as chosen: moved and restyled, hidden, or left to the game. Done once at login:

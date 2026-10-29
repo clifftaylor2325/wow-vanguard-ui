@@ -854,6 +854,37 @@ it("Round Four leftovers: menu glyphs, a target diamond, raid names above incomi
       b.texts:GetFrameLevel() > b.heal:GetFrameLevel() and b.texts:GetFrameLevel() > b.shield:GetFrameLevel(), b.texts:GetFrameLevel() < b.overlay:GetFrameLevel() }`);
   expect(layers, "a tile's name, role and status sit above the incoming-heal and shield bars, under the status marks").toEqual([true, true, true]);
 });
+// TEST-ONLY the game's state textures on a menu button and the backpack, and the methods and script that set their
+// alpha back (MainMenuBarMicroButtonMixin OnLeave, SetPushed, SetNormal; BaseBagSlotButtonMixin:UpdateTextures).
+const ALPHA_RESET_ENV = `
+  local function states(b)
+    b.pushed, b.highlight = b:CreateTexture(), b:CreateTexture()
+    b.normal = b.normal or b:CreateTexture()
+    b.GetNormalTexture = function(self) return self.normal end
+    b.GetPushedTexture = function(self) return self.pushed end
+    b.GetHighlightTexture = function(self) return self.highlight end
+  end
+  states(CharacterMicroButton) states(MainMenuBarBackpackButton)
+  CharacterMicroButton:SetScript("OnLeave", function(self) self.normal:SetAlpha(1) end)
+  function CharacterMicroButton:SetPushed() self.highlight:SetAlpha(0.5) end
+  function CharacterMicroButton:SetNormal() self.highlight:SetAlpha(1) end
+  function MainMenuBarBackpackButton:UpdateTextures() self.highlight:SetAlpha(0.4) self.normal:SetAlpha(1) self.pushed:SetAlpha(1) end
+`;
+it("menu strip: the game's own icon and highlight stay faded after it sets their alpha back (K6-2)", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + ALPHA_RESET_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
+  // The alpha of a button's normal, pushed and highlight textures.
+  const states = (name) => addon.eval(`local b = ${name} return { b.normal.__alpha, b.pushed.__alpha, b.highlight.__alpha }`);
+  expect(states("CharacterMicroButton"), "skinned: the game's state art is faded").toEqual([0, 0, 0]);
+  addon.hover("CharacterMicroButton");
+  addon.hover(null);
+  expect(states("CharacterMicroButton"), "after the game's mouse-leave put the icon back, it is faded again").toEqual([0, 0, 0]);
+  addon.eval("CharacterMicroButton:SetPushed()");
+  expect(states("CharacterMicroButton"), "after SetPushed's highlight alpha").toEqual([0, 0, 0]);
+  addon.eval("CharacterMicroButton:SetNormal()");
+  expect(states("CharacterMicroButton"), "after SetNormal's highlight alpha").toEqual([0, 0, 0]);
+  addon.eval("MainMenuBarBackpackButton:UpdateTextures()");
+  expect(states("MainMenuBarBackpackButton"), "a bag button after the game redrew its textures").toEqual([0, 0, 0]);
+});
 it("menu strip: set to mouseover, shown by the mouse entering and leaving it and its buttons, with nothing polling", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: 'VanguardDB.profiles.Default = { MenuStrip = { menu = "mouseover" } }' });
   // The menu strip's alpha.

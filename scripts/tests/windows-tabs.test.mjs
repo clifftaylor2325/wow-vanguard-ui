@@ -361,6 +361,12 @@ it("character pane lists: bars panelled with their fill kept, headers flat with 
 it("character pane lists: a bar that is a real StatusBar gets the theme's texture, and the lists are the game's with the tabs switch off", () => {
   const addon = loggedIn(PANE_ENV);
   expect(addon.eval(`local bar = CreateFrame("StatusBar", nil, UIParent) ns.GetModule("Windows").SkinBar(bar) return bar.__barTexture ~= nil`)).toBe(true);
+  // Retail's ReputationBarTemplate: a StatusBar with end caps and a black backdrop, a standing colour and its text.
+  expect(addon.eval(`local bar = CreateFrame("StatusBar", nil, UIParent) bar.LeftTexture, bar.RightTexture, bar.Background = __art(bar, "ARTWORK"), __art(bar, "ARTWORK"), __art(bar)
+    bar.BarText = bar:CreateFontString() bar:SetStatusBarColor(0.25, 0.25, 0.75)
+    ns.GetModule("Windows").SkinBar(bar)
+    return { __a(bar.LeftTexture), __a(bar.RightTexture), __a(bar.Background), bar.__barTexture ~= nil, __panel(bar), bar.__barColor ~= nil }`),
+    "a retail reputation bar: its frame art and backdrop faded, the flat texture, an inset behind it, the standing colour kept").toEqual([0, 0, 0, true, true, true]);
   expect(addon.eval(`local bar = CreateFrame("Frame", nil, UIParent) ns.GetModule("Windows").SkinBar(bar) ns.GetModule("Windows").SkinBar(nil) return __panel(bar)`), "a frame that is neither is left alone").toBe(false);
   const off = loggedIn(PANE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
   expect(off.eval("return { __a(__repEntry.bar.backdrop), __a(__repHeader.banner) }"), "tabs off: the pane's lists are the game's").toEqual([-1, -1]);
@@ -387,10 +393,13 @@ it("character pane gear slots: each item button's bronze frame faded and a flat 
   const addon = loggedIn(PANE_ENV + `
     function __slot(name) local b = CreateFrame("Button", "Character" .. name .. "Slot", CharacterFrame) b.NormalTexture, b.IconBorder = __art(b), __art(b, "BORDER") return b end
     __slotHead, __slotShirt, __slotAmmo = __slot("Head"), __slot("Shirt"), __slot("Ammo")
+    -- Retail's slot has no BorderFrame: its bronze plate is a texture named after the button (PaperDollFrame.xml).
+    __slotNeck = __slot("Neck") __neckPlate = __slotNeck:CreateTexture("CharacterNeckSlotFrame", "BACKGROUND") __neckPlate:SetTexture("TEST-ONLY-ART")
   `);
   addon.eval("CharacterFrame:Show()");
   expect(addon.eval("return { __a(__slotHead.NormalTexture), __a(__slotHead.IconBorder), __panel(__slotHead) }"), "a slot's frame faded, a flat panel behind its icon").toEqual([0, 0, true]);
   expect(addon.eval("return { __a(__slotShirt.NormalTexture), __panel(__slotAmmo) }"), "the shirt and ammo slots too").toEqual([0, true]);
+  expect(addon.eval("return { __a(__neckPlate), __a(__slotNeck.NormalTexture) }"), "retail's plate (a texture named <slot>Frame, no BorderFrame) faded too").toEqual([0, 0]);
   expect(addon.eval("return ns.errors[1] == nil"), "a slot the client lacks is skipped without an error").toBe(true);
 });
 
@@ -401,9 +410,11 @@ it("character pane model area: the strip above the model and the model scene's b
     __strip = __art(PaperDollFrame.TopBackgroundStripHost)
     PaperDollFrame.CharacterModelScene = CreateFrame("Frame", nil, PaperDollFrame) -- the harness has no ModelScene type; the skin only reads regions
     __backdrop = __art(PaperDollFrame.CharacterModelScene)
+    PaperDollFrame.CharacterModelScene.BackgroundOverlay = __art(PaperDollFrame.CharacterModelScene, "BORDER")
   `);
   addon.eval("CharacterFrame:Show()");
   expect(addon.eval("return { __a(__strip), __a(__backdrop), __panel(PaperDollFrame.CharacterModelScene) }"), "strip and backdrop faded, a panel behind the model").toEqual([0, 0, true]);
+  expect(addon.eval("local o = PaperDollFrame.CharacterModelScene.BackgroundOverlay local before = __a(o) o:SetAlpha(0.7) return { before, __a(o) }"), "the overlay the game sets by race (SetPaperDollBackground) stays faded").toEqual([0, 0]);
   expect(addon.eval("return ns.errors[1] == nil"), "nothing reported").toBe(true);
 });
 
@@ -755,6 +766,8 @@ it("side tabs: the collections window's TabContainer tabs are side tabs, the con
 it("side tabs: the paper doll's sidebar tabs are dressed on the character window only, the plate faded and the icon kept", () => {
   const addon = loggedIn(HOLDERS_ENV + `
     local holder = CreateFrame("Frame", "PaperDollSidebarTabs", CharacterFrame) holder.Tabs = {}
+    -- Retail's strip also draws two bronze corner pieces on its own ARTWORK layer (PaperDollFrame.xml).
+    holder.DecorLeft, holder.DecorRight = __art(holder, "ARTWORK"), __art(holder, "ARTWORK")
     for i = 1, 3 do
       local t = CreateFrame("CheckButton", "PaperDollSidebarTab" .. i, holder)
       t.Icon = t:CreateTexture(nil, "BACKGROUND") __art(t, "BORDER") t:SetChecked(i == 1)
@@ -768,6 +781,8 @@ it("side tabs: the paper doll's sidebar tabs are dressed on the character window
   expect(tabs.map((t) => t[0]), "the unkeyed plate behind each icon is faded").toEqual([0, 0, 0]);
   expect(tabs.map((t) => [t[1].icon, t[1].raised, t[1].dim]), "the icon stays, the checked tab is raised and the others' icons are greyed").toEqual([[true, true, false], [true, false, true], [true, false, true]]);
   expect(addon.eval(`return { ns.GetModule("Windows").TabButtons(CharacterFrame).seen[PaperDollSidebarTab1] == true, ns.GetModule("Windows").TabButtons(MerchantFrame).seen[PaperDollSidebarTab1] == true }`), "the character window lists them, no other window does").toEqual([true, false]);
+  addon.eval("CharacterFrame:Show()");
+  expect(addon.eval("return { __a(PaperDollSidebarTabs.DecorLeft), __a(PaperDollSidebarTabs.DecorRight), #ns.errors }"), "the strip's two corner pieces faded (a strip without them, Camelot's, is skipped)").toEqual([0, 0, 0]);
 });
 
 it("appearances: the Items and Sets tabs (top tabs on the page) are in the theme, the one the game disables raised", () => {
@@ -1103,7 +1118,7 @@ const PAPER_ENV = SIDE_PANE_ENV + `
   end
   function __setRow(id, selected)
     local r = CreateFrame("Button", nil, __sets.ScrollBox)
-    r.setID, r.plate, r.ring, r.SpecRing = id, __art(r), __art(r, "ARTWORK"), __art(r, "OVERLAY")
+    r.setID, r.plate, r.ring, r.SpecRing, r.Stripe = id, __art(r), __art(r, "ARTWORK"), __art(r, "OVERLAY"), __art(r)
     r.icon, r.Check, r.SpecIcon, r.HighlightBar, r.SelectedBar = __art(r, "ARTWORK"), __art(r, "BORDER"), __art(r, "OVERLAY"), __art(r), __art(r)
     r.text = r:CreateFontString() r.text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
     r.SelectedBar:SetShown(selected == true)
@@ -1129,12 +1144,14 @@ it("paper doll lists: the titles and sets panes are flat insets, a title row los
   expect(title(1), "stripe and selected bar faded, tick the game's, text in the text colour, not lit").toEqual([0, -1, 0, true, false]);
   addon.eval("__titleRow()");
   expect(title(2), "a title row acquired later too").toEqual([0, -1, 0, true, false]);
+  expect(addon.eval("local r = __titles.ScrollBox.rows[1] r.Stripe:SetAlpha(0.1) return __a(r.Stripe)"), "retail's init sets the zebra stripe back to 0.1 on each fill: it stays faded").toBe(0);
   addon.eval("PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[2], true)");
   expect([title(1)[4], title(2)[4]], "the selected rail follows the game marking a title selected").toEqual([false, true]);
   addon.eval("PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[2], false) PaperDollTitlesPane_SetButtonSelected(__titles.ScrollBox.rows[1], true)");
   expect([title(1)[4], title(2)[4]], "and moves with the selection").toEqual([true, false]);
   // A set row's plate and rings, then what stays (icon, tick, spec icon, hover and selected card), then its name's colour.
   const set = (i) => addon.eval(`local r = __sets.ScrollBox.rows[${i}] return { __a(r.plate), __a(r.ring), __a(r.SpecRing), __a(r.icon), __a(r.Check), __a(r.SpecIcon), __a(r.HighlightBar), __a(r.SelectedBar), __text(r.text), ns.Theme.RowParts(r) ~= nil, __lit(r) }`);
+  expect(addon.eval("local r = __sets.ScrollBox.rows[1] r.Stripe:SetAlpha(0.1) return __a(r.Stripe)"), "a set row's zebra stripe stays faded after the game's fill").toBe(0);
   expect(set(1), "plate, rings and cards faded, icon, tick and spec icon the game's, name in the text colour, a theme row, not lit").toEqual([0, 0, 0, -1, -1, -1, 0, 0, true, true, false]);
   addon.eval("PaperDollEquipmentManagerPane_SetButtonSelected(__sets.ScrollBox.rows[2], true)");
   expect([set(1)[10], set(2)[10]], "the selected rail follows the game marking a set selected").toEqual([false, true]);

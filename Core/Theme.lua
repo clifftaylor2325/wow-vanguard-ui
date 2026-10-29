@@ -2322,12 +2322,13 @@ end
 -- Tab, row and scroll bar painting: nothing in this block is used outside it (Lua allows 200 top-level locals).
 do
 -- Whether a game tab is the selected one: a tab system's flag, the checked state a
--- side tab was last given, else disabled (the game selects a panel tab by disabling it).
+-- side tab was last given, else disabled (the game selects a panel tab by disabling it, but
+-- PanelTemplates_DisableTab disables one too and sets its isDisabled: that tab is greyed, not open).
 local function tabSelected(button)
   if type(button.SetTabSelected) == "function" then return button.isSelected == true end
   local checked = T.IsChecked(button)
   if checked ~= nil then return checked end
-  return not isEnabled(button)
+  return not isEnabled(button) and not button.isDisabled
 end
 
 -- How faded an unselected tab's icon is.

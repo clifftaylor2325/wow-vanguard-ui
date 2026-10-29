@@ -47,7 +47,7 @@ const SPELLS_ENV = `${READERS_ENV}
   book.PagedSpellsFrame = __well(nil, book) book.PagedSpellsFrame.PagingControls = __mkpaging(book.PagedSpellsFrame)
   book.SearchBox, book.SettingsDropdown = __mkbox(book), __mkbutton(book, "Icon")
   -- TEST-ONLY page contents: a section head (a plate and rule, a name) and spell entries (a smudged plate, a name, a rank line
-  -- and the level an unlearned spell needs), made again as the game turns a page (SetCurrentPage).
+  -- and the level an unlearned spell needs), made again as the game turns a page (DisplayViewsForCurrentPage, which PagedContentFrameBaseMixin runs on every page change and data change).
   local function mkEntry(parent)
     local e = CreateFrame("Frame", nil, parent)
     e.Backplate, e.Name, e.SubName, e.RequiredLevel = __art(e), __text(e, "Cure Disease"), __text(e, "Rank 1"), __text(e, "Level 14")
@@ -55,7 +55,9 @@ const SPELLS_ENV = `${READERS_ENV}
   end
   local head = CreateFrame("Frame", nil, book.PagedSpellsFrame) head.Plate, head.Rule, head.Text = __art(head), __art(head), __text(head, "Holy")
   local entry = mkEntry(book.PagedSpellsFrame) entry.Button = CreateFrame("Button", nil, entry) entry.Button.Icon, entry.Button.Border = __art(entry.Button), __art(entry.Button)
-  function book.PagedSpellsFrame:SetCurrentPage() book.late = mkEntry(book.PagedSpellsFrame) end
+  -- TEST-ONLY state markers the game shows by turn on the button (SpellBookItemTemplate and FlyoutButtonTemplate keys).
+  for _, key in ipairs(ns.GetModule("Windows").BOOK_MARKS) do entry.Button[key] = __art(entry.Button) end
+  function book.PagedSpellsFrame:DisplayViewsForCurrentPage() book.late = mkEntry(book.PagedSpellsFrame) end
   local t = CreateFrame("Frame", nil, f) f.TalentsFrame = t
   for _, key in ipairs({ "Background", "ClassBackground", "BackgroundBorder", "DividerHorizontalLeft", "OverlayBackgroundMid" }) do t[key] = __art(t) end
   for _, key in ipairs(ns.GetModule("Windows").TALENT_FX) do t[key] = __art(t) end
@@ -71,9 +73,11 @@ const SPELLS_ENV = `${READERS_ENV}
     local backdrop = 0
     for _, key in ipairs({ "Background", "ClassBackground", "BackgroundBorder", "DividerHorizontalLeft", "OverlayBackgroundMid" }) do if t[key].__alpha == 0 then backdrop = backdrop + 1 end end
     local paged, paging = book.PagedSpellsFrame, book.PagedSpellsFrame.PagingControls
+    local marks = 0
+    for _, key in ipairs(ns.GetModule("Windows").BOOK_MARKS) do if entry.Button[key].__alpha ~= 0 then marks = marks + 1 end end
     local pages = { head = __faded(head) and __lit(head.Text, "heading", "text"), entry = entry.Backplate.__alpha == 0 and entry.Button.Border.__alpha == 0 and entry.Button.Icon.__alpha ~= 0 and entry.Button.Icon.__texCoord ~= nil and ns.Theme.PaintedCount() > 0 and __lit(entry.Name, "label", "text") and __lit(entry.SubName, "small", "muted") and __lit(entry.RequiredLevel, "small", "text2"),
       late = book.late == nil or (book.late.Backplate.__alpha == 0 and __lit(book.late.Name, "label", "text")) }
-    return { pages = pages, parchment = __faded(book), paged = __faded(paged) and paged.NineSlice.__alpha == 0 and __sunk(paged), search = __box(book.SearchBox),
+    return { pages = pages, marks = marks, parchment = __faded(book), paged = __faded(paged) and paged.NineSlice.__alpha == 0 and __sunk(paged), search = __box(book.SearchBox),
       settings = __button(book.SettingsDropdown) and book.SettingsDropdown.Icon.__alpha == 0, arrows = __arrow(paging.PrevPageButton) and __arrow(paging.NextPageButton),
       count = __lit(paging.PageText, "small", "text2"), fx = fx, backdrop = backdrop, tree = __sunk(t),
       buttons = __button(t.ApplyButton) and __button(t.InspectCopyButton) and __button(t.ActiveSpec.ActivateButton),
@@ -92,8 +96,9 @@ it("R2.14 the spellbook and the talents: parchment faded to an inset, controls a
   expect(first, "book art faded, pages an inset, search box with its magnifier, settings arrow replaced, arrows and count themed").toMatchObject({
     parchment: true, paged: true, search: true, settings: true, arrows: true, count: true, errors: 0,
   });
+  expect(first.marks, "the entry button's eleven state markers (flyout arrow, highlights, glyphs, lock, covers) are not faded").toBe(11);
   expect(first.pages, "the section head's plate and rule are faded and its name a light heading; an entry's plate is faded and its name and rank light").toEqual({ head: true, entry: true, late: true });
-  addon.eval("PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame:SetCurrentPage()");
+  addon.eval("PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame:DisplayViewsForCurrentPage()");
   expect([spellsState(addon).pages.late, addon.eval("return PlayerSpellsFrame.SpellBookFrame.late ~= nil")], "an entry the game makes when a page turns is dressed as soon as it has")
     .toEqual([true, true]);
   expect(first, "the tree's backdrop faded and sunk with its effects kept, five controls, the search box, two dropdowns with arrows, the currency plate faded").toMatchObject({
@@ -108,7 +113,7 @@ it("a spellbook entry's smudged plate stays faded when the game lights it under 
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   addon.eval("PlayerSpellsFrame:Show()");
   const plate = "PlayerSpellsFrame.SpellBookFrame.late.Backplate";
-  addon.eval("PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame:SetCurrentPage()");
+  addon.eval("PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame:DisplayViewsForCurrentPage()");
   addon.eval(`${plate}:SetAlpha(1)`);
   expect(addon.eval(`return ${plate}:GetAlpha()`), "the game's hover alpha (1) is faded again").toBe(0);
   addon.eval(`${plate}:SetAlpha(0.25)`);
@@ -189,6 +194,9 @@ const PROF_ENV = `${READERS_ENV}
     return box:Acquire(row)
   end
   local f = __window("ProfessionsFrame")
+  -- TEST-ONLY maximize/minimize box under the key the game uses for it (ProfessionsFrame.xml parentKey MaximizeMinimize).
+  f.MaximizeMinimize = CreateFrame("Frame", nil, f)
+  f.MaximizeMinimize.MaximizeButton, f.MaximizeMinimize.MinimizeButton = __mkbutton(f.MaximizeMinimize, "Normal"), __mkbutton(f.MaximizeMinimize, "Normal")
   local page = CreateFrame("Frame", nil, f) f.CraftingPage = page __art(page)
   local list = __well(nil, page) page.RecipeList = list
   list.BackgroundNineSlice = CreateFrame("Frame", nil, list) list.BackgroundNineSlice:CreateTexture(nil, "BORDER")
@@ -245,6 +253,14 @@ it("R2.15 the professions window: list, form, rank bar, controls and gear slots 
   expect(windowState(addon, "ProfessionsFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
   addon.eval("ProfessionsFrame:Hide() ProfessionsFrame:Show()");
   expect(profState(addon).painted, "a second show paints nothing new").toBe(first.painted);
+});
+it("R2.15 the professions window: its maximize and minimize buttons are window controls with the theme's glyphs", () => {
+  const addon = loggedIn(PROF_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_Professions");
+  addon.eval("ProfessionsFrame:Show()");
+  expect(addon.eval(`local box = ProfessionsFrame.MaximizeMinimize
+    local function glyph(b) for _, r in ipairs({ b:GetRegions() }) do if r.__layer == "OVERLAY" then return (r.__texture or ""):match("(%a+)$") end end end
+    return { glyph(box.MaximizeButton), glyph(box.MinimizeButton), #ns.errors }`), "found under MaximizeMinimize: the Maximize and Minimize glyphs, no error").toEqual(["Maximize", "Minimize", 0]);
 });
 it("R2.15 the professions rank bar: a StatusBar gets the flat theme bar, a Fill-less frame and a non-table are left alone", () => {
   const addon = loggedIn(PROF_ENV);
@@ -308,6 +324,8 @@ const INSPECT_ENV = `${READERS_ENV}
   local f = __window("InspectFrame")
   local model = __well("InspectModelFrame", f) model.BackgroundOverlay = __art(model)
   local paper = CreateFrame("Frame", "InspectPaperDollFrame", f) paper.ViewButton = __mkbutton(paper)
+  -- TEST-ONLY Talents button (retail InspectPaperDollItemsFrame.InspectTalents, a UIPanelButtonTemplate).
+  local items = CreateFrame("Frame", "InspectPaperDollItemsFrame", paper) items.InspectTalents = __mkbutton(items)
   for _, name in ipairs(ns.GetModule("Windows").EQUIP_SLOTS) do
     if name ~= "Ammo" then
       local slot = __itemButton("Inspect" .. name .. "Slot", paper) slot.BorderFrame = CreateFrame("Frame", nil, slot) __art(slot.BorderFrame)
@@ -323,7 +341,7 @@ const INSPECT_ENV = `${READERS_ENV}
       if slot and __faded(slot.BorderFrame) then plates = plates + 1 end
     end
     return { model = __faded(model) and model.BackgroundOverlay.__alpha == 0 and model.NineSlice.__alpha == 0 and __sunk(model), slots = slots, plates = plates,
-      view = __button(paper.ViewButton), title = __lit(InspectTitleText, "small", "text2"), guild = __lit(InspectGuildText, "small", "text2"),
+      view = __button(paper.ViewButton), talents = __button(items.InspectTalents), title = __lit(InspectTitleText, "small", "text2"), guild = __lit(InspectGuildText, "small", "text2"),
       level = __lit(InspectLevelText, "heading", "text"), painted = ns.Theme.PaintedCount(), errors = #ns.errors }
   end
 `;
@@ -335,7 +353,7 @@ it("R2.16 the inspect window: model on an inset, nineteen gear slots in the item
   addon.eval("InspectFrame:Show()");
   const first = inspectState(addon);
   expect(first, "the model's backdrop and border faded and sunk; the slots and their bronze frames; the View button; the lines").toMatchObject({
-    model: true, slots: 19, plates: 19, view: true, title: true, guild: true, level: true, errors: 0,
+    model: true, slots: 19, plates: 19, view: true, talents: true, title: true, guild: true, level: true, errors: 0,
   });
   expect(windowState(addon, "InspectFrame"), "and the window skin as ever").toMatchObject({ art: 0, panel: true, title: true });
   addon.eval("InspectFrame:Hide() InspectFrame:Show()");
@@ -345,7 +363,7 @@ it("R2.16 the inspect window: the windows group off leaves it the game's; a bare
   const off = loggedIn(INSPECT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
   off.fire("ADDON_LOADED", "Blizzard_InspectUI");
   off.eval("InspectFrame:Show()");
-  expect(inspectState(off), "nothing faded or painted").toMatchObject({ model: false, slots: 0, view: false });
+  expect(inspectState(off), "nothing faded or painted").toMatchObject({ model: false, slots: 0, view: false, talents: false });
   const bare = loggedIn(`${WINDOWS_ENV}__window("InspectFrame")`);
   bare.fire("ADDON_LOADED", "Blizzard_InspectUI");
   bare.eval("InspectFrame:Show()");
@@ -466,7 +484,8 @@ it("R2.17 the guild bank: the windows group off leaves it the game's; a bare or 
 // HeirloomCollection, CollectionTemplates): the window and its four pages with the parts each has.
 const JOURNAL_ENV = `${READERS_ENV}
   local f = __window("CollectionsJournal")
-  local function bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.border = __art(b) b:SetStatusBarTexture("TEST-ONLY-ART") return b end
+  -- A collected-count bar with the green fill of CollectionsProgressBarTemplate (BarColor 0.03, 0.85, 0).
+  local function bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.border = __art(b) b:SetStatusBarTexture("TEST-ONLY-ART") b:SetStatusBarColor(0.03, 0.85, 0) return b end
   local function count(parent) local c = __well(nil, parent) c.Label, c.Count = __text(c, "Mounts"), __text(c, "12") return c end
   local mount = CreateFrame("Frame", "MountJournal", f)
   mount.LeftInset, mount.RightInset, mount.BottomLeftInset = __well(nil, mount), __well(nil, mount), __well(nil, mount)
@@ -484,7 +503,8 @@ const JOURNAL_ENV = `${READERS_ENV}
   function __journalState()
     local function well(w) return __faded(w) and w.NineSlice.__alpha == 0 and __sunk(w) end
     local function plate(c) return well(c) and __lit(c.Label, "small", "text2") end
-    local function track(b) return b.border.__alpha == 0 and __sunk(b) and b:GetStatusBarTexture().__alpha ~= 0 end
+    local function accent(b) local d, r, g, bl = { ns.Theme.RGB("accentDim") }, unpack(b.__barColor) return r == d[1] and g == d[2] and bl == d[3] end
+    local function track(b) return b.border.__alpha == 0 and __sunk(b) and b:GetStatusBarTexture().__alpha ~= 0 and accent(b) end
     local function drop(d) return __button(d) and d.Arrow.__alpha == 0 end
     return { mount = well(mount.LeftInset) and well(mount.RightInset) and well(mount.BottomLeftInset), pet = well(pet.LeftInset) and well(pet.RightInset),
       counts = plate(mount.MountCount) and plate(pet.PetCount) and plate(toys.ProgressTracker), bars = track(toys.progressBar) and track(heirlooms.progressBar),
@@ -502,7 +522,7 @@ it("R2.18 the collections journals: wells and grids as insets, counts, bars, sea
   addon.fire("ADDON_LOADED", "Blizzard_Collections");
   addon.eval("CollectionsJournal:Show()");
   const first = journalState(addon);
-  expect(first, "the mount and pet wells and the toy and heirloom grids sunk, three count plates, two collected-count bars").toMatchObject({
+  expect(first, "the mount and pet wells and the toy and heirloom grids sunk, three count plates, two collected-count bars (flat, in the dim accent instead of the game's green)").toMatchObject({
     mount: true, pet: true, grids: true, counts: true, bars: true, errors: 0,
   });
   expect(first, "the four search boxes, five dropdowns with arrows, the Mount and Summon buttons, the paging arrows and count").toMatchObject({
@@ -533,10 +553,11 @@ it("R2.18 the collections journals: the tabs switch off leaves them the game's; 
 const ACHIEVEMENT_ENV = `${READERS_ENV}
   local f = __window("AchievementFrame")
   local function border(parent) local b = CreateFrame("Frame", nil, parent) b.NineSlice = CreateFrame("Frame", nil, b) b.NineSlice:CreateTexture() return b end
-  local function bar(parent) local b = CreateFrame("StatusBar", nil, parent) b.Left = __art(b) b:SetStatusBarTexture("TEST-ONLY-ART") return b end
+  -- A bar as the game makes it: its art, a texture and the pure green fill of AchievementHeaderStatusBarTemplate.
+  local function bar(parent, name) local b = CreateFrame("StatusBar", name, parent) b.Left = __art(b) b:SetStatusBarTexture("TEST-ONLY-ART") b:SetStatusBarColor(0, 1, 0) return b end
   -- A summary bar (by global name): the game's green fill and its name and count (Label, Text) lifted for its art's margin.
   local function summaryBar(name)
-    local b = bar(f) _G[name] = b b:SetStatusBarColor(0, 1, 0)
+    local b = bar(f, name) _G[name] = b
     b.Label, b.Text = __text(b, "Quests"), __text(b, "242/518")
     b.Label:SetPoint("LEFT", b, "LEFT", 6, 4) b.Text:SetPoint("RIGHT", b, "RIGHT", -5, 3)
     return b
@@ -562,7 +583,11 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
   -- The completed bar's name and count are globals only (no parent keys).
   local done = summaryBar("AchievementFrameSummaryCategoriesStatusBar")
   AchievementFrameSummaryCategoriesStatusBarTitle, AchievementFrameSummaryCategoriesStatusBarText, done.Label, done.Text = done.Label, done.Text, nil, nil
-  for i = 1, 12 do summaryBar("AchievementFrameSummaryCategoriesCategory" .. i) end
+  -- A category bar's hover highlight: a frame under the bar's global name and ButtonHighlight, with its gold end caps.
+  for i = 1, 12 do
+    local name = "AchievementFrameSummaryCategoriesCategory" .. i
+    summaryBar(name) local h = CreateFrame("Frame", name .. "ButtonHighlight", f) __art(h) __art(h)
+  end
   local c = AchievementFrameComparison
   c.Summary = CreateFrame("Frame", nil, c) c.Summary.Player, c.Summary.Friend = border(c.Summary), border(c.Summary)
   c.Summary.Player.StatusBar, c.Summary.Friend.StatusBar = bar(c.Summary.Player), bar(c.Summary.Friend)
@@ -570,6 +595,27 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
   c.AchievementContainer.ScrollBox, c.StatContainer.ScrollBox = __list(c.AchievementContainer), __list(c.StatContainer)
   local sr = CreateFrame("Frame", nil, f) f.SearchResults = sr __art(sr)
   sr.TitleText, sr.CloseButton = __text(sr, "Results"), CreateFrame("Button", nil, sr)
+  -- The open achievement's criteria and meta achievements, and the game's colouring of them (AchievementObjectives_DisplayCriteria):
+  -- a completed criterion black for its parchment, a done one green, an open one grey.
+  local objectives = CreateFrame("Frame", "AchievementFrameAchievementsObjectives", f)
+  objectives.criterias, objectives.metas = {}, {}
+  for i = 1, 3 do
+    objectives.criterias[i] = { Name = __text(objectives, "Kill it") }
+    objectives.metas[i] = { Label = __text(objectives, "Meta") }
+  end
+  function AchievementObjectives_DisplayCriteria(frame)
+    local colours = { { 0, 0, 0 }, { 0, 1, 0 }, { 0.6, 0.6, 0.6 } }
+    for i, c in ipairs(colours) do
+      frame.criterias[i].Name:SetTextColor(c[1], c[2], c[3], 1)
+      frame.metas[i].Label:SetTextColor(c[1], c[2], c[3], 1)
+    end
+  end
+  -- TEST-ONLY reader: the three criteria names' red and the three meta labels' red, as { done, green, open }.
+  function __criteriaReds()
+    local names, labels = {}, {}
+    for i = 1, 3 do names[i], labels[i] = objectives.criterias[i].Name.__textColor, objectives.metas[i].Label.__textColor end
+    return { names, labels, (ns.Theme.RGB("text")) }
+  end
   -- Rows as the game acquires them.
   function __categoryRow(box)
     local row = CreateFrame("Frame", nil, box) row.Button = CreateFrame("Button", nil, row) row.Button.Background, row.Button.Label = __art(row.Button), __text(row.Button, "Quests")
@@ -580,11 +626,25 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
     local row = CreateFrame("Button", nil, box) row.Background, row.Check, row.PlusMinus = __art(row), __art(row), __art(row)
     row.NineSlice, row.Description = border(row).NineSlice, __text(row, "Kill things") row.NineSlice:SetParent(row)
     row.Tracked = CreateFrame("CheckButton", nil, row) row.Tracked.Art = __art(row.Tracked)
+    row.TitleBar, row.BottomTsunami1, row.TopTsunami1 = __art(row), __art(row), __art(row)
     function row:Saturate() self.Description:SetTextColor(0, 0, 0, 1) end
+    -- AchievementTemplateMixin:Init sets these three alphas again each time it sets a row up.
+    function row:Init() self.TitleBar:SetAlpha(0.8) self.BottomTsunami1:SetAlpha(0.35) self.TopTsunami1:SetAlpha(0.3) end
     return box:Acquire(row)
   end
-  function __pairRow(box) local row = CreateFrame("Frame", nil, box) row.Player, row.Friend = __well(nil, row), __well(nil, row) return box:Acquire(row) end
-  function __flatRow(box) local row = CreateFrame("Button", nil, box) __art(row) return box:Acquire(row) end
+  -- A comparison row: the player's card has a description and the Saturate the game's OnLoad gives it (black for a completed one).
+  function __pairRow(box)
+    local row = CreateFrame("Frame", nil, box) row.Player, row.Friend = __well(nil, row), __well(nil, row)
+    row.Player.Description = __text(row.Player, "Kill things")
+    function row.Player:Saturate() self.Description:SetTextColor(0, 0, 0, 1) end
+    return box:Acquire(row)
+  end
+  -- A statistics row: its stripe (Background) is shown and given an alpha again each time the game sets the row up (Init).
+  function __flatRow(box)
+    local row = CreateFrame("Button", nil, box) __art(row) row.Background = __art(row)
+    function row:Init() self.Background:SetAlpha(0.5) end
+    return box:Acquire(row)
+  end
   -- TEST-ONLY reader of the achievements window (see achievementState).
   function __achievementState()
     local function tile(a) return __faded(a) and __sunk(a) end
@@ -600,7 +660,10 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
     local bars, cats = track(AchievementFrameSummaryCategoriesStatusBar), 0
     for i = 1, 12 do if track(_G["AchievementFrameSummaryCategoriesCategory" .. i]) then cats = cats + 1 end end
     local details, box = f.HeaderDetails, f.HeaderDetails.Filters.SearchBox
-    return { plate = __faded(f.Header, f.Header.Shield) and f.Header.Shield.__alpha ~= 0 and __titled(f.Header.Title), areas = areas, heads = heads,
+    local function accent(b) local d, r, g, bl = { ns.Theme.RGB("accentDim") }, unpack(b.__barColor) return r == d[1] and g == d[2] and bl == d[3] end
+    local lit = 0
+    for i = 1, 12 do if __faded(_G["AchievementFrameSummaryCategoriesCategory" .. i .. "ButtonHighlight"]) then lit = lit + 1 end end
+    return { accent = accent(c.Summary.Player.StatusBar) and accent(c.Summary.Friend.StatusBar) and accent(box.SearchProgressBar), highlights = lit, plate = __faded(f.Header, f.Header.Shield) and f.Header.Shield.__alpha ~= 0 and __titled(f.Header.Title), areas = areas, heads = heads,
       bars = bars and cats == 12 and track(c.Summary.Player.StatusBar) and track(c.Summary.Friend.StatusBar), cards = c.Summary.Player.NineSlice:GetAlpha() == 0,
       streaks = __faded(details), back = __button(details.Back), filter = __button(details.Filters.FilterDropdown) and details.Filters.FilterDropdown.Arrow.__alpha == 0,
       search = __box(box), preview = __faded(box.SearchPreviewContainer) and panelled(box.SearchPreviewContainer), progress = track(box.SearchProgressBar),
@@ -626,7 +689,7 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
   -- TEST-ONLY reader of a pooled row (see rowState).
   function __achievementRow(row)
     local tracked = ns.Theme.CheckParts(row.Tracked) ~= nil and row.Tracked.Art.__alpha == 0
-    return { card = row.Background.__alpha == 0 and row.NineSlice:GetAlpha() == 0, marks = row.Check.__alpha ~= 0 and row.PlusMinus.__alpha ~= 0, tracked = tracked,
+    return { reset = row.TitleBar.__alpha == 0 and row.BottomTsunami1.__alpha == 0 and row.TopTsunami1.__alpha == 0, card = row.Background.__alpha == 0 and row.NineSlice:GetAlpha() == 0, marks = row.Check.__alpha ~= 0 and row.PlusMinus.__alpha ~= 0, tracked = tracked,
       light = row.Description.__textColor[1] == (ns.Theme.RGB("text")) }
   end
 `;
@@ -644,6 +707,9 @@ it("R2.19 the achievements window: plate, areas, header row, summary and the sea
   });
   expect(first, "the summary's headers as section heads, its thirteen bars and the comparison's two as flat tracks, the comparison cards without borders").toMatchObject({
     heads: true, bars: true, cards: true,
+  });
+  expect(first, "the comparison cards' bars and the search progress bar the dim accent, not the game's pure green; the twelve category bars' hover caps faded").toMatchObject({
+    accent: true, highlights: 12,
   });
   expect(first, "the header row: streaks, back, filter, the search box with its preview as a panel and its progress bar; the results window").toMatchObject({
     streaks: true, back: true, filter: true, search: true, preview: true, progress: true, results: true,
@@ -675,8 +741,14 @@ it("R2.19 the achievements window: pooled rows are dressed as the lists make the
   });
   addon.eval(`__late = __cardRow(AchievementFrameAchievements.ScrollBox) __late:Saturate()`);
   expect(rowState(addon, "__late"), "a row acquired later, and the black the game gives a completed description made light again").toMatchObject({ card: true, marks: true, tracked: true, light: true });
+  addon.eval("__late:Init() __early:Init()");
+  expect([rowState(addon, "__late").reset, rowState(addon, "__early").reset], "the title bar and wave strips stay faded when the game sets the row up again (Init sets their alpha)").toEqual([true, true]);
   addon.eval(`__stat = __flatRow(AchievementFrameStats.ScrollBox) __stat2 = __flatRow(AchievementFrameComparison.StatContainer.ScrollBox) __pair = __pairRow(AchievementFrameComparison.AchievementContainer.ScrollBox)`);
   expect(addon.eval("return { __faded(__stat), __faded(__stat2), __faded(__pair.Player) and __pair.Player.NineSlice.__alpha == 0, #ns.errors }"), "statistic rows and comparison rows lose their plates").toEqual([true, true, true, 0]);
+  addon.eval("__stat:Init() __stat2:Init()");
+  expect(addon.eval("return { __stat.Background.__alpha, __stat2.Background.__alpha }"), "a statistics row's stripe stays faded when the game sets the row up again").toEqual([0, 0]);
+  addon.eval("__pair.Player:Saturate()");
+  expect(addon.eval("return { __pair.Player.Description.__textColor[1] == (ns.Theme.RGB('text')), #ns.errors }"), "the player card's description the game paints black when completed is light again").toEqual([true, 0]);
   addon.eval("__cat = __categoryRow(AchievementFrame.Categories.ScrollBox) __cat:Init()");
   // The category row's theme parts, whether its selected fill and rail show, and its label.
   const lit = () => addon.eval("local p = ns.Theme.RowParts(__cat.Button) return { p ~= nil, p.fill:IsShown(), p.rail:IsShown(), __lit(__cat.Button.Label, 'label', 'text') }");
@@ -686,6 +758,16 @@ it("R2.19 the achievements window: pooled rows are dressed as the lists make the
   addon.eval("__cat:UpdateSelectionState(nil)");
   expect(lit().slice(1, 3), "and deselects it").toEqual([false, false]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("R2.19 the achievements window: black criteria and meta labels become light, green and grey ones keep their meaning", () => {
+  const addon = loggedIn(ACHIEVEMENT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  addon.eval("AchievementFrame:Show()");
+  addon.eval("AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 1)");
+  const [names, labels, text] = addon.eval("return __criteriaReds()");
+  expect([names.map((c) => c[0]), labels.map((c) => c[0])], "a completed criterion and meta label in the text colour, a done one still green, an open one still grey").toEqual([[text, 0, 0.6], [text, 0, 0.6]]);
+  addon.eval("AchievementFrame:Hide() AchievementFrame:Show() AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 2)");
+  expect([addon.eval("return __criteriaReds()[1][1][1]"), addon.eval("return #ns.errors")], "the hook is added once however often the window opens, and the next achievement is lit again").toEqual([text, 0]);
 });
 it("R2.19 the achievements window: the windows group off leaves it the game's; a bare or odd window loads cleanly", () => {
   const off = loggedIn(ACHIEVEMENT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
