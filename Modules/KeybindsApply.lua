@@ -492,6 +492,16 @@ local function shownBy(row)
   return row.layers[#row.layers].after
 end
 
+-- Whether a key still does what Vanguard last set it to, by its record in the key set the game uses now (another
+-- character's Apply in the account set counts).
+---@param key string
+---@return boolean
+function KA.Ours(key)
+  local rec, name = recordFor(GetCurrentBindingSet()), chord(key)
+  local row = rec and name and rec.keys[name]
+  return type(row) == "table" and row.after ~= nil and GetBindingAction(name) == row.after
+end
+
 -- Whether Vanguard's record says it changed this key, in the key set the game uses now (Your keys will mark it).
 ---@param key string
 ---@return boolean
@@ -688,7 +698,8 @@ local function keepLeft(run, left)
 end
 
 -- Puts back what a failed run changed: each slot that still holds exactly the spell it put there, then the keys by
--- loading the saved set (which drops the unsaved ones), or the set it switched from.
+-- loading the saved set (which drops the unsaved ones), or the set it switched from. A quiet run (an update) says
+-- nothing; its caller does.
 local function undoRun(run)
   local left = {}
   for slot, placed in pairs(run.placed) do
@@ -696,6 +707,7 @@ local function undoRun(run)
   end
   if run.from then switchBack(run) else LoadBindings(GetCurrentBindingSet()) end
   keepLeft(run, left)
+  if run.quiet then return end
   if #left == 0 then return ns.Chat(L["No key changed: the game refused one of the changes, so Vanguard put everything back."]) end
   ns.Chat(ns.Format(L["No key changed, but {count} button(s) couldn't be put back yet. Put everything back restores them."], { count = #left }))
 end
@@ -751,14 +763,14 @@ local function finish(run, ok)
   KA.run, run.ok, run.count = nil, ok, 0
   if ok and not writes(run.rows) then return switchBack(run) end
   if ok then run.count = keep(run) return end
-  if ns.InCombat() then ns.Chat(L["No key changed: a fight began, so Vanguard puts your buttons back after it."]) end
+  if ns.InCombat() and not run.quiet then ns.Chat(L["No key changed: a fight began, so Vanguard puts your buttons back after it."]) end
   ns.OutOfCombat(function() undoRun(run) end)
 end
 
 -- Runs a preset's entries in key set `set` (nil: the one in use), leaving out the slots in `skip`, as one
--- all-or-nothing run, and returns the run.
+-- all-or-nothing run (`quiet`: no chat line when it fails), and returns the run.
 local function execute(entries, set, where, skip)
-  local run = { entries = entries, set = set, skip = skip, keys = {}, slots = {}, placed = {} }
+  local run = { entries = entries, set = set, skip = skip, quiet = where == "key setup update", keys = {}, slots = {}, placed = {} }
   KA.run = run
   local done, ok = ns.Try(where, runSteps, run)
   finish(run, done and ok == true)
@@ -794,15 +806,15 @@ function KA.Recorded()
 end
 
 -- Applies entries again in the key set in use, quietly, as new spells are learned (Modules/KeybindsLearn.lua): the
--- same plan, record and all-or-nothing run as Apply, with no chat line unless it fails, never writing, searching or
--- moving to a slot in `skip` (the player's). Nil, with nothing changed, when KA.Refusal says no or Vanguard has no
--- keys recorded in that set; else the rows (each writing row's old command as `was`) when it succeeded, false when
--- it didn't (and everything it changed goes back).
+-- same plan, record and all-or-nothing run as Apply, with no chat line (the caller tells the player), never
+-- writing, searching or moving to a slot in `skip` (the player's). Nil, with nothing changed, when KA.Refusal says
+-- no; else the rows (each writing row's old command as `was`) when it succeeded, false when it didn't (and
+-- everything it changed goes back).
 ---@param entries table[]
 ---@param skip table|nil  { [slot] = true }
 ---@return table[]|false|nil
 function KA.Update(entries, skip)
-  if KA.Refusal() or not KA.Recorded() then return nil end
+  if KA.Refusal() then return nil end
   local run = execute(entries, nil, "key setup update", skip)
   return run.ok and run.rows
 end

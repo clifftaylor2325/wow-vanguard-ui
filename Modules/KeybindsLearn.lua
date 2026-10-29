@@ -43,11 +43,14 @@ KN.EVENTS = { "LEARNED_SPELL_IN_SKILL_LINE", "PLAYER_LEVEL_UP" }
 KN.TABLES = { "slots", "keys", "ownSlots", "ownKeys" }
 -- How many times the resolver runs at most while keys the player took over leave more slots out.
 KN.PASSES = 8
+-- How many updates in a row the game may refuse before the switch turns itself off.
+KN.FAILS = 3
 
 -- The saved state ---------------------------------------------------------------------------------
 
 -- This character's state: { preset (what the resolver takes), on (the switch), asked (the question was shown),
--- yes (its answer was "Set up keys"), slots = { [slot] = a spell ID or "other" }, keys = { [key] = command },
+-- yes (its answer was "Set up keys"), recorded (Vanguard has keys recorded since the Apply), pending (an update to
+-- try again), fails (updates the game refused in a row), slots = { [slot] = a spell ID or "other" }, keys = { [key] = command },
 -- ownSlots = { [slot] = true }, ownKeys = { [key] = true } }: what each button and key held when Vanguard last
 -- looked, and those the player has taken over.
 local function state()
@@ -72,12 +75,12 @@ function KN.Ticked()
   return state().yes == true or (now ~= nil and now < KN.LEVEL)
 end
 
--- Whether the switch is on: on, and (once a preset was applied) Vanguard still has keys recorded, so Put everything
--- back shows it off at once.
+-- Whether the switch is on: on, and not since Vanguard's recorded keys went (Put everything back, or the game now
+-- uses the other key set), so it shows off at once.
 ---@return boolean
 function KN.IsOn()
   local s = state()
-  return s.on == true and (s.preset == nil or KA.Recorded())
+  return s.on == true and not (s.recorded and not KA.Recorded())
 end
 
 -- Turns the switch on or off (the Your keys tab). It does nothing until keys are set up with a preset.
@@ -145,6 +148,7 @@ end
 function KN.Applied(preset, placeNew)
   local s = state()
   s.preset, s.on, s.ownSlots, s.ownKeys = ns.Copy(preset), placeNew == true, {}, {}
+  s.recorded, s.pending, s.fails = KA.Recorded(), false, 0
   rememberSlots(s)
   rememberKeys(s, ns.KeybindsLayouts.Resolve(s.preset, {}))
 end
@@ -157,11 +161,12 @@ local function claimSlots(s)
   end)
 end
 
--- Marks as the player's every key of the entries that does something else than when Vanguard last looked.
+-- Marks as the player's every key of the entries that does something else than when Vanguard last looked, unless
+-- it does what Vanguard's record set (another character's update of the account's keys).
 local function claimKeys(s, entries)
   for _, entry in ipairs(entries) do
     local key = KA.Chord(entry.key)
-    if key and action(key) ~= (s.keys[key] or "") then s.ownKeys[key] = true end
+    if key and action(key) ~= (s.keys[key] or "") and not KA.Ours(key) then s.ownKeys[key] = true end
   end
 end
 
@@ -211,17 +216,22 @@ local function landsOn(rows, spellID)
   end
 end
 
+-- What `told` notes for a spell on a key (by name, so another rank counts).
+local function toldKey(spellID, key)
+  return (ns.SpellName(spellID) or tostring(spellID)) .. "@" .. key
+end
+
 -- The clauses for a row's own spell, unless an earlier clause already said it moved there.
 local function newOn(row, told, out)
-  if told[row.spell .. "@" .. row.key] then return end
+  if told[toldKey(row.spell, row.key)] then return end
   out[#out + 1] = ns.Format(L["{spell} is now on {key}."], { spell = ns.SpellName(row.spell) or "?", key = keyName(row.key) })
 end
 
--- The clause for the spell a row moved off its slot: to the key that now holds it, or to bar 3.
-local function movedOff(rows, old, told, out)
-  local key = landsOn(rows, old)
+-- The clause for the spell a row moved off its slot: to bar 3 (a move), or to the key that now holds it.
+local function movedOff(rows, row, old, told, out)
+  local key = not row.moved and landsOn(rows, old)
   local name = ns.SpellName(old) or "?"
-  if key then told[old .. "@" .. key] = true end
+  if key then told[toldKey(old, key)] = true end
   out[#out + 1] = key and ns.Format(L["{spell} moved to {key}."], { spell = name, key = keyName(key) })
     or ns.Format(L["{spell} moved to bar 3."], { spell = name })
 end
@@ -243,7 +253,7 @@ local function tell(rows, row, told, out)
   if row.kind == "command" then return tookKey(row) and commandOn(row, out) end
   local old = row.moved or (not row.replaced and row.over)
   if row.kind == "bind" or old or tookKey(row) then newOn(row, told, out) end
-  if old then movedOff(rows, old, told, out) end
+  if old then movedOff(rows, row, old, told, out) end
 end
 
 -- Says in one chat line what an update moved under the player's fingers (nothing when it only filled empty buttons).
@@ -263,20 +273,31 @@ local function rememberUpdate(s, rows)
   end
 end
 
--- After an update that didn't run (rows nil) or failed (false): a refusal or a failure waits for the next try
--- (KN.pending; a failure says so); no keys left in the record (Put everything back) turns the switch off.
-local function notUpdated(s, rows)
-  KN.pending = rows == false or KA.Refusal() ~= nil
-  if rows == false then ns.Chat(L["Vanguard couldn't put your new spells on keys this time. It tries again at the next spell, level or load screen."]) end
-  if not KN.pending then s.on = false end
+-- Stops placing new spells: Vanguard's recorded keys went, or the game refused updates KN.FAILS times in a row.
+local function stop(s)
+  s.on, s.pending = false, false
+  ns.Chat(L["Vanguard stopped putting new spells on keys. Set up keys again to start over."])
 end
 
--- Runs the preset again for the spells known now, without the buttons and keys the player took over.
+-- An update the game refused went back: the buttons are remembered as they are now (out of combat the rollback is
+-- done), and it tries again at the next spell, level or load screen, KN.FAILS times at most.
+local function failed(s)
+  s.fails = (tonumber(s.fails) or 0) + 1
+  if not ns.InCombat() then rememberSlots(s) end
+  if s.fails >= KN.FAILS then return stop(s) end
+  s.pending = true
+  ns.Chat(L["Vanguard couldn't put your new spells on keys this time. It tries again at the next spell, level or load screen."])
+end
+
+-- Runs the preset again for the spells known now, without the buttons and keys the player took over; a refused
+-- update waits (pending).
 local function update(s)
+  if s.recorded and not KA.Recorded() then return stop(s) end
   local entries, skip = entriesNow(s)
   local rows = KA.Update(entries, skip)
-  if not rows then return notUpdated(s, rows) end
-  KN.pending = false
+  if rows == nil then s.pending = true return end
+  if rows == false then return failed(s) end
+  s.pending, s.fails, s.recorded = false, 0, s.recorded or KA.Recorded()
   rememberUpdate(s, rows)
   report(rows)
 end
@@ -327,17 +348,24 @@ local function onSpells(event)
 end
 for _, event in ipairs(KN.EVENTS) do ns.On(event, onSpells) end
 
--- The game placed a spell on a button by itself: it counts as the game's, so a later update may move it.
+-- The game placed a spell on a button by itself: it counts as the game's, so a later update may move it (even when
+-- the look before this event already took the button for the player's).
 local function onPushed(_, spellID, slot)
   if type(VanguardCharDB) ~= "table" or not state().preset then return end
   local id, place = ns.PlainNumber(spellID), ns.PlainNumber(slot)
-  if id and place and KA.CommandFor(place) then state().slots[place] = id end
+  if id and place and KA.CommandFor(place) then state().slots[place], state().ownSlots[place] = id, nil end
 end
 ns.On("SPELL_PUSHED_TO_ACTIONBAR", onPushed)
 
+-- Login has settled: spell events count from now, and an update left from an earlier session runs.
+local function settle()
+  KN.settled = true
+  if state().pending then soon() end
+end
+
 -- The first load screen starts the settling time; a later one tries a refused update again.
 local function onWorld()
-  if not KN.settled then return C_Timer.After(KN.SETTLE, ns.Guard("keys learn settle", function() KN.settled = true end)) end
-  if KN.pending then soon() end
+  if not KN.settled then return C_Timer.After(KN.SETTLE, ns.Guard("keys learn settle", settle)) end
+  if state().pending then soon() end
 end
 ns.On("PLAYER_ENTERING_WORLD", onWorld)

@@ -631,9 +631,9 @@ it("Apply: a spell another row places goes straight there, with no copy on bar 3
   expect(state(addon)).toEqual(before);
 });
 
-it("Update: quiet on success, nil when refused or when Vanguard has set no keys in that set, false when it fails", () => {
+it("Update: quiet on success and on failure, nil when refused, false when it fails", () => {
   const addon = rogue();
-  expect(ka(addon, `return KA.Update({ { key = "F", spell = 1766, slot = 61 } })`), "no record yet").toBe(null);
+  expect(ka(addon, `return KA.Recorded()`), "no record yet").toBe(false);
   ka(addon, `KA.Apply({ { key = "F", spell = 1766, slot = 61 } })`);
   addon.clearChat();
   expect(ka(addon, `local rows = KA.Update({ { key = "G", spell = 1784, slot = 62 } }) return { rows[1].kind, KA.Recorded(), KA.Changed("G") }`)).toEqual(["place", true, true]);
@@ -642,6 +642,8 @@ it("Update: quiet on success, nil when refused or when Vanguard has set no keys 
   expect(ka(addon, `return KA.Update({ { key = "T", spell = 1776, slot = 63 } })`), "refused in combat").toBe(null);
   setCombat(addon, false);
   addon.eval('local set = SetBinding SetBinding = function(key, command) if key == "T" then return false end return set(key, command) end');
+  addon.clearChat();
   expect(ka(addon, `return KA.Update({ { key = "T", spell = 1776, slot = 63 } })`), "the game refused T").toBe(false);
-  expect(slots(addon, [63]), "and Gouge came off again").toEqual([0]);
+  expect([slots(addon, [63]), Array.from(addon.chat())], "and Gouge came off again, quietly").toEqual([[0], []]);
+  expect(ka(addon, 'return { KA.Ours("G"), KA.Ours("F"), KA.Ours("T") }'), "G and F do what Vanguard set").toEqual([true, true, false]);
 });

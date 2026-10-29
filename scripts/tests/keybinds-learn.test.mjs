@@ -226,9 +226,58 @@ it("an update the game refuses goes back, says so, and tries again at the next l
   addon.eval('__set = SetBinding SetBinding = function(key, command) if key == "2" then return false end return __set(key, command) end');
   learn(addon, 772);
   expect([slots(addon, [2]), said(addon)]).toEqual([[0], expect.stringContaining("Vanguard couldn't put your new spells on keys this time.")]);
+  expect(said(addon), "one line, from key setup's new spells only").not.toContain("No key changed");
   addon.eval("SetBinding = __set");
   addon.fire("PLAYER_ENTERING_WORLD", false, false);
   addon.advance(0.5);
+  expect(slots(addon, [2])).toEqual([772]);
+});
+
+it("three refused updates in a row turn the switch off, and say so", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  addon.eval('local set = SetBinding SetBinding = function(key, command) if key == "2" then return false end return set(key, command) end');
+  for (const id of [772, 6343, 7384]) learn(addon, id);
+  expect([kn(addon, "return KN.IsOn()"), said(addon)]).toEqual([false, expect.stringContaining("Vanguard stopped putting new spells on keys.")]);
+});
+
+it("an Apply with nothing to change still places new spells", () => {
+  const addon = warrior();
+  addon.eval(`__wfgWorld.setAction(1, { id = 78 }) __wfgWorld.setAction(49, { id = 168 })
+    SetBinding("1", "ACTIONBUTTON1") SetBinding("SHIFT-W", "MULTIACTIONBAR2BUTTON1") SetBinding("\`", "SHAPESHIFTBUTTON1") SaveBindings(1)`);
+  expect(applyPreset(addon), "the bars and keys already match").toBe(true);
+  expect([addon.eval("return ns.KeybindsApply.Recorded()"), kn(addon, "return KN.IsOn()")], "nothing recorded, the switch on").toEqual([false, true]);
+  learn(addon, 772);
+  expect(slots(addon, [2])).toEqual([772]);
+});
+
+it("a key another character's key setup set in the account's keys isn't taken for the player's", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  addon.eval("ns.KeybindsApply.Apply({ { key = 'F', spell = 6673, slot = 63 } })");
+  learn(addon, 72);
+  expect([keys(addon, ["F"]), slots(addon, [61])]).toEqual([["MULTIACTIONBAR1BUTTON1"], [72]]);
+});
+
+it("the game's placement arriving after the look still counts as the game's", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  learn(addon, 6343);
+  addon.eval("__wfgWorld.setAction(4, { id = 6673 })");
+  learn(addon, 772);
+  expect(addon.savedVariables().char.keysLearn.ownSlots["4"], "a change before the event").toBe(true);
+  addon.eval("__wfgWorld.pushSpellToActionBar(6673, 4)");
+  expect(addon.savedVariables().char.keysLearn.ownSlots["4"], "the event gives it back to the game").toBe(undefined);
+});
+
+it("an update left waiting runs once a new session's login settles", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  addon.eval('__wfgWorld.cursor = { type = "item", id = 929 }');
+  learn(addon, 772);
+  addon.eval("__wfgWorld.cursor = nil ns.KeybindsLearn.settled = false");
+  addon.fire("PLAYER_ENTERING_WORLD", true, false);
+  addon.advance(4);
   expect(slots(addon, [2])).toEqual([772]);
 });
 
