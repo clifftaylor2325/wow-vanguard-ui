@@ -70,7 +70,7 @@ MS.COUNT_PAD, MS.COUNT_BACK = 1, 0.75
 -- (pixels). Each bar is drawn at the scale that puts its buttons one slot
 -- and one gap apart.
 MS.ROWS = {
-  { bar = "BagsBar", button = 45, pad = 2, tileH = MS.TILE, inset = 3, y = MS.MARGIN + MS.TILE / 2 },
+  { bar = "BagsBar", button = 45, pad = 2, tileH = MS.TILE, inset = 3, y = MS.MARGIN + MS.TILE / 2, bags = true },
   { bar = "MicroMenuContainer", button = 32, pad = -5, tileH = MS.MENU_TILE_H, inset = 2, y = MS.MARGIN + MS.TILE + MS.GAP + MS.MENU_TILE_H / 2 },
 }
 for _, row in ipairs(MS.ROWS) do row.scale = (MS.TILE + MS.GAP) / (row.button + row.pad) end
@@ -83,6 +83,11 @@ MS.BAGS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot
 -- behind: the game measures its bag buttons before Vanguard gives each a bag's
 -- size, and retail's bar holds its fold arrow too).
 MS.ROWS[1].buttons = MS.BAGS
+-- The menu row counts the micro buttons the menu shows (the container's width
+-- also holds retail's queue eye, which is no slot).
+MS.ROWS[2].buttons = {}
+-- The pools of dividers Forever's bag bar draws between its buttons, anew at every layout.
+MS.DIVIDER_POOLS = { "HorizontalDividersPool", "VerticalDividersPool" }
 -- The backpack's icon on a client that draws its backpack as button art and
 -- leaves the icon blank (retail): the game's backpack item icon.
 MS.BACKPACK_ICON = "Interface\\Icons\\INV_Misc_Bag_08"
@@ -114,6 +119,9 @@ MS.GLYPHS = {
   StoreMicroButton = "Shop", MainMenuMicroButton = "MenuCog", HelpMicroButton = "Help",
   WorldMapMicroButton = "Map", HousingMicroButton = "House", LegacyMicroButton = "Legacy",
 }
+-- Every menu button with an icon here is one the menu row counts (sorted, so the list is the same each run).
+for name in pairs(MS.GLYPHS) do table.insert(MS.ROWS[2].buttons, name) end
+table.sort(MS.ROWS[2].buttons)
 -- A menu button's alert textures (new talents, mail...), kept when its art is faded.
 MS.ALERTS = { "Flash", "FlashBorder", "FlashContent" }
 -- A menu button's own background plates, faded: its slot is its background.
@@ -188,18 +196,16 @@ local function shownButtons(row, f)
   return n
 end
 
--- How many buttons the game laid out in a row (its named buttons shown, or from
--- its bar's width); 0 for a bar the client lacks.
+-- How many buttons the game laid out in a row (its named buttons shown); 0 for a bar the client lacks.
 local function rowCount(row)
   local f = _G[row.bar]
   if type(f) ~= "table" or f:GetParent() ~= MS.strip then return 0 end
-  if row.buttons then return shownButtons(row, f) end
-  return math.max(0, math.floor(((f:GetWidth() or 0) + row.pad) / (row.button + row.pad) + 0.5))
+  return shownButtons(row, f)
 end
 
 -- The room retail's fold arrow takes in the bags row, while it shows (pixels).
 local function foldRoom(row)
-  local fold = row.buttons and _G[MS.FOLD]
+  local fold = _G[MS.FOLD]
   if not (type(fold) == "table" and fold:IsShown() and fold:GetParent() == _G[row.bar]) then return 0 end
   return fold:GetWidth() * row.scale
 end
@@ -233,18 +239,53 @@ function MS.Refit(bar)
   ns.Repin(bar)
 end
 
--- Re-fits the bar whenever the game changes a row's size or lays it out again.
-local function watchBar(f)
-  f:HookScript("OnSizeChanged", MS.Refit)
-  if type(f.Layout) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(f, "Layout", ns.Guard("hook Layout", MS.Refit)) end
-end
-
 -- A row laid out with its bar's own padding between buttons, where the bar
 -- has one (the bag bar: Forever's 2, retail's 0), so its buttons still sit one slot and a gap apart.
 local function padRow(row, f)
   local pad = f.bagPadding
   if type(pad) ~= "number" then return end
   row.pad, row.scale = pad, (MS.TILE + MS.GAP) / (row.button + pad)
+end
+
+-- Gives a bag button a bag's square size. The game sets Forever's key ring back to its own size at every layout.
+local function sizeBag(b)
+  local side = MS.ROWS[1].button
+  if b:GetWidth() ~= side or b:GetHeight() ~= side then b:SetSize(side, side) end
+end
+
+-- Puts every bag button Vanguard has framed back at a bag's size, out of combat.
+local function sizeBags()
+  for _, name in ipairs(MS.BAGS) do
+    local b = _G[name]
+    if type(b) == "table" and vgSlot[b] then ns.OutOfCombat(function() sizeBag(b) end, "menustrip size " .. name) end
+  end
+end
+
+-- Fades the game's brass dividers between the bags (Forever pools them and draws them anew at every layout,
+-- over Vanguard's slots), whichever pools this bar has.
+local function fadeDividers(bar)
+  for _, key in ipairs(MS.DIVIDER_POOLS) do
+    local pool = type(bar) == "table" and bar[key]
+    if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
+      for divider in pool:EnumerateActive() do divider:SetAlpha(0) end
+    end
+  end
+end
+
+-- After the game lays a bar out again: the bar's padding read anew (Edit Mode changes it), the bags back at a
+-- bag's size with the game's dividers faded, then the bar re-fitted.
+local function afterLayout(row, f)
+  padRow(row, f)
+  if row.bags then sizeBags() fadeDividers(f) end
+  MS.Refit(f)
+end
+
+-- Re-fits the bar whenever the game changes a row's size or lays it out again.
+local function watchBar(row, f)
+  f:HookScript("OnSizeChanged", MS.Refit)
+  if type(f.Layout) == "function" and type(hooksecurefunc) == "function" then
+    hooksecurefunc(f, "Layout", ns.Guard("hook Layout", function() afterLayout(row, f) end))
+  end
 end
 
 -- Pins one of the game's bars into its row (on the row's own anchor, a frame
@@ -260,7 +301,7 @@ local function pinInto(row)
     MS.FitStrip()
     MS.SizeSlots()
   end)
-  watchBar(f)
+  watchBar(row, f)
 end
 
 -- Paints the line between the rows: the accent, one screen pixel thick.
@@ -664,11 +705,10 @@ end
 -- 30, and backpack, 48) made a bag's 45 square, so every bag gets the same slot
 -- at the same pitch. The game anchors each bag button's right edge, so it grows away from its neighbor.
 local function fitBag(b, icon)
-  local side = MS.ROWS[1].button
   vgIcon[b] = T.Crop(icon)
   vgArt[b] = { vgIcon[b] }
   icon:SetAlpha(1)
-  if b:GetWidth() ~= side or b:GetHeight() ~= side then b:SetSize(side, side) end
+  sizeBag(b)
 end
 
 -- The backpack as the other bags: its icon where the client leaves it blank,
@@ -729,6 +769,7 @@ local function buildStrip()
   MS.FadeArt()
   keepShown()
   skinButtons()
+  fadeDividers(_G[MS.ROWS[1].bar])
   MS.FitStrip()
   watchVisibility(MS.strip)
 end
@@ -797,12 +838,24 @@ local function skinToggle(header)
   if type(header.SetCollapsed) == "function" then hooksecurefunc(header, "SetCollapsed", ns.Guard("hook SetCollapsed", MS.PaintArrow)) end
 end
 
+-- Stops a header's add animation, now and each time the game plays it (a section shown again): it sweeps the
+-- game's shine over the header and leaves the game's band at full alpha, which the themed header has no use for.
+local function skipAddAnim(header)
+  local anim = header.AddAnim
+  if type(anim) ~= "table" or type(anim.Stop) ~= "function" then return end
+  anim:Stop()
+  if type(header.PlayAddAnimation) == "function" then
+    hooksecurefunc(header, "PlayAddAnimation", ns.Guard("hook PlayAddAnimation", function() anim:Stop() end))
+  end
+end
+
 -- One tracker header in the theme: its art faded, a flat band with an accent
 -- line along the bottom, its title in the heading font (its color kept). Once.
 function MS.SkinHeader(header)
   if vgHeader[header] then return end
   vgHeader[header] = true
   for _, key in ipairs(MS.HEADER_ART) do if type(header[key]) == "table" then header[key]:SetAlpha(0) end end
+  skipAddAnim(header)
   T.HudPanel(header, { inset = true, alpha = 0.6 })
   addRule(header)
   if type(header.Text) == "table" then T.Text(header.Text, "heading", false) end

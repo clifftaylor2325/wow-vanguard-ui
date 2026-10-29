@@ -62,6 +62,39 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
   expect(partial.eval("return Vanguard_LossOfControlFrameSpot ~= nil and Vanguard_TalkingHeadFrameSpot ~= nil"), "frames without their usual parts are still placed").toBe(true);
   expect(loggedIn("").eval("return Vanguard_LossOfControlFrameSpot == nil"), "a client without them loads cleanly").toBe(true);
 });
+// TEST-ONLY talking head play: the game's PlayCurrent colours the name and text from the line's texture kit
+// (Blizzard_FrameXML/TalkingHeadUI.lua), dark browns and black for the faction kits made for parchment.
+const PLAY_ENV = `
+  local kits = {
+    Horde = { { 0.28, 0.02, 0.02 }, { 0, 0, 0 }, { 0, 0, 0, 0 } },
+    Alliance = { { 0.02, 0.17, 0.33 }, { 0, 0, 0 }, { 0, 0, 0, 0 } },
+    Neutral = { { 0.33, 0.16, 0.02 }, { 0, 0, 0 }, { 0, 0, 0, 0 } },
+    Normal = { { 1, 0.82, 0.02 }, { 1, 1, 1 }, { 0, 0, 0, 1 } },
+  }
+  function TalkingHeadFrame:PlayCurrent()
+    local kit = kits[__kit]
+    self.NameFrame.Name:SetTextColor(unpack(kit[1]))
+    self.NameFrame.Name:SetShadowColor(unpack(kit[3]))
+    self.TextFrame.Text:SetTextColor(unpack(kit[2]))
+    self.TextFrame.Text:SetShadowColor(unpack(kit[3]))
+  end
+`;
+it("game alerts: the talking head's name and text stay light on its dark panel for every texture kit the game plays", () => {
+  const addon = loggedIn(ALERTS_ENV + PLAY_ENV);
+  // The name's and text's colours, then their shadows.
+  const colors = () => addon.eval("local f = TalkingHeadFrame return { f.NameFrame.Name.__textColor, f.TextFrame.Text.__textColor, f.NameFrame.Name.__shadowColor, f.TextFrame.Text.__shadowColor }");
+  addon.eval("TalkingHeadFrame.NameFrame.Name:SetAlpha(0.01) TalkingHeadFrame.TextFrame.Text:SetAlpha(0.01)");
+  for (const kit of ["Horde", "Alliance", "Neutral", "Normal"]) {
+    addon.eval(`__kit = "${kit}" TalkingHeadFrame:PlayCurrent()`);
+    const [name, text, nameShadow, textShadow] = colors();
+    expect([isTok(addon, name, "accentText"), isTok(addon, text, "text"), isTok(addon, nameShadow, "textShadow"), isTok(addon, textShadow, "textShadow")], `${kit}: the name in the accent, the text in the theme's, the theme's shadow`).toEqual([true, true, true, true]);
+  }
+  expect(addon.eval("return { TalkingHeadFrame.NameFrame.Name:GetAlpha(), TalkingHeadFrame.TextFrame.Text:GetAlpha() }"), "the game's fade-in of the strings is left alone").toEqual([0.01, 0.01]);
+  addon.eval("ns.Theme.SetAccent(0.1, 0.9, 0.2)");
+  expect(isTok(addon, colors()[0], "accentText"), "and the name follows the accent").toBe(true);
+  const bare = loggedIn("TalkingHeadFrame = CreateFrame('Frame', 'TalkingHeadFrame', UIParent)");
+  expect(bare.eval("return Vanguard_TalkingHeadFrameSpot ~= nil"), "a head with no PlayCurrent or strings is still placed").toBe(true);
+});
 it("game alerts: the loss of control band stays hidden when the game's animation resets its alpha", () => {
   const addon = loggedIn(ALERTS_ENV + "LossOfControlFrame.RedLineTop = LossOfControlFrame:CreateTexture() LossOfControlFrame.RedLineBottom = LossOfControlFrame:CreateTexture()");
   expect(addon.eval("local f = LossOfControlFrame return { f.blackBg:IsShown(), f.RedLineTop:IsShown(), f.RedLineBottom:IsShown() }"), "the band and both red lines are hidden").toEqual([false, false, false]);

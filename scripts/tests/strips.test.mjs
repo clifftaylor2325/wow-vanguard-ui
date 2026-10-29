@@ -712,8 +712,6 @@ const barSize = (addon) => addon.eval("return { Vanguard_MenuStrip:GetWidth(), V
 const barW = (n) => (n > 0 ? n * 28 - 4 : 0) + 24;
 // The bar's height: a 24-pixel bags row, a 4-pixel gap and a 30-pixel menu row, inside the margins.
 const BAR_H = 24 + 4 + 30 + 24;
-// The bar's width around a micro menu w units wide: the game lays its buttons 27 units apart, 5 overlapping.
-const menuBarW = (w) => barW(Math.round((w - 5) / 27));
 it("the game's extras: duplicates hidden, minimap buttons on the map, menu strip, quest tracker", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV);
   expect(["DurabilityFrame", "TimeManagerClockButton", "GameTimeFrame"].map((n) => putAway(addon, n)), "the game's durability figure, clock and calendar button are put away").toEqual([true, true, true]);
@@ -911,7 +909,7 @@ it("bag and menu bar: the bars' own frame art is hidden, the key ring gets a ful
   expect(off.eval("return { MicroMenu.BorderArt.__alpha, ns.FrameState('vgSlot')[KeyRingButton] ~= nil }"), "with or without the line icons, the frame art goes and the key ring is framed").toEqual([0, true]);
 });
 it("bag and menu bar: every row's anchor has a size, so the bars get a rect to draw in", () => {
-  const addon = strips("BagsBar:SetSize(315, 45) MicroMenuContainer:SetSize(226.5, 30)");
+  const addon = strips("BagsBar:SetSize(315, 45) MicroMenuContainer:SetSize(226.5, 30) __menuButtons(8)");
   // The client gives a zero-sized frame no rect and draws nothing anchored to one: the bar showed its panel and divider with nothing in it (seen in game).
   const rects = (names) => addon.eval(`local out = {} for _, n in ipairs({ ${names.map((n) => JSON.stringify(n)).join(", ")} }) do out[#out + 1] = _G[n]:IsRectValid() end return out`);
   expect(addon.eval("local MS = ns.GetModule('MenuStrip') local out = {} for i, row in ipairs(MS.ROWS) do out[i] = { row.anchor:GetWidth(), row.anchor:GetHeight(), row.anchor:IsRectValid() } end return out"),
@@ -921,7 +919,7 @@ it("bag and menu bar: every row's anchor has a size, so the bars get a rect to d
   expect(rects(["Probe"]), "the harness lays out what hangs on a row's anchor").toEqual([true]);
   addon.eval("Probe:SetPoint('RIGHT', Empty, 'TOPRIGHT')");
   expect(rects(["Empty", "Probe"]), "and, like the client, gives nothing hung on a zero-sized frame a rect").toEqual([false, false]);
-  addon.eval("MainMenuBarBackpackButton:Hide() KeyRingButton:Hide() MicroMenuContainer:SetSize(0, 30) ns.PausePins(false)");
+  addon.eval("MainMenuBarBackpackButton:Hide() KeyRingButton:Hide() MicroMenuContainer:SetSize(0, 30) __menuButtons(0) ns.PausePins(false)");
   expect(addon.eval("local MS = ns.GetModule('MenuStrip') return { MS.ROWS[1].anchor:GetWidth(), MS.ROWS[2].anchor:GetWidth(), Vanguard_MenuStrip:GetWidth() }"),
     "rows with no buttons keep a unit-wide anchor (the bar hugs its margins)").toEqual([1, 1, 24]);
 });
@@ -943,21 +941,60 @@ it("bag and menu bar: the bags and menu the game hides on an input switch come b
 // Where a seated bar's RIGHT point sits on its row's anchor (row k of the bar): { x, y } in screen units.
 const seatOf = (addon, bar, k, scale) => addon.eval(`local p = ${bar}.__points.RIGHT return { p.rel == ns.GetModule("MenuStrip").ROWS[${k}].anchor, p.relPoint, p.x, p.y }`).map((v, i) => (i > 1 ? r3(v * scale) : v));
 it("bag and menu bar: the rows re-fit when the game lays the bars out or resizes them", () => {
-  const addon = strips();
+  const addon = strips("__menuButtons(0)");
   expect(barSize(addon), "before the game lays the menu out, the bar hugs the bags row's two slots, a bags row, a gap and a menu row tall").toEqual([barW(2), BAR_H]);
-  addon.eval("MicroMenuContainer:Layout()");
-  expect(barSize(addon), "the bar grows around the laid-out micro menu").toEqual([menuBarW(378), BAR_H]);
+  addon.eval("__menuButtons(14) MicroMenuContainer:Layout()");
+  expect(barSize(addon), "the bar grows around the laid-out micro menu").toEqual([barW(14), BAR_H]);
   // Each row's last slot sits at its anchor (its button reaches past it by half the difference), its middle on the row's.
   expect(seatOf(addon, "MicroMenuContainer", 2, MENU), "the menu: the lower row, its middle 55 pixels below the top (the 12-pixel margin, the bags row, the gap and half a 30-pixel slot)").toEqual([true, "TOPRIGHT", r3((32 * MENU - 24) / 2), -55]);
   expect(seatOf(addon, "BagsBar", 1, BAGS), "the bags: the upper row, its middle 24 pixels below the top").toEqual([true, "TOPRIGHT", r3((45 * BAGS - 24) / 2), -24]);
   addon.eval("BagsBar:SetScale(1) BagsBar:Layout()");
-  expect([barSize(addon)[0], r3(addon.eval("return BagsBar:GetScale()"))], "a narrower bag row leaves the bar as wide as the menu, and the game's reset of the bag bar's scale is undone").toEqual([menuBarW(378), r3(BAGS)]);
-  addon.eval("MicroMenuContainer:SetSize(500, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer, 500, 40)");
-  expect(barSize(addon)[0], "a size change alone re-fits the bar").toBe(menuBarW(500));
+  expect([barSize(addon)[0], r3(addon.eval("return BagsBar:GetScale()"))], "a narrower bag row leaves the bar as wide as the menu, and the game's reset of the bag bar's scale is undone").toEqual([barW(14), r3(BAGS)]);
+  addon.eval("__menuButtons(17) MicroMenuContainer:SetSize(500, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer, 500, 40)");
+  expect(barSize(addon)[0], "a size change alone re-fits the bar").toBe(barW(17));
   expect(addon.eval("local d = ns.GetModule('MenuStrip').divider local p = d.__points.LEFT return { p.relPoint, p.x, p.y, d.__points.RIGHT.x, d:GetHeight() }"), "a one-pixel accent line between the rows, across the bar inside its margins").toEqual(["TOPLEFT", 12, -38, -12, addon.eval("return ns.Theme.Pixel(Vanguard_MenuStrip)")]);
   expect(isTok(addon, addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "accent"), "in the accent").toBe(true);
   addon.eval("ns.Theme.SetAccent(0.1, 0.9, 0.2)");
   expect(addon.eval("return ns.GetModule('MenuStrip').divider.__vertexColor"), "which it follows").toEqual([0.1, 0.9, 0.2, 1]);
+});
+it("bag and menu bar: retail's queue eye, which the micro menu container counts in its width, is no slot", () => {
+  // TEST-ONLY retail shape: the eye is a child of the container (scale 0.6, 45 wide, 1.2 in), so the container is that much wider than its 12 buttons.
+  const addon = strips(`__menuW = 12 * 27 + 5 + 45 * 0.6 + 1.2
+    QueueStatusButton = CreateFrame("Button", "QueueStatusButton", MicroMenuContainer) QueueStatusButton:SetSize(45, 45) QueueStatusButton:SetScale(0.6) __menuButtons(12)`);
+  addon.eval("MicroMenuContainer:Layout()");
+  expect([addon.eval("return MicroMenuContainer:GetWidth()") > 12 * 27 + 5, barSize(addon)], "twelve micro buttons are twelve slots, however wide the container").toEqual([true, [barW(12), BAR_H]]);
+});
+// TEST-ONLY Forever bag bar: its Layout sets the key ring back to its own 33 units and draws two pooled dividers anew, as the game does.
+const FOREVER_BAGS_ENV = `
+  BagsBar.bagPadding = 2
+  BagsBar.HorizontalDividersPool = { active = {} }
+  function BagsBar.HorizontalDividersPool:ReleaseAll() for d in pairs(self.active) do d:Hide() end self.active = {} end
+  function BagsBar.HorizontalDividersPool:EnumerateActive() return pairs(self.active) end
+  function BagsBar:Layout()
+    self:SetSize(266, 45) KeyRingButton:SetSize(33, 45)
+    self.HorizontalDividersPool:ReleaseAll()
+    for i = 1, 2 do local d = CreateFrame("Frame", nil, self) d:Show() self.HorizontalDividersPool.active[d] = true end
+  end
+  BagsBar:Layout()
+`;
+it("bag and menu bar: after each layout the game's key ring is a bag's size again and its brass dividers stay faded", () => {
+  const addon = strips(FOREVER_BAGS_ENV);
+  // The alpha of each divider the game has drawn.
+  const dividers = () => addon.eval("local out = {} for d in BagsBar.HorizontalDividersPool:EnumerateActive() do out[#out + 1] = d:GetAlpha() end return out");
+  expect([addon.eval("return KeyRingButton:GetWidth()"), dividers()], "the dividers the game drew at login are faded, the key ring a full slot").toEqual([45, [0, 0]]);
+  addon.eval("BagsBar:Layout()");
+  expect([addon.eval("return KeyRingButton:GetWidth()"), dividers()], "a layout resets the key ring to 33 and draws new dividers: both put right again").toEqual([45, [0, 0]]);
+  setCombat(addon, true);
+  addon.eval("BagsBar:Layout()");
+  expect(addon.eval("return KeyRingButton:GetWidth()"), "in combat the key ring waits").toBe(33);
+  setCombat(addon, false);
+  expect(addon.eval("return KeyRingButton:GetWidth()"), "and is put right when combat ends").toBe(45);
+});
+it("bag and menu bar: a bag padding changed in Edit Mode is read again at the next layout", () => {
+  const addon = strips(FOREVER_BAGS_ENV);
+  expect(r3(addon.eval("return BagsBar:GetScale()")), "the bags are laid out with the game's 2 units between them").toBe(r3(28 / 47));
+  addon.eval("BagsBar.bagPadding = 6 BagsBar:Layout()");
+  expect(r3(addon.eval("return BagsBar:GetScale()")), "a wider padding scales the bar so the bags still sit one slot and a gap apart").toBe(r3(28 / 51));
 });
 it("bag and menu bar: the game's menu icons are drawn larger than their slots, so the icon fills the slot, uncropped", () => {
   // TEST-ONLY quest log button showing one of the game's menu icons; the character button's art has no atlas,
@@ -1020,7 +1057,8 @@ it("bag and menu bar: the bar hugs its slots, one size, one baseline per row, on
   expect([r3(line.left), r3(line.right)], "the divider runs under the slots only, edge to edge with the longer row").toEqual([menu[0][0], menu[8][2]]);
   expect(line.bottom >= menu[0][3] && line.top <= bags[0][1], "between the rows").toBe(true);
   expect([r3(bar.right), r3(bar.bottom), r3(bar.right - bar.left)], "the bar keeps its bottom-right corner, 16 and 20 in from the screen's").toEqual([1904, 20, barW(9)]);
-  addon.eval("MicroMenuContainer:SetSize(14 * 27 + 5, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer)");
+  addon.eval(`for _, name in ipairs({ "Help", "Store", "EJ", "Housing", "Profession" }) do CreateFrame("Button", name .. "MicroButton", MicroMenuContainer):SetSize(32, 40) end
+    MicroMenuContainer:SetSize(14 * 27 + 5, 40) MicroMenuContainer.__scripts.OnSizeChanged(MicroMenuContainer)`);
   const wide = addon.frame("Vanguard_MenuStrip").rect;
   expect([r3(wide.right), r3(wide.right - wide.left)], "fourteen menu buttons: the bar grows to the left only").toEqual([1904, barW(14)]);
 });
@@ -1035,18 +1073,18 @@ it("bag and menu bar: one mover keeps the menu strip's saved spot; the bag strip
   expect(now.eval("return ns.FrameState('vgGlyph')[CharacterMicroButton] ~= nil"), "line icons switched on after the upgrade stay on").toBe(true);
 });
 it("bag and menu bar: no re-fit while pins are paused or in combat, and one queued entry per bar", () => {
-  const addon = strips();
-  addon.eval("ns.PausePins(true) __menuW = 600 MicroMenuContainer:Layout()");
+  const addon = strips("__menuButtons(0)");
+  addon.eval("ns.PausePins(true) __menuButtons(17) MicroMenuContainer:Layout()");
   expect(barSize(addon)[0], "Edit Mode open: the bar waits").toBe(barW(2));
   addon.eval("ns.PausePins(false)");
-  expect(barSize(addon)[0], "and fits when it closes").toBe(menuBarW(600));
+  expect(barSize(addon)[0], "and fits when it closes").toBe(barW(17));
   setCombat(addon, true);
-  addon.eval("__menuW = 400 MicroMenuContainer:Layout()");
+  addon.eval("__menuButtons(9) MicroMenuContainer:Layout()");
   const queued = addon.eval("return ns.QueuedCount()");
   addon.eval("for _ = 1, 50 do MicroMenuContainer:Layout() end");
-  expect([barSize(addon)[0], addon.eval("return ns.QueuedCount()")], "in combat nothing changes, and 50 more Layout calls queue nothing more").toEqual([menuBarW(600), queued]);
+  expect([barSize(addon)[0], addon.eval("return ns.QueuedCount()")], "in combat nothing changes, and 50 more Layout calls queue nothing more").toEqual([barW(17), queued]);
   setCombat(addon, false);
-  expect(barSize(addon)[0], "after combat the bar fits").toBe(menuBarW(400));
+  expect(barSize(addon)[0], "after combat the bar fits").toBe(barW(9));
   const plain = loggedIn(UI_ENV + 'CreateFrame("Frame", "MicroMenuContainer", UIParent) function MicroMenuContainer:Layout() end');
   expect(plain.eval("return { MicroMenuContainer:GetParent() == Vanguard_MenuStrip, MicroMenuContainer.__scripts.OnSizeChanged ~= nil }"), "a client without hooksecurefunc still pins and watches the size").toEqual([true, true]);
 });

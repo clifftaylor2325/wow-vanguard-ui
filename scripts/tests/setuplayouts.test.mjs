@@ -182,7 +182,7 @@ function wholeHud(screen = "", hud = "PartyExtras = { show = true }") {
   const addon = loggedIn(screen + UI_ENV + ACTIONS_ENV + UNITS_ENV + RAID_ENV + SWING_ENV + TOOLS_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + SPECIAL_BARS_ENV + "TakeTaxiNode = function() end", { firstRun: true, savedVariables: `VanguardDB = { profiles = { Default = { ${hud} } } }` });
   addon.eval("Vanguard_InfoStrip:SetHeight(68)");
   addon.eval('local R = ns.GetModule("Rolls") Vanguard_Rolls:SetHeight(R.LINES * R.LINE + 2 * R.PAD)');
-  addon.eval("MicroMenuContainer:Layout() BagsBar:Layout()");
+  addon.eval("__menuButtons(14) MicroMenuContainer:Layout() BagsBar:Layout()");
   return addon;
 }
 // Every part's rect in a layout preset: the quest dialog only in the centered ones.

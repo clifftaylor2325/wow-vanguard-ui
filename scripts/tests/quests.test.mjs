@@ -1496,6 +1496,11 @@ const TRACKER_ENV = `
     h.MinimizeButton = CreateFrame("Button", nil, h) h.MinimizeButton.normal = h.MinimizeButton:CreateTexture()
     h.MinimizeButton.GetNormalTexture = function(self) return self.normal end
     function h:SetCollapsed(collapsed) self.collapsed = collapsed end
+    -- The game's add animation (setToFinalAlpha): played, it ends by setting the band to full alpha unless stopped first.
+    h.Shine = h:CreateTexture()
+    h.AddAnim = { Restart = function(anim) anim.playing = true end, Stop = function(anim) anim.playing = false end,
+      Finish = function(anim) if anim.playing then h.Background:SetAlpha(1) h.Shine:SetAlpha(1) anim.playing = false end end }
+    function h:PlayAddAnimation() self.AddAnim:Restart() end
     return h
   end
   ObjectiveTrackerFrame.Header = __header(ObjectiveTrackerFrame)
@@ -1518,6 +1523,9 @@ it("the quest tracker in the Vanguard look: flat headers, brass lines, theme arr
   expect(addon.eval("return { ObjectiveTrackerLineFont.font[2], ObjectiveTrackerHeaderFont.font[2], ObjectiveTrackerHeaderFont.font[1]:find('SemiBold') ~= nil }"), "the tracker's fonts are the theme's (headers bold)").toEqual([12, 13, true]);
   addon.eval("ns.Theme.SetAccent(0.1, 0.2, 0.3)");
   expect(addon.eval("return ns.GetModule('MenuStrip').rules[2].__vertexColor[3]"), "the lines follow the accent").toBe(0.3);
+  // A section shown again: the game plays its header's add animation, which would fade the band and shine back in.
+  addon.eval("local h = ObjectiveTrackerFrame.modules[1].Header h:PlayAddAnimation() h.AddAnim:Finish()");
+  expect(addon.eval("local h = ObjectiveTrackerFrame.modules[1].Header return { h.Background.__alpha, h.Shine.__alpha, h.AddAnim.playing }"), "the game's add animation is stopped, so the band and shine stay faded").toEqual([0, 0, false]);
   addon.eval("ObjectiveTrackerFrame.modules[2] = { Header = __header(ObjectiveTrackerFrame) } ObjectiveTrackerFrame:Update()");
   expect(addon.eval("return ns.FrameState('vgHeader')[ObjectiveTrackerFrame.modules[2].Header]"), "a section the game adds later is styled on its next update").toBe(true);
   const own = loggedIn(UI_ENV + TIDY_ENV + TRACKER_ENV);
