@@ -179,9 +179,11 @@ const getBarOption = (addon, n, label) => addon.eval(`
     if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then return row[#row - 1]() end
   end`);
 
-// Bar 2's secure visibility driver, alpha, and whether it takes the mouse.
+// Bar 2's secure visibility driver (without the pet battle clause every bar's begins with; `raw` keeps it),
+// alpha, and whether it takes the mouse.
 const barVis = (addon, n = 2) => addon.eval(`local bar = Vanguard_Bar${n}
-  return { driver = bar.__states.visibility, alpha = bar:GetAlpha(), mouse = bar.__mouse }`);
+  local raw = bar.__states.visibility
+  return { driver = raw:gsub("^%[petbattle%] hide; ", ""), raw = raw, alpha = bar:GetAlpha(), mouse = bar.__mouse }`);
 
 it("action bar visibility: each mode's state driver and mouseover alpha", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -333,6 +335,44 @@ it("Hidden bar bindings stay intact", () => {
   expect(addon.eval("return __overrides['CTRL-BUTTON4']") === "Vanguard_Bar2Button1:LeftButton", "also after the bindings are rebuilt").toBeTruthy();
   const help = addon.eval('local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end local rows = page.rows() for i, r in ipairs(rows) do if r[2] == "Visibility" then return rows[i + 1] end end');
   expect(help[0] === "text" && /keys.*still casts/.test(help[1]), `the Visibility row's help text says so (got ${JSON.stringify(help)})`).toBeTruthy();
+});
+
+it("a pet battle hands the number keys back to the game and hides the bars, then everything returns", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  // What key 1 is bound to click (nil: nothing of Vanguard's).
+  const keyOne = () => addon.eval("return __overrides['1']");
+  expect([keyOne(), barVis(addon).raw], "outside a battle: key 1 clicks Vanguard's button, and the bar's driver hides it in a pet battle").toEqual(["Vanguard_Bar1Button1:LeftButton", "[petbattle] hide; show"]);
+  setBarOption(addon, 2, "Visibility", '"combat"');
+  expect(barVis(addon).raw, "a conditional bar keeps its own conditions behind the clause").toBe("[petbattle] hide; [combat] show; hide");
+  addon.eval("C_PetBattles = { IsInBattle = function() return true end }");
+  addon.fire("PET_BATTLE_OPENING_START");
+  expect(keyOne(), "in a pet battle no key of Vanguard's is set, so the pet battle bar gets them").toBe(null);
+  addon.eval("C_PetBattles.IsInBattle = function() return false end");
+  addon.fire("PET_BATTLE_CLOSE");
+  expect(keyOne(), "when it closes the keys return").toBe("Vanguard_Bar1Button1:LeftButton");
+});
+
+it("a pet battle's opening alone takes the keys away, and its end waits for a fight to finish", () => {
+  const addon = loggedIn(ACTIONS_ENV + "C_PetBattles = nil");
+  addon.fire("PET_BATTLE_OPENING_START");
+  expect(addon.eval("return __overrides['1']"), "a client that has not flagged the battle yet: the event is enough").toBe(null);
+  setCombat(addon, true);
+  addon.fire("PET_BATTLE_CLOSE");
+  expect(addon.eval("return __overrides['1']"), "a fight in progress: the keys wait (they are protected)").toBe(null);
+  setCombat(addon, false);
+  expect(addon.eval("return __overrides['1']"), "and return when it ends").toBe("Vanguard_Bar1Button1:LeftButton");
+});
+
+it("a button prints the client's own count text, such as spell charges, and keeps the use count where it has none", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.eval("C_ActionBar.GetActionDisplayCount = function(slot) if slot == 1 then return '2' elseif slot == 3 then return { __secret = true } end return nil end");
+  addon.fire("SPELL_UPDATE_CHARGES");
+  expect(button(addon, 1, 1).count, "a spell with charges: the client's text, though the use count is 0").toBe("2");
+  expect(button(addon, 1, 3).count.__secret, "a hidden text goes to the label as it is").toBe(true);
+  expect(button(addon, 1, 2).count, "an answer of nothing keeps the use count").toBe("5");
+  addon.eval("C_ActionBar.GetActionDisplayCount = function() return '' end");
+  addon.fire("SPELL_UPDATE_CHARGES");
+  expect(button(addon, 1, 2).count, "an empty text from the client shows nothing, as on the game's buttons").toBe("");
 });
 
 it("action bar layout: per-bar buttons, rows and size, deferred in combat", () => {

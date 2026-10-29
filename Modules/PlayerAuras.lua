@@ -85,13 +85,40 @@ local function enchantIcon(e, inv)
   return type(GetInventoryItemTexture) == "function" and GetInventoryItemTexture("player", inv) or nil
 end
 
+-- Whether the client lists a weapon's enchants by weapon slot (WoW Forever's call).
+local function listsByWeaponSlot()
+  return type(C_Item and C_Item.GetWeaponEnchantInfo) == "function" and Enum and Enum.WeaponSlot ~= nil
+end
+
+-- Whether the client can list your weapon enchants at all: by weapon slot, or (retail) by inventory slot.
+function PA.CanListEnchants()
+  local byInventorySlot = C_PaperDollInfo and C_PaperDollInfo.GetTemporaryEnchantmentInfo
+  return listsByWeaponSlot() or type(byInventorySlot) == "function"
+end
+
+-- A weapon's timed enchant from the by-weapon-slot list, as { inv, icon, left (seconds) }, or nil.
+local function listedEnchant(weapon)
+  local slot = Enum.WeaponSlot[weapon[1]]
+  local e = slot ~= nil and timedEnchant(C_Item.GetWeaponEnchantInfo(slot)) or nil
+  if e then return { inv = weapon[2], icon = enchantIcon(e, weapon[2]), left = e.timeLeft / 1000 } end
+end
+
+-- A weapon's timed enchant on a retail client, which asks by inventory slot, as { inv, icon, left }, or nil.
+local function retailEnchant(weapon)
+  local get = C_PaperDollInfo and C_PaperDollInfo.GetTemporaryEnchantmentInfo
+  local info = type(get) == "function" and get(weapon[2]) or nil
+  if type(info) ~= "table" or ns.IsSecret(info) then return nil end
+  local ms = ns.PlainNumber(info.remainingTimeMs)
+  if plain(info.hasExpirationTime) ~= true or (ms or 0) <= 0 then return nil end
+  return { inv = weapon[2], icon = enchantIcon({}, weapon[2]), left = ms / 1000 }
+end
+
 -- The enchants to show: { inv, icon, left (seconds) } per weapon with a timed one.
 function PA.Enchants()
-  local out, slots, get = {}, Enum and Enum.WeaponSlot, C_Item and C_Item.GetWeaponEnchantInfo
-  if not slots or type(get) ~= "function" then return out end
-  for _, w in ipairs(PA.WEAPONS) do
-    local e = slots[w[1]] ~= nil and timedEnchant(get(slots[w[1]])) or nil
-    if e then out[#out + 1] = { inv = w[2], icon = enchantIcon(e, w[2]), left = e.timeLeft / 1000 } end
+  local out, read = {}, listsByWeaponSlot() and listedEnchant or retailEnchant
+  for _, weapon in ipairs(PA.WEAPONS) do
+    local e = read(weapon)
+    if e then out[#out + 1] = e end
   end
   return out
 end

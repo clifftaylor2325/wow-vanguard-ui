@@ -114,8 +114,12 @@ read_globals = {
   "ItemLocation",
   -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
   "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo",
-  -- Info strip ammo: whether your ranged weapon needs ammo.
+  -- Info strip ammo: whether your ranged weapon needs ammo. Player auras and prep: temporary weapon enchants.
   "C_PaperDollInfo",
+  -- Action bars: pet battle state (the game's pet battle bar owns the number keys).
+  "C_PetBattles",
+  -- Cast bars: the game's cast bar types (the overlay bar's interrupted look).
+  "CastingBarType",
   -- Pet stable: the stable master's pet lists and slot price.
   "C_StableInfo",
   -- E5 Auction ledger: the inbox's auction mail (Blizzard_MailFrame/MailFrame.lua), and the game's

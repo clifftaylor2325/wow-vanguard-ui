@@ -386,6 +386,14 @@ it("prep buffs: nothing is guessed when the client hides auras or can't list the
   expect(count(), "no item info: no enchant rows").toBe(5);
 });
 
+it("prep buffs: a retail client lists enchants by inventory slot, so a bare weapon gets its row", () => {
+  const addon = buffed();
+  addon.eval(`C_Item.GetWeaponEnchantInfo = nil
+    C_PaperDollInfo = { GetTemporaryEnchantmentInfo = function(slot) return slot == 16 and { enchantID = 5, remainingTimeMs = 600000, chargesRemaining = 0, hasExpirationTime = true } or nil end }`);
+  const rows = addon.eval("return ns.GetModule('InstancePrep').EnchantRows()");
+  expect(rows.map((r) => r.label), "the oiled main hand makes no row; the bare off hand does").toEqual(["Off-hand oil or poison"]);
+});
+
 it("prep buffs: the options page has the switches", () => {
   const addon = character("WARRIOR", 60);
   addon.eval('ns.Options.Show("town")');
