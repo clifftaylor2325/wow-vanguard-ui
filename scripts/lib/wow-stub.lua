@@ -379,6 +379,10 @@ function methods:IsMouseClickEnabled()
 end
 -- The mouse wheel: whether the frame takes it (a frame with an OnMouseWheel script does too, as in game).
 function methods:EnableMouseWheel(on) self.__mouseWheel = on ~= false end
+-- Whether the frame takes the keyboard (EnableKeyboard), and whether a key it takes goes on to the game too.
+function methods:EnableKeyboard(on) self.__keyboard = on == true end
+function methods:IsKeyboardEnabled() return self.__keyboard == true end
+function methods:SetPropagateKeyboardInput(on) self.__propagate = on == true end
 function methods:IsMouseWheelEnabled() return self.__mouseWheel == true or self.__scripts.OnMouseWheel ~= nil end
 -- Moving (recorded for the mover tests).
 function methods:StartMoving() self.__moving = true end

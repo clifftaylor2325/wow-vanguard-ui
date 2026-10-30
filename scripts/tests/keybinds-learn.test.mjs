@@ -381,7 +381,9 @@ it("the question: asked once, when a player who never applied trains a spell; Se
 });
 
 it("the question waits while the wizard is due after first-run setup, or while another question shows", () => {
-  const addon = warrior({ level: 12, savedVariables: "VanguardCharDB.keysOffer = true" });
+  const addon = warrior({ level: 12 });
+  // The wizard's own offer at login would take keysOffer; set after login, it is still due.
+  addon.eval("VanguardCharDB.keysOffer = true");
   learn(addon, 772);
   expect(addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false"), "the wizard opens by itself").toBe(false);
   addon.eval('VanguardCharDB.keysOffer = false ns.Ask("Another question?", "Yes", function() end)');

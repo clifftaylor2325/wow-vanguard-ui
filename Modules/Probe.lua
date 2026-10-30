@@ -480,6 +480,41 @@ local function undocumentedLines()
   return out
 end
 
+-- Key setup's spells: each ID with the name the client gives it, by name (a name that reads nil is an ID to fix), so
+-- one run on a character of any class checks every class's layout.
+local function keySpellLines()
+  local out, data = {}, ns.KeybindsData
+  for name, id in pairs(data.SPELL) do
+    if id ~= data.UNKNOWN then out[#out + 1] = name .. " " .. id .. ": " .. describe(ns.SpellName(id)) end
+  end
+  table.sort(out)
+  return out
+end
+
+-- Every listed command that has a key, with its keys: on a fresh install, the game's default key map.
+local function bindingLines()
+  local count, get = ns.GuideData.Find("GetNumBindings"), ns.GuideData.Find("GetBinding")
+  if not (count and get) then return { "GetBinding: missing" } end
+  local out = {}
+  for i = 1, ns.PlainNumber(count()) or 0 do
+    local command, _, key1, key2 = get(i)
+    if ns.IsSecret(key1) or key1 then out[#out + 1] = describeAll(command, key1, key2) end
+  end
+  return out
+end
+
+-- What bar 1's pages and bars 2 and 3 hold, slot by slot (on a new character, its starter buttons), then the stance
+-- bar's forms in order (which button each stance key presses).
+local function barSlotLines()
+  local out = {}
+  for slot = 1, 120 do
+    local kind, id = GetActionInfo(slot)
+    if ns.IsSecret(kind) or kind then out[#out + 1] = "slot " .. slot .. ": " .. describeAll(kind, id) end
+  end
+  for i = 1, ns.PlainNumber(GetNumShapeshiftForms()) or 0 do out[#out + 1] = "stance " .. i .. ": " .. describeAll(GetShapeshiftFormInfo(i)) end
+  return out
+end
+
 -- The sections of a run: { title, lines function }, in the order they print.
 P.SECTIONS = {
   { "Client", clientLines }, { "SavedVariables round trip", savedLines },
@@ -491,7 +526,8 @@ P.SECTIONS = {
   { "C_Secrets predicates", secretLines }, { "Restrictions and lockdown", restrictionLines },
   { "Navigation", navigationLines }, { "Undocumented on Forever", undocumentedLines },
   { "Quest and map reads", questMapLines }, { "Party, marks and bosses", partyLines },
-  { "Bars and strips", gateLines },
+  { "Bars and strips", gateLines }, { "Key setup spells", keySpellLines }, { "Key bindings", bindingLines },
+  { "Action slots and stances", barSlotLines },
 }
 
 -- A run ------------------------------------------------------------------------------------

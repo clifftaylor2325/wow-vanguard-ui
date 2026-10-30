@@ -79,6 +79,8 @@ read_globals = {
   "SetBinding", "SaveBindings", "GetCurrentBindingSet",
   -- P4a Key setup's apply engine: loading a key set (the switch to "Only this character", and a rollback).
   "LoadBindings",
+  -- P4b Key setup's resolver and wizard (Modules/KeybindsLayouts.lua, KeybindsWizard.lua): the stance bar's forms.
+  "GetNumShapeshiftForms", "GetShapeshiftFormInfo",
   -- P3.5 Shared media: the bundled libraries' loader (Libs/LibStub).
   "LibStub",
   -- P3.8 Chat: the game's time formatter and clock (chat timestamps), its chat windows list.

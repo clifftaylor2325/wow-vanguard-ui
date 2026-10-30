@@ -1,5 +1,6 @@
 -- The Action bars page (/vg): the shared card (locking, range, the
--- default and special bars, keybind mode), the Your keys card (with the switch for new spells), then one card per bar.
+-- default and special bars, keybind mode), the Your keys card (with key setup's
+-- buttons and the switch for new spells on WoW Forever), then one card per bar.
 -- Core/Options.lua has the helpers and the page list.
 
 local ADDON, ns = ...
@@ -68,6 +69,22 @@ local function actionBarRows()
   }
 end
 
+-- Put everything back asks first: every key key setup changed, and the spells it moved, go back.
+local function putBackAll()
+  ns.Ask(L["Put back every key key setup changed, and the spells it moved?"], L["Put back"], function() ns.KeybindsApply.PutBackAll() end)
+end
+
+-- Key setup's buttons on WoW Forever (Modules/KeybindsWizard.lua, Modules/KeybindsApply.lua): set up recommended
+-- keys, and put back every key it changed.
+local function keySetupRows()
+  if not ns.IsForever() then return {} end
+  return {
+    { "text", L["Key setup suggests keys for your class and changes nothing until you press Apply. Right-click a key it changed to put that key back."] },
+    { "button", L["Set up keys"], function() ns.KeybindsWizard.Open() end },
+    { "button", L["Put everything back"], putBackAll },
+  }
+end
+
 -- "Place new spells as I learn them" (Modules/KeybindsLearn.lua), on WoW Forever once key setup's wizard is in.
 local function newSpellsRows()
   if not (ns.IsForever() and ns.KeybindsWizard) then return {} end
@@ -78,13 +95,15 @@ local function newSpellsRows()
   }
 end
 
--- Your keys (Modules/KeysViewCard.lua): what every key does now, then the switch for new spells.
+-- Your keys (Modules/KeysViewCard.lua): what every key does now, and on WoW Forever key setup's buttons and the
+-- switch for new spells.
 local function yourKeysRows()
-  return append({
+  local rows = {
     { "header", L["Your keys"] },
     { "text", L["What every key does now. Hold Shift, Ctrl or Alt to see those keys, and hover a key for what it does."] },
     { "keystabs" }, { "keyboard" }, { "keylist" },
-  }, newSpellsRows())
+  }
+  return append(append(rows, keySetupRows()), newSpellsRows())
 end
 
 -- Buttons on a bar, and per row: 1 to 12.

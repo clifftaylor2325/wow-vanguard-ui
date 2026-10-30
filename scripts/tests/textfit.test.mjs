@@ -101,6 +101,19 @@ it("text fits: the dialogs", () => {
   expectFits("dialogs", findings);
 });
 
+it("text fits: key setup, every step, with a change listed, a key that stays and the shared-keys choice", () => {
+  const addon = fitClient();
+  addon.eval(`__wfgWorld.setUnit("player", { class = "WARRIOR", className = "Warrior", level = 12 })
+    for _, id in ipairs({ 78, 72, 1715, 2687, 100, 6673, 2457 }) do __wfgWorld.learn(id, { name = "TEST-ONLY spell " .. id }) end
+    __wfgWorld.setStances({ { spellID = 2457, icon = 1 } }) __wfgWorld.setAction(63, { type = "macro", id = 3 })`);
+  const findings = [];
+  for (const step of [1, 2, 3]) {
+    addon.eval(step === 1 ? "ns.KeybindsWizard.Open()" : "ns.KeybindsWizard.Next()");
+    findings.push(...addon.textFit("Vanguard_KeysWizard"));
+  }
+  expectFits("key setup", findings);
+});
+
 it("text fits: the Click casting page's menu-click notice and its buttons (KB1-3)", () => {
   // TEST-ONLY saved list in the old layouts' shape: a spell on Right click, the Unit menu on Middle click.
   const old = 'VanguardCharDB = { clickcast = { [0] = { { key = "BUTTON2", action = "spell", value = "Flash Heal" }, { key = "BUTTON3", action = "menu" } } } }';

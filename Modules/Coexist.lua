@@ -56,6 +56,18 @@ local function loaded(name)
   return type(fn) == "function" and fn(name) == true
 end
 
+-- The loaded addons that do the job of a Vanguard module (its rows in CX.OVERLAPS), by folder name, in order.
+---@param module string  a module's name ("ActionBars")
+---@return string[]
+function CX.Overlaps(module)
+  local out = {}
+  for name, row in pairs(CX.OVERLAPS) do
+    if row[1] == module and loaded(name) then out[#out + 1] = name end
+  end
+  table.sort(out)
+  return out
+end
+
 -- The row's settings keys, or nil for a whole-module row. A named list is read off the module now.
 local function keysOf(o)
   if type(o.keys) ~= "string" then return o.keys end
