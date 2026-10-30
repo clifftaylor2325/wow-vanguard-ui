@@ -183,6 +183,16 @@ function CC.WontRun(b)
   return verdict == "override" and WONT_RUN.override or nil
 end
 
+-- Whether the game is sure to run a Target or Unit menu binding on its click: its profile has that interaction on the
+-- same button with exactly those modifiers. Unlike CC.WontRun, an entry this can't read counts as no. A client without
+-- the game's click bindings, or while they are in use (Vanguard's rest), needs nothing: true.
+function CC.GameCovers(b)
+  local profile = not CC.UsesGame() and gameProfile()
+  if not profile then return true end
+  local prefix, n = CC.MouseParts(b.key)
+  return prefix ~= nil and gameVerdict(profile, prefix, n) == "covered"
+end
+
 -- Opens the game's own Click Casting window (it loads on demand), closing Vanguard's options window first; a client
 -- without one says so in chat, and in a fight chat says the window waits.
 function CC.OpenGameWindow()

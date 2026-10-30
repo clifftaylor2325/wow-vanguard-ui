@@ -822,6 +822,9 @@ local function refreshPresets(d)
   d:SetShown(#CP.Choices() > 0)
 end
 
+-- A starter layout was put on: the extra modifier columns follow its bindings again, whatever was last asked.
+CP.OnApplied = function() state.more = nil end
+
 -- Shows or hides the extra modifier columns (the page is built again for the new width).
 local function toggleMore()
   state.more = not moreShown()
@@ -844,8 +847,8 @@ local function askClear()
   end, nil, "danger")
 end
 
--- The layout row's starter layout control, in one spot: the presets dropdown on WoW Forever (Modules/ClickCastPresets.lua),
--- else the class layout button (when the class has one); neither where another addon does the raid frames' job.
+-- The layout row's starter layout control, in one spot: the presets dropdown on WoW Forever (Modules/ClickCastPresets.lua;
+-- not where another addon does the raid frames' job), else the class layout button (when the class has one).
 local function layoutControl(r)
   r.presets = W.Dropdown(r, CP.Choices, function() return nil end, function(id) CP.Pick(id) end, 200)
   r.presets:SetPoint("LEFT", T.SPACE.gap, 0)
@@ -853,7 +856,7 @@ local function layoutControl(r)
   r.presets:Refresh()
   r.layout = W.Button(r, ns.Format(L["{class} healing layout"], { class = CS.ClassName() }), applyLayout, 200)
   r.layout:SetPoint("LEFT", T.SPACE.gap, 0)
-  r.layout:SetShown(CS.HasLayout() and not ns.IsForever() and CP.Blocker() == nil)
+  r.layout:SetShown(CS.HasLayout() and not ns.IsForever())
 end
 
 -- Clear all, after the starter layout control, or at the row's start when there is none.
