@@ -3234,7 +3234,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.168 Calm HUD with the game's locked frames
 
-- Do: in retail (where the error was first seen) and on WoW Forever, `/vg errors clear` (or `/reload`), then open Options → General, switch the Calm HUD on, set every part to Dim, then to Hide, then back to Leave as is; mouse over each part while it is quiet. Do the same in a dungeon. On a character with Bartender4 or Dominos loaded, open key setup.
+- Do: in retail (where the error was first seen) and on WoW Forever, `/reload`, then open Options → General, switch the Calm HUD on, set every part to Dim, then to Hide, then back to Leave as is; mouse over each part while it is quiet. Do the same in a dungeon. On a character with Bartender4 or Dominos loaded, open key setup.
 - Expect: no "cannot replace a forbidden script handler" or "Lua Taint: Vanguard" entry in `/vg errors`; each part still comes back to full strength under the mouse. Key setup names the bar addon ("You use Bartender4 for your bars…"), never "table: 0x…".
 - If it fails, paste: `/vg errors` and which part you had set when it appeared.
 
