@@ -207,6 +207,26 @@ it("step 3: a stance key whose button already has two keys is listed as staying"
   expect(ready(addon).filter((r) => r.startsWith("`:"))).toEqual(["`: unchanged, its button already has two keys"]);
 });
 
+it("step 3: Place new spells as I learn them starts unticked at level 12, and a ticked one turns placing new spells on", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  const box = "Vanguard_KeysWizard.steps.ready.placeNew";
+  expect(addon.eval(`return { ${box}:IsShown(), ${box}.get(), ns.KeybindsLearn.IsOn() }`)).toEqual([true, false, false]);
+  addon.eval(`${box}.__scripts.OnClick(${box}) __click("Apply")`);
+  expect(addon.eval("return { ns.KeybindsLearn.IsOn(), VanguardCharDB.keysLearn.preset.class }")).toEqual([true, "WARRIOR"]);
+});
+
+it("step 3: a spell that replaces the one on its button says so", () => {
+  const addon = loggedIn(CLICK_LUA, {});
+  addon.eval('__wfgWorld.setUnit("player", { name = "Ilsa", class = "MAGE", className = "Mage", level = 30 })');
+  for (const [id, name] of [[7302, "Ice Armor"], [168, "Frost Armor"]]) addon.world.learn(id, { name, icon: `TEST-ONLY-${id}` });
+  addon.world.setAction(50, { type: "spell", id: 168 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon)).toContain("[x] SHIFT-A: Ice Armor, in place of Frost Armor");
+});
+
 it("step 3: a bar that is off and a rogue without roles", () => {
   const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles.Default = { modules = {}, ActionBars = { bars = { [3] = { enabled = false } } } }" });
   addon.eval('__wfgWorld.setUnit("player", { class = "ROGUE", className = "Rogue", level = 10 })');

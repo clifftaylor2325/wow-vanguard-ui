@@ -132,6 +132,7 @@ Modules/KeysViewCard.lua
 Modules/KeybindsData.lua
 Modules/KeybindsLayouts.lua
 Modules/KeybindsWizard.lua
+Modules/KeybindsLearn.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/Waypoints.lua

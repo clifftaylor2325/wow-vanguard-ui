@@ -3,7 +3,8 @@
 -- your mouse has side buttons; step 2 shows the keyboard with the proposed keys (the None, Shift, Ctrl and Alt tabs,
 -- the bar page for each stance or form, "Show what comes later", and a key pressed over the keyboard lights up and
 -- says what it will do, casting nothing); step 3 lists every change with a tick box, warns when your keys are shared
--- by all your characters, and applies through the apply engine (Modules/KeybindsApply.lua). Opened from the Your
+-- by all your characters, has "Place new spells as I learn them" (Modules/KeybindsLearn.lua, told of the Apply), and
+-- applies through the apply engine (Modules/KeybindsApply.lua). Opened from the Your
 -- keys card on the Action bars page, and once after first-run setup (VanguardCharDB.keysOffer). WoW Forever only.
 -- With a bar addon loaded, Vanguard's action bars off or the gamepad on, step 1 says why it changes nothing.
 
@@ -33,7 +34,8 @@ WZ.onApply = {}
 
 -- State while the window is open: preset { class, role, sides }, step, tab, page, later (show what comes later),
 -- entries and rows (the resolver's entries and the apply engine's plan, one row per entry), off ({ [entry] = true }
--- for an unticked change), scope ("char" or "all"), lit (the chord pressed last).
+-- for an unticked change), scope ("char" or "all"), lit (the chord pressed last), placeNew (step 3's tick box for
+-- new spells).
 local state = { step = 1, tab = "none", page = 1, later = false, off = {}, scope = "char" }
 WZ.state = state
 
@@ -132,6 +134,8 @@ local CHANGE_TEXT = {
   place = L["{key}: {spell} added to your bar"], bind = L["{key}: your {spell} on bar {bar}"],
   move = L["{key}: {spell}, and {moved} moves to bar 3"], command = L["{key}: {spell}"],
 }
+-- A change that writes over a spell the plan needn't keep (it replaces it, or another key places it in reach).
+local OVER_TEXT = L["{key}: {spell}, in place of {over}"]
 -- Why a key stays as it was, by the apply engine's reason; a reason not listed isn't shown.
 local KEPT_TEXT = {
   kept = L["{key}: unchanged, its button holds something key setup leaves alone (a macro, an item or a mount)"],
@@ -151,11 +155,11 @@ end
 -- One plan row in words, or nil for a row that needn't be listed (already set, or a spell not known yet). A stance or
 -- pet key's row has no spell and is named by its command.
 local function changeText(row, entry)
-  local text = CHANGE_TEXT[row.kind] or KEPT_TEXT[row.why]
+  local text = row.over and OVER_TEXT or CHANGE_TEXT[row.kind] or KEPT_TEXT[row.why]
   if not text then return nil end
   local spell = row.spell and spellText(row.spell) or commandText(row.command)
-  local moved = row.moved and spellText(row.moved)
-  return ns.Format(text, { key = KV.KeyText(row.key), spell = spell, bar = barOf(row.slot or entry.slot), moved = moved })
+  local moved, over = row.moved and spellText(row.moved), row.over and spellText(row.over)
+  return ns.Format(text, { key = KV.KeyText(row.key), spell = spell, bar = barOf(row.slot or entry.slot), moved = moved, over = over })
 end
 
 -- A plan row in words for step 3's list: a change also says what the key does now when it does something else.
@@ -466,7 +470,8 @@ local function addFootnote(s)
   s.footnote:SetText(L["The keys are saved in the game's own key bindings, and Put everything back on the Your keys card restores them."])
 end
 
--- Step 3's parts: the intro, the scrolling list, the shared-keys warning with its choice, and the footnote.
+-- Step 3's parts: the intro, the scrolling list, the tick box for new spells, the shared-keys warning with its
+-- choice (addScope), and the footnote.
 local function buildReady(f)
   local s = stepFrame(f)
   s.intro = textLine(s, "label", "text2", SIZE.intro)
@@ -474,6 +479,7 @@ local function buildReady(f)
   s.view = ns.ScrollView(s, { width = CONTENT_W })
   s.pools = { check = {}, line = {} }
   s.view:SetPoint("TOPLEFT", 0, -s.y)
+  s.placeNew = W.Check(s, L["Place new spells as I learn them"], function() return state.placeNew end, function(v) state.placeNew = v end, CONTENT_W)
   addFootnote(s)
   return s
 end
@@ -495,15 +501,25 @@ local function addScope(s)
   s.scope:SetPoint("BOTTOMLEFT", 0, SIZE.footnote + T.SPACE.tight)
 end
 
--- Fills step 3: the list, and the scope choice only while the game uses the account's keys (the list takes its room
--- when it is hidden).
+-- Puts the tick box for new spells just under the list, above the shared-keys choice when that shows (its warning
+-- may take two lines in a longer language). Answers the room everything under the list takes.
+local function placeNewAt(s, shared)
+  local below = SIZE.footnote + T.SPACE.tight + (shared and W.ROW_HEIGHT + 2 * SIZE.line + 2 * T.SPACE.tight or 0)
+  s.placeNew:ClearAllPoints()
+  s.placeNew:SetPoint("BOTTOMLEFT", 0, below)
+  s.placeNew:Refresh()
+  return below + W.ROW_HEIGHT + T.SPACE.tight
+end
+
+-- Fills step 3: the list, the tick box for new spells, and the scope choice only while the game uses the account's
+-- keys (the list takes its room when it is hidden).
 local function showReady(s)
   local shared = KA.SharesKeys()
   s.shared:SetShown(shared)
   s.shared:SetText(SCOPE_TEXT[state.scope])
   s.scope:SetShown(shared)
   s.scope:Refresh()
-  s.view:SetPoint("BOTTOMRIGHT", 0, SIZE.footnote + T.SPACE.tight + (shared and W.ROW_HEIGHT + SIZE.line + 2 * T.SPACE.tight or 0))
+  s.view:SetPoint("BOTTOMRIGHT", 0, placeNewAt(s, shared))
   fillReady(s)
 end
 
@@ -542,14 +558,15 @@ local function kept()
   return out, changes
 end
 
--- Applies the kept changes in the scope picked; on success the window closes and the listeners hear of it. With
--- every change unticked it says so and stays.
+-- Applies the kept changes in the scope picked; on success the window closes, placing new spells is told of the
+-- preset and its tick box, and the listeners hear of it. With every change unticked it says so and stays.
 local function apply()
   local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
   local entries, changes = kept()
   if changes == 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
   if not KA.Apply(entries, set) then return end
   WZ.frame:Hide()
+  ns.KeybindsLearn.Applied(state.preset, state.placeNew)
   for _, fn in ipairs(WZ.onApply) do fn(state.preset) end
 end
 
@@ -597,7 +614,7 @@ local function keyWindowOpen()
 end
 
 -- Opens key setup on step 1 (WoW Forever only; after the fight when one is on; not while the game's key windows
--- are open). It keeps the answers given earlier this session.
+-- are open). It keeps the answers given earlier this session; "Place new spells" starts as placing new spells says.
 function WZ.Open()
   if not ns.IsForever() then return ns.Chat(L["Vanguard's key setup is for WoW Forever only."]) end
   if ns.InCombat() then return ns.OutOfCombat(WZ.Open, "key setup") end
@@ -605,6 +622,7 @@ function WZ.Open()
   VanguardCharDB.keysOffer = false
   state.preset = state.preset or KL.Preset()
   state.lit, state.tab, state.page, state.later, state.scope = nil, "none", 1, false, "char"
+  state.placeNew = ns.KeybindsLearn.Ticked()
   WZ.frame = WZ.frame or build()
   WZ.Show(1)
   WZ.frame:Show()

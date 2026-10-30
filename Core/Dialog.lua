@@ -428,6 +428,12 @@ function ns.Ask(text, yes, onYes, onNo, kind)
   f:Show()
 end
 
+-- Whether the question dialog shows a question now (another ns.Ask would replace it).
+---@return boolean
+function ns.Asking()
+  return question ~= nil and question:IsShown() == true
+end
+
 -- Reload ------------------------------------------------------------------------------
 
 -- Passes hover from an overlay to the button under it, so the button's hover look still shows.

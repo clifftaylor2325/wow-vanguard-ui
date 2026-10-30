@@ -605,3 +605,45 @@ it("leftover buttons on a character with its own keys go back even when another 
   expect(ka(addon, "return KA.PutBackAll()")).toBe(true);
   expect(slots(addon, [61])).toEqual([0]);
 });
+
+it("Plan: a known spell another row places isn't copied to bar 3, and one the entry replaces is overwritten", () => {
+  const addon = rogue();
+  expect(plan(addon, `{ { key = "1", spell = 1766, slot = 1 }, { key = "4", spell = 1752, slot = 4 } }`), "Sinister Strike goes to 4, not bar 3")
+    .toEqual(["1 place - 1 -", "4 place - 4 -"]);
+  expect(ka(addon, `local r = KA.Plan({ { key = "2", spell = 1776, slot = 2, replaces = { 6603 } } })[1] return { r.kind, r.over, r.replaced }`), "Gouge replaces Attack")
+    .toEqual(["place", 6603, true]);
+  expect(plan(addon, `{ { key = "2", spell = 1776, slot = 2 }, { key = "Z", spell = 6603, slot = 49 }, { key = "5", spell = 6603, slot = 5 } }`),
+    "a key binds to Attack where it moved, so it stays there").toEqual(["2 move - 2 53", "Z bind - 53 -", "5 place - 5 -"]);
+  expect(plan(addon, `{ { key = "2", spell = 1776, slot = 2 }, { key = "5", spell = 6603, slot = 77 } }`), "Attack on a stealth page only still goes to bar 3")
+    .toEqual(["2 move - 2 53", "5 place - 77 -"]);
+  expect(plan(addon, `{ { key = "1", spell = 1766, slot = 1 }, { key = "4", spell = 1752, slot = 4 }, { key = "Z", spell = 1776, slot = 53 } }`),
+    "no bar 3 slot is held for a move that isn't needed").toEqual(["1 place - 1 -", "4 place - 4 -", "Z place - 53 -"]);
+  expect(ka(addon, `local out = {} for i, r in ipairs(KA.Plan({ { key = "2", spell = 1776, slot = 2 }, { key = "G", spell = 1784, slot = 62 } }, { [53] = true, [62] = true })) do
+    out[i] = r.kind .. " " .. (r.why or "-") .. " " .. tostring(r.to or "-") end return out`), "skipped slots are never written nor moved to").toEqual(["move - 54", "unchanged owned -"]);
+});
+
+it("Apply: a spell another row places goes straight there, with no copy on bar 3, and putting back restores both buttons", () => {
+  const addon = rogue();
+  const before = state(addon);
+  expect(ka(addon, `return KA.Apply({ { key = "1", spell = 1766, slot = 1 }, { key = "4", spell = 1752, slot = 4 } })`)).toBe(true);
+  expect(slots(addon, [1, 4, 53]), "Kick on 1, Sinister Strike on 4, bar 3 empty").toEqual([1766, 1752, 0]);
+  ka(addon, "KA.PutBackAll()");
+  expect(state(addon)).toEqual(before);
+});
+
+it("Update: quiet on success and on failure, nil when refused, false when it fails", () => {
+  const addon = rogue();
+  expect(ka(addon, `return KA.Recorded()`), "no record yet").toBe(false);
+  ka(addon, `KA.Apply({ { key = "F", spell = 1766, slot = 61 } })`);
+  addon.clearChat();
+  expect(ka(addon, `local rows = KA.Update({ { key = "G", spell = 1784, slot = 62 } }) return { rows[1].kind, KA.Recorded(), KA.Changed("G") }`)).toEqual(["place", true, true]);
+  expect(Array.from(addon.chat()), "no chat line").toEqual([]);
+  setCombat(addon, true);
+  expect(ka(addon, `return KA.Update({ { key = "T", spell = 1776, slot = 63 } })`), "refused in combat").toBe(null);
+  setCombat(addon, false);
+  addon.eval('local set = SetBinding SetBinding = function(key, command) if key == "T" then return false end return set(key, command) end');
+  addon.clearChat();
+  expect(ka(addon, `return KA.Update({ { key = "T", spell = 1776, slot = 63 } })`), "the game refused T").toBe(false);
+  expect([slots(addon, [63]), Array.from(addon.chat())], "and Gouge came off again, quietly").toEqual([[0], []]);
+  expect(ka(addon, 'return { KA.Ours("G"), KA.Ours("F"), KA.Ours("T") }'), "G and F do what Vanguard set").toEqual([true, true, false]);
+});

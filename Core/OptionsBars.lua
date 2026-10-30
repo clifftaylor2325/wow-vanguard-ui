@@ -1,6 +1,6 @@
 -- The Action bars page (/vg): the shared card (locking, range, the
 -- default and special bars, keybind mode), the Your keys card (with key setup's
--- buttons on WoW Forever), then one card per bar.
+-- buttons and the switch for new spells on WoW Forever), then one card per bar.
 -- Core/Options.lua has the helpers and the page list.
 
 local ADDON, ns = ...
@@ -85,14 +85,25 @@ local function keySetupRows()
   }
 end
 
--- Your keys (Modules/KeysViewCard.lua): what every key does now, and on WoW Forever key setup's buttons.
+-- "Place new spells as I learn them" (Modules/KeybindsLearn.lua), on WoW Forever once key setup's wizard is in.
+local function newSpellsRows()
+  if not (ns.IsForever() and ns.KeybindsWizard) then return {} end
+  local KN = ns.KeybindsLearn
+  return {
+    check(L["Place new spells as I learn them"], KN.IsOn, KN.SetOn, false),
+    { "text", L["Once your keys are set up, each spell you learn goes on its key. A button or key you change yourself stays as you set it."] },
+  }
+end
+
+-- Your keys (Modules/KeysViewCard.lua): what every key does now, and on WoW Forever key setup's buttons and the
+-- switch for new spells.
 local function yourKeysRows()
   local rows = {
     { "header", L["Your keys"] },
     { "text", L["What every key does now. Hold Shift, Ctrl or Alt to see those keys, and hover a key for what it does."] },
     { "keystabs" }, { "keyboard" }, { "keylist" },
   }
-  return append(rows, keySetupRows())
+  return append(append(rows, keySetupRows()), newSpellsRows())
 end
 
 -- Buttons on a bar, and per row: 1 to 12.
