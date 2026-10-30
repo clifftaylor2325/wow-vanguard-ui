@@ -10,6 +10,24 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.8.0", groups = {
+    { module = "ActionBars", label = "Keys", items = {
+      { text = "A Your keys tab on the Action bars page draws your keyboard and mouse and shows what every key does, with the Shift, Ctrl and Alt keys on their own tabs." },
+      { text = "On WoW Forever, Set up keys (on the Your keys tab) suggests keys for your class and role, shows every change on the keyboard and lists it with a tick box before anything moves, and can put your old keys back." },
+      { text = "Place new spells as I learn them puts each spell you learn, and each spell that replaces an old one, on its key for you." },
+    } },
+    { module = "ClickCast", label = "Click casting", items = {
+      { text = "On WoW Forever, the Click casting page has starter layouts for every class, with two healer layouts for priests, druids, paladins and shamans, and an Undo." },
+      { text = "Click casting keeps a list for each talent group on WoW Forever." },
+      { text = "A binding the game's own click settings won't run is marked on the grid, and an older list with the unit menu on Middle click gets a notice with Swap them." },
+    } },
+    { module = "Other", label = "Calm HUD", items = {
+      { text = "Calm HUD quiets the whole HUD out of combat, not only the unit frames: on the General page's Calm HUD card each part dims, hides until the mouse is over it, or is left as it is." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "Fixes from two hunts on the game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons." },
+    } },
+  } },
   { version = "0.7.5", groups = {
     { module = "Other", label = "Language", items = {
       { text = "Vanguard's own text shows in your client's language: German, French, Spanish, Italian, Brazilian Portuguese, Russian, Korean and Chinese. The translations are machine-drafted, so report a wrong line with /vg feedback. Commands and these notes stay English." },

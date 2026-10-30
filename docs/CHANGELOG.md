@@ -4,6 +4,30 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
+## 0.8.0
+
+Nothing in this release has been checked in the game; see the batch checklist (issue #284).
+
+### Keys (0.8.0)
+
+- A Your keys tab on the Action bars page draws your keyboard and mouse and shows what every key does, with the Shift, Ctrl and Alt keys on their own tabs.
+- On WoW Forever, Set up keys (on the Your keys tab) suggests keys for your class and role, shows every change on the keyboard and lists it with a tick box before anything moves, and can put your old keys back.
+- Place new spells as I learn them puts each spell you learn, and each spell that replaces an old one, on its key for you.
+
+### Click casting (0.8.0)
+
+- On WoW Forever, the Click casting page has starter layouts for every class, with two healer layouts for priests, druids, paladins and shamans, and an Undo.
+- Click casting keeps a list for each talent group on WoW Forever.
+- A binding the game's own click settings won't run is marked on the grid, and an older list with the unit menu on Middle click gets a notice with Swap them.
+
+### Calm HUD (0.8.0)
+
+- Calm HUD quiets the whole HUD out of combat, not only the unit frames: on the General page's Calm HUD card each part dims, hides until the mouse is over it, or is left as it is.
+
+### Fixes (0.8.0)
+
+- Fixes from two hunts on the game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons.
+
 ## 0.7.5
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284).
