@@ -1,5 +1,6 @@
 -- The "Click casting" options page, built so a healer never types a spell:
---   * a starter layout for the class, one click;
+--   * a starter layout for the class, one pick (on WoW Forever, Modules/ClickCastPresets.lua: a healer's two
+--     styles or damage and tanking, with Undo, and the better spells offered as they are learned);
 --   * a grid of mouse buttons by modifier, each cell the spell's icon: click a
 --     cell to pick from the spellbook, right-click to clear, drop a spell on it;
 --   * hover keys: press a key, pick a spell; a note when the key is also an
@@ -14,7 +15,7 @@ local ADDON, ns = ...
 
 local T, W = ns.Theme, ns.Widgets
 local L = ns.L
-local CC, CS = ns.GetModule("ClickCast"), ns.ClickCastSpells
+local CC, CS, CP = ns.GetModule("ClickCast"), ns.ClickCastSpells, ns.ClickCastPresets
 local O = ns.Options
 
 local PAGE = "clickcast"
@@ -22,6 +23,8 @@ local MOUSE = { L["Left click"], L["Right click"], L["Middle click"], L["Button 
 local MODS = { { "", L["Plain"] }, { "shift-", L["Shift"] }, { "ctrl-", L["Ctrl"] }, { "alt-", L["Alt"] } }
 local MORE_MODS = { { "ctrl-shift-", L["Ctrl + Shift"] }, { "alt-shift-", L["Alt + Shift"] }, { "alt-ctrl-", L["Alt + Ctrl"] } }
 local CELL_H, LABEL_W, MAX_KEYS, PICKER_ROWS, ICON_SIZE = 40, 92, 8, 12, 24
+-- The grid's band of column headers: two lines tall, since seven columns leave a long modifier name little room.
+local GRID = { head = 28 }
 -- The picker's and the hover-key list's rows are list rows.
 local ROW_H = T.ROW.height
 -- The hover-key list's top line (Add key, a standalone button, with a tight gap over and under it): its height
@@ -32,9 +35,9 @@ local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
 local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
 local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
--- Page state: whether the extra modifier columns show, the key the picker is for, and the notice (see noticeSignature)
--- the page was built with (nil until it is built).
-local state = { more = false, pickKey = nil, built = nil }
+-- Page state: whether the extra modifier columns show (nil: while a binding uses them, see moreShown), the key the
+-- picker is for, and the page's signature (see pageSignature) it was built with (nil until it is built).
+local state = { more = nil, pickKey = nil, built = nil }
 
 -- Shared pieces -----------------------------------------------------------------------------
 
@@ -121,11 +124,35 @@ local function noticeNeeded()
   return noticeSignature() ~= ""
 end
 
--- Re-reads every row on the page after a binding changed; a page built with another notice than the one that applies
--- now (none, or other words) is built again first; a page not built yet has nothing to rebuild (and the event can come
--- before the saved variables load). The other pages' rows are re-read either way.
+-- Whether a mouse binding of the list shown sits in one of the extra modifier columns (a preset's emergency row).
+local function usesMoreMods()
+  for _, b in ipairs(CC.Bindings()) do
+    local prefix = CC.MouseParts(b.key)
+    for _, m in ipairs(prefix and MORE_MODS or {}) do
+      if m[1] == prefix then return true end
+    end
+  end
+  return false
+end
+
+-- Whether the grid shows the extra modifier columns: as last asked (More or Fewer modifiers), else while a binding uses them.
+local function moreShown()
+  if state.more ~= nil then return state.more end
+  return usesMoreMods()
+end
+
+-- What the page's built rows depend on, as a short text that changes when they would: the notice, the modifier
+-- columns, and the starter layout's rows (CP.Signature).
+local function pageSignature()
+  return table.concat({ noticeSignature(), tostring(moreShown()), CP.Signature() }, "|")
+end
+
+-- Re-reads every row on the page after a binding changed; a page built with another signature than the one that
+-- applies now (a notice begun or ended, the columns, the starter layout's rows) is built again first; a page not built
+-- yet has nothing to rebuild (and the event can come before the saved variables load). The other pages' rows are
+-- re-read either way.
 local function changed()
-  if state.built ~= nil and state.built ~= noticeSignature() then O.RebuildPage(PAGE) end
+  if state.built ~= nil and state.built ~= pageSignature() then O.RebuildPage(PAGE) end
   O.Refresh()
 end
 
@@ -397,7 +424,7 @@ end
 local function columns()
   local cols = {}
   for _, m in ipairs(MODS) do cols[#cols + 1] = m end
-  for _, m in ipairs(state.more and MORE_MODS or {}) do cols[#cols + 1] = m end
+  for _, m in ipairs(moreShown() and MORE_MODS or {}) do cols[#cols + 1] = m end
   return cols
 end
 
@@ -410,8 +437,18 @@ local function refreshCell(c)
   c.empty:SetShown(b == nil)
 end
 
+-- Keeps the extra modifier columns shown once the player works in one of them, so clearing its last binding doesn't
+-- fold them away under the pointer.
+local function pinMore(key)
+  local prefix = CC.MouseParts(key)
+  for _, m in ipairs(MORE_MODS) do
+    if m[1] == prefix and state.more == nil then state.more = true end
+  end
+end
+
 -- A click on a cell: a dropped spell binds, right-click clears, left opens the picker.
 local function cellClick(c, button)
+  pinMore(c.key)
   if dropSpell(c.key) then return changed() end
   if button == "RightButton" then
     CC.Remove(c.key)
@@ -442,7 +479,7 @@ end
 local function wireCell(c)
   c:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   c:SetScript("OnClick", ns.Guard("click click-cast cell", cellClick))
-  c:SetScript("OnReceiveDrag", function(self) if dropSpell(self.key) then changed() end end)
+  c:SetScript("OnReceiveDrag", function(self) pinMore(self.key) if dropSpell(self.key) then changed() end end)
   c:SetScript("OnEnter", cellTooltip)
   c:SetScript("OnLeave", hideTooltip)
 end
@@ -470,13 +507,23 @@ local function cell(grid, key, width)
   return c
 end
 
--- The column headers (modifier names) across the top of the grid: section headers, each centred over its column.
+-- A column header's text: centred over its column, on the band's bottom line, and wrapping upward onto a second line
+-- when it runs longer than the column.
+local function wrapHeader(h)
+  h.text:ClearAllPoints()
+  h.text:SetPoint("BOTTOMLEFT", T.SPACE.tight, 0)
+  h.text:SetPoint("BOTTOMRIGHT", -T.SPACE.tight, 0)
+  h.text:SetWordWrap(true)
+  h.text:SetJustifyH("CENTER")
+end
+
+-- The column headers (modifier names) across the top of the grid: section headers, one over each column.
 local function gridHeaders(grid, cols, cellW)
   for i, col in ipairs(cols) do
     local h = W.SectionHeader(grid, col[2], { width = cellW })
+    h:SetHeight(GRID.head)
     h:SetPoint("TOPLEFT", LABEL_W + (i - 1) * cellW, 0)
-    h.text:ClearAllPoints()
-    h.text:SetPoint("CENTER")
+    wrapHeader(h)
   end
 end
 
@@ -492,7 +539,7 @@ end
 
 -- One grid row: the mouse button's name and a cell per column.
 local function gridRow(grid, row, cols, cellW)
-  local y = -(18 + (row - 1) * CELL_H)
+  local y = -(GRID.head + (row - 1) * CELL_H)
   gridLabel(grid, row, y)
   for i, col in ipairs(cols) do
     local c = cell(grid, col[1] .. "BUTTON" .. row, cellW)
@@ -501,12 +548,12 @@ local function gridRow(grid, row, cols, cellW)
   end
 end
 
--- Builds the page again on the next frame when it was built with another notice than the one that applies now: the
--- window shows a page it built earlier and only re-reads it, so a notice that began or ended since (a stamp cleared,
--- the game's bindings edited in its own window) would otherwise wait for a /reload. Not at once: this runs inside the
--- window's refresh of its rows.
+-- Builds the page again on the next frame when it was built with another signature than the one that applies now:
+-- the window shows a page it built earlier and only re-reads it, so a notice that began or ended since (a stamp
+-- cleared, the game's bindings edited in its own window, a spell learned) would otherwise wait for a /reload. Not at
+-- once: this runs inside the window's refresh of its rows.
 local function rebuildForNotice()
-  if state.built ~= noticeSignature() then ns.Soon("clickcast notice", function() O.RebuildPage(PAGE) end) end
+  if state.built ~= pageSignature() then ns.Soon("clickcast notice", function() O.RebuildPage(PAGE) end) end
 end
 
 -- Re-reads every cell.
@@ -520,11 +567,11 @@ local function gridBuilder(parent, _, width)
   local grid = CreateFrame("Frame", nil, parent)
   local cols = columns()
   local cellW = math.floor((width - LABEL_W - 4) / #cols)
-  grid:SetSize(width, 18 + #MOUSE * CELL_H + 4)
+  grid:SetSize(width, GRID.head + #MOUSE * CELL_H + 4)
   grid.cells, grid.Refresh = {}, refreshGrid
   gridHeaders(grid, cols, cellW)
   for row = 1, #MOUSE do gridRow(grid, row, cols, cellW) end
-  state.built = noticeSignature()
+  state.built = pageSignature()
   grid:Refresh()
   return grid
 end
@@ -772,16 +819,25 @@ end
 
 -- Layout, sharing and page -------------------------------------------------------------------------
 
--- Fills the grid with the class's starter layout.
+-- Fills the grid with the class's starter layout (a client other than WoW Forever).
 local function applyLayout()
   CC.ApplyLayout(CS.Layout())
   T.Sound("on")
   changed()
 end
 
+-- The starter layout dropdown's caption (the layouts are its choices), shown while the presets are offered.
+local function refreshPresets(d)
+  d.text:SetText(L["Starter layout..."])
+  d:SetShown(#CP.Choices() > 0)
+end
+
+-- A starter layout was put on: the extra modifier columns follow its bindings again, whatever was last asked.
+CP.OnApplied = function() state.more = nil end
+
 -- Shows or hides the extra modifier columns (the page is built again for the new width).
 local function toggleMore()
-  state.more = not state.more
+  state.more = not moreShown()
   O.RebuildPage(PAGE)
 end
 
@@ -801,17 +857,36 @@ local function askClear()
   end, nil, "danger")
 end
 
--- The layout row kind: the class layout button (when the class has one), Clear all, and the modifier columns switch.
+-- The layout row's starter layout control, in one spot: the presets dropdown on WoW Forever (Modules/ClickCastPresets.lua;
+-- not where another addon does the raid frames' job), else the class layout button (when the class has one).
+local function layoutControl(r)
+  r.presets = W.Dropdown(r, CP.Choices, function() return nil end, function(id) CP.Pick(id) end, 200)
+  r.presets:SetPoint("LEFT", T.SPACE.gap, 0)
+  r.presets.Refresh = refreshPresets
+  r.presets:Refresh()
+  r.layout = W.Button(r, ns.Format(L["{class} healing layout"], { class = CS.ClassName() }), applyLayout, 200)
+  r.layout:SetPoint("LEFT", T.SPACE.gap, 0)
+  r.layout:SetShown(CS.HasLayout() and not ns.IsForever())
+end
+
+-- Clear all, after the starter layout control, or at the row's start when there is none.
+local function clearButton(r)
+  r.clear = W.Button(r, L["Clear all"], askClear)
+  local lead = (r.presets:IsShown() and r.presets) or (r.layout:IsShown() and r.layout)
+  if lead then r.clear:SetPoint("LEFT", lead, "RIGHT", T.SPACE.gap, 0)
+  else r.clear:SetPoint("LEFT", T.SPACE.gap, 0) end
+end
+
+-- The layout row kind: the starter layout control, Clear all, and the modifier columns switch.
 local function layoutBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, 32)
-  r.layout = W.Button(r, ns.Format(L["{class} healing layout"], { class = CS.ClassName() }), applyLayout, 200)
-  r.layout:SetPoint("LEFT", T.SPACE.gap, 0)
-  r.layout:SetShown(CS.HasLayout())
-  r.clear = W.Button(r, L["Clear all"], askClear)
-  r.clear:SetPoint("LEFT", r.layout, "RIGHT", T.SPACE.gap, 0)
-  r.more = W.Button(r, state.more and L["Fewer modifiers"] or L["More modifiers"], toggleMore, 140)
+  layoutControl(r)
+  clearButton(r)
+  r.more = W.Button(r, moreShown() and L["Fewer modifiers"] or L["More modifiers"], toggleMore, 140)
   r.more:SetPoint("RIGHT", -T.SPACE.gap, 0)
+  -- The row re-reads through its dropdown (the buttons never change).
+  r.Refresh = function(self) self.presets:Refresh() end
   return r
 end
 
@@ -1007,12 +1082,19 @@ local function setUnitFrames(on)
 end
 
 O.AddRowKind("bindlayout", layoutBuilder, 36, true)
-O.AddRowKind("bindgrid", gridBuilder, 18 + #MOUSE * CELL_H + 8, true)
+O.AddRowKind("bindgrid", gridBuilder, GRID.head + #MOUSE * CELL_H + 8, true)
 O.AddRowKind("bindkeys", keysBuilder, KEYS_HEIGHT + T.SPACE.tight, true)
 O.AddRowKind("bindtest", testBuilder, 64, true)
 O.AddRowKind("bindshare", shareBuilder, 36, true)
 
--- The page's rows: the grid and its tools, the hover keys, the test tile, sharing, the unit-frame switch.
+-- Opens the Action bars page on its Your keys tab: what every key does now, hover keys aside.
+local function openYourKeys()
+  O.Show("actionbars")
+  O.ShowTab(L["Your keys"])
+end
+
+-- The page's rows: the grid and its tools, the hover keys (and the way to all your keys), the test tile, sharing,
+-- the unit-frame switch.
 local ROWS = {
   { "header", L["Click casting"] },
   { "text", title },
@@ -1020,6 +1102,7 @@ local ROWS = {
   { "bindgrid" },
   { "header", L["Keys while hovering a frame"] },
   { "bindkeys" },
+  { "button", L["See all your keys"], openYourKeys },
   { "header", L["Try it"] },
   { "bindtest" },
   { "header", L["Share"] },
@@ -1038,14 +1121,6 @@ local function setUseGame(on)
   changed()
 end
 
--- Opens the game's own Click Casting window (it loads on demand).
-local function openGameBindings()
-  if type(ToggleClickBindingFrame) ~= "function" then return ns.Chat(L["This client has no click bindings window."]) end
-  if ns.WindowWaitsForCombat(L["The game's click bindings window"]) then return end
-  O.Hide()
-  ToggleClickBindingFrame()
-end
-
 -- The page's rows on a client with the game's click bindings: Vanguard's, then the switch to the game's.
 local WITH_GAME = {}
 for _, row in ipairs(ROWS) do WITH_GAME[#WITH_GAME + 1] = row end
@@ -1053,17 +1128,25 @@ for _, row in ipairs({
   { "header", L["The game's click bindings"] },
   { "text", L["The game has click casting of its own (its Click Casting window). Switched on, it works on the raid and unit frames and Vanguard's bindings and hover keys rest."], "note" },
   { "check", L["Use the game's click bindings instead"], useGameOn, setUseGame, false },
-  { "button", L["Open the game's click bindings"], openGameBindings },
+  { "button", L["Open the game's click bindings"], CC.OpenGameWindow },
 }) do WITH_GAME[#WITH_GAME + 1] = row end
 
--- The page's rows (built again after the modifier columns change, or when the notice starts or stops applying); the
--- game's click bindings are offered where the client has them, and the menu-click notice while it applies.
+-- The rows over the layout row while they apply: the menu-click notice, then the starter layouts' own
+-- (CP.PageRows: the Click to heal guide, the other addon's line, Undo and the better spells to use).
+local function leadRows()
+  local out = noticeNeeded() and { { "bindnotice" } } or {}
+  for _, row in ipairs(CP.PageRows()) do out[#out + 1] = row end
+  return out
+end
+
+-- The page's rows (built again when its signature changes, see pageSignature); the game's click bindings are offered
+-- where the client has them.
 local function rows()
-  local base = type(C_ClickBindings) == "table" and WITH_GAME or ROWS
-  if not noticeNeeded() then return base end
-  local out = {}
+  local base, out = type(C_ClickBindings) == "table" and WITH_GAME or ROWS, {}
   for _, row in ipairs(base) do
-    if row[1] == "bindlayout" then out[#out + 1] = { "bindnotice" } end
+    if row[1] == "bindlayout" then
+      for _, lead in ipairs(leadRows()) do out[#out + 1] = lead end
+    end
     out[#out + 1] = row
   end
   return out

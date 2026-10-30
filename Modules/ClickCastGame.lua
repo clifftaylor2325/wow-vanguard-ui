@@ -182,3 +182,28 @@ function CC.WontRun(b)
   if verdict == "remap" then return INTERACTIONS[entry.interaction].remap end
   return verdict == "override" and WONT_RUN.override or nil
 end
+
+-- The game's interaction id for each action it gates (Target, Open menu).
+local INTERACTION_OF = { target = 1, menu = 2 }
+
+-- Whether the game is sure to run a Target or Unit menu binding on its click: its profile binds that same interaction
+-- to the same button with exactly those modifiers. Else false and, when an entry on that button has modifier text this
+-- can't read (it may be the one), "unsure"; unlike CC.WontRun, that counts as no. A client without the game's click
+-- bindings, or while they are in use (Vanguard's rest), needs nothing: true.
+function CC.GameCovers(b)
+  local profile = not CC.UsesGame() and gameProfile()
+  if not profile then return true end
+  local prefix, n = CC.MouseParts(b.key)
+  local verdict, entry = gameVerdict(profile, prefix or "", n)
+  if verdict == "covered" and entry.interaction == INTERACTION_OF[b.action] then return true end
+  return false, verdict == "unsure" and "unsure" or nil
+end
+
+-- Opens the game's own Click Casting window (it loads on demand), closing Vanguard's options window first; a client
+-- without one says so in chat, and in a fight chat says the window waits.
+function CC.OpenGameWindow()
+  if type(ToggleClickBindingFrame) ~= "function" then return ns.Chat(L["This client has no click bindings window."]) end
+  if ns.WindowWaitsForCombat(L["The game's click bindings window"]) then return end
+  ns.Options.Hide()
+  ToggleClickBindingFrame()
+end

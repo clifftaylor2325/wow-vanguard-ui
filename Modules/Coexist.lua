@@ -128,6 +128,17 @@ local function collect()
   return out
 end
 
+-- The loaded addons that do a module's job, whatever the card's answer, as { addon, what } sorted by addon name (other
+-- modules ask: the click-casting presets step aside for another addon's raid frames or click casting).
+function CX.Overlaps(module)
+  local out = {}
+  for addon, row in pairs(CX.OVERLAPS) do
+    if row[1] == module and loaded(addon) then out[#out + 1] = { addon = addon, what = row[2] } end
+  end
+  table.sort(out, function(a, b) return a.addon < b.addon end)
+  return out
+end
+
 -- The overlaps to ask about: on the card and not yet answered.
 function CX.Pending()
   local out = {}

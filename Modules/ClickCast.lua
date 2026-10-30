@@ -253,6 +253,7 @@ function CC.Add(key, action, value, id, rank)
   local err = problem(key, action, value)
   if err then return false, err end
   put(CC.Bindings(), { key = key, action = action, value = value, spellID = id, rank = rank })
+  if CC.OnAdded then CC.OnAdded(key) end
   applySoon()
   return true
 end
@@ -263,9 +264,16 @@ function CC.Remove(key)
   applySoon()
 end
 
+-- Tells whoever listens (CC.OnReplaced: the starter layouts' record) that a whole list was replaced: emptied, imported
+-- or copied over. key is the list's.
+local function replaced(key)
+  if CC.OnReplaced then CC.OnReplaced(key) end
+end
+
 -- Removes every binding in the current spec.
 function CC.Clear()
   clearList(CC.Bindings())
+  replaced(CC.CurrentKey())
   applySoon()
 end
 
@@ -289,6 +297,7 @@ function CC.CopyToSpec(spec)
   local from, to = CC.Bindings(), CC.Bindings(spec)
   if from == to then return end
   overwriteList(to, from)
+  replaced(spec)
 end
 
 -- The current spec's bindings as a string to share.
@@ -334,6 +343,7 @@ local function replaceAll(list)
   for _, b in ipairs(list) do
     put(mine, { key = b.key, action = b.action, value = b.value, spellID = wholeNumber(b.spellID), rank = wholeNumber(b.rank) })
   end
+  replaced(CC.CurrentKey())
   applySoon()
 end
 

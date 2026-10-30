@@ -231,7 +231,9 @@ Modules/SituationsBanner.lua
 Modules/ClickCast.lua
 Modules/ClickCastGame.lua
 Modules/ClickCastSpells.lua
+Modules/ClickCastPresets.lua
 Modules/ClickCastOptions.lua
+Modules/ClickCastPresetRows.lua
 Modules/Coexist.lua
 Modules/GroupBoard.lua
 Modules/GroupBoardView.lua

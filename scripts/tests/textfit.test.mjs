@@ -112,6 +112,19 @@ it("text fits: the Click casting page's menu-click notice and its buttons (KB1-3
   expect(addon.textFit("Vanguard_Options"), "its text and both buttons fit, with every string a third longer").toEqual([]);
 });
 
+it("text fits: the Click casting page's starter layout rows: Click to heal's guide, Undo and an offer (KB2a)", () => {
+  const addon = fitClient();
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2050, { name: "Lesser Heal", rank: 1, helpful: true });
+  addon.eval('ns.ClickCastPresets.Apply("select")');
+  addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
+  addon.eval('ns.Options.Show("clickcast") ns.ClickCastPresets.Pick("heal")');
+  // The rows shown: the guide (Click to heal before the game binds its clicks), Undo, and the offer of Heal for Middle.
+  const rows = addon.eval('local out = { "" } for _, row in ipairs(ns.ClickCastPresets.PageRows()) do out[#out + 1] = row[1] end return out').slice(1);
+  expect(rows, "all three kinds are on the page").toEqual(["bindguide", "bindundo", "bindupgrade"]);
+  expect(addon.textFit("Vanguard_Options"), "their texts and buttons fit, with every string a third longer").toEqual([]);
+});
+
 it("text fits: the key-capture prompt on a French client is not cut short (P1-4)", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "frFR" end' });
   addon.login();
