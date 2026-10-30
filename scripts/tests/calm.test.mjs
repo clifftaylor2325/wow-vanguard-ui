@@ -88,3 +88,13 @@ it("Calm HUD: a Versus deck turned on in a fight joins it when the fight ends", 
   setCombat(addon, false);
   expect(calm(addon, 'ns.GetModule("UnitFrames").deck').state, "built after it, and dimmed with your frames").toBe(DIM);
 });
+
+it("Calm HUD: a frame the client keeps from addons inside a part is left unhooked, so switching it on catches no error", () => {
+  const addon = loggedIn(ENV);
+  addon.eval(`local box = CreateFrame("Frame", nil, Vanguard_PlayerAuras)
+    TEST_Forbidden = CreateFrame("Button", nil, box)
+    TEST_Forbidden.IsForbidden = function() return true end`);
+  calmOn(addon);
+  expect(calm(addon, "Vanguard_PlayerAuras").state, "your buffs still dim").toBe(DIM);
+  expect(addon.eval('return ns.FrameState("vgHoverOf")[TEST_Forbidden] == nil'), "the forbidden button is not hooked").toBe(true);
+});

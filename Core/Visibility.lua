@@ -295,8 +295,10 @@ local function hoverLeave(f)
   V.Refresh(frame)
 end
 
--- Follows the mouse over a frame and every frame inside it (nothing polls).
+-- Follows the mouse over a frame and every frame inside it (nothing polls). The client refuses a hook
+-- on a frame it keeps from addons (a forbidden one), so that frame and what is in it are left out.
 local function hookHover(f, frame)
+  if f:IsForbidden() then return end
   vgHoverOf[f] = frame
   f:HookScript("OnEnter", ns.Guard("visibility hover", hoverEnter))
   f:HookScript("OnLeave", ns.Guard("visibility hover", hoverLeave))

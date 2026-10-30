@@ -805,6 +805,13 @@ it("badges shown on two menu buttons in one fight both let clicks through once i
   setCombat(addon, false);
   expect(addon.eval("return { __b1.__mouse and 1 or 0, __b1.__hitInsets[1], __b2.__mouse and 1 or 0, __b2.__hitInsets[1] }"), "both badges: no mouse, no place to hit").toEqual([0, 512, 0, 512]);
 });
+it("a frame the client keeps from addons on a menu button is left as it is", () => {
+  // TEST-ONLY forbidden child on a menu button: the client refuses a hook on it.
+  const FORBIDDEN_ENV = `__locked = CreateFrame("Frame", nil, CharacterMicroButton) __locked:EnableMouse(true)
+    __locked.IsForbidden = function() return true end`;
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + FORBIDDEN_ENV);
+  expect(addon.eval("return __locked.__mouse == true and __locked.__hitInsets == nil"), "no hook and no change: it keeps the mouse").toBe(true);
+});
 it("Round Four leftovers: menu glyphs, a target diamond, raid names above incoming heals", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   // A menu button's state: its icon, the icon's color, its faded art and kept flash, the icon's width.
