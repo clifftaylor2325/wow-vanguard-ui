@@ -3232,6 +3232,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: (the harness's model, not yet seen in game) a spell landing on an empty button changes its key without a word; one that takes a key says both in one chat line ("Overpower is now on 3. Thunder Clap moved to 4."); a spell the game placed by itself may move; the button with your macro and the key you rebound stay as you set them from then on; nothing changes while the switch is off, and the next spell catches up; a talent's spell lands like a trained one; the second character gets one question ("Want Vanguard to put your new spells on keys?"), whose "Set up keys" opens the wizard with the box ticked, and is never asked again. Nothing changes during a fight; it happens when the fight ends.
 - If it fails, paste: what chat said, a screenshot of the bars, the game setting's name, and `/vg errors`.
 
+### 33.168 Calm HUD with the game's locked frames
+
+- Do: in retail (where the error was first seen) and on WoW Forever, `/vg errors clear` (or `/reload`), then open Options → General, switch the Calm HUD on, set every part to Dim, then to Hide, then back to Leave as is; mouse over each part while it is quiet. Do the same in a dungeon. On a character with Bartender4 or Dominos loaded, open key setup.
+- Expect: no "cannot replace a forbidden script handler" or "Lua Taint: Vanguard" entry in `/vg errors`; each part still comes back to full strength under the mouse. Key setup names the bar addon ("You use Bartender4 for your bars…"), never "table: 0x…".
+- If it fails, paste: `/vg errors` and which part you had set when it appeared.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
