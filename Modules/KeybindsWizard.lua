@@ -50,7 +50,7 @@ end
 function WZ.Blocked()
   if not D.CLASSES[(state.preset or KL.Preset()).class] then return L["Key setup has no layout for your class yet."] end
   local bars = ns.GetModule("Coexist").Overlaps("ActionBars")
-  if bars[1] then return ns.Format(L["You use {addon} for your bars, so Vanguard won't change your keys. Your keys on the Action bars page still shows what every key does."], { addon = bars[1] }) end
+  if bars[1] then return ns.Format(L["You use {addon} for your bars, so Vanguard won't change your keys. Your keys on the Action bars page still shows what every key does."], { addon = bars[1].addon }) end
   local AB = ns.GetModule("ActionBars")
   if not (AB and AB.enabled) then return L["Vanguard's action bars are off, so key setup has no bars to put spells on."] end
   if gamepad() then return L["You play with a gamepad, so Vanguard won't change your keys."] end
