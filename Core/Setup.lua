@@ -277,12 +277,11 @@ function S.Calm()
   return moduleSettings("UnitFrames").calm == true
 end
 
--- Turns the Calm HUD on or off, applying it at once when the unit frames are built.
+-- Turns the Calm HUD on or off, applying it to the whole HUD at once.
 function S.SetCalm(on)
   S.Backup()
   moduleSettings("UnitFrames").calm = on == true
-  local UF = ns.GetModule("UnitFrames")
-  if UF.settings then UF.ApplyCalm() end
+  ns.GetModule("UnitFrames").ApplyCalm()
 end
 
 -- The Text size setup's "Larger text" switch sets: 115%, against the normal 100%.
@@ -741,7 +740,7 @@ end
 
 -- The Calm HUD switch and the two readability switches (larger text, safer colours) under the style tiles.
 local function lookSwitches(page)
-  page.calm = W.Check(page, L["Calm HUD: dim your frames out of combat"], S.Calm, S.SetCalm, PAGE_W)
+  page.calm = W.Check(page, L["Calm HUD: quiet the HUD out of combat"], S.Calm, S.SetCalm, PAGE_W)
   page.calm:SetPoint("TOPLEFT", 0, LOOK_Y.switches)
   page.larger = W.Check(page, L["Larger text (115%)"], S.Larger, S.SetLarger, PAGE_W)
   page.larger:SetPoint("TOPLEFT", page.calm, "BOTTOMLEFT", 0, 0)

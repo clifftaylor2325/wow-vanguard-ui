@@ -161,6 +161,23 @@ function IsAltKeyDown() return world.keys.alt == true end
 -- Cmd on a Mac (Input documentation); a test sets world.keys.meta.
 function IsMetaKeyDown() return world.keys.meta == true end
 
+-- GetStringFromModifiers (Input documentation): the text for a click-binding modifier mask. UNVERIFIED model: the
+-- real mask's bits and the text's format are not documented, so the bits come from world.modifierBits and the words
+-- from world.modifierNames. A test changes either field.
+world.modifierBits = { alt = 1, ctrl = 2, shift = 4 }
+world.modifierNames = { alt = "ALT", ctrl = "CTRL", shift = "SHIFT" }
+local MODIFIER_ORDER = { "alt", "ctrl", "shift" }
+
+-- The text for a modifier mask (a number in, a string out), the set ones joined as "ALT-CTRL-SHIFT-", whatever
+-- keys are held now (MakeModifiers is the call that reads those, and is not modelled).
+function GetStringFromModifiers(modifiers)
+  local out = ""
+  for _, name in ipairs(MODIFIER_ORDER) do
+    if math.floor(modifiers / world.modifierBits[name]) % 2 == 1 then out = out .. world.modifierNames[name] .. "-" end
+  end
+  return out
+end
+
 -- The cursor's screen position, in pixels.
 function GetCursorPosition() return world.mouse.x, world.mouse.y end
 

@@ -25,10 +25,36 @@ local function unitFrameSetting(key)
   return liveMethod("UnitFrames", key, "Refresh")
 end
 
--- The Calm HUD switch: your frames dim out of combat (applied at once, also from a situation).
+-- get/set for a Calm HUD setting (kept with the unit frames' settings), applied to the whole HUD at once.
+local function calmSetting(key)
+  local get, set, initial = setting("UnitFrames", key)
+  return get, function(v) set(v) ns.GetModule("UnitFrames").ApplyCalm() end, initial
+end
+
+-- The Calm HUD switch, here and on the General page (applied at once, also from a situation).
 local function calmRow()
-  return check(L["Calm HUD: dim your frames out of combat until a fight, a hostile target or the mouse"],
-    liveMethod("UnitFrames", "calm", "ApplyCalm"))
+  return check(L["Calm HUD: quiet the HUD out of combat until a fight, a hostile target or the mouse"], calmSetting("calm"))
+end
+
+-- What a part of the HUD does out of combat with the Calm HUD on; your unit frames can't fade away (V.CALM_PARTS).
+local CALM_CHOICES = { { "dim", L["Dim"] }, { "hide", L["Hide"] }, { "leave", L["Leave as is"] } }
+local CALM_FRAME_CHOICES = { CALM_CHOICES[1], CALM_CHOICES[3] }
+
+-- One part's row: its choice out of combat (CALM_CHOICES unless given), applied at once.
+local function calmPart(label, key, choices)
+  return { "cycle", label, choices or CALM_CHOICES, calmSetting(key) }
+end
+
+-- The Calm HUD card on the General page: the switch, then each part's choice.
+function O.CalmRows()
+  local part = calmPart
+  return {
+    { "header", L["Calm HUD"] }, calmRow(),
+    { "text", L["Out of combat each part dims, or hides until the mouse is over it. A fight or a living hostile target brings it all back. A part whose own Visibility isn't Always keeps that."], "note" },
+    part(L["Unit frames"], "calmFrames", CALM_FRAME_CHOICES), part(L["Action bars"], "calmBars"), part(L["Your buffs and debuffs"], "calmAuras"),
+    part(L["Info strip, menu bar and broker strip"], "calmStrips"), part(L["XP and rep bars"], "calmXP"),
+    part(L["Damage meter and fight history"], "calmMeter"), part(L["Minimap"], "calmMinimap"),
+  }
 end
 
 -- The Versus deck switch: one shield panel behind your frame and your target's, the crest between (at once).
