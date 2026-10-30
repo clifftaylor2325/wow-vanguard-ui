@@ -129,6 +129,7 @@ Modules/ActionBarKeybinds.lua
 Modules/KeybindsApply.lua
 Modules/KeysView.lua
 Modules/KeysViewCard.lua
+Modules/KeybindsLearn.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/Waypoints.lua
