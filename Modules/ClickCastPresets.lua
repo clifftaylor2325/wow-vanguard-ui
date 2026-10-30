@@ -9,12 +9,14 @@
 -- says so once and the Click casting page offers it (Use it, or keep what is there); nothing changes by itself. The
 -- stored bindings keep their five fields (key, action, value, spellID, rank): the lists of spells stay in this file,
 -- and what a list was made from is kept per list in VanguardCharDB.clickcastPresets (the layout, the bindings before
--- the first layout as a CC.Export string for Undo, the clicks it left empty, and the offers told or kept). Emptying,
--- importing or copying over a list drops its record.
+-- the first layout as a CC.Export string for Undo, the mouse bindings it made, the clicks it left empty, and the
+-- offers told or kept). Emptying, importing or copying over a list drops its record.
 --
 -- Applying replaces every mouse binding of the list the page shows (hover keys stay), out of combat like any other
--- change; the page asks first when the list has mouse bindings of the player's own. Other clients keep the class layouts of ClickCastSpells, and where another addon draws the raid frames or
--- does click casting (Coexist's list), nothing is offered, since Vanguard's click casting works on its own frames only.
+-- change; the page asks first when those aren't the ones a layout made (the player's own, or a layout's they changed
+-- since). Other clients keep the class layouts of ClickCastSpells, and where another addon draws the raid frames or
+-- does click casting (Coexist's list, whatever its card's answer), nothing is offered, since Vanguard's click casting
+-- works on its own frames only.
 
 local ADDON, ns = ...
 
@@ -209,8 +211,9 @@ local function records()
 end
 
 -- The record of the list the page shows, or nil when no preset made it: { preset (its id), undo (the list before the
--- first preset as a CC.Export string, "" for an empty one), open (the keys the preset left empty, for want of a known
--- spell), told and kept (the offers chat named and the ones the player turned down, as "key:spell" sets) }.
+-- first preset as a CC.Export string, "" for an empty one), made (its mouse bindings as the preset and its offers left
+-- them, see mouseText), open (the keys the preset left empty, for want of a known spell, until bound), told and kept
+-- (the offers chat named and the ones the player turned down, as "key:spell" sets) }.
 function CP.Record()
   local rec = records()[CC.CurrentKey()]
   return type(rec) == "table" and rec or nil
@@ -220,19 +223,34 @@ end
 -- the new list away, so its record goes.
 CC.OnReplaced = function(key) records()[key] = nil end
 
+-- A key of the list shown was bound (ClickCast.lua): one the preset left empty is an ordinary one from now on.
+CC.OnAdded = function(key)
+  local rec = CP.Record()
+  if rec and rec.open then rec.open[key] = nil end
+end
+
+-- The list shown's mouse bindings as one text, in key order, to tell whether they are still the ones a preset made.
+local function mouseText()
+  local out = {}
+  for _, b in ipairs(CC.Bindings()) do
+    if CC.MouseParts(b.key) then out[#out + 1] = table.concat({ b.key, b.action, tostring(b.value) }, "=") end
+  end
+  table.sort(out)
+  return table.concat(out, ";")
+end
+
 -- The preset the list shown was made from, as its entry in CP.PRESETS, or nil.
 function CP.Applied()
   local rec = CP.Record()
   return rec and presetOf(rec.preset)
 end
 
--- Whether the list shown has a mouse binding no preset made: picking a preset asks before it replaces those.
+-- Whether the list shown has mouse bindings other than the ones a preset (and the offers taken since) made: the
+-- player's own, or a preset's changed since. Picking a preset asks before it replaces those.
 function CP.HasOwnClicks()
-  if CP.Record() then return false end
-  for _, b in ipairs(CC.Bindings()) do
-    if CC.MouseParts(b.key) then return true end
-  end
-  return false
+  local rec, now = CP.Record(), mouseText()
+  if rec and rec.made == now then return false end
+  return now ~= ""
 end
 
 -- Removes every mouse binding from the list shown (hover keys stay).
@@ -263,13 +281,15 @@ function CP.Apply(id)
   records()[CC.CurrentKey()] = { preset = id, undo = undo, open = openKeys(id, bound), told = old.told or {}, kept = old.kept or {} }
   dropMouse()
   for _, b in ipairs(bound) do CC.Add(b.key, b.action, b.value, b.spellID) end
+  CP.Record().made = mouseText()
   if CP.OnApplied then CP.OnApplied() end
 end
 
--- Whether the list shown can go back to what it was before its first preset.
+-- Whether the list shown can go back to what it was before its first preset (a record of a preset this version
+-- doesn't know, from a newer one, offers nothing).
 function CP.CanUndo()
   local rec = CP.Record()
-  return rec ~= nil and type(rec.undo) == "string"
+  return CP.Applied() ~= nil and type(rec.undo) == "string"
 end
 
 -- Puts back the list as it was before the first preset (empty, if it was); the record goes. Changes made since are
@@ -302,11 +322,10 @@ local function takenElsewhere(key)
   return taken
 end
 
--- Whether a row's best spell now (best) beats what the key holds (b): a spell the character doesn't know, or one
--- lower in the row's list.
+-- Whether a row's best spell now (best) beats what the key holds (b): one lower in the row's list. A better one the
+-- character doesn't know (a talent not taken, or a spellbook not read in full yet) is never offered down.
 local function beats(row, best, b)
-  if b.value == best then return false end
-  return CS.Spell(b.value) == nil or rankIn(row, b.value) > rankIn(row, best)
+  return rankIn(row, b.value) > rankIn(row, best)
 end
 
 -- Whether a key may take an offer: it holds one of the row's spells, or it is empty because the preset left it so (a
@@ -339,17 +358,19 @@ function CP.Upgrades()
   return out
 end
 
--- Puts an offered spell on its key (out of combat, like any change); a key the preset had left empty is an ordinary
--- one from now on.
+-- Puts an offered spell on its key (out of combat, like any change), as the preset's own: picking a preset after it
+-- doesn't ask. An offer the list no longer has (its record went) does nothing.
 function CP.Use(u)
   local rec = CP.Record()
-  if rec.open then rec.open[u.key] = nil end
+  if not rec then return end
   CC.Add(u.key, "spell", u.to, u.spellID)
+  rec.made = mouseText()
 end
 
 -- Keeps what the key holds: this spell isn't offered on it again.
 function CP.Keep(u)
   local rec = CP.Record()
+  if not rec then return end
   rec.kept = rec.kept or {}
   rec.kept[u.key .. ":" .. u.to] = true
 end
@@ -382,14 +403,15 @@ ns.On("SPELLS_CHANGED", function() ns.Soon("clickcast upgrades", tellUpgrades) e
 -- The game's name for each interaction, as its Click Casting window shows it, for the page's guide.
 CP.GAME_NAMES = { target = L["Target"], menu = L["Open menu"] }
 
--- Where a preset puts Target and the unit menu ({ key, action } each) that the game isn't sure to run there: its own
--- Click Casting window doesn't bind that interaction to that click (CC.GameCovers). None on a client without the game's
--- click bindings.
+-- Where a preset puts Target and the unit menu ({ key, action, unsure } each) that the game isn't sure to run there:
+-- its own Click Casting window doesn't bind that interaction to that click, or (unsure) binds something there this
+-- can't read (CC.GameCovers). None on a client without the game's click bindings.
 function CP.Unbound(id)
   local out = {}
   for _, row in ipairs(ACTION_ROWS[id] or ACTION_ROWS.select) do
     local b = { key = row[1], action = row.action }
-    if not CC.GameCovers(b) then out[#out + 1] = b end
+    local covered, why = CC.GameCovers(b)
+    if not covered then b.unsure, out[#out + 1] = why == "unsure", b end
   end
   return out
 end

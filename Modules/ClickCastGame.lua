@@ -183,14 +183,20 @@ function CC.WontRun(b)
   return verdict == "override" and WONT_RUN.override or nil
 end
 
--- Whether the game is sure to run a Target or Unit menu binding on its click: its profile has that interaction on the
--- same button with exactly those modifiers. Unlike CC.WontRun, an entry this can't read counts as no. A client without
--- the game's click bindings, or while they are in use (Vanguard's rest), needs nothing: true.
+-- The game's interaction id for each action it gates (Target, Open menu).
+local INTERACTION_OF = { target = 1, menu = 2 }
+
+-- Whether the game is sure to run a Target or Unit menu binding on its click: its profile binds that same interaction
+-- to the same button with exactly those modifiers. Else false and, when an entry on that button has modifier text this
+-- can't read (it may be the one), "unsure"; unlike CC.WontRun, that counts as no. A client without the game's click
+-- bindings, or while they are in use (Vanguard's rest), needs nothing: true.
 function CC.GameCovers(b)
   local profile = not CC.UsesGame() and gameProfile()
   if not profile then return true end
   local prefix, n = CC.MouseParts(b.key)
-  return prefix ~= nil and gameVerdict(profile, prefix, n) == "covered"
+  local verdict, entry = gameVerdict(profile, prefix or "", n)
+  if verdict == "covered" and entry.interaction == INTERACTION_OF[b.action] then return true end
+  return false, verdict == "unsure" and "unsure" or nil
 end
 
 -- Opens the game's own Click Casting window (it loads on demand), closing Vanguard's options window first; a client

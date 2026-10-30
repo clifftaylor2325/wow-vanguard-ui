@@ -253,6 +253,7 @@ function CC.Add(key, action, value, id, rank)
   local err = problem(key, action, value)
   if err then return false, err end
   put(CC.Bindings(), { key = key, action = action, value = value, spellID = id, rank = rank })
+  if CC.OnAdded then CC.OnAdded(key) end
   applySoon()
   return true
 end

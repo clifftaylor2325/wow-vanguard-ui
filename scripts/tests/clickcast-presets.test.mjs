@@ -106,13 +106,13 @@ it("click presets: a level 1 priest gets Lesser Heal on Middle; each better spel
   expect(picked(addon, "Healer: click to select").BUTTON3, "the best spell it knows").toBe("Lesser Heal");
   addon.clearChat();
   addon.world.learn(2054, { name: "Heal", rank: 1, helpful: true });
-  addon.update(0.1)
+  addon.update(0.1);
   addon.update(0.1);
   expect(chatHas(addon, /Click casting: you can put Heal on Middle click now/), "chat tells it once the spellbook is read again").toBe(true);
   expect(addon.texts("Middle click could cast Heal instead of Lesser Heal.").length, "the page offers it").toBe(1);
   addon.clearChat();
   addon.world.learn(9999, { name: "TEST-ONLY Smite", helpful: false });
-  addon.update(0.1)
+  addon.update(0.1);
   addon.update(0.1);
   expect(chatHas(addon, /you can put/), "told once only").toBe(false);
   addon.eval('__click("Use Heal")');
@@ -127,7 +127,7 @@ it("click presets: a spell an earlier click took is passed over, then offered to
   expect([list.BUTTON3, list["shift-BUTTON1"]], "Heal on Middle, Shift + Left left empty (Greater Heal unknown)").toEqual(["Heal", undefined]);
   expect(addon.texts("Shift + Left click could cast Heal.").length, "nothing to offer while Middle has it").toBe(0);
   addon.world.learn(2061, { name: "Flash Heal", rank: 1, helpful: true });
-  addon.update(0.1)
+  addon.update(0.1);
   addon.update(0.1);
   addon.eval('__click("Use Flash Heal")');
   expect(addon.texts("Shift + Left click could cast Heal.").length, "Heal is free: Shift + Left is offered it").toBe(1);
@@ -149,7 +149,7 @@ it("click presets: a key holding a spell the row doesn't list is the player's ow
   addon.eval(`${CC}.Add("BUTTON3", "spell", "Lesser Heal") ${CC}.Add("alt-BUTTON1", "spell", "TEST-ONLY Gone")`);
   expect(addon.eval(`local u = ${CP}.Upgrades()[1] return { #${CP}.Upgrades(), u.key, u.from, u.to }`), "a lower spell of the row is offered over").toEqual([1, "BUTTON3", "Lesser Heal", "Heal"]);
   addon.eval(`__wfgWorld.spells[2061] = { name = "Flash Heal", helpful = true } ${CC}.Add("BUTTON3", "spell", "Flash Heal")`);
-  expect(addon.eval(`local u = ${CP}.Upgrades()[1] return { u.key, u.from, u.to }`), "and so is one of its spells not learned yet").toEqual(["BUTTON3", "Flash Heal", "Heal"]);
+  expect(addon.eval(`local out = { "" } for _, u in ipairs(${CP}.Upgrades()) do out[#out + 1] = u.key .. ">" .. u.to end return out`).slice(1), "a better spell of the row not learned yet is never offered down (Shift + Left gets Heal instead)").toEqual(["shift-BUTTON1>Heal"]);
 });
 
 it("click presets: Undo puts back the list as it was (hover keys included), and offers stop", () => {
@@ -162,7 +162,7 @@ it("click presets: Undo puts back the list as it was (hover keys included), and 
   expect(addon.eval("return Vanguard_Question:IsShown()"), "Undo asks first").toBe(true);
   addon.click("Vanguard_Question.confirm");
   expect(bindings(addon), "after asking, the old list is back").toEqual(before);
-  expect([addon.eval(`return ${CP}.Record() == nil`), addon.texts("Starter layout applied: Healer: click to select.").length], "the record and the row go").toEqual([true, 0]);
+  expect([addon.eval(`return ${CP}.Record() == nil`), textsWith(addon, "These bindings came from the starter layout").length], "the record and the row go").toEqual([true, 0]);
   expect(addon.eval(`return ${CP}.Undo()`), "nothing more to undo").toBe(false);
 });
 
@@ -185,7 +185,10 @@ it("click presets: picking a layout over the player's own mouse bindings asks fi
   expect([shortBindings(addon), addon.eval(`return ${CP}.Record() == nil`)], "nothing changed").toEqual([{ BUTTON4: "TEST-ONLY Own" }, true]);
   addon.eval(`${CP}.Apply("other")`);
   addon.eval('ns.Options.Show("clickcast") __click("Starter layout...") __click("Healer: click to select")');
-  expect(addon.eval("return Vanguard_Question:IsShown()"), "a list a layout made is replaced without asking").toBe(false);
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "a list as a layout made it is replaced without asking").toBe(false);
+  addon.eval(`${CC}.Add("BUTTON5", "spell", "TEST-ONLY Own")`);
+  addon.eval('ns.Options.Show("clickcast") __click("Starter layout...") __click("Damage or tank")');
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "once the player changed it, it asks again").toBe(true);
 });
 
 it("click presets: Clear all, Import and Copy to drop a list's record; a click the player cleared gets no offer", () => {
@@ -203,7 +206,7 @@ it("click presets: Clear all, Import and Copy to drop a list's record; a click t
   expect([addon.eval(`return ${CP}.Record() == nil`), offers()], "Clear all: no record, no offers").toEqual([true, []]);
   addon.eval(`${CP}.Apply("select") ${CC}.Import(${JSON.stringify(text)})`);
   expect(addon.eval(`return ${CP}.Record() == nil`), "Import drops it too").toBe(true);
-  addon.eval(`${CP}.Apply("select") ${CC}.CopyToSpec(2)`);
+  addon.eval(`${CP}.Apply("select") VanguardCharDB.clickcastPresets[2] = { preset = "select", undo = "" } ${CC}.CopyToSpec(2)`);
   expect(addon.eval(`return { VanguardCharDB.clickcastPresets[2] == nil, ${CP}.Record() ~= nil }`), "Copy to drops the target list's, keeps this one's").toEqual([true, true]);
 });
 
@@ -245,10 +248,12 @@ it("click presets: Click to heal shows its guide until the game binds Target and
   expect(addon.eval("return __gameWindow"), "the button opens the game's window").toBe(1);
   gameProfile(addon, "shift-LeftButton", "shift-RightButton");
   addon.eval('ns.Options.Show("clickcast")');
-  addon.update(0.1)
+  addon.update(0.1);
   addon.update(0.1);
   expect(textsWith(addon, "Both are bound in the game's window.").length, "coming back, the page sees both bound").toBe(1);
   addon.eval('__click("Put heals on Left and Right")');
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "the player's own Middle click: it asks once, now").toBe(true);
+  addon.click("Vanguard_Question.confirm");
   // What the game's click handler does with a click (and the modifiers held) on the raid tile.
   const click = (button, prefix) => addon.eval(`return __engineClick(Vanguard_RaidUnitButton1, "${button}", "${prefix}")`);
   expect([click("LeftButton", ""), click("RightButton", ""), click("RightButton", "shift-"), click("LeftButton", "shift-")], "heals on the plain clicks, the menu and Target on Shift").toEqual(["spell", "spell", "togglemenu", "target"]);
@@ -309,10 +314,53 @@ it("click presets: once another raid frame addon is on, a list made earlier gets
   expect(addon.eval(`return #${CP}.Upgrades()`), "not now").toBe(0);
 });
 
-it("click presets: an unknown saved layout offers nothing", () => {
+it("click presets: an unknown saved layout offers nothing, and the page still builds", () => {
   const addon = priestly(loggedIn(CLICK_LUA));
   addon.eval(`${CP}.Apply("select") VanguardCharDB.clickcastPresets[${CC}.CurrentKey()].preset = "TEST-ONLY gone"`);
-  expect(addon.eval(`return #${CP}.Upgrades()`)).toBe(0);
+  expect(addon.eval(`return { #${CP}.Upgrades(), ${CP}.CanUndo() }`), "no offers, no Undo").toEqual([0, false]);
+  addon.eval('ns.Options.Show("clickcast")');
+  expect(addon.texts("Starter layout...").length, "the page is there").toBe(1);
+});
+
+it("click presets: a click the layout left empty, bound and then emptied by the player, is the player's own", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('__wfgWorld.units.player.class = "PRIEST"');
+  addon.world.learn(2050, { name: "Lesser Heal", rank: 1, helpful: true });
+  addon.eval(`${CP}.Apply("select") ${CC}.Add("alt-BUTTON1", "spell", "TEST-ONLY Own") ${CC}.Remove("alt-BUTTON1")`);
+  addon.world.learn(17, { name: "Power Word: Shield", rank: 1, helpful: true });
+  expect(addon.eval(`return #${CP}.Upgrades()`), "no offer for Alt + Left").toBe(0);
+});
+
+it("click presets: the guide belongs to the list it was picked on, and its button asks before replacing the player's own bindings", () => {
+  const addon = priestly(loggedIn(CLICK_LUA + "__wfgWorld.specGroup = 1"));
+  picked(addon, "Healer: click to heal");
+  expect(textsWith(addon, "Click to heal puts your heals").length, "the guide on Primary").toBe(1);
+  addon.eval("__wfgWorld.specGroup = 2");
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
+  addon.eval('ns.Options.RebuildPage("clickcast") ns.Options.Show("clickcast")');
+  expect(textsWith(addon, "Click to heal puts your heals").length, "not on Secondary").toBe(0);
+  addon.eval("__wfgWorld.specGroup = 1");
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", 1, 2);
+  addon.eval(`${CC}.Add("BUTTON4", "spell", "TEST-ONLY Own") ns.Options.RebuildPage("clickcast") ns.Options.Show("clickcast")`);
+  addon.eval('__click("Put heals on Left and Right")');
+  expect([addon.eval("return Vanguard_Question:IsShown()"), shortBindings(addon).BUTTON4], "back on Primary, it asks first").toEqual([true, "TEST-ONLY Own"]);
+});
+
+it("click presets: the guide says when it can't read the game's binding, and an interaction for the other action is no cover", () => {
+  const addon = priestly(loggedIn(CLICK_LUA + "GetStringFromModifiers = function() return 'TEST-ONLY ???' end"));
+  gameProfile(addon, "shift-LeftButton", "shift-RightButton");
+  picked(addon, "Healer: click to heal");
+  expect(textsWith(addon, "can't read"), "both Shift clicks are unreadable").toEqual([expect.stringContaining("Vanguard can't read what the game's window binds to Shift + Left click: check that it is Target.")]);
+  addon.eval("__wfgWorld.clickProfile = { { type = 3, actionID = 2, button = 'LeftButton', modifiers = 0 }, { type = 3, actionID = 1, button = 'RightButton', modifiers = 0 } }");
+  expect(addon.eval(`return #${CP}.Unbound("select")`), "Open menu on Left and Target on Right cover neither").toBe(2);
+});
+
+it("click presets: working in an extra modifier column keeps the columns open when its last binding goes", () => {
+  const addon = priestly(loggedIn(CLICK_LUA));
+  picked(addon, "Damage or tank");
+  addon.eval(`local c for _, w in ipairs(__wfgStub.frames) do if w.key == "ctrl-shift-BUTTON3" and w.iconFrame and w:IsVisible() then c = w end end
+    c.__scripts.OnClick(c, "RightButton")`);
+  expect([shortBindings(addon)["ctrl-shift-BUTTON3"], addon.texts("Fewer modifiers").length], "Assist cleared, the columns stay").toEqual([undefined, 1]);
 });
 
 it("click presets: /vg probe names each preset spell id the client knows", () => {

@@ -437,8 +437,18 @@ local function refreshCell(c)
   c.empty:SetShown(b == nil)
 end
 
+-- Keeps the extra modifier columns shown once the player works in one of them, so clearing its last binding doesn't
+-- fold them away under the pointer.
+local function pinMore(key)
+  local prefix = CC.MouseParts(key)
+  for _, m in ipairs(MORE_MODS) do
+    if m[1] == prefix and state.more == nil then state.more = true end
+  end
+end
+
 -- A click on a cell: a dropped spell binds, right-click clears, left opens the picker.
 local function cellClick(c, button)
+  pinMore(c.key)
   if dropSpell(c.key) then return changed() end
   if button == "RightButton" then
     CC.Remove(c.key)
@@ -469,7 +479,7 @@ end
 local function wireCell(c)
   c:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   c:SetScript("OnClick", ns.Guard("click click-cast cell", cellClick))
-  c:SetScript("OnReceiveDrag", function(self) if dropSpell(self.key) then changed() end end)
+  c:SetScript("OnReceiveDrag", function(self) pinMore(self.key) if dropSpell(self.key) then changed() end end)
   c:SetScript("OnEnter", cellTooltip)
   c:SetScript("OnLeave", hideTooltip)
 end
@@ -862,7 +872,8 @@ end
 -- Clear all, after the starter layout control, or at the row's start when there is none.
 local function clearButton(r)
   r.clear = W.Button(r, L["Clear all"], askClear)
-  if r.presets:IsShown() or r.layout:IsShown() then r.clear:SetPoint("LEFT", r.layout, "RIGHT", T.SPACE.gap, 0)
+  local lead = (r.presets:IsShown() and r.presets) or (r.layout:IsShown() and r.layout)
+  if lead then r.clear:SetPoint("LEFT", lead, "RIGHT", T.SPACE.gap, 0)
   else r.clear:SetPoint("LEFT", T.SPACE.gap, 0) end
 end
 

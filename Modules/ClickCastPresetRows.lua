@@ -14,14 +14,25 @@ local O = ns.Options
 local PAGE = "clickcast"
 local BUTTON_W = 160
 
--- The layout the guide is for (nil while it doesn't show): the player picked it while the game wouldn't run its Target
--- or menu click (this session only).
-local guide = { id = nil }
+-- The layout the guide is for and the list it was picked on (id nil while it doesn't show): the player picked it while
+-- the game wouldn't run its Target or menu click (this session only; another talent group's list doesn't show it).
+local guide = { id = nil, key = nil }
 
 -- Builds the page again for rows that came or went, then re-reads every page.
 local function pageChanged()
   O.RebuildPage(PAGE)
   O.Refresh()
+end
+
+-- Whether the guide shows on the list the page shows now.
+local function guideShown()
+  return guide.id ~= nil and guide.key == CC.CurrentKey()
+end
+
+-- Runs fn now, or after asking when the list shown has mouse bindings a layout didn't make (CP.HasOwnClicks).
+local function unlessOwn(fn)
+  if not CP.HasOwnClicks() then return fn() end
+  ns.Ask(L["Replace your own click-casting mouse bindings with this starter layout? Undo puts them back."], L["Replace"], fn, nil, "danger")
 end
 
 -- Applies a layout now, puts the guide away and builds the page again.
@@ -32,18 +43,13 @@ local function applyNow(id)
   pageChanged()
 end
 
--- Applies a picked layout, or shows its guide first while the game won't run its Target or menu click.
-local function pickChecked(id)
-  if #CP.Unbound(id) == 0 then return applyNow(id) end
-  guide.id = id
-  pageChanged()
-end
-
--- Applies a picked starter layout to the list shown (see pickChecked), asking first when it would replace mouse
--- bindings of the player's own.
+-- Applies a picked starter layout to the list shown, asking first when it would replace mouse bindings of the
+-- player's own; or, while the game won't run its Target or menu click, shows its guide first (for this list), whose
+-- button applies it the same way.
 function CP.Pick(id)
-  if not CP.HasOwnClicks() then return pickChecked(id) end
-  ns.Ask(L["Replace your own click-casting mouse bindings with this starter layout? Undo puts them back."], L["Replace"], function() pickChecked(id) end, nil, "danger")
+  if #CP.Unbound(id) == 0 then return unlessOwn(function() applyNow(id) end) end
+  guide.id, guide.key = id, CC.CurrentKey()
+  pageChanged()
 end
 
 -- The offers as one text ("BUTTON3:Flash Heal,..."), for the signature.
@@ -56,7 +62,7 @@ end
 -- What the rows below depend on, as a short text that changes when they would.
 function CP.Signature()
   local blocker = CP.Blocker()
-  return table.concat({ tostring(guide.id), guide.id and #CP.Unbound(guide.id) or 0, tostring(CP.CanUndo()),
+  return table.concat({ guideShown() and guide.id or "", guideShown() and #CP.Unbound(guide.id) or 0, tostring(CP.CanUndo()),
     blocker and blocker.addon or "", offersText() }, ";")
 end
 
@@ -69,7 +75,7 @@ end
 -- The rows that apply now, in order: the guide, the other addon's line, Undo, then one row per offer.
 function CP.PageRows()
   local out = {}
-  if guide.id then out[#out + 1] = { "bindguide" } end
+  if guideShown() then out[#out + 1] = { "bindguide" } end
   if CP.Blocker() then out[#out + 1] = { "text", blockerText } end
   if CP.CanUndo() then out[#out + 1] = { "bindundo" } end
   for _, u in ipairs(CP.Upgrades()) do out[#out + 1] = { "bindupgrade", u } end
@@ -117,7 +123,8 @@ local GUIDE_LEADS = {
 local function guideWords()
   local lines = { GUIDE_LEADS[guide.id] or GUIDE_LEADS.other }
   for _, b in ipairs(CP.Unbound(guide.id)) do
-    lines[#lines + 1] = ns.Format(L["Still to bind in the game's window: {action} on {click}."], { action = CP.GAME_NAMES[b.action], click = CC.KeyName(b.key) })
+    local words = b.unsure and L["Vanguard can't read what the game's window binds to {click}: check that it is {action}."] or L["Still to bind in the game's window: {action} on {click}."]
+    lines[#lines + 1] = ns.Format(words, { action = CP.GAME_NAMES[b.action], click = CC.KeyName(b.key) })
   end
   lines[#lines + 1] = #lines == 1 and L["Both are bound in the game's window."] or L["Put on now, the clicks still to bind do nothing until you bind them there."]
   return table.concat(lines, "\n")
@@ -134,7 +141,7 @@ local function fillGuide(r)
   r.text:SetText(guideWords())
   r.open = W.Button(r, L["Open the game's window"], CC.OpenGameWindow, BUTTON_W + 20)
   local label = guide.id == "heal" and L["Put heals on Left and Right"] or L["Put the layout on"]
-  r.apply = W.Primary(r, label, function() applyNow(guide.id) end, BUTTON_W + 20)
+  r.apply = W.Primary(r, label, function() unlessOwn(function() applyNow(guide.id) end) end, BUTTON_W + 20)
   r.accent = r.apply
   r.cancel = W.Button(r, L["Cancel"], cancelGuide, 100)
   return { r.open, r.apply, r.cancel }
