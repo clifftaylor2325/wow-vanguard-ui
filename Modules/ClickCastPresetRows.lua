@@ -90,7 +90,7 @@ local function rowText(r, width, colour)
   r.text:SetJustifyH("LEFT")
 end
 
--- Buttons in a line under a row's text (each label already fits its button, as on every dialog button).
+-- Buttons in a line under a row's text (each label shrinks to fit its button, as on every dialog button).
 local function rowButtons(r, buttons)
   local last
   for _, b in ipairs(buttons) do
@@ -141,7 +141,8 @@ local function fillGuide(r)
   r.text:SetText(guideWords())
   r.open = W.Button(r, L["Open the game's window"], CC.OpenGameWindow, BUTTON_W + 20)
   local label = guide.id == "heal" and L["Put heals on Left and Right"] or L["Put the layout on"]
-  r.apply = W.Primary(r, label, function() unlessOwn(function() applyNow(guide.id) end) end, BUTTON_W + 20)
+  local id = guide.id
+  r.apply = W.Primary(r, label, function() unlessOwn(function() applyNow(id) end) end, BUTTON_W + 20)
   r.accent = r.apply
   r.cancel = W.Button(r, L["Cancel"], cancelGuide, 100)
   return { r.open, r.apply, r.cancel }
@@ -165,8 +166,8 @@ end
 -- Puts back the bindings from before the last starter layout, after asking.
 local function askUndo()
   ns.Ask(L["Put back the click-casting bindings you had before the starter layouts? Changes made since are lost."], L["Undo"], function()
-    local ok, why = CP.Undo()
-    if not ok then ns.Chat(ns.Format(L["Can't undo: {why}."], { why = why })) end
+    local _, why = CP.Undo()
+    if why then ns.Chat(ns.Format(L["Can't undo: {why}."], { why = why })) end
     pageChanged()
   end, nil, "danger")
 end

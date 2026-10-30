@@ -216,7 +216,11 @@ end
 -- (the offers chat named and the ones the player turned down, as "key:spell" sets) }.
 function CP.Record()
   local rec = records()[CC.CurrentKey()]
-  return type(rec) == "table" and rec or nil
+  if type(rec) ~= "table" then return nil end
+  for _, field in ipairs({ "open", "told", "kept" }) do
+    if type(rec[field]) ~= "table" then rec[field] = {} end
+  end
+  return rec
 end
 
 -- A list was emptied, imported or copied over (ClickCast.lua): it isn't a preset's any more, and its Undo would throw
@@ -358,13 +362,15 @@ function CP.Upgrades()
   return out
 end
 
--- Puts an offered spell on its key (out of combat, like any change), as the preset's own: picking a preset after it
--- doesn't ask. An offer the list no longer has (its record went) does nothing.
+-- Puts an offered spell on its key (out of combat, like any change), as the preset's own: on a list still as the
+-- preset made it, picking a preset after it doesn't ask (a list with the player's own clicks still does). An offer the
+-- list no longer has (its record went) does nothing.
 function CP.Use(u)
   local rec = CP.Record()
   if not rec then return end
+  local clean = not CP.HasOwnClicks()
   CC.Add(u.key, "spell", u.to, u.spellID)
-  rec.made = mouseText()
+  if clean then rec.made = mouseText() end
 end
 
 -- Keeps what the key holds: this spell isn't offered on it again.
@@ -384,15 +390,15 @@ local function tellOnce(rec, u)
   return true
 end
 
--- Says each offer chat hasn't told yet, once, and has an open options window read its rows again (the Click casting
--- page holds the buttons, and builds itself again for them). Not before the module has started.
+-- Says each offer chat hasn't told yet, once, and has the Click casting page built again for their rows (even one not
+-- built yet: the window keeps the rows it read on opening). Not before the module has started.
 local function tellUpgrades()
   local rec = CC.settings and CP.Record()
   if not rec then return end
   rec.told = rec.told or {}
   local told = false
   for _, u in ipairs(CP.Upgrades()) do told = tellOnce(rec, u) or told end
-  if told then ns.Options.Refresh() end
+  if told then ns.Options.RebuildPage("clickcast") end
 end
 
 -- The spellbook changed (a spell learned, a talent taken): tell the new offers once the catalog is read again.
