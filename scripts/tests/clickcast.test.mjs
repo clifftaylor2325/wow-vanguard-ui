@@ -290,10 +290,11 @@ it("the picker's actions, macros and typed names; the extra modifier columns", (
   expect(addon.frames("w.key ~= nil and w.iconFrame ~= nil and w.empty ~= nil and w:IsVisible()").length).toBe(20);
 });
 
-it("the starter layout, hover keys with collision notes, and the test tile", () => {
+it("a starter layout, hover keys with collision notes, and the test tile", () => {
   const addon = priest();
-  addon.eval('ns.Options.Show("clickcast")');
-  expect(addon.eval('return __click("Priest healing layout")')).toBe(true);
+  // The starter layout (clickcast-presets.test.mjs tests its picker) is put on before the page is built, so the
+  // finders below find this page's widgets.
+  addon.eval('ns.ClickCastPresets.Apply("select") ns.Options.Show("clickcast")');
   addon.eval('ns.Options.ShowTab("Keys while hovering a frame")');
   expect(bindings(addon)).toMatchObject({ BUTTON1: "target:nil:nil:nil", "ctrl-BUTTON1": "spell:Dispel Magic:527:nil" });
   expect(bindings(addon).BUTTON3.startsWith("spell:Flash Heal:")).toBe(true);
@@ -443,13 +444,12 @@ const fontOf = (addon, text) => addon.eval(`for _, w in ipairs(__wfgStub.frames)
 
 it("the grid's column headers are section headers centred over their cells, and an action with no icon shows its letter in the name role", () => {
   const addon = priest();
-  addon.eval('ns.Options.Show("clickcast")');
-  addon.eval('__click("Priest healing layout")');
+  addon.eval('ns.ClickCastPresets.Apply("select") ns.Options.Show("clickcast")');
   const [small, name] = addon.eval("return { ns.Theme.RoleSize('small'), ns.Theme.RoleSize('name') }");
   const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.__kind == "Button" and w:IsVisible() and w.text.__text == "PLAIN" then
-    return { w:GetHeight(), w:GetWidth(), w.text.__points.CENTER ~= nil, w.text.__points.LEFT == nil, (select(2, w.text:GetFont())), w.text.__textColor, (w:GetCenter()) } end end`);
+    return { w:GetHeight(), w:GetWidth(), w.text.__points.BOTTOMLEFT ~= nil and w.text.__points.BOTTOMRIGHT ~= nil, w.text.__justifyH, (select(2, w.text:GetFont())), w.text.__textColor, (w:GetCenter()) } end end`);
   const plain = addon.eval(`local c = __wfgStub.frames[${cell(addon, "BUTTON1")}] return { c:GetWidth(), (c:GetCenter()) }`);
-  expect(head.slice(0, 5), "a section header 18 tall, one column wide, its text centred in small").toEqual([18, plain[0] + 4, true, true, small]);
+  expect(head.slice(0, 5), "a section header two lines tall, one column wide, its text centred along its bottom in small").toEqual([28, plain[0] + 4, true, "CENTER", small]);
   expect([isTok(addon, head[5], "muted"), Math.abs(head[6] - plain[1]) < 1], "muted, and centred over its column's cells").toEqual([true, true]);
   const letter = addon.eval(`local l = __wfgStub.frames[${cell(addon, "BUTTON1")}].iconFrame.letter return { l:GetText(), (select(2, l:GetFont())), l.__textColor }`);
   expect([letter[0], letter[1], isTok(addon, letter[2], "accentText")], "the left click's Target shows a T in the name role, in the accent's text colour").toEqual(["T", name, true]);
@@ -457,8 +457,7 @@ it("the grid's column headers are section headers centred over their cells, and 
 
 it("on a Russian client an action with no icon shows its whole first letter, not half of it", () => {
   const addon = priest("", { client: '__wfgWorld.locale = "ruRU"' });
-  addon.eval('ns.Options.Show("clickcast")');
-  addon.eval('__click(ns.Format(ns.L["{class} healing layout"], { class = "Priest" }))');
+  addon.eval('ns.ClickCastPresets.Apply("select") ns.Options.Show("clickcast")');
   const letter = addon.eval(`return __wfgStub.frames[${cell(addon, "BUTTON1")}].iconFrame.letter:GetText()`);
   const action = addon.eval('return ns.GetModule("ClickCast").ActionText({ action = "target" })');
   expect([letter, letter.length], "the first letter of the translated Target, one character").toEqual([action[0], 1]);

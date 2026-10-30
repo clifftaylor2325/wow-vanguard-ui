@@ -182,3 +182,12 @@ function CC.WontRun(b)
   if verdict == "remap" then return INTERACTIONS[entry.interaction].remap end
   return verdict == "override" and WONT_RUN.override or nil
 end
+
+-- Opens the game's own Click Casting window (it loads on demand), closing Vanguard's options window first; a client
+-- without one says so in chat, and in a fight chat says the window waits.
+function CC.OpenGameWindow()
+  if type(ToggleClickBindingFrame) ~= "function" then return ns.Chat(L["This client has no click bindings window."]) end
+  if ns.WindowWaitsForCombat(L["The game's click bindings window"]) then return end
+  ns.Options.Hide()
+  ToggleClickBindingFrame()
+end
