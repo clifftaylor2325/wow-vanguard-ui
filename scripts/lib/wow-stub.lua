@@ -480,8 +480,10 @@ function methods:SetNormalFontObject(font) self.__normalFont = font end
 -- The font object SetNormalFontObject gave.
 function methods:GetNormalFontObject() return self.__normalFont end
 
--- Runs fn after a script's current handler, as HookScript does.
+-- Runs fn after a script's current handler, as HookScript does. Like the client, a frame it keeps from
+-- addons (one whose IsForbidden says so) refuses the hook with an error.
 function methods:HookScript(name, fn)
+  if self:IsForbidden() then error(self:GetObjectType() .. ":HookScript(): Cannot assign script handler for '" .. name:lower() .. "' (cannot replace a forbidden script handler)", 2) end
   local old = self.__scripts[name]
   self.__scripts[name] = function(...)
     if old then old(...) end
