@@ -185,15 +185,26 @@ it("step 3: All my characters keeps the account's keys; a refused Apply leaves t
 
 it("step 3: a character with its own keys gets no scope choice; Back goes to the steps before", () => {
   const addon = warrior("__wfgWorld.bindingSet = 2");
+  addon.world.setAction(62, { type: "macro", id: 3 });
   open(addon);
   addon.eval('__click("Show me") __click("Next")');
   expect(addon.eval("return Vanguard_KeysWizard.steps.ready.scope:IsShown()")).toBe(false);
   addon.eval('for _, r in ipairs(Vanguard_KeysWizard.steps.ready.pools.check) do if r:IsShown() and r.get() then r.__scripts.OnClick(r) end end __click("Apply")');
-  expect([win(addon).shown, chatHas(addon, /Nothing is ticked, so no key changes\.$/)], "nothing ticked: it says so and stays").toEqual([true, true]);
+  expect([win(addon).shown, chatHas(addon, /Nothing is ticked, so no key changes\.$/)],
+    "nothing ticked (the kept macro key has no tick box): it says so and stays").toEqual([true, true]);
   addon.eval('__click("Back")');
   expect(win(addon).step).toBe(2);
   addon.eval('__click("Not now")');
   expect([win(addon).shown, chatHas(addon, /Nothing has changed\./)]).toEqual([false, true]);
+});
+
+it("step 3: a stance key whose button already has two keys is listed as staying", () => {
+  // TEST-ONLY: the client's GetSpellName raises on nil (the harness stub doesn't), so the list must not ask it.
+  const addon = warrior("local name = C_Spell.GetSpellName C_Spell.GetSpellName = function(id) assert(id ~= nil, 'no spell ID') return name(id) end");
+  addon.eval('SetBinding("F11", "SHAPESHIFTBUTTON1") SetBinding("F12", "SHAPESHIFTBUTTON1") SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon).filter((r) => r.startsWith("`:"))).toEqual(["`: unchanged, its button already has two keys"]);
 });
 
 it("step 3: a bar that is off and a rogue without roles", () => {

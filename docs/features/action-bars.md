@@ -37,7 +37,7 @@ Each class has a layout: what each key means, as a short list of spells written 
 - **F, T, G, X and Ctrl-X**: interrupt, crowd control (a tank's taunt), a short cooldown or Shoot, a defensive, and a heal on yourself or your pet; **Mouse 4 and 5** (Shift-X and Shift-T without side buttons): a gap closer or escape, and a second utility. These are bar 2's buttons 1 to 7, the same in every stance.
 - **Shift-W, Shift-A, Shift-D and Shift-Space**: long buffs, conjures and stealth, on bar 3's buttons 1 to 4.
 - **`, Shift-` and Ctrl-`**: the stance bar's forms (by where each sits on the game's stance bar), or Pet Attack and Pet Follow for hunters and warlocks.
-- C, R, V, Y, K, B, H, Z and keys 7 to = are left to you.
+- C, R, V, Y, K, B, H, Z and keys 7 to = (9 to = for a shaman) are left to you.
 
 A spell WoW Forever added or changed whose ID isn't confirmed yet (Victory Rush, Lacerate, Holy Strike, the shaman Calls and others) ships as an empty key, never a guess; `/vg probe` lists every layout's spell IDs with the names the client gives them.
 

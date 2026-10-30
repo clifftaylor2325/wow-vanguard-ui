@@ -148,16 +148,20 @@ local function nowText(row)
   return entry and entry.place
 end
 
--- One plan row in words, or nil for a row that needn't be listed (already set, or a spell not known yet); a change
--- says what the key does now when it does something else.
-local function rowText(row, entry)
+-- One plan row in words, or nil for a row that needn't be listed (already set, or a spell not known yet). A stance or
+-- pet key's row has no spell and is named by its command.
+local function changeText(row, entry)
   local text = CHANGE_TEXT[row.kind] or KEPT_TEXT[row.why]
   if not text then return nil end
-  local spell = row.kind == "command" and commandText(row.command) or spellText(row.spell)
+  local spell = row.spell and spellText(row.spell) or commandText(row.command)
   local moved = row.moved and spellText(row.moved)
-  text = ns.Format(text, { key = KV.KeyText(row.key), spell = spell, bar = barOf(row.slot or entry.slot), moved = moved })
-  local now = nowText(row)
-  return now and ns.Format(L["{change} (now {what})"], { change = text, what = now }) or text
+  return ns.Format(text, { key = KV.KeyText(row.key), spell = spell, bar = barOf(row.slot or entry.slot), moved = moved })
+end
+
+-- A plan row in words for step 3's list: a change also says what the key does now when it does something else.
+local function rowText(row, entry)
+  local text, now = changeText(row, entry), nowText(row)
+  return text and now and ns.Format(L["{change} (now {what})"], { change = text, what = now }) or text
 end
 
 -- What a key will do, for the line under the keyboard: its change, or that it stays as it is.
@@ -288,12 +292,13 @@ local function tipPreview(cap)
   GameTooltip:AddLine(text, T.RGB("accentText"))
 end
 
--- The changes the preview lists under the keyboard: on the tab and bar page shown.
+-- The changes the preview lists under the keyboard: on the tab and bar page shown, each kept to one line (what a
+-- key does now is in its tooltip and on step 3).
 local function shownChanges()
   local out = {}
   for i, row in ipairs(state.rows) do
     local entry = state.entries[i]
-    if KA.WRITES[row.kind] and tabOf(entry.key) == state.tab and onPage(entry) then out[#out + 1] = rowText(row, entry) end
+    if KA.WRITES[row.kind] and tabOf(entry.key) == state.tab and onPage(entry) then out[#out + 1] = changeText(row, entry) end
   end
   return out
 end
@@ -526,20 +531,23 @@ function WZ.Show(n)
   SHOW[step.id](f.steps[step.id])
 end
 
--- The entries the player kept ticked, for Apply.
+-- The entries the player kept ticked, for Apply, and how many of them change something (a key that stays as it
+-- is has no tick box, so it is always kept).
 local function kept()
-  local out = {}
+  local out, changes = {}, 0
   for i, entry in ipairs(state.entries) do
     if not state.off[i] then out[#out + 1] = entry end
+    if not state.off[i] and KA.WRITES[state.rows[i].kind] then changes = changes + 1 end
   end
-  return out
+  return out, changes
 end
 
 -- Applies the kept changes in the scope picked; on success the window closes and the listeners hear of it. With
 -- every change unticked it says so and stays.
 local function apply()
-  local set, entries = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil, kept()
-  if #entries == 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
+  local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
+  local entries, changes = kept()
+  if changes == 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
   if not KA.Apply(entries, set) then return end
   WZ.frame:Hide()
   for _, fn in ipairs(WZ.onApply) do fn(state.preset) end
