@@ -230,6 +230,8 @@ local function lookTextRows()
     { "cycle", L["Font"], T.FontChoices(FONT_CHOICES), liveThemeSetting("font") },
     { "slider", L["Text size"], TEXT_SIZES, liveThemeSetting("textScale") },
     { "cycle", L["Faction look"], FACTION_LOOK, liveThemeSetting("faction") },
+    check(L["AFK scene"], setting("AfkScreen", "scene")),
+    { "text", L["A painted scene behind the AFK screen: a keep for the Alliance, a red canyon for the Horde, a night camp otherwise."], "note" },
   }
   for _, row in ipairs(lookShapeRows()) do rows[#rows + 1] = row end
   return rows

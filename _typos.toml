@@ -28,6 +28,7 @@ criterias = "criterias" # the achievement window's list of criteria frames (Achi
 strat = "strat" # Stratholme, as LFG chat shortens it (the group board reads it)
 ony = "ony" # Onyxia's Lair, as LFG chat shortens it (the group board reads it)
 maintenant = "maintenant" # French "now", the group board's age cell in a frFR test
+paeth = "paeth" # the Paeth predictor, PNG's filter type 4 (scripts/lib/media-scenes.mjs)
 tages = "tages" # German "of the day", the guild message of the day's template in a deDE test
 # Code and test names.
 fo = "fo" # a test's local for Vanguard_focus

@@ -11,6 +11,9 @@ import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
 import { ICONS, ICON_SIZES, MEDIA, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
+import { SCENES, readPng, scene } from "./lib/media-scenes.mjs";
+import { image, fill, png } from "./lib/media-art.mjs";
+import os from "node:os";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -92,7 +95,7 @@ function mediaIn(src) {
   for (const m of src.matchAll(/MicroButton = "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
   for (const m of src.matchAll(/Media\\+(Textures|Icons)\\+(\w+)/g)) files.push(`Media/${m[1]}/${m[2]}.tga`);
   for (const m of src.matchAll(/Fonts\\+([\w-]+\.ttf)/g)) files.push(`Media/Fonts/${m[1]}`);
-  for (const m of src.matchAll(/"((?:lorc|delapouite|sbed)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
+  for (const m of src.matchAll(/"((?:lorc|delapouite|sbed|afk)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
   return files;
 }
 
@@ -226,7 +229,10 @@ function questMarksDrawn() {
 
 // Generated files that are not tinted white shapes: the pre-colored addons-list icon, the black
 // shadow (one color throughout) and the two opaque grayscale bars.
-const NOT_TINTED = { "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque" };
+const NOT_TINTED = {
+  "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
+  ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, "opaque"])),
+};
 
 // How many pixels of an image fail a test on (r, g, b, a).
 function countPixels(img, bad) {
@@ -376,5 +382,36 @@ describe(
   () => {
     it("Core/Theme.lua lists the same icons and sizes the generator draws", sizedListsMatch);
     it("every icon has a file at every size", sizedFilesFit);
+  },
+);
+
+// Each AFK scene is 1024 x 512, the 2:1 shape the AFK screen crops to the screen (opaque: clearPixelsWhite).
+function scenesSized() {
+  for (const name of SCENES) expect([scene(name).w, scene(name).h], name).toEqual([1024, 512]);
+}
+
+// The PNG reader gives back what the repo's own PNG writer wrote, alpha included.
+function pngRoundTrip() {
+  const img = fill(image(5, 3), (x, y) => [x / 4, y / 2, 0.2, (x + y) % 2 ? 1 : 0.4]);
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "vg-png-")), "t.png");
+  fs.writeFileSync(file, png(img));
+  const back = readPng(file);
+  expect([back.w, back.h, [...back.px].map((v) => Math.round(v * 255))]).toEqual([5, 3, [...img.px].map((v) => Math.round(v * 255))]);
+}
+
+// Core/Theme.lua's T.AFK_SCENES names exactly the scenes the build writes.
+function themeNamesScenes() {
+  const theme = fs.readFileSync(path.join(root, "Core/Theme.lua"), "utf8");
+  const names = [...theme.match(/T\.AFK_SCENES = \{([^}]*)\}/)[1].matchAll(/"([\w-]+)"/g)].map((m) => m[1]);
+  expect(names.sort()).toEqual([...SCENES].sort());
+}
+
+describe(
+  "AFK scenes",
+  // The painted scenes: their size, the PNG reader the build uses, and the theme's list.
+  () => {
+    it("each scene is 1024 x 512", scenesSized);
+    it("the PNG reader reads back what the PNG writer wrote", pngRoundTrip);
+    it("Core/Theme.lua names the scenes the build writes", themeNamesScenes);
   },
 );

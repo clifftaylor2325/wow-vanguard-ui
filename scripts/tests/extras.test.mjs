@@ -689,7 +689,7 @@ it("the AFK screen: a dimmed screen and a card while you're away", () => {
   const card = afk();
   expect(card, "your name, level and class, where you are, the time away and the clock, your XP").toMatchObject({ shown: true, name: "<name>", who: "Level 42 Class", where: "TEST-ONLY Vale  ·  TEST-ONLY Hamlet", away: "Away 0:00", clock: "21:04", xp: 300 });
   expect(card.color.slice(0, 3), "the name in your class color").toEqual([0.25, 0.78, 0.92]);
-  expect(addon.eval("return { Vanguard_AfkScreen.__strata, Vanguard_AfkScreen.dim.__vertexColor[4] }"), "over the whole UI, dimmed").toEqual(["FULLSCREEN_DIALOG", 0.75]);
+  expect(addon.eval("return { Vanguard_AfkScreen.__strata, Vanguard_AfkScreen.dim.__vertexColor[4] }"), "over the whole UI, dimmed lightly over the scene").toEqual(["FULLSCREEN_DIALOG", 0.45]);
   addon.eval("__wfgStub.advance(65, 1)");
   expect(afk().away, "the time away ticks").toBe("Away 1:05");
   expect(addon.eval("return ns.GetModule('AfkScreen').AwayText(3725)"), "past an hour").toBe("Away 1:02:05");
@@ -778,6 +778,26 @@ it("the AFK screen's backdrop: your faction's passage under the card, in its hea
   expect(addon.eval("local f = Vanguard_AfkScreen return { f.passage:IsShown(), f.by:IsShown() }"), "the faction look off: no passage").toEqual([false, false]);
   addon.eval('__click("Faction look") __click("Faction look") __faction = "Neutral" ns.Theme.Refresh()');
   expect(addon.eval("return Vanguard_AfkScreen.passage:IsShown()"), "a neutral character: none").toBe(false);
+});
+it("the AFK screen's scene: your faction's painting fills the screen; the switch under Look turns it off", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
+  // The scene's shown state, file name and crop, and the dim's alpha.
+  const scene = () => addon.eval(`local f = Vanguard_AfkScreen
+    return { f.scene:IsShown(), (f.scene:GetTexture() or ""):match("[^\\\\]+$"), f.scene.__texCoord, f.dim.__vertexColor[4] }`);
+  addon.eval("UIParent:SetSize(1920, 1080) __afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  const ally = scene();
+  expect(ally.slice(0, 2), "Alliance: the keep, shown").toEqual([true, "afk-keep"]);
+  expect(ally[2].map((v) => Math.round(v * 10000) / 10000), "a 16:9 screen shows the middle of the 2:1 scene, full height").toEqual([0.0556, 0.9444, 0, 1]);
+  expect(ally[3], "under a lighter dim").toBe(0.45);
+  addon.eval('Vanguard_AfkScreen:Hide() __faction = "Horde" UIParent:SetSize(2560, 960) ns.GetModule("AfkScreen").Paint()');
+  const horde = scene();
+  expect([horde[1], horde[2].map((v) => Math.round(v * 10000) / 10000)], "Horde: the canyon; a screen wider than 2:1 shows its full width, cropped top and bottom").toEqual(["afk-canyon", [0, 1, 0.125, 0.875]]);
+  addon.eval('__faction = "Neutral" ns.GetModule("AfkScreen").Paint()');
+  expect(scene()[1], "anyone else: the night camp").toBe("afk-camp");
+  addon.slash("");
+  addon.eval('__click("AFK scene") ns.GetModule("AfkScreen").Paint()');
+  expect([scene()[0], scene()[3]], "switched off under Look: no scene, the full dim").toEqual([false, 0.75]);
 });
 it("the AFK screen: after a fight while you're still away, the time away runs on from when you went away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV);

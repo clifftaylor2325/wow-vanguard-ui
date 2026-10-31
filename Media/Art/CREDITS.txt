@@ -9,3 +9,9 @@ licensed under Creative Commons Attribution 3.0 Unported
 
 Changes: the black background square is removed and each glyph is rasterized
 to a 64x64 white image whose alpha is the glyph, so Vanguard can tint it.
+
+AFK screen scenes
+
+afk-camp.tga, afk-keep.tga, afk-canyon.tga  made by Cliff Hearthvale with
+Leonardo.ai (https://leonardo.ai), AI-generated, all rights reserved with the
+rest of Vanguard.

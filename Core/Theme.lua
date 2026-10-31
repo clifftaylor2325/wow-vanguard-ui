@@ -34,6 +34,8 @@ T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "l
 -- Where a crest goes and how big (units): beside a window title (title), on the AFK card (card), and as a
 -- watermark on the two reading windows (the quest dialog and quest log) at the wash alpha.
 T.CREST = { title = 20, card = 44, watermark = 96, wash = 0.1 }
+-- The AFK screen's painted scene (Media/Art, full colour, 2:1), by faction; everyone else gets the camp.
+T.AFK_SCENES = { Alliance = "afk-keep", Horde = "afk-canyon", none = "afk-camp" }
 -- Text roles that take the faction's heading font: the two display roles, used only for window and card titles.
 T.HEADING_ROLES = { title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.

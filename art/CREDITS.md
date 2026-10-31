@@ -76,6 +76,13 @@ From https://github.com/google/fonts (ofl/).
 | `fonts/Cinzel[wght].ttf` | The Cinzel Project Authors (https://github.com/NDISCOVER/Cinzel) | No Reserved Font Name; license in `fonts/OFL-Cinzel.txt` |
 | `fonts/Metamorphous-Regular.ttf` | Sorkin Type Co (www.sorkintype.com) | Reserved Font Name "Metamorphous": a subset or changed copy must ship under another name; license in `fonts/OFL-Metamorphous.txt` |
 
+## AFK scenes (AI-generated)
+
+`scenes/afk-camp.png`, `scenes/afk-keep.png` and `scenes/afk-canyon.png` were made by Cliff
+Hearthvale with Leonardo.ai (https://leonardo.ai) from his own prompts, in October 2026, then
+cropped and sized to 1024 x 512. No other art or reference picture went in.
+`scripts/lib/media-scenes.mjs` writes them to `Media/Art/` as TGA for the AFK screen.
+
 ## Not used
 
 Blizzard's own faction emblems are the game's trademarked art, so Vanguard
