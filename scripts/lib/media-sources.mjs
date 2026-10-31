@@ -2,7 +2,8 @@
 // Media/Icons is made here (the line icons drawn in plain math; the options
 // nav's and the minimap's filled icons, SILHOUETTES, rasterized from
 // game-icons.net SVGs), and the faction crests under Media/Art come from their
-// SVGs too (scripts/lib/media-crests.mjs); scripts/build-media.mjs writes them.
+// SVGs too (scripts/lib/media-crests.mjs), as do the AFK screen's painted scenes from their PNGs
+// (scripts/lib/media-scenes.mjs); scripts/build-media.mjs writes them.
 // Textures are white or grayscale so the addon tints them with theme colors;
 // Icon is the one pre-colored image (the addons list can't tint): Vanguard's
 // crest, drawn in scripts/lib/media-brand.mjs.
@@ -11,6 +12,7 @@ import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
 import { crestIcon } from "./media-brand.mjs";
 import { SURFACES } from "./media-surfaces.mjs";
+import { SCENES, scene } from "./media-scenes.mjs";
 
 // Textures --------------------------------------------------------------------------------
 
@@ -399,4 +401,5 @@ export const MEDIA = {
   ...Object.fromEntries(Object.entries(TEXTURES).map(([n, make]) => [`Textures/${n}.tga`, make])),
   ...Object.fromEntries(Object.entries(ICONS).map(([n, make]) => [`Icons/${n}.tga`, make])),
   ...Object.fromEntries(CRESTS.map((n) => [`Art/${n}.tga`, () => crest(n)])),
+  ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, () => scene(n)])),
 };

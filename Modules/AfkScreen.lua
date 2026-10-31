@@ -1,5 +1,6 @@
--- The AFK screen: while you're away (/afk, or the game marks you idle), the
--- screen dims and a card shows your name in your class color, your level and
+-- The AFK screen: while you're away (/afk, or the game marks you idle), a
+-- painted scene for your faction fills the screen under a dim (only the dim
+-- while the AFK scene switch under Look is off) and a card shows your name in your class color, your level and
 -- class, the zone, how long you've been away, the time, and your XP bar. Under
 -- the card, in your faction's heading font and crest color, sits your faction's
 -- passage: Varian's last letter to Anduin for the Alliance, the Blood Oath of
@@ -15,9 +16,11 @@ local ADDON, ns = ...
 local T = ns.Theme
 local L = ns.L
 
-local AFK = ns.Module("AfkScreen", { defaults = {} })
+local AFK = ns.Module("AfkScreen", { defaults = { scene = true } })
 
 AFK.CARD_W, AFK.CARD_H, AFK.BAR_H = 380, 132, 10
+-- How dark the dim is: over the screen alone, and lighter over the painted scene; the scene's width over its height.
+AFK.DIM, AFK.SCENE_DIM, AFK.SCENE_ASPECT = 0.75, 0.45, 2
 -- How far (units) in from each side the zone line stays, clear of the crest (14 in, 44 wide, 8 gap).
 AFK.CREST_CLEAR = 66
 -- The passage under the card, in your faction's heading font: how wide it wraps, its size over the title's.
@@ -113,9 +116,29 @@ function AFK.PaintPassage()
   f.passage:SetTextColor(T.RGB(T.CRESTS[faction][2]))
 end
 
--- The card's texts and bar, as they are now.
+-- Crops the scene to the screen's shape, centred, so it fills the screen without stretching.
+local function cover(t, screen)
+  local aspect = screen:GetWidth() / math.max(screen:GetHeight(), 1)
+  local wide = math.min(1, aspect / AFK.SCENE_ASPECT)
+  local tall = math.min(1, AFK.SCENE_ASPECT / math.max(aspect, 0.01))
+  t:SetTexCoord((1 - wide) / 2, (1 + wide) / 2, (1 - tall) / 2, (1 + tall) / 2)
+end
+
+-- Your faction's painted scene under a lighter dim (the camp for anyone else), or the plain dim while the switch is off.
+-- The scene's file loads only when the screen first shows.
+function AFK.PaintScene()
+  local f, on = AFK.frame, AFK.settings.scene == true
+  f.scene:SetShown(on)
+  T.Tint(f.dim, "shade", on and AFK.SCENE_DIM or AFK.DIM)
+  if not on then return end
+  f.scene:SetTexture(T.MEDIA .. "Art\\" .. T.AFK_SCENES[ns.FactionArt.Faction()])
+  cover(f.scene, f)
+end
+
+-- The scene, the card's texts and bar, as they are now.
 function AFK.Paint()
   local f = AFK.frame
+  AFK.PaintScene()
   f.name:SetText(plain(ask("UnitName", "player")))
   f.name:SetTextColor(classColor())
   f.who:SetText(AFK.Who())
@@ -243,18 +266,20 @@ local function addXP(f, card)
   f.xp:SetHeight(AFK.BAR_H)
 end
 
--- The full-screen frame over the UI, dimmed.
+-- The full-screen frame over the UI: the scene at the back (painted as it opens), dimmed.
 local function dimmer()
   local f = CreateFrame("Frame", "Vanguard_AfkScreen", UIParent)
   f:SetAllPoints(UIParent)
   f:SetFrameStrata("FULLSCREEN_DIALOG")
-  f.dim = T.Tint(f:CreateTexture(nil, "BACKGROUND"), "shade", 0.75)
+  f.scene = f:CreateTexture(nil, "BACKGROUND", nil, -1)
+  f.scene:SetAllPoints()
+  f.dim = T.Tint(f:CreateTexture(nil, "BACKGROUND"), "shade", AFK.DIM)
   f.dim:SetTexture(T.WHITE)
   f.dim:SetAllPoints()
   return f
 end
 
--- The dim over the whole screen, and the card in its middle.
+-- The scene and dim over the whole screen, and the card in its middle.
 local function build()
   local f = dimmer()
   local card = T.Panel(CreateFrame("Frame", nil, f), { shadow = true })
@@ -293,7 +318,8 @@ end
 
 -- Module entry point (Core/Modules.lua): a fight puts the screen away, and it
 -- comes back after the fight if you're still away.
-function AFK.Enable()
+function AFK.Enable(settings)
+  AFK.settings = settings
   AFK.frame = build()
   wire(AFK.frame)
   AFK.frame:Hide()

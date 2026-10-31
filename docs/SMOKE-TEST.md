@@ -1025,6 +1025,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: Report a bug closes the errors window and opens the feedback form on Bug with the report attached; Clear closes the window, chat says "Errors cleared.", the addons button's count goes, and `/vg errors` then says none were caught. Other copy windows (export, report) show Close only. [Needs in game.]
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
+### 11.1c AFK scene
+
+- Do: on an Alliance character, then a Horde one, type `/afk`. Then open `/vg` → General → Look, untick **AFK scene**, and `/afk` again.
+- Expect: Alliance gets the stone keep by the lake, Horde the red canyon (a neutral character, the night camp), filling the screen edge to edge without looking stretched or blurry, under a light dim; the card, the passage under it and the XP bar stay easy to read on it. With the switch off, only the darker plain dim. [Needs in game.]
+- If it fails, paste: a screenshot, your screen resolution and `/vg errors`.
+
 ## 12. Game menu
 
 ### 12.1 The Vanguard button
