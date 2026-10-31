@@ -1028,7 +1028,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 11.1c AFK scene
 
 - Do: on an Alliance character, then a Horde one, type `/afk`. Then open `/vg` → General → Look, untick **AFK scene**, and `/afk` again.
-- Expect: Alliance gets the stone keep by the lake, Horde the red canyon (a neutral character, the night camp), filling the screen edge to edge without looking stretched or blurry, under a light dim; the card, the passage under it and the XP bar stay easy to read on it. With the switch off, only the darker plain dim. [Needs in game.]
+- Expect: Alliance gets the stone keep by the lake, Horde the red canyon (a neutral character, the night camp), the whole picture filling the screen edge to edge (nothing cut off at the sides, not blurry, and not noticeably squashed), under a light dim; the card, the passage under it and the XP bar stay easy to read on it. With the switch off, only the darker plain dim. [Needs in game.]
 - If it fails, paste: a screenshot, your screen resolution and `/vg errors`.
 
 ## 12. Game menu
