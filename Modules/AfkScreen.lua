@@ -19,8 +19,8 @@ local L = ns.L
 local AFK = ns.Module("AfkScreen", { defaults = { scene = true } })
 
 AFK.CARD_W, AFK.CARD_H, AFK.BAR_H = 380, 132, 10
--- How dark the dim is: over the screen alone, and lighter over the painted scene; the scene's width over its height.
-AFK.DIM, AFK.SCENE_DIM, AFK.SCENE_ASPECT = 0.75, 0.45, 2
+-- How dark the dim is: over the screen alone, and lighter over the painted scene.
+AFK.DIM, AFK.SCENE_DIM = 0.75, 0.45
 -- How far (units) in from each side the zone line stays, clear of the crest (14 in, 44 wide, 8 gap).
 AFK.CREST_CLEAR = 66
 -- The passage under the card, in your faction's heading font: how wide it wraps, its size over the title's.
@@ -116,15 +116,8 @@ function AFK.PaintPassage()
   f.passage:SetTextColor(T.RGB(T.CRESTS[faction][2]))
 end
 
--- Crops the scene to the screen's shape, centred, so it fills the screen without stretching.
-local function cover(t, screen)
-  local aspect = screen:GetWidth() / math.max(screen:GetHeight(), 1)
-  local wide = math.min(1, aspect / AFK.SCENE_ASPECT)
-  local tall = math.min(1, AFK.SCENE_ASPECT / math.max(aspect, 0.01))
-  t:SetTexCoord((1 - wide) / 2, (1 + wide) / 2, (1 - tall) / 2, (1 + tall) / 2)
-end
-
 -- Your faction's painted scene under a lighter dim (the camp for anyone else), or the plain dim while the switch is off.
+-- The whole picture fills the screen (a 2:1 scene a little narrower on a 16:9 screen; nothing is cut off).
 -- The scene's file loads only when the screen first shows.
 function AFK.PaintScene()
   local f, on = AFK.frame, AFK.settings.scene == true
@@ -132,7 +125,6 @@ function AFK.PaintScene()
   T.Tint(f.dim, "shade", on and AFK.SCENE_DIM or AFK.DIM)
   if not on then return end
   f.scene:SetTexture(T.MEDIA .. "Art\\" .. T.AFK_SCENES[ns.FactionArt.Faction()])
-  cover(f.scene, f)
 end
 
 -- The scene, the card's texts and bar, as they are now.

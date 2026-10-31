@@ -783,16 +783,16 @@ it("the AFK screen's scene: your faction's painting fills the screen; the switch
   const addon = loggedIn(UNITS_ENV + AFK_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
   // The scene's shown state, file name and crop, and the dim's alpha.
   const scene = () => addon.eval(`local f = Vanguard_AfkScreen
-    return { f.scene:IsShown(), (f.scene:GetTexture() or ""):match("[^\\\\]+$"), f.scene.__texCoord, f.dim.__vertexColor[4] }`);
+    return { f.scene:IsShown(), (f.scene:GetTexture() or ""):match("[^\\\\]+$"), f.scene.__texCoord or "whole", f.dim.__vertexColor[4] }`);
   addon.eval("UIParent:SetSize(1920, 1080) __afk = true");
   addon.fire("PLAYER_FLAGS_CHANGED", "player");
   const ally = scene();
   expect(ally.slice(0, 2), "Alliance: the keep, shown").toEqual([true, "afk-keep"]);
-  expect(ally[2].map((v) => Math.round(v * 10000) / 10000), "a 16:9 screen shows the middle of the 2:1 scene, full height").toEqual([0.0556, 0.9444, 0, 1]);
+  expect(ally[2], "the whole picture, nothing cropped").toBe("whole");
   expect(ally[3], "under a lighter dim").toBe(0.45);
   addon.eval('Vanguard_AfkScreen:Hide() __faction = "Horde" UIParent:SetSize(2560, 960) ns.GetModule("AfkScreen").Paint()');
   const horde = scene();
-  expect([horde[1], horde[2].map((v) => Math.round(v * 10000) / 10000)], "Horde: the canyon; a screen wider than 2:1 shows its full width, cropped top and bottom").toEqual(["afk-canyon", [0, 1, 0.125, 0.875]]);
+  expect([horde[1], horde[2]], "Horde: the canyon, whole on a wider screen too").toEqual(["afk-canyon", "whole"]);
   addon.eval('__faction = "Neutral" ns.GetModule("AfkScreen").Paint()');
   expect(scene()[1], "anyone else: the night camp").toBe("afk-camp");
   addon.slash("");
