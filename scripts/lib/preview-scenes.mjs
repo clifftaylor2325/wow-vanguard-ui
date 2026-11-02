@@ -249,11 +249,30 @@ const SECRET = `
   AbbreviateNumbers = function(v) return format(issecretvalue(v) and v.n or v) end
 `;
 
+// The window ornaments (art plan M1a, A1) on the options window, setup and the quest log, in the default and Classic
+// look variants with the brass accent: the options window's rule and the two windows' drawn corner brackets.
+const ORNAMENT_WINDOWS = {
+  options: { caption: "the options window", lua: 'ns.Options.Show("general")' },
+  setup: { caption: "first-run setup", lua: "ns.Setup.Open()" },
+  questlog: { caption: "the quest log", lua: 'ns.GetModule("QuestLog").Toggle()' },
+};
+const ORNAMENT_VARIANTS = {
+  default: 'VanguardDB.profiles.Default.theme = { ornaments = true }',
+  classic: 'VanguardDB.profiles.Default.theme = { variant = "classic" }',
+};
+const ORNAMENT_SCENES = Object.entries(ORNAMENT_WINDOWS).flatMap(([window, w]) => Object.entries(ORNAMENT_VARIANTS).map(([variant, before]) => ({
+  name: `vanguard-ornaments-${window}-${variant}`,
+  caption: `Window ornaments on ${w.caption}, ${variant} look, brass accent: the drawn corner brackets and the header rule in the accent's dim shade`,
+  lua: w.lua,
+  before,
+})));
+
 // Scenes: the default layout (party on the raid frames), a 20-player raid, setup, then the options window.
 export const SCENES = [
   { name: "vanguard-default", caption: "Vanguard defaults (brass accent)", lua: '__group({ "player", "party1", "party2" })' },
   { name: "vanguard-classic-look", caption: "Classic look variant (round minimap and bar backing both follow the theme): dark leather and bronze, a bronze outline on the map's rim, a flat panel under each action bar (the map's picture is approximated square; empty slots are drawn dashed)", lua: '__group({ "player", "party1", "party2" }) if Vanguard_Setup then Vanguard_Setup:Hide() end',
     before: 'VanguardDB.profiles.Default.theme = { variant = "classic" }' },
+  ...ORNAMENT_SCENES,
   { name: "vanguard-scale1", caption: "The same defaults at the game's UI scale 1.0 (1365 x 768 units, zoomed to 1080p): the cluster keeps its shape", lua: '__group({ "player", "party1", "party2" })',
     screen: { width: 1365, height: 768 }, before: "UIParent:SetSize(1365, 768)" },
   { name: "vanguard-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
