@@ -293,7 +293,7 @@ A tiled surface draws one texel per UI unit, like the existing ones (`Core/Panel
 - **Leonardo effort** is Cliff's work: runs of 4 images (no upscales, §6.1).
 
 **Progress** (tick here in the task's commit, as CLAUDE.md asks; a new thread reads this list and the PR body first):
-- [ ] M0.1 - [ ] M0.2 - [x] C1 - [x] C2 - [x] C3 - [x] C4 - [ ] H1 - [ ] K1 - [ ] A1 - [ ] K2 - [ ] A2 - [ ] K3 - [ ] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] S3 - [ ] B0 - [ ] B1
+- [x] M0.1 - [x] M0.2 - [x] C1 - [x] C2 - [x] C3 - [x] C4 - [ ] H1 - [ ] K1 - [ ] A1 - [ ] K2 - [ ] A2 - [ ] K3 - [ ] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] S3 - [ ] B0 - [ ] B1
 
 Order and gates: M0-code and M0-Cliff in parallel; M1a after both; M1b after A1 is approved (its render is a reference for K2 and K3); M2 after Q5 and Q6; M3 last. Each thread's state lives in this list and its PR body's Tasks section.
 

@@ -396,10 +396,17 @@ export const ICONS = {
   ...Object.fromEntries(Object.entries(SILHOUETTES).map(([name, svg]) => [name, () => glyph(svg)])),
 };
 
-// Every generated file: path under Media -> image maker.
-export const MEDIA = {
+// A maker that draws (or decodes) its image once and hands the same image back after that, so the
+// build and the tests that read one file several times do the work once. Callers only read it.
+function once(make) {
+  let img = null;
+  return () => (img ||= make());
+}
+
+// Every generated file: path under Media -> image maker (memoised).
+export const MEDIA = Object.fromEntries(Object.entries({
   ...Object.fromEntries(Object.entries(TEXTURES).map(([n, make]) => [`Textures/${n}.tga`, make])),
   ...Object.fromEntries(Object.entries(ICONS).map(([n, make]) => [`Icons/${n}.tga`, make])),
   ...Object.fromEntries(CRESTS.map((n) => [`Art/${n}.tga`, () => crest(n)])),
   ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, () => scene(n)])),
-};
+}).map(([file, make]) => [file, once(make)]));
