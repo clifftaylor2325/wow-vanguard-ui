@@ -12,7 +12,8 @@ import { crest, crestNames } from "./lib/media-crests.mjs";
 import { ICONS, ICON_SIZES, MEDIA, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 import { SCENES, readPng, scene } from "./lib/media-scenes.mjs";
-import { image, fill, png } from "./lib/media-art.mjs";
+import { TONES, image, fill, png } from "./lib/media-art.mjs";
+import { tonedBracket } from "./fixtures/toned-bracket.mjs";
 import os from "node:os";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -228,7 +229,8 @@ function questMarksDrawn() {
 }
 
 // Generated files that are not tinted white shapes: the pre-colored addons-list icon, the black
-// shadow (one color throughout) and the two opaque grayscale bars.
+// shadow (one color throughout), the two opaque grayscale bars and the scenes. Drawn art in toned
+// grey (leonardo-art-plan §3.7 step 8) is listed here as "toned".
 const NOT_TINTED = {
   "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
   ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, "opaque"])),
@@ -241,18 +243,79 @@ function countPixels(img, bad) {
   return n;
 }
 
-// Every tinted image is white in every pixel, clear ones included, so filtering never pulls a dark
-// fringe into a tinted edge (#228); the shadow is one color throughout and the bars are opaque.
+// Whether n is a power of two.
+const pow2 = (n) => n > 0 && (n & (n - 1)) === 0;
+
+// The alphas of the up to eight pixels around (x, y).
+function neighbourAlphas(img, x, y) {
+  const out = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const nx = x + dx, ny = y + dy;
+    if ((dx || dy) && nx >= 0 && ny >= 0 && nx < img.w && ny < img.h) out.push(img.px[(ny * img.w + nx) * 4 + 3]);
+  }
+  return out;
+}
+
+// Whether a partly covered pixel is the one anti-aliased texel of an edge: it has a clear and a solid neighbour.
+function edgeTexel(img, x, y) {
+  const around = neighbourAlphas(img, x, y);
+  return around.includes(0) && around.includes(1);
+}
+
+// What breaks the toned kind's rules in one image (§3.7 step 8, §4.2): a size that is not a power of
+// two, any alpha on the outer ring, a clear pixel not the outline grey (edge bleed: a filtered edge
+// blends toward the dark outline, never a light fringe), or a soft pixel that is not an edge texel.
+function tonedFaults(img, outline = TONES.outline) {
+  const faults = [pow2(img.w) && pow2(img.h) ? null : "size", edgePixels(img) ? "border" : null];
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) {
+    const i = (y * img.w + x) * 4, a = img.px[i + 3];
+    if (a === 0 && [0, 1, 2].some((c) => img.px[i + c] !== outline)) faults.push(`bleed ${x},${y}`);
+    if (a > 0 && a < 1 && !edgeTexel(img, x, y)) faults.push(`soft ${x},${y}`);
+  }
+  return faults.filter(Boolean);
+}
+
+// Kind -> how many pixels break its rule. Tinted glyphs (no kind) are white in every pixel, clear ones
+// included, so filtering never pulls a dark fringe into a tinted edge (#228); the shadow is one colour
+// throughout, the bars and scenes are opaque, and toned art follows tonedFaults.
+const KIND_FAULTS = {
+  // Pre-coloured: anything goes.
+  colored: () => 0,
+  // Opaque: no pixel lets the world through.
+  opaque: (img) => countPixels(img, (r, g, b, a) => a < 1),
+  // One colour: every pixel the first pixel's colour.
+  "one color": (img) => countPixels(img, (r, g, b) => r !== img.px[0] || g !== img.px[1] || b !== img.px[2]),
+  // Toned: the toned rules.
+  toned: (img) => tonedFaults(img).length,
+  // Tinted glyphs: white in every pixel.
+  white: (img) => countPixels(img, (r, g, b) => r < 1 || g < 1 || b < 1),
+};
+
+// Every generated image keeps its kind's rule under its clear pixels.
 function clearPixelsWhite() {
-  const out = Object.entries(MEDIA).map(([file, make]) => {
-    const img = make();
-    const kind = NOT_TINTED[file];
-    if (kind === "colored") return [file, 0];
-    if (kind === "opaque") return [file, countPixels(img, (r, g, b, a) => a < 1)];
-    if (kind === "one color") return [file, countPixels(img, (r, g, b) => r !== img.px[0] || g !== img.px[1] || b !== img.px[2])];
-    return [file, countPixels(img, (r, g, b) => r < 1 || g < 1 || b < 1)];
-  });
+  const out = Object.entries(MEDIA).map(([file, make]) => [file, KIND_FAULTS[NOT_TINTED[file] || "white"](make())]);
   expect(out.filter(([, n]) => n > 0)).toEqual([]);
+}
+
+// The toned fixture bracket keeps the toned rules at its 1 x and 2 x bakes, and its clear pixels are the outline grey, not white.
+function tonedFixturePasses() {
+  expect([16, 32].map((size) => tonedFaults(tonedBracket(size)))).toEqual([[], []]);
+  expect(Array.from(tonedBracket(16).px.slice(0, 4)), "a clear corner pixel").toEqual([TONES.outline, TONES.outline, TONES.outline, 0]);
+}
+
+// Each toned rule catches its fault: a white clear pixel, a soft pixel inside a bar, alpha on the border, a size that is not a power of two.
+function tonedFaultsCaught() {
+  // The faults of the 16 px bracket after one edit.
+  const broken = (edit) => tonedFaults(edit(tonedBracket(16)));
+  expect(broken((img) => (img.px.set([1, 1, 1], 0), img))).toEqual(["bleed 0,0"]);
+  expect(broken((img) => (img.px[(3 * 16 + 3) * 4 + 3] = 0.5, img))).toEqual(["soft 3,3"]);
+  expect(broken((img) => (img.px[(0 * 16 + 8) * 4 + 3] = 1, img))).toContain("border");
+  expect(tonedFaults(fill(image(12, 16), () => [TONES.outline, TONES.outline, TONES.outline, 0]))).toEqual(["size"]);
+}
+
+// Every MEDIA maker is memoised: asking twice gives the same image, drawn or decoded once.
+function makersMemoised() {
+  expect(MEDIA["Textures/Icon.tga"]()).toBe(MEDIA["Textures/Icon.tga"]());
 }
 
 // Every panel texture is faint (at most SURFACE_MAX_ALPHA, so text stays readable on it) but not empty.
@@ -333,6 +396,16 @@ describe(
     it("the pill outline is about one screen pixel at 18, 14 and 12 high", capsuleOutlinesOnePixel);
     it("the addons-list icon is the pre-coloured crest", iconIsCrest);
     it("the panel textures are faint", surfacesFaint);
+  },
+);
+
+describe(
+  "toned art (leonardo-art-plan M0.2)",
+  // The drawn kind's rules on the test-only fixture bracket, and the memoised makers.
+  () => {
+    it("the toned fixture bracket keeps the toned rules (hard alpha, edge bleed to its outline, clear border, power of two)", tonedFixturePasses);
+    it("the toned rules each catch their fault", tonedFaultsCaught);
+    it("media makers are memoised", makersMemoised);
   },
 );
 

@@ -35,6 +35,17 @@ function over(img, x, y, rgb, a) {
   p[i + 3] = out;
 }
 
+// The grey values of toned art before its tint (docs/handoff/leonardo-art-plan.md §4.2): base,
+// lit facet (top and left edges), recess and the dark outline round every shape.
+export const TONES = { base: 0.72, lit: 1, recess: 0.45, outline: 0.15 };
+
+// Gives every clear pixel the colour rgb (edge bleed for toned art): a filtered edge then blends
+// toward the dark outline the clear pixels sit beside, never toward the white of image().
+export function bleed(img, rgb) {
+  for (let i = 0; i < img.px.length; i += 4) if (img.px[i + 3] === 0) img.px.set(rgb, i);
+  return img;
+}
+
 // Shapes ------------------------------------------------------------------------------
 
 // Distance from (x, y) to the segment [ax, ay, bx, by].
