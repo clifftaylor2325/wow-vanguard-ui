@@ -879,6 +879,37 @@ it("ornaments (#238): off by default; /vg ornaments puts a rule on the options w
   expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
 });
 
+it("ornaments (H1): High contrast shows no ornament even with Window ornaments on, and they come back with another variant", () => {
+  const addon = loggedIn("", { firstRun: true });
+  addon.eval('ns.Options.Show("general") ns.GetModule("QuestLog").Toggle()');
+  // The ornament pieces shown on the options window (rule) and the quest log (brackets).
+  const shown = () => [artShown(addon, "Vanguard_Options", "Diamond"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")];
+  addon.slash("ornaments");
+  addon.slash("variant contrast");
+  expect(shown(), "ornaments setting on, High contrast: none drawn").toEqual([0, 0]);
+  addon.slash("variant midnight");
+  expect(shown(), "another variant: the rule and the brackets are back").toEqual([1, 4]);
+});
+
+it("ornaments (A1): each corner has its own bracket file, and the 32-texel bake comes in from 1.5 screen pixels per unit", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 1920, 1080 end", { firstRun: true });
+  addon.eval('ns.GetModule("QuestLog").Toggle()');
+  addon.slash("ornaments");
+  // The bracket files the quest log shows, sorted.
+  const files = () => addon.eval(`local out = {}
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__kind == "Texture" and w.__parent == Vanguard_QuestLog and w:IsShown() and tostring(w.__texture):find("OrnamentCorner") then out[#out + 1] = tostring(w.__texture):match("OrnamentCorner%d+%a+") end
+    end
+    table.sort(out) return out`);
+  addon.eval("UIParent:SetScale(0.71)");
+  addon.eval("ns.Theme.Refresh()");
+  expect(files(), "about 1 pixel per unit: the 16-texel bake, one file for each corner").toEqual(["OrnamentCorner16BL", "OrnamentCorner16BR", "OrnamentCorner16TL", "OrnamentCorner16TR"]);
+  addon.eval("GetPhysicalScreenSize = function() return 2560, 1440 end UIParent:SetScale(1)");
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.update(0.1);
+  expect(files(), "2560 x 1440 at scale 1 is 1.9 pixels per unit: the 32-texel bake comes in without a reload").toEqual(["OrnamentCorner32BL", "OrnamentCorner32BR", "OrnamentCorner32TL", "OrnamentCorner32TR"]);
+});
+
 it("T.BarColor (14th hunt M6-4): a bar follows the accent and the variant, one recoloured by hand is left alone and forgotten", () => {
   const addon = loggedIn("");
   addon.eval(`local T = ns.Theme

@@ -14,6 +14,7 @@ import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 import { SCENES, readPng, scene } from "./lib/media-scenes.mjs";
 import { TONES, image, fill, png } from "./lib/media-art.mjs";
 import { tonedBracket } from "./fixtures/toned-bracket.mjs";
+import { ORNAMENT_CORNERS } from "./lib/media-ornament.mjs";
 import os from "node:os";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -119,7 +120,9 @@ function scanFindsMedia() {
 // quest marks for the quest dialog and quest log lines (F17; QuestBang, QuestQuery, Modules/QuestDialogParts.lua QP.ICONS).
 // The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
-const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/OrnamentCorner.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Textures/CornerCutMask.tga", "Media/Textures/CornerCutMaskTR.tga", "Media/Textures/CornerCutMaskBL.tga", "Media/Textures/CornerCutMaskBR.tga", "Media/Textures/CornerRoundMask.tga", "Media/Textures/CornerRoundMaskTR.tga", "Media/Textures/CornerRoundMaskBL.tga", "Media/Textures/CornerRoundMaskBR.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
+// The window-corner brackets (A1): four corners at the 1 x and 2 x bakes, picked by T.PixelsPerUnit() in Core/Theme.lua.
+const ORNAMENT_NAMES = [16, 32].flatMap((size) => ["TL", "TR", "BL", "BR"].map((key) => `Media/Textures/OrnamentCorner${size}${key}.tga`));
+const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Textures/CornerCutMask.tga", "Media/Textures/CornerCutMaskTR.tga", "Media/Textures/CornerCutMaskBL.tga", "Media/Textures/CornerCutMaskBR.tga", "Media/Textures/CornerRoundMask.tga", "Media/Textures/CornerRoundMaskTR.tga", "Media/Textures/CornerRoundMaskBL.tga", "Media/Textures/CornerRoundMaskBR.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
   ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga", "Media/Icons/QuestBang.tga", "Media/Icons/QuestQuery.tga", "Media/Icons/Pin.tga"];
 
 // The images in Media/ (not the fonts and license texts), as repo paths.
@@ -130,7 +133,7 @@ function mediaImages() {
 
 // Every image in Media/ is named by the addon (or built by name), so none ships unused.
 function noUnusedMedia() {
-  const used = new Set([...namedMedia(), ...BUILT_NAMES, ...SIZED_NAMES]);
+  const used = new Set([...namedMedia(), ...BUILT_NAMES, ...ORNAMENT_NAMES, ...SIZED_NAMES]);
   expect(mediaImages().filter((f) => !used.has(f)), "Media images the addon never uses (remove them in scripts/lib/media-sources.mjs)").toEqual([]);
 }
 
@@ -232,6 +235,7 @@ function questMarksDrawn() {
 // shadow (one color throughout), the two opaque grayscale bars and the scenes. Drawn art in toned
 // grey (leonardo-art-plan §3.7 step 8) is listed here as "toned".
 const NOT_TINTED = {
+  ...Object.fromEntries(Object.keys(ORNAMENT_CORNERS).map((n) => [`Textures/${n}.tga`, "toned"])),
   "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
   ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, "opaque"])),
 };
@@ -399,6 +403,34 @@ describe(
   },
 );
 
+// The grey of a corner bracket's texel (x, y) at its 2 x bake, and its alpha.
+const cornerTexel = (key, x, y) => {
+  const img = ORNAMENT_CORNERS[`OrnamentCorner32${key}`](), i = (y * img.w + x) * 4;
+  return [img.px[i], img.px[i + 3]];
+};
+
+// Light comes from the top left at every corner: a bar's top edge or left edge is its lit facet (grey 1) and the
+// opposite edge its recess line (0.45), so the lit strip is on the inner side of a bar at the far corners.
+function bracketsLitFromTopLeft() {
+  const lit = TONES.lit, recess = TONES.recess;
+  expect([cornerTexel("TL", 4, 20), cornerTexel("TL", 7, 20), cornerTexel("TL", 20, 4), cornerTexel("TL", 20, 7)].map(([g]) => g), "top left: left and top edges lit, inner edges recess").toEqual([lit, recess, lit, recess]);
+  expect([cornerTexel("TR", 24, 20), cornerTexel("TR", 27, 20), cornerTexel("TR", 12, 4), cornerTexel("TR", 12, 7)].map(([g]) => g), "top right: the vertical bar's inner (left) edge is lit, its outer edge recess; the top edge is lit").toEqual([lit, recess, lit, recess]);
+  expect([cornerTexel("BL", 4, 12), cornerTexel("BL", 7, 12), cornerTexel("BL", 20, 24), cornerTexel("BL", 20, 27)].map(([g]) => g), "bottom left: the horizontal bar's inner (top) edge is lit, its bottom edge recess").toEqual([lit, recess, lit, recess]);
+  expect([cornerTexel("BR", 24, 12), cornerTexel("BR", 27, 12), cornerTexel("BR", 12, 24), cornerTexel("BR", 12, 27)].map(([g]) => g), "bottom right: both lit edges are the inner ones").toEqual([lit, recess, lit, recess]);
+}
+
+// Each corner's bracket is a mirror of the top left's silhouette (same alpha) with its own light, at both bakes.
+function bracketsMirrorTheSilhouette() {
+  for (const size of [16, 32]) {
+    // A corner's alpha channel.
+    const alphas = (key) => Array.from(ORNAMENT_CORNERS[`OrnamentCorner${size}${key}`]().px).filter((_, i) => i % 4 === 3);
+    // An alpha channel mirrored across x and/or y.
+    const flip = (a, fx, fy) => a.map((_, i) => a[((fy ? size - 1 - Math.floor(i / size) : Math.floor(i / size)) * size) + (fx ? size - 1 - (i % size) : i % size)]);
+    const tl = alphas("TL");
+    expect([alphas("TR"), alphas("BL"), alphas("BR")], `${size} texels`).toEqual([flip(tl, true, false), flip(tl, false, true), flip(tl, true, true)]);
+  }
+}
+
 describe(
   "toned art (leonardo-art-plan M0.2)",
   // The drawn kind's rules on the test-only fixture bracket, and the memoised makers.
@@ -406,6 +438,8 @@ describe(
     it("the toned fixture bracket keeps the toned rules (hard alpha, edge bleed to its outline, clear border, power of two)", tonedFixturePasses);
     it("the toned rules each catch their fault", tonedFaultsCaught);
     it("media makers are memoised", makersMemoised);
+    it("the window-corner brackets are lit from the top left at every corner (A1)", bracketsLitFromTopLeft);
+    it("the four corners share one silhouette at both bakes (A1)", bracketsMirrorTheSilhouette);
   },
 );
 
