@@ -2047,6 +2047,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the options window gets a thin dim-brass rule under its header with a small diamond in the middle; the quest log and the setup wizard get four chamfered corner brackets just inside their corners; all in the accent's darker shade, none on unit frames or other HUD frames; switching off removes them at once. Screenshots at 1080p and 1440p. [Needs in game: that the brackets sit cleanly on the 1 px border at both resolutions.]
 - If it fails, paste: screenshots and `/vg errors`.
 
+### 27.1a High contrast hides them
+
+- Do: with `/vg ornaments` on, type `/vg variant contrast`, look at `/vg` and the quest log, then `/vg variant default`.
+- Expect: under High contrast the rule and the brackets are gone at once; back on Slate and brass they return. [Needs in game: that no ornament is left on the quest log or setup.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ## 28. Cooldown Manager refresh glow
 
 ### 28.1 The glow on a buff

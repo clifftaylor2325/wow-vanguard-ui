@@ -3018,8 +3018,10 @@ local function headerRule(frame, anchor)
 end
 
 -- Shows or hides a window's ornament with the ornaments setting and paints it in the accent's dim variant.
+-- High contrast (a flat variant) shows none: decoration is the first thing it drops.
 function T.PaintOrnament(frame, o)
-  local on = T.Settings().ornaments == true or (T.Variant() or {}).ornaments == true
+  local variant = T.Variant() or {}
+  local on = (T.Settings().ornaments == true or variant.ornaments == true) and not variant.flat
   for _, t in ipairs(o) do
     t:SetShown(on)
     T.Tint(t, "accentDim")

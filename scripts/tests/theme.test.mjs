@@ -879,6 +879,18 @@ it("ornaments (#238): off by default; /vg ornaments puts a rule on the options w
   expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
 });
 
+it("ornaments (H1): High contrast shows no ornament even with Window ornaments on, and they come back with another variant", () => {
+  const addon = loggedIn("", { firstRun: true });
+  addon.eval('ns.Options.Show("general") ns.GetModule("QuestLog").Toggle()');
+  // The ornament pieces shown on the options window (rule) and the quest log (brackets).
+  const shown = () => [artShown(addon, "Vanguard_Options", "Diamond"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")];
+  addon.slash("ornaments");
+  addon.slash("variant contrast");
+  expect(shown(), "ornaments setting on, High contrast: none drawn").toEqual([0, 0]);
+  addon.slash("variant midnight");
+  expect(shown(), "another variant: the rule and the brackets are back").toEqual([1, 4]);
+});
+
 it("T.BarColor (14th hunt M6-4): a bar follows the accent and the variant, one recoloured by hand is left alone and forgotten", () => {
   const addon = loggedIn("");
   addon.eval(`local T = ns.Theme
