@@ -413,15 +413,39 @@ function MM.WatchHybrid()
   raiseHybrid(hybrid)
 end
 
--- On a round map: the disc mask the bands wear (so they stop at the edge) and the outline over the map's rim.
+-- A round map's ring from this drawn size (screen pixels across) is the 256 bake, which has the studs; under it the
+-- 128 bake, a bare band.
+MM.RING_BAKE_FROM = 160
+
+-- The ring's file (under Media/Textures): the ornate band while window ornaments are on, at the bake the map's
+-- drawn size needs, else the plain outline.
+function MM.RingArt()
+  if not T.OrnamentsOn() then return "RoundRing" end
+  return "RoundRingOrnate" .. ((MM.size + 2) * T.PixelsPerUnit() >= MM.RING_BAKE_FROM and 256 or 128)
+end
+
+-- Paints the ring: its file, and its tint (the ornate band wears the ornament's accentDim, the outline the edge colour).
+function MM.PaintRing()
+  if not MM.ring then return end
+  MM.ring:SetTexture(T.Texture(MM.RingArt()))
+  T.Tint(MM.ring, T.OrnamentsOn() and "accentDim" or "edge")
+end
+
+-- The ring over the map's rim, painted now and again after a theme, scale or screen change.
+local function roundRing(overlay)
+  MM.ring = overlay:CreateTexture(nil, "OVERLAY")
+  MM.ring:SetAllPoints(overlay)
+  MM.PaintRing()
+  T.OnChanged(MM.PaintRing)
+  T.OnScale(MM.PaintRing)
+end
+
+-- On a round map: the disc mask the bands wear (so they stop at the edge) and the ring over the map's rim.
 local function roundTrim(overlay)
   MM.mask = overlay:CreateMaskTexture()
   MM.mask:SetTexture(T.Texture("RoundDisc"), "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
   MM.mask:SetAllPoints(overlay)
-  local ring = overlay:CreateTexture(nil, "OVERLAY")
-  ring:SetTexture(T.Texture("RoundRing"))
-  ring:SetAllPoints(overlay)
-  T.Tint(ring, "edge")
+  roundRing(overlay)
 end
 
 -- The overlay frame above the map that holds the bands, the texts, the
@@ -565,7 +589,7 @@ end
 
 -- Builds the minimap frame. Out of combat, since it moves Blizzard frames.
 local function build(settings)
-  MM.round, MM.rim = MM.IsRound(settings), settings.size / 2 - MM.RIM_INSET
+  MM.round, MM.rim, MM.size = MM.IsRound(settings), settings.size / 2 - MM.RIM_INSET, settings.size
   local holder = createHolder(settings.size)
   adoptMinimap(holder, settings.size)
   dress(createOverlay(holder, settings.size), settings)

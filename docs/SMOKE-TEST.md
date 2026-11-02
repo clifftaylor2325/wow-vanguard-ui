@@ -2053,6 +2053,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: each corner's bracket has a thin dark outline and a lit top or left edge with the light from the top left; no shimmer when a window is dragged, no blur, and no dark fringe round the edge; the bracket tints in the accent's dim shade and never matches a selected row or a primary button beside it, and differs from them in brightness under the colour-blind filters; labels clear the brackets at both text sizes; the 32-texel bake takes over at the larger scales without a reload. [Needs in game: whether the 16- and 32-texel bakes filter cleanly at every scale, and whether the bracket is quiet enough.]
 - If it fails, paste: a screenshot with the scale, resolution and variant named, and `/vg errors`.
 
+### 27.1c The rule motif and the ornate minimap ring (art plan M1b)
+
+- Do: with `/vg ornaments` on, open `/vg` and look under its header; set Minimap shape to Round (Map, reload) or pick the Classic look. Try Minimap size 120, 180 and 240 at UI scale 0.64 and 1.0, then UI scale 0.64, 1.0 and 1.0 at 2560 x 1440 for the rule. Turn Window ornaments off and on with the map in view. Walk past a party member, a tracked node and a ping at the map's rim, and turn the camera. Go through every accent preset and variant, the three colour-blind filters, and Text size 70 % and 130 %.
+- Expect: the header rule has a diamond with a dark outline between two lines that meet its tips, centred on the line; the ring is a thin band with a dark outline each side, flat dark studs round it (not under 160 px, where it is a bare band) and a small diamond at north, east, south and west; the ring swaps at once with the switch and tints in the accent's dim shade; studs do not sparkle as the camera turns; party dots, nodes and pings stay visible as they cross the rim; labels clear the rule. [Needs in game: whether the ring is quiet enough in a fight (if not, it goes back to the plain outline: art plan R10), whether the 128 and 256 bakes filter cleanly at each size, and whether the dark tips of the rule motif read against every panel.]
+- If it fails, paste: a screenshot with the map size, scale and variant named, and `/vg errors`.
+
 ### 27.1a High contrast hides them
 
 - Do: with `/vg ornaments` on, type `/vg variant contrast`, look at `/vg` and the quest log, then `/vg variant default`.

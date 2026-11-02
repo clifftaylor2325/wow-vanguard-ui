@@ -63,6 +63,20 @@ it("a round minimap: masked to a disc, an outline on its rim, bands cut to the d
   expect(Math.hypot(Math.abs(rim[0]) + 9, Math.abs(rim[1]) + 9) <= 88, "its outer corner stays inside the outline, so the whole button shows").toBe(true);
   expect(addon.eval("local ok = pcall(ns.Theme.Refresh) return ok"), "a theme refresh repaints the disc and ring").toBe(true);
 });
+it("a round minimap's ring (A3): the plain outline until Window ornaments are on, then the ornate band in the accent's dim shade, at the bake the drawn size needs", () => {
+  // The ring's file name and tint colour.
+  const ringOf = (addon) => addon.eval("local r = ns.GetModule('Minimap').ring return { tostring(r.__texture):match('RoundRing%a*%d*'), r.__vertexColor[1], r.__vertexColor[2], r.__vertexColor[3] }");
+  const addon = loggedIn(UI_ENV + TIDY_ENV + "GetPhysicalScreenSize = function() return 1920, 1080 end", { savedVariables: 'VanguardDB.profiles = { Default = { Minimap = { shape = "round" } } }' });
+  const [plain, ...plainTint] = ringOf(addon);
+  expect([plain, plainTint], "ornaments off: the plain outline in the edge colour").toEqual(["RoundRing", addon.eval("local r, g, b = ns.Theme.RGB('edge') return { r, g, b }")]);
+  addon.slash("ornaments");
+  const [ornate, ...dim] = ringOf(addon);
+  expect([ornate, dim], "ornaments on, at once and without a reload: the 256 bake (180 units at 1.4 pixels is 255 pixels), in the accent's dim shade").toEqual(["RoundRingOrnate256", addon.eval("local r, g, b = ns.Theme.RGB('accentDim') return { r, g, b }")]);
+  addon.eval("UIParent:SetScale(0.5) ns.Theme.Refresh()");
+  expect(ringOf(addon)[0], "a smaller drawn size (under 160 pixels): the 128 bake, a bare band").toBe("RoundRingOrnate128");
+  addon.slash("ornaments off");
+  expect(ringOf(addon), "ornaments off again: the plain outline in the edge colour").toEqual(["RoundRing", ...plainTint]);
+});
 it("a minimap that has the game's own wheel handler keeps it, and Vanguard adds none", () => {
   const addon = loggedIn("Minimap:SetScript('OnMouseWheel', function(self, d) self.__gameWheel = (self.__gameWheel or 0) + d end)");
   addon.eval("Minimap:GetScript('OnMouseWheel')(Minimap, 1)");

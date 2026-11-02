@@ -864,11 +864,11 @@ const artShown = (addon, frame, art) => addon.eval(`local n = 0 for _, w in ipai
 it("ornaments (#238): off by default; /vg ornaments puts a rule on the options window and brackets on the quest log and setup, in the accent's dim variant", () => {
   const addon = loggedIn("", { firstRun: true });
   addon.eval('ns.Options.Show("general") ns.GetModule("QuestLog").Toggle()');
-  // How many ornament pieces each window shows: the options rule diamond, the quest log and setup brackets.
-  const shown = () => [artShown(addon, "Vanguard_Options", "Diamond"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), artShown(addon, "Vanguard_Setup", "OrnamentCorner")];
+  // How many ornament pieces each window shows: the options rule motif, the quest log and setup brackets.
+  const shown = () => [artShown(addon, "Vanguard_Options", "OrnamentRule"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner"), artShown(addon, "Vanguard_Setup", "OrnamentCorner")];
   expect(shown(), "off by default: nothing drawn").toEqual([0, 0, 0]);
   addon.slash("ornaments");
-  expect([shown(), chatHas(addon, /Window ornaments on/)], "on at once: a diamond rule, four brackets each").toEqual([[1, 4, 4], true]);
+  expect([shown(), chatHas(addon, /Window ornaments on/)], "on at once: the rule motif, four brackets each").toEqual([[1, 4, 4], true]);
   const dim = tok(addon, "accentDim");
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent == Vanguard_QuestLog and tostring(w.__texture):find("OrnamentCorner") then return w.__vertexColor end end`).slice(0, 3), "tinted in the accent's dim variant").toEqual(dim.slice(0, 3));
   addon.eval('ns.Theme.Ornament(Vanguard_QuestLog, "corners")');
@@ -883,7 +883,7 @@ it("ornaments (H1): High contrast shows no ornament even with Window ornaments o
   const addon = loggedIn("", { firstRun: true });
   addon.eval('ns.Options.Show("general") ns.GetModule("QuestLog").Toggle()');
   // The ornament pieces shown on the options window (rule) and the quest log (brackets).
-  const shown = () => [artShown(addon, "Vanguard_Options", "Diamond"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")];
+  const shown = () => [artShown(addon, "Vanguard_Options", "OrnamentRule"), artShown(addon, "Vanguard_QuestLog", "OrnamentCorner")];
   addon.slash("ornaments");
   addon.slash("variant contrast");
   expect(shown(), "ornaments setting on, High contrast: none drawn").toEqual([0, 0]);
@@ -908,6 +908,30 @@ it("ornaments (A1): each corner has its own bracket file, and the 32-texel bake 
   addon.fire("DISPLAY_SIZE_CHANGED");
   addon.update(0.1);
   expect(files(), "2560 x 1440 at scale 1 is 1.9 pixels per unit: the 32-texel bake comes in without a reload").toEqual(["OrnamentCorner32BL", "OrnamentCorner32BR", "OrnamentCorner32TL", "OrnamentCorner32TR"]);
+});
+
+it("ornaments (A2): the rule's motif is a 24 x 6 diamond between two lines that stop at its tips, and its 64-texel bake comes in from 1.5 screen pixels per unit", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 1920, 1080 end", { firstRun: true });
+  addon.eval('ns.Options.Show("general")');
+  addon.slash("ornaments");
+  // The options window's rule motif (its file, width and height) and where the lines stop beside it (units from the middle).
+  const motif = () => addon.eval(`local m, left, right
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__kind == "Texture" and w.__parent == Vanguard_Options and w:IsShown() then
+        local p = w.__points or {}
+        if tostring(w.__texture):find("OrnamentRule") then m = w end
+        if p.BOTTOMRIGHT and p.BOTTOMRIGHT.rel == Vanguard_Options.header and p.BOTTOMRIGHT.relPoint == "BOTTOM" then left = p.BOTTOMRIGHT.x end
+        if p.BOTTOMLEFT and p.BOTTOMLEFT.rel == Vanguard_Options.header and p.BOTTOMLEFT.relPoint == "BOTTOM" then right = p.BOTTOMLEFT.x end
+      end
+    end
+    return { tostring(m.__texture):match("OrnamentRule%d+"), m.__width, m.__height, left, right }`);
+  addon.eval("UIParent:SetScale(0.71)");
+  addon.eval("ns.Theme.Refresh()");
+  expect(motif(), "about 1 pixel per unit: the 32-texel bake, 24 x 6 units, the lines stopping 11 units either side of the middle").toEqual(["OrnamentRule32", 24, 6, -11, 11]);
+  addon.eval("GetPhysicalScreenSize = function() return 2560, 1440 end UIParent:SetScale(1)");
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.update(0.1);
+  expect(motif()[0], "1.9 pixels per unit: the 64-texel bake comes in without a reload").toBe("OrnamentRule64");
 });
 
 it("T.BarColor (14th hunt M6-4): a bar follows the accent and the variant, one recoloured by hand is left alone and forgotten", () => {

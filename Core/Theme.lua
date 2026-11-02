@@ -3016,31 +3016,57 @@ local function cornerBrackets(frame)
   return out
 end
 
--- A one-pixel rule along the bottom of an anchor (a header) with a diamond cut in its middle.
-local function headerRule(frame, anchor)
+-- The rule motif (the elongated diamond in a header rule's middle): its size in units, and how far from the middle
+-- the two lines stop (the diamond's tips run out to there).
+T.ORNAMENT_RULE = { width = 24, height = 6, reach = 11 }
+
+-- The rule motif's file (under Media/Textures) at the bake the current scale needs (the bracket's switch point).
+function T.OrnamentRuleArt()
+  return "OrnamentRule" .. (T.PixelsPerUnit() >= T.ORNAMENT_BAKE_FROM and 64 or 32)
+end
+
+-- The rule's two one-pixel lines along the bottom of an anchor, each running from the anchor's edge in to the motif.
+local function ruleLines(frame, anchor)
   local left, right = solid(frame, "OVERLAY", 0, "divider"), solid(frame, "OVERLAY", 0, "divider")
-  local mid = frame:CreateTexture(nil, "OVERLAY")
-  mid:SetTexture(T.Texture("Diamond"))
-  mid:SetSize(7, 7)
-  mid:SetPoint("CENTER", anchor, "BOTTOM")
   left:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", 12, 0)
-  left:SetPoint("BOTTOMRIGHT", anchor, "BOTTOM", -8, 0)
-  right:SetPoint("BOTTOMLEFT", anchor, "BOTTOM", 8, 0)
+  left:SetPoint("BOTTOMRIGHT", anchor, "BOTTOM", -T.ORNAMENT_RULE.reach, 0)
+  right:SetPoint("BOTTOMLEFT", anchor, "BOTTOM", T.ORNAMENT_RULE.reach, 0)
   right:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -12, 0)
-  return { left, right, mid, rule = { left, right } }
+  return left, right
+end
+
+-- The rule motif, centred on the bottom edge of an anchor; PaintOrnament gives it its file.
+local function ruleMotif(frame, anchor)
+  local mid = frame:CreateTexture(nil, "OVERLAY")
+  mid:SetSize(T.ORNAMENT_RULE.width, T.ORNAMENT_RULE.height)
+  mid:SetPoint("CENTER", anchor, "BOTTOM")
+  return mid
+end
+
+-- A one-pixel rule along the bottom of an anchor (a header) with a diamond motif in its middle.
+local function headerRule(frame, anchor)
+  local left, right = ruleLines(frame, anchor)
+  local mid = ruleMotif(frame, anchor)
+  return { left, right, mid, rule = { left, right }, motif = mid }
+end
+
+-- Whether ornaments show: the ornaments setting or a variant that brings them. High contrast (a flat variant)
+-- shows none: decoration is the first thing it drops.
+function T.OrnamentsOn()
+  local variant = T.Variant() or {}
+  return (T.Settings().ornaments == true or variant.ornaments == true) and not variant.flat
 end
 
 -- Shows or hides a window's ornament with the ornaments setting and paints it in the accent's dim variant.
--- High contrast (a flat variant) shows none: decoration is the first thing it drops.
 function T.PaintOrnament(frame, o)
-  local variant = T.Variant() or {}
-  local on = (T.Settings().ornaments == true or variant.ornaments == true) and not variant.flat
+  local on = T.OrnamentsOn()
   for _, t in ipairs(o) do
     t:SetShown(on)
     T.Tint(t, "accentDim")
   end
   for _, t in ipairs(o.rule or {}) do t:SetHeight(T.Pixel(frame)) end
   for t, point in pairs(o.corner or {}) do t:SetTexture(T.Texture(T.OrnamentCornerArt(point))) end
+  if o.motif then o.motif:SetTexture(T.Texture(T.OrnamentRuleArt())) end
 end
 
 -- Gives a large window an ornament (#238), once: kind "corners" (four brackets) or "rule" (a rule
@@ -3051,7 +3077,7 @@ function T.Ornament(frame, kind, anchor)
   T.PaintOrnament(frame, ornaments[frame])
 end
 
--- A UI scale or screen change can move the brackets to the other bake.
+-- A UI scale or screen change can move the brackets and the rule motif to the other bake.
 T.OnScale(function()
   for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
 end)
