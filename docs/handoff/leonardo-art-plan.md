@@ -293,7 +293,7 @@ A tiled surface draws one texel per UI unit, like the existing ones (`Core/Panel
 - **Leonardo effort** is Cliff's work: runs of 4 images (no upscales, §6.1).
 
 **Progress** (tick here in the task's commit, as CLAUDE.md asks; a new thread reads this list and the PR body first):
-- [ ] M0.1 - [ ] M0.2 - [ ] C1 - [ ] C2 - [ ] C3 - [ ] C4 - [ ] H1 - [ ] K1 - [ ] A1 - [ ] K2 - [ ] A2 - [ ] K3 - [ ] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] S3 - [ ] B0 - [ ] B1
+- [ ] M0.1 - [ ] M0.2 - [ ] C1 - [x] C2 - [ ] C3 - [ ] C4 - [ ] H1 - [ ] K1 - [ ] A1 - [ ] K2 - [ ] A2 - [ ] K3 - [ ] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] S3 - [ ] B0 - [ ] B1
 
 Order and gates: M0-code and M0-Cliff in parallel; M1a after both; M1b after A1 is approved (its render is a reference for K2 and K3); M2 after Q5 and Q6; M3 last. Each thread's state lives in this list and its PR body's Tasks section.
 
@@ -515,7 +515,7 @@ Each row names the milestones it applies to; a PR ticks the rows for its milesto
 
 **Risks:**
 - R1. How the Forever client loads, filters and keeps addon textures (mipmaps, non-power-of-two, memory) is undocumented, and code cannot see a failed load; only the in-game checks after M1 settle it, by eye.
-- R2. Phoenix's controls are verified from its API page, not from the web app; what the app hides, and whether Style and Content references run together, C4 settles. The three shipped AFK scenes carry no record of plan or privacy; if any was a free-plan image, Leonardo rather than Cliff holds its rights and the scene is remade (C2).
+- R2. Phoenix's controls are verified from its API page, not from the web app; what the app hides, and whether Style and Content references run together, C4 settles. The three shipped AFK scenes are private, so they were made on a paid plan (Cliff checked his Library, 2026-11-02, C2); the credits now say so.
 - R3. AI output may not be protected by copyright; the code-drawn crest stays the mark.
 - R4. Brass tones tinted jade or orchid may read as coloured plastic (Q2); the M0.2 tint sheet shows it before any art is made.
 - R5. Consistency across many sessions depends on the reference board and the manifest; drift shows up as one asset that looks newer than the rest.

@@ -79,8 +79,8 @@ From https://github.com/google/fonts (ofl/).
 ## AFK scenes (AI-generated)
 
 `scenes/afk-camp.png`, `scenes/afk-keep.png` and `scenes/afk-canyon.png` were made by Cliff
-Hearthvale with Leonardo.ai (https://leonardo.ai) from his own prompts, in October 2026, then
-cropped and sized to 1024 x 512. No other art or reference picture went in.
+Hearthvale with Leonardo.ai (https://leonardo.ai) from his own prompts, in October 2026, on a
+paid plan in private mode (checked in his Library on 2026-11-02), then cropped and sized to 1024 x 512. No other art or reference picture went in.
 `scripts/lib/media-scenes.mjs` writes them to `Media/Art/` as TGA for the AFK screen.
 
 ## Not used

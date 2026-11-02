@@ -13,5 +13,5 @@ to a 64x64 white image whose alpha is the glyph, so Vanguard can tint it.
 AFK screen scenes
 
 afk-camp.tga, afk-keep.tga, afk-canyon.tga  made by Cliff Hearthvale with
-Leonardo.ai (https://leonardo.ai), AI-generated, all rights reserved with the
+Leonardo.ai (https://leonardo.ai) on a paid plan in private mode, AI-generated, all rights reserved with the
 rest of Vanguard.
