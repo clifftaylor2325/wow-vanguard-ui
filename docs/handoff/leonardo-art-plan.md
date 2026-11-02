@@ -168,8 +168,9 @@ The API pages describe each model's controls exactly; the web app exposes most o
 | Transparency | API parameter `"transparency": "foreground_only"` on compatible models (the example uses a legacy model); not listed for Phoenix or Lucid Origin | [Leonardo docs: transparency](https://docs.leonardo.ai/docs/generate-images-using-transparency) |
 | Upscaling | Universal Upscaler, at most 2 x and 20 MP, with a creativity setting that "may deviate from the original image" | [Leonardo docs: Universal Upscaler](https://docs.leonardo.ai/docs/image-variations-with-universal-upscaler); [help: Universal Upscaler](https://intercom.help/leonardo-ai/en/articles/8756274-universal-upscaler) |
 | Elements (custom style training) | 10 to 50 images; the default training base is a third-party model; using an Element costs 1 token | [Leonardo help: Elements, 2026-02-19](https://intercom.help/leonardo-ai/en/articles/10501488-how-to-train-and-use-elements-loras-and-datasets-on-leonardo-ai) |
-| Token costs | The help centre's table (2026-08-25) prices a 768 x 768 default image at 1 token and image guidance at 1 to 7 tokens, but does not price Phoenix, Lucid Origin, these sizes or the modes. The app shows the exact cost beside the Generate button. Third-party pages put Phoenix at 1024 x 1024 around 8 to 12 tokens an image (weak). | [Leonardo help: token usage](https://intercom.help/leonardo-ai/en/articles/8044033-token-usage); [third-party summary](https://dev.to/techsifted/leonardo-ai-pricing-2026-free-credits-paid-plans-and-api-costs-16a2) |
-| Private mode | "Private image generation is a feature only available to paid members"; Leonardo sets "no usage caps, quotas, or other limits on private generation" | [Leonardo help: private and public images](https://intercom.help/leonardo-ai/en/articles/8044029-private-public-images) |
+| Token costs | The help centre's table (2026-08-25) prices a 768 x 768 default image at 1 token and image guidance at 1 to 7 tokens, but does not price Phoenix, Lucid Origin, these sizes or the modes. The app shows the exact cost beside the Generate button. Third-party pages put Phoenix at 1024 x 1024 around 8 to 12 tokens an image (weak). | [Leonardo help: token usage](https://intercom.help/leonardo-ai/en/articles/8044033-token-usage); [third-party summary](https://dev.to/techsifted/leonardo-ai-pricing-2026-free-credits-paid-plans-and-api-costs-16a2) Measured in Cliff's app on 2026-11-02: 24 tokens for four Phoenix 1.0 images at Quality, 1776 x 1008, about 6 an image. |
+| Private mode | "Private image generation is a feature only available to paid members"; Leonardo sets "no usage caps, quotas, or other limits on private generation" | [Leonardo help: private and public images](https://intercom.help/leonardo-ai/en/articles/8044029-private-public-images) Cliff's app showed Private Mode on and a paid token balance on 2026-11-02 (C1, in part). |
+| Web app controls (Phoenix 1.0) | Seen in Cliff's app on 2026-11-02 (C4, in part): Prompt Enhance, Style, Contrast, Generation Mode Fast / Quality / Ultra, sizes 2:3, 1:1, 16:9 and Custom, 1 to 4 or more images, Private Mode, and under Advanced Settings switches for Negative Prompt, Tiling and Use Fixed Seed. Tiling is a sticky switch: on for surfaces only, off for concept sheets and the banner. | Cliff's screenshots, `/mnt/project-files/leonardo-art/m0-cliff/` |
 | Tokens vs API credits | Web app uses tokens, which expire; the API uses API credits, which don't | [Leonardo help: FAQ, 2026-02-16](https://intercom.help/leonardo-ai/en/articles/7051613-frequently-asked-questions) |
 | Plans and prices | **Not verified from Leonardo** (its pricing page would not load). Third-party pages from June to October 2026 list Free (150 tokens a day), Essential $12 a month (8,500 tokens), Premium $30 (25,000), Ultimate $60 (60,000); older pages use the names Apprentice, Artisan, Maestro | Weak: [cost summary, checked 2026-10-29](https://www.costbench.com/software/ai-image-generators/leonardo-ai/) |
 
@@ -292,7 +293,7 @@ A tiled surface draws one texel per UI unit, like the existing ones (`Core/Panel
 - **Leonardo effort** is Cliff's work: runs of 4 images (no upscales, §6.1).
 
 **Progress** (tick here in the task's commit, as CLAUDE.md asks; a new thread reads this list and the PR body first):
-- [ ] M0.1 - [ ] M0.2 - [ ] C1 - [ ] C2 - [ ] C3 - [ ] C4 - [ ] H1 - [ ] K1 - [ ] A1 - [ ] K2 - [ ] A2 - [ ] K3 - [ ] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] B0 - [ ] B1
+- [ ] M0.1 - [ ] M0.2 - [ ] C1 - [ ] C2 - [ ] C3 - [ ] C4 - [ ] H1 - [ ] K1 - [ ] A1 - [ ] K2 - [ ] A2 - [ ] K3 - [ ] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] S3 - [ ] B0 - [ ] B1
 
 Order and gates: M0-code and M0-Cliff in parallel; M1a after both; M1b after A1 is approved (its render is a reference for K2 and K3); M2 after Q5 and Q6; M3 last. Each thread's state lives in this list and its PR body's Tasks section.
 
@@ -313,7 +314,7 @@ Each item is one short ask; the thread that runs M1a posts them as one message a
 | C2 | In the Library, does each of the three shipped AFK scenes show as private, and what plan were you on in October 2026? | §3.6, §7 credits wording |
 | C3 | Read the Terms sections on output ownership, the licence on uploaded content (the reference crops are the crest) and restrictions; paste the section numbers and the "last updated" line. Then read both stores' current rules on AI and third-party content and paste the lines. | §3.6; Q1 |
 | C4 | In the app, with Phoenix 1.0: note what it shows of tiling, contrast, mode, seed, negative prompt, style and content references and their named strengths, and the download's file type and size. Then three calibration runs on a throwaway prompt: the K1 prompt under the None, Graphic Design Vector and Minimalist presets (keep the flattest); K1 once as a six-up grid and once as four single pieces; the S1 prompt with "fine", "medium" and "coarse" lines (the thread measures the feature width after the box filter). The K1 calibration output counts as K1's runs. Save the reference crops (§6.2). | §6.1, §6.3, §6.4 |
-| Q2 to Q4 | Answer them (§9); they block M1a. Q5 and Q6 block M2. | §9 |
+| Q2 to Q6 | Answered 2026-11-02 (§9). | §9 |
 
 ### M1a: Corner bracket (existing slot) and the High contrast fix
 
@@ -345,6 +346,7 @@ Starts after Q5 and Q6 are answered.
 | S0 | Surface pipeline: `scripts/lib/media-painted.mjs` for the `surface` class (§3.7 steps 2 to 6, integer maths), reading `art/painted/surface/<id>.png` with `import { readPng } from "./media-scenes.mjs"` and `art/painted/manifest.json` (§6.1 shape); a test that builds each painted file twice and compares bytes; the banding, alpha-level, variance and seam tests of §8; a test that every file under `art/painted/` has a complete manifest entry. Built and tested on S1's first real download, not before. | n/a | n/a | none |
 | S1 | Bedded slate | New entries in `T.PANEL_TEXTURES` and `T.PANEL_TEXTURE_CHOICES` (`Core/PanelTexture.lua:19-31`), shared under a "Vanguard ..." name (`Core/SharedMedia.lua:15`) | 256 x 256 | surface | 3 runs |
 | S2 | Vellum fibre | same | 256 x 256 | surface | 3 runs |
+| S3 | Existing surfaces to the new ceiling (Q5): `Grain`, `Stone` and `Leather` rebuilt in `scripts/lib/media-surfaces.mjs` with `SURFACE_MAX_ALPHA` lowered to 12/255, so the §8 contrast table passes for all five surfaces | `scripts/lib/media-surfaces.mjs:9` and the three files in `Media/Textures` | 256 x 256 each | surface | none |
 
 Gate: each new surface is shown at shipped alpha beside the three existing ones; if Cliff cannot tell it from them, it is dropped. The existing three stay (profiles name them).
 
@@ -373,7 +375,7 @@ Gate: each new surface is shown at shipped alpha beside the three existing ones;
 
 - **Model:** Phoenix 1.0 for everything (concept sheets, surfaces, banner). It is the one Leonardo model with a documented negative prompt, tiling switch and contrast control (§3.4), and one set of terms then covers every asset. Lucid Origin is not used: it has no negative box, and the two assets that need the strongest exclusions (a tile with no seam or vignette, a banner with no blue or red cloth and no people) would go to it.
 - **Mode and contrast:** FAST unless a sheet comes out soft, then QUALITY; contrast HIGH for concept sheets (hard-edged flat art), LOW for surfaces and the banner. Both recorded per image.
-- **Prompt enhance:** off, set again on every run and re-run (the app defaults it to AUTO). **Style preset:** the one C4 picked between None, Graphic Design Vector and Minimalist, the same for every concept sheet; None for surfaces and the banner. **Private mode:** on.
+- **Prompt enhance:** off, set again on every run and re-run (the app defaults it to AUTO). **Tiling** (Advanced Settings) stays as last set, so check it before every run: on for surfaces, off for everything else. **Use Fixed Seed** off, except to re-run a kept image. **Style preset:** the one C4 picked between None, Graphic Design Vector and Minimalist, the same for every concept sheet; None for surfaces and the banner. **Private mode:** on.
 - **References:** Style references (up to four) carry look; one Content reference carries shape (§3.5, §6.2). Strength is a named step; start at LOW for Style and MID for Content, written in the manifest, and change it only for a whole class after a calibration run (C4).
 - **Images per run:** 4. **Size:** 1024 x 1024 for concept sheets (or four single pieces at 1024, §6.4); 1024 x 1024 with tiling on for surfaces, box 4 x down to 256; 2048 x 1024 for the banner, box 2 x down to 1024 x 512. **No upscaling:** an upscaler invents detail that the box filter averages away; if a native banner is too soft, M3 may try a 2 x upscale at the lowest creativity, recording mode, style, creativity, similarity and multiplier.
 - **Cost:** the token figure the app shows beside the Generate button for that model, size and mode, written into the manifest per run; the help-centre price table does not cover these models (§3.4).
@@ -498,13 +500,18 @@ Each row names the milestones it applies to; a PR ticks the rows for its milesto
 
 ## 9. Risks and open questions
 
-**Decisions for Cliff** (Q1 blocks every shipped painted file; Q2 to Q4 block M1a; Q5 and Q6 block M2):
+**Decisions for Cliff** (Q1 blocks every shipped painted file; Q2 to Q4 block M1a; Q5 and Q6 block M2). Q2 to Q6 were answered on 2026-11-02 with the recommended options; Q1 is open:
 - Q1. Read Leonardo's Terms of Service on your plan's page and confirm commercial use and ownership for private generations before anything painted ships (C3), including the licence Leonardo takes on uploaded reference images, since the crops are the crest.
 - Q2. Ornaments tinted by the accent's dim shade (`accentDim`, as today's ornaments are, with the loudness gate in §8; recommended), or always brass (a full-colour piece that ignores the accent)? The brighter `accent` tint is off the table: it is the selection and focus colour.
+  **Answered 2026-11-02 (Cliff, "take all recommended decisions"):** `accentDim`.
 - Q3. The plan draws the ornaments and the ring in code from Leonardo concept sheets, and uses Leonardo pixels for the surfaces and the banner (§4.1). Is that split what you want, or do you want painted pixels in the small ornaments even though they will be softer?
+  **Answered 2026-11-02:** yes, the split in §4.1 stands: ornaments and the ring drawn in code from concept sheets.
 - Q4. Should Window ornaments stay off by default, with the new art showing only for players who turn them on or pick the Classic look? (The Classic look forces ornaments on, including the minimap ring; a separate map switch is not planned, since nobody asked for one.)
+  **Answered 2026-11-02:** Window ornaments stay off by default.
 - Q5. The existing three surfaces are built to a 0.08 ceiling and miss the 4.5:1 that `docs/THEME.md` promises for `disabled` text in five variants (§4.4). Lower them to the new 0.05 ceiling in M2 (players see slightly fainter textures), or leave them and file it as an issue?
-- Q6. Should the panel surface skip tooltips in combat? Today every surface draws on tooltips and menus; the 0.05 ceiling keeps them readable, so the plan leaves it, but it is your call.
+  **Answered 2026-11-02:** lower them; M2 moves the three existing surfaces to `PAINTED_MAX_ALPHA` (12/255) with the new ones, and its changelog line says panel textures are a little fainter.
+- Q6. Should the panel surface skip tooltips in combat? Today every surface draws on tooltips and menus; the 12/255 ceiling keeps them readable, so the plan leaves it, but it is your call.
+  **Answered 2026-11-02:** surfaces stay on tooltips in combat; the lower ceiling is what keeps them readable.
 
 **Risks:**
 - R1. How the Forever client loads, filters and keeps addon textures (mipmaps, non-power-of-two, memory) is undocumented, and code cannot see a failed load; only the in-game checks after M1 settle it, by eye.
