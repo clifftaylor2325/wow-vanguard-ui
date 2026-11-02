@@ -12,7 +12,7 @@ import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
 import { crestIcon } from "./media-brand.mjs";
 import { SURFACES } from "./media-surfaces.mjs";
-import { ORNAMENT_CORNERS } from "./media-ornament.mjs";
+import { ORNAMENT_CORNERS, ORNAMENT_ROUND, ORNAMENT_RULES } from "./media-ornament.mjs";
 import { SCENES, scene } from "./media-scenes.mjs";
 
 // Textures --------------------------------------------------------------------------------
@@ -208,6 +208,10 @@ export const TEXTURES = {
   // A window-corner bracket (#238), drawn in toned grey (scripts/lib/media-ornament.mjs) for each corner at 16 and 32
   // texels; lit from the top left at every corner, so each corner is its own image.
   ...ORNAMENT_CORNERS,
+  // The header rule's motif (an elongated diamond, 32 and 64 texels wide) and the round minimap's ornate ring (256 and
+  // 128 texels, the RoundDisc's size and half of it), drawn the same way.
+  ...ORNAMENT_RULES,
+  ...ORNAMENT_ROUND,
   // Rounded corners (the corners setting): the border's arc, 8 of 32 wide (one pixel at T.CORNER_RADIUS 4 px), and the fill under it.
   CornerLine: () => corner(32, 8, true),
   // A window control's tile under the mouse (its fill and its one-pixel line, both tinted by the theme).

@@ -14,7 +14,7 @@ import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 import { SCENES, readPng, scene } from "./lib/media-scenes.mjs";
 import { TONES, image, fill, png } from "./lib/media-art.mjs";
 import { tonedBracket } from "./fixtures/toned-bracket.mjs";
-import { ORNAMENT_CORNERS } from "./lib/media-ornament.mjs";
+import { ORNAMENT_CORNERS, ORNAMENT_ROUND, ORNAMENT_RULES } from "./lib/media-ornament.mjs";
 import os from "node:os";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -122,6 +122,8 @@ function scanFindsMedia() {
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
 // The window-corner brackets (A1): four corners at the 1 x and 2 x bakes, picked by T.PixelsPerUnit() in Core/Theme.lua.
 const ORNAMENT_NAMES = [16, 32].flatMap((size) => ["TL", "TR", "BL", "BR"].map((key) => `Media/Textures/OrnamentCorner${size}${key}.tga`));
+// The rule motif (A2) and the ornate ring (A3), each at two bakes, and the plain ring the ornate one replaces while ornaments are on (all picked by name in the Lua).
+const RULE_RING_NAMES = [...Object.keys(ORNAMENT_RULES), ...Object.keys(ORNAMENT_ROUND), "RoundRing"].map((n) => `Media/Textures/${n}.tga`);
 const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Textures/CornerCutMask.tga", "Media/Textures/CornerCutMaskTR.tga", "Media/Textures/CornerCutMaskBL.tga", "Media/Textures/CornerCutMaskBR.tga", "Media/Textures/CornerRoundMask.tga", "Media/Textures/CornerRoundMaskTR.tga", "Media/Textures/CornerRoundMaskBL.tga", "Media/Textures/CornerRoundMaskBR.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
   ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga", "Media/Icons/QuestBang.tga", "Media/Icons/QuestQuery.tga", "Media/Icons/Pin.tga"];
 
@@ -133,7 +135,7 @@ function mediaImages() {
 
 // Every image in Media/ is named by the addon (or built by name), so none ships unused.
 function noUnusedMedia() {
-  const used = new Set([...namedMedia(), ...BUILT_NAMES, ...ORNAMENT_NAMES, ...SIZED_NAMES]);
+  const used = new Set([...namedMedia(), ...BUILT_NAMES, ...ORNAMENT_NAMES, ...RULE_RING_NAMES, ...SIZED_NAMES]);
   expect(mediaImages().filter((f) => !used.has(f)), "Media images the addon never uses (remove them in scripts/lib/media-sources.mjs)").toEqual([]);
 }
 
@@ -235,7 +237,7 @@ function questMarksDrawn() {
 // shadow (one color throughout), the two opaque grayscale bars and the scenes. Drawn art in toned
 // grey (leonardo-art-plan §3.7 step 8) is listed here as "toned".
 const NOT_TINTED = {
-  ...Object.fromEntries(Object.keys(ORNAMENT_CORNERS).map((n) => [`Textures/${n}.tga`, "toned"])),
+  ...Object.fromEntries(Object.keys({ ...ORNAMENT_CORNERS, ...ORNAMENT_RULES, ...ORNAMENT_ROUND }).map((n) => [`Textures/${n}.tga`, "toned"])),
   "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
   ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, "opaque"])),
 };
