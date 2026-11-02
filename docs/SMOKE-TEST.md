@@ -2047,6 +2047,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the options window gets a thin dim-brass rule under its header with a small diamond in the middle; the quest log and the setup wizard get four chamfered corner brackets just inside their corners; all in the accent's darker shade, none on unit frames or other HUD frames; switching off removes them at once. Screenshots at 1080p and 1440p. [Needs in game: that the brackets sit cleanly on the 1 px border at both resolutions.]
 - If it fails, paste: screenshots and `/vg errors`.
 
+### 27.1b The drawn bracket (art plan M1a)
+
+- Do: with `/vg ornaments` on, open the quest log and setup. Try UI scale 0.64, 0.71, 0.8 and 1.0 at 1920 x 1080, and 1.0 at 2560 x 1440 (and 3440 x 1440, 3840 x 2160 if you have them), dragging a window each time. Then go through every accent preset and every variant, the game's three colour-blind filters, and Text size 70 % and 130 %.
+- Expect: each corner's bracket has a thin dark outline and a lit top or left edge with the light from the top left; no shimmer when a window is dragged, no blur, and no dark fringe round the edge; the bracket tints in the accent's dim shade and never matches a selected row or a primary button beside it, and differs from them in brightness under the colour-blind filters; labels clear the brackets at both text sizes; the 32-texel bake takes over at the larger scales without a reload. [Needs in game: whether the 16- and 32-texel bakes filter cleanly at every scale, and whether the bracket is quiet enough.]
+- If it fails, paste: a screenshot with the scale, resolution and variant named, and `/vg errors`.
+
 ### 27.1a High contrast hides them
 
 - Do: with `/vg ornaments` on, type `/vg variant contrast`, look at `/vg` and the quest log, then `/vg variant default`.

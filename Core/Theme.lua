@@ -2992,13 +2992,26 @@ end
 -- How far the brackets and the rule sit in from the window's edge (units), and the bracket's size.
 T.ORNAMENT_INSET, T.ORNAMENT_SIZE = 3, 14
 
--- Four corner brackets just inside a frame's corners.
+-- Corner point -> the suffix of its bracket file: the bracket is lit from the top left at every corner, so each
+-- corner is its own image (not the top left one flipped), at two bakes (16 and 32 texels).
+T.ORNAMENT_KEYS = { TOPLEFT = "TL", TOPRIGHT = "TR", BOTTOMLEFT = "BL", BOTTOMRIGHT = "BR" }
+-- From this many screen pixels per unit the bracket uses its 32-texel bake (14 units shown is then about 21 px).
+T.ORNAMENT_BAKE_FROM = 1.5
+
+-- The bracket file (under Media/Textures) for a corner point at the bake the current scale needs.
+function T.OrnamentCornerArt(point)
+  local bake = T.PixelsPerUnit() >= T.ORNAMENT_BAKE_FROM and 32 or 16
+  return "OrnamentCorner" .. bake .. T.ORNAMENT_KEYS[point]
+end
+
+-- Four corner brackets just inside a frame's corners; out.corner remembers each one's point for its file.
 local function cornerBrackets(frame)
-  local out = {}
-  for point, t in pairs(cornerPieces(frame, "OrnamentCorner", "OVERLAY")) do
+  local out = { corner = {} }
+  for point in pairs(T.ORNAMENT_KEYS) do
+    local t = frame:CreateTexture(nil, "OVERLAY")
     t:SetSize(T.ORNAMENT_SIZE, T.ORNAMENT_SIZE)
     t:SetPoint(point, frame, point, outward(point, -T.ORNAMENT_INSET))
-    out[#out + 1] = t
+    out[#out + 1], out.corner[t] = t, point
   end
   return out
 end
@@ -3027,6 +3040,7 @@ function T.PaintOrnament(frame, o)
     T.Tint(t, "accentDim")
   end
   for _, t in ipairs(o.rule or {}) do t:SetHeight(T.Pixel(frame)) end
+  for t, point in pairs(o.corner or {}) do t:SetTexture(T.Texture(T.OrnamentCornerArt(point))) end
 end
 
 -- Gives a large window an ornament (#238), once: kind "corners" (four brackets) or "rule" (a rule
@@ -3036,6 +3050,11 @@ function T.Ornament(frame, kind, anchor)
   ornaments[frame] = kind == "rule" and headerRule(frame, anchor or frame) or cornerBrackets(frame)
   T.PaintOrnament(frame, ornaments[frame])
 end
+
+-- A UI scale or screen change can move the brackets to the other bake.
+T.OnScale(function()
+  for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
+end)
 
 -- Sets the accent color (0-1 components) and repaints.
 function T.SetAccent(r, g, b)
