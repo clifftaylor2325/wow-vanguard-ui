@@ -102,6 +102,18 @@ it("/vg probe: secure paging, the player's position and the widget methods repor
   expect(lineOf(text, "FontString:SetTextToFit"), "a widget method this client lacks").toMatch(/missing/);
   expect(lineOf(text, "SetTextToFit read:"), "and no read of it").toMatch(/method missing/);
 });
+it("/vg probe: asks a texture for the slice, SVG, sprite and load-state methods and reports presence only", () => {
+  const addon = loggedIn(PROBE_ENV);
+  addon.slash("probe");
+  const text = reportText(addon);
+  for (const method of ["IsObjectLoaded", "SetTextureSliceMode", "SetSVG", "SetSpriteSheetCell"]) {
+    expect(lineOf(text, `Texture:${method}:`), `${method} is unlisted in the harness, so it reads missing`).toMatch(/missing/);
+  }
+  expect(lineOf(text, "Texture:SetTextureSliceMargins:"), "the harness lists this one").toMatch(/present \(not called\)/);
+  addon.eval("ns.Probe.widgets.Texture.SetSVG = function() end");
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "Texture:SetSVG:"), "a method the client has reads present and is not called").toMatch(/present \(not called\)/);
+});
 it("/vg probe: reads what SetTextToFit does to a label, where the client has it", () => {
   const addon = loggedIn(PROBE_ENV);
   const fake = "ns.Probe.widgets = { FontString = { SetSize = function() end, GetFontHeight = function(s) return s.h or 12 end, GetStringWidth = function(s) return s.w or 90 end, GetText = function(s) return s.t end, SetTextToFit = function(s, t) s.h, s.w, s.t = 9, 58, t if t == 'boom' then error('TEST-ONLY fit') end end } }";

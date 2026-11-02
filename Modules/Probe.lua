@@ -91,7 +91,11 @@ P.HAVE = {
 }
 
 -- The widget methods looked for: { kind of widget, method }.
-P.METHODS = { { "Cooldown", "SetCountdownFormatter" }, { "Frame", "SetOnUpdateMode" }, { "FontString", "SetTextToFit" } }
+P.METHODS = {
+  { "Cooldown", "SetCountdownFormatter" }, { "Frame", "SetOnUpdateMode" }, { "FontString", "SetTextToFit" },
+  { "Texture", "IsObjectLoaded" }, { "Texture", "SetTextureSliceMargins" }, { "Texture", "SetTextureSliceMode" },
+  { "Texture", "SetSVG" }, { "Texture", "SetSpriteSheetCell" },
+}
 
 -- Text -------------------------------------------------------------------------------------
 
@@ -310,12 +314,17 @@ local function realmLines()
   }
 end
 
+-- The frame method that makes a widget kind that is not a frame itself.
+local WIDGET_PART = { FontString = "CreateFontString", Texture = "CreateTexture" }
+
 -- A hidden widget of this kind, made once.
 local function widgetOf(kind)
   P.widgets = P.widgets or {}
   if not P.widgets[kind] then
     local frame = CreateFrame(kind == "Cooldown" and "Cooldown" or "Frame")
-    P.widgets[kind] = kind == "FontString" and ns.Theme.Text(frame:CreateFontString(), "label") or frame
+    local part = WIDGET_PART[kind]
+    P.widgets[kind] = part and frame[part](frame) or frame
+    if kind == "FontString" then ns.Theme.Text(P.widgets[kind], "label") end
   end
   return P.widgets[kind]
 end
