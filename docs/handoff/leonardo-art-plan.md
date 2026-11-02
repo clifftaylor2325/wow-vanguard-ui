@@ -293,7 +293,7 @@ A tiled surface draws one texel per UI unit, like the existing ones (`Core/Panel
 - **Leonardo effort** is Cliff's work: runs of 4 images (no upscales, §6.1).
 
 **Progress** (tick here in the task's commit, as CLAUDE.md asks; a new thread reads this list and the PR body first):
-- [ ] M0.1 - [ ] M0.2 - [ ] C1 - [x] C2 - [ ] C3 - [ ] C4 - [ ] H1 - [ ] K1 - [ ] A1 - [ ] K2 - [ ] A2 - [ ] K3 - [ ] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] S3 - [ ] B0 - [ ] B1
+- [ ] M0.1 - [ ] M0.2 - [x] C1 - [x] C2 - [x] C3 - [x] C4 - [ ] H1 - [ ] K1 - [ ] A1 - [ ] K2 - [ ] A2 - [ ] K3 - [ ] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] S3 - [ ] B0 - [ ] B1
 
 Order and gates: M0-code and M0-Cliff in parallel; M1a after both; M1b after A1 is approved (its render is a reference for K2 and K3); M2 after Q5 and Q6; M3 last. Each thread's state lives in this list and its PR body's Tasks section.
 
@@ -305,6 +305,8 @@ Order and gates: M0-code and M0-Cliff in parallel; M1a after both; M1b after A1 
 | M0.2 | Drawn kind and tint sheet: a `toned` kind in `NOT_TINTED` (`scripts/media.test.mjs:232`) with its own edge-bleed check (bleed to the outline colour, not white); the drawing makers memoised so tests do not decode each file four times; a test-only fixture outside `MEDIA` (under `scripts/fixtures/`, never written to `Media/`, so `noUnusedMedia` at `scripts/media.test.mjs:131` is untouched). The tint sheet: a test bracket in the §4.2 tones, tinted `accentDim` by all five accent presets on `panel`, `raised` and `inset` of all eight variants, as one PNG written to `/mnt/project-files/leonardo-art/m0/tint-sheet.png` (`mkdir -p`) and attached in the thread. | `node scripts/build-media.mjs --check`, `npm run quality` and `npm run coverage` pass; no file under `Media/` changes; Cliff has seen the tint sheet. |
 
 ### M0-Cliff: Leonardo setup and decisions (a checklist for Cliff, no thread)
+
+**Done (Cliff, 2026-11-02):** C1 and C2 by screenshot in the thread; C3 and C4 Cliff did himself and keeps ("already have done them"), so no thread asks for them again. Where C4's results would set a value (the concept preset, grid or singles, the surface wording), a thread uses the plan's default and asks Cliff only if a result looks wrong.
 
 Each item is one short ask; the thread that runs M1a posts them as one message and waits.
 
