@@ -42,6 +42,15 @@ it("chat history: off until switched on; nothing is saved, and nothing comes bac
   expect(back.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("chat history: closing a tab drops its saved lines, so the next tab to take that window number starts empty", () => {
+  const addon = loggedIn(`${CLOCK} FCF_Close = function() end`);
+  addon.slash("history on");
+  addon.eval(`ChatFrame1:AddMessage("main") ChatFrame2:AddMessage("trade") VanguardCharDB.chatHistory[3] = { "1|ffffff|loot" }`);
+  addon.eval("ChatFrame2.__frameID = 2 FCF_Close(ChatFrame2) FCF_Close(DEFAULT_CHAT_FRAME) FCF_Close(nil, { GetID = function() return 3 end }) FCF_Close(nil) FCF_Close({})");
+  expect(Object.keys(saved(addon)), "only the main window (window 1) keeps its lines").toEqual(["0"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat history: lines come back after a relog, in their own window and colour, between a header and a footer", () => {
   const addon = session();
   expect(chatHas(addon, /Chat history on\./), "says so").toBe(true);
