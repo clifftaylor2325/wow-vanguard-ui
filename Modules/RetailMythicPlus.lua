@@ -4,7 +4,7 @@
 --     enemy forces (a percentage). Outside a key the block is the scenario block (Modules/RetailQuests.lua) as before.
 --     The game's own tracker stays parked while Vanguard's shows (Modules/QuestTracker.lua), its key block with it;
 --   * the Mythic+ tab of the group finder (ChallengesFrame) and the keystone window (ChallengesKeystoneFrame), both
---     Blizzard_ChallengesUI's, which loads on demand, in the Vanguard look under the windows switch: the tab's bronze
+--     Blizzard_ChallengesUI's, which loads on demand, in the Vanguard look under the group finder switch: the tab's bronze
 --     well border faded (the dungeon's painting stays), the keystone window on a theme panel with its runes and slot;
 --   * the dungeon card (Modules/DungeonCard.lua) on Retail: the dungeon's Mythic+ timer in the heading in place of
 --     vanilla's level range, then your keystone and the affixes (the running key's, else this week's), and the bags
@@ -214,8 +214,8 @@ function RM.SkinTab()
   GW.FadeFrame(GW.Part(_G, "ChallengesFrameInset.NineSlice"))
 end
 
-GW.AddOnDemand("windows", "Blizzard_ChallengesUI", { "ChallengesFrame" }, RM.SkinTab)
-GW.AddOnDemand("windows", "Blizzard_ChallengesUI", { "ChallengesKeystoneFrame" }, RM.SkinKeystone)
+GW.AddOnDemand("finder", "Blizzard_ChallengesUI", { "ChallengesFrame" }, RM.SkinTab)
+GW.AddOnDemand("finder", "Blizzard_ChallengesUI", { "ChallengesKeystoneFrame" }, RM.SkinKeystone)
 
 -- The tracker's scenario block becomes the key block (which draws the scenario block outside a key), and the
 -- tracker follows the key's events.

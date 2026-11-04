@@ -183,8 +183,8 @@ it("retail mythic+: the keystone window sits on a theme panel with its runes and
   expect(alphas(addon, "ChallengesFrame", ["Background"]), "the dungeon's painting stays").toEqual([1]);
 });
 
-it("retail mythic+: with the windows switch off the Mythic+ windows stay the game's", () => {
-  const addon = challenges("VanguardDB.profiles = { Default = { Windows = { windows = false } } }");
+it("retail mythic+: with the group finder switch off the Mythic+ windows stay the game's", () => {
+  const addon = challenges("VanguardDB.profiles = { Default = { Windows = { finder = false } } }");
   expect(alphas(addon, "ChallengesKeystoneFrame", ["Divider"]), "untouched").toEqual([1]);
   expect(alphas(addon, "ChallengesFrameInset", ["NineSlice"]), "untouched").toEqual([1]);
 });
