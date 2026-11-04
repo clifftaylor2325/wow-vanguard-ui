@@ -3,7 +3,7 @@
 -- (colored by PvP status; hover it for the zone's territory, click it for the
 -- world map), the coordinates on a band along its bottom between the tracking
 -- and addon slot buttons, accent rules inside both bands, and mouse-wheel zoom. The round
--- border art and zoom buttons are faded out (the zoom buttons take no mouse either), and the game's
+-- border art, the day/night ring (Forever) and zoom buttons are faded out (the zoom buttons take no mouse either), and the game's
 -- emptied cluster frame stops taking the mouse and loses its zone button.
 -- Nothing is unregistered. The game's small minimap buttons (tracking, mail,
 -- dungeon difficulty, the addon compartment) move from the old minimap spot
@@ -72,6 +72,7 @@ local PVP_WORDS = {
 local FADE = {
   { "MinimapCompassTexture" },
   { "MinimapCluster", "BorderTop" },
+  { "MinimapCluster", "DielFrame" },
   { "Minimap", "ZoomIn" },
   { "Minimap", "ZoomOut" },
   { "MinimapBackdrop" },

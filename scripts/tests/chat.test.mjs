@@ -260,6 +260,12 @@ const CHAT_ART_ENV = `
     end
   end
 `;
+it("minimap: Forever's day/night ring in the cluster is faded with the rest of the art", () => {
+  const ring = `MinimapCluster.MinimapContainer = CreateFrame("Frame", nil, MinimapCluster)
+    MinimapCluster.DielFrame = CreateFrame("Frame", nil, MinimapCluster.MinimapContainer)`;
+  const addon = loggedIn(UI_ENV + ring);
+  expect(addon.eval("return MinimapCluster.DielFrame.__alpha"), "the ring no longer shows at the old map spot").toBe(0);
+});
 it("minimap: the game's emptied cluster takes no mouse and its zone button is hidden", () => {
   const addon = loggedIn(UI_ENV + `MinimapCluster:EnableMouse(true)
     MinimapCluster.ZoneTextButton = CreateFrame("Button", nil, MinimapCluster)`);
