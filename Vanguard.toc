@@ -191,6 +191,7 @@ Modules/WindowsTabs.lua
 Modules/CharacterExtras.lua
 Modules/WindowsPvP.lua
 Modules/WindowsMove.lua
+Modules/RetailWindows.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
 Modules/AuctionTable.lua

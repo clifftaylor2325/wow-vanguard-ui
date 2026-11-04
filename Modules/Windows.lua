@@ -95,9 +95,14 @@ GW.EXTRA_BUTTONS = {
     "QuestFrameCompleteButton", "QuestFrameGreetingGoodbyeButton",
   },
 }
--- The character pane's gear slots (Character<slot>Slot; each button's ID is its inventory slot).
-GW.SLOTS = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Waist", "Legs", "Feet",
-  "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged" }
+-- The character pane's gear slots (Character<slot>Slot; each button's ID is its inventory slot), on each client:
+-- Retail has no ranged slot.
+GW.SLOTS = ns.ClientData({
+  forever = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Waist", "Legs", "Feet",
+    "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged" },
+  retail = { "Head", "Neck", "Shoulder", "Back", "Chest", "Wrist", "Hands", "Waist", "Legs", "Feet",
+    "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand" },
+})
 -- The game menu's header plate: the three textures behind its title.
 GW.MENU_PLATE = { "LeftBG", "RightBG", "CenterBG" }
 -- A window's art pieces that are faded out, where it has them.
@@ -2250,12 +2255,21 @@ local function replaced(name)
   return GW.QUEST_WINDOWS[name] == true and dialog ~= nil and dialog.frame ~= nil
 end
 
--- Whether a registered window should be hooked now: the client has it, its group is
--- switched on, it isn't hooked yet, and the quest dialog doesn't stand in for it.
+-- Whether a frame is one the game keeps from addons (Retail's encounter timeline and warnings are): a game window
+-- that is one is never hooked, moved or dressed.
+---@param frame table
+---@return boolean
+function GW.Forbidden(frame)
+  return type(frame.IsForbidden) == "function" and frame:IsForbidden() == true
+end
+
+-- Whether a registered window should be hooked now: the client has it, its group is switched on, it isn't hooked
+-- yet, the game lets addons touch it, and the quest dialog doesn't stand in for it.
 local function wanted(name, frame)
   local entry = GW.REGISTERED[name]
   if not entry or not GW.settings or not GW.settings[entry.group] then return false end
-  return type(frame) == "table" and frame.HookScript ~= nil and not vgWindow[frame] and not replaced(name)
+  if type(frame) ~= "table" or frame.HookScript == nil or GW.Forbidden(frame) then return false end
+  return not vgWindow[frame] and not replaced(name)
 end
 
 -- Skins a registered window now and every time it shows (once hooked). A skin that fails
