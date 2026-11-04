@@ -118,10 +118,9 @@ end
 local PREP_SECONDS = { min = 5, max = 60, step = 5, format = function(v) return ns.Format(L["{seconds} s"], { seconds = v }) end }
 local PREP_PERCENT = { min = 10, max = 90, step = 5, format = function(v) return string.format("%d%%", v) end }
 
--- The dungeon card's switch, on WoW Forever only (its dungeons are vanilla's; Modules/InstancePrep.lua).
+-- The dungeon card's switch, named for what this client's card shows (Modules/DungeonCard.lua, DC.LABEL).
 local function dungeonCardRows()
-  if not ns.IsForever() then return {} end
-  return { check(L["Dungeon card: level range, your dungeon quests and keys on the checklist"], setting("InstancePrep", "dungeonCard")) }
+  return { check(ns.DungeonCard.LABEL, setting("InstancePrep", "dungeonCard")) }
 end
 
 -- Instance prep's dungeon card and buff checks (flask, food, oil or poison, raid buffs; world buffs), and the note on wanted amounts.
