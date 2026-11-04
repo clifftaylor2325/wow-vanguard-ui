@@ -97,6 +97,27 @@ P.METHODS = {
   { "Texture", "SetSVG" }, { "Texture", "SetSpriteSheetCell" },
 }
 
+-- The Forever-only calls Vanguard makes: absent from retail 12.1.5 in the two clients' API docs
+-- (Forever 1.60.1.70755 against retail 12.1.5.70783). Only looked for, never called.
+P.FOREVER_ONLY = {
+  "C_GameRules.GetForeverExperiencePreset", "C_GameRules.IsHardcoreActive", "C_GameRules.IsSelfFoundAllowed",
+  "C_SwingTimer.EnableRangeCheck", "C_SwingTimer.IsTargetWithinSwingRange", "C_PetInfo.GetPetHappiness",
+  "C_StableInfo.GetNextStableSlotCost", "C_Trainer.GetTrainerType", "C_SkillInfo.GetSkillLineInfoByID",
+  "C_Item.GetWeaponEnchantInfo", "C_PaperDollInfo.AmmoNeeded", "C_PartyInfo.IsRaidListEnabled",
+  "C_PartyInfo.IsRaidListSupported", "C_QuestLog.GetQuestTimers",
+}
+
+-- The WOW_PROJECT_<name> constants WOW_PROJECT_ID can equal.
+P.PROJECTS = { "MAINLINE", "CAMELOT", "CLASSIC", "BURNING_CRUSADE_CLASSIC", "WRATH_CLASSIC", "CATACLYSM_CLASSIC", "MISTS_CLASSIC" }
+
+-- The game's class resource bars (retail builds them; Forever's player frame excludes them) and the
+-- encounter timeline's frame, looked for as globals.
+P.CLASS_BARS = {
+  "RuneFrame", "PaladinPowerBar", "WarlockPowerFrame", "MonkHarmonyBar", "MageArcaneChargesBar",
+  "EssencePlayerFrame", "MonkStaggerBar", "InsanityBarFrame", "DemonHunterSoulFragmentsBar", "ComboPointPlayerFrame",
+}
+P.TIMELINE_ADDON, P.TIMELINE_FRAME = "Blizzard_EncounterTimeline", "EncounterTimeline"
+
 -- Text -------------------------------------------------------------------------------------
 
 -- The wall clock in seconds, or 0 on a client without it.
@@ -183,6 +204,66 @@ local function clientLines()
     string.format("version %s, build %s (%s), interface %s, WOW_PROJECT_ID %s", tostring(version), tostring(build), tostring(date), tostring(iface), tostring(_G.WOW_PROJECT_ID)),
     ns.Client.Line(),
   }
+end
+
+-- The name of a WOW_PROJECT_ID value ("CAMELOT"), or "unknown".
+local function projectName(id)
+  for _, name in ipairs(P.PROJECTS) do
+    if _G["WOW_PROJECT_" .. name] == id then return name end
+  end
+  return "unknown"
+end
+
+-- The project, interface and build the client reports, and what ns.IsForever makes of them.
+local function gameLine()
+  local _, build, _, iface = GetBuildInfo()
+  local id = _G.WOW_PROJECT_ID
+  return string.format("game: WOW_PROJECT_ID %s (%s), interface %s, build %s, ns.IsForever %s", tostring(id), projectName(id), tostring(iface), tostring(build), tostring(ns.IsForever()))
+end
+
+-- How many of the Forever-only calls the client has, then each one (looked for, never called).
+local function foreverCallLines()
+  local out, found = {}, 0
+  for _, name in ipairs(P.FOREVER_ONLY) do
+    local line = P.Has(name)
+    found = found + (line:find("present", 1, true) and 1 or 0)
+    out[#out + 1] = line
+  end
+  table.insert(out, 1, string.format("Forever-only calls found: %d of %d (a retail client finds none)", found, #P.FOREVER_ONLY))
+  return out
+end
+
+-- How many functions C_Secrets holds, against the predicates the probe asks about.
+local function secretCountLine()
+  local count = 0
+  for _, value in pairs(type(_G.C_Secrets) == "table" and _G.C_Secrets or {}) do
+    count = count + (type(value) == "function" and 1 or 0)
+  end
+  return string.format("C_Secrets functions: %d (the API docs list %d on both clients)", count, #P.SECRETS)
+end
+
+-- A game frame by its global: missing, or present with whether it is forbidden, else shown or hidden.
+local function frameLine(name)
+  local frame = _G[name]
+  if type(frame) ~= "table" then return name .. ": missing" end
+  local ok, forbidden = pcall(frame.IsForbidden, frame)
+  if ok and forbidden then return name .. ": present, forbidden" end
+  local read, shown = pcall(frame.IsShown, frame)
+  return name .. ": present, " .. (read and (shown and "shown" or "hidden") or "shown state not readable")
+end
+
+-- Whether the encounter timeline's addon is loaded, then its frame.
+local function timelineLines()
+  return { P.TIMELINE_ADDON .. " loaded: " .. tostring(C_AddOns.IsAddOnLoaded(P.TIMELINE_ADDON)), frameLine(P.TIMELINE_FRAME) }
+end
+
+-- Which client this is, for the retail work: the project, the Forever-only calls, C_Secrets, the class bars and the timeline.
+local function retailCheckLines()
+  local out = { gameLine(), secretCountLine() }
+  for _, line in ipairs(foreverCallLines()) do out[#out + 1] = line end
+  for _, name in ipairs(P.CLASS_BARS) do out[#out + 1] = frameLine(name) end
+  for _, line in ipairs(timelineLines()) do out[#out + 1] = line end
+  return out
 end
 
 -- The saved record of the run before this one, as a line, or why there is none.
@@ -526,7 +607,8 @@ end
 
 -- The sections of a run: { title, lines function }, in the order they print.
 P.SECTIONS = {
-  { "Client", clientLines }, { "SavedVariables round trip", savedLines },
+  { "Client", clientLines }, { "Client checks (Forever and retail)", retailCheckLines },
+  { "SavedVariables round trip", savedLines },
   { "New-quest flag", questLines }, { "Threat secrecy (target a mob first)", threatLines },
   { "Group listing", function() return sectionRows("group") end },
   { "Secure paging", pagingLines }, { "Realm and name format", realmLines },
