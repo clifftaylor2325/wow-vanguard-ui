@@ -159,6 +159,20 @@ it("ready check: a new check started while the last one's answers linger keeps i
   expect([marks(addon, 3).ready, marks(addon, 3).status], "the new check's answers go a few seconds after it ends").toEqual([false, true]);
 });
 
+it("ready check: a player who never answered gets the cross when the check ends, even if the client then says nothing", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  addon.eval('__status.ready = { raid1 = "ready", raid3 = "waiting" }');
+  addon.fire("READY_CHECK");
+  expect(/Icons\\Waiting$/.test(marks(addon, 3).ready), "while the check runs, the dots").toBe(true);
+  addon.fire("READY_CHECK_FINISHED");
+  expect([/Icons\\Close$/.test(marks(addon, 3).ready), isTok(addon, marks(addon, 3).readyColor, "bad"), /Icons\\Waiting$/.test(marks(addon, 1).ready)], "at the end: the cross in red, and the answer given stays").toEqual([true, true, false]);
+  addon.eval("__status.ready = {} ns.GetModule('RaidStatus').UpdateAll()");
+  expect(/Icons\\Close$/.test(marks(addon, 3).ready), "the client no longer says: the cross stays").toBe(true);
+  addon.eval("__wfgStub.advance(6.5)");
+  expect([marks(addon, 3).ready, marks(addon, 1).ready], "both clear after the linger").toEqual([false, false]);
+});
+
 // Tile i's summon mark: its atlas while shown, else false; whether the resurrection mark and the status text show.
 const summonOf = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitButton${i}
   return { b.summon:IsShown() and b.summon:GetAtlas(), b.rez:IsShown(), b.status:IsShown() }`);
