@@ -109,13 +109,19 @@ end
 
 -- Rewards --------------------------------------------------------------------------------------
 
--- The quest's items of one kind ("choice", "reward" or "required").
+-- One reward slot's card: the currency the client names for a currency choice (loot type 1), else the slot's item.
+local function slotCard(kind, i)
+  local isCurrency = kind == "choice" and ns.PlainNumber(ns.CallIf(_G, "GetQuestItemInfoLootType", kind, i)) == 1
+  local currency = isCurrency and QP.CurrencyItem(ns.CallIf(C_QuestOffer, "GetQuestRewardCurrencyInfo", kind, i), { kind = kind, index = i })
+  if currency then return currency end
+  local name, texture, n, quality = ns.CallIf(_G, "GetQuestItemInfo", kind, i)
+  return { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality, link = ns.CallIf(_G, "GetQuestItemLink", kind, i) }
+end
+
+-- The quest's items of one kind ("choice", "reward" or "required"); a choice keeps its slot number, a currency's too.
 function QD.Items(kind, count)
   local out = {}
-  for i = 1, ns.PlainNumber(count) or 0 do
-    local name, texture, n, quality = ns.CallIf(_G, "GetQuestItemInfo", kind, i)
-    out[#out + 1] = { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality, link = ns.CallIf(_G, "GetQuestItemLink", kind, i) }
-  end
+  for i = 1, ns.PlainNumber(count) or 0 do out[#out + 1] = slotCard(kind, i) end
   return out
 end
 

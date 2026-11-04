@@ -93,12 +93,30 @@ local function rewardItem(kind, i, id, name, texture, count, quality)
   return { kind = kind, index = i, questID = id, name = name, texture = texture, count = count, quality = quality, link = ns.CallIf(_G, "GetQuestLogItemLink", kind, i) }
 end
 
+-- The currency choice at overall slot i, with tipIndex its place among the currency choices (the game's tooltip
+-- counts them apart from the items); nil when the client names none.
+local function currencyChoice(id, i, tipIndex)
+  local place = { kind = "choice", index = i, tipIndex = tipIndex, questID = id }
+  return ns.QuestParts.CurrencyItem(questLog("GetQuestRewardCurrencyInfo", id, i, true), place)
+end
+
+-- The quest's reward choices, items and currencies in the game's order. A client that tells the two apart is
+-- asked for the currencies too (GetNumQuestLogChoices's second argument, as the game's quest panel does).
+local function choiceItems(id)
+  local out, typed = {}, type(GetQuestLogChoiceInfoLootType) == "function"
+  local seen = { [0] = 0, [1] = 0 }
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestLogChoices", id, typed or nil)) or 0 do
+    local lootType = typed and ns.PlainNumber(GetQuestLogChoiceInfoLootType(i)) == 1 and 1 or 0
+    seen[lootType] = seen[lootType] + 1
+    out[#out + 1] = (lootType == 1 and currencyChoice(id, i, seen[1])) or rewardItem("choice", i, id, ns.CallIf(_G, "GetQuestLogChoiceInfo", i))
+    out[#out].tipIndex = out[#out].tipIndex or seen[0]
+  end
+  return out
+end
+
 -- The quest's reward items: choices, then what you always get.
 local function rewardItems(id)
-  local out = {}
-  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestLogChoices", id)) or 0 do
-    out[#out + 1] = rewardItem("choice", i, id, ns.CallIf(_G, "GetQuestLogChoiceInfo", i))
-  end
+  local out = choiceItems(id)
   for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumQuestLogRewards", id)) or 0 do
     out[#out + 1] = rewardItem("reward", i, id, ns.CallIf(_G, "GetQuestLogRewardInfo", i, id))
   end

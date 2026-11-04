@@ -2347,6 +2347,8 @@ local function tooltipSetters(tip)
   function tip:SetHyperlink(link) self.__link = link end
   function tip:SetItemByID(id) self.__itemId = id end
   function tip:SetQuestLogItem(kind, i, questID) self.__questLogItem = kind .. " " .. i .. " " .. tostring(questID) end
+  function tip:SetQuestCurrency(kind, i) self.__questCurrency = kind .. " " .. i end
+  function tip:SetQuestLogCurrency(kind, i) self.__questLogCurrency = kind .. " " .. i end
   function tip:SetSpellByID(id) self.__spellId = id self.__lines = { { text = (world.spells[id] or {}).name } } end
   function tip:GetItem() return self.__itemName, self.__itemLink end
 end

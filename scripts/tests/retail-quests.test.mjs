@@ -205,3 +205,36 @@ it("retail quests: a timed quest counts down from the game's time allowed, once 
   addon.update(0);
   expect(blocks(addon)[0][1], "a hidden timer: no line, no error").toEqual(["TEST-ONLY Parcel 0/1"]);
 });
+
+// TEST-ONLY currency reward choice: the second of three choices is a currency (loot type 1) the client names
+// through its currency calls, as Retail's quest frame reads them.
+const CURRENCY_CHOICE = `
+  GetQuestItemInfoLootType = function(kind, i) return i == 2 and 1 or 0 end
+  C_QuestOffer = { GetQuestRewardCurrencyInfo = function(kind, i) if kind == "choice" and i == 2 then return { currencyID = 1, name = "TEST-ONLY Marks", texture = "TEST-ONLY-ICON", quality = 2, totalRewardAmount = 30 } end end }
+`;
+
+it("retail quests: a currency reward choice is a named card in the dialog, hovered as a currency and picked by its slot", () => {
+  const addon = retail(CURRENCY_CHOICE);
+  addon.eval(`__wfgWorld.openNpc({ quest = { title = "TEST-ONLY Pay", questID = 91050, text = "x", complete = true, choices = { { name = "TEST-ONLY Boots" }, { currency = true }, { name = "TEST-ONLY Cloak" } } } })`);
+  const names = addon.eval("local f, out = Vanguard_QuestDialog, {} for i = 1, f.cards.used do out[i] = f.cards[i].name:GetText() end return out");
+  expect(Object.values(names), "the currency's card has its name").toEqual(["TEST-ONLY Boots", "TEST-ONLY Marks", "TEST-ONLY Cloak"]);
+  addon.eval("local c = Vanguard_QuestDialog.cards[2] c.__scripts.OnEnter(c)");
+  expect(addon.eval("return GameTooltip.__questCurrency"), "its tooltip is the currency's, by the overall slot").toBe("choice 2");
+  addon.eval("local QD = ns.GetModule('QuestDialog') QD.Pick(2) QD.Complete()");
+  expect(addon.eval("return __wfgWorld.rewardChosen"), "picking it hands in the overall slot").toBe(2);
+  expect(addon.eval("return ns.QuestParts.TopChoice(ns.GetModule('QuestDialog').CompletePage().choices)"), "no crown on a section holding a currency").toBe(null);
+});
+
+it("retail quests: the quest log lists a currency reward choice, with each type's own count for the tooltip", () => {
+  const addon = retail(CURRENCY_CHOICE + `
+    __wfgWorld.addQuest({ questID = 91051, title = "TEST-ONLY Pay", level = 70 })
+    GetQuestLogChoiceInfoLootType = function(i) return i == 2 and 1 or 0 end
+    GetNumQuestLogChoices = function(id, withCurrency) return withCurrency and 3 or 2 end
+    GetQuestLogChoiceInfo = function(i) return "TEST-ONLY Item " .. i, "TEST-ONLY-ICON", 1, 1 end
+    C_QuestLog.GetQuestRewardCurrencyInfo = function(id, i, isChoice) if id == 91051 and i == 2 and isChoice then return { currencyID = 1, name = "TEST-ONLY Marks", texture = "TEST-ONLY-ICON", quality = 2, totalRewardAmount = 30 } end end
+  `);
+  const rewards = addon.eval("return ns.GetModule('QuestLog').Details(91051).rewards");
+  expect(Object.values(rewards).map((r) => r.name), "items and the currency, in the game's order").toEqual(["TEST-ONLY Item 1", "TEST-ONLY Marks", "TEST-ONLY Item 3"]);
+  addon.eval("local QP, r = ns.QuestParts, ns.GetModule('QuestLog').Details(91051).rewards QP.ItemTooltip({ item = r[2] }) QP.ItemTooltip({ item = r[3] })");
+  expect(addon.eval("return { GameTooltip.__questLogCurrency, GameTooltip.__questLogItem }"), "the currency is the first of its type, the last item the second of its own").toEqual(["choice 1", "choice 2 91051"]);
+});
