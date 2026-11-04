@@ -3262,6 +3262,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "cannot replace a forbidden script handler" or "Lua Taint: Vanguard" entry in `/vg errors`; each part still comes back to full strength under the mouse. Key setup names the bar addon ("You use Bartender4 for your bars…"), never "table: 0x…".
 - If it fails, paste: `/vg errors` and which part you had set when it appeared.
 
+### 33.169 Your buffs' hover with the Calm HUD
+
+- Do: on WoW Forever, `/reload` with the Calm HUD on (your buffs set to Dim), then mouse over your buffs, over a single buff icon, and away again.
+- Expect: no "PlayerAuras: Button:HookScript(): … cannot replace a forbidden script handler" entry in `/vg errors` after the reload (seen 2026-11-04). Your buffs come up to full strength under the mouse and dim again when it leaves. Note whether moving the mouse straight onto a buff icon from outside brightens them (the game keeps its buff icons' hover from addons, so only the space around them may count).
+- If it fails, paste: `/vg errors`.
+
+### 33.170 The Cooldown Manager fits between your frames
+
+- Do: on WoW Forever with the game's Cooldown Manager on and Vanguard placing it (Cooldowns page), track enough spells that the essential row holds 10 or more icons, then `/reload`. Learn or untrack a spell. Change the row's icon size in Edit Mode, close Edit Mode. Enter a fight and use a cooldown.
+- Expect: the essential, utility and tracked-buff rows sit centered between your player and target frames, each shrunk just enough to fit its spot; a row twice as wide as the gap or more is drawn at half size and may reach a little past the frames. A row that fits keeps its full size. After a change it fits again (after the fight, if you were in one); while Edit Mode is open the row keeps the size it had. Nothing in `/vg errors`.
+- If it fails, paste: a screenshot of the bottom of the screen, the row's icon count, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

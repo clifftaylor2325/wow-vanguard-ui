@@ -1,7 +1,8 @@
 -- The game's own new tools in the Vanguard look, and placed to fit the
 -- Centered layout:
 --   * the Cooldown Manager's rows sit in the gap between the player and
---     target frames, above the swing timer, with square icons in thin borders
+--     target frames, above the swing timer, a row wider than its spot shrunk
+--     to fit it (down to half size), with square icons in thin borders
 --     and their numbers (charges, stacks, cooldown timers) in the theme font;
 --     one switch (off by default) turns the game's Cooldown Manager on, so its
 --     essential row shows there without a trip to the game's options;
@@ -51,6 +52,26 @@ function GT.FitCenter(frame, spot)
   set(frame, "CENTER", spot, "CENTER")
 end
 
+-- The smallest a Cooldown Manager row is shrunk to fit its spot: a row that would need more keeps this size
+-- and runs past the spot's edges, as icons any smaller can't be read.
+GT.MIN_FIT = 0.5
+
+-- The scale that fits a row `width` wide into `room`: 1 when it fits, else room / width, never under GT.MIN_FIT.
+function GT.FitScale(width, room)
+  local w = ns.PlainNumber(width)
+  if not w or w <= room then return 1 end
+  return math.max(GT.MIN_FIT, room / w)
+end
+
+-- Puts a Cooldown Manager row centered on its spot, shrunk to the spot's width when it's wider (it grows with
+-- what it tracks and Edit Mode's icon size). Its scale is set through the client's own method, kept aside as
+-- SetScaleBase on an Edit Mode system: Edit Mode's override moves the frame to keep its corner in place.
+function GT.FitRow(frame, spot)
+  local setScale = frame.SetScaleBase or frame.SetScale
+  setScale(frame, GT.FitScale(frame:GetWidth(), spot:GetWidth()))
+  GT.FitCenter(frame, spot)
+end
+
 -- Puts one of the game's frames over its spot, filling it (the damage meter).
 function GT.FitFill(frame, spot)
   local set = setPointOf(frame)
@@ -69,9 +90,19 @@ function GT.PlaceSpot(name, spot, fit)
   ns.Pin(f, function(frame) fit(frame, holder) end)
 end
 
--- A movable spot for one of the game's frames, with the frame kept on it (the meter fills its spot).
+-- Fits a cooldown row to its spot again each time the game lays it out (after combat, if in one).
+local function refitOnLayout(viewer)
+  if type(viewer) ~= "table" or type(viewer.RefreshLayout) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(viewer, "RefreshLayout", ns.Guard("hook RefreshLayout", ns.Repin))
+end
+
+-- A movable spot for one of the game's frames, with the frame kept on it: the meter fills its spot, and a
+-- cooldown row is centered on its own and fitted to it whenever it's laid out again.
 local function place(name)
-  GT.PlaceSpot(name, GT.SPOTS[name], name == "DamageMeter" and GT.FitFill or GT.FitCenter)
+  if name == "DamageMeter" then return GT.PlaceSpot(name, GT.SPOTS[name], GT.FitFill) end
+  if not GT.SPOTS[name] then return end
+  GT.PlaceSpot(name, GT.SPOTS[name], GT.FitRow)
+  refitOnLayout(_G[name])
 end
 
 -- Cooldown Manager ---------------------------------------------------------------------------

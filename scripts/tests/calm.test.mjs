@@ -98,3 +98,15 @@ it("Calm HUD: a frame the client keeps from addons inside a part is left unhooke
   expect(calm(addon, "Vanguard_PlayerAuras").state, "your buffs still dim").toBe(DIM);
   expect(addon.eval('return ns.FrameState("vgHoverOf")[TEST_Forbidden] == nil'), "the forbidden button is not hooked").toBe(true);
 });
+
+it("Calm HUD: the client's aura buttons, whose tooltip handlers it keeps, are left unhooked, so your buffs join it with no error", () => {
+  const addon = loggedIn(ENV);
+  calmOn(addon);
+  expect(calm(addon, "Vanguard_PlayerAuras").state, "your buffs still dim").toBe(DIM);
+  const hooked = addon.eval(`local n, hooked = 0, 0
+    for _, f in ipairs(__wfgStub.frames) do
+      if f.__kind == "AuraButton" and f.__forbiddenScripts then n = n + 1 hooked = hooked + (ns.FrameState("vgHoverOf")[f] and 1 or 0) end
+    end
+    return { n > 0, hooked, #ns.errors }`);
+  expect(hooked, "the aura buttons are there, none is hooked, and nothing was caught").toEqual([true, 0, 0]);
+});
