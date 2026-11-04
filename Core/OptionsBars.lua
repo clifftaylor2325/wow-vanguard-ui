@@ -71,7 +71,7 @@ end
 
 -- Put everything back asks first: every key key setup changed, and the spells it moved, go back.
 local function putBackAll()
-  ns.Ask(L["Put back every key key setup changed, and the spells it moved?"], L["Put back"], function() ns.KeybindsApply.PutBackAll() end)
+  ns.Ask(L["Put back every key that key setup changed, and the spells it moved?"], L["Put back"], function() ns.KeybindsApply.PutBackAll() end)
 end
 
 -- Key setup's buttons (Modules/KeybindsWizard.lua, Modules/KeybindsApply.lua): set up recommended keys, and put

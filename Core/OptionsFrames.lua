@@ -63,6 +63,12 @@ local function deckRow()
     liveMethod("UnitFrames", "deck", "ApplyDeck"))
 end
 
+-- The mana bar switch's caption: druids only on WoW Forever, three more specs on Retail.
+O.MANA_BAR_LABEL = ns.ClientData({
+  forever = L["Druid mana under the player frame in bear and cat form (reload)"],
+  retail = L["Mana under the player frame when your power bar shows another power: druid forms, Shadow, Elemental and Balance (reload)"],
+})
+
 -- Unit frames, and the class bars under the player frame.
 local function unitFrameRows()
   return {
@@ -72,8 +78,8 @@ local function unitFrameRows()
     { "cycle", L["Health as"], { { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] } }, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
-    check(L["Group threat panel: who has the most threat on your target (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems under the player frame (reload)"], reloadSetting("ClassBars", "totems")),
-    check(L["Druid mana under the player frame in bear and cat form (reload)"], reloadSetting("ClassBars", "druidMana")),
+    check(L["Group threat panel: who has the most threat on your target (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
+    check(O.MANA_BAR_LABEL, reloadSetting("ClassBars", "druidMana")),
   }
 end
 

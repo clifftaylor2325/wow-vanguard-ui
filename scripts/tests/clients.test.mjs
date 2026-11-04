@@ -116,6 +116,18 @@ it("clients: the Modules page lists only the modules the client has", () => {
   for (const name of FOREVER_ONLY) expect(retail, `Retail has no ${name} switch`).not.toContain(name);
 });
 
+it("clients: the class bars and quest arrow wording describe the running client", () => {
+  // The Class bars description, the mana switch's caption and the Quests page's arrow note.
+  const words = (addon) => addon.eval(`local O = ns.Options
+    local note for _, r in ipairs(__rows("quests")) do if r[1] == "text" and r[2]:find("^The arrow on screen") then note = r[2] end end
+    return { O.MODULE_INFO.ClassBars[2], O.MANA_BAR_LABEL, note }`);
+  const [foreverInfo, foreverMana, foreverNote] = words(on(false));
+  const [retailInfo, retailMana, retailNote] = words(on(true));
+  expect([foreverInfo, foreverMana], "WoW Forever: totems and druid mana").toEqual(["Shaman totems above the player frame, and druid mana in forms under it. Needs Unit frames.", "Druid mana under the player frame in bear and cat form (reload)"]);
+  expect([retailInfo, retailMana], "Retail: the class resources and the mana specs").toEqual([expect.stringContaining("holy power, soul shards"), expect.stringContaining("Shadow, Elemental and Balance")]);
+  expect([foreverNote.includes("/vg questdata"), retailNote.includes("/vg questdata")], "/vg questdata is named only where it exists").toEqual([true, false]);
+});
+
 it("clients: on Retail the Forever-only /vg words are unknown and out of /vg help", () => {
   const retail = on(true);
   retail.slash("pets");

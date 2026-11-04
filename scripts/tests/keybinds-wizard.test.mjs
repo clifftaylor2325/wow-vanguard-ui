@@ -305,7 +305,7 @@ it("the Your keys card: right-click a key key setup changed to put it back, and 
   addon.eval('__click("Put back")');
   expect(keys(addon, ["F", "T"])).toEqual(["", "MULTIACTIONBAR1BUTTON2"]);
   cardButton(addon, "Put everything back");
-  expect(addon.texts("Put back every key key setup changed, and the spells it moved?").length, "Put everything back asks first").toBe(1);
+  expect(addon.texts("Put back every key that key setup changed, and the spells it moved?").length, "Put everything back asks first").toBe(1);
   addon.eval('__click("Put back")');
   expect(keys(addon, ["T", "G"])).toEqual(["", ""]);
 });
