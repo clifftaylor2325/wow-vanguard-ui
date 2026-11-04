@@ -153,7 +153,7 @@ Each hunt lists its client, its files (a file belongs to one hunt per block), it
 
 Every wave reads Blizzard's `live` branch for the frame and API facts and the retail docs in `Blizzard_APIDocumentationGenerated`. A finding says whether it affects retail only or both. A fix goes in the `Retail*` file or the per-client table; the Forever half of a table and every Forever test stay byte-for-byte.
 
-- [ ] **H6 Class resources and casting on retail** (retail; SMOKE 33.233 to 33.238). Files: `Modules/ClassBars.lua`, `ComboPoints.lua`, `CastBars.lua`, `UnitFrames.lua` (hiding the game's class bars), `Core/Theme.lua` (tokens), `scripts/lib/wow-retail-classes.lua`.
+- [x] **H6 Class resources and casting on retail** (retail; SMOKE 33.233 to 33.238). Files: `Modules/ClassBars.lua`, `ComboPoints.lua`, `CastBars.lua`, `UnitFrames.lua` (hiding the game's class bars), `Core/Theme.lua` (tokens), `scripts/lib/wow-retail-classes.lua`.
   1. The class and spec to bar-kind table against the game's own power bars in `Blizzard_UnitFrame` on `live`: every class, every spec, Devourer as Demon Hunter spec 3.
   2. Runes: order, cooldown reads, `RUNE_POWER_UPDATE`, a rune mid-recharge at login.
   3. Holy power, chi, arcane charges, soul shards (fractional for Destruction), insanity, maelstrom, essence with its recharge timer, stagger: maximums that change with talents.
@@ -164,7 +164,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Class colours for 13 classes everywhere a colour is keyed by class (raid frames, nameplates, chat, tooltips, meter).
   9. Pet battle, vehicle, dragonriding and skyriding: bars hidden and restored, vigor.
   10. Harness: `wow-retail-classes.lua` against the live docs; a stub that is kinder than the game is a finding here.
-- [ ] **H7 The retail game windows** (retail; SMOKE 33.239 to 33.244). Files: `Modules/RetailWindows.lua`, `Windows.lua`, `WindowsTabs.lua`, `WindowsSocial.lua`, `WindowsMap.lua`, `WindowsPvP.lua`, `WindowsMove.lua`, `WindowsTown.lua`, `WindowsSystem.lua`, `WindowsMenus.lua`, `Core/Skin.lua`, `GameAlerts.lua`, `scripts/lib/wow-retail-windows.lua`.
+- [x] **H7 The retail game windows** (retail; SMOKE 33.239 to 33.244). Files: `Modules/RetailWindows.lua`, `Windows.lua`, `WindowsTabs.lua`, `WindowsSocial.lua`, `WindowsMap.lua`, `WindowsPvP.lua`, `WindowsMove.lua`, `WindowsTown.lua`, `WindowsSystem.lua`, `WindowsMenus.lua`, `Core/Skin.lua`, `GameAlerts.lua`, `scripts/lib/wow-retail-windows.lua`.
   1. The mainline character pane and paper doll: the four look-bug shapes (dark text, orphan anchors, re-shown art, raw bars) against `live`.
   2. `PVEFrame`: dungeon finder, premade groups, raid finder tabs; selection callbacks and ScrollBox initializers that recolour.
   3. `PVPUIFrame` and the honor and conquest bars.
@@ -175,7 +175,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Options rows through `ns.RetailRows`: the game-windows page on retail versus Forever, a switch for a frame that is not loaded yet.
   9. Shared skins (`Windows.lua`) on retail geometry: tab buttons (#733's class), nine-slice layouts, the bag bar and micro menu sizes (#705's class).
   10. Harness: `wow-retail-windows.lua` children versus the live XML; a skin whose test passes on a frame the game builds differently.
-- [ ] **H8 Retail quest content and the tracker** (retail; SMOKE 33.245 to 33.250). Files: `Modules/QuestTracker.lua`, `QuestTrackerView.lua`, `QuestLog.lua`, `QuestLogView.lua`, `QuestDialog.lua`, `QuestDialogParts.lua`, `QuestDialogView.lua`, `QuestMinimap.lua`, `QuestArrow.lua`, `Waypoints.lua`, `WindowsMap.lua`, `scripts/lib/wow-retail-quests.lua`.
+- [x] **H8 Retail quest content and the tracker** (retail; SMOKE 33.245 to 33.250). Files: `Modules/QuestTracker.lua`, `QuestTrackerView.lua`, `QuestLog.lua`, `QuestLogView.lua`, `QuestDialog.lua`, `QuestDialogParts.lua`, `QuestDialogView.lua`, `QuestMinimap.lua`, `QuestArrow.lua`, `Waypoints.lua`, `WindowsMap.lua`, `scripts/lib/wow-retail-quests.lua`.
   1. World quests: `C_TaskQuest`, a quest that expires while tracked, zone changes, the pin.
   2. Bonus objectives and scenarios: the generic scenario block, a stage change mid-fight, criteria with secret progress.
   3. Campaigns and monthly activities: chapters, a completed campaign, the Traveler's Log.
@@ -186,7 +186,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. The quest log and dialog on retail: 35 quests, the game's own tracker hidden and re-shown by Edit Mode.
   9. Text fit: retail quest names and objectives in every language, a third longer.
   10. Harness: `wow-retail-quests.lua` against the live docs.
-- [ ] **H9 Retail bank, bags and private auras** (retail; SMOKE 33.251 to 33.256). Files: `Modules/Bags.lua`, `BagCategories.lua`, `BagSearch.lua`, `BagSections.lua`, `BagTools.lua`, `Inventory.lua`, `RaidAuras.lua`, `FrameAuras.lua`, `RaidFrames.lua` (anchors), `UnitFrames.lua` (anchors), `scripts/lib/wow-retail-bank.lua`.
+- [x] **H9 Retail bank, bags and private auras** (retail; SMOKE 33.251 to 33.256). Files: `Modules/Bags.lua`, `BagCategories.lua`, `BagSearch.lua`, `BagSections.lua`, `BagTools.lua`, `Inventory.lua`, `RaidAuras.lua`, `FrameAuras.lua`, `RaidFrames.lua` (anchors), `UnitFrames.lua` (anchors), `scripts/lib/wow-retail-bank.lua`.
   1. Warband bank tabs: `Enum.BankType`, `C_Bank`, a tab the account has not bought, deposit and withdraw in combat.
   2. The reagent bag as a section and the retail bag families; retail bag button geometry.
   3. Search across bank types, a search while a tab loads, account-wide counts in `Inventory` (only if it shipped).
@@ -197,7 +197,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Forever path untouched: the Forever bag and bank tests and the key ring unchanged.
   9. Text fit of bank tab names and item counts.
   10. Harness: `wow-retail-bank.lua` against the live docs.
-- [ ] **H10 Per-client data tables and shipping** (retail; SMOKE 33.257 to 33.262). Files: `Modules/RaidHealing.lua`, `ClickCastSpells.lua`, `InstancePrepBuffs.lua`, `RaidPreview.lua`, `Upgrades.lua`, `UpgradeWeights.lua`, `DataBars.lua`, `scripts/lib/media-sources.mjs` (crests), `scripts/lib/wow-retail-data.lua`, `Vanguard.toc`, `Core/WhatsNewNotes.lua`, `Locales/`.
+- [x] **H10 Per-client data tables and shipping** (retail; SMOKE 33.257 to 33.262). Files: `Modules/RaidHealing.lua`, `ClickCastSpells.lua`, `InstancePrepBuffs.lua`, `RaidPreview.lua`, `Upgrades.lua`, `UpgradeWeights.lua`, `DataBars.lua`, `scripts/lib/media-sources.mjs` (crests), `scripts/lib/wow-retail-data.lua`, `Vanguard.toc`, `Core/WhatsNewNotes.lua`, `Locales/`.
   1. Every spell and item id in the retail halves resolved by name in a probe against the live docs and spell data; an id typed from memory is the expected bug.
   2. Dispels and raid-healing spells for the healing specs of 13 classes; a spec with no dispel.
   3. Raid buffs as of 12.1.5 and the prep card at the door.
@@ -208,7 +208,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Listings and notes: `WhatsNewNotes` per client, the i18n import run once, placeholders per locale.
   9. Forever halves byte-identical: a probe that dumps each table on `FOREVER_CLIENT` and diffs it against 0.8.0.
   10. Harness: `wow-retail-data.lua` against the live docs.
-- [ ] **H11 Housing, Mythic+, vault, delves, professions and the landing page** (retail; SMOKE 33.263 to 33.268). Files: `Modules/RetailHousing.lua` and the other `Retail*.lua` systems files the build wrote, `Situations.lua`, `DungeonCard.lua`, `InstancePrep.lua`, `MenuStrip.lua` (the House button), `Tooltips.lua` (decor), their `scripts/lib/wow-retail-*.lua`.
+- [x] **H11 Housing, Mythic+, vault, delves, professions and the landing page** (retail; SMOKE 33.263 to 33.268). Files: `Modules/RetailHousing.lua` and the other `Retail*.lua` systems files the build wrote, `Situations.lua`, `DungeonCard.lua`, `InstancePrep.lua`, `MenuStrip.lua` (the House button), `Tooltips.lua` (decor), their `scripts/lib/wow-retail-*.lua`.
   1. The housing dashboard, finder, catalog and editor: load on demand, skins that fall back to the game's window, moved and reloaded.
   2. Decor tooltips and the House micro button.
   3. Mythic+: the keystone, affixes and timers under secrecy, the dungeon card's data, a run that fails, a death counter.

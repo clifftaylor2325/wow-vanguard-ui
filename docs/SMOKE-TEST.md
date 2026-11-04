@@ -3467,6 +3467,180 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the text goes back to the tab's right-click Font size at once, without a reload, and after the reload the Loot tab is empty while the main tab gets its saved lines back.
 - If it fails, paste: the `/vg history` output and the tab's right-click Font size.
 
+### 33.198 Cast bar seconds left (Forever and Retail)
+
+- Do: Turn on the player cast bar and cast a spell of about 2.5 seconds, then do the same on a target's cast bar (target a casting enemy or a friend casting).
+- Expect: The bar fills smoothly and the seconds left count down at its right edge, ending at 0.0.
+- If it fails, paste: the cast bar's right-hand text and whether the bar fills (screenshot), plus `/vg probe` output.
+
+### 33.199 Devourer soul fragments and Ebon Might bars (Retail)
+
+- Do: With Replace the default unit frames on, play a Devourer Demon Hunter, gain soul fragments, then enter Void Metamorphosis; then play an Augmentation Evoker and cast Ebon Might.
+- Expect: A thin bar under the player frame fills with the soul fragment count (switching to the Silence the Whispers count in Void Metamorphosis, full at the Collapsing Star's cost), and for the Evoker fills with the seconds left of Ebon Might (full at 20 seconds) and empties as it runs out (out of combat; note whether it stays empty in a fight); the essence pips stay for the Evoker. No bar in other specs.
+- If it fails, paste: `/dump C_Spell.GetSpellMaxCumulativeAuraApplications(1225789)` and `/dump GetCollapsingStarCost()` for the Demon Hunter, or `/dump C_UnitAuras.GetPlayerAuraBySpellID(395296)` for the Evoker.
+
+### 33.200 Interrupt mark for the retail classes (Retail)
+
+- Do: On a Death Knight (or a Hunter, Druid, Monk, Paladin, Demon Hunter or Evoker), leave Interrupt mark on (Unit frames, Cast bars), and target an enemy casting an interruptible spell. Then use your interrupt.
+- Expect: A filled diamond shows beside the target cast bar while the interrupt is ready, and a hollow dim one sweeps while it recovers; no diamond on an uninterruptible cast.
+- If it fails, paste: the output of `/dump C_SpellBook.IsSpellKnown(47528)` (use your class's interrupt id) and your class token.
+
+### 33.201 Character pane sidebar tabs and weapon slots flat (Retail; H7-1-1, H7-1-2)
+
+- Do: On Retail with the game windows skin on, open the character pane, click the three small tabs above the stats half in turn (Titles, Equipment Manager, Stats), and look at the main-hand and off-hand slots at the bottom.
+- Expect: The three tabs have no bronze tab art, only their icons on a flat look, and the open side's tab shows the selected look, moving as you click; there is no bronze strip beside the main hand or the off hand, and the weapon icons and quality borders still show.
+- If it fails, paste: a screenshot of the character pane with the Titles side open.
+
+### 33.202 Reputation detail box and currency options themed (Retail; H7-1-R1, H7-1-4, H7-1-3)
+
+- Do: On Retail, open the character pane's Reputation tab, click a faction, then click a different one you can move to inactive; then open the Currency tab and click a currency row.
+- Expect: The reputation detail box and the currency options box are flat theme panels with no bronze dialog border or parchment, and their "Move to inactive" / "Unused" labels stay light after each click, never gold.
+- If it fails, paste: a screenshot of the reputation detail box after the second click and one of the currency options box.
+
+### 33.203 Group finder and PvP category cards (Retail; H7-2-1, H7-3-1, H7-3-2)
+
+- Do: On Retail, open the group finder (I), click Dungeon Finder, Raid Finder and Premade Groups in turn while moving the mouse over each card, then open the PvP tab and do the same with its cards.
+- Expect: No blue shadow strips or bright vertical rule over the left column, no blue plate lights up on hover, and the open card has an accent-coloured edge (the others the normal edge), following each click on both pages.
+- If it fails, paste: a screenshot of the card column with the mouse over a card, and which card the game has open.
+
+### 33.204 Moved windows: Reset and a UI scale change (both clients; H7-7-1, H7-7-2)
+
+- Do: On either client, drag the character pane away and leave it open, change the UI scale in the game's settings, then press Esc, drag the game menu to one side, open Vanguard's options, Game windows, press Reset window positions and press Esc again.
+- Expect: The character pane stays where you dropped it through the scale change, and after Reset the game menu opens in the middle of the screen without a /reload.
+- If it fails, paste: /vg probe output and which window ended up where.
+
+### 33.205 Ready check shows no empty panel to its caller (both clients; H7-9-1)
+
+- Do: On either client, as party or raid leader start a ready check (/readycheck) and watch the middle of the screen, then have another member start one.
+- Expect: While your own check runs no empty dark panel or corner brackets sit mid-screen, and the dialog another member's check opens still has the flat Vanguard panel with its corners behind it.
+- If it fails, paste: a screenshot of the middle of the screen during your own ready check.
+
+### 33.206 Bottom tabs sit below the panel (Retail; H7-4-1, H7-9-2)
+
+- Do: On Retail with the tabs group and the Group finder, PvP and Adventure Guide switch on, open the Adventure Guide, close it and open it twice more; then open the spellbook and talents window (N) and a profession window.
+- Expect: In all three windows the row of bottom tabs starts just below the panel's bottom edge, with the panel border not running behind them, and the Adventure Guide's tabs stay there on every open.
+- If it fails, paste: a screenshot of the bottom edge of the window whose tabs sit under the panel.
+
+### 33.207 New mark in the greeting window (Forever)
+
+- Do: On WoW Forever, with Quest guidance's New mark on, talk to a quest giver that opens the old greeting window (no gossip) and offers or holds a quest that is new in WoW Forever.
+- Expect: That quest's line in Vanguard's quest dialog ends in the accent "New" mark, as gossip quest givers' lines do; other quests carry none.
+- If it fails, paste: `/vg questdata` with that quest giver open.
+
+### 33.208 Percent on weighted scenario progress (Retail)
+
+- Do: On Retail, enter a scenario or delve whose tracker shows a progress bar (not a Mythic+ key), and compare Vanguard's tracker line with the game's bar (switch Vanguard's tracker off to see it).
+- Expect: The line for the bar ends in a percentage ("Enemy forces 45%") that matches the game's bar; a stage the game draws as one bar shows its description with the percent instead of a criteria list.
+- If it fails, paste: the scenario's name, Vanguard's lines and what the game's own tracker shows.
+
+### 33.209 Tracked appearances, decor and Endeavor tasks in the tracker (Retail)
+
+- Do: On Retail, with Vanguard's quest tracker on, track an appearance you do not own from the Collections window (and a Housing decor piece if you have one) and an unfinished Endeavor task from the Housing Endeavors tab, then right-click each new tracker row.
+- Expect: The appearance (and decor) sit under a "Collections" heading after your quests, each with its source line as the game's own tracker words it; the task sits under an "Endeavors" heading after the Traveler's Log with one line per unfinished requirement ("3/9 Logs"); right-clicking a row stops tracking it and the row goes.
+- If it fails, paste: the item's or task's name and the lines the game's own tracker shows for it (switch Vanguard's tracker off to see it).
+
+### 33.210 Retail tracker sections in the game's order (Retail)
+
+- Do: On Retail, with Vanguard's quest tracker on, stand in an area with a bonus objective and a world quest that use a quest item, and track a quest, an achievement with no criteria list (a feat, say), a Traveler's Log activity and a profession recipe; then switch Vanguard's tracker off and on to compare with the game's own.
+- Expect: Vanguard's headings run in the game's order: Quests, Achievements (not "Legacy challenges"; the feat shows its description under its title), Traveler's Log, Recipes, Bonus objectives, World quests; the bonus objective and the world quest each have their item button beside them.
+- If it fails, paste: the headings of Vanguard's tracker from top to bottom and the names of the rows that looked wrong.
+
+### 33.211 Currency reward choice (Retail)
+
+- Do: On Retail, talk to a quest giver whose reward choices include a currency next to items, hover each reward card, then open the same quest in Vanguard's quest log and hover its cards.
+- Expect: Every card shows its name and icon (the currency with its amount) in both windows, and the currency's tooltip names the currency; picking it and completing hands in that choice.
+- If it fails, paste: `/vg probe` with the quest open.
+
+### 33.212 Quest log hides world quests and unfinished bounties (Retail)
+
+- Do: On Retail, stand in a world quest or bonus objective area (or hold a bounty quest you have not finished) and open Vanguard's quest log with L.
+- Expect: The world quest, the bonus objective and the unfinished bounty are not listed, no zone header sits empty, and the "{count} quests" title matches the count in the game's own log.
+- If it fails, paste: the quest log's count line and the zone headers listed.
+
+### 33.213 Send a group to the bank lands on the open tab (Retail and Forever)
+
+- Do: Make a group holding an item you carry (put one stack in the reagent bag too if you have one), open the bank, select the Warband tab, then choose Groups > Send <group> to the bank (or /vg bag deposit <group>). Repeat on a character bank tab. Also try an item that can still be refunded.
+- Expect: Stacks land in the tab that is open (Warband or character), the reagent-bag stack moves too, the chat count matches what moved, and a refundable item stays in your bags with the line "N refundable stack(s) stayed in your bags."
+- If it fails, paste: the chat lines the command printed and the name of the bank tab that was open
+
+### 33.214 Private aura spots by the target and on raid tiles, Raid debuffs and HoTs off (Retail)
+
+- Do: On Retail with the default layout, switch off Raid debuffs and HoTs (Raid frames on), /reload, then in a boss fight that puts a private aura on raiders, target an affected raider who has a target of their own so the target of target frame shows.
+- Expect: The aura's icon shows just right of the target frame, standing on top of the target of target frame without covering it, and it also shows in the middle of that raider's Vanguard raid tile.
+- If it fails, paste: a screenshot of the target frame row and of the raid tiles
+
+### 33.215 Bank buying tab shows selected (Retail)
+
+- Do: Open the bank and click the plus tab on the right side that buys a new bank tab.
+- Expect: The plus tab shows the same selected glow the bought tabs show when picked, while the purchase panel is open.
+- If it fails, paste: a screenshot of the bank's right-side tabs
+
+### 33.216 XP bar hides at the level cap, honor shows (Forever and Retail)
+
+- Do: On a max-level character with the XP data bar on, look at the XP bar (on Retail, with Show honor as experience ticked in the honor level's right-click menu).
+- Expect: On Forever no XP bar at the cap; on Retail the bar reads "Honor level N" with its progress instead of XP.
+- If it fails, paste: `/dump GameRulesUtil.IsPlayerAtEffectiveMaxLevel()`, `/dump UnitXPMax("player")` and a screenshot of the bar
+
+### 33.217 Ranged weapons compare with the hands (Retail)
+
+- Do: On a Retail hunter wearing a bow, gun or crossbow, hover a better and a clearly worse ranged weapon in your bags.
+- Expect: The tooltips say "Upgrade +N%" and "Downgrade -N%" against your worn weapon, never "Upgrade: fills an empty slot", and the bag arrow marks only the better one.
+- If it fails, paste: the tooltip text of both bag weapons and of the worn one
+
+### 33.218 Gear weights follow the specialization (Retail)
+
+- Do: On a Retail Holy paladin or Restoration druid outside a group, with Gear upgrades on, run `/vg weights` and hover an Intellect piece in the bags; then switch to a damage specialization (Retribution or Balance) and do the same.
+- Expect: As a healer `/vg weights` says "healer" and the Intellect piece is not marked a downgrade for its stats; after the switch, without a reload, it names the damage kind of that specialization's main stat (strength for Retribution, caster for Balance).
+- If it fails, paste: the output of `/vg weights` and the tooltip line
+
+### 33.219 Prep buff checks skip buffs nobody in the group can give (Retail)
+
+- Do: On Retail with Instance prep buff checks on (Town and gear), in a group with no warrior, shaman or evoker (and not one yourself), run `/vg prep`; then have a warrior join and run `/vg prep` again.
+- Expect: First no Battle Shout, Skyfury or Blessing of the Bronze row; after the warrior joins, a Battle Shout row appears while you lack the buff.
+- If it fails, paste: the card's rows and the output of `/vg prep buffs`
+
+### 33.220 No Forever-only ammo, shard, reagent or bandage figures (Retail)
+
+- Do: On a Retail hunter (then a warlock) with no bandages, the Info strip on with its ammo and shards blocks ticked and Instance prep on, look at the strip, then step into a dungeon and run `/vg prep`.
+- Expect: The strip shows no "ammo" figure on the hunter and no "shards" figure on the warlock, and the prep card has no reagent, ammo, soul shard or bandage row (it stays away unless food, potions, durability or a Keep-stocked item is short).
+- If it fails, paste: a screenshot of the Info strip and the output of `/vg prep`
+
+### 33.221 Renown bar is blue (Retail)
+
+- Do: With the Reputation data bar on, watch a major (renown) faction, then an ordinary faction.
+- Expect: The renown faction's bar is blue; the ordinary faction's bar takes its standing colour as before.
+- If it fails, paste: a screenshot of the bar for each faction
+
+### 33.222 Housing storage, collection and plot tooltip art (Retail)
+
+- Do: On Retail with the Game windows skin on, enter house edit mode and open the decor storage drawer; then open the housing dashboard's Collection tab; then open the house finder and hover a plot on the map.
+- Expect: The storage drawer has no wooden header band or top-right corbel over its dark panel, the Collection tab's category column is flat like the Catalog tab's (no wooden backdrop or corbels), and the plot tooltip is a flat dark panel with no grey arrow under it.
+- If it fails, paste: a screenshot of the part that still shows wood or the arrow, and `/vg errors`.
+
+### 33.223 Delve header rows in the tracker (Retail)
+
+- Do: On Retail with Quests on, enter a delve and look at the tracker under the delve's heading and stage line; lose a life or let a counter change.
+- Expect: Under the stage, one row per counter the game's delve header shows (such as lives), an "Affixes: ..." row and "Reward chest not earned" (or "earned"), and the counter row changes when the counter does.
+- If it fails, paste: a screenshot of the tracker and `/vg errors`.
+
+### 33.224 Crafting order minimum-quality icon (Retail)
+
+- Do: On Retail with the Game windows skin on, open the professions window, Crafting Orders tab, and open an order whose customer set a minimum quality above 1.
+- Expect: The minimum-quality pip shows beside the output name in the order details, on the flat inset.
+- If it fails, paste: a screenshot of the order details and `/vg errors`.
+
+### 33.225 Crafting orders recipe list (Retail)
+
+- Do: On Retail with the Game windows skin on, open the professions window's Crafting Orders tab, click a recipe in the left list, hover another, then search the list for nonsense.
+- Expect: The list sits on the flat theme inset with no bronze border, the clicked row is selected and the hovered row lit as on the Crafting tab's list, and the "no results" text is in the theme's light colour.
+- If it fails, paste: a screenshot of the list and `/vg errors`.
+
+### 33.226 Small mover handles while recording (both clients)
+
+- Do: On either client, in /vg > Situations record Raid (or type /vg situation record raid), then Unlock the frames.
+- Expect: The banner says "Editing as: Raid"; the vehicle exit and menu bar handles show only their name on one line, and wider handles such as the info strip show "Info strip · recording Raid".
+- If it fails, paste: a screenshot of the handles and `/vg situation list`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
