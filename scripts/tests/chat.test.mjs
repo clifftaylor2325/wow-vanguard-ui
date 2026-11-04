@@ -1198,7 +1198,7 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
   const on = loggedIn(PROMPT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { summons = true, resurrect = true, duels = true } } }" });
   fire(on);
-  expect(on.eval("return __answers"), "each answered, its prompt closed (all three resurrection prompts, whichever the game showed)").toEqual(["summon", "close CONFIRM_SUMMON", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "close RESURRECT_NO_TIMER", "decline", "close DUEL_REQUESTED"]);
+  expect(on.eval("return __answers"), "each answered, its prompt closed (all three resurrection prompts, whichever the game showed)").toEqual(["summon", "close CONFIRM_SUMMON", "close CONFIRM_SUMMON_SCENARIO", "close CONFIRM_SUMMON_STARTING_AREA", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "close RESURRECT_NO_TIMER", "decline", "close DUEL_REQUESTED"]);
   expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
 });
 
@@ -1253,6 +1253,27 @@ it("auto-accept: a summon from a fight is left when it ran out, you died or the 
   expect(summonAfter("__wfgWorld.secretReads.UnitIsDeadOrGhost = true"), "whether you are dead hidden").toBe(false);
   expect(summonAfter("ns.GetModule('AutoAccept').settings.summons = false"), "switched off").toBe(false);
   expect(summonAfter("C_SummonInfo.GetSummonConfirmTimeLeft = nil __wfgWorld.summon = nil"), "no time-left call, and no summoner any more").toBe(false);
+});
+it("auto-accept: a summon out of a starting area is left for the player, its prompt up", () => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale', skipStart = true }");
+  addon.eval("__wfgWorld.popups.CONFIRM_SUMMON_STARTING_AREA = {}");
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return __wfgWorld.summonAccepted == true"), "not accepted").toBe(false);
+  expect(addon.eval("return __wfgWorld.popups.CONFIRM_SUMMON_STARTING_AREA ~= nil"), "its prompt stays").toBe(true);
+});
+it("auto-accept: an accepted summon closes the scenario and starting-area prompts as well", () => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' }");
+  addon.eval("__wfgWorld.popups.CONFIRM_SUMMON_SCENARIO = {} __wfgWorld.popups.CONFIRM_SUMMON_STARTING_AREA = {}");
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return next(__wfgWorld.popups) == nil"), "all closed").toBe(true);
+});
+it("auto-accept: without the game's hide call each summon prompt is closed by name", () => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("HideSummonConfirmationDialogs = nil __wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' } __wfgWorld.popups.CONFIRM_SUMMON_SCENARIO = {}");
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return next(__wfgWorld.popups) == nil"), "closed by name").toBe(true);
 });
 // TEST-ONLY loot window: three slots, the second locked (being rolled for); every slot taken is recorded.
 const LOOT_ENV = `

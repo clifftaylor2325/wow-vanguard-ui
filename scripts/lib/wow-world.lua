@@ -807,7 +807,14 @@ C_SummonInfo = {
   GetSummonConfirmAreaName = function() return world.summon and world.summon.area end,
   GetSummonConfirmTimeLeft = function() return world.summon and (world.summon.timeLeft or 120) or 0 end,
   ConfirmSummon = function() world.summonAccepted = true end,
+  -- Whether the summon leaves a starting area (a test sets world.summon.skipStart), and why it was sent.
+  IsSummonSkippingStartExperience = function() return world.summon ~= nil and world.summon.skipStart == true end,
+  GetSummonReason = function() return world.summon and world.summon.reason or 0 end,
 }
+-- Hides the three summon prompts, as the game's does (GameDialogDefs.lua).
+function HideSummonConfirmationDialogs()
+  for _, name in ipairs({ "CONFIRM_SUMMON", "CONFIRM_SUMMON_SCENARIO", "CONFIRM_SUMMON_STARTING_AREA" }) do StaticPopup_Hide(name) end
+end
 -- Whether the player may take a summon now (the game's Accept waits on it); a test sets world.cannotTeleport.
 function PlayerCanTeleport() return world.cannotTeleport ~= true end
 -- Accepting a resurrection and cancelling a duel, recorded.
