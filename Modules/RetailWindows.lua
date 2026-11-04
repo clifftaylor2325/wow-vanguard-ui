@@ -172,6 +172,9 @@ function GW.SkinRetailPage(frame)
   GW.DressRetailParts(frame:GetName())
 end
 
+-- The premade group invite's role picture (tank, healer or damage, beside "Your role") is the dialog's content, kept
+-- as the window skin fades the dialog's own textures.
+GW.CONTENT_ART.LFGListInviteDialog = { "RoleIcon" }
 GW.Add("finder", { "PVEFrame", "LFGListApplicationDialog", "LFGListInviteDialog" }, GW.SkinRetailWindow)
 GW.AddOnDemand("finder", "Blizzard_PVPUI", { "PVPUIFrame" }, GW.SkinRetailPage)
 GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournal" }, GW.SkinRetailWindow)

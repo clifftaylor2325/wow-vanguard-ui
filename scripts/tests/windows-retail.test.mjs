@@ -53,11 +53,15 @@ it("windows-retail: the PvP tab is dressed when its part of the game loads, insi
   expect(state).toEqual({ card: true, wells: true, buttons: true, dropdown: true });
 });
 
-it("windows-retail: the premade groups' invite dialog takes the window skin and flat buttons", () => {
+it("windows-retail: the premade groups' invite dialog takes the window skin and flat buttons, and keeps its role picture", () => {
   const addon = retail(["LFGListInviteDialog"]);
   addon.eval("LFGListInviteDialog:Show()");
-  expect(windowState(addon, "LFGListInviteDialog")).toMatchObject({ art: 0, panel: true, title: true });
-  expect(addon.eval("return __button(LFGListInviteDialog.AcceptButton) and __button(LFGListInviteDialog.DeclineButton)")).toBe(true);
+  const state = addon.eval(`local f = LFGListInviteDialog
+    local panel = 0 for _, r in ipairs({ __panelHost(f):GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
+    return { role = f.RoleIcon:GetAlpha(), border = f.Border.__alpha, panel = panel > 0, errors = #ns.errors,
+      buttons = __button(f.AcceptButton) and __button(f.DeclineButton) and __button(f.AcknowledgeButton) }`);
+  expect(state, "the border faded, the role picture kept, a panel painted, the three buttons flat")
+    .toEqual({ role: 1, border: 0, panel: true, errors: 0, buttons: true });
 });
 
 it("windows-retail: the Adventure Guide is dressed when it loads; its tabs are theme tabs and its pages keep the game's parchment and pictures", () => {

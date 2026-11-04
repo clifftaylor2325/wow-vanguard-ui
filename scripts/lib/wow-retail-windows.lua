@@ -122,7 +122,9 @@ W.MODELS = {
     button = { "HonorFrame.QueueButton", "ConquestFrame.JoinButton" },
     dropdown = { "HonorFrame.TypeDropdown" },
   } },
-  LFGListInviteDialog = { window = true, parts = { button = { "LFGListInviteDialog.AcceptButton", "LFGListInviteDialog.DeclineButton" } } },
+  LFGListInviteDialog = { parts = {
+    button = { "LFGListInviteDialog.AcceptButton", "LFGListInviteDialog.DeclineButton", "LFGListInviteDialog.AcknowledgeButton" },
+  } },
   EncounterJournal = { window = true, parts = {
     well = { "EncounterJournal.inset", "EncounterJournal.navBar" },
     texture = { "EncounterJournal.instanceSelect.bg", "EncounterJournal.encounter.info.BG" },
@@ -182,8 +184,20 @@ local function journalTabs()
   end
 end
 
+-- The premade groups' invite dialog's own regions (LFGList.xml: a plain dialog, no ButtonFrameTemplate): the role
+-- picture on its ARTWORK layer (its content), its text lines, and its Border child (DialogBorderTemplate) with art.
+local function inviteDialog()
+  local f = LFGListInviteDialog
+  f.RoleIcon = f:CreateTexture(nil, "ARTWORK")
+  f.RoleIcon:SetTexture("TEST-ONLY-ART")
+  f.Label, f.GroupName, f.ActivityName, f.Role = text(f), text(f), text(f), text(f)
+  f.Border = CreateFrame("Frame", nil, f)
+  art(f.Border)
+  f:Hide()
+end
+
 -- What a window has beyond its parts, by name.
-local EXTRAS = { CharacterFrame = characterExtras, EncounterJournal = journalTabs }
+local EXTRAS = { CharacterFrame = characterExtras, EncounterJournal = journalTabs, LFGListInviteDialog = inviteDialog }
 
 -- Builds one window of W.MODELS: the window (when it is one), its parts and its extras.
 function W.build(name)
