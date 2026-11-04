@@ -81,8 +81,9 @@ it("windows-retail: the friends window's Who tab: its list on a well, its column
   addon.eval("FriendsFrame:Show()");
   const state = addon.eval(`local h = WhoFrameColumnHeader1
     return { well = __well(WhoFrameListInset), header = __faded(h) and __looks(h.Text, "small", "text2"),
-      buttons = __button(WhoFrameWhoButton) and __button(WhoFrameAddFriendButton), dropdown = __button(WhoFrameDropdown), search = __box(WhoFrameEditBox) }`);
-  expect(state).toEqual({ well: true, header: true, buttons: true, dropdown: true, search: true });
+      buttons = __button(WhoFrameWhoButton) and __button(WhoFrameAddFriendButton), dropdown = __button(WhoFrameDropdown), search = __box(WhoFrameEditBox),
+      totals = __looks(WhoFrameTotals, "small", "text2") }`);
+  expect(state).toEqual({ well: true, header: true, buttons: true, dropdown: true, search: true, totals: true });
 });
 
 it("windows-retail: the mainline character pane: its stats well, class picture, model backdrop and stat lines, as the game updates them", () => {

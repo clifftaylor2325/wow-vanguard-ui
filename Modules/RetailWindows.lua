@@ -26,6 +26,7 @@ table.insert(GW.GROUPS, "finder")
 -- The order a window's parts are dressed in: the art first, then the controls, then the texts.
 GW.RETAIL_STEPS = {
   "fade", "inset", "scene", "card", "header", "button", "plate", "dropdown", "search", "edit", "check", "money", "heading", "label",
+  "note",
 }
 
 -- Each Retail window's parts by step, as dotted paths from the globals (Blizzard's Mainline XML; a path the
@@ -90,6 +91,7 @@ GW.RETAIL_PARTS = {
     button = { "WhoFrameGroupInviteButton", "WhoFrameAddFriendButton", "WhoFrameWhoButton" },
     dropdown = { "WhoFrameDropdown" },
     search = { "WhoFrameEditBox" },
+    note = { "WhoFrameTotals" },
   },
   -- The mainline character pane's parts WoW Forever's pane lacks: the stats side's well and class picture, and the
   -- model's backdrop (its race picture, dark overlay and bronze inner border are regions of the model scene).
@@ -131,6 +133,12 @@ local function lightLabel(fs)
   GW.SkinText(fs, "label", "text")
 end
 
+-- A quiet line the game draws in its gold (the Who list's "N players total"), in the small role and the quiet text
+-- colour, as WoW Forever's Who list has it.
+local function quietNote(fs)
+  GW.SkinText(fs, "small", "text2")
+end
+
 -- A page's or a section's heading the game draws in its gold display font, in the heading role and the light text
 -- colour.
 local function lightHeading(fs)
@@ -142,6 +150,7 @@ local DRESSERS = {
   fade = GW.FadeFrame, inset = GW.InsetPanel, scene = dressScene, card = dressCard, header = dressHeader,
   button = GW.SkinButton, plate = GW.SkinPlate, dropdown = GW.SkinDropdown, search = GW.SkinSearch,
   edit = GW.SkinEditBox, check = GW.SkinCheck, money = GW.SkinMoney, heading = lightHeading, label = lightLabel,
+  note = quietNote,
 }
 
 -- Dresses the parts listed for one window, step by step, each part under ns.Try named for its path: a part the

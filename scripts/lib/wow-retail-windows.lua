@@ -196,8 +196,15 @@ local function inviteDialog()
   f:Hide()
 end
 
+-- The Who list's count line (FriendsFrame.xml: the font string WhoFrameTotals, parentKey on WhoFrameListInset).
+local function whoTotals()
+  WhoFrameListInset.WhoFrameTotals = text(WhoFrameListInset, "WhoFrameTotals")
+end
+
 -- What a window has beyond its parts, by name.
-local EXTRAS = { CharacterFrame = characterExtras, EncounterJournal = journalTabs, LFGListInviteDialog = inviteDialog }
+local EXTRAS = {
+  CharacterFrame = characterExtras, EncounterJournal = journalTabs, LFGListInviteDialog = inviteDialog, FriendsFrame = whoTotals,
+}
 
 -- Builds one window of W.MODELS: the window (when it is one), its parts and its extras.
 function W.build(name)
