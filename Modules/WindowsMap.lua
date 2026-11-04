@@ -961,8 +961,9 @@ end
 
 -- The Legacy system window (Forever's own: the Adventure, Professions and Progression trees, challenges
 -- and a reward track): the window skin, and its three pages with their cards, rows, bars and controls. The side
--- tabs and their indicators are another stream's. Decided (design 6.1, option c): this skins the window only;
--- Vanguard's tracker does not list Legacy challenges and the game's tracker is not brought back for them.
+-- tabs and their indicators are another stream's. Decided (design 6.1, option c): this skins the window only.
+-- Vanguard's own tracker lists the challenges you track (Modules/QuestTracker.lua), and the game's tracker stays
+-- hidden and is not brought back for them.
 function GW.SkinLegacy(frame)
   GW.Skin(frame)
   for _, key in ipairs(GW.LEGACY_PAGES) do skinLegacyPage(frame[key]) end
