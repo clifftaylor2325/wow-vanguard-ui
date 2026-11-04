@@ -2175,6 +2175,23 @@ it("R2.11 the ready check: the listener's tile and border faded, the portrait ke
   noTitle.eval("ReadyCheckFrame:Show()");
   expect([bare, noTitle].map((a) => a.eval("return #ns.errors")), "a holder without its listener, or a listener without title or border, is no error").toEqual([0, 0]);
 });
+it("H7-9-1 the ready check: its panel shows only with its dialog, so the player who called the check sees no empty panel", () => {
+  const addon = loggedIn(POPUP_ENV);
+  // Whether the holder's panel (its backdrop, with the window skin's paint) is up.
+  const shown = () => addon.eval(`local back = __panelHost(ReadyCheckFrame)
+    return { back ~= ReadyCheckFrame and back:IsShown(), ns.Theme.Padding(back), #ns.errors }`);
+  addon.eval("ReadyCheckListenerFrame:Hide() ReadyCheckFrame:Show()");
+  expect(shown(), "the holder shown without its dialog: the panel stays hidden").toEqual([false, 12, 0]);
+  addon.eval("ReadyCheckListenerFrame:Show()");
+  expect(shown(), "the dialog shows, and the panel with it").toEqual([true, 12, 0]);
+  addon.eval("ReadyCheckListenerFrame:Hide()");
+  expect(shown()[0], "the dialog hides, and the panel with it").toBe(false);
+  addon.eval("ReadyCheckListenerFrame:Show() ReadyCheckFrame:Hide()");
+  expect(shown()[0], "the check ends: the holder hides, and the panel with it").toBe(false);
+  const bare = loggedIn(`${WINDOWS_ENV} CreateFrame("Frame", "ReadyCheckFrame", UIParent):Hide()`);
+  bare.eval("ReadyCheckFrame:Show()");
+  expect(bare.eval("local back = __panelHost(ReadyCheckFrame) return { back:IsShown(), #ns.errors }"), "a holder without its listener keeps its panel hidden, with no error").toEqual([false, 0]);
+});
 it("R2.11 the ready check on retail: Yes and No are only the globals ReadyCheckFrameYesButton and ReadyCheckFrameNoButton, and are themed", () => {
   const addon = loggedIn(`${POPUP_ENV} local l = ReadyCheckListenerFrame ReadyCheckFrameYesButton, ReadyCheckFrameNoButton = l.YesButton, l.NoButton l.YesButton, l.NoButton = nil, nil`);
   addon.eval("ReadyCheckFrame:Show()");

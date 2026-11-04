@@ -131,6 +131,10 @@ GW.LAYOUT_WINDOWS = {
   StaticPopup1 = true, StaticPopup2 = true, StaticPopup3 = true, StaticPopup4 = true,
   EditModeManagerFrame = true, EditModeSystemSettingsDialog = true, ReportFrame = true,
 }
+-- The windows the game shows without what fills them, by name -> the global name of the child their panel shows with:
+-- the ready check's holder shows on its own, its dialog hidden, to the player who called the check. Their panel goes on
+-- Vanguard's backdrop too, which shows only while that child is shown.
+GW.PANEL_SHOWN_WITH = { ReadyCheckFrame = "ReadyCheckListenerFrame" }
 
 -- Backdrops ---------------------------------------------------------------------------------------
 
@@ -183,12 +187,30 @@ do
   end
 end
 
+-- Whether a window's panel goes on its backdrop: one the game sizes from its parts (GW.LAYOUT_WINDOWS) or shows without
+-- what fills it (GW.PANEL_SHOWN_WITH).
+local function onBackdrop(frame)
+  local name = frame:GetName() or ""
+  return GW.LAYOUT_WINDOWS[name] or GW.PANEL_SHOWN_WITH[name]
+end
+
+-- What a window's backdrop waits for (GW.Backdrop's `when`): the child it shows with being shown, for a window in
+-- GW.PANEL_SHOWN_WITH; nil, nothing, for any other.
+local function shownWith(frame)
+  local child = GW.PANEL_SHOWN_WITH[frame:GetName() or ""]
+  if not child then return nil end
+  return function()
+    local part = _G[child]
+    return type(part) == "table" and part:IsShown()
+  end
+end
+
 -- The frame a window's panel goes on: its backdrop (GW.Backdrop) for a window the game sizes from its parts
--- (GW.LAYOUT_WINDOWS), else the window itself.
+-- (GW.LAYOUT_WINDOWS) or shows without what fills it (GW.PANEL_SHOWN_WITH), else the window itself.
 ---@param frame table
 ---@return table
 function GW.PanelHost(frame)
-  return GW.LAYOUT_WINDOWS[frame:GetName() or ""] and GW.Backdrop(frame) or frame
+  return onBackdrop(frame) and GW.Backdrop(frame, shownWith(frame)) or frame
 end
 
 -- How far a window's panel reaches out past it (T.Padding of GW.PanelHost's frame), read without making the backdrop
@@ -196,7 +218,7 @@ end
 ---@param frame table
 ---@return number
 function GW.PanelPad(frame)
-  if GW.LAYOUT_WINDOWS[frame:GetName() or ""] then return T.Padding(GW.MadeBackdrop(frame)) end
+  if onBackdrop(frame) then return T.Padding(GW.MadeBackdrop(frame)) end
   return T.Padding(frame)
 end
 
@@ -1183,12 +1205,20 @@ local function popupInside(frame)
 end
 for _, name in ipairs(GW.POPUPS) do GW.INSIDES[name] = popupInside end
 
+-- Shows or hides the ready check's panel (its backdrop) with its dialog.
+local function fitReadyCheck()
+  GW.FitBackdrop(_G.ReadyCheckFrame)
+end
+
 -- The ready check's dialog is a child of its holder (ReadyCheckListenerFrame): its dark tile and border faded
 -- (the portrait of who called it stays), its title in the title role, its prompt in light text, its Yes and No buttons themed. The panel
--- the window skin painted on the holder sits behind it.
+-- the window skin painted on the holder's backdrop sits behind it and shows and hides with it (GW.PANEL_SHOWN_WITH):
+-- the game shows the holder without the dialog to the player who called the check.
 GW.INSIDES.ReadyCheckFrame = function()
   local listener = _G.ReadyCheckListenerFrame
   if type(listener) ~= "table" then return end
+  GW.HookScriptOnce(listener, "OnShow", "ready check shown", fitReadyCheck)
+  GW.HookScriptOnce(listener, "OnHide", "ready check hidden", fitReadyCheck)
   GW.FadeParts(listener, { "Bg", "NineSlice" })
   GW.FadeFrame(GW.Part(listener, "NineSlice"))
   GW.SkinTitle(type(listener.TitleContainer) == "table" and listener.TitleContainer.TitleText or nil)
