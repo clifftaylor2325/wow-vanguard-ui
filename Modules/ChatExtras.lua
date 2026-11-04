@@ -297,16 +297,18 @@ function CX.LinkMotd(text)
 end
 
 -- A line as Vanguard shows it: its channel tags short (switched on), and the guild message of the day linked.
-local function rewrite(text)
+-- A line as it is while the module is off.
+function CX.Rewrite(text)
+  if not CX.settings then return text end
   if CX.settings.shortChannels then text = CX.ShortChannels(text) end
   return CX.LinkMotd(text)
 end
 
--- The line a window just added, rewritten (rewrite): the game's own TransformMessages swaps it in
+-- The line a window just added, rewritten (CX.Rewrite): the game's own TransformMessages swaps it in
 -- (no addon code runs inside the game's chat handler). Hidden text is never read.
 local function rewriteAdded(frame, text)
   if not (CX.settings.shortChannels or CX.settings.links) or ns.IsSecret(text) or type(text) ~= "string" then return end
-  local shown = rewrite(text)
+  local shown = CX.Rewrite(text)
   if shown == text then return end
   frame:TransformMessages(function(message) return not ns.IsSecret(message) and message == text end, function(_, ...) return shown, ... end)
 end

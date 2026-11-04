@@ -263,6 +263,18 @@ it("chat find: saved history that no window shows is searched too, and only the 
   expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
 });
 
+it("chat find: a saved channel line that a window shows shortened is listed once, with Chat extras on or off", () => {
+  const saved = 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff||Hchannel:CHANNEL:2|h[2. Trade - City]|h Bob: wts sword" } } }';
+  // The Find result of "wts" in a loaded client.
+  const find = (addon) => addon.eval("return { ns.GetModule('ChatWindows').Find('wts') }");
+  const lines = '__lines1 = { "|Hchannel:CHANNEL:2|h[2]|h Bob: wts sword" } ChatFrame1.GetNumMessages = function() return 1 end ChatFrame1.GetMessageInfo = function(_, i) return __lines1[i] end';
+  const on = loggedIn(ENV + lines, { savedVariables: saved });
+  expect(find(on), "the shown short line stands for its long saved form").toEqual(['Chat: 1 lines with "wts"', `[2] Bob: ${lit(on, "wts")} sword`]);
+  const off = loggedIn(ENV + lines, { savedVariables: saved });
+  off.eval("ns.GetModule('ChatExtras').settings = nil");
+  expect(find(off)[0], "with the module off nothing is rewritten, so both lines are listed").toBe('Chat: 2 lines with "wts"');
+});
+
 it("chat find: the Chat page has the button and the switch; off, no button, and the switch shows and hides it at once; a window without line reads is fine", () => {
   const off = loggedIn(ENV, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { find = false } } }' });
   expect(off.eval("return ns.GetModule('ChatWindows').findButton == nil"), "switched off: no button").toBe(true);

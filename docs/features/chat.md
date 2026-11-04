@@ -32,7 +32,7 @@ Under `/vg` → Chat → Chat tabs, pick a tab from the Tab choice, then Rename 
 
 ## Chat search
 
-The Find tile (a magnifier) in the main chat window's tab bar (left of Copy; Find button in the chat's tab bar under `/vg` → Chat turns it off at once) and Find in chat on the Chat page (under Chat extras, beside the Copy switch) open the find box: type a word in the field at its top and press Enter or Find, and the matching lines are listed under it as plain text with each match in your accent colour, newest 200: the lines in your windows plus, when Chat history is on, saved lines that no window shows any more. Case does not matter; another word in the same box searches again, and the box keeps the last word and lines until the next search. Lines the game hides from addons are never read.
+The Find tile (a magnifier) in the main chat window's tab bar (left of Copy; Find button in the chat's tab bar under `/vg` → Chat turns it off at once) and Find in chat on the Chat page (under Chat extras, beside the Copy switch) open the find box: type a word in the field at its top and press Enter or Find, and the matching lines are listed under it as plain text with each match in your accent colour, newest 200: the lines in your windows plus, when Chat history is on, saved lines that no window shows any more (a channel line shown shortened counts once, not as its saved long form too). Case does not matter; another word in the same box searches again, and the box keeps the last word and lines until the next search. Lines the game hides from addons are never read.
 
 ## Chat bubbles
 
