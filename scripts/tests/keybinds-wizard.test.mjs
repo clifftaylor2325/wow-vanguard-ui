@@ -354,3 +354,14 @@ it("step 3: keys 1 to 6 name the stance page they are on, so no key is listed tw
   expect(rows.filter((r) => /^\[x\] 1:/.test(r)), "no unnamed key 1").toEqual([]);
   expect(rows, "a key off the bar 1 pages keeps its plain name").toContain("[x] F: Shield Bash added to your bar");
 });
+
+it("step 3: run again with nothing to change, Apply closes and keeps the Place new spells tick", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") __click("Apply")');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") local box = Vanguard_KeysWizard.steps.ready.placeNew if not box.get() then box.__scripts.OnClick(box) end');
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, chatHas(addon, /No key needs changing\.$/), chatHas(addon, /Nothing is ticked/), addon.eval("return ns.KeybindsLearn.IsOn()")]).toEqual([false, true, false, true]);
+});

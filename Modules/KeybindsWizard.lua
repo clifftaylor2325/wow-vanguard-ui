@@ -584,12 +584,21 @@ local function kept()
   return out, changes, declined
 end
 
+-- Whether the plan has any change to tick (a key that stays as it is has no tick box).
+local function hasChanges()
+  for _, row in ipairs(state.rows) do
+    if KA.WRITES[row.kind] then return true end
+  end
+  return false
+end
+
 -- Applies the kept changes in the scope picked; on success the window closes, placing new spells is told of the
--- preset and its tick box, and the listeners hear of it. With every change unticked it says so and stays.
+-- preset and its tick box, and the listeners hear of it. With every change unticked it says so and stays; with
+-- nothing to change it closes and keeps the tick box.
 local function apply()
   local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
   local entries, changes, declined = kept()
-  if changes == 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
+  if changes == 0 and hasChanges() then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
   if not KA.Apply(entries, set) then return end
   WZ.frame:Hide()
   ns.KeybindsLearn.Applied(state.preset, state.placeNew, declined)
