@@ -352,8 +352,10 @@ CB.WIDTHS = { 80, 600 }
 
 -- The interrupt mark ---------------------------------------------------------------------
 
--- Interrupts by class (vanilla ranks, plus the retail classes' own; Blizzard_CooldownBroadcaster/TrackedCooldowns.lua
--- InterruptSpellsBySpec has the retail ids, and Warlock's pet interrupt is left out): the families you may know (the one to use first first), each from its highest rank down.
+-- Interrupts by class: the families you may know (the one to use first first), each from its
+-- highest rank down. Vanilla ranks, plus the retail classes' own (ids from live
+-- Blizzard_CooldownBroadcaster/TrackedCooldowns.lua InterruptSpellsBySpec; Warlock's pet
+-- interrupt is left out).
 CB.INTERRUPTS = {
   -- Kick.
   ROGUE = { { 1769, 1768, 1767, 1766 } },
