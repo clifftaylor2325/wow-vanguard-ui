@@ -1297,7 +1297,12 @@ C_Container = {
     return { isQuestItem = item.quest == true, questID = item.questID, isActive = false }
   end,
   -- Uses (sells, at a merchant) an item; recorded.
-  UseContainerItem = function(bag, slot) world.usedItems = world.usedItems or {} table.insert(world.usedItems, { bag, slot }) end,
+  UseContainerItem = function(bag, slot, _, bankType)
+    world.usedItems = world.usedItems or {}
+    table.insert(world.usedItems, { bag, slot })
+    world.usedBankTypes = world.usedBankTypes or {}
+    world.usedBankTypes[#world.usedBankTypes + 1] = bankType or false
+  end,
   SortBags = function() world.sorted = true end,
 }
 

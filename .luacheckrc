@@ -131,6 +131,7 @@ read_globals = {
   -- A5 Auction helper, your auctions: an expired auction's item found in the bags, for Relist.
   -- A1 Auction helper, sell form: a bag slot's item location, for the next stack.
   "ItemLocation",
+  "BankUtil_IsAccountBankDepositRefundable",
   -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
   "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo",
   -- Info strip ammo: whether your ranged weapon needs ammo. Player auras and prep: temporary weapon enchants.
