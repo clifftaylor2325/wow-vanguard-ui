@@ -238,3 +238,19 @@ it("retail quests: the quest log lists a currency reward choice, with each type'
   addon.eval("local QP, r = ns.QuestParts, ns.GetModule('QuestLog').Details(91051).rewards QP.ItemTooltip({ item = r[2] }) QP.ItemTooltip({ item = r[3] })");
   expect(addon.eval("return { GameTooltip.__questLogCurrency, GameTooltip.__questLogItem }"), "the currency is the first of its type, the last item the second of its own").toEqual(["choice 1", "choice 2 91051"]);
 });
+
+// TEST-ONLY tracked achievements: one with no criteria, one earned by you, one with a criterion.
+const ACHIEVEMENTS = `
+  Enum.ContentTrackingType = { Achievement = 2 }
+  C_ContentTracking = { GetTrackedIDs = function(kind) return kind == 2 and { 8001, 8002, 8003 } or {} end }
+  local info = { [8001] = { "TEST-ONLY Feat", false, "TEST-ONLY Do the feat", false }, [8002] = { "TEST-ONLY Earned", true, "x", true }, [8003] = { "TEST-ONLY Meta", false, "y", false } }
+  GetAchievementInfo = function(id) local a = info[id] if a then return id, a[1], 10, a[2], 1, 1, 1, a[3], 0, "TEST-ONLY-ICON", "", false, a[4] end end
+  GetAchievementNumCriteria = function(id) return id == 8003 and 1 or 0 end
+  GetAchievementCriteriaInfo = function() return "TEST-ONLY Step", 0, false end
+`;
+
+it("retail quests: tracked achievements sit under an Achievements heading, a bare one shows its description, an earned one is gone", () => {
+  const addon = retail(ACHIEVEMENTS);
+  expect(blocks(addon), "the Retail heading, the description line, the criterion; the earned one left out").toEqual([
+    ["Achievements", []], ["TEST-ONLY Feat", ["TEST-ONLY Do the feat"]], ["TEST-ONLY Meta", ["TEST-ONLY Step"]]]);
+});

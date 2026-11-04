@@ -487,6 +487,12 @@ it("quest tracker: tracked Legacy challenges under their own heading", () => {
   expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "good")], "the heading in gold, a challenge's title in the text color").toEqual([true, true, true]);
   expect(tracker(addon).count, "the count still counts quests only").toBe("1");
 });
+it("quest tracker: a Legacy challenge with no criteria shows its description, and an earned one stays Complete", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST + `
+    GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed, 1, 1, 1, "TEST-ONLY Do it", 0, "", "", false, true end end
+    __achievements[7002].completed = false`);
+  expect(tracker(addon).blocks.slice(3), "Forever lists it with its description; the earned flag changes nothing").toEqual([["TEST-ONLY Legacy Done", ["TEST-ONLY Do it"]]]);
+});
 it("quest tracker: right-click stops tracking a challenge; the heading and left-click do nothing", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
   addon.eval("local b = Vanguard_QuestTrackerFrame.blocks b[2].__scripts.OnClick(b[2], 'RightButton') b[3].__scripts.OnClick(b[3], 'LeftButton')");

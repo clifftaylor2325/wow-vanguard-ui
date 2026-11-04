@@ -246,12 +246,26 @@ local function achievementCriteria(id)
   return out
 end
 
+-- The heading over tracked achievements: Forever's "Legacy challenges", Retail's "Achievements".
+QT.ACHIEVEMENT_HEADING = ns.ClientData({ forever = L["Legacy challenges"], retail = L["Achievements"] })
+
+-- Whether an achievement you have earned leaves the tracker: on Retail it does, as in the game's own; on Forever it
+-- stays and reads "Complete".
+QT.SKIP_EARNED = ns.ClientData({ forever = false, retail = true })
+
+-- A tracked achievement's lines: its criteria, or its description when it has none (as the game's tracker does).
+local function achievementObjectives(id, description)
+  local criteria = achievementCriteria(id)
+  if #criteria > 0 or type(description) ~= "string" then return criteria end
+  return { { text = ns.QuestParts.Plain(description), done = false } }
+end
+
 -- One tracked achievement (a Legacy challenge on Forever): { id, title, ready, objectives, achievement = true },
--- or nil when the client doesn't have it.
+-- or nil when the client doesn't have it (or, on Retail, you have earned it).
 function QT.Achievement(id)
-  local _, name, _, completed = ns.CallIf(_G, "GetAchievementInfo", id)
-  if type(name) ~= "string" then return nil end
-  return { id = id, title = name, ready = ns.IsTrue(completed), objectives = achievementCriteria(id), achievement = true }
+  local _, name, _, completed, _, _, _, description, _, _, _, _, earnedByMe = ns.CallIf(_G, "GetAchievementInfo", id)
+  if type(name) ~= "string" or (QT.SKIP_EARNED and ns.IsTrue(earnedByMe)) then return nil end
+  return { id = id, title = name, ready = ns.IsTrue(completed), objectives = achievementObjectives(id, description), achievement = true }
 end
 
 -- The achievements you track, in the game's order.
@@ -345,13 +359,13 @@ local function addQuests(rows, quests, taken)
 end
 
 -- The rows the tracker draws: the client's blocks above the quests, the watched quests, the blocks below them,
--- then the tracked Legacy challenges and the tracked recipes, each under its own heading.
+-- then the tracked achievements (Legacy challenges on Forever) and the tracked recipes, each under its own heading.
 function QT.Rows(quests)
   local rows, taken = {}, {}
   addBlocks(rows, QT.BLOCKS.above, quests, taken)
   addQuests(rows, quests, taken)
   addBlocks(rows, QT.BLOCKS.below, quests, taken)
-  addSection(rows, L["Legacy challenges"], QT.Achievements())
+  addSection(rows, QT.ACHIEVEMENT_HEADING, QT.Achievements())
   addSection(rows, L["Recipes"], QT.Recipes())
   return rows
 end
