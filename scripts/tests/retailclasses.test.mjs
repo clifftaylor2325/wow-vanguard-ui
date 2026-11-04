@@ -199,3 +199,58 @@ it("an empowered cast's end: let go is done, cut short is interrupted", () => {
   const start = begin("secret");
   expect(addon.eval(`return ns.GetModule("CastBars").bars.player.endMS - ${start}`), "a hidden hold leaves the end as the client gave it").toBe(2000);
 });
+
+// A Retail Demon Hunter or Evoker's alternate bar: its value, maximum, colour token and whether it shows.
+const altBar = (addon) => addon.eval(`local h = ns.GetModule("ClassBars").altFrame if not h then return nil end
+  local v = h.bar:GetValue()
+  local _, hi = h.bar:GetMinMaxValues()
+  return { v = issecretvalue(v) and "secret" or v, max = hi, token = ns.Theme.barColored[h.bar].token, shown = h:IsShown() }`);
+
+it("soul fragments: a Devourer's bar under the frame counts Dark Heart stacks against the game's cap", () => {
+  const addon = retail("DEMONHUNTER", 3, "__wfgWorld.maxApplications = { [1225789] = 35 }");
+  expect(altBar(addon), "no stacks yet").toEqual({ v: 0, max: 35, token: "soulFragments", shown: true });
+  const place = addon.eval('local h = ns.GetModule("ClassBars").altFrame local p, rel, rp = h:GetPoint(1) return { p, rel == Vanguard_player, rp }');
+  expect(place, "under the player frame").toEqual(["TOPLEFT", true, "BOTTOMLEFT"]);
+  addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Dark Heart', spellId = 1225789, applications = 12 })");
+  expect(altBar(addon).v, "on an aura change").toBe(12);
+  addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Meta', spellId = 1217607 }) __wfgWorld.addAura('player', { name = 'TEST-ONLY Whispers', spellId = 1227702, applications = 20 }) __wfgWorld.collapsingStarCost = 30");
+  addon.fire("UNIT_AURA", "player");
+  expect([altBar(addon).v, altBar(addon).max], "in Void Metamorphosis: Silence the Whispers against the Collapsing Star's cost").toEqual([20, 30]);
+  addon.eval("__wfgWorld.collapsingStarCost = __wfgWorld.secret(30) __wfgWorld.units.player.auras[1].applications = __wfgWorld.secret(7)");
+  addon.fire("UNIT_AURA", "player");
+  expect(altBar(addon).max, "a hidden maximum falls back to the usual one").toBe(30);
+  addon.eval("__wfgWorld.units.player.auras = { { spellId = 1225789, applications = __wfgWorld.secret(7) } }");
+  addon.fire("UNIT_AURA", "player");
+  expect(altBar(addon).v, "a hidden count goes to the bar as it is").toBe("secret");
+  addon.eval("__wfgWorld.units.player.auras = { __wfgWorld.secret({ spellId = 1225789 }) }");
+  addon.fire("UNIT_AURA", "player");
+  expect(altBar(addon).v, "a hidden aura reads empty").toBe(0);
+});
+
+it("Ebon Might: an Augmentation bar counts the seconds left against twenty, and stops when it ends", () => {
+  const addon = retail("EVOKER", 3, "__p.powers[19], __p.maxpowers[19] = 3, 5");
+  expect(altBar(addon), "no Ebon Might").toEqual({ v: 0, max: 20, token: "ebonMight", shown: true });
+  expect(fills(addon, "essence"), "Augmentation keeps its essence pips").toEqual([1, 1, 1, 0, 0]);
+  addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Ebon Might', spellId = 395296, duration = 10 })");
+  expect(altBar(addon).v, "ten seconds left").toBe(10);
+  addon.advance(4);
+  expect(altBar(addon).v, "four seconds on").toBe(6);
+  addon.advance(7);
+  expect(altBar(addon).v, "run out").toBe(0);
+  addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Ebon Might', spellId = 395296, expirationTime = __wfgWorld.secret(99) })");
+  expect(altBar(addon).v, "a hidden time reads empty").toBe(0);
+  addon.eval("__wfgWorld.units.player.auras = { __wfgWorld.secret({ spellId = 395296 }) }");
+  addon.fire("UNIT_AURA", "player");
+  expect(altBar(addon).v, "a hidden aura reads empty").toBe(0);
+});
+
+it("alternate bars follow the spec, and other specs and classes have none", () => {
+  const addon = retail("EVOKER", 3);
+  addon.eval("__wfgWorld.spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(altBar(addon).shown, "Devastation has no Ebon Might bar").toBe(false);
+  addon.fire("UNIT_AURA", "player");
+  expect(altBar(addon).shown, "and an aura change paints nothing").toBe(false);
+  expect(retail("DEMONHUNTER", 1).eval('return ns.GetModule("ClassBars").altFrame'), "a Havoc Demon Hunter builds none").toBe(null);
+  expect(retail("WARRIOR", 1).eval('return ns.GetModule("ClassBars").altFrame'), "nor a Warrior").toBe(null);
+});

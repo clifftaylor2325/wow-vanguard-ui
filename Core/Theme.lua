@@ -113,9 +113,9 @@ local TOKENS = {
   hostile = "cc4b45", neutral = "e0c24e", friendly = "4db86a",
   -- Resources
   mana = "3e7be0", rage = "cf4a3e", energy = "e6c24a", focus = "e0893c",
-  -- Class resources on Retail (Modules/RetailClassBars.lua), and a charged combo point (Modules/ComboPoints.lua).
+  -- Class resources on Retail (Modules/RetailClassBars.lua, with a Devourer's soul fragments and Ebon Might), and a charged combo point (Modules/ComboPoints.lua).
   runes = "c84a5a", holyPower = "f0d878", soulShards = "9b6ad8", chi = "6fe0c0", arcaneCharges = "6f8cf0",
-  essence = "4fb8c8", charged = "5ab4f0",
+  essence = "4fb8c8", charged = "5ab4f0", soulFragments = "6fd04a", ebonMight = "d9a441",
   -- Threat: yellow, orange, red
   threat1 = "e0c24e", threat2 = "ee8b3a", threat3 = "e0565b",
   -- Dispel types, and the highlight when the type is hidden
