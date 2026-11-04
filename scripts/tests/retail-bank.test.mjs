@@ -57,6 +57,7 @@ it("retail bank: the Bank and Warband tabs, the side tabs and the warband's rows
   expect(addon.eval("local t = BankFrame.TabSystem.tabs return { t[1].Left.__alpha, t[2].Middle.__alpha }"), "the type tabs' game art is faded").toEqual([0, 0]);
   expect(addon.eval("local t = __sideTabs[1] return { t.Border.__alpha, t.Icon.__alpha == nil, t.SelectedTexture.__alpha == nil }"),
     "a side tab: its frame faded, its icon and selected glow kept").toEqual([0, true, true]);
+  expect(addon.eval("return BankPanel.PurchaseTab.SelectedTexture.__alpha == nil"), "the buying tab's selected glow is kept too").toBe(true);
   const parts = ["BankPanel.PurchaseTab", "BankPanel.MoneyFrame.WithdrawButton", "BankPanel.MoneyFrame.DepositButton", "BankPanel.MoneyFrame.Border",
     "BankPanel.MoneyFrame.MoneyDisplay", "BankPanel.AutoDepositFrame.DepositButton", "BankPanel.AutoDepositFrame.IncludeReagentsCheckbox"];
   expect(parts.map((p) => dressed(addon, p)), "the buying tab, both rows' buttons, the money box and the check box").toEqual(parts.map(() => true));
