@@ -207,16 +207,24 @@ function AH.StopJudging()
   AH.judge:Hide()
 end
 
+-- An item search row's buyout per unit, or nil when it is yours (or the client hides whether), has no buyout
+-- or hides a number.
+local function gearUnit(r)
+  if type(r) ~= "table" or ns.IsSecret(r.containsOwnerItem) or r.containsOwnerItem then return nil end
+  local buyout, qty = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity)
+  if buyout and qty and qty > 0 and buyout > 0 then return math.floor(buyout / qty) end
+end
+
 -- An item search's results (ITEM_SEARCH_RESULTS_UPDATED and ADDED, with the item key): for armor
--- or a weapon, each link is seen at its cheapest listing with a buyout, per unit.
+-- or a weapon, each link is seen at its cheapest listing with a buyout, per unit (your own listings left out).
 function AH.OnGearResults(_, key)
   local id = type(key) == "table" and ns.PlainNumber(key.itemID)
   if not id or not isGear(id) then return end
   local seen = {}
   for i = 1, ns.PlainNumber(C_AuctionHouse.GetNumItemSearchResults(key)) or 0 do
     local r = C_AuctionHouse.GetItemSearchResultInfo(key, i)
-    local buyout, qty = r and ns.PlainNumber(r.buyoutAmount), r and ns.PlainNumber(r.quantity)
-    if buyout and qty and qty > 0 and buyout > 0 then cheapest(seen, r.itemLink, math.floor(buyout / qty)) end
+    local unit = gearUnit(r)
+    if unit then cheapest(seen, r.itemLink, unit) end
   end
   for link, price in pairs(seen) do AH.SeeGear(link, price) end
 end
