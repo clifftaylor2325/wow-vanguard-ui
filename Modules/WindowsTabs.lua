@@ -217,6 +217,12 @@ local function dressTab(button, window, side)
   fadeSideArt(button)
 end
 
+-- A side tab a window takes from a pool (LargeSideTabButtonTemplate: WoW Forever's bank page tabs,
+-- Modules/ForeverBank.lua), dressed as the window's own side tabs are.
+function GW.DressSideTab(tab, window)
+  dressTab(tab, window, true)
+end
+
 -- One guild bank side tab (a frame with a bronze plate and a .Button, the check button that holds the icon): out
 -- past the window's padding, the plate faded, the button a tab in the theme with its icon and the search dimmer kept.
 local function dressBankTab(tab, window)

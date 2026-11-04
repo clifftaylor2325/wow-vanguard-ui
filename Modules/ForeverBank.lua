@@ -1,10 +1,10 @@
 -- The bank window's WoW Forever parts (WoW Forever only: the TOC keeps this file off Retail), added to the bank's
 -- skin (Modules/Bags.lua, BG.BANK_PARTS) with the Bags module's bank switch. Forever's bank (Camelot
 -- BankFrame.lua/.xml) makes these itself, and Vanguard dresses them to sit with the flat bank panel:
---   * the page tabs down its right side, as icon tiles (the game makes them again whenever the pages change,
---     RefreshPageTabs);
+--   * the page tabs down its right side, as the game windows' side tabs are (under the tabs switch; the game makes
+--     them again whenever the pages change, RefreshPageTabs);
 --   * the row of bank bag slots at its foot, as item slots (RefreshBagButtons);
---   * the Costs line, the money beside it and the Purchase button, while a bag slot is left to buy.
+--   * the Bag Slots and Costs lines, the money beside them and the Purchase button, while a bag slot is left to buy.
 -- The slots and the search words are the bank's on both clients (Modules/Bags.lua).
 
 local ADDON, ns = ...
@@ -17,9 +17,6 @@ local vgDressed = ns.FrameState("vgForeverBank")
 local FB = {}
 ns.ForeverBank = FB
 
--- The parts of a page tab whose art stays: its selected glow and the search overlay that dims a tab with no match.
-FB.TAB_KEEP = { "SelectedTexture", "SearchOverlay" }
-
 -- Dresses a part of the game's once (the game reuses its pooled frames, and never undoes the look).
 local function once(part, dress, ...)
   if type(part) ~= "table" or vgDressed[part] then return end
@@ -27,15 +24,25 @@ local function once(part, dress, ...)
   dress(part, ...)
 end
 
--- Dresses each active frame of one of the bank's pools, once.
-local function dressPool(pool, dress, ...)
+-- Runs dress(part, ...) on each active frame of one of the bank's pools.
+local function eachActive(pool, dress, ...)
   if type(pool) ~= "table" or type(pool.EnumerateActive) ~= "function" then return end
-  for part in pool:EnumerateActive() do once(part, dress, ...) end
+  for part in pool:EnumerateActive() do dress(part, ...) end
 end
 
--- The bank's page tabs as the game made them last.
+-- Dresses each active frame of one of the bank's pools, once.
+local function dressPool(pool, dress, ...)
+  eachActive(pool, once, dress, ...)
+end
+
+-- The bank's page tabs as the game made them last: side tabs in the theme, and out past the panel's padding again
+-- (the game anchors them afresh each time, the first one on the window's right edge). Left to the game when the
+-- tabs group is off.
 function FB.DressPageTabs(bank)
-  dressPool(bank.bankPageTabPool, ns.GetModule("Windows").DressIcon, FB.TAB_KEEP)
+  local GW = ns.GetModule("Windows")
+  if not GW.GroupOn("tabs") then return end
+  dressPool(bank.bankPageTabPool, GW.DressSideTab, bank)
+  eachActive(bank.bankPageTabPool, GW.PadTabAgain, bank)
 end
 
 -- The bank's bag slots as the game made them last.
@@ -43,9 +50,10 @@ function FB.DressBagSlots(bank)
   dressPool(bank.itemButtonBagPool, BG.SkinItem)
 end
 
--- The Costs line, its money and the Purchase button.
+-- The Bag Slots and Costs lines, the money and the Purchase button.
 function FB.DressPurchase(bank, panel)
   local GW = ns.GetModule("Windows")
+  once(bank.BagText, GW.SkinText, "label", "text")
   once(bank.BagCost, GW.SkinText, "label", "text")
   once(panel.MoneyDisplay, GW.SkinMoney)
   once(panel.PurchaseButton, GW.SkinButton)
