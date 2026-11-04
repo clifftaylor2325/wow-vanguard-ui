@@ -143,9 +143,9 @@ it("copying a profile over another keeps the craft queue and cooldowns of the ch
   expect(addon.eval("return VanguardDB.profiles.Default.CraftQueue.chars"), "a destination with none: the source's characters do not come").toBeNull();
 });
 it("a profile reset keeps the record of your own game settings and each character's craft queue", () => {
-  const saved = `VanguardDB.profiles = { Default = { theme = { accent = { 1, 1, 1 } }, Bags = { applied = "1", prior = "0" }, Quiet = { camera = 2.6, cameraPrior = 1.9 }, Graphics = { undo = { graphicsQuality = 7 } }, CraftQueue = { on = true, chars = { ["Alt-Realm"] = { queue = {}, cooldowns = {} } } } } }`;
+  const saved = `VanguardDB.profiles = { Default = { theme = { accent = { 1, 1, 1 } }, Bags = { applied = "1", prior = "0" }, Quiet = { camera = 2.6 }, Graphics = { undo = { graphicsQuality = 7 } }, CraftQueue = { on = true, chars = { ["Alt-Realm"] = { queue = {}, cooldowns = {} } } } } }`;
   const addon = loggedIn("", { savedVariables: saved });
-  addon.eval("ns.ResetProfile()");
+  addon.eval("ns.Settings('Quiet').cameraPrior = 1.9 ns.ResetProfile()");
   const kept = addon.eval("local p = VanguardDB.profiles.Default return { p.Bags.prior, p.Quiet.cameraPrior, p.Graphics.undo.graphicsQuality, p.CraftQueue.chars['Alt-Realm'] ~= nil, p.CraftQueue.on == nil, p.theme == nil or p.theme.accent == nil }");
   expect(kept, "the records stay, the settings go").toEqual(["0", 1.9, 7, true, true, true]);
 });

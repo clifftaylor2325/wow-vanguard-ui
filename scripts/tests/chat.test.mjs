@@ -1385,18 +1385,40 @@ it("quiet the game: the error line and the zone names, each off until switched o
 it("quiet the game: picking the game's setting for the camera zoom puts back the player's own, out of combat", () => {
   // TEST-ONLY the player's own furthest zoom before Vanguard changes it.
   const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.9')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
-  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').cameraPrior }"), "the camera set, the player's value kept").toEqual(["2.6", "1.9"]);
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), VanguardDB.client.cameraPrior }"), "the camera set, the player's value kept").toEqual(["2.6", "1.9"]);
   addon.eval("ns.Settings('Quiet').camera = 2 ns.GetModule('Quiet').ApplyCamera()");
-  expect(addon.eval("return ns.Settings('Quiet').cameraPrior"), "a second choice keeps the value from before the first").toBe("1.9");
+  expect(addon.eval("return VanguardDB.client.cameraPrior"), "a second choice keeps the value from before the first").toBe("1.9");
   setCombat(addon, true);
   addon.eval("ns.Settings('Quiet').camera = 0 ns.GetModule('Quiet').ApplyCamera()");
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "not in combat").toBe("2");
   setCombat(addon, false);
-  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').cameraPrior == nil }"), "the game's setting: the player's own value back").toEqual(["1.9", true]);
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), VanguardDB.client.cameraPrior == nil }"), "the game's setting: the player's own value back").toEqual(["1.9", true]);
   addon.eval("SetCVar('cameraDistanceMaxZoomFactor', '1.5') ns.GetModule('Quiet').ApplyCamera()");
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "and after that the game's setting is left alone").toBe("1.5");
   addon.eval("ns.Settings('Quiet').camera = 2.6 ns.GetModule('Quiet').ApplyCamera()");
   expect(addon.eval("local _, data = ns.Serialize.Decode(ns.ExportProfile()) return { data.Quiet.camera, data.Quiet.cameraPrior == nil }"), "a profile string has the choice, not this computer's camera").toEqual([2.6, true]);
+});
+it("quiet the game: a profile with the game's setting puts back the zoom another profile changed", () => {
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.9')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "the first profile's choice is on").toBe("2.6");
+  addon.eval("ns.GetModule('Quiet').Enable({ camera = 0 })");
+  expect([addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), addon.eval("return VanguardDB.client.cameraPrior == nil")], "the next profile loads: the player's value is back, forgotten").toEqual(["1.9", true]);
+});
+it("quiet the game: a zoom value an older version kept in the profile moves to the account", () => {
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '2.6')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 0, cameraPrior = '1.9' } } }" });
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').cameraPrior == nil, VanguardDB.client.cameraPrior == nil }"), "adopted at load, then put back").toEqual(["1.9", true, true]);
+  const kept = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.client = { cameraPrior = '1.5' } VanguardDB.profiles = { Default = { Quiet = { camera = 2, cameraPrior = '1.9' } } }" });
+  expect(kept.eval("return { VanguardDB.client.cameraPrior, ns.Settings('Quiet').cameraPrior == nil }"), "the account's value stands over an older profile's").toEqual(["1.5", true]);
+});
+it("quiet the game: turning Quiet off puts back the player's zoom, out of combat", () => {
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.9')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
+  setCombat(addon, true);
+  addon.eval("ns.SetModuleEnabled('Quiet', false)");
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "not in combat").toBe("2.6");
+  setCombat(addon, false);
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "after the fight").toBe("1.9");
+  addon.eval("SetCVar, C_CVar = nil, nil ns.GetModule('Quiet').Disable()");
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe("1.9");
 });
 it("quiet the game: hiding the red error line keeps yellow info lines, whichever way the red line came", () => {
   const addon = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
