@@ -63,9 +63,15 @@ it("retail data: a healer's starter click layout and a raid buff come from Retai
   expect(priest.eval("return ns.ClickCastSpells.HasLayout()"), "and has a layout").toBe(true);
 });
 
+// A TEST-ONLY raid with a priest, a druid, a mage, a shaman and an evoker beside the warrior, so every Retail raid buff has
+// a giver.
+const SEATED_GIVERS = `local classes = { "PRIEST", "DRUID", "MAGE", "SHAMAN", "EVOKER" }
+  for i, class in ipairs(classes) do __wfgWorld.units["raid" .. i] = { name = "TEST-ONLY Member " .. i, class = class, player = true } end`;
+
 it("retail data: the prep card checks Retail's six raid buffs, makes no flask row and has no world buffs", () => {
   const addon = retail("__wfgWorld.units.player.class = 'WARRIOR'");
   addon.eval("ns.GetModule('InstancePrep').settings.buffs = true ns.GetModule('InstancePrep').settings.worldBuffs = true");
+  addon.eval(SEATED_GIVERS);
   // The labels of the aura rows now.
   const labels = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out");
   expect(labels(), "food and the six raid buffs; no flask or world buff row").toEqual(["Food buff", "Fortitude", "Mark of the Wild", "Arcane Intellect", "Battle Shout", "Skyfury", "Blessing of the Bronze"]);
@@ -191,4 +197,16 @@ it("retail data: the renown bar is the theme's blue, where a plain faction keeps
   addon.eval("__wfgWorld.majorFactions = {}");
   addon.fire("UPDATE_FACTION");
   expect(isTok(addon, addon.eval("return Vanguard_repbar.__barColor"), "repFriendly"), "a plain faction at reaction 5").toBe(true);
+});
+
+it("retail data: a prep raid buff row needs someone in the group of the class that gives it", () => {
+  const addon = retail("__wfgWorld.units.player.class = 'WARRIOR'");
+  addon.eval("ns.GetModule('InstancePrep').settings.buffs = true");
+  // The raid buff rows now (an empty Lua table comes back as an object).
+  const labels = () => [].concat(addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out"));
+  expect(labels(), "alone: the food and the warrior's own Battle Shout").toEqual(["Food buff", "Battle Shout"]);
+  addon.eval("__wfgWorld.units.party1 = { name = 'TEST-ONLY Priest', class = 'PRIEST', player = true } __wfgWorld.units.party2 = { name = 'TEST-ONLY Hidden', class = { __secret = true }, player = true }");
+  expect(labels(), "a priest brings Fortitude; a class the client hides brings nothing").toEqual(["Food buff", "Fortitude", "Battle Shout"]);
+  addon.eval("__wfgWorld.units.party1 = nil __wfgWorld.units.party2 = nil __wfgWorld.units.raid1 = { name = 'TEST-ONLY Evoker', class = 'EVOKER', player = true }");
+  expect(labels(), "in a raid the raid units count: an evoker brings the Bronze blessing").toEqual(["Food buff", "Battle Shout", "Blessing of the Bronze"]);
 });
