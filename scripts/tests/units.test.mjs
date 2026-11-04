@@ -837,3 +837,21 @@ it("separate party frames hide in a raid: one visibility driver, no unit watch",
 it("separate party frames hide in a raid with the raid frames module off too", () => {
   expect(partyWatch(NO_RAID.savedVariables)).toEqual(PARTY_DRIVERS);
 });
+
+// TEST-ONLY: the game's PetFrame with the UpdateShownState Edit Mode runs on exit: it moves the frame to UIParent and shows it.
+const PET_SHOWN_ENV = `
+function PetFrame:UpdateShownState() self:SetParent(UIParent) self:Show() end`;
+it("Edit Mode closing does not bring the game's pet frame back: it is parked again", () => {
+  const addon = loggedIn(UNITS_ENV + PET_SHOWN_ENV, NO_RAID);
+  expect(addon.eval("return PetFrame:IsShown()"), "parked at login").toBe(false);
+  addon.eval("PetFrame:UpdateShownState()");
+  expect(addon.eval("return { PetFrame:IsShown(), PetFrame:GetParent() ~= UIParent }"), "the game's re-show is undone").toEqual([false, true]);
+  addon.eval("ns.GetModule('UnitFrames').HideBlizzard('PetFrame') PetFrame:UpdateShownState()");
+  expect(addon.eval("return PetFrame:IsShown()"), "hooking a frame twice still parks it").toBe(false);
+});
+it("a parked game frame without UpdateShownState, or on a client without hooksecurefunc, is left alone", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  expect(addon.eval("return PetFrame.UpdateShownState"), "no method, no hook").toBe(null);
+  const plain = loggedIn(UNITS_ENV + PET_SHOWN_ENV + "\nhooksecurefunc = nil", NO_RAID);
+  expect(plain.eval("return PetFrame:IsShown()"), "still hidden at login").toBe(false);
+});

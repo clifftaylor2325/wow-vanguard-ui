@@ -616,6 +616,28 @@ end
 
 local hiddenParent
 
+-- Hides a game frame and puts it under the hidden frame (protected frames: out of combat only).
+local function park(f)
+  f:Hide()
+  f:SetParent(hiddenParent)
+end
+
+-- Parks a frame the game showed again, unless it is still parked.
+local function repark(f)
+  if not f:IsShown() and f:GetParent() == hiddenParent then return end
+  ns.OutOfCombat(function() park(f) end, f)
+end
+
+-- Parks again a frame the game shows by itself: Edit Mode closing runs UpdateShownState on the
+-- managed frames (PetFrame, DurabilityFrame) with their events gone. Hooked once per frame.
+local function keepParked(f)
+  if type(f.UpdateShownState) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  UF.parked = UF.parked or {}
+  if UF.parked[f] then return end
+  UF.parked[f] = true
+  hooksecurefunc(f, "UpdateShownState", ns.Guard("hook UpdateShownState", function() repark(f) end))
+end
+
 -- Hides one of the game's frames for good: no events, parented to a hidden frame.
 local function hideBlizzard(name)
   local f = _G[name]
@@ -625,9 +647,9 @@ local function hideBlizzard(name)
   hiddenParent = hiddenParent or CreateFrame("Frame")
   hiddenParent:Hide()
   f:UnregisterAllEvents()
-  f:Hide()
-  f:SetParent(hiddenParent)
+  park(f)
   ns.EditModeReplaced(f)
+  keepParked(f)
 end
 -- Shared with modules that replace other game frames (PlayerAuras).
 UF.HideBlizzard = hideBlizzard
