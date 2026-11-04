@@ -766,6 +766,53 @@ it("chat bar tiles follow the shown docked window: Copy and Find ride its bar wh
   expect(tiles("ChatFrame1"), "General shown again: they are back on its bar").toEqual([true, true, true, true, true, -28, true]);
   expect(addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, nil) FCFDock_SelectWindow(GENERAL_CHAT_DOCK, {}) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
 });
+// TEST-ONLY a third docked tab as the game lays it out (FloatingChatFrame.lua FCFDock_UpdateTabs and
+// FloatingChatFrame.xml): General and the Combat Log fixed on the dock, "Loot / Trade" scrolling in the
+// scroll frame, which the game hangs from the last fixed tab's middle and a unit under the dock's
+// bottom but keeps 31 high, and gives one set width (90 here, its label cut to 60).
+const LOOT_TAB_ENV = `
+  local loot = FCF_OpenNewWindow("TEST-ONLY Loot / Trade")
+  ChatFrame3Tab.Text:SetText("TEST-ONLY Loot / Trade")
+  ChatFrame2.isStaticDocked, loot.isDocked = true, 1
+  GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES = { ChatFrame1, ChatFrame2, loot }
+  GENERAL_CHAT_DOCK.scrollFrame:SetHeight(31)
+  GENERAL_CHAT_DOCK.scrollFrame:GetScrollChild():SetWidth(1)
+  GENERAL_CHAT_DOCK.overflowButton = CreateFrame("Button", nil, GENERAL_CHAT_DOCK)
+  GENERAL_CHAT_DOCK.overflowButton:Hide()
+  function FCFDock_UpdateTabs(dock)
+    __dockUpdates = __dockUpdates + 1
+    local child, fixed, last = dock.scrollFrame:GetScrollChild()
+    for _, frame in ipairs(dock.DOCKED_CHAT_FRAMES) do
+      local tab = _G[frame:GetName() .. "Tab"]
+      tab:ClearAllPoints() FCFTab_UpdateColors(tab, frame == SELECTED_CHAT_FRAME)
+      if frame.isStaticDocked then
+        tab:SetParent(dock) tab:SetWidth(70)
+        if fixed then tab:SetPoint("LEFT", fixed, "RIGHT", 1, 0) else tab:SetPoint("BOTTOMLEFT", dock, "BOTTOMLEFT", 0, 0) end
+        fixed = tab
+      else
+        tab:SetParent(child) tab.Text:SetWidth(60) tab:SetWidth(90)
+        if last then tab:SetPoint("LEFT", last, "RIGHT", 1, 0) else tab:SetPoint("LEFT", child, "LEFT", 0, -1) end
+        last = tab
+      end
+    end
+    dock.scrollFrame:SetPoint("LEFT", fixed, "RIGHT")
+    dock.scrollFrame:SetPoint("BOTTOMRIGHT", dock, "BOTTOMRIGHT", 0, -1)
+  end
+`;
+it("chat dock: a third docked tab (Loot / Trade) sits level with General and the Combat Log in the bar and is as wide as its label, where the scrolling tabs all fit and there is no overflow menu", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + LOOT_TAB_ENV);
+  addon.update(0);
+  // The Loot tab's bottom and top against General's, its width against its label's room, its label's set width.
+  const loot = () => addon.eval("local t, g = ChatFrame3Tab, ChatFrame1Tab return { t:GetBottom() - g:GetBottom(), t:GetTop() - g:GetTop(), t:GetWidth() - t.Text:GetUnboundedStringWidth(), t.Text:GetWidth() == 0 or t.Text:GetWidth() >= t.Text:GetUnboundedStringWidth(), #ns.errors }");
+  expect(loot(), "level with General (the scroll frame a tab and a unit each side high), as wide as its label and two columns of air, the label uncut").toEqual([0, 0, 24, true, 0]);
+  expect(addon.eval("return GENERAL_CHAT_DOCK.scrollFrame:GetHeight()"), "the scroll frame a tab and a unit each side high").toBe(22);
+  addon.eval("GENERAL_CHAT_DOCK.overflowButton:Show() FCFDock_UpdateTabs(GENERAL_CHAT_DOCK)");
+  expect(addon.eval("return ChatFrame3Tab:GetWidth()"), "with the overflow menu shown the game's width stays (its scrolling counts in it)").toBe(90);
+  addon.eval("GENERAL_CHAT_DOCK.overflowButton:Hide() GENERAL_CHAT_DOCK:SetWidth(200) GENERAL_CHAT_DOCK:ClearAllPoints() GENERAL_CHAT_DOCK:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', 0, 0) GENERAL_CHAT_DOCK:SetHeight(20) FCFDock_UpdateTabs(GENERAL_CHAT_DOCK)");
+  expect(addon.eval("return ChatFrame3Tab:GetWidth()"), "too little room for the labels: the game's width stays").toBe(90);
+  addon.eval("GENERAL_CHAT_DOCK:SetWidth(600) ChatFrame3Tab.Text.GetUnboundedStringWidth = function() return { __secret = true } end FCFDock_UpdateTabs(GENERAL_CHAT_DOCK)");
+  expect(addon.eval("return { ChatFrame3Tab:GetWidth(), ChatFrame3Tab.Text:GetWidth(), #ns.errors }"), "a label the client hides (a whisper's name in lockdown) keeps the game's fixed width and label cut").toEqual([90, 60, 0]);
+});
 it("chat dock: the overflow arrow is a window control at the dock's right end and its list is a themed box with the theme's label font on its rows", () => {
   const overflow = `GENERAL_CHAT_DOCK.overflowButton = CreateFrame("Button", nil, GENERAL_CHAT_DOCK)
     GENERAL_CHAT_DOCK.overflowButton:SetSize(16, 16)
