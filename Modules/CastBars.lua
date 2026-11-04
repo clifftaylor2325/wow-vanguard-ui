@@ -38,7 +38,7 @@ local CB = ns.Module("CastBars", {
 local LAYOUT = {
   -- Yours: centered just above the action bars, between the player and target frames (CB.PlayerPoint
   -- moves it up with the bars' stack; this is its spot over the default three bars).
-  player = { label = L["Player cast bar"], w = 220, h = 18, point = { "BOTTOM", "BOTTOM", 0, 146 } },
+  player = { label = L["Player cast bar"], w = 220, h = 18, point = { "BOTTOM", "BOTTOM", 0, 146, underFrames = true } },
   -- The target's sits over its buff row (Modules/FrameAuras.lua), the focus's over the focus frame.
   target = { label = L["Target cast bar"], w = 240, h = 16, point = { "BOTTOM", "BOTTOM", 240, 262 } },
   focus = { label = L["Focus cast bar"], w = 160, h = 14, point = { "BOTTOM", "BOTTOM", -270, 324 } },
@@ -384,11 +384,12 @@ end
 CB.ABOVE_BARS = 4
 
 -- Your cast bar's default point: CB.ABOVE_BARS over the top of Vanguard's bottom action bar stack, which
--- grows with more bars or rows, so the bars never cover it; its layout point while those bars are off.
+-- grows with more bars or rows, so the bars never cover it; its layout point while those bars are off. It is
+-- part of the block under your frames (Core/Layout.lua, HudLift).
 function CB.PlayerPoint()
   local p, AB = LAYOUT.player.point, ns.GetModule("ActionBars")
   if not ns.ModuleEnabled("ActionBars") then return p end
-  return { p[1], p[2], p[3], AB.StackTop(ns.Settings("ActionBars", AB.defaults)) + CB.ABOVE_BARS }
+  return { p[1], p[2], p[3], AB.StackTop(ns.Settings("ActionBars", AB.defaults)) + CB.ABOVE_BARS, underFrames = true }
 end
 
 -- Moves your cast bar's default point with the action bars' stack (a position you dragged it to still wins).

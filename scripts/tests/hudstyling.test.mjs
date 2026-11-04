@@ -4,7 +4,7 @@
 import { expect, it } from "vitest";
 import fs from "node:fs";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { NO_RAID, SETUP_DONE, UNITS_ENV, loggedIn } from "./helpers.mjs";
+import { NO_RAID, RISE, SETUP_DONE, UNITS_ENV, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY pet mood: a content cat.
 const HAPPY_ENV = "GetPetHappiness = function() return 2, 0, 0 end\n";
@@ -21,7 +21,7 @@ it("P4-3: the swing timer rides above the cast bar when the action bar stack gro
   const edges = (addon) => addon.eval(`local y = function(k) local _, _, _, v = ns.MoverPoint(k) return v end
     return { y("swing"), y("cast_player") + ns.GetModule("CastBars").LAYOUT.player.h, y("bar1") + Vanguard_Bar1:GetHeight() }`);
   const flat = edges(loggedIn(SWING, { savedVariables: profile(SWING_ALWAYS) }));
-  expect(flat[0], "over the default three bars the swing rows sit where they always did").toBeCloseTo(170, 0);
+  expect(flat[0], "over the default three bars the swing rows sit where they always did, risen with the block").toBeCloseTo(170 + RISE.under, 0);
   const six = edges(loggedIn(SWING, { savedVariables: profile(`${SWING_ALWAYS}, ActionBars = { bars = { [6] = { enabled = true } } }`) }));
   expect(six[0] - six[1], "with a 4th stacked bar the swing rows are still 11 over the cast bar").toBe(11);
   expect(six[0], "and above bar 1's top").toBeGreaterThan(six[2]);
@@ -35,7 +35,7 @@ it("P4-3: the swing timer follows a stack that grows after login, and stays at i
   live.eval('local AB = ns.GetModule("ActionBars") AB.settings.bars[3].perRow = 6 AB.SettingChanged(3, "perRow")');
   expect(swingY() - before, "a second row on bar 3 lifts the swing rows by that row's height").toBeGreaterThan(30);
   const off = loggedIn(SWING, { savedVariables: profile(`${SWING_ALWAYS}, modules = { ActionBars = false }`) });
-  expect(off.eval('local _, _, _, y = ns.MoverPoint("swing") return y'), "with the action bars off it sits at its fixed spot").toBe(170);
+  expect(off.eval('local _, _, _, y = ns.MoverPoint("swing") return y'), "with the action bars off it sits at its fixed spot, risen with the block").toBe(170 + RISE.under);
 });
 
 // A rect (left, right, top, bottom) of a frame, font string or texture by ref.

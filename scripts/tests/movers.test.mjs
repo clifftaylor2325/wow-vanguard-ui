@@ -1,7 +1,7 @@
 // movers: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { TOOLS_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 it("movers", () => {
   const addon = loggedIn(`
@@ -95,12 +95,12 @@ it("mover coordinates with no handle", () => {
   expect(addon.eval('return ns.ShowCoords({ label = "TEST-ONLY" })') === null, "a mover that has no handle yet shows nothing").toBeTruthy();
 });
 
-// TEST-ONLY movable box: 200 x 40, anchored at its bottom center 100 up from the screen's;
-// its module fades it with SetAlpha, as a mouseover bar does.
+// TEST-ONLY movable box: 200 x 40, anchored at its bottom center 100 up from the screen's, kept to the edge
+// (it doesn't rise with the block around your character); its module fades it with SetAlpha, as a mouseover bar does.
 const BOX = `
   __box = CreateFrame("Frame", "TESTONLY_Box", UIParent)
   __box:SetSize(200, 40)
-  ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100 })
+  ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100, edge = true })
 `;
 
 // The box on screen: its scale, alpha, rect (screen pixels: center x, bottom, width) and saved entry.
@@ -188,7 +188,7 @@ it("a damaged saved position (a hand-edited profile string) falls back to the de
   expect(addon.eval("return { ns.GetModule('UnitFrames').enabled, #ns.errors }"), "the unit frames still load, with nothing to report").toEqual([true, 0]);
   expect(addon.eval("return { ns.MoverPoint('uf_player') }"), "a point that isn't one leaves the default").toEqual(clean);
   expect(addon.eval("return { ns.MoverLook('uf_target') }"), "a scale out of range is kept to it, an opacity that isn't a number is 1").toEqual([0.5, 1]);
-  addon.eval('ns.Profile().positions.box = { point = "TOPLEFT", relPoint = "TEST-ONLY", x = "12", y = {} } ns.SetMoverDefault("box", { "BOTTOM", "BOTTOM", 0, 100 })');
+  addon.eval('ns.Profile().positions.box = { point = "TOPLEFT", relPoint = "TEST-ONLY", x = "12", y = {} } ns.SetMoverDefault("box", { "BOTTOM", "BOTTOM", 0, 100, edge = true })');
   expect(addon.eval("return { ns.MoverPoint('box') }"), "a good point keeps; a bad relative point is the point; offsets that aren't numbers read as numbers or 0").toEqual(["TOPLEFT", "TOPLEFT", 12, 0]);
 });
 
@@ -423,21 +423,41 @@ const spotsAt = (addon, w, h) => addon.eval(`__wfgStub.setScreen(${w}, ${h}) loc
   for _, m in ipairs(ns.MoverList()) do out[m.key] = { ns.MoverPoint(m.key) } end
   return out`);
 
-it("at 1365 x 768 and wider every default spot is where it always was: only narrower or shorter canvases adapt", () => {
-  const addon = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
-  // On a canvas far bigger than any screen nothing is narrow or off the edge: each default as given.
-  const given = spotsAt(addon, 8000, 4000);
+it("at 1365 x 768 and wider every default spot is where it always was, the block around your character risen: only narrower or shorter canvases adapt", () => {
+  const addon = loggedIn(TOOLS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { PartyExtras = { show = true } } } }" });
+  // On a canvas far wider than any screen and 768 tall nothing is narrow, off the edge or risen: each default as given.
+  const given = spotsAt(addon, 8000, 768);
   expect(given.uf_targettarget, "the target of target's default as given").toEqual(["BOTTOM", "BOTTOM", 426, 196]);
   for (const [w, h] of [[1365, 768], [1366, 768], [1600, 900], [1920, 1080], [2743, 1543], [4914, 2057]]) {
-    expect(spotsAt(addon, w, h), `${w} x ${h}`).toEqual(given);
+    const spots = spotsAt(addon, w, h);
+    const [rise, room] = addon.eval(`local LY = ns.Layout return { LY.HudRise(${h}), LY.HudRoom(${h}) and LY.HUD.row or 0 }`);
+    // How far each spot moved up from its default as given; the rest of each spot is as given.
+    const lifts = Object.fromEntries(Object.entries(spots).map(([k, p]) => [k, Math.round((p[3] - given[k][3]) * 1000) / 1000]));
+    for (const [k, p] of Object.entries(spots)) {
+      expect(p.slice(0, 3), `${w} x ${h}: ${k}'s point and x as given`).toEqual(given[k].slice(0, 3));
+      expect([0, rise, rise - room], `${w} x ${h}: ${k} rises with the block or not at all`).toContain(lifts[k]);
+    }
+    expect([lifts.xpbar, lifts.chat, lifts.minimap, lifts.uf_player, lifts.uf_targettarget, lifts.raid, lifts.bar1, lifts.cast_player, lifts.cdm_essential, lifts.cdm_utility], `${w} x ${h}: the edges stay; your frames rise; the bars, cast bar and main cooldown row a row less once there is room`)
+      .toEqual([0, 0, 0, rise, rise, rise, rise - room, rise - room, rise - room, rise]);
   }
+});
+it("the block around your character: no rise up to 768 tall, a third of the extra height above, room for the cooldown row's line from 984", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  // The rise and whether there is room for the cooldown row's line on a canvas h tall.
+  const at = (h) => addon.eval(`local LY = ns.Layout return { LY.HudRise(${h}), LY.HudRoom(${h}) }`);
+  expect([at(668), at(768), at(960), at(984), at(1080), at(1440)], "1440 tall (1440p pixel-perfect) rises 224").toEqual([[0, false], [0, false], [64, false], [72, true], [104, true], [224, true]]);
+  expect(addon.eval("return ns.Layout.HudRise(nil)"), "a canvas that can't say rises nothing").toBe(0);
+  // The main cooldown row's spot width after the screen became 1920 x h and the spots refitted.
+  const width = (h) => addon.eval(`__wfgStub.setScreen(1920, ${h}) ns.GetModule("GameTools").FitRoomy() return Vanguard_EssentialCooldownViewerSpot:GetWidth()`);
+  expect([width(960), width(1080), width(1080), width(768)], "the main cooldown row's spot is the gap's width without room and 560 with it, changed only when the room does").toEqual([236, 560, 560, 236]);
 });
 
 it("narrow canvases: the target of target sits over the target's cast bar, on screen and clear of the target and the tooltip", () => {
   for (const [w, h] of [[1280, 800], [1229, 768], [1024, 768], [835, 668]]) {
     const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h})`);
     const [tot, target, cast, tip] = ["Vanguard_targettarget", "Vanguard_target", "Vanguard_CastBar_target", "Vanguard_TooltipAnchor"].map((n) => addon.frame(n).rect);
-    expect(addon.eval("return { ns.MoverPoint('uf_targettarget') }"), `${w} x ${h}: over the target's inner end`).toEqual(["BOTTOM", "BOTTOM", 180, 280]);
+    const rise = addon.eval(`return ns.Layout.HudRise(${h})`);
+    expect(addon.eval("return { ns.MoverPoint('uf_targettarget') }"), `${w} x ${h}: over the target's inner end, risen with the block (10 on 800 tall)`).toEqual(["BOTTOM", "BOTTOM", 180, 280 + rise]);
     expect(tot.left >= 0 && tot.left + tot.width <= w, `${w} x ${h}: on screen`).toBe(true);
     expect(tot.bottom >= target.bottom + target.height && tot.bottom >= cast.bottom + cast.height, `${w} x ${h}: above the target and its cast bar`).toBe(true);
     expect(tot.left + tot.width <= tip.left || tot.bottom >= tip.bottom + tip.height, `${w} x ${h}: clear of the tooltip's corner`).toBe(true);

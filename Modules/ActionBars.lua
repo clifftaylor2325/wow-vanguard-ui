@@ -601,7 +601,8 @@ local function rightPoint(n, settings)
 end
 
 -- Default point for stacked bar n: every enabled stacked bar with a higher
--- number sits below it, so bar 1 is always the top row.
+-- number sits below it, so bar 1 is always the top row. The stack is part of the
+-- block under your frames (Core/Layout.lua, HudLift).
 function AB.StackPoint(n, settings)
   local y = STACK_BASE
   for k = #BARS, n + 1, -1 do
@@ -610,7 +611,7 @@ function AB.StackPoint(n, settings)
       y = y + barHeight(settings, barSettings, k) + BAR_GAP
     end
   end
-  return { "BOTTOM", "BOTTOM", 0, y }
+  return { "BOTTOM", "BOTTOM", 0, y, underFrames = true }
 end
 
 -- Where the bottom stack ends: the top edge of its highest bar (bar 1 while it is on), in units

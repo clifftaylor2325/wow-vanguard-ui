@@ -142,9 +142,10 @@ end
 SB.EXIT_OFFSET = 21
 SB.EXIT_MIN_X = 260
 
--- The exit's default point for a bar 1 of this half width: today's spot, or clear of bar 1's right end.
+-- The exit's default point for a bar 1 of this half width: today's spot, or clear of bar 1's right end; it rises
+-- with the bars, under your frames (Core/Layout.lua, HudLift).
 function SB.ExitPoint(halfWidth)
-  return { "BOTTOM", "BOTTOM", math.max(SB.EXIT_MIN_X, halfWidth + SB.EXIT_OFFSET), 114 }
+  return { "BOTTOM", "BOTTOM", math.max(SB.EXIT_MIN_X, halfWidth + SB.EXIT_OFFSET), 114, underFrames = true }
 end
 
 -- Moves the exit's default spot to bar 1's current width (ActionBars calls it as the bars restack), only when
