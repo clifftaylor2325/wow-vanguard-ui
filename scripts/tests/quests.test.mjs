@@ -892,6 +892,26 @@ it("quest log: a zone the game folded in its own list is opened as you zone in a
   addon.eval("__expanded = 0 ExpandQuestHeader = nil __log[4].isCollapsed = true");
   expect(addon.eval("local QL = ns.GetModule('QuestLog') return QL.Count()"), "a client without ExpandQuestHeader reads what the log lists").toBe(2);
 });
+// TEST-ONLY log with the entries only Retail has (on top of QLOG_ENV): a task (world quest), a bounty not done, a
+// bounty done, a zone holding only a task and a campaign header with nothing under it.
+const TASK_ENV = `
+  __log = { { isHeader = true, title = "Vale" }, { questID = 90051, title = "Wolves" }, { questID = 90052, title = "World", isTask = true },
+    { isHeader = true, title = "Hills" }, { questID = 90053, title = "Bounty", isBounty = true },
+    { isHeader = true, title = "Coast" }, { questID = 90054, title = "Done bounty", isBounty = true },
+    { isHeader = true, title = "Bonus" }, { questID = 90055, title = "Bonus", isTask = true },
+    { isHeader = true, title = "Story", campaignID = 7 } }
+  C_QuestLog.GetInfo = function(i) return __log[i] end
+  __quests[90054] = { title = "Done bounty", level = 5, objectives = {} }
+  __quests[90055] = { title = "Bonus", level = 5, objectives = {} }
+  C_QuestLog.IsComplete = function(id) return id == 90054 end
+`;
+it("quest log: leaves out the quests the game's own list hides (tasks, unfinished bounties) and a zone left empty", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + TASK_ENV);
+  const QL = "local QL = ns.GetModule('QuestLog') ";
+  const names = addon.eval(QL + "local out = {} for i, e in ipairs(QL.Entries()) do out[i] = e.title end return out");
+  expect(Object.values(names), "only real quests, their zones and the campaign header").toEqual(["Vale", "Wolves", "Coast", "Done bounty", "Story"]);
+  expect(addon.eval(QL + "return QL.Count()"), "the count agrees").toBe(2);
+});
 // TEST-ONLY game quest panel of the windowed world map, there before the addon's files load (Lua for loggedIn's client).
 const MAP_PANEL_CLIENT = `QuestMapFrame = CreateFrame("Frame", "QuestMapFrame", UIParent)`;
 it("quest log: zones the game's map panel folded are opened again when the panel closes", () => {

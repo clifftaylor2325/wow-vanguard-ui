@@ -1383,7 +1383,7 @@ C_QuestLog = {
   -- The log entry as the client's QuestInfo (no completion field: IsComplete answers that).
   GetInfo = function(i)
     local q = questAt(i)
-    return q and { questID = q.questID, title = q.title, level = q.level or 1, isHeader = q.isHeader == true, isOnMap = true, hasLocalPOI = true, questLogIndex = i, isCollapsed = false, isHidden = false, isTask = false }
+    return q and { questID = q.questID, title = q.title, level = q.level or 1, isHeader = q.isHeader == true, isOnMap = true, hasLocalPOI = true, questLogIndex = i, isCollapsed = false, isHidden = false, isTask = q.isTask == true, isBounty = q.isBounty == true }
   end,
   GetLogIndexForQuestID = function(id) return (questIndex(id)) end,
   GetQuestObjectives = function(id) local _, q = questIndex(id) return q and q.objectives or {} end,

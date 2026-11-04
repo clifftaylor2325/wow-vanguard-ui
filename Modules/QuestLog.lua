@@ -23,21 +23,45 @@ end
 
 -- The list ----------------------------------------------------------------------------------------
 
--- One log entry: a zone header { header, title }, or a quest { id, title, level, ready }; nil for hidden ones.
+-- Whether the game's own log lists a quest: not a world quest or bonus objective (a task), and a bounty only once done.
+local function listed(info, id)
+  return not ns.IsTrue(info.isTask) and (not ns.IsTrue(info.isBounty) or ns.IsTrue(questLog("IsComplete", id)))
+end
+
+-- One log entry: a zone header { header, title, campaign }, or a quest { id, title, level, ready }; nil for hidden
+-- ones and those the game's log leaves out.
 local function entry(info)
   if type(info) ~= "table" or ns.IsTrue(info.isHidden) then return nil end
-  if ns.IsTrue(info.isHeader) then return { header = true, title = info.title } end
+  if ns.IsTrue(info.isHeader) then return { header = true, title = info.title, campaign = ns.PlainNumber(info.campaignID) ~= nil } end
   local id = ns.PlainNumber(info.questID)
-  return id and { id = id, title = info.title, level = info.level, ready = ns.GetModule("QuestTracker").IsReady(id) }
+  if not (id and listed(info, id)) then return nil end
+  return { id = id, title = info.title, level = info.level, ready = ns.GetModule("QuestTracker").IsReady(id) }
+end
+
+-- Drops the last entry when it is a zone header with no quest under it (a campaign header stays, as in the game).
+local function trimEmptyHeader(out)
+  local last = out[#out]
+  if last and last.header and not last.campaign then out[#out] = nil end
+end
+
+-- Every entry in log order, a zone header only when a quest is listed under it.
+local function logEntries()
+  local out = {}
+  for i = 1, ns.PlainNumber(questLog("GetNumQuestLogEntries")) or 0 do
+    local e = entry(questLog("GetInfo", i))
+    if e and e.header then trimEmptyHeader(out) end
+    if e then out[#out + 1] = e end
+  end
+  trimEmptyHeader(out)
+  return out
 end
 
 -- Your quests under their zone headers (a collapsed zone keeps its header, without its quests).
 function QL.Entries()
   local out, zone = {}, nil
-  for i = 1, ns.PlainNumber(questLog("GetNumQuestLogEntries")) or 0 do
-    local e = entry(questLog("GetInfo", i))
-    if e and e.header then zone = e.title end
-    if e and (e.header or not QL.collapsed[zone]) then out[#out + 1] = e end
+  for _, e in ipairs(logEntries()) do
+    if e.header then zone = e.title end
+    if e.header or not QL.collapsed[zone] then out[#out + 1] = e end
   end
   return out
 end
@@ -45,9 +69,8 @@ end
 -- Every quest in your log in log order, those under a folded zone too (headers aside).
 local function allQuests()
   local out = {}
-  for i = 1, ns.PlainNumber(questLog("GetNumQuestLogEntries")) or 0 do
-    local e = entry(questLog("GetInfo", i))
-    if e and not e.header then out[#out + 1] = e end
+  for _, e in ipairs(logEntries()) do
+    if not e.header then out[#out + 1] = e end
   end
   return out
 end
