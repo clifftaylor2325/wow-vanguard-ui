@@ -23,31 +23,61 @@ RP.WORDS = { off = 0, party = 5, ["5"] = 5, ["10"] = 10, ["25"] = 25, ["40"] = 4
 
 -- Every sample player's maximum health.
 local MAX_HEALTH = 4000
--- A class's power as { color token, how full }; everyone else has mana, mostly full.
-local POWER = { WARRIOR = { "rage", 0.3 }, ROGUE = { "energy", 1 }, other = { "mana", 0.8 } }
+-- A class's power as { color token, how full }; everyone else has mana, mostly full. Retail's death knights and demon
+-- hunters add the client's power token, so theirs fill in the client's colour for it (PowerBarColor) as their real
+-- tiles do, the theme's token where the client has none.
+local POWER = ns.ClientData({
+  forever = { WARRIOR = { "rage", 0.3 }, ROGUE = { "energy", 1 }, other = { "mana", 0.8 } },
+  retail = {
+    WARRIOR = { "rage", 0.3 }, ROGUE = { "energy", 1 }, MONK = { "energy", 1 }, DEATHKNIGHT = { "mana", 0.4, "RUNIC_POWER" },
+    DEMONHUNTER = { "mana", 0.5, "FURY" }, other = { "mana", 0.8 },
+  },
+})
 -- Where each role goes when sorted by role (the header's groupingOrder).
 local ROLE_ORDER = { TANK = 1, HEALER = 2, DAMAGER = 3 }
 
 -- The sample roster, five to a group: { name, class, role, share of health, "Dead" / "Offline" }.
 -- The first group is the party preview, so it has the dead and the offline player.
-RP.ROSTER = {
-  { "Aldren", "WARRIOR", "TANK", 0.64 }, { "Brielle", "PRIEST", "HEALER", 0.92 }, { "Corwyn", "ROGUE", "DAMAGER", 1 },
-  { "Dagny", "MAGE", "DAMAGER", 0, L["Dead"] }, { "Elowen", "HUNTER", "DAMAGER", 1, L["Offline"] },
-  { "Fennick", "WARRIOR", "TANK", 0.81 }, { "Galora", "DRUID", "HEALER", 1 }, { "Hesketh", "WARLOCK", "DAMAGER", 0.55 },
-  { "Isolde", "MAGE", "DAMAGER", 1 }, { "Jorund", "SHAMAN", "HEALER", 0.88 },
-  { "Kestra", "PALADIN", "HEALER", 0.97 }, { "Lorcan", "ROGUE", "DAMAGER", 0.73 }, { "Maelis", "PRIEST", "HEALER", 1 },
-  { "Norrin", "HUNTER", "DAMAGER", 0.42 }, { "Orla", "WARLOCK", "DAMAGER", 1 },
-  { "Perrin", "WARRIOR", "TANK", 0.69 }, { "Quillan", "DRUID", "DAMAGER", 1 }, { "Rowena", "MAGE", "DAMAGER", 0.86 },
-  { "Sorcha", "PRIEST", "HEALER", 1 }, { "Tamsin", "ROGUE", "DAMAGER", 0.94 },
-  { "Ulric", "PALADIN", "HEALER", 0.78 }, { "Vesna", "HUNTER", "DAMAGER", 1 }, { "Wystan", "WARLOCK", "DAMAGER", 0.61 },
-  { "Xanthe", "MAGE", "DAMAGER", 1 }, { "Yorick", "SHAMAN", "DAMAGER", 0.9 },
-  { "Zelda", "WARRIOR", "TANK", 0.83 }, { "Ansel", "DRUID", "HEALER", 1 }, { "Bryony", "ROGUE", "DAMAGER", 0.5 },
-  { "Caspian", "PRIEST", "HEALER", 0.95 }, { "Delphine", "HUNTER", "DAMAGER", 1 },
-  { "Emrys", "MAGE", "DAMAGER", 0.77 }, { "Freya", "PALADIN", "DAMAGER", 1 }, { "Gideon", "WARLOCK", "DAMAGER", 0.88 },
-  { "Haldis", "SHAMAN", "HEALER", 1 }, { "Ivo", "ROGUE", "DAMAGER", 0.66 },
-  { "Jessamy", "WARRIOR", "DAMAGER", 1 }, { "Kenric", "HUNTER", "DAMAGER", 0.93 }, { "Liesel", "MAGE", "DAMAGER", 1 },
-  { "Merrick", "WARLOCK", "DAMAGER", 0.71 }, { "Nessa", "DRUID", "DAMAGER", 1 },
-}
+RP.ROSTER = ns.ClientData({
+  forever = {
+    { "Aldren", "WARRIOR", "TANK", 0.64 }, { "Brielle", "PRIEST", "HEALER", 0.92 }, { "Corwyn", "ROGUE", "DAMAGER", 1 },
+    { "Dagny", "MAGE", "DAMAGER", 0, L["Dead"] }, { "Elowen", "HUNTER", "DAMAGER", 1, L["Offline"] },
+    { "Fennick", "WARRIOR", "TANK", 0.81 }, { "Galora", "DRUID", "HEALER", 1 }, { "Hesketh", "WARLOCK", "DAMAGER", 0.55 },
+    { "Isolde", "MAGE", "DAMAGER", 1 }, { "Jorund", "SHAMAN", "HEALER", 0.88 },
+    { "Kestra", "PALADIN", "HEALER", 0.97 }, { "Lorcan", "ROGUE", "DAMAGER", 0.73 }, { "Maelis", "PRIEST", "HEALER", 1 },
+    { "Norrin", "HUNTER", "DAMAGER", 0.42 }, { "Orla", "WARLOCK", "DAMAGER", 1 },
+    { "Perrin", "WARRIOR", "TANK", 0.69 }, { "Quillan", "DRUID", "DAMAGER", 1 }, { "Rowena", "MAGE", "DAMAGER", 0.86 },
+    { "Sorcha", "PRIEST", "HEALER", 1 }, { "Tamsin", "ROGUE", "DAMAGER", 0.94 },
+    { "Ulric", "PALADIN", "HEALER", 0.78 }, { "Vesna", "HUNTER", "DAMAGER", 1 }, { "Wystan", "WARLOCK", "DAMAGER", 0.61 },
+    { "Xanthe", "MAGE", "DAMAGER", 1 }, { "Yorick", "SHAMAN", "DAMAGER", 0.9 },
+    { "Zelda", "WARRIOR", "TANK", 0.83 }, { "Ansel", "DRUID", "HEALER", 1 }, { "Bryony", "ROGUE", "DAMAGER", 0.5 },
+    { "Caspian", "PRIEST", "HEALER", 0.95 }, { "Delphine", "HUNTER", "DAMAGER", 1 },
+    { "Emrys", "MAGE", "DAMAGER", 0.77 }, { "Freya", "PALADIN", "DAMAGER", 1 }, { "Gideon", "WARLOCK", "DAMAGER", 0.88 },
+    { "Haldis", "SHAMAN", "HEALER", 1 }, { "Ivo", "ROGUE", "DAMAGER", 0.66 },
+    { "Jessamy", "WARRIOR", "DAMAGER", 1 }, { "Kenric", "HUNTER", "DAMAGER", 0.93 }, { "Liesel", "MAGE", "DAMAGER", 1 },
+    { "Merrick", "WARLOCK", "DAMAGER", 0.71 }, { "Nessa", "DRUID", "DAMAGER", 1 },
+  },
+  -- Retail's: the same forty seats, five to a group, with its four later classes (death knight, monk, demon hunter,
+  -- evoker) in some of them, so a raid of 10 shows ten classes and a raid of 25 or 40 all thirteen.
+  retail = {
+    { "Aldren", "WARRIOR", "TANK", 0.64 }, { "Brielle", "PRIEST", "HEALER", 0.92 }, { "Corwyn", "ROGUE", "DAMAGER", 1 },
+    { "Dagny", "MAGE", "DAMAGER", 0, L["Dead"] }, { "Elowen", "HUNTER", "DAMAGER", 1, L["Offline"] },
+    { "Fennick", "DEATHKNIGHT", "TANK", 0.81 }, { "Galora", "DRUID", "HEALER", 1 }, { "Hesketh", "WARLOCK", "DAMAGER", 0.55 },
+    { "Isolde", "EVOKER", "DAMAGER", 1 }, { "Jorund", "SHAMAN", "HEALER", 0.88 },
+    { "Kestra", "PALADIN", "HEALER", 0.97 }, { "Lorcan", "DEMONHUNTER", "DAMAGER", 0.73 }, { "Maelis", "MONK", "HEALER", 1 },
+    { "Norrin", "HUNTER", "DAMAGER", 0.42 }, { "Orla", "WARLOCK", "DAMAGER", 1 },
+    { "Perrin", "MONK", "TANK", 0.69 }, { "Quillan", "DRUID", "DAMAGER", 1 }, { "Rowena", "MAGE", "DAMAGER", 0.86 },
+    { "Sorcha", "EVOKER", "HEALER", 1 }, { "Tamsin", "ROGUE", "DAMAGER", 0.94 },
+    { "Ulric", "PALADIN", "HEALER", 0.78 }, { "Vesna", "DEATHKNIGHT", "DAMAGER", 1 }, { "Wystan", "WARLOCK", "DAMAGER", 0.61 },
+    { "Xanthe", "DEMONHUNTER", "DAMAGER", 1 }, { "Yorick", "SHAMAN", "DAMAGER", 0.9 },
+    { "Zelda", "DEMONHUNTER", "TANK", 0.83 }, { "Ansel", "PRIEST", "HEALER", 1 }, { "Bryony", "ROGUE", "DAMAGER", 0.5 },
+    { "Caspian", "MONK", "DAMAGER", 0.95 }, { "Delphine", "HUNTER", "DAMAGER", 1 },
+    { "Emrys", "MAGE", "DAMAGER", 0.77 }, { "Freya", "PALADIN", "DAMAGER", 1 }, { "Gideon", "EVOKER", "DAMAGER", 0.88 },
+    { "Haldis", "SHAMAN", "HEALER", 1 }, { "Ivo", "ROGUE", "DAMAGER", 0.66 },
+    { "Jessamy", "WARRIOR", "DAMAGER", 1 }, { "Kenric", "HUNTER", "DAMAGER", 0.93 }, { "Liesel", "DEATHKNIGHT", "DAMAGER", 1 },
+    { "Merrick", "WARLOCK", "DAMAGER", 0.71 }, { "Nessa", "DRUID", "DAMAGER", 1 },
+  },
+})
 for i, s in ipairs(RP.ROSTER) do s.index = i end
 
 -- Sample players -----------------------------------------------------------------------------
@@ -84,11 +114,19 @@ local function paintHealth(b, s, r, g, bl)
   RF.PaintColors(b, r, g, bl)
 end
 
+-- r, g, b for a POWER entry: the client's colour for its power token where it names one the client has (PowerBarColor,
+-- Retail's runic power and fury), else its theme colour.
+local function powerColor(p)
+  local c = p[3] and type(PowerBarColor) == "table" and PowerBarColor[p[3]]
+  if c then return c.r, c.g, c.b end
+  return T.RGB(p[1])
+end
+
 -- The power bar for sample s, in its class's power (or hidden with the power bar off).
 local function paintPower(b, s)
   if not RF.ShowPower(b) then return end
   local p = POWER[s[2]] or POWER.other
-  RF.PaintPower(b, p[2], 1, T.RGB(p[1]))
+  RF.PaintPower(b, p[2], 1, powerColor(p))
 end
 
 -- Everything on a tile for sample s: name, role mark, top line, health and power.

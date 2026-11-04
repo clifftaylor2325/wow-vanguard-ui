@@ -25,6 +25,8 @@ WZ.LABELS = {
   AP = L["Attack power"], RAP = L["Ranged attack power"], SP = L["Spell power"], MP5 = L["Mana per 5 seconds"],
   CRIT = L["Crit rating"], HIT = L["Hit rating"], HASTE = L["Haste rating"], EXP = L["Expertise"], ARP = L["Armor penetration"],
   DEF = L["Defense"], DODGE = L["Dodge"], PARRY = L["Parry"], BLOCK = L["Block rating"], BLOCKVALUE = L["Block value"], DPS = L["Weapon damage per second"],
+  -- Retail's own.
+  MASTERY = L["Mastery"], VERS = L["Versatility"], ILVL = L["Item level"],
 }
 
 local frame

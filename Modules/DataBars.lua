@@ -3,6 +3,8 @@
 -- for the numbers; the XP bar hides at max level, the reputation bar when
 -- no faction is watched. Both are seen always unless their visibility setting
 -- says otherwise (Core/Visibility.lua): on mouseover, in combat, hidden, or on a checklist.
+-- On Retail the XP bar shows honor at max level when the game would (watched,
+-- or in a battleground), and the reputation bar a major faction's renown.
 
 local ADDON, ns = ...
 
@@ -41,9 +43,19 @@ function DB.Short(n)
   return thousands
 end
 
--- The events that can change what the XP bar shows, or whether it shows (XP gain locked or unlocked, the cap moved).
-DB.XP_EVENTS = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
-  "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE" }
+-- The events that can change what the XP bar shows, or whether it shows (XP gain locked or unlocked, the cap moved);
+-- on Retail also its honor at the cap (honor gained, a new honor level, into or out of a battleground).
+DB.XP_EVENTS = ns.ClientData({
+  forever = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
+    "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE" },
+  retail = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
+    "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE", "HONOR_XP_UPDATE", "HONOR_LEVEL_UPDATE", "ZONE_CHANGED_NEW_AREA" },
+})
+-- The events that can change the watched faction or its standing; on Retail also a major faction's renown level.
+DB.REP_EVENTS = ns.ClientData({
+  forever = { "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" },
+  retail = { "UPDATE_FACTION", "PLAYER_ENTERING_WORLD", "MAJOR_FACTION_RENOWN_LEVEL_CHANGED" },
+})
 
 -- Values -------------------------------------------------------------------------------
 
@@ -71,6 +83,37 @@ function DB.XP()
   return { cur = number(UnitXP, "player"), max = max, rested = number(GetXPExhaustion), level = number(UnitLevel, "player") }
 end
 
+-- Honor (Retail) ------------------------------------------------------------------------
+
+-- Whether the game shows honor in place of XP now, by its own rule: watched as XP, in a battleground, or in world PvP.
+local function honorShown()
+  local pvp = type(C_PvP) == "table" and type(C_PvP.IsActiveBattlefield) == "function" and C_PvP.IsActiveBattlefield() == true
+  local watched = type(IsWatchingHonorAsXP) == "function" and IsWatchingHonorAsXP() == true
+  return watched or pvp or (type(IsInActiveWorldPVP) == "function" and IsInActiveWorldPVP() == true)
+end
+
+-- { cur, max, rested = 0, level, honor = true } for the honor line, or nil when the game wouldn't show it or the
+-- client hides a value.
+function DB.Honor()
+  if not honorShown() then return nil end
+  local max = number(UnitHonorMax, "player")
+  if max <= 0 then return nil end
+  return { cur = number(UnitHonor, "player"), max = max, rested = 0, level = number(UnitHonorLevel, "player"), honor = true }
+end
+
+-- Nothing: WoW Forever has neither honor levels nor renown, so its bars show what they always have.
+local function none()
+  return nil
+end
+
+-- What the XP bar shows at the level cap: Retail's honor, nothing on WoW Forever.
+DB.AtCap = ns.ClientData({ forever = none, retail = DB.Honor })
+
+-- What the XP bar shows: { cur, max, rested, level } for XP (honor = true at Retail's cap), or nil when it should hide.
+function DB.Line()
+  return DB.XP() or (xpHidden() and DB.AtCap() or nil)
+end
+
 -- The XP this level still needs, or nil at the level cap or when the client hides a value.
 function DB.XPToLevel()
   if xpHidden() then return nil end
@@ -95,12 +138,8 @@ local function namesFaction(data)
   return ns.IsSecret(data.name) or (type(data.name) == "string" and data.name ~= "")
 end
 
--- { name, standing, cur, max } for the watched faction, or nil when none. The standing is nil while the
--- client hides it (the bar then takes Neutral's colour, and names no standing).
-function DB.Reputation()
-  local get = C_Reputation and C_Reputation.GetWatchedFactionData
-  local data = type(get) == "function" and get() or nil
-  if not namesFaction(data) then return nil end
+-- { name, standing, cur, max } for a watched faction's standing.
+local function standingOf(data)
   local standing = ns.PlainNumber(data.reaction)
   local low, high = ns.PlainNumber(data.currentReactionThreshold), ns.PlainNumber(data.nextReactionThreshold)
   local top = standing and standing >= DB.TOP_STANDING
@@ -108,6 +147,54 @@ function DB.Reputation()
   if top or not readable then return noNumbers(data.name, standing, (top or (low and high)) and 1 or 0) end
   local cur = (ns.PlainNumber(data.currentStanding) or low) - low
   return { name = data.name, standing = standing, cur = cur, max = high - low }
+end
+
+-- Renown (Retail) ------------------------------------------------------------------------
+
+-- A major faction's renown data from the client and its id, or nil for a faction that isn't one (or a client without them).
+local function majorFaction(data)
+  local id = ns.PlainNumber(data.factionID)
+  local is = type(C_Reputation) == "table" and C_Reputation.IsMajorFaction
+  if not id or type(is) ~= "function" or not ns.IsTrue(is(id)) then return nil end
+  local info = C_MajorFactions.GetMajorFactionData(id)
+  return type(info) == "table" and info or nil, id
+end
+
+-- Whether a major faction is at its top renown level (no where the client can't say).
+local function topRenown(id)
+  local top = C_MajorFactions.HasMaximumRenown
+  return type(top) == "function" and ns.IsTrue(top(id))
+end
+
+-- "Renown 12", for a renown level.
+local function renownWord(level)
+  return ns.Format(L["Renown {level}"], { level = level })
+end
+
+-- The watched faction's renown when it is a major faction (Retail): its level as the standing's word, the reputation
+-- earned towards the next level as the bar; full and without numbers at the top level or while a value is hidden.
+function DB.Renown(data)
+  local info, id = majorFaction(data)
+  local level = info and ns.PlainNumber(info.renownLevel)
+  if not level then return nil end
+  local rep = noNumbers(data.name, ns.PlainNumber(data.reaction), 1)
+  rep.word, rep.nextWord = renownWord(level), renownWord(level + 1)
+  local cur, max = ns.PlainNumber(info.renownReputationEarned), ns.PlainNumber(info.renownLevelThreshold)
+  if topRenown(id) or not (cur and max and max > 0) then return rep end
+  rep.cur, rep.max, rep.noNumbers = cur, max, nil
+  return rep
+end
+
+-- A watched faction's renown on Retail; WoW Forever has none.
+DB.RenownOf = ns.ClientData({ forever = none, retail = DB.Renown })
+
+-- { name, standing, cur, max } for the watched faction, or nil when none (a major faction's renown on Retail, with its
+-- word). The standing is nil while the client hides it (the bar then takes Neutral's colour, and names no standing).
+function DB.Reputation()
+  local get = C_Reputation and C_Reputation.GetWatchedFactionData
+  local data = type(get) == "function" and get() or nil
+  if not namesFaction(data) then return nil end
+  return DB.RenownOf(data) or standingOf(data)
 end
 
 -- The game's word for a standing (1 Hated .. 8 Exalted, "Honored"), in your character's form of it; nil
@@ -119,16 +206,18 @@ function DB.StandingName(standing)
   return type(word) == "string" and word or nil
 end
 
--- "Level 42  12.3K / 40.0K (31%)  rested 5.0K"
+-- "Level 42  12.3K / 40.0K (31%)  rested 5.0K", or "Honor level 12  1.2K / 2.5K (48%)" for Retail's honor.
 function DB.XPText(xp)
   local values = { level = xp.level, cur = DB.Short(xp.cur), max = DB.Short(xp.max), percent = math.floor(xp.cur / xp.max * 100), rested = DB.Short(xp.rested) }
+  if xp.honor then return ns.Format(L["Honor level {level}  {cur} / {max} ({percent}%)"], values) end
   if xp.rested > 0 then return ns.Format(L["Level {level}  {cur} / {max} ({percent}%)  rested {rested}"], values) end
   return ns.Format(L["Level {level}  {cur} / {max} ({percent}%)"], values)
 end
 
--- "Valdrakken Accord  Honored  1.2K / 2.5K (48%)", or "Valdrakken Accord  Exalted" at the top standing.
+-- "Valdrakken Accord  Honored  1.2K / 2.5K (48%)", or "Valdrakken Accord  Exalted" at the top standing (a major
+-- faction's "Renown 12" in place of the standing).
 function DB.ReputationText(rep)
-  local word = DB.StandingName(rep.standing)
+  local word = rep.word or DB.StandingName(rep.standing)
   local head = word and rep.name .. "  " .. word or rep.name
   if rep.noNumbers then return head end
   return string.format("%s  %s / %s (%d%%)", head, DB.Short(rep.cur), DB.Short(rep.max), math.floor(rep.cur / rep.max * 100))
@@ -212,22 +301,34 @@ function DB.XPLines(xp)
   return lines
 end
 
+-- The honor tooltip's lines as { left, right } (Retail, at the cap): what is left in the honor level, how far through.
+function DB.HonorLines(honor)
+  return { { L["To next level"], DB.Short(honor.max - honor.cur) }, { L["Through this level"], math.floor(honor.cur / honor.max * 100) .. "%" } }
+end
+
+-- The XP bar tooltip's title and lines: "Level 42" and the XP lines, or Retail's honor level and its lines.
+local function lineTip(xp)
+  if xp.honor then return ns.Format(L["Honor level {level}"], { level = xp.level }), DB.HonorLines(xp) end
+  return ns.Format(L["Level {level}"], { level = xp.level }), DB.XPLines(xp)
+end
+
 -- Shows the XP bar's tooltip, when it is on and the bar has something to say.
 function DB.ShowXPTooltip(bar)
-  local xp = DB.settings.tooltip and DB.XP()
+  local xp = DB.settings.tooltip and DB.Line()
   if not xp then return end
+  local title, lines = lineTip(xp)
   GameTooltip_SetDefaultAnchor(GameTooltip, bar)
-  GameTooltip:SetText(ns.Format(L["Level {level}"], { level = xp.level }), T.RGB("text"))
-  for _, l in ipairs(DB.XPLines(xp)) do GameTooltip:AddDoubleLine(l[1], l[2]) end
+  GameTooltip:SetText(title, T.RGB("text"))
+  for _, l in ipairs(lines) do GameTooltip:AddDoubleLine(l[1], l[2]) end
   GameTooltip:Show()
 end
 
 -- The reputation tooltip's lines as { left, right }: the standing, and (below the top) what the next one needs.
 function DB.ReputationLines(rep)
-  local word, lines = DB.StandingName(rep.standing), {}
+  local word, lines = rep.word or DB.StandingName(rep.standing), {}
   if word then lines[1] = { L["Standing"], word } end
   if rep.noNumbers then return lines end
-  local nextWord = rep.standing and DB.StandingName(rep.standing + 1)
+  local nextWord = rep.nextWord or (rep.standing and DB.StandingName(rep.standing + 1))
   lines[#lines + 1] = { nextWord and ns.Format(L["To {standing}"], { standing = nextWord }) or L["To the next standing"], DB.Short(rep.max - rep.cur) }
   lines[#lines + 1] = { L["Through this standing"], math.floor(rep.cur / rep.max * 100) .. "%" }
   return lines
@@ -360,15 +461,19 @@ function DB.PlaceRepBar(xp)
   ns.SetMoverDefault("repbar", point)
 end
 
--- Fills the XP bar, or hides it at max level (or while its visibility hides it).
+-- Honor's bar colour: the theme's orange (the game paints honor orange; the theme has no honor token).
+DB.HONOR_COLOR = "focus"
+
+-- Fills the XP bar (with honor at Retail's cap, in its own colour), or hides it at max level (or while its
+-- visibility hides it).
 function DB.UpdateXP()
-  local bar, xp = DB.xpBar, DB.XP()
+  local bar, xp = DB.xpBar, DB.Line()
   DB.PlaceRepBar(xp)
   bar:SetShown(xp ~= nil and V.Shows(bar))
   if not xp then return end
   bar:SetMinMaxValues(0, xp.max)
   bar:SetValue(xp.cur)
-  T.BarColor(bar, "xp")
+  T.BarColor(bar, xp.honor and DB.HONOR_COLOR or "xp")
   bar.rested:SetWidth(math.max(1, bar:GetWidth() * math.min(1, (xp.cur + xp.rested) / xp.max)))
   bar.text:SetText(DB.XPText(xp))
 end
@@ -399,12 +504,12 @@ end
 
 -- The reputation bar for the watched faction, kept current, with its tooltip and a click to the reputation list.
 local function enableReputation(settings)
-  DB.repPoint = DB.RepPoint(DB.XP())
+  DB.repPoint = DB.RepPoint(DB.Line())
   DB.repBar = createBar("repbar", L["Reputation"], DB.repPoint, settings)
   DB.repBar.vgOnState = DB.UpdateReputation
   hoverTip(DB.repBar, "show reputation tooltip", DB.ShowReputationTooltip)
   DB.repBar:HookScript("OnMouseUp", ns.Guard("open reputation list", DB.OpenReputation))
-  for _, e in ipairs({ "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" }) do ns.On(e, DB.UpdateReputation) end
+  for _, e in ipairs(DB.REP_EVENTS) do ns.On(e, DB.UpdateReputation) end
   DB.UpdateReputation()
 end
 

@@ -23,64 +23,99 @@ local RH = ns.Module("RaidHealing", {
 
 -- Buffs each class can give, by spell id (the single and group versions count alike); the client names
 -- each, and every rank shares that name. The ids are ALL_BUFFS' below.
-RH.CLASS_BUFFS = {
-  PRIEST = { 1243, 21562 },
-  MAGE = { 1459, 23028 },
-  DRUID = { 1126, 21849 },
-  WARRIOR = { 6673 },
-  -- Any blessing, normal or greater, counts: a paladin gives one per player.
-  PALADIN = { 19740, 19742, 20217, 1038, 19977, 25782, 25894, 25898, 25895, 25890 },
-}
+RH.CLASS_BUFFS = ns.ClientData({
+  forever = {
+    PRIEST = { 1243, 21562 },
+    MAGE = { 1459, 23028 },
+    DRUID = { 1126, 21849 },
+    WARRIOR = { 6673 },
+    -- Any blessing, normal or greater, counts: a paladin gives one per player.
+    PALADIN = { 19740, 19742, 20217, 1038, 19977, 25782, 25894, 25898, 25895, 25890 },
+  },
+  -- Retail's raid buffs (12.1.5): Power Word: Fortitude, Arcane Intellect, Mark of the Wild, Battle Shout, Skyfury,
+  -- Blessing of the Bronze. Retail ranks nothing and has no group versions, so one id each.
+  retail = {
+    PRIEST = { 21562 },
+    MAGE = { 1459 },
+    DRUID = { 1126 },
+    WARRIOR = { 6673 },
+    SHAMAN = { 462854 },
+    EVOKER = { 364342 },
+  },
+})
 
 -- Every class's group buffs for the options list, by class, as { English name, spellID }. The row shows
 -- the client's name for the id; the English one only where the client has none. The id also finds the
 -- icon for spells you haven't learned (the client can't look those up by name).
-RH.ALL_BUFFS = {
-  { "PRIEST", { { "Power Word: Fortitude", 1243 }, { "Prayer of Fortitude", 21562 }, { "Divine Spirit", 14752 },
-    { "Prayer of Spirit", 27681 }, { "Shadow Protection", 976 }, { "Prayer of Shadow Protection", 27683 } } },
-  { "MAGE", { { "Arcane Intellect", 1459 }, { "Arcane Brilliance", 23028 }, { "Amplify Magic", 1008 }, { "Dampen Magic", 604 } } },
-  { "DRUID", { { "Mark of the Wild", 1126 }, { "Gift of the Wild", 21849 }, { "Thorns", 467 } } },
-  { "PALADIN", { { "Blessing of Might", 19740 }, { "Blessing of Wisdom", 19742 }, { "Blessing of Kings", 20217 },
-    { "Blessing of Salvation", 1038 }, { "Blessing of Light", 19977 }, { "Blessing of Sanctuary", 20911 },
-    { "Greater Blessing of Might", 25782 }, { "Greater Blessing of Wisdom", 25894 }, { "Greater Blessing of Kings", 25898 },
-    { "Greater Blessing of Salvation", 25895 }, { "Greater Blessing of Light", 25890 }, { "Greater Blessing of Sanctuary", 25899 } } },
-  { "WARRIOR", { { "Battle Shout", 6673 } } },
-  { "HUNTER", { { "Trueshot Aura", 19506 } } },
-  { "WARLOCK", { { "Unending Breath", 5697 }, { "Detect Invisibility", 2970 } } },
-}
+RH.ALL_BUFFS = ns.ClientData({
+  forever = {
+    { "PRIEST", { { "Power Word: Fortitude", 1243 }, { "Prayer of Fortitude", 21562 }, { "Divine Spirit", 14752 },
+      { "Prayer of Spirit", 27681 }, { "Shadow Protection", 976 }, { "Prayer of Shadow Protection", 27683 } } },
+    { "MAGE", { { "Arcane Intellect", 1459 }, { "Arcane Brilliance", 23028 }, { "Amplify Magic", 1008 }, { "Dampen Magic", 604 } } },
+    { "DRUID", { { "Mark of the Wild", 1126 }, { "Gift of the Wild", 21849 }, { "Thorns", 467 } } },
+    { "PALADIN", { { "Blessing of Might", 19740 }, { "Blessing of Wisdom", 19742 }, { "Blessing of Kings", 20217 },
+      { "Blessing of Salvation", 1038 }, { "Blessing of Light", 19977 }, { "Blessing of Sanctuary", 20911 },
+      { "Greater Blessing of Might", 25782 }, { "Greater Blessing of Wisdom", 25894 }, { "Greater Blessing of Kings", 25898 },
+      { "Greater Blessing of Salvation", 25895 }, { "Greater Blessing of Light", 25890 }, { "Greater Blessing of Sanctuary", 25899 } } },
+    { "WARRIOR", { { "Battle Shout", 6673 } } },
+    { "HUNTER", { { "Trueshot Aura", 19506 } } },
+    { "WARLOCK", { { "Unending Breath", 5697 }, { "Detect Invisibility", 2970 } } },
+  },
+  -- Retail's: the raid buffs above, and Unending Breath.
+  retail = {
+    { "PRIEST", { { "Power Word: Fortitude", 21562 } } },
+    { "MAGE", { { "Arcane Intellect", 1459 } } },
+    { "DRUID", { { "Mark of the Wild", 1126 } } },
+    { "WARRIOR", { { "Battle Shout", 6673 } } },
+    { "SHAMAN", { { "Skyfury", 462854 } } },
+    { "EVOKER", { { "Blessing of the Bronze", 364342 } } },
+    { "WARLOCK", { { "Unending Breath", 5697 } } },
+  },
+})
 
 -- Static icons by spell id, used when the client has none for the name or id (never a question mark).
-RH.FALLBACK_ICONS = {
-  [1243] = "Interface\\Icons\\Spell_Holy_WordFortitude", -- Power Word: Fortitude
-  [21562] = "Interface\\Icons\\Spell_Holy_PrayerOfFortitude", -- Prayer of Fortitude
-  [14752] = "Interface\\Icons\\Spell_Holy_DivineSpirit", -- Divine Spirit
-  [27681] = "Interface\\Icons\\Spell_Holy_PrayerofSpirit", -- Prayer of Spirit
-  [976] = "Interface\\Icons\\Spell_Shadow_AntiShadow", -- Shadow Protection
-  [27683] = "Interface\\Icons\\Spell_Holy_PrayerofShadowProtection", -- Prayer of Shadow Protection
-  [1459] = "Interface\\Icons\\Spell_Holy_MagicalSentry", -- Arcane Intellect
-  [23028] = "Interface\\Icons\\Spell_Holy_ArcaneIntellect", -- Arcane Brilliance
-  [1008] = "Interface\\Icons\\Spell_Holy_FlashHeal", -- Amplify Magic
-  [604] = "Interface\\Icons\\Spell_Nature_AbolishMagic", -- Dampen Magic
-  [1126] = "Interface\\Icons\\Spell_Nature_Regeneration", -- Mark of the Wild
-  [21849] = "Interface\\Icons\\Spell_Nature_Regeneration", -- Gift of the Wild
-  [467] = "Interface\\Icons\\Spell_Nature_Thorns", -- Thorns
-  [19740] = "Interface\\Icons\\Spell_Holy_FistOfJustice", -- Blessing of Might
-  [19742] = "Interface\\Icons\\Spell_Holy_SealOfWisdom", -- Blessing of Wisdom
-  [20217] = "Interface\\Icons\\Spell_Magic_MageArmor", -- Blessing of Kings
-  [1038] = "Interface\\Icons\\Spell_Holy_SealOfSalvation", -- Blessing of Salvation
-  [19977] = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02", -- Blessing of Light
-  [20911] = "Interface\\Icons\\Spell_Nature_LightningShield", -- Blessing of Sanctuary
-  [25782] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings", -- Greater Blessing of Might
-  [25894] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofWisdom", -- Greater Blessing of Wisdom
-  [25898] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings", -- Greater Blessing of Kings
-  [25895] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSalvation", -- Greater Blessing of Salvation
-  [25890] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofLight", -- Greater Blessing of Light
-  [25899] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSanctuary", -- Greater Blessing of Sanctuary
-  [6673] = "Interface\\Icons\\Ability_Warrior_BattleShout", -- Battle Shout
-  [19506] = "Interface\\Icons\\Ability_TrueShot", -- Trueshot Aura
-  [5697] = "Interface\\Icons\\Spell_Shadow_DemonBreath", -- Unending Breath
-  [2970] = "Interface\\Icons\\Spell_Shadow_DetectInvisibility", -- Detect Invisibility
-}
+RH.FALLBACK_ICONS = ns.ClientData({
+  forever = {
+    [1243] = "Interface\\Icons\\Spell_Holy_WordFortitude", -- Power Word: Fortitude
+    [21562] = "Interface\\Icons\\Spell_Holy_PrayerOfFortitude", -- Prayer of Fortitude
+    [14752] = "Interface\\Icons\\Spell_Holy_DivineSpirit", -- Divine Spirit
+    [27681] = "Interface\\Icons\\Spell_Holy_PrayerofSpirit", -- Prayer of Spirit
+    [976] = "Interface\\Icons\\Spell_Shadow_AntiShadow", -- Shadow Protection
+    [27683] = "Interface\\Icons\\Spell_Holy_PrayerofShadowProtection", -- Prayer of Shadow Protection
+    [1459] = "Interface\\Icons\\Spell_Holy_MagicalSentry", -- Arcane Intellect
+    [23028] = "Interface\\Icons\\Spell_Holy_ArcaneIntellect", -- Arcane Brilliance
+    [1008] = "Interface\\Icons\\Spell_Holy_FlashHeal", -- Amplify Magic
+    [604] = "Interface\\Icons\\Spell_Nature_AbolishMagic", -- Dampen Magic
+    [1126] = "Interface\\Icons\\Spell_Nature_Regeneration", -- Mark of the Wild
+    [21849] = "Interface\\Icons\\Spell_Nature_Regeneration", -- Gift of the Wild
+    [467] = "Interface\\Icons\\Spell_Nature_Thorns", -- Thorns
+    [19740] = "Interface\\Icons\\Spell_Holy_FistOfJustice", -- Blessing of Might
+    [19742] = "Interface\\Icons\\Spell_Holy_SealOfWisdom", -- Blessing of Wisdom
+    [20217] = "Interface\\Icons\\Spell_Magic_MageArmor", -- Blessing of Kings
+    [1038] = "Interface\\Icons\\Spell_Holy_SealOfSalvation", -- Blessing of Salvation
+    [19977] = "Interface\\Icons\\Spell_Holy_PrayerOfHealing02", -- Blessing of Light
+    [20911] = "Interface\\Icons\\Spell_Nature_LightningShield", -- Blessing of Sanctuary
+    [25782] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings", -- Greater Blessing of Might
+    [25894] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofWisdom", -- Greater Blessing of Wisdom
+    [25898] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings", -- Greater Blessing of Kings
+    [25895] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSalvation", -- Greater Blessing of Salvation
+    [25890] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofLight", -- Greater Blessing of Light
+    [25899] = "Interface\\Icons\\Spell_Holy_GreaterBlessingofSanctuary", -- Greater Blessing of Sanctuary
+    [6673] = "Interface\\Icons\\Ability_Warrior_BattleShout", -- Battle Shout
+    [19506] = "Interface\\Icons\\Ability_TrueShot", -- Trueshot Aura
+    [5697] = "Interface\\Icons\\Spell_Shadow_DemonBreath", -- Unending Breath
+    [2970] = "Interface\\Icons\\Spell_Shadow_DetectInvisibility", -- Detect Invisibility
+  },
+  -- Retail's, for the buffs whose icon files are the same as WoW Forever's; Retail names an icon for every id it knows,
+  -- so the rest never need one.
+  retail = {
+    [21562] = "Interface\\Icons\\Spell_Holy_WordFortitude", -- Power Word: Fortitude
+    [1459] = "Interface\\Icons\\Spell_Holy_MagicalSentry", -- Arcane Intellect
+    [1126] = "Interface\\Icons\\Spell_Nature_Regeneration", -- Mark of the Wild
+    [6673] = "Interface\\Icons\\Ability_Warrior_BattleShout", -- Battle Shout
+    [5697] = "Interface\\Icons\\Spell_Shadow_DemonBreath", -- Unending Breath
+  },
+})
 
 -- Values -----------------------------------------------------------------------------------
 
