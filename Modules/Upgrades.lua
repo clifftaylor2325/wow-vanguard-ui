@@ -36,8 +36,21 @@ UP.SLOTS = {
   INVTYPE_FINGER = { 11, 12 }, INVTYPE_TRINKET = { 13, 14 }, INVTYPE_CLOAK = { 15 },
   INVTYPE_WEAPON = { 16 }, INVTYPE_WEAPONMAINHAND = { 16 }, INVTYPE_2HWEAPON = { 16 },
   INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_SHIELD = { 17 }, INVTYPE_HOLDABLE = { 17 },
-  INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 }, INVTYPE_THROWN = { 18 }, INVTYPE_RELIC = { 18 },
 }
+
+-- Ranged weapons: WoW Forever has a ranged slot (18). Retail has none and wears a bow, gun or crossbow in the
+-- main hand, with no thrown or relic slot.
+UP.RANGED_SLOTS = ns.ClientData({
+  forever = { INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 }, INVTYPE_THROWN = { 18 }, INVTYPE_RELIC = { 18 } },
+  retail = { INVTYPE_RANGED = { 16 }, INVTYPE_RANGEDRIGHT = { 16 } },
+})
+for loc, slots in pairs(UP.RANGED_SLOTS) do UP.SLOTS[loc] = slots end
+
+-- The equip locations that take both hands, compared with both hands together (a Retail ranged weapon is one).
+UP.TWO_HANDED = ns.ClientData({
+  forever = { INVTYPE_2HWEAPON = true },
+  retail = { INVTYPE_2HWEAPON = true, INVTYPE_RANGED = true, INVTYPE_RANGEDRIGHT = true },
+})
 
 -- Weights ---------------------------------------------------------------------------------
 
@@ -147,7 +160,7 @@ end
 
 -- What an item of equip location loc is compared with: both hands for a two-hander, else the weakest of its slots.
 local function wornScore(loc, slots)
-  if loc == "INVTYPE_2HWEAPON" then return bothHands() end
+  if UP.TWO_HANDED[loc] then return bothHands() end
   return weakest(slots)
 end
 

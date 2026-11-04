@@ -1,6 +1,7 @@
 // upgrades: gear compared with what you wear (Modules/Upgrades.lua) in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { chatHas, isTok, loggedIn, px } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
@@ -208,4 +209,15 @@ it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () =
   expect([card("__link(2)"), card("nil")], "a reward that's an upgrade gets the arrow; one with no link doesn't").toEqual([true, false]);
   addon.eval("ns.GetModule('Upgrades').settings.quests = false");
   expect(card("__link(2)"), "switched off").toBe(false);
+});
+
+// Bows (equip location INVTYPE_RANGED) in the bags: item 18 is strong, item 19 weak.
+const BOW_ENV = GEAR_ENV + `__gear[18] = { "INVTYPE_RANGED", { ITEM_MOD_STRENGTH_SHORT = 20 } } __gear[19] = { "INVTYPE_RANGED", { ITEM_MOD_STRENGTH_SHORT = 1 } }`;
+
+it("upgrades: on Retail a ranged weapon is judged against both hands, where Forever keeps its ranged slot", () => {
+  const retail = loggedIn(BOW_ENV, { client: RETAIL_CLIENT });
+  expect(retail.eval("return __line(18)"), "a strong bow against the weapons worn in the hands").toMatch(/^Upgrade \+\d+% \(estimate\) vs TEST-ONLY Item 8$/);
+  expect(retail.eval("return __line(19)"), "a weak bow is a downgrade, not an empty slot").toMatch(/^Downgrade -\d+% \(estimate\)/);
+  const forever = loggedIn(BOW_ENV);
+  expect(forever.eval("return __line(19)"), "Forever: the empty ranged slot 18").toBe("Upgrade: fills an empty slot");
 });
