@@ -32,7 +32,7 @@ end
 -- The unit token of whoever is giving the quest: "questnpc", the one the game's own quest window reads, when
 -- it exists (a shared quest's sharer, an object), else the gossip's "npc". A hidden answer keeps "npc".
 function QP.GiverUnit()
-  return ns.CallIf(_G, "UnitExists", "questnpc") == true and "questnpc" or "npc"
+  return ns.IsTrue(ns.CallIf(_G, "UnitExists", "questnpc")) and "questnpc" or "npc"
 end
 
 -- r, g, b for a quest of this level, from the game's difficulty colors; the theme's text otherwise.

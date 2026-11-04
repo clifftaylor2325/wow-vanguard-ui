@@ -1778,6 +1778,11 @@ it("quest dialog: the portrait and name come from the questnpc unit when there i
   addon.fire("QUEST_DETAIL");
   expect([dialog(addon).npc, addon.eval("return Vanguard_QuestDialog.portrait.__portrait")], "name and portrait of the giver").toEqual(["TEST-ONLY Sharer", "questnpc"]);
 });
+it("quest dialog: a hidden answer on whether questnpc exists keeps the npc unit", () => {
+  const addon = loggedIn(QUEST_ENV + SHARER_ENV);
+  addon.eval("local old = UnitExists UnitExists = function(unit) if unit == 'questnpc' then return __wfgWorld.secret(true) end return old(unit) end");
+  expect(addon.eval("return ns.QuestParts.GiverUnit()"), "never compared, read as no").toBe("npc");
+});
 // TEST-ONLY quest that flags you for PvP, with the game's own warning text.
 const PVP_ENV = `
   __pvp = true
