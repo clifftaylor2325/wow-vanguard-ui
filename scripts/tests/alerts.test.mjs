@@ -304,6 +304,19 @@ it("the game's tools: a row's scale goes through the client's own SetScaleBase o
     ns.GetModule("GameTools").FitRow(f, spot)`);
   expect(addon.eval("return __ran"), "only the client's own method").toEqual(["SetScaleBase 0.5"]);
 });
+it("the game's tools: scaling the Cooldowns spot scales the row on it, and fits it to the scaled spot", () => {
+  const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)");
+  // The essential row's scale after the game lays it out at `width` wide.
+  const scaleAt = (width) => addon.eval(`EssentialCooldownViewer:SetSize(${width}, 40) EssentialCooldownViewer:RefreshLayout() return EssentialCooldownViewer:GetScale()`);
+  expect(scaleAt(200), "a row that fits, on a spot at 100%").toBe(1);
+  addon.eval("ns.SetMoverScale('cdm_essential', 2)");
+  addon.advance(0.5);
+  expect(addon.eval("return EssentialCooldownViewer:GetScale()"), "the spot at 200%: the row grows with it, at once").toBe(2);
+  expect(scaleAt(450), "a row wider than the spot fits the scaled spot: twice the shrink of a 100% spot").toBeCloseTo((2 * 236) / 450);
+  addon.eval("ns.SetMoverScale('cdm_essential', 1)");
+  addon.advance(0.5);
+  expect(addon.eval("return EssentialCooldownViewer:GetScale()"), "back at 100%: shrunk to the plain spot").toBeCloseTo(236 / 450);
+});
 it("damage meter: a pooled line set up again keeps its background faded, with one hook per line", () => {
   const addon = loggedIn(TOOLS_ENV);
   // The first line's background alpha.

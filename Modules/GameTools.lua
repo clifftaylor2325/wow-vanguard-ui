@@ -68,12 +68,31 @@ function GT.FitScale(width, room)
   return math.max(GT.MIN_FIT, room / w)
 end
 
--- Puts a Cooldown Manager row centered on its spot, shrunk to the spot's width when it's wider (it grows with
--- what it tracks and Edit Mode's icon size). Its scale is set through the client's own method, kept aside as
--- SetScaleBase on an Edit Mode system: Edit Mode's override moves the frame to keep its corner in place.
-function GT.FitRow(frame, spot)
+-- Spots whose frame follows the spot's scale: spot -> { frame = the game's frame, scale = the spot's scale when
+-- the frame last took it }. GT.FitScaled fits the frame again when the spot's scale moves on.
+GT.scaledSpots = {}
+
+-- Sets a game frame's scale to its spot's scale times `own` (the scale the game gives the frame itself), both
+-- frames being UIParent children, so a scaled spot scales what sits on it. Set through the client's own method,
+-- kept aside as SetScaleBase on an Edit Mode system: Edit Mode's override moves the frame to keep its corner in place.
+function GT.ScaleWithSpot(frame, spot, own)
   local setScale = frame.SetScaleBase or frame.SetScale
-  setScale(frame, GT.FitScale(frame:GetWidth(), spot:GetWidth()))
+  setScale(frame, spot:GetScale() * own)
+  GT.scaledSpots[spot] = { frame = frame, scale = spot:GetScale() }
+end
+
+-- After a scale change (T.OnScale): each frame whose spot was scaled since it last fitted fits again.
+function GT.FitScaled()
+  for spot, held in pairs(GT.scaledSpots) do
+    if spot:GetScale() ~= held.scale then ns.Repin(held.frame) end
+  end
+end
+ns.Theme.OnScale(GT.FitScaled)
+
+-- Puts a Cooldown Manager row centered on its spot, shrunk to the spot's width when it's wider (it grows with
+-- what it tracks and Edit Mode's icon size), at the spot's scale: the room is the spot's width in the row's units.
+function GT.FitRow(frame, spot)
+  GT.ScaleWithSpot(frame, spot, GT.FitScale(frame:GetWidth(), spot:GetWidth()))
   GT.FitCenter(frame, spot)
 end
 
