@@ -64,10 +64,21 @@ local function number(fn, ...)
   return type(fn) == "function" and ns.PlainNumber(fn(...)) or 0
 end
 
+-- Whether you are at the level cap, as the game's own bars judge it (GameRulesUtil); a client without it
+-- compares your level with the maximum.
+local function atCap()
+  local rules = GameRulesUtil
+  if type(rules) == "table" and type(rules.IsPlayerAtEffectiveMaxLevel) == "function" then
+    return rules.IsPlayerAtEffectiveMaxLevel() == true
+  end
+  local level, max = ns.PlainNumber(UnitLevel("player")), number(GetMaxPlayerLevel)
+  return level ~= nil and max > 0 and level >= max
+end
+
 -- True when XP has nothing to show, as the game's own bar judges it: at the level cap, or with XP gain
 -- turned off at the XP-lock NPC.
 local function xpHidden()
-  local capped = type(IsPlayerAtEffectiveMaxLevel) == "function" and IsPlayerAtEffectiveMaxLevel() == true
+  local capped = atCap()
   return capped or (type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true)
 end
 

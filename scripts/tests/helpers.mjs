@@ -216,7 +216,7 @@ export const DATA_ENV = `
   UnitXPMax = function() return 40000 end
   GetXPExhaustion = function() return 5000 end
   UnitLevel = function() return 42 end
-  IsPlayerAtEffectiveMaxLevel = function() return __maxLevel == true end
+  GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return __maxLevel == true end }
   C_Reputation = { GetWatchedFactionData = function() return __faction end }
   __faction = { name = "TEST-ONLY Faction", reaction = 5, currentReactionThreshold = 3000, nextReactionThreshold = 9000, currentStanding = 4200 }
 `;

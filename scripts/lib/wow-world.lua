@@ -678,7 +678,7 @@ function UnitXPMax(unit) return uf(unit, "xpmax") or 0 end
 function GetXPExhaustion() return world.units.player.rested end
 function IsXPUserDisabled() return world.units.player.xpDisabled == true end
 function GetMaxPlayerLevel() return world.maxLevel end
-function IsPlayerAtEffectiveMaxLevel() return world.units.player.level >= world.maxLevel end
+GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return world.units.player.level >= world.maxLevel end }
 function GetComboPoints(unit) return uf(unit, "combo") or 0 end
 
 -- Whether two tokens name the same unit.

@@ -115,7 +115,7 @@ it("retail data: gear is weighed with mastery, versatility and item level, and /
 
 // TEST-ONLY: a character at Retail's level cap, watching a major faction (id 2600) at renown 12.
 const CAP_ENV = `
-  IsPlayerAtEffectiveMaxLevel = function() return true end
+  GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return true end }
   __wfgWorld.watchedFaction = { name = "TEST-ONLY Council", factionID = 2600, reaction = 5, currentReactionThreshold = 0, nextReactionThreshold = 0, currentStanding = 0 }
   __wfgWorld.majorFactions[2600] = { renownLevel = 12, renownReputationEarned = 1200, renownLevelThreshold = 2500 }
 `;

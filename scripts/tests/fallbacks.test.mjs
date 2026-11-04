@@ -48,8 +48,15 @@ it("raid status reads nothing from a client without the API", () => {
 });
 
 it("the XP bar hides at the cap on a client with only IsXPUserDisabled, and with no XP to earn", () => {
-  const addon = loggedIn("IsPlayerAtEffectiveMaxLevel = nil IsXPUserDisabled = function() return true end");
+  const addon = loggedIn("GameRulesUtil = nil IsXPUserDisabled = function() return true end");
   expect(addon.eval('return ns.GetModule("DataBars").XP() == nil')).toBe(true);
   addon.eval("IsXPUserDisabled = function() return false end UnitXPMax = function() return 0 end");
   expect(addon.eval('return ns.GetModule("DataBars").XP() == nil')).toBe(true);
+});
+
+it("the XP bar hides at the cap by level when the client has no GameRulesUtil", () => {
+  const addon = loggedIn("GameRulesUtil = nil UnitXPMax = function() return 40000 end __wfgWorld.units.player.level = __wfgWorld.maxLevel - 1");
+  expect(addon.eval('return ns.GetModule("DataBars").XP() ~= nil'), "one level short: the bar shows").toBe(true);
+  addon.eval("__wfgWorld.units.player.level = __wfgWorld.maxLevel");
+  expect(addon.eval('return ns.GetModule("DataBars").XP() == nil'), "at the cap: it hides").toBe(true);
 });
