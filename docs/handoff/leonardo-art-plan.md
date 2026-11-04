@@ -293,7 +293,7 @@ A tiled surface draws one texel per UI unit, like the existing ones (`Core/Panel
 - **Leonardo effort** is Cliff's work: runs of 4 images (no upscales, §6.1).
 
 **Progress** (tick here in the task's commit, as CLAUDE.md asks; a new thread reads this list and the PR body first):
-- [x] M0.1 - [x] M0.2 - [x] C1 - [x] C2 - [x] C3 - [x] C4 - [x] H1 - [x] K1 - [x] A1 - [x] K2 (not run: drawn from the spec) - [x] A2 - [x] K3 (not run: drawn from the spec) - [x] A3 - [ ] S0 - [ ] S1 - [ ] S2 - [ ] S3 - [ ] B0 - [ ] B1
+- [x] M0.1 - [x] M0.2 - [x] C1 - [x] C2 - [x] C3 - [x] C4 - [x] H1 - [x] K1 - [x] A1 - [x] K2 (not run: drawn from the spec) - [x] A2 - [x] K3 (not run: drawn from the spec) - [x] A3 - [x] S0 - [x] S1 - [x] S2 - [x] S3 - [ ] B0 - [ ] B1
 
 Order and gates: M0-code and M0-Cliff in parallel; M1a after both; M1b after A1 is approved (its render is a reference for K2 and K3); M2 after Q5 and Q6; M3 last. Each thread's state lives in this list and its PR body's Tasks section.
 
@@ -349,6 +349,8 @@ Starts after Q5 and Q6 are answered.
 | S1 | Bedded slate | New entries in `T.PANEL_TEXTURES` and `T.PANEL_TEXTURE_CHOICES` (`Core/PanelTexture.lua:19-31`), shared under a "Vanguard ..." name (`Core/SharedMedia.lua:15`) | 256 x 256 | surface | 3 runs |
 | S2 | Vellum fibre | same | 256 x 256 | surface | 3 runs |
 | S3 | Existing surfaces to the new ceiling (Q5): `Grain`, `Stone` and `Leather` rebuilt in `scripts/lib/media-surfaces.mjs` with `SURFACE_MAX_ALPHA` lowered to 12/255, so the §8 contrast table passes for all five surfaces | `scripts/lib/media-surfaces.mjs:9` and the three files in `Media/Textures` | 256 x 256 each | surface | none |
+
+Plan corrections made while building M2 (2026-11-04): the wrap runs one axis after the other (a single 2-D weight lets the shifted copy's join show along the rows where the other axis's weight is up); drift comes out before the wrap as well as after it, so the two pictures it mixes share a mean; the contrast table also covers the inset well and raised button, and over a bright world muted text misses 4.5:1 in Vellum and ink and Classic look (4.15:1 with a surface at the ceiling, 4.77 and 4.76 flat), which the test lists by name; the S2 prompt is "a blank page from an old book" (the texture words "cloudy mottled" gave smoke), and its picture is cropped to the middle 512 x 512 and boxed 2 x to dodge the book's edges; the files are `PanelSlate` and `PanelVellum`, beside the existing `Panel*` names.
 
 Gate: each new surface is shown at shipped alpha beside the three existing ones; if Cliff cannot tell it from them, it is dropped. The existing three stay (profiles name them).
 

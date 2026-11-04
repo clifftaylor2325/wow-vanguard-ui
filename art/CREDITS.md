@@ -83,6 +83,14 @@ Hearthvale with Leonardo.ai (https://leonardo.ai) from his own prompts, in Octob
 paid plan in private mode (checked in his Library on 2026-11-02), then cropped and sized to 1024 x 512. No other art or reference picture went in.
 `scripts/lib/media-scenes.mjs` writes them to `Media/Art/` as TGA for the AFK screen.
 
+## Painted panel textures (AI-assisted)
+
+`painted/surface/S1.png` and `painted/surface/S2.png` were made by Cliff Hearthvale with Leonardo.ai
+(https://leonardo.ai) from his own prompts, in November 2026, on a paid plan in private mode. The prompts and
+settings are in `painted/manifest.json`. `scripts/lib/media-painted.mjs` turns them into the faint white tiles
+`Media/Textures/PanelSlate.tga` and `PanelVellum.tga`. They are AI-generated and may not be copyrightable; they
+ship under the same all-rights-reserved licence as the rest of Vanguard.
+
 ## Not used
 
 Blizzard's own faction emblems are the game's trademarked art, so Vanguard

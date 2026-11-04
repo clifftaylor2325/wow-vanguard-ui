@@ -12,7 +12,8 @@ local T = ns.Theme
 T.SHARED_MEDIA = {
   font = { ["Vanguard Fira Sans"] = T.FONTS.regular, ["Vanguard Fira Sans SemiBold"] = T.FONTS.bold },
   statusbar = { ["Vanguard"] = T.Texture("Bar"), ["Vanguard Soft"] = T.Texture("BarSoft"), ["Vanguard Flat"] = T.WHITE },
-  background = { ["Vanguard Grain"] = T.Texture("PanelGrain"), ["Vanguard Stone"] = T.Texture("PanelStone"), ["Vanguard Leather"] = T.Texture("PanelLeather") },
+  background = { ["Vanguard Grain"] = T.Texture("PanelGrain"), ["Vanguard Stone"] = T.Texture("PanelStone"), ["Vanguard Leather"] = T.Texture("PanelLeather"),
+    ["Vanguard Slate"] = T.Texture("PanelSlate"), ["Vanguard Vellum"] = T.Texture("PanelVellum") },
 }
 
 -- LibSharedMedia-3.0, or nil when it isn't loaded.

@@ -2,6 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
+import { SURFACE_MAX_ALPHA } from "../lib/media-surfaces.mjs";
 import { CLICK_LUA, MICRO_ENV, TIDY_ENV, UI_ENV, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
 
 it("theme", () => {
@@ -1148,6 +1149,41 @@ it("rounded corners: High contrast's 2 px ring rounds at twice the radius, and a
   expect(addon.eval("return ns.Theme.Settings().corners"), "reset gives square corners").toBe("square");
 });
 
+// The WCAG contrast of `fg` over `bg`, both { r, g, b } with 0-1 channels (unrounded).
+const ratioOf = (fg, bg) => (Math.max(lum(fg), lum(bg)) + 0.05) / (Math.min(lum(fg), lum(bg)) + 0.05);
+
+// A colour `c` ({ r, g, b, a }) laid over an opaque ground.
+const over = (c, ground) => ground.map((g, i) => c[i] * (c[3] ?? 1) + g * (1 - (c[3] ?? 1)));
+
+// The panel's fill with a surface at `alpha` over it, over a world of one colour (what raised and inset sit on).
+const surfaced = (addon, world, alpha) => over([1, 1, 1, alpha], over(tok(addon, "panel"), world));
+
+// The worst contrast of a text tier on the panel, on an inset well (translucent, so it shows the surface a little)
+// and on a raised button (opaque, so it hides the surface), with a surface at `alpha` over a world of one colour.
+const worstOver = (addon, tier, world, alpha) => {
+  const ground = surfaced(addon, world, alpha);
+  const grounds = [ground, over(tok(addon, "inset"), ground), over(tok(addon, "raised"), ground)];
+  return Math.min(...grounds.map((g) => ratioOf(tok(addon, tier), g)));
+};
+
+// Over a bright world, Vellum and ink's and Classic look's muted text sits near 4.15:1 under a surface at the ceiling
+// (4.77 and 4.76 on a flat panel); the plan (docs/handoff/leonardo-art-plan.md, 4.4) expected 4.5. Listed so a new miss fails.
+const BRIGHT_WORLD_MISSES = ["vellum muted over white", "classic muted over white"];
+
+it("panel surfaces (M2): at the written alpha ceiling every variant's text tiers keep 4.5:1 over a dark world, and over a bright one but disabled", () => {
+  const addon = loggedIn();
+  const alpha = Math.round(SURFACE_MAX_ALPHA * 255) / 255;
+  const failures = [];
+  for (const name of addon.eval("return ns.Theme.VARIANT_ORDER")) {
+    addon.slash(`variant ${name}`);
+    for (const tier of ["text", "text2", "muted", "disabled"]) {
+      if (worstOver(addon, tier, [0, 0, 0], alpha) < 4.5) failures.push(`${name} ${tier} over black`);
+      if (tier !== "disabled" && worstOver(addon, tier, [1, 1, 1], alpha) < 4.5) failures.push(`${name} ${tier} over white`);
+    }
+  }
+  expect(failures, "no tier under 4.5:1 on the panel, an inset well or a raised button, bar the two known bright-world misses").toEqual(BRIGHT_WORLD_MISSES);
+});
+
 // WCAG contrast of an { r, g, b } colour against another.
 const contrastOf = (a, b) => Math.round(((Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05)) * 10) / 10;
 
@@ -1491,10 +1527,15 @@ it("panel texture: the minimap's button slots and the menu strip's wells stay fl
 it("panel texture: the picker lists Vanguard's, the game's and other addons' backgrounds, and a name no longer shared draws flat", () => {
   const addon = loggedIn('LibStub("LibSharedMedia-3.0"):Register("background", "TEST-ONLY Cloth", [[Interface\\AddOns\\TestOnly\\Cloth]]) __win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })');
   const values = addon.eval("local out = {} for i, c in ipairs(ns.Theme.PanelTextureChoices()) do out[i] = c[1] end return out");
-  expect(values.slice(0, 7), "the built-ins first, in order").toEqual(["flat", "grain", "stone", "leather", "rock", "marble", "dialog"]);
-  expect([values.includes("TEST-ONLY Cloth"), values.includes("None"), values.includes("Solid"), values.includes("Blizzard Rock"), values.includes("Blizzard Low Health"), values.includes("Vanguard Stone")],
-    "another addon's background is offered; no-texture, solid, full-screen effects, built-in duplicates and Vanguard's own shared names are not").toEqual([true, false, false, false, false, false]);
+  expect(values.slice(0, 9), "the built-ins first, in order").toEqual(["flat", "grain", "stone", "leather", "slate", "vellum", "rock", "marble", "dialog"]);
+  expect([values.includes("TEST-ONLY Cloth"), values.includes("None"), values.includes("Solid"), values.includes("Blizzard Rock"), values.includes("Blizzard Low Health"), values.includes("Vanguard Stone"), values.includes("Vanguard Slate"), values.includes("Vanguard Vellum")],
+    "another addon's background is offered; no-texture, solid, full-screen effects, built-in duplicates and Vanguard's own shared names are not").toEqual([true, false, false, false, false, false, false, false]);
   expect(addon.eval('return LibStub("LibSharedMedia-3.0"):Fetch("background", "Vanguard Stone", true)'), "Vanguard shares its own surfaces").toBe("Interface\\AddOns\\Vanguard\\Media\\Textures\\PanelStone");
+  expect(["Slate", "Vellum"].map((name) => addon.eval(`return LibStub("LibSharedMedia-3.0"):Fetch("background", "Vanguard ${name}", true)`)), "and the painted two").toEqual(["Slate", "Vellum"].map((name) => `Interface\\AddOns\\Vanguard\\Media\\Textures\\Panel${name}`));
+  for (const pick of ["slate", "vellum"]) {
+    addon.eval(`ns.Theme.Settings().panelTexture = "${pick}" ns.Theme.Refresh()`);
+    expect(surfaceOf(addon, "__win").slice(0, 2), `${pick} is drawn whole`).toEqual([`Panel${pick === "slate" ? "Slate" : "Vellum"}`, 1]);
+  }
   addon.eval('ns.Theme.Settings().panelTexture = "TEST-ONLY Cloth" ns.Theme.Refresh()');
   expect(surfaceOf(addon, "__win").slice(0, 2), "a shared background is drawn faint").toEqual(["Cloth", addon.eval("return ns.Theme.PANEL_SURFACE.sharedAlpha")]);
   addon.eval('ns.Theme.Settings().panelTexture = "TEST-ONLY Gone" ns.Theme.Refresh()');
