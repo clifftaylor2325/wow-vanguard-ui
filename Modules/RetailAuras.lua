@@ -3,7 +3,8 @@
 -- (C_UnitAuras.AddPrivateAuraAnchor, UnitAuraDocumentation.lua). Vanguard hands it two:
 --   * one in the middle of each raid tile (its tile hooks on Modules/RaidFrames.lua, kept with Raid debuffs and HoTs off), moved to the tile's new unit
 --     as the roster shifts (the game's own raid frames do the same, CompactUnitFrame.lua);
---   * one left of the target frame (Modules/FrameAuras.lua's frame parts), handed again on a new target.
+--   * one right of the target frame, over the target of target (Modules/FrameAuras.lua's frame parts), handed again
+--     on a new target.
 -- Nothing about the aura is read here: the game draws it, its icon and its sweep, in the spot.
 
 local ADDON, ns = ...
@@ -13,8 +14,9 @@ local RF, RA, FA = ns.GetModule("RaidFrames"), ns.GetModule("RaidAuras"), ns.Get
 local PA = {}
 ns.PrivateAuras = PA
 
--- The gap between the target frame and its spot, and how much larger than a debuff the spot is.
-PA.GAP, PA.GROW = 4, 4
+-- The gap between the target of target and the target's spot, and how much larger than a debuff the spot is.
+-- PA.CLEAR: how far right of the target frame the spot starts, past its corner mark and the Versus deck's edge.
+PA.GAP, PA.GROW, PA.CLEAR = 4, 4, 8
 
 -- Hands the game the spot on holder for unit's first private aura, an icon size across, and gives back its id.
 local function anchor(holder, unit, size)
@@ -66,12 +68,14 @@ table.insert(RF.emptyHooks, PA.TileEmptied)
 
 -- The target frame ---------------------------------------------------------------------------
 
--- The target's spot left of its frame (its right side holds the target of target), a debuff and a bit across, handed again on each new target (the token
--- then means someone else).
+-- The target's spot right of its frame, raised PA.GAP over the target of target that sits there (Modules/UnitFrames.lua
+-- LAYOUT; both stand on the same line), a debuff and a bit across, handed again on each new target (the token
+-- then means someone else). Left of the frame is the Cooldown Manager's row (Modules/GameTools.lua).
 function PA.TargetPart(f, key, settings)
   if key ~= "target" then return end
   local holder = PA.Spot(f, settings.size + PA.GROW, 1)
-  holder:SetPoint("RIGHT", f, "LEFT", -PA.GAP, 0)
+  local below = ns.GetModule("UnitFrames").LAYOUT_BY_KEY.targettarget.h
+  holder:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", PA.CLEAR, below + PA.GAP)
   PA.target = holder
   PA.Point(holder, "target")
   ns.On("PLAYER_TARGET_CHANGED", function() PA.Point(holder, "target") end)
