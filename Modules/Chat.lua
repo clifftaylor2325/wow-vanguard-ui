@@ -31,6 +31,11 @@ CH.BAR = T.CONTROL_H + T.SPACE.tight
 -- The width (units) of the strip of scroll bar and arrow right of a chat window, which the panel reaches over.
 CH.SIDE_COLUMN = 24
 
+-- The game's dock layout (FCFDock_UpdateTabs) in units: it hangs the dock's scroll frame a unit under
+-- the dock's bottom and its scrolling tabs a unit under the scroll child's middle (drop), and leaves a
+-- unit between two tabs (step).
+CH.DOCK = { drop = 1, step = 1 }
+
 -- The room the main window's side buttons take left of its panel (the game keeps them on the
 -- left while the window is nearer the screen's left edge): a gap and a tile.
 CH.STACK_ROOM = T.SPACE.gap + T.CONTROL.tile
@@ -424,15 +429,29 @@ end
 -- Backdrop strengths for the options cycle.
 CH.BACKDROPS = T.CHAT_BACKDROP.levels
 
--- A tab wide enough for its label at the theme font: the game sized it for its own font, which
--- cut a name to "Gene...". A label the client hides (a whisper window named in chat lockdown, whose
--- width comes back secret) keeps the fixed width the game gave it.
+-- A tab's label (its font string), or nil.
+local function tabLabel(tab)
+  local text = tab.Text or (type(tab.GetFontString) == "function" and tab:GetFontString())
+  return type(text) == "table" and type(text.GetUnboundedStringWidth) == "function" and text or nil
+end
+
+-- The width a tab needs for its whole label in the theme's font and a column of air each side, or
+-- nil while the client hides the label (a whisper window named in chat lockdown, whose width comes
+-- back secret: the game keeps that tab a fixed width so the name never spreads to its size).
+local function labelRoom(tab)
+  local text = tabLabel(tab)
+  local width = text and ns.PlainNumber(text:GetUnboundedStringWidth())
+  return width and width + T.SPACE.col * 2 or nil
+end
+
+-- A tab wide enough for its label at the theme font, the label no longer cut to the width the game
+-- gave it: the game sized it for its own font, which cut a name to "Gene...". A label the client
+-- hides keeps the fixed width and cut the game gave it.
 local function fitTab(tab)
-  local text = tab.Text or (tab.GetFontString and tab:GetFontString())
-  if not (text and text.GetStringWidth and tab.SetWidth) then return end
-  text:SetWidth(0)
-  local width = ns.PlainNumber(text:GetStringWidth())
-  if width then tab:SetWidth(width + T.SPACE.col * 2) end
+  local room = labelRoom(tab)
+  if not room or type(tab.SetWidth) ~= "function" then return end
+  tabLabel(tab):SetWidth(0)
+  tab:SetWidth(room)
 end
 
 -- A floating window's tab fitted to its label; a docked window's keeps the width the game gave it
@@ -745,23 +764,67 @@ local function dockScrollChild(dock)
   return type(scroll) == "table" and type(scroll.GetScrollChild) == "function" and scroll:GetScrollChild() or nil
 end
 
+-- The dock's scroll frame and its child seated so the scrolling tabs (every docked tab past General
+-- and the Combat Log, such as a Loot / Trade tab) sit level with the fixed ones. The game hangs the
+-- frame from the last fixed tab's middle and a unit under the dock's bottom but keeps the 31 units
+-- its own art wanted, so the frame stood 9 units above the 20-unit tabs and its tabs with it. A tab
+-- and a unit each side high, both hold one span; the child, a tab high and a unit up, then puts its
+-- tabs centred in the bar whether the client holds it by its left edge or by its top.
+local function seatScrollChild(dock)
+  local child, drop = dockScrollChild(dock), CH.DOCK.drop
+  if not child then return end
+  dock.scrollFrame:SetHeight(T.CONTROL_H + drop * 2)
+  child:SetHeight(T.CONTROL_H)
+  child:SetPoint("LEFT", 0, drop)
+end
+
 -- The main window's tab dock (the docked windows' tabs) on its bar, after the game anchors it to the
 -- window's art (FCFDock_SetPrimary): a tab high, two units inside the bar, its right end before the
 -- Find and Copy buttons, so spare tabs go to the overflow menu, not under them. The game hangs its
--- fixed tabs from the dock's bottom and the rest a unit under its scroll child's centre
--- (FCFDock_UpdateTabs), so the child is a tab high and rides a unit up: every tab lands centred in
--- the bar, whether the client holds the child by its left edge or by its top.
+-- fixed tabs from the dock's bottom and the rest from its scroll frame (seatScrollChild): every tab
+-- lands centred in the bar.
 function CH.PlaceDock()
   local dock, frame = _G.GENERAL_CHAT_DOCK, _G.ChatFrame1
   if type(dock) ~= "table" or type(frame) ~= "table" or not (CH.frames and CH.frames[frame]) then return end
-  local bar, gap, child = CH.frames[frame].bar, T.SPACE.tight, dockScrollChild(dock)
+  local bar, gap = CH.frames[frame].bar, T.SPACE.tight
   local edge = endTile(frame)
   local anchor, side = edge or bar, edge and "LEFT" or "RIGHT"
   dock:ClearAllPoints()
   dock:SetPoint("TOPLEFT", bar, "TOPLEFT", gap / 2, -gap / 2)
   dock:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", gap / 2, gap / 2)
   dock:SetPoint("RIGHT", anchor, side, -gap, 0)
-  if child then child:SetHeight(T.CONTROL_H) child:SetPoint("LEFT", 0, 1) end
+  seatScrollChild(dock)
+end
+
+-- The dock's scrolling tabs: the tabs of its docked windows past the fixed ones (General and the
+-- Combat Log), in the order the game lays them out.
+local function scrollingTabs(dock)
+  local tabs, frames = {}, dock.DOCKED_CHAT_FRAMES
+  for _, frame in ipairs(type(frames) == "table" and frames or {}) do
+    local tab = not frame.isStaticDocked and _G[(frame:GetName() or "") .. "Tab"]
+    if type(tab) == "table" then tabs[#tabs + 1] = tab end
+  end
+  return tabs
+end
+
+-- The room the scrolling tabs take side by side, each as wide as its label (a hidden one at its own
+-- width), with the game's unit between two.
+local function roomNeeded(tabs)
+  local total = 0
+  for _, tab in ipairs(tabs) do total = total + (labelRoom(tab) or ns.PlainNumber(tab:GetWidth()) or 0) + CH.DOCK.step end
+  return total
+end
+
+-- The dock's scrolling tabs after the game lays them out (FCFDock_UpdateTabs), each as wide as its
+-- label like the fixed tabs (fitTab): the game gives them one set width, 90 at most, which cut
+-- "Loot / Trade" to "Loot / Tra...". Only where they all fit its scroll room with no overflow menu,
+-- because past that the game's scrolling counts in its own widths.
+local function fitDockTabs(dock)
+  local scroll, arrow = type(dock) == "table" and dock.scrollFrame, type(dock) == "table" and dock.overflowButton
+  if type(scroll) ~= "table" or (type(arrow) == "table" and arrow:IsShown()) then return end
+  local tabs = scrollingTabs(dock)
+  if roomNeeded(tabs) > (ns.PlainNumber(scroll:GetWidth()) or 0) then return end
+  for _, tab in ipairs(tabs) do fitTab(tab) end
 end
 
 -- The dock laid out by the game again on the next frame, once for a burst of asks (a chat windows
@@ -1141,6 +1204,7 @@ local function hookLayout()
   after("FCFDock_SelectWindow", carryTiles)
   after("FCFDockOverflowList_Update", fontOverflowRows)
   after("FCFDock_UpdateTabs", CH.PlaceEditBoxes)
+  after("FCFDock_UpdateTabs", fitDockTabs)
   after("FCFTab_UpdateColors", restyleTab)
   after("FCF_SetTabPosition", placeFloatingTab)
   after("FCF_SetButtonSide", CH.StackButtons)
