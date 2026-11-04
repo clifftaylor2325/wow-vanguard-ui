@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { tga } from "./lib/media-art.mjs";
-import { PAINTED_MAX_ALPHA, alphaOf, boxDown, colourOf, greyOf, manifest, paintedArt, paintedSurfaces, percentile, saturations, surfaceOf, withoutDrift, wrap } from "./lib/media-painted.mjs";
+import { PAINTED_MAX_ALPHA, alphaOf, boxDown, colourOf, greyOf, iconOf, manifest, paintedArt, paintedSurfaces, percentile, saturations, surfaceOf, withoutDrift, wrap } from "./lib/media-painted.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -16,6 +16,12 @@ const surfaces = () => manifest().filter((e) => e.class === "surface");
 
 // The colour entries of the manifest.
 const colours = () => manifest().filter((e) => e.class === "colour");
+
+// The icon entries of the manifest.
+const icons = () => manifest().filter((e) => e.class === "icon");
+
+// The Media folder each class of entry writes to.
+const OUTPUT_FOLDER = { surface: "Textures", colour: "Art", icon: "Textures" };
 
 // An image's alpha channel as whole bytes, with its side.
 function alphaBytes(img) {
@@ -137,11 +143,11 @@ const FIELDS = ["id", "name", "class", "source", "output", "crop", "box", "conve
 
 // Every picture under art/painted has a complete manifest entry, and every entry's source and output exist.
 function manifestIsComplete() {
-  const entries = manifest(), kinds = ["surface", "colour"];
+  const entries = manifest(), kinds = Object.keys(OUTPUT_FOLDER);
   expect(entries.map((e) => e.source).sort(), "a source with no entry, or an entry with no source").toEqual(kinds.flatMap(sourcesOf).sort());
   for (const entry of entries) {
     expect(FIELDS.filter((f) => entry[f] === undefined), `${entry.id} lacks fields`).toEqual([]);
-    expect(entry.output, entry.id).toBe(`${entry.class === "surface" ? "Textures" : "Art"}/${entry.name}.tga`);
+    expect(entry.output, entry.id).toBe(`${OUTPUT_FOLDER[entry.class]}/${entry.name}.tga`);
     expect(fs.existsSync(path.join(root, "Media", entry.output)), `${entry.id}'s file is built`).toBe(true);
   }
   for (const entry of surfaces()) expect(entry.crop[2] / entry.box, `${entry.id} is a 256 tile`).toBe(256);
@@ -154,6 +160,24 @@ function bannerShape() {
     expect([img.w, img.h, entry.crop], entry.id).toEqual([1024, 512, [0, 0, 2048, 1024]]);
     expect(tga(img).equals(tga(colourOf(entry))), `${entry.id} builds the same twice`).toBe(true);
     expect(img.px.filter((v, i) => i % 4 === 3).every((v) => v === 1), `${entry.id} is opaque`).toBe(true);
+  }
+}
+
+// Whether an image's outer ring of pixels is fully clear.
+function edgeIsClear(img) {
+  const ring = [];
+  for (let i = 0; i < img.w; i++) ring.push([i, 0], [i, img.h - 1], [0, i], [img.w - 1, i]);
+  return ring.every(([x, y]) => img.px[(y * img.w + x) * 4 + 3] === 0);
+}
+
+// The addons-list icon is 64 x 64 from a whole crop, clear along its edge, builds to the same bytes twice, and its
+// clear texels are white (the alpha-weighted box keeps the cut-out's surround out of its colour).
+function iconShape() {
+  for (const entry of icons()) {
+    const img = iconOf(entry);
+    expect([img.w, img.h, entry.crop[2] / entry.box], entry.id).toEqual([64, 64, 64]);
+    expect([edgeIsClear(img), tga(img).equals(tga(iconOf(entry)))], `${entry.id}: clear edge, same bytes`).toEqual([true, true]);
+    expect(Array.from(img.px.slice(0, 4)), `${entry.id}: a clear corner is clear white`).toEqual([1, 1, 1, 0]);
   }
 }
 
@@ -190,6 +214,7 @@ describe(
     it("every painted source has a complete manifest entry and a built file", manifestIsComplete);
     it("the banner is 1024 x 512, opaque and reproducible", bannerShape);
     it("the banner's saturation stays calm", bannerIsCalm);
+    it("the addons-list icon is 64 x 64, clear at its edge and reproducible", iconShape);
     it("the pipeline's stages behave on small grids", stagesBehave);
   },
 );

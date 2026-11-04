@@ -2694,7 +2694,7 @@ function T.FontObjects(map)
   applyFontObjects()
 end
 
--- The Vanguard crest (Media/Textures/Icon, pre-colored: the accent and theme don't tint it) at size x size.
+-- The Vanguard crest (Media/Textures/Icon, the painted shield, pre-colored: the accent and theme don't tint it) at size x size.
 function T.Logo(parent, size)
   local f = T.PixelSize(CreateFrame("Frame", nil, parent), size, size)
   local t = f:CreateTexture(nil, "ARTWORK")

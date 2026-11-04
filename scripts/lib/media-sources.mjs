@@ -6,13 +6,12 @@
 // (scripts/lib/media-scenes.mjs); scripts/build-media.mjs writes them.
 // Textures are white or grayscale so the addon tints them with theme colors;
 // Icon is the one pre-colored image (the addons list can't tint): Vanguard's
-// crest, drawn in scripts/lib/media-brand.mjs.
+// crest, a painted shield cut out from its PNG (scripts/lib/media-painted.mjs).
 
 import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./media-art.mjs";
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
-import { crestIcon } from "./media-brand.mjs";
 import { SURFACES } from "./media-surfaces.mjs";
-import { paintedArt, paintedSurfaces } from "./media-painted.mjs";
+import { paintedArt, paintedIcons, paintedSurfaces } from "./media-painted.mjs";
 import { ORNAMENT_CORNERS, ORNAMENT_ROUND, ORNAMENT_RULES } from "./media-ornament.mjs";
 import { SCENES, scene } from "./media-scenes.mjs";
 
@@ -232,8 +231,8 @@ export const TEXTURES = {
   ...paintedSurfaces(),
   // The classification diamond, white, for the addon to tint.
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
-  // The pre-colored addons-list icon: Vanguard's crest (scripts/lib/media-brand.mjs).
-  Icon: () => crestIcon(64),
+  // The pre-colored addons-list icon, Icon: Vanguard's crest, painted (art/painted/manifest.json, class "icon").
+  ...paintedIcons(),
   // Shield corners (the cut corner of the crest, on the unit frames): a 45-degree cut across the top-left corner, 8 x 8,
   // drawn at T.CORNER_CUT (8) screen pixels so each texel is one pixel. The border's cut line is one pixel diagonal, the
   // fill sits under it, and the mask is the fill less the line, so a bar under it stops inside the line.

@@ -2051,6 +2051,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a painted dusk landscape (a cream banner on a spear on a hill, a grey watchtower, slate-blue and amber sky) fills a strip under the title on setup's first step and under the hint in What's new, with the text below it clear of it. The window is taller by the picture on setup's first step only; the next step is the usual height, and Back brings the picture back. It appears with its window (no separate fade) and with Reduce motion on it shows at once. On a screen too short for it the picture is cropped to the middle or left out, and the window never runs off the screen. No blur, no fringe, no blocky banding in the sky. `/vg errors` stays empty. [Needs in game: how the 400 x 200 strip looks at 1080p and 1440p; that the picture reads calmly beside Slate and brass, Vellum and ink and Classic look; that nothing in it reads as a faction emblem.]
 - If it fails, paste: a screenshot of the window with the variant, UI scale and screen size named, and `/vg errors`.
 
+### 26.3c Painted crest (addons list, options header)
+
+- Do: at the character screen open AddOns and find Vanguard; in game open `/vg` and look at the header's top-left; on General look at the sample action button; turn on the Versus deck (Unit frames) and look at its top edge. Try UI scale 0.64 and 1.0, and Slate and brass, Vellum and ink and Classic look.
+- Expect: each shows the painted crest, a navy shield with a brass rim, small studs and a large gold V, with no grey box or fringe around it and the V readable at 28 px. Nothing is tinted by the accent. `/vg errors` stays empty. [Needs in game: how the 64 px icon reads in the AddOns list and the 28 px crest in the header at 1080p and 1440p.]
+- If it fails, paste: a screenshot with the variant and UI scale named, and `/vg errors`.
+
 ## 27. Window ornaments (#238)
 
 ### 27.1 Rule and corner brackets
@@ -2224,7 +2230,7 @@ These steps check what the UI consistency pass changed (docs/THEME.md, Window ch
 ### 32.9 The options preview
 
 - Do: open `/vg` → General and look at the sample at the top; change the accent and the Bar texture.
-- Expect: the sample unit frame shows your character's own name (`You` if the game hides it) where `<name>` used to be, with `72%` on its right; the sample action button shows Vanguard's crest, a shield with crossed swords, instead of the game's question mark, with `1` and `5` in its corners. The bars and the button's glow follow the accent and the texture as you change them.
+- Expect: the sample unit frame shows your character's own name (`You` if the game hides it) where `<name>` used to be, with `72%` on its right; the sample action button shows Vanguard's crest, a navy shield with a gold V, instead of the game's question mark, with `1` and `5` in its corners. The bars and the button's glow follow the accent and the texture as you change them.
 - If it fails, paste: a screenshot of the sample and `/vg errors`.
 
 ### 32.10 General captions

@@ -77,5 +77,33 @@
     "date": "2026-11-04",
     "tokens": null,
     "seed": null
+  },
+  {
+    "id": "C2",
+    "name": "Icon",
+    "class": "icon",
+    "source": "art/painted/icon/C2.png",
+    "output": "Textures/Icon.tga",
+    "crop": [
+      0,
+      0,
+      960,
+      960
+    ],
+    "box": 15,
+    "convert": "Cut out by hand once from C2-shield-icon-v1.png (1024 x 1024, flat grey background): the background keyed out by saturation (HSL, 20%) merged with a 14% flood fill from the edges, the floor and its reflection masked off below the shield's tip, the largest shape kept, the edge eroded 1 px and softened 0.5 px, trimmed to 679 x 876 and centred on a clear 960 x 960 canvas (8-bit RGBA). Steps kept in the project files with the picture.",
+    "model": "Phoenix 1.0",
+    "mode": null,
+    "contrast": null,
+    "preset": null,
+    "tiling": false,
+    "prompt": "Stylised cartoon game icon, a heraldic shield seen straight from the front, perfectly symmetrical, bold clean shapes, thick dark outline, flat cel shading with two or three tones per material, thick bronze-gold rim with four large amber gems, deep navy panel, a very large chunky polished brass serif letter V filling most of the panel, bright and high contrast, hand-painted game art style, plain flat mid-grey background, no floor, no shadow, no other text",
+    "negative": "photograph, realistic, 3D render, floor, reflection, perspective, swords, weapons, scratches, fine detail, small text",
+    "references": [],
+    "private": true,
+    "date": "2026-11-04",
+    "tokens": null,
+    "seed": null,
+    "note": "Settings and the exact prompt were not reported; the prompt is the one suggested in the project thread for this run (Prompt Enhance off, Illustration style asked for)."
   }
 ]

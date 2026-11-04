@@ -18,6 +18,7 @@
     "package": "node scripts/package.mjs",
     "release:local": "node scripts/release-local.mjs",
     "preview": "node scripts/preview-ui.mjs",
+    "store-art": "node scripts/store-art.mjs",
     "link:wow": "node scripts/link-wow.mjs",
     "prepare": "node scripts/install-hooks.mjs"
   },

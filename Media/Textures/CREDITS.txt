@@ -4,5 +4,9 @@ PanelSlate.tga, PanelVellum.tga  made by Cliff Hearthvale with Leonardo.ai (http
 in private mode, AI-generated, then turned into faint white tiles (grey, seamless, box-filtered, alpha-mapped) by
 scripts/lib/media-painted.mjs. All rights reserved with the rest of Vanguard.
 
+Icon.tga  Vanguard's crest, a painted shield made by Cliff Hearthvale with Leonardo.ai (https://leonardo.ai) on a paid
+plan in private mode, AI-generated, cut out by hand and boxed down to 64 x 64 by scripts/lib/media-painted.mjs. All rights
+reserved with the rest of Vanguard.
+
 The other panel textures (PanelGrain, PanelStone, PanelLeather) and every other file in this folder are drawn by
 Vanguard's own build scripts.
