@@ -13,6 +13,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { tocPaths } from "./lib/toc.mjs";
 
 // No npm dependencies: packaging runs without npm ci.
 const ADDON = "Vanguard";
@@ -35,10 +36,8 @@ const tocName = `${ADDON}.toc`;
 const toc = show(tocName).toString("utf8");
 const version = toc.match(/^## Version:\s*(\S+)/m)?.[1];
 if (!version) throw new Error(`${tocName} has no ## Version`);
-const loaded = toc
-  .split(/\r?\n/)
-  .map((l) => l.trim())
-  .filter((l) => l && !l.startsWith("#"));
+// Every file the TOC lists, whichever client loads it, without its game-type tags.
+const loaded = tocPaths(toc);
 const media = git("ls-tree", "-r", "--name-only", ref, "Media").toString("utf8").split("\n").filter(Boolean);
 // The libraries' license files (their Lua is in the TOC).
 const libLicenses = git("ls-tree", "-r", "--name-only", ref, "Libs").toString("utf8").split("\n").filter((f) => f && !f.endsWith(".lua"));

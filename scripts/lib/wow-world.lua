@@ -70,6 +70,13 @@ C_Secrets = {
 -- Client ---------------------------------------------------------------------------------
 
 world.build = { version = "1.16.0", build = "65000", date = "Sep 1 2026", interface = 16001 }
+-- The project constants (Blizzard_ProjectConstants: ProjectConstants.lua on both clients, and
+-- Camelot/ProjectConstants.lua, which only WoW Forever loads), and which client the harness models:
+-- "forever" or "retail", whose TOC game types (scripts/lib/toc.mjs) decide which addon files load.
+WOW_PROJECT_MAINLINE, WOW_PROJECT_CLASSIC = 1, 2
+WOW_PROJECT_CAMELOT = 18
+WOW_PROJECT_ID = WOW_PROJECT_CAMELOT
+world.client = "forever"
 world.locale = "enUS"
 world.cvars = {}
 world.sounds = {}
@@ -283,6 +290,27 @@ C_EventUtils = {
   -- Whether the client knows an event.
   IsEventValid = function(event) return world.invalidEvents[event] ~= true end,
 }
+
+-- Removes one API function, a global ("Name") or in a namespace ("C_Namespace.Name"; nothing when the
+-- namespace is not stubbed).
+local function removeApi(name)
+  local space, fn = name:match("^([%w_]+)%.([%w_]+)$")
+  if not space then _G[name] = nil return end
+  local t = _G[space]
+  if type(t) == "table" then t[fn] = nil end
+end
+
+-- Makes the world Retail 12.1.5 (interface 120105, WOW_PROJECT_MAINLINE), as RETAIL_CLIENT does
+-- before the addon's files load: the WoW Forever API Retail lacks (scripts/lib/forever-only-api.json)
+-- is gone, its `functions` nil and its `events` invalid. The harness then runs the Retail stubs
+-- (scripts/lib/wow-retail-<area>.lua) and loads the files the TOC tags allow on Retail.
+function world.becomeRetail(functions, events)
+  world.client = "retail"
+  world.build = { version = "12.1.5", build = "70783", date = "Nov 4 2026", interface = 120105 }
+  WOW_PROJECT_CAMELOT, WOW_PROJECT_ID = nil, WOW_PROJECT_MAINLINE
+  for _, name in ipairs(functions) do removeApi(name) end
+  for _, event in ipairs(events) do world.invalidEvents[event] = true end
+end
 
 -- Timers on the test clock: C_Timer.After runs when stub.update has moved
 -- the clock past the delay.

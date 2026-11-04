@@ -39,7 +39,7 @@ export function setCombat(addon, on) {
 }
 
 // A retail-like client (the world's default is WoW Forever): the newer interface number.
-export const RETAIL = "__wfgWorld.build.interface = 120007\n";
+export const RETAIL = "__wfgWorld.build.interface = 120105\n";
 
 // An account that has finished first-run setup, and a character that has played on it, so the
 // wizard stays shut in cases about other things (a case's own VanguardDB or VanguardCharDB replaces them).
