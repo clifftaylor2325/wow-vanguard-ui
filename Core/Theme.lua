@@ -182,7 +182,7 @@ T.VARIANTS = {
     label = ns.L["Classic look"], ornaments = true, minimapRound = true, barBacking = true,
     tokens = {
       panel = { "1c1610", 0.96 }, inset = { "120d09", 0.96 }, raised = "2b2117", divider = "4a3a24", edge = "6b5230",
-      sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "9c8a62",
+      sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "a4926a",
     },
   },
   -- Vellum & Ink: a warm dark with cream text and brass.
@@ -190,7 +190,7 @@ T.VARIANTS = {
     label = ns.L["Vellum and ink"],
     tokens = {
       panel = { "1a1612", 0.94 }, inset = { "100d0a", 0.95 }, raised = "241f19", divider = "3a3226",
-      text = "efe6d2", text2 = "d2c6ad", muted = "9a8f78",
+      text = "efe6d2", text2 = "d2c6ad", muted = "a29780",
     },
   },
   -- Midnight: a cold navy-black with steel-blue dividers and ice-blue text.

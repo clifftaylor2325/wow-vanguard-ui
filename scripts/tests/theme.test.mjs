@@ -1166,10 +1166,6 @@ const worstOver = (addon, tier, world, alpha) => {
   return Math.min(...grounds.map((g) => ratioOf(tok(addon, tier), g)));
 };
 
-// Over a bright world, Vellum and ink's and Classic look's muted text sits near 4.15:1 under a surface at the ceiling
-// (4.77 and 4.76 on a flat panel); the plan (docs/handoff/leonardo-art-plan.md, 4.4) expected 4.5. Listed so a new miss fails.
-const BRIGHT_WORLD_MISSES = ["vellum muted over white", "classic muted over white"];
-
 it("panel surfaces (M2): at the written alpha ceiling every variant's text tiers keep 4.5:1 over a dark world, and over a bright one but disabled", () => {
   const addon = loggedIn();
   const alpha = Math.round(SURFACE_MAX_ALPHA * 255) / 255;
@@ -1181,7 +1177,7 @@ it("panel surfaces (M2): at the written alpha ceiling every variant's text tiers
       if (tier !== "disabled" && worstOver(addon, tier, [1, 1, 1], alpha) < 4.5) failures.push(`${name} ${tier} over white`);
     }
   }
-  expect(failures, "no tier under 4.5:1 on the panel, an inset well or a raised button, bar the two known bright-world misses").toEqual(BRIGHT_WORLD_MISSES);
+  expect(failures, "no tier under 4.5:1 on the panel, an inset well or a raised button").toEqual([]);
 });
 
 // WCAG contrast of an { r, g, b } colour against another.
