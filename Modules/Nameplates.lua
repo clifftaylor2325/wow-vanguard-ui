@@ -55,6 +55,13 @@ NP.MARKER = 8
 NP.QUEST = 12
 -- How many screen pixels the accent glow around your target's plate reaches out.
 NP.GLOW = 2
+-- How far a plate's scale may drift (as a ratio, either way) from the one its border and glow were
+-- painted at before they are painted again. The client scales plates as it likes, and hands some
+-- over at a tiny scale (about 0.01): a one-pixel border painted then is some 50 units thick once
+-- the plate grows, and its four black edges draw a dark box over and around the bar.
+NP.SCALE_SLACK = 1.2
+-- How often (seconds) every plate's scale is looked at again.
+NP.SCALE_POLL = 0.5
 -- The game's Info display setting (its Nameplates options), whose health percent and
 -- value bits Vanguard's enemy plates follow; NP.info holds them as last read.
 NP.INFO_CVAR = "nameplateInfoDisplay"
@@ -533,14 +540,25 @@ local function paintTarget(f, unit)
   if target then T.Tint(f.marker, "accent") end
 end
 
+-- True when a plate's scale now is within NP.SCALE_SLACK of the scale its border and glow were
+-- painted at (none yet counts as no), so they still look their pixel size. A hidden scale counts as yes.
+function NP.ScaleHolds(scale, painted)
+  scale = ns.PlainNumber(scale)
+  if not scale then return true end
+  if type(painted) ~= "number" or painted <= 0 then return false end
+  local ratio = scale / painted
+  return ratio <= NP.SCALE_SLACK and ratio * NP.SCALE_SLACK >= 1
+end
+
 -- Your target's accent border, glow and marker. They are repainted only when
--- the plate's target state or its scale (the pixel size of the edge and the
--- glow) changed since they were last painted.
+-- the plate's target state changed or its scale (the pixel size of the edge and
+-- the glow) left NP.SCALE_SLACK of the one they were painted at.
 function NP.UpdateTarget(f, unit)
   local target, scale = targetShown(unit), f:GetEffectiveScale()
-  if target == f.vgTarget and scale == f.vgScale then return end
+  if target == f.vgTarget and NP.ScaleHolds(scale, f.vgScale) then return end
   paintTarget(f, unit)
 end
+
 
 -- Health bar, color, name and level, raid icon, and your target's border, glow and marker.
 function NP.Update(f, unit)
@@ -601,6 +619,12 @@ end
 -- threat colors, the target border, quest marks): the options and Situations call it.
 function NP.RefreshAll()
   each(refresh)
+end
+
+-- Every NP.SCALE_POLL seconds: each plate's border and glow painted again where the client has
+-- since rescaled the plate (no event says so), and where its target state changed.
+function NP.CheckScales()
+  each(NP.UpdateTarget)
 end
 
 -- The client's bit index for one of the Info display's boxes ("CurrentHealthPercent"), or nil on a client without it.
@@ -748,6 +772,7 @@ function NP.Enable(settings)
   watchPersonalResources()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
   T.OnChanged(function() each(paintTarget) end)
+  ns.Every("nameplate scale", NP.SCALE_POLL, NP.CheckScales)
 end
 
 -- Slash -------------------------------------------------------------------------------------
