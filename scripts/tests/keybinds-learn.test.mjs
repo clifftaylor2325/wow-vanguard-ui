@@ -271,6 +271,22 @@ it("three refused updates in a row turn the switch off, and say so", () => {
   expect(kn(addon, "return KN.IsOn()"), "on again, the count starts afresh").toBe(true);
 });
 
+// Whether the Your keys tab's Place new spells switch is drawn on.
+const switchDrawn = (addon) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.track and w.label and w.label:GetText() == "Place new spells as I learn them" then return w.fill:IsShown() end end`);
+
+it("the open Your keys tab's switch follows an Apply and placing stopping itself", () => {
+  const addon = warrior();
+  applyPreset(addon, false);
+  addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
+  expect(switchDrawn(addon), "off after an Apply with the box unticked").toBe(false);
+  kn(addon, `KN.Applied(${PRESET}, true)`);
+  expect(switchDrawn(addon), "on after an Apply with the box ticked").toBe(true);
+  addon.eval('local set = SetBinding SetBinding = function(key, command) if key == "2" then return false end return set(key, command) end');
+  for (const id of [772, 6343, 7384]) learn(addon, id);
+  expect(switchDrawn(addon), "off after three refused updates").toBe(false);
+});
+
 it("the switch turns on only for keys set up with a preset and still there", () => {
   const bare = warrior();
   kn(bare, "KN.SetOn(true)");

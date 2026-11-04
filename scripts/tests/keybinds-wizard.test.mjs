@@ -329,3 +329,17 @@ it("step 3: a change the player unticked reaches key setup's later updates as th
     __click("Apply")`);
   expect(addon.eval("return { #__declined, __declined[1].key }")).toEqual([1, "F"]);
 });
+
+it("the open Your keys tab's Place new spells switch turns off at once on Put everything back", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") local box = Vanguard_KeysWizard.steps.ready.placeNew box.__scripts.OnClick(box) __click("Apply")');
+  addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
+  // Whether the switch is drawn on.
+  const drawn = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.track and w.label and w.label:GetText() == "Place new spells as I learn them" and w:IsVisible() then return w.fill:IsShown() end end`);
+  expect(drawn()).toBe(true);
+  cardButton(addon, "Put everything back");
+  addon.eval('__click("Put back")');
+  expect(drawn()).toBe(false);
+});
