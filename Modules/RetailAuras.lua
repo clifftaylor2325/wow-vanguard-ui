@@ -1,7 +1,7 @@
 -- Private auras on Retail (WoW Retail only: the TOC keeps this file off WoW Forever). A boss fight can give a
 -- player auras the client hides from addons; the game draws such an aura itself, in a spot an addon hands it
 -- (C_UnitAuras.AddPrivateAuraAnchor, UnitAuraDocumentation.lua). Vanguard hands it two:
---   * one in the middle of each raid tile (Modules/RaidAuras.lua's tile hooks), moved to the tile's new unit
+--   * one in the middle of each raid tile (its tile hooks on Modules/RaidFrames.lua, kept with Raid debuffs and HoTs off), moved to the tile's new unit
 --     as the roster shifts (the game's own raid frames do the same, CompactUnitFrame.lua);
 --   * one right of the target frame (Modules/FrameAuras.lua's frame parts), handed again on a new target.
 -- Nothing about the aura is read here: the game draws it, its icon and its sweep, in the spot.
@@ -42,25 +42,27 @@ end
 -- Raid tiles --------------------------------------------------------------------------------
 
 -- Gives a tile its spot, a debuff icon across, in the middle of its health bar, under the tile's overlay, so a ready
--- check, resurrection or summon mark in the middle shows over the aura while it lasts (RaidAuras setup hook).
+-- check, resurrection or summon mark in the middle shows over the aura while it lasts (raid frames setup hook).
 function PA.TileSetup(b)
   b.privateAura = PA.Spot(b, RF.TileZones().icon + PA.GROW, RA.LEVEL_ABOVE + 1)
   b.privateAura:SetPoint("CENTER", b.health or b, "CENTER", 0, 0)
 end
 
--- Points the tile's spot at its unit, when that changed (RaidAuras update hook).
+-- Points the tile's spot at its unit, when that changed (raid frames update hook).
 function PA.TileUpdate(b, unit)
   if b.privateAura.unit ~= unit then PA.Point(b.privateAura, unit) end
 end
 
--- An emptied tile's spot points at nobody (RaidAuras empty hook).
+-- An emptied tile's spot points at nobody (raid frames empty hook).
 function PA.TileEmptied(b)
   if b.privateAura.unit ~= nil then PA.Point(b.privateAura, nil) end
 end
 
-table.insert(RA.CLIENT_HOOKS.setup, PA.TileSetup)
-table.insert(RA.CLIENT_HOOKS.update, PA.TileUpdate)
-table.insert(RA.CLIENT_HOOKS.empty, PA.TileEmptied)
+-- The raid frames' own hooks, not the Raid debuffs module's: the game's raid frames are hidden, so the spot
+-- stays when that module is off.
+table.insert(RF.setupHooks, PA.TileSetup)
+table.insert(RF.updateHooks, PA.TileUpdate)
+table.insert(RF.emptyHooks, PA.TileEmptied)
 
 -- The target frame ---------------------------------------------------------------------------
 

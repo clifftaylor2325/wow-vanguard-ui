@@ -109,6 +109,13 @@ it("retail auras: each raid tile hands the game one private aura spot, moved to 
   expect(spots(addon).filter((s) => s[3] === "Vanguard_RaidUnitButton2"), "an emptied tile's spot is given back").toEqual([]);
 });
 
+it("retail auras: the raid tiles keep their private aura spot with Raid debuffs and HoTs switched off (H9-4-1)", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidAuras = false } } }" });
+  addon.eval(`__spawn(1, "raid1")`);
+  expect([addon.eval("return ns.ModuleEnabled('RaidAuras')"), addon.eval("return Vanguard_RaidUnitButton1.debuffRow == nil")], "the aura rows are off").toEqual([false, true]);
+  expect(spots(addon).filter((s) => s[3].startsWith("Vanguard_Raid")).map((s) => s[0]), "the tile still has its spot, for its unit").toEqual(["raid1"]);
+});
+
 it("retail auras: the target frame has a spot right of it, handed again on each new target", () => {
   const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
   // The target spot's unit, whether it sits by the target frame, and its anchor id.
