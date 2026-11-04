@@ -236,6 +236,20 @@ local function emptied(b)
   if b.dispel then b.dispel:Hide() end
 end
 
+-- What a client adds to each tile besides these rows, by the raid frames' hook it joins (Modules/RetailAuras.lua
+-- on Retail: the private aura spot; none on WoW Forever).
+RA.CLIENT_HOOKS = { setup = {}, update = {}, empty = {} }
+
+-- Joins a client's own tile hooks to the raid frames' hooks, and runs its setup on the tiles already built.
+local function addClientHooks()
+  for _, hook in ipairs(RA.CLIENT_HOOKS.setup) do
+    for _, b in ipairs(RF.buttons) do hook(b) end
+    table.insert(RF.setupHooks, hook)
+  end
+  for _, hook in ipairs(RA.CLIENT_HOOKS.update) do table.insert(RF.updateHooks, hook) end
+  for _, hook in ipairs(RA.CLIENT_HOOKS.empty) do table.insert(RF.emptyHooks, hook) end
+end
+
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).
 function RA.Enable(settings)
   RA.settings = settings
@@ -246,4 +260,5 @@ function RA.Enable(settings)
   table.insert(RF.updateHooks, indicatorUpdate)
   table.insert(RF.emptyHooks, emptied)
   table.insert(RF.emptyHooks, indicatorEmptied)
+  addClientHooks()
 end

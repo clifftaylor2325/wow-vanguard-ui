@@ -117,6 +117,7 @@ Modules/SwingTimer.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard
 Modules/UnitExtras.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/RaidFrames.lua
 Modules/RaidAuras.lua
+Modules/RetailAuras.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/RaidHealing.lua
 Modules/RaidStatus.lua
 Modules/RaidPreview.lua
@@ -152,6 +153,7 @@ Modules/BagSections.lua
 Modules/BagCategories.lua
 Modules/BagSearch.lua
 Modules/BagTools.lua
+Modules/RetailBank.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
