@@ -81,7 +81,7 @@ end
 -- Every bag slot whose item keep(id) accepts, as { bag, slot, id, count }.
 local function scan(keep)
   local out = {}
-  for bag = 0, 4 do
+  for bag = 0, MC.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
       local id, count = slotItem(bag, slot)
       if id and keep(id) then out[#out + 1] = { bag = bag, slot = slot, id = id, count = count } end

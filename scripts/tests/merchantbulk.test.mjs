@@ -365,3 +365,20 @@ it("bulk buy reads the 12.x merchant table: Stack, Max and the cost line without
   old.eval("StackSplitFrame:Show()");
   expect(split(old), "a client with only the old call: read from it").toEqual([true, true, true, "Max 40 for 0s 80c"]);
 });
+
+it("the reagent bag (bag 5) is scanned for the sell list and for junk", () => {
+  const addon = loggedIn(BULK_ENV + `
+    __reagent = { { itemID = 159, stackCount = 3 }, { itemID = 1, quality = 0 } }
+    local n, i = C_Container.GetContainerNumSlots, C_Container.GetContainerItemInfo
+    C_Container.GetContainerNumSlots = function(bag) return bag == 5 and #__reagent or n(bag) end
+    C_Container.GetContainerItemInfo = function(bag, slot) if bag == 5 then return __reagent[slot] end return i(bag, slot) end
+  `);
+  const bags = addon.eval(`
+    local MC = ns.GetModule("Merchant")
+    local found = {}
+    for _, spot in ipairs(MC.Listed(159)) do if spot.bag == 5 then found[#found + 1] = spot.slot end end
+    local junk = {}
+    for _, spot in ipairs(MC.Junk()) do if spot[1] == 5 then junk[#junk + 1] = spot[2] end end
+    return { found, junk }`);
+  expect(bags, "the listed stack and the gray item in bag 5 are both found").toEqual([[1], [2]]);
+});
