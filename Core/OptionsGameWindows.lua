@@ -24,6 +24,17 @@ local WINDOW_GROUPS = {
   { "movable", L["Drag game windows by their title bar (reload)"] },
 }
 
+-- The rows functions added to the Game windows card with ns.RetailRows, in the order they came.
+local addedWindowRows = {}
+
+-- Adds rows to the Game windows card, under the game window switches: a Retail* file (loaded on Retail only)
+-- puts the switches of the windows it dresses there without this file changing. rowsFn() runs each time the
+-- page is built. Nothing adds any yet, on either client.
+---@param rowsFn fun(): table[]
+function ns.RetailRows(rowsFn)
+  addedWindowRows[#addedWindowRows + 1] = rowsFn
+end
+
 -- Puts dragged game windows back where the game puts them, open ones too, and the options window in the middle at
 -- once; in a fight the game's windows wait until it ends (their layout isn't allowed in one), and chat says so.
 local function resetWindowPlaces()
@@ -33,10 +44,11 @@ local function resetWindowPlaces()
 end
 
 -- The game's own windows in the Vanguard look (after a reload): one switch per group, dragging them by
--- their title bar, and a button that puts them back where the game places them.
+-- their title bar, the rows added with ns.RetailRows, and a button that puts them back where the game places them.
 local function windowRows()
   local rows = { { "header", L["Game windows"] } }
   for _, g in ipairs(WINDOW_GROUPS) do rows[#rows + 1] = check(g[2], reloadSetting("Windows", g[1])) end
+  for _, rowsFn in ipairs(addedWindowRows) do append(rows, rowsFn()) end
   rows[#rows + 1] = { "button", L["Reset window positions"], resetWindowPlaces }
   return rows
 end

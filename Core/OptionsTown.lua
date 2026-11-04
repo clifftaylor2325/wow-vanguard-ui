@@ -74,7 +74,7 @@ local function mailRows()
 end
 
 -- Spell ranks: the bar notice and trainer memory, both off until switched on.
-local function spellRankRows()
+local function spellRankCard()
   return {
     { "header", L["Spell ranks"] },
     check(L["Notice older spell ranks on bar buttons (/vg ranks)"], setting("SpellRanks", "barNotice")),
@@ -82,8 +82,13 @@ local function spellRankRows()
   }
 end
 
+-- The card above, on the clients that have the module (WoW Forever).
+local function spellRankRows()
+  return O.ModuleRows("SpellRanks", spellRankCard)
+end
+
 -- Pet stable: the line at a stable master (/vg pets).
-local function petStableRows()
+local function petStableCard()
   return {
     { "header", L["Pet stable"] },
     check(L["Say how many pets you have, and the next slot's price, at a stable master (/vg pets)"], setting("PetStable", "announce")),
@@ -91,27 +96,42 @@ local function petStableRows()
   }
 end
 
+-- The card above, on the clients that have the module (WoW Forever).
+local function petStableRows()
+  return O.ModuleRows("PetStable", petStableCard)
+end
+
 -- The Legacy perk planner: its switch (/vg legacy plan).
-local function legacyRows()
+local function legacyCard()
   return {
     { "header", L["Legacy"] },
     check(L["Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)"], setting("Legacy", "planner")),
   }
 end
 
+-- The card above, on the clients that have the module (WoW Forever).
+local function legacyRows()
+  return O.ModuleRows("Legacy", legacyCard)
+end
+
 -- Instance prep's sliders: how long the card stays (seconds), and the durability warning (percent).
 local PREP_SECONDS = { min = 5, max = 60, step = 5, format = function(v) return ns.Format(L["{seconds} s"], { seconds = v }) end }
 local PREP_PERCENT = { min = 10, max = 90, step = 5, format = function(v) return string.format("%d%%", v) end }
 
+-- The dungeon card's switch, on WoW Forever only (its dungeons are vanilla's; Modules/InstancePrep.lua).
+local function dungeonCardRows()
+  if not ns.IsForever() then return {} end
+  return { check(L["Dungeon card: level range, your dungeon quests and keys on the checklist"], setting("InstancePrep", "dungeonCard")) }
+end
+
 -- Instance prep's dungeon card and buff checks (flask, food, oil or poison, raid buffs; world buffs), and the note on wanted amounts.
 local function prepBuffRows()
-  return {
-    check(L["Dungeon card: level range, your dungeon quests and keys on the checklist"], setting("InstancePrep", "dungeonCard")),
+  return append(dungeonCardRows(), {
     check(L["Buff checks on the card: flask, food, oil or poison, raid buffs"], setting("InstancePrep", "buffs")),
     check(L["World buffs among them"], setting("InstancePrep", "worldBuffs")),
     { "button", L["Set wanted amounts..."], function() ns.GetModule("InstancePrep").Wizard.Open() end, function() return ns.GetModule("InstancePrep").settings ~= nil end },
     { "text", L["Wanted amounts (food, bandages, potions, ammo, shards) are set in the window above or with /vg prep want <kind> <n>; items from /vg stock are checked too."] },
-  }
+  })
 end
 
 -- Instance prep: when the checklist card shows, how long it stays, and the durability warning.

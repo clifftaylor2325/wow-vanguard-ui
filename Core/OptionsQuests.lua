@@ -39,7 +39,7 @@ local function wayRows()
     { "header", L["Finding your way"] },
     { "text", L["The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock. /vg questdata shows what the client says about quests."] },
   }
-  rows = append(append(rows, ns.GetModule("QuestArrow").Rows()), ns.GetModule("QuestGuide").Rows())
+  rows = append(append(rows, ns.GetModule("QuestArrow").Rows()), O.ModuleRows("QuestGuide", ns.QuestGuide.Rows))
   return append(rows, ns.GetModule("QuestMinimap").Rows())
 end
 

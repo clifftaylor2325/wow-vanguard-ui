@@ -14,7 +14,10 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local SR = ns.Module("SpellRanks", { defaults = { barNotice = false, trainerMemory = false } })
+local SR = ns.Module("SpellRanks", { clients = { forever = true }, defaults = { barNotice = false, trainerMemory = false } })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(SR) then return end
 
 -- Action slots scanned (12 on each of 15 pages: bar 1's pages and bonus bars, bars 2 to 5, and bars 6 to 8 up
 -- to 180); services kept per class; levels ahead /vg trainers next and a level-up show; lines listed.

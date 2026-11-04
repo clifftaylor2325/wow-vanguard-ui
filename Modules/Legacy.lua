@@ -13,7 +13,10 @@ local ADDON, ns = ...
 
 local L = ns.L
 
-local LG = ns.Module("Legacy", { defaults = { planner = false } })
+local LG = ns.Module("Legacy", { clients = { forever = true }, defaults = { planner = false } })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(LG) then return end
 
 -- Points in the perk tree, the most globals the probe lists, and the most keys it shows of a frame.
 LG.BUDGET, LG.MAX_GLOBALS, LG.MAX_KEYS = 16, 20, 12

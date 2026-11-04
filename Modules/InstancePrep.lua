@@ -322,9 +322,15 @@ local function present(rows, lines)
   ns.AutoHide(PR.card, PR.settings.hideAfter)
 end
 
--- The dungeon card's lines while its switch is on.
+-- Whether the dungeon card is on: its switch, on WoW Forever only (its dungeons, quests and keys are vanilla's,
+-- so a profile brought over to Retail with the switch on draws no card there).
+local function cardOn()
+  return PR.settings.dungeonCard and ns.IsForever()
+end
+
+-- The dungeon card's lines while it is on.
 local function dungeonLines()
-  return PR.settings.dungeonCard and ns.DungeonCard.Lines() or {}
+  return cardOn() and ns.DungeonCard.Lines() or {}
 end
 
 -- At the door: the supplies that are short and the dungeon card; with nothing
@@ -350,7 +356,7 @@ function PR.OnEnter(_, _, isReloadingUi)
   local where = ns.Where()
   if not PR.DOORS[where] then PR.lastInstance = nil return end
   local id = ns.PlainNumber((select(8, ask("GetInstanceInfo"))))
-  if PR.settings.dungeonCard then ns.DungeonCard.Record() end
+  if cardOn() then ns.DungeonCard.Record() end
   if isReloadingUi == true then PR.lastInstance = id return end
   if not PR.settings.onEnter or ns.InCombat() or (id and id == PR.lastInstance) then return end
   PR.lastInstance = id

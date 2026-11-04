@@ -19,7 +19,10 @@ local CB = ns.GetModule("CastBars")
 local UF = ns.GetModule("UnitFrames")
 
 -- show: "auto" (the classes that live by auto-attack), "always" or "never".
-local SW = ns.Module("SwingTimer", { defaults = { show = "auto" } })
+local SW = ns.Module("SwingTimer", { clients = { forever = true }, defaults = { show = "auto" } })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(SW) then return end
 
 -- The classes "auto" shows it for: every class that fights with its weapon (hunters for Auto Shot too).
 -- Rows show only while a swing runs, so a healer who rarely swings sees nothing at rest.

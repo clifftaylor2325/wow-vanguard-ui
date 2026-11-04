@@ -161,12 +161,13 @@ end
 
 -- True on the WoW Forever client (game type "camelot"): the 12.1 engine with
 -- vanilla content, reporting a 1.x interface number (16001). A build that
--- reports the 12.x number instead still counts when the client has the Forever
--- ruleset call, which Retail lacks.
+-- reports the 12.x number instead still counts when its project is Forever's
+-- (WOW_PROJECT_CAMELOT, 18) or it has the Forever ruleset call, which Retail lacks.
 ---@return boolean
 function ns.IsForever()
   local iface = type(GetBuildInfo) == "function" and select(4, GetBuildInfo())
   if type(iface) == "number" and iface >= 16000 and iface < 20000 then return true end
+  if WOW_PROJECT_CAMELOT ~= nil and WOW_PROJECT_ID == WOW_PROJECT_CAMELOT then return true end
   return type(C_GameRules) == "table" and type(C_GameRules.GetForeverExperiencePreset) == "function"
 end
 
