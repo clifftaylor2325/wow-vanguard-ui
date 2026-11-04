@@ -301,3 +301,64 @@ it("/vg probe: the bars' reads: CVar defaults, the bar button's cooldown numbers
   addon.slash("probe");
   expect(lineOf(reportText(addon), "watched faction:"), "an error is a line").toMatch(/error .*TEST-ONLY faction/);
 });
+
+// A report line starting with a label, without its indent.
+const clientRow = (text, label) => lineOf(text, label).trim();
+// TEST-ONLY: a Forever client for the client checks: the project constants and two of the Forever-only calls.
+const FOREVER_CLIENT_ENV = `
+  WOW_PROJECT_MAINLINE, WOW_PROJECT_CAMELOT, WOW_PROJECT_ID = 1, 18, 18
+  C_GameRules = { IsHardcoreActive = function() return false end }
+  C_SwingTimer = { EnableRangeCheck = function() end }
+`;
+// TEST-ONLY: game frames as the client may give them: shown, hidden, forbidden, one whose read fails, one that is no frame.
+const CLASS_BAR_ENV = `
+  RuneFrame = { IsForbidden = function() return false end, IsShown = function() return true end }
+  PaladinPowerBar = { IsForbidden = function() return false end, IsShown = function() return false end }
+  EncounterTimeline = { IsForbidden = function() return true end, IsShown = function() error("TEST-ONLY forbidden read") end }
+  MonkHarmonyBar = { IsForbidden = function() return false end }
+  MonkStaggerBar = "TEST-ONLY not a frame"
+`;
+it("/vg probe: the client checks name the project and count the Forever-only calls the client has", () => {
+  const addon = loggedIn(PROBE_ENV + FOREVER_CLIENT_ENV);
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(text, "its own section").toContain("== Client checks (Forever and retail)");
+  expect(clientRow(text, "game:"), "the project id with its name, the interface and ns.IsForever").toMatch(/^game: WOW_PROJECT_ID 18 \(CAMELOT\), interface \d+, build \d+, ns\.IsForever true$/);
+  const names = addon.eval("return ns.Probe.FOREVER_ONLY");
+  const present = names.filter((name) => clientRow(text, name + ":").endsWith("present (not called)")).length;
+  expect(names.length, "the list holds the fourteen names the API diff found").toBe(14);
+  expect(clientRow(text, "Forever-only calls found:"), "the count agrees with the lines under it").toBe(`Forever-only calls found: ${present} of 14 (a retail client finds none)`);
+  expect(clientRow(text, "C_GameRules.IsHardcoreActive"), "a call that exists is only looked for").toBe("C_GameRules.IsHardcoreActive: present (not called)");
+  expect(clientRow(text, "C_Trainer.GetTrainerType"), "one that does not is missing").toBe("C_Trainer.GetTrainerType: missing");
+  expect(addon.eval("return #ns.errors"), "and nothing was caught").toBe(0);
+});
+it("/vg probe: on a retail project the project name changes, and an unknown id says so", () => {
+  const retail = loggedIn(PROBE_ENV + "WOW_PROJECT_MAINLINE, WOW_PROJECT_ID = 1, 1");
+  retail.slash("probe");
+  expect(clientRow(reportText(retail), "game:"), "retail is MAINLINE").toMatch(/WOW_PROJECT_ID 1 \(MAINLINE\)/);
+  const odd = loggedIn(PROBE_ENV + "WOW_PROJECT_ID = 99");
+  odd.slash("probe");
+  expect(clientRow(reportText(odd), "game:"), "an id no constant matches").toMatch(/WOW_PROJECT_ID 99 \(unknown\)/);
+});
+it("/vg probe: the client checks count C_Secrets and report each class bar as missing, shown, hidden or forbidden", () => {
+  const addon = loggedIn(PROBE_ENV + CLASS_BAR_ENV);
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(clientRow(text, "C_Secrets functions:"), "the count against the 27 the probe asks about").toMatch(/^C_Secrets functions: \d+ \(the API docs list 27 on both clients\)$/);
+  expect(clientRow(text, "RuneFrame:"), "a shown bar").toBe("RuneFrame: present, shown");
+  expect(clientRow(text, "PaladinPowerBar:"), "a hidden bar").toBe("PaladinPowerBar: present, hidden");
+  expect(clientRow(text, "WarlockPowerFrame:"), "a bar the client lacks").toBe("WarlockPowerFrame: missing");
+  expect(clientRow(text, "MonkHarmonyBar:"), "a bar whose shown state cannot be read").toBe("MonkHarmonyBar: present, shown state not readable");
+  expect(clientRow(text, "MonkStaggerBar:"), "a global that is no frame counts as missing").toBe("MonkStaggerBar: missing");
+});
+it("/vg probe: the client checks say whether the encounter timeline is loaded and its frame forbidden", () => {
+  const addon = loggedIn(PROBE_ENV + CLASS_BAR_ENV);
+  addon.eval("C_AddOns.IsAddOnLoaded = function(name) return name == 'Blizzard_EncounterTimeline' end");
+  addon.slash("probe");
+  const text = reportText(addon);
+  expect(clientRow(text, "Blizzard_EncounterTimeline loaded:"), "the addon is loaded").toBe("Blizzard_EncounterTimeline loaded: true");
+  expect(clientRow(text, "EncounterTimeline:"), "a forbidden frame is named so and its shown state is not read").toBe("EncounterTimeline: present, forbidden");
+  const bare = loggedIn(PROBE_ENV);
+  bare.slash("probe");
+  expect(clientRow(reportText(bare), "Blizzard_EncounterTimeline loaded:"), "not loaded in the default world").toBe("Blizzard_EncounterTimeline loaded: false");
+});
