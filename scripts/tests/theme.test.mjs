@@ -1527,10 +1527,15 @@ it("panel texture: the minimap's button slots and the menu strip's wells stay fl
 it("panel texture: the picker lists Vanguard's, the game's and other addons' backgrounds, and a name no longer shared draws flat", () => {
   const addon = loggedIn('LibStub("LibSharedMedia-3.0"):Register("background", "TEST-ONLY Cloth", [[Interface\\AddOns\\TestOnly\\Cloth]]) __win = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { shadow = true })');
   const values = addon.eval("local out = {} for i, c in ipairs(ns.Theme.PanelTextureChoices()) do out[i] = c[1] end return out");
-  expect(values.slice(0, 7), "the built-ins first, in order").toEqual(["flat", "grain", "stone", "leather", "rock", "marble", "dialog"]);
-  expect([values.includes("TEST-ONLY Cloth"), values.includes("None"), values.includes("Solid"), values.includes("Blizzard Rock"), values.includes("Blizzard Low Health"), values.includes("Vanguard Stone")],
-    "another addon's background is offered; no-texture, solid, full-screen effects, built-in duplicates and Vanguard's own shared names are not").toEqual([true, false, false, false, false, false]);
+  expect(values.slice(0, 9), "the built-ins first, in order").toEqual(["flat", "grain", "stone", "leather", "slate", "vellum", "rock", "marble", "dialog"]);
+  expect([values.includes("TEST-ONLY Cloth"), values.includes("None"), values.includes("Solid"), values.includes("Blizzard Rock"), values.includes("Blizzard Low Health"), values.includes("Vanguard Stone"), values.includes("Vanguard Slate"), values.includes("Vanguard Vellum")],
+    "another addon's background is offered; no-texture, solid, full-screen effects, built-in duplicates and Vanguard's own shared names are not").toEqual([true, false, false, false, false, false, false, false]);
   expect(addon.eval('return LibStub("LibSharedMedia-3.0"):Fetch("background", "Vanguard Stone", true)'), "Vanguard shares its own surfaces").toBe("Interface\\AddOns\\Vanguard\\Media\\Textures\\PanelStone");
+  expect(["Slate", "Vellum"].map((name) => addon.eval(`return LibStub("LibSharedMedia-3.0"):Fetch("background", "Vanguard ${name}", true)`)), "and the painted two").toEqual(["Slate", "Vellum"].map((name) => `Interface\\AddOns\\Vanguard\\Media\\Textures\\Panel${name}`));
+  for (const pick of ["slate", "vellum"]) {
+    addon.eval(`ns.Theme.Settings().panelTexture = "${pick}" ns.Theme.Refresh()`);
+    expect(surfaceOf(addon, "__win").slice(0, 2), `${pick} is drawn whole`).toEqual([`Panel${pick === "slate" ? "Slate" : "Vellum"}`, 1]);
+  }
   addon.eval('ns.Theme.Settings().panelTexture = "TEST-ONLY Cloth" ns.Theme.Refresh()');
   expect(surfaceOf(addon, "__win").slice(0, 2), "a shared background is drawn faint").toEqual(["Cloth", addon.eval("return ns.Theme.PANEL_SURFACE.sharedAlpha")]);
   addon.eval('ns.Theme.Settings().panelTexture = "TEST-ONLY Gone" ns.Theme.Refresh()');

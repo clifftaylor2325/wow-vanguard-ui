@@ -12,6 +12,7 @@ import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
 import { crestIcon } from "./media-brand.mjs";
 import { SURFACES } from "./media-surfaces.mjs";
+import { paintedSurfaces } from "./media-painted.mjs";
 import { ORNAMENT_CORNERS, ORNAMENT_ROUND, ORNAMENT_RULES } from "./media-ornament.mjs";
 import { SCENES, scene } from "./media-scenes.mjs";
 
@@ -227,6 +228,8 @@ export const TEXTURES = {
   Vignette: vignette,
   // The panel textures (scripts/lib/media-surfaces.mjs): faint white surfaces over a floating window's fill.
   ...SURFACES,
+  // The painted ones (scripts/lib/media-painted.mjs, from art/painted/manifest.json): Leonardo.ai pictures, faint white.
+  ...paintedSurfaces(),
   // The classification diamond, white, for the addon to tint.
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
   // The pre-colored addons-list icon: Vanguard's crest (scripts/lib/media-brand.mjs).

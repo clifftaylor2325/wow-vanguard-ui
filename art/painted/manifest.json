@@ -1,0 +1,54 @@
+[
+  {
+    "id": "S1",
+    "name": "PanelSlate",
+    "source": "art/painted/surface/S1.png",
+    "output": "Textures/PanelSlate.tga",
+    "crop": [
+      0,
+      0,
+      1024
+    ],
+    "box": 4,
+    "convert": "convert S1-slate-v4-2.jpg -strip -colorspace sRGB -type TrueColor S1.png",
+    "prompt": "Seamless texture swatch of honed grey slate, dense fine hairline streaks and tiny broken specks, very small scale, about thirty fine lines across the whole frame, low contrast, matte, uniform all over, soft diffuse light, neutral grey",
+    "negative": "cracks, veins, stains, blotches, seams, grid, tiles, border, vignette, folds, creases, text, ledges, stacked stones, rocks, chips, edges, cliff, wall, bricks, relief, deep shadows, highlights, dark outlines, deep grooves, planks, large panels",
+    "references": [],
+    "class": "surface",
+    "model": "Phoenix 1.0",
+    "mode": "FAST",
+    "contrast": "LOW",
+    "preset": "None",
+    "tiling": true,
+    "private": true,
+    "date": "2026-11-04",
+    "tokens": null,
+    "seed": null
+  },
+  {
+    "id": "S2",
+    "name": "PanelVellum",
+    "source": "art/painted/surface/S2.png",
+    "output": "Textures/PanelVellum.tga",
+    "crop": [
+      256,
+      256,
+      512
+    ],
+    "box": 2,
+    "convert": "convert S2-vellum-v3-4.jpg -strip -colorspace sRGB -type TrueColor S2.png",
+    "prompt": "Close-up of a blank page from an old book, aged paper, very even, subtle fine fibres, faint soft mottling, tiny flecks, low contrast, flat lighting, seamless texture, neutral grey",
+    "negative": "text, writing, letters, illustrations, flowers, pattern, folds, creases, tears, torn edges, holes, border, margin, vignette, seams, grid, tiles, wrinkles, deep shadows, highlights, dark outlines, large stains",
+    "references": [],
+    "class": "surface",
+    "model": "Phoenix 1.0",
+    "mode": "FAST",
+    "contrast": "LOW",
+    "preset": "None",
+    "tiling": true,
+    "private": true,
+    "date": "2026-11-04",
+    "tokens": null,
+    "seed": null
+  }
+]
