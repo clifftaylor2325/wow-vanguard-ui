@@ -3343,7 +3343,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.177 Frame buffer left on after a quick reopen (both)
 
-- Do: Turn on /vg framebuffer. Close the options window with Escape and open it again within a tenth of a second (/vg twice quickly). Repeat once closing in combat and reopening before the fade ends.
+- Do: Type `/vg framebuffer` to turn it on. Close the options window with Escape and open it again within a tenth of a second (Escape, then `/vg` at once). Repeat once closing in combat and reopening before the fade ends.
 - Expect: The window looks the same as normal afterwards, with no ghosted or doubled translucent borders and no change when hovering or resizing it; it is only buffered while it fades.
 - If it fails, paste: a screenshot of the window and the output of /vg framebuffer.
 
