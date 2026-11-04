@@ -480,6 +480,9 @@ export const borderOf = (addon, lua) => addon.eval(`local f = ${lua}
     if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then return w.__vertexColor end
   end`);
 
+// How far the block around your character rises on the harness's 1920 x 1080 canvas (Core/Layout.lua, HudLift):
+// default spots from your frames' line up by `frames`, the part under it (bars, your cast bar, the main cooldown row) by `under`.
+export const RISE = { frames: 104, under: 32 };
 // Where along a point's vertical axis a frame hangs: 0 at BOTTOM, 1 at TOP, 0.5 between.
 export const UP = (point) => (/BOTTOM/.test(point) ? 0 : /TOP/.test(point) ? 1 : 0.5);
 

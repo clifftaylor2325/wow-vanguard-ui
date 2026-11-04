@@ -3274,6 +3274,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the essential, utility and tracked-buff rows sit centered between your player and target frames, each shrunk just enough to fit its spot; a row twice as wide as the gap or more is drawn at half size and may reach a little past the frames. A row that fits keeps its full size. After a change it fits again (after the fight, if you were in one); while Edit Mode is open the row keeps the size it had. Nothing in `/vg errors`.
 - If it fails, paste: a screenshot of the bottom of the screen, the row's icon count, and `/vg errors`.
 
+### 33.171 The HUD rises to sit under your character
+
+- Do: on WoW Forever at 1440p with Pixel-perfect on (and once at 1080p with the game's own UI scale), with the Cooldown Manager on and tracking 10 or more spells, run `/vg reset all` (or start a fresh profile) and `/reload`. Stand still in an open field at the default camera distance, then target an enemy and cast. Then set the game's UI scale so the screen is 768 units tall (or pick Fit in setup's screen step) and look again.
+- Expect: the action bars, your frames, cast bar and cooldown rows sit together as one block whose top ends just under your character's feet, not at the bottom edge; the XP bar, chat and bag bar stay at the edges. On the tall screen the essential cooldown row has its own line under your frames at full size (or shrunk only when it holds more than about 560 units of icons), and nothing overlaps the debuffs under your target. On the 768-tall screen the layout is the one it always was. Note how far the block's top is from your feet, and whether it should sit higher or lower.
+- If it fails, paste: a screenshot at each scale, your resolution and UI scale, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done

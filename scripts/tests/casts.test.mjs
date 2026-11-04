@@ -1,7 +1,7 @@
 // casts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, FAKE_FADES, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FAKE_FADES, RISE, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY casts: __casts[unit] = { kind = "cast"|"channel", start, finish, shielded }.
 const CAST_ENV = `
@@ -181,7 +181,7 @@ it("your pet's casts show on a small bar by the pet frame while the game's cast 
   const addon = loggedIn(CAST_ENV);
   // The pet bar's spot, its size, and whether it has an interrupt mark.
   const spot = addon.eval("local b = Vanguard_CastBar_pet local p, _, _, x, y = b:GetPoint() return { p, x, y, b:GetWidth(), b:GetHeight(), b.mark ~= nil }");
-  expect(spot, "100 x 10 left of the pet frame, with no interrupt mark").toEqual(["BOTTOM", -300, 252, 100, 10, false]);
+  expect(spot, "100 x 10 left of the pet frame (risen with the block around your character), with no interrupt mark").toEqual(["BOTTOM", -300, 252 + RISE.frames, 100, 10, false]);
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do if m.key == 'cast_pet' then out[1] = m.label end end return out[1]"), "movable in unlock mode").toBe("Pet cast bar");
   addon.eval('__casts.pet = { kind = "cast", start = 999000, finish = 1001000 }');
   addon.fire("UNIT_SPELLCAST_START", "pet");
@@ -575,5 +575,5 @@ it("your cast bar sits above the action bars and moves up when they grow, so the
   addon.eval('ns.Settings("positions").cast_player = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 400 } local AB = ns.GetModule("ActionBars") AB.settings.bars[1].perRow = 12 AB.Layout(1)');
   expect(Math.round(castSpot(addon).bottom), "a spot you dragged it to wins").toBe(400);
   const off = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { ActionBars = false } } }" });
-  expect(off.eval("return Vanguard_CastBar_player:GetBottom()"), "with Vanguard's action bars off: its layout spot").toBeCloseTo(146, 3);
+  expect(off.eval("return Vanguard_CastBar_player:GetBottom()"), "with Vanguard's action bars off: its layout spot, risen with the block").toBeCloseTo(146 + RISE.under, 3);
 });

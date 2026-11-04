@@ -1,7 +1,7 @@
 // raid: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, HEALING_ENV, RAID_ENV, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, overlaps, raidButton, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, HEALING_ENV, RAID_ENV, RISE, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, overlaps, raidButton, setCombat } from "./helpers.mjs";
 
 it("a unit event reaches only the tile showing that unit", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
@@ -429,12 +429,12 @@ it("raid preview: a real group or combat ends it; it won't start in a group, in 
   addon.slash("preview 25");
   addon.fire("PLAYER_REGEN_DISABLED");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off: combat started\.$/)], "combat ends it").toEqual([0, true]);
-  expect(addon.eval("return { ns.MoverPoint('raid') }"), "and the real grid isn't re-anchored at that edge, before the lockdown").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344]);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "and the real grid isn't re-anchored at that edge, before the lockdown").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames]);
   setCombat(addon, true);
   addon.slash("preview 10");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sIn combat\. Try the preview again once combat ends\.$/)], "and it won't start in combat").toEqual([0, true]);
   setCombat(addon, false);
-  expect(addon.eval("return { ns.MoverPoint('raid') }"), "it is fitted when the fight ends").toEqual(["BOTTOM", "BOTTOM", -240, 344]);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "it is fitted when the fight ends").toEqual(["BOTTOM", "BOTTOM", -240, 344 + RISE.frames]);
   addon.slash("preview 10");
   addon.slash("preview");
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/)], "/vg preview again turns it off").toEqual([0, true]);

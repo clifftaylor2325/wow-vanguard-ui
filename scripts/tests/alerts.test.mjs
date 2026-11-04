@@ -275,7 +275,8 @@ it("the game's tools: an Edit Mode system is fitted through the client's own Set
   expect(addon.eval("return __ran"), "filling a spot goes the same way").toEqual(["ClearAllPointsOverride", "SetPointBase TOPLEFT", "SetPointBase BOTTOMRIGHT"]);
 });
 it("the game's tools: a Cooldown Manager row wider than its spot shrinks to fit it, again whenever the game lays it out", () => {
-  const addon = loggedIn(TOOLS_ENV);
+  // On a canvas 768 tall the essential row sits in the 236-wide gap between your frames (a taller one gives it 560).
+  const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)");
   // The essential row's scale after the game lays it out at `width` wide.
   const scaleAt = (width) => addon.eval(`EssentialCooldownViewer:SetSize(${width}, 40) EssentialCooldownViewer:RefreshLayout() return EssentialCooldownViewer:GetScale()`);
   expect(scaleAt(200), "a row that fits keeps its size").toBe(1);

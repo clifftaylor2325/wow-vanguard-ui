@@ -194,10 +194,11 @@ SW.ABOVE_CAST = 11
 -- Where the holder sits while Vanguard's action bars are off and your cast bar stays at its layout spot.
 SW.FREE_Y = 170
 
--- The holder's default point: SW.ABOVE_CAST over your cast bar, which rides the action bars' stack.
+-- The holder's default point: SW.ABOVE_CAST over your cast bar, which rides the action bars' stack; part of the
+-- block under your frames (Core/Layout.lua, HudLift).
 function SW.Point()
-  if not ns.ModuleEnabled("ActionBars") then return { "BOTTOM", "BOTTOM", 0, SW.FREE_Y } end
-  return { "BOTTOM", "BOTTOM", 0, CB.PlayerPoint()[4] + CB.LAYOUT.player.h + SW.ABOVE_CAST }
+  if not ns.ModuleEnabled("ActionBars") then return { "BOTTOM", "BOTTOM", 0, SW.FREE_Y, underFrames = true } end
+  return { "BOTTOM", "BOTTOM", 0, CB.PlayerPoint()[4] + CB.LAYOUT.player.h + SW.ABOVE_CAST, underFrames = true }
 end
 
 -- Moves the holder's default point with your cast bar (a position you dragged it to still wins).
