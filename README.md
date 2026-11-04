@@ -6,7 +6,7 @@
 >
 > **Not yet checked in the game.** Most of what follows is written from the code and the headless test harness; [docs/CHANGELOG.md](docs/CHANGELOG.md) and [docs/SMOKE-TEST.md](docs/SMOKE-TEST.md) say what has been seen working in the client.
 
-A from-scratch UI suite for WoW Forever (the 12.1 engine with vanilla content; the TOC declares Interface 16001 for Forever, 120105 for the 12.1.5 client and 120007).
+A from-scratch UI suite for WoW Forever (the 12.1 engine with vanilla content; the TOC declares Interface 16001 for Forever and 120105 for the 12.1.5 client).
 Written from scratch. It contains no code, art or fonts from other UI addons. It bundles three small shared libraries, unmodified, in `Libs/`: LibStub, CallbackHandler-1.0 and LibSharedMedia-3.0, which addons use to share fonts and bar textures (see Credits).
 
 ## Install

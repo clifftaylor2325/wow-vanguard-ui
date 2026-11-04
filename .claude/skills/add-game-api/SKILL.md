@@ -9,7 +9,7 @@ The harness (`scripts/lib/wow-*.lua`) models the 12.1 client. Anything the addon
 
 ## Steps, in order
 
-1. **Confirm the API exists on the 12.1 client**: Blizzard's `wow-ui-source` (the `Interface/AddOns/Blizzard_*` code for the version the TOC names, 120007) or the warcraft.wiki.gg API page, and that it exists on WoW Forever when the code will run there (`ns.IsForever`). Note the source in the commit body. No source, no API: the addon then guards the call with a `type()` check and falls back.
+1. **Confirm the API exists on the 12.1 client**: Blizzard's `wow-ui-source` (the `Interface/AddOns/Blizzard_*` code for the versions the TOC names: the `forever` branch for 16001, `live` for 120105) or the warcraft.wiki.gg API page, and that it exists on WoW Forever when the code will run there (`ns.IsForever`). Note the source in the commit body. No source, no API: the addon then guards the call with a `type()` check and falls back.
 2. **Where it goes**:
    - A widget method: its name in the right list in `scripts/lib/wow-widget-api.lua` (`REGION`, frame, button, texture, font string, status bar). Unlisted methods are nil; listed ones the stub does not model are no-ops. If the addon reads what the method returns, model it in `scripts/lib/wow-stub.lua` next to the methods of that kind.
    - A global function or `C_*` namespace member: `scripts/lib/wow-world.lua`, in the section for that part of the game, answering from `world.<field>` so a test can set what it returns (`world.set("units.player.hp", ...)`). The pattern is `C_Item = C_Item or {}` then the function.
