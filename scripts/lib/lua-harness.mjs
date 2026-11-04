@@ -20,19 +20,26 @@ import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { lineHook } from "./lua-coverage.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 import { advanceEms } from "./truetype.mjs";
+import { clientPaths, readToc, tocPaths } from "./toc.mjs";
 
 const { lua, lauxlib, lualib, to_luastring, to_jsstring } = fengari;
 
 export const ADDON = "Vanguard";
 
-// The two clients the TOC declares (## Interface: 16001, 120007). The world
-// starts as WoW Forever; RETAIL_CLIENT, passed to createAddon as `client`,
-// makes it a Retail 12.x client before the addon's files load: the interface
-// number, and GAME_RULES_CHANGED invalid, as Retail's C_EventUtils.IsEventValid
-// answers (the event is in Forever's GameRules docs only).
-export const FOREVER_CLIENT = "";
-export const RETAIL_CLIENT = '__wfgWorld.build.version, __wfgWorld.build.interface = "12.0.7", 120007\n__wfgWorld.invalidEvents.GAME_RULES_CHANGED = true';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+// The WoW Forever API that Retail lacks and the addon uses (scripts/forever-only-api.mjs writes it).
+const FOREVER_ONLY = JSON.parse(fs.readFileSync(path.join(root, "scripts/lib/forever-only-api.json"), "utf8"));
+
+// The two clients the TOC declares (## Interface: 16001, 120105). The world
+// starts as WoW Forever (16001, WOW_PROJECT_CAMELOT); RETAIL_CLIENT, passed to
+// createAddon as `client`, makes it Retail 12.1.5 before the addon's files load
+// (wow-world.lua's world.becomeRetail): interface 120105, WOW_PROJECT_MAINLINE,
+// the Forever-only functions nil and events invalid, then the Retail stubs
+// (scripts/lib/wow-retail-<area>.lua) and only the files the TOC's game-type tags
+// allow on Retail (scripts/lib/toc.mjs).
+export const FOREVER_CLIENT = "";
+export const RETAIL_CLIENT = `__wfgWorld.becomeRetail(${luaValue(FOREVER_ONLY.functions)}, ${luaValue(FOREVER_ONLY.events)})`;
 
 // Lua 5.1 fidelity for `..`: the game prints a whole float as "3", fengari
 // (5.3) as "3.0". Concatenation converts through this one function, which
@@ -89,13 +96,11 @@ export function pushFileChunk(L, file, chunkName) {
 // Whether a file's compiled chunk is in the cache (for the harness's own tests).
 export const hasCachedChunk = (file) => chunkCache.has(file);
 
-// The addon's files in TOC load order.
-export function tocFiles() {
-  const toc = fs.readFileSync(path.join(root, `${ADDON}.toc`), "utf8");
-  return toc
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith("#"));
+// The addon's files in TOC load order: the ones a client loads ("forever" or "retail",
+// by the TOC's game-type tags), or every file listed when no client is named.
+export function tocFiles(client) {
+  const toc = readToc(root, `${ADDON}.toc`);
+  return client ? clientPaths(toc, client) : tocPaths(toc);
 }
 
 const TYPE_NAMES = {
@@ -230,7 +235,7 @@ function traceback(L) {
   const msg = lua.lua_tojsstring(L, 1) ?? "<non-string error>";
   lauxlib.luaL_traceback(L, L, to_luastring(msg), 1);
   const [first, ...rest] = lua.lua_tojsstring(L, -1).split("\n");
-  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-inspect\.lua/.test(l))];
+  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-inspect\.lua|wow-retail-[\w-]+\.lua/.test(l))];
   lua.lua_pushstring(L, to_luastring(lines.join("\n")));
   return 1;
 }
@@ -333,16 +338,33 @@ function loadStub(L) {
   run(L, "__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns", false, 0);
 }
 
-// Runs the client Lua before the addon's files load, with the font metrics on for the text-fit audit.
+// The Retail client's own stubs, one file per area (scripts/lib/wow-retail-<area>.lua), in name order.
+export function retailStubs() {
+  return fs.readdirSync(path.join(root, "scripts/lib")).filter((f) => /^wow-retail-[\w-]+\.lua$/.test(f)).sort();
+}
+
+// The client the world has become ("forever" or "retail": wow-world.lua's world.client).
+function worldClient(L) {
+  run(L, "return __wfgWorld.client", "=client", false, 1);
+  const name = toJs(L, -1);
+  lua.lua_pop(L, 1);
+  return name;
+}
+
+// Runs the client Lua before the addon's files load, with the font metrics on for the text-fit
+// audit, then a Retail world's own stubs; returns the client the world is.
 function startClient(L, client, textFit) {
   if (textFit) run(L, '__wfgStub.textMetrics = "font"', "=textFit", false, 0);
   if (client) run(L, client, "=client", false, 0);
+  const name = worldClient(L);
+  if (name === "retail") for (const file of retailStubs()) runLib(L, file);
+  return name;
 }
 
-// Loads every TOC file in order (the string table made a pseudo-locale as soon as
-// it exists, when pseudoLocale), then the SavedVariables source if any.
-function loadAddon(L, savedVariables, pseudoLocale) {
-  for (const file of tocFiles()) {
+// Loads the TOC files that client loads, in order (the string table made a pseudo-locale as soon
+// as it exists, when pseudoLocale), then the SavedVariables source if any.
+function loadAddon(L, client, savedVariables, pseudoLocale) {
+  for (const file of tocFiles(client)) {
     runFile(L, path.join(root, file), `@${file}`, true, 0);
     if (pseudoLocale && file === "Core/Locale.lua") evalIn(L, "__wfgPseudoLocale(ns.L)");
   }
@@ -528,8 +550,8 @@ export function createAddon({ savedVariables = "", client = "", instructionBudge
   const L = newState();
   attachHooks(L, instructionBudget);
   loadStub(L);
-  startClient(L, client, textFit);
-  loadAddon(L, savedVariables, textFit);
+  const name = startClient(L, client, textFit);
+  loadAddon(L, name, savedVariables, textFit);
   // Runs Lua with `ADDON, ns` in scope and returns the first result as JS.
   const addon = { L, eval: (source) => evalIn(L, source) };
   Object.assign(addon, drivers(addon), lifecycle(addon), inspectors(addon), input(addon));

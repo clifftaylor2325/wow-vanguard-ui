@@ -9,7 +9,10 @@
 //     from `globals` in .luacheckrc;
 //   - ## Interface lacks one of EXPECTED_INTERFACE, or ## Title or ## Version
 //     is missing;
-//   - a shared library (Libs/) is listed after one of the addon's own files.
+//   - a shared library (Libs/) is listed after one of the addon's own files;
+//   - a file line carries a bracket directive other than AllowLoadGameType and
+//     ExcludeLoadGameType (the harness models only those), or its game-type
+//     tags keep it off every client the harness models (scripts/lib/toc.mjs).
 // A listed file that is missing on disk, or has the wrong case, is caught by
 // the luac5.1 -p step that opens every TOC path on Linux CI.
 //
@@ -18,29 +21,25 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { CLIENT_GAME_TYPES, TAG_FIELDS, loadsOn, tocEntries } from "./lib/toc.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-// The Interface values the TOC must list: WoW Forever, the 12.1.5 client (the live number the wiki gives, so the release does not show as out of date), then the 12.0.7 build the harness models as Retail.
-export const EXPECTED_INTERFACE = ["16001", "120105", "120007"];
+// The Interface values the TOC must list: WoW Forever, then Retail 12.1.5 (the client the harness models as RETAIL_CLIENT).
+export const EXPECTED_INTERFACE = ["16001", "120105"];
 const ORPHAN_SCOPE = ["Core", "Modules", "Locales"];
 const LIBS = "Libs/";
 const SAVED_KEYS = ["SavedVariables", "SavedVariablesPerCharacter"];
 
-// A TOC path as the game reads it: forward slashes, trailing spaces and CR dropped.
-const normalize = (p) => p.trim().replace(/\\/g, "/");
-
-// The TOC's metadata ({ key: value }) and its files ([{ path, line }]), in order.
+// The TOC's metadata ({ key: value }) and its files ([{ path, line, allow, exclude, unknown }]), in
+// order: each path as the game reads it (forward slashes, its game-type tags apart; scripts/lib/toc.mjs).
 export function parseToc(text) {
   const meta = {};
-  const files = [];
-  text.split("\n").forEach((raw, i) => {
-    const line = raw.trim();
-    const tag = /^##\s*([^:]+?)\s*:\s*(.*)$/.exec(line);
+  for (const raw of text.split("\n")) {
+    const tag = /^##\s*([^:]+?)\s*:\s*(.*)$/.exec(raw.trim());
     if (tag) meta[tag[1]] = tag[2].trim();
-    else if (line && !line.startsWith("#")) files.push({ path: normalize(line), line: i + 1 });
-  });
-  return { meta, files };
+  }
+  return { meta, files: tocEntries(text) };
 }
 
 // The text of the `globals = { ... }` table in .luacheckrc (braces balanced), or "".
@@ -118,6 +117,15 @@ function libraryOrderProblems(files, toc) {
   return late.map((f) => `${toc}:${f.line}: ${f.path} loads after ${first.path} (line ${first.line}); move the shared libraries above the addon's own files`);
 }
 
+// Bracket directives the harness does not model, and files whose tags keep them off every client.
+function tagProblems(files, toc) {
+  const known = Object.keys(TAG_FIELDS).join(" and ");
+  const unknown = files.flatMap((f) => f.unknown.map((name) => `${toc}:${f.line}: ${f.path} carries [${name} ...]; the harness reads only ${known}, so it would load the file where the game may not`));
+  const clients = Object.keys(CLIENT_GAME_TYPES);
+  const nowhere = files.filter((f) => !clients.some((c) => loadsOn(f, c)));
+  return [...unknown, ...nowhere.map((f) => `${toc}:${f.line}: ${f.path} loads on no client (${clients.join(", ")}): check its game-type tags`)];
+}
+
 // Every problem, given the TOC's text, .luacheckrc's text and the .lua files on disk.
 export function tocProblems({ toc, luacheckrc, disk, name = "Vanguard.toc" }) {
   const { meta, files } = parseToc(toc);
@@ -127,6 +135,7 @@ export function tocProblems({ toc, luacheckrc, disk, name = "Vanguard.toc" }) {
     ...orphanProblems(files, disk, name),
     ...savedVariableProblems(meta, luacheckGlobals(luacheckrc), name),
     ...libraryOrderProblems(files, name),
+    ...tagProblems(files, name),
   ];
 }
 
