@@ -59,8 +59,9 @@ read_globals = {
   "GameTooltip_SetDefaultAnchor",
   -- Retail's Great Vault (Modules/RetailVault.lua): its slots this week and last week's reward.
   "C_WeeklyRewards",
-  -- Retail's quest tracker blocks: scenarios, campaigns, world quests and the Traveler's Log (Modules/RetailQuests.lua).
-  "C_ScenarioInfo", "C_CampaignInfo", "C_TaskQuest", "C_PerksActivities",
+  -- Retail's quest tracker blocks: scenarios, campaigns, world quests and the Traveler's Log (Modules/RetailQuests.lua),
+  -- and the delve you are in (Modules/RetailDelves.lua).
+  "C_ScenarioInfo", "C_CampaignInfo", "C_TaskQuest", "C_PerksActivities", "C_DelvesUI",
   -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).
   "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
   -- P2.8 Chat: the game's list of chat window art names.

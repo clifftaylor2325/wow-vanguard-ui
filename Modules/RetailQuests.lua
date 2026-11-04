@@ -1,7 +1,8 @@
 -- Retail's own quest tracker blocks (WoW Retail only: the TOC keeps this file off WoW Forever), added to
 -- Vanguard's tracker (Modules/QuestTracker.lua, QT.BLOCKS) where the game's own tracker shows them:
---   * above the watched quests: the scenario you are in (a delve, a scenario, later Mythic+) under its name, with
---     its stage and criteria; then the watched campaign quests under their campaign's name and chapter;
+--   * above the watched quests: the scenario you are in (a delve, a scenario, later Mythic+) under its name (a
+--     kind of scenario may add to it: RQ.HEADINGS), with its stage and criteria; then the watched campaign
+--     quests under their campaign's name and chapter;
 --   * below them: world quests (those in your area, then those you watch), the bonus objectives of your area,
 --     and the Traveler's Log activities you track.
 -- Each block reads the client's calls from Blizzard's live API docs (wow-ui-source, live branch); the task list
@@ -63,14 +64,28 @@ function RQ.Stage(step, stage, stages)
   return { title = title, objectives = criteria(ns.PlainNumber(step.numCriteria) or 0), kind = "scenario" }
 end
 
--- The scenario you are in, under its name: none outside one (no stages), once its last stage is done, or while
+-- What a kind of scenario makes of its heading: each fn(name) gives the heading for a scenario of its kind, or nil
+-- for any other (Modules/RetailDelves.lua adds a delve's tier). The first that answers wins.
+RQ.HEADINGS = {}
+
+-- The scenario's heading: its name (Scenario while the client hides it), as the first of RQ.HEADINGS to answer has it.
+local function scenarioHeading(info)
+  local name = ns.PlainText(info.name) or L["Scenario"]
+  for _, heading in ipairs(RQ.HEADINGS) do
+    local text = heading(name)
+    if text then return text end
+  end
+  return name
+end
+
+-- The scenario you are in, under its heading: none outside one (no stages), once its last stage is done, or while
 -- the client hides where you are in it.
 function RQ.Scenario()
   local info = plainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioInfo"))
   local stage, stages = info and ns.PlainNumber(info.currentStage), info and ns.PlainNumber(info.numStages)
   if not (stage and stages and stages > 0 and stage <= stages) then return {} end
   local step = plainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
-  return section(ns.PlainText(info.name) or L["Scenario"], { RQ.Stage(step, stage, stages) })
+  return section(scenarioHeading(info), { RQ.Stage(step, stage, stages) })
 end
 
 -- Campaigns ------------------------------------------------------------------------------------

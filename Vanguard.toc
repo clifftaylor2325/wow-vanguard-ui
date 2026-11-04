@@ -197,6 +197,8 @@ Modules/WindowsPvP.lua
 Modules/WindowsMove.lua
 Modules/RetailWindows.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/RetailHousing.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
+Modules/RetailDelves.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
+Modules/RetailProfessions.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/RetailVault.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/RetailLanding.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/AuctionPrices.lua
