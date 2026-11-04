@@ -38,8 +38,9 @@ export function setCombat(addon, on) {
   if (!on) addon.fire("PLAYER_REGEN_ENABLED");
 }
 
-// A retail-like client (the world's default is WoW Forever): the newer interface number.
-export const RETAIL = "__wfgWorld.build.interface = 120105\n";
+// A retail-like client (the world's default is WoW Forever): the newer interface number and Retail's project
+// (WOW_PROJECT_MAINLINE, 1; the world's is Forever's, 18, which ns.IsForever also reads).
+export const RETAIL = "__wfgWorld.build.interface = 120105\nWOW_PROJECT_ID = 1\n";
 
 // An account that has finished first-run setup, and a character that has played on it, so the
 // wizard stays shut in cases about other things (a case's own VanguardDB or VanguardCharDB replaces them).

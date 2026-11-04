@@ -2,8 +2,11 @@
 // is not registered there: ns.GetModule gives nil, ns.ModuleNames leaves it out, and its options rows and /vg words
 // don't show. On WoW Forever nothing changes.
 
+import fs from "node:fs";
+import path from "node:path";
 import { expect, it } from "vitest";
-import { createAddon, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { createAddon, RETAIL_CLIENT, root } from "../lib/lua-harness.mjs";
+import { loadsOn, tocEntries } from "../lib/toc.mjs";
 import { chatHas, loggedIn } from "./helpers.mjs";
 
 // The modules only WoW Forever has: vanilla's systems (swing timer, five-second rule, spell ranks, Legacy, the
@@ -153,4 +156,18 @@ it("clients: on Retail the dungeon card stays off even when a profile has its sw
     local PR = ns.GetModule("InstancePrep") PR.ShowOnDemand() ns.Where = function() return "party" end PR.OnEnter(nil, nil, true) return __card`);
   expect(asked(loggedIn("", { savedVariables: sv })), "WoW Forever: lines and the record").toBe(2);
   expect(asked(loggedIn("", { savedVariables: sv, client: RETAIL_CLIENT })), "Retail: neither").toBe(0);
+});
+
+// Forever-only modules whose file still loads on Retail, as if switched off, and why.
+const LOADS_SWITCHED_OFF = { QuestGuide: "the quest tracker, arrow and dialog call ns.QuestGuide" };
+
+it("clients: every module's TOC line loads on just the clients its `clients` names (the tags are the second lock)", () => {
+  const addon = createAddon();
+  for (const entry of tocEntries(fs.readFileSync(path.join(root, "Vanguard.toc"), "utf8"))) {
+    const name = fs.readFileSync(path.join(root, entry.path), "utf8").match(/ns\.Module\("(\w+)"/)?.[1];
+    if (!name) continue;
+    const clients = addon.eval(`local c = ns.GetModule("${name}").clients return c and { c.forever == true, c.retail == true } or { true, true }`);
+    const retail = clients[1] || name in LOADS_SWITCHED_OFF;
+    expect([loadsOn(entry, "forever"), loadsOn(entry, "retail")], `${entry.path} (${name})`).toEqual([clients[0], retail]);
+  }
 });
