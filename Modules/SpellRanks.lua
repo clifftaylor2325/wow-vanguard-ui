@@ -149,10 +149,17 @@ function SR.Remember(token, s)
   c.list[key] = s
 end
 
--- The open trainer's services, remembered (not in combat; only when the class and the trainer's name can be read).
+-- Whether the open trainer is the pet's: its required levels are the pet's, not the player's.
+local function petTrainer()
+  local get = C_Trainer and C_Trainer.GetTrainerType
+  local pet = type(Enum) == "table" and type(Enum.TrainerType) == "table" and Enum.TrainerType.Pet
+  return type(get) == "function" and pet ~= nil and ns.PlainNumber(get()) == pet
+end
+
+-- The open trainer's services, remembered (not in combat, not a pet trainer's; only when the class and the trainer's name can be read).
 function SR.Record()
   local token = classToken()
-  if not settings().trainerMemory or ns.InCombat() or not token then return end
+  if not settings().trainerMemory or ns.InCombat() or not token or petTrainer() then return end
   local where = { whereNow() }
   if not where[1] then return end
   for i = 1, ns.PlainNumber(ns.Client.Call("GetNumTrainerServices")) or 0 do

@@ -162,6 +162,16 @@ it("a client without GetTrainerServiceLevelReq still remembers: the level is Get
   expect(remembered(addon).map((s) => s.slice(0, 3)), "both levels come from the service info").toEqual([["TEST-ONLY Fireball", "Rank 3", 6], ["TEST-ONLY Frostbolt", "Rank 4", 8]]);
 });
 
+it("trainer memory leaves a pet trainer's services out: their levels are the pet's, not yours", () => {
+  const addon = mage();
+  addon.eval(TRAINER + "Enum.TrainerType = { General = 0, Pet = 3 } C_Trainer = { GetTrainerType = function() return __trainerType end } __trainerType = 3");
+  visit(addon);
+  expect(Object.keys(remembered(addon)).length, "a pet trainer: nothing kept").toBe(0);
+  addon.eval("__trainerType = 0");
+  visit(addon);
+  expect(remembered(addon).length, "a class trainer: kept as before").toBe(2);
+});
+
 it("on a German client the trainer's rank text is kept by its number, not the English word; a texture path is no rank", () => {
   const addon = mage();
   addon.eval('__wfgWorld.locale = "deDE"');
