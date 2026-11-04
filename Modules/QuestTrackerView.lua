@@ -63,14 +63,21 @@ local function objectiveLine(block)
   return addLineText(row)
 end
 
--- A title click: a Legacy challenge untracks on right-click, a recipe opens (or untracks), a quest opens its details.
+-- What a click does on a row of a client's own kind (a Retail block's world quest, say: Modules/RetailQuests.lua),
+-- by its kind: fn(id, button). A kind left out takes no clicks.
+QT.KIND_CLICKS = {}
+
+-- A title click: a client's own kind of row as that kind says, a Legacy challenge untracks on right-click, a recipe
+-- opens (or untracks), a quest opens its details.
 local function onTitleClick(self, button)
+  if self.kind then return ns.CallIf(QT.KIND_CLICKS, self.kind, self.id, button) end
   if self.achievement then return QT.OnAchievement(self.id, button) end
   if self.recipe then return QT.OnRecipe(self.id, button) end
   if self.id then QT.OnTitle(self.id, button) end
 end
 
--- What a click does on each kind of row, for its tooltip (a quest's Shift-click only while Quest guidance is on).
+-- What a click does on each kind of row, for its tooltip (a quest's Shift-click only while Quest guidance is on; a
+-- client's own kind adds its line by its kind, and a kind with none has no clicks line).
 QT.CLICKS = {
   quest = L["Click: open · Shift-click: point the arrow · Right-click: stop watching"],
   questNoGuide = L["Click: open · Right-click: stop watching"],
@@ -78,8 +85,9 @@ QT.CLICKS = {
   recipe = L["Click: open · Right-click: stop tracking"],
 }
 
--- The clicks line for a row.
+-- The clicks line for a row (nil for a client's own kind that takes no clicks).
 local function clicksFor(q)
+  if q.kind then return QT.CLICKS[q.kind] end
   if q.achievement then return QT.CLICKS.achievement end
   if q.recipe then return QT.CLICKS.recipe end
   return ns.QuestGuide.settings and QT.CLICKS.quest or QT.CLICKS.questNoGuide
@@ -93,7 +101,8 @@ function QT.TitleTooltip(b)
   tip:SetOwner(b, "ANCHOR_LEFT")
   tip:SetText(q.title, T.RGB("text"))
   for _, line in ipairs(QT.StateLines(q)) do tip:AddLine(T.Paint(line.full or line[1], line[2]), nil, nil, nil, true) end
-  tip:AddLine(clicksFor(q), T.RGB("muted"))
+  local clicks = clicksFor(q)
+  if clicks then tip:AddLine(clicks, T.RGB("muted")) end
   tip:Show()
 end
 
@@ -201,10 +210,10 @@ end
 
 -- A quest's lines under its title: the arrow's next step when it follows this quest (Quest
 -- guidance), its countdown while it is timed ("Time left 4:32"), then { text, color } for each
--- objective, or "Ready to turn in", then its XP. An achievement or a recipe has no guide step
--- or XP: its criteria or reagents only.
+-- objective, or "Ready to turn in", then its XP. An achievement, a recipe or a client's own kind of row has no
+-- guide step: its criteria, reagents or objectives (and XP, when it has some) only.
 function QT.LineSpecs(q)
-  local out = (q.achievement or q.recipe) and {} or { ns.QuestGuide.StepLine(q.id) }
+  local out = (q.achievement or q.recipe or q.kind) and {} or { ns.QuestGuide.StepLine(q.id) }
   if q.timer then out[#out + 1] = { ns.Format(L["Time left {time}"], { time = QT.Clock(q.timer) }), "text2" } end
   for _, line in ipairs(QT.StateLines(q)) do out[#out + 1] = line end
   if (q.xp or 0) > 0 then out[#out + 1] = { QP.XPText(q.xp), "text2" } end
@@ -249,9 +258,9 @@ local function paintSection(b, q)
   b.lines.Reset()
 end
 
--- A quest's title in its difficulty color; a challenge's or a recipe's in the text color, by its name.
+-- A quest's title in its difficulty color; a challenge's, a recipe's or a client's own kind's in the text color, by its name.
 local function paintTitle(b, q)
-  if q.achievement or q.recipe then
+  if q.achievement or q.recipe or q.kind then
     b.title:SetText(q.title)
     return T.Color(b.title, "text")
   end
@@ -260,9 +269,9 @@ local function paintTitle(b, q)
 end
 
 -- Whether a row is the followed quest: the one you Shift-clicked or the game tracks (Quest guidance, the quest
--- with the step line), else the shown arrow's own pick; a quest, not a heading, a challenge or a recipe.
+-- with the step line), else the shown arrow's own pick; a quest, not a heading, a challenge, a recipe or a client's own kind.
 function QT.IsFollowed(q)
-  if q.section or q.achievement or q.recipe or not q.id then return false end
+  if q.section or q.achievement or q.recipe or q.kind or not q.id then return false end
   return q.id == (ns.QuestGuide.Followed() or ns.QuestArrow.Followed())
 end
 
@@ -278,7 +287,7 @@ end
 -- Fills a block: its title, then its lines (a section heading is its name alone), cut to cap tall when given; the
 -- followed quest has the accent line down its left edge.
 function QT.PaintBlock(b, q, cap)
-  b.id, b.achievement, b.recipe, b.row = q.id, q.achievement, q.recipe, q
+  b.id, b.achievement, b.recipe, b.kind, b.row = q.id, q.achievement, q.recipe, q.kind, q
   b.edge:SetShown(QT.IsFollowed(q))
   followMouse(b, q)
   if q.section then paintSection(b, q) else

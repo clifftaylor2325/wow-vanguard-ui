@@ -124,9 +124,9 @@ local function distance(q)
   return ns.PlainNumber((ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", q.id))) or math.huge
 end
 
--- Seconds left on each timed quest, by quest id, from C_QuestLog.GetQuestTimers (the call the game's own
--- timer frame reads; QuestLogDocumentation.lua's QuestTimerInfo). A timer the client hides is left out.
-function QT.Timers()
+-- Seconds left on each timed quest, by quest id, on WoW Forever: C_QuestLog.GetQuestTimers (the call the game's
+-- own timer frame reads; QuestLogDocumentation.lua's QuestTimerInfo). A timer the client hides is left out.
+local function questTimers()
   local out = {}
   for _, info in ipairs(plainTable(ns.CallIf(C_QuestLog, "GetQuestTimers")) or {}) do
     local id, left = plainTable(info) and ns.PlainNumber(info.questID), plainTable(info) and ns.PlainNumber(info.questTimer)
@@ -134,6 +134,21 @@ function QT.Timers()
   end
   return out
 end
+
+-- The same on Retail, which has no GetQuestTimers: each watched quest's (the ids given) C_QuestLog.GetTimeAllowed (its whole
+-- time and the seconds gone, as the game's own tracker reads them), while time is left. A hidden value is left out.
+local function timesAllowed(watched)
+  local out = {}
+  for _, id in ipairs(watched) do
+    local total, gone = ns.CallIf(C_QuestLog, "GetTimeAllowed", id)
+    total, gone = ns.PlainNumber(total), ns.PlainNumber(gone)
+    if total and gone and gone < total then out[id] = total - gone end
+  end
+  return out
+end
+
+-- Seconds left on each timed quest, by quest id: the running client's call, picked once. Takes the watched ids.
+QT.Timers = ns.ClientData({ forever = questTimers, retail = timesAllowed })
 
 -- A countdown as minutes and seconds ("4:32"; an hour and more as "61:05").
 function QT.Clock(seconds)
@@ -149,8 +164,9 @@ end
 
 -- Every watched quest, in the chosen order, each timed one with its seconds left; and whether any is timed.
 function QT.Quests()
-  local out, timers, timed = {}, QT.Timers(), false
-  for _, id in ipairs(QT.Watched()) do
+  local watched = QT.Watched()
+  local out, timers, timed = {}, QT.Timers(watched), false
+  for _, id in ipairs(watched) do
     local q = QT.Quest(id)
     if q then q.timer = timers[id] timed = timed or q.timer ~= nil out[#out + 1] = q end
   end
@@ -276,18 +292,41 @@ function QT.Recipes()
   return out
 end
 
--- Adds a heading and the rows under it (nothing when there are none, so the tracker looks as it did).
+-- Adds a heading (none without a name) and the rows under it (nothing when there are none, so the tracker looks as it did).
 local function addSection(rows, name, list)
   if #list == 0 then return end
-  rows[#rows + 1] = { section = name }
+  if name then rows[#rows + 1] = { section = name } end
   for _, r in ipairs(list) do rows[#rows + 1] = r end
 end
 
--- The rows the tracker draws: the watched quests, then the tracked Legacy challenges and the tracked
--- recipes, each under its own heading.
+-- Blocks a client adds around the watched quests, in order (Modules/RetailQuests.lua on Retail; none on WoW
+-- Forever). Each is fn(quests, taken) giving its rows, headings included, and setting taken[id] for each watched
+-- quest it draws itself (a campaign quest under its campaign), so the plain list leaves that quest out.
+QT.BLOCKS = { above = {}, below = {} }
+
+-- Appends every block's rows.
+local function addBlocks(rows, blocks, quests, taken)
+  for _, block in ipairs(blocks) do
+    for _, r in ipairs(block(quests, taken)) do rows[#rows + 1] = r end
+  end
+end
+
+-- The watched quests no block took: under a "Quests" heading when blocks above them drew rows, else as they are.
+local function addQuests(rows, quests, taken)
+  local rest = {}
+  for _, q in ipairs(quests) do
+    if not taken[q.id] then rest[#rest + 1] = q end
+  end
+  addSection(rows, #rows > 0 and L["Quests"] or nil, rest)
+end
+
+-- The rows the tracker draws: the client's blocks above the quests, the watched quests, the blocks below them,
+-- then the tracked Legacy challenges and the tracked recipes, each under its own heading.
 function QT.Rows(quests)
-  local rows = {}
-  for _, q in ipairs(quests) do rows[#rows + 1] = q end
+  local rows, taken = {}, {}
+  addBlocks(rows, QT.BLOCKS.above, quests, taken)
+  addQuests(rows, quests, taken)
+  addBlocks(rows, QT.BLOCKS.below, quests, taken)
   addSection(rows, L["Legacy challenges"], QT.Achievements())
   addSection(rows, L["Recipes"], QT.Recipes())
   return rows
