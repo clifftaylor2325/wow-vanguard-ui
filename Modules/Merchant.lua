@@ -76,10 +76,11 @@ function MC.SellJunk(tries)
   if tries > 1 and C_Timer and C_Timer.After then C_Timer.After(MC.RETRY_AFTER, ns.Guard("timer sell junk", function() MC.SellJunk(tries - 1) end)) end
 end
 
--- Sells your junk: the client's own one-step sale where it has one.
+-- Sells your junk: the client's own one-step sale where it has one and has it turned on, else item by item.
 function MC.Sell()
   local all = C_MerchantFrame and C_MerchantFrame.SellAllJunkItems
-  if type(all) == "function" then return all() end
+  local enabled = C_MerchantFrame and C_MerchantFrame.IsSellAllJunkEnabled
+  if type(all) == "function" and type(enabled) == "function" and enabled() == true then return all() end
   if C_Container and C_Container.GetContainerItemInfo then MC.SellJunk(MC.RETRIES) end
 end
 

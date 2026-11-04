@@ -635,7 +635,11 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   addon.fire("MERCHANT_SHOW");
   addon.eval("__canRepair = false");
   addon.fire("MERCHANT_SHOW");
-  addon.eval("C_MerchantFrame = { SellAllJunkItems = function() __all = true end }");
+  addon.eval("C_MerchantFrame = { SellAllJunkItems = function() __all = true end, IsSellAllJunkEnabled = function() return __allOn end }");
+  addon.eval("__allOn = false __used = {} __sticky = 0 __bag[1] = { quality = 0 }");
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return { __all == true, #__used }"), "the one-step sale turned off: the item-by-item sale instead").toEqual([false, 1]);
+  addon.eval("__allOn = true");
   addon.fire("MERCHANT_SHOW");
   expect(addon.eval("return __all"), "the client's own one-step sale where it has one").toBe(true);
   const off = loggedIn(MERCHANT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Merchant = { repair = false, junk = false, errors = false } } }" });
