@@ -61,6 +61,12 @@ it("retail professions: the crafting orders page's tabs, lists, order view and m
   expect(view, "the order's info and details on insets, the recipe form, the money lines and the buttons").toEqual([true, true, true, true, true, true, true]);
 });
 
+it("retail professions: an order's minimum-quality icon keeps its picture while the details' own art fades", () => {
+  const addon = professions();
+  addon.eval("ProfessionsFrame:Show()");
+  expect(addon.eval("local d = ProfessionsFrame.OrdersPage.OrderView.OrderDetails return { __alpha(d.MinimumQualityIcon), __gameArt(d) }"), "icon shown, background faded").toEqual([1, 0]);
+});
+
 it("retail professions: a page that fails is reported by name, and the other page is still dressed", () => {
   expectErrors("professions orders list: eval:2: TEST-ONLY odd favourites button");
   const addon = professions({ before: "ns.GetModule('Windows').SkinPlate = function() error('TEST-ONLY odd favourites button') end" });

@@ -72,6 +72,7 @@ local function orderView(page)
   buttons(info, { "BackButton", "StartOrderButton", "DeclineOrderButton", "ReleaseOrderButton" })
   for _, key in ipairs({ "CommissionTitleMoneyDisplayFrame", "ConsortiumCutMoneyDisplayFrame", "FinalTipMoneyDisplayFrame" }) do moneyDisplay(info, key) end
   well(view, "OrderDetails").SchematicForm = CreateFrame("Frame", nil, view.OrderDetails)
+  view.OrderDetails.MinimumQualityIcon = view.OrderDetails:CreateTexture(nil, "OVERLAY")
   buttons(view, { "CreateButton", "CompleteOrderButton", "StartRecraftButton", "StopRecraftButton" })
   page.OrderView = view
 end

@@ -72,13 +72,15 @@ function RP.SkinBrowse(browse)
 end
 
 -- An order's view: its info side (an inset, push buttons, money lines), its details (an inset with the recipe form
--- in the crafting page's look) and its own push buttons.
+-- in the crafting page's look; the minimum-quality icon keeps its picture, which the inset fade would hide and the
+-- game never shows again) and its own push buttons.
 function RP.SkinOrderView(view)
   local info = view.OrderInfo
   GW.InsetPanel(info)
   GW.EachKey(info, RP.INFO_BUTTONS, GW.SkinButton)
   GW.EachKey(info, RP.INFO_MONEY, GW.SkinMoneyDisplay)
   GW.InsetPanel(view.OrderDetails)
+  GW.ShowTexture(GW.Part(view, "OrderDetails.MinimumQualityIcon"))
   GW.SkinSchematicForm(GW.Part(view, "OrderDetails.SchematicForm"))
   GW.EachKey(view, RP.VIEW_BUTTONS, GW.SkinButton)
 end
