@@ -61,6 +61,18 @@ it("retail professions: the crafting orders page's tabs, lists, order view and m
   expect(view, "the order's info and details on insets, the recipe form, the money lines and the buttons").toEqual([true, true, true, true, true, true, true]);
 });
 
+it("retail professions: the crafting orders recipe list is the crafting page's: its rows are theme rows following the game's selection, its no-results text themed", () => {
+  const addon = professions();
+  addon.eval("ProfessionsFrame:Show()");
+  // Whether the first recipe row is a theme row, and whether its selected look shows.
+  const lit = () => addon.eval(`local row = ProfessionsFrame.OrdersPage.BrowseFrame.RecipeList.ScrollBox.rows[1]
+    return { ns.Theme.RowParts(row) ~= nil, ns.Theme.RowParts(row).fill:IsShown() }`);
+  expect(lit(), "a row is a theme row, not selected").toEqual([true, false]);
+  addon.eval("ProfessionsFrame.OrdersPage.BrowseFrame.RecipeList.ScrollBox.rows[1]:SetSelected(true)");
+  expect(lit(), "the game selects it: the selected look").toEqual([true, true]);
+  expect(addon.eval("return __themed(ProfessionsFrame.OrdersPage.BrowseFrame.RecipeList.NoResultsText)"), "the no-results text in the theme font").toBe(true);
+});
+
 it("retail professions: an order's minimum-quality icon keeps its picture while the details' own art fades", () => {
   const addon = professions();
   addon.eval("ProfessionsFrame:Show()");

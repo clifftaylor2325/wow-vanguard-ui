@@ -1499,8 +1499,9 @@ local function skinRecipeRow(row)
   GW.HookAfter(row, "SetSelected", function(_, selected) T.SelectRow(row, selected and true or false) end)
 end
 
--- The recipe list: its dark tile and bronze frame faded for an inset, the filter, search box and rows in the theme.
-local function skinRecipeList(list)
+-- The recipe list (the crafting page's, and the crafting orders page's): its dark tile and bronze frame faded for an
+-- inset, the filter, search box, no-results text and rows in the theme.
+function GW.SkinRecipeList(list)
   if type(list) ~= "table" or not list.GetRegions then return end
   GW.InsetPanel(list)
   GW.FadeFrame(list.BackgroundNineSlice)
@@ -1528,7 +1529,7 @@ GW.INSIDES.ProfessionsFrame = function(frame)
   local page = frame.CraftingPage
   if type(page) ~= "table" or not page.GetRegions then return end
   T.FadeRegions(page)
-  skinRecipeList(page.RecipeList)
+  GW.SkinRecipeList(page.RecipeList)
   GW.SkinSchematicForm(page.SchematicForm)
   skinCraftingControls(page)
 end
