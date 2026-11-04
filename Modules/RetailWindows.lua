@@ -24,7 +24,9 @@ GW.defaults.finder = true
 table.insert(GW.GROUPS, "finder")
 
 -- The order a window's parts are dressed in: the art first, then the controls, then the texts.
-GW.RETAIL_STEPS = { "fade", "inset", "scene", "card", "header", "button", "plate", "dropdown", "search", "edit", "label" }
+GW.RETAIL_STEPS = {
+  "fade", "inset", "scene", "card", "header", "button", "plate", "dropdown", "search", "edit", "check", "money", "heading", "label",
+}
 
 -- Each Retail window's parts by step, as dotted paths from the globals (Blizzard's Mainline XML; a path the
 -- client lacks is skipped). The group finder's own blue art is the window's and fades with it.
@@ -129,11 +131,17 @@ local function lightLabel(fs)
   GW.SkinText(fs, "label", "text")
 end
 
+-- A page's or a section's heading the game draws in its gold display font, in the heading role and the light text
+-- colour.
+local function lightHeading(fs)
+  GW.SkinText(fs, "heading", "text")
+end
+
 -- What each step does to a part (the shared dressers are Modules/Windows.lua's; each skips what is not its kind).
 local DRESSERS = {
   fade = GW.FadeFrame, inset = GW.InsetPanel, scene = dressScene, card = dressCard, header = dressHeader,
   button = GW.SkinButton, plate = GW.SkinPlate, dropdown = GW.SkinDropdown, search = GW.SkinSearch,
-  edit = GW.SkinEditBox, label = lightLabel,
+  edit = GW.SkinEditBox, check = GW.SkinCheck, money = GW.SkinMoney, heading = lightHeading, label = lightLabel,
 }
 
 -- Dresses the parts listed for one window, step by step, each part under ns.Try named for its path: a part the
@@ -149,20 +157,24 @@ function GW.DressRetailParts(key)
   end
 end
 
--- A Retail window: the window skin (panel, close button, title, art faded), then its own parts.
-local function skinWindow(frame)
+-- A Retail window: the window skin (panel, close button, title, art faded), then its own parts (Modules/RetailVault.lua
+-- and RetailLanding.lua register theirs with it too).
+---@param frame table  a window named by a key of GW.RETAIL_PARTS
+function GW.SkinRetailWindow(frame)
   GW.Skin(frame)
   GW.DressRetailParts(frame:GetName())
 end
 
--- A page the game shows inside another window (the PvP tab, inside the group finder): its own parts only.
-local function skinPage(frame)
+-- A page the game shows inside another window (the PvP tab, inside the group finder), or a screen of its own with no
+-- window round it (the Trading Post): its own parts only.
+---@param frame table  a frame named by a key of GW.RETAIL_PARTS
+function GW.SkinRetailPage(frame)
   GW.DressRetailParts(frame:GetName())
 end
 
-GW.Add("finder", { "PVEFrame", "LFGListApplicationDialog", "LFGListInviteDialog" }, skinWindow)
-GW.AddOnDemand("finder", "Blizzard_PVPUI", { "PVPUIFrame" }, skinPage)
-GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournal" }, skinWindow)
+GW.Add("finder", { "PVEFrame", "LFGListApplicationDialog", "LFGListInviteDialog" }, GW.SkinRetailWindow)
+GW.AddOnDemand("finder", "Blizzard_PVPUI", { "PVPUIFrame" }, GW.SkinRetailPage)
+GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournal" }, GW.SkinRetailWindow)
 
 -- The friends window's inside on Retail: its Who tab (the window itself is a framed window, Modules/Windows.lua).
 GW.INSIDES.FriendsFrame = function()
