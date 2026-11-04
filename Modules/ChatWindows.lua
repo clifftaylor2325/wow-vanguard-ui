@@ -200,7 +200,7 @@ function CW.New(text)
   ns.OutOfCombat(function()
     local frame = FCF_OpenNewWindow(name)
     if not frame then return ns.Chat(L["Every chat tab is in use. Close one to make another."]) end
-    CW.editing = frame and tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
+    CW.editing = tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
     ns.Options.RebuildPage("chat")
   end, "chat new tab " .. name)
   ns.HideText()
