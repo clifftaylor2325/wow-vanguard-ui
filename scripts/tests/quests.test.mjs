@@ -2069,6 +2069,29 @@ it("quest tracker: hovering a quest shows its title, its objectives in full and,
   expect([trackerTip(addon)[0], addon.eval("return ns.Theme.RowParts(Vanguard_QuestTrackerFrame.blocks[1]).hover:IsShown()")], "leaving hides both").toEqual([false, false]);
 });
 
+// TEST-ONLY: every watched quest completes by a click once its objectives are done, and the game's call is recorded.
+const AUTO_COMPLETE_ENV = `
+  local oldInfo = C_QuestLog.GetInfo
+  C_QuestLog.GetInfo = function(i) local info = oldInfo(i) if info then info.isAutoComplete = true end return info end
+  ShowQuestComplete = function(id) __completed = id end
+`;
+it("quest tracker: a finished quest that completes by a click says so, and a click completes it", () => {
+  const addon = loggedIn(TRACK_ENV + AUTO_COMPLETE_ENV);
+  expect(tracker(addon).blocks[1][1], "the ready one reads Click to complete").toEqual(["Click to complete"]);
+  expect(tracker(addon).blocks[0][1][0], "an unfinished one keeps its objectives").toContain("TEST-ONLY Wolves");
+  hoverBlock(addon, 2);
+  expect(trackerTip(addon)[1].slice(-1)[0], "its tooltip says the click completes").toBe("Click: complete · Shift-click: point the arrow · Right-click: stop watching");
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  expect(addon.eval("return __completed"), "clicking an unfinished one completes nothing").toBe(null);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[2] b.__scripts.OnClick(b, 'LeftButton')");
+  expect(addon.eval("return __completed"), "clicking the finished one asks the game to complete it").toBe(90052);
+});
+it("quest tracker: without Quest guidance the complete tooltip leaves Shift-click out", () => {
+  const addon = loggedIn(TRACK_ENV + AUTO_COMPLETE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestGuide = false } } }" });
+  hoverBlock(addon, 2);
+  expect(trackerTip(addon)[1].slice(-1)[0]).toBe("Click: complete · Right-click: stop watching");
+});
+
 it("quest tracker: no title tooltip in a fight", () => {
   const addon = loggedIn(TRACK_ENV);
   setCombat(addon, true);

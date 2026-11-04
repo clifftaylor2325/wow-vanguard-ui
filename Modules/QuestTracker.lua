@@ -108,14 +108,14 @@ function QT.IsReady(id)
   return ns.IsTrue(ns.CallIf(C_QuestLog, "ReadyForTurnIn", id)) or ns.IsTrue(ns.CallIf(C_QuestLog, "IsComplete", id))
 end
 
--- One watched quest: { id, title, level, ready, failed, objectives, item, xp }, or nil when the log doesn't have it.
+-- One watched quest: { id, title, level, ready, autoComplete, failed, objectives, item, xp }, or nil when the log doesn't have it.
 -- The XP switch is read from the profile: the arrow and the minimap marks ask with this module off, before any QT.Enable.
 function QT.Quest(id)
   local index = QT.LogIndex(id)
   local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = QT.IsReady(id)
-  return { id = id, title = info.title, level = info.level, ready = ready, failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index),
+  return { id = id, title = info.title, level = info.level, ready = ready, autoComplete = ns.IsTrue(info.isAutoComplete), failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index),
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 
@@ -344,12 +344,23 @@ end
 
 -- Actions --------------------------------------------------------------------------------------
 
+-- Completes a ready auto-complete quest (one with nobody to hand in to), as the game's own tracker does on a
+-- click (Blizzard_QuestObjectiveTracker.lua); true when it did. The game's tracker is hidden, so this is the way.
+local function completeAuto(id)
+  local q = QT.Quest(id)
+  if not (q and q.autoComplete and q.ready) then return false end
+  ns.CallIf(_G, "ShowQuestComplete", id)
+  return true
+end
+
 -- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map), Shift-left points
--- the arrow at it (Quest guidance, when it's on); right stops watching it.
+-- the arrow at it (Quest guidance, when it's on); right stops watching it. A finished auto-complete quest is
+-- completed instead of opened.
 function QT.OnTitle(id, button)
   if button == "RightButton" then return ns.CallIf(C_QuestLog, "RemoveQuestWatch", id) end
   local guide = ns.QuestGuide
   if IsShiftKeyDown() and guide.settings then return guide.Point(id) end
+  if completeAuto(id) then return end
   local log = ns.GetModule("QuestLog")
   if log and log.Open and log.frame then return log.Open(id) end
   if ns.WindowWaitsForCombat(L["The world map"]) then return end
