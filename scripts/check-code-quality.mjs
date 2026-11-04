@@ -20,6 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { REPORT_RULES, checkSource, compareToBaseline, reportSource, sourceFiles as listSources } from "./lib/code-quality.mjs";
+import { readToc, tocPaths } from "./lib/toc.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASELINE = "scripts/code-quality-baseline.json";
@@ -70,10 +71,9 @@ function ratchet(counts, baseline) {
   return rows.filter((r) => r.status === "above");
 }
 
-// The files Vanguard.toc loads (Lua only), as repo-relative paths.
+// The files Vanguard.toc loads on any client (Lua only), as repo-relative paths without their tags.
 function tocLuaFiles() {
-  const lines = fs.readFileSync(path.join(root, "Vanguard.toc"), "utf8").split(/\r?\n/);
-  return lines.map((l) => l.trim()).filter((l) => l.endsWith(".lua"));
+  return tocPaths(readToc(root)).filter((f) => f.endsWith(".lua"));
 }
 
 // Compiles each TOC file with the real Lua 5.1 compiler when it is installed (the harness parses

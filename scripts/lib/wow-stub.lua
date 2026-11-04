@@ -481,9 +481,10 @@ function methods:SetNormalFontObject(font) self.__normalFont = font end
 function methods:GetNormalFontObject() return self.__normalFont end
 
 -- Runs fn after a script's current handler, as HookScript does. Like the client, a frame it keeps from
--- addons (one whose IsForbidden says so) refuses the hook with an error.
+-- addons (one whose IsForbidden says so), or a script whose handler it keeps (one in __forbiddenScripts),
+-- refuses the hook with an error.
 function methods:HookScript(name, fn)
-  if self:IsForbidden() then error(self:GetObjectType() .. ":HookScript(): Cannot assign script handler for '" .. name:lower() .. "' (cannot replace a forbidden script handler)", 2) end
+  if self:IsForbidden() or (self.__forbiddenScripts or {})[name] then error(self:GetObjectType() .. ":HookScript(): Cannot assign script handler for '" .. name:lower() .. "' (cannot replace a forbidden script handler)", 2) end
   local old = self.__scripts[name]
   self.__scripts[name] = function(...)
     if old then old(...) end
@@ -842,6 +843,9 @@ function methods:AddAuraGroup(key, filter, opts)
   for i = 1, math.min(opts.maxFrameCount or 10, 10) do
     g.buttons[i] = newWidget("AuraButton", nil, self)
     g.buttons[i].__dispel, g.buttons[i].__pandemic = {}, {}
+    -- The client keeps its aura buttons' tooltip handlers (in game 2026-11-04, a HookScript on one raised
+    -- "cannot replace a forbidden script handler" though the button isn't forbidden).
+    g.buttons[i].__forbiddenScripts = { OnEnter = true, OnLeave = true }
     if opts.initializeFrame then opts.initializeFrame(g.buttons[i]) end
   end
   self:UpdateAllAuras()

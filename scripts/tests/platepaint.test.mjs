@@ -68,6 +68,45 @@ const LEVELS_ENV = `
   UnitLevel = function(unit) return ({ target = 12, nameplate1 = 12, party1 = 14, nameplate2 = 14 })[unit] or 10 end
   GetCreatureDifficultyColor = function(level) if level == 12 then return { r = 1, g = 0.82, b = 0 } end end
 `;
+it("a plate the client hands over at a tiny scale gets its one-pixel border back once the plate grows", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  // The plate's edges' thickness in screen pixels at its scale now (the thickest of the four).
+  const edge = (unit) => addon.eval(`local f = ns.FrameState('vgPlate')[__plates.${unit}] local most = 0
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__parent == f and w.__layer == "OVERLAY" and w.__sublevel == 7 then most = math.max(most, math.min(w:GetWidth(), w:GetHeight())) end
+    end
+    return most / ns.Theme.Pixel(f)`);
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate2");
+  addon.eval("__plates.nameplate2:SetScale(0.01)");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  addon.eval("__plates.nameplate2:SetScale(1)");
+  expect(edge("nameplate2"), "painted at scale 0.01: some 100 pixels thick at scale 1, a dark box").toBeGreaterThan(50);
+  addon.advance(0.5);
+  expect(Math.round(edge("nameplate2") * 1000) / 1000, "the scale check paints it again: one pixel").toBe(1);
+});
+
+it("a plate's border is not painted again while its scale drifts less than NP.SCALE_SLACK", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + `__borders = 0
+    local setBorder = ns.Theme.SetBorder
+    -- TEST-ONLY spy: counts border repaints of nameplates (the frames with a target marker).
+    ns.Theme.SetBorder = function(f, rgb) if f.marker then __borders = __borders + 1 end return setBorder(f, rgb) end`);
+  // How many times a plate border has been painted.
+  const borders = () => addon.eval("return __borders");
+  addon.eval("__plates.nameplate2:SetScale(1.1)");
+  addon.advance(1);
+  expect(borders(), "10 % off: the two borders painted at login stand").toBe(2);
+  addon.eval("__plates.nameplate2:SetScale(0.8)");
+  addon.advance(0.5);
+  expect(borders(), "20 % smaller than painted: that plate's border is painted again").toBe(3);
+});
+
+it("a hidden or unknown scale counts as holding, and a plate never painted as not", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  // NP.ScaleHolds on two Lua values.
+  const holds = (scale, painted) => addon.eval(`return ns.GetModule('Nameplates').ScaleHolds(${scale}, ${painted})`);
+  expect([holds("{ __secret = true }", 1), holds(1, "nil"), holds(1, 0), holds(1, 1)]).toEqual([true, false, false, true]);
+});
+
 it("nameplates show levels in the difficulty color", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + LEVELS_ENV);
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");

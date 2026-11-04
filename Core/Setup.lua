@@ -573,7 +573,9 @@ local function fit()
   local tallest = 0
   growSwitches(frame.pages.look)
   for _, key in ipairs(state.order) do tallest = math.max(tallest, HEIGHTS[key](frame.pages[key])) end
-  T.PixelSize(frame, WIDTH, TOP + math.ceil(tallest) + FOOT, true)
+  local base = TOP + math.ceil(tallest) + FOOT
+  ns.Banner.Show(frame.banner, state.step == 1 and ns.Banner.Height(PAGE_W, ns.Banner.Room(base)) or 0)
+  T.PixelSize(frame, WIDTH, base + frame.banner:GetHeight(), true)
 end
 
 -- Fits the window, then re-marks the chosen profile, layout and screen (and shows their hints), accent and style
@@ -792,7 +794,6 @@ local function window()
   f:SetFrameStrata("FULLSCREEN_DIALOG")
   f:EnableMouse(true)
   addTitle(f)
-  T.Ornament(f, "corners")
   return f
 end
 
@@ -864,12 +865,14 @@ end
 
 local BUILDERS = { profile = profilePage, layout = layoutPage, screen = screenPage, look = lookPage, move = movePage }
 
--- A page per step, between the caption and the footer, by key.
+-- A page per step, between the caption (under the welcome banner on the first step) and the footer, by key.
 local function addPages(f)
   f.pages = {}
+  f.banner = ns.Banner.Create(f, PAGE_W)
+  f.banner:SetPoint("TOPLEFT", PAD, -TOP)
   for key, builder in pairs(BUILDERS) do
     f.pages[key] = CreateFrame("Frame", nil, f)
-    f.pages[key]:SetPoint("TOPLEFT", PAD, -TOP)
+    f.pages[key]:SetPoint("TOPLEFT", f.banner, "BOTTOMLEFT")
     f.pages[key]:SetPoint("BOTTOMRIGHT", -PAD, FOOT)
     builder(f.pages[key])
   end

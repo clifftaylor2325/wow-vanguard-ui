@@ -1,0 +1,119 @@
+[
+  {
+    "id": "S1",
+    "name": "PanelSlate",
+    "source": "art/painted/surface/S1.png",
+    "output": "Textures/PanelSlate.tga",
+    "crop": [
+      0,
+      0,
+      1024
+    ],
+    "box": 4,
+    "convert": "convert S1-slate-v4-2.jpg -strip -colorspace sRGB -type TrueColor S1.png",
+    "prompt": "Seamless texture swatch of honed grey slate, dense fine hairline streaks and tiny broken specks, very small scale, about thirty fine lines across the whole frame, low contrast, matte, uniform all over, soft diffuse light, neutral grey",
+    "negative": "cracks, veins, stains, blotches, seams, grid, tiles, border, vignette, folds, creases, text, ledges, stacked stones, rocks, chips, edges, cliff, wall, bricks, relief, deep shadows, highlights, dark outlines, deep grooves, planks, large panels",
+    "references": [],
+    "class": "surface",
+    "model": "Phoenix 1.0",
+    "mode": "FAST",
+    "contrast": "LOW",
+    "preset": "None",
+    "tiling": true,
+    "private": true,
+    "date": "2026-11-04",
+    "tokens": null,
+    "seed": null
+  },
+  {
+    "id": "S2",
+    "name": "PanelVellum",
+    "source": "art/painted/surface/S2.png",
+    "output": "Textures/PanelVellum.tga",
+    "crop": [
+      256,
+      256,
+      512
+    ],
+    "box": 2,
+    "convert": "convert S2-vellum-v3-4.jpg -strip -colorspace sRGB -type TrueColor S2.png",
+    "prompt": "Close-up of a blank page from an old book, aged paper, very even, subtle fine fibres, faint soft mottling, tiny flecks, low contrast, flat lighting, seamless texture, neutral grey",
+    "negative": "text, writing, letters, illustrations, flowers, pattern, folds, creases, tears, torn edges, holes, border, margin, vignette, seams, grid, tiles, wrinkles, deep shadows, highlights, dark outlines, large stains",
+    "references": [],
+    "class": "surface",
+    "model": "Phoenix 1.0",
+    "mode": "FAST",
+    "contrast": "LOW",
+    "preset": "None",
+    "tiling": true,
+    "private": true,
+    "date": "2026-11-04",
+    "tokens": null,
+    "seed": null
+  },
+  {
+    "id": "B1",
+    "name": "banner-dusk",
+    "class": "colour",
+    "source": "art/painted/colour/B1.png",
+    "output": "Art/banner-dusk.tga",
+    "crop": [
+      0,
+      0,
+      2048,
+      1024
+    ],
+    "box": 2,
+    "convert": "convert B1-banner-v1-1.jpg -strip -colorspace sRGB -type TrueColor B1.png",
+    "model": "Phoenix 1.0",
+    "mode": "FAST",
+    "contrast": "LOW",
+    "preset": "None",
+    "tiling": false,
+    "prompt": "Painterly landscape at dusk, a plain undyed cream cloth banner on a spear planted on a grassy hilltop in the right third, rolling hills and a distant grey stone watchtower, muted slate-blue and soft amber sky, the left half open sky, calm, low saturation, wide composition, digital painting",
+    "negative": "text, letters, logo, emblem, coat of arms, symbols on the banner, blue banner, red banner, people, characters, city, bright saturated colours, lens flare",
+    "references": [],
+    "private": true,
+    "date": "2026-11-04",
+    "tokens": null,
+    "seed": null
+  },
+  {
+    "id": "C2",
+    "name": "Icon",
+    "class": "icon",
+    "source": "art/painted/icon/C2.png",
+    "output": "Textures/Icon.tga",
+    "crop": [
+      0,
+      0,
+      960,
+      960
+    ],
+    "box": 15,
+    "convert": "Cut out by hand once from C2-shield-icon-v1.png (1024 x 1024, flat grey background): the background keyed out by saturation (HSL, 20%) merged with a 14% flood fill from the edges, the floor and its reflection masked off below the shield's tip, the largest shape kept, the edge eroded 1 px and softened 0.5 px, trimmed to 679 x 876 and centred on a clear 960 x 960 canvas (8-bit RGBA). Steps kept in the project files with the picture.",
+    "model": "Phoenix 1.0",
+    "mode": null,
+    "contrast": null,
+    "preset": null,
+    "tiling": false,
+    "prompt": "Stylised cartoon game icon, a heraldic shield seen straight from the front, perfectly symmetrical, bold clean shapes, thick dark outline, flat cel shading with two or three tones per material, thick bronze-gold rim with four large amber gems, deep navy panel, a very large chunky polished brass serif letter V filling most of the panel, bright and high contrast, hand-painted game art style, plain flat mid-grey background, no floor, no shadow, no other text",
+    "negative": "photograph, realistic, 3D render, floor, reflection, perspective, swords, weapons, scratches, fine detail, small text",
+    "references": [],
+    "private": true,
+    "date": "2026-11-04",
+    "tokens": null,
+    "seed": null,
+    "note": "Settings and the exact prompt were not reported; the prompt is the one suggested in the project thread for this run (Prompt Enhance off, Illustration style asked for).",
+    "large": {
+      "name": "banner-crest",
+      "crop": [
+        -32,
+        -32,
+        1024,
+        1024
+      ],
+      "box": 4
+    }
+  }
+]

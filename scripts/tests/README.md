@@ -57,9 +57,22 @@ addon drew.** `scripts/tests/scenarios.test.mjs` has more.
 - `createAddon({ savedVariables, client })` (from `../lib/lua-harness.mjs`): the
   addon files are run, SavedVariables Lua is run after them, nothing has fired
   yet. `client` is Lua run before the addon's files: `FOREVER_CLIENT` (the
-  default) or `RETAIL_CLIENT` (interface 120007, and GAME_RULES_CHANGED invalid,
-  as on Retail). `loggedIn(env, { client })`
-  passes it on.
+  default: interface 16001, `WOW_PROJECT_ID` 18, `WOW_PROJECT_CAMELOT`) or
+  `RETAIL_CLIENT` (Retail 12.1.5: interface 120105, `WOW_PROJECT_ID` 1, and the
+  WoW Forever API Retail lacks gone: its functions nil, its events invalid).
+  `loggedIn(env, { client })` passes it on.
+- The Forever-only list is `scripts/lib/forever-only-api.json`, made from
+  Blizzard's API docs of both clients by `node scripts/forever-only-api.mjs`;
+  `scripts/forever-only-api.test.mjs` fails when the addon starts or stops using
+  one, and running the command again fixes it. Never edit the list by hand.
+- On Retail the harness then runs every `scripts/lib/wow-retail-<area>.lua` (name
+  order) before the addon loads. A Retail-only API goes in its area's file, not
+  in `wow-world.lua`; start one beside `wow-retail-core.lua`.
+- Each client loads only the files the TOC's game-type tags allow it
+  (`[AllowLoadGameType camelot] [ExcludeLoadGameType standard]` after a path:
+  Forever is `camelot` and Retail `standard`, both `mainline`;
+  `scripts/lib/toc.mjs`). A file kept to one client counts once towards the
+  coverage floor, so that client's cases must cover it.
 - `loggedIn(env)` (from `./helpers.mjs`): a finished-setup account, `env` Lua
   run before login, then `login()` fires ADDON_LOADED, PLAYER_LOGIN and
   PLAYER_ENTERING_WORLD (with six heavy modules off in most files; see
@@ -179,7 +192,7 @@ change fires the events the client would.
 | `units.<token>.tooltipLines` | The lines `C_TooltipInfo.GetUnit(token)` returns for a unit: `{ { type = Enum.TooltipDataLineType.QuestObjective, leftText = "..." } }` (none by default; a unit that does not exist gives nothing). The enum holds None, Blank, UnitName, UnitThreat, QuestObjective, QuestTitle and QuestPlayer. |
 | `world.modifierBits`, `world.modifierNames` (Lua, through `addon.eval`) | What `GetStringFromModifiers(modifiers)` answers for a click-binding modifier mask: `{ alt = 1, ctrl = 2, shift = 4 }` and `{ alt = "ALT", ctrl = "CTRL", shift = "SHIFT" }` by default, joined as `ALT-CTRL-SHIFT-` (in that order, for the bits set, `""` for 0). The signature is documented, the bits and the text's format are not, so this is an unverified model and the addon reads the text by the key names; a test changes the names to try another format or language. |
 | `GAME_CLICKS_LUA`, `GAME_ENGINE_LUA` (from `helpers.mjs`, run through `addon.eval` or a `client` string) | The game's click bindings: `GAME_CLICKS_LUA` is `C_ClickBindings` with the game's default profile (Target on Left, the menu on Right) in `__gameClicks`; `GAME_ENGINE_LUA` adds `__engineClick(frame, button, prefix)`, a model of what `SecureUnitButton_OnClick` does with a click. UNVERIFIED: only the order of its checks is from `SecureTemplates.lua`, and the modifier masks are the world's unverified `modifierBits`; `scripts/lua-engine.test.mjs` tests the model itself. |
-| `get(field)` / `set(field, value)` | Any world field by path: `set("money", 12345)`, `set("build.interface", 120007)`. |
+| `get(field)` / `set(field, value)` | Any world field by path: `set("money", 12345)`, `set("build.interface", 120105)`. |
 | `without(...names)` | Removes global APIs, as an older client would lack them. |
 | `addChatBubble(text, opts)` | A chat bubble over a speaker's head saying `text`: a frame in `world.bubbles` with one child panel holding nine `TEST-ONLY-ART` textures and the text (`panel.String`), listed by `C_ChatBubbles.GetAllChatBubbles`; CHAT_MSG_SAY fires. `opts.forbidden` makes its `IsForbidden` true (an instance's bubble), `opts.empty` leaves it without a panel, `opts.unkeyed` leaves its text without the `String` key, `opts.event` is the chat event that fires instead of CHAT_MSG_SAY (`"CHAT_MSG_RAID"`). Returns its index. |
 | `world.sentChat` (Lua, through `addon.eval`) | What the addon sent to chat channels through `C_ChatInfo.SendChatMessage`, `{ text, chatType }` each, in order. The old `SendChatMessage` global is not modelled (on Forever it is only a deprecation fallback); a test that needs it defines it. |

@@ -5,8 +5,13 @@
 
 import { image, fill } from "./media-art.mjs";
 
-// The most a panel texture lightens a panel (its highest alpha); scripts/media.test.mjs checks every surface.
-export const SURFACE_MAX_ALPHA = 0.08;
+// The most a panel texture lightens a panel (its highest alpha), 12/255: the largest byte-exact value under 0.05, so
+// text, text2, muted and disabled keep 4.5:1 on every variant's panel. scripts/media.test.mjs checks every surface.
+export const SURFACE_MAX_ALPHA = 12 / 255;
+
+// The peak the three code-made patterns below were first tuned to; their alpha is scaled by SURFACE_MAX_ALPHA / this,
+// so each keeps its shape and only gets fainter.
+const TUNED_PEAK = 0.08;
 
 // The tile size of every surface, in texels.
 const SIZE = 256;
@@ -35,9 +40,10 @@ function octaves(cells, seed) {
   return (x, y) => fields.reduce((sum, f, i) => sum + f(x, y) / 2 ** i, 0) / total;
 }
 
-// A surface: white throughout, its alpha alpha(x, y) kept within 0..SURFACE_MAX_ALPHA.
+// A surface: white throughout, its alpha alpha(x, y) (tuned to TUNED_PEAK) scaled into 0..SURFACE_MAX_ALPHA.
 function surface(alpha) {
-  return fill(image(SIZE, SIZE), (x, y) => [1, 1, 1, Math.max(0, Math.min(SURFACE_MAX_ALPHA, alpha(x, y)))]);
+  const scale = SURFACE_MAX_ALPHA / TUNED_PEAK;
+  return fill(image(SIZE, SIZE), (x, y) => [1, 1, 1, Math.max(0, Math.min(TUNED_PEAK, alpha(x, y))) * scale]);
 }
 
 // Fine grain: a texel-sized speckle over a soft blotch, so a window reads as matte rather than flat.

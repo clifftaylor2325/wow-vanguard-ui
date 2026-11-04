@@ -1,7 +1,7 @@
 // setuplayouts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, CLICK_LUA, MICRO_ENV, RAID_ENV, SPECIAL_BARS_ENV, STRIPS_ENV, STRIP_ENV, SWING_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, borderOf, chatHas, key, loggedIn, overlaps, px, setCombat, tok } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, RISE, MICRO_ENV, RAID_ENV, SPECIAL_BARS_ENV, STRIPS_ENV, STRIP_ENV, SWING_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, borderOf, chatHas, key, loggedIn, overlaps, px, setCombat, tok } from "./helpers.mjs";
 
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
@@ -24,7 +24,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   expect(addon.eval('return __click("Centered: healing")') && addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
   expect(addon.eval("local c = Vanguard_Setup.pages.layout.choices return { c[3].selected, c[3 == 1 and 2 or 1].selected, c[3].rail:IsShown(), c[3 == 1 and 2 or 1].rail:IsShown() }"), "the chosen layout wears the selected rail; the others rest flat").toEqual([true, false, true, false]);
   setupClick(addon, "next");
-  expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing leaves the raid frames at their default spot, over your player frame").toEqual(["BOTTOM", "BOTTOM", -240, 344]);
+  expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing leaves the raid frames at their default spot, over your player frame").toEqual(["BOTTOM", "BOTTOM", -240, 344 + RISE.frames]);
   expect(addon.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "click casting and the raid frames are on").toBe(true);
   const role = "return { ns.Settings('RaidFrames').showPower, ns.Settings('RaidFrames').sortByRole, ns.Settings('RaidAuras').hots, ns.Settings('RaidHealing').healPrediction, ns.Settings('Nameplates').debuffs, ns.Settings('Nameplates').threat }";
   expect(addon.eval(role), "Healing sets power bars, sort by role, HoTs and incoming heals on the raid frames, short debuff rows and no threat colours on nameplates").toEqual([true, true, true, true, 2, false]);
@@ -207,16 +207,22 @@ function problemsAt(addon, layout, sw, sh, label) {
   }
   return bad;
 }
+// Gives the addon an sw x sh canvas (UIParent's size in its own units, as a UI scale makes it) and lets the
+// frames follow it, as they do a moment after a UI scale change: the block around your character rises with its height.
+const canvasAt = (addon, sw, sh) => addon.eval(`UIParent:SetSize(${sw}, ${sh}) ns.Theme.Rescale() __wfgStub.advance(0.25)`);
 it("setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect", () => {
   const addon = wholeHud();
   expect(addon.eval("return ChatFrame1.__points.BOTTOMLEFT ~= nil"), "chat sits in its layout spot").toBe(true);
   expect(moverSpots(addon).menustrip.slice(4, 6).map((n) => Math.round(n * 10) / 10), "the bag and menu bar hugs its 14 menu slots").toEqual([412, 82]);
   expect(["bar1", "bar2", "bar3", "cast_player", "cast_target", "cast_focus", "uf_player", "uf_target", "uf_focus", "uf_pet", "swing", "raid", "xpbar", "cdm_essential", "cdm_utility", "cdm_buffs", "damagemeter", "fighthistory", "tooltip", "infostrip", "questtracker", "flighttimer", "uf_boss1", "raidtools", "maintanks", "partyextras", "petbar", "stancebar", "chat", "questdialog"].filter((k) => !moverSpots(addon)[k]), "every part of the cluster is a mover").toEqual([]);
-  expect(moverSpots(addon).questdialog.slice(3, 6), "the quest dialog is checked at its greatest size, 8 px over the focus cast bar").toEqual([346, 560, 360]);
+  expect(moverSpots(addon).questdialog.slice(3, 6), "the quest dialog is checked at its greatest size, 8 px over the focus cast bar").toEqual([346 + RISE.frames, 560, 360]);
   for (const layout of ["damage", "tank", "healing", "versus", "classic"]) {
     addon.eval(`ns.Setup.ApplyLayout("${layout}")`);
     // The bags ride over the menu in one bar, so it is no wider than the menu row and clears the bars at 1365.
-    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) expect(problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
+    for (const [sw, sh] of [[1365, 768], [1920, 1080]]) {
+      canvasAt(addon, sw, sh);
+      expect(problemsAt(addon, layout, sw, sh, `${layout}, ${sw}x${sh}`)).toEqual([]);
+    }
   }
 });
 it("setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man", () => {
@@ -228,6 +234,7 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
     const sw = (768 * w) / h / ui, sh = 768 / ui;
     for (const layout of ["damage", "tank", "healing", "versus", "classic"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("${key}")`);
+      canvasAt(addon, sw, sh);
       expect(problemsAt(addon, layout, sw, sh, `${key} (${Math.round(sw)}x${Math.round(sh)}), ${layout}`)).toEqual([]);
     }
   }
@@ -270,17 +277,18 @@ it("setup layouts: with the meter on, target of target stays clear of it from 13
 it("meter: target of target takes its narrow spot while the meter is on and goes back when it is off, under 1838 wide only", () => {
   // Where target of target sits now.
   const spot = (addon) => addon.eval("return { ns.MoverPoint('uf_targettarget') }");
-  const home = ["BOTTOM", "BOTTOM", 426, 196], narrow = ["BOTTOM", "BOTTOM", 180, 280];
+  // Both spots rise with the block around your character: 44 on a canvas 900 tall, 104 on 1080.
+  const home = (rise) => ["BOTTOM", "BOTTOM", 426, 196 + rise], narrow = ["BOTTOM", "BOTTOM", 180, 280 + 44];
   const addon = loggedIn(UI_ENV + UNITS_ENV + "__wfgStub.setScreen(1600, 900)");
-  expect(spot(addon), "meter off: the default spot at 1600 wide").toEqual(home);
+  expect(spot(addon), "meter off: the default spot at 1600 wide").toEqual(home(44));
   addon.slash("meter on");
   expect(spot(addon), "meter on: the narrow spot, at once").toEqual(narrow);
   addon.slash("meter off");
-  expect(spot(addon), "meter off again: the default spot").toEqual(home);
+  expect(spot(addon), "meter off again: the default spot").toEqual(home(44));
   addon.slash("meter on");
   addon.eval("__wfgStub.setScreen(1920, 1080)");
   addon.eval("ns.PlaceMover('uf_targettarget')");
-  expect(spot(addon), "meter on at 1920 wide, where the meter sits at its wide spot: the default spot").toEqual(home);
+  expect(spot(addon), "meter on at 1920 wide, where the meter sits at its wide spot: the default spot").toEqual(home(RISE.frames));
 });
 // The screen step's choices (their labels) and the hint under them.
 const screenPage = (addon) => addon.eval("local p = Vanguard_Setup.pages.screen local out = {} for i, b in ipairs(p.choices) do out[i] = b.text:GetText() end return { out, p.hint:GetText() }");
@@ -353,6 +361,7 @@ it("setup screen: with Pixel-perfect, nothing overlaps or leaves the screen, in 
     const n = addon.eval(`return ns.Setup.PixelMultiple(${h})`);
     for (const layout of ["damage", "tank", "healing", "versus", "classic"]) {
       addon.eval(`ns.Setup.ApplyLayout("${layout}") ns.Setup.ApplyScreen("pixel")`);
+      canvasAt(addon, w / n, h / n);
       expect(problemsAt(addon, layout, w / n, h / n, `pixel-perfect ${w}x${h}, ${layout}`)).toEqual([]);
     }
   }
@@ -380,34 +389,34 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   const RF = "ns.GetModule('RaidFrames')";
   // The raid after n players: its spot, then its layout and the header's point and column anchor.
   const state = (n) => { addon.eval(`__members = ${n}`); addon.fire("GROUP_ROSTER_UPDATE"); return addon.eval(`return { ns.MoverPoint('raid') }`).concat(addon.eval(`return { ${RF}.LayoutFor(${n}), Vanguard_Raid:GetAttribute('point'), Vanguard_Raid:GetAttribute('columnAnchorPoint') }`)); };
-  expect(state(5), "a party: over your player frame, groups as columns").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
-  expect(state(10), "10 players: the same").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
-  expect(state(25), "25: left of your character, groups stacked as rows").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344, "rows", "LEFT", "BOTTOM"]);
-  expect(state(40), "40: the same").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344, "rows", "LEFT", "BOTTOM"]);
+  expect(state(5), "a party: over your player frame, groups as columns").toEqual(["BOTTOM", "BOTTOM", -240, 344 + RISE.frames, "columns", "BOTTOM", "LEFT"]);
+  expect(state(10), "10 players: the same").toEqual(["BOTTOM", "BOTTOM", -240, 344 + RISE.frames, "columns", "BOTTOM", "LEFT"]);
+  expect(state(25), "25: left of your character, groups stacked as rows").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames, "rows", "LEFT", "BOTTOM"]);
+  expect(state(40), "40: the same").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames, "rows", "LEFT", "BOTTOM"]);
   // A roster change in combat leaves the secure header, its anchor and the holder's default alone until the fight ends.
   addon.eval("__secureSets = 0 local set = Vanguard_Raid.SetAttribute Vanguard_Raid.SetAttribute = function(...) __secureSets = __secureSets + 1 return set(...) end");
   setCombat(addon, true);
   addon.eval("__members = 5");
   addon.fire("GROUP_ROSTER_UPDATE");
-  expect([addon.eval("return __secureSets"), addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "in combat nothing is re-anchored or re-laid out").toEqual([0, ["BOTTOMLEFT", "BOTTOM", -500, 344], "LEFT"]);
+  expect([addon.eval("return __secureSets"), addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "in combat nothing is re-anchored or re-laid out").toEqual([0, ["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames], "LEFT"]);
   setCombat(addon, false);
-  expect([addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "and it follows when combat ends").toEqual([["BOTTOM", "BOTTOM", -240, 344], "BOTTOM"]);
-  expect(state(5), "and back over your player frame when the raid shrinks").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
+  expect([addon.eval("return { ns.MoverPoint('raid') }"), addon.eval("return Vanguard_Raid:GetAttribute('point')")], "and it follows when combat ends").toEqual([["BOTTOM", "BOTTOM", -240, 344 + RISE.frames], "BOTTOM"]);
+  expect(state(5), "and back over your player frame when the raid shrinks").toEqual(["BOTTOM", "BOTTOM", -240, 344 + RISE.frames, "columns", "BOTTOM", "LEFT"]);
   expect(addon.eval("return { Vanguard_RaidHolder:GetWidth(), Vanguard_RaidHolder:GetHeight() }"), "the holder is one group's size in the layout").toEqual([100, 256]);
   addon.eval(`${RF}.settings.stackBig = false`);
-  expect(state(40), "with Stack big raids off, a raid keeps the old spot and columns").toEqual(["BOTTOM", "BOTTOM", -240, 344, "columns", "BOTTOM", "LEFT"]);
+  expect(state(40), "with Stack big raids off, a raid keeps the old spot and columns").toEqual(["BOTTOM", "BOTTOM", -240, 344 + RISE.frames, "columns", "BOTTOM", "LEFT"]);
   addon.eval(`${RF}.settings.stackBig = true ${RF}.settings.layout = "rows"`);
   expect(state(5)[4], "Groups as rows is still rows for a party").toBe("rows");
   addon.eval(`${RF}.settings.layout = "columns"`);
-  expect(state(40).slice(0, 4), "a raid of 40 at the left again").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344]);
+  expect(state(40).slice(0, 4), "a raid of 40 at the left again").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames]);
   addon.eval('ns.Options.Show("raid") __click("Stack big raids at the left (more than 10 players)")');
-  expect([addon.eval(`return ${RF}.settings.stackBig`), addon.eval("return { ns.MoverPoint('raid') }")], "the option turns it off at once, for the real frames").toEqual([false, ["BOTTOM", "BOTTOM", -240, 344]]);
+  expect([addon.eval(`return ${RF}.settings.stackBig`), addon.eval("return { ns.MoverPoint('raid') }")], "the option turns it off at once, for the real frames").toEqual([false, ["BOTTOM", "BOTTOM", -240, 344 + RISE.frames]]);
   const moved = loggedIn(UNITS_ENV + RAID_ENV + "__members = 40 GetNumGroupMembers = function() return __members end", { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { raid = { point = "BOTTOMRIGHT", relPoint = "BOTTOMRIGHT", x = -20, y = 344 } } } } }' });
   moved.fire("GROUP_ROSTER_UPDATE");
   expect(moved.eval("return { ns.MoverPoint('raid') }"), "frames you already moved keep their spot at every size").toEqual(["BOTTOMRIGHT", "BOTTOMRIGHT", -20, 344]);
   expect(moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMRIGHT ~= nil"), "the grid is pinned to the right of the holder at the saved spot").toBe(true);
   moved.eval("ns.ResetMovers('raid')");
-  expect([moved.eval("return { ns.MoverPoint('raid') }"), moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMLEFT ~= nil")], "a reset puts a raid of 40 at the left default, and the grid follows at once, without a roster change").toEqual([["BOTTOMLEFT", "BOTTOM", -500, 344], true]);
+  expect([moved.eval("return { ns.MoverPoint('raid') }"), moved.eval("local p = Vanguard_Raid.__points return p.BOTTOMLEFT ~= nil")], "a reset puts a raid of 40 at the left default, and the grid follows at once, without a roster change").toEqual([["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames], true]);
 });
 it("Centered layout: compact raid grid, one-time migrations, a strip with nothing to show", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 5 GetNumGroupMembers = function() return __members end");

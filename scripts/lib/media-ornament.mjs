@@ -2,8 +2,8 @@
 // tones and a dark outline (TONES), tinted accentDim by the theme. Light comes from the top left everywhere.
 //
 // The corner bracket (A1): two straight bars meet at a 45-degree cut corner, so a bar's top edge or left edge is
-// the lit facet and its opposite edge the recess line, wherever the corner sits. The 1 x bake (16 texels) has an
-// outline and a base; the 2 x bake (32 texels) adds the lit and recess strips.
+// the lit facet and its opposite edge the recess line, wherever the corner sits. Both bakes (32 and 64 texels) have an
+// outline, a base and the lit and recess strips.
 // The header rule's motif (A2) and the round minimap's ring (A3) follow below the bracket.
 
 import { TONES, bleed, draw, image, line, poly, ring } from "./media-art.mjs";
@@ -59,7 +59,7 @@ function grey(tone) {
   return [TONES[tone], TONES[tone], TONES[tone]];
 }
 
-// The bracket for one corner at `size` texels (16 or 32), its clear pixels bled to the outline tone.
+// The bracket for one corner at `size` texels (32 or 64), its clear pixels bled to the outline tone.
 export function ornamentCorner(size, fx = false, fy = false) {
   const img = image(size, size);
   draw(img, GRID, [poly(flipPoints(OUTLINE, fx, fy))], grey("outline"));
@@ -75,17 +75,17 @@ export function ornamentCorner(size, fx = false, fy = false) {
 // The corner keys (the pieces a window's corners use) and which way each is flipped from the top-left drawing.
 const CORNER_FLIPS = { TL: [false, false], TR: [true, false], BL: [false, true], BR: [true, true] };
 // The two bakes, in texels, named for their size.
-const BAKES = [16, 32];
+const BAKES = [32, 64];
 
-// Name (under Media/Textures) -> the image: OrnamentCorner16TL ... OrnamentCorner32BR, eight files.
+// Name (under Media/Textures) -> the image: OrnamentCorner32TL ... OrnamentCorner64BR, eight files.
 export const ORNAMENT_CORNERS = Object.fromEntries(
   BAKES.flatMap((size) => Object.entries(CORNER_FLIPS).map(([key, [fx, fy]]) => [`OrnamentCorner${size}${key}`, () => ornamentCorner(size, fx, fy)])),
 );
 
 // The rule motif (A2) ----------------------------------------------------------------------
 
-// The motif's canvas in grid units (32 x 8, shown 24 x 6 units, so a texel stays square) and the bake that
-// gets the facet strips (64 texels wide).
+// The motif's canvas in grid units (32 x 8, shown 64 x 16 units, so a texel stays square) and the bake that
+// gets the facet strips (64 texels wide: both bakes).
 const RULE_GRID = 32;
 const RULE_STRIP_FROM = 64;
 // The elongated diamond's centre, and the half width and half height of its outline, its base and the inner edge
@@ -114,7 +114,7 @@ function ruleStrip(from, to) {
   return poly([base[from], base[to], inner[to], inner[from]]);
 }
 
-// The rule motif at `size` texels wide (32 or 64): a dark outline, the base, and from 64 texels a lit strip
+// The rule motif at `size` texels wide (64 or 128): a dark outline, the base, and from 64 texels a lit strip
 // along the upper left edge and a recess strip along the lower right one.
 export function ornamentRule(size) {
   const img = image(size, size / 4);
@@ -183,7 +183,7 @@ export function roundRingOrnate(size) {
   return bleed(img, grey("outline"));
 }
 
-// Name (under Media/Textures) -> the image: OrnamentRule32 and OrnamentRule64.
-export const ORNAMENT_RULES = Object.fromEntries([32, 64].map((size) => [`OrnamentRule${size}`, () => ornamentRule(size)]));
+// Name (under Media/Textures) -> the image: OrnamentRule64 and OrnamentRule128.
+export const ORNAMENT_RULES = Object.fromEntries([64, 128].map((size) => [`OrnamentRule${size}`, () => ornamentRule(size)]));
 // RoundRingOrnate256 and RoundRingOrnate128.
 export const ORNAMENT_ROUND = Object.fromEntries([256, 128].map((size) => [`RoundRingOrnate${size}`, () => roundRingOrnate(size)]));

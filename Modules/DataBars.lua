@@ -341,8 +341,9 @@ end
 
 -- Updating -------------------------------------------------------------------------------
 
--- Each bar's default spot: the XP bar along the bottom edge, the reputation bar just above it.
-DB.POINTS = { xpbar = { "BOTTOM", "BOTTOM", 0, 4 }, repbar = { "BOTTOM", "BOTTOM", 0, 12 } }
+-- Each bar's default spot: the XP bar along the bottom edge, the reputation bar just above it. Both keep to the
+-- edge (`edge`) while the block around your character rises on a tall screen (Core/Layout.lua, HudLift).
+DB.POINTS = { xpbar = { "BOTTOM", "BOTTOM", 0, 4, edge = true }, repbar = { "BOTTOM", "BOTTOM", 0, 12, edge = true } }
 
 -- The reputation bar's default spot, given the XP bar's figures (nil when it has nothing to show): above
 -- the XP bar, or the XP bar's own spot at the level cap or with that bar turned off, so no gap is left.

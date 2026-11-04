@@ -274,6 +274,36 @@ it("the game's tools: an Edit Mode system is fitted through the client's own Set
   addon.eval("__ran = {} ns.GetModule('GameTools').FitFill(TESTONLY_EditModeSystem, Vanguard_TESTONLY_EditModeSystemSpot)");
   expect(addon.eval("return __ran"), "filling a spot goes the same way").toEqual(["ClearAllPointsOverride", "SetPointBase TOPLEFT", "SetPointBase BOTTOMRIGHT"]);
 });
+it("the game's tools: a Cooldown Manager row wider than its spot shrinks to fit it, again whenever the game lays it out", () => {
+  // On a canvas 768 tall the essential row sits in the 236-wide gap between your frames (a taller one gives it 560).
+  const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)");
+  // The essential row's scale after the game lays it out at `width` wide.
+  const scaleAt = (width) => addon.eval(`EssentialCooldownViewer:SetSize(${width}, 40) EssentialCooldownViewer:RefreshLayout() return EssentialCooldownViewer:GetScale()`);
+  expect(scaleAt(200), "a row that fits keeps its size").toBe(1);
+  expect(scaleAt(472), "a row twice the 236-wide spot is drawn at half size").toBe(0.5);
+  expect(scaleAt(900), "never under half size, so its icons stay readable").toBe(0.5);
+  expect(addon.eval("return EssentialCooldownViewer.__points.CENTER.rel == Vanguard_EssentialCooldownViewerSpot"), "still centered on its spot").toBe(true);
+  setCombat(addon, true);
+  expect(scaleAt(300), "laid out again in a fight: nothing changes until it ends").toBe(0.5);
+  setCombat(addon, false);
+  expect(addon.eval("return EssentialCooldownViewer:GetScale()"), "then it fits again").toBeCloseTo(236 / 300);
+  addon.eval("EditModeManagerFrame:Show()");
+  expect(scaleAt(200), "while Edit Mode is open, Vanguard stands aside").toBeCloseTo(236 / 300);
+  addon.eval("EditModeManagerFrame:Hide()");
+  expect(addon.eval("return EssentialCooldownViewer:GetScale()"), "and fits it again when Edit Mode closes").toBe(1);
+});
+it("the game's tools: a row's scale goes through the client's own SetScaleBase on an Edit Mode system", () => {
+  const addon = loggedIn(TOOLS_ENV);
+  // TEST-ONLY: Edit Mode's SetScale override (it moves the frame to keep its corner) beside the client's own method.
+  addon.eval(`__ran = {}
+    local f = CreateFrame("Frame", nil, UIParent) f:SetSize(472, 40)
+    local spot = CreateFrame("Frame", nil, UIParent) spot:SetSize(236, 32)
+    local setScale = f.SetScale
+    f.SetScaleBase = function(self, s) __ran[#__ran + 1] = "SetScaleBase " .. s return setScale(self, s) end
+    f.SetScale = function(self, s) __ran[#__ran + 1] = "SetScaleOverride " .. s return setScale(self, s) end
+    ns.GetModule("GameTools").FitRow(f, spot)`);
+  expect(addon.eval("return __ran"), "only the client's own method").toEqual(["SetScaleBase 0.5"]);
+});
 it("damage meter: a pooled line set up again keeps its background faded, with one hook per line", () => {
   const addon = loggedIn(TOOLS_ENV);
   // The first line's background alpha.

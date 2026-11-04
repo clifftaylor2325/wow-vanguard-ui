@@ -2,8 +2,8 @@
 // test:quick, .github/workflows/verify.yml). The addon loads, logs in on a
 // finished-setup account, draws its default layout, unlocks and locks its
 // frames, plays a couple of seconds, and has caught no error: once as each
-// client the TOC declares (WoW Forever 16001, Retail 120007), and once more
-// with the client's secret geometry on through a fight. Every case also
+// client the TOC declares (WoW Forever 16001, Retail 120105), and once more
+// as each client with the client's secret geometry on through a fight. Every case also
 // passes the harness's taint rules (scripts/lib/wow-taint.lua): no field
 // stored on a game frame, no protected call blocked in combat. Anything
 // deeper is the full suite (.github/workflows/full-suite.yml).
@@ -34,15 +34,17 @@ it("the addon loads, logs in, unlocks and locks its frames, and catches no error
   expect(chatHas(addon, /Client WoW Forever/), "it knows it is on WoW Forever").toBe(true);
 });
 
-it("as a Retail 12.x client (interface 120007) it does the same", () => {
+it("as a Retail 12.1.5 client (interface 120105) it does the same", () => {
   const addon = loadAndPlay(RETAIL_CLIENT);
+  expect(addon.eval("return select(4, GetBuildInfo())"), "the client reports Retail's interface").toBe(120105);
   addon.slash("status");
   expect(chatHas(addon, /Client Retail/), "it knows it is on Retail").toBe(true);
   expect(addon.eval("return ns.IsForever()"), "the Forever-only defaults stay off").toBe(false);
 });
 
-it("with secret geometry, through a fight with hidden numbers, nothing errors and nothing protected is touched", () => {
-  const addon = loggedIn();
+// Logs in as one client and fights with secret geometry and hidden numbers; returns the addon.
+function hiddenNumbersFight(client) {
+  const addon = loggedIn("", { client });
   addon.world.secretGeometry("strict");
   addon.world.setUnit("target", { name: "TEST-ONLY Boar", hp: addon.world.secret(640), maxhp: addon.world.secret(800), reaction: 2 });
   addon.world.combat(true);
@@ -51,8 +53,21 @@ it("with secret geometry, through a fight with hidden numbers, nothing errors an
   addon.advance(2);
   addon.world.combat(false);
   addon.advance(1);
+  return addon;
+}
+
+// Nothing errored and the target frame showed its target, hidden numbers and all.
+function expectCalmFight(addon) {
   expect(addon.eval("return #ns.errors"), "nothing caught by ns.Try").toBe(0);
   expect(addon.frame("Vanguard_target").visible, "the target frame shows a target with hidden numbers").toBe(true);
+}
+
+it("with secret geometry, through a fight with hidden numbers, nothing errors and nothing protected is touched", () => {
+  expectCalmFight(hiddenNumbersFight(FOREVER_CLIENT));
+});
+
+it("as a Retail client, through the same fight with hidden numbers, nothing errors and nothing protected is touched", () => {
+  expectCalmFight(hiddenNumbersFight(RETAIL_CLIENT));
 });
 
 // The safe mode a friend turns to when a module breaks the launch: every module off in the profile.

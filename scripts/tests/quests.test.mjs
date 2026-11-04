@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, DATA_ENV, strips, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, SETUP_DONE, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, DATA_ENV, strips, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, RISE, SETUP_DONE, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
 const layout = (addon) => addon.eval(`local T = ns.Theme
@@ -162,7 +162,7 @@ it("quest dialog: sized to its page, above the cast bars, cards under the text, 
   addon.fire("QUEST_DETAIL");
   // A frame's rect on the screen.
   const rect = (ref) => addon.frame(ref).rect;
-  expect(addon.eval("return { ns.MoverPoint('questdialog') }"), "by default it sits centered, 8 px above the focus cast bar's top (324 + 14)").toEqual(["BOTTOM", "BOTTOM", 0, 346]);
+  expect(addon.eval("return { ns.MoverPoint('questdialog') }"), "by default it sits centered, 8 px above the focus cast bar's top (324 + 14), risen with the block around your character").toEqual(["BOTTOM", "BOTTOM", 0, 346 + RISE.frames]);
   const castTops = ["player", "target", "focus"].map((u) => rect(`Vanguard_CastBar_${u}`).top);
   expect(castTops.every((top) => rect("Vanguard_QuestDialog").bottom > top), "every cast bar is below the dialog").toBe(true);
   expect(panelHeights(addon), "a short quest: the text and objectives (40 px), then the two choices' row and the reward's row (8 + 36 + 8 + 36 px) between the 64 px header and the 50 px footer").toEqual([242, 40]);

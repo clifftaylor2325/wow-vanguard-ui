@@ -36,6 +36,10 @@ T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "l
 T.CREST = { title = 20, card = 44, watermark = 96, wash = 0.1 }
 -- The AFK screen's painted scene (Media/Art, full colour, 2:1), by faction; everyone else gets the camp.
 T.AFK_SCENES = { Alliance = "afk-keep", Horde = "afk-canyon", none = "afk-camp" }
+-- The welcome banner's brand mark (Core/Banner.lua): the painted crest (Media/Art) and the name in the Alliance heading
+-- font, each a share of the picture's height, in brandGold over a shade (the left edge's alpha) that fades out across
+-- `reach` of the picture's width, so the name stays clear of the bright sky.
+T.BANNER_MARK = { file = "banner-crest", crest = 0.5, name = 0.12, color = "brandGold", shade = 0.6, reach = 0.7 }
 -- Text roles that take the faction's heading font: the two display roles, used only for window and card titles.
 T.HEADING_ROLES = { title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.
@@ -96,6 +100,8 @@ local TOKENS = {
   -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text
   -- (at least 4.5:1 on panel, raised and inset in every variant, even over a bright world).
   text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "878e9b", white = "ffffff", gold = "ffd100",
+  -- The wordmark's gold on the store art and the welcome banner (T.BANNER_MARK), the same in every look.
+  brandGold = "e9c874",
   -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
   -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
   good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",
@@ -182,7 +188,7 @@ T.VARIANTS = {
     label = ns.L["Classic look"], ornaments = true, minimapRound = true, barBacking = true,
     tokens = {
       panel = { "1c1610", 0.96 }, inset = { "120d09", 0.96 }, raised = "2b2117", divider = "4a3a24", edge = "6b5230",
-      sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "9c8a62",
+      sheen = { "ffd27a", 0.08 }, text = "f2e2b6", text2 = "d4bf8c", muted = "a4926a",
     },
   },
   -- Vellum & Ink: a warm dark with cream text and brass.
@@ -190,7 +196,7 @@ T.VARIANTS = {
     label = ns.L["Vellum and ink"],
     tokens = {
       panel = { "1a1612", 0.94 }, inset = { "100d0a", 0.95 }, raised = "241f19", divider = "3a3226",
-      text = "efe6d2", text2 = "d2c6ad", muted = "9a8f78",
+      text = "efe6d2", text2 = "d2c6ad", muted = "a29780",
     },
   },
   -- Midnight: a cold navy-black with steel-blue dividers and ice-blue text.
@@ -2694,7 +2700,7 @@ function T.FontObjects(map)
   applyFontObjects()
 end
 
--- The Vanguard crest (Media/Textures/Icon, pre-colored: the accent and theme don't tint it) at size x size.
+-- The Vanguard crest (Media/Textures/Icon, the painted shield, pre-colored: the accent and theme don't tint it) at size x size.
 function T.Logo(parent, size)
   local f = T.PixelSize(CreateFrame("Frame", nil, parent), size, size)
   local t = f:CreateTexture(nil, "ARTWORK")
@@ -2990,44 +2996,60 @@ function T.Crest(parent, size, layer, alpha)
 end
 
 -- How far the brackets and the rule sit in from the window's edge (units), and the bracket's size.
-T.ORNAMENT_INSET, T.ORNAMENT_SIZE = 3, 14
+T.ORNAMENT_INSET, T.ORNAMENT_SIZE = 3, 24
+-- How many frame levels the brackets sit above their window, so a list, an inset or a portrait at a corner never
+-- covers them.
+T.ORNAMENT_LIFT = 20
 
 -- Corner point -> the suffix of its bracket file: the bracket is lit from the top left at every corner, so each
--- corner is its own image (not the top left one flipped), at two bakes (16 and 32 texels).
+-- corner is its own image (not the top left one flipped), at two bakes (32 and 64 texels).
 T.ORNAMENT_KEYS = { TOPLEFT = "TL", TOPRIGHT = "TR", BOTTOMLEFT = "BL", BOTTOMRIGHT = "BR" }
--- From this many screen pixels per unit the bracket uses its 32-texel bake (14 units shown is then about 21 px).
+-- From this many screen pixels per unit the bracket uses its 64-texel bake (24 units shown is then 36 px or more).
 T.ORNAMENT_BAKE_FROM = 1.5
 
 -- The bracket file (under Media/Textures) for a corner point at the bake the current scale needs.
 function T.OrnamentCornerArt(point)
-  local bake = T.PixelsPerUnit() >= T.ORNAMENT_BAKE_FROM and 32 or 16
+  local bake = T.PixelsPerUnit() >= T.ORNAMENT_BAKE_FROM and 64 or 32
   return "OrnamentCorner" .. bake .. T.ORNAMENT_KEYS[point]
 end
 
--- Four corner brackets just inside a frame's corners; out.corner remembers each one's point for its file.
+-- The frame the brackets are drawn on: over the frame's whole panel (its T.Padding out past the frame, where a game
+-- window's panel reaches) and T.ORNAMENT_LIFT levels above it, so the window's own child frames never hide them.
+local function cornerHolder(frame)
+  local pad, holder = T.Padding(frame), CreateFrame("Frame", nil, frame)
+  holder:SetPoint("TOPLEFT", -pad, pad)
+  holder:SetPoint("BOTTOMRIGHT", pad, -pad)
+  holder:SetFrameLevel(frame:GetFrameLevel() + T.ORNAMENT_LIFT)
+  return holder
+end
+
+-- Four corner brackets just inside a frame's panel corners; out.corner remembers each one's point for its file.
 local function cornerBrackets(frame)
-  local out = { corner = {} }
+  local out, holder = { corner = {} }, cornerHolder(frame)
   for point in pairs(T.ORNAMENT_KEYS) do
-    local t = frame:CreateTexture(nil, "OVERLAY")
+    local t = holder:CreateTexture(nil, "OVERLAY")
     t:SetSize(T.ORNAMENT_SIZE, T.ORNAMENT_SIZE)
-    t:SetPoint(point, frame, point, outward(point, -T.ORNAMENT_INSET))
+    t:SetPoint(point, holder, point, outward(point, -T.ORNAMENT_INSET))
     out[#out + 1], out.corner[t] = t, point
   end
   return out
 end
 
 -- The rule motif (the elongated diamond in a header rule's middle): its size in units, and how far from the middle
--- the two lines stop (the diamond's tips run out to there).
-T.ORNAMENT_RULE = { width = 24, height = 6, reach = 11 }
+-- the two lines stop (the diamond's tips run out to there). At a pixel-perfect scale (one screen pixel per unit)
+-- the 64-texel bake lands one texel on each pixel, so it stays crisp there.
+T.ORNAMENT_RULE = { width = 64, height = 16, reach = 30 }
 
 -- The rule motif's file (under Media/Textures) at the bake the current scale needs (the bracket's switch point).
 function T.OrnamentRuleArt()
-  return "OrnamentRule" .. (T.PixelsPerUnit() >= T.ORNAMENT_BAKE_FROM and 64 or 32)
+  return "OrnamentRule" .. (T.PixelsPerUnit() >= T.ORNAMENT_BAKE_FROM and 128 or 64)
 end
 
 -- The rule's two one-pixel lines along the bottom of an anchor, each running from the anchor's edge in to the motif.
-local function ruleLines(frame, anchor)
-  local left, right = solid(frame, "OVERLAY", 0, "divider"), solid(frame, "OVERLAY", 0, "divider")
+-- The rule's pieces belong to the anchor, not the window: a header is a child frame, so it draws over its window's
+-- own textures and would hide them.
+local function ruleLines(anchor)
+  local left, right = solid(anchor, "OVERLAY", 0, "divider"), solid(anchor, "OVERLAY", 0, "divider")
   left:SetPoint("BOTTOMLEFT", anchor, "BOTTOMLEFT", 12, 0)
   left:SetPoint("BOTTOMRIGHT", anchor, "BOTTOM", -T.ORNAMENT_RULE.reach, 0)
   right:SetPoint("BOTTOMLEFT", anchor, "BOTTOM", T.ORNAMENT_RULE.reach, 0)
@@ -3035,18 +3057,18 @@ local function ruleLines(frame, anchor)
   return left, right
 end
 
--- The rule motif, centred on the bottom edge of an anchor; PaintOrnament gives it its file.
-local function ruleMotif(frame, anchor)
-  local mid = frame:CreateTexture(nil, "OVERLAY")
+-- The rule motif, centred on the bottom edge of an anchor (half of it below); PaintOrnament gives it its file.
+local function ruleMotif(anchor)
+  local mid = anchor:CreateTexture(nil, "OVERLAY")
   mid:SetSize(T.ORNAMENT_RULE.width, T.ORNAMENT_RULE.height)
   mid:SetPoint("CENTER", anchor, "BOTTOM")
   return mid
 end
 
 -- A one-pixel rule along the bottom of an anchor (a header) with a diamond motif in its middle.
-local function headerRule(frame, anchor)
-  local left, right = ruleLines(frame, anchor)
-  local mid = ruleMotif(frame, anchor)
+local function headerRule(anchor)
+  local left, right = ruleLines(anchor)
+  local mid = ruleMotif(anchor)
   return { left, right, mid, rule = { left, right }, motif = mid }
 end
 
@@ -3071,9 +3093,10 @@ end
 
 -- Gives a large window an ornament (#238), once: kind "corners" (four brackets) or "rule" (a rule
 -- along the bottom of `anchor`, its header). One per window; never on combat frames. Off with the ornaments setting.
+-- Every Vanguard window (ns.WindowTitle) and every game window Vanguard skins (GW.Skin) gets the corners.
 function T.Ornament(frame, kind, anchor)
   if ornaments[frame] then return end
-  ornaments[frame] = kind == "rule" and headerRule(frame, anchor or frame) or cornerBrackets(frame)
+  ornaments[frame] = kind == "rule" and headerRule(anchor or frame) or cornerBrackets(frame)
   T.PaintOrnament(frame, ornaments[frame])
 end
 

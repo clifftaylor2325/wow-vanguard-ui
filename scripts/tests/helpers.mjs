@@ -39,7 +39,7 @@ export function setCombat(addon, on) {
 }
 
 // A retail-like client (the world's default is WoW Forever): the newer interface number.
-export const RETAIL = "__wfgWorld.build.interface = 120007\n";
+export const RETAIL = "__wfgWorld.build.interface = 120105\n";
 
 // An account that has finished first-run setup, and a character that has played on it, so the
 // wizard stays shut in cases about other things (a case's own VanguardDB or VanguardCharDB replaces them).
@@ -480,6 +480,9 @@ export const borderOf = (addon, lua) => addon.eval(`local f = ${lua}
     if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then return w.__vertexColor end
   end`);
 
+// How far the block around your character rises on the harness's 1920 x 1080 canvas (Core/Layout.lua, HudLift):
+// default spots from your frames' line up by `frames`, the part under it (bars, your cast bar, the main cooldown row) by `under`.
+export const RISE = { frames: 104, under: 32 };
 // Where along a point's vertical axis a frame hangs: 0 at BOTTOM, 1 at TOP, 0.5 between.
 export const UP = (point) => (/BOTTOM/.test(point) ? 0 : /TOP/.test(point) ? 1 : 0.5);
 

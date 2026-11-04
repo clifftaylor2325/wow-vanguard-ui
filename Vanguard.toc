@@ -1,4 +1,4 @@
-## Interface: 16001, 120105, 120007
+## Interface: 16001, 120105
 ## Title: Vanguard
 ## Notes: A from-scratch UI suite for WoW Forever: theme, movers, unit frames, action bars, minimap, chat, bags.
 ## Notes-deDE: Eine von Grund auf neu gebaute UI-Suite für WoW Forever: Design, verschiebbare Rahmen, Einheitenfenster, Aktionsleisten, Minikarte, Chat, Taschen.
@@ -94,6 +94,7 @@ Core/PresetStrings.lua
 Core/Integration.lua
 Core/ProfileExport.lua
 Core/SettingsGuard.lua
+Core/Banner.lua
 Core/Setup.lua
 Core/WhatsNewNotes.lua
 Core/WhatsNew.lua

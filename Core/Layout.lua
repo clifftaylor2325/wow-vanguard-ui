@@ -149,3 +149,41 @@ function L.NearestSide(r, t)
   if math.abs(dx) * (t.h + r.h) > math.abs(dy) * (t.w + r.w) then return dx < 0 and "LEFT" or "RIGHT" end
   return dy < 0 and "BOTTOM" or "TOP"
 end
+
+-- The block around your character -----------------------------------------------------------
+
+-- The Centered layout's spots are drawn for a canvas 768 units tall. On a taller one, every spot anchored to the
+-- bottom centre rises by `share` of the extra height, so the bars, frames and cooldown rows stay one block under
+-- your character instead of keeping to the screen's bottom edge. Once the rise is at least a `row`, the part under
+-- your frames (spots marked `underFrames`: the bars, your cast bar and swing timer, the vehicle exit and the
+-- Cooldown Manager's main row) rises a row less, so that row gets a line of its own between your swing timer and
+-- the debuffs under your target, `roomyRow` wide (Modules/GameTools.lua). The share is about where your
+-- character's feet stand at the game's default camera; it needs an in-game look.
+L.HUD = { base = 768, share = 1 / 3, row = 72, roomyRow = 560 }
+
+-- How far the block rises on a canvas `height` units tall: 0 up to 768.
+---@param height number?
+---@return number
+function L.HudRise(height)
+  return math.floor(math.max(0, ((height or 0) - L.HUD.base) * L.HUD.share))
+end
+
+-- Whether a canvas `height` tall has room for the cooldown row's own line under your frames.
+---@param height number?
+---@return boolean
+function L.HudRoom(height)
+  return L.HudRise(height) >= L.HUD.row
+end
+
+-- How far a default spot ({ point, relPoint, x, y }) rises on a canvas `height` tall: one anchored to the bottom
+-- centre rises with the block (one marked `edge`, the XP and reputation bars, keeps to the screen's edge), and
+-- one under your frames (`underFrames`) a row less once there is room.
+---@param spot table
+---@param height number?
+---@return number
+function L.HudLift(spot, height)
+  if spot[2] ~= "BOTTOM" or spot.edge then return 0 end
+  local rise = L.HudRise(height)
+  if spot.underFrames and L.HudRoom(height) then return rise - L.HUD.row end
+  return rise
+end

@@ -109,16 +109,18 @@ local function sizeOnScreen(f)
   return { w = w * s, h = h * s }
 end
 
--- A mover's default point on this canvas (spotOn), moved as little as it takes to keep its frame on the screen
--- and out of the spot's room (spot.room: insets kept for frames beside it, the minimap's column for one).
+-- A mover's default point on this canvas (spotOn), raised with the block around your character on a tall canvas
+-- (LY.HudLift), then moved as little as it takes to keep its frame on the screen and out of the spot's room
+-- (spot.room: insets kept for frames beside it, the minimap's column for one).
 -- Worked out each time the frame is placed; a saved position never comes through here.
 local function defaultPoint(m)
   local screen, size = canvas(), sizeOnScreen(m.frame)
   local d = spotOn(m.default, screen)
-  if not size or screen.w == 0 then return d[1], d[2], d[3], d[4] end
-  local r = LY.Rect({ point = d[1], relPoint = d[2], x = d[3], y = d[4] }, size, screen)
+  local y = d[4] + LY.HudLift(d, screen.h)
+  if not size or screen.w == 0 then return d[1], d[2], d[3], y end
+  local r = LY.Rect({ point = d[1], relPoint = d[2], x = d[3], y = y }, size, screen)
   local dx, dy = LY.FitShift(r, screen, d.room)
-  return d[1], d[2], d[3] + dx, d[4] + dy
+  return d[1], d[2], d[3] + dx, y + dy
 end
 
 -- The point to use for a mover: where its link puts it (anchored to a frame

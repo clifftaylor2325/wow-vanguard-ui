@@ -6,12 +6,12 @@
 // (scripts/lib/media-scenes.mjs); scripts/build-media.mjs writes them.
 // Textures are white or grayscale so the addon tints them with theme colors;
 // Icon is the one pre-colored image (the addons list can't tint): Vanguard's
-// crest, drawn in scripts/lib/media-brand.mjs.
+// crest, a painted shield cut out from its PNG (scripts/lib/media-painted.mjs).
 
 import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./media-art.mjs";
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
-import { crestIcon } from "./media-brand.mjs";
 import { SURFACES } from "./media-surfaces.mjs";
+import { paintedArt, paintedIcons, paintedMarks, paintedSurfaces } from "./media-painted.mjs";
 import { ORNAMENT_CORNERS, ORNAMENT_ROUND, ORNAMENT_RULES } from "./media-ornament.mjs";
 import { SCENES, scene } from "./media-scenes.mjs";
 
@@ -205,10 +205,10 @@ export const TEXTURES = {
   Shadow: () => softBox(64, 16, 6, [0, 0, 0], 0.8, false),
   Glow: () => softBox(64, 16, 5, [1, 1, 1], 0.9, true),
   Stripes: stripes,
-  // A window-corner bracket (#238), drawn in toned grey (scripts/lib/media-ornament.mjs) for each corner at 16 and 32
+  // A window-corner bracket (#238), drawn in toned grey (scripts/lib/media-ornament.mjs) for each corner at 32 and 64
   // texels; lit from the top left at every corner, so each corner is its own image.
   ...ORNAMENT_CORNERS,
-  // The header rule's motif (an elongated diamond, 32 and 64 texels wide) and the round minimap's ornate ring (256 and
+  // The header rule's motif (an elongated diamond, 64 and 128 texels wide) and the round minimap's ornate ring (256 and
   // 128 texels, the RoundDisc's size and half of it), drawn the same way.
   ...ORNAMENT_RULES,
   ...ORNAMENT_ROUND,
@@ -227,10 +227,12 @@ export const TEXTURES = {
   Vignette: vignette,
   // The panel textures (scripts/lib/media-surfaces.mjs): faint white surfaces over a floating window's fill.
   ...SURFACES,
+  // The painted ones (scripts/lib/media-painted.mjs, from art/painted/manifest.json): Leonardo.ai pictures, faint white.
+  ...paintedSurfaces(),
   // The classification diamond, white, for the addon to tint.
   LogoLeft: () => draw(image(64, 64), 64, LOGO_LEFT),
-  // The pre-colored addons-list icon: Vanguard's crest (scripts/lib/media-brand.mjs).
-  Icon: () => crestIcon(64),
+  // The pre-colored addons-list icon, Icon: Vanguard's crest, painted (art/painted/manifest.json, class "icon").
+  ...paintedIcons(),
   // Shield corners (the cut corner of the crest, on the unit frames): a 45-degree cut across the top-left corner, 8 x 8,
   // drawn at T.CORNER_CUT (8) screen pixels so each texel is one pixel. The border's cut line is one pixel diagonal, the
   // fill sits under it, and the mask is the fill less the line, so a bar under it stops inside the line.
@@ -415,4 +417,6 @@ export const MEDIA = Object.fromEntries(Object.entries({
   ...Object.fromEntries(Object.entries(ICONS).map(([n, make]) => [`Icons/${n}.tga`, make])),
   ...Object.fromEntries(CRESTS.map((n) => [`Art/${n}.tga`, () => crest(n)])),
   ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, () => scene(n)])),
+  ...Object.fromEntries(Object.entries(paintedArt()).map(([n, make]) => [`Art/${n}.tga`, make])),
+  ...Object.fromEntries(Object.entries(paintedMarks()).map(([n, make]) => [`Art/${n}.tga`, make])),
 }).map(([file, make]) => [file, once(make)]));

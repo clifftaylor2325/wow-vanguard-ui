@@ -366,8 +366,9 @@ for _, name in ipairs(UNTAINTED_ONLY) do C_UnitAuras[name] = untaintedOnly(name,
 --   "strict"   those, and every frame of the game's but UIParent (code that measures
 --              the game's frames fails: anchor to them instead).
 
--- The getters that answer with a secret when a region's geometry is.
-local GEOMETRY = { "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect", "GetStringWidth" }
+-- The getters that answer with a secret when a region's geometry is (each SecretWhenAnchoringSecret in
+-- the client's API documentation).
+local GEOMETRY = { "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect", "GetStringWidth", "GetUnboundedStringWidth" }
 
 -- Whether a value is a secret (the global, which a test may replace).
 local function isSecret(v)

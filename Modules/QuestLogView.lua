@@ -44,11 +44,10 @@ local function scrollArea(f, x, w, h)
   return view, view.child
 end
 
--- The title with the quest count and the close button along the top (Escape closes the window too), the corner
--- brackets, and the crest behind the top-right corner.
+-- The title with the quest count and the close button along the top (Escape closes the window too; the title also
+-- brings the corner brackets), and the crest behind the top-right corner.
 local function addTop(f)
   f.count = ns.WindowTitle(f, L["Quest log"], { count = "", onClose = function() f:Hide() end, escape = true }).count
-  T.Ornament(f, "corners")
   QP.Watermark(f)
 end
 

@@ -1,6 +1,6 @@
 // Tests for the TEST-ONLY headless client itself (scripts/lib/wow-stub.lua, wow-text.lua, wow-textfit.lua,
-// wow-layout.lua, wow-world.lua, wow-inspect.lua and lua-harness.mjs): Lua
-// 5.1 fidelity, layout, the world's events, timers, input and inspectors.
+// wow-layout.lua, wow-world.lua, wow-retail-*.lua, wow-inspect.lua and lua-harness.mjs): Lua
+// 5.1 fidelity, layout, the world's events, timers, input and inspectors, and the two clients.
 // Each case loads the addon, as every scenario does.
 
 import fs from "node:fs";
@@ -9,7 +9,9 @@ import path from "node:path";
 import fengari from "fengari";
 import { expect, it } from "vitest";
 import { expectErrors } from "./lib/error-guard.mjs";
-import { createAddon, hasCachedChunk, pushFileChunk, root, tocFiles } from "./lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon, hasCachedChunk, pushFileChunk, retailStubs, root, tocFiles } from "./lib/lua-harness.mjs";
+import { luaValue } from "./lib/lua-emit.mjs";
+import { clientPaths, readToc, tocPaths } from "./lib/toc.mjs";
 import { GAME_CLICKS_LUA, GAME_ENGINE_LUA } from "./tests/helpers.mjs";
 
 const { lua, lauxlib, lualib } = fengari;
@@ -39,7 +41,7 @@ it("a Lua error carries a traceback naming the addon file", () => {
 
 it("a worker compiles each addon file once: the second addon loads from the chunk cache, with file names intact", () => {
   createAddon();
-  expect(tocFiles().every((file) => hasCachedChunk(path.join(root, file))), "every TOC file is cached after one load").toBe(true);
+  expect(tocFiles("forever").every((file) => hasCachedChunk(path.join(root, file))), "every file Forever loads is cached after one load").toBe(true);
   const addon = createAddon();
   expect(() => addon.eval("ns.Theme.RGB({})"), "an error in a cached chunk still names its file and line").toThrow(/Core\/Theme\.lua:\d+:/);
   expect(addon.eval('return debug.getinfo(ns.Theme.RGB, "S").source'), "a cached function knows its source").toBe("@Core/Theme.lua");
@@ -465,4 +467,52 @@ it("text fit: a caption beside its frame, an invisible click area and clipped te
     return __wfgTextFit(b)`);
   expect(findings).toEqual({});
   expect(addon.eval(`${FIT_BOX(12)} fs:SetText("Wider than the box it sits in") return __wfgTextFit(b)[1].place`), "an unnamed frame's place is the top level").toBe("top level");
+});
+
+// The WoW Forever API Retail lacks, as the harness reads it.
+const FOREVER_ONLY = JSON.parse(fs.readFileSync(path.join(root, "scripts/lib/forever-only-api.json"), "utf8"));
+
+// Lua that answers, for each "C_Namespace.Name" or global, whether the client has it as a function.
+const hasEach = (names) => `local out = {}
+for i, name in ipairs(${luaValue(names)}) do
+  local space, fn = name:match("^([%w_]+)%.([%w_]+)$")
+  local t = space and _G[space]
+  out[i] = type(t) == "table" and type(t[fn]) == "function"
+end
+return out`;
+
+it("the world starts as WoW Forever: interface 16001 and WOW_PROJECT_CAMELOT, the project Blizzard's Camelot constants set", () => {
+  const addon = createAddon();
+  expect(addon.eval("return { select(4, GetBuildInfo()), WOW_PROJECT_ID, WOW_PROJECT_CAMELOT, WOW_PROJECT_MAINLINE, __wfgWorld.client }")).toEqual([16001, 18, 18, 1, "forever"]);
+  expect(addon.eval(hasEach(["C_SwingTimer.EnableRangeCheck", "C_QuestLog.GetQuestTimers"]))).toEqual([true, true]);
+  expect(addon.eval("return C_EventUtils.IsEventValid('PLAYER_SWING')")).toBe(true);
+});
+
+it("RETAIL_CLIENT makes it Retail 12.1.5 before the addon loads: interface 120105, WOW_PROJECT_MAINLINE, no Forever-only API", () => {
+  const addon = createAddon({ client: RETAIL_CLIENT });
+  expect(addon.eval("return { GetBuildInfo() }")).toEqual(["12.1.5", "70783", "Nov 4 2026", 120105]);
+  expect(addon.eval("return { WOW_PROJECT_ID, WOW_PROJECT_CAMELOT == nil, __wfgWorld.client, ns.IsForever() }")).toEqual([1, true, "retail", false]);
+  expect(addon.eval(hasEach(FOREVER_ONLY.functions)), "every Forever-only function is gone").toEqual(FOREVER_ONLY.functions.map(() => false));
+  const valid = FOREVER_ONLY.events.map((e) => addon.eval(`return C_EventUtils.IsEventValid("${e}")`));
+  expect(valid, "every Forever-only event is invalid").toEqual(FOREVER_ONLY.events.map(() => false));
+});
+
+it("on Retail the harness runs each scripts/lib/wow-retail-<area>.lua before the addon's files", () => {
+  expect(retailStubs()).toContain("wow-retail-core.lua");
+  expect(retailStubs().every((f) => /^wow-retail-[\w-]+\.lua$/.test(f))).toBe(true);
+  expect(createAddon({ client: RETAIL_CLIENT }).eval("return GetPetHappiness == nil"), "wow-retail-core.lua ran").toBe(true);
+  expect(createAddon().eval("return type(GetPetHappiness)"), "a Forever world never runs it").toBe("function");
+});
+
+it("becomeRetail removes a global or a namespaced function by name, and skips a namespace the world lacks", () => {
+  const addon = createAddon();
+  addon.eval('TEST_ONLY_Global = print; C_TestOnly = { Fn = print, Kept = print }; __wfgWorld.becomeRetail({ "TEST_ONLY_Global", "C_TestOnly.Fn", "C_Absent.Fn" }, { "TEST_ONLY_EVENT" })');
+  expect(addon.eval("return { TEST_ONLY_Global == nil, C_TestOnly.Fn == nil, C_TestOnly.Kept ~= nil, C_EventUtils.IsEventValid('TEST_ONLY_EVENT') }")).toEqual([true, true, true, false]);
+});
+
+it("each client loads the files the TOC's game-type tags allow it, and tocFiles() alone lists them all", () => {
+  const toc = readToc(root);
+  expect(tocFiles("forever")).toEqual(clientPaths(toc, "forever"));
+  expect(tocFiles("retail")).toEqual(clientPaths(toc, "retail"));
+  expect(tocFiles()).toEqual(tocPaths(toc));
 });

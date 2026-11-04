@@ -12,6 +12,7 @@ import { crest, crestNames } from "./lib/media-crests.mjs";
 import { ICONS, ICON_SIZES, MEDIA, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 import { SCENES, readPng, scene } from "./lib/media-scenes.mjs";
+import { paintedArt } from "./lib/media-painted.mjs";
 import { TONES, image, fill, png } from "./lib/media-art.mjs";
 import { tonedBracket } from "./fixtures/toned-bracket.mjs";
 import { ORNAMENT_CORNERS, ORNAMENT_ROUND, ORNAMENT_RULES } from "./lib/media-ornament.mjs";
@@ -97,7 +98,7 @@ function mediaIn(src) {
   for (const m of src.matchAll(/MicroButton = "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
   for (const m of src.matchAll(/Media\\+(Textures|Icons)\\+(\w+)/g)) files.push(`Media/${m[1]}/${m[2]}.tga`);
   for (const m of src.matchAll(/Fonts\\+([\w-]+\.ttf)/g)) files.push(`Media/Fonts/${m[1]}`);
-  for (const m of src.matchAll(/"((?:lorc|delapouite|sbed|afk)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
+  for (const m of src.matchAll(/"((?:lorc|delapouite|sbed|afk|banner)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
   return files;
 }
 
@@ -121,7 +122,7 @@ function scanFindsMedia() {
 // The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
 // The window-corner brackets (A1): four corners at the 1 x and 2 x bakes, picked by T.PixelsPerUnit() in Core/Theme.lua.
-const ORNAMENT_NAMES = [16, 32].flatMap((size) => ["TL", "TR", "BL", "BR"].map((key) => `Media/Textures/OrnamentCorner${size}${key}.tga`));
+const ORNAMENT_NAMES = [32, 64].flatMap((size) => ["TL", "TR", "BL", "BR"].map((key) => `Media/Textures/OrnamentCorner${size}${key}.tga`));
 // The rule motif (A2) and the ornate ring (A3), each at two bakes, and the plain ring the ornate one replaces while ornaments are on (all picked by name in the Lua).
 const RULE_RING_NAMES = [...Object.keys(ORNAMENT_RULES), ...Object.keys(ORNAMENT_ROUND), "RoundRing"].map((n) => `Media/Textures/${n}.tga`);
 const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Textures/CornerCutMask.tga", "Media/Textures/CornerCutMaskTR.tga", "Media/Textures/CornerCutMaskBL.tga", "Media/Textures/CornerCutMaskBR.tga", "Media/Textures/CornerRoundMask.tga", "Media/Textures/CornerRoundMaskTR.tga", "Media/Textures/CornerRoundMaskBL.tga", "Media/Textures/CornerRoundMaskBR.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
@@ -238,8 +239,8 @@ function questMarksDrawn() {
 // grey (leonardo-art-plan §3.7 step 8) is listed here as "toned".
 const NOT_TINTED = {
   ...Object.fromEntries(Object.keys({ ...ORNAMENT_CORNERS, ...ORNAMENT_RULES, ...ORNAMENT_ROUND }).map((n) => [`Textures/${n}.tga`, "toned"])),
-  "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
-  ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, "opaque"])),
+  "Textures/Icon.tga": "colored", "Art/banner-crest.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
+  ...Object.fromEntries([...SCENES, ...Object.keys(paintedArt())].map((n) => [`Art/${n}.tga`, "opaque"])),
 };
 
 // How many pixels of an image fail a test on (r, g, b, a).
@@ -324,28 +325,26 @@ function makersMemoised() {
   expect(MEDIA["Textures/Icon.tga"]()).toBe(MEDIA["Textures/Icon.tga"]());
 }
 
-// Every panel texture is faint (at most SURFACE_MAX_ALPHA, so text stays readable on it) but not empty.
+// Every panel texture is faint (its written alpha bytes at most SURFACE_MAX_ALPHA, 12/255, so text stays readable
+// on it) but not empty.
 function surfacesFaint() {
   const out = Object.entries(SURFACES).map(([name, make]) => {
     const img = make();
     let max = 0;
-    for (let i = 3; i < img.px.length; i += 4) max = Math.max(max, img.px[i]);
-    return [name, max <= SURFACE_MAX_ALPHA && max > 0.02];
+    for (let i = 3; i < img.px.length; i += 4) max = Math.max(max, Math.round(img.px[i] * 255));
+    return [name, max <= Math.round(SURFACE_MAX_ALPHA * 255) && max >= 5];
   });
   expect(out).toEqual(Object.keys(SURFACES).map((name) => [name, true]));
 }
 
-// The addons-list icon is the crest, pre-coloured (media-brand.mjs): a few hundred solid brass
-// pixels (the shield's field and the hilts), the V in slate over them, and grey steel on the blades
-// (thin at 64 px, so most of their pixels are blends: any grey over half alpha counts).
+// The addons-list icon is the crest, pre-coloured (the painted shield, scripts/lib/media-painted.mjs): hundreds of solid
+// brass pixels (the rim and the V), a navy field around the V, and clear air beside the shield.
 function iconIsCrest() {
   const img = MEDIA["Textures/Icon.tga"]();
-  // Whether a pixel's color is within a hair of want (0-255 RGB).
-  const near = (r, g, b, want) => [r, g, b].every((v, c) => Math.abs(v - want[c] / 255) < 0.025);
-  const brass = countPixels(img, (r, g, b, a) => a > 0.99 && near(r, g, b, [0xd9, 0xa4, 0x41]));
-  const slate = countPixels(img, (r, g, b, a) => a > 0.99 && near(r, g, b, [0x0b, 0x0d, 0x11]));
-  const steel = countPixels(img, (r, g, b, a) => a > 0.5 && Math.min(r, g, b) > 0.55 && Math.abs(r - b) < 0.1);
-  expect({ brass: brass > 500, slate: slate > 60, steel: steel > 20 }).toEqual({ brass: true, slate: true, steel: true });
+  const brass = countPixels(img, (r, g, b, a) => a > 0.99 && r > 0.5 && r > b + 0.2 && g > b);
+  const navy = countPixels(img, (r, g, b, a) => a > 0.99 && b > r + 0.08 && b < 0.6);
+  const clear = countPixels(img, (r, g, b, a) => a === 0);
+  expect({ brass: brass > 250, navy: navy > 400, clear: clear > 1500 }).toEqual({ brass: true, navy: true, clear: true });
 }
 
 // Pixels with any alpha along an image's outer ring.
@@ -423,7 +422,7 @@ function bracketsLitFromTopLeft() {
 
 // Each corner's bracket is a mirror of the top left's silhouette (same alpha) with its own light, at both bakes.
 function bracketsMirrorTheSilhouette() {
-  for (const size of [16, 32]) {
+  for (const size of [32, 64]) {
     // A corner's alpha channel.
     const alphas = (key) => Array.from(ORNAMENT_CORNERS[`OrnamentCorner${size}${key}`]().px).filter((_, i) => i % 4 === 3);
     // An alpha channel mirrored across x and/or y.

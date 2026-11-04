@@ -77,11 +77,13 @@ local function addTitle(f)
   f.hint = parts.count
 end
 
--- The list: the shared scroll view (ns.ScrollView: the T.SCROLL thumb, soft edges, the wheel) under the hint,
--- with room right of it for its thumb.
+-- The list: the shared scroll view (ns.ScrollView: the T.SCROLL thumb, soft edges, the wheel) under the hint and the
+-- welcome banner, with room right of it for its thumb.
 local function addView(f)
+  f.banner = ns.Banner.Create(f, WIDTH - 2 * PAD)
+  f.banner:SetPoint("TOPLEFT", PAD, -TOP)
   f.view = ns.ScrollView(f, { width = LIST_W })
-  f.view:SetPoint("TOPLEFT", PAD, -TOP)
+  f.view:SetPoint("TOPLEFT", f.banner, "BOTTOMLEFT")
   f.view:SetPoint("BOTTOMRIGHT", -(PAD + T.SPACE.col), PAD)
 end
 
@@ -174,10 +176,17 @@ end
 
 -- Showing ------------------------------------------------------------------------------------
 
+-- Gives the window its banner when the screen has room for it, and the height that holds the banner and the list.
+local function fit()
+  ns.Banner.Show(frame.banner, ns.Banner.Height(WIDTH - 2 * PAD, ns.Banner.Room(HEIGHT)))
+  frame:SetSize(WIDTH, HEIGHT + frame.banner:GetHeight())
+end
+
 -- Shows the window with these notes (in the current accent), fading it in; notes for the
 -- running version count as seen.
 function WN.Show(entry)
   if not frame then build() end
+  fit()
   if frame.version ~= entry.version or frame.textScale ~= T.Settings().textScale then fill(entry) end
   for _, fs in ipairs(accented) do T.Color(fs, "accent") end
   if entry.version == ns.AddonVersion() then VanguardDB.whatsNewSeen = entry.version end

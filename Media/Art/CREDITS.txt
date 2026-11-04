@@ -15,3 +15,10 @@ AFK screen scenes
 afk-camp.tga, afk-keep.tga, afk-canyon.tga  made by Cliff Hearthvale with
 Leonardo.ai (https://leonardo.ai) on a paid plan in private mode, AI-generated, all rights reserved with the
 rest of Vanguard.
+
+Welcome banner
+
+banner-dusk.tga  made by Cliff Hearthvale with Leonardo.ai (https://leonardo.ai) on a paid plan in private mode,
+AI-generated, all rights reserved with the rest of Vanguard.
+banner-crest.tga  Vanguard's painted crest, made by Cliff Hearthvale with Leonardo.ai (https://leonardo.ai) on a paid
+plan in private mode, AI-generated, all rights reserved with the rest of Vanguard.

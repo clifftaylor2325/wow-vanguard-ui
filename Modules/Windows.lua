@@ -356,8 +356,14 @@ local function paintPanel(frame, pad)
   T.Panel(GW.PanelHost(frame), { shadow = true, pad = pad or GW.PAD, alpha = 1 })
 end
 
+-- A window's corner brackets (T.Ornament, on its panel's host), like every Vanguard window: only a window of its
+-- own on the screen (parented to UIParent) with the usual panel, not a part of another window or a pad-less box.
+local function addCorners(frame, pad)
+  if pad == nil and frame:GetParent() == UIParent then T.Ornament(GW.PanelHost(frame), "corners") end
+end
+
 -- Skins one window: art faded (its content art kept), its Inset painted as an inset panel, the window's panel
--- (paintPanel), its parts themed.
+-- (paintPanel), its parts themed, its corner brackets.
 function GW.Skin(frame, pad)
   local name = frame.GetName and frame:GetName()
   GW.FadeWindowArt(frame)
@@ -365,6 +371,7 @@ function GW.Skin(frame, pad)
   keepContent(frame, name)
   paintPanel(frame, pad)
   dressParts(frame, name)
+  addCorners(frame, pad)
 end
 
 -- Fades each part of a frame named in keys (parentKeys) that it has: a frame's own

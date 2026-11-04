@@ -20,6 +20,8 @@ T.PANEL_TEXTURES = {
   grain = { path = T.Texture("PanelGrain"), alpha = 1 },
   stone = { path = T.Texture("PanelStone"), alpha = 1 },
   leather = { path = T.Texture("PanelLeather"), alpha = 1 },
+  slate = { path = T.Texture("PanelSlate"), alpha = 1 },
+  vellum = { path = T.Texture("PanelVellum"), alpha = 1 },
   rock = { path = "Interface\\FrameGeneral\\UI-Background-Rock", alpha = 0.25 },
   marble = { path = "Interface\\FrameGeneral\\UI-Background-Marble", alpha = 0.3 },
   dialog = { path = "Interface\\DialogFrame\\UI-DialogBox-Background", alpha = 0.5 },
@@ -28,6 +30,7 @@ T.PANEL_TEXTURES = {
 -- The picker's built-ins, in display order.
 T.PANEL_TEXTURE_CHOICES = {
   { "flat", L["Flat"] }, { "grain", L["Fine grain"] }, { "stone", L["Carved stone"] }, { "leather", L["Dark leather"] },
+  { "slate", L["Bedded slate"] }, { "vellum", L["Vellum"] },
   { "rock", L["Rock (the game's)"] }, { "marble", L["Marble (the game's)"] }, { "dialog", L["Dialog (the game's)"] },
 }
 

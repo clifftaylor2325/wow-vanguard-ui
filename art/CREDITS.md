@@ -57,15 +57,15 @@ uses are named in `SILHOUETTES` in `scripts/lib/media-sources.mjs`.
 | `sbed-health-increase.svg` | Sbed (http://opengameart.org/content/95-game-icons) | https://game-icons.net/1x1/sbed/health-increase.html |
 | `sbed-shield.svg` | Sbed (http://opengameart.org/content/95-game-icons) | https://game-icons.net/1x1/sbed/shield.html |
 
-## Vanguard's own crest
+## Painted crest (AI-assisted)
 
-`brand/vanguard-crest.svg` is Vanguard's crest (two swords crossed behind a rimmed brass
-shield that bears a V), drawn for Vanguard; copyright Cliff Hearthvale, all rights reserved,
-like the rest of the addon. The V is Cinzel's capital at weight 900 (the font below, SIL
-OFL; the licence allows its glyphs in a logo), converted to an outline. The build does not
-read the SVG: `scripts/lib/media-brand.mjs` draws the same shapes with `media-art.mjs` for
-`Media/Textures/Icon.tga`, the addons list's icon, and the website keeps the SVG for its
-favicon and logo.
+`painted/icon/C2.png`, a brass-rimmed navy shield bearing a gold V, was made by Cliff Hearthvale with
+Leonardo.ai (https://leonardo.ai) from his own prompt, in November 2026, on a paid plan in private mode, then cut
+out from its grey background by hand once (the steps are in `painted/manifest.json`). `scripts/lib/media-painted.mjs`
+boxes it down to 64 x 64 for `Media/Textures/Icon.tga`, the addons list's icon (and to 256 x 256 for `Media/Art/banner-crest.tga`, the crest on the welcome banner), which also shows in the options
+window's header, the options preview's action button and the Versus deck; `scripts/store-art.mjs` puts it on the
+store, Discord and X art, and the README and the website show it. It is AI-generated and may not be copyrightable; it ships under the same
+all-rights-reserved licence as the rest of Vanguard.
 
 ## Heading fonts: SIL Open Font License 1.1
 
@@ -82,6 +82,18 @@ From https://github.com/google/fonts (ofl/).
 Hearthvale with Leonardo.ai (https://leonardo.ai) from his own prompts, in October 2026, on a
 paid plan in private mode (checked in his Library on 2026-11-02), then cropped and sized to 1024 x 512. No other art or reference picture went in.
 `scripts/lib/media-scenes.mjs` writes them to `Media/Art/` as TGA for the AFK screen.
+
+## Welcome banner (AI-assisted)
+
+`painted/colour/B1.png` was made by Cliff Hearthvale with Leonardo.ai (https://leonardo.ai) from his own prompt, in November 2026, on a paid plan in private mode; the prompt and settings are in `painted/manifest.json`. `scripts/lib/media-painted.mjs` boxes it down to 1024 x 512 and writes `Media/Art/banner-dusk.tga` for setup's first step and What's new (`Core/Banner.lua`). It is AI-generated and may not be copyrightable; it ships under the same all-rights-reserved licence as the rest of Vanguard.
+
+## Painted panel textures (AI-assisted)
+
+`painted/surface/S1.png` and `painted/surface/S2.png` were made by Cliff Hearthvale with Leonardo.ai
+(https://leonardo.ai) from his own prompts, in November 2026, on a paid plan in private mode. The prompts and
+settings are in `painted/manifest.json`. `scripts/lib/media-painted.mjs` turns them into the faint white tiles
+`Media/Textures/PanelSlate.tga` and `PanelVellum.tga`. They are AI-generated and may not be copyrightable; they
+ship under the same all-rights-reserved licence as the rest of Vanguard.
 
 ## Not used
 

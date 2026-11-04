@@ -2039,6 +2039,24 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: each pick changes every open window at once, with no reload; the unit frames, action bars and other HUD frames stay flat. Fine grain, Carved stone and Dark leather are a faint texture on the usual panel colour; Rock, Marble and Dialog show the game's own background faintly through it. All text stays easy to read, muted and greyed-out text included. No seam shows where the texture repeats. With Rounded corners the texture stops just inside the arcs, with no square corner poking out. High contrast shows flat windows. Flat puts everything back; `/vg errors` stays empty. [Needs in game: that Rock, Marble and Dialog exist on Forever (an empty list entry or a plain window means one is missing); whether the faintness (0.25, 0.3, 0.5 for the game's, the art itself for Vanguard's) reads well at 1080p and 1440p; the size the texture repeats at.]
 - If it fails, paste: a screenshot of the window with the pick and variant named, and `/vg errors`.
 
+### 26.3a Painted panel textures (art plan M2)
+
+- Do: open `/vg` → General → Look → **Panel texture** and pick **Bedded slate**, then **Vellum**. For each, open the options window, your bags, a tooltip over a mob and the quest log. Try both on Slate and brass, Vellum and ink, Classic look and Ash and ember, at UI scale 0.64 and 1.0. Then stand over a bright snowfield, over lava and in a crowded capital with a window open. Last, set **Fine grain**, **Carved stone** and **Dark leather**: they are now fainter than before. Set it back to Flat.
+- Expect: Bedded slate is a very faint fine grey streak and fleck pattern, Vellum a very faint even paper fleck; neither can be mistaken for Fine grain beside it, though both are quiet. No seam or repeat shows when a window is wider than 256 units, and nothing crawls while a window is dragged or rises into place. All text, muted and greyed-out text included, reads at a glance on every variant, in a fight too (a tooltip over a mob, the bag, the quest log). Nothing new appears on unit frames, bars, raid tiles or nameplates. Fine grain, Carved stone and Dark leather look slightly fainter than in 0.8.0. `/vg errors` stays empty. [Needs in game: that Vellum reads as an old page on the Vellum and ink variant; whether muted text over a snowfield is easy to read on Vellum and ink and Classic look (their muted tier was brightened a few shades so the harness figure there is 4.5:1 with a surface on); how the 256-unit repeat looks at 4K.]
+- If it fails, paste: a screenshot of the window with the texture, variant and UI scale named, and `/vg errors`.
+
+### 26.3b Welcome banner (art plan M3)
+
+- Do: `/vg setup` and look at the first step; click Next once, then Back. Then `/vg whatsnew`. Try both at UI scale 0.64 and 1.0, on Slate and brass, Vellum and ink and Classic look, with Reduce motion on and off. On a small window (shrink the game window to about 1280 x 720 at UI scale 1.0) open both again.
+- Expect: a painted dusk landscape (a cream banner on a spear on a hill, a grey watchtower, slate-blue and amber sky) fills a strip under the title on setup's first step and under the hint in What's new, with the text below it clear of it. On its left, over a shade that darkens the sky, sit the painted shield crest (about half the picture's height) and "Vanguard" in gold capitals (Cinzel) beside it, clear of the flagpole; on a cropped picture both are smaller, and on a client in any language the name reads "Vanguard". The window is taller by the picture on setup's first step only; the next step is the usual height, and Back brings the picture back. It appears with its window (no separate fade) and with Reduce motion on it shows at once. On a screen too short for it the picture is cropped to the middle or left out, and the window never runs off the screen. No blur, no fringe, no blocky banding in the sky. `/vg errors` stays empty. [Needs in game: how the 400 x 200 strip looks at 1080p and 1440p; that the picture reads calmly beside Slate and brass, Vellum and ink and Classic look; that nothing in it reads as a faction emblem.]
+- If it fails, paste: a screenshot of the window with the variant, UI scale and screen size named, and `/vg errors`.
+
+### 26.3c Painted crest (addons list, options header)
+
+- Do: at the character screen open AddOns and find Vanguard; in game open `/vg` and look at the header's top-left; on General look at the sample action button; turn on the Versus deck (Unit frames) and look at its top edge. Try UI scale 0.64 and 1.0, and Slate and brass, Vellum and ink and Classic look.
+- Expect: each shows the painted crest, a navy shield with a brass rim, small studs and a large gold V, with no grey box or fringe around it and the V readable at 28 px. Nothing is tinted by the accent. `/vg errors` stays empty. [Needs in game: how the 64 px icon reads in the AddOns list and the 28 px crest in the header at 1080p and 1440p.]
+- If it fails, paste: a screenshot with the variant and UI scale named, and `/vg errors`.
+
 ## 27. Window ornaments (#238)
 
 ### 27.1 Rule and corner brackets
@@ -2058,6 +2076,18 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with `/vg ornaments` on, open `/vg` and look under its header; set Minimap shape to Round (Map, reload) or pick the Classic look. Try Minimap size 120, 180 and 240 at UI scale 0.64 and 1.0, then UI scale 0.64, 1.0 and 1.0 at 2560 x 1440 for the rule. Turn Window ornaments off and on with the map in view. Walk past a party member, a tracked node and a ping at the map's rim, and turn the camera. Go through every accent preset and variant, the three colour-blind filters, and Text size 70 % and 130 %.
 - Expect: the header rule has a diamond with a dark outline between two lines that meet its tips, centred on the line; the ring is a thin band with a dark outline each side, flat dark studs round it (not under 160 px, where it is a bare band) and a small diamond at north, east, south and west; the ring swaps at once with the switch and tints in the accent's dim shade; studs do not sparkle as the camera turns; party dots, nodes and pings stay visible as they cross the rim; labels clear the rule. [Needs in game: whether the ring is quiet enough in a fight (if not, it goes back to the plain outline: art plan R10), whether the 128 and 256 bakes filter cleanly at each size, and whether the dark tips of the rule motif read against every panel.]
 - If it fails, paste: a screenshot with the map size, scale and variant named, and `/vg errors`.
+
+### 27.1d The larger rule motif, in full
+
+- Do: with `/vg ornaments` on, open `/vg` at a pixel-perfect scale at 2560 x 1440 (Pixel-perfect scale on), then at UI scale 1.0 at 2560 x 1440 and at 1920 x 1080. Drag the window a little each time.
+- Expect: the whole rule shows under the header: two thin lines in the accent's dim shade along the header's bottom edge and, between them, a diamond about 60 pixels wide at the pixel-perfect scale, half above the edge and half below, crisp with no blur; the search box and the page title clear it. [Needs in game: that the header no longer hides the top half of the diamond or the lines, and that the 64- and 128-texel bakes filter cleanly.]
+- If it fails, paste: a screenshot with the scale and resolution named, and `/vg errors`.
+
+### 27.1e Larger corner brackets on every window
+
+- Do: with `/vg ornaments` on, open the quest log, `/vg setup`, Guild & Communities, the character pane, the spellbook, a merchant and the game menu (Escape). Drag one over another.
+- Expect: each window has a bracket in all four corners, about 24 pixels across at a pixel-perfect scale, just inside its panel's edge, never hidden by a list, an inset or a portrait at the corner; titles and close buttons stay clear of them. [Needs in game: that the brackets stay over the window when it is raised over another, and that no game window gains a bracket that looks wrong (a part of another window, a HUD box).]
+- If it fails, paste: a screenshot naming the window, and `/vg errors`.
 
 ### 27.1a High contrast hides them
 
@@ -2212,7 +2242,7 @@ These steps check what the UI consistency pass changed (docs/THEME.md, Window ch
 ### 32.9 The options preview
 
 - Do: open `/vg` → General and look at the sample at the top; change the accent and the Bar texture.
-- Expect: the sample unit frame shows your character's own name (`You` if the game hides it) where `<name>` used to be, with `72%` on its right; the sample action button shows Vanguard's crest, a shield with crossed swords, instead of the game's question mark, with `1` and `5` in its corners. The bars and the button's glow follow the accent and the texture as you change them.
+- Expect: the sample unit frame shows your character's own name (`You` if the game hides it) where `<name>` used to be, with `72%` on its right; the sample action button shows Vanguard's crest, a navy shield with a gold V, instead of the game's question mark, with `1` and `5` in its corners. The bars and the button's glow follow the accent and the texture as you change them.
 - If it fails, paste: a screenshot of the sample and `/vg errors`.
 
 ### 32.10 General captions
@@ -3261,6 +3291,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: in retail (where the error was first seen) and on WoW Forever, `/reload`, then open Options → General, switch the Calm HUD on, set every part to Dim, then to Hide, then back to Leave as is; mouse over each part while it is quiet. Do the same in a dungeon. On a character with Bartender4 or Dominos loaded, open key setup.
 - Expect: no "cannot replace a forbidden script handler" or "Lua Taint: Vanguard" entry in `/vg errors`; each part still comes back to full strength under the mouse. Key setup names the bar addon ("You use Bartender4 for your bars…"), never "table: 0x…".
 - If it fails, paste: `/vg errors` and which part you had set when it appeared.
+
+### 33.169 Your buffs' hover with the Calm HUD
+
+- Do: on WoW Forever, `/reload` with the Calm HUD on (your buffs set to Dim), then mouse over your buffs, over a single buff icon, and away again.
+- Expect: no "PlayerAuras: Button:HookScript(): … cannot replace a forbidden script handler" entry in `/vg errors` after the reload (seen 2026-11-04). Your buffs come up to full strength under the mouse and dim again when it leaves. Note whether moving the mouse straight onto a buff icon from outside brightens them (the game keeps its buff icons' hover from addons, so only the space around them may count).
+- If it fails, paste: `/vg errors`.
+
+### 33.170 The Cooldown Manager fits between your frames
+
+- Do: on WoW Forever with the game's Cooldown Manager on and Vanguard placing it (Cooldowns page), track enough spells that the essential row holds 10 or more icons, then `/reload`. Learn or untrack a spell. Change the row's icon size in Edit Mode, close Edit Mode. Enter a fight and use a cooldown.
+- Expect: the essential, utility and tracked-buff rows sit centered between your player and target frames, each shrunk just enough to fit its spot; a row twice as wide as the gap or more is drawn at half size and may reach a little past the frames. A row that fits keeps its full size. After a change it fits again (after the fight, if you were in one); while Edit Mode is open the row keeps the size it had. Nothing in `/vg errors`.
+- If it fails, paste: a screenshot of the bottom of the screen, the row's icon count, and `/vg errors`.
+
+### 33.171 The HUD rises to sit under your character
+
+- Do: on WoW Forever at 1440p with Pixel-perfect on (and once at 1080p with the game's own UI scale), with the Cooldown Manager on and tracking 10 or more spells, run `/vg reset all` (or start a fresh profile) and `/reload`. Stand still in an open field at the default camera distance, then target an enemy and cast. Then set the game's UI scale so the screen is 768 units tall (or pick Fit in setup's screen step) and look again.
+- Expect: the action bars, your frames, cast bar and cooldown rows sit together as one block whose top ends just under your character's feet, not at the bottom edge; the XP bar, chat and bag bar stay at the edges. On the tall screen the essential cooldown row has its own line under your frames at full size (or shrunk only when it holds more than about 560 units of icons), and nothing overlaps the debuffs under your target. On the 768-tall screen the layout is the one it always was. Note how far the block's top is from your feet, and whether it should sit higher or lower.
+- If it fails, paste: a screenshot at each scale, your resolution and UI scale, and `/vg errors`.
+
+### 33.172 Nameplates never draw a dark box
+
+- Do: on WoW Forever with Vanguard's nameplates on, walk up to a row of training dummies (or a group of mobs) from out of plate range, several times, from different distances and with the camera turned away and back. Target one, then another.
+- Expect: every plate is the bar with its name and level; no plate shows a see-through dark or solid black box over and around its bar (seen 2026-11-04). If one flickers in for a moment, it is gone within half a second. Your target's plate keeps its thin accent border and glow.
+- If it fails, paste: a screenshot, whether the box went away after half a second, your resolution and UI scale, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

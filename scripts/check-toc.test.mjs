@@ -10,7 +10,7 @@ import { execFileSync } from "node:child_process";
 import { afterAll, expect, it } from "vitest";
 import { EXPECTED_INTERFACE, checkCheckout, luaFilesOnDisk, luacheckGlobals, parseToc, root, tocProblems } from "./check-toc.mjs";
 
-const HEAD = ["## Interface: 16001, 120105, 120007", "## Title: Vanguard", "## Version: 1.0.0", "## SavedVariables: VanguardDB", "## SavedVariablesPerCharacter: VanguardCharDB"];
+const HEAD = ["## Interface: 16001, 120105", "## Title: Vanguard", "## Version: 1.0.0", "## SavedVariables: VanguardDB", "## SavedVariablesPerCharacter: VanguardCharDB"];
 const FILES = ["Libs/LibStub/LibStub.lua", "Core/Events.lua", "Modules/Bars.lua"];
 const RC = 'globals = {\n  -- saved\n  "VanguardDB",\n  "VanguardCharDB",\n  SlashCmdList = { other_fields = true },\n}\nread_globals = { "GetTime" }\n';
 
@@ -35,9 +35,9 @@ it("a well-formed TOC passes, with CRLF endings and comment lines", () => {
   expect(check()).toEqual([]);
 });
 
-it("the expected Interface values are 16001, 120105 and 120007, kept in one constant", () => {
-  expect(EXPECTED_INTERFACE).toEqual(["16001", "120105", "120007"]);
-  expect(parseToc("## Interface: 16001, 120105, 120007\n").meta.Interface).toBe("16001, 120105, 120007");
+it("the expected Interface values are 16001 and 120105, kept in one constant", () => {
+  expect(EXPECTED_INTERFACE).toEqual(["16001", "120105"]);
+  expect(parseToc("## Interface: 16001, 120105\n").meta.Interface).toBe("16001, 120105");
 });
 
 it("an unlisted Modules/X.lua fails and names the fix", () => {
@@ -92,14 +92,30 @@ it("a commented-out global does not count, and keyed tables do", () => {
 it("a missing Interface value, Title or Version fails", () => {
   const head = ["## Interface: 16001", "## SavedVariables: VanguardDB"];
   const problems = check({ head });
-  expect(problems[0]).toMatch(/## Interface does not list 120105; it must list 16001, 120105, 120007/);
+  expect(problems[0]).toMatch(/## Interface does not list 120105; it must list 16001, 120105 /);
   expect(problems).toContain('Vanguard.toc: ## Title is missing; add a "## Title: ..." line');
   expect(problems).toContain('Vanguard.toc: ## Version is missing; add a "## Version: ..." line');
-  expect(check({ head: [] }).filter((p) => p.includes("Interface"))).toHaveLength(3);
+  expect(check({ head: [] }).filter((p) => p.includes("Interface"))).toHaveLength(2);
 });
 
 it("a shared library listed after the addon's own files fails", () => {
   const problems = check({ files: ["Core/Events.lua", "Libs/LibStub/LibStub.lua", "Modules/Bars.lua"] });
   expect(problems).toEqual([expect.stringMatching(/:\d+: Libs\/LibStub\/LibStub\.lua loads after Core\/Events\.lua \(line \d+\); move the shared libraries above/)]);
   expect(check({ files: ["Libs/LibStub/LibStub.lua"], disk: [] })).toEqual([]);
+});
+
+it("a file's game-type tags are read apart from its path, so a tagged file is no orphan", () => {
+  const files = ["Core/Events.lua", "Modules/Bars.lua\t[AllowLoadGameType camelot] [ExcludeLoadGameType standard]"];
+  expect(check({ files })).toEqual([]);
+  expect(parseToc(files.join("\n")).files[1]).toMatchObject({ path: "Modules/Bars.lua", allow: ["camelot"], exclude: ["standard"] });
+});
+
+it("a bracket directive the harness does not model fails, naming the two it reads", () => {
+  const problems = check({ files: ["Core/Events.lua", "Modules/Bars.lua [AllowLoadTextLocale deDE]"] });
+  expect(problems).toEqual([expect.stringMatching(/:\d+: Modules\/Bars\.lua carries \[AllowLoadTextLocale \.\.\.\]; the harness reads only AllowLoadGameType and ExcludeLoadGameType/)]);
+});
+
+it("a file whose tags keep it off both clients fails", () => {
+  const problems = check({ files: ["Core/Events.lua", "Modules/Bars.lua [AllowLoadGameType vanilla]"] });
+  expect(problems).toEqual([expect.stringMatching(/:\d+: Modules\/Bars\.lua loads on no client \(forever, retail\): check its game-type tags$/)]);
 });

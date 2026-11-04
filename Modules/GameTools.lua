@@ -1,7 +1,10 @@
 -- The game's own new tools in the Vanguard look, and placed to fit the
 -- Centered layout:
 --   * the Cooldown Manager's rows sit in the gap between the player and
---     target frames, above the swing timer, with square icons in thin borders
+--     target frames, above the swing timer (on a screen taller than 768 units
+--     the main row gets a wider line of its own under your frames), a row
+--     wider than its spot shrunk
+--     to fit it (down to half size), with square icons in thin borders
 --     and their numbers (charges, stacks, cooldown timers) in the theme font;
 --     one switch (off by default) turns the game's Cooldown Manager on, so its
 --     essential row shows there without a trip to the game's options;
@@ -24,9 +27,12 @@ local L = ns.L
 local GT = ns.Module("GameTools", { defaults = { cooldowns = true, meter = true, place = true, cdmHint = true, essential = false } })
 
 -- Each placed frame's mover: key, label, default point, and the spot's size
--- (UI units; the rows fit the 240-unit gap between the unit frames).
+-- (UI units; the rows fit the 240-unit gap between the unit frames). The main row is part of the block under your
+-- frames: on a screen with room (Core/Layout.lua, HudRoom) it rises a row less than they do and takes a line for
+-- itself, `roomy` wide.
 GT.SPOTS = {
-  EssentialCooldownViewer = { "cdm_essential", L["Cooldowns"], { "BOTTOM", "BOTTOM", 0, 210 }, 236, 32 },
+  EssentialCooldownViewer = { "cdm_essential", L["Cooldowns"], { "BOTTOM", "BOTTOM", 0, 210, underFrames = true }, 236, 32,
+    roomy = ns.Layout.HUD.roomyRow },
   UtilityCooldownViewer = { "cdm_utility", L["Utility cooldowns"], { "BOTTOM", "BOTTOM", 0, 248 }, 206, 24 },
   BuffIconCooldownViewer = { "cdm_buffs", L["Tracked buffs"], { "BOTTOM", "BOTTOM", 0, 278 }, 206, 24 },
   DamageMeter = { "damagemeter", L["Damage meter"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 118 }, 300, 78 },
@@ -51,6 +57,26 @@ function GT.FitCenter(frame, spot)
   set(frame, "CENTER", spot, "CENTER")
 end
 
+-- The smallest a Cooldown Manager row is shrunk to fit its spot: a row that would need more keeps this size
+-- and runs past the spot's edges, as icons any smaller can't be read.
+GT.MIN_FIT = 0.5
+
+-- The scale that fits a row `width` wide into `room`: 1 when it fits, else room / width, never under GT.MIN_FIT.
+function GT.FitScale(width, room)
+  local w = ns.PlainNumber(width)
+  if not w or w <= room then return 1 end
+  return math.max(GT.MIN_FIT, room / w)
+end
+
+-- Puts a Cooldown Manager row centered on its spot, shrunk to the spot's width when it's wider (it grows with
+-- what it tracks and Edit Mode's icon size). Its scale is set through the client's own method, kept aside as
+-- SetScaleBase on an Edit Mode system: Edit Mode's override moves the frame to keep its corner in place.
+function GT.FitRow(frame, spot)
+  local setScale = frame.SetScaleBase or frame.SetScale
+  setScale(frame, GT.FitScale(frame:GetWidth(), spot:GetWidth()))
+  GT.FitCenter(frame, spot)
+end
+
 -- Puts one of the game's frames over its spot, filling it (the damage meter).
 function GT.FitFill(frame, spot)
   local set = setPointOf(frame)
@@ -59,19 +85,54 @@ function GT.FitFill(frame, spot)
   set(frame, "BOTTOMRIGHT", spot, "BOTTOMRIGHT")
 end
 
+-- A spot's width on this screen: its roomy width (the main cooldown row's) when the screen has room for its own
+-- line under your frames, else its own.
+function GT.SpotWidth(spot)
+  local roomy = spot.roomy and ns.Layout.HudRoom(ns.PlainNumber(UIParent:GetHeight()))
+  return roomy and spot.roomy or spot[4]
+end
+
+-- Holders whose width depends on the screen (a roomy spot's): holder -> { spot = its SPOTS row, frame = the
+-- game's frame kept on it }.
+GT.roomyHolders = {}
+
+-- After a UI scale or screen change: each roomy spot takes its width for the new screen, and the row on it
+-- fits again. Only a holder whose width changed is touched, as placing runs this again (T.OnScale).
+function GT.FitRoomy()
+  for holder, roomy in pairs(GT.roomyHolders) do
+    local width = GT.SpotWidth(roomy.spot)
+    if holder:GetWidth() ~= width then
+      holder:SetWidth(width)
+      ns.Repin(roomy.frame)
+    end
+  end
+end
+ns.Theme.OnScale(GT.FitRoomy)
+
 -- A movable spot (its SPOTS row or the alert's) for one of the game's frames, with the frame kept on it by `fit`.
 function GT.PlaceSpot(name, spot, fit)
   local f = _G[name]
   if type(f) ~= "table" or not f.SetPoint or not spot then return end
   local holder = CreateFrame("Frame", "Vanguard_" .. name .. "Spot", UIParent)
-  holder:SetSize(spot[4], spot[5])
+  holder:SetSize(GT.SpotWidth(spot), spot[5])
+  if spot.roomy then GT.roomyHolders[holder] = { spot = spot, frame = f } end
   ns.Mover(holder, spot[1], spot[2], spot[3])
   ns.Pin(f, function(frame) fit(frame, holder) end)
 end
 
--- A movable spot for one of the game's frames, with the frame kept on it (the meter fills its spot).
+-- Fits a cooldown row to its spot again each time the game lays it out (after combat, if in one).
+local function refitOnLayout(viewer)
+  if type(viewer) ~= "table" or type(viewer.RefreshLayout) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(viewer, "RefreshLayout", ns.Guard("hook RefreshLayout", ns.Repin))
+end
+
+-- A movable spot for one of the game's frames, with the frame kept on it: the meter fills its spot, and a
+-- cooldown row is centered on its own and fitted to it whenever it's laid out again.
 local function place(name)
-  GT.PlaceSpot(name, GT.SPOTS[name], name == "DamageMeter" and GT.FitFill or GT.FitCenter)
+  if name == "DamageMeter" then return GT.PlaceSpot(name, GT.SPOTS[name], GT.FitFill) end
+  if not GT.SPOTS[name] then return end
+  GT.PlaceSpot(name, GT.SPOTS[name], GT.FitRow)
+  refitOnLayout(_G[name])
 end
 
 -- Cooldown Manager ---------------------------------------------------------------------------
