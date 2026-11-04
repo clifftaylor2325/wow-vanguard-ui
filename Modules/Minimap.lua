@@ -40,8 +40,9 @@ MM.LEFTOVERS = {
 }
 -- A slot button on the map (UI units square), and its icon.
 MM.BUTTON, MM.GLYPH = 18, 12
--- Minimap buttons that have nothing to show here (vanilla content has no expansion page): put away.
-MM.HIDE = { "ExpansionLandingPageMinimapButton" }
+-- Minimap buttons that have nothing to show here, on each client: WoW Forever's vanilla content has no expansion
+-- page, so its button is put away; Retail keeps it (Modules/RetailLanding.lua puts it on the map's corner).
+MM.HIDE = ns.ClientData({ forever = { "ExpansionLandingPageMinimapButton" }, retail = {} })
 MM.ICON_SCALE = 0.85
 -- The accent diamonds on the map's corners (UI units across).
 MM.CORNER = 8

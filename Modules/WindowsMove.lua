@@ -33,7 +33,7 @@ local GW = ns.GetModule("Windows")
 
 -- The windows that can be dragged, by global name, on each client (ns.ClientData); one the client lacks (or hasn't
 -- loaded yet) is skipped. Retail has the group finder (PVEFrame) and the Adventure Guide in place of WoW Forever's
--- group finder and Legacy window.
+-- group finder and Legacy window, and its transmog window.
 GW.MOVABLE = ns.ClientData({
   forever = {
     "CharacterFrame", "ContainerFrameCombinedBags", "GameMenuFrame", "FriendsFrame", "SocialUIFrame", "MerchantFrame",
@@ -44,11 +44,12 @@ GW.MOVABLE = ns.ClientData({
     "CharacterFrame", "ContainerFrameCombinedBags", "GameMenuFrame", "FriendsFrame", "SocialUIFrame", "MerchantFrame",
     "MailFrame", "PVEFrame", "CommunitiesFrame", "PlayerSpellsFrame", "EncounterJournal",
     "CollectionsJournal", "AuctionHouseFrame", "ProfessionsFrame", "AchievementFrame", "TimeManagerFrame", "ChannelFrame",
+    "TransmogFrame",
   },
 })
 -- The windows dragged only by an empty spot along their top edge, on each client: no drag area is laid over them,
 -- since the game draws buttons (the calendar's month arrows) where one would go. Retail has no hunter's pet stable
--- of WoW Forever's kind.
+-- of WoW Forever's kind, and has the Great Vault and the expansion page (no title bar on either).
 GW.MOVABLE_TOP = ns.ClientData({
   forever = {
     "CalendarFrame", "InspectFrame", "TradeFrame", "DressUpFrame", "ClassTrainerFrame", "GuildBankFrame", "MacroFrame",
@@ -59,6 +60,7 @@ GW.MOVABLE_TOP = ns.ClientData({
     "CalendarFrame", "InspectFrame", "TradeFrame", "DressUpFrame", "ClassTrainerFrame", "GuildBankFrame", "MacroFrame",
     "RaidParentFrame", "OpenMailFrame", "GroupLootHistoryFrame", "ItemTextFrame", "AddonList",
     "HelpFrame", "QuestLogPopupDetailFrame", "SettingsPanel", "ChatConfigFrame", "GuildControlUI",
+    "WeeklyRewardsFrame", "ExpansionLandingPage",
   },
 })
 -- How far down from a window's top edge a press starts a drag (units).
