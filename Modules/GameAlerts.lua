@@ -50,11 +50,25 @@ local function talkingHeadSpot()
   return { point[1], point[2], point[3], point[4], room = { right = GA.HEAD_ROOM + ns.GetModule("InfoStrip").Width() } }
 end
 
--- A movable spot for one of the game's alerts, with the alert kept centered on it.
-local function place(name)
+-- The scale the game's own Edit Mode Size setting gives loss of control (1 at 100%). 1 for the talking head, which
+-- has no size setting, and for a client without one.
+local function editModeSize(f)
+  local setting = Enum and Enum.EditModeLossOfControlSetting
+  if f ~= _G.LossOfControlFrame or not setting or type(f.GetSettingValue) ~= "function" then return 1 end
+  return (ns.PlainNumber(f:GetSettingValue(setting.Size)) or 100) / 100
+end
+
+-- Puts an alert centered on its spot, at the spot's scale times the game's own size for it.
+local function fitAlert(f, spot)
   local tools = ns.GetModule("GameTools")
+  tools.FitCenter(f, spot)
+  tools.ScaleWithSpot(f, spot, editModeSize(f))
+end
+
+-- A movable spot for one of the game's alerts, with the alert kept centered on it and scaled with it.
+local function place(name)
   if name == "TalkingHeadFrame" then GA.SPOTS[name][3] = talkingHeadSpot() end
-  tools.PlaceSpot(name, GA.SPOTS[name], tools.FitCenter)
+  ns.GetModule("GameTools").PlaceSpot(name, GA.SPOTS[name], fitAlert)
 end
 
 -- Gives the talking head's spot the room the info strip needs at the new Text size, out of combat.

@@ -62,6 +62,24 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
   expect(partial.eval("return Vanguard_LossOfControlFrameSpot ~= nil and Vanguard_TalkingHeadFrameSpot ~= nil"), "frames without their usual parts are still placed").toBe(true);
   expect(loggedIn("").eval("return Vanguard_LossOfControlFrameSpot == nil"), "a client without them loads cleanly").toBe(true);
 });
+it("game alerts: scaling the talking head or loss of control spot scales the game's frame", () => {
+  const addon = loggedIn(ALERTS_ENV);
+  addon.eval("ns.SetMoverScale('talkinghead', 2) ns.SetMoverScale('lossofcontrol', 1.5)");
+  addon.advance(0.5);
+  expect(addon.eval("return { TalkingHeadFrame:GetScale(), LossOfControlFrame:GetScale() }"), "each takes its spot's scale").toEqual([2, 1.5]);
+  addon.eval("ns.SetMoverScale('talkinghead', 1)");
+  addon.advance(0.5);
+  expect(addon.eval("return TalkingHeadFrame:GetScale()"), "and gives it back").toBe(1);
+});
+it("game alerts: loss of control takes the spot's scale times the Size set in Edit Mode", () => {
+  // TEST-ONLY Edit Mode system: a Size setting of 150 (percent) on loss of control.
+  const sized = "Enum = Enum or {} Enum.EditModeLossOfControlSetting = { Size = 0 } LossOfControlFrame.GetSettingValue = function() return 150 end";
+  const addon = loggedIn(ALERTS_ENV + sized);
+  expect(addon.eval("return LossOfControlFrame:GetScale()"), "at a spot of 100%: the game's own size").toBe(1.5);
+  addon.eval("ns.SetMoverScale('lossofcontrol', 2)");
+  addon.advance(0.5);
+  expect([addon.eval("return LossOfControlFrame:GetScale()"), addon.eval("return TalkingHeadFrame:GetScale()")], "at 200%: both together; the talking head has no size").toEqual([3, 1]);
+});
 // TEST-ONLY talking head play: the game's PlayCurrent colours the name and text from the line's texture kit
 // (Blizzard_FrameXML/TalkingHeadUI.lua), dark browns and black for the faction kits made for parchment.
 const PLAY_ENV = `
