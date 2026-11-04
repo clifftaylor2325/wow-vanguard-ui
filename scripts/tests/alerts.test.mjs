@@ -322,6 +322,19 @@ it("the game's tools: a row's scale goes through the client's own SetScaleBase o
     ns.GetModule("GameTools").FitRow(f, spot)`);
   expect(addon.eval("return __ran"), "only the client's own method").toEqual(["SetScaleBase 0.5"]);
 });
+// The first Cooldown Manager item's [pixel at its scale, top edge height, icon inset], read from what was painted.
+const itemPixels = (addon) => addon.eval(`local i = EssentialCooldownViewer.items[1] local edge
+  for _, r in ipairs({ i:GetRegions() }) do if r.__layer == "BORDER" and r:GetWidth() == i:GetWidth() then edge = edge or r:GetHeight() end end
+  return { ns.Theme.Pixel(i), edge, i.Icon.__points.TOPLEFT.x }`);
+it("the game's tools: a row shrunk to fit its spot, or an icon size the game changes, repaints the icon borders at the new pixel", () => {
+  const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)");
+  addon.eval("EssentialCooldownViewer:RefreshLayout()");
+  expect(itemPixels(addon), "a row that fits: borders and inset one pixel").toEqual([1, 1, 1]);
+  addon.eval("EssentialCooldownViewer:SetSize(472, 40) EssentialCooldownViewer:RefreshLayout()");
+  expect(itemPixels(addon), "shrunk to half: the pixel is 2 units, and so are the borders and the inset").toEqual([2, 2, 2]);
+  addon.eval("EssentialCooldownViewer:SetSize(200, 40) EssentialCooldownViewer.items[1]:SetScale(2) EssentialCooldownViewer:RefreshLayout()");
+  expect(itemPixels(addon), "the game scales an item (Edit Mode's icon size): painted for it too").toEqual([0.5, 0.5, 0.5]);
+});
 it("the game's tools: scaling the Cooldowns spot scales the row on it, and fits it to the scaled spot", () => {
   const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)");
   // The essential row's scale after the game lays it out at `width` wide.

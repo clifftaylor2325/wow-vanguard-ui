@@ -93,6 +93,7 @@ ns.Theme.OnScale(GT.FitScaled)
 -- what it tracks and Edit Mode's icon size), at the spot's scale: the room is the spot's width in the row's units.
 function GT.FitRow(frame, spot)
   GT.ScaleWithSpot(frame, spot, GT.FitScale(frame:GetWidth(), spot:GetWidth()))
+  GT.RepaintItems(frame)
   GT.FitCenter(frame, spot)
 end
 
@@ -192,10 +193,17 @@ local function themeTimer(item)
   if fs then T.Text(fs, "cooldown", "white") end
 end
 
+-- Frames a skinned item's icon again at the pixel size now (not a buff bar's: it has no framed icon).
+local function reframeIcon(item)
+  local icon = iconOf(item)
+  if not item.Bar and type(icon) == "table" and icon.SetPoint then frameIcon(item, icon) end
+end
+
 -- One cooldown or buff item in the theme: icon cropped and framed (a buff bar
--- gets the theme's bar instead), its numbers in the theme font. Once per item.
+-- gets the theme's bar instead), its numbers in the theme font. Once per item;
+-- one skinned already is framed again, as its scale may have changed (a row shrunk to fit, Edit Mode's icon size).
 function GT.SkinItem(item)
-  if vgSkinned[item] then return end
+  if vgSkinned[item] then return reframeIcon(item) end
   vgSkinned[item] = true
   local icon = iconOf(item)
   if type(icon) == "table" and icon.SetTexCoord then T.Crop(icon) end
@@ -203,6 +211,15 @@ function GT.SkinItem(item)
   elseif type(icon) == "table" and icon.SetPoint then frameIcon(item, icon) end
   for _, fs in ipairs(GT.Texts(item)) do T.Text(fs, item.Bar and "barSmall" or "auraCount", false) end
   if not item.Bar then themeTimer(item) end
+end
+
+-- Frames every skinned icon of a cooldown row again at the pixel size now (the row's scale changed).
+function GT.RepaintItems(viewer)
+  local items = type(viewer.GetItemFrames) == "function" and viewer:GetItemFrames()
+  if type(items) ~= "table" then return end
+  for _, item in ipairs(items) do
+    if vgSkinned[item] then reframeIcon(item) end
+  end
 end
 
 -- Every item a cooldown row shows right now, in the theme.
