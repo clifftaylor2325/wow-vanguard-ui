@@ -26,9 +26,13 @@ GW.TAB_SYSTEMS = {
   { "TabSystem" }, { "CategoryTabSystem" }, { "TabHeaders" }, { "FriendsTabHeader", "TabSystem" },
   { "SpellBookFrame", "CategoryTabSystem" }, { "TalentsFrame", "TabSystem" },
 }
--- The windows with side tabs, dressed by name whether or not another group registered them: the
--- character pane, the guild window (Communities), the Legacy window, the inspect window and the group finder.
-GW.TAB_WINDOWS = { "CharacterFrame", "CommunitiesFrame", "LegacySystemFrame", "InspectFrame", "LFGParentFrame" }
+-- The windows with side tabs, dressed by name whether or not another group registered them, on each client: the
+-- character pane, the guild window (Communities), the inspect window and, on WoW Forever, the Legacy window and the
+-- group finder (Retail's group finder has bottom tabs only).
+GW.TAB_WINDOWS = ns.ClientData({
+  forever = { "CharacterFrame", "CommunitiesFrame", "LegacySystemFrame", "InspectFrame", "LFGParentFrame" },
+  retail = { "CharacterFrame", "CommunitiesFrame", "InspectFrame" },
+})
 -- Where those windows keep their side tabs, as parentKeys on the window (the Camelot character pane
 -- keeps its own in a ModeTabs frame, which has a Tabs array too). LargeSideTabButtonTemplate and
 -- RightSideTabTemplate (the guild window's) tabs; the professions window's (an overview tab and one for each
@@ -721,12 +725,18 @@ local function placePaneToggle(frame)
   GW.HookAfter(frame, "UpdateRightPaneToggleButton", pointPaneToggle)
 end
 
--- Every gear slot the pane shows, by the name of its item button (Camelot PaperDollFrame.xml). The shirt, tabard and
--- ammo are there too; a slot the client lacks is skipped.
-GW.EQUIP_SLOTS = {
-  "Head", "Neck", "Shoulder", "Back", "Chest", "Shirt", "Tabard", "Wrist", "Hands", "Waist", "Legs", "Feet",
-  "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo",
-}
+-- Every gear slot the pane shows, by the name of its item button (Camelot PaperDollFrame.xml), on each client. The
+-- shirt, tabard and ammo are there too (Retail has no ranged or ammo slot); a slot the client lacks is skipped.
+GW.EQUIP_SLOTS = ns.ClientData({
+  forever = {
+    "Head", "Neck", "Shoulder", "Back", "Chest", "Shirt", "Tabard", "Wrist", "Hands", "Waist", "Legs", "Feet",
+    "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand", "Ranged", "Ammo",
+  },
+  retail = {
+    "Head", "Neck", "Shoulder", "Back", "Chest", "Shirt", "Tabard", "Wrist", "Hands", "Waist", "Legs", "Feet",
+    "Finger0", "Finger1", "Trinket0", "Trinket1", "MainHand", "SecondaryHand",
+  },
+})
 
 -- A gear slot's bronze plate faded: the Camelot pane's BorderFrame (a child that holds its own texture) and the retail
 -- pane's texture named after the button ("CharacterHeadSlotFrame"); one the client lacks is skipped.
@@ -1050,9 +1060,10 @@ local function dressWindow(frame)
   if GW.REGISTERED[name] then ns.Try("scroll bars " .. name, dressBars, frame, GW.SCROLL_DEPTH) end
 end
 
--- Dresses a window's tabs and scroll bars now and every time it shows, once per window, and what it holds inside.
+-- Dresses a window's tabs and scroll bars now and every time it shows, once per window, and what it holds inside; a
+-- window the game keeps from addons (GW.Forbidden) is left alone.
 local function dress(frame)
-  if type(frame) ~= "table" or not frame.HookScript or dressed[frame] then return end
+  if type(frame) ~= "table" or not frame.HookScript or dressed[frame] or GW.Forbidden(frame) then return end
   dressed[frame] = true
   dressWindow(frame)
   frame:HookScript("OnShow", ns.Guard("show window tabs", dressWindow))

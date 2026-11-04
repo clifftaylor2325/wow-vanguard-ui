@@ -31,28 +31,46 @@ local vgHome = ns.FrameState("vgHome")
 
 local GW = ns.GetModule("Windows")
 
--- The windows that can be dragged, by global name; one the client lacks (or hasn't loaded yet) is skipped.
-GW.MOVABLE = {
-  "CharacterFrame", "ContainerFrameCombinedBags", "GameMenuFrame", "FriendsFrame", "SocialUIFrame", "MerchantFrame",
-  "MailFrame", "LFGParentFrame", "CommunitiesFrame", "PlayerSpellsFrame", "LegacySystemFrame",
-  "CollectionsJournal", "AuctionHouseFrame", "ProfessionsFrame", "AchievementFrame", "TimeManagerFrame", "ChannelFrame",
-}
--- The windows dragged only by an empty spot along their top edge: no drag area is laid over them, since
--- the game draws buttons (the calendar's month arrows) where one would go.
-GW.MOVABLE_TOP = {
-  "CalendarFrame", "InspectFrame", "TradeFrame", "DressUpFrame", "ClassTrainerFrame", "GuildBankFrame", "MacroFrame",
-  "PetStableFrame", "RaidParentFrame", "OpenMailFrame", "GroupLootHistoryFrame", "ItemTextFrame", "AddonList",
-  "HelpFrame", "QuestLogPopupDetailFrame", "SettingsPanel", "ChatConfigFrame", "GuildControlUI",
-}
+-- The windows that can be dragged, by global name, on each client (ns.ClientData); one the client lacks (or hasn't
+-- loaded yet) is skipped. Retail has the group finder (PVEFrame) and the Adventure Guide in place of WoW Forever's
+-- group finder and Legacy window.
+GW.MOVABLE = ns.ClientData({
+  forever = {
+    "CharacterFrame", "ContainerFrameCombinedBags", "GameMenuFrame", "FriendsFrame", "SocialUIFrame", "MerchantFrame",
+    "MailFrame", "LFGParentFrame", "CommunitiesFrame", "PlayerSpellsFrame", "LegacySystemFrame",
+    "CollectionsJournal", "AuctionHouseFrame", "ProfessionsFrame", "AchievementFrame", "TimeManagerFrame", "ChannelFrame",
+  },
+  retail = {
+    "CharacterFrame", "ContainerFrameCombinedBags", "GameMenuFrame", "FriendsFrame", "SocialUIFrame", "MerchantFrame",
+    "MailFrame", "PVEFrame", "CommunitiesFrame", "PlayerSpellsFrame", "EncounterJournal",
+    "CollectionsJournal", "AuctionHouseFrame", "ProfessionsFrame", "AchievementFrame", "TimeManagerFrame", "ChannelFrame",
+  },
+})
+-- The windows dragged only by an empty spot along their top edge, on each client: no drag area is laid over them,
+-- since the game draws buttons (the calendar's month arrows) where one would go. Retail has no hunter's pet stable
+-- of WoW Forever's kind.
+GW.MOVABLE_TOP = ns.ClientData({
+  forever = {
+    "CalendarFrame", "InspectFrame", "TradeFrame", "DressUpFrame", "ClassTrainerFrame", "GuildBankFrame", "MacroFrame",
+    "PetStableFrame", "RaidParentFrame", "OpenMailFrame", "GroupLootHistoryFrame", "ItemTextFrame", "AddonList",
+    "HelpFrame", "QuestLogPopupDetailFrame", "SettingsPanel", "ChatConfigFrame", "GuildControlUI",
+  },
+  retail = {
+    "CalendarFrame", "InspectFrame", "TradeFrame", "DressUpFrame", "ClassTrainerFrame", "GuildBankFrame", "MacroFrame",
+    "RaidParentFrame", "OpenMailFrame", "GroupLootHistoryFrame", "ItemTextFrame", "AddonList",
+    "HelpFrame", "QuestLogPopupDetailFrame", "SettingsPanel", "ChatConfigFrame", "GuildControlUI",
+  },
+})
 -- How far down from a window's top edge a press starts a drag (units).
 GW.MOVE_GRAB = 30
 -- How far (units) a press may move and still count as a click: a press that never leaves its spot saves no place.
 GW.MOVE_SLOP = 1
 -- The part a window's title bar is, by window, when it isn't its TitleContainer (parentKey).
 GW.MOVE_BAR = { GameMenuFrame = "Header" }
--- The pages that cover a window and carry its title (the group finder's), by window: each page's title
--- bar is a drag area too, since the page takes the press before the window does.
-GW.MOVE_PAGES = { LFGParentFrame = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" } }
+-- The pages that cover a window and carry its title (WoW Forever's group finder's), by window: each page's title
+-- bar is a drag area too, since the page takes the press before the window does. Retail's group finder keeps its
+-- title on the window.
+GW.MOVE_PAGES = ns.ClientData({ forever = { LFGParentFrame = { "LFGListingFrame", "LFGBrowseFrame", "LFGWhoListFrame" } }, retail = {} })
 -- The drag area (units): `trim` is left off the title bar's right end (the close and minimize buttons sit
 -- there); a window without a title bar gets a strip `height` tall along its top, `left` in from its left
 -- edge (the portrait and its button) and `right` in from its right edge.
@@ -61,7 +79,8 @@ GW.MOVE_STRIP = { trim = 40, height = 24, left = 58, right = 64 }
 GW.MOVE_TAB_HANG = 32
 -- How far (units) a column of tabs at a window's right side reaches past its edge, by window: the width of the
 -- character pane's ModeTabs (the Camelot pane's CharacterFrame.xml). Other windows' side tabs wait for their widths.
-GW.MOVE_SIDE_HANG = { CharacterFrame = 64 }
+-- Retail's character pane keeps its tabs along its bottom edge.
+GW.MOVE_SIDE_HANG = ns.ClientData({ forever = { CharacterFrame = 64 }, retail = {} })
 -- The game's calls that place its windows again; every moved window is put back after each.
 GW.MOVE_LAYOUTS = { "UpdateUIPanelPositions", "UpdateContainerFrameAnchors" }
 -- The windows the game lays out with a call of their own (not the panel manager's), by window.
@@ -312,11 +331,12 @@ local function makeMovable(frame, name)
   frame:HookScript("OnHide", ns.Guard("release " .. name, dropHidden))
 end
 
--- Sets a window up once, when the client has it: made movable out of combat, and put back each time it shows.
+-- Sets a window up once, when the client has it and lets addons touch it (GW.Forbidden): made movable out of combat,
+-- and put back each time it shows.
 -- Returns the window's frame only when this call set it up, so the caller can add to it once.
 local function setUp(name)
   local frame = _G[name]
-  if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or vgMovable[frame] then return end
+  if type(frame) ~= "table" or type(frame.HookScript) ~= "function" or vgMovable[frame] or GW.Forbidden(frame) then return end
   vgMovable[frame] = true
   if not layoutOf(frame, name) then recordHome(frame) end
   ns.OutOfCombat(function() makeMovable(frame, name) end, "move setup " .. name)

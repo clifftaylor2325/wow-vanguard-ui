@@ -3,6 +3,7 @@
 // profession window of the headless client.
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock, items and recipes. 100 makes a bag from 3 linen and a thread; 102 makes
@@ -30,9 +31,9 @@ const ENV = `
 const ON = "VanguardDB.profiles = { Default = { CraftQueue = { on = true } } }";
 const CQ = "ns.GetModule('CraftQueue')";
 
-// A logged-in character, the queue on unless told otherwise.
-function crafter(extra = "", savedVariables = ON) {
-  const addon = loggedIn(ENV + extra, { savedVariables });
+// A logged-in character, the queue on unless told otherwise (on WoW Forever, or the client given).
+function crafter(extra = "", savedVariables = ON, client = undefined) {
+  const addon = loggedIn(ENV + extra, { savedVariables, client });
   addon.world.setUnit("player", { class: "WARRIOR", level: 60 });
   return addon;
 }
@@ -206,4 +207,13 @@ it("the options have the switch and the pace", () => {
   addon.eval('ns.Options.Show("town") ns.Options.ShowTab("Craft queue")');
   expect(addon.find("^Craft queue, profession cooldowns and recipe ranking").text, "under Town and gear").toMatch(/^Craft queue/);
   expect(addon.find("^Seconds a craft takes").text, "the pace").toMatch(/^Seconds a craft takes/);
+});
+
+it("on WoW Retail, reads the client's recipe list and recipe cooldowns as on Forever", () => {
+  const addon = crafter("", ON, RETAIL_CLIENT);
+  addon.world.openProfession(100);
+  addon.eval("__wfgWorld.cooldowns = { [102] = 7200 }");
+  addon.fire("TRADE_SKILL_LIST_UPDATE");
+  addon.slash("craft cd");
+  expect([chatHas(addon, /TEST-ONLY Bandage, 2h 0m/), addon.eval("return #ns.errors")], "a recipe not on display, found through the recipe list, with its cooldown").toEqual([true, 0]);
 });

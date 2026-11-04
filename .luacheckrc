@@ -57,10 +57,11 @@ read_globals = {
   "GetCVar", "C_AddOnProfiler", "debugprofilestop", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
   -- Action button tooltips: the client's default anchor (P2.3).
   "GameTooltip_SetDefaultAnchor",
-  -- Retail's quest tracker blocks: scenarios, campaigns, world quests and the Traveler's Log (Modules/RetailQuests.lua).
-  "C_ScenarioInfo", "C_CampaignInfo", "C_TaskQuest", "C_PerksActivities",
-  -- Retail's Mythic+ (Modules/RetailMythicPlus.lua, the Situations kinds): the key, its affixes and timer; delves.
-  "C_ChallengeMode", "C_MythicPlus", "GetWorldElapsedTimers", "GetWorldElapsedTime", "C_DelvesUI",
+  -- Retail's quest tracker blocks: scenarios, campaigns, world quests and the Traveler's Log (Modules/RetailQuests.lua),
+  -- and the delve you are in (Modules/RetailDelves.lua).
+  "C_ScenarioInfo", "C_CampaignInfo", "C_TaskQuest", "C_PerksActivities", "C_DelvesUI",
+  -- Retail's Mythic+ (Modules/RetailMythicPlus.lua, the Situations kinds): the key, its affixes and timer.
+  "C_ChallengeMode", "C_MythicPlus", "GetWorldElapsedTimers", "GetWorldElapsedTime",
   -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).
   "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
   -- P2.8 Chat: the game's list of chat window art names.

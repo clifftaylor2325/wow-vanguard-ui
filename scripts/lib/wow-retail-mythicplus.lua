@@ -76,11 +76,6 @@ function world.startKey(key)
   stub.fire(key and "CHALLENGE_MODE_START" or "CHALLENGE_MODE_RESET")
 end
 
--- Delves (DelvesUIDocumentation.lua): whether you are in one, from world.delveTier (nil outside a delve). The delves
--- area's own stubs (wow-retail-delves.lua, read first by name) keep theirs when they have it.
-C_DelvesUI = C_DelvesUI or {}
-C_DelvesUI.HasActiveDelve = C_DelvesUI.HasActiveDelve or function() return world.delveTier ~= nil end
-
 -- A piece of game art on a frame, marked so a test can tell it from Vanguard's.
 local function art(parent, key, layer)
   local t = parent:CreateTexture(nil, layer or "ARTWORK")
