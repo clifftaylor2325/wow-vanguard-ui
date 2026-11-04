@@ -24,7 +24,8 @@ local PR = ns.Module("InstancePrep", {
   defaults = {
     onEnter = true, onReadyCheck = true, lowWarn = true, dungeonCard = false, hideAfter = 20, durability = 50,
     buffs = false, worldBuffs = false,
-    want = { food = 20, bandages = 10, potions = 3, ammo = 400, shards = 10 },
+    -- Retail starts with no bandage row (its players rarely carry them); /vg prep want bandages <n> turns it on.
+    want = { food = 20, bandages = ns.ClientData({ forever = 10, retail = 0 }), potions = 3, ammo = 400, shards = 10 },
   },
 })
 
@@ -53,7 +54,8 @@ PR.WANTS = { food = true, bandages = true, potions = true, ammo = true, shards =
 -- soul shard row and hunters the ammo row instead.
 -- UNVERIFIED: these item IDs are from the classic database; they are not in
 -- the Forever UI source. Check each class with /vg prep in game.
-PR.REAGENTS = {
+-- Retail takes no reagent rows from this table until its item ids are confirmed in the game.
+PR.REAGENTS = ns.ClientData({ forever = {
   MAGE = { { 17031, 10, "Rune of Teleportation", 20 }, { 17032, 5, "Rune of Portals", 40 }, { 17020, 20, "Arcane Powder", 56 } },
   PRIEST = { { 17028, 20, "Holy Candle", 48, 59 }, { 17029, 20, "Sacred Candle", 56 } },
   DRUID = {
@@ -64,7 +66,7 @@ PR.REAGENTS = {
   PALADIN = { { 17033, 5, "Symbol of Divinity", 30 }, { 21177, 50, "Symbol of Kings", 52 } },
   SHAMAN = { { 17030, 5, "Ankh", 30 }, { 17057, 5, "Shiny Fish Scales", 22 }, { 17058, 5, "Fish Oil", 28 } },
   ROGUE = { { 5140, 10, "Flash Powder", 22 }, { 5530, 10, "Blinding Powder", 34 } },
-}
+}, retail = {} })
 
 -- Counting ------------------------------------------------------------------------------------
 
@@ -128,7 +130,19 @@ end
 PR.You = you
 
 -- The supply each class keeps: ammo for hunters, soul shards for warlocks (the wizard's class page).
-PR.CLASS_KEYS = { HUNTER = { "ammo" }, WARLOCK = { "shards" } }
+-- Ammo and Soul Shard items are vanilla's, so Retail has none.
+PR.CLASS_KEYS = ns.ClientData({ forever = { HUNTER = { "ammo" }, WARLOCK = { "shards" } }, retail = {} })
+
+-- Ammo carried, by the Info strip's ammo slot.
+local function ammoCount(IS)
+  return ask("GetInventoryItemCount", "player", IS.AMMO_SLOT)
+end
+
+-- A class supply key's row label and how it is counted (the Info strip's figures).
+PR.CLASS_SUPPLY = {
+  ammo = { L["Ammo"], ammoCount },
+  shards = { L["Soul shards"], function(IS) return IS.SoulShards() end },
+}
 
 -- A class reagent's name in the client's language (once the client has the item's data), else the English one.
 local function reagentName(r)
@@ -136,12 +150,14 @@ local function reagentName(r)
   return name or r[3]
 end
 
--- The class rows: ammo for hunters, soul shards for warlocks, then the class's reagents at your level.
+-- The class rows: the class's supply (ammo, soul shards) from CLASS_KEYS, then its reagents at your level.
 function PR.ReagentRows()
   local rows, class, level = {}, you()
   local IS, want = ns.GetModule("InfoStrip"), PR.settings.want
-  if class == "HUNTER" then rows[#rows + 1] = short(L["Ammo"], ask("GetInventoryItemCount", "player", IS.AMMO_SLOT), want.ammo) end
-  if class == "WARLOCK" then rows[#rows + 1] = short(L["Soul shards"], IS.SoulShards(), want.shards) end
+  for _, key in ipairs(PR.CLASS_KEYS[class] or {}) do
+    local supply = PR.CLASS_SUPPLY[key]
+    rows[#rows + 1] = short(supply[1], supply[2](IS), want[key])
+  end
   for _, r in ipairs(PR.REAGENTS[class] or {}) do
     if level >= r[4] and level <= (r[5] or level) then rows[#rows + 1] = short(reagentName(r), count(r[1]), r[2], r[1]) end
   end

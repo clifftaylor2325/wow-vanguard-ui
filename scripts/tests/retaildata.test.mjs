@@ -167,3 +167,19 @@ it("retail data: the info strip shows no ammo or shards block, where Forever's h
     expect(block(loggedIn(env), key).shown, `Forever ${class_}: the ${key} block shows`).toBe(true);
   }
 });
+
+it("retail data: Instance prep makes no reagent, ammo, soul shard or bandage row, where Forever keeps them", () => {
+  const [onRetail, onForever] = [retail(UNITS_ENV), loggedIn(UNITS_ENV)];
+  const rows = (client, class_) => client.eval(`__units.player.class = "${class_}" __units.player.level = 80
+    local out = {} for _, r in ipairs(ns.GetModule("InstancePrep").Rows()) do out[#out + 1] = r.label end
+    return table.concat(out, ",")`);
+  for (const class_ of ["MAGE", "HUNTER", "WARLOCK"]) {
+    expect(rows(onRetail, class_), `Retail ${class_}: no class supply, no Bandages`).not.toMatch(/Rune|Ammo|Soul shards|Bandages/);
+    expect(rows(onRetail, class_), `Retail ${class_}: food is still listed`).toMatch(/Food & drink/);
+  }
+  expect(rows(onForever, "MAGE"), "Forever mage: reagents and bandages").toMatch(/Rune of Teleportation.*Bandages/);
+  expect(rows(onForever, "HUNTER"), "Forever hunter: ammo").toMatch(/Ammo/);
+  expect(rows(onForever, "WARLOCK"), "Forever warlock: soul shards").toMatch(/Soul shards/);
+  expect(onRetail.eval('__units.player.class = "HUNTER" return #ns.GetModule("InstancePrep").Wizard.ClassKeys()'), "Retail wizard: no class supply page").toBe(0);
+  expect(onRetail.eval('return #ns.GetModule("InstancePrep").BuyRows()'), "no reagent ids reach the Restock list").toBe(0);
+});
