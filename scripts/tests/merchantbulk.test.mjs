@@ -152,6 +152,8 @@ const BUY_ENV = `
   StackSplitFrame:SetSize(100, 60) StackSplitFrame:SetPoint("CENTER") StackSplitFrame:Hide()
   __owner = function(name, id) StackSplitFrame.owner = { GetName = function() return name end, GetID = function() return id end } end
   __owner("MerchantItem1ItemButton", 1)
+  StackSplitFrame.OpenStackSplitFrame = function(self, _, parent) self.owner = parent self:Show() end
+  __button = function(name, id) return { GetName = function() return name end, GetID = function() return id end } end
 `;
 
 // What the quantity window's extras show: the Stack and Max buttons, the cost line and its text (false before they exist).
@@ -178,6 +180,19 @@ it("the quantity window of a merchant's item gets Stack, Max and a cost line; an
   set(addon, "s.bulkBuy = false");
   addon.eval("__owner('MerchantItem1ItemButton', 1) StackSplitFrame:Hide() StackSplitFrame:Show()");
   expect(split(addon)[0], "switched off: hidden").toBe(false);
+});
+
+it("opening the quantity window for another item while it is open refreshes the drawer, and a stale press buys nothing", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:OpenStackSplitFrame(40, __button('MerchantItem3ItemButton', 3))");
+  expect(addon.eval("return ns.FrameState('vgSplitBulk')[StackSplitFrame].index"), "the second item, with no Hide between").toBe(3);
+  addon.eval("StackSplitFrame:OpenStackSplitFrame(40, __button('ContainerFrame1Item1', 1))");
+  expect(split(addon)[0], "re-opened on a bag item: the drawer goes").toBe(false);
+  addon.eval("StackSplitFrame:OpenStackSplitFrame(40, __button('MerchantItem1ItemButton', 1))");
+  addon.eval("StackSplitFrame.owner = __button('MerchantItem3ItemButton', 3) __bought = {}");
+  press(addon, "max");
+  expect(Object.keys(bought(addon)).length, "the window moved to another item without a refresh: nothing bought").toBe(0);
 });
 
 // Z5-1: bag 4 is an empty specialty bag of family `bagFamily` with 3 free slots; the general bags are full. The merchant's

@@ -391,10 +391,11 @@ local function costText(drawer, stack)
   return T.FitText(ns.SingleLine(line), drawer)
 end
 
--- A Stack or Max press: buys only while the row still holds the item, at the pack price, that the cost
--- line was worked out for (the list can shift under an open window, and a button reads its row by place).
+-- A Stack or Max press: buys only while the window is still for that item and the row still holds it, at the
+-- pack price, that the cost line was worked out for (the list can shift under an open window, and a button
+-- reads its row by place).
 local function press(entry, frame, packsOf)
-  local same = MC.Sells(entry.index, entry.id) and wares(entry.index) == entry.price
+  local same = MC.SplitIndex(frame) == entry.index and MC.Sells(entry.index, entry.id) and wares(entry.index) == entry.price
   if not same then return ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end
   MC.Order(entry.index, packsOf(entry.index), frame)
 end
@@ -424,12 +425,16 @@ function MC.OnSplitShow(frame)
   end
 end
 
--- Hooks the quantity window (once), when the game has made it.
+-- Hooks the quantity window (once), when the game has made it. Opening it for a second item while it is
+-- open fires no OnShow, so the game's open call is hooked too.
 function MC.HookSplit()
   local frame = _G.StackSplitFrame
   if type(frame) ~= "table" or not frame.HookScript or MC.splitHooked then return end
   MC.splitHooked = true
   frame:HookScript("OnShow", ns.Guard("stack split bulk", MC.OnSplitShow))
+  if type(frame.OpenStackSplitFrame) == "function" then
+    hooksecurefunc(frame, "OpenStackSplitFrame", ns.Guard("hook OpenStackSplitFrame", MC.OnSplitShow))
+  end
 end
 
 -- The merchant opened or closed. Closing ends a running buy for good: its next chunk buys nothing,
