@@ -324,13 +324,14 @@ function makersMemoised() {
   expect(MEDIA["Textures/Icon.tga"]()).toBe(MEDIA["Textures/Icon.tga"]());
 }
 
-// Every panel texture is faint (at most SURFACE_MAX_ALPHA, so text stays readable on it) but not empty.
+// Every panel texture is faint (its written alpha bytes at most SURFACE_MAX_ALPHA, 12/255, so text stays readable
+// on it) but not empty.
 function surfacesFaint() {
   const out = Object.entries(SURFACES).map(([name, make]) => {
     const img = make();
     let max = 0;
-    for (let i = 3; i < img.px.length; i += 4) max = Math.max(max, img.px[i]);
-    return [name, max <= SURFACE_MAX_ALPHA && max > 0.02];
+    for (let i = 3; i < img.px.length; i += 4) max = Math.max(max, Math.round(img.px[i] * 255));
+    return [name, max <= Math.round(SURFACE_MAX_ALPHA * 255) && max >= 5];
   });
   expect(out).toEqual(Object.keys(SURFACES).map((name) => [name, true]));
 }

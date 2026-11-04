@@ -2,6 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
+import { SURFACE_MAX_ALPHA } from "../lib/media-surfaces.mjs";
 import { CLICK_LUA, MICRO_ENV, TIDY_ENV, UI_ENV, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
 
 it("theme", () => {
@@ -1146,6 +1147,41 @@ it("rounded corners: High contrast's 2 px ring rounds at twice the radius, and a
   expect(addon.eval(`for _, t in ipairs({ __ring:GetRegions() }) do if tostring(t.__texture):find("CornerLine") then return t:GetWidth() end end`) / px, "8 px arcs").toBe(8);
   addon.slash("theme reset");
   expect(addon.eval("return ns.Theme.Settings().corners"), "reset gives square corners").toBe("square");
+});
+
+// The WCAG contrast of `fg` over `bg`, both { r, g, b } with 0-1 channels (unrounded).
+const ratioOf = (fg, bg) => (Math.max(lum(fg), lum(bg)) + 0.05) / (Math.min(lum(fg), lum(bg)) + 0.05);
+
+// A colour `c` ({ r, g, b, a }) laid over an opaque ground.
+const over = (c, ground) => ground.map((g, i) => c[i] * (c[3] ?? 1) + g * (1 - (c[3] ?? 1)));
+
+// The panel's fill with a surface at `alpha` over it, over a world of one colour (what raised and inset sit on).
+const surfaced = (addon, world, alpha) => over([1, 1, 1, alpha], over(tok(addon, "panel"), world));
+
+// The worst contrast of a text tier on the panel, on an inset well (translucent, so it shows the surface a little)
+// and on a raised button (opaque, so it hides the surface), with a surface at `alpha` over a world of one colour.
+const worstOver = (addon, tier, world, alpha) => {
+  const ground = surfaced(addon, world, alpha);
+  const grounds = [ground, over(tok(addon, "inset"), ground), over(tok(addon, "raised"), ground)];
+  return Math.min(...grounds.map((g) => ratioOf(tok(addon, tier), g)));
+};
+
+// Over a bright world, Vellum and ink's and Classic look's muted text sits near 4.15:1 under a surface at the ceiling
+// (4.77 and 4.76 on a flat panel); the plan (docs/handoff/leonardo-art-plan.md, 4.4) expected 4.5. Listed so a new miss fails.
+const BRIGHT_WORLD_MISSES = ["vellum muted over white", "classic muted over white"];
+
+it("panel surfaces (M2): at the written alpha ceiling every variant's text tiers keep 4.5:1 over a dark world, and over a bright one but disabled", () => {
+  const addon = loggedIn();
+  const alpha = Math.round(SURFACE_MAX_ALPHA * 255) / 255;
+  const failures = [];
+  for (const name of addon.eval("return ns.Theme.VARIANT_ORDER")) {
+    addon.slash(`variant ${name}`);
+    for (const tier of ["text", "text2", "muted", "disabled"]) {
+      if (worstOver(addon, tier, [0, 0, 0], alpha) < 4.5) failures.push(`${name} ${tier} over black`);
+      if (tier !== "disabled" && worstOver(addon, tier, [1, 1, 1], alpha) < 4.5) failures.push(`${name} ${tier} over white`);
+    }
+  }
+  expect(failures, "no tier under 4.5:1 on the panel, an inset well or a raised button, bar the two known bright-world misses").toEqual(BRIGHT_WORLD_MISSES);
 });
 
 // WCAG contrast of an { r, g, b } colour against another.
