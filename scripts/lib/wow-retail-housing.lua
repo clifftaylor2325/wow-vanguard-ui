@@ -66,7 +66,9 @@ local BUILDERS = {
     local f = window("HouseFinderFrame")
     f.SelectedPlotTooltip = CreateFrame("Frame", nil, f)
     f.SelectedPlotTooltip.NineSlice = CreateFrame("Frame", nil, f.SelectedPlotTooltip)
-    CreateFrame("Frame", "HouseFinderHighlightedPlotTooltip", UIParent)
+    f.SelectedPlotTooltip.Arrow = art(f.SelectedPlotTooltip, "BORDER")
+    local highlighted = CreateFrame("Frame", "HouseFinderHighlightedPlotTooltip", UIParent)
+    highlighted.Arrow = art(highlighted, "BORDER")
   end,
   -- The house editor, over the whole screen, with its decor storage.
   Blizzard_HouseEditor = function()

@@ -23,6 +23,8 @@ ns.RetailHousing = RHo
 -- category column's backdrop and brackets faded, the search box, filter button and scroll bar in the theme.
 RHo.CATALOG_ART = { "Background" }
 RHo.CATEGORY_ART = { "Background", "TopBorder" }
+-- The house finder's plot tooltips draw their pointer arrow as a texture of the tooltip itself, under the flat panel.
+RHo.PLOT_TIP_ART = { "Arrow" }
 
 -- A decor catalog in the theme; a part this client lacks is skipped.
 function RHo.SkinCatalog(catalog)
@@ -44,11 +46,15 @@ function RHo.SkinDashboard(frame)
   if type(frame.CollectionContent) == "table" then GW.FadeParts(frame.CollectionContent, RHo.CATALOG_ART) end
 end
 
--- The house finder: the window skin, and its plot tooltips (the selected plot's, and the one under the mouse on the map).
+-- The house finder: the window skin, and its plot tooltips (the selected plot's, and the one under the mouse on the map),
+-- theme panels without the game's pointer arrow.
 function RHo.SkinFinder(frame)
   GW.Skin(frame)
   for _, tip in ipairs({ frame.SelectedPlotTooltip, _G.HouseFinderHighlightedPlotTooltip }) do
-    if type(tip) == "table" and tip.CreateTexture then T.Tooltip(tip) end
+    if type(tip) == "table" and tip.CreateTexture then
+      T.Tooltip(tip)
+      GW.FadeParts(tip, RHo.PLOT_TIP_ART)
+    end
   end
 end
 
