@@ -74,10 +74,9 @@ local function putBackAll()
   ns.Ask(L["Put back every key key setup changed, and the spells it moved?"], L["Put back"], function() ns.KeybindsApply.PutBackAll() end)
 end
 
--- Key setup's buttons on WoW Forever (Modules/KeybindsWizard.lua, Modules/KeybindsApply.lua): set up recommended
--- keys, and put back every key it changed.
+-- Key setup's buttons (Modules/KeybindsWizard.lua, Modules/KeybindsApply.lua): set up recommended keys, and put
+-- back every key it changed.
 local function keySetupRows()
-  if not ns.IsForever() then return {} end
   return {
     { "text", L["Key setup suggests keys for your class and changes nothing until you press Apply. Right-click a key it changed to put that key back."] },
     { "button", L["Set up keys"], function() ns.KeybindsWizard.Open() end },
@@ -85,9 +84,9 @@ local function keySetupRows()
   }
 end
 
--- "Place new spells as I learn them" (Modules/KeybindsLearn.lua), on WoW Forever once key setup's wizard is in.
+-- "Place new spells as I learn them" (Modules/KeybindsLearn.lua), once key setup's wizard is in.
 local function newSpellsRows()
-  if not (ns.IsForever() and ns.KeybindsWizard) then return {} end
+  if not ns.KeybindsWizard then return {} end
   local KN = ns.KeybindsLearn
   return {
     check(L["Place new spells as I learn them"], KN.IsOn, KN.SetOn, false),
@@ -95,9 +94,10 @@ local function newSpellsRows()
   }
 end
 
--- Your keys (Modules/KeysViewCard.lua): what every key does now, and on WoW Forever key setup's buttons and the
--- switch for new spells.
+-- Your keys (Modules/KeysViewCard.lua): what every key does now, key setup's buttons and the switch for new
+-- spells. WoW Forever only: key setup's layouts are vanilla's classes and spells, so Retail has no card.
 local function yourKeysRows()
+  if not ns.IsForever() then return {} end
   local rows = {
     { "header", L["Your keys"] },
     { "text", L["What every key does now. Hold Shift, Ctrl or Alt to see those keys, and hover a key for what it does."] },

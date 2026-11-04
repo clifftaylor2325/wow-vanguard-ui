@@ -158,6 +158,13 @@ end
 O.VisibilityRows = visibilityRows
 O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append = moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append
 
+-- A module's rows on its page: rowsFn's rows where the client has the module (Core/Modules.lua, ns.ClientAllows),
+-- none where it doesn't, so a WoW Forever-only module's switches never show on Retail.
+function O.ModuleRows(name, rowsFn)
+  if ns.GetModule(name) then return rowsFn() end
+  return {}
+end
+
 -- get/set for a theme setting; changes apply on reload.
 local function themeSetting(key)
   return O.Tag(function() return T.Settings()[key] end, "theme", key), function(v) T.Settings()[key] = v; O.NeedReload() end

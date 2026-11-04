@@ -19,7 +19,10 @@ local T = ns.Theme
 local L = ns.L
 local UF = ns.GetModule("UnitFrames")
 
-local UX = ns.Module("UnitExtras", { defaults = { threat = true, happiness = true, chip = false } })
+local UX = ns.Module("UnitExtras", { clients = { forever = true }, defaults = { threat = true, happiness = true, chip = false } })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(UX) then return end
 
 -- Pet happiness (GetPetHappiness: 1 unhappy, 2 content, 3 happy) -> color token.
 UX.HAPPINESS = { "bad", "warn", "good" }

@@ -13,6 +13,8 @@ local L = ns.L
 local T, W = ns.Theme, ns.Widgets
 local QP = ns.QuestParts
 local GB = ns.GetModule("GroupBoard")
+-- The board is WoW Forever only (Modules/GroupBoard.lua): without its module there is no window to make.
+if not GB then return end
 
 -- The board's inset from its edges (T.SPACE.pad, a floating window's), how far across a row its cells run (the
 -- kind's left edge to the age's right edge) and how far in the first cell sits, which the note lines up with.

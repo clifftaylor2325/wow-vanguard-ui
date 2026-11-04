@@ -7,13 +7,41 @@ local ADDON, ns = ...
 
 local modules, order = {}, {}
 
+-- Which client this load runs on, "forever" or "retail", decided once (ns.IsForever, Core/Combat.lua).
+local client
+
+-- The running client's key in a { forever = ..., retail = ... } table.
+local function clientKey()
+  client = client or (ns.IsForever() and "forever" or "retail")
+  return client
+end
+
+-- Whether a module belongs on the running client: def.clients = { forever = true } or { retail = true }
+-- names the only clients it has; without def.clients it has both. The one place that decides it.
+---@param def { clients: table? }
+---@return boolean
+function ns.ClientAllows(def)
+  return def.clients == nil or def.clients[clientKey()] == true
+end
+
+-- The running client's entry of a per-client table: tbl.forever on WoW Forever, tbl.retail on Retail.
+---@param tbl { forever: any, retail: any }
+---@return any
+function ns.ClientData(tbl)
+  return tbl[clientKey()]
+end
+
 -- Registers a module. def.defaults = its settings; def.Enable(settings) builds
--- it. Returns def so the module file can add functions to it.
+-- it; def.clients limits it to some clients (ns.ClientAllows). Returns def so the
+-- module file can add functions to it. On a client it isn't for, nothing is
+-- registered: ns.GetModule gives nil, ns.ModuleNames leaves it out, it is never
+-- built, and its options rows and /vg words don't show.
 ---@param name string
----@param def { defaults: table?, Enable: fun(settings: table)?, Disable: fun(settings: table)? }
+---@param def { defaults: table?, clients: table?, Enable: fun(settings: table)?, Disable: fun(settings: table)? }
 ---@return table def  the same table, with name set
 function ns.Module(name, def)
   def.name = name
+  if not ns.ClientAllows(def) then return def end
   modules[name] = def
   order[#order + 1] = name
   return def

@@ -14,7 +14,9 @@ local L = ns.L
 
 local T = ns.Theme
 
-local QG = ns.Module("QuestGuide", { defaults = { newMark = true, pins = true, arrow = "quest", stepLine = true } })
+-- WoW Forever only. The quest tracker, arrow and dialog call ns.QuestGuide, so on another client this file still
+-- loads, as if the module were switched off: never built, its settings nil.
+local QG = ns.Module("QuestGuide", { clients = { forever = true }, defaults = { newMark = true, pins = true, arrow = "quest", stepLine = true } })
 ns.QuestGuide = QG
 
 ns.Options.MODULE_INFO.QuestGuide = { L["Quest guidance"], L["A New mark on quests new in WoW Forever (when the client flags them), quest-start pins on the world map, and the arrow on a tracked quest's next step."] }

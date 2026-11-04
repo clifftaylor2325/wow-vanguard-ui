@@ -112,9 +112,9 @@ Modules/FrameAuras.lua
 Modules/PlayerAuras.lua
 Modules/ComboPoints.lua
 Modules/ClassBars.lua
-Modules/PowerTicks.lua
-Modules/SwingTimer.lua
-Modules/UnitExtras.lua
+Modules/PowerTicks.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
+Modules/SwingTimer.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
+Modules/UnitExtras.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/RaidFrames.lua
 Modules/RaidAuras.lua
 Modules/RaidHealing.lua
@@ -164,8 +164,8 @@ Modules/InstancePrep.lua
 Modules/InstancePrepBuffs.lua
 Modules/InstancePrepWizard.lua
 Modules/DungeonCard.lua
-Modules/TalentPlanner.lua
-Modules/Legacy.lua
+Modules/TalentPlanner.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
+Modules/Legacy.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/AutoAccept.lua
 Modules/Quiet.lua
 Modules/QuestDialogParts.lua
@@ -227,8 +227,8 @@ Modules/UpgradeWeights.lua
 Modules/Upgrades.lua
 Modules/UpgradeWizard.lua
 Modules/VendorMemory.lua
-Modules/SpellRanks.lua
-Modules/PetStable.lua
+Modules/SpellRanks.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
+Modules/PetStable.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/Nameplates.lua
 Modules/Situations.lua
 Modules/SituationsBanner.lua
@@ -239,5 +239,5 @@ Modules/ClickCastPresets.lua
 Modules/ClickCastOptions.lua
 Modules/ClickCastPresetRows.lua
 Modules/Coexist.lua
-Modules/GroupBoard.lua
-Modules/GroupBoardView.lua
+Modules/GroupBoard.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
+Modules/GroupBoardView.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]

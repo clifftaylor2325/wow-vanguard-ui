@@ -18,6 +18,22 @@ end
 
 `ns.Module` registers the name and defaults; `Enable(settings)` gets the profile's table with defaults filled in. Functions the module exports hang on `PX`; everything else is `local`. The file is listed in `Vanguard.toc` after any module it calls `ns.GetModule` on at load time.
 
+## A module for one client
+
+```lua
+local SW = ns.Module("SwingTimer", { clients = { forever = true }, defaults = { show = "auto" } })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(SW) then return end
+```
+
+`clients` is `{ forever = true }` or `{ retail = true }`; without it the module is on both. `ns.ClientAllows(def)` is the one place that decides: on a client it leaves out, `ns.GetModule` gives nil, `ns.ModuleNames` skips it and it is never built. Wrap its options rows in `O.ModuleRows(name, rowsFn)` and add its `/vg` words to `WORD_MODULES` in `Core/Slash.lua`, so neither shows there. A file that other modules call into at load (`Modules/QuestGuide.lua`) skips the early return and loads as if switched off. Data that differs by client is one table read once, never an `if` in a handler:
+
+```lua
+-- A per-client table, read once at load (no module has one yet).
+DC.DUNGEONS = ns.ClientData({ forever = VANILLA_DUNGEONS, retail = {} })
+```
+
 ## A guarded callback
 
 ```lua

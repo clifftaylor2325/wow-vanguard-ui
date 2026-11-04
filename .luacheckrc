@@ -33,6 +33,7 @@ globals = {
 
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
+  "WOW_PROJECT_ID", "WOW_PROJECT_CAMELOT",
   "C_DeathRecap", "COMPLETE", "DECIMAL_SEPERATOR", "LARGE_NUMBER_SEPERATOR",
   "UiMapPoint", "C_SuperTrack", "C_Navigation", "C_Minimap", "hash_SlashCmdList", "IsPlayerSpell",
   "C_Bank", "C_ContentTracking", "InputUtil",

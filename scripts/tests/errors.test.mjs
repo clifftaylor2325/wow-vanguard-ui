@@ -73,7 +73,7 @@ it("caught errors: the stack is read while the failing frames are still live", (
 });
 it("caught errors: without debugstack or an error handler (this stub), and a hidden error value", () => {
   expectErrors("TEST-ONLY bare: x", "TEST-ONLY: (a hidden error message)");
-  const addon = loggedIn("GetBuildInfo = nil debugstack = nil geterrorhandler = nil CallErrorHandler = nil");
+  const addon = loggedIn("GetBuildInfo = nil WOW_PROJECT_ID = nil debugstack = nil geterrorhandler = nil CallErrorHandler = nil");
   addon.eval('ns.ClearErrors() ns.Report("TEST-ONLY bare", "x")');
   expect(addon.eval("return { ns.errors[1].text, ns.errors[1].stack, ns.errors[1].count }"), "the error is kept without a stack").toEqual(["TEST-ONLY bare: x", "", 1]);
   addon.eval("ns.ShowErrors = function(title, text) __shown = { title, text } end");

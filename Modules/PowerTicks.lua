@@ -13,7 +13,10 @@ local ADDON, ns = ...
 local T = ns.Theme
 local UF = ns.GetModule("UnitFrames")
 
-local PT = ns.Module("PowerTicks", { defaults = { mana = true, energy = true } })
+local PT = ns.Module("PowerTicks", { clients = { forever = true }, defaults = { mana = true, energy = true } })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(PT) then return end
 
 -- Power types (Enum.PowerType), and each one's sweep: seconds, and whether it repeats.
 PT.MANA, PT.ENERGY = 0, 3

@@ -21,7 +21,10 @@ local vgPlanner = ns.FrameState("vgPlanner")
 
 local T, W = ns.Theme, ns.Widgets
 
-local TP = ns.Module("TalentPlanner", { defaults = { levelPrompt = true, autoSpend = false } })
+local TP = ns.Module("TalentPlanner", { clients = { forever = true }, defaults = { levelPrompt = true, autoSpend = false } })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(TP) then return end
 
 -- The events after which the marks are painted again (the tree, its points or the spec group changed).
 TP.EVENTS = {

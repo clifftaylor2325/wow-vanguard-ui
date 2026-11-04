@@ -107,7 +107,7 @@ local function playerAuraRows()
 end
 
 -- Small readouts on the unit frames: threat on your target, your pet's mood.
-local function readoutRows()
+local function readoutCard()
   return {
     { "header", L["Readouts"] },
     check(L["Your threat on your target, above its frame (reload)"], reloadSetting("UnitExtras", "threat")),
@@ -116,19 +116,32 @@ local function readoutRows()
   }
 end
 
+-- The readouts' card, on the clients that have them (WoW Forever).
+local function readoutRows()
+  return O.ModuleRows("UnitExtras", readoutCard)
+end
+
 -- get/set for one power bar spark, which switches at once.
 local function sparkSetting(key)
   return liveSetting("PowerTicks", key, function() local PT = ns.GetModule("PowerTicks") if PT.spark then PT.UpdateMode() end end)
 end
 
--- Combat timers: the swing timer, and the sparks on your power bar.
+-- The swing timer's row.
+local function swingRows()
+  return { { "cycle", L["Swing timer (reload)"], { { "auto", L["Melee and hunters"] }, { "always", L["Always"] }, { "never", L["Never"] } }, reloadSetting("SwingTimer", "show") } }
+end
+
+-- The power bar sparks' rows.
+local function sparkRows()
+  return { check(L["Five-second rule spark on your mana bar"], sparkSetting("mana")), check(L["Energy tick spark on your energy bar"], sparkSetting("energy")) }
+end
+
+-- Combat timers: the swing timer, and the sparks on your power bar, each where the client has it (no card without either).
 local function timerRows()
-  return {
-    { "header", L["Combat timers"] },
-    { "cycle", L["Swing timer (reload)"], { { "auto", L["Melee and hunters"] }, { "always", L["Always"] }, { "never", L["Never"] } }, reloadSetting("SwingTimer", "show") },
-    check(L["Five-second rule spark on your mana bar"], sparkSetting("mana")),
-    check(L["Energy tick spark on your energy bar"], sparkSetting("energy")),
-  }
+  local rows = append(O.ModuleRows("SwingTimer", swingRows), O.ModuleRows("PowerTicks", sparkRows))
+  if #rows == 0 then return rows end
+  table.insert(rows, 1, { "header", L["Combat timers"] })
+  return rows
 end
 
 -- get/set for a raid frame setting the preview (Modules/RaidPreview.lua) shows at once; the real frames take a reload.

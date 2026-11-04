@@ -101,10 +101,25 @@ local function printLines(lines)
   end
 end
 
--- /vg help: the intro, then each command and what it does, the commands in one column.
+-- The /vg words of modules some clients don't have (Core/Modules.lua, ns.ClientAllows), by word: where the
+-- module isn't registered the word is unknown and /vg help leaves it out.
+local WORD_MODULES = {
+  ranks = "SpellRanks", trainers = "SpellRanks", pets = "PetStable", legacy = "Legacy",
+  talents = "TalentPlanner", lfg = "GroupBoard", questdata = "QuestGuide",
+}
+
+-- Whether /vg <word> is a command on this client.
+local function wordHere(word)
+  local name = WORD_MODULES[word]
+  return name == nil or ns.GetModule(name) ~= nil
+end
+
+-- /vg help: the intro, then each command this client has and what it does, the commands in one column.
 local function helpCommand()
   chat(HELP_INTRO)
-  for _, entry in ipairs(HELP) do chat(ns.Literal(string.format("%-20s %s", entry[1], entry[2]))) end
+  for _, entry in ipairs(HELP) do
+    if wordHere(entry[1]:match("^%S+")) then chat(ns.Literal(string.format("%-20s %s", entry[1], entry[2]))) end
+  end
 end
 
 -- "on" / "off" in green / gray.
@@ -841,8 +856,9 @@ local function handleSlash(msg)
   if cmd == "" then
     return ns.Try("slash options", ns.Options.Toggle)
   end
-  local handler = COMMANDS[cmd:lower()] or function() chat(L["Unknown command. /vg help"]) end
-  ns.Try("slash " .. cmd:lower(), handler, rest)
+  local word = cmd:lower()
+  local handler = wordHere(word) and COMMANDS[word] or function() chat(L["Unknown command. /vg help"]) end
+  ns.Try("slash " .. word, handler, rest)
 end
 
 SLASH_VANGUARD1 = "/vg"

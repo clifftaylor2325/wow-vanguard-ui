@@ -6,7 +6,10 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local PS = ns.Module("PetStable", { defaults = { announce = true } })
+local PS = ns.Module("PetStable", { clients = { forever = true }, defaults = { announce = true } })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(PS) then return end
 
 -- Happiness by the game's level (1 unhappy, 2 content, 3 happy, as GetPetHappiness gives it).
 PS.HAPPINESS = { L["unhappy"], L["content"], L["happy"] }

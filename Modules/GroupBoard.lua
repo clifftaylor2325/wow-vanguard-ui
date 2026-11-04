@@ -15,8 +15,12 @@ local ADDON, ns = ...
 local L = ns.L
 
 local GB = ns.Module("GroupBoard", {
+  clients = { forever = true },
   defaults = { role = "auto", minutes = 10, mine = true, channels = { channel = true, yell = true, say = false, guild = false } },
 })
+
+-- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
+if not ns.ClientAllows(GB) then return end
 
 -- Every profile saved before "Automatic" held "dps", the old default, whether the player picked it or not:
 -- once, it becomes Automatic, which still says DPS for a damage dealer.
