@@ -4,7 +4,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { expectErrors, INSIDES_LUA, loggedIn, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { borderOf, expectErrors, INSIDES_LUA, loggedIn, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 // TEST-ONLY readers: __button(b) whether the theme made b a flat button, __box(b) whether a search box lost its art
 // and kept its magnifier, __plate(b) whether a control tile went behind b, __card(b, icon, name) whether a category
@@ -146,4 +146,40 @@ it("windows-retail: a window the game keeps from addons is never hooked, and the
     __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterTimeline") __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterWarnings")`);
   expect(addon.eval("return ns.FrameState('vgWindow')[EncounterJournal] == nil and EncounterJournal.inset.NineSlice.__alpha ~= 0")).toBe(true);
   expect(addon.eval("return #ns.errors")).toBe(0);
+});
+
+it("windows-retail: the group finder's raised shadows frame and the cards' hover plates are faded (H7-2-1, H7-3-1)", () => {
+  const addon = retail(["PVEFrame"]);
+  addon.eval(`__wfgRetailWindows.build("PVPUIFrame") __wfgStub.fire("ADDON_LOADED", "Blizzard_PVPUI") PVEFrame:Show()`);
+  const state = addon.eval(`return { shadows = PVEFrame.shadows:GetAlpha(), group = GroupFinderFrame.groupButton1:GetHighlightTexture():GetAlpha(),
+    pvp = PVPQueueFrame.CategoryButton2:GetHighlightTexture():GetAlpha() }`);
+  expect(state, "the shadows frame and both kinds of card hover plate").toEqual({ shadows: 0, group: 0, pvp: 0 });
+});
+
+it("windows-retail: the open category card has an accent border, on the group finder and the PvP tab (H7-3-2)", () => {
+  const addon = retail(["PVEFrame"]);
+  addon.eval(`__wfgRetailWindows.build("PVPUIFrame")
+    function GroupFinderFrame_SelectGroupButton(index) GroupFinderFrame.selectionIndex = index end
+    function PVPQueueFrame_SelectButton(index) end
+    GroupFinderFrame.selectionIndex = 2
+    __wfgStub.fire("ADDON_LOADED", "Blizzard_PVPUI") PVEFrame:Show()`);
+  const themeBorder = borderOf(addon, "GroupFinderFrame.groupButton1");
+  // Whether a card's border differs from the first card's, which is the theme's while it is not the open one.
+  const accent = (path) => { const c = borderOf(addon, path); return c !== undefined && c.join() !== themeBorder.join(); };
+  expect([1, 2, 3].map((i) => accent(`GroupFinderFrame.groupButton${i}`)), "the card the game had open when the skin ran").toEqual([false, true, false]);
+  addon.eval("GroupFinderFrame_SelectGroupButton(3)");
+  expect([2, 3].map((i) => accent(`GroupFinderFrame.groupButton${i}`)), "then the one the player picks").toEqual([false, true]);
+  addon.eval("PVPQueueFrame_SelectButton(2)");
+  expect([1, 2, 3].map((i) => accent(`PVPQueueFrame.CategoryButton${i}`)), "the PvP tab's cards").toEqual([false, true, false]);
+});
+
+it("windows-retail: the Adventure Guide's first tab is moved out past the panel again each time the game anchors it (H7-4-1)", () => {
+  const addon = retail();
+  addon.eval(`__wfgRetailWindows.build("EncounterJournal") __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterJournal") EncounterJournal:Show()`);
+  // The vertical offset of the first tab's anchor.
+  const y = () => addon.eval("local _, _, _, _, y = EncounterJournal.Tabs[1]:GetPoint() return y");
+  const first = y();
+  expect(first, "moved out of the game's own 2").toBeLessThan(2);
+  addon.eval("EncounterJournal:Hide() EncounterJournal:Show() EncounterJournal:Hide() EncounterJournal:Show()");
+  expect(y(), "and again after the game's OnShow put it back").toBe(first);
 });

@@ -59,6 +59,9 @@ local function card(parent, name, capital)
   local b = CreateFrame("Button", name, parent)
   b[capital and "Background" or "bg"], b[capital and "Ring" or "ring"] = art(b), art(b)
   b[capital and "Icon" or "icon"], b[capital and "Name" or "name"] = art(b), text(b)
+  local plate = art(b)
+  -- The button's HighlightTexture (unkeyed in the XML), which the stub has no setter for.
+  function b.GetHighlightTexture() return plate end
   return b
 end
 
@@ -175,6 +178,7 @@ local function characterExtras()
 end
 
 -- The EncounterJournal's bottom tabs (its Tabs array, as its OnLoad sets it; PanelTabButtonTemplate's three pieces).
+-- The first hangs from the window's bottom left, and EncounterJournal_OnShow anchors it there again on every show.
 local function journalTabs()
   EncounterJournal.Tabs = {}
   for i = 1, 3 do
@@ -182,6 +186,11 @@ local function journalTabs()
     tab.Left, tab.Middle, tab.Right = art(tab), art(tab), art(tab)
     EncounterJournal.Tabs[i] = tab
   end
+  local first = EncounterJournal.Tabs[1]
+  -- The anchor EncounterJournal_OnShow sets on the first tab.
+  local function anchor() first:ClearAllPoints() first:SetPoint("TOPLEFT", EncounterJournal, "BOTTOMLEFT", 11, 2) end
+  anchor()
+  EncounterJournal:SetScript("OnShow", anchor)
 end
 
 -- The premade groups' invite dialog's own regions (LFGList.xml: a plain dialog, no ButtonFrameTemplate): the role
@@ -212,5 +221,9 @@ function W.build(name)
   if model.window then window(name) else root(name) end
   build(model.parts)
   if EXTRAS[name] then EXTRAS[name]() end
+  if name == "PVEFrame" then
+    PVEFrame.shadows = CreateFrame("Frame", nil, PVEFrame)
+    art(PVEFrame.shadows)
+  end
   return _G[name]
 end

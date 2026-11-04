@@ -207,9 +207,21 @@ local function fitIconTab(button)
   T.Crop(icon)
 end
 
+-- The windows (by name) whose game code anchors its tabs again each time it shows (Retail's Adventure Guide), filled
+-- by the Retail files; their tabs are moved out past the padding again after each such anchoring.
+GW.TABS_REANCHORED = {}
+
+-- Lets a tab the game anchors again (ClearAllPoints, then its raw anchor) be moved out again, when its window is one
+-- of GW.TABS_REANCHORED.
+local function padAfterReanchor(button, window)
+  if type(window.GetName) ~= "function" or not GW.TABS_REANCHORED[window:GetName() or ""] then return end
+  GW.HookAfter(button, "ClearAllPoints", function() vgTabPadded[button] = nil end)
+end
+
 -- One tab button of a window in the theme, whichever template it came from: out past the window's padding,
 -- and a side tab's or icon tab's icon greyed while another is selected.
 local function dressTab(button, window, side)
+  padAfterReanchor(button, window)
   GW.ClearPadding(button, window)
   fitIconTab(button)
   T.Tab(button, { dimIcon = side == true or button.tabIcon ~= nil })
@@ -496,7 +508,7 @@ end
 -- of parentKeys from a global to the pane: reputation, skills, currency and the honor tab.
 GW.SIDE_PANES = {
   { "ReputationFrame", "ReputationDetailFrame" }, { "SkillsFrame", "SkillDetailFrame" },
-  { "TokenFrame", "DetailFrame" }, { "PVPRankFrame", "DetailFrame" },
+  { "TokenFrame", "DetailFrame" }, { "TokenFrame", "Popup" }, { "PVPRankFrame", "DetailFrame" },
 }
 -- The methods a side pane adds rows with, and which argument is the label's colour (0: it takes none). The game
 -- paints a label gold unless it is given another colour; gold goes to the text colour, a given colour is content.
@@ -600,9 +612,20 @@ local function paneParts(pane)
   GW.SkinBar(pane.StandingBar)
 end
 
+-- Puts one check box label back in the text colour whenever the game paints it gold (a grey one stays grey). Retail
+-- sets it in the pane's Refresh, which an EventRegistry callback holds by value, so a hook on the pane never runs.
+local function keepLabelLight(label)
+  GW.HookAfter(label, "SetTextColor", function(fs)
+    if isGold(fs) then colorText(fs, "text") end
+  end)
+end
+
 -- After the pane's Refresh (each entry picked), its check box labels the game painted gold again go back to the
 -- text colour; a grey one (a faction that can't be made inactive) stays the game's grey.
 local function keepCheckLabels(pane)
+  for _, key in ipairs(GW.PANE_CHECKS) do
+    if type(pane[key]) == "table" then keepLabelLight(pane[key].Label) end
+  end
   if type(pane.Refresh) ~= "function" then return end
   hooksecurefunc(pane, "Refresh", ns.Guard("hook pane Refresh", function()
     for _, key in ipairs(GW.PANE_CHECKS) do
@@ -612,12 +635,23 @@ local function keepCheckLabels(pane)
   end))
 end
 
+-- A side pane that floats as a dialog (Retail's reputation detail box and currency options: a DialogBorder frame, and
+-- for the first a parchment texture): the border and the pane's own textures faded, a flat panel behind it. Camelot's
+-- panes have no Border and keep the look they have.
+local function dressDialogPane(pane)
+  if type(pane.Border) ~= "table" then return end
+  GW.FadeParts(pane, { "Border" })
+  T.FadeRegions(pane)
+  T.Panel(pane, { noSheen = true })
+end
+
 -- One side pane in the theme, once: its heading, its rule faded, its rows as the game adds them (those it has now
 -- too) and its own parts. The description's scroll bar is reached with the window's (GW.SCROLL_KEYS).
 local function dressSidePane(pane)
   if type(pane) ~= "table" or watched[pane] then return end
   watched[pane] = true
   GW.FadeParts(pane, { "Divider" })
+  dressDialogPane(pane)
   dressPaneTitle(pane)
   for _, row in ipairs(paneRows(pane)) do dressRowArt(row) end
   for method, at in pairs(GW.SIDE_ROWS) do hookRows(pane, method, at) end

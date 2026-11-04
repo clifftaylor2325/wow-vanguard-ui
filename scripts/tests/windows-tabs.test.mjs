@@ -962,6 +962,28 @@ it("side panes: each Refresh puts the reputation pane's gold check box labels ba
   expect(addon.eval(`return ${label}.__textColor[1]`), "one you can't: the game's grey").toBe(0.5);
 });
 
+it("side panes: Retail's dialog panes (the reputation detail box, the currency options popup) lose their border and parchment and sit on a panel; Camelot's keep theirs (H7-1-R1, H7-1-3)", () => {
+  const addon = loggedIn(SIDE_PANE_ENV + `
+    local rep, pop = ReputationFrame.ReputationDetailFrame, __sidePane(TokenFrame, "Popup")
+    rep.Border, rep.parchment = __art(CreateFrame("Frame", nil, rep)), __art(rep, "ARTWORK")
+    pop.Border = CreateFrame("Frame", nil, pop) __art(pop.Border)
+    pop.InactiveCheckbox = CreateFrame("CheckButton", nil, pop) pop.InactiveCheckbox.Label = pop.InactiveCheckbox:CreateFontString()`);
+  expect(addon.eval(`local rep, pop = ReputationFrame.ReputationDetailFrame, TokenFrame.Popup
+    return { __a(rep.parchment), __a(rep.Border), __panel(rep), __headed(pop.Title), __panel(pop) }`),
+  "reputation box: parchment and border faded, a panel; the popup is dressed like a side pane and panelled").toEqual([0, 0, true, true, true]);
+  expect(addon.eval("return { __panel(SkillsFrame.SkillDetailFrame), __panel(TokenFrame.DetailFrame) }"), "a pane with no Border is not panelled").toEqual([false, false]);
+});
+
+it("side panes: a check box label the game paints gold turns light even when the pane's Refresh is never called (H7-1-4)", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  addon.eval("ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label:SetTextColor(NORMAL_FONT_COLOR:GetRGB())");
+  expect(addon.eval("return __text(ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label)"), "the label is light again at once").toBe(true);
+  addon.eval("ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label:SetTextColor(0.5, 0.5, 0.5)");
+  expect(addon.eval("return ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label.__textColor[1]"), "a grey one stays grey").toBe(0.5);
+  const bare = loggedIn(SIDE_PANE_ENV + "ReputationFrame.ReputationDetailFrame.WatchFactionCheckbox.Label = nil TokenFrame.DetailFrame.InactiveCheckbox = 5");
+  expect(bare.eval("return #ns.errors"), "a check box without a label, or that is not a frame").toBe(0);
+});
+
 it("a window that sets its own title colour (the character pane, after it shows) gets the light title back each time", () => {
   const addon = loggedIn(WINDOWS_ENV + `
     local f = __window("CharacterFrame")
