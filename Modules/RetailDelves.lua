@@ -4,7 +4,8 @@
 --     door opens (its tier, rewards and Enter button). The companion window and the picker frame a painted scene,
 --     which stays: only their dialog border goes, for the theme's edge, shadow and corners round the scene;
 --   * the tracker's scenario block (Modules/RetailQuests.lua) names the delve you are in with its tier
---     ("Fungal Folly · Tier 8"), through RQ.HEADINGS.
+--     ("Fungal Folly · Tier 8"), through RQ.HEADINGS, and lists the game's delve header under its stage (counters
+--     such as lives, affixes, the reward chest), through RQ.EXTRAS.
 -- WoW Retail 12.1.5 has no delves page in the group finder: delves are chosen at their door, so the picker stands in.
 -- Frame names and parentKeys are read from Blizzard's live source (wow-ui-source, live branch, 12.1.5):
 -- Blizzard_DelvesCompanionConfiguration (it loads with the game on Retail) and Blizzard_DelvesDifficultyPicker (on
@@ -39,6 +40,87 @@ function RD.Heading(name)
 end
 
 table.insert(RQ.HEADINGS, RD.Heading)
+
+-- The delve header the game draws in its own tracker (Blizzard_UIWidgetTemplateScenarioHeaderDelves), which Vanguard's
+-- tracker replaces: read from the step's widget set (C_UIWidgetManager, UIWidgetManagerDocumentation.lua) and shown as
+-- plain objectives under the stage: its counters (such as lives), its affixes and the reward chest.
+RD.WIDGET_TYPE = 29 -- Enum.UIWidgetVisualizationType.ScenarioHeaderDelves
+RD.SHOWN = 1 -- Enum.WidgetShownState.Shown
+RD.REWARD_EARNED, RD.REWARD_UNEARNED = 1, 2 -- Enum.UIWidgetRewardShownState
+
+-- A table the client gives plainly (a hidden one counts as none).
+local function plainTable(v)
+  return not ns.IsSecret(v) and type(v) == "table" and v or nil
+end
+
+-- The delve header's info when this widget is one and it is shown, else nil.
+function RD.HeaderOf(widget)
+  widget = plainTable(widget)
+  local id = widget and ns.PlainNumber(widget.widgetType) == RD.WIDGET_TYPE and ns.PlainNumber(widget.widgetID)
+  local info = id and plainTable(ns.CallIf(C_UIWidgetManager, "GetScenarioHeaderDelvesWidgetVisualizationInfo", id))
+  return info and ns.PlainNumber(info.shownState) == RD.SHOWN and info or nil
+end
+
+-- The header of the delve you are in, from the widget set of the scenario's step; nil outside a delve, with no set,
+-- or while the client hides it.
+function RD.HeaderInfo(step)
+  local set = RD.Tier() and ns.PlainNumber(step.widgetSetID)
+  if not set then return nil end
+  for _, widget in ipairs(plainTable(ns.CallIf(C_UIWidgetManager, "GetAllWidgetsBySetID", set)) or {}) do
+    local info = RD.HeaderOf(widget)
+    if info then return info end
+  end
+end
+
+-- One counter of the header ("Lives 3") as an objective; nil while the client hides its text.
+function RD.CurrencyLine(currency)
+  currency = plainTable(currency)
+  local count = currency and ns.PlainText(currency.text)
+  if not count then return nil end
+  local name = ns.PlainText(currency.leadingText)
+  return { text = name and ns.Format(L["{name} {count}"], { name = name, count = count }) or count }
+end
+
+-- The ids of the header's affix spells that the client shows plainly.
+function RD.SpellIDs(spells)
+  local ids = {}
+  for _, spell in ipairs(plainTable(spells) or {}) do
+    local id = plainTable(spell) and ns.PlainNumber(spell.spellID)
+    if id then ids[#ids + 1] = id end
+  end
+  return ids
+end
+
+-- The header's affixes as one objective ("Affixes: Overgrowth, Rotting"); nil when it has none the client names.
+function RD.AffixLine(spells)
+  local names = ns.SpellNames(RD.SpellIDs(spells))
+  if #names == 0 then return nil end
+  return { text = ns.Format(L["Affixes: {spells}"], { spells = table.concat(names, ", ") }) }
+end
+
+-- The reward chest's state as an objective, done once earned; nil while the header shows no chest.
+function RD.RewardLine(reward)
+  local state = plainTable(reward) and ns.PlainNumber(reward.shownState)
+  if state == RD.REWARD_EARNED then return { text = L["Reward chest earned"], done = true } end
+  if state == RD.REWARD_UNEARNED then return { text = L["Reward chest not earned"] } end
+end
+
+-- The delve header as objectives under the stage: a row per counter, the affixes, the reward chest. None outside a delve.
+function RD.HeaderLines(step)
+  local info = RD.HeaderInfo(step)
+  local lines = {}
+  if not info then return lines end
+  for _, currency in ipairs(plainTable(info.currencies) or {}) do
+    lines[#lines + 1] = RD.CurrencyLine(currency)
+  end
+  lines[#lines + 1] = RD.AffixLine(info.spells)
+  lines[#lines + 1] = RD.RewardLine(info.rewardInfo)
+  return lines
+end
+
+table.insert(RQ.EXTRAS, RD.HeaderLines)
+-- The game's header widget redraws on this event (a lives counter changes), so does Vanguard's tracker.
+table.insert(QT.EVENTS, "UPDATE_UI_WIDGET")
 -- The game's own tracker redraws its scenario block on this event in a delve.
 table.insert(QT.EVENTS, "ACTIVE_DELVE_DATA_UPDATE")
 

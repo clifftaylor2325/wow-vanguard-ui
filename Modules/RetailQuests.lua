@@ -57,11 +57,24 @@ local function criteria(count)
   return out
 end
 
--- The stage's row: "Stage 2/3: The Crypt" (the stage's title alone in a scenario of one stage) and its criteria.
+-- What a kind of scenario adds under its stage's criteria: each fn(step) gives a list of objectives (Modules/
+-- RetailDelves.lua adds a delve's counters, affixes and reward chest). Empty for any other kind.
+RQ.EXTRAS = {}
+
+-- The stage's criteria as objectives, then what each of RQ.EXTRAS adds for this step.
+local function stageObjectives(step)
+  local out = criteria(ns.PlainNumber(step.numCriteria) or 0)
+  for _, extra in ipairs(RQ.EXTRAS) do
+    for _, line in ipairs(extra(step)) do out[#out + 1] = line end
+  end
+  return out
+end
+
+-- The stage's row: "Stage 2/3: The Crypt" (the stage's title alone in a scenario of one stage) and its objectives.
 function RQ.Stage(step, stage, stages)
   local title = ns.PlainText(step.title) or L["Scenario"]
   if stages > 1 then title = ns.Format(L["Stage {stage}/{stages}: {title}"], { stage = stage, stages = stages, title = title }) end
-  return { title = title, objectives = criteria(ns.PlainNumber(step.numCriteria) or 0), kind = "scenario" }
+  return { title = title, objectives = stageObjectives(step), kind = "scenario" }
 end
 
 -- What a kind of scenario makes of its heading: each fn(name) gives the heading for a scenario of its kind, or nil

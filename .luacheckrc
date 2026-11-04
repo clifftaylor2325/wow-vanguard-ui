@@ -61,7 +61,7 @@ read_globals = {
   "C_WeeklyRewards",
   -- Retail's quest tracker blocks: scenarios, campaigns, world quests and the Traveler's Log (Modules/RetailQuests.lua),
   -- and the delve you are in (Modules/RetailDelves.lua).
-  "C_ScenarioInfo", "C_CampaignInfo", "C_TaskQuest", "C_PerksActivities", "C_DelvesUI",
+  "C_ScenarioInfo", "C_CampaignInfo", "C_TaskQuest", "C_PerksActivities", "C_DelvesUI", "C_UIWidgetManager",
   -- Retail's Mythic+ (Modules/RetailMythicPlus.lua, the Situations kinds): the key, its affixes and timer.
   "C_ChallengeMode", "C_MythicPlus", "GetWorldElapsedTimers", "GetWorldElapsedTime",
   -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).

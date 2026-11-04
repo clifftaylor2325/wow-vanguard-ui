@@ -57,6 +57,61 @@ it("retail delves: the tracker names the delve you are in with its tier, and any
   expect([titles(addon)[0], addon.eval("return #ns.errors")], "a tier the client hides: the name alone, no error").toEqual(["TEST-ONLY Fungal Folly", 0]);
 });
 
+// A TEST-ONLY delve: its step has a widget set whose one widget is the delve header (widget type 29, id 77), with
+// two counters, two affixes and an unearned reward chest. `header` overrides parts of the header's info.
+const DELVE = (header = "") => `${SCENARIO}
+  __wfgWorld.scenario.step.widgetSetID = 5 __wfgWorld.delveTier = 8
+  __wfgWorld.delveWidgets = { { widgetID = 3, widgetType = 1 }, { widgetID = 77, widgetType = 29 } }
+  __wfgWorld.delveHeader = { shownState = 1, currencies = { { leadingText = "TEST-ONLY Lives", text = "3" }, { leadingText = "", text = "5/6" } },
+    spells = { { spellID = 133 }, { spellID = 116 } }, rewardInfo = { shownState = 2 } }
+  ${header}`;
+// The stage block's objective lines as drawn (the block after the delve's heading).
+const lines = (addon) => (blocks(addon)[1] || [])[1];
+// Each drawn block as [title, line texts].
+const blocks = (addon) => Object.values(addon.eval(`local f, out = Vanguard_QuestTrackerFrame, {}
+  for i = 1, f.blocks.used do local b, rows = f.blocks[i], {}
+    for j = 1, b.lines.used do rows[j] = b.lines[j].text:GetText() end
+    out[i] = { b.title:GetText(), rows } end
+  return out`)).map(([title, rows]) => [title, Object.values(rows)]);
+
+it("retail delves: the tracker lists the game's delve header under the stage, its counters, affixes and reward chest", () => {
+  const addon = loggedIn(DELVE(), { client: RETAIL_CLIENT, savedVariables: EXPANDED });
+  expect(lines(addon), "two counters, the affixes by their spells' names, the unearned chest").toEqual(
+    ["TEST-ONLY Lives 3", "5/6", "Affixes: Fireball, Frostbolt", "Reward chest not earned"]);
+  addon.eval("__wfgWorld.delveHeader.rewardInfo.shownState = 1");
+  addon.fire("UPDATE_UI_WIDGET");
+  addon.update(0);
+  expect(lines(addon).pop(), "the widget event redraws it: the earned chest").toBe("Reward chest earned");
+  addon.eval("__wfgWorld.delveHeader.rewardInfo.shownState = 0 __wfgWorld.delveHeader.spells = {}");
+  addon.fire("UPDATE_UI_WIDGET");
+  addon.update(0);
+  expect(lines(addon), "no chest and no affix: the counters alone").toEqual(["TEST-ONLY Lives 3", "5/6"]);
+});
+
+it("retail delves: the header rows stay out when there is no delve, no widget set, a hidden header or hidden text", () => {
+  const stage = [];
+  const addon = loggedIn(DELVE("__wfgWorld.delveTier = nil"), { client: RETAIL_CLIENT, savedVariables: EXPANDED });
+  expect(lines(addon), "a scenario that is no delve").toEqual(stage);
+  addon.eval("__wfgWorld.delveTier = 8 __wfgWorld.scenario.step.widgetSetID = nil");
+  addon.fire("SCENARIO_UPDATE");
+  addon.update(0);
+  expect(lines(addon), "a delve with no widget set").toEqual(stage);
+  addon.eval("__wfgWorld.scenario.step.widgetSetID = 5 __wfgWorld.delveHeader.shownState = 0");
+  addon.fire("UPDATE_UI_WIDGET");
+  addon.update(0);
+  expect(lines(addon), "a header the game hides").toEqual(stage);
+  addon.eval(`local h = __wfgWorld.delveHeader h.shownState = 1
+    h.currencies = { { leadingText = "x", text = __wfgWorld.secret("3") }, { text = "" } } h.spells = { { spellID = __wfgWorld.secret(133) }, { spellID = 999999 } }
+    h.rewardInfo = __wfgWorld.secret({ shownState = 1 }) __wfgWorld.delveWidgets = { __wfgWorld.secret({}), { widgetID = 77, widgetType = __wfgWorld.secret(29) } }`);
+  addon.fire("UPDATE_UI_WIDGET");
+  addon.update(0);
+  expect([lines(addon), addon.eval("return #ns.errors")], "hidden values and unknown spells leave no row and no error").toEqual([stage, 0]);
+  addon.eval("local h = __wfgWorld.delveHeader __wfgWorld.delveWidgets = { { widgetID = 77, widgetType = 29 } } h.currencies = __wfgWorld.secret({}) h.rewardInfo = {} h.spells = __wfgWorld.secret({})");
+  addon.fire("UPDATE_UI_WIDGET");
+  addon.update(0);
+  expect([lines(addon), addon.eval("return #ns.errors")], "hidden lists leave no row and no error").toEqual([stage, 0]);
+});
+
 it("retail delves: the companion window and the delve door's picker keep their painted scene inside the theme's edge", () => {
   const addon = delves();
   addon.eval("DelvesCompanionConfigurationFrame:Show() DelvesDifficultyPickerFrame:Show()");
