@@ -205,10 +205,10 @@ export const TEXTURES = {
   Shadow: () => softBox(64, 16, 6, [0, 0, 0], 0.8, false),
   Glow: () => softBox(64, 16, 5, [1, 1, 1], 0.9, true),
   Stripes: stripes,
-  // A window-corner bracket (#238), drawn in toned grey (scripts/lib/media-ornament.mjs) for each corner at 16 and 32
+  // A window-corner bracket (#238), drawn in toned grey (scripts/lib/media-ornament.mjs) for each corner at 32 and 64
   // texels; lit from the top left at every corner, so each corner is its own image.
   ...ORNAMENT_CORNERS,
-  // The header rule's motif (an elongated diamond, 32 and 64 texels wide) and the round minimap's ornate ring (256 and
+  // The header rule's motif (an elongated diamond, 64 and 128 texels wide) and the round minimap's ornate ring (256 and
   // 128 texels, the RoundDisc's size and half of it), drawn the same way.
   ...ORNAMENT_RULES,
   ...ORNAMENT_ROUND,

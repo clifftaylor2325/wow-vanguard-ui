@@ -2077,6 +2077,18 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the header rule has a diamond with a dark outline between two lines that meet its tips, centred on the line; the ring is a thin band with a dark outline each side, flat dark studs round it (not under 160 px, where it is a bare band) and a small diamond at north, east, south and west; the ring swaps at once with the switch and tints in the accent's dim shade; studs do not sparkle as the camera turns; party dots, nodes and pings stay visible as they cross the rim; labels clear the rule. [Needs in game: whether the ring is quiet enough in a fight (if not, it goes back to the plain outline: art plan R10), whether the 128 and 256 bakes filter cleanly at each size, and whether the dark tips of the rule motif read against every panel.]
 - If it fails, paste: a screenshot with the map size, scale and variant named, and `/vg errors`.
 
+### 27.1d The larger rule motif, in full
+
+- Do: with `/vg ornaments` on, open `/vg` at a pixel-perfect scale at 2560 x 1440 (Pixel-perfect scale on), then at UI scale 1.0 at 2560 x 1440 and at 1920 x 1080. Drag the window a little each time.
+- Expect: the whole rule shows under the header: two thin lines in the accent's dim shade along the header's bottom edge and, between them, a diamond about 60 pixels wide at the pixel-perfect scale, half above the edge and half below, crisp with no blur; the search box and the page title clear it. [Needs in game: that the header no longer hides the top half of the diamond or the lines, and that the 64- and 128-texel bakes filter cleanly.]
+- If it fails, paste: a screenshot with the scale and resolution named, and `/vg errors`.
+
+### 27.1e Larger corner brackets on every window
+
+- Do: with `/vg ornaments` on, open the quest log, `/vg setup`, Guild & Communities, the character pane, the spellbook, a merchant and the game menu (Escape). Drag one over another.
+- Expect: each window has a bracket in all four corners, about 24 pixels across at a pixel-perfect scale, just inside its panel's edge, never hidden by a list, an inset or a portrait at the corner; titles and close buttons stay clear of them. [Needs in game: that the brackets stay over the window when it is raised over another, and that no game window gains a bracket that looks wrong (a part of another window, a HUD box).]
+- If it fails, paste: a screenshot naming the window, and `/vg errors`.
+
 ### 27.1a High contrast hides them
 
 - Do: with `/vg ornaments` on, type `/vg variant contrast`, look at `/vg` and the quest log, then `/vg variant default`.

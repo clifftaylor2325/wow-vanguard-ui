@@ -122,7 +122,7 @@ function scanFindsMedia() {
 // The sized copies of the line and menu icons (#232), named by T.Icon(name, size) in the Lua.
 const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icons/${n}${s}.tga`));
 // The window-corner brackets (A1): four corners at the 1 x and 2 x bakes, picked by T.PixelsPerUnit() in Core/Theme.lua.
-const ORNAMENT_NAMES = [16, 32].flatMap((size) => ["TL", "TR", "BL", "BR"].map((key) => `Media/Textures/OrnamentCorner${size}${key}.tga`));
+const ORNAMENT_NAMES = [32, 64].flatMap((size) => ["TL", "TR", "BL", "BR"].map((key) => `Media/Textures/OrnamentCorner${size}${key}.tga`));
 // The rule motif (A2) and the ornate ring (A3), each at two bakes, and the plain ring the ornate one replaces while ornaments are on (all picked by name in the Lua).
 const RULE_RING_NAMES = [...Object.keys(ORNAMENT_RULES), ...Object.keys(ORNAMENT_ROUND), "RoundRing"].map((n) => `Media/Textures/${n}.tga`);
 const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Textures/CornerCutMask.tga", "Media/Textures/CornerCutMaskTR.tga", "Media/Textures/CornerCutMaskBL.tga", "Media/Textures/CornerCutMaskBR.tga", "Media/Textures/CornerRoundMask.tga", "Media/Textures/CornerRoundMaskTR.tga", "Media/Textures/CornerRoundMaskBL.tga", "Media/Textures/CornerRoundMaskBR.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
@@ -422,7 +422,7 @@ function bracketsLitFromTopLeft() {
 
 // Each corner's bracket is a mirror of the top left's silhouette (same alpha) with its own light, at both bakes.
 function bracketsMirrorTheSilhouette() {
-  for (const size of [16, 32]) {
+  for (const size of [32, 64]) {
     // A corner's alpha channel.
     const alphas = (key) => Array.from(ORNAMENT_CORNERS[`OrnamentCorner${size}${key}`]().px).filter((_, i) => i % 4 === 3);
     // An alpha channel mirrored across x and/or y.

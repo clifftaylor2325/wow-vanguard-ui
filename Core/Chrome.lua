@@ -89,7 +89,8 @@ end
 -- A window's or card's title line. opts.kind: "window" (the default; the title role) or "card" (the heading
 -- role), both in the text colour. opts.align: "left" (the default) or "center". opts.count: a second string
 -- (a quest count, a subtitle) beside the title. opts.onClose: a function; a close button is placed and its
--- click calls it with the frame. opts.escape: the frame (which must have a name) closes on Escape.
+-- click calls it with the frame. opts.escape: the frame (which must have a name) closes on Escape. A window (not a
+-- card) also gets its corner brackets (T.Ornament), shown while Window ornaments is on.
 -- Returns { title, count, close }, and sets frame.title and frame.close for the code that reads them.
 ---@param frame table  a frame Vanguard made
 ---@param text string
@@ -102,6 +103,7 @@ function ns.WindowTitle(frame, text, opts)
   if opts.count then parts.count = addCount(frame, parts.title, opts.count, align) end
   if opts.onClose then parts.close = addClose(frame, text, kind, opts.onClose) end
   if opts.escape then ns.CloseOnEscape(frame) end
+  if kind == "window" then T.Ornament(frame, "corners") end
   frame.title, frame.close = parts.title, parts.close
   return parts
 end
