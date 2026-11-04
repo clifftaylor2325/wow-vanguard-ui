@@ -263,12 +263,13 @@ function QD.Show(key, event)
   ns.OutOfCombat(takeKeys, "quest dialog keys")
 end
 
--- The game finished loading an item's details: redraw the page (keeping a reward already picked).
+-- The game finished loading an item's details: redraw the page (keeping a reward already picked and where you scrolled to).
 function QD.Redraw()
   if not (QD.frame:IsShown() and QD.key) then return end
-  local choice = QD.choice
+  local choice, scroll = QD.choice, QD.frame.scroll:GetVerticalScroll() or 0
   QD.page = QD.PAGES[QD.key]()
   QD.Render(QD.page)
+  QD.frame.scroll:ScrollTo(scroll)
   if choice then QD.Pick(choice) end
 end
 
