@@ -94,6 +94,7 @@ Core/PresetStrings.lua
 Core/Integration.lua
 Core/ProfileExport.lua
 Core/SettingsGuard.lua
+Core/Banner.lua
 Core/Setup.lua
 Core/WhatsNewNotes.lua
 Core/WhatsNew.lua

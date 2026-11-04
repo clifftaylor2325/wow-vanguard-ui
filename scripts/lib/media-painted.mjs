@@ -1,5 +1,6 @@
-// Painted panel surfaces (docs/handoff/leonardo-art-plan.md, 3.7 and 6.1): Cliff's Leonardo.ai pictures, turned into
-// faint white tiles that lighten a floating window's fill like the code-made ones in media-surfaces.mjs.
+// Painted art (docs/handoff/leonardo-art-plan.md, 3.7 and 6.1): Cliff's Leonardo.ai pictures. A surface is turned into a
+// faint white tile that lightens a floating window's fill like the code-made ones in media-surfaces.mjs; a colour picture
+// (the welcome banner) is only boxed down, its saturation measured by the tests, and written to Media/Art/ in full colour.
 // art/painted/manifest.json lists each source PNG (8-bit RGB, no colour profile, converted by hand once, the command
 // kept in the entry) and where it crops. The steps below use only + - * / and sqrt (exactly rounded in IEEE 754), so
 // every machine writes the same bytes: grey, seamless wrap, lighting drift out, whole-number box downscale, alpha.
@@ -140,4 +141,33 @@ export function surfaceOf(entry) {
 export function paintedSurfaces() {
   const entries = manifest().filter((e) => e.class === "surface");
   return Object.fromEntries(entries.map((e) => [e.name, () => surfaceOf(e)]));
+}
+
+// The colour entries' picture as an opaque image (plan 3.7 step 7): the box [x, y, w, h] of the PNG, averaged k x k
+// into whole texels (in the stored sRGB values, like the grey of a surface).
+export function colourOf(entry) {
+  const src = readPng(path.join(root, entry.source)), [x0, y0, w, h] = entry.crop, k = entry.box;
+  return fill(image(w / k, h / k), (x, y) => {
+    const sum = [0, 0, 0];
+    for (let j = 0; j < k; j++) {
+      for (let i = 0; i < k; i++) sum.forEach((_, c, a) => (a[c] += src.px[((y0 + y * k + j) * src.w + x0 + x * k + i) * 4 + c] / (k * k)));
+    }
+    return [...sum, 1];
+  });
+}
+
+// Texture name (under Media/Art) -> maker, for every colour picture in the manifest.
+export function paintedArt() {
+  const entries = manifest().filter((e) => e.class === "colour");
+  return Object.fromEntries(entries.map((e) => [e.name, () => colourOf(e)]));
+}
+
+// The saturation of an opaque image's pixels, HSV style: (max - min) / max, 0 for black.
+export function saturations(img) {
+  const out = new Float64Array(img.w * img.h);
+  out.forEach((_, i) => {
+    const hi = Math.max(img.px[i * 4], img.px[i * 4 + 1], img.px[i * 4 + 2]), lo = Math.min(img.px[i * 4], img.px[i * 4 + 1], img.px[i * 4 + 2]);
+    out[i] = hi ? (hi - lo) / hi : 0;
+  });
+  return out;
 }

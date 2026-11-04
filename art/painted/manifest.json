@@ -50,5 +50,32 @@
     "date": "2026-11-04",
     "tokens": null,
     "seed": null
+  },
+  {
+    "id": "B1",
+    "name": "banner-dusk",
+    "class": "colour",
+    "source": "art/painted/colour/B1.png",
+    "output": "Art/banner-dusk.tga",
+    "crop": [
+      0,
+      0,
+      2048,
+      1024
+    ],
+    "box": 2,
+    "convert": "convert B1-banner-v1-1.jpg -strip -colorspace sRGB -type TrueColor B1.png",
+    "model": "Phoenix 1.0",
+    "mode": "FAST",
+    "contrast": "LOW",
+    "preset": "None",
+    "tiling": false,
+    "prompt": "Painterly landscape at dusk, a plain undyed cream cloth banner on a spear planted on a grassy hilltop in the right third, rolling hills and a distant grey stone watchtower, muted slate-blue and soft amber sky, the left half open sky, calm, low saturation, wide composition, digital painting",
+    "negative": "text, letters, logo, emblem, coat of arms, symbols on the banner, blue banner, red banner, people, characters, city, bright saturated colours, lens flare",
+    "references": [],
+    "private": true,
+    "date": "2026-11-04",
+    "tokens": null,
+    "seed": null
   }
 ]
