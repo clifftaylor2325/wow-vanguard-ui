@@ -52,9 +52,9 @@ it("retail professions: the crafting orders page's tabs, lists, order view and m
   const addon = professions();
   addon.eval("ProfessionsFrame:Show()");
   const browse = addon.eval(`local b = ProfessionsFrame.OrdersPage.BrowseFrame
-    return { __panel(b.PublicOrdersButton), __panel(b.PersonalOrdersButton), __gameArt(b.RecipeList), __alpha(b.RecipeList.NineSlice), __panel(b.RecipeList),
+    return { __panel(b.PublicOrdersButton), __panel(b.PersonalOrdersButton), __gameArt(b.RecipeList), __alpha(b.RecipeList.NineSlice), __alpha(b.RecipeList.BackgroundNineSlice), __panel(b.RecipeList),
       __panel(b.SearchButton), __panel(b.FavoritesSearchButton), __gameArt(b.OrderList), __panel(b.OrderList.ScrollBar.Thumb), __gameArt(b.OrdersRemainingDisplay) }`);
-  expect(browse, "tabs, the recipe list and order list on insets, buttons, the scroll bar; the remaining-orders plate faded").toEqual([true, true, 0, 0, true, true, true, 0, true, 0]);
+  expect(browse, "tabs, the recipe list and order list on insets, buttons, the scroll bar; the remaining-orders plate faded").toEqual([true, true, 0, 0, 0, true, true, true, 0, true, 0]);
   const view = addon.eval(`local v = ProfessionsFrame.OrdersPage.OrderView
     return { __panel(v.OrderInfo), __panel(v.OrderInfo.StartOrderButton), __themed(v.OrderInfo.FinalTipMoneyDisplayFrame.GoldDisplay.Text),
       __panel(v.OrderDetails), __panel(v.OrderDetails.SchematicForm), __panel(v.CreateButton), __panel(v.CompleteOrderButton) }`);

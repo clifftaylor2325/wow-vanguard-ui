@@ -58,12 +58,13 @@ local function skinInsetList(list)
   if type(bar) == "table" then T.ScrollBar(bar) end
 end
 
--- The browse side: the tabs, the recipe list (an inset, its filter and search box), the push buttons, the
+-- The browse side: the tabs, the recipe list (an inset, its bronze frame faded, its filter and search box), the push buttons, the
 -- favourites button on the control tile, the order list, and the remaining-orders plate faded.
 function RP.SkinBrowse(browse)
   GW.EachKey(browse, RP.ORDER_TABS, skinOrderTab)
   local recipes = browse.RecipeList
   GW.InsetPanel(recipes)
+  GW.FadeFrame(GW.Part(browse, "RecipeList.BackgroundNineSlice"))
   if type(recipes) == "table" then GW.SkinDropdown(recipes.FilterDropdown) GW.SkinSearch(recipes.SearchBox) end
   GW.EachKey(browse, RP.BROWSE_BUTTONS, GW.SkinButton)
   GW.SkinPlate(browse.FavoritesSearchButton)
