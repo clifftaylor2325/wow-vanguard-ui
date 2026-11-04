@@ -63,9 +63,17 @@ uses are named in `SILHOUETTES` in `scripts/lib/media-sources.mjs`.
 shield that bears a V), drawn for Vanguard; copyright Cliff Hearthvale, all rights reserved,
 like the rest of the addon. The V is Cinzel's capital at weight 900 (the font below, SIL
 OFL; the licence allows its glyphs in a logo), converted to an outline. The build does not
-read the SVG: `scripts/lib/media-brand.mjs` draws the same shapes with `media-art.mjs` for
-`Media/Textures/Icon.tga`, the addons list's icon, and the website keeps the SVG for its
-favicon and logo.
+read the SVG; the website keeps it for its favicon and logo, and the README shows it.
+
+## Painted crest (AI-assisted)
+
+`painted/icon/C2.png`, a brass-rimmed navy shield bearing a gold V, was made by Cliff Hearthvale with
+Leonardo.ai (https://leonardo.ai) from his own prompt, in November 2026, on a paid plan in private mode, then cut
+out from its grey background by hand once (the steps are in `painted/manifest.json`). `scripts/lib/media-painted.mjs`
+boxes it down to 64 x 64 for `Media/Textures/Icon.tga`, the addons list's icon, which also shows in the options
+window's header, the options preview's action button and the Versus deck; `scripts/store-art.mjs` puts it on the
+store, Discord and X art. It is AI-generated and may not be copyrightable; it ships under the same
+all-rights-reserved licence as the rest of Vanguard.
 
 ## Heading fonts: SIL Open Font License 1.1
 

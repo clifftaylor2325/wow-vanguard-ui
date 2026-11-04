@@ -337,17 +337,14 @@ function surfacesFaint() {
   expect(out).toEqual(Object.keys(SURFACES).map((name) => [name, true]));
 }
 
-// The addons-list icon is the crest, pre-coloured (media-brand.mjs): a few hundred solid brass
-// pixels (the shield's field and the hilts), the V in slate over them, and grey steel on the blades
-// (thin at 64 px, so most of their pixels are blends: any grey over half alpha counts).
+// The addons-list icon is the crest, pre-coloured (the painted shield, scripts/lib/media-painted.mjs): hundreds of solid
+// brass pixels (the rim and the V), a navy field around the V, and clear air beside the shield.
 function iconIsCrest() {
   const img = MEDIA["Textures/Icon.tga"]();
-  // Whether a pixel's color is within a hair of want (0-255 RGB).
-  const near = (r, g, b, want) => [r, g, b].every((v, c) => Math.abs(v - want[c] / 255) < 0.025);
-  const brass = countPixels(img, (r, g, b, a) => a > 0.99 && near(r, g, b, [0xd9, 0xa4, 0x41]));
-  const slate = countPixels(img, (r, g, b, a) => a > 0.99 && near(r, g, b, [0x0b, 0x0d, 0x11]));
-  const steel = countPixels(img, (r, g, b, a) => a > 0.5 && Math.min(r, g, b) > 0.55 && Math.abs(r - b) < 0.1);
-  expect({ brass: brass > 500, slate: slate > 60, steel: steel > 20 }).toEqual({ brass: true, slate: true, steel: true });
+  const brass = countPixels(img, (r, g, b, a) => a > 0.99 && r > 0.5 && r > b + 0.2 && g > b);
+  const navy = countPixels(img, (r, g, b, a) => a > 0.99 && b > r + 0.08 && b < 0.6);
+  const clear = countPixels(img, (r, g, b, a) => a === 0);
+  expect({ brass: brass > 250, navy: navy > 400, clear: clear > 1500 }).toEqual({ brass: true, navy: true, clear: true });
 }
 
 // Pixels with any alpha along an image's outer ring.

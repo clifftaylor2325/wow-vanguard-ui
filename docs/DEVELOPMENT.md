@@ -19,6 +19,7 @@ npm run bench     # time and Lua instructions per event and per module under a s
 npm run media     # regenerate Media/Textures and Media/Icons from scripts/lib/media-sources.mjs (deleting images no source makes)
 npm run package   # dist/Vanguard-<version>.zip from committed files
 npm run preview   # preview/*.png: the default layout and the options window (needs Playwright)
+npm run store-art # dist/store-art/*.png: store, Discord and X banners and logos from the painted crest and the dusk landscape
 ```
 
 **Play from your clone:** `npm run link:wow -- --wow "<Forever folder that has Interface/AddOns>"` links `Interface/AddOns/Vanguard` to this clone (a directory junction on Windows, no admin needed), so an edit plus `/reload` shows in game. The folder is remembered in `~/.wow-forever/config.json`, so after the first time it's just `npm run link:wow`. An installed copy is only moved aside with `--replace` (it becomes `Vanguard.backup-<date>`). `--status` shows what's there; `--unlink` removes the link and never deletes a real folder.

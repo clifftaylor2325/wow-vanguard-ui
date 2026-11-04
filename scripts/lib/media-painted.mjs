@@ -1,6 +1,7 @@
 // Painted art (docs/handoff/leonardo-art-plan.md, 3.7 and 6.1): Cliff's Leonardo.ai pictures. A surface is turned into a
 // faint white tile that lightens a floating window's fill like the code-made ones in media-surfaces.mjs; a colour picture
-// (the welcome banner) is only boxed down, its saturation measured by the tests, and written to Media/Art/ in full colour.
+// (the welcome banner) is only boxed down, its saturation measured by the tests, and written to Media/Art/ in full colour;
+// an icon (the crest, cut out by hand once, with alpha) is boxed down with its alpha and written to Media/Textures/.
 // art/painted/manifest.json lists each source PNG (8-bit RGB, no colour profile, converted by hand once, the command
 // kept in the entry) and where it crops. The steps below use only + - * / and sqrt (exactly rounded in IEEE 754), so
 // every machine writes the same bytes: grey, seamless wrap, lighting drift out, whole-number box downscale, alpha.
@@ -170,4 +171,29 @@ export function saturations(img) {
     out[i] = hi ? (hi - lo) / hi : 0;
   });
   return out;
+}
+
+// The alpha-weighted mean colour and the mean alpha of the k x k block of `src` whose top-left is (x0, y0): weighting by
+// alpha keeps the clear surround's colour out of the edge texels (no fringe). A fully clear block is clear white.
+function blockMean(src, x0, y0, k) {
+  const sum = [0, 0, 0, 0];
+  for (let j = 0; j < k; j++) {
+    for (let i = 0; i < k; i++) {
+      const p = ((y0 + j) * src.w + x0 + i) * 4, a = src.px[p + 3];
+      sum.forEach((_, c, s) => (s[c] += c < 3 ? src.px[p + c] * a : a));
+    }
+  }
+  return sum[3] ? [sum[0] / sum[3], sum[1] / sum[3], sum[2] / sum[3], sum[3] / (k * k)] : [1, 1, 1, 0];
+}
+
+// The icon entries' picture (an RGBA cut-out): the box [x, y, w, h] of the PNG, averaged k x k into whole texels.
+export function iconOf(entry) {
+  const src = readPng(path.join(root, entry.source)), [x0, y0, w, h] = entry.crop, k = entry.box;
+  return fill(image(w / k, h / k), (x, y) => blockMean(src, x0 + x * k, y0 + y * k, k));
+}
+
+// Texture name (under Media/Textures) -> maker, for every icon in the manifest.
+export function paintedIcons() {
+  const entries = manifest().filter((e) => e.class === "icon");
+  return Object.fromEntries(entries.map((e) => [e.name, () => iconOf(e)]));
 }

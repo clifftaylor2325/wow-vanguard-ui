@@ -294,6 +294,7 @@ A tiled surface draws one texel per UI unit, like the existing ones (`Core/Panel
 
 **Progress** (tick here in the task's commit, as CLAUDE.md asks; a new thread reads this list and the PR body first):
 - [x] M0.1 - [x] M0.2 - [x] C1 - [x] C2 - [x] C3 - [x] C4 - [x] H1 - [x] K1 - [x] A1 - [x] K2 (not run: drawn from the spec) - [x] A2 - [x] K3 (not run: drawn from the spec) - [x] A3 - [x] S0 - [x] S1 - [x] S2 - [x] S3 - [x] B0 - [x] B1
+- Plan change (2026-11-04, Cliff's call): the crest is painted after all. Cliff picked a cartoon-style Leonardo shield (navy field, brass rim, large gold V; manifest entry C2, class `icon`), which replaces the code-drawn crest as `Media/Textures/Icon.tga` (addons list, options header, options preview, Versus deck), and `scripts/store-art.mjs` builds the store, Discord and X art from it and B1. The code-drawn SVG stays the website's logo until the site is changed. §5's "Not in this plan" note on a painted crest no longer holds.
 
 Order and gates: M0-code and M0-Cliff in parallel; M1a after both; M1b after A1 is approved (its render is a reference for K2 and K3); M2 after Q5 and Q6; M3 last. Each thread's state lives in this list and its PR body's Tasks section.
 
