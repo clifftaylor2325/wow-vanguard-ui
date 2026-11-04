@@ -216,10 +216,11 @@ end
 local function updateCenter(b, unit)
   local s = RS.settings
   showMark(b.ready, s.readyCheck and RS.readyRunning, RS.ReadyMark(unit))
-  local summon = s.resurrect and not b.ready:IsShown() and RS.SummonAtlas(unit) or nil
+  local readyShown = b.ready:IsShown()
+  local summon = s.resurrect and not readyShown and RS.SummonAtlas(unit) or nil
   showAtlas(b.summon, summon)
-  b.rez:SetShown(s.resurrect and not summon and RS.Resurrecting(unit))
-  b.status:SetShown(not (b.ready:IsShown() or b.rez:IsShown() or b.summon:IsShown()))
+  b.rez:SetShown(s.resurrect and not readyShown and not summon and RS.Resurrecting(unit))
+  b.status:SetShown(not (readyShown or b.rez:IsShown() or b.summon:IsShown()))
 end
 
 -- The leader crown or assistant mark.

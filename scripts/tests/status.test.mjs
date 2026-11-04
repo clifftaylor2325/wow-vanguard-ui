@@ -163,6 +163,16 @@ it("ready check: a new check started while the last one's answers linger keeps i
 const summonOf = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitButton${i}
   return { b.summon:IsShown() and b.summon:GetAtlas(), b.rez:IsShown(), b.status:IsShown() }`);
 
+it("raid status: a resurrection on its way waits for the ready check answer, so one center mark shows at a time", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1") __status.ready.raid1 = "ready" __status.rez.raid1 = true');
+  addon.fire("READY_CHECK");
+  expect(summonOf(addon, 1), "the ready mark shows alone: no resurrection arrow, no status text").toEqual([false, false, false]);
+  addon.fire("READY_CHECK_FINISHED");
+  addon.eval("__wfgStub.advance(6.5)");
+  expect(summonOf(addon, 1)[1], "after the check clears, the resurrection arrow shows").toBe(true);
+});
+
 it("raid status: a summon on its way shows the game's summon icon, over the resurrection and the status text", () => {
   // TEST-ONLY summons by unit (Enum.SummonStatus: 1 pending, 2 accepted, 3 declined), read through the client's calls.
   const summons = `__summon = {}
