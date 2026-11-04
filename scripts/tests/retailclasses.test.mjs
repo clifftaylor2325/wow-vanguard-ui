@@ -216,7 +216,7 @@ it("soul fragments: a Devourer's bar under the frame counts Dark Heart stacks ag
   addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Meta', spellId = 1217607 }) __wfgWorld.addAura('player', { name = 'TEST-ONLY Whispers', spellId = 1227702, applications = 20 }) __wfgWorld.collapsingStarCost = 30");
   addon.fire("UNIT_AURA", "player");
   expect([altBar(addon).v, altBar(addon).max], "in Void Metamorphosis: Silence the Whispers against the Collapsing Star's cost").toEqual([20, 30]);
-  addon.eval("__wfgWorld.collapsingStarCost = __wfgWorld.secret(30) __wfgWorld.units.player.auras[1].applications = __wfgWorld.secret(7)");
+  addon.eval("__wfgWorld.collapsingStarCost = __wfgWorld.secret(25) __wfgWorld.units.player.auras[1].applications = __wfgWorld.secret(7)");
   addon.fire("UNIT_AURA", "player");
   expect(altBar(addon).max, "a hidden maximum falls back to the usual one").toBe(30);
   addon.eval("__wfgWorld.units.player.auras = { { spellId = 1225789, applications = __wfgWorld.secret(7) } }");

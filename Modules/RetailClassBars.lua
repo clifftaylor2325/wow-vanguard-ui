@@ -227,10 +227,18 @@ function CB.AltKind(class)
   return kinds and kinds[spec() or 0]
 end
 
+-- One of your auras by spell id, or nil without it or while the client hides it (the result is
+-- checked with type() and ns.IsSecret, never compared, since the client may hand back a secret).
+local function ownAura(spellID)
+  local aura = C_UnitAuras.GetPlayerAuraBySpellID(spellID)
+  if type(aura) ~= "table" or ns.IsSecret(aura) then return nil end
+  return aura
+end
+
 -- The stack count of one of your auras (a hidden count goes to the bar as it is), 0 without it.
 local function stacks(spellID)
-  local aura = C_UnitAuras.GetPlayerAuraBySpellID(spellID)
-  if aura == nil or ns.IsSecret(aura) then return 0 end
+  local aura = ownAura(spellID)
+  if not aura then return 0 end
   return aura.applications
 end
 
@@ -244,16 +252,15 @@ end
 -- Fills the soul fragments bar from the aura the game reads: Silence the Whispers in Void Metamorphosis, else Dark Heart.
 local function fillSoulFragments(bar)
   local auras = CB.ALT_AURAS
-  local meta = C_UnitAuras.GetPlayerAuraBySpellID(auras.voidMetamorphosis) ~= nil
+  local meta = ownAura(auras.voidMetamorphosis) ~= nil
   bar:SetMinMaxValues(0, soulFragmentsMax(meta))
   T.SetBarValue(bar, stacks(meta and auras.silenceTheWhispers or auras.darkHeart))
 end
 
 -- The seconds left on your Ebon Might (0 without it, or while the client hides its time).
 local function ebonMightLeft()
-  local aura = C_UnitAuras.GetPlayerAuraBySpellID(CB.ALT_AURAS.ebonMight)
-  if aura == nil or ns.IsSecret(aura) then return 0 end
-  local expires = ns.PlainNumber(aura.expirationTime)
+  local aura = ownAura(CB.ALT_AURAS.ebonMight)
+  local expires = aura and ns.PlainNumber(aura.expirationTime)
   return expires and math.max(0, expires - GetTime()) or 0
 end
 
