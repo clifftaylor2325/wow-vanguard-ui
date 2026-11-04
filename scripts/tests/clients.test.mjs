@@ -148,14 +148,16 @@ it("clients: rows added with ns.RetailRows show on the Game windows card, under 
   expect(labels(on(false), "windows"), "nothing adds any today").not.toContain("TEST-ONLY Retail window row");
 });
 
-it("clients: on Retail the dungeon card stays off even when a profile has its switch on", () => {
+it("clients: the dungeon card follows its switch on both clients, Retail's with its own label", () => {
   const sv = "VanguardDB.profiles.Default = { InstancePrep = { dungeonCard = true } }";
   // Shows the card on demand and walks in a door; whether the dungeon card was asked for lines or to record.
   const asked = (addon) => addon.eval(`__card = 0 ns.DungeonCard.Lines = function() __card = __card + 1 return {} end
     ns.DungeonCard.Record = function() __card = __card + 1 end
     local PR = ns.GetModule("InstancePrep") PR.ShowOnDemand() ns.Where = function() return "party" end PR.OnEnter(nil, nil, true) return __card`);
   expect(asked(loggedIn("", { savedVariables: sv })), "WoW Forever: lines and the record").toBe(2);
-  expect(asked(loggedIn("", { savedVariables: sv, client: RETAIL_CLIENT })), "Retail: neither").toBe(0);
+  const retail = loggedIn("", { savedVariables: sv, client: RETAIL_CLIENT });
+  expect(retail.eval("return ns.DungeonCard.LABEL"), "Retail's card is the keystone card (Modules/RetailMythicPlus.lua)").toMatch(/keystone/);
+  expect(asked(retail), "Retail: lines and the record too").toBe(2);
 });
 
 // Forever-only modules whose file still loads on Retail, as if switched off, and why.

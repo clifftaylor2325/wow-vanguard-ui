@@ -1,7 +1,8 @@
 -- Situations: a different layout and settings for Solo, Party, Raid, PvP,
 -- Instance and Resting. One situation holds at a time, the first of: pvp (a
 -- battleground or arena), instance (a dungeon or raid instance), raid, party,
--- resting, solo. Its override, if it has one, goes over the profile's own
+-- resting, solo. Retail has two more before instance: mythicplus (a running
+-- Mythic+ key) and delve. Its override, if it has one, goes over the profile's own
 -- values (the base) out of combat, and comes off again when you leave it.
 --
 -- You record an override as you'd set things up anyway: Record for Raid,
@@ -22,13 +23,39 @@ local L = ns.L
 
 local SI = ns.Module("Situations", { defaults = { enabled = true, overrides = {} } })
 
--- The situations, in precedence order (the first that holds is the one you're in), and their names.
-SI.NAMES = { "pvp", "instance", "raid", "party", "resting", "solo" }
+-- The situations, in precedence order (the first that holds is the one you're in), and their names. Retail adds two
+-- before Instance: a Mythic+ key (its dungeon is a party instance) and a delve (its instance type, "scenario", is
+-- none of SI.KINDS). WoW Forever has neither.
+SI.NAMES = ns.ClientData({
+  forever = { "pvp", "instance", "raid", "party", "resting", "solo" },
+  retail = { "pvp", "mythicplus", "delve", "instance", "raid", "party", "resting", "solo" },
+})
 SI.LABELS = { pvp = L["PvP"], instance = L["Instance"], raid = L["Raid"], party = L["Party"], resting = L["Resting"], solo = L["Solo"] }
 -- The options' Record for choices.
 SI.CHOICES = { { "off", L["Off"] }, { "solo", SI.LABELS.solo }, { "party", SI.LABELS.party }, { "raid", SI.LABELS.raid }, { "pvp", SI.LABELS.pvp }, { "instance", SI.LABELS.instance }, { "resting", SI.LABELS.resting } }
 -- The client's instance types (ns.Where) that are a situation of their own.
 SI.KINDS = { pvp = "pvp", arena = "pvp", party = "instance", raid = "instance" }
+-- The situations the client says you are in by a call of its own, asked before SI.KINDS in this order (Retail: a
+-- running Mythic+ key, then a delve); none on WoW Forever. Both answers are yes-or-no and never compared while hidden.
+SI.ASKED = ns.ClientData({ forever = {}, retail = { "mythicplus", "delve" } })
+-- Their names; each is a label and a Record for choice on its client only.
+SI.ASKED_LABELS = { mythicplus = L["Mythic+"], delve = L["Delve"] }
+for _, name in ipairs(SI.ASKED) do
+  SI.LABELS[name] = SI.ASKED_LABELS[name]
+  SI.CHOICES[#SI.CHOICES + 1] = { name, SI.LABELS[name] }
+end
+-- How each of those is asked.
+SI.ASK = {}
+
+-- Whether a Mythic+ key is running in the dungeon you are in.
+function SI.ASK.mythicplus()
+  return ns.IsTrue(ns.CallIf(C_ChallengeMode, "IsChallengeModeActive"))
+end
+
+-- Whether you are in a delve.
+function SI.ASK.delve()
+  return ns.IsTrue(ns.CallIf(C_DelvesUI, "HasActiveDelve"))
+end
 -- The settings an override may hold: each module's keys that its apply functions
 -- (run once after the writes) re-read at once. Keys that need a reload are left out.
 SI.LIVE = {
@@ -41,8 +68,12 @@ SI.LIVE = {
 -- The live modules in the order the status line names them, and the names it uses.
 SI.ORDER = { "InfoStrip", "MenuStrip", "DataBars", "Nameplates", "UnitFrames" }
 SI.MODULE_LABELS = { InfoStrip = L["info strip"], MenuStrip = L["menu bar"], DataBars = L["XP bars"], Nameplates = L["nameplates"], UnitFrames = L["unit frames"] }
--- The events after which you may be somewhere else.
-SI.EVENTS = { "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_UPDATE_RESTING" }
+-- The events after which you may be somewhere else (on Retail also a key starting, finishing or being reset).
+SI.EVENTS = ns.ClientData({
+  forever = { "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_UPDATE_RESTING" },
+  retail = { "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_UPDATE_RESTING",
+    "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED", "CHALLENGE_MODE_RESET" },
+})
 
 -- module -> { key = true } from SI.LIVE.
 local ALLOWED = {}
@@ -94,9 +125,16 @@ local function yes(query)
   return type(query) == "function" and query() == true
 end
 
+-- The first of the client's own situations (SI.ASKED) that it says you are in, or nil.
+local function asked()
+  for _, name in ipairs(SI.ASKED) do
+    if SI.ASK[name]() then return name end
+  end
+end
+
 -- The situation you're in (one of SI.NAMES), never nil.
 function SI.Where()
-  local kind = SI.KINDS[ns.Where()]
+  local kind = asked() or SI.KINDS[ns.Where()]
   if kind then return kind end
   if yes(IsInRaid) then return "raid" end
   if yes(IsInGroup) then return "party" end
@@ -422,7 +460,10 @@ function SI.List()
 end
 
 -- What a command with an unknown situation says.
-SI.UNKNOWN = L["Situations: solo, party, raid, pvp, instance or resting."]
+SI.UNKNOWN = ns.ClientData({
+  forever = L["Situations: solo, party, raid, pvp, instance or resting."],
+  retail = L["Situations: solo, party, raid, pvp, instance, mythicplus, delve or resting."],
+})
 
 -- Starts recording from a command or the options, and says how it went.
 local function record(name)
@@ -470,7 +511,10 @@ function SI.SetRecording(name)
 end
 
 -- What the page says first, as one note.
-SI.INTRO = L["Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."]
+SI.INTRO = ns.ClientData({
+  forever = L["Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."],
+  retail = L["Overrides for Solo, Party, Raid, PvP, Mythic+, Delve, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."],
+})
 -- What the Your situations card says with no override yet.
 SI.EMPTY = L["No overrides yet. Pick Record for to make one."]
 

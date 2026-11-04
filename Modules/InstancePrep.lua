@@ -322,10 +322,10 @@ local function present(rows, lines)
   ns.AutoHide(PR.card, PR.settings.hideAfter)
 end
 
--- Whether the dungeon card is on: its switch, on WoW Forever only (its dungeons, quests and keys are vanilla's,
--- so a profile brought over to Retail with the switch on draws no card there).
+-- Whether the dungeon card is on: its switch (on Retail the card shows your keystone, the affixes and the dungeon's
+-- Mythic+ timer in place of vanilla's level range and key ring, Modules/RetailMythicPlus.lua).
 local function cardOn()
-  return PR.settings.dungeonCard and ns.IsForever()
+  return PR.settings.dungeonCard
 end
 
 -- The dungeon card's lines while it is on.

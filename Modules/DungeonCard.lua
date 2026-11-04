@@ -18,6 +18,11 @@ ns.DungeonCard = DC
 
 -- Quest lines shown before "and N more"; bags scanned (the key ring, backpack, four bags, reagent bag); the item class of keys (Enum.ItemClass.Key).
 DC.QUESTS, DC.KEY_RING, DC.LAST_BAG, DC.KEY_CLASS = 6, -1, 5, 13
+-- The first bag the key scan reads: the key ring. Retail has none (its bag -1 is the bank), so its card starts at
+-- the backpack (Modules/RetailMythicPlus.lua).
+DC.FIRST_BAG = DC.KEY_RING
+-- The card's switch under Town and gear, as this client's card reads (Retail's says what its card shows instead).
+DC.LABEL = L["Dungeon card: level range, your dungeon quests and keys on the checklist"]
 -- The quest tags (Enum.QuestTag names) that make a log quest a dungeon quest.
 DC.TAGS = { "Dungeon", "Raid", "Group" }
 
@@ -46,7 +51,7 @@ local function mapNow()
 end
 
 -- "levels 13-18" from the client's map levels, or nil when it gives none.
-local function levelText(mapID)
+function DC.LevelText(mapID)
   local low, high = call(C_Map, "GetMapLevels", mapID or 0)
   low, high = ns.PlainNumber(low), ns.PlainNumber(high)
   if not low or not high or low < 1 then return nil end
@@ -54,11 +59,15 @@ local function levelText(mapID)
   return ns.Format(L["levels {low}-{high}"], { low = low, high = high })
 end
 
+-- What the heading says after the dungeon's name, from the map you stand on: its level range (DC.LevelText); Retail
+-- puts the dungeon's Mythic+ timer there instead (Modules/RetailMythicPlus.lua). nil says nothing.
+DC.Detail = DC.LevelText
+
 -- The heading at a dungeon's door: "Ragefire Chasm · levels 13-18 · 5-player Normal", or nil outside one (outside, the client answers with the zone's name and type "none").
 function DC.Heading()
   local name, kind, _, difficulty, size = ask("GetInstanceInfo")
   if not plainText(name) or (kind ~= "party" and kind ~= "raid") then return nil end
-  local parts = { name, levelText(mapNow()) }
+  local parts = { name, DC.Detail(mapNow()) }
   local group = ns.PlainNumber(size)
   local sized = plainText(difficulty) and L["{size}-player {difficulty}"] or L["{size}-player"]
   if group and group > 0 then parts[#parts + 1] = ns.Format(sized, { size = group, difficulty = difficulty }) end
@@ -191,7 +200,7 @@ end
 -- The keys on your key ring and in your bags, by name, each once.
 function DC.Keys()
   local out, seen = {}, {}
-  for bag = DC.KEY_RING, DC.LAST_BAG do
+  for bag = DC.FIRST_BAG, DC.LAST_BAG do
     for slot = 1, slotCount(bag) do
       local item = call(C_Container, "GetContainerItemInfo", bag, slot)
       local id = type(item) == "table" and ns.PlainNumber(item.itemID)
@@ -211,10 +220,19 @@ local function questLines(inside)
   return lines, #quests
 end
 
--- The dungeon's heading and, when there was an earlier visit, its last-run line.
+-- Lines a client adds under the heading, each fn() giving { text, role } lines (Retail: your keystone and the
+-- affixes, Modules/RetailMythicPlus.lua); none on WoW Forever.
+DC.EXTRA = {}
+
+-- The dungeon's heading, the client's own lines and, when there was an earlier visit, its last-run line.
 local function headLines(heading)
+  local out = { { heading, "head" } }
+  for _, fn in ipairs(DC.EXTRA) do
+    for _, line in ipairs(fn()) do out[#out + 1] = line end
+  end
   local last = DC.LastRun()
-  return { { heading, "head" }, last and { last } or nil }
+  if last then out[#out + 1] = { last } end
+  return out
 end
 
 -- The lines to add to the Instance prep card, as { text, role } with role "head" for a heading: the dungeon, your quests for it, the keys you carry. Empty when there is nothing to say or in combat.
