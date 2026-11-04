@@ -191,6 +191,13 @@ it("chat tabs: two tabs closed in one fight are both closed when it ends", () =>
   expect(addon.eval("return __allClosed"), "both closed after the fight").toEqual(["ChatFrame2", "ChatFrame3"]);
 });
 
+it("chat tabs: a new tab with every chat window in use says so and keeps the tab being edited", () => {
+  const addon = loggedIn(ENV + "FCF_OpenNewWindow = function() return nil end");
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 1 CW.New("Trade")`);
+  expect(chatHas(addon, /Every chat tab is in use\. Close one to make another\./), "the player is told").toBe(true);
+  expect(addon.eval(`return ns.GetModule("ChatWindows").editing`), "the edited tab is unchanged").toBe(1);
+});
+
 it("chat tabs: a client without the calls says so and changes nothing", () => {
   const addon = loggedIn(ENV + "FCF_OpenNewWindow = nil");
   addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("Trade") CW.Rename("Barter") CW.Close()`);
