@@ -523,8 +523,8 @@ it("a 12.x build with the Forever ruleset call still reads as WoW Forever", () =
   expect(addon.eval("return ns.IsForever()"), "120105 without the call is Retail").toBe(false);
 });
 it("a retail client is not WoW Forever and keeps its aura state readable", () => {
-  const addon = loggedIn('GetBuildInfo = function() return "12.0.7", "TEST-ONLY", "Sep 1 2026", 120007 end');
-  expect(addon.eval("return ns.IsForever()") === false && addon.eval("return ns.AurasSecret()") === false, "120007 is retail; no C_Secrets means readable").toBeTruthy();
+  const addon = loggedIn('GetBuildInfo = function() return "12.1.5", "TEST-ONLY", "Nov 4 2026", 120105 end');
+  expect(addon.eval("return ns.IsForever()") === false && addon.eval("return ns.AurasSecret()") === false, "120105 is retail; no C_Secrets means readable").toBeTruthy();
   addon.slash("status");
   expect(chatHas(addon, /Client Retail/), "/vg status says Retail").toBeTruthy();
 });

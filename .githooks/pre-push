@@ -23,12 +23,13 @@ check() {
   "$@" || status=1
 }
 
-# The Lua 5.1 syntax of every file the TOC loads (the same loop as verify.yml).
+# The Lua 5.1 syntax of every file the TOC loads, its game-type tags dropped (the same loop as verify.yml).
 luac_toc() {
   rc=0
   cr=$(printf '\r')
   while IFS= read -r file || [ -n "$file" ]; do
     file=${file%"$cr"}
+    file=${file%%[[:space:][]*}
     case "$file" in ''|'#'*) continue ;; esac
     luac5.1 -p "$file" || rc=1
   done < Vanguard.toc

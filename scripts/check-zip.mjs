@@ -12,6 +12,7 @@ import path from "node:path";
 import zlib from "node:zlib";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { tocPaths } from "./lib/toc.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -35,7 +36,7 @@ export function addonName() {
 export function expectedEntries(ref = "HEAD") {
   const addon = addonName();
   const toc = `${addon}.toc`;
-  const loaded = gitLines("show", `${ref}:${toc}`).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  const loaded = tocPaths(gitLines("show", `${ref}:${toc}`).join("\n"));
   const media = gitLines("ls-tree", "-r", "--name-only", ref, "Media");
   const libLicenses = gitLines("ls-tree", "-r", "--name-only", ref, "Libs").filter((f) => !f.endsWith(".lua"));
   return [toc, ...loaded, ...media, ...libLicenses, "LICENSE"].map((f) => `${addon}/${f}`);

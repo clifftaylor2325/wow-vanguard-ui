@@ -21,6 +21,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { tocPaths } from "./lib/toc.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -174,8 +175,8 @@ function collectState(opts) {
   };
 }
 
-// The files the TOC loads, in order.
-export const tocFiles = (toc) => toc.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+// The files the TOC loads on any client, in order, without their game-type tags (scripts/lib/toc.mjs).
+export const tocFiles = (toc) => tocPaths(toc);
 
 // Writes dist/release-notes.md and dist/pkgmeta.yaml for the packager and the GitHub release.
 function writeNotes(version) {

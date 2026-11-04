@@ -1,0 +1,25 @@
+{
+  "source": "scripts/fixtures/api-diff-forever-70755-vs-live-70783.json (node scripts/forever-only-api.mjs)",
+  "functions": [
+    "C_GameRules.GetForeverExperiencePreset",
+    "C_GameRules.IsHardcoreActive",
+    "C_GameRules.IsSelfFoundAllowed",
+    "C_Item.GetWeaponEnchantInfo",
+    "C_PaperDollInfo.AmmoNeeded",
+    "C_PartyInfo.IsRaidListEnabled",
+    "C_PartyInfo.IsRaidListSupported",
+    "C_PetInfo.GetPetHappiness",
+    "C_QuestLog.GetQuestTimers",
+    "C_SkillInfo.GetSkillLineInfoByID",
+    "C_StableInfo.GetNextStableSlotCost",
+    "C_SwingTimer.EnableRangeCheck",
+    "C_SwingTimer.IsTargetWithinSwingRange",
+    "C_Trainer.GetTrainerType"
+  ],
+  "events": [
+    "GAME_RULES_CHANGED",
+    "PLAYER_SWING",
+    "PLAYER_SWING_RANGE_UPDATE",
+    "UNIT_HAPPINESS"
+  ]
+}
