@@ -3298,6 +3298,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the action bars, your frames, cast bar and cooldown rows sit together as one block whose top ends just under your character's feet, not at the bottom edge; the XP bar, chat and bag bar stay at the edges. On the tall screen the essential cooldown row has its own line under your frames at full size (or shrunk only when it holds more than about 560 units of icons), and nothing overlaps the debuffs under your target. On the 768-tall screen the layout is the one it always was. Note how far the block's top is from your feet, and whether it should sit higher or lower.
 - If it fails, paste: a screenshot at each scale, your resolution and UI scale, and `/vg errors`.
 
+### 33.172 Nameplates never draw a dark box
+
+- Do: on WoW Forever with Vanguard's nameplates on, walk up to a row of training dummies (or a group of mobs) from out of plate range, several times, from different distances and with the camera turned away and back. Target one, then another.
+- Expect: every plate is the bar with its name and level; no plate shows a see-through dark or solid black box over and around its bar (seen 2026-11-04). If one flickers in for a moment, it is gone within half a second. Your target's plate keeps its thin accent border and glow.
+- If it fails, paste: a screenshot, whether the box went away after half a second, your resolution and UI scale, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## When you are done
