@@ -151,18 +151,10 @@ local function wornScore(loc, slots)
   return weakest(slots)
 end
 
--- Whether you wear this very item: it has nothing to be compared with (its own slot, or the pair's other one).
-local function isWorn(link)
-  for slot = 1, UP.LAST_WORN_SLOT do
-    if GetInventoryItemLink("player", slot) == link then return true end
-  end
-  return false
-end
-
 -- How an item compares with what you wear: the change in per cent (nil when it isn't gear you
--- can wear, or there's nothing to measure, or you wear it), true when it fills an empty slot, and the worn link.
+-- can wear, or there's nothing to measure), true when it fills an empty slot, and the worn link.
 function UP.Compare(link)
-  if not canCompare() or isWorn(link) then return nil end
+  if not canCompare() then return nil end
   local loc = select(4, C_Item.GetItemInfoInstant(link))
   local slots = UP.SLOTS[loc]
   if not slots or not usable(link) then return nil end
@@ -182,13 +174,22 @@ end
 
 -- Tooltip --------------------------------------------------------------------------------
 
+-- Whether you wear this very item: its own tooltip gets no line against the pair's other one (a bag copy with the
+-- same link loses its line too; its arrow, and the auction house's list, still compare it).
+local function isWorn(link)
+  for slot = 1, UP.LAST_WORN_SLOT do
+    if GetInventoryItemLink("player", slot) == link then return true end
+  end
+  return false
+end
+
 -- The item tooltip's line (Tooltips' AddItemLines): "Upgrade +12% (estimate) vs <worn>" in the good color, a drop in the
--- bad one. "(estimate)" because the weights behind it are defaults for the class and role, not simulated values.
+-- bad one; none on an item you wear. "(estimate)" because the weights behind it are defaults for the class and role, not simulated values.
 function UP.AddLine(tt, link)
   if not UP.settings.tooltip then return end
   local pct, empty, worn = UP.Compare(link)
   if empty then return tt:AddLine(L["Upgrade: fills an empty slot"], T.RGB("good")) end
-  if not pct or math.abs(pct) < UP.MIN_PCT then return end
+  if not pct or math.abs(pct) < UP.MIN_PCT or isWorn(link) then return end
   local vs = worn and worn:match("%[(.-)%]")
   local change = pct > 0 and L["Upgrade {change} (estimate)"] or L["Downgrade {change} (estimate)"]
   local text = ns.Format(change, { change = string.format("%+.0f%%", pct) })

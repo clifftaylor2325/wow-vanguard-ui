@@ -43,6 +43,7 @@ it("upgrades: tooltips compare gear with what you wear, by your class's weights"
   expect(addon.eval("return __line(13)"), "against worn gear worth nothing to you").toBe("Upgrade +100% (estimate) vs TEST-ONLY Item 14");
   expect(addon.eval("return { __line(11), __line(12), __line(17), __line(15) }"), "gear you can't use, can't wear, isn't equippable, or that's the same: no line").toEqual([false, false, false, false]);
   expect(addon.eval("return { __line(6), __line(5), __line(8), __line(9) }"), "an item you wear, a pair's better ring too, gets no line against another worn item").toEqual([false, false, false, false]);
+  expect(addon.eval("return math.floor(ns.GetModule('Upgrades').Compare(__link(6)))"), "the bag arrows and the auction house still compare it: the better ring against the weaker").toBe(100);
   expect(addon.eval("local up, good = __tt, { ns.Theme.RGB('good') } __tt.AddLine = function(self, text, r) self.lines[1] = r == good[1] end return __line(2)"), "an upgrade in the good color").toBe(true);
   addon.eval("ns.GetModule('Upgrades').settings.tooltip = false");
   expect(addon.eval("return __line(2)"), "switched off").toBe(false);
