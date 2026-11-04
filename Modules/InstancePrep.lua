@@ -349,12 +349,18 @@ function PR.ShowOnDemand()
   present(rows, dungeonLines())
 end
 
+-- You are out of every door: forget the instance, and have the dungeon card count its hour from now.
+local function leftDoor()
+  PR.lastInstance = nil
+  if cardOn() then ns.DungeonCard.Left() end
+end
+
 -- You came into a world: at a dungeon or raid's door, once per visit (a reload
 -- inside doesn't count again: the event says so, as the memory of the visit is gone),
 -- the card shows if something is low. Not in combat.
 function PR.OnEnter(_, _, isReloadingUi)
   local where = ns.Where()
-  if not PR.DOORS[where] then PR.lastInstance = nil return end
+  if not PR.DOORS[where] then return leftDoor() end
   local id = ns.PlainNumber((select(8, ask("GetInstanceInfo"))))
   if cardOn() then ns.DungeonCard.Record() end
   if isReloadingUi == true then PR.lastInstance = id return end

@@ -134,6 +134,27 @@ it("the card says when you last came: nothing the first time, then days ago; a q
   expect(text(addon)[1], "a little under two days after the second visit is yesterday").toBe("Last run: yesterday");
 });
 
+it("a wipe in a long run: the way back in within the hour of leaving is the same visit, not 'Last run: today'", () => {
+  const runs = `VanguardCharDB = { profile = "Default", setupDone = true, dungeonRuns = { [389] = { at = 1000 - 5 * 86400 } } }`;
+  const addon = character(ON + "\n" + runs, "__t = 1000 time = function() return __t end");
+  addon.eval("__inside = false");
+  visit(addon, 1000 + 5000);
+  addon.eval("__inside = true");
+  visit(addon, 1000 + 5400);
+  addon.slash("prep");
+  expect(text(addon)[1], "released at 5000, back in at 5400: the same run").toBe("Last run: 5 days ago");
+  expect(text(addon).some((l) => /Last run: today/.test(l)), "never today").toBe(false);
+});
+it("leaving a dungeon with the card off, or with no time or visit recorded, changes nothing and raises no error", () => {
+  const off = character("VanguardDB.profiles = { Default = { InstancePrep = { dungeonCard = false } } }");
+  off.eval("__inside = false");
+  off.fire("PLAYER_ENTERING_WORLD");
+  expect(off.eval("return #ns.errors"), "card off: no error").toBe(0);
+  const on = character(ON);
+  on.eval("ns.DungeonCard.inside = 389 time = nil __inside = false");
+  on.fire("PLAYER_ENTERING_WORLD");
+  expect([on.eval("return #ns.errors"), on.eval("return ns.DungeonCard.inside")], "no clock: no error, and the dungeon forgotten").toEqual([0, null]);
+});
 it("a long run with a way back in every 40 minutes stays one visit: the last run is still the one before", () => {
   const runs = `VanguardCharDB = { profile = "Default", setupDone = true, dungeonRuns = { [389] = { at = 1000 - 5 * 86400 } } }`;
   const addon = character(ON + "\n" + runs, "__t = 1000 time = function() return __t end");
