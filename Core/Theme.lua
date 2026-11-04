@@ -3214,18 +3214,32 @@ local function riser(frame)
   return r
 end
 
+-- Windows this file has put through a frame buffer (weak).
+local bufferedOn = setmetatable({}, { __mode = "k" })
+
 -- Draws a window through its own frame buffer (#239) while it fades, when the frameBuffer setting
 -- is on and the client has SetIsFrameBuffer, so overlapping translucent borders don't ghost.
-local function buffered(frame, on)
-  if T.Settings().frameBuffer and frame.SetIsFrameBuffer then frame:SetIsFrameBuffer(on) end
+local function buffer(frame)
+  if T.Settings().frameBuffer and frame.SetIsFrameBuffer then
+    frame:SetIsFrameBuffer(true)
+    bufferedOn[frame] = true
+  end
+end
+
+-- Turns a window's frame buffer off if this file turned it on, whatever the switch says now (it may
+-- have been turned off mid-fade), so a window reopened mid-close isn't left buffered while idle.
+local function unbuffer(frame)
+  if not bufferedOn[frame] then return end
+  frame:SetIsFrameBuffer(false)
+  bufferedOn[frame] = nil
 end
 
 -- Plays a window's open animation from px below its spot, buffered until it ends.
 local function playRise(frame, r, px)
   r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
   r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
-  buffered(frame, true)
-  r.group:SetScript("OnFinished", ns.Guard("window frame buffer", function() buffered(frame, false) end))
+  buffer(frame)
+  r.group:SetScript("OnFinished", ns.Guard("window frame buffer", function() unbuffer(frame) end))
   r.group:Play()
 end
 
@@ -3241,8 +3255,8 @@ end
 -- Closes a window (#257): fades it out over T.WINDOW_CLOSE, then hides it and runs done.
 function T.CloseWindow(frame, done)
   if riserOf[frame] then riserOf[frame].group:Stop() end
-  buffered(frame, true)
-  T.FadeOut(frame, T.WINDOW_CLOSE, function() buffered(frame, false) if done then done() end end)
+  buffer(frame)
+  T.FadeOut(frame, T.WINDOW_CLOSE, function() unbuffer(frame) if done then done() end end)
 end
 
 -- How long a button's hover takes to ease in and out (#257), in seconds; capped in combat like any fade.
@@ -3312,6 +3326,7 @@ end
 function T.StopFade(frame)
   local f = vgFader[frame]
   if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
+  unbuffer(frame)
   frame:SetAlpha(1)
 end
 end

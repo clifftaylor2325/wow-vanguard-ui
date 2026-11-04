@@ -126,6 +126,24 @@ it("motion: with /vg framebuffer on, a window is drawn through a frame buffer on
   expect(addon.eval("return ns.Theme.Settings().frameBuffer"), "a client without the call is left alone; off again").toBe(false);
 });
 
+it("motion: a window reopened mid-close, or with the switch turned off mid-fade, is not left in a frame buffer", () => {
+  const addon = loggedIn(FAKE_FADES + 'local f = CreateFrame("Frame", "TEST_Buf", UIParent) f:SetSize(200, 100) f:Hide() __fakeFader(f)');
+  // Whether the window is drawn through a frame buffer now.
+  const buf = () => addon.eval("return TEST_Buf.__frameBuffer");
+  addon.slash("framebuffer");
+  addon.eval("ns.Theme.OpenWindow(TEST_Buf) __finishFades() ns.Theme.CloseWindow(TEST_Buf) ns.Theme.StopFade(TEST_Buf) __finishFades()");
+  expect(buf(), "reopened by StopFade while closing").toBe(false);
+  addon.eval("ns.Theme.CloseWindow(TEST_Buf)");
+  setCombat(addon, true);
+  addon.eval("ns.Theme.OpenWindow(TEST_Buf) __finishFades()");
+  setCombat(addon, false);
+  expect(buf(), "reopened in combat while closing").toBe(false);
+  addon.eval("ns.Theme.CloseWindow(TEST_Buf)");
+  addon.slash("framebuffer off");
+  addon.eval("__finishFades()");
+  expect(buf(), "switch turned off mid-close").toBe(false);
+});
+
 // A themed test button with its own label anchored LEFT and RIGHT 2 units down; returns nothing.
 const PRESS_BUTTON = `local b = CreateFrame("Button", "TEST_Press", UIParent) b:SetSize(80, 22)
   b.text = b:CreateFontString(nil, "OVERLAY") b.text:SetPoint("LEFT", b, "LEFT", 4, -2) b.text:SetPoint("RIGHT", b, "RIGHT", -4, -2)
