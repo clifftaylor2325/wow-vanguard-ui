@@ -368,12 +368,19 @@ function ns.RoleKey(role)
   return ROLE_KEYS[role]
 end
 
--- Your group role as Vanguard names it, "damage" when you have none or the client hides it. The group
--- role can be secret (SecretWhenUnitIdentityRestricted), and callers use it as a table key.
+-- Your group role as Vanguard names it, or nil when you have none or the client hides it. The group
+-- role can be secret (SecretWhenUnitIdentityRestricted).
+---@return string|nil
+function ns.GroupRole()
+  local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
+  return ns.RoleKey(assigned)
+end
+
+-- Your group role as Vanguard names it, "damage" when you have none or the client hides it; callers use it
+-- as a table key.
 ---@return string
 function ns.PlayerRole()
-  local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
-  return ns.RoleKey(assigned) or "damage"
+  return ns.GroupRole() or "damage"
 end
 
 -- This character's spec -> profile map.

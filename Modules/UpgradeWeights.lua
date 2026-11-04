@@ -95,7 +95,8 @@ W.CLASSES = ns.ClientData({
 -- nil for what the client won't say.
 local function retailSpec()
   local index = ns.SpecIndex()
-  local info = index and C_SpecializationInfo.GetSpecializationInfo
+  local api = index and C_SpecializationInfo
+  local info = api and api.GetSpecializationInfo
   if type(info) ~= "function" then return nil, nil end
   local _, _, _, _, role, stat = info(index)
   return ns.RoleKey(role), ns.PlainNumber(stat)

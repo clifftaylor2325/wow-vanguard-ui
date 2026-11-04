@@ -240,7 +240,6 @@ it("upgrades: on Retail the specialization's main stat picks the damage kind, an
   expect(specKind(retail, "DRUID", null, "NONE"), "no specialization: the class and damage").toEqual(["agility", "damage"]);
   retail.eval("C_SpecializationInfo.GetSpecializationInfo = nil");
   expect(specKind(retail, "DRUID", "{ role = 'HEALER' }", "NONE"), "a client with no spec info").toEqual(["agility", "damage"]);
-  retail.eval("__wfgWorld.specInfo[1] = { role = 'HEALER', primaryStat = LE_UNIT_STAT_INTELLECT }");
 });
 
 it("upgrades: a new specialization on Retail scores gear afresh; Forever ignores specialization", () => {

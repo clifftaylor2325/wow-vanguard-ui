@@ -58,8 +58,7 @@ UP.TWO_HANDED = ns.ClientData({
 -- role, damage when you have none.
 function UP.Role()
   if UP.settings.role ~= "auto" then return UP.settings.role end
-  local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
-  return ns.RoleKey(assigned) or W.SpecRole() or "damage"
+  return ns.GroupRole() or W.SpecRole() or "damage"
 end
 
 -- What the lines call each kind of character and each role (the keys of ns.UpgradeWeights.KINDS and of a class's roles).
