@@ -23,6 +23,8 @@ ns.RetailHousing = RHo
 -- category column's backdrop and brackets faded, the search box, filter button and scroll bar in the theme.
 RHo.CATALOG_ART = { "Background" }
 RHo.CATEGORY_ART = { "Background", "TopBorder" }
+-- The editor's storage also draws the chest's header band and top-right corbel (its Background is in CATALOG_ART).
+RHo.STORAGE_ART = { "HeaderBackground", "CornerBorder" }
 -- The house finder's plot tooltips draw their pointer arrow as a texture of the tooltip itself, under the flat panel.
 RHo.PLOT_TIP_ART = { "Arrow" }
 
@@ -37,13 +39,16 @@ function RHo.SkinCatalog(catalog)
   if bar then T.ScrollBar(bar) end
 end
 
--- The housing dashboard: the window skin, the house picker, the catalog, and the collection's parchment faded (the
--- house info page's painted scene is content and stays).
+-- The housing dashboard: the window skin, the house picker, the catalog, and the collection's parchment and category
+-- column art faded (the house info page's painted scene is content and stays).
 function RHo.SkinDashboard(frame)
   GW.Skin(frame)
   GW.SkinDropdown(GW.Part(frame, "HouseDropdown.Dropdown"))
   RHo.SkinCatalog(frame.CatalogContent)
-  if type(frame.CollectionContent) == "table" then GW.FadeParts(frame.CollectionContent, RHo.CATALOG_ART) end
+  if type(frame.CollectionContent) ~= "table" then return end
+  GW.FadeParts(frame.CollectionContent, RHo.CATALOG_ART)
+  local categories = GW.Part(frame, "CollectionContent.Categories")
+  if categories then GW.FadeParts(categories, RHo.CATEGORY_ART) end
 end
 
 -- The house finder: the window skin, and its plot tooltips (the selected plot's, and the one under the mouse on the map),
@@ -64,6 +69,7 @@ function RHo.SkinEditor(frame)
   local storage = frame.StoragePanel
   if type(storage) ~= "table" or not storage.CreateTexture then return end
   RHo.SkinCatalog(storage)
+  GW.FadeParts(storage, RHo.STORAGE_ART)
   T.Panel(storage)
 end
 
