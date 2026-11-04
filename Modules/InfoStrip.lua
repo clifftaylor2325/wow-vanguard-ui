@@ -60,6 +60,9 @@ IS.RATES = { "xprate", "leveltime", "goldrate" }
 IS.AMMO_CLASSES = { HUNTER = true, WARRIOR = true, ROGUE = true }
 -- The ammo inventory slot, and the equipment slots durability reads.
 IS.AMMO_SLOT, IS.LAST_SLOT = 0, 19
+-- Which class supplies the strip counts: ammo and Soul Shard items are vanilla's, and Retail has neither
+-- (its shards are a power, shown by the class bars).
+IS.CLASS_SUPPLY = ns.ClientData({ forever = { ammo = true, shards = true }, retail = {} })
 -- The Soul Shard item (vanilla's, 6265), and the last bag counted: the reagent bag
 -- (Enum.BagIndex.ReagentBag), where Forever lets shards go.
 IS.SHARD_ITEMS, IS.LAST_BAG = { [6265] = true }, 5
@@ -370,6 +373,7 @@ end
 -- Your ammo: for any class whose ranged weapon needs it (0 in red), else for classes that carry it
 -- (hunters see 0, in red).
 function IS.TEXT.ammo()
+  if not IS.CLASS_SUPPLY.ammo then return nil end
   local _, class = UnitClass("player")
   local needed = IS.AmmoNeeded()
   if needed == false or ns.IsSecret(class) or (needed == nil and not IS.AMMO_CLASSES[class]) then return nil end
@@ -379,6 +383,7 @@ end
 
 -- Your soul shards, for warlocks (none is red).
 function IS.TEXT.shards()
+  if not IS.CLASS_SUPPLY.shards then return nil end
   local _, class = UnitClass("player")
   if ns.IsSecret(class) or class ~= "WARLOCK" then return nil end
   local n = IS.SoulShards()

@@ -5,7 +5,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { RAID_ENV, UNITS_ENV, bars, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, RAID_ENV, STRIP_ENV, UNITS_ENV, bars, block, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // Retail's thirteen class tokens.
 const CLASSES = ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK", "DRUID", "DEMONHUNTER", "EVOKER"];
@@ -157,4 +157,13 @@ it("retail data: a watched major faction shows its renown on the reputation bar 
   addon.fire("UPDATE_FACTION");
   expect(bars(addon).repText, "not a major faction: its standing as on WoW Forever").toBe("TEST-ONLY Council");
   expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+});
+
+it("retail data: the info strip shows no ammo or shards block, where Forever's hunter and warlock still do", () => {
+  for (const [class_, key] of [["HUNTER", "ammo"], ["WARLOCK", "shards"]]) {
+    const env = UNITS_ENV + (class_ === "HUNTER" ? STRIP_ENV : "") + `__units.player.class = "${class_}" issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+      __wfgWorld.bags[1][3] = { itemID = 6265 }` + CLICK_LUA;
+    expect(block(retail(env), key).shown, `Retail ${class_}: no ${key} block`).toBe(false);
+    expect(block(loggedIn(env), key).shown, `Forever ${class_}: the ${key} block shows`).toBe(true);
+  }
 });
