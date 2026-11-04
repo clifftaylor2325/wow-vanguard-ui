@@ -65,6 +65,11 @@ const DELVE = (header = "") => `${SCENARIO}
   __wfgWorld.delveHeader = { shownState = 1, currencies = { { leadingText = "TEST-ONLY Lives", text = "3" }, { leadingText = "", text = "5/6" } },
     spells = { { spellID = 133 }, { spellID = 116 } }, rewardInfo = { shownState = 2 } }
   ${header}`;
+// The game updating a widget (UPDATE_UI_WIDGET with its UIWidgetInfo): the delve header (type 29), or another kind.
+const widgetUpdated = (addon, type = 29) => {
+  addon.eval(`__wfgStub.fire("UPDATE_UI_WIDGET", { widgetID = 77, widgetSetID = 5, widgetType = ${type} })`);
+  addon.update(0);
+};
 // The stage block's objective lines as drawn (the block after the delve's heading).
 const lines = (addon) => (blocks(addon)[1] || [])[1];
 // Each drawn block as [title, line texts].
@@ -78,13 +83,16 @@ it("retail delves: the tracker lists the game's delve header under the stage, it
   const addon = loggedIn(DELVE(), { client: RETAIL_CLIENT, savedVariables: EXPANDED });
   expect(lines(addon), "two counters, the affixes by their spells' names, the unearned chest").toEqual(
     ["TEST-ONLY Lives 3", "5/6", "Affixes: Fireball, Frostbolt", "Reward chest not earned"]);
-  addon.eval("__wfgWorld.delveHeader.rewardInfo.shownState = 1");
-  addon.fire("UPDATE_UI_WIDGET");
-  addon.update(0);
-  expect(lines(addon).pop(), "the widget event redraws it: the earned chest").toBe("Reward chest earned");
+  addon.eval(`__wfgWorld.delveHeader.rewardInfo.shownState = 1
+    local QT, refresh = ns.GetModule("QuestTracker"), ns.GetModule("QuestTracker").Refresh
+    __refreshes = 0
+    QT.Refresh = function(...) __refreshes = __refreshes + 1 return refresh(...) end`);
+  widgetUpdated(addon, 1);
+  expect(addon.eval("return __refreshes"), "another widget's update (the event fires for every widget) asks no redraw").toBe(0);
+  widgetUpdated(addon);
+  expect([addon.eval("return __refreshes"), lines(addon).pop()], "the header's update redraws it: the earned chest").toEqual([1, "Reward chest earned"]);
   addon.eval("__wfgWorld.delveHeader.rewardInfo.shownState = 0 __wfgWorld.delveHeader.spells = {}");
-  addon.fire("UPDATE_UI_WIDGET");
-  addon.update(0);
+  widgetUpdated(addon);
   expect(lines(addon), "no chest and no affix: the counters alone").toEqual(["TEST-ONLY Lives 3", "5/6"]);
 });
 
@@ -97,18 +105,15 @@ it("retail delves: the header rows stay out when there is no delve, no widget se
   addon.update(0);
   expect(lines(addon), "a delve with no widget set").toEqual(stage);
   addon.eval("__wfgWorld.scenario.step.widgetSetID = 5 __wfgWorld.delveHeader.shownState = 0");
-  addon.fire("UPDATE_UI_WIDGET");
-  addon.update(0);
+  widgetUpdated(addon);
   expect(lines(addon), "a header the game hides").toEqual(stage);
   addon.eval(`local h = __wfgWorld.delveHeader h.shownState = 1
     h.currencies = { { leadingText = "x", text = __wfgWorld.secret("3") }, { text = "" } } h.spells = { { spellID = __wfgWorld.secret(133) }, { spellID = 999999 } }
     h.rewardInfo = __wfgWorld.secret({ shownState = 1 }) __wfgWorld.delveWidgets = { __wfgWorld.secret({}), { widgetID = 77, widgetType = __wfgWorld.secret(29) } }`);
-  addon.fire("UPDATE_UI_WIDGET");
-  addon.update(0);
+  widgetUpdated(addon);
   expect([lines(addon), addon.eval("return #ns.errors")], "hidden values and unknown spells leave no row and no error").toEqual([stage, 0]);
   addon.eval("local h = __wfgWorld.delveHeader __wfgWorld.delveWidgets = { { widgetID = 77, widgetType = 29 } } h.currencies = __wfgWorld.secret({}) h.rewardInfo = {} h.spells = __wfgWorld.secret({})");
-  addon.fire("UPDATE_UI_WIDGET");
-  addon.update(0);
+  widgetUpdated(addon);
   expect([lines(addon), addon.eval("return #ns.errors")], "hidden lists leave no row and no error").toEqual([stage, 0]);
 });
 

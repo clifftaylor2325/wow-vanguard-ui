@@ -53,10 +53,15 @@ local function plainTable(v)
   return not ns.IsSecret(v) and type(v) == "table" and v or nil
 end
 
+-- Whether a widget (UIWidgetInfo) is the delve header, as far as the client shows its type.
+function RD.IsHeader(widget)
+  widget = plainTable(widget)
+  return widget ~= nil and ns.PlainNumber(widget.widgetType) == RD.WIDGET_TYPE
+end
+
 -- The delve header's info when this widget is one and it is shown, else nil.
 function RD.HeaderOf(widget)
-  widget = plainTable(widget)
-  local id = widget and ns.PlainNumber(widget.widgetType) == RD.WIDGET_TYPE and ns.PlainNumber(widget.widgetID)
+  local id = RD.IsHeader(widget) and ns.PlainNumber(widget.widgetID)
   local info = id and plainTable(ns.CallIf(C_UIWidgetManager, "GetScenarioHeaderDelvesWidgetVisualizationInfo", id))
   return info and ns.PlainNumber(info.shownState) == RD.SHOWN and info or nil
 end
@@ -119,8 +124,14 @@ function RD.HeaderLines(step)
 end
 
 table.insert(RQ.EXTRAS, RD.HeaderLines)
--- The game's header widget redraws on this event (a lives counter changes), so does Vanguard's tracker.
-table.insert(QT.EVENTS, "UPDATE_UI_WIDGET")
+
+-- The game's header widget redraws on UPDATE_UI_WIDGET (a lives counter changes), and so does Vanguard's tracker, but
+-- only for the delve header: the event fires for every widget the game shows anywhere, a capture bar's every tick.
+function RD.WidgetUpdated(_, widget)
+  if QT.frame and RD.IsHeader(widget) then ns.Soon("questtracker", QT.Refresh) end
+end
+
+ns.On("UPDATE_UI_WIDGET", RD.WidgetUpdated)
 -- The game's own tracker redraws its scenario block on this event in a delve.
 table.insert(QT.EVENTS, "ACTIVE_DELVE_DATA_UPDATE")
 
