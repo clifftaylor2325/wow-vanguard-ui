@@ -33,7 +33,7 @@ end
 
 -- Whether the quest on offer comes from a player (one shared in your group) rather than an NPC.
 local function fromPlayer()
-  local v = ns.CallIf(_G, "UnitIsPlayer", "npc")
+  local v = ns.CallIf(_G, "UnitIsPlayer", ns.QuestParts.GiverUnit())
   return ns.IsTrue(v)
 end
 
@@ -152,7 +152,7 @@ end
 -- The accept line: the quest, and who shared it when a player did.
 local function acceptLine()
   if not fromPlayer() then return ns.Format(L["Accepted: {quest}"], { quest = title() }) end
-  return ns.Format(L["Accepted: {quest} (shared by {name})"], { quest = title(), name = ns.QuestParts.Plain(ns.CallIf(_G, "UnitName", "npc")) })
+  return ns.Format(L["Accepted: {quest} (shared by {name})"], { quest = title(), name = ns.QuestParts.Plain(ns.CallIf(_G, "UnitName", ns.QuestParts.GiverUnit())) })
 end
 
 -- Accepts the offered quest (or acknowledges one the game accepted already, said at once).

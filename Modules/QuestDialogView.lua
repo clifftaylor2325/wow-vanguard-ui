@@ -273,8 +273,9 @@ end
 -- The NPC's portrait when the client can draw one (it has the call, and there
 -- is an NPC: not for a quest started from an item), else the quest mark in the accent.
 local function paintPortrait(f)
-  local drawn = type(SetPortraitTexture) == "function" and ns.CallIf(_G, "UnitExists", "npc") == true
-  if drawn then SetPortraitTexture(f.portrait, "npc") end
+  local giver = QP.GiverUnit()
+  local drawn = type(SetPortraitTexture) == "function" and ns.CallIf(_G, "UnitExists", giver) == true
+  if drawn then SetPortraitTexture(f.portrait, giver) end
   f.portrait:SetShown(drawn)
   f.placeholder:SetShown(not drawn)
   T.Tint(f.placeholder, "accent")
@@ -294,7 +295,7 @@ end
 function QD.Render(p)
   local f = QD.frame
   paintPortrait(f)
-  f.npc:SetText(QP.Plain(ns.CallIf(_G, "UnitName", "npc")))
+  f.npc:SetText(QP.Plain(ns.CallIf(_G, "UnitName", QP.GiverUnit())))
   f.title:SetText(QP.Plain(p.title))
   local content = renderBody(f, p)
   fitPanel(f, content, renderCards(f, p))

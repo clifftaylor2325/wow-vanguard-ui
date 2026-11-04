@@ -1703,6 +1703,28 @@ it("quest automation: a quest a player shares follows its own switch, and Shift 
   on.fire("QUEST_DETAIL");
   expect(calls(on), "a hidden answer counts as an NPC").toEqual([]);
 });
+// TEST-ONLY: a party member's shared quest, the giver "questnpc" a player while "npc" is not set.
+const SHARER_ENV = `
+  local old = { UnitExists = UnitExists, UnitName = UnitName, UnitIsPlayer = UnitIsPlayer }
+  UnitExists = function(unit) if unit == "questnpc" then return true end return old.UnitExists(unit) end
+  UnitName = function(unit) if unit == "questnpc" then return "TEST-ONLY Sharer" end return old.UnitName(unit) end
+  UnitIsPlayer = function(unit) return unit == "questnpc" or old.UnitIsPlayer(unit) end
+  __npc = false
+`;
+it("quest automation: a quest shared by the questnpc unit follows the shared switch and names the sharer", () => {
+  const addon = loggedIn(QUEST_ENV + SHARER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  addon.fire("QUEST_DETAIL");
+  expect([dialog(addon).shown, calls(addon)], "Accept quests alone leaves a player's quest to you").toEqual([true, []]);
+  const on = loggedIn(QUEST_ENV + SHARER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { acceptShared = true } } }" });
+  on.fire("QUEST_DETAIL");
+  on.fire("QUEST_ACCEPTED", 90001);
+  expect(chatHas(on, /Accepted: TEST-ONLY Wolves \(shared by TEST-ONLY Sharer\)/), "the sharer is named").toBe(true);
+});
+it("quest dialog: the portrait and name come from the questnpc unit when there is one", () => {
+  const addon = loggedIn(QUEST_ENV + SHARER_ENV);
+  addon.fire("QUEST_DETAIL");
+  expect([dialog(addon).npc, addon.eval("return Vanguard_QuestDialog.portrait.__portrait")], "name and portrait of the giver").toEqual(["TEST-ONLY Sharer", "questnpc"]);
+});
 // TEST-ONLY quest that flags you for PvP, with the game's own warning text.
 const PVP_ENV = `
   __pvp = true
