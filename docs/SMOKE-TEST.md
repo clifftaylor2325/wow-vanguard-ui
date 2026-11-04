@@ -3317,6 +3317,156 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: every plate is the bar with its name and level; no plate shows a see-through dark or solid black box over and around its bar (seen 2026-11-04). If one flickers in for a moment, it is gone within half a second. Your target's plate keeps its thin accent border and glow.
 - If it fails, paste: a screenshot, whether the box went away after half a second, your resolution and UI scale, and `/vg errors`.
 
+### 33.173 Key setup's Ready step names each stance page, and an unticked change stays yours (Forever)
+
+- Do: On a Forever warrior with Battle and Defensive Stance, open /vg, Action bars, Your keys, press Set up keys, Show me and Next; on the Ready step read the rows for keys 1 to 6, untick one change, leave Place new spells as I learn them ticked, press Apply, then learn a new spell or gain a level.
+- Expect: Keys 1 to 6 read like "1 in Battle Stance: Heroic Strike added to your bar" and "1 in Defensive Stance: Sunder Armor added to your bar", no row is cut off or runs over its tick box, and after learning the unticked key and button are exactly as they were, with no chat line about a spell moving there.
+- If it fails, paste: a screenshot of the Ready step and the chat lines after learning
+
+### 33.174 Key setup places the top rank (Forever)
+
+- Do: On a Forever character of level 10 or higher with a spell that has more than one rank (a mage with Frostbolt or Fireball, a priest with Smite), open /vg, Action bars, Your keys, press Set up keys, go through the steps and press Apply. Then hover the key that got that spell.
+- Expect: The tooltip shows the highest rank you know, not Rank 1, and /vg ranks lists nothing out of date for those buttons.
+- If it fails, paste: the key's tooltip text and the output of /vg ranks
+
+### 33.175 Free keys on Your keys are crisp (Forever)
+
+- Do: Open /vg, Action bars, Your keys, and look at the keyboard in the default, Classic and Vellum looks.
+- Expect: Every free key's name is a readable grey and its border is as crisp as a bound key's; the free keys are no longer faded.
+- If it fails, paste: a screenshot of the Your keys card and the output of /vg errors
+
+### 33.176 Place new spells switch follows Put back at once (Forever)
+
+- Do: With key setup applied and Place new spells as I learn them on, open /vg, Action bars, Your keys and leave the window open; press Put everything back and confirm.
+- Expect: The Place new spells switch turns off at once, without closing and reopening the window (right-click putting back the last changed key does the same).
+- If it fails, paste: a screenshot of the Your keys tab after confirming
+
+### 33.177 Frame buffer left on after a quick reopen (both)
+
+- Do: Turn on /vg framebuffer. Close the options window with Escape and open it again within a tenth of a second (/vg twice quickly). Repeat once closing in combat and reopening before the fade ends.
+- Expect: The window looks the same as normal afterwards, with no ghosted or doubled translucent borders and no change when hovering or resizing it; it is only buffered while it fades.
+- If it fails, paste: a screenshot of the window and the output of /vg framebuffer.
+
+### 33.178 Blood Oath readable on the AFK screen (both)
+
+- Do: On a Horde character with the Faction look and the AFK scene switches on, type /afk and look at the passage under the card; repeat on an Alliance character.
+- Expect: The Blood Oath (Horde) and Varian's letter (Alliance) read clearly on a dark band behind them, over the canyon sand and the keep; the band is not so heavy that it looks like a black bar across the painting.
+- If it fails, paste: a screenshot of the AFK screen
+
+### 33.179 Cooldown Manager row follows its spot's scale, with one-pixel borders (both)
+
+- Do: Turn on the Cooldown Manager and track ten or more cooldowns on the Essential row, run /vg unlock, right-click the Cooldowns handle, set its scale to 150%, press Done and Save and lock; then change Icon Size in Edit Mode and close Edit Mode.
+- Expect: The icons grow with the handle and stay centered in it, a long row is shrunk to the handle's scaled width and no more, and every icon keeps a thin border one screen pixel thick with the icon inset by the same amount (at 150%, after the Icon Size change, and back at 100%).
+- If it fails, paste: a screenshot of the Cooldowns handle and the Essential row, with the handle's scale and the Edit Mode Icon Size.
+
+### 33.180 Talking head and Loss of control scale (both)
+
+- Do: Run /vg unlock, right-click the Talking head handle and set its scale to 150%, then do the same for Loss of control. Trigger a talking head (talk to a quest NPC that speaks) and a stun or fear, or use Edit Mode's preview of each.
+- Expect: Each game frame grows with its handle. Loss of control also keeps whatever Size you set in Edit Mode (its Size 150% at a handle of 100% looks 150%).
+- If it fails, paste: a screenshot of the handle and the frame
+
+### 33.181 Exit without saving after a situation change (both)
+
+- Do: With a Raid override saved, run /vg situation record raid, /vg unlock, then Stop and save (the frames stay unlocked). Click Exit without saving, then /reload.
+- Expect: The info strip is at its base spot after the reload, not at the Raid override's spot; Raid still applies its own layout when you join a raid.
+- If it fails, paste: /vg situation, plus the info strip's position from /vg unlock
+
+### 33.182 Camera zoom comes back when Quiet is off (both)
+
+- Do: Note your own zoom with /run print(GetCVar('cameraDistanceMaxZoomFactor')). Under Game windows set Quiet's furthest camera zoom to 2.6 times, then under Modules turn Quiet off, and print the CVar again.
+- Expect: The second print shows the value you noted at first. Switching to a profile whose zoom is "The game's setting" and reloading also shows your own value.
+- If it fails, paste: the two /run print lines
+
+### 33.183 Raid preview follows the raid mover and loading screens (Forever)
+
+- Do: Run /vg preview 40, then /vg unlock, set the raid frames' Scale to 80% in the right-click popover, set Opacity to 50%, then Reset, then take a portal or loading screen.
+- Expect: The preview shrinks and fades with the Scale and Opacity, goes back to full size on Reset, and stays on the left big-raid spot through Reset and the loading screen instead of jumping to the centre.
+- If it fails, paste: a line saying which step moved the preview and where it ended up.
+
+### 33.184 Game pet frame stays hidden after Edit Mode (Forever)
+
+- Do: On a hunter or warlock with a pet out and Replace the default unit frames on, use an Edit Mode layout in which the game's Pet Frame was moved off its default spot before Vanguard (or move it, then switch layouts), then open Edit Mode and close it.
+- Expect: Only Vanguard's pet frame shows; the game's pet frame does not appear anywhere on screen. The durability figure is also hidden when the Info strip is on.
+- If it fails, paste: /vg probe output and where the second pet frame sits.
+
+### 33.185 Ready check marks: unanswered turns to the cross, no resurrection arrow over them (Forever)
+
+- Do: In a raid after a wipe, with one dead player being resurrected by a healer and one other member AFK, have the leader start a ready check and let it time out.
+- Expect: While the check runs, the dead player's tile shows only its ready check mark (no resurrection arrow drawn over it); when the check ends, the AFK member's grey waiting dots turn to the red cross at once, the marks clear about six seconds later, and the resurrection arrow then comes back.
+- If it fails, paste: a line naming each of the two tiles and the marks it showed during the check, at its end and six seconds after.
+
+### 33.186 Summon out of a starting area is left to you (Retail)
+
+- Do: With Accept summons on (Game windows, Auto-accept), have a party member summon a character standing in Exile's Reach.
+- Expect: The summon is not taken and the game's starting-area summon prompt stays up for you to answer.
+- If it fails, paste: the chat lines from the summon and the text of any summon prompt shown
+
+### 33.187 Shared quest follows its own switch and names the sharer (Forever)
+
+- Do: Switch on Accept quests and Accept quests a party member shares with you (Quests, Automation), then have a party member share a quest with you.
+- Expect: The quest is accepted and chat says "Accepted: <quest> (shared by <their name>)".
+- If it fails, paste: the chat line, and what the dialog's name and portrait showed if it stayed open
+
+### 33.188 Quest on another continent is never the nearest (Forever)
+
+- Do: Watch one quest in Kalimdor and one in the Eastern Kingdoms, set the tracker's order to nearest first with Follow the nearest quest on, and stand on one of the two continents.
+- Expect: The arrow follows the quest on your own continent and the tracker lists the other-continent quest last.
+- If it fails, paste: the /vg questdata output for the other-continent quest id
+
+### 33.189 Quest dialog: modified number keys reach your bars, and the scroll place holds (Forever)
+
+- Do: Open a quest with a long text in Vanguard's dialog, scroll down, hover a reward card so its item loads, then press a number bound with Shift, Ctrl or Alt on a bar (Ctrl-1, say).
+- Expect: The text stays where you scrolled to, the bound bar action fires and the dialog picks nothing.
+- If it fails, paste: the quest name, the binding you pressed and what the dialog did
+
+### 33.190 World map: Clear waypoint beside the quest panel toggle, and every quest counted after browsing (Forever)
+
+- Do: Type /way 45 60, open the windowed world map with its quest panel up, click the quest panel toggle in the bottom right corner twice, browse to another zone, close the map, then open Vanguard's quest log.
+- Expect: The toggle is fully visible and folds and unfolds the quest panel, Clear waypoint sits to its left, and after the map closes the XP line under the tracker and the quest log's count include every quest in your log.
+- If it fails, paste: which part failed, the quest count in Vanguard's log header and the number of quests in the game's own log
+
+### 33.191 Day/night ring leaves the old minimap spot (Forever)
+
+- Do: Type /vg unlock, drag the minimap to the middle of the screen, then type /vg lock.
+- Expect: No day/night ring is left in the top-right corner where the game's minimap used to be.
+- If it fails, paste: the output of /dump MinimapCluster.DielFrame:GetAlpha()
+
+### 33.192 Merchant quantity window and junk sale (WoW Forever)
+
+- Do: on WoW Forever, with gray items in your bags and Sell junk on (Town and gear, Merchants), open a merchant that sells stackable items; then shift-click item A, and without closing the quantity window shift-click item B and press Max.
+- Expect: the grays are sold as the merchant opens (with or without the game's Sell All Junk button), and the Stack/Max panel and its Max line follow item B at once, so Max never buys item A.
+- If it fails, paste: `/vg errors` and the output of `/run print(C_MerchantFrame.IsSellAllJunkEnabled())`.
+
+### 33.193 Forever bank page tabs, bag slots and purchase line (WoW Forever)
+
+- Do: on WoW Forever, open the bank and look at the page tabs on its right side, the row of bank bag slots at its foot and, with a bag slot left to buy, the Bag Slots and Costs lines, the money and the Purchase button; then switch pages.
+- Expect: the page tabs are the theme's side tabs, clear of the panel's edge, with their picture kept and the shown page raised; the bag slots take the item-slot look; the lines, money and Purchase button are in the theme, still after the page switch.
+- If it fails, paste: a screenshot of the bank and the `/vg errors` output.
+
+### 33.194 Talent planner on the other spec's tab and either-or parents (WoW Forever)
+
+- Do: on WoW Forever, on a dual-spec character, open the talents window with Plan on and a few talents planned (one of them, if the tree has one, a talent with two arrows into it, planned with only one of its parents); click the other spec's tab, then back.
+- Expect: on the other spec's tab no badges, ring or red marks show; back on your active spec they return at once, and the talent with two parents is not red.
+- If it fails, paste: `/vg errors` and a screenshot of the talents window.
+
+### 33.195 Trainer memory: class trainer kept, pet trainer left out (WoW Forever)
+
+- Do: on WoW Forever, on a hunter with Trainer memory on (`/vg` → Spell ranks), open your class trainer with spells you can't learn yet, close it, open the pet trainer (Beast Training), close it, then run `/vg trainers next`.
+- Expect: the list shows the class spells with the level each is learned at, and no pet skills.
+- If it fails, paste: the `/vg trainers next` output and `/run print(select(4, GetTrainerServiceInfo(1)))` with the class trainer open.
+
+### 33.196 No upgrade line on a ring you wear (WoW Forever and Retail)
+
+- Do: on either client, wear two rings of different strength and hover the better one on the character pane.
+- Expect: its tooltip has no "Upgrade +N% (estimate) vs ..." line, while a better ring in your bags still shows its line and its arrow.
+- If it fails, paste: the worn ring's tooltip text and the `/vg errors` output.
+
+### 33.197 Chat text size and a closed tab's history (WoW Forever)
+
+- Do: on WoW Forever, set `/vg` → Chat → Chat text size to Large, then back to "The game's chat setting"; with Chat history on, make a tab called Trade, chat in it, close it from its tab menu, make a tab called Loot and `/reload`.
+- Expect: the text goes back to the tab's right-click Font size at once, without a reload, and after the reload the Loot tab is empty while the main tab gets its saved lines back.
+- If it fails, paste: the `/vg history` output and the tab's right-click Font size.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
