@@ -243,7 +243,7 @@ RA.CLIENT_HOOKS = { setup = {}, update = {}, empty = {} }
 -- Joins a client's own tile hooks to the raid frames' hooks, and runs its setup on the tiles already built.
 local function addClientHooks()
   for _, hook in ipairs(RA.CLIENT_HOOKS.setup) do
-    for _, b in ipairs(RF.buttons) do hook(b) end
+    for _, b in ipairs(RF.buttons) do ns.Try("raid aura hook", hook, b) end
     table.insert(RF.setupHooks, hook)
   end
   for _, hook in ipairs(RA.CLIENT_HOOKS.update) do table.insert(RF.updateHooks, hook) end

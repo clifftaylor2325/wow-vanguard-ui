@@ -41,7 +41,8 @@ end
 
 -- Raid tiles --------------------------------------------------------------------------------
 
--- Gives a tile its spot, a debuff icon across, in the middle of its health bar (RaidAuras setup hook).
+-- Gives a tile its spot, a debuff icon across, in the middle of its health bar, under the tile's overlay, so a ready
+-- check, resurrection or summon mark in the middle shows over the aura while it lasts (RaidAuras setup hook).
 function PA.TileSetup(b)
   b.privateAura = PA.Spot(b, RF.TileZones().icon + PA.GROW, RA.LEVEL_ABOVE + 1)
   b.privateAura:SetPoint("CENTER", b.health or b, "CENTER", 0, 0)

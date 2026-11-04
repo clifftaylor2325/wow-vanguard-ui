@@ -139,8 +139,14 @@ it("retail quests: a world quest's click opens the map on its zone (after a figh
   expect(titles(addon), "unwatched, it goes; the area's stay").not.toContain("TEST-ONLY Far Rares");
   clickBlock(addon, "TEST-ONLY Clear the Mine", "RightButton");
   expect(titles(addon), "a bonus objective takes no clicks").toContain("TEST-ONLY Clear the Mine");
-  addon.eval("local f = Vanguard_QuestTrackerFrame ns.GetModule('QuestTracker').TitleTooltip(f.blocks[2])");
-  expect(addon.eval("return GameTooltip.__lines[#GameTooltip.__lines].text"), "its tooltip says what the clicks do").toBe("Click: show on the map · Right-click: stop watching");
+  // The last tooltip line of the drawn block titled `title`.
+  const clicksLine = (title) => addon.eval(`local f = Vanguard_QuestTrackerFrame
+    for i = 1, f.blocks.used do local b = f.blocks[i] if b.title:GetText() == "${title}" then ns.GetModule('QuestTracker').TitleTooltip(b) end end
+    return GameTooltip.__lines[#GameTooltip.__lines].text`);
+  expect(clicksLine("TEST-ONLY Both"), "a watched one's tooltip says what the clicks do").toBe("Click: show on the map · Right-click: stop watching");
+  expect(clicksLine("TEST-ONLY Storm Spirits"), "one only in your area has nothing to stop watching").toBe("Click: show on the map");
+  clickBlock(addon, "TEST-ONLY Storm Spirits", "LeftButton");
+  expect(addon.eval("return __wfgWorld.openedMap"), "and its click opens the map on its zone too").toBe(2248);
 });
 
 // TEST-ONLY Traveler's Log: a tracked activity with one requirement left, a finished one, and one not tracked.
@@ -151,18 +157,18 @@ const ACTIVITIES = `
     [302] = { ID = 302, activityName = "TEST-ONLY Finished", completed = true, requirementsList = {} },
     [303] = { ID = 303, activityName = "TEST-ONLY Untracked", completed = false, requirementsList = {} },
   }
-  __wfgWorld.trackedActivities = { 301, 302 }
+  __wfgWorld.trackedActivities = { 301, 302, __wfgWorld.secret(303) }
 `;
 
 it("retail quests: tracked Traveler's Log activities with what they still ask; right-click stops tracking", () => {
   const addon = retail(ACTIVITIES);
-  expect(blocks(addon), "the unfinished tracked activity, its spaced slash closed up, its done step left out").toEqual([
+  expect(blocks(addon), "the unfinished tracked activity, its spaced slash closed up, its done step and a hidden id left out").toEqual([
     ["Traveler's Log", []], ["TEST-ONLY Run Dungeons", ["TEST-ONLY Dungeons 2/5"]]]);
   clickBlock(addon, "TEST-ONLY Run Dungeons", "LeftButton");
-  expect(addon.eval("return #__wfgWorld.trackedActivities"), "a left-click does nothing").toBe(2);
+  expect(addon.eval("return #__wfgWorld.trackedActivities"), "a left-click does nothing").toBe(3);
   clickBlock(addon, "TEST-ONLY Run Dungeons", "RightButton");
   addon.update(0);
-  expect([addon.eval("return #__wfgWorld.trackedActivities"), addon.eval("return Vanguard_QuestTrackerFrame:IsShown()")], "untracked: the block goes").toEqual([1, false]);
+  expect([addon.eval("return #__wfgWorld.trackedActivities"), addon.eval("return Vanguard_QuestTrackerFrame:IsShown()")], "untracked: the block goes").toEqual([2, false]);
 });
 
 it("retail quests: every block together, in the game's tracker's order", () => {

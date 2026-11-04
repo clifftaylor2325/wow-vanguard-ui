@@ -98,8 +98,9 @@ it("retail auras: each raid tile hands the game one private aura spot, moved to 
   const size = addon.eval("return ns.GetModule('RaidFrames').TileZones().icon + ns.PrivateAuras.GROW");
   expect(spots(addon).filter((s) => s[3].startsWith("Vanguard_Raid")), "one spot per tile, for its unit's first private aura").toEqual([
     ["raid1", 1, size, "Vanguard_RaidUnitButton1"], ["raid3", 1, size, "Vanguard_RaidUnitButton2"]]);
-  expect(addon.eval("local h = Vanguard_RaidUnitButton1.privateAura return { h.__points.CENTER.rel == Vanguard_RaidUnitButton1.health, h:GetFrameLevel() > Vanguard_RaidUnitButton1:GetFrameLevel() }"),
-    "in the middle of the health bar, above the tile").toEqual([true, true]);
+  expect(addon.eval(`local b = Vanguard_RaidUnitButton1 local h = b.privateAura
+    return { h.__points.CENTER.rel == b.health, h:GetFrameLevel() > b:GetFrameLevel(), h:GetFrameLevel() < b.overlay:GetFrameLevel() }`),
+    "in the middle of the health bar, above the tile, under the ready check, resurrection and summon marks").toEqual([true, true, true]);
   setCombat(addon, true);
   addon.eval('Vanguard_RaidUnitButton2:SetAttribute("unit", "raid2")');
   expect(spots(addon).filter((s) => s[3] === "Vanguard_RaidUnitButton2").map((s) => s[0]), "a roster change in a fight moves the spot to the new unit").toEqual(["raid2"]);

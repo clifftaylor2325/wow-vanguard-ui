@@ -41,7 +41,8 @@ function RQ.Criterion(c)
   if not text then return nil end
   local have, need = ns.PlainNumber(c.quantity), ns.PlainNumber(c.totalQuantity)
   local counted = have and need and not (ns.IsTrue(c.isWeightedProgress) or ns.IsTrue(c.isFormatted))
-  return { text = counted and (have .. "/" .. need .. " " .. text) or text, done = ns.IsTrue(c.completed) }
+  if counted then text = ns.Format(L["{have}/{need} {objective}"], { have = have, need = need, objective = text }) end
+  return { text = text, done = ns.IsTrue(c.completed) }
 end
 
 -- The stage's criteria as objectives, in the game's order.
@@ -127,16 +128,41 @@ function RQ.WatchedWorldQuests()
   return out
 end
 
--- The tasks of the area you are in (world quests when world is true, else bonus objectives), each with its
--- name, as the game's tracker finds them: in the area, with objectives, and not a quest you watch already.
+-- Every quest you watch, plain and world, as a set: the area's lists leave these out, as the game's tracker does.
+local function watchedSet()
+  local set = {}
+  for _, id in ipairs(QT.Watched()) do set[id] = true end
+  for _, id in ipairs(RQ.WatchedWorldQuests()) do set[id] = true end
+  return set
+end
+
+-- Whether a task is in your area, with objectives (GetTaskInfo's first and third values), and its own name.
+local function taskHere(id)
+  local here, _, count, name = ns.CallIf(_G, "GetTaskInfo", id)
+  return ns.IsTrue(here) and (ns.PlainNumber(count) or 0) > 0, ns.PlainText(name)
+end
+
+-- The tasks of the area you are in that you don't watch (world quests when world is true, else bonus
+-- objectives), each as { id, name }, as the game's tracker finds them.
 local function areaTasks(world)
-  local out = {}
+  local out, watched = {}, watchedSet()
   for _, id in ipairs(plainTable(ns.CallIf(_G, "GetTasksTable")) or {}) do
-    local here, _, count, name = ns.CallIf(_G, "GetTaskInfo", id)
+    local here, name = taskHere(id)
     local kind = ns.IsTrue(ns.CallIf(C_QuestLog, "IsWorldQuest", id)) == world
-    if kind and ns.IsTrue(here) and (ns.PlainNumber(count) or 0) > 0 and not QT.IsWatched(id) then out[#out + 1] = { id, ns.PlainText(name) } end
+    if kind and here and not watched[id] then out[#out + 1] = { id, name } end
   end
   return out
+end
+
+-- The world quests you watch, those in your area first (as the game's tracker sorts them), else in watch order.
+local function watchedByArea()
+  local near, far = {}, {}
+  for _, id in ipairs(RQ.WatchedWorldQuests()) do
+    local here = taskHere(id)
+    table.insert(here and near or far, id)
+  end
+  for _, id in ipairs(far) do near[#near + 1] = id end
+  return near
 end
 
 -- A task's row: its title (the task's own name, else the quest's), objectives and ready state; nil without a title.
@@ -146,18 +172,12 @@ function RQ.TaskRow(id, name, kind)
   return { id = id, title = title, objectives = QT.Objectives(id), ready = QT.IsReady(id), kind = kind }
 end
 
--- Adds a task's row once (a world quest in your area that you also watch shows once).
-local function addTask(rows, seen, id, name)
-  local row = not seen[id] and RQ.TaskRow(id, name, "world")
-  seen[id] = true
-  if row then rows[#rows + 1] = row end
-end
-
--- World quests: those in your area first, then those you watch elsewhere, under one heading.
+-- World quests: those in your area you don't watch ("areaWorld": nothing to stop watching), then those you
+-- watch ("world"), under one heading.
 function RQ.WorldQuests()
-  local rows, seen = {}, {}
-  for _, task in ipairs(areaTasks(true)) do addTask(rows, seen, task[1], task[2]) end
-  for _, id in ipairs(RQ.WatchedWorldQuests()) do addTask(rows, seen, id) end
+  local rows = {}
+  for _, task in ipairs(areaTasks(true)) do rows[#rows + 1] = RQ.TaskRow(task[1], task[2], "areaWorld") end
+  for _, id in ipairs(watchedByArea()) do rows[#rows + 1] = RQ.TaskRow(id, nil, "world") end
   return section(L["World quests"], rows)
 end
 
@@ -180,9 +200,9 @@ local function requirements(info)
   return out
 end
 
--- An activity's row, or nil once it is done (the game's tracker drops it then) or while its name is hidden.
+-- An activity's row, or nil once it is done (the game's tracker drops it then) or while its id or name is hidden.
 local function activityRow(id)
-  local info = plainTable(ns.CallIf(C_PerksActivities, "GetPerksActivityInfo", id))
+  local info = id and plainTable(ns.CallIf(C_PerksActivities, "GetPerksActivityInfo", id))
   local name = info and not ns.IsTrue(info.completed) and ns.PlainText(info.activityName)
   return name and { id = id, title = name, objectives = requirements(info), kind = "activity" } or nil
 end
@@ -200,7 +220,7 @@ end
 -- Clicks ---------------------------------------------------------------------------------------
 
 -- A world quest's title clicked: left opens the world map on its zone (after a fight, as other windows do),
--- right stops watching it (the game's own call; one in your area you don't watch stays, as in the game's tracker).
+-- right stops watching it (the game's own call; one in your area you don't watch has nothing to stop).
 function RQ.OnWorldQuest(id, button)
   if button == "RightButton" then return ns.CallIf(C_QuestLog, "RemoveWorldQuestWatch", id) end
   if ns.WindowWaitsForCombat(L["The world map"]) then return end
@@ -212,8 +232,9 @@ function RQ.OnActivity(id, button)
   if button == "RightButton" then ns.CallIf(C_PerksActivities, "RemoveTrackedPerksActivity", id) end
 end
 
-QT.KIND_CLICKS.world, QT.KIND_CLICKS.activity = RQ.OnWorldQuest, RQ.OnActivity
+QT.KIND_CLICKS.world, QT.KIND_CLICKS.areaWorld, QT.KIND_CLICKS.activity = RQ.OnWorldQuest, RQ.OnWorldQuest, RQ.OnActivity
 QT.CLICKS.world = L["Click: show on the map · Right-click: stop watching"]
+QT.CLICKS.areaWorld = L["Click: show on the map"]
 QT.CLICKS.activity = L["Right-click: stop tracking"]
 
 -- The blocks, in the game's tracker's order, and their events.

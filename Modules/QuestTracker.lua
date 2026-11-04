@@ -135,11 +135,11 @@ local function questTimers()
   return out
 end
 
--- The same on Retail, which has no GetQuestTimers: each watched quest's C_QuestLog.GetTimeAllowed (its whole
+-- The same on Retail, which has no GetQuestTimers: each watched quest's (the ids given) C_QuestLog.GetTimeAllowed (its whole
 -- time and the seconds gone, as the game's own tracker reads them), while time is left. A hidden value is left out.
-local function timesAllowed()
+local function timesAllowed(watched)
   local out = {}
-  for _, id in ipairs(QT.Watched()) do
+  for _, id in ipairs(watched) do
     local total, gone = ns.CallIf(C_QuestLog, "GetTimeAllowed", id)
     total, gone = ns.PlainNumber(total), ns.PlainNumber(gone)
     if total and gone and gone < total then out[id] = total - gone end
@@ -147,7 +147,7 @@ local function timesAllowed()
   return out
 end
 
--- Seconds left on each timed quest, by quest id: the running client's call, picked once.
+-- Seconds left on each timed quest, by quest id: the running client's call, picked once. Takes the watched ids.
 QT.Timers = ns.ClientData({ forever = questTimers, retail = timesAllowed })
 
 -- A countdown as minutes and seconds ("4:32"; an hour and more as "61:05").
@@ -164,8 +164,9 @@ end
 
 -- Every watched quest, in the chosen order, each timed one with its seconds left; and whether any is timed.
 function QT.Quests()
-  local out, timers, timed = {}, QT.Timers(), false
-  for _, id in ipairs(QT.Watched()) do
+  local watched = QT.Watched()
+  local out, timers, timed = {}, QT.Timers(watched), false
+  for _, id in ipairs(watched) do
     local q = QT.Quest(id)
     if q then q.timer = timers[id] timed = timed or q.timer ~= nil out[#out + 1] = q end
   end

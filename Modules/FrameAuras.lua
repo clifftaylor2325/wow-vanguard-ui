@@ -75,7 +75,7 @@ local function build(settings)
   for _, key in ipairs({ "target", "focus" }) do
     local f = UF.frames[key]
     if f then addContainers(f, settings, key) end
-    for _, part in ipairs(f and FA.CLIENT_PARTS or {}) do part(f, key, settings) end
+    for _, part in ipairs(f and FA.CLIENT_PARTS or {}) do ns.Try("frame aura part", part, f, key, settings) end
   end
 end
 
