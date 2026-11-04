@@ -170,6 +170,7 @@ it("retail data: the info strip shows no ammo or shards block, where Forever's h
 
 it("retail data: Instance prep makes no reagent, ammo, soul shard or bandage row, where Forever keeps them", () => {
   const [onRetail, onForever] = [retail(UNITS_ENV), loggedIn(UNITS_ENV)];
+  // The labels of the rows Instance prep makes for a character of that class at level 80.
   const rows = (client, class_) => client.eval(`__units.player.class = "${class_}" __units.player.level = 80
     local out = {} for _, r in ipairs(ns.GetModule("InstancePrep").Rows()) do out[#out + 1] = r.label end
     return table.concat(out, ",")`);
