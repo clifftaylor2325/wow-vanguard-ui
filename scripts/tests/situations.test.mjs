@@ -539,3 +539,32 @@ it("Y6-1 situations: a roster change re-reads the options widgets only while the
   raid(addon, false);
   expect(addon.eval("return __refreshes"), "open: re-read").toBeGreaterThan(0);
 });
+
+it("situations: Exit without saving after leaving a raid while unlocked keeps the override out of the base profile", () => {
+  const addon = situated(saved());
+  raid(addon);
+  addon.slash("unlock");
+  raid(addon, false);
+  addon.eval("ns.ExitWithoutSaving()");
+  expect([spot(addon), savedSpot(addon)], "the base spot, and nothing saved for the strip").toEqual([HOME, null]);
+});
+
+it("situations: Exit without saving after a recording stopped while unlocked keeps the recording out of the base profile", () => {
+  const addon = situated(saved());
+  addon.slash("situation record raid");
+  addon.slash("unlock");
+  addon.slash("situation stop");
+  addon.eval("ns.ExitWithoutSaving()");
+  expect([spot(addon), savedSpot(addon)], "the base spot, and nothing saved for the strip").toEqual([HOME, null]);
+});
+
+it("situations: Exit without saving after joining a raid while unlocked leaves the raid's layout on screen", () => {
+  const addon = situated(saved());
+  addon.slash("unlock");
+  raid(addon);
+  addon.eval("ns.ExitWithoutSaving()");
+  addon.advance(1);
+  expect(spot(addon), "the raid's spot stays through later frames").toEqual(["TOP", "TOP", 0, -60]);
+  raid(addon, false);
+  expect([spot(addon), savedSpot(addon)], "leaving puts the base back").toEqual([HOME, null]);
+});
