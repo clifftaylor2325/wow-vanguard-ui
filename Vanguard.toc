@@ -112,6 +112,7 @@ Modules/FrameAuras.lua
 Modules/PlayerAuras.lua
 Modules/ComboPoints.lua
 Modules/ClassBars.lua
+Modules/RetailClassBars.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/PowerTicks.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/SwingTimer.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/UnitExtras.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]

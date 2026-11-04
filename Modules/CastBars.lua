@@ -22,6 +22,10 @@
 -- nothing is compared when the client hides the cooldown or whether the cast can be
 -- interrupted (that goes to the mark's opacity as it is). No fade; the mark goes with the bar.
 
+-- Empowered casts (Retail's Evoker): the client reports them as channels with stages. Their bar fills
+-- as a cast does, to the end of the hold at the last stage, with a thin mark where each stage ends
+-- (from plain stage times only). WoW Forever has none, and doesn't listen for them.
+
 local ADDON, ns = ...
 
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
@@ -70,19 +74,28 @@ local function castInfo(unit)
   return name, icon, startMS, endMS, shielded, false
 end
 
+-- An empowered cast's end with its hold at the last stage added, as the client's own bar adds it (when both are plain).
+local function withHold(unit, endMS)
+  local plainEnd, hold = ns.PlainNumber(endMS), ns.PlainNumber(GetUnitEmpowerHoldAtMaxTime(unit))
+  if not plainEnd or not hold then return endMS end
+  return plainEnd + hold
+end
+
 -- The unit's channel from UnitChannelInfo as CB.Cast's values, or nothing when there is none. The uninterruptible
--- flag is its 7th return.
+-- flag is its 7th return and the stages of an empowered cast its 10th (never hidden): that one fills as a cast.
 local function channelInfo(unit)
   local get = _G.UnitChannelInfo
   if type(get) ~= "function" then return nil end
-  local name, _, icon, startMS, endMS, _, shielded = get(unit)
+  local name, _, icon, startMS, endMS, _, shielded, _, _, stages = get(unit)
   if type(name) == "nil" then return nil end
+  if type(stages) == "number" and stages > 0 then return name, icon, startMS, withHold(unit, endMS), shielded, false, stages end
   return name, icon, startMS, endMS, shielded, true
 end
 
 -- The unit's current cast or channel as values (no table each time it's
--- asked): name, icon, startMS, endMS, shielded, channel; nil when there is
--- none. (Checked with type() so a hidden name is never tested for truth.)
+-- asked): name, icon, startMS, endMS, shielded, channel, and an empowered
+-- cast's stages; nil when there is none. (Checked with type() so a hidden
+-- name is never tested for truth.)
 function CB.Cast(unit)
   local name, icon, startMS, endMS, shielded, channel = castInfo(unit)
   if type(name) ~= "nil" then return name, icon, startMS, endMS, shielded, channel end
@@ -99,9 +112,15 @@ local function isTrue(v)
   return not ns.IsSecret(v) and v == true
 end
 
+-- The client's call for a cast's duration object: an empowered cast's includes its hold at the last stage.
+local function durationCall(channel, stages)
+  if stages then return _G.UnitEmpoweredChannelDuration end
+  return channel and _G.UnitChannelDuration or _G.UnitCastingDuration
+end
+
 -- The client's duration object for a cast, where it has one.
-local function castDuration(unit, channel)
-  local get = channel and _G.UnitChannelDuration or _G.UnitCastingDuration
+local function castDuration(unit, channel, stages)
+  local get = durationCall(channel, stages)
   if type(get) ~= "function" then return nil end
   local ok, d = pcall(get, unit)
   return ok and d or nil
@@ -163,8 +182,8 @@ local function timerArgs(channel)
 end
 
 -- Starts the bar's timing: the client's own timer where it can, else plain times on each frame.
-local function startTiming(bar, unit, startMS, endMS, channel)
-  local duration = castDuration(unit, channel)
+local function startTiming(bar, unit, startMS, endMS, channel, stages)
+  local duration = castDuration(unit, channel, stages)
   CB.ClearSeconds(bar.time)
   showLatency(bar, startMS, endMS, channel)
   if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration, timerArgs(channel)) then
@@ -200,16 +219,57 @@ local function paintCast(bar, name, icon, shielded, channel)
   bar.text:SetText(name)
 end
 
+-- The share of an empowered cast's time at the end of each of its stages, from plain times (none while any is hidden).
+local function stageShares(unit, startMS, endMS, stages)
+  local s, e = ns.PlainNumber(startMS), ns.PlainNumber(endMS)
+  local shares, sum = {}, 0
+  if not s or not e or e <= s then return shares end
+  for i = 1, stages do
+    local length = ns.PlainNumber(GetUnitEmpowerStageDuration(unit, i - 1))
+    if not length then return {} end
+    sum = sum + length
+    shares[i] = sum / (e - s)
+  end
+  return shares
+end
+
+-- A thin light mark across a bar: where a stage of an empowered cast ends.
+local function stageMark(bar)
+  local m = T.Tint(T.Snap(bar:CreateTexture(nil, "ARTWORK", nil, 3)), "white", 0.8)
+  m:SetTexture(T.WHITE)
+  m:SetWidth(2 * T.Pixel(bar))
+  return m
+end
+
+-- Puts one stage mark at its share of the bar's width, or hides it when that stage has none.
+local function placeMark(bar, m, share)
+  m:SetShown(share ~= nil)
+  if share == nil then return end
+  m:ClearAllPoints()
+  m:SetPoint("TOP", bar, "TOPLEFT", bar:GetWidth() * share, 0)
+  m:SetPoint("BOTTOM", bar, "BOTTOMLEFT", bar:GetWidth() * share, 0)
+end
+
+-- Marks where each stage of an empowered cast ends on its bar, and clears the marks for any other cast.
+function CB.MarkStages(bar, unit, startMS, endMS, stages)
+  if not stages and not bar.stageMarks then return end
+  local shares = stages and stageShares(unit, startMS, endMS, stages) or {}
+  bar.stageMarks = bar.stageMarks or {}
+  for i = #bar.stageMarks + 1, #shares do bar.stageMarks[i] = stageMark(bar) end
+  for i, m in ipairs(bar.stageMarks) do placeMark(bar, m, shares[i]) end
+end
+
 -- Shows the unit's cast on a bar made by CB.Build, or hides the bar when it isn't casting.
 function CB.Show(bar, unit)
-  local name, icon, startMS, endMS, shielded, channel = CB.Cast(unit)
+  local name, icon, startMS, endMS, shielded, channel, stages = CB.Cast(unit)
   local cast = type(name) ~= "nil"
   if not cast and bar.vgFinishing then return end
   if cast then bar.vgFinishing = nil T.StopFade(bar) end
   bar:SetShown(cast)
   if not cast then return bar:SetScript("OnUpdate", nil) end
   paintCast(bar, name, icon, shielded, channel)
-  startTiming(bar, unit, startMS, endMS, channel)
+  startTiming(bar, unit, startMS, endMS, channel, stages)
+  CB.MarkStages(bar, unit, startMS, endMS, stages)
   if bar.mark then CB.PaintMark(bar, shielded) end
 end
 
@@ -473,6 +533,11 @@ local CAST_EVENTS = {
   "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_CHANNEL_UPDATE",
   "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE",
 }
+-- And an empowered cast's, on the client that has them.
+CB.EMPOWER_EVENTS = ns.ClientData({
+  forever = {}, retail = { "UNIT_SPELLCAST_EMPOWER_START", "UNIT_SPELLCAST_EMPOWER_UPDATE", "UNIT_SPELLCAST_EMPOWER_STOP" },
+})
+for _, event in ipairs(CB.EMPOWER_EVENTS) do CAST_EVENTS[#CAST_EVENTS + 1] = event end
 CB.EVENTS = CAST_EVENTS
 
 -- The cursor ring ---------------------------------------------------------------------
@@ -507,12 +572,12 @@ end
 
 -- Sweeps the inner ring with your cast or channel now, or clears it when you are not casting.
 function CB.RingCast()
-  local name, _, startMS, endMS, _, channel = CB.Cast("player")
+  local name, _, startMS, endMS, _, channel, stages = CB.Cast("player")
   local cd = CB.ring.cast
   if type(name) == "nil" then return cd:Clear() end
   cd:SetReverse(not channel)
   local start, finish = ns.PlainNumber(startMS), ns.PlainNumber(endMS)
-  sweepRing(cd, castDuration("player", channel), start and start / 1000, start and finish and (finish - start) / 1000)
+  sweepRing(cd, castDuration("player", channel, stages), start and start / 1000, start and finish and (finish - start) / 1000)
 end
 
 -- Puts the ring's centre on the cursor (the cursor is in screen pixels, the ring's anchor in UIParent units).
@@ -590,22 +655,24 @@ end
 
 -- Events that end a cast, and how the bar says so.
 local FINISH = {
-  UNIT_SPELLCAST_STOP = "good", UNIT_SPELLCAST_CHANNEL_STOP = "good",
+  UNIT_SPELLCAST_STOP = "good", UNIT_SPELLCAST_CHANNEL_STOP = "good", UNIT_SPELLCAST_EMPOWER_STOP = "good",
   UNIT_SPELLCAST_INTERRUPTED = L["Interrupted"], UNIT_SPELLCAST_FAILED = L["Failed"],
 }
 
--- How an ending event says the cast went. A channel's stop names who interrupted
--- it (nil when it ran its course; a hidden name is still someone), as the
--- client's own cast bar reads it (CastingBarFrame.lua, UNIT_SPELLCAST_CHANNEL_STOP).
-local function finishReason(event, interruptedBy)
-  if event == "UNIT_SPELLCAST_CHANNEL_STOP" and type(interruptedBy) ~= "nil" then return L["Interrupted"] end
+-- How an ending event says the cast went, from its fourth argument. A channel's stop
+-- names who interrupted it (nil when it ran its course; a hidden name is still someone),
+-- as the client's own cast bar reads it (CastingBarFrame.lua, UNIT_SPELLCAST_CHANNEL_STOP);
+-- an empowered cast's stop says whether it completed (a plain false: interrupted).
+local function finishReason(event, fourth)
+  if event == "UNIT_SPELLCAST_CHANNEL_STOP" and type(fourth) ~= "nil" then return L["Interrupted"] end
+  if event == "UNIT_SPELLCAST_EMPOWER_STOP" and not ns.IsSecret(fourth) and fourth == false then return L["Interrupted"] end
   return FINISH[event]
 end
 
 -- A cast event for one of our units: an end flashes the bar, anything else refreshes it.
-local function onCast(event, unit, _, _, interruptedBy)
+local function onCast(event, unit, _, _, fourth)
   local bar = CB.bars[unit]
-  if bar and FINISH[event] and not casting(unit) then return CB.Finish(bar, finishReason(event, interruptedBy)) end
+  if bar and FINISH[event] and not casting(unit) then return CB.Finish(bar, finishReason(event, fourth)) end
   CB.Update(unit)
 end
 
