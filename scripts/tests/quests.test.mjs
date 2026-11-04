@@ -856,6 +856,17 @@ it("quest log: a zone the game folded in its own list is opened as you zone in a
   addon.eval("__expanded = 0 ExpandQuestHeader = nil __log[4].isCollapsed = true");
   expect(addon.eval("local QL = ns.GetModule('QuestLog') return QL.Count()"), "a client without ExpandQuestHeader reads what the log lists").toBe(2);
 });
+// TEST-ONLY game quest panel of the windowed world map, there before the addon's files load (Lua for loggedIn's client).
+const MAP_PANEL_CLIENT = `QuestMapFrame = CreateFrame("Frame", "QuestMapFrame", UIParent)`;
+it("quest log: zones the game's map panel folded are opened again when the panel closes", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV, { client: MAP_PANEL_CLIENT });
+  addon.advance(0.25);
+  addon.eval("QuestMapFrame:Show() __log[4].isCollapsed = true");
+  expect(addon.eval("return ns.GetModule('QuestLog').Count()"), "folded while the map is up: short").toBe(2);
+  addon.eval("QuestMapFrame:Hide()");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, ns.GetModule('QuestLog').Count() }"), "the panel closing opens the zone again").toEqual([false, 3]);
+});
 it("quest log: zones, a quest's details, and its buttons", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   expect(addon.eval("return __overrides"), "the game's quest log keys open this log").toEqual({ L: "Vanguard_QuestLogToggle:LeftButton", "SHIFT-L": "Vanguard_QuestLogToggle:LeftButton" });

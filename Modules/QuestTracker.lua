@@ -92,9 +92,22 @@ end
 
 -- The game folds every zone off the current map as you zone in (QuestMapFrame_ResetFilters, on
 -- PLAYER_ENTERING_WORLD): they are opened on the next frame, after it, so the quest log, the XP lines, the
--- dungeon card and the tracker read every quest. Shared by those modules, so it holds whichever are on;
--- a zone folded by hand afterwards stays folded until the next zone-in or until Vanguard's log opens.
-ns.On("PLAYER_ENTERING_WORLD", ns.Guard("quest folds", function() ns.Soon("quest folds", QT.OpenFolds) end))
+-- dungeon card and the tracker read every quest. Shared by those modules, so it holds whichever are on.
+-- The windowed world map's quest panel folds them again on each map change while it is up, so they are opened
+-- again when the panel closes (the map closing, or its panel being put away); a zone folded by hand stays
+-- folded until the next zone-in, that closing, or until Vanguard's log opens.
+local function openFoldsSoon()
+  ns.Soon("quest folds", QT.OpenFolds)
+end
+ns.On("PLAYER_ENTERING_WORLD", ns.Guard("quest folds", openFoldsSoon))
+
+-- Has the game's map quest panel (QuestMapFrame, there before any addon loads) open the folds when it hides.
+-- HookScript only: the game's frame keeps its own scripts.
+local function hookMapPanel()
+  local panel = _G.QuestMapFrame
+  if type(panel) == "table" and panel.HookScript then panel:HookScript("OnHide", ns.Guard("quest folds", openFoldsSoon)) end
+end
+hookMapPanel()
 
 -- A quest's place in the log (it moves as quests come and go), or nil when the log doesn't have it.
 function QT.LogIndex(id)
