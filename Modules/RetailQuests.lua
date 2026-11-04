@@ -79,21 +79,21 @@ end
 -- RetailDelves.lua adds a delve's counters, affixes and reward chest). Empty for any other kind.
 RQ.EXTRAS = {}
 
--- The stage's criteria as objectives, then what each of RQ.EXTRAS adds for this step.
+-- The stage's criteria as objectives, or its description with the stage's percent when the game draws the stage as
+-- one bar.
+local function stageCriteria(step)
+  local percent, text = ns.PlainNumber(step.weightedProgress), ns.PlainText(step.description)
+  if percent and text then return { percentLine(text, percent, false) } end
+  return criteria(ns.PlainNumber(step.numCriteria) or 0)
+end
+
+-- The stage's objectives: its criteria, then what each of RQ.EXTRAS adds for this step.
 local function stageObjectives(step)
-  local out = criteria(ns.PlainNumber(step.numCriteria) or 0)
+  local out = stageCriteria(step)
   for _, extra in ipairs(RQ.EXTRAS) do
     for _, line in ipairs(extra(step)) do out[#out + 1] = line end
   end
   return out
-end
-
--- The stage's objectives: its description with the stage's percent when the game draws the stage as one bar, else
--- its objectives.
-local function stageObjectives(step)
-  local percent, text = ns.PlainNumber(step.weightedProgress), ns.PlainText(step.description)
-  if percent and text then return { percentLine(text, percent, false) } end
-  return criteria(ns.PlainNumber(step.numCriteria) or 0)
 end
 
 -- The stage's row: "Stage 2/3: The Crypt" (the stage's title alone in a scenario of one stage) and its objectives.
