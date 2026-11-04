@@ -152,19 +152,44 @@ local function nowText(row)
   return entry and entry.place
 end
 
+-- The name of a bar page: its stance or form, else its label, else "Page n".
+local function pageName(i, page)
+  local name = page.forms and ns.SpellName(page.forms[1])
+  return name or page.label or ns.Format(L["Page {n}"], { n = i })
+end
+
+-- The index and table of the bar 1 page a slot is on, for a class with more than one page; nil for any other slot.
+local function pageAt(slot)
+  local pages = classData() and classData().pages or {}
+  if #pages < 2 or not slot or barOf(slot) ~= 1 then return nil end
+  for i, page in ipairs(pages) do
+    if slot >= page.base and slot < page.base + 12 then return i, page end
+  end
+end
+
+-- The key as step 3 names it: on a stance, form or stealth page, with that page's name (keys 1 to 6 repeat on every
+-- page).
+local function pagedKey(row, entry)
+  local key = KV.KeyText(row.key)
+  local i, page = pageAt(row.slot or entry.slot)
+  if not page then return key end
+  return ns.Format(L["{key} in {page}"], { key = key, page = pageName(i, page) })
+end
+
 -- One plan row in words, or nil for a row that needn't be listed (already set, or a spell not known yet). A stance or
--- pet key's row has no spell and is named by its command.
-local function changeText(row, entry)
+-- pet key's row has no spell and is named by its command. `keyName` is the key as the line names it (the key's own
+-- name when nil).
+local function changeText(row, entry, keyName)
   local text = row.over and OVER_TEXT or CHANGE_TEXT[row.kind] or KEPT_TEXT[row.why]
   if not text then return nil end
   local spell = row.spell and spellText(row.spell) or commandText(row.command)
   local moved, over = row.moved and spellText(row.moved), row.over and spellText(row.over)
-  return ns.Format(text, { key = KV.KeyText(row.key), spell = spell, bar = barOf(row.slot or entry.slot), moved = moved, over = over })
+  return ns.Format(text, { key = keyName or KV.KeyText(row.key), spell = spell, bar = barOf(row.slot or entry.slot), moved = moved, over = over })
 end
 
 -- A plan row in words for step 3's list: a change also says what the key does now when it does something else.
 local function rowText(row, entry)
-  local text, now = changeText(row, entry), nowText(row)
+  local text, now = changeText(row, entry, pagedKey(row, entry)), nowText(row)
   return text and now and ns.Format(L["{change} (now {what})"], { change = text, what = now }) or text
 end
 
@@ -347,8 +372,7 @@ end
 local function pageChoices()
   local out = {}
   for i, page in ipairs(classData() and classData().pages or {}) do
-    local name = page.forms and ns.SpellName(page.forms[1])
-    out[i] = { i, name or page.label or ns.Format(L["Page {n}"], { n = i }) }
+    out[i] = { i, pageName(i, page) }
   end
   return out
 end

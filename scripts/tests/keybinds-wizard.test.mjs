@@ -343,3 +343,14 @@ it("the open Your keys tab's Place new spells switch turns off at once on Put ev
   addon.eval('__click("Put back")');
   expect(drawn()).toBe(false);
 });
+
+it("step 3: keys 1 to 6 name the stance page they are on, so no key is listed twice unnamed", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  const rows = ready(addon);
+  expect(rows.filter((r) => /^\[x\] 1 in /.test(r)), "key 1 once per page").toEqual(
+    expect.arrayContaining([expect.stringMatching(/^\[x\] 1 in Battle Stance: .+ added to your bar$/), expect.stringMatching(/^\[x\] 1 in Defensive Stance: /)]));
+  expect(rows.filter((r) => /^\[x\] 1:/.test(r)), "no unnamed key 1").toEqual([]);
+  expect(rows, "a key off the bar 1 pages keeps its plain name").toContain("[x] F: Shield Bash added to your bar");
+});
