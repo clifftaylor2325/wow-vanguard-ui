@@ -202,9 +202,11 @@ function GW.SkinRetailPage(frame)
   watchOpenCards()
 end
 
+-- The Adventure Guide anchors its first bottom tab again on every show (EncounterJournal_OnShow), so its tabs are moved
+-- out past the panel again after each.
+GW.TABS_REANCHORED.EncounterJournal = true
 -- The premade group invite's role picture (tank, healer or damage, beside "Your role") is the dialog's content, kept
 -- as the window skin fades the dialog's own textures.
-GW.TABS_REANCHORED.EncounterJournal = true
 GW.CONTENT_ART.LFGListInviteDialog = { "RoleIcon" }
 GW.Add("finder", { "PVEFrame", "LFGListApplicationDialog", "LFGListInviteDialog" }, GW.SkinRetailWindow)
 GW.AddOnDemand("finder", "Blizzard_PVPUI", { "PVPUIFrame" }, GW.SkinRetailPage)
