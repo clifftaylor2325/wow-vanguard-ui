@@ -293,6 +293,27 @@ it("quest dialog: hiding the whole UI keeps the conversation open; closing it en
   addon.eval("Vanguard_QuestDialog:Hide()");
   expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")], "so does Escape (the game's special windows hide it)").toEqual([["closeGossip nil", "closeQuest nil"], false]);
 });
+it("quest dialog: late item details keep where the long text was scrolled to; a new page starts at the top", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval('__greeting = "TEST-ONLY " .. string.rep("word ", 400)');
+  addon.fire("GOSSIP_SHOW");
+  wheelBody(addon, -2);
+  addon.fire("QUEST_ITEM_UPDATE");
+  expect(bodyScroll(addon)[2], "the redraw leaves the reading place").toBe(80);
+  addon.fire("GOSSIP_SHOW");
+  expect(bodyScroll(addon)[2], "a new page opens at the top").toBe(0);
+});
+it("quest dialog: a number or Space with Shift, Ctrl or Alt held goes on to the game", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("Vanguard_QuestDialog.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
+  addon.eval("__wfgWorld.keys.ctrl = true");
+  key(addon, "1");
+  expect([calls(addon), addon.eval("return Vanguard_QuestDialog.__passed")], "Ctrl-1 picks no line and the key goes on").toEqual([[], true]);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  key(addon, "1");
+  expect([calls(addon), addon.eval("return Vanguard_QuestDialog.__passed")], "1 alone picks the line and is kept").toEqual([["avail 90031"], false]);
+});
 it("quest dialog: late item details redraw the page; spell and currency rewards", () => {
   const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
     C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,
@@ -391,7 +412,7 @@ const TRACK_ENV = `
     GetDistanceSqToQuest = function(id) return __quests[id].dist end,
     RemoveQuestWatch = function(id) __removed = id end,
   }
-  GetQuestLogSpecialItemInfo = function(i) local q = __quests[__index(i)] if q.item then return q.item, "TEST-ONLY-ICON" end end
+  GetQuestLogSpecialItemInfo = function(i) local q = __quests[__index(i)] if q.item then return q.item, "TEST-ONLY-ICON", 0, not q.goneWhenReady end end
   QuestMapFrame_OpenToQuestDetails = function(id) __opened = id end
   GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
 `;
@@ -590,6 +611,21 @@ const questItems = (addon) => addon.eval(`local out = {}
   return out`);
 // The tracker's block titles, top to bottom.
 const blockTitles = (addon) => tracker(addon).blocks.map((b) => b[0]);
+it("quest tracker: a ready quest keeps its item button only when the game keeps showing the item", () => {
+  const addon = loggedIn(TRACK_ENV);
+  addon.eval("__quests[90051].ready = true");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(questItems(addon)[0][1], "the game shows the item on a ready quest: the button stays").toBe(true);
+  addon.eval("__quests[90051].goneWhenReady = true");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(questItems(addon)[0][1], "the game hides it once the quest is ready: so does the tracker").toBe(false);
+  addon.eval("__quests[90051].ready = false");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(questItems(addon)[0][1], "not ready yet: the item is back").toBe(true);
+});
 it("quest tracker: with Questie loaded, Questie's tracker shows instead unless Vanguard's is picked", () => {
   const QUESTIE = 'C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Questie" end\n';
   const questie = loggedIn(QUESTIE + TRACK_ENV);

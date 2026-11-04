@@ -73,11 +73,12 @@ function QT.Objectives(id)
   return out
 end
 
--- The quest's usable item { link, texture }, if it has one.
-local function questItem(logIndex)
+-- The quest's usable item { link, texture }, if it has one. The item goes once the quest is ready to turn in,
+-- unless the game keeps showing it.
+local function questItem(logIndex, ready)
   if not logIndex or type(GetQuestLogSpecialItemInfo) ~= "function" then return nil end
-  local link, texture = GetQuestLogSpecialItemInfo(logIndex)
-  if type(link) == "string" then return { link = link, texture = texture } end
+  local link, texture, _, showsWhenReady = GetQuestLogSpecialItemInfo(logIndex)
+  if type(link) == "string" and (not ready or ns.IsTrue(showsWhenReady)) then return { link = link, texture = texture } end
 end
 
 -- Opens every zone folded in the game's own quest list, since the log hides the quests under a folded
@@ -128,7 +129,7 @@ function QT.Quest(id)
   local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = QT.IsReady(id)
-  return { id = id, title = info.title, level = info.level, ready = ready, autoComplete = ns.IsTrue(info.isAutoComplete), failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index),
+  return { id = id, title = info.title, level = info.level, ready = ready, autoComplete = ns.IsTrue(info.isAutoComplete), failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index, ready),
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 
