@@ -75,7 +75,10 @@ end
 
 -- The quest's usable item { link, texture }, if it has one. The item goes once the quest is ready to turn in,
 -- unless the game keeps showing it.
-local function questItem(logIndex, ready)
+---@param logIndex number|nil
+---@param ready boolean
+---@return table|nil
+function QT.QuestItem(logIndex, ready)
   if not logIndex or type(GetQuestLogSpecialItemInfo) ~= "function" then return nil end
   local link, texture, _, showsWhenReady = GetQuestLogSpecialItemInfo(logIndex)
   if type(link) == "string" and (not ready or ns.IsTrue(showsWhenReady)) then return { link = link, texture = texture } end
@@ -129,7 +132,7 @@ function QT.Quest(id)
   local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = QT.IsReady(id)
-  return { id = id, title = info.title, level = info.level, ready = ready, autoComplete = ns.IsTrue(info.isAutoComplete), failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index, ready),
+  return { id = id, title = info.title, level = info.level, ready = ready, autoComplete = ns.IsTrue(info.isAutoComplete), failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = QT.QuestItem(index, ready),
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 
@@ -340,7 +343,7 @@ end
 -- Blocks a client adds around the watched quests, in order (Modules/RetailQuests.lua on Retail; none on WoW
 -- Forever). Each is fn(quests, taken) giving its rows, headings included, and setting taken[id] for each watched
 -- quest it draws itself (a campaign quest under its campaign), so the plain list leaves that quest out.
-QT.BLOCKS = { above = {}, afterChallenges = {}, last = {} }
+QT.BLOCKS = { above = {}, afterQuests = {}, afterChallenges = {}, last = {} }
 
 -- Appends every block's rows.
 local function addBlocks(rows, blocks, quests, taken)
@@ -359,12 +362,13 @@ local function addQuests(rows, quests, taken)
 end
 
 -- The rows the tracker draws, in the game's tracker's order: the client's blocks above the quests, the watched
--- quests, the tracked achievements (Legacy challenges on Forever), the client's blocks that follow them, the tracked
--- recipes, then the client's last blocks, each under its own heading.
+-- quests, the client's blocks that follow them, the tracked achievements (Legacy challenges on Forever), the
+-- client's blocks that follow those, the tracked recipes, then the client's last blocks, each under its own heading.
 function QT.Rows(quests)
   local rows, taken = {}, {}
   addBlocks(rows, QT.BLOCKS.above, quests, taken)
   addQuests(rows, quests, taken)
+  addBlocks(rows, QT.BLOCKS.afterQuests, quests, taken)
   addSection(rows, QT.ACHIEVEMENT_HEADING, QT.Achievements())
   addBlocks(rows, QT.BLOCKS.afterChallenges, quests, taken)
   addSection(rows, L["Recipes"], QT.Recipes())

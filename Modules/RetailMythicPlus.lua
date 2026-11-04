@@ -119,21 +119,12 @@ function RM.DeathText(key)
   return ns.Format(L["Deaths: {count} ({seconds} s lost)"], { count = key.deaths, seconds = key.lost })
 end
 
--- A criterion as a line: the enemy forces (a weighted criterion, whose quantity is its percentage) as "Enemy
--- Forces 45%", any other as the scenario block draws it (RQ.Criterion).
-function RM.Criterion(c)
-  local text, percent = ns.PlainText(c.description), ns.IsTrue(c.isWeightedProgress) and ns.PlainNumber(c.quantity)
-  if not (text and percent) then return RQ.Criterion(c) end
-  local line = ns.Format(L["{objective} {percent}%"], { objective = text, percent = math.floor(percent) })
-  return { text = line, done = ns.IsTrue(c.completed) }
-end
-
 -- The stage's criteria (the bosses and the enemy forces) as lines, in the game's order.
 local function criteria()
   local out, step = {}, plainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
   for i = 1, ns.PlainNumber(step.numCriteria) or 0 do
     local c = plainTable(ns.CallIf(C_ScenarioInfo, "GetCriteriaInfo", i))
-    local line = c and RM.Criterion(c)
+    local line = c and RQ.Criterion(c)
     if line then out[#out + 1] = line end
   end
   return out

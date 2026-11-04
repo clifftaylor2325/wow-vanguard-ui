@@ -84,7 +84,7 @@ const SCENARIO = `
 it("retail quests: the scenario you are in shows on top under its name, its stage and criteria", () => {
   const addon = retail(SCENARIO);
   expect(blocks(addon), "the heading, then the stage with its criteria; a hidden criterion is left out").toEqual([
-    ["TEST-ONLY Delve", []], ["Stage 2/3: TEST-ONLY The Crypt", ["TEST-ONLY Cultists slain 2/5", "TEST-ONLY Gate opened 1/1", "TEST-ONLY Enemy forces"]]]);
+    ["TEST-ONLY Delve", []], ["Stage 2/3: TEST-ONLY The Crypt", ["TEST-ONLY Cultists slain 2/5", "TEST-ONLY Gate opened 1/1", "TEST-ONLY Enemy forces 40%"]]]);
   expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[2].lines[2].text.__textColor"), "muted"), "a done criterion is muted, as a done objective").toBe(true);
   addon.eval("__wfgWorld.scenario.numStages = 1 __wfgWorld.scenario.currentStage = 1 __wfgWorld.scenario.step = { numCriteria = 0 } __wfgWorld.scenario.name = ''");
   redraw(addon, "SCENARIO_UPDATE");
@@ -179,6 +179,14 @@ it("retail quests: every block together, in the game's tracker's order", () => {
     ["TEST-ONLY Delve", "TEST-ONLY Campaign: TEST-ONLY Ascent", "Quests", "Achievements", "Traveler's Log", "Bonus objectives", "World quests"]);
 });
 
+it("retail quests: collections follow the quests and Endeavors follow the Traveler's Log, before bonus objectives", () => {
+  const addon = retail(QUESTS + TASKS + ACTIVITIES + ACHIEVEMENTS + COLLECTABLES + ENDEAVORS);
+  const headings = addon.eval(`local QT = ns.GetModule("QuestTracker") local out = {}
+    for _, r in ipairs(QT.Rows((QT.Quests()))) do if r.section then out[#out + 1] = r.section end end return out`);
+  expect(Object.values(headings), "the headings in order").toEqual(
+    ["TEST-ONLY Campaign: TEST-ONLY Ascent", "Quests", "Collections", "Achievements", "Traveler's Log", "Endeavors", "Bonus objectives", "World quests"]);
+});
+
 it("retail quests: without the Retail calls (a hidden answer or none) the blocks draw nothing and nothing errors", () => {
   const addon = retail("C_ScenarioInfo = nil C_CampaignInfo = nil C_TaskQuest = nil C_PerksActivities = nil GetTasksTable = nil GetTaskInfo = nil" + QUESTS);
   expect(titles(addon), "the plain quest list").toEqual(["[70] TEST-ONLY Boars", "[70] TEST-ONLY Crown", "[70] TEST-ONLY Herbs"]);
@@ -241,8 +249,8 @@ it("retail quests: the quest log lists a currency reward choice, with each type'
 
 // TEST-ONLY tracked achievements: one with no criteria, one earned by you, one with a criterion.
 const ACHIEVEMENTS = `
-  Enum.ContentTrackingType = { Achievement = 2 }
-  C_ContentTracking = { GetTrackedIDs = function(kind) return kind == 2 and { 8001, 8002, 8003 } or {} end }
+  local tracked = C_ContentTracking.GetTrackedIDs
+  C_ContentTracking.GetTrackedIDs = function(kind) return kind == 2 and { 8001, 8002, 8003 } or tracked(kind) end
   local info = { [8001] = { "TEST-ONLY Feat", false, "TEST-ONLY Do the feat", false }, [8002] = { "TEST-ONLY Earned", true, "x", true }, [8003] = { "TEST-ONLY Meta", false, "y", false } }
   GetAchievementInfo = function(id) local a = info[id] if a then return id, a[1], 10, a[2], 1, 1, 1, a[3], 0, "TEST-ONLY-ICON", "", false, a[4] end end
   GetAchievementNumCriteria = function(id) return id == 8003 and 1 or 0 end
@@ -253,4 +261,98 @@ it("retail quests: tracked achievements sit under an Achievements heading, a bar
   const addon = retail(ACHIEVEMENTS);
   expect(blocks(addon), "the Retail heading, the description line, the criterion; the earned one left out").toEqual([
     ["Achievements", []], ["TEST-ONLY Feat", ["TEST-ONLY Do the feat"]], ["TEST-ONLY Meta", ["TEST-ONLY Step"]]]);
+});
+
+// TEST-ONLY tracked collectables: an appearance with a source, a decor piece still loading its text, one with no
+// target, one whose title the client hides, and a hidden id.
+const COLLECTABLES = `
+  local w = __wfgWorld
+  w.collectables[0] = { { id = 501, title = "TEST-ONLY Helm", target = { 4, 9001 }, objective = "TEST-ONLY Drops from the Boss" },
+    { id = 502, title = "TEST-ONLY No Target" }, { id = 503, title = w.secret("hidden"), target = { 4, 9003 } } }
+  w.collectables[3] = { { id = 601, title = "TEST-ONLY Lamp", target = { 5, 9002 } } }
+`;
+
+it("retail quests: tracked appearances and decor show under Collections with their source; right-click stops tracking", () => {
+  const addon = retail(COLLECTABLES);
+  expect(blocks(addon), "the appearance with its source line, the decor without one; no target and a hidden title left out").toEqual([
+    ["Collections", []], ["TEST-ONLY Helm", ["TEST-ONLY Drops from the Boss"]], ["TEST-ONLY Lamp", []]]);
+  clickBlock(addon, "TEST-ONLY Helm", "LeftButton");
+  expect(addon.eval("return #__wfgWorld.stopped"), "a left-click does nothing").toBe(0);
+  clickBlock(addon, "TEST-ONLY Lamp", "RightButton");
+  addon.update(0);
+  expect(addon.eval("return __wfgWorld.stopped"), "stopped by hand, with its type").toEqual([[3, 601, 2]]);
+  expect(titles(addon), "the stopped one goes").not.toContain("TEST-ONLY Lamp");
+  expect(retail("C_ContentTracking = nil" + COLLECTABLES).eval("return Vanguard_QuestTrackerFrame:IsShown()"), "no content tracking: nothing").toBe(false);
+  const hidden = retail("C_ContentTracking.GetCollectableSourceTypes = function() return { __wfgWorld.secret(0), 0 } end C_ContentTracking.GetTrackedIDs = function() return { __wfgWorld.secret(1) } end" + COLLECTABLES);
+  expect(hidden.eval("return Vanguard_QuestTrackerFrame:IsShown()"), "hidden types and ids: nothing").toBe(false);
+  addon.eval("ns.RetailQuests.OnCollectable(1, 'RightButton')");
+  expect(addon.eval("return #__wfgWorld.stopped"), "a click with no row stops nothing").toBe(1);
+});
+
+// TEST-ONLY tracked Housing Endeavor tasks: one with a done and an open requirement, a completed one, a nameless one.
+const ENDEAVORS = `
+  local w = __wfgWorld
+  w.endeavors = {
+    [701] = { taskName = "TEST-ONLY Gather Wood", completed = false, requirementsList = {
+      { completed = false, requirementText = "3 / 9 TEST-ONLY Logs" }, { completed = true, requirementText = "1 / 1 TEST-ONLY Done" }, w.secret(1) } },
+    [702] = { taskName = "TEST-ONLY Finished", completed = true, requirementsList = {} },
+    [703] = { taskName = "", completed = false, requirementsList = {} },
+  }
+  w.trackedEndeavors = { 701, 702, 703, w.secret(704) }
+`;
+
+it("retail quests: tracked Housing Endeavor tasks show what they still ask; right-click stops tracking", () => {
+  const addon = retail(ENDEAVORS);
+  expect(blocks(addon), "the open task, its spaced slash closed up; a finished, a nameless and a hidden one left out").toEqual([
+    ["Endeavors", []], ["TEST-ONLY Gather Wood", ["TEST-ONLY Logs 3/9"]]]);
+  clickBlock(addon, "TEST-ONLY Gather Wood", "LeftButton");
+  expect(addon.eval("return #__wfgWorld.trackedEndeavors"), "a left-click does nothing").toBe(4);
+  clickBlock(addon, "TEST-ONLY Gather Wood", "RightButton");
+  addon.update(0);
+  expect(addon.eval("return #__wfgWorld.trackedEndeavors"), "untracked").toBe(3);
+  expect(retail("C_NeighborhoodInitiative = nil" + ENDEAVORS).eval("return Vanguard_QuestTrackerFrame:IsShown()"), "no Endeavors calls: nothing").toBe(false);
+  const hidden = retail("C_NeighborhoodInitiative.GetTrackedInitiativeTasks = function() return { trackedIDs = __wfgWorld.secret(1) } end" + ENDEAVORS);
+  expect(hidden.eval("return Vanguard_QuestTrackerFrame:IsShown()"), "a hidden tracked list: nothing").toBe(false);
+});
+
+// TEST-ONLY item buttons for tasks: the bonus objective (92002) and the world quest (92001) are in the log, each
+// with a quest item that goes once the quest is ready; the world quest is also ready-proof (the game keeps it).
+const TASK_ITEMS = `
+  local w = __wfgWorld
+  w.addQuest({ questID = 92001, title = "TEST-ONLY Storm Spirits", level = 70, objectives = {} })
+  w.addQuest({ questID = 92002, title = "TEST-ONLY Clear the Mine", level = 70, objectives = {} })
+  w.ready = {}
+  C_QuestLog.ReadyForTurnIn = function(id) return w.ready[id] == true end
+  GetQuestLogSpecialItemInfo = function(index)
+    local id = C_QuestLog.GetInfo(index).questID
+    return "|Hitem:" .. id .. "|h[TEST-ONLY Tool]|h", "TEST-ONLY-ICON", 0, id == 92001
+  end
+`;
+
+// Each shown item button's quest.
+const shownItems = (addon) => Object.values(addon.eval(`local out = {}
+  for _, b in ipairs(ns.GetModule("QuestTracker").items) do if b:IsShown() then out[#out + 1] = b.questID end end return out`));
+
+it("retail quests: a world quest and a bonus objective with a usable item get its button, which goes with the task", () => {
+  const addon = retail(TASKS + TASK_ITEMS);
+  expect(shownItems(addon).sort(), "one button per task").toEqual([92001, 92002]);
+  addon.eval("__wfgWorld.ready[92001] = true __wfgWorld.ready[92002] = true");
+  redraw(addon);
+  expect(shownItems(addon), "ready: only the item the game keeps showing").toEqual([92001]);
+  addon.eval("__wfgWorld.tasks[1].inArea = false __wfgWorld.tasks[2].inArea = false");
+  redraw(addon);
+  expect(shownItems(addon), "the tasks leave the area: no buttons").toEqual([]);
+});
+
+it("retail quests: a weighted stage shows its description with its percent, a hidden percent falls back to the criteria", () => {
+  const addon = retail(`__wfgWorld.scenario = { name = "TEST-ONLY Delve", currentStage = 1, numStages = 2,
+    step = { title = "TEST-ONLY Hold", description = "TEST-ONLY Hold the line", numCriteria = 1, weightedProgress = 45.7 },
+    criteria = { { description = "TEST-ONLY Wave", quantity = 1, totalQuantity = 3, completed = false } } }`);
+  expect(blocks(addon)[1], "the description with the percent, no criteria").toEqual(["Stage 1/2: TEST-ONLY Hold", ["TEST-ONLY Hold the line 45%"]]);
+  addon.eval("__wfgWorld.scenario.step.weightedProgress = __wfgWorld.secret(45)");
+  redraw(addon, "SCENARIO_UPDATE");
+  expect(blocks(addon)[1][1], "a hidden percent: the criteria").toEqual(["TEST-ONLY Wave 1/3"]);
+  addon.eval("__wfgWorld.scenario.step.weightedProgress = 45 __wfgWorld.scenario.step.description = ''");
+  redraw(addon, "SCENARIO_UPDATE");
+  expect(blocks(addon)[1][1], "no description: the criteria").toEqual(["TEST-ONLY Wave 1/3"]);
 });

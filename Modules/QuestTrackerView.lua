@@ -64,13 +64,13 @@ local function objectiveLine(block)
 end
 
 -- What a click does on a row of a client's own kind (a Retail block's world quest, say: Modules/RetailQuests.lua),
--- by its kind: fn(id, button). A kind left out takes no clicks.
+-- by its kind: fn(id, button, row). A kind left out takes no clicks.
 QT.KIND_CLICKS = {}
 
 -- A title click: a client's own kind of row as that kind says, a Legacy challenge untracks on right-click, a recipe
 -- opens (or untracks), a quest opens its details.
 local function onTitleClick(self, button)
-  if self.kind then return ns.CallIf(QT.KIND_CLICKS, self.kind, self.id, button) end
+  if self.kind then return ns.CallIf(QT.KIND_CLICKS, self.kind, self.id, button, self.row) end
   if self.achievement then return QT.OnAchievement(self.id, button) end
   if self.recipe then return QT.OnRecipe(self.id, button) end
   if self.id then QT.OnTitle(self.id, button) end
