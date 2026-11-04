@@ -512,6 +512,16 @@ it("the interrupt mark: which interrupt, by class and rank", () => {
   expect(pick("MAGE", [2139]), "a mage's Counterspell").toBe(2139);
   expect(pick("MAGE", []), "an interrupt you have not learned").toBe(false);
   expect(pick("DRUID", [2139]), "a class with none").toBe(false);
+  expect(pick("DEATHKNIGHT", [47528]), "a retail Death Knight's Mind Freeze").toBe(47528);
+  expect(pick("DEMONHUNTER", [183752]), "a retail Demon Hunter's Disrupt").toBe(183752);
+  expect(pick("DRUID", [78675, 106839]), "a retail Druid's Skull Bash before Solar Beam").toBe(106839);
+  expect(pick("DRUID", [78675]), "a Balance Druid with only Solar Beam").toBe(78675);
+  expect(pick("HUNTER", [187707, 147362]), "a retail Hunter's Counter Shot before Muzzle").toBe(147362);
+  expect(pick("HUNTER", [187707]), "a Survival Hunter with only Muzzle").toBe(187707);
+  expect(pick("MONK", [116705]), "a retail Monk's Spear Hand Strike").toBe(116705);
+  expect(pick("PALADIN", [96231]), "a retail Paladin's Rebuke").toBe(96231);
+  expect(pick("EVOKER", [351338]), "a retail Evoker's Quell").toBe(351338);
+  expect(pick("DRUID", []), "a Druid who knows none").toBe(false);
   addon.eval("IsPlayerSpell = nil C_SpellBook.IsSpellKnown = nil");
   expect(addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false'), "a client that cannot say what you know").toBe(false);
 });

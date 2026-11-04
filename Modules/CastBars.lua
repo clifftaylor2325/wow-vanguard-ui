@@ -352,7 +352,8 @@ CB.WIDTHS = { 80, 600 }
 
 -- The interrupt mark ---------------------------------------------------------------------
 
--- Vanilla interrupts by class: the families you may know (the one to use first first), each from its highest rank down.
+-- Interrupts by class (vanilla ranks, plus the retail classes' own; Blizzard_CooldownBroadcaster/TrackedCooldowns.lua
+-- InterruptSpellsBySpec has the retail ids, and Warlock's pet interrupt is left out): the families you may know (the one to use first first), each from its highest rank down.
 CB.INTERRUPTS = {
   -- Kick.
   ROGUE = { { 1769, 1768, 1767, 1766 } },
@@ -365,6 +366,20 @@ CB.INTERRUPTS = {
   SHAMAN = { { 57994 }, { 10414, 10413, 10412, 8046, 8045, 8044, 8042 } },
   -- Silence (a talent).
   PRIEST = { { 15487 } },
+  -- Retail: Mind Freeze.
+  DEATHKNIGHT = { { 47528 } },
+  -- Retail: Disrupt.
+  DEMONHUNTER = { { 183752 } },
+  -- Retail: Skull Bash, then Solar Beam (Balance).
+  DRUID = { { 106839 }, { 78675 } },
+  -- Retail: Counter Shot, then Muzzle (Survival).
+  HUNTER = { { 147362 }, { 187707 } },
+  -- Retail: Spear Hand Strike.
+  MONK = { { 116705 } },
+  -- Retail: Rebuke.
+  PALADIN = { { 96231 } },
+  -- Retail: Quell.
+  EVOKER = { { 351338 } },
 }
 
 -- The interrupt you know and would use (the best rank of the first family you have), or nil.
