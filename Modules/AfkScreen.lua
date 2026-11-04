@@ -25,6 +25,9 @@ AFK.DIM, AFK.SCENE_DIM = 0.75, 0.45
 AFK.CREST_CLEAR = 66
 -- The passage under the card, in your faction's heading font: how wide it wraps, its size over the title's.
 AFK.PASSAGE_W, AFK.PASSAGE_UP = 640, 3
+-- How dark the band behind the passage is: the crest's red reaches only 4.2:1 on black, so over the canyon's
+-- bright sand it needs this much shade to stay above 3:1 for large text.
+AFK.PASSAGE_SHADE = 0.7
 -- Kept shut while you cast; tried again once this many seconds later.
 AFK.RETRY = 30
 -- The instances it stays shut in (ns.Where): dungeons, raids, battlegrounds and arenas.
@@ -104,12 +107,13 @@ local function paintXP(bar)
   T.SetBarValue(bar, cur)
 end
 
--- Your faction's passage under the card, in the crest's color; gone while the faction look is off.
+-- Your faction's passage under the card, in the crest's color on a dark band; gone while the faction look is off.
 function AFK.PaintPassage()
   local f, faction = AFK.frame, T.Faction()
   local passage = faction and AFK.PASSAGES[faction]
   f.passage:SetShown(passage ~= nil)
   f.by:SetShown(passage ~= nil)
+  f.passageShade:SetShown(passage ~= nil)
   if not passage then return end
   f.passage:SetText(passage.text)
   f.by:SetText(passage.by)
@@ -236,6 +240,15 @@ local function addCrest(f, card)
   f.crest:SetPoint("TOPLEFT", card, "TOPLEFT", 14, -14)
 end
 
+-- A dark band behind the passage and its attribution, over the scene, so the crest's color stays legible on it.
+local function addPassageShade(f)
+  f.passageShade = T.Tint(f:CreateTexture(nil, "BACKGROUND", nil, 1), "shade", AFK.PASSAGE_SHADE)
+  f.passageShade:SetTexture(T.WHITE)
+  f.passageShade:SetPoint("TOPLEFT", f.passage, "TOPLEFT", -24, 12)
+  f.passageShade:SetPoint("TOPRIGHT", f.passage, "TOPRIGHT", 24, 12)
+  f.passageShade:SetPoint("BOTTOM", f.by, "BOTTOM", 0, -12)
+end
+
 -- The passage under the card (a title, so it takes the faction's heading font), centered
 -- and wrapped, with who said it beneath.
 local function addPassage(f, card)
@@ -247,6 +260,7 @@ local function addPassage(f, card)
   f.passage:SetPoint("TOP", card, "BOTTOM", 0, -36)
   f.by = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "text2")
   f.by:SetPoint("TOP", f.passage, "BOTTOM", 0, -10)
+  addPassageShade(f)
 end
 
 -- The XP bar along the card's bottom.
