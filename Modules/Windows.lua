@@ -1576,13 +1576,14 @@ GW.INSPECT_TEXTS = { "InspectTitleText", "InspectGuildText" }
 
 -- One inspect gear slot (Inspect<name>Slot; a slot the client lacks is skipped) in the bags' item look, its bronze
 -- frame faded: the Camelot slot keeps it in a child of the button, the retail slot in a texture named after the button
--- (InspectHeadSlotFrame), which only its global name reaches.
+-- (InspectHeadSlotFrame), which only its global name reaches; a weapon slot's end caps too (GW.FadeEndCaps).
 local function skinInspectSlot(name)
   local button = _G["Inspect" .. name .. "Slot"]
   if type(button) ~= "table" then return end
   GW.SkinItem(button)
   GW.FadeParts(button, { "BorderFrame" })
   GW.FadeNamed({ "Inspect" .. name .. "SlotFrame" })
+  GW.FadeEndCaps(name, button)
 end
 
 -- The inspect window's inside: the model's painted backdrop and bronze frame an inset, the gear slots, the View in

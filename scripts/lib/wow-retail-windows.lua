@@ -164,6 +164,34 @@ local function statLine(parent)
   return f
 end
 
+-- The game's update of the three tabs over the given side frames: the open side's Hider and Highlight hidden.
+local function updateSidebarTabs(sides)
+  return function()
+    for i = 1, 3 do
+      local tab = _G["PaperDollSidebarTab" .. i]
+      tab.Hider:SetShown(not sides[i]:IsShown())
+      tab.Highlight:SetShown(not sides[i]:IsShown())
+    end
+  end
+end
+
+-- The paper doll's sidebar (PaperDollFrame.xml): PaperDollSidebarTabs with three PaperDollSidebarTabTemplate buttons
+-- (TabBg, Icon, Hider, Highlight; no Tabs array, no parentKey on a tab), the three side frames GetPaperDollSideBarFrame
+-- names, and the game's update, which shows the open side's tab by hiding its Hider and Highlight.
+local function sidebarTabs()
+  local strip = CreateFrame("Frame", "PaperDollSidebarTabs", CharacterFrame)
+  strip.DecorLeft, strip.DecorRight = art(strip), art(strip)
+  local sides = { CharacterStatsPane, CreateFrame("Frame", nil, CharacterFrame), CreateFrame("Frame", nil, CharacterFrame) }
+  for i = 1, 3 do
+    local tab = CreateFrame("Button", "PaperDollSidebarTab" .. i, strip)
+    tab.TabBg, tab.Hider, tab.Highlight, tab.Icon = art(tab), art(tab), art(tab), tab:CreateTexture(nil, "ARTWORK")
+    sides[i]:SetShown(i == 1)
+  end
+  -- The game's lookup of a sidebar's frame.
+  GetPaperDollSideBarFrame = function(index) return sides[index] end
+  PaperDollFrame_UpdateSidebarTabs = updateSidebarTabs(sides)
+end
+
 -- The mainline pane's own parts beyond the model: the stats side's line pool with one line, the update that adds a
 -- line (PaperDollFrame_UpdateStats), and the model scene with its race picture, overlay and inner border.
 local function characterExtras()
@@ -175,6 +203,7 @@ local function characterExtras()
   scene.BackgroundTopLeft, scene.BackgroundBotRight = art(scene), art(scene)
   scene.BackgroundOverlay = art(scene)
   scene.InnerBorder = art(scene)
+  sidebarTabs()
 end
 
 -- The EncounterJournal's bottom tabs (its Tabs array, as its OnLoad sets it; PanelTabButtonTemplate's three pieces).

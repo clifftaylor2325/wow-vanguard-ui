@@ -100,6 +100,41 @@ it("windows-retail: the mainline character pane: its stats well, class picture, 
   expect(addon.eval(lineLit.replace("%", "2")), "a line the game's update made").toBe(true);
 });
 
+it("windows-retail: the paper doll's three sidebar tabs lose the game's bronze tab art, and the open side's tab is marked selected (H7-1-1)", () => {
+  const addon = retail(["CharacterFrame"]);
+  addon.eval("CharacterFrame:Show()");
+  const tabs = `local out = {}
+    for i = 1, 3 do local t = _G["PaperDollSidebarTab" .. i]
+      out[i] = { t.TabBg:GetAlpha(), t.Hider:GetAlpha(), t.Highlight:GetAlpha(), t.Icon:GetAlpha(), ns.Theme.RowParts(t).fill:IsShown() } end
+    return out`;
+  expect(addon.eval(tabs), "tab, cover and highlight faded, the icon kept, the stats side (open) selected").toEqual([
+    [0, 0, 0, 1, true], [0, 0, 0, 1, false], [0, 0, 0, 1, false]]);
+  addon.eval(`local side = GetPaperDollSideBarFrame(2) GetPaperDollSideBarFrame(1):Hide() side:Show() PaperDollFrame_UpdateSidebarTabs()
+    PaperDollSidebarTab3:Disable()`);
+  expect(addon.eval(tabs).map((t) => t[4]), "the game's update moves the mark to the titles tab; a disabled tab is not marked").toEqual([false, true, false]);
+  expect(addon.eval("return #ns.errors")).toBe(0);
+  expect(forever().eval("return { PaperDollSidebarTab1 == nil, #ns.GetModule('Windows').SIDEBAR_TABS }"), "WoW Forever has no such list").toEqual([true, 0]);
+});
+
+it("windows-retail: the weapon slots' bronze end caps are faded in the character pane and the inspect window, the icon and overlays kept (H7-1-2)", () => {
+  const addon = retail(["CharacterFrame"], "");
+  addon.eval(`function __slot(prefix, name)
+    local b = CreateFrame("Button", prefix .. name .. "Slot", UIParent)
+    b.cap, b.icon, b.overlay = b:CreateTexture(nil, "BACKGROUND"), b:CreateTexture(nil, "BORDER"), b:CreateTexture(nil, "OVERLAY")
+    for _, t in ipairs({ b.cap, b.icon, b.overlay }) do t:SetTexture("TEST-ONLY-ART") end
+    return b
+  end
+  __caps = { __slot("Character", "MainHand"), __slot("Character", "Head"), __slot("Inspect", "SecondaryHand") }
+  CharacterFrame:Show() InspectFrame = CreateFrame("Frame", "InspectFrame", UIParent) InspectFrame:Show()
+  ns.GetModule("Windows").INSIDES.InspectFrame()`);
+  addon.eval("CharacterFrame:Hide() CharacterFrame:Show()");
+  const alphas = addon.eval("local out = {} for i, b in ipairs(__caps) do out[i] = { b.cap:GetAlpha(), b.icon:GetAlpha(), b.overlay:GetAlpha() } end return out");
+  expect(alphas[0], "character main hand: the end cap faded, icon and overlay kept").toEqual([0, 1, 1]);
+  expect(alphas[1], "a slot with no end caps keeps its background texture").toEqual([1, 1, 1]);
+  expect(alphas[2], "inspect off hand: the same").toEqual([0, 1, 1]);
+  expect(addon.eval("return #ns.errors")).toBe(0);
+});
+
 it("windows-retail: with the Retail windows' switch off the group finder stays the game's; the switch is on Retail's Game windows page only", () => {
   const off = retail(["PVEFrame"], "VanguardDB.profiles = { Default = { Windows = { finder = false } } }");
   off.eval("PVEFrame:Show()");
