@@ -32,6 +32,7 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lib/wow-inspect.lua` | A widget as a plain snapshot: what it draws, where, and its children. |
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
 | `scripts/tests/smoke.test.mjs` | The harness cases a pull request's CI runs (`npm run test:quick`): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
+| `scripts/tests/snapshot.test.mjs` | The Forever snapshot (see "The Forever snapshot" below): the frames, events and modules the addon leaves after a login, unlock and lock, compared with `forever-snapshot.json`. Also a `npm run test:quick` case. |
 
 ## Writing a scenario
 
@@ -309,6 +310,25 @@ insetNine, panel, title, painted }`
 (`art` is the marked texture's alpha; `panel` is whether Vanguard painted anything). The `windows-<area>.test.mjs`
 files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
 
+### The Forever snapshot
+
+`snapshot.test.mjs` logs the addon in on WoW Forever, unlocks, locks and plays two seconds, then writes down what
+it left: every frame whose name starts with `Vanguard` (anchors, size, scale, alpha, strata, level, shown and
+visible, its own text and the text of its font strings), the game's frames the addon moved or hid (a game frame
+whose record differs from what it was before the addon loaded), every event the addon's frames listen for, and
+the module list with each module's state. Numbers are rounded to two decimals, names are sorted, and no time or id
+is written, so two runs on any machine give the same file. The test compares the live record with
+`forever-snapshot.json` and fails with one line per difference: the frame, the field, what it was and what it is.
+
+It is the fence for the retail work: anything that changes how the addon looks or listens on Forever must show up
+here. A pull request that should change nothing on Forever never touches the file.
+
+- `npm run snapshot:update` (`node scripts/tests/snapshot.test.mjs --update`) rewrites the JSON. Read the diff
+  before you commit it.
+- **A pull request that rewrites `forever-snapshot.json` says why in its body**: which lines moved and which change
+  of yours moved them. A rewrite with no reason is a regression waiting to be accepted.
+- The test runs in `npm run test:quick` (the `quick` project in `vitest.config.mjs`), not in the `lua` project.
+
 ## Conventions
 
 - Names, texts and icons a test makes up carry `TEST-ONLY` so a leak into the
@@ -322,6 +342,6 @@ files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
   draft), on later pushes only while it carries the `full-tests` label, weekly,
   before a release and from the Actions tab, not on every push): a new feature comes with the
   scenario that exercises it. A pull request's own check runs only
-  `smoke.test.mjs` from here.
+  `smoke.test.mjs` and `snapshot.test.mjs` from here.
 - `npm run quality` applies to the tests too: every function has a comment
   above it and at most 10 lines of body code.

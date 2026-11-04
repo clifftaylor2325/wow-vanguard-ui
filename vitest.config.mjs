@@ -3,8 +3,9 @@ import { configDefaults, defineConfig } from "vitest/config";
 import { luaSummaryReporter } from "./scripts/lib/lua-summary-reporter.mjs";
 
 // Two projects under one config. "quick" is the JS tests (scripts/*.test.mjs,
-// none of which loads the addon) and scripts/tests/smoke.test.mjs, one
-// addon load: the pull-request gate (npm run test:quick). "lua" is the Lua
+// none of which loads the addon), scripts/tests/smoke.test.mjs (one
+// addon load) and scripts/tests/snapshot.test.mjs (the Forever snapshot):
+// the pull-request gate (npm run test:quick). "lua" is the Lua
 // harness (scripts/tests/*.test.mjs, one file per area, run in parallel)
 // and the client's own tests (scripts/lua-engine.test.mjs, a dozen loads).
 // npm test runs both; npm run coverage runs both with line coverage on,
@@ -60,9 +61,9 @@ export default defineConfig({
     // "quick" (code quality, the TOC check, unit events) read that folder, so it runs after them ("hooks", a
     // later group), never beside them.
     projects: [
-      { extends: true, test: { name: "quick", include: ["scripts/*.test.mjs", "scripts/tests/smoke.test.mjs"], exclude: [...configDefaults.exclude, "scripts/lua-engine.test.mjs", "scripts/agent-check.test.mjs"] } },
+      { extends: true, test: { name: "quick", include: ["scripts/*.test.mjs", "scripts/tests/smoke.test.mjs", "scripts/tests/snapshot.test.mjs"], exclude: [...configDefaults.exclude, "scripts/lua-engine.test.mjs", "scripts/agent-check.test.mjs"] } },
       { extends: true, test: { name: "hooks", include: ["scripts/agent-check.test.mjs"], sequence: { groupOrder: 1 } } },
-      { extends: true, test: { name: "lua", isolate: false, include: ["scripts/tests/*.test.mjs", "scripts/lua-engine.test.mjs"], exclude: [...configDefaults.exclude, "scripts/tests/smoke.test.mjs"] } },
+      { extends: true, test: { name: "lua", isolate: false, include: ["scripts/tests/*.test.mjs", "scripts/lua-engine.test.mjs"], exclude: [...configDefaults.exclude, "scripts/tests/smoke.test.mjs", "scripts/tests/snapshot.test.mjs"] } },
     ],
   },
 });
