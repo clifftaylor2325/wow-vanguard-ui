@@ -3,7 +3,9 @@
 --   * shamans: one cell per totem slot, with the totem's icon and time left, in a row above
 --     the frame (under it the row met the chat's tab bar and its Find and Copy tiles, B4-1);
 --     right-click a cell to destroy that totem, as the game's own buttons do;
---   * druids: your mana under the frame while a form shows rage or energy instead.
+--   * druids: your mana under the frame while a form shows rage or energy instead (on Retail
+--     also Balance druids, Shadow priests and Elemental shamans, whose power bar shows another power);
+--   * on Retail, the class resources the game's player frame draws (Modules/RetailClassBars.lua).
 -- In instanced combat the client may hide totem values from addons. The icon
 -- and the client's duration object still go straight to the widgets; whether
 -- a totem is down is then left to the client too, where it offers that.
@@ -17,6 +19,8 @@ local UF = ns.GetModule("UnitFrames")
 local CB = ns.Module("ClassBars", { defaults = { totems = true, druidMana = true, size = 22, manaHeight = 6 } })
 
 CB.SLOTS = 4
+-- The classes whose mana goes under the frame while their power bar shows another power, by client.
+CB.MANA_CLASSES = ns.ClientData({ forever = { DRUID = true }, retail = { DRUID = true, PRIEST = true, SHAMAN = true } })
 -- The mana power type (Enum.PowerType.Mana).
 CB.MANA = 0
 
@@ -134,10 +138,12 @@ local function enableMana(settings)
   ns.On("UPDATE_SHAPESHIFT_FORM", CB.UpdateMana)
 end
 
--- Module entry point (Core/Modules.lua): each class gets only its own bar.
+-- Module entry point (Core/Modules.lua): each class gets only its own bars, and on Retail its class
+-- resource (CB.EnableResources, from Modules/RetailClassBars.lua, which only Retail loads).
 function CB.Enable(settings)
   local _, class = UnitClass("player")
   if ns.IsSecret(class) then return end
   if class == "SHAMAN" and settings.totems then enableTotems(settings) end
-  if class == "DRUID" and settings.druidMana then enableMana(settings) end
+  if CB.MANA_CLASSES[class] and settings.druidMana then enableMana(settings) end
+  if CB.EnableResources then CB.EnableResources(class) end
 end

@@ -34,6 +34,8 @@ globals = {
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
   "WOW_PROJECT_ID", "WOW_PROJECT_CAMELOT",
+  -- Retail data tables (Modules/DataBars.lua): honor at the level cap and a major faction's renown.
+  "UnitHonor", "UnitHonorMax", "UnitHonorLevel", "IsWatchingHonorAsXP", "IsInActiveWorldPVP", "C_MajorFactions",
   "C_DeathRecap", "COMPLETE", "DECIMAL_SEPERATOR", "LARGE_NUMBER_SEPERATOR",
   "UiMapPoint", "C_SuperTrack", "C_Navigation", "C_Minimap", "hash_SlashCmdList", "IsPlayerSpell",
   "C_Bank", "C_ContentTracking", "InputUtil",
@@ -44,6 +46,9 @@ read_globals = {
   "GetInventoryItemID", "GetPetActionInfo", "GetPetActionCooldown", "UnitExists", "UnitHealth", "UnitHealthMax", "UnitIsConnected",
   "UnitIsDeadOrGhost", "UnitIsPlayer", "UnitPlayerControlled", "UnitName", "UnitPower", "UnitPowerMax",
   "UnitPowerType", "UnitReaction", "issecretvalue", "GetTotemInfo", "GetTotemDuration", "C_EventUtils", "C_LootHistory", "RANDOM_ROLL_RESULT", "C_Item", "GetInventoryItemTexture", "GameTooltip", "C_Container", "C_MerchantFrame", "CanMerchantRepair", "GetRepairAllCost", "RepairAllItems", "GetMoney", "UIErrorsFrame", "GetGameMessageInfo", "C_SwingTimer", "GetPetHappiness", "C_PetInfo", "C_Trainer", "GetKeyRingSize", "C_PvP", "HideUIPanel", "C_Texture", "UnitFactionGroup", "C_CooldownViewer", "C_DamageMeter", "AcceptQuest", "QuestFlagsPVP", "CONFIRM_ACCEPT_PVP_QUEST", "AcknowledgeAutoAcceptQuest", "C_GossipInfo", "CloseQuest", "CompleteQuest", "DeclineQuest", "GetActiveLevel", "GetActiveTitle", "GetAvailableLevel", "GetAvailableTitle", "GetGreetingText", "GetNumActiveQuests", "GetNumAvailableQuests", "GetNumQuestChoices", "GetNumQuestItems", "GetNumQuestRewards", "GetObjectiveText", "GetProgressText", "GetQuestDifficultyColor", "GetQuestItemInfo", "GetQuestItemLink", "GetQuestReward", "GetQuestMoneyToGet", "GetQuestText", "GetSuggestedGroupSize", "GetRewardMoney", "GetRewardText", "GetRewardXP", "GetTitleText", "IsQuestCompletable", "QuestGetAutoAccept", "SelectActiveQuest", "SelectAvailableQuest", "SetPortraitTexture", "GetQuestID", "C_QuestInfoSystem", "C_QuestLog", "C_TooltipInfo", "GetQuestLogSpecialItemInfo", "QuestMapFrame_OpenToQuestDetails", "QuestLogQuests_Update", "QuestScrollFrame", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo", "GetQuestLogItemLink", "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetQuestLogRewardMoney", "GetQuestLogRewardXP", "GetQuestLogQuestText", "QuestLogPushQuest", "StaticPopup_Show", "IsInGroup", "ChatFrame_AddMessageEventFilter", "C_SummonInfo", "AcceptResurrect", "GetCorpseRecoveryDelay", "CancelDuel", "GetNumLootItems", "GetLootSlotInfo", "LootSlot", "StaticPopup_Hide", "StaticPopupSpecial_Hide", "StaticPopupSpecial_Show", "PlayerCanTeleport", "EventRegistry", "GetInventoryItemDurability", "GetPartyAssignment", "PixelUtil", "C_PartyInfo", "GetNumGroupMembers",
+  -- Retail class resources, charged combo points and empowered casts (Modules/RetailClassBars.lua, ComboPoints.lua, CastBars.lua).
+  "GetRuneCooldown", "UnitStagger", "UnitPowerDisplayMod", "UnitPartialPower", "GetPowerRegenForPowerType",
+  "GetUnitChargedPowerPoints", "GetUnitEmpowerStageDuration", "GetUnitEmpowerHoldAtMaxTime",
   -- The social window's status dropdown: the game's word for a presence (Available, Away, Busy).
   "SocialUIUtil",
   -- Target of target identity and the minimap's still-standing check (P1.13).
@@ -52,6 +57,8 @@ read_globals = {
   "GetCVar", "C_AddOnProfiler", "debugprofilestop", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
   -- Action button tooltips: the client's default anchor (P2.3).
   "GameTooltip_SetDefaultAnchor",
+  -- Retail's quest tracker blocks: scenarios, campaigns, world quests and the Traveler's Log (Modules/RetailQuests.lua).
+  "C_ScenarioInfo", "C_CampaignInfo", "C_TaskQuest", "C_PerksActivities",
   -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).
   "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
   -- P2.8 Chat: the game's list of chat window art names.

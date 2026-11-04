@@ -9,8 +9,8 @@
 -- every client language: every rank of a buff, and every food's Well Fed, shares the
 -- one name. A buff whose name holds one of those names counts too (a camp's "Gift of
 -- the Wild" variant), and a check whose ids the client can't name makes no row.
--- UNVERIFIED: the ids are from the classic database, not checked against a Forever
--- client. /vg prep buffs lists your buffs against what each check counts, to check them in game.
+-- UNVERIFIED: the ids are from the classic database (Retail's from its own), not checked
+-- against either client. /vg prep buffs lists your buffs against what each check counts, to check them in game.
 
 local ADDON, ns = ...
 
@@ -18,20 +18,46 @@ local L = ns.L
 
 local PR = ns.GetModule("InstancePrep")
 
--- Buff groups by spell id (any one of them counts). The names in the comments are the English client's.
--- Flask of the Titans, Flask of Distilled Wisdom, Flask of Supreme Power, Flask of Chromatic Resistance.
-PR.FLASKS = { 17626, 17627, 17628, 17629 }
--- Well Fed: one food's buff names them all.
-PR.FOOD = { 19705 }
--- Row label -> Power Word: Fortitude, Prayer of Fortitude; Mark of the Wild, Gift of the Wild; Arcane Intellect, Arcane Brilliance.
-PR.RAID_BUFFS = {
-  { L["Fortitude"], { 1243, 21562 } },
-  { L["Mark of the Wild"], { 1126, 21849 } },
-  { L["Arcane Intellect"], { 1459, 23028 } },
-}
--- Rallying Cry of the Dragonslayer, Spirit of Zandalar, Songflower Serenade, Warchief's Blessing, Fengus' Ferocity,
--- Slip'kik's Savvy, Mol'dar's Moxie.
-PR.WORLD_BUFFS = { 22888, 24425, 15366, 16609, 22817, 22820, 22818 }
+-- Buff groups by spell id (any one of them counts), per client (ns.ClientData): WoW Forever's are the classic database's,
+-- Retail's its 12.1.5 ones. The names in the comments are the English client's.
+local BUFFS = ns.ClientData({
+  forever = {
+    -- Flask of the Titans, Flask of Distilled Wisdom, Flask of Supreme Power, Flask of Chromatic Resistance.
+    flasks = { 17626, 17627, 17628, 17629 },
+    -- Well Fed: one food's buff names them all.
+    food = { 19705 },
+    -- Row label -> Power Word: Fortitude, Prayer of Fortitude; Mark of the Wild, Gift of the Wild; Arcane Intellect, Arcane Brilliance.
+    raid = {
+      { L["Fortitude"], { 1243, 21562 } },
+      { L["Mark of the Wild"], { 1126, 21849 } },
+      { L["Arcane Intellect"], { 1459, 23028 } },
+    },
+    -- Rallying Cry of the Dragonslayer, Spirit of Zandalar, Songflower Serenade, Warchief's Blessing, Fengus' Ferocity,
+    -- Slip'kik's Savvy, Mol'dar's Moxie.
+    world = { 22888, 24425, 15366, 16609, 22817, 22820, 22818 },
+  },
+  -- UNVERIFIED on a Retail client: typed from the live database (scripts/lib/wow-retail-data.lua names each).
+  retail = {
+    -- None yet: the flasks change with every expansion and this one's ids aren't confirmed, so no row rather than a
+    -- "missing" next to a flask the check doesn't know.
+    flasks = {},
+    -- Well Fed, as on WoW Forever: every food's buff has that name.
+    food = { 19705 },
+    -- Row label -> Power Word: Fortitude; Mark of the Wild; Arcane Intellect; Battle Shout; Skyfury; Blessing of the Bronze.
+    raid = {
+      { L["Fortitude"], { 21562 } },
+      { L["Mark of the Wild"], { 1126 } },
+      { L["Arcane Intellect"], { 1459 } },
+      { L["Battle Shout"], { 6673 } },
+      { L["Skyfury"], { 462854 } },
+      { L["Blessing of the Bronze"], { 364342 } },
+    },
+    -- Retail has no world buffs to carry into a raid.
+    world = {},
+  },
+})
+PR.FLASKS, PR.FOOD, PR.RAID_BUFFS, PR.WORLD_BUFFS = BUFFS.flasks, BUFFS.food, BUFFS.raid, BUFFS.world
+
 -- Item class Weapon (Enum.ItemClass.Weapon), and the weapon slots checked (main hand 16, off hand 17) with their row labels.
 PR.WEAPON = 2
 PR.ENCHANT_SLOTS = { { 16, L["Weapon oil or poison"] }, { 17, L["Off-hand oil or poison"] } }

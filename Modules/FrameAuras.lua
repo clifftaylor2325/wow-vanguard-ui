@@ -66,10 +66,16 @@ local function refreshBoth()
   FA.Update(UF.frames.focus)
 end
 
--- Adds the containers to the target and focus frames.
+-- What a client adds to the target and focus frames besides the rows, each fn(frame, key, settings) (Modules/RetailAuras.lua
+-- on Retail: the target's private aura spot; none on WoW Forever).
+FA.CLIENT_PARTS = {}
+
+-- Adds the containers, and the client's own parts, to the target and focus frames.
 local function build(settings)
   for _, key in ipairs({ "target", "focus" }) do
-    if UF.frames[key] then addContainers(UF.frames[key], settings, key) end
+    local f = UF.frames[key]
+    if f then addContainers(f, settings, key) end
+    for _, part in ipairs(f and FA.CLIENT_PARTS or {}) do ns.Try("frame aura part", part, f, key, settings) end
   end
 end
 
