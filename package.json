@@ -8,6 +8,7 @@
     "test": "vitest run",
     "test:quick": "vitest run --project quick --project hooks",
     "verify": "npm test && npm run quality",
+    "snapshot:update": "node scripts/tests/snapshot.test.mjs --update",
     "coverage": "node scripts/coverage-lua.mjs",
     "timing": "node scripts/suite-timing.mjs",
     "profile": "node scripts/profile-lua.mjs",
