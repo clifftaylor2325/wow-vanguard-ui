@@ -606,6 +606,18 @@ it("/vg bag deposit sends a category's stacks to the open bank, out of combat on
   expect(chat(), "it says how many").toMatch(/Sent 2 stack\(s\) of Water/);
 });
 
+it("search bind words: an item already bound to you counts as bind on pickup (H9-3-1)", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { equipment: 1, consumables: 2 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval("__openBag() __wfgWorld.bags[0][2] = { itemID = 90001, bound = true } __wfgWorld.bags[0][3].bound = true");
+  // The slots lit by a search, as bag and slot pairs.
+  const slots = (text) => Object.values(addon.eval(`BagItemSearchBox:SetText(${JSON.stringify(text)}) ContainerFrameCombinedBags:UpdateSearchResults()
+    local out = {}
+    for _, b in ipairs(ContainerFrameCombinedBags.Items) do if b.matches and (C_Container.GetContainerItemInfo(b:GetBagID(), b:GetID()) or {}).itemID == 90001 then out[#out + 1] = b:GetID() end end
+    table.sort(out) return out`));
+  expect(slots("bind:boe"), "only the copy that is not bound yet").toHaveLength(1);
+  expect(slots("bind:bop"), "the bound copy").toHaveLength(1);
+});
+
 it("/vg bag deposit sends the reagent bag's stacks too, and names the open bank tab (H9-6-1, H9-1-1)", () => {
   const addon = openFilled([8, 4, 0, 0, 0], { consumables: 2, equipment: 1 });
   addon.slash("bag add Water 159");
