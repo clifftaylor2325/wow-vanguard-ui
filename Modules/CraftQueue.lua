@@ -10,7 +10,8 @@
 --   * /vg craft done|clear  takes the first craft off, or empties the queue.
 -- Forever documents neither a recipe list nor a recipe cooldown call: where the client lacks them, the
 -- recipes met (on display, queued, or with a cooldown noted) are read, and a cooldown is the recipe
--- spell's own (C_Spell). That part is unverified in the game.
+-- spell's own (C_Spell). That part is unverified in the game. WoW Retail documents neither call either, but its own
+-- profession window reads the recipe cooldown, so on Retail the same calls are read wherever the client has them.
 -- Nothing is bought, posted or crafted for you: each step is prepared and the click stays yours. A
 -- craft you finish (your own cast of the recipe's spell, out of combat) comes off the queue.
 
