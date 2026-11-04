@@ -19,7 +19,7 @@ const cap = (addon, key) => addon.eval(`
     if w.key == "${key}" and w.chord and w:IsVisible() then
       local e = w.entry
       return { chord = w.chord, label = w.label:GetText(), icon = w.icon:IsShown() and w.icon.__texture or false,
-        place = e and e.place, name = e and e.name, color = ns.Theme.ColorToken(w.label) }
+        place = e and e.place, name = e and e.name, color = ns.Theme.ColorToken(w.label), alpha = w:GetAlpha() }
     end
   end`);
 // The card's list lines, without the empty ones.
@@ -36,7 +36,7 @@ it("your keys: a key shows the icon and name of what is on it, a game command sh
   const addon = withKeys();
   expect(cap(addon, "1"), "key 1 is bar 1 button 1").toMatchObject({ chord: "1", label: "1", icon: "Interface\\Icons\\Spell_Fire_FlameBolt", place: "Bar 1 button 1", name: "Fireball", color: "text" });
   expect(cap(addon, "B"), "a game key shows its command, no icon").toMatchObject({ icon: false, place: "TOGGLEBACKPACK", color: "accentText" });
-  expect(cap(addon, "Q"), "a free key is muted").toMatchObject({ icon: false, color: "disabled" });
+  expect(cap(addon, "Q"), "a free key is muted, at full alpha so its border and label stay crisp").toMatchObject({ icon: false, color: "muted", alpha: 1 });
   expect(cap(addon, "SPACE").label, "the space bar uses the short name").toBe("Sp");
   expect(lines(addon).some((l) => l.includes("Bar 1 button 1 · Fireball")), "the list says what key 1 does").toBe(true);
 });
