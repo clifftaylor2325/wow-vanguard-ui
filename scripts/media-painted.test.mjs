@@ -6,13 +6,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { tga } from "./lib/media-art.mjs";
-import { PAINTED_MAX_ALPHA, alphaOf, boxDown, greyOf, manifest, paintedSurfaces, percentile, surfaceOf, withoutDrift, wrap } from "./lib/media-painted.mjs";
+import { PAINTED_MAX_ALPHA, alphaOf, boxDown, colourOf, greyOf, manifest, paintedArt, paintedSurfaces, percentile, saturations, surfaceOf, withoutDrift, wrap } from "./lib/media-painted.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 // The surface entries of the manifest.
 const surfaces = () => manifest().filter((e) => e.class === "surface");
+
+// The colour entries of the manifest.
+const colours = () => manifest().filter((e) => e.class === "colour");
 
 // An image's alpha channel as whole bytes, with its side.
 function alphaBytes(img) {
@@ -126,15 +129,39 @@ function bandingStaysLow() {
   for (const [name, tile] of painted()) expect(banding(tile), name).toBeLessThan(limit);
 }
 
+// The pictures under one class's folder of art/painted, as repo paths.
+const sourcesOf = (kind) => fs.readdirSync(path.join(root, "art", "painted", kind)).map((f) => `art/painted/${kind}/${f}`);
+
+// The fields every manifest entry carries (plan 6.1).
+const FIELDS = ["id", "name", "class", "source", "output", "crop", "box", "convert", "model", "mode", "contrast", "preset", "prompt", "negative", "tiling", "private", "date"];
+
 // Every picture under art/painted has a complete manifest entry, and every entry's source and output exist.
 function manifestIsComplete() {
-  const files = fs.readdirSync(path.join(root, "art", "painted", "surface")).map((f) => `art/painted/surface/${f}`);
-  expect(surfaces().map((e) => e.source).sort(), "a source with no entry, or an entry with no source").toEqual(files.sort());
-  const fields = ["id", "name", "class", "source", "output", "crop", "box", "convert", "model", "mode", "contrast", "preset", "prompt", "negative", "tiling", "private", "date"];
-  for (const entry of surfaces()) {
-    expect(fields.filter((f) => entry[f] === undefined), `${entry.id} lacks fields`).toEqual([]);
-    expect([entry.output, entry.crop[2] / entry.box], entry.id).toEqual([`Textures/${entry.name}.tga`, 256]);
+  const entries = manifest(), kinds = ["surface", "colour"];
+  expect(entries.map((e) => e.source).sort(), "a source with no entry, or an entry with no source").toEqual(kinds.flatMap(sourcesOf).sort());
+  for (const entry of entries) {
+    expect(FIELDS.filter((f) => entry[f] === undefined), `${entry.id} lacks fields`).toEqual([]);
+    expect(entry.output, entry.id).toBe(`${entry.class === "surface" ? "Textures" : "Art"}/${entry.name}.tga`);
     expect(fs.existsSync(path.join(root, "Media", entry.output)), `${entry.id}'s file is built`).toBe(true);
+  }
+  for (const entry of surfaces()) expect(entry.crop[2] / entry.box, `${entry.id} is a 256 tile`).toBe(256);
+}
+
+// The banner is 1024 x 512 (2:1, whole, no crop), opaque, and builds to the same bytes twice.
+function bannerShape() {
+  for (const entry of colours()) {
+    const img = colourOf(entry);
+    expect([img.w, img.h, entry.crop], entry.id).toEqual([1024, 512, [0, 0, 2048, 1024]]);
+    expect(tga(img).equals(tga(colourOf(entry))), `${entry.id} builds the same twice`).toBe(true);
+    expect(img.px.filter((v, i) => i % 4 === 3).every((v) => v === 1), `${entry.id} is opaque`).toBe(true);
+  }
+}
+
+// The banner is calm (plan 4.5): median saturation at most 0.45 and the 90th percentile at most 0.7.
+function bannerIsCalm() {
+  for (const make of Object.values(paintedArt())) {
+    const sat = saturations(make());
+    expect([percentile({ v: sat }, 0.5) <= 0.45, percentile({ v: sat }, 0.9) <= 0.7]).toEqual([true, true]);
   }
 }
 
@@ -148,6 +175,7 @@ function stagesBehave() {
   const grey = greyOf({ w: 2, h: 2, px: Float64Array.from({ length: 16 }, (_, i) => (i % 4 === 3 ? 1 : [1, 0, 0][i % 4])) }, [0, 0, 2]);
   expect(grey.v[0], "Rec. 709 weights on the stored values").toBeCloseTo(0.2126, 12);
   expect(alphaOf({ n: 2, v: Float64Array.of(-1, 0, 0.5, 1) }).px[3], "the lowest values clamp to zero").toBe(0);
+  expect(Array.from(saturations({ w: 3, h: 1, px: Float64Array.of(1, 0, 0, 1, 0.5, 0.5, 0.5, 1, 0, 0, 0, 1) })), "saturation: red full, grey none, black none").toEqual([1, 0, 0]);
 }
 
 describe(
@@ -160,6 +188,8 @@ describe(
     it("every surface wraps without a seam", wrapsWithoutASeam);
     it("no surface has more banding than the code-made ones", bandingStaysLow);
     it("every painted source has a complete manifest entry and a built file", manifestIsComplete);
+    it("the banner is 1024 x 512, opaque and reproducible", bannerShape);
+    it("the banner's saturation stays calm", bannerIsCalm);
     it("the pipeline's stages behave on small grids", stagesBehave);
   },
 );

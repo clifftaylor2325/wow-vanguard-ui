@@ -12,6 +12,7 @@ import { crest, crestNames } from "./lib/media-crests.mjs";
 import { ICONS, ICON_SIZES, MEDIA, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 import { SCENES, readPng, scene } from "./lib/media-scenes.mjs";
+import { paintedArt } from "./lib/media-painted.mjs";
 import { TONES, image, fill, png } from "./lib/media-art.mjs";
 import { tonedBracket } from "./fixtures/toned-bracket.mjs";
 import { ORNAMENT_CORNERS, ORNAMENT_ROUND, ORNAMENT_RULES } from "./lib/media-ornament.mjs";
@@ -97,7 +98,7 @@ function mediaIn(src) {
   for (const m of src.matchAll(/MicroButton = "(\w+)"/g)) files.push(`Media/Icons/${m[1]}.tga`);
   for (const m of src.matchAll(/Media\\+(Textures|Icons)\\+(\w+)/g)) files.push(`Media/${m[1]}/${m[2]}.tga`);
   for (const m of src.matchAll(/Fonts\\+([\w-]+\.ttf)/g)) files.push(`Media/Fonts/${m[1]}`);
-  for (const m of src.matchAll(/"((?:lorc|delapouite|sbed|afk)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
+  for (const m of src.matchAll(/"((?:lorc|delapouite|sbed|afk|banner)-[\w-]+)"/g)) files.push(`Media/Art/${m[1]}.tga`);
   return files;
 }
 
@@ -239,7 +240,7 @@ function questMarksDrawn() {
 const NOT_TINTED = {
   ...Object.fromEntries(Object.keys({ ...ORNAMENT_CORNERS, ...ORNAMENT_RULES, ...ORNAMENT_ROUND }).map((n) => [`Textures/${n}.tga`, "toned"])),
   "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
-  ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, "opaque"])),
+  ...Object.fromEntries([...SCENES, ...Object.keys(paintedArt())].map((n) => [`Art/${n}.tga`, "opaque"])),
 };
 
 // How many pixels of an image fail a test on (r, g, b, a).

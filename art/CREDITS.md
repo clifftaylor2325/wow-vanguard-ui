@@ -83,6 +83,10 @@ Hearthvale with Leonardo.ai (https://leonardo.ai) from his own prompts, in Octob
 paid plan in private mode (checked in his Library on 2026-11-02), then cropped and sized to 1024 x 512. No other art or reference picture went in.
 `scripts/lib/media-scenes.mjs` writes them to `Media/Art/` as TGA for the AFK screen.
 
+## Welcome banner (AI-assisted)
+
+`painted/colour/B1.png` was made by Cliff Hearthvale with Leonardo.ai (https://leonardo.ai) from his own prompt, in November 2026, on a paid plan in private mode; the prompt and settings are in `painted/manifest.json`. `scripts/lib/media-painted.mjs` boxes it down to 1024 x 512 and writes `Media/Art/banner-dusk.tga` for setup's first step and What's new (`Core/Banner.lua`). It is AI-generated and may not be copyrightable; it ships under the same all-rights-reserved licence as the rest of Vanguard.
+
 ## Painted panel textures (AI-assisted)
 
 `painted/surface/S1.png` and `painted/surface/S2.png` were made by Cliff Hearthvale with Leonardo.ai

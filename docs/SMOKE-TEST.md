@@ -2045,6 +2045,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: Bedded slate is a very faint fine grey streak and fleck pattern, Vellum a very faint even paper fleck; neither can be mistaken for Fine grain beside it, though both are quiet. No seam or repeat shows when a window is wider than 256 units, and nothing crawls while a window is dragged or rises into place. All text, muted and greyed-out text included, reads at a glance on every variant, in a fight too (a tooltip over a mob, the bag, the quest log). Nothing new appears on unit frames, bars, raid tiles or nameplates. Fine grain, Carved stone and Dark leather look slightly fainter than in 0.8.0. `/vg errors` stays empty. [Needs in game: that Vellum reads as an old page on the Vellum and ink variant; whether muted text over a snowfield is still easy to read on Vellum and ink and Classic look (the harness figure there is 4.15:1, not 4.5); how the 256-unit repeat looks at 4K.]
 - If it fails, paste: a screenshot of the window with the texture, variant and UI scale named, and `/vg errors`.
 
+### 26.3b Welcome banner (art plan M3)
+
+- Do: `/vg setup` and look at the first step; click Next once, then Back. Then `/vg whatsnew`. Try both at UI scale 0.64 and 1.0, on Slate and brass, Vellum and ink and Classic look, with Reduce motion on and off. On a small window (shrink the game window to about 1280 x 720 at UI scale 1.0) open both again.
+- Expect: a painted dusk landscape (a cream banner on a spear on a hill, a grey watchtower, slate-blue and amber sky) fills a strip under the title on setup's first step and under the hint in What's new, with the text below it clear of it. The window is taller by the picture on setup's first step only; the next step is the usual height, and Back brings the picture back. It appears with its window (no separate fade) and with Reduce motion on it shows at once. On a screen too short for it the picture is cropped to the middle or left out, and the window never runs off the screen. No blur, no fringe, no blocky banding in the sky. `/vg errors` stays empty. [Needs in game: how the 400 x 200 strip looks at 1080p and 1440p; that the picture reads calmly beside Slate and brass, Vellum and ink and Classic look; that nothing in it reads as a faction emblem.]
+- If it fails, paste: a screenshot of the window with the variant, UI scale and screen size named, and `/vg errors`.
+
 ## 27. Window ornaments (#238)
 
 ### 27.1 Rule and corner brackets
