@@ -39,7 +39,7 @@ QA.PIN_TOP = 2
 -- (nothing is left to do there), or the client won't say.
 local function rank(id)
   local q = ns.GetModule("QuestTracker").Quest(id)
-  local d = q and ns.PlainNumber(ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", id))
+  local d = q and ns.GetModule("QuestTracker").DistanceSq(id)
   if not d or q.failed then return nil end
   return q.ready and d * QA.READY_BIAS or d
 end
@@ -160,9 +160,9 @@ function QA.Turn(mapID, x, y)
   return math.atan2(-(x - px) * w, -(y - py) * h) - facing
 end
 
--- Yards to the quest, from the distance the client reports; nil when it won't say.
+-- Yards to the quest, from the distance the client reports; nil when it won't say or the quest is on another continent.
 local function yards(id)
-  local sq = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", id))
+  local sq = ns.GetModule("QuestTracker").DistanceSq(id)
   return sq and math.floor(math.sqrt(sq) + 0.5)
 end
 

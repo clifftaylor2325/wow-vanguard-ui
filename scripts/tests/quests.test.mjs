@@ -1219,6 +1219,12 @@ it("quest bursts: many quest log updates in one frame rebuild the tracker and th
   addon.update(0);
   expect(rebuilds(addon).log, "a log closed before the next frame isn't re-rendered").toBe(0);
 });
+it("quest tracker: nearest first puts a quest on another continent last, whatever distance it reports", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { order = 'nearest' } } }" });
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function(id) if id == 90052 then return 0, false end return __quests[id].dist, true end");
+  addon.eval("__wfgStub.advance(1.25)");
+  expect(tracker(addon).blocks.map((b) => b[0])[0], "the 0-away off-continent letter is not first").toBe("[8] TEST-ONLY Wolves");
+});
 it("quest tracker: the nearest-first sort ticks only while that order is on", () => {
   const addon = loggedIn(TRACK_ENV);
   // Whether the tracker's sort is a job on the shared ticker.

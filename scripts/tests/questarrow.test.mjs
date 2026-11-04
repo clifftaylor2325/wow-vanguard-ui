@@ -63,6 +63,15 @@ it("quest arrow: a finished quest outranks a nearer objective; the pick holds un
   expect([pick(), chatHas(addon, /Arrow: TEST-ONLY Near\./)], "the turn-in gone: on to the next, with a word").toEqual([90061, true]);
 });
 
+it("quest arrow: a quest the game puts on another continent is never picked as nearest, whatever distance it reports", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function(id) if id == 90061 then return 0, false end return 90000, true end ns.QuestArrow.Pick()");
+  expect(addon.eval("return ns.QuestArrow.current"), "the quest reading 0 yards off-continent is passed over").toBe(90062);
+  expect(addon.eval("return ns.GetModule('QuestTracker').DistanceSq(90061) == nil"), "no distance for it").toBe(true);
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function() return 144, __wfgWorld.secret(false) end");
+  expect(addon.eval("return ns.GetModule('QuestTracker').DistanceSq(90061)"), "a hidden flag keeps the distance").toBe(144);
+});
+
 it("E6-2 quest arrow: a map position the client hides whole gives no spot and no error", () => {
   const addon = loggedIn(ARROW_ENV);
   expect(addon.eval("return { ns.QuestArrow.PlayerSpot(10) }"), "a plain position is read").toEqual([0.5, 0.5]);

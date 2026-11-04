@@ -119,9 +119,19 @@ function QT.Quest(id)
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 
--- How far a quest is (squared), or a long way when the client can't say.
+-- How far a quest is (squared), or nil when the client won't say or says it isn't on your continent (that
+-- distance means nothing). A client with one return keeps the distance.
+---@param id number
+---@return number|nil
+function QT.DistanceSq(id)
+  local sq, onContinent = ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", id)
+  if not ns.IsSecret(onContinent) and onContinent == false then return nil end
+  return ns.PlainNumber(sq)
+end
+
+-- How far a quest is (squared), or a long way when it can't be told.
 local function distance(q)
-  return ns.PlainNumber((ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", q.id))) or math.huge
+  return QT.DistanceSq(q.id) or math.huge
 end
 
 -- Seconds left on each timed quest, by quest id, on WoW Forever: C_QuestLog.GetQuestTimers (the call the game's
