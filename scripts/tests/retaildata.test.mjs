@@ -183,3 +183,11 @@ it("retail data: Instance prep makes no reagent, ammo, soul shard or bandage row
   expect(onRetail.eval('__units.player.class = "HUNTER" return #ns.GetModule("InstancePrep").Wizard.ClassKeys()'), "Retail wizard: no class supply page").toBe(0);
   expect(onRetail.eval('return #ns.GetModule("InstancePrep").BuyRows()'), "no reagent ids reach the Restock list").toBe(0);
 });
+
+it("retail data: the renown bar is the theme's blue, where a plain faction keeps its standing colour", () => {
+  const addon = retail(CAP_ENV);
+  expect(isTok(addon, addon.eval("return Vanguard_repbar.__barColor"), "info"), "renown in blue, whatever its reaction").toBe(true);
+  addon.eval("__wfgWorld.majorFactions = {}");
+  addon.fire("UPDATE_FACTION");
+  expect(isTok(addon, addon.eval("return Vanguard_repbar.__barColor"), "repFriendly"), "a plain faction at reaction 5").toBe(true);
+});

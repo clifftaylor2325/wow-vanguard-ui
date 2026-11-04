@@ -189,7 +189,7 @@ function DB.Renown(data)
   local level = info and ns.PlainNumber(info.renownLevel)
   if not level then return nil end
   local rep = noNumbers(data.name, ns.PlainNumber(data.reaction), 1)
-  rep.word, rep.nextWord = renownWord(level), renownWord(level + 1)
+  rep.word, rep.nextWord, rep.color = renownWord(level), renownWord(level + 1), DB.RENOWN_COLOR
   local cur, max = ns.PlainNumber(info.renownReputationEarned), ns.PlainNumber(info.renownLevelThreshold)
   if topRenown(id) or not (cur and max and max > 0) then return rep end
   rep.cur, rep.max, rep.noNumbers = cur, max, nil
@@ -474,6 +474,8 @@ end
 
 -- Honor's bar colour: the theme's orange (the game paints honor orange; the theme has no honor token).
 DB.HONOR_COLOR = "focus"
+-- The renown bar's color token: the game draws a major faction's bar blue whatever its reaction.
+DB.RENOWN_COLOR = "info"
 
 -- Fills the XP bar (with honor at Retail's cap, in its own colour), or hides it at max level (or while its
 -- visibility hides it).
@@ -497,7 +499,7 @@ function DB.UpdateReputation()
   if not rep then return end
   bar:SetMinMaxValues(0, rep.max)
   bar:SetValue(rep.cur)
-  T.BarColor(bar, REACTION[rep.standing] or REACTION[4])
+  T.BarColor(bar, rep.color or REACTION[rep.standing] or REACTION[4])
   bar.text:SetText(DB.ReputationText(rep))
 end
 
