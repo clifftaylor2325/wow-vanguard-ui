@@ -127,9 +127,10 @@ local function whereNow()
 end
 
 -- Service i as a record { name, rank, level, cost, trainer, zone, sub, t }, or nil (hidden name, already learned, no level to learn it at).
+-- The level is the fourth return of GetTrainerServiceInfo, as the game's own trainer window reads it, else GetTrainerServiceLevelReq's.
 local function service(i, where)
-  local name, kind = ns.Client.Call("GetTrainerServiceInfo", i)
-  local level = ns.PlainNumber(ns.Client.Call("GetTrainerServiceLevelReq", i))
+  local name, kind, _, reqLevel = ns.Client.Call("GetTrainerServiceInfo", i)
+  local level = ns.PlainNumber(reqLevel) or ns.PlainNumber(ns.Client.Call("GetTrainerServiceLevelReq", i))
   if not ns.PlainText(name) or kind == "used" or not level or level < 1 then return nil end
   return { name = name, rank = rankText(i), level = level, cost = ns.PlainNumber(ns.Client.Call("GetTrainerServiceCost", i)) or 0,
     trainer = where[1], zone = where[2], sub = where[3], t = ns.PlainNumber(ns.Client.Call("time")) or 0 }
