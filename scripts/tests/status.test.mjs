@@ -173,6 +173,15 @@ it("ready check: a player who never answered gets the cross when the check ends,
   expect([marks(addon, 3).ready, marks(addon, 1).ready], "both clear after the linger").toEqual([false, false]);
 });
 
+it("ready check: a tile that takes another player after the check ends shows no answer from the one before", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(3, "raid3") __status.ready = { raid3 = "waiting" }');
+  addon.fire("READY_CHECK");
+  addon.fire("READY_CHECK_FINISHED");
+  addon.eval("Vanguard_RaidUnitButton3:SetAttribute('unit', 'raid5') ns.GetModule('RaidStatus').UpdateAll()");
+  expect(marks(addon, 3).ready, "raid5 was not in the check: no cross carried over from raid3").toBe(false);
+});
+
 // Tile i's summon mark: its atlas while shown, else false; whether the resurrection mark and the status text show.
 const summonOf = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitButton${i}
   return { b.summon:IsShown() and b.summon:GetAtlas(), b.rez:IsShown(), b.status:IsShown() }`);

@@ -211,11 +211,14 @@ local function showAtlas(t, atlas)
   t:SetShown(atlas ~= nil and t:SetAtlas(atlas) ~= false)
 end
 
--- The ready check mark { texture, color } for a tile, or nil. The answer is remembered on the tile
--- while the check runs: once it ended, the client no longer says, and "waiting" means no answer, so not ready.
-local function readyMarkFor(b, unit)
-  if not RS.readyFinished then b.readyAnswer = RS.ReadyStatus(unit) end
-  local answer = b.readyAnswer
+-- The answers of the check under way, by unit: once it ended, the client no longer says. Kept by unit, not
+-- by tile, so a tile that shows or takes another unit after the check ends shows no older answer.
+RS.readyAnswers = {}
+
+-- The ready check mark { texture, color } for a unit, or nil: "waiting" once the check ended means no answer, so not ready.
+local function readyMarkFor(unit)
+  if not RS.readyFinished then RS.readyAnswers[unit] = RS.ReadyStatus(unit) end
+  local answer = RS.readyAnswers[unit]
   return RS.READY[RS.readyFinished and answer == "waiting" and "notready" or answer]
 end
 
@@ -223,7 +226,7 @@ end
 -- else the resurrection (the last two under one switch). The status text (missing health, Dead) hides while one shows.
 local function updateCenter(b, unit)
   local s = RS.settings
-  showMark(b.ready, s.readyCheck and RS.readyRunning, readyMarkFor(b, unit))
+  showMark(b.ready, s.readyCheck and RS.readyRunning, readyMarkFor(unit))
   local readyShown = b.ready:IsShown()
   local summon = s.resurrect and not readyShown and RS.SummonAtlas(unit) or nil
   showAtlas(b.summon, summon)
@@ -268,9 +271,16 @@ end
 -- Ready checks seen so far: a finished check's linger timer clears only if no newer check began.
 RS.readyChecks = 0
 
+-- A new ready check: count it, and forget the last one's answers.
+local function startReadyCheck()
+  RS.readyChecks = RS.readyChecks + 1
+  RS.readyFinished = false
+  RS.readyAnswers = {}
+end
+
 -- A ready check started or someone answered: show the answers.
 local function onReadyCheck(event)
-  if event == "READY_CHECK" then RS.readyChecks = RS.readyChecks + 1 RS.readyFinished = false end
+  if event == "READY_CHECK" then startReadyCheck() end
   RS.readyRunning = true
   each(updateCenter)
 end
