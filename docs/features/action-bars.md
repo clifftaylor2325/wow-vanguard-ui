@@ -32,7 +32,7 @@ On WoW Forever only (a retail client has no Your keys tab, so no Set up keys but
 
 ### The class layouts
 
-Each class has a layout: what each key means, as a short list of spells written best first. One rule picks every key: **each key takes the first spell on its list that the character knows and that no earlier key on the same bar page has already taken**, so the keys grow with the character (a level-1 warrior's key 1 is Heroic Strike; with Mortal Strike it is Mortal Strike, and Heroic Strike moves to key 4). A role only adds the spells marked for it (a Fury warrior's F is Pummel, a tank's T is Taunt). The keys:
+Each class has a layout: what each key means, as a short list of spells written best first. One rule picks every key: **each key takes the first spell on its list that the character knows and that no earlier key on the same bar page has already taken**, so the keys grow with the character, and a spell with ranks goes on the key at the highest rank the character knows (a level-1 warrior's key 1 is Heroic Strike; with Mortal Strike it is Mortal Strike, and Heroic Strike moves to key 4). A role only adds the spells marked for it (a Fury warrior's F is Pummel, a tank's T is Taunt). The keys:
 
 - **1 to 6**: the class's core spells, on bar 1, one set per stance, form or stealth page for warriors, druids and rogues (a shaman's 7 and 8 too, for spells Forever adds).
 - **F, T, G, X and Ctrl-X**: interrupt, crowd control (a tank's taunt), a short cooldown or Shoot, a defensive, and a heal on yourself or your pet; **Mouse 4 and 5** (Shift-X and Shift-T without side buttons): a gap closer or escape, and a second utility. These are bar 2's buttons 1 to 7, the same in every stance.

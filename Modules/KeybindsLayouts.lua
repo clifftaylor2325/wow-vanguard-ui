@@ -52,21 +52,29 @@ local function forRole(only, role)
   return only == nil or (" " .. only .. " "):find(" " .. tostring(role) .. " ", 1, true) ~= nil
 end
 
--- The first spell on a key's list the character knows, on the list for its role and not taken; nil for none.
+-- The character's top rank of a layout spell, by the client's name (Modules/ClickCastSpells.lua's catalog), else the ID itself.
+local function topRank(id)
+  local name = ns.SpellName(id)
+  local spell = name and ns.ClickCastSpells and ns.ClickCastSpells.Spell(name)
+  return spell and spell.spellID or id
+end
+
+-- The first spell on a key's list the character knows, on the list for its role and not taken: the layout's ID and the rank to place; nil for none.
 local function pick(ctx, list, taken)
   for _, c in ipairs(list or {}) do
     local id, only = candidate(c)
-    if id ~= D.UNKNOWN and forRole(only, ctx.role) and not taken[id] and ctx.knows(id) then return id end
+    local placed = id ~= D.UNKNOWN and topRank(id)
+    if placed and forRole(only, ctx.role) and not taken[id] and ctx.knows(placed) then return id, placed end
   end
 end
 
 -- Adds one key's entry, unless its button is one the player took over: the key takes its list's pick.
 local function addSpell(ctx, key, slot, list, taken)
   if ctx.skip[slot] then return end
-  local id = pick(ctx, list, taken)
+  local id, placed = pick(ctx, list, taken)
   if not id then return end
   taken[id] = true
-  ctx.out[#ctx.out + 1] = { key = key, spell = id, slot = slot, replaces = D.REPLACES[id] }
+  ctx.out[#ctx.out + 1] = { key = key, spell = placed, slot = slot, replaces = D.REPLACES[id] }
 end
 
 -- The keys every page shares; their spells are taken on every page.

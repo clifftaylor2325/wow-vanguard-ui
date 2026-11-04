@@ -647,3 +647,10 @@ it("Update: quiet on success and on failure, nil when refused, false when it fai
   expect([slots(addon, [63]), Array.from(addon.chat())], "and Gouge came off again, quietly").toEqual([[0], []]);
   expect(ka(addon, 'return { KA.Ours("G"), KA.Ours("F"), KA.Ours("T") }'), "G and F do what Vanguard set").toEqual([true, true, false]);
 });
+
+it("Apply puts the top rank of a ranked layout spell on the button", () => {
+  const addon = rogue();
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank });
+  expect(ka(addon, `return KA.Apply(ns.KeybindsLayouts.Resolve({ class = "MAGE", role = "frost" }, nil, function(id) return id == 837 end))`)).toBe(true);
+  expect(slots(addon, [1])).toEqual([837]);
+});
