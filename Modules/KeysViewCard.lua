@@ -129,11 +129,15 @@ local function paintCap(cap)
   T.Color(cap.label, cap.entry and (icon and "text" or "accentText") or "muted")
 end
 
--- A right-click on a key key setup changed asks, then puts back what it did before.
+-- A right-click on a key key setup changed asks, then puts back what it did before. The window is read again
+-- after it: putting back the last changed key turns Place new spells off.
 local function clickCap(cap, button)
   if button ~= "RightButton" or not changedHere(cap.chord) then return end
   local chord = cap.chord
-  ns.Ask(ns.Format(L["Put back what {key} did before key setup changed it?"], { key = KV.KeyText(chord) }), L["Put back"], function() ns.KeybindsApply.PutBack(chord) end)
+  ns.Ask(ns.Format(L["Put back what {key} did before key setup changed it?"], { key = KV.KeyText(chord) }), L["Put back"], function()
+    ns.KeybindsApply.PutBack(chord)
+    ns.Options.Refresh()
+  end)
 end
 
 -- The tab to show now: the modifier held, else the one picked.

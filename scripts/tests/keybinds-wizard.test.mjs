@@ -344,6 +344,21 @@ it("the open Your keys tab's Place new spells switch turns off at once on Put ev
   expect(drawn()).toBe(false);
 });
 
+it("the open Your keys tab's Place new spells switch turns off when the last changed key is put back from the card", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") local box = Vanguard_KeysWizard.steps.ready.placeNew if not box.get() then box.__scripts.OnClick(box) end __click("Apply")');
+  addon.eval('for _, e in ipairs(ns.KeybindsWizard.state.entries) do if e.key ~= "F" then ns.KeybindsApply.PutBack(e.key) end end');
+  addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
+  // Whether the switch is drawn on.
+  const drawn = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.track and w.label and w.label:GetText() == "Place new spells as I learn them" and w:IsVisible() then return w.fill:IsShown() end end`);
+  expect(drawn(), "F is still key setup's, so placing is on").toBe(true);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.key == "F" and w.entry ~= nil and w:IsVisible() and w:GetParent() ~= ${BOARD} then w.__scripts.OnClick(w, "RightButton") break end end`);
+  addon.eval('__click("Put back")');
+  expect([addon.eval("return ns.KeybindsLearn.IsOn()"), drawn()]).toEqual([false, false]);
+});
+
 it("step 3: keys 1 to 6 name the stance page they are on, so no key is listed twice unnamed", () => {
   const addon = warrior();
   open(addon);
