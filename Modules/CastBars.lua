@@ -181,17 +181,29 @@ local function timerArgs(channel)
   return ease and ease.Immediate, dirs and (channel and dirs.RemainingTime or dirs.ElapsedTime)
 end
 
--- Starts the bar's timing: the client's own timer where it can, else plain times on each frame.
-local function startTiming(bar, unit, startMS, endMS, channel, stages)
+-- Writes only the seconds left while the client's timer fills the bar (plain times only).
+local function tickSeconds(bar)
+  local endMS = ns.PlainNumber(bar.endMS)
+  if endMS then CB.ShowSeconds(bar.time, math.max(0, endMS - GetTime() * 1000) / 1000) end
+end
+
+-- Hands the bar to the client's timer; false where the client has none or the bar won't take it.
+local function runTimer(bar, unit, channel, stages)
   local duration = castDuration(unit, channel, stages)
+  return duration ~= nil and bar.SetTimerDuration ~= nil and pcall(bar.SetTimerDuration, bar, duration, timerArgs(channel))
+end
+
+-- Starts the bar's timing: the client's own timer where it can (the seconds still ticked from plain
+-- times), else plain times on each frame.
+local function startTiming(bar, unit, startMS, endMS, channel, stages)
   CB.ClearSeconds(bar.time)
   showLatency(bar, startMS, endMS, channel)
-  if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration, timerArgs(channel)) then
-    return bar:SetScript("OnUpdate", nil)
+  bar.startMS, bar.endMS, bar.channel = startMS, endMS, channel
+  if runTimer(bar, unit, channel, stages) then
+    return bar:SetScript("OnUpdate", ns.PlainNumber(startMS) and ns.PlainNumber(endMS) and tickSeconds or nil)
   end
   bar:SetMinMaxValues(0, 1)
   bar:SetValue(1)
-  bar.startMS, bar.endMS, bar.channel = startMS, endMS, channel
   bar:SetScript("OnUpdate", onUpdate)
 end
 
