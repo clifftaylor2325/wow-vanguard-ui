@@ -32,6 +32,10 @@ local WP = ns.Module("Waypoints", { defaults = { slash = true, mapCoords = true,
 -- Seconds between updates of the world map's coordinates line.
 WP.MAP_INTERVAL = 0.1
 
+-- Room the game's quest panel toggle takes in the world map's bottom right corner (Blizzard_WorldMap.lua:
+-- SidePanelToggle, 32 wide, at BOTTOMRIGHT -2), left clear by the Clear waypoint button.
+WP.MAP_TOGGLE_ROOM = 34
+
 -- Parsing a /way line -------------------------------------------------------------------------
 
 -- The words of a /way line, commas read as spaces ("45.2, 61.8" and "45,61" both work).
@@ -305,7 +309,7 @@ local function buildMapLine(map)
   WP.mapLine = T.Text(holder:CreateFontString(nil, "OVERLAY"), "small", "text2")
   WP.mapLine:SetPoint("BOTTOM", holder, "BOTTOM", 0, 6)
   WP.clearButton = ns.WidenToLabel(ns.DialogButton(holder, L["Clear waypoint"], 110))
-  WP.clearButton:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", -8, 6)
+  WP.clearButton:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", -(WP.MAP_TOGGLE_ROOM + T.SPACE.gap), 6)
   WP.clearButton:SetScript("OnClick", ns.Guard("clear waypoint", WP.Clear))
   ns.Every("world map coords", WP.MAP_INTERVAL, WP.PaintMapLine, holder, true)
 end
