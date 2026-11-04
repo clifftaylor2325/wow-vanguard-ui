@@ -345,8 +345,10 @@ function QD.Press()
 end
 
 -- What a key does here: 1-9 pick a line (or a reward) that exists, Space presses the main button, and so does
--- Enter, but only out of combat (a key caught in combat could not be handed on again). True when the key was used.
+-- Enter, but only out of combat (a key caught in combat could not be handed on again). A key with Shift, Ctrl or
+-- Alt held goes on to the game (your bars). True when the key was used.
 local function useKey(key)
+  if ns.Widgets.Modifiers() ~= "" then return false end
   local n = tonumber(key)
   if n and n >= 1 and n <= 9 then
     if QD.page.pick then return QD.Pick(n) end
