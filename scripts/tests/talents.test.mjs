@@ -115,6 +115,7 @@ it("talent planner: a talent with two sufficient-for-availability parents needs 
     __nodes[301] = { g = 10, x = 3000, y = 0, max = 1, rank = 0, edges = { { targetNode = 303, type = 2 } } }
     __nodes[302] = { g = 10, x = 3600, y = 0, max = 1, rank = 0, edges = { { targetNode = 303, type = 2 } } }
     __nodes[303] = { g = 10, x = 3000, y = 600, max = 1, rank = 0 }`);
+  // Puts a plan in (the ranks as Lua), repaints, and reads the order and what is stuck back.
   const plan = (lua) => addon.eval(`local TP = ${TP} VanguardCharDB.talentPlans = { { ranks = { ${lua} }, hash = "1-2-3" } } TP.Refresh() local r = TP.result return { order = r.order, stuck = r.stuck }`);
   expect(plan("[301] = 1, [303] = 1"), "one parent planned: the child follows it, nothing unreachable").toEqual({ order: [301, 303], stuck: {} });
   expect(plan("[303] = 1").stuck, "neither parent planned: the child is unreachable").toEqual({ 303: true });
