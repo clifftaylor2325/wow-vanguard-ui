@@ -117,12 +117,14 @@ it("retail auras: the raid tiles keep their private aura spot with Raid debuffs 
   expect(spots(addon).filter((s) => s[3].startsWith("Vanguard_Raid")).map((s) => s[0]), "the tile still has its spot, for its unit").toEqual(["raid1"]);
 });
 
-it("retail auras: the target frame has a spot right of it, handed again on each new target", () => {
+it("retail auras: the target frame has a spot left of it, clear of the target of target (H9-1-3), handed again on each new target", () => {
   const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
   // The target spot's unit, whether it sits by the target frame, and its anchor id.
-  const target = () => addon.eval("local h = ns.PrivateAuras.target return { h.unit, h.__points.LEFT.rel == Vanguard_target, h.anchorID }");
+  const target = () => addon.eval("local h = ns.PrivateAuras.target return { h.unit, h.__points.RIGHT.rel == Vanguard_target, h.anchorID }");
   const first = target();
   expect([first[0], first[1]], "the target's spot, beside its frame").toEqual(["target", true]);
+  const rects = addon.eval("local h, t = ns.PrivateAuras.target, Vanguard_targettarget return { h:GetRight(), h:GetLeft(), Vanguard_target:GetLeft(), t:GetLeft() }");
+  expect(rects[0] < rects[2] && rects[1] < rects[2] && rects[0] < rects[3], "the spot ends before the target frame's left edge, nowhere near the target of target").toBe(true);
   addon.fire("PLAYER_TARGET_CHANGED");
   const second = target();
   expect([second[2] !== first[2], addon.eval(`return __wfgWorld.privateAnchors[${first[2]}] == nil`)], "a new spot for the new target, the old one given back").toEqual([true, true]);

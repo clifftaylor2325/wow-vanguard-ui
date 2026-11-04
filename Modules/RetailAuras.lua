@@ -3,7 +3,7 @@
 -- (C_UnitAuras.AddPrivateAuraAnchor, UnitAuraDocumentation.lua). Vanguard hands it two:
 --   * one in the middle of each raid tile (its tile hooks on Modules/RaidFrames.lua, kept with Raid debuffs and HoTs off), moved to the tile's new unit
 --     as the roster shifts (the game's own raid frames do the same, CompactUnitFrame.lua);
---   * one right of the target frame (Modules/FrameAuras.lua's frame parts), handed again on a new target.
+--   * one left of the target frame (Modules/FrameAuras.lua's frame parts), handed again on a new target.
 -- Nothing about the aura is read here: the game draws it, its icon and its sweep, in the spot.
 
 local ADDON, ns = ...
@@ -66,12 +66,12 @@ table.insert(RF.emptyHooks, PA.TileEmptied)
 
 -- The target frame ---------------------------------------------------------------------------
 
--- The target's spot right of its frame, a debuff and a bit across, handed again on each new target (the token
+-- The target's spot left of its frame (its right side holds the target of target), a debuff and a bit across, handed again on each new target (the token
 -- then means someone else).
 function PA.TargetPart(f, key, settings)
   if key ~= "target" then return end
   local holder = PA.Spot(f, settings.size + PA.GROW, 1)
-  holder:SetPoint("LEFT", f, "RIGHT", PA.GAP, 0)
+  holder:SetPoint("RIGHT", f, "LEFT", -PA.GAP, 0)
   PA.target = holder
   PA.Point(holder, "target")
   ns.On("PLAYER_TARGET_CHANGED", function() PA.Point(holder, "target") end)
