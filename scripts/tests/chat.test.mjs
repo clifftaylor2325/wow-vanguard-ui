@@ -2374,6 +2374,15 @@ it("chat text size: the game's chat setting: survives a reload, so chat keeps fo
   expect(again.eval('return { ns.Settings("Chat").textSize, ns.GetModule("Chat").TextSize(ChatFrame1) }'), "still the game's setting after the reload: the window's own 18").toEqual([0, 18]);
 });
 
+it("chat text size: the game's chat setting reads the size the game saved for the window, not the last Vanguard size left on it", () => {
+  const addon = loggedIn("GetChatWindowInfo = function(i) return 'General', __saved end");
+  addon.eval("ns.GetModule('Chat').settings.textSize = 20 __saved = 12 ChatFrame1:SetFont(ChatFrame1:GetFont(), 20)");
+  addon.eval("ns.GetModule('Chat').settings.textSize = 0");
+  expect(addon.eval("return ns.GetModule('Chat').TextSize(ChatFrame1)"), "the game's saved 12, not the 20 still on the window").toBe(12);
+  addon.eval("__saved = 0");
+  expect(addon.eval("return ns.GetModule('Chat').TextSize(ChatFrame1)"), "0 is the game's untouched 14").toBe(14);
+});
+
 // Whether chat tab n is painted in the raised (selected) fill, and its fill's alpha.
 const tabLook = (addon, n) => addon.eval(`local bg for _, r in ipairs({ ChatFrame${n}Tab:GetRegions() }) do if r.__layer == "BACKGROUND" and r.__vertexColor then bg = r end end
   local c, r, g, b = bg and bg.__vertexColor, ns.Theme.RGB("raised") return { c ~= nil and c[1] == r and c[2] == g and c[3] == b, bg and bg:GetAlpha() }`);

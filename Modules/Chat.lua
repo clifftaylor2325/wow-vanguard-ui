@@ -131,11 +131,19 @@ local function chosenSize()
   return size > 0 and size or nil
 end
 
--- The size chat text draws at: the chosen size scaled by Text size, or the window's own.
+-- The size the game saved for a chat window (0 is its untouched default, 14), or nil where it can't say.
+local function gameSize(frame)
+  if type(GetChatWindowInfo) ~= "function" or type(frame.GetID) ~= "function" then return nil end
+  local size = ns.PlainNumber((select(2, GetChatWindowInfo(frame:GetID()))))
+  return size == 0 and 14 or size
+end
+
+-- The size chat text draws at: the chosen size scaled by Text size, or the game's own for the window (its
+-- current font size where the game has none saved: Vanguard's last size must not stand in for it).
 function CH.TextSize(frame)
   local size = chosenSize()
   if size then return T.ScaledSize(size) end
-  return fontSize(frame)
+  return gameSize(frame) or fontSize(frame)
 end
 
 -- Theme font on a chat window, at the chat text size, with the theme's drop shadow under every line
