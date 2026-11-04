@@ -252,10 +252,21 @@ local function clearHolders(frame)
   end
 end
 
+-- Moves each of the window's tab systems (GW.TAB_SYSTEMS) set against an outer edge of the window out past the padding,
+-- as a holder is: its tab buttons hang from it, not from the window (one set inside the window, such as the friends
+-- window's header, keeps its place).
+local function clearSystems(frame)
+  for _, path in ipairs(GW.TAB_SYSTEMS) do
+    local system = walk(frame, path)
+    if type(system) == "table" and system.GetPoint then ns.Try("tab system", GW.ClearPadding, system, frame) end
+  end
+end
+
 -- Puts every tab button the window has now in the theme; a button that fails leaves the others alone.
 function GW.DressTabs(frame)
   local list = GW.TabButtons(frame)
   clearHolders(frame)
+  clearSystems(frame)
   for _, button in ipairs(list) do ns.Try("tab button", dressTab, button, frame, list.side[button]) end
   dressBankTabs(frame)
   GW.FadeParts(frame, { "TabIndicators" })
