@@ -83,8 +83,9 @@ GW.MOVE_TAB_HANG = 32
 -- character pane's ModeTabs (the Camelot pane's CharacterFrame.xml). Other windows' side tabs wait for their widths.
 -- Retail's character pane keeps its tabs along its bottom edge.
 GW.MOVE_SIDE_HANG = ns.ClientData({ forever = { CharacterFrame = 64 }, retail = {} })
--- The game's calls that place its windows again; every moved window is put back after each.
-GW.MOVE_LAYOUTS = { "UpdateUIPanelPositions", "UpdateContainerFrameAnchors" }
+-- The game's calls that place its windows again; every moved window is put back after each. The scale-to-fit pass
+-- after a UI scale change lays the open panels out again without calling the global UpdateUIPanelPositions.
+GW.MOVE_LAYOUTS = { "UpdateUIPanelPositions", "UpdateContainerFrameAnchors", "UpdateScaleForFitForOpenPanels" }
 -- The windows the game lays out with a call of their own (not the panel manager's), by window.
 GW.MOVE_LAID_OUT = { ContainerFrameCombinedBags = "UpdateContainerFrameAnchors" }
 

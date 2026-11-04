@@ -73,6 +73,15 @@ it("#201 the character pane: dragged by its title bar, its place is saved and pu
   expect(errors(addon)).toBe("none");
 });
 
+it("H7-7-2 a UI scale change: the game's scale-to-fit pass lays the moved character pane out again, and its saved place is put back", () => {
+  const addon = loggedIn(`${MOVE_ENV}
+    function UpdateScaleForFitForOpenPanels() CharacterFrame:ClearAllPoints() CharacterFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -116) end`);
+  addon.eval("__open(CharacterFrame)");
+  drag(addon, "CharacterFrame", 500, 700);
+  addon.eval("UpdateScaleForFitForOpenPanels()");
+  expect([corner(addon, "CharacterFrame"), errors(addon)], "still where it was dropped").toEqual([[500, 700], "none"]);
+});
+
 it("a window hidden mid-drag ends the drag: it is not stuck dragging, and its saved place is put back again", () => {
   const addon = loggedIn(MOVE_ENV);
   addon.eval("__open(CharacterFrame)");
