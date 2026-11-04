@@ -2375,12 +2375,12 @@ it("chat text size: the game's chat setting: survives a reload, so chat keeps fo
 });
 
 it("chat text size: the game's chat setting reads the size the game saved for the window, not the last Vanguard size left on it", () => {
-  const addon = loggedIn("GetChatWindowInfo = function(i) return 'General', __saved end");
-  addon.eval("ns.GetModule('Chat').settings.textSize = 20 __saved = 12 ChatFrame1:SetFont(ChatFrame1:GetFont(), 20)");
+  const addon = loggedIn("FCF_GetChatWindowInfo = function(i) return 'General', __saved[i] end");
+  addon.eval("ns.GetModule('Chat').settings.textSize = 20 __saved = { 12 } ChatFrame1.__frameID = 1 ChatFrame1:SetFont(ChatFrame1:GetFont(), 20)");
   addon.eval("ns.GetModule('Chat').settings.textSize = 0");
   expect(addon.eval("return ns.GetModule('Chat').TextSize(ChatFrame1)"), "the game's saved 12, not the 20 still on the window").toBe(12);
-  addon.eval("__saved = 0");
-  expect(addon.eval("return ns.GetModule('Chat').TextSize(ChatFrame1)"), "0 is the game's untouched 14").toBe(14);
+  addon.eval("__saved = { __wfgWorld.secret(16) }");
+  expect(addon.eval("return ns.GetModule('Chat').TextSize(ChatFrame1)"), "a size the client hides: the window's own font").toBe(20);
 });
 
 // Whether chat tab n is painted in the raised (selected) fill, and its fill's alpha.

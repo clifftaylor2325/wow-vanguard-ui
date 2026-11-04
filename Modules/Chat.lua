@@ -131,11 +131,12 @@ local function chosenSize()
   return size > 0 and size or nil
 end
 
--- The size the game saved for a chat window (0 is its untouched default, 14), or nil where it can't say.
+-- The size the game keeps for a chat window, through the game's own reader (which turns an untouched 0 into its
+-- default size and reads a temporary window's font), or nil where it can't say.
 local function gameSize(frame)
-  if type(GetChatWindowInfo) ~= "function" or type(frame.GetID) ~= "function" then return nil end
-  local size = ns.PlainNumber((select(2, GetChatWindowInfo(frame:GetID()))))
-  return size == 0 and 14 or size
+  local id = type(frame.GetID) == "function" and ns.PlainNumber(frame:GetID())
+  if type(FCF_GetChatWindowInfo) ~= "function" or not id then return nil end
+  return ns.PlainNumber((select(2, FCF_GetChatWindowInfo(id))))
 end
 
 -- The size chat text draws at: the chosen size scaled by Text size, or the game's own for the window (its
