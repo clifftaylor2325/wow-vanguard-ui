@@ -1618,9 +1618,9 @@ it("a page rebuilt while it shows (a module filter picked on the Modules page) k
 });
 it("Window ornaments applies at once and asks for no reload", () => {
   const addon = loggedIn(CLICK_LUA);
-  // The diamond rule's textures showing on the options window.
+  // The rule motif's textures showing on the options window's header.
   const diamonds = () => addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do
-    if w.__kind == "Texture" and w.__parent == Vanguard_Options and w:IsShown() and tostring(w.__texture):find("Diamond") then n = n + 1 end end return n`);
+    if w.__kind == "Texture" and w.__parent == Vanguard_Options.header and w:IsShown() and tostring(w.__texture):find("OrnamentRule") then n = n + 1 end end return n`);
   addon.eval('ns.Options.Show("general")');
   expect(diamonds(), "off by default").toBe(0);
   expect(addon.eval('return __click("Window ornaments")')).toBe(true);
