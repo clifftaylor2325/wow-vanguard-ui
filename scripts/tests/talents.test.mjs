@@ -93,6 +93,23 @@ it("talent planner: the bar on the talents window, and plan mode's clicks set pl
   expect(mark(addon, 102), "plan mode off: the badge stays, the mouse goes back to the game").toMatchObject({ badge: "2", shown: true, mouse: false });
 });
 
+it("talent planner: no marks while the window shows another config than the plan's, and a repaint when it changes", () => {
+  const addon = open(`
+    __shown = 501
+    function PlayerSpellsFrame.TalentsFrame:GetConfigID() return __shown end
+    function PlayerSpellsFrame.TalentsFrame:SetConfigID(id) __shown = id end`);
+  addon.eval(`${TP}.SetPlanning(true) VanguardCharDB.talentPlans = { { ranks = { [101] = 2 }, hash = "1-2-3" } } ${TP}.Refresh()`);
+  expect(mark(addon, 101), "the config the plan is for: the badge shows").toMatchObject({ badge: "2", shown: true });
+  addon.eval("PlayerSpellsFrame.TalentsFrame:SetConfigID(502)");
+  addon.update(0.01);
+  expect(addon.eval("return __mark(101):IsShown()"), "the other spec's tab (or an inspected player): no badge to plan on").toBe(false);
+  addon.eval("PlayerSpellsFrame.TalentsFrame:SetConfigID(501)");
+  addon.update(0.01);
+  expect(addon.eval("return __mark(101):IsShown()"), "back on the plan's config: the badge returns").toBe(true);
+  addon.eval("__shown = { __secret = true } " + `${TP}.Refresh()`);
+  expect(addon.eval("return __mark(101):IsShown()"), "a config ID the client hides is not read: the marks stay").toBe(true);
+});
+
 it("talent planner: buying order, rows' gates, prerequisites and unreachable ranks", () => {
   const addon = open();
   // Puts a plan in (the ranks as Lua), repaints, and reads the result back: the order, what is stuck, points planned.

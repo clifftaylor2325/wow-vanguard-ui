@@ -436,10 +436,19 @@ local function paintMark(m, node, planned, result)
   m:Show()
 end
 
+-- Whether the window shows a config other than the one the plan is for (the other spec's tab, or an inspected player).
+local function showsOther(frame, tree)
+  if type(frame.GetConfigID) ~= "function" then return false end
+  local ok, id = pcall(frame.GetConfigID, frame)
+  local shown = ok and ns.PlainNumber(id)
+  return shown and shown ~= tree.configID or false
+end
+
 -- Marks every talent button the window shows now from the tree and plan; marks on buttons that show no
--- talent now are hidden.
+-- talent now are hidden, and so are all of them while the window shows another config than the plan's.
 local function paintAll(frame, tree, plan, result)
   for _, m in pairs(marks) do m:Hide() end
+  if showsOther(frame, tree) then return end
   for id, button in pairs(TP.Buttons(frame, tree)) do
     local node = tree.nodes[id]
     if node then paintMark(markFor(button), node, plan.ranks[id], result) end
@@ -556,6 +565,12 @@ function TP.Schedule()
   after(0, function() TP.pending = false ns.Try("talent planner", TP.Refresh) end)
 end
 
+-- A repaint each time the window is given another config (a spec tab picked, or a player inspected), where it can.
+local function watchConfig(frame)
+  if type(frame.SetConfigID) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(frame, "SetConfigID", ns.Guard("talent window config", TP.Schedule))
+end
+
 -- Hooks the game's talents window once it exists: the bar built, a repaint on show, the tooltip put away on hide.
 function TP.Attach()
   local frame = TP.Frame()
@@ -564,6 +579,7 @@ function TP.Attach()
   buildBar(frame)
   frame:HookScript("OnShow", ns.Guard("show talent window", TP.Schedule))
   frame:HookScript("OnHide", ns.Guard("hide talent window", function() GameTooltip:Hide() end))
+  watchConfig(frame)
   TP.Schedule()
 end
 
