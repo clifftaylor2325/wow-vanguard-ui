@@ -534,6 +534,15 @@ it("+ Add holds its label in German, Russian and Portuguese in every place along
   }
 });
 
+it("mail search looks in the first item's name, not in the item link's markup", () => {
+  const addon = mailer("");
+  const mail = `{ sender = "Bobalt", subject = "Ore", money = 0, items = 1, link = "|cffa335ee|Hitem:12345:0|h[Iron Ore]|h|r" }`;
+  // Whether the mail matches the query.
+  const found = (query) => addon.eval(`return ${MT}.Matches(${mail}, "${query}")`);
+  expect([found("iron"), found("bobalt ore")], "the item's name, the sender and the subject match").toEqual([true, true]);
+  expect([found("item"), found("cff"), found("123"), found("hitem")], "link markup and ids do not").toEqual([false, false, false, false]);
+});
+
 it("mail search, presets and preset words ignore the case of Russian letters, not only of A-Z", () => {
   const addon = mailer(`__wfgWorld.items[903] = { name = "Железная руда" } __wfgWorld.bags[0][3] = { itemID = 903 }`);
   expect(addon.eval(`return ${MT}.Matches({ sender = "Торговец", subject = "Письмо", link = "", money = 0, items = 0 }, "торговец")`), "a small-letter query finds the capital").toBe(true);

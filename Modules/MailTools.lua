@@ -75,9 +75,10 @@ local function keeps(filter, m)
   return true
 end
 
--- Whether a mail passes the filter and holds every word typed (in any case).
+-- Whether a mail passes the filter and holds every word typed (in any case), in its sender, subject or
+-- first item's name (the words between the link's brackets, not its markup).
 function MT.Matches(m, query)
-  local hay = ns.Lower(m.sender .. " " .. m.subject .. " " .. m.link)
+  local hay = ns.Lower(m.sender .. " " .. m.subject .. " " .. (m.link:match("%[(.-)%]") or ""))
   for word in ns.Lower(query or ""):gmatch("%S+") do
     if not hay:find(word, 1, true) then return false end
   end
