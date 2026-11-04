@@ -34,6 +34,8 @@ globals = {
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
   "WOW_PROJECT_ID", "WOW_PROJECT_CAMELOT",
+  -- Retail data tables (Modules/DataBars.lua): honor at the level cap and a major faction's renown.
+  "UnitHonor", "UnitHonorMax", "UnitHonorLevel", "IsWatchingHonorAsXP", "IsInActiveWorldPVP", "C_MajorFactions",
   "C_DeathRecap", "COMPLETE", "DECIMAL_SEPERATOR", "LARGE_NUMBER_SEPERATOR",
   "UiMapPoint", "C_SuperTrack", "C_Navigation", "C_Minimap", "hash_SlashCmdList", "IsPlayerSpell",
   "C_Bank", "C_ContentTracking", "InputUtil",
@@ -55,6 +57,8 @@ read_globals = {
   "GetCVar", "C_AddOnProfiler", "debugprofilestop", "GetAddOnCPUUsage", "UpdateAddOnCPUUsage", "GetAddOnMemoryUsage", "UpdateAddOnMemoryUsage", "GetFunctionCPUUsage",
   -- Action button tooltips: the client's default anchor (P2.3).
   "GameTooltip_SetDefaultAnchor",
+  -- Retail's quest tracker blocks: scenarios, campaigns, world quests and the Traveler's Log (Modules/RetailQuests.lua).
+  "C_ScenarioInfo", "C_CampaignInfo", "C_TaskQuest", "C_PerksActivities",
   -- Quest tracker item buttons: the quest item's cooldown and range (P2.10).
   "GetQuestLogSpecialItemCooldown", "IsQuestLogSpecialItemInRange",
   -- P2.8 Chat: the game's list of chat window art names.

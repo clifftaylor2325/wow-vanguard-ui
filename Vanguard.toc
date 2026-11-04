@@ -118,6 +118,7 @@ Modules/SwingTimer.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard
 Modules/UnitExtras.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/RaidFrames.lua
 Modules/RaidAuras.lua
+Modules/RetailAuras.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/RaidHealing.lua
 Modules/RaidStatus.lua
 Modules/RaidPreview.lua
@@ -153,6 +154,7 @@ Modules/BagSections.lua
 Modules/BagCategories.lua
 Modules/BagSearch.lua
 Modules/BagTools.lua
+Modules/RetailBank.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
@@ -175,6 +177,7 @@ Modules/QuestDialogView.lua
 Modules/QuestAuto.lua
 Modules/QuestTracker.lua
 Modules/QuestTrackerView.lua
+Modules/RetailQuests.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/QuestLog.lua
 Modules/QuestLogView.lua
 Modules/QuestHistory.lua
@@ -192,6 +195,7 @@ Modules/WindowsTabs.lua
 Modules/CharacterExtras.lua
 Modules/WindowsPvP.lua
 Modules/WindowsMove.lua
+Modules/RetailHousing.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
 Modules/AuctionTable.lua

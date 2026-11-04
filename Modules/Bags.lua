@@ -154,7 +154,11 @@ local function skinBankWindow()
   BG.SkinBankItems()
 end
 
--- The bank window and its slots, whenever it opens or shows another tab.
+-- What a client dresses in the bank besides the window and its slots, each fn(bank, panel) run once as the bank is
+-- watched (Modules/RetailBank.lua on Retail: the warband bank's parts; none on WoW Forever).
+BG.BANK_PARTS = {}
+
+-- The bank window and its slots, whenever it opens or shows another tab, and the client's own bank parts.
 local function watchBank()
   local bank, panel = _G.BankFrame, _G.BankPanel
   if type(bank) ~= "table" or type(panel) ~= "table" then return end
@@ -162,6 +166,7 @@ local function watchBank()
   if type(panel.GenerateItemSlotsForSelectedTab) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(panel, "GenerateItemSlotsForSelectedTab", ns.Guard("hook GenerateItemSlotsForSelectedTab", BG.SkinBankItems))
   end
+  for _, watch in ipairs(BG.BANK_PARTS) do ns.Try("bank parts", watch, bank, panel) end
 end
 
 -- Hides the game's sort button while it sits on the combined bag, where Vanguard's Sort takes its place. On

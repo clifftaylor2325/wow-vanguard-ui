@@ -21,56 +21,138 @@ CS.GROUP_NAMES = { heals = L["Heals"], cleanse = L["Protect & cleanse"], buffs =
 -- Per class: the spell ids of each group, and the starter layout (mouse button -> spell id), the main heal on the middle click.
 -- The names in the comments are the English client's, for reading only: the client names each id.
 -- UNVERIFIED on a Forever client: the ids are the classic database's; check them in the click-casting picker.
-CS.CLASSES = {
-  PRIEST = {
-    -- Lesser Heal, Heal, Greater Heal, Flash Heal, Renew, Prayer of Healing, Holy Nova, Circle of Healing,
-    -- Prayer of Mending, Binding Heal, Penance.
-    heals = { 2050, 2054, 2060, 2061, 139, 596, 15237, 34861, 33076, 32546, 47540 },
-    -- Power Word: Shield, Dispel Magic, Cure Disease, Abolish Disease, Fear Ward, Pain Suppression, Guardian Spirit.
-    cleanse = { 17, 527, 528, 552, 6346, 33206, 47788 },
-    -- Power Word: Fortitude, Divine Spirit, Shadow Protection, Prayer of Fortitude, Prayer of Spirit,
-    -- Prayer of Shadow Protection, Levitate, Mind Vision.
-    buffs = { 1243, 14752, 976, 21562, 27681, 27683, 1706, 2096 },
-    -- Flash Heal, Greater Heal, Renew, Dispel Magic, Cure Disease, Power Word: Shield, Resurrection.
-    layout = { BUTTON3 = 2061, ["shift-BUTTON1"] = 2060, ["shift-BUTTON2"] = 139, ["ctrl-BUTTON1"] = 527, ["ctrl-BUTTON2"] = 528, ["alt-BUTTON1"] = 17, ["alt-BUTTON2"] = 2006 },
+CS.CLASSES = ns.ClientData({
+  forever = {
+    PRIEST = {
+      -- Lesser Heal, Heal, Greater Heal, Flash Heal, Renew, Prayer of Healing, Holy Nova, Circle of Healing,
+      -- Prayer of Mending, Binding Heal, Penance.
+      heals = { 2050, 2054, 2060, 2061, 139, 596, 15237, 34861, 33076, 32546, 47540 },
+      -- Power Word: Shield, Dispel Magic, Cure Disease, Abolish Disease, Fear Ward, Pain Suppression, Guardian Spirit.
+      cleanse = { 17, 527, 528, 552, 6346, 33206, 47788 },
+      -- Power Word: Fortitude, Divine Spirit, Shadow Protection, Prayer of Fortitude, Prayer of Spirit,
+      -- Prayer of Shadow Protection, Levitate, Mind Vision.
+      buffs = { 1243, 14752, 976, 21562, 27681, 27683, 1706, 2096 },
+      -- Flash Heal, Greater Heal, Renew, Dispel Magic, Cure Disease, Power Word: Shield, Resurrection.
+      layout = { BUTTON3 = 2061, ["shift-BUTTON1"] = 2060, ["shift-BUTTON2"] = 139, ["ctrl-BUTTON1"] = 527, ["ctrl-BUTTON2"] = 528, ["alt-BUTTON1"] = 17, ["alt-BUTTON2"] = 2006 },
+    },
+    DRUID = {
+      -- Healing Touch, Regrowth, Rejuvenation, Tranquility, Swiftmend, Lifebloom, Nourish, Wild Growth.
+      heals = { 5185, 8936, 774, 740, 18562, 33763, 50464, 48438 },
+      -- Remove Curse (Remove Corruption on later clients), Cure Poison, Abolish Poison, Nature's Cure.
+      cleanse = { 2782, 8946, 2893, 88423 },
+      -- Mark of the Wild, Gift of the Wild, Thorns, Innervate.
+      buffs = { 1126, 21849, 467, 29166 },
+      -- Rejuvenation, Healing Touch, Regrowth, Remove Curse, Abolish Poison, Swiftmend, Rebirth.
+      layout = { BUTTON3 = 774, ["shift-BUTTON1"] = 5185, ["shift-BUTTON2"] = 8936, ["ctrl-BUTTON1"] = 2782, ["ctrl-BUTTON2"] = 2893, ["alt-BUTTON1"] = 18562, ["alt-BUTTON2"] = 20484 },
+    },
+    PALADIN = {
+      -- Holy Light, Flash of Light, Lay on Hands, Holy Shock, Word of Glory, Light of Dawn.
+      heals = { 635, 19750, 633, 20473, 85673, 85222 },
+      -- Cleanse, Purify, Blessing of Protection, Blessing of Freedom, Blessing of Sacrifice (the three Hand of ...
+      -- on later clients), Divine Intervention.
+      cleanse = { 4987, 1152, 1022, 1044, 6940, 19752 },
+      -- Blessing of Might, Wisdom, Kings, Salvation, Light, Sanctuary, then the Greater Blessing of each.
+      buffs = { 19740, 19742, 20217, 1038, 19977, 20911, 25782, 25894, 25898, 25895, 25890, 25899 },
+      -- Flash of Light, Holy Light, Blessing of Protection, Cleanse, Purify, Lay on Hands, Redemption.
+      layout = { BUTTON3 = 19750, ["shift-BUTTON1"] = 635, ["shift-BUTTON2"] = 1022, ["ctrl-BUTTON1"] = 4987, ["ctrl-BUTTON2"] = 1152, ["alt-BUTTON1"] = 633, ["alt-BUTTON2"] = 7328 },
+    },
+    SHAMAN = {
+      -- Healing Wave, Lesser Healing Wave (Healing Surge on later clients), Chain Heal, Riptide, Earth Shield.
+      heals = { 331, 8004, 1064, 61295, 974 },
+      -- Cure Poison (Cure Toxins on later clients), Cure Disease, Cleanse Spirit, Purify Spirit.
+      cleanse = { 526, 2870, 51886, 77130 },
+      -- Water Walking, Water Breathing.
+      buffs = { 546, 131 },
+      -- Lesser Healing Wave, Healing Wave, Chain Heal, Cure Poison, Cure Disease, Ancestral Spirit, Nature's Swiftness.
+      layout = { BUTTON3 = 8004, ["shift-BUTTON1"] = 331, ["shift-BUTTON2"] = 1064, ["ctrl-BUTTON1"] = 526, ["ctrl-BUTTON2"] = 2870, ["alt-BUTTON1"] = 2008, ["alt-BUTTON2"] = 16188 },
+    },
+    -- Remove Lesser Curse (Remove Curse on later clients); Arcane Intellect, Arcane Brilliance, Dampen Magic, Amplify Magic,
+    -- Slow Fall; the layout: Arcane Intellect, Remove Lesser Curse.
+    MAGE = { heals = {}, cleanse = { 475 }, buffs = { 1459, 23028, 604, 1008, 130 }, layout = { ["shift-BUTTON1"] = 1459, ["ctrl-BUTTON1"] = 475 } },
+    -- Unending Breath, Detect Invisibility, Detect Lesser Invisibility, Detect Greater Invisibility; the layout: Unending Breath.
+    WARLOCK = { heals = {}, cleanse = {}, buffs = { 5697, 2970, 132, 11743 }, layout = { ["shift-BUTTON1"] = 5697 } },
   },
-  DRUID = {
-    -- Healing Touch, Regrowth, Rejuvenation, Tranquility, Swiftmend, Lifebloom, Nourish, Wild Growth.
-    heals = { 5185, 8936, 774, 740, 18562, 33763, 50464, 48438 },
-    -- Remove Curse (Remove Corruption on later clients), Cure Poison, Abolish Poison, Nature's Cure.
-    cleanse = { 2782, 8946, 2893, 88423 },
-    -- Mark of the Wild, Gift of the Wild, Thorns, Innervate.
-    buffs = { 1126, 21849, 467, 29166 },
-    -- Rejuvenation, Healing Touch, Regrowth, Remove Curse, Abolish Poison, Swiftmend, Rebirth.
-    layout = { BUTTON3 = 774, ["shift-BUTTON1"] = 5185, ["shift-BUTTON2"] = 8936, ["ctrl-BUTTON1"] = 2782, ["ctrl-BUTTON2"] = 2893, ["alt-BUTTON1"] = 18562, ["alt-BUTTON2"] = 20484 },
+  -- Retail's thirteen classes, the healers' current spells by their Retail ids (12.1.5). UNVERIFIED on a Retail
+  -- client: typed from the live database; scripts/lib/wow-retail-data.lua names each, and the PR lists them to /dump.
+  retail = {
+    PRIEST = {
+      -- Flash Heal, Heal, Renew, Prayer of Healing, Holy Word: Serenity, Holy Word: Sanctify, Prayer of Mending,
+      -- Penance, Power Word: Radiance, Circle of Healing, Halo, Divine Hymn, Power Word: Life.
+      heals = { 2061, 2060, 139, 596, 2050, 34861, 33076, 47540, 194509, 204883, 120517, 64843, 373481 },
+      -- Power Word: Shield, Purify, Purify Disease, Pain Suppression, Guardian Spirit, Leap of Faith, Power Infusion.
+      cleanse = { 17, 527, 213634, 33206, 47788, 73325, 10060 },
+      -- Power Word: Fortitude, Levitate.
+      buffs = { 21562, 1706 },
+      -- Flash Heal, Heal, Renew, Purify, Prayer of Mending, Power Word: Shield, Resurrection.
+      layout = { BUTTON3 = 2061, ["shift-BUTTON1"] = 2060, ["shift-BUTTON2"] = 139, ["ctrl-BUTTON1"] = 527, ["ctrl-BUTTON2"] = 33076, ["alt-BUTTON1"] = 17, ["alt-BUTTON2"] = 2006 },
+    },
+    DRUID = {
+      -- Rejuvenation, Regrowth, Wild Growth, Swiftmend, Lifebloom, Tranquility, Efflorescence, Cenarion Ward, Nourish,
+      -- Invigorate, Grove Guardians, Overgrowth.
+      heals = { 774, 8936, 48438, 18562, 33763, 740, 145205, 102351, 50464, 392160, 102693, 203651 },
+      -- Nature's Cure, Remove Corruption, Ironbark.
+      cleanse = { 88423, 2782, 102342 },
+      -- Mark of the Wild, Innervate.
+      buffs = { 1126, 29166 },
+      -- Rejuvenation, Regrowth, Wild Growth, Nature's Cure, Lifebloom, Swiftmend, Rebirth.
+      layout = { BUTTON3 = 774, ["shift-BUTTON1"] = 8936, ["shift-BUTTON2"] = 48438, ["ctrl-BUTTON1"] = 88423, ["ctrl-BUTTON2"] = 33763, ["alt-BUTTON1"] = 18562, ["alt-BUTTON2"] = 20484 },
+    },
+    PALADIN = {
+      -- Flash of Light, Holy Light, Holy Shock, Word of Glory, Light of Dawn, Lay on Hands, Holy Prism, Barrier of Faith,
+      -- Light's Hammer.
+      heals = { 19750, 82326, 20473, 85673, 85222, 633, 114165, 148039, 114158 },
+      -- Cleanse, Cleanse Toxins, Blessing of Protection, Blessing of Freedom, Blessing of Sacrifice, Blessing of
+      -- Spellwarding, Beacon of Light, Beacon of Faith.
+      cleanse = { 4987, 213644, 1022, 1044, 6940, 204018, 53563, 156910 },
+      buffs = {},
+      -- Flash of Light, Holy Light, Word of Glory, Cleanse, Blessing of Freedom, Lay on Hands, Redemption.
+      layout = { BUTTON3 = 19750, ["shift-BUTTON1"] = 82326, ["shift-BUTTON2"] = 85673, ["ctrl-BUTTON1"] = 4987, ["ctrl-BUTTON2"] = 1044, ["alt-BUTTON1"] = 633, ["alt-BUTTON2"] = 7328 },
+    },
+    SHAMAN = {
+      -- Healing Surge, Healing Wave, Chain Heal, Riptide, Earth Shield, Healing Rain, Unleash Life, Wellspring.
+      heals = { 8004, 77472, 1064, 61295, 974, 73920, 73685, 197995 },
+      -- Purify Spirit, Cleanse Spirit.
+      cleanse = { 77130, 51886 },
+      -- Skyfury, Water Walking.
+      buffs = { 462854, 546 },
+      -- Healing Surge, Healing Wave, Chain Heal, Purify Spirit, Riptide, Earth Shield, Ancestral Spirit.
+      layout = { BUTTON3 = 8004, ["shift-BUTTON1"] = 77472, ["shift-BUTTON2"] = 1064, ["ctrl-BUTTON1"] = 77130, ["ctrl-BUTTON2"] = 61295, ["alt-BUTTON1"] = 974, ["alt-BUTTON2"] = 2008 },
+    },
+    MONK = {
+      -- Vivify, Renewing Mist, Enveloping Mist, Soothing Mist, Life Cocoon, Revival, Sheilun's Gift.
+      heals = { 116670, 115151, 124682, 115175, 116849, 115310, 399491 },
+      -- Detox (Mistweaver's), Detox (Brewmaster's and Windwalker's), Tiger's Lust.
+      cleanse = { 115450, 218164, 116841 },
+      buffs = {},
+      -- Vivify, Enveloping Mist, Renewing Mist, Detox, Life Cocoon, Soothing Mist, Resuscitate.
+      layout = { BUTTON3 = 116670, ["shift-BUTTON1"] = 124682, ["shift-BUTTON2"] = 115151, ["ctrl-BUTTON1"] = 115450, ["ctrl-BUTTON2"] = 116849, ["alt-BUTTON1"] = 115175, ["alt-BUTTON2"] = 115178 },
+    },
+    EVOKER = {
+      -- Living Flame, Emerald Blossom, Verdant Embrace, Dream Breath, Spiritbloom, Reversion, Echo, Temporal Anomaly.
+      heals = { 361469, 355913, 360995, 355936, 367226, 366155, 364343, 373861 },
+      -- Naturalize, Expunge, Cauterizing Flame, Time Dilation, Rescue.
+      cleanse = { 360823, 365585, 374251, 357170, 370665 },
+      -- Blessing of the Bronze, Source of Magic.
+      buffs = { 364342, 369459 },
+      -- Living Flame, Echo, Reversion, Naturalize, Verdant Embrace, Emerald Blossom, Return.
+      layout = { BUTTON3 = 361469, ["shift-BUTTON1"] = 364343, ["shift-BUTTON2"] = 366155, ["ctrl-BUTTON1"] = 360823, ["ctrl-BUTTON2"] = 360995, ["alt-BUTTON1"] = 355913, ["alt-BUTTON2"] = 361227 },
+    },
+    -- Remove Curse; Arcane Intellect, Slow Fall; the layout: Arcane Intellect, Remove Curse.
+    MAGE = { heals = {}, cleanse = { 475 }, buffs = { 1459, 130 }, layout = { ["shift-BUTTON1"] = 1459, ["ctrl-BUTTON1"] = 475 } },
+    -- Unending Breath, Soulstone; the layout: Unending Breath, Soulstone.
+    WARLOCK = { heals = {}, cleanse = {}, buffs = { 5697, 20707 }, layout = { ["shift-BUTTON1"] = 5697, ["ctrl-BUTTON1"] = 20707 } },
+    -- Intervene; Battle Shout; the layout: Intervene.
+    WARRIOR = { heals = {}, cleanse = { 3411 }, buffs = { 6673 }, layout = { ["shift-BUTTON1"] = 3411 } },
+    -- The layout: Raise Ally.
+    DEATHKNIGHT = { heals = {}, cleanse = {}, buffs = {}, layout = { ["alt-BUTTON2"] = 61999 } },
+    -- The layout: Misdirection.
+    HUNTER = { heals = {}, cleanse = {}, buffs = {}, layout = { ["shift-BUTTON1"] = 34477 } },
+    -- The layout: Tricks of the Trade.
+    ROGUE = { heals = {}, cleanse = {}, buffs = {}, layout = { ["shift-BUTTON1"] = 57934 } },
+    -- Nothing a demon hunter casts on a friend: target and menu only.
+    DEMONHUNTER = { heals = {}, cleanse = {}, buffs = {}, layout = {} },
   },
-  PALADIN = {
-    -- Holy Light, Flash of Light, Lay on Hands, Holy Shock, Word of Glory, Light of Dawn.
-    heals = { 635, 19750, 633, 20473, 85673, 85222 },
-    -- Cleanse, Purify, Blessing of Protection, Blessing of Freedom, Blessing of Sacrifice (the three Hand of ...
-    -- on later clients), Divine Intervention.
-    cleanse = { 4987, 1152, 1022, 1044, 6940, 19752 },
-    -- Blessing of Might, Wisdom, Kings, Salvation, Light, Sanctuary, then the Greater Blessing of each.
-    buffs = { 19740, 19742, 20217, 1038, 19977, 20911, 25782, 25894, 25898, 25895, 25890, 25899 },
-    -- Flash of Light, Holy Light, Blessing of Protection, Cleanse, Purify, Lay on Hands, Redemption.
-    layout = { BUTTON3 = 19750, ["shift-BUTTON1"] = 635, ["shift-BUTTON2"] = 1022, ["ctrl-BUTTON1"] = 4987, ["ctrl-BUTTON2"] = 1152, ["alt-BUTTON1"] = 633, ["alt-BUTTON2"] = 7328 },
-  },
-  SHAMAN = {
-    -- Healing Wave, Lesser Healing Wave (Healing Surge on later clients), Chain Heal, Riptide, Earth Shield.
-    heals = { 331, 8004, 1064, 61295, 974 },
-    -- Cure Poison (Cure Toxins on later clients), Cure Disease, Cleanse Spirit, Purify Spirit.
-    cleanse = { 526, 2870, 51886, 77130 },
-    -- Water Walking, Water Breathing.
-    buffs = { 546, 131 },
-    -- Lesser Healing Wave, Healing Wave, Chain Heal, Cure Poison, Cure Disease, Ancestral Spirit, Nature's Swiftness.
-    layout = { BUTTON3 = 8004, ["shift-BUTTON1"] = 331, ["shift-BUTTON2"] = 1064, ["ctrl-BUTTON1"] = 526, ["ctrl-BUTTON2"] = 2870, ["alt-BUTTON1"] = 2008, ["alt-BUTTON2"] = 16188 },
-  },
-  -- Remove Lesser Curse (Remove Curse on later clients); Arcane Intellect, Arcane Brilliance, Dampen Magic, Amplify Magic,
-  -- Slow Fall; the layout: Arcane Intellect, Remove Lesser Curse.
-  MAGE = { heals = {}, cleanse = { 475 }, buffs = { 1459, 23028, 604, 1008, 130 }, layout = { ["shift-BUTTON1"] = 1459, ["ctrl-BUTTON1"] = 475 } },
-  -- Unending Breath, Detect Invisibility, Detect Lesser Invisibility, Detect Greater Invisibility; the layout: Unending Breath.
-  WARLOCK = { heals = {}, cleanse = {}, buffs = { 5697, 2970, 132, 11743 }, layout = { ["shift-BUTTON1"] = 5697 } },
-}
+})
 
 -- Every layout is "Click to select": plain left click targets and plain right click opens the unit menu. These are the
 -- clicks the game's own click profile covers by default, and the units' click handler drops a Target or Unit menu
