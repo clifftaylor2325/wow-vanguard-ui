@@ -768,19 +768,24 @@ local function scaleHeader()
   T.Rescale()
 end
 
+-- Fits the grid for n players now (out of combat), then the raid preview while it is on, so the
+-- preview keeps its own spot and the mover's look.
+local function fitFor(n)
+  RF.tileScale = RF.Scale(n) * RF.LookScale(n)
+  RF.Arrange(n)
+  scaleHeader()
+  RF.header:ClearAllPoints()
+  RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
+  RF.PlaceAllTexts()
+  if ns.RaidPreview then ns.RaidPreview.Refresh() end
+end
+
 -- Scales the grid to the group's size, pins it to the holder and lays the
 -- tiles' texts out for that scale (out of combat).
 function RF.Fit()
   if not RF.header then return end
   local n = type(GetNumGroupMembers) == "function" and ns.PlainNumber(GetNumGroupMembers()) or 0
-  ns.OutOfCombat(function()
-    RF.tileScale = RF.Scale(n or 0) * RF.LookScale(n or 0)
-    RF.Arrange(n or 0)
-    scaleHeader()
-    RF.header:ClearAllPoints()
-    RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
-    RF.PlaceAllTexts()
-  end, "raidfit")
+  ns.OutOfCombat(function() fitFor(n or 0) end, "raidfit")
 end
 
 -- Sizes the holder f for one group in a layout: a column of RF.GROUP tiles tall, or a row of them wide.
