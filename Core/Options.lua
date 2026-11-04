@@ -349,7 +349,10 @@ O.MODULE_INFO = {
   FrameAuras = { L["Target and focus auras"], L["Buffs and debuffs under the target and focus frames. Needs Unit frames."] },
   PlayerAuras = { L["Your buffs and debuffs"], L["Your own auras and weapon enchants, left of the minimap."] },
   ComboPoints = { L["Combo points"], L["Rogue and druid combo points above the player frame. Needs Unit frames."] },
-  ClassBars = { L["Class bars"], L["Shaman totems, and druid mana in forms, under the player frame. Needs Unit frames."] },
+  ClassBars = { L["Class bars"], ns.ClientData({
+    forever = L["Shaman totems above the player frame, and druid mana in forms under it. Needs Unit frames."],
+    retail = L["Above the player frame, your class resource (holy power, soul shards, chi, arcane charges, essence or runes) and shaman totems; under it, a Brewmaster's stagger and your mana while your power bar shows another power. Needs Unit frames."],
+  }) },
   PowerTicks = { L["Power bar sparks"], L["The five-second rule and energy ticks on your power bar. Needs Unit frames."] },
   SwingTimer = { L["Swing timer"], L["A row per hand that swings, from WoW Forever's own swing events."] },
   UnitExtras = { L["Readouts"], L["Threat on your target, your pet's happiness, and a status chip for eating, drinking and missing buffs. Needs Unit frames."] },

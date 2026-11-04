@@ -65,6 +65,7 @@ If the beta closes before you finish, do these first and stop after any step tha
 3. 9.4 and 14.9.2: open the auction house, then Post from the Posting tab. Run `/vg errors` right after.
 4. 14: each skinned game window, opened once in combat and once out of it.
 5. Everything else, in section order.
+6. On Retail: 34.1 first (a login error stops the run), then 34.6 and 34.14 (a key and a raid pull), then the rest of 34.
 
 ## Report block
 
@@ -3317,6 +3318,100 @@ The order is the order to play in: looks you can check quickly first, then the g
 - If it fails, paste: a screenshot, whether the box went away after half a second, your resolution and UI scale, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
+
+## 34. Retail
+
+Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
+
+### 34.1 Retail login, and the parts that stay WoW Forever's
+
+- Do: log in on Retail with Vanguard on, then `/reload`. Run `/vg status`, `/vg modules` and `/vg help`, open `/vg` and look at the Modules, Unit frames, Town and gear, Quests, Action bars and Chat pages, then type `/vg pets`.
+- Expect: no Lua error and no "not on this client" line; `/vg status` names the Retail client and build 120105. None of the WoW Forever-only parts (spell ranks, the pet stable, Legacy, the talent planner, quest guidance's data, the group board, the swing timer, power bar sparks, readouts) is listed or has a row, there is no Talents page and no Your keys tab, and `/vg pets` says Unknown command. The Class bars row on the Modules page names the class resources, and the Quests page's arrow note doesn't mention `/vg questdata`.
+- If it fails, paste: the `/vg report` block and a screenshot of the page.
+
+### 34.2 Class resources above the player frame
+
+- Do: on Retail, one character at a time (as many as you have): a paladin, a warlock (Destruction too), a Windwalker monk, an Arcane mage, an Evoker, a death knight and a Brewmaster monk. Look at the player frame in and out of combat, use the resource, then change spec.
+- Expect: holy power, soul shards (Destruction fills by tenths), chi, Arcane charges, essence (the next point filling as it recharges) and runes (ready ones on the left) show as pips just above the player frame; a Brewmaster gets a thin stagger bar under the frame, amber past 30% of your health and vermilion past 60%. A spec change moves the row to the new resource after the fight, and a spec with none shows no row.
+- If it fails, paste: a screenshot of the frame and the class and spec.
+
+### 34.3 Mana under the frame, charged combo points, empowered casts
+
+- Do: on Retail, as a Shadow priest, an Elemental shaman and a Balance druid look under the player frame; as a rogue or feral druid with a charged point build combo points; as an Evoker cast Fire Breath held to the last stage, then once more and get interrupted.
+- Expect: the three specs get the thin mana bar under the player frame; the charged pip lights in its own blue; the cast bar fills to the end of the hold with a thin mark at each stage's end, and an interrupted one reads Interrupted. Also `/dump GetPowerRegenForPowerType(Enum.PowerType.Essence)` and `/dump UnitPartialPower("player", Enum.PowerType.Essence)` give numbers.
+- If it fails, paste: a screenshot, the two `/dump` lines and the spec.
+
+### 34.4 The quest tracker's Retail blocks
+
+- Do: on Retail, with Vanguard's tracker on: have a campaign quest, watch a world quest in its zone and one elsewhere, stand in a bonus objective's area, track a Traveler's Log activity, and take a timed quest if you can. Left-click and right-click a world quest and the Traveler's Log row.
+- Expect: the campaign heading reads "Campaign: Chapter" with other quests under Quests; world quests in your area come first, then watched ones; left-click opens the map on the quest's zone and right-click stops watching; the bonus objective shows while you are in its area; the Traveler's Log row lists its requirements and right-click untracks it; a timed quest counts down.
+- If it fails, paste: a screenshot of the tracker.
+
+### 34.5 Scenarios and delves
+
+- Do: on Retail, enter a delve from its door: pick a tier in the difficulty picker and Enter. Play it to the end. Open the delve companion window and its ability list, drag each and reopen it.
+- Expect: the picker and the companion window keep their painted scene with the theme's edge, readable slot labels and themed buttons, tier dropdown and scroll bar. In the delve the tracker's top block reads "Name · Tier N" with "Stage n/m: title" and its criteria updating as you go.
+- If it fails, paste: a screenshot of the window or the tracker, and the tier.
+
+### 34.6 A Mythic+ key
+
+- Do: on Retail, at a dungeon door with a keystone, look at the dungeon card. Open the Mythic+ tab and the keystone window, slot the key and start it. Run the key to the end with the tracker on, and leave.
+- Expect: the card's heading shows the dungeon's Mythic+ timer, and it lists your keystone and this week's affixes. The keystone window sits on a theme panel with its runes and slot, and nothing errors. In the key, the tracker's top block reads "Dungeon +level", the timer matches the game's ("12:34 / 33:00", then "· over time" past the limit), deaths add their lost seconds, the affixes are named, bosses tick off and the enemy forces percentage matches the game's bar. Say what the block shows after the end and whether it clears when you leave.
+- If it fails, paste: a screenshot of the block next to the game's own timer, and the key level.
+
+### 34.7 Situations in a key and a delve
+
+- Do: on Retail, open `/vg` → Situations. Record for Mythic+ and move one frame, then Record for Delve and move another. Start a key, then leave; enter a delve, then leave.
+- Expect: Record for offers Mythic+ and Delve on Retail (and on WoW Forever the list is unchanged). The Mythic+ layout applies when the key starts and comes off on reset or when you leave; the Delve layout applies inside the delve.
+- If it fails, paste: `/vg situation` and a screenshot of the page.
+
+### 34.8 Group finder, PvP and Adventure Guide
+
+- Do: on Retail, open the group finder (Dungeon Finder, Raid Finder, Premade Groups), its PvP tab (Quick Match, Rated, Training Grounds) and the Adventure Guide (Dungeons, Raids, a boss page, Loot, the search box). Drag each, `/reload` and reopen. Sign up for a premade group if you can.
+- Expect: the windows wear the theme with their art faded; the dungeon and raid finders' reward pages keep their parchment; the Adventure Guide's pages and pictures stay the game's. Each drags by its title and stays where you put it. Under Game windows the switch "Group finder, PvP and Adventure Guide windows (reload)" turned off and a reload leaves them the game's.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 34.9 Character pane, Who list and the warband bank
+
+- Do: on Retail, open the character pane (Character, Reputation, Currency; the titles and equipment sets lists), change a piece of gear and swap spec; open the friends window's Who tab; at a banker open the bank's Bank and Warband tabs, its side tabs, Withdraw and Deposit, and search `q:epic` in a warband tab.
+- Expect: the stat lines stay light after the gear change and the spec swap, the model backdrop stays dark for your race; the Who list has flat headers; the bank's tabs, side tabs and rows are themed and the search words work in a warband tab.
+- If it fails, paste: a screenshot.
+
+### 34.10 The Great Vault and its info strip line
+
+- Do: on Retail, open the Great Vault (after a Tuesday reset is best). Under Game windows turn on "Great Vault progress on the info strip", hover the new line and click it (out of a fight).
+- Expect: the vault window has the theme's border with its reward slots, chest and claim flow unchanged; it drags by its top edge. The strip line reads "Vault n/9" (or "Vault reward waiting" in the accent when one waits) and fills in at login without opening the vault; its tooltip lists each row's progress to the next slot, and the click opens the vault.
+- If it fails, paste: a screenshot of the line, its tooltip and the window.
+
+### 34.11 Expansion page, transmog and the Trading Post
+
+- Do: on Retail, click the expansion page's minimap button (square and round minimap), open the transmog window at a transmogrifier and the Trading Post, drag each and reopen it. Buy something at the Trading Post if you want to.
+- Expect: the minimap button sits on the map's lower left corner, clickable, its alerts and pulses still visible. The expansion page has the flat panel behind its overlay with its border gone and a working close button in the corner. Transmog's insets, dropdowns, search box, check boxes, Save button and money line are themed and the character scene and slots unchanged; the Trading Post's lists, cart and buttons are themed and buying still works.
+- If it fails, paste: a screenshot of the window.
+
+### 34.12 Housing windows
+
+- Do: on Retail, open the housing dashboard (all three tabs), the house finder (hover a plot) and a decor preview; drag each by its title bar. Open the house editor and its storage panel.
+- Expect: each window wears the theme and drags; the plot tooltips are themed; the editor's storage panel looks right and the editor itself is the game's.
+- If it fails, paste: a screenshot.
+
+### 34.13 Professions and crafting orders
+
+- Do: on Retail, open a profession's specialisation page, its crafting orders page, the profession book and the crafting orders window. Place a crafting order and fulfil one from the orders page if you can. On a crafter, run `/vg craft cd` and `/vg craft top`.
+- Expect: the specialisation page's buttons are themed with its tree, backdrop and dial unchanged; the orders pages' tabs, lists, order view, money lines and Start and Complete buttons are themed; the book's texts and skill bars read well; both windows drag. The two `/vg craft` commands list recipes and cooldowns (an empty list is a finding).
+- If it fails, paste: a screenshot and the two chat outputs.
+
+### 34.14 Private auras, Retail spells and buffs
+
+- Do: on Retail, fight a raid boss with a private aura (or a dungeon boss known to use one), with Vanguard's raid frames and target frame on. On two healers, put the Click casting page's class layout on and heal and dispel with it. At a raid door, look at the prep card; run `/vg weights` and `/vg preview 25`; watch a renown faction, and at max level watch honor.
+- Expect: the private aura icon shows in the middle of the affected tile (following roster swaps) and beside the target frame after a target change. The class layout's heal and dispel both cast. The prep card lists six raid buffs and no flask row. `/vg weights` lists MASTERY, VERS and ILVL; the preview seats death knights, monks, demon hunters and evokers. The XP bar reads "Renown N" or "Honor level N" with progress.
+- If it fails, paste: a screenshot and `/dump C_Spell.GetSpellName(462854)` (Skyfury) for one of the spells that looked wrong.
+
+### 34.15 WoW Forever after the Retail run
+
+- Do: log in on WoW Forever with the same Vanguard folder and `/reload`. Open the character pane, the group finder, the professions window, the quest tracker, the bank and `/vg` → Situations; look at the player frame on a druid and a shaman.
+- Expect: nothing changed from 33: Situations shows its six situations, the dungeon card is the level-range one, the Modules page's Class bars row names shaman totems above the frame and druid mana in forms under it.
+- If it fails, paste: the `/vg report` block.
 
 ## When you are done
 

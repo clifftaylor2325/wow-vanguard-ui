@@ -10,6 +10,29 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.9.0", groups = {
+    { module = "Other", label = "Retail", items = {
+      { text = "Vanguard now supports Retail 12.1.5 as well as WoW Forever, from the same download. The parts made for WoW Forever's own rules (key setup, the talent planner, spell ranks, the swing timer and a few more) stay off on Retail, with their pages and commands." },
+      { text = "On Retail, class bars show holy power, soul shards, chi, Arcane charges, essence, runes and a Brewmaster's stagger; combo points light a charged point, and the cast bar marks each stage of an empowered cast." },
+      { text = "On Retail, the quest tracker groups campaign quests and adds scenarios, delves with their tier, world quests, bonus objectives and the Traveler's Log; a Mythic+ block shows the key's timer, deaths, affixes, bosses and enemy forces." },
+      { text = "On Retail, the dungeon card shows your keystone, the affixes and the Mythic+ timer, and Situations gains Mythic+ and Delve." },
+      { text = "On Retail, the group finder, Adventure Guide, Mythic+ tab, character pane, warband bank, Great Vault, expansion page, transmog, Trading Post, housing, delve and profession windows wear the Vanguard look, and an optional info strip line shows your Great Vault progress." },
+    } },
+    { module = "Other", label = "Look", items = {
+      { text = "The painted shield is Vanguard's icon, and setup and What's new open under a painted welcome banner with the crest." },
+      { text = "Two painted panel textures, Bedded slate and Vellum, join the Panel texture choice; the older three are fainter.", page = "general", row = "Panel texture" },
+      { text = "Window ornaments are larger and show in full on every Vanguard window and every game window it skins, with an ornate ring on the round minimap.", page = "general", row = "Window ornaments" },
+      { text = "The AFK screen shows a painted scene for your faction behind the AFK card.", page = "general", row = "AFK scene" },
+    } },
+    { module = "Other", label = "Layout", items = {
+      { text = "On tall screens the bars and HUD rise as one block to sit under your character, and the Cooldown Manager's main row gets a line of its own; a row wider than its spot shrinks to fit." },
+      { text = "A Loot / Trade chat tab sits level in the tab bar and shows its whole name." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "Nameplates no longer draw a dark box when the game hands a plate over at a tiny scale, and the Calm HUD's hover no longer reports an error on your buff buttons." },
+      { text = "The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback)." },
+    } },
+  } },
   { version = "0.8.0", groups = {
     { module = "ActionBars", label = "Keys", items = {
       { text = "A Your keys tab on the Action bars page draws your keyboard and mouse and shows what every key does, with the Shift, Ctrl and Alt keys on their own tabs." },

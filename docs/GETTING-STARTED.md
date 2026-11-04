@@ -1,11 +1,11 @@
 # Getting started with Vanguard
 
-Vanguard is one addon that replaces a pile of them: unit frames, raid frames, action bars, bags, chat, nameplates, the map, quest tools, an auction helper and more, in one look. It is made for WoW Forever. This page is the short version for players; the [feature pages](features/) are the full description of what every part does.
+Vanguard is one addon that replaces a pile of them: unit frames, raid frames, action bars, bags, chat, nameplates, the map, quest tools, an auction helper and more, in one look. It is made for WoW Forever, and from 0.9.0 it runs on Retail too, with Retail's own windows and systems (Mythic+, delves, the Great Vault, housing, the warband bank); a few Forever-only parts, such as key setup, the talent planner and the swing timer, stay off there. This page is the short version for players; the [feature pages](features/) are the full description of what every part does.
 
 ## Install
 
 1. Download `Vanguard-<version>.zip` (CurseForge and Wago carry each release).
-2. Unzip the `Vanguard` folder into `World of Warcraft/_retail_/Interface/AddOns/`, your Forever client's AddOns folder.
+2. Unzip the `Vanguard` folder into your client's AddOns folder, `World of Warcraft/<client folder>/Interface/AddOns/`: your WoW Forever client's folder for Forever, `_retail_` for Retail. The same download serves both.
 3. Start the game and make sure Vanguard is ticked on the character screen's AddOns list.
 
 Updating from ForeverUI (before 0.4.0)? Settings don't carry over by themselves. Before updating, type `/fui export` in game and keep the string, then `/vg import` it after.
