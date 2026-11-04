@@ -415,7 +415,7 @@ O.MODULE_INFO = {
   VendorMemory = { L["Vendor memory"], L["Remembers what each merchant sells; tooltips and the stock list say where to buy."] },
   AuctionHelper = { L["Auction helper"], L["Shopping lists with Deals and Upgrades, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions."] },
   Nameplates = { L["Nameplates"], L["Flat plates with levels, your debuffs, players' buffs, casts and threat."] },
-  Situations = { L["Situations"], L["Different frame spots and settings for solo, party, raid, PvP, instance and resting, applied out of combat."] },
+  Situations = { L["Situations"], L["Different frame spots and settings for solo, party, raid, PvP, instance and resting (on Retail also Mythic+ and delves), applied out of combat."] },
 }
 
 -- Modules with their own switch inside (off by default): its setting keys (on if any is) and the page it is on.

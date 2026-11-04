@@ -125,6 +125,13 @@ it("situations: which situation holds, the first of pvp, instance, raid, party, 
   expect(addon.eval("IsInInstance, IsResting, IsInRaid, IsInGroup = nil, nil, nil, nil return ns.GetModule('Situations').Where()"), "a client that can't say: solo").toBe("solo");
 });
 
+it("situations: /vg help and the Modules page name the Mythic+ and delve situations Retail offers", () => {
+  const addon = situated();
+  addon.slash("help");
+  expect(chatHas(addon, /Situations: record a layout and settings for solo, party, raid, pvp, instance or resting \(on Retail also mythicplus or delve\)/), "the help line").toBe(true);
+  expect(addon.eval("return ns.Options.MODULE_INFO.Situations[2]"), "the Modules page").toMatch(/\(on Retail also Mythic\+ and delves\), applied out of combat\.$/);
+});
+
 it("situations: recording keeps only what the player changed, with the frames' and settings' own controls", () => {
   const addon = situated();
   addon.slash("situation record raid");

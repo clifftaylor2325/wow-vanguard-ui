@@ -40,7 +40,7 @@ local HELP = {
   { "preset [name]", L["presets on offer (Vanguard's healer, damage and tank, and any an addon registers); a name asks to apply it, backed up first"] },
   { "spec [profile|off]", L["use a profile whenever you're in this specialization"] },
   { "copy", L["the recent chat of the shown tab as plain text, ready to copy"] },
-  { "situation [record <name>|stop|clear [name]|list]", L["Situations: record a layout and settings for solo, party, raid, pvp, instance or resting"] },
+  { "situation [record <name>|stop|clear [name]|list]", L["Situations: record a layout and settings for solo, party, raid, pvp, instance or resting (on Retail also mythicplus or delve)"] },
   { "watch [add|remove <phrase>|list|clear]", L["Chat watch: phrases that ring a sound and show a toast when said in chat"] },
   { "filter [on|off|tab|hide|add|remove <word>|clear]", L["Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)"] },
   { "history [on|off|whispers|nowhispers|clear]", L["Chat history: your chat comes back after a reload or the next login (off until switched on)"] },
