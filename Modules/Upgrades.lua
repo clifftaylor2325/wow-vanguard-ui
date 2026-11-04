@@ -82,14 +82,22 @@ end
 
 -- Scoring ---------------------------------------------------------------------------------
 
--- What an item is worth with weights: weight x amount, summed over its stats (0 for none).
+-- An item's level from the client (C_Item.GetDetailedItemLevelInfo), or nil when it can't say.
+local function itemLevel(link)
+  local get = type(C_Item) == "table" and C_Item.GetDetailedItemLevelInfo
+  return type(get) == "function" and ns.PlainNumber((get(link))) or nil
+end
+
+-- What an item is worth with weights: weight x amount, summed over its stats (0 for none), plus its item level
+-- where the weights count it (Retail's ILVL; no item stat key holds it).
 function UP.Score(link, weights)
   local score = 0
   for key, amount in pairs(C_Item.GetItemStats(link) or {}) do
     local w, n = weights[W.SHORT[key]], ns.PlainNumber(amount)
     if w and n then score = score + w * n end
   end
-  return score
+  local level = weights.ILVL and itemLevel(link)
+  return level and score + weights.ILVL * level or score
 end
 
 -- An item's score with the weights in use, remembered until they change.
