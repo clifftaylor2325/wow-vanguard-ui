@@ -37,8 +37,10 @@ TP.FRAMES = { { "PlayerSpellsFrame", "TalentsFrame" }, { "ClassTalentFrame", "Ta
 -- How many frames deep inside the window its talent buttons are looked for, when it has no enumerator.
 TP.BUTTON_DEPTH = 6
 -- Edge types (Enum.TraitEdgeType) that are no requirement: visual only (0) and mutually exclusive (4);
--- any other edge means the talent it points to needs the one it comes from at full rank.
+-- a sufficient-for-availability edge (2) needs any one of its sources at full rank, and any other edge
+-- means the talent it points to needs the one it comes from at full rank.
 TP.LOOSE_EDGES = { [0] = true, [4] = true }
+TP.ANY_EDGE = 2
 -- How far above a talent button (frame levels) its mark sits, and the bar above the window.
 TP.LEVEL_ABOVE = 5
 -- The next pick's ring, units wide.
@@ -144,16 +146,18 @@ local function readNode(configID, nodeID, groups)
   return {
     nodeID = nodeID, group = group, x = ns.PlainNumber(node.posX) or 0, y = ns.PlainNumber(node.posY) or 0,
     rank = ns.PlainNumber(node.ranksPurchased) or 0, max = math.max(1, ns.PlainNumber(node.maxRanks) or 1),
-    spell = spellOf(configID, node), gate = gateOf(configID, node.conditionIDs), edges = node.visibleEdges or {}, prereqs = {},
+    spell = spellOf(configID, node), gate = gateOf(configID, node.conditionIDs), edges = node.visibleEdges or {}, prereqs = {}, anyOf = {},
   }
 end
 
--- Gives each node the list of nodes it hangs from: the sources of the edges into it that are requirements.
+-- Gives each node the lists of nodes it hangs from: the sources of the edges into it that are all required
+-- (prereqs) and those of which any one will do (anyOf).
 local function linkPrereqs(tree)
   for id, node in pairs(tree.nodes) do
     for _, edge in ipairs(node.edges) do
-      local target = type(edge) == "table" and tree.nodes[edge.targetNode]
-      if target and not TP.LOOSE_EDGES[ns.PlainNumber(edge.type) or 0] then target.prereqs[#target.prereqs + 1] = id end
+      local target, kind = type(edge) == "table" and tree.nodes[edge.targetNode], ns.PlainNumber(edge.type) or 0
+      local list = target and not TP.LOOSE_EDGES[kind] and (kind == TP.ANY_EDGE and target.anyOf or target.prereqs)
+      if list then list[#list + 1] = id end
     end
   end
 end
@@ -241,14 +245,30 @@ local function startState(tree, plan)
   return state, want, spent
 end
 
--- Whether a node can take its next rank in a simulated state: its row's gate met, the nodes it hangs from full.
-local function buyable(tree, state, spent, node)
-  if (spent[node.group] or 0) < node.gate then return false end
-  for _, id in ipairs(node.prereqs) do
+-- Whether the nodes in a list are all full in a simulated state (a node the tree lacks counts as full).
+local function allFull(tree, state, ids)
+  for _, id in ipairs(ids) do
     local src = tree.nodes[id]
     if src and state[id] < src.max then return false end
   end
   return true
+end
+
+-- Whether at least one node in a list is full in a simulated state; an empty list needs none.
+local function anyFull(tree, state, ids)
+  if #ids == 0 then return true end
+  for _, id in ipairs(ids) do
+    local src = tree.nodes[id]
+    if not src or state[id] >= src.max then return true end
+  end
+  return false
+end
+
+-- Whether a node can take its next rank in a simulated state: its row's gate met, the nodes it hangs from full
+-- (all of those it requires, any one of those that are enough alone).
+local function buyable(tree, state, spent, node)
+  if (spent[node.group] or 0) < node.gate then return false end
+  return allFull(tree, state, node.prereqs) and anyFull(tree, state, node.anyOf)
 end
 
 -- Whether node a comes before node b in buying order: higher rows first, then left to right, then by ID.
