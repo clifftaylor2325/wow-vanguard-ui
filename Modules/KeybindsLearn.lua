@@ -152,16 +152,28 @@ local function rememberKeys(s, entries)
   end
 end
 
+-- Leaves the changes the player unticked in the wizard to them: the button of a spell entry, the key of a stance or
+-- pet entry (keys 1 to 6 share one chord on every bar page, so a spell entry's key is not marked).
+local function leaveDeclined(s, declined)
+  for _, entry in ipairs(declined or {}) do
+    local chord = KA.Chord(entry.key)
+    if entry.slot then s.ownSlots[entry.slot] = true
+    elseif chord then s.ownKeys[chord] = true end
+  end
+end
+
 -- A preset was applied (the wizard, after KA.Apply succeeded): keeps the preset and the switch, forgets what the
--- player had taken over before, and remembers the bars and keys as they are now.
+-- player had taken over before (except the changes they unticked), and remembers the bars and keys as they are now.
 ---@param preset table  what ns.KeybindsLayouts.Resolve takes
 ---@param placeNew boolean  the Ready step's "Place new spells as I learn them"
-function KN.Applied(preset, placeNew)
+---@param declined table|nil  the entries the player unticked, which stay theirs
+function KN.Applied(preset, placeNew, declined)
   local s = state()
   s.preset, s.on, s.ownSlots, s.ownKeys = ns.Copy(preset), placeNew == true, {}, {}
   s.recorded, s.pending, s.fails = KA.Recorded(), false, 0
   rememberSlots(s)
   rememberKeys(s, ns.KeybindsLayouts.Resolve(s.preset, {}))
+  leaveDeclined(s, declined)
 end
 
 -- Marks as the player's every slot that holds something else than when Vanguard last looked.

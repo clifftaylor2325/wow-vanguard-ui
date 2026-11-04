@@ -547,26 +547,28 @@ function WZ.Show(n)
   SHOW[step.id](f.steps[step.id])
 end
 
--- The entries the player kept ticked, for Apply, and how many of them change something (a key that stays as it
--- is has no tick box, so it is always kept).
+-- The entries the player kept ticked, for Apply, how many of them change something (a key that stays as it is has
+-- no tick box, so it is always kept), and the changes the player unticked.
 local function kept()
-  local out, changes = {}, 0
+  local out, changes, declined = {}, 0, {}
   for i, entry in ipairs(state.entries) do
+    local writes = KA.WRITES[state.rows[i].kind]
     if not state.off[i] then out[#out + 1] = entry end
-    if not state.off[i] and KA.WRITES[state.rows[i].kind] then changes = changes + 1 end
+    if not state.off[i] and writes then changes = changes + 1 end
+    if state.off[i] and writes then declined[#declined + 1] = entry end
   end
-  return out, changes
+  return out, changes, declined
 end
 
 -- Applies the kept changes in the scope picked; on success the window closes, placing new spells is told of the
 -- preset and its tick box, and the listeners hear of it. With every change unticked it says so and stays.
 local function apply()
   local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
-  local entries, changes = kept()
+  local entries, changes, declined = kept()
   if changes == 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
   if not KA.Apply(entries, set) then return end
   WZ.frame:Hide()
-  ns.KeybindsLearn.Applied(state.preset, state.placeNew)
+  ns.KeybindsLearn.Applied(state.preset, state.placeNew, declined)
   for _, fn in ipairs(WZ.onApply) do fn(state.preset) end
 end
 

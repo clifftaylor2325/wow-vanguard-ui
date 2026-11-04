@@ -174,6 +174,31 @@ it("a button the player changed is theirs for good: its key's spell goes to the 
   expect(slots(addon, [3]), "emptied again, it is still the player's").toEqual([0]);
 });
 
+// Applies the preset as the wizard does with one change unticked: the entry for `key` is left out and handed to KN.Applied.
+function applyDeclining(addon, key) {
+  return addon.eval(`local entries, declined = {}, {}
+    for _, e in ipairs(ns.KeybindsLayouts.Resolve(${PRESET}, {})) do
+      local list = e.key == ${luaValue(key)} and declined or entries
+      list[#list + 1] = e
+    end
+    local ok = ns.KeybindsApply.Apply(entries) if ok then ns.KeybindsLearn.Applied(${PRESET}, true, declined) end return ok`);
+}
+
+it("a change the player unticked in the wizard stays theirs: a later update leaves that button alone", () => {
+  const addon = warrior();
+  addon.eval("__wfgWorld.setAction(1, { id = 6673 })");
+  expect(applyDeclining(addon, "1")).toBe(true);
+  learn(addon, 772);
+  expect([slots(addon, [1]), spare(addon)], "Battle Shout stays on 1; nothing moved to bar 3").toEqual([[6673], []]);
+});
+
+it("a stance key the player unticked in the wizard stays unbound after a later update", () => {
+  const addon = warrior();
+  expect(applyDeclining(addon, "`")).toBe(true);
+  learn(addon, 772);
+  expect(keys(addon, ["`"])).toEqual([""]);
+});
+
 it("a key the player rebound is theirs for good: no update binds it again", () => {
   const addon = warrior();
   applyPreset(addon);

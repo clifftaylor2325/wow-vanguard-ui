@@ -318,3 +318,14 @@ it("a warlock: the pet keys are listed by what they press", () => {
   addon.eval('__click("Show me") __click("Next")');
   expect(ready(addon)).toEqual(expect.arrayContaining(["[x] `: Pet Attack", "[x] SHIFT-`: Pet Follow", "[x] 1: Shadow Bolt added to your bar"]));
 });
+
+it("step 3: a change the player unticked reaches key setup's later updates as theirs", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval(`__click("Show me") __click("Next")
+    local applied = ns.KeybindsLearn.Applied
+    ns.KeybindsLearn.Applied = function(preset, placeNew, declined) __declined = declined return applied(preset, placeNew, declined) end
+    for _, r in ipairs(Vanguard_KeysWizard.steps.ready.pools.check) do if r:IsShown() then r.__scripts.OnClick(r) break end end
+    __click("Apply")`);
+  expect(addon.eval("return { #__declined, __declined[1].key }")).toEqual([1, "F"]);
+});
