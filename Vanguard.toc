@@ -200,6 +200,8 @@ Modules/RetailHousing.lua [AllowLoadGameType standard] [ExcludeLoadGameType came
 Modules/RetailMythicPlus.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/RetailDelves.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/RetailProfessions.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
+Modules/RetailVault.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
+Modules/RetailLanding.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
 Modules/AuctionPrices.lua
 Modules/AuctionHelper.lua
 Modules/AuctionTable.lua

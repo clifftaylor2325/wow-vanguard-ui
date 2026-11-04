@@ -73,6 +73,7 @@ local MAKERS = {
   dropdown = function(parent, name) local b = button(parent, name) b.Arrow = art(b) return b end,
   search = function(parent, name) local b = CreateFrame("EditBox", name, parent) art(b) b.searchIcon, b.Instructions = art(b), text(b) return b end,
   edit = function(parent, name) local b = CreateFrame("EditBox", name, parent) art(b) return b end,
+  check = function(parent, name) local b = CreateFrame("CheckButton", name, parent) art(b) return b end,
   header = function(parent, name) local b = CreateFrame("Button", name, parent) b.Left, b.Middle, b.Right, b.Text = art(b), art(b), art(b), text(b) return b end,
 }
 
