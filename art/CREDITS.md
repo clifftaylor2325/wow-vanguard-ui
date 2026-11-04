@@ -62,7 +62,7 @@ uses are named in `SILHOUETTES` in `scripts/lib/media-sources.mjs`.
 `painted/icon/C2.png`, a brass-rimmed navy shield bearing a gold V, was made by Cliff Hearthvale with
 Leonardo.ai (https://leonardo.ai) from his own prompt, in November 2026, on a paid plan in private mode, then cut
 out from its grey background by hand once (the steps are in `painted/manifest.json`). `scripts/lib/media-painted.mjs`
-boxes it down to 64 x 64 for `Media/Textures/Icon.tga`, the addons list's icon, which also shows in the options
+boxes it down to 64 x 64 for `Media/Textures/Icon.tga`, the addons list's icon (and to 256 x 256 for `Media/Art/banner-crest.tga`, the crest on the welcome banner), which also shows in the options
 window's header, the options preview's action button and the Versus deck; `scripts/store-art.mjs` puts it on the
 store, Discord and X art, and the README and the website show it. It is AI-generated and may not be copyrightable; it ships under the same
 all-rights-reserved licence as the rest of Vanguard.

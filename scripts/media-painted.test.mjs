@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { tga } from "./lib/media-art.mjs";
-import { PAINTED_MAX_ALPHA, alphaOf, boxDown, colourOf, greyOf, iconOf, manifest, paintedArt, paintedSurfaces, percentile, saturations, surfaceOf, withoutDrift, wrap } from "./lib/media-painted.mjs";
+import { PAINTED_MAX_ALPHA, alphaOf, boxDown, colourOf, greyOf, iconOf, manifest, paintedArt, paintedMarks, paintedSurfaces, percentile, saturations, surfaceOf, withoutDrift, wrap } from "./lib/media-painted.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -181,6 +181,16 @@ function iconShape() {
   }
 }
 
+// The welcome banner's crest (an icon's `large` size, Media/Art) is 256 x 256 from a crop that reaches past the
+// cut-out's 960 canvas (outside counts as clear), clear along its edge and reproducible.
+function crestMarkShape() {
+  const marks = paintedMarks();
+  expect(Object.keys(marks), "one large crest").toEqual(["banner-crest"]);
+  const img = marks["banner-crest"]();
+  expect([img.w, img.h, edgeIsClear(img), tga(img).equals(tga(marks["banner-crest"]()))]).toEqual([256, 256, true, true]);
+  expect(img.px[(128 * 256 + 128) * 4 + 3], "the shield's middle is solid").toBe(1);
+}
+
 // The banner is calm (plan 4.5): median saturation at most 0.45 and the 90th percentile at most 0.7.
 function bannerIsCalm() {
   for (const make of Object.values(paintedArt())) {
@@ -214,7 +224,15 @@ describe(
     it("every painted source has a complete manifest entry and a built file", manifestIsComplete);
     it("the banner is 1024 x 512, opaque and reproducible", bannerShape);
     it("the banner's saturation stays calm", bannerIsCalm);
-    it("the addons-list icon is 64 x 64, clear at its edge and reproducible", iconShape);
     it("the pipeline's stages behave on small grids", stagesBehave);
+  },
+);
+
+describe(
+  "painted crest",
+  // The cut-out crest at its two sizes.
+  () => {
+    it("the addons-list icon is 64 x 64, clear at its edge and reproducible", iconShape);
+    it("the welcome banner's crest is 256 x 256, clear at its edge and reproducible", crestMarkShape);
   },
 );

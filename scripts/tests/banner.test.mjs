@@ -45,3 +45,25 @@ it("banner: What's new shows it under its hint, crops it to the room there is, a
   expect([cropped.art, cropped.crop.map((v) => +v.toFixed(3))], "120 units of the whole: the middle of the picture").toEqual([120, [0, 1, +((1 - kept) / 2).toFixed(3), +((1 + kept) / 2).toFixed(3)]]);
   expect(addon.eval("return Vanguard_WhatsNew.banner.loaded"), "loaded once").toBe(true);
 });
+
+// The What's new banner's brand mark: whether it shows, the crest's file and side, the name, its font and size, the shade's
+// gradient and reach, the strip's width and the theme's spec.
+const brandMark = (addon) => addon.eval(`local m, spec = Vanguard_WhatsNew.banner.mark, ns.Theme.BANNER_MARK
+  local font, size = m.name:GetFont()
+  local g = m.shade.__gradient or {}
+  return { shown = m:IsShown(), crest = m.crest.__texture or false, side = m.crest:GetWidth(), name = m.name:GetText() or false,
+    font = font == ns.Theme.FONTS.alliance, size = size, shade = g[1] or false, left = g[2] and g[2][4] or false, right = g[3] and g[3][4] or false,
+    reach = m.shade:GetWidth(), width = Vanguard_WhatsNew.banner:GetWidth(), spec = spec }`);
+
+it("banner: Vanguard's crest and name sit over the picture's open sky, sized to the picture, and hide with it", () => {
+  const addon = loggedIn(NOTES);
+  const whole = brandMark(addon), h = whole.width / 2;
+  expect([whole.shown, whole.crest, whole.name, whole.font], "the crest's file, the addon's name in the heading font").toEqual([true, "Interface\\AddOns\\Vanguard\\Media\\Art\\banner-crest", "Vanguard", true]);
+  expect([whole.side, whole.size, whole.reach], "a share of the picture's height, the shade across its reach").toEqual([Math.floor(h * whole.spec.crest), Math.floor(h * whole.spec.name), whole.width * whole.spec.reach]);
+  expect([whole.shade, whole.left, whole.right], "a shade from the left fading to clear").toEqual(["HORIZONTAL", whole.spec.shade, 0]);
+  addon.eval("ns.Banner.Room = function() return 100 end ns.WhatsNew.Open()");
+  const cropped = brandMark(addon);
+  expect([cropped.side, cropped.size], "a cropped picture has a smaller mark").toEqual([Math.floor(100 * whole.spec.crest), Math.floor(100 * whole.spec.name)]);
+  addon.eval("ns.Banner.Room = function() return 10 end ns.WhatsNew.Open()");
+  expect(brandMark(addon).shown, "no picture, no mark").toBe(false);
+});

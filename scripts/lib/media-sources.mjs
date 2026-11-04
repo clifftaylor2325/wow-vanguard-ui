@@ -11,7 +11,7 @@
 import { image, fill, draw, drawSdf, line, poly, box, ring, path, arc } from "./media-art.mjs";
 import { CRESTS, crest, glyph } from "./media-crests.mjs";
 import { SURFACES } from "./media-surfaces.mjs";
-import { paintedArt, paintedIcons, paintedSurfaces } from "./media-painted.mjs";
+import { paintedArt, paintedIcons, paintedMarks, paintedSurfaces } from "./media-painted.mjs";
 import { ORNAMENT_CORNERS, ORNAMENT_ROUND, ORNAMENT_RULES } from "./media-ornament.mjs";
 import { SCENES, scene } from "./media-scenes.mjs";
 
@@ -418,4 +418,5 @@ export const MEDIA = Object.fromEntries(Object.entries({
   ...Object.fromEntries(CRESTS.map((n) => [`Art/${n}.tga`, () => crest(n)])),
   ...Object.fromEntries(SCENES.map((n) => [`Art/${n}.tga`, () => scene(n)])),
   ...Object.fromEntries(Object.entries(paintedArt()).map(([n, make]) => [`Art/${n}.tga`, make])),
+  ...Object.fromEntries(Object.entries(paintedMarks()).map(([n, make]) => [`Art/${n}.tga`, make])),
 }).map(([file, make]) => [file, once(make)]));

@@ -36,6 +36,10 @@ T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "l
 T.CREST = { title = 20, card = 44, watermark = 96, wash = 0.1 }
 -- The AFK screen's painted scene (Media/Art, full colour, 2:1), by faction; everyone else gets the camp.
 T.AFK_SCENES = { Alliance = "afk-keep", Horde = "afk-canyon", none = "afk-camp" }
+-- The welcome banner's brand mark (Core/Banner.lua): the painted crest (Media/Art) and the name in the Alliance heading
+-- font, each a share of the picture's height, in brandGold over a shade (the left edge's alpha) that fades out across
+-- `reach` of the picture's width, so the name stays clear of the bright sky.
+T.BANNER_MARK = { file = "banner-crest", crest = 0.5, name = 0.12, color = "brandGold", shade = 0.6, reach = 0.7 }
 -- Text roles that take the faction's heading font: the two display roles, used only for window and card titles.
 T.HEADING_ROLES = { title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.
@@ -96,6 +100,8 @@ local TOKENS = {
   -- Text tiers, brightest first (#227): text, text2, muted; disabled only for disabled and placeholder text
   -- (at least 4.5:1 on panel, raised and inset in every variant, even over a bright world).
   text = "e8eaee", text2 = "c8cdd6", muted = "a6adb9", disabled = "878e9b", white = "ffffff", gold = "ffd100",
+  -- The wordmark's gold on the store art and the welcome banner (T.BANNER_MARK), the same in every look.
+  brandGold = "e9c874",
   -- State (kept apart from the accent), off the red-green axis (#235, after Okabe-Ito): a bluish
   -- green, an amber and a vermilion, each with a glyph where it stands alone (T.STATE_GLYPHS).
   good = "3fbf9a", warn = "f0b43c", bad = "e8663f", info = "5aa2f0", unknown = "808080",

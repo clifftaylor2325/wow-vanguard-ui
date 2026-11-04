@@ -239,7 +239,7 @@ function questMarksDrawn() {
 // grey (leonardo-art-plan §3.7 step 8) is listed here as "toned".
 const NOT_TINTED = {
   ...Object.fromEntries(Object.keys({ ...ORNAMENT_CORNERS, ...ORNAMENT_RULES, ...ORNAMENT_ROUND }).map((n) => [`Textures/${n}.tga`, "toned"])),
-  "Textures/Icon.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
+  "Textures/Icon.tga": "colored", "Art/banner-crest.tga": "colored", "Textures/Shadow.tga": "one color", "Textures/Bar.tga": "opaque", "Textures/BarSoft.tga": "opaque",
   ...Object.fromEntries([...SCENES, ...Object.keys(paintedArt())].map((n) => [`Art/${n}.tga`, "opaque"])),
 };
 

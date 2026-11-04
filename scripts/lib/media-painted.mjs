@@ -174,13 +174,14 @@ export function saturations(img) {
 }
 
 // The alpha-weighted mean colour and the mean alpha of the k x k block of `src` whose top-left is (x0, y0): weighting by
-// alpha keeps the clear surround's colour out of the edge texels (no fringe). A fully clear block is clear white.
+// alpha keeps the clear surround's colour out of the edge texels (no fringe). A fully clear block is clear white, and a
+// pixel outside the picture counts as clear, so a crop may reach past the canvas to make a power-of-two size.
 function blockMean(src, x0, y0, k) {
   const sum = [0, 0, 0, 0];
   for (let j = 0; j < k; j++) {
     for (let i = 0; i < k; i++) {
-      const p = ((y0 + j) * src.w + x0 + i) * 4, a = src.px[p + 3];
-      sum.forEach((_, c, s) => (s[c] += c < 3 ? src.px[p + c] * a : a));
+      const x = x0 + i, y = y0 + j, p = (y * src.w + x) * 4, a = x >= 0 && y >= 0 && x < src.w && y < src.h ? src.px[p + 3] : 0;
+      if (a) sum.forEach((_, c, s) => (s[c] += c < 3 ? src.px[p + c] * a : a));
     }
   }
   return sum[3] ? [sum[0] / sum[3], sum[1] / sum[3], sum[2] / sum[3], sum[3] / (k * k)] : [1, 1, 1, 0];
@@ -196,4 +197,11 @@ export function iconOf(entry) {
 export function paintedIcons() {
   const entries = manifest().filter((e) => e.class === "icon");
   return Object.fromEntries(entries.map((e) => [e.name, () => iconOf(e)]));
+}
+
+// Texture name (under Media/Art) -> maker, for every icon that also ships at a larger size (its manifest `large`: a
+// name, a crop and a box of its own): the welcome banner's crest.
+export function paintedMarks() {
+  const entries = manifest().filter((e) => e.class === "icon" && e.large);
+  return Object.fromEntries(entries.map((e) => [e.large.name, () => iconOf({ ...e, ...e.large })]));
 }
