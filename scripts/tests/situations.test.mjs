@@ -132,6 +132,7 @@ it("situations: recording keeps only what the player changed, with the frames' a
   addon.slash("unlock");
   addon.eval(`function __handle(k) for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == k then return w end end end`);
   expect(addon.eval("return __handle('infostrip').label:GetText()"), "the handles say what's being recorded").toBe("Info strip · recording Raid");
+  expect(addon.eval("return __handle('vehicleexit').label:GetText()"), "a small handle keeps just its name, the banner names the situation").toBe("Vehicle exit");
   addon.eval("local h = __handle('infostrip') h.__left, h.__bottom = 700, 600 h:GetScript('OnDragStop')(h)");
   addon.eval("ns.SetMoverAlpha('infostrip', 0.66)");
   const dropped = savedSpot(addon);

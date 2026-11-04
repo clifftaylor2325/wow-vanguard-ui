@@ -89,6 +89,13 @@ it("text fits: the screen at login, and unlock mode's handles", () => {
   expectFits("screen", findings);
 });
 
+it("text fits: unlock mode's handles while a situation records", () => {
+  const addon = fitClient();
+  addon.slash("situation record raid");
+  addon.slash("unlock");
+  expectFits("handles while recording", addon.textFit());
+});
+
 it("text fits: the dialogs", () => {
   const addon = fitClient();
   const findings = [];

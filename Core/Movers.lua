@@ -485,13 +485,22 @@ local function selectedText(m, label)
   return string.format(thin and "%s  ·  %s %d, %d" or "%s\n%s %d, %d", label, where or point, rx or x, ry or y)
 end
 
+-- A handle's label: with the recording suffix when the two fit its width on one line, else just the label (the
+-- screen banner names the situation either way).
+local function handleLabel(m)
+  local h, full = m.handle, m.label .. suffix
+  h.label:SetText(full)
+  local width = ns.PlainNumber(h.label:GetUnboundedStringWidth()) or math.huge
+  return width <= h:GetWidth() - T.SPACE.tight and full or m.label
+end
+
 -- Shows the selected handle's point and offsets on it (for an anchored frame, the
 -- side it's anchored to and its offsets from it); others show their label.
 function ns.ShowCoords(m)
   if not m.handle then
     return
   end
-  local label = m.label .. suffix
+  local label = handleLabel(m)
   m.handle.label:SetText(m == selected and selectedText(m, label) or label)
 end
 
@@ -558,7 +567,7 @@ local function createHandle(m)
   h.label = T.Text(h:CreateFontString(nil, "OVERLAY"), "small")
   h.label:SetPoint("LEFT", T.SPACE.tight / 2, 0)
   h.label:SetPoint("RIGHT", -T.SPACE.tight / 2, 0)
-  h.label:SetText(m.label .. suffix)
+  h.label:SetText(m.label)
   return h
 end
 
@@ -581,6 +590,7 @@ local function handleFor(m)
   m.handle:SetSize(math.max((ns.PlainNumber(f:GetWidth()) or 0) * s, 40), math.max((ns.PlainNumber(f:GetHeight()) or 0) * s, 14))
   if m.insets then m.handle:SetClampRectInsets(m.insets[1] * s, m.insets[2] * s, m.insets[3] * s, m.insets[4] * s) end
   anchor(m.handle, m)
+  ns.ShowCoords(m)
   return m.handle
 end
 
