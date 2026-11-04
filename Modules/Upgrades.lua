@@ -27,6 +27,8 @@ local UP = ns.Module("Upgrades", { defaults = { tooltip = true, bags = true, que
 UP.MIN_PCT = 0.5
 -- The inventory slots of the main hand and the off hand (a two-hander fills both).
 UP.MAIN_HAND, UP.OFF_HAND = 16, 17
+-- The last equipment slot (the tabard): the slots 1 to this one hold what you wear.
+UP.LAST_WORN_SLOT = 19
 -- Equip locations -> the inventory slots they go in (a pair compares with the weaker).
 UP.SLOTS = {
   INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 },
@@ -149,10 +151,18 @@ local function wornScore(loc, slots)
   return weakest(slots)
 end
 
+-- Whether you wear this very item: it has nothing to be compared with (its own slot, or the pair's other one).
+local function isWorn(link)
+  for slot = 1, UP.LAST_WORN_SLOT do
+    if GetInventoryItemLink("player", slot) == link then return true end
+  end
+  return false
+end
+
 -- How an item compares with what you wear: the change in per cent (nil when it isn't gear you
--- can wear, or there's nothing to measure), true when it fills an empty slot, and the worn link.
+-- can wear, or there's nothing to measure, or you wear it), true when it fills an empty slot, and the worn link.
 function UP.Compare(link)
-  if not canCompare() then return nil end
+  if not canCompare() or isWorn(link) then return nil end
   local loc = select(4, C_Item.GetItemInfoInstant(link))
   local slots = UP.SLOTS[loc]
   if not slots or not usable(link) then return nil end
