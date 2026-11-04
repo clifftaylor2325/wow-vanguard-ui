@@ -1,6 +1,6 @@
 -- Default stat weights for the gear upgrade indicator (Modules/Upgrades.lua):
 -- how much one point of each stat is worth, per kind of character. A class
--- and a role pick the kind; /vg weights changes any weight for a profile.
+-- and a role pick the kind (on Retail a damage dealer's follows the specialization's primary stat); /vg weights changes any weight for a profile.
 --
 -- These are a starting point written for WoW Forever's vanilla-style stats,
 -- not simulated values: the owner reviews them, and players tune their own.
@@ -91,9 +91,38 @@ W.CLASSES = ns.ClientData({
   },
 })
 
+-- Retail: your specialization's role (as Vanguard names it) and primary stat (the client's LE_UNIT_STAT index), or
+-- nil for what the client won't say.
+local function retailSpec()
+  local index = ns.SpecIndex()
+  local info = index and C_SpecializationInfo.GetSpecializationInfo
+  if type(info) ~= "function" then return nil, nil end
+  local _, _, _, _, role, stat = info(index)
+  return ns.RoleKey(role), ns.PlainNumber(stat)
+end
+
+-- The role your specialization has on Retail, nil on WoW Forever (it has no specialization role).
+function W.SpecRole()
+  if ns.IsForever() then return nil end
+  return (retailSpec())
+end
+
+-- Retail: the kind of damage dealer each primary stat makes (Enhancement is Agility, Balance Intellect).
+function W.PrimaryKinds()
+  return { [LE_UNIT_STAT_STRENGTH] = "strength", [LE_UNIT_STAT_AGILITY] = "agility", [LE_UNIT_STAT_INTELLECT] = "caster" }
+end
+
+-- A damage dealer's kind: on Retail the one for the specialization's primary stat, else the class's (fallback).
+function W.DamageKind(fallback)
+  if ns.IsForever() then return fallback end
+  local _, stat = retailSpec()
+  return W.PrimaryKinds()[stat] or fallback
+end
+
 -- The kind of character a class in a role ("damage", "tank" or "healer") is; caster for a class not listed.
 function W.Kind(class, role)
   local roles = W.CLASSES[class]
   if not roles then return "caster" end
-  return roles[role] or roles.damage
+  if role ~= "damage" and roles[role] then return roles[role] end
+  return W.DamageKind(roles.damage)
 end

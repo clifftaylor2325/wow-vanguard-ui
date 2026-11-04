@@ -54,10 +54,12 @@ UP.TWO_HANDED = ns.ClientData({
 
 -- Weights ---------------------------------------------------------------------------------
 
--- The role weights are picked for: the setting, else (auto) your group role, damage when you have none.
+-- The role weights are picked for: the setting, else (auto) your group role, else (on Retail) your specialization's
+-- role, damage when you have none.
 function UP.Role()
   if UP.settings.role ~= "auto" then return UP.settings.role end
-  return ns.PlayerRole()
+  local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
+  return ns.RoleKey(assigned) or W.SpecRole() or "damage"
 end
 
 -- What the lines call each kind of character and each role (the keys of ns.UpgradeWeights.KINDS and of a class's roles).
@@ -356,5 +358,6 @@ function UP.Enable(settings)
   if bag and type(hooksecurefunc) == "function" then hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", markBagSafely)) end
   ns.On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
   ns.On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
+  if not ns.IsForever() then ns.On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.OnRolesChanged) end -- a new spec, new main stat
   ns.On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
 end

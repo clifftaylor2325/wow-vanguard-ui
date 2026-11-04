@@ -221,3 +221,35 @@ it("upgrades: on Retail a ranged weapon is judged against both hands, where Fore
   const forever = loggedIn(BOW_ENV);
   expect(forever.eval("return __line(19)"), "Forever: the empty ranged slot 18").toBe("Upgrade: fills an empty slot");
 });
+
+// Sets the player's class, specialization (its role and primary stat as the client names them) and group role, and
+// answers the weights' kind and role.
+const specKind = (addon, class_, spec, role) => {
+  addon.eval(`__wfgWorld.units.player.class = "${class_}" __wfgWorld.spec = ${spec ? 1 : "nil"} __wfgWorld.specInfo[1] = ${spec || "nil"}
+    UnitGroupRolesAssigned = function() return "${role}" end ns.GetModule("Upgrades").Changed()`);
+  return addon.eval("local UP = ns.GetModule('Upgrades') local _, kind = UP.Current() return { kind, UP.Role() }");
+};
+
+it("upgrades: on Retail the specialization's main stat picks the damage kind, and its role stands in for none", () => {
+  const retail = loggedIn(GEAR_ENV, { client: RETAIL_CLIENT });
+  expect(specKind(retail, "DRUID", "{ role = 'DAMAGER', primaryStat = LE_UNIT_STAT_INTELLECT }", "DAMAGER"), "Balance is an Intellect user").toEqual(["caster", "damage"]);
+  expect(specKind(retail, "SHAMAN", "{ role = 'DAMAGER', primaryStat = LE_UNIT_STAT_AGILITY }", "DAMAGER"), "Enhancement is an Agility user").toEqual(["agility", "damage"]);
+  expect(specKind(retail, "PALADIN", "{ role = 'HEALER', primaryStat = LE_UNIT_STAT_INTELLECT }", "NONE"), "a solo Holy paladin is a healer").toEqual(["healer", "healer"]);
+  expect(specKind(retail, "DRUID", "{ role = 'DAMAGER', primaryStat = LE_UNIT_STAT_STRENGTH }", "NONE"), "any other main stat").toEqual(["strength", "damage"]);
+  expect(specKind(retail, "DRUID", "{ role = 'DAMAGER', primaryStat = 99 }", "NONE"), "an unknown main stat falls back to the class").toEqual(["agility", "damage"]);
+  expect(specKind(retail, "DRUID", null, "NONE"), "no specialization: the class and damage").toEqual(["agility", "damage"]);
+  retail.eval("C_SpecializationInfo.GetSpecializationInfo = nil");
+  expect(specKind(retail, "DRUID", "{ role = 'HEALER' }", "NONE"), "a client with no spec info").toEqual(["agility", "damage"]);
+  retail.eval("__wfgWorld.specInfo[1] = { role = 'HEALER', primaryStat = LE_UNIT_STAT_INTELLECT }");
+});
+
+it("upgrades: a new specialization on Retail scores gear afresh; Forever ignores specialization", () => {
+  const retail = loggedIn(GEAR_ENV, { client: RETAIL_CLIENT });
+  specKind(retail, "SHAMAN", "{ role = 'DAMAGER', primaryStat = LE_UNIT_STAT_INTELLECT }", "NONE");
+  retail.eval("__wfgWorld.specInfo[1] = { role = 'DAMAGER', primaryStat = LE_UNIT_STAT_AGILITY }");
+  retail.fire("ACTIVE_PLAYER_SPECIALIZATION_CHANGED");
+  expect(retail.eval("return select(2, ns.GetModule('Upgrades').Current())"), "the kind follows the new spec").toBe("agility");
+  const forever = loggedIn(GEAR_ENV);
+  forever.eval("__wfgWorld.spec = 1 ns.GetModule('Upgrades').Changed()");
+  expect(forever.eval("return { select(2, ns.GetModule('Upgrades').Current()), ns.GetModule('Upgrades').Role() }"), "Forever: the warrior's class and damage").toEqual(["strength", "damage"]);
+});
