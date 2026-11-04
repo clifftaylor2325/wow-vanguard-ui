@@ -29,7 +29,7 @@ local addedWindowRows = {}
 
 -- Adds rows to the Game windows card, under the game window switches: a Retail* file (loaded on Retail only)
 -- puts the switches of the windows it dresses there without this file changing. rowsFn() runs each time the
--- page is built. Nothing adds any yet, on either client.
+-- page is built. RetailWindows, RetailVault and RetailLanding add theirs on Retail; Forever adds none.
 ---@param rowsFn fun(): table[]
 function ns.RetailRows(rowsFn)
   addedWindowRows[#addedWindowRows + 1] = rowsFn
