@@ -119,10 +119,10 @@ const TASKS = `
 
 it("retail quests: world quests in your area then those you watch, each once, and the area's bonus objectives", () => {
   const addon = retail(TASKS);
-  expect(blocks(addon), "World quests (the area's first), then Bonus objectives; no empty task, no nameless one").toEqual([
-    ["World quests", []], ["TEST-ONLY Storm Spirits", ["TEST-ONLY Spirits 3/10"]], ["TEST-ONLY Both", ["TEST-ONLY Both 0/2"]],
-    ["TEST-ONLY Far Rares", ["TEST-ONLY Rare slain 0/1"]], ["Bonus objectives", []], ["TEST-ONLY Clear the Mine", ["40% TEST-ONLY Mine cleared"]]]);
-  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[2].title.__textColor"), "text"), "a world quest's title in the text color").toBe(true);
+  expect(blocks(addon), "Bonus objectives, then World quests (the area's first); no empty task, no nameless one").toEqual([
+    ["Bonus objectives", []], ["TEST-ONLY Clear the Mine", ["40% TEST-ONLY Mine cleared"]], ["World quests", []],
+    ["TEST-ONLY Storm Spirits", ["TEST-ONLY Spirits 3/10"]], ["TEST-ONLY Both", ["TEST-ONLY Both 0/2"]], ["TEST-ONLY Far Rares", ["TEST-ONLY Rare slain 0/1"]]]);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[4].title.__textColor"), "text"), "a world quest's title in the text color").toBe(true);
 });
 
 it("retail quests: a world quest's click opens the map on its zone (after a fight), right-click stops watching it", () => {
@@ -172,11 +172,11 @@ it("retail quests: tracked Traveler's Log activities with what they still ask; r
 });
 
 it("retail quests: every block together, in the game's tracker's order", () => {
-  const addon = retail(SCENARIO + QUESTS + TASKS + ACTIVITIES);
+  const addon = retail(SCENARIO + QUESTS + TASKS + ACTIVITIES + ACHIEVEMENTS);
   const headings = addon.eval(`local QT = ns.GetModule("QuestTracker") local out = {}
     for _, r in ipairs(QT.Rows((QT.Quests()))) do if r.section then out[#out + 1] = r.section end end return out`);
   expect(Object.values(headings), "the headings in order").toEqual(
-    ["TEST-ONLY Delve", "TEST-ONLY Campaign: TEST-ONLY Ascent", "Quests", "World quests", "Bonus objectives", "Traveler's Log"]);
+    ["TEST-ONLY Delve", "TEST-ONLY Campaign: TEST-ONLY Ascent", "Quests", "Achievements", "Traveler's Log", "Bonus objectives", "World quests"]);
 });
 
 it("retail quests: without the Retail calls (a hidden answer or none) the blocks draw nothing and nothing errors", () => {

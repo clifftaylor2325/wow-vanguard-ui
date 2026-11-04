@@ -3,8 +3,9 @@
 --   * above the watched quests: the scenario you are in (a delve, a scenario, later Mythic+) under its name (a
 --     kind of scenario may add to it: RQ.HEADINGS), with its stage and criteria; then the watched campaign
 --     quests under their campaign's name and chapter;
---   * below them: world quests (those in your area, then those you watch), the bonus objectives of your area,
---     and the Traveler's Log activities you track.
+--   * after the achievements: the Traveler's Log activities you track;
+--   * last, after the recipes: the bonus objectives of your area, then world quests (those in your area, then
+--     those you watch).
 -- Each block reads the client's calls from Blizzard's live API docs (wow-ui-source, live branch); the task list
 -- comes from GetTasksTable and GetTaskInfo, which the game's own tracker reads and the docs leave out. Every
 -- value goes through the plain-value helpers: a scenario's counts can be hidden in an instance.
@@ -265,7 +266,9 @@ QT.CLICKS.world = L["Click: show on the map · Right-click: stop watching"]
 QT.CLICKS.areaWorld = L["Click: show on the map"]
 QT.CLICKS.activity = L["Right-click: stop tracking"]
 
--- The blocks, in the game's tracker's order, and their events.
+-- The blocks, in the game's tracker's order (Blizzard_ObjectiveTrackerManager.lua): the scenario and campaigns above
+-- the quests, the Traveler's Log after the achievements, the bonus objectives and world quests last.
 for _, block in ipairs({ RQ.Scenario, RQ.Campaigns }) do table.insert(QT.BLOCKS.above, block) end
-for _, block in ipairs({ RQ.WorldQuests, RQ.BonusObjectives, RQ.Activities }) do table.insert(QT.BLOCKS.below, block) end
+table.insert(QT.BLOCKS.afterChallenges, RQ.Activities)
+for _, block in ipairs({ RQ.BonusObjectives, RQ.WorldQuests }) do table.insert(QT.BLOCKS.last, block) end
 for _, event in ipairs(RQ.EVENTS) do table.insert(QT.EVENTS, event) end

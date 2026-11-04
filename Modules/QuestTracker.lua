@@ -340,7 +340,7 @@ end
 -- Blocks a client adds around the watched quests, in order (Modules/RetailQuests.lua on Retail; none on WoW
 -- Forever). Each is fn(quests, taken) giving its rows, headings included, and setting taken[id] for each watched
 -- quest it draws itself (a campaign quest under its campaign), so the plain list leaves that quest out.
-QT.BLOCKS = { above = {}, below = {} }
+QT.BLOCKS = { above = {}, afterChallenges = {}, last = {} }
 
 -- Appends every block's rows.
 local function addBlocks(rows, blocks, quests, taken)
@@ -358,15 +358,17 @@ local function addQuests(rows, quests, taken)
   addSection(rows, #rows > 0 and L["Quests"] or nil, rest)
 end
 
--- The rows the tracker draws: the client's blocks above the quests, the watched quests, the blocks below them,
--- then the tracked achievements (Legacy challenges on Forever) and the tracked recipes, each under its own heading.
+-- The rows the tracker draws, in the game's tracker's order: the client's blocks above the quests, the watched
+-- quests, the tracked achievements (Legacy challenges on Forever), the client's blocks that follow them, the tracked
+-- recipes, then the client's last blocks, each under its own heading.
 function QT.Rows(quests)
   local rows, taken = {}, {}
   addBlocks(rows, QT.BLOCKS.above, quests, taken)
   addQuests(rows, quests, taken)
-  addBlocks(rows, QT.BLOCKS.below, quests, taken)
   addSection(rows, QT.ACHIEVEMENT_HEADING, QT.Achievements())
+  addBlocks(rows, QT.BLOCKS.afterChallenges, quests, taken)
   addSection(rows, L["Recipes"], QT.Recipes())
+  addBlocks(rows, QT.BLOCKS.last, quests, taken)
   return rows
 end
 
