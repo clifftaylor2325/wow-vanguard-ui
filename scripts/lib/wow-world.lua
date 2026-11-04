@@ -1511,6 +1511,10 @@ function GetAvailableTitle(i) local q = (npc().available or {})[i] return q and 
 function GetAvailableLevel(i) local q = (npc().available or {})[i] return q and q.level or 1 end
 function GetActiveTitle(i) local q = (npc().active or {})[i] return q and q.title end
 function GetActiveLevel(i) local q = (npc().active or {})[i] return q and q.level or 1 end
+-- The offered quest's flags and ID (the client's fifth value).
+function GetAvailableQuestInfo(i) local q = (npc().available or {})[i] return false, 0, false, false, q and q.questID end
+-- The turn-in quest's ID.
+function GetActiveQuestID(i) local q = (npc().active or {})[i] return q and q.questID end
 function SelectAvailableQuest(i) world.questChosen = i stub.fire("QUEST_DETAIL") end
 function SelectActiveQuest(i) world.questChosen = i stub.fire("QUEST_PROGRESS") end
 function GetTitleText() return openQuest().title or "" end

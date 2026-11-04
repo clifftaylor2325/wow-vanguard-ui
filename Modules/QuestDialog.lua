@@ -86,14 +86,24 @@ function QD.SkipGossip()
   return option ~= nil
 end
 
+-- The greeting window's i-th quest on offer, with its ID (the New mark's key).
+local function greetingAvailable(i)
+  local questID = select(5, ns.CallIf(_G, "GetAvailableQuestInfo", i))
+  return availableLine(ns.CallIf(_G, "GetAvailableLevel", i), ns.CallIf(_G, "GetAvailableTitle", i), function() SelectAvailableQuest(i) end, ns.PlainNumber(questID))
+end
+
+-- The greeting window's i-th quest to turn in, with its ID.
+local function greetingActive(i)
+  local title, complete = ns.CallIf(_G, "GetActiveTitle", i)
+  local questID = ns.PlainNumber(ns.CallIf(_G, "GetActiveQuestID", i))
+  return activeLine(ns.CallIf(_G, "GetActiveLevel", i), title, complete, function() SelectActiveQuest(i) end, questID)
+end
+
 -- A quest giver's lines without gossip (the game's greeting window).
 function QD.GreetingLines()
   local out = {}
-  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumAvailableQuests")) or 0 do out[#out + 1] = availableLine(ns.CallIf(_G, "GetAvailableLevel", i), ns.CallIf(_G, "GetAvailableTitle", i), function() SelectAvailableQuest(i) end) end
-  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumActiveQuests")) or 0 do
-    local title, complete = ns.CallIf(_G, "GetActiveTitle", i)
-    out[#out + 1] = activeLine(ns.CallIf(_G, "GetActiveLevel", i), title, complete, function() SelectActiveQuest(i) end)
-  end
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumAvailableQuests")) or 0 do out[#out + 1] = greetingAvailable(i) end
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumActiveQuests")) or 0 do out[#out + 1] = greetingActive(i) end
   return out
 end
 
