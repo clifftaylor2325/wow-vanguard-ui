@@ -173,6 +173,13 @@ const countLayouts = (addon) => {
   return () => addon.eval("local n = __places __places = 0 return n");
 };
 
+it("the combined bag in sections: slots the game marks locked stay in Empty, after every other empty slot", () => {
+  const addon = loggedIn(BAG_ENV);
+  addon.eval("__slots.b0s8.IsExtended = function() return true end __openBag()");
+  const empties = ["b1s1", "b1s4", "b0s8"].map((s) => spot(addon, s));
+  expect(empties, "bag 1's empty slots first, the locked slot last in the same row").toEqual([[194, 160], [320, 160], [362, 160]]);
+});
+
 it("the combined bag in sections: each kind of item under its header, packed side by side", () => {
   const addon = loggedIn(BAG_ENV);
   expect(addon.eval("return ns.Settings('Bags').sections"), "sections are on by default").toBe(true);

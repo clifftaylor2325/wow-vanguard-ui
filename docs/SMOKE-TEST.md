@@ -3939,6 +3939,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: No slot art pokes out past each slot's thin border; empty slots read as flat squares.
 - If it fails, paste: a screenshot of four empty Warband slots
 
+### 33.285 Locked backpack slots come last in Empty (Retail)
+
+- Do: On an account without an authenticator, open the combined bag with sections on.
+- Expect: The four locked slots are the last four of Empty, and the game's add-slots button sits at their left edge, not over a usable slot.
+- If it fails, paste: a screenshot of the Empty section
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
