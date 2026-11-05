@@ -3921,6 +3921,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The unbound copy goes on the sell card and the row goes; with only the bound copy, the row stays and says expired · by mail.
 - If it fails, paste: /vg errors and a screenshot of Your auctions.
 
+### 33.274 Cancelling an auction that costs asks first (Forever)
+
+- Do: Post an auction, get a bid on it from another character, then press its Cancel on Your auctions in the Posting tab.
+- Expect: A question names the cancel cost; No leaves the auction up and Yes cancels it. A cancel that costs nothing still goes on the click.
+- If it fails, paste: /run print(C_AuctionHouse.GetCancelCost(<auctionID>)) and /vg errors.
+
 ### 33.281 Docked chat tab sizes through General's sliders (Forever)
 
 - Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.
