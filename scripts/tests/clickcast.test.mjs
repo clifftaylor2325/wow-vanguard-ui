@@ -713,6 +713,7 @@ it("the spell picker finds a Russian spell typed in small letters", () => {
 it("H17-2-2: the Click casting page shows its combat notice as soon as a fight starts, without a click", () => {
   const addon = priest();
   addon.eval('ns.Options.Show("clickcast")');
+  // How many times the page shows the combat notice.
   const notice = () => addon.texts("In combat: changes are kept and apply when the fight ends.").length;
   expect(notice(), "out of a fight the page shows no notice").toBe(0);
   addon.world.combat(true);

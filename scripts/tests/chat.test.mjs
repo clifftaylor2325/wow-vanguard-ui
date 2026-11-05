@@ -783,6 +783,7 @@ it("H17-8-1: the first pop-out chat of a session carries Copy and Find onto its 
     end
     function FCFDock_GetSelectedWindow() return __selected end`;
   const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + popOut);
+  // Whether Copy and Find sit on the new window's bar and show, and how many errors there are.
   const state = () => addon.eval(`local F = ns.GetModule('Chat').frames local CX, CW = ns.GetModule('ChatExtras'), ns.GetModule('ChatWindows')
     return { CX.copyButton:GetParent() == F[ChatFrame11].bar, CW.findButton:GetParent() == F[ChatFrame11].bar, CX.copyButton:IsVisible(), CW.findButton:IsVisible(), #ns.errors }`);
   addon.eval("FCF_OpenTemporaryWindow('CHAT_MSG_WHISPER', 'TEST-ONLY Name')");
