@@ -14,9 +14,7 @@ local L = ns.L
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  -- WoW Forever players read levels and health percent on every frame (as its own UI does).
-  defaults = { showLevel = ns.ClientData({ forever = true, retail = false }),
-    healthFormat = ns.ClientData({ forever = "percent", retail = "value" }), hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true,
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true,
     -- WoW Forever players read levels and health percent on every frame (as its own UI does),
     -- so a profile that hasn't chosen yet starts that way there.
     showLevel = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.showLevel), healthFormat = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.healthFormat),
