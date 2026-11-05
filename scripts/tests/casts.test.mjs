@@ -49,6 +49,13 @@ it("cast bars", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.cast_player and out.cast_target and out.cast_focus") === true, "all three are movable").toBeTruthy();
 });
 
+it("the game's cast bar stays put away after Edit Mode hands it back to UIParent and shows it", () => {
+  // TEST-ONLY: the game's bar shows itself in Edit Mode (CastingBarMixin:UpdateShownState).
+  const addon = loggedIn(CAST_ENV + "function PlayerCastingBarFrame:UpdateShownState() if self.isInEditMode then self:Show() end end");
+  addon.eval("PlayerCastingBarFrame:SetParent(UIParent) PlayerCastingBarFrame.isInEditMode = true PlayerCastingBarFrame:UpdateShownState()");
+  expect(addon.eval("return { PlayerCastingBarFrame:IsVisible(), PlayerCastingBarFrame:GetParent() == UIParent }"), "a layout apply and Edit Mode's show: parked again, hidden").toEqual([false, false]);
+});
+
 it("cast bar flashes on finish and interrupt", () => {
   const addon = loggedIn(CAST_ENV + FAKE_FADES);
   addon.eval("__fakeFader(Vanguard_CastBar_player)");

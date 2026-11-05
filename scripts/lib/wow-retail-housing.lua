@@ -36,14 +36,20 @@ local function scrollBar(parent)
   return bar
 end
 
+-- A category column (the catalog template's): its backdrop, top bracket and the strip under an open category.
+local function categories(parent)
+  local c = CreateFrame("Frame", nil, parent)
+  c.Background, c.TopBorder, c.SubcategoriesDivider = art(c), art(c, "ARTWORK"), art(c, "BACKGROUND")
+  return c
+end
+
 -- The decor catalog's parts (HousingCatalogFrameTemplate and the editor's storage share them) on frame.
 local function catalog(frame)
   frame.Background = art(frame)
   frame.SearchBox = CreateFrame("EditBox", nil, frame)
   frame.Filters = CreateFrame("Frame", nil, frame)
   frame.Filters.FilterDropdown = CreateFrame("Button", nil, frame.Filters)
-  frame.Categories = CreateFrame("Frame", nil, frame)
-  frame.Categories.Background, frame.Categories.TopBorder = art(frame.Categories), art(frame.Categories, "ARTWORK")
+  frame.Categories = categories(frame)
   frame.OptionsContainer = CreateFrame("Frame", nil, frame)
   frame.OptionsContainer.ScrollBar = scrollBar(frame.OptionsContainer)
   return frame
@@ -60,9 +66,7 @@ local BUILDERS = {
     f.CatalogContent = catalog(CreateFrame("Frame", nil, f))
     f.CollectionContent = CreateFrame("Frame", nil, f)
     f.CollectionContent.Background = art(f.CollectionContent)
-    f.CollectionContent.Categories = CreateFrame("Frame", nil, f.CollectionContent)
-    f.CollectionContent.Categories.Background = art(f.CollectionContent.Categories)
-    f.CollectionContent.Categories.TopBorder = art(f.CollectionContent.Categories, "ARTWORK")
+    f.CollectionContent.Categories = categories(f.CollectionContent)
   end,
   -- The house finder and its two plot tooltips.
   Blizzard_HousingHouseFinder = function()

@@ -38,19 +38,37 @@ local function cell(b, n)
   b:SetSize(MB.SIZE, MB.SIZE)
 end
 
+-- The gathered buttons their addons show, in name order: a button its addon has hidden takes no cell.
+local function shownButtons()
+  local shown = {}
+  for _, b in ipairs(MB.buttons) do
+    if b:IsShown() then shown[#shown + 1] = b end
+  end
+  return shown
+end
+
 -- Sizes the drawer to its grid, and shows the toggle once there's something in it.
 local function fit()
-  local n = #MB.buttons
+  local n = #shownButtons()
   local cols, rows = math.min(n, MB.PER_ROW), math.ceil(n / MB.PER_ROW)
   MB.drawer:SetSize(2 * MB.PAD + cols * MB.SIZE + (cols - 1) * MB.GAP, 2 * MB.PAD + rows * MB.SIZE + (rows - 1) * MB.GAP)
   MB.toggle:SetShown(n > 0)
 end
 
--- Puts every gathered button in its cell, in name order, each kept there when its addon moves it again.
+-- The pin of a hidden button: it stays where it is until its addon shows it again.
+local function noCell() end
+
+-- Puts every shown gathered button in its cell, in name order, each kept there when its addon moves it again.
 local function arrange()
   table.sort(MB.buttons, function(a, b) return vgGathered[a] < vgGathered[b] end)
-  for n, b in ipairs(MB.buttons) do ns.Pin(b, function(f) cell(f, n) end) end
+  for _, b in ipairs(MB.buttons) do ns.Pin(b, noCell) end
+  for n, b in ipairs(shownButtons()) do ns.Pin(b, function(f) cell(f, n) end) end
   fit()
+end
+
+-- Lays the drawer out again next frame (a button's addon showed or hid it).
+local function arrangeSoon()
+  ns.Soon("minimapbuttons", arrange)
 end
 
 -- Takes one addon button into the drawer, keeping its place in the name order (its addon's name without
@@ -60,6 +78,8 @@ local function gather(b)
   vgGathered[b] = (b:GetName():gsub(MB.NAME, "")):lower()
   MB.buttons[#MB.buttons + 1] = b
   b:SetParent(MB.drawer)
+  b:HookScript("OnShow", ns.Guard("minimap drawer button shown", arrangeSoon))
+  b:HookScript("OnHide", ns.Guard("minimap drawer button hidden", arrangeSoon))
   return true
 end
 
@@ -128,16 +148,16 @@ function MB.PlaceDrawer()
   d:SetPoint(side[1], MB.map, side[2], side[3] * gap, 0)
 end
 
--- Opens the drawer on the side with room, or shuts it.
+-- Opens the drawer on the side with room (laid out first: a button shown while it was shut did not say), or shuts it.
 function MB.Toggle()
-  if not MB.drawer:IsShown() then MB.PlaceDrawer() end
+  if not MB.drawer:IsShown() then arrange() MB.PlaceDrawer() end
   MB.drawer:SetShown(not MB.drawer:IsShown())
 end
 
 -- The toggle's tooltip: how many addon buttons the drawer holds.
 function MB.ToggleTip(t)
   GameTooltip:SetOwner(t, "ANCHOR_LEFT")
-  GameTooltip:SetText(ns.Format(L["Addon buttons ({count})"], { count = #MB.buttons }), T.RGB("text"))
+  GameTooltip:SetText(ns.Format(L["Addon buttons ({count})"], { count = #shownButtons() }), T.RGB("text"))
   GameTooltip:Show()
 end
 

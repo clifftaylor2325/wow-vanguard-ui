@@ -132,8 +132,8 @@ table.insert(QT.EVENTS, "ACTIVE_DELVE_DATA_UPDATE")
 
 -- The windows -------------------------------------------------------------------------------------
 
--- The dialog border (DialogBorderTemplate) round the companion window's and the picker's painted scenes.
-RD.SCENE_ART = { "Border" }
+-- The dialog border and the inset edge (InsetFrameTemplate's NineSlice) round the companion window's and the picker's painted scenes.
+RD.SCENE_ART = { "Border", "NineSlice" }
 -- The companion's four slots (role, flavour and the two curios), each a label over the game's coloured value.
 RD.SLOTS = { "CompanionCombatRoleSlot", "CompanionFlavorSlot", "CompanionCombatTrinketSlot", "CompanionUtilityTrinketSlot" }
 

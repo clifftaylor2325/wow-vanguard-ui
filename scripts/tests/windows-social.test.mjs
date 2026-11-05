@@ -699,8 +699,10 @@ it("channels and friends dialogs: the window and each dialog skinned, borders fa
   "the game's art faded").toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   expect(addon.eval(`local function themed(x) for _, r in ipairs({ x:GetRegions() }) do if r.__alpha ~= 0 then return true end end return false end
     return { themed(AddFriendNameEditBox), themed(AddFriendEntryFrameAcceptButton), themed(CreateChannelPopup.Name), themed(CreateChannelPopup.OKButton),
-      themed(FriendsFriendsFrame.SendRequestButton), themed(FriendsFriendsFrame.CloseButton), themed(BattleNetInviteFrame.SendButton), themed(AddFriendFrame), themed(BattleNetInviteFrame) }`),
-  "edit boxes and buttons themed, each dialog panelled").toEqual([true, true, true, true, true, true, true, true, true]);
+      themed(FriendsFriendsFrame.SendRequestButton), themed(FriendsFriendsFrame.CloseButton), themed(BattleNetInviteFrame.SendButton), themed(ns.GetModule("Windows").MadeBackdrop(AddFriendFrame)), themed(BattleNetInviteFrame) }`),
+  "edit boxes and buttons themed, each dialog panelled (Add Friend on its backdrop)").toEqual([true, true, true, true, true, true, true, true, true]);
+  expect(addon.eval(`local n = 0 for _, r in ipairs({ AddFriendFrame:GetRegions() }) do if r:GetObjectType() == "Texture" and r.__alpha ~= 0 then n = n + 1 end end return n`),
+  "no texture of Vanguard's is among the regions the game sizes Add Friend from").toBe(0);
 });
 
 it("channels and friends dialogs: a second show paints nothing more, the switch off leaves them the game's, missing parts load cleanly", () => {

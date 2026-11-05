@@ -94,6 +94,22 @@ it("retail quests: the scenario you are in shows on top under its name, its stag
   expect(addon.eval("return Vanguard_QuestTrackerFrame:IsShown()"), "past its last stage: nothing to track, the tracker hides").toBe(false);
 });
 
+it("retail quests: a timed scenario criterion has its countdown under it, ticking each second", () => {
+  const addon = retail(`__wfgWorld.scenario = { name = "TEST-ONLY Delve", currentStage = 1, numStages = 2,
+    step = { title = "TEST-ONLY Hold", numCriteria = 1 },
+    criteria = { { description = "TEST-ONLY Survive", quantity = 0, totalQuantity = 1, completed = false, duration = 180, elapsed = 60 } } }`);
+  expect(blocks(addon)[1][1], "the criterion, then its countdown").toEqual(["TEST-ONLY Survive 0/1", "Time left 2:00"]);
+  addon.eval("__wfgWorld.scenario.criteria[1].elapsed = 61");
+  addon.advance(1, 1);
+  expect(blocks(addon)[1][1][1], "a second on: redrawn without an event").toBe("Time left 1:59");
+  addon.eval("__wfgWorld.scenario.criteria[1].elapsed = 181");
+  addon.advance(1, 1);
+  expect(blocks(addon)[1][1], "run out: no line").toEqual(["TEST-ONLY Survive 0/1"]);
+  addon.eval("__wfgWorld.scenario.criteria[1].elapsed = 5 __wfgWorld.scenario.criteria[1].duration = __wfgWorld.secret(180)");
+  redraw(addon, "SCENARIO_CRITERIA_UPDATE");
+  expect(blocks(addon)[1][1], "a hidden limit: no line").toEqual(["TEST-ONLY Survive 0/1"]);
+});
+
 it("retail quests: a scenario's hidden stage draws nothing, and a hover shows no clicks line for it", () => {
   const addon = retail(SCENARIO);
   addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[2] b.__scripts.OnClick(b, 'LeftButton') ns.GetModule('QuestTracker').TitleTooltip(b)");

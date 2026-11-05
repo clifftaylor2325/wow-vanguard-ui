@@ -216,16 +216,23 @@ local function mark(r)
   return m
 end
 
+-- The row's label, right of the mark and ending short of the count, on one line (a long item name ends in "...").
+local function rowLabel(r)
+  local label = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
+  label:SetPoint("LEFT", r.mark, "RIGHT", MARK, 0)
+  label:SetPoint("RIGHT", r.value, "LEFT", -T.SPACE.gap, 0)
+  return ns.SingleLine(label)
+end
+
 -- Row i of the card: a red mark, the label, and "have / want" at the right in red.
 local function rowFrame(i)
   local r = CreateFrame("Frame", nil, PR.card)
   r:SetSize(PR.WIDTH - 2 * PR.PAD, PR.ROW)
   r:SetPoint("TOPLEFT", PR.PAD, -PR.TOP - (i - 1) * PR.ROW)
   r.mark = mark(r)
-  r.label = T.Text(r:CreateFontString(nil, "OVERLAY"), "label")
-  r.label:SetPoint("LEFT", r.mark, "RIGHT", MARK, 0)
   r.value = T.Text(r:CreateFontString(nil, "OVERLAY"), "number", "bad")
   r.value:SetPoint("RIGHT", 0, 0)
+  r.label = rowLabel(r)
   return r
 end
 

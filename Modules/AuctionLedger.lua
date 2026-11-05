@@ -395,10 +395,12 @@ end
 
 -- The ledger's events, through the helper's on: your auctions list, the notices,
 -- an auction run out or cancelled, and the inbox. The session's sales count from now, and old
--- records go.
+-- records go, except at a login where the computer's clock is more than a day off the realm's
+-- (AP.ClockTrusted, as for prices): a clock far ahead would age out every record, so then only
+-- what is broken goes.
 function AH.ListenLedger(on)
   AL.since = AP.Now()
-  AL.Prune(AL.since)
+  AL.Prune(AP.ClockTrusted(AL.since) and AL.since or -math.huge)
   on("OWNED_AUCTIONS_UPDATED", AL.OnOwned)
   on("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", AL.OnNotice)
   on("AUCTION_HOUSE_AUCTIONS_EXPIRED", function(_, id) AL.Ended("expired", ns.PlainNumber(id)) end)

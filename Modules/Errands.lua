@@ -291,15 +291,15 @@ end
 -- Keep stocked: buying -----------------------------------------------------------------------
 
 -- A merchant item's price, how many that price buys, how many are left (modern table, else the old call),
--- and whether it costs more than gold (the table says so; else the cost call).
+-- whether it costs more than gold (the table says so; else the cost call), and whether the client says it can be bought.
 local function merchantInfo(i)
   local api = C_MerchantFrame and C_MerchantFrame.GetItemInfo
   if type(api) == "function" then
     local info = api(i)
-    if type(info) == "table" then return info.price, info.stackCount, info.numAvailable, info.hasExtendedCost == true end
+    if type(info) == "table" then return info.price, info.stackCount, info.numAvailable, info.hasExtendedCost == true, info.isPurchasable end
   end
-  local _, _, price, stack, left = ask("GetMerchantItemInfo", i)
-  return price, stack, left, false
+  local _, _, price, stack, left, buyable = ask("GetMerchantItemInfo", i)
+  return price, stack, left, false, buyable
 end
 
 -- How many of an item you carry (nil when the client can't say).
@@ -317,12 +317,14 @@ local function wanted(i)
 end
 
 -- The order for merchant item i, or nil: an item your list wants, in stock, bought for gold alone
--- (an item priced in honor, badges or other items reads 0 copper and would be "bought" for nothing).
+-- (an item priced in honor, badges or other items reads 0 copper and would be "bought" for nothing) and
+-- one the client doesn't say is unbuyable (a red row: reputation too low).
 local function orderFor(i)
   local need, id = wanted(i)
-  local price, stack, left, extended = merchantInfo(i)
+  local price, stack, left, extended, buyable = merchantInfo(i)
   price, stack = ns.PlainNumber(price), math.max(ns.PlainNumber(stack) or 1, 1)
-  if need <= 0 or not price or price <= 0 or extended or ns.GetModule("Merchant").ExtendedCost(i) or ns.PlainNumber(left) == 0 then return nil end
+  local MC = ns.GetModule("Merchant")
+  if need <= 0 or not price or price <= 0 or extended or not MC.Purchasable(buyable) or MC.ExtendedCost(i) or ns.PlainNumber(left) == 0 then return nil end
   return { index = i, id = id, need = need, unit = price / stack, stack = stack }
 end
 

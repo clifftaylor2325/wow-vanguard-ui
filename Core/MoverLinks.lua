@@ -140,13 +140,17 @@ function K.Own(key, dim)
   return LY.Within(matchedSize(key, dim) or own or s.natural[dim], s[dim][1], s[dim][2])
 end
 
--- A mover's rect on screen ({ left, bottom, w, h } in UIParent's units), from where it goes and its size.
+-- A mover's rect on screen ({ left, bottom, w, h } in UIParent's units), from where it goes and its size. The client
+-- keeps a mover's frame on the screen (Movers.lua place), so a frame linked to it follows where it is drawn; a
+-- not-yet-sized UIParent is left alone, or every rect would collapse to 0,0.
 function K.RectOf(key)
   local point, relPoint, x, y = ns.MoverPoint(key)
-  local s = scaleOf(key)
+  local s, sc = scaleOf(key), screen()
   local anchor = { point = point, relPoint = relPoint, x = x, y = y }
   local size = { w = K.Own(key, "width") * s, h = K.Own(key, "height") * s }
-  return LY.Rect(anchor, size, screen())
+  local r = LY.Rect(anchor, size, sc)
+  if sc.w > 0 and sc.h > 0 then r = LY.Clamp(r, sc.w, sc.h) end
+  return r
 end
 
 -- Sizes a frame Vanguard may size (as K.Own works it out) and tells its module.

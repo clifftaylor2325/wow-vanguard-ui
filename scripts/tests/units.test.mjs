@@ -128,6 +128,20 @@ it("class bars: totems for shamans, mana in forms for druids", () => {
   expect(early.eval('ns.GetModule("ClassBars").UpdateTotems() return ns.GetModule("ClassBars").cells[1].__alpha'), "no totem call on this client: cells stay as built").toBe(null);
 });
 
+it("class bars: an empty totem cell lets clicks through out of combat, and every cell takes clicks in a fight", () => {
+  const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
+  // Whether a totem cell takes clicks.
+  const clicks = (slot) => addon.eval(`return ns.GetModule("ClassBars").cells[${slot}]:IsMouseClickEnabled()`);
+  expect([clicks(1), clicks(2)], "out of combat: the totem that is down takes clicks, the empty slot doesn't").toEqual([true, false]);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(clicks(2), "a fight is starting: the empty cell takes clicks, for a totem dropped in it").toBe(true);
+  setCombat(addon, true);
+  addon.fire("PLAYER_TOTEM_UPDATE");
+  expect(clicks(2), "in the fight a repaint leaves the secure cell as it is").toBe(true);
+  setCombat(addon, false);
+  expect(clicks(2), "after the fight the empty cell lets clicks through again").toBe(false);
+});
+
 it("class bars: a right-click on a totem cell destroys it, with key-down casting on or off", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
   // Which phases of a right-click run the cell's secure action: [press, release].

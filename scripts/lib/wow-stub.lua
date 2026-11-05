@@ -776,8 +776,12 @@ end
 -- A button's label font string (as a template's own would be), once one is set.
 function methods:SetFontString(fs) self.__fontString = fs end
 function methods:GetFontString() return self.__fontString end
--- The text set, and the rotation field.
-function methods:GetText() return self.__text end
+-- The text set; an edit box with none answers "" as the client does (MailFrame's SendMailFrame_CanSend takes its length).
+function methods:GetText()
+  if self.__kind == "EditBox" then return self.__text or "" end
+  return self.__text
+end
+-- The rotation field.
 function methods:SetRotation(r) self.__rotation = r end
 function methods:GetRotation() return self.__rotation or 0 end
 

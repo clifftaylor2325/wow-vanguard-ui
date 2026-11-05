@@ -306,16 +306,27 @@ local function slotName(bag, slot)
   return mailable and (C_Item.GetItemInfo(info.itemID)) or ""
 end
 
--- Attaches the bag items that fit a preset and can be mailed (a bag slot at a time, up to the game's limit); how many.
-function MT.Attach(words)
+-- How many of the Send Mail tab's attachment slots already hold an item (the game's HasSendMailItem).
+local function attachedNow()
   local n = 0
+  for slot = 1, MT.ATTACH do
+    if ns.CallIf(_G, "HasSendMailItem", slot) == true then n = n + 1 end
+  end
+  return n
+end
+
+-- Attaches the bag items that fit a preset and can be mailed (a bag slot at a time, up to the game's limit,
+-- counting what is already attached); how many it added.
+function MT.Attach(words)
+  local before = attachedNow()
+  local n = before
   for bag = 0, MT.BAGS do
     for slot = 1, C_Container.GetContainerNumSlots(bag) do
       local name = slotName(bag, slot)
       if n < MT.ATTACH and name ~= "" and wanted(name, words) then C_Container.UseContainerItem(bag, slot) n = n + 1 end
     end
   end
-  return n
+  return n - before
 end
 
 -- What a send says: how many items went in, or, when a preset with words attached nothing, how the words

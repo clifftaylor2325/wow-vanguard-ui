@@ -50,11 +50,18 @@ function CW.Words(phrase)
   return words
 end
 
+-- The pattern that holds a phrase word to a word start: ASCII letters and digits, and two-byte UTF-8 letters
+-- (accented Latin, Greek, Cyrillic); a word in three-byte letters (Chinese, Korean) has none, as Chinese runs on without breaks.
+local function wordStart(word)
+  if word:find("^%w") then return "%f[%w]" end
+  if word:find("^[\195-\212]") then return "%f[%w\128-\255]" end
+  return ""
+end
+
 -- A word as a pattern: its magic characters escaped, and one that starts with a letter or digit held to a
 -- word's start ("lfm" doesn't find "alfm").
 local function wordPattern(word)
-  local escaped = ns.GetModule("ChatExtras").Escape(word)
-  return word:find("^%w") and "%f[%w]" .. escaped or escaped
+  return wordStart(word) .. ns.GetModule("ChatExtras").Escape(word)
 end
 
 -- Each phrase's word patterns, made once per phrase (never per line; forgotten when the list changes).

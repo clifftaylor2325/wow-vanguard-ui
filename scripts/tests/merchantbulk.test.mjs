@@ -259,6 +259,41 @@ it("Stack buys one merchant stack; Max asks first when it is more, then buys in 
   expect(chatHas(addon, /Bought 40 × TEST-ONLY Water for 0s 80c\./), "and says so").toBe(true);
 });
 
+// TEST-ONLY: a fifth merchant item, one pack at 150g, marked non-refundable (refundable) or not, and gold for 60 of them.
+const HEIRLOOM = (refundable) => `__gold = 90000000 table.insert(__wfgWorld.merchant.items, { itemID = 159, name = "TEST-ONLY Water", price = 1500000, stack = 1, maxStack = 20, refundable = ${refundable} })`;
+it("Stack asks first for a pack of 150g or more the merchant marks non-refundable, as the game's window does", () => {
+  const addon = loggedIn(BUY_ENV + HEIRLOOM(false));
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("__owner('MerchantItem5ItemButton', 5) StackSplitFrame:Show()");
+  press(addon, "stack");
+  expect([ask(addon), bought(addon)], "non-refundable at 150g: the Buy question, nothing bought before the answer").toEqual([[true, "Buy 20 × TEST-ONLY Water for 3000g 0s 0c?"], {}]);
+  addon.click("Vanguard_Question.confirm");
+  expect(bought(addon), "Yes buys the stack").toEqual([[5, 20]]);
+});
+it("Stack buys at once a refundable pack of 150g, and a non-refundable one under 150g", () => {
+  const refundable = loggedIn(BUY_ENV + HEIRLOOM(true));
+  refundable.fire("MERCHANT_SHOW");
+  refundable.eval("__owner('MerchantItem5ItemButton', 5) StackSplitFrame:Show()");
+  press(refundable, "stack");
+  expect([ask(refundable)[0], bought(refundable)], "refundable: no question").toEqual([false, [[5, 20]]]);
+  const cheap = loggedIn(BUY_ENV + HEIRLOOM(false).replace("1500000", "1499999"));
+  cheap.fire("MERCHANT_SHOW");
+  cheap.eval("__owner('MerchantItem5ItemButton', 5) StackSplitFrame:Show()");
+  press(cheap, "stack");
+  expect([ask(cheap)[0], bought(cheap)], "non-refundable at 1499999: no question").toEqual([false, [[5, 20]]]);
+  cheap.eval("__wfgWorld.merchant.items[5].price = 1500000 __wfgWorld.merchant.items[5].refundable = __wfgWorld.secret(false)");
+  expect(cheap.eval("return ns.GetModule('Merchant').AsksFirst(5)"), "a secret answer counts as refundable").toBe(false);
+});
+it("an item the client says cannot be bought gets no Stack or Max, and a run on it buys nothing and says nothing", () => {
+  const addon = loggedIn(BUY_ENV + "__wfgWorld.merchant.items[1].purchasable = false");
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  expect([split(addon), addon.eval("return ns.GetModule('Merchant').MaxPacks(1)")], "a red row: no drawer, nothing to buy").toEqual([false, 0]);
+  addon.eval("ns.GetModule('Merchant').Buy(1, 4)");
+  expect([bought(addon), chatHas(addon, /Bought/)], "a forced buy goes nowhere and says nothing").toEqual([{}, false]);
+  addon.eval("__wfgWorld.merchant.items[1].purchasable = true StackSplitFrame:Hide() StackSplitFrame:Show()");
+  expect(split(addon)[0], "buyable again: the drawer is back").toBe(true);
+});
 it("a run stops when the merchant closes, combat starts or the gold runs out; one run at a time; nothing for zero", () => {
   const addon = loggedIn(BUY_ENV + "__later = {} C_Timer = { After = function(s, fn) if s == 0.2 then __later[#__later + 1] = fn end end }");
   const MC = "ns.GetModule('Merchant')";

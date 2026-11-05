@@ -220,14 +220,16 @@ local function refreshBarAlpha()
 end
 
 -- ACTIONBAR_SHOWGRID (on) and ACTIONBAR_HIDEGRID (off): shows or hides the
--- empty slots and reveals or restores the mouseover and In combat bars.
+-- empty slots and reveals or restores the mouseover and In combat bars. Keybind mode keeps
+-- the grid up, so a drag that ends during it hides nothing.
 function AB.SetGrid(on)
-  AB.grid = on
+  local shown = on or AB.binding == true
+  AB.grid = shown
   for _, b in ipairs(AB.buttons) do
     AB.UpdateEmpty(b)
   end
   refreshBarAlpha()
-  if on then showCombatBars() else restoreCombatBars() end
+  if shown then showCombatBars() else restoreCombatBars() end
 end
 
 -- Settings changes --------------------------------------------------------------------

@@ -80,8 +80,16 @@ function BG.Classify(button)
   return BG.CategoryOf and BG.CategoryOf(info.itemID) or builtIn(info, bag, slot)
 end
 
--- Reading order: by bag, then slot, as the game's own grid reads.
+-- Whether the game marks this slot locked until the account is secured (its IsExtended).
+local function locked(button)
+  return type(button.IsExtended) == "function" and button:IsExtended() == true
+end
+
+-- Reading order: by bag, then slot, as the game's own grid reads, the locked slots after all the others
+-- (the game's combined bag sorts them last).
 local function readingOrder(a, b)
+  local lockedA, lockedB = locked(a), locked(b)
+  if lockedA ~= lockedB then return lockedB end
   local bagA, bagB = a:GetBagID(), b:GetBagID()
   if bagA ~= bagB then return bagA < bagB end
   return a:GetID() < b:GetID()

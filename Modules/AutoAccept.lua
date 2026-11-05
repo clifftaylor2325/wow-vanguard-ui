@@ -30,14 +30,18 @@ local function closePrompt(which)
   if type(StaticPopup_Hide) == "function" then StaticPopup_Hide(which) end
 end
 
--- Hides one of the game's own invite windows when it is up (Forever's GuildInviteFrame and
--- LFGInvitePopup, shown with StaticPopupSpecial_Show, not static popups), as its own buttons do;
--- true when it was up.
-local function hideInvite(name)
-  local frame = _G[name]
-  if type(frame) ~= "table" or not frame:IsShown() then return false end
+-- Hides one of the game's own windows when it is up (the invite windows are shown with
+-- StaticPopupSpecial_Show, not as static popups), as its own buttons do; true when it was up.
+local function hideFrame(frame)
+  if type(frame) ~= "table" or not frame.IsShown or not frame:IsShown() then return false end
   if type(StaticPopupSpecial_Hide) == "function" then StaticPopupSpecial_Hide(frame) else frame:Hide() end
   return true
+end
+
+-- Hides one of the game's own invite windows by its global name (Forever's GuildInviteFrame and
+-- LFGInvitePopup); true when it was up.
+local function hideInvite(name)
+  return hideFrame(_G[name])
 end
 
 -- A name or place the client may hide: plain text, else a stand-in.
@@ -181,11 +185,14 @@ local function knownPlayer(guid)
   return type(IsGuildMember) == "function" and IsGuildMember(guid) and true or false
 end
 
--- Declines a group invite and closes its prompt: the game's popup, or the role popup Forever shows
--- for an invite with roles.
+-- Declines a group invite and closes its prompt: the game's popup, the role popup Forever shows for an
+-- invite with roles, or Retail's Party Sync dialog for an invite that carries a quest session (it would
+-- stay up for a minute with its Accept answering an invite already declined).
 local function declineGroup()
   DeclineGroup()
   hideInvite("LFGInvitePopup")
+  local sessions = _G.QuestSessionManager
+  hideFrame(type(sessions) == "table" and sessions.ConfirmInviteToGroupReceivedDialog or nil)
   closePrompt("PARTY_INVITE")
 end
 

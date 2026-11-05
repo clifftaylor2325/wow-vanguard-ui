@@ -168,6 +168,21 @@ it("levelling: the log's XP sum skips headers, hidden ids and a client without t
   expect(addon.eval("return ns.GetModule('DataBars').LogXP()"), "no log: nothing").toBe(0);
 });
 
+it("levelling: the log's XP sums count only the quests the game's log lists, not tasks, hidden rows or open bounties", () => {
+  const addon = loggedIn(DATA_ENV, noTrack);
+  addon.world.addQuest({ questID: 7, title: "Wolves", level: 8, xp: 6925, objectives: [] });
+  addon.world.addQuest({ questID: 8, title: "World quest", level: 8, xp: 6925, isComplete: true, objectives: [] });
+  addon.world.addQuest({ questID: 9, title: "Hidden", level: 8, xp: 6925, isComplete: true, objectives: [] });
+  addon.world.addQuest({ questID: 10, title: "Open bounty", level: 8, xp: 6925, objectives: [] });
+  addon.world.addQuest({ questID: 11, title: "Done bounty", level: 8, xp: 6925, isComplete: true, objectives: [] });
+  addon.eval(`local get = C_QuestLog.GetInfo
+    local flags = { [8] = "isTask", [9] = "isHidden", [10] = "isBounty", [11] = "isBounty" }
+    C_QuestLog.GetInfo = function(i) local q = get(i) if q and flags[q.questID] then q[flags[q.questID]] = true end return q end`);
+  const DB = "ns.GetModule('DataBars')";
+  expect(addon.eval(`return ${DB}.LogXP()`), "the wolves and the finished bounty, not the task, hidden row or open bounty").toBe(6925 * 2);
+  expect(addon.eval(`return ${DB}.QuestXP()`), "waiting to turn in: only the finished bounty").toBe(6925);
+});
+
 it("levelling: a quest you accept is watched, unless it is watched already or the switch is off", () => {
   const addon = loggedIn();
   addon.eval("__adds = 0 local add = C_QuestLog.AddQuestWatch C_QuestLog.AddQuestWatch = function(id) __adds = __adds + 1 return add(id) end");
@@ -196,6 +211,19 @@ it("levelling: a world quest or a bounty you accept is not watched, as the game'
   addon.eval("C_QuestLog.IsQuestTask = function() return __wfgWorld.secret() end");
   addon.fire("QUEST_ACCEPTED", 31);
   expect(watched(31), "a hidden answer counts as no: the quest is watched").toBe(true);
+});
+it("levelling: moving onto another map within a zone sorts the game's order once per map", () => {
+  const addon = loggedIn();
+  addon.eval("__sorts = 0 C_QuestLog.SortQuestWatches = function() __sorts = __sorts + 1 end");
+  addon.fire("ZONE_CHANGED");
+  addon.fire("ZONE_CHANGED");
+  expect(addon.eval("return __sorts"), "the first map sorts, the same map again does not").toBe(1);
+  addon.eval("__wfgWorld.zone.mapId = 38");
+  addon.fire("ZONE_CHANGED");
+  expect(addon.eval("return __sorts"), "a new map sorts once").toBe(2);
+  addon.eval("ns.GetModule('QuestTracker').settings.order = 'nearest' __wfgWorld.zone.mapId = 39");
+  addon.fire("ZONE_CHANGED");
+  expect(addon.eval("return __sorts"), "nearest first sorts itself").toBe(2);
 });
 it("levelling: a new area puts the watch list in the game's order again, unless the tracker orders by distance", () => {
   const addon = loggedIn();

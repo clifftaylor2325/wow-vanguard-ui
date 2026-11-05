@@ -57,7 +57,7 @@ end
 
 -- A listing of gear (its link) at a price per unit as an upgrade, or nil: a gain of at least
 -- UP.MIN_PCT over what you wear, or an empty slot it fills (then with its score, to pick the best
--- for the slot); nil too while the Upgrades module is off.
+-- for the slot; 0 while the client hasn't loaded its stats); nil too while the Upgrades module is off.
 function AH.Upgrade(link, price, found)
   local UP = ns.GetModule("Upgrades")
   if not UP.settings then return nil end
@@ -65,7 +65,7 @@ function AH.Upgrade(link, price, found)
   if not empty and not (pct and pct >= UP.MIN_PCT) then return nil end
   local id, _, _, loc = C_Item.GetItemInfoInstant(link)
   return { link = link, id = id, key = C_AuctionHouse.MakeItemKey(id), price = price, pct = pct, empty = empty == true,
-    slot = slotName(loc), score = empty and UP.Score(link, (UP.Current())) or nil, found = found }
+    slot = slotName(loc), score = empty and (UP.Score(link, (UP.Current())) or 0) or nil, found = found }
 end
 
 -- Which item a gear link is: its ID, enchant, gems and suffix, without the per-listing unique ID

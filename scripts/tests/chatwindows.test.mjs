@@ -323,6 +323,14 @@ it("chat windows: a docked tab behind the selected one is still a window: the si
   expect(addon.eval(`return { #${CW}.Shown(), #${CW}.Windows() }`), "Loot neither shown nor docked (closed): only General").toEqual([1, 1]);
 });
 
+it("chat windows: a docked tab shown instead of General gets General's sliders, and none of its own", () => {
+  const addon = loggedIn(DOCKED_ENV);
+  const names = addon.eval(`${PAGE} local out = {} for _, r in ipairs(page.rows()) do if r[1] == "slider" and (r[2]:find("General") or r[2]:find("Loot")) then out[#out + 1] = r[2] end end return out`);
+  expect(names, "the main window only").toEqual(["General: width", "General: height"]);
+  const width = addon.eval(`${PAGE} for _, r in ipairs(page.rows()) do if r[2] == "General: width" then r[5](600) end end return ChatFrame1:GetWidth()`);
+  expect(width, "General's width sizes ChatFrame1").toBe(600);
+});
+
 it("chat tabs: a tab name is cut at 16 characters, not 16 bytes: keeps 16 whole letters of an accented or Cyrillic name", () => {
   const addon = loggedIn("");
   // The cleaned name and its length in bytes.

@@ -173,10 +173,11 @@ function V.Fades(frame) return frame.vgStateString ~= nil and frame.vgStateStrin
 -- settings (calm, calmBars, ...: Modules/UnitFrames.lua), where it began.
 V.CALM = { dim = "[combat] show; [harm,nodead] show; dim", hide = "[combat] show; [harm,nodead] show; fade" }
 -- Each part: its setting and the choices it allows (any other is Leave). Your unit frames only dim,
--- since a frame faded away would still take a click where nothing shows.
+-- since a frame faded away would still take a click where nothing shows. A part's wake clause brings it back in more
+-- states: the action bars in a vehicle, a possess or an override bar, where bar 1 holds the only buttons for it.
 V.CALM_PARTS = {
   frames = { key = "calmFrames", allows = { dim = true } },
-  bars = { key = "calmBars", allows = { dim = true, hide = true } },
+  bars = { key = "calmBars", allows = { dim = true, hide = true }, wake = "[vehicleui][possessbar][overridebar] show; " },
   auras = { key = "calmAuras", allows = { dim = true, hide = true } },
   strips = { key = "calmStrips", allows = { dim = true, hide = true } },
   xp = { key = "calmXP", allows = { dim = true, hide = true } },
@@ -189,7 +190,7 @@ function V.CalmState(part)
   local p, UF = V.CALM_PARTS[part], ns.GetModule("UnitFrames")
   local s = ns.Settings("UnitFrames", UF.defaults)
   if not (p and s.calm == true and p.allows[s[p.key]]) then return nil end
-  return V.CALM[s[p.key]]
+  return (p.wake or "") .. V.CALM[s[p.key]]
 end
 
 -- A visibility setting's state on frame: the Calm HUD's for its part (frame.vgCalm) when the setting
@@ -287,10 +288,11 @@ local function hoverEnter(f)
 end
 
 -- The mouse left: the frame fades unless the mouse is still over it (moving
--- between its buttons crosses the frame itself); an Auto-hide frame lingers first.
+-- between its buttons crosses the frame itself), or over its hover area where it names one (a pad over rows
+-- that draw past its own rect); an Auto-hide frame lingers first.
 local function hoverLeave(f)
   local frame = vgHoverOf[f]
-  vgHover[frame] = frame.vgHoverRoot:IsMouseOver() == true
+  vgHover[frame] = (frame.vgHoverArea or frame.vgHoverRoot):IsMouseOver() == true
   if frame.vgAutoHide and not vgHover[frame] then return V.Linger(frame) end
   V.Refresh(frame)
 end
@@ -324,6 +326,7 @@ function V.CalmNow(frame)
   if not (state or frame.vgStateString) then return end
   if not frame.vgHoverRoot then V.WatchHover(frame) end
   feelMouse(frame)
+  if frame.vgHoverArea then feelMouse(frame.vgHoverArea) end
   V.ApplyState(frame, state or "show")
   V.Refresh(frame)
 end

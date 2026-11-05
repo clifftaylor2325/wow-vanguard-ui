@@ -51,6 +51,9 @@ DB.XP_EVENTS = ns.ClientData({
   retail = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
     "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE", "HONOR_XP_UPDATE", "HONOR_LEVEL_UPDATE", "ZONE_CHANGED_NEW_AREA" },
 })
+-- The CVars, lower-cased, whose change repaints the XP bar: on Retail the "Show honor as experience" switch
+-- (IsWatchingHonorAsXP reads showHonorAsExperience, PVPHonorSystem.lua). Every other CVar write is left alone.
+DB.XP_CVARS = ns.ClientData({ forever = {}, retail = { showhonorasexperience = true } })
 -- The events that can change the watched faction or its standing; on Retail also a major faction's renown level.
 DB.REP_EVENTS = ns.ClientData({
   forever = { "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" },
@@ -75,11 +78,11 @@ local function atCap()
   return level ~= nil and max > 0 and level >= max
 end
 
--- True when XP has nothing to show, as the game's own bar judges it: at the level cap, or with XP gain
--- turned off at the XP-lock NPC.
+-- True when XP has nothing to show, as the game's own bar judges it (GameRulesUtil.CanShowExperienceBar): at the
+-- level cap, with XP gain turned off at the XP-lock NPC, or with the realm's rules switching the bar off.
 local function xpHidden()
-  local capped = atCap()
-  return capped or (type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true)
+  local locked = type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true
+  return atCap() or locked or ns.GameRuleOn("ExperienceBarDisabled")
 end
 -- The same rule for the info strip's XP rows.
 DB.XPHidden = xpHidden
@@ -245,10 +248,9 @@ function DB.RewardXP(id)
   return xp and xp > 0 and xp or 0
 end
 
--- The XP a log entry is worth when it is a quest ready to turn in, else 0.
+-- The XP a log entry is worth when it is a quest the game's log lists and it is ready to turn in, else 0.
 local function readyXP(info)
-  if type(info) ~= "table" or ns.IsSecret(info.isHeader) or info.isHeader == true then return 0 end
-  local id = ns.PlainNumber(info.questID)
+  local id = ns.GetModule("QuestTracker").Listed(info)
   return id and ns.IsTrue(C_QuestLog.IsComplete(id)) and DB.RewardXP(id) or 0
 end
 
@@ -260,10 +262,9 @@ function DB.QuestXP()
   return total
 end
 
--- The XP a log entry gives when it is a quest (a header or a hidden id gives 0).
+-- The XP a log entry gives when it is a quest the game's log lists (a header, hidden row or task gives 0).
 local function entryXP(info)
-  if type(info) ~= "table" or ns.IsSecret(info.isHeader) or info.isHeader == true then return 0 end
-  local id = ns.PlainNumber(info.questID)
+  local id = ns.GetModule("QuestTracker").Listed(info)
   return id and DB.RewardXP(id) or 0
 end
 
@@ -505,12 +506,19 @@ function DB.UpdateReputation()
   bar.text:SetText(DB.ReputationText(rep))
 end
 
+-- A CVar changed: the XP bar repaints only for one of DB.XP_CVARS (the client sends every CVar's change; the name
+-- is matched without case, as it may come as registered).
+local function onXPCVar(_, name)
+  if type(name) == "string" and DB.XP_CVARS[name:lower()] then DB.UpdateXP() end
+end
+
 -- The XP bar with its rested overlay, kept current.
 local function enableXP(settings)
   DB.xpBar = createBar("xpbar", L["Experience"], DB.POINTS.xpbar, settings)
   DB.xpBar.vgOnState = DB.UpdateXP
   addRested(DB.xpBar)
   for _, e in ipairs(DB.XP_EVENTS) do ns.On(e, DB.UpdateXP) end
+  if next(DB.XP_CVARS) then ns.On("CVAR_UPDATE", onXPCVar) end
   ns.On("PLAYER_XP_UPDATE", DB.OnXPChange)
   ns.On("CHAT_MSG_COMBAT_XP_GAIN", DB.OnKillMessage)
   hoverTip(DB.xpBar, "show XP tooltip", DB.ShowXPTooltip)

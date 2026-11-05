@@ -110,7 +110,8 @@ end
 W.MODELS = {
   PVEFrame = { window = true, parts = {
     texture = { "LFDParentFrameRoleBackground", "LFDQueueFrameBackground", "RaidFinderFrameRoleBackground", "RaidFinderQueueFrameBackground" },
-    well = { "LFDParentFrameInset", "RaidFinderFrameRoleInset", "RaidFinderFrameBottomInset", "LFGListFrame.SearchPanel.ResultsInset", "LFGListFrame.ApplicationViewer.Inset" },
+    well = { "LFDParentFrameInset", "RaidFinderFrameRoleInset", "RaidFinderFrameBottomInset", "LFGListFrame.SearchPanel.ResultsInset", "LFGListFrame.ApplicationViewer.Inset",
+      "LFGListFrame.CategorySelection.Inset", "LFGListFrame.EntryCreation.Inset", "LFGListFrame.NothingAvailable.Inset" },
     card = { "GroupFinderFrame.groupButton1", "GroupFinderFrame.groupButton2", "GroupFinderFrame.groupButton3", "GroupFinderFrame.groupButton4" },
     button = { "LFDQueueFrameFindGroupButton", "RaidFinderFrameFindRaidButton", "LFGListFrame.CategorySelection.FindGroupButton", "LFGListFrame.EntryCreation.ListGroupButton" },
     plate = { "LFGListFrame.SearchPanel.RefreshButton" },

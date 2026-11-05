@@ -112,7 +112,8 @@ it("retail data: gear is weighed with mastery, versatility and item level, and /
   const score = (n) => addon.eval(`local UP = ns.GetModule("Upgrades") return UP.Score(__link(${n}), (UP.Weights()))`);
   expect(score(1), "100 STR + 50 x 0.45 crit + 600 item levels").toBeCloseTo(100 + 22.5 + 600);
   expect(score(2), "100 STR + 30 x 0.4 mastery + 30 x 0.4 versatility + 620 item levels").toBeCloseTo(100 + 12 + 12 + 620);
-  expect(addon.eval("return ns.GetModule('Upgrades').Score(__link(9), { STR = 1, ILVL = 1 })"), "an item with no stats or level is worth nothing").toBe(0);
+  expect(addon.eval("__gear[9] = {} return ns.GetModule('Upgrades').Score(__link(9), { STR = 1, ILVL = 1 })"), "an item with no stats or level is worth nothing").toBe(0);
+  expect(addon.eval("__gear[9] = nil return ns.GetModule('Upgrades').Score(__link(9), { STR = 1, ILVL = 1 })"), "an item the client has no stats for yet has no score").toBe(null);
   addon.slash("weights");
   expect(chatHas(addon, /Weights for strength \(role damage\): .*ILVL 1.*MASTERY 0\.4.*VERS 0\.4/), "the weights in use, Retail's stats among them").toBe(true);
   expect(addon.eval("local W = ns.GetModule('Upgrades').Wizard local o = W.Order('strength') return { W.LABELS[o[1]], W.LABELS[o[2]] }"), "the wizard names Retail's stats; item level and strength first").toEqual(["Item level", "Strength"]);
@@ -142,6 +143,22 @@ it("retail data: at the level cap the XP bar shows honor while the game would, i
   addon.eval("__wfgWorld.honor = { cur = 0, max = 0, level = 0, watched = true }");
   addon.fire("HONOR_LEVEL_UPDATE");
   expect(bars(addon).xpShown, "no honor range: hidden").toBe(false);
+});
+
+it("retail data: ticking Show honor as experience at the cap changes the XP bar at once", () => {
+  const addon = retail(CAP_ENV);
+  addon.eval("__wfgWorld.honor = { cur = 1200, max = 2500, level = 34, watched = false }");
+  addon.fire("CVAR_UPDATE", "showHonorAsExperience", "0");
+  expect(bars(addon).xpShown, "unticked: hidden at the cap").toBe(false);
+  addon.eval("__wfgWorld.honor.watched = true");
+  addon.fire("CVAR_UPDATE", "showHonorAsExperience", "1");
+  expect(bars(addon).xpText, "ticked: the honor line").toBe("Honor level 34  1.2K / 2.5K (48%)");
+  addon.eval("__wfgWorld.honor.watched = false");
+  addon.fire("CVAR_UPDATE", "showHonorAsExperience", "0");
+  expect(bars(addon).xpShown, "unticked again: hidden").toBe(false);
+  addon.eval("__wfgWorld.honor.watched = true");
+  addon.fire("CVAR_UPDATE", "nameplateShowEnemies", "1");
+  expect(bars(addon).xpShown, "another CVar's change leaves the bar alone (CR-6)").toBe(false);
 });
 
 it("retail data: a watched major faction shows its renown on the reputation bar and in its tooltip", () => {

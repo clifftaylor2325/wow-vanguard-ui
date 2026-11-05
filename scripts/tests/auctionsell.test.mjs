@@ -539,7 +539,9 @@ it("undercut check marks the undercut auction and Cancel is per click", () => {
   expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "what cancelling costs").toEqual(["Cancel this auction", "Costs 1s 0c"]);
   addon.hover(null);
   addon.click(`${OWNED_CARD}.table.rows[1].cancel`);
-  expect(restrictedLog(addon), "cancelled once, from the click").toEqual([["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]]);
+  expect(restrictedLog(addon), "a cancel that costs asks first (H19-9-1)").toEqual([]);
+  addon.click("Vanguard_Question.confirm");
+  expect(restrictedLog(addon), "cancelled once, from the Yes").toEqual([["CancelAuction", true, 501, "nil", "nil", "nil", "nil"]]);
   addon.fire("AUCTION_CANCELED", 501);
   expect([ownedRow(addon, 1)[1], ownedRow(addon, 2)[2], ownedRow(addon, 3)[0]], "its row goes").toEqual(["TEST-ONLY Blade", "sold · 40s 0c", false]);
 });

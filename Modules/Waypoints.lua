@@ -250,10 +250,30 @@ function WP.Command(rest)
   sayWaypoint(mapID, x, y, title)
 end
 
--- Takes /way unless another addon (TomTom) has it; true when it did.
+-- Whether the slash command filed under key (its SLASH_<key>1, 2, ... words) answers to /way.
+local function hasWay(key)
+  local i = 1
+  while type(_G["SLASH_" .. key .. i]) == "string" do
+    if _G["SLASH_" .. key .. i]:upper() == "/WAY" then return true end
+    i = i + 1
+  end
+  return false
+end
+
+-- Whether another addon has /way: in the game's table of commands, or still in the raw list the game moves into
+-- that table only when a chat line is parsed (an addon that registered as it loaded is there at login).
+local function wayTaken()
+  if hash_SlashCmdList and hash_SlashCmdList["/WAY"] then return true end
+  for key in pairs(SlashCmdList or {}) do
+    if key ~= "VANGUARDWAY" and type(key) == "string" and hasWay(key) then return true end
+  end
+  return false
+end
+
+-- Takes /way unless another addon (TomTom, or any that registered it) has it; true when it did.
 local function claimWay()
   local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
-  if (hash_SlashCmdList and hash_SlashCmdList["/WAY"]) or (loaded and loaded("TomTom")) then return false end
+  if wayTaken() or (loaded and loaded("TomTom")) then return false end
   SLASH_VANGUARDWAY1 = "/way"
   SlashCmdList.VANGUARDWAY = WP.Command
   return true

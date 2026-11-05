@@ -32,6 +32,14 @@ it("holy power: a pip per point above the player frame, a hidden count still fil
   expect(addon.eval('return { ns.Theme.RGB("holyPower") }'), "in the holy power colour").toEqual(addon.eval('return { ns.GetModule("ClassBars").resourceFrames.holyPower.pips[1].bar:GetStatusBarColor() }'));
 });
 
+it("a warlock below level 10 has no soul shard pips until the level-up to 10", () => {
+  const addon = retail("WARLOCK", 1, "__p.powers[7], __p.maxpowers[7] = 2, 5 __p.level = 5");
+  expect(shown(addon, "soulShards"), "level 5: no row").toBeFalsy();
+  addon.eval("__wfgWorld.units.player.level = 10");
+  addon.fire("PLAYER_LEVEL_UP", 10);
+  expect(shown(addon, "soulShards"), "level 10: the pips show").toBe(true);
+});
+
 it("soul shards fill by tenths for a Destruction warlock, whole for the others", () => {
   const destro = retail("WARLOCK", 3, "__p.powers[7], __p.maxpowers[7] = 2, 5 __p.rawPowers = { [7] = 27 }");
   expect(fills(destro, "soulShards"), "2.7 shards").toEqual([1, 1, 0.7, 0, 0]);

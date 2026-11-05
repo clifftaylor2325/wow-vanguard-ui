@@ -688,6 +688,19 @@ function UnitIsUnit(a, b)
   return ua ~= nil and ua == ub
 end
 
+-- Whether the client shows only a widget on a unit's nameplate (unit.widgetsOnly), as it does for
+-- some friendly NPCs (UnitDocumentation.lua, UnitNameplateShowsWidgetsOnly, both clients).
+function UnitNameplateShowsWidgetsOnly(unit) return uf(unit, "widgetsOnly") == true end
+
+-- SetUnitCursorTexture(texture, unit, ...): the cursor icon the client picks for the unit
+-- (unit.cursorIcon: the speech bubble, a sword) put on the texture; true when it has one.
+function SetUnitCursorTexture(texture, unit)
+  local icon = uf(unit, "cursorIcon")
+  if icon == nil then return false end
+  texture:SetTexture(icon)
+  return true
+end
+
 -- Threat: a unit's status against its target (0-3), from unit.threat.
 function UnitThreatSituation(unit) return uf(unit, "threat") end
 -- isTanking, status, scaled percent, raw percent, threat value.
@@ -1121,6 +1134,11 @@ C_SpellBook = {
     if bank ~= nil and bank ~= Enum.SpellBookSpellBank.Player then return false end
     return knowsSpell(id)
   end,
+  -- Whether a spell is found in the spellbook (QuestInfo.lua asks it of a reward spell); here, whether it is known.
+  IsSpellInSpellBook = function(id, bank)
+    if bank ~= nil and bank ~= Enum.SpellBookSpellBank.Player then return false end
+    return knowsSpell(id)
+  end,
   -- One skill line while anything is learned.
   GetNumSpellBookSkillLines = function() return #world.book > 0 and 1 or 0 end,
   -- The one skill line holds every learned spell.
@@ -1306,10 +1324,12 @@ C_Container = {
     local item = it and world.items[it.itemID] or {}
     return { isQuestItem = item.quest == true, questID = item.questID, isActive = false }
   end,
-  -- Uses (sells, at a merchant) an item; recorded.
+  -- Uses (sells, at a merchant) an item; recorded. With world.bankRoom set to a number the call also
+  -- sends the stack to the bank: it leaves the slot while the bank has room (bankRoom stacks), else stays.
   UseContainerItem = function(bag, slot, _, bankType)
     world.usedItems = world.usedItems or {}
     table.insert(world.usedItems, { bag, slot })
+    if world.bankRoom and world.bankRoom > 0 then world.bankRoom = world.bankRoom - 1 world.bags[bag][slot] = nil end
     world.usedBankTypes = world.usedBankTypes or {}
     world.usedBankTypes[#world.usedBankTypes + 1] = bankType or false
   end,
@@ -1339,11 +1359,11 @@ world.merchant = nil
 -- The merchant API, read from world.merchant.
 function GetMerchantNumItems() return world.merchant and #world.merchant.items or 0 end
 
--- name, icon, price, stack, numAvailable, isPurchasable, isUsable of a merchant item.
+-- name, icon, price, stack, numAvailable, isPurchasable (purchasable = false on the entry makes it false), isUsable of a merchant item.
 function GetMerchantItemInfo(i)
   local it = world.merchant and world.merchant.items[i]
   if not it then return nil end
-  return it.name, it.icon, it.price or 0, it.stack or 1, it.left or -1, true, false
+  return it.name, it.icon, it.price or 0, it.stack or 1, it.left or -1, it.purchasable ~= false, false
 end
 -- Links, stacks, buying and repairing at the merchant.
 function GetMerchantItemLink(i) local it = world.merchant and world.merchant.items[i] return it and (it.link or "|Hitem:" .. (it.itemID or 0) .. "|h[" .. it.name .. "]|h") end
@@ -1355,9 +1375,11 @@ function GetRepairAllCost() local r = world.merchant and world.merchant.repair r
 function RepairAllItems() world.repaired = true world.money = world.money - GetRepairAllCost() end
 C_MerchantFrame = {
   -- The older global names for the item API.
-  GetItemInfo = function(i) local it = world.merchant and world.merchant.items[i] return it and { name = it.name, texture = it.icon, price = it.price or 0, stackCount = it.stack or 1, numAvailable = it.left or -1, isPurchasable = true } end,
+  GetItemInfo = function(i) local it = world.merchant and world.merchant.items[i] return it and { name = it.name, texture = it.icon, price = it.price or 0, stackCount = it.stack or 1, numAvailable = it.left or -1, isPurchasable = it.purchasable ~= false } end,
   SellAllJunkItems = function() world.soldJunk = true end,
   IsSellAllJunkEnabled = function() return true end,
+  -- An item is refundable unless the merchant entry says refundable = false (or a secret answer).
+  IsMerchantItemRefundable = function(i) local it = world.merchant and world.merchant.items[i] if it == nil or it.refundable == nil then return true end return it.refundable end,
 }
 
 -- Trainers: world.trainer = { services = { { name, cost, available } } }.
@@ -1417,6 +1439,7 @@ C_QuestLog = {
   GetSelectedQuest = function() return world.selectedQuest end,
   IsPushableQuest = function(id) local _, q = questIndex(id) return q ~= nil and q.pushable == true end,
   SetAbandonQuest = function() world.abandoning = world.selectedQuest end,
+  GetAbandonQuest = function() return world.abandoning end,
   -- QuestLogDocumentation.lua: the item IDs the game destroys with the quest being abandoned (a quest's abandonItems).
   GetAbandonQuestItems = function() local _, q = questIndex(world.abandoning) return q and q.abandonItems or {} end,
   AbandonQuest = function() local i = questIndex(world.abandoning) if i then table.remove(world.quests, i) stub.fire("QUEST_LOG_UPDATE") end end,
@@ -1631,7 +1654,7 @@ C_DamageMeter = {
 -- test calls world.finishPost(auctionID): the house took the stack (the units leave the slot),
 -- AUCTION_HOUSE_AUCTION_CREATED, BAG_UPDATE_DELAYED and AUCTION_HOUSE_THROTTLED_SYSTEM_READY fire.
 -- Off (the default), the throttle stays ready and nothing leaves the bags.
--- world.items[id].commodity = true makes an item a commodity, .noAuction one the house won't take,
+-- world.items[id].commodity = true makes an item a commodity, .noAuction one the house won't take (a bag entry's own .noAuction marks one bound copy),
 -- .pending one whose item key info the client hasn't loaded yet, .equipment one the house calls equipment.
 
 Enum.ItemCommodityStatus = { Unknown = 0, Item = 1, Commodity = 2 }
@@ -1811,7 +1834,7 @@ function C_AuctionHouse.GetOwnedAuctions() return world.ah.owned end
 function C_AuctionHouse.GetNumOwnedAuctions() return #world.ah.owned end
 -- Selling: whether the house takes an item, commodity or item, its key, how many can go up (every one of
 -- the item in the bags, as the game's sell frame's Max offers), and the deposit.
-function C_AuctionHouse.IsSellItemValid(loc) local it = itemAtLocation(loc) return it ~= nil and (world.items[it.itemID] or {}).noAuction ~= true end
+function C_AuctionHouse.IsSellItemValid(loc) local it = itemAtLocation(loc) return it ~= nil and it.noAuction ~= true and (world.items[it.itemID] or {}).noAuction ~= true end
 function C_AuctionHouse.GetItemCommodityStatus(loc) return commodityStatus(loc) end
 function C_AuctionHouse.GetItemKeyFromItem(loc) local id = C_Item.GetItemID(loc) local item = world.items[id] or {} return itemKey(id, item.level, item.suffix) end
 function C_AuctionHouse.GetAvailablePostCount(loc) local id = C_Item.GetItemID(loc) return id and C_Item.GetItemCount(id) or 0 end
@@ -2018,6 +2041,8 @@ function HasInboxItem(i, n)
   local m = world.mail[i]
   return m ~= nil and mailSlots(m)[n] == true
 end
+-- Whether Send Mail attachment slot n holds an item: world.sendMailSlots = { [n] = true } when a test fills slots.
+function HasSendMailItem(n) return world.sendMailSlots ~= nil and world.sendMailSlots[n] == true end
 C_Mail = C_Mail or {}
 -- Whether the server is still answering a mail command: world.mailPending (false by default).
 function C_Mail.IsCommandPending() return world.mailPending == true end

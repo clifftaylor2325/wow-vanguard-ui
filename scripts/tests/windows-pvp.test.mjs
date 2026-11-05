@@ -3,6 +3,7 @@
 // The frames are built after Blizzard's Forever source (parentKeys and global names as the game has them).
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { INSIDES_LUA, WINDOWS_ENV, loggedIn, windowState } from "./helpers.mjs";
 
 // The pvp group's switch turned off in the saved variables.
@@ -323,6 +324,16 @@ it("S8.3 the objective banner: its texts in the theme font at the game's size, i
   const off = loggedIn(BANNER_ENV, OFF);
   off.eval("PvPObjectiveBannerFrame:Show()");
   expect(off.eval("return (PvPObjectiveBannerFrame.Title:GetFont())"), "with the group off").toBe("TEST-ONLY-FONT");
+});
+
+it("S8.3 the objective banner on Retail: made by Blizzard_PVPUI after login, it is themed once that addon loads", () => {
+  const addon = loggedIn(PVP_ENV, { client: RETAIL_CLIENT });
+  addon.eval(BANNER_ENV.slice(PVP_ENV.length));
+  addon.fire("ADDON_LOADED", "Blizzard_PVPUI");
+  addon.eval("PvPObjectiveBannerFrame:Show()");
+  expect(addon.eval(`local out = {} for i, key in ipairs({ "Title", "TitleFlash", "BonusLabel" }) do
+      local font, size = PvPObjectiveBannerFrame[key]:GetFont() out[i] = { font ~= "TEST-ONLY-FONT", size } end return out`))
+    .toEqual([[true, 30], [true, 30], [true, 30]]);
 });
 
 // Honor tab ---------------------------------------------------------------------------------------

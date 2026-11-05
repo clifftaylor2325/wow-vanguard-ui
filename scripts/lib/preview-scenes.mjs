@@ -123,8 +123,8 @@ const WORLD = `
   end
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
     if unit ~= "target" then return nil end
-    if filter == "HARMFUL|CROWD_CONTROL" and i == 1 then return { icon = "TEST-ONLY-CC", dispelName = "Magic" } end
-    if filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i <= 3 then return { icon = "TEST-ONLY-DOT", applications = i, dispelName = ({ "Magic", "Curse" })[i] } end
+    if filter == "HARMFUL|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY" and i == 1 then return { icon = "TEST-ONLY-CC", dispelName = "Magic" } end
+    if filter == "HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY" and i <= 3 then return { icon = "TEST-ONLY-DOT", applications = i, dispelName = ({ "Magic", "Curse" })[i] } end
     if filter == "HELPFUL" and i <= 3 then return { icon = "TEST-ONLY-BUFF" } end
   end }
 `;

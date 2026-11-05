@@ -145,11 +145,16 @@ local function countLists(lists)
   return n
 end
 
+-- A shopping list name as the lists keep it: without spaces at either end.
+local function trimmed(name)
+  return (name:match("^%s*(.-)%s*$"))
+end
+
 -- Puts the entries in shopping list `name`, made when new, its old entries replaced; false (and
 -- nothing changed) for a blank name or a new list past AH.MAX_LISTS. The shop card repaints.
 local function putList(name, list)
   local lists = AP.Store().lists
-  name = name:match("^%s*(.-)%s*$")
+  name = trimmed(name)
   if name == "" or not lists[name] and countLists(lists) >= AH.MAX_LISTS then return false end
   lists[name] = list
   AH.PaintShop()
@@ -160,7 +165,7 @@ end
 -- or replaced), which the shop card picks and searches as Search list does. False when the house
 -- is closed, no term is usable, or the list can't be made.
 local function search(callerID, terms, exact)
-  local name, list = callerID .. " search", entries(terms, exact)
+  local name, list = trimmed(callerID .. " search"), entries(terms, exact)
   if not AH.open or #list == 0 or not putList(name, list) then return false end
   AP.Store().list = name
   AH.ShopTop()
@@ -194,6 +199,6 @@ end
 function API.AlterShoppingListItems(callerID, listName, items)
   checkCall("AlterShoppingListItems", callerID, "listName", listName, "string")
   checkCall("AlterShoppingListItems", callerID, "items", items, "table")
-  if AP.Store().lists[listName] == nil then return false end
+  if AP.Store().lists[trimmed(listName)] == nil then return false end
   return putList(listName, entries(items, false))
 end

@@ -439,6 +439,17 @@ export const PLATE_ENV = `
   __units.nameplate2 = __units.party1
   __units.nameplate3 = __units.party1
   plate("nameplate1") plate("nameplate2") plate("nameplate3", true)
+  UnitNameplateShowsWidgetsOnly = function(unit) return __units[unit] ~= nil and __units[unit].widgetsOnly == true end
+  -- TEST-ONLY cursor icon: the unit's cursorIcon on the texture; the arguments after the unit are kept in __cursorArgs.
+  SetUnitCursorTexture = function(texture, unit, ...)
+    __cursorArgs = { n = select("#", ...), ... }
+    local icon = __units[unit] and __units[unit].cursorIcon
+    if icon then texture:SetTexture(icon) end
+    return icon ~= nil
+  end
+  -- TEST-ONLY plate driver: the game's draws its soft-target icon on the frame Vanguard hides; a test calls it as the game would.
+  NamePlateDriverFrame = CreateFrame("Frame", "NamePlateDriverFrame", UIParent)
+  function NamePlateDriverFrame:UpdateSoftTargetIconInternal(frame, iconSize, doEnemyIcon, doFriendIcon, doInteractIcon) end
 `;
 
 // One nameplate's state.

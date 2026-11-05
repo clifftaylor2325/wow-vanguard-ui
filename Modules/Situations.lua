@@ -52,9 +52,10 @@ function SI.ASK.mythicplus()
   return ns.IsTrue(ns.CallIf(C_ChallengeMode, "IsChallengeModeActive"))
 end
 
--- Whether you are in a delve.
+-- Whether you are in a delve: in an instance while the party has a delve running (the delve
+-- data is the party's, so it can hold after you walk out).
 function SI.ASK.delve()
-  return ns.IsTrue(ns.CallIf(C_DelvesUI, "HasActiveDelve"))
+  return ns.Where() ~= "none" and ns.IsTrue(ns.CallIf(C_DelvesUI, "HasActiveDelve"))
 end
 -- The settings an override may hold: each module's keys that its apply functions
 -- (run once after the writes) re-read at once. Keys that need a reload are left out.

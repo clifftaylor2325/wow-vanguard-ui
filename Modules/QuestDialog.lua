@@ -130,17 +130,40 @@ function QD.MoneyLine()
   return QP.MoneyText(ns.PlainNumber(ns.CallIf(_G, "GetRewardMoney")), ns.PlainNumber(ns.CallIf(_G, "GetRewardXP")))
 end
 
--- The spells a quest teaches, as "Teaches: Name".
+-- The line for a reward spell by the kind the game files it under (QuestInfo.lua's headers): learned, a generic
+-- unlock, or anything else it grants (an aura, say).
+QD.SPELL_WORDS = {
+  learned = L["Teaches: {spell}"],
+  unlock = L["Unlocks: {spell}"],
+  other = L["Grants: {spell}"],
+}
+
+-- Which kind of reward a spell is: learned (a spell or tradeskill), unlock, or other.
+local function kindOf(spell)
+  if ns.IsTrue(spell.isSpellLearned) or ns.IsTrue(spell.isTradeskill) then return "learned" end
+  return ns.IsTrue(spell.genericUnlock) and "unlock" or "other"
+end
+
+-- Whether the game's window lists a reward spell: not one already in your spellbook, and not a boost spell.
+local function shown(spell, spellID)
+  local bank = Enum.SpellBookSpellBank and Enum.SpellBookSpellBank.Player
+  local known = ns.CallIf(C_SpellBook, "IsSpellInSpellBook", spellID, bank, true)
+  return known ~= true and not ns.IsTrue(spell.isBoostSpell)
+end
+
+-- The spells a quest teaches, unlocks or grants, as "Teaches: Name", "Unlocks: Name" or "Grants: Name".
 local function spellRewards(info, questID)
   local out = {}
   for _, spellID in ipairs(ns.CallIf(info, "GetQuestRewardSpells", questID) or {}) do
     local spell = ns.CallIf(info, "GetQuestRewardSpellInfo", questID, spellID)
-    if type(spell) == "table" and spell.name then out[#out + 1] = ns.Format(L["Teaches: {spell}"], { spell = QP.Plain(spell.name) }) end
+    if type(spell) == "table" and spell.name and shown(spell, spellID) then
+      out[#out + 1] = ns.Format(QD.SPELL_WORDS[kindOf(spell)], { spell = QP.Plain(spell.name) })
+    end
   end
   return out
 end
 
--- A quest's spell and currency rewards as text ("Teaches: Name", "3 Marks"); none without the client's calls.
+-- A quest's spell and currency rewards as text ("Teaches: Name", "Grants: Name", "3 Marks"); none without the client's calls.
 function QD.ExtraRewards(questID)
   local info = C_QuestInfoSystem
   if type(info) ~= "table" or not questID then return {} end

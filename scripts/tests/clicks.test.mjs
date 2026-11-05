@@ -90,6 +90,12 @@ it("the game's click bindings: Vanguard's own step aside out of combat, and come
   addon.eval("__wfgStub.inCombat = false");
   addon.eval('__click("Open the game\'s click bindings")');
   expect(addon.eval("return { __gameWindow, Vanguard_Options:IsShown() }"), "the button opens the game's Click Casting window").toEqual([1, false]);
+  addon.eval('CreateFrame("Frame", "ClickBindingFrame", UIParent):Show() ns.Options.Show("clickcast")');
+  addon.eval('__click("Open the game\'s click bindings")');
+  expect(addon.eval("return { __gameWindow, Vanguard_Options:IsShown() }"), "with the game's window already open, the button leaves it open (the opener toggles)").toEqual([1, false]);
+  addon.eval('ClickBindingFrame:Hide() ns.Options.Show("clickcast")');
+  addon.eval('__click("Open the game\'s click bindings")');
+  expect(addon.eval("return __gameWindow"), "hidden, it opens it again").toBe(2);
   addon.eval('ToggleClickBindingFrame = nil ns.Options.Show("clickcast")');
   addon.clearChat();
   addon.eval('__click("Open the game\'s click bindings")');
