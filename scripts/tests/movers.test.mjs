@@ -22,6 +22,13 @@ it("movers", () => {
   expect(addon.eval("return VanguardDB.profiles.Default.positions.player.x") === 10, "the position is saved in the profile").toBeTruthy();
   addon.slash("reset player");
   expect(point()[0] === "CENTER", "/vg reset puts the frame back").toBeTruthy();
+  addon.slash("unlock");
+  addon.eval(`local h = ${handle}; h:GetScript("OnDragStart")(h); h:ClearAllPoints(); h:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 10, -20); h:GetScript("OnDragStop")(h)`);
+  addon.clearChat();
+  addon.slash("reset");
+  expect(chatHas(addon, /Usage: \/vg reset <frame\|all>/), "a bare /vg reset prints its usage line").toBeTruthy();
+  expect(point()[0], "and leaves the saved place alone").toBe("TOPLEFT");
+  addon.slash("reset player");
   addon.fire("PLAYER_REGEN_DISABLED");
   expect(addon.eval(`return ${handle}:IsShown()`) === false, "entering combat locks").toBeTruthy();
   addon.eval("__wfgStub.inCombat = true");

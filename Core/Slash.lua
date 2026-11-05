@@ -148,7 +148,8 @@ end
 
 -- /vg reset <frame|all>
 local function resetCommand(rest)
-  local key = rest ~= "" and rest or "all"
+  if rest == "" then return chat(L["Usage: /vg reset <frame|all>"]) end
+  local key = rest
   local n = ns.ResetMovers(key)
   chat(n > 0 and ns.Format(L["Reset {count} frame(s)."], { count = n }) or ns.Format(L["No frame called {name}. /vg frames lists them."], { name = key }))
 end
