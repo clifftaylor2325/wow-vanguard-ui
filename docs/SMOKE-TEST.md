@@ -3873,6 +3873,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The frame goes back to your own spot once you are outside.
 - If it fails, paste: `/vg situation` and `/dump C_DelvesUI.HasActiveDelve(), IsInInstance()` outside the door
 
+### 33.264 Keybind mode keeps empty slots after a drag (both)
+
+- Do: Run `/vg keybind`, press the spellbook key, pick up a spell and right-click to drop it, then hover an empty bar 1 slot.
+- Expect: Empty slots and faded bars stay shown and the hovered empty slot shows the accent wash until Done.
+- If it fails, paste: a screenshot of the bars and `/vg errors`
+
 ### 33.267 Marking quests closes the game's Abandon box (both)
 
 - Do: In Vanguard's quest log click Abandon on one quest and leave the game's box open, Ctrl-click two other quests and click Abandon 2.
