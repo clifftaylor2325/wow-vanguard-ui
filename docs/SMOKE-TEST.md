@@ -3987,6 +3987,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The player frame sits against the right edge of the screen and the target frame sits just left of it, not over it.
 - If it fails, paste: a screenshot and /vg errors.
 
+### 33.294 Calm action bars come back in a vehicle (both)
+
+- Do: With the Calm HUD on and Action bars set to Hide on the General page's Calm HUD card, out of combat enter a vehicle (on Forever, cast Eye of Kilrogg or Eyes of the Beast instead).
+- Expect: Bar 1 shows at full strength with the vehicle's or eye's buttons, and fades again after you leave; your buffs and unit frames stay calm.
+- If it fails, paste: /vg errors, and whether the bar is invisible or on the wrong page.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

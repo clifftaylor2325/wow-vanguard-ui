@@ -173,10 +173,11 @@ function V.Fades(frame) return frame.vgStateString ~= nil and frame.vgStateStrin
 -- settings (calm, calmBars, ...: Modules/UnitFrames.lua), where it began.
 V.CALM = { dim = "[combat] show; [harm,nodead] show; dim", hide = "[combat] show; [harm,nodead] show; fade" }
 -- Each part: its setting and the choices it allows (any other is Leave). Your unit frames only dim,
--- since a frame faded away would still take a click where nothing shows.
+-- since a frame faded away would still take a click where nothing shows. A part's wake clause brings it back in more
+-- states: the action bars in a vehicle, a possess or an override bar, where bar 1 holds the only buttons for it.
 V.CALM_PARTS = {
   frames = { key = "calmFrames", allows = { dim = true } },
-  bars = { key = "calmBars", allows = { dim = true, hide = true } },
+  bars = { key = "calmBars", allows = { dim = true, hide = true }, wake = "[vehicleui][possessbar][overridebar] show; " },
   auras = { key = "calmAuras", allows = { dim = true, hide = true } },
   strips = { key = "calmStrips", allows = { dim = true, hide = true } },
   xp = { key = "calmXP", allows = { dim = true, hide = true } },
@@ -189,7 +190,7 @@ function V.CalmState(part)
   local p, UF = V.CALM_PARTS[part], ns.GetModule("UnitFrames")
   local s = ns.Settings("UnitFrames", UF.defaults)
   if not (p and s.calm == true and p.allows[s[p.key]]) then return nil end
-  return V.CALM[s[p.key]]
+  return (p.wake or "") .. V.CALM[s[p.key]]
 end
 
 -- A visibility setting's state on frame: the Calm HUD's for its part (frame.vgCalm) when the setting

@@ -9,6 +9,8 @@ const ENV = UNITS_ENV + ACTIONS_ENV + STRIP_ENV + DATA_ENV;
 const SWITCH = "Calm HUD: quiet the HUD out of combat until a fight, a hostile target or the mouse";
 const DIM = "[combat] show; [harm,nodead] show; dim";
 const HIDE = "[combat] show; [harm,nodead] show; fade";
+// The action bars' wake clause: they also come back in a vehicle, a possess or an override bar.
+const WAKE = "[vehicleui][possessbar][overridebar] show; ";
 
 // TEST-ONLY: runs the setter of the General page's row `label` (a check row's is its 4th field, a cycle's its 5th) with a Lua value.
 const setRow = (addon, label, lua, field = 5) => addon.eval(`
@@ -35,7 +37,7 @@ it("Calm HUD: one switch quiets the whole HUD out of combat, each part as its de
   expect(calmOn(addon), "the General page has the switch").toBe(true);
   expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.calm"), "it is the Calm HUD's own setting").toBe(true);
   expect(calm(addon, "Vanguard_player"), "your frames dim, and keep their clicks").toEqual({ state: DIM, alpha: 0.35, feels: false });
-  expect(calm(addon, "Vanguard_Bar1"), "the action bars dim").toMatchObject({ state: DIM, alpha: 0.35 });
+  expect(calm(addon, "Vanguard_Bar1"), "the action bars dim, and come back in a vehicle").toMatchObject({ state: WAKE + DIM, alpha: 0.35 });
   expect(addon.eval("return Vanguard_Bar1.__states.visibility"), "a dimmed bar stays shown, so its keys and clicks work").toBe("show");
   expect(calm(addon, "Vanguard_PlayerAuras"), "your buffs dim, and feel the mouse").toEqual({ state: DIM, alpha: 0.35, feels: true });
   expect(calm(addon, "Vanguard_InfoStrip"), "the info strip dims").toMatchObject({ state: DIM, alpha: 0.35 });
@@ -54,7 +56,8 @@ it("Calm HUD: each part's choice applies at once, a part's own Visibility wins, 
   const addon = loggedIn(ENV);
   calmOn(addon);
   expect(setRow(addon, "Action bars", '"hide"'), "the General page has a row per part").toBe(true);
-  expect(calm(addon, "Vanguard_Bar1"), "Hide: the bar fades away until the mouse is over it").toMatchObject({ state: HIDE, alpha: 0 });
+  expect(calm(addon, "Vanguard_Bar1"), "Hide: the bar fades away until the mouse is over it, and comes back in a vehicle").toMatchObject({ state: WAKE + HIDE, alpha: 0 });
+  expect(calm(addon, "Vanguard_PlayerAuras").state, "only the action bars wake in a vehicle: your buffs stay calm").toBe(DIM);
   setRow(addon, "Minimap", '"dim"');
   expect(calm(addon, "Vanguard_Minimap"), "Dim: the minimap dims, its holder feeling the mouse").toEqual({ state: DIM, alpha: 0.35, feels: true });
   setRow(addon, "Unit frames", '"leave"');
@@ -63,7 +66,7 @@ it("Calm HUD: each part's choice applies at once, a part's own Visibility wins, 
   expect(calm(addon, "Vanguard_InfoStrip").state, "a strip shown In combat keeps its own setting").toBe("[combat] show; hide");
   setCombat(addon, true);
   calmOn(addon, false);
-  expect(calm(addon, "Vanguard_Bar1").state, "switching it off in combat waits").toBe(HIDE);
+  expect(calm(addon, "Vanguard_Bar1").state, "switching it off in combat waits").toBe(WAKE + HIDE);
   setCombat(addon, false);
   expect(["Vanguard_Bar1", "Vanguard_Minimap", "Vanguard_PlayerAuras", "Vanguard_xpbar"].map((f) => calm(addon, f)), "and brings every part back when the fight ends")
     .toEqual([{ state: "show", alpha: 1, feels: false }, { state: "show", alpha: 1, feels: true }, { state: "show", alpha: 1, feels: true }, { state: "show", alpha: 1, feels: false }]);
@@ -76,7 +79,7 @@ it("Calm HUD: a profile that had it on keeps it on your frames only, and your fr
   expect([calm(before, "Vanguard_player").state, calm(before, "Vanguard_Bar1").state], "so only your frames dim").toEqual([DIM, "show"]);
   const picked = loggedIn(ENV, { savedVariables: 'VanguardDB.profiles.Default = { UnitFrames = { calm = true, calmBars = "dim", calmFrames = "hide" } }' });
   expect(picked.eval("return VanguardDB.profiles.Default.UnitFrames.calmBars"), "choices already made stay").toBe("dim");
-  expect([calm(picked, "Vanguard_player").state, calm(picked, "Vanguard_Bar1").state], "Hide isn't a choice for your frames: left as they are").toEqual(["none", DIM]);
+  expect([calm(picked, "Vanguard_player").state, calm(picked, "Vanguard_Bar1").state], "Hide isn't a choice for your frames: left as they are").toEqual(["none", WAKE + DIM]);
 });
 
 it("Calm HUD: a Versus deck turned on in a fight joins it when the fight ends", () => {
