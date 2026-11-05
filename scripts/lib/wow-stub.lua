@@ -530,11 +530,20 @@ function methods:GetHighlightFontObject() return self.__highlightFont end
 -- A font object takes another's face, colour and shadow.
 function methods:CopyFontObject(src) self.__font, self.__textColor, self.__shadowColor = src.__font, src.__textColor, src.__shadowColor end
 
+-- Errors as the client does on a script the widget's kind lacks, for SetScript and HookScript alike.
+local function requireScript(w, name)
+  local scripts = API.scripts[w.__kind]
+  if not scripts or not scripts[name] then
+    error(w.__kind .. " doesn't have a \"" .. tostring(name) .. "\" script", 3)
+  end
+end
+
 -- Runs fn after a script's current handler, as HookScript does. Like the client, a frame it keeps from
 -- addons (one whose IsForbidden says so), or a script whose handler it keeps (one in __forbiddenScripts),
 -- refuses the hook with an error.
 function methods:HookScript(name, fn)
   if self:IsForbidden() or (self.__forbiddenScripts or {})[name] then error(self:GetObjectType() .. ":HookScript(): Cannot assign script handler for '" .. name:lower() .. "' (cannot replace a forbidden script handler)", 2) end
+  requireScript(self, name)
   local old = self.__scripts[name]
   self.__scripts[name] = function(...)
     if old then old(...) end
@@ -710,10 +719,7 @@ function methods:SetShown(shown) self.__shown = not not shown end
 
 -- Script handlers: only ones the real widget type has.
 function methods:SetScript(name, fn)
-  local scripts = API.scripts[self.__kind]
-  if not scripts or not scripts[name] then
-    error(self.__kind .. " doesn't have a \"" .. tostring(name) .. "\" script", 2)
-  end
+  requireScript(self, name)
   self.__scripts[name] = fn
   if name == "OnUpdate" then stub.updaters[self] = fn and true or nil end
 end

@@ -90,6 +90,10 @@ const ITEM_TIP_ENV = `
   end
 `;
 
+// An older client's GameTooltip, with the OnTooltipSetItem and OnTooltipSetUnit scripts the 12.1 client dropped: its XML makes it a
+// GameTooltip widget, which the stub makes as a Frame, so the script goes on the Frame list for this client only.
+const OLD_TOOLTIP_SCRIPT = "local s = __wfgWidgetApi.scripts.Frame s.OnTooltipSetItem, s.OnTooltipSetUnit = true, true GameTooltip.HasScript = function() return true end ";
+
 it("item tooltips show what the stack sells for, unless the client already does", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
   const line = addon.eval('return __showItem("item:90001", 20)[1]');
@@ -106,7 +110,7 @@ it("item tooltips show what the stack sells for, unless the client already does"
   expect(addon.eval('return #__showItem("item:90001", 1)'), "no price line from the game: ours shows").toBe(1);
   addon.eval("VanguardDB.profiles.Default.Tooltips.sellPrice = false");
   expect(addon.eval('return #__showItem("item:90001", 1)'), "the switch turns it off").toBe(0);
-  const old = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace("TooltipDataProcessor =", "__noProcessor =") + "GameTooltip.HasScript = function() return true end" + ITEM_TIP_ENV);
+  const old = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace("TooltipDataProcessor =", "__noProcessor =") + OLD_TOOLTIP_SCRIPT + ITEM_TIP_ENV);
   expect(old.eval('return __showItem("item:90001", 2)[1].text'), "a client without the tooltip data API: the old script").toBe("Sells for 0s 50c");
 });
 

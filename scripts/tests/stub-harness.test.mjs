@@ -15,3 +15,22 @@ it("replacing a method a widget kind already resolved reaches new and existing w
     return { fresh = fresh.__marked == true, old = old.__marked == true, button = button.__marked == true }`);
   expect(seen).toEqual({ fresh: true, old: true, button: true });
 });
+
+it("HookScript refuses a script the widget's kind lacks, as SetScript does", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local ok, err = pcall(function() CreateFrame("Frame"):HookScript("OnClick", function() end) end)
+    return { ok, err:match("Frame doesn't have a \\"OnClick\\" script") ~= nil }`)).toEqual([false, true]);
+});
+
+it("buttons, check buttons, sliders and edit boxes take OnEnable and OnDisable hooks, run by Disable and Enable", () => {
+  const addon = createAddon();
+  const runs = addon.eval(`local out = {}
+    for _, kind in ipairs({ "Button", "CheckButton", "Slider", "EditBox" }) do
+      local w, seen = CreateFrame(kind), {}
+      w:HookScript("OnDisable", function() seen[#seen + 1] = "off" end)
+      w:HookScript("OnEnable", function() seen[#seen + 1] = "on" end)
+      w:Disable() w:Enable() out[kind] = table.concat(seen, " ")
+    end
+    return out`);
+  expect(runs).toEqual({ Button: "off on", CheckButton: "off on", Slider: "off on", EditBox: "off on" });
+});
