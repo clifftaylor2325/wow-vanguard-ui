@@ -3957,6 +3957,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: That bag's button on the bag bar is lit and the others are dimmed.
 - If it fails, paste: a screenshot of the bag bar
 
+### 33.289 Hover keys survive a party member's spec change (Retail)
+
+- Do: In a party with Vanguard click casting on, hold the pointer over a party member's raid tile and press a hover key bound on the Click casting page while that member changes spec.
+- Expect: The hover key still casts on that tile without moving the pointer off and back.
+- If it fails, paste: /vg errors, and which key and tile.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
