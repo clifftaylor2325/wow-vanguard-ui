@@ -187,8 +187,26 @@ for name, field in pairs(LAZY) do rewrap(name, lazyRegion(field)) end
 
 -- Combat lockdown ---------------------------------------------------------------------------
 
--- The methods the client blocks on a protected frame while insecure code runs in combat.
-local PROTECTED_CALLS = { "Show", "Hide", "SetShown", "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "SetScale", "SetParent", "SetAttribute", "StartMoving", "StopMovingOrSizing" }
+-- The methods the client blocks on a protected frame while insecure code runs in combat: the ones
+-- Blizzard_APIDocumentationGenerated marks IsProtectedFunction (the same on both clients), grouped by its
+-- file, plus SetAttribute. A documented name no kind in wow-widget-api.lua carries is left out until it is listed.
+local PROTECTED_CALLS = {
+  -- SimpleFrameAPIDocumentation.lua
+  "Show", "Hide", "SetShown", "SetScale", "StartMoving", "StartSizing", "StopMovingOrSizing", "Raise", "Lower",
+  "SetFrameLevel", "SetFrameStrata", "SetFixedFrameLevel", "SetFixedFrameStrata", "SetToplevel", "SetID",
+  "SetHitRectInsets", "SetClampedToScreen", "SetClampRectInsets", "EnableKeyboard", "SetIgnoreParentScale",
+  "SetHyperlinksEnabled", "SetAttribute",
+  -- SimpleScriptRegionAPIDocumentation.lua
+  "SetParent", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel", "SetMouseClickEnabled",
+  "SetMouseMotionEnabled", "SetPassThroughButtons",
+  -- SimpleScriptRegionResizingAPIDocumentation.lua
+  "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "ClearPoint",
+  "ClearPointsOffset", "AdjustPointsOffset",
+  -- SimpleButtonAPIDocumentation.lua
+  "Enable", "Disable", "SetEnabled", "RegisterForClicks",
+  -- SimpleScrollFrameAPIDocumentation.lua
+  "SetScrollChild", "SetVerticalScroll", "SetHorizontalScroll",
+}
 
 -- The game's frames the client protects (secure unit buttons in the real UI).
 local GAME_PROTECTED = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame" }
@@ -240,7 +258,21 @@ local function lockable(name)
     end
   end
 end
-for _, name in ipairs(PROTECTED_CALLS) do rewrap(name, lockable(name)) end
+
+-- Whether any widget kind in the widget API list carries a method.
+local function listedMethod(name)
+  for _, kindMethods in pairs(__wfgWidgetApi.methods) do
+    if kindMethods[name] then return true end
+  end
+  return false
+end
+
+-- A protected name the stub leaves to its shared no-op gets a no-op of its own, so the guard has a
+-- method to wrap; which kinds have it is still the widget API list's call.
+for _, name in ipairs(PROTECTED_CALLS) do
+  if not methods[name] and listedMethod(name) then methods[name] = function() end end
+  rewrap(name, lockable(name))
+end
 
 -- The addon's code nearest the top of the stack, or nil: a run with any of it is tainted,
 -- whatever game or test code it called on the way.
