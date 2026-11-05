@@ -790,8 +790,8 @@ it("raid indicators: small icons down the tile's right edge, from the client's o
 });
 
 it("H17-10-1: the debuff type badge's backing is black in the Classic look, so the dispel letter keeps its contrast", () => {
-  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
-  addon.eval('ns.Theme.Settings().variant = "classic" ns.Theme.Refresh() __c = ns.Auras.Container(UIParent, __spec, "target") __g = __c.frame.__groups[1]');
-  const back = badgeOf(addon, "__g.buttons[1]").back;
-  expect(back.slice(2), "the backing is black at 0.8, not Classic's bronze edge").toEqual([0, 0, 0]);
+  const addon = loggedIn(`ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()
+    __f = CreateFrame("Frame", nil, UIParent) __p = ns.Auras.Dress(__f, { size = 30, debuff = true })`);
+  const back = addon.eval("local c = __p.badge.back.__vertexColor return { c[1], c[2], c[3], c[4] }");
+  expect(back, "the backing is black at 0.8, not Classic's bronze edge").toEqual([0, 0, 0, 0.8]);
 });
