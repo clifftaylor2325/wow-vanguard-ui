@@ -706,10 +706,10 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the quest's XP under its objectives in the tracker; the XP bar's tooltip lists what is left, how far through, rested, `Kills to level` (after your first kill, and not changed by a quest turn-in) and `XP in finished quests` (only quests ready to turn in); one `Running low: Food & drink n / 20.` line in chat when food drops under the count, nothing further until it has been back at 20 and drops again, and nothing during a fight (it appears after).
 - If it fails, paste: a screenshot, the chat line and `/vg errors`. Say which came first in chat: the XP message for a kill or the XP bar moving.
 
-### 8.5a XP and reputation numbers side by side
+### 8.5a XP and reputation numbers centred
 
-- Do: while levelling, watch a faction (Escape → Reputation → Show as experience bar). In `/vg` → Bars and bags set Numbers to "always" (it needs a reload). Look at the two bars at the bottom, then set Text size under General to 130% and look again.
-- Expect: the XP numbers at the left end of the XP bar and the reputation numbers at the right end of the bar above it, both readable, not on top of each other, at both text sizes. [Needs in-game check: how far apart the two lines sit at 100% depends on the font's real line height.]
+- Do: while levelling, hover the XP bar with no faction watched. Then watch a faction (Escape → Reputation → Show as experience bar). In `/vg` → Bars and bags set Numbers to "always" (it needs a reload). Look at the two bars at the bottom, then set Text size under General to 130% and look again.
+- Expect: the XP numbers ("Level 9  3.1K / 6.5K (47%)") in the middle of the XP bar, not at its left end. With a faction watched, the reputation numbers centred just above the reputation bar, both lines readable and not on top of each other, at both text sizes. [Needs in-game check: how far apart the two lines sit at 100% depends on the font's real line height.]
 - If it fails, paste: a screenshot of the two bars.
 
 ### 8.5b Reputation bar tooltip and click
