@@ -8,7 +8,7 @@
 --   * with a choice of rewards, take the one that sells for the most, a stack by its whole worth (on a tie,
 --     or when none sells, you choose);
 --   * skip the gossip when an NPC has exactly one quest for you and nothing else to say.
--- Each says in chat what it did. The quest dialog asks Claims(event) first,
+-- Accepting and turning in say in chat what they did; skipping the chatter is silent. The quest dialog asks Claims(event) first,
 -- so a page that's about to be answered for you isn't shown.
 
 local ADDON, ns = ...
