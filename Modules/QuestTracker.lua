@@ -108,6 +108,17 @@ local function hookMapPanel()
 end
 hookMapPanel()
 
+-- The quest id of a log row the game's own log lists, or nil: not a header, hidden or a task (a world quest or bonus
+-- objective), and a bounty only once it is complete. The quest log, the XP footer and the XP tooltip share this rule.
+---@param info table|nil  A C_QuestLog.GetInfo row.
+---@return number|nil
+function QT.Listed(info)
+  if type(info) ~= "table" or ns.IsTrue(info.isHeader) or ns.IsTrue(info.isHidden) or ns.IsTrue(info.isTask) then return nil end
+  local id = ns.PlainNumber(info.questID)
+  if id and ns.IsTrue(info.isBounty) and not ns.IsTrue(ns.CallIf(C_QuestLog, "IsComplete", id)) then return nil end
+  return id
+end
+
 -- A quest's place in the log (it moves as quests come and go), or nil when the log doesn't have it.
 function QT.LogIndex(id)
   return ns.PlainNumber(ns.CallIf(C_QuestLog, "GetLogIndexForQuestID", id))

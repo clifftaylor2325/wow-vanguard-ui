@@ -4047,6 +4047,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Vanguard's XP bar shows the orange honor bar at once on ticking and hides at once on unticking.
 - If it fails, paste: /dump GetCVarBool('showHonorAsExperience') and what the bar shows.
 
+### 33.298 Quest XP footer ignores world quests (Retail)
+
+- Do: below the level cap, stand in a zone with world quests, hover nothing, read the tracker's Quests: N% line, then leave the zone.
+- Expect: the number does not change on leaving.
+- If it fails, paste: /run for i=1,C_QuestLog.GetNumQuestLogEntries() do local q=C_QuestLog.GetInfo(i) if q.isTask or q.isHidden then print(q.title,q.isTask,q.isHidden,GetQuestLogRewardXP(q.questID)) end end
+
 ### 33.305 Abandon is greyed for a quest the game won't abandon (Retail)
 
 - Do: Pick a quest the game's own map panel shows without an Abandon option (a starting-zone or campaign quest) and open Vanguard's quest log on it.

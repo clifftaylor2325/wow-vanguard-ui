@@ -247,10 +247,9 @@ function DB.RewardXP(id)
   return xp and xp > 0 and xp or 0
 end
 
--- The XP a log entry is worth when it is a quest ready to turn in, else 0.
+-- The XP a log entry is worth when it is a quest the game's log lists and it is ready to turn in, else 0.
 local function readyXP(info)
-  if type(info) ~= "table" or ns.IsSecret(info.isHeader) or info.isHeader == true then return 0 end
-  local id = ns.PlainNumber(info.questID)
+  local id = ns.GetModule("QuestTracker").Listed(info)
   return id and ns.IsTrue(C_QuestLog.IsComplete(id)) and DB.RewardXP(id) or 0
 end
 
@@ -262,10 +261,9 @@ function DB.QuestXP()
   return total
 end
 
--- The XP a log entry gives when it is a quest (a header or a hidden id gives 0).
+-- The XP a log entry gives when it is a quest the game's log lists (a header, hidden row or task gives 0).
 local function entryXP(info)
-  if type(info) ~= "table" or ns.IsSecret(info.isHeader) or info.isHeader == true then return 0 end
-  local id = ns.PlainNumber(info.questID)
+  local id = ns.GetModule("QuestTracker").Listed(info)
   return id and DB.RewardXP(id) or 0
 end
 

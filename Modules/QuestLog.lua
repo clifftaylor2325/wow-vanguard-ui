@@ -23,18 +23,13 @@ end
 
 -- The list ----------------------------------------------------------------------------------------
 
--- Whether the game's own log lists a quest: not a world quest or bonus objective (a task), and a bounty only once done.
-local function listed(info, id)
-  return not ns.IsTrue(info.isTask) and (not ns.IsTrue(info.isBounty) or ns.IsTrue(questLog("IsComplete", id)))
-end
-
 -- One log entry: a zone header { header, title, campaign }, or a quest { id, title, level, ready }; nil for hidden
 -- ones and those the game's log leaves out.
 local function entry(info)
   if type(info) ~= "table" or ns.IsTrue(info.isHidden) then return nil end
   if ns.IsTrue(info.isHeader) then return { header = true, title = info.title, campaign = ns.PlainNumber(info.campaignID) ~= nil } end
-  local id = ns.PlainNumber(info.questID)
-  if not (id and listed(info, id)) then return nil end
+  local id = ns.GetModule("QuestTracker").Listed(info)
+  if not id then return nil end
   return { id = id, title = info.title, level = info.level, ready = ns.GetModule("QuestTracker").IsReady(id) }
 end
 

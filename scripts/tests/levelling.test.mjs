@@ -168,6 +168,21 @@ it("levelling: the log's XP sum skips headers, hidden ids and a client without t
   expect(addon.eval("return ns.GetModule('DataBars').LogXP()"), "no log: nothing").toBe(0);
 });
 
+it("levelling: the log's XP sums count only the quests the game's log lists, not tasks, hidden rows or open bounties", () => {
+  const addon = loggedIn(DATA_ENV, noTrack);
+  addon.world.addQuest({ questID: 7, title: "Wolves", level: 8, xp: 6925, objectives: [] });
+  addon.world.addQuest({ questID: 8, title: "World quest", level: 8, xp: 6925, isComplete: true, objectives: [] });
+  addon.world.addQuest({ questID: 9, title: "Hidden", level: 8, xp: 6925, isComplete: true, objectives: [] });
+  addon.world.addQuest({ questID: 10, title: "Open bounty", level: 8, xp: 6925, objectives: [] });
+  addon.world.addQuest({ questID: 11, title: "Done bounty", level: 8, xp: 6925, isComplete: true, objectives: [] });
+  addon.eval(`local get = C_QuestLog.GetInfo
+    local flags = { [8] = "isTask", [9] = "isHidden", [10] = "isBounty", [11] = "isBounty" }
+    C_QuestLog.GetInfo = function(i) local q = get(i) if q and flags[q.questID] then q[flags[q.questID]] = true end return q end`);
+  const DB = "ns.GetModule('DataBars')";
+  expect(addon.eval(`return ${DB}.LogXP()`), "the wolves and the finished bounty, not the task, hidden row or open bounty").toBe(6925 * 2);
+  expect(addon.eval(`return ${DB}.QuestXP()`), "waiting to turn in: only the finished bounty").toBe(6925);
+});
+
 it("levelling: a quest you accept is watched, unless it is watched already or the switch is off", () => {
   const addon = loggedIn();
   addon.eval("__adds = 0 local add = C_QuestLog.AddQuestWatch C_QuestLog.AddQuestWatch = function(id) __adds = __adds + 1 return add(id) end");
