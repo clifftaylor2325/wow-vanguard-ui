@@ -160,23 +160,33 @@ it("action bar dragging", () => {
 });
 
 // TEST-ONLY: runs the setter of bar n's row `label` on the action bar options page,
-// as its control would, with a Lua value; false when there is no such row.
+// as its control would, with a Lua value; false when there is no such row. The setter is the
+// row's last function (a row may end with its default after it).
 const setBarOption = (addon, n, label, lua) => addon.eval(`
   local page, card
   for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end
   for _, row in ipairs(page.rows()) do
     if row[1] == "header" then card = row[2] end
-    if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then row[#row](${lua}) return true end
+    if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then
+      local i = #row
+      while type(row[i]) ~= "function" do i = i - 1 end
+      row[i](${lua}) return true
+    end
   end
   return false`);
 
-// TEST-ONLY: what the getter of bar n's row `label` on the action bar options page says.
+// TEST-ONLY: what the getter of bar n's row `label` on the action bar options page says (the function
+// just before its setter).
 const getBarOption = (addon, n, label) => addon.eval(`
   local page, card
   for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then page = p end end
   for _, row in ipairs(page.rows()) do
     if row[1] == "header" then card = row[2] end
-    if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then return row[#row - 1]() end
+    if card and card:match("^Bar ${n}") and row[2] == ${JSON.stringify(label)} then
+      local i = #row
+      while type(row[i]) ~= "function" do i = i - 1 end
+      return row[i - 1]()
+    end
   end`);
 
 // Bar 2's secure visibility driver (without the pet battle clause a retail bar's begins with; `raw` keeps it),
