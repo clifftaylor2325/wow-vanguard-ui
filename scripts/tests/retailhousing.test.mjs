@@ -54,8 +54,9 @@ it("retail housing: the decor catalog, the collection and the plot tooltips are 
   const catalog = addon.eval(`local c = HousingDashboardFrame.CatalogContent
     return { __alpha(c.Background), __alpha(c.Categories.Background), __alpha(c.Categories.TopBorder), __panel(c.OptionsContainer.ScrollBar.Thumb),
       __alpha(HousingDashboardFrame.CollectionContent.Background),
-      __alpha(HousingDashboardFrame.CollectionContent.Categories.Background), __alpha(HousingDashboardFrame.CollectionContent.Categories.TopBorder) }`);
-  expect(catalog, "the parchment and category art faded, the scroll bar's thumb in the theme, the collection's parchment and category art faded").toEqual([0, 0, 0, true, 0, 0, 0]);
+      __alpha(HousingDashboardFrame.CollectionContent.Categories.Background), __alpha(HousingDashboardFrame.CollectionContent.Categories.TopBorder),
+      __alpha(c.Categories.SubcategoriesDivider), __alpha(HousingDashboardFrame.CollectionContent.Categories.SubcategoriesDivider) }`);
+  expect(catalog, "the parchment and category art faded (the strip under an open category too), the scroll bar's thumb in the theme, the collection's parchment and category art faded").toEqual([0, 0, 0, true, 0, 0, 0, 0, 0]);
   const tips = addon.eval(`return { __panel(HouseFinderFrame.SelectedPlotTooltip), __alpha(HouseFinderFrame.SelectedPlotTooltip.NineSlice), __panel(HouseFinderHighlightedPlotTooltip),
     __alpha(HouseFinderFrame.SelectedPlotTooltip.Arrow), __alpha(HouseFinderHighlightedPlotTooltip.Arrow) }`);
   expect(tips, "both plot tooltips on a theme panel, the game's edge and pointer arrow faded").toEqual([true, 0, true, 0, 0]);
@@ -64,8 +65,8 @@ it("retail housing: the decor catalog, the collection and the plot tooltips are 
 it("retail housing: only the house editor's decor storage is dressed, never the screen-wide editor", () => {
   const addon = housing();
   addon.eval("HouseEditorFrame:Show()");
-  expect(addon.eval("return { __panel(HouseEditorFrame), __panel(HouseEditorFrame.StoragePanel), __alpha(HouseEditorFrame.StoragePanel.Background) }"),
-    "the editor itself bare; its storage on a theme panel, the chest art faded").toEqual([false, true, 0]);
+  expect(addon.eval("return { __panel(HouseEditorFrame), __panel(HouseEditorFrame.StoragePanel), __alpha(HouseEditorFrame.StoragePanel.Background), __alpha(HouseEditorFrame.StoragePanel.Categories.SubcategoriesDivider) }"),
+    "the editor itself bare; its storage on a theme panel, the chest art and the category strip faded").toEqual([false, true, 0, 0]);
 });
 
 it("retail housing: the game windows switch off leaves every housing window as the game drew it", () => {
