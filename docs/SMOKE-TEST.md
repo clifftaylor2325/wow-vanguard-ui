@@ -3792,6 +3792,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 - Do: Drag a flyout from the spellbook (a Mage's Teleport, a Hunter's Call Pet) onto bar 1, click it and pick a spell from the list, then press its key once out of combat and once in combat, and press Escape while the list shows.
 - Expect: Each click or key press opens a list of the spells you know above the button with no Lua error, picking a spell casts it and closes the list, and Escape closes it.
+- Also: open the list, then mount a vehicle or start a pet battle (or anything that hides bar 1): the list goes with the bar and is still closed when the bar comes back, and Escape then opens the game menu, not nothing.
 - If it fails, paste: the output of /vg errors and the spell you tried.
 
 ### 33.251 Bag and menu rows keep one slot per button on Retail (Retail)

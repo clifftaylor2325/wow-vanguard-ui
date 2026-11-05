@@ -69,6 +69,12 @@ AB.FLYOUT_CHILD_PRE = [[
   if (down and "down" or "up") == control:GetAttribute("edge") then return nil, true end
 ]]
 
+-- Runs before a bar button's OnHide (the button, or its whole bar, going away): the list it opened closes
+-- with it, as the game's own flyout does with its button, so it never stays up holding Escape.
+AB.FLYOUT_BUTTON_HIDE = [[
+  if control:IsShown() and control:GetAttribute("opened-by") == self:GetName() then control:Hide() end
+]]
+
 -- Escape closes the list while it shows: a key binding to the close button, held only then.
 AB.FLYOUT_ON_SHOW = 'self:SetBindingClick(true, "ESCAPE", "' .. AB.FLYOUT.close .. '")'
 
@@ -157,9 +163,10 @@ local function makeFlyout()
   return flyout
 end
 
--- Wraps one bar button's click with the snippet (out of combat: a bar's buttons are made then).
+-- Wraps one bar button's click and its hiding with the snippets (out of combat: a bar's buttons are made then).
 local function wrapButton(b)
   SecureHandlerWrapScript(b, "OnClick", AB.flyout, AB.FLYOUT_PRE)
+  SecureHandlerWrapScript(b, "OnHide", AB.flyout, AB.FLYOUT_BUTTON_HIDE)
   b.vgFlyoutWrapped = true
 end
 

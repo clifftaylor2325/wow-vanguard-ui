@@ -65,7 +65,10 @@ it("a flyout on a bar makes the list once and wraps every bar button's click wit
   const addon = loggedIn(FLYOUTS);
   expect(addon.eval("return Vanguard_Flyout"), "with no flyout on a bar there is no list").toBe(null);
   place(addon, 1, 1);
-  expect(addon.eval("local n = 0 for _, b in ipairs(ns.GetModule('ActionBars').buttons) do if b.__wraps and b.__wraps.OnClick == ns.GetModule('ActionBars').FLYOUT_PRE then n = n + 1 end end return n"), "every button is wrapped").toBe(36);
+  const wrapped = addon.eval(`local AB, n = ns.GetModule('ActionBars'), 0
+    for _, b in ipairs(AB.buttons) do if b.__wraps and b.__wraps.OnClick == AB.FLYOUT_PRE and b.__wraps.OnHide == AB.FLYOUT_BUTTON_HIDE then n = n + 1 end end
+    return n`);
+  expect(wrapped, "every button's click and hiding are wrapped").toBe(36);
   const frame = addon.eval("local f = Vanguard_Flyout return { #f.vgChildren, f:GetAttribute('_onshow'), f:GetAttribute('_onhide'), f:GetAttribute('gap') }");
   expect(frame, "twenty spell buttons, Escape bound while it shows and freed when it hides").toEqual([20, 'self:SetBindingClick(true, "ESCAPE", "Vanguard_FlyoutClose")', "self:ClearBindings()", 2]);
   expect(addon.eval("local c = Vanguard_FlyoutClose return { c:GetAttribute('_onclick'), c.__frameRefs.flyout == Vanguard_Flyout }"), "the close button hides the list").toEqual(['self:GetFrameRef("flyout"):Hide()', true]);
@@ -151,6 +154,19 @@ it("a click on anything but a flyout closes the list, a flyout with no known spe
   addon.eval("__wfgWorld.flyouts[1].slots = { { spell = 11, known = false } } ") ;
   place(addon, 1, 1);
   expect(run(addon, PRE), "a flyout with nothing to list").toEqual([false, "nil"]);
+});
+
+it("the list closes when the button that opened it hides (its bar going away too), not when another button does", () => {
+  const addon = loggedIn(FLYOUTS);
+  place(addon, 1, 1);
+  const HIDE = "ns.GetModule('ActionBars').FLYOUT_BUTTON_HIDE";
+  run(addon, PRE);
+  run(addon, HIDE, { button: "Vanguard_Bar1Button3" });
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "another button hiding leaves it open").toBe(true);
+  run(addon, HIDE);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "its own button hiding closes it").toBe(false);
+  run(addon, HIDE);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "and a closed list stays closed").toBe(false);
 });
 
 it("a spell button of the list closes it after the click the game acts on, and shows its spell's tooltip", () => {
