@@ -8,6 +8,7 @@ local L = ns.L
 
 local O = ns.Options
 local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
+local essential = O.Essential
 
 -- get/set for a raid frame setting that repaints the raid frames at once (look, power bar).
 local function raidSetting(key)
@@ -31,7 +32,7 @@ local function calmSetting(key)
   return get, function(v) set(v) ns.GetModule("UnitFrames").ApplyCalm() end, initial
 end
 
--- The Calm HUD switch, here and on the General page (applied at once, also from a situation).
+-- The Calm HUD switch, on the General page (applied at once, also from a situation).
 local function calmRow()
   return check(L["Calm HUD: quiet the HUD out of combat until a fight, a hostile target or the mouse"], calmSetting("calm"))
 end
@@ -79,7 +80,7 @@ O.MANA_BAR_LABEL = ns.ClientData({
 local function unitFrameRows()
   return {
     { "header", L["Unit frames"] },
-    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), calmRow(), deckRow(), combatRow(),
+    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target: a green check if you tagged it, a grey X if another player did"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], { { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] } }, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
@@ -168,17 +169,18 @@ local function stackSetting()
   return get, function(v) set(v); ns.GetModule("RaidFrames").Fit(); ns.RaidPreview.Refresh() end, initial
 end
 
--- Raid frames: party coverage, sorting, size.
+-- Raid frames: party coverage, sorting, size. The essential rows (Core/OptionsFold.lua) are the ones that lay the
+-- whole feature out or replace the game's.
 local function raidRows()
   return {
     { "header", L["Raid frames"] },
     check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty")), check(L["Include yourself"], reloadSetting("RaidFrames", "showPlayer")),
-    check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole")),
-    { "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") },
-    check(L["Stack big raids at the left (more than 10 players)"], stackSetting()), check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard")),
-    { "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") },
-    { "cycle", L["Width"], ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), previewedSetting("width") },
-    { "cycle", L["Height"], { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, previewedSetting("height") },
+    essential(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole"))),
+    essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
+    essential(check(L["Stack big raids at the left (more than 10 players)"], stackSetting())), essential(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard"))),
+    essential({ "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") }),
+    essential({ "cycle", L["Width"], ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), previewedSetting("width") }),
+    essential({ "cycle", L["Height"], { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, previewedSetting("height") }),
   }
 end
 
