@@ -708,6 +708,28 @@ it("/vg bag deposit says which stacks stayed when the bank has no room (H19-7-2)
   expect(Array.from(addon.chat()).join("\n"), "one went, two found no room").toMatch(/Sent 1 stack\(s\) of Water[^]*2 stack\(s\) stayed in your bags: the bank has no room\./);
 });
 
+// CR-7: under latency a sent stack sits locked in its slot until the game's answer; it is never counted as "no room".
+it("/vg bag deposit waits while the sent stacks are locked, and counts one still locked at the end as sent", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { consumables: 3, equipment: 1 });
+  addon.slash("bag add Water 159");
+  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.bankRoom = 0");
+  addon.slash("bag deposit Water");
+  addon.eval("for slot = 1, 3 do __wfgWorld.bags[0][slot].locked = true end");
+  // Everything chat has said so far.
+  const said = () => Array.from(addon.chat()).join("\n");
+  addon.advance(1);
+  expect(said(), "the stacks still on their way: nothing is said yet").not.toMatch(/Sent/);
+  addon.eval("__wfgWorld.bags[0][1], __wfgWorld.bags[0][2] = nil, nil __wfgWorld.bags[0][3].locked = nil");
+  addon.advance(1);
+  expect(said(), "the game answered: two went, one found no room").toMatch(/Sent 2 stack\(s\) of Water[^]*1 stack\(s\) stayed in your bags: the bank has no room\./);
+  addon.slash("bag deposit Water");
+  addon.eval("__wfgWorld.bags[0][3].locked = true");
+  addon.advance(4);
+  expect(said().match(/Sent \d/g).length, "still locked after 4 s: still waiting").toBe(1);
+  addon.advance(2);
+  expect(said(), "after 5 s a stack still locked counts as sent, not as no room").toMatch(/Sent 1 stack\(s\) of Water to the bank\.$/);
+});
+
 // The text of the shown rows of the dropdown menu now open.
 const menuRows = (addon) => Object.values(addon.eval("local out = {} for i, b in ipairs(Vanguard_Menu.items) do if b:IsShown() then out[#out + 1] = b.text:GetText() end end return out"));
 // Opens one of the bag's tool buttons ("filter" or "groups").

@@ -3942,7 +3942,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.275 Sending a group to a full bank says what stayed (Forever)
 
 - Do: Fill the open bank tab, put three stacks in a bag group, open the bank and choose Send <group> to the bank on the bag's Groups menu.
-- Expect: Half a second later chat says Sent 0 stack(s) of the group to the bank and 3 stack(s) stayed in your bags: the bank has no room.
+- Expect: Within a few seconds chat says Sent 0 stack(s) of the group to the bank and 3 stack(s) stayed in your bags: the bank has no room.
 - If it fails, paste: the two chat lines.
 
 ### 33.276 Mail preset counts what is already attached (Forever)

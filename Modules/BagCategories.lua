@@ -105,8 +105,9 @@ local function depositOne(bag, slot, bankType)
   return true
 end
 
--- Seconds a deposit waits for the game to move the stacks before it counts what is left.
-BG.DEPOSIT_WAIT = 0.5
+-- Seconds between looks at a deposit's stacks while the game moves them, and the most looks before it is counted
+-- anyway (5 s).
+BG.DEPOSIT_WAIT, BG.DEPOSIT_TRIES = 0.5, 10
 
 -- Says what a finished deposit did: how many stacks went, how many found no room, how many were held back.
 local function sayDeposit(group, moved, stayed, kept)
@@ -115,15 +116,31 @@ local function sayDeposit(group, moved, stayed, kept)
   if kept > 0 then ns.Chat(ns.Format(L["{count} refundable stack(s) stayed in your bags."], { count = kept })) end
 end
 
--- Counts a deposit once the game has moved the stacks: before is how many stacks the group had, kept how
--- many were held back as refundable. Stacks still in the bags beyond those found no room.
-local function reportDeposit(cat, before, kept)
-  local stayed = math.max(#stacksIn(cat) - kept, 0)
-  sayDeposit(cat.name, math.max(before - kept - stayed, 0), stayed, kept)
+-- The group's stacks still in the bags: how many sit there (unlocked) and how many are locked, on their way to the
+-- bank with the game's answer not back yet.
+local function stillInBags(cat)
+  local idle, moving = 0, 0
+  for _, spot in ipairs(stacksIn(cat)) do
+    local info = C_Container.GetContainerItemInfo(spot[1], spot[2])
+    if ns.IsTrue(info and info.isLocked) then moving = moving + 1 else idle = idle + 1 end
+  end
+  return idle, moving
 end
 
--- /vg bag deposit <name>: sends every stack of the category to the open bank, out of combat, and a moment
--- later says how many went (read again, since the game answers later) and how many found no room.
+-- Counts a deposit (job: cat, before, how many stacks the group had, kept, how many were held back as refundable)
+-- once the game has moved the stacks: none of them locked any more, or after BG.DEPOSIT_TRIES looks, when a stack
+-- still locked counts as sent. Unlocked stacks still in the bags beyond the kept ones found no room.
+local function reportDeposit(job)
+  local idle, moving = stillInBags(job.cat)
+  job.tries = job.tries + 1
+  if moving > 0 and job.tries < BG.DEPOSIT_TRIES then return end
+  ns.Every(job.key, nil)
+  local stayed = math.max(idle - job.kept, 0)
+  sayDeposit(job.cat.name, math.max(job.before - job.kept - stayed, 0), stayed, job.kept)
+end
+
+-- /vg bag deposit <name>: sends every stack of the category to the open bank, out of combat, and once the game has
+-- moved them says how many went (read again, since the game answers later) and how many found no room.
 local function deposit(name)
   local at = find(name)
   if not at then return ns.Chat(ns.Format(L["No bag category called {name}."], { name = name })) end
@@ -133,8 +150,8 @@ local function deposit(name)
   for _, spot in ipairs(stacks) do
     if not depositOne(spot[1], spot[2], bankType) then kept = kept + 1 end
   end
-  local cat = list()[at]
-  C_Timer.After(BG.DEPOSIT_WAIT, ns.Guard("timer bag deposit report", function() reportDeposit(cat, #stacks, kept) end))
+  local job = { cat = list()[at], before = #stacks, kept = kept, tries = 0, key = "bag deposit " .. name:lower() }
+  ns.Every(job.key, BG.DEPOSIT_WAIT, function() reportDeposit(job) end)
 end
 
 -- A group name from typed text: one word (spaces become dashes), or nil for none.
