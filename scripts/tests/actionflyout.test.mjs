@@ -63,6 +63,8 @@ it("a flyout on a bar makes the list once and wraps every bar button's click wit
   const frame = addon.eval("local f = Vanguard_Flyout return { #f.vgChildren, f:GetAttribute('_onshow'), f:GetAttribute('_onhide'), f:GetAttribute('gap') }");
   expect(frame, "twenty spell buttons, Escape bound while it shows and freed when it hides").toEqual([20, 'self:SetBindingClick(true, "ESCAPE", "Vanguard_FlyoutClose")', "self:ClearBindings()", 2]);
   expect(addon.eval("local c = Vanguard_FlyoutClose return { c:GetAttribute('_onclick'), c.__frameRefs.flyout == Vanguard_Flyout }"), "the close button hides the list").toEqual(['self:GetFrameRef("flyout"):Hide()', true]);
+  const placed = addon.eval("local f = Vanguard_Flyout local p, rel = f:GetPoint(1) local _, _, w, h = f:GetRect() return { p, rel == UIParent, w, h, f:GetFrameStrata() }");
+  expect(placed, "the list has a rect of its own from the start: a button's size at the screen's middle").toEqual(["CENTER", true, 32, 32, "HIGH"]);
   place(addon, 2, 1);
   expect(addon.eval("return Vanguard_Flyout:GetName()"), "a second flyout does not make a second list").toBe("Vanguard_Flyout");
 });

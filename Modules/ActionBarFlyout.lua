@@ -136,10 +136,18 @@ local function makeChildren(flyout)
   end
 end
 
+-- The list's own place: a button's size at the screen's middle, set once as it is made (out of combat), so the
+-- secure frame is never left without a rect. Its spell buttons are placed against the bar button that opens it.
+local function placeFlyout(flyout)
+  flyout:SetFrameStrata("HIGH")
+  flyout:SetPoint("CENTER")
+  flyout:SetSize(AB.FLYOUT.size, AB.FLYOUT.size)
+end
+
 -- The list: a secure handler holding the spell buttons, shown by the bar buttons' snippet.
 local function makeFlyout()
   local flyout = CreateFrame("Frame", AB.FLYOUT.frame, UIParent, "SecureHandlerShowHideTemplate")
-  flyout:SetFrameStrata("HIGH")
+  placeFlyout(flyout)
   flyout:SetAttribute("gap", AB.FLYOUT.gap)
   flyout:SetAttribute("_onshow", AB.FLYOUT_ON_SHOW)
   flyout:SetAttribute("_onhide", "self:ClearBindings()")
