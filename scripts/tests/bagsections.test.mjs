@@ -1,7 +1,7 @@
 // bagsections: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, SETUP_DONE, UI_ENV, borderOf, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY bags: the backpack (8 slots) holds a Hearthstone, 5 waters, 12
@@ -493,6 +493,31 @@ it("search operators: ilvl, quality, type, bind and category words combine with 
   expect(lit(addon, "cat:water"), "a category by name").toEqual([159, 159]);
   expect(lit(addon, "cat:nope"), "no such category").toEqual([]);
   expect(addon.eval(`local BG = ns.GetModule("Bags") return BG.ItemMatches(BG.ParseSearch("ilvl>1"), 1, 4)`), "an empty slot never matches").toBe(false);
+});
+
+// TEST-ONLY: the sword's slot holds an upgraded epic of level 610 over an item ID whose base is a rare of level 590.
+const UPGRADED_ENV = `
+  local sword = __wfgWorld.items[90001]
+  sword.quality, sword.level = 3, 590
+  __wfgWorld.itemLevels = __wfgWorld.itemLevels or {}
+  for _, held in ipairs(__wfgWorld.bags[0]) do if held.itemID == 90001 then held.quality, held.link = 4, "|cffa335ee|Hitem:90001::::::::::::1:6652|h[Sword]|h|r" end end
+  __wfgWorld.itemLevels["|cffa335ee|Hitem:90001::::::::::::1:6652|h[Sword]|h|r"] = 610
+`;
+
+it("search operators: on Retail ilvl and q read the slot's own level and quality, not the item ID's base", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV + UPGRADED_ENV, { client: RETAIL_CLIENT });
+  addon.eval("__openBag()");
+  expect(lit(addon, "ilvl>600"), "the copy's 610, not the base 590").toEqual([90001]);
+  expect(lit(addon, "q:epic"), "the copy's quality 4, not the base 3").toEqual([90001]);
+  addon.eval("C_Item.GetDetailedItemLevelInfo = nil");
+  expect(lit(addon, "ilvl>580"), "without the call the base level stands").toEqual([90001]);
+});
+
+it("search operators: on WoW Forever ilvl and q keep the item ID's record", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV + UPGRADED_ENV);
+  addon.eval("__openBag()");
+  expect(lit(addon, "q:epic"), "the base quality 3 is not epic").toEqual([]);
+  expect(lit(addon, "q:rare"), "the base quality").toEqual([90001]);
 });
 
 it("type: words name the item class, so Armor and Weapons light on a client whose type names are not English", () => {

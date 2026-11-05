@@ -70,11 +70,26 @@ local function boundBind(info, bind)
   return bind
 end
 
+-- The slot's own item level (upgrades and bonus IDs included), else the item ID's.
+local function copyLevel(info, base)
+  local link = not ns.IsSecret(info.hyperlink) and info.hyperlink
+  local get = C_Item.GetDetailedItemLevelInfo
+  return type(get) == "function" and type(link) == "string" and ns.PlainNumber((get(link))) or base
+end
+
+-- The slot's own quality and item level on Retail, where upgrades and bonus IDs make them differ from the
+-- item ID's base record; WoW Forever keeps the base.
+local function ownQualityLevel(info, quality, ilvl)
+  if ns.IsForever() then return quality, ilvl end
+  return ns.PlainNumber(info.quality) or quality, copyLevel(info, ilvl)
+end
+
 -- What the client says about an item: name, quality, item level, type words and bind type.
 local function factsOf(info)
   local name, _, quality, ilvl, _, kind, sub, _, _, _, _, _, _, bind = C_Item.GetItemInfo(info.itemID)
+  quality, ilvl = ownQualityLevel(info, ns.PlainNumber(quality), ns.PlainNumber(ilvl))
   return {
-    name = ns.Lower(name or ""), quality = ns.PlainNumber(quality), ilvl = ns.PlainNumber(ilvl),
+    name = ns.Lower(name or ""), quality = quality, ilvl = ilvl,
     type = ns.Lower((kind or "") .. " " .. (sub or "")), bind = boundBind(info, ns.PlainNumber(bind)), item = info.itemID,
   }
 end

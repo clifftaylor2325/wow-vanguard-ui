@@ -3927,6 +3927,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Your line has a full bar and the time into the fight, like the game's own meter.
 - If it fails, paste: /dump C_DamageMeter.GetCombatSessionFromType(Enum.DamageMeterSessionType.Current, Enum.DamageMeterType.Deaths).combatSources[1]
 
+### 33.283 Retail bag search reads the item's own level and quality (Retail)
+
+- Do: Carry an upgraded epic whose base item is a rare (or a raised item level), and type ilvl>N between the two levels in the bag search.
+- Expect: The upgraded item lights, and q:epic lights it too.
+- If it fails, paste: /run local i=C_Container.GetContainerItemInfo(<bag>,<slot>) print(i.quality, C_Item.GetDetailedItemLevelInfo(i.hyperlink), select(4, C_Item.GetItemInfo(i.itemID)))
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
