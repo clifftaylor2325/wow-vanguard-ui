@@ -37,11 +37,12 @@ local function barOption(n, key)
     barDefault(n, key)
 end
 
--- get/set/default for action bar n's button size (the shared size until the bar has its own).
+-- get/set for action bar n's button size (the shared size until the bar has its own). No default: the bar's
+-- unchanged state is "the shared size", which the player and setup's screen presets change, so a fixed one
+-- would mark every bar changed and its reset would pin a size of the bar's own.
 local function barSizeOption(n)
   local _, set = barOption(n, "size")
-  local AB = ns.GetModule("ActionBars")
-  return function() local s = moduleSettings("ActionBars") return s.bars[n].size or s.size end, set, AB and AB.defaults.size
+  return function() local s = moduleSettings("ActionBars") return s.bars[n].size or s.size end, set
 end
 
 -- get/set for restyling the client's special bars (pet, stance, possess, extra) at once (applies on reload).
