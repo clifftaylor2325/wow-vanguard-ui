@@ -840,6 +840,7 @@ const QLOG_ENV = `
   C_QuestLog.RemoveQuestWatch = function(id) __removed = id for i, w in ipairs(__watches) do if w == id then table.remove(__watches, i) end end end
   C_QuestLog.IsPushableQuest = function() return true end
   C_QuestLog.SetAbandonQuest = function() __abandoning = __selected end
+  C_QuestLog.GetAbandonQuest = function() return __abandoning end
   IsInGroup = function() return __group end
   StaticPopup_Show = function(which, text) __popup = which .. " " .. text end
   QuestLogPushQuest = function() __pushed = __selected end
@@ -2133,6 +2134,24 @@ it("quest log: asking about marked quests closes the game's own Abandon box firs
   expect(shownPopups(addon), "the game's box is open for quest 7").toEqual(["ABANDON_QUEST_WITH_ITEMS: TEST-ONLY Wolves | TEST-ONLY Sack"]);
   addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [8] = true } QL.AbandonMarked()");
   expect(Object.keys(shownPopups(addon)), "marking moves the abandon target, so the box is closed").toEqual([]);
+});
+
+it("quest log: a marked quest that left the log before the answer is skipped, never the quest on show", () => {
+  const addon = holdingItems();
+  addon.world.addQuest({ questID: 9, title: "TEST-ONLY Hares", level: 8, objectives: [] });
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [7] = true, [8] = true } QL.AbandonMarked()");
+  addon.eval("table.remove(__wfgWorld.quests, 1) C_QuestLog.SetSelectedQuest = function(id) if C_QuestLog.GetLogIndexForQuestID(id) then __wfgWorld.selectedQuest = id end end");
+  addon.eval("__wfgWorld.selectedQuest = 9");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local o = {} for _, q in ipairs(__wfgWorld.quests) do o[#o + 1] = q.questID end return o"), "7 had left, 8 went, 9 (on show) stays").toEqual([9]);
+  expect(chatHas(addon, /Abandoned 1 quest\(s\)\./), "chat counts only the one abandoned").toBe(true);
+});
+
+it("quest log: a quest the game does not take as the one to abandon is left alone", () => {
+  const addon = holdingItems();
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [8] = true } QL.AbandonMarked() C_QuestLog.GetAbandonQuest = function() return 7 end");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local o = {} for _, q in ipairs(__wfgWorld.quests) do o[#o + 1] = q.questID end return o"), "nothing abandoned").toEqual([7, 8]);
 });
 
 // F-05: what the tracker's tooltip shows: its owner's title, each line, and whether it is shown.

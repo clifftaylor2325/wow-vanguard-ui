@@ -223,15 +223,27 @@ function QL.MarkedCount()
   return #QL.MarkedQuests()
 end
 
--- Abandons each quest of the list (the question was the confirmation), then clears the marks.
+-- Abandons one marked quest if it is still in the log and the game took it as the quest to abandon
+-- (AbandonQuest names no quest, so a quest gone from the log must never fall through to the one still
+-- selected); whether it did.
+local function abandonOne(id)
+  if not ns.PlainNumber(questLog("GetLogIndexForQuestID", id)) then return false end
+  questLog("SetSelectedQuest", id)
+  questLog("SetAbandonQuest")
+  if ns.PlainNumber(questLog("GetAbandonQuest")) ~= id then return false end
+  questLog("AbandonQuest")
+  return true
+end
+
+-- Abandons each quest of the list that is still in the log (the question was the confirmation), then clears
+-- the marks and says how many went.
 local function abandonAll(list)
+  local gone = 0
   for _, e in ipairs(list) do
-    questLog("SetSelectedQuest", e.id)
-    questLog("SetAbandonQuest")
-    questLog("AbandonQuest")
+    if abandonOne(e.id) then gone = gone + 1 end
   end
   QL.marked = {}
-  ns.Chat(ns.Format(L["Abandoned {count} quest(s)."], { count = #list }))
+  ns.Chat(ns.Format(L["Abandoned {count} quest(s)."], { count = gone }))
   QL.Refresh()
 end
 

@@ -3861,6 +3861,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The game's box closes as Vanguard's question opens; answering Vanguard's question removes only the two marked quests.
 - If it fails, paste: which quests left the log, and /vg errors.
 
+### 33.268 Abandoning marked quests skips one that left the log (both)
+
+- Do: Ctrl-click two quests in Vanguard's quest log, one ready to turn in, press Abandon 2 and leave the question open; turn that quest in at its NPC, click a third quest in the log, then answer Abandon.
+- Expect: Only the other marked quest leaves the log, the third stays, and chat says Abandoned 1 quest(s).
+- If it fails, paste: the quest log before and after, the chat line, and /vg errors.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
