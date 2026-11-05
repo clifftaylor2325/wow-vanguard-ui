@@ -2,7 +2,7 @@
 
 An architecture decision record for the options window (`/vg`) and the other places a player configures Vanguard. Written 2026-11-05 against `main` at `c997aca` (0.8.0 plus the retail build and the twenty bug hunts), from a spike measured in the headless harness: `node scripts/options-inventory.mjs` reproduces every number below. Nothing in it was checked in a game client.
 
-- **Status:** Proposed. Five calls are open for Cliff (§6). Nothing here is built.
+- **Status:** Accepted for S1 (Cliff, 2026-11-05: build the fold, Raid frames first). Calls 2 to 5 in §6 stand on their recommendation unless Cliff says otherwise before each phase starts. Nothing is built yet; S1 is the first build.
 - **Deciders:** Cliff. Reviewed in four design-review waves before it was sent (§8).
 - **Relation to earlier work:** the 2026-10-26 options review offered A (folded cards), B (tabs inside a page) and C (essentials first); Cliff chose B, built as PR #690, and it stays. D1 below is A moved inside B, carrying C's essentials without C's mode. Builds on [UI-COHERENCE.md](UI-COHERENCE.md) and [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md) and changes none of their decisions.
 
