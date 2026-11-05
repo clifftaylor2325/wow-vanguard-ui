@@ -618,6 +618,7 @@ it("your cast bar sits above the action bars and moves up when they grow, so the
 
 it("a world cast is interruptible unless marked interruptible = false (the notInterruptible return)", () => {
   const addon = loggedIn();
+  // The notInterruptible returns of a world cast and the same cast as a channel.
   const shielded = (cast) => addon.eval(`local u = __wfgWorld.units.player
     u.cast = ${cast} local n = select(8, UnitCastingInfo("player"))
     u.cast.channel = true local c = select(7, UnitChannelInfo("player")) u.cast = nil return { n, c }`);
