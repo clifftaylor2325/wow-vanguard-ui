@@ -3963,6 +3963,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The hover key still casts on that tile without moving the pointer off and back.
 - If it fails, paste: /vg errors, and which key and tile.
 
+### 33.290 Opening the game's click bindings twice keeps the window open (Forever)
+
+- Do: In /vg, Click casting, press Open the game's click bindings; then, with the game's Click Casting window still open, open /vg, go to Click casting and press it again.
+- Expect: The game's Click Casting window is still open after the second press, and Vanguard's options window has stepped aside.
+- If it fails, paste: whether either window is open, and /vg errors.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
