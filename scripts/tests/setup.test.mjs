@@ -81,7 +81,7 @@ it("first-run setup waits for combat and steps aside in a fight", () => {
   setCombat(addon, false);
   expect(setupState(addon), "after the fight setup comes back on the same step, frames unlocked").toEqual({ step: 4, done: false, unlocked: true });
   addon.slash("setup");
-  expect(setupState(addon), "/vg setup starts again at step 1 and locks the frames").toEqual({ step: 1, done: false, unlocked: false });
+  expect(setupState(addon), "/vg setup while it is open leaves it on its step, frames unlocked").toEqual({ step: 4, done: false, unlocked: true });
 });
 it("/vg setup reopens setup; Back and the close button", () => {
   const addon = loggedIn();
@@ -259,6 +259,15 @@ it("setup closed early keeps its backup for the next owed run, until Done; a run
   addon.slash("setup");
   addon.eval("ns.Setup.Backup()");
   expect(size(), "a run after Done backs up the profile as it is now").toBe(50);
+});
+it("/vg setup while setup is open leaves the run as it is: same step, same backup", () => {
+  const addon = loggedIn("");
+  addon.slash("setup");
+  setupClick(addon, "next");
+  addon.eval("ns.Settings('ActionBars').size = 40 ns.Setup.Backup() ns.Settings('ActionBars').size = 50");
+  addon.slash("setup");
+  addon.eval("ns.Setup.Backup()");
+  expect([setupState(addon).step, addon.eval("return VanguardDB.profiles['Default backup'].ActionBars.size")], "still on step 2, the backup from before the run").toEqual([2, 40]);
 });
 it("setup look: accent swatches and the raid frame style apply at once", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });

@@ -972,9 +972,11 @@ end
 
 -- Opens setup at step 1 (the profile step for a new character); in combat it waits. Keep and Keep
 -- are picked, the first time too, so Vanguard starts from where you are and clicking through
--- changes nothing; your role's layout and your screen's preset are marked.
+-- changes nothing; your role's layout and your screen's preset are marked. Already open, it stays as it is
+-- (a restart would reset the run's backup and Back's floor).
 function S.Open()
   if ns.InCombat() then return S.Defer() end
+  if frame and frame:IsShown() then return end
   frame = frame or build()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
