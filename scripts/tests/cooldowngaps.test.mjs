@@ -263,6 +263,7 @@ it("the tracked spells follow a spec or spellbook change, and the spell commands
   expect(shown(addon).length, "the manager's data arriving reads it again").toBe(1);
   addon.eval("__sets[0] = { 11 }");
   addon.fire("SPELLS_CHANGED");
+  expect(shown(addon).length, "a spellbook change reads it again").toBe(2);
   addon.slash("gaps spell add 501");
   addon.slash("gaps spell add 501");
   expect(chatHas(addon, /Already showing spell 501/), "twice says so").toBe(true);
