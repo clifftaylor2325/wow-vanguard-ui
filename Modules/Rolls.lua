@@ -102,7 +102,7 @@ end
 
 -- Loot history ------------------------------------------------------------------------------
 
--- Whether this client has the loot history calls the tracker reads (Forever's encounter loot history).
+-- Whether this client has the loot history calls the tracker reads (the client's encounter loot history).
 function R.HasLoot()
   local history = C_LootHistory
   return type(history) == "table" and type(history.GetAllEncounterInfos) == "function" and type(history.GetSortedDropsForEncounter) == "function"
@@ -128,7 +128,7 @@ function R.ReadDrop(drop)
   local link = drop.itemHyperlink
   return {
     link = (type(link) == "string" and not ns.IsSecret(link)) and link or "?", players = players,
-    done = type(drop.winner) == "table" or ns.IsTrue(drop.allPassed), at = ns.PlainNumber(drop.startTime) or 0, key = ns.PlainNumber(drop.lootListKey) or 0,
+    done = type(drop.winner) == "table" or ns.IsTrue(drop.allPassed), at = ns.PlainNumber(drop.startTime) or 0, key = ns.PlainNumber(drop.lootListKey) or ns.PlainNumber(drop.lootListID) or 0,
   }
 end
 
