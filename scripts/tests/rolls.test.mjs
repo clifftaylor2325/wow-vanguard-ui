@@ -213,6 +213,14 @@ it("a drop key named lootListID (Retail's field) orders drops that share a start
   expect(panel(addon)[2].map((l) => l[0]), "the lower key first, whatever order the game listed them in").toEqual(["|cff0070dd[Item1]|r", "|cff0070dd[Item2]|r"]);
 });
 
+it("a round too long for the panel keeps its highest rolls and leaves the newest item its header line (H15-4-2)", () => {
+  const addon = loggedIn(ROLL_ENV + lootEnv(false, ['{ "Thrall", 3, 9, false }']));
+  for (let i = 1; i <= 20; i++) roll(addon, `P${i}`, i);
+  addon.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);
+  const lines = panel(addon)[2];
+  expect([lines.length, lines[0][0], lines[1][0], lines[12][0], lines[13].slice(0, 2)], "heading, the top 12 rolls, then the item").toEqual([14, "Rolls 1-100", "P20", "P9", ["|cff0070dd[Boots]|r", "rolling"]]);
+});
+
 it("a client without the loot history, one that errors or hides it, or with the switch off, leaves loot rolls off with no error", () => {
   const without = loggedIn(ROLL_ENV);
   without.fire("LOOT_HISTORY_UPDATE_DROP", 7, 1);

@@ -242,9 +242,16 @@ local function itemLinesWithin(room)
   return groups
 end
 
--- Every line to draw: the current round of rolls, then the loot items that fit, newest last; cut to R.LINES.
+-- The first n entries of a list.
+local function firstOf(list, n)
+  return { unpack(list, 1, n) }
+end
+
+-- Every line to draw: the current round of rolls (its highest ones, leaving the newest item one line when
+-- there is an item), then the loot items that fit, newest last; cut to R.LINES.
 function R.Lines()
   local out = R.Current() and R.RollLines() or {}
+  if #R.items > 0 then out = firstOf(out, R.LINES - 1) end
   for _, lines in ipairs(itemLinesWithin(R.LINES - #out)) do
     for _, line in ipairs(lines) do out[#out + 1] = line end
   end
