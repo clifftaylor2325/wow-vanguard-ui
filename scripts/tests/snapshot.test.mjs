@@ -8,6 +8,15 @@
 //
 //   npm run snapshot:update      rewrites scripts/tests/forever-snapshot.json
 //
+// What it records: the addon's frames (named Vanguard* ones, and unnamed ones
+// that are not textures or font strings, under a label such as
+// "(Button 3 of Vanguard_RaidTools)"), with the text of their font strings and
+// the text colour, font and bar colour the frame itself carries; the game frames
+// the addon changed; events per addon frame; and modules. Textures (path, atlas,
+// vertex colour) and an unnamed font string's own font and colour are not
+// recorded. A label counts same-kind siblings in creation order, so one sibling
+// added in the middle shows up as added and removed lines for the ones after it.
+//
 // A pull request that rewrites the file says why in its body (README, "The
 // Forever snapshot"). Nothing here varies from run to run: numbers are rounded
 // to two decimals, names are sorted, and no time or id is recorded.
@@ -26,24 +35,32 @@ const MAX_LISTED = 40;
 
 // The fields of a frame's record, in the order they are written.
 // Game frames also carry their parent and the events they listen for, so parking or silencing one shows.
-const FIELDS = ["kind", "shown", "visible", "size", "scale", "alpha", "strata", "level", "anchors", "text", "texts", "parent", "events"];
+// textColor, font and barColor appear only on a frame that set them (a font string, a status bar, a button's text).
+const FIELDS = ["kind", "shown", "visible", "size", "scale", "alpha", "strata", "level", "anchors", "text", "texts", "parent", "events", "textColor", "font", "barColor"];
 
 // Lua, run once in the addon's state: __vgSnap.frames(test, extend) answers one record per widget the test accepts
 // (extend, when given, adds fields to each), __vgSnap.wiring adds a game frame's parent and events,
 // __vgSnap.events() each addon frame that listens for events with its sorted list, __vgSnap.modules() each module
 // and whether it is on.
 // Anchors are { point, relative frame, relative point, x, y }; a frame without a name is told by its kind and its
-// place among its parent's children, so a label does not change from run to run.
+// place among its parent's children (in creation order), so a label does not change from run to run.
 const LUA_RECORDER = `
   local stub = __wfgStub
   local labels = {}
+  local function siblings(w)
+    local p = w.__parent
+    local drawn = w.__kind == "Texture" or w.__kind == "FontString"
+    local list = p and (drawn and p.GetRegions or p.GetChildren)
+    if list then return { list(p) } end
+    return stub.frames
+  end
   local function label(w)
     if w == nil then return nil end
     if type(w) ~= "table" then return tostring(w) end
     if w.__name then return w.__name end
     if labels[w] then return labels[w] end
     local n = 0
-    for _, c in ipairs(stub.frames) do
+    for _, c in ipairs(siblings(w)) do
       if c.__parent == w.__parent and c.__kind == w.__kind and not c.__name then
         n = n + 1
         if c == w then break end
@@ -78,10 +95,11 @@ const LUA_RECORDER = `
   local function record(w, parents)
     local drawn = w.__kind == "Texture" or w.__kind == "FontString"
     return {
-      name = w.__name, kind = w.__kind, shown = w.__shown == true, visible = w:IsVisible(),
+      name = label(w), kind = w.__kind, shown = w.__shown == true, visible = w:IsVisible(),
       size = { w:GetWidth(), w:GetHeight() }, scale = w:GetScale(), alpha = w:GetAlpha(),
       strata = not drawn and w:GetFrameStrata() or nil, level = not drawn and w:GetFrameLevel() or nil, anchors = anchors(w),
       text = type(w.__text) == "string" and w.__text or nil, texts = parents[w] or {},
+      textColor = w.__textColor, font = w.__font, barColor = w.__barColor,
     }
   end
   __vgSnap = {}
@@ -89,7 +107,7 @@ const LUA_RECORDER = `
     local parents, out = {}, {}
     textsOf(parents)
     for _, w in ipairs(stub.frames) do
-      if w.__name and test(w) then
+      if test(w) then
         out[#out + 1] = record(w, parents)
         if extend then extend(w, out[#out]) end
       end
@@ -114,11 +132,14 @@ const LUA_RECORDER = `
   end
 `;
 
-// Lua: the widgets whose name starts with Vanguard.
-const ADDON_FRAMES = `return __vgSnap.frames(function(w) return w.__name:find("^Vanguard") ~= nil end)`;
+// Lua: the widgets whose name starts with Vanguard, and the unnamed frames the addon made that are not regions.
+const ADDON_FRAMES = `return __vgSnap.frames(function(w)
+  if w.__name then return w.__name:find("^Vanguard") ~= nil end
+  return w.__id > __wfgStub.firstAddonFrame and w.__kind ~= "Texture" and w.__kind ~= "FontString"
+end)`;
 
-// Lua: the widgets the client made before the addon loaded (the ones the addon may move).
-const GAME_FRAMES = `return __vgSnap.frames(function(w) return w.__id <= __wfgStub.firstAddonFrame end, __vgSnap.wiring)`;
+// Lua: the named widgets the client made before the addon loaded (the ones the addon may move).
+const GAME_FRAMES = `return __vgSnap.frames(function(w) return w.__name ~= nil and w.__id <= __wfgStub.firstAddonFrame end, __vgSnap.wiring)`;
 
 // A Lua list as a JS array (an empty Lua table comes back as an object).
 const asList = (value) => (Array.isArray(value) ? value : []);
@@ -134,6 +155,11 @@ function anchorOf([point, relativeTo, relativePoint, x, y]) {
   return { point, relativeTo, relativePoint, x: rounded(x), y: rounded(y) };
 }
 
+// The list fields a widget may lack, each with its numbers rounded; an absent one is left out.
+function optionalLists(raw, fields) {
+  return Object.fromEntries(fields.filter((field) => raw[field] != null).map((field) => [field, asList(raw[field]).map(rounded)]));
+}
+
 // One widget's record from the Lua one: fixed field order, rounded numbers, no field the widget does not have.
 function frameOf(raw) {
   const record = {
@@ -143,7 +169,7 @@ function frameOf(raw) {
     alpha: rounded(raw.alpha),
     anchors: asList(raw.anchors).map(anchorOf),
     texts: asList(raw.texts),
-    events: raw.events == null ? null : asList(raw.events),
+    ...optionalLists(raw, ["events", "textColor", "font", "barColor"]),
   };
   return Object.fromEntries(FIELDS.filter((field) => record[field] != null).map((field) => [field, record[field]]));
 }
