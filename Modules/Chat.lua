@@ -1219,11 +1219,21 @@ local function hookLayout()
   after("FCF_SetButtonSide", CH.StackButtons)
 end
 
+-- A temporary window (a whisper or a pop-out) dressed as it opens, and the bar tiles carried onto the
+-- shown window: the game selects a new one before it returns, while it is not dressed yet.
+local function skinTemporary()
+  CH.SkinAll()
+  local dock = _G.GENERAL_CHAT_DOCK
+  if type(FCFDock_GetSelectedWindow) == "function" and type(dock) == "table" then
+    carryTiles(nil, FCFDock_GetSelectedWindow(dock))
+  end
+end
+
 -- Follows the game's chat code: new windows are skinned, a tab click repaints the tabs, its size menu
 -- re-fonts, its layout is put right (hookLayout), and its alert flashes are watched for the
 -- hidden-until-hover bar.
 local function hookGame()
-  after("FCF_OpenTemporaryWindow", CH.SkinAll)
+  after("FCF_OpenTemporaryWindow", skinTemporary)
   after("FCF_OpenNewWindow", CH.SkinAll)
   after("FCF_Tab_OnClick", CH.UpdateTabs)
   after("FCF_SetChatWindowFontSize", onGameSize)

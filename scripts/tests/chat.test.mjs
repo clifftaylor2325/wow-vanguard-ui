@@ -772,6 +772,27 @@ it("chat bar tiles follow the shown docked window: Copy and Find ride its bar wh
   expect(tiles("ChatFrame1"), "General shown again: they are back on its bar").toEqual([true, true, true, true, true, -28, true]);
   expect(addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, nil) FCFDock_SelectWindow(GENERAL_CHAT_DOCK, {}) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
 });
+it("H17-8-1: the first pop-out chat of a session carries Copy and Find onto its own bar, though the game selects it before it is dressed", () => {
+  const popOut = `local opened = FCF_OpenTemporaryWindow
+    function FCF_OpenTemporaryWindow(...)
+      local frame = opened(...)
+      table.insert(GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES, frame)
+      __selected = frame
+      for _, w in ipairs(GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES) do w:SetShown(w == frame) end
+      return frame
+    end
+    function FCFDock_GetSelectedWindow() return __selected end`;
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + popOut);
+  const state = () => addon.eval(`local F = ns.GetModule('Chat').frames local CX, CW = ns.GetModule('ChatExtras'), ns.GetModule('ChatWindows')
+    return { CX.copyButton:GetParent() == F[ChatFrame11].bar, CW.findButton:GetParent() == F[ChatFrame11].bar, CX.copyButton:IsVisible(), CW.findButton:IsVisible(), #ns.errors }`);
+  addon.eval("FCF_OpenTemporaryWindow('CHAT_MSG_WHISPER', 'TEST-ONLY Name')");
+  expect(state(), "Copy and Find sit on the new window's bar, shown, with no error").toEqual([true, true, true, true, 0]);
+  addon.eval("__selected = nil FCF_OpenTemporaryWindow('CHAT_MSG_WHISPER', 'TEST-ONLY Other')");
+  expect(addon.eval("return #ns.errors"), "a game that selects nothing leaves the tiles alone").toBe(0);
+  const bare = loggedIn(UI_ENV);
+  bare.eval("GENERAL_CHAT_DOCK = nil FCF_OpenTemporaryWindow('WHISPER', 'TEST-ONLY Name')");
+  expect(bare.eval("return #ns.errors"), "and a client with no dock to ask is left alone").toBe(0);
+});
 // TEST-ONLY a third docked tab as the game lays it out (FloatingChatFrame.lua FCFDock_UpdateTabs and
 // FloatingChatFrame.xml): General and the Combat Log fixed on the dock, "Loot / Trade" scrolling in the
 // scroll frame, which the game hangs from the last fixed tab's middle and a unit under the dock's
