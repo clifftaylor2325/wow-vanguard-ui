@@ -548,6 +548,28 @@ it("search operators wait for a client that has the search refresh, and skip but
   expect(other.eval(`local BG = ns.GetModule("Bags") return BG.ParseSearch(nil) == nil`), "no text: no tests").toBe(true);
 });
 
+// TEST-ONLY bag bar buttons, each knowing its bag; the game's UpdateBagMatchesSearch lights them from its own
+// text search (here: every bag filtered out, as with search words it knows nothing of).
+const BAG_BUTTONS_ENV = `
+  for name, bag in pairs({ MainMenuBarBackpackButton = 0, CharacterBag0Slot = 1 }) do
+    local b = CreateFrame("Button", name, UIParent)
+    b.GetBagID, b.SetMatchesSearch = function() return bag end, function(self, yes) self.matches = yes end
+    b.UpdateBagMatchesSearch = function(self) self:SetMatchesSearch(false) end
+  end
+`;
+
+it("search operators light each bag button whose bag holds a match; plain text leaves the game's answer", () => {
+  const addon = loggedIn(BAG_BUTTONS_ENV + ITEMS_ENV + fill([1, 4, 0, 0, 0], { consumables: 1, equipment: 1 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval("__openBag()");
+  // The bag buttons' matches after the game's own refresh of each, as [backpack, bag 1].
+  const buttons = () => Object.values(addon.eval("MainMenuBarBackpackButton:UpdateBagMatchesSearch() CharacterBag0Slot:UpdateBagMatchesSearch() return { MainMenuBarBackpackButton.matches, CharacterBag0Slot.matches }"));
+  addon.eval("BagItemSearchBox:SetText('q:uncommon')");
+  expect(buttons(), "the sword is in bag 1: its button lit, the backpack's not").toEqual([false, true]);
+  addon.eval("BagItemSearchBox:SetText('sword')");
+  expect(buttons(), "a plain word: the game's answer").toEqual([false, false]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 // TEST-ONLY game whose bag refill sets each slot's match from its own search, as Mainline/ContainerFrame.lua's
 // UpdateItems does (here the game's own search lights everything).
 const REFILL_ENV = `

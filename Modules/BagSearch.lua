@@ -159,12 +159,37 @@ function BG.ApplySearch(frame)
   for _, button in frame:EnumerateValidItems() do mark(button, tests, button:GetBagID(), button:GetID()) end
 end
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState): bag buttons whose search is hooked.
+local vgBagButtonHooked = ns.FrameState("vgBagButtonHooked")
+
+-- With search words in the bag's box, a bag button is lit when its bag holds a match (the game's own answer
+-- follows its text search, which knows nothing of the words).
+local function markBagButton(button)
+  local tests = testsIn("BagItemSearchBox")
+  if tests and type(button.GetBagID) == "function" and type(button.SetMatchesSearch) == "function" then
+    button:SetMatchesSearch(BG.ContainerMatches(tests, button:GetBagID()))
+  end
+end
+
+-- Hooks each bag button of the bag bar once (the backpack and the bags it holds), so it lights by the same words.
+local function watchBagButtons()
+  local menu = ns.GetModule("MenuStrip")
+  for _, name in ipairs(menu and menu.BAGS or {}) do
+    local button = _G[name]
+    if type(button) == "table" and type(button.UpdateBagMatchesSearch) == "function" and not vgBagButtonHooked[button] then
+      vgBagButtonHooked[button] = true
+      hooksecurefunc(button, "UpdateBagMatchesSearch", ns.Guard("hook bag button search", markBagButton))
+    end
+  end
+end
+
 -- Search operators in the combined bag, when the client has the calls they use (Bags.Enable): after the
 -- game's search refresh, and after it fills the slots (it sets each slot's match from its own search then).
 function BG.WatchSearch(frame)
   if type(frame.UpdateSearchResults) ~= "function" or type(frame.EnumerateValidItems) ~= "function" then return end
   if type(hooksecurefunc) ~= "function" or type(C_Item) ~= "table" or type(C_Container) ~= "table" then return end
   hooksecurefunc(frame, "UpdateSearchResults", ns.Guard("hook UpdateSearchResults", BG.ApplySearch))
+  watchBagButtons()
   if type(frame.UpdateItems) == "function" then hooksecurefunc(frame, "UpdateItems", ns.Guard("hook search UpdateItems", BG.ApplySearch)) end
 end
 

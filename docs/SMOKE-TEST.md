@@ -3951,6 +3951,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Tab 3 is lit and the other side tabs are dimmed.
 - If it fails, paste: a screenshot of the side tabs
 
+### 33.287 Bag bar buttons light by the search words (both)
+
+- Do: Put an epic in your second bag only, open the bags and type q:epic.
+- Expect: That bag's button on the bag bar is lit and the others are dimmed.
+- If it fails, paste: a screenshot of the bag bar
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
