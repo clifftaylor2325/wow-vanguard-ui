@@ -721,11 +721,19 @@ function NP.WidgetsOnly(unit)
   return ns.PlainCall("UnitNameplateShowsWidgetsOnly", unit) == true
 end
 
+-- A pooled plate left to the client (a widgets-only unit) that Vanguard once stacked by its own box, now hidden:
+-- stacked by the plate's own frame again. The client takes no nil here and the game never sets it itself, so the
+-- plate is the nearest to its own bounds; tried again on the next such unit if the client refused it.
+local function stackByPlate(plate)
+  if not (plate and vgStacked[plate]) then return end
+  vgStacked[plate] = not pcall(plate.SetStackingBoundsFrame, plate, plate)
+end
+
 -- A nameplate appeared: draw on it (once per plate, with a frame built ahead) and fill it in. A
 -- unit the client shows only a widget for keeps the client's own plate.
 local function onAdded(_, unit)
   local plate = NP.PlateFor(unit)
-  if not plate or NP.WidgetsOnly(unit) then return end
+  if not plate or NP.WidgetsOnly(unit) then return stackByPlate(plate) end
   local f = vgPlate[plate] or claim(plate)
   vgPlate[plate] = f
   f.gameFrame = hideDefault(plate)
