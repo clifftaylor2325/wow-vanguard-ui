@@ -48,6 +48,8 @@ CB.PIP = { size = 14, gap = 3, staggerHeight = 6 }
 CB.STAGGER_STEPS = { warn = 0.3, bad = 0.6 }
 -- How often the stagger bar is read (the client sends no event for it), in seconds.
 CB.STAGGER_PERIOD = 0.1
+-- The ticker job that counts an Ebon Might bar down while the aura runs.
+CB.EBON_MIGHT_JOB = "class ebon might"
 -- Essence recharges at one point every five seconds when the client gives no rate (as its own bar does).
 CB.ESSENCE_RATE = 0.2
 
@@ -269,16 +271,18 @@ local function fillEbonMight(bar)
   local left = ebonMightLeft()
   bar:SetMinMaxValues(0, CB.ALT_AURAS.fallbackMax.ebonMight)
   bar:SetValue(left)
-  ns.Every("class ebon might", left > 0 and CB.STAGGER_PERIOD or nil, CB.UpdateAlt, CB.altFrame)
+  ns.Every(CB.EBON_MIGHT_JOB, left > 0 and CB.STAGGER_PERIOD or nil, CB.UpdateAlt, CB.altFrame)
 end
 
 -- How each alternate bar is filled (its kind is also its theme colour token).
 CB.ALT_FILLS = { soulFragments = fillSoulFragments, ebonMight = fillEbonMight }
 
--- Repaints the alternate bar showing now (an aura change, or its own timer).
+-- Repaints the alternate bar showing now (an aura change, or its own timer). A hidden bar (another spec)
+-- stops the Ebon Might countdown, which would otherwise stay on the ticker.
 function CB.UpdateAlt()
   local holder = CB.altFrame
-  if holder and holder:IsShown() then CB.ALT_FILLS[CB.altKind](holder.bar) end
+  if holder and holder:IsShown() then return CB.ALT_FILLS[CB.altKind](holder.bar) end
+  ns.Every(CB.EBON_MIGHT_JOB, nil)
 end
 
 -- Shows the alternate bar of your spec now (building it the first time) and hides it in other specs.

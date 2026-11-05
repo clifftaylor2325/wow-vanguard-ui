@@ -246,9 +246,14 @@ it("Ebon Might: an Augmentation bar counts the seconds left against twenty, and 
 
 it("alternate bars follow the spec, and other specs and classes have none", () => {
   const addon = retail("EVOKER", 3);
+  // Whether the Ebon Might countdown is on the ticker.
+  const counting = () => addon.eval('return ns.ticker.vgJobs["class ebon might"] ~= nil');
+  addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Ebon Might', spellId = 395296, duration = 10 })");
+  expect(counting(), "Ebon Might running: the bar counts down").toBe(true);
   addon.eval("__wfgWorld.spec = 1");
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(altBar(addon).shown, "Devastation has no Ebon Might bar").toBe(false);
+  expect(counting(), "and its countdown stops with it").toBe(false);
   addon.fire("UNIT_AURA", "player");
   expect(altBar(addon).shown, "and an aura change paints nothing").toBe(false);
   expect(retail("DEMONHUNTER", 1).eval('return ns.GetModule("ClassBars").altFrame'), "a Havoc Demon Hunter builds none").toBe(null);
