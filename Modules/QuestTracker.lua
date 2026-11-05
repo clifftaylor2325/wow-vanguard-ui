@@ -228,6 +228,15 @@ function QT.SortWatches()
   if QT.settings.order == "game" then ns.CallIf(C_QuestLog, "SortQuestWatches") end
 end
 
+-- The game also sorts again when a zone change puts you on another map (Blizzard_ObjectiveTracker.lua), once
+-- per map; the nearest-first order sorts itself.
+function QT.SortOnMapChange()
+  local mapID = ns.PlainNumber(ns.CallIf(C_Map, "GetBestMapForUnit", "player"))
+  if mapID == QT.sortedMap then return end
+  QT.sortedMap = mapID
+  QT.SortWatches()
+end
+
 -- The achievement type of the content tracker (Enum.ContentTrackingType.Achievement), or nil without it.
 local function achievementType()
   local types = Enum and Enum.ContentTrackingType
@@ -459,5 +468,6 @@ function QT.Enable(settings)
   followRecipes()
   ns.On("QUEST_ACCEPTED", QT.AutoTrack)
   ns.On("ZONE_CHANGED_NEW_AREA", QT.SortWatches)
+  ns.On("ZONE_CHANGED", QT.SortOnMapChange)
   ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)
 end

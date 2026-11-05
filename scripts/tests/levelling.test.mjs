@@ -197,6 +197,19 @@ it("levelling: a world quest or a bounty you accept is not watched, as the game'
   addon.fire("QUEST_ACCEPTED", 31);
   expect(watched(31), "a hidden answer counts as no: the quest is watched").toBe(true);
 });
+it("levelling: moving onto another map within a zone sorts the game's order once per map", () => {
+  const addon = loggedIn();
+  addon.eval("__sorts = 0 C_QuestLog.SortQuestWatches = function() __sorts = __sorts + 1 end");
+  addon.fire("ZONE_CHANGED");
+  addon.fire("ZONE_CHANGED");
+  expect(addon.eval("return __sorts"), "the first map sorts, the same map again does not").toBe(1);
+  addon.eval("__wfgWorld.zone.mapId = 38");
+  addon.fire("ZONE_CHANGED");
+  expect(addon.eval("return __sorts"), "a new map sorts once").toBe(2);
+  addon.eval("ns.GetModule('QuestTracker').settings.order = 'nearest' __wfgWorld.zone.mapId = 39");
+  addon.fire("ZONE_CHANGED");
+  expect(addon.eval("return __sorts"), "nearest first sorts itself").toBe(2);
+});
 it("levelling: a new area puts the watch list in the game's order again, unless the tracker orders by distance", () => {
   const addon = loggedIn();
   addon.eval("__sorts = 0 C_QuestLog.SortQuestWatches = function() __sorts = __sorts + 1 end");

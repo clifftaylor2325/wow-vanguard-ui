@@ -4047,6 +4047,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Abandon is greyed, and Ctrl-click does not mark the quest.
 - If it fails, paste: /run print(C_QuestLog.CanAbandonQuest(C_QuestLog.GetSelectedQuest()))
 
+### 33.306 Game order sorts again on a map change within a zone (Forever)
+
+- Do: With the tracker on Game order and quests watched in two maps of one zone (a city and its zone), walk from one map into the other.
+- Expect: The quests for the map you entered move up the list.
+- If it fails, paste: /run print(C_Map.GetBestMapForUnit("player"))
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
