@@ -375,6 +375,18 @@ it("an expired auction says it's coming back by mail; once it is in the bags, Re
   expect(addon.eval(`local s = ${HELPER}.sell return { s.loc.bagID, s.loc.slotIndex }`), "the bag slot it found").toEqual([1, 4]);
   expect(restrictedLog(addon).length, "relisting posts nothing by itself").toBe(0);
 });
+it("Relist keeps the expired row when the sell card refuses every copy, and takes a sellable one past a bound one", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + "__wfgWorld.bags[0][2] = { itemID = 9999, count = 1, noAuction = true }");
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.fire("AUCTION_HOUSE_AUCTIONS_EXPIRED", 502);
+  addon.eval(`${HELPER}.Relist(502)`);
+  expect([ownedLook(addon, 2).slice(0, 3), card(addon)[1]], "only a bound copy: the row stays as it was, the card is empty").toEqual([[true, "TEST-ONLY Blade", "expired · by mail"], false]);
+  addon.eval("__wfgWorld.bags[1][4] = { itemID = 9999, count = 1 }");
+  addon.advance(1);
+  addon.eval(`${HELPER}.Relist(502)`);
+  expect(addon.eval(`local s = ${HELPER}.sell return { s.loc.bagID, s.loc.slotIndex }`), "the sellable copy in bag 1 is on the card").toEqual([1, 4]);
+  expect(ownedRow(addon, 2)[2], "its row went: the sold one moved up").toBe("sold · 40s 0c");
+});
 // Searches feed the price store ---------------------------------------------------------------
 
 // Item `id`'s stored values: [last-seen price, today's low, today's units, today's market] (false for none).

@@ -233,25 +233,26 @@ function AH.OnNotice(_, note, _, id)
 end
 
 -- The first bag slot (the backpack to bag AH.LAST_BAG) holding the item of an item key, with its
--- level and suffix and not locked (the sell card's own test), as an ItemLocation, or nil.
+-- level and suffix, not locked and one the house takes (the sell card's own tests), as an
+-- ItemLocation, or nil. A bound copy of the same item is passed over.
 function AH.FindInBags(key)
   local sale = { id = key.itemID, key = key }
   for bag = 0, AH.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
       local loc = AH.Holds(sale, bag, slot)
-      if loc then return loc end
+      if loc and C_AuctionHouse.IsSellItemValid(loc, false) then return loc end
     end
   end
 end
 
--- Relist (an expired row's click): once the item is back in the bags, its row goes and the item
--- goes on the sell card (the sell card's own TakeItem, which checks its price now).
+-- Relist (an expired row's click): once the item is back in the bags, the item goes on the sell
+-- card (the sell card's own TakeItem, which checks its price now) and then its row goes. A card that
+-- refuses the item leaves the row.
 function AH.Relist(id)
   local a, i = findOwned(id)
   local loc = a and AH.FindInBags(a.key)
-  if not loc then return end
+  if not (loc and AH.TakeItem(loc)) then return end
   table.remove(AH.owned, i)
-  AH.TakeItem(loc)
   AH.PaintOwned()
 end
 

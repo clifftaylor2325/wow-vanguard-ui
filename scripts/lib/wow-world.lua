@@ -1632,7 +1632,7 @@ C_DamageMeter = {
 -- test calls world.finishPost(auctionID): the house took the stack (the units leave the slot),
 -- AUCTION_HOUSE_AUCTION_CREATED, BAG_UPDATE_DELAYED and AUCTION_HOUSE_THROTTLED_SYSTEM_READY fire.
 -- Off (the default), the throttle stays ready and nothing leaves the bags.
--- world.items[id].commodity = true makes an item a commodity, .noAuction one the house won't take,
+-- world.items[id].commodity = true makes an item a commodity, .noAuction one the house won't take (a bag entry's own .noAuction marks one bound copy),
 -- .pending one whose item key info the client hasn't loaded yet, .equipment one the house calls equipment.
 
 Enum.ItemCommodityStatus = { Unknown = 0, Item = 1, Commodity = 2 }
@@ -1812,7 +1812,7 @@ function C_AuctionHouse.GetOwnedAuctions() return world.ah.owned end
 function C_AuctionHouse.GetNumOwnedAuctions() return #world.ah.owned end
 -- Selling: whether the house takes an item, commodity or item, its key, how many can go up (every one of
 -- the item in the bags, as the game's sell frame's Max offers), and the deposit.
-function C_AuctionHouse.IsSellItemValid(loc) local it = itemAtLocation(loc) return it ~= nil and (world.items[it.itemID] or {}).noAuction ~= true end
+function C_AuctionHouse.IsSellItemValid(loc) local it = itemAtLocation(loc) return it ~= nil and it.noAuction ~= true and (world.items[it.itemID] or {}).noAuction ~= true end
 function C_AuctionHouse.GetItemCommodityStatus(loc) return commodityStatus(loc) end
 function C_AuctionHouse.GetItemKeyFromItem(loc) local id = C_Item.GetItemID(loc) local item = world.items[id] or {} return itemKey(id, item.level, item.suffix) end
 function C_AuctionHouse.GetAvailablePostCount(loc) local id = C_Item.GetItemID(loc) return id and C_Item.GetItemCount(id) or 0 end

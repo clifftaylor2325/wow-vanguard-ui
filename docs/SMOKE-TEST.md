@@ -3915,6 +3915,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Only the second line rings and toasts.
 - If it fails, paste: both lines and /vg errors.
 
+### 33.273 Relist leaves the row when the sell card refuses the item (Forever)
+
+- Do: Let an auction of a BoE item expire while you carry a second copy of it that is soulbound, take the mail, open the auction house Posting tab and press Relist.
+- Expect: The unbound copy goes on the sell card and the row goes; with only the bound copy, the row stays and says expired · by mail.
+- If it fails, paste: /vg errors and a screenshot of Your auctions.
+
 ### 33.281 Docked chat tab sizes through General's sliders (Forever)
 
 - Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.
