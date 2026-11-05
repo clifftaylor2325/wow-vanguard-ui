@@ -338,6 +338,10 @@ it("sold rows show the amount, and are neither cancelled nor counted as undercut
   addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY not yours", 999);
   expect([ownedLook(addon, 1)[2], addon.eval("return #ns.errors")], "other notices change nothing").toEqual(["sold · 7s 50c", 0]);
 });
+it("an expired auction's item is found in the reagent bag", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.bagSizes[5] = 4 __wfgWorld.bags[5] = { [2] = { itemID = 777, count = 1 } }");
+  expect(addon.eval(`local l = ${HELPER}.FindInBags(777) return { l.bagID, l.slotIndex }`), "bag 5 is searched").toEqual([5, 2]);
+});
 it("an expired auction says it's coming back by mail; once it is in the bags, Relist puts it on the sell card", () => {
   const addon = atAuctionHouse(BAGS + OWNED + "__wfgWorld.bags[0][2] = nil");
   addon.fire("OWNED_AUCTIONS_UPDATED");

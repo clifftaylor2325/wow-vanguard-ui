@@ -227,6 +227,15 @@ it("stack presets for vanilla: by item class and subclass, else one", () => {
   const presets = addon.eval(`local out = {} for i, id in ipairs({ 2589, 159, 9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 6948, 4242, 9009, "item:2589" }) do out[i] = ${HELPER}.StackPreset(id) end return out`);
   expect(presets, "cloth, food, potion, elixir, flask, scroll, leather, ore, herb 20/5; dust, a hearthstone, an unknown item, a hidden class 1; a link works").toEqual([20, 20, 5, 5, 5, 5, 20, 20, 20, 1, 1, 1, 1, 20]);
 });
+it("the next stack is found in the reagent bag too", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.bagSizes[5] = 4 __wfgWorld.bags[5] = { [1] = { itemID = 9999, count = 1 } } __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.qtyMax`);
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][2] = nil");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => c[2]), "the blade in bag 0, then the one in the reagent bag").toEqual(["0:2", "5:1"]);
+});
 // TEST-ONLY linen as a commodity: 20 in bag 0 slot 3, 20 in bag 1 slot 1 and 5 in bag 1 slot 2; someone asks 2s a unit.
 const LINEN_BAGS = `__wfgWorld.items[2589].commodity = true
   __wfgWorld.bags[0][3] = { itemID = 2589, count = 20 }

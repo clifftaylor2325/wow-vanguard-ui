@@ -181,11 +181,14 @@ local function holds(s, bag, slot)
   if key and key.itemLevel == s.key.itemLevel and key.itemSuffix == s.key.itemSuffix then return loc end
 end
 
+-- The bags searched for a sale's or an expired auction's item: the backpack (0) through the reagent bag (5).
+AH.LAST_BAG = 5
+
 -- Where the sale's item is now: its own slot while it's still there, else the first bag slot
 -- that holds it (the next stack, once the one before went up); nil when none does.
 function AH.SellLocation(s)
   local found = holds(s, s.loc:GetBagAndSlot())
-  for bag = 0, 4 do
+  for bag = 0, AH.LAST_BAG do
     for slot = 1, found and 0 or ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do found = found or holds(s, bag, slot) end
   end
   s.loc = found or s.loc
