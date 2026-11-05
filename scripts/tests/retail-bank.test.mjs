@@ -87,6 +87,20 @@ it("retail bank: the search words work in a warband tab as in a character tab", 
   expect(Object.values(addon.eval("local out = {} for i, b in ipairs(__bankSlots) do out[i] = b.matches == true end return out")), "the sword alone is lit").toEqual([true, false]);
 });
 
+// A slot with a Background and an ItemSlotBackground, skinned; their alpha as [background, item slot background].
+const slotArt = (client) => {
+  const addon = loggedIn("", client ? { client } : {});
+  return Object.values(addon.eval(`local b = CreateFrame("Button", nil, UIParent)
+    b.Background, b.ItemSlotBackground = b:CreateTexture(), b:CreateTexture()
+    ns.GetModule("Bags").SkinItem(b)
+    return { b.Background:GetAlpha(), b.ItemSlotBackground:GetAlpha() }`));
+};
+
+it("retail bank: bag and bank slots lose the game's Background and ItemSlotBackground art; WoW Forever keeps it", () => {
+  expect(slotArt(RETAIL_CLIENT), "Retail: both faded").toEqual([0, 0]);
+  expect(slotArt(), "Forever: both kept").toEqual([1, 1]);
+});
+
 // The private aura spots handed to the game, as [unit, parent's name or the target spot's owner, size] by id.
 const spots = (addon) => Object.values(addon.eval(`local out = {}
   for id, a in pairs(__wfgWorld.privateAnchors) do out[#out + 1] = { a.unitToken, a.auraIndex, a.iconInfo.iconWidth, a.parent:GetParent():GetName() or "?" } end

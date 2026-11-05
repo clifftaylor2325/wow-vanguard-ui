@@ -3933,6 +3933,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The upgraded item lights, and q:epic lights it too.
 - If it fails, paste: /run local i=C_Container.GetContainerItemInfo(<bag>,<slot>) print(i.quality, C_Item.GetDetailedItemLevelInfo(i.hyperlink), select(4, C_Item.GetItemInfo(i.itemID)))
 
+### 33.284 Retail bag and bank slots show no template art (Retail)
+
+- Do: Open the bank and click the Warband tab, then open the combined bag.
+- Expect: No slot art pokes out past each slot's thin border; empty slots read as flat squares.
+- If it fails, paste: a screenshot of four empty Warband slots
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
