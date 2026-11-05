@@ -4071,6 +4071,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: every debuff on the nameplate also shows on the target row.
 - If it fails, paste: the debuff names missing and `/vg errors`.
 
+### 33.302 No soul shards below level 10 (Retail)
+
+- Do: on a warlock under level 10 look above Vanguard's player frame, then level to 10.
+- Expect: no shard pips before level 10, and five pips from the level-up on.
+- If it fails, paste: /dump UnitLevel('player') and whether the pips show.
+
 ### 33.305 Abandon is greyed for a quest the game won't abandon (Retail)
 
 - Do: Pick a quest the game's own map panel shows without an Abandon option (a starting-zone or campaign quest) and open Vanguard's quest log on it.
