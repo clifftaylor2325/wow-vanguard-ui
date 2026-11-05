@@ -66,6 +66,7 @@ function resetRoundTrip(addon, page, change, read) {
 }
 
 it.each([
+  ["healing", "ns.Settings('RaidHealing').absorbs = false", "return ns.Settings('RaidHealing').absorbs", false],
   ["unitframes", "ns.Settings('UnitFrames').healthFormat = 'value' ns.Settings('UnitFrames').showLevel = false", "return { ns.Settings('UnitFrames').healthFormat, ns.Settings('UnitFrames').showLevel }", false],
   ["unitframes", "ns.Settings('UnitFrames').healthFormat = 'percent' ns.Settings('UnitFrames').showLevel = true", "return { ns.Settings('UnitFrames').healthFormat, ns.Settings('UnitFrames').showLevel }", true],
 ])("options: %s page switches reset to their default", (page, change, read, retail) => {
