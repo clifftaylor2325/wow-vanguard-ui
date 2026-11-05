@@ -48,21 +48,16 @@ RD.WIDGET_TYPE = 29 -- Enum.UIWidgetVisualizationType.ScenarioHeaderDelves
 RD.SHOWN = 1 -- Enum.WidgetShownState.Shown
 RD.REWARD_EARNED, RD.REWARD_UNEARNED = 1, 2 -- Enum.UIWidgetRewardShownState
 
--- A table the client gives plainly (a hidden one counts as none).
-local function plainTable(v)
-  return not ns.IsSecret(v) and type(v) == "table" and v or nil
-end
-
 -- Whether a widget (UIWidgetInfo) is the delve header, as far as the client shows its type.
 function RD.IsHeader(widget)
-  widget = plainTable(widget)
+  widget = ns.PlainTable(widget)
   return widget ~= nil and ns.PlainNumber(widget.widgetType) == RD.WIDGET_TYPE
 end
 
 -- The delve header's info when this widget is one and it is shown, else nil.
 function RD.HeaderOf(widget)
   local id = RD.IsHeader(widget) and ns.PlainNumber(widget.widgetID)
-  local info = id and plainTable(ns.CallIf(C_UIWidgetManager, "GetScenarioHeaderDelvesWidgetVisualizationInfo", id))
+  local info = id and ns.PlainTable(ns.CallIf(C_UIWidgetManager, "GetScenarioHeaderDelvesWidgetVisualizationInfo", id))
   return info and ns.PlainNumber(info.shownState) == RD.SHOWN and info or nil
 end
 
@@ -71,7 +66,7 @@ end
 function RD.HeaderInfo(step)
   local set = RD.Tier() and ns.PlainNumber(step.widgetSetID)
   if not set then return nil end
-  for _, widget in ipairs(plainTable(ns.CallIf(C_UIWidgetManager, "GetAllWidgetsBySetID", set)) or {}) do
+  for _, widget in ipairs(ns.PlainTable(ns.CallIf(C_UIWidgetManager, "GetAllWidgetsBySetID", set)) or {}) do
     local info = RD.HeaderOf(widget)
     if info then return info end
   end
@@ -79,7 +74,7 @@ end
 
 -- One counter of the header ("Lives 3") as an objective; nil while the client hides its text.
 function RD.CurrencyLine(currency)
-  currency = plainTable(currency)
+  currency = ns.PlainTable(currency)
   local count = currency and ns.PlainText(currency.text)
   if not count then return nil end
   local name = ns.PlainText(currency.leadingText)
@@ -89,8 +84,8 @@ end
 -- The ids of the header's affix spells that the client shows plainly.
 function RD.SpellIDs(spells)
   local ids = {}
-  for _, spell in ipairs(plainTable(spells) or {}) do
-    local id = plainTable(spell) and ns.PlainNumber(spell.spellID)
+  for _, spell in ipairs(ns.PlainTable(spells) or {}) do
+    local id = ns.PlainTable(spell) and ns.PlainNumber(spell.spellID)
     if id then ids[#ids + 1] = id end
   end
   return ids
@@ -105,7 +100,7 @@ end
 
 -- The reward chest's state as an objective, done once earned; nil while the header shows no chest.
 function RD.RewardLine(reward)
-  local state = plainTable(reward) and ns.PlainNumber(reward.shownState)
+  local state = ns.PlainTable(reward) and ns.PlainNumber(reward.shownState)
   if state == RD.REWARD_EARNED then return { text = L["Reward chest earned"], done = true } end
   if state == RD.REWARD_UNEARNED then return { text = L["Reward chest not earned"] } end
 end
@@ -115,7 +110,7 @@ function RD.HeaderLines(step)
   local info = RD.HeaderInfo(step)
   local lines = {}
   if not info then return lines end
-  for _, currency in ipairs(plainTable(info.currencies) or {}) do
+  for _, currency in ipairs(ns.PlainTable(info.currencies) or {}) do
     lines[#lines + 1] = RD.CurrencyLine(currency)
   end
   lines[#lines + 1] = RD.AffixLine(info.spells)

@@ -111,6 +111,14 @@ function ns.PlainText(value)
   return value
 end
 
+-- The value if it's a table the client gives plainly; nil for a hidden table or anything else.
+---@param value any
+---@return table|nil
+function ns.PlainTable(value)
+  if ns.IsSecret(value) or type(value) ~= "table" then return nil end
+  return value
+end
+
 -- A spell's name from its id, in the client's own language (C_Spell, else the old global), or nil when the
 -- client doesn't know the id or hides the name. Match game spells and auras through this, never by an
 -- English name: a German client calls Power Word: Fortitude "Machtwort: Seelenstärke".

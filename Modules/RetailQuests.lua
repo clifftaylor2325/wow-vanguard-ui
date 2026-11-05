@@ -25,11 +25,6 @@ RQ.EVENTS = { "SCENARIO_UPDATE", "SCENARIO_CRITERIA_UPDATE", "SCENARIO_COMPLETED
   "INITIATIVE_TASKS_TRACKED_UPDATED", "INITIATIVE_TASKS_TRACKED_LIST_CHANGED", "NEIGHBORHOOD_INITIATIVE_UPDATED",
   "TRACKING_TARGET_INFO_UPDATE", "TRACKABLE_INFO_UPDATE" }
 
--- A table the client gives plainly (a hidden one counts as none).
-local function plainTable(v)
-  return not ns.IsSecret(v) and type(v) == "table" and v or nil
-end
-
 -- A heading and its rows, or no rows at all when there are none (a heading never shows alone).
 local function section(name, rows)
   if #rows == 0 then return rows end
@@ -68,7 +63,7 @@ end
 local function criteria(count)
   local out = {}
   for i = 1, count do
-    local c = plainTable(ns.CallIf(C_ScenarioInfo, "GetCriteriaInfo", i))
+    local c = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetCriteriaInfo", i))
     local line = c and RQ.Criterion(c)
     if line then out[#out + 1] = line end
   end
@@ -120,10 +115,10 @@ end
 -- The scenario you are in, under its heading: none outside one (no stages), once its last stage is done, or while
 -- the client hides where you are in it.
 function RQ.Scenario()
-  local info = plainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioInfo"))
+  local info = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioInfo"))
   local stage, stages = info and ns.PlainNumber(info.currentStage), info and ns.PlainNumber(info.numStages)
   if not (stage and stages and stages > 0 and stage <= stages) then return {} end
-  local step = plainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
+  local step = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
   return section(scenarioHeading(info), { RQ.Stage(step, stage, stages) })
 end
 
@@ -132,13 +127,13 @@ end
 -- The name of the chapter a campaign is on, or nil when the game names none.
 local function chapterName(campaign)
   local chapter = ns.PlainNumber(ns.CallIf(C_CampaignInfo, "GetCurrentChapterID", campaign))
-  local info = chapter and plainTable(ns.CallIf(C_CampaignInfo, "GetCampaignChapterInfo", chapter))
+  local info = chapter and ns.PlainTable(ns.CallIf(C_CampaignInfo, "GetCampaignChapterInfo", chapter))
   return info and ns.PlainText(info.name)
 end
 
 -- A campaign's heading: its name and the chapter you are on ("The War Within: Ascent"), or its name alone.
 function RQ.CampaignName(campaign)
-  local info = plainTable(ns.CallIf(C_CampaignInfo, "GetCampaignInfo", campaign))
+  local info = ns.PlainTable(ns.CallIf(C_CampaignInfo, "GetCampaignInfo", campaign))
   local name, chapter = info and ns.PlainText(info.name) or L["Campaign"], chapterName(campaign)
   return chapter and ns.Format(L["{campaign}: {chapter}"], { campaign = name, chapter = chapter }) or name
 end
@@ -200,7 +195,7 @@ end
 -- objectives), each as { id, name }, as the game's tracker finds them.
 local function areaTasks(world)
   local out, watched = {}, watchedSet()
-  for _, id in ipairs(plainTable(ns.CallIf(_G, "GetTasksTable")) or {}) do
+  for _, id in ipairs(ns.PlainTable(ns.CallIf(_G, "GetTasksTable")) or {}) do
     local here, name = taskHere(id)
     local kind = ns.IsTrue(ns.CallIf(C_QuestLog, "IsWorldQuest", id)) == world
     if kind and here and not watched[id] then out[#out + 1] = { id, name } end
@@ -249,8 +244,8 @@ end
 -- What an activity still asks, as objectives ("2/5 Dungeons", the game's spaced slash closed up as its tracker does).
 local function requirements(info)
   local out = {}
-  for _, r in ipairs(plainTable(info.requirementsList) or {}) do
-    local text = plainTable(r) and not ns.IsTrue(r.completed) and ns.PlainText(r.requirementText)
+  for _, r in ipairs(ns.PlainTable(info.requirementsList) or {}) do
+    local text = ns.PlainTable(r) and not ns.IsTrue(r.completed) and ns.PlainText(r.requirementText)
     if text then out[#out + 1] = { text = (text:gsub(" / ", "/")), done = false } end
   end
   return out
@@ -258,15 +253,15 @@ end
 
 -- An activity's row, or nil once it is done (the game's tracker drops it then) or while its id or name is hidden.
 local function activityRow(id)
-  local info = id and plainTable(ns.CallIf(C_PerksActivities, "GetPerksActivityInfo", id))
+  local info = id and ns.PlainTable(ns.CallIf(C_PerksActivities, "GetPerksActivityInfo", id))
   local name = info and not ns.IsTrue(info.completed) and ns.PlainText(info.activityName)
   return name and { id = id, title = name, objectives = requirements(info), kind = "activity" } or nil
 end
 
 -- The Traveler's Log activities you track and haven't finished, under its heading.
 function RQ.Activities()
-  local rows, tracked = {}, plainTable(ns.CallIf(C_PerksActivities, "GetTrackedPerksActivities"))
-  for _, id in ipairs(tracked and plainTable(tracked.trackedIDs) or {}) do
+  local rows, tracked = {}, ns.PlainTable(ns.CallIf(C_PerksActivities, "GetTrackedPerksActivities"))
+  for _, id in ipairs(tracked and ns.PlainTable(tracked.trackedIDs) or {}) do
     local row = activityRow(ns.PlainNumber(id))
     if row then rows[#rows + 1] = row end
   end
@@ -277,15 +272,15 @@ end
 
 -- A tracked Endeavor task's row, or nil once it is done or while its info or name is hidden.
 local function endeavorRow(id)
-  local info = id and plainTable(ns.CallIf(C_NeighborhoodInitiative, "GetInitiativeTaskInfo", id))
+  local info = id and ns.PlainTable(ns.CallIf(C_NeighborhoodInitiative, "GetInitiativeTaskInfo", id))
   local name = info and not ns.IsTrue(info.completed) and ns.PlainText(info.taskName)
   return name and { id = id, title = name, objectives = requirements(info), kind = "endeavor" } or nil
 end
 
 -- The Housing Endeavor tasks you track and haven't finished, under their heading.
 function RQ.Endeavors()
-  local rows, tracked = {}, plainTable(ns.CallIf(C_NeighborhoodInitiative, "GetTrackedInitiativeTasks"))
-  for _, id in ipairs(tracked and plainTable(tracked.trackedIDs) or {}) do
+  local rows, tracked = {}, ns.PlainTable(ns.CallIf(C_NeighborhoodInitiative, "GetTrackedInitiativeTasks"))
+  for _, id in ipairs(tracked and ns.PlainTable(tracked.trackedIDs) or {}) do
     local row = endeavorRow(ns.PlainNumber(id))
     if row then rows[#rows + 1] = row end
   end
@@ -307,7 +302,7 @@ end
 -- The collectables of one type that you track, as rows.
 local function collectablesOf(kind)
   local out = {}
-  for _, id in ipairs(plainTable(ns.CallIf(C_ContentTracking, "GetTrackedIDs", kind)) or {}) do
+  for _, id in ipairs(ns.PlainTable(ns.CallIf(C_ContentTracking, "GetTrackedIDs", kind)) or {}) do
     local row = ns.PlainNumber(id) and collectableRow(kind, id)
     if row then out[#out + 1] = row end
   end
@@ -317,7 +312,7 @@ end
 -- The appearances and decor you track, under their heading, as the game's Adventure tracker lists them.
 function RQ.Collectables()
   local rows = {}
-  for _, kind in ipairs(plainTable(ns.CallIf(C_ContentTracking, "GetCollectableSourceTypes")) or {}) do
+  for _, kind in ipairs(ns.PlainTable(ns.CallIf(C_ContentTracking, "GetCollectableSourceTypes")) or {}) do
     if ns.PlainNumber(kind) then for _, row in ipairs(collectablesOf(kind)) do rows[#rows + 1] = row end end
   end
   return section(L["Collections"], rows)

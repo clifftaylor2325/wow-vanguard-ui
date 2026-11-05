@@ -37,11 +37,6 @@ function QT.Shows(settings)
   return not (questie and settings.withQuestie == "questie")
 end
 
--- A table the client gives plainly (a hidden one counts as none).
-local function plainTable(v)
-  return not ns.IsSecret(v) and type(v) == "table" and v or nil
-end
-
 -- Data -----------------------------------------------------------------------------------------
 
 -- The quest IDs you watch, in the game's order.
@@ -155,8 +150,8 @@ end
 -- own timer frame reads; QuestLogDocumentation.lua's QuestTimerInfo). A timer the client hides is left out.
 local function questTimers()
   local out = {}
-  for _, info in ipairs(plainTable(ns.CallIf(C_QuestLog, "GetQuestTimers")) or {}) do
-    local id, left = plainTable(info) and ns.PlainNumber(info.questID), plainTable(info) and ns.PlainNumber(info.questTimer)
+  for _, info in ipairs(ns.PlainTable(ns.CallIf(C_QuestLog, "GetQuestTimers")) or {}) do
+    local id, left = ns.PlainTable(info) and ns.PlainNumber(info.questID), ns.PlainTable(info) and ns.PlainNumber(info.questTimer)
     if id and left then out[id] = left end
   end
   return out
@@ -289,7 +284,7 @@ end
 -- named yet (its data is asked for, and the line comes with it). The second value is true in that last case.
 local function reagentLine(slot)
   local basic = (Enum and Enum.CraftingReagentType or {}).Basic or QT.BASIC_REAGENT
-  local r, need = plainTable(slot.reagents) and plainTable(slot.reagents[1]), ns.PlainNumber(slot.quantityRequired)
+  local r, need = ns.PlainTable(slot.reagents) and ns.PlainTable(slot.reagents[1]), ns.PlainNumber(slot.quantityRequired)
   local id = r and ns.PlainNumber(r.itemID)
   if ns.PlainNumber(slot.reagentType) ~= basic or not (id and need) then return nil end
   local name = ns.CallIf(C_Item, "GetItemInfo", id)
@@ -302,9 +297,9 @@ end
 -- a reagent's name is still loading.
 local function recipeReagents(schematic)
   local out, loading = {}, false
-  for _, slot in ipairs(plainTable(schematic.reagentSlotSchematics) or {}) do
+  for _, slot in ipairs(ns.PlainTable(schematic.reagentSlotSchematics) or {}) do
     local line, waiting
-    if plainTable(slot) then line, waiting = reagentLine(slot) end
+    if ns.PlainTable(slot) then line, waiting = reagentLine(slot) end
     if line then out[#out + 1] = line end
     loading = loading or waiting == true
   end
@@ -314,7 +309,7 @@ end
 -- One tracked recipe: { id, title, objectives, recipe = true }, or nil when the client has no schematic for it.
 -- The second value is true while one of its reagent names is still loading.
 function QT.Recipe(id)
-  local s = id and plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipeSchematic", id, false))
+  local s = id and ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipeSchematic", id, false))
   if not s or ns.IsSecret(s.name) or type(s.name) ~= "string" then return nil end
   local reagents, loading = recipeReagents(s)
   return { id = id, title = s.name, objectives = reagents, recipe = true }, loading
@@ -324,7 +319,7 @@ end
 -- tracking API; C_TradeSkillUI.GetRecipesTracked, TradeSkillUIDocumentation.lua).
 function QT.Recipes()
   local out, loading = {}, false
-  for _, id in ipairs(plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) or {}) do
+  for _, id in ipairs(ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) or {}) do
     local r, waiting = QT.Recipe(ns.PlainNumber(id))
     loading = loading or waiting == true
     if r then out[#out + 1] = r end
@@ -440,7 +435,7 @@ end
 -- Follows the events the game's own recipe tracker does (Blizzard_ProfessionsRecipeTracker.lua: a recipe
 -- tracked or untracked, the bags settling), and an item's name arriving, on a client that tracks recipes.
 local function followRecipes()
-  if not plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) then return end
+  if not ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) then return end
   ns.On("TRACKED_RECIPE_UPDATE", refreshSoon)
   ns.On("BAG_UPDATE_DELAYED", refreshSoon)
   ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)

@@ -25,10 +25,11 @@ it("the shared client-call helpers read nothing from a missing call or a hidden 
   expect(addon.eval("return select('#', ns.Client.Call('__TwoValues'))")).toBe(2);
 });
 
-it("ns.IsTrue passes only a plain true, and ns.PlainText only a plain non-empty string", () => {
+it("ns.IsTrue passes only a plain true, ns.PlainText only a plain non-empty string, and ns.PlainTable only a plain table", () => {
   const addon = loggedIn();
   expect(addon.eval("return { ns.IsTrue(true), ns.IsTrue(__wfgWorld.secret(true)), ns.IsTrue(1) }")).toEqual([true, false, false]);
   expect(addon.eval('return { ns.PlainText("x"), ns.PlainText("") == nil, ns.PlainText(__wfgWorld.secret("x")) == nil }')).toEqual(["x", true, true]);
+  expect(addon.eval("local t = { 1 } return { ns.PlainTable(t) == t, ns.PlainTable(__wfgWorld.secret({ 1 })) == nil, ns.PlainTable('x') == nil }")).toEqual([true, true, true]);
 });
 
 it("a mover dropped before the client has laid it out keeps the point the client reports", () => {
