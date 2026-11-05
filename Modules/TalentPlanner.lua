@@ -787,9 +787,11 @@ function TP.Command(rest)
   summaryCommand()
 end
 
--- get/set for one of the planner's settings.
+-- get/set and the default for one of the planner's settings.
 local function setting(key)
-  return function() return ns.Settings("TalentPlanner", TP.defaults)[key] end, function(v) ns.Settings("TalentPlanner", TP.defaults)[key] = v end
+  -- The setting's saved value.
+  local function get() return ns.Settings("TalentPlanner", TP.defaults)[key] end
+  return ns.Options.Tag(get, "TalentPlanner", key), function(v) ns.Settings("TalentPlanner", TP.defaults)[key] = v end, TP.defaults[key]
 end
 
 -- The Talents page: how to plan, the level-up switches, and the plan's export, import and clear.

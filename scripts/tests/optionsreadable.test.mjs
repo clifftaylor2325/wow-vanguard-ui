@@ -76,6 +76,12 @@ it.each([
   expect(out.restored, "Reset puts the page's default back").toEqual(out.before);
 });
 
+it("options: the Talents page level-up switch resets on Forever", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const out = resetRoundTrip(addon, "talents", "ns.Settings('TalentPlanner').levelPrompt = false", "return ns.Settings('TalentPlanner').levelPrompt");
+  expect([out.changed, out.restored, out.after], "unticked: Reset this page on; reset: ticked again").toEqual([true, true, false]);
+});
+
 it("options: the Modules page is grouped like the nav, and a filter shows the ones on or off", () => {
   const addon = loggedIn(CLICK_LUA);
   // The Modules page's rows as "kind|caption".
