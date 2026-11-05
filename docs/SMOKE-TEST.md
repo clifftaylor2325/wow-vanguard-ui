@@ -3855,6 +3855,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The alert's panel border is a crisp one-screen-pixel line, the same thickness as other Vanguard panels, not a double-thick border.
 - If it fails, paste: the alert name, its spot scale and your UI scale.
 
+### 33.261 Sales ledger survives a wrong clock (Forever)
+
+- Do: With at least one sale in Your history, quit, set the computer's date 100 days ahead, log in and open the auction house, quit, put the date right, log in, open Posting and drop that item, click Your history.
+- Expect: Its sales are still listed.
+- If it fails, paste: the Your history line and `/run local n=0 for k in pairs(VanguardDB.ah.ledgers or {}) do n=n+1 end print(n)`
+
 ### 33.267 Marking quests closes the game's Abandon box (both)
 
 - Do: In Vanguard's quest log click Abandon on one quest and leave the game's box open, Ctrl-click two other quests and click Abandon 2.
