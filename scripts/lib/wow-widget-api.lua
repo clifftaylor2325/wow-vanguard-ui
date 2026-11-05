@@ -241,6 +241,8 @@ return {
     SecureHandlerAttributeTemplate = {},
     SecureGroupHeaderTemplate = { kind = "Frame" },
     SecureHandlerBaseTemplate = {},
+    SecureHandlerShowHideTemplate = {},
+    SecureHandlerClickTemplate = { kind = "Button" },
     CooldownFrameTemplate = { kind = "Cooldown" },
     CustomAuraContainerTemplate = { kind = "AuraContainer" },
   },

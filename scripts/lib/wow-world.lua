@@ -1157,6 +1157,14 @@ function world.setAction(slot, fields)
   stub.fire("ACTIONBAR_SLOT_CHANGED", slot)
 end
 
+-- Flyouts (world.flyouts[id] = { name, slots = { { spell, override, known, name } } }): the flyout API.
+function GetFlyoutInfo(id) local f = (world.flyouts or {})[id] if not f then return nil, nil, 0, false end return f.name, "", #f.slots, true end
+-- A flyout slot: its spell, override, whether it is known, its name and spec.
+function GetFlyoutSlotInfo(id, k)
+  local s = ((world.flyouts or {})[id] or { slots = {} }).slots[k]
+  if not s then return nil end
+  return s.spell, s.override or s.spell, s.known ~= false, s.name or "", 0
+end
 -- The action slot API, read from world.actions.
 function HasAction(slot) return world.actions[slot] ~= nil end
 function GetActionInfo(slot) local a = actionOf(slot) return a.type, a.id, a.subType end

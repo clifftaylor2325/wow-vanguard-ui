@@ -544,6 +544,7 @@ local function createButton(bar, n, index, def)
   addRegions(b)
   addToMasque(b)
   wireButton(b, def.slot + index - 1, index)
+  AB.WrapFlyout(b)
   AB.buttons[#AB.buttons + 1] = b
   return b
 end
@@ -899,6 +900,7 @@ end
 function AB.Enable(settings)
   AB.settings = settings
   ns.OutOfCombat(function() build(settings) end)
+  AB.WatchFlyouts()
   for event, fn in pairs(EVENTS) do
     ns.On(event, fn)
   end

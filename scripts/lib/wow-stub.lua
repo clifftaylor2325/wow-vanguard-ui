@@ -888,6 +888,12 @@ function SecureHandlerWrapScript(frame, script, _, preBody)
   frame.__wraps[script] = preBody
 end
 
+-- Secure frame references (FrameXML): recorded per frame and label.
+function SecureHandlerSetFrameRef(frame, label, ref)
+  frame.__frameRefs = frame.__frameRefs or {}
+  frame.__frameRefs[label] = ref
+end
+
 -- TEST-ONLY: runs a snippet with self bound to the frame, as the client's restricted
 -- environment does, without its restrictions (Lua 5.3 load with an env table).
 function SecureHandlerExecute(frame, body)
