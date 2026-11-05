@@ -4137,6 +4137,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the event button shows there, small, with its tooltip; nothing invisible takes clicks elsewhere on the map.
 - If it fails, paste: `/run local b=MinimapBackdrop.ExternalEventURLButton print(b:GetParent():GetName(), b:GetEffectiveAlpha(), b:GetPoint())`
 
+### 33.316 /way left to another waypoint addon (both)
+
+- Do: with another addon that registers /way (not TomTom) enabled, `/reload`, then type `/way 50 50` and `/vg way 50 50`.
+- Expect: the other addon answers `/way`; `/vg way 50 50` sets Vanguard's waypoint.
+- If it fails, paste: `/run print(SLASH_VANGUARDWAY1, hash_SlashCmdList["/WAY"])`
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

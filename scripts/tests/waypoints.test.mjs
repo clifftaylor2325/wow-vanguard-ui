@@ -81,6 +81,12 @@ it("waypoints: /way is left to another addon, /vg way always works, and the swit
   expect(tomtom.eval("return { SLASH_VANGUARDWAY1 == nil, SlashCmdList.VANGUARDWAY == nil }"), "TomTom loaded: /way is its").toEqual([true, true]);
   const taken = loggedIn(MAP_ENV + 'hash_SlashCmdList = { ["/WAY"] = function() end }');
   expect(taken.eval("return SLASH_VANGUARDWAY1 == nil"), "another addon's /way is left alone").toBe(true);
+  const raw = loggedIn(MAP_ENV + 'SLASH_TESTONLYWAY1, SLASH_TESTONLYWAY2 = "/wp", "/Way" SlashCmdList.TESTONLYWAY = function() end');
+  expect(raw.eval("return { SLASH_VANGUARDWAY1 == nil, SlashCmdList.VANGUARDWAY == nil }"), "another addon's /way still in the raw list at login: left alone").toEqual([true, true]);
+  raw.slash("way 10 20");
+  expect(raw.eval("return __set"), "and /vg way still works").toEqual([[10, 0.1, 0.2]]);
+  const other = loggedIn(MAP_ENV + 'SLASH_TESTONLYWAY1 = "/wp" SlashCmdList.TESTONLYWAY = function() end SlashCmdList.TESTONLYNOWORDS = function() end');
+  expect(other.eval("return SLASH_VANGUARDWAY1"), "another addon's other commands don't stop Vanguard").toBe("/way");
   const off = loggedIn(MAP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Waypoints = { slash = false } } }" });
   expect(off.eval("return SLASH_VANGUARDWAY1 == nil"), "switched off: no /way").toBe(true);
 });
