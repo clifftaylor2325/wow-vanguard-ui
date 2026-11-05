@@ -10,10 +10,17 @@ local L = ns.L
 local O = ns.Options
 local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
--- get/set for whether action bar n is shown (applies on reload).
+-- Action bar n's default for key (Modules/ActionBars.lua defaults.bars), nil without the module.
+local function barDefault(n, key)
+  local AB = ns.GetModule("ActionBars")
+  return AB and AB.defaults.bars[n][key]
+end
+
+-- get/set/default for whether action bar n is shown (applies on reload).
 local function barSetting(n)
   return O.Tag(function() local b = moduleSettings("ActionBars").bars[n] return b and b.enabled end, "ActionBars", "bars"),
-    function(v) moduleSettings("ActionBars").bars[n].enabled = v; O.NeedReload() end
+    function(v) moduleSettings("ActionBars").bars[n].enabled = v; O.NeedReload() end,
+    barDefault(n, "enabled")
 end
 
 -- Tells the action bars that bar n's `key` changed, if they are running.
@@ -22,17 +29,19 @@ local function barChanged(n, key)
   if AB and AB.enabled then AB.SettingChanged(n, key) end
 end
 
--- get/set for one of action bar n's settings (button count, per row,
+-- get/set/default for one of action bar n's settings (button count, per row,
 -- visibility); applies at once, or when combat ends.
 local function barOption(n, key)
   return O.Tag(function() return moduleSettings("ActionBars").bars[n][key] end, "ActionBars", "bars"),
-    function(v) moduleSettings("ActionBars").bars[n][key] = v; barChanged(n, key) end
+    function(v) moduleSettings("ActionBars").bars[n][key] = v; barChanged(n, key) end,
+    barDefault(n, key)
 end
 
--- get/set for action bar n's button size (the shared size until the bar has its own).
+-- get/set/default for action bar n's button size (the shared size until the bar has its own).
 local function barSizeOption(n)
   local _, set = barOption(n, "size")
-  return function() local s = moduleSettings("ActionBars") return s.bars[n].size or s.size end, set
+  local AB = ns.GetModule("ActionBars")
+  return function() local s = moduleSettings("ActionBars") return s.bars[n].size or s.size end, set, AB and AB.defaults.size
 end
 
 -- get/set for restyling the client's special bars (pet, stance, possess, extra) at once (applies on reload).
@@ -132,6 +141,7 @@ local function barVisibilityRows(n)
     modeKey = "visibility",
     whenKey = "showWhen",
     after = function() barChanged(n, "visibility") end,
+    initial = barDefault(n, "visibility"),
   })
   O.Tag(mode[4], "ActionBars", "bars")
   return mode, when

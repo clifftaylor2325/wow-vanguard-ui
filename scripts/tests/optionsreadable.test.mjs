@@ -82,6 +82,14 @@ it("options: the Talents page level-up switch resets on Forever", () => {
   expect([out.changed, out.restored, out.after], "unticked: Reset this page on; reset: ticked again").toEqual([true, true, false]);
 });
 
+it("options: the Action bars page's per-bar rows reset to each bar's own default", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const read = "local b = ns.Settings('ActionBars').bars return { b[1].buttons, b[4].enabled, b[4].visibility, b[4].perRow, b[2].size }";
+  const out = resetRoundTrip(addon, "actionbars", "local b = ns.Settings('ActionBars').bars b[1].buttons = 6 b[4].enabled = true b[4].visibility = 'always' b[4].perRow = 5 b[2].size = 30", read);
+  expect([out.changed, out.after], "only per-bar rows changed: Reset this page is on, then off").toEqual([true, false]);
+  expect(out.restored.slice(0, 4), "bar 4 returns to off, mouseover, one per row").toEqual([12, false, "mouseover", 1]);
+});
+
 it("options: the Modules page is grouped like the nav, and a filter shows the ones on or off", () => {
   const addon = loggedIn(CLICK_LUA);
   // The Modules page's rows as "kind|caption".
