@@ -222,7 +222,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
 
 ### Block 3: both clients, cross-cutting (`work/hunts-block-3`)
 
-- [ ] **H12 The client gate** (both; SMOKE 33.293 to 33.298). Files: `Core/Modules.lua`, `Combat.lua` (`ns.IsForever`), `Client.lua`, `Core/Options*.lua` (`ns.RetailRows`), `Vanguard.toc`, `Modules/Probe.lua`, `scripts/lib/forever-only-api.json`, `scripts/lib/toc.mjs`, every `ns.GetModule` and `ns.ClientData` caller.
+- [x] **H12 The client gate** (both; SMOKE 33.293 to 33.298). Files: `Core/Modules.lua`, `Combat.lua` (`ns.IsForever`), `Client.lua`, `Core/Options*.lua` (`ns.RetailRows`), `Vanguard.toc`, `Modules/Probe.lua`, `scripts/lib/forever-only-api.json`, `scripts/lib/toc.mjs`, every `ns.GetModule` and `ns.ClientData` caller.
   1. Every caller of a Forever-only module on retail: `ns.GetModule` nil, options rows, slash words, settings, saved data for a module that is not there.
   2. Every `clients` field against its TOC tag; the Forever module list byte-for-byte 0.8.0's.
   3. The 12 Forever-only functions and 4 events: every call guarded, the harness's retail client has them nil and no test papers over it.
@@ -233,7 +233,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. The probe's client block against reality (Cliff's pastes from both clients).
   9. Forbidden frames on retail: every frame Vanguard touches against the forbidden list.
   10. Packaging: the zip loads on both clients (TOC walk), the packager's game-type mapping, a file only one client needs listed once.
-- [ ] **H13 Safety census: secrets, taint and combat lockdown** (both; SMOKE 33.299 to 33.304). Files: everything under `Core/` and `Modules/` changed since hunt 3's census (`bfeadf4`), the retail build included; `scripts/lib/wow-taint.lua` as the oracle.
+- [x] **H13 Safety census: secrets, taint and combat lockdown** (both; SMOKE 33.299 to 33.304). Files: everything under `Core/` and `Modules/` changed since hunt 3's census (`bfeadf4`), the retail build included; `scripts/lib/wow-taint.lua` as the oracle.
   1. Secret values: every read of a value the API docs flag as possibly secret, arithmetic and comparisons on it, concatenation into text, `ns.IsSecret` and `ns.PlainNumber` at the input.
   2. Secret aura data on both clients and in Mythic+ and raids on retail.
   3. Protected calls: every `SetPoint`, `Show`, `Hide`, `SetAttribute`, `SetParent`, `RegisterUnitWatch` and friends on a secure frame reachable in combat; `ns.OutOfCombat` around it.
@@ -244,7 +244,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Load-on-demand and reload in combat: addons that load mid-fight, `ADDON_LOADED` hooks that call protected functions.
   9. Edit Mode on both clients: layout switch, `UpdateSystem`, `ApplySystemAnchor`, Vanguard's anchors on game frames.
   10. Diagnostics: `/vg errors`, the error badge, what a taint report would show and whether the code names the path.
-- [ ] **H14 Options, profiles, setup and saved data** (both; SMOKE 33.305 to 33.310). Files: `Core/Options.lua`, `OptionsWindow.lua`, every `Options<page>.lua`, `OptionsSearch.lua`, `OptionsPreview.lua`, `Profiles.lua`, `ProfileExport.lua`, `ProfileStrings.lua`, `PresetStrings.lua`, `Serialize.lua`, `DB.lua`, `SettingsGuard.lua`, `Setup.lua`, `Home.lua`, `WhatsNew.lua`, `Slash.lua`, `Feedback.lua`, `ErrorBadge.lua`, `Perf.lua`, `Ticker.lua`, `Locale.lua`, `SharedMedia.lua`, `Masque.lua`, `Integration.lua`.
+- [x] **H14 Options, profiles, setup and saved data** (both; SMOKE 33.305 to 33.310). Files: `Core/Options.lua`, `OptionsWindow.lua`, every `Options<page>.lua`, `OptionsSearch.lua`, `OptionsPreview.lua`, `Profiles.lua`, `ProfileExport.lua`, `ProfileStrings.lua`, `PresetStrings.lua`, `Serialize.lua`, `DB.lua`, `SettingsGuard.lua`, `Setup.lua`, `Home.lua`, `WhatsNew.lua`, `Slash.lua`, `Feedback.lua`, `ErrorBadge.lua`, `Perf.lua`, `Ticker.lua`, `Locale.lua`, `SharedMedia.lua`, `Masque.lua`, `Integration.lua`.
   1. Every row to its db key to its consumer: a row with no consumer, a consumer with no row, a default that differs between the two, per client.
   2. Reset this page, Reset all and module switches at runtime on every page, both clients.
   3. Migrations: saves from 0.4.0 to 0.8.x plus the keybind, click-cast, Calm HUD and retail saves; a save from the other client.
@@ -255,7 +255,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Slash: every word in `docs/COMMANDS.md` real and documented, words for absent modules, `/vg` in combat.
   9. Settings guard, performance counters and the ticker: a guard that fires in combat, a timer that survives a reload, perf numbers that are secret.
   10. Integrations: shared media, Masque, the hooks in `docs/API.md`, another addon registering before Vanguard loads.
-- [ ] **H15 Spec drift: the docs against the code** (both; SMOKE 33.311 to 33.316). Files: `README.md`, `docs/features/*.md` (twelve pages), `docs/COMMANDS.md`, `docs/API.md`, `docs/GETTING-STARTED.md`, `docs/SMOKE-TEST.md`, `docs/THEME.md`, `Locales/`, against `Core/` and `Modules/`. The site generates its facts from these, so a wrong sentence here is a wrong page there. A finding is either a behaviour bug (the code is wrong) or a spec bug (the page is wrong); the reviewer says which.
+- [x] **H15 Spec drift: the docs against the code** (both; SMOKE 33.311 to 33.316). Files: `README.md`, `docs/features/*.md` (twelve pages), `docs/COMMANDS.md`, `docs/API.md`, `docs/GETTING-STARTED.md`, `docs/SMOKE-TEST.md`, `docs/THEME.md`, `Locales/`, against `Core/` and `Modules/`. The site generates its facts from these, so a wrong sentence here is a wrong page there. A finding is either a behaviour bug (the code is wrong) or a spec bug (the page is wrong); the reviewer says which.
   1. `look-and-layout.md` and `docs/THEME.md`: every fade, sound, colour role and spacing claim.
   2. `unit-frames.md` and `raid-frames.md`.
   3. `action-bars.md` (keys, click casting, cooldowns included).
@@ -266,7 +266,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. `COMMANDS.md` and `API.md`: every word, argument and hook exists and does what the page says, on the client the page names.
   9. `GETTING-STARTED.md` and `SMOKE-TEST.md`: steps that no longer match the UI (a renamed page, a moved control), the "needs in-game check" items still open.
   10. `Locales/`: placeholders against `L[...]` strings, strings the import dropped, the `unwrapped-text` baseline, per-client strings.
-- [ ] **H16 Harness fidelity and test strength** (both; SMOKE 33.317 to 33.322). Files: `scripts/lib/lua-harness.mjs`, `wow-stub.lua`, `wow-world.lua`, `wow-widget-api.lua`, `wow-taint.lua`, `wow-inspect.lua`, the secret helpers, `wow-retail-*.lua`, `wow-keybinds.lua`, the snapshot test, `scripts/lib/code-quality.mjs`, `scripts/tests/*.test.mjs`. Fixes here change the harness rules, so the fixer is Opus 5.5 and the block PR gets the `full-tests` label.
+- [x] **H16 Harness fidelity and test strength** (both; SMOKE 33.317 to 33.322). Files: `scripts/lib/lua-harness.mjs`, `wow-stub.lua`, `wow-world.lua`, `wow-widget-api.lua`, `wow-taint.lua`, `wow-inspect.lua`, the secret helpers, `wow-retail-*.lua`, `wow-keybinds.lua`, the snapshot test, `scripts/lib/code-quality.mjs`, `scripts/tests/*.test.mjs`. Fixes here change the harness rules, so the fixer is Opus 5.5 and the block PR gets the `full-tests` label.
   1. Widget methods whose stub semantics differ from the client: `SetPoint` with missing arguments, `GetPoint` return shapes, `IsShown` versus `IsVisible`, `SetShown(nil)`, `HookScript` order, `GetText` on an unset string.
   2. Methods in `wow-widget-api.lua` that the 12.1 client lacks, and methods the code calls that the list lacks (nil in tests on purpose, but a path that only runs in game then has no test).
   3. The taint oracle's blind spots (H13 wave 7's hand-offs): `SetScript` variants, `SetAttribute` in combat, fields on game frames through a helper.

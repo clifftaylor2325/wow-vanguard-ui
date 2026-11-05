@@ -3650,6 +3650,114 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The banner says "Editing as: Raid"; the vehicle exit and menu bar handles show only their name on one line, and wider handles such as the info strip show "Info strip · recording Raid".
 - If it fails, paste: a screenshot of the handles and `/vg situation list`.
 
+### 33.227 Beta-data notice stays out of Retail (Retail)
+
+- Do: On Retail, after 4 November 2026, log in, open /vg, Town and gear, then type /vg launch and /vg help.
+- Expect: No "Still saved from the beta" line at login, no "Data from the beta" section on the page, /vg launch says Unknown command and /vg help has no launch line.
+- If it fails, paste: the chat lines from login and the /vg launch reply.
+
+### 33.228 Info strip has no Ammo or Soul shards switch (Retail)
+
+- Do: On Retail, open /vg, Map and info, and read the "Strip under the minimap" switches.
+- Expect: Neither "Ammo (hunters, warriors, rogues)" nor "Soul shards (warlocks)" is listed; Gold is followed by Clock.
+- If it fails, paste: a screenshot of the Map and info page.
+
+### 33.229 Reset this page restores Health as and Show levels (Forever)
+
+- Do: On WoW Forever, open /vg, Unit frames, set Health as to Value and untick Show levels, then press Reset this page and confirm.
+- Expect: Health as reads Percent, Show levels is ticked again, and Reset this page is dimmed afterwards.
+- If it fails, paste: a screenshot of the Unit frames page and the /vg errors output.
+
+### 33.230 Probe lists the real class bars, Devourer included (Retail)
+
+- Do: On Retail, on a Paladin, Monk, Mage, Rogue, Druid or Devourer demon hunter with its class bar showing, run /vg probe and open the "Client checks (Forever and retail)" section.
+- Expect: Your class's bar row (for example "PaladinPowerBarFrame: present, shown") reads present, not missing or "shown state not readable", and the list includes DevourerFuryBarFrame, RogueComboPointBarFrame and DruidComboPointBarFrame.
+- If it fails, paste: the Client checks section of the /vg probe report and your class and spec.
+
+### 33.231 Game objective tracker stays hidden after Edit Mode (both clients: Forever and Retail)
+
+- Do: With Vanguard's quest tracker on and at least one quest watched, open Edit Mode (/editmode), then close it. Repeat after switching to another Edit Mode layout, and once with the game's objective tracker dragged to a new spot in a saved layout.
+- Expect: Only Vanguard's quest tracker shows on the right edge. The game's own objective tracker never reappears, beside it or over it.
+- If it fails, paste: a screenshot of the right edge and the output of /vg probe
+
+### 33.232 Reset arrows and Reset this page on Action bars, Healing, Unit frames and Talents (both)
+
+- Do: Type `/vg`. On Action bars turn on bar 4 and set bar 1's Buttons to 6; on Healing untick Shields; on Unit frames switch Health as to the other choice and untick Show levels; on Forever also open Talents and untick the level-up prompt. On each of those pages look for the accent reset arrow left of each changed caption, then press Reset this page and confirm.
+- Expect: Each changed row shows a reset arrow and Reset this page is on; no bar's Button size row shows an arrow you didn't cause. After the reset: bar 1 has 12 buttons and bar 4 is off (after a reload), Shields is ticked, Unit frames is on Percent with levels (Forever) or Value without levels (Retail; the level change shows after a reload), and the level-up prompt is ticked.
+- If it fails, paste: the page and row that showed no arrow (or an arrow you didn't cause), the value it went back to, and the client.
+
+### 33.233 Camera zoom stays put after Quiet is switched off (both)
+
+- Do: Type `/vg`, open Modules and switch Quiet the game on, then on Game windows pick a furthest camera zoom. Back on Modules switch Quiet off, return to Game windows and pick a different furthest zoom (or press Reset this page there). Zoom out with the mouse wheel.
+- Expect: The furthest zoom stays at the game's own value from before Quiet was on; the new pick is only saved. Switching Quiet on again applies it.
+- If it fails, paste: the zoom you reached with Quiet off and the value of `/run print(GetCVar("cameraDistanceMaxZoomFactor"))`.
+
+### 33.234 A profile string from the other client keeps this client's defaults (both)
+
+- Do: On one client (Retail or WoW Forever) with Health as, Show levels and the instance-prep bandage count left alone, open Profiles and copy the whole-profile export. On the other client open Profiles, import that string into a new profile and reload with it.
+- Expect: Health as, Show levels and the bandage count show this client's own defaults (Forever: Percent, levels on, 10 bandages; Retail: Value, no levels, 0 bandages), not the other client's. A value you had changed on the first client (for example Percent on Retail) comes across as you set it.
+- If it fails, paste: the three settings as shown after the reload and which client made the string.
+
+### 33.235 Picking a profile on a spec that has its own says the spec wins (both)
+
+- Do: Type `/vg`, open Profiles and give the current spec (on Forever, Secondary or Primary talents) a profile of its own, for example Heal. Then click Use on a different profile such as Solo.
+- Expect: Chat says "Spec 2 uses Heal. It switches back at the reload; Stop spec switching on the Profiles page keeps your pick." and the Profiles page reads "This character uses Solo until you reload, then Heal." After /reload the character is on Heal. With Stop spec switching pressed first, the pick stays after the reload.
+- If it fails, paste: the chat line (or its absence) and the page's "This character uses" line.
+
+### 33.236 Reload tags clear their captions after a Font change (both)
+
+- Do: Type `/vg`, open the Modules page and look at the "(reload)" tags beside the module names. Open General, change Font to the game's font, then open Modules again (no reload).
+- Expect: Every "(reload)" tag on Modules starts after its module name ends, with a small gap; none draws over a name such as Unit frames, Cast bars or Target and focus auras. Switching Font back and reopening Modules looks just as clean.
+- If it fails, paste: the module names whose tag overlaps, and the Font you switched to.
+
+### 33.237 Options opened in a fight takes the keyboard after it (both)
+
+- Do: Type `/reload` and do not open `/vg`. Start a fight (attack a training dummy or a mob) and, while in combat, type `/vg` for the first time this session. Keep the window open until you are out of combat, then press Down and Tab without clicking in the window.
+- Expect: While in combat the keys still move your character. Once the fight ends, Down opens the next page and Tab puts the accent ring on a setting, with no click needed first.
+- If it fails, paste: whether Down or Tab did anything, and any Lua error.
+
+### 33.238 Gaps row reads the Cooldown Manager's spells after a reload (both)
+
+- Do: Under /vg > Cooldowns tick Gaps row and Add the manager's cooldowns, then /reload (and once log out and back in) and stay out of combat.
+- Expect: The manager's tracked spells show on the gaps row straight after the load screen, without a spell change or a fight.
+- If it fails, paste: a screenshot of the gaps row beside the manager's essential and utility rows, and /vg errors.
+
+### 33.239 Roll tracker orders a boss's drops (Retail)
+
+- Do: On Retail, in a group, finish a loot roll after a boss that dropped five or more items, with the roll tracker's loot rolls on.
+- Expect: The panel lists the last four items in the same order as the game's loot history window, the newest one last.
+- If it fails, paste: the item names in the panel in order, and the order in the game's loot history.
+
+### 33.240 Big roll round keeps the item line (both)
+
+- Do: In a group of 13 or more, have the leader start a /roll round while a loot item is still being rolled on in the group loot window.
+- Expect: The roll tracker panel shows the heading and the highest 12 rolls, with the item's link line as the last line; `/vg rolls` still lists every roll.
+- If it fails, paste: the panel's last three lines.
+
+### 33.241 Info strip XP rows while XP gain is locked (Forever)
+
+- Do: Level for a few minutes with the info strip's XP rows showing, then lock XP gain at the XP-lock NPC (or /reload after it).
+- Expect: The XP per hour and time-to-level rows disappear from the strip, as the XP bar does.
+- If it fails, paste: the info strip's rows and whether the XP bar shows.
+
+### 33.242 Retail arrow wording without a tracker Shift-click (Retail)
+
+- Do: On Retail, open /vg > Quests > Finding your way and read the arrow text; turn Follow the nearest quest off, track a quest on the game's map so the arrow holds it, and hover the Pin button, then click it.
+- Expect: The text mentions the quest you track on the game's map and no Shift-click; the Pin tooltip title reads "Pinned (the quest you track on the map)" and the chat line after the click reads "Arrow: off until you track a quest on the map."
+- If it fails, paste: the Finding your way text and the Pin tooltip's first line.
+
+### 33.243 Mail presets and the Sell card read the reagent bag (both)
+
+- Do: With two stacks of an ore or herb in the reagent bag, open the Send Mail tab and click a preset whose words match it; then at the Auction House put one stack on the Sell card, Post it, and press Post again.
+- Expect: The preset attaches the reagent bag stacks and its chat line counts them; the Sell card finds the second stack in the reagent bag and posts it, never saying the item is not in your bags.
+- If it fails, paste: the preset's chat line "<preset>: N items attached for <character>." and the Sell card's status line.
+
+### 33.244 A left-click-only button ignores a right-click (both)
+
+- Do: Type `/vg` to open the Vanguard options window. Right-click its Close button (the X at the top right) once, then left-click it once.
+- Expect: The right-click does nothing and the window stays open; the left-click closes it. This confirms the test client's rule that a button which never called RegisterForClicks takes left-button releases only.
+- If it fails, paste: whether the window closed on the right-click, and the client (Forever or Retail).
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
