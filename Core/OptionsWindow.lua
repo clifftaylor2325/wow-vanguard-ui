@@ -691,7 +691,7 @@ end
 -- the page's bar and tab strip, holding the card its tab shows.
 local function buildPage(page)
   local view = ns.ScrollView(window, { width = CARD_WIDTH })
-  view.child.pageKey, view.textScale = page.key, T.Settings().textScale
+  view.child.pageKey, view.textScale, view.font = page.key, T.Settings().textScale, (T.Font())
   placeCards(view, page)
   view:SetPoint("TOPLEFT", view.strip, "BOTTOMLEFT", 0, view.strip:GetHeight() > 1 and 0 or 1 - T.SPACE.gap)
   view:SetPoint("BOTTOMRIGHT", -VIEW_RIGHT, FOOT + T.SPACE.col)
@@ -1095,11 +1095,16 @@ local function forgetRows(view)
   end
 end
 
--- Throws a page built at another Text size away (its rows and reload tags were laid out for that size), so it is built
--- again when next shown; the page being dragged on is never rebuilt mid-drag.
+-- True when a built page was laid out at the current Text size and font.
+local function laidOutNow(view)
+  return view.textScale == T.Settings().textScale and view.font == (T.Font())
+end
+
+-- Throws a page built at another Text size or font away (its rows and reload tags were laid out for those), so it is
+-- built again when next shown; the page being dragged on is never rebuilt mid-drag.
 local function dropStale(key)
   local view = pages[key]
-  if not view or view.textScale == T.Settings().textScale then return end
+  if not view or laidOutNow(view) then return end
   rowCache[key] = nil
   forgetRows(view)
   showView(view, false)

@@ -1772,6 +1772,8 @@ it("options: pages built at another Text size are built again the next time they
     end return out`);
   for (const page of ["unitframes", "tools", "town"]) expect(Object.values(crowded(page)), `${page}: no reload tag sits over its caption`).toEqual([]);
   expect(addon.eval("return ns.Options.current"), "the page opened is the one asked for").toBe("town");
+  addon.eval('ns.Options.Show("modules") ns.Theme.Settings().font = "client" ns.Theme.Refresh() ns.Options.Show("general")');
+  expect(Object.values(crowded("modules")), "after a Font change too (the game's font is wider)").toEqual([]);
 });
 
 it("options: a nav entry's title stops short of the changed-setting dot and never wraps", () => {
