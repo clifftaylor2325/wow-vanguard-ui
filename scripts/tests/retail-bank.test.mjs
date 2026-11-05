@@ -130,3 +130,18 @@ it("retail auras: the target frame has a spot right of it, over the target of ta
   const second = target();
   expect([second[2] !== first[2], addon.eval(`return __wfgWorld.privateAnchors[${first[2]}] == nil`)], "a new spot for the new target, the old one given back").toEqual([true, true]);
 });
+
+it("retail auras: your own six private aura spots stand left of your buffs, outside the block Calm fades (H18-7-1)", () => {
+  const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
+  const own = addon.eval(`local out = {}
+    for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == "player" then out[#out + 1] = { a.auraIndex, a.iconInfo.iconWidth, a.parent:GetParent() } end end
+    table.sort(out, function(x, y) return x[1] < y[1] end)
+    local holder = ns.GetModule("PlayerAuras").holder
+    local row = out[1] and out[1][3]
+    return { #out, out[1] and out[1][1], out[6] and out[6][1], out[1] and out[1][2], row ~= nil and row:GetParent() == UIParent, row ~= nil and row.__points.RIGHT.rel == holder }`);
+  const size = addon.eval("return ns.GetModule('PlayerAuras').settings.size + ns.PrivateAuras.GROW");
+  expect(own, "six spots for the player's aura 1 to 6, a debuff and a bit across, in a row hung on the block's holder but not under it").toEqual([6, 1, 6, size, true, true]);
+  expect(addon.eval("local n = 0 for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == 'target' then n = n + 1 end end return n"), "the target's spot still asks for the first").toBe(1);
+  const off = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { modules = { PlayerAuras = false } } }" });
+  expect(off.eval("local n = 0 for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == 'player' then n = n + 1 end end return n"), "with the buffs block off the game's debuff frame is not parked and nothing is added").toBe(0);
+});

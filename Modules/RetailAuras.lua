@@ -4,7 +4,9 @@
 --   * one in the middle of each raid tile (its tile hooks on Modules/RaidFrames.lua, kept with Raid debuffs and HoTs off), moved to the tile's new unit
 --     as the roster shifts (the game's own raid frames do the same, CompactUnitFrame.lua);
 --   * one right of the target frame, over the target of target (Modules/FrameAuras.lua's frame parts), handed again
---     on a new target.
+--     on a new target;
+--   * six left of your own buffs and debuffs (Modules/PlayerAuras.lua's client parts), for the player's own, which
+--     the game's debuff frame draws until Vanguard parks it.
 -- Nothing about the aura is read here: the game draws it, its icon and its sweep, in the spot.
 
 local ADDON, ns = ...
@@ -16,11 +18,13 @@ ns.PrivateAuras = PA
 
 -- The gap between the target of target and the target's spot, and how much larger than a debuff the spot is.
 -- PA.CLEAR: how far right of the target frame the spot starts, past its corner mark and the Versus deck's edge.
-PA.GAP, PA.GROW, PA.CLEAR = 4, 4, 8
+-- PA.PLAYER_SPOTS: how many of your own private auras are drawn (the game's debuff frame has six).
+PA.GAP, PA.GROW, PA.CLEAR, PA.PLAYER_SPOTS = 4, 4, 8, 6
 
--- Hands the game the spot on holder for unit's first private aura, an icon size across, and gives back its id.
+-- Hands the game the spot on holder for unit's private aura (the holder's auraIndex, else the first), an icon
+-- size across, and gives back its id.
 local function anchor(holder, unit, size)
-  return ns.CallIf(C_UnitAuras, "AddPrivateAuraAnchor", { unitToken = unit, auraIndex = 1, parent = holder,
+  return ns.CallIf(C_UnitAuras, "AddPrivateAuraAnchor", { unitToken = unit, auraIndex = holder.auraIndex or 1, parent = holder,
     showCooldownFrame = true, showCooldownEdge = false, showCountdownNumbers = false, showDispelIcon = false, isContainer = false,
     iconInfo = { iconWidth = size, iconHeight = size,
       iconAnchor = { point = "CENTER", relativeTo = holder, relativePoint = "CENTER", offsetX = 0, offsetY = 0 } } })
@@ -82,3 +86,25 @@ function PA.TargetPart(f, key, settings)
 end
 
 table.insert(FA.CLIENT_PARTS, PA.TargetPart)
+
+-- Your own auras ------------------------------------------------------------------------------
+
+-- Your private aura number index: a spot size across, right to left from the row's right edge, handed the player.
+local function playerSpot(row, size, index)
+  local spot = PA.Spot(row, size, 1)
+  spot.auraIndex = index
+  spot:SetPoint("RIGHT", row, "RIGHT", -(index - 1) * (size + PA.GAP), 0)
+  PA.Point(spot, "player")
+end
+
+-- A row of your private aura spots left of your buffs and debuffs. It hangs on the block's holder but not under it,
+-- so the Calm HUD's fade of the block never hides a mechanic. The token "player" is fixed: no re-pointing.
+function PA.PlayerPart(holder, settings)
+  local size = settings.size + PA.GROW
+  local row = CreateFrame("Frame", nil, UIParent)
+  row:SetSize(PA.PLAYER_SPOTS * (size + PA.GAP), size)
+  row:SetPoint("RIGHT", holder, "LEFT", -PA.GAP, 0)
+  for index = 1, PA.PLAYER_SPOTS do playerSpot(row, size, index) end
+end
+
+table.insert(ns.GetModule("PlayerAuras").CLIENT_PARTS, PA.PlayerPart)
