@@ -92,16 +92,17 @@ local function addDot(line)
   line.changed:SetPoint("RIGHT", -T.SPACE.tight, 0)
 end
 
+-- The fold line's header options: collapsible, the count of folded rows, and a press that opens or folds the card.
+local function foldOptions(card, count)
+  return { collapsible = true, count = tostring(count), onToggle = function(collapsed) Fold.SetOpen(card, not collapsed) end }
+end
+
 -- The fold line: a collapsible section header, "More settings" and the count, across the card at y (units from its
 -- top) with the card's inset each side. Returns it and the y below it, where the folded rows start.
 function Fold.Line(card, spec, y)
   local at = y + T.SPACE.gap
   card.foldTitle = spec.title
-  local line = W.SectionHeader(card, L["More settings"], {
-    collapsible = true,
-    count = tostring(#spec.folded),
-    onToggle = function(collapsed) Fold.SetOpen(card, not collapsed) end,
-  })
+  local line = W.SectionHeader(card, L["More settings"], foldOptions(card, #spec.folded))
   line:SetPoint("TOPLEFT", card, "TOPLEFT", T.SPACE.col, -at)
   line:SetPoint("RIGHT", card, "RIGHT", -T.SPACE.col, 0)
   addDot(line)
