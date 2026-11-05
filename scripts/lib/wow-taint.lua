@@ -201,8 +201,10 @@ for name, field in pairs(LAZY) do rewrap(name, lazyRegion(field)) end
 -- Combat lockdown ---------------------------------------------------------------------------
 
 -- The methods the client blocks on a protected frame while insecure code runs in combat: the ones
--- Blizzard_APIDocumentationGenerated marks IsProtectedFunction (the same on both clients), grouped by its
--- file, plus SetAttribute. A documented name no kind in wow-widget-api.lua carries is left out until it is listed.
+-- Blizzard_APIDocumentationGenerated marks IsProtectedFunction, grouped by its file, plus SetAttribute. The
+-- flags match on both clients, except that Forever also protects FocusEnter, FocusExit, MouseDown and MouseUp
+-- (SimpleScriptRegionAPIDocumentation.lua). A documented name no kind in wow-widget-api.lua carries (those four
+-- among them) is left out until it is listed.
 local PROTECTED_CALLS = {
   -- SimpleFrameAPIDocumentation.lua
   "Show", "Hide", "SetShown", "SetScale", "StartMoving", "StartSizing", "StopMovingOrSizing", "Raise", "Lower",
