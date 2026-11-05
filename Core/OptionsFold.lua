@@ -97,7 +97,11 @@ end
 function Fold.Line(card, spec, y)
   local at = y + T.SPACE.gap
   card.foldTitle = spec.title
-  local line = W.SectionHeader(card, L["More settings"], { collapsible = true, count = tostring(#spec.folded), onToggle = function(collapsed) Fold.SetOpen(card, not collapsed) end })
+  local line = W.SectionHeader(card, L["More settings"], {
+    collapsible = true,
+    count = tostring(#spec.folded),
+    onToggle = function(collapsed) Fold.SetOpen(card, not collapsed) end,
+  })
   line:SetPoint("TOPLEFT", card, "TOPLEFT", T.SPACE.col, -at)
   line:SetPoint("RIGHT", card, "RIGHT", -T.SPACE.col, 0)
   addDot(line)
