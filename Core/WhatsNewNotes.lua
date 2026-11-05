@@ -33,6 +33,7 @@ ns.WHATS_NEW = {
     { module = "Other", label = "Safety and tools", items = {
       { text = "Nameplates no longer draw a dark box when the game hands a plate over at a tiny scale, and the Calm HUD's hover no longer reports an error on your buff buttons." },
       { text = "Fixes from twenty bug hunts across both clients: key setup and click casting, action bar flyouts, frames and raid marks, quests and the arrow, the reagent bag in selling, mail, auctions and the bank, profiles and setup, chat tabs, and the Retail windows." },
+      { text = "Fixes from three more bug hunts: the merchant's Stack and Your auctions' Cancel ask first when it costs gold, bag and bank search lights the tabs and bag buttons that hold a match, the quest dialog sorts reward spells into Teaches, Unlocks and Grants, nameplates show the soft-target icon, the Calm HUD brings action bars back in a vehicle, and chat links and the Retail Delve layout behave." },
       { text = "The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback)." },
     } },
   } },
