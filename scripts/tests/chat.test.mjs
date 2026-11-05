@@ -2424,6 +2424,22 @@ it("auto-accept: Forever's own invite windows and the teleport check: a declined
   expect(addon.eval("return { LFGInvitePopup:IsShown(), __answers }"), "declined and the popup hidden (a client without StaticPopupSpecial_Hide hides it itself)").toEqual([false, ["group", "close PARTY_INVITE"]]);
 });
 
+it("auto-accept: declining a stranger's group invite that carries a quest session closes Retail's Party Sync dialog (H19-2-2)", () => {
+  const addon = loggedIn(FOREVER_INVITES + "QuestSessionManager = { ConfirmInviteToGroupReceivedDialog = CreateFrame('Frame', 'QSConfirm', UIParent) } QuestSessionManager.ConfirmInviteToGroupReceivedDialog:Show()", { savedVariables: INVITE_SWITCHES_ON });
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  expect(addon.eval("return QuestSessionManager.ConfirmInviteToGroupReceivedDialog:IsShown()"), "up until the next frame").toBe(true);
+  addon.update(0);
+  expect(addon.eval("return { QuestSessionManager.ConfirmInviteToGroupReceivedDialog:IsShown(), __answers }"), "declined and the session dialog hidden").toEqual([false, ["group", "hide QSConfirm", "close PARTY_INVITE"]]);
+  addon.eval("QuestSessionManager = nil");
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.update(0);
+  expect(addon.eval("return #ns.errors"), "a client without the manager raises no error").toBe(0);
+  addon.eval("QuestSessionManager = { ConfirmInviteToGroupReceivedDialog = CreateFrame('Frame', 'QSConfirm2', UIParent) }");
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.update(0);
+  expect(addon.eval("return #ns.errors"), "a dialog that is not up is left alone").toBe(0);
+});
+
 it("auto-accept: Forever's own invite windows and the teleport check: a summon the game won't let you take yet leaves its prompt up", () => {
   const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
   addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' } __wfgWorld.cannotTeleport = true");

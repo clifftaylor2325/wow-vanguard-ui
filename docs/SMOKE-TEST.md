@@ -3951,6 +3951,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Chat says 2 items attached, the Send Mail tab holds 12, and there is no red error.
 - If it fails, paste: the chat line and any red error.
 
+### 33.279 Declining a stranger in Party Sync closes the session dialog (Retail)
+
+- Do: With Decline group invites from strangers on, have a non-friend in a party with Party Sync active invite you.
+- Expect: No Party Sync invite dialog stays on screen, and chat says Declined a group invite from the player.
+- If it fails, paste: /fstack over the dialog, and /vg errors.
+
 ### 33.281 Docked chat tab sizes through General's sliders (Forever)
 
 - Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.
