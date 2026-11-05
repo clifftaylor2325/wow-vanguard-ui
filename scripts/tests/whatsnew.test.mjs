@@ -189,3 +189,12 @@ it("what's new: a Text size change after the first fill lays the lines out again
   const heights = addon.eval(`local out = {} for _, l in ipairs(Vanguard_WhatsNew.lines) do out[#out + 1] = l:GetHeight() == l.text:GetStringHeight() end return out`);
   expect(heights.length > 0 && heights.every(Boolean), "each line is as tall as its text at the new size").toBe(true);
 });
+
+it("what's new: a Font change re-lays the lines out, and an unchanged window keeps its list", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("ns.WhatsNew.Open()");
+  addon.eval("Vanguard_WhatsNew.first = Vanguard_WhatsNew.lines Vanguard_WhatsNew:Hide() ns.WhatsNew.Open()");
+  expect(addon.eval("return Vanguard_WhatsNew.lines == Vanguard_WhatsNew.first"), "nothing changed: the same list").toBe(true);
+  addon.eval("Vanguard_WhatsNew:Hide() ns.Theme.Settings().font = 'client' ns.Theme.Refresh() ns.WhatsNew.Open()");
+  expect(addon.eval("return Vanguard_WhatsNew.lines ~= Vanguard_WhatsNew.first"), "a new font: the lines are measured again").toBe(true);
+});

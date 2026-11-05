@@ -4053,6 +4053,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the number does not change on leaving.
 - If it fails, paste: /run for i=1,C_QuestLog.GetNumQuestLogEntries() do local q=C_QuestLog.GetInfo(i) if q.isTask or q.isHidden then print(q.title,q.isTask,q.isHidden,GetQuestLogRewardXP(q.questID)) end end
 
+### 33.299 What's new after a Font change (Forever)
+
+- Do: /vg whatsnew, close it, General -> Look -> Font: the game's font, then /vg whatsnew again.
+- Expect: no wrapped line overlaps the next and there are no extra gaps.
+- If it fails, paste: a screenshot of the window and /vg errors.
+
 ### 33.305 Abandon is greyed for a quest the game won't abandon (Retail)
 
 - Do: Pick a quest the game's own map panel shows without an Abandon option (a starting-zone or campaign quest) and open Vanguard's quest log on it.

@@ -170,6 +170,7 @@ local function fill(entry)
   frame.hint:SetShown(hasLink(entry))
   frame.view:Fit(y - GROUP_GAP - LINE_GAP)
   frame.lines, frame.version, frame.textScale = child.lines, entry.version, T.Settings().textScale
+  frame.font = T.Settings().font
   frame.title:SetText(ns.Format(L["What's new in Vanguard {version}"], { version = entry.version }))
   frame.view:ScrollTo(0)
 end
@@ -182,12 +183,19 @@ local function fit()
   frame:SetSize(WIDTH, HEIGHT + frame.banner:GetHeight())
 end
 
+-- True when the list was laid out for other notes, text size or font (a Font change re-fonts the lines in place, so
+-- their measured heights are stale).
+local function stale(entry)
+  local settings = T.Settings()
+  return frame.version ~= entry.version or frame.textScale ~= settings.textScale or frame.font ~= settings.font
+end
+
 -- Shows the window with these notes (in the current accent), fading it in; notes for the
 -- running version count as seen.
 function WN.Show(entry)
   if not frame then build() end
   fit()
-  if frame.version ~= entry.version or frame.textScale ~= T.Settings().textScale then fill(entry) end
+  if stale(entry) then fill(entry) end
   for _, fs in ipairs(accented) do T.Color(fs, "accent") end
   if entry.version == ns.AddonVersion() then VanguardDB.whatsNewSeen = entry.version end
   T.FadeIn(frame)
