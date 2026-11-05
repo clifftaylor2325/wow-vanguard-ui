@@ -553,14 +553,15 @@ local function currentProfileText()
 end
 
 -- Asks before a reset: what is lost (every setting in the profile in use, for every character
--- using it) and where its copy goes; yes backs it up, resets it and runs after().
+-- using it) and where its copy goes; yes backs it up, resets it and runs after(backup name).
 local function confirmReset(what, yes, after)
   local name = ns.ProfileName()
   local q = L["{question} Every setting in profile {profile} goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile {backup}."]
   ns.Ask(ns.Format(q, { question = what, profile = name, backup = ns.BackupName(name) }), yes, function()
-    ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = name, backup = ns.BackupProfile() }))
+    local backup = ns.BackupProfile()
+    ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = name, backup = backup }))
     ns.ResetProfile()
-    after()
+    after(backup)
   end, function() end, "danger")
 end
 
@@ -571,8 +572,12 @@ end
 O.AskResetProfile = resetProfile
 
 -- Start over: after asking, the profile back to defaults (backed up first), and setup opens after the reload that applies it.
+-- Setup keeps that backup (Core/Setup.lua), so its first change doesn't copy the reset profile over it.
 local function startOver()
-  confirmReset(L["Start over?"], L["Start over"], function() VanguardCharDB.setupDone = false O.ProfileReplaced() end)
+  confirmReset(L["Start over?"], L["Start over"], function(backup)
+    VanguardCharDB.setupDone, VanguardCharDB.setupBackup = false, backup
+    O.ProfileReplaced()
+  end)
 end
 
 -- Profiles, part one: which profile, export/import, reset.

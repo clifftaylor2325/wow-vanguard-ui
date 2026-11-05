@@ -233,10 +233,32 @@ it("setup again: Keep and Keep change nothing; Run setup in the options; Start o
   expect(addon.eval("return Vanguard_Question.title:GetText()"), "it asks first, saying what is lost and where the copy goes")
     .toBe("Start over? Every setting in profile Default goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile Default backup.");
   addon.eval('Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
-  expect(addon.eval("return { VanguardCharDB.setupDone, VanguardDB.profiles.Default.positions == nil, VanguardDB.profiles['Default backup'].positions.raid.y }"), "it backs the profile up, resets it and owes setup").toEqual([false, true, -300]);
+  expect(addon.eval("return { VanguardCharDB.setupDone, VanguardDB.profiles.Default.positions == nil, VanguardDB.profiles['Default backup'].positions.raid.y, VanguardCharDB.setupBackup }"), "it backs the profile up, resets it, owes setup and hands setup the backup").toEqual([false, true, -300, "Default backup"]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
   const after = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} } }\nVanguardCharDB = { setupDone = false }" });
   expect(after.eval("return { Vanguard_Setup.caption:GetText(), Vanguard_Setup.pages.layout.hint:GetText() }"), "after the reload setup opens on its layouts, Keep picked").toEqual(["Step 1 of 4 · Layout", "Moves nothing: your frames stay where they are."]);
+});
+it("setup after Start over keeps Start over's backup: its first change doesn't copy the reset profile over it", () => {
+  const sv = "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, ['Default backup'] = { positions = { raid = { point = 'TOP', relPoint = 'TOP', x = 0, y = -300 } } } } }\nVanguardCharDB = { setupDone = false, setupBackup = 'Default backup' }";
+  const addon = loggedIn("", { firstRun: true, savedVariables: sv });
+  addon.clearChat();
+  addon.eval("ns.Setup.Backup()");
+  expect(addon.eval("return VanguardDB.profiles['Default backup'].positions.raid.y"), "the backup still holds the settings from before Start over").toBe(-300);
+  expect(chatHas(addon, /Profile Default as it was before setup is saved as profile Default backup\./), "and chat names it").toBe(true);
+});
+it("setup closed early keeps its backup for the next owed run, until Done; a run after Done backs up afresh", () => {
+  const addon = loggedIn("", { firstRun: true });
+  // The action button size the backup profile holds.
+  const size = () => addon.eval("return VanguardDB.profiles['Default backup'].ActionBars.size");
+  addon.eval("ns.Settings('ActionBars').size = 40 ns.Setup.Backup() ns.Settings('ActionBars').size = 50 Vanguard_Setup:Hide()");
+  addon.slash("setup");
+  addon.eval("ns.Setup.Backup()");
+  expect(size(), "the second run keeps the backup of the profile as it was before the first").toBe(40);
+  for (let i = 0; i < 4; i += 1) setupClick(addon, "next");
+  expect(addon.eval("return VanguardCharDB.setupBackup"), "Done lets the backup go").toBe(null);
+  addon.slash("setup");
+  addon.eval("ns.Setup.Backup()");
+  expect(size(), "a run after Done backs up the profile as it is now").toBe(50);
 });
 it("setup look: accent swatches and the raid frame style apply at once", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
