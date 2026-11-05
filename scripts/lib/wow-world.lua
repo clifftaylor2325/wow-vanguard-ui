@@ -752,16 +752,17 @@ C_SpecializationInfo = { GetSpecialization = viaGlobal("GetSpecialization"), Get
 C_Reputation = { GetWatchedFactionData = function() return world.watchedFaction end }
 
 -- Casting: a unit's cast or channel from unit.cast = { name, icon, startMs, endMs, channel, interruptible, spellId }.
+-- An unset interruptible means the cast can be interrupted; only interruptible = false sets notInterruptible.
 function UnitCastingInfo(unit)
   local c = uf(unit, "cast")
   if not c or c.channel then return nil end
-  return c.name, c.name, c.icon, c.startMs, c.endMs, false, nil, c.interruptible ~= false, c.spellId
+  return c.name, c.name, c.icon, c.startMs, c.endMs, false, nil, c.interruptible == false, c.spellId
 end
 -- A channel: name, text, icon, startMs, endMs, isTradeSkill, notInterruptible, spellId.
 function UnitChannelInfo(unit)
   local c = uf(unit, "cast")
   if not c or not c.channel then return nil end
-  return c.name, c.name, c.icon, c.startMs, c.endMs, false, c.interruptible ~= false, c.spellId
+  return c.name, c.name, c.icon, c.startMs, c.endMs, false, c.interruptible == false, c.spellId
 end
 
 -- The group ---------------------------------------------------------------------------------

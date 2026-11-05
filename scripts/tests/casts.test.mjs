@@ -615,3 +615,13 @@ it("your cast bar sits above the action bars and moves up when they grow, so the
   const off = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { ActionBars = false } } }" });
   expect(off.eval("return Vanguard_CastBar_player:GetBottom()"), "with Vanguard's action bars off: its layout spot, risen with the block").toBeCloseTo(146 + RISE.under, 3);
 });
+
+it("a world cast is interruptible unless marked interruptible = false (the notInterruptible return)", () => {
+  const addon = loggedIn();
+  const shielded = (cast) => addon.eval(`local u = __wfgWorld.units.player
+    u.cast = ${cast} local n = select(8, UnitCastingInfo("player"))
+    u.cast.channel = true local c = select(7, UnitChannelInfo("player")) u.cast = nil return { n, c }`);
+  expect(shielded("{ name = 'TEST-ONLY Spell', startMs = 1, endMs = 2 }"), "unset").toEqual([false, false]);
+  expect(shielded("{ name = 'TEST-ONLY Spell', interruptible = true }"), "true").toEqual([false, false]);
+  expect(shielded("{ name = 'TEST-ONLY Spell', interruptible = false }"), "false").toEqual([true, true]);
+});
