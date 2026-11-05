@@ -76,8 +76,8 @@ end
 
 -- Last run -------------------------------------------------------------------------------------
 
--- Seconds in a day; a way back in within SAME_VISIT seconds of leaving (a reload, a wipe and a run back) is the same visit.
-DC.DAY, DC.SAME_VISIT = 86400, 3600
+-- A way back in within SAME_VISIT seconds of leaving (a reload, a wipe and a run back) is the same visit.
+DC.SAME_VISIT = 3600
 
 -- The dungeon you stand in by the client's instance ID, and the time now; nil for either the client lacks.
 local function here()
@@ -112,12 +112,12 @@ function DC.Left()
   DC.inside = nil
 end
 
--- "Last run: today", "yesterday" or "5 days ago" for the dungeon you stand at; nil when there was no earlier visit.
+-- "Last run: today", "yesterday" or "5 days ago" (calendar days at your own midnight) for the dungeon you stand at; nil when there was no earlier visit.
 function DC.LastRun()
   local id, now = here()
   local seen = id and visits()[id]
   if not now or type(seen) ~= "table" or type(seen.prior) ~= "number" then return nil end
-  local days = math.max(0, math.floor((now - seen.prior) / DC.DAY))
+  local days = math.max(0, ns.LocalDay(now) - ns.LocalDay(seen.prior))
   if days == 0 then return L["Last run: today"] end
   if days == 1 then return L["Last run: yesterday"] end
   return ns.Format(L["Last run: {days} days ago"], { days = days })

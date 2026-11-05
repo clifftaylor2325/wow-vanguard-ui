@@ -114,11 +114,16 @@ it("the Keys line lists the keys on the key ring too, whichever way the client g
   expect([text(none).slice(-1), none.eval("return #ns.errors")], "no key ring size from either: the bags' keys only, no error").toEqual([["Keys: TEST-ONLY Skeleton Key, TEST-ONLY Gate Key"], 0]);
 });
 
+// The computer's clock kept at UTC, so a calendar day does not depend on the machine running the test.
+const UTC_DATE = `date = function(format, t) return os.date("!" .. format, t) end`;
 // The wall clock moved to `t` seconds, then a walk through the door (a new world) with the card on.
 const visit = (addon, t) => { addon.eval(`__t = ${t} time = function() return __t end`); addon.fire("PLAYER_ENTERING_WORLD"); addon.advance(0.25); };
 
+// Out of the dungeon at `t`, then back in a minute later.
+const comeIn = (addon, t) => { addon.eval("__inside = false"); visit(addon, t); addon.eval("__inside = true"); visit(addon, t + 60); };
+
 it("the card says when you last came: nothing the first time, then days ago; a quick way back in is the same visit", () => {
-  const addon = character(ON, "__t = 1000 time = function() return __t end");
+  const addon = character(ON, "__t = 1000 time = function() return __t end " + UTC_DATE);
   expect(text(addon)[1], "the first visit has no earlier one").not.toMatch(/^Last run/);
   addon.eval("ns.GetModule('InstancePrep').lastInstance = nil");
   visit(addon, 1000 + 600);
@@ -129,11 +134,28 @@ it("the card says when you last came: nothing the first time, then days ago; a q
   addon.slash("prep");
   expect(text(addon)[1], "three days after its last way in, the first visit is the earlier one").toBe("Last run: 3 days ago");
   addon.eval("ns.GetModule('InstancePrep').lastInstance = nil");
-  visit(addon, 1000 + 86400 * 5);
+  visit(addon, 1000 + 86400 * 4);
   addon.slash("prep");
-  expect(text(addon)[1], "a little under two days after the second visit is yesterday").toBe("Last run: yesterday");
+  expect(text(addon)[1], "the day after the second visit is yesterday").toBe("Last run: yesterday");
 });
+// A character whose last visit to the dungeon was at `at`, with the clock ten hours on and the computer's day kept at UTC.
+const lastSeen = (at) => {
+  const runs = `VanguardCharDB = { profile = "Default", setupDone = true, dungeonRuns = { [389] = { at = ${at} } } }`;
+  return character(ON + "\n" + runs, `__t = ${at + 36000} time = function() return __t end ` + UTC_DATE);
+};
 
+it("the card counts calendar days: a run at 23:00 reads yesterday at 01:00 the next day, two hours later", () => {
+  const addon = lastSeen(3 * 86400 + 23 * 3600);
+  comeIn(addon, 3 * 86400 + 25 * 3600);
+  addon.slash("prep");
+  expect(text(addon)[1], "two hours, but across midnight").toBe("Last run: yesterday");
+});
+it("a run earlier the same calendar day reads today, even 21 hours before", () => {
+  const addon = lastSeen(3 * 86400 + 3600);
+  comeIn(addon, 3 * 86400 + 22 * 3600);
+  addon.slash("prep");
+  expect(text(addon)[1], "01:00 then 22:00 the same day").toBe("Last run: today");
+});
 it("a wipe in a long run: the way back in within the hour of leaving is the same visit, not 'Last run: today'", () => {
   const runs = `VanguardCharDB = { profile = "Default", setupDone = true, dungeonRuns = { [389] = { at = 1000 - 5 * 86400 } } }`;
   const addon = character(ON + "\n" + runs, "__t = 1000 time = function() return __t end");
