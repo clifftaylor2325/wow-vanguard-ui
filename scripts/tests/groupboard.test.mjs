@@ -94,12 +94,13 @@ it("group board: hidden chat, your own lines and channels you don't read are ski
   addon.eval('__wfgStub.fire("CHAT_MSG_CHANNEL", __wfgWorld.secret(), "Hidden")');
   addon.eval('__wfgStub.fire("CHAT_MSG_CHANNEL", "LFM SFK", __wfgWorld.secret())');
   post(addon, "LFM SFK", "Tester");
+  post(addon, "LFM SFK", "Tester-ForeverTest");
   post(addon, "LFM SFK", "Tester-Ruleset");
   post(addon, "LFM SFK", "Saying", "SAY");
   post(addon, "LFM SFK", "Guildie", "GUILD");
   addon.eval("__wfgWorld.units.player.name = __wfgWorld.secret()");
   post(addon, "LFM SFK", "Tester");
-  expect(addon.eval("local out = {} for _, e in ipairs(ns.GetModule('GroupBoard').entries) do out[#out + 1] = e.sender end return out"), "only the line whose sender may be someone else").toEqual(["Tester"]);
+  expect(addon.eval("local out = {} for _, e in ipairs(ns.GetModule('GroupBoard').entries) do out[#out + 1] = e.sender end return out"), "your own line with or without your realm is skipped; the same name from another realm, and any name while yours is hidden, is kept").toEqual(["Tester", "Tester-Ruleset"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
