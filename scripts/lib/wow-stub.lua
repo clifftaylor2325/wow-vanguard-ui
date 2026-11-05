@@ -144,9 +144,12 @@ local function forgetResolved()
     for key in pairs(classMisses[id]) do classMisses[id][key] = nil end
   end
 end
--- A new stub method: stored, and the class tables start over.
-local function addMethod(t, key, fn) rawset(t, key, fn) forgetResolved() end
-setmetatable(methods, { __newindex = addMethod })
+-- The stub methods live in a store behind the methods table, so every write, a new method or one
+-- replacing it (the taint file's rewrap, a test double), reaches __newindex and the class tables start over.
+local methodStore = {}
+-- Stores a method, new or replacing, and the class tables start over.
+local function setMethod(_, key, fn) methodStore[key] = fn forgetResolved() end
+setmetatable(methods, { __index = methodStore, __newindex = setMethod })
 
 -- A set from the widget API list behind a proxy, so an edit to it reaches
 -- the class tables; reads see the set as it is.
