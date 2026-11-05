@@ -680,7 +680,7 @@ end
 local function addFree(b)
   vgFreeBack[b] = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
   vgFreeBack[b]:SetTexture(T.WHITE)
-  T.Tint(vgFreeBack[b], "edge", MS.COUNT_BACK)
+  T.Tint(vgFreeBack[b], "shade", MS.COUNT_BACK)
   vgFree[b] = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
   MS.free, MS.freeBack = vgFree[b], vgFreeBack[b]
 end

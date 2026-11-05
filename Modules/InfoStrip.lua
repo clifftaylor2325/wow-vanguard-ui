@@ -628,7 +628,7 @@ end
 local function addInvites(b)
   local pad, back = ns.GetModule("MenuStrip").COUNT_PAD, T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
   back:SetTexture(T.WHITE)
-  T.Tint(back, "edge", ns.GetModule("MenuStrip").COUNT_BACK)
+  T.Tint(back, "shade", ns.GetModule("MenuStrip").COUNT_BACK)
   local fs = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
   fs:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -pad, pad)
   back:SetPoint("TOPLEFT", fs, "TOPLEFT", -pad, pad)

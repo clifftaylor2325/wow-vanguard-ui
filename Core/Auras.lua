@@ -172,7 +172,7 @@ end
 -- A debuff icon's type badge (#235) in its top-left corner: a dark backing and one letter per
 -- type, all hidden until a typed debuff shows. { back, letters = { type -> texture } }.
 local function badge(f, size)
-  local back = T.Tint(T.Snap(f:CreateTexture(nil, "OVERLAY", nil, 6)), "edge", 0.8)
+  local back = T.Tint(T.Snap(f:CreateTexture(nil, "OVERLAY", nil, 6)), "shade", 0.8)
   back:SetTexture(T.WHITE)
   back:SetSize(math.max(A.BADGE_MIN, size * A.BADGE), math.max(A.BADGE_MIN, size * A.BADGE))
   back:SetPoint("TOPLEFT")

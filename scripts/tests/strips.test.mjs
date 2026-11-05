@@ -1257,3 +1257,10 @@ it("the minimap's zone name is the zone role: a bold 13 in Fira Sans that the fa
   expect(font("ns.GetModule('Minimap').zone"), "the zone name keeps Fira Sans SemiBold at the zone role's 13").toEqual(["FiraSansCondensed-SemiBold.ttf", addon.eval("return ns.Theme.RoleSize('zone')")]);
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneContested"), "and the PvP colour is still its colour").toBe(true);
 });
+
+it("H17-10-R1: the backpack's free count and the calendar's invite count sit on a black backing in every look, so a red 0 stays readable", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + BAGS_ENV + "C_Calendar = { GetNumPendingInvites = function() return 1 end }");
+  addon.eval('ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()');
+  const backs = addon.eval("return { ns.GetModule('MenuStrip').freeBack.__vertexColor, ns.GetModule('InfoStrip').invitesBack.__vertexColor }");
+  expect(backs.map((c) => [c[0], c[1], c[2]]), "Classic's bronze edge does not tint either backing").toEqual([[0, 0, 0], [0, 0, 0]]);
+});
