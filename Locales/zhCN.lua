@@ -1791,7 +1791,6 @@ L["The General and Profiles pages in /vg can still restore them; Start fresh the
 L["The Great Vault"] = "宏伟宝库"
 L["The Legacy perk planner is off: switch it on under Town and gear."] = "传承特长规划器已关闭：请在“城镇与装备”中开启。"
 L["The Talent planner is off (/vg > Modules)."] = "天赋规划器已关闭（/vg > 模块）。"
-L["The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock."] = "屏幕上的箭头指向你追踪的任务中最近的未完成目标；在追踪器中 Shift-点击任务可让它改为指向那里。用 /vg unlock 移动它。"
 L["The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock. /vg questdata shows what the client says about quests."] = "屏幕上的箭头会指向你所关注任务中最近的未完成目标；在追踪器中Shift点击任务可改为指向该任务。用 /vg unlock 移动它。/vg questdata 显示客户端提供的任务信息。"
 L["The auction helper is off (/vg > Modules)."] = "拍卖助手已关闭（/vg > 模块）。"
 L["The auction house hasn't answered the scan: another character or auction addon may have scanned in the last 15 minutes. The button counts down to the next try."] = "拍卖行没有回应扫描：其他角色或拍卖插件可能在过去15分钟内扫描过。按钮会倒数到下次尝试。"

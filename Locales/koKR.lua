@@ -1791,7 +1791,6 @@ L["The General and Profiles pages in /vg can still restore them; Start fresh the
 L["The Great Vault"] = "위대한 금고"
 L["The Legacy perk planner is off: switch it on under Town and gear."] = "유산 특전 계획기가 꺼져 있습니다: 마을과 장비에서 켜세요."
 L["The Talent planner is off (/vg > Modules)."] = "특성 계획기가 꺼져 있습니다 (/vg > 모듈)."
-L["The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock."] = "화면의 화살표는 추적 중인 퀘스트의 가장 가까운 미완료 목표를 가리킵니다. 추적기에서 퀘스트를 Shift-클릭하면 대신 그쪽을 가리킵니다. /vg unlock으로 옮기세요."
 L["The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock. /vg questdata shows what the client says about quests."] = "화면의 화살표가 지켜보는 퀘스트 중 가장 가까운 미완료 목표를 가리킵니다. 추적기에서 퀘스트를 Shift-클릭하면 그쪽을 가리킵니다. /vg unlock으로 옮깁니다. /vg questdata는 클라이언트가 퀘스트에 대해 알려주는 내용을 보여줍니다."
 L["The auction helper is off (/vg > Modules)."] = "경매 도우미가 꺼져 있습니다 (/vg > 모듈)."
 L["The auction house hasn't answered the scan: another character or auction addon may have scanned in the last 15 minutes. The button counts down to the next try."] = "경매장이 검색에 응답하지 않았습니다: 다른 캐릭터나 경매 애드온이 최근 15분 안에 검색했을 수 있습니다. 버튼에 다음 시도까지 남은 시간이 표시됩니다."
