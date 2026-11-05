@@ -1545,7 +1545,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.9.3 Objectives and the countdown
 
 - Do: enter a battleground with flags or bases (Warsong Gulch, Arathi Basin) before it starts; watch the countdown; look at the scores at the top of the screen and anything under the minimap.
-- Expect: the countdown bar uses the theme's bar texture on a flat panel with its time in the theme font, and the big numbers are the game's; the scores at the top (and capture bars under the minimap) sit on one flat panel that disappears when they go; the panel never stays behind as an empty square. (The banner shown as you enter a battleground on Retail is step 33.303; WoW Forever never shows it.) [Needs in game: the panel's place and size around the widgets.]
+- Expect: the countdown bar uses the theme's bar texture on a flat panel with its time in the theme font, and the big numbers are the game's; the scores at the top (and capture bars under the minimap) sit on one flat panel that disappears when they go; the panel never stays behind as an empty square. (The banner shown as you enter a battleground on Retail is step 33.298; WoW Forever never shows it.) [Needs in game: the panel's place and size around the widgets.]
 - If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
 
 ### 14.9.4 Honor tab and switch
@@ -3885,307 +3885,307 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The form opens with Request a feature highlighted in the kind row and the want and why boxes below it; the second time Report a bug is highlighted.
 - If it fails, paste: `/vg errors` and which of the two segments was lit
 
-### 33.267 Marking quests closes the game's Abandon box (both)
+### 33.266 Marking quests closes the game's Abandon box (both)
 
 - Do: In Vanguard's quest log click Abandon on one quest and leave the game's box open, Ctrl-click two other quests and click Abandon 2.
 - Expect: The game's box closes as Vanguard's question opens; answering Vanguard's question removes only the two marked quests.
 - If it fails, paste: which quests left the log, and /vg errors.
 
-### 33.268 Abandoning marked quests skips one that left the log (both)
+### 33.267 Abandoning marked quests skips one that left the log (both)
 
 - Do: Ctrl-click two quests in Vanguard's quest log, one ready to turn in, press Abandon 2 and leave the question open; turn that quest in at its NPC, click a third quest in the log, then answer Abandon.
 - Expect: Only the other marked quest leaves the log, the third stays, and chat says Abandoned 1 quest(s).
 - If it fails, paste: the quest log before and after, the chat line, and /vg errors.
 
-### 33.269 A web address alone in a message is a link (both)
+### 33.268 A web address alone in a message is a link (both)
 
 - Do: In /s say only https://example.test/x, then say go http://. now.
 - Expect: The whole first line is an accent link and clicking it opens the copy box with the address; the second line has no link.
 - If it fails, paste: the chat lines as shown, and /vg errors.
 
-### 33.270 A bare address with a subdomain is a link (both)
+### 33.269 A bare address with a subdomain is a link (both)
 
 - Do: In /s say see classic.wowhead.com/item=1 and eu.battle.net.
 - Expect: Both addresses are accent links and clicking one opens the copy box.
 - If it fails, paste: the chat line as shown, and /vg errors.
 
-### 33.271 Chat watch holds a Russian word to a word start (both, Russian client)
+### 33.270 Chat watch holds a Russian word to a word start (both, Russian client)
 
 - Do: /vg watch add продам, then have a friend say непродам in /s and then продам.
 - Expect: Only the second line rings and toasts.
 - If it fails, paste: both lines and /vg errors.
 
-### 33.273 Relist leaves the row when the sell card refuses the item (Forever)
+### 33.271 Relist leaves the row when the sell card refuses the item (Forever)
 
 - Do: Let an auction of a BoE item expire while you carry a second copy of it that is soulbound, take the mail, open the auction house Posting tab and press Relist.
 - Expect: The unbound copy goes on the sell card and the row goes; with only the bound copy, the row stays and says expired · by mail.
 - If it fails, paste: /vg errors and a screenshot of Your auctions.
 
-### 33.274 Cancelling an auction that costs asks first (Forever)
+### 33.272 Cancelling an auction that costs asks first (Forever)
 
 - Do: Post an auction, get a bid on it from another character, then press its Cancel on Your auctions in the Posting tab.
 - Expect: A question names the cancel cost; No leaves the auction up and Yes cancels it. A cancel that costs nothing still goes on the click.
 - If it fails, paste: /run print(C_AuctionHouse.GetCancelCost(<auctionID>)) and /vg errors.
 
-### 33.275 Stack asks first for a costly non-refundable pack (Retail)
+### 33.273 Stack asks first for a costly non-refundable pack (Retail)
 
 - Do: At a vendor selling a stackable non-refundable item priced 150g or more per pack, shift-click it and press Stack.
 - Expect: Vanguard's Buy question appears and nothing is bought until you answer; a refundable pack of that price, or a non-refundable one under 150g, buys at once.
 - If it fails, paste: /run local i=<row> print(C_MerchantFrame.IsMerchantItemRefundable(i), C_MerchantFrame.GetItemInfo(i).price)
 
-### 33.276 Stack and Max skip an item the merchant will not sell you (Forever)
+### 33.274 Stack and Max skip an item the merchant will not sell you (Forever)
 
 - Do: At a reputation vendor, shift-click a stackable item shown in red (reputation too low); with the same item on your Keep stocked list, also open the vendor fresh.
 - Expect: No Stack/Max drawer under the quantity window, no Bought line, and the stock run buys nothing of it.
 - If it fails, paste: /dump C_MerchantFrame.GetItemInfo(<row>)
 
-### 33.277 Sending a group to a full bank says what stayed (Forever)
+### 33.275 Sending a group to a full bank says what stayed (Forever)
 
 - Do: Fill the open bank tab, put three stacks in a bag group, open the bank and choose Send <group> to the bank on the bag's Groups menu.
 - Expect: Half a second later chat says Sent 0 stack(s) of the group to the bank and 3 stack(s) stayed in your bags: the bank has no room.
 - If it fails, paste: the two chat lines.
 
-### 33.278 Mail preset counts what is already attached (Forever)
+### 33.276 Mail preset counts what is already attached (Forever)
 
 - Do: On the Send Mail tab attach 10 items by hand, then press a preset that matches 5 more.
 - Expect: Chat says 2 items attached, the Send Mail tab holds 12, and there is no red error.
 - If it fails, paste: the chat line and any red error.
 
-### 33.279 Declining a stranger in Party Sync closes the session dialog (Retail)
+### 33.277 Declining a stranger in Party Sync closes the session dialog (Retail)
 
 - Do: With Decline group invites from strangers on, have a non-friend in a party with Party Sync active invite you.
 - Expect: No Party Sync invite dialog stays on screen, and chat says Declined a group invite from the player.
 - If it fails, paste: /fstack over the dialog, and /vg errors.
 
-### 33.281 Docked chat tab sizes through General's sliders (Forever)
+### 33.278 Docked chat tab sizes through General's sliders (Forever)
 
 - Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.
 - Expect: The dock (and the tab shown) gets wider; there is no slider for the docked tab.
 - If it fails, paste: /run print(ChatFrame1:GetWidth(), ChatFrame2:GetWidth(), select(9, GetChatWindowInfo(2)))
 
-### 33.282 Meter Deaths view shows the time of death (Forever)
+### 33.279 Meter Deaths view shows the time of death (Forever)
 
 - Do: Die once in a fight, open the Vanguard meter on Deaths, this fight.
 - Expect: Your line has a full bar and the time into the fight, like the game's own meter.
 - If it fails, paste: /dump C_DamageMeter.GetCombatSessionFromType(Enum.DamageMeterSessionType.Current, Enum.DamageMeterType.Deaths).combatSources[1]
 
-### 33.283 Retail bag search reads the item's own level and quality (Retail)
+### 33.280 Retail bag search reads the item's own level and quality (Retail)
 
 - Do: Carry an upgraded epic whose base item is a rare (or a raised item level), and type ilvl>N between the two levels in the bag search.
 - Expect: The upgraded item lights, and q:epic lights it too.
 - If it fails, paste: /run local i=C_Container.GetContainerItemInfo(<bag>,<slot>) print(i.quality, C_Item.GetDetailedItemLevelInfo(i.hyperlink), select(4, C_Item.GetItemInfo(i.itemID)))
 
-### 33.284 Retail bag and bank slots show no template art (Retail)
+### 33.281 Retail bag and bank slots show no template art (Retail)
 
 - Do: Open the bank and click the Warband tab, then open the combined bag.
 - Expect: No slot art pokes out past each slot's thin border; empty slots read as flat squares.
 - If it fails, paste: a screenshot of four empty Warband slots
 
-### 33.285 Locked backpack slots come last in Empty (both)
+### 33.282 Locked backpack slots come last in Empty (both)
 
 - Do: On an account without an authenticator, open the combined bag with sections on.
 - Expect: The four locked slots are the last four of Empty, and the game's add-slots button sits at their left edge, not over a usable slot.
 - If it fails, paste: a screenshot of the Empty section
 
-### 33.286 Retail bank side tabs dim by the search words (Retail)
+### 33.283 Retail bank side tabs dim by the search words (Retail)
 
 - Do: Put an epic in bank tab 3 only, open the bank on tab 1 and type q:epic in its search.
 - Expect: Tab 3 is lit and the other side tabs are dimmed.
 - If it fails, paste: a screenshot of the side tabs
 
-### 33.287 Bag bar buttons light by the search words (both)
+### 33.284 Bag bar buttons light by the search words (both)
 
 - Do: Put an epic in your second bag only, open the bags and type q:epic.
 - Expect: That bag's button on the bag bar is lit and the others are dimmed.
 - If it fails, paste: a screenshot of the bag bar
 
-### 33.289 Hover keys survive a party member's spec change (Retail)
+### 33.285 Hover keys survive a party member's spec change (Retail)
 
 - Do: In a party with Vanguard click casting on, hold the pointer over a party member's raid tile and press a hover key bound on the Click casting page while that member changes spec.
 - Expect: The hover key still casts on that tile without moving the pointer off and back.
 - If it fails, paste: /vg errors, and which key and tile.
 
-### 33.290 Opening the game's click bindings twice keeps the window open (Forever)
+### 33.286 Opening the game's click bindings twice keeps the window open (Forever)
 
 - Do: In /vg, Click casting, press Open the game's click bindings; then, with the game's Click Casting window still open, open /vg, go to Click casting and press it again.
 - Expect: The game's Click Casting window is still open after the second press, and Vanguard's options window has stepped aside.
 - If it fails, paste: whether either window is open, and /vg errors.
 
-### 33.291 Empty totem slots let clicks through (Forever)
+### 33.287 Empty totem slots let clicks through (Forever)
 
 - Do: As a shaman with no totems down, stand so an NPC or a lootable corpse is under the empty totem strip just above your player frame and click it; then drop a totem in a fight and right-click its cell.
 - Expect: The first click targets or loots what is under the strip; the right-click in the fight destroys the totem.
 - If it fails, paste: /vg errors, and which click did nothing.
 
-### 33.292 The game's moved cast bar stays hidden in Edit Mode (both)
+### 33.288 The game's moved cast bar stays hidden in Edit Mode (both)
 
 - Do: Before or with Vanguard's cast bars on, open Edit Mode, untick Lock to Player Frame on the game's cast bar and drag it away, tick the Cast Bar box, close Edit Mode, /reload, then open Edit Mode again.
 - Expect: Only Vanguard's cast bar handle shows; no game cast bar appears beside it.
 - If it fails, paste: /dump PlayerCastingBarFrame:GetParent():GetName() and a screenshot.
 
-### 33.293 A frame anchored to a mover pushed off the edge sits beside it (Forever)
+### 33.289 A frame anchored to a mover pushed off the edge sits beside it (Forever)
 
 - Do: In /vg unlock, anchor the target frame to the player frame (its popover: Anchor to Player frame, Side Left), then in the player frame's popover type X 3000 and press Done, then Save and lock.
 - Expect: The player frame sits against the right edge of the screen and the target frame sits just left of it, not over it.
 - If it fails, paste: a screenshot and /vg errors.
 
-### 33.294 Calm action bars come back in a vehicle (both)
+### 33.290 Calm action bars come back in a vehicle (both)
 
 - Do: With the Calm HUD on and Action bars set to Hide on the General page's Calm HUD card, out of combat enter a vehicle (on Forever, cast Eye of Kilrogg or Eyes of the Beast instead).
 - Expect: Bar 1 shows at full strength with the vehicle's or eye's buttons, and fades again after you leave; your buffs and unit frames stay calm.
 - If it fails, paste: /vg errors, and whether the bar is invisible or on the wrong page.
 
-### 33.295 Hovering any row of calm buffs brings them back (Forever)
+### 33.291 Hovering any row of calm buffs brings them back (Forever)
 
 - Do: With the Calm HUD on and buffs and debuffs on Dim, carry enough buffs for two rows (or have a debuff), then move the pointer onto a buff in the second row from below.
 - Expect: The whole buffs and debuffs block returns to full strength while the pointer is on it, and dims again when it leaves.
 - If it fails, paste: how many rows you had, and which row woke it.
 
-### 33.297 Show honor as experience updates the XP bar at once (Retail)
+### 33.292 Show honor as experience updates the XP bar at once (Retail)
 
 - Do: at max level, open the PvP window, right-click the honor level and tick Show honor as experience, then untick it.
 - Expect: Vanguard's XP bar shows the orange honor bar at once on ticking and hides at once on unticking.
 - If it fails, paste: /dump GetCVarBool('showHonorAsExperience') and what the bar shows.
 
-### 33.298 Quest XP footer ignores world quests (Retail)
+### 33.293 Quest XP footer ignores world quests (Retail)
 
 - Do: below the level cap, stand in a zone with world quests, hover nothing, read the tracker's Quests: N% line, then leave the zone.
 - Expect: the number does not change on leaving.
 - If it fails, paste: /run for i=1,C_QuestLog.GetNumQuestLogEntries() do local q=C_QuestLog.GetInfo(i) if q.isTask or q.isHidden then print(q.title,q.isTask,q.isHidden,GetQuestLogRewardXP(q.questID)) end end
 
-### 33.299 What's new after a Font change (Forever)
+### 33.294 What's new after a Font change (Forever)
 
 - Do: /vg whatsnew, close it, General -> Look -> Font: the game's font, then /vg whatsnew again.
 - Expect: no wrapped line overlaps the next and there are no extra gaps.
 - If it fails, paste: a screenshot of the window and /vg errors.
 
-### 33.300 Instance prep card keeps a long name off its count (Forever)
+### 33.295 Instance prep card keeps a long name off its count (Forever)
 
 - Do: on a German or French client, or English at the largest Text size, keep a long-named item stocked with `/vg stock <item> <n>` (for example Greater Arcane Protection Potion) at a count above what you carry, then open the card with `/vg prep`.
 - Expect: the name ends in ... before the red have / want count and never runs under it.
 - If it fails, paste: a screenshot of the card.
 
-### 33.301 Target debuff row includes nameplate debuffs (Forever)
+### 33.296 Target debuff row includes nameplate debuffs (Forever)
 
 - Do: target a mob a group member has debuffed with several spells (or one with a known nameplate debuff), and compare the game's nameplate debuffs with Vanguard's target debuff row (Only your debuffs off).
 - Expect: every debuff on the nameplate also shows on the target row.
 - If it fails, paste: the debuff names missing and `/vg errors`.
 
-### 33.302 No soul shards below level 10 (Retail)
+### 33.297 No soul shards below level 10 (Retail)
 
 - Do: on a warlock under level 10 look above Vanguard's player frame, then level to 10.
 - Expect: no shard pips before level 10, and five pips from the level-up on.
 - If it fails, paste: /dump UnitLevel('player') and whether the pips show.
 
-### 33.303 Objective banner skin on Retail (Retail)
+### 33.298 Objective banner skin on Retail (Retail)
 
 - Do: /reload, don't open the PvP tab, queue for and enter a battleground or brawl.
 - Expect: about a second after you arrive, the banner with the battleground's name and its one-line description is in Vanguard's font at the game's usual size, its art and animation the game's.
 - If it fails, paste: `/run local b=PvPObjectiveBannerFrame print(C_AddOns.IsAddOnLoaded("Blizzard_PVPUI"), b and b.Title:GetFont())` and `/vg errors`.
 
-### 33.305 Abandon is greyed for a quest the game won't abandon (Retail)
+### 33.299 Abandon is greyed for a quest the game won't abandon (Retail)
 
 - Do: Pick a quest the game's own map panel shows without an Abandon option (a starting-zone or campaign quest) and open Vanguard's quest log on it.
 - Expect: Abandon is greyed, and Ctrl-click does not mark the quest.
 - If it fails, paste: /run print(C_QuestLog.CanAbandonQuest(C_QuestLog.GetSelectedQuest()))
 
-### 33.306 Game order sorts again on a map change within a zone (Forever)
+### 33.300 Game order sorts again on a map change within a zone (Forever)
 
 - Do: With the tracker on Game order and quests watched in two maps of one zone (a city and its zone), walk from one map into the other.
 - Expect: The quests for the map you entered move up the list.
 - If it fails, paste: /run print(C_Map.GetBestMapForUnit("player"))
 
-### 33.307 Quest reward upgrade arrow on a cold item cache (Forever)
+### 33.301 Quest reward upgrade arrow on a cold item cache (Forever)
 
 - Do: After a fresh login, talk to a quest giver whose reward item you have never seen and which is an upgrade for you.
 - Expect: The green upgrade arrow appears on the reward card within a second, and the item's tooltip has an Upgrade line, not a Downgrade line.
 - If it fails, paste: /run print(C_Item.GetItemStats(GetQuestItemLink("choice",1)) ~= nil)
 
-### 33.308 Timed scenario criterion shows a countdown (Retail)
+### 33.302 Timed scenario criterion shows a countdown (Retail)
 
 - Do: Start a scenario stage with a timed criterion (a Survive step or a timed escort) with Vanguard's tracker on.
 - Expect: A Time left line sits under the criterion and counts down each second, and goes when the time runs out.
 - If it fails, paste: /run for i=1,select(3,C_Scenario.GetStepInfo()) do local c=C_ScenarioInfo.GetCriteriaInfo(i) print(c.description,c.duration,c.elapsed) end
 
-### 33.309 Quest arrow with a waypoint but no distance (Forever)
+### 33.303 Quest arrow with a waypoint but no distance (Forever)
 
 - Do: Shift-click a tracked quest on the other continent and stand on a map where the client gives a boat or zone exit waypoint.
 - Expect: The arrow points at the exit at full strength and its line reads No distance (Turn in · no distance once the quest is ready).
 - If it fails, paste: /run print(C_QuestLog.GetDistanceSqToQuest(C_SuperTrack.GetSuperTrackedQuestID()))
 
-### 33.310 Quest reward spells are worded by kind (Forever)
+### 33.304 Quest reward spells are worded by kind (Forever)
 
 - Do: Open a quest offering whose reward is a spell you already know, and one whose reward is a buff.
 - Expect: No line for the known spell; the buff reads Grants: Name, a learned spell Teaches: Name, an unlock Unlocks: Name.
 - If it fails, paste: /run for _,id in ipairs(C_QuestInfoSystem.GetQuestRewardSpells(GetQuestID())) do local s=C_QuestInfoSystem.GetQuestRewardSpellInfo(GetQuestID(),id) print(id,s.name,s.isSpellLearned,s.genericUnlock,C_SpellBook.IsSpellInSpellBook(id,0,true)) end
 
-### 33.313 Quest-start pins skip held quests and continent maps (Forever)
+### 33.305 Quest-start pins skip held quests and continent maps (Forever)
 
 - Do: accept a quest that starts a quest line, then open the world map on that zone; then open the map on Kalimdor or Azeroth.
 - Expect: no Vanguard "!" pin for the quest you now hold, none for lines that start on another map, and none at all on the continent or world map.
 - If it fails, paste: `/run for _,l in ipairs(C_QuestLine.GetAvailableQuestLines(WorldMapFrame:GetMapID())) do print(l.questID,l.inProgress,l.startMapID) end`
 
-### 33.314 Hidden addon minimap buttons leave the drawer (both)
+### 33.306 Hidden addon minimap buttons leave the drawer (both)
 
 - Do: in an addon that uses LibDBIcon, tick its "hide minimap icon", then open the minimap drawer with the "..." button.
 - Expect: no empty square for it, and the "..." button's tooltip count leaves it out; untick it and it takes the next cell.
 - If it fails, paste: `/run for _,c in ipairs({Vanguard_MinimapDrawer:GetChildren()}) do print(c:GetName(), c:IsShown()) end`
 
-### 33.315 Event link button on the minimap's corner (Forever)
+### 33.307 Event link button on the minimap's corner (Forever)
 
 - Do: `/run MinimapBackdrop.ExternalEventURLButton:Show()` then hover the map's top-left corner, under the dungeon difficulty icon.
 - Expect: the event button shows there, small, with its tooltip; nothing invisible takes clicks elsewhere on the map.
 - If it fails, paste: `/run local b=MinimapBackdrop.ExternalEventURLButton print(b:GetParent():GetName(), b:GetEffectiveAlpha(), b:GetPoint())`
 
-### 33.316 /way left to another waypoint addon (both)
+### 33.308 /way left to another waypoint addon (both)
 
 - Do: with another addon that registers /way (not TomTom) enabled, `/reload`, then type `/way 50 50` and `/vg way 50 50`.
 - Expect: the other addon answers `/way`; `/vg way 50 50` sets Vanguard's waypoint.
 - If it fails, paste: `/run print(SLASH_VANGUARDWAY1, hash_SlashCmdList["/WAY"])`
 
-### 33.317 Options search finds Move frames in Korean (both, Korean client)
+### 33.309 Options search finds Move frames in Korean (both, Korean client)
 
 - Do: on a koKR client open `/vg` and type unlock in the search box.
 - Expect: the 창 이동 (Move frames) button on the General page is listed.
 - If it fails, paste: a screenshot of the search list.
 
-### 33.318 Housing category column stays flat under an open category (Retail)
+### 33.310 Housing category column stays flat under an open category (Retail)
 
 - Do: open the housing dashboard, Catalog tab, and click a category that has subcategories.
 - Expect: the category column stays flat, with no wooden strip between Back and the subcategory icons.
 - If it fails, paste: `/run local c=HousingDashboardFrame.CatalogContent.Categories print(c.SubcategoriesDivider:IsShown(), c.SubcategoriesDivider:GetAlpha())`
 
-### 33.319 Delve windows lose the game's inset edge (Retail)
+### 33.311 Delve windows lose the game's inset edge (Retail)
 
 - Do: open the delve companion window, and stand at a delve door to open the difficulty picker.
 - Expect: one Vanguard edge round the painted scene, no thin grey-gold inner frame line inside it.
 - If it fails, paste: `/run print(DelvesCompanionConfigurationFrame.NineSlice:GetRegions():GetAlpha())`
 
-### 33.321 Soft-target icons over Vanguard's nameplates (both)
+### 33.312 Soft-target icons over Vanguard's nameplates (both)
 
 - Do: With Nameplates on, run /run SetCVar("SoftTargetIconInteract", 1) SetCVar("SoftTargetIconEnemy", 1), then walk up to a friendly NPC you can talk to, then face a hostile mob in range.
 - Expect: The speech bubble shows above the NPC's Vanguard plate and the enemy soft-target icon above the mob's plate, each gone when you turn away; neither plate shows the game's own bar under Vanguard's.
 - If it fails, paste: the output of /vg plates and of /run print(GetCVar("SoftTargetNameplateSize"), GetCVar("SoftTargetIconInteract"), GetCVar("SoftTargetIconEnemy")), and which client.
 
-### 33.327 Equipment Manager set names keep their colours (both)
+### 33.313 Equipment Manager set names keep their colours (both)
 
 - Do: Make two equipment sets, put one item of the second in the bank, open Character > Equipment Manager, then change the accent colour in /vg > Look.
 - Expect: The first set's name is in the light text colour and the second's is red, and on Retail the New Set row is green, both before and after the accent change.
 - If it fails, paste: `/run PaperDollFrame.EquipmentManagerPane.ScrollBox:ForEachFrame(function(r) print(r.setID, r.text:GetText(), r.text:GetTextColor()) end)`
 
-### 33.328 Add Friend dialog is no taller than the game makes it (both)
+### 33.314 Add Friend dialog is no taller than the game makes it (both)
 
 - Do: Open the Friends window and click Add Friend (the entry page with the name box).
 - Expect: The dialog's panel and soft shadow end the game's usual margin below Accept and Cancel, with no empty dark strip under them, and the panel shows and hides with the dialog.
 - If it fails, paste: `/run print(AddFriendFrame:GetHeight(), AddFriendEntryFrame:GetHeight())`
 
-### 33.329 Premade groups pages sit on flat insets (Retail)
+### 33.315 Premade groups pages sit on flat insets (Retail)
 
 - Do: Open the group finder, click Premade Groups, then Start a Group.
 - Expect: Both pages sit on the same flat dark inset as the search results page, with no bronze edge or painted backdrop behind the category list or the form.
 - If it fails, paste: `/run local i = LFGListFrame.CategorySelection.Inset print(i.NineSlice:GetAlpha(), i.CustomBG:GetAlpha(), i.Bg:GetAlpha())`
 
-### 33.330 Empty edit boxes, font strings and buttons answer GetText the same in game as in tests (both)
+### 33.316 Empty edit boxes, font strings and buttons answer GetText the same in game as in tests (both)
 
 - Do: Run /run local f = UIParent:CreateFontString(nil, 'OVERLAY', 'GameFontNormal') local b = CreateFrame('Button') print(CreateFrame('EditBox'):GetText() == '', f:GetText() == nil, b:GetText() == nil)
 - Expect: The first value is true; the next two say whether a font string and a button with no text answer nil (true) or an empty string (false).
