@@ -399,6 +399,15 @@ it("the meter's title row has Report and Reset buttons; Report goes where the op
   expect(addon.eval("local out = {} for i, m in ipairs(__wfgWorld.sentChat) do out[i] = m[2] end return out"), "then to the party").toEqual(["PARTY"]);
 });
 
+it("the Deaths view shows a full bar and the time of death, empty for the overall session or a hidden time", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Tess', totalAmount = 5, deathTimeSeconds = 202 }, { name = 'Bo', totalAmount = 1, deathTimeSeconds = -1 }, { name = 'Al', totalAmount = 1, deathTimeSeconds = __wfgWorld.secret(9) } }");
+  addon.slash("meter deaths");
+  addon.advance(1);
+  const rows = addon.eval("local out = {} for i = 1, 3 do local r = Vanguard_Meter.rows[i] local lo, hi = r:GetMinMaxValues() out[i] = { r:GetValue() / hi, r.value.__text } end return out");
+  expect(rows, "full bars; 3m 22s, then nothing for the overall session and a hidden time").toEqual([[1, "3m 22s"], [1, ""], [1, ""]]);
+});
+
 it("on the Deaths view a click puts the game's death recap link in chat", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
   const MT = "ns.GetModule('Meter')";

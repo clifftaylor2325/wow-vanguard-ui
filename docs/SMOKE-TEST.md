@@ -3921,6 +3921,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The dock (and the tab shown) gets wider; there is no slider for the docked tab.
 - If it fails, paste: /run print(ChatFrame1:GetWidth(), ChatFrame2:GetWidth(), select(9, GetChatWindowInfo(2)))
 
+### 33.282 Meter Deaths view shows the time of death (Forever)
+
+- Do: Die once in a fight, open the Vanguard meter on Deaths, this fight.
+- Expect: Your line has a full bar and the time into the fight, like the game's own meter.
+- If it fails, paste: /dump C_DamageMeter.GetCombatSessionFromType(Enum.DamageMeterSessionType.Current, Enum.DamageMeterType.Deaths).combatSources[1]
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
