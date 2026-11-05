@@ -1662,14 +1662,15 @@ it("quest log: Abandon is greyed for a quest the game won't let you abandon, and
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
   // Whether the log's Abandon button is lit.
   const abandonLit = () => addon.eval("return Vanguard_QuestLog.buttons.abandon:IsEnabled()");
-  logLine(addon, 2);
-  expect(abandonLit(), "the quest the game won't abandon: greyed").toBe(false);
   logLine(addon, 1);
   expect(abandonLit(), "an ordinary quest: lit").toBe(true);
+  logLine(addon, 2);
+  expect(abandonLit(), "the quest the game won't abandon: greyed").toBe(false);
   addon.eval("__wfgWorld.keys.ctrl = true");
   logLine(addon, 1); logLine(addon, 2); logLine(addon, 3);
   addon.eval("__wfgWorld.keys.ctrl = false");
   expect(addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()"), "Ctrl-click skipped the quest that can't go").toBe("Abandon 2");
+  expect(abandonLit(), "with quests marked, Abandon is lit even on a chosen quest that can't go").toBe(true);
   addon.eval("ns.GetModule('QuestLog').marked[90052] = true");
   logButton(addon, "abandon");
   addon.click("Vanguard_Question.confirm");

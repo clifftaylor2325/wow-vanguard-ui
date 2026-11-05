@@ -343,7 +343,8 @@ local function renderObjectives(f, d)
   return placeObjectives(f, #shown, d.needs or "", d.done or "")
 end
 
--- The details buttons: Track or Untrack, Share and Abandon only when you can.
+-- The details buttons: Track or Untrack, Share and Abandon only when you can (Abandon also while quests are
+-- marked, since it then abandons those, not the chosen one).
 local function renderButtons(f, d)
   for _, b in pairs(f.buttons) do b:SetShown(d ~= nil) end
   if not d then return end
@@ -351,7 +352,7 @@ local function renderButtons(f, d)
   local marked = QL.MarkedCount()
   f.buttons.abandon.text:SetText(marked > 0 and ns.Format(L["Abandon {count}"], { count = marked }) or L["Abandon"])
   if d.shareable then f.buttons.share:Enable() else f.buttons.share:Disable() end
-  if d.abandonable then f.buttons.abandon:Enable() else f.buttons.abandon:Disable() end
+  if d.abandonable or marked > 0 then f.buttons.abandon:Enable() else f.buttons.abandon:Disable() end
 end
 
 -- Marks the chosen quest's line in the list.
