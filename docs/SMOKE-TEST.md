@@ -3867,6 +3867,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Chat prints true and the Lists tab shows the list "Test search", its Linen Cloth row searched and priced.
 - If it fails, paste: the chat lines and `/vg ah`
 
+### 33.263 Delve layout comes off at the delve's door (Retail)
+
+- Do: With a Delve override that moves a frame, enter a delve, then walk back out of its door before finishing it.
+- Expect: The frame goes back to your own spot once you are outside.
+- If it fails, paste: `/vg situation` and `/dump C_DelvesUI.HasActiveDelve(), IsInInstance()` outside the door
+
 ### 33.267 Marking quests closes the game's Abandon box (both)
 
 - Do: In Vanguard's quest log click Abandon on one quest and leave the game's box open, Ctrl-click two other quests and click Abandon 2.

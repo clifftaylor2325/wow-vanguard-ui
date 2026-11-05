@@ -130,7 +130,9 @@ it("retail situations: a running key is Mythic+ and a delve is Delve, both befor
   expect(where(addon), "a key runs").toBe("mythicplus");
   addon.eval("__wfgWorld.key = nil __wfgWorld.delveTier = 8 IsInInstance = function() return true, 'scenario' end");
   expect(where(addon), "in a delve").toBe("delve");
-  addon.eval("__wfgWorld.delveTier = nil");
+  addon.eval("IsInInstance = function() return false, 'none' end");
+  expect(where(addon), "delve data held outside an instance is no delve").toBe("solo");
+  addon.eval("__wfgWorld.delveTier = nil IsInInstance = function() return true, 'scenario' end");
   expect(where(addon), "a scenario that is no delve: no situation of its own").toBe("solo");
   expect(addon.eval("return ns.GetModule('Situations').UNKNOWN"), "the commands' list names both").toBe("Situations: solo, party, raid, pvp, instance, mythicplus, delve or resting.");
 });

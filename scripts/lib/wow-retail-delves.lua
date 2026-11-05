@@ -10,7 +10,7 @@ local world = __wfgWorld
 world.delveTier = nil
 
 C_DelvesUI = {
-  -- Whether you are in a delve.
+  -- Whether the party has an active delve.
   HasActiveDelve = function() return world.delveTier ~= nil end,
   -- The active delve's TieredEntranceTierInfo (its tier 0 outside one, as the client answers).
   GetActiveDelveTier = function() return { tier = world.delveTier or 0, suggestedILvl = 0, unlocked = true, tierDescription = "", rewards = {} } end,
