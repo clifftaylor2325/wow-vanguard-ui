@@ -210,8 +210,11 @@ it("a game push button's label takes the theme's text tiers from T.Button; a pri
   addon.eval('local b = CreateFrame("Button", "TEST_Primary", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) ns.Theme.Button(b, "primary")');
   expect(addon.eval("return TEST_Primary:GetNormalFontObject() == TEST_GameFontNormal"), "a primary keeps its label").toBe(true);
   setCombat(addon, true);
+  addon.eval("local wait = ns.OutOfCombat __waits = 0 ns.OutOfCombat = function(...) __waits = __waits + 1 return wait(...) end");
+  addon.eval('local b = CreateFrame("Button", "TEST_Own", UIParent) b:SetFontString(b:CreateFontString()) ns.Theme.Button(b)');
+  expect(addon.eval("return __waits"), "a button with no font object (Vanguard's own) leaves nothing waiting on the fight").toBe(0);
   addon.eval('local b = CreateFrame("Button", "TEST_Fight", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) ns.Theme.Button(b)');
-  expect(addon.eval("return ns.Theme.LabelFonts(TEST_Fight) == nil"), "in a fight the label waits").toBe(true);
+  expect(addon.eval("return { __waits, ns.Theme.LabelFonts(TEST_Fight) == nil }"), "a game button's label waits for the fight to end").toEqual([1, true]);
   setCombat(addon, false);
   expect(addon.eval("return ns.Theme.LabelFonts(TEST_Fight) ~= nil"), "and gets its copies when the fight ends").toBe(true);
 });

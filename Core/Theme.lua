@@ -1560,13 +1560,26 @@ do
     return c
   end
 
-  -- Gives a game button whose label has a font object the theme's copies: `text` at rest and under the mouse (hover
-  -- never recolours text), `disabled` while disabled. The label's remembered colour is dropped first, so a theme
-  -- change leaves it to the copies. A button without a label or font object, or a client without CreateFont, is left alone.
-  function T.ButtonLabel(button)
+  -- A button's label and the game font object behind it, when T.ButtonLabel has copies to give it; nil for a button
+  -- without a label or font object (Vanguard's own), one given its copies already, or a client without CreateFont.
+  local function labelFont(button)
     local fs = type(button) == "table" and button.GetFontString and button:GetFontString()
     local from = fs and button.GetNormalFontObject and button:GetNormalFontObject()
-    if not from or labelled[button] or type(CreateFont) ~= "function" then return end
+    if not from or labelled[button] or type(CreateFont) ~= "function" then return nil end
+    return fs, from
+  end
+
+  -- Whether T.ButtonLabel has anything to do for a button (reads only, so it is asked in a fight too).
+  function T.WantsLabelFonts(button)
+    return labelFont(button) ~= nil
+  end
+
+  -- Gives a game button whose label has a font object the theme's copies: `text` at rest and under the mouse (hover
+  -- never recolours text), `disabled` while disabled. The label's remembered colour is dropped first, so a theme
+  -- change leaves it to the copies. A button labelFont finds nothing on is left alone.
+  function T.ButtonLabel(button)
+    local fs, from = labelFont(button)
+    if not fs then return end
     local c = copiesFor(from)
     T.ColorRGB(fs, fs:GetTextColor())
     button:SetNormalFontObject(c.text)
@@ -1592,7 +1605,8 @@ end
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
 -- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
 -- have them hooked). A game button of kind "secondary" (Accept, Open All, Train) also gets the theme's label
--- copies (T.ButtonLabel), set out of combat; a primary's label is its own, and Vanguard's own have no font objects.
+-- copies (T.ButtonLabel), set out of combat; a primary's label is its own, and Vanguard's own have no font objects, so
+-- nothing waits on a fight for them.
 local function stateParts(button, kind)
   local fill = T.FillParts(button, "BACKGROUND", 3, T.PRESS.token, T.PRESS.alpha)
   T.ShowFill(fill, false)
@@ -1601,7 +1615,7 @@ local function stateParts(button, kind)
   button:HookScript("OnMouseUp", ns.Guard("button press", function(b) T.PressButton(b, false) end))
   pcall(button.HookScript, button, "OnDisable", ns.Guard("button state", function(b) T.DisabledLook(b, true) end))
   pcall(button.HookScript, button, "OnEnable", ns.Guard("button state", function(b) T.DisabledLook(b, false) end))
-  if kind ~= "primary" then ns.OutOfCombat(function() T.ButtonLabel(button) end) end
+  if kind ~= "primary" and T.WantsLabelFonts(button) then ns.OutOfCombat(function() T.ButtonLabel(button) end) end
 end
 
 -- The panel options of each button kind: the secondary is an inset panel with a bevel; the primary
