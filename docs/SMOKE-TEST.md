@@ -3879,6 +3879,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Empty slots and faded bars stay shown and the hovered empty slot shows the accent wash until Done.
 - If it fails, paste: a screenshot of the bars and `/vg errors`
 
+### 33.265 Feedback kind row follows /vg feedback feature (both)
+
+- Do: Type `/vg feedback feature`, then close the form and type `/vg feedback bug`.
+- Expect: The form opens with Request a feature highlighted in the kind row and the want and why boxes below it; the second time Report a bug is highlighted.
+- If it fails, paste: `/vg errors` and which of the two segments was lit
+
 ### 33.267 Marking quests closes the game's Abandon box (both)
 
 - Do: In Vanguard's quest log click Abandon on one quest and leave the game's box open, Ctrl-click two other quests and click Abandon 2.

@@ -306,6 +306,7 @@ end
 function FB.Open(kind)
   local f = build()
   if CHECKS[kind] then f.kind = kind end
+  f.kindRow:Refresh()
   showKind()
   f:Show()
   f.summary:SetFocus()
