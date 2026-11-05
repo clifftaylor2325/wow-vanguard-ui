@@ -59,6 +59,25 @@ it("the sell list: /vg junk adds, lists, removes and clears; the merchant asks f
   expect(chatHas(addon, /Your sell list is empty\.$/), "cleared").toBe(true);
 });
 
+it("a sale of more than 12 stacks warns that the Buyback tab keeps only the last 12; 12 or fewer say nothing", () => {
+  const addon = loggedIn(BULK_ENV);
+  set(addon, "s.listSell = true for n = 1, 7 do s.junkList[1000 + n] = true end s.junkList[159] = true");
+  addon.eval("for n = 1, 6 do __bag[#__bag + 1] = { itemID = 4540 } end s = ns.GetModule('Merchant').settings s.junkList[4540] = true");
+  addon.fire("MERCHANT_SHOW");
+  expect(ask(addon)[1], "13 or more stacks: the question names the limit").toMatch(/\nOnly the last 12 stacks can be bought back\.$/);
+  addon.click("Vanguard_Question.confirm");
+  expect(chatHas(addon, /Buyback tab gets the last 12 back/), "and so does the chat line").toBe(true);
+});
+
+it("a sale of 12 or fewer stacks keeps the plain Buyback promise", () => {
+  const addon = loggedIn(BULK_ENV);
+  set(addon, "s.listSell = true s.junkList[159] = true");
+  addon.fire("MERCHANT_SHOW");
+  expect(ask(addon)[1], "no limit line").not.toMatch(/Only the last/);
+  addon.click("Vanguard_Question.confirm");
+  expect(chatHas(addon, /Buyback tab gets them back/), "the plain line").toBe(true);
+});
+
 it("the question says 'and N more' past five items; a sale retries what is left and stops without a merchant or in a fight", () => {
   const addon = loggedIn(BULK_ENV);
   set(addon, "s.listSell = true for n = 1, 7 do s.junkList[1000 + n] = true end");
