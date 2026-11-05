@@ -26,8 +26,12 @@ BG.PAD = T.SPACE.col
 local SORT_W, SORT_GAP = 52, 6
 
 -- Item button regions whose art is faded (the icon and texts stay). Not the
--- context overlay: the game dims items that don't match a search with it.
-local ITEM_ART = { "NormalTexture", "IconBorder" }
+-- context overlay: the game dims items that don't match a search with it. On Retail also the bank
+-- slot's Background and the combined bag's ItemSlotBackground (the Warband one pokes out past the border).
+local ITEM_ART = ns.ClientData({
+  forever = { "NormalTexture", "IconBorder" },
+  retail = { "NormalTexture", "IconBorder", "Background", "ItemSlotBackground" },
+})
 
 -- The client's combined bag window, or nil if it doesn't have one.
 local function combinedFrame()
@@ -95,16 +99,21 @@ local function followQuality(button)
   hooksecurefunc(border, "Hide", ns.Guard("hook Hide", function() paintQuality(button, nil) end))
 end
 
+-- Fades an item button's slot art regions.
+local function fadeItemArt(button)
+  for _, key in ipairs(ITEM_ART) do
+    local region = button[key] or (button["Get" .. key] and button["Get" .. key](button))
+    if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
+  end
+end
+
 -- Fades an item button's slot art and gives it a thin border in its quality
 -- color. Once per button: the game reuses its buttons and never undoes this.
 -- A slot with no button yet (a bag window the game hasn't filled) is skipped.
 local function skinItem(button)
   if type(button) ~= "table" or vgSkinned[button] then return end
   vgSkinned[button] = true
-  for _, key in ipairs(ITEM_ART) do
-    local region = button[key] or (button["Get" .. key] and button["Get" .. key](button))
-    if type(region) == "table" and region.SetAlpha then region:SetAlpha(0) end
-  end
+  fadeItemArt(button)
   local icon = button.icon or button.Icon
   if icon and icon.SetTexCoord then T.Crop(icon) end
   T.Panel(button, { inset = true, noBg = true })

@@ -135,13 +135,16 @@ function RM.Row(key)
 end
 
 -- The tracker's top block: the running key under its name, redrawn once a second while it runs (and the tracker
--- shows); outside a key, the scenario block as before.
+-- shows; the scenario block's countdown, which the key's rows never hold, stops); outside a key, the scenario block
+-- as before.
 function RM.Block(quests, taken)
   local active = RM.Active()
   ns.Every("mythic plus timer", active and RM.TICK_EVERY or nil, QT.Refresh, QT.frame)
   if not active then return RQ.Scenario(quests, taken) end
   local key = RM.Key()
-  return { { section = RM.KeyName(key) }, RM.Row(key) }
+  local rows = { { section = RM.KeyName(key) }, RM.Row(key) }
+  RQ.TimeScenario(rows)
+  return rows
 end
 
 -- The dungeon card -----------------------------------------------------------------------------

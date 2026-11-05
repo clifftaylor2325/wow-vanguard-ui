@@ -162,6 +162,15 @@ it("MultiSearch searches each term through the shop's queue, only at the open au
   expect(call(addon, "MultiSearch", "'TEST-ONLY Addon', { '', 7 }"), "no usable term").toBe(false);
 });
 
+it("a callerID or list name padded with spaces still finds its list", () => {
+  const addon = withApi();
+  expect(call(addon, "MultiSearch", "' TEST-ONLY Addon', { 'Linen Cloth' }"), "queued").toBe(true);
+  expect(addon.eval("return VanguardDB.ah.lists[VanguardDB.ah.list] ~= nil"), "the list in use exists").toBe(true);
+  expect(sent(addon), "and is searched").toEqual(["SendBrowseQuery:Linen Cloth"]);
+  call(addon, "CreateShoppingList", "'TEST-ONLY Addon', 'x', { 'Linen Cloth' }");
+  expect(call(addon, "AlterShoppingListItems", "'TEST-ONLY Addon', 'x ', { 'Soul Dust' }"), "a padded name finds the list").toBe(true);
+});
+
 it("MultiSearchExact searches a name the client knows by its item ID", () => {
   const addon = withApi();
   expect(call(addon, "MultiSearchExact", "'TEST-ONLY Addon', { '\"Strange Dust\"', 'TEST-ONLY Unknown', '2589' }"), "queued").toBe(true);

@@ -13,7 +13,10 @@
 -- Vanguard draws its own frame on each nameplate the client gives it and
 -- hides the default one; the client still places, sizes and stacks the
 -- plates. Plates the client keeps from addons (forbidden ones, such as
--- friendly plates in some instances) are left as they are.
+-- friendly plates in some instances) are left as they are, and so are the
+-- plates of units the client shows only a widget for (its own frame draws the
+-- widget). The game's soft-target icon sits on the frame hidden here, so
+-- Vanguard draws it on its own plate, when and as the game would.
 --
 -- The mouse hits a plate only inside its hit-test points, which the client's
 -- own frame sets around its own name and bar (and clears for name-only friendly
@@ -29,6 +32,7 @@ local ADDON, ns = ...
 local vgHooked = ns.FrameState("vgHooked")
 local vgStacked = ns.FrameState("vgStacked")
 local vgPlate = ns.FrameState("vgPlate")
+local vgOwned = ns.FrameState("vgOwned")
 
 local T = ns.Theme
 local L = ns.L
@@ -62,6 +66,16 @@ NP.GLOW = 2
 NP.SCALE_SLACK = 1.2
 -- How often (seconds) every plate's scale is looked at again.
 NP.SCALE_POLL = 0.5
+-- The soft-target icon's size (the game's own is 24 square) and how far above the bar it sits:
+-- clear of one row of debuffs (16 up, ICON tall) with a gap.
+NP.SOFT = 24
+NP.SOFT_RISE = 36
+-- The soft targets whose icon the game draws over a plate, in the order of their switches among
+-- its icon arguments (enemy, friend, interact), as its own plates check them.
+NP.SOFT_UNITS = { "softenemy", "softfriend", "softinteract" }
+-- The game's soft-target icon arguments as last given (size, then the three switches); none yet
+-- counts as off.
+NP.softIcons = {}
 -- The game's Info display setting (its Nameplates options), whose health percent and
 -- value bits Vanguard's enemy plates follow; NP.info holds them as last read.
 NP.INFO_CVAR = "nameplateInfoDisplay"
@@ -163,6 +177,15 @@ local function addMarker(f)
   f.marker:SetSize(NP.MARKER, NP.MARKER)
   f.marker:SetPoint("LEFT", f, "RIGHT", 4, 0)
   f.marker:Hide()
+end
+
+-- The game's soft-target icon (its cursor icon for the unit: a speech bubble, a sword), above the
+-- debuffs; the client draws its art (NP.PaintSoftTarget).
+local function addSoftTarget(f)
+  f.soft = f:CreateTexture(nil, "OVERLAY")
+  f.soft:SetSize(NP.SOFT, NP.SOFT)
+  f.soft:SetPoint("BOTTOM", f, "TOP", 0, NP.SOFT_RISE)
+  f.soft:Hide()
 end
 
 -- A gold quest "!" (Vanguard's QuestBang mark) just right of the name, shown on units your quests need.
@@ -286,9 +309,10 @@ local function addRow(f, key)
   f[key .. "OnEngine"] = ns.Auras.Backend() == ns.AuraEngine
 end
 
--- A plate's texts, tag mark, click area and mouseover wash.
+-- A plate's texts, tag mark, soft-target icon, click area and mouseover wash.
 local function addOverlays(f, s)
   addTexts(f)
+  addSoftTarget(f)
   addNumbers(f)
   addTagMark(f)
   addHitArea(f, s)
@@ -388,17 +412,25 @@ local function reapplyHitArea(uf)
   NP.ApplyHitArea(type(uf.GetNamePlateFrame) == "function" and uf:GetNamePlateFrame() or uf:GetParent())
 end
 
--- Hides the client's own frame on a plate, and keeps it hidden, and its
--- click area ours.
+-- The client's own frame showed: hidden again while Vanguard dresses its plate. The client
+-- pools these frames, so the same one may next show on a plate left to the game.
+local function keepHidden(uf)
+  if vgOwned[uf] then uf:Hide() end
+end
+
+-- Hides the client's own frame on a plate, keeps it hidden while Vanguard owns it, and its
+-- click area ours; returns that frame (nil when the plate has none).
 local function hideDefault(plate)
   local uf = plate.UnitFrame
-  if type(uf) ~= "table" or not uf.Hide then return end
+  if type(uf) ~= "table" or not uf.Hide then return nil end
+  vgOwned[uf] = true
   uf:Hide()
   if not vgHooked[uf] then
     vgHooked[uf] = true
-    uf:HookScript("OnShow", uf.Hide)
+    uf:HookScript("OnShow", keepHidden)
     if type(uf.UpdateHitTestArea) == "function" then hooksecurefunc(uf, "UpdateHitTestArea", ns.Guard("hook UpdateHitTestArea", reapplyHitArea)) end
   end
+  return uf
 end
 
 -- Personal resource display ----------------------------------------------------------------
@@ -524,6 +556,29 @@ function NP.UpdateIcon(f, unit)
   RS.PaintIcon(f.raidIcon, RS.RaidIcon(unit))
 end
 
+-- Whether a plate's unit is one of the game's soft targets whose icon is switched on, as the game's
+-- own plates check: a size above 0, then enemy, friend or interact (a hidden answer counts as no).
+local function softTargeted(unit)
+  local size = ns.PlainNumber(NP.softIcons[1])
+  if not size or size <= 0 then return false end
+  for i, token in ipairs(NP.SOFT_UNITS) do
+    if NP.softIcons[i + 1] == true and isUnit(unit, token) then return true end
+  end
+  return false
+end
+
+-- What each client's plates pass SetUnitCursorTexture after the texture and the unit (style,
+-- low priority, then Forever's prefer-the-gamepad-icon), as Blizzard_NamePlates.lua's
+-- UpdateSoftTargetIconInternal does in each.
+NP.CURSOR_ARGS = { forever = { n = 3, nil, nil, true }, retail = { n = 0 } }
+
+-- The soft-target icon above a plate while its unit is a soft target the game shows one for, in
+-- the art the client gives it; hidden when the client has none for the unit.
+function NP.PaintSoftTarget(f, unit)
+  local args = NP.CURSOR_ARGS[ns.IsForever() and "forever" or "retail"]
+  f.soft:SetShown(softTargeted(unit) and ns.IsTrue(SetUnitCursorTexture(f.soft, unit, unpack(args, 1, args.n))))
+end
+
 -- Whether a plate's unit is your target, while the target border is on.
 local function targetShown(unit)
   return NP.settings.targetBorder and isUnit(unit, "target") or false
@@ -608,6 +663,7 @@ local function refresh(f, unit)
   NP.UpdateAuras(f, unit)
   if NP.UpdateHover(f, unit) then NP.WatchHover(true) end
   if f.cast then CB.Show(f.cast, unit) end
+  NP.PaintSoftTarget(f, unit)
 end
 
 -- Runs fn(frame, unit) for every plate we drew on.
@@ -660,13 +716,27 @@ end
 
 -- Events -----------------------------------------------------------------------------------
 
--- A nameplate appeared: draw on it (once per plate, with a frame built ahead) and fill it in.
+-- True when the client shows only a widget on the unit's plate (a hidden answer counts as no).
+function NP.WidgetsOnly(unit)
+  return ns.PlainCall("UnitNameplateShowsWidgetsOnly", unit) == true
+end
+
+-- A pooled plate left to the client (a widgets-only unit) that Vanguard once stacked by its own box, now hidden:
+-- stacked by the plate's own frame again. The client takes no nil here and the game never sets it itself, so the
+-- plate is the nearest to its own bounds; tried again on the next such unit if the client refused it.
+local function stackByPlate(plate)
+  if not (plate and vgStacked[plate]) then return end
+  vgStacked[plate] = not pcall(plate.SetStackingBoundsFrame, plate, plate)
+end
+
+-- A nameplate appeared: draw on it (once per plate, with a frame built ahead) and fill it in. A
+-- unit the client shows only a widget for keeps the client's own plate.
 local function onAdded(_, unit)
   local plate = NP.PlateFor(unit)
-  if not plate then return end
+  if not plate or NP.WidgetsOnly(unit) then return stackByPlate(plate) end
   local f = vgPlate[plate] or claim(plate)
   vgPlate[plate] = f
-  hideDefault(plate)
+  f.gameFrame = hideDefault(plate)
   NP.plates[unit], f.unit = f, unit
   takeHitArea(plate)
   ns.SetUnits(f.events, unit)
@@ -674,10 +744,20 @@ local function onAdded(_, unit)
   refresh(f, unit)
 end
 
+-- A plate's frame put away as its unit goes: hidden, its rows and events emptied, and the client's
+-- frame it hid let go (the client hands that frame to a later plate, maybe one it keeps).
+local function putAway(f)
+  if f.gameFrame then vgOwned[f.gameFrame] = nil end
+  f:Hide()
+  f.unit, f.gameFrame = nil, nil
+  NP.UpdateAuras(f, nil)
+  ns.SetUnits(f.events)
+end
+
 -- A nameplate went away: forget it (the client reuses the plate).
 local function onRemoved(_, unit)
   local f = NP.plates[unit]
-  if f then f:Hide(); f.unit = nil; NP.UpdateAuras(f, nil); ns.SetUnits(f.events) end
+  if f then putAway(f) end
   NP.plates[unit] = nil
 end
 
@@ -747,6 +827,23 @@ function NP.QuestsChanged()
   ns.Soon("nameplate quest marks", function() each(NP.PaintQuest) end)
 end
 
+-- The game updated its soft-target icon on one of its plates (a soft target changed, or the plate
+-- got a unit): its icon arguments noted for plates drawn later, and ours repainted on that plate
+-- while Vanguard dresses it. The plate is only looked up, never asked: it may be a forbidden one.
+local function onSoftTargetIcon(_, plate, size, enemy, friend, interact)
+  local on = NP.softIcons
+  on[1], on[2], on[3], on[4] = size, enemy, friend, interact
+  local f = vgPlate[plate]
+  if f and f.unit then NP.PaintSoftTarget(f, f.unit) end
+end
+
+-- Follows the game's soft-target icon updates (its plate driver's), where this client has them.
+local function watchSoftTargets()
+  local driver = _G.NamePlateDriverFrame
+  if type(driver) ~= "table" or type(driver.UpdateSoftTargetIconInternal) ~= "function" or type(SetUnitCursorTexture) ~= "function" then return end
+  hooksecurefunc(driver, "UpdateSoftTargetIconInternal", ns.Guard("hook soft target", onSoftTargetIcon))
+end
+
 -- Event -> handler.
 local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
@@ -770,6 +867,7 @@ function NP.Enable(settings)
   ns.OutOfCombat(NP.FillPool)
   NP.EnemyPlatesOnce()
   watchPersonalResources()
+  watchSoftTargets()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
   T.OnChanged(function() each(paintTarget) end)
   ns.Every("nameplate scale", NP.SCALE_POLL, NP.CheckScales)

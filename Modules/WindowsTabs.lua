@@ -928,15 +928,25 @@ local function setLost(row)
   return (numLost or 0) > 0
 end
 
+-- A gear set row's name once the game's init painted it (the init runs after the row is acquired and skinned): a saved
+-- set with all its items in the text colour; a set with items missing (red) or the New set row (green, no setID) keeps the
+-- game's colour, and the theme forgets the row's token so a theme change does not paint over it.
+local function colorSetName(row)
+  local name = type(row) == "table" and row.text
+  if type(name) ~= "table" or not name.SetTextColor then return end
+  if row.setID and not setLost(row) then return T.Color(name, "text") end
+  T.ColorRGB(name, name:GetTextColor())
+end
+
 -- A gear set row (GearSetButtonTemplate): a theme row (its card plate, rings and hover and selected cards faded, the icon,
--- tick and spec icon kept) showing the selected look the game's SelectedBar stands for, its name in the text colour
--- unless the game marked it red.
+-- tick and spec icon kept) showing the selected look the game's SelectedBar stands for, its name coloured as the game's
+-- init leaves it (see colorSetName).
 local function skinSetRow(row)
   if type(row) ~= "table" or not row.GetRegions then return end
   GW.DressRow(row, GW.SET_ROW_KEEP)
   GW.KeepFaded(row.Stripe)
   GW.FollowMark(row, row.SelectedBar)
-  if not setLost(row) then colorText(row.text, "text") end
+  colorSetName(row)
 end
 
 -- The textures of a button drawn on its ARTWORK layer (a glyph beside its label).
@@ -964,8 +974,10 @@ local function dressGearPane(pane, skin)
   GW.WatchRows(pane.ScrollBox, skin)
 end
 
--- The two lists' selected looks following the game's marking of a title or a set (hooked once).
+-- The two lists' selected looks following the game's marking of a title or a set, and a set's name colour following the
+-- game's init of its row (the init is called by name for every fill, so this post-hook runs after each); hooked once.
 local function watchGearSelection()
+  GW.HookGlobalOnce("PaperDollEquipmentManagerPane_InitButton", "gear set name", colorSetName)
   watchSelection("PaperDollTitlesPane_SetButtonSelected")
   watchSelection("PaperDollEquipmentManagerPane_SetButtonSelected")
 end

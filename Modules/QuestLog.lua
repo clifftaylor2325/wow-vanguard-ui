@@ -23,18 +23,13 @@ end
 
 -- The list ----------------------------------------------------------------------------------------
 
--- Whether the game's own log lists a quest: not a world quest or bonus objective (a task), and a bounty only once done.
-local function listed(info, id)
-  return not ns.IsTrue(info.isTask) and (not ns.IsTrue(info.isBounty) or ns.IsTrue(questLog("IsComplete", id)))
-end
-
 -- One log entry: a zone header { header, title, campaign }, or a quest { id, title, level, ready }; nil for hidden
 -- ones and those the game's log leaves out.
 local function entry(info)
   if type(info) ~= "table" or ns.IsTrue(info.isHidden) then return nil end
   if ns.IsTrue(info.isHeader) then return { header = true, title = info.title, campaign = ns.PlainNumber(info.campaignID) ~= nil } end
-  local id = ns.PlainNumber(info.questID)
-  if not (id and listed(info, id)) then return nil end
+  local id = ns.GetModule("QuestTracker").Listed(info)
+  if not id then return nil end
   return { id = id, title = info.title, level = info.level, ready = ns.GetModule("QuestTracker").IsReady(id) }
 end
 
@@ -142,8 +137,15 @@ local function requirements(id, d)
   return d
 end
 
--- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, done (the
--- quest history line), needs and short (QP.Needs), failed }. It selects the quest in the game's log, which the
+-- Whether the game lets you abandon a quest (as its own quest map asks); a client without the call keeps
+-- offering it, and a secret answer counts as no.
+function QL.CanAbandon(id)
+  local answer = questLog("CanAbandonQuest", id)
+  return answer ~= false and not ns.IsSecret(answer)
+end
+
+-- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, abandonable,
+-- done (the quest history line), needs and short (QP.Needs), failed }. It selects the quest in the game's log, which the
 -- quest text read needs.
 function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
@@ -153,7 +155,7 @@ function QL.Details(id)
   local text = ns.CallIf(_G, "GetQuestLogQuestText")
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
-    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), done = ns.GetModule("QuestHistory").Muted(id) })
+    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), abandonable = QL.CanAbandon(id), done = ns.GetModule("QuestHistory").Muted(id) })
 end
 
 -- Actions ----------------------------------------------------------------------------------------
@@ -209,11 +211,11 @@ function QL.Abandon(d)
   ns.CallIf(_G, "StaticPopup_Show", "ABANDON_QUEST", title)
 end
 
--- The marked quests still in your log, as { id, title } in log order (a folded zone's marks count too).
+-- The marked quests still in your log that the game lets you abandon, as { id, title } in log order (a folded zone's marks count too).
 function QL.MarkedQuests()
   local out = {}
   for _, e in ipairs(allQuests()) do
-    if e.id and QL.marked[e.id] then out[#out + 1] = e end
+    if e.id and QL.marked[e.id] and QL.CanAbandon(e.id) then out[#out + 1] = e end
   end
   return out
 end
@@ -223,15 +225,27 @@ function QL.MarkedCount()
   return #QL.MarkedQuests()
 end
 
--- Abandons each quest of the list (the question was the confirmation), then clears the marks.
+-- Abandons one marked quest if it is still in the log and the game took it as the quest to abandon
+-- (AbandonQuest names no quest, so a quest gone from the log must never fall through to the one still
+-- selected); whether it did.
+local function abandonOne(id)
+  if not ns.PlainNumber(questLog("GetLogIndexForQuestID", id)) then return false end
+  questLog("SetSelectedQuest", id)
+  questLog("SetAbandonQuest")
+  if ns.PlainNumber(questLog("GetAbandonQuest")) ~= id then return false end
+  questLog("AbandonQuest")
+  return true
+end
+
+-- Abandons each quest of the list that is still in the log (the question was the confirmation), then clears
+-- the marks and says how many went.
 local function abandonAll(list)
+  local gone = 0
   for _, e in ipairs(list) do
-    questLog("SetSelectedQuest", e.id)
-    questLog("SetAbandonQuest")
-    questLog("AbandonQuest")
+    if abandonOne(e.id) then gone = gone + 1 end
   end
   QL.marked = {}
-  ns.Chat(ns.Format(L["Abandoned {count} quest(s)."], { count = #list }))
+  ns.Chat(ns.Format(L["Abandoned {count} quest(s)."], { count = gone }))
   QL.Refresh()
 end
 
@@ -241,8 +255,15 @@ local function markedLine(e)
   return items and ns.Format(L["{quest} (destroys {items})"], { quest = title, items = items }) or title
 end
 
+-- Closes the game's own Abandon confirmations: picking the marked quests moves the quest they would abandon.
+local function closeGameAbandon()
+  ns.CallIf(_G, "StaticPopup_Hide", "ABANDON_QUEST")
+  ns.CallIf(_G, "StaticPopup_Hide", "ABANDON_QUEST_WITH_ITEMS")
+end
+
 -- Asks, naming the marked quests (and the items they destroy), then abandons them all.
 function QL.AbandonMarked()
+  closeGameAbandon()
   local list, names = QL.MarkedQuests(), {}
   for i, e in ipairs(list) do names[i] = markedLine(e) end
   if #list == 0 then return end

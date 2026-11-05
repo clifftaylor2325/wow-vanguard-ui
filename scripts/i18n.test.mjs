@@ -84,3 +84,17 @@ it("i18n: the command line reports status and exports a CSV", () => {
   expect(run("export", "frFR").split("\n")[0]).toBe("key,english,translation,context,note");
   expect(run("extract")).toMatch(/^\d+ keys$/m);
 });
+
+it("i18n: no locale gives another text the translation of a caption the options search keys its keywords by (ns.English would pick either)", () => {
+  const search = fs.readFileSync(path.join(root, "Core", "OptionsSearch.lua"), "utf8");
+  const captions = [...search.matchAll(/^\s*\["([^"]+)"\] = L\[/gm)].map((m) => m[1]);
+  expect(captions.length, "the keyword captions were found").toBeGreaterThan(10);
+  for (const locale of Object.keys(LOCALES)) {
+    const entries = parseLocale(fs.readFileSync(path.join(root, "Locales", `${locale}.lua`), "utf8"));
+    for (const [key, text] of entries) {
+      if (!captions.includes(key.toLowerCase())) continue;
+      const clash = [...entries].filter(([other, same]) => same === text && other.toLowerCase() !== key.toLowerCase()).map(([other]) => other);
+      expect(clash, `${locale}: "${key}" and ${clash} share the translation "${text}"`).toEqual([]);
+    }
+  }
+});

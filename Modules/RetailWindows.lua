@@ -37,6 +37,7 @@ GW.RETAIL_PARTS = {
     inset = {
       "LFDParentFrameInset", "RaidFinderFrameRoleInset", "RaidFinderFrameBottomInset",
       "LFGListFrame.SearchPanel.ResultsInset", "LFGListFrame.ApplicationViewer.Inset",
+      "LFGListFrame.CategorySelection.Inset", "LFGListFrame.EntryCreation.Inset", "LFGListFrame.NothingAvailable.Inset",
     },
     card = { "GroupFinderFrame.groupButton1", "GroupFinderFrame.groupButton2", "GroupFinderFrame.groupButton3", "GroupFinderFrame.groupButton4" },
     button = {

@@ -16,6 +16,9 @@ local W = ns.Widgets
 local MC = ns.GetModule("Merchant")
 
 MC.BUY_EVERY, MC.LIST_SHOWN = 0.2, 5
+-- A pack at this price (15000 silver: MERCHANT_HIGH_PRICE_COST in the game's merchant window) that the merchant marks
+-- non-refundable is asked about first by the game's own quantity window.
+MC.HIGH_PRICE = 1500000
 -- The merchant's Buyback tab holds the last 12 stacks sold (BUYBACK_ITEMS_PER_PAGE in both clients).
 MC.BUYBACK_SLOTS = 12
 -- The drawer under the quantity window (Stack, Max and the cost line): at least this wide, two 60-wide buttons
@@ -249,21 +252,27 @@ function MC.ExtendedCost(index)
   return count ~= nil and count > 0
 end
 
--- A merchant item's price, pack size and stock from the client's table (C_MerchantFrame.GetItemInfo, the 12.x
--- call; the old GetMerchantItemInfo is gone there), else the old call on a client that still has it.
+-- False only when the client plainly says a merchant item can't be bought (isPurchasable false: the game tints
+-- the row red). A secret or missing answer counts as buyable, so a client that doesn't say keeps buying.
+function MC.Purchasable(isPurchasable)
+  return ns.IsSecret(isPurchasable) or isPurchasable ~= false
+end
+
+-- A merchant item's price, pack size, stock and isPurchasable from the client's table (C_MerchantFrame.GetItemInfo,
+-- the 12.x call; the old GetMerchantItemInfo is gone there), else the old call on a client that still has it.
 local function itemFacts(index)
   local api = C_MerchantFrame and C_MerchantFrame.GetItemInfo
   local info = type(api) == "function" and api(index)
-  if type(info) == "table" then return info.price, info.stackCount, info.numAvailable end
+  if type(info) == "table" then return info.price, info.stackCount, info.numAvailable, info.isPurchasable end
   return select(3, ask("GetMerchantItemInfo", index))
 end
 
 -- A merchant item's price per pack, pack size and stock left (-1 for no limit), or nil for one that
--- can't be bought for gold alone.
+-- can't be bought for gold alone, or that the client says can't be bought at all.
 local function wares(index)
-  local price, quantity, left = itemFacts(index)
+  local price, quantity, left, buyable = itemFacts(index)
   price, quantity, left = ns.PlainNumber(price), ns.PlainNumber(quantity) or 1, ns.PlainNumber(left) or -1
-  if price and price > 0 and not MC.ExtendedCost(index) then return price, math.max(quantity, 1), left end
+  if price and price > 0 and MC.Purchasable(buyable) and not MC.ExtendedCost(index) then return price, math.max(quantity, 1), left end
 end
 
 -- The item class of bags (Enum.ItemClass.Container): for a bag, GetItemFamily answers what the bag holds.
@@ -357,13 +366,22 @@ local function buyAsked(index, packs, id, price)
   MC.Buy(index, packs)
 end
 
--- Buys packs after a question when it is more than one merchant stack; hides the quantity window.
+-- True when the game's own quantity window would ask before this buy: a pack of 150g or more that the
+-- merchant marks non-refundable (MerchantFrame.lua's SplitStack). A client that doesn't say counts as refundable.
+function MC.AsksFirst(index)
+  local price = wares(index)
+  local refundable = ns.CallIf(C_MerchantFrame, "IsMerchantItemRefundable", index)
+  return price ~= nil and price >= MC.HIGH_PRICE and not ns.IsSecret(refundable) and refundable == false
+end
+
+-- Buys packs after a question when it is more than one merchant stack, or a pack the game itself would ask
+-- about (see MC.AsksFirst); hides the quantity window.
 function MC.Order(index, packs, frame)
   if packs <= 0 then return end
   local price, quantity = wares(index)
   local id = MC.ItemID(ask("GetMerchantItemLink", index))
   if frame and frame.Hide then frame:Hide() end
-  if packs <= MC.StackPacks(index) then return MC.Buy(index, packs) end
+  if packs <= MC.StackPacks(index) and not MC.AsksFirst(index) then return MC.Buy(index, packs) end
   ns.Ask(ns.Format(L["Buy {count} × {item} for {money}?"], { count = packs * quantity, item = itemName(id or 0), money = money(packs * price) }), L["Buy"], function() buyAsked(index, packs, id, price) end)
 end
 

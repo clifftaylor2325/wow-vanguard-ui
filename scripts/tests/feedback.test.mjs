@@ -27,6 +27,22 @@ function goodBug(addon) {
   addon.type("Vanguard_Feedback_happened", "The raid frames stayed empty until I left the group.");
 }
 
+// Which kind segments of the form's kind row wear the selected look (dark text on the accent fill).
+const litKinds = (addon) => addon.eval(`local T, out = ns.Theme, {} local x, y, z = T.RGB("void")
+  for _, s in ipairs(${BOX}.kindRow.segments) do
+    local a, b, c = s.text:GetTextColor()
+    if a == x and b == y and c == z then out[#out + 1] = s.value end
+  end
+  return out`);
+
+it("/vg feedback feature and /vg feedback bug light the matching segment of the kind row", () => {
+  const addon = loggedIn();
+  open(addon, "feature");
+  expect(litKinds(addon), "feature lit").toEqual(["feature"]);
+  open(addon, "bug");
+  expect(litKinds(addon), "bug lit again").toEqual(["bug"]);
+});
+
 it("/vg feedback opens the form on a bug, with the summary focused and the bug fields showing", () => {
   const addon = loggedIn();
   expect(open(addon).visible, "the form opens").toBe(true);

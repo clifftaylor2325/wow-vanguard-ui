@@ -184,19 +184,43 @@ function AH.NextUndercut()
   end
 end
 
--- Cancel (the row's click, never a timer or an event): cancels one of your auctions if the game allows it.
+-- Cancels auction id when the game still allows it; true when the cancel was sent.
+local function sendCancel(id)
+  if not C_AuctionHouse.CanCancelAuction(id) then return false end
+  C_AuctionHouse.CancelAuction(id)
+  return true
+end
+
+-- What the question before a paid cancel says: its cost, or that the game would not say.
+local function cancelQuestion(cost)
+  if not cost then return L["Cancel this auction? The game would not say what it costs."] end
+  return ns.Format(L["Cancel this auction? It costs {money}."], { money = AP.Money(cost) })
+end
+
+-- Cancels auction id from a click, then runs onSent. A cancel that costs anything, or whose cost the game
+-- hides, asks first (the game's own CANCEL_AUCTION always does); the Yes click is the click the cancel needs.
+local function cancelOrAsk(id, onSent)
+  local cost = ns.PlainNumber(C_AuctionHouse.GetCancelCost(id))
+  if cost == 0 then return sendCancel(id) and onSent() end
+  ns.Ask(cancelQuestion(cost), L["Cancel auction"], function() if sendCancel(id) then onSent() end end, nil, "danger")
+end
+
+-- Cancel (the row's click, never a timer or an event): cancels one of your auctions if the game allows it,
+-- after a question when that costs anything.
 function AH.Cancel(id)
-  if id and C_AuctionHouse.CanCancelAuction(id) then C_AuctionHouse.CancelAuction(id) end
+  if id and C_AuctionHouse.CanCancelAuction(id) then cancelOrAsk(id, function() end) end
 end
 
 -- Cancel next undercut (the button's click, never a timer or an event): cancels one auction, the
 -- next undercut one, marked as on its way (for AH.CANCEL_WAIT) so the next click takes the one after.
+-- A cancel that costs anything asks first, and is marked once it is sent.
 function AH.CancelNext()
   local a = AH.NextUndercut()
   if not a then return end
-  a.cancelling = GetTime()
-  C_AuctionHouse.CancelAuction(a.id)
-  AH.PaintOwned()
+  cancelOrAsk(a.id, function()
+    a.cancelling = GetTime()
+    AH.PaintOwned()
+  end)
 end
 
 -- The row of auction id and its place in the list, or nil.
@@ -233,25 +257,26 @@ function AH.OnNotice(_, note, _, id)
 end
 
 -- The first bag slot (the backpack to bag AH.LAST_BAG) holding the item of an item key, with its
--- level and suffix and not locked (the sell card's own test), as an ItemLocation, or nil.
+-- level and suffix, not locked and one the house takes (the sell card's own tests), as an
+-- ItemLocation, or nil. A bound copy of the same item is passed over.
 function AH.FindInBags(key)
   local sale = { id = key.itemID, key = key }
   for bag = 0, AH.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
       local loc = AH.Holds(sale, bag, slot)
-      if loc then return loc end
+      if loc and C_AuctionHouse.IsSellItemValid(loc, false) then return loc end
     end
   end
 end
 
--- Relist (an expired row's click): once the item is back in the bags, its row goes and the item
--- goes on the sell card (the sell card's own TakeItem, which checks its price now).
+-- Relist (an expired row's click): once the item is back in the bags, the item goes on the sell
+-- card (the sell card's own TakeItem, which checks its price now) and then its row goes. A card that
+-- refuses the item leaves the row.
 function AH.Relist(id)
   local a, i = findOwned(id)
   local loc = a and AH.FindInBags(a.key)
-  if not loc then return end
+  if not (loc and AH.TakeItem(loc)) then return end
   table.remove(AH.owned, i)
-  AH.TakeItem(loc)
   AH.PaintOwned()
 end
 

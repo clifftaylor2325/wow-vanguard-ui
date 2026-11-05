@@ -1034,9 +1034,15 @@ it("chat extras: bare addresses with a web ending become links, never inside a l
   // A string's regular expression characters escaped.
   const esc = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   expect(said("join discord.gg/abc, we raid"), "a bare address with its path, the comma left after the link").toContain(`${linkOf("discord.gg/abc")}, we raid`);
+  expect(said("see classic.wowhead.com/item=1 and eu.battle.net"), "addresses with a subdomain are linked too")
+    .toMatch(new RegExp(`${esc(linkOf("classic.wowhead.com/item=1"))} and \\|c\\w{8}${esc(linkOf("eu.battle.net"))}$`));
   expect(said("see Site.COM."), "any case of a known ending, the full stop left outside").toContain(`${linkOf("Site.COM")}.`);
   expect(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"].map(said), "unknown endings, numbers, mail and a link's own text are left alone")
     .toEqual(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"]);
+  expect(said("https://example.test/x"), "an address that starts the message is linked whole").toMatch(new RegExp(`^\\|c\\w{8}${esc(linkOf("https://example.test/x"))}$`));
+  expect(said("www.example.test"), "so is a www one").toMatch(new RegExp(`^\\|c\\w{8}${esc(linkOf("www.example.test"))}$`));
+  expect(said("go http://. now"), "a prefix with no letter after it is no address").toBe("go http://. now");
+  expect(said("www.. or www.example.test"), "only the real address beside it is linked").toMatch(new RegExp(`^www\\.\\. or \\|c\\w{8}${esc(linkOf("www.example.test"))}$`));
   expect(said("https://example.test/x and www.example.test"), "the http and www addresses are linked once, not again as bare words").not.toContain("|h|r|h");
   expect(said("see https://example.test/x. or (discord.gg/abc)"), "punctuation after an http address and brackets round a bare one stay outside the links")
     .toMatch(new RegExp(`${esc(linkOf("https://example.test/x"))}\\. or \\(\\|c\\w{8}${esc(linkOf("discord.gg/abc"))}\\)$`));
@@ -1220,6 +1226,30 @@ it("minimap drawer: buttons in name order, the toggle counts them, Escape closes
   expect(openAt("TOPLEFT", 0, -12), "at the left edge: right of the map").toEqual([true, "TOPLEFT", "TOPRIGHT"]);
   addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
   expect(addon.eval("return Vanguard_MinimapDrawer:IsShown()"), "the toggle shuts it again").toBe(false);
+});
+it("minimap: the game's event link button leaves the faded backdrop for the map's top-left corner", () => {
+  const addon = loggedIn(UI_ENV + `MinimapBackdrop = CreateFrame("Frame", "MinimapBackdrop", UIParent)
+    MinimapBackdrop.ExternalEventURLButton = CreateFrame("Button", "TestOnlyEventLink", MinimapBackdrop)`);
+  expect(addon.eval("local f = TestOnlyEventLink local p = f.__points.TOPLEFT return { f:GetParent() == ns.GetModule('Minimap').overlay, p.x, p.y, f:GetScale(), MinimapBackdrop.__alpha }"),
+    "small on the top-left corner of the map's overlay, out of the faded backdrop").toEqual([true, 2, -24, 0.6, 0]);
+  expect(loggedIn(UI_ENV).eval("return Vanguard_Minimap ~= nil"), "a client without the button builds the map as before").toBe(true);
+});
+it("minimap drawer: a button its addon has hidden takes no cell and is not counted, and comes back when shown", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyHidden", Minimap):Hide()');
+  // The drawer's width and the toggle's tooltip count.
+  const state = () => {
+    addon.update(0);
+    addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
+    return addon.eval("return { Vanguard_MinimapDrawer:GetWidth(), GameTooltip.__lines[1].text, Vanguard_MinimapDrawerToggle:IsShown() }");
+  };
+  expect(state(), "one shown button: a one cell drawer counting one").toEqual([39, "Addon buttons (1)", true]);
+  expect(addon.eval("return LibDBIcon10_TestOnlyHidden.__points.TOPLEFT == nil"), "the hidden one has no cell").toBe(true);
+  addon.eval("LibDBIcon10_TestOnlyHidden:Show()");
+  expect(state(), "shown again: the next cell, counted").toEqual([72, "Addon buttons (2)", true]);
+  addon.eval("LibDBIcon10_TestOnlyHidden:Hide() LibDBIcon10_TestOnlyOne:Hide()");
+  expect(state(), "all hidden: nothing to open").toEqual([6, "Addon buttons (0)", false]);
+  addon.eval("LibDBIcon10_TestOnlyOne:Show() Vanguard_MinimapDrawerToggle.__scripts.OnClick(Vanguard_MinimapDrawerToggle)");
+  expect(addon.eval("return Vanguard_MinimapDrawer:GetWidth()"), "opening lays it out at once").toBe(39);
 });
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
@@ -2416,6 +2446,22 @@ it("auto-accept: Forever's own invite windows and the teleport check: a declined
   addon.fire("PARTY_INVITE_REQUEST", "<name>", true, false, true, false, false, "stranger", false);
   addon.update(0);
   expect(addon.eval("return { LFGInvitePopup:IsShown(), __answers }"), "declined and the popup hidden (a client without StaticPopupSpecial_Hide hides it itself)").toEqual([false, ["group", "close PARTY_INVITE"]]);
+});
+
+it("auto-accept: declining a stranger's group invite that carries a quest session closes Retail's Party Sync dialog (H19-2-2)", () => {
+  const addon = loggedIn(FOREVER_INVITES + "QuestSessionManager = { ConfirmInviteToGroupReceivedDialog = CreateFrame('Frame', 'QSConfirm', UIParent) } QuestSessionManager.ConfirmInviteToGroupReceivedDialog:Show()", { savedVariables: INVITE_SWITCHES_ON });
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  expect(addon.eval("return QuestSessionManager.ConfirmInviteToGroupReceivedDialog:IsShown()"), "up until the next frame").toBe(true);
+  addon.update(0);
+  expect(addon.eval("return { QuestSessionManager.ConfirmInviteToGroupReceivedDialog:IsShown(), __answers }"), "declined and the session dialog hidden").toEqual([false, ["group", "hide QSConfirm", "close PARTY_INVITE"]]);
+  addon.eval("QuestSessionManager = nil");
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.update(0);
+  expect(addon.eval("return #ns.errors"), "a client without the manager raises no error").toBe(0);
+  addon.eval("QuestSessionManager = { ConfirmInviteToGroupReceivedDialog = CreateFrame('Frame', 'QSConfirm2', UIParent) }");
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.update(0);
+  expect(addon.eval("return #ns.errors"), "a dialog that is not up is left alone").toBe(0);
 });
 
 it("auto-accept: Forever's own invite windows and the teleport check: a summon the game won't let you take yet leaves its prompt up", () => {

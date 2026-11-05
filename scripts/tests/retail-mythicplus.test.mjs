@@ -72,6 +72,16 @@ it("retail mythic+: outside a key the scenario block draws as before", () => {
   expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
 });
 
+// CR-5: the key block draws in the scenario block's place, so it stops the scenario countdown's tick itself.
+it("retail mythic+: a scenario countdown ticking before a key stops once the key block draws", () => {
+  const addon = retail(SEASON + STAGE + "__wfgWorld.scenario.criteria[1].duration, __wfgWorld.scenario.criteria[1].elapsed = 180, 60");
+  // Whether the scenario countdown's tick is running.
+  const ticking = () => addon.eval("return ns.ticker.vgJobs['scenario timer'] ~= nil");
+  expect(ticking(), "before the key: the timed criterion's countdown ticks").toBe(true);
+  startKey(addon);
+  expect(ticking(), "the key block in its place: that tick stops (the key's own timer ticks instead)").toBe(false);
+});
+
 it("retail mythic+: what the client hides in a key is left out, never compared", () => {
   const addon = retail(SEASON + STAGE);
   startKey(addon, "{ mapID = __wfgWorld.secret(501), level = __wfgWorld.secret(12), affixes = __wfgWorld.secret({}), deaths = __wfgWorld.secret(1), started = __wfgWorld.secret(0) }");
@@ -130,7 +140,9 @@ it("retail situations: a running key is Mythic+ and a delve is Delve, both befor
   expect(where(addon), "a key runs").toBe("mythicplus");
   addon.eval("__wfgWorld.key = nil __wfgWorld.delveTier = 8 IsInInstance = function() return true, 'scenario' end");
   expect(where(addon), "in a delve").toBe("delve");
-  addon.eval("__wfgWorld.delveTier = nil");
+  addon.eval("IsInInstance = function() return false, 'none' end");
+  expect(where(addon), "delve data held outside an instance is no delve").toBe("solo");
+  addon.eval("__wfgWorld.delveTier = nil IsInInstance = function() return true, 'scenario' end");
   expect(where(addon), "a scenario that is no delve: no situation of its own").toBe("solo");
   expect(addon.eval("return ns.GetModule('Situations').UNKNOWN"), "the commands' list names both").toBe("Situations: solo, party, raid, pvp, instance, mythicplus, delve or resting.");
 });

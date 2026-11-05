@@ -20,9 +20,9 @@ local RHo = {}
 ns.RetailHousing = RHo
 
 -- The decor catalog (the dashboard's Catalog tab and the editor's storage share its template): its parchment, the
--- category column's backdrop and brackets faded, the search box, filter button and scroll bar in the theme.
+-- category column's backdrop, brackets and the strip under an open category faded, the search box, filter button and scroll bar in the theme.
 RHo.CATALOG_ART = { "Background" }
-RHo.CATEGORY_ART = { "Background", "TopBorder" }
+RHo.CATEGORY_ART = { "Background", "TopBorder", "SubcategoriesDivider" }
 -- The editor's storage also draws the chest's header band and top-right corbel (its Background is in CATALOG_ART).
 RHo.STORAGE_ART = { "HeaderBackground", "CornerBorder" }
 -- The house finder's plot tooltips draw their pointer arrow as a texture of the tooltip itself, under the flat panel.

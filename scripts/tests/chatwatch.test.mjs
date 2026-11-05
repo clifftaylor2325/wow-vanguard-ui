@@ -332,6 +332,15 @@ it("chat watch: a phrase matches when the line holds all its words, in any order
   expect(match("alfm brd"), "a word inside another word does not count").toBe(null);
 });
 
+it("chat watch: a word of any alphabet is held to a word start, except Chinese", () => {
+  const addon = watching("продам", "épée", "金币");
+  // What ChatWatch.Match makes of a line.
+  const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
+  expect([match("непродам золото"), match("xпродам"), match("WTS Продам золото")], "Cyrillic: not inside a word, found after one").toEqual([null, null, "продам"]);
+  expect([match("lépée"), match("une épée rare")], "accented Latin: the same").toEqual([null, "épée"]);
+  expect(match("收金币"), "Chinese has no breaks between words, so it matches inside").toBe("金币");
+});
+
 it("chat watch: a phrase's magic characters are plain text, and | is refused", () => {
   const addon = watching("+1 heal", "50%");
   // What ChatWatch.Match makes of a line.

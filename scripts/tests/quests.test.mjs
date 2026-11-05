@@ -316,7 +316,7 @@ it("quest dialog: a number or Space with Shift, Ctrl or Alt held goes on to the 
 });
 it("quest dialog: late item details redraw the page; spell and currency rewards", () => {
   const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
-    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,
+    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt", isSpellLearned = true } end,
       GetQuestRewardCurrencies = function() return { { name = "TEST-ONLY Marks", totalRewardAmount = 3 } } end }`);
   addon.fire("QUEST_COMPLETE");
   expect(dialog(addon).money, "the money line keeps the money and XP only").toBe("+12s 0c  ·  450 XP");
@@ -330,6 +330,18 @@ it("quest dialog: late item details redraw the page; spell and currency rewards"
   expect(dialog(addon).cards[0], "closed, nothing redraws").toBe("TEST-ONLY Better Boots");
   addon.eval("C_QuestInfoSystem = nil");
   expect(addon.eval("return #ns.GetModule('QuestDialog').ExtraRewards(90031)"), "a client without those calls shows none").toBe(0);
+});
+it("quest dialog: reward spells are worded by kind, and one you already know or a boost spell is left out", () => {
+  const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
+    __spells = { [1] = { name = "TEST-ONLY Bolt", isSpellLearned = true }, [2] = { name = "TEST-ONLY Gate", genericUnlock = true },
+      [3] = { name = "TEST-ONLY Aura" }, [4] = { name = "TEST-ONLY Known", isSpellLearned = true }, [5] = { name = "TEST-ONLY Boost", isBoostSpell = true },
+      [6] = { name = "TEST-ONLY Recipe", isTradeskill = true } }
+    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 1, 2, 3, 4, 5, 6 } end, GetQuestRewardSpellInfo = function(_, id) return __spells[id] end }
+    C_SpellBook.IsSpellInSpellBook = function(id) return id == 4 end`);
+  expect(addon.eval("return ns.GetModule('QuestDialog').ExtraRewards(90031)"), "each kind in the game's word; the known and boost spells are left out")
+    .toEqual(["Teaches: TEST-ONLY Bolt", "Unlocks: TEST-ONLY Gate", "Grants: TEST-ONLY Aura", "Teaches: TEST-ONLY Recipe"]);
+  addon.eval("C_SpellBook = nil");
+  expect(addon.eval("return #ns.GetModule('QuestDialog').ExtraRewards(90031)"), "a client without the spellbook call lists them all but the boost spell").toBe(5);
 });
 it("quest dialog: a spell reward is in the body of the detail page in French, not at the end of a money line that runs out of room", () => {
   const spell = `GetQuestID = function() return 90031 end
@@ -840,6 +852,7 @@ const QLOG_ENV = `
   C_QuestLog.RemoveQuestWatch = function(id) __removed = id for i, w in ipairs(__watches) do if w == id then table.remove(__watches, i) end end end
   C_QuestLog.IsPushableQuest = function() return true end
   C_QuestLog.SetAbandonQuest = function() __abandoning = __selected end
+  C_QuestLog.GetAbandonQuest = function() return __abandoning end
   IsInGroup = function() return __group end
   StaticPopup_Show = function(which, text) __popup = which .. " " .. text end
   QuestLogPushQuest = function() __pushed = __selected end
@@ -1643,6 +1656,28 @@ it("quest log: Ctrl-click marks quests, the Abandon button counts them, and one 
   addon.click("Vanguard_Question.confirm");
   expect([addon.eval("return __gone"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "each marked quest abandoned; the marks are cleared").toEqual([[90051, 90053], "Abandon"]);
 });
+// H8-1-2: the game's own CanAbandonQuest gates Abandon, Ctrl-click marks and the count.
+it("quest log: Abandon is greyed for a quest the game won't let you abandon, and marks and counts skip it", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __selected end C_QuestLog.CanAbandonQuest = function(id) return id ~= 90052 end");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  // Whether the log's Abandon button is lit.
+  const abandonLit = () => addon.eval("return Vanguard_QuestLog.buttons.abandon:IsEnabled()");
+  logLine(addon, 1);
+  expect(abandonLit(), "an ordinary quest: lit").toBe(true);
+  logLine(addon, 2);
+  expect(abandonLit(), "the quest the game won't abandon: greyed").toBe(false);
+  addon.eval("__wfgWorld.keys.ctrl = true");
+  logLine(addon, 1); logLine(addon, 2); logLine(addon, 3);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  expect(addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()"), "Ctrl-click skipped the quest that can't go").toBe("Abandon 2");
+  expect(abandonLit(), "with quests marked, Abandon is lit even on a chosen quest that can't go").toBe(true);
+  addon.eval("ns.GetModule('QuestLog').marked[90052] = true");
+  logButton(addon, "abandon");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("return __gone"), "only the quests that can go are abandoned").toEqual([90051, 90053]);
+  addon.eval("C_QuestLog.CanAbandonQuest = function() return nil end");
+  expect(addon.eval("return ns.GetModule('QuestLog').CanAbandon(1)"), "an answer the client doesn't give keeps today's offer").toBe(true);
+});
 // TEST-ONLY quest history: the clock at three days past the seeded turn-ins, and a store another character wrote.
 const HISTORY_ENV = `
   time = function() return 1000000 + 3 * 86400 end
@@ -2125,6 +2160,32 @@ it("quest log: the question for marked quests names the items each destroys", ()
   const addon = holdingItems();
   addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [7] = true, [8] = true } QL.AbandonMarked()");
   expect(addon.eval("return Vanguard_Question.title:GetText()")).toBe("Abandon 2 quest(s)?\nTEST-ONLY Wolves (destroys TEST-ONLY Sack)\nTEST-ONLY Boars");
+});
+
+it("quest log: asking about marked quests closes the game's own Abandon box first", () => {
+  const addon = holdingItems();
+  logButton(addon, "abandon");
+  expect(shownPopups(addon), "the game's box is open for quest 7").toEqual(["ABANDON_QUEST_WITH_ITEMS: TEST-ONLY Wolves | TEST-ONLY Sack"]);
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [8] = true } QL.AbandonMarked()");
+  expect(Object.keys(shownPopups(addon)), "marking moves the abandon target, so the box is closed").toEqual([]);
+});
+
+it("quest log: a marked quest that left the log before the answer is skipped, never the quest on show", () => {
+  const addon = holdingItems();
+  addon.world.addQuest({ questID: 9, title: "TEST-ONLY Hares", level: 8, objectives: [] });
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [7] = true, [8] = true } QL.AbandonMarked()");
+  addon.eval("table.remove(__wfgWorld.quests, 1) C_QuestLog.SetSelectedQuest = function(id) if C_QuestLog.GetLogIndexForQuestID(id) then __wfgWorld.selectedQuest = id end end");
+  addon.eval("__wfgWorld.selectedQuest = 9");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local o = {} for _, q in ipairs(__wfgWorld.quests) do o[#o + 1] = q.questID end return o"), "7 had left, 8 went, 9 (on show) stays").toEqual([9]);
+  expect(chatHas(addon, /Abandoned 1 quest\(s\)\./), "chat counts only the one abandoned").toBe(true);
+});
+
+it("quest log: a quest the game does not take as the one to abandon is left alone", () => {
+  const addon = holdingItems();
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [8] = true } QL.AbandonMarked() C_QuestLog.GetAbandonQuest = function() return 7 end");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local o = {} for _, q in ipairs(__wfgWorld.quests) do o[#o + 1] = q.questID end return o"), "nothing abandoned").toEqual([7, 8]);
 });
 
 // F-05: what the tracker's tooltip shows: its owner's title, each line, and whether it is shown.

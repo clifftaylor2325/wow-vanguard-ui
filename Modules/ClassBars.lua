@@ -77,6 +77,12 @@ local function totemDown(have, duration)
   return have == true and (ns.PlainNumber(duration) or 0) > 0
 end
 
+-- Lets clicks through an empty cell out of combat; a secure cell can't change in a fight (CB.ArmTotems readies every
+-- cell as one starts).
+local function takeClicks(c, down)
+  if down ~= nil and not ns.InCombat() then c:EnableMouse(down) end
+end
+
 -- Paints one cell from its slot. Cells are secure, so they show and hide by
 -- alpha (allowed in combat); a hidden answer goes to the client's own
 -- alpha-from-boolean where it has one, else the cell keeps its last state.
@@ -86,12 +92,20 @@ local function paintCell(c, slot)
   totemSweep(c.cooldown, slot, start, duration)
   local down = totemDown(have, duration)
   if down ~= nil then c:SetAlpha(down and 1 or 0) elseif c.SetAlphaFromBoolean then c:SetAlphaFromBoolean(have) end
+  takeClicks(c, down)
 end
 
--- Repaints every totem cell (PLAYER_TOTEM_UPDATE).
+-- Repaints every totem cell (PLAYER_TOTEM_UPDATE, and after a fight, which sets each cell's clicks again).
 function CB.UpdateTotems()
   if not CB.cells or type(GetTotemInfo) ~= "function" then return end
   for slot, c in ipairs(CB.cells) do paintCell(c, slot) end
+end
+
+-- A fight is starting (PLAYER_REGEN_DISABLED, before the lockdown): every cell takes clicks, so a totem dropped in the
+-- fight can still be right-clicked away; once it ends the cells are repainted, which sets each cell's clicks again.
+function CB.ArmTotems()
+  for _, c in ipairs(CB.cells or {}) do c:EnableMouse(true) end
+  ns.AfterCombat(CB.UpdateTotems, "totem clicks")
 end
 
 -- Druid mana -------------------------------------------------------------------------------
@@ -129,6 +143,7 @@ local function enableTotems(settings)
   ns.OutOfCombat(function() if UF.frames.player then buildTotems(UF.frames.player, settings.size) end end)
   ns.On("PLAYER_TOTEM_UPDATE", CB.UpdateTotems)
   ns.On("PLAYER_ENTERING_WORLD", CB.UpdateTotems)
+  ns.On("PLAYER_REGEN_DISABLED", CB.ArmTotems)
 end
 
 -- Druids: build the mana bar out of combat and follow your mana and forms (only yours).

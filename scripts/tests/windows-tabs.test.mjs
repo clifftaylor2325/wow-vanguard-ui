@@ -1165,6 +1165,13 @@ const PAPER_ENV = SIDE_PANE_ENV + `
   -- The game's selection functions, which its init and click run with the row and whether it is the selected one.
   function PaperDollTitlesPane_SetButtonSelected(button, selected) button.SelectedBar:SetShown(selected) end
   function PaperDollEquipmentManagerPane_SetButtonSelected(button, selected) button.SelectedBar:SetShown(selected) end
+  -- TEST-ONLY, shaped like the live PaperDollEquipmentManagerPane_InitButton: setID, then the name's colour.
+  function PaperDollEquipmentManagerPane_InitButton(button, data)
+    button.setID = not data.addSetButton and data.setID or nil
+    local lost = button.setID and select(8, C_EquipmentSet.GetEquipmentSetInfo(button.setID)) or 0
+    local color = data.addSetButton and GREEN_FONT_COLOR or lost > 0 and RED_FONT_COLOR or NORMAL_FONT_COLOR
+    if button.text.SetTextColor then button.text:SetTextColor(color:GetRGB()) end
+  end
   function __lit(r) return ns.Theme.RowParts(r).rail:IsShown() end
   for _, key in ipairs({ "EquipSet", "SaveSet", "NewSet" }) do
     local b = CreateFrame("Button", nil, __sets) b.StateTexture, b.plus = __art(b), __art(b, "ARTWORK") b.label = b:CreateFontString()
@@ -1200,6 +1207,21 @@ it("paper doll lists: the titles and sets panes are flat insets, a title row los
   expect(addon.eval("return { __lit(__sets.ScrollBox.rows[1]), __lit(__sets.ScrollBox.rows[3]), __lit(__titles.ScrollBox.rows[3]) }"), "a row the game already marked selected when dressed is lit at once").toEqual([false, true, true]);
   expect(set(3)[0], "a set row acquired later too").toBe(0);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("paper doll lists: set names after the game's init, and through a theme change", () => {
+  const addon = loggedIn(PAPER_ENV + `GREEN_FONT_COLOR, RED_FONT_COLOR = CreateColor(0.1, 1, 0.1), CreateColor(1, 0.1, 0.1)`);
+  addon.eval("CharacterFrame:Show()");
+  // The game's order: acquire (skinned), then init. Rows start with no setID and a gold name, as a fresh row does.
+  addon.eval(`for _, id in ipairs({ 1, 2, 0 }) do local r = __setRow(nil) r.text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+    PaperDollEquipmentManagerPane_InitButton(r, id == 0 and { addSetButton = true } or { setID = id }) end`);
+  // Whether each of the three rows' names is in the text colour, the game's red, the game's green.
+  const names = () => addon.eval(`local rows, r = __sets.ScrollBox.rows, function(fs, c) local t = fs.__textColor return t[1] == c.r and t[2] == c.g and t[3] == c.b end
+    return { __text(rows[1].text), r(rows[2].text, RED_FONT_COLOR), r(rows[3].text, GREEN_FONT_COLOR) }`);
+  expect(names(), "a complete set in the text colour, a set with items missing red, the New set row green").toEqual([true, true, true]);
+  addon.eval("ns.Theme.Refresh()");
+  expect(names(), "and the same after a theme change").toEqual([true, true, true]);
+  expect(addon.eval("PaperDollEquipmentManagerPane_InitButton({ text = {} }, {}) return #ns.errors"), "a row with no name (not a font string) is left alone").toBe(0);
 });
 
 it("paper doll lists: the set buttons are theme buttons, the New set button keeps its plus", () => {

@@ -59,13 +59,22 @@ function RQ.Criterion(c)
   return { text = text, done = ns.IsTrue(c.completed) }
 end
 
--- The stage's criteria as objectives, in the game's order.
+-- The countdown line under a timed criterion ("Time left 2:41"), as the game's tracker draws a timer bar for one
+-- while it runs; nil for an untimed or run-out criterion, or one whose timing the client hides. The line carries
+-- timed = true, which keeps the tracker redrawing each second.
+local function criterionTimer(c)
+  local total, gone = ns.PlainNumber(c.duration), ns.PlainNumber(c.elapsed)
+  if not (total and gone and total > 0 and gone <= total) then return nil end
+  return { text = ns.Format(L["Time left {time}"], { time = QT.Clock(total - gone) }), done = false, timed = true }
+end
+
+-- The stage's criteria as objectives, in the game's order, a timed one with its countdown under it.
 local function criteria(count)
   local out = {}
   for i = 1, count do
     local c = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetCriteriaInfo", i))
     local line = c and RQ.Criterion(c)
-    if line then out[#out + 1] = line end
+    if line then out[#out + 1], out[#out + 2] = line, criterionTimer(c) end
   end
   return out
 end
@@ -114,12 +123,36 @@ end
 
 -- The scenario you are in, under its heading: none outside one (no stages), once its last stage is done, or while
 -- the client hides where you are in it.
-function RQ.Scenario()
+local function scenarioRows()
   local info = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioInfo"))
   local stage, stages = info and ns.PlainNumber(info.currentStage), info and ns.PlainNumber(info.numStages)
   if not (stage and stages and stages > 0 and stage <= stages) then return {} end
   local step = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
   return section(scenarioHeading(info), { RQ.Stage(step, stage, stages) })
+end
+
+-- Whether a row in the rows has a countdown line.
+local function hasTimer(rows)
+  for _, row in ipairs(rows) do
+    for _, line in ipairs(row.objectives or {}) do
+      if line.timed then return true end
+    end
+  end
+  return false
+end
+
+-- Redraws the tracker once a second while the block's rows hold a countdown line, and stops when they hold none.
+-- Whatever draws in the scenario block's place (Modules/RetailMythicPlus.lua's key block) passes its rows too, so
+-- a countdown started before it never keeps ticking under it.
+function RQ.TimeScenario(rows)
+  ns.Every("scenario timer", hasTimer(rows) and QT.TICK_EVERY or nil, QT.Refresh, QT.frame)
+end
+
+-- The scenario block, redrawn once a second while one of its criteria counts down (and stopped when none does).
+function RQ.Scenario()
+  local rows = scenarioRows()
+  RQ.TimeScenario(rows)
+  return rows
 end
 
 -- Campaigns ------------------------------------------------------------------------------------

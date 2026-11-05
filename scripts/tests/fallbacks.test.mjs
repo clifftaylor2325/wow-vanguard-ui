@@ -55,6 +55,17 @@ it("the XP bar hides at the cap on a client with only IsXPUserDisabled, and with
   expect(addon.eval('return ns.GetModule("DataBars").XP() == nil')).toBe(true);
 });
 
+it("the XP bar and the strip's XP rows hide while the realm's rules switch the game's XP bar off", () => {
+  const addon = loggedIn("UnitXPMax = function() return 40000 end __wfgWorld.units.player.level = __wfgWorld.maxLevel - 1");
+  // Whether the XP bar and the strip's XP rows are both hidden now.
+  const hidden = () => addon.eval('local DB = ns.GetModule("DataBars") return { DB.XP() == nil, DB.XPHidden() }');
+  expect(hidden(), "no such rule: shown").toEqual([false, false]);
+  addon.eval("Enum.GameRule = { ExperienceBarDisabled = 7 } C_GameRules = { IsGameRuleActive = function(rule) return rule == 7 end }");
+  expect(hidden(), "the rule on: both hide").toEqual([true, true]);
+  addon.eval("C_GameRules.IsGameRuleActive = function() return __wfgWorld.secret(true) end");
+  expect(hidden(), "a secret answer counts as off").toEqual([false, false]);
+});
+
 it("the XP bar hides at the cap by level when the client has no GameRulesUtil", () => {
   const addon = loggedIn("GameRulesUtil = nil UnitXPMax = function() return 40000 end __wfgWorld.units.player.level = __wfgWorld.maxLevel - 1");
   expect(addon.eval('return ns.GetModule("DataBars").XP() ~= nil'), "one level short: the bar shows").toBe(true);

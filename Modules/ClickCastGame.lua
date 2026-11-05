@@ -199,11 +199,19 @@ function CC.GameCovers(b)
   return false, verdict == "unsure" and "unsure" or nil
 end
 
--- Opens the game's own Click Casting window (it loads on demand), closing Vanguard's options window first; a client
--- without one says so in chat, and in a fight chat says the window waits.
+-- Whether the game's Click Casting window is up (it loads on demand, so nil until then).
+local function gameWindowShown()
+  local f = _G.ClickBindingFrame
+  return type(f) == "table" and f:IsShown() == true
+end
+
+-- Opens the game's own Click Casting window (it loads on demand), closing Vanguard's options window first; the
+-- game's opener toggles, so a window already open is left open. A client without one says so in chat, and in a fight
+-- chat says the window waits.
 function CC.OpenGameWindow()
   if type(ToggleClickBindingFrame) ~= "function" then return ns.Chat(L["This client has no click bindings window."]) end
   if ns.WindowWaitsForCombat(L["The game's click bindings window"]) then return end
   ns.Options.Hide()
+  if gameWindowShown() then return end
   ToggleClickBindingFrame()
 end

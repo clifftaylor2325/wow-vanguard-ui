@@ -708,6 +708,17 @@ it("keybind mode: hover a button and press a key to bind it; a modifier alone wa
   expect([tipLines(addon), addon.eval("return Vanguard_Bar1Button2.vgCatcher:IsShown()")], "the tooltip and the catchers go with it").toEqual([null, false]);
 });
 
+it("keybind mode: a drag that ends keeps the empty slots shown", () => {
+  const addon = loggedIn(BIND_ENV);
+  // The alpha of the empty bar 1 slot 4.
+  const alpha = () => addon.eval("return Vanguard_Bar1Button4:GetAlpha()");
+  addon.slash("keybind");
+  addon.eval("ns.GetModule('ActionBars').SetGrid(true) ns.GetModule('ActionBars').SetGrid(false)");
+  expect(alpha(), "the mode's grid stays after the drag").toBe(1);
+  addon.key("Vanguard_KeybindMode", "ESCAPE");
+  expect(alpha(), "leaving the mode hides the empty slots").toBe(0);
+});
+
 it("keybind mode: the mouse's side buttons and wheel bind too; Backspace clears; a taken key says whose it was", () => {
   const addon = loggedIn(BIND_ENV + `
     __wfgWorld.bindings.MOVEFORWARD = { "W" }

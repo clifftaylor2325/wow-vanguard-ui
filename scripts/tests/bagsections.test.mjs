@@ -1,7 +1,7 @@
 // bagsections: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, SETUP_DONE, UI_ENV, borderOf, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY bags: the backpack (8 slots) holds a Hearthstone, 5 waters, 12
@@ -172,6 +172,13 @@ const countLayouts = (addon) => {
     BG.Place = function(...) __places = __places + 1 return place(...) end`);
   return () => addon.eval("local n = __places __places = 0 return n");
 };
+
+it("the combined bag in sections: slots the game marks locked stay in Empty, after every other empty slot", () => {
+  const addon = loggedIn(BAG_ENV);
+  addon.eval("__slots.b0s8.IsExtended = function() return true end __openBag()");
+  const empties = ["b1s1", "b1s4", "b0s8"].map((s) => spot(addon, s));
+  expect(empties, "bag 1's empty slots first, the locked slot last in the same row").toEqual([[194, 160], [320, 160], [362, 160]]);
+});
 
 it("the combined bag in sections: each kind of item under its header, packed side by side", () => {
   const addon = loggedIn(BAG_ENV);
@@ -495,6 +502,31 @@ it("search operators: ilvl, quality, type, bind and category words combine with 
   expect(addon.eval(`local BG = ns.GetModule("Bags") return BG.ItemMatches(BG.ParseSearch("ilvl>1"), 1, 4)`), "an empty slot never matches").toBe(false);
 });
 
+// TEST-ONLY: the sword's slot holds an upgraded epic of level 610 over an item ID whose base is a rare of level 590.
+const UPGRADED_ENV = `
+  local sword = __wfgWorld.items[90001]
+  sword.quality, sword.level = 3, 590
+  __wfgWorld.itemLevels = __wfgWorld.itemLevels or {}
+  for _, held in ipairs(__wfgWorld.bags[0]) do if held.itemID == 90001 then held.quality, held.link = 4, "|cffa335ee|Hitem:90001::::::::::::1:6652|h[Sword]|h|r" end end
+  __wfgWorld.itemLevels["|cffa335ee|Hitem:90001::::::::::::1:6652|h[Sword]|h|r"] = 610
+`;
+
+it("search operators: on Retail ilvl and q read the slot's own level and quality, not the item ID's base", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV + UPGRADED_ENV, { client: RETAIL_CLIENT });
+  addon.eval("__openBag()");
+  expect(lit(addon, "ilvl>600"), "the copy's 610, not the base 590").toEqual([90001]);
+  expect(lit(addon, "q:epic"), "the copy's quality 4, not the base 3").toEqual([90001]);
+  addon.eval("C_Item.GetDetailedItemLevelInfo = nil");
+  expect(lit(addon, "ilvl>580"), "without the call the base level stands").toEqual([90001]);
+});
+
+it("search operators: on WoW Forever ilvl and q keep the item ID's record", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV + UPGRADED_ENV);
+  addon.eval("__openBag()");
+  expect(lit(addon, "q:epic"), "the base quality 3 is not epic").toEqual([]);
+  expect(lit(addon, "q:rare"), "the base quality").toEqual([90001]);
+});
+
 it("type: words name the item class, so Armor and Weapons light on a client whose type names are not English", () => {
   const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 }) + BAG_FRAME + SEARCH_ENV);
   addon.eval(`local items = __wfgWorld.items
@@ -514,6 +546,28 @@ it("search operators wait for a client that has the search refresh, and skip but
   other.eval("__openBag() BagItemSearchBox:SetText('ilvl>1') ContainerFrameCombinedBags:UpdateSearchResults()");
   expect(other.eval("return ContainerFrameCombinedBags.Items[1].matches"), "buttons without SetMatchesSearch are left alone").toBeNull();
   expect(other.eval(`local BG = ns.GetModule("Bags") return BG.ParseSearch(nil) == nil`), "no text: no tests").toBe(true);
+});
+
+// TEST-ONLY bag bar buttons, each knowing its bag; the game's UpdateBagMatchesSearch lights them from its own
+// text search (here: every bag filtered out, as with search words it knows nothing of).
+const BAG_BUTTONS_ENV = `
+  for name, bag in pairs({ MainMenuBarBackpackButton = 0, CharacterBag0Slot = 1 }) do
+    local b = CreateFrame("Button", name, UIParent)
+    b.GetBagID, b.SetMatchesSearch = function() return bag end, function(self, yes) self.matches = yes end
+    b.UpdateBagMatchesSearch = function(self) self:SetMatchesSearch(false) end
+  end
+`;
+
+it("search operators light each bag button whose bag holds a match; plain text leaves the game's answer", () => {
+  const addon = loggedIn(BAG_BUTTONS_ENV + ITEMS_ENV + fill([1, 4, 0, 0, 0], { consumables: 1, equipment: 1 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval("__openBag()");
+  // The bag buttons' matches after the game's own refresh of each, as [backpack, bag 1].
+  const buttons = () => Object.values(addon.eval("MainMenuBarBackpackButton:UpdateBagMatchesSearch() CharacterBag0Slot:UpdateBagMatchesSearch() return { MainMenuBarBackpackButton.matches, CharacterBag0Slot.matches }"));
+  addon.eval("BagItemSearchBox:SetText('q:uncommon')");
+  expect(buttons(), "the sword is in bag 1: its button lit, the backpack's not").toEqual([false, true]);
+  addon.eval("BagItemSearchBox:SetText('sword')");
+  expect(buttons(), "a plain word: the game's answer").toEqual([false, false]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
 // TEST-ONLY game whose bag refill sets each slot's match from its own search, as Mainline/ContainerFrame.lua's
@@ -596,14 +650,16 @@ it("/vg bag deposit sends a category's stacks to the open bank, out of combat on
   addon.slash("bag deposit Water");
   addon.slash("bag deposit Nope");
   expect(chat(), "no bank open: told so; no such category: told so").toMatch(/Open the bank first[^]*No bag category called Nope/);
-  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.usedItems = nil");
+  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.usedItems = nil __wfgWorld.bankRoom = 99");
   setCombat(addon, true);
   addon.slash("bag deposit Water");
   expect(addon.eval("return __wfgWorld.usedItems"), "nothing moves in a fight").toBeNull();
   setCombat(addon, false);
   addon.slash("bag deposit Water");
   expect(addon.eval("return __wfgWorld.usedItems"), "both stacks of water go, the sword stays").toEqual([[0, 1], [0, 2]]);
-  expect(chat(), "it says how many").toMatch(/Sent 2 stack\(s\) of Water/);
+  addon.advance(1);
+  expect(chat(), "it says how many, once the game has moved them").toMatch(/Sent 2 stack\(s\) of Water/);
+  expect(chat(), "none stayed").not.toMatch(/stayed/);
 });
 
 it("search bind words: an item already bound to you counts as bind on pickup (H9-3-1)", () => {
@@ -622,8 +678,9 @@ it("/vg bag deposit sends the reagent bag's stacks too, and names the open bank 
   const addon = openFilled([8, 4, 0, 0, 0], { consumables: 2, equipment: 1 });
   addon.slash("bag add Water 159");
   addon.eval("__wfgWorld.bagSizes[5] = 1 __wfgWorld.bags[5] = { { itemID = 159 } } BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show()");
-  addon.eval("function BankFrame:GetActiveBankType() return 2 end");
+  addon.eval("function BankFrame:GetActiveBankType() return 2 end __wfgWorld.bankRoom = 99");
   addon.slash("bag deposit Water");
+  addon.advance(1);
   expect(addon.eval("return __wfgWorld.usedItems"), "the reagent bag's stack goes with the others").toEqual([[0, 1], [0, 2], [5, 1]]);
   expect(addon.eval("return __wfgWorld.usedBankTypes"), "each call says which bank is open").toEqual([2, 2, 2]);
   expect(Array.from(addon.chat()).join("\n"), "the count includes it").toMatch(/Sent 3 stack\(s\) of Water/);
@@ -633,11 +690,44 @@ it("/vg bag deposit leaves a stack the game would warn about in the bags and say
   const addon = openFilled([8, 4, 0, 0, 0], { consumables: 2, equipment: 1 });
   addon.slash("bag add Water 159");
   addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show()");
-  addon.eval("function BankUtil_IsAccountBankDepositRefundable(loc) local _, slot = loc:GetBagAndSlot() return slot == 2 end");
+  addon.eval("function BankUtil_IsAccountBankDepositRefundable(loc) local _, slot = loc:GetBagAndSlot() return slot == 2 end __wfgWorld.bankRoom = 99");
   addon.slash("bag deposit Water");
+  addon.advance(1);
   expect(addon.eval("return __wfgWorld.usedItems"), "only the stack that is not refundable goes").toEqual([[0, 1]]);
   const chat = Array.from(addon.chat()).join("\n");
   expect(chat, "the sent count is true; the kept stack is named").toMatch(/Sent 1 stack\(s\) of Water[^]*1 refundable stack\(s\) stayed in your bags/);
+});
+
+it("/vg bag deposit says which stacks stayed when the bank has no room (H19-7-2)", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { consumables: 3, equipment: 1 });
+  addon.slash("bag add Water 159");
+  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.bankRoom = 1");
+  addon.slash("bag deposit Water");
+  expect(Array.from(addon.chat()).join("\n"), "nothing is said before the game has answered").not.toMatch(/Sent/);
+  addon.advance(1);
+  expect(Array.from(addon.chat()).join("\n"), "one went, two found no room").toMatch(/Sent 1 stack\(s\) of Water[^]*2 stack\(s\) stayed in your bags: the bank has no room\./);
+});
+
+// CR-7: under latency a sent stack sits locked in its slot until the game's answer; it is never counted as "no room".
+it("/vg bag deposit waits while the sent stacks are locked, and counts one still locked at the end as sent", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { consumables: 3, equipment: 1 });
+  addon.slash("bag add Water 159");
+  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.bankRoom = 0");
+  addon.slash("bag deposit Water");
+  addon.eval("for slot = 1, 3 do __wfgWorld.bags[0][slot].locked = true end");
+  // Everything chat has said so far.
+  const said = () => Array.from(addon.chat()).join("\n");
+  addon.advance(1);
+  expect(said(), "the stacks still on their way: nothing is said yet").not.toMatch(/Sent/);
+  addon.eval("__wfgWorld.bags[0][1], __wfgWorld.bags[0][2] = nil, nil __wfgWorld.bags[0][3].locked = nil");
+  addon.advance(1);
+  expect(said(), "the game answered: two went, one found no room").toMatch(/Sent 2 stack\(s\) of Water[^]*1 stack\(s\) stayed in your bags: the bank has no room\./);
+  addon.slash("bag deposit Water");
+  addon.eval("__wfgWorld.bags[0][3].locked = true");
+  addon.advance(4);
+  expect(said().match(/Sent \d/g).length, "still locked after 4 s: still waiting").toBe(1);
+  addon.advance(2);
+  expect(said(), "after 5 s a stack still locked counts as sent, not as no room").toMatch(/Sent 1 stack\(s\) of Water to the bank\.$/);
 });
 
 // The text of the shown rows of the dropdown menu now open.

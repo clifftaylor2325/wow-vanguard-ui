@@ -278,6 +278,17 @@ it("quest arrow: the tracker draws an accent line down the left edge of the ques
   expect(edges(addon), "the quest you Shift-clicked has it, as its step line does").toEqual(["[8] TEST-ONLY Near"]);
 });
 
+it("quest arrow: a quest on another continent with a waypoint toward it says no distance, the arrow stays bright", () => {
+  const addon = loggedIn(ARROW_ENV + "__spots[90061] = { 11, 0.6, 0.5 } C_QuestLog.GetDistanceSqToQuest = function() return 250000, false end");
+  addon.eval(`C_QuestLog.GetNextWaypointForMap = function(id, map) if id == 90061 and map == 10 then return 0.6, 0.5 end end
+    ns.QuestArrow.current = 90061 ns.QuestArrow.target = { 11, 0.6, 0.5 } ns.QuestArrow.Draw()`);
+  expect(arrow(addon).slice(2, 4), "a way out of this map but no distance: said so, full arrow").toEqual(["No distance", 1]);
+  addon.eval("ns.QuestArrow.ready = true ns.QuestArrow.Draw()");
+  expect(arrow(addon)[2], "ready to turn in").toBe("Turn in · no distance");
+  addon.eval("C_QuestLog.GetNextWaypointForMap = nil ns.QuestArrow.Draw()");
+  expect(arrow(addon).slice(2, 4), "no waypoint either: no direction, faint").toEqual(["No direction", 0.35]);
+});
+
 it("quest arrow: the longest real distance lines fit beside the arrow, also with the Pin button showing", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
   addon.eval(ARROW_ENV);
@@ -289,10 +300,12 @@ it("quest arrow: the longest real distance lines fit beside the arrow, also with
     return addon.textFit("Vanguard_QuestArrow").filter((f) => f.kind === "cut");
   };
   expect(cut("Consegna · 1240 m, nessuna direzione"), "the Italian turn-in line with no direction, arrow alone").toEqual([]);
+  expect(cut("Consegna · nessuna distanza"), "the Italian turn-in line with no distance, arrow alone").toEqual([]);
   addon.eval("ns.QuestGuide.pointed = 90061 ns.QuestArrow.Pick()");
   expect(addon.eval("return Vanguard_QuestArrow.pin:IsShown()"), "the arrow is held: the Pin button shows").toBe(true);
   expect(cut("Aucun endroit fourni par le jeu"), "the French no-spot reason while the Pin button shows").toEqual([]);
   expect(cut("Consegna · 1240 m, nessuna direzione"), "the Italian line with no direction while the Pin button shows (P9-5)").toEqual([]);
+  expect(cut("Consegna · nessuna distanza"), "the Italian line with no distance while the Pin button shows").toEqual([]);
   addon.eval('Vanguard_QuestArrow.dist:SetText("Consegna · 1240 m, nessuna direzione")');
   const overlaps = addon.textFit("Vanguard_QuestArrow").filter((f) => f.kind === "overlap");
   expect(overlaps, "and the distance line does not run under the Pin button").toEqual([]);

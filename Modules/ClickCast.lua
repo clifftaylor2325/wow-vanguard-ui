@@ -614,6 +614,11 @@ local function enteringWorld()
   tellMenuNotice()
 end
 
+-- Your spec changed (the event also names other group members, whose specs don't pick your list).
+local function specChanged(_, unit)
+  if unit == nil or unit == "player" then groupNamed() end
+end
+
 -- Module entry point (Core/Modules.lua): a secure handler, the talent-group migration, the frames, spec changes.
 function CC.Enable(settings)
   CC.settings = settings
@@ -622,7 +627,7 @@ function CC.Enable(settings)
   migrateTalentGroups()
   ns.OutOfCombat(function() registerFrames(settings) end)
   -- A new spec has its own bindings: apply them (spec changes happen out of combat).
-  ns.On("PLAYER_SPECIALIZATION_CHANGED", groupNamed)
+  ns.On("PLAYER_SPECIALIZATION_CHANGED", specChanged)
   ns.On("ACTIVE_TALENT_GROUP_CHANGED", groupNamed)
   ns.On("PLAYER_ENTERING_WORLD", enteringWorld)
 end

@@ -43,6 +43,14 @@ it("a plate's click area and stacking box are our name and bar, padded, whatever
   expect(hit("nameplate1")[2], "a plate with no unit is left to the client").toBe("TEST-ONLY default");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   expect(hit("nameplate1")[0], "its next unit gets ours again").toBe(true);
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  addon.eval("__units.nameplate1 = { name = 'TEST-ONLY Herald', hp = 100, maxhp = 100, power = 0, maxpower = 0, ptype = 'MANA', widgetsOnly = true }");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(addon.eval("return __plates.nameplate1.__stack == __plates.nameplate1"), "a widgets-only unit on that pooled plate: stacked by the plate again, not Vanguard's hidden box (CR-3)").toBe(true);
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  addon.eval("__units.nameplate1 = __units.target");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(hit("nameplate1")[1], "and the next unit Vanguard draws stacks by its box again").toBe(true);
   addon.eval(morePlates(4, 4));
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate4");
   expect(addon.eval("return { ns.FrameState('vgPlate')[__plates.nameplate4]:IsShown(), #ns.errors }"), "a client without hit testing: the plate is drawn, no error").toEqual([true, 0]);

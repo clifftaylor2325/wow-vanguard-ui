@@ -31,10 +31,11 @@ CB.ALT_AURAS = {
 }
 
 -- How each resource is drawn: pips of a power type (Enum.PowerType's key) in a theme colour, with
--- the most it usually has (used while the client won't say), or a builder of its own.
+-- the most it usually has (used while the client won't say), or a builder of its own. A minLevel is the level the
+-- game's own bar starts showing at (requiredShownLevel in ShardBar.xml).
 CB.RESOURCES = {
   holyPower = { power = "HolyPower", token = "holyPower", max = 5 },
-  soulShards = { power = "SoulShards", token = "soulShards", max = 5, fractionSpec = 3 },
+  soulShards = { power = "SoulShards", token = "soulShards", max = 5, fractionSpec = 3, minLevel = 10 },
   chi = { power = "Chi", token = "chi", max = 5 },
   arcaneCharges = { power = "ArcaneCharges", token = "arcaneCharges", max = 4 },
   essence = { power = "Essence", token = "essence", max = 5, recharges = true },
@@ -323,12 +324,18 @@ function CB.UpdateResource()
   CB.UpdateStagger()
 end
 
--- Shows the resource of your spec now (building it the first time) and hides the others.
+-- Whether you are high enough for a resource the game shows only from a level.
+local function levelled(def)
+  return def.minLevel == nil or (ns.PlainNumber(UnitLevel("player")) or 0) >= def.minLevel
+end
+
+-- Shows the resource of your spec now (building it the first time) and hides the others; none below its level.
 function CB.ShowResource()
   local player = UF.frames.player
   if not player then return end
   CB.kind = CB.ResourceKind(CB.class)
   local def = CB.kind and CB.RESOURCES[CB.kind]
+  if def and not levelled(def) then CB.kind, def = nil, nil end
   if def and not CB.resourceFrames[CB.kind] then CB.resourceFrames[CB.kind] = buildResource(player, def) end
   for kind, frame in pairs(CB.resourceFrames) do frame:SetShown(kind == CB.kind) end
   CB.UpdateResource()
@@ -343,6 +350,11 @@ local function onSpec(_, unit)
   if unit == nil or unit == "player" then ns.OutOfCombat(CB.ShowResource) end
 end
 
+-- A level-up (yours) may bring a resource into view, out of combat.
+local function onLevelUp()
+  ns.OutOfCombat(CB.ShowResource)
+end
+
 -- Your class resource (CB.Enable, Modules/ClassBars.lua): built out of combat after the unit frames
 -- (it hangs off the player frame), repainted on your power and rune changes, rebuilt on a spec change.
 function CB.EnableResources(class)
@@ -352,5 +364,6 @@ function CB.EnableResources(class)
   ns.OnUnit(CB.RESOURCE_EVENTS, CB.UpdateResource, "player")
   ns.On("RUNE_POWER_UPDATE", CB.UpdateResource)
   ns.On("PLAYER_SPECIALIZATION_CHANGED", onSpec)
+  ns.On("PLAYER_LEVEL_UP", onLevelUp)
   if CB.ALT_BARS[class] then ns.OnUnit("UNIT_AURA", CB.UpdateAlt, "player") end
 end

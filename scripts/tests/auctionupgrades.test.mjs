@@ -215,3 +215,11 @@ it("Z1-2 the pane's Upgrades count is counted without sorting, and still equals 
   const counted = card(addon)[1];
   expect([counted, addon.eval("return __sorts"), addon.eval(`return #${HELPER}.Sources[${HELPER}.UPGRADES].items()`)], "gains and one fill per empty slot; the pane sorted nothing").toEqual([4, 0, 4]);
 });
+
+// H4-6-6: a listing for an empty slot whose stats the client hasn't loaded yet has no score; it is still listed,
+// ranked below one that has, and the list is drawn without an error.
+it("upgrades: an empty-slot listing whose stats haven't loaded is listed after one that has, with no error", () => {
+  const addon = warrior("gear(112, 'Unloaded Helm', 'INVTYPE_HEAD', nil)");
+  scan(addon, "{ { itemID = 112, count = 1, buyoutPrice = 10 }, { itemID = 105, count = 1, buyoutPrice = 80 } }");
+  expect([row(addon, 1)[1], addon.eval("return #ns.errors")], "the helm with stats fills the slot; no error").toEqual(["TEST-ONLY Sturdy Helm", 0]);
+});

@@ -105,10 +105,12 @@ local function itemLevel(link)
 end
 
 -- What an item is worth with weights: weight x amount, summed over its stats (0 for none), plus its item level
--- where the weights count it (Retail's ILVL; no item stat key holds it).
+-- where the weights count it (Retail's ILVL; no item stat key holds it). nil while the client has no stats for
+-- the item yet (it isn't loaded), so nothing is judged, or remembered, on a guess.
 function UP.Score(link, weights)
-  local score = 0
-  for key, amount in pairs(C_Item.GetItemStats(link) or {}) do
+  local score, stats = 0, C_Item.GetItemStats(link)
+  if not stats then return nil end
+  for key, amount in pairs(stats) do
     local w, n = weights[W.SHORT[key]], ns.PlainNumber(amount)
     if w and n then score = score + w * n end
   end
@@ -116,34 +118,41 @@ function UP.Score(link, weights)
   return level and score + weights.ILVL * level or score
 end
 
--- An item's score with the weights in use, remembered until they change.
+-- An item's score with the weights in use, remembered until they change (a number only: nil while its stats
+-- haven't loaded, so the next look asks again).
 local function score(link)
-  if not UP.scores[link] then UP.scores[link] = UP.Score(link, (UP.Current())) end
+  local known = UP.scores[link]
+  if known then return known end
+  UP.scores[link] = UP.Score(link, (UP.Current()))
   return UP.scores[link]
 end
 
--- The score of what's worn in an inventory slot (0 when empty), and whether it's empty.
+-- The score of what's worn in an inventory slot (0 when empty, nil while its stats haven't loaded), and whether
+-- it's empty.
 local function equipped(slot)
   local link = GetInventoryItemLink("player", slot)
   if not link then return 0, true end
   return score(link), false
 end
 
--- The weakest worn item among slots: its score, whether a slot is empty, and its link.
+-- The weakest worn item among slots: its score (nil when a worn one has no stats yet, so nothing is judged
+-- against a guess), whether a slot is empty, and its link.
 local function weakest(slots)
-  local low, at
+  local low, at, unloaded
   for _, slot in ipairs(slots) do
     local s, empty = equipped(slot)
     if empty then return 0, true, nil end
-    if not low or s < low then low, at = s, slot end
+    if not s then unloaded = slot elseif not low or s < low then low, at = s, slot end
   end
+  if unloaded then return nil, false, GetInventoryItemLink("player", unloaded) end
   return low, false, GetInventoryItemLink("player", at)
 end
 
--- What both hands are worth together, for a two-hander: main hand plus off hand.
+-- What both hands are worth together, for a two-hander: main hand plus off hand (nil while either has no stats).
 local function bothHands()
   local mh, empty = equipped(UP.MAIN_HAND)
-  return mh + (equipped(UP.OFF_HAND)), empty, GetInventoryItemLink("player", UP.MAIN_HAND)
+  local oh = equipped(UP.OFF_HAND)
+  return mh and oh and mh + oh, empty, GetInventoryItemLink("player", UP.MAIN_HAND)
 end
 
 -- Whether you can wear the item (the client's answers, where it has them).
@@ -166,7 +175,8 @@ local function wornScore(loc, slots)
 end
 
 -- How an item compares with what you wear: the change in per cent (nil when it isn't gear you
--- can wear, or there's nothing to measure), true when it fills an empty slot, and the worn link.
+-- can wear, there's nothing to measure, or either side's stats haven't loaded), true when it fills an empty slot,
+-- and the worn link.
 function UP.Compare(link)
   if not canCompare() then return nil end
   local loc = select(4, C_Item.GetItemInfoInstant(link))
@@ -175,6 +185,7 @@ function UP.Compare(link)
   local old, empty, worn = wornScore(loc, slots)
   if empty then return nil, true end
   local new = score(link)
+  if not (old and new) then return nil, false, worn end
   if old <= 0 then return new > 0 and 100 or nil, false, worn end
   return (new - old) / old * 100, false, worn
 end

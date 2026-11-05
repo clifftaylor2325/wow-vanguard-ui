@@ -70,11 +70,26 @@ local function boundBind(info, bind)
   return bind
 end
 
+-- The slot's own item level (upgrades and bonus IDs included), else the item ID's.
+local function copyLevel(info, base)
+  local link = not ns.IsSecret(info.hyperlink) and info.hyperlink
+  local get = C_Item.GetDetailedItemLevelInfo
+  return type(get) == "function" and type(link) == "string" and ns.PlainNumber((get(link))) or base
+end
+
+-- The slot's own quality and item level on Retail, where upgrades and bonus IDs make them differ from the
+-- item ID's base record; WoW Forever keeps the base.
+local function ownQualityLevel(info, quality, ilvl)
+  if ns.IsForever() then return quality, ilvl end
+  return ns.PlainNumber(info.quality) or quality, copyLevel(info, ilvl)
+end
+
 -- What the client says about an item: name, quality, item level, type words and bind type.
 local function factsOf(info)
   local name, _, quality, ilvl, _, kind, sub, _, _, _, _, _, _, bind = C_Item.GetItemInfo(info.itemID)
+  quality, ilvl = ownQualityLevel(info, ns.PlainNumber(quality), ns.PlainNumber(ilvl))
   return {
-    name = ns.Lower(name or ""), quality = ns.PlainNumber(quality), ilvl = ns.PlainNumber(ilvl),
+    name = ns.Lower(name or ""), quality = quality, ilvl = ilvl,
     type = ns.Lower((kind or "") .. " " .. (sub or "")), bind = boundBind(info, ns.PlainNumber(bind)), item = info.itemID,
   }
 end
@@ -107,6 +122,14 @@ function BG.ItemMatches(tests, bag, slot)
   return true
 end
 
+-- Whether any slot of container bag passes the tests.
+function BG.ContainerMatches(tests, bag)
+  for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
+    if BG.ItemMatches(tests, bag, slot) then return true end
+  end
+  return false
+end
+
 -- The search last parsed, so a refresh of each slot doesn't parse it again: { text, tests }.
 local parsed = {}
 
@@ -117,6 +140,11 @@ local function testsIn(boxName)
   local text = box:GetText()
   if parsed.text ~= text then parsed.text, parsed.tests = text, BG.ParseSearch(text) end
   return parsed.tests
+end
+
+-- The tests of what the bank's search box holds, or nil when it holds no operator.
+function BG.BankTests()
+  return testsIn("BankItemSearchBox")
 end
 
 -- Sets whether one button matches the tests (bag and slot: what it holds); a button without the call is left alone.
@@ -131,12 +159,37 @@ function BG.ApplySearch(frame)
   for _, button in frame:EnumerateValidItems() do mark(button, tests, button:GetBagID(), button:GetID()) end
 end
 
+-- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState): bag buttons whose search is hooked.
+local vgBagButtonHooked = ns.FrameState("vgBagButtonHooked")
+
+-- With search words in the bag's box, a bag button is lit when its bag holds a match (the game's own answer
+-- follows its text search, which knows nothing of the words).
+local function markBagButton(button)
+  local tests = testsIn("BagItemSearchBox")
+  if tests and type(button.GetBagID) == "function" and type(button.SetMatchesSearch) == "function" then
+    button:SetMatchesSearch(BG.ContainerMatches(tests, button:GetBagID()))
+  end
+end
+
+-- Hooks each bag button of the bag bar once (the backpack and the bags it holds), so it lights by the same words.
+local function watchBagButtons()
+  local menu = ns.GetModule("MenuStrip")
+  for _, name in ipairs(menu and menu.BAGS or {}) do
+    local button = _G[name]
+    if type(button) == "table" and type(button.UpdateBagMatchesSearch) == "function" and not vgBagButtonHooked[button] then
+      vgBagButtonHooked[button] = true
+      hooksecurefunc(button, "UpdateBagMatchesSearch", ns.Guard("hook bag button search", markBagButton))
+    end
+  end
+end
+
 -- Search operators in the combined bag, when the client has the calls they use (Bags.Enable): after the
 -- game's search refresh, and after it fills the slots (it sets each slot's match from its own search then).
 function BG.WatchSearch(frame)
   if type(frame.UpdateSearchResults) ~= "function" or type(frame.EnumerateValidItems) ~= "function" then return end
   if type(hooksecurefunc) ~= "function" or type(C_Item) ~= "table" or type(C_Container) ~= "table" then return end
   hooksecurefunc(frame, "UpdateSearchResults", ns.Guard("hook UpdateSearchResults", BG.ApplySearch))
+  watchBagButtons()
   if type(frame.UpdateItems) == "function" then hooksecurefunc(frame, "UpdateItems", ns.Guard("hook search UpdateItems", BG.ApplySearch)) end
 end
 

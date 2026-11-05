@@ -211,6 +211,31 @@ it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () =
   expect(card("__link(2)"), "switched off").toBe(false);
 });
 
+// H4-6-6: a reward whose stats the client hasn't loaded yet gets no verdict, and none is remembered.
+it("upgrades: an item whose stats haven't loaded gets no arrow or line, then both once they arrive", () => {
+  const addon = loggedIn(GEAR_ENV + BAG_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  addon.eval("__unloaded = true local real = C_Item.GetItemStats C_Item.GetItemStats = function(link) if __unloaded and tostring(link):find('item:2:') then return nil end return real(link) end");
+  // Whether the reward card shows its upgrade arrow.
+  const card = () => addon.eval(`local QP = ns.QuestParts local c = __card or QP.Card(UIParent) __card = c
+    QP.PaintCard(c, { name = "TEST-ONLY Reward", texture = 1, count = 1, quality = 2, link = __link(2) }) return ns.FrameState('vgUpgrade')[c] ~= nil and ns.FrameState('vgUpgrade')[c]:IsShown()`);
+  expect([card(), addon.eval("return __line(2)")], "no stats yet: no arrow, no Downgrade line").toEqual([false, false]);
+  addon.eval("__unloaded = false");
+  expect([card(), addon.eval("return __line(2) ~= false")], "the stats arrived: the arrow and the Upgrade line").toEqual([true, true]);
+});
+
+// CR-1: a worn item whose stats haven't loaded is no 0 to beat: the candidate gets no verdict until it loads.
+it("upgrades: against a worn item whose stats haven't loaded, nothing is judged, then it is once they arrive", () => {
+  const addon = loggedIn(GEAR_ENV);
+  addon.eval("__unloaded = {} local real = C_Item.GetItemStats C_Item.GetItemStats = function(link) if __unloaded[tonumber(tostring(link):match('item:(%d+)'))] then return nil end return real(link) end");
+  // UP.Compare's per cent for item n, as a whole number, or false for no verdict.
+  const pct = (n) => addon.eval(`local p = ns.GetModule("Upgrades").Compare(__link(${n})) return p and math.floor(p + 0.5) or false`);
+  addon.eval("__unloaded = { [1] = true, [5] = true, [9] = true }");
+  expect([pct(2), pct(4), pct(7), addon.eval("return __line(2)")], "worn bracers, a worn ring, the worn off hand unloaded: no verdict, no line").toEqual([false, false, false, false]);
+  addon.eval("__unloaded = { [8] = true } ns.GetModule(\"Upgrades\").scores = {}");
+  expect(pct(7), "the worn main hand unloaded: no verdict for a two-hander").toBe(false);
+  addon.eval("__unloaded = {}");
+  expect([pct(2), pct(4), pct(7)], "the worn stats arrived: the real changes").toEqual([20, 50, 163]);
+});
 // Bows (equip location INVTYPE_RANGED) in the bags: item 18 is strong, item 19 weak.
 const BOW_ENV = GEAR_ENV + `__gear[18] = { "INVTYPE_RANGED", { ITEM_MOD_STRENGTH_SHORT = 20 } } __gear[19] = { "INVTYPE_RANGED", { ITEM_MOD_STRENGTH_SHORT = 1 } }`;
 

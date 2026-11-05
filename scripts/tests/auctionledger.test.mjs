@@ -189,6 +189,14 @@ it("the ledger is kept per realm and faction, capped, and old records go at logi
   expect(records(addon).length, "forgetting the prices keeps the ledger").toBe(3);
 });
 
+it("a login with the computer's clock far ahead of the realm's prunes nothing", () => {
+  const saved = `VanguardDB.ah = { ledgers = { ["ForeverTest-Alliance"] = { records = { { kind = "sold", id = 9999, name = "TEST-ONLY Blade", qty = 1, amount = 200, t = 1790000000 - 86400 }, "junk" },
+    open = { [1] = { t = 1790000000 - 3600 } } } } }`;
+  const clock = "__now = 1790000000 + 100 * 86400 GetServerTime = function() return 1790000000 end";
+  const addon = loggedIn(ENV + clock, { savedVariables: saved });
+  expect(addon.eval("local b = VanguardDB.ah.ledgers['ForeverTest-Alliance'] return { #b.records, b.open[1] ~= nil }"), "the record and the open auction stay; only the broken entry goes").toEqual([1, true]);
+});
+
 // The Up now card, which holds Your history.
 const UP = `${HELPER}.upCard`;
 

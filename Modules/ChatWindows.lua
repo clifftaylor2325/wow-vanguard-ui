@@ -42,9 +42,15 @@ local function windowsWhere(keep)
   return out
 end
 
--- The chat windows in use and showing (the size sliders and the floating movers): records { index, frame, name }.
+-- The chat windows in use and showing (the floating movers): records { index, frame, name }.
 function CW.Shown()
   return windowsWhere(function(_, frame) return frame:IsShown() end)
+end
+
+-- The windows the size sliders size: the main window (every docked window takes its size, as the
+-- game's own resize grip on a docked tab sizes the main one) and each floating window showing.
+function CW.Sized()
+  return windowsWhere(function(i, frame) return i == 1 or (frame:IsShown() and not docked(i)) end)
 end
 
 -- The chat windows in use, showing or in the dock behind the selected tab (the game hides every

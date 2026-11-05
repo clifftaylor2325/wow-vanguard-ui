@@ -168,8 +168,8 @@ it("raid tile zones never overlap", () => {
 // TEST-ONLY auras on the target and focus: a sheep, your dot, someone else's debuff, two buffs.
 const FRAME_AURAS = `
   __units.focus = { name = "TEST-ONLY Focus", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", reaction = 5 }
-  __frameAuras = { ["HARMFUL|CROWD_CONTROL"] = { { icon = "SHEEP" } }, ["HARMFUL|PLAYER|!CROWD_CONTROL"] = { { icon = "MY-DOT", applications = 3 } },
-    ["HARMFUL|!PLAYER|!CROWD_CONTROL"] = { { icon = "ANY-DEBUFF" } }, HELPFUL = { { icon = "BUFF-A" }, { icon = "BUFF-B" } } }
+  __frameAuras = { ["HARMFUL|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY"] = { { icon = "SHEEP" } }, ["HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY"] = { { icon = "MY-DOT", applications = 3 } },
+    ["HARMFUL|!PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY"] = { { icon = "ANY-DEBUFF" } }, HELPFUL = { { icon = "BUFF-A" }, { icon = "BUFF-B" } } }
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return (__frameAuras[filter] or {})[i] end }
 `;
 
@@ -190,6 +190,7 @@ it("target and focus auras", () => {
   expect(t.buffs.point.point === "BOTTOMLEFT" && t.buffs.point.relPoint === "TOPLEFT", "buffs sit above it, so neither row floats").toBeTruthy();
   expect(t.debuffs.groups[0].icon === "SHEEP" && t.debuffs.groups[1].icon === "MY-DOT" && t.debuffs.groups[1].count === "3", "crowd control first, then your debuffs, with stacks").toBeTruthy();
   expect(t.debuffs.groups[2].max === 0, "only your debuffs by default").toBeTruthy();
+  expect(t.debuffs.groups.map((g) => g.filter.includes("INCLUDE_NAME_PLATE_ONLY")), "every debuff group also reads the debuffs the game flags for nameplates").toEqual([true, true, true]);
   expect(t.buffs.groups[0].icon === "BUFF-A" && t.debuffs.groups[1].timer === false, "buffs above; no timer numbers by default (the sweep shows time left)").toBeTruthy();
   const f = frameRows(addon, "focus");
   expect(f.buffs == null && f.debuffs.groups[1].icon === "MY-DOT", "the focus shows your debuffs only").toBeTruthy();
@@ -298,7 +299,8 @@ const WEAPONS_ENV = `
 const playerAuras = (addon) => addon.eval(`local PA = ns.GetModule("PlayerAuras") local f = PA.auras.frame
   local cells = {} for i, c in ipairs(PA.cells) do cells[i] = { shown = c:IsShown(), icon = c.icon.__texture, sweep = c.cooldown.__cooldown, inv = c.inv } end
   return { unit = f.__unit, filters = { f.__groups[1].filter, f.__groups[2].filter }, newLine = f.__groups[2].opts.layout.forceNewLine,
-    cancel = f.__groups[1].buttons[1].__cancelButtons, x = f.__points.TOPRIGHT.x, cells = cells }`);
+    cancel = f.__groups[1].buttons[1].__cancelButtons, x = f.__points.TOPRIGHT.x, cells = cells,
+    padReach = PA.holder.vgHoverArea:GetWidth() - PA.holder:GetWidth() }`);
 
 it("your buffs and debuffs replace the game's, with weapon enchants in front", () => {
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "GetTime = function() return 1000 end");
@@ -307,6 +309,7 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   expect(pa, "one container on you: buffs, then debuffs from a new row; right-click cancels").toMatchObject({ unit: "player", filters: ["HELPFUL", "HARMFUL"], newLine: true, cancel: "RightButtonUp" });
   expect(pa.cells[0], "the main hand's imbue shows first, its sweep full").toMatchObject({ shown: true, icon: "TEST-ONLY-ICON-Imbue", sweep: [1000, 1800], inv: 16 });
   expect(pa.cells[1].shown === false && pa.x === -34, "no off-hand enchant, and the buffs move over by one cell").toBe(true);
+  expect(pa.padReach, "the Calm HUD's hover pad reaches one cell further left with them (CR-2)").toBe(34);
   expect(addon.eval('return { ns.MoverPoint("playerauras") }'), "the holder is movable, left of the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -210, -14]);
   addon.eval("__enchants[0][1].timeLeft = 1200000 __enchants[1] = { { hasEnchant = true, timeLeft = 600000, enchantIconID = 0 } }");
   addon.fire("UNIT_INVENTORY_CHANGED", "party1");
@@ -315,7 +318,7 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   const two = playerAuras(addon);
   expect(two.cells[0].sweep, "time passing keeps the sweep's full length, so it empties").toEqual([400, 1800]);
   expect(two.cells[1], "an oil on the off hand, drawn with the weapon's icon").toMatchObject({ shown: true, icon: "TEST-ONLY-ICON-Weapon17", sweep: [1000, 600] });
-  expect(two.x, "and the buffs move over by two cells").toBe(-68);
+  expect([two.x, two.padReach], "and the buffs move over by two cells, the hover pad still under their last column").toEqual([-68, 68]);
   addon.eval("__enchants[1] = { { hasEnchant = { __secret = true }, timeLeft = 600000 } } local c = ns.GetModule('PlayerAuras').cells[1] c.cooldown:GetScript('OnCooldownDone')(c.cooldown)");
   expect(playerAuras(addon).cells[1].shown, "a hidden answer shows no cell").toBe(false);
   addon.eval("local c = ns.GetModule('PlayerAuras').cells[1] c:GetScript('OnEnter')(c)");
@@ -531,13 +534,14 @@ it("aura filter words this client rejects are dropped for the session", () => {
 });
 
 it("a client that rejects every aura filter word keeps the filter and shows no auras", () => {
-  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client", "aura filter HARMFUL|PLAYER: no part of it is known to this client",
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client",
+    "aura filter HARMFUL|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client", "aura filter HARMFUL|PLAYER|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client",
     "aura filter HARMFUL: no part of it is known to this client", "aura filter HELPFUL: no part of it is known to this client");
   const addon = loggedIn(UNITS_ENV + `__wfgStub.noAuraContainer = true
     C_UnitAuras = { GetAuraDataByIndex = function() error("TEST-ONLY: no filters") end }`);
   expect(addon.eval('return ns.Auras.Filter("HARMFUL|CROWD_CONTROL")'), "nothing better to read: the filter is kept").toBe("HARMFUL|CROWD_CONTROL");
   expect(addon.eval('return ns.Auras.Get("target", 1, "HARMFUL|CROWD_CONTROL")'), "and the read gives no aura").toBe(null);
-  expect(addon.eval('local k, text = 0 for _, e in ipairs(ns.errors) do if e.text:find("aura filter HARMFUL|CROWD_CONTROL", 1, true) then k, text = k + 1, e.text end end return { k, text }'))
+  expect(addon.eval('local k, text = 0 for _, e in ipairs(ns.errors) do if e.text:find("aura filter HARMFUL|CROWD_CONTROL: no", 1, true) then k, text = k + 1, e.text end end return { k, text }'))
     .toEqual([1, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client"]);
 });
 

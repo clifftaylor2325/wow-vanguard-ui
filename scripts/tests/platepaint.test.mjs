@@ -1,6 +1,7 @@
 // platepaint: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, PLATE_ENV, UNITS_ENV, isTok, loggedIn, plate, tok } from "./helpers.mjs";
 
 it("nameplates repaint only what an event changed, and the border only when the target or the scale does", () => {
@@ -139,4 +140,78 @@ it("NP.RefreshAll repaints every plate on screen from the settings as they are n
   expect(levels(), "RefreshAll clears both").toEqual(["", ""]);
   addon.eval("ns.Settings('Nameplates').level = true ns.GetModule('Nameplates').RefreshAll()");
   expect(levels(), "and paints them back").toEqual(["12", "14"]);
+});
+
+// A plate's soft-target icon: shown, and its art (false when not drawn).
+const softIcon = (addon, unit) => addon.eval(`local f = ns.FrameState('vgPlate')[__plates.${unit}] return { f.soft:IsShown(), f.soft:IsShown() and f.soft.__texture or false }`);
+// The game's soft-target update over every plate, as its driver runs it (size, enemy, friend, interact icons).
+const softUpdate = (addon, args = "32, true, false, true") => addon.eval(`for _, p in pairs(__plates) do NamePlateDriverFrame:UpdateSoftTargetIconInternal(p, ${args}) end`);
+
+it("the game's soft-target icon shows above Vanguard's plate of a soft enemy, in the client's art (H22-2-1)", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  addon.eval("__units.target.cursorIcon = 'TEST-ONLY-SWORD' __units.softenemy = __units.target");
+  softUpdate(addon);
+  expect(softIcon(addon, "nameplate1"), "the soft enemy's plate: the client's icon for it").toEqual([true, "TEST-ONLY-SWORD"]);
+  expect(softIcon(addon, "nameplate2")[0], "another plate: none").toBe(false);
+  expect(addon.eval("return { __cursorArgs.n, __cursorArgs[3] }"), "Forever's plates ask for the gamepad icon, as the game's own do").toEqual([3, true]);
+  const f = addon.frame("ns.FrameState('vgPlate')[__plates.nameplate1]").rect;
+  const icon = addon.frame("ns.FrameState('vgPlate')[__plates.nameplate1].soft").rect;
+  expect([icon.width, icon.bottom - (f.bottom + f.height)], "24 square, clear above the debuff row").toEqual([24, 36]);
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(softIcon(addon, "nameplate1")[0], "a plate drawn again while it is the soft enemy gets the icon from the game's last switches").toBe(true);
+});
+
+it("the soft-target icon goes when the unit stops being a soft target or the game's icons are off (H22-2-1)", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  addon.eval("__units.party1.cursorIcon = 'TEST-ONLY-BUBBLE' __units.softinteract = __units.party1");
+  softUpdate(addon);
+  expect(softIcon(addon, "nameplate2"), "a friend you can talk to: the speech bubble").toEqual([true, "TEST-ONLY-BUBBLE"]);
+  softUpdate(addon, "32, true, false, false");
+  expect(softIcon(addon, "nameplate2")[0], "the game's interact icon switched off: gone").toBe(false);
+  softUpdate(addon);
+  addon.eval("__units.softinteract = nil");
+  softUpdate(addon);
+  expect(softIcon(addon, "nameplate2")[0], "no longer the soft target: gone").toBe(false);
+  addon.eval("__units.softinteract = __units.party1");
+  softUpdate(addon, "0, true, true, true");
+  expect(softIcon(addon, "nameplate2")[0], "an icon size of 0 turns them all off").toBe(false);
+  addon.eval("__units.party1.cursorIcon = nil");
+  softUpdate(addon);
+  expect(softIcon(addon, "nameplate2")[0], "the client has no icon for the unit: none").toBe(false);
+});
+
+it("a unit the client shows only a widget for keeps the game's plate, and its frame is hidden again on a normal unit (H22-2-1)", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate2");
+  addon.eval("__units.nameplate2 = { name = 'TEST-ONLY Herald', hp = 100, maxhp = 100, power = 0, maxpower = 0, ptype = 'MANA', widgetsOnly = true }");
+  addon.eval("__plates.nameplate2.UnitFrame:Show()");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  expect(plate(addon, "nameplate2"), "the game's frame shows (with its widget), Vanguard's plate does not").toMatchObject({ drawn: false, default: true });
+  expect(addon.eval("return ns.GetModule('Nameplates').plates.nameplate2 == nil"), "and Vanguard does not count it as drawn").toBe(true);
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate2");
+  addon.eval("__units.nameplate2 = __units.party1 __plates.nameplate2.UnitFrame:Hide() __plates.nameplate2.UnitFrame:Show()");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  expect(plate(addon, "nameplate2"), "the same frame on a normal unit: Vanguard's plate, the game's hidden").toMatchObject({ drawn: true, default: false });
+  addon.eval("__plates.nameplate2.UnitFrame:Show()");
+  expect(plate(addon, "nameplate2").default, "and kept hidden while Vanguard owns it").toBe(false);
+});
+
+it("a frame the game moves to a plate it keeps is not hidden by the hook Vanguard left on it (H22-2-1)", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  addon.eval("__moved = __plates.nameplate1.UnitFrame");
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  addon.eval("__moved:Show()");
+  expect(addon.eval("return __moved:IsShown()"), "let go when its plate's unit went: the game may show it elsewhere").toBe(true);
+});
+
+it("the soft-target hook skips plates Vanguard leaves alone, and Retail's plates ask for the plain icon (H22-2-1)", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  addon.eval("__units.party1.cursorIcon = 'TEST-ONLY-BUBBLE' __units.softfriend = __units.party1 __cursorArgs = nil");
+  softUpdate(addon, "32, false, true, false");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate3] == nil and __cursorArgs.n"), "the forbidden plate is not dressed or asked; the friend's is").toBe(3);
+  const retail = loggedIn(UNITS_ENV + PLATE_ENV, { client: RETAIL_CLIENT });
+  retail.eval("__units.party1.cursorIcon = 'TEST-ONLY-BUBBLE' __units.softfriend = __units.party1");
+  softUpdate(retail, "32, false, true, false");
+  expect([softIcon(retail, "nameplate2")[0], retail.eval("return __cursorArgs.n")], "Retail: the icon, with no gamepad preference").toEqual([true, 0]);
 });

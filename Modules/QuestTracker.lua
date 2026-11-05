@@ -108,6 +108,17 @@ local function hookMapPanel()
 end
 hookMapPanel()
 
+-- The quest id of a log row the game's own log lists, or nil: not a header, hidden or a task (a world quest or bonus
+-- objective), and a bounty only once it is complete. The quest log, the XP footer and the XP tooltip share this rule.
+---@param info table|nil  A C_QuestLog.GetInfo row.
+---@return number|nil
+function QT.Listed(info)
+  if type(info) ~= "table" or ns.IsTrue(info.isHeader) or ns.IsTrue(info.isHidden) or ns.IsTrue(info.isTask) then return nil end
+  local id = ns.PlainNumber(info.questID)
+  if id and ns.IsTrue(info.isBounty) and not ns.IsTrue(ns.CallIf(C_QuestLog, "IsComplete", id)) then return nil end
+  return id
+end
+
 -- A quest's place in the log (it moves as quests come and go), or nil when the log doesn't have it.
 function QT.LogIndex(id)
   return ns.PlainNumber(ns.CallIf(C_QuestLog, "GetLogIndexForQuestID", id))
@@ -226,6 +237,15 @@ end
 -- off while this tracker shows). With the nearest-first order the tracker sorts itself.
 function QT.SortWatches()
   if QT.settings.order == "game" then ns.CallIf(C_QuestLog, "SortQuestWatches") end
+end
+
+-- The game also sorts again when a zone change puts you on another map (Blizzard_ObjectiveTracker.lua), once
+-- per map; the nearest-first order sorts itself.
+function QT.SortOnMapChange()
+  local mapID = ns.PlainNumber(ns.CallIf(C_Map, "GetBestMapForUnit", "player"))
+  if mapID == QT.sortedMap then return end
+  QT.sortedMap = mapID
+  QT.SortWatches()
 end
 
 -- The achievement type of the content tracker (Enum.ContentTrackingType.Achievement), or nil without it.
@@ -459,5 +479,6 @@ function QT.Enable(settings)
   followRecipes()
   ns.On("QUEST_ACCEPTED", QT.AutoTrack)
   ns.On("ZONE_CHANGED_NEW_AREA", QT.SortWatches)
+  ns.On("ZONE_CHANGED", QT.SortOnMapChange)
   ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)
 end

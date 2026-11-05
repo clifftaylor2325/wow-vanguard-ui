@@ -99,6 +99,27 @@ it("layout: anchors, sizes and scale resolve to screen rects as the client lays 
   expect(addon.frame("TESTONLY_B").rect, "the inspector gives the same rect in pixels").toMatchObject({ left: 870, bottom: 500, width: 180, height: 80, top: 580, right: 1050 });
 });
 
+it("layout: text hung on an empty font string is laid out; a frame hung on a 0 x 0 frame is not", () => {
+  const addon = createAddon();
+  addon.eval(`
+    __row = CreateFrame("Frame", "TESTONLY_Row", UIParent) __row:SetSize(200, 16) __row:SetPoint("CENTER")
+    __count = __row:CreateFontString(nil, "OVERLAY", "GameFontNormal") __count:SetPoint("RIGHT", __row, "RIGHT") __count:SetText("")
+    __text = __row:CreateFontString(nil, "OVERLAY", "GameFontNormal") __text:SetPoint("LEFT", __row, "LEFT") __text:SetPoint("RIGHT", __count, "LEFT", -4, 0) __text:SetText("Speak with the quartermaster")
+    __empty = CreateFrame("Frame", "TESTONLY_Empty", UIParent) __empty:SetPoint("CENTER")
+    __hung = CreateFrame("Frame", "TESTONLY_Hung", UIParent) __hung:SetSize(10, 10) __hung:SetPoint("RIGHT", __empty, "LEFT")`);
+  expect(addon.eval("return { __count:IsRectValid(), __text:IsRectValid(), __text:GetRight() }"), "an empty count has a rect at its anchor, and the objective text hung on it ends 4 short of it").toEqual([true, true, 1060 - 4]);
+  expect(addon.eval("return { __empty:IsRectValid(), __hung:IsRectValid() }"), "a 0 x 0 frame has no rect, and nothing hung on it gets one").toEqual([false, false]);
+});
+
+it("the world: a unit's widgets-only nameplate and its cursor icon, as the client reports them", () => {
+  const addon = createAddon();
+  addon.world.setUnit("nameplate1", { name: "TEST-ONLY Herald", widgetsOnly: true, cursorIcon: "TEST-ONLY-BUBBLE" });
+  addon.world.setUnit("nameplate2", { name: "TEST-ONLY Boar" });
+  expect(addon.eval("return { UnitNameplateShowsWidgetsOnly('nameplate1'), UnitNameplateShowsWidgetsOnly('nameplate2') }"), "widgets only, from the unit").toEqual([true, false]);
+  expect(addon.eval("local t = UIParent:CreateTexture() return { SetUnitCursorTexture(t, 'nameplate1'), t.__texture, SetUnitCursorTexture(t, 'nameplate2') }"),
+    "the unit's cursor icon on the texture, and false for a unit with none").toEqual([true, "TEST-ONLY-BUBBLE", false]);
+});
+
 it("the world: a unit change fires the client's events at frames registered for them", () => {
   const addon = loggedIn();
   addon.eval(`__got = {} local f = CreateFrame("Frame") f:RegisterUnitEvent("UNIT_HEALTH", "target") f:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -515,6 +536,12 @@ it("each client loads the files the TOC's game-type tags allow it, and tocFiles(
   expect(tocFiles("forever")).toEqual(clientPaths(toc, "forever"));
   expect(tocFiles("retail")).toEqual(clientPaths(toc, "retail"));
   expect(tocFiles()).toEqual(tocPaths(toc));
+});
+
+it("an edit box with no text answers an empty string from GetText, as the client does; a font string answers nil", () => {
+  const addon = loggedIn();
+  expect(addon.eval(`local box = CreateFrame("EditBox") local before = box:GetText() box:SetText("x")
+    return { before, box:GetText(), UIParent:CreateFontString():GetText() == nil }`)).toEqual(["", "x", true]);
 });
 
 it("fonts: CreateFont makes a named font object, and a button's label takes its state's font object as the client does", () => {

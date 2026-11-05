@@ -129,7 +129,7 @@ GW.PAD = 12
 -- Vanguard's (one would taint the popup's caller, and later a protected Accept such as deleting an item).
 GW.LAYOUT_WINDOWS = {
   StaticPopup1 = true, StaticPopup2 = true, StaticPopup3 = true, StaticPopup4 = true,
-  EditModeManagerFrame = true, EditModeSystemSettingsDialog = true, ReportFrame = true,
+  EditModeManagerFrame = true, EditModeSystemSettingsDialog = true, ReportFrame = true, AddFriendFrame = true,
 }
 -- The windows the game shows without what fills them, by name -> the global name of the child their panel shows with:
 -- the ready check's holder shows on its own, its dialog hidden, to the player who called the check. Their panel goes on

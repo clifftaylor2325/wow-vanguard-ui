@@ -99,6 +99,17 @@ function C.Call(name, ...)
   return fn(...)
 end
 
+-- Whether the realm's rules (C_GameRules) have this game rule switched on; no when the client can't say or the
+-- answer is secret.
+---@param name string  A key of Enum.GameRule, such as "ExperienceBarDisabled".
+---@return boolean
+function ns.GameRuleOn(name)
+  local rule = Enum and Enum.GameRule and Enum.GameRule[name]
+  if rule == nil or type(C_GameRules) ~= "table" or type(C_GameRules.IsGameRuleActive) ~= "function" then return false end
+  local on = C_GameRules.IsGameRuleActive(rule)
+  return not ns.IsSecret(on) and on == true
+end
+
 -- Names of the keys whose answer is `want` (a still-waiting key counts as lacking, marked with "?").
 local function names(want)
   local out = {}

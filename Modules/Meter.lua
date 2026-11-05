@@ -140,14 +140,27 @@ local function mine(src)
   return not ns.IsSecret(src.isLocalPlayer) and src.isLocalPlayer == true
 end
 
+-- Fills a row's bar and figure from a line, scaled to the top line's figure.
+local function fillFigure(row, src, top)
+  give(row, "SetMinMaxValues", 0, scale(top))
+  give(row, "SetValue", figure(src[MT.Field()]))
+  give(row.value, "SetText", MT.WithShare(src[MT.Field()], src.totalAmount, MT.total))
+end
+
+-- Fills a Deaths line as the game's meter does: a full bar and the time of death (none for the overall session).
+local function fillDeath(row, src)
+  give(row, "SetMinMaxValues", 0, 1)
+  give(row, "SetValue", 1)
+  local at = ns.PlainNumber(src.deathTimeSeconds)
+  give(row.value, "SetText", at and at >= 0 and ns.GetModule("InfoStrip").FightLength(at) or "")
+end
+
 -- Fills one row's bar and texts from one line, scaled to the top line's figure.
 local function fill(row, src, top)
   row:SetStatusBarColor(lineColor(src))
-  give(row, "SetMinMaxValues", 0, scale(top))
-  give(row, "SetValue", figure(src[MT.Field()]))
   give(row.name, "SetText", src.name)
   T.Color(row.name, mine(src) and "accent" or "text")
-  give(row.value, "SetText", MT.WithShare(src[MT.Field()], src.totalAmount, MT.total))
+  if MT.settings.kind == "Deaths" then fillDeath(row, src) else fillFigure(row, src, top) end
   row.src = src
 end
 

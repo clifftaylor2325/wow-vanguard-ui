@@ -3,7 +3,7 @@
 
 import { expect, it } from "vitest";
 import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, loggedIn } from "./helpers.mjs";
-import { CC, MENU_NOTICE, priestly, widget } from "./clickcast-helpers.mjs";
+import { CC, MENU_NOTICE, applies, priestly, widget } from "./clickcast-helpers.mjs";
 
 // A logged-in priest with the spellbook above, on the click-casting page when asked.
 const priest = (extra = "", opts = {}) => priestly(loggedIn(CLICK_LUA + extra, opts));
@@ -195,4 +195,11 @@ it("Copy to a talent group that has bindings asks first, and after Replace the n
   addon.eval(`__wfgStub.frames[${copyDropdown(addon)}].set(2)`);
   addon.click("Vanguard_Question.confirm");
   expect(addon.texts(ALSO_SECONDARY).length, "the copy was shown at once").toBe(1);
+});
+
+it("a spec change applies the lists again only when it is the player's, not another group member's", () => {
+  const addon = priest();
+  const [, party] = applies(addon, () => addon.fire("PLAYER_SPECIALIZATION_CHANGED", "party1"));
+  const [, own] = applies(addon, () => addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player"));
+  expect([party, own], "a party member's spec leaves the tiles' hover keys alone; yours applies once").toEqual([0, 1]);
 });

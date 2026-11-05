@@ -233,8 +233,9 @@ GW.Add("pvp", { "TimerTracker" }, GW.SkinTimerTracker)
 -- The objective banner's texts and their text roles: the objective's name and its flash, and the line under it.
 GW.BANNER_TEXTS = { Title = "title", TitleFlash = "title", BonusLabel = "label" }
 
--- The objective banner (a flag taken, a base assaulted) in the theme font at the game's sizes; its art and its
--- animation stay the game's (the animation sets their alpha).
+-- The objective banner (the battleground's or brawl's name and its short description, shown once as you enter; the
+-- game makes it with Blizzard_PVPUI on Retail) in the theme font at the game's sizes; its art and its animation
+-- stay the game's (the animation sets their alpha).
 function GW.SkinPvPBanner(frame)
   for key, role in pairs(GW.BANNER_TEXTS) do
     local fs = frame[key]
@@ -242,7 +243,7 @@ function GW.SkinPvPBanner(frame)
   end
 end
 
-GW.Add("pvp", { "PvPObjectiveBannerFrame" }, GW.SkinPvPBanner)
+GW.AddOnDemand("pvp", "Blizzard_PVPUI", { "PvPObjectiveBannerFrame" }, GW.SkinPvPBanner)
 
 -- Honor tab -------------------------------------------------------------------------------------
 
