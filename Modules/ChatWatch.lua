@@ -51,7 +51,7 @@ function CW.Words(phrase)
 end
 
 -- The pattern that holds a phrase word to a word start: ASCII letters and digits, and two-byte UTF-8 letters
--- (accented Latin, Greek, Cyrillic); a Chinese or Korean word has none, as its text runs on without breaks.
+-- (accented Latin, Greek, Cyrillic); a word in three-byte letters (Chinese, Korean) has none, as Chinese runs on without breaks.
 local function wordStart(word)
   if word:find("^%w") then return "%f[%w]" end
   if word:find("^[\195-\212]") then return "%f[%w\128-\255]" end

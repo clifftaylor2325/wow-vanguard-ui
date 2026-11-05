@@ -3909,7 +3909,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Both addresses are accent links and clicking one opens the copy box.
 - If it fails, paste: the chat line as shown, and /vg errors.
 
-### 33.271 Chat watch holds a Russian word to a word start (Russian client)
+### 33.271 Chat watch holds a Russian word to a word start (both, Russian client)
 
 - Do: /vg watch add продам, then have a friend say непродам in /s and then продам.
 - Expect: Only the second line rings and toasts.
