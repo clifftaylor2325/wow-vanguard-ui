@@ -78,7 +78,7 @@ end
 -- Whether a piece of chat holds a word with one of CX.TLDS as its ending ("site.com", "discord.gg/abc"):
 -- only then is it read word by word.
 local function hasEnding(text)
-  for ending in text:gmatch("%w%.(%a+)") do
+  for ending in text:gmatch("%.(%a+)") do
     if CX.TLDS[ending:lower()] then return true end
   end
   return false

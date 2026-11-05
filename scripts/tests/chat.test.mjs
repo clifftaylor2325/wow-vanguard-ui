@@ -1034,6 +1034,8 @@ it("chat extras: bare addresses with a web ending become links, never inside a l
   // A string's regular expression characters escaped.
   const esc = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   expect(said("join discord.gg/abc, we raid"), "a bare address with its path, the comma left after the link").toContain(`${linkOf("discord.gg/abc")}, we raid`);
+  expect(said("see classic.wowhead.com/item=1 and eu.battle.net"), "addresses with a subdomain are linked too")
+    .toMatch(new RegExp(`${esc(linkOf("classic.wowhead.com/item=1"))} and \\|c\\w{8}${esc(linkOf("eu.battle.net"))}$`));
   expect(said("see Site.COM."), "any case of a known ending, the full stop left outside").toContain(`${linkOf("Site.COM")}.`);
   expect(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"].map(said), "unknown endings, numbers, mail and a link's own text are left alone")
     .toEqual(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"]);
