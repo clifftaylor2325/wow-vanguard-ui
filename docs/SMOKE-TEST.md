@@ -3933,6 +3933,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Vanguard's Buy question appears and nothing is bought until you answer; a refundable pack of that price, or a non-refundable one under 150g, buys at once.
 - If it fails, paste: /run local i=<row> print(C_MerchantFrame.IsMerchantItemRefundable(i), C_MerchantFrame.GetItemInfo(i).price)
 
+### 33.276 Stack and Max skip an item the merchant will not sell you (Forever)
+
+- Do: At a reputation vendor, shift-click a stackable item shown in red (reputation too low); with the same item on your Keep stocked list, also open the vendor fresh.
+- Expect: No Stack/Max drawer under the quantity window, no Bought line, and the stock run buys nothing of it.
+- If it fails, paste: /dump C_MerchantFrame.GetItemInfo(<row>)
+
 ### 33.281 Docked chat tab sizes through General's sliders (Forever)
 
 - Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.

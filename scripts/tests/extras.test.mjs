@@ -446,6 +446,18 @@ it("keep stocked never buys an item that costs honor, badges or other items as i
   gold.fire("MERCHANT_SHOW");
   expect(gold.eval("return __buys"), "the same item for gold is bought").toEqual([[90011, 5]]);
 });
+it("keep stocked skips an item the client says cannot be bought (a red row), on the table and the old call", () => {
+  const GOLD = MARKS_ENV + "__goods[1].price = 5 __goods[1].ext = nil ";
+  const table = loggedIn(GOLD + "C_MerchantFrame.GetItemInfo = function(i) local g = __goods[i] return { price = g.price, stackCount = g.stack, numAvailable = g.left, isPurchasable = false } end", WANT_5);
+  table.fire("MERCHANT_SHOW");
+  expect(table.eval("return __buys"), "isPurchasable false: nothing bought").toEqual({});
+  const old = loggedIn(GOLD + "C_MerchantFrame = nil GetMerchantItemInfo = function(i) local g = __goods[i] return 'x', '', g.price, g.stack, g.left, false end", WANT_5);
+  old.fire("MERCHANT_SHOW");
+  expect(old.eval("return __buys"), "the old call's sixth value false: nothing bought").toEqual({});
+  const secret = loggedIn(GOLD + "C_MerchantFrame.GetItemInfo = function(i) local g = __goods[i] return { price = g.price, stackCount = g.stack, numAvailable = g.left, isPurchasable = __wfgWorld.secret(false) } end", WANT_5);
+  secret.fire("MERCHANT_SHOW");
+  expect(secret.eval("return __buys"), "a secret answer is not read: bought as before").toEqual([[90011, 5]]);
+});
 it("keep stocked notes only what arrived: a purchase that fails ends the run and is not reported as bought", () => {
   const none = loggedIn(STOCK_ENV + "__have = {} BuyMerchantItem = function(i, n) __buys[#__buys + 1] = { __goods[i].id, n } end", WANT_5);
   none.fire("MERCHANT_SHOW");

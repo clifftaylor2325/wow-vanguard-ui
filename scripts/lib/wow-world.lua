@@ -1339,11 +1339,11 @@ world.merchant = nil
 -- The merchant API, read from world.merchant.
 function GetMerchantNumItems() return world.merchant and #world.merchant.items or 0 end
 
--- name, icon, price, stack, numAvailable, isPurchasable, isUsable of a merchant item.
+-- name, icon, price, stack, numAvailable, isPurchasable (purchasable = false on the entry makes it false), isUsable of a merchant item.
 function GetMerchantItemInfo(i)
   local it = world.merchant and world.merchant.items[i]
   if not it then return nil end
-  return it.name, it.icon, it.price or 0, it.stack or 1, it.left or -1, true, false
+  return it.name, it.icon, it.price or 0, it.stack or 1, it.left or -1, it.purchasable ~= false, false
 end
 -- Links, stacks, buying and repairing at the merchant.
 function GetMerchantItemLink(i) local it = world.merchant and world.merchant.items[i] return it and (it.link or "|Hitem:" .. (it.itemID or 0) .. "|h[" .. it.name .. "]|h") end
@@ -1355,7 +1355,7 @@ function GetRepairAllCost() local r = world.merchant and world.merchant.repair r
 function RepairAllItems() world.repaired = true world.money = world.money - GetRepairAllCost() end
 C_MerchantFrame = {
   -- The older global names for the item API.
-  GetItemInfo = function(i) local it = world.merchant and world.merchant.items[i] return it and { name = it.name, texture = it.icon, price = it.price or 0, stackCount = it.stack or 1, numAvailable = it.left or -1, isPurchasable = true } end,
+  GetItemInfo = function(i) local it = world.merchant and world.merchant.items[i] return it and { name = it.name, texture = it.icon, price = it.price or 0, stackCount = it.stack or 1, numAvailable = it.left or -1, isPurchasable = it.purchasable ~= false } end,
   SellAllJunkItems = function() world.soldJunk = true end,
   IsSellAllJunkEnabled = function() return true end,
   -- An item is refundable unless the merchant entry says refundable = false (or a secret answer).
