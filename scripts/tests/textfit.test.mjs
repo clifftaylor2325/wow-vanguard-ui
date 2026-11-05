@@ -261,3 +261,12 @@ it("text fits: the options footer's error line stops short of the reload notice,
     expect(cuts, `${locale}: Reload now is not cut`).toBe(0);
   }
 });
+
+it("text fits: a long Keep-stocked name on the Instance prep card ends in an ellipsis before its count (H17-5-R1)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
+  addon.login();
+  const name = "Большое зелье защиты от тайной магии";
+  addon.eval(`local PR = ns.GetModule("InstancePrep") PR.card:Show() PR.Paint({ { label = "${name}", value = "3 / 20", id = 1 } })`);
+  const kinds = addon.textFit("Vanguard_PrepCard").map((finding) => finding.kind);
+  expect(kinds.filter((kind) => kind === "overlap" || kind === "spill"), "never under the count or out of the card (a cut is fine)").toEqual([]);
+});

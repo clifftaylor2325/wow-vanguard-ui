@@ -4059,6 +4059,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no wrapped line overlaps the next and there are no extra gaps.
 - If it fails, paste: a screenshot of the window and /vg errors.
 
+### 33.300 Instance prep card keeps a long name off its count (Forever)
+
+- Do: on a German or French client, or English at the largest Text size, keep a long-named item stocked with `/vg stock <item> <n>` (for example Greater Arcane Protection Potion) at a count above what you carry, then open the card with `/vg prep`.
+- Expect: the name ends in ... before the red have / want count and never runs under it.
+- If it fails, paste: a screenshot of the card.
+
 ### 33.305 Abandon is greyed for a quest the game won't abandon (Retail)
 
 - Do: Pick a quest the game's own map panel shows without an Abandon option (a starting-zone or campaign quest) and open Vanguard's quest log on it.
