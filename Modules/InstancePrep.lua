@@ -24,8 +24,7 @@ local PR = ns.Module("InstancePrep", {
   defaults = {
     onEnter = true, onReadyCheck = true, lowWarn = true, dungeonCard = false, hideAfter = 20, durability = 50,
     buffs = false, worldBuffs = false,
-    -- Retail starts with no bandage row (its players rarely carry them); /vg prep want bandages <n> turns it on.
-    want = { food = 20, bandages = ns.ClientData({ forever = 10, retail = 0 }), potions = 3, ammo = 400, shards = 10 },
+    want = { food = 20, bandages = ns.ClientData(ns.CLIENT_DEFAULTS.InstancePrep.want.bandages), potions = 3, ammo = 400, shards = 10 },
   },
 })
 

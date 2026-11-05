@@ -1,7 +1,7 @@
 // profiles: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { createAddon, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
 import { CLICK_LUA, RETAIL, SETUP_DONE, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
@@ -681,6 +681,46 @@ it("two long profile names that are cut alike each keep their own backup", () =>
   expect(addon.eval(`return VanguardDB.backupOf["${two}"]`), "deleting a backup frees its name").toBeNull();
   addon.eval("VanguardDB.backupOf = 7");
   expect(backupFor(b), "a damaged note is ignored: the plain name is free again").toBe(`${"A".repeat(25)} backup`);
+});
+// A profile string made on `maker` ("retail" or "forever") with the saved tables `lua`, then imported whole on the other client;
+// returns the imported profile's UnitFrames and InstancePrep.want.bandages as { levels, health, bandages }.
+function importedOnOtherClient(maker, lua) {
+  const from = loggedIn(`ns.Profile().UnitFrames = ${lua.unit}`, maker === "retail" ? { client: RETAIL_CLIENT } : {});
+  from.eval(`ns.Profile().InstancePrep = ${lua.prep}`);
+  const text = from.eval("return ns.ExportProfile()");
+  const here = loggedIn("", maker === "retail" ? {} : { client: RETAIL_CLIENT });
+  here.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  return here.eval("local p = VanguardDB.profiles.Imported local w = p.InstancePrep and p.InstancePrep.want return { tostring(p.UnitFrames and p.UnitFrames.showLevel), tostring(p.UnitFrames and p.UnitFrames.healthFormat), tostring(w and w.bandages) }");
+}
+it("a string from the other client brings that client's defaults in as no choice, so this client's own fill in", () => {
+  const retail = importedOnOtherClient("retail", { unit: "{ showLevel = false, healthFormat = 'value' }", prep: "{ want = { bandages = 0 } }" });
+  expect(retail, "Retail defaults on Forever: all three cleared").toEqual(["nil", "nil", "nil"]);
+  const forever = importedOnOtherClient("forever", { unit: "{ showLevel = true, healthFormat = 'percent' }", prep: "{ want = { bandages = 10 } }" });
+  expect(forever, "Forever defaults on Retail: all three cleared").toEqual(["nil", "nil", "nil"]);
+});
+it("a string from the other client keeps a value that differs from its maker's default", () => {
+  const kept = importedOnOtherClient("retail", { unit: "{ showLevel = true, healthFormat = 'percent' }", prep: "{ want = { bandages = 5 } }" });
+  expect(kept, "a real choice on Retail stays on Forever").toEqual(["true", "percent", "5"]);
+});
+it("a string from the same client, or with no client stamp, keeps every value", () => {
+  const same = loggedIn("", { client: RETAIL_CLIENT });
+  same.eval("ns.Profile().UnitFrames = { showLevel = false, healthFormat = 'value' }");
+  const text = same.eval("return ns.ExportProfile()");
+  same.eval("ns.Profile().UnitFrames.boss = false");
+  same.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(same.eval("local p = VanguardDB.profiles.Imported.UnitFrames return { p.showLevel, p.healthFormat }"), "same client: unchanged").toEqual([false, "value"]);
+  const addon = loggedIn();
+  const old = addon.eval("return ns.Serialize.Encode('profile', { format = 2, UnitFrames = { showLevel = false, healthFormat = 'value' } })");
+  addon.eval(`ns.ImportProfile(${JSON.stringify(old)})`);
+  expect(addon.eval("local p = VanguardDB.profiles.Imported.UnitFrames return { p.showLevel, p.healthFormat }"), "no client field: left as written").toEqual([false, "value"]);
+});
+it("a parts string from the other client drops its client defaults too", () => {
+  const from = loggedIn("", { client: RETAIL_CLIENT });
+  from.eval("ns.Profile().UnitFrames = { showLevel = false, healthFormat = 'value', boss = false }");
+  const text = from.eval("return ns.ExportProfile('UnitFrames')");
+  const here = loggedIn("");
+  here.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(here.eval("local u = ns.Profile().UnitFrames return { u.showLevel, u.healthFormat, u.boss }"), "the choice stays, the Retail defaults give way to Forever's").toEqual([true, "percent", false]);
 });
 it("an import's backup never overwrites a profile another character or a spec uses", () => {
   // TEST-ONLY: another character runs on "Default backup", and this character's spec 2 uses "Default backup 2".

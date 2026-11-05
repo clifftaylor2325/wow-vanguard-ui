@@ -18,7 +18,7 @@ local S = ns.Serialize
 ns.PROFILE_FORMAT = 2
 
 -- Keys a payload carries beside the settings tables: never saved into a profile.
-local META = { format = true, addonVersion = true, parts = true, display = true }
+local META = { format = true, addonVersion = true, parts = true, display = true, client = true }
 
 -- Settings that record this computer's own state rather than a choice, by table: they never go in a
 -- string, and a string's are dropped as it is read, so they never reach another client.
@@ -119,9 +119,9 @@ local function addonVersion()
   return type(get) == "function" and get(ADDON, "Version") or "?"
 end
 
--- Adds the format and addon version every string carries to a payload; returns it.
+-- Adds the format, addon version and client every string carries to a payload; returns it.
 function ns.StampPayload(data)
-  data.format, data.addonVersion = ns.PROFILE_FORMAT, addonVersion()
+  data.format, data.addonVersion, data.client = ns.PROFILE_FORMAT, addonVersion(), ns.ClientKey()
   return data
 end
 
@@ -151,6 +151,25 @@ function ns.WithoutClientState(data)
   for key, leave in pairs(CLIENT_STATE) do
     if type(data[key]) == "table" then data[key] = without(data[key], leave) end
   end
+  return data
+end
+
+-- Clears, in node, each setting that still holds the default of the client `from` (the table
+-- defaults mirrors node's own shape: a { forever, retail } leaf is a per-client default).
+local function clearClientDefaults(node, defaults, from)
+  if type(node) ~= "table" then return end
+  for key, spec in pairs(defaults) do
+    if spec.forever == nil and spec.retail == nil then clearClientDefaults(node[key], spec, from)
+    elseif node[key] == spec[from] then node[key] = nil end
+  end
+end
+
+-- Takes out of a payload made on the other client each setting still at that client's default, so this
+-- client's own default fills it at the next load. A choice that differs from the maker's default stays,
+-- and so does a string with no client (older strings). Returns data.
+function ns.WithoutOtherClientDefaults(data)
+  local from = data.client
+  if (from == "forever" or from == "retail") and from ~= ns.ClientKey() then clearClientDefaults(data, ns.CLIENT_DEFAULTS, from) end
   return data
 end
 
