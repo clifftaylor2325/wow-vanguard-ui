@@ -71,6 +71,16 @@ it("game alerts: scaling the talking head or loss of control spot scales the gam
   addon.advance(0.5);
   expect(addon.eval("return TalkingHeadFrame:GetScale()"), "and gives it back").toBe(1);
 });
+it("game alerts: a scaled spot repaints the alert's panel border at the new pixel", () => {
+  const addon = loggedIn(ALERTS_ENV);
+  const edge = `local f = LossOfControlFrame local e
+    for _, r in ipairs({ f:GetRegions() }) do if r.__layer == "BORDER" and r:GetWidth() == f:GetWidth() then e = e or r:GetHeight() end end
+    return { ns.Theme.Pixel(f), e }`;
+  addon.eval("ns.SetMoverScale('lossofcontrol', 2)");
+  addon.advance(0.5);
+  const [pixel, top] = addon.eval(edge);
+  expect(top, "the border is one screen pixel at the frame's scale").toBe(pixel);
+});
 it("game alerts: loss of control takes the spot's scale times the Size set in Edit Mode", () => {
   // TEST-ONLY Edit Mode system: a Size setting of 150 (percent) on loss of control.
   const sized = "Enum = Enum or {} Enum.EditModeLossOfControlSetting = { Size = 0 } LossOfControlFrame.GetSettingValue = function() return 150 end";

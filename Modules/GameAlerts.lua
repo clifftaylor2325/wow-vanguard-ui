@@ -63,6 +63,7 @@ local function fitAlert(f, spot)
   local tools = ns.GetModule("GameTools")
   tools.FitCenter(f, spot)
   tools.ScaleWithSpot(f, spot, editModeSize(f))
+  T.RepaintFrame(f)
 end
 
 -- A movable spot for one of the game's alerts, with the alert kept centered on it and scaled with it.
