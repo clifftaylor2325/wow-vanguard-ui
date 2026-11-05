@@ -119,13 +119,29 @@ local function turnOn(name)
   state.reload = true
 end
 
+-- True when setup still owes a run: the account never finished it, or this character is new
+-- (or started over) since.
+local function owed()
+  return not VanguardDB.setupDone or VanguardCharDB.setupDone == false
+end
+
+-- The backup an owed setup already has (made by Start over, or by an earlier run closed before Done),
+-- while that profile is still there and is still the backup of the profile in use.
+local function keptBackup()
+  local name = VanguardCharDB.setupBackup
+  local kept = owed() and type(name) == "string" and VanguardDB.profiles[name] ~= nil
+  if kept and name == ns.BackupName(ns.ProfileName()) then return name end
+end
+
 -- Before setup's first change in a run: copies the profile in use to its backup profile (once
--- per run) and says so in chat. From then on Back doesn't return to the Profile step: a profile
--- of its own made after a change would leave that change in the shared profile.
+-- per run, and once until Done or Skip while setup is owed, so a later run never copies a
+-- half-set-up profile over it) and says so in chat. From then on Back doesn't return to the
+-- Profile step: a profile of its own made after a change would leave that change in the shared profile.
 function S.Backup()
   if state.backup then return end
   if state.order[1] == "profile" then state.floor = math.max(state.floor, 2) end
-  state.backup = ns.BackupProfile()
+  state.backup = keptBackup() or ns.BackupProfile()
+  if owed() then VanguardCharDB.setupBackup = state.backup end
   ns.Chat(ns.Format(L["Profile {profile} as it was before setup is saved as profile {backup}."], { profile = ns.ProfileName(), backup = state.backup }))
 end
 
@@ -822,10 +838,11 @@ local function reloadReason()
   if state.complete and state.done then return L["Setup is done."] end
 end
 
--- Remembers that setup ran, on the account and for this character, and says how to run it again. On WoW Forever
--- it also leaves key setup's note (Modules/KeybindsWizard.lua), which offers it once at the next login.
+-- Remembers that setup ran, on the account and for this character (dropping the backup an owed run
+-- kept), and says how to run it again. On WoW Forever it also leaves key setup's note (Modules/KeybindsWizard.lua), which offers it once at the next login.
 local function markDone()
   VanguardDB.setupDone, VanguardCharDB.setupDone, VanguardCharDB.pickProfile = true, true, nil
+  VanguardCharDB.setupBackup = nil
   if ns.IsForever() and VanguardCharDB.keysOffer == nil then VanguardCharDB.keysOffer = true end
   ns.Chat(AGAIN)
 end
@@ -953,17 +970,13 @@ function S.Defer()
   ns.OutOfCombat(function() waiting = false; S.Open() end)
 end
 
--- True when setup still owes a run: the account never finished it, or this character is new
--- (or started over) since.
-local function owed()
-  return not VanguardDB.setupDone or VanguardCharDB.setupDone == false
-end
-
 -- Opens setup at step 1 (the profile step for a new character); in combat it waits. Keep and Keep
 -- are picked, the first time too, so Vanguard starts from where you are and clicking through
--- changes nothing; your role's layout and your screen's preset are marked.
+-- changes nothing; your role's layout and your screen's preset are marked. Already open, it stays as it is
+-- (a restart would reset the run's backup and Back's floor).
 function S.Open()
   if ns.InCombat() then return S.Defer() end
+  if frame and frame:IsShown() then return end
   frame = frame or build()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"

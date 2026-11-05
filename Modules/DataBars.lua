@@ -64,12 +64,25 @@ local function number(fn, ...)
   return type(fn) == "function" and ns.PlainNumber(fn(...)) or 0
 end
 
+-- Whether you are at the level cap, as the game's own bars judge it (GameRulesUtil); a client without it
+-- compares your level with the maximum.
+local function atCap()
+  local rules = GameRulesUtil
+  if type(rules) == "table" and type(rules.IsPlayerAtEffectiveMaxLevel) == "function" then
+    return rules.IsPlayerAtEffectiveMaxLevel() == true
+  end
+  local level, max = ns.PlainNumber(UnitLevel("player")), number(GetMaxPlayerLevel)
+  return level ~= nil and max > 0 and level >= max
+end
+
 -- True when XP has nothing to show, as the game's own bar judges it: at the level cap, or with XP gain
 -- turned off at the XP-lock NPC.
 local function xpHidden()
-  local capped = type(IsPlayerAtEffectiveMaxLevel) == "function" and IsPlayerAtEffectiveMaxLevel() == true
+  local capped = atCap()
   return capped or (type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true)
 end
+-- The same rule for the info strip's XP rows.
+DB.XPHidden = xpHidden
 
 -- { cur, max, rested, level } for the XP bar, or nil when it should hide.
 function DB.XP()
@@ -178,7 +191,7 @@ function DB.Renown(data)
   local level = info and ns.PlainNumber(info.renownLevel)
   if not level then return nil end
   local rep = noNumbers(data.name, ns.PlainNumber(data.reaction), 1)
-  rep.word, rep.nextWord = renownWord(level), renownWord(level + 1)
+  rep.word, rep.nextWord, rep.color = renownWord(level), renownWord(level + 1), DB.RENOWN_COLOR
   local cur, max = ns.PlainNumber(info.renownReputationEarned), ns.PlainNumber(info.renownLevelThreshold)
   if topRenown(id) or not (cur and max and max > 0) then return rep end
   rep.cur, rep.max, rep.noNumbers = cur, max, nil
@@ -368,29 +381,29 @@ end
 -- set under General → Layout).
 DB.SIZES = { width = { 60, 1600 }, height = { 2, 40 } }
 
--- Where a bar's text goes while the bar is thinner than a line of it (the two bars stack 8 apart, so centred
--- texts would run into each other): the XP text at the left end, the reputation text at the right, a cell
--- gap in (the sign is the direction in from that end).
-DB.TEXT_SIDE = { xpbar = { "LEFT", 1 }, repbar = { "RIGHT", -1 } }
+-- Where a bar's text goes while the bar is thinner than a line of it: centred on the XP bar, and centred
+-- just above the reputation bar, a cell gap up, so with the two bars stacked 8 apart the two lines never meet.
+-- Each is { text point, bar point, gaps up }.
+DB.THIN_TEXT = { xpbar = { "CENTER", "CENTER", 0 }, repbar = { "BOTTOM", "TOP", 1 } }
 
--- Puts a bar's text at the bar's own end, in half the bar's width less a cell gap, so the two bars' texts
--- never meet: it is cut short with an ellipsis in that room.
-local function sideText(bar, side)
-  local half = (ns.PlainNumber(bar:GetWidth()) or 0) / 2
-  bar.text:SetWidth(math.max(0, half - T.SPACE.tight))
-  bar.text:SetJustifyH(side[1])
-  bar.text:SetPoint(side[1], bar, side[1], side[2] * T.SPACE.tight, 0)
+-- Puts a thin bar's text where DB.THIN_TEXT says, held to the bar's width less a cell gap at each end: it is
+-- cut short with an ellipsis in that room.
+local function thinText(bar, spot)
+  local width = (ns.PlainNumber(bar:GetWidth()) or 0) - 2 * T.SPACE.tight
+  bar.text:SetWidth(math.max(0, width))
+  bar.text:SetJustifyH("CENTER")
+  bar.text:SetPoint(spot[1], bar, spot[2], 0, spot[3] * T.SPACE.tight)
 end
 
--- Places a bar's text on one line: centred while the bar is at least as tall as its font (or its height is
--- hidden), else at the bar's own end.
+-- Places a bar's text on one line: centred on the bar while the bar is at least as tall as its font (or its
+-- height is hidden), else as DB.THIN_TEXT says.
 function DB.PlaceText(bar)
   local _, size = bar.text:GetFont()
   local height = ns.PlainNumber(bar:GetHeight())
-  local side = height and height < (size or 0) and DB.TEXT_SIDE[bar.vgKey]
+  local spot = height and height < (size or 0) and DB.THIN_TEXT[bar.vgKey]
   bar.text:ClearAllPoints()
   bar.text:SetWordWrap(false)
-  if side then return sideText(bar, side) end
+  if spot then return thinText(bar, spot) end
   bar.text:SetWidth(0)
   bar.text:SetJustifyH("CENTER")
   bar.text:SetPoint("CENTER")
@@ -463,6 +476,8 @@ end
 
 -- Honor's bar colour: the theme's orange (the game paints honor orange; the theme has no honor token).
 DB.HONOR_COLOR = "focus"
+-- The renown bar's color token: the game draws a major faction's bar blue whatever its reaction.
+DB.RENOWN_COLOR = "info"
 
 -- Fills the XP bar (with honor at Retail's cap, in its own colour), or hides it at max level (or while its
 -- visibility hides it).
@@ -486,7 +501,7 @@ function DB.UpdateReputation()
   if not rep then return end
   bar:SetMinMaxValues(0, rep.max)
   bar:SetValue(rep.cur)
-  T.BarColor(bar, REACTION[rep.standing] or REACTION[4])
+  T.BarColor(bar, rep.color or REACTION[rep.standing] or REACTION[4])
   bar.text:SetText(DB.ReputationText(rep))
 end
 

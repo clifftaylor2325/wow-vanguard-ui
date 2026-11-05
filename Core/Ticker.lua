@@ -91,3 +91,18 @@ end
 function ns.HasTimer()
   return type(C_Timer) == "table" and type(C_Timer.After) == "function"
 end
+
+-- Leap days between year 1 and 1970, and the seconds in a day (the whole-day counts below go by them).
+ns.LEAPS_BEFORE_1970, ns.SECONDS_PER_DAY = 477, 86400
+
+-- The day a time falls on by the computer's own clock (whole days since 1970 in its time zone), so
+-- "today" ends at the player's midnight; the UTC day on a client without date().
+---@param t number seconds since 1970
+---@return number day
+function ns.LocalDay(t)
+  local d = type(_G.date) == "function" and _G.date("*t", t)
+  if type(d) ~= "table" then return math.floor(t / ns.SECONDS_PER_DAY) end
+  local y = d.year - 1
+  local leaps = math.floor(y / 4) - math.floor(y / 100) + math.floor(y / 400) - ns.LEAPS_BEFORE_1970
+  return (d.year - 1970) * 365 + leaps + d.yday - 1
+end

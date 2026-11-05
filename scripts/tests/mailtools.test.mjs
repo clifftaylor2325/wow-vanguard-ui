@@ -233,6 +233,14 @@ it("+ Add on the panel makes a preset, a right-click on its button asks and remo
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("presets attach an item that sits in the reagent bag too", () => {
+  const addon = mailer("__wfgWorld.bagSizes[5] = 2 __wfgWorld.bags[5] = { [1] = { itemID = 901 } }");
+  addon.slash("mail preset add Ores Bobalt ore");
+  addon.world.openMailWindow();
+  addon.world.showSendMail();
+  addon.slash("mail send ores");
+  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Ores: 2 items attached for Bobalt\./)], "the bag 0 ore and the reagent bag ore").toEqual([[[0, 2], [5, 1]], true]);
+});
 it("attaches at most 12, and a preset button before the panel exists is quiet", () => {
   const addon = mailer("__wfgWorld.bagSizes[0] = 20 for s = 1, 20 do __wfgWorld.bags[0][s] = { itemID = 900 } end");
   addon.slash("mail preset add All Bobalt");
@@ -532,6 +540,15 @@ it("+ Add holds its label in German, Russian and Portuguese in every place along
       expect(inside, `${locale}, ${n} presets: + Add ends inside the panel's padding`).toBe(true);
     }
   }
+});
+
+it("mail search looks in the first item's name, not in the item link's markup", () => {
+  const addon = mailer("");
+  const mail = `{ sender = "Bobalt", subject = "Ore", money = 0, items = 1, link = "|cffa335ee|Hitem:12345:0|h[Iron Ore]|h|r" }`;
+  // Whether the mail matches the query.
+  const found = (query) => addon.eval(`return ${MT}.Matches(${mail}, "${query}")`);
+  expect([found("iron"), found("bobalt ore")], "the item's name, the sender and the subject match").toEqual([true, true]);
+  expect([found("item"), found("cff"), found("123"), found("hitem")], "link markup and ids do not").toEqual([false, false, false, false]);
 });
 
 it("mail search, presets and preset words ignore the case of Russian letters, not only of A-Z", () => {

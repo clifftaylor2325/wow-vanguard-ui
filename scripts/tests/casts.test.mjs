@@ -100,7 +100,35 @@ it("cast timing from the client's duration object", () => {
   `);
   addon.fire("UNIT_SPELLCAST_START", "player");
   expect(addon.eval("return __timer") === true, "a cast uses the client's duration object when the bar accepts one").toBeTruthy();
-  expect(addon.eval('return Vanguard_CastBar_player:GetScript("OnUpdate")') === null, "and then does not tick the bar itself").toBeTruthy();
+  addon.eval("Vanguard_CastBar_player.SetValue = function() __moved = true end __wfgStub.update(1)");
+  expect(addon.eval("return __moved") === null, "and then never moves the fill itself").toBeTruthy();
+});
+
+it("on the client's timer the seconds left still tick from plain times", () => {
+  const addon = loggedIn(CAST_ENV + "UnitCastingDuration = function() return { __duration = true } end");
+  addon.eval('Vanguard_CastBar_player.SetTimerDuration = function() return true end');
+  addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.eval("__wfgStub.update(1)");
+  expect(addon.eval("return Vanguard_CastBar_player.time:GetText()"), "the seconds left").toBe("2.0");
+});
+
+it("on the client's timer hidden times leave the seconds empty and no ticker", () => {
+  const addon = loggedIn(CAST_ENV + "UnitCastingDuration = function() return { __duration = true } end");
+  addon.eval('Vanguard_CastBar_player.SetTimerDuration = function() return true end');
+  addon.eval('__casts.player = { kind = "cast", start = { __secret = true }, finish = { __secret = true } }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  expect(addon.eval('return Vanguard_CastBar_player:GetScript("OnUpdate")') === null, "no ticker").toBeTruthy();
+  expect(addon.eval("return Vanguard_CastBar_player.time:GetText()"), "no seconds").toBe("");
+});
+
+it("on the client's timer a ticker that meets hidden times writes nothing", () => {
+  const addon = loggedIn(CAST_ENV + "UnitCastingDuration = function() return { __duration = true } end");
+  addon.eval('Vanguard_CastBar_player.SetTimerDuration = function() return true end');
+  addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+  addon.fire("UNIT_SPELLCAST_START", "player");
+  addon.eval("Vanguard_CastBar_player.endMS = { __secret = true } Vanguard_CastBar_player.time:SetText('x') __wfgStub.update(1)");
+  expect(addon.eval("return Vanguard_CastBar_player.time:GetText()"), "left as it was").toBe("x");
 });
 
 it("on the client's timer a channel empties and a cast fills, as without it", () => {
@@ -484,6 +512,16 @@ it("the interrupt mark: which interrupt, by class and rank", () => {
   expect(pick("MAGE", [2139]), "a mage's Counterspell").toBe(2139);
   expect(pick("MAGE", []), "an interrupt you have not learned").toBe(false);
   expect(pick("DRUID", [2139]), "a class with none").toBe(false);
+  expect(pick("DEATHKNIGHT", [47528]), "a retail Death Knight's Mind Freeze").toBe(47528);
+  expect(pick("DEMONHUNTER", [183752]), "a retail Demon Hunter's Disrupt").toBe(183752);
+  expect(pick("DRUID", [78675, 106839]), "a retail Druid's Skull Bash before Solar Beam").toBe(106839);
+  expect(pick("DRUID", [78675]), "a Balance Druid with only Solar Beam").toBe(78675);
+  expect(pick("HUNTER", [187707, 147362]), "a retail Hunter's Counter Shot before Muzzle").toBe(147362);
+  expect(pick("HUNTER", [187707]), "a Survival Hunter with only Muzzle").toBe(187707);
+  expect(pick("MONK", [116705]), "a retail Monk's Spear Hand Strike").toBe(116705);
+  expect(pick("PALADIN", [96231]), "a retail Paladin's Rebuke").toBe(96231);
+  expect(pick("EVOKER", [351338]), "a retail Evoker's Quell").toBe(351338);
+  expect(pick("DRUID", []), "a Druid who knows none").toBe(false);
   addon.eval("IsPlayerSpell = nil C_SpellBook.IsSpellKnown = nil");
   expect(addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false'), "a client that cannot say what you know").toBe(false);
 });
@@ -576,4 +614,15 @@ it("your cast bar sits above the action bars and moves up when they grow, so the
   expect(Math.round(castSpot(addon).bottom), "a spot you dragged it to wins").toBe(400);
   const off = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = { ActionBars = false } } }" });
   expect(off.eval("return Vanguard_CastBar_player:GetBottom()"), "with Vanguard's action bars off: its layout spot, risen with the block").toBeCloseTo(146 + RISE.under, 3);
+});
+
+it("a world cast is interruptible unless marked interruptible = false (the notInterruptible return)", () => {
+  const addon = loggedIn();
+  // The notInterruptible returns of a world cast and the same cast as a channel.
+  const shielded = (cast) => addon.eval(`local u = __wfgWorld.units.player
+    u.cast = ${cast} local n = select(8, UnitCastingInfo("player"))
+    u.cast.channel = true local c = select(7, UnitChannelInfo("player")) u.cast = nil return { n, c }`);
+  expect(shielded("{ name = 'TEST-ONLY Spell', startMs = 1, endMs = 2 }"), "unset").toEqual([false, false]);
+  expect(shielded("{ name = 'TEST-ONLY Spell', interruptible = true }"), "true").toEqual([false, false]);
+  expect(shielded("{ name = 'TEST-ONLY Spell', interruptible = false }"), "false").toEqual([true, true]);
 });

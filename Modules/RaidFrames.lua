@@ -1,4 +1,4 @@
--- Raid frames: up to 40 players in a grid, one column per group (or sorted
+-- Raid frames: up to 40 players in a grid, filled five at a time in group order (or sorted
 -- by role), built on the client's secure group header so the roster can
 -- change in combat. Each button shows class-colored health (softened into
 -- the panel color by default, so the outlined name stays readable), a role
@@ -29,7 +29,7 @@ RF.COMPACT = { { 10, 1 }, { 25, 0.8 }, { 40, 0.72 } }
 -- The most players a grid grows for when the raid mover's Scale is above 100% (the Healing preset's 115%):
 -- a bigger raid keeps its compact size so its grid stays clear of the main tanks and the raid tools.
 RF.GROW_MAX = 25
--- Tiles in one group: a group is a column (or a row) of this many.
+-- Tiles in one column (or row): five, a full group. A short group lets the next group's players fill the rest.
 RF.GROUP = 5
 -- More players than this is a big raid (Stack big raids moves its grid left of your character).
 RF.BIG_RAID = 10
@@ -618,7 +618,7 @@ function RF.Setup(b)
   if RF.OnButtonCreated then RF.OnButtonCreated(b) end
 end
 
--- Where the header grows for each layout: columns of five side by side
+-- Where the header grows for each layout: columns filled five at a time, side by side
 -- (growing up), or rows of five stacked upward (wide, for big healing raids).
 RF.GROW = {
   columns = { point = "BOTTOM", columnAnchorPoint = "LEFT", xOffset = 0, yOffset = 4 },
@@ -631,7 +631,7 @@ local function big(n)
 end
 
 -- The groups' direction for n players: your Groups as choice, except that a big raid stacks its
--- groups as rows (five across, one group above the next), which is shorter and clear of your frames.
+-- groups as rows (five across, one above the next), which is shorter and clear of your frames.
 function RF.LayoutFor(n)
   return (RF.settings.layout == "rows" or big(n)) and "rows" or "columns"
 end
@@ -651,7 +651,7 @@ function RF.SpotFor(n)
   return big(n) and RF.BigSpotFor(UIParent:GetWidth()) or RF.SPOT
 end
 
--- Layout attributes: groups of five (or sorted by role), as columns or rows (kind).
+-- Layout attributes: five at a time in group order (or sorted by role), as columns or rows (kind).
 local function layout(header, s, kind)
   local grow = RF.GROW[kind] or RF.GROW.columns
   header:SetAttribute("groupBy", s.sortByRole and "ASSIGNEDROLE" or "GROUP")
@@ -768,19 +768,24 @@ local function scaleHeader()
   T.Rescale()
 end
 
+-- Fits the grid for n players now (out of combat), then the raid preview while it is on, so the
+-- preview keeps its own spot and the mover's look.
+local function fitFor(n)
+  RF.tileScale = RF.Scale(n) * RF.LookScale(n)
+  RF.Arrange(n)
+  scaleHeader()
+  RF.header:ClearAllPoints()
+  RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
+  RF.PlaceAllTexts()
+  if ns.RaidPreview then ns.RaidPreview.Refresh() end
+end
+
 -- Scales the grid to the group's size, pins it to the holder and lays the
 -- tiles' texts out for that scale (out of combat).
 function RF.Fit()
   if not RF.header then return end
   local n = type(GetNumGroupMembers) == "function" and ns.PlainNumber(GetNumGroupMembers()) or 0
-  ns.OutOfCombat(function()
-    RF.tileScale = RF.Scale(n or 0) * RF.LookScale(n or 0)
-    RF.Arrange(n or 0)
-    scaleHeader()
-    RF.header:ClearAllPoints()
-    RF.header:SetPoint(headerPoint(), RF.holder, headerPoint())
-    RF.PlaceAllTexts()
-  end, "raidfit")
+  ns.OutOfCombat(function() fitFor(n or 0) end, "raidfit")
 end
 
 -- Sizes the holder f for one group in a layout: a column of RF.GROUP tiles tall, or a row of them wide.

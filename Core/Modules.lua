@@ -16,6 +16,21 @@ local function clientKey()
   return client
 end
 
+-- The running client's key: "forever" or "retail".
+---@return string
+function ns.ClientKey()
+  return clientKey()
+end
+
+-- The settings that start differently on each client, by module (a nested table follows the settings'
+-- own): one place for the module defaults and for an import to tell a value left at the other client's
+-- default from a choice (ns.WithoutOtherClientDefaults, Core/ProfileStrings.lua).
+ns.CLIENT_DEFAULTS = {
+  UnitFrames = { showLevel = { forever = true, retail = false }, healthFormat = { forever = "percent", retail = "value" } },
+  -- Retail starts with no bandage row (its players rarely carry them); /vg prep want bandages <n> turns it on.
+  InstancePrep = { want = { bandages = { forever = 10, retail = 0 } } },
+}
+
 -- Whether a module belongs on the running client: def.clients = { forever = true } or { retail = true }
 -- names the only clients it has; without def.clients it has both. The one place that decides it.
 ---@param def { clients: table? }

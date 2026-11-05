@@ -6,7 +6,7 @@
 --     what Max costs, and a question before buying more than a stack.
 -- Items in an equipment set are never sold from here, and nothing is sold or bought in combat or
 -- once the merchant has closed (using an item with no merchant open would use it). Buying and
--- selling only start from a click, a command or an answered question; the Buyback tab undoes a sale.
+-- selling only start from a click, a command or an answered question; the Buyback tab undoes a sale (it holds the last 12 stacks).
 
 local ADDON, ns = ...
 local L = ns.L
@@ -16,6 +16,8 @@ local W = ns.Widgets
 local MC = ns.GetModule("Merchant")
 
 MC.BUY_EVERY, MC.LIST_SHOWN = 0.2, 5
+-- The merchant's Buyback tab holds the last 12 stacks sold (BUYBACK_ITEMS_PER_PAGE in both clients).
+MC.BUYBACK_SLOTS = 12
 -- The drawer under the quantity window (Stack, Max and the cost line): at least this wide, two 60-wide buttons
 -- and three gaps.
 MC.DRAWER_W = 2 * 60 + 3 * T.SPACE.gap
@@ -81,7 +83,7 @@ end
 -- Every bag slot whose item keep(id) accepts, as { bag, slot, id, count }.
 local function scan(keep)
   local out = {}
-  for bag = 0, 4 do
+  for bag = 0, MC.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
       local id, count = slotItem(bag, slot)
       if id and keep(id) then out[#out + 1] = { bag = bag, slot = slot, id = id, count = count } end
@@ -154,7 +156,9 @@ end
 -- "Sell for 1g 2s?" and up to five of the items by name, one to a line.
 function MC.SellQuestion(rows)
   local question = ns.Format(L["Sell for {money}?"], { money = money(MC.Worth(rows)) })
-  return question .. "\n" .. table.concat(shortList(itemLines(rows)), "\n")
+  local text = question .. "\n" .. table.concat(shortList(itemLines(rows)), "\n")
+  if #rows <= MC.BUYBACK_SLOTS then return text end
+  return text .. "\n" .. ns.Format(L["Only the last {count} stacks can be bought back."], { count = MC.BUYBACK_SLOTS })
 end
 
 -- A finder of the shown rows that still hold what was shown (the same item, the same count): a stack
@@ -170,15 +174,24 @@ local function stillShown(rows)
   end
 end
 
+-- The chat line after a sale: the Buyback tab only holds the last 12 stacks, so a bigger sale says so.
+local function soldLine(rows)
+  local values = { count = #rows, money = money(MC.Worth(rows)), slots = MC.BUYBACK_SLOTS }
+  if #rows <= MC.BUYBACK_SLOTS then
+    return ns.Format(L["Selling {count} stack(s) for {money}. The merchant's Buyback tab gets them back."], values)
+  end
+  return ns.Format(L["Selling {count} stack(s) for {money}. The merchant's Buyback tab gets the last {slots} back."], values)
+end
+
 -- Asks (a "danger" question, so Enter alone never answers it), then sells the rows that were shown and
--- no others; says what the Buyback tab can undo.
+-- no others; says what the Buyback tab can undo (the last 12 stacks).
 function MC.OfferSale(find)
   local rows = find()
   if #rows == 0 then return false end
   ns.Ask(MC.SellQuestion(rows), L["Sell"], function()
     if not trading() then return ns.Chat(L["Nothing sold: the merchant is closed."]) end
     MC.SellRows(stillShown(rows), MC.RETRIES)
-    ns.Chat(ns.Format(L["Selling {count} stack(s) for {money}. The merchant's Buyback tab gets them back."], { count = #rows, money = money(MC.Worth(rows)) }))
+    ns.Chat(soldLine(rows))
   end, nil, "danger")
   return true
 end
@@ -391,10 +404,11 @@ local function costText(drawer, stack)
   return T.FitText(ns.SingleLine(line), drawer)
 end
 
--- A Stack or Max press: buys only while the row still holds the item, at the pack price, that the cost
--- line was worked out for (the list can shift under an open window, and a button reads its row by place).
+-- A Stack or Max press: buys only while the window is still for that item and the row still holds it, at the
+-- pack price, that the cost line was worked out for (the list can shift under an open window, and a button
+-- reads its row by place).
 local function press(entry, frame, packsOf)
-  local same = MC.Sells(entry.index, entry.id) and wares(entry.index) == entry.price
+  local same = MC.SplitIndex(frame) == entry.index and MC.Sells(entry.index, entry.id) and wares(entry.index) == entry.price
   if not same then return ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end
   MC.Order(entry.index, packsOf(entry.index), frame)
 end
@@ -424,12 +438,16 @@ function MC.OnSplitShow(frame)
   end
 end
 
--- Hooks the quantity window (once), when the game has made it.
+-- Hooks the quantity window (once), when the game has made it. Opening it for a second item while it is
+-- open fires no OnShow, so the game's open call is hooked too.
 function MC.HookSplit()
   local frame = _G.StackSplitFrame
   if type(frame) ~= "table" or not frame.HookScript or MC.splitHooked then return end
   MC.splitHooked = true
   frame:HookScript("OnShow", ns.Guard("stack split bulk", MC.OnSplitShow))
+  if type(frame.OpenStackSplitFrame) == "function" then
+    hooksecurefunc(frame, "OpenStackSplitFrame", ns.Guard("hook OpenStackSplitFrame", MC.OnSplitShow))
+  end
 end
 
 -- The merchant opened or closed. Closing ends a running buy for good: its next chunk buys nothing,

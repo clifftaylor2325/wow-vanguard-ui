@@ -93,7 +93,12 @@ local BUTTON = {
   "SetMotionScriptsWhileDisabled",
   "SetFontString", "SetHighlightTexture", "SetNormalFontObject",
   "SetNormalTexture", "SetPushedTexture", "SetText", "UnlockHighlight",
+  -- The label's font object per state (SimpleButtonAPIDocumentation, forever branch of wow-ui-source).
+  "GetDisabledFontObject", "GetHighlightFontObject", "SetDisabledFontObject", "SetHighlightFontObject",
 }
+
+-- A font object made by CreateFont (SimpleFontAPIDocumentation, forever branch of wow-ui-source).
+local FONT_OBJECT = { "CopyFontObject" }
 
 local SCROLL_FRAME = {
   "GetHorizontalScroll", "GetHorizontalScrollRange", "GetScrollChild",
@@ -200,21 +205,22 @@ return {
     EditBox = set(REGION, FRAME, FONT, EDIT_BOX),
     Texture = set(REGION, LAYERED, TEXTURE),
     FontString = set(REGION, LAYERED, FONT, FONT_STRING),
+    Font = set(FONT, FONT_OBJECT),
   },
   scripts = {
     Frame = set(FRAME_SCRIPTS),
-    Button = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
+    Button = set(FRAME_SCRIPTS, { "OnClick", "OnDisable", "OnDoubleClick", "OnEnable", "PostClick", "PreClick" }),
     StatusBar = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
     Minimap = set(FRAME_SCRIPTS),
     ScrollingMessageFrame = set(FRAME_SCRIPTS, { "OnHyperlinkClick", "OnHyperlinkEnter", "OnHyperlinkLeave", "OnMessageScrollChanged" }),
-    Slider = set(FRAME_SCRIPTS, { "OnMinMaxChanged", "OnValueChanged" }),
-    CheckButton = set(FRAME_SCRIPTS, { "OnClick", "OnDoubleClick", "PostClick", "PreClick" }),
+    Slider = set(FRAME_SCRIPTS, { "OnDisable", "OnEnable", "OnMinMaxChanged", "OnValueChanged" }),
+    CheckButton = set(FRAME_SCRIPTS, { "OnClick", "OnDisable", "OnDoubleClick", "OnEnable", "PostClick", "PreClick" }),
     Cooldown = set(FRAME_SCRIPTS, { "OnCooldownDone" }),
     AuraContainer = set(FRAME_SCRIPTS),
     AuraButton = set(FRAME_SCRIPTS),
     ScrollFrame = set(FRAME_SCRIPTS, { "OnHorizontalScroll", "OnScrollRangeChanged", "OnVerticalScroll" }),
     EditBox = set(FRAME_SCRIPTS, {
-      "OnChar", "OnCursorChanged", "OnEditFocusGained", "OnEditFocusLost",
+      "OnChar", "OnCursorChanged", "OnDisable", "OnEditFocusGained", "OnEditFocusLost", "OnEnable",
       "OnEnterPressed", "OnEscapePressed", "OnTabPressed", "OnTextChanged",
       "OnTextSet",
     }),
@@ -235,6 +241,8 @@ return {
     SecureHandlerAttributeTemplate = {},
     SecureGroupHeaderTemplate = { kind = "Frame" },
     SecureHandlerBaseTemplate = {},
+    SecureHandlerShowHideTemplate = {},
+    SecureHandlerClickTemplate = { kind = "Button" },
     CooldownFrameTemplate = { kind = "Cooldown" },
     CustomAuraContainerTemplate = { kind = "AuraContainer" },
   },

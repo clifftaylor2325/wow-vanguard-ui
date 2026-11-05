@@ -66,13 +66,29 @@ local function alive()
   return not ns.IsSecret(dead) and not dead
 end
 
+-- Whether the summon takes you out of a starting area, which the game asks you about with a prompt of its
+-- own (read when deciding, so a summon held until the fight ends is checked too); a client without the call
+-- or a hidden answer counts as no.
+local function leavesStart()
+  return ns.IsTrue(summon("IsSummonSkippingStartExperience"))
+end
+
+-- Closes every kind of summon prompt the game shows (the plain, scenario and starting-area ones).
+local function closeSummonPrompts()
+  if type(HideSummonConfirmationDialogs) == "function" then return HideSummonConfirmationDialogs() end
+  closePrompt("CONFIRM_SUMMON")
+  closePrompt("CONFIRM_SUMMON_SCENARIO")
+  closePrompt("CONFIRM_SUMMON_STARTING_AREA")
+end
+
 -- Takes the waiting summon, when the switch is still on, it is still waiting, you are alive and the game
--- would let you (otherwise its prompt stays up), and says from whom and to where.
+-- would let you (otherwise its prompt stays up, as it does for a summon out of a starting area, which is
+-- yours to decide), and says from whom and to where.
 function AA.AcceptSummon()
-  if not AA.settings.summons or not summonWaiting() or not alive() or not canTeleport() then return end
+  if not AA.settings.summons or not summonWaiting() or not alive() or not canTeleport() or leavesStart() then return end
   local who, where = plain(summon("GetSummonConfirmSummoner"), L["someone"]), plain(summon("GetSummonConfirmAreaName"), L["somewhere"])
   summon("ConfirmSummon")
-  closePrompt("CONFIRM_SUMMON")
+  closeSummonPrompts()
   ns.Chat(ns.Format(L["Accepted a summon from {who} to {place}."], { who = who, place = where }))
 end
 

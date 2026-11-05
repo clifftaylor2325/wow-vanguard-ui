@@ -129,6 +129,25 @@ it("raid preview: stepping from 25 to 40 sample players works the tiles' borders
   expect(addon.eval("return __rescales"), "drawn again at the same scale, nothing more").toBe(1);
 });
 
+// The raid preview's scale, opacity, left edge and the raid mover's default spot.
+const previewLook = (addon) => addon.eval("local p = Vanguard_RaidPreview return { p:GetScale(), p:GetAlpha(), p:GetLeft(), ns.GetModule('RaidFrames').spot }");
+
+it("raid preview: it follows the raid mover's scale, opacity and reset, and a loading screen, and keeps the big raid's spot", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  addon.slash("preview 40");
+  const [scale, alpha, left, spot] = previewLook(addon);
+  addon.eval("ns.SetMoverScale('raid', 0.5) ns.SetMoverAlpha('raid', 0.5)");
+  const look = previewLook(addon);
+  expect([look[0], look[1], look[3]], "scale and opacity reach the preview; the spot stays the big raid's").toEqual([scale * 0.5, 0.5, spot]);
+  addon.eval("ns.ResetMovers('raid')");
+  expect([previewLook(addon)[0], previewLook(addon)[3]], "reset puts the look back and keeps the big raid's spot").toEqual([scale, spot]);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect([previewLook(addon)[2], previewLook(addon)[3]], "a loading screen does not move the preview to the 5-player spot").toEqual([left, spot]);
+  addon.slash("preview off");
+  expect(addon.eval("return ns.GetModule('RaidFrames').spot"), "stopping puts the real grid's spot back").not.toBe(spot);
+  expect(alpha, "full opacity to begin with").toBe(1);
+});
+
 it("raid role mark: a hidden role shows no mark, no role call or NONE shows none, a healer gets the cross", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   // The role mark RaidFrames gives raid1 after setup: [there is an icon, its color].

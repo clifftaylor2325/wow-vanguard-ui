@@ -165,10 +165,15 @@ local function spellCooldownOf(id)
 end
 
 -- A recipe's cooldown in seconds (0 for none or where the client can't say): the game's recipe cooldown where it has
--- one, else the cooldown of the recipe's spell.
+-- one (0 while a charge is left, as the game's own check says: the time given is then the next charge's), else the
+-- cooldown of the recipe's spell.
 local function cooldownOf(id)
   local get = type(C_TradeSkillUI) == "table" and C_TradeSkillUI.GetRecipeCooldown
-  if type(get) == "function" then return ns.PlainNumber((get(id))) or 0 end
+  if type(get) == "function" then
+    local cooldown, _, charges = get(id)
+    if (ns.PlainNumber(charges) or 0) > 0 then return 0 end
+    return ns.PlainNumber(cooldown) or 0
+  end
   return spellCooldownOf(id)
 end
 

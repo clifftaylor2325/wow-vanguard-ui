@@ -519,6 +519,7 @@ const LEVEL_ENV = `
   GetXPExhaustion = function() return __rested end
   UnitLevel = function() return __level end
   GetMaxPlayerLevel = function() return 60 end
+  GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return __level >= 60 end }
 `;
 it("the info strip: XP and gold per hour, and time to level", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
@@ -555,6 +556,19 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
   expect(addon.eval('local IS = ns.GetModule("InfoStrip") return { IS.ShortMoney(5), IS.ShortMoney(507), IS.Duration(30) }'), "short money and times").toEqual(["5c", "5s 7c", "1m"]);
+});
+it("the info strip: the XP rate and time to level hide while XP gain is locked, as the XP bar does (H15-5-R1)", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 10);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 1790);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(block(addon, "xprate").shown, "levelling: the rate shows").toBe(true);
+  addon.eval("IsXPUserDisabled = function() return true end");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect([block(addon, "xprate").shown, block(addon, "leveltime").shown], "XP gain locked: both XP rows hide").toEqual([false, false]);
 });
 it("the info strip: a hidden middle block leaves no empty row (gold per hour sits right under the time at the level cap)", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
@@ -754,7 +768,7 @@ it("menu strip: the game's tracker is pinned into the spot only while Vanguard's
 it("the game's extras: a protected frame is hidden once, out of combat, with no Show hook", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + "ProtectedBar = CreateFrame('Frame', 'ProtectedBar', UIParent) ProtectedBar.IsProtected = function() return true, false end __wfgStub.inCombat = true");
   // Shown, still under UIParent, and without a raw Show or SetShown hook.
-  const state = () => addon.eval("local f = ProtectedBar return { f:IsShown(), f:GetParent() == UIParent, rawget(f, 'Show') == nil and rawget(f, 'SetShown') == nil }");
+  const state = () => addon.eval("local f = ProtectedBar return { f:IsShown(), f:GetParent() == UIParent, __wfgStub.ownField(f, 'Show') == nil and __wfgStub.ownField(f, 'SetShown') == nil }");
   addon.eval("ns.GetModule('DataBars').Suppress('ProtectedBar')");
   expect(state(), "in combat it is left alone, with no hook").toEqual([true, true, true]);
   setCombat(addon, false);
@@ -1140,6 +1154,17 @@ it("bag and menu bar: slots are 24 screen pixels wide, take the clicks, and ligh
   expect(r3(addon.eval("return ns.FrameState('vgSlot')[CharacterMicroButton].__width") * MENU * 0.5), "a smaller button: its slot shrinks to its place in the row, re-sized by the re-fit").toBe(r3(27 * MENU * 0.5 - 4));
   expect(r3(addon.eval("return ns.FrameState('vgSlot')[EJMicroButton].__width") * MENU), "a button with no size yet gets a full slot").toBe(24);
 });
+it("bag and menu bar: a micro menu Size set in Edit Mode leaves the buttons one slot and a gap apart", () => {
+  const addon = strips("", { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
+  // The menu button's scale on screen (28/27 puts its 27-unit pitch on 28 pixels) and its slot's width in screen pixels.
+  const look = () => addon.eval(`local b = CharacterMicroButton return { b:GetEffectiveScale() / UIParent:GetEffectiveScale(), ns.FrameState('vgSlot')[b].__width * b:GetEffectiveScale() / UIParent:GetEffectiveScale() }`).map(r3);
+  addon.eval("CharacterMicroButton:SetParent(MicroMenu) MicroMenu:SetScale(0.85) MicroMenuContainer:Layout()");
+  expect(look(), "the game's Size at 85%: the buttons are drawn at the row's scale again, the 24-pixel slot unchanged").toEqual([r3(MENU), 24]);
+  addon.eval("MicroMenu:SetScale(0) MicroMenuContainer:Layout()");
+  expect(addon.eval("return MicroMenuContainer:GetScale()"), "a scale the client can't use leaves the row's own").toBe(MENU);
+  addon.eval("MicroMenu:SetScale(1) MicroMenuContainer:Layout()");
+  expect(addon.eval("return MicroMenuContainer:GetScale()"), "at 100% nothing changes").toBe(MENU);
+});
 it("bag and menu bar: line icons are 20 screen pixels on their slot, accent under the mouse", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   // The line icon's screen size and whether it is square and centered on the slot.
@@ -1165,7 +1190,7 @@ it("bag and menu bar: line icons are 20 screen pixels on their slot, accent unde
 // free count and no icon (its art is a button texture), the fold arrow left of it, and 30-unit bags
 // with no padding between them.
 const RETAIL_BAGS_ENV = `
-  BagsBar.bagPadding = 0
+  BagsBar.bagPadding = nil
   BagsBar:SetSize(48 + 10 + 5 * 30, 47)
   local pack = CreateFrame("Button", "MainMenuBarBackpackButton", BagsBar) pack:SetSize(48, 48) pack:SetPoint("RIGHT", BagsBar, "RIGHT")
   pack.icon = pack:CreateTexture() pack.Count = pack:CreateFontString() function pack:GetBagID() return 0 end
@@ -1242,4 +1267,11 @@ it("the minimap's zone name is the zone role: a bold 13 in Fira Sans that the fa
   expect(font("__heading"), "the faction look is on: a heading takes Cinzel").toEqual(["Cinzel-SemiBold.ttf", 13]);
   expect(font("ns.GetModule('Minimap').zone"), "the zone name keeps Fira Sans SemiBold at the zone role's 13").toEqual(["FiraSansCondensed-SemiBold.ttf", addon.eval("return ns.Theme.RoleSize('zone')")]);
   expect(isTok(addon, addon.eval("return ns.GetModule('Minimap').zone.__textColor"), "zoneContested"), "and the PvP colour is still its colour").toBe(true);
+});
+
+it("H17-10-R1: the backpack's free count and the calendar's invite count sit on a black backing in every look, so a red 0 stays readable", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + BAGS_ENV + "C_Calendar = { GetNumPendingInvites = function() return 1 end }");
+  addon.eval('ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()');
+  const backs = addon.eval("return { ns.GetModule('MenuStrip').freeBack.__vertexColor, ns.GetModule('InfoStrip').invitesBack.__vertexColor }");
+  expect(backs.map((c) => [c[0], c[1], c[2]]), "Classic's bronze edge does not tint either backing").toEqual([[0, 0, 0], [0, 0, 0]]);
 });

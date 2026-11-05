@@ -110,6 +110,16 @@ it("upgrades: an item search's results are judged too, bids only skipped, a list
   expect([card(addon)[1], addon.eval("return #ns.errors")], "a potion's results, and a key the client hides, are left alone").toEqual([1, 0]);
 });
 
+it("upgrades: your own listings in an item search are left out, so a real seller's dearer listing is the row", () => {
+  const addon = warrior();
+  addon.eval(`__wfgWorld.ah.items[102] = { { buyoutAmount = 300, quantity = 1, itemLink = __link(102), containsOwnerItem = true },
+    { buyoutAmount = 400, quantity = 1, itemLink = __link(102), containsOwnerItem = __wfgWorld.secret(false) },
+    { buyoutAmount = 900, quantity = 1, itemLink = __link(102), containsOwnerItem = false } }`);
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 102 });
+  addon.update(0.01);
+  expect([card(addon)[1], row(addon, 1)[4]], "only the other seller's listing, at its price").toEqual([1, "9s 0c"]);
+});
+
 it("upgrades: the same item and suffix at another unique ID is one row at the cheapest price; another suffix stays its own", () => {
   const addon = warrior();
   addon.eval(`function __variant(unique, suffix) return "|cffffffff|Hitem:102:0:0:0:0:0:" .. suffix .. ":" .. unique .. ":60|h[TEST-ONLY Better Bracers]|h|r" end

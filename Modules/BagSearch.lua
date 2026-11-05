@@ -62,12 +62,20 @@ function BG.ParseSearch(text)
   return operators and tests or nil
 end
 
+-- The bind type of this copy: an item already bound to you counts as bind on pickup, whatever its base type.
+local function boundBind(info, bind)
+  local bound = info.isBound
+  if ns.IsSecret(bound) or bound ~= true then return bind end
+  if bind == BIND.boe or bind == BIND.bou then return BIND.bop end
+  return bind
+end
+
 -- What the client says about an item: name, quality, item level, type words and bind type.
 local function factsOf(info)
   local name, _, quality, ilvl, _, kind, sub, _, _, _, _, _, _, bind = C_Item.GetItemInfo(info.itemID)
   return {
     name = ns.Lower(name or ""), quality = ns.PlainNumber(quality), ilvl = ns.PlainNumber(ilvl),
-    type = ns.Lower((kind or "") .. " " .. (sub or "")), bind = ns.PlainNumber(bind), item = info.itemID,
+    type = ns.Lower((kind or "") .. " " .. (sub or "")), bind = boundBind(info, ns.PlainNumber(bind)), item = info.itemID,
   }
 end
 

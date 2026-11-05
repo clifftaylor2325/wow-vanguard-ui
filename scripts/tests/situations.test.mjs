@@ -125,6 +125,13 @@ it("situations: which situation holds, the first of pvp, instance, raid, party, 
   expect(addon.eval("IsInInstance, IsResting, IsInRaid, IsInGroup = nil, nil, nil, nil return ns.GetModule('Situations').Where()"), "a client that can't say: solo").toBe("solo");
 });
 
+it("situations: /vg help and the Modules page name the Mythic+ and delve situations Retail offers", () => {
+  const addon = situated();
+  addon.slash("help");
+  expect(chatHas(addon, /Situations: record a layout and settings for solo, party, raid, pvp, instance or resting \(on Retail also mythicplus or delve\)/), "the help line").toBe(true);
+  expect(addon.eval("return ns.Options.MODULE_INFO.Situations[2]"), "the Modules page").toMatch(/\(on Retail also Mythic\+ and delves\), applied out of combat\.$/);
+});
+
 it("situations: recording keeps only what the player changed, with the frames' and settings' own controls", () => {
   const addon = situated();
   addon.slash("situation record raid");
@@ -132,6 +139,7 @@ it("situations: recording keeps only what the player changed, with the frames' a
   addon.slash("unlock");
   addon.eval(`function __handle(k) for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == k then return w end end end`);
   expect(addon.eval("return __handle('infostrip').label:GetText()"), "the handles say what's being recorded").toBe("Info strip · recording Raid");
+  expect(addon.eval("return __handle('vehicleexit').label:GetText()"), "a small handle keeps just its name, the banner names the situation").toBe("Vehicle exit");
   addon.eval("local h = __handle('infostrip') h.__left, h.__bottom = 700, 600 h:GetScript('OnDragStop')(h)");
   addon.eval("ns.SetMoverAlpha('infostrip', 0.66)");
   const dropped = savedSpot(addon);
@@ -538,4 +546,33 @@ it("Y6-1 situations: a roster change re-reads the options widgets only while the
   addon.eval("__refreshes = 0");
   raid(addon, false);
   expect(addon.eval("return __refreshes"), "open: re-read").toBeGreaterThan(0);
+});
+
+it("situations: Exit without saving after leaving a raid while unlocked keeps the override out of the base profile", () => {
+  const addon = situated(saved());
+  raid(addon);
+  addon.slash("unlock");
+  raid(addon, false);
+  addon.eval("ns.ExitWithoutSaving()");
+  expect([spot(addon), savedSpot(addon)], "the base spot, and nothing saved for the strip").toEqual([HOME, null]);
+});
+
+it("situations: Exit without saving after a recording stopped while unlocked keeps the recording out of the base profile", () => {
+  const addon = situated(saved());
+  addon.slash("situation record raid");
+  addon.slash("unlock");
+  addon.slash("situation stop");
+  addon.eval("ns.ExitWithoutSaving()");
+  expect([spot(addon), savedSpot(addon)], "the base spot, and nothing saved for the strip").toEqual([HOME, null]);
+});
+
+it("situations: Exit without saving after joining a raid while unlocked leaves the raid's layout on screen", () => {
+  const addon = situated(saved());
+  addon.slash("unlock");
+  raid(addon);
+  addon.eval("ns.ExitWithoutSaving()");
+  addon.advance(1);
+  expect(spot(addon), "the raid's spot stays through later frames").toEqual(["TOP", "TOP", 0, -60]);
+  raid(addon, false);
+  expect([spot(addon), savedSpot(addon)], "leaving puts the base back").toEqual([HOME, null]);
 });

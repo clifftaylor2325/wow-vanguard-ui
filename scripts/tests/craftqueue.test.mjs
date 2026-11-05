@@ -126,6 +126,15 @@ it("/vg craft stock with the Auction helper off raises Keep stocked but makes no
   expect([lines.some((l) => /Lists tab|Shopping list Restock/.test(l)), addon.eval("return ns.AuctionPrices.Store().lists.Restock == nil")], "no Restock list, and no direction to a Lists tab that isn't there").toEqual([false, true]);
 });
 
+it("a recipe with a charge left is not on cooldown, though the game gives the time to its next charge", () => {
+  const addon = crafter("C_TradeSkillUI.GetRecipeCooldown = function() return 18000, false, __charges, 3 end __charges = 2");
+  addon.fire("TRADE_SKILL_LIST_UPDATE");
+  expect(addon.eval(`return ${CQ}.Mine().cooldowns[100]`), "2 of 3 charges: craftable now, nothing listed").toBe(null);
+  addon.eval("__charges = 0");
+  addon.fire("TRADE_SKILL_LIST_UPDATE");
+  expect(addon.eval(`return ${CQ}.Mine().cooldowns[100].ready - __now`), "no charge left: the five hours show").toBe(18000);
+});
+
 it("notes profession cooldowns for each character and says when they are ready", () => {
   const addon = crafter();
   expect(say(addon, "craft cd", /No profession cooldowns noted yet/), "none yet").toBe(true);

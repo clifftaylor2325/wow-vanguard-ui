@@ -127,6 +127,7 @@ Modules/MainTanks.lua
 Modules/PartyExtras.lua
 Modules/GroupThreat.lua
 Modules/ActionBars.lua
+Modules/ActionBarFlyout.lua
 Modules/ActionBarLayout.lua
 Modules/ActionBarKeybinds.lua
 Modules/KeybindsApply.lua
@@ -155,6 +156,7 @@ Modules/BagCategories.lua
 Modules/BagSearch.lua
 Modules/BagTools.lua
 Modules/RetailBank.lua [AllowLoadGameType standard] [ExcludeLoadGameType camelot]
+Modules/ForeverBank.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua

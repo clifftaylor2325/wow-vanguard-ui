@@ -63,6 +63,12 @@ local function deckRow()
     liveMethod("UnitFrames", "deck", "ApplyDeck"))
 end
 
+-- The in-combat mark switch: crossed swords and a red edge on your frame, the edge on your target's (at once).
+local function combatRow()
+  return check(L["In-combat mark: crossed swords and a red edge on your frame, a red edge on your target's while it fights"],
+    liveMethod("UnitFrames", "combatMark", "RefreshCombat"))
+end
+
 -- The mana bar switch's caption: druids only on WoW Forever, three more specs on Retail.
 O.MANA_BAR_LABEL = ns.ClientData({
   forever = L["Druid mana under the player frame in bear and cat form (reload)"],
@@ -73,7 +79,7 @@ O.MANA_BAR_LABEL = ns.ClientData({
 local function unitFrameRows()
   return {
     { "header", L["Unit frames"] },
-    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), calmRow(), deckRow(),
+    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), calmRow(), deckRow(), combatRow(),
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target: a green check if you tagged it, a grey X if another player did"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], { { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] } }, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),

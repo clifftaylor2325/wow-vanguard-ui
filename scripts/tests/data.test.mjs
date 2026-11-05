@@ -39,24 +39,26 @@ it("G1-1 G1-2 the XP bar follows XP gain locked and unlocked; an empty watched-f
 const textPlace = (addon) => addon.eval(`local out = {}
   for i, bar in ipairs({ Vanguard_xpbar, Vanguard_repbar }) do local p, _, rel, x = bar.text:GetPoint(1) out[i] = { p, rel, x } end
   return out`);
-it("data bar texts: on thin bars the XP text goes to the left end and the reputation text to the right, so they never overlap", () => {
+it("data bar texts: on thin bars the XP text is centred on its bar and the reputation text centred just above its own, so they never overlap", () => {
   const addon = loggedIn(DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { text = 'always' } } }" });
-  expect(textPlace(addon), "6 px bars under 10 px text: each at its own end, a cell gap in").toEqual([["LEFT", "LEFT", 4], ["RIGHT", "RIGHT", -4]]);
+  expect(textPlace(addon), "6 px bars under 10 px text: XP centred on its bar, reputation a cell gap above its bar").toEqual([["CENTER", "CENTER", 0], ["BOTTOM", "TOP", 0]]);
+  expect(addon.eval("return { select(5, Vanguard_xpbar.text:GetPoint(1)), select(5, Vanguard_repbar.text:GetPoint(1)) }"), "the reputation text sits a cell gap up").toEqual([0, 4]);
   addon.eval("ns.SetMoverSize('xpbar', 'height', 20)");
-  expect(textPlace(addon)[0], "a bar as tall as its text: centred again").toEqual(["CENTER", "CENTER", 0]);
-  addon.eval("ns.SetMoverSize('xpbar', 'height', 12) ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
-  expect(textPlace(addon)[0], "a larger text size than the bar: back to its end").toEqual(["LEFT", "LEFT", 4]);
+  expect(textPlace(addon)[0], "a bar as tall as its text: centred").toEqual(["CENTER", "CENTER", 0]);
+  addon.eval("ns.SetMoverSize('repbar', 'height', 20)");
+  expect(textPlace(addon)[1], "a reputation bar as tall as its text: centred on it").toEqual(["CENTER", "CENTER", 0]);
 });
 
-it("data bar texts: long texts at a large text size stay in their half of the bar, on one line", () => {
+it("data bar texts: long texts at a large text size stay centred on one line, held to their bar, the two lines apart", () => {
   const addon = loggedIn(DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { text = 'always' } } }" });
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
   addon.eval("Vanguard_xpbar.text:SetText('Level 59  123.4K / 209.8K (58%)  rested 104.9K') Vanguard_repbar.text:SetText('Hydraxian Waterlords  Honored  1.2K / 6.0K (20%)')");
-  const [xp, rep] = ["Vanguard_xpbar", "Vanguard_repbar"].map((name) => addon.frame(`${name}.text`).rect);
-  expect(xp.right, "the XP text ends before the reputation text starts").toBeLessThanOrEqual(rep.left);
+  const [xpBar, xp, rep] = ["Vanguard_xpbar", "Vanguard_xpbar.text", "Vanguard_repbar.text"].map((name) => addon.frame(name).rect);
+  expect(xp.top, "the XP line ends below the reputation line").toBeLessThanOrEqual(rep.bottom);
+  expect([xp.left - xpBar.left, xpBar.right - xp.right], "the XP text spans its bar less a cell gap at each end").toEqual([4, 4]);
   expect(addon.eval("return Vanguard_xpbar.text:GetStringHeight() == Vanguard_xpbar.text:GetHeight()"), "and stays on one line").toBe(true);
   addon.eval("ns.SetMoverSize('xpbar', 'height', 20) Vanguard_xpbar.text:SetText('Level 59  123.4K / 209.8K (58%)  rested 104.9K')");
-  expect(addon.eval("local w = Vanguard_xpbar.text:GetWidth() return w == 0 or w > 239"), "a text centred again on a taller bar is not held to half the bar").toBe(true);
+  expect(addon.eval("return Vanguard_xpbar.text:GetWidth() == 0"), "a text centred on a taller bar is not held to the bar").toBe(true);
 });
 
 // The game's standing words (GlobalStrings), and a female form for one, as GetText gives them.

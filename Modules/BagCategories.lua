@@ -80,10 +80,13 @@ local function bankOpen()
   return type(_G.BankFrame) == "table" and _G.BankFrame:IsShown()
 end
 
+-- The last bag the bank takes stacks from: the reagent bag.
+BG.LAST_BAG = 5
+
 -- The { bag, slot } of every stack in your bags that is in the category.
 local function stacksIn(cat)
   local out = {}
-  for bag = 0, 4 do
+  for bag = 0, BG.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
       local info = C_Container.GetContainerItemInfo(bag, slot)
       local id = info and ns.PlainNumber(info.itemID)
@@ -93,14 +96,27 @@ local function stacksIn(cat)
   return out
 end
 
+-- Sends one stack to the bank tab that is open, like the game's own right-click. A stack the game would first
+-- warn about (depositing it in the Warband bank ends its refund) stays put: returns false for that, else true.
+local function depositOne(bag, slot, bankType)
+  local refundable = ns.CallIf(_G, "BankUtil_IsAccountBankDepositRefundable", ItemLocation:CreateFromBagAndSlot(bag, slot))
+  if not ns.IsSecret(refundable) and refundable then return false end
+  C_Container.UseContainerItem(bag, slot, nil, bankType, false)
+  return true
+end
+
 -- /vg bag deposit <name>: sends every stack of the category to the open bank, out of combat.
 local function deposit(name)
   local at = find(name)
   if not at then return ns.Chat(ns.Format(L["No bag category called {name}."], { name = name })) end
   if ns.InCombat() or not bankOpen() then return ns.Chat(L["Open the bank first (not in a fight)."]) end
-  local stacks = stacksIn(list()[at])
-  for _, spot in ipairs(stacks) do C_Container.UseContainerItem(spot[1], spot[2]) end
-  ns.Chat(ns.Format(L["Sent {count} stack(s) of {group} to the bank."], { count = #stacks, group = list()[at].name }))
+  local stacks, kept = stacksIn(list()[at]), 0
+  local bankType = ns.CallIf(_G.BankFrame, "GetActiveBankType", _G.BankFrame)
+  for _, spot in ipairs(stacks) do
+    if not depositOne(spot[1], spot[2], bankType) then kept = kept + 1 end
+  end
+  ns.Chat(ns.Format(L["Sent {count} stack(s) of {group} to the bank."], { count = #stacks - kept, group = list()[at].name }))
+  if kept > 0 then ns.Chat(ns.Format(L["{count} refundable stack(s) stayed in your bags."], { count = kept })) end
 end
 
 -- A group name from typed text: one word (spaces become dashes), or nil for none.

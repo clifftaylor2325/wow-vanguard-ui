@@ -89,7 +89,7 @@ local function addSide(list, holder, sideArray)
 end
 
 -- Adds the side tabs the window's tab holders keep (GW.TAB_HOLDERS) and, on the character pane, the paper doll's
--- sidebar (the global PaperDollSidebarTabs frame, whose Tabs array holds its four tabs).
+-- sidebar (the global PaperDollSidebarTabs frame; Camelot's has a Tabs array holding its four tabs, Retail's none).
 local function addHolders(list, frame)
   for _, key in ipairs(GW.TAB_HOLDERS) do addSide(list, frame[key], true) end
   if frame == _G.CharacterFrame then addSide(list, _G.PaperDollSidebarTabs, true) end
@@ -207,14 +207,32 @@ local function fitIconTab(button)
   T.Crop(icon)
 end
 
+-- The windows (by name) whose game code anchors its tabs again each time it shows (Retail's Adventure Guide), filled
+-- by the Retail files; their tabs are moved out past the padding again after each such anchoring.
+GW.TABS_REANCHORED = {}
+
+-- Lets a tab the game anchors again (ClearAllPoints, then its raw anchor) be moved out again, when its window is one
+-- of GW.TABS_REANCHORED.
+local function padAfterReanchor(button, window)
+  if type(window.GetName) ~= "function" or not GW.TABS_REANCHORED[window:GetName() or ""] then return end
+  GW.HookAfter(button, "ClearAllPoints", function() vgTabPadded[button] = nil end)
+end
+
 -- One tab button of a window in the theme, whichever template it came from: out past the window's padding,
 -- and a side tab's or icon tab's icon greyed while another is selected.
 local function dressTab(button, window, side)
+  padAfterReanchor(button, window)
   GW.ClearPadding(button, window)
   fitIconTab(button)
   T.Tab(button, { dimIcon = side == true or button.tabIcon ~= nil })
   seedChecked(button)
   fadeSideArt(button)
+end
+
+-- A side tab a window takes from a pool (LargeSideTabButtonTemplate: WoW Forever's bank page tabs,
+-- Modules/ForeverBank.lua), dressed as the window's own side tabs are.
+function GW.DressSideTab(tab, window)
+  dressTab(tab, window, true)
 end
 
 -- One guild bank side tab (a frame with a bronze plate and a .Button, the check button that holds the icon): out
@@ -246,10 +264,21 @@ local function clearHolders(frame)
   end
 end
 
+-- Moves each of the window's tab systems (GW.TAB_SYSTEMS) set against an outer edge of the window out past the padding,
+-- as a holder is: its tab buttons hang from it, not from the window (one set inside the window, such as the friends
+-- window's header, keeps its place).
+local function clearSystems(frame)
+  for _, path in ipairs(GW.TAB_SYSTEMS) do
+    local system = walk(frame, path)
+    if type(system) == "table" and system.GetPoint then ns.Try("tab system", GW.ClearPadding, system, frame) end
+  end
+end
+
 -- Puts every tab button the window has now in the theme; a button that fails leaves the others alone.
 function GW.DressTabs(frame)
   local list = GW.TabButtons(frame)
   clearHolders(frame)
+  clearSystems(frame)
   for _, button in ipairs(list) do ns.Try("tab button", dressTab, button, frame, list.side[button]) end
   dressBankTabs(frame)
   GW.FadeParts(frame, { "TabIndicators" })
@@ -479,7 +508,7 @@ end
 -- of parentKeys from a global to the pane: reputation, skills, currency and the honor tab.
 GW.SIDE_PANES = {
   { "ReputationFrame", "ReputationDetailFrame" }, { "SkillsFrame", "SkillDetailFrame" },
-  { "TokenFrame", "DetailFrame" }, { "PVPRankFrame", "DetailFrame" },
+  { "TokenFrame", "DetailFrame" }, { "TokenFrame", "Popup" }, { "PVPRankFrame", "DetailFrame" },
 }
 -- The methods a side pane adds rows with, and which argument is the label's colour (0: it takes none). The game
 -- paints a label gold unless it is given another colour; gold goes to the text colour, a given colour is content.
@@ -583,9 +612,20 @@ local function paneParts(pane)
   GW.SkinBar(pane.StandingBar)
 end
 
+-- Puts one check box label back in the text colour whenever the game paints it gold (a grey one stays grey). Retail
+-- sets it in the pane's Refresh, which an EventRegistry callback holds by value, so a hook on the pane never runs.
+local function keepLabelLight(label)
+  GW.HookAfter(label, "SetTextColor", function(fs)
+    if isGold(fs) then colorText(fs, "text") end
+  end)
+end
+
 -- After the pane's Refresh (each entry picked), its check box labels the game painted gold again go back to the
 -- text colour; a grey one (a faction that can't be made inactive) stays the game's grey.
 local function keepCheckLabels(pane)
+  for _, key in ipairs(GW.PANE_CHECKS) do
+    if type(pane[key]) == "table" then keepLabelLight(pane[key].Label) end
+  end
   if type(pane.Refresh) ~= "function" then return end
   hooksecurefunc(pane, "Refresh", ns.Guard("hook pane Refresh", function()
     for _, key in ipairs(GW.PANE_CHECKS) do
@@ -595,12 +635,23 @@ local function keepCheckLabels(pane)
   end))
 end
 
+-- A side pane that floats as a dialog (Retail's reputation detail box and currency options: a DialogBorder frame, and
+-- for the first a parchment texture): the border and the pane's own textures faded, a flat panel behind it. Camelot's
+-- panes have no Border and keep the look they have.
+local function dressDialogPane(pane)
+  if type(pane.Border) ~= "table" then return end
+  GW.FadeParts(pane, { "Border" })
+  T.FadeRegions(pane)
+  T.Panel(pane, { noSheen = true })
+end
+
 -- One side pane in the theme, once: its heading, its rule faded, its rows as the game adds them (those it has now
 -- too) and its own parts. The description's scroll bar is reached with the window's (GW.SCROLL_KEYS).
 local function dressSidePane(pane)
   if type(pane) ~= "table" or watched[pane] then return end
   watched[pane] = true
   GW.FadeParts(pane, { "Divider" })
+  dressDialogPane(pane)
   dressPaneTitle(pane)
   for _, row in ipairs(paneRows(pane)) do dressRowArt(row) end
   for method, at in pairs(GW.SIDE_ROWS) do hookRows(pane, method, at) end
@@ -690,6 +741,38 @@ local function fadeSidebarDecor()
   if type(strip) == "table" then GW.FadeParts(strip, { "DecorLeft", "DecorRight" }) end
 end
 
+-- The paper doll's sidebar tabs on Retail, by global name (its three tabs have no parentArray, so the tab finder cannot
+-- list them). Camelot's are found through PaperDollSidebarTabs.Tabs.
+GW.SIDEBAR_TABS = ns.ClientData({
+  forever = {},
+  retail = { "PaperDollSidebarTab1", "PaperDollSidebarTab2", "PaperDollSidebarTab3" },
+})
+
+-- Marks each sidebar tab selected while its side (the stats, titles or equipment pane, GetPaperDollSideBarFrame(i))
+-- is open. The game shows that with Hider and the tab art's tex coords, both faded, and Disable()s a tab that is only
+-- unavailable, so the open pane, not the tab's enabled state, is what says "selected".
+local function markSidebarTabs()
+  local sideFrame = _G.GetPaperDollSideBarFrame
+  for i, name in ipairs(GW.SIDEBAR_TABS) do
+    local pane = type(sideFrame) == "function" and sideFrame(i)
+    if type(pane) == "table" and T.RowParts(_G[name]) then T.SelectRow(_G[name], pane:IsShown() == true) end
+  end
+end
+
+-- The Retail sidebar tabs flat: the bronze tab, its cover and its highlight faded (the game only shows, hides and
+-- re-crops them), the icon kept, a row look on each that marks the open side; re-marked after the game's update.
+local function dressSidebarTabs()
+  for _, name in ipairs(GW.SIDEBAR_TABS) do
+    local tab = _G[name]
+    if type(tab) == "table" and tab.HookScript then
+      GW.FadeParts(tab, { "TabBg", "Hider", "Highlight" })
+      T.Row(tab)
+    end
+  end
+  markSidebarTabs()
+  GW.HookGlobalOnce("PaperDollFrame_UpdateSidebarTabs", "mark sidebar tabs", markSidebarTabs)
+end
+
 -- The pane's flat look: its hosts' art faded, each list in a flat inset panel, and the currency list's empty note.
 local function flattenPane()
   local frame = _G.CharacterFrame
@@ -697,6 +780,7 @@ local function flattenPane()
     for _, key in ipairs(GW.PANE_HOSTS) do fadeHost(frame[key]) end
   end
   fadeSidebarDecor()
+  dressSidebarTabs()
   flattenLists()
   flattenStatBoxes()
   if boxOf("TokenFrame") then GW.WatchEmpty(boxOf("TokenFrame"), GW.CURRENCY_EMPTY) end
@@ -738,6 +822,28 @@ GW.EQUIP_SLOTS = ns.ClientData({
   },
 })
 
+-- The slots whose button draws its own bronze end cap (an unnamed BACKGROUND texture anchored to the slot's plate,
+-- Char-Slot-Bottom-Left or -Right) beside the plate, by slot name on each client; Camelot's art sits in BorderFrame.
+GW.CAPPED_SLOTS = ns.ClientData({ forever = {}, retail = { MainHand = true, SecondaryHand = true } })
+
+-- Every texture of a button outside its BACKGROUND layer (the icon, the count, the item overlays and the search dim):
+-- the ones that stay when its background art goes.
+local function foregroundOf(button)
+  local keep = {}
+  for _, region in ipairs({ button:GetRegions() }) do
+    local isTexture = region.GetObjectType and region:GetObjectType() == "Texture"
+    if isTexture and region.GetDrawLayer and region:GetDrawLayer() ~= "BACKGROUND" then keep[region] = true end
+  end
+  return keep
+end
+
+-- A weapon slot's end caps faded (the character pane's and the inspect window's: `slot` is the name, "MainHand"):
+-- the button's BACKGROUND textures, which the named plate's fade does not reach. Other slots are left alone.
+function GW.FadeEndCaps(slot, button)
+  if not GW.CAPPED_SLOTS[slot] or type(button) ~= "table" or not button.GetRegions then return end
+  T.FadeRegions(button, foregroundOf(button))
+end
+
 -- A gear slot's bronze plate faded: the Camelot pane's BorderFrame (a child that holds its own texture) and the retail
 -- pane's texture named after the button ("CharacterHeadSlotFrame"); one the client lacks is skipped.
 local function fadeSlotFrame(button)
@@ -767,6 +873,7 @@ local function skinSlots()
     local button = _G["Character" .. slot .. "Slot"]
     GW.SkinItem(button)
     fadeSlotFrame(button)
+    GW.FadeEndCaps(slot, button)
   end
   fadeAmmoPlate(_G.CharacterAmmoSlot)
 end

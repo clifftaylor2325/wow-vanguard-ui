@@ -900,18 +900,31 @@ local function dropGroups(text, mark, decimal)
   return text
 end
 
--- A bare number of gold typed the client's way, as Lua reads it: the client's thousands mark between
--- groups of three digits dropped ("1.500" in German) and its decimal comma made a point ("2,5"). A client
--- without the marks (a missing global) reads English numbers: "," between thousands, "." for decimals.
+-- The text with the thousands mark dropped inside each figure that a coin letter follows ("1,500g 20s" in
+-- English, "1.500g" in German); the figures without a letter after them are left alone.
+local function dropUnitGroups(text, mark, decimal)
+  return (text:gsub("(%d[^gsc%a]*)([gsc])", function(figure, unit)
+    local number, gap = figure:match("^(.-)(%s*)$")
+    return dropGroups(number, mark, decimal) .. gap .. unit
+  end))
+end
+
+-- A number of gold typed the client's way, as Lua reads it: the client's thousands mark between
+-- groups of three digits dropped ("1.500" in German, also before a coin letter: "1.500g") and a bare
+-- number's decimal comma made a point ("2,5"). A client without the marks (a missing global) reads English
+-- numbers: "," between thousands, "." for decimals.
 local function clientNumber(text)
   local group, decimal = _G.LARGE_NUMBER_SEPERATOR or ",", _G.DECIMAL_SEPERATOR or "."
   if type(decimal) ~= "string" or decimal == "" then decimal = "." end
-  if type(group) == "string" and group ~= "" then text = dropGroups(text, group:gsub("%p", "%%%0"), decimal:gsub("%p", "%%%0")) end
+  if type(group) == "string" and group ~= "" then
+    local mark, point = group:gsub("%p", "%%%0"), decimal:gsub("%p", "%%%0")
+    text = dropUnitGroups(dropGroups(text, mark, point), mark, point)
+  end
   if decimal == "," then text = text:gsub("^(%d*),(%d+)$", "%1.%2") end
   return text
 end
 
--- Copper from a typed price: "1g 50s", "75s 20c", "12c" or a bare number of gold ("2.5"); nil for
+-- Copper from a typed price: "1g 50s", "75s 20c", "1,500g", "12c" or a bare number of gold ("2.5"); nil for
 -- nothing, nothing above zero, more than the game's highest price, or text that isn't money (an
 -- exponent such as "1e5", hex such as "0x10" or "inf" is not a number here). Every price box reads
 -- it (the shop's max price, the sell card's price and bid), so a bare number is gold in all of them.

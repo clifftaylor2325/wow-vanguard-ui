@@ -68,10 +68,11 @@ MS.COUNT_PAD, MS.COUNT_BACK = 1, 0.75
 -- slot's edge (the bag icons, full squares, get a little more air than the
 -- menu icons, which are clear around their shape) and the row's middle below the bar's top
 -- (pixels). Each bar is drawn at the scale that puts its buttons one slot
--- and one gap apart.
+-- and one gap apart. A row's inner is the game's frame between its bar and
+-- its buttons, which Edit Mode's Size scales (the micro menu's).
 MS.ROWS = {
   { bar = "BagsBar", button = 45, pad = 2, tileH = MS.TILE, inset = 3, y = MS.MARGIN + MS.TILE / 2, bags = true },
-  { bar = "MicroMenuContainer", button = 32, pad = -5, tileH = MS.MENU_TILE_H, inset = 2, y = MS.MARGIN + MS.TILE + MS.GAP + MS.MENU_TILE_H / 2 },
+  { bar = "MicroMenuContainer", button = 32, pad = -5, inner = "MicroMenu", tileH = MS.MENU_TILE_H, inset = 2, y = MS.MARGIN + MS.TILE + MS.GAP + MS.MENU_TILE_H / 2 },
 }
 for _, row in ipairs(MS.ROWS) do row.scale = (MS.TILE + MS.GAP) / (row.button + row.pad) end
 -- The quest tracker's spot: its width and the most height it gets (it ends above the
@@ -171,13 +172,23 @@ local function overhang(row)
   return (row.button * row.scale - MS.TILE) / 2
 end
 
+-- The scale a row's bar is drawn at: the row's, less the scale of the game's frame between the bar and its
+-- buttons (the micro menu's Edit Mode Size), so the buttons still sit one slot and a gap apart.
+local function barScale(row)
+  local inner = row.inner and _G[row.inner]
+  if not (type(inner) == "table" and inner:GetParent() == _G[row.bar]) then return row.scale end
+  local s = inner:GetScale()
+  return s > 0 and row.scale / s or row.scale
+end
+
 -- Seats one of the game's bars in its row: drawn at the row's scale, its last
 -- slot's right edge on the row's anchor (which MS.FitStrip places), its middle on the row's.
 local function seat(f, row)
+  local s = barScale(row)
   f:SetParent(MS.strip)
-  f:SetScale(row.scale)
+  f:SetScale(s)
   f:ClearAllPoints()
-  f:SetPoint("RIGHT", row.anchor, "TOPRIGHT", overhang(row) / row.scale, -row.y / row.scale)
+  f:SetPoint("RIGHT", row.anchor, "TOPRIGHT", overhang(row) / s, -row.y / s)
 end
 
 -- Whether a button is on the bar, or on a cluster of slots on it (Forever's bags).
@@ -239,11 +250,11 @@ function MS.Refit(bar)
   ns.Repin(bar)
 end
 
--- A row laid out with its bar's own padding between buttons, where the bar
--- has one (the bag bar: Forever's 2, retail's 0), so its buttons still sit one slot and a gap apart.
+-- The bag row laid out with its bar's own padding between buttons (Forever's 2, from its XML and Edit Mode; none on
+-- Retail 12.1.5, which lays the bar out with 0), so its buttons still sit one slot and a gap apart. The menu row keeps its own.
 local function padRow(row, f)
-  local pad = f.bagPadding
-  if type(pad) ~= "number" then return end
+  if not row.bags then return end
+  local pad = type(f.bagPadding) == "number" and f.bagPadding or 0
   row.pad, row.scale = pad, (MS.TILE + MS.GAP) / (row.button + pad)
 end
 
@@ -680,7 +691,7 @@ end
 local function addFree(b)
   vgFreeBack[b] = T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
   vgFreeBack[b]:SetTexture(T.WHITE)
-  T.Tint(vgFreeBack[b], "edge", MS.COUNT_BACK)
+  T.Tint(vgFreeBack[b], "shade", MS.COUNT_BACK)
   vgFree[b] = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
   MS.free, MS.freeBack = vgFree[b], vgFreeBack[b]
 end

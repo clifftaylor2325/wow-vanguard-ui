@@ -29,6 +29,12 @@ function QP.Plain(text)
   return type(text) == "string" and text or ""
 end
 
+-- The unit token of whoever is giving the quest: "questnpc", the one the game's own quest window reads, when
+-- it exists (a shared quest's sharer, an object), else the gossip's "npc". A hidden answer keeps "npc".
+function QP.GiverUnit()
+  return ns.IsTrue(ns.CallIf(_G, "UnitExists", "questnpc")) and "questnpc" or "npc"
+end
+
 -- r, g, b for a quest of this level, from the game's difficulty colors; the theme's text otherwise.
 function QP.LevelColor(level)
   local c = type(GetQuestDifficultyColor) == "function" and ns.PlainNumber(level) and GetQuestDifficultyColor(level)
@@ -186,13 +192,28 @@ function QP.Card(parent)
   return QP.WireTooltip(addCrown(c))
 end
 
--- Shows a card's item tooltip: a quest log reward by its quest, a quest dialog reward by its slot (nothing when the client lacks the call).
+-- The tooltip call of a card, by whether it is a quest log reward and whether it is a currency.
+local TIP_CALLS = {
+  [false] = { [false] = "SetQuestItem", [true] = "SetQuestCurrency" },
+  [true] = { [false] = "SetQuestLogItem", [true] = "SetQuestLogCurrency" },
+}
+
+-- A currency reward card from the client's QuestRewardCurrencyInfo, filled into `place` (its kind, index and
+-- the like); nil when the client gave no currency.
+function QP.CurrencyItem(info, place)
+  if type(info) ~= "table" or not ns.PlainNumber(info.currencyID) then return nil end
+  place.name, place.texture, place.count, place.quality, place.currency = info.name, info.texture, info.totalRewardAmount, info.quality, true
+  return place
+end
+
+-- Shows a card's tooltip: a quest log reward by its quest, a quest dialog reward by its slot, an item or a currency
+-- (nothing when the client lacks the call). tipIndex is the place among rewards of its type where the game counts so.
 function QP.ItemTooltip(c)
   local tip, item = GameTooltip, c.item
-  local log = item and item.questID
-  if not (tip and item and type(tip[log and "SetQuestLogItem" or "SetQuestItem"]) == "function") then return end
+  local method = item and TIP_CALLS[item.questID ~= nil][item.currency == true]
+  if not (tip and method and type(tip[method]) == "function") then return end
   tip:SetOwner(c, "ANCHOR_RIGHT")
-  if log then tip:SetQuestLogItem(item.kind, item.index, item.questID) else tip:SetQuestItem(item.kind, item.index) end
+  tip[method](tip, item.kind, item.tipIndex or item.index, not item.currency and item.questID or nil)
   tip:Show()
 end
 

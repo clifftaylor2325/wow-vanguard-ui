@@ -161,7 +161,9 @@ local function upgradeRows()
 end
 
 -- Saved prices, sales and characters from the beta, and the button that clears them (Core/Home.lua).
+-- WoW Forever only: on Retail the same data is ordinary and there is no beta.
 local function betaRows()
+  if not ns.IsForever() then return {} end
   return {
     { "header", L["Data from the beta"] },
     { "text", L["Prices, sales and characters saved before launch (4 November 2026) stay until you clear them. Vendors are the same in both and stay."] },

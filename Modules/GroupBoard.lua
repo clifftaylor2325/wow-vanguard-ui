@@ -150,11 +150,10 @@ function GB.Add(e)
   if GB.Changed then GB.Changed() end
 end
 
--- True for your own line: only when your name and the sender's are both plain.
+-- True for your own line: your name, alone or with your realm (ns.Home.IsMe; a hidden name is never you, and
+-- a same-named player from another realm is someone else).
 local function own(sender)
-  local me = UnitName("player")
-  if ns.IsSecret(me) or type(me) ~= "string" then return false end
-  return sender == me or sender:match("^[^%-]+") == me
+  return ns.Home.IsMe(sender)
 end
 
 -- What the chat lines did since login: per event, and how many were read, skipped (and why) or became posts.

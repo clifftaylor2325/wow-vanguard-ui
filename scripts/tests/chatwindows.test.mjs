@@ -191,6 +191,13 @@ it("chat tabs: two tabs closed in one fight are both closed when it ends", () =>
   expect(addon.eval("return __allClosed"), "both closed after the fight").toEqual(["ChatFrame2", "ChatFrame3"]);
 });
 
+it("chat tabs: a new tab with every chat window in use says so and keeps the tab being edited", () => {
+  const addon = loggedIn(ENV + "FCF_OpenNewWindow = function() return nil end");
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 1 CW.New("Trade")`);
+  expect(chatHas(addon, /Every chat tab is in use\. Close one to make another\./), "the player is told").toBe(true);
+  expect(addon.eval(`return ns.GetModule("ChatWindows").editing`), "the edited tab is unchanged").toBe(1);
+});
+
 it("chat tabs: a client without the calls says so and changes nothing", () => {
   const addon = loggedIn(ENV + "FCF_OpenNewWindow = nil");
   addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("Trade") CW.Rename("Barter") CW.Close()`);
@@ -254,6 +261,18 @@ it("chat find: saved history that no window shows is searched too, and only the 
   expect(addon.eval("return select(2, ns.GetModule('ChatWindows').Find('sword'))"), "the old saved line first, the duplicate of a showing line once").toBe(`old ${sword} talk\n[General] Hello ${sword} world\ntwo ${sword} lines [Big ${sword}]`);
   addon.eval("ns.GetModule('ChatWindows').MAX_FOUND = 1");
   expect(addon.eval("return (ns.GetModule('ChatWindows').Find('sword'))"), "capped to the newest").toBe('Chat: 1 lines with "sword"');
+});
+
+it("chat find: a saved channel line that a window shows shortened is listed once, with Chat extras on or off", () => {
+  const saved = 'VanguardCharDB = { chatHistory = { [1] = { "5|ffffff||Hchannel:CHANNEL:2|h[2. Trade - City]|h Bob: wts sword" } } }';
+  // The Find result of "wts" in a loaded client.
+  const find = (addon) => addon.eval("return { ns.GetModule('ChatWindows').Find('wts') }");
+  const lines = '__lines1 = { "|Hchannel:CHANNEL:2|h[2]|h Bob: wts sword" } ChatFrame1.GetNumMessages = function() return 1 end ChatFrame1.GetMessageInfo = function(_, i) return __lines1[i] end';
+  const on = loggedIn(ENV + lines, { savedVariables: saved });
+  expect(find(on), "the shown short line stands for its long saved form").toEqual(['Chat: 1 lines with "wts"', `[2] Bob: ${lit(on, "wts")} sword`]);
+  const off = loggedIn(ENV + lines, { savedVariables: saved });
+  off.eval("ns.GetModule('ChatExtras').settings = nil");
+  expect(find(off)[0], "with the module off nothing is rewritten, so both lines are listed").toBe('Chat: 2 lines with "wts"');
 });
 
 it("chat find: the Chat page has the button and the switch; off, no button, and the switch shows and hides it at once; a window without line reads is fine", () => {

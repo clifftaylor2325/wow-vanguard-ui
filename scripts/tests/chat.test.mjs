@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, RETAIL, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -260,12 +260,36 @@ const CHAT_ART_ENV = `
     end
   end
 `;
+it("minimap: Forever's day/night ring in the cluster is faded with the rest of the art", () => {
+  const ring = `MinimapCluster.MinimapContainer = CreateFrame("Frame", nil, MinimapCluster)
+    MinimapCluster.DielFrame = CreateFrame("Frame", nil, MinimapCluster.MinimapContainer)`;
+  const addon = loggedIn(UI_ENV + ring);
+  expect(addon.eval("return MinimapCluster.DielFrame.__alpha"), "the ring no longer shows at the old map spot").toBe(0);
+});
 it("minimap: the game's emptied cluster takes no mouse and its zone button is hidden", () => {
   const addon = loggedIn(UI_ENV + `MinimapCluster:EnableMouse(true)
     MinimapCluster.ZoneTextButton = CreateFrame("Button", nil, MinimapCluster)`);
   expect(addon.eval("return { MinimapCluster.__mouse, MinimapCluster.ZoneTextButton:IsShown() }"), "no mouse on the cluster, the zone button hidden (not just faded)").toEqual([false, false]);
   expect(addon.eval("return { MinimapCluster.BorderTop.__alpha, Vanguard_Minimap:IsShown() }"), "the border art is still faded, the map still shows").toEqual([0, true]);
   expect(loggedIn(UI_ENV + "MinimapCluster = nil").eval("return Vanguard_Minimap ~= nil"), "a client without the cluster still gets the map").toBe(true);
+});
+it("minimap: the box goes with the map when the game hides it (Toggle Minimap, the tutorial) and comes back with it, on both clients", () => {
+  // Whether the map's box shows.
+  const box = (addon) => addon.eval("return Vanguard_Minimap:IsShown()");
+  for (const client of ["", RETAIL]) {
+    const addon = loggedIn(client + UI_ENV);
+    addon.eval("Minimap:Hide()");
+    expect(box(addon), "the map hidden: the empty box goes").toBe(false);
+    addon.eval("Minimap:Show()");
+    expect(box(addon), "the map shown: the box is back").toBe(true);
+    addon.eval("Minimap:SetShown(false)");
+    expect(box(addon), "SetShown(false) hides it too").toBe(false);
+    addon.eval("Minimap:SetShown(true)");
+    expect(box(addon), "and SetShown(true) brings it back").toBe(true);
+  }
+  expect(loggedIn(UI_ENV + "Minimap:Hide()").eval("return Vanguard_Minimap:IsShown()"), "a map the game hid before the box was built: the box is built hidden").toBe(false);
+  const unhooked = loggedIn(UI_ENV + "Minimap:Hide() hooksecurefunc = nil");
+  expect(unhooked.eval("return { Vanguard_Minimap:IsShown(), #ns.errors }"), "a client without hooksecurefunc: the box is still built to the map's state, with no error").toEqual([false, 0]);
 });
 it("minimap: the game's own coordinates line (the container's PlayerCoords) is faded, since Vanguard has its own", () => {
   const addon = loggedIn(UI_ENV + `MinimapCluster.MinimapContainer = CreateFrame("Frame", nil, MinimapCluster)
@@ -766,6 +790,28 @@ it("chat bar tiles follow the shown docked window: Copy and Find ride its bar wh
   expect(tiles("ChatFrame1"), "General shown again: they are back on its bar").toEqual([true, true, true, true, true, -28, true]);
   expect(addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, nil) FCFDock_SelectWindow(GENERAL_CHAT_DOCK, {}) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
 });
+it("H17-8-1: the first pop-out chat of a session carries Copy and Find onto its own bar, though the game selects it before it is dressed", () => {
+  const popOut = `local opened = FCF_OpenTemporaryWindow
+    function FCF_OpenTemporaryWindow(...)
+      local frame = opened(...)
+      table.insert(GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES, frame)
+      __selected = frame
+      for _, w in ipairs(GENERAL_CHAT_DOCK.DOCKED_CHAT_FRAMES) do w:SetShown(w == frame) end
+      return frame
+    end
+    function FCFDock_GetSelectedWindow() return __selected end`;
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + popOut);
+  // Whether Copy and Find sit on the new window's bar and show, and how many errors there are.
+  const state = () => addon.eval(`local F = ns.GetModule('Chat').frames local CX, CW = ns.GetModule('ChatExtras'), ns.GetModule('ChatWindows')
+    return { CX.copyButton:GetParent() == F[ChatFrame11].bar, CW.findButton:GetParent() == F[ChatFrame11].bar, CX.copyButton:IsVisible(), CW.findButton:IsVisible(), #ns.errors }`);
+  addon.eval("FCF_OpenTemporaryWindow('CHAT_MSG_WHISPER', 'TEST-ONLY Name')");
+  expect(state(), "Copy and Find sit on the new window's bar, shown, with no error").toEqual([true, true, true, true, 0]);
+  addon.eval("__selected = nil FCF_OpenTemporaryWindow('CHAT_MSG_WHISPER', 'TEST-ONLY Other')");
+  expect(addon.eval("return #ns.errors"), "a game that selects nothing leaves the tiles alone").toBe(0);
+  const bare = loggedIn(UI_ENV);
+  bare.eval("GENERAL_CHAT_DOCK = nil FCF_OpenTemporaryWindow('WHISPER', 'TEST-ONLY Name')");
+  expect(bare.eval("return #ns.errors"), "and a client with no dock to ask is left alone").toBe(0);
+});
 // TEST-ONLY a third docked tab as the game lays it out (FloatingChatFrame.lua FCFDock_UpdateTabs and
 // FloatingChatFrame.xml): General and the Combat Log fixed on the dock, "Loot / Trade" scrolling in the
 // scroll frame, which the game hangs from the last fixed tab's middle and a unit under the dock's
@@ -1198,7 +1244,7 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   expect(off.eval("return #__answers"), "off by default: the game asks as usual").toBe(0);
   const on = loggedIn(PROMPT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { summons = true, resurrect = true, duels = true } } }" });
   fire(on);
-  expect(on.eval("return __answers"), "each answered, its prompt closed (all three resurrection prompts, whichever the game showed)").toEqual(["summon", "close CONFIRM_SUMMON", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "close RESURRECT_NO_TIMER", "decline", "close DUEL_REQUESTED"]);
+  expect(on.eval("return __answers"), "each answered, its prompt closed (all three resurrection prompts, whichever the game showed)").toEqual(["summon", "close CONFIRM_SUMMON", "close CONFIRM_SUMMON_SCENARIO", "close CONFIRM_SUMMON_STARTING_AREA", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "close RESURRECT_NO_TIMER", "decline", "close DUEL_REQUESTED"]);
   expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
 });
 
@@ -1253,6 +1299,27 @@ it("auto-accept: a summon from a fight is left when it ran out, you died or the 
   expect(summonAfter("__wfgWorld.secretReads.UnitIsDeadOrGhost = true"), "whether you are dead hidden").toBe(false);
   expect(summonAfter("ns.GetModule('AutoAccept').settings.summons = false"), "switched off").toBe(false);
   expect(summonAfter("C_SummonInfo.GetSummonConfirmTimeLeft = nil __wfgWorld.summon = nil"), "no time-left call, and no summoner any more").toBe(false);
+});
+it("auto-accept: a summon out of a starting area is left for the player, its prompt up", () => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale', skipStart = true }");
+  addon.eval("__wfgWorld.popups.CONFIRM_SUMMON_STARTING_AREA = {}");
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return __wfgWorld.summonAccepted == true"), "not accepted").toBe(false);
+  expect(addon.eval("return __wfgWorld.popups.CONFIRM_SUMMON_STARTING_AREA ~= nil"), "its prompt stays").toBe(true);
+});
+it("auto-accept: an accepted summon closes the scenario and starting-area prompts as well", () => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("__wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' }");
+  addon.eval("__wfgWorld.popups.CONFIRM_SUMMON_SCENARIO = {} __wfgWorld.popups.CONFIRM_SUMMON_STARTING_AREA = {}");
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return next(__wfgWorld.popups) == nil"), "all closed").toBe(true);
+});
+it("auto-accept: without the game's hide call each summon prompt is closed by name", () => {
+  const addon = loggedIn("", { savedVariables: INVITE_SWITCHES_ON });
+  addon.eval("HideSummonConfirmationDialogs = nil __wfgWorld.summon = { summoner = '<name>', area = 'TEST-ONLY Vale' } __wfgWorld.popups.CONFIRM_SUMMON_SCENARIO = {}");
+  addon.fire("CONFIRM_SUMMON");
+  expect(addon.eval("return next(__wfgWorld.popups) == nil"), "closed by name").toBe(true);
 });
 // TEST-ONLY loot window: three slots, the second locked (being rolled for); every slot taken is recorded.
 const LOOT_ENV = `
@@ -1385,18 +1452,47 @@ it("quiet the game: the error line and the zone names, each off until switched o
 it("quiet the game: picking the game's setting for the camera zoom puts back the player's own, out of combat", () => {
   // TEST-ONLY the player's own furthest zoom before Vanguard changes it.
   const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.9')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
-  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').cameraPrior }"), "the camera set, the player's value kept").toEqual(["2.6", "1.9"]);
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), VanguardDB.client.cameraPrior }"), "the camera set, the player's value kept").toEqual(["2.6", "1.9"]);
   addon.eval("ns.Settings('Quiet').camera = 2 ns.GetModule('Quiet').ApplyCamera()");
-  expect(addon.eval("return ns.Settings('Quiet').cameraPrior"), "a second choice keeps the value from before the first").toBe("1.9");
+  expect(addon.eval("return VanguardDB.client.cameraPrior"), "a second choice keeps the value from before the first").toBe("1.9");
   setCombat(addon, true);
   addon.eval("ns.Settings('Quiet').camera = 0 ns.GetModule('Quiet').ApplyCamera()");
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "not in combat").toBe("2");
   setCombat(addon, false);
-  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').cameraPrior == nil }"), "the game's setting: the player's own value back").toEqual(["1.9", true]);
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), VanguardDB.client.cameraPrior == nil }"), "the game's setting: the player's own value back").toEqual(["1.9", true]);
   addon.eval("SetCVar('cameraDistanceMaxZoomFactor', '1.5') ns.GetModule('Quiet').ApplyCamera()");
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "and after that the game's setting is left alone").toBe("1.5");
   addon.eval("ns.Settings('Quiet').camera = 2.6 ns.GetModule('Quiet').ApplyCamera()");
   expect(addon.eval("local _, data = ns.Serialize.Decode(ns.ExportProfile()) return { data.Quiet.camera, data.Quiet.cameraPrior == nil }"), "a profile string has the choice, not this computer's camera").toEqual([2.6, true]);
+});
+it("quiet the game: a profile with the game's setting puts back the zoom another profile changed", () => {
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.9')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "the first profile's choice is on").toBe("2.6");
+  addon.eval("ns.GetModule('Quiet').Enable({ camera = 0 })");
+  expect([addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), addon.eval("return VanguardDB.client.cameraPrior == nil")], "the next profile loads: the player's value is back, forgotten").toEqual(["1.9", true]);
+});
+it("quiet the game: a zoom value an older version kept in the profile moves to the account", () => {
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '2.6')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 0, cameraPrior = '1.9' } } }" });
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').cameraPrior == nil, VanguardDB.client.cameraPrior == nil }"), "adopted at load, then put back").toEqual(["1.9", true, true]);
+  const kept = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.client = { cameraPrior = '1.5' } VanguardDB.profiles = { Default = { Quiet = { camera = 2, cameraPrior = '1.9' } } }" });
+  expect(kept.eval("return { VanguardDB.client.cameraPrior, ns.Settings('Quiet').cameraPrior == nil }"), "the account's value stands over an older profile's").toEqual(["1.5", true]);
+});
+it("quiet the game: turning Quiet off puts back the player's zoom, out of combat", () => {
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.9')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
+  setCombat(addon, true);
+  addon.eval("ns.SetModuleEnabled('Quiet', false)");
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "not in combat").toBe("2.6");
+  setCombat(addon, false);
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "after the fight").toBe("1.9");
+  addon.eval("SetCVar, C_CVar = nil, nil ns.GetModule('Quiet').Disable()");
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe("1.9");
+});
+it("quiet the game: a camera row changed after Quiet is switched off only saves the value", () => {
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.3')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
+  addon.eval("ns.SetModuleEnabled('Quiet', false) local _, set = ns.Options.LiveMethod('Quiet', 'camera', 'ApplyCamera') set(1.9)");
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').camera }"), "off: the zoom stays the player's").toEqual(["1.3", 1.9]);
+  addon.eval("ns.SetModuleEnabled('Quiet', true) local _, set = ns.Options.LiveMethod('Quiet', 'camera', 'ApplyCamera') set(2.2)");
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "on again: applies").toBe("2.2");
 });
 it("quiet the game: hiding the red error line keeps yellow info lines, whichever way the red line came", () => {
   const addon = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
@@ -2046,7 +2142,7 @@ it("R2.11 popups: the dark tile faded, the warning icon and progress fill kept, 
   expect([windowState(bare, "StaticPopup1").panel, bare.eval("return #ns.errors")], "a bare popup, or odd controls, are skinned without an error").toEqual([true, 0]);
 });
 // TEST-ONLY StaticPopup1 with its first button in its ButtonContainer (GameDialog.xml), so the window skin themes
-// it, the label in the game's gold from its normal font object.
+// it, the label in the game's gold from its normal font object (which the skin swaps for the theme's text copy).
 const DANGER_ENV = `${POPUP_ENV}
   local p = StaticPopup1
   p.ButtonContainer = CreateFrame("Frame", nil, p)
@@ -2065,20 +2161,20 @@ it("H-08 popups: a destroy popup's first button reads in the danger colour, and 
   addon.eval("local b = StaticPopup1.ButtonContainer.Button1 b:GetFontString():SetTextColor(1, 1, 1) b.__scripts.OnEnter(b)");
   expect(isTok(addon, confirmLabel(addon), "bad"), "the game's hover colour is painted over again").toBe(true);
 });
-it("H-08 popups: an ordinary popup on the same frame gets the game's gold back, and a theme refresh leaves it gold", () => {
+it("H-08 popups: an ordinary popup on the same frame gets the button's own light label back, and a theme refresh leaves it", () => {
   const addon = loggedIn(DANGER_ENV);
   showPopup(addon, "DELETE_ITEM");
   showPopup(addon, "CAMP");
-  expect(confirmLabel(addon).slice(0, 3), "the gold from the button's normal font object").toEqual([1, 0.82, 0]);
+  expect(isTok(addon, confirmLabel(addon), "text"), "the text colour from the button's normal font object (the theme's copy, not the game's gold)").toBe(true);
   addon.eval("local b = StaticPopup1.ButtonContainer.Button1 b.__scripts.OnEnter(b) b.__scripts.OnLeave(b) ns.Theme.Refresh()");
-  expect(confirmLabel(addon).slice(0, 3), "hover and a theme refresh leave it gold").toEqual([1, 0.82, 0]);
+  expect(isTok(addon, confirmLabel(addon), "text"), "hover and a theme refresh leave it so").toBe(true);
 });
 it("H-08 popups: without a normal font object, the colour from before the paint comes back", () => {
   const addon = loggedIn(DANGER_ENV);
   addon.eval("StaticPopup1.ButtonContainer.Button1:SetNormalFontObject(nil)");
   showPopup(addon, "ABANDON_QUEST");
   showPopup(addon, "CAMP");
-  expect(confirmLabel(addon).slice(0, 3), "the label's own gold").toEqual([1, 0.82, 0]);
+  expect(isTok(addon, confirmLabel(addon), "text"), "the label's own colour from before").toBe(true);
 });
 it("H-08 popups: a destroy popup waiting for DELETE leaves the disabled button alone, and paints it once it is enabled", () => {
   const addon = loggedIn(DANGER_ENV);
@@ -2125,6 +2221,23 @@ it("R2.11 the ready check: the listener's tile and border faded, the portrait ke
   const noTitle = loggedIn(`${POPUP_ENV} ReadyCheckListenerFrame.TitleContainer = nil ReadyCheckListenerFrame.NineSlice = nil`);
   noTitle.eval("ReadyCheckFrame:Show()");
   expect([bare, noTitle].map((a) => a.eval("return #ns.errors")), "a holder without its listener, or a listener without title or border, is no error").toEqual([0, 0]);
+});
+it("H7-9-1 the ready check: its panel shows only with its dialog, so the player who called the check sees no empty panel", () => {
+  const addon = loggedIn(POPUP_ENV);
+  // Whether the holder's panel (its backdrop, with the window skin's paint) is up.
+  const shown = () => addon.eval(`local back = __panelHost(ReadyCheckFrame)
+    return { back ~= ReadyCheckFrame and back:IsShown(), ns.Theme.Padding(back), #ns.errors }`);
+  addon.eval("ReadyCheckListenerFrame:Hide() ReadyCheckFrame:Show()");
+  expect(shown(), "the holder shown without its dialog: the panel stays hidden").toEqual([false, 12, 0]);
+  addon.eval("ReadyCheckListenerFrame:Show()");
+  expect(shown(), "the dialog shows, and the panel with it").toEqual([true, 12, 0]);
+  addon.eval("ReadyCheckListenerFrame:Hide()");
+  expect(shown()[0], "the dialog hides, and the panel with it").toBe(false);
+  addon.eval("ReadyCheckListenerFrame:Show() ReadyCheckFrame:Hide()");
+  expect(shown()[0], "the check ends: the holder hides, and the panel with it").toBe(false);
+  const bare = loggedIn(`${WINDOWS_ENV} CreateFrame("Frame", "ReadyCheckFrame", UIParent):Hide()`);
+  bare.eval("ReadyCheckFrame:Show()");
+  expect(bare.eval("local back = __panelHost(ReadyCheckFrame) return { back:IsShown(), #ns.errors }"), "a holder without its listener keeps its panel hidden, with no error").toEqual([false, 0]);
 });
 it("R2.11 the ready check on retail: Yes and No are only the globals ReadyCheckFrameYesButton and ReadyCheckFrameNoButton, and are themed", () => {
   const addon = loggedIn(`${POPUP_ENV} local l = ReadyCheckListenerFrame ReadyCheckFrameYesButton, ReadyCheckFrameNoButton = l.YesButton, l.NoButton l.YesButton, l.NoButton = nil, nil`);
@@ -2323,6 +2436,15 @@ it("chat text size: the game's chat setting: survives a reload, so chat keeps fo
   const again = loggedIn("FCF_SetChatWindowFontSize = nil", { savedVariables: `VanguardDB.profiles.Default = { Chat = ${luaValue(saved)} }` });
   again.eval("ChatFrame1:SetFont(ChatFrame1:GetFont(), 18)");
   expect(again.eval('return { ns.Settings("Chat").textSize, ns.GetModule("Chat").TextSize(ChatFrame1) }'), "still the game's setting after the reload: the window's own 18").toEqual([0, 18]);
+});
+
+it("chat text size: the game's chat setting reads the size the game saved for the window, not the last Vanguard size left on it", () => {
+  const addon = loggedIn("FCF_GetChatWindowInfo = function(i) return 'General', __saved[i] end");
+  addon.eval("ns.GetModule('Chat').settings.textSize = 20 __saved = { 12 } ChatFrame1.__frameID = 1 ChatFrame1:SetFont(ChatFrame1:GetFont(), 20)");
+  addon.eval("ns.GetModule('Chat').settings.textSize = 0");
+  expect(addon.eval("return ns.GetModule('Chat').TextSize(ChatFrame1)"), "the game's saved 12, not the 20 still on the window").toBe(12);
+  addon.eval("__saved = { __wfgWorld.secret(16) }");
+  expect(addon.eval("return ns.GetModule('Chat').TextSize(ChatFrame1)"), "a size the client hides: the window's own font").toBe(20);
 });
 
 // Whether chat tab n is painted in the raised (selected) fill, and its fill's alpha.

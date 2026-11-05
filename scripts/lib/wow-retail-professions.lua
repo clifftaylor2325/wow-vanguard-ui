@@ -54,12 +54,46 @@ local function specPage(window)
   window.SpecPage = page
 end
 
+-- A ScrollBox as the game keeps it: its rows, ForEachFrame, and the acquire callbacks ScrollUtil registers.
+local function scrollBox(parent)
+  local box = CreateFrame("Frame", nil, parent)
+  box.rows, box.callbacks = {}, {}
+  -- Runs fn on every row.
+  function box:ForEachFrame(fn) for _, row in ipairs(self.rows) do fn(row) end end
+  -- Adds a row and calls back everyone watching for acquired rows.
+  function box:Acquire(row) table.insert(self.rows, row) for _, cb in ipairs(self.callbacks) do cb(row) end return row end
+  return box
+end
+
+-- ScrollUtil.AddAcquiredFrameCallback as the game has it: cb(owner, row) for each row the box acquires later.
+ScrollUtil = ScrollUtil or { AddAcquiredFrameCallback = function(box, cb, owner) table.insert(box.callbacks, function(row) cb(owner, row) end) end }
+
+-- A recipe row as the game acquires it (ProfessionsRecipeListRecipeTemplate): SetSelected shows its selected overlay.
+local function recipeRow(box)
+  local row = CreateFrame("Button", nil, box)
+  row.SelectedOverlay, row.HighlightOverlay = art(row), art(row)
+  row.SelectedOverlay:Hide()
+  -- The game's selection: the selected overlay when selected, the highlight when not.
+  function row:SetSelected(selected) self.SelectedOverlay:SetShown(selected) self.HighlightOverlay:SetShown(not selected) end
+  return row
+end
+
+-- The browse side's recipe list (ProfessionsRecipeListTemplate): a well with a bronze frame, the filter and search
+-- box, the no-results text and a scroll box holding one recipe row.
+local function recipeList(browse)
+  local recipes = well(browse, "RecipeList")
+  recipes.BackgroundNineSlice = CreateFrame("Frame", nil, recipes)
+  recipes.FilterDropdown, recipes.SearchBox = CreateFrame("Button", nil, recipes), CreateFrame("EditBox", nil, recipes)
+  recipes.NoResultsText = recipes:CreateFontString(nil, "OVERLAY")
+  recipes.ScrollBox = scrollBox(recipes)
+  recipes.ScrollBox:Acquire(recipeRow(recipes.ScrollBox))
+end
+
 -- The orders page's browse side: the order type tabs, the recipe list, the push buttons and the order list.
 local function browseFrame(page)
   local browse = CreateFrame("Frame", nil, page)
   buttons(browse, { "PublicOrdersButton", "GuildOrdersButton", "NpcOrdersButton", "PersonalOrdersButton", "SearchButton", "BackButton", "FavoritesSearchButton" })
-  local recipes = well(browse, "RecipeList")
-  recipes.FilterDropdown, recipes.SearchBox = CreateFrame("Button", nil, recipes), CreateFrame("EditBox", nil, recipes)
+  recipeList(browse)
   well(browse, "OrderList").ScrollBar = world.scrollBar(browse.OrderList)
   artFrame(browse, "OrdersRemainingDisplay")
   page.BrowseFrame = browse
@@ -72,6 +106,7 @@ local function orderView(page)
   buttons(info, { "BackButton", "StartOrderButton", "DeclineOrderButton", "ReleaseOrderButton" })
   for _, key in ipairs({ "CommissionTitleMoneyDisplayFrame", "ConsortiumCutMoneyDisplayFrame", "FinalTipMoneyDisplayFrame" }) do moneyDisplay(info, key) end
   well(view, "OrderDetails").SchematicForm = CreateFrame("Frame", nil, view.OrderDetails)
+  view.OrderDetails.MinimumQualityIcon = view.OrderDetails:CreateTexture(nil, "OVERLAY")
   buttons(view, { "CreateButton", "CompleteOrderButton", "StartRecraftButton", "StopRecraftButton" })
   page.OrderView = view
 end

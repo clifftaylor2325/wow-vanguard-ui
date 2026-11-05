@@ -363,8 +363,9 @@ const MENU_SHAPES = {
 };
 
 // Filled silhouettes from game-icons.net (art/game-icons; scripts/lib/media-crests.mjs glyph):
-// the options nav's page icons (Nav*, shown at 16 px) and the minimap's two slot buttons
-// (Minimap*, 12 px), each a 32 px image with a unit of air around it. Icon name -> SVG name.
+// the options nav's page icons (Nav*, shown at 16 px), the minimap's two slot buttons
+// (Minimap*, 12 px) and the player frame's in-combat swords (Combat, 14 px), each a 32 px image
+// with a unit of air around it. Icon name -> SVG name.
 export const SILHOUETTES = {
   NavGeneral: "lorc-cog", NavModules: "lorc-cubes", NavUnitFrames: "delapouite-orc-head",
   NavRaidFrames: "delapouite-three-friends", NavActionBars: "lorc-broadsword", NavQuests: "lorc-scroll-unfurled",
@@ -372,7 +373,7 @@ export const SILHOUETTES = {
   NavClickCasting: "delapouite-mouse", NavHealing: "sbed-health-increase", NavTalents: "delapouite-upgrade",
   NavSituations: "delapouite-crossroad", NavNameplates: "delapouite-price-tag",
   NavBars: "lorc-laurel-crown", NavChat: "lorc-raven", NavTools: "lorc-battle-axe", NavWindows: "lorc-checked-shield", NavTown: "delapouite-castle",
-  MinimapTracking: "delapouite-binoculars", MinimapAddons: "lorc-jigsaw-piece",
+  MinimapTracking: "delapouite-binoculars", MinimapAddons: "lorc-jigsaw-piece", Combat: "lorc-crossed-swords",
 };
 
 // The sizes (px) the line and menu icons are also baked at (#232), each as Icons/<Name><size> drawn

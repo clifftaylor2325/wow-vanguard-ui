@@ -84,3 +84,22 @@ function GetUnitEmpowerHoldAtMaxTime(unit)
   local c = world.unit(unit).cast
   return c.holdMs or 0
 end
+
+-- A player aura by spell id (the player's unit.auras entry with that spellId, or a hidden entry as it is; nil without it).
+function C_UnitAuras.GetPlayerAuraBySpellID(spellID)
+  local u = world.unit("player")
+  for _, aura in ipairs(u and u.auras or {}) do
+    if issecretvalue(aura) or aura.spellId == spellID then return aura end
+  end
+  return nil
+end
+
+-- The most stacks a spell's aura can reach (world.maxApplications[spellID]; nil when unset).
+function C_Spell.GetSpellMaxCumulativeAuraApplications(spellID)
+  return world.maxApplications and world.maxApplications[spellID]
+end
+
+-- The soul fragments a Devourer's Collapsing Star costs (world.collapsingStarCost; 0 when unset).
+function GetCollapsingStarCost()
+  return world.collapsingStarCost or 0
+end

@@ -290,6 +290,7 @@ local function placeSpot(key, spot)
   ns.RestoreMoverLinks(key, spot)
   if spot.scale then ns.SetMoverScale(key, spot.scale) end
   if spot.alpha then ns.SetMoverAlpha(key, spot.alpha) end
+  ns.RememberUnlockSpot(key)
 end
 
 -- Writes a module's allowlisted values (any other key is refused), then runs its apply functions once.

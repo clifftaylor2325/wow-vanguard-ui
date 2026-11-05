@@ -43,14 +43,15 @@ local BUFFS = ns.ClientData({
     flasks = {},
     -- Well Fed, as on WoW Forever: every food's buff has that name.
     food = { 19705 },
-    -- Row label -> Power Word: Fortitude; Mark of the Wild; Arcane Intellect; Battle Shout; Skyfury; Blessing of the Bronze.
+    -- Row label -> Power Word: Fortitude; Mark of the Wild; Arcane Intellect; Battle Shout; Skyfury; Blessing of the
+    -- Bronze. The third field is the class that gives the buff: a group without one makes no row nobody could clear.
     raid = {
-      { L["Fortitude"], { 21562 } },
-      { L["Mark of the Wild"], { 1126 } },
-      { L["Arcane Intellect"], { 1459 } },
-      { L["Battle Shout"], { 6673 } },
-      { L["Skyfury"], { 462854 } },
-      { L["Blessing of the Bronze"], { 364342 } },
+      { L["Fortitude"], { 21562 }, "PRIEST" },
+      { L["Mark of the Wild"], { 1126 }, "DRUID" },
+      { L["Arcane Intellect"], { 1459 }, "MAGE" },
+      { L["Battle Shout"], { 6673 }, "WARRIOR" },
+      { L["Skyfury"], { 462854 }, "SHAMAN" },
+      { L["Blessing of the Bronze"], { 364342 }, "EVOKER" },
     },
     -- Retail has no world buffs to carry into a raid.
     world = {},
@@ -144,10 +145,30 @@ local function push(rows, row)
   if row then rows[#rows + 1] = row end
 end
 
--- The buff checks always made, in the card's order, as { label, spell ids }: flask, food, the raid buffs.
+-- You and the members of your group as units (party1-4, or raid1-40 in a raid).
+local function groupUnits()
+  local raid, count = IsInRaid(), ns.PlainNumber(GetNumGroupMembers()) or 0
+  local units = { "player" }
+  for i = 1, raid and count or count - 1 do units[#units + 1] = (raid and "raid" or "party") .. i end
+  return units
+end
+
+-- Whether you or someone in your group is of a class (a class the client hides counts for no one).
+local function groupHasClass(class)
+  for _, unit in ipairs(groupUnits()) do
+    local _, found = UnitClass(unit)
+    if not ns.IsSecret(found) and found == class then return true end
+  end
+  return false
+end
+
+-- The buff checks always made, in the card's order, as { label, spell ids }: flask, food, the raid buffs (a buff
+-- with a giving class, on Retail, only when your group has one).
 function PR.Checks()
   local checks = { { L["Flask"], PR.FLASKS }, { L["Food buff"], PR.FOOD } }
-  for _, b in ipairs(PR.RAID_BUFFS) do checks[#checks + 1] = b end
+  for _, b in ipairs(PR.RAID_BUFFS) do
+    if not b[3] or groupHasClass(b[3]) then checks[#checks + 1] = b end
+  end
   return checks
 end
 

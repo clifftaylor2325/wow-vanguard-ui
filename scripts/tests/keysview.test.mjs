@@ -19,7 +19,7 @@ const cap = (addon, key) => addon.eval(`
     if w.key == "${key}" and w.chord and w:IsVisible() then
       local e = w.entry
       return { chord = w.chord, label = w.label:GetText(), icon = w.icon:IsShown() and w.icon.__texture or false,
-        place = e and e.place, name = e and e.name, color = ns.Theme.ColorToken(w.label) }
+        place = e and e.place, name = e and e.name, color = ns.Theme.ColorToken(w.label), alpha = w:GetAlpha() }
     end
   end`);
 // The card's list lines, without the empty ones.
@@ -36,7 +36,7 @@ it("your keys: a key shows the icon and name of what is on it, a game command sh
   const addon = withKeys();
   expect(cap(addon, "1"), "key 1 is bar 1 button 1").toMatchObject({ chord: "1", label: "1", icon: "Interface\\Icons\\Spell_Fire_FlameBolt", place: "Bar 1 button 1", name: "Fireball", color: "text" });
   expect(cap(addon, "B"), "a game key shows its command, no icon").toMatchObject({ icon: false, place: "TOGGLEBACKPACK", color: "accentText" });
-  expect(cap(addon, "Q"), "a free key is muted").toMatchObject({ icon: false, color: "disabled" });
+  expect(cap(addon, "Q"), "a free key is muted, at full alpha so its border and label stay crisp").toMatchObject({ icon: false, color: "muted", alpha: 1 });
   expect(cap(addon, "SPACE").label, "the space bar uses the short name").toBe("Sp");
   expect(lines(addon).some((l) => l.includes("Bar 1 button 1 · Fireball")), "the list says what key 1 does").toBe(true);
 });
@@ -181,4 +181,13 @@ it("your keys: a key whose button is hidden is not reported as that button's", (
   const addon = withKeys();
   addon.eval("Vanguard_Bar1Button1:Hide() ns.Options.Refresh()");
   expect(cap(addon, "1").place, "falls back to the game's command").toBe("ACTIONBUTTON1");
+});
+
+it("H17-2-1: a key's icon is cropped like every other game icon, so the art's bevel stays out of the key", () => {
+  const addon = withKeys();
+  const coords = addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.key == "1" and w.chord and w:IsVisible() then return w.icon.__texCoord end
+  end`);
+  const edge = addon.eval("return ns.Theme.ICON_EDGE");
+  expect(coords, "the icon shows the middle of the art, T.ICON_EDGE trimmed off each side").toEqual([edge, 1 - edge, edge, 1 - edge]);
 });

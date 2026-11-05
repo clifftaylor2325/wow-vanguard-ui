@@ -196,6 +196,7 @@ change fires the events the client would.
 | `get(field)` / `set(field, value)` | Any world field by path: `set("money", 12345)`, `set("build.interface", 120105)`. |
 | `without(...names)` | Removes global APIs, as an older client would lack them. |
 | `addChatBubble(text, opts)` | A chat bubble over a speaker's head saying `text`: a frame in `world.bubbles` with one child panel holding nine `TEST-ONLY-ART` textures and the text (`panel.String`), listed by `C_ChatBubbles.GetAllChatBubbles`; CHAT_MSG_SAY fires. `opts.forbidden` makes its `IsForbidden` true (an instance's bubble), `opts.empty` leaves it without a panel, `opts.unkeyed` leaves its text without the `String` key, `opts.event` is the chat event that fires instead of CHAT_MSG_SAY (`"CHAT_MSG_RAID"`). Returns its index. |
+| `CreateFont(name)` (Lua, through `addon.eval`) | A font object, as the client's: `SetFont`, `SetTextColor`, `CopyFontObject` and the font getters; named globally, never in `__wfgStub.frames`. A button's `SetNormalFontObject` and `SetDisabledFontObject` put that font object's face and colour on its label (`SetFontString`) at once and again on each `Enable` and `Disable`, as the client does; `SetHighlightFontObject` is only recorded (the stub has no mouse-over font). A game button made by a test has no font objects until it sets them. |
 | `world.sentChat` (Lua, through `addon.eval`) | What the addon sent to chat channels through `C_ChatInfo.SendChatMessage`, `{ text, chatType }` each, in order. The old `SendChatMessage` global is not modelled (on Forever it is only a deprecation fallback); a test that needs it defines it. |
 | `set("instance", true)` | The player is in an instance: `IsInInstance()` answers `true, "party"` (default `false, "none"`). |
 
@@ -326,15 +327,20 @@ files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
 ### The Forever snapshot
 
 `snapshot.test.mjs` logs the addon in on WoW Forever, unlocks, locks and plays two seconds, then writes down what
-it left: every frame whose name starts with `Vanguard` (anchors, size, scale, alpha, strata, level, shown and
-visible, its own text and the text of its font strings), the game's frames the addon moved or hid (a game frame
-whose record differs from what it was before the addon loaded), every event the addon's frames listen for, and
-the module list with each module's state. Numbers are rounded to two decimals, names are sorted, and no time or id
+it left: every frame whose name starts with `Vanguard` and every unnamed frame the addon made that is not a
+texture or font string, under a label such as `(Button 3 of Vanguard_RaidTools)` (anchors, size, scale, alpha,
+strata, level, shown and visible, its own text and the text of its font strings, and the text colour, font and bar
+colour the frame itself carries), the game's frames the addon moved, hid, re-parented or
+silenced (a game frame, with its parent and its events, whose record differs from what it was before the addon
+loaded), each addon frame that listens for events with the events it listens for, and the module list with each
+module's state. Numbers are rounded to two decimals, names are sorted, and no time or id
 is written, so two runs on any machine give the same file. The test compares the live record with
 `forever-snapshot.json` and fails with one line per difference: the frame, the field, what it was and what it is.
 
-It is the fence for the retail work: anything that changes how the addon looks or listens on Forever must show up
-here. A pull request that should change nothing on Forever never touches the file.
+It is the fence for the retail work: a change to any of those on Forever shows up here. Textures (path, atlas,
+vertex colour) and an unnamed font string's own font and colour are not recorded, so other tests cover them. A
+label counts same-kind siblings in creation order, so a sibling added in the middle shows up as added and removed
+lines for the ones after it. A pull request that should change nothing on Forever never touches the file.
 
 - `npm run snapshot:update` (`node scripts/tests/snapshot.test.mjs --update`) rewrites the JSON. Read the diff
   before you commit it.

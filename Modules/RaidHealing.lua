@@ -398,10 +398,12 @@ end
 
 local W = ns.Widgets
 
--- get/set for one of this module's switches (applies at the next refresh).
+-- get/set and the default for one of this module's switches (applies at the next refresh).
 local function switch(key)
-  return function() return ns.Settings("RaidHealing", RH.defaults)[key] end,
-    function(v) ns.Settings("RaidHealing", RH.defaults)[key] = v; RF.UpdateAll() end
+  -- The switch's saved value.
+  local function get() return ns.Settings("RaidHealing", RH.defaults)[key] end
+  return ns.Options.Tag(get, "RaidHealing", key),
+    function(v) ns.Settings("RaidHealing", RH.defaults)[key] = v; RF.UpdateAll() end, RH.defaults[key]
 end
 
 -- Stores the buff list (empty = class defaults), then refreshes the frames and the page.

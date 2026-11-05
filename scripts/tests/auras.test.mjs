@@ -788,3 +788,16 @@ it("raid indicators: small icons down the tile's right edge, from the client's o
   expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { tostring(b.indRows[1].frame.__unit), b.indUnit == nil }"), "an emptied tile lets go of its unit").toEqual(["none", true]);
   expect(addon.eval("local RA = ns.GetModule('RaidAuras') return RA.IndicatorSpec(Vanguard_RaidUnitButton1, { missing = { 0, 3, 10, 10 }, debuffs = { 2, 20 } }, 1)"), "a tile too short for any slot leaves them out").toBeNull();
 });
+
+it("H17-10-1: the debuff type badge's backing is black in the Classic look, so the dispel letter keeps its contrast", () => {
+  const addon = loggedIn(`ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()
+    __f = CreateFrame("Frame", nil, UIParent) __p = ns.Auras.Dress(__f, { size = 30, debuff = true })`);
+  const back = addon.eval("local c = __p.badge.back.__vertexColor return { c[1], c[2], c[3], c[4] }");
+  expect(back, "the backing is black at 0.8, not Classic's bronze edge").toEqual([0, 0, 0, 0.8]);
+});
+
+it("H17-10-1: on the client's aura engine the type badge's backing is black in the Classic look too", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + ` ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()`);
+  addon.eval('__c = ns.Auras.Container(UIParent, __spec, "target") __g = __c.frame.__groups[1]');
+  expect(badgeOf(addon, "__g.buttons[1]").back.slice(1), "a Magic debuff's backing: black at 0.8, not Classic's bronze edge").toEqual([0.8, 0, 0, 0]);
+});

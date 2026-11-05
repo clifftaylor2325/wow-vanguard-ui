@@ -19,6 +19,8 @@ local T = ns.Theme
 local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true, listSell = false, junkList = {}, bulkBuy = true } })
 
 MC.RETRIES, MC.RETRY_AFTER = 3, 0.3
+-- The last bag scanned for sales: the reagent bag (Enum.BagIndex.ReagentBag), after the four ordinary bags.
+MC.LAST_BAG = 5
 -- How many of the client's message types the noisy-error scan looks at, at most.
 MC.LAST_MESSAGE_TYPE = 2000
 -- The client's own names for the noisy errors (their text is in the player's language).
@@ -57,7 +59,7 @@ end
 -- Your junk as { bag, slot } pairs.
 function MC.Junk()
   local out = {}
-  for bag = 0, 4 do
+  for bag = 0, MC.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
       if isJunk(bag, slot) then out[#out + 1] = { bag, slot } end
     end
@@ -76,10 +78,11 @@ function MC.SellJunk(tries)
   if tries > 1 and C_Timer and C_Timer.After then C_Timer.After(MC.RETRY_AFTER, ns.Guard("timer sell junk", function() MC.SellJunk(tries - 1) end)) end
 end
 
--- Sells your junk: the client's own one-step sale where it has one.
+-- Sells your junk: the client's own one-step sale where it has one and has it turned on, else item by item.
 function MC.Sell()
   local all = C_MerchantFrame and C_MerchantFrame.SellAllJunkItems
-  if type(all) == "function" then return all() end
+  local enabled = C_MerchantFrame and C_MerchantFrame.IsSellAllJunkEnabled
+  if type(all) == "function" and type(enabled) == "function" and enabled() == true then return all() end
   if C_Container and C_Container.GetContainerItemInfo then MC.SellJunk(MC.RETRIES) end
 end
 

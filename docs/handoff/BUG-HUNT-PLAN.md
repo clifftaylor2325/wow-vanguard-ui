@@ -93,7 +93,7 @@ Each hunt lists its client, its files (a file belongs to one hunt per block), it
 
 ### Block 1: Forever, the code no hunt reached (`work/hunts-block-1`)
 
-- [ ] **H1 Keys and click casting** (Forever; SMOKE 33.173 to 33.178). Files: `Modules/KeybindsApply.lua`, `KeybindsData.lua`, `KeybindsLayouts.lua`, `KeybindsLearn.lua`, `KeybindsWizard.lua`, `KeysView.lua`, `KeysViewCard.lua`, `ActionBarKeybinds.lua`, `ClickCast.lua`, `ClickCastGame.lua`, `ClickCastOptions.lua`, `ClickCastPresetRows.lua`, `ClickCastPresets.lua`, `ClickCastSpells.lua`, `CooldownKeys.lua`, `Coexist.lua`, `scripts/lib/wow-keybinds.lua`.
+- [x] **H1 Keys and click casting** (Forever; SMOKE 33.173 to 33.178). Files: `Modules/KeybindsApply.lua`, `KeybindsData.lua`, `KeybindsLayouts.lua`, `KeybindsLearn.lua`, `KeybindsWizard.lua`, `KeysView.lua`, `KeysViewCard.lua`, `ActionBarKeybinds.lua`, `ClickCast.lua`, `ClickCastGame.lua`, `ClickCastOptions.lua`, `ClickCastPresetRows.lua`, `ClickCastPresets.lua`, `ClickCastSpells.lua`, `CooldownKeys.lua`, `Coexist.lua`, `scripts/lib/wow-keybinds.lua`.
   1. The apply engine against the game's binding API: `SetBinding*`, `SaveBindings`, per-character sets, what happens in combat and at the fight's end, a `/reload` mid-apply.
   2. Learning: a new spell on an empty button, a spell that takes a key (chat line), a rank replacing a rank, a talent-granted spell, the game's own auto-placement setting, the "never ask again" flag.
   3. The wizard: every step's controls, text fit at every language a third longer, Escape and Tab, a second character, the reload offer.
@@ -104,7 +104,7 @@ Each hunt lists its client, its files (a file belongs to one hunt per block), it
   8. `KeysView` and its card: the four look-bug shapes (section 1 of hunt 14's brief) against Vanguard's own theme roles.
   9. The Your keys options page and tab: every row to its db key to its consumer, Reset this page, module switch at runtime.
   10. Error census over the seventeen files: nil returns from the binding and spell API, secret values (`C_Spell` in combat), `table.sort` comparators, string patterns fed player text.
-- [ ] **H2 Calm HUD, scenes and the art** (Forever; SMOKE 33.179 to 33.184). Files: `Core/Visibility.lua`, `Banner.lua`, `Chrome.lua`, `PanelTexture.lua`, `FactionArt.lua`, `Graphics.lua`, `Widgets.lua`, `UnlockBar.lua`, `Movers.lua`, `MoverLinks.lua`, `MoverPopover.lua`, `Layout.lua`, `Grid.lua`, `Setup.lua` (the banner and screen steps), `WhatsNew.lua`, `Modules/AfkScreen.lua`, `Quiet.lua`, `Situations.lua`, `SituationsBanner.lua`, `PlayerAuras.lua`, `CooldownGlow.lua`, `CooldownGaps.lua`, `SpecialBars.lua`, `BossDocks.lua`, `MenuStrip.lua`, `DataBars.lua`, `ActionBars.lua`, `ActionBarLayout.lua`, `GameAlerts.lua`.
+- [x] **H2 Calm HUD, scenes and the art** (Forever; SMOKE 33.179 to 33.184). Files: `Core/Visibility.lua`, `Banner.lua`, `Chrome.lua`, `PanelTexture.lua`, `FactionArt.lua`, `Graphics.lua`, `Widgets.lua`, `UnlockBar.lua`, `Movers.lua`, `MoverLinks.lua`, `MoverPopover.lua`, `Layout.lua`, `Grid.lua`, `Setup.lua` (the banner and screen steps), `WhatsNew.lua`, `Modules/AfkScreen.lua`, `Quiet.lua`, `Situations.lua`, `SituationsBanner.lua`, `PlayerAuras.lua`, `CooldownGlow.lua`, `CooldownGaps.lua`, `SpecialBars.lua`, `BossDocks.lua`, `MenuStrip.lua`, `DataBars.lua`, `ActionBars.lua`, `ActionBarLayout.lua`, `GameAlerts.lua`.
   1. Forbidden handler census: every `HookScript` and `SetScript` on a frame the game made, against the handlers the client forbids (#719's class), on both the Calm HUD and the hover paths.
   2. Calm states crossed with player states: vehicle, pet battle, taxi, ghost, cinematic, AFK, loading screen, Edit Mode, combat start and end; what comes back to full strength and what stays dim.
   3. Fades and sounds: nothing longer than 0.15 s in combat, Reduce motion and Interface sounds respected, every fade and sound listed in `docs/THEME.md`.
@@ -115,7 +115,7 @@ Each hunt lists its client, its files (a file belongs to one hunt per block), it
   8. Movers, links and the popover: unlock in combat, a link to a hidden frame, a saved position off-screen, the grid at odd scales.
   9. Situations and the banner: dungeon, raid, battleground, resting and travel transitions, the banner over other HUD pieces, Quiet's rules.
   10. Game alerts, special bars, boss docks and data bars re-shown by the game (hunt 14's shapes) in the states wave 2 lists.
-- [ ] **H3 Unit, party and raid frames, and auras** (Forever; SMOKE 33.185 to 33.190). Files: `Modules/UnitFrames.lua`, `UnitExtras.lua`, `PartyExtras.lua`, `FrameAuras.lua`, `RaidFrames.lua`, `RaidAuras.lua`, `RaidStatus.lua`, `RaidHealing.lua`, `RaidPreview.lua`, `RaidTools.lua`, `MainTanks.lua`, `GroupThreat.lua`, `ClassBars.lua`, `ComboPoints.lua`, `PowerTicks.lua`, `SwingTimer.lua`, `CastBars.lua`, `Nameplates.lua`, `Tooltips.lua` (unit lines), `Core/AuraEngine.lua`, `AuraLegacy.lua`, `Auras.lua`, `Inspect.lua`.
+- [x] **H3 Unit, party and raid frames, and auras** (Forever; SMOKE 33.185 to 33.190). Files: `Modules/UnitFrames.lua`, `UnitExtras.lua`, `PartyExtras.lua`, `FrameAuras.lua`, `RaidFrames.lua`, `RaidAuras.lua`, `RaidStatus.lua`, `RaidHealing.lua`, `RaidPreview.lua`, `RaidTools.lua`, `MainTanks.lua`, `GroupThreat.lua`, `ClassBars.lua`, `ComboPoints.lua`, `PowerTicks.lua`, `SwingTimer.lua`, `CastBars.lua`, `Nameplates.lua`, `Tooltips.lua` (unit lines), `Core/AuraEngine.lua`, `AuraLegacy.lua`, `Auras.lua`, `Inspect.lua`.
   1. Unit token changes: target of target, focus, pet, vehicle swap, mind control, a unit that leaves range or phase, dead and ghost, offline, a name that changes (realm suffix).
   2. The aura engine: secret aura data in combat (`C_UnitAuras`), update ordering between full and incremental updates, the legacy path, filters per frame kind.
   3. Class bars, combo points, power ticks and the swing timer per class at levels 1, 10, 20, 40, 60: power types that appear mid-session, a druid shapeshifting, a shaman's totems.
@@ -126,7 +126,7 @@ Each hunt lists its client, its files (a file belongs to one hunt per block), it
   8. Raid status, main tanks, threat and the raid tools: officer rights, `HasRestrictions`, 40-player CPU (hunt 4's lens), a leader change mid-fight.
   9. Tooltips on units: secret health, levels, PvP flags, guild text, the tooltip health bar's colour.
   10. Inspect and raid preview: inspects that never answer, a target that leaves, item levels and crests at the raid door.
-- [ ] **H4 Quests, map, minimap and strips** (Forever; SMOKE 33.191 to 33.196). Files: `Modules/Quest*.lua` (all thirteen), `Waypoints.lua`, `GuideData.lua`, `AutoAccept.lua`, `WindowsMap.lua`, `Minimap.lua`, `MinimapButtons.lua`, `BrokerStrip.lua`, `InfoStrip.lua`, `GroupBoard.lua`, `GroupBoardView.lua`, `DungeonCard.lua`.
+- [x] **H4 Quests, map, minimap and strips** (Forever; SMOKE 33.191 to 33.196). Files: `Modules/Quest*.lua` (all thirteen), `Waypoints.lua`, `GuideData.lua`, `AutoAccept.lua`, `WindowsMap.lua`, `Minimap.lua`, `MinimapButtons.lua`, `BrokerStrip.lua`, `InfoStrip.lua`, `GroupBoard.lua`, `GroupBoardView.lua`, `DungeonCard.lua`.
   1. Quest log data late or absent: a quest that arrives after login, a log that is still loading, a quest removed while its row is open, 25 quests.
   2. Auto accept and turn in: every automatic decision and its switch, a quest with a choice reward, an escort, a daily, a quest the player cannot take.
   3. The guide and its data: client data only (no server lookups), a step for a quest the player abandoned, a level the guide skips, data per faction and race.
@@ -137,7 +137,7 @@ Each hunt lists its client, its files (a file belongs to one hunt per block), it
   8. The minimap and its buttons: other addons' buttons gathered, the tracking menu, coordinates blank on first read (hunt 10's class), zone text in every language.
   9. The strips: broker plugins, the info strip's fields with secret or nil data, money and durability, clock skew.
   10. The group board and dungeon card (Forever only): the board under the mouse, a listing that vanishes, roles, the card's data per dungeon.
-- [ ] **H5 Town, gear, chat and combat records** (Forever; SMOKE 33.197 to 33.202). Files: `Modules/Merchant.lua`, `MerchantBulk.lua`, `VendorMemory.lua`, `Inventory.lua`, `Bags.lua`, `BagCategories.lua`, `BagSearch.lua`, `BagSections.lua`, `BagTools.lua`, `MailTools.lua`, `PetStable.lua`, `Legacy.lua`, `SpellRanks.lua`, `TalentPlanner.lua`, `Upgrades.lua`, `UpgradeWeights.lua`, `UpgradeWizard.lua`, `InstancePrep.lua`, `InstancePrepBuffs.lua`, `InstancePrepWizard.lua`, `Errands.lua`, `ErrandsBoats.lua`, `ErrandsStock.lua`, `CharacterExtras.lua`, `GameTools.lua`, `Chat.lua`, `ChatBubbles.lua`, `ChatExtras.lua`, `ChatFilter.lua`, `ChatHistory.lua`, `ChatWatch.lua`, `ChatWindows.lua`, `Rolls.lua`, `OfficerLoot.lua`, `OfficerRoster.lua`, `Meter.lua`, `MeterDetail.lua`, `FightHistory.lua`, `FightRecap.lua`, `CraftQueue.lua`, `AuctionRestock.lua`, `AuctionAPI.lua`, `AuctionCrafting.lua`, `AuctionDeals.lua`, `AuctionUpgrades.lua`.
+- [x] **H5 Town, gear, chat and combat records** (Forever; SMOKE 33.197 to 33.202). Files: `Modules/Merchant.lua`, `MerchantBulk.lua`, `VendorMemory.lua`, `Inventory.lua`, `Bags.lua`, `BagCategories.lua`, `BagSearch.lua`, `BagSections.lua`, `BagTools.lua`, `MailTools.lua`, `PetStable.lua`, `Legacy.lua`, `SpellRanks.lua`, `TalentPlanner.lua`, `Upgrades.lua`, `UpgradeWeights.lua`, `UpgradeWizard.lua`, `InstancePrep.lua`, `InstancePrepBuffs.lua`, `InstancePrepWizard.lua`, `Errands.lua`, `ErrandsBoats.lua`, `ErrandsStock.lua`, `CharacterExtras.lua`, `GameTools.lua`, `Chat.lua`, `ChatBubbles.lua`, `ChatExtras.lua`, `ChatFilter.lua`, `ChatHistory.lua`, `ChatWatch.lua`, `ChatWindows.lua`, `Rolls.lua`, `OfficerLoot.lua`, `OfficerRoster.lua`, `Meter.lua`, `MeterDetail.lua`, `FightHistory.lua`, `FightRecap.lua`, `CraftQueue.lua`, `AuctionRestock.lua`, `AuctionAPI.lua`, `AuctionCrafting.lua`, `AuctionDeals.lua`, `AuctionUpgrades.lua`.
   1. Merchant, bulk buy and vendor memory: the vendor closing mid-action, junk sell retries, a bulk buy across bag families, prices that are secret or nil.
   2. The bags family: sections and categories with the key ring (bag `-1` on Forever), search across bank and bags, a bag swapped mid-sort, empty and full.
   3. Mail and the pet stable: COD, a mailbox that closes, the clock skew records (hunt 6's K7-2), stable slots and happiness.
@@ -153,7 +153,7 @@ Each hunt lists its client, its files (a file belongs to one hunt per block), it
 
 Every wave reads Blizzard's `live` branch for the frame and API facts and the retail docs in `Blizzard_APIDocumentationGenerated`. A finding says whether it affects retail only or both. A fix goes in the `Retail*` file or the per-client table; the Forever half of a table and every Forever test stay byte-for-byte.
 
-- [ ] **H6 Class resources and casting on retail** (retail; SMOKE 33.233 to 33.238). Files: `Modules/ClassBars.lua`, `ComboPoints.lua`, `CastBars.lua`, `UnitFrames.lua` (hiding the game's class bars), `Core/Theme.lua` (tokens), `scripts/lib/wow-retail-classes.lua`.
+- [x] **H6 Class resources and casting on retail** (retail; SMOKE 33.233 to 33.238). Files: `Modules/ClassBars.lua`, `ComboPoints.lua`, `CastBars.lua`, `UnitFrames.lua` (hiding the game's class bars), `Core/Theme.lua` (tokens), `scripts/lib/wow-retail-classes.lua`.
   1. The class and spec to bar-kind table against the game's own power bars in `Blizzard_UnitFrame` on `live`: every class, every spec, Devourer as Demon Hunter spec 3.
   2. Runes: order, cooldown reads, `RUNE_POWER_UPDATE`, a rune mid-recharge at login.
   3. Holy power, chi, arcane charges, soul shards (fractional for Destruction), insanity, maelstrom, essence with its recharge timer, stagger: maximums that change with talents.
@@ -164,7 +164,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Class colours for 13 classes everywhere a colour is keyed by class (raid frames, nameplates, chat, tooltips, meter).
   9. Pet battle, vehicle, dragonriding and skyriding: bars hidden and restored, vigor.
   10. Harness: `wow-retail-classes.lua` against the live docs; a stub that is kinder than the game is a finding here.
-- [ ] **H7 The retail game windows** (retail; SMOKE 33.239 to 33.244). Files: `Modules/RetailWindows.lua`, `Windows.lua`, `WindowsTabs.lua`, `WindowsSocial.lua`, `WindowsMap.lua`, `WindowsPvP.lua`, `WindowsMove.lua`, `WindowsTown.lua`, `WindowsSystem.lua`, `WindowsMenus.lua`, `Core/Skin.lua`, `GameAlerts.lua`, `scripts/lib/wow-retail-windows.lua`.
+- [x] **H7 The retail game windows** (retail; SMOKE 33.239 to 33.244). Files: `Modules/RetailWindows.lua`, `Windows.lua`, `WindowsTabs.lua`, `WindowsSocial.lua`, `WindowsMap.lua`, `WindowsPvP.lua`, `WindowsMove.lua`, `WindowsTown.lua`, `WindowsSystem.lua`, `WindowsMenus.lua`, `Core/Skin.lua`, `GameAlerts.lua`, `scripts/lib/wow-retail-windows.lua`.
   1. The mainline character pane and paper doll: the four look-bug shapes (dark text, orphan anchors, re-shown art, raw bars) against `live`.
   2. `PVEFrame`: dungeon finder, premade groups, raid finder tabs; selection callbacks and ScrollBox initializers that recolour.
   3. `PVPUIFrame` and the honor and conquest bars.
@@ -175,7 +175,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Options rows through `ns.RetailRows`: the game-windows page on retail versus Forever, a switch for a frame that is not loaded yet.
   9. Shared skins (`Windows.lua`) on retail geometry: tab buttons (#733's class), nine-slice layouts, the bag bar and micro menu sizes (#705's class).
   10. Harness: `wow-retail-windows.lua` children versus the live XML; a skin whose test passes on a frame the game builds differently.
-- [ ] **H8 Retail quest content and the tracker** (retail; SMOKE 33.245 to 33.250). Files: `Modules/QuestTracker.lua`, `QuestTrackerView.lua`, `QuestLog.lua`, `QuestLogView.lua`, `QuestDialog.lua`, `QuestDialogParts.lua`, `QuestDialogView.lua`, `QuestMinimap.lua`, `QuestArrow.lua`, `Waypoints.lua`, `WindowsMap.lua`, `scripts/lib/wow-retail-quests.lua`.
+- [x] **H8 Retail quest content and the tracker** (retail; SMOKE 33.245 to 33.250). Files: `Modules/QuestTracker.lua`, `QuestTrackerView.lua`, `QuestLog.lua`, `QuestLogView.lua`, `QuestDialog.lua`, `QuestDialogParts.lua`, `QuestDialogView.lua`, `QuestMinimap.lua`, `QuestArrow.lua`, `Waypoints.lua`, `WindowsMap.lua`, `scripts/lib/wow-retail-quests.lua`.
   1. World quests: `C_TaskQuest`, a quest that expires while tracked, zone changes, the pin.
   2. Bonus objectives and scenarios: the generic scenario block, a stage change mid-fight, criteria with secret progress.
   3. Campaigns and monthly activities: chapters, a completed campaign, the Traveler's Log.
@@ -186,7 +186,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. The quest log and dialog on retail: 35 quests, the game's own tracker hidden and re-shown by Edit Mode.
   9. Text fit: retail quest names and objectives in every language, a third longer.
   10. Harness: `wow-retail-quests.lua` against the live docs.
-- [ ] **H9 Retail bank, bags and private auras** (retail; SMOKE 33.251 to 33.256). Files: `Modules/Bags.lua`, `BagCategories.lua`, `BagSearch.lua`, `BagSections.lua`, `BagTools.lua`, `Inventory.lua`, `RaidAuras.lua`, `FrameAuras.lua`, `RaidFrames.lua` (anchors), `UnitFrames.lua` (anchors), `scripts/lib/wow-retail-bank.lua`.
+- [x] **H9 Retail bank, bags and private auras** (retail; SMOKE 33.251 to 33.256). Files: `Modules/Bags.lua`, `BagCategories.lua`, `BagSearch.lua`, `BagSections.lua`, `BagTools.lua`, `Inventory.lua`, `RaidAuras.lua`, `FrameAuras.lua`, `RaidFrames.lua` (anchors), `UnitFrames.lua` (anchors), `scripts/lib/wow-retail-bank.lua`.
   1. Warband bank tabs: `Enum.BankType`, `C_Bank`, a tab the account has not bought, deposit and withdraw in combat.
   2. The reagent bag as a section and the retail bag families; retail bag button geometry.
   3. Search across bank types, a search while a tab loads, account-wide counts in `Inventory` (only if it shipped).
@@ -197,7 +197,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Forever path untouched: the Forever bag and bank tests and the key ring unchanged.
   9. Text fit of bank tab names and item counts.
   10. Harness: `wow-retail-bank.lua` against the live docs.
-- [ ] **H10 Per-client data tables and shipping** (retail; SMOKE 33.257 to 33.262). Files: `Modules/RaidHealing.lua`, `ClickCastSpells.lua`, `InstancePrepBuffs.lua`, `RaidPreview.lua`, `Upgrades.lua`, `UpgradeWeights.lua`, `DataBars.lua`, `scripts/lib/media-sources.mjs` (crests), `scripts/lib/wow-retail-data.lua`, `Vanguard.toc`, `Core/WhatsNewNotes.lua`, `Locales/`.
+- [x] **H10 Per-client data tables and shipping** (retail; SMOKE 33.257 to 33.262). Files: `Modules/RaidHealing.lua`, `ClickCastSpells.lua`, `InstancePrepBuffs.lua`, `RaidPreview.lua`, `Upgrades.lua`, `UpgradeWeights.lua`, `DataBars.lua`, `scripts/lib/media-sources.mjs` (crests), `scripts/lib/wow-retail-data.lua`, `Vanguard.toc`, `Core/WhatsNewNotes.lua`, `Locales/`.
   1. Every spell and item id in the retail halves resolved by name in a probe against the live docs and spell data; an id typed from memory is the expected bug.
   2. Dispels and raid-healing spells for the healing specs of 13 classes; a spec with no dispel.
   3. Raid buffs as of 12.1.5 and the prep card at the door.
@@ -208,7 +208,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Listings and notes: `WhatsNewNotes` per client, the i18n import run once, placeholders per locale.
   9. Forever halves byte-identical: a probe that dumps each table on `FOREVER_CLIENT` and diffs it against 0.8.0.
   10. Harness: `wow-retail-data.lua` against the live docs.
-- [ ] **H11 Housing, Mythic+, vault, delves, professions and the landing page** (retail; SMOKE 33.263 to 33.268). Files: `Modules/RetailHousing.lua` and the other `Retail*.lua` systems files the build wrote, `Situations.lua`, `DungeonCard.lua`, `InstancePrep.lua`, `MenuStrip.lua` (the House button), `Tooltips.lua` (decor), their `scripts/lib/wow-retail-*.lua`.
+- [x] **H11 Housing, Mythic+, vault, delves, professions and the landing page** (retail; SMOKE 33.263 to 33.268). Files: `Modules/RetailHousing.lua` and the other `Retail*.lua` systems files the build wrote, `Situations.lua`, `DungeonCard.lua`, `InstancePrep.lua`, `MenuStrip.lua` (the House button), `Tooltips.lua` (decor), their `scripts/lib/wow-retail-*.lua`.
   1. The housing dashboard, finder, catalog and editor: load on demand, skins that fall back to the game's window, moved and reloaded.
   2. Decor tooltips and the House micro button.
   3. Mythic+: the keystone, affixes and timers under secrecy, the dungeon card's data, a run that fails, a death counter.
@@ -222,7 +222,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
 
 ### Block 3: both clients, cross-cutting (`work/hunts-block-3`)
 
-- [ ] **H12 The client gate** (both; SMOKE 33.293 to 33.298). Files: `Core/Modules.lua`, `Combat.lua` (`ns.IsForever`), `Client.lua`, `Core/Options*.lua` (`ns.RetailRows`), `Vanguard.toc`, `Modules/Probe.lua`, `scripts/lib/forever-only-api.json`, `scripts/lib/toc.mjs`, every `ns.GetModule` and `ns.ClientData` caller.
+- [x] **H12 The client gate** (both; SMOKE 33.293 to 33.298). Files: `Core/Modules.lua`, `Combat.lua` (`ns.IsForever`), `Client.lua`, `Core/Options*.lua` (`ns.RetailRows`), `Vanguard.toc`, `Modules/Probe.lua`, `scripts/lib/forever-only-api.json`, `scripts/lib/toc.mjs`, every `ns.GetModule` and `ns.ClientData` caller.
   1. Every caller of a Forever-only module on retail: `ns.GetModule` nil, options rows, slash words, settings, saved data for a module that is not there.
   2. Every `clients` field against its TOC tag; the Forever module list byte-for-byte 0.8.0's.
   3. The 12 Forever-only functions and 4 events: every call guarded, the harness's retail client has them nil and no test papers over it.
@@ -233,7 +233,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. The probe's client block against reality (Cliff's pastes from both clients).
   9. Forbidden frames on retail: every frame Vanguard touches against the forbidden list.
   10. Packaging: the zip loads on both clients (TOC walk), the packager's game-type mapping, a file only one client needs listed once.
-- [ ] **H13 Safety census: secrets, taint and combat lockdown** (both; SMOKE 33.299 to 33.304). Files: everything under `Core/` and `Modules/` changed since hunt 3's census (`bfeadf4`), the retail build included; `scripts/lib/wow-taint.lua` as the oracle.
+- [x] **H13 Safety census: secrets, taint and combat lockdown** (both; SMOKE 33.299 to 33.304). Files: everything under `Core/` and `Modules/` changed since hunt 3's census (`bfeadf4`), the retail build included; `scripts/lib/wow-taint.lua` as the oracle.
   1. Secret values: every read of a value the API docs flag as possibly secret, arithmetic and comparisons on it, concatenation into text, `ns.IsSecret` and `ns.PlainNumber` at the input.
   2. Secret aura data on both clients and in Mythic+ and raids on retail.
   3. Protected calls: every `SetPoint`, `Show`, `Hide`, `SetAttribute`, `SetParent`, `RegisterUnitWatch` and friends on a secure frame reachable in combat; `ns.OutOfCombat` around it.
@@ -244,7 +244,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Load-on-demand and reload in combat: addons that load mid-fight, `ADDON_LOADED` hooks that call protected functions.
   9. Edit Mode on both clients: layout switch, `UpdateSystem`, `ApplySystemAnchor`, Vanguard's anchors on game frames.
   10. Diagnostics: `/vg errors`, the error badge, what a taint report would show and whether the code names the path.
-- [ ] **H14 Options, profiles, setup and saved data** (both; SMOKE 33.305 to 33.310). Files: `Core/Options.lua`, `OptionsWindow.lua`, every `Options<page>.lua`, `OptionsSearch.lua`, `OptionsPreview.lua`, `Profiles.lua`, `ProfileExport.lua`, `ProfileStrings.lua`, `PresetStrings.lua`, `Serialize.lua`, `DB.lua`, `SettingsGuard.lua`, `Setup.lua`, `Home.lua`, `WhatsNew.lua`, `Slash.lua`, `Feedback.lua`, `ErrorBadge.lua`, `Perf.lua`, `Ticker.lua`, `Locale.lua`, `SharedMedia.lua`, `Masque.lua`, `Integration.lua`.
+- [x] **H14 Options, profiles, setup and saved data** (both; SMOKE 33.305 to 33.310). Files: `Core/Options.lua`, `OptionsWindow.lua`, every `Options<page>.lua`, `OptionsSearch.lua`, `OptionsPreview.lua`, `Profiles.lua`, `ProfileExport.lua`, `ProfileStrings.lua`, `PresetStrings.lua`, `Serialize.lua`, `DB.lua`, `SettingsGuard.lua`, `Setup.lua`, `Home.lua`, `WhatsNew.lua`, `Slash.lua`, `Feedback.lua`, `ErrorBadge.lua`, `Perf.lua`, `Ticker.lua`, `Locale.lua`, `SharedMedia.lua`, `Masque.lua`, `Integration.lua`.
   1. Every row to its db key to its consumer: a row with no consumer, a consumer with no row, a default that differs between the two, per client.
   2. Reset this page, Reset all and module switches at runtime on every page, both clients.
   3. Migrations: saves from 0.4.0 to 0.8.x plus the keybind, click-cast, Calm HUD and retail saves; a save from the other client.
@@ -255,7 +255,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Slash: every word in `docs/COMMANDS.md` real and documented, words for absent modules, `/vg` in combat.
   9. Settings guard, performance counters and the ticker: a guard that fires in combat, a timer that survives a reload, perf numbers that are secret.
   10. Integrations: shared media, Masque, the hooks in `docs/API.md`, another addon registering before Vanguard loads.
-- [ ] **H15 Spec drift: the docs against the code** (both; SMOKE 33.311 to 33.316). Files: `README.md`, `docs/features/*.md` (twelve pages), `docs/COMMANDS.md`, `docs/API.md`, `docs/GETTING-STARTED.md`, `docs/SMOKE-TEST.md`, `docs/THEME.md`, `Locales/`, against `Core/` and `Modules/`. The site generates its facts from these, so a wrong sentence here is a wrong page there. A finding is either a behaviour bug (the code is wrong) or a spec bug (the page is wrong); the reviewer says which.
+- [x] **H15 Spec drift: the docs against the code** (both; SMOKE 33.311 to 33.316). Files: `README.md`, `docs/features/*.md` (twelve pages), `docs/COMMANDS.md`, `docs/API.md`, `docs/GETTING-STARTED.md`, `docs/SMOKE-TEST.md`, `docs/THEME.md`, `Locales/`, against `Core/` and `Modules/`. The site generates its facts from these, so a wrong sentence here is a wrong page there. A finding is either a behaviour bug (the code is wrong) or a spec bug (the page is wrong); the reviewer says which.
   1. `look-and-layout.md` and `docs/THEME.md`: every fade, sound, colour role and spacing claim.
   2. `unit-frames.md` and `raid-frames.md`.
   3. `action-bars.md` (keys, click casting, cooldowns included).
@@ -266,7 +266,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. `COMMANDS.md` and `API.md`: every word, argument and hook exists and does what the page says, on the client the page names.
   9. `GETTING-STARTED.md` and `SMOKE-TEST.md`: steps that no longer match the UI (a renamed page, a moved control), the "needs in-game check" items still open.
   10. `Locales/`: placeholders against `L[...]` strings, strings the import dropped, the `unwrapped-text` baseline, per-client strings.
-- [ ] **H16 Harness fidelity and test strength** (both; SMOKE 33.317 to 33.322). Files: `scripts/lib/lua-harness.mjs`, `wow-stub.lua`, `wow-world.lua`, `wow-widget-api.lua`, `wow-taint.lua`, `wow-inspect.lua`, the secret helpers, `wow-retail-*.lua`, `wow-keybinds.lua`, the snapshot test, `scripts/lib/code-quality.mjs`, `scripts/tests/*.test.mjs`. Fixes here change the harness rules, so the fixer is Opus 5.5 and the block PR gets the `full-tests` label.
+- [x] **H16 Harness fidelity and test strength** (both; SMOKE 33.317 to 33.322). Files: `scripts/lib/lua-harness.mjs`, `wow-stub.lua`, `wow-world.lua`, `wow-widget-api.lua`, `wow-taint.lua`, `wow-inspect.lua`, the secret helpers, `wow-retail-*.lua`, `wow-keybinds.lua`, the snapshot test, `scripts/lib/code-quality.mjs`, `scripts/tests/*.test.mjs`. Fixes here change the harness rules, so the fixer is Opus 5.5 and the block PR gets the `full-tests` label.
   1. Widget methods whose stub semantics differ from the client: `SetPoint` with missing arguments, `GetPoint` return shapes, `IsShown` versus `IsVisible`, `SetShown(nil)`, `HookScript` order, `GetText` on an unset string.
   2. Methods in `wow-widget-api.lua` that the 12.1 client lacks, and methods the code calls that the list lacks (nil in tests on purpose, but a path that only runs in game then has no test).
   3. The taint oracle's blind spots (H13 wave 7's hand-offs): `SetScript` variants, `SetAttribute` in combat, fields on game frames through a helper.
@@ -280,7 +280,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
 
 ### Block 4: second passes (`work/hunts-block-4`)
 
-- [ ] **H17 Look pass, Forever** (Forever; SMOKE 33.353 to 33.358). Files: everything under `Core/` and `Modules/` changed since `4d86d2c`, plus Vanguard's own windows (the options window, keys view, cards, dialogs, auction tabs, group board, the home window). The four look-bug shapes plus text fit, at 1080p and 1440p pixel-perfect, the three looks, ten languages a third longer. `npm run preview` renders are evidence.
+- [x] **H17 Look pass, Forever** (Forever; SMOKE 33.353 to 33.358). Files: everything under `Core/` and `Modules/` changed since `4d86d2c`, plus Vanguard's own windows (the options window, keys view, cards, dialogs, auction tabs, group board, the home window). The four look-bug shapes plus text fit, at 1080p and 1440p pixel-perfect, the three looks, ten languages a third longer. `npm run preview` renders are evidence.
   1. The options window and every page.
   2. Keys view, click-cast options and the wizards.
   3. Dialogs, popups, the game menu and the reload offers.
@@ -291,7 +291,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Chat windows, tabs and bubbles.
   9. Tooltips and the strips.
   10. Classic look and Vellum: every piece above in the two other looks.
-- [ ] **H18 Look pass, retail** (retail; SMOKE 33.359 to 33.364). Files: the retail build and every shared HUD piece on retail geometry. Hunt 14's waves run again on retail with the new code: 30-unit bag buttons, the micro menu, Edit Mode's systems, 13 class colours, retail fonts and atlases.
+- [x] **H18 Look pass, retail** (retail; SMOKE 33.359 to 33.364). Files: the retail build and every shared HUD piece on retail geometry. Hunt 14's waves run again on retail with the new code: 30-unit bag buttons, the micro menu, Edit Mode's systems, 13 class colours, retail fonts and atlases.
   1. Action bars and buttons (override, extra, possess, vehicle bars).
   2. Micro menu, bag bar, XP and reputation bars, alerts.
   3. Blizzard unit, party, raid and boss frames; cast bars; buffs.
@@ -302,7 +302,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Housing, Mythic+, vault, delves and professions windows after H11's fixes.
   9. Vanguard's own windows at retail's default scale and fonts.
   10. Retail at 1080p with the game's UI scale, and at 1440p pixel-perfect.
-- [ ] **H19 Wrong actions and money** (both; SMOKE 33.365 to 33.370). A re-census of hunt 6's lenses over the code changed since its base (`c53043a`) and the retail build.
+- [x] **H19 Wrong actions and money** (both; SMOKE 33.365 to 33.370). A re-census of hunt 6's lenses over the code changed since its base (`c53043a`) and the retail build.
   1. Every irreversible money and item call: buy, sell, bid, buyout, mail, COD, destroy, delete, disenchant, repair, transmog, warband transfer.
   2. Every auto accept, decline, roll, release, resurrect, summon, group invite and leave.
   3. Bindings: every `SetBinding` and click-cast change that the player did not click for in that moment.
@@ -313,7 +313,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Account and realm restrictions: trial, self-found, hardcore, guildless, a dead hardcore character.
   9. Confirmations: every dialog that stands in for a game confirmation, and every game confirmation Vanguard answers.
   10. Logout, disconnect and the save moment: an action half done at logout, saved data written in combat.
-- [ ] **H20 Regressions and the plausible list** (both; SMOKE 33.371 to 33.376). Files: every fix commit of blocks 1 to 3 and the launch week (#711 to #747), and the ledger's `plausible` and `deferred` entries.
+- [x] **H20 Regressions and the plausible list** (both; SMOKE 33.371 to 33.376). Files: every fix commit of blocks 1 to 3 and the launch week (#711 to #747), and the ledger's `plausible` and `deferred` entries.
   1. Every block 1 fix commit read for side effects on the sibling paths it did not change.
   2. Every block 2 fix commit, with the Forever snapshot and tests as the oracle.
   3. Every block 3 fix commit, with a probe per harness change.

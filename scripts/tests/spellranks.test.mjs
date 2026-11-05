@@ -118,7 +118,7 @@ const TRAINER = `
     { "TEST-ONLY Old", "used", 0, 4, "Rank 1" }, { "TEST-ONLY Recipe", "available", 10, 0 }, { __secret = true, "available", 1, 5 },
   }
   GetNumTrainerServices = function() return #__services end
-  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1].__secret and s[1] or s[1], s[2], 134400, 1, s[5] end
+  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1].__secret and s[1] or s[1], s[2], 134400, s[4], s[5] end
   GetTrainerServiceCost = function(i) return __services[i][3] end
   GetTrainerServiceLevelReq = function(i) return __services[i][4] end
   __wfgWorld.units.npc = { name = "Archmage Test" }
@@ -153,6 +153,23 @@ it("trainer memory keeps what a trainer teaches and at what level, and /vg train
   addon.eval("__wfgWorld.units.player.level = 1");
   addon.slash("trainers next");
   expect(count(addon, /Level 8: TEST-ONLY Frostbolt/), "a service more than five levels ahead is left out").toBe(1);
+});
+
+it("a client without GetTrainerServiceLevelReq still remembers: the level is GetTrainerServiceInfo's fourth return", () => {
+  const addon = mage();
+  addon.eval(TRAINER + " GetTrainerServiceLevelReq = nil");
+  visit(addon);
+  expect(remembered(addon).map((s) => s.slice(0, 3)), "both levels come from the service info").toEqual([["TEST-ONLY Fireball", "Rank 3", 6], ["TEST-ONLY Frostbolt", "Rank 4", 8]]);
+});
+
+it("trainer memory leaves a pet trainer's services out: their levels are the pet's, not yours", () => {
+  const addon = mage();
+  addon.eval(TRAINER + "Enum.TrainerType = { General = 0, Pet = 3 } C_Trainer = { GetTrainerType = function() return __trainerType end } __trainerType = 3");
+  visit(addon);
+  expect(Object.keys(remembered(addon)).length, "a pet trainer: nothing kept").toBe(0);
+  addon.eval("__trainerType = 0");
+  visit(addon);
+  expect(remembered(addon).length, "a class trainer: kept as before").toBe(2);
 });
 
 it("on a German client the trainer's rank text is kept by its number, not the English word; a texture path is no rank", () => {

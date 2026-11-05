@@ -192,7 +192,7 @@ it("showing or hiding a frame runs OnShow and OnHide on its shown children, as t
 
 it("input: clicks, hover, the wheel and keys reach the frame's scripts", () => {
   const addon = createAddon();
-  addon.eval(`__log = {} local b = CreateFrame("Button", "TESTONLY_Button", UIParent)
+  addon.eval(`__log = {} local b = CreateFrame("Button", "TESTONLY_Button", UIParent) b:RegisterForClicks("AnyUp")
     b:SetScript("OnClick", function(_, button) __log[#__log + 1] = "click:" .. button end)
     b:SetScript("OnEnter", function() __log[#__log + 1] = "enter" end)
     b:SetScript("OnLeave", function() __log[#__log + 1] = "leave" end)
@@ -307,7 +307,7 @@ it("taint: addon code storing a field on a game frame fails the test; game, test
   asAddon(addon, "ChatFrame1.vgTest = true ChatFrame1.vgTest = false");
   asAddon(addon, "local f = CreateFrame('Frame') f.vgMine = true");
   addon.eval("ChatFrame1.testOnly = 1 hooksecurefunc(ChatFrame1, 'Show', function() end)");
-  expect(addon.eval("return { ChatFrame1.vgTest, #__wfgStub.violations, __wfgStub.violations[1].count }"), "the write still happens, and is one entry").toEqual([false, 1, 1]);
+  expect(addon.eval("return { ChatFrame1.vgTest, #__wfgStub.violations, __wfgStub.violations[1].count }"), "the write still happens; the overwrite is recorded too, as the same entry counted twice").toEqual([false, 1, 2]);
   const unnamed = createAddon();
   unnamed.eval("__plain = CreateFrame('Frame')");
   expectErrors(/^field write: Modules\/TEST-ONLY\.lua:1 stored the field vgTest on the game's frame Frame #\d+$/);
@@ -515,4 +515,18 @@ it("each client loads the files the TOC's game-type tags allow it, and tocFiles(
   expect(tocFiles("forever")).toEqual(clientPaths(toc, "forever"));
   expect(tocFiles("retail")).toEqual(clientPaths(toc, "retail"));
   expect(tocFiles()).toEqual(tocPaths(toc));
+});
+
+it("fonts: CreateFont makes a named font object, and a button's label takes its state's font object as the client does", () => {
+  const addon = loggedIn();
+  // The test button's label colour now.
+  const label = () => addon.eval("return TEST_FontButton:GetFontString().__textColor");
+  addon.eval(`local gold = CreateFont("TEST_Gold") gold:SetFont("F.TTF", 12, "") gold:SetTextColor(1, 0.8, 0)
+    local grey = CreateFont("TEST_Grey") grey:CopyFontObject(gold) grey:SetTextColor(0.5, 0.5, 0.5)
+    local b = CreateFrame("Button", "TEST_FontButton", UIParent) b:SetFontString(b:CreateFontString()) b:SetDisabledFontObject(grey) b:SetNormalFontObject(gold)`);
+  expect([label(), addon.eval("return { TEST_Grey:GetFont() }")], "the normal font's colour on the label; a copy keeps the face").toEqual([[1, 0.8, 0, 1], ["F.TTF", 12, ""]]);
+  addon.eval("TEST_FontButton:Disable()");
+  expect([label(), addon.eval("return TEST_FontButton:GetDisabledFontObject() == TEST_Grey")], "disabled: the disabled font's colour").toEqual([[0.5, 0.5, 0.5, 1], true]);
+  addon.eval("TEST_FontButton:Enable()");
+  expect([label(), addon.eval("local found = false for _, w in ipairs(__wfgStub.frames) do found = found or w == TEST_Gold end return found")], "enabled: the normal one again; a font object is no frame").toEqual([[1, 0.8, 0, 1], false]);
 });

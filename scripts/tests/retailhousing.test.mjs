@@ -53,10 +53,12 @@ it("retail housing: the decor catalog, the collection and the plot tooltips are 
   addon.eval("HousingDashboardFrame:Show() HouseFinderFrame:Show()");
   const catalog = addon.eval(`local c = HousingDashboardFrame.CatalogContent
     return { __alpha(c.Background), __alpha(c.Categories.Background), __alpha(c.Categories.TopBorder), __panel(c.OptionsContainer.ScrollBar.Thumb),
-      __alpha(HousingDashboardFrame.CollectionContent.Background) }`);
-  expect(catalog, "the parchment and category art faded, the scroll bar's thumb in the theme, the collection's parchment faded").toEqual([0, 0, 0, true, 0]);
-  const tips = addon.eval("return { __panel(HouseFinderFrame.SelectedPlotTooltip), __alpha(HouseFinderFrame.SelectedPlotTooltip.NineSlice), __panel(HouseFinderHighlightedPlotTooltip) }");
-  expect(tips, "both plot tooltips on a theme panel, the game's edge faded").toEqual([true, 0, true]);
+      __alpha(HousingDashboardFrame.CollectionContent.Background),
+      __alpha(HousingDashboardFrame.CollectionContent.Categories.Background), __alpha(HousingDashboardFrame.CollectionContent.Categories.TopBorder) }`);
+  expect(catalog, "the parchment and category art faded, the scroll bar's thumb in the theme, the collection's parchment and category art faded").toEqual([0, 0, 0, true, 0, 0, 0]);
+  const tips = addon.eval(`return { __panel(HouseFinderFrame.SelectedPlotTooltip), __alpha(HouseFinderFrame.SelectedPlotTooltip.NineSlice), __panel(HouseFinderHighlightedPlotTooltip),
+    __alpha(HouseFinderFrame.SelectedPlotTooltip.Arrow), __alpha(HouseFinderHighlightedPlotTooltip.Arrow) }`);
+  expect(tips, "both plot tooltips on a theme panel, the game's edge and pointer arrow faded").toEqual([true, 0, true, 0, 0]);
 });
 
 it("retail housing: only the house editor's decor storage is dressed, never the screen-wide editor", () => {

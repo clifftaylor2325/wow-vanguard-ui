@@ -181,17 +181,29 @@ local function timerArgs(channel)
   return ease and ease.Immediate, dirs and (channel and dirs.RemainingTime or dirs.ElapsedTime)
 end
 
--- Starts the bar's timing: the client's own timer where it can, else plain times on each frame.
-local function startTiming(bar, unit, startMS, endMS, channel, stages)
+-- Writes only the seconds left while the client's timer fills the bar (plain times only).
+local function tickSeconds(bar)
+  local endMS = ns.PlainNumber(bar.endMS)
+  if endMS then CB.ShowSeconds(bar.time, math.max(0, endMS - GetTime() * 1000) / 1000) end
+end
+
+-- Hands the bar to the client's timer; false where the client has none or the bar won't take it.
+local function runTimer(bar, unit, channel, stages)
   local duration = castDuration(unit, channel, stages)
+  return duration ~= nil and bar.SetTimerDuration ~= nil and pcall(bar.SetTimerDuration, bar, duration, timerArgs(channel))
+end
+
+-- Starts the bar's timing: the client's own timer where it can (the seconds still ticked from plain
+-- times), else plain times on each frame.
+local function startTiming(bar, unit, startMS, endMS, channel, stages)
   CB.ClearSeconds(bar.time)
   showLatency(bar, startMS, endMS, channel)
-  if duration and bar.SetTimerDuration and pcall(bar.SetTimerDuration, bar, duration, timerArgs(channel)) then
-    return bar:SetScript("OnUpdate", nil)
+  bar.startMS, bar.endMS, bar.channel = startMS, endMS, channel
+  if runTimer(bar, unit, channel, stages) then
+    return bar:SetScript("OnUpdate", ns.PlainNumber(startMS) and ns.PlainNumber(endMS) and tickSeconds or nil)
   end
   bar:SetMinMaxValues(0, 1)
   bar:SetValue(1)
-  bar.startMS, bar.endMS, bar.channel = startMS, endMS, channel
   bar:SetScript("OnUpdate", onUpdate)
 end
 
@@ -340,7 +352,10 @@ CB.WIDTHS = { 80, 600 }
 
 -- The interrupt mark ---------------------------------------------------------------------
 
--- Vanilla interrupts by class: the families you may know (the one to use first first), each from its highest rank down.
+-- Interrupts by class: the families you may know (the one to use first first), each from its
+-- highest rank down. Vanilla ranks, plus the retail classes' own (ids from live
+-- Blizzard_CooldownBroadcaster/TrackedCooldowns.lua InterruptSpellsBySpec; Warlock's pet
+-- interrupt is left out).
 CB.INTERRUPTS = {
   -- Kick.
   ROGUE = { { 1769, 1768, 1767, 1766 } },
@@ -353,6 +368,20 @@ CB.INTERRUPTS = {
   SHAMAN = { { 57994 }, { 10414, 10413, 10412, 8046, 8045, 8044, 8042 } },
   -- Silence (a talent).
   PRIEST = { { 15487 } },
+  -- Retail: Mind Freeze.
+  DEATHKNIGHT = { { 47528 } },
+  -- Retail: Disrupt.
+  DEMONHUNTER = { { 183752 } },
+  -- Retail: Skull Bash, then Solar Beam (Balance).
+  DRUID = { { 106839 }, { 78675 } },
+  -- Retail: Counter Shot, then Muzzle (Survival).
+  HUNTER = { { 147362 }, { 187707 } },
+  -- Retail: Spear Hand Strike.
+  MONK = { { 116705 } },
+  -- Retail: Rebuke.
+  PALADIN = { { 96231 } },
+  -- Retail: Quell.
+  EVOKER = { { 351338 } },
 }
 
 -- The interrupt you know and would use (the best rank of the first family you have), or nil.

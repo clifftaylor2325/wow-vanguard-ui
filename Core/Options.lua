@@ -62,10 +62,10 @@ local function reloadSetting(module, key)
   return get, function(v) set(v) O.NeedReload() end, initial
 end
 
--- True when a module was built this session, so its live callbacks have its settings to read.
+-- True when a module was built this session and is still switched on, so its live callbacks have its settings to read.
 local function moduleRunning(module)
   local def = ns.GetModule(module)
-  return def ~= nil and def.enabled == true
+  return def ~= nil and def.enabled == true and ns.ModuleEnabled(module)
 end
 
 -- get/set for a module setting that applies at once (after() runs on each change), and its default.
@@ -415,7 +415,7 @@ O.MODULE_INFO = {
   VendorMemory = { L["Vendor memory"], L["Remembers what each merchant sells; tooltips and the stock list say where to buy."] },
   AuctionHelper = { L["Auction helper"], L["Shopping lists with Deals and Upgrades, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions."] },
   Nameplates = { L["Nameplates"], L["Flat plates with levels, your debuffs, players' buffs, casts and threat."] },
-  Situations = { L["Situations"], L["Different frame spots and settings for solo, party, raid, PvP, instance and resting, applied out of combat."] },
+  Situations = { L["Situations"], L["Different frame spots and settings for solo, party, raid, PvP, instance and resting (on Retail also Mythic+ and delves), applied out of combat."] },
 }
 
 -- Modules with their own switch inside (off by default): its setting keys (on if any is) and the page it is on.
@@ -549,18 +549,20 @@ end
 local function currentProfileText()
   local later = ns.PendingProfileName()
   if not later then return ns.Format(L["This character uses {profile}."], { profile = ns.ProfileName() }) end
-  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = later })
+  local spec = ns.SpecProfile()
+  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = spec or later })
 end
 
 -- Asks before a reset: what is lost (every setting in the profile in use, for every character
--- using it) and where its copy goes; yes backs it up, resets it and runs after().
+-- using it) and where its copy goes; yes backs it up, resets it and runs after(backup name).
 local function confirmReset(what, yes, after)
   local name = ns.ProfileName()
   local q = L["{question} Every setting in profile {profile} goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile {backup}."]
   ns.Ask(ns.Format(q, { question = what, profile = name, backup = ns.BackupName(name) }), yes, function()
-    ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = name, backup = ns.BackupProfile() }))
+    local backup = ns.BackupProfile()
+    ns.Chat(ns.Format(L["Profile {profile} as it was is saved as profile {backup}."], { profile = name, backup = backup }))
     ns.ResetProfile()
-    after()
+    after(backup)
   end, function() end, "danger")
 end
 
@@ -571,8 +573,12 @@ end
 O.AskResetProfile = resetProfile
 
 -- Start over: after asking, the profile back to defaults (backed up first), and setup opens after the reload that applies it.
+-- Setup keeps that backup (Core/Setup.lua), so its first change doesn't copy the reset profile over it.
 local function startOver()
-  confirmReset(L["Start over?"], L["Start over"], function() VanguardCharDB.setupDone = false O.ProfileReplaced() end)
+  confirmReset(L["Start over?"], L["Start over"], function(backup)
+    VanguardCharDB.setupDone, VanguardCharDB.setupBackup = false, backup
+    O.ProfileReplaced()
+  end)
 end
 
 -- Profiles, part one: which profile, export/import, reset.

@@ -523,7 +523,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end
     __dot:GetScript("OnEnter")(__dot) __dot:GetScript("OnLeave")(__dot) __dot:GetScript("OnClick")(__dot)`);
   expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
-  expect(resetDot(addon, "Health as"), "a default that depends on the client has no dot").toEqual([false, false]);
+  expect(resetDot(addon, "Health as"), "a default that depends on the client has one, and no dot while it is held").toEqual([false, true]);
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
   addon.eval(`GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent) function GameTooltip:SetOwner(o) self.__owner = o end
@@ -706,6 +706,22 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   setCombat(addon, true);
   setCombat(addon, false);
   expect(addon.eval("return Vanguard_Options.__kb"), "and a fight ending while it is closed doesn't change that").toBe(false);
+});
+
+it("options: a window opened in a fight takes the keyboard when the fight ends, unless it was closed by then", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // TEST-ONLY spy on the window's keyboard calls.
+  addon.eval("ns.Options.Show('general') local f = Vanguard_Options f.EnableKeyboard = function(self, on) self.__kb = on end f:Hide()");
+  setCombat(addon, true);
+  addon.eval("ns.Options.Show('general')");
+  expect(addon.eval("return Vanguard_Options.__kb"), "opened in a fight, it takes no keys").toBe(false);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Options.__kb"), "the fight over, it takes them").toBe(true);
+  addon.eval("Vanguard_Options:Hide()");
+  setCombat(addon, true);
+  addon.eval("ns.Options.Show('general') Vanguard_Options:Hide()");
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Options.__kb"), "closed before the fight ended, it stays without them").toBe(false);
 });
 
 it("E6-R2 options: Alt-Z (UIParent hidden and shown) leaves the open window its keyboard; closing it still lets go", () => {
@@ -933,7 +949,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|52", "modules|Modules|20|87", "unitframes|Unit frames|30|34", "raid|Raid frames|40|26",
+    "general|General|10|52", "modules|Modules|20|87", "unitframes|Unit frames|30|35", "raid|Raid frames|40|26",
     "actionbars|Action bars|60|84", "quests|Quests|70|29", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|82", "windows|Game windows|83|47", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|39", "town|Town and gear|85|57", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|18",
     "situations|Situations|86|16", "clickcast|Click casting|46|16",
@@ -1555,6 +1571,20 @@ it("the text and reload dialogs take Tab focus too, and a hidden button is skipp
   addon.key("Vanguard_Reload", "TAB");
   expect(ring(addon, "Vanguard_Reload.cancel"), "the reload dialog starts at Later").toBe(true);
 });
+it("H17-3-1: on WoW Forever the reload offer's Tab ring stops at Later (a key cannot reload there), on Retail it reaches Reload", () => {
+  const forever = loggedIn("UISpecialFrames = {}");
+  forever.eval(`ns.OfferReload("A change.")`);
+  forever.key("Vanguard_Reload", "TAB");
+  forever.key("Vanguard_Reload", "TAB");
+  expect([ring(forever, "Vanguard_Reload.cancel"), ring(forever, "Vanguard_Reload.accept")], "Forever: the second Tab stays on Later").toEqual([true, false]);
+  forever.key("Vanguard_Reload", "ENTER");
+  expect([forever.eval("return Vanguard_Reload:IsShown()"), chatHas(forever, /Type \/reload/)], "Enter presses Later: the dialog closes, no chat line").toEqual([false, false]);
+  const retail = loggedIn(RETAIL + "UISpecialFrames = {}");
+  retail.eval(`ns.OfferReload("A change.")`);
+  retail.key("Vanguard_Reload", "TAB");
+  retail.key("Vanguard_Reload", "TAB");
+  expect(ring(retail, "Vanguard_Reload.accept"), "Retail: the second Tab reaches Reload").toBe(true);
+});
 // Whether the options window shows its reload notice.
 const reloadNotice = (addon) => addon.eval("return Vanguard_Options.notice:IsShown()");
 it("Reset theme: a reset that only changes the accent needs no reload", () => {
@@ -1756,6 +1786,8 @@ it("options: pages built at another Text size are built again the next time they
     end return out`);
   for (const page of ["unitframes", "tools", "town"]) expect(Object.values(crowded(page)), `${page}: no reload tag sits over its caption`).toEqual([]);
   expect(addon.eval("return ns.Options.current"), "the page opened is the one asked for").toBe("town");
+  addon.eval('ns.Options.Show("modules") ns.Theme.Settings().font = "client" ns.Theme.Refresh() ns.Options.Show("general")');
+  expect(Object.values(crowded("modules")), "after a Font change too (the game's font is wider)").toEqual([]);
 });
 
 it("options: a nav entry's title stops short of the changed-setting dot and never wraps", () => {

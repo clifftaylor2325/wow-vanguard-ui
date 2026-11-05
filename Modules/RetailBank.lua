@@ -35,7 +35,7 @@ function RB.DressSideTabs(panel)
   if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
     for tab in pool:EnumerateActive() do once(tab, GW.DressIcon, RB.TAB_KEEP) end
   end
-  once(panel.PurchaseTab, GW.DressIcon)
+  once(panel.PurchaseTab, GW.DressIcon, RB.TAB_KEEP)
 end
 
 -- The warband bank's gold row and deposit row in the theme: buttons, the check box and the money in a flat box.

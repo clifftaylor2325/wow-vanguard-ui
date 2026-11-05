@@ -30,8 +30,16 @@ function OL.Norm(name)
   return (ns.Lower(tostring(name)):gsub("%-.*$", ""))
 end
 
--- Whether two names are the same player.
+-- The realm a name carries, lower-case without spaces (a typed "Area 52" is the game's "Area52"); nil for a bare name.
+function OL.Realm(name)
+  local realm = ns.Lower(tostring(name)):match("%-(.+)$")
+  return realm and realm:gsub("%s", "")
+end
+
+-- Whether two names are the same player: the same name, and not two different realms (a bare name matches any realm).
 function OL.Same(a, b)
+  local realmA, realmB = OL.Realm(a), OL.Realm(b)
+  if realmA and realmB and realmA ~= realmB then return false end
   return OL.Norm(a) == OL.Norm(b)
 end
 
@@ -44,9 +52,10 @@ function OL.Item(text)
   return { id = tonumber(text:match("item:(%d+)")), name = name, lname = ns.Lower(name) }
 end
 
--- Whether a stored reserve is for the item read by OL.Item: the same id, else the same name.
+-- Whether a stored reserve is for the item read by OL.Item: the same id when both have one, else the same name.
 function OL.Match(entry, item)
-  return (item.id ~= nil and entry.id == item.id) or (entry.lname ~= nil and ns.Lower(entry.lname) == item.lname)
+  if item.id ~= nil and entry.id ~= nil then return entry.id == item.id end
+  return entry.lname ~= nil and ns.Lower(entry.lname) == item.lname
 end
 
 -- The reserves kept on this character, a list of { player, item, id, lname }; made on first use.

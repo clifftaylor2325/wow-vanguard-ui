@@ -1036,9 +1036,10 @@ local function scopeLine(key)
   }, key)
 end
 
--- The line over the grid: whose bindings, or the combat notice while a fight is on.
+-- The line over the grid: whose bindings, or the combat notice while a fight is on (ns.Fighting, which is
+-- true from the fight's first event, a moment before the client's lockdown).
 local function title()
-  if ns.InCombat() then return L["In combat: changes are kept and apply when the fight ends."] end
+  if ns.Fighting() then return L["In combat: changes are kept and apply when the fight ends."] end
   if CC.UsesGame() then return L["The game's click bindings are in use: these are kept for when you switch back."] end
   return scopeLine(CC.CurrentKey())
 end
@@ -1132,8 +1133,16 @@ local function pickerFollows()
   if picker and picker:IsShown() then picker:Refresh() end
 end
 
+-- A fight's start re-reads the open options window for the combat notice (only Vanguard's own widgets, so
+-- nothing protected runs); a closed window re-reads as it opens, so a pull costs it nothing.
+local function fightStarts()
+  local window = O.Frame()
+  if window and window:IsShown() then O.Refresh() end
+end
+
 -- When a fight ends the queued changes apply: re-read the page; the picker follows the bindings too. So does
 -- a change of talent group or spec, whose list may or may not need the notice.
+ns.On("PLAYER_REGEN_DISABLED", fightStarts)
 ns.On("PLAYER_REGEN_ENABLED", changed)
 ns.On("ACTIVE_TALENT_GROUP_CHANGED", changed)
 ns.On("PLAYER_SPECIALIZATION_CHANGED", changed)

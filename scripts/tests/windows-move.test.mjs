@@ -73,6 +73,15 @@ it("#201 the character pane: dragged by its title bar, its place is saved and pu
   expect(errors(addon)).toBe("none");
 });
 
+it("H7-7-2 a UI scale change: the game's scale-to-fit pass lays the moved character pane out again, and its saved place is put back", () => {
+  const addon = loggedIn(`${MOVE_ENV}
+    function UpdateScaleForFitForOpenPanels() CharacterFrame:ClearAllPoints() CharacterFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -116) end`);
+  addon.eval("__open(CharacterFrame)");
+  drag(addon, "CharacterFrame", 500, 700);
+  addon.eval("UpdateScaleForFitForOpenPanels()");
+  expect([corner(addon, "CharacterFrame"), errors(addon)], "still where it was dropped").toEqual([[500, 700], "none"]);
+});
+
 it("a window hidden mid-drag ends the drag: it is not stuck dragging, and its saved place is put back again", () => {
   const addon = loggedIn(MOVE_ENV);
   addon.eval("__open(CharacterFrame)");
@@ -334,6 +343,36 @@ it("H-04 Reset leaves a closed panel to the game: no layout call, and it opens w
   expect(addon.eval("return __testLayouts") - before, "nothing open to lay out").toBe(0);
   addon.eval("__open(CharacterFrame)");
   expect(corner(addon, "CharacterFrame"), "opened again: where the game puts it").toEqual([16, 964]);
+});
+
+// TEST-ONLY game menu for Reset: anchored CENTER once, as GameMenuFrame.xml has it, and listed as a centre panel the
+// panel manager never re-anchors (UIPanelWindows.lua), so the stub layout call leaves it alone, as the game's does.
+const MENU_ENV = `${RESET_ENV}
+  local m = CreateFrame("Frame", "GameMenuFrame", UIParent) m:SetSize(200, 300) m:SetPoint("CENTER")
+  m.Header = CreateFrame("Frame", nil, m) m.Header:SetSize(160, 30) m.Header:SetPoint("TOP", m, "TOP", 0, 10)
+  m.SetMovable = function(self, on) self.__testMovable = on end
+  m.SetUserPlaced = function(self, on) self.__testUserPlaced = on end
+`;
+
+// Drags the game menu away, clicks Reset, then closes and reopens the menu; its corner after Reset and after reopening.
+const resetMenu = (addon) => {
+  addon.eval("GameMenuFrame:Show()");
+  drag(addon, "GameMenuFrame", 300, 400);
+  clickReset(addon);
+  const afterReset = corner(addon, "GameMenuFrame");
+  addon.eval("GameMenuFrame:Hide() __open(GameMenuFrame)");
+  return [afterReset, corner(addon, "GameMenuFrame"), saved(addon), errors(addon)];
+};
+
+it("H7-7-1 Reset puts the game menu, which the game never re-anchors, back in the middle of the screen", () => {
+  const addon = loggedIn(`${MENU_ENV} UIPanelWindows.GameMenuFrame = { area = "center", pushable = 0, centerFrameSkipAnchoring = true }` + CLICK_LUA);
+  expect(resetMenu(addon), "back at its CENTER home at once and when reopened").toEqual([[860, 690], [860, 690], {}, "none"]);
+});
+
+it("H7-7-1 a panel whose own attributes skip its anchoring counts as one the game never places, and goes home on Reset", () => {
+  const addon = loggedIn(`${MENU_ENV} GameMenuFrame:SetAttribute("UIPanelLayout-defined", true)
+    GameMenuFrame:SetAttribute("UIPanelLayout-centerFrameSkipAnchoring", true)` + CLICK_LUA);
+  expect(resetMenu(addon), "back at its CENTER home at once and when reopened").toEqual([[860, 690], [860, 690], {}, "none"]);
 });
 
 it("H-04 Reset in a fight waits until it ends, says so, and then puts everything back", () => {

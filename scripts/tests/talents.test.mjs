@@ -93,6 +93,34 @@ it("talent planner: the bar on the talents window, and plan mode's clicks set pl
   expect(mark(addon, 102), "plan mode off: the badge stays, the mouse goes back to the game").toMatchObject({ badge: "2", shown: true, mouse: false });
 });
 
+it("talent planner: no marks while the window shows another config than the plan's, and a repaint when it changes", () => {
+  const addon = open(`
+    __shown = 501
+    function PlayerSpellsFrame.TalentsFrame:GetConfigID() return __shown end
+    function PlayerSpellsFrame.TalentsFrame:SetConfigID(id) __shown = id end`);
+  addon.eval(`${TP}.SetPlanning(true) VanguardCharDB.talentPlans = { { ranks = { [101] = 2 }, hash = "1-2-3" } } ${TP}.Refresh()`);
+  expect(mark(addon, 101), "the config the plan is for: the badge shows").toMatchObject({ badge: "2", shown: true });
+  addon.eval("PlayerSpellsFrame.TalentsFrame:SetConfigID(502)");
+  addon.update(0.01);
+  expect(addon.eval("return __mark(101):IsShown()"), "the other spec's tab (or an inspected player): no badge to plan on").toBe(false);
+  addon.eval("PlayerSpellsFrame.TalentsFrame:SetConfigID(501)");
+  addon.update(0.01);
+  expect(addon.eval("return __mark(101):IsShown()"), "back on the plan's config: the badge returns").toBe(true);
+  addon.eval("__shown = { __secret = true } " + `${TP}.Refresh()`);
+  expect(addon.eval("return __mark(101):IsShown()"), "a config ID the client hides is not read: the marks stay").toBe(true);
+});
+
+it("talent planner: a talent with two sufficient-for-availability parents needs only one of them", () => {
+  const addon = open(`
+    __nodes[301] = { g = 10, x = 3000, y = 0, max = 1, rank = 0, edges = { { targetNode = 303, type = 2 } } }
+    __nodes[302] = { g = 10, x = 3600, y = 0, max = 1, rank = 0, edges = { { targetNode = 303, type = 2 } } }
+    __nodes[303] = { g = 10, x = 3000, y = 600, max = 1, rank = 0 }`);
+  // Puts a plan in (the ranks as Lua), repaints, and reads the order and what is stuck back.
+  const plan = (lua) => addon.eval(`local TP = ${TP} VanguardCharDB.talentPlans = { { ranks = { ${lua} }, hash = "1-2-3" } } TP.Refresh() local r = TP.result return { order = r.order, stuck = r.stuck }`);
+  expect(plan("[301] = 1, [303] = 1"), "one parent planned: the child follows it, nothing unreachable").toEqual({ order: [301, 303], stuck: {} });
+  expect(plan("[303] = 1").stuck, "neither parent planned: the child is unreachable").toEqual({ 303: true });
+});
+
 it("talent planner: buying order, rows' gates, prerequisites and unreachable ranks", () => {
   const addon = open();
   // Puts a plan in (the ranks as Lua), repaints, and reads the result back: the order, what is stuck, points planned.

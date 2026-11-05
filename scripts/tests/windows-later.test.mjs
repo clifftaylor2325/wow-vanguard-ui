@@ -3,7 +3,7 @@
 // the Blizzard XML (Camelot over Mainline) with the parts its skin reaches.
 
 import { expect, it } from "vitest";
-import { expectErrors, INSIDES_LUA, loggedIn, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { expectErrors, INSIDES_LUA, isTok, loggedIn, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 // TEST-ONLY readers shared by the models below: __button(b) whether the theme painted a flat button on b, __arrow(b)
 // whether it is a theme arrow button, __plate(b) whether a control tile was put behind a button that has no art of
@@ -254,6 +254,30 @@ it("R2.15 the professions window: list, form, rank bar, controls and gear slots 
   addon.eval("ProfessionsFrame:Hide() ProfessionsFrame:Show()");
   expect(profState(addon).painted, "a second show paints nothing new").toBe(first.painted);
 });
+// TEST-ONLY: the crafting page's push buttons as the game makes them, each label on a gold and a grey font object;
+// Create All starts greyed out (nothing it can make).
+const PROF_FONTS = `
+  local gold = CreateFont("TEST_GameFontNormal") gold:SetTextColor(1, 0.82, 0)
+  local grey = CreateFont("TEST_GameFontDisable") grey:SetTextColor(0.5, 0.5, 0.5)
+  for _, key in ipairs(ns.GetModule("Windows").PROF_BUTTONS) do
+    local b = ProfessionsFrame.CraftingPage[key] b:SetFontString(b:CreateFontString())
+    b:SetNormalFontObject(gold) b:SetHighlightFontObject(gold) b:SetDisabledFontObject(grey)
+  end
+  ProfessionsFrame.CraftingPage.CreateAllButton:Disable()
+`;
+
+it("R2.15 the professions window: its push buttons (Create, Create All) are labelled in the theme's text colour while they can be used, grey while not", () => {
+  const addon = loggedIn(PROF_ENV + PROF_FONTS);
+  addon.fire("ADDON_LOADED", "Blizzard_Professions");
+  addon.eval("ProfessionsFrame:Show()");
+  // The colour of the crafting page's button under key now.
+  const label = (key) => addon.eval(`return ProfessionsFrame.CraftingPage.${key}:GetFontString().__textColor`);
+  expect([isTok(addon, label("CreateButton"), "text"), isTok(addon, label("CreateAllButton"), "disabled")], "Create light, Create All grey while it can't be used").toEqual([true, true]);
+  addon.eval("ProfessionsFrame.CraftingPage.CreateAllButton:Enable()");
+  expect(isTok(addon, label("CreateAllButton"), "text"), "Create All light once it can, not the game's gold").toBe(true);
+  expect(isTok(addon, label("ViewGuildCraftersButton"), "text"), "the guild crafters button the same").toBe(true);
+});
+
 it("R2.15 the professions window: its maximize and minimize buttons are window controls with the theme's glyphs", () => {
   const addon = loggedIn(PROF_ENV);
   addon.fire("ADDON_LOADED", "Blizzard_Professions");

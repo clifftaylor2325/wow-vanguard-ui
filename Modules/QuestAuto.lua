@@ -8,7 +8,7 @@
 --   * with a choice of rewards, take the one that sells for the most, a stack by its whole worth (on a tie,
 --     or when none sells, you choose);
 --   * skip the gossip when an NPC has exactly one quest for you and nothing else to say.
--- Each says in chat what it did. The quest dialog asks Claims(event) first,
+-- Accepting and turning in say in chat what they did; skipping the chatter is silent. The quest dialog asks Claims(event) first,
 -- so a page that's about to be answered for you isn't shown.
 
 local ADDON, ns = ...
@@ -33,7 +33,7 @@ end
 
 -- Whether the quest on offer comes from a player (one shared in your group) rather than an NPC.
 local function fromPlayer()
-  local v = ns.CallIf(_G, "UnitIsPlayer", "npc")
+  local v = ns.CallIf(_G, "UnitIsPlayer", ns.QuestParts.GiverUnit())
   return ns.IsTrue(v)
 end
 
@@ -152,7 +152,7 @@ end
 -- The accept line: the quest, and who shared it when a player did.
 local function acceptLine()
   if not fromPlayer() then return ns.Format(L["Accepted: {quest}"], { quest = title() }) end
-  return ns.Format(L["Accepted: {quest} (shared by {name})"], { quest = title(), name = ns.QuestParts.Plain(ns.CallIf(_G, "UnitName", "npc")) })
+  return ns.Format(L["Accepted: {quest} (shared by {name})"], { quest = title(), name = ns.QuestParts.Plain(ns.CallIf(_G, "UnitName", ns.QuestParts.GiverUnit())) })
 end
 
 -- Accepts the offered quest (or acknowledges one the game accepted already, said at once).

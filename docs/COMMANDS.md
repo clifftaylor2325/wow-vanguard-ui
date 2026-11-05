@@ -89,7 +89,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg graphics` | Checks your computer, screen and frame rate, then suggests a Graphics Quality and the sizes for your screen |
 | `/vg graphics apply` | Sets what the check suggested: Graphics Quality, render scale on a slow 4K screen, and the sizes for your screen |
 | `/vg graphics undo` | Puts your graphics settings and UI scale back as they were before apply |
-| `/vg launch [clear]` | Prices, sales and characters saved from before launch (the beta); clear removes them after launch |
+| `/vg launch [clear]` | WoW Forever only: prices, sales and characters saved from before launch (the beta); clear removes them after launch |
 | `/vg frame <name> [deep]`, `/vg realm`, `/vg factionart` | What the client says about a frame, your realm, the faction pictures |
 
 ## Every command, word for word
@@ -120,7 +120,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
-/vg profile [name]              switch (or create); profile new|copy|delete <name>, profile reset (asks and backs up first)
+/vg profile [name]              switch (or create); profile new|copy|delete <name>, profile reset (asks and backs up first); a profile's exact name wins over these words
 /vg export [part ...|pick] | import   profile strings: the whole profile, or only some parts (layout, situations, global, a module's name); pick opens a switch for each part
 /vg spec [profile|off]          use a profile whenever you're in this specialization
 /vg binds                       this spec's click-casting and hover-key bindings
@@ -132,9 +132,9 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg questdata [questID]         what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever
 /vg guide probe                 what this client returns for the quest, map, taxi and unit reads a levelling guide would use, and for the unit tooltip data of your target (its line count only) (chat only; nothing changes)
 /vg probe [chat|fight|last]    one run out of combat asks the client the open questions (the client's project, interface and build, which of the 14 Forever-only calls it has (presence only; a retail client has none), how many C_Secrets functions it has, which of the game's class resource bars and the encounter timeline exist and whether they are shown or forbidden, SavedVariables round trip, new-quest flag, threat secrecy, group listing, secure paging, realm and name format, C_Secrets predicates, restriction states, navigation, reads Forever's API docs lack (which widget methods exist, among them the texture's slice, SVG and sprite-sheet ones; presence only, nothing is called), quest and map reads, party health, raid marks and boss units, the bars' CVar defaults, reward XP and watched faction, and the click-casting starter layouts' spell ids) and opens the report in a copy box; chat prints it too; typed in a fight it takes only the party, mark and boss reads and keeps them; fight takes the secrecy reads in the next fight; last reopens the saved report with the fight reads after it
-/vg junk [<item>|remove <item>|clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on); the question sells only the stacks it lists, and Enter alone never answers it
-/vg bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]   your bag categories: a name and its items, each under its own header in the combined bag, above the built-in sections; deposit sends one to the open bank
-/vg sell <item>                 at a merchant: sell every stack of an item in your bags (of a random-suffix item, only the variant linked), after a question
+/vg junk [<item>|remove <item>|clear]   your sell list: items a merchant offers to buy from you with your grays (off until switched on); the question sells only the stacks it lists, and Enter alone never answers it (the Buyback tab holds the last 12 stacks, so a bigger sale says so)
+/vg bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]   your bag categories: a name and its items, each under its own header in the combined bag, above the built-in sections; deposit sends one to the open bank tab (reagent bag included; refundable items bound for the Warband bank stay put)
+/vg sell <item>                 at a merchant: sell every stack of an item in your bags (of a random-suffix item, only the variant linked), after a question (past 12 stacks it says only the last 12 can be bought back)
 /vg stock [<item> <n>]          items to keep in your bags; a merchant tops them up (0 removes, clear empties)
 /vg gear                        your gear in chat: average item level, melee damage per second and the worn pieces missing an enchant
 /vg alts [<name>]                every character's level, money, rested XP and time played; with a name, that character's bags and bank
@@ -145,7 +145,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg way [zone] x y [title]      a waypoint the game's arrow points to; /vg way clear removes it; /vg way recent [n] lists the last eight or goes back to one
 /vg dock                        line up Deadly Boss Mods' bars with the Boss timers spots; for BigWigs, where to drag its bars
 /vg factionart                  which of the game's own faction pictures this client has
-/vg launch [clear]               prices, sales and characters saved from before launch (4 November 2026, the beta); clear removes them once the game has launched (the same button is under /vg > Town and gear)
+/vg launch [clear]               (WoW Forever only) prices, sales and characters saved from before launch (4 November 2026, the beta); clear removes them once the game has launched (the same button is under /vg > Town and gear)
 /vg realm                       your realm, ruleset, the Classic or Modern preset and side as the client gives them, how it writes your name, and the key your prices, sales and characters are kept under
 /vg frame <name> [deep]         (a name may end in #n parts, the nth child frame of the one before: QuestScrollFrame.Contents.#3) what the client says about a frame now (shown, alpha, scale, size, where its rect is or that it has none, anchors, its parents); deep adds its textures and child frames, for a frame that draws empty: paste it with a bug report
 /vg plates [enemies on|off]   how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)

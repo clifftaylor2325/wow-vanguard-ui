@@ -40,7 +40,7 @@ local HELP = {
   { "preset [name]", L["presets on offer (Vanguard's healer, damage and tank, and any an addon registers); a name asks to apply it, backed up first"] },
   { "spec [profile|off]", L["use a profile whenever you're in this specialization"] },
   { "copy", L["the recent chat of the shown tab as plain text, ready to copy"] },
-  { "situation [record <name>|stop|clear [name]|list]", L["Situations: record a layout and settings for solo, party, raid, pvp, instance or resting"] },
+  { "situation [record <name>|stop|clear [name]|list]", L["Situations: record a layout and settings for solo, party, raid, pvp, instance or resting (on Retail also mythicplus or delve)"] },
   { "watch [add|remove <phrase>|list|clear]", L["Chat watch: phrases that ring a sound and show a toast when said in chat"] },
   { "filter [on|off|tab|hide|add|remove <word>|clear]", L["Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)"] },
   { "history [on|off|whispers|nowhispers|clear]", L["Chat history: your chat comes back after a reload or the next login (off until switched on)"] },
@@ -108,8 +108,12 @@ local WORD_MODULES = {
   talents = "TalentPlanner", lfg = "GroupBoard", questdata = "QuestGuide",
 }
 
+-- The /vg words that are no module's and only WoW Forever has (the beta data went with its launch).
+local FOREVER_WORDS = { launch = true }
+
 -- Whether /vg <word> is a command on this client.
 local function wordHere(word)
+  if FOREVER_WORDS[word] then return ns.IsForever() end
   local name = WORD_MODULES[word]
   return name == nil or ns.GetModule(name) ~= nil
 end
@@ -144,9 +148,9 @@ end
 
 -- /vg reset <frame|all>
 local function resetCommand(rest)
-  local key = rest ~= "" and rest or "all"
-  local n = ns.ResetMovers(key)
-  chat(n > 0 and ns.Format(L["Reset {count} frame(s)."], { count = n }) or ns.Format(L["No frame called {name}. /vg frames lists them."], { name = key }))
+  if rest == "" then return chat(L["Usage: /vg reset <frame|all>"]) end
+  local n = ns.ResetMovers(rest)
+  chat(n > 0 and ns.Format(L["Reset {count} frame(s)."], { count = n }) or ns.Format(L["No frame called {name}. /vg frames lists them."], { name = rest }))
 end
 
 -- /vg frames
@@ -444,6 +448,8 @@ local function profileCommand(rest)
     local text = ns.PendingProfileName() and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
     return chat(ns.Format(text, { profile = ns.ProfileName(), next = ns.PendingProfileName(), all = table.concat(ns.ProfileNames(), ", ") }))
   end
+  -- A profile's exact name wins over a verb, so /vg profile Copy Raid switches to "Copy Raid".
+  if VanguardDB.profiles[rest] then return useProfile(rest) end
   local action, name = rest:match("^(%S+)%s*(.-)$")
   local handler = PROFILE_ACTIONS[action:lower()]
   if handler then return handler(name) end

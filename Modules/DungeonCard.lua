@@ -76,8 +76,8 @@ end
 
 -- Last run -------------------------------------------------------------------------------------
 
--- Seconds in a day; a way back in within SAME_VISIT seconds (a reload, a quick run in) is the same visit.
-DC.DAY, DC.SAME_VISIT = 86400, 3600
+-- A way back in within SAME_VISIT seconds of leaving (a reload, a wipe and a run back) is the same visit.
+DC.SAME_VISIT = 3600
 
 -- The dungeon you stand in by the client's instance ID, and the time now; nil for either the client lacks.
 local function here()
@@ -92,22 +92,32 @@ local function visits()
 end
 
 -- Notes a visit to the dungeon you stand at: the latest visit becomes the prior one, unless this is
--- the same visit, which only moves its time on (so the hour counts from the last way in, not the first).
+-- the same visit, which only moves its time on. It remembers the dungeon you are in, so DC.Left can start the
+-- hour from the moment you leave.
 function DC.Record()
   local id, now = here()
   if not id or not now or ns.InCombat() then return end
   local seen = visits()[id]
   local sameVisit = type(seen) == "table" and type(seen.at) == "number" and now - seen.at < DC.SAME_VISIT
+  DC.inside = id
   if sameVisit then seen.at = now return end
   visits()[id] = { at = now, prior = type(seen) == "table" and seen.at or nil }
 end
 
--- "Last run: today", "yesterday" or "5 days ago" for the dungeon you stand at; nil when there was no earlier visit.
+-- You left the dungeon Record saw you in (a wipe and the run back, say): its visit now ends at this moment, so
+-- a long run does not read as an old visit when you come back in within the hour.
+function DC.Left()
+  local seen, now = visits()[DC.inside or 0], type(time) == "function" and time() or nil
+  if type(seen) == "table" and now then seen.at = now end
+  DC.inside = nil
+end
+
+-- "Last run: today", "yesterday" or "5 days ago" (calendar days at your own midnight) for the dungeon you stand at; nil when there was no earlier visit.
 function DC.LastRun()
   local id, now = here()
   local seen = id and visits()[id]
   if not now or type(seen) ~= "table" or type(seen.prior) ~= "number" then return nil end
-  local days = math.max(0, math.floor((now - seen.prior) / DC.DAY))
+  local days = math.max(0, ns.LocalDay(now) - ns.LocalDay(seen.prior))
   if days == 0 then return L["Last run: today"] end
   if days == 1 then return L["Last run: yesterday"] end
   return ns.Format(L["Last run: {days} days ago"], { days = days })

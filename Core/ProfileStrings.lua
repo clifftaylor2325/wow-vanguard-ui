@@ -18,13 +18,14 @@ local S = ns.Serialize
 ns.PROFILE_FORMAT = 2
 
 -- Keys a payload carries beside the settings tables: never saved into a profile.
-local META = { format = true, addonVersion = true, parts = true, display = true }
+local META = { format = true, addonVersion = true, parts = true, display = true, client = true }
 
 -- Settings that record this computer's own state rather than a choice, by table: they never go in a
 -- string, and a string's are dropped as it is read, so they never reach another client.
 -- Graphics.undo: the game settings /vg graphics apply changed here, which its undo puts back.
 -- Bags.applied and Bags.prior: what Vanguard set the game's combined bags to here, and the player's value before.
--- Quiet.cameraPrior: the player's own furthest camera zoom here, from before Vanguard first changed it.
+-- Quiet.cameraPrior: the player's own furthest camera zoom, from before Vanguard first changed it. Older versions
+-- kept it in the profile; it lives in VanguardDB.client now, and Quiet moves a profile's old one there.
 -- Chat.sized and Chat.widened: whether the chat window got its first size, from before those flags
 -- moved to each character's own file.
 -- CraftQueue.chars: each character's craft queue and profession cooldowns, which are not for whoever imports a string.
@@ -118,9 +119,9 @@ local function addonVersion()
   return type(get) == "function" and get(ADDON, "Version") or "?"
 end
 
--- Adds the format and addon version every string carries to a payload; returns it.
+-- Adds the format, addon version and client every string carries to a payload; returns it.
 function ns.StampPayload(data)
-  data.format, data.addonVersion = ns.PROFILE_FORMAT, addonVersion()
+  data.format, data.addonVersion, data.client = ns.PROFILE_FORMAT, addonVersion(), ns.ClientKey()
   return data
 end
 
@@ -150,6 +151,32 @@ function ns.WithoutClientState(data)
   for key, leave in pairs(CLIENT_STATE) do
     if type(data[key]) == "table" then data[key] = without(data[key], leave) end
   end
+  return data
+end
+
+-- Puts the default of the client `to` (nil when `to` is nil) in place of each setting in node that still
+-- holds the default of the client `from` (the table defaults mirrors node's own shape: a { forever, retail }
+-- leaf is a per-client default).
+local function replaceClientDefaults(node, defaults, from, to)
+  if type(node) ~= "table" then return end
+  for key, spec in pairs(defaults) do
+    if spec.forever == nil and spec.retail == nil then replaceClientDefaults(node[key], spec, from, to)
+    elseif node[key] == spec[from] then node[key] = to and spec[to] end
+  end
+end
+
+-- Gives this client's default to each setting of a payload made on the other client that is still at
+-- that client's default. A whole profile ("profile") has the setting cleared, so the default fills it at the
+-- next load; a partial string ("parts") carries this client's default itself, since its merge keeps the
+-- player's old value for a setting it leaves out. A choice that differs from the maker's default stays,
+-- and so does a string with no client (older strings). Returns data.
+---@param data table
+---@param kind "profile"|"parts"
+---@return table
+function ns.WithoutOtherClientDefaults(data, kind)
+  local from, here = data.client, ns.ClientKey()
+  local otherClient = (from == "forever" or from == "retail") and from ~= here
+  if otherClient then replaceClientDefaults(data, ns.CLIENT_DEFAULTS, from, kind == "parts" and here or nil) end
   return data
 end
 
@@ -183,12 +210,13 @@ function ns.StripPayload(data)
 end
 
 -- The parts a partial payload says it holds, as text ("layout, theme"); nil when it names none.
+-- The names come from the string, so their | is doubled: chat shows them as written, never as codes.
 function ns.PartsText(data)
   local names = {}
   for _, p in ipairs(type(data.parts) == "table" and data.parts or {}) do
     if type(p) == "string" then names[#names + 1] = p end
   end
-  return #names > 0 and table.concat(names, ", ") or nil
+  return #names > 0 and ns.Literal(table.concat(names, ", ")) or nil
 end
 
 -- Reading ----------------------------------------------------------------------------------
@@ -257,11 +285,12 @@ local MEDIA_CHECKS = {
 }
 
 -- A line for each font, bar and panel texture the string's theme names that this client doesn't
--- have, and what Vanguard draws instead (the name stays saved, for when it comes back).
+-- have, and what Vanguard draws instead (the name stays saved, for when it comes back). The name comes
+-- from the string, so its | is doubled: a crafted name can't print coloured text or links in chat.
 function ns.MissingMedia(data)
   local theme, lines = type(data.theme) == "table" and data.theme or {}, {}
   for _, check in ipairs(MEDIA_CHECKS) do
-    if check.missing(theme[check.key]) then lines[#lines + 1] = ns.Format(check.line, { name = theme[check.key] }) end
+    if check.missing(theme[check.key]) then lines[#lines + 1] = ns.Format(check.line, { name = ns.Literal(theme[check.key]) }) end
   end
   return lines
 end

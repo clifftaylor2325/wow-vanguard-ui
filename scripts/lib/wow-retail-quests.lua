@@ -132,3 +132,55 @@ C_PerksActivities = {
     stub.fire("PERKS_ACTIVITIES_TRACKED_LIST_CHANGED", id, false)
   end,
 }
+
+-- world.endeavors[id] = InitiativeTaskInfo (taskName, completed, requirementsList); world.trackedEndeavors = the
+-- tracked ids, in order.
+world.endeavors, world.trackedEndeavors = {}, {}
+
+-- NeighborhoodInitiativeDocumentation.lua: the tracked ids (InitiativeTasksTracked.trackedIDs), one task, untracking it.
+C_NeighborhoodInitiative = {
+  -- The tracked ids.
+  GetTrackedInitiativeTasks = function() return { trackedIDs = world.trackedEndeavors } end,
+  GetInitiativeTaskInfo = function(id) return world.endeavors[id] end,
+  RemoveTrackedInitiativeTask = function(id)
+    for i, tracked in ipairs(world.trackedEndeavors) do if tracked == id then table.remove(world.trackedEndeavors, i) break end end
+    stub.fire("INITIATIVE_TASKS_TRACKED_LIST_CHANGED", id, false)
+  end,
+}
+
+-- ContentTrackingTypesDocumentation.lua's types and stop types.
+Enum.ContentTrackingType = { Appearance = 0, Mount = 1, Achievement = 2, Decor = 3 }
+Enum.ContentTrackingStopType = { Invalidated = 0, Collected = 1, Manual = 2 }
+
+-- world.collectables[type] = { { id, title, target = { type, id } | nil, objective } } in tracking order; world.stopped
+-- = the (type, id, stop type) of each StopTracking call.
+world.collectables, world.stopped = {}, {}
+
+-- The tracked entry of a type and id.
+local function collectableOf(kind, id)
+  for _, c in ipairs(world.collectables[kind] or {}) do if c.id == id then return c end end
+end
+
+-- ContentTrackingDocumentation.lua: the collectable types, a type's tracked ids, an entry's current target, its
+-- title and its target's objective text, and stopping the tracking.
+C_ContentTracking = {
+  -- The collectable types.
+  GetCollectableSourceTypes = function() return { Enum.ContentTrackingType.Appearance, Enum.ContentTrackingType.Decor } end,
+  GetTrackedIDs = function(kind)
+    local out = {}
+    for i, c in ipairs(world.collectables[kind] or {}) do out[i] = c.id end
+    return out
+  end,
+  GetCurrentTrackingTarget = function(kind, id) local c = collectableOf(kind, id) if c and c.target then return c.target[1], c.target[2] end end,
+  GetTitle = function(kind, id) local c = collectableOf(kind, id) return c and c.title end,
+  GetObjectiveText = function(targetType, targetID)
+    for _, list in pairs(world.collectables) do
+      for _, c in ipairs(list) do if c.target and c.target[1] == targetType and c.target[2] == targetID then return c.objective end end
+    end
+  end,
+  StopTracking = function(kind, id, stopType)
+    world.stopped[#world.stopped + 1] = { kind, id, stopType }
+    for i, c in ipairs(world.collectables[kind] or {}) do if c.id == id then table.remove(world.collectables[kind], i) break end end
+    stub.fire("CONTENT_TRACKING_UPDATE", kind, id, true)
+  end,
+}

@@ -187,6 +187,15 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
+-- What a client adds to your auras block once it is built, each fn(holder, settings) (Modules/RetailAuras.lua
+-- on Retail: your private aura spots; none on WoW Forever).
+PA.CLIENT_PARTS = {}
+
+-- Adds the client's own parts to the built block.
+local function addClientParts(s)
+  for _, part in ipairs(PA.CLIENT_PARTS) do ns.Try("player aura part", part, PA.holder, s) end
+end
+
 -- The movable holder left of the minimap, the container and the enchant cells.
 local function build(s)
   PA.holder = CreateFrame("Frame", "Vanguard_PlayerAuras", UIParent)
@@ -197,6 +206,7 @@ local function build(s)
   for i = 1, #PA.WEAPONS do PA.cells[i] = enchantCell(PA.holder, i, s.size) end
   PA.UpdateEnchants()
   ns.Visibility.Calm(PA.holder, "auras")
+  addClientParts(s)
 end
 
 -- A weapon or inventory event: only yours matters.

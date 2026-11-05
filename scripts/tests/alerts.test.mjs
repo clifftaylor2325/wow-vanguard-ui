@@ -62,6 +62,34 @@ it("game alerts: loss of control and the talking head, styled and placed (or hid
   expect(partial.eval("return Vanguard_LossOfControlFrameSpot ~= nil and Vanguard_TalkingHeadFrameSpot ~= nil"), "frames without their usual parts are still placed").toBe(true);
   expect(loggedIn("").eval("return Vanguard_LossOfControlFrameSpot == nil"), "a client without them loads cleanly").toBe(true);
 });
+it("game alerts: scaling the talking head or loss of control spot scales the game's frame", () => {
+  const addon = loggedIn(ALERTS_ENV);
+  addon.eval("ns.SetMoverScale('talkinghead', 2) ns.SetMoverScale('lossofcontrol', 1.5)");
+  addon.advance(0.5);
+  expect(addon.eval("return { TalkingHeadFrame:GetScale(), LossOfControlFrame:GetScale() }"), "each takes its spot's scale").toEqual([2, 1.5]);
+  addon.eval("ns.SetMoverScale('talkinghead', 1)");
+  addon.advance(0.5);
+  expect(addon.eval("return TalkingHeadFrame:GetScale()"), "and gives it back").toBe(1);
+});
+it("game alerts: a scaled spot repaints the alert's panel border at the new pixel", () => {
+  const addon = loggedIn(ALERTS_ENV);
+  const edge = `local f = LossOfControlFrame local e
+    for _, r in ipairs({ f:GetRegions() }) do if r.__layer == "BORDER" and r:GetWidth() == f:GetWidth() then e = e or r:GetHeight() end end
+    return { ns.Theme.Pixel(f), e }`;
+  addon.eval("ns.SetMoverScale('lossofcontrol', 2)");
+  addon.advance(0.5);
+  const [pixel, top] = addon.eval(edge);
+  expect(top, "the border is one screen pixel at the frame's scale").toBe(pixel);
+});
+it("game alerts: loss of control takes the spot's scale times the Size set in Edit Mode", () => {
+  // TEST-ONLY Edit Mode system: a Size setting of 150 (percent) on loss of control.
+  const sized = "Enum = Enum or {} Enum.EditModeLossOfControlSetting = { Size = 0 } LossOfControlFrame.GetSettingValue = function() return 150 end";
+  const addon = loggedIn(ALERTS_ENV + sized);
+  expect(addon.eval("return LossOfControlFrame:GetScale()"), "at a spot of 100%: the game's own size").toBe(1.5);
+  addon.eval("ns.SetMoverScale('lossofcontrol', 2)");
+  addon.advance(0.5);
+  expect([addon.eval("return LossOfControlFrame:GetScale()"), addon.eval("return TalkingHeadFrame:GetScale()")], "at 200%: both together; the talking head has no size").toEqual([3, 1]);
+});
 // TEST-ONLY talking head play: the game's PlayCurrent colours the name and text from the line's texture kit
 // (Blizzard_FrameXML/TalkingHeadUI.lua), dark browns and black for the faction kits made for parchment.
 const PLAY_ENV = `
@@ -193,7 +221,7 @@ it("game alerts: a rare nearby is announced with a sound and a chat line, out of
 });
 // What the game's boss holder and its first and last boss button look like: shown, parked, listening, hooked.
 const bossHolder = (addon) => addon.eval(`local c, b1, b5 = BossTargetFrameContainer, Boss1TargetFrame, Boss5TargetFrame
-  return { c:IsShown(), c:GetParent() == UIParent, c:IsEventRegistered("PLAYER_ENTERING_WORLD"), rawget(c, "Show") == nil and rawget(c, "SetShown") == nil,
+  return { c:IsShown(), c:GetParent() == UIParent, c:IsEventRegistered("PLAYER_ENTERING_WORLD"), __wfgStub.ownField(c, "Show") == nil and __wfgStub.ownField(c, "SetShown") == nil,
     b1:IsEventRegistered("INSTANCE_ENCOUNTER_ENGAGE_UNIT"), b5:IsEventRegistered("INSTANCE_ENCOUNTER_ENGAGE_UNIT"), b1:GetParent() == c, b5:GetParent() == c }`);
 it("boss frames: five in a column at the top left, the game's put away", () => {
   const addon = loggedIn(UNITS_ENV + BOSS_ENV);
@@ -303,6 +331,32 @@ it("the game's tools: a row's scale goes through the client's own SetScaleBase o
     f.SetScale = function(self, s) __ran[#__ran + 1] = "SetScaleOverride " .. s return setScale(self, s) end
     ns.GetModule("GameTools").FitRow(f, spot)`);
   expect(addon.eval("return __ran"), "only the client's own method").toEqual(["SetScaleBase 0.5"]);
+});
+// The first Cooldown Manager item's [pixel at its scale, top edge height, icon inset], read from what was painted.
+const itemPixels = (addon) => addon.eval(`local i = EssentialCooldownViewer.items[1] local edge
+  for _, r in ipairs({ i:GetRegions() }) do if r.__layer == "BORDER" and r:GetWidth() == i:GetWidth() then edge = edge or r:GetHeight() end end
+  return { ns.Theme.Pixel(i), edge, i.Icon.__points.TOPLEFT.x }`);
+it("the game's tools: a row shrunk to fit its spot, or an icon size the game changes, repaints the icon borders at the new pixel", () => {
+  const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)");
+  addon.eval("EssentialCooldownViewer:RefreshLayout()");
+  expect(itemPixels(addon), "a row that fits: borders and inset one pixel").toEqual([1, 1, 1]);
+  addon.eval("EssentialCooldownViewer:SetSize(472, 40) EssentialCooldownViewer:RefreshLayout()");
+  expect(itemPixels(addon), "shrunk to half: the pixel is 2 units, and so are the borders and the inset").toEqual([2, 2, 2]);
+  addon.eval("EssentialCooldownViewer:SetSize(200, 40) EssentialCooldownViewer.items[1]:SetScale(2) EssentialCooldownViewer:RefreshLayout()");
+  expect(itemPixels(addon), "the game scales an item (Edit Mode's icon size): painted for it too").toEqual([0.5, 0.5, 0.5]);
+});
+it("the game's tools: scaling the Cooldowns spot scales the row on it, and fits it to the scaled spot", () => {
+  const addon = loggedIn(TOOLS_ENV + "__wfgStub.setScreen(1365, 768)");
+  // The essential row's scale after the game lays it out at `width` wide.
+  const scaleAt = (width) => addon.eval(`EssentialCooldownViewer:SetSize(${width}, 40) EssentialCooldownViewer:RefreshLayout() return EssentialCooldownViewer:GetScale()`);
+  expect(scaleAt(200), "a row that fits, on a spot at 100%").toBe(1);
+  addon.eval("ns.SetMoverScale('cdm_essential', 2)");
+  addon.advance(0.5);
+  expect(addon.eval("return EssentialCooldownViewer:GetScale()"), "the spot at 200%: the row grows with it, at once").toBe(2);
+  expect(scaleAt(450), "a row wider than the spot fits the scaled spot: twice the shrink of a 100% spot").toBeCloseTo((2 * 236) / 450);
+  addon.eval("ns.SetMoverScale('cdm_essential', 1)");
+  addon.advance(0.5);
+  expect(addon.eval("return EssentialCooldownViewer:GetScale()"), "back at 100%: shrunk to the plain spot").toBeCloseTo(236 / 450);
 });
 it("damage meter: a pooled line set up again keeps its background faded, with one hook per line", () => {
   const addon = loggedIn(TOOLS_ENV);

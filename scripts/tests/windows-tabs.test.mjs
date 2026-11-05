@@ -93,6 +93,22 @@ it("tab buttons: a second show paints nothing more, and tabs a tab system adds l
   expect(addon.eval("return { __tabState(MerchantFrameTab1).raised, __tabState(MerchantFrameTab2).raised }"), "the raised tab follows the game's selection").toEqual([true, false]);
 });
 
+it("H7-9-2 tab systems: one set against the window's bottom edge moves out past the panel's padding, one set inside it stays", () => {
+  const addon = loggedIn(WINDOWS_ENV + WINDOW_TABS_ENV + `
+    TestOnlySpells.TabSystem:SetPoint("TOPLEFT", TestOnlySpells, "BOTTOMLEFT", 22, 2)
+    TestOnlyHeader.FriendsTabHeader.TabSystem:SetPoint("TOPLEFT", TestOnlyHeader.FriendsTabHeader, "BOTTOMLEFT", 18, 2)`);
+  addon.eval("TestOnlySpells:Show() TestOnlyHeader:Show()");
+  // A tab system's first anchor's offsets, and the padding its window's tabs move out by.
+  const anchor = (system, frame) => addon.eval(`local _, _, _, x, y = ${system}:GetPoint(1)
+    return { x, y, ns.GetModule("Windows").TabPad(${frame}) }`);
+  const [x, y, pad] = anchor("TestOnlySpells.TabSystem", "TestOnlySpells");
+  expect(pad, "the window's panel is padded").toBeGreaterThan(0);
+  expect([x, y], "the window's tab system: its top edge at the panel's edge").toEqual([22, -pad]);
+  expect(anchor("TestOnlyHeader.FriendsTabHeader.TabSystem", "TestOnlyHeader").slice(0, 2), "a system set inside its header keeps its offset").toEqual([18, 2]);
+  addon.eval("TestOnlySpells.TabSystem:AddTab()");
+  expect(anchor("TestOnlySpells.TabSystem", "TestOnlySpells")[1], "moved once: a tab the game adds later moves it no further").toBe(-pad);
+});
+
 it("tab buttons: a window whose tabs fail to dress on a later show is reported under its own name, and still opens", () => {
   expectErrors("show window tabs: TEST-ONLY: tab system broke");
   const addon = loggedIn(WINDOWS_ENV + WINDOW_TABS_ENV + `
@@ -944,6 +960,28 @@ it("side panes: each Refresh puts the reputation pane's gold check box labels ba
   expect(addon.eval(`return __text(${label})`), "a faction you can make inactive: the text colour").toBe(true);
   addon.eval("__canInactive = false ReputationFrame.ReputationDetailFrame:Refresh()");
   expect(addon.eval(`return ${label}.__textColor[1]`), "one you can't: the game's grey").toBe(0.5);
+});
+
+it("side panes: Retail's dialog panes (the reputation detail box, the currency options popup) lose their border and parchment and sit on a panel; Camelot's keep theirs (H7-1-R1, H7-1-3)", () => {
+  const addon = loggedIn(SIDE_PANE_ENV + `
+    local rep, pop = ReputationFrame.ReputationDetailFrame, __sidePane(TokenFrame, "Popup")
+    rep.Border, rep.parchment = __art(CreateFrame("Frame", nil, rep)), __art(rep, "ARTWORK")
+    pop.Border = CreateFrame("Frame", nil, pop) __art(pop.Border)
+    pop.InactiveCheckbox = CreateFrame("CheckButton", nil, pop) pop.InactiveCheckbox.Label = pop.InactiveCheckbox:CreateFontString()`);
+  expect(addon.eval(`local rep, pop = ReputationFrame.ReputationDetailFrame, TokenFrame.Popup
+    return { __a(rep.parchment), __a(rep.Border), __panel(rep), __headed(pop.Title), __panel(pop) }`),
+  "reputation box: parchment and border faded, a panel; the popup is dressed like a side pane and panelled").toEqual([0, 0, true, true, true]);
+  expect(addon.eval("return { __panel(SkillsFrame.SkillDetailFrame), __panel(TokenFrame.DetailFrame) }"), "a pane with no Border is not panelled").toEqual([false, false]);
+});
+
+it("side panes: a check box label the game paints gold turns light even when the pane's Refresh is never called (H7-1-4)", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  addon.eval("ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label:SetTextColor(NORMAL_FONT_COLOR:GetRGB())");
+  expect(addon.eval("return __text(ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label)"), "the label is light again at once").toBe(true);
+  addon.eval("ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label:SetTextColor(0.5, 0.5, 0.5)");
+  expect(addon.eval("return ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label.__textColor[1]"), "a grey one stays grey").toBe(0.5);
+  const bare = loggedIn(SIDE_PANE_ENV + "ReputationFrame.ReputationDetailFrame.WatchFactionCheckbox.Label = nil TokenFrame.DetailFrame.InactiveCheckbox = 5");
+  expect(bare.eval("return #ns.errors"), "a check box without a label, or that is not a frame").toBe(0);
 });
 
 it("a window that sets its own title colour (the character pane, after it shows) gets the light title back each time", () => {

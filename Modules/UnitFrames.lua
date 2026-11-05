@@ -14,7 +14,10 @@ local L = ns.L
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true,
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true, combatMark = true,
+    -- WoW Forever players read levels and health percent on every frame (as its own UI does),
+    -- so a profile that hasn't chosen yet starts that way there.
+    showLevel = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.showLevel), healthFormat = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.healthFormat),
     calmFrames = "dim", calmBars = "dim", calmAuras = "dim", calmStrips = "dim", calmXP = "hide", calmMeter = "dim", calmMinimap = "leave" },
 })
 
@@ -309,6 +312,25 @@ local function addTagMark(f)
   f.tag:Hide()
 end
 
+-- In-combat mark ------------------------------------------------------------------------------
+
+-- The frames that show whether their unit is fighting: yours gets crossed swords on its top-right corner (where
+-- the target has its diamond) and a vermilion edge, your target's the edge alone. Off with the combatMark switch.
+UF.COMBAT = { keys = { player = true, target = true }, icon = 14, color = "bad" }
+
+-- The crossed swords over the player frame's top-right corner (hidden until a fight). The health text ends left of
+-- them, fight or not, so it never jumps.
+local function addCombatMark(f)
+  f.combat = T.Snap(f.health:CreateTexture(nil, "OVERLAY"), "icon")
+  f.combat:SetTexture(T.Icon("Combat"))
+  f.combat:SetSize(UF.COMBAT.icon, UF.COMBAT.icon)
+  f.combat:SetPoint("CENTER", f, "TOPRIGHT", -2, -2)
+  T.Tint(f.combat, UF.COMBAT.color)
+  f.combat:Hide()
+  f.healthText:ClearAllPoints()
+  f.healthText:SetPoint("RIGHT", f.health, "RIGHT", -UF.CLASS_MARK_ROOM, 0)
+end
+
 -- The raid target icon's size: the raid tiles' 12 grown to the unit frames' scale.
 UF.RAID_ICON = 16
 
@@ -445,6 +467,39 @@ function UF.UpdateTag(f)
   if f.tag then UF.PaintTagMark(f.tag, UF.settings.tagMark == true and UF.TagState(f.unit) or nil) end
 end
 
+-- True while the unit is in combat: the client's answer (a hidden or missing one counts as no), and for you
+-- also the client's combat lockdown.
+function UF.InCombat(unit)
+  if unit == "player" and ns.InCombat() then return true end
+  return ns.PlainCall("UnitAffectingCombat", unit) == true
+end
+
+-- Shows or hides a frame's in-combat mark: the vermilion edge, and the swords where it has them (never with the
+-- switch off). Painted only on a change, since the edge repaints the whole frame.
+function UF.PaintCombat(f, fighting)
+  local on = fighting == true and UF.settings.combatMark == true
+  if f.vgFighting == on then return end
+  f.vgFighting = on
+  T.SetBorder(f, on and { T.RGB(UF.COMBAT.color) } or nil)
+  if f.combat then f.combat:SetShown(on) end
+end
+
+-- Repaints the in-combat mark of a frame that has one (UF.COMBAT.keys), from its unit.
+function UF.UpdateCombat(f)
+  if UF.COMBAT.keys[f.key] then UF.PaintCombat(f, UF.InCombat(f.unit)) end
+end
+
+-- Repaints every frame's in-combat mark (a fight ended, or the switch changed).
+function UF.RefreshCombat()
+  for _, f in pairs(UF.frames) do UF.UpdateCombat(f) end
+end
+
+-- A fight is starting: your mark shows at once, before the client's lockdown begins.
+function UF.CombatStarts()
+  local f = UF.frames.player
+  if f then UF.PaintCombat(f, true) end
+end
+
 -- The raid mark on the frame's unit, painted as Raid status paints the raid tiles' and following its
 -- Raid target icons switch (read even while that module is off). A hidden mark shows nothing.
 function UF.UpdateRaidIcon(f)
@@ -468,6 +523,7 @@ function UF.UpdateFrame(f)
   UF.UpdateName(f)
   UF.UpdateTag(f)
   UF.UpdateRaidIcon(f)
+  UF.UpdateCombat(f)
 end
 
 -- Unit event -> what it updates.
@@ -492,11 +548,13 @@ local TAG_EVENTS = { "UNIT_FLAGS", "UNIT_FACTION", "UNIT_THREAT_LIST_UPDATE" }
 local UNIT_EVENT_LIST = {}
 for event in pairs(UNIT_EVENTS) do UNIT_EVENT_LIST[#UNIT_EVENT_LIST + 1] = event end
 
--- Listens for its own unit's events through ns.OnUnit (the client sends that
--- unit's only, and the target its tag mark's too); the subscription is its own frame, not the secure unit button.
+-- Listens for its own unit's events through ns.OnUnit (the client sends that unit's only, the target its tag
+-- mark's too, and a frame with an in-combat mark UNIT_FLAGS, which comes as its unit starts or stops fighting);
+-- the subscription is its own frame, not the secure unit button.
 local function listen(f)
   f.vgUnitEvents = ns.OnUnit(UNIT_EVENT_LIST, function(event) UNIT_EVENTS[event](f) end, f.unit)
   if f.tag then f.vgTagEvents = ns.OnUnit(TAG_EVENTS, function() UF.UpdateTag(f) end, f.unit) end
+  if UF.COMBAT.keys[f.key] then f.vgCombatEvents = ns.OnUnit("UNIT_FLAGS", function() UF.UpdateCombat(f) end, f.unit) end
 end
 
 -- Whether the frame's unit is someone else, or shows another name or level,
@@ -571,6 +629,7 @@ local function addFrame(key, size)
   local f = createUnitFrame(key, size.w, size.h)
   if key == "target" or key == "focus" then addClassMark(f) end
   if key == "target" then addTagMark(f) end
+  if key == "player" then addCombatMark(f) end
   UF.frames[key] = f
   listen(f)
   watch(f)
@@ -616,18 +675,55 @@ end
 
 local hiddenParent
 
+-- Hides a game frame and puts it under the hidden frame (protected frames: out of combat only).
+local function park(f)
+  f:Hide()
+  f:SetParent(hiddenParent)
+end
+
+-- Parks a frame the game showed again, unless it is still parked.
+local function repark(f)
+  if not f:IsShown() and f:GetParent() == hiddenParent then return end
+  ns.OutOfCombat(function() park(f) end, f)
+end
+
+-- Parks again a frame the game shows by itself: Edit Mode closing runs UpdateShownState on the
+-- managed frames (PetFrame, DurabilityFrame) with their events gone. Hooked once per frame.
+local function keepParked(f)
+  if type(f.UpdateShownState) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  UF.parked = UF.parked or {}
+  if UF.parked[f] then return end
+  UF.parked[f] = true
+  hooksecurefunc(f, "UpdateShownState", ns.Guard("hook UpdateShownState", function() repark(f) end))
+end
+
+-- Game frames with no UpdateShownState that the managed-frame system or Edit Mode still moves
+-- out of the hidden frame (SetParent) while they are shown.
+UF.REPARENTED = { ObjectiveTrackerFrame = true }
+
+-- Parks the frame again whenever the game gives it a parent other than the hidden frame. Its own
+-- once-per-frame table, so a frame keepParked has hooked still gets this hook.
+local function keepUnderHidden(f, name)
+  if not UF.REPARENTED[name] or type(hooksecurefunc) ~= "function" then return end
+  UF.reparentHooked = UF.reparentHooked or {}
+  if UF.reparentHooked[f] then return end
+  UF.reparentHooked[f] = true
+  hooksecurefunc(f, "SetParent", ns.Guard("hook SetParent", function(_, parent)
+    if parent ~= hiddenParent then repark(f) end
+  end))
+end
+
 -- Hides one of the game's frames for good: no events, parented to a hidden frame.
 local function hideBlizzard(name)
   local f = _G[name]
-  if type(f) ~= "table" or not f.UnregisterAllEvents then
-    return
-  end
+  if type(f) ~= "table" or not f.UnregisterAllEvents then return end
   hiddenParent = hiddenParent or CreateFrame("Frame")
   hiddenParent:Hide()
   f:UnregisterAllEvents()
-  f:Hide()
-  f:SetParent(hiddenParent)
+  park(f)
   ns.EditModeReplaced(f)
+  keepParked(f)
+  keepUnderHidden(f, name)
 end
 -- Shared with modules that replace other game frames (PlayerAuras).
 UF.HideBlizzard = hideBlizzard
@@ -759,20 +855,14 @@ function UF.ApplyCalm()
   V.ApplyCalm()
 end
 
--- WoW Forever players read levels and health percent on every frame (as its
--- own UI does), so a profile that hasn't chosen yet starts that way there.
-local function clientDefaults(settings)
-  if settings.showLevel == nil then settings.showLevel = ns.IsForever() end
-  if settings.healthFormat == nil then settings.healthFormat = ns.IsForever() and "percent" or "value" end
-end
-
 -- Module entry point (Core/Modules.lua): build once out of combat, then listen.
 function UF.Enable(settings)
   UF.settings = settings
-  clientDefaults(settings)
   ns.OutOfCombat(function() build(settings) end)
   for event in pairs(GLOBAL_EVENTS) do
     ns.On(event, onGlobalEvent)
   end
   ns.On("RAID_TARGET_UPDATE", UF.RefreshRaidIcons)
+  ns.On("PLAYER_REGEN_DISABLED", UF.CombatStarts)
+  ns.On("PLAYER_REGEN_ENABLED", UF.RefreshCombat)
 end

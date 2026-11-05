@@ -9,7 +9,7 @@
 -- stand in for the game's frames.
 --
 -- Five rules, always on:
---  * Field writes: addon code that stores a new field on a game widget plants
+--  * Field writes: addon code that stores a field on a game widget, new or not, plants
 --    taint in game (frame.vgSkinned = true). Keep such state in a weak-keyed
 --    side table instead. Replacing a game widget's script (SetScript) is
 --    recorded the same way: hook it with HookScript.
@@ -96,11 +96,13 @@ end
 
 -- Ownership and field writes ----------------------------------------------------------------
 
--- A new field on a game widget: stored; recorded when addon code stored it.
--- The stub's own fields (__name) and anything game or test code writes are fine.
+-- A field write on a game widget, new or an overwrite: kept (stub.gameFields); recorded when addon code wrote it.
+-- The stub's own fields (__name) stay raw, and anything game or test code writes is fine.
 local function guardWrite(w, key, value)
-  rawset(w, key, value)
-  if type(key) == "string" and key:sub(1, 2) == "__" then return end
+  if stub.isStubKey(key) then return rawset(w, key, value) end
+  local fields = stub.gameFields[w] or {}
+  stub.gameFields[w] = fields
+  fields[key] = value
   local at = callerOf(1)
   if byAddon(at) then violate(string.format("field write: %s stored the field %s on the game's frame %s", where(at), tostring(key), label(w))) end
 end
@@ -108,10 +110,21 @@ end
 -- Game widgets resolve methods as every widget does (stub.metaFor) and watch their new fields.
 stub.gameNewindex = guardWrite
 
+-- Moves a widget's public fields off it into its kept fields, so the next write to one reaches the guard.
+local function keepFields(w)
+  local fields = stub.gameFields[w] or {}
+  for key, value in pairs(w) do
+    if not stub.isStubKey(key) then fields[key] = value end
+  end
+  for key in pairs(fields) do rawset(w, key, nil) end
+  stub.gameFields[w] = fields
+end
+
 -- Makes a widget the game's.
 local function ownByGame(w)
   if rawget(w, "__byGame") then return w end
   rawset(w, "__byGame", true)
+  keepFields(w)
   return setmetatable(w, stub.metaFor(w))
 end
 stub.ownByGame = ownByGame
@@ -187,8 +200,28 @@ for name, field in pairs(LAZY) do rewrap(name, lazyRegion(field)) end
 
 -- Combat lockdown ---------------------------------------------------------------------------
 
--- The methods the client blocks on a protected frame while insecure code runs in combat.
-local PROTECTED_CALLS = { "Show", "Hide", "SetShown", "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "SetScale", "SetParent", "SetAttribute", "StartMoving", "StopMovingOrSizing" }
+-- The methods the client blocks on a protected frame while insecure code runs in combat: the ones
+-- Blizzard_APIDocumentationGenerated marks IsProtectedFunction, grouped by its file, plus SetAttribute. The
+-- flags match on both clients, except that Forever also protects FocusEnter, FocusExit, MouseDown and MouseUp
+-- (SimpleScriptRegionAPIDocumentation.lua). A documented name no kind in wow-widget-api.lua carries (those four
+-- among them) is left out until it is listed.
+local PROTECTED_CALLS = {
+  -- SimpleFrameAPIDocumentation.lua
+  "Show", "Hide", "SetShown", "SetScale", "StartMoving", "StartSizing", "StopMovingOrSizing", "Raise", "Lower",
+  "SetFrameLevel", "SetFrameStrata", "SetFixedFrameLevel", "SetFixedFrameStrata", "SetToplevel", "SetID",
+  "SetHitRectInsets", "SetClampedToScreen", "SetClampRectInsets", "EnableKeyboard", "SetIgnoreParentScale",
+  "SetHyperlinksEnabled", "SetAttribute",
+  -- SimpleScriptRegionAPIDocumentation.lua
+  "SetParent", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel", "SetMouseClickEnabled",
+  "SetMouseMotionEnabled", "SetPassThroughButtons",
+  -- SimpleScriptRegionResizingAPIDocumentation.lua
+  "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "ClearPoint",
+  "ClearPointsOffset", "AdjustPointsOffset",
+  -- SimpleButtonAPIDocumentation.lua
+  "Enable", "Disable", "SetEnabled", "RegisterForClicks",
+  -- SimpleScrollFrameAPIDocumentation.lua
+  "SetScrollChild", "SetVerticalScroll", "SetHorizontalScroll",
+}
 
 -- The game's frames the client protects (secure unit buttons in the real UI).
 local GAME_PROTECTED = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame" }
@@ -240,7 +273,21 @@ local function lockable(name)
     end
   end
 end
-for _, name in ipairs(PROTECTED_CALLS) do rewrap(name, lockable(name)) end
+
+-- Whether any widget kind in the widget API list carries a method.
+local function listedMethod(name)
+  for _, kindMethods in pairs(__wfgWidgetApi.methods) do
+    if kindMethods[name] then return true end
+  end
+  return false
+end
+
+-- A protected name the stub leaves to its shared no-op gets a no-op of its own, so the guard has a
+-- method to wrap; which kinds have it is still the widget API list's call.
+for _, name in ipairs(PROTECTED_CALLS) do
+  if not methods[name] and listedMethod(name) then methods[name] = function() end end
+  rewrap(name, lockable(name))
+end
 
 -- The addon's code nearest the top of the stack, or nil: a run with any of it is tainted,
 -- whatever game or test code it called on the way.

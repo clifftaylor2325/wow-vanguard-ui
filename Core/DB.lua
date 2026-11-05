@@ -110,7 +110,7 @@ end
 local function initDB()
   local from = savedVersion()
   newCharacter = type(VanguardCharDB) ~= "table"
-  VanguardDB = fill(type(VanguardDB) == "table" and VanguardDB or {}, { profiles = {} })
+  VanguardDB = fill(type(VanguardDB) == "table" and VanguardDB or {}, { profiles = {}, client = {} })
   dropBrokenProfiles(VanguardDB.profiles)
   VanguardDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
@@ -236,6 +236,7 @@ end
 function ns.UseProfile(name)
   ns.StageProfile(name)
   VanguardCharDB.ownProfile = name
+  ns.WarnSpecWins(name)
 end
 
 -- The profile staged for the next reload, or nil.

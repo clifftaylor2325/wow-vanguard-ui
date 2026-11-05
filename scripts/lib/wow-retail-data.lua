@@ -89,3 +89,15 @@ C_MajorFactions = {
 world.itemLevels = {}
 -- An item's level, from its link.
 C_Item.GetDetailedItemLevelInfo = function(link) return world.itemLevels[link] end
+
+-- Specializations: world.specInfo[index] = { role = "HEALER", primaryStat = LE_UNIT_STAT_INTELLECT } (index from
+-- world.spec). Checked against live's SpecializationInfoDocumentation: GetSpecializationInfo returns specId, name,
+-- description, icon, role, primaryStat. The LE_UNIT_STAT values are TEST-ONLY.
+LE_UNIT_STAT_STRENGTH, LE_UNIT_STAT_AGILITY, LE_UNIT_STAT_INTELLECT = 1, 2, 4
+world.specInfo = {}
+-- A specialization's id, name, description, icon, role and primary stat.
+C_SpecializationInfo.GetSpecializationInfo = function(index)
+  local info = world.specInfo[index]
+  if not info then return nil end
+  return index, "TEST-ONLY Spec", "", 0, info.role, info.primaryStat
+end

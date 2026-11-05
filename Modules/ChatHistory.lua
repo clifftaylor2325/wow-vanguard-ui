@@ -140,11 +140,19 @@ local function watchWindow(index)
   hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage history", function(_, text, r, g, b) CHH.Record(index, text, r, g, b) end))
 end
 
--- Follows every permanent chat window and the game's whisper events.
+-- A chat window was closed: its saved lines go with it, or the next tab to take its number would get them back.
+function CHH.Forget(frame, fallback)
+  frame = fallback or frame
+  local index = frame ~= DEFAULT_CHAT_FRAME and type(frame) == "table" and type(frame.GetID) == "function" and ns.PlainNumber(frame:GetID())
+  if index then CHH.Store()[index] = nil end
+end
+
+-- Follows every permanent chat window, the game closing one, and the game's whisper events.
 function CHH.Watch()
   for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i) end
   if CHH.watching then return end
   CHH.watching = true
+  if type(hooksecurefunc) == "function" and type(FCF_Close) == "function" then hooksecurefunc("FCF_Close", ns.Guard("hook FCF_Close history", CHH.Forget)) end
   local guarded = ns.GuardResult("chat history whisper", CHH.NoteWhisper, false)
   ns.AddChatFilters(CHH.WHISPERS, guarded)
 end

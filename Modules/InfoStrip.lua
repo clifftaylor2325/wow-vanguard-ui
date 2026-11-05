@@ -60,6 +60,9 @@ IS.RATES = { "xprate", "leveltime", "goldrate" }
 IS.AMMO_CLASSES = { HUNTER = true, WARRIOR = true, ROGUE = true }
 -- The ammo inventory slot, and the equipment slots durability reads.
 IS.AMMO_SLOT, IS.LAST_SLOT = 0, 19
+-- Which class supplies the strip counts: ammo and Soul Shard items are vanilla's, and Retail has neither
+-- (its shards are a power, shown by the class bars).
+IS.CLASS_SUPPLY = ns.ClientData({ forever = { ammo = true, shards = true }, retail = {} })
 -- The Soul Shard item (vanilla's, 6265), and the last bag counted: the reagent bag
 -- (Enum.BagIndex.ReagentBag), where Forever lets shards go.
 IS.SHARD_ITEMS, IS.LAST_BAG = { [6265] = true }, 5
@@ -322,12 +325,6 @@ function IS.Rank()
   if line then return place, count end
 end
 
--- True at the level cap, where XP stops.
-local function atMaxLevel()
-  local level, cap = ns.PlainNumber(ask("UnitLevel", "player")), ns.PlainNumber(ask("GetMaxPlayerLevel"))
-  return level ~= nil and cap ~= nil and level >= cap
-end
-
 -- Block texts (text, color token), nil to hide ------------------------------------------------
 
 IS.TEXT = {}
@@ -370,6 +367,7 @@ end
 -- Your ammo: for any class whose ranged weapon needs it (0 in red), else for classes that carry it
 -- (hunters see 0, in red).
 function IS.TEXT.ammo()
+  if not IS.CLASS_SUPPLY.ammo then return nil end
   local _, class = UnitClass("player")
   local needed = IS.AmmoNeeded()
   if needed == false or ns.IsSecret(class) or (needed == nil and not IS.AMMO_CLASSES[class]) then return nil end
@@ -379,6 +377,7 @@ end
 
 -- Your soul shards, for warlocks (none is red).
 function IS.TEXT.shards()
+  if not IS.CLASS_SUPPLY.shards then return nil end
   local _, class = UnitClass("player")
   if ns.IsSecret(class) or class ~= "WARLOCK" then return nil end
   local n = IS.SoulShards()
@@ -414,13 +413,13 @@ end
 
 -- XP per hour this session (the XP bar shows rested XP).
 function IS.TEXT.xprate()
-  local rate = not atMaxLevel() and IS.XPRate()
+  local rate = not ns.GetModule("DataBars").XPHidden() and IS.XPRate()
   if rate then return ns.Format(L["{xp} xp/h"], { xp = ns.GetModule("DataBars").Short(math.floor(rate)) }), "text" end
 end
 
 -- Time to the next level at this session's pace.
 function IS.TEXT.leveltime()
-  local rate, cur, max = not atMaxLevel() and IS.XPRate(), xpNow()
+  local rate, cur, max = not ns.GetModule("DataBars").XPHidden() and IS.XPRate(), xpNow()
   if rate and cur then return ns.Format(L["lvl {time}"], { time = IS.Duration((max - cur) * 3600 / rate) }), "text2" end
 end
 
@@ -629,7 +628,7 @@ end
 local function addInvites(b)
   local pad, back = ns.GetModule("MenuStrip").COUNT_PAD, T.Snap(b:CreateTexture(nil, "OVERLAY", nil, 7))
   back:SetTexture(T.WHITE)
-  T.Tint(back, "edge", ns.GetModule("MenuStrip").COUNT_BACK)
+  T.Tint(back, "shade", ns.GetModule("MenuStrip").COUNT_BACK)
   local fs = T.Text(b:CreateFontString(nil, "OVERLAY"), "badge")
   fs:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -pad, pad)
   back:SetPoint("TOPLEFT", fs, "TOPLEFT", -pad, pad)

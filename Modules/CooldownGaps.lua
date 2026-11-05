@@ -29,7 +29,7 @@ CG.TRINKETS = { 13, 14 }
 -- Events that change what the row shows.
 CG.EVENTS = { "BAG_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED", "SPELL_UPDATE_COOLDOWN", "PET_BAR_UPDATE", "PET_BAR_UPDATE_COOLDOWN", "PLAYER_TOTEM_UPDATE", "PLAYER_EQUIPMENT_CHANGED" }
 -- Events that change the spells the game's manager tracks.
-CG.REREAD = { "SPELLS_CHANGED", "PLAYER_SPECIALIZATION_CHANGED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED" }
+CG.REREAD = { "SPELLS_CHANGED", "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_ENABLED", "COOLDOWN_VIEWER_DATA_LOADED" }
 -- The manager's rows drawn here, as Enum.CooldownViewerCategory keys.
 CG.CATEGORIES = { "Essential", "Utility" }
 -- The spells the game's manager tracks now, read when they change (not on every cooldown event).
@@ -335,11 +335,6 @@ function CG.Command(rest)
   list()
 end
 
--- A re-read event: only the player's own spec change counts (the event names the unit).
-function CG.Reread(_, unit)
-  if unit == nil or unit == "player" then CG.Rebuild() end
-end
-
 -- Reads the manager's spells again and repaints.
 function CG.Rebuild()
   CG.ReadTracked()
@@ -354,7 +349,8 @@ function CG.Enable(settings)
   CG.holder:SetSize(6 * (CG.SIZE + CG.GAP), CG.SIZE)
   ns.Mover(CG.holder, "cdm_gaps", L["Cooldown gaps"], { "BOTTOM", "BOTTOM", 0, 306 })
   for _, event in ipairs(CG.EVENTS) do ns.On(event, CG.Refresh) end
-  for _, event in ipairs(CG.REREAD) do ns.On(event, CG.Reread) end
+  for _, event in ipairs(CG.REREAD) do ns.On(event, CG.Rebuild) end
+  ns.OnUnit("PLAYER_SPECIALIZATION_CHANGED", CG.Rebuild, "player")
   CG.Rebuild()
 end
 

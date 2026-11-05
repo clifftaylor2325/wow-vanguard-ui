@@ -39,7 +39,7 @@ QA.PIN_TOP = 2
 -- (nothing is left to do there), or the client won't say.
 local function rank(id)
   local q = ns.GetModule("QuestTracker").Quest(id)
-  local d = q and ns.PlainNumber(ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", id))
+  local d = q and ns.GetModule("QuestTracker").DistanceSq(id)
   if not d or q.failed then return nil end
   return q.ready and d * QA.READY_BIAS or d
 end
@@ -160,9 +160,9 @@ function QA.Turn(mapID, x, y)
   return math.atan2(-(x - px) * w, -(y - py) * h) - facing
 end
 
--- Yards to the quest, from the distance the client reports; nil when it won't say.
+-- Yards to the quest, from the distance the client reports; nil when it won't say or the quest is on another continent.
 local function yards(id)
-  local sq = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", id))
+  local sq = ns.GetModule("QuestTracker").DistanceSq(id)
   return sq and math.floor(math.sqrt(sq) + 0.5)
 end
 
@@ -235,10 +235,21 @@ function QA.Draw()
   f:Show()
 end
 
+-- The chat line and tooltip title that say how a pin is made: Retail has no tracker Shift-click (quest
+-- guidance is Forever's), so the arrow there holds the quest the player tracks on the map.
+QA.UNPIN_OFF = ns.ClientData({
+  forever = L["Arrow: off until you Shift-click a quest in the tracker."],
+  retail = L["Arrow: off until you track a quest on the map."],
+})
+QA.PIN_TITLE = ns.ClientData({
+  forever = L["Pinned (Shift-click in the tracker)"],
+  retail = L["Pinned (the quest you track on the map)"],
+})
+
 -- The Pin button: back to the nearest quest (or, with "Follow the nearest quest" off, no arrow until the next pin).
 function QA.Unpin()
   ns.QuestGuide.Unpin()
-  ns.Chat(QA.settings.auto and L["Arrow: nearest quest."] or L["Arrow: off until you Shift-click a quest in the tracker."])
+  ns.Chat(QA.settings.auto and L["Arrow: nearest quest."] or QA.UNPIN_OFF)
   QA.Pick()
 end
 
@@ -247,7 +258,7 @@ function QA.PinTooltip(b)
   local tip = GameTooltip
   if not tip then return end
   tip:SetOwner(b, "ANCHOR_BOTTOM")
-  tip:SetText(L["Pinned (Shift-click in the tracker)"], T.RGB("text"))
+  tip:SetText(QA.PIN_TITLE, T.RGB("text"))
   tip:AddLine(QA.settings.auto and L["Click: follow the nearest quest."] or L["Click: let it go. Follow the nearest quest is off, so the arrow hides."], T.RGB("text2"))
   tip:Show()
 end

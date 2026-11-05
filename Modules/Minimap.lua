@@ -3,7 +3,7 @@
 -- (colored by PvP status; hover it for the zone's territory, click it for the
 -- world map), the coordinates on a band along its bottom between the tracking
 -- and addon slot buttons, accent rules inside both bands, and mouse-wheel zoom. The round
--- border art and zoom buttons are faded out (the zoom buttons take no mouse either), and the game's
+-- border art, the day/night ring (Forever) and zoom buttons are faded out (the zoom buttons take no mouse either), and the game's
 -- emptied cluster frame stops taking the mouse and loses its zone button.
 -- Nothing is unregistered. The game's small minimap buttons (tracking, mail,
 -- dungeon difficulty, the addon compartment) move from the old minimap spot
@@ -72,6 +72,7 @@ local PVP_WORDS = {
 local FADE = {
   { "MinimapCompassTexture" },
   { "MinimapCluster", "BorderTop" },
+  { "MinimapCluster", "DielFrame" },
   { "Minimap", "ZoomIn" },
   { "Minimap", "ZoomOut" },
   { "MinimapBackdrop" },
@@ -385,6 +386,24 @@ end
 -- no tiles) fits in the level between.
 MM.MAP_LEVEL = 2
 
+-- The map's box follows the game's own minimap switch (Toggle Minimap, the new-player tutorial): hidden with the
+-- map, back with it.
+local function syncShown()
+  MM.holder:SetShown(Minimap:IsShown())
+end
+
+-- Mirrors the map's shown state onto the box now and whenever the game shows or hides the map. A hook on the
+-- calls, not on OnShow and OnHide: with the box hidden the map never shows, so OnShow would not fire to bring it back.
+-- A client without hooksecurefunc still gets the box built to the map's state.
+local function followMapShown()
+  if type(hooksecurefunc) == "function" then
+    for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+      hooksecurefunc(Minimap, method, ns.Guard("hook Minimap " .. method, syncShown))
+    end
+  end
+  syncShown()
+end
+
 -- Moves the minimap into the holder, square and sized, a pixel in from its bottom edge.
 local function adoptMinimap(holder, size)
   Minimap:SetParent(holder)
@@ -395,6 +414,7 @@ local function adoptMinimap(holder, size)
   applyMask()
   keepMask()
   wheelZoom()
+  followMapShown()
 end
 
 -- The game's hybrid map is a child of the minimap fixed at BACKGROUND strata, which stays there when the

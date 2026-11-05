@@ -199,7 +199,8 @@ function CW.New(text)
   if type(FCF_OpenNewWindow) ~= "function" then return ns.Chat(L["This client can't make a chat tab."]) end
   ns.OutOfCombat(function()
     local frame = FCF_OpenNewWindow(name)
-    CW.editing = frame and tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
+    if not frame then return ns.Chat(L["Every chat tab is in use. Close one to make another."]) end
+    CW.editing = tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
     ns.Options.RebuildPage("chat")
   end, "chat new tab " .. name)
   ns.HideText()
@@ -249,14 +250,14 @@ local function frameLines(frame)
   return out
 end
 
--- Lines saved for the next login (Modules/ChatHistory.lua) that no window shows any more, oldest first.
+-- Lines saved for the next login (Modules/ChatHistory.lua) that no window shows any more (as saved, or as Vanguard rewrote it on screen), oldest first.
 local function savedLines(shown)
-  local out, CHH = {}, ns.GetModule("ChatHistory")
+  local out, CHH, CX = {}, ns.GetModule("ChatHistory"), ns.GetModule("ChatExtras")
   local store = CHH.Store()
   for i = 1, windowCount() do
     for _, line in ipairs(type(store[i]) == "table" and store[i] or {}) do
       local text = select(5, CHH.Unpack(line))
-      if text and not shown[text] then out[#out + 1] = text end
+      if text and not (shown[text] or shown[CX.Rewrite(text)]) then out[#out + 1] = text end
     end
   end
   return out

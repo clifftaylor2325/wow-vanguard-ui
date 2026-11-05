@@ -293,6 +293,27 @@ it("quest dialog: hiding the whole UI keeps the conversation open; closing it en
   addon.eval("Vanguard_QuestDialog:Hide()");
   expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")], "so does Escape (the game's special windows hide it)").toEqual([["closeGossip nil", "closeQuest nil"], false]);
 });
+it("quest dialog: late item details keep where the long text was scrolled to; a new page starts at the top", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval('__greeting = "TEST-ONLY " .. string.rep("word ", 400)');
+  addon.fire("GOSSIP_SHOW");
+  wheelBody(addon, -2);
+  addon.fire("QUEST_ITEM_UPDATE");
+  expect(bodyScroll(addon)[2], "the redraw leaves the reading place").toBe(80);
+  addon.fire("GOSSIP_SHOW");
+  expect(bodyScroll(addon)[2], "a new page opens at the top").toBe(0);
+});
+it("quest dialog: a number or Space with Shift, Ctrl or Alt held goes on to the game", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("Vanguard_QuestDialog.SetPropagateKeyboardInput = function(self, v) self.__passed = v end");
+  addon.eval("__wfgWorld.keys.ctrl = true");
+  key(addon, "1");
+  expect([calls(addon), addon.eval("return Vanguard_QuestDialog.__passed")], "Ctrl-1 picks no line and the key goes on").toEqual([[], true]);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  key(addon, "1");
+  expect([calls(addon), addon.eval("return Vanguard_QuestDialog.__passed")], "1 alone picks the line and is kept").toEqual([["avail 90031"], false]);
+});
 it("quest dialog: late item details redraw the page; spell and currency rewards", () => {
   const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
     C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,
@@ -391,7 +412,7 @@ const TRACK_ENV = `
     GetDistanceSqToQuest = function(id) return __quests[id].dist end,
     RemoveQuestWatch = function(id) __removed = id end,
   }
-  GetQuestLogSpecialItemInfo = function(i) local q = __quests[__index(i)] if q.item then return q.item, "TEST-ONLY-ICON" end end
+  GetQuestLogSpecialItemInfo = function(i) local q = __quests[__index(i)] if q.item then return q.item, "TEST-ONLY-ICON", 0, not q.goneWhenReady end end
   QuestMapFrame_OpenToQuestDetails = function(id) __opened = id end
   GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
 `;
@@ -465,6 +486,12 @@ it("quest tracker: tracked Legacy challenges under their own heading", () => {
   const colors = addon.eval("local b = Vanguard_QuestTrackerFrame.blocks return { b[2].title.__textColor, b[3].title.__textColor, b[4].lines[1].text.__textColor }");
   expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "good")], "the heading in gold, a challenge's title in the text color").toEqual([true, true, true]);
   expect(tracker(addon).count, "the count still counts quests only").toBe("1");
+});
+it("quest tracker: a Legacy challenge with no criteria shows its description, and an earned one stays Complete", () => {
+  const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST + `
+    GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed, 1, 1, 1, "TEST-ONLY Do it", 0, "", "", false, true end end
+    __achievements[7002].completed = false`);
+  expect(tracker(addon).blocks.slice(3), "Forever lists it with its description; the earned flag changes nothing").toEqual([["TEST-ONLY Legacy Done", ["TEST-ONLY Do it"]]]);
 });
 it("quest tracker: right-click stops tracking a challenge; the heading and left-click do nothing", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
@@ -590,6 +617,21 @@ const questItems = (addon) => addon.eval(`local out = {}
   return out`);
 // The tracker's block titles, top to bottom.
 const blockTitles = (addon) => tracker(addon).blocks.map((b) => b[0]);
+it("quest tracker: a ready quest keeps its item button only when the game keeps showing the item", () => {
+  const addon = loggedIn(TRACK_ENV);
+  addon.eval("__quests[90051].ready = true");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(questItems(addon)[0][1], "the game shows the item on a ready quest: the button stays").toBe(true);
+  addon.eval("__quests[90051].goneWhenReady = true");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(questItems(addon)[0][1], "the game hides it once the quest is ready: so does the tracker").toBe(false);
+  addon.eval("__quests[90051].ready = false");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(questItems(addon)[0][1], "not ready yet: the item is back").toBe(true);
+});
 it("quest tracker: with Questie loaded, Questie's tracker shows instead unless Vanguard's is picked", () => {
   const QUESTIE = 'C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Questie" end\n';
   const questie = loggedIn(QUESTIE + TRACK_ENV);
@@ -855,6 +897,37 @@ it("quest log: a zone the game folded in its own list is opened as you zone in a
   expect(addon.eval("return { __log[4].isCollapsed, ns.GetModule('QuestLog').Count() }"), "zoning in, after the game folds the zones off the map, opens them again").toEqual([false, 3]);
   addon.eval("__expanded = 0 ExpandQuestHeader = nil __log[4].isCollapsed = true");
   expect(addon.eval("local QL = ns.GetModule('QuestLog') return QL.Count()"), "a client without ExpandQuestHeader reads what the log lists").toBe(2);
+});
+// TEST-ONLY log with the entries only Retail has (on top of QLOG_ENV): a task (world quest), a bounty not done, a
+// bounty done, a zone holding only a task and a campaign header with nothing under it.
+const TASK_ENV = `
+  __log = { { isHeader = true, title = "Vale" }, { questID = 90051, title = "Wolves" }, { questID = 90052, title = "World", isTask = true },
+    { isHeader = true, title = "Hills" }, { questID = 90053, title = "Bounty", isBounty = true },
+    { isHeader = true, title = "Coast" }, { questID = 90054, title = "Done bounty", isBounty = true },
+    { isHeader = true, title = "Bonus" }, { questID = 90055, title = "Bonus", isTask = true },
+    { isHeader = true, title = "Story", campaignID = 7 } }
+  C_QuestLog.GetInfo = function(i) return __log[i] end
+  __quests[90054] = { title = "Done bounty", level = 5, objectives = {} }
+  __quests[90055] = { title = "Bonus", level = 5, objectives = {} }
+  C_QuestLog.IsComplete = function(id) return id == 90054 end
+`;
+it("quest log: leaves out the quests the game's own list hides (tasks, unfinished bounties) and a zone left empty", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + TASK_ENV);
+  const QL = "local QL = ns.GetModule('QuestLog') ";
+  const names = addon.eval(QL + "local out = {} for i, e in ipairs(QL.Entries()) do out[i] = e.title end return out");
+  expect(Object.values(names), "only real quests, their zones and the campaign header").toEqual(["Vale", "Wolves", "Coast", "Done bounty", "Story"]);
+  expect(addon.eval(QL + "return QL.Count()"), "the count agrees").toBe(2);
+});
+// TEST-ONLY game quest panel of the windowed world map, there before the addon's files load (Lua for loggedIn's client).
+const MAP_PANEL_CLIENT = `QuestMapFrame = CreateFrame("Frame", "QuestMapFrame", UIParent)`;
+it("quest log: zones the game's map panel folded are opened again when the panel closes", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV, { client: MAP_PANEL_CLIENT });
+  addon.advance(0.25);
+  addon.eval("QuestMapFrame:Show() __log[4].isCollapsed = true");
+  expect(addon.eval("return ns.GetModule('QuestLog').Count()"), "folded while the map is up: short").toBe(2);
+  addon.eval("QuestMapFrame:Hide()");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, ns.GetModule('QuestLog').Count() }"), "the panel closing opens the zone again").toEqual([false, 3]);
 });
 it("quest log: zones, a quest's details, and its buttons", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
@@ -1218,6 +1291,12 @@ it("quest bursts: many quest log updates in one frame rebuild the tracker and th
   addon.eval("Vanguard_QuestLog:Hide()");
   addon.update(0);
   expect(rebuilds(addon).log, "a log closed before the next frame isn't re-rendered").toBe(0);
+});
+it("quest tracker: nearest first puts a quest on another continent last, whatever distance it reports", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { order = 'nearest' } } }" });
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function(id) if id == 90052 then return 0, false end return __quests[id].dist, true end");
+  addon.eval("__wfgStub.advance(1.25)");
+  expect(tracker(addon).blocks.map((b) => b[0])[0], "the 0-away off-continent letter is not first").toBe("[8] TEST-ONLY Wolves");
 });
 it("quest tracker: the nearest-first sort ticks only while that order is on", () => {
   const addon = loggedIn(TRACK_ENV);
@@ -1703,6 +1782,33 @@ it("quest automation: a quest a player shares follows its own switch, and Shift 
   on.fire("QUEST_DETAIL");
   expect(calls(on), "a hidden answer counts as an NPC").toEqual([]);
 });
+// TEST-ONLY: a party member's shared quest, the giver "questnpc" a player while "npc" is not set.
+const SHARER_ENV = `
+  local old = { UnitExists = UnitExists, UnitName = UnitName, UnitIsPlayer = UnitIsPlayer }
+  UnitExists = function(unit) if unit == "questnpc" then return true end return old.UnitExists(unit) end
+  UnitName = function(unit) if unit == "questnpc" then return "TEST-ONLY Sharer" end return old.UnitName(unit) end
+  UnitIsPlayer = function(unit) return unit == "questnpc" or old.UnitIsPlayer(unit) end
+  __npc = false
+`;
+it("quest automation: a quest shared by the questnpc unit follows the shared switch and names the sharer", () => {
+  const addon = loggedIn(QUEST_ENV + SHARER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  addon.fire("QUEST_DETAIL");
+  expect([dialog(addon).shown, calls(addon)], "Accept quests alone leaves a player's quest to you").toEqual([true, []]);
+  const on = loggedIn(QUEST_ENV + SHARER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { acceptShared = true } } }" });
+  on.fire("QUEST_DETAIL");
+  on.fire("QUEST_ACCEPTED", 90001);
+  expect(chatHas(on, /Accepted: TEST-ONLY Wolves \(shared by TEST-ONLY Sharer\)/), "the sharer is named").toBe(true);
+});
+it("quest dialog: the portrait and name come from the questnpc unit when there is one", () => {
+  const addon = loggedIn(QUEST_ENV + SHARER_ENV);
+  addon.fire("QUEST_DETAIL");
+  expect([dialog(addon).npc, addon.eval("return Vanguard_QuestDialog.portrait.__portrait")], "name and portrait of the giver").toEqual(["TEST-ONLY Sharer", "questnpc"]);
+});
+it("quest dialog: a hidden answer on whether questnpc exists keeps the npc unit", () => {
+  const addon = loggedIn(QUEST_ENV + SHARER_ENV);
+  addon.eval("local old = UnitExists UnitExists = function(unit) if unit == 'questnpc' then return __wfgWorld.secret(true) end return old(unit) end");
+  expect(addon.eval("return ns.QuestParts.GiverUnit()"), "never compared, read as no").toBe("npc");
+});
 // TEST-ONLY quest that flags you for PvP, with the game's own warning text.
 const PVP_ENV = `
   __pvp = true
@@ -2039,6 +2145,29 @@ it("quest tracker: hovering a quest shows its title, its objectives in full and,
   expect(addon.eval("return ns.Theme.RowParts(Vanguard_QuestTrackerFrame.blocks[1]).hover:IsShown()"), "the list row's hover wash").toBe(true);
   hoverBlock(addon);
   expect([trackerTip(addon)[0], addon.eval("return ns.Theme.RowParts(Vanguard_QuestTrackerFrame.blocks[1]).hover:IsShown()")], "leaving hides both").toEqual([false, false]);
+});
+
+// TEST-ONLY: every watched quest completes by a click once its objectives are done, and the game's call is recorded.
+const AUTO_COMPLETE_ENV = `
+  local oldInfo = C_QuestLog.GetInfo
+  C_QuestLog.GetInfo = function(i) local info = oldInfo(i) if info then info.isAutoComplete = true end return info end
+  ShowQuestComplete = function(id) __completed = id end
+`;
+it("quest tracker: a finished quest that completes by a click says so, and a click completes it", () => {
+  const addon = loggedIn(TRACK_ENV + AUTO_COMPLETE_ENV);
+  expect(tracker(addon).blocks[1][1], "the ready one reads Click to complete").toEqual(["Click to complete"]);
+  expect(tracker(addon).blocks[0][1][0], "an unfinished one keeps its objectives").toContain("TEST-ONLY Wolves");
+  hoverBlock(addon, 2);
+  expect(trackerTip(addon)[1].slice(-1)[0], "its tooltip says the click completes").toBe("Click: complete · Shift-click: point the arrow · Right-click: stop watching");
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  expect(addon.eval("return __completed"), "clicking an unfinished one completes nothing").toBe(null);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[2] b.__scripts.OnClick(b, 'LeftButton')");
+  expect(addon.eval("return __completed"), "clicking the finished one asks the game to complete it").toBe(90052);
+});
+it("quest tracker: without Quest guidance the complete tooltip leaves Shift-click out", () => {
+  const addon = loggedIn(TRACK_ENV + AUTO_COMPLETE_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestGuide = false } } }" });
+  hoverBlock(addon, 2);
+  expect(trackerTip(addon)[1].slice(-1)[0]).toBe("Click: complete · Right-click: stop watching");
 });
 
 it("quest tracker: no title tooltip in a fight", () => {

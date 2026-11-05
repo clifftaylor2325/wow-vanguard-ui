@@ -26,13 +26,14 @@ table.insert(GW.GROUPS, "finder")
 -- The order a window's parts are dressed in: the art first, then the controls, then the texts.
 GW.RETAIL_STEPS = {
   "fade", "inset", "scene", "card", "header", "button", "plate", "dropdown", "search", "edit", "check", "money", "heading", "label",
+  "note",
 }
 
 -- Each Retail window's parts by step, as dotted paths from the globals (Blizzard's Mainline XML; a path the
 -- client lacks is skipped). The group finder's own blue art is the window's and fades with it.
 GW.RETAIL_PARTS = {
   PVEFrame = {
-    fade = { "LFDParentFrameRoleBackground", "LFDParentFrame.TopTileStreaks", "RaidFinderFrameRoleBackground" },
+    fade = { "LFDParentFrameRoleBackground", "LFDParentFrame.TopTileStreaks", "RaidFinderFrameRoleBackground", "PVEFrame.shadows" },
     inset = {
       "LFDParentFrameInset", "RaidFinderFrameRoleInset", "RaidFinderFrameBottomInset",
       "LFGListFrame.SearchPanel.ResultsInset", "LFGListFrame.ApplicationViewer.Inset",
@@ -90,6 +91,7 @@ GW.RETAIL_PARTS = {
     button = { "WhoFrameGroupInviteButton", "WhoFrameAddFriendButton", "WhoFrameWhoButton" },
     dropdown = { "WhoFrameDropdown" },
     search = { "WhoFrameEditBox" },
+    note = { "WhoFrameTotals" },
   },
   -- The mainline character pane's parts WoW Forever's pane lacks: the stats side's well and class picture, and the
   -- model's backdrop (its race picture, dark overlay and bronze inner border are regions of the model scene).
@@ -112,12 +114,31 @@ local function dressScene(scene)
   GW.KeepFaded(scene.BackgroundOverlay)
 end
 
--- A category card: its plate and ring faded, a flat inset panel behind it, its name (the game's gold) in the light
--- text colour. The round icon stays the game's.
+-- A category card: its plate and ring faded, its blue hover plate (the unkeyed highlight texture) too, a flat inset
+-- panel behind it, its name (the game's gold) in the light text colour. The round icon stays the game's.
 local function dressCard(card)
   GW.FadeParts(card, GW.FINDER_CARD_ART)
+  if type(card.GetHighlightTexture) == "function" then GW.FadeFrame(card:GetHighlightTexture()) end
   T.Panel(card, { inset = true, noSheen = true })
   GW.SkinText(card.name or card.Name, "name", "text")
+end
+
+-- Marks the open category card of a Retail window (a key of GW.RETAIL_PARTS) with an accent border and gives the others
+-- the theme's: the game shows the open one only by the texture coordinates of the plate this skin fades.
+local function markOpenCard(key, index)
+  for i, path in ipairs(GW.RETAIL_PARTS[key].card) do
+    local card = GW.Part(_G, path)
+    if card then T.SetBorder(card, i == index and { T.Accent() } or nil) end
+  end
+end
+
+-- Follows the game's choice of the open card on the group finder's first page (marked now, as the game chose it
+-- before this skin) and on the PvP tab.
+local function watchOpenCards()
+  local finder = _G.GroupFinderFrame
+  GW.HookGlobalOnce("GroupFinderFrame_SelectGroupButton", "open group card", function(index) markOpenCard("PVEFrame", index) end)
+  GW.HookGlobalOnce("PVPQueueFrame_SelectButton", "open PvP card", function(index) markOpenCard("PVPUIFrame", index) end)
+  if type(finder) == "table" and finder.selectionIndex then markOpenCard("PVEFrame", finder.selectionIndex) end
 end
 
 -- A column header: its tab pieces faded and its caption in the small role and the quiet text colour.
@@ -131,6 +152,12 @@ local function lightLabel(fs)
   GW.SkinText(fs, "label", "text")
 end
 
+-- A quiet line the game draws in its gold (the Who list's "N players total"), in the small role and the quiet text
+-- colour, as WoW Forever's Who list has it.
+local function quietNote(fs)
+  GW.SkinText(fs, "small", "text2")
+end
+
 -- A page's or a section's heading the game draws in its gold display font, in the heading role and the light text
 -- colour.
 local function lightHeading(fs)
@@ -142,6 +169,7 @@ local DRESSERS = {
   fade = GW.FadeFrame, inset = GW.InsetPanel, scene = dressScene, card = dressCard, header = dressHeader,
   button = GW.SkinButton, plate = GW.SkinPlate, dropdown = GW.SkinDropdown, search = GW.SkinSearch,
   edit = GW.SkinEditBox, check = GW.SkinCheck, money = GW.SkinMoney, heading = lightHeading, label = lightLabel,
+  note = quietNote,
 }
 
 -- Dresses the parts listed for one window, step by step, each part under ns.Try named for its path: a part the
@@ -163,6 +191,7 @@ end
 function GW.SkinRetailWindow(frame)
   GW.Skin(frame)
   GW.DressRetailParts(frame:GetName())
+  watchOpenCards()
 end
 
 -- A page the game shows inside another window (the PvP tab, inside the group finder), or a screen of its own with no
@@ -170,8 +199,15 @@ end
 ---@param frame table  a frame named by a key of GW.RETAIL_PARTS
 function GW.SkinRetailPage(frame)
   GW.DressRetailParts(frame:GetName())
+  watchOpenCards()
 end
 
+-- The Adventure Guide anchors its first bottom tab again on every show (EncounterJournal_OnShow), so its tabs are moved
+-- out past the panel again after each.
+GW.TABS_REANCHORED.EncounterJournal = true
+-- The premade group invite's role picture (tank, healer or damage, beside "Your role") is the dialog's content, kept
+-- as the window skin fades the dialog's own textures.
+GW.CONTENT_ART.LFGListInviteDialog = { "RoleIcon" }
 GW.Add("finder", { "PVEFrame", "LFGListApplicationDialog", "LFGListInviteDialog" }, GW.SkinRetailWindow)
 GW.AddOnDemand("finder", "Blizzard_PVPUI", { "PVPUIFrame" }, GW.SkinRetailPage)
 GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournal" }, GW.SkinRetailWindow)

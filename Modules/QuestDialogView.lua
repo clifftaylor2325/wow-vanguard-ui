@@ -273,8 +273,9 @@ end
 -- The NPC's portrait when the client can draw one (it has the call, and there
 -- is an NPC: not for a quest started from an item), else the quest mark in the accent.
 local function paintPortrait(f)
-  local drawn = type(SetPortraitTexture) == "function" and ns.CallIf(_G, "UnitExists", "npc") == true
-  if drawn then SetPortraitTexture(f.portrait, "npc") end
+  local giver = QP.GiverUnit()
+  local drawn = type(SetPortraitTexture) == "function" and ns.CallIf(_G, "UnitExists", giver) == true
+  if drawn then SetPortraitTexture(f.portrait, giver) end
   f.portrait:SetShown(drawn)
   f.placeholder:SetShown(not drawn)
   T.Tint(f.placeholder, "accent")
@@ -294,7 +295,7 @@ end
 function QD.Render(p)
   local f = QD.frame
   paintPortrait(f)
-  f.npc:SetText(QP.Plain(ns.CallIf(_G, "UnitName", "npc")))
+  f.npc:SetText(QP.Plain(ns.CallIf(_G, "UnitName", QP.GiverUnit())))
   f.title:SetText(QP.Plain(p.title))
   local content = renderBody(f, p)
   fitPanel(f, content, renderCards(f, p))
@@ -344,8 +345,10 @@ function QD.Press()
 end
 
 -- What a key does here: 1-9 pick a line (or a reward) that exists, Space presses the main button, and so does
--- Enter, but only out of combat (a key caught in combat could not be handed on again). True when the key was used.
+-- Enter, but only out of combat (a key caught in combat could not be handed on again). A key with Shift, Ctrl or
+-- Alt held goes on to the game (your bars). True when the key was used.
 local function useKey(key)
+  if ns.Widgets.Modifiers() ~= "" then return false end
   local n = tonumber(key)
   if n and n >= 1 and n <= 9 then
     if QD.page.pick then return QD.Pick(n) end

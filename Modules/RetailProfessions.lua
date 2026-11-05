@@ -58,13 +58,11 @@ local function skinInsetList(list)
   if type(bar) == "table" then T.ScrollBar(bar) end
 end
 
--- The browse side: the tabs, the recipe list (an inset, its filter and search box), the push buttons, the
+-- The browse side: the tabs, the recipe list (as the crafting page has it: an inset, its filter, search box and rows), the push buttons, the
 -- favourites button on the control tile, the order list, and the remaining-orders plate faded.
 function RP.SkinBrowse(browse)
   GW.EachKey(browse, RP.ORDER_TABS, skinOrderTab)
-  local recipes = browse.RecipeList
-  GW.InsetPanel(recipes)
-  if type(recipes) == "table" then GW.SkinDropdown(recipes.FilterDropdown) GW.SkinSearch(recipes.SearchBox) end
+  GW.SkinRecipeList(browse.RecipeList)
   GW.EachKey(browse, RP.BROWSE_BUTTONS, GW.SkinButton)
   GW.SkinPlate(browse.FavoritesSearchButton)
   skinInsetList(browse.OrderList)
@@ -72,13 +70,15 @@ function RP.SkinBrowse(browse)
 end
 
 -- An order's view: its info side (an inset, push buttons, money lines), its details (an inset with the recipe form
--- in the crafting page's look) and its own push buttons.
+-- in the crafting page's look; the minimum-quality icon keeps its picture, which the inset fade would hide and the
+-- game never shows again) and its own push buttons.
 function RP.SkinOrderView(view)
   local info = view.OrderInfo
   GW.InsetPanel(info)
   GW.EachKey(info, RP.INFO_BUTTONS, GW.SkinButton)
   GW.EachKey(info, RP.INFO_MONEY, GW.SkinMoneyDisplay)
   GW.InsetPanel(view.OrderDetails)
+  GW.ShowTexture(GW.Part(view, "OrderDetails.MinimumQualityIcon"))
   GW.SkinSchematicForm(GW.Part(view, "OrderDetails.SchematicForm"))
   GW.EachKey(view, RP.VIEW_BUTTONS, GW.SkinButton)
 end

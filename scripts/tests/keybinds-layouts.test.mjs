@@ -5,6 +5,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
+import { loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY trainer levels (remembered vanilla levels from the key setup report's Appendix A, never shipped): the
 // level each spell is learned at, a talent's the level its talent can first be taken. A spell Forever names later
@@ -237,4 +238,15 @@ it("a stance-bar button at another rank counts as its form, by the client's name
   addon.eval(`__wfgWorld.learn(465, { name = "Devotion Aura" }) __wfgWorld.learn(10290, { name = "Devotion Aura" })
     __wfgWorld.setStances({ { spellID = 10290, icon = 1 } })`);
   expect(addon.eval("return { ns.KeybindsLayouts.FormIndex(465), ns.KeybindsLayouts.FormIndex(7294) }")).toEqual([1]);
+});
+
+it("a ranked spell is placed at the character's top rank", () => {
+  const addon = loggedIn("", {});
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank });
+  addon.world.learn(133, { name: "Fireball", rank: 1 });
+  const keys = addon.eval(`local D, KL = ns.KeybindsData, ns.KeybindsLayouts
+    local known = { [837] = true, [133] = true }
+    local out = {} for i, e in ipairs(KL.Resolve({ class = "MAGE", role = "frost" }, nil, function(id) return known[id] == true end)) do out[i] = e.key .. "=" .. e.spell .. "@" .. e.slot end
+    return out`);
+  expect(keys, "key 1 asks the client's highest Frostbolt; rank 1 is not known by itself").toEqual(["1=837@1", "2=133@2"]);
 });

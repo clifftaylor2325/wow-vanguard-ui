@@ -3,8 +3,10 @@
 --   * above the watched quests: the scenario you are in (a delve, a scenario, later Mythic+) under its name (a
 --     kind of scenario may add to it: RQ.HEADINGS), with its stage and criteria; then the watched campaign
 --     quests under their campaign's name and chapter;
---   * below them: world quests (those in your area, then those you watch), the bonus objectives of your area,
---     and the Traveler's Log activities you track.
+--   * after the watched quests: the appearances and decor you track (Collections);
+--   * after the achievements: the Traveler's Log activities you track, then the Housing Endeavor tasks you track;
+--   * last, after the recipes: the bonus objectives of your area, then world quests (those in your area, then
+--     those you watch).
 -- Each block reads the client's calls from Blizzard's live API docs (wow-ui-source, live branch); the task list
 -- comes from GetTasksTable and GetTaskInfo, which the game's own tracker reads and the docs leave out. Every
 -- value goes through the plain-value helpers: a scenario's counts can be hidden in an instance.
@@ -19,12 +21,9 @@ ns.RetailQuests = RQ
 -- The events the game's own tracker follows for these blocks (Blizzard_ObjectiveTracker on Retail), each one
 -- a redraw of Vanguard's tracker.
 RQ.EVENTS = { "SCENARIO_UPDATE", "SCENARIO_CRITERIA_UPDATE", "SCENARIO_COMPLETED", "TASK_PROGRESS_UPDATE",
-  "QUEST_WATCH_UPDATE", "PERKS_ACTIVITY_COMPLETED", "PERKS_ACTIVITIES_TRACKED_UPDATED", "PERKS_ACTIVITIES_TRACKED_LIST_CHANGED" }
-
--- A table the client gives plainly (a hidden one counts as none).
-local function plainTable(v)
-  return not ns.IsSecret(v) and type(v) == "table" and v or nil
-end
+  "QUEST_WATCH_UPDATE", "PERKS_ACTIVITY_COMPLETED", "PERKS_ACTIVITIES_TRACKED_UPDATED", "PERKS_ACTIVITIES_TRACKED_LIST_CHANGED",
+  "INITIATIVE_TASKS_TRACKED_UPDATED", "INITIATIVE_TASKS_TRACKED_LIST_CHANGED", "NEIGHBORHOOD_INITIATIVE_UPDATED",
+  "TRACKING_TARGET_INFO_UPDATE", "TRACKABLE_INFO_UPDATE" }
 
 -- A heading and its rows, or no rows at all when there are none (a heading never shows alone).
 local function section(name, rows)
@@ -35,11 +34,25 @@ end
 
 -- Scenario -------------------------------------------------------------------------------------
 
--- A scenario criterion as an objective: "2/5 Cultists slain", or the game's own text where it counts for
--- itself (a weighted bar, a formatted line), done once completed. nil while the client hides its text.
+-- An objective drawn as a bar in the game's tracker, as a line: "Enemy forces 45%".
+local function percentLine(text, percent, done)
+  return { text = ns.Format(L["{objective} {percent}%"], { objective = text, percent = math.floor(percent) }), done = done }
+end
+
+-- A weighted criterion's line ("Enemy forces 45%", its quantity being the percent), or nil when it isn't one or its
+-- percent is hidden.
+local function weightedLine(c, text)
+  local percent = ns.IsTrue(c.isWeightedProgress) and ns.PlainNumber(c.quantity)
+  return percent and percentLine(text, percent, ns.IsTrue(c.completed)) or nil
+end
+
+-- A scenario criterion as an objective: "2/5 Cultists slain", a weighted one as its percent ("Enemy forces 45%"),
+-- or the game's own text for a formatted line, done once completed. nil while the client hides its text.
 function RQ.Criterion(c)
   local text = ns.PlainText(c.description)
   if not text then return nil end
+  local weighted = weightedLine(c, text)
+  if weighted then return weighted end
   local have, need = ns.PlainNumber(c.quantity), ns.PlainNumber(c.totalQuantity)
   local counted = have and need and not (ns.IsTrue(c.isWeightedProgress) or ns.IsTrue(c.isFormatted))
   if counted then text = ns.Format(L["{have}/{need} {objective}"], { have = have, need = need, objective = text }) end
@@ -50,18 +63,39 @@ end
 local function criteria(count)
   local out = {}
   for i = 1, count do
-    local c = plainTable(ns.CallIf(C_ScenarioInfo, "GetCriteriaInfo", i))
+    local c = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetCriteriaInfo", i))
     local line = c and RQ.Criterion(c)
     if line then out[#out + 1] = line end
   end
   return out
 end
 
--- The stage's row: "Stage 2/3: The Crypt" (the stage's title alone in a scenario of one stage) and its criteria.
+-- What a kind of scenario adds under its stage's criteria: each fn(step) gives a list of objectives (Modules/
+-- RetailDelves.lua adds a delve's counters, affixes and reward chest). Empty for any other kind.
+RQ.EXTRAS = {}
+
+-- The stage's criteria as objectives, or its description with the stage's percent when the game draws the stage as
+-- one bar.
+local function stageCriteria(step)
+  local percent, text = ns.PlainNumber(step.weightedProgress), ns.PlainText(step.description)
+  if percent and text then return { percentLine(text, percent, false) } end
+  return criteria(ns.PlainNumber(step.numCriteria) or 0)
+end
+
+-- The stage's objectives: its criteria, then what each of RQ.EXTRAS adds for this step.
+local function stageObjectives(step)
+  local out = stageCriteria(step)
+  for _, extra in ipairs(RQ.EXTRAS) do
+    for _, line in ipairs(extra(step)) do out[#out + 1] = line end
+  end
+  return out
+end
+
+-- The stage's row: "Stage 2/3: The Crypt" (the stage's title alone in a scenario of one stage) and its objectives.
 function RQ.Stage(step, stage, stages)
   local title = ns.PlainText(step.title) or L["Scenario"]
   if stages > 1 then title = ns.Format(L["Stage {stage}/{stages}: {title}"], { stage = stage, stages = stages, title = title }) end
-  return { title = title, objectives = criteria(ns.PlainNumber(step.numCriteria) or 0), kind = "scenario" }
+  return { title = title, objectives = stageObjectives(step), kind = "scenario" }
 end
 
 -- What a kind of scenario makes of its heading: each fn(name) gives the heading for a scenario of its kind, or nil
@@ -81,10 +115,10 @@ end
 -- The scenario you are in, under its heading: none outside one (no stages), once its last stage is done, or while
 -- the client hides where you are in it.
 function RQ.Scenario()
-  local info = plainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioInfo"))
+  local info = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioInfo"))
   local stage, stages = info and ns.PlainNumber(info.currentStage), info and ns.PlainNumber(info.numStages)
   if not (stage and stages and stages > 0 and stage <= stages) then return {} end
-  local step = plainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
+  local step = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
   return section(scenarioHeading(info), { RQ.Stage(step, stage, stages) })
 end
 
@@ -93,13 +127,13 @@ end
 -- The name of the chapter a campaign is on, or nil when the game names none.
 local function chapterName(campaign)
   local chapter = ns.PlainNumber(ns.CallIf(C_CampaignInfo, "GetCurrentChapterID", campaign))
-  local info = chapter and plainTable(ns.CallIf(C_CampaignInfo, "GetCampaignChapterInfo", chapter))
+  local info = chapter and ns.PlainTable(ns.CallIf(C_CampaignInfo, "GetCampaignChapterInfo", chapter))
   return info and ns.PlainText(info.name)
 end
 
 -- A campaign's heading: its name and the chapter you are on ("The War Within: Ascent"), or its name alone.
 function RQ.CampaignName(campaign)
-  local info = plainTable(ns.CallIf(C_CampaignInfo, "GetCampaignInfo", campaign))
+  local info = ns.PlainTable(ns.CallIf(C_CampaignInfo, "GetCampaignInfo", campaign))
   local name, chapter = info and ns.PlainText(info.name) or L["Campaign"], chapterName(campaign)
   return chapter and ns.Format(L["{campaign}: {chapter}"], { campaign = name, chapter = chapter }) or name
 end
@@ -161,7 +195,7 @@ end
 -- objectives), each as { id, name }, as the game's tracker finds them.
 local function areaTasks(world)
   local out, watched = {}, watchedSet()
-  for _, id in ipairs(plainTable(ns.CallIf(_G, "GetTasksTable")) or {}) do
+  for _, id in ipairs(ns.PlainTable(ns.CallIf(_G, "GetTasksTable")) or {}) do
     local here, name = taskHere(id)
     local kind = ns.IsTrue(ns.CallIf(C_QuestLog, "IsWorldQuest", id)) == world
     if kind and here and not watched[id] then out[#out + 1] = { id, name } end
@@ -180,11 +214,13 @@ local function watchedByArea()
   return near
 end
 
--- A task's row: its title (the task's own name, else the quest's), objectives and ready state; nil without a title.
+-- A task's row: its title (the task's own name, else the quest's), objectives, ready state and usable item (as the
+-- game's tracker gives one); nil without a title.
 function RQ.TaskRow(id, name, kind)
   local title = name or ns.PlainText((ns.CallIf(C_TaskQuest, "GetQuestInfoByQuestID", id)))
   if not title then return nil end
-  return { id = id, title = title, objectives = QT.Objectives(id), ready = QT.IsReady(id), kind = kind }
+  local ready = QT.IsReady(id)
+  return { id = id, title = title, objectives = QT.Objectives(id), ready = ready, kind = kind, item = QT.QuestItem(QT.LogIndex(id), ready) }
 end
 
 -- World quests: those in your area you don't watch ("areaWorld": nothing to stop watching), then those you
@@ -208,8 +244,8 @@ end
 -- What an activity still asks, as objectives ("2/5 Dungeons", the game's spaced slash closed up as its tracker does).
 local function requirements(info)
   local out = {}
-  for _, r in ipairs(plainTable(info.requirementsList) or {}) do
-    local text = plainTable(r) and not ns.IsTrue(r.completed) and ns.PlainText(r.requirementText)
+  for _, r in ipairs(ns.PlainTable(info.requirementsList) or {}) do
+    local text = ns.PlainTable(r) and not ns.IsTrue(r.completed) and ns.PlainText(r.requirementText)
     if text then out[#out + 1] = { text = (text:gsub(" / ", "/")), done = false } end
   end
   return out
@@ -217,19 +253,69 @@ end
 
 -- An activity's row, or nil once it is done (the game's tracker drops it then) or while its id or name is hidden.
 local function activityRow(id)
-  local info = id and plainTable(ns.CallIf(C_PerksActivities, "GetPerksActivityInfo", id))
+  local info = id and ns.PlainTable(ns.CallIf(C_PerksActivities, "GetPerksActivityInfo", id))
   local name = info and not ns.IsTrue(info.completed) and ns.PlainText(info.activityName)
   return name and { id = id, title = name, objectives = requirements(info), kind = "activity" } or nil
 end
 
 -- The Traveler's Log activities you track and haven't finished, under its heading.
 function RQ.Activities()
-  local rows, tracked = {}, plainTable(ns.CallIf(C_PerksActivities, "GetTrackedPerksActivities"))
-  for _, id in ipairs(tracked and plainTable(tracked.trackedIDs) or {}) do
+  local rows, tracked = {}, ns.PlainTable(ns.CallIf(C_PerksActivities, "GetTrackedPerksActivities"))
+  for _, id in ipairs(tracked and ns.PlainTable(tracked.trackedIDs) or {}) do
     local row = activityRow(ns.PlainNumber(id))
     if row then rows[#rows + 1] = row end
   end
   return section(L["Traveler's Log"], rows)
+end
+
+-- Housing Endeavors -----------------------------------------------------------------------------
+
+-- A tracked Endeavor task's row, or nil once it is done or while its info or name is hidden.
+local function endeavorRow(id)
+  local info = id and ns.PlainTable(ns.CallIf(C_NeighborhoodInitiative, "GetInitiativeTaskInfo", id))
+  local name = info and not ns.IsTrue(info.completed) and ns.PlainText(info.taskName)
+  return name and { id = id, title = name, objectives = requirements(info), kind = "endeavor" } or nil
+end
+
+-- The Housing Endeavor tasks you track and haven't finished, under their heading.
+function RQ.Endeavors()
+  local rows, tracked = {}, ns.PlainTable(ns.CallIf(C_NeighborhoodInitiative, "GetTrackedInitiativeTasks"))
+  for _, id in ipairs(tracked and ns.PlainTable(tracked.trackedIDs) or {}) do
+    local row = endeavorRow(ns.PlainNumber(id))
+    if row then rows[#rows + 1] = row end
+  end
+  return section(L["Endeavors"], rows)
+end
+
+-- Collections -----------------------------------------------------------------------------------
+
+-- A tracked appearance or decor piece's row (its title and where to get it), or nil while the game has no target
+-- for it or the client hides its title. The type stays on the row: a click needs it.
+local function collectableRow(kind, id)
+  local targetType, targetID = ns.CallIf(C_ContentTracking, "GetCurrentTrackingTarget", kind, id)
+  local title = targetType and ns.PlainText(ns.CallIf(C_ContentTracking, "GetTitle", kind, id))
+  if not title then return nil end
+  local text = ns.PlainText(ns.CallIf(C_ContentTracking, "GetObjectiveText", targetType, targetID, false))
+  return { id = id, trackableType = kind, title = title, objectives = text and { { text = text, done = false } } or {}, kind = "collectable" }
+end
+
+-- The collectables of one type that you track, as rows.
+local function collectablesOf(kind)
+  local out = {}
+  for _, id in ipairs(ns.PlainTable(ns.CallIf(C_ContentTracking, "GetTrackedIDs", kind)) or {}) do
+    local row = ns.PlainNumber(id) and collectableRow(kind, id)
+    if row then out[#out + 1] = row end
+  end
+  return out
+end
+
+-- The appearances and decor you track, under their heading, as the game's Adventure tracker lists them.
+function RQ.Collectables()
+  local rows = {}
+  for _, kind in ipairs(ns.PlainTable(ns.CallIf(C_ContentTracking, "GetCollectableSourceTypes")) or {}) do
+    if ns.PlainNumber(kind) then for _, row in ipairs(collectablesOf(kind)) do rows[#rows + 1] = row end end
+  end
+  return section(L["Collections"], rows)
 end
 
 -- Clicks ---------------------------------------------------------------------------------------
@@ -247,12 +333,28 @@ function RQ.OnActivity(id, button)
   if button == "RightButton" then ns.CallIf(C_PerksActivities, "RemoveTrackedPerksActivity", id) end
 end
 
+-- A tracked Endeavor task's title right-clicked: it stops being tracked (the game's own call).
+function RQ.OnEndeavor(id, button)
+  if button == "RightButton" then ns.CallIf(C_NeighborhoodInitiative, "RemoveTrackedInitiativeTask", id) end
+end
+
+-- A tracked appearance or decor piece right-clicked: tracking stops, as the game's tracker does it by hand.
+function RQ.OnCollectable(id, button, row)
+  if button ~= "RightButton" or not row then return end
+  ns.CallIf(C_ContentTracking, "StopTracking", row.trackableType, id, Enum.ContentTrackingStopType.Manual)
+end
+
 QT.KIND_CLICKS.world, QT.KIND_CLICKS.areaWorld, QT.KIND_CLICKS.activity = RQ.OnWorldQuest, RQ.OnWorldQuest, RQ.OnActivity
+QT.KIND_CLICKS.endeavor, QT.KIND_CLICKS.collectable = RQ.OnEndeavor, RQ.OnCollectable
 QT.CLICKS.world = L["Click: show on the map · Right-click: stop watching"]
 QT.CLICKS.areaWorld = L["Click: show on the map"]
 QT.CLICKS.activity = L["Right-click: stop tracking"]
+QT.CLICKS.endeavor, QT.CLICKS.collectable = QT.CLICKS.activity, QT.CLICKS.activity
 
--- The blocks, in the game's tracker's order, and their events.
+-- The blocks, in the game's tracker's order (Blizzard_ObjectiveTrackerManager.lua): the scenario and campaigns above
+-- the quests, the Collections after the quests, the Traveler's Log and Endeavors after the achievements, the bonus objectives and world quests last.
 for _, block in ipairs({ RQ.Scenario, RQ.Campaigns }) do table.insert(QT.BLOCKS.above, block) end
-for _, block in ipairs({ RQ.WorldQuests, RQ.BonusObjectives, RQ.Activities }) do table.insert(QT.BLOCKS.below, block) end
+table.insert(QT.BLOCKS.afterQuests, RQ.Collectables)
+for _, block in ipairs({ RQ.Activities, RQ.Endeavors }) do table.insert(QT.BLOCKS.afterChallenges, block) end
+for _, block in ipairs({ RQ.BonusObjectives, RQ.WorldQuests }) do table.insert(QT.BLOCKS.last, block) end
 for _, event in ipairs(RQ.EVENTS) do table.insert(QT.EVENTS, event) end

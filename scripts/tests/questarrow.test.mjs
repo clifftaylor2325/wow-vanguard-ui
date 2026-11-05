@@ -3,7 +3,7 @@
 // of the watched quests, with the quest's title and distance.
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { createAddon, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { SETUP_DONE, chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY world: the player at (0.5, 0.5) on map 10 (1000 x 1000 yards) facing north. Quest 90061
@@ -61,6 +61,15 @@ it("quest arrow: a finished quest outranks a nearer objective; the pick holds un
   addon.eval("__wfgWorld.quests[3].watched = false __wfgWorld.quests[3].isComplete = false table.remove(__wfgWorld.quests, 3)");
   addon.eval("ns.QuestArrow.Pick()");
   expect([pick(), chatHas(addon, /Arrow: TEST-ONLY Near\./)], "the turn-in gone: on to the next, with a word").toEqual([90061, true]);
+});
+
+it("quest arrow: a quest the game puts on another continent is never picked as nearest, whatever distance it reports", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function(id) if id == 90061 then return 0, false end return 90000, true end ns.QuestArrow.Pick()");
+  expect(addon.eval("return ns.QuestArrow.current"), "the quest reading 0 yards off-continent is passed over").toBe(90062);
+  expect(addon.eval("return ns.GetModule('QuestTracker').DistanceSq(90061) == nil"), "no distance for it").toBe(true);
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function() return 144, __wfgWorld.secret(false) end");
+  expect(addon.eval("return ns.GetModule('QuestTracker').DistanceSq(90061)"), "a hidden flag keeps the distance").toBe(144);
 });
 
 it("E6-2 quest arrow: a map position the client hides whole gives no spot and no error", () => {
@@ -209,6 +218,19 @@ it("quest arrow: with Follow the nearest quest off, the Pin button lets the arro
   expect(addon.eval("return GameTooltip.__lines[2].text")).toBe("Click: let it go. Follow the nearest quest is off, so the arrow hides.");
   addon.eval("ns.QuestArrow.Unpin()");
   expect([arrow(addon)[4], chatHas(addon, /Arrow: off until you Shift-click a quest in the tracker\./)]).toEqual([false, true]);
+});
+
+it("quest arrow on Retail: no Shift-click is promised, the arrow holds the quest tracked on the map (H15-6-1)", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV, { client: RETAIL_CLIENT });
+  const text = addon.eval(`local out = {}
+    for _, p in ipairs(ns.Options.PAGES) do
+      if p.key == "quests" then for _, r in ipairs(p.rows()) do if r[1] == "text" then out[#out + 1] = r[2] end end end
+    end
+    return table.concat(out, "\\n")`);
+  expect(text).toContain("or the quest you track on the game's map.");
+  expect(text).not.toContain("Shift-click a quest in the tracker");
+  addon.eval("ns.Settings('QuestArrow').auto = false ns.QuestArrow.PinTooltip(Vanguard_QuestArrow.pin) ns.QuestArrow.Unpin()");
+  expect([addon.eval("return GameTooltip.__lines[1].text"), chatHas(addon, /Arrow: off until you track a quest on the map\./)]).toEqual(["Pinned (the quest you track on the map)", true]);
 });
 
 it("quest arrow: a failed quest is not pointed at, and the arrow moves on from it", () => {

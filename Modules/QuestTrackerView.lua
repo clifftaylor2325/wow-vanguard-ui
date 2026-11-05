@@ -64,13 +64,13 @@ local function objectiveLine(block)
 end
 
 -- What a click does on a row of a client's own kind (a Retail block's world quest, say: Modules/RetailQuests.lua),
--- by its kind: fn(id, button). A kind left out takes no clicks.
+-- by its kind: fn(id, button, row). A kind left out takes no clicks.
 QT.KIND_CLICKS = {}
 
 -- A title click: a client's own kind of row as that kind says, a Legacy challenge untracks on right-click, a recipe
 -- opens (or untracks), a quest opens its details.
 local function onTitleClick(self, button)
-  if self.kind then return ns.CallIf(QT.KIND_CLICKS, self.kind, self.id, button) end
+  if self.kind then return ns.CallIf(QT.KIND_CLICKS, self.kind, self.id, button, self.row) end
   if self.achievement then return QT.OnAchievement(self.id, button) end
   if self.recipe then return QT.OnRecipe(self.id, button) end
   if self.id then QT.OnTitle(self.id, button) end
@@ -81,6 +81,8 @@ end
 QT.CLICKS = {
   quest = L["Click: open · Shift-click: point the arrow · Right-click: stop watching"],
   questNoGuide = L["Click: open · Right-click: stop watching"],
+  complete = L["Click: complete · Shift-click: point the arrow · Right-click: stop watching"],
+  completeNoGuide = L["Click: complete · Right-click: stop watching"],
   achievement = L["Right-click: stop tracking"],
   recipe = L["Click: open · Right-click: stop tracking"],
 }
@@ -90,7 +92,9 @@ local function clicksFor(q)
   if q.kind then return QT.CLICKS[q.kind] end
   if q.achievement then return QT.CLICKS.achievement end
   if q.recipe then return QT.CLICKS.recipe end
-  return ns.QuestGuide.settings and QT.CLICKS.quest or QT.CLICKS.questNoGuide
+  local guided = ns.QuestGuide.settings ~= nil
+  if q.autoComplete and q.ready then return guided and QT.CLICKS.complete or QT.CLICKS.completeNoGuide end
+  return guided and QT.CLICKS.quest or QT.CLICKS.questNoGuide
 end
 
 -- A row's tooltip: its title, its lines in full (the tracker cuts long ones short) and, muted, what its clicks
@@ -198,11 +202,18 @@ local function objectiveSpec(o)
   return { text, o.done and "muted" or "text2", count = count, done = o.done == true, full = o.text }
 end
 
+-- What a finished row says: "Complete" for an achievement, "Click to complete" for a quest with nobody to hand
+-- in to, else "Ready to turn in".
+local function readyText(q)
+  if q.achievement then return L["Complete"] end
+  return q.autoComplete and L["Click to complete"] or L["Ready to turn in"]
+end
+
 -- The lines for a quest's state: "Failed" (a timed quest run out, an escort lost), "Ready to turn in" (an
--- achievement: "Complete"), or its objectives.
+-- achievement: "Complete"; a quest that completes by a click: "Click to complete"), or its objectives.
 function QT.StateLines(q)
   if q.failed then return { { L["Failed"], "bad" } } end
-  if q.ready then return { { q.achievement and L["Complete"] or L["Ready to turn in"], "good" } } end
+  if q.ready then return { { readyText(q), "good" } } end
   local out = {}
   for _, o in ipairs(q.objectives) do out[#out + 1] = objectiveSpec(o) end
   return out

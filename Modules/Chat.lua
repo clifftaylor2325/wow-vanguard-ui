@@ -131,11 +131,20 @@ local function chosenSize()
   return size > 0 and size or nil
 end
 
--- The size chat text draws at: the chosen size scaled by Text size, or the window's own.
+-- The size the game keeps for a chat window, through the game's own reader (which turns an untouched 0 into its
+-- default size and reads a temporary window's font), or nil where it can't say.
+local function gameSize(frame)
+  local id = type(frame.GetID) == "function" and ns.PlainNumber(frame:GetID())
+  if type(FCF_GetChatWindowInfo) ~= "function" or not id then return nil end
+  return ns.PlainNumber((select(2, FCF_GetChatWindowInfo(id))))
+end
+
+-- The size chat text draws at: the chosen size scaled by Text size, or the game's own for the window (its
+-- current font size where the game has none saved: Vanguard's last size must not stand in for it).
 function CH.TextSize(frame)
   local size = chosenSize()
   if size then return T.ScaledSize(size) end
-  return fontSize(frame)
+  return gameSize(frame) or fontSize(frame)
 end
 
 -- Theme font on a chat window, at the chat text size, with the theme's drop shadow under every line
@@ -1210,11 +1219,21 @@ local function hookLayout()
   after("FCF_SetButtonSide", CH.StackButtons)
 end
 
+-- A temporary window (a whisper or a pop-out) dressed as it opens, and the bar tiles carried onto the
+-- shown window: the game selects a new one before it returns, while it is not dressed yet.
+local function skinTemporary()
+  CH.SkinAll()
+  local dock = _G.GENERAL_CHAT_DOCK
+  if type(FCFDock_GetSelectedWindow) == "function" and type(dock) == "table" then
+    carryTiles(nil, FCFDock_GetSelectedWindow(dock))
+  end
+end
+
 -- Follows the game's chat code: new windows are skinned, a tab click repaints the tabs, its size menu
 -- re-fonts, its layout is put right (hookLayout), and its alert flashes are watched for the
 -- hidden-until-hover bar.
 local function hookGame()
-  after("FCF_OpenTemporaryWindow", CH.SkinAll)
+  after("FCF_OpenTemporaryWindow", skinTemporary)
   after("FCF_OpenNewWindow", CH.SkinAll)
   after("FCF_Tab_OnClick", CH.UpdateTabs)
   after("FCF_SetChatWindowFontSize", onGameSize)

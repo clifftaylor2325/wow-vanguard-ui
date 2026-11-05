@@ -59,6 +59,9 @@ local function card(parent, name, capital)
   local b = CreateFrame("Button", name, parent)
   b[capital and "Background" or "bg"], b[capital and "Ring" or "ring"] = art(b), art(b)
   b[capital and "Icon" or "icon"], b[capital and "Name" or "name"] = art(b), text(b)
+  local plate = art(b)
+  -- The button's HighlightTexture (unkeyed in the XML), which the stub has no setter for.
+  function b.GetHighlightTexture() return plate end
   return b
 end
 
@@ -122,7 +125,9 @@ W.MODELS = {
     button = { "HonorFrame.QueueButton", "ConquestFrame.JoinButton" },
     dropdown = { "HonorFrame.TypeDropdown" },
   } },
-  LFGListInviteDialog = { window = true, parts = { button = { "LFGListInviteDialog.AcceptButton", "LFGListInviteDialog.DeclineButton" } } },
+  LFGListInviteDialog = { parts = {
+    button = { "LFGListInviteDialog.AcceptButton", "LFGListInviteDialog.DeclineButton", "LFGListInviteDialog.AcknowledgeButton" },
+  } },
   EncounterJournal = { window = true, parts = {
     well = { "EncounterJournal.inset", "EncounterJournal.navBar" },
     texture = { "EncounterJournal.instanceSelect.bg", "EncounterJournal.encounter.info.BG" },
@@ -159,6 +164,34 @@ local function statLine(parent)
   return f
 end
 
+-- The game's update of the three tabs over the given side frames: the open side's Hider and Highlight hidden.
+local function updateSidebarTabs(sides)
+  return function()
+    for i = 1, 3 do
+      local tab = _G["PaperDollSidebarTab" .. i]
+      tab.Hider:SetShown(not sides[i]:IsShown())
+      tab.Highlight:SetShown(not sides[i]:IsShown())
+    end
+  end
+end
+
+-- The paper doll's sidebar (PaperDollFrame.xml): PaperDollSidebarTabs with three PaperDollSidebarTabTemplate buttons
+-- (TabBg, Icon, Hider, Highlight; no Tabs array, no parentKey on a tab), the three side frames GetPaperDollSideBarFrame
+-- names, and the game's update, which shows the open side's tab by hiding its Hider and Highlight.
+local function sidebarTabs()
+  local strip = CreateFrame("Frame", "PaperDollSidebarTabs", CharacterFrame)
+  strip.DecorLeft, strip.DecorRight = art(strip), art(strip)
+  local sides = { CharacterStatsPane, CreateFrame("Frame", nil, CharacterFrame), CreateFrame("Frame", nil, CharacterFrame) }
+  for i = 1, 3 do
+    local tab = CreateFrame("Button", "PaperDollSidebarTab" .. i, strip)
+    tab.TabBg, tab.Hider, tab.Highlight, tab.Icon = art(tab), art(tab), art(tab), tab:CreateTexture(nil, "ARTWORK")
+    sides[i]:SetShown(i == 1)
+  end
+  -- The game's lookup of a sidebar's frame.
+  GetPaperDollSideBarFrame = function(index) return sides[index] end
+  PaperDollFrame_UpdateSidebarTabs = updateSidebarTabs(sides)
+end
+
 -- The mainline pane's own parts beyond the model: the stats side's line pool with one line, the update that adds a
 -- line (PaperDollFrame_UpdateStats), and the model scene with its race picture, overlay and inner border.
 local function characterExtras()
@@ -170,9 +203,11 @@ local function characterExtras()
   scene.BackgroundTopLeft, scene.BackgroundBotRight = art(scene), art(scene)
   scene.BackgroundOverlay = art(scene)
   scene.InnerBorder = art(scene)
+  sidebarTabs()
 end
 
 -- The EncounterJournal's bottom tabs (its Tabs array, as its OnLoad sets it; PanelTabButtonTemplate's three pieces).
+-- The first hangs from the window's bottom left, and EncounterJournal_OnShow anchors it there again on every show.
 local function journalTabs()
   EncounterJournal.Tabs = {}
   for i = 1, 3 do
@@ -180,10 +215,34 @@ local function journalTabs()
     tab.Left, tab.Middle, tab.Right = art(tab), art(tab), art(tab)
     EncounterJournal.Tabs[i] = tab
   end
+  local first = EncounterJournal.Tabs[1]
+  -- The anchor EncounterJournal_OnShow sets on the first tab.
+  local function anchor() first:ClearAllPoints() first:SetPoint("TOPLEFT", EncounterJournal, "BOTTOMLEFT", 11, 2) end
+  anchor()
+  EncounterJournal:SetScript("OnShow", anchor)
+end
+
+-- The premade groups' invite dialog's own regions (LFGList.xml: a plain dialog, no ButtonFrameTemplate): the role
+-- picture on its ARTWORK layer (its content), its text lines, and its Border child (DialogBorderTemplate) with art.
+local function inviteDialog()
+  local f = LFGListInviteDialog
+  f.RoleIcon = f:CreateTexture(nil, "ARTWORK")
+  f.RoleIcon:SetTexture("TEST-ONLY-ART")
+  f.Label, f.GroupName, f.ActivityName, f.Role = text(f), text(f), text(f), text(f)
+  f.Border = CreateFrame("Frame", nil, f)
+  art(f.Border)
+  f:Hide()
+end
+
+-- The Who list's count line (FriendsFrame.xml: the font string WhoFrameTotals, parentKey on WhoFrameListInset).
+local function whoTotals()
+  WhoFrameListInset.WhoFrameTotals = text(WhoFrameListInset, "WhoFrameTotals")
 end
 
 -- What a window has beyond its parts, by name.
-local EXTRAS = { CharacterFrame = characterExtras, EncounterJournal = journalTabs }
+local EXTRAS = {
+  CharacterFrame = characterExtras, EncounterJournal = journalTabs, LFGListInviteDialog = inviteDialog, FriendsFrame = whoTotals,
+}
 
 -- Builds one window of W.MODELS: the window (when it is one), its parts and its extras.
 function W.build(name)
@@ -191,5 +250,9 @@ function W.build(name)
   if model.window then window(name) else root(name) end
   build(model.parts)
   if EXTRAS[name] then EXTRAS[name]() end
+  if name == "PVEFrame" then
+    PVEFrame.shadows = CreateFrame("Frame", nil, PVEFrame)
+    art(PVEFrame.shadows)
+  end
   return _G[name]
 end

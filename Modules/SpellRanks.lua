@@ -127,9 +127,10 @@ local function whereNow()
 end
 
 -- Service i as a record { name, rank, level, cost, trainer, zone, sub, t }, or nil (hidden name, already learned, no level to learn it at).
+-- The level is the fourth return of GetTrainerServiceInfo, as the game's own trainer window reads it, else GetTrainerServiceLevelReq's.
 local function service(i, where)
-  local name, kind = ns.Client.Call("GetTrainerServiceInfo", i)
-  local level = ns.PlainNumber(ns.Client.Call("GetTrainerServiceLevelReq", i))
+  local name, kind, _, reqLevel = ns.Client.Call("GetTrainerServiceInfo", i)
+  local level = ns.PlainNumber(reqLevel) or ns.PlainNumber(ns.Client.Call("GetTrainerServiceLevelReq", i))
   if not ns.PlainText(name) or kind == "used" or not level or level < 1 then return nil end
   return { name = name, rank = rankText(i), level = level, cost = ns.PlainNumber(ns.Client.Call("GetTrainerServiceCost", i)) or 0,
     trainer = where[1], zone = where[2], sub = where[3], t = ns.PlainNumber(ns.Client.Call("time")) or 0 }
@@ -148,10 +149,17 @@ function SR.Remember(token, s)
   c.list[key] = s
 end
 
--- The open trainer's services, remembered (not in combat; only when the class and the trainer's name can be read).
+-- Whether the open trainer is the pet's: its required levels are the pet's, not the player's.
+local function petTrainer()
+  local get = C_Trainer and C_Trainer.GetTrainerType
+  local pet = type(Enum) == "table" and type(Enum.TrainerType) == "table" and Enum.TrainerType.Pet
+  return type(get) == "function" and pet ~= nil and ns.PlainNumber(get()) == pet
+end
+
+-- The open trainer's services, remembered (not in combat, not a pet trainer's; only when the class and the trainer's name can be read).
 function SR.Record()
   local token = classToken()
-  if not settings().trainerMemory or ns.InCombat() or not token then return end
+  if not settings().trainerMemory or ns.InCombat() or not token or petTrainer() then return end
   local where = { whereNow() }
   if not where[1] then return end
   for i = 1, ns.PlainNumber(ns.Client.Call("GetNumTrainerServices")) or 0 do

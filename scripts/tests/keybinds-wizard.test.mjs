@@ -318,3 +318,65 @@ it("a warlock: the pet keys are listed by what they press", () => {
   addon.eval('__click("Show me") __click("Next")');
   expect(ready(addon)).toEqual(expect.arrayContaining(["[x] `: Pet Attack", "[x] SHIFT-`: Pet Follow", "[x] 1: Shadow Bolt added to your bar"]));
 });
+
+it("step 3: a change the player unticked reaches key setup's later updates as theirs", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval(`__click("Show me") __click("Next")
+    local applied = ns.KeybindsLearn.Applied
+    ns.KeybindsLearn.Applied = function(preset, placeNew, declined) __declined = declined return applied(preset, placeNew, declined) end
+    for _, r in ipairs(Vanguard_KeysWizard.steps.ready.pools.check) do if r:IsShown() then r.__scripts.OnClick(r) break end end
+    __click("Apply")`);
+  expect(addon.eval("return { #__declined, __declined[1].key }")).toEqual([1, "F"]);
+});
+
+it("the open Your keys tab's Place new spells switch turns off at once on Put everything back", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") local box = Vanguard_KeysWizard.steps.ready.placeNew box.__scripts.OnClick(box) __click("Apply")');
+  addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
+  // Whether the switch is drawn on.
+  const drawn = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.track and w.label and w.label:GetText() == "Place new spells as I learn them" and w:IsVisible() then return w.fill:IsShown() end end`);
+  expect(drawn()).toBe(true);
+  cardButton(addon, "Put everything back");
+  addon.eval('__click("Put back")');
+  expect(drawn()).toBe(false);
+});
+
+it("the open Your keys tab's Place new spells switch turns off when the last changed key is put back from the card", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") local box = Vanguard_KeysWizard.steps.ready.placeNew if not box.get() then box.__scripts.OnClick(box) end __click("Apply")');
+  addon.eval('for _, e in ipairs(ns.KeybindsWizard.state.entries) do if e.key ~= "F" then ns.KeybindsApply.PutBack(e.key) end end');
+  addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
+  // Whether the switch is drawn on.
+  const drawn = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.track and w.label and w.label:GetText() == "Place new spells as I learn them" and w:IsVisible() then return w.fill:IsShown() end end`);
+  expect(drawn(), "F is still key setup's, so placing is on").toBe(true);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.key == "F" and w.entry ~= nil and w:IsVisible() and w:GetParent() ~= ${BOARD} then w.__scripts.OnClick(w, "RightButton") break end end`);
+  addon.eval('__click("Put back")');
+  expect([addon.eval("return ns.KeybindsLearn.IsOn()"), drawn()]).toEqual([false, false]);
+});
+
+it("step 3: keys 1 to 6 name the stance page they are on, so no key is listed twice unnamed", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  const rows = ready(addon);
+  expect(rows.filter((r) => /^\[x\] 1 in /.test(r)), "key 1 once per page").toEqual(
+    expect.arrayContaining([expect.stringMatching(/^\[x\] 1 in Battle Stance: .+ added to your bar$/), expect.stringMatching(/^\[x\] 1 in Defensive Stance: /)]));
+  expect(rows.filter((r) => /^\[x\] 1:/.test(r)), "no unnamed key 1").toEqual([]);
+  expect(rows, "a key off the bar 1 pages keeps its plain name").toContain("[x] F: Shield Bash added to your bar");
+});
+
+it("step 3: run again with nothing to change, Apply closes and keeps the Place new spells tick", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") __click("Apply")');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") local box = Vanguard_KeysWizard.steps.ready.placeNew if not box.get() then box.__scripts.OnClick(box) end');
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, chatHas(addon, /No key needs changing\.$/), chatHas(addon, /Nothing is ticked/), addon.eval("return ns.KeybindsLearn.IsOn()")]).toEqual([false, true, false, true]);
+});

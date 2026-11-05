@@ -317,9 +317,9 @@ function H.AskClear()
   ns.Ask(question, L["Clear"], function() H.Launch("clear") end, function() end)
 end
 
--- Once per account, after launch: says when beta data is still saved and where to clear it.
+-- Once per account, after launch, on WoW Forever (Retail had no beta): says when beta data is still saved and where to clear it.
 function H.LaunchNotice()
-  if not H.Launched() or type(VanguardDB) ~= "table" or VanguardDB.launchNoticed then return end
+  if not ns.IsForever() or not H.Launched() or type(VanguardDB) ~= "table" or VanguardDB.launchNoticed then return end
   VanguardDB.launchNoticed = true
   local text = betaText(H.Beta())
   if text then ns.Chat(ns.Format(L["Still saved from the beta: {saved}. Clear them under /vg > Town and gear if the live game starts fresh."], { saved = text })) end

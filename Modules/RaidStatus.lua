@@ -52,10 +52,10 @@ function RS.RaidIcon(unit)
   return index
 end
 
--- The ready check mark { texture, color } for a unit while a check runs, or nil.
-function RS.ReadyMark(unit)
+-- The ready check answer for a unit ("ready", "notready" or "waiting"), or nil.
+function RS.ReadyStatus(unit)
   local status = plain(ns.CallIf(_G, "GetReadyCheckStatus", unit))
-  return type(status) == "string" and RS.READY[status] or nil
+  return type(status) == "string" and status or nil
 end
 
 -- The leader or assistant mark { texture, color } for a unit, or nil.
@@ -211,15 +211,27 @@ local function showAtlas(t, atlas)
   t:SetShown(atlas ~= nil and t:SetAtlas(atlas) ~= false)
 end
 
+-- The answers of the check under way, by unit: once it ended, the client no longer says. Kept by unit, not
+-- by tile, so a tile that shows or takes another unit after the check ends shows no older answer.
+RS.readyAnswers = {}
+
+-- The ready check mark { texture, color } for a unit, or nil: "waiting" once the check ended means no answer, so not ready.
+local function readyMarkFor(unit)
+  if not RS.readyFinished then RS.readyAnswers[unit] = RS.ReadyStatus(unit) end
+  local answer = RS.readyAnswers[unit]
+  return RS.READY[RS.readyFinished and answer == "waiting" and "notready" or answer]
+end
+
 -- The marks that come and go in the center, one at a time: the ready check answer, else the summon,
 -- else the resurrection (the last two under one switch). The status text (missing health, Dead) hides while one shows.
 local function updateCenter(b, unit)
   local s = RS.settings
-  showMark(b.ready, s.readyCheck and RS.readyRunning, RS.ReadyMark(unit))
-  local summon = s.resurrect and not b.ready:IsShown() and RS.SummonAtlas(unit) or nil
+  showMark(b.ready, s.readyCheck and RS.readyRunning, readyMarkFor(unit))
+  local readyShown = b.ready:IsShown()
+  local summon = s.resurrect and not readyShown and RS.SummonAtlas(unit) or nil
   showAtlas(b.summon, summon)
-  b.rez:SetShown(s.resurrect and not summon and RS.Resurrecting(unit))
-  b.status:SetShown(not (b.ready:IsShown() or b.rez:IsShown() or b.summon:IsShown()))
+  b.rez:SetShown(s.resurrect and not readyShown and not summon and RS.Resurrecting(unit))
+  b.status:SetShown(not (readyShown or b.rez:IsShown() or b.summon:IsShown()))
 end
 
 -- The leader crown or assistant mark.
@@ -259,9 +271,16 @@ end
 -- Ready checks seen so far: a finished check's linger timer clears only if no newer check began.
 RS.readyChecks = 0
 
+-- A new ready check: count it, and forget the last one's answers.
+local function startReadyCheck()
+  RS.readyChecks = RS.readyChecks + 1
+  RS.readyFinished = false
+  RS.readyAnswers = {}
+end
+
 -- A ready check started or someone answered: show the answers.
 local function onReadyCheck(event)
-  if event == "READY_CHECK" then RS.readyChecks = RS.readyChecks + 1 end
+  if event == "READY_CHECK" then startReadyCheck() end
   RS.readyRunning = true
   each(updateCenter)
 end
@@ -272,9 +291,11 @@ local function clearReady()
   each(updateCenter)
 end
 
--- The check ended: leave the answers up a few seconds, then clear them
--- (unless another check has started by then).
+-- The check ended: unanswered tiles turn to the cross at once, and the answers stay up a few
+-- seconds, then clear (unless another check has started by then).
 local function onReadyFinished()
+  RS.readyFinished = true
+  each(updateCenter)
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return clearReady() end
   local check = RS.readyChecks
   C_Timer.After(READY_LINGER, ns.Guard("timer ready check linger", function() if RS.readyChecks == check then clearReady() end end))

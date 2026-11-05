@@ -60,19 +60,25 @@ local BUILDERS = {
     f.CatalogContent = catalog(CreateFrame("Frame", nil, f))
     f.CollectionContent = CreateFrame("Frame", nil, f)
     f.CollectionContent.Background = art(f.CollectionContent)
+    f.CollectionContent.Categories = CreateFrame("Frame", nil, f.CollectionContent)
+    f.CollectionContent.Categories.Background = art(f.CollectionContent.Categories)
+    f.CollectionContent.Categories.TopBorder = art(f.CollectionContent.Categories, "ARTWORK")
   end,
   -- The house finder and its two plot tooltips.
   Blizzard_HousingHouseFinder = function()
     local f = window("HouseFinderFrame")
     f.SelectedPlotTooltip = CreateFrame("Frame", nil, f)
     f.SelectedPlotTooltip.NineSlice = CreateFrame("Frame", nil, f.SelectedPlotTooltip)
-    CreateFrame("Frame", "HouseFinderHighlightedPlotTooltip", UIParent)
+    f.SelectedPlotTooltip.Arrow = art(f.SelectedPlotTooltip, "BORDER")
+    local highlighted = CreateFrame("Frame", "HouseFinderHighlightedPlotTooltip", UIParent)
+    highlighted.Arrow = art(highlighted, "BORDER")
   end,
   -- The house editor, over the whole screen, with its decor storage.
   Blizzard_HouseEditor = function()
     local f = CreateFrame("Frame", "HouseEditorFrame", UIParent)
     f:SetAllPoints()
     f.StoragePanel = catalog(CreateFrame("Frame", nil, f))
+    f.StoragePanel.HeaderBackground, f.StoragePanel.CornerBorder = art(f.StoragePanel), art(f.StoragePanel, "ARTWORK")
     f:Hide()
   end,
   -- The decor preview window.

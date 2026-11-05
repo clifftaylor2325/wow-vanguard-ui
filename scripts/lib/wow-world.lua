@@ -316,19 +316,28 @@ end
 -- the clock past the delay.
 world.timers = {}
 
--- Schedules fn once after `delay` seconds.
+-- Schedules fn once after `delay` seconds; seq is the order timers were made in, for timers due together.
 local function after(delay, fn)
-  local t = { at = stub.now + delay, fn = fn }
+  world.timerSeq = (world.timerSeq or 0) + 1
+  local t = { at = stub.now + delay, fn = fn, seq = world.timerSeq }
   world.timers[#world.timers + 1] = t
   return t
 end
 
--- The timers that are due now.
+-- Orders due timers as the game, a frame at a time, runs them: the earliest due first, then the order they were
+-- made in (table.sort is not stable in Lua 5.1, so seq breaks the tie).
+local function byDue(a, b)
+  if a.at ~= b.at then return a.at < b.at end
+  return a.seq < b.seq
+end
+
+-- The timers that are due now, in the order they fall due. A timer one of them makes runs on a later update.
 local function dueTimers()
   local due = {}
   for _, t in ipairs(world.timers) do
     if not t.cancelled and t.at <= stub.now then due[#due + 1] = t end
   end
+  table.sort(due, byDue)
   return due
 end
 
@@ -352,8 +361,8 @@ local function cancellable(t)
 end
 
 C_Timer = {
-  -- Runs fn once after `delay` seconds.
-  After = function(delay, fn) after(delay, fn) end,
+  -- Runs fn once after `delay` seconds; the client's After callback gets no arguments (NewTimer's gets the timer).
+  After = function(delay, fn) after(delay, function() fn() end) end,
   -- A timer object with Cancel and IsCancelled.
   NewTimer = function(delay, fn) return cancellable(after(delay, fn)) end,
 }
@@ -424,21 +433,13 @@ end
 -- Removes an attribute driver.
 function UnregisterAttributeDriver(frame, attr) if frame.__drivers then frame.__drivers[attr] = nil end end
 
--- Whether a click registration ("AnyUp", "RightButtonDown") sends this button's press or release.
-local function clickRegistered(frame, button, down)
-  local phase = down and "Down" or "Up"
-  for _, reg in ipairs(frame.__clicks or {}) do
-    if reg == "Any" .. phase or reg == button .. phase then return true end
-  end
-  return false
-end
-
 -- Whether an addon's SecureActionButtonTemplate button runs its action on this click phase, as
 -- SecureActionButton_OnClick decides (SecureTemplates.lua): an addon's OnClick has no isKeyPress or
 -- isSecureAction, so the useOnKeyDown attribute, else the ActionButtonUseKeyDown CVar (on, "1", unless
 -- world.cvars says otherwise), or pressAndHoldAction picks the down phase; the other phase does nothing.
 function stub.secureActs(frame, button, down)
-  if not clickRegistered(frame, button, down == true) then return false end
+  -- A secure button that never called RegisterForClicks acts on no phase here (stricter than the default).
+  if not (frame.__clicks and stub.clickRegistered(frame, button, down == true)) then return false end
   local onDown = frame:GetAttribute("useOnKeyDown")
   if onDown == nil then onDown = world.cvars.ActionButtonUseKeyDown ~= "0" end
   onDown = onDown or frame:GetAttribute("pressAndHoldAction")
@@ -678,7 +679,7 @@ function UnitXPMax(unit) return uf(unit, "xpmax") or 0 end
 function GetXPExhaustion() return world.units.player.rested end
 function IsXPUserDisabled() return world.units.player.xpDisabled == true end
 function GetMaxPlayerLevel() return world.maxLevel end
-function IsPlayerAtEffectiveMaxLevel() return world.units.player.level >= world.maxLevel end
+GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return world.units.player.level >= world.maxLevel end }
 function GetComboPoints(unit) return uf(unit, "combo") or 0 end
 
 -- Whether two tokens name the same unit.
@@ -751,16 +752,17 @@ C_SpecializationInfo = { GetSpecialization = viaGlobal("GetSpecialization"), Get
 C_Reputation = { GetWatchedFactionData = function() return world.watchedFaction end }
 
 -- Casting: a unit's cast or channel from unit.cast = { name, icon, startMs, endMs, channel, interruptible, spellId }.
+-- An unset interruptible means the cast can be interrupted; only interruptible = false sets notInterruptible.
 function UnitCastingInfo(unit)
   local c = uf(unit, "cast")
   if not c or c.channel then return nil end
-  return c.name, c.name, c.icon, c.startMs, c.endMs, false, nil, c.interruptible ~= false, c.spellId
+  return c.name, c.name, c.icon, c.startMs, c.endMs, false, nil, c.interruptible == false, c.spellId
 end
 -- A channel: name, text, icon, startMs, endMs, isTradeSkill, notInterruptible, spellId.
 function UnitChannelInfo(unit)
   local c = uf(unit, "cast")
   if not c or not c.channel then return nil end
-  return c.name, c.name, c.icon, c.startMs, c.endMs, false, c.interruptible ~= false, c.spellId
+  return c.name, c.name, c.icon, c.startMs, c.endMs, false, c.interruptible == false, c.spellId
 end
 
 -- The group ---------------------------------------------------------------------------------
@@ -807,7 +809,14 @@ C_SummonInfo = {
   GetSummonConfirmAreaName = function() return world.summon and world.summon.area end,
   GetSummonConfirmTimeLeft = function() return world.summon and (world.summon.timeLeft or 120) or 0 end,
   ConfirmSummon = function() world.summonAccepted = true end,
+  -- Whether the summon leaves a starting area (a test sets world.summon.skipStart), and why it was sent.
+  IsSummonSkippingStartExperience = function() return world.summon ~= nil and world.summon.skipStart == true end,
+  GetSummonReason = function() return world.summon and world.summon.reason or 0 end,
 }
+-- Hides the three summon prompts, as the game's does (GameDialogDefs.lua).
+function HideSummonConfirmationDialogs()
+  for _, name in ipairs({ "CONFIRM_SUMMON", "CONFIRM_SUMMON_SCENARIO", "CONFIRM_SUMMON_STARTING_AREA" }) do StaticPopup_Hide(name) end
+end
 -- Whether the player may take a summon now (the game's Accept waits on it); a test sets world.cannotTeleport.
 function PlayerCanTeleport() return world.cannotTeleport ~= true end
 -- Accepting a resurrection and cancelling a duel, recorded.
@@ -1148,6 +1157,14 @@ function world.setAction(slot, fields)
   stub.fire("ACTIONBAR_SLOT_CHANGED", slot)
 end
 
+-- Flyouts (world.flyouts[id] = { name, slots = { { spell, override, known, name } } }): the flyout API.
+function GetFlyoutInfo(id) local f = (world.flyouts or {})[id] if not f then return nil, nil, 0, false end return f.name, "", #f.slots, true end
+-- A flyout slot: its spell, override, whether it is known, its name and spec.
+function GetFlyoutSlotInfo(id, k)
+  local s = ((world.flyouts or {})[id] or { slots = {} }).slots[k]
+  if not s then return nil end
+  return s.spell, s.override or s.spell, s.known ~= false, s.name or "", 0
+end
 -- The action slot API, read from world.actions.
 function HasAction(slot) return world.actions[slot] ~= nil end
 function GetActionInfo(slot) local a = actionOf(slot) return a.type, a.id, a.subType end
@@ -1290,7 +1307,12 @@ C_Container = {
     return { isQuestItem = item.quest == true, questID = item.questID, isActive = false }
   end,
   -- Uses (sells, at a merchant) an item; recorded.
-  UseContainerItem = function(bag, slot) world.usedItems = world.usedItems or {} table.insert(world.usedItems, { bag, slot }) end,
+  UseContainerItem = function(bag, slot, _, bankType)
+    world.usedItems = world.usedItems or {}
+    table.insert(world.usedItems, { bag, slot })
+    world.usedBankTypes = world.usedBankTypes or {}
+    world.usedBankTypes[#world.usedBankTypes + 1] = bankType or false
+  end,
   SortBags = function() world.sorted = true end,
 }
 
@@ -1335,6 +1357,7 @@ C_MerchantFrame = {
   -- The older global names for the item API.
   GetItemInfo = function(i) local it = world.merchant and world.merchant.items[i] return it and { name = it.name, texture = it.icon, price = it.price or 0, stackCount = it.stack or 1, numAvailable = it.left or -1, isPurchasable = true } end,
   SellAllJunkItems = function() world.soldJunk = true end,
+  IsSellAllJunkEnabled = function() return true end,
 }
 
 -- Trainers: world.trainer = { services = { { name, cost, available } } }.
@@ -1370,7 +1393,7 @@ C_QuestLog = {
   -- The log entry as the client's QuestInfo (no completion field: IsComplete answers that).
   GetInfo = function(i)
     local q = questAt(i)
-    return q and { questID = q.questID, title = q.title, level = q.level or 1, isHeader = q.isHeader == true, isOnMap = true, hasLocalPOI = true, questLogIndex = i, isCollapsed = false, isHidden = false, isTask = false }
+    return q and { questID = q.questID, title = q.title, level = q.level or 1, isHeader = q.isHeader == true, isOnMap = true, hasLocalPOI = true, questLogIndex = i, isCollapsed = false, isHidden = false, isTask = q.isTask == true, isBounty = q.isBounty == true }
   end,
   GetLogIndexForQuestID = function(id) return (questIndex(id)) end,
   GetQuestObjectives = function(id) local _, q = questIndex(id) return q and q.objectives or {} end,
@@ -1498,6 +1521,10 @@ function GetAvailableTitle(i) local q = (npc().available or {})[i] return q and 
 function GetAvailableLevel(i) local q = (npc().available or {})[i] return q and q.level or 1 end
 function GetActiveTitle(i) local q = (npc().active or {})[i] return q and q.title end
 function GetActiveLevel(i) local q = (npc().active or {})[i] return q and q.level or 1 end
+-- The offered quest's flags and ID (the client's fifth value).
+function GetAvailableQuestInfo(i) local q = (npc().available or {})[i] return false, 0, false, false, q and q.questID end
+-- The turn-in quest's ID.
+function GetActiveQuestID(i) local q = (npc().active or {})[i] return q and q.questID end
 function SelectAvailableQuest(i) world.questChosen = i stub.fire("QUEST_DETAIL") end
 function SelectActiveQuest(i) world.questChosen = i stub.fire("QUEST_PROGRESS") end
 function GetTitleText() return openQuest().title or "" end
@@ -1595,7 +1622,7 @@ C_DamageMeter = {
 -- The calls the client restricts to a hardware event (HasRestrictions: PostItem, PostCommodity,
 -- ConfirmPostItem, ConfirmPostCommodity, CancelAuction, PlaceBid, StartCommoditiesPurchase) are
 -- logged in world.ah.restricted as { fn, args, clicked, path }: clicked says whether a click was
--- running (stub.click), path is the Lua stack that made the call.
+-- running (stub.runClick: a mouse click or a :Click()), path is the Lua stack that made the call.
 -- world.ah.throttle = true models what a post does to the client (AuctionHouseDocumentation.lua;
 -- the game's sell frame follows the same throttle, Blizzard_AuctionHouseSellFrame.lua CanPostItem):
 -- a PostItem or PostCommodity the client doesn't want confirmed sends a throttled message, so
@@ -1621,9 +1648,9 @@ world.ah = emptyAuctionHouse()
 
 -- Clicks are hardware events: stub.hardware counts the clicks running now.
 stub.hardware = 0
-local rawClick = stub.click
+local rawClick = stub.runClick
 -- A click, counted while it runs.
-function stub.click(...)
+function stub.runClick(...)
   stub.hardware = stub.hardware + 1
   rawClick(...)
   stub.hardware = stub.hardware - 1
@@ -2330,6 +2357,8 @@ local function tooltipSetters(tip)
   function tip:SetHyperlink(link) self.__link = link end
   function tip:SetItemByID(id) self.__itemId = id end
   function tip:SetQuestLogItem(kind, i, questID) self.__questLogItem = kind .. " " .. i .. " " .. tostring(questID) end
+  function tip:SetQuestCurrency(kind, i) self.__questCurrency = kind .. " " .. i end
+  function tip:SetQuestLogCurrency(kind, i) self.__questLogCurrency = kind .. " " .. i end
   function tip:SetSpellByID(id) self.__spellId = id self.__lines = { { text = (world.spells[id] or {}).name } } end
   function tip:GetItem() return self.__itemName, self.__itemLink end
 end
@@ -2384,6 +2413,7 @@ function world.reset()
   world.units = { player = defaultPlayer() }
   world.actions, world.quests, world.npc, world.merchant, world.trainer = {}, {}, nil, nil, nil
   world.cursor, world.timers, world.book = nil, {}, {}
+  world.timerSeq = nil
   world.ah = emptyAuctionHouse()
   world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
   world.questTimers, world.trackedRecipes = {}, {}

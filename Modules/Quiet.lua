@@ -108,31 +108,63 @@ local function cameraNow()
   if type(get) == "function" then return get("cameraDistanceMaxZoomFactor") end
 end
 
+-- The account's notes on the client: its own state, not a profile's (Core/DB.lua). Empty before they are loaded.
+local function clientNotes()
+  return type(VanguardDB) == "table" and VanguardDB.client or {}
+end
+
+-- The CVar setter, or nil when the client has none.
+local function cvarSetter()
+  local set = (C_CVar and C_CVar.SetCVar) or _G.SetCVar
+  if type(set) == "function" then return set end
+end
+
+-- Puts back the player's own furthest zoom, if Vanguard changed it (kept account-wide, since the CVar
+-- outlives the profile), and forgets it.
+local function restoreCamera(set)
+  local notes = clientNotes()
+  if notes.cameraPrior ~= nil then set("cameraDistanceMaxZoomFactor", notes.cameraPrior) end
+  notes.cameraPrior = nil
+end
+
 -- Sets the furthest zoom from the settings: a chosen factor, keeping the player's own value from before
--- Vanguard's first change in settings.cameraPrior; or, for "The game's setting", that kept value put back.
+-- Vanguard's first change in the account's cameraPrior; or, for "The game's setting", that kept value put back.
 local function setCamera(set, settings)
   local factor = tonumber(settings.camera) or 0
-  if factor > 0 then
-    if settings.cameraPrior == nil then settings.cameraPrior = cameraNow() end
-    return set("cameraDistanceMaxZoomFactor", factor)
-  end
-  if settings.cameraPrior ~= nil then set("cameraDistanceMaxZoomFactor", settings.cameraPrior) end
-  settings.cameraPrior = nil
+  if factor <= 0 then return restoreCamera(set) end
+  local notes = clientNotes()
+  if notes.cameraPrior == nil then notes.cameraPrior = cameraNow() end
+  return set("cameraDistanceMaxZoomFactor", factor)
 end
 
 -- The camera's furthest zoom (a CVar the client lets addons set), out of combat. "The game's setting" (0) puts
 -- back the player's own value if Vanguard changed it, and otherwise leaves the game's setting alone.
 function QU.ApplyCamera()
-  local set = (C_CVar and C_CVar.SetCVar) or _G.SetCVar
-  local settings = QU.settings
-  if type(set) ~= "function" or type(settings) ~= "table" then return end
-  if (tonumber(settings.camera) or 0) <= 0 and settings.cameraPrior == nil then return end
+  local set, settings = cvarSetter(), QU.settings
+  if not set or type(settings) ~= "table" then return end
+  if (tonumber(settings.camera) or 0) <= 0 and clientNotes().cameraPrior == nil then return end
   ns.OutOfCombat(function() setCamera(set, settings) end, "quiet camera")
+end
+
+-- Moves a value an older version kept in the profile (settings.cameraPrior) to the account's notes,
+-- unless they hold one already.
+local function adoptProfilePrior(settings)
+  if settings.cameraPrior == nil then return end
+  local notes = clientNotes()
+  if notes.cameraPrior == nil then notes.cameraPrior = settings.cameraPrior end
+  settings.cameraPrior = nil
+end
+
+-- The module switched off (Core/Modules.lua): the player's own furthest zoom comes back, out of combat.
+function QU.Disable()
+  local set = cvarSetter()
+  if set then ns.OutOfCombat(function() restoreCamera(set) end, "quiet camera") end
 end
 
 -- Module entry point (Core/Modules.lua): the hooks read their switch each time, so the options apply at once.
 function QU.Enable(settings)
   QU.settings = settings
+  adoptProfilePrior(settings)
   errorLine()
   quiet(_G.ZoneTextFrame, "zoneText")
   quiet(_G.SubZoneTextFrame, "zoneText")

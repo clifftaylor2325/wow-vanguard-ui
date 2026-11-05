@@ -1,6 +1,7 @@
 // optionsreadable: the options window's reload tags, page reset, grouped Modules page and settings search (real Lua in the TEST-ONLY headless client).
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, loggedIn } from "./helpers.mjs";
 
 // The row widget with this caption on the open page, its tab shown, as Lua source: `w`.
@@ -49,6 +50,53 @@ it("options: Reset this page asks, then puts back what changed on that page only
   expect(enabled(), "Reset puts the default back and the button goes off again").toBe(false);
   addon.eval('ns.Options.Show("feedback")');
   expect(addon.eval(`for _, x in ipairs(__wfgStub.frames) do if x.caption == "Reset this page" and x:IsVisible() then return true end end return false`), "a page with no settings has none").toBe(false);
+});
+
+// The Reset this page check for one page: change `change` (Lua), see the button on, reset, read `read` (Lua).
+function resetRoundTrip(addon, page, change, read) {
+  addon.eval(`ns.Options.Show("${page}")`);
+  // Whether the Reset this page button is on.
+  const enabled = () => addon.eval(`local on for _, x in ipairs(__wfgStub.frames) do if x.caption == "Reset this page" and x:IsVisible() then on = x:IsEnabled() end end return on`);
+  const before = addon.eval(read);
+  addon.eval(change);
+  addon.eval(`ns.Options.Show("${page}")`);
+  const changed = enabled();
+  addon.eval('__click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  return { changed, restored: addon.eval(read), before, after: enabled() };
+}
+
+it.each([
+  ["healing", "ns.Settings('RaidHealing').absorbs = false", "return ns.Settings('RaidHealing').absorbs", false],
+  ["unitframes", "ns.Settings('UnitFrames').healthFormat = 'value' ns.Settings('UnitFrames').showLevel = false", "return { ns.Settings('UnitFrames').healthFormat, ns.Settings('UnitFrames').showLevel }", false],
+  ["unitframes", "ns.Settings('UnitFrames').healthFormat = 'percent' ns.Settings('UnitFrames').showLevel = true", "return { ns.Settings('UnitFrames').healthFormat, ns.Settings('UnitFrames').showLevel }", true],
+])("options: %s page switches reset to their default", (page, change, read, retail) => {
+  const addon = loggedIn(CLICK_LUA, retail ? { client: RETAIL_CLIENT } : {});
+  const out = resetRoundTrip(addon, page, change, read);
+  expect([out.changed, out.after], "the change turns Reset this page on, and Reset turns it off").toEqual([true, false]);
+  expect(out.restored, "Reset puts the page's default back").toEqual(out.before);
+});
+
+it("options: the Talents page level-up switch resets on Forever", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const out = resetRoundTrip(addon, "talents", "ns.Settings('TalentPlanner').levelPrompt = false", "return ns.Settings('TalentPlanner').levelPrompt");
+  expect([out.changed, out.restored, out.after], "unticked: Reset this page on; reset: ticked again").toEqual([true, true, false]);
+});
+
+it("options: the Action bars page's per-bar rows reset to each bar's own default", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const read = "local b = ns.Settings('ActionBars').bars return { b[1].buttons, b[4].enabled, b[4].visibility, b[4].perRow }";
+  const out = resetRoundTrip(addon, "actionbars", "local b = ns.Settings('ActionBars').bars b[1].buttons = 6 b[4].enabled = true b[4].visibility = 'always' b[4].perRow = 5", read);
+  expect([out.changed, out.after], "only per-bar rows changed: Reset this page is on, then off").toEqual([true, false]);
+  expect(out.restored, "bar 1 back to 12 buttons; bar 4 returns to off, mouseover, one per row").toEqual([12, false, "mouseover", 1]);
+});
+
+it("options: a shared button size other than 38 marks no bar's Button size changed, and leaves each bar on the shared size", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("ns.Settings('ActionBars').size = 46 ns.Options.Show('actionbars')");
+  // How many bar cards' Button size rows show a reset arrow, of how many rows.
+  const barDots = addon.eval(`local rows, dots = 0, 0 for _, w in ipairs(__wfgStub.frames) do
+    if w.label and w.label.__text == "Button size" then rows = rows + 1 if w.reset and w.reset:IsShown() then dots = dots + 1 end end end return { rows, dots }`);
+  expect(barDots, "the bars follow the shared size: no arrow that would pin 38 on one").toEqual([8, 0]);
 });
 
 it("options: the Modules page is grouped like the nav, and a filter shows the ones on or off", () => {
@@ -155,4 +203,28 @@ it("options: picking a camera zoom on the Game windows page sets it and the game
   const clicked = addon.eval('return __click("Furthest the camera zooms out")');
   const out = addon.eval(`return { camera = ns.GetModule("Quiet").settings.camera, cvar = tostring(GetCVar("cameraDistanceMaxZoomFactor")) }`);
   expect([clicked, out]).toEqual([true, { camera: 1.5, cvar: "1.5" }]);
+});
+
+// The Unit frames page's Reset this page on one client: Health as and Show levels, set away from the client's start, come back.
+for (const [client, clientOption, format, level] of [["Forever", undefined, "percent", true], ["Retail", RETAIL_CLIENT, "value", false]]) {
+  it(`options: Reset this page puts back Health as and Show levels on the Unit frames page (${client})`, () => {
+    const addon = loggedIn(CLICK_LUA, { client: clientOption });
+    addon.eval('ns.Options.Show("unitframes")');
+    // The two saved values as a list.
+    const read = () => addon.eval('local s = ns.Settings("UnitFrames") return { s.healthFormat, s.showLevel }');
+    expect(read(), "a fresh profile starts the client's way").toEqual([format, level]);
+    addon.eval(`local s = ns.Settings("UnitFrames") s.healthFormat = "${format === "percent" ? "value" : "percent"}" s.showLevel = ${!level}`);
+    addon.eval('ns.Options.Show("unitframes") __click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+    expect(read(), "Reset puts the client's start back").toEqual([format, level]);
+  });
+}
+
+// Whether the Map and info page has a switch with this label, on a client.
+const mapHas = (client, label) => loggedIn(CLICK_LUA, { client }).eval(`local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "map" then page = p end end
+  for _, row in ipairs(page.rows()) do if row[2] == "${label}" then return true end end return false`);
+
+it("options: the Info strip's Ammo and Soul shards switches show on Forever only, where the strip draws them", () => {
+  const labels = ["Ammo (hunters, warriors, rogues)", "Soul shards (warlocks)"];
+  expect(labels.map((label) => mapHas(undefined, label)), "Forever has both").toEqual([true, true]);
+  expect(labels.map((label) => mapHas(RETAIL_CLIENT, label)), "Retail has neither").toEqual([false, false]);
 });

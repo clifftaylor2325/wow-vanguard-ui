@@ -19,8 +19,6 @@ local AB = ns.GetModule("ActionBars")
 local SIZE = { cap = 34, gap = 3, tab = 84, tabRow = 30, lines = 8, line = 16 }
 -- The keyboard picture's height: its rows (the space bar's included), then the mouse row.
 KV.KEYBOARD_H = (#KV.ROWS + 1) * (SIZE.cap + SIZE.gap) + T.SPACE.gap
--- How faint a free key is drawn, so it reads as free without its colour.
-local FREE_ALPHA = 0.55
 -- The page's current frames, replaced when the page is built again.
 local view = {}
 
@@ -55,7 +53,7 @@ local function newCap(r, key, width)
   local cap = T.Button(CreateFrame("Button", nil, r))
   cap:SetSize(width, SIZE.cap)
   cap.key = key
-  cap.icon = cap:CreateTexture(nil, "ARTWORK")
+  cap.icon = T.Crop(cap:CreateTexture(nil, "ARTWORK"))
   cap.icon:SetSize(SIZE.cap - 12, SIZE.cap - 12)
   cap.icon:SetPoint("CENTER")
   cap.label = T.Text(cap:CreateFontString(nil, "OVERLAY"), "barSmall")
@@ -128,15 +126,18 @@ local function paintCap(cap)
   cap.entry = KV.Lookup(cap.chord)
   local icon = cap.entry and cap.entry.icon
   KV.SetCapIcon(cap, icon)
-  T.Color(cap.label, cap.entry and (icon and "text" or "accentText") or "disabled")
-  cap:SetAlpha(cap.entry and 1 or FREE_ALPHA)
+  T.Color(cap.label, cap.entry and (icon and "text" or "accentText") or "muted")
 end
 
--- A right-click on a key key setup changed asks, then puts back what it did before.
+-- A right-click on a key key setup changed asks, then puts back what it did before. The window is read again
+-- after it: putting back the last changed key turns Place new spells off.
 local function clickCap(cap, button)
   if button ~= "RightButton" or not changedHere(cap.chord) then return end
   local chord = cap.chord
-  ns.Ask(ns.Format(L["Put back what {key} did before key setup changed it?"], { key = KV.KeyText(chord) }), L["Put back"], function() ns.KeybindsApply.PutBack(chord) end)
+  ns.Ask(ns.Format(L["Put back what {key} did before key setup changed it?"], { key = KV.KeyText(chord) }), L["Put back"], function()
+    ns.KeybindsApply.PutBack(chord)
+    ns.Options.Refresh()
+  end)
 end
 
 -- The tab to show now: the modifier held, else the one picked.

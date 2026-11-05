@@ -155,7 +155,8 @@ local function skinBankWindow()
 end
 
 -- What a client dresses in the bank besides the window and its slots, each fn(bank, panel) run once as the bank is
--- watched (Modules/RetailBank.lua on Retail: the warband bank's parts; none on WoW Forever).
+-- watched (Modules/RetailBank.lua on Retail: the warband bank's parts; Modules/ForeverBank.lua on WoW Forever: its page tabs,
+-- bag slots and purchase line).
 BG.BANK_PARTS = {}
 
 -- The bank window and its slots, whenever it opens or shows another tab, and the client's own bank parts.

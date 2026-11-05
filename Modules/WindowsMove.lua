@@ -83,8 +83,9 @@ GW.MOVE_TAB_HANG = 32
 -- character pane's ModeTabs (the Camelot pane's CharacterFrame.xml). Other windows' side tabs wait for their widths.
 -- Retail's character pane keeps its tabs along its bottom edge.
 GW.MOVE_SIDE_HANG = ns.ClientData({ forever = { CharacterFrame = 64 }, retail = {} })
--- The game's calls that place its windows again; every moved window is put back after each.
-GW.MOVE_LAYOUTS = { "UpdateUIPanelPositions", "UpdateContainerFrameAnchors" }
+-- The game's calls that place its windows again; every moved window is put back after each. The scale-to-fit pass
+-- after a UI scale change lays the open panels out again without calling the global UpdateUIPanelPositions.
+GW.MOVE_LAYOUTS = { "UpdateUIPanelPositions", "UpdateContainerFrameAnchors", "UpdateScaleForFitForOpenPanels" }
 -- The windows the game lays out with a call of their own (not the panel manager's), by window.
 GW.MOVE_LAID_OUT = { ContainerFrameCombinedBags = "UpdateContainerFrameAnchors" }
 
@@ -157,11 +158,14 @@ local function goHome(frame)
 end
 
 -- The game's call that lays a window out: its own (the bags'), the panel manager's for a panel window
--- (one UIPanelWindows lists, or one its XML marks as a panel), or nil when the game never places it again.
+-- (one UIPanelWindows lists, or one its XML marks as a panel), or nil when the game never places it again: a
+-- centre panel it never re-anchors (centerFrameSkipAnchoring, the game menu's) counts as one it never places.
 local function layoutOf(frame, name)
   if GW.MOVE_LAID_OUT[name] then return GW.MOVE_LAID_OUT[name] end
-  local listed = type(UIPanelWindows) == "table" and UIPanelWindows[name] ~= nil
-  if listed or frame:GetAttribute("UIPanelLayout-defined") ~= nil then return "UpdateUIPanelPositions" end
+  local entry = type(UIPanelWindows) == "table" and UIPanelWindows[name]
+  if type(entry) == "table" and entry.centerFrameSkipAnchoring then return nil end
+  if frame:GetAttribute("UIPanelLayout-centerFrameSkipAnchoring") then return nil end
+  if entry or frame:GetAttribute("UIPanelLayout-defined") ~= nil then return "UpdateUIPanelPositions" end
 end
 
 -- Puts one dragged window where the game would have it: one the game lays out adds that call to `calls` while

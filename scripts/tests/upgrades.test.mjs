@@ -1,6 +1,7 @@
 // upgrades: gear compared with what you wear (Modules/Upgrades.lua) in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { chatHas, isTok, loggedIn, px } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
@@ -42,6 +43,8 @@ it("upgrades: tooltips compare gear with what you wear, by your class's weights"
   expect(addon.eval("return __line(10)"), "an empty slot").toBe("Upgrade: fills an empty slot");
   expect(addon.eval("return __line(13)"), "against worn gear worth nothing to you").toBe("Upgrade +100% (estimate) vs TEST-ONLY Item 14");
   expect(addon.eval("return { __line(11), __line(12), __line(17), __line(15) }"), "gear you can't use, can't wear, isn't equippable, or that's the same: no line").toEqual([false, false, false, false]);
+  expect(addon.eval("return { __line(6), __line(5), __line(8), __line(9) }"), "an item you wear, a pair's better ring too, gets no line against another worn item").toEqual([false, false, false, false]);
+  expect(addon.eval("return math.floor(ns.GetModule('Upgrades').Compare(__link(6)))"), "the bag arrows and the auction house still compare it: the better ring against the weaker").toBe(100);
   expect(addon.eval("local up, good = __tt, { ns.Theme.RGB('good') } __tt.AddLine = function(self, text, r) self.lines[1] = r == good[1] end return __line(2)"), "an upgrade in the good color").toBe(true);
   addon.eval("ns.GetModule('Upgrades').settings.tooltip = false");
   expect(addon.eval("return __line(2)"), "switched off").toBe(false);
@@ -206,4 +209,46 @@ it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () =
   expect([card("__link(2)"), card("nil")], "a reward that's an upgrade gets the arrow; one with no link doesn't").toEqual([true, false]);
   addon.eval("ns.GetModule('Upgrades').settings.quests = false");
   expect(card("__link(2)"), "switched off").toBe(false);
+});
+
+// Bows (equip location INVTYPE_RANGED) in the bags: item 18 is strong, item 19 weak.
+const BOW_ENV = GEAR_ENV + `__gear[18] = { "INVTYPE_RANGED", { ITEM_MOD_STRENGTH_SHORT = 20 } } __gear[19] = { "INVTYPE_RANGED", { ITEM_MOD_STRENGTH_SHORT = 1 } }`;
+
+it("upgrades: on Retail a ranged weapon is judged against both hands, where Forever keeps its ranged slot", () => {
+  const retail = loggedIn(BOW_ENV, { client: RETAIL_CLIENT });
+  expect(retail.eval("return __line(18)"), "a strong bow against the weapons worn in the hands").toMatch(/^Upgrade \+\d+% \(estimate\) vs TEST-ONLY Item 8$/);
+  expect(retail.eval("return __line(19)"), "a weak bow is a downgrade, not an empty slot").toMatch(/^Downgrade -\d+% \(estimate\)/);
+  const forever = loggedIn(BOW_ENV);
+  expect(forever.eval("return __line(19)"), "Forever: the empty ranged slot 18").toBe("Upgrade: fills an empty slot");
+});
+
+// Sets the player's class, specialization (its role and primary stat as the client names them) and group role, and
+// answers the weights' kind and role.
+const specKind = (addon, class_, spec, role) => {
+  addon.eval(`__wfgWorld.units.player.class = "${class_}" __wfgWorld.spec = ${spec ? 1 : "nil"} __wfgWorld.specInfo[1] = ${spec || "nil"}
+    UnitGroupRolesAssigned = function() return "${role}" end ns.GetModule("Upgrades").Changed()`);
+  return addon.eval("local UP = ns.GetModule('Upgrades') local _, kind = UP.Current() return { kind, UP.Role() }");
+};
+
+it("upgrades: on Retail the specialization's main stat picks the damage kind, and its role stands in for none", () => {
+  const retail = loggedIn(GEAR_ENV, { client: RETAIL_CLIENT });
+  expect(specKind(retail, "DRUID", "{ role = 'DAMAGER', primaryStat = LE_UNIT_STAT_INTELLECT }", "DAMAGER"), "Balance is an Intellect user").toEqual(["caster", "damage"]);
+  expect(specKind(retail, "SHAMAN", "{ role = 'DAMAGER', primaryStat = LE_UNIT_STAT_AGILITY }", "DAMAGER"), "Enhancement is an Agility user").toEqual(["agility", "damage"]);
+  expect(specKind(retail, "PALADIN", "{ role = 'HEALER', primaryStat = LE_UNIT_STAT_INTELLECT }", "NONE"), "a solo Holy paladin is a healer").toEqual(["healer", "healer"]);
+  expect(specKind(retail, "DRUID", "{ role = 'DAMAGER', primaryStat = LE_UNIT_STAT_STRENGTH }", "NONE"), "any other main stat").toEqual(["strength", "damage"]);
+  expect(specKind(retail, "DRUID", "{ role = 'DAMAGER', primaryStat = 99 }", "NONE"), "an unknown main stat falls back to the class").toEqual(["agility", "damage"]);
+  expect(specKind(retail, "DRUID", null, "NONE"), "no specialization: the class and damage").toEqual(["agility", "damage"]);
+  retail.eval("C_SpecializationInfo.GetSpecializationInfo = nil");
+  expect(specKind(retail, "DRUID", "{ role = 'HEALER' }", "NONE"), "a client with no spec info").toEqual(["agility", "damage"]);
+});
+
+it("upgrades: a new specialization on Retail scores gear afresh; Forever ignores specialization", () => {
+  const retail = loggedIn(GEAR_ENV, { client: RETAIL_CLIENT });
+  specKind(retail, "SHAMAN", "{ role = 'DAMAGER', primaryStat = LE_UNIT_STAT_INTELLECT }", "NONE");
+  retail.eval("__wfgWorld.specInfo[1] = { role = 'DAMAGER', primaryStat = LE_UNIT_STAT_AGILITY }");
+  retail.fire("ACTIVE_PLAYER_SPECIALIZATION_CHANGED");
+  expect(retail.eval("return select(2, ns.GetModule('Upgrades').Current())"), "the kind follows the new spec").toBe("agility");
+  const forever = loggedIn(GEAR_ENV);
+  forever.eval("__wfgWorld.spec = 1 ns.GetModule('Upgrades').Changed()");
+  expect(forever.eval("return { select(2, ns.GetModule('Upgrades').Current()), ns.GetModule('Upgrades').Role() }"), "Forever: the warrior's class and damage").toEqual(["strength", "damage"]);
 });

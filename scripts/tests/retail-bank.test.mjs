@@ -57,6 +57,7 @@ it("retail bank: the Bank and Warband tabs, the side tabs and the warband's rows
   expect(addon.eval("local t = BankFrame.TabSystem.tabs return { t[1].Left.__alpha, t[2].Middle.__alpha }"), "the type tabs' game art is faded").toEqual([0, 0]);
   expect(addon.eval("local t = __sideTabs[1] return { t.Border.__alpha, t.Icon.__alpha == nil, t.SelectedTexture.__alpha == nil }"),
     "a side tab: its frame faded, its icon and selected glow kept").toEqual([0, true, true]);
+  expect(addon.eval("return BankPanel.PurchaseTab.SelectedTexture.__alpha == nil"), "the buying tab's selected glow is kept too").toBe(true);
   const parts = ["BankPanel.PurchaseTab", "BankPanel.MoneyFrame.WithdrawButton", "BankPanel.MoneyFrame.DepositButton", "BankPanel.MoneyFrame.Border",
     "BankPanel.MoneyFrame.MoneyDisplay", "BankPanel.AutoDepositFrame.DepositButton", "BankPanel.AutoDepositFrame.IncludeReagentsCheckbox"];
   expect(parts.map((p) => dressed(addon, p)), "the buying tab, both rows' buttons, the money box and the check box").toEqual(parts.map(() => true));
@@ -109,13 +110,38 @@ it("retail auras: each raid tile hands the game one private aura spot, moved to 
   expect(spots(addon).filter((s) => s[3] === "Vanguard_RaidUnitButton2"), "an emptied tile's spot is given back").toEqual([]);
 });
 
-it("retail auras: the target frame has a spot right of it, handed again on each new target", () => {
+it("retail auras: the raid tiles keep their private aura spot with Raid debuffs and HoTs switched off (H9-4-1)", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidAuras = false } } }" });
+  addon.eval(`__spawn(1, "raid1")`);
+  expect([addon.eval("return ns.ModuleEnabled('RaidAuras')"), addon.eval("return Vanguard_RaidUnitButton1.debuffRow == nil")], "the aura rows are off").toEqual([false, true]);
+  expect(spots(addon).filter((s) => s[3].startsWith("Vanguard_Raid")).map((s) => s[0]), "the tile still has its spot, for its unit").toEqual(["raid1"]);
+});
+
+it("retail auras: the target frame has a spot right of it, over the target of target (H9-1-3), handed again on each new target", () => {
   const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
   // The target spot's unit, whether it sits by the target frame, and its anchor id.
-  const target = () => addon.eval("local h = ns.PrivateAuras.target return { h.unit, h.__points.LEFT.rel == Vanguard_target, h.anchorID }");
+  const target = () => addon.eval("local h = ns.PrivateAuras.target return { h.unit, h.__points.BOTTOMLEFT.rel == Vanguard_target, h.anchorID }");
   const first = target();
   expect([first[0], first[1]], "the target's spot, beside its frame").toEqual(["target", true]);
+  const [left, bottom, targetRight, totLeft, totTop] = Object.values(addon.eval(
+    "local h, t = ns.PrivateAuras.target, Vanguard_targettarget return { h:GetLeft(), h:GetBottom(), Vanguard_target:GetRight(), t:GetLeft(), t:GetTop() }"));
+  expect([left > targetRight, left < totLeft + 10, bottom > totTop], "right of the target, standing on the target of target, not over it").toEqual([true, true, true]);
   addon.fire("PLAYER_TARGET_CHANGED");
   const second = target();
   expect([second[2] !== first[2], addon.eval(`return __wfgWorld.privateAnchors[${first[2]}] == nil`)], "a new spot for the new target, the old one given back").toEqual([true, true]);
+});
+
+it("retail auras: your own six private aura spots stand left of your buffs, outside the block Calm fades (H18-7-1)", () => {
+  const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
+  const own = addon.eval(`local out = {}
+    for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == "player" then out[#out + 1] = { a.auraIndex, a.iconInfo.iconWidth, a.parent:GetParent() } end end
+    table.sort(out, function(x, y) return x[1] < y[1] end)
+    local holder = ns.GetModule("PlayerAuras").holder
+    local row = out[1] and out[1][3]
+    return { #out, out[1] and out[1][1], out[6] and out[6][1], out[1] and out[1][2], row ~= nil and row:GetParent() == UIParent, row ~= nil and row.__points.RIGHT.rel == holder }`);
+  const size = addon.eval("return ns.GetModule('PlayerAuras').settings.size + ns.PrivateAuras.GROW");
+  expect(own, "six spots for the player's aura 1 to 6, a debuff and a bit across, in a row hung on the block's holder but not under it").toEqual([6, 1, 6, size, true, true]);
+  expect(addon.eval("local n = 0 for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == 'target' then n = n + 1 end end return n"), "the target's spot still asks for the first").toBe(1);
+  const off = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { modules = { PlayerAuras = false } } }" });
+  expect(off.eval("local n = 0 for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == 'player' then n = n + 1 end end return n"), "with the buffs block off the game's debuff frame is not parked and nothing is added").toBe(0);
 });

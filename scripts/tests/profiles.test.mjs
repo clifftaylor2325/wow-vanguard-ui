@@ -1,7 +1,7 @@
 // profiles: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { createAddon, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
 import { CLICK_LUA, RETAIL, SETUP_DONE, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
@@ -111,6 +111,15 @@ it("profile management", () => {
   addon.slash("profile bad/name");
   expect(chatHas(addon, /1-32 letters/), "profile names are checked").toBeTruthy();
 });
+it("/vg profile <name>: a profile's exact name wins over the verbs, so Copy Raid switches instead of copying Raid", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile new Copy Raid");
+  addon.eval("VanguardDB.profiles.Raid.theme = { accent = { 0, 1, 0 } } VanguardDB.profiles.Default.theme = { accent = { 1, 0, 0 } }");
+  addon.slash("profile Copy Raid");
+  expect(addon.eval("return { ns.PendingProfileName(), VanguardDB.profiles.Default.theme.accent[1], VanguardDB.profiles.Raid.theme.accent[2] }"), "it stages Copy Raid; Default and Raid are untouched")
+    .toEqual(["Copy Raid", 1, 1]);
+});
 it("spec profiles", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
   const addon = loggedIn(env);
@@ -143,9 +152,9 @@ it("copying a profile over another keeps the craft queue and cooldowns of the ch
   expect(addon.eval("return VanguardDB.profiles.Default.CraftQueue.chars"), "a destination with none: the source's characters do not come").toBeNull();
 });
 it("a profile reset keeps the record of your own game settings and each character's craft queue", () => {
-  const saved = `VanguardDB.profiles = { Default = { theme = { accent = { 1, 1, 1 } }, Bags = { applied = "1", prior = "0" }, Quiet = { camera = 2.6, cameraPrior = 1.9 }, Graphics = { undo = { graphicsQuality = 7 } }, CraftQueue = { on = true, chars = { ["Alt-Realm"] = { queue = {}, cooldowns = {} } } } } }`;
+  const saved = `VanguardDB.profiles = { Default = { theme = { accent = { 1, 1, 1 } }, Bags = { applied = "1", prior = "0" }, Quiet = { camera = 2.6 }, Graphics = { undo = { graphicsQuality = 7 } }, CraftQueue = { on = true, chars = { ["Alt-Realm"] = { queue = {}, cooldowns = {} } } } } }`;
   const addon = loggedIn("", { savedVariables: saved });
-  addon.eval("ns.ResetProfile()");
+  addon.eval("ns.Settings('Quiet').cameraPrior = 1.9 ns.ResetProfile()");
   const kept = addon.eval("local p = VanguardDB.profiles.Default return { p.Bags.prior, p.Quiet.cameraPrior, p.Graphics.undo.graphicsQuality, p.CraftQueue.chars['Alt-Realm'] ~= nil, p.CraftQueue.on == nil, p.theme == nil or p.theme.accent == nil }");
   expect(kept, "the records stay, the settings go").toEqual(["0", 1.9, 7, true, true, true]);
 });
@@ -262,6 +271,19 @@ it("a spec with no profile of its own goes back to the character's profile after
   expect([addon.eval("return VanguardCharDB.pendingProfile"), addon.eval("return Vanguard_Reload:IsShown()")], "spec 1 stages the character's profile and offers the reload").toEqual(["Default", true]);
   reloadInSpec(addon, 1);
   expect(addon.eval("return ns.ProfileName()"), "and it runs after the reload").toBe("Default");
+});
+it("picking a profile on a spec with a profile of its own says the spec's takes over at login, and the page names it", () => {
+  const addon = specCharacter(2);
+  addon.eval("VanguardCharDB.profile = 'Heal' ns.ProfileChanged()");
+  addon.clearChat();
+  addon.eval("ns.UseProfile('Default')");
+  expect(chatHas(addon, /Spec 2 uses Heal\. It switches back at the reload; Stop spec switching on the Profiles page keeps your pick\./), "the pick says the spec wins").toBe(true);
+  // The Profiles page's line about the profile in use, as the window draws it.
+  const text = addon.eval("for _, page in ipairs(ns.Options.PAGES) do if page.key == 'profiles' then for _, r in ipairs(page.rows()) do if r[1] == 'text' and type(r[2]) == 'function' then return r[2]() end end end end");
+  expect(text, "and the page names what login will load").toMatch(/until you reload, then Heal\./);
+  addon.clearChat();
+  addon.eval("ns.UseProfile('Heal')");
+  expect(chatHas(addon, /switches back/), "picking the spec's own profile says nothing").toBe(false);
 });
 it("a profile picked by hand is the one a spec with no profile of its own goes back to", () => {
   const addon = specCharacter(2);
@@ -647,6 +669,63 @@ it("every import backs up the profile in use first, into one rolling backup prof
   expect(backupOf(`TEST-ONLY ${"x".repeat(22)}`), "a long name is cut to fit 32 characters").toBe(`TEST-ONLY ${"x".repeat(15)} backup`);
   expect(backupOf(`TEST-ONLY ${"x".repeat(15)} backup`), "and the backup is never the profile in use").toBe(`TEST-ONLY ${"x".repeat(13)} backup 2`);
 });
+it("two long profile names that are cut alike each keep their own backup", () => {
+  const addon = loggedIn();
+  const [a, b] = [`${"A".repeat(31)}1`, `${"A".repeat(31)}2`];
+  // The backup name for a profile that is the one in use, after the backup is made.
+  const backupFor = (name) => addon.eval(`VanguardDB.profiles["${name}"] = { marker = "${name}" } VanguardCharDB.profile = "${name}" return ns.BackupProfile()`);
+  const [one, two, again] = [backupFor(a), backupFor(b), backupFor(a)];
+  expect([one, two, again], "the second gets the next free name; the first profile's backup is reused").toEqual([`${"A".repeat(25)} backup`, `${"A".repeat(23)} backup 2`, `${"A".repeat(25)} backup`]);
+  expect(addon.eval(`return { VanguardDB.profiles["${one}"].marker, VanguardDB.profiles["${two}"].marker }`), "neither backup replaced the other").toEqual([a, b]);
+  addon.eval(`VanguardCharDB.profile = "Default" ns.DeleteProfile("${two}")`);
+  expect(addon.eval(`return VanguardDB.backupOf["${two}"]`), "deleting a backup frees its name").toBeNull();
+  addon.eval("VanguardDB.backupOf = 7");
+  expect(backupFor(b), "a damaged note is ignored: the plain name is free again").toBe(`${"A".repeat(25)} backup`);
+});
+// A profile string made on `maker` ("retail" or "forever") with the saved tables `lua`, then imported whole on the other client;
+// returns the imported profile's UnitFrames and InstancePrep.want.bandages as { levels, health, bandages }.
+function importedOnOtherClient(maker, lua) {
+  const from = loggedIn(`ns.Profile().UnitFrames = ${lua.unit}`, maker === "retail" ? { client: RETAIL_CLIENT } : {});
+  from.eval(`ns.Profile().InstancePrep = ${lua.prep}`);
+  const text = from.eval("return ns.ExportProfile()");
+  const here = loggedIn("", maker === "retail" ? {} : { client: RETAIL_CLIENT });
+  here.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  return here.eval("local p = VanguardDB.profiles.Imported local w = p.InstancePrep and p.InstancePrep.want return { tostring(p.UnitFrames and p.UnitFrames.showLevel), tostring(p.UnitFrames and p.UnitFrames.healthFormat), tostring(w and w.bandages) }");
+}
+it("a string from the other client brings that client's defaults in as no choice, so this client's own fill in", () => {
+  const retail = importedOnOtherClient("retail", { unit: "{ showLevel = false, healthFormat = 'value' }", prep: "{ want = { bandages = 0 } }" });
+  expect(retail, "Retail defaults on Forever: all three cleared").toEqual(["nil", "nil", "nil"]);
+  const forever = importedOnOtherClient("forever", { unit: "{ showLevel = true, healthFormat = 'percent' }", prep: "{ want = { bandages = 10 } }" });
+  expect(forever, "Forever defaults on Retail: all three cleared").toEqual(["nil", "nil", "nil"]);
+});
+it("a string from the other client keeps a value that differs from its maker's default", () => {
+  const kept = importedOnOtherClient("retail", { unit: "{ showLevel = true, healthFormat = 'percent' }", prep: "{ want = { bandages = 5 } }" });
+  expect(kept, "a real choice on Retail stays on Forever").toEqual(["true", "percent", "5"]);
+});
+it("a string from the same client, or with no client stamp, keeps every value", () => {
+  const same = loggedIn("", { client: RETAIL_CLIENT });
+  same.eval("ns.Profile().UnitFrames = { showLevel = false, healthFormat = 'value' }");
+  const text = same.eval("return ns.ExportProfile()");
+  same.eval("ns.Profile().UnitFrames.boss = false");
+  same.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(same.eval("local p = VanguardDB.profiles.Imported.UnitFrames return { p.showLevel, p.healthFormat }"), "same client: unchanged").toEqual([false, "value"]);
+  const addon = loggedIn();
+  const old = addon.eval("return ns.Serialize.Encode('profile', { format = 2, UnitFrames = { showLevel = false, healthFormat = 'value' } })");
+  addon.eval(`ns.ImportProfile(${JSON.stringify(old)})`);
+  expect(addon.eval("local p = VanguardDB.profiles.Imported.UnitFrames return { p.showLevel, p.healthFormat }"), "no client field: left as written").toEqual([false, "value"]);
+});
+it("a parts string from the other client drops its client defaults too", () => {
+  const from = loggedIn("", { client: RETAIL_CLIENT });
+  from.eval("ns.Profile().UnitFrames = { showLevel = false, healthFormat = 'value', boss = false }");
+  const text = from.eval("return ns.ExportProfile('UnitFrames')");
+  const here = loggedIn("");
+  here.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(here.eval("local u = ns.Profile().UnitFrames return { u.showLevel, u.healthFormat, u.boss }"), "the choice stays, the Retail defaults give way to Forever's").toEqual([true, "percent", false]);
+  const set = loggedIn("");
+  set.eval("ns.Profile().UnitFrames.showLevel = false ns.Profile().UnitFrames.healthFormat = 'value'");
+  set.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(set.eval("local u = ns.Profile().UnitFrames return { u.showLevel, u.healthFormat }"), "over the player's own values: Forever's defaults come in, not the old values").toEqual([true, "percent"]);
+});
 it("an import's backup never overwrites a profile another character or a spec uses", () => {
   // TEST-ONLY: another character runs on "Default backup", and this character's spec 2 uses "Default backup 2".
   const sv = 'VanguardDB.profiles = { Default = {}, ["Default backup"] = { marker = "other" }, ["Default backup 2"] = { marker = "spec" } }\nVanguardDB.guard = { chars = { ["TEST-ONLY Other-Realm"] = { profile = "Default backup", stamp = 1 }, broken = "x" } }\nVanguardCharDB.specProfiles = { [2] = "Default backup 2" }';
@@ -681,6 +760,16 @@ it("an import names each font, bar and panel texture this client doesn't have, a
   // How many lines ns.MissingMedia gives for a theme (a Lua table).
   const found = (lua) => addon.eval(`return #ns.MissingMedia({ theme = ${lua} })`);
   expect([found('{ font = "TEST-ONLY Shared", barTexture = "soft", panelTexture = "stone" }'), found('{ panelTexture = "flat" }'), found('{ font = "client" }'), found('{ font = "" }'), found('{ font = [[Fonts\\TEST-ONLY.ttf]] }'), addon.eval("return #ns.MissingMedia({})")], "a shared font, Vanguard's bars and panel textures, Flat, the game's font and a font path are found").toEqual([0, 0, 0, 0, 0, 0]);
+});
+it("an import prints the string's font and part names as written: their | codes are doubled, never read as colours or links", () => {
+  const addon = loggedIn();
+  // TEST-ONLY names holding colour codes, as a crafted string might.
+  const text = encoded(addon, "parts", '{ format = 2, parts = { "|cffff0000P|r" }, theme = { font = "|cffff0000X|r" } }');
+  addon.clearChat();
+  importText(addon, text);
+  expect(chatHas(addon, /Font not found: \|\|cffff0000X\|\|r /), "the font's name shows its codes doubled in chat").toBe(true);
+  expect(chatHas(addon, /(^|[^|])\|cffff0000/), "no chat line holds an undoubled code").toBe(false);
+  expect(imports(addon, text).m, "the part names are doubled too").toMatch(/^Imported \|\|cffff0000P\|\|r settings into profile Default\.$/);
 });
 it("an import names a font path this client can't load (N7-1)", () => {
   const addon = loggedIn("__wfgStub.missingFonts[ [[Interface\\AddOns\\Gone\\f.ttf]] ] = true");

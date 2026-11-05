@@ -272,6 +272,11 @@ it("waypoints: the world map has a Clear waypoint button, shown only while there
   addon.update(0.2);
   expect([shown(), addon.eval("return __point")], "the click clears it").toEqual([false, null]);
 });
+it("waypoints: the Clear waypoint button leaves the game's quest panel toggle in the bottom right corner free", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV + WORLD_MAP_ENV);
+  const x = addon.eval("return ns.GetModule('Waypoints').clearButton.__points.BOTTOMRIGHT.x");
+  expect(x, "the toggle is 32 wide at -2, so the button ends left of -34").toBeLessThanOrEqual(-34);
+});
 it("waypoints: /vg way recent lists and goes back to a spot with the Waypoints module off", () => {
   const addon = loggedIn(MAP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Waypoints = false }, Waypoints = { recent = { { map = 10, x = 0.2, y = 0.3 } } } } }" });
   addon.slash("way recent");

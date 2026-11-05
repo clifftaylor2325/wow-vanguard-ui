@@ -25,10 +25,11 @@ it("the shared client-call helpers read nothing from a missing call or a hidden 
   expect(addon.eval("return select('#', ns.Client.Call('__TwoValues'))")).toBe(2);
 });
 
-it("ns.IsTrue passes only a plain true, and ns.PlainText only a plain non-empty string", () => {
+it("ns.IsTrue passes only a plain true, ns.PlainText only a plain non-empty string, and ns.PlainTable only a plain table", () => {
   const addon = loggedIn();
   expect(addon.eval("return { ns.IsTrue(true), ns.IsTrue(__wfgWorld.secret(true)), ns.IsTrue(1) }")).toEqual([true, false, false]);
   expect(addon.eval('return { ns.PlainText("x"), ns.PlainText("") == nil, ns.PlainText(__wfgWorld.secret("x")) == nil }')).toEqual(["x", true, true]);
+  expect(addon.eval("local t = { 1 } return { ns.PlainTable(t) == t, ns.PlainTable(__wfgWorld.secret({ 1 })) == nil, ns.PlainTable('x') == nil }")).toEqual([true, true, true]);
 });
 
 it("a mover dropped before the client has laid it out keeps the point the client reports", () => {
@@ -48,8 +49,15 @@ it("raid status reads nothing from a client without the API", () => {
 });
 
 it("the XP bar hides at the cap on a client with only IsXPUserDisabled, and with no XP to earn", () => {
-  const addon = loggedIn("IsPlayerAtEffectiveMaxLevel = nil IsXPUserDisabled = function() return true end");
+  const addon = loggedIn("GameRulesUtil = nil IsXPUserDisabled = function() return true end");
   expect(addon.eval('return ns.GetModule("DataBars").XP() == nil')).toBe(true);
-  addon.eval("IsXPUserDisabled = function() return false end UnitXPMax = function() return 0 end");
+  addon.eval("IsXPUserDisabled = function() return false end UnitXPMax = function() return 0 end __wfgWorld.units.player.level = __wfgWorld.maxLevel - 1");
   expect(addon.eval('return ns.GetModule("DataBars").XP() == nil')).toBe(true);
+});
+
+it("the XP bar hides at the cap by level when the client has no GameRulesUtil", () => {
+  const addon = loggedIn("GameRulesUtil = nil UnitXPMax = function() return 40000 end __wfgWorld.units.player.level = __wfgWorld.maxLevel - 1");
+  expect(addon.eval('return ns.GetModule("DataBars").XP() ~= nil'), "one level short: the bar shows").toBe(true);
+  addon.eval("__wfgWorld.units.player.level = __wfgWorld.maxLevel");
+  expect(addon.eval('return ns.GetModule("DataBars").XP() == nil'), "at the cap: it hides").toBe(true);
 });

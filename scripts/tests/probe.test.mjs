@@ -313,10 +313,11 @@ const FOREVER_CLIENT_ENV = `
 // TEST-ONLY: game frames as the client may give them: shown, hidden, forbidden, one whose read fails, one that is no frame.
 const CLASS_BAR_ENV = `
   RuneFrame = { IsForbidden = function() return false end, IsShown = function() return true end }
-  PaladinPowerBar = { IsForbidden = function() return false end, IsShown = function() return false end }
+  PaladinPowerBarFrame = { IsForbidden = function() return false end, IsShown = function() return false end }
   EncounterTimeline = { IsForbidden = function() return true end, IsShown = function() error("TEST-ONLY forbidden read") end }
-  MonkHarmonyBar = { IsForbidden = function() return false end }
+  MonkHarmonyBarFrame = { IsForbidden = function() return false end }
   MonkStaggerBar = "TEST-ONLY not a frame"
+  DruidComboPointBarFrame = { IsForbidden = function() return false end, IsShown = function() return true end }
 `;
 it("/vg probe: the client checks name the project and count the Forever-only calls the client has", () => {
   const addon = loggedIn(PROBE_ENV + FOREVER_CLIENT_ENV);
@@ -346,10 +347,14 @@ it("/vg probe: the client checks count C_Secrets and report each class bar as mi
   const text = reportText(addon);
   expect(clientRow(text, "C_Secrets functions:"), "the count against the 27 the probe asks about").toMatch(/^C_Secrets functions: \d+ \(the API docs list 27 on both clients\)$/);
   expect(clientRow(text, "RuneFrame:"), "a shown bar").toBe("RuneFrame: present, shown");
-  expect(clientRow(text, "PaladinPowerBar:"), "a hidden bar").toBe("PaladinPowerBar: present, hidden");
+  expect(clientRow(text, "PaladinPowerBarFrame:"), "a hidden bar").toBe("PaladinPowerBarFrame: present, hidden");
   expect(clientRow(text, "WarlockPowerFrame:"), "a bar the client lacks").toBe("WarlockPowerFrame: missing");
-  expect(clientRow(text, "MonkHarmonyBar:"), "a bar whose shown state cannot be read").toBe("MonkHarmonyBar: present, shown state not readable");
+  expect(clientRow(text, "MonkHarmonyBarFrame:"), "a bar whose shown state cannot be read").toBe("MonkHarmonyBarFrame: present, shown state not readable");
   expect(clientRow(text, "MonkStaggerBar:"), "a global that is no frame counts as missing").toBe("MonkStaggerBar: missing");
+  for (const name of ["DevourerFuryBarFrame", "RogueComboPointBarFrame", "MageArcaneChargesFrame"]) {
+    expect(clientRow(text, name + ":"), "a listed bar the client lacks").toBe(name + ": missing");
+  }
+  expect(clientRow(text, "DruidComboPointBarFrame:"), "the druid bar is listed").toBe("DruidComboPointBarFrame: present, shown");
 });
 it("/vg probe: the client checks say whether the encounter timeline is loaded and its frame forbidden", () => {
   const addon = loggedIn(PROBE_ENV + CLASS_BAR_ENV);

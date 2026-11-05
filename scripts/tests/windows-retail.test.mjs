@@ -4,7 +4,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { expectErrors, INSIDES_LUA, loggedIn, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { borderOf, expectErrors, INSIDES_LUA, loggedIn, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 // TEST-ONLY readers: __button(b) whether the theme made b a flat button, __box(b) whether a search box lost its art
 // and kept its magnifier, __plate(b) whether a control tile went behind b, __card(b, icon, name) whether a category
@@ -53,11 +53,15 @@ it("windows-retail: the PvP tab is dressed when its part of the game loads, insi
   expect(state).toEqual({ card: true, wells: true, buttons: true, dropdown: true });
 });
 
-it("windows-retail: the premade groups' invite dialog takes the window skin and flat buttons", () => {
+it("windows-retail: the premade groups' invite dialog takes the window skin and flat buttons, and keeps its role picture", () => {
   const addon = retail(["LFGListInviteDialog"]);
   addon.eval("LFGListInviteDialog:Show()");
-  expect(windowState(addon, "LFGListInviteDialog")).toMatchObject({ art: 0, panel: true, title: true });
-  expect(addon.eval("return __button(LFGListInviteDialog.AcceptButton) and __button(LFGListInviteDialog.DeclineButton)")).toBe(true);
+  const state = addon.eval(`local f = LFGListInviteDialog
+    local panel = 0 for _, r in ipairs({ __panelHost(f):GetRegions() }) do if r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then panel = panel + 1 end end
+    return { role = f.RoleIcon:GetAlpha(), border = f.Border.__alpha, panel = panel > 0, errors = #ns.errors,
+      buttons = __button(f.AcceptButton) and __button(f.DeclineButton) and __button(f.AcknowledgeButton) }`);
+  expect(state, "the border faded, the role picture kept, a panel painted, the three buttons flat")
+    .toEqual({ role: 1, border: 0, panel: true, errors: 0, buttons: true });
 });
 
 it("windows-retail: the Adventure Guide is dressed when it loads; its tabs are theme tabs and its pages keep the game's parchment and pictures", () => {
@@ -77,8 +81,9 @@ it("windows-retail: the friends window's Who tab: its list on a well, its column
   addon.eval("FriendsFrame:Show()");
   const state = addon.eval(`local h = WhoFrameColumnHeader1
     return { well = __well(WhoFrameListInset), header = __faded(h) and __looks(h.Text, "small", "text2"),
-      buttons = __button(WhoFrameWhoButton) and __button(WhoFrameAddFriendButton), dropdown = __button(WhoFrameDropdown), search = __box(WhoFrameEditBox) }`);
-  expect(state).toEqual({ well: true, header: true, buttons: true, dropdown: true, search: true });
+      buttons = __button(WhoFrameWhoButton) and __button(WhoFrameAddFriendButton), dropdown = __button(WhoFrameDropdown), search = __box(WhoFrameEditBox),
+      totals = __looks(WhoFrameTotals, "small", "text2") }`);
+  expect(state).toEqual({ well: true, header: true, buttons: true, dropdown: true, search: true, totals: true });
 });
 
 it("windows-retail: the mainline character pane: its stats well, class picture, model backdrop and stat lines, as the game updates them", () => {
@@ -93,6 +98,41 @@ it("windows-retail: the mainline character pane: its stats well, class picture, 
   expect(addon.eval(lineLit.replace("%", "1")), "the line the pane had").toBe(true);
   addon.eval("PaperDollFrame_UpdateStats()");
   expect(addon.eval(lineLit.replace("%", "2")), "a line the game's update made").toBe(true);
+});
+
+it("windows-retail: the paper doll's three sidebar tabs lose the game's bronze tab art, and the open side's tab is marked selected (H7-1-1)", () => {
+  const addon = retail(["CharacterFrame"]);
+  addon.eval("CharacterFrame:Show()");
+  const tabs = `local out = {}
+    for i = 1, 3 do local t = _G["PaperDollSidebarTab" .. i]
+      out[i] = { t.TabBg:GetAlpha(), t.Hider:GetAlpha(), t.Highlight:GetAlpha(), t.Icon:GetAlpha(), ns.Theme.RowParts(t).fill:IsShown() } end
+    return out`;
+  expect(addon.eval(tabs), "tab, cover and highlight faded, the icon kept, the stats side (open) selected").toEqual([
+    [0, 0, 0, 1, true], [0, 0, 0, 1, false], [0, 0, 0, 1, false]]);
+  addon.eval(`local side = GetPaperDollSideBarFrame(2) GetPaperDollSideBarFrame(1):Hide() side:Show() PaperDollFrame_UpdateSidebarTabs()
+    PaperDollSidebarTab3:Disable()`);
+  expect(addon.eval(tabs).map((t) => t[4]), "the game's update moves the mark to the titles tab; a disabled tab is not marked").toEqual([false, true, false]);
+  expect(addon.eval("return #ns.errors")).toBe(0);
+  expect(forever().eval("return { PaperDollSidebarTab1 == nil, #ns.GetModule('Windows').SIDEBAR_TABS }"), "WoW Forever has no such list").toEqual([true, 0]);
+});
+
+it("windows-retail: the weapon slots' bronze end caps are faded in the character pane and the inspect window, the icon and overlays kept (H7-1-2)", () => {
+  const addon = retail(["CharacterFrame"], "");
+  addon.eval(`function __slot(prefix, name)
+    local b = CreateFrame("Button", prefix .. name .. "Slot", UIParent)
+    b.cap, b.icon, b.overlay = b:CreateTexture(nil, "BACKGROUND"), b:CreateTexture(nil, "BORDER"), b:CreateTexture(nil, "OVERLAY")
+    for _, t in ipairs({ b.cap, b.icon, b.overlay }) do t:SetTexture("TEST-ONLY-ART") end
+    return b
+  end
+  __caps = { __slot("Character", "MainHand"), __slot("Character", "Head"), __slot("Inspect", "SecondaryHand") }
+  CharacterFrame:Show() InspectFrame = CreateFrame("Frame", "InspectFrame", UIParent) InspectFrame:Show()
+  ns.GetModule("Windows").INSIDES.InspectFrame()`);
+  addon.eval("CharacterFrame:Hide() CharacterFrame:Show()");
+  const alphas = addon.eval("local out = {} for i, b in ipairs(__caps) do out[i] = { b.cap:GetAlpha(), b.icon:GetAlpha(), b.overlay:GetAlpha() } end return out");
+  expect(alphas[0], "character main hand: the end cap faded, icon and overlay kept").toEqual([0, 1, 1]);
+  expect(alphas[1], "a slot with no end caps keeps its background texture").toEqual([1, 1, 1]);
+  expect(alphas[2], "inspect off hand: the same").toEqual([0, 1, 1]);
+  expect(addon.eval("return #ns.errors")).toBe(0);
 });
 
 it("windows-retail: with the Retail windows' switch off the group finder stays the game's; the switch is on Retail's Game windows page only", () => {
@@ -141,4 +181,40 @@ it("windows-retail: a window the game keeps from addons is never hooked, and the
     __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterTimeline") __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterWarnings")`);
   expect(addon.eval("return ns.FrameState('vgWindow')[EncounterJournal] == nil and EncounterJournal.inset.NineSlice.__alpha ~= 0")).toBe(true);
   expect(addon.eval("return #ns.errors")).toBe(0);
+});
+
+it("windows-retail: the group finder's raised shadows frame and the cards' hover plates are faded (H7-2-1, H7-3-1)", () => {
+  const addon = retail(["PVEFrame"]);
+  addon.eval(`__wfgRetailWindows.build("PVPUIFrame") __wfgStub.fire("ADDON_LOADED", "Blizzard_PVPUI") PVEFrame:Show()`);
+  const state = addon.eval(`return { shadows = PVEFrame.shadows:GetAlpha(), group = GroupFinderFrame.groupButton1:GetHighlightTexture():GetAlpha(),
+    pvp = PVPQueueFrame.CategoryButton2:GetHighlightTexture():GetAlpha() }`);
+  expect(state, "the shadows frame and both kinds of card hover plate").toEqual({ shadows: 0, group: 0, pvp: 0 });
+});
+
+it("windows-retail: the open category card has an accent border, on the group finder and the PvP tab (H7-3-2)", () => {
+  const addon = retail(["PVEFrame"]);
+  addon.eval(`__wfgRetailWindows.build("PVPUIFrame")
+    function GroupFinderFrame_SelectGroupButton(index) GroupFinderFrame.selectionIndex = index end
+    function PVPQueueFrame_SelectButton(index) end
+    GroupFinderFrame.selectionIndex = 2
+    __wfgStub.fire("ADDON_LOADED", "Blizzard_PVPUI") PVEFrame:Show()`);
+  const themeBorder = borderOf(addon, "GroupFinderFrame.groupButton1");
+  // Whether a card's border differs from the first card's, which is the theme's while it is not the open one.
+  const accent = (path) => { const c = borderOf(addon, path); return c !== undefined && c.join() !== themeBorder.join(); };
+  expect([1, 2, 3].map((i) => accent(`GroupFinderFrame.groupButton${i}`)), "the card the game had open when the skin ran").toEqual([false, true, false]);
+  addon.eval("GroupFinderFrame_SelectGroupButton(3)");
+  expect([2, 3].map((i) => accent(`GroupFinderFrame.groupButton${i}`)), "then the one the player picks").toEqual([false, true]);
+  addon.eval("PVPQueueFrame_SelectButton(2)");
+  expect([1, 2, 3].map((i) => accent(`PVPQueueFrame.CategoryButton${i}`)), "the PvP tab's cards").toEqual([false, true, false]);
+});
+
+it("windows-retail: the Adventure Guide's first tab is moved out past the panel again each time the game anchors it (H7-4-1)", () => {
+  const addon = retail();
+  addon.eval(`__wfgRetailWindows.build("EncounterJournal") __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterJournal") EncounterJournal:Show()`);
+  // The vertical offset of the first tab's anchor.
+  const y = () => addon.eval("local _, _, _, _, y = EncounterJournal.Tabs[1]:GetPoint() return y");
+  const first = y();
+  expect(first, "moved out of the game's own 2").toBeLessThan(2);
+  addon.eval("EncounterJournal:Hide() EncounterJournal:Show() EncounterJournal:Hide() EncounterJournal:Show()");
+  expect(y(), "and again after the game's OnShow put it back").toBe(first);
 });

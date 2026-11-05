@@ -126,6 +126,24 @@ it("motion: with /vg framebuffer on, a window is drawn through a frame buffer on
   expect(addon.eval("return ns.Theme.Settings().frameBuffer"), "a client without the call is left alone; off again").toBe(false);
 });
 
+it("motion: a window reopened mid-close, or with the switch turned off mid-fade, is not left in a frame buffer", () => {
+  const addon = loggedIn(FAKE_FADES + 'local f = CreateFrame("Frame", "TEST_Buf", UIParent) f:SetSize(200, 100) f:Hide() __fakeFader(f)');
+  // Whether the window is drawn through a frame buffer now.
+  const buf = () => addon.eval("return TEST_Buf.__frameBuffer");
+  addon.slash("framebuffer");
+  addon.eval("ns.Theme.OpenWindow(TEST_Buf) __finishFades() ns.Theme.CloseWindow(TEST_Buf) ns.Theme.StopFade(TEST_Buf) __finishFades()");
+  expect(buf(), "reopened by StopFade while closing").toBe(false);
+  addon.eval("ns.Theme.CloseWindow(TEST_Buf)");
+  setCombat(addon, true);
+  addon.eval("ns.Theme.OpenWindow(TEST_Buf) __finishFades()");
+  setCombat(addon, false);
+  expect(buf(), "reopened in combat while closing").toBe(false);
+  addon.eval("ns.Theme.CloseWindow(TEST_Buf)");
+  addon.slash("framebuffer off");
+  addon.eval("__finishFades()");
+  expect(buf(), "switch turned off mid-close").toBe(false);
+});
+
 // A themed test button with its own label anchored LEFT and RIGHT 2 units down; returns nothing.
 const PRESS_BUTTON = `local b = CreateFrame("Button", "TEST_Press", UIParent) b:SetSize(80, 22)
   b.text = b:CreateFontString(nil, "OVERLAY") b.text:SetPoint("LEFT", b, "LEFT", 4, -2) b.text:SetPoint("RIGHT", b, "RIGHT", -4, -2)
@@ -180,4 +198,23 @@ it("motion: a disabled button's label goes to the disabled tier with no hover, a
   expect(isTok(addon, addon.eval("return TEST_Off:GetFontString().__textColor"), "disabled"), "a button painted while disabled starts disabled, its template label too").toBe(true);
   addon.eval("ns.Theme.DisabledLook(TEST_Press, false)");
   expect(isTok(addon, label(), "text"), "enabling one that wasn't disabled changes nothing").toBe(true);
+});
+
+it("a game push button's label takes the theme's text tiers from T.Button; a primary keeps its own, and in a fight the copies wait", () => {
+  const addon = loggedIn();
+  // Whether TEST_Game's label colour is the theme token `name`.
+  const labelIs = (name) => isTok(addon, addon.eval("return TEST_Game:GetFontString().__textColor"), name);
+  addon.eval(`local gold = CreateFont("TEST_GameFontNormal") gold:SetTextColor(1, 0.82, 0)
+    local b = CreateFrame("Button", "TEST_Game", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(gold) ns.Theme.Button(b)`);
+  expect(labelIs("text"), "a secondary game button: the text tier, not gold").toBe(true);
+  addon.eval('local b = CreateFrame("Button", "TEST_Primary", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) ns.Theme.Button(b, "primary")');
+  expect(addon.eval("return TEST_Primary:GetNormalFontObject() == TEST_GameFontNormal"), "a primary keeps its label").toBe(true);
+  setCombat(addon, true);
+  addon.eval("local wait = ns.OutOfCombat __waits = 0 ns.OutOfCombat = function(...) __waits = __waits + 1 return wait(...) end");
+  addon.eval('local b = CreateFrame("Button", "TEST_Own", UIParent) b:SetFontString(b:CreateFontString()) ns.Theme.Button(b)');
+  expect(addon.eval("return __waits"), "a button with no font object (Vanguard's own) leaves nothing waiting on the fight").toBe(0);
+  addon.eval('local b = CreateFrame("Button", "TEST_Fight", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) ns.Theme.Button(b)');
+  expect(addon.eval("return { __waits, ns.Theme.LabelFonts(TEST_Fight) == nil }"), "a game button's label waits for the fight to end").toEqual([1, true]);
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Theme.LabelFonts(TEST_Fight) ~= nil"), "and gets its copies when the fight ends").toBe(true);
 });

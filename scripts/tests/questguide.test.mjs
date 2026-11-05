@@ -88,6 +88,14 @@ it("quest guidance: without a client flag nothing is marked; with one, new quest
   expect(tracker(addon)[0][0], "the switch turns the mark off").toBe("[8] TEST-ONLY Wolves");
 });
 
+it("quest guidance: the greeting window's quest lines carry the New mark too", () => {
+  const addon = loggedIn(QUESTS_ENV + FLAG_ENV);
+  addon.eval(`__wfgWorld.openNpc({ available = { { title = "TEST-ONLY Bandits", level = 10, questID = 90071 } }, active = { { title = "TEST-ONLY Letter", level = 12, questID = 90052 } } })`);
+  addon.fire("QUEST_GREETING");
+  const m = mark(addon);
+  expect(addon.eval("return { Vanguard_QuestDialog.lines[1].text:GetText(), Vanguard_QuestDialog.lines[2].text:GetText() }"), "the New quest to take is marked, the other to turn in is not").toEqual(["1.  [10] TEST-ONLY Bandits" + m, "2.  [12] TEST-ONLY Letter"]);
+});
+
 it("quest guidance: a quest tag named for new quests works too; hidden values mark nothing", () => {
   const addon = loggedIn(QUESTS_ENV + `
     Enum.QuestTag = { Group = 1, NewInForever = 500 }

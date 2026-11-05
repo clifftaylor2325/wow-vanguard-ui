@@ -137,7 +137,7 @@ end
 
 -- The backing's color for a type: dark for a type with a letter, clear for one without.
 local function backColor(kind)
-  local r, g, b = T.RGB("edge")
+  local r, g, b = T.RGB("shade")
   return r, g, b, A.DISPEL_GLYPHS[kind] and 0.8 or 0
 end
 

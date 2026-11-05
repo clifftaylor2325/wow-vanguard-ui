@@ -86,26 +86,42 @@ function QD.SkipGossip()
   return option ~= nil
 end
 
+-- The greeting window's i-th quest on offer, with its ID (the New mark's key).
+local function greetingAvailable(i)
+  local questID = select(5, ns.CallIf(_G, "GetAvailableQuestInfo", i))
+  return availableLine(ns.CallIf(_G, "GetAvailableLevel", i), ns.CallIf(_G, "GetAvailableTitle", i), function() SelectAvailableQuest(i) end, ns.PlainNumber(questID))
+end
+
+-- The greeting window's i-th quest to turn in, with its ID.
+local function greetingActive(i)
+  local title, complete = ns.CallIf(_G, "GetActiveTitle", i)
+  local questID = ns.PlainNumber(ns.CallIf(_G, "GetActiveQuestID", i))
+  return activeLine(ns.CallIf(_G, "GetActiveLevel", i), title, complete, function() SelectActiveQuest(i) end, questID)
+end
+
 -- A quest giver's lines without gossip (the game's greeting window).
 function QD.GreetingLines()
   local out = {}
-  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumAvailableQuests")) or 0 do out[#out + 1] = availableLine(ns.CallIf(_G, "GetAvailableLevel", i), ns.CallIf(_G, "GetAvailableTitle", i), function() SelectAvailableQuest(i) end) end
-  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumActiveQuests")) or 0 do
-    local title, complete = ns.CallIf(_G, "GetActiveTitle", i)
-    out[#out + 1] = activeLine(ns.CallIf(_G, "GetActiveLevel", i), title, complete, function() SelectActiveQuest(i) end)
-  end
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumAvailableQuests")) or 0 do out[#out + 1] = greetingAvailable(i) end
+  for i = 1, ns.PlainNumber(ns.CallIf(_G, "GetNumActiveQuests")) or 0 do out[#out + 1] = greetingActive(i) end
   return out
 end
 
 -- Rewards --------------------------------------------------------------------------------------
 
--- The quest's items of one kind ("choice", "reward" or "required").
+-- One reward slot's card: the currency the client names for a currency choice (loot type 1), else the slot's item.
+local function slotCard(kind, i)
+  local isCurrency = kind == "choice" and ns.PlainNumber(ns.CallIf(_G, "GetQuestItemInfoLootType", kind, i)) == 1
+  local currency = isCurrency and QP.CurrencyItem(ns.CallIf(C_QuestOffer, "GetQuestRewardCurrencyInfo", kind, i), { kind = kind, index = i })
+  if currency then return currency end
+  local name, texture, n, quality = ns.CallIf(_G, "GetQuestItemInfo", kind, i)
+  return { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality, link = ns.CallIf(_G, "GetQuestItemLink", kind, i) }
+end
+
+-- The quest's items of one kind ("choice", "reward" or "required"); a choice keeps its slot number, a currency's too.
 function QD.Items(kind, count)
   local out = {}
-  for i = 1, ns.PlainNumber(count) or 0 do
-    local name, texture, n, quality = ns.CallIf(_G, "GetQuestItemInfo", kind, i)
-    out[#out + 1] = { kind = kind, index = i, name = name, texture = texture, count = n, quality = quality, link = ns.CallIf(_G, "GetQuestItemLink", kind, i) }
-  end
+  for i = 1, ns.PlainNumber(count) or 0 do out[#out + 1] = slotCard(kind, i) end
   return out
 end
 
@@ -263,12 +279,13 @@ function QD.Show(key, event)
   ns.OutOfCombat(takeKeys, "quest dialog keys")
 end
 
--- The game finished loading an item's details: redraw the page (keeping a reward already picked).
+-- The game finished loading an item's details: redraw the page (keeping a reward already picked and where you scrolled to).
 function QD.Redraw()
   if not (QD.frame:IsShown() and QD.key) then return end
-  local choice = QD.choice
+  local choice, scroll = QD.choice, QD.frame.scroll:GetVerticalScroll() or 0
   QD.page = QD.PAGES[QD.key]()
   QD.Render(QD.page)
+  QD.frame.scroll:ScrollTo(scroll)
   if choice then QD.Pick(choice) end
 end
 

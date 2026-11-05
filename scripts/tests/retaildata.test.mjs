@@ -5,7 +5,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { RAID_ENV, UNITS_ENV, bars, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, RAID_ENV, STRIP_ENV, UNITS_ENV, bars, block, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // Retail's thirteen class tokens.
 const CLASSES = ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK", "DRUID", "DEMONHUNTER", "EVOKER"];
@@ -63,9 +63,15 @@ it("retail data: a healer's starter click layout and a raid buff come from Retai
   expect(priest.eval("return ns.ClickCastSpells.HasLayout()"), "and has a layout").toBe(true);
 });
 
+// A TEST-ONLY raid with a priest, a druid, a mage, a shaman and an evoker beside the warrior, so every Retail raid buff has
+// a giver.
+const SEATED_GIVERS = `local classes = { "PRIEST", "DRUID", "MAGE", "SHAMAN", "EVOKER" }
+  for i, class in ipairs(classes) do __wfgWorld.units["raid" .. i] = { name = "TEST-ONLY Member " .. i, class = class, player = true } end`;
+
 it("retail data: the prep card checks Retail's six raid buffs, makes no flask row and has no world buffs", () => {
   const addon = retail("__wfgWorld.units.player.class = 'WARRIOR'");
   addon.eval("ns.GetModule('InstancePrep').settings.buffs = true ns.GetModule('InstancePrep').settings.worldBuffs = true");
+  addon.eval(SEATED_GIVERS);
   // The labels of the aura rows now.
   const labels = () => addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out");
   expect(labels(), "food and the six raid buffs; no flask or world buff row").toEqual(["Food buff", "Fortitude", "Mark of the Wild", "Arcane Intellect", "Battle Shout", "Skyfury", "Blessing of the Bronze"]);
@@ -115,7 +121,7 @@ it("retail data: gear is weighed with mastery, versatility and item level, and /
 
 // TEST-ONLY: a character at Retail's level cap, watching a major faction (id 2600) at renown 12.
 const CAP_ENV = `
-  IsPlayerAtEffectiveMaxLevel = function() return true end
+  GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return true end }
   __wfgWorld.watchedFaction = { name = "TEST-ONLY Council", factionID = 2600, reaction = 5, currentReactionThreshold = 0, nextReactionThreshold = 0, currentStanding = 0 }
   __wfgWorld.majorFactions[2600] = { renownLevel = 12, renownReputationEarned = 1200, renownLevelThreshold = 2500 }
 `;
@@ -157,4 +163,50 @@ it("retail data: a watched major faction shows its renown on the reputation bar 
   addon.fire("UPDATE_FACTION");
   expect(bars(addon).repText, "not a major faction: its standing as on WoW Forever").toBe("TEST-ONLY Council");
   expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+});
+
+it("retail data: the info strip shows no ammo or shards block, where Forever's hunter and warlock still do", () => {
+  for (const [class_, key] of [["HUNTER", "ammo"], ["WARLOCK", "shards"]]) {
+    const env = UNITS_ENV + (class_ === "HUNTER" ? STRIP_ENV : "") + `__units.player.class = "${class_}" issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+      __wfgWorld.bags[1][3] = { itemID = 6265 }` + CLICK_LUA;
+    expect(block(retail(env), key).shown, `Retail ${class_}: no ${key} block`).toBe(false);
+    expect(block(loggedIn(env), key).shown, `Forever ${class_}: the ${key} block shows`).toBe(true);
+  }
+});
+
+it("retail data: Instance prep makes no reagent, ammo, soul shard or bandage row, where Forever keeps them", () => {
+  const [onRetail, onForever] = [retail(UNITS_ENV), loggedIn(UNITS_ENV)];
+  // The labels of the rows Instance prep makes for a character of that class at level 80.
+  const rows = (client, class_) => client.eval(`__units.player.class = "${class_}" __units.player.level = 80
+    local out = {} for _, r in ipairs(ns.GetModule("InstancePrep").Rows()) do out[#out + 1] = r.label end
+    return table.concat(out, ",")`);
+  for (const class_ of ["MAGE", "HUNTER", "WARLOCK"]) {
+    expect(rows(onRetail, class_), `Retail ${class_}: no class supply, no Bandages`).not.toMatch(/Rune|Ammo|Soul shards|Bandages/);
+    expect(rows(onRetail, class_), `Retail ${class_}: food is still listed`).toMatch(/Food & drink/);
+  }
+  expect(rows(onForever, "MAGE"), "Forever mage: reagents and bandages").toMatch(/Rune of Teleportation.*Bandages/);
+  expect(rows(onForever, "HUNTER"), "Forever hunter: ammo").toMatch(/Ammo/);
+  expect(rows(onForever, "WARLOCK"), "Forever warlock: soul shards").toMatch(/Soul shards/);
+  expect(onRetail.eval('__units.player.class = "HUNTER" return #ns.GetModule("InstancePrep").Wizard.ClassKeys()'), "Retail wizard: no class supply page").toBe(0);
+  expect(onRetail.eval('return #ns.GetModule("InstancePrep").BuyRows()'), "no reagent ids reach the Restock list").toBe(0);
+});
+
+it("retail data: the renown bar is the theme's blue, where a plain faction keeps its standing colour", () => {
+  const addon = retail(CAP_ENV);
+  expect(isTok(addon, addon.eval("return Vanguard_repbar.__barColor"), "info"), "renown in blue, whatever its reaction").toBe(true);
+  addon.eval("__wfgWorld.majorFactions = {}");
+  addon.fire("UPDATE_FACTION");
+  expect(isTok(addon, addon.eval("return Vanguard_repbar.__barColor"), "repFriendly"), "a plain faction at reaction 5").toBe(true);
+});
+
+it("retail data: a prep raid buff row needs someone in the group of the class that gives it", () => {
+  const addon = retail("__wfgWorld.units.player.class = 'WARRIOR'");
+  addon.eval("ns.GetModule('InstancePrep').settings.buffs = true");
+  // The raid buff rows now (an empty Lua table comes back as an object).
+  const labels = () => [].concat(addon.eval("local out = {} for i, r in ipairs(ns.GetModule('InstancePrep').AuraRows()) do out[i] = r.label end return out"));
+  expect(labels(), "alone: the food and the warrior's own Battle Shout").toEqual(["Food buff", "Battle Shout"]);
+  addon.eval("__wfgWorld.units.party1 = { name = 'TEST-ONLY Priest', class = 'PRIEST', player = true } __wfgWorld.units.party2 = { name = 'TEST-ONLY Hidden', class = { __secret = true }, player = true }");
+  expect(labels(), "a priest brings Fortitude; a class the client hides brings nothing").toEqual(["Food buff", "Fortitude", "Battle Shout"]);
+  addon.eval("__wfgWorld.units.party1 = nil __wfgWorld.units.party2 = nil __wfgWorld.units.raid1 = { name = 'TEST-ONLY Evoker', class = 'EVOKER', player = true }");
+  expect(labels(), "in a raid the raid units count: an evoker brings the Bronze blessing").toEqual(["Food buff", "Battle Shout", "Blessing of the Bronze"]);
 });

@@ -144,9 +144,12 @@ local function forgetResolved()
     for key in pairs(classMisses[id]) do classMisses[id][key] = nil end
   end
 end
--- A new stub method: stored, and the class tables start over.
-local function addMethod(t, key, fn) rawset(t, key, fn) forgetResolved() end
-setmetatable(methods, { __newindex = addMethod })
+-- The stub methods live in a store behind the methods table, so every write, a new method or one
+-- replacing it (the taint file's rewrap, a test double), reaches __newindex and the class tables start over.
+local methodStore = {}
+-- Stores a method, new or replacing, and the class tables start over.
+local function setMethod(_, key, fn) methodStore[key] = fn forgetResolved() end
+setmetatable(methods, { __index = methodStore, __newindex = setMethod })
 
 -- A set from the widget API list behind a proxy, so an edit to it reaches
 -- the class tables; reads see the set as it is.
@@ -160,6 +163,32 @@ API.backdrop = watched(API.backdrop)
 
 -- Writes to a game widget's fields go through this (set by wow-taint.lua).
 stub.gameNewindex = nil
+-- A game widget's public fields, kept off the widget so that every write, a new field or an overwrite,
+-- reaches the field guard. The stub's own "__" fields stay on the widget.
+stub.gameFields = setmetatable({}, { __mode = "k" })
+
+-- Whether a key is one of the stub's own fields ("__kind"), kept raw on every widget.
+function stub.isStubKey(key)
+  return type(key) == "string" and key:sub(1, 2) == "__"
+end
+
+-- A field as the widget holds it, without its class's methods: raw, or a game widget's kept field.
+function stub.ownField(w, key)
+  local fields = stub.gameFields[w]
+  if fields and not stub.isStubKey(key) then return fields[key] end
+  return rawget(w, key)
+end
+
+-- The __index of a game widget's class: the widget's kept fields first, then the class's methods.
+local function gameIndex(class)
+  -- The kept field, else the class's answer.
+  return function(w, key)
+    local fields = stub.gameFields[w]
+    local value = fields and fields[key]
+    if value ~= nil then return value end
+    return class[key]
+  end
+end
 -- The metatable for a widget as it is now: its class's methods, and the game's
 -- field guard when the game owns it. Called again when the backdrop mixin or the owner changes.
 function stub.metaFor(w)
@@ -168,7 +197,8 @@ function stub.metaFor(w)
   local id = (backdrop and "b" or "-") .. (guard and "g" or "-") .. rawget(w, "__kind")
   local meta = classMetas[id]
   if not meta then
-    meta = { __index = classTable(rawget(w, "__kind"), backdrop), __newindex = guard }
+    local class = classTable(rawget(w, "__kind"), backdrop)
+    meta = { __index = guard and gameIndex(class) or class, __newindex = guard }
     classMetas[id] = meta
   end
   return meta
@@ -461,10 +491,19 @@ function methods:RegisterForClicks(...) self.__clicks = { ... } end
 -- Buttons: whether they're enabled, recorded.
 function methods:IsEnabled() return self.__disabled ~= true end
 
+-- Gives a button's label the face and colour of its state's font object (disabled, else
+-- normal), as the client does when the font object or the state changes; no font object, no change.
+local function stateFont(button)
+  local font = button.__disabled and button.__disabledFont or button.__normalFont
+  local fs = button.__fontString
+  if font and fs then fs.__font, fs.__textColor = font.__font, font.__textColor end
+end
+
 -- Enables a button, running OnEnable if it was disabled, as the client does.
 function methods:Enable()
   local was = self.__disabled
   self.__disabled = false
+  stateFont(self)
   if was and self.__scripts.OnEnable then self.__scripts.OnEnable(self) end
 end
 
@@ -472,19 +511,39 @@ end
 function methods:Disable()
   local was = self.__disabled
   self.__disabled = true
+  stateFont(self)
   if not was and self.__scripts.OnDisable then self.__scripts.OnDisable(self) end
 end
 
--- A button's normal font object: the one last set (nil until one is).
-function methods:SetNormalFontObject(font) self.__normalFont = font end
+-- A button's font object per state (nil until one is set): the normal and disabled ones go on its label at once.
+function methods:SetNormalFontObject(font) self.__normalFont = font stateFont(self) end
+-- The disabled state's font object, put on the label while the button is disabled.
+function methods:SetDisabledFontObject(font) self.__disabledFont = font stateFont(self) end
+-- The mouse-over font object: only recorded (the stub has no mouse-over state).
+function methods:SetHighlightFontObject(font) self.__highlightFont = font end
 -- The font object SetNormalFontObject gave.
 function methods:GetNormalFontObject() return self.__normalFont end
+-- The font object SetDisabledFontObject gave.
+function methods:GetDisabledFontObject() return self.__disabledFont end
+-- The font object SetHighlightFontObject gave.
+function methods:GetHighlightFontObject() return self.__highlightFont end
+-- A font object takes another's face, colour and shadow.
+function methods:CopyFontObject(src) self.__font, self.__textColor, self.__shadowColor = src.__font, src.__textColor, src.__shadowColor end
+
+-- Errors as the client does on a script the widget's kind lacks, for SetScript and HookScript alike.
+local function requireScript(w, name)
+  local scripts = API.scripts[w.__kind]
+  if not scripts or not scripts[name] then
+    error(w.__kind .. " doesn't have a \"" .. tostring(name) .. "\" script", 3)
+  end
+end
 
 -- Runs fn after a script's current handler, as HookScript does. Like the client, a frame it keeps from
 -- addons (one whose IsForbidden says so), or a script whose handler it keeps (one in __forbiddenScripts),
 -- refuses the hook with an error.
 function methods:HookScript(name, fn)
   if self:IsForbidden() or (self.__forbiddenScripts or {})[name] then error(self:GetObjectType() .. ":HookScript(): Cannot assign script handler for '" .. name:lower() .. "' (cannot replace a forbidden script handler)", 2) end
+  requireScript(self, name)
   local old = self.__scripts[name]
   self.__scripts[name] = function(...)
     if old then old(...) end
@@ -614,23 +673,28 @@ end
 
 -- Showing a hidden widget runs its OnShow, as the client does, and its shown
 -- children's when it comes into view.
-function methods:Show()
-  local was = self.__shown
-  self.__shown = true
-  local onShow = self.__scripts.OnShow
-  if not was and onShow then onShow(self) end
-  if not was and parentsShown(self) then cascade(self, "OnShow") end
+local function showWidget(w)
+  local was = w.__shown
+  w.__shown = true
+  local onShow = w.__scripts.OnShow
+  if not was and onShow then onShow(w) end
+  if not was and parentsShown(w) then cascade(w, "OnShow") end
 end
 
 -- Hiding a shown widget runs its OnHide, as the client does, and its shown
 -- children's when it was in view.
-function methods:Hide()
-  local was = self.__shown
-  self.__shown = false
-  local onHide = self.__scripts.OnHide
-  if was and onHide then onHide(self) end
-  if was and parentsShown(self) then cascade(self, "OnHide") end
+local function hideWidget(w)
+  local was = w.__shown
+  w.__shown = false
+  local onHide = w.__scripts.OnHide
+  if was and onHide then onHide(w) end
+  if was and parentsShown(w) then cascade(w, "OnHide") end
 end
+
+-- Shows a widget (showWidget).
+function methods:Show() showWidget(self) end
+-- Hides a widget (hideWidget).
+function methods:Hide() hideWidget(self) end
 
 -- The shown state.
 function methods:IsShown() return self.__shown end
@@ -655,15 +719,15 @@ function methods:IsVisible()
   return true
 end
 
--- Shows or hides by a flag.
-function methods:SetShown(shown) self.__shown = not not shown end
+-- Shows or hides by a flag (nil hides), running OnShow or OnHide as Show and Hide do. It calls the
+-- locals, not self:Show(), so a hooksecurefunc on the frame's Show or Hide does not run, as in the client.
+function methods:SetShown(shown)
+  if shown then showWidget(self) else hideWidget(self) end
+end
 
 -- Script handlers: only ones the real widget type has.
 function methods:SetScript(name, fn)
-  local scripts = API.scripts[self.__kind]
-  if not scripts or not scripts[name] then
-    error(self.__kind .. " doesn't have a \"" .. tostring(name) .. "\" script", 2)
-  end
+  requireScript(self, name)
   self.__scripts[name] = fn
   if name == "OnUpdate" then stub.updaters[self] = fn and true or nil end
 end
@@ -796,6 +860,15 @@ local function checkTemplates(template, kind)
   return backdrop
 end
 
+-- A font object (the client's CreateFont): a face and a colour, as a font string has. Not a region,
+-- so it stays out of stub.frames; named globally like a frame.
+function CreateFont(name)
+  local font = widgetState("Font", name)
+  setmetatable(font, stub.metaFor(font))
+  if name then _G[name] = font end
+  return font
+end
+
 -- Unknown frame types and templates are errors in game, so they are here.
 function CreateFrame(kind, name, parent, template)
   local missing = kind == "AuraContainer" and stub.noAuraContainer
@@ -813,6 +886,12 @@ end
 function SecureHandlerWrapScript(frame, script, _, preBody)
   frame.__wraps = frame.__wraps or {}
   frame.__wraps[script] = preBody
+end
+
+-- Secure frame references (FrameXML): recorded per frame and label.
+function SecureHandlerSetFrameRef(frame, label, ref)
+  frame.__frameRefs = frame.__frameRefs or {}
+  frame.__frameRefs[label] = ref
 end
 
 -- TEST-ONLY: runs a snippet with self bound to the frame, as the client's restricted
@@ -983,14 +1062,16 @@ function stub.update(elapsed)
   end
 end
 
--- Moves the clock in frames of `step` seconds so throttled OnUpdate
--- drivers tick every frame.
+-- How close two clock readings may be and still count as the same moment (float sums of steps drift).
+local CLOCK_SLACK = 1e-9
+
+-- Moves the clock to now + seconds in frames of `step` seconds (a shorter last frame for the remainder), so
+-- throttled OnUpdate drivers tick every frame and the clock ends exactly where asked.
 function stub.advance(seconds, step)
   step = step or 0.25
-  local frames = math.floor(seconds / step + 0.5)
-  for _ = 1, frames do
-    stub.update(step)
-  end
+  local target = stub.now + seconds
+  while stub.now + step <= target + CLOCK_SLACK do stub.update(step) end
+  if target - stub.now > CLOCK_SLACK then stub.update(target - stub.now) end
 end
 
 -- Forgets the chat lines seen so far.
@@ -1007,18 +1088,53 @@ local function runScript(frame, name, ...)
 end
 stub.runScript = runScript
 
--- Clicks a frame: PreClick, OnMouseDown, OnMouseUp, OnClick, PostClick, as the client does.
-function stub.click(frame, button, down)
-  button = button or "LeftButton"
-  runScript(frame, "PreClick", button, down == true)
-  runScript(frame, "OnMouseDown", button)
-  runScript(frame, "OnMouseUp", button)
-  if frame.__disabled ~= true then runScript(frame, "OnClick", button, down == true) end
-  runScript(frame, "PostClick", button, down == true)
+-- Whether a button's click registration ("AnyUp", "RightButtonDown") takes this press or release.
+-- With no RegisterForClicks call a button takes left releases only: that default is the engine's (Blizzard's
+-- Lua shows it only by registering every other click by hand, e.g. GameTime.lua's "AnyUp"), not in its Lua.
+function stub.clickRegistered(frame, button, down)
+  local phase = down and "Down" or "Up"
+  for _, reg in ipairs(frame.__clicks or { "LeftButtonUp" }) do
+    if reg == "Any" .. phase or reg == button .. phase then return true end
+  end
+  return false
 end
 
--- The widget's Click method, as buttons have in game.
-function methods:Click(button, down) stub.click(self, button, down) end
+-- The scripts a click runs, in the client's order: all of them, or only the mouse ones when a button does not
+-- take that click (RegisterForMouse, not RegisterForClicks, governs OnMouseDown and OnMouseUp).
+local CLICK_SCRIPTS = {
+  all = { "PreClick", "OnMouseDown", "OnMouseUp", "OnClick", "PostClick" },
+  mouse = { "OnMouseDown", "OnMouseUp" },
+}
+
+-- Runs one script of a click with the arguments the client gives it; a disabled button's OnClick does not run.
+local function clickScript(frame, name, button, down)
+  if name == "OnMouseDown" or name == "OnMouseUp" then return runScript(frame, name, button) end
+  if name == "OnClick" and frame.__disabled == true then return end
+  runScript(frame, name, button, down == true)
+end
+
+-- Runs a click's scripts (a CLICK_SCRIPTS list) on a frame. Every click goes through here (wow-world.lua
+-- counts it as a hardware event).
+function stub.runClick(frame, button, down, scripts)
+  for _, name in ipairs(scripts) do clickScript(frame, name, button or "LeftButton", down) end
+end
+
+-- Whether a mouse click reaches a frame's OnClick: always, but on a Button or CheckButton only a registered click.
+local function sendsClick(frame, button, down)
+  local kind = frame.__kind
+  return (kind ~= "Button" and kind ~= "CheckButton") or stub.clickRegistered(frame, button, down)
+end
+
+-- Clicks a frame with the mouse: PreClick, OnMouseDown, OnMouseUp, OnClick, PostClick, as the client does; a
+-- button that did not register this button and phase runs only OnMouseDown and OnMouseUp.
+function stub.click(frame, button, down)
+  button = button or "LeftButton"
+  stub.runClick(frame, button, down, sendsClick(frame, button, down == true) and CLICK_SCRIPTS.all or CLICK_SCRIPTS.mouse)
+end
+
+-- The widget's Click method, as buttons have in game: /click and button:Click() run OnClick whatever the button
+-- registered (SlashCommands.lua drives /click through it, and the source does not show the engine filtering it).
+function methods:Click(button, down) stub.runClick(self, button, down, CLICK_SCRIPTS.all) end
 
 -- Takes the mouse off the frame it is over, running its OnLeave.
 local function leave()

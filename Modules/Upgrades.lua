@@ -27,6 +27,8 @@ local UP = ns.Module("Upgrades", { defaults = { tooltip = true, bags = true, que
 UP.MIN_PCT = 0.5
 -- The inventory slots of the main hand and the off hand (a two-hander fills both).
 UP.MAIN_HAND, UP.OFF_HAND = 16, 17
+-- The last equipment slot (the tabard): the slots 1 to this one hold what you wear.
+UP.LAST_WORN_SLOT = 19
 -- Equip locations -> the inventory slots they go in (a pair compares with the weaker).
 UP.SLOTS = {
   INVTYPE_HEAD = { 1 }, INVTYPE_NECK = { 2 }, INVTYPE_SHOULDER = { 3 }, INVTYPE_CHEST = { 5 }, INVTYPE_ROBE = { 5 },
@@ -34,15 +36,29 @@ UP.SLOTS = {
   INVTYPE_FINGER = { 11, 12 }, INVTYPE_TRINKET = { 13, 14 }, INVTYPE_CLOAK = { 15 },
   INVTYPE_WEAPON = { 16 }, INVTYPE_WEAPONMAINHAND = { 16 }, INVTYPE_2HWEAPON = { 16 },
   INVTYPE_WEAPONOFFHAND = { 17 }, INVTYPE_SHIELD = { 17 }, INVTYPE_HOLDABLE = { 17 },
-  INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 }, INVTYPE_THROWN = { 18 }, INVTYPE_RELIC = { 18 },
 }
+
+-- Ranged weapons: WoW Forever has a ranged slot (18). Retail has none and wears a bow, gun or crossbow in the
+-- main hand, with no thrown or relic slot.
+UP.RANGED_SLOTS = ns.ClientData({
+  forever = { INVTYPE_RANGED = { 18 }, INVTYPE_RANGEDRIGHT = { 18 }, INVTYPE_THROWN = { 18 }, INVTYPE_RELIC = { 18 } },
+  retail = { INVTYPE_RANGED = { 16 }, INVTYPE_RANGEDRIGHT = { 16 } },
+})
+for loc, slots in pairs(UP.RANGED_SLOTS) do UP.SLOTS[loc] = slots end
+
+-- The equip locations that take both hands, compared with both hands together (a Retail ranged weapon is one).
+UP.TWO_HANDED = ns.ClientData({
+  forever = { INVTYPE_2HWEAPON = true },
+  retail = { INVTYPE_2HWEAPON = true, INVTYPE_RANGED = true, INVTYPE_RANGEDRIGHT = true },
+})
 
 -- Weights ---------------------------------------------------------------------------------
 
--- The role weights are picked for: the setting, else (auto) your group role, damage when you have none.
+-- The role weights are picked for: the setting, else (auto) your group role, else (on Retail) your specialization's
+-- role, damage when you have none.
 function UP.Role()
   if UP.settings.role ~= "auto" then return UP.settings.role end
-  return ns.PlayerRole()
+  return ns.GroupRole() or W.SpecRole() or "damage"
 end
 
 -- What the lines call each kind of character and each role (the keys of ns.UpgradeWeights.KINDS and of a class's roles).
@@ -145,7 +161,7 @@ end
 
 -- What an item of equip location loc is compared with: both hands for a two-hander, else the weakest of its slots.
 local function wornScore(loc, slots)
-  if loc == "INVTYPE_2HWEAPON" then return bothHands() end
+  if UP.TWO_HANDED[loc] then return bothHands() end
   return weakest(slots)
 end
 
@@ -172,13 +188,22 @@ end
 
 -- Tooltip --------------------------------------------------------------------------------
 
+-- Whether you wear this very item: its own tooltip gets no line against the pair's other one (a bag copy with the
+-- same link loses its line too; its arrow, and the auction house's list, still compare it).
+local function isWorn(link)
+  for slot = 1, UP.LAST_WORN_SLOT do
+    if GetInventoryItemLink("player", slot) == link then return true end
+  end
+  return false
+end
+
 -- The item tooltip's line (Tooltips' AddItemLines): "Upgrade +12% (estimate) vs <worn>" in the good color, a drop in the
--- bad one. "(estimate)" because the weights behind it are defaults for the class and role, not simulated values.
+-- bad one; none on an item you wear. "(estimate)" because the weights behind it are defaults for the class and role, not simulated values.
 function UP.AddLine(tt, link)
   if not UP.settings.tooltip then return end
   local pct, empty, worn = UP.Compare(link)
   if empty then return tt:AddLine(L["Upgrade: fills an empty slot"], T.RGB("good")) end
-  if not pct or math.abs(pct) < UP.MIN_PCT then return end
+  if not pct or math.abs(pct) < UP.MIN_PCT or isWorn(link) then return end
   local vs = worn and worn:match("%[(.-)%]")
   local change = pct > 0 and L["Upgrade {change} (estimate)"] or L["Downgrade {change} (estimate)"]
   local text = ns.Format(change, { change = string.format("%+.0f%%", pct) })
@@ -332,5 +357,6 @@ function UP.Enable(settings)
   if bag and type(hooksecurefunc) == "function" then hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", markBagSafely)) end
   ns.On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
   ns.On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
+  if not ns.IsForever() then ns.On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.OnRolesChanged) end -- a new spec, new main stat
   ns.On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
 end

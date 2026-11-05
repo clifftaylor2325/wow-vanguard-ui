@@ -33,6 +33,15 @@ function ns.ExitWithoutSaving()
   ns.Chat(L["Every frame is back where it was when you unlocked."])
 end
 
+-- While unlocked: the key's saved spot as it is now becomes the one Exit without saving puts back (Situations
+-- just put an override or the base there, and that is not a move the player made).
+---@param key string
+function ns.RememberUnlockSpot(key)
+  if not before then return end
+  local spot = ns.Settings("positions")[key]
+  before[key] = type(spot) == "table" and ns.Copy(spot) or spot
+end
+
 -- Whether the options window is open now.
 local function optionsOpen()
   local window = ns.Options.Frame()

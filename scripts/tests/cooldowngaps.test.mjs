@@ -256,8 +256,14 @@ it("the tracked spells follow a spec or spellbook change, and the spell commands
   addon.fire("PLAYER_REGEN_ENABLED");
   expect(shown(addon).length, "the end of a fight reads the manager's list again").toBe(1);
   addon.eval("__sets[0] = { 11 }");
-  addon.fire("PLAYER_SPECIALIZATION_CHANGED");
-  expect(shown(addon).length, "an event naming no unit counts").toBe(2);
+  addon.fire("PLAYER_ENTERING_WORLD", false, true);
+  expect(shown(addon).length, "a load screen reads the manager's list again").toBe(2);
+  addon.eval("__sets[0] = {} __sets[1] = {}");
+  addon.fire("COOLDOWN_VIEWER_DATA_LOADED");
+  expect(shown(addon).length, "the manager's data arriving reads it again").toBe(1);
+  addon.eval("__sets[0] = { 11 }");
+  addon.fire("SPELLS_CHANGED");
+  expect(shown(addon).length, "a spellbook change reads it again").toBe(2);
   addon.slash("gaps spell add 501");
   addon.slash("gaps spell add 501");
   expect(chatHas(addon, /Already showing spell 501/), "twice says so").toBe(true);

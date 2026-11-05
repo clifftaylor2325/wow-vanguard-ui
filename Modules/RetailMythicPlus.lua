@@ -29,11 +29,6 @@ RM.TIMER_KIND, RM.TICK_EVERY, RM.BACKPACK = 1, 1, 0
 RM.EVENTS = { "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED", "CHALLENGE_MODE_RESET", "CHALLENGE_MODE_DEATH_COUNT_UPDATED",
   "WORLD_STATE_TIMER_START", "WORLD_STATE_TIMER_STOP" }
 
--- A table the client gives plainly (a hidden one counts as none).
-local function plainTable(v)
-  return not ns.IsSecret(v) and type(v) == "table" and v or nil
-end
-
 -- Keys and affixes -----------------------------------------------------------------------------
 
 -- A challenge map's name, time limit (seconds) and instance (GetMapUIInfo's first, third and sixth values), each
@@ -47,7 +42,7 @@ end
 -- "Fortified, Bursting" from a list of affix ids, by the client's own names; nil when none is named.
 function RM.AffixText(ids)
   local names = {}
-  for _, id in ipairs(plainTable(ids) or {}) do
+  for _, id in ipairs(ns.PlainTable(ids) or {}) do
     local name = ns.PlainNumber(id) and ns.PlainText((ns.CallIf(C_ChallengeMode, "GetAffixInfo", id)))
     if name then names[#names + 1] = name end
   end
@@ -57,8 +52,8 @@ end
 -- This week's affix ids (C_MythicPlus.GetCurrentAffixes: { id, seasonID } each).
 local function weekAffixes()
   local ids = {}
-  for _, affix in ipairs(plainTable(ns.CallIf(C_MythicPlus, "GetCurrentAffixes")) or {}) do
-    if plainTable(affix) then ids[#ids + 1] = affix.id end
+  for _, affix in ipairs(ns.PlainTable(ns.CallIf(C_MythicPlus, "GetCurrentAffixes")) or {}) do
+    if ns.PlainTable(affix) then ids[#ids + 1] = affix.id end
   end
   return ids
 end
@@ -119,21 +114,12 @@ function RM.DeathText(key)
   return ns.Format(L["Deaths: {count} ({seconds} s lost)"], { count = key.deaths, seconds = key.lost })
 end
 
--- A criterion as a line: the enemy forces (a weighted criterion, whose quantity is its percentage) as "Enemy
--- Forces 45%", any other as the scenario block draws it (RQ.Criterion).
-function RM.Criterion(c)
-  local text, percent = ns.PlainText(c.description), ns.IsTrue(c.isWeightedProgress) and ns.PlainNumber(c.quantity)
-  if not (text and percent) then return RQ.Criterion(c) end
-  local line = ns.Format(L["{objective} {percent}%"], { objective = text, percent = math.floor(percent) })
-  return { text = line, done = ns.IsTrue(c.completed) }
-end
-
 -- The stage's criteria (the bosses and the enemy forces) as lines, in the game's order.
 local function criteria()
-  local out, step = {}, plainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
+  local out, step = {}, ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
   for i = 1, ns.PlainNumber(step.numCriteria) or 0 do
-    local c = plainTable(ns.CallIf(C_ScenarioInfo, "GetCriteriaInfo", i))
-    local line = c and RM.Criterion(c)
+    local c = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetCriteriaInfo", i))
+    local line = c and RQ.Criterion(c)
     if line then out[#out + 1] = line end
   end
   return out
@@ -163,7 +149,7 @@ end
 -- The challenge map of the dungeon you stand in (the one whose instance is GetInstanceInfo's eighth value), or nil.
 function RM.MapHere()
   local here = ns.PlainNumber((select(8, ns.CallIf(_G, "GetInstanceInfo"))))
-  for _, mapID in ipairs(here and plainTable(ns.CallIf(C_ChallengeMode, "GetMapTable")) or {}) do
+  for _, mapID in ipairs(here and ns.PlainTable(ns.CallIf(C_ChallengeMode, "GetMapTable")) or {}) do
     local _, _, instance = RM.MapInfo(ns.PlainNumber(mapID))
     if instance == here then return mapID end
   end

@@ -1,7 +1,7 @@
 -- Class resources on Retail (only Retail loads this file): what the game's player frame draws for a
 -- class or spec, which hiding that frame took with it. A row of pips just above the player frame
 -- (holy power, soul shards, chi, arcane charges, essence, runes), or a Brewmaster's stagger bar
--- just under it. CB.Enable (Modules/ClassBars.lua) calls CB.EnableResources at login.
+-- just under it; a Devourer's soul fragments and an Augmentation's Ebon Might get a thin bar there too. CB.Enable (Modules/ClassBars.lua) calls CB.EnableResources at login.
 --
 -- Display only: nothing here is secure. Each pip is a status bar holding one point (pip i runs
 -- from i - 1 to i), and the power goes to every pip as it is, so a value the client hides still
@@ -18,6 +18,16 @@ local UF = ns.GetModule("UnitFrames")
 CB.RESOURCE_KINDS = {
   DEATHKNIGHT = "runes", PALADIN = "holyPower", WARLOCK = "soulShards", EVOKER = "essence",
   MAGE = { [1] = "arcaneCharges" }, MONK = { [1] = "stagger", [3] = "chi" },
+}
+
+-- The bar under the frame (the game's alternate power bar) of a class by spec number, besides its resource above.
+CB.ALT_BARS = { DEMONHUNTER = { [3] = "soulFragments" }, EVOKER = { [3] = "ebonMight" } }
+
+-- The auras those bars read (Blizzard_APIDocumentationGenerated/SpellIDDocumentation.lua; Ebon Might's is
+-- EvokerEbonMightBar.lua's), and the fullest each bar shows while the client won't say (Ebon Might's is the game's 20 s).
+CB.ALT_AURAS = {
+  voidMetamorphosis = 1217607, darkHeart = 1225789, silenceTheWhispers = 1227702, ebonMight = 395296,
+  fallbackMax = { soulFragments = 30, ebonMight = 20 },
 }
 
 -- How each resource is drawn: pips of a power type (Enum.PowerType's key) in a theme colour, with
@@ -38,6 +48,8 @@ CB.PIP = { size = 14, gap = 3, staggerHeight = 6 }
 CB.STAGGER_STEPS = { warn = 0.3, bad = 0.6 }
 -- How often the stagger bar is read (the client sends no event for it), in seconds.
 CB.STAGGER_PERIOD = 0.1
+-- The ticker job that counts an Ebon Might bar down while the aura runs.
+CB.EBON_MIGHT_JOB = "class ebon might"
 -- Essence recharges at one point every five seconds when the client gives no rate (as its own bar does).
 CB.ESSENCE_RATE = 0.2
 
@@ -172,15 +184,21 @@ end
 
 -- Stagger ----------------------------------------------------------------------------------
 
--- The stagger bar just under the player frame, as thin as the druid mana bar.
-local function buildStagger(player)
+-- A thin bar just under the player frame, as thin as the druid mana bar, in a theme colour.
+local function thinBar(player, token)
   local holder = T.HudPanel(CreateFrame("Frame", nil, player), { inset = true })
   holder:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -3)
   holder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -3)
   holder:SetHeight(CB.PIP.staggerHeight)
   local px = T.Pixel(holder)
-  holder.bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, holder)), "good")
+  holder.bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, holder)), token)
   holder.bar:SetPoint("TOPLEFT", px, -px); holder.bar:SetPoint("BOTTOMRIGHT", -px, px)
+  return holder
+end
+
+-- The stagger bar just under the player frame, read on a timer (the client sends no event for it).
+local function buildStagger(player)
+  local holder = thinBar(player, "good")
   ns.Every("class stagger", CB.STAGGER_PERIOD, CB.UpdateStagger, holder)
   return holder
 end
@@ -201,6 +219,79 @@ function CB.UpdateStagger()
   T.SetBarValue(holder.bar, amount)
   local token = staggerToken(amount, health)
   if token then T.BarColor(holder.bar, token) end
+end
+
+-- Alternate bars -----------------------------------------------------------------------------
+
+-- Your alternate bar's kind (CB.ALT_BARS) for a class, or nil when it has none in this spec.
+function CB.AltKind(class)
+  local kinds = CB.ALT_BARS[class]
+  return kinds and kinds[spec() or 0]
+end
+
+-- One of your auras by spell id, or nil without it or while the client hides it (the result is
+-- checked with type() and ns.IsSecret, never compared, since the client may hand back a secret).
+local function ownAura(spellID)
+  local aura = C_UnitAuras.GetPlayerAuraBySpellID(spellID)
+  if type(aura) ~= "table" or ns.IsSecret(aura) then return nil end
+  return aura
+end
+
+-- The stack count of one of your auras (a hidden count goes to the bar as it is), 0 without it.
+local function stacks(spellID)
+  local aura = ownAura(spellID)
+  if not aura then return 0 end
+  return aura.applications
+end
+
+-- The most soul fragments to show: the Collapsing Star's cost in Void Metamorphosis, else the Dark Heart's cap.
+-- Only the one in use is asked for, and neither is truth-tested: either may be secret.
+local function soulFragmentsMax(meta)
+  local most
+  if meta then most = GetCollapsingStarCost() else most = C_Spell.GetSpellMaxCumulativeAuraApplications(CB.ALT_AURAS.darkHeart) end
+  return ns.PlainNumber(most) or CB.ALT_AURAS.fallbackMax.soulFragments
+end
+
+-- Fills the soul fragments bar from the aura the game reads: Silence the Whispers in Void Metamorphosis, else Dark Heart.
+local function fillSoulFragments(bar)
+  local auras = CB.ALT_AURAS
+  local meta = ownAura(auras.voidMetamorphosis) ~= nil
+  bar:SetMinMaxValues(0, soulFragmentsMax(meta))
+  T.SetBarValue(bar, stacks(meta and auras.silenceTheWhispers or auras.darkHeart))
+end
+
+-- The seconds left on your Ebon Might (0 without it, or while the client hides its time).
+local function ebonMightLeft()
+  local aura = ownAura(CB.ALT_AURAS.ebonMight)
+  local expires = aura and ns.PlainNumber(aura.expirationTime)
+  return expires and math.max(0, expires - GetTime()) or 0
+end
+
+-- Fills the Ebon Might bar, and again each tenth of a second while it runs.
+local function fillEbonMight(bar)
+  local left = ebonMightLeft()
+  bar:SetMinMaxValues(0, CB.ALT_AURAS.fallbackMax.ebonMight)
+  T.SetBarValue(bar, left)
+  ns.Every(CB.EBON_MIGHT_JOB, left > 0 and CB.STAGGER_PERIOD or nil, CB.UpdateAlt, CB.altFrame)
+end
+
+-- How each alternate bar is filled (its kind is also its theme colour token).
+CB.ALT_FILLS = { soulFragments = fillSoulFragments, ebonMight = fillEbonMight }
+
+-- Repaints the alternate bar showing now (an aura change, or its own timer). A hidden bar (another spec)
+-- stops the Ebon Might countdown, which would otherwise stay on the ticker.
+function CB.UpdateAlt()
+  local holder = CB.altFrame
+  if holder and holder:IsShown() then return CB.ALT_FILLS[CB.altKind](holder.bar) end
+  ns.Every(CB.EBON_MIGHT_JOB, nil)
+end
+
+-- Shows the alternate bar of your spec now (building it the first time) and hides it in other specs.
+function CB.ShowAlt(player)
+  CB.altKind = CB.AltKind(CB.class)
+  if CB.altKind and not CB.altFrame then CB.altFrame = thinBar(player, CB.altKind) end
+  if CB.altFrame then CB.altFrame:SetShown(CB.altKind ~= nil) end
+  CB.UpdateAlt()
 end
 
 -- Showing ----------------------------------------------------------------------------------
@@ -241,6 +332,7 @@ function CB.ShowResource()
   if def and not CB.resourceFrames[CB.kind] then CB.resourceFrames[CB.kind] = buildResource(player, def) end
   for kind, frame in pairs(CB.resourceFrames) do frame:SetShown(kind == CB.kind) end
   CB.UpdateResource()
+  CB.ShowAlt(player)
 end
 
 -- The power events that change a resource, all your own.
@@ -254,10 +346,11 @@ end
 -- Your class resource (CB.Enable, Modules/ClassBars.lua): built out of combat after the unit frames
 -- (it hangs off the player frame), repainted on your power and rune changes, rebuilt on a spec change.
 function CB.EnableResources(class)
-  if not CB.RESOURCE_KINDS[class] then return end
+  if not (CB.RESOURCE_KINDS[class] or CB.ALT_BARS[class]) then return end
   CB.class, CB.resourceFrames = class, {}
   ns.OutOfCombat(CB.ShowResource)
   ns.OnUnit(CB.RESOURCE_EVENTS, CB.UpdateResource, "player")
   ns.On("RUNE_POWER_UPDATE", CB.UpdateResource)
   ns.On("PLAYER_SPECIALIZATION_CHANGED", onSpec)
+  if CB.ALT_BARS[class] then ns.OnUnit("UNIT_AURA", CB.UpdateAlt, "player") end
 end

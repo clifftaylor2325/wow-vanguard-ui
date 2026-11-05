@@ -39,7 +39,7 @@ local function wayRows()
     { "header", L["Finding your way"] },
     { "text", ns.ClientData({
       forever = L["The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock. /vg questdata shows what the client says about quests."],
-      retail = L["The arrow on screen turns toward the nearest unfinished objective of the quests you watch; Shift-click a quest in the tracker to point it there instead. Move it with /vg unlock."],
+      retail = L["The arrow on screen turns toward the nearest unfinished objective of the quests you watch, or the quest you track on the game's map. Move it with /vg unlock."],
     }) },
   }
   rows = append(append(rows, ns.GetModule("QuestArrow").Rows()), O.ModuleRows("QuestGuide", ns.QuestGuide.Rows))

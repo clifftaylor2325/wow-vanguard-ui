@@ -54,6 +54,7 @@ function ns.DeleteProfile(name)
     return false
   end
   VanguardDB.profiles[name] = nil
+  if type(VanguardDB.backupOf) == "table" then VanguardDB.backupOf[name] = nil end
   return true
 end
 
@@ -175,11 +176,19 @@ local function backupName(name, n)
   return name:sub(1, 32 - #suffix) .. suffix
 end
 
+-- True when the backup profile called candidate was made from a profile other than name (two
+-- long names cut alike): VanguardDB.backupOf keeps the source of each backup.
+local function otherBackup(candidate, name)
+  local source = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf[candidate] or nil
+  return source ~= nil and source ~= name
+end
+
 -- The rolling backup's name for a profile: "<name> backup"; never a profile in use (by this
--- character, now, after the reload or for a spec, or by another character): then "<name> backup 2", 3 and on.
+-- character, now, after the reload or for a spec, or by another character) or another profile's
+-- backup: then "<name> backup 2", 3 and on.
 function ns.BackupName(name)
   local n = 1
-  while profileInUse(backupName(name, n)) do n = n + 1 end
+  while profileInUse(backupName(name, n)) or otherBackup(backupName(name, n), name) do n = n + 1 end
   return backupName(name, n)
 end
 
@@ -187,8 +196,11 @@ end
 -- taken out, as for an export) into its one rolling backup profile, replacing the last
 -- backup. Runs before every import. Returns the backup's name.
 function ns.BackupProfile()
-  local name = ns.BackupName(ns.ProfileName())
+  local source = ns.ProfileName()
+  local name = ns.BackupName(source)
   VanguardDB.profiles[name] = ownCopy(ns.Profile())
+  VanguardDB.backupOf = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf or {}
+  VanguardDB.backupOf[name] = source
   return name
 end
 
@@ -260,7 +272,7 @@ end
 function ns.ApplyImport(scope, data)
   local kind, payload = ns.ReadPayload(scope, data)
   if not kind then return nil, payload end
-  ns.WithoutClientState(payload)
+  ns.WithoutOtherClientDefaults(ns.WithoutClientState(payload), kind)
   local backup = ns.BackupProfile()
   local result = { notes = importNotes(payload, backup), backup = backup, reload = true }
   local text = kind == "profile" and importWhole(payload, result) or importParts(payload)
@@ -368,12 +380,19 @@ function ns.RoleKey(role)
   return ROLE_KEYS[role]
 end
 
--- Your group role as Vanguard names it, "damage" when you have none or the client hides it. The group
--- role can be secret (SecretWhenUnitIdentityRestricted), and callers use it as a table key.
+-- Your group role as Vanguard names it, or nil when you have none or the client hides it. The group
+-- role can be secret (SecretWhenUnitIdentityRestricted).
+---@return string|nil
+function ns.GroupRole()
+  local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
+  return ns.RoleKey(assigned)
+end
+
+-- Your group role as Vanguard names it, "damage" when you have none or the client hides it; callers use it
+-- as a table key.
 ---@return string
 function ns.PlayerRole()
-  local assigned = type(UnitGroupRolesAssigned) == "function" and UnitGroupRolesAssigned("player")
-  return ns.RoleKey(assigned) or "damage"
+  return ns.GroupRole() or "damage"
 end
 
 -- This character's spec -> profile map.
@@ -419,6 +438,15 @@ end
 function ns.SpecNowLine(key, profile)
   if not ns.TalentGroup() then return ns.Format(L["Spec {spec} now uses profile {profile}."], { spec = key, profile = profile }) end
   return ns.Format(L["{talents} now use profile {profile}."], { talents = ns.TalentsName(key), profile = profile })
+end
+
+-- After a pick by hand: when the current spec has a profile of its own, it takes over again at
+-- login, so say so (the Profiles page's "Stop spec switching" keeps the pick).
+function ns.WarnSpecWins(picked)
+  local spec = ns.SpecProfile()
+  if not spec or spec == picked then return end
+  local line = ns.SpecUsesLine(ns.SpecKey(), spec)
+  ns.Chat(line .. " " .. L["It switches back at the reload; Stop spec switching on the Profiles page keeps your pick."])
 end
 
 -- Remembers the profile the character picked, before a spec's profile takes over from it.

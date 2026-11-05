@@ -16,6 +16,18 @@ C_DelvesUI = {
   GetActiveDelveTier = function() return { tier = world.delveTier or 0, suggestedILvl = 0, unlocked = true, tierDescription = "", rewards = {} } end,
 }
 
+-- world.delveWidgets: the widgets of the scenario step's widget set (UIWidgetInfo: widgetID, widgetType), and
+-- world.delveHeader: the ScenarioHeaderDelvesWidgetVisualizationInfo they answer (shownState, currencies, spells,
+-- rewardInfo), both nil outside a delve (UIWidgetManagerDocumentation.lua).
+world.delveWidgets, world.delveHeader = nil, nil
+
+C_UIWidgetManager = {
+  -- The widgets of a widget set, by its id.
+  GetAllWidgetsBySetID = function(setID) return setID == ((world.scenario or {}).step or {}).widgetSetID and world.delveWidgets or {} end,
+  -- The delve header widget's info, nil for any other widget id.
+  GetScenarioHeaderDelvesWidgetVisualizationInfo = function(widgetID) return widgetID == 77 and world.delveHeader or nil end,
+}
+
 -- A piece of game art on a frame, marked so a test can tell it from Vanguard's.
 local function art(parent, layer)
   local t = parent:CreateTexture(nil, layer or "BACKGROUND")

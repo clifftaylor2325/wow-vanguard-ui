@@ -113,9 +113,9 @@ local TOKENS = {
   hostile = "cc4b45", neutral = "e0c24e", friendly = "4db86a",
   -- Resources
   mana = "3e7be0", rage = "cf4a3e", energy = "e6c24a", focus = "e0893c",
-  -- Class resources on Retail (Modules/RetailClassBars.lua), and a charged combo point (Modules/ComboPoints.lua).
+  -- Class resources on Retail (Modules/RetailClassBars.lua, with a Devourer's soul fragments and Ebon Might), and a charged combo point (Modules/ComboPoints.lua).
   runes = "c84a5a", holyPower = "f0d878", soulShards = "9b6ad8", chi = "6fe0c0", arcaneCharges = "6f8cf0",
-  essence = "4fb8c8", charged = "5ab4f0",
+  essence = "4fb8c8", charged = "5ab4f0", soulFragments = "6fd04a", ebonMight = "d9a441",
   -- Threat: yellow, orange, red
   threat1 = "e0c24e", threat2 = "ee8b3a", threat3 = "e0565b",
   -- Dispel types, and the highlight when the type is hidden
@@ -1520,21 +1520,94 @@ end
 local labelBefore = setmetatable({}, { __mode = "k" })
 
 -- Gives a button its disabled look (#257): no hover or press, its label in the disabled tier; or,
--- enabled again, the label's colour from before.
+-- enabled again, the label's colour from before. A label on the theme's font objects (T.ButtonLabel) has its colours from them.
 function T.DisabledLook(button, disabled)
   local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
   if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
-  if not (fs and fs.GetTextColor) then return end
+  if not (fs and fs.GetTextColor) or T.LabelFonts(button) then return end
   if disabled then labelBefore[button] = labelBefore[button] or { token = T.ColorToken(fs), fs:GetTextColor() } return T.Color(fs, "disabled") end
   local c = labelBefore[button]
   labelBefore[button] = nil
   if c and c.token then T.Color(fs, c.token) elseif c then T.ColorRGB(fs, c[1], c[2], c[3]) end
 end
 
+-- A game push button's label (UIPanelButtonTemplate and kin, the trainer's Train): the game's font objects paint it
+-- gold at rest, white under the mouse and grey while disabled, and put those colours back each time its state changes,
+-- so a SetTextColor doesn't hold. T.ButtonLabel gives such a button copies of its font objects in the theme's tiers,
+-- so it reads like a Vanguard button beside it. Kept in a block: Lua's 200-local limit.
+do
+  -- Per game font object, Vanguard's copies (made once): { text = font, disabled = font }.
+  local copiesOf = {}
+  -- Each button given the copies (weak) -> its copies.
+  local labelled = setmetatable({}, { __mode = "k" })
+  -- How many copies exist, for their global names.
+  local made = 0
+
+  -- Paints one copy: the game's font object's face and size again, in a theme colour.
+  local function paintCopy(font, from, token)
+    font:CopyFontObject(from)
+    font:SetTextColor(T.RGB(token))
+  end
+
+  -- Vanguard's text and disabled copies of the game's font object `from`, made on first use.
+  local function copiesFor(from)
+    if copiesOf[from] then return copiesOf[from] end
+    local c = { text = CreateFont("VanguardButtonLabel" .. made + 1), disabled = CreateFont("VanguardButtonLabel" .. made + 2) }
+    made = made + 2
+    paintCopy(c.text, from, "text")
+    paintCopy(c.disabled, from, "disabled")
+    copiesOf[from] = c
+    return c
+  end
+
+  -- A button's label and the game font object behind it, when T.ButtonLabel has copies to give it; nil for a button
+  -- without a label or font object (Vanguard's own), one given its copies already, or a client without CreateFont.
+  local function labelFont(button)
+    local fs = type(button) == "table" and button.GetFontString and button:GetFontString()
+    local from = fs and button.GetNormalFontObject and button:GetNormalFontObject()
+    if not from or labelled[button] or type(CreateFont) ~= "function" then return nil end
+    return fs, from
+  end
+
+  -- Whether T.ButtonLabel has anything to do for a button (reads only, so it is asked in a fight too).
+  function T.WantsLabelFonts(button)
+    return labelFont(button) ~= nil
+  end
+
+  -- Gives a game button whose label has a font object the theme's copies: `text` at rest and under the mouse (hover
+  -- never recolours text), `disabled` while disabled. The label's remembered colour is dropped first, so a theme
+  -- change leaves it to the copies. A button labelFont finds nothing on is left alone.
+  function T.ButtonLabel(button)
+    local fs, from = labelFont(button)
+    if not fs then return end
+    local c = copiesFor(from)
+    T.ColorRGB(fs, fs:GetTextColor())
+    button:SetNormalFontObject(c.text)
+    button:SetHighlightFontObject(c.text)
+    button:SetDisabledFontObject(c.disabled)
+    labelled[button] = c
+  end
+
+  -- The copies a button was given ({ text, disabled }), or nil: its label's colours are theirs.
+  function T.LabelFonts(button)
+    return labelled[button]
+  end
+
+  -- Paints every copy again after a theme change (a new font, Text size, variant or accent).
+  function T.RepaintLabelFonts()
+    for from, c in pairs(copiesOf) do
+      paintCopy(c.text, from, "text")
+      paintCopy(c.disabled, from, "disabled")
+    end
+  end
+end
+
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
 -- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
--- have them hooked).
-local function stateParts(button)
+-- have them hooked). A game button of kind "secondary" (Accept, Open All, Train) also gets the theme's label
+-- copies (T.ButtonLabel), set out of combat; a primary's label is its own, and Vanguard's own have no font objects, so
+-- nothing waits on a fight for them.
+local function stateParts(button, kind)
   local fill = T.FillParts(button, "BACKGROUND", 3, T.PRESS.token, T.PRESS.alpha)
   T.ShowFill(fill, false)
   pressOf[button] = { overlay = fill.bg, fill = fill }
@@ -1542,6 +1615,7 @@ local function stateParts(button)
   button:HookScript("OnMouseUp", ns.Guard("button press", function(b) T.PressButton(b, false) end))
   pcall(button.HookScript, button, "OnDisable", ns.Guard("button state", function(b) T.DisabledLook(b, true) end))
   pcall(button.HookScript, button, "OnEnable", ns.Guard("button state", function(b) T.DisabledLook(b, false) end))
+  if kind ~= "primary" and T.WantsLabelFonts(button) then ns.OutOfCombat(function() T.ButtonLabel(button) end) end
 end
 
 -- The panel options of each button kind: the secondary is an inset panel with a bevel; the primary
@@ -1553,14 +1627,14 @@ local BUTTON_KINDS = {
 
 -- A flat button of a kind ("secondary" unless given, or "primary"; read on the first call only): inset
 -- panel with a bevel, template art faded, an eased hover (raisedHover and a borderHi top line), a press
--- look and a disabled look.
+-- look, a disabled look, and a game button's label in the theme's text tiers.
 function T.Button(button, kind)
   local fresh = not painted[button]
   local entry = base(button, "button", BUTTON_KINDS[kind or "secondary"])
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
     hoverParts(button, entry)
-    stateParts(button)
+    stateParts(button, kind)
   end
   repaint(button, entry)
   if not isEnabled(button) then T.DisabledLook(button, true) end
@@ -2759,6 +2833,11 @@ T.ROLES = {
   section = { size = 10, bold = false, upper = true },
 }
 
+-- The game's own sizes for text Vanguard re-fonts but leaves at the game's size (Modules/GameAlerts.lua): a raid
+-- warning line (GameFontNormalHuge), the screenshot status line (GameFontNormalLarge) and the frame rate readout
+-- (SystemFont_Shadow_Med1), before the Text size setting.
+T.GAME_TEXT = { warning = 20, status = 16, small = 12 }
+
 -- Every font string styled with a role: string -> role name. Weak, so text
 -- that gets collected doesn't stay; T.RefreshText re-fonts them all.
 local styled = setmetatable({}, { __mode = "k" })
@@ -2956,6 +3035,7 @@ function T.Refresh()
   T.RefreshText()
   refreshTints()
   applyFontObjects()
+  T.RepaintLabelFonts()
   repaintArt()
   reSnap()
   local count = #listeners
@@ -3214,18 +3294,32 @@ local function riser(frame)
   return r
 end
 
+-- Windows this file has put through a frame buffer (weak).
+local bufferedOn = setmetatable({}, { __mode = "k" })
+
 -- Draws a window through its own frame buffer (#239) while it fades, when the frameBuffer setting
 -- is on and the client has SetIsFrameBuffer, so overlapping translucent borders don't ghost.
-local function buffered(frame, on)
-  if T.Settings().frameBuffer and frame.SetIsFrameBuffer then frame:SetIsFrameBuffer(on) end
+local function buffer(frame)
+  if T.Settings().frameBuffer and frame.SetIsFrameBuffer then
+    frame:SetIsFrameBuffer(true)
+    bufferedOn[frame] = true
+  end
+end
+
+-- Turns a window's frame buffer off if this file turned it on, whatever the switch says now (it may
+-- have been turned off mid-fade), so a window reopened mid-close isn't left buffered while idle.
+local function unbuffer(frame)
+  if not bufferedOn[frame] then return end
+  frame:SetIsFrameBuffer(false)
+  bufferedOn[frame] = nil
 end
 
 -- Plays a window's open animation from px below its spot, buffered until it ends.
 local function playRise(frame, r, px)
   r.group:Stop() r.drop:SetOffset(0, -px) r.rise:SetOffset(0, px)
   r.alpha:SetFromAlpha(0) r.alpha:SetToAlpha(1)
-  buffered(frame, true)
-  r.group:SetScript("OnFinished", ns.Guard("window frame buffer", function() buffered(frame, false) end))
+  buffer(frame)
+  r.group:SetScript("OnFinished", ns.Guard("window frame buffer", function() unbuffer(frame) end))
   r.group:Play()
 end
 
@@ -3241,8 +3335,8 @@ end
 -- Closes a window (#257): fades it out over T.WINDOW_CLOSE, then hides it and runs done.
 function T.CloseWindow(frame, done)
   if riserOf[frame] then riserOf[frame].group:Stop() end
-  buffered(frame, true)
-  T.FadeOut(frame, T.WINDOW_CLOSE, function() buffered(frame, false) if done then done() end end)
+  buffer(frame)
+  T.FadeOut(frame, T.WINDOW_CLOSE, function() unbuffer(frame) if done then done() end end)
 end
 
 -- How long a button's hover takes to ease in and out (#257), in seconds; capped in combat like any fade.
@@ -3312,6 +3406,7 @@ end
 function T.StopFade(frame)
   local f = vgFader[frame]
   if f then f.group:SetScript("OnFinished", nil) f.group:Stop() end
+  unbuffer(frame)
   frame:SetAlpha(1)
 end
 end

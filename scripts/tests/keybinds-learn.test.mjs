@@ -174,6 +174,31 @@ it("a button the player changed is theirs for good: its key's spell goes to the 
   expect(slots(addon, [3]), "emptied again, it is still the player's").toEqual([0]);
 });
 
+// Applies the preset as the wizard does with one change unticked: the entry for `key` is left out and handed to KN.Applied.
+function applyDeclining(addon, key) {
+  return addon.eval(`local entries, declined = {}, {}
+    for _, e in ipairs(ns.KeybindsLayouts.Resolve(${PRESET}, {})) do
+      local list = e.key == ${luaValue(key)} and declined or entries
+      list[#list + 1] = e
+    end
+    local ok = ns.KeybindsApply.Apply(entries) if ok then ns.KeybindsLearn.Applied(${PRESET}, true, declined) end return ok`);
+}
+
+it("a change the player unticked in the wizard stays theirs: a later update leaves that button alone", () => {
+  const addon = warrior();
+  addon.eval("__wfgWorld.setAction(1, { id = 6673 })");
+  expect(applyDeclining(addon, "1")).toBe(true);
+  learn(addon, 772);
+  expect([slots(addon, [1]), spare(addon)], "Battle Shout stays on 1; nothing moved to bar 3").toEqual([[6673], []]);
+});
+
+it("a stance key the player unticked in the wizard stays unbound after a later update", () => {
+  const addon = warrior();
+  expect(applyDeclining(addon, "`")).toBe(true);
+  learn(addon, 772);
+  expect(keys(addon, ["`"])).toEqual([""]);
+});
+
 it("a key the player rebound is theirs for good: no update binds it again", () => {
   const addon = warrior();
   applyPreset(addon);
@@ -244,6 +269,22 @@ it("three refused updates in a row turn the switch off, and say so", () => {
   kn(addon, "KN.SetOn(true)");
   learn(addon, 12294);
   expect(kn(addon, "return KN.IsOn()"), "on again, the count starts afresh").toBe(true);
+});
+
+// Whether the Your keys tab's Place new spells switch is drawn on.
+const switchDrawn = (addon) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.track and w.label and w.label:GetText() == "Place new spells as I learn them" then return w.fill:IsShown() end end`);
+
+it("the open Your keys tab's switch follows an Apply and placing stopping itself", () => {
+  const addon = warrior();
+  applyPreset(addon, false);
+  addon.eval('ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
+  expect(switchDrawn(addon), "off after an Apply with the box unticked").toBe(false);
+  kn(addon, `KN.Applied(${PRESET}, true)`);
+  expect(switchDrawn(addon), "on after an Apply with the box ticked").toBe(true);
+  addon.eval('local set = SetBinding SetBinding = function(key, command) if key == "2" then return false end return set(key, command) end');
+  for (const id of [772, 6343, 7384]) learn(addon, id);
+  expect(switchDrawn(addon), "off after three refused updates").toBe(false);
 });
 
 it("the switch turns on only for keys set up with a preset and still there", () => {

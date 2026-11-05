@@ -37,11 +37,6 @@ function QT.Shows(settings)
   return not (questie and settings.withQuestie == "questie")
 end
 
--- A table the client gives plainly (a hidden one counts as none).
-local function plainTable(v)
-  return not ns.IsSecret(v) and type(v) == "table" and v or nil
-end
-
 -- Data -----------------------------------------------------------------------------------------
 
 -- The quest IDs you watch, in the game's order.
@@ -73,11 +68,15 @@ function QT.Objectives(id)
   return out
 end
 
--- The quest's usable item { link, texture }, if it has one.
-local function questItem(logIndex)
+-- The quest's usable item { link, texture }, if it has one. The item goes once the quest is ready to turn in,
+-- unless the game keeps showing it.
+---@param logIndex number|nil
+---@param ready boolean
+---@return table|nil
+function QT.QuestItem(logIndex, ready)
   if not logIndex or type(GetQuestLogSpecialItemInfo) ~= "function" then return nil end
-  local link, texture = GetQuestLogSpecialItemInfo(logIndex)
-  if type(link) == "string" then return { link = link, texture = texture } end
+  local link, texture, _, showsWhenReady = GetQuestLogSpecialItemInfo(logIndex)
+  if type(link) == "string" and (not ready or ns.IsTrue(showsWhenReady)) then return { link = link, texture = texture } end
 end
 
 -- Opens every zone folded in the game's own quest list, since the log hides the quests under a folded
@@ -92,9 +91,22 @@ end
 
 -- The game folds every zone off the current map as you zone in (QuestMapFrame_ResetFilters, on
 -- PLAYER_ENTERING_WORLD): they are opened on the next frame, after it, so the quest log, the XP lines, the
--- dungeon card and the tracker read every quest. Shared by those modules, so it holds whichever are on;
--- a zone folded by hand afterwards stays folded until the next zone-in or until Vanguard's log opens.
-ns.On("PLAYER_ENTERING_WORLD", ns.Guard("quest folds", function() ns.Soon("quest folds", QT.OpenFolds) end))
+-- dungeon card and the tracker read every quest. Shared by those modules, so it holds whichever are on.
+-- The windowed world map's quest panel folds them again on each map change while it is up, so they are opened
+-- again when the panel closes (the map closing, or its panel being put away); a zone folded by hand stays
+-- folded until the next zone-in, that closing, or until Vanguard's log opens.
+local function openFoldsSoon()
+  ns.Soon("quest folds", QT.OpenFolds)
+end
+ns.On("PLAYER_ENTERING_WORLD", ns.Guard("quest folds", openFoldsSoon))
+
+-- Has the game's map quest panel (QuestMapFrame, there before any addon loads) open the folds when it hides.
+-- HookScript only: the game's frame keeps its own scripts.
+local function hookMapPanel()
+  local panel = _G.QuestMapFrame
+  if type(panel) == "table" and panel.HookScript then panel:HookScript("OnHide", ns.Guard("quest folds", openFoldsSoon)) end
+end
+hookMapPanel()
 
 -- A quest's place in the log (it moves as quests come and go), or nil when the log doesn't have it.
 function QT.LogIndex(id)
@@ -108,28 +120,38 @@ function QT.IsReady(id)
   return ns.IsTrue(ns.CallIf(C_QuestLog, "ReadyForTurnIn", id)) or ns.IsTrue(ns.CallIf(C_QuestLog, "IsComplete", id))
 end
 
--- One watched quest: { id, title, level, ready, failed, objectives, item, xp }, or nil when the log doesn't have it.
+-- One watched quest: { id, title, level, ready, autoComplete, failed, objectives, item, xp }, or nil when the log doesn't have it.
 -- The XP switch is read from the profile: the arrow and the minimap marks ask with this module off, before any QT.Enable.
 function QT.Quest(id)
   local index = QT.LogIndex(id)
   local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = QT.IsReady(id)
-  return { id = id, title = info.title, level = info.level, ready = ready, failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = questItem(index),
+  return { id = id, title = info.title, level = info.level, ready = ready, autoComplete = ns.IsTrue(info.isAutoComplete), failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = QT.QuestItem(index, ready),
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 
--- How far a quest is (squared), or a long way when the client can't say.
+-- How far a quest is (squared), or nil when the client won't say or says it isn't on your continent (that
+-- distance means nothing). A client with one return keeps the distance.
+---@param id number
+---@return number|nil
+function QT.DistanceSq(id)
+  local sq, onContinent = ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", id)
+  if not ns.IsSecret(onContinent) and onContinent == false then return nil end
+  return ns.PlainNumber(sq)
+end
+
+-- How far a quest is (squared), or a long way when it can't be told.
 local function distance(q)
-  return ns.PlainNumber((ns.CallIf(C_QuestLog, "GetDistanceSqToQuest", q.id))) or math.huge
+  return QT.DistanceSq(q.id) or math.huge
 end
 
 -- Seconds left on each timed quest, by quest id, on WoW Forever: C_QuestLog.GetQuestTimers (the call the game's
 -- own timer frame reads; QuestLogDocumentation.lua's QuestTimerInfo). A timer the client hides is left out.
 local function questTimers()
   local out = {}
-  for _, info in ipairs(plainTable(ns.CallIf(C_QuestLog, "GetQuestTimers")) or {}) do
-    local id, left = plainTable(info) and ns.PlainNumber(info.questID), plainTable(info) and ns.PlainNumber(info.questTimer)
+  for _, info in ipairs(ns.PlainTable(ns.CallIf(C_QuestLog, "GetQuestTimers")) or {}) do
+    local id, left = ns.PlainTable(info) and ns.PlainNumber(info.questID), ns.PlainTable(info) and ns.PlainNumber(info.questTimer)
     if id and left then out[id] = left end
   end
   return out
@@ -222,12 +244,26 @@ local function achievementCriteria(id)
   return out
 end
 
+-- The heading over tracked achievements: Forever's "Legacy challenges", Retail's "Achievements".
+QT.ACHIEVEMENT_HEADING = ns.ClientData({ forever = L["Legacy challenges"], retail = L["Achievements"] })
+
+-- Whether an achievement you have earned leaves the tracker: on Retail it does, as in the game's own; on Forever it
+-- stays and reads "Complete".
+QT.SKIP_EARNED = ns.ClientData({ forever = false, retail = true })
+
+-- A tracked achievement's lines: its criteria, or its description when it has none (as the game's tracker does).
+local function achievementObjectives(id, description)
+  local criteria = achievementCriteria(id)
+  if #criteria > 0 or type(description) ~= "string" then return criteria end
+  return { { text = ns.QuestParts.Plain(description), done = false } }
+end
+
 -- One tracked achievement (a Legacy challenge on Forever): { id, title, ready, objectives, achievement = true },
--- or nil when the client doesn't have it.
+-- or nil when the client doesn't have it (or, on Retail, you have earned it).
 function QT.Achievement(id)
-  local _, name, _, completed = ns.CallIf(_G, "GetAchievementInfo", id)
-  if type(name) ~= "string" then return nil end
-  return { id = id, title = name, ready = ns.IsTrue(completed), objectives = achievementCriteria(id), achievement = true }
+  local _, name, _, completed, _, _, _, description, _, _, _, _, earnedByMe = ns.CallIf(_G, "GetAchievementInfo", id)
+  if type(name) ~= "string" or (QT.SKIP_EARNED and ns.IsTrue(earnedByMe)) then return nil end
+  return { id = id, title = name, ready = ns.IsTrue(completed), objectives = achievementObjectives(id, description), achievement = true }
 end
 
 -- The achievements you track, in the game's order.
@@ -248,7 +284,7 @@ end
 -- named yet (its data is asked for, and the line comes with it). The second value is true in that last case.
 local function reagentLine(slot)
   local basic = (Enum and Enum.CraftingReagentType or {}).Basic or QT.BASIC_REAGENT
-  local r, need = plainTable(slot.reagents) and plainTable(slot.reagents[1]), ns.PlainNumber(slot.quantityRequired)
+  local r, need = ns.PlainTable(slot.reagents) and ns.PlainTable(slot.reagents[1]), ns.PlainNumber(slot.quantityRequired)
   local id = r and ns.PlainNumber(r.itemID)
   if ns.PlainNumber(slot.reagentType) ~= basic or not (id and need) then return nil end
   local name = ns.CallIf(C_Item, "GetItemInfo", id)
@@ -261,9 +297,9 @@ end
 -- a reagent's name is still loading.
 local function recipeReagents(schematic)
   local out, loading = {}, false
-  for _, slot in ipairs(plainTable(schematic.reagentSlotSchematics) or {}) do
+  for _, slot in ipairs(ns.PlainTable(schematic.reagentSlotSchematics) or {}) do
     local line, waiting
-    if plainTable(slot) then line, waiting = reagentLine(slot) end
+    if ns.PlainTable(slot) then line, waiting = reagentLine(slot) end
     if line then out[#out + 1] = line end
     loading = loading or waiting == true
   end
@@ -273,7 +309,7 @@ end
 -- One tracked recipe: { id, title, objectives, recipe = true }, or nil when the client has no schematic for it.
 -- The second value is true while one of its reagent names is still loading.
 function QT.Recipe(id)
-  local s = id and plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipeSchematic", id, false))
+  local s = id and ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipeSchematic", id, false))
   if not s or ns.IsSecret(s.name) or type(s.name) ~= "string" then return nil end
   local reagents, loading = recipeReagents(s)
   return { id = id, title = s.name, objectives = reagents, recipe = true }, loading
@@ -283,7 +319,7 @@ end
 -- tracking API; C_TradeSkillUI.GetRecipesTracked, TradeSkillUIDocumentation.lua).
 function QT.Recipes()
   local out, loading = {}, false
-  for _, id in ipairs(plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) or {}) do
+  for _, id in ipairs(ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) or {}) do
     local r, waiting = QT.Recipe(ns.PlainNumber(id))
     loading = loading or waiting == true
     if r then out[#out + 1] = r end
@@ -302,7 +338,7 @@ end
 -- Blocks a client adds around the watched quests, in order (Modules/RetailQuests.lua on Retail; none on WoW
 -- Forever). Each is fn(quests, taken) giving its rows, headings included, and setting taken[id] for each watched
 -- quest it draws itself (a campaign quest under its campaign), so the plain list leaves that quest out.
-QT.BLOCKS = { above = {}, below = {} }
+QT.BLOCKS = { above = {}, afterQuests = {}, afterChallenges = {}, last = {} }
 
 -- Appends every block's rows.
 local function addBlocks(rows, blocks, quests, taken)
@@ -320,26 +356,40 @@ local function addQuests(rows, quests, taken)
   addSection(rows, #rows > 0 and L["Quests"] or nil, rest)
 end
 
--- The rows the tracker draws: the client's blocks above the quests, the watched quests, the blocks below them,
--- then the tracked Legacy challenges and the tracked recipes, each under its own heading.
+-- The rows the tracker draws, in the game's tracker's order: the client's blocks above the quests, the watched
+-- quests, the client's blocks that follow them, the tracked achievements (Legacy challenges on Forever), the
+-- client's blocks that follow those, the tracked recipes, then the client's last blocks, each under its own heading.
 function QT.Rows(quests)
   local rows, taken = {}, {}
   addBlocks(rows, QT.BLOCKS.above, quests, taken)
   addQuests(rows, quests, taken)
-  addBlocks(rows, QT.BLOCKS.below, quests, taken)
-  addSection(rows, L["Legacy challenges"], QT.Achievements())
+  addBlocks(rows, QT.BLOCKS.afterQuests, quests, taken)
+  addSection(rows, QT.ACHIEVEMENT_HEADING, QT.Achievements())
+  addBlocks(rows, QT.BLOCKS.afterChallenges, quests, taken)
   addSection(rows, L["Recipes"], QT.Recipes())
+  addBlocks(rows, QT.BLOCKS.last, quests, taken)
   return rows
 end
 
 -- Actions --------------------------------------------------------------------------------------
 
+-- Completes a ready auto-complete quest (one with nobody to hand in to), as the game's own tracker does on a
+-- click (Blizzard_QuestObjectiveTracker.lua); true when it did. The game's tracker is hidden, so this is the way.
+local function completeAuto(id)
+  local q = QT.Quest(id)
+  if not (q and q.autoComplete and q.ready) then return false end
+  ns.CallIf(_G, "ShowQuestComplete", id)
+  return true
+end
+
 -- A title was clicked: left opens the quest (Vanguard's quest log, else the game's map), Shift-left points
--- the arrow at it (Quest guidance, when it's on); right stops watching it.
+-- the arrow at it (Quest guidance, when it's on); right stops watching it. A finished auto-complete quest is
+-- completed instead of opened.
 function QT.OnTitle(id, button)
   if button == "RightButton" then return ns.CallIf(C_QuestLog, "RemoveQuestWatch", id) end
   local guide = ns.QuestGuide
   if IsShiftKeyDown() and guide.settings then return guide.Point(id) end
+  if completeAuto(id) then return end
   local log = ns.GetModule("QuestLog")
   if log and log.Open and log.frame then return log.Open(id) end
   if ns.WindowWaitsForCombat(L["The world map"]) then return end
@@ -385,7 +435,7 @@ end
 -- Follows the events the game's own recipe tracker does (Blizzard_ProfessionsRecipeTracker.lua: a recipe
 -- tracked or untracked, the bags settling), and an item's name arriving, on a client that tracks recipes.
 local function followRecipes()
-  if not plainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) then return end
+  if not ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) then return end
   ns.On("TRACKED_RECIPE_UPDATE", refreshSoon)
   ns.On("BAG_UPDATE_DELAYED", refreshSoon)
   ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)

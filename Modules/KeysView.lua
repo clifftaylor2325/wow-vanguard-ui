@@ -2,8 +2,7 @@
 -- draws it, Modules/KeysViewCard.lua). A key is looked up as the game binds it: the
 -- command on it, and when that is one of Vanguard's action buttons, the spell, macro
 -- or item in the button's slot with its icon. Nothing here writes a key, so it runs in
--- combat and on every client. The keyboard is a QWERTY picture, keys by the names the
--- game binds them by.
+-- combat. The keyboard is a QWERTY picture, keys by the names the game binds them by.
 
 local ADDON, ns = ...
 
