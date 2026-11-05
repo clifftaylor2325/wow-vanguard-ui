@@ -12,7 +12,7 @@ A player who opens `/vg` to "set Vanguard up" meets 632 rows on 20 pages with no
 
 ## 2. What the spike measured
 
-The window on WoW Forever, logged in with every module on, one row per control (a card title is no row):
+The window on WoW Forever, logged in with every module on, one row per control (a card title is no row, and the page's own Reset this page button is not counted: with it the script prints 649 and 579):
 
 | | Forever | Retail |
 |---|---|---|
@@ -63,40 +63,46 @@ Adopt D as six rules, each with the smallest mechanism that holds it.
 
 ### D1. Two depths on every card: essentials shown, the rest folded
 
-Every row gets a tier, and a card shows its essential rows then a fold line, "More settings · N", that opens the rest below it (the quest log's collapsible section header, `W.SectionHeader` with `collapsible`, already draws one). The fold is remembered per card while the game runs, like the tab. The fold line wears the accent dot while a folded row is changed from its default. A search hit, a What's new link, `OpenOptions` and the keyboard open the fold on their way to the row. Reset this page covers both depths.
+Every row gets a tier, and a card shows its essential rows then a fold line, "More settings · N", that opens the rest below it (the quest log's collapsible section header, `W.SectionHeader` with `collapsible`, already draws one). The fold is remembered per card for the character, across reloads (a small table in the character's saved file, like the quest log's folded zones), since 70 settings and every module switch reload and a player following a guide reloads between steps. The fold line wears the accent dot while a folded row is changed from its default, so "where did X go" is answered where the player is looking. A search hit, a What's new link, `OpenOptions` and the keyboard open the fold on their way to the row. Reset this page covers both depths.
 
 The tier is a rule, not taste, so a reviewer can check it. A row is **essential** when it is
 
 - the module's switch (D2),
-- something setup, a layout or a preset sets (so the window shows the player what the wizard chose), or
-- something that adds, removes, moves or resizes a thing on screen (a visibility choice, a placement, a size, a frame's replacement).
+- a setting that setup, a layout or a preset sets (so the window shows the player what the wizard chose), or
+- the row that places, sizes, hides, replaces or lays out **the whole feature**: its Visibility and Show when, its width and height, its spot, Groups as, "Replace the default unit frames", "Vanguard's quest tracker under the info strip".
 
-Every other row is **more**: a tuning number, a wording or colour variant, a mirror of the game's own setting, a list editor, a per-channel switch, a diagnostic. Marked as `more = true` on the row table, the way `isReset` already is, so no row helper changes its signature. With that rule 22 tabs fall under the 8-row target; the harness test (§7) lists the rest as a baseline that only shrinks, like `textfit-baseline.json`.
+Every other row is **more**, and in particular **a part of a feature** is more: one block of the info strip, one raid mark, one icon slot, one chat channel, one window group, one tooltip line, a tuning number, a wording or colour variant, a mirror of the game's own setting, a list editor, a diagnostic. Marked as `more = true` on the row table, the way `isReset` already is, so no row helper changes its signature. With that rule 22 tabs fall under the 8-row target; the harness test (§7) lists the rest as a baseline that only shrinks, like `textfit-baseline.json`.
 
 ### D2. One switch per feature, on its page
 
-A module's switch moves to the top of its card on its area page (the first row of Chat → Chat filter is "Chat filter", with the "Reload to apply" tag where a reload is still needed), and the fourteen modules with an own switch inside lose it: the module switch is the switch. Those fourteen do nothing until switched on, so they stay registered and load as every other module does, and their switch applies live, as their own switch did. The Modules page stays as the overview (what's on, what each module does, what it needs, the Other addons card), which the website also reads; its switches set the same key as the one on the page, the one allowed case of a setting in two places (rule 4).
+A module's switch moves to the top of its card on its area page, and the fourteen modules with an own switch inside lose it: the module switch is the switch. Which cards get one:
+
+- **A card that is one module's** (its name is the module's: Chat filter, Chat history, Cast bars, Readouts, Tooltips' first module, the meter, the roll tracker, each Town and gear card) gets the module's switch as its first row, with the "Reload to apply" tag where the module still builds at login.
+- **The fourteen** (party pets and targets, group threat, officer loot, chat filter and history, the three Cooldown Manager extras, craft queue, mail tools, spell ranks, Legacy, fight history, the meter): the row that was the own switch becomes the module's switch, where it is, and applies live, as the own switch did; the module stays registered and loaded, as today when its own switch is off, so there is nothing to build at login. Its row on the Modules page sets the same key and loses its "Reload to apply" tag, since none is needed. `O.MODULE_LINKS` and the "On, but its own switch is off" note go.
+- **A card that mixes modules** (Raid frames → Raid frames holds RaidFrames, RaidAuras and RaidStatus; Unit frames → Unit frames holds UnitFrames and ClassBars; Game windows → Tooltips holds Tooltips, Inventory and VendorMemory) gets no switch for the modules whose rows are a few lines inside another module's card: their switch stays on Modules only, so a healer never flips "Raid debuffs and HoTs" among 22 rows thinking it is a setting. Where the mix is large enough to be its own card (RaidAuras' and RaidStatus' rows on Raid frames), the card is split by module first, within the page's tab budget (rule 5).
+
+The Modules page stays as the overview (what's on, what each module does, what it needs, the Other addons card), which the website also reads; its switches set the same key as the one on the page, the one allowed case of a setting in two places (rule 4), and both wear the same tag.
 
 ### D3. Captions are names; the explanation is the tip
 
-The 75 long captions are renamed to a name of at most 40 English characters, and their sentence moves to `row.tip` (shown on hover and found by the search, which already reads tips) or, when the row can't be understood without it, to a note. The `/vg` word a caption names moves to the tip too. A new row that breaks the rule fails the test. Translations: a renamed caption shows in English until the next `scripts/i18n.mjs import` carries its draft, which the addon already allows ("any text without a translation shows in English").
+The 75 long captions are renamed to a name of at most 40 English characters, and their sentence moves to `row.tip` (shown on hover and found by the search, which already reads tips) or, when the row can't be understood without it, to a note. The `/vg` word a caption names moves to the tip too. A renamed row keeps its old English caption on the row (`was = "Recap in chat after each fight (/vg recap)"`), which the search reads as a keyword, so a guide written against 0.8 still finds the row by its old words; the old page names of D5 are keywords of their kin tab the same way. A new row that breaks the length rule fails the test. Translations: a renamed caption shows in English until the next `scripts/i18n.mjs import` carries its draft, which the addon already allows ("any text without a translation shows in English").
 
 ### D4. One home per setting, and no repeated cards
 
-Calm HUD's switch leaves Unit frames (General → Calm HUD keeps it with its seven parts). Action bars' eight bar cards become one "Bars" tab with a Bar 1 to 8 choice at its top (the row helpers take the bar from that choice; a per-bar changed dot shows on the choice). Healing's seven class tabs become one "Class buffs" tab that opens on the player's class and folds the other six under D1. The presets' buttons also appear on the first tab of General (D6), with the Profiles page keeping the list for addon presets.
+Calm HUD's switch leaves Unit frames (General → Calm HUD keeps it with its seven parts). Action bars' eight bar cards become one "Bars" tab with a Bar 1 to 8 choice at its top, the choice names keeping "right edge" where a bar has it (the row helpers take the bar from that choice; a per-bar changed dot shows on the choice; a search hit or the "changed" list names the bar, "Action bars → Bars → Bar 4, right edge", so eight hits of "Buttons per row" tell apart). Healing's seven class tabs become one "Class buffs" tab that opens on the player's class and folds the other six under D1; they fold rather than hide because the list is the buffs to watch for on the raid, any class's (a priest watching for a missing Blessing of Kings), not the buffs this character gives. The presets' buttons also appear on the first tab of General (D6), with the Profiles page keeping the list for addon presets.
 
 ### D5. Pages by what the player is doing
 
-Three pages fold into kin pages as tabs: Healing into Raid frames (Raid frames · Preview · Healing · Class buffs), Talents into Town and gear (as the Training tab with Spell ranks, Pet stable and Legacy), Cooldowns into Combat tools (its four cards as one Cooldown Manager tab, 9 rows). Town and gear's eleven tabs become six (Auction house · Merchants and errands · Crafting and mail · Training · Instance prep · Gear upgrades), Chat's eight become six (Chat · Tabs and windows · Extras · Watch · Filter · History and group board). The list on the left gets three dividers instead of one: **Start** (General, Modules), **On screen** (Unit frames, Raid frames, Nameplates, Action bars, Combat tools, Map, Bars and bags, Chat), **Playing** (Quests, Game windows, Town and gear, Click casting), **Yours** (Situations, Profiles, Feedback). Old page keys (`healing`, `talents`, `cooldowns`) stay as aliases in `OpenOptions`, `/vg` and What's new, opening the kin page on the right tab, so no link or guide breaks.
+Three pages fold into kin pages as tabs: Healing into Raid frames (Raid frames · Debuffs and marks · Preview · Healing · Class buffs, with D2's split), Talents into Town and gear (as the Training tab with Spell ranks, Pet stable and Legacy; all four are WoW Forever's, so on Retail there is no Training tab, as there is no Talents page today), Cooldowns into Combat tools (its four cards as one Cooldown Manager tab of 9 rows, its "Set up cooldowns" button the tab's first row, and the note on The game's tools that points to "the Cooldowns page" reworded to the tab). Town and gear's eleven tabs become six on Forever (Auction house · Merchants and errands · Crafting and mail · Training · Instance prep · Gear upgrades) and five on Retail; its "Data from the beta" card (a note and a Clear button about saved data) moves to Profiles → Your profiles, beside Reset profile, where clearing saved data belongs. Chat's eight become six (Chat · Tabs and windows · Extras · Watch · Filter · History and group board). The list on the left gets three dividers instead of one: **Start** (General, Modules), **On screen** (Unit frames, Raid frames, Nameplates, Action bars, Click casting, Combat tools, Map, Bars and bags, Chat), **Playing** (Quests, Game windows, Town and gear), **Yours** (Situations, Profiles, Feedback); the three extra dividers cost 3 list rows, which `fitHeight` already absorbs by shortening entries, and the text-fit test covers the list at Larger text on 1080p. Old page keys (`healing`, `talents`, `cooldowns`) stay as aliases in `OpenOptions`, `/vg` and What's new, opening the kin page on the right tab, and their old names are search keywords of that tab, so no link or guide breaks.
 
 ### D6. Set up first, tune second
 
-General's first tab becomes **Start here**: the preview, then **Run setup**, the three role presets (Healer, Damage and tanking, Tank) with one line each on what they set, **Move frames**, and **What's new**. Look, Bars, Motion and sound, Calm HUD and Layout follow as tabs. Setup stays the recommended path and gains nothing; the window just stops hiding it under Layout.
+General's first tab becomes **Start here**: **Run setup**, the three role presets (Healer, Damage and tanking, Tank), each with one line that says what it replaces ("Replaces your raid frame, aura, healing and nameplate settings; asks first and backs your profile up"), **Move frames**, and **What's new**. Look (which keeps the preview, since the preview shows Look's own controls changing), Bars, Motion and sound, Calm HUD and Layout follow as tabs. General opens on Start here until setup has run once on the character, then on the tab it showed last, as every page does; the window keeps opening on the page it showed last. Setup stays the recommended path and gains nothing; the window just stops hiding it under Layout.
 
 ## 6. Calls for Cliff [DECIDE]
 
 1. **D1's fold versus B's page switch.** Recommended: the fold. One mechanism, no mode, the count stays in view.
-2. **D2: the fourteen inner switches go, and their modules always load.** Recommended: yes. They cost nothing until switched on (the module's own switch today). The alternative keeps the Modules switch and the inner switch and only moves the latter up, which leaves two places to be off.
+2. **D2: the fourteen inner switches go, and their modules always load.** Recommended: yes. They cost nothing until switched on (the module's own switch today), and a card that mixes modules gets no switch for the modules inside it. The alternative keeps the Modules switch and the inner switch and only moves the latter up, which leaves two places to be off.
 3. **D5's three page merges and the four-group list.** Recommended: yes, with the key aliases. Alternative: keep the twenty pages and only regroup the list.
 4. **D3 now, in English, with translations following in the next i18n batch;** or wait and rename captions only with their ten drafts in hand. Recommended: now. 75 rows in English for one release is the cost; a window that reads as prose is the cost of waiting.
 5. **D6's Start here tab.** Recommended: yes. Alternative: leave General as it is and put Run setup and the presets in the header beside the profile picker.
@@ -109,7 +115,7 @@ Four phases, one PR each, in this order so that nothing is renamed and moved in 
 |---|---|---|---|---|
 | S1 fold and tiers | D1; the `more` marks on every row by the rule; the harness test `scripts/tests/options-budget.test.mjs` (rows shown per tab ≤ 8 with a shrinking baseline, no duplicate keys, caption length, tabs per page) and the inventory script; D4's Calm HUD dedupe and bar picker | No (the bar picker keeps the keys) | `Core/OptionsWindow.lua` (one new row kind and the fold; it has room: 32 top-level locals), every `Core/Options*.lua` for the marks, `docs/features/options-and-setup.md`, SMOKE-TEST | The fold's look at Larger text and in German; the bar choice; keyboard Tab through a fold |
 | S2 names | D3: 75 captions renamed, tips written, `OptionsSearch` keywords checked; the i18n export for the drafts | No | `Core/Options*.lua`, module options files, `Locales/` via import, WhatsNewNotes rows that name a caption | Tips on hover; search finds the old words (keywords) |
-| S3 one switch | D2: the module switch row on its page, the fourteen own switches gone with a migration that turns the module on where the own switch was on, `ns.Module` building those fourteen live | The 14 keys (migrated) | `Core/Modules.lua`, `Core/Options.lua` (MODULE_LINKS goes), the fourteen modules, Modules page | A module switched on without a reload; the Modules overview |
+| S3 one switch | D2: the module switch row on its page, the fourteen own switches gone with a migration that turns the module on where the own switch was on (`ns.Migrate`, which already runs on a loaded profile, an imported string and an addon's preset string, so a friend's 0.8 string lands right), `ns.Module` starting those fourteen live | The 14 keys (migrated) | `Core/Modules.lua`, `Core/Options.lua` (MODULE_LINKS goes), the fourteen modules, Modules page | A module switched on without a reload; the Modules overview |
 | S4 pages | D5 and D6; the aliases; the nav groups | Yes (page keys) | `Core/Options.lua` PAGES, `OptionsWindow` nav, `Slash`, `WhatsNewNotes`, `API.md`, the website's generators read page keys | The list on the left at 1080p and Larger text; every What's new link |
 
 What changes for players: the window opens on Start here; each tab shows a short list with a fold under it; a module is switched on where its settings are and most switch on without a reload; names, not sentences; three fewer pages. What stays: every setting, every key, every `/vg` word, every deep link, the search, the dots, the reset.
@@ -122,32 +128,32 @@ What it does not do: cut any setting (C), change the theme or the controls (UI-C
 
 Four design-review waves, each a fresh reviewer with one lens, run before this record was sent; the record was revised after each. The lens and what changed:
 
-1. Player lens (a first-week player, a healer with a guide open): pending.
+1. Player lens (a first-week player, a healer with a guide open). Found: the tier rule's third clause marked a part of a feature (one strip block, one raid mark) essential, so Raid frames would have shown 20 rows, not 7; D2 said nothing about cards that mix modules; D5's Training tab was empty on Retail and lost "Data from the beta"; a renamed caption and a folded card broke a guide-follower twice; the migration had to cover imported strings. Changed: the whole-feature versus part-of-feature rule, D2's three card cases, the Retail tab list, the fold remembered across reloads, old captions and page names as search keywords, migration on import stated, the preview kept on Look, Click casting under On screen, the presets' one-liner.
 2. Engineering lens (CLAUDE.md's hard rules, the harness, the local limit, taint, Retail): pending.
 3. Consistency lens (UI-COHERENCE, DESIGN-PRINCIPLES, text fit in ten languages, the website's generators): pending.
 4. Decision lens (is each [DECIDE] a real fork, is the recommendation defended, could Cliff act on this in one reading): pending.
 
 ## 9. Appendix: the tabs over the 8-row target today
 
-Rows shown when the tab opens (Forever). The tier rule's expected essentials are an estimate from the captions and will be set row by row in S1.
+Rows shown when the tab opens (Forever, today's tabs). The expected essentials are an estimate under D1's rule, read from the captions, and will be set row by row in S1; the rule's test is that a reviewer reading the caption reaches the same tier.
 
-| Page → tab | Rows | Expected essentials |
+| Page → tab | Rows | Expected essentials (the rows) |
 |---|---|---|
-| Raid frames → Raid frames | 22 | 7 |
-| General → Look | 19 | 6 |
-| Nameplates → Nameplates | 17 | 6 |
-| Map → Strip under the minimap | 16 | 2 (visibility, Show when) |
-| Chat → Chat tabs | 15 | 4 (the tab choice and its three buttons) |
-| Modules → Town and gear | 15 | 15 (module switches; the overview stays long) |
-| General → Layout | 14 | 5 |
+| Raid frames → Raid frames | 22 | 7: the module switch, Groups as, Stack big raids, Style, Width, Height, Sort (preset keys); the marks, icon slots, fade and ready-check rows are parts |
+| General → Look | 19 | 6: Safer colours, Font, Text size, Theme variant, Corners, Pixel-perfect (setup keys); the rest are variants |
+| Nameplates → Nameplates | 17 | 5: the switch, Show levels, threat colours, the two preset keys; the rest are parts |
+| Map → Strip under the minimap | 16 | 2: Strip visibility, Show when; 14 blocks are parts |
+| Chat → Chat tabs | 15 | 4: the Tab choice and its three buttons; 10 channel switches are parts |
+| Modules → Town and gear | 15 | 15: module switches; the overview stays long by design |
+| General → Layout | 14 | 5: Run setup, Move frames, Frame to size, Its scale, Reset all positions |
 | Modules → Unit frames | 14 | 14 |
-| Unit frames → Unit frames | 13 | 7 |
-| Game windows → Game windows | 13 | 3 |
-| Chat → Chat filter | 13 | 1 (the switch; the rest is the filter's lists) |
-| Chat → Chat watch | 12 | 2 |
-| Healing → Paladin | 12 | 0 for another class, 12 for a paladin |
-| Town and gear → Auction house | 11 | 2 |
-| Combat tools → Vanguard meter | 10 | 3 |
-| Game windows → Tooltips | 10 | 1 |
-| Town and gear → Instance prep | 10 | 2 |
+| Unit frames → Unit frames | 13 | 6: Replace the default frames, Versus deck, Health as, Boss frames, the two ClassBars rows (they place a bar) |
+| Game windows → Game windows | 13 | 3: the module switch, Drag game windows, Reset window positions; the window groups are parts |
+| Chat → Chat filter | 13 | 1: the switch; the kinds and lists are parts |
+| Chat → Chat watch | 12 | 2: Add a phrase, Toast |
+| Healing → Paladin | 12 | 12 for a paladin, folded whole for another class |
+| Town and gear → Auction house | 11 | 2: the switch, Auction prices in tooltips |
+| Combat tools → Vanguard meter | 10 | 4: the switch, Meter visibility, Show when, Lines |
+| Game windows → Tooltips | 10 | 2: Tooltip position, Hide in combat |
+| Town and gear → Instance prep | 10 | 2: the two checklist triggers |
 | Action bars → Action bars, Your keys; Chat → Chat, Group board; General → Calm HUD; Combat tools → The game's tools; Quests → Finding your way; Map → Minimap and waypoints; Town and gear → Gear upgrades; Modules → Quests, Game windows, Combat tools | 8 to 9 | at or under 8, except the Modules tabs |
