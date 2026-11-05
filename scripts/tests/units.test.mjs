@@ -770,7 +770,7 @@ it("Calm HUD: frames dim out of combat, come back for a fight, a hostile target 
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
   expect(calm(addon), "off by default: no state driver, full strength").toEqual({ driver: "none", now: "none", alpha: 1 });
   addon.slash("");
-  addon.eval('__click("Unit frames") __click("Calm HUD")');
+  addon.eval('__click("General") __click("Calm HUD")');
   expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.calm"), "the switch saves it").toBe(true);
   expect(calm(addon), "on: the client's state dims the frame").toEqual({ driver: "[combat] show; [harm,nodead] show; dim", now: "dim", alpha: 0.35 });
   expect(calm(addon, "focus").driver, "the focus frame dims too").toBe("[combat] show; [harm,nodead] show; dim");
@@ -825,7 +825,7 @@ it("Versus deck: one rounded panel behind the player and target, the crest at th
   expect(corners(addon, "Vanguard_focus", "CornerCutLine"), "frames outside the deck keep their shield corners").toBe(4);
   expect(addon.eval("return { select(2, Vanguard_player.name:GetFont()), select(2, Vanguard_target.healthText:GetFont()) }"), "names and health in the title size")
     .toEqual(addon.eval("return { select(2, ns.Theme.Text(UIParent:CreateFontString(), 'title'):GetFont()), select(2, ns.Theme.Text(UIParent:CreateFontString(), 'title'):GetFont()) }"));
-  addon.eval('__click("Calm HUD")');
+  addon.eval('__click("General") __click("Calm HUD") __click("Unit frames")');
   expect(addon.eval("return ns.GetModule('UnitFrames').deck.vgStateString"), "the deck dims with the Calm HUD").toBe("[combat] show; [harm,nodead] show; dim");
   setCombat(addon, true);
   addon.eval('__click("Versus deck: your")');
