@@ -3879,6 +3879,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Both addresses are accent links and clicking one opens the copy box.
 - If it fails, paste: the chat line as shown, and /vg errors.
 
+### 33.271 Chat watch holds a Russian word to a word start (Russian client)
+
+- Do: /vg watch add продам, then have a friend say непродам in /s and then продам.
+- Expect: Only the second line rings and toasts.
+- If it fails, paste: both lines and /vg errors.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
