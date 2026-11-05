@@ -1227,6 +1227,23 @@ it("minimap drawer: buttons in name order, the toggle counts them, Escape closes
   addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
   expect(addon.eval("return Vanguard_MinimapDrawer:IsShown()"), "the toggle shuts it again").toBe(false);
 });
+it("minimap drawer: a button its addon has hidden takes no cell and is not counted, and comes back when shown", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyHidden", Minimap):Hide()');
+  // The drawer's width and the toggle's tooltip count.
+  const state = () => {
+    addon.update(0);
+    addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
+    return addon.eval("return { Vanguard_MinimapDrawer:GetWidth(), GameTooltip.__lines[1].text, Vanguard_MinimapDrawerToggle:IsShown() }");
+  };
+  expect(state(), "one shown button: a one cell drawer counting one").toEqual([39, "Addon buttons (1)", true]);
+  expect(addon.eval("return LibDBIcon10_TestOnlyHidden.__points.TOPLEFT == nil"), "the hidden one has no cell").toBe(true);
+  addon.eval("LibDBIcon10_TestOnlyHidden:Show()");
+  expect(state(), "shown again: the next cell, counted").toEqual([72, "Addon buttons (2)", true]);
+  addon.eval("LibDBIcon10_TestOnlyHidden:Hide() LibDBIcon10_TestOnlyOne:Hide()");
+  expect(state(), "all hidden: nothing to open").toEqual([6, "Addon buttons (0)", false]);
+  addon.eval("LibDBIcon10_TestOnlyOne:Show() Vanguard_MinimapDrawerToggle.__scripts.OnClick(Vanguard_MinimapDrawerToggle)");
+  expect(addon.eval("return Vanguard_MinimapDrawer:GetWidth()"), "opening lays it out at once").toBe(39);
+});
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(addon.eval("return Vanguard_MinimapDrawer == nil and LibDBIcon10_TestOnlyOne:GetParent():GetName()"), "Minimap off: no drawer, the button stays on the map").toBe("Minimap");

@@ -4125,6 +4125,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no Vanguard "!" pin for the quest you now hold, none for lines that start on another map, and none at all on the continent or world map.
 - If it fails, paste: `/run for _,l in ipairs(C_QuestLine.GetAvailableQuestLines(WorldMapFrame:GetMapID())) do print(l.questID,l.inProgress,l.startMapID) end`
 
+### 33.314 Hidden addon minimap buttons leave the drawer (both)
+
+- Do: in an addon that uses LibDBIcon, tick its "hide minimap icon", then open the minimap drawer with the "..." button.
+- Expect: no empty square for it, and the "..." button's tooltip count leaves it out; untick it and it takes the next cell.
+- If it fails, paste: `/run for _,c in ipairs({Vanguard_MinimapDrawer:GetChildren()}) do print(c:GetName(), c:IsShown()) end`
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
