@@ -102,9 +102,10 @@ function CB.UpdateTotems()
 end
 
 -- A fight is starting (PLAYER_REGEN_DISABLED, before the lockdown): every cell takes clicks, so a totem dropped in the
--- fight can still be right-clicked away.
+-- fight can still be right-clicked away; once it ends the cells are repainted, which sets each cell's clicks again.
 function CB.ArmTotems()
   for _, c in ipairs(CB.cells or {}) do c:EnableMouse(true) end
+  ns.AfterCombat(CB.UpdateTotems, "totem clicks")
 end
 
 -- Druid mana -------------------------------------------------------------------------------
@@ -143,7 +144,6 @@ local function enableTotems(settings)
   ns.On("PLAYER_TOTEM_UPDATE", CB.UpdateTotems)
   ns.On("PLAYER_ENTERING_WORLD", CB.UpdateTotems)
   ns.On("PLAYER_REGEN_DISABLED", CB.ArmTotems)
-  ns.On("PLAYER_REGEN_ENABLED", CB.UpdateTotems)
 end
 
 -- Druids: build the mana bar out of combat and follow your mana and forms (only yours).
