@@ -44,15 +44,16 @@ function DB.Short(n)
 end
 
 -- The events that can change what the XP bar shows, or whether it shows (XP gain locked or unlocked, the cap moved);
--- on Retail also its honor at the cap (honor gained, a new honor level, into or out of a battleground, and the
--- "Show honor as experience" switch, which is a CVar).
+-- on Retail also its honor at the cap (honor gained, a new honor level, into or out of a battleground).
 DB.XP_EVENTS = ns.ClientData({
   forever = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
     "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE" },
   retail = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
-    "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE", "HONOR_XP_UPDATE", "HONOR_LEVEL_UPDATE", "ZONE_CHANGED_NEW_AREA",
-    "CVAR_UPDATE" },
+    "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE", "HONOR_XP_UPDATE", "HONOR_LEVEL_UPDATE", "ZONE_CHANGED_NEW_AREA" },
 })
+-- The CVars, lower-cased, whose change repaints the XP bar: on Retail the "Show honor as experience" switch
+-- (IsWatchingHonorAsXP reads showHonorAsExperience, PVPHonorSystem.lua). Every other CVar write is left alone.
+DB.XP_CVARS = ns.ClientData({ forever = {}, retail = { showhonorasexperience = true } })
 -- The events that can change the watched faction or its standing; on Retail also a major faction's renown level.
 DB.REP_EVENTS = ns.ClientData({
   forever = { "UPDATE_FACTION", "PLAYER_ENTERING_WORLD" },
@@ -505,12 +506,19 @@ function DB.UpdateReputation()
   bar.text:SetText(DB.ReputationText(rep))
 end
 
+-- A CVar changed: the XP bar repaints only for one of DB.XP_CVARS (the client sends every CVar's change; the name
+-- is matched without case, as it may come as registered).
+local function onXPCVar(_, name)
+  if type(name) == "string" and DB.XP_CVARS[name:lower()] then DB.UpdateXP() end
+end
+
 -- The XP bar with its rested overlay, kept current.
 local function enableXP(settings)
   DB.xpBar = createBar("xpbar", L["Experience"], DB.POINTS.xpbar, settings)
   DB.xpBar.vgOnState = DB.UpdateXP
   addRested(DB.xpBar)
   for _, e in ipairs(DB.XP_EVENTS) do ns.On(e, DB.UpdateXP) end
+  if next(DB.XP_CVARS) then ns.On("CVAR_UPDATE", onXPCVar) end
   ns.On("PLAYER_XP_UPDATE", DB.OnXPChange)
   ns.On("CHAT_MSG_COMBAT_XP_GAIN", DB.OnKillMessage)
   hoverTip(DB.xpBar, "show XP tooltip", DB.ShowXPTooltip)

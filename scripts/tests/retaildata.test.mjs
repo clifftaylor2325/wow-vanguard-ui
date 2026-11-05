@@ -156,6 +156,9 @@ it("retail data: ticking Show honor as experience at the cap changes the XP bar 
   addon.eval("__wfgWorld.honor.watched = false");
   addon.fire("CVAR_UPDATE", "showHonorAsExperience", "0");
   expect(bars(addon).xpShown, "unticked again: hidden").toBe(false);
+  addon.eval("__wfgWorld.honor.watched = true");
+  addon.fire("CVAR_UPDATE", "nameplateShowEnemies", "1");
+  expect(bars(addon).xpShown, "another CVar's change leaves the bar alone (CR-6)").toBe(false);
 });
 
 it("retail data: a watched major faction shows its renown on the reputation bar and in its tooltip", () => {
