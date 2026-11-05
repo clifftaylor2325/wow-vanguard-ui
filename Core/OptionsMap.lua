@@ -33,18 +33,25 @@ local function ledgerRows()
   return { check(L["Your auction sales this session"], stripSetting("ahgold")) }
 end
 
+-- One info strip switch for a class supply (ammo, soul shards), only where the client draws it. The strip
+-- loads after the options files, so its supply table is read at call time.
+local function supplyRows(key, label)
+  local strip = ns.GetModule("InfoStrip")
+  if not (strip and strip.CLASS_SUPPLY and strip.CLASS_SUPPLY[key]) then return {} end
+  return { check(label, stripSetting(key)) }
+end
+
 -- The info strip under the minimap: one switch per block, then the auction sales.
 local function stripRows()
   local stripVisibility, stripWhen = O.VisibilityRows(L["Strip visibility"], "InfoStrip", "visibility", "showWhen")
-  return append({
-    { "header", L["Strip under the minimap"] }, stripVisibility, stripWhen,
+  local rows = { { "header", L["Strip under the minimap"] }, stripVisibility, stripWhen,
     check(L["Durability"], stripSetting("durability")), check(L["Free bag slots"], stripSetting("bags")),
-    check(L["Frame rate and latency"], stripSetting("system")), check(L["Gold"], stripSetting("gold")),
-    check(L["Ammo (hunters, warriors, rogues)"], stripSetting("ammo")), check(L["Clock"], stripSetting("clock")), check(L["Day, date and calendar button"], stripSetting("date")),
-    check(L["Soul shards (warlocks)"], stripSetting("shards")), check(L["XP per hour this session"], stripSetting("xprate")),
+    check(L["Frame rate and latency"], stripSetting("system")), check(L["Gold"], stripSetting("gold")) }
+  append(rows, supplyRows("ammo", L["Ammo (hunters, warriors, rogues)"]))
+  append(append(rows, { check(L["Clock"], stripSetting("clock")), check(L["Day, date and calendar button"], stripSetting("date")) }), supplyRows("shards", L["Soul shards (warlocks)"]))
+  return append(append(rows, { check(L["XP per hour this session"], stripSetting("xprate")),
     check(L["Time to the next level"], stripSetting("leveltime")), check(L["Gold per hour this session"], stripSetting("goldrate")),
-    check(L["Your DPS in the last fight (from the game's damage meter)"], stripSetting("dps")), check(L["Your place in the last fight's DPS, in a group"], stripSetting("rank")),
-  }, ledgerRows())
+    check(L["Your DPS in the last fight (from the game's damage meter)"], stripSetting("dps")), check(L["Your place in the last fight's DPS, in a group"], stripSetting("rank")) }), ledgerRows())
 end
 
 -- Other addons' data feeds for the broker strip: one switch per feed, while any addon shares one.

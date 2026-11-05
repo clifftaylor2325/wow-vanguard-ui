@@ -171,3 +171,13 @@ for (const [client, clientOption, format, level] of [["Forever", undefined, "per
     expect(read(), "Reset puts the client's start back").toEqual([format, level]);
   });
 }
+
+// Whether the Map and info page has a switch with this label, on a client.
+const mapHas = (client, label) => loggedIn(CLICK_LUA, { client }).eval(`local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "map" then page = p end end
+  for _, row in ipairs(page.rows()) do if row[2] == "${label}" then return true end end return false`);
+
+it("options: the Info strip's Ammo and Soul shards switches show on Forever only, where the strip draws them", () => {
+  const labels = ["Ammo (hunters, warriors, rogues)", "Soul shards (warlocks)"];
+  expect(labels.map((label) => mapHas(undefined, label)), "Forever has both").toEqual([true, true]);
+  expect(labels.map((label) => mapHas(RETAIL_CLIENT, label)), "Retail has neither").toEqual([false, false]);
+});
