@@ -3867,6 +3867,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Only the other marked quest leaves the log, the third stays, and chat says Abandoned 1 quest(s).
 - If it fails, paste: the quest log before and after, the chat line, and /vg errors.
 
+### 33.269 A web address alone in a message is a link (both)
+
+- Do: In /s say only https://example.test/x, then say go http://. now.
+- Expect: The whole first line is an accent link and clicking it opens the copy box with the address; the second line has no link.
+- If it fails, paste: the chat lines as shown, and /vg errors.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

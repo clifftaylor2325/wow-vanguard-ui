@@ -28,8 +28,10 @@ CX.EVENTS = {
   "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER",
   "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM", "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM", "CHAT_MSG_CHANNEL",
 }
--- Web addresses: a word starting http(s):// or www. (up to a space or an escape code).
-CX.PATTERNS = { "%f[%S]https?://[^%s|]+", "%f[%S]www%.[^%s|]+" }
+-- Web addresses: a word starting http(s):// or www. (up to a space or an escape code), with a letter or digit
+-- after the prefix ("http://." is no address). The frontier also matches at the start of the text, where
+-- "%f[%S]" cannot (Lua reads the character before it as "\0").
+CX.PATTERNS = { "%f[^%s%z]https?://%w[^%s|]*", "%f[^%s%z]www%.%w[^%s|]*" }
 -- The web endings a bare address ("discord.gg/abc", "site.com") must have to become a link.
 CX.TLDS = { com = true, net = true, org = true, gg = true, tv = true, io = true, eu = true }
 CX.COPY_LINES = 100

@@ -1037,6 +1037,10 @@ it("chat extras: bare addresses with a web ending become links, never inside a l
   expect(said("see Site.COM."), "any case of a known ending, the full stop left outside").toContain(`${linkOf("Site.COM")}.`);
   expect(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"].map(said), "unknown endings, numbers, mail and a link's own text are left alone")
     .toEqual(["e.g. this", "lvl 1.5 dps", "my.stuff here", "bob@site.com", "|Hitem:1|h[a.com]|h"]);
+  expect(said("https://example.test/x"), "an address that starts the message is linked whole").toMatch(new RegExp(`^\\|c\\w{8}${esc(linkOf("https://example.test/x"))}$`));
+  expect(said("www.example.test"), "so is a www one").toMatch(new RegExp(`^\\|c\\w{8}${esc(linkOf("www.example.test"))}$`));
+  expect(said("go http://. now"), "a prefix with no letter after it is no address").toBe("go http://. now");
+  expect(said("www.. or www.example.test"), "only the real address beside it is linked").toMatch(new RegExp(`^www\\.\\. or \\|c\\w{8}${esc(linkOf("www.example.test"))}$`));
   expect(said("https://example.test/x and www.example.test"), "the http and www addresses are linked once, not again as bare words").not.toContain("|h|r|h");
   expect(said("see https://example.test/x. or (discord.gg/abc)"), "punctuation after an http address and brackets round a bare one stay outside the links")
     .toMatch(new RegExp(`${esc(linkOf("https://example.test/x"))}\\. or \\(\\|c\\w{8}${esc(linkOf("discord.gg/abc"))}\\)$`));
