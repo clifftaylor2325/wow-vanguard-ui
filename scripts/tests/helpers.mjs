@@ -594,6 +594,7 @@ export const TIDY_ENV = `
   end
   for _, name in ipairs({ "StatusTrackingBarManager", "DurabilityFrame", "TimeManagerClockButton", "GameTimeFrame",
     "AddonCompartmentFrame", "MicroMenuContainer", "BagsBar", "ObjectiveTrackerFrame" }) do CreateFrame("Frame", name, UIParent) end
+  BagsBar.bagPadding = 2
   MinimapCluster.Tracking = CreateFrame("Frame", nil, MinimapCluster)
   MinimapCluster.IndicatorFrame = CreateFrame("Frame", nil, MinimapCluster)
   MinimapCluster.IndicatorFrame.MailFrame = CreateFrame("Frame", nil, MinimapCluster.IndicatorFrame)

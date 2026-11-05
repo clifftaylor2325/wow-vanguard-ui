@@ -1190,7 +1190,7 @@ it("bag and menu bar: line icons are 20 screen pixels on their slot, accent unde
 // free count and no icon (its art is a button texture), the fold arrow left of it, and 30-unit bags
 // with no padding between them.
 const RETAIL_BAGS_ENV = `
-  BagsBar.bagPadding = 0
+  BagsBar.bagPadding = nil
   BagsBar:SetSize(48 + 10 + 5 * 30, 47)
   local pack = CreateFrame("Button", "MainMenuBarBackpackButton", BagsBar) pack:SetSize(48, 48) pack:SetPoint("RIGHT", BagsBar, "RIGHT")
   pack.icon = pack:CreateTexture() pack.Count = pack:CreateFontString() function pack:GetBagID() return 0 end

@@ -336,7 +336,7 @@ export const SCENES = [
         local b = CreateFrame("Button", name .. "MicroButton", MicroMenuContainer) b:SetSize(32, 40) b:SetPoint("LEFT", (i - 1) * 27, 0)
         b.Background = b:CreateTexture(nil, "BACKGROUND") b.Background:SetAllPoints() b.Background:SetColorTexture(0.55, 0.12, 0.1, 1)
         local art = b:CreateTexture(nil, "ARTWORK") art:SetSize(20, 20) art:SetPoint("CENTER") art:SetColorTexture(0.25 + i * 0.07, 0.55, 0.85 - i * 0.06, 1) end
-      BagsBar = CreateFrame("Frame", "BagsBar", UIParent) BagsBar:SetSize(5 * 47 + 33, 45)
+      BagsBar = CreateFrame("Frame", "BagsBar", UIParent) BagsBar:SetSize(5 * 47 + 33, 45) BagsBar.bagPadding = 2
       __space = { [0] = { 16, 5 }, [1] = { 14, 9 }, [2] = { 10, 0 }, [3] = { 0, 0 }, [4] = { 12, 6 } }
       C_Container = C_Container or {}
       C_Container.GetContainerNumSlots = function(bag) return (__space[bag] or { 0 })[1] end

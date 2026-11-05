@@ -250,11 +250,11 @@ function MS.Refit(bar)
   ns.Repin(bar)
 end
 
--- A row laid out with its bar's own padding between buttons, where the bar
--- has one (the bag bar: Forever's 2, retail's 0), so its buttons still sit one slot and a gap apart.
+-- The bag row laid out with its bar's own padding between buttons (Forever's 2, from its XML and Edit Mode; none on
+-- Retail 12.1.5, which lays the bar out with 0), so its buttons still sit one slot and a gap apart. The menu row keeps its own.
 local function padRow(row, f)
-  local pad = f.bagPadding
-  if type(pad) ~= "number" then return end
+  if not row.bags then return end
+  local pad = type(f.bagPadding) == "number" and f.bagPadding or 0
   row.pad, row.scale = pad, (MS.TILE + MS.GAP) / (row.button + pad)
 end
 
