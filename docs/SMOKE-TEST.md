@@ -3927,6 +3927,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: A question names the cancel cost; No leaves the auction up and Yes cancels it. A cancel that costs nothing still goes on the click.
 - If it fails, paste: /run print(C_AuctionHouse.GetCancelCost(<auctionID>)) and /vg errors.
 
+### 33.275 Stack asks first for a costly non-refundable pack (Retail)
+
+- Do: At a vendor selling a stackable non-refundable item priced 150g or more per pack, shift-click it and press Stack.
+- Expect: Vanguard's Buy question appears and nothing is bought until you answer; a refundable pack of that price, or a non-refundable one under 150g, buys at once.
+- If it fails, paste: /run local i=<row> print(C_MerchantFrame.IsMerchantItemRefundable(i), C_MerchantFrame.GetItemInfo(i).price)
+
 ### 33.281 Docked chat tab sizes through General's sliders (Forever)
 
 - Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.

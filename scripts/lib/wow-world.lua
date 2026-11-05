@@ -1358,6 +1358,8 @@ C_MerchantFrame = {
   GetItemInfo = function(i) local it = world.merchant and world.merchant.items[i] return it and { name = it.name, texture = it.icon, price = it.price or 0, stackCount = it.stack or 1, numAvailable = it.left or -1, isPurchasable = true } end,
   SellAllJunkItems = function() world.soldJunk = true end,
   IsSellAllJunkEnabled = function() return true end,
+  -- An item is refundable unless the merchant entry says refundable = false (or a secret answer).
+  IsMerchantItemRefundable = function(i) local it = world.merchant and world.merchant.items[i] if it == nil or it.refundable == nil then return true end return it.refundable end,
 }
 
 -- Trainers: world.trainer = { services = { { name, cost, available } } }.

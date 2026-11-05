@@ -16,6 +16,9 @@ local W = ns.Widgets
 local MC = ns.GetModule("Merchant")
 
 MC.BUY_EVERY, MC.LIST_SHOWN = 0.2, 5
+-- A pack at this price (15000 silver: MERCHANT_HIGH_PRICE_COST in the game's merchant window) that the merchant marks
+-- non-refundable is asked about first by the game's own quantity window.
+MC.HIGH_PRICE = 1500000
 -- The merchant's Buyback tab holds the last 12 stacks sold (BUYBACK_ITEMS_PER_PAGE in both clients).
 MC.BUYBACK_SLOTS = 12
 -- The drawer under the quantity window (Stack, Max and the cost line): at least this wide, two 60-wide buttons
@@ -357,13 +360,22 @@ local function buyAsked(index, packs, id, price)
   MC.Buy(index, packs)
 end
 
--- Buys packs after a question when it is more than one merchant stack; hides the quantity window.
+-- True when the game's own quantity window would ask before this buy: a pack of 150g or more that the
+-- merchant marks non-refundable (MerchantFrame.lua's SplitStack). A client that doesn't say counts as refundable.
+function MC.AsksFirst(index)
+  local price = wares(index)
+  local refundable = ns.CallIf(C_MerchantFrame, "IsMerchantItemRefundable", index)
+  return price ~= nil and price >= MC.HIGH_PRICE and not ns.IsSecret(refundable) and refundable == false
+end
+
+-- Buys packs after a question when it is more than one merchant stack, or a pack the game itself would ask
+-- about (see MC.AsksFirst); hides the quantity window.
 function MC.Order(index, packs, frame)
   if packs <= 0 then return end
   local price, quantity = wares(index)
   local id = MC.ItemID(ask("GetMerchantItemLink", index))
   if frame and frame.Hide then frame:Hide() end
-  if packs <= MC.StackPacks(index) then return MC.Buy(index, packs) end
+  if packs <= MC.StackPacks(index) and not MC.AsksFirst(index) then return MC.Buy(index, packs) end
   ns.Ask(ns.Format(L["Buy {count} × {item} for {money}?"], { count = packs * quantity, item = itemName(id or 0), money = money(packs * price) }), L["Buy"], function() buyAsked(index, packs, id, price) end)
 end
 
