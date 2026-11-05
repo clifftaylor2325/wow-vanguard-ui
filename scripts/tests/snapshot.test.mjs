@@ -2,7 +2,8 @@
 // WoW Forever, an unlock and a lock, written down in forever-snapshot.json and
 // compared on every run (npm run test:quick). It is the fence round the retail
 // work: a change that moves, resizes, restacks, re-labels or hides anything on
-// Forever, or registers another event or module, shows up here as a short list
+// Forever, re-parents or silences a game frame, or moves an event to another
+// frame or registers another event or module, shows up here as a short list
 // of (frame, field, before, after) until the snapshot is rewritten on purpose.
 //
 //   npm run snapshot:update      rewrites scripts/tests/forever-snapshot.json
@@ -24,10 +25,13 @@ const SNAPSHOT_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), "f
 const MAX_LISTED = 40;
 
 // The fields of a frame's record, in the order they are written.
-const FIELDS = ["kind", "shown", "visible", "size", "scale", "alpha", "strata", "level", "anchors", "text", "texts"];
+// Game frames also carry their parent and the events they listen for, so parking or silencing one shows.
+const FIELDS = ["kind", "shown", "visible", "size", "scale", "alpha", "strata", "level", "anchors", "text", "texts", "parent", "events"];
 
-// Lua, run once in the addon's state: __vgSnap.frames(test) answers one record per widget the test accepts,
-// __vgSnap.events() every event the addon's frames listen for, __vgSnap.modules() each module and whether it is on.
+// Lua, run once in the addon's state: __vgSnap.frames(test, extend) answers one record per widget the test accepts
+// (extend, when given, adds fields to each), __vgSnap.wiring adds a game frame's parent and events,
+// __vgSnap.events() each addon frame that listens for events with its sorted list, __vgSnap.modules() each module
+// and whether it is on.
 // Anchors are { point, relative frame, relative point, x, y }; a frame without a name is told by its kind and its
 // place among its parent's children, so a label does not change from run to run.
 const LUA_RECORDER = `
@@ -65,6 +69,12 @@ const LUA_RECORDER = `
       end
     end
   end
+  local function eventsOf(w)
+    local out = {}
+    for event in pairs(w.__events) do out[#out + 1] = event end
+    table.sort(out)
+    return out
+  end
   local function record(w, parents)
     local drawn = w.__kind == "Texture" or w.__kind == "FontString"
     return {
@@ -75,22 +85,25 @@ const LUA_RECORDER = `
     }
   end
   __vgSnap = {}
-  function __vgSnap.frames(test)
+  function __vgSnap.frames(test, extend)
     local parents, out = {}, {}
     textsOf(parents)
     for _, w in ipairs(stub.frames) do
-      if w.__name and test(w) then out[#out + 1] = record(w, parents) end
+      if w.__name and test(w) then
+        out[#out + 1] = record(w, parents)
+        if extend then extend(w, out[#out]) end
+      end
     end
     return out
   end
+  function __vgSnap.wiring(w, r)
+    r.parent = label(w.__parent) or "nil"
+    r.events = eventsOf(w)
+  end
   function __vgSnap.events()
-    local seen, out = {}, {}
+    local out = {}
     for _, w in ipairs(stub.frames) do
-      if w.__id > stub.firstAddonFrame then
-        for event in pairs(w.__events) do
-          if not seen[event] then seen[event] = true; out[#out + 1] = event end
-        end
-      end
+      if w.__id > stub.firstAddonFrame and next(w.__events) then out[#out + 1] = { label(w), eventsOf(w) } end
     end
     return out
   end
@@ -105,7 +118,7 @@ const LUA_RECORDER = `
 const ADDON_FRAMES = `return __vgSnap.frames(function(w) return w.__name:find("^Vanguard") ~= nil end)`;
 
 // Lua: the widgets the client made before the addon loaded (the ones the addon may move).
-const GAME_FRAMES = `return __vgSnap.frames(function(w) return w.__id <= __wfgStub.firstAddonFrame end)`;
+const GAME_FRAMES = `return __vgSnap.frames(function(w) return w.__id <= __wfgStub.firstAddonFrame end, __vgSnap.wiring)`;
 
 // A Lua list as a JS array (an empty Lua table comes back as an object).
 const asList = (value) => (Array.isArray(value) ? value : []);
@@ -130,14 +143,24 @@ function frameOf(raw) {
     alpha: rounded(raw.alpha),
     anchors: asList(raw.anchors).map(anchorOf),
     texts: asList(raw.texts),
+    events: raw.events == null ? null : asList(raw.events),
   };
   return Object.fromEntries(FIELDS.filter((field) => record[field] != null).map((field) => [field, record[field]]));
 }
 
+// Orders two strings by code point, the way the snapshot sorts names.
+const byText = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 // A list of Lua records as an object keyed by frame name, in name order.
 function framesByName(list) {
   const entries = asList(list).map((raw) => [raw.name, frameOf(raw)]);
-  return Object.fromEntries(entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  return Object.fromEntries(entries.sort(([a], [b]) => byText(a, b)));
+}
+
+// The addon's frames that listen for events, as { frame, events }, in frame order.
+function eventsByFrame(list) {
+  const entries = asList(list).map(([frame, events]) => ({ frame, events: asList(events) }));
+  return entries.sort((a, b) => byText(a.frame, b.frame));
 }
 
 // The game frames the addon changed: those whose record after the session differs from the record before it.
@@ -159,7 +182,7 @@ function readRecord(addon, gameBefore) {
   return {
     interface: addon.eval("return select(4, GetBuildInfo())"),
     modules: asList(addon.eval("return __vgSnap.modules()")).map(([name, enabled]) => ({ name, enabled })),
-    events: asList(addon.eval("return __vgSnap.events()")).sort(),
+    events: eventsByFrame(addon.eval("return __vgSnap.events()")),
     frames: framesByName(addon.eval(ADDON_FRAMES)),
     gameFrames: movedGameFrames(gameBefore, framesByName(addon.eval(GAME_FRAMES))),
   };
@@ -202,7 +225,7 @@ export function snapshotText(snapshot) {
 // An item as the text two lists are compared by.
 const itemKey = (item) => JSON.stringify(item);
 
-// What differs between two lists of plain values: "event X was added", "event X was removed".
+// What differs between two lists of plain values or records: "event X was added", "event X was removed".
 function listDifferences(what, before, after) {
   const had = new Set(before.map(itemKey));
   const has = new Set(after.map(itemKey));
@@ -270,19 +293,24 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
 
   it("the comparison names the frame, the field, what it was and what it is", () => {
     const frame = { shown: true, anchors: [{ point: "CENTER", relativeTo: "UIParent", relativePoint: "CENTER", x: 0, y: 0 }] };
-    const base = { interface: 16001, modules: [{ name: "Bars", enabled: true }], events: ["A", "B"], frames: { Vanguard_a: frame, Vanguard_b: frame }, gameFrames: {} };
+    // One addon frame's entry in the events list.
+    const listening = (frame, events) => ({ frame, events });
+    const base = { interface: 16001, modules: [{ name: "Bars", enabled: true }], events: [listening("Vanguard_a", ["A"]), listening("Vanguard_b", ["B"])], frames: { Vanguard_a: frame, Vanguard_b: frame }, gameFrames: { PlayerFrame: { ...frame, parent: "UIParent", events: ["UNIT_HEALTH"] } } };
     const moved = { ...frame, shown: false };
-    const live = { ...base, modules: [{ name: "Bars", enabled: false }], events: ["B", "C"], frames: { Vanguard_a: moved, Vanguard_c: frame }, gameFrames: { Minimap: frame } };
+    const parked = { ...frame, parent: "(Frame 1 of UIParent)", events: [] };
+    const live = { ...base, modules: [{ name: "Bars", enabled: false }], events: [listening("Vanguard_a", ["A"]), listening("Vanguard_c", ["B"])], frames: { Vanguard_a: moved, Vanguard_c: frame }, gameFrames: { Minimap: frame, PlayerFrame: parked } };
     expect(snapshotDifferences(base, base)).toEqual([]);
     expect(snapshotDifferences(base, live)).toEqual([
       'module added: {"name":"Bars","enabled":false}',
       'module removed: {"name":"Bars","enabled":true}',
-      'event added: "C"',
-      'event removed: "A"',
+      'event added: {"frame":"Vanguard_c","events":["B"]}',
+      'event removed: {"frame":"Vanguard_b","events":["B"]}',
       "frame Vanguard_a shown: true -> false",
       `frame Vanguard_b removed`,
       `frame Vanguard_c added: ${JSON.stringify(frame)}`,
       `game frame Minimap added: ${JSON.stringify(frame)}`,
+      'game frame PlayerFrame parent: "UIParent" -> "(Frame 1 of UIParent)"',
+      'game frame PlayerFrame events: ["UNIT_HEALTH"] -> []',
     ]);
   });
 

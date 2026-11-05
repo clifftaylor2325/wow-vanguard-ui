@@ -328,9 +328,10 @@ files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
 
 `snapshot.test.mjs` logs the addon in on WoW Forever, unlocks, locks and plays two seconds, then writes down what
 it left: every frame whose name starts with `Vanguard` (anchors, size, scale, alpha, strata, level, shown and
-visible, its own text and the text of its font strings), the game's frames the addon moved or hid (a game frame
-whose record differs from what it was before the addon loaded), every event the addon's frames listen for, and
-the module list with each module's state. Numbers are rounded to two decimals, names are sorted, and no time or id
+visible, its own text and the text of its font strings), the game's frames the addon moved, hid, re-parented or
+silenced (a game frame, with its parent and its events, whose record differs from what it was before the addon
+loaded), each addon frame that listens for events with the events it listens for, and the module list with each
+module's state. Numbers are rounded to two decimals, names are sorted, and no time or id
 is written, so two runs on any machine give the same file. The test compares the live record with
 `forever-snapshot.json` and fails with one line per difference: the frame, the field, what it was and what it is.
 
