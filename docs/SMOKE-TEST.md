@@ -4041,6 +4041,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The whole buffs and debuffs block returns to full strength while the pointer is on it, and dims again when it leaves.
 - If it fails, paste: how many rows you had, and which row woke it.
 
+### 33.297 Show honor as experience updates the XP bar at once (Retail)
+
+- Do: at max level, open the PvP window, right-click the honor level and tick Show honor as experience, then untick it.
+- Expect: Vanguard's XP bar shows the orange honor bar at once on ticking and hides at once on unticking.
+- If it fails, paste: /dump GetCVarBool('showHonorAsExperience') and what the bar shows.
+
 ### 33.305 Abandon is greyed for a quest the game won't abandon (Retail)
 
 - Do: Pick a quest the game's own map panel shows without an Abandon option (a starting-zone or campaign quest) and open Vanguard's quest log on it.

@@ -145,6 +145,19 @@ it("retail data: at the level cap the XP bar shows honor while the game would, i
   expect(bars(addon).xpShown, "no honor range: hidden").toBe(false);
 });
 
+it("retail data: ticking Show honor as experience at the cap changes the XP bar at once", () => {
+  const addon = retail(CAP_ENV);
+  addon.eval("__wfgWorld.honor = { cur = 1200, max = 2500, level = 34, watched = false }");
+  addon.fire("CVAR_UPDATE", "showHonorAsExperience", "0");
+  expect(bars(addon).xpShown, "unticked: hidden at the cap").toBe(false);
+  addon.eval("__wfgWorld.honor.watched = true");
+  addon.fire("CVAR_UPDATE", "showHonorAsExperience", "1");
+  expect(bars(addon).xpText, "ticked: the honor line").toBe("Honor level 34  1.2K / 2.5K (48%)");
+  addon.eval("__wfgWorld.honor.watched = false");
+  addon.fire("CVAR_UPDATE", "showHonorAsExperience", "0");
+  expect(bars(addon).xpShown, "unticked again: hidden").toBe(false);
+});
+
 it("retail data: a watched major faction shows its renown on the reputation bar and in its tooltip", () => {
   const addon = retail(CAP_ENV);
   const b = bars(addon);

@@ -44,12 +44,14 @@ function DB.Short(n)
 end
 
 -- The events that can change what the XP bar shows, or whether it shows (XP gain locked or unlocked, the cap moved);
--- on Retail also its honor at the cap (honor gained, a new honor level, into or out of a battleground).
+-- on Retail also its honor at the cap (honor gained, a new honor level, into or out of a battleground, and the
+-- "Show honor as experience" switch, which is a CVar).
 DB.XP_EVENTS = ns.ClientData({
   forever = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
     "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE" },
   retail = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_ENTERING_WORLD",
-    "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE", "HONOR_XP_UPDATE", "HONOR_LEVEL_UPDATE", "ZONE_CHANGED_NEW_AREA" },
+    "ENABLE_XP_GAIN", "DISABLE_XP_GAIN", "PLAYER_MAX_LEVEL_UPDATE", "HONOR_XP_UPDATE", "HONOR_LEVEL_UPDATE", "ZONE_CHANGED_NEW_AREA",
+    "CVAR_UPDATE" },
 })
 -- The events that can change the watched faction or its standing; on Retail also a major faction's renown level.
 DB.REP_EVENTS = ns.ClientData({
