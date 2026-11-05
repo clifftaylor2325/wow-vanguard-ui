@@ -4059,6 +4059,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The green upgrade arrow appears on the reward card within a second, and the item's tooltip has an Upgrade line, not a Downgrade line.
 - If it fails, paste: /run print(C_Item.GetItemStats(GetQuestItemLink("choice",1)) ~= nil)
 
+### 33.308 Timed scenario criterion shows a countdown (Retail)
+
+- Do: Start a scenario stage with a timed criterion (a Survive step or a timed escort) with Vanguard's tracker on.
+- Expect: A Time left line sits under the criterion and counts down each second, and goes when the time runs out.
+- If it fails, paste: /run for i=1,select(3,C_Scenario.GetStepInfo()) do local c=C_ScenarioInfo.GetCriteriaInfo(i) print(c.description,c.duration,c.elapsed) end
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
