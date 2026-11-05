@@ -957,10 +957,7 @@ end
 
 -- Whether the realm's rules switch the in-game calendar off (C_GameRules); no when the client can't say.
 function IS.CalendarOff()
-  local rule = Enum and Enum.GameRule and Enum.GameRule.IngameCalendarDisabled
-  if rule == nil or type(C_GameRules) ~= "table" or type(C_GameRules.IsGameRuleActive) ~= "function" then return false end
-  local on = C_GameRules.IsGameRuleActive(rule)
-  return not ns.IsSecret(on) and on == true
+  return ns.GameRuleOn("IngameCalendarDisabled")
 end
 
 -- A calendar event's reminder, as the game's calendar button prints it (GameTime.lua): with that button put

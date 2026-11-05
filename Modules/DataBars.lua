@@ -77,11 +77,11 @@ local function atCap()
   return level ~= nil and max > 0 and level >= max
 end
 
--- True when XP has nothing to show, as the game's own bar judges it: at the level cap, or with XP gain
--- turned off at the XP-lock NPC.
+-- True when XP has nothing to show, as the game's own bar judges it (GameRulesUtil.CanShowExperienceBar): at the
+-- level cap, with XP gain turned off at the XP-lock NPC, or with the realm's rules switching the bar off.
 local function xpHidden()
-  local capped = atCap()
-  return capped or (type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true)
+  local locked = type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true
+  return atCap() or locked or ns.GameRuleOn("ExperienceBarDisabled")
 end
 -- The same rule for the info strip's XP rows.
 DB.XPHidden = xpHidden
