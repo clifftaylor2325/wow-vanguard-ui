@@ -1591,8 +1591,9 @@ end
 
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
 -- corners), and hooks on the mouse and on its state (pcall: a widget without OnEnable/OnDisable can't
--- have them hooked).
-local function stateParts(button)
+-- have them hooked). A game button of kind "secondary" (Accept, Open All, Train) also gets the theme's label
+-- copies (T.ButtonLabel), set out of combat; a primary's label is its own, and Vanguard's own have no font objects.
+local function stateParts(button, kind)
   local fill = T.FillParts(button, "BACKGROUND", 3, T.PRESS.token, T.PRESS.alpha)
   T.ShowFill(fill, false)
   pressOf[button] = { overlay = fill.bg, fill = fill }
@@ -1600,6 +1601,7 @@ local function stateParts(button)
   button:HookScript("OnMouseUp", ns.Guard("button press", function(b) T.PressButton(b, false) end))
   pcall(button.HookScript, button, "OnDisable", ns.Guard("button state", function(b) T.DisabledLook(b, true) end))
   pcall(button.HookScript, button, "OnEnable", ns.Guard("button state", function(b) T.DisabledLook(b, false) end))
+  if kind ~= "primary" then ns.OutOfCombat(function() T.ButtonLabel(button) end) end
 end
 
 -- The panel options of each button kind: the secondary is an inset panel with a bevel; the primary
@@ -1611,14 +1613,14 @@ local BUTTON_KINDS = {
 
 -- A flat button of a kind ("secondary" unless given, or "primary"; read on the first call only): inset
 -- panel with a bevel, template art faded, an eased hover (raisedHover and a borderHi top line), a press
--- look and a disabled look.
+-- look, a disabled look, and a game button's label in the theme's text tiers.
 function T.Button(button, kind)
   local fresh = not painted[button]
   local entry = base(button, "button", BUTTON_KINDS[kind or "secondary"])
   if fresh then
     T.FadeRegions(button, { [entry.parts.bg] = true })
     hoverParts(button, entry)
-    stateParts(button)
+    stateParts(button, kind)
   end
   repaint(button, entry)
   if not isEnabled(button) then T.DisabledLook(button, true) end

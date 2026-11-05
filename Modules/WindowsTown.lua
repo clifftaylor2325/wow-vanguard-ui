@@ -265,10 +265,9 @@ local function styleTrainerBar(bar)
 end
 
 -- The window's foot and top: the player's money in the theme font (the pet trainer's training points in its place), the
--- rank bar, the filter button, the scroll bar, and Train's label in the theme's text tiers like Train all's beside it.
+-- rank bar, the filter button and the scroll bar.
 local function styleTrainerParts(frame)
   GW.SkinMoney(frame.money)
-  T.ButtonLabel(frame.TrainButton or _G.ClassTrainerTrainButton)
   GW.SkinText(GW.Part(frame, "trainingPoints.text"), "small", "text")
   styleTrainerBar(_G.ClassTrainerStatusBar)
   GW.EachKey(frame, { "FilterDropdown" }, GW.SkinButton)
