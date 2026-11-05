@@ -3758,6 +3758,102 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The right-click does nothing and the window stays open; the left-click closes it. This confirms the test client's rule that a button which never called RegisterForClicks takes left-button releases only.
 - If it fails, paste: whether the window closed on the right-click, and the client (Forever or Retail).
 
+### 33.245 Dark backings stay black in the Classic look (Forever)
+
+- Do: In Options, General, set Theme variant to Classic look (then Obsidian). Fill your bags so the backpack button reads 0, and look at the backpack count on the menu bar; have a calendar invite waiting and look at the info strip's calendar count. Then look at a typed debuff (Magic, Curse, Disease, Poison) on a unit frame or the debuff row.
+- Expect: the backpack's red 0, the invite count and the debuff type letter each sit on a black square (not bronze or grey) and read clearly.
+- If it fails, paste: /vg errors
+
+### 33.246 Key icons are cropped on Your keys (Forever)
+
+- Do: Open Options, Action bars, Your keys with a spell or item on a bar key (also key setup step 2).
+- Expect: the icon on each key has no dark bevel rim inside it, matching the click-casting grid's icons.
+- If it fails, paste: a screenshot of the key and /vg errors
+
+### 33.247 Click casting notice appears as a fight starts (Forever)
+
+- Do: Open Options on the Click casting page and leave it open, then get pulled into a fight (attack a mob) without clicking anything.
+- Expect: the line over the grid changes to "In combat: changes are kept and apply when the fight ends." as the fight starts, and back to the bindings line when it ends.
+- If it fails, paste: /vg errors
+
+### 33.248 Reload offer's Tab ring (Forever)
+
+- Do: Change a setting that offers a reload and press Tab twice, then press Enter.
+- Expect: the focus ring stays on Later and never reaches Reload; Enter closes the offer with no "Type /reload" chat line. A mouse click on Reload still reloads.
+- If it fails, paste: the button the ring is on after two Tabs
+
+### 33.249 First pop-out chat keeps Find and Copy (Forever)
+
+- Do: Right-click a name in chat and choose the pop-out chat entry, the first one this session (or whisper someone so a new tab opens and is selected).
+- Expect: Find and Copy show at the right end of the new tab's bar, and come back to General's bar when you click the General tab.
+- If it fails, paste: /vg probe line, or "tiles missing" if they are not there
+
+### 33.250 A flyout on an action bar opens Vanguard's list (both)
+
+- Do: Drag a flyout from the spellbook (a Mage's Teleport, a Hunter's Call Pet) onto bar 1, click it and pick a spell from the list, then press its key once out of combat and once in combat, and press Escape while the list shows.
+- Expect: Each click or key press opens a list of the spells you know above the button with no Lua error, picking a spell casts it and closes the list, and Escape closes it.
+- If it fails, paste: the output of /vg errors and the spell you tried.
+
+### 33.251 Bag and menu rows keep one slot per button on Retail (Retail)
+
+- Do: On Retail with the bag and menu bar on, look at the bag slots over the menu slots; then open Edit Mode, set the micro menu's Size to 80%, save, close Edit Mode and look again (put it back to 100% after).
+- Expect: Both times the bag slots and the menu slots have the same 4-pixel gaps, each row fills its box with no gap at the left and no button past the panel's edge.
+- If it fails, paste: which row is off (bags or menu), at which Size, and the output of /vg errors.
+
+### 33.252 Toggle Minimap hides the whole box (both)
+
+- Do: Bind a key to Toggle Minimap (Key Bindings, Interface), then press it twice with the minimap on screen.
+- Expect: The first press hides the map and Vanguard's whole minimap box (panel, bands, zone name, coordinates, corner buttons) with it; the second brings it all back.
+- If it fails, paste: what stays on screen after the first press, and the output of /vg errors.
+
+### 33.253 Your own private auras show left of your buffs (Retail)
+
+- Do: On Retail with Your buffs and debuffs on and the Calm HUD hiding the buffs out of combat, fight a boss solo (a delve boss) that puts a private aura (a boss mechanic) on you, and look just left of your buffs block.
+- Expect: The mechanic's icon and its sweep show in the row left of the buffs block while it lasts, even while the Calm HUD hides the block.
+- If it fails, paste: the boss and mechanic name, and the output of /vg errors.
+
+### 33.254 Relist picks the same variant (both)
+
+- Do: With two bag items of the same item ID but a different random suffix (for example an "of the Bear" and an "of the Owl" cloak), let an auction of one expire and collect it from the mail so the other variant is also in your bags. Open Posting, look at the expired row in Your auctions and click Relist.
+- Expect: The row says "expired · in bags" only when the exact variant is in the bags and not locked, and Relist puts that variant (not the other one) on the sell card.
+- If it fails, paste: the row text, the item shown on the sell card and the two items' links.
+
+### 33.255 Price typed with a thousands mark before its coin letter (Forever)
+
+- Do: At the auction house, on Vanguard's Posting tab put an item on the Sell card, type 1,500g (on a German client 1.500g) into its price box and read the Your price line; then type the same into the shop filter's max price box and save the filter.
+- Expect: The Your price line shows 1500 gold instead of the suggested price, and the filter keeps the 1500 gold max price.
+- If it fails, paste: what you typed, the Your price line and the filter's max price as shown.
+
+### 33.256 Group board shows another realm's same-named player (both)
+
+- Do: On a character whose name another realm also has, read the Group board while that other player posts an LFG line in Trade or LookingForGroup, and post one of your own.
+- Expect: Their post shows on the board and your own does not.
+- If it fails, paste: the "Posts kept" line from /vg lfg
+
+### 33.257 Soft reserve with a realm does not flag another realm's player (both)
+
+- Do: With Officer loot tools on, add a reserve with a realm-qualified name (/vg loot add Bob-Stormrage <item>), then have a player named Bob from a different realm roll on that item.
+- Expect: Their roll has no [SR] mark, while a roll by Bob-Stormrage (or by a bare Bob) is marked [SR].
+- If it fails, paste: /vg loot list and the roll tracker's lines
+
+### 33.258 Craft cooldown list with charges left (Retail)
+
+- Do: With Craft queue switched on, use one charge of a recipe that has several (a transmute with 3 charges) so 2 remain, open the profession and select the recipe, then type /vg craft cd.
+- Expect: The recipe is not listed as hours from ready while a charge is left. Use all the charges and repeat: it is listed with the time to the next charge.
+- If it fails, paste: the output of /vg craft cd and the recipe's "N of M charges" line from the profession window
+
+### 33.259 Sell more than 12 stacks warns about Buyback (both)
+
+- Do: At a merchant, with a sell list or an item of 13 or more stacks in your bags (for example /vg sell on a cloth you farmed), read the Sell question, then answer Sell.
+- Expect: The question ends with "Only the last 12 stacks can be bought back." and the chat line says the Buyback tab gets the last 12 back. With 12 stacks or fewer the question has no such line and the chat line promises all of them back. The Buyback tab shows 12 entries.
+- If it fails, paste: the Sell question text and the chat line after it
+
+### 33.260 Scaled alert border stays one pixel (both)
+
+- Do: In /vg unlock, set the Loss of control spot's scale to 200%, then trigger or preview a loss of control alert (or the Talking head with its spot at 200%).
+- Expect: The alert's panel border is a crisp one-screen-pixel line, the same thickness as other Vanguard panels, not a double-thick border.
+- If it fails, paste: the alert name, its spot scale and your UI scale.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

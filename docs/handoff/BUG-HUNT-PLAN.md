@@ -280,7 +280,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
 
 ### Block 4: second passes (`work/hunts-block-4`)
 
-- [ ] **H17 Look pass, Forever** (Forever; SMOKE 33.353 to 33.358). Files: everything under `Core/` and `Modules/` changed since `4d86d2c`, plus Vanguard's own windows (the options window, keys view, cards, dialogs, auction tabs, group board, the home window). The four look-bug shapes plus text fit, at 1080p and 1440p pixel-perfect, the three looks, ten languages a third longer. `npm run preview` renders are evidence.
+- [x] **H17 Look pass, Forever** (Forever; SMOKE 33.353 to 33.358). Files: everything under `Core/` and `Modules/` changed since `4d86d2c`, plus Vanguard's own windows (the options window, keys view, cards, dialogs, auction tabs, group board, the home window). The four look-bug shapes plus text fit, at 1080p and 1440p pixel-perfect, the three looks, ten languages a third longer. `npm run preview` renders are evidence.
   1. The options window and every page.
   2. Keys view, click-cast options and the wizards.
   3. Dialogs, popups, the game menu and the reload offers.
@@ -291,7 +291,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Chat windows, tabs and bubbles.
   9. Tooltips and the strips.
   10. Classic look and Vellum: every piece above in the two other looks.
-- [ ] **H18 Look pass, retail** (retail; SMOKE 33.359 to 33.364). Files: the retail build and every shared HUD piece on retail geometry. Hunt 14's waves run again on retail with the new code: 30-unit bag buttons, the micro menu, Edit Mode's systems, 13 class colours, retail fonts and atlases.
+- [x] **H18 Look pass, retail** (retail; SMOKE 33.359 to 33.364). Files: the retail build and every shared HUD piece on retail geometry. Hunt 14's waves run again on retail with the new code: 30-unit bag buttons, the micro menu, Edit Mode's systems, 13 class colours, retail fonts and atlases.
   1. Action bars and buttons (override, extra, possess, vehicle bars).
   2. Micro menu, bag bar, XP and reputation bars, alerts.
   3. Blizzard unit, party, raid and boss frames; cast bars; buffs.
@@ -302,7 +302,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Housing, Mythic+, vault, delves and professions windows after H11's fixes.
   9. Vanguard's own windows at retail's default scale and fonts.
   10. Retail at 1080p with the game's UI scale, and at 1440p pixel-perfect.
-- [ ] **H19 Wrong actions and money** (both; SMOKE 33.365 to 33.370). A re-census of hunt 6's lenses over the code changed since its base (`c53043a`) and the retail build.
+- [x] **H19 Wrong actions and money** (both; SMOKE 33.365 to 33.370). A re-census of hunt 6's lenses over the code changed since its base (`c53043a`) and the retail build.
   1. Every irreversible money and item call: buy, sell, bid, buyout, mail, COD, destroy, delete, disenchant, repair, transmog, warband transfer.
   2. Every auto accept, decline, roll, release, resurrect, summon, group invite and leave.
   3. Bindings: every `SetBinding` and click-cast change that the player did not click for in that moment.
@@ -313,7 +313,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   8. Account and realm restrictions: trial, self-found, hardcore, guildless, a dead hardcore character.
   9. Confirmations: every dialog that stands in for a game confirmation, and every game confirmation Vanguard answers.
   10. Logout, disconnect and the save moment: an action half done at logout, saved data written in combat.
-- [ ] **H20 Regressions and the plausible list** (both; SMOKE 33.371 to 33.376). Files: every fix commit of blocks 1 to 3 and the launch week (#711 to #747), and the ledger's `plausible` and `deferred` entries.
+- [x] **H20 Regressions and the plausible list** (both; SMOKE 33.371 to 33.376). Files: every fix commit of blocks 1 to 3 and the launch week (#711 to #747), and the ledger's `plausible` and `deferred` entries.
   1. Every block 1 fix commit read for side effects on the sibling paths it did not change.
   2. Every block 2 fix commit, with the Forever snapshot and tests as the oracle.
   3. Every block 3 fix commit, with a probe per harness change.
