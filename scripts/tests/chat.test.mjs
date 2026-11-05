@@ -1447,6 +1447,13 @@ it("quiet the game: turning Quiet off puts back the player's zoom, out of combat
   addon.eval("SetCVar, C_CVar = nil, nil ns.GetModule('Quiet').Disable()");
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe("1.9");
 });
+it("quiet the game: a camera row changed after Quiet is switched off only saves the value", () => {
+  const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.3')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
+  addon.eval("ns.SetModuleEnabled('Quiet', false) local _, set = ns.Options.LiveMethod('Quiet', 'camera', 'ApplyCamera') set(1.9)");
+  expect(addon.eval("return { GetCVar('cameraDistanceMaxZoomFactor'), ns.Settings('Quiet').camera }"), "off: the zoom stays the player's").toEqual(["1.3", 1.9]);
+  addon.eval("ns.SetModuleEnabled('Quiet', true) local _, set = ns.Options.LiveMethod('Quiet', 'camera', 'ApplyCamera') set(2.2)");
+  expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "on again: applies").toBe("2.2");
+});
 it("quiet the game: hiding the red error line keeps yellow info lines, whichever way the red line came", () => {
   const addon = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true } } }" });
   addon.fire("UI_INFO_MESSAGE", 0, "TEST-ONLY Kobold Vermin slain: 3/10");

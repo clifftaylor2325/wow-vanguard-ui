@@ -62,10 +62,10 @@ local function reloadSetting(module, key)
   return get, function(v) set(v) O.NeedReload() end, initial
 end
 
--- True when a module was built this session, so its live callbacks have its settings to read.
+-- True when a module was built this session and is still switched on, so its live callbacks have its settings to read.
 local function moduleRunning(module)
   local def = ns.GetModule(module)
-  return def ~= nil and def.enabled == true
+  return def ~= nil and def.enabled == true and ns.ModuleEnabled(module)
 end
 
 -- get/set for a module setting that applies at once (after() runs on each change), and its default.
