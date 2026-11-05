@@ -3945,6 +3945,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The four locked slots are the last four of Empty, and the game's add-slots button sits at their left edge, not over a usable slot.
 - If it fails, paste: a screenshot of the Empty section
 
+### 33.286 Retail bank side tabs dim by the search words (Retail)
+
+- Do: Put an epic in bank tab 3 only, open the bank on tab 1 and type q:epic in its search.
+- Expect: Tab 3 is lit and the other side tabs are dimmed.
+- If it fails, paste: a screenshot of the side tabs
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

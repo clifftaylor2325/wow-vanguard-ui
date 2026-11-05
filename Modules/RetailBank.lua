@@ -29,11 +29,25 @@ local function once(part, dress, ...)
   dress(part, ...)
 end
 
+-- With search words in the bank's box, a side tab is dimmed when none of its slots matches them (the game's
+-- own overlay follows its text search, which knows nothing of the words). Reads the game's fields, stores nothing.
+function RB.MarkTab(tab)
+  local tests = BG.BankTests()
+  local id = tab.tabData and ns.PlainNumber(tab.tabData.ID)
+  if tests and id and tab.SearchOverlay then tab.SearchOverlay:SetShown(not BG.ContainerMatches(tests, id)) end
+end
+
+-- Dresses one bought side tab as an icon tile, and has its search overlay follow the bank's search words.
+function RB.DressTab(tab)
+  ns.GetModule("Windows").DressIcon(tab, RB.TAB_KEEP)
+  if type(tab.RefreshSearchOverlay) == "function" then hooksecurefunc(tab, "RefreshSearchOverlay", ns.Guard("hook bank tab search", RB.MarkTab)) end
+end
+
 -- The bank's side tabs as the game made them last: each bought tab, and the tab for buying one.
 function RB.DressSideTabs(panel)
   local GW, pool = ns.GetModule("Windows"), panel.bankTabPool
   if type(pool) == "table" and type(pool.EnumerateActive) == "function" then
-    for tab in pool:EnumerateActive() do once(tab, GW.DressIcon, RB.TAB_KEEP) end
+    for tab in pool:EnumerateActive() do once(tab, RB.DressTab) end
   end
   once(panel.PurchaseTab, GW.DressIcon, RB.TAB_KEEP)
 end

@@ -122,6 +122,14 @@ function BG.ItemMatches(tests, bag, slot)
   return true
 end
 
+-- Whether any slot of container bag passes the tests.
+function BG.ContainerMatches(tests, bag)
+  for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
+    if BG.ItemMatches(tests, bag, slot) then return true end
+  end
+  return false
+end
+
 -- The search last parsed, so a refresh of each slot doesn't parse it again: { text, tests }.
 local parsed = {}
 
@@ -132,6 +140,11 @@ local function testsIn(boxName)
   local text = box:GetText()
   if parsed.text ~= text then parsed.text, parsed.tests = text, BG.ParseSearch(text) end
   return parsed.tests
+end
+
+-- The tests of what the bank's search box holds, or nil when it holds no operator.
+function BG.BankTests()
+  return testsIn("BankItemSearchBox")
 end
 
 -- Sets whether one button matches the tests (bag and slot: what it holds); a button without the call is left alone.

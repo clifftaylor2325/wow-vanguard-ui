@@ -22,7 +22,7 @@ const BANK_ENV = `
   function BankFrame.TabSystem:GetTabButton(id) return self.tabs[id] end
   BankPanel = CreateFrame("Frame", "BankPanel", BankFrame)
   BankItemSearchBox = CreateFrame("EditBox", "BankItemSearchBox", BankFrame)
-  local function sideTab() local t = CreateFrame("Button", nil, BankPanel) tex(t, "Border") tex(t, "Icon") tex(t, "SelectedTexture") return t end
+  local function sideTab() local t = CreateFrame("Button", nil, BankPanel) tex(t, "Border") tex(t, "Icon") tex(t, "SelectedTexture") tex(t, "SearchOverlay") t.RefreshSearchOverlay = function(self) self.SearchOverlay:SetShown(self.filtered == true) end return t end
   __sideTabs = { sideTab(), sideTab() }
   BankPanel.bankTabPool = { EnumerateActive = function() return pairs({ [__sideTabs[1]] = true, [__sideTabs[2]] = true }) end }
   BankPanel.PurchaseTab = sideTab()
@@ -85,6 +85,22 @@ it("retail bank: the search words work in a warband tab as in a character tab", 
   addon.eval("ns.GetModule('Bags').WatchBankSearch(BankPanel)");
   addon.eval("BankFrame:Show() BankPanel:GenerateItemSlotsForSelectedTab() BankItemSearchBox:SetText('q:uncommon') BankPanel:UpdateSearchResults()");
   expect(Object.values(addon.eval("local out = {} for i, b in ipairs(__bankSlots) do out[i] = b.matches == true end return out")), "the sword alone is lit").toEqual([true, false]);
+});
+
+it("retail bank: with search words in the box a side tab is dimmed when none of its slots matches; plain text leaves the game's overlay", () => {
+  const addon = loggedIn(BANK_ENV, { client: RETAIL_CLIENT });
+  addon.eval(`__wfgWorld.bagSizes[14] = 1 __wfgWorld.bags[14] = { { itemID = 90002 } }
+    __wfgWorld.items[90002] = { name = "TEST-ONLY Epic", quality = 4, classID = 2 }
+    __sideTabs[1].tabData, __sideTabs[2].tabData = { ID = 13 }, { ID = 14 }
+    BankFrame:Show()`);
+  // Whether each side tab's overlay shows.
+  const overlays = () => Object.values(addon.eval("return { __sideTabs[1].SearchOverlay:IsShown(), __sideTabs[2].SearchOverlay:IsShown() }"));
+  addon.eval("BankItemSearchBox:SetText('q:epic') for _, t in ipairs(__sideTabs) do t:RefreshSearchOverlay() end");
+  expect(overlays(), "the epic is only in the second tab: the first is dimmed").toEqual([true, false]);
+  addon.eval("BankItemSearchBox:SetText('sword') for _, t in ipairs(__sideTabs) do t:RefreshSearchOverlay() end");
+  expect(overlays(), "a plain word: the game's own answer (nothing filtered here)").toEqual([false, false]);
+  addon.eval("BankItemSearchBox:SetText('q:epic') __sideTabs[1].tabData = nil __sideTabs[1]:RefreshSearchOverlay()");
+  expect([overlays()[0], addon.eval("return #ns.errors")], "a tab without data keeps the game's answer, no errors").toEqual([false, 0]);
 });
 
 // A slot with a Background and an ItemSlotBackground, skinned; their alpha as [background, item slot background].
