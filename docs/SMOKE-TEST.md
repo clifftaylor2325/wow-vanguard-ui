@@ -4071,6 +4071,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The arrow points at the exit at full strength and its line reads No distance (Turn in · no distance once the quest is ready).
 - If it fails, paste: /run print(C_QuestLog.GetDistanceSqToQuest(C_SuperTrack.GetSuperTrackedQuestID()))
 
+### 33.310 Quest reward spells are worded by kind (Forever)
+
+- Do: Open a quest offering whose reward is a spell you already know, and one whose reward is a buff.
+- Expect: No line for the known spell; the buff reads Grants: Name, a learned spell Teaches: Name, an unlock Unlocks: Name.
+- If it fails, paste: /run for _,id in ipairs(C_QuestInfoSystem.GetQuestRewardSpells(GetQuestID())) do local s=C_QuestInfoSystem.GetQuestRewardSpellInfo(GetQuestID(),id) print(id,s.name,s.isSpellLearned,s.genericUnlock,C_SpellBook.IsSpellInSpellBook(id,0,true)) end
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

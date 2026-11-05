@@ -316,7 +316,7 @@ it("quest dialog: a number or Space with Shift, Ctrl or Alt held goes on to the 
 });
 it("quest dialog: late item details redraw the page; spell and currency rewards", () => {
   const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
-    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt" } end,
+    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 90081 } end, GetQuestRewardSpellInfo = function() return { name = "TEST-ONLY Bolt", isSpellLearned = true } end,
       GetQuestRewardCurrencies = function() return { { name = "TEST-ONLY Marks", totalRewardAmount = 3 } } end }`);
   addon.fire("QUEST_COMPLETE");
   expect(dialog(addon).money, "the money line keeps the money and XP only").toBe("+12s 0c  ·  450 XP");
@@ -330,6 +330,18 @@ it("quest dialog: late item details redraw the page; spell and currency rewards"
   expect(dialog(addon).cards[0], "closed, nothing redraws").toBe("TEST-ONLY Better Boots");
   addon.eval("C_QuestInfoSystem = nil");
   expect(addon.eval("return #ns.GetModule('QuestDialog').ExtraRewards(90031)"), "a client without those calls shows none").toBe(0);
+});
+it("quest dialog: reward spells are worded by kind, and one you already know or a boost spell is left out", () => {
+  const addon = loggedIn(QUEST_ENV + `GetQuestID = function() return 90031 end
+    __spells = { [1] = { name = "TEST-ONLY Bolt", isSpellLearned = true }, [2] = { name = "TEST-ONLY Gate", genericUnlock = true },
+      [3] = { name = "TEST-ONLY Aura" }, [4] = { name = "TEST-ONLY Known", isSpellLearned = true }, [5] = { name = "TEST-ONLY Boost", isBoostSpell = true },
+      [6] = { name = "TEST-ONLY Recipe", isTradeskill = true } }
+    C_QuestInfoSystem = { GetQuestRewardSpells = function() return { 1, 2, 3, 4, 5, 6 } end, GetQuestRewardSpellInfo = function(_, id) return __spells[id] end }
+    C_SpellBook.IsSpellInSpellBook = function(id) return id == 4 end`);
+  expect(addon.eval("return ns.GetModule('QuestDialog').ExtraRewards(90031)"), "each kind in the game's word; the known and boost spells are left out")
+    .toEqual(["Teaches: TEST-ONLY Bolt", "Unlocks: TEST-ONLY Gate", "Grants: TEST-ONLY Aura", "Teaches: TEST-ONLY Recipe"]);
+  addon.eval("C_SpellBook = nil");
+  expect(addon.eval("return #ns.GetModule('QuestDialog').ExtraRewards(90031)"), "a client without the spellbook call lists them all but the boost spell").toBe(5);
 });
 it("quest dialog: a spell reward is in the body of the detail page in French, not at the end of a money line that runs out of room", () => {
   const spell = `GetQuestID = function() return 90031 end

@@ -1121,6 +1121,11 @@ C_SpellBook = {
     if bank ~= nil and bank ~= Enum.SpellBookSpellBank.Player then return false end
     return knowsSpell(id)
   end,
+  -- Whether a spell is found in the spellbook (QuestInfo.lua asks it of a reward spell); here, whether it is known.
+  IsSpellInSpellBook = function(id, bank)
+    if bank ~= nil and bank ~= Enum.SpellBookSpellBank.Player then return false end
+    return knowsSpell(id)
+  end,
   -- One skill line while anything is learned.
   GetNumSpellBookSkillLines = function() return #world.book > 0 and 1 or 0 end,
   -- The one skill line holds every learned spell.
