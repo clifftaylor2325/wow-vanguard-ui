@@ -795,3 +795,9 @@ it("H17-10-1: the debuff type badge's backing is black in the Classic look, so t
   const back = addon.eval("local c = __p.badge.back.__vertexColor return { c[1], c[2], c[3], c[4] }");
   expect(back, "the backing is black at 0.8, not Classic's bronze edge").toEqual([0, 0, 0, 0.8]);
 });
+
+it("H17-10-1: on the client's aura engine the type badge's backing is black in the Classic look too", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS + ` ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()`);
+  addon.eval('__c = ns.Auras.Container(UIParent, __spec, "target") __g = __c.frame.__groups[1]');
+  expect(badgeOf(addon, "__g.buttons[1]").back.slice(1), "a Magic debuff's backing: black at 0.8, not Classic's bronze edge").toEqual([0.8, 0, 0, 0]);
+});
