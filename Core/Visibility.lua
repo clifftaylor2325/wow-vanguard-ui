@@ -288,10 +288,11 @@ local function hoverEnter(f)
 end
 
 -- The mouse left: the frame fades unless the mouse is still over it (moving
--- between its buttons crosses the frame itself); an Auto-hide frame lingers first.
+-- between its buttons crosses the frame itself), or over its hover area where it names one (a pad over rows
+-- that draw past its own rect); an Auto-hide frame lingers first.
 local function hoverLeave(f)
   local frame = vgHoverOf[f]
-  vgHover[frame] = frame.vgHoverRoot:IsMouseOver() == true
+  vgHover[frame] = (frame.vgHoverArea or frame.vgHoverRoot):IsMouseOver() == true
   if frame.vgAutoHide and not vgHover[frame] then return V.Linger(frame) end
   V.Refresh(frame)
 end
@@ -325,6 +326,7 @@ function V.CalmNow(frame)
   if not (state or frame.vgStateString) then return end
   if not frame.vgHoverRoot then V.WatchHover(frame) end
   feelMouse(frame)
+  if frame.vgHoverArea then feelMouse(frame.vgHoverArea) end
   V.ApplyState(frame, state or "show")
   V.Refresh(frame)
 end

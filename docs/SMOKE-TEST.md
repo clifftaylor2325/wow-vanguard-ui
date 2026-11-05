@@ -3993,6 +3993,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Bar 1 shows at full strength with the vehicle's or eye's buttons, and fades again after you leave; your buffs and unit frames stay calm.
 - If it fails, paste: /vg errors, and whether the bar is invisible or on the wrong page.
 
+### 33.295 Hovering any row of calm buffs brings them back (Forever)
+
+- Do: With the Calm HUD on and buffs and debuffs on Dim, carry enough buffs for two rows (or have a debuff), then move the pointer onto a buff in the second row from below.
+- Expect: The whole buffs and debuffs block returns to full strength while the pointer is on it, and dims again when it leaves.
+- If it fails, paste: how many rows you had, and which row woke it.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

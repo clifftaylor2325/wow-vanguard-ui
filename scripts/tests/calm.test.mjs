@@ -52,6 +52,23 @@ it("Calm HUD: one switch quiets the whole HUD out of combat, each part as its de
   expect([calm(addon, "Vanguard_Bar1").alpha, calm(addon, "Vanguard_xpbar").alpha], "a fight or a hostile target: the client says show").toEqual([1, 1]);
 });
 
+it("Calm HUD: a pad over every row of your buffs and debuffs brings the whole block back from any row", () => {
+  const addon = loggedIn(ENV);
+  calmOn(addon);
+  const pad = "Vanguard_PlayerAuras.vgHoverArea";
+  expect(addon.eval(`local p, h = ${pad}, Vanguard_PlayerAuras
+    return { p:GetHeight() > h:GetHeight(), p:GetWidth() == h:GetWidth(), p.__mouseMotion == true, p.__mouseClick == false }`),
+    "taller than the one-row holder, as wide, feeling the mouse without taking clicks").toEqual([true, true, true, true]);
+  addon.hover(pad);
+  expect(calm(addon, "Vanguard_PlayerAuras").alpha, "the pointer on a lower row: the block is at full strength").toBe(1);
+  addon.hover(null);
+  expect(calm(addon, "Vanguard_PlayerAuras").alpha, "and quiet again when it leaves").toBe(0.35);
+  addon.hover("Vanguard_PlayerAuras");
+  addon.eval(`${pad}.__mouseOver = true`);
+  addon.hover(null);
+  expect(calm(addon, "Vanguard_PlayerAuras").alpha, "moving off the first row onto a lower one (a buff the client keeps unhooked) keeps it back").toBe(1);
+});
+
 it("Calm HUD: each part's choice applies at once, a part's own Visibility wins, and a change in combat waits", () => {
   const addon = loggedIn(ENV);
   calmOn(addon);
