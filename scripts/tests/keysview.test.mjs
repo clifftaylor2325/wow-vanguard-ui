@@ -182,3 +182,12 @@ it("your keys: a key whose button is hidden is not reported as that button's", (
   addon.eval("Vanguard_Bar1Button1:Hide() ns.Options.Refresh()");
   expect(cap(addon, "1").place, "falls back to the game's command").toBe("ACTIONBUTTON1");
 });
+
+it("H17-2-1: a key's icon is cropped like every other game icon, so the art's bevel stays out of the key", () => {
+  const addon = withKeys();
+  const coords = addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.key == "1" and w.chord and w:IsVisible() then return w.icon.__texCoord end
+  end`);
+  const edge = addon.eval("return ns.Theme.ICON_EDGE");
+  expect(coords, "the icon shows the middle of the art, T.ICON_EDGE trimmed off each side").toEqual([edge, 1 - edge, edge, 1 - edge]);
+});

@@ -53,7 +53,7 @@ local function newCap(r, key, width)
   local cap = T.Button(CreateFrame("Button", nil, r))
   cap:SetSize(width, SIZE.cap)
   cap.key = key
-  cap.icon = cap:CreateTexture(nil, "ARTWORK")
+  cap.icon = T.Crop(cap:CreateTexture(nil, "ARTWORK"))
   cap.icon:SetSize(SIZE.cap - 12, SIZE.cap - 12)
   cap.icon:SetPoint("CENTER")
   cap.label = T.Text(cap:CreateFontString(nil, "OVERLAY"), "barSmall")
