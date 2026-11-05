@@ -4143,6 +4143,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the other addon answers `/way`; `/vg way 50 50` sets Vanguard's waypoint.
 - If it fails, paste: `/run print(SLASH_VANGUARDWAY1, hash_SlashCmdList["/WAY"])`
 
+### 33.317 Options search finds Move frames in Korean (both, Korean client)
+
+- Do: on a koKR client open `/vg` and type unlock in the search box.
+- Expect: the 창 이동 (Move frames) button on the General page is listed.
+- If it fails, paste: a screenshot of the search list.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
