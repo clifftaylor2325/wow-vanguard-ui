@@ -15,8 +15,14 @@ const FLYOUTS = `
   C_Spell.GetSpellTexture = function(id) return "TEST-ONLY-ICON-" .. id end
 `;
 
-// Puts flyout id on action slot 1 (bar 1's first button).
-const place = (addon, slot, id) => addon.world.setAction(slot, { type: "flyout", id });
+// One frame on, for the flyouts stored on the next frame after a change.
+const nextFrame = (addon) => addon.update(0.01);
+
+// Puts flyout id on an action slot (slot 1 is bar 1's first button), and lets the list store it.
+const place = (addon, slot, id) => {
+  addon.world.setAction(slot, { type: "flyout", id });
+  nextFrame(addon);
+};
 
 // TEST-ONLY restricted environment: self and control are wrappers that hand back what the real frames answer
 // (a frame given to a call by wrapper goes through as the real frame), with the button's rect and scale set.
@@ -79,15 +85,29 @@ it("a flyout's known spells are stored for the snippet, a Call Pet slot without 
   expect(attrs(3, 1)[0], "a flyout of 25 is cut at the 20 buttons").toBe(20);
   expect(addon.eval("local f = Vanguard_Flyout return { f:GetAttribute('edge'), f:GetAttribute('screen-width') > 0, f:GetAttribute('screen-height') > 0 }"), "the click edge and the screen size are stored").toEqual(["up", true, true]);
   addon.eval("__wfgWorld.cvars.ActionButtonUseKeyDown = '1'");
-  addon.fire("CVAR_UPDATE");
-  expect(addon.eval("return Vanguard_Flyout:GetAttribute('edge')"), "key down is read again when the setting changes").toBe("down");
+  addon.fire("CVAR_UPDATE", "autoLootDefault", "1");
+  nextFrame(addon);
+  expect(addon.eval("return Vanguard_Flyout:GetAttribute('edge')"), "another setting's change reads nothing again").toBe("up");
+  addon.fire("CVAR_UPDATE", "ActionButtonUseKeyDown", "1");
+  nextFrame(addon);
+  expect(addon.eval("return Vanguard_Flyout:GetAttribute('edge')"), "key down is read again when its setting changes").toBe("down");
+});
+
+it("a burst of slot changes in one frame stores the flyouts once, on the next frame", () => {
+  const addon = loggedIn(FLYOUTS);
+  place(addon, 1, 1);
+  addon.eval("local AB = ns.GetModule('ActionBars') local show = AB.ShowFlyouts __stores = 0 AB.ShowFlyouts = function() __stores = __stores + 1 show() end");
+  for (const slot of [4, 5, 6]) addon.world.setAction(slot, { type: "flyout", id: 2 });
+  expect(addon.eval("return __stores"), "nothing is read in the frame of the changes").toBe(0);
+  nextFrame(addon);
+  expect(addon.eval("return { __stores, Vanguard_Flyout:GetAttribute('flyout-2-count') }"), "one store on the next frame, with the new flyout").toEqual([1, 2]);
 });
 
 it("a flyout stored in a fight waits for it to end, and a client without the Call Pet call lists every known spell", () => {
   const addon = loggedIn(FLYOUTS);
   place(addon, 1, 1);
   setCombat(addon, true);
-  addon.world.setAction(2, { type: "flyout", id: 2 });
+  place(addon, 2, 2);
   expect(addon.eval("return Vanguard_Flyout:GetAttribute('flyout-2-count')"), "nothing is written in combat").toBe(null);
   setCombat(addon, false);
   expect(addon.eval("return Vanguard_Flyout:GetAttribute('flyout-2-count')"), "written after it, both spells (no Call Pet call to ask)").toBe(2);
@@ -129,7 +149,7 @@ it("a click on anything but a flyout closes the list, a flyout with no known spe
   expect(run(addon, PRE, { down: "true" }), "the other edge of the click (the game acts on release): stopped").toEqual([false, "nil"]);
   expect(addon.eval("return Vanguard_Flyout:IsShown()"), "and nothing opens").toBe(false);
   addon.eval("__wfgWorld.flyouts[1].slots = { { spell = 11, known = false } } ") ;
-  addon.world.setAction(1, { type: "flyout", id: 1 });
+  place(addon, 1, 1);
   expect(run(addon, PRE), "a flyout with nothing to list").toEqual([false, "nil"]);
 });
 

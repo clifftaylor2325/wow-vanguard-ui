@@ -19,8 +19,9 @@ local AB = ns.GetModule("ActionBars")
 local T = ns.Theme
 
 -- The flyout's spell buttons (the most spells a flyout holds; a larger one is cut short), their side,
--- the gap between buttons, and the action slots to look through (the last bar's last slot is 180).
-AB.FLYOUT = { max = 20, size = 32, gap = 2, slots = 180, frame = "Vanguard_Flyout", close = "Vanguard_FlyoutClose" }
+-- the gap between buttons, the action slots to look through (the last bar's last slot is 180), and the game
+-- setting that says which edge of a click the game acts on.
+AB.FLYOUT = { max = 20, size = 32, gap = 2, slots = 180, frame = "Vanguard_Flyout", close = "Vanguard_FlyoutClose", edgeCVar = "ActionButtonUseKeyDown" }
 
 -- Runs in the secure environment before a bar button's click. On a flyout slot it lists the flyout's
 -- spells beside the button (above it, below it, or toward the screen's middle from a side edge) and
@@ -207,7 +208,7 @@ end
 local function storeScreen(flyout)
   flyout:SetAttribute("screen-width", UIParent:GetWidth() * UIParent:GetEffectiveScale())
   flyout:SetAttribute("screen-height", UIParent:GetHeight() * UIParent:GetEffectiveScale())
-  flyout:SetAttribute("edge", GetCVarBool("ActionButtonUseKeyDown") and "down" or "up")
+  flyout:SetAttribute("edge", GetCVarBool(AB.FLYOUT.edgeCVar) and "down" or "up")
 end
 
 -- Makes the list and wraps every bar button, once a flyout first sits on a bar.
@@ -228,15 +229,28 @@ function AB.ShowFlyouts()
 end
 
 -- Stores the flyouts now, or when the fight ends.
-local function refresh()
+local function store()
   ns.OutOfCombat(AB.ShowFlyouts, "action bar flyouts")
+end
+
+-- Stores the flyouts on the next frame, once for a burst of changes (a bar's slots all change together on a
+-- page or a talent swap, and each store reads every slot).
+local function refresh()
+  ns.Soon("action bar flyouts", store)
+end
+
+-- A game setting changed: only the Action Button key-down setting matters to the list (the client sends
+-- every setting's change; the name is matched without case to be safe).
+local function onSettingChanged(_, name)
+  if type(name) == "string" and name:lower() == AB.FLYOUT.edgeCVar:lower() then refresh() end
 end
 
 -- Keeps the stored flyouts current: when spells, slots, the screen or the key-down setting change, and at login.
 local function watchFlyouts()
-  for _, event in ipairs({ "SPELLS_CHANGED", "ACTIONBAR_SLOT_CHANGED", "PLAYER_ENTERING_WORLD", "CVAR_UPDATE", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }) do
+  for _, event in ipairs({ "SPELLS_CHANGED", "ACTIONBAR_SLOT_CHANGED", "PLAYER_ENTERING_WORLD", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }) do
     ns.On(event, refresh)
   end
+  ns.On("CVAR_UPDATE", onSettingChanged)
   refresh()
 end
 
