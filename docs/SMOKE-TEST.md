@@ -4173,6 +4173,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The first set's name is in the light text colour and the second's is red, and on Retail the New Set row is green, both before and after the accent change.
 - If it fails, paste: `/run PaperDollFrame.EquipmentManagerPane.ScrollBox:ForEachFrame(function(r) print(r.setID, r.text:GetText(), r.text:GetTextColor()) end)`
 
+### 33.328 Add Friend dialog is no taller than the game makes it (both)
+
+- Do: Open the Friends window and click Add Friend (the entry page with the name box).
+- Expect: The dialog's panel and soft shadow end the game's usual margin below Accept and Cancel, with no empty dark strip under them, and the panel shows and hides with the dialog.
+- If it fails, paste: `/run print(AddFriendFrame:GetHeight(), AddFriendEntryFrame:GetHeight())`
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

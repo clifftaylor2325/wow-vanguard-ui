@@ -591,7 +591,7 @@ end
 function GW.SkinSocialDialog(frame)
   T.FadeRegions(frame)
   for _, key in ipairs(GW.SOCIAL_DIALOG_ART) do fadeKey(frame, key) end
-  T.Panel(frame, { shadow = true })
+  T.Panel(GW.PanelHost(frame), { shadow = true })
   dressDialogParts(frame, frame.GetName and frame:GetName())
 end
 
