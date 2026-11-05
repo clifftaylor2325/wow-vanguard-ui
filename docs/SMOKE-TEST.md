@@ -3969,6 +3969,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The game's Click Casting window is still open after the second press, and Vanguard's options window has stepped aside.
 - If it fails, paste: whether either window is open, and /vg errors.
 
+### 33.291 Empty totem slots let clicks through (Forever)
+
+- Do: As a shaman with no totems down, stand so an NPC or a lootable corpse is under the empty totem strip just above your player frame and click it; then drop a totem in a fight and right-click its cell.
+- Expect: The first click targets or loots what is under the strip; the right-click in the fight destroys the totem.
+- If it fails, paste: /vg errors, and which click did nothing.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

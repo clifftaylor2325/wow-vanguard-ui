@@ -313,6 +313,7 @@
       "a released player reads Ghost and a feigning hunter reads alive",
       "an offline or dead unit's health bar goes dark, an online one keeps its class colour",
       "class bars: a right-click on a totem cell destroys it, with key-down casting on or off",
+      "class bars: an empty totem cell lets clicks through out of combat, and every cell takes clicks in a fight",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: the totem row sits above the player frame, clear of the chat's tab bar and its tiles at 1365 and 1440 wide (B4-1)",
       "class bars: totems for shamans, mana in forms for druids",
