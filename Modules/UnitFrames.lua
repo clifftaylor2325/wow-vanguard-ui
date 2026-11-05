@@ -644,12 +644,13 @@ end
 -- out of the hidden frame (SetParent) while they are shown.
 UF.REPARENTED = { ObjectiveTrackerFrame = true }
 
--- Parks the frame again whenever the game gives it a parent other than the hidden frame.
+-- Parks the frame again whenever the game gives it a parent other than the hidden frame. Its own
+-- once-per-frame table, so a frame keepParked has hooked still gets this hook.
 local function keepUnderHidden(f, name)
   if not UF.REPARENTED[name] or type(hooksecurefunc) ~= "function" then return end
-  UF.parked = UF.parked or {}
-  if UF.parked[f] then return end
-  UF.parked[f] = true
+  UF.reparentHooked = UF.reparentHooked or {}
+  if UF.reparentHooked[f] then return end
+  UF.reparentHooked[f] = true
   hooksecurefunc(f, "SetParent", ns.Guard("hook SetParent", function(_, parent)
     if parent ~= hiddenParent then repark(f) end
   end))

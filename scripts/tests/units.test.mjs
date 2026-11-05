@@ -858,6 +858,13 @@ it("Edit Mode re-parenting the game's objective tracker parks it again", () => {
   const plain = loggedIn(UNITS_ENV + '\nObjectiveTrackerFrame = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent)\nhooksecurefunc = nil', NO_RAID);
   expect(plain.eval("return ObjectiveTrackerFrame:IsShown()"), "no hook where hooksecurefunc is missing").toBe(false);
 });
+// TEST-ONLY: a listed frame that also has UpdateShownState, so keepParked hooks it first.
+it("a re-parented game frame with UpdateShownState is parked again after SetParent too", () => {
+  const addon = loggedIn(UNITS_ENV + '\nBothFrame = CreateFrame("Frame", "BothFrame", UIParent)\nfunction BothFrame:UpdateShownState() end', NO_RAID);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.REPARENTED.BothFrame = true UF.HideBlizzard('BothFrame')");
+  addon.eval("BothFrame:Show() BothFrame:SetParent(UIParent)");
+  expect(addon.eval("return { BothFrame:IsShown(), BothFrame:GetParent() == UIParent }"), "hidden and parked again").toEqual([false, false]);
+});
 it("a parked game frame without UpdateShownState, or on a client without hooksecurefunc, is left alone", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
   expect(addon.eval("return PetFrame.UpdateShownState"), "no method, no hook").toBe(null);
