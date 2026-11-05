@@ -508,6 +508,13 @@ function ns.ReloadButton(btn)
 end
 ns.On("PLAYER_REGEN_DISABLED", putAway)
 
+-- The reload offer's Tab ring: Later, then Reload where a key can reload (on WoW Forever only a mouse
+-- click reaches the overlay's /reload macro, so a key on Reload would only print the chat line).
+local function reloadFocus()
+  if ns.IsForever() then return { reload.cancel } end
+  return { reload.cancel, reload.accept }
+end
+
 -- Builds the reload dialog once: the reason, a primary (accent) Reload button and Later.
 local function reloadDialog()
   if reload then return reload end
@@ -518,7 +525,7 @@ local function reloadDialog()
   reload.cancel = button(reload, L["Later"])
   reload.cancel:SetPoint("RIGHT", reload.accept, "LEFT", -T.SPACE.gap, 0)
   reload.cancel:SetScript("OnClick", ns.Guard("click reload later", function() reload:Hide() end))
-  ns.TabFocus(reload, function() return { reload.cancel, reload.accept } end)
+  ns.TabFocus(reload, reloadFocus)
   return reload
 end
 

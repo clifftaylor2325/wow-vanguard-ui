@@ -1571,6 +1571,20 @@ it("the text and reload dialogs take Tab focus too, and a hidden button is skipp
   addon.key("Vanguard_Reload", "TAB");
   expect(ring(addon, "Vanguard_Reload.cancel"), "the reload dialog starts at Later").toBe(true);
 });
+it("H17-3-1: on WoW Forever the reload offer's Tab ring stops at Later (a key cannot reload there), on Retail it reaches Reload", () => {
+  const forever = loggedIn("UISpecialFrames = {}");
+  forever.eval(`ns.OfferReload("A change.")`);
+  forever.key("Vanguard_Reload", "TAB");
+  forever.key("Vanguard_Reload", "TAB");
+  expect([ring(forever, "Vanguard_Reload.cancel"), ring(forever, "Vanguard_Reload.accept")], "Forever: the second Tab stays on Later").toEqual([true, false]);
+  forever.key("Vanguard_Reload", "ENTER");
+  expect([forever.eval("return Vanguard_Reload:IsShown()"), chatHas(forever, /Type \/reload/)], "Enter presses Later: the dialog closes, no chat line").toEqual([false, false]);
+  const retail = loggedIn(RETAIL + "UISpecialFrames = {}");
+  retail.eval(`ns.OfferReload("A change.")`);
+  retail.key("Vanguard_Reload", "TAB");
+  retail.key("Vanguard_Reload", "TAB");
+  expect(ring(retail, "Vanguard_Reload.accept"), "Retail: the second Tab reaches Reload").toBe(true);
+});
 // Whether the options window shows its reload notice.
 const reloadNotice = (addon) => addon.eval("return Vanguard_Options.notice:IsShown()");
 it("Reset theme: a reset that only changes the accent needs no reload", () => {
