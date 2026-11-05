@@ -150,7 +150,7 @@ read_globals = {
   "GetInboxNumItems", "GetInboxHeaderInfo", "GetServerTime", "GetInboxInvoiceInfo", "InboxItemCanDelete", "AUCTION_EXPIRED_MAIL_SUBJECT",
   -- Mail tools, Take all: which attachment slots a mail still holds, and whether the server is still
   -- answering the last take (Blizzard_MailFrame/MailFrame.lua, MailInfoDocumentation.lua).
-  "HasInboxItem", "C_Mail",
+  "HasInboxItem", "C_Mail", "HasSendMailItem",
   -- D2 Auction helper, crafting costs: the game's profession window (Blizzard_Professions).
   "ProfessionsFrame",
   -- Minimap: the game's world map toggle. Healing: the client's readable class names, for the buff list.

@@ -3945,6 +3945,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Half a second later chat says Sent 0 stack(s) of the group to the bank and 3 stack(s) stayed in your bags: the bank has no room.
 - If it fails, paste: the two chat lines.
 
+### 33.278 Mail preset counts what is already attached (Forever)
+
+- Do: On the Send Mail tab attach 10 items by hand, then press a preset that matches 5 more.
+- Expect: Chat says 2 items attached, the Send Mail tab holds 12, and there is no red error.
+- If it fails, paste: the chat line and any red error.
+
 ### 33.281 Docked chat tab sizes through General's sliders (Forever)
 
 - Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.

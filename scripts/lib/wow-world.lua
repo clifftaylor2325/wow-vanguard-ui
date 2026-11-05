@@ -2023,6 +2023,8 @@ function HasInboxItem(i, n)
   local m = world.mail[i]
   return m ~= nil and mailSlots(m)[n] == true
 end
+-- Whether Send Mail attachment slot n holds an item: world.sendMailSlots = { [n] = true } when a test fills slots.
+function HasSendMailItem(n) return world.sendMailSlots ~= nil and world.sendMailSlots[n] == true end
 C_Mail = C_Mail or {}
 -- Whether the server is still answering a mail command: world.mailPending (false by default).
 function C_Mail.IsCommandPending() return world.mailPending == true end

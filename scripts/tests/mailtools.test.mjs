@@ -253,6 +253,22 @@ it("attaches at most 12, and a preset button before the panel exists is quiet", 
   expect(early.eval(`return ${MT}.PaintPresets()`), "no panel yet").toBe(null);
 });
 
+it("a preset counts the items already attached against the game's 12 and reports only what it added", () => {
+  const addon = mailer("__wfgWorld.bagSizes[0] = 20 for s = 1, 4 do __wfgWorld.bags[0][s] = { itemID = 900 } end __wfgWorld.sendMailSlots = {} for n = 1, 10 do __wfgWorld.sendMailSlots[n] = true end");
+  addon.slash("mail preset add All Bobalt");
+  addon.world.openMailWindow();
+  addon.world.showSendMail();
+  addon.slash("mail send all");
+  expect(addon.eval("return #__wfgWorld.usedItems"), "10 already attached: room for 2 of the 4 items").toBe(2);
+  expect(chatHas(addon, /All: 2 items attached for Bobalt\. Press Send\./), "and chat says 2, not the 12 it once claimed").toBe(true);
+  const full = mailer("__wfgWorld.bagSizes[0] = 20 for s = 1, 4 do __wfgWorld.bags[0][s] = { itemID = 900 } end __wfgWorld.sendMailSlots = {} for n = 1, 12 do __wfgWorld.sendMailSlots[n] = true end");
+  full.slash("mail preset add All Bobalt");
+  full.world.openMailWindow();
+  full.world.showSendMail();
+  full.slash("mail send all");
+  expect([full.eval("return __wfgWorld.usedItems"), chatHas(full, /All: 0 items attached/)], "a full mail takes nothing more").toEqual([null, true]);
+});
+
 it("a panel first built by the inbox update (the window shows after MAIL_SHOW) hides unset presets, says when there is nothing, and sits on the window's layer", () => {
   const addon = mailer("__wfgWorld.mail = {}");
   addon.eval("MailFrame = nil");
