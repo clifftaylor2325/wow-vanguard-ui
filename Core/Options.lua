@@ -549,7 +549,8 @@ end
 local function currentProfileText()
   local later = ns.PendingProfileName()
   if not later then return ns.Format(L["This character uses {profile}."], { profile = ns.ProfileName() }) end
-  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = later })
+  local spec = ns.SpecProfile()
+  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = spec or later })
 end
 
 -- Asks before a reset: what is lost (every setting in the profile in use, for every character

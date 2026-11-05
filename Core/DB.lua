@@ -236,6 +236,7 @@ end
 function ns.UseProfile(name)
   ns.StageProfile(name)
   VanguardCharDB.ownProfile = name
+  ns.WarnSpecWins(name)
 end
 
 -- The profile staged for the next reload, or nil.

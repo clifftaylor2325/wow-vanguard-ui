@@ -440,6 +440,15 @@ function ns.SpecNowLine(key, profile)
   return ns.Format(L["{talents} now use profile {profile}."], { talents = ns.TalentsName(key), profile = profile })
 end
 
+-- After a pick by hand: when the current spec has a profile of its own, it takes over again at
+-- login, so say so (the Profiles page's "Stop spec switching" keeps the pick).
+function ns.WarnSpecWins(picked)
+  local spec = ns.SpecProfile()
+  if not spec or spec == picked then return end
+  local line = ns.SpecUsesLine(ns.SpecKey(), spec)
+  ns.Chat(line .. " " .. L["It switches back at the reload; Stop spec switching on the Profiles page keeps your pick."])
+end
+
 -- Remembers the profile the character picked, before a spec's profile takes over from it.
 local function rememberOwn()
   local selected = ns.SelectedProfileName()

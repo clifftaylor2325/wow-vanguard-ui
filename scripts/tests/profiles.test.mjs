@@ -272,6 +272,19 @@ it("a spec with no profile of its own goes back to the character's profile after
   reloadInSpec(addon, 1);
   expect(addon.eval("return ns.ProfileName()"), "and it runs after the reload").toBe("Default");
 });
+it("picking a profile on a spec with a profile of its own says the spec's takes over at login, and the page names it", () => {
+  const addon = specCharacter(2);
+  addon.eval("VanguardCharDB.profile = 'Heal' ns.ProfileChanged()");
+  addon.clearChat();
+  addon.eval("ns.UseProfile('Default')");
+  expect(chatHas(addon, /Spec 2 uses Heal\. It switches back at the reload; Stop spec switching on the Profiles page keeps your pick\./), "the pick says the spec wins").toBe(true);
+  // The Profiles page's line about the profile in use, as the window draws it.
+  const text = addon.eval("for _, page in ipairs(ns.Options.PAGES) do if page.key == 'profiles' then for _, r in ipairs(page.rows()) do if r[1] == 'text' and type(r[2]) == 'function' then return r[2]() end end end end");
+  expect(text, "and the page names what login will load").toMatch(/until you reload, then Heal\./);
+  addon.clearChat();
+  addon.eval("ns.UseProfile('Heal')");
+  expect(chatHas(addon, /switches back/), "picking the spec's own profile says nothing").toBe(false);
+});
 it("a profile picked by hand is the one a spec with no profile of its own goes back to", () => {
   const addon = specCharacter(2);
   addon.eval("ns.UseProfile('Heal')");
