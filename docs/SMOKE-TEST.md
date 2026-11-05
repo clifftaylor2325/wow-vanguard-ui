@@ -4065,6 +4065,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: A Time left line sits under the criterion and counts down each second, and goes when the time runs out.
 - If it fails, paste: /run for i=1,select(3,C_Scenario.GetStepInfo()) do local c=C_ScenarioInfo.GetCriteriaInfo(i) print(c.description,c.duration,c.elapsed) end
 
+### 33.309 Quest arrow with a waypoint but no distance (Forever)
+
+- Do: Shift-click a tracked quest on the other continent and stand on a map where the client gives a boat or zone exit waypoint.
+- Expect: The arrow points at the exit at full strength and its line reads No distance (Turn in · no distance once the quest is ready).
+- If it fails, paste: /run print(C_QuestLog.GetDistanceSqToQuest(C_SuperTrack.GetSuperTrackedQuestID()))
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

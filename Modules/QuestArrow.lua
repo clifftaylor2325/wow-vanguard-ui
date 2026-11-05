@@ -172,9 +172,16 @@ local DISTANCE = {
   [false] = { [false] = L["{yards} yd, no direction"], [true] = L["Turn in · {yards} yd, no direction"] },
 }
 
+-- The line when the game gives no distance (the quest is on another continent), by whether the arrow has a turn
+-- (the client's next waypoint toward it), then whether the quest is ready to turn in.
+local NO_DISTANCE = {
+  [true] = { [false] = L["No distance"], [true] = L["Turn in · no distance"] },
+  [false] = { [false] = L["No direction"], [true] = L["No direction"] },
+}
+
 -- The distance line: "230 yd" ("Turn in · 230 yd" for a finished quest), or why there is none.
 local function distanceText(d, turn, ready)
-  if not d then return L["No direction"] end
+  if not d then return NO_DISTANCE[not not turn][not not ready] end
   return ns.Format(DISTANCE[not not turn][not not ready], { yards = d })
 end
 
