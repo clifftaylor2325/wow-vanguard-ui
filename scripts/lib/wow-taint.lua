@@ -9,7 +9,7 @@
 -- stand in for the game's frames.
 --
 -- Five rules, always on:
---  * Field writes: addon code that stores a new field on a game widget plants
+--  * Field writes: addon code that stores a field on a game widget, new or not, plants
 --    taint in game (frame.vgSkinned = true). Keep such state in a weak-keyed
 --    side table instead. Replacing a game widget's script (SetScript) is
 --    recorded the same way: hook it with HookScript.
@@ -96,11 +96,13 @@ end
 
 -- Ownership and field writes ----------------------------------------------------------------
 
--- A new field on a game widget: stored; recorded when addon code stored it.
--- The stub's own fields (__name) and anything game or test code writes are fine.
+-- A field write on a game widget, new or an overwrite: kept (stub.gameFields); recorded when addon code wrote it.
+-- The stub's own fields (__name) stay raw, and anything game or test code writes is fine.
 local function guardWrite(w, key, value)
-  rawset(w, key, value)
-  if type(key) == "string" and key:sub(1, 2) == "__" then return end
+  if stub.isStubKey(key) then return rawset(w, key, value) end
+  local fields = stub.gameFields[w] or {}
+  stub.gameFields[w] = fields
+  fields[key] = value
   local at = callerOf(1)
   if byAddon(at) then violate(string.format("field write: %s stored the field %s on the game's frame %s", where(at), tostring(key), label(w))) end
 end
@@ -108,10 +110,21 @@ end
 -- Game widgets resolve methods as every widget does (stub.metaFor) and watch their new fields.
 stub.gameNewindex = guardWrite
 
+-- Moves a widget's public fields off it into its kept fields, so the next write to one reaches the guard.
+local function keepFields(w)
+  local fields = stub.gameFields[w] or {}
+  for key, value in pairs(w) do
+    if not stub.isStubKey(key) then fields[key] = value end
+  end
+  for key in pairs(fields) do rawset(w, key, nil) end
+  stub.gameFields[w] = fields
+end
+
 -- Makes a widget the game's.
 local function ownByGame(w)
   if rawget(w, "__byGame") then return w end
   rawset(w, "__byGame", true)
+  keepFields(w)
   return setmetatable(w, stub.metaFor(w))
 end
 stub.ownByGame = ownByGame

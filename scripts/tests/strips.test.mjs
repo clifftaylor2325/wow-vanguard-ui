@@ -768,7 +768,7 @@ it("menu strip: the game's tracker is pinned into the spot only while Vanguard's
 it("the game's extras: a protected frame is hidden once, out of combat, with no Show hook", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + "ProtectedBar = CreateFrame('Frame', 'ProtectedBar', UIParent) ProtectedBar.IsProtected = function() return true, false end __wfgStub.inCombat = true");
   // Shown, still under UIParent, and without a raw Show or SetShown hook.
-  const state = () => addon.eval("local f = ProtectedBar return { f:IsShown(), f:GetParent() == UIParent, rawget(f, 'Show') == nil and rawget(f, 'SetShown') == nil }");
+  const state = () => addon.eval("local f = ProtectedBar return { f:IsShown(), f:GetParent() == UIParent, __wfgStub.ownField(f, 'Show') == nil and __wfgStub.ownField(f, 'SetShown') == nil }");
   addon.eval("ns.GetModule('DataBars').Suppress('ProtectedBar')");
   expect(state(), "in combat it is left alone, with no hook").toEqual([true, true, true]);
   setCombat(addon, false);

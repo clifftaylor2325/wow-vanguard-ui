@@ -175,7 +175,7 @@ it("a new undercut rule after the game asks to confirm turns Confirm back into P
 it("the addon never writes into the game's auction window", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
   // The window's own fields (not the stub's), sorted.
-  const fields = () => addon.eval("local out = {} for k in pairs(AuctionHouseFrame) do if type(k) == 'string' and k:sub(1, 2) ~= '__' then out[#out + 1] = k end end table.sort(out) return out");
+  const fields = () => addon.eval("local out = {} for k in pairs(__wfgStub.gameFields[AuctionHouseFrame] or AuctionHouseFrame) do if type(k) == 'string' and k:sub(1, 2) ~= '__' then out[#out + 1] = k end end table.sort(out) return out");
   const before = fields();
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
   addon.click(`${CARD}.post`);

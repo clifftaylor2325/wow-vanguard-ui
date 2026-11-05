@@ -28,3 +28,22 @@ it("documented protected methods are blocked on a secure button in combat and ru
   expect(addon.eval("return #__wfgStub.violations"), "out of combat nothing is blocked").toBe(0);
   expect(addon.eval("return TestSecure:GetFrameLevel()"), "the level moved").toBe(77);
 });
+
+// A game frame with a field the game set (layoutIndex), as test code stands in for the game's frames.
+const GAME_FRAME = 'CreateFrame("Frame", "TestGameFrame", UIParent).layoutIndex = 3';
+
+it("addon code overwriting a field the game set on its frame is recorded, and the new value reads back", () => {
+  const addon = createAddon();
+  addon.eval(GAME_FRAME);
+  asAddon(addon, "TestGameFrame.layoutIndex = 99");
+  expect(violations(addon)).toEqual(["field write: Modules/TEST-ONLY.lua:1 stored the field layoutIndex on the game's frame TestGameFrame"]);
+  expect(addon.eval("return TestGameFrame.layoutIndex"), "the write still lands").toBe(99);
+  expect(addon.eval('return { __wfgStub.ownField(TestGameFrame, "layoutIndex"), __wfgStub.ownField(TestGameFrame, "__name") }'),
+    "ownField reads a kept field and a stub field").toEqual([99, "TestGameFrame"]);
+});
+
+it("game or test code overwriting a field on the game's frame is not recorded", () => {
+  const addon = createAddon();
+  addon.eval(`${GAME_FRAME} TestGameFrame.layoutIndex = 7`);
+  expect(addon.eval("return { #__wfgStub.violations, TestGameFrame.layoutIndex }")).toEqual([0, 7]);
+});

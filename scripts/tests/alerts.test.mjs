@@ -211,7 +211,7 @@ it("game alerts: a rare nearby is announced with a sound and a chat line, out of
 });
 // What the game's boss holder and its first and last boss button look like: shown, parked, listening, hooked.
 const bossHolder = (addon) => addon.eval(`local c, b1, b5 = BossTargetFrameContainer, Boss1TargetFrame, Boss5TargetFrame
-  return { c:IsShown(), c:GetParent() == UIParent, c:IsEventRegistered("PLAYER_ENTERING_WORLD"), rawget(c, "Show") == nil and rawget(c, "SetShown") == nil,
+  return { c:IsShown(), c:GetParent() == UIParent, c:IsEventRegistered("PLAYER_ENTERING_WORLD"), __wfgStub.ownField(c, "Show") == nil and __wfgStub.ownField(c, "SetShown") == nil,
     b1:IsEventRegistered("INSTANCE_ENCOUNTER_ENGAGE_UNIT"), b5:IsEventRegistered("INSTANCE_ENCOUNTER_ENGAGE_UNIT"), b1:GetParent() == c, b5:GetParent() == c }`);
 it("boss frames: five in a column at the top left, the game's put away", () => {
   const addon = loggedIn(UNITS_ENV + BOSS_ENV);

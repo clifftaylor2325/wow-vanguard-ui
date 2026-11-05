@@ -163,6 +163,32 @@ API.backdrop = watched(API.backdrop)
 
 -- Writes to a game widget's fields go through this (set by wow-taint.lua).
 stub.gameNewindex = nil
+-- A game widget's public fields, kept off the widget so that every write, a new field or an overwrite,
+-- reaches the field guard. The stub's own "__" fields stay on the widget.
+stub.gameFields = setmetatable({}, { __mode = "k" })
+
+-- Whether a key is one of the stub's own fields ("__kind"), kept raw on every widget.
+function stub.isStubKey(key)
+  return type(key) == "string" and key:sub(1, 2) == "__"
+end
+
+-- A field as the widget holds it, without its class's methods: raw, or a game widget's kept field.
+function stub.ownField(w, key)
+  local fields = stub.gameFields[w]
+  if fields and not stub.isStubKey(key) then return fields[key] end
+  return rawget(w, key)
+end
+
+-- The __index of a game widget's class: the widget's kept fields first, then the class's methods.
+local function gameIndex(class)
+  -- The kept field, else the class's answer.
+  return function(w, key)
+    local fields = stub.gameFields[w]
+    local value = fields and fields[key]
+    if value ~= nil then return value end
+    return class[key]
+  end
+end
 -- The metatable for a widget as it is now: its class's methods, and the game's
 -- field guard when the game owns it. Called again when the backdrop mixin or the owner changes.
 function stub.metaFor(w)
@@ -171,7 +197,8 @@ function stub.metaFor(w)
   local id = (backdrop and "b" or "-") .. (guard and "g" or "-") .. rawget(w, "__kind")
   local meta = classMetas[id]
   if not meta then
-    meta = { __index = classTable(rawget(w, "__kind"), backdrop), __newindex = guard }
+    local class = classTable(rawget(w, "__kind"), backdrop)
+    meta = { __index = guard and gameIndex(class) or class, __newindex = guard }
     classMetas[id] = meta
   end
   return meta

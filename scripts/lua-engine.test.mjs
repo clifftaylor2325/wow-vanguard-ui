@@ -307,7 +307,7 @@ it("taint: addon code storing a field on a game frame fails the test; game, test
   asAddon(addon, "ChatFrame1.vgTest = true ChatFrame1.vgTest = false");
   asAddon(addon, "local f = CreateFrame('Frame') f.vgMine = true");
   addon.eval("ChatFrame1.testOnly = 1 hooksecurefunc(ChatFrame1, 'Show', function() end)");
-  expect(addon.eval("return { ChatFrame1.vgTest, #__wfgStub.violations, __wfgStub.violations[1].count }"), "the write still happens, and is one entry").toEqual([false, 1, 1]);
+  expect(addon.eval("return { ChatFrame1.vgTest, #__wfgStub.violations, __wfgStub.violations[1].count }"), "the write still happens; the overwrite is recorded too, as the same entry counted twice").toEqual([false, 1, 2]);
   const unnamed = createAddon();
   unnamed.eval("__plain = CreateFrame('Frame')");
   expectErrors(/^field write: Modules\/TEST-ONLY\.lua:1 stored the field vgTest on the game's frame Frame #\d+$/);
