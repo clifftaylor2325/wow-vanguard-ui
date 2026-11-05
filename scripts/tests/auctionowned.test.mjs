@@ -103,11 +103,11 @@ const list = (v) => (Array.isArray(v) ? v : []);
 // TEST-ONLY auctions of yours: 5 dust at 1s 50c a unit, a blade at 40s, and three the check
 // leaves out (sold, bid only, a hidden buyout).
 const OWNED = `__wfgWorld.ah.owned = {
-  { auctionID = 501, itemKey = { itemID = 10940 }, status = 0, quantity = 5, buyoutAmount = 150 },
-  { auctionID = 502, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = 4000 },
-  { auctionID = 503, itemKey = { itemID = 9999 }, status = 1, quantity = 1, buyoutAmount = 4000 },
-  { auctionID = 504, itemKey = { itemID = 9999 }, status = 0, quantity = 1, bidAmount = 300 },
-  { auctionID = 505, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = __wfgWorld.secret(1) } }
+  { auctionID = 501, itemKey = { itemID = 10940, itemLevel = 0, itemSuffix = 0 }, status = 0, quantity = 5, buyoutAmount = 150 },
+  { auctionID = 502, itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, status = 0, quantity = 1, buyoutAmount = 4000 },
+  { auctionID = 503, itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, status = 1, quantity = 1, buyoutAmount = 4000 },
+  { auctionID = 504, itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, status = 0, quantity = 1, bidAmount = 300 },
+  { auctionID = 505, itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, status = 0, quantity = 1, buyoutAmount = __wfgWorld.secret(1) } }
   __wfgWorld.ah.commodities[10940] = { { unitPrice = 120, quantity = 7 }, { unitPrice = 150, quantity = 5, containsOwnerItem = true } }
   __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }
   __wfgWorld.ah.cancelCost = 100`;
@@ -340,7 +340,16 @@ it("sold rows show the amount, and are neither cancelled nor counted as undercut
 });
 it("an expired auction's item is found in the reagent bag", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.bagSizes[5] = 4 __wfgWorld.bags[5] = { [2] = { itemID = 777, count = 1 } }");
-  expect(addon.eval(`local l = ${HELPER}.FindInBags(777) return { l.bagID, l.slotIndex }`), "bag 5 is searched").toEqual([5, 2]);
+  expect(addon.eval(`local l = ${HELPER}.FindInBags({ itemID = 777, itemLevel = 0, itemSuffix = 0 }) return { l.bagID, l.slotIndex }`), "bag 5 is searched").toEqual([5, 2]);
+});
+it("Relist and 'in bags' pass over a bag item of another suffix, level or one that is locked", () => {
+  const addon = atAuctionHouse(BAGS + OWNED);
+  // Whether the owned key finds a bag slot.
+  const find = (key) => addon.eval(`return ${HELPER}.FindInBags(${key}) ~= nil`);
+  expect(find("{ itemID = 9999, itemLevel = 25, itemSuffix = 7 }"), "the same variant").toBe(true);
+  expect([find("{ itemID = 9999, itemLevel = 25, itemSuffix = 8 }"), find("{ itemID = 9999, itemLevel = 30, itemSuffix = 7 }")], "another suffix, another item level").toEqual([false, false]);
+  addon.eval("__wfgWorld.bags[0][2].locked = true");
+  expect(find("{ itemID = 9999, itemLevel = 25, itemSuffix = 7 }"), "locked while the house takes it").toBe(false);
 });
 it("an expired auction says it's coming back by mail; once it is in the bags, Relist puts it on the sell card", () => {
   const addon = atAuctionHouse(BAGS + OWNED + "__wfgWorld.bags[0][2] = nil");

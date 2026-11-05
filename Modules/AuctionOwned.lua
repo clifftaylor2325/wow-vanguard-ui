@@ -232,12 +232,14 @@ function AH.OnNotice(_, note, _, id)
   AH.PaintOwned()
 end
 
--- The first bag slot holding item id (the backpack to bag AH.LAST_BAG), as an ItemLocation, or nil.
-function AH.FindInBags(id)
+-- The first bag slot (the backpack to bag AH.LAST_BAG) holding the item of an item key, with its
+-- level and suffix and not locked (the sell card's own test), as an ItemLocation, or nil.
+function AH.FindInBags(key)
+  local sale = { id = key.itemID, key = key }
   for bag = 0, AH.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
-      local info = C_Container.GetContainerItemInfo(bag, slot)
-      if info and ns.PlainNumber(info.itemID) == id then return ItemLocation:CreateFromBagAndSlot(bag, slot) end
+      local loc = AH.Holds(sale, bag, slot)
+      if loc then return loc end
     end
   end
 end
@@ -246,7 +248,7 @@ end
 -- goes on the sell card (the sell card's own TakeItem, which checks its price now).
 function AH.Relist(id)
   local a, i = findOwned(id)
-  local loc = a and AH.FindInBags(a.key.itemID)
+  local loc = a and AH.FindInBags(a.key)
   if not loc then return end
   table.remove(AH.owned, i)
   AH.TakeItem(loc)
@@ -300,7 +302,7 @@ end
 -- An auction's row: the item, what the price column says by status, the flag and the button.
 local function paintOwnedRow(r, a)
   local name, icon = itemLook(a.key)
-  local home = a.status == "expired" and AH.FindInBags(a.key.itemID) ~= nil
+  local home = a.status == "expired" and AH.FindInBags(a.key) ~= nil
   local text, color = statusText(a, home)
   r.id = a.id
   r.icon:SetTexture(icon)

@@ -180,6 +180,7 @@ local function holds(s, bag, slot)
   local key = C_AuctionHouse.GetItemKeyFromItem(loc)
   if key and key.itemLevel == s.key.itemLevel and key.itemSuffix == s.key.itemSuffix then return loc end
 end
+AH.Holds = holds
 
 -- The bags searched for a sale's or an expired auction's item: the backpack (0) through the reagent bag (5).
 AH.LAST_BAG = 5
