@@ -4077,6 +4077,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no shard pips before level 10, and five pips from the level-up on.
 - If it fails, paste: /dump UnitLevel('player') and whether the pips show.
 
+### 33.303 Objective banner skin on Retail (Retail)
+
+- Do: /reload, don't open the PvP tab, queue for and enter a battleground or brawl.
+- Expect: about a second after you arrive, the banner with the battleground's name and its one-line description is in Vanguard's font at the game's usual size, its art and animation the game's.
+- If it fails, paste: `/run local b=PvPObjectiveBannerFrame print(C_AddOns.IsAddOnLoaded("Blizzard_PVPUI"), b and b.Title:GetFont())` and `/vg errors`.
+
 ### 33.305 Abandon is greyed for a quest the game won't abandon (Retail)
 
 - Do: Pick a quest the game's own map panel shows without an Abandon option (a starting-zone or campaign quest) and open Vanguard's quest log on it.
