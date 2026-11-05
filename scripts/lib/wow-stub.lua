@@ -1036,18 +1036,53 @@ local function runScript(frame, name, ...)
 end
 stub.runScript = runScript
 
--- Clicks a frame: PreClick, OnMouseDown, OnMouseUp, OnClick, PostClick, as the client does.
-function stub.click(frame, button, down)
-  button = button or "LeftButton"
-  runScript(frame, "PreClick", button, down == true)
-  runScript(frame, "OnMouseDown", button)
-  runScript(frame, "OnMouseUp", button)
-  if frame.__disabled ~= true then runScript(frame, "OnClick", button, down == true) end
-  runScript(frame, "PostClick", button, down == true)
+-- Whether a button's click registration ("AnyUp", "RightButtonDown") takes this press or release.
+-- With no RegisterForClicks call a button takes left releases only: that default is the engine's (Blizzard's
+-- Lua shows it only by registering every other click by hand, e.g. GameTime.lua's "AnyUp"), not in its Lua.
+function stub.clickRegistered(frame, button, down)
+  local phase = down and "Down" or "Up"
+  for _, reg in ipairs(frame.__clicks or { "LeftButtonUp" }) do
+    if reg == "Any" .. phase or reg == button .. phase then return true end
+  end
+  return false
 end
 
--- The widget's Click method, as buttons have in game.
-function methods:Click(button, down) stub.click(self, button, down) end
+-- The scripts a click runs, in the client's order: all of them, or only the mouse ones when a button does not
+-- take that click (RegisterForMouse, not RegisterForClicks, governs OnMouseDown and OnMouseUp).
+local CLICK_SCRIPTS = {
+  all = { "PreClick", "OnMouseDown", "OnMouseUp", "OnClick", "PostClick" },
+  mouse = { "OnMouseDown", "OnMouseUp" },
+}
+
+-- Runs one script of a click with the arguments the client gives it; a disabled button's OnClick does not run.
+local function clickScript(frame, name, button, down)
+  if name == "OnMouseDown" or name == "OnMouseUp" then return runScript(frame, name, button) end
+  if name == "OnClick" and frame.__disabled == true then return end
+  runScript(frame, name, button, down == true)
+end
+
+-- Runs a click's scripts (a CLICK_SCRIPTS list) on a frame. Every click goes through here (wow-world.lua
+-- counts it as a hardware event).
+function stub.runClick(frame, button, down, scripts)
+  for _, name in ipairs(scripts) do clickScript(frame, name, button or "LeftButton", down) end
+end
+
+-- Whether a mouse click reaches a frame's OnClick: always, but on a Button or CheckButton only a registered click.
+local function sendsClick(frame, button, down)
+  local kind = frame.__kind
+  return (kind ~= "Button" and kind ~= "CheckButton") or stub.clickRegistered(frame, button, down)
+end
+
+-- Clicks a frame with the mouse: PreClick, OnMouseDown, OnMouseUp, OnClick, PostClick, as the client does; a
+-- button that did not register this button and phase runs only OnMouseDown and OnMouseUp.
+function stub.click(frame, button, down)
+  button = button or "LeftButton"
+  stub.runClick(frame, button, down, sendsClick(frame, button, down == true) and CLICK_SCRIPTS.all or CLICK_SCRIPTS.mouse)
+end
+
+-- The widget's Click method, as buttons have in game: /click and button:Click() run OnClick whatever the button
+-- registered (SlashCommands.lua drives /click through it, and the source does not show the engine filtering it).
+function methods:Click(button, down) stub.runClick(self, button, down, CLICK_SCRIPTS.all) end
 
 -- Takes the mouse off the frame it is over, running its OnLeave.
 local function leave()

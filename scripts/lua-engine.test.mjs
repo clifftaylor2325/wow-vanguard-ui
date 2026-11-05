@@ -192,7 +192,7 @@ it("showing or hiding a frame runs OnShow and OnHide on its shown children, as t
 
 it("input: clicks, hover, the wheel and keys reach the frame's scripts", () => {
   const addon = createAddon();
-  addon.eval(`__log = {} local b = CreateFrame("Button", "TESTONLY_Button", UIParent)
+  addon.eval(`__log = {} local b = CreateFrame("Button", "TESTONLY_Button", UIParent) b:RegisterForClicks("AnyUp")
     b:SetScript("OnClick", function(_, button) __log[#__log + 1] = "click:" .. button end)
     b:SetScript("OnEnter", function() __log[#__log + 1] = "enter" end)
     b:SetScript("OnLeave", function() __log[#__log + 1] = "leave" end)

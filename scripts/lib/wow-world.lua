@@ -424,21 +424,13 @@ end
 -- Removes an attribute driver.
 function UnregisterAttributeDriver(frame, attr) if frame.__drivers then frame.__drivers[attr] = nil end end
 
--- Whether a click registration ("AnyUp", "RightButtonDown") sends this button's press or release.
-local function clickRegistered(frame, button, down)
-  local phase = down and "Down" or "Up"
-  for _, reg in ipairs(frame.__clicks or {}) do
-    if reg == "Any" .. phase or reg == button .. phase then return true end
-  end
-  return false
-end
-
 -- Whether an addon's SecureActionButtonTemplate button runs its action on this click phase, as
 -- SecureActionButton_OnClick decides (SecureTemplates.lua): an addon's OnClick has no isKeyPress or
 -- isSecureAction, so the useOnKeyDown attribute, else the ActionButtonUseKeyDown CVar (on, "1", unless
 -- world.cvars says otherwise), or pressAndHoldAction picks the down phase; the other phase does nothing.
 function stub.secureActs(frame, button, down)
-  if not clickRegistered(frame, button, down == true) then return false end
+  -- A secure button that never called RegisterForClicks acts on no phase here (stricter than the default).
+  if not (frame.__clicks and stub.clickRegistered(frame, button, down == true)) then return false end
   local onDown = frame:GetAttribute("useOnKeyDown")
   if onDown == nil then onDown = world.cvars.ActionButtonUseKeyDown ~= "0" end
   onDown = onDown or frame:GetAttribute("pressAndHoldAction")
@@ -1612,7 +1604,7 @@ C_DamageMeter = {
 -- The calls the client restricts to a hardware event (HasRestrictions: PostItem, PostCommodity,
 -- ConfirmPostItem, ConfirmPostCommodity, CancelAuction, PlaceBid, StartCommoditiesPurchase) are
 -- logged in world.ah.restricted as { fn, args, clicked, path }: clicked says whether a click was
--- running (stub.click), path is the Lua stack that made the call.
+-- running (stub.runClick: a mouse click or a :Click()), path is the Lua stack that made the call.
 -- world.ah.throttle = true models what a post does to the client (AuctionHouseDocumentation.lua;
 -- the game's sell frame follows the same throttle, Blizzard_AuctionHouseSellFrame.lua CanPostItem):
 -- a PostItem or PostCommodity the client doesn't want confirmed sends a throttled message, so
@@ -1638,9 +1630,9 @@ world.ah = emptyAuctionHouse()
 
 -- Clicks are hardware events: stub.hardware counts the clicks running now.
 stub.hardware = 0
-local rawClick = stub.click
+local rawClick = stub.runClick
 -- A click, counted while it runs.
-function stub.click(...)
+function stub.runClick(...)
   stub.hardware = stub.hardware + 1
   rawClick(...)
   stub.hardware = stub.hardware - 1

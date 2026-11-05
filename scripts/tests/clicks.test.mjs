@@ -373,3 +373,19 @@ it("a hidden modifier mask is not decoded: no warning and no error", () => {
   expect(addon.eval(`local out = {} for _, b in ipairs(${CC}.Bindings()) do out[#out + 1] = ${CC}.WontRun(b) or "" end return out`)).toEqual(["", ""]);
   expect(addon.eval("return #ns.errors"), "no error on the way").toBe(0);
 });
+
+// The TEST-ONLY client's mouse: a button takes only the clicks it registered (left releases when it never called
+// RegisterForClicks); OnMouseDown and OnMouseUp run either way, and :Click() always reaches OnClick.
+it("a test click reaches OnClick only for a registered button and phase", () => {
+  const addon = loggedIn("");
+  addon.eval(`__got = {}
+    __b = CreateFrame("Button", nil, UIParent)
+    __b:SetScript("OnClick", function(_, button, down) __got[#__got + 1] = button .. (down and "Down" or "Up") end)
+    __b:SetScript("OnMouseUp", function(_, button) __got[#__got + 1] = "mouse " .. button end)`);
+  // The scripts a run of Lua made the test button run.
+  const clicks = (lua) => addon.eval(`__got = {} ${lua} return __got`);
+  expect(clicks("__wfgStub.click(__b, 'RightButton', false) __wfgStub.click(__b, 'LeftButton', true)"), "unregistered clicks run only the mouse scripts").toEqual(["mouse RightButton", "mouse LeftButton"]);
+  expect(clicks("__wfgStub.click(__b, 'LeftButton', false)"), "a left release is the default").toEqual(["mouse LeftButton", "LeftButtonUp"]);
+  expect(clicks("__b:RegisterForClicks('AnyDown') __wfgStub.click(__b, 'RightButton', true) __wfgStub.click(__b, 'LeftButton', false)"), "a registration replaces the default").toEqual(["mouse RightButton", "RightButtonDown", "mouse LeftButton"]);
+  expect(clicks("__b:Click('MiddleButton', false)"), ":Click() is not filtered").toEqual(["mouse MiddleButton", "MiddleButtonUp"]);
+});
