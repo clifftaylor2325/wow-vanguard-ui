@@ -21,12 +21,13 @@ FA.MASQUE = "Target and focus auras"
 
 -- Specs ----------------------------------------------------------------------------------
 
--- The debuff groups: crowd control, yours, then others' (none with onlyMine).
+-- The debuff groups: crowd control, yours, then others' (none with onlyMine). Each also reads the debuffs the game
+-- flags for nameplates only, as its own target frame's debuff filter does (AuraUtil IncludeNameplateOnly).
 local function debuffGroups(s, size)
   return {
-    { filter = "HARMFUL|CROWD_CONTROL", max = 1, size = size + 2, debuff = true },
-    { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = s.debuffs, size = size, debuff = true, sort = "ExpirationOnly" },
-    { filter = "HARMFUL|!PLAYER|!CROWD_CONTROL", max = s.onlyMine and 0 or s.debuffs, size = size - 4, debuff = true, dim = true },
+    { filter = "HARMFUL|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = 1, size = size + 2, debuff = true },
+    { filter = "HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = s.debuffs, size = size, debuff = true, sort = "ExpirationOnly" },
+    { filter = "HARMFUL|!PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = s.onlyMine and 0 or s.debuffs, size = size - 4, debuff = true, dim = true },
   }
 end
 
