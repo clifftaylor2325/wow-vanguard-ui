@@ -4179,6 +4179,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The dialog's panel and soft shadow end the game's usual margin below Accept and Cancel, with no empty dark strip under them, and the panel shows and hides with the dialog.
 - If it fails, paste: `/run print(AddFriendFrame:GetHeight(), AddFriendEntryFrame:GetHeight())`
 
+### 33.329 Premade groups pages sit on flat insets (Retail)
+
+- Do: Open the group finder, click Premade Groups, then Start a Group.
+- Expect: Both pages sit on the same flat dark inset as the search results page, with no bronze edge or painted backdrop behind the category list or the form.
+- If it fails, paste: `/run local i = LFGListFrame.CategorySelection.Inset print(i.NineSlice:GetAlpha(), i.CustomBG:GetAlpha(), i.Bg:GetAlpha())`
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

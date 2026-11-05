@@ -31,7 +31,8 @@ it("windows-retail: the group finder takes the window skin, and its pages' wells
   const state = addon.eval(`local list, make = LFGListFrame.SearchPanel, LFGListFrame.EntryCreation
     local card = GroupFinderFrame.groupButton1
     return { role = LFDParentFrameRoleBackground.__alpha, raidRole = RaidFinderFrameRoleBackground.__alpha,
-      wells = __well(LFDParentFrameInset) and __well(RaidFinderFrameBottomInset) and __well(list.ResultsInset),
+      wells = __well(LFDParentFrameInset) and __well(RaidFinderFrameBottomInset) and __well(list.ResultsInset)
+        and __well(LFGListFrame.CategorySelection.Inset) and __well(LFGListFrame.EntryCreation.Inset) and __well(LFGListFrame.NothingAvailable.Inset),
       card = __card(card, card.icon, card.name), buttons = __button(LFDQueueFrameFindGroupButton) and __button(make.ListGroupButton),
       dropdowns = __button(LFDQueueFrameTypeDropdown) and __button(list.FilterButton), plate = __plate(list.RefreshButton),
       search = __box(list.SearchBox), edit = __faded(make.Name), label = __looks(make.NameLabel, "label", "text") }`);
