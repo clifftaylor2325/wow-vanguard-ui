@@ -4161,6 +4161,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: one Vanguard edge round the painted scene, no thin grey-gold inner frame line inside it.
 - If it fails, paste: `/run print(DelvesCompanionConfigurationFrame.NineSlice:GetRegions():GetAlpha())`
 
+### 33.321 Soft-target icons over Vanguard's nameplates (both)
+
+- Do: With Nameplates on, run /run SetCVar("SoftTargetIconInteract", 1) SetCVar("SoftTargetIconEnemy", 1), then walk up to a friendly NPC you can talk to, then face a hostile mob in range.
+- Expect: The speech bubble shows above the NPC's Vanguard plate and the enemy soft-target icon above the mob's plate, each gone when you turn away; neither plate shows the game's own bar under Vanguard's.
+- If it fails, paste: the output of /vg plates and of /run print(GetCVar("SoftTargetNameplateSize"), GetCVar("SoftTargetIconInteract"), GetCVar("SoftTargetIconEnemy")), and which client.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

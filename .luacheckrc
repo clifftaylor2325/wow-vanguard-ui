@@ -161,4 +161,6 @@ read_globals = {
   "strcmputf8i",
   -- H-04 Reset moved windows (Modules/WindowsMove.lua): the panel manager's list of the windows it lays out.
   "UIPanelWindows",
+  -- H22-2-1 Nameplates: the game's soft-target icon, drawn on Vanguard's plate, and the units it shows a widget for only.
+  "NamePlateDriverFrame", "SetUnitCursorTexture", "UnitNameplateShowsWidgetsOnly",
 }

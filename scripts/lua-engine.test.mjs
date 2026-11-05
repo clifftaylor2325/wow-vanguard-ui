@@ -111,6 +111,15 @@ it("layout: text hung on an empty font string is laid out; a frame hung on a 0 x
   expect(addon.eval("return { __empty:IsRectValid(), __hung:IsRectValid() }"), "a 0 x 0 frame has no rect, and nothing hung on it gets one").toEqual([false, false]);
 });
 
+it("the world: a unit's widgets-only nameplate and its cursor icon, as the client reports them", () => {
+  const addon = createAddon();
+  addon.world.setUnit("nameplate1", { name: "TEST-ONLY Herald", widgetsOnly: true, cursorIcon: "TEST-ONLY-BUBBLE" });
+  addon.world.setUnit("nameplate2", { name: "TEST-ONLY Boar" });
+  expect(addon.eval("return { UnitNameplateShowsWidgetsOnly('nameplate1'), UnitNameplateShowsWidgetsOnly('nameplate2') }"), "widgets only, from the unit").toEqual([true, false]);
+  expect(addon.eval("local t = UIParent:CreateTexture() return { SetUnitCursorTexture(t, 'nameplate1'), t.__texture, SetUnitCursorTexture(t, 'nameplate2') }"),
+    "the unit's cursor icon on the texture, and false for a unit with none").toEqual([true, "TEST-ONLY-BUBBLE", false]);
+});
+
 it("the world: a unit change fires the client's events at frames registered for them", () => {
   const addon = loggedIn();
   addon.eval(`__got = {} local f = CreateFrame("Frame") f:RegisterUnitEvent("UNIT_HEALTH", "target") f:RegisterEvent("PLAYER_TARGET_CHANGED")

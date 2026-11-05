@@ -159,6 +159,7 @@ change fires the events the client would.
 | --- | --- |
 | `setUnit(token, fields)` | Creates or changes a unit (`name, hp, maxhp, power, maxpower, ptypeName, reaction, level, class, isPlayer, controlled (a player's pet: `UnitPlayerControlled`), connected, dead, role, ...`). A new target fires PLAYER_TARGET_CHANGED; changed fields fire their UNIT_* events. |
 | `removeUnit(token)` | The unit is gone (target lost, pet dismissed). |
+| `UnitNameplateShowsWidgetsOnly(unit)`, `SetUnitCursorTexture(texture, unit)` | From the unit's `widgetsOnly` (its nameplate shows only a widget) and `cursorIcon` (the icon the client picks for it): the second puts that icon on the texture and answers true, or false for a unit with none. |
 | `unit(token)` | The unit's fields, or null. |
 | `combat(true/false)` | PLAYER_REGEN_DISABLED, then `InCombatLockdown()` turns true; `InCombatLockdown()` turns false, then PLAYER_REGEN_ENABLED (the client's order). |
 | `addAura(unit, aura)` / `removeAura(unit, name)` | Auras (`name, duration, applications, isHarmful, dispelName, sourceUnit, icon, spellId`); containers refresh and UNIT_AURA fires. |

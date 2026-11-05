@@ -688,6 +688,19 @@ function UnitIsUnit(a, b)
   return ua ~= nil and ua == ub
 end
 
+-- Whether the client shows only a widget on a unit's nameplate (unit.widgetsOnly), as it does for
+-- some friendly NPCs (UnitDocumentation.lua, UnitNameplateShowsWidgetsOnly, both clients).
+function UnitNameplateShowsWidgetsOnly(unit) return uf(unit, "widgetsOnly") == true end
+
+-- SetUnitCursorTexture(texture, unit, ...): the cursor icon the client picks for the unit
+-- (unit.cursorIcon: the speech bubble, a sword) put on the texture; true when it has one.
+function SetUnitCursorTexture(texture, unit)
+  local icon = uf(unit, "cursorIcon")
+  if icon == nil then return false end
+  texture:SetTexture(icon)
+  return true
+end
+
 -- Threat: a unit's status against its target (0-3), from unit.threat.
 function UnitThreatSituation(unit) return uf(unit, "threat") end
 -- isTanking, status, scaled percent, raw percent, threat value.
