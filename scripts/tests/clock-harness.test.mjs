@@ -31,3 +31,11 @@ it("timers due in one large step run in the order they fall due, then the order 
     C_Timer.NewTicker(1.5, note("tick"), 1)`);
   expect(addon.eval("__wfgStub.advance(5, 5) return __ran")).toEqual(["one", "one again", "tick", "two"]);
 });
+
+it("an After callback gets no arguments, a NewTimer callback gets its timer", () => {
+  const addon = createAddon();
+  addon.eval(`__counts = {}
+    C_Timer.After(0.1, function(...) __counts.after = select("#", ...) end)
+    C_Timer.NewTimer(0.1, function(...) __counts.timer = select("#", ...) end)`);
+  expect(addon.eval("__wfgStub.advance(0.5) return __counts")).toEqual({ after: 0, timer: 1 });
+});

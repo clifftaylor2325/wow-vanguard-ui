@@ -361,8 +361,8 @@ local function cancellable(t)
 end
 
 C_Timer = {
-  -- Runs fn once after `delay` seconds.
-  After = function(delay, fn) after(delay, fn) end,
+  -- Runs fn once after `delay` seconds; the client's After callback gets no arguments (NewTimer's gets the timer).
+  After = function(delay, fn) after(delay, function() fn() end) end,
   -- A timer object with Cancel and IsCancelled.
   NewTimer = function(delay, fn) return cancellable(after(delay, fn)) end,
 }
