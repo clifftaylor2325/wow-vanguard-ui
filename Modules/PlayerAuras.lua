@@ -56,11 +56,13 @@ function PA.Spec(holder, s)
       { filter = "HARMFUL", max = s.debuffs, size = s.size, debuff = true, newLine = true } } }
 end
 
--- Moves the container over to leave room for n enchant cells at the right.
+-- Moves the container over to leave room for n enchant cells at the right, and widens the hover pad (below) by as
+-- much, so it still lies under every row.
 function PA.PlaceAuras(n)
-  local frame = PA.auras.frame
+  local frame, shift = PA.auras.frame, n * (PA.settings.size + PA.GAP)
   frame:ClearAllPoints()
-  frame:SetPoint("TOPRIGHT", PA.holder, "TOPRIGHT", -n * (PA.settings.size + PA.GAP), 0)
+  frame:SetPoint("TOPRIGHT", PA.holder, "TOPRIGHT", -shift, 0)
+  PA.holder.vgHoverArea:SetWidth(PA.lineSize + shift)
 end
 
 -- Weapon enchants ---------------------------------------------------------------------------
@@ -205,13 +207,20 @@ end
 
 -- A pad over every row of the block, under its buttons: the holder is one row tall and the client's aura buttons
 -- can't be hooked, so the Calm HUD reads the mouse over the pad to bring the block back from any row. It feels the
--- mouse (never clicks) only once the Calm HUD quiets the block.
+-- mouse (never clicks) only once the Calm HUD quiets the block. PA.PlaceAuras keeps its width.
 local function hoverPad(holder, s)
   local pad = CreateFrame("Frame", nil, holder)
   pad:SetFrameLevel(holder:GetFrameLevel())
   pad:SetPoint("TOPRIGHT", holder, "TOPRIGHT", 0, 0)
-  pad:SetSize(PA.PerRow(s) * (s.size + PA.GAP), PA.Rows(s) * (s.size + PA.GAP))
+  pad:SetSize(PA.lineSize, PA.Rows(s) * (s.size + PA.GAP))
   holder.vgHoverArea = pad
+end
+
+-- The aura container on the holder, keeping its row width (PA.lineSize) for the hover pad.
+local function container(s)
+  local spec = PA.Spec(PA.holder, s)
+  PA.lineSize = spec.lineSize
+  return A.Container(PA.holder, spec, "player")
 end
 
 -- The movable holder left of the minimap, the container and the enchant cells.
@@ -219,11 +228,11 @@ local function build(s)
   PA.holder = CreateFrame("Frame", "Vanguard_PlayerAuras", UIParent)
   PA.holder:SetSize(PA.PerRow(s) * (s.size + PA.GAP), s.size)
   ns.Mover(PA.holder, "playerauras", L["Your buffs and debuffs"], PA.SPOT)
-  PA.auras = A.Container(PA.holder, PA.Spec(PA.holder, s), "player")
+  PA.auras = container(s)
   PA.cells = {}
   for i = 1, #PA.WEAPONS do PA.cells[i] = enchantCell(PA.holder, i, s.size) end
-  PA.UpdateEnchants()
   hoverPad(PA.holder, s)
+  PA.UpdateEnchants()
   ns.Visibility.Calm(PA.holder, "auras")
   addClientParts(s)
 end

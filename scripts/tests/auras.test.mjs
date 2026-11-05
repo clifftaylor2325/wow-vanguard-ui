@@ -299,7 +299,8 @@ const WEAPONS_ENV = `
 const playerAuras = (addon) => addon.eval(`local PA = ns.GetModule("PlayerAuras") local f = PA.auras.frame
   local cells = {} for i, c in ipairs(PA.cells) do cells[i] = { shown = c:IsShown(), icon = c.icon.__texture, sweep = c.cooldown.__cooldown, inv = c.inv } end
   return { unit = f.__unit, filters = { f.__groups[1].filter, f.__groups[2].filter }, newLine = f.__groups[2].opts.layout.forceNewLine,
-    cancel = f.__groups[1].buttons[1].__cancelButtons, x = f.__points.TOPRIGHT.x, cells = cells }`);
+    cancel = f.__groups[1].buttons[1].__cancelButtons, x = f.__points.TOPRIGHT.x, cells = cells,
+    padReach = PA.holder.vgHoverArea:GetWidth() - PA.holder:GetWidth() }`);
 
 it("your buffs and debuffs replace the game's, with weapon enchants in front", () => {
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "GetTime = function() return 1000 end");
@@ -308,6 +309,7 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   expect(pa, "one container on you: buffs, then debuffs from a new row; right-click cancels").toMatchObject({ unit: "player", filters: ["HELPFUL", "HARMFUL"], newLine: true, cancel: "RightButtonUp" });
   expect(pa.cells[0], "the main hand's imbue shows first, its sweep full").toMatchObject({ shown: true, icon: "TEST-ONLY-ICON-Imbue", sweep: [1000, 1800], inv: 16 });
   expect(pa.cells[1].shown === false && pa.x === -34, "no off-hand enchant, and the buffs move over by one cell").toBe(true);
+  expect(pa.padReach, "the Calm HUD's hover pad reaches one cell further left with them (CR-2)").toBe(34);
   expect(addon.eval('return { ns.MoverPoint("playerauras") }'), "the holder is movable, left of the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -210, -14]);
   addon.eval("__enchants[0][1].timeLeft = 1200000 __enchants[1] = { { hasEnchant = true, timeLeft = 600000, enchantIconID = 0 } }");
   addon.fire("UNIT_INVENTORY_CHANGED", "party1");
@@ -316,7 +318,7 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   const two = playerAuras(addon);
   expect(two.cells[0].sweep, "time passing keeps the sweep's full length, so it empties").toEqual([400, 1800]);
   expect(two.cells[1], "an oil on the off hand, drawn with the weapon's icon").toMatchObject({ shown: true, icon: "TEST-ONLY-ICON-Weapon17", sweep: [1000, 600] });
-  expect(two.x, "and the buffs move over by two cells").toBe(-68);
+  expect([two.x, two.padReach], "and the buffs move over by two cells, the hover pad still under their last column").toEqual([-68, 68]);
   addon.eval("__enchants[1] = { { hasEnchant = { __secret = true }, timeLeft = 600000 } } local c = ns.GetModule('PlayerAuras').cells[1] c.cooldown:GetScript('OnCooldownDone')(c.cooldown)");
   expect(playerAuras(addon).cells[1].shown, "a hidden answer shows no cell").toBe(false);
   addon.eval("local c = ns.GetModule('PlayerAuras').cells[1] c:GetScript('OnEnter')(c)");
