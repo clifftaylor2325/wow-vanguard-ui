@@ -523,7 +523,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end
     __dot:GetScript("OnEnter")(__dot) __dot:GetScript("OnLeave")(__dot) __dot:GetScript("OnClick")(__dot)`);
   expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
-  expect(resetDot(addon, "Health as"), "a default that depends on the client has no dot").toEqual([false, false]);
+  expect(resetDot(addon, "Health as"), "a default that depends on the client has one, and no dot while it is held").toEqual([false, true]);
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
   addon.eval(`GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent) function GameTooltip:SetOwner(o) self.__owner = o end

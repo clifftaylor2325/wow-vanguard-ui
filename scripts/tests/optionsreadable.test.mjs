@@ -52,6 +52,29 @@ it("options: Reset this page asks, then puts back what changed on that page only
   expect(addon.eval(`for _, x in ipairs(__wfgStub.frames) do if x.caption == "Reset this page" and x:IsVisible() then return true end end return false`), "a page with no settings has none").toBe(false);
 });
 
+// The Reset this page check for one page: change `change` (Lua), see the button on, reset, read `read` (Lua).
+function resetRoundTrip(addon, page, change, read) {
+  addon.eval(`ns.Options.Show("${page}")`);
+  // Whether the Reset this page button is on.
+  const enabled = () => addon.eval(`local on for _, x in ipairs(__wfgStub.frames) do if x.caption == "Reset this page" and x:IsVisible() then on = x:IsEnabled() end end return on`);
+  const before = addon.eval(read);
+  addon.eval(change);
+  addon.eval(`ns.Options.Show("${page}")`);
+  const changed = enabled();
+  addon.eval('__click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  return { changed, restored: addon.eval(read), before, after: enabled() };
+}
+
+it.each([
+  ["unitframes", "ns.Settings('UnitFrames').healthFormat = 'value' ns.Settings('UnitFrames').showLevel = false", "return { ns.Settings('UnitFrames').healthFormat, ns.Settings('UnitFrames').showLevel }", false],
+  ["unitframes", "ns.Settings('UnitFrames').healthFormat = 'percent' ns.Settings('UnitFrames').showLevel = true", "return { ns.Settings('UnitFrames').healthFormat, ns.Settings('UnitFrames').showLevel }", true],
+])("options: %s page switches reset to their default", (page, change, read, retail) => {
+  const addon = loggedIn(CLICK_LUA, retail ? { client: RETAIL_CLIENT } : {});
+  const out = resetRoundTrip(addon, page, change, read);
+  expect([out.changed, out.after], "the change turns Reset this page on, and Reset turns it off").toEqual([true, false]);
+  expect(out.restored, "Reset puts the page's default back").toEqual(out.before);
+});
+
 it("options: the Modules page is grouped like the nav, and a filter shows the ones on or off", () => {
   const addon = loggedIn(CLICK_LUA);
   // The Modules page's rows as "kind|caption".
