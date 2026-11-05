@@ -183,6 +183,24 @@ it("quest guidance: quest-start pins on the world map, unless the game shows its
   expect(addon.eval("return ns.QuestGuide.pins.used"), "the map closed: nothing redrawn").toBe(0);
 });
 
+it("quest guidance: quest-start pins leave out what the game's map would: quests in the log, other maps' lines, and continent maps", () => {
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA + `
+    MapUtil = { IsChildMapCached = function(a, b) return a == 11 and b == 10 end, ShouldMapTypeShowQuests = function(t) return t ~= 2 end }
+    __types = { [10] = 3, [12] = 2 }
+    C_Map.GetMapInfo = function(id) return { mapType = __types[id] } end
+    C_QuestLine.GetAvailableQuestLines = function(id) return { { questID = 90071, x = 0.5, y = 0.25, inProgress = true },
+      { questID = 90075, x = 0.3, y = 0.3, startMapID = 99 }, { questID = 90076, x = 0.4, y = 0.4, startMapID = 11 },
+      { questID = 90077, x = 0.6, y = 0.1, startMapID = 10 } } end
+    C_QuestLog.GetQuestsOnMap = function() return { { questID = 90074, x = 0.2, y = 0.8, isQuestStart = true, inProgress = true } } end
+  `);
+  addon.eval("WorldMapFrame:Show()");
+  addon.update(0);
+  expect(pins(addon).map((p) => p[0]), "not the quest in the log, not the line from map 99; a child map's and this map's stay").toEqual([90076, 90077]);
+  addon.eval("__mapID = 12 __requested = {} WorldMapFrame:OnMapChanged()");
+  addon.update(0);
+  expect([pins(addon), addon.eval("return __requested")], "a continent map: no pins and no request").toEqual([{}, {}]);
+});
+
 it("quest guidance: quest-start pins keep their size as the world map zooms, and follow a zoom", () => {
   const zoom = "__scale = 2 WorldMapFrame.GetCanvasScale = function() return __scale end WorldMapFrame.OnCanvasScaleChanged = function() end";
   const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA + zoom);

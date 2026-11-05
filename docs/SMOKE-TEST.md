@@ -4119,6 +4119,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: No line for the known spell; the buff reads Grants: Name, a learned spell Teaches: Name, an unlock Unlocks: Name.
 - If it fails, paste: /run for _,id in ipairs(C_QuestInfoSystem.GetQuestRewardSpells(GetQuestID())) do local s=C_QuestInfoSystem.GetQuestRewardSpellInfo(GetQuestID(),id) print(id,s.name,s.isSpellLearned,s.genericUnlock,C_SpellBook.IsSpellInSpellBook(id,0,true)) end
 
+### 33.313 Quest-start pins skip held quests and continent maps (Forever)
+
+- Do: accept a quest that starts a quest line, then open the world map on that zone; then open the map on Kalimdor or Azeroth.
+- Expect: no Vanguard "!" pin for the quest you now hold, none for lines that start on another map, and none at all on the continent or world map.
+- If it fails, paste: `/run for _,l in ipairs(C_QuestLine.GetAvailableQuestLines(WorldMapFrame:GetMapID())) do print(l.questID,l.inProgress,l.startMapID) end`
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

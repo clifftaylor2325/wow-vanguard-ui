@@ -25,25 +25,41 @@ local function addStart(out, seen, questID, x, y, name)
   out[#out + 1] = { questID = questID, x = x, y = y, name = ns.PlainText(name) }
 end
 
--- Where quests start on a map: its quest lines' starts (hidden ones left out), then the quest spots marked as starts.
+-- Whether the game's own map would offer this quest line or spot on the map (QuestOfferDataProvider's
+-- ShouldAddQuestOffer): not one already in the log, and one that starts on this map or a map inside it.
+local function offered(info, mapID)
+  if ns.IsTrue(info.inProgress) then return false end
+  local start = ns.PlainNumber(info.startMapID)
+  return start == nil or start == mapID or ns.CallIf(MapUtil, "IsChildMapCached", start, mapID) == true
+end
+
+-- Where quests start on a map: its quest lines' starts (hidden ones left out), then the quest spots marked as starts,
+-- both only where the game's own map would offer them.
 function QG.Starts(mapID)
   local out, seen = {}, {}
   for _, l in ipairs(ns.CallIf(C_QuestLine, "GetAvailableQuestLines", mapID) or {}) do
-    if l.isHidden ~= true then addStart(out, seen, l.questID, l.x, l.y, l.questName) end
+    if l.isHidden ~= true and offered(l, mapID) then addStart(out, seen, l.questID, l.x, l.y, l.questName) end
   end
   for _, q in ipairs(ns.CallIf(C_QuestLog, "GetQuestsOnMap", mapID) or {}) do
-    if q.isQuestStart == true then addStart(out, seen, q.questID, q.x, q.y, ns.CallIf(C_QuestLog, "GetTitleForQuestID", q.questID)) end
+    if q.isQuestStart == true and offered(q, mapID) then addStart(out, seen, q.questID, q.x, q.y, ns.CallIf(C_QuestLog, "GetTitleForQuestID", q.questID)) end
   end
   return out
 end
 
+-- Whether the game draws quests on this kind of map: it draws none on the world, continent and cosmic maps.
+local function showsQuests(mapID)
+  local info = ns.PlainTable(ns.CallIf(C_Map, "GetMapInfo", mapID))
+  local mapType = info and ns.PlainNumber(info.mapType)
+  return not (mapType and ns.CallIf(MapUtil, "ShouldMapTypeShowQuests", mapType) == false)
+end
+
 -- Whether Vanguard draws pins on this map: the setting is on, neither Questie nor OpenMap is loaded,
--- and the game's own map shows no quest offers.
+-- the map is a kind the game draws quests on, and the game's own map shows no quest offers.
 function QG.DrawsPins(map)
   if not QG.settings.pins or ns.CallIf(C_AddOns, "IsAddOnLoaded", "Questie") == true then return false end
   if ns.GetModule("Waypoints").OpenMapDraws() then return false end
   local offers = map.GetNumActivePinsByTemplate and ns.PlainNumber(map:GetNumActivePinsByTemplate("QuestOfferPinTemplate")) or 0
-  return offers == 0
+  return offers == 0 and showsQuests(ns.PlainNumber(map:GetMapID()))
 end
 
 -- Pins -------------------------------------------------------------------------------------------
@@ -132,7 +148,7 @@ end
 function QG.MapChanged()
   local map = _G.WorldMapFrame
   local mapID = map and map:IsShown() and ns.PlainNumber(map:GetMapID())
-  if mapID then ns.CallIf(C_QuestLine, "RequestQuestLinesForMap", mapID) end
+  if mapID and showsQuests(mapID) then ns.CallIf(C_QuestLine, "RequestQuestLinesForMap", mapID) end
   QG.ListsChanged()
 end
 
