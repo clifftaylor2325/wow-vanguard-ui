@@ -132,12 +132,12 @@ local function chatFilterRows()
   return append(append(rows, chatFilterStatusRows(CF)), chatFilterWordRows(CF))
 end
 
--- Chat windows: the game's lock, the movers for floating windows, then a width and a height for each window showing.
+-- Chat windows: the game's lock, the movers for floating windows, then a width and a height for the main window and each floating window showing.
 local function chatWindowsRows()
   local CW = ns.GetModule("ChatWindows")
   local rows = { { "header", L["Chat windows"] }, { "text", L["Size each chat window here instead of dragging its corner. Lock stops the game's drag."] },
     check(L["Lock chat windows"], CW.LockSetting()), check(L["Move floating windows with /vg unlock (reload)"], reloadSetting("ChatWindows", "movers")) }
-  for _, w in ipairs(CW.Shown()) do
+  for _, w in ipairs(CW.Sized()) do
     local wGet, wSet = CW.WidthSetting(w.frame)
     local hGet, hSet = CW.HeightSetting(w.frame)
     local window = { window = w.name }

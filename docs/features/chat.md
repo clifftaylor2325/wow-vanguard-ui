@@ -24,7 +24,7 @@ Off until you switch it on (`/vg` → Chat, or `/vg history on`). The lines in y
 
 ## Chat windows
 
-Under `/vg` → Chat, each chat window that is showing has a Width and a Height slider (set instead of dragging its corner, saved in the game's own chat layout), Lock chat windows is the game's lock for all of them, and Move floating windows with /vg unlock (reload) makes each window you pulled out of the dock a handle like the main chat window's, with the same room kept past its edges (and the Combat Log's filter strip above its bar). Sliders for a window in a hidden tab appear once its tab is showing and the page is reopened.
+Under `/vg` → Chat, the main window (docked tabs share its size) and each floating window that is showing have a Width and a Height slider (set instead of dragging its corner, saved in the game's own chat layout), Lock chat windows is the game's lock for all of them, and Move floating windows with /vg unlock (reload) makes each window you pulled out of the dock a handle like the main chat window's, with the same room kept past its edges (and the Combat Log's filter strip above its bar). Floating windows that are closed or hidden get their sliders once they show and the page is reopened.
 
 ## Chat tabs
 

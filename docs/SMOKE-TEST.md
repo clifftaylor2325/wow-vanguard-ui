@@ -3915,6 +3915,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Only the second line rings and toasts.
 - If it fails, paste: both lines and /vg errors.
 
+### 33.281 Docked chat tab sizes through General's sliders (Forever)
+
+- Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.
+- Expect: The dock (and the tab shown) gets wider; there is no slider for the docked tab.
+- If it fails, paste: /run print(ChatFrame1:GetWidth(), ChatFrame2:GetWidth(), select(9, GetChatWindowInfo(2)))
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
