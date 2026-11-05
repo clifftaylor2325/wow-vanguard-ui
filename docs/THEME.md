@@ -42,6 +42,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `sheen` | `ffffff` at 0.06 | The one-pixel light line inside a panel's top border. |
 | | `divider` | `2f343d` | Lines between sections (the options window). |
 | | `shade` | `000000` at 0.5 | Dimming behind or under things: the options nav, unit frame bar backgrounds, the cast bar's latency zone, the AFK screen (0.75 alone, 0.45 over its scene), the shade under a switch knob or slider thumb (`KnobShade`). |
+| | `clear` | `000000` at 0 | A fully see-through black: the shadow colour of text that wants none (the `void` text role). |
 | | `hover` | `ffffff` at 0.08 | The faint white wash under the mouse on rows, tabs, raid tiles and menu icons (see-through things; buttons ease to `raisedHover`). |
 | | `darkBar` | `2a3039` | The health bar of the raid style "Dark, class-coloured names". |
 | | `checked` | `ffffff` at 0.25 | An action button that is checked (an active stance or aura). |
@@ -59,7 +60,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | State | `good` | `3fbf9a` | Success, ready, full durability. Off the red-green axis with `warn` and `bad` (#235, after Okabe-Ito); where a state stands alone as a mark it has a glyph too (`T.STATE_GLYPHS`: `Check`, `Warn`, `Close`), as on the pet's mood. |
 | | `warn` | `f0b43c` | Warnings, middling values. |
 | | `bad` | `e8663f` | Errors, not ready, broken items. |
-| | `info` | `5aa2f0` | Informational state (reserved; no module uses it yet). |
+| | `info` | `5aa2f0` | Informational state: the renown bar (`DB.RENOWN_COLOR`) and the group board's LFM tag. High contrast sets its own (`4da6ff`). |
 | | `unknown` | `808080` | A value the client will not tell: a unit frame's reaction colour when the game hides the unit's reaction. |
 | | `tapped` | `8c8c8c` | A mob another player has tagged: its grey X tag mark (nameplate and target frame) and its nameplate bar. A plain grey, apart from the bluish text greys. |
 | Reaction | `hostile` | `cc4b45` | Hostile units (nameplates, unit frames). |
@@ -68,6 +69,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | Resources | `mana` / `rage` / `energy` / `focus` | `3e7be0` / `cf4a3e` / `e6c24a` / `e0893c` | Power bars. |
 | | `runes` / `holyPower` / `soulShards` / `chi` / `arcaneCharges` / `essence` | `c84a5a` / `f0d878` / `9b6ad8` / `6fe0c0` / `6f8cf0` / `4fb8c8` | The class resource pips above the player frame on Retail (a Brewmaster's stagger bar under it takes `good`, `warn` and `bad` as it grows past 30% and 60% of your health). |
 | | `charged` | `5ab4f0` | A charged combo point (Retail). |
+| | `soulFragments` / `ebonMight` | `6fd04a` / `d9a441` | The bar under the player frame on Retail for a Demon Hunter's soul fragments and an Evoker's Ebon Might (`CB.ALT_BARS`). |
 | Threat | `threat1` / `threat2` / `threat3` | `e0c24e` / `ee8b3a` / `e0565b` | Yellow, orange, red threat. |
 | Dispel | `magic` / `curse` / `disease` / `poison` | `3c8cf0` / `9a55e0` / `b08a3a` / `3fa34d` | Debuff borders and the raid tile dispel wash. With Safer colours on they are `2f7fe0` / `d86ac0` / `e8b030` / `7ad0b0` (`T.ASSIST`), at least dE 18 apart under all three colour-vision filters. Every debuff icon also carries a type badge (#235): its letter (`Media/Icons/DispelMagic`, `DispelCurse`, `DispelDisease`, `DispelPoison`) with a corner mark (diamond, circle, square, triangle) drawn in the same glyph, in the type's colour on an `edge` backing at 0.8, 0.6 of the icon (at least 12 units) in its top-left corner; on the client's aura engine each letter is mapped clear for every type but its own, so hidden types keep theirs. |
 | | `dispel` | `cc4dff` | The dispel highlight when the client hides the debuff's type. |
