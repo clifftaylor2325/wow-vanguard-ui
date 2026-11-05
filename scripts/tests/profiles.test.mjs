@@ -721,6 +721,10 @@ it("a parts string from the other client drops its client defaults too", () => {
   const here = loggedIn("");
   here.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
   expect(here.eval("local u = ns.Profile().UnitFrames return { u.showLevel, u.healthFormat, u.boss }"), "the choice stays, the Retail defaults give way to Forever's").toEqual([true, "percent", false]);
+  const set = loggedIn("");
+  set.eval("ns.Profile().UnitFrames.showLevel = false ns.Profile().UnitFrames.healthFormat = 'value'");
+  set.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(set.eval("local u = ns.Profile().UnitFrames return { u.showLevel, u.healthFormat }"), "over the player's own values: Forever's defaults come in, not the old values").toEqual([true, "percent"]);
 });
 it("an import's backup never overwrites a profile another character or a spec uses", () => {
   // TEST-ONLY: another character runs on "Default backup", and this character's spec 2 uses "Default backup 2".

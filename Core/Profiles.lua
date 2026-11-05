@@ -272,7 +272,7 @@ end
 function ns.ApplyImport(scope, data)
   local kind, payload = ns.ReadPayload(scope, data)
   if not kind then return nil, payload end
-  ns.WithoutOtherClientDefaults(ns.WithoutClientState(payload))
+  ns.WithoutOtherClientDefaults(ns.WithoutClientState(payload), kind)
   local backup = ns.BackupProfile()
   local result = { notes = importNotes(payload, backup), backup = backup, reload = true }
   local text = kind == "profile" and importWhole(payload, result) or importParts(payload)

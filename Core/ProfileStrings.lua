@@ -154,22 +154,29 @@ function ns.WithoutClientState(data)
   return data
 end
 
--- Clears, in node, each setting that still holds the default of the client `from` (the table
--- defaults mirrors node's own shape: a { forever, retail } leaf is a per-client default).
-local function clearClientDefaults(node, defaults, from)
+-- Puts the default of the client `to` (nil when `to` is nil) in place of each setting in node that still
+-- holds the default of the client `from` (the table defaults mirrors node's own shape: a { forever, retail }
+-- leaf is a per-client default).
+local function replaceClientDefaults(node, defaults, from, to)
   if type(node) ~= "table" then return end
   for key, spec in pairs(defaults) do
-    if spec.forever == nil and spec.retail == nil then clearClientDefaults(node[key], spec, from)
-    elseif node[key] == spec[from] then node[key] = nil end
+    if spec.forever == nil and spec.retail == nil then replaceClientDefaults(node[key], spec, from, to)
+    elseif node[key] == spec[from] then node[key] = to and spec[to] end
   end
 end
 
--- Takes out of a payload made on the other client each setting still at that client's default, so this
--- client's own default fills it at the next load. A choice that differs from the maker's default stays,
+-- Gives this client's default to each setting of a payload made on the other client that is still at
+-- that client's default. A whole profile ("profile") has the setting cleared, so the default fills it at the
+-- next load; a partial string ("parts") carries this client's default itself, since its merge keeps the
+-- player's old value for a setting it leaves out. A choice that differs from the maker's default stays,
 -- and so does a string with no client (older strings). Returns data.
-function ns.WithoutOtherClientDefaults(data)
-  local from = data.client
-  if (from == "forever" or from == "retail") and from ~= ns.ClientKey() then clearClientDefaults(data, ns.CLIENT_DEFAULTS, from) end
+---@param data table
+---@param kind "profile"|"parts"
+---@return table
+function ns.WithoutOtherClientDefaults(data, kind)
+  local from, here = data.client, ns.ClientKey()
+  local otherClient = (from == "forever" or from == "retail") and from ~= here
+  if otherClient then replaceClientDefaults(data, ns.CLIENT_DEFAULTS, from, kind == "parts" and here or nil) end
   return data
 end
 
