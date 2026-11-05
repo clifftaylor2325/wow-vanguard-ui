@@ -1123,10 +1123,18 @@ local function appear(previous)
   if pages[O.current] then pages[O.current]:ScrollTo(pages[O.current]:GetVerticalScroll() or 0) end
 end
 
--- The window takes the keyboard (out of combat); a new page starts without a keyboard row.
+-- The fight is over: a window opened during it, still up, reads keys again.
+local function regainKeys()
+  window:EnableKeyboard(window:IsShown())
+end
+
+-- The window takes the keyboard (out of combat; a window opened in a fight takes it when the fight ends);
+-- a new page starts without a keyboard row.
 local function takeKeys(previous)
   if previous ~= O.current then setFocus(nil) end
-  window:EnableKeyboard(not ns.InCombat())
+  local fight = ns.InCombat()
+  window:EnableKeyboard(not fight)
+  if fight then ns.OutOfCombat(regainKeys, "options keyboard") end
 end
 
 -- Shows the reload notice and button while a change needs a reload.

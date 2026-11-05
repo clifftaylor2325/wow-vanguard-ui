@@ -708,6 +708,22 @@ it("options: Up and Down walk the pages, Tab the rows, Enter presses one; other 
   expect(addon.eval("return Vanguard_Options.__kb"), "and a fight ending while it is closed doesn't change that").toBe(false);
 });
 
+it("options: a window opened in a fight takes the keyboard when the fight ends, unless it was closed by then", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // TEST-ONLY spy on the window's keyboard calls.
+  addon.eval("ns.Options.Show('general') local f = Vanguard_Options f.EnableKeyboard = function(self, on) self.__kb = on end f:Hide()");
+  setCombat(addon, true);
+  addon.eval("ns.Options.Show('general')");
+  expect(addon.eval("return Vanguard_Options.__kb"), "opened in a fight, it takes no keys").toBe(false);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Options.__kb"), "the fight over, it takes them").toBe(true);
+  addon.eval("Vanguard_Options:Hide()");
+  setCombat(addon, true);
+  addon.eval("ns.Options.Show('general') Vanguard_Options:Hide()");
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Options.__kb"), "closed before the fight ended, it stays without them").toBe(false);
+});
+
 it("E6-R2 options: Alt-Z (UIParent hidden and shown) leaves the open window its keyboard; closing it still lets go", () => {
   const addon = loggedIn(CLICK_LUA);
   // TEST-ONLY spy on the window's keyboard calls.
