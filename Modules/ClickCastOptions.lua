@@ -1133,10 +1133,16 @@ local function pickerFollows()
   if picker and picker:IsShown() then picker:Refresh() end
 end
 
+-- A fight's start re-reads the open options window for the combat notice (only Vanguard's own widgets, so
+-- nothing protected runs); a closed window re-reads as it opens, so a pull costs it nothing.
+local function fightStarts()
+  local window = O.Frame()
+  if window and window:IsShown() then O.Refresh() end
+end
+
 -- When a fight ends the queued changes apply: re-read the page; the picker follows the bindings too. So does
--- a change of talent group or spec, whose list may or may not need the notice. A fight's start re-reads the
--- page too, for the combat notice (the page only refreshes its own widgets, so nothing protected runs).
-ns.On("PLAYER_REGEN_DISABLED", O.Refresh)
+-- a change of talent group or spec, whose list may or may not need the notice.
+ns.On("PLAYER_REGEN_DISABLED", fightStarts)
 ns.On("PLAYER_REGEN_ENABLED", changed)
 ns.On("ACTIVE_TALENT_GROUP_CHANGED", changed)
 ns.On("PLAYER_SPECIALIZATION_CHANGED", changed)

@@ -720,4 +720,7 @@ it("H17-2-2: the Click casting page shows its combat notice as soon as a fight s
   expect(notice(), "the fight's start puts it up").toBe(1);
   addon.world.combat(false);
   expect(notice(), "and its end takes it down again").toBe(0);
+  addon.eval("Vanguard_Options:Hide() __reads = 0 local read = ns.Options.Refresh ns.Options.Refresh = function() __reads = __reads + 1 read() end");
+  addon.world.combat(true);
+  expect(addon.eval("return __reads"), "a closed window is not re-read as a fight starts").toBe(0);
 });
