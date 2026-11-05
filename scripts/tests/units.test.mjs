@@ -849,6 +849,15 @@ it("Edit Mode closing does not bring the game's pet frame back: it is parked aga
   addon.eval("ns.GetModule('UnitFrames').HideBlizzard('PetFrame') PetFrame:UpdateShownState()");
   expect(addon.eval("return PetFrame:IsShown()"), "hooking a frame twice still parks it").toBe(false);
 });
+// TEST-ONLY: the managed-frame system and Edit Mode giving a shown tracker back to UIParent.
+it("Edit Mode re-parenting the game's objective tracker parks it again", () => {
+  const addon = loggedIn(UNITS_ENV + '\nObjectiveTrackerFrame = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent)', NO_RAID);
+  addon.eval("ns.GetModule('UnitFrames').HideBlizzard('ObjectiveTrackerFrame') ns.GetModule('UnitFrames').HideBlizzard('ObjectiveTrackerFrame')");
+  addon.eval("ObjectiveTrackerFrame:Show() ObjectiveTrackerFrame:SetParent(UIParent)");
+  expect(addon.eval("return { ObjectiveTrackerFrame:IsShown(), ObjectiveTrackerFrame:GetParent() == UIParent }"), "hidden and parked again").toEqual([false, false]);
+  const plain = loggedIn(UNITS_ENV + '\nObjectiveTrackerFrame = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent)\nhooksecurefunc = nil', NO_RAID);
+  expect(plain.eval("return ObjectiveTrackerFrame:IsShown()"), "no hook where hooksecurefunc is missing").toBe(false);
+});
 it("a parked game frame without UpdateShownState, or on a client without hooksecurefunc, is left alone", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
   expect(addon.eval("return PetFrame.UpdateShownState"), "no method, no hook").toBe(null);

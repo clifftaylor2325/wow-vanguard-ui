@@ -640,18 +640,32 @@ local function keepParked(f)
   hooksecurefunc(f, "UpdateShownState", ns.Guard("hook UpdateShownState", function() repark(f) end))
 end
 
+-- Game frames with no UpdateShownState that the managed-frame system or Edit Mode still moves
+-- out of the hidden frame (SetParent) while they are shown.
+UF.REPARENTED = { ObjectiveTrackerFrame = true }
+
+-- Parks the frame again whenever the game gives it a parent other than the hidden frame.
+local function keepUnderHidden(f, name)
+  if not UF.REPARENTED[name] or type(hooksecurefunc) ~= "function" then return end
+  UF.parked = UF.parked or {}
+  if UF.parked[f] then return end
+  UF.parked[f] = true
+  hooksecurefunc(f, "SetParent", ns.Guard("hook SetParent", function(_, parent)
+    if parent ~= hiddenParent then repark(f) end
+  end))
+end
+
 -- Hides one of the game's frames for good: no events, parented to a hidden frame.
 local function hideBlizzard(name)
   local f = _G[name]
-  if type(f) ~= "table" or not f.UnregisterAllEvents then
-    return
-  end
+  if type(f) ~= "table" or not f.UnregisterAllEvents then return end
   hiddenParent = hiddenParent or CreateFrame("Frame")
   hiddenParent:Hide()
   f:UnregisterAllEvents()
   park(f)
   ns.EditModeReplaced(f)
   keepParked(f)
+  keepUnderHidden(f, name)
 end
 -- Shared with modules that replace other game frames (PlayerAuras).
 UF.HideBlizzard = hideBlizzard
