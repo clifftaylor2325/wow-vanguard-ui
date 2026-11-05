@@ -250,6 +250,19 @@ function lua53Passes() {
   expect(problems("Modules/t.lua", ok)).toBe("");
 }
 
+// A quoted string with a Lua 5.2+ escape fails: \x, \z and \u{...}.
+function lua52EscapeFails() {
+  for (const [what, stmt] of [["\\x", 'local s = "\\x41"'], ["\\z", "local s = 'a\\z  b'"], ["\\u{", 'local s = "\\u{B7}"'], ["\\x", 'local s = "\\\\\\x41"']]) {
+    expect(problems("Modules/t.lua", `${stmt}\n`), stmt).toContain(`Lua 5.2 string escape (${what})`);
+  }
+}
+
+// An escaped backslash before x, a decimal escape and a long string pass.
+function lua52EscapePasses() {
+  const ok = 'local a = "\\\\x41"\nlocal b = "\\194\\183"\nlocal c = [[\\x41]]\n';
+  expect(problems("Modules/t.lua", ok)).toBe("");
+}
+
 // The rule covers addon Lua only, and reports the line.
 function lua53Scope() {
   expect(problems("scripts/lib/t.lua", "local x = 7 // 2\n")).toBe("");
@@ -271,6 +284,8 @@ describe(
   () => {
     it("Lua 5.3 syntax fails", lua53Fails);
     it("Lua 5.1 syntax passes", lua53Passes);
+    it("Lua 5.2 string escapes fail", lua52EscapeFails);
+    it("Lua 5.1 string escapes pass", lua52EscapePasses);
     it("Lua 5.3 syntax is judged in addon Lua only", lua53Scope);
     it("Lua 5.3 syntax agrees with luac5.1", lua53MatchesLuac);
   },

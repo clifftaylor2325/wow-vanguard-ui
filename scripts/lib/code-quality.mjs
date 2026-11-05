@@ -15,6 +15,8 @@
 //   5. Addon Lua (Core/, Modules/) uses no syntax newer than Lua 5.1: no goto or
 //      ::label::, no // , << , >> , & , | or ~ operator. The test harness parses
 //      Lua 5.3 and accepts them; the game does not, and the addon would not load.
+//      Quoted strings use no \x, \z or \u{...} escape: luac5.1 accepts them, but the
+//      game reads them as plain letters while the harness decodes them.
 //   6. Addon Lua (Core/, Modules/) keeps at most MAX_TOP_LOCALS locals active at the
 //      top level of the file. Lua allows 200 per function and the file is one function:
 //      the next `local` past 200 stops the whole addon loading (Core/Theme.lua got
@@ -463,6 +465,16 @@ function isGoto(tokens, i) {
   return tokens[i].text === "goto" && tokens[i + 1]?.kind === "word" && ![".", ":"].includes(tokens[i - 1]?.text);
 }
 
+// An unescaped backslash before x, z or u{ : the escapes Lua 5.2 and 5.3 added.
+const LUA52_ESCAPE = /(?:^|[^\\])(?:\\\\)*(\\(?:x|z|u\{))/;
+
+// The Lua 5.2+ escape ("\x", "\z", "\u{") in a quoted string token, or null. Lua 5.1 reads it as the letter alone.
+function lua52Escape(src, t) {
+  const text = src.slice(t.start, t.end);
+  if (t.kind !== "string" || !/^["']/.test(text)) return null;
+  return LUA52_ESCAPE.exec(text)?.[1] ?? null;
+}
+
 // Lua 5.3 syntax in addon Lua: [{ line, message }]. Only the game's Lua 5.1 loads the addon.
 function lua51Problems(file, src) {
   if (!COLOR_SCOPE.test(file)) return [];
@@ -470,7 +482,9 @@ function lua51Problems(file, src) {
   const line = lineIndex(src);
   return tokens.flatMap((t, i) => {
     const what = isGoto(tokens, i) ? "goto" : lua53Operator(tokens, i);
-    return what ? [{ line: line(t.start), message: `Lua 5.3 syntax (${what}): the game runs Lua 5.1 and would not load this file` }] : [];
+    if (what) return [{ line: line(t.start), message: `Lua 5.3 syntax (${what}): the game runs Lua 5.1 and would not load this file` }];
+    const escape = lua52Escape(src, t);
+    return escape ? [{ line: line(t.start), message: `Lua 5.2 string escape (${escape}): the game's Lua 5.1 reads it as plain letters; use a decimal escape` }] : [];
   });
 }
 
