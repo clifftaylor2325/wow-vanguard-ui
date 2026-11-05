@@ -1443,6 +1443,8 @@ GW.PROF_SLOTS = {
 }
 -- The crafting page's push buttons by key (view guild crafters, and the Create and Create All buttons it makes itself).
 GW.PROF_BUTTONS = { "ViewGuildCraftersButton", "CreateButton", "CreateAllButton" }
+-- The two that make something, their labels in the theme's text tiers (T.ButtonLabel): light while they can be used.
+GW.PROF_CREATE = { "CreateButton", "CreateAllButton" }
 
 -- One of the form's check boxes as a theme check box, its label in small text; a part that is no check button is skipped.
 local function skinFormCheck(box)
@@ -1510,13 +1512,14 @@ local function skinRecipeList(list)
   GW.WatchRows(list.ScrollBox, skinRecipeRow)
 end
 
--- The crafting page's controls: the skill bar, the quantity box, the push buttons, the link dropdown (a picture),
--- the eleven gear slots and the divider between them and the rest.
+-- The crafting page's controls: the skill bar, the quantity box, the push buttons (Create and Create All labelled
+-- light while they can be used), the link dropdown (a picture), the eleven gear slots and the divider between them and the rest.
 local function skinCraftingControls(page)
   GW.SkinRankBar(page.RankBar)
   GW.SkinEditBox(page.CreateMultipleInputBox)
   GW.SkinSearch(page.MinimizedSearchBox)
   GW.EachKey(page, GW.PROF_BUTTONS, GW.SkinButton)
+  GW.EachKey(page, GW.PROF_CREATE, T.ButtonLabel)
   GW.SkinIconDropdown(page.LinkButton)
   GW.EachKey(page, GW.PROF_SLOTS, GW.SkinItem)
   GW.FadeArt(page.GearSlotDivider)
