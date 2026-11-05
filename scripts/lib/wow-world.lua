@@ -316,19 +316,28 @@ end
 -- the clock past the delay.
 world.timers = {}
 
--- Schedules fn once after `delay` seconds.
+-- Schedules fn once after `delay` seconds; seq is the order timers were made in, for timers due together.
 local function after(delay, fn)
-  local t = { at = stub.now + delay, fn = fn }
+  world.timerSeq = (world.timerSeq or 0) + 1
+  local t = { at = stub.now + delay, fn = fn, seq = world.timerSeq }
   world.timers[#world.timers + 1] = t
   return t
 end
 
--- The timers that are due now.
+-- Orders due timers as the game, a frame at a time, runs them: the earliest due first, then the order they were
+-- made in (table.sort is not stable in Lua 5.1, so seq breaks the tie).
+local function byDue(a, b)
+  if a.at ~= b.at then return a.at < b.at end
+  return a.seq < b.seq
+end
+
+-- The timers that are due now, in the order they fall due. A timer one of them makes runs on a later update.
 local function dueTimers()
   local due = {}
   for _, t in ipairs(world.timers) do
     if not t.cancelled and t.at <= stub.now then due[#due + 1] = t end
   end
+  table.sort(due, byDue)
   return due
 end
 
@@ -2395,6 +2404,7 @@ function world.reset()
   world.units = { player = defaultPlayer() }
   world.actions, world.quests, world.npc, world.merchant, world.trainer = {}, {}, nil, nil, nil
   world.cursor, world.timers, world.book = nil, {}, {}
+  world.timerSeq = nil
   world.ah = emptyAuctionHouse()
   world.professions, world.recipes, world.cooldowns, world.openedRecipe = {}, {}, {}, nil
   world.questTimers, world.trackedRecipes = {}, {}
