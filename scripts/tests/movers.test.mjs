@@ -249,6 +249,12 @@ it("layout: rects, clamping to the screen, and the nearest side", () => {
   expect([side(720, 505), side(300, 505), side(550, 560), side(550, 400)], "right, left, above and below another frame").toEqual(["RIGHT", "LEFT", "TOP", "BOTTOM"]);
 });
 
+it("a frame anchored to a mover saved off the screen follows where the client draws it, on the screen", () => {
+  const addon = loggedIn(BOX + DEP);
+  addon.eval("ns.SetMoverAnchor('dep', 'box', 'LEFT', -4, 0) ns.SetMoverPoint('box', 'BOTTOM', 'BOTTOM', 1200, 100)");
+  expect(rectOf(addon, "TESTONLY_Dep"), "the box is kept at the right edge (1720 to 1920): the frame sits just left of it, not over it").toEqual([1616, 110, 100, 20]);
+});
+
 it("anchoring a frame to another frame's side: placed there, grows away from it, follows it, refused with a reason", () => {
   const addon = loggedIn(BOX + DEP);
   expect(results(addon, 'ns.SetMoverAnchor("dep", "box", "RIGHT", 4, 0)'), "anchoring is accepted").toEqual([true]);

@@ -3981,6 +3981,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Only Vanguard's cast bar handle shows; no game cast bar appears beside it.
 - If it fails, paste: /dump PlayerCastingBarFrame:GetParent():GetName() and a screenshot.
 
+### 33.293 A frame anchored to a mover pushed off the edge sits beside it (Forever)
+
+- Do: In /vg unlock, anchor the target frame to the player frame (its popover: Anchor to Player frame, Side Left), then in the player frame's popover type X 3000 and press Done, then Save and lock.
+- Expect: The player frame sits against the right edge of the screen and the target frame sits just left of it, not over it.
+- If it fails, paste: a screenshot and /vg errors.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
