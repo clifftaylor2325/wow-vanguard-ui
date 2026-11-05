@@ -3861,6 +3861,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Its sales are still listed.
 - If it fails, paste: the Your history line and `/run local n=0 for k in pairs(VanguardDB.ah.ledgers or {}) do n=n+1 end print(n)`
 
+### 33.262 API search with a padded callerID (Forever)
+
+- Do: At the auction house type `/run print(Vanguard.API.v1.MultiSearch(" Test", {"Linen Cloth"}))`.
+- Expect: Chat prints true and the Lists tab shows the list "Test search", its Linen Cloth row searched and priced.
+- If it fails, paste: the chat lines and `/vg ah`
+
 ### 33.267 Marking quests closes the game's Abandon box (both)
 
 - Do: In Vanguard's quest log click Abandon on one quest and leave the game's box open, Ctrl-click two other quests and click Abandon 2.

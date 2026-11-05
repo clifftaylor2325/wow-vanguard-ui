@@ -67,7 +67,7 @@ Search strings are item names, as you would type them in the game's search box. 
 | --- | --- |
 | `MultiSearch(callerID, terms)` | At the open auction house: the terms become the list "`callerID` search" (made, or replaced), which the Shop card picks and searches one term at a time (one search in flight, at most one a second). Returns `true` when queued, `false` when the auction house is closed, no term is usable or the list can't be made. |
 | `MultiSearchExact(callerID, terms)` | The same, each name matched exactly: a name the game knows an item by is searched by that item's ID, so only that item comes back. |
-| `CreateShoppingList(callerID, listName, terms)` | Makes the list (replacing one of that name). Returns `true`, or `false` for a blank name or a new list past 20. Works with the auction house closed. |
+| `CreateShoppingList(callerID, listName, terms)` | Makes the list (replacing one of that name; spaces at either end of the name are dropped). Returns `true`, or `false` for a blank name or a new list past 20. Works with the auction house closed. |
 | `AlterShoppingListItems(callerID, listName, terms)` | Replaces the entries of an existing list. Returns `false` when there is no list of that name. |
 
 Nothing in the API posts, buys, bids or cancels: those stay with the player's clicks.
