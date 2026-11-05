@@ -81,6 +81,8 @@ local function xpHidden()
   local capped = atCap()
   return capped or (type(IsXPUserDisabled) == "function" and IsXPUserDisabled() == true)
 end
+-- The same rule for the info strip's XP rows.
+DB.XPHidden = xpHidden
 
 -- { cur, max, rested, level } for the XP bar, or nil when it should hide.
 function DB.XP()

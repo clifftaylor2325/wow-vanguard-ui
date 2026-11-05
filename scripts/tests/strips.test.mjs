@@ -519,6 +519,7 @@ const LEVEL_ENV = `
   GetXPExhaustion = function() return __rested end
   UnitLevel = function() return __level end
   GetMaxPlayerLevel = function() return 60 end
+  GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return __level >= 60 end }
 `;
 it("the info strip: XP and gold per hour, and time to level", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
@@ -555,6 +556,19 @@ it("the info strip: XP and gold per hour, and time to level", () => {
   addon.fire("PLAYER_XP_UPDATE", "player");
   expect(rates(), "hidden XP: the rate so far stays, the time to level hides").toEqual([true, false, false]);
   expect(addon.eval('local IS = ns.GetModule("InfoStrip") return { IS.ShortMoney(5), IS.ShortMoney(507), IS.Duration(30) }'), "short money and times").toEqual(["5c", "5s 7c", "1m"]);
+});
+it("the info strip: the XP rate and time to level hide while XP gain is locked, as the XP bar does (H15-5-R1)", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);
+  addon.eval("__xp = 1900");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 10);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  later(addon, 1790);
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect(block(addon, "xprate").shown, "levelling: the rate shows").toBe(true);
+  addon.eval("IsXPUserDisabled = function() return true end");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  expect([block(addon, "xprate").shown, block(addon, "leveltime").shown], "XP gain locked: both XP rows hide").toEqual([false, false]);
 });
 it("the info strip: a hidden middle block leaves no empty row (gold per hour sits right under the time at the level cap)", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + LEVEL_ENV);

@@ -325,12 +325,6 @@ function IS.Rank()
   if line then return place, count end
 end
 
--- True at the level cap, where XP stops.
-local function atMaxLevel()
-  local level, cap = ns.PlainNumber(ask("UnitLevel", "player")), ns.PlainNumber(ask("GetMaxPlayerLevel"))
-  return level ~= nil and cap ~= nil and level >= cap
-end
-
 -- Block texts (text, color token), nil to hide ------------------------------------------------
 
 IS.TEXT = {}
@@ -419,13 +413,13 @@ end
 
 -- XP per hour this session (the XP bar shows rested XP).
 function IS.TEXT.xprate()
-  local rate = not atMaxLevel() and IS.XPRate()
+  local rate = not ns.GetModule("DataBars").XPHidden() and IS.XPRate()
   if rate then return ns.Format(L["{xp} xp/h"], { xp = ns.GetModule("DataBars").Short(math.floor(rate)) }), "text" end
 end
 
 -- Time to the next level at this session's pace.
 function IS.TEXT.leveltime()
-  local rate, cur, max = not atMaxLevel() and IS.XPRate(), xpNow()
+  local rate, cur, max = not ns.GetModule("DataBars").XPHidden() and IS.XPRate(), xpNow()
   if rate and cur then return ns.Format(L["lvl {time}"], { time = IS.Duration((max - cur) * 3600 / rate) }), "text2" end
 end
 
