@@ -111,6 +111,15 @@ it("profile management", () => {
   addon.slash("profile bad/name");
   expect(chatHas(addon, /1-32 letters/), "profile names are checked").toBeTruthy();
 });
+it("/vg profile <name>: a profile's exact name wins over the verbs, so Copy Raid switches instead of copying Raid", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile new Copy Raid");
+  addon.eval("VanguardDB.profiles.Raid.theme = { accent = { 0, 1, 0 } } VanguardDB.profiles.Default.theme = { accent = { 1, 0, 0 } }");
+  addon.slash("profile Copy Raid");
+  expect(addon.eval("return { ns.PendingProfileName(), VanguardDB.profiles.Default.theme.accent[1], VanguardDB.profiles.Raid.theme.accent[2] }"), "it stages Copy Raid; Default and Raid are untouched")
+    .toEqual(["Copy Raid", 1, 1]);
+});
 it("spec profiles", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
   const addon = loggedIn(env);

@@ -448,6 +448,8 @@ local function profileCommand(rest)
     local text = ns.PendingProfileName() and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
     return chat(ns.Format(text, { profile = ns.ProfileName(), next = ns.PendingProfileName(), all = table.concat(ns.ProfileNames(), ", ") }))
   end
+  -- A profile's exact name wins over a verb, so /vg profile Copy Raid switches to "Copy Raid".
+  if VanguardDB.profiles[rest] then return useProfile(rest) end
   local action, name = rest:match("^(%S+)%s*(.-)$")
   local handler = PROFILE_ACTIONS[action:lower()]
   if handler then return handler(name) end
