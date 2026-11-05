@@ -30,8 +30,16 @@ function OL.Norm(name)
   return (ns.Lower(tostring(name)):gsub("%-.*$", ""))
 end
 
--- Whether two names are the same player.
+-- The realm a name carries, lower-case without spaces (a typed "Area 52" is the game's "Area52"); nil for a bare name.
+function OL.Realm(name)
+  local realm = ns.Lower(tostring(name)):match("%-(.+)$")
+  return realm and realm:gsub("%s", "")
+end
+
+-- Whether two names are the same player: the same name, and not two different realms (a bare name matches any realm).
 function OL.Same(a, b)
+  local realmA, realmB = OL.Realm(a), OL.Realm(b)
+  if realmA and realmB and realmA ~= realmB then return false end
   return OL.Norm(a) == OL.Norm(b)
 end
 

@@ -90,10 +90,25 @@ it("a reserve is for the same item id when both have one, and for the same name 
   const addon = loggedIn("", ON);
   const OL = "ns.GetModule('OfficerLoot')";
   say(addon, "loot add Thrall |cff0070dd|Hitem:1234:0|h[TEST-ONLY Boots]|h|r");
+  // Whether Thrall holds a reserve for this item text.
   const holds = (item) => addon.eval(`return ${OL}.Reserved('Thrall', ${JSON.stringify(item)})`);
   expect(holds("|Hitem:1234::|h[TEST-ONLY Boots]|h"), "the same id").toBe(true);
   expect(holds("|Hitem:5678::|h[TEST-ONLY Boots]|h"), "another item with the same name").toBe(false);
   expect(holds("TEST-ONLY Boots"), "typed by name only: the name decides").toBe(true);
+});
+
+it("a reserve for a player with a realm is not another realm's player of the same name; a bare name matches either way", () => {
+  const addon = loggedIn("", ON);
+  const OL = "ns.GetModule('OfficerLoot')";
+  // Whether OfficerLoot reads the two names as one player.
+  const same = (a, b) => addon.eval(`return ${OL}.Same(${JSON.stringify(a)}, ${JSON.stringify(b)})`);
+  expect(same("Bob-Stormrage", "Bob-Silvermoon"), "two realms").toBe(false);
+  expect(same("Bob-Stormrage", "Bob"), "a bare name").toBe(true);
+  expect(same("Bob", "bob-Stormrage"), "a bare name the other way, any case").toBe(true);
+  expect(same("Bob-Area 52", "Bob-Area52"), "a typed space in the realm").toBe(true);
+  say(addon, "loot add Bob-Stormrage TEST-ONLY Boots");
+  say(addon, "loot add Bob-Silvermoon TEST-ONLY Boots");
+  expect(addon.eval("return #VanguardCharDB.lootReserves"), "a second Bob from another realm is its own reserve").toBe(2);
 });
 
 it("a finished item is not the one rolls are flagged for, and a hidden item text is skipped", () => {
