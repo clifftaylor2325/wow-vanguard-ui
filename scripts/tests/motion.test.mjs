@@ -181,3 +181,19 @@ it("motion: a disabled button's label goes to the disabled tier with no hover, a
   addon.eval("ns.Theme.DisabledLook(TEST_Press, false)");
   expect(isTok(addon, label(), "text"), "enabling one that wasn't disabled changes nothing").toBe(true);
 });
+
+it("a game push button's label takes the theme's text tiers from T.Button; a primary keeps its own, and in a fight the copies wait", () => {
+  const addon = loggedIn();
+  // Whether TEST_Game's label colour is the theme token `name`.
+  const labelIs = (name) => isTok(addon, addon.eval("return TEST_Game:GetFontString().__textColor"), name);
+  addon.eval(`local gold = CreateFont("TEST_GameFontNormal") gold:SetTextColor(1, 0.82, 0)
+    local b = CreateFrame("Button", "TEST_Game", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(gold) ns.Theme.Button(b)`);
+  expect(labelIs("text"), "a secondary game button: the text tier, not gold").toBe(true);
+  addon.eval('local b = CreateFrame("Button", "TEST_Primary", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) ns.Theme.Button(b, "primary")');
+  expect(addon.eval("return TEST_Primary:GetNormalFontObject() == TEST_GameFontNormal"), "a primary keeps its label").toBe(true);
+  setCombat(addon, true);
+  addon.eval('local b = CreateFrame("Button", "TEST_Fight", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) ns.Theme.Button(b)');
+  expect(addon.eval("return ns.Theme.LabelFonts(TEST_Fight) == nil"), "in a fight the label waits").toBe(true);
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Theme.LabelFonts(TEST_Fight) ~= nil"), "and gets its copies when the fight ends").toBe(true);
+});
