@@ -1325,8 +1325,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.4.5 Help, report and colour picker
 
-- Do: press Escape, click Support (or the help button), look, close it. Open a color swatch (Chat Settings, any color swatch), drag in the wheel, then click Cancel. Right-click a player in a group and open Report if you can.
-- Expect: the help window, the report window and the color picker on flat panels with themed buttons; the help page sits in a dark frame with no bronze ring; the report window's reason dropdown is a flat button with its arrow, its labels light (not gold), the comment box dark with the theme's scroll bar, and each reason under it is a plain row that lights a little under the mouse and shows the accent rail when ticked (ticking and unticking still works); the # beside the color picker's hex box is grey; open a window's opacity slider (a nameplate or raid frame color with transparency) and the vertical slider is a dark track with a round knob, its OPACITY label light; the color wheel, the value and alpha bars and the swatches look exactly as the game draws them, and picking a color still works. If you have an open support ticket, its small status box keeps its icon.
+- Do: press Escape, click Support (or the help button), look, close it. Open a color swatch (Chat Settings, any color swatch), drag in the wheel, then click Cancel. Right-click a player in a group and open Report if you can. Open the zone map (Shift-M), right-click its tab and pick Opacity.
+- Expect: the help window, the report window and the color picker on flat panels with themed buttons; the help page sits in a dark frame with no bronze ring; the report window's reason dropdown is a flat button with its arrow, its labels light (not gold), the comment box dark with the theme's scroll bar, and each reason under it is a plain row that lights a little under the mouse and shows the accent rail when ticked (ticking and unticking still works); the # beside the color picker's hex box is grey; the zone map's small opacity window is a flat panel, its vertical slider a dark track with a round knob, OPACITY in light text and the + and - grey (dragging still changes the map's opacity); the color wheel, the value and alpha bars and the swatches look exactly as the game draws them, and picking a color still works. If you have an open support ticket, its small status box keeps its icon.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 14.4.6 Death recap and the combat log bar
@@ -1544,8 +1544,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.9.3 Objectives and the countdown
 
-- Do: enter a battleground with flags or bases (Warsong Gulch, Arathi Basin) before it starts; watch the countdown, then take or watch a flag being taken; look at the scores at the top of the screen and anything under the minimap.
-- Expect: the countdown bar uses the theme's bar texture on a flat panel with its time in the theme font, and the big numbers are the game's; the scores at the top (and capture bars under the minimap) sit on one flat panel that disappears when they go; the panel never stays behind as an empty square; the objective banner's text is in the theme font at its usual size. [Needs in game: the panel's place and size around the widgets.]
+- Do: enter a battleground with flags or bases (Warsong Gulch, Arathi Basin) before it starts; watch the countdown; look at the scores at the top of the screen and anything under the minimap.
+- Expect: the countdown bar uses the theme's bar texture on a flat panel with its time in the theme font, and the big numbers are the game's; the scores at the top (and capture bars under the minimap) sit on one flat panel that disappears when they go; the panel never stays behind as an empty square. (The banner shown as you enter a battleground on Retail is step 33.303; WoW Forever never shows it.) [Needs in game: the panel's place and size around the widgets.]
 - If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
 
 ### 14.9.4 Honor tab and switch
@@ -2461,8 +2461,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.28 Cooldown Manager, keybinding, click binding, help, report, colour picker
 
-- Do: open the Cooldown Manager settings and refresh its layout. Use its search, a bar and its dropdowns, then Undo. Open the keybinding window and the click binding window (hover, delete, marks, the tutorial card). Open the help window and the report window (its minor-category rows and comment box). Open the colour picker and use its Hash field and opacity slider.
-- Expect: the Cooldown Manager's headers stay grey after a layout refresh, and its dropdowns and Undo are themed. The keybinding and click binding windows are flat. The help window has its inset. The report's minor-category rows follow the select state. The colour picker's Hash field and opacity slider are themed.
+- Do: open the Cooldown Manager settings and refresh its layout. Use its search, a bar and its dropdowns, then Undo. Open the keybinding window and the click binding window (hover, delete, marks, the tutorial card). Open the help window and the report window (its minor-category rows and comment box). Open the colour picker and use its Hash field, then open the zone map (Shift-M), right-click its tab and pick Opacity.
+- Expect: the Cooldown Manager's headers stay grey after a layout refresh, and its dropdowns and Undo are themed. The keybinding and click binding windows are flat. The help window has its inset. The report's minor-category rows follow the select state. The colour picker's Hash field is themed, and the zone map's opacity window is a flat panel with a dark slider track and a round knob.
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ### 33.29 Combat log, death recap, Cooldown alerts, movement pad, Lua error window
