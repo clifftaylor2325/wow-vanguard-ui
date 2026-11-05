@@ -113,8 +113,9 @@ P.PROJECTS = { "MAINLINE", "CAMELOT", "CLASSIC", "BURNING_CRUSADE_CLASSIC", "WRA
 -- The game's class resource bars (retail builds them; Forever's player frame excludes them) and the
 -- encounter timeline's frame, looked for as globals.
 P.CLASS_BARS = {
-  "RuneFrame", "PaladinPowerBar", "WarlockPowerFrame", "MonkHarmonyBar", "MageArcaneChargesBar",
-  "EssencePlayerFrame", "MonkStaggerBar", "InsanityBarFrame", "DemonHunterSoulFragmentsBar", "ComboPointPlayerFrame",
+  "RuneFrame", "PaladinPowerBarFrame", "WarlockPowerFrame", "MonkHarmonyBarFrame", "MageArcaneChargesFrame",
+  "EssencePlayerFrame", "MonkStaggerBar", "InsanityBarFrame", "DevourerFuryBarFrame", "DemonHunterSoulFragmentsBar",
+  "RogueComboPointBarFrame", "DruidComboPointBarFrame",
 }
 P.TIMELINE_ADDON, P.TIMELINE_FRAME = "Blizzard_EncounterTimeline", "EncounterTimeline"
 
