@@ -105,10 +105,12 @@ local function itemLevel(link)
 end
 
 -- What an item is worth with weights: weight x amount, summed over its stats (0 for none), plus its item level
--- where the weights count it (Retail's ILVL; no item stat key holds it).
+-- where the weights count it (Retail's ILVL; no item stat key holds it). nil while the client has no stats for
+-- the item yet (it isn't loaded), so nothing is judged, or remembered, on a guess.
 function UP.Score(link, weights)
-  local score = 0
-  for key, amount in pairs(C_Item.GetItemStats(link) or {}) do
+  local score, stats = 0, C_Item.GetItemStats(link)
+  if not stats then return nil end
+  for key, amount in pairs(stats) do
     local w, n = weights[W.SHORT[key]], ns.PlainNumber(amount)
     if w and n then score = score + w * n end
   end
@@ -116,9 +118,12 @@ function UP.Score(link, weights)
   return level and score + weights.ILVL * level or score
 end
 
--- An item's score with the weights in use, remembered until they change.
+-- An item's score with the weights in use, remembered until they change (a number only: nil while its stats
+-- haven't loaded, so the next look asks again).
 local function score(link)
-  if not UP.scores[link] then UP.scores[link] = UP.Score(link, (UP.Current())) end
+  local known = UP.scores[link]
+  if known then return known end
+  UP.scores[link] = UP.Score(link, (UP.Current()))
   return UP.scores[link]
 end
 
@@ -126,7 +131,7 @@ end
 local function equipped(slot)
   local link = GetInventoryItemLink("player", slot)
   if not link then return 0, true end
-  return score(link), false
+  return score(link) or 0, false
 end
 
 -- The weakest worn item among slots: its score, whether a slot is empty, and its link.
@@ -175,6 +180,7 @@ function UP.Compare(link)
   local old, empty, worn = wornScore(loc, slots)
   if empty then return nil, true end
   local new = score(link)
+  if not new then return nil, false, worn end
   if old <= 0 then return new > 0 and 100 or nil, false, worn end
   return (new - old) / old * 100, false, worn
 end

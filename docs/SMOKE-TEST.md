@@ -4053,6 +4053,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The quests for the map you entered move up the list.
 - If it fails, paste: /run print(C_Map.GetBestMapForUnit("player"))
 
+### 33.307 Quest reward upgrade arrow on a cold item cache (Forever)
+
+- Do: After a fresh login, talk to a quest giver whose reward item you have never seen and which is an upgrade for you.
+- Expect: The green upgrade arrow appears on the reward card within a second, and the item's tooltip has an Upgrade line, not a Downgrade line.
+- If it fails, paste: /run print(C_Item.GetItemStats(GetQuestItemLink("choice",1)) ~= nil)
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

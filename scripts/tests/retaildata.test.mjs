@@ -112,7 +112,8 @@ it("retail data: gear is weighed with mastery, versatility and item level, and /
   const score = (n) => addon.eval(`local UP = ns.GetModule("Upgrades") return UP.Score(__link(${n}), (UP.Weights()))`);
   expect(score(1), "100 STR + 50 x 0.45 crit + 600 item levels").toBeCloseTo(100 + 22.5 + 600);
   expect(score(2), "100 STR + 30 x 0.4 mastery + 30 x 0.4 versatility + 620 item levels").toBeCloseTo(100 + 12 + 12 + 620);
-  expect(addon.eval("return ns.GetModule('Upgrades').Score(__link(9), { STR = 1, ILVL = 1 })"), "an item with no stats or level is worth nothing").toBe(0);
+  expect(addon.eval("__gear[9] = {} return ns.GetModule('Upgrades').Score(__link(9), { STR = 1, ILVL = 1 })"), "an item with no stats or level is worth nothing").toBe(0);
+  expect(addon.eval("__gear[9] = nil return ns.GetModule('Upgrades').Score(__link(9), { STR = 1, ILVL = 1 })"), "an item the client has no stats for yet has no score").toBe(null);
   addon.slash("weights");
   expect(chatHas(addon, /Weights for strength \(role damage\): .*ILVL 1.*MASTERY 0\.4.*VERS 0\.4/), "the weights in use, Retail's stats among them").toBe(true);
   expect(addon.eval("local W = ns.GetModule('Upgrades').Wizard local o = W.Order('strength') return { W.LABELS[o[1]], W.LABELS[o[2]] }"), "the wizard names Retail's stats; item level and strength first").toEqual(["Item level", "Strength"]);
