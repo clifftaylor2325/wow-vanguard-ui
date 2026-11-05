@@ -184,12 +184,13 @@ function ns.StripPayload(data)
 end
 
 -- The parts a partial payload says it holds, as text ("layout, theme"); nil when it names none.
+-- The names come from the string, so their | is doubled: chat shows them as written, never as codes.
 function ns.PartsText(data)
   local names = {}
   for _, p in ipairs(type(data.parts) == "table" and data.parts or {}) do
     if type(p) == "string" then names[#names + 1] = p end
   end
-  return #names > 0 and table.concat(names, ", ") or nil
+  return #names > 0 and ns.Literal(table.concat(names, ", ")) or nil
 end
 
 -- Reading ----------------------------------------------------------------------------------
@@ -258,11 +259,12 @@ local MEDIA_CHECKS = {
 }
 
 -- A line for each font, bar and panel texture the string's theme names that this client doesn't
--- have, and what Vanguard draws instead (the name stays saved, for when it comes back).
+-- have, and what Vanguard draws instead (the name stays saved, for when it comes back). The name comes
+-- from the string, so its | is doubled: a crafted name can't print coloured text or links in chat.
 function ns.MissingMedia(data)
   local theme, lines = type(data.theme) == "table" and data.theme or {}, {}
   for _, check in ipairs(MEDIA_CHECKS) do
-    if check.missing(theme[check.key]) then lines[#lines + 1] = ns.Format(check.line, { name = theme[check.key] }) end
+    if check.missing(theme[check.key]) then lines[#lines + 1] = ns.Format(check.line, { name = ns.Literal(theme[check.key]) }) end
   end
   return lines
 end

@@ -691,6 +691,16 @@ it("an import names each font, bar and panel texture this client doesn't have, a
   const found = (lua) => addon.eval(`return #ns.MissingMedia({ theme = ${lua} })`);
   expect([found('{ font = "TEST-ONLY Shared", barTexture = "soft", panelTexture = "stone" }'), found('{ panelTexture = "flat" }'), found('{ font = "client" }'), found('{ font = "" }'), found('{ font = [[Fonts\\TEST-ONLY.ttf]] }'), addon.eval("return #ns.MissingMedia({})")], "a shared font, Vanguard's bars and panel textures, Flat, the game's font and a font path are found").toEqual([0, 0, 0, 0, 0, 0]);
 });
+it("an import prints the string's font and part names as written: their | codes are doubled, never read as colours or links", () => {
+  const addon = loggedIn();
+  // TEST-ONLY names holding colour codes, as a crafted string might.
+  const text = encoded(addon, "parts", '{ format = 2, parts = { "|cffff0000P|r" }, theme = { font = "|cffff0000X|r" } }');
+  addon.clearChat();
+  importText(addon, text);
+  expect(chatHas(addon, /Font not found: \|\|cffff0000X\|\|r /), "the font's name shows its codes doubled in chat").toBe(true);
+  expect(chatHas(addon, /(^|[^|])\|cffff0000/), "no chat line holds an undoubled code").toBe(false);
+  expect(imports(addon, text).m, "the part names are doubled too").toMatch(/^Imported \|\|cffff0000P\|\|r settings into profile Default\.$/);
+});
 it("an import names a font path this client can't load (N7-1)", () => {
   const addon = loggedIn("__wfgStub.missingFonts[ [[Interface\\AddOns\\Gone\\f.ttf]] ] = true");
   const text = encoded(addon, "parts", '{ format = 2, parts = { "global" }, theme = { font = [[Interface\\AddOns\\Gone\\f.ttf]] } }');
