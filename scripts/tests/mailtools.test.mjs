@@ -233,6 +233,14 @@ it("+ Add on the panel makes a preset, a right-click on its button asks and remo
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("presets attach an item that sits in the reagent bag too", () => {
+  const addon = mailer("__wfgWorld.bagSizes[5] = 2 __wfgWorld.bags[5] = { [1] = { itemID = 901 } }");
+  addon.slash("mail preset add Ores Bobalt ore");
+  addon.world.openMailWindow();
+  addon.world.showSendMail();
+  addon.slash("mail send ores");
+  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Ores: 2 items attached for Bobalt\./)], "the bag 0 ore and the reagent bag ore").toEqual([[[0, 2], [5, 1]], true]);
+});
 it("attaches at most 12, and a preset button before the panel exists is quiet", () => {
   const addon = mailer("__wfgWorld.bagSizes[0] = 20 for s = 1, 20 do __wfgWorld.bags[0][s] = { itemID = 900 } end");
   addon.slash("mail preset add All Bobalt");

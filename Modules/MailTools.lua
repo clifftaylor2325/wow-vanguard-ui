@@ -24,8 +24,9 @@ local T, W = ns.Theme, ns.Widgets
 local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} } })
 
 -- The panel's width and padding (a HUD card's, T.SPACE.gap), a row's height (T.ROW.height), rows, preset buttons,
--- bags read, the game's attachment limit, mails scanned and the gap to the window (T.SPACE.gap).
-MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN, MT.GAP = 270, T.SPACE.gap, T.ROW.height, 8, 4, 4, 12, 60, T.SPACE.gap
+-- the last bag read (the backpack, the four bags, then the reagent bag, Enum.BagIndex.ReagentBag), the game's
+-- attachment limit, mails scanned and the gap to the window (T.SPACE.gap).
+MT.WIDTH, MT.PAD, MT.ROW, MT.ROWS, MT.BUTTONS, MT.BAGS, MT.ATTACH, MT.SCAN, MT.GAP = 270, T.SPACE.gap, T.ROW.height, 8, 4, 5, 12, 60, T.SPACE.gap
 -- The attachment slots a received mail has (ATTACHMENTS_MAX_RECEIVE in Blizzard_MailFrame/MailFrame.lua).
 MT.RECEIVE = 16
 -- Under this many days left a mail's time is in the warning colour; the first match the rows show (the wheel moves it).
