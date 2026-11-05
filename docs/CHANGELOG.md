@@ -35,6 +35,7 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - On tall screens the bars and HUD rise as one block to sit under your character, and the Cooldown Manager's main row gets a line of its own.
 - A Cooldown Manager row wider than its spot shrinks to fit it.
 - A Loot / Trade chat tab sits level in the tab bar and shows its whole name.
+- The Raid frames page's cards open on their main settings, with a More settings line under them that shows the rest; a search hit or a What's new link opens it.
 
 ### Fixes (0.9.0)
 

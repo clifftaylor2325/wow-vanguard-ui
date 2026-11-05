@@ -28,6 +28,7 @@ ns.WHATS_NEW = {
       { text = "On tall screens the bars and HUD rise as one block to sit under your character, and the Cooldown Manager's main row gets a line of its own; a row wider than its spot shrinks to fit." },
       { text = "A Loot / Trade chat tab sits level in the tab bar and shows its whole name." },
       { text = "An in-combat mark: crossed swords and a red edge on your frame, and a red edge on your target's while it fights.", page = "unitframes", row = "In-combat mark" },
+      { text = "The Raid frames page's cards open on their main settings, with a More settings line that shows the rest." },
       { text = "The XP bar's numbers sit in the middle of the bar, and game window buttons' labels use the theme's text colours." },
     } },
     { module = "Other", label = "Safety and tools", items = {
