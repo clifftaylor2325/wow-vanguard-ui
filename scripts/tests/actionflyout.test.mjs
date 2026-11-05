@@ -152,3 +152,9 @@ it("on Retail the list is the same, and the bar buttons are wrapped the same way
   expect(addon.eval("return Vanguard_Bar3Button12.__wraps.OnClick == ns.GetModule('ActionBars').FLYOUT_PRE"), "wrapped").toBe(true);
   expect(run(addon, PRE), "and opens").toEqual([false, "nil"]);
 });
+
+it("on a client that can't run secure snippets a flyout wraps nothing, so every bar button still acts", () => {
+  const addon = loggedIn('SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end\n' + FLYOUTS);
+  place(addon, 1, 1);
+  expect(addon.eval("return { Vanguard_Flyout == nil, Vanguard_Bar1Button1.__wraps == nil or Vanguard_Bar1Button1.__wraps.OnClick == nil }"), "no list and no wrap").toEqual([true, true]);
+});

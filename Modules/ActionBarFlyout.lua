@@ -225,9 +225,15 @@ local function refresh()
 end
 
 -- Keeps the stored flyouts current: when spells, slots, the screen or the key-down setting change, and at login.
-function AB.WatchFlyouts()
+local function watchFlyouts()
   for _, event in ipairs({ "SPELLS_CHANGED", "ACTIONBAR_SLOT_CHANGED", "PLAYER_ENTERING_WORLD", "CVAR_UPDATE", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }) do
     ns.On(event, refresh)
   end
   refresh()
+end
+
+-- Watches the flyouts only on a client that runs secure snippets: on one that can't, the wrap on every bar
+-- button would fail before the game's click, so no button would act at all.
+function AB.WatchFlyouts()
+  ns.Client.WhenSnippetsKnown(function(worked) if worked then watchFlyouts() end end)
 end
