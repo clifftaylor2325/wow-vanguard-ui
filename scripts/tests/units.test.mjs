@@ -871,3 +871,52 @@ it("a parked game frame without UpdateShownState, or on a client without hooksec
   const plain = loggedIn(UNITS_ENV + PET_SHOWN_ENV + "\nhooksecurefunc = nil", NO_RAID);
   expect(plain.eval("return PetFrame:IsShown()"), "still hidden at login").toBe(false);
 });
+
+// TEST-ONLY: who is fighting comes from __units, and what a frame's in-combat mark shows: its edge's colour token
+// ("bad" in a fight, else "theme") and, on the player frame, whether the swords show and in which colour.
+const FIGHT_LUA = `UnitAffectingCombat = function(unit) return __units[unit] and __units[unit].inCombat end
+  function __edge(f) for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then
+      local r, g, b = unpack(w.__vertexColor) local br, bg, bb = ns.Theme.RGB("bad")
+      return (r == br and g == bg and b == bb) and "bad" or "theme" end end end
+  function __fight() local s = Vanguard_player.combat
+    return { __edge(Vanguard_player), s:IsShown() and "swords" or "none", __edge(Vanguard_target) } end
+`;
+it("in-combat mark: crossed swords and a vermilion edge on your frame from the fight's start to its end", () => {
+  const addon = loggedIn(UNITS_ENV + FIGHT_LUA);
+  const swords = addon.eval("local s = Vanguard_player.combat return { s:GetTexture() == ns.Theme.Icon('Combat'), s:GetWidth(), select(2, s:GetPoint()) == Vanguard_player }");
+  expect(swords, "the swords icon, 14 across, on the player frame's corner").toEqual([true, 14, true]);
+  expect(addon.eval("return __fight()"), "out of combat: the theme's edge, no swords").toEqual(["theme", "none", "theme"]);
+  addon.world.combat(true);
+  expect(addon.eval("return __fight()"), "the fight starts: swords and the vermilion edge on yours at once").toEqual(["bad", "swords", "theme"]);
+  addon.world.combat(false);
+  expect(addon.eval("return __fight()"), "it ends: both gone").toEqual(["theme", "none", "theme"]);
+});
+it("in-combat mark: your target's edge follows the client's answer, a hidden one counting as no", () => {
+  const addon = loggedIn(UNITS_ENV + FIGHT_LUA);
+  // Runs lua (who fights), sends UNIT_FLAGS for the target as the client does, and reads the target's edge.
+  const look = (lua) => { addon.eval(lua); addon.fire("UNIT_FLAGS", "target"); return addon.eval("return __fight()[3]"); };
+  expect(look("__units.target.inCombat = true"), "a target in a fight: the vermilion edge").toBe("bad");
+  expect(look("__units.target.inCombat = { __secret = true }"), "a hidden answer: the theme's").toBe("theme");
+  addon.eval("__units.target.inCombat = true");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(addon.eval("return __fight()[3]"), "a new target already fighting").toBe("bad");
+  expect(look("__units.target.inCombat = false"), "out of its fight").toBe("theme");
+  addon.eval("__units.player.inCombat = true");
+  addon.fire("UNIT_FLAGS", "player");
+  expect(addon.eval("return __fight()"), "you in combat by the client's answer, heard as UNIT_FLAGS on you").toEqual(["bad", "swords", "theme"]);
+});
+it("in-combat mark: the Unit frames page switches it at once, and the health text ends clear of the swords", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + FIGHT_LUA + "__units.target.inCombat = true");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.world.combat(true);
+  addon.slash("");
+  addon.eval('__click("Unit frames")');
+  addon.eval('__click("In-combat mark: crossed swords and a red edge on your frame, a red edge on your target\'s while it fights")');
+  expect(addon.eval("return __fight()"), "off, in the fight: both marks go").toEqual(["theme", "none", "theme"]);
+  expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.combatMark"), "the switch saves it").toBe(false);
+  addon.eval('__click("In-combat mark: crossed swords and a red edge on your frame, a red edge on your target\'s while it fights")');
+  expect(addon.eval("return __fight()"), "on again: back at once").toEqual(["bad", "swords", "bad"]);
+  const room = addon.eval("return { select(4, Vanguard_player.healthText:GetPoint()) }");
+  expect(room, "the health text ends left of the swords").toEqual([-addon.eval("return ns.GetModule('UnitFrames').CLASS_MARK_ROOM"), 0]);
+});

@@ -1,6 +1,6 @@
 Vanguard options nav and minimap icons
 
-The Nav*.tga and Minimap*.tga files here are from game-icons.net
+The Nav*.tga, Minimap*.tga and Combat.tga files here are from game-icons.net
 (https://game-icons.net, https://github.com/game-icons/icons), licensed under
 Creative Commons Attribution 3.0 Unported
 (https://creativecommons.org/licenses/by/3.0/). The other icons in this
@@ -27,6 +27,7 @@ NavWindows.tga        "Checked shield" by Lorc (lorc-checked-shield)
 NavTown.tga           "Castle" by Delapouite (delapouite-castle)
 MinimapTracking.tga   "Binoculars" by Delapouite (delapouite-binoculars)
 MinimapAddons.tga     "Jigsaw piece" by Lorc (lorc-jigsaw-piece)
+Combat.tga            "Crossed swords" by Lorc (lorc-crossed-swords)
 
 Lorc: http://lorcblog.blogspot.com
 Delapouite: https://delapouite.com
