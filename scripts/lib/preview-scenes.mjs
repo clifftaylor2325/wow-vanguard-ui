@@ -70,7 +70,8 @@ const TOOLTIP = `
   tt:SetFrameStrata("TOOLTIP")
   tt.NineSlice = CreateFrame("Frame", nil, tt)
   tt.GetUnit = function(self) return "TEST-ONLY", self.unit end
-  tt.SetOwner = function() end
+  tt.SetOwner = function(self, owner) self.owner = owner end
+  tt.GetOwner = function(self) return self.owner end
   tt.lines = 0
   tt.AddLine = function(self, text, r, g, b)
     self.lines = self.lines + 1

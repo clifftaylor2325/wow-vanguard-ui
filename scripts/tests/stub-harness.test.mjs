@@ -34,3 +34,15 @@ it("buttons, check buttons, sliders and edit boxes take OnEnable and OnDisable h
     return out`);
   expect(runs).toEqual({ Button: "off on", CheckButton: "off on", Slider: "off on", EditBox: "off on" });
 });
+
+it("SetShown runs OnShow and OnHide as Show and Hide do, but not a hook on the frame's Show", () => {
+  const addon = createAddon();
+  const runs = addon.eval(`local f, seen = CreateFrame("Frame"), {}
+    f:SetScript("OnShow", function() seen[#seen + 1] = "show" end)
+    f:SetScript("OnHide", function() seen[#seen + 1] = "hide" end)
+    f:Hide() f:SetShown(true) f:SetShown(true) f:SetShown(nil) f:SetShown(false)
+    hooksecurefunc(f, "Show", function() seen[#seen + 1] = "Show hook" end)
+    f:SetShown(true)
+    return table.concat(seen, " ")`);
+  expect(runs).toBe("hide show hide show");
+});

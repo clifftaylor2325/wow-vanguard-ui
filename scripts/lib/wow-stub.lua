@@ -673,23 +673,28 @@ end
 
 -- Showing a hidden widget runs its OnShow, as the client does, and its shown
 -- children's when it comes into view.
-function methods:Show()
-  local was = self.__shown
-  self.__shown = true
-  local onShow = self.__scripts.OnShow
-  if not was and onShow then onShow(self) end
-  if not was and parentsShown(self) then cascade(self, "OnShow") end
+local function showWidget(w)
+  local was = w.__shown
+  w.__shown = true
+  local onShow = w.__scripts.OnShow
+  if not was and onShow then onShow(w) end
+  if not was and parentsShown(w) then cascade(w, "OnShow") end
 end
 
 -- Hiding a shown widget runs its OnHide, as the client does, and its shown
 -- children's when it was in view.
-function methods:Hide()
-  local was = self.__shown
-  self.__shown = false
-  local onHide = self.__scripts.OnHide
-  if was and onHide then onHide(self) end
-  if was and parentsShown(self) then cascade(self, "OnHide") end
+local function hideWidget(w)
+  local was = w.__shown
+  w.__shown = false
+  local onHide = w.__scripts.OnHide
+  if was and onHide then onHide(w) end
+  if was and parentsShown(w) then cascade(w, "OnHide") end
 end
+
+-- Shows a widget (showWidget).
+function methods:Show() showWidget(self) end
+-- Hides a widget (hideWidget).
+function methods:Hide() hideWidget(self) end
 
 -- The shown state.
 function methods:IsShown() return self.__shown end
@@ -714,8 +719,11 @@ function methods:IsVisible()
   return true
 end
 
--- Shows or hides by a flag.
-function methods:SetShown(shown) self.__shown = not not shown end
+-- Shows or hides by a flag (nil hides), running OnShow or OnHide as Show and Hide do. It calls the
+-- locals, not self:Show(), so a hooksecurefunc on the frame's Show or Hide does not run, as in the client.
+function methods:SetShown(shown)
+  if shown then showWidget(self) else hideWidget(self) end
+end
 
 -- Script handlers: only ones the real widget type has.
 function methods:SetScript(name, fn)
