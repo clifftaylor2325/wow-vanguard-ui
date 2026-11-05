@@ -1154,6 +1154,17 @@ it("bag and menu bar: slots are 24 screen pixels wide, take the clicks, and ligh
   expect(r3(addon.eval("return ns.FrameState('vgSlot')[CharacterMicroButton].__width") * MENU * 0.5), "a smaller button: its slot shrinks to its place in the row, re-sized by the re-fit").toBe(r3(27 * MENU * 0.5 - 4));
   expect(r3(addon.eval("return ns.FrameState('vgSlot')[EJMicroButton].__width") * MENU), "a button with no size yet gets a full slot").toBe(24);
 });
+it("bag and menu bar: a micro menu Size set in Edit Mode leaves the buttons one slot and a gap apart", () => {
+  const addon = strips("", { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = false } }" });
+  // The menu button's scale on screen (28/27 puts its 27-unit pitch on 28 pixels) and its slot's width in screen pixels.
+  const look = () => addon.eval(`local b = CharacterMicroButton return { b:GetEffectiveScale() / UIParent:GetEffectiveScale(), ns.FrameState('vgSlot')[b].__width * b:GetEffectiveScale() / UIParent:GetEffectiveScale() }`).map(r3);
+  addon.eval("CharacterMicroButton:SetParent(MicroMenu) MicroMenu:SetScale(0.85) MicroMenuContainer:Layout()");
+  expect(look(), "the game's Size at 85%: the buttons are drawn at the row's scale again, the 24-pixel slot unchanged").toEqual([r3(MENU), 24]);
+  addon.eval("MicroMenu:SetScale(0) MicroMenuContainer:Layout()");
+  expect(addon.eval("return MicroMenuContainer:GetScale()"), "a scale the client can't use leaves the row's own").toBe(MENU);
+  addon.eval("MicroMenu:SetScale(1) MicroMenuContainer:Layout()");
+  expect(addon.eval("return MicroMenuContainer:GetScale()"), "at 100% nothing changes").toBe(MENU);
+});
 it("bag and menu bar: line icons are 20 screen pixels on their slot, accent under the mouse", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV, { savedVariables: "VanguardDB.profiles.Default = { MenuStrip = { glyphs = true } }" });
   // The line icon's screen size and whether it is square and centered on the slot.
