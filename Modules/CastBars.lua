@@ -499,17 +499,10 @@ local function createBar(unit)
   return bar
 end
 
-local hiddenParent
-
--- Hides a default cast bar for good: no events, parented to a hidden frame.
+-- Hides a default cast bar for good, as the unit frames hide the game's: no events, parented to a hidden frame, and
+-- parked again when Edit Mode's layout apply hands it back to UIParent and shows it (UpdateShownState).
 local function hideBlizzard(name)
-  local f = _G[name]
-  if type(f) ~= "table" or not f.UnregisterAllEvents then return end
-  hiddenParent = hiddenParent or CreateFrame("Frame")
-  hiddenParent:Hide()
-  f:UnregisterAllEvents()
-  f:SetParent(hiddenParent)
-  ns.EditModeReplaced(f)
+  ns.GetModule("UnitFrames").HideBlizzard(name)
 end
 
 -- The game's overlay cast bar ---------------------------------------------------------

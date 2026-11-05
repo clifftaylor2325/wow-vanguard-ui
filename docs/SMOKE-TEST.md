@@ -3975,6 +3975,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The first click targets or loots what is under the strip; the right-click in the fight destroys the totem.
 - If it fails, paste: /vg errors, and which click did nothing.
 
+### 33.292 The game's moved cast bar stays hidden in Edit Mode (both)
+
+- Do: Before or with Vanguard's cast bars on, open Edit Mode, untick Lock to Player Frame on the game's cast bar and drag it away, tick the Cast Bar box, close Edit Mode, /reload, then open Edit Mode again.
+- Expect: Only Vanguard's cast bar handle shows; no game cast bar appears beside it.
+- If it fails, paste: /dump PlayerCastingBarFrame:GetParent():GetName() and a screenshot.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
