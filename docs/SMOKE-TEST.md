@@ -181,6 +181,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each page name ends before the page's dot and the list's edge (a name too long is cut short), never over them. After the Text size change, each page you reopen is laid out for the new size: a module's description sits wholly inside its row, a "reload" tag sits after its caption without touching it, and a switch with a wrapped caption has the switch centred on the caption. [Needs in-game check: how far a real translation runs depends on the font's real widths.]
 - If it fails, paste: a screenshot of the list and the page, the client language, and `/vg errors`.
 
+### 2.1h The fold on Raid frames
+
+- Do: type `/vg` → Raid frames. Count the rows, then press the **More settings** line, press it again, then press it open and change Power bar. Fold it, and look at the line. Reset Power bar with its accent arrow. Type "leader" in the search box and press Enter on the first hit. Then `/reload`, open Raid frames again, press Tab until the line is marked and press Enter. Repeat at Text size 130% and in a non-English client if you have one.
+- Expect: the first tab opens on seven rows (Sort by role, Groups as, Stack big raids, Hide the default raid frames, Style, Width, Height) and a **More settings** line with 15 beside it; the other rows (party and self options, the auras, the marks) appear below the line when it is pressed, the card growing with them and the page scrolling only as needed, and go again when it is pressed again. With Power bar changed and the fold shut, an accent dot sits at the right end of the line, and the Raid frames tab and page dots show too; the arrow clears all of them. The search hit opens the fold and marks Leader and assistant marks. After the reload the card is folded again; Tab reaches the line, and Enter opens it. The line's text and count stay inside the card at 130% and in a longer language. The Unit frames page no longer has a Calm HUD switch (General → Calm HUD does). No error. [Needs in game]
+- If it fails, paste: a screenshot of the page, the client language, and `/vg errors`.
+
 ### 2.1g The addons button's tooltip and the AddOns list heading
 
 - Do: point at the addons button by the minimap without clicking. Then open the game's AddOns list from the character select screen or the game menu.

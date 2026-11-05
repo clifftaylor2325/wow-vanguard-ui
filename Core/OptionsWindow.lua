@@ -389,7 +389,8 @@ local function addRow(cards, card, row)
 end
 
 -- Splits rows into cards: each header starts one; rows before the first header make an untitled card. The page's
--- reset row goes in cards.reset (the page bar holds it).
+-- reset row goes in cards.reset (the page bar holds it). A card with essential rows also gets them as card.shown and
+-- the rest as card.folded (Core/OptionsFold.lua); card.rows stays whole, for the dots.
 local function groupRows(rows)
   local cards, card = {}, nil
   for _, row in ipairs(rows) do
@@ -397,6 +398,7 @@ local function groupRows(rows)
     elseif row[1] == "header" then card = newCard(row)
     else card = card or newCard(row) addRow(cards, card, row) end
   end
+  O.Fold.Partition(cards)
   return cards
 end
 
@@ -442,15 +444,36 @@ local function placeRows(card, rows, y)
   return y
 end
 
+-- Fits a card's view to its height again after its fold opened or closed (when the card is the one shown).
+local function refitCard(card)
+  local view = pages[card.child.pageKey]
+  card:SetHeight(card.height)
+  if view and view.cards[view.tab] == card then view:Fit(card.height) end
+end
+
+-- Builds a card's folded rows under their "More settings" line (hidden unless the fold is open); returns the y below
+-- the card's rows as the fold leaves them now.
+local function placeFold(card, spec, y)
+  local line, below = O.Fold.Line(card, spec, y)
+  widgets[#widgets + 1] = line
+  line.card, line.pageY, card.refit = card, y, refitCard
+  local first = #widgets + 1
+  local bottom = placeRows(card, spec.folded, below)
+  O.Fold.Adopt(card, line, { unpack(widgets, first) }, { closed = below, open = bottom })
+  return card.height - T.SPACE.gap
+end
+
 -- One card (a raised panel) at the top of the page, its rows under its title; on a page of tabs the tab names it
--- (opts.tabbed), so it has no title of its own. Keeps its rows and height.
+-- (opts.tabbed), so it has no title of its own. Keeps its rows and height. Its essential rows come first, then the
+-- fold line over the rest.
 local function buildCard(child, spec, tabbed)
   local card = T.Panel(CreateFrame("Frame", nil, child), { raised = true })
   card:SetPoint("TOPLEFT")
   card:SetWidth(CARD_WIDTH)
   card.child, card.rows = child, spec.rows
   local top = (spec.title and not tabbed) and addCardTitle(card, spec.title) or PAD
-  card.height = placeRows(card, spec.rows, top) + T.SPACE.gap
+  local bottom = placeRows(card, spec.shown, top)
+  card.height = (spec.folded and placeFold(card, spec, bottom) or bottom) + T.SPACE.gap
   card:SetHeight(card.height)
   return card
 end
@@ -477,6 +500,7 @@ end
 
 -- Shows the card holding row w on its page (nothing changes when it shows already, or when w sits in the page bar).
 local function showCardOf(view, w)
+  O.Fold.Reveal(w)
   local index = w.card and w.card.index
   if index and index ~= view.tab then showCard(view, index) end
 end
@@ -525,6 +549,7 @@ end
 local function markTabs(view)
   for _, card in ipairs(view.cards) do
     if card.tab then card.tab.changed:SetShown(anyChanged(card.rows)) T.Tint(card.tab.changed, "accent") end
+    if card.fold then O.Fold.Refresh(card) end
   end
 end
 
@@ -612,7 +637,7 @@ local function rowsOf(page)
 end
 
 -- A page's rows for the search (Core/OptionsSearch.lua), and whether one differs from its default.
-O.RowsOf, O.RowChanged = rowsOf, rowChanged
+O.RowsOf, O.RowChanged, O.ChangedDot = rowsOf, rowChanged, changedDot
 
 -- Pages --------------------------------------------------------------------------------------
 
@@ -1225,7 +1250,7 @@ end
 -- The first row on a page whose caption, as shown or in English, has the (lower-case) text.
 local function firstRow(view, text)
   for _, w in ipairs(widgets) do
-    if w.card and w.card.child == view.child and captionHas(w.source, text) then return w end
+    if w.source and w.card.child == view.child and captionHas(w.source, text) then return w end
   end
 end
 
