@@ -4149,6 +4149,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the 창 이동 (Move frames) button on the General page is listed.
 - If it fails, paste: a screenshot of the search list.
 
+### 33.318 Housing category column stays flat under an open category (Retail)
+
+- Do: open the housing dashboard, Catalog tab, and click a category that has subcategories.
+- Expect: the category column stays flat, with no wooden strip between Back and the subcategory icons.
+- If it fails, paste: `/run local c=HousingDashboardFrame.CatalogContent.Categories print(c.SubcategoriesDivider:IsShown(), c.SubcategoriesDivider:GetAlpha())`
+
+### 33.319 Delve windows lose the game's inset edge (Retail)
+
+- Do: open the delve companion window, and stand at a delve door to open the difficulty picker.
+- Expect: one Vanguard edge round the painted scene, no thin grey-gold inner frame line inside it.
+- If it fails, paste: `/run print(DelvesCompanionConfigurationFrame.NineSlice:GetRegions():GetAlpha())`
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

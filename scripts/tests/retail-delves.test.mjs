@@ -121,8 +121,8 @@ it("retail delves: the companion window and the delve door's picker keep their p
   const addon = delves();
   addon.eval("DelvesCompanionConfigurationFrame:Show() DelvesDifficultyPickerFrame:Show()");
   for (const name of ["DelvesCompanionConfigurationFrame", "DelvesDifficultyPickerFrame"]) {
-    const state = addon.eval(`local f = ${name} return { __gameArt(f.Border), __alpha(f.Background), __alpha(f.Bg), __panel(f) }`);
-    expect(state, `${name}: the dialog border faded; the scene and the game's fill kept; the theme's edge on`).toEqual([0, 1, 1, true]);
+    const state = addon.eval(`local f = ${name} return { __gameArt(f.Border), __alpha(f.Background), __alpha(f.Bg), __panel(f), __gameArt(f.NineSlice) }`);
+    expect(state, `${name}: the dialog border and the inset edge faded; the scene and the game's fill kept; the theme's edge on`).toEqual([0, 1, 1, true, 0]);
   }
   const companion = addon.eval(`local f = DelvesCompanionConfigurationFrame
     return { __themed(f.CompanionSlots.CompanionCombatRoleSlot.Label), __themed(f.CompanionSlots.CompanionCombatRoleSlot.Value), __panel(f.CompanionConfigShowAbilitiesButton) }`);
@@ -147,5 +147,5 @@ it("retail delves: the companion's ability list is a game window in the Vanguard
 it("retail delves: the game windows switch off leaves the delve windows as the game drew them", () => {
   const addon = delves({ savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
   addon.eval("DelvesCompanionConfigurationFrame:Show() DelvesDifficultyPickerFrame:Show()");
-  expect(addon.eval("return { __gameArt(DelvesCompanionConfigurationFrame.Border), __panel(DelvesDifficultyPickerFrame) }"), "untouched").toEqual([1, false]);
+  expect(addon.eval("return { __gameArt(DelvesCompanionConfigurationFrame.Border), __panel(DelvesDifficultyPickerFrame), __gameArt(DelvesCompanionConfigurationFrame.NineSlice) }"), "untouched").toEqual([1, false, 1]);
 });

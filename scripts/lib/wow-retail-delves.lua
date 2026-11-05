@@ -66,6 +66,8 @@ local function sceneWindow(name)
   f.Bg, f.Background = art(f), art(f, "ARTWORK")
   f.Border = CreateFrame("Frame", nil, f)
   art(f.Border, "BORDER")
+  f.NineSlice = CreateFrame("Frame", nil, f)
+  art(f.NineSlice, "BORDER")
   f.CloseButton = CreateFrame("Button", nil, f)
   f:Hide()
   return f
