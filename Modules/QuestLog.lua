@@ -142,8 +142,15 @@ local function requirements(id, d)
   return d
 end
 
--- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, done (the
--- quest history line), needs and short (QP.Needs), failed }. It selects the quest in the game's log, which the
+-- Whether the game lets you abandon a quest (as its own quest map asks); a client without the call keeps
+-- offering it, and a secret answer counts as no.
+function QL.CanAbandon(id)
+  local answer = questLog("CanAbandonQuest", id)
+  return answer ~= false and not ns.IsSecret(answer)
+end
+
+-- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, abandonable,
+-- done (the quest history line), needs and short (QP.Needs), failed }. It selects the quest in the game's log, which the
 -- quest text read needs.
 function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
@@ -153,7 +160,7 @@ function QL.Details(id)
   local text = ns.CallIf(_G, "GetQuestLogQuestText")
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
-    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), done = ns.GetModule("QuestHistory").Muted(id) })
+    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), abandonable = QL.CanAbandon(id), done = ns.GetModule("QuestHistory").Muted(id) })
 end
 
 -- Actions ----------------------------------------------------------------------------------------
@@ -209,11 +216,11 @@ function QL.Abandon(d)
   ns.CallIf(_G, "StaticPopup_Show", "ABANDON_QUEST", title)
 end
 
--- The marked quests still in your log, as { id, title } in log order (a folded zone's marks count too).
+-- The marked quests still in your log that the game lets you abandon, as { id, title } in log order (a folded zone's marks count too).
 function QL.MarkedQuests()
   local out = {}
   for _, e in ipairs(allQuests()) do
-    if e.id and QL.marked[e.id] then out[#out + 1] = e end
+    if e.id and QL.marked[e.id] and QL.CanAbandon(e.id) then out[#out + 1] = e end
   end
   return out
 end

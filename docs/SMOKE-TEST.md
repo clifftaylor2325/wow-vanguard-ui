@@ -4041,6 +4041,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The whole buffs and debuffs block returns to full strength while the pointer is on it, and dims again when it leaves.
 - If it fails, paste: how many rows you had, and which row woke it.
 
+### 33.305 Abandon is greyed for a quest the game won't abandon (Retail)
+
+- Do: Pick a quest the game's own map panel shows without an Abandon option (a starting-zone or campaign quest) and open Vanguard's quest log on it.
+- Expect: Abandon is greyed, and Ctrl-click does not mark the quest.
+- If it fails, paste: /run print(C_QuestLog.CanAbandonQuest(C_QuestLog.GetSelectedQuest()))
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

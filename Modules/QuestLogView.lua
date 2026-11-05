@@ -191,10 +191,13 @@ end
 
 -- The list ----------------------------------------------------------------------------------------
 
--- A quest line was clicked: Ctrl-click marks or unmarks it for Abandon; else show the quest, and
+-- A quest line was clicked: Ctrl-click marks or unmarks it for Abandon (not one the game won't let you abandon); else show the quest, and
 -- Shift-click also tracks or untracks it.
 local function pickQuest(id)
-  if IsControlKeyDown() then QL.marked[id] = not QL.marked[id] or nil return QL.Select(QL.selected) end
+  if IsControlKeyDown() then
+    QL.marked[id] = QL.CanAbandon(id) and not QL.marked[id] or nil
+    return QL.Select(QL.selected)
+  end
   QL.Select(id)
   if IsShiftKeyDown() and QL.details then QL.ToggleTrack(QL.details) end
 end
@@ -340,7 +343,7 @@ local function renderObjectives(f, d)
   return placeObjectives(f, #shown, d.needs or "", d.done or "")
 end
 
--- The details buttons: Track or Untrack, Share only when you can.
+-- The details buttons: Track or Untrack, Share and Abandon only when you can.
 local function renderButtons(f, d)
   for _, b in pairs(f.buttons) do b:SetShown(d ~= nil) end
   if not d then return end
@@ -348,6 +351,7 @@ local function renderButtons(f, d)
   local marked = QL.MarkedCount()
   f.buttons.abandon.text:SetText(marked > 0 and ns.Format(L["Abandon {count}"], { count = marked }) or L["Abandon"])
   if d.shareable then f.buttons.share:Enable() else f.buttons.share:Disable() end
+  if d.abandonable then f.buttons.abandon:Enable() else f.buttons.abandon:Disable() end
 end
 
 -- Marks the chosen quest's line in the list.

@@ -1644,6 +1644,27 @@ it("quest log: Ctrl-click marks quests, the Abandon button counts them, and one 
   addon.click("Vanguard_Question.confirm");
   expect([addon.eval("return __gone"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "each marked quest abandoned; the marks are cleared").toEqual([[90051, 90053], "Abandon"]);
 });
+// H8-1-2: the game's own CanAbandonQuest gates Abandon, Ctrl-click marks and the count.
+it("quest log: Abandon is greyed for a quest the game won't let you abandon, and marks and counts skip it", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __selected end C_QuestLog.CanAbandonQuest = function(id) return id ~= 90052 end");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  // Whether the log's Abandon button is lit.
+  const abandonLit = () => addon.eval("return Vanguard_QuestLog.buttons.abandon:IsEnabled()");
+  logLine(addon, 2);
+  expect(abandonLit(), "the quest the game won't abandon: greyed").toBe(false);
+  logLine(addon, 1);
+  expect(abandonLit(), "an ordinary quest: lit").toBe(true);
+  addon.eval("__wfgWorld.keys.ctrl = true");
+  logLine(addon, 1); logLine(addon, 2); logLine(addon, 3);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  expect(addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()"), "Ctrl-click skipped the quest that can't go").toBe("Abandon 2");
+  addon.eval("ns.GetModule('QuestLog').marked[90052] = true");
+  logButton(addon, "abandon");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("return __gone"), "only the quests that can go are abandoned").toEqual([90051, 90053]);
+  addon.eval("C_QuestLog.CanAbandonQuest = function() return nil end");
+  expect(addon.eval("return ns.GetModule('QuestLog').CanAbandon(1)"), "an answer the client doesn't give keeps today's offer").toBe(true);
+});
 // TEST-ONLY quest history: the clock at three days past the seeded turn-ins, and a store another character wrote.
 const HISTORY_ENV = `
   time = function() return 1000000 + 3 * 86400 end
