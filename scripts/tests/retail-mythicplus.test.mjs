@@ -72,6 +72,16 @@ it("retail mythic+: outside a key the scenario block draws as before", () => {
   expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
 });
 
+// CR-5: the key block draws in the scenario block's place, so it stops the scenario countdown's tick itself.
+it("retail mythic+: a scenario countdown ticking before a key stops once the key block draws", () => {
+  const addon = retail(SEASON + STAGE + "__wfgWorld.scenario.criteria[1].duration, __wfgWorld.scenario.criteria[1].elapsed = 180, 60");
+  // Whether the scenario countdown's tick is running.
+  const ticking = () => addon.eval("return ns.ticker.vgJobs['scenario timer'] ~= nil");
+  expect(ticking(), "before the key: the timed criterion's countdown ticks").toBe(true);
+  startKey(addon);
+  expect(ticking(), "the key block in its place: that tick stops (the key's own timer ticks instead)").toBe(false);
+});
+
 it("retail mythic+: what the client hides in a key is left out, never compared", () => {
   const addon = retail(SEASON + STAGE);
   startKey(addon, "{ mapID = __wfgWorld.secret(501), level = __wfgWorld.secret(12), affixes = __wfgWorld.secret({}), deaths = __wfgWorld.secret(1), started = __wfgWorld.secret(0) }");

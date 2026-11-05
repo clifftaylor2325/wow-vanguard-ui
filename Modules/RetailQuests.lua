@@ -141,10 +141,17 @@ local function hasTimer(rows)
   return false
 end
 
+-- Redraws the tracker once a second while the block's rows hold a countdown line, and stops when they hold none.
+-- Whatever draws in the scenario block's place (Modules/RetailMythicPlus.lua's key block) passes its rows too, so
+-- a countdown started before it never keeps ticking under it.
+function RQ.TimeScenario(rows)
+  ns.Every("scenario timer", hasTimer(rows) and QT.TICK_EVERY or nil, QT.Refresh, QT.frame)
+end
+
 -- The scenario block, redrawn once a second while one of its criteria counts down (and stopped when none does).
 function RQ.Scenario()
   local rows = scenarioRows()
-  ns.Every("scenario timer", hasTimer(rows) and QT.TICK_EVERY or nil, QT.Refresh, QT.frame)
+  RQ.TimeScenario(rows)
   return rows
 end
 
