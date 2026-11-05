@@ -1012,14 +1012,16 @@ function stub.update(elapsed)
   end
 end
 
--- Moves the clock in frames of `step` seconds so throttled OnUpdate
--- drivers tick every frame.
+-- How close two clock readings may be and still count as the same moment (float sums of steps drift).
+local CLOCK_SLACK = 1e-9
+
+-- Moves the clock to now + seconds in frames of `step` seconds (a shorter last frame for the remainder), so
+-- throttled OnUpdate drivers tick every frame and the clock ends exactly where asked.
 function stub.advance(seconds, step)
   step = step or 0.25
-  local frames = math.floor(seconds / step + 0.5)
-  for _ = 1, frames do
-    stub.update(step)
-  end
+  local target = stub.now + seconds
+  while stub.now + step <= target + CLOCK_SLACK do stub.update(step) end
+  if target - stub.now > CLOCK_SLACK then stub.update(target - stub.now) end
 end
 
 -- Forgets the chat lines seen so far.
