@@ -3855,6 +3855,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The alert's panel border is a crisp one-screen-pixel line, the same thickness as other Vanguard panels, not a double-thick border.
 - If it fails, paste: the alert name, its spot scale and your UI scale.
 
+### 33.267 Marking quests closes the game's Abandon box (both)
+
+- Do: In Vanguard's quest log click Abandon on one quest and leave the game's box open, Ctrl-click two other quests and click Abandon 2.
+- Expect: The game's box closes as Vanguard's question opens; answering Vanguard's question removes only the two marked quests.
+- If it fails, paste: which quests left the log, and /vg errors.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

@@ -2127,6 +2127,14 @@ it("quest log: the question for marked quests names the items each destroys", ()
   expect(addon.eval("return Vanguard_Question.title:GetText()")).toBe("Abandon 2 quest(s)?\nTEST-ONLY Wolves (destroys TEST-ONLY Sack)\nTEST-ONLY Boars");
 });
 
+it("quest log: asking about marked quests closes the game's own Abandon box first", () => {
+  const addon = holdingItems();
+  logButton(addon, "abandon");
+  expect(shownPopups(addon), "the game's box is open for quest 7").toEqual(["ABANDON_QUEST_WITH_ITEMS: TEST-ONLY Wolves | TEST-ONLY Sack"]);
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [8] = true } QL.AbandonMarked()");
+  expect(Object.keys(shownPopups(addon)), "marking moves the abandon target, so the box is closed").toEqual([]);
+});
+
 // F-05: what the tracker's tooltip shows: its owner's title, each line, and whether it is shown.
 const trackerTip = (addon) => addon.eval(`local lines = {}
   for i, l in ipairs(GameTooltip.__lines or {}) do lines[i] = l.text end

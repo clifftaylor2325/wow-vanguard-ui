@@ -241,8 +241,15 @@ local function markedLine(e)
   return items and ns.Format(L["{quest} (destroys {items})"], { quest = title, items = items }) or title
 end
 
+-- Closes the game's own Abandon confirmations: picking the marked quests moves the quest they would abandon.
+local function closeGameAbandon()
+  ns.CallIf(_G, "StaticPopup_Hide", "ABANDON_QUEST")
+  ns.CallIf(_G, "StaticPopup_Hide", "ABANDON_QUEST_WITH_ITEMS")
+end
+
 -- Asks, naming the marked quests (and the items they destroy), then abandons them all.
 function QL.AbandonMarked()
+  closeGameAbandon()
   local list, names = QL.MarkedQuests(), {}
   for i, e in ipairs(list) do names[i] = markedLine(e) end
   if #list == 0 then return end
