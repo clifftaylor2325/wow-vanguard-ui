@@ -538,6 +538,12 @@ it("each client loads the files the TOC's game-type tags allow it, and tocFiles(
   expect(tocFiles()).toEqual(tocPaths(toc));
 });
 
+it("an edit box with no text answers an empty string from GetText, as the client does; a font string answers nil", () => {
+  const addon = loggedIn();
+  expect(addon.eval(`local box = CreateFrame("EditBox") local before = box:GetText() box:SetText("x")
+    return { before, box:GetText(), UIParent:CreateFontString():GetText() == nil }`)).toEqual(["", "x", true]);
+});
+
 it("fonts: CreateFont makes a named font object, and a button's label takes its state's font object as the client does", () => {
   const addon = loggedIn();
   // The test button's label colour now.

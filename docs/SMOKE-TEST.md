@@ -4185,6 +4185,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Both pages sit on the same flat dark inset as the search results page, with no bronze edge or painted backdrop behind the category list or the form.
 - If it fails, paste: `/run local i = LFGListFrame.CategorySelection.Inset print(i.NineSlice:GetAlpha(), i.CustomBG:GetAlpha(), i.Bg:GetAlpha())`
 
+### 33.330 Empty edit boxes, font strings and buttons answer GetText the same in game as in tests (both)
+
+- Do: Run /run local f = UIParent:CreateFontString(nil, 'OVERLAY', 'GameFontNormal') local b = CreateFrame('Button') print(CreateFrame('EditBox'):GetText() == '', f:GetText() == nil, b:GetText() == nil)
+- Expect: The first value is true; the next two say whether a font string and a button with no text answer nil (true) or an empty string (false).
+- If it fails, paste: the printed line, and which client.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
