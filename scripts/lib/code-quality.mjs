@@ -342,7 +342,8 @@ function colorProblems(file, src) {
 }
 
 // A font set with a written size: T.SetFont(...) or :SetFont(path, 12, ...).
-const FONT_SIZE = /\bT\.SetFont\s*\(|:SetFont\s*\([^,()]*,\s*\d/g;
+// The first argument may hold one call, as in fs:SetFont(T.Font(true), 14).
+const FONT_SIZE = /\bT\.SetFont\s*\(|:SetFont\s*\((?:[^,()]|\([^()]*\))*,\s*\d/g;
 const FONT_MESSAGE = "font size outside Core/Theme.lua: use a text role (T.Text(fs, role))";
 
 // Fonts sized outside the theme's text roles: [{ line, message }].

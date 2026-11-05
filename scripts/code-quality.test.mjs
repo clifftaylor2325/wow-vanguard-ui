@@ -140,9 +140,15 @@ function fontMethodSizeFails() {
   expect(problems("Modules/t.lua", src)).toMatch(/font size/);
 }
 
+// SetFont with a call for its path and a written size fails.
+function fontCallPathSizeFails() {
+  const src = "-- doc\nlocal function f(fs)\n  fs:SetFont(T.Font(true), 14, \"OUTLINE\")\nend\n";
+  expect(problems("Modules/t.lua", src)).toMatch(/font size/);
+}
+
 // Text roles and a computed size pass.
 function fontRolesPass() {
-  const src = "-- doc\nlocal function f(fs, p)\n  fs:SetFont(p, size(fs), \"\")\n  T.Text(fs, \"label\")\nend\n";
+  const src = "-- doc\nlocal function f(fs, p)\n  fs:SetFont(p, size(fs), \"\")\n  fs:SetFont(T.Font(true), T.ScaledSize(size), \"\")\n  T.Text(fs, \"label\")\nend\n";
   expect(problems("Modules/t.lua", src)).toBe("");
 }
 
@@ -322,7 +328,7 @@ describe(
 
 describe(
   "code quality",
-  // Color numbers and font sizes outside Core/Theme.lua.
+  // Color numbers outside Core/Theme.lua.
   () => {
     it("colors: a setter with numbers fails", colorSetterFails);
     it("colors: a 0-1 number table fails", colorTableFails);
@@ -330,10 +336,18 @@ describe(
     it("colors: big numbers, comments and strings pass", colorNonColorsPass);
     it("colors: a |c escape with a written color fails", colorEscapeFails);
     it("colors: the theme itself may write them", themeMayWriteColors);
+    it("colors: only addon Lua is checked", colorAddonOnly);
+  },
+);
+
+describe(
+  "code quality",
+  // Font sizes outside Core/Theme.lua.
+  () => {
     it("fonts: T.SetFont with a size fails", fontSetFontFails);
     it("fonts: SetFont with a written size fails", fontMethodSizeFails);
+    it("fonts: SetFont with a call for its path and a written size fails", fontCallPathSizeFails);
     it("fonts: roles and computed sizes pass", fontRolesPass);
-    it("colors: only addon Lua is checked", colorAddonOnly);
   },
 );
 

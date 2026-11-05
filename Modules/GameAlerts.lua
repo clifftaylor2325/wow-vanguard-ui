@@ -147,10 +147,13 @@ end
 -- Fonts and Hardcore death notices ----------------------------------------------------------
 
 -- The game's size for a raid warning line (GameFontNormalHuge); the game scales it from there as the line comes and goes.
-GA.WARNING_SIZE = 20
+GA.WARNING_SIZE = T.GAME_TEXT.warning
 -- The status texts the game draws in a font of its own: frame name -> font string key -> { the game's size, bold }.
 -- The screenshot line (ActionStatus, GameFontNormalLarge) and the frame rate readout (FramerateFrame, SystemFont_Shadow_Med1).
-GA.STATUS_TEXTS = { ActionStatus = { Text = { 16, true } }, FramerateFrame = { Label = { 12 }, FramerateText = { 12 } } }
+GA.STATUS_TEXTS = {
+  ActionStatus = { Text = { T.GAME_TEXT.status, true } },
+  FramerateFrame = { Label = { T.GAME_TEXT.small }, FramerateText = { T.GAME_TEXT.small } },
+}
 
 -- Puts the theme font on a font string at the game's size (before Text size) and weight; its colour stays as the game has it.
 -- Anything that is not a font string is left alone.
