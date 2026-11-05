@@ -214,8 +214,10 @@ it("soul fragments: a Devourer's bar under the frame counts Dark Heart stacks ag
   addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Dark Heart', spellId = 1225789, applications = 12 })");
   expect(altBar(addon).v, "on an aura change").toBe(12);
   addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Meta', spellId = 1217607 }) __wfgWorld.addAura('player', { name = 'TEST-ONLY Whispers', spellId = 1227702, applications = 20 }) __wfgWorld.collapsingStarCost = 30");
+  addon.eval("local ask = C_Spell.GetSpellMaxCumulativeAuraApplications __capAsks = 0 C_Spell.GetSpellMaxCumulativeAuraApplications = function(...) __capAsks = __capAsks + 1 return ask(...) end");
   addon.fire("UNIT_AURA", "player");
   expect([altBar(addon).v, altBar(addon).max], "in Void Metamorphosis: Silence the Whispers against the Collapsing Star's cost").toEqual([20, 30]);
+  expect(addon.eval("return __capAsks"), "and Dark Heart's cap is not asked for").toBe(0);
   addon.eval("__wfgWorld.collapsingStarCost = __wfgWorld.secret(25) __wfgWorld.units.player.auras[1].applications = __wfgWorld.secret(7)");
   addon.fire("UNIT_AURA", "player");
   expect(altBar(addon).max, "a hidden maximum falls back to the usual one").toBe(30);
@@ -231,8 +233,10 @@ it("Ebon Might: an Augmentation bar counts the seconds left against twenty, and 
   const addon = retail("EVOKER", 3, "__p.powers[19], __p.maxpowers[19] = 3, 5");
   expect(altBar(addon), "no Ebon Might").toEqual({ v: 0, max: 20, token: "ebonMight", shown: true });
   expect(fills(addon, "essence"), "Augmentation keeps its essence pips").toEqual([1, 1, 1, 0, 0]);
+  addon.eval("local set = ns.Theme.SetBarValue __themed = 0 ns.Theme.SetBarValue = function(bar, v) if bar == ns.GetModule('ClassBars').altFrame.bar then __themed = __themed + 1 end return set(bar, v) end");
   addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Ebon Might', spellId = 395296, duration = 10 })");
   expect(altBar(addon).v, "ten seconds left").toBe(10);
+  expect(addon.eval("return __themed > 0"), "filled through the theme's bar setter, as the other bars are").toBe(true);
   addon.advance(4);
   expect(altBar(addon).v, "four seconds on").toBe(6);
   addon.advance(7);

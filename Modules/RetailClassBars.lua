@@ -245,9 +245,10 @@ local function stacks(spellID)
 end
 
 -- The most soul fragments to show: the Collapsing Star's cost in Void Metamorphosis, else the Dark Heart's cap.
+-- Only the one in use is asked for, and neither is truth-tested: either may be secret.
 local function soulFragmentsMax(meta)
-  local most = C_Spell.GetSpellMaxCumulativeAuraApplications(CB.ALT_AURAS.darkHeart)
-  if meta then most = GetCollapsingStarCost() end
+  local most
+  if meta then most = GetCollapsingStarCost() else most = C_Spell.GetSpellMaxCumulativeAuraApplications(CB.ALT_AURAS.darkHeart) end
   return ns.PlainNumber(most) or CB.ALT_AURAS.fallbackMax.soulFragments
 end
 
@@ -270,7 +271,7 @@ end
 local function fillEbonMight(bar)
   local left = ebonMightLeft()
   bar:SetMinMaxValues(0, CB.ALT_AURAS.fallbackMax.ebonMight)
-  bar:SetValue(left)
+  T.SetBarValue(bar, left)
   ns.Every(CB.EBON_MIGHT_JOB, left > 0 and CB.STAGGER_PERIOD or nil, CB.UpdateAlt, CB.altFrame)
 end
 
