@@ -13,8 +13,8 @@ ns.WHATS_NEW = {
   { version = "0.9.0", groups = {
     { module = "Other", label = "Retail", items = {
       { text = "Vanguard now supports Retail 12.1.5 as well as WoW Forever, from the same download. The parts made for WoW Forever's own rules (key setup, the talent planner, spell ranks, the swing timer and a few more) stay off on Retail, with their pages and commands." },
-      { text = "On Retail, class bars show holy power, soul shards, chi, Arcane charges, essence, runes and a Brewmaster's stagger; combo points light a charged point, and the cast bar marks each stage of an empowered cast." },
-      { text = "On Retail, the quest tracker groups campaign quests and adds scenarios, delves with their tier, world quests, bonus objectives and the Traveler's Log; a Mythic+ block shows the key's timer, deaths, affixes, bosses and enemy forces." },
+      { text = "On Retail, class bars show holy power, soul shards, chi, Arcane charges, essence, runes, a Brewmaster's stagger, a Devourer's soul fragments and Ebon Might; combo points light a charged point, and the cast bar marks each stage of an empowered cast." },
+      { text = "On Retail, the quest tracker groups campaign quests and adds scenarios, delves with their tier, world quests, bonus objectives, the Traveler's Log, Endeavors, collections and achievements; a Mythic+ block shows the key's timer, deaths, affixes, bosses and enemy forces." },
       { text = "On Retail, the dungeon card shows your keystone, the affixes and the Mythic+ timer, and Situations gains Mythic+ and Delve." },
       { text = "On Retail, the group finder, Adventure Guide, Mythic+ tab, character pane, warband bank, Great Vault, expansion page, transmog, Trading Post, housing, delve and profession windows wear the Vanguard look, and an optional info strip line shows your Great Vault progress." },
     } },
@@ -27,9 +27,14 @@ ns.WHATS_NEW = {
     { module = "Other", label = "Layout", items = {
       { text = "On tall screens the bars and HUD rise as one block to sit under your character, and the Cooldown Manager's main row gets a line of its own; a row wider than its spot shrinks to fit." },
       { text = "A Loot / Trade chat tab sits level in the tab bar and shows its whole name." },
+      { text = "An in-combat mark: crossed swords and a red edge on your frame, and a red edge on your target's while it fights.", page = "unitframes", row = "In-combat mark" },
+      { text = "The Raid frames page's cards open on their main settings, with a More settings line that shows the rest." },
+      { text = "The XP bar's numbers sit in the middle of the bar, and game window buttons' labels use the theme's text colours." },
     } },
     { module = "Other", label = "Safety and tools", items = {
       { text = "Nameplates no longer draw a dark box when the game hands a plate over at a tiny scale, and the Calm HUD's hover no longer reports an error on your buff buttons." },
+      { text = "Fixes from twenty bug hunts across both clients: key setup and click casting, action bar flyouts, frames and raid marks, quests and the arrow, the reagent bag in selling, mail, auctions and the bank, profiles and setup, chat tabs, and the Retail windows." },
+      { text = "Fixes from three more bug hunts: the merchant's Stack and Your auctions' Cancel ask first when it costs gold, bag and bank search lights the tabs and bag buttons that hold a match, the quest dialog sorts reward spells into Teaches, Unlocks and Grants, nameplates show the soft-target icon, the Calm HUD brings action bars back in a vehicle, and chat links and the Retail Delve layout behave." },
       { text = "The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback)." },
     } },
   } },

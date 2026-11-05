@@ -4,6 +4,62 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
+## 0.9.0
+
+Nothing in this release has been checked in the game; see the batch checklist (issue #284) and the Retail section of [SMOKE-TEST.md](SMOKE-TEST.md) (section 34).
+
+### Retail (0.9.0)
+
+- Vanguard now supports Retail 12.1.5 as well as WoW Forever, from the same download. The parts made for WoW Forever's own rules (key setup, the talent planner, spell ranks, the swing timer, power bar sparks, readouts, the pet stable, the group board and the Legacy window) stay off on Retail, and their pages, switches and commands don't show there.
+- Class bars on Retail: holy power, soul shards (by tenths for Destruction), Windwalker chi, Arcane charges, Evoker essence and death knight runes above the player frame; a Brewmaster's stagger, a Devourer demon hunter's soul fragments and an Augmentation Evoker's Ebon Might as thin bars under it; and mana under the frame for Shadow priests, Elemental shamans and Balance druids.
+- Combo points light a charged point in its own colour, and the cast bar shows an Evoker's empowered casts with a mark at each stage.
+- The quest tracker on Retail groups campaign quests by chapter and adds blocks for scenarios and delves (with the delve tier, affixes and the reward chest), world quests, bonus objectives, the Traveler's Log, Endeavors, tracked collections and achievements, in the game's own order.
+- A Mythic+ block in the tracker while a key runs: the timer against the dungeon's limit, deaths and the time they cost, the affixes, bosses and enemy forces. The dungeon card at the door shows your keystone, the affixes and the Mythic+ timer.
+- Situations gains Mythic+ and Delve on Retail, so a layout can change inside a key or a delve.
+- Retail's game windows in the Vanguard look, each falling back to the game's own if a part is drawn another way: the group finder, PvP and Adventure Guide, the Mythic+ tab and keystone window, the character pane, the Who list, the warband bank, the Great Vault, the expansion page, transmog, the Trading Post, the housing windows, the delve companion and difficulty picker, and the profession specialisation and crafting order pages.
+- An optional Great Vault line on the info strip (off until you turn it on under Game windows) shows slots unlocked this week and when a reward waits.
+- Private aura icons on the raid tiles and beside the target frame, and Retail's spells for click casting, raid buffs, the prep card and upgrade weights (mastery, versatility and item level).
+
+### Look (0.9.0)
+
+- The painted shield is Vanguard's icon, and setup's first step and What's new open under a painted welcome banner with Vanguard's crest and name.
+- Two painted panel textures, Bedded slate and Vellum, join the Panel texture choice (General, Look); the three older ones are fainter.
+- Window ornaments are larger and show in full on every Vanguard window and every game window it skins, and the round minimap gets an ornate ring with them; High contrast shows none.
+- The AFK screen shows a painted scene for your faction behind the AFK card; the AFK scene switch (General, Look) turns it off.
+- Muted text in Vellum and ink and in Classic look is a few shades brighter, so it reads over a bright world.
+
+### Layout (0.9.0)
+
+- An in-combat mark: crossed swords and a red edge on your frame, and a red edge on your target's while it fights (on by default; the switch is on the Unit frames page).
+- The XP bar's numbers sit in the middle of the bar, and game window buttons' labels use the theme's text colours.
+- On tall screens the bars and HUD rise as one block to sit under your character, and the Cooldown Manager's main row gets a line of its own.
+- A Cooldown Manager row wider than its spot shrinks to fit it.
+- A Loot / Trade chat tab sits level in the tab bar and shows its whole name.
+- The Raid frames page's cards open on their main settings, with a More settings line under them that shows the rest; a search hit or a What's new link opens it.
+
+### Fixes (0.9.0)
+
+- Fixes from twenty bug hunts across both clients (178 in all):
+  - Keys and click casting: key setup places a ranked spell's top rank, and a change you untick stays yours.
+  - Action bars: a flyout (such as a mage's portals) opens Vanguard's own list, which closes with its bar.
+  - Frames and raid: game frames Vanguard hides stay hidden, ready check and resurrection marks clear at the right time, and the raid preview follows Scale and Reset.
+  - Quests and map: finished auto-complete quests complete from the tracker (Click to complete), the arrow points at the quest you track on the game's map, and the quest dialog keeps its scroll and passes modifier keys to the game.
+  - Town and gear: junk sales, mail presets, the auction Sell card and bank deposits include the reagent bag; selling more than 12 stacks warns that buyback keeps only the last 12; prices written as "1,500g" are understood; refundable stacks stay in your bags.
+  - Retail: class weights follow your spec's main stat, raid buff rows only show when someone in the group gives that buff, ranged weapons compare properly, Forever-only prep rows and strip blocks stay off, and more of the character pane, group finder, PvP, housing and profession windows wear the theme.
+  - Options, profiles and setup: Reset this page covers every row, a profile you pick by hand stays picked at login, Start over keeps your backup, and a profile from the other client brings this client's defaults.
+  - Chat: closing a tab drops its saved history, and a new tab says when every tab is in use.
+- Fixes from three more bug hunts (62 in all):
+  - Town and gear: the merchant's Stack button asks first for a pack the game would ask about (150g or more and not refundable), and Stack and Max only report what they really bought; Cancel on Your auctions asks first when cancelling costs gold or the cost can't be read; Relist keeps an expired auction if the sell card refuses it; a mail preset counts the items already in the mail towards its 12; sending a bag group to a full bank says how many stacks stayed; the sales ledger survives a login with the computer clock set far ahead.
+  - Bags and bank: bank side tabs and bag bar buttons light up when they hold a search match, and locked backpack slots sort last under Empty. On Retail the game's slot art is faded, and the ilvl and q search words read the item's own level and quality.
+  - Quests and map: the quest dialog sorts reward spells into Teaches, Unlocks and Grants and leaves out spells you know; the arrow stays bright and says "No distance" when the game gives only a direction; quest-start pins leave out quests already in your log; a timed scenario step shows its countdown; abandoning checks each quest is still in the log and can be abandoned; a reward's upgrade arrow waits for the item's stats; the tracker re-sorts for the area you walk into.
+  - HUD and frames: Vanguard's nameplates show the soft-target icon, and a friendly NPC the game marks with a widget keeps the game's plate; with the Calm HUD on, action bars come back in a vehicle and hovering any buff row brings it back; empty totem slots no longer catch clicks; a warlock's soul shards show from level 10; keybind mode keeps every button shown after you drag a spell; the game's event link button shows at the minimap's top-left corner while there is an event; minimap buttons an addon hid stay out of the drawer; the meter's Deaths view shows when each death happened.
+  - Chat and feedback: a web address at the start of a message, or with a subdomain, becomes a link; chat watch matches whole words in every alphabet; /vg feedback feature opens on the right kind.
+  - Retail: the Delve layout ends when you leave the delve, the battleground banner uses the theme font, the tracker's XP footer counts only quests you've taken, and the premade group pages, delve companion window, decor categories and Equipment Manager list wear the theme in full.
+
+- Nameplates no longer draw a dark box when the game hands a plate over at a tiny scale.
+- The Calm HUD's hover no longer reports an error on your buff buttons.
+- The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback).
+
 ## 0.8.0
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284).
