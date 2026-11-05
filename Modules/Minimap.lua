@@ -386,6 +386,21 @@ end
 -- no tiles) fits in the level between.
 MM.MAP_LEVEL = 2
 
+-- The map's box follows the game's own minimap switch (Toggle Minimap, the new-player tutorial): hidden with the
+-- map, back with it.
+local function syncShown()
+  MM.holder:SetShown(Minimap:IsShown())
+end
+
+-- Mirrors the map's shown state onto the box now and whenever the game shows or hides the map. A hook on the
+-- calls, not on OnShow and OnHide: with the box hidden the map never shows, so OnShow would not fire to bring it back.
+local function followMapShown()
+  for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+    hooksecurefunc(Minimap, method, ns.Guard("hook Minimap " .. method, syncShown))
+  end
+  syncShown()
+end
+
 -- Moves the minimap into the holder, square and sized, a pixel in from its bottom edge.
 local function adoptMinimap(holder, size)
   Minimap:SetParent(holder)
@@ -396,6 +411,7 @@ local function adoptMinimap(holder, size)
   applyMask()
   keepMask()
   wheelZoom()
+  followMapShown()
 end
 
 -- The game's hybrid map is a child of the minimap fixed at BACKGROUND strata, which stays there when the

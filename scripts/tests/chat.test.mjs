@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, RETAIL, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -272,6 +272,22 @@ it("minimap: the game's emptied cluster takes no mouse and its zone button is hi
   expect(addon.eval("return { MinimapCluster.__mouse, MinimapCluster.ZoneTextButton:IsShown() }"), "no mouse on the cluster, the zone button hidden (not just faded)").toEqual([false, false]);
   expect(addon.eval("return { MinimapCluster.BorderTop.__alpha, Vanguard_Minimap:IsShown() }"), "the border art is still faded, the map still shows").toEqual([0, true]);
   expect(loggedIn(UI_ENV + "MinimapCluster = nil").eval("return Vanguard_Minimap ~= nil"), "a client without the cluster still gets the map").toBe(true);
+});
+it("minimap: the box goes with the map when the game hides it (Toggle Minimap, the tutorial) and comes back with it, on both clients", () => {
+  // Whether the map's box shows.
+  const box = (addon) => addon.eval("return Vanguard_Minimap:IsShown()");
+  for (const client of ["", RETAIL]) {
+    const addon = loggedIn(client + UI_ENV);
+    addon.eval("Minimap:Hide()");
+    expect(box(addon), "the map hidden: the empty box goes").toBe(false);
+    addon.eval("Minimap:Show()");
+    expect(box(addon), "the map shown: the box is back").toBe(true);
+    addon.eval("Minimap:SetShown(false)");
+    expect(box(addon), "SetShown(false) hides it too").toBe(false);
+    addon.eval("Minimap:SetShown(true)");
+    expect(box(addon), "and SetShown(true) brings it back").toBe(true);
+  }
+  expect(loggedIn(UI_ENV + "Minimap:Hide()").eval("return Vanguard_Minimap:IsShown()"), "a map the game hid before the box was built: the box is built hidden").toBe(false);
 });
 it("minimap: the game's own coordinates line (the container's PlayerCoords) is faded, since Vanguard has its own", () => {
   const addon = loggedIn(UI_ENV + `MinimapCluster.MinimapContainer = CreateFrame("Frame", nil, MinimapCluster)
