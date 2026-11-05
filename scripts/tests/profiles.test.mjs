@@ -656,6 +656,19 @@ it("every import backs up the profile in use first, into one rolling backup prof
   expect(backupOf(`TEST-ONLY ${"x".repeat(22)}`), "a long name is cut to fit 32 characters").toBe(`TEST-ONLY ${"x".repeat(15)} backup`);
   expect(backupOf(`TEST-ONLY ${"x".repeat(15)} backup`), "and the backup is never the profile in use").toBe(`TEST-ONLY ${"x".repeat(13)} backup 2`);
 });
+it("two long profile names that are cut alike each keep their own backup", () => {
+  const addon = loggedIn();
+  const [a, b] = [`${"A".repeat(31)}1`, `${"A".repeat(31)}2`];
+  // The backup name for a profile that is the one in use, after the backup is made.
+  const backupFor = (name) => addon.eval(`VanguardDB.profiles["${name}"] = { marker = "${name}" } VanguardCharDB.profile = "${name}" return ns.BackupProfile()`);
+  const [one, two, again] = [backupFor(a), backupFor(b), backupFor(a)];
+  expect([one, two, again], "the second gets the next free name; the first profile's backup is reused").toEqual([`${"A".repeat(25)} backup`, `${"A".repeat(23)} backup 2`, `${"A".repeat(25)} backup`]);
+  expect(addon.eval(`return { VanguardDB.profiles["${one}"].marker, VanguardDB.profiles["${two}"].marker }`), "neither backup replaced the other").toEqual([a, b]);
+  addon.eval(`VanguardCharDB.profile = "Default" ns.DeleteProfile("${two}")`);
+  expect(addon.eval(`return VanguardDB.backupOf["${two}"]`), "deleting a backup frees its name").toBeNull();
+  addon.eval("VanguardDB.backupOf = 7");
+  expect(backupFor(b), "a damaged note is ignored: the plain name is free again").toBe(`${"A".repeat(25)} backup`);
+});
 it("an import's backup never overwrites a profile another character or a spec uses", () => {
   // TEST-ONLY: another character runs on "Default backup", and this character's spec 2 uses "Default backup 2".
   const sv = 'VanguardDB.profiles = { Default = {}, ["Default backup"] = { marker = "other" }, ["Default backup 2"] = { marker = "spec" } }\nVanguardDB.guard = { chars = { ["TEST-ONLY Other-Realm"] = { profile = "Default backup", stamp = 1 }, broken = "x" } }\nVanguardCharDB.specProfiles = { [2] = "Default backup 2" }';

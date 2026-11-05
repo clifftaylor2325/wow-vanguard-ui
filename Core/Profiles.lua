@@ -54,6 +54,7 @@ function ns.DeleteProfile(name)
     return false
   end
   VanguardDB.profiles[name] = nil
+  if type(VanguardDB.backupOf) == "table" then VanguardDB.backupOf[name] = nil end
   return true
 end
 
@@ -175,11 +176,19 @@ local function backupName(name, n)
   return name:sub(1, 32 - #suffix) .. suffix
 end
 
+-- True when the backup profile called candidate was made from a profile other than name (two
+-- long names cut alike): VanguardDB.backupOf keeps the source of each backup.
+local function otherBackup(candidate, name)
+  local source = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf[candidate] or nil
+  return source ~= nil and source ~= name
+end
+
 -- The rolling backup's name for a profile: "<name> backup"; never a profile in use (by this
--- character, now, after the reload or for a spec, or by another character): then "<name> backup 2", 3 and on.
+-- character, now, after the reload or for a spec, or by another character) or another profile's
+-- backup: then "<name> backup 2", 3 and on.
 function ns.BackupName(name)
   local n = 1
-  while profileInUse(backupName(name, n)) do n = n + 1 end
+  while profileInUse(backupName(name, n)) or otherBackup(backupName(name, n), name) do n = n + 1 end
   return backupName(name, n)
 end
 
@@ -187,8 +196,11 @@ end
 -- taken out, as for an export) into its one rolling backup profile, replacing the last
 -- backup. Runs before every import. Returns the backup's name.
 function ns.BackupProfile()
-  local name = ns.BackupName(ns.ProfileName())
+  local source = ns.ProfileName()
+  local name = ns.BackupName(source)
   VanguardDB.profiles[name] = ownCopy(ns.Profile())
+  VanguardDB.backupOf = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf or {}
+  VanguardDB.backupOf[name] = source
   return name
 end
 
