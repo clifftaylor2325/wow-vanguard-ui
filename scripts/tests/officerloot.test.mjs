@@ -86,6 +86,16 @@ it("a roll on a reserved item is flagged [SR], by the item the loot history says
   expect(names(addon).some((x) => /SR|Reserved/.test(x)), "off: no flags").toBe(false);
 });
 
+it("a reserve is for the same item id when both have one, and for the same name only when one side has none", () => {
+  const addon = loggedIn("", ON);
+  const OL = "ns.GetModule('OfficerLoot')";
+  say(addon, "loot add Thrall |cff0070dd|Hitem:1234:0|h[TEST-ONLY Boots]|h|r");
+  const holds = (item) => addon.eval(`return ${OL}.Reserved('Thrall', ${JSON.stringify(item)})`);
+  expect(holds("|Hitem:1234::|h[TEST-ONLY Boots]|h"), "the same id").toBe(true);
+  expect(holds("|Hitem:5678::|h[TEST-ONLY Boots]|h"), "another item with the same name").toBe(false);
+  expect(holds("TEST-ONLY Boots"), "typed by name only: the name decides").toBe(true);
+});
+
 it("a finished item is not the one rolls are flagged for, and a hidden item text is skipped", () => {
   const addon = loggedIn(ROLL_ENV + LOOT("true"), ON);
   say(addon, "loot add Thrall TEST-ONLY Boots");

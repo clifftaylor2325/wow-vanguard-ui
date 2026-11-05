@@ -44,9 +44,10 @@ function OL.Item(text)
   return { id = tonumber(text:match("item:(%d+)")), name = name, lname = ns.Lower(name) }
 end
 
--- Whether a stored reserve is for the item read by OL.Item: the same id, else the same name.
+-- Whether a stored reserve is for the item read by OL.Item: the same id when both have one, else the same name.
 function OL.Match(entry, item)
-  return (item.id ~= nil and entry.id == item.id) or (entry.lname ~= nil and ns.Lower(entry.lname) == item.lname)
+  if item.id ~= nil and entry.id ~= nil then return entry.id == item.id end
+  return entry.lname ~= nil and ns.Lower(entry.lname) == item.lname
 end
 
 -- The reserves kept on this character, a list of { player, item, id, lname }; made on first use.
