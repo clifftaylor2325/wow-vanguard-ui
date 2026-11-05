@@ -650,14 +650,16 @@ it("/vg bag deposit sends a category's stacks to the open bank, out of combat on
   addon.slash("bag deposit Water");
   addon.slash("bag deposit Nope");
   expect(chat(), "no bank open: told so; no such category: told so").toMatch(/Open the bank first[^]*No bag category called Nope/);
-  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.usedItems = nil");
+  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.usedItems = nil __wfgWorld.bankRoom = 99");
   setCombat(addon, true);
   addon.slash("bag deposit Water");
   expect(addon.eval("return __wfgWorld.usedItems"), "nothing moves in a fight").toBeNull();
   setCombat(addon, false);
   addon.slash("bag deposit Water");
   expect(addon.eval("return __wfgWorld.usedItems"), "both stacks of water go, the sword stays").toEqual([[0, 1], [0, 2]]);
-  expect(chat(), "it says how many").toMatch(/Sent 2 stack\(s\) of Water/);
+  addon.advance(1);
+  expect(chat(), "it says how many, once the game has moved them").toMatch(/Sent 2 stack\(s\) of Water/);
+  expect(chat(), "none stayed").not.toMatch(/stayed/);
 });
 
 it("search bind words: an item already bound to you counts as bind on pickup (H9-3-1)", () => {
@@ -676,8 +678,9 @@ it("/vg bag deposit sends the reagent bag's stacks too, and names the open bank 
   const addon = openFilled([8, 4, 0, 0, 0], { consumables: 2, equipment: 1 });
   addon.slash("bag add Water 159");
   addon.eval("__wfgWorld.bagSizes[5] = 1 __wfgWorld.bags[5] = { { itemID = 159 } } BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show()");
-  addon.eval("function BankFrame:GetActiveBankType() return 2 end");
+  addon.eval("function BankFrame:GetActiveBankType() return 2 end __wfgWorld.bankRoom = 99");
   addon.slash("bag deposit Water");
+  addon.advance(1);
   expect(addon.eval("return __wfgWorld.usedItems"), "the reagent bag's stack goes with the others").toEqual([[0, 1], [0, 2], [5, 1]]);
   expect(addon.eval("return __wfgWorld.usedBankTypes"), "each call says which bank is open").toEqual([2, 2, 2]);
   expect(Array.from(addon.chat()).join("\n"), "the count includes it").toMatch(/Sent 3 stack\(s\) of Water/);
@@ -687,11 +690,22 @@ it("/vg bag deposit leaves a stack the game would warn about in the bags and say
   const addon = openFilled([8, 4, 0, 0, 0], { consumables: 2, equipment: 1 });
   addon.slash("bag add Water 159");
   addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show()");
-  addon.eval("function BankUtil_IsAccountBankDepositRefundable(loc) local _, slot = loc:GetBagAndSlot() return slot == 2 end");
+  addon.eval("function BankUtil_IsAccountBankDepositRefundable(loc) local _, slot = loc:GetBagAndSlot() return slot == 2 end __wfgWorld.bankRoom = 99");
   addon.slash("bag deposit Water");
+  addon.advance(1);
   expect(addon.eval("return __wfgWorld.usedItems"), "only the stack that is not refundable goes").toEqual([[0, 1]]);
   const chat = Array.from(addon.chat()).join("\n");
   expect(chat, "the sent count is true; the kept stack is named").toMatch(/Sent 1 stack\(s\) of Water[^]*1 refundable stack\(s\) stayed in your bags/);
+});
+
+it("/vg bag deposit says which stacks stayed when the bank has no room (H19-7-2)", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { consumables: 3, equipment: 1 });
+  addon.slash("bag add Water 159");
+  addon.eval("BankFrame = CreateFrame('Frame', 'BankFrame', UIParent) BankFrame:Show() __wfgWorld.bankRoom = 1");
+  addon.slash("bag deposit Water");
+  expect(Array.from(addon.chat()).join("\n"), "nothing is said before the game has answered").not.toMatch(/Sent/);
+  addon.advance(1);
+  expect(Array.from(addon.chat()).join("\n"), "one went, two found no room").toMatch(/Sent 1 stack\(s\) of Water[^]*2 stack\(s\) stayed in your bags: the bank has no room\./);
 });
 
 // The text of the shown rows of the dropdown menu now open.

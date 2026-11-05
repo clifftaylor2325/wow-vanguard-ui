@@ -3939,6 +3939,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: No Stack/Max drawer under the quantity window, no Bought line, and the stock run buys nothing of it.
 - If it fails, paste: /dump C_MerchantFrame.GetItemInfo(<row>)
 
+### 33.277 Sending a group to a full bank says what stayed (Forever)
+
+- Do: Fill the open bank tab, put three stacks in a bag group, open the bank and choose Send <group> to the bank on the bag's Groups menu.
+- Expect: Half a second later chat says Sent 0 stack(s) of the group to the bank and 3 stack(s) stayed in your bags: the bank has no room.
+- If it fails, paste: the two chat lines.
+
 ### 33.281 Docked chat tab sizes through General's sliders (Forever)
 
 - Do: Dock a second chat tab, select it, open /vg > Chat > Chat windows and move General: width.

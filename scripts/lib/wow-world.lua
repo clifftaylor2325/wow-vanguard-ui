@@ -1306,10 +1306,12 @@ C_Container = {
     local item = it and world.items[it.itemID] or {}
     return { isQuestItem = item.quest == true, questID = item.questID, isActive = false }
   end,
-  -- Uses (sells, at a merchant) an item; recorded.
+  -- Uses (sells, at a merchant) an item; recorded. With world.bankRoom set to a number the call also
+  -- sends the stack to the bank: it leaves the slot while the bank has room (bankRoom stacks), else stays.
   UseContainerItem = function(bag, slot, _, bankType)
     world.usedItems = world.usedItems or {}
     table.insert(world.usedItems, { bag, slot })
+    if world.bankRoom and world.bankRoom > 0 then world.bankRoom = world.bankRoom - 1 world.bags[bag][slot] = nil end
     world.usedBankTypes = world.usedBankTypes or {}
     world.usedBankTypes[#world.usedBankTypes + 1] = bankType or false
   end,
