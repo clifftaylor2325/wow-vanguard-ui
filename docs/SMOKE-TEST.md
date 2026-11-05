@@ -558,6 +558,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: while the target is out of melee range the swinging rows dim (to about 40%) and come back at full strength when you step in, also right after the weapon swap; with no target they are never dim. The paladin, shaman or druid sees no rows at rest and the rows while swinging. `/vg errors` stays empty.
 - If it fails, paste: a screenshot in and out of range, your class, and `/vg errors`.
 
+### 7.2k In-combat mark on your frame and your target's
+
+- Do: out of combat, look at your player frame. Target a mob that is not fighting, then pull it, fight it to the end and stand still until combat drops. Target a mob already fighting another player. Do the same with the Versus deck on (`/vg` → Unit frames). Then, in a fight, untick "In-combat mark" on the Unit frames page, and tick it again.
+- Expect: out of combat the frames keep their usual edges and no swords show; your health text (100%) ends a little left of the frame's top-right corner. The moment the fight starts small vermilion crossed swords sit on your frame's top-right corner (clear of the pet frame above) and your frame's edge turns vermilion; your target's edge turns vermilion once it is fighting (the mob fighting the other player shows it at once). Both go when combat drops. With the deck on the edges still change, on the rounded frames. Unticking takes the marks off at once, mid-fight, and ticking brings them back. `/vg errors` stays empty. [Needs in game: that the one-pixel edge reads at 1440p, and that `UNIT_FLAGS` comes for the target as it starts and stops fighting.]
+- If it fails, paste: a screenshot of the two frames in and out of the fight, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
