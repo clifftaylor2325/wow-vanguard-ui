@@ -394,9 +394,12 @@ end
 
 -- Mirrors the map's shown state onto the box now and whenever the game shows or hides the map. A hook on the
 -- calls, not on OnShow and OnHide: with the box hidden the map never shows, so OnShow would not fire to bring it back.
+-- A client without hooksecurefunc still gets the box built to the map's state.
 local function followMapShown()
-  for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
-    hooksecurefunc(Minimap, method, ns.Guard("hook Minimap " .. method, syncShown))
+  if type(hooksecurefunc) == "function" then
+    for _, method in ipairs({ "Show", "Hide", "SetShown" }) do
+      hooksecurefunc(Minimap, method, ns.Guard("hook Minimap " .. method, syncShown))
+    end
   end
   syncShown()
 end

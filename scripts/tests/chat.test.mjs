@@ -288,6 +288,8 @@ it("minimap: the box goes with the map when the game hides it (Toggle Minimap, t
     expect(box(addon), "and SetShown(true) brings it back").toBe(true);
   }
   expect(loggedIn(UI_ENV + "Minimap:Hide()").eval("return Vanguard_Minimap:IsShown()"), "a map the game hid before the box was built: the box is built hidden").toBe(false);
+  const unhooked = loggedIn(UI_ENV + "Minimap:Hide() hooksecurefunc = nil");
+  expect(unhooked.eval("return { Vanguard_Minimap:IsShown(), #ns.errors }"), "a client without hooksecurefunc: the box is still built to the map's state, with no error").toEqual([false, 0]);
 });
 it("minimap: the game's own coordinates line (the container's PlayerCoords) is faded, since Vanguard has its own", () => {
   const addon = loggedIn(UI_ENV + `MinimapCluster.MinimapContainer = CreateFrame("Frame", nil, MinimapCluster)
