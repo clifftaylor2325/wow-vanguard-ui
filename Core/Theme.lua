@@ -1520,15 +1520,73 @@ end
 local labelBefore = setmetatable({}, { __mode = "k" })
 
 -- Gives a button its disabled look (#257): no hover or press, its label in the disabled tier; or,
--- enabled again, the label's colour from before.
+-- enabled again, the label's colour from before. A label on the theme's font objects (T.ButtonLabel) has its colours from them.
 function T.DisabledLook(button, disabled)
   local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
   if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
-  if not (fs and fs.GetTextColor) then return end
+  if not (fs and fs.GetTextColor) or T.LabelFonts(button) then return end
   if disabled then labelBefore[button] = labelBefore[button] or { token = T.ColorToken(fs), fs:GetTextColor() } return T.Color(fs, "disabled") end
   local c = labelBefore[button]
   labelBefore[button] = nil
   if c and c.token then T.Color(fs, c.token) elseif c then T.ColorRGB(fs, c[1], c[2], c[3]) end
+end
+
+-- A game push button's label (UIPanelButtonTemplate and kin, the trainer's Train): the game's font objects paint it
+-- gold at rest, white under the mouse and grey while disabled, and put those colours back each time its state changes,
+-- so a SetTextColor doesn't hold. T.ButtonLabel gives such a button copies of its font objects in the theme's tiers,
+-- so it reads like a Vanguard button beside it. Kept in a block: Lua's 200-local limit.
+do
+  -- Per game font object, Vanguard's copies (made once): { text = font, disabled = font }.
+  local copiesOf = {}
+  -- Each button given the copies (weak) -> its copies.
+  local labelled = setmetatable({}, { __mode = "k" })
+  -- How many copies exist, for their global names.
+  local made = 0
+
+  -- Paints one copy: the game's font object's face and size again, in a theme colour.
+  local function paintCopy(font, from, token)
+    font:CopyFontObject(from)
+    font:SetTextColor(T.RGB(token))
+  end
+
+  -- Vanguard's text and disabled copies of the game's font object `from`, made on first use.
+  local function copiesFor(from)
+    if copiesOf[from] then return copiesOf[from] end
+    local c = { text = CreateFont("VanguardButtonLabel" .. made + 1), disabled = CreateFont("VanguardButtonLabel" .. made + 2) }
+    made = made + 2
+    paintCopy(c.text, from, "text")
+    paintCopy(c.disabled, from, "disabled")
+    copiesOf[from] = c
+    return c
+  end
+
+  -- Gives a game button whose label has a font object the theme's copies: `text` at rest and under the mouse (hover
+  -- never recolours text), `disabled` while disabled. The label's remembered colour is dropped first, so a theme
+  -- change leaves it to the copies. A button without a label or font object, or a client without CreateFont, is left alone.
+  function T.ButtonLabel(button)
+    local fs = type(button) == "table" and button.GetFontString and button:GetFontString()
+    local from = fs and button.GetNormalFontObject and button:GetNormalFontObject()
+    if not from or labelled[button] or type(CreateFont) ~= "function" then return end
+    local c = copiesFor(from)
+    T.ColorRGB(fs, fs:GetTextColor())
+    button:SetNormalFontObject(c.text)
+    button:SetHighlightFontObject(c.text)
+    button:SetDisabledFontObject(c.disabled)
+    labelled[button] = c
+  end
+
+  -- The copies a button was given ({ text, disabled }), or nil: its label's colours are theirs.
+  function T.LabelFonts(button)
+    return labelled[button]
+  end
+
+  -- Paints every copy again after a theme change (a new font, Text size, variant or accent).
+  function T.RepaintLabelFonts()
+    for from, c in pairs(copiesOf) do
+      paintCopy(c.text, from, "text")
+      paintCopy(c.disabled, from, "disabled")
+    end
+  end
 end
 
 -- A button's press and disabled looks (#257): the hidden overlay (T.FillParts, so it follows rounded
@@ -2956,6 +3014,7 @@ function T.Refresh()
   T.RefreshText()
   refreshTints()
   applyFontObjects()
+  T.RepaintLabelFonts()
   repaintArt()
   reSnap()
   local count = #listeners

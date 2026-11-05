@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { INSIDES_LUA, WINDOWS_ENV, loggedIn, setCombat, windowState } from "./helpers.mjs";
+import { INSIDES_LUA, WINDOWS_ENV, isTok, loggedIn, setCombat, windowState } from "./helpers.mjs";
 
 const OFF = "VanguardDB.profiles = { Default = { Windows = { town = false } } }";
 
@@ -238,6 +238,43 @@ it("S2.2 the trainer: window, bars, texts and rows in the theme; skill rows foll
   expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "and when the mouse enters the row").toBe(true);
   addon.eval(`${f}:Hide() ${f}:Show()`);
   expect(windowState(addon, f).painted, "a second show paints nothing more").toBe(first.painted);
+});
+
+// TEST-ONLY: the game's Train button as MagicButtonTemplate makes it: a label on gold and grey font objects, disabled
+// until a skill the player can learn is picked.
+const TRAIN_FONTS = `
+  local gold = CreateFont("TEST_GameFontNormal") gold:SetFont("Fonts/FRIZQT__.TTF", 12, "") gold:SetTextColor(1, 0.82, 0)
+  local grey = CreateFont("TEST_GameFontDisable") grey:CopyFontObject(gold) grey:SetTextColor(0.5, 0.5, 0.5)
+  local b = ClassTrainerTrainButton b:SetFontString(b:CreateFontString())
+  b:SetNormalFontObject(gold) b:SetHighlightFontObject(gold) b:SetDisabledFontObject(grey) b:Disable()
+`;
+
+it("S2.2 the trainer: Train's label is the theme's text colour when it can be used, like Train all's, and grey when not", () => {
+  const addon = loggedIn(TRAINER_ENV + "__trainer()" + TRAIN_FONTS);
+  addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  addon.eval("ClassTrainerFrame:Show()");
+  // Whether the Train label's colour is the theme token `name`.
+  const labelIs = (name) => isTok(addon, addon.eval("return ClassTrainerTrainButton:GetFontString().__textColor"), name);
+  expect(labelIs("disabled"), "nothing picked: the disabled tier").toBe(true);
+  addon.eval("ClassTrainerTrainButton:Enable()");
+  expect(labelIs("text"), "a skill it can learn picked: the text tier, not the game's gold").toBe(true);
+  expect(addon.eval("local b = ClassTrainerTrainButton return { b:GetHighlightFontObject() == b:GetNormalFontObject(), b:GetNormalFontObject():GetFont() }"), "the same under the mouse, in the game's own face and size").toEqual([true, "Fonts/FRIZQT__.TTF", 12, ""]);
+  addon.eval("ClassTrainerTrainButton:Disable()");
+  expect(labelIs("disabled"), "greyed out again").toBe(true);
+  addon.eval('TEST_GameFontNormal:SetFont("Fonts/NEW.TTF", 14, "") ClassTrainerTrainButton:Enable() ns.Theme.Refresh()');
+  expect([labelIs("text"), addon.eval("return { ClassTrainerTrainButton:GetNormalFontObject():GetFont() }")], "a theme change keeps the text tier and copies the game's font again").toEqual([true, ["Fonts/NEW.TTF", 14, ""]]);
+});
+
+it("S2.2 the trainer: Train keeps the game's label on a client without CreateFont, and a second skin changes nothing", () => {
+  const old = loggedIn(TRAINER_ENV + "__trainer()" + TRAIN_FONTS + "CreateFont = nil");
+  old.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  old.eval("ClassTrainerFrame:Show()");
+  expect(old.eval("return ClassTrainerTrainButton:GetNormalFontObject() == TEST_GameFontNormal and ns.Theme.LabelFonts(ClassTrainerTrainButton) == nil"), "no copies").toBe(true);
+  const addon = loggedIn(TRAINER_ENV + "__trainer()" + TRAIN_FONTS);
+  addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
+  addon.eval('ClassTrainerFrame:Show() __first = ClassTrainerTrainButton:GetNormalFontObject() ns.Theme.ButtonLabel(ClassTrainerTrainButton)');
+  addon.eval('local b = CreateFrame("Button", "TEST_Other", UIParent) b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(TEST_GameFontNormal) ns.Theme.ButtonLabel(b) ns.Theme.ButtonLabel(CreateFrame("Button")) ns.Theme.ButtonLabel(nil)');
+  expect(addon.eval("return { ClassTrainerTrainButton:GetNormalFontObject() == __first, TEST_Other:GetNormalFontObject() == __first }"), "skinning again keeps the copies; a button on the same game font shares them; one without a label is left").toEqual([true, true]);
 });
 
 it("S2.2 the trainer: group off leaves it the game's; a trainer missing parts loads cleanly", () => {

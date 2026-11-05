@@ -461,10 +461,19 @@ function methods:RegisterForClicks(...) self.__clicks = { ... } end
 -- Buttons: whether they're enabled, recorded.
 function methods:IsEnabled() return self.__disabled ~= true end
 
+-- Gives a button's label the face and colour of its state's font object (disabled, else
+-- normal), as the client does when the font object or the state changes; no font object, no change.
+local function stateFont(button)
+  local font = button.__disabled and button.__disabledFont or button.__normalFont
+  local fs = button.__fontString
+  if font and fs then fs.__font, fs.__textColor = font.__font, font.__textColor end
+end
+
 -- Enables a button, running OnEnable if it was disabled, as the client does.
 function methods:Enable()
   local was = self.__disabled
   self.__disabled = false
+  stateFont(self)
   if was and self.__scripts.OnEnable then self.__scripts.OnEnable(self) end
 end
 
@@ -472,13 +481,24 @@ end
 function methods:Disable()
   local was = self.__disabled
   self.__disabled = true
+  stateFont(self)
   if not was and self.__scripts.OnDisable then self.__scripts.OnDisable(self) end
 end
 
--- A button's normal font object: the one last set (nil until one is).
-function methods:SetNormalFontObject(font) self.__normalFont = font end
+-- A button's font object per state (nil until one is set): the normal and disabled ones go on its label at once.
+function methods:SetNormalFontObject(font) self.__normalFont = font stateFont(self) end
+-- The disabled state's font object, put on the label while the button is disabled.
+function methods:SetDisabledFontObject(font) self.__disabledFont = font stateFont(self) end
+-- The mouse-over font object: only recorded (the stub has no mouse-over state).
+function methods:SetHighlightFontObject(font) self.__highlightFont = font end
 -- The font object SetNormalFontObject gave.
 function methods:GetNormalFontObject() return self.__normalFont end
+-- The font object SetDisabledFontObject gave.
+function methods:GetDisabledFontObject() return self.__disabledFont end
+-- The font object SetHighlightFontObject gave.
+function methods:GetHighlightFontObject() return self.__highlightFont end
+-- A font object takes another's face, colour and shadow.
+function methods:CopyFontObject(src) self.__font, self.__textColor, self.__shadowColor = src.__font, src.__textColor, src.__shadowColor end
 
 -- Runs fn after a script's current handler, as HookScript does. Like the client, a frame it keeps from
 -- addons (one whose IsForbidden says so), or a script whose handler it keeps (one in __forbiddenScripts),
@@ -794,6 +814,15 @@ local function checkTemplates(template, kind)
     backdrop = checkTemplate(t, kind) or backdrop
   end
   return backdrop
+end
+
+-- A font object (the client's CreateFont): a face and a colour, as a font string has. Not a region,
+-- so it stays out of stub.frames; named globally like a frame.
+function CreateFont(name)
+  local font = widgetState("Font", name)
+  setmetatable(font, stub.metaFor(font))
+  if name then _G[name] = font end
+  return font
 end
 
 -- Unknown frame types and templates are errors in game, so they are here.

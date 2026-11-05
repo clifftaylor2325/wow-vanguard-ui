@@ -516,3 +516,17 @@ it("each client loads the files the TOC's game-type tags allow it, and tocFiles(
   expect(tocFiles("retail")).toEqual(clientPaths(toc, "retail"));
   expect(tocFiles()).toEqual(tocPaths(toc));
 });
+
+it("fonts: CreateFont makes a named font object, and a button's label takes its state's font object as the client does", () => {
+  const addon = loggedIn();
+  // The test button's label colour now.
+  const label = () => addon.eval("return TEST_FontButton:GetFontString().__textColor");
+  addon.eval(`local gold = CreateFont("TEST_Gold") gold:SetFont("F.TTF", 12, "") gold:SetTextColor(1, 0.8, 0)
+    local grey = CreateFont("TEST_Grey") grey:CopyFontObject(gold) grey:SetTextColor(0.5, 0.5, 0.5)
+    local b = CreateFrame("Button", "TEST_FontButton", UIParent) b:SetFontString(b:CreateFontString()) b:SetDisabledFontObject(grey) b:SetNormalFontObject(gold)`);
+  expect([label(), addon.eval("return { TEST_Grey:GetFont() }")], "the normal font's colour on the label; a copy keeps the face").toEqual([[1, 0.8, 0, 1], ["F.TTF", 12, ""]]);
+  addon.eval("TEST_FontButton:Disable()");
+  expect([label(), addon.eval("return TEST_FontButton:GetDisabledFontObject() == TEST_Grey")], "disabled: the disabled font's colour").toEqual([[0.5, 0.5, 0.5, 1], true]);
+  addon.eval("TEST_FontButton:Enable()");
+  expect([label(), addon.eval("local found = false for _, w in ipairs(__wfgStub.frames) do found = found or w == TEST_Gold end return found")], "enabled: the normal one again; a font object is no frame").toEqual([[1, 0.8, 0, 1], false]);
+});

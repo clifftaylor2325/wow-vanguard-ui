@@ -93,7 +93,12 @@ local BUTTON = {
   "SetMotionScriptsWhileDisabled",
   "SetFontString", "SetHighlightTexture", "SetNormalFontObject",
   "SetNormalTexture", "SetPushedTexture", "SetText", "UnlockHighlight",
+  -- The label's font object per state (SimpleButtonAPIDocumentation, forever branch of wow-ui-source).
+  "GetDisabledFontObject", "GetHighlightFontObject", "SetDisabledFontObject", "SetHighlightFontObject",
 }
+
+-- A font object made by CreateFont (SimpleFontAPIDocumentation, forever branch of wow-ui-source).
+local FONT_OBJECT = { "CopyFontObject" }
 
 local SCROLL_FRAME = {
   "GetHorizontalScroll", "GetHorizontalScrollRange", "GetScrollChild",
@@ -200,6 +205,7 @@ return {
     EditBox = set(REGION, FRAME, FONT, EDIT_BOX),
     Texture = set(REGION, LAYERED, TEXTURE),
     FontString = set(REGION, LAYERED, FONT, FONT_STRING),
+    Font = set(FONT, FONT_OBJECT),
   },
   scripts = {
     Frame = set(FRAME_SCRIPTS),
