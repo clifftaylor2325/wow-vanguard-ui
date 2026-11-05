@@ -217,3 +217,15 @@ it("home: the Town and gear page has a button that asks first, naming what would
   addon.eval("time = function() return " + BETA_DAY + " end");
   expect(press(), "before launch the button is off").toBe(false);
 });
+
+it("home: on Retail, which had no beta, the notice, /vg launch, /vg help and the Town page's beta section stay out", () => {
+  const addon = loggedIn("", { client: RETAIL_CLIENT, savedVariables: SAVED + "time = function() return " + LIVE_DAY + " end" });
+  addon.fire("PLAYER_LOGIN");
+  expect([chatHas(addon, /Still saved from the beta/), addon.eval("return VanguardDB.launchNoticed")], "no notice, and it stays unmarked").toEqual([false, null]);
+  addon.slash("launch");
+  expect(chatHas(addon, /Unknown command/), "/vg launch is unknown").toBe(true);
+  addon.slash("help");
+  expect(chatHas(addon, /\/vg launch/), "and help leaves it out").toBe(false);
+  expect(addon.eval(`local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "town" then page = p end end
+    for _, row in ipairs(page.rows()) do if row[2] == "Data from the beta" then return true end end return false`), "the Town page has no beta section").toBe(false);
+});

@@ -108,8 +108,12 @@ local WORD_MODULES = {
   talents = "TalentPlanner", lfg = "GroupBoard", questdata = "QuestGuide",
 }
 
+-- The /vg words that are no module's and only WoW Forever has (the beta data went with its launch).
+local FOREVER_WORDS = { launch = true }
+
 -- Whether /vg <word> is a command on this client.
 local function wordHere(word)
+  if FOREVER_WORDS[word] then return ns.IsForever() end
   local name = WORD_MODULES[word]
   return name == nil or ns.GetModule(name) ~= nil
 end
