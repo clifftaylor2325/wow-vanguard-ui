@@ -99,6 +99,18 @@ it("layout: anchors, sizes and scale resolve to screen rects as the client lays 
   expect(addon.frame("TESTONLY_B").rect, "the inspector gives the same rect in pixels").toMatchObject({ left: 870, bottom: 500, width: 180, height: 80, top: 580, right: 1050 });
 });
 
+it("layout: text hung on an empty font string is laid out; a frame hung on a 0 x 0 frame is not", () => {
+  const addon = createAddon();
+  addon.eval(`
+    __row = CreateFrame("Frame", "TESTONLY_Row", UIParent) __row:SetSize(200, 16) __row:SetPoint("CENTER")
+    __count = __row:CreateFontString(nil, "OVERLAY", "GameFontNormal") __count:SetPoint("RIGHT", __row, "RIGHT") __count:SetText("")
+    __text = __row:CreateFontString(nil, "OVERLAY", "GameFontNormal") __text:SetPoint("LEFT", __row, "LEFT") __text:SetPoint("RIGHT", __count, "LEFT", -4, 0) __text:SetText("Speak with the quartermaster")
+    __empty = CreateFrame("Frame", "TESTONLY_Empty", UIParent) __empty:SetPoint("CENTER")
+    __hung = CreateFrame("Frame", "TESTONLY_Hung", UIParent) __hung:SetSize(10, 10) __hung:SetPoint("RIGHT", __empty, "LEFT")`);
+  expect(addon.eval("return { __count:IsRectValid(), __text:IsRectValid(), __text:GetRight() }"), "an empty count has a rect at its anchor, and the objective text hung on it ends 4 short of it").toEqual([true, true, 1060 - 4]);
+  expect(addon.eval("return { __empty:IsRectValid(), __hung:IsRectValid() }"), "a 0 x 0 frame has no rect, and nothing hung on it gets one").toEqual([false, false]);
+});
+
 it("the world: a unit change fires the client's events at frames registered for them", () => {
   const addon = loggedIn();
   addon.eval(`__got = {} local f = CreateFrame("Frame") f:RegisterUnitEvent("UNIT_HEALTH", "target") f:RegisterEvent("PLAYER_TARGET_CHANGED")

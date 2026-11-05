@@ -130,7 +130,9 @@ returns what does not fit, `{ kind, text, place, other, size }` each (`text` in 
   something) in the same window and scroll view, other than its own.
 
 Text faded out, hidden, or outside a frame that clips its children is skipped; a scroll frame's content counts
-wherever it sits. `scripts/tests/textfit.test.mjs` is the suite's check; a new window goes in it as a case.
+wherever it sits. Only drawn text is audited, laid out as the client lays it out: a frame with no width or height has no rect
+and nothing anchored to it is drawn, but a font string has one even when empty, so text hung on an empty count
+or label is audited too. `scripts/tests/textfit.test.mjs` is the suite's check; a new window goes in it as a case.
 
 ### Timing and profiling
 

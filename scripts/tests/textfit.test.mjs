@@ -270,3 +270,16 @@ it("text fits: a long Keep-stocked name on the Instance prep card ends in an ell
   const kinds = addon.textFit("Vanguard_PrepCard").map((finding) => finding.kind);
   expect(kinds.filter((kind) => kind === "overlap" || kind === "spill"), "never under the count or out of the card (a cut is fine)").toEqual([]);
 });
+
+it("text fits: the quest tracker's objective lines are audited with or without a count (H8-9-R1)", () => {
+  const addon = fitClient();
+  addon.eval(`__wfgWorld.addQuest({ questID = 90051, title = "TEST-ONLY Wolves", level = 8, watched = true, objectives = {
+    { text = "TEST-ONLY Speak with the very long named quartermaster of the northern watch garrison", finished = false },
+    { text = "3/8 TEST-ONLY Wolves slain in the very long named forest of the northern watch garrison", finished = false } } })
+    ns.GetModule("QuestTracker").Refresh()`);
+  addon.update(0);
+  const cut = addon.textFit("Vanguard_QuestTrackerFrame").filter((f) => f.kind === "cut").map((f) => f.text);
+  expect(cut, "a long objective is reported cut, whether its count is empty or not").toEqual(expect.arrayContaining([
+    "TEST-ONLY Speak with the very long named quartermaster of the northern watch garrison",
+    "TEST-ONLY Wolves slain in the very long named forest of the northern watch garrison"]));
+});
