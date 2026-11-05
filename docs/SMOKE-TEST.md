@@ -4131,6 +4131,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no empty square for it, and the "..." button's tooltip count leaves it out; untick it and it takes the next cell.
 - If it fails, paste: `/run for _,c in ipairs({Vanguard_MinimapDrawer:GetChildren()}) do print(c:GetName(), c:IsShown()) end`
 
+### 33.315 Event link button on the minimap's corner (Forever)
+
+- Do: `/run MinimapBackdrop.ExternalEventURLButton:Show()` then hover the map's top-left corner, under the dungeon difficulty icon.
+- Expect: the event button shows there, small, with its tooltip; nothing invisible takes clicks elsewhere on the map.
+- If it fails, paste: `/run local b=MinimapBackdrop.ExternalEventURLButton print(b:GetParent():GetName(), b:GetEffectiveAlpha(), b:GetPoint())`
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

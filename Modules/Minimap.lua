@@ -34,6 +34,9 @@ MM.LEFTOVERS = {
   { paths = { { "MinimapCluster", "Tracking" } }, point = "BOTTOMLEFT", x = 3, y = 3, slot = "MinimapTracking", angle = 225 },
   { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" } }, point = "TOPRIGHT", x = -2, y = -2, angle = 45 },
   { paths = { { "MinimapCluster", "InstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2, angle = 135 },
+  -- WoW Forever's event link (shown only while the game has one), smaller, under the dungeon difficulty. It lives
+  -- inside the faded MinimapBackdrop, where it would stay clickable but unseen.
+  { paths = { { "MinimapBackdrop", "ExternalEventURLButton" } }, point = "TOPLEFT", x = 2, y = -24, scale = 0.6, angle = 160 },
   { paths = { { "AddonCompartmentFrame" } }, point = "BOTTOMRIGHT", x = -3, y = 3, slot = "MinimapAddons", angle = 315 },
   -- The group finder eye (shown while you're queued), smaller, just above the compartment.
   { paths = { { "QueueStatusButton" } }, point = "BOTTOMRIGHT", x = -2, y = 42, scale = 0.6, angle = 345 },

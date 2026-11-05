@@ -1227,6 +1227,13 @@ it("minimap drawer: buttons in name order, the toggle counts them, Escape closes
   addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnClick(t)");
   expect(addon.eval("return Vanguard_MinimapDrawer:IsShown()"), "the toggle shuts it again").toBe(false);
 });
+it("minimap: the game's event link button leaves the faded backdrop for the map's top-left corner", () => {
+  const addon = loggedIn(UI_ENV + `MinimapBackdrop = CreateFrame("Frame", "MinimapBackdrop", UIParent)
+    MinimapBackdrop.ExternalEventURLButton = CreateFrame("Button", "TestOnlyEventLink", MinimapBackdrop)`);
+  expect(addon.eval("local f = TestOnlyEventLink local p = f.__points.TOPLEFT return { f:GetParent() == ns.GetModule('Minimap').overlay, p.x, p.y, f:GetScale(), MinimapBackdrop.__alpha }"),
+    "small on the top-left corner of the map's overlay, out of the faded backdrop").toEqual([true, 2, -24, 0.6, 0]);
+  expect(loggedIn(UI_ENV).eval("return Vanguard_Minimap ~= nil"), "a client without the button builds the map as before").toBe(true);
+});
 it("minimap drawer: a button its addon has hidden takes no cell and is not counted, and comes back when shown", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV + 'CreateFrame("Button", "LibDBIcon10_TestOnlyHidden", Minimap):Hide()');
   // The drawer's width and the toggle's tooltip count.
