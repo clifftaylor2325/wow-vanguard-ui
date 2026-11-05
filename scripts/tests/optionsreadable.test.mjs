@@ -1,6 +1,7 @@
 // optionsreadable: the options window's reload tags, page reset, grouped Modules page and settings search (real Lua in the TEST-ONLY headless client).
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, loggedIn } from "./helpers.mjs";
 
 // The row widget with this caption on the open page, its tab shown, as Lua source: `w`.
@@ -156,3 +157,17 @@ it("options: picking a camera zoom on the Game windows page sets it and the game
   const out = addon.eval(`return { camera = ns.GetModule("Quiet").settings.camera, cvar = tostring(GetCVar("cameraDistanceMaxZoomFactor")) }`);
   expect([clicked, out]).toEqual([true, { camera: 1.5, cvar: "1.5" }]);
 });
+
+// The Unit frames page's Reset this page on one client: Health as and Show levels, set away from the client's start, come back.
+for (const [client, clientOption, format, level] of [["Forever", undefined, "percent", true], ["Retail", RETAIL_CLIENT, "value", false]]) {
+  it(`options: Reset this page puts back Health as and Show levels on the Unit frames page (${client})`, () => {
+    const addon = loggedIn(CLICK_LUA, { client: clientOption });
+    addon.eval('ns.Options.Show("unitframes")');
+    // The two saved values as a list.
+    const read = () => addon.eval('local s = ns.Settings("UnitFrames") return { s.healthFormat, s.showLevel }');
+    expect(read(), "a fresh profile starts the client's way").toEqual([format, level]);
+    addon.eval(`local s = ns.Settings("UnitFrames") s.healthFormat = "${format === "percent" ? "value" : "percent"}" s.showLevel = ${!level}`);
+    addon.eval('ns.Options.Show("unitframes") __click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+    expect(read(), "Reset puts the client's start back").toEqual([format, level]);
+  });
+}

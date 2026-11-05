@@ -14,7 +14,9 @@ local L = ns.L
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true,
+  -- WoW Forever players read levels and health percent on every frame (as its own UI does).
+  defaults = { showLevel = ns.ClientData({ forever = true, retail = false }),
+    healthFormat = ns.ClientData({ forever = "percent", retail = "value" }), hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true,
     calmFrames = "dim", calmBars = "dim", calmAuras = "dim", calmStrips = "dim", calmXP = "hide", calmMeter = "dim", calmMinimap = "leave" },
 })
 
@@ -781,17 +783,9 @@ function UF.ApplyCalm()
   V.ApplyCalm()
 end
 
--- WoW Forever players read levels and health percent on every frame (as its
--- own UI does), so a profile that hasn't chosen yet starts that way there.
-local function clientDefaults(settings)
-  if settings.showLevel == nil then settings.showLevel = ns.IsForever() end
-  if settings.healthFormat == nil then settings.healthFormat = ns.IsForever() and "percent" or "value" end
-end
-
 -- Module entry point (Core/Modules.lua): build once out of combat, then listen.
 function UF.Enable(settings)
   UF.settings = settings
-  clientDefaults(settings)
   ns.OutOfCombat(function() build(settings) end)
   for event in pairs(GLOBAL_EVENTS) do
     ns.On(event, onGlobalEvent)
