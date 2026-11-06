@@ -115,7 +115,10 @@ it("step 2: a key pressed over the keyboard lights up and says what it will do, 
   expect(addon.eval(`return ${KEY}:IsKeyboardEnabled()`), "the keyboard reads keys while the pointer is over it").toBe(true);
   addon.key(KEY, "F");
   expect(preview(addon).result).toBe("F: Shield Bash added to your bar");
-  expect(cap(addon, "F").color, "the key pressed is lit").toBe("accent");
+  expect(cap(addon, "F").color, "the key pressed is lit, in accentText").toBe("accentText");
+  addon.key(KEY, "Q");
+  expect(cap(addon, "Q").color, "a lit free key takes accentText, not the fill accent").toBe("accentText");
+  addon.key(KEY, "F");
   addon.keys({ shift: true });
   addon.key(KEY, "W");
   expect([preview(addon).result, cap(addon, "W").chord], "Shift-W shows the Shift tab").toEqual(["SHIFT-W: Battle Shout added to your bar", "SHIFT-W"]);

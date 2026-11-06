@@ -294,7 +294,7 @@ end
 local function paintAs(cap, icon, grey, color, alpha)
   KV.SetCapIcon(cap, icon)
   cap.icon:SetDesaturated(grey)
-  T.Color(cap.label, cap.chord == state.lit and "accent" or color)
+  T.Color(cap.label, cap.chord == state.lit and "accentText" or color)
   cap:SetAlpha(alpha)
 end
 
