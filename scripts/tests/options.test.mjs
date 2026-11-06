@@ -764,6 +764,16 @@ it("options: Enter on a row that was disabled after it took the keyboard does no
   expect(addon.eval("return __pressed"), "once it is enabled again, Enter presses it").toBe(1);
 });
 
+it("H24-2-1 options: a tab clicked with the mouse lets go of the keyboard row on the tab it hides, so Enter does not flip it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const second = `local card for _, w in ipairs(__wfgStub.frames) do if w.foldRows and w:IsShown() then card = w end end
+    local tab for _, x in ipairs(__wfgStub.frames) do if x.tab and x ~= card and x.child == card.child and not x:IsShown() then tab = tab or x end end`;
+  addon.eval(`ns.Options.Show("raid") Vanguard_Options.__scripts.OnKeyDown(Vanguard_Options, "TAB") __row = Vanguard_Options.focusRow`);
+  addon.eval(`${second} tab.tab.__scripts.OnClick(tab.tab, "LeftButton")`);
+  addon.key("Vanguard_Options", "ENTER");
+  expect(addon.eval("return { __row:IsVisible(), ns.Options.RowChanged(__row.source), Vanguard_Options.focusRow == nil }"), "hidden, not flipped, let go").toEqual([false, false, true]);
+});
+
 // The focus ring on a row: { shown, the ring's colour, its and the gap's top-left x } (false if it never had one).
 const ringOf = (addon, row) => addon.eval(`local f = ns.Theme.FocusParts(${row})
   if not f then return false end
