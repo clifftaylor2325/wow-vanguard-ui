@@ -148,6 +148,9 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   expect(addon.eval(`local n, err = ${CC}.Import(ns.Serialize.Encode("profile", { a = 1 })) return err`)).toBe("not a click-casting string");
   const odd = addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = { { key = 1 }, { key = "BUTTON4", action = "target" } } })`);
   expect(addon.eval(`return ${CC}.Import(${JSON.stringify(odd)})`), "malformed entries are skipped").toBe(1);
+  const spoof = addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = { { key = "BUTTON4", action = "macro", value = "|cffff0000Reset|r" }, { key = "BUTTON5", action = "spell", value = "|Hitem:1|h[x]|h" } } })`);
+  addon.eval(`${CC}.Import(${JSON.stringify(spoof)})`);
+  expect(addon.eval(`return { ${CC}.ActionText(${CC}.Binding("BUTTON4")), ${CC}.ActionText(${CC}.Binding("BUTTON5")), ${CC}.Binding("BUTTON4").value }`), "H28-3-1: an imported string's | shows as typed, never as a colour or link; the macro itself is kept").toEqual(["Macro: ||cffff0000Reset||r", "||Hitem:1||h[x]||h", "|cffff0000Reset|r"]);
   addon.eval(`${CC}.ApplyLayout(${CS}.Layout())`);
   expect(bindings(addon)).toMatchObject({ BUTTON1: "target:nil:nil:nil", BUTTON2: "menu:nil:nil:nil", "alt-BUTTON2": "spell:Resurrection:2006:nil" });
   expect(bindings(addon).BUTTON3.startsWith("spell:Flash Heal:"), "the layout's spells bind by name").toBe(true);

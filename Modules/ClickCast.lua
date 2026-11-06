@@ -396,11 +396,14 @@ function CC.KeyText(key)
   return ns.Format(L["{key} (hover)"], { key = CC.KeyName(key) })
 end
 
--- What a binding does: the spell name (with its rank when one was picked), "Macro: ...", "Target", "Unit menu"...
+-- What a binding does, for display: the spell name (with its rank when one was picked), "Macro: ...", "Target",
+-- "Unit menu"... A spell name or macro text can come from an imported string, so its | shows as typed and never
+-- as a colour, icon or link escape (ns.Literal).
 function CC.ActionText(b)
-  if b.action == "spell" and b.rank then return ns.Format(L["{spell} (Rank {rank})"], { spell = b.value, rank = b.rank }) end
-  if b.action == "spell" then return b.value end
-  if b.action == "macro" then return ns.Format(L["Macro: {text}"], { text = b.value }) end
+  local value = type(b.value) == "string" and ns.Literal(b.value) or b.value
+  if b.action == "spell" and b.rank then return ns.Format(L["{spell} (Rank {rank})"], { spell = value, rank = b.rank }) end
+  if b.action == "spell" then return value end
+  if b.action == "macro" then return ns.Format(L["Macro: {text}"], { text = value }) end
   return ACTION_NAMES[b.action] or ACTION_NAMES.menu
 end
 
