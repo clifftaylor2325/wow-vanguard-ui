@@ -148,3 +148,12 @@ it("on a German client the class buffs are watched and listed under the client's
   expect(addon.eval('local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "Machtwort: Seelenstärke" then n = n + 1 end end return n'),
     "two ids the client names alike make one row").toBe(1);
 });
+
+it("H28-2-1: a player the client can't see (far away, another phase) gets no missing-buff mark until it can", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + "__unseen = { raid1 = true } UnitIsVisible = function(unit) return not __unseen[unit] end");
+  addon.eval('__spawn(1, "raid1")');
+  expect(healing(addon, 1).missing, "out of sight, without the buff: no mark").toBe(false);
+  addon.eval("__unseen.raid1 = nil");
+  addon.eval(`__wfgStub.fire("UNIT_AURA", "raid1", { isFullUpdate = true })`);
+  expect(healing(addon, 1).missing, "in sight again, its auras sent: the mark shows").toBe("TEST-ONLY-ICON-Arcane Intellect");
+});

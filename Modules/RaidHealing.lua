@@ -239,11 +239,18 @@ local function hasWatched(unit, w)
   return false
 end
 
+-- Whether the client plainly says it can't see the unit (far away, another phase): it sends no
+-- auras for one, so an empty list there proves nothing. A client without the call, or a hidden answer, counts as seen.
+local function outOfSight(unit)
+  local seen = ns.CallIf(_G, "UnitIsVisible", unit)
+  return not ns.IsSecret(seen) and seen == false
+end
+
 -- The first watched buff you know, if the unit has none of the watched buffs; else nil.
--- While the client hides auras a lookup can't see a hidden buff, so an absent
+-- While the client hides auras, or can't see the unit, a lookup can't see a buff, so an absent
 -- buff proves nothing: unknown shows no marker rather than a false alarm.
 function RH.MissingBuff(unit)
-  if ns.AurasSecret() then return nil end
+  if ns.AurasSecret() or outOfSight(unit) then return nil end
   local w = watched()
   if not w.give or hasWatched(unit, w) then return nil end
   return w.give
