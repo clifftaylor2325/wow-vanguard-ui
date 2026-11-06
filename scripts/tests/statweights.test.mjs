@@ -5,19 +5,20 @@ import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
 
-// TEST-ONLY gear: worn bracers 1 (STR 10), worn main hand 2 (STR 10, HIT 1) and off hand 3 (STR 10, HIT 1); bracers
-// 4 (STR 10, HIT 3), bracers 5 (STR 10, HIT 2), a two-hander 6 (STR 20, HIT 4), bracers 7 (SP 10, CRIT 1, HIT 1).
+// TEST-ONLY gear, hit and crit as rating (10 hit rating is 1%, 14 crit rating 1%): worn bracers 1 (STR 100), worn
+// main hand 2 (STR 100, 1% hit) and off hand 3 (STR 100, 1% hit); bracers 4 (STR 100, 3% hit), bracers 5 (STR 100,
+// 2% hit), a two-hander 6 (STR 200, 4% hit), bracers 7 (SP 100, 1% crit, 1% hit).
 // __link(n) is item n's link; __pct(n) the change UP.Compare gives for it, to one place, or false for none.
 const GEAR = `
   __wfgWorld.units.player.class = "WARRIOR"
   __gear = {
-    [1] = { "INVTYPE_WRIST", { ITEM_MOD_STRENGTH_SHORT = 10 } },
-    [2] = { "INVTYPE_WEAPONMAINHAND", { ITEM_MOD_STRENGTH_SHORT = 10, ITEM_MOD_HIT_RATING_SHORT = 1 } },
-    [3] = { "INVTYPE_WEAPONOFFHAND", { ITEM_MOD_STRENGTH_SHORT = 10, ITEM_MOD_HIT_RATING_SHORT = 1 } },
-    [4] = { "INVTYPE_WRIST", { ITEM_MOD_STRENGTH_SHORT = 10, ITEM_MOD_HIT_RATING_SHORT = 3 } },
-    [5] = { "INVTYPE_WRIST", { ITEM_MOD_STRENGTH_SHORT = 10, ITEM_MOD_HIT_RATING_SHORT = 2 } },
-    [6] = { "INVTYPE_2HWEAPON", { ITEM_MOD_STRENGTH_SHORT = 20, ITEM_MOD_HIT_RATING_SHORT = 4 } },
-    [7] = { "INVTYPE_WRIST", { ITEM_MOD_SPELL_POWER_SHORT = 10, ITEM_MOD_CRIT_RATING_SHORT = 1, ITEM_MOD_HIT_RATING_SHORT = 1 } },
+    [1] = { "INVTYPE_WRIST", { ITEM_MOD_STRENGTH_SHORT = 100 } },
+    [2] = { "INVTYPE_WEAPONMAINHAND", { ITEM_MOD_STRENGTH_SHORT = 100, ITEM_MOD_HIT_RATING_SHORT = 10 } },
+    [3] = { "INVTYPE_WEAPONOFFHAND", { ITEM_MOD_STRENGTH_SHORT = 100, ITEM_MOD_HIT_RATING_SHORT = 10 } },
+    [4] = { "INVTYPE_WRIST", { ITEM_MOD_STRENGTH_SHORT = 100, ITEM_MOD_HIT_RATING_SHORT = 30 } },
+    [5] = { "INVTYPE_WRIST", { ITEM_MOD_STRENGTH_SHORT = 100, ITEM_MOD_HIT_RATING_SHORT = 20 } },
+    [6] = { "INVTYPE_2HWEAPON", { ITEM_MOD_STRENGTH_SHORT = 200, ITEM_MOD_HIT_RATING_SHORT = 40 } },
+    [7] = { "INVTYPE_WRIST", { ITEM_MOD_SPELL_POWER_SHORT = 100, ITEM_MOD_CRIT_RATING_SHORT = 14, ITEM_MOD_HIT_RATING_SHORT = 10 } },
   }
   function __link(n) return "|cff1eff00|Hitem:" .. n .. "::|h[TEST-ONLY Item " .. n .. "]|h|r" end
   local function gear(link) return __gear[tonumber(tostring(link):match("item:(%d+)"))] end
@@ -43,7 +44,7 @@ it("stat weights: a druid or a shaman picks a damage style on Forever, and Balan
   addon.eval('ns.Options.Show("town")');
   expect(addon.eval('return __click("Damage style")'), "the Damage style row is on Town and gear for a druid").toBe(true);
   expect([kindOf(addon), addon.eval("return ns.GetModule('Upgrades').settings.styles.DRUID")], "a click steps to Balance, kept for the class").toEqual(["balance", "balance"]);
-  expect(addon.eval("local w = ns.GetModule('Upgrades').Current() return { w.SP, w.CRIT, w.HIT, w.INT, w.HASTE, w.SPI }"), "the Balance estimates").toEqual([1, 10, 12, 0.4, 7, 0.1]);
+  expect(addon.eval("local w = ns.GetModule('Upgrades').Current() return { w.SP, w.CRIT, w.HIT, w.INT, w.HASTE, w.SPI }"), "the Balance estimates, per point of rating (crit 10, hit 12 and haste 7 per 1%)").toEqual([1, 0.71, 1.2, 0.4, 0.7, 0.1]);
   addon.slash("weights");
   expect(chatHas(addon, /Weights for Balance \(role damage\)/), "/vg weights names the style").toBe(true);
   addon.eval("__wfgWorld.units.player.role = 'HEALER'");
@@ -88,7 +89,7 @@ it("stat weights: changes are kept per class, and weights a profile kept per kin
 it("stat weights: with a hit cap set, hit past it counts for nothing", () => {
   const addon = loggedIn(GEAR);
   const UP = "ns.GetModule('Upgrades')";
-  expect([addon.eval("return __pct(4)"), addon.eval("return __pct(5)")], "no cap: all the hit counts (3 and 2 hit at 0.9)").toEqual([27, 18]);
+  expect([addon.eval("return __pct(4)"), addon.eval("return __pct(5)")], "no cap: all the hit counts (30 and 20 rating at 0.9)").toEqual([27, 18]);
   addon.eval(`${UP}.SetCap("strength", 5) __wfgWorld.units.player.hit = 4`);
   expect(addon.eval("return __pct(4)"), "4% hit, a cap of 5%: one point of the bracers' 3 counts").toBe(9);
   addon.eval("__wfgWorld.units.player.hit = 2 __wfgWorld.units.player.ratingBonus = { [6] = 2, [8] = 9 }");
@@ -97,7 +98,7 @@ it("stat weights: with a hit cap set, hit past it counts for nothing", () => {
   expect(addon.eval("return __pct(4)"), "a hidden hit: no cap applied").toBe(27);
   addon.eval("__wfgWorld.units.player.hit = 5 __wfgWorld.units.player.ratingBonus = nil");
   expect(addon.eval("return __pct(4)"), "at the cap: the hit is worth nothing, so they're no better").toBe(0);
-  addon.eval(`__gear[1][2].ITEM_MOD_HIT_RATING_SHORT = 2 __wfgWorld.units.player.hit = 6 ${UP}.Changed()`);
+  addon.eval(`__gear[1][2].ITEM_MOD_HIT_RATING_SHORT = 20 __wfgWorld.units.player.hit = 6 ${UP}.Changed()`);
   expect([addon.eval("return __pct(4)"), addon.eval("return __pct(5)")], "6% with 2 from the worn bracers: both pairs fill the same room to the cap").toEqual([0, 0]);
   addon.eval(`__gear[1][2].ITEM_MOD_HIT_RATING_SHORT = nil __wfgWorld.units.player.hit = 3 ${UP}.Changed()`);
   expect(addon.eval("return __pct(6)"), "a two-hander replaces both hands' hit: 3% less their 2 leaves 4 of room, all of its 4 counts").toBe(8.3);
@@ -114,9 +115,9 @@ it("stat weights: with a hit cap set, hit past it counts for nothing", () => {
 it("stat weights: a caster's cap counts spell hit", () => {
   const addon = loggedIn(GEAR);
   becomeClass(addon, "MAGE");
-  addon.eval("__worn[9] = __link(7) __gear[8] = { 'INVTYPE_WRIST', { ITEM_MOD_SPELL_POWER_SHORT = 10, ITEM_MOD_HIT_RATING_SHORT = 3 } }");
+  addon.eval("__worn[9] = __link(7) __gear[8] = { 'INVTYPE_WRIST', { ITEM_MOD_SPELL_POWER_SHORT = 100, ITEM_MOD_HIT_RATING_SHORT = 30 } }");
   addon.eval("ns.GetModule('Upgrades').SetCap('caster', 4) __wfgWorld.units.player.hit = 0 __wfgWorld.units.player.spellHit = 4");
-  expect(addon.eval("return __pct(8)"), "4% spell hit with 1 from the worn bracers: room for 1 on either, so the 3 gain nothing over the crit").toBe(-6);
+  expect(addon.eval("return __pct(8)"), "4% spell hit with 1 from the worn bracers: room for 1 on either, so the 3% gain nothing over the crit").toBe(-8.2);
 });
 
 it("stat weights: the wizard's hit cap box is saved with the weights, shown, exported and reset", () => {
@@ -166,8 +167,8 @@ it("stat weights: a guide site's weight string sets the weights in use for your 
   expect(addon.eval('return __click("Import stat weights")'), "the button on Town and gear opens the box").toBe(true);
   addon.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(BALANCE)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
   expect([chatHas(addon, /Imported weights for Balance\./), chatHas(addon, /Skipped what Vanguard doesn't weigh: Speed\./)], "it says what it did, and what it skipped").toEqual([true, true]);
-  const weights = addon.eval("local w = ns.GetModule('Upgrades').Current() return { w.SP, w.CRIT, w.HIT, w.INT, w.SPI, w.STR }");
-  expect(weights, "the biggest of the names one stat has; what the string leaves out is worth nothing").toEqual([1, 10, 12, 0.4, 0, 0]);
+  const weights = addon.eval("local w = ns.GetModule('Upgrades').Current() local r = function(n) return math.floor(n * 1000 + 0.5) / 1000 end return { w.SP, r(w.CRIT), w.HIT, w.INT, w.SPI, w.STR }");
+  expect(weights, "the biggest of the names one stat has, per 1% turned into per point of rating (14 crit, 10 hit); what the string leaves out is worth nothing").toEqual([1, 0.714, 1.2, 0.4, 0, 0]);
   // UP.Import of a string: { ok, why }.
   const imported = (text) => addon.eval(`local ok, why = ns.GetModule("Upgrades").Import(${JSON.stringify(text)}) return { ok, why }`);
   expect(imported(BALANCE.replace("Druid", "Mage")), "a string for another class").toEqual([false, "the string is for another class (MAGE)"]);

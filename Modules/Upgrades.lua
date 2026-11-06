@@ -242,11 +242,12 @@ end
 
 -- Hit cap ---------------------------------------------------------------------------------
 
--- An item's hit (its HIT stat; 0 for none, no link, or stats not loaded).
+-- An item's hit in per cent: its hit rating over the rating that makes 1% (0 for none, no link, or stats not loaded).
 local function hitOf(link)
-  local key = W.STATS.HIT
-  local stats = key and link and C_Item.GetItemStats(link)
-  return stats and ns.PlainNumber(stats[key]) or 0
+  local key, per = W.STATS.HIT, W.RATING_PER_PERCENT.HIT
+  local stats = key and per and link and C_Item.GetItemStats(link)
+  local rating = stats and ns.PlainNumber(stats[key])
+  return rating and rating / per or 0
 end
 
 -- The combat ratings a kind's hit is counted from (the client's CR_HIT_SPELL and CR_HIT_MELEE).
@@ -270,14 +271,14 @@ local function wornHit(loc, worn)
 end
 
 -- The worn and the new scores with hit past the cap taken off both: from your hit less what the worn item gives,
--- only the part of each item's hit that stays under the cap counts. Unchanged with no cap, no hit weight, or a client
+-- only the part of each item's hit that stays under the cap counts (per cent; its weight is per point of rating). Unchanged with no cap, no hit weight, or a client
 -- that won't say your hit.
 function UP.CapHit(old, new, link, loc, worn)
   local weights, kind = UP.Current()
-  local cap, w = UP.Cap(kind), weights.HIT
-  local now = cap > 0 and w and hitNow(kind)
+  local cap, per = UP.Cap(kind), W.RATING_PER_PERCENT.HIT
+  local now = cap > 0 and weights.HIT and per and hitNow(kind)
   if not now then return old, new end
-  local oldHit = wornHit(loc, worn)
+  local oldHit, w = wornHit(loc, worn), weights.HIT * per
   local room = math.max(0, cap - (now - oldHit))
   return old - w * math.max(0, oldHit - room), new - w * math.max(0, hitOf(link) - room)
 end
@@ -464,10 +465,11 @@ local function importVanguard(text)
 end
 
 -- A guide string's weights as the whole set for the kind in use: the stats it leaves out are worth nothing, as they
--- are in the tool it was written for (item level, which those strings never weigh, keeps its weight).
+-- are in the tool it was written for (item level, which those strings never weigh, keeps its weight). A weight the
+-- string gives per 1% becomes one per point of rating, as items carry it (W.RATING_PER_PERCENT).
 local function guideSet(weights)
   local out = {}
-  for short in pairs(W.STATS) do if short ~= "ILVL" then out[short] = weights[short] or 0 end end
+  for short in pairs(W.STATS) do if short ~= "ILVL" then out[short] = (weights[short] or 0) / (W.RATING_PER_PERCENT[short] or 1) end end
   out.ILVL = W.STATS.ILVL and (UP.Current()).ILVL or nil
   return out
 end

@@ -4287,11 +4287,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The dungeon name, level and instruction lines are in the Vanguard font, in light text at the game's sizes, fitting the window; with Window ornaments on, the panel has corner brackets.
 - If it fails, paste: a screenshot of the keystone window.
 
-### 33.332 What gear stats and your hit look like to Vanguard (Forever)
+### 33.332 Crit and hit on items are rating (Forever)
 
-- Do: Wear an item with "+1% crit" or "+1% hit" (put its slot number in place of 2, the neck) and run `/dump C_Item.GetItemStats(GetInventoryItemLink("player", 2))`, then `/dump GetHitModifier(), GetSpellHitModifier()`, and open the character sheet's hit line.
-- Expect: The item's crit or hit shows under `ITEM_MOD_CRIT_RATING_SHORT` or `ITEM_MOD_HIT_RATING_SHORT` with 1 for 1% (the Balance weights and the hit cap count them that way); the two numbers are your melee and spell hit in per cent, the same as the character sheet.
-- If it fails, paste: both `/dump` outputs, the item's tooltip and the character sheet's hit numbers.
+- Do: Run `/run C_Item.RequestLoadItemDataByID(12640)`, wait a second, then `/dump C_Item.GetItemStats("item:12640")` (Lionheart Helm, 2% crit and 2% hit on its tooltip), then `/dump GetHitModifier(), GetSpellHitModifier()`.
+- Expect: `ITEM_MOD_CRIT_RATING_SHORT=28` and `ITEM_MOD_HIT_RATING_SHORT=20` (14 and 10 rating per 1%, which Vanguard's Balance weights, hit cap and guide string import count on; seen 2026-11-06 at level 17), and the two hit numbers in per cent.
+- If it fails, paste: both `/dump` outputs, your level and the helm's tooltip.
 
 ### 33.333 Damage style for a druid or shaman (Forever)
 

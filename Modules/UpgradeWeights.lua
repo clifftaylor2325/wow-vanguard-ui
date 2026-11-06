@@ -36,6 +36,16 @@ W.STATS = ns.ClientData({
   },
 })
 
+-- How much rating makes 1% at level 60 on WoW Forever, whose items list their "Equip: ... by 2%" lines as rating
+-- (C_Item.GetItemStats gave Lionheart Helm's 2% crit and 2% hit as 28 and 20, seen 2026-11-06). Crit and hit are
+-- that reading; haste, dodge, parry and block are the same level-60 combat rating table's, not yet seen on an item.
+-- Guide sites' weight strings count these per 1%, so an import divides by them. Retail's strings already count
+-- rating.
+W.RATING_PER_PERCENT = ns.ClientData({
+  forever = { CRIT = 14, HIT = 10, HASTE = 10, DODGE = 12, PARRY = 15, BLOCK = 5 },
+  retail = {},
+})
+
 -- The client's item stat key -> its short name.
 W.SHORT = {}
 for short, key in pairs(W.STATS) do W.SHORT[key] = short end
@@ -48,9 +58,10 @@ W.KINDS = ns.ClientData({
     caster = { SP = 1, INT = 0.6, SPI = 0.2, STA = 0.2, CRIT = 0.7, HIT = 0.9, HASTE = 0.6, ARMOR = 0.005 },
     healer = { SP = 1, INT = 0.7, SPI = 0.5, MP5 = 1.2, STA = 0.2, CRIT = 0.5, HASTE = 0.6, ARMOR = 0.005 },
     tank = { STA = 1, ARMOR = 0.05, AGI = 0.6, STR = 0.5, DEF = 1, DODGE = 0.8, PARRY = 0.7, BLOCK = 0.5, BLOCKVALUE = 0.3, HIT = 0.4, EXP = 0.4, DPS = 0.6 },
-    -- A Balance druid's: the owner's estimates from the guides' order (crit, hit and haste per 1%), not published
-    -- values; Forever has none yet.
-    balance = { SP = 1, CRIT = 10, HIT = 12, INT = 0.4, HASTE = 7, SPI = 0.1 },
+    -- A Balance druid's: the owner's estimates from the guides' stat order, not published values (Forever has none
+    -- yet). He gave crit 10, hit 12 and haste 7 per 1%; items carry rating, so those are divided by the rating that
+    -- makes 1% (W.RATING_PER_PERCENT).
+    balance = { SP = 1, CRIT = 0.71, HIT = 1.2, INT = 0.4, HASTE = 0.7, SPI = 0.1 },
   },
   -- Retail's: the primary stat first, the four secondaries close behind it (which one leads changes with the spec and the
   -- patch, so they start near equal), item level as much as a point of the primary stat. A tank's item has the
