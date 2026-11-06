@@ -159,7 +159,7 @@ end
 local function fill(row, src, top)
   row:SetStatusBarColor(lineColor(src))
   give(row.name, "SetText", src.name)
-  T.Color(row.name, mine(src) and "accent" or "text")
+  T.Color(row.name, mine(src) and "accentText" or "text")
   if MT.settings.kind == "Deaths" then fillDeath(row, src) else fillFigure(row, src, top) end
   row.src = src
 end
