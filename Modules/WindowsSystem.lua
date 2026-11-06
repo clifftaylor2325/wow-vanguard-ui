@@ -332,17 +332,24 @@ local function watchCheckMakers(window, names, apply)
   end
 end
 
+-- One addon list row as the game draws it: its check button as Vanguard's, and its Load button (shown for an addon
+-- that loads on demand) a theme button like the window's own.
+local function dressAddonRow(frame)
+  GW.DressChecks(frame, GW.CHECK_DEPTH)
+  GW.SkinButton(frame.LoadAddonButton)
+end
+
 -- The addon list: its push buttons and search box, its character dropdown, scroll bar and performance block (a
--- section head and its line), and each row's check button (the rows' other parts keep the game's look).
+-- section head and its line), and each row's check button and Load button (the rows' other parts keep the game's look).
 local skinAddonList = withWindowSkin({
   buttons = { "CancelButton", "OkayButton", "EnableAllButton", "DisableAllButton" }, searches = { "SearchBox" },
   bars = { "ScrollBar" }, dropdowns = { "Dropdown" }, sections = { "Performance.Header" }, dividers = { "Performance.Divider" },
 })
--- Skins the addon list (see skinAddonList), then its rows' check buttons, now and as the game makes rows.
+-- Skins the addon list (see skinAddonList), then its rows' check and Load buttons, now and as the game makes rows.
 function GW.SkinAddonList(frame)
   skinAddonList(frame)
   GW.DressChecks(frame, GW.CHECK_DEPTH)
-  watchCheckMakers("AddonList", GW.CHECK_MAKERS.AddonList, GW.DressChecks)
+  watchCheckMakers("AddonList", GW.CHECK_MAKERS.AddonList, dressAddonRow)
 end
 -- The nameplates tutorial: the window skin, but its four picture cards are the content, so they stay.
 GW.SkinNamePlatesTutorial = withWindowSkin({ keep = { "StyleOptions", "Aggro", "BuffsDebuffs", "EnemyVsFriendly" } })

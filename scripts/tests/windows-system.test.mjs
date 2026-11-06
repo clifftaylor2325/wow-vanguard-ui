@@ -788,6 +788,8 @@ it("addon list: each row's check button is a themed check box, the rows the game
   addon.eval('__rows = 9 AddonList_InitAddon(CreateFrame("Button", "TestOnlyAddonRow9", AddonList.ScrollBox.ScrollTarget))');
   expect(row(addon, 9), "a row the scroll box takes into view: dressed after AddonList_InitAddon alone").toEqual([0, true, false]);
   sameOnReshow(addon, "AddonList");
+  addon.eval('__rows = 10 local r = CreateFrame("Button", "TestOnlyAddonRow10", AddonList.ScrollBox.ScrollTarget) r.LoadAddonButton = CreateFrame("Button", nil, r) AddonList_InitAddon(r)');
+  expect(addon.eval("return ns.Theme.HoverParts(TestOnlyAddonRow10.LoadAddonButton) ~= nil"), "a row's Load button is a theme button (H27-5-3)").toBe(true);
   const off = loggedIn(ADDON_ROWS_ENV, SWITCH_OFF);
   off.eval("AddonList:Show() AddonList_Update()");
   expect([frameState(off, "AddonList").panel, off.eval("return ns.Theme.CheckParts(TestOnlyAddonRow1.Enabled) == nil and ns.Theme.CheckParts(TestOnlyAddonRow2.Enabled) == nil")], "switched off: the game's window and rows").toEqual([false, true]);
