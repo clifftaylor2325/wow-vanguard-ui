@@ -2404,7 +2404,7 @@ end
 T.TAB_ART = {
   "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive", "LeftHighlight", "MiddleHighlight",
   "RightHighlight", "Background", "SelectedTexture", "HighlightTexture", "TabGlow",
-  "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow",
+  "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow", "SelectedHighlight",
 }
 
 -- Remembers a tab's checked (selected) state, for the tab look. Chat and the window tabs set it through here.

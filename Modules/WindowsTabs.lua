@@ -21,10 +21,12 @@ local GW = ns.GetModule("Windows")
 -- How many tabs a PanelTemplates window can have (they are named <window>Tab1 ... Tab8).
 GW.MAX_TABS = 8
 -- Where a window keeps a tab system (TabSystemTemplate, Blizzard_SharedXML/Shared/TabSystem), as a path of
--- parentKeys: the window's own, the spellbook's categories, the talents page, the friends window's header.
+-- parentKeys: the window's own, the spellbook's categories, the talents page, the friends window's header, the
+-- transmog window's Items / Sets / Custom Sets tabs and the housing dashboard's house info tabs.
 GW.TAB_SYSTEMS = {
   { "TabSystem" }, { "CategoryTabSystem" }, { "TabHeaders" }, { "FriendsTabHeader", "TabSystem" },
   { "SpellBookFrame", "CategoryTabSystem" }, { "TalentsFrame", "TabSystem" },
+  { "WardrobeCollection", "TabHeaders" }, { "HouseInfoContent", "ContentFrame", "TabSystem" },
 }
 -- The windows with side tabs, dressed by name whether or not another group registered them, on each client: the
 -- character pane, the guild window (Communities), the inspect window and, on WoW Forever, the Legacy window and the

@@ -147,6 +147,20 @@ it("retail landing: the transmog window is dressed when it loads; its character 
   expect(state).toEqual({ wells: true, frame: 0, save: true, dropdowns: true, search: true, checks: true, label: true, heading: true, money: true, plate: 0, scene: true });
 });
 
+it("retail landing: the transmog window's Items / Sets tabs are theme tabs, the selected glow faded, the system left in place (H27-6-2)", () => {
+  const addon = retail(["TransmogFrame"]);
+  addon.eval(`local s = CreateFrame("Frame", nil, TransmogFrame.WardrobeCollection) TransmogFrame.WardrobeCollection.TabHeaders = s
+    s:SetPoint("TOPLEFT", TransmogFrame.WardrobeCollection, "TOPLEFT", 32, -12)
+    local b = CreateFrame("Button", nil, s) b.Left = b:CreateTexture() b.Icon = b:CreateTexture() b.SelectedHighlight = CreateFrame("Frame", nil, b)
+    function s:GetTabButton(id) return id == 1 and b or nil end
+    function b:SetTabSelected(on) self.SelectedHighlight:SetShown(on) end
+    __wfgStub.fire("ADDON_LOADED", "Blizzard_Transmog") TransmogFrame:Show()
+    b:SetTabSelected(true)`);
+  expect(addon.eval(`local s = TransmogFrame.WardrobeCollection.TabHeaders local b = s:GetTabButton(1)
+    local _, rel, _, x, y = s:GetPoint(1)
+    return { b.Left.__alpha, b.SelectedHighlight.__alpha, rel == TransmogFrame.WardrobeCollection, x, y, #ns.errors }`), "tab art and glow faded, the system still anchored inside its page").toEqual([0, 0, true, 32, -12, 0]);
+});
+
 it("retail landing: the Trading Post's lists sit on flat insets and its plain buttons are themed; the price buttons stay the game's", () => {
   const addon = retail(["PerksProgramFrame"]);
   addon.eval(`__wfgStub.fire("ADDON_LOADED", "Blizzard_PerksProgram") PerksProgramFrame:Show()`);
