@@ -10,6 +10,21 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.9.1", groups = {
+    { module = "Upgrades", label = "Gear upgrades", items = {
+      { text = "Gear upgrades weigh stats per class: on WoW Forever a druid picks Feral or Balance and a shaman Elemental or Enhancement under Damage style, and changed weights stay with their class." },
+      { text = "Caps on hit, expertise and defense: past its cap a stat counts for nothing. Import stat weights takes a Vanguard or guide site weights string." },
+    } },
+    { module = "Other", label = "Keys, raid frames and nameplates", items = {
+      { text = "Stance and pet buttons stay on their spots in a fight, and keybind mode binds them too." },
+      { text = "Click casting works on the main tank and party pet tiles, and Import asks before it replaces your bindings." },
+      { text = "A thin bright line marks a shield past a full health bar, your focus's nameplate gets a quieter border, and raid tiles read Offline, ready checks and missing buffs right." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "Colours and the theme agree across every module (41 fixes), and fixes from three more bug hunts, Retail's right-click menus among them." },
+      { text = "The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback)." },
+    } },
+  } },
   { version = "0.9.0", groups = {
     { module = "Other", label = "Retail", items = {
       { text = "Vanguard now supports Retail 12.1.5 as well as WoW Forever, from the same download. The parts made for WoW Forever's own rules (key setup, the talent planner, spell ranks, the swing timer and a few more) stay off on Retail, with their pages and commands." },

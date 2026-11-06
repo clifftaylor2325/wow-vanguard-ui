@@ -4,6 +4,38 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
+## 0.9.1
+
+Nothing in this release has been checked in the game; see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md) (steps 33.317 to 33.335).
+
+### Gear upgrades (0.9.1)
+
+- Gear upgrades weigh stats per class. On WoW Forever a druid picks Feral or Balance and a shaman Elemental or Enhancement under Damage style (Town and gear, Gear upgrades), and crit, hit and haste are weighed per point of rating, as Forever's items carry them.
+- Changed weights stay with their class, so a mage and a warlock sharing a profile no longer change each other's.
+- Caps on hit, expertise and defense: past its cap a stat counts for nothing, with a default cap for each kind of character.
+- Import stat weights takes a Vanguard or guide site weights string, skips what Vanguard doesn't weigh, and says when a string is for another class.
+
+### Keys and click casting (0.9.1)
+
+- Stance and pet buttons stay on their spots in a fight, and keybind mode binds them too.
+- Click casting works on the main tank and party pet tiles, and Import asks before it replaces the bindings you have; imported spell and macro text can't paint colours or links.
+
+### Raid frames and nameplates (0.9.1)
+
+- A thin bright line marks a shield that runs past a full health bar.
+- Your focus's nameplate gets a quieter border and diamond, and plate auras include the ones the game flags for nameplates only.
+- Raid tiles: a player who died and then went offline reads Offline, ready check answers follow the player, players the client can't see get no missing-buff mark, a dead or offline tile drops the dispel wash, and a main tank who is also main assist always gets the shield.
+- Nameplates no longer draw dark squares around debuff icons on a plate the game hands over shrunk.
+
+### Look (0.9.1)
+
+- Colours and the theme agree across every module (41 fixes from a colour hunt): cast bar times are white like the other numbers over bars, combo point pips use the bar texture, Dead, Ghost and Offline are coloured as on the raid tiles, Safer colours also cover the reputation bar and the minimap's zone name, hand-set text colours survive a look, accent or text size change, and the keystone window gets the corner brackets the other windows have.
+
+### Fixes (0.9.1)
+
+- Fixes from three more bug hunts: Retail's right-click menus wear the theme, Quiet stops hiding red errors and zone names once it is switched off, mail tools say when the Send Mail tab is full, auction alerts check again when the item's name arrives, and a profile string for one module imports correctly.
+- The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback).
+
 ## 0.9.0
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284) and the Retail section of [SMOKE-TEST.md](SMOKE-TEST.md) (section 34).
