@@ -251,3 +251,11 @@ it("H27-3-1: a plate's level keeps its difficulty colour through a look and text
   addon.eval("ns.Theme.Settings().textScale = 1.1 ns.Theme.Refresh()");
   expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].level.__textColor"), "the boar's level stays yellow").toEqual([1, 0.82, 0, 1]);
 });
+
+it("H28-4-2: a colour variant repaints every plate's bar colour at once, with no unit event", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  const before = plate(addon, "nameplate1").color;
+  addon.slash("variant contrast"); // High contrast turns Safer colours on: the hostile red moves to vermilion
+  const after = plate(addon, "nameplate1").color;
+  expect([isTok(addon, after, "hostile"), after.join() === before.join()], "the bar takes the new reaction colour").toEqual([true, false]);
+});

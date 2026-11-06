@@ -872,6 +872,13 @@ local EVENTS = {
   CVAR_UPDATE = onSettingChanged,
 }
 
+-- Repaints a plate's look after a theme change: its target border and glow, and its bar's colour
+-- (tapped, threat, class or reaction follow the colour variant, and a quiet plate gets no event to repaint it).
+local function repaintLook(f, unit)
+  paintTarget(f, unit)
+  NP.UpdateColor(f, unit)
+end
+
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and
 -- dresses the game's personal resource display.
 function NP.Enable(settings)
@@ -882,7 +889,7 @@ function NP.Enable(settings)
   watchPersonalResources()
   watchSoftTargets()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
-  T.OnChanged(function() each(paintTarget) end)
+  T.OnChanged(function() each(repaintLook) end)
   ns.Every("nameplate scale", NP.SCALE_POLL, NP.CheckScales)
 end
 

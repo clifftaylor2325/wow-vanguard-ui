@@ -134,6 +134,7 @@ it("the game re-stacking its bars in a fight leaves the buttons on their spots",
 
 it("the spots hide as the game hides its bars: a vehicle, an override bar, mind control, no pet, a pet battle", () => {
   const forever = loggedIn(SEATED_ENV);
+  // The pet and stance spots' visibility drivers.
   const drivers = (addon) => addon.eval("return { Vanguard_PetActionBarSpot.__states.visibility, Vanguard_StanceBarSpot.__states.visibility }");
   expect(drivers(forever), "Forever has no pet battles").toEqual(["[vehicleui][overridebar][nopet] hide; show", "[vehicleui][possessbar][overridebar] hide; show"]);
   const retail = loggedIn(RETAIL + SEATED_ENV);
