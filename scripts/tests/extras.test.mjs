@@ -926,3 +926,21 @@ it("H27-3-2: an offline main tank's bar goes dark, as on the unit frames and rai
   addon.eval('__mt(1, "raid1") __wfgStub.advance(0.5)');
   expect(isTok(addon, addon.eval("return Vanguard_MainTanksUnitButton1.bar.__barColor"), "darkBar"), "the dark bar, not the class colour").toBe(true);
 });
+
+it("keep stocked: the add slot's accent edge follows the mouse: brighter on hover, darker held", () => {
+  const addon = loggedIn(STOCK_WINDOW_ENV);
+  addon.eval("ns.GetModule('Errands').StockWindow.Open()");
+  const SLOT = "Vanguard_StockList.slot";
+  // The slot's accent edge colours, as one string (the edge's textures sit on its BORDER layer).
+  const edges = () => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == ${SLOT} and w.__kind == "Texture" and w.__layer == "BORDER" and w.__vertexColor then out[#out + 1] = table.concat(w.__vertexColor, ",") end end
+    return table.concat(out, ";")`);
+  const rest = edges();
+  addon.hover(SLOT);
+  const hover = edges();
+  addon.hover(null);
+  addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseDown')`);
+  const held = edges();
+  addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseUp')`);
+  expect([hover !== rest, held !== rest, held !== hover, edges()], "hover and pressed repaint the accent edge, and leaving brings it back").toEqual([true, true, true, rest]);
+});

@@ -1752,6 +1752,14 @@ function T.SlotState(frame, state)
   repaint(frame, entry)
 end
 
+-- A clickable slot's accent edge follows the mouse: brighter while it is over the slot, darker while it is held.
+function T.SlotStates(slot)
+  slot:HookScript("OnEnter", ns.Guard("hook OnEnter", function(self) T.SlotState(self, "hover") end))
+  slot:HookScript("OnLeave", ns.Guard("hook OnLeave", function(self) T.SlotState(self, nil) end))
+  slot:HookScript("OnMouseDown", ns.Guard("hook OnMouseDown", function(self) T.SlotState(self, "pressed") end))
+  slot:HookScript("OnMouseUp", ns.Guard("hook OnMouseUp", function(self) T.SlotState(self, self:IsMouseOver() and "hover" or nil) end))
+end
+
 -- Window controls (close, maximize, minimize), the same in every window (units): how big the
 -- square tile behind the glyph is while the mouse is over it, and the glyph (drawn on a 20-unit
 -- grid, one pixel each, its mark in the middle 9); a control with no size yet takes the tile's.

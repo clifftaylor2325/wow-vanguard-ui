@@ -109,14 +109,6 @@ local function slotKeep(button)
   return keep
 end
 
--- A pet slot's accent edge follows the mouse: brighter while it is over the slot, darker while it is held.
-local function slotStates(button)
-  button:HookScript("OnEnter", ns.Guard("hook OnEnter", function(self) T.SlotState(self, "hover") end))
-  button:HookScript("OnLeave", ns.Guard("hook OnLeave", function(self) T.SlotState(self, nil) end))
-  button:HookScript("OnMouseDown", ns.Guard("hook OnMouseDown", function(self) T.SlotState(self, "pressed") end))
-  button:HookScript("OnMouseUp", ns.Guard("hook OnMouseUp", function(self) T.SlotState(self, self:IsMouseOver() and "hover" or nil) end))
-end
-
 -- One slot-style tile (a pet slot, a selector tile) as a quiet slot: its rims faded, the parts keepOf(button) returns
 -- kept, its accent edge following the mouse. Once per tile; keepOf runs only after the frame check, as a button name
 -- is read from the button.
@@ -125,7 +117,7 @@ local function dressSlotTile(button, keepOf)
   vgSlotTiles[button] = true
   T.FadeRegions(button, keepOf(button))
   T.Slot(button, { quiet = true })
-  slotStates(button)
+  T.SlotStates(button)
 end
 
 -- The window's foot (the slots, the purchase button, the money): the art strip the game sank it with replaced by an

@@ -683,3 +683,20 @@ it("the Lists toolbar buttons hold their labels in French and German", () => {
     expect(toolbar, `${locale}: nothing on the shopping card is cut`).toEqual([]);
   }
 });
+
+it("the sell slot's accent edge follows the mouse: brighter on hover, darker held", () => {
+  const addon = atAuctionHouse(BAGS);
+  const SLOT = `${CARD}.slot`;
+  // The slot's accent edge colours, as one string (the edge's textures sit on its BORDER layer).
+  const edges = (addon, lua) => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == ${lua} and w.__kind == "Texture" and w.__layer == "BORDER" and w.__vertexColor then out[#out + 1] = table.concat(w.__vertexColor, ",") end end
+    return table.concat(out, ";")`);
+  const rest = edges(addon, SLOT);
+  addon.hover(SLOT);
+  const hover = edges(addon, SLOT);
+  addon.hover(null);
+  addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseDown')`);
+  const held = edges(addon, SLOT);
+  addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseUp')`);
+  expect([hover !== rest, held !== rest, held !== hover, edges(addon, SLOT)], "hover and pressed repaint the accent edge, and leaving brings it back").toEqual([true, true, true, rest]);
+});
