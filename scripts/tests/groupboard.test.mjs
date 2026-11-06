@@ -249,6 +249,7 @@ it("group board: the tooltip, closing, the module off, and its options card", ()
   addon.eval("local b = Vanguard_GroupBoard.rows[1] b.__scripts.OnEnter(b)");
   expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "the full name, the whole line, what a click does").toEqual([
     "Lightmend-Ruleset", "LFM SFK need heals", addon.eval('return ns.Theme.Paint("Click: whisper with a message filled in", "text2")')]);
+  expect(addon.eval("local l = GameTooltip.__lines[2] return { l.r, l.g, l.b }").map((c) => Math.round(c * 1000)), "the post's line is in the text color, not white").toEqual(addon.eval('return { ns.Theme.RGB("text") }').slice(0, 3).map((c) => Math.round(c * 1000)));
   addon.eval("local b = Vanguard_GroupBoard.rows[1] b.__scripts.OnLeave(b) b.entry = nil b.__scripts.OnEnter(b)");
   expect(addon.eval("return GameTooltip:IsShown()"), "hidden on leave; no post, no tooltip").toBe(false);
   addon.eval("local c = Vanguard_GroupBoard.close c.__scripts.OnClick(c)");
