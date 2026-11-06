@@ -29,9 +29,9 @@ local function menuPanel(menu)
   panel:SetFrameLevel(menu:GetFrameLevel())
 end
 
--- A menu just opened (EventRegistry "MenuProxy.OnShow", fired by MenuProxyMixin:OnShow), with the
--- menus group on: the background the game attached for this open faded, the gamepad focus glow
--- (Camelot's MenuTemplateBase.FrameGlow) faded, and the panel behind it. Only the menu frame's own
+-- A menu just opened (on Forever EventRegistry "MenuProxy.OnShow", fired by MenuProxyMixin:OnShow; on Retail the
+-- default menu style's Generate, see GW.WatchMenus), with the menus group on: the background the game attached for
+-- this open faded, the gamepad focus glow (Camelot's MenuTemplateBase.FrameGlow) faded, and the panel behind it. Only the menu frame's own
 -- textures are touched: never its rows, which run the unit menu's secure actions, its anchors or its keys. A long menu's
 -- scroll bar (a child of the menu, made with it) is put in the theme through the theme's own side tables, so nothing is
 -- written on the menu.
@@ -45,12 +45,41 @@ function GW.SkinContextMenu(_, menu)
   menuPanel(menu)
 end
 
--- Listens for menus opening, where the client has the menu system's hook. Done at load, before
--- the group's switch can be read: GW.SkinContextMenu reads it on each open.
-function GW.WatchMenus()
+-- A Retail menu frame being opened, its background just attached by the default style (MenuStyle1Mixin:Generate,
+-- copied onto the pooled frame by Blizzard_Menu's SecureGenerate on every open, submenus too): the same skin. Retail
+-- sets the menu's strata and level after Generate, so the panel behind it is put level with the menu next frame.
+local function skinGeneratedMenu(menu)
+  GW.SkinContextMenu(nil, menu)
+  ns.Soon("menu panels", GW.LevelMenuPanels)
+end
+
+-- Every shown menu's panel level with its menu again (after the game has placed a menu it just opened).
+function GW.LevelMenuPanels()
+  for menu in pairs(menuPanels) do
+    if menu:IsShown() then menuPanel(menu) end
+  end
+end
+
+-- Retail's menus fire no event when they open (its MenuProxyMixin has no OnShow), so the default menu style's
+-- Generate is hooked instead: a secure post-hook, nothing written on the menu.
+function GW.WatchMenuStyle()
+  local style = _G.MenuStyle1Mixin
+  if type(style) ~= "table" or type(style.Generate) ~= "function" then return end
+  hooksecurefunc(style, "Generate", ns.Guard("skin context menu", skinGeneratedMenu))
+end
+
+-- Forever's menus fire EventRegistry "MenuProxy.OnShow" (its MenuProxyMixin:OnShow) as they open.
+function GW.WatchMenuEvent()
   local registry = _G.EventRegistry
   if type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
   registry:RegisterCallback("MenuProxy.OnShow", ns.Guard("skin context menu", GW.SkinContextMenu), GW)
+end
+
+-- Listens for menus opening, the event on Forever and the style hook on Retail. Done at load, before the group's
+-- switch can be read: GW.SkinContextMenu reads it on each open.
+function GW.WatchMenus()
+  if ns.IsForever() then return GW.WatchMenuEvent() end
+  GW.WatchMenuStyle()
 end
 
 GW.WatchMenus()

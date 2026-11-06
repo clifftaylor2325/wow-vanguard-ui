@@ -125,8 +125,11 @@ go next to the existing ones and into `docs/THEME.md`.
 12.x builds every right-click menu, dropdown and chat menu from `Blizzard_Menu` (`MenuTemplateBase`, created by a frame
 factory in `Menu.lua:2154`); the menu's background is a texture attached on every open by the Compositor
 (`MenuStyle1Mixin:Generate`, `Blizzard_Menu/Mainline/MenuTemplates.lua:53`, atlas `common-dropdown-bg`). The frame itself
-never has a `NineSlice`. The one hook the game offers is `EventRegistry:TriggerEvent("MenuProxy.OnShow", menuFrame)`
-(`Menu.lua:1805`): register for it, fade the menu's regions and paint a panel. Menus are pooled, so a frame is painted
+never has a `NineSlice`. Forever's `MenuProxyMixin:OnShow` fires `EventRegistry:TriggerEvent("MenuProxy.OnShow", menuFrame)`
+(`Menu.lua:1845`): register for it, fade the menu's regions and paint a panel. Retail 12.1.5's `MenuProxyMixin` has no
+`OnShow` and fires no event, so there a `hooksecurefunc` post-hook on `MenuStyle1Mixin.Generate` (copied onto the pooled
+frame by `SecureGenerate`, `Menu.lua:2094`, on every open, submenus too, right after the background is attached) does the
+same skin, and the panel is re-levelled a frame later because Retail sets the menu's strata and level after `Generate`. Menus are pooled, so a frame is painted
 once and only faded again on each show. The unit popup menu runs secure actions from its buttons; the skin touches only
 textures on the menu frame, never a button's attributes, and it is tagged **[VERIFY IN GAME]** for taint
 ("Interface action failed because of an AddOn" after right-clicking a unit and choosing an action). `EventRegistry` is
@@ -238,7 +241,7 @@ handles with no extra code once the name is registered.
 
 | Frame | Loads | Parts | Notes |
 |---|---|---|---|
-| Menus from `Blizzard_Menu` | login | `MenuTemplateBase` (`ResizeLayoutFrame`; on Camelot also `FrameGlow`, jump hints), background attached per open | `EventRegistry` `MenuProxy.OnShow`; §3.4 |
+| Menus from `Blizzard_Menu` | login | `MenuTemplateBase` (`ResizeLayoutFrame`; on Camelot also `FrameGlow`, jump hints), background attached per open | `EventRegistry` `MenuProxy.OnShow` (Forever), `MenuStyle1Mixin.Generate` hook (Retail); §3.4 |
 | `DropDownList1-3` | login | `UIDropDownListTemplate`: `Backdrop`, `MenuBackdrop` (child frames), `Border` | legacy dropdowns some panels still use |
 | `ItemRefShoppingTooltip1/2`, `GameNoHeaderTooltip`, `GameSmallHeaderTooltip`, `BuffFrameTooltip`, `QuickKeybindTooltip`, `SettingsTooltip`, `PartyMemberBuffTooltip`, `AutoCompleteBox`, `LFGBrowseSearchEntryTooltip` | login/LoD | `GameTooltipTemplate` / `TooltipBackdropTemplate` (`NineSlice`) | add to `TT.NAMES` (`Modules/Tooltips.lua:22`), or `T.Tooltip` for the LoD ones from their area file |
 
