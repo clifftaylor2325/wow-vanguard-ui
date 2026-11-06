@@ -104,7 +104,7 @@ function CK.SetKeys(on)
   CK.Refresh()
 end
 
--- Repaints on the next frame, once for however many buttons changed in this one.
+-- Repaints on the next frame, once for however many events or buttons changed in this one.
 local function refreshSoon()
   ns.Soon("cooldown keys", CK.Refresh)
 end
@@ -133,7 +133,7 @@ end
 -- Module entry point (Core/Modules.lua): watch the events, the bars and the rows, then paint.
 function CK.Enable(settings)
   CK.settings = settings
-  for _, event in ipairs(CK.EVENTS) do ns.On(event, ns.Guard("cooldown keys", CK.Refresh)) end
+  for _, event in ipairs(CK.EVENTS) do ns.On(event, ns.Guard("cooldown keys", refreshSoon)) end
   followButtons()
   for _, name in ipairs(CK.VIEWERS) do watch(name) end
   CK.Refresh()
