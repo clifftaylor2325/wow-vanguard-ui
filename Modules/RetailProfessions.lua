@@ -106,8 +106,21 @@ end
 RP.BOOK_PAGES = { "ProfessionsBookPage1", "ProfessionsBookPage2" }
 RP.BOOK_ROWS = { "PrimaryProfession1", "PrimaryProfession2", "SecondaryProfession1", "SecondaryProfession2", "SecondaryProfession3" }
 RP.BOOK_TEXTS = { "professionName", "missingHeader", "missingText" }
+-- The keys of a profession row's two spell buttons (ProfessionButtonTemplate).
+RP.BOOK_SPELLS = { "SpellButton1", "SpellButton2" }
 
--- One profession row of the book: its skill bar flat and its ink texts in the light text colour, at the game's sizes.
+-- A spell button of a profession row: its name (the game's gold, or grey for a passive spell) in the label role and the
+-- light text colour, its sub-name small and quiet; the light colour again after each
+-- UpdateButton, which sets the name's colour by hand. Like the spellbook's entries.
+local function dressBookSpell(button)
+  if type(button) ~= "table" then return end
+  GW.SkinText(button.spellString, "label", "text")
+  GW.SkinText(button.subSpellString, "small", "muted")
+  GW.HookAfter(button, "UpdateButton", function(b) GW.SkinText(b.spellString, "label", "text") end)
+end
+
+-- One profession row of the book: its skill bar flat and its ink texts in the light text colour, at the game's sizes,
+-- and its spell buttons.
 local function skinBookRow(row)
   if type(row) ~= "table" then return end
   GW.SkinProgress(row.statusBar)
@@ -115,6 +128,7 @@ local function skinBookRow(row)
     local fs = row[key]
     if type(fs) == "table" and fs.SetTextColor then T.Color(fs, "text") end
   end
+  for _, key in ipairs(RP.BOOK_SPELLS) do dressBookSpell(row[key]) end
 end
 
 -- The profession book: the window skin, its pages faded and its rows dressed.

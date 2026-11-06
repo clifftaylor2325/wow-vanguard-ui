@@ -88,6 +88,16 @@ it("retail professions: a page that fails is reported by name, and the other pag
     "the specialisation page and the order view are dressed").toEqual([true, true]);
 });
 
+it("retail professions: a book row's spell buttons read in the theme (name light, sub-name quiet), again after the game updates one (H27-6-4)", () => {
+  const addon = professions();
+  addon.eval("ProfessionsBookFrame:Show() PrimaryProfession1.SpellButton1:UpdateButton()");
+  const look = (key) => addon.eval(`local b = PrimaryProfession1.${key}
+    return { b.spellString.__textColor[1] == ns.Theme.RGB("text"), b.subSpellString.__textColor[1] == ns.Theme.RGB("muted") }`);
+  expect(look("SpellButton1"), "the name light after the game's own gold, the sub-name quiet").toEqual([true, true]);
+  expect(look("SpellButton2"), "the second button too").toEqual([true, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("retail professions: the profession book and the crafting orders window are game windows in the Vanguard look, and can be dragged", () => {
   const addon = professions();
   addon.eval("ProfessionsBookFrame:Show() ProfessionsCustomerOrdersFrame:Show()");
