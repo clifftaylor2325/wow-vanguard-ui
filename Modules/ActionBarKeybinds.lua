@@ -60,9 +60,9 @@ local function gameTarget(def, i, frame)
   return { frame = frame, binding = def.command .. i, label = ns.Format(def.label, { n = i }) }
 end
 
--- The key targets for the game's buttons this client has, made once.
+-- The key targets for the game's buttons this client has, made once they exist (an empty list is looked for again).
 local function gameTargets()
-  if AB.gameTargets then return AB.gameTargets end
+  if AB.gameTargets and AB.gameTargets[1] then return AB.gameTargets end
   AB.gameTargets = {}
   for _, def in ipairs(AB.GAME_KEY_BUTTONS) do
     for i = 1, 10 do
