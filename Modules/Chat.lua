@@ -569,12 +569,14 @@ local function tintRail(box)
   if rail then rail:SetVertexColor(railColor(box)) end
 end
 
--- Sizes an edit box's rail to T.SELECT.rail screen pixels down its left edge (again after a scale change).
+-- Sizes an edit box's rail to T.SELECT.rail screen pixels down its left edge, T.CORNER_RADIUS pixels short of
+-- each end so it stays inside the box's rounded corners (again after a scale change).
 local function placeRail(rail, box)
+  local px = T.Pixel(box)
   rail:ClearAllPoints()
-  rail:SetPoint("TOPLEFT")
-  rail:SetPoint("BOTTOMLEFT")
-  rail:SetWidth(T.SELECT.rail * T.Pixel(box))
+  rail:SetPoint("TOPLEFT", 0, -T.CORNER_RADIUS * px)
+  rail:SetPoint("BOTTOMLEFT", 0, T.CORNER_RADIUS * px)
+  rail:SetWidth(T.SELECT.rail * px)
 end
 
 -- One step of an edit box's focus fade: its alpha toward the target by the share of the time gone; at

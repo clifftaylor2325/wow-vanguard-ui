@@ -246,6 +246,8 @@ it("chat edit box: under the panel in the chat role, a rail in the channel's col
   expect(alphaAfter(0), "Reduce motion: at once").toBe(0.35);
   addon.eval("ns.Theme.Settings().reduceMotion = false __wfgStub.setScreen(2560, 1440) ns.GetModule('Chat').Refresh()");
   expect(rail(1)[1], "after a scale change the rail is two pixels again").toBe(true);
+  expect(addon.eval(`local box = ChatFrame1EditBox local p = ns.FrameState("vgRail")[box].__points local gap = ns.Theme.CORNER_RADIUS * ns.Theme.Pixel(box)
+    return { p.TOPLEFT.y == -gap, p.BOTTOMLEFT.y == gap, p.TOPLEFT.x }`), "the rail stops a corner radius short of each end, inside the rounded box").toEqual([true, true, 0]);
   // The main edit box's anchors: what its top-left hangs from and where, and whether it has a top-right.
   const boxPoints = () => addon.eval(`local p = ChatFrame1EditBox.__points return { p.TOPLEFT and p.TOPLEFT.rel == ${F}.outline, p.TOPLEFT and p.TOPLEFT.relPoint, p.TOPLEFT and p.TOPLEFT.y, p.TOPRIGHT ~= nil }`);
   addon.eval("ChatFrame1EditBox:ClearAllPoints() ChatFrame1EditBox:SetPoint('TOPLEFT', ChatFrame1, 'BOTTOMLEFT', 0, -10)");
