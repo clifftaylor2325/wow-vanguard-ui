@@ -4293,6 +4293,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The stance and pet buttons stay at the bottom left over the chat the whole fight, never over action bars 1 to 3, and every Vanguard action button under where the game's bar used to be still takes clicks. In a vehicle or while mind-controlling, the stance buttons go and come back after; the pet buttons hide with no pet. The handle's Scale and Opacity change the buttons. Active stance highlight, cooldowns, tooltips and the stance keys work as before. `/vg errors` is empty.
 - If it fails, paste: a screenshot in the fight and `/vg errors`.
 
+### 33.332b Binding stance keys
+
+- Do: On a class with stances or forms (and a pet class for the pet bar), `/vg keybind`, hover the second stance button and press F2; hover a pet button and press F3. Leave with Escape, then press F2 and F3 out of combat and in a fight.
+- Expect: Each stance and pet button gets the accent wash and a tooltip ("Stance 2", "Pet button 1") while hovered; chat says "F2 bound to Stance 2."; F2 changes to the second stance and F3 runs the pet action, in a fight too; the stance button's hotkey text shows F2. The keys also show under the game's Key Bindings, Action Bar, Special Action Button 2.
+- If it fails, paste: `/vg errors` and what chat said when you pressed the key.
+
 ### 33.333 Raid tiles: far players, offline players and lingering ready checks
 
 - Do: In a raid with the missing-buff mark on, let some players be far away (another zone or phase). Watch a player who dies and then disconnects. Run a ready check and have someone leave in the six seconds after it ends.
