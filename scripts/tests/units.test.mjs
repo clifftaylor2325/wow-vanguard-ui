@@ -944,3 +944,8 @@ it("H27-3-1: a difficulty-coloured level keeps its colour through a look, accent
   addon.eval("ns.Theme.Settings().textScale = 1.1 ns.Theme.Refresh()");
   expect(addon.eval("return Vanguard_player.level.__textColor").slice(0, 3), "still the difficulty colour, not the text colour").toEqual([1, 0.1, 0.1]);
 });
+
+it("H27-4-3: a combo point's fill is drawn in the bar texture, like the other class-resource pips", () => {
+  const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" GetComboPoints = function() return 3 end`, NO_RAID);
+  expect(addon.eval('return ns.GetModule("ComboPoints").pips[1].fill.__texture == ns.Theme.BarTexture()'), "not the flat white").toBe(true);
+});
