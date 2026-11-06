@@ -141,14 +141,13 @@ end
 
 -- Dressing ---------------------------------------------------------------------------------
 
--- The four 1 px strips of the type-colored debuff edge, hidden until a debuff shows.
-local function ring(f, px)
+-- The four strips of the type-colored debuff edge (one pixel wide: place), hidden until a debuff shows.
+local function ring(f)
   local strips = {}
   for i, side in ipairs({ { "TOPLEFT", "TOPRIGHT" }, { "BOTTOMLEFT", "BOTTOMRIGHT" }, { "TOPLEFT", "BOTTOMLEFT" }, { "TOPRIGHT", "BOTTOMRIGHT" } }) do
     local t = T.Snap(f:CreateTexture(nil, "OVERLAY", nil, 7))
     t:SetTexture(T.WHITE)
     t:SetPoint(side[1]); t:SetPoint(side[2])
-    if i <= 2 then t:SetHeight(px) else t:SetWidth(px) end
     t:Hide()
     strips[i] = t
   end
@@ -189,11 +188,9 @@ function A.ShowBadge(b, kind)
   for k, t in pairs(b.letters) do t:SetShown(known and k == kind) end
 end
 
--- The dark sweep: empties clockwise as the aura runs out, no edge line, no flash.
-local function sweep(f, px)
+-- The dark sweep (one pixel in: place): empties clockwise as the aura runs out, no edge line, no flash.
+local function sweep(f)
   local cd = CreateFrame("Cooldown", nil, f, "CooldownFrameTemplate")
-  cd:SetPoint("TOPLEFT", px, -px)
-  cd:SetPoint("BOTTOMRIGHT", -px, px)
   cd:SetReverse(true)
   cd:SetDrawEdge(false)
   cd:SetDrawBling(false)
@@ -223,19 +220,59 @@ local function frameEdge(f, masque)
   return T.Panel(skin, { noBg = true })
 end
 
+-- Dressed icons by the frame that holds them (an aura container's) -> { icon frame -> its parts }, so
+-- a holder the client has rescaled can put its icons back on whole pixels (A.Refit). Weak, as the frames.
+local dressed = setmetatable({}, { __mode = "k" })
+
+-- Puts an icon's pixel-sized parts on whole pixels at `ref`'s scale now (the icon and sweep one pixel
+-- in, the type edge one pixel wide, its own edge painted again) and notes that scale.
+local function place(parts, ref)
+  local px = T.Pixel(ref)
+  for _, region in ipairs({ parts.icon, parts.cooldown }) do
+    region:ClearAllPoints()
+    region:SetPoint("TOPLEFT", px, -px); region:SetPoint("BOTTOMRIGHT", -px, px)
+  end
+  for i, t in ipairs(parts.ring or {}) do if i <= 2 then t:SetHeight(px) else t:SetWidth(px) end end
+  T.RepaintFrame(parts.skin)
+  parts.scale = ref:GetEffectiveScale()
+end
+
+-- Notes a dressed icon's parts under the holder its style names (nothing when it names none); returns the parts.
+local function remember(f, parts, holder)
+  if not holder then return parts end
+  dressed[holder] = dressed[holder] or setmetatable({}, { __mode = "k" })
+  dressed[holder][f] = parts
+  return parts
+end
+
 -- Dresses an icon frame (an engine button or one of ours). style: size, debuff
 -- (type-colored edge and type badge), dim (desaturated: others' auras), timer, masque (the
--- Masque group that skins it, when Masque is loaded). Returns its parts.
+-- Masque group that skins it, when Masque is loaded), holder (the container frame it sits in,
+-- for A.Refit). Returns its parts.
 function A.Dress(f, style)
   f:SetSize(style.size, style.size)
-  local px = T.Pixel(f)
   local skin = frameEdge(f, style.masque)
   local icon = T.Snap(T.Crop(f:CreateTexture(nil, "ARTWORK")))
-  icon:SetPoint("TOPLEFT", px, -px); icon:SetPoint("BOTTOMRIGHT", -px, px); icon:SetDesaturated(style.dim == true)
-  local cd = sweep(f, px)
+  icon:SetDesaturated(style.dim == true)
+  local cd = sweep(f)
   local count, clock = texts(f, cd, style.size, style.timer)
   ns.Masque.Add(style.masque, f, { Icon = icon, Cooldown = cd, Count = count }, "Aura")
-  return { icon = icon, cooldown = cd, count = count, timer = clock, ring = style.debuff and ring(skin, px) or nil, badge = style.debuff and badge(skin, style.size) or nil }
+  local parts = { icon = icon, cooldown = cd, count = count, timer = clock, skin = skin, ring = style.debuff and ring(skin) or nil, badge = style.debuff and badge(skin, style.size) or nil }
+  place(parts, f)
+  return remember(f, parts, style.holder)
+end
+
+-- Puts the icons a holder holds back on whole pixels where its scale has moved since they were placed,
+-- as `holds(scale, placed)` judges (true: still right). The client makes an icon when an aura first needs
+-- it, at whatever scale it has the holder then: on a nameplate it hands over at about 0.01, a one-pixel
+-- edge placed then is some 50 units thick once the plate grows, a dark square around the icon.
+---@param holder table
+---@param holds function
+function A.Refit(holder, holds)
+  local scale = holder:GetEffectiveScale()
+  for _, parts in pairs(dressed[holder] or {}) do
+    if not holds(scale, parts.scale) then ns.Try("aura icon pixels", place, parts, holder) end
+  end
 end
 
 -- Containers -------------------------------------------------------------------------------

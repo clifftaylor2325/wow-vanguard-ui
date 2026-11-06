@@ -32,12 +32,12 @@ function A.CountdownAtEdge(cd)
   fs:SetPoint("BOTTOM", cd, "BOTTOM", 0, 1)
 end
 
--- An icon frame, dressed (A.Dress) and hidden until used. style: size, debuff,
--- dim, timer (the client's countdown numbers), as A.Style gives.
+-- An icon frame, dressed (A.Dress, noted under `parent` for A.Refit) and hidden until used. style:
+-- size, debuff, dim, timer (the client's countdown numbers), as A.Style gives.
 function A.Icon(parent, size, style)
   style = style or { size = size }
   local f = CreateFrame("Frame", nil, parent)
-  local parts = A.Dress(f, { size = size, debuff = style.debuff, dim = style.dim, masque = style.masque })
+  local parts = A.Dress(f, { size = size, debuff = style.debuff, dim = style.dim, masque = style.masque, holder = parent })
   f.icon, f.cooldown, f.count, f.ring, f.badge = parts.icon, parts.cooldown, parts.count, parts.ring, parts.badge
   if style.timer then A.Countdown(f.cooldown, size) A.CountdownAtEdge(f.cooldown) end
   f:Hide()

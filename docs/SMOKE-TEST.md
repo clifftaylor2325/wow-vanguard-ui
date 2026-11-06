@@ -4215,6 +4215,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Every menu and submenu opens on the flat Vanguard panel with no game dropdown art, its rows readable and never hidden behind the open window, the tracking menu's scroll bar a thin thumb, no flicker as a menu opens, and every action works with no "blocked because of an AddOn" message and nothing in Vanguard's error badge. With the switch off and a reload the game's menu art is back.
 - If it fails, paste: which menu, a screenshot of it, any "blocked" message, and the output of `/vg errors`.
 
+### 33.320 Debuffs on nameplates keep a thin edge (both)
+
+- Do: With Vanguard's nameplates on, put your damage over time debuffs on two or three mobs, run out of nameplate range and back (or turn the camera away and back) several times, then pull a few more mobs so new plates appear mid-fight.
+- Expect: Every debuff icon on a plate shows its picture with a thin one-pixel edge; no icon shows a black or dark square around it, or a dark square in its place. If one flickers in, it is gone within half a second.
+- If it fails, paste: a screenshot, whether the square went away after half a second, your resolution and UI scale, and the output of `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

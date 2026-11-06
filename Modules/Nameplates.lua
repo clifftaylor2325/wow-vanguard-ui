@@ -677,10 +677,23 @@ function NP.RefreshAll()
   each(refresh)
 end
 
+-- A plate's aura icons back on whole pixels where the client has rescaled the plate since it made them.
+local function refitAuras(f)
+  for key in pairs(ROW_SPECS) do
+    if f[key] then ns.Auras.Refit(f[key].frame, NP.ScaleHolds) end
+  end
+end
+
+-- One plate's scale check: its border and glow, and its aura icons.
+local function checkScale(f, unit)
+  NP.UpdateTarget(f, unit)
+  refitAuras(f)
+end
+
 -- Every NP.SCALE_POLL seconds: each plate's border and glow painted again where the client has
--- since rescaled the plate (no event says so), and where its target state changed.
+-- since rescaled the plate (no event says so), and where its target state changed; its aura icons too.
 function NP.CheckScales()
-  each(NP.UpdateTarget)
+  each(checkScale)
 end
 
 -- The client's bit index for one of the Info display's boxes ("CurrentHealthPercent"), or nil on a client without it.
