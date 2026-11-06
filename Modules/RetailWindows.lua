@@ -212,6 +212,8 @@ GW.CONTENT_ART.LFGListInviteDialog = { "RoleIcon" }
 GW.Add("finder", { "PVEFrame", "LFGListApplicationDialog", "LFGListInviteDialog" }, GW.SkinRetailWindow)
 GW.AddOnDemand("finder", "Blizzard_PVPUI", { "PVPUIFrame" }, GW.SkinRetailPage)
 GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournal" }, GW.SkinRetailWindow)
+GW.AddOnDemand("finder", "Blizzard_PVPUI", { "ConquestTooltip" }, GW.SkinTooltipFrame)
+GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournalTooltip" }, GW.SkinTooltipFrame)
 
 -- The friends window's inside on Retail: its Who tab (the window itself is a framed window, Modules/Windows.lua).
 GW.INSIDES.FriendsFrame = function()
