@@ -227,6 +227,7 @@ local function moduleString(scope, data)
   if not (ns.GetModule(scope) or CORE[scope] or ns.Profile()[scope] ~= nil) then
     return nil, ns.Format(L["it's a {kind} string, not a profile string"], { kind = scope })
   end
+  if S.TooDeep(data, 1) then return nil, L["the settings in it can't be read"] end
   return "parts", { [scope] = data, parts = { scope } }
 end
 

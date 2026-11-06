@@ -47,6 +47,21 @@ it("a profile string nested deeper than Vanguard can write is refused, and the d
     local scope, back = S.Decode(S.Encode("profile", t)) return scope`);
   expect(again, "the deepest table the encoder writes round-trips").toBe("profile");
 });
+it("H25-4-2 an empty table 20 below the root is refused by the encoder, as the reader refuses it", () => {
+  const ok = loggedIn().eval(`local S = ns.Serialize local t = {} local at = t for _ = 1, 20 do at.x = {} at = at.x end
+    local written = pcall(S.Encode, "profile", t) local deep = {} local d = deep for _ = 1, 18 do d.x = {} d = d.x end
+    return { written, (S.Decode(S.Encode("profile", deep))) }`);
+  expect(ok, "20 refused; 19 tables below the root, the last empty, round-trips").toEqual([false, "profile"]);
+});
+it("H25-4-R1 an old module string nested as deep as a profile string can be is refused, and exports keep working", () => {
+  const addon = loggedIn();
+  // An old-format ActionBars string around n nested tables with a value in the deepest.
+  const importN = (n) => addon.eval(`local S = ns.Serialize local body = S.Base64(string.rep('{["x"]=', ${n}) .. "1" .. string.rep("}", ${n}))
+    local ok, why = ns.ImportProfile("VG1:ActionBars:" .. S.Checksum(body) .. ":" .. body)
+    local exported = pcall(ns.ExportProfile) return { ok and true or false, exported }`);
+  expect(importN(20), "20 tables would sit one level too deep: refused, export fine").toEqual([false, true]);
+  expect(importN(18), "18 tables import and still export").toEqual([true, true]);
+});
 it("profile strings keep big whole numbers", () => {
   const r = loggedIn().eval(`local S = ns.Serialize
     local realFormat = string.format
