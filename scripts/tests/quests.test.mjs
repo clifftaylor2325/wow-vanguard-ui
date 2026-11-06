@@ -1272,14 +1272,14 @@ it("quest log: the chosen quest's line shows the rail and wash of W.Row, the oth
   expect(addon.eval("return ns.Theme.RowParts(Vanguard_QuestLog.lines[2]).hover:GetParent() == Vanguard_QuestLog.lines[2]"), "W.Row's hover wash is on the line").toBe(true);
   expect(addon.eval("return Vanguard_QuestLog.lines[1].text:GetText()"), "no numbers in the log").toBe("[8] TEST-ONLY Wolves");
 });
-it("quest log: a ready quest keeps the log's check, untinted, and a quest in progress has no mark", () => {
+it("quest log: a ready quest has the log's check in the good color, and a quest in progress has no mark", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("ns.GetModule('QuestLog').Open()");
   const icons = addon.eval(`local f, out = Vanguard_QuestLog, {}
     for i = 1, f.lines.used do local b = f.lines[i] out[i] = { b.icon:IsShown(), tostring(b.icon.__texture):match("[^\\\\]+$"), b.icon.__vertexColor } end
     return out`);
   expect(icons.map((i) => [i[0], i[1]]), "the letter (ready to turn in) has the check; the wolves and the far quest none").toEqual([[false, "nil"], [true, "Check"], [false, "nil"]]);
-  expect(isTok(addon, icons[1][2], "white"), "the check is untinted").toBe(true);
+  expect(isTok(addon, icons[1][2], "good"), "the check is in the good color, as the tracker's ready line").toBe(true);
 });
 // TEST-ONLY counters: how often the tracker and the quest log rebuild (__rebuilds.tracker, __rebuilds.log).
 const COUNT_REBUILDS = `__rebuilds = { tracker = 0, log = 0 }

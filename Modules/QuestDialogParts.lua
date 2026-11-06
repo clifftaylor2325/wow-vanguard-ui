@@ -138,9 +138,11 @@ function QP.Mark(b, on)
   b:SetSelected(on)
 end
 
--- The tint of a line's icon: a quest mark by its state (QP.ICONS), gold for a quest to take and one to turn in
--- and muted for one in progress (the same "?", told apart by its line's gold); white for any other icon.
+-- The tint of a line's icon: the line's own tint if it names one; else a quest mark by its state (QP.ICONS), gold for
+-- a quest to take and one to turn in and muted for one in progress (the same "?", told apart by its line's gold);
+-- white for any other icon.
 local function iconTint(spec)
+  if spec.tint then return spec.tint end
   if not spec.quest then return "white" end
   if spec.icon == QP.ICONS.available then return "gold" end
   return spec.color == "gold" and "gold" or "muted"
