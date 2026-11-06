@@ -255,8 +255,8 @@ end
 -- follows the plate's unit (Core/Auras.lua).
 function NP.DebuffSpec(f, s)
   return { point = { "BOTTOMLEFT", f, "TOPLEFT", 0, 16 }, grow = "RIGHT", growY = "UP", lineSize = s.width, gap = 2, timer = s.timers, mouse = false,
-    groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = s.debuffs, size = ICON, debuff = true, sort = "ExpirationOnly" },
-      { filter = "HARMFUL|PLAYER|CROWD_CONTROL", max = s.debuffs > 0 and 1 or 0, size = ICON, debuff = true } } }
+    groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = s.debuffs, size = ICON, debuff = true, sort = "ExpirationOnly" },
+      { filter = "HARMFUL|PLAYER|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = s.debuffs > 0 and 1 or 0, size = ICON, debuff = true } } }
 end
 
 -- A player's buffs in a row right of the bar, past the target marker: big
@@ -268,7 +268,7 @@ end
 function NP.BuffSpec(f, s)
   local gap = 2
   -- One group of up to s.buffs icons through `filter`.
-  local function group(filter) return { filter = filter, max = s.buffs, size = NP.BUFF } end
+  local function group(filter) return { filter = filter .. "|INCLUDE_NAME_PLATE_ONLY", max = s.buffs, size = NP.BUFF } end
   return { point = { "BOTTOMLEFT", f, "BOTTOMRIGHT", NP.MARKER + 8, (s.height - NP.BUFF) / 2 }, grow = "RIGHT", growY = "UP",
     lineSize = s.buffs * (NP.BUFF + gap), gap = gap, timer = s.timers, mouse = false,
     groups = { group("HELPFUL|BIG_DEFENSIVE"), group("HELPFUL|EXTERNAL_DEFENSIVE|!BIG_DEFENSIVE"),

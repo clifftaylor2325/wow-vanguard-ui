@@ -424,7 +424,7 @@ export const PLATE_ENV = `
   UnitThreatSituation = function(_, unit) return __threat[unit] end
   UnitCastingInfo = function(unit) if __cast[unit] then return "TEST-ONLY Spell", "", "TEST-ONLY-ICON", 1000, 3000, false, nil, false end end
   C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
-    if unit == "nameplate1" and filter == "HARMFUL|PLAYER|!CROWD_CONTROL" and i == 1 then return { icon = "TEST-ONLY-DOT", expirationTime = 1010, duration = 12 } end
+    if unit == "nameplate1" and filter == "HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY" and i == 1 then return { icon = "TEST-ONLY-DOT", expirationTime = 1010, duration = 12 } end
   end }
   local function plate(unit, forbidden)
     local p = CreateFrame("Frame", nil, UIParent)
