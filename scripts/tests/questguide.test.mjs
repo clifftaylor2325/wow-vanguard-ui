@@ -128,7 +128,7 @@ it("quest guidance: Shift-click a tracked quest and the game's quest arrow follo
   expect([addon.eval("return __super"), chatHas(addon, /Arrow: TEST-ONLY Letter\./)], "the game's arrow on the quest, and chat says so").toEqual([[90052], true]);
   const t = tracker(addon);
   expect(t[1], "the next step first under the followed quest").toEqual(["[12] TEST-ONLY Letter", ["> TEST-ONLY Take the boat"]]);
-  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[2].lines[1].text.__textColor"), "accent"), "in the accent").toBe(true);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[2].lines[1].text.__textColor"), "accentText"), "in the accent text color").toBe(true);
   expect(t[0][1], "the other quest has no step line").toEqual(["TEST-ONLY Wolves slain 3/8"]);
   addon.eval("ns.QuestArrow.Pick()");
   addon.update(0);

@@ -139,7 +139,7 @@ function QG.StepLine(questID)
   if not (QG.settings and QG.settings.stepLine) or questID ~= QG.Followed() then return nil end
   local text = ns.PlainText(ns.CallIf(C_QuestLog, "GetNextWaypointText", questID))
   if not text then return nil end
-  return { "> " .. text, "accent" }
+  return { "> " .. text, "accentText" }
 end
 
 -- The steps or the followed quest changed: the tracker redraws, if it shows.
