@@ -1618,6 +1618,15 @@ it("more game windows: friends, books and letters, and windows that load later",
   addon.eval('ItemTextFrame.__scripts.OnEvent(ItemTextFrame, "ITEM_TEXT_READY")');
   expect(addon.eval("return ItemTextMaterialTopLeft.__alpha"), "a page without colors to set is left alone").toBe(0);
 });
+it("a book's page follows a look change while it is open, and is left alone when it is closed (H27-5-4)", () => {
+  const addon = loggedIn(ALERTS_ENV);
+  addon.eval('ItemTextFrame:Show() ItemTextFrame.__scripts.OnEvent(ItemTextFrame, "ITEM_TEXT_READY")');
+  addon.slash("variant classic");
+  expect(addon.eval("return ItemTextPageText.__colors.P[1] == ns.Theme.RGB('text')"), "the page takes the new text colour").toBe(true);
+  addon.eval("ItemTextFrame:Hide() ItemTextPageText.__colors = {}");
+  addon.slash("variant default");
+  expect(addon.eval("return next(ItemTextPageText.__colors) == nil"), "a closed book is not painted").toBe(true);
+});
 it("a Sort button on the combined bag, where the client can sort", () => {
   const addon = loggedIn(UI_ENV + "C_Container = { SortBags = function() __sorted = true end }");
   expect(addon.eval('local b = ns.GetModule("Bags").sort b:GetScript("OnClick")(b) return __sorted'), "Sort sorts your bags").toBe(true);

@@ -124,6 +124,14 @@ function GW.SkinOpenMail(frame)
 end
 
 GW.Add("social", { "OpenMailFrame" }, GW.SkinOpenMail)
+
+-- The open letter's body in the text colour again after a theme change (its tag colours are set by hand), while
+-- the social group is on.
+local function relightOpenMail()
+  local frame = _G.OpenMailFrame
+  if GW.GroupOn("social") and type(frame) == "table" and frame:IsShown() then GW.LightMailText() end
+end
+T.OnChanged(ns.Guard("relight open mail", relightOpenMail))
 GW.AddButtons("OpenMailFrame", { "OpenMailReplyButton", "OpenMailDeleteButton", "OpenMailCancelButton", "OpenMailReportSpamButton" })
 
 -- Guild window ----------------------------------------------------------------------------------

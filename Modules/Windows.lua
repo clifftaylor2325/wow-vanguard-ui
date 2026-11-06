@@ -2059,6 +2059,13 @@ local function lightProgressMoney()
   if type(fs) == "table" and fs.SetTextColor and inDressedWindow(fs) then T.Color(fs, "text") end
 end
 
+-- The open book's page in the text colour again after a theme change (its tag colours are set by hand: a SimpleHTML
+-- has no one colour T.Color could remember).
+local function relightItemText()
+  local frame = _G.ItemTextFrame
+  if type(frame) == "table" and frame:IsShown() then GW.LightItemText() end
+end
+
 -- Keeps quest and gossip text readable: the game recolors it for parchment as
 -- each page shows, so Vanguard's colors go on after it does, every time.
 local function keepTextReadable()
@@ -2071,6 +2078,7 @@ local function keepTextReadable()
     GW.HookScriptOnce(f, "OnShow", "quest text", function() GW.LightQuestText() GW.LightGossip() end)
   end
   GW.HookScriptOnce(_G.ItemTextFrame, "OnEvent", "item text", function(...) GW.LightItemText(...) end)
+  T.OnChanged(ns.Guard("relight item text", relightItemText))
 end
 
 -- Keeps the shared quest texts readable after each QuestInfo_Display, in whichever dressed window shows them.

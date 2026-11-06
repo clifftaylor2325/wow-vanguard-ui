@@ -82,6 +82,17 @@ it("open mail: the letter window in the theme, its stationery faded, body text l
   expect(addon.eval("return { ns.FrameState('vgSkinned')[OpenMailLetterButton], ns.FrameState('vgSkinned')[OpenMailMoneyButton], ns.FrameState('vgSkinned')[OpenMailAttachmentButton1] }"), "the item buttons get the bags' border").toEqual([true, true, true]);
 });
 
+it("open mail: the open letter's body follows a look change, and is left alone with the group off (H27-5-4)", () => {
+  const addon = loggedIn(MAIL_ENV);
+  addon.eval("OpenMailFrame:Show()");
+  addon.slash("variant classic");
+  expect(addon.eval("return OpenMailBodyText.__colors.P[1] == ns.Theme.RGB('text')"), "the body takes the new text colour").toBe(true);
+  const off = loggedIn(MAIL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
+  off.eval("OpenMailFrame:Show()");
+  off.slash("variant classic");
+  expect(off.eval("return next(OpenMailBodyText.__colors) == nil"), "with the group off nothing is painted").toBe(true);
+});
+
 it("open mail: a redraw puts the look back, a second show paints nothing more, the switch off leaves the game's", () => {
   const addon = loggedIn(MAIL_ENV);
   addon.eval("OpenMailFrame:Show()");
