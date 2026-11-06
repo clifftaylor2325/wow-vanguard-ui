@@ -583,11 +583,17 @@ end
 
 -- Setup ------------------------------------------------------------------------------------
 
--- The raid buttons (existing and future) and, if turned on, the unit frames.
+-- Registers a module's tiles made so far (listed in mod[list]) and, through its hook, those it makes later.
+local function registerTiles(mod, list, hook)
+  for _, b in ipairs(mod[list] or {}) do CC.Register(b) end
+  mod[hook] = CC.Register
+end
+
+-- The raid buttons, the main tank tiles and the party pet tiles (existing and future) and, if turned on, the unit frames.
 local function registerFrames(settings)
-  local raid = ns.GetModule("RaidFrames")
-  for _, b in ipairs(raid.buttons) do CC.Register(b) end
-  raid.OnButtonCreated = CC.Register
+  registerTiles(ns.GetModule("RaidFrames"), "buttons", "OnButtonCreated")
+  registerTiles(ns.GetModule("MainTanks"), "tiles", "OnTileCreated")
+  registerTiles(ns.GetModule("PartyExtras"), "pets", "OnPetTile")
   if not settings.unitFrames then return end
   for _, f in pairs(ns.GetModule("UnitFrames").frames) do CC.Register(f) end
 end

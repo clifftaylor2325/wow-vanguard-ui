@@ -77,6 +77,13 @@ it("party pets and targets: small tiles above the party, only in a party, when s
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Party pets and targets, above the party") and VanguardDB.profiles.Default.PartyExtras.show'), "the switch is under Unit frames").toBe(false);
 });
+it("H28-I1: click casting reaches the main tank tiles and the party pet tiles, not the party target tiles", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true } } }" });
+  addon.eval('ns.GetModule("ClickCast").Add("BUTTON2", "spell", "Renew", 139) __mt(1, "raid1")');
+  // A tile's Right click: its type and spell.
+  const right = (b) => addon.eval(`return { ${b}:GetAttribute("type2") or false, ${b}:GetAttribute("spell2") or false }`);
+  expect([right("Vanguard_MainTanksUnitButton1"), right("Vanguard_partypet1"), right("Vanguard_party1target")], "a tank tile made later and a pet tile cast Renew; a target tile keeps its own clicks").toEqual([["spell", "Renew"], ["spell", "Renew"], [false, false]]);
+});
 it("party pets and targets: on a canvas under 676 tall the column sits right of the party, on screen", () => {
   // The column's spot and rect on a w x h canvas, with the raid frames' party column's right edge.
   const at = (w, h) => {

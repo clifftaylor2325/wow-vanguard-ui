@@ -27,11 +27,11 @@ Class/reaction/threat colors, the name in outlined text with the level (colored 
 
 ## Main tank frames
 
-In a raid, the players marked main tank or main assist get small tiles at the top left (beside the raid tools), with health in their class color (a dark bar while offline) and what each is targeting written beside it. Click one to target them. Move them with `/vg unlock`; turn them off under Modules.
+In a raid, the players marked main tank or main assist get small tiles at the top left (beside the raid tools), with health in their class color (a dark bar while offline) and what each is targeting written beside it. Click one to target them; your click casting and hover keys work on them as on the raid tiles. Move them with `/vg unlock`; turn them off under Modules.
 
 ## Party pets and targets
 
-Party pets and targets (off until you turn it on under Unit frames): a small tile for each party member's pet and target, one row per member, above the party frames (the Healing layout draws the party larger, 115%, so its grid reaches about 32 units into the column; move either with `/vg unlock`) (on a screen under 676 UI units tall, the UI scale slider's last notches, right of the party column instead, so it stays on the screen). They show only in a party, each while its unit exists.
+Party pets and targets (off until you turn it on under Unit frames): a small tile for each party member's pet and target, one row per member, above the party frames (the Healing layout draws the party larger, 115%, so its grid reaches about 32 units into the column; move either with `/vg unlock`) (on a screen under 676 UI units tall, the UI scale slider's last notches, right of the party column instead, so it stays on the screen). They show only in a party, each while its unit exists. Click one to target its unit; the pet tiles also take your click casting and hover keys (the target tiles don't, so a click always targets an enemy).
 
 ## Group threat
 
