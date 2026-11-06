@@ -4287,6 +4287,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The dungeon name, level and instruction lines are in the Vanguard font, in light text at the game's sizes, fitting the window; with Window ornaments on, the panel has corner brackets.
 - If it fails, paste: a screenshot of the keystone window.
 
+### 33.332 Stance and pet buttons in a fight
+
+- Do: On a warrior, druid or rogue (or a hunter or warlock for the pet bar), fight a few mobs while you gain XP or reputation, so the XP or reputation bar shows or changes during the fight. Enter a vehicle or mind-control a mob if you can. Then `/vg unlock`, right-click the stance bar's handle and drag its Scale and Opacity.
+- Expect: The stance and pet buttons stay at the bottom left over the chat the whole fight, never over action bars 1 to 3, and every Vanguard action button under where the game's bar used to be still takes clicks. In a vehicle or while mind-controlling, the stance buttons go and come back after; the pet buttons hide with no pet. The handle's Scale and Opacity change the buttons. Active stance highlight, cooldowns, tooltips and the stance keys work as before. `/vg errors` is empty.
+- If it fails, paste: a screenshot in the fight and `/vg errors`.
+
+### 33.333 Raid tiles: far players, offline players and lingering ready checks
+
+- Do: In a raid with the missing-buff mark on, let some players be far away (another zone or phase). Watch a player who dies and then disconnects. Run a ready check and have someone leave in the six seconds after it ends.
+- Expect: Far players show no missing-buff mark until they come close. The dead-then-gone player reads Offline, with no dispel wash on the tile. After the leave, nobody's tile shows the leaver's tick or cross. A player who is both main tank and main assist always has the accent shield.
+- If it fails, paste: a screenshot of the raid tiles and `/vg errors`.
+
+### 33.334 Nameplates after a look change
+
+- Do: Stand near a few enemy plates out of combat, then switch `/vg variant contrast` (or Safer colours) and back.
+- Expect: Every plate's bar takes the new reaction colour at once. Debuffs and buffs the game shows only on nameplates (some class and boss auras) appear on Vanguard's plates too.
+- If it fails, paste: a screenshot of the plates before and after.
+
+### 33.335 Imported click-casting strings
+
+- Do: Import a click-casting string whose macro text holds colour codes (`|cffff0000Reset|r`), then open Click casting and type `/vg binds`.
+- Expect: The cell, the hover-key row and the chat line show the text with its | characters as typed, never in red or as a link.
+- If it fails, paste: a screenshot of the grid and the chat line.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
