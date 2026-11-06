@@ -4299,11 +4299,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The Damage style row shows Feral or Balance (Elemental or Enhancement on a shaman) and no row on a warrior; with Balance the caster item's line compares by spell damage, crit and hit, and `/vg weights` says "Weights for Balance"; changing the druid's weights doesn't change a mage's on the same profile.
 - If it fails, paste: a screenshot of the Gear upgrades card, the two tooltips and the `/vg weights` line.
 
-### 33.334 Hit cap (Forever)
+### 33.334 Caps on hit, expertise and defense (Forever)
 
-- Do: Open Set up stat weights, type your current hit per cent (from the character sheet) into Hit cap and Save. Hover an item with hit and an otherwise equal one without.
-- Expect: The item with hit is no better than the one without, since all its hit is past the cap; `/vg weights` says "Hit past N% counts for nothing."; set the cap back to 0 and the item with hit is the upgrade again.
-- If it fails, paste: the two tooltips, `/vg weights` and `/dump GetHitModifier(), GetSpellHitModifier()`.
+- Do: Open Set up stat weights and look at the three cap boxes; type your current hit per cent (the character sheet's Hit Chance) into Hit cap and Save. Hover an item with hit and an otherwise equal one without. On a warrior tank (Weigh stats for: tank), hover an item with defense.
+- Expect: The boxes start at the kind's caps (8 hit for melee, 17 for a caster or Balance druid; 6.5 expertise; 440 defense for a tank); with the cap at your hit, the item with hit is no better than the one without; `/vg weights` lists the caps; set the hit cap back to 0 and the item with hit is the upgrade again. Also `/dump GetExpertise()` and `/dump UnitDefenseSkill("player")` give the character sheet's numbers.
+- If it fails, paste: the two tooltips, `/vg weights`, and `/dump GetHitModifier(), GetSpellHitModifier(), GetExpertise(), UnitDefenseSkill("player")`.
 
 ### 33.335 A guide site's weight string (both)
 

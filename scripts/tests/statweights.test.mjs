@@ -89,8 +89,9 @@ it("stat weights: changes are kept per class, and weights a profile kept per kin
 it("stat weights: with a hit cap set, hit past it counts for nothing", () => {
   const addon = loggedIn(GEAR);
   const UP = "ns.GetModule('Upgrades')";
-  expect([addon.eval("return __pct(4)"), addon.eval("return __pct(5)")], "no cap: all the hit counts (30 and 20 rating at 0.9)").toEqual([27, 18]);
-  addon.eval(`${UP}.SetCap("strength", 5) __wfgWorld.units.player.hit = 4`);
+  expect(addon.eval(`return { ${UP}.Cap("strength", "HIT"), ${UP}.Cap("caster", "HIT"), ${UP}.Cap("tank", "DEF"), ${UP}.Cap("healer", "HIT") }`), "the caps each kind starts with").toEqual([8, 17, 440, 0]);
+  expect([addon.eval("return __pct(4)"), addon.eval("return __pct(5)")], "0% hit, under the 8% cap: all the hit counts (30 and 20 rating at 0.9)").toEqual([27, 18]);
+  addon.eval(`${UP}.SetCap("strength", "HIT", 5) __wfgWorld.units.player.hit = 4`);
   expect(addon.eval("return __pct(4)"), "4% hit, a cap of 5%: one point of the bracers' 3 counts").toBe(9);
   addon.eval("__wfgWorld.units.player.hit = 2 __wfgWorld.units.player.ratingBonus = { [6] = 2, [8] = 9 }");
   expect(addon.eval("return __pct(4)"), "the hit rating's bonus counts beside the modifier, as the character sheet adds them (melee, not spell)").toBe(9);
@@ -108,52 +109,86 @@ it("stat weights: with a hit cap set, hit past it counts for nothing", () => {
   expect(addon.eval("return __pct(4)"), "a client without rating bonuses: the modifier alone (6% is past the cap)").toBe(0);
   addon.eval("GetHitModifier = nil");
   expect(addon.eval("return __pct(4)"), "a client that won't say your hit: no cap applied").toBe(27);
-  addon.eval(`${UP}.SetCap("strength", 0)`);
-  expect(addon.eval(`return ${UP}.settings.caps.WARRIOR.strength == nil`), "a cap of 0 is none").toBe(true);
+  addon.eval(`${UP}.SetCap("strength", "HIT", 0)`);
+  expect(addon.eval(`return ${UP}.settings.caps.WARRIOR.strength.HIT`), "a cap of 0 is none, kept over the kind's 8").toBe(0);
+  addon.eval(`${UP}.SetCap("strength", "HIT", 8)`);
+  expect(addon.eval(`return ${UP}.settings.caps.WARRIOR.strength.HIT == nil`), "the kind's own cap keeps nothing saved").toBe(true);
+});
+
+it("stat weights: rating turns into per cent by the client's own ratio while you have some, else the level-60 table", () => {
+  const addon = loggedIn(GEAR);
+  // How much hit rating makes 1% now.
+  const per = () => addon.eval("return ns.GetModule('Upgrades').PerUnit('HIT', 'strength')");
+  expect(per(), "no hit rating yet: 10 per 1%").toBe(10);
+  addon.eval("__wfgWorld.units.player.rating = { [6] = 40 } __wfgWorld.units.player.ratingBonus = { [6] = 2 }");
+  expect(per(), "40 rating giving 2%: 20 per 1% at this level").toBe(20);
+  addon.eval("GetCombatRating = nil");
+  expect(per(), "a client that won't say: the table").toBe(10);
 });
 
 it("stat weights: a caster's cap counts spell hit", () => {
   const addon = loggedIn(GEAR);
   becomeClass(addon, "MAGE");
   addon.eval("__worn[9] = __link(7) __gear[8] = { 'INVTYPE_WRIST', { ITEM_MOD_SPELL_POWER_SHORT = 100, ITEM_MOD_HIT_RATING_SHORT = 30 } }");
-  addon.eval("ns.GetModule('Upgrades').SetCap('caster', 4) __wfgWorld.units.player.hit = 0 __wfgWorld.units.player.spellHit = 4");
+  addon.eval("ns.GetModule('Upgrades').SetCap('caster', 'HIT', 4) __wfgWorld.units.player.hit = 0 __wfgWorld.units.player.spellHit = 4");
   expect(addon.eval("return __pct(8)"), "4% spell hit with 1 from the worn bracers: room for 1 on either, so the 3% gain nothing over the crit").toBe(-8.2);
 });
 
-it("stat weights: the wizard's hit cap box is saved with the weights, shown, exported and reset", () => {
+it("stat weights: a tank's expertise and defense count only up to their caps", () => {
   const addon = loggedIn(GEAR);
-  const box = "Vanguard_WeightsWizard.cap";
-  // Types text into the cap box and presses Enter (or leaves the box).
+  addon.eval("ns.GetModule('Upgrades').settings.role = 'tank' ns.GetModule('Upgrades').Changed()");
+  addon.eval("__gear[9] = { 'INVTYPE_WRIST', { ITEM_MOD_STRENGTH_SHORT = 100, ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = 30 } } __gear[10] = { 'INVTYPE_WRIST', { ITEM_MOD_STRENGTH_SHORT = 100, ITEM_MOD_EXPERTISE_RATING_SHORT = 30 } }");
+  expect([addon.eval("return __pct(9)"), addon.eval("return __pct(10)")], "far under the caps: 30 defense rating at 1 and 30 expertise rating at 0.4 over 50 of strength").toEqual([60, 24]);
+  addon.eval("__wfgWorld.units.player.defense = { 300, 130 } __wfgWorld.units.player.expertise = 5");
+  expect([addon.eval("return __pct(9)"), addon.eval("return __pct(10)")], "430 defense and 5% expertise: 10 of the 20 skill and 1.5 of the 3% fit under 440 and 6.5%").toEqual([30, 12]);
+  addon.eval("__wfgWorld.units.player.defense = { 300, __wfgWorld.secret(130) }");
+  expect(addon.eval("return __pct(9)"), "a hidden bonus counts as none (300 is far under 440)").toBe(60);
+  addon.eval("UnitDefenseSkill = nil GetExpertise = nil");
+  expect([addon.eval("return __pct(9)"), addon.eval("return __pct(10)")], "a client that can't say: no cap applied").toEqual([60, 24]);
+});
+
+it("stat weights: the wizard's cap boxes are saved with the weights, shown, exported and reset", () => {
+  const addon = loggedIn(GEAR);
+  const box = "Vanguard_WeightsWizard.caps.HIT";
+  // Types text into the hit cap box and presses Enter (or leaves the box).
   const type = (text, script = "OnEnterPressed") => addon.eval(`local b = ${box} b:SetText(${JSON.stringify(text)}) b:GetScript("${script}")(b)`);
   // Clicks a wizard button by its field name.
   const click = (name) => addon.eval(`local b = Vanguard_WeightsWizard.${name} b:GetScript("OnClick")(b)`);
+  // The hit cap in use for the strength kind.
+  const cap = () => addon.eval("return ns.GetModule('Upgrades').Cap('strength', 'HIT')");
   addon.slash("weights wizard");
-  expect([addon.eval(`return ${box}:GetText()`), addon.eval("return Vanguard_WeightsWizard.capLabel:GetText()")], "the box starts at 0, labelled").toEqual(["0", "Hit cap in per cent (0 for none)"]);
+  const labels = addon.eval("local l = Vanguard_WeightsWizard.capLabels return { l.HIT:GetText(), l.EXP:GetText(), l.DEF:GetText() }");
+  expect([addon.eval(`return ${box}:GetText()`), labels], "a box per cap, the hit cap at the kind's 8").toEqual(["8", ["Hit cap in per cent (0 for none)", "Expertise cap in per cent (0 for none)", "Defense cap in skill (0 for none)"]]);
   type("lots");
+  expect(addon.eval(`return ${box}:GetText()`), "text puts the cap back").toBe("8");
   type("-3", "OnEditFocusLost");
-  expect(addon.eval(`return ${box}:GetText()`), "text puts the cap back; a cap below 0 is none").toBe("0");
+  expect(addon.eval(`return ${box}:GetText()`), "a cap below 0 is none").toBe("0");
   type("9");
   click("cancel");
-  expect(addon.eval("return ns.GetModule('Upgrades').Cap('strength')"), "Cancel keeps nothing").toBe(0);
+  expect(cap(), "Cancel keeps nothing").toBe(8);
   addon.slash("weights wizard");
   type("9");
   click("save");
-  expect(addon.eval("return ns.GetModule('Upgrades').Cap('strength')"), "Save keeps it").toBe(9);
+  expect(cap(), "Save keeps it").toBe(9);
   addon.slash("weights");
-  expect(chatHas(addon, /Hit past 9% counts for nothing\./), "/vg weights says the cap").toBe(true);
+  expect(chatHas(addon, /Caps \(past them a stat counts for nothing\): EXP 6\.5, HIT 9/), "/vg weights says the caps").toBe(true);
   addon.slash("weights wizard");
   expect(addon.eval(`return ${box}:GetText()`), "the wizard shows it again").toBe("9");
   click("defaults");
-  expect(addon.eval(`return ${box}:GetText()`), "Defaults puts it back to none").toBe("0");
+  expect(addon.eval(`return ${box}:GetText()`), "Defaults puts the kind's back").toBe("8");
   click("cancel");
   addon.slash("weights export");
   const text = addon.eval("return Vanguard_TextEdit:GetText()");
   addon.slash("weights reset");
-  expect(addon.eval("return ns.GetModule('Upgrades').Cap('strength')"), "reset takes the cap off too").toBe(0);
-  expect(addon.eval(`return { ns.GetModule("Upgrades").Import(${JSON.stringify(text)}), ns.GetModule('Upgrades').Cap('strength') }`), "the exported string carries the cap").toEqual([true, 9]);
+  expect(cap(), "reset puts the cap back too").toBe(8);
+  expect(addon.eval(`return { ns.GetModule("Upgrades").Import(${JSON.stringify(text)}), ns.GetModule('Upgrades').Cap('strength', 'HIT') }`), "the exported string carries the caps").toEqual([true, 9]);
+  addon.eval("ns.GetModule('Upgrades').SetCap('strength', 'HIT', 0) ns.GetModule('Upgrades').SetCap('strength', 'EXP', 0)");
+  addon.clearChat();
+  addon.slash("weights");
+  expect(chatHas(addon, /Caps/), "no caps: no caps line").toBe(false);
   const retail = loggedIn(GEAR, { client: RETAIL_CLIENT });
   retail.slash("weights wizard");
-  expect(retail.eval("return { Vanguard_WeightsWizard:IsShown(), Vanguard_WeightsWizard.cap == nil }"), "Retail's items have no hit: no cap box").toEqual([true, true]);
+  expect(retail.eval("return { Vanguard_WeightsWizard:IsShown(), next(Vanguard_WeightsWizard.caps) == nil }"), "Retail's items have none of these: no cap boxes").toEqual([true, true]);
 });
 
 // A TEST-ONLY guide site string for a Balance druid.

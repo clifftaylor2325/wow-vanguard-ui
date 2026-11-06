@@ -127,7 +127,7 @@ it("upgrades: the weights wizard has a slider for every stat, and saves only on 
   expect([escapes(addon, wizard), alphaOf(addon, wizard)], "Escape closes it; the dialog alpha").toEqual([true, 0.98]);
   const caption = addon.frame(`${wizard}.caption`);
   expect([caption.font.size, isTok(addon, caption.textColor, "muted"), insets(addon, `${wizard}.caption`, wizard).slice(0, 2)], "the caption is a note: small muted, T.SPACE.pad in, under the head").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true, [16, 40]]);
-  expect(insets(addon, `${wizard}.view`, wizard), "the list is T.SPACE.pad in, a gap (8) under the caption and the hit cap row (20 and a gap), a thumb's gutter (12) more on the right, over the foot (50)").toEqual([16, 40 + lua(`return ${wizard}.caption:GetHeight()`) + 8 + 28, 28, 50]);
+  expect(insets(addon, `${wizard}.view`, wizard), "the list is T.SPACE.pad in, a gap (8) under the caption and the three cap rows (20 and a gap each), a thumb's gutter (12) more on the right, over the foot (50)").toEqual([16, 40 + lua(`return ${wizard}.caption:GetHeight()`) + 8 + 3 * 28, 28, 50]);
   expect(lua(`local r = ${wizard}.rows[1] return { r:GetWidth(), r:GetHeight(), r.box:GetWidth(), r.box:GetHeight(), r.box:GetLeft() - r:GetRight(), ${wizard}.view:GetRight() - r.box:GetRight() }`), "a stat's slider (348) and its box (60 by 20, a gap of 8 on) fill the list's width (416)").toEqual([348, 28, 60, 20, 8, 0]);
   expect(thumbOf(addon, `${wizard}.view`, wizard), "21 stats are more than fit: the thumb shows, in the right pad").toEqual([true, true, 16]);
   lua(`${wizard}.view:Fit(100)`);

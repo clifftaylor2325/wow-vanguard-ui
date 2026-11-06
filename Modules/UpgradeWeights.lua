@@ -36,13 +36,32 @@ W.STATS = ns.ClientData({
   },
 })
 
--- How much rating makes 1% at level 60 on WoW Forever, whose items list their "Equip: ... by 2%" lines as rating
--- (C_Item.GetItemStats gave Lionheart Helm's 2% crit and 2% hit as 28 and 20, seen 2026-11-06). Crit and hit are
--- that reading; haste, dodge, parry and block are the same level-60 combat rating table's, not yet seen on an item.
--- Guide sites' weight strings count these per 1%, so an import divides by them. Retail's strings already count
--- rating.
-W.RATING_PER_PERCENT = ns.ClientData({
-  forever = { CRIT = 14, HIT = 10, HASTE = 10, DODGE = 12, PARRY = 15, BLOCK = 5 },
+-- How much rating makes 1% (defense: one point of skill) at level 60 on WoW Forever, whose items list their
+-- "Equip: ... by 2%" lines as rating (C_Item.GetItemStats gave Lionheart Helm's 2% crit and 2% hit as 28 and 20,
+-- seen 2026-11-06). Crit and hit are that reading; the rest are the same level-60 combat rating table's, not yet
+-- seen on an item. Guide sites' weight strings count these per 1% (per point of defense), so an import divides by
+-- them, and a cap falls back to them when the client can't say (UP.PerUnit). Retail's strings already count rating.
+W.RATING_PER_UNIT = ns.ClientData({
+  forever = { CRIT = 14, HIT = 10, HASTE = 10, DODGE = 12, PARRY = 15, BLOCK = 5, EXP = 10, DEF = 1.5 },
+  retail = {},
+})
+
+-- The stats a cap can be set for, in the order the wizard lists them: hit and expertise in per cent, defense in
+-- skill. Retail's items have none of them.
+W.CAP_STATS = ns.ClientData({ forever = { "HIT", "EXP", "DEF" }, retail = {} })
+
+-- The combat rating each capped stat is counted from (the client's CR_ indexes; a caster's hit is CR_HIT_SPELL).
+W.CAP_RATING = { HIT = 6, SPELLHIT = 8, EXP = 24, DEF = 2 }
+
+-- The caps each kind starts with on WoW Forever, against a raid boss three levels up. Hit: 8% melee and 17% spell,
+-- what the guides measured on the beta (Blizzard has published none). Expertise: the boss's 6.5% dodge, and defense:
+-- 440 skill, where a boss's 5% crit (0.04% a point over 315) is gone, both from the client's own character sheet
+-- (Camelot PaperDollFrameStats.lua). A player changes any of them in the wizard.
+W.CAPS = ns.ClientData({
+  forever = {
+    strength = { HIT = 8, EXP = 6.5 }, agility = { HIT = 8, EXP = 6.5 }, tank = { HIT = 8, EXP = 6.5, DEF = 440 },
+    caster = { HIT = 17 }, balance = { HIT = 17 }, healer = {},
+  },
   retail = {},
 })
 
@@ -60,7 +79,7 @@ W.KINDS = ns.ClientData({
     tank = { STA = 1, ARMOR = 0.05, AGI = 0.6, STR = 0.5, DEF = 1, DODGE = 0.8, PARRY = 0.7, BLOCK = 0.5, BLOCKVALUE = 0.3, HIT = 0.4, EXP = 0.4, DPS = 0.6 },
     -- A Balance druid's: the owner's estimates from the guides' stat order, not published values (Forever has none
     -- yet). He gave crit 10, hit 12 and haste 7 per 1%; items carry rating, so those are divided by the rating that
-    -- makes 1% (W.RATING_PER_PERCENT).
+    -- makes 1% (W.RATING_PER_UNIT).
     balance = { SP = 1, CRIT = 0.71, HIT = 1.2, INT = 0.4, HASTE = 0.7, SPI = 0.1 },
   },
   -- Retail's: the primary stat first, the four secondaries close behind it (which one leads changes with the spec and the

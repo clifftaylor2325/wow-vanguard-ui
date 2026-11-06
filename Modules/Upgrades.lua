@@ -7,8 +7,8 @@
 --
 -- /vg weights shows the weights in use; set <stat> <n>, reset, export and
 -- import change or share them (a profile keeps its own, per class). On WoW
--- Forever a druid or shaman picks a damage style, and a hit cap set in the
--- wizard makes hit past it worth nothing.
+-- Forever a druid or shaman picks a damage style, and hit, expertise and
+-- defense past their caps (set in the wizard) are worth nothing.
 --
 -- Written for WoW Forever: C_Item.GetItemStats, GetItemInfoInstant and
 -- IsEquippableItem and C_PlayerInfo.CanUseItem are in its UI source (1.60.1).
@@ -24,7 +24,8 @@ local T = ns.Theme
 local W = ns.UpgradeWeights
 
 
--- weights: class -> kind -> this profile's changes to the defaults; caps: class -> kind -> hit cap (per cent);
+-- weights: class -> kind -> this profile's changes to the defaults; caps: class -> kind -> stat -> its cap where it
+-- differs from the kind's (ns.UpgradeWeights.CAPS; 0 for none);
 -- styles: class -> its damage style on WoW Forever (ns.UpgradeWeights.STYLES).
 local UP = ns.Module("Upgrades", { defaults = { tooltip = true, bags = true, quests = true, role = "auto", weights = {}, caps = {}, styles = {} } })
 
@@ -117,16 +118,25 @@ function UP.SetOwn(kind, changes)
   all[class][kind] = changes
 end
 
--- The hit cap set for a kind for your class, per cent (0: none).
-function UP.Cap(kind)
-  return (UP.settings.caps[UP.Class()] or {})[kind] or 0
+-- The cap on a stat (W.CAP_STATS) for a kind, for your class: this profile's, else the kind's (0: none).
+function UP.Cap(kind, short)
+  local own = ((UP.settings.caps[UP.Class()] or {})[kind] or {})[short]
+  return own or (W.CAPS[kind] or {})[short] or 0
 end
 
--- Sets the hit cap for a kind for your class (0 or less: none).
-function UP.SetCap(kind, cap)
+-- Sets the cap on a stat for a kind, for your class (0 or less: none; the kind's own cap keeps nothing saved).
+function UP.SetCap(kind, short, cap)
   local all, class = UP.settings.caps, UP.Class()
   all[class] = all[class] or {}
-  all[class][kind] = cap > 0 and cap or nil
+  all[class][kind] = all[class][kind] or {}
+  cap = math.max(0, cap)
+  all[class][kind][short] = cap ~= ((W.CAPS[kind] or {})[short] or 0) and cap or nil
+end
+
+-- Every cap for a kind back to the kind's own.
+function UP.ResetCaps(kind)
+  local mine = UP.settings.caps[UP.Class()]
+  if mine then mine[kind] = nil end
 end
 
 -- Your damage style on WoW Forever (a druid's Feral or Balance), nil for a class with none.
@@ -240,57 +250,92 @@ local function wornScore(loc, slots)
   return weakest(slots)
 end
 
--- Hit cap ---------------------------------------------------------------------------------
+-- Caps ------------------------------------------------------------------------------------
 
--- An item's hit in per cent: its hit rating over the rating that makes 1% (0 for none, no link, or stats not loaded).
-local function hitOf(link)
-  local key, per = W.STATS.HIT, W.RATING_PER_PERCENT.HIT
-  local stats = key and per and link and C_Item.GetItemStats(link)
-  local rating = stats and ns.PlainNumber(stats[key])
-  return rating and rating / per or 0
+-- The combat rating a capped stat is counted from for a kind (a caster's hit is spell hit).
+local function ratingOf(short, kind)
+  local key = (short == "HIT" and W.SPELL_KINDS[kind]) and "SPELLHIT" or short
+  return W.CAP_RATING[key]
 end
 
--- The combat ratings a kind's hit is counted from (the client's CR_HIT_SPELL and CR_HIT_MELEE).
-UP.HIT_RATING = { spell = 8, melee = 6 }
+-- How much rating makes one unit (1%, or a point of defense) of a capped stat for you now: the client's own ratio
+-- (GetCombatRating over GetCombatRatingBonus) while you have some of that rating, as it changes with level, else the
+-- level-60 table (W.RATING_PER_UNIT).
+function UP.PerUnit(short, kind)
+  local cr = ratingOf(short, kind)
+  local rating = type(GetCombatRating) == "function" and ns.PlainNumber(GetCombatRating(cr))
+  local bonus = rating and rating > 0 and type(GetCombatRatingBonus) == "function" and ns.PlainNumber(GetCombatRatingBonus(cr))
+  if bonus and bonus > 0 then return rating / bonus end
+  return W.RATING_PER_UNIT[short]
+end
 
--- Your chance to hit now, per cent, summed as WoW Forever's character sheet sums it (PaperDollFrameStats.lua): the
--- hit rating's bonus plus the hit modifier, spell hit for a kind that casts, melee hit for the rest. nil when the
--- client can't say or hides it (the 12.1 client can make both secret).
+-- Your hit now, per cent, summed as WoW Forever's character sheet sums it (PaperDollFrameStats.lua): the hit rating's
+-- bonus plus the hit modifier, spell hit for a kind that casts, melee hit for the rest.
 local function hitNow(kind)
-  local spell = W.SPELL_KINDS[kind]
-  local read = spell and GetSpellHitModifier or GetHitModifier
+  local read = W.SPELL_KINDS[kind] and GetSpellHitModifier or GetHitModifier
   local hit = type(read) == "function" and ns.PlainNumber(read())
-  local bonus = type(GetCombatRatingBonus) == "function" and ns.PlainNumber(GetCombatRatingBonus(UP.HIT_RATING[spell and "spell" or "melee"]))
+  local bonus = type(GetCombatRatingBonus) == "function" and ns.PlainNumber(GetCombatRatingBonus(ratingOf("HIT", kind)))
   return hit and hit + (bonus or 0) or nil
 end
 
--- The hit of what an item of equip location loc would replace: both hands for a two-hander, else the worn item.
-local function wornHit(loc, worn)
-  if not UP.TWO_HANDED[loc] then return hitOf(worn) end
-  return hitOf(GetInventoryItemLink("player", UP.MAIN_HAND)) + hitOf(GetInventoryItemLink("player", UP.OFF_HAND))
+-- Your main hand's expertise now, per cent, as the character sheet shows it (GetExpertise).
+local function expertiseNow()
+  return type(GetExpertise) == "function" and ns.PlainNumber((GetExpertise())) or nil
 end
 
--- The worn and the new scores with hit past the cap taken off both: from your hit less what the worn item gives,
--- only the part of each item's hit that stays under the cap counts (per cent; its weight is per point of rating). Unchanged with no cap, no hit weight, or a client
--- that won't say your hit.
-function UP.CapHit(old, new, link, loc, worn)
-  local weights, kind = UP.Current()
-  local cap, per = UP.Cap(kind), W.RATING_PER_PERCENT.HIT
-  local now = cap > 0 and weights.HIT and per and hitNow(kind)
+-- Your defense skill now, base plus bonus, as the character sheet adds it (UnitDefenseSkill).
+local function defenseNow()
+  if type(UnitDefenseSkill) ~= "function" then return nil end
+  local base, bonus = UnitDefenseSkill("player")
+  base, bonus = ns.PlainNumber(base), ns.PlainNumber(bonus)
+  return base and base + (bonus or 0) or nil
+end
+
+-- How much of each capped stat you have now (nil when the client can't say or hides it: the 12.1 client can make
+-- these secret).
+UP.NOW = { HIT = hitNow, EXP = expertiseNow, DEF = defenseNow }
+
+-- An item's rating in a stat (0 for none, no link, or stats not loaded).
+local function ratingIn(short, link)
+  local stats = link and C_Item.GetItemStats(link)
+  return stats and ns.PlainNumber(stats[W.STATS[short]]) or 0
+end
+
+-- The rating in a stat of what an item of equip location loc would replace: both hands for a two-hander, else the
+-- worn item.
+local function wornRating(short, loc, worn)
+  if not UP.TWO_HANDED[loc] then return ratingIn(short, worn) end
+  return ratingIn(short, GetInventoryItemLink("player", UP.MAIN_HAND)) + ratingIn(short, GetInventoryItemLink("player", UP.OFF_HAND))
+end
+
+-- Takes a stat's amount past its cap off both scores: from what you have less what the worn item gives, only the part
+-- of each item's that stays under the cap counts (in units of the cap; the weight is per point of rating). Unchanged
+-- with no cap, no weight, or a client that won't say what you have. c: { weights, kind, link, loc, worn }.
+local function capOne(c, short, old, new)
+  local cap, w, per = UP.Cap(c.kind, short), c.weights[short], UP.PerUnit(short, c.kind)
+  local now = cap > 0 and w and per and UP.NOW[short](c.kind)
   if not now then return old, new end
-  local oldHit, w = wornHit(loc, worn), weights.HIT * per
-  local room = math.max(0, cap - (now - oldHit))
-  return old - w * math.max(0, oldHit - room), new - w * math.max(0, hitOf(link) - room)
+  local worn, item, full = wornRating(short, c.loc, c.worn) / per, ratingIn(short, c.link) / per, w * per
+  local room = math.max(0, cap - (now - worn))
+  return old - full * math.max(0, worn - room), new - full * math.max(0, item - room)
 end
 
--- The worn score, the new one (both nil while either side's stats haven't loaded; hit past the cap taken off), whether
+-- The worn and the new scores with every capped stat past its cap taken off both (capOne).
+function UP.CapStats(old, new, link, loc, worn)
+  local weights, kind = UP.Current()
+  local c = { weights = weights, kind = kind, link = link, loc = loc, worn = worn }
+  for _, short in ipairs(W.CAP_STATS) do old, new = capOne(c, short, old, new) end
+  return old, new
+end
+
+-- The worn score, the new one (both nil while either side's stats haven't loaded; stats past their caps taken off), whether
 -- the slot is empty, and the worn link.
 local function scores(link, loc, slots)
   local old, empty, worn = wornScore(loc, slots)
   if empty then return nil, nil, true end
   local new = score(link)
   if not (old and new) then return nil, nil, false, worn end
-  old, new = UP.CapHit(old, new, link, loc, worn)
+  old, new = UP.CapStats(old, new, link, loc, worn)
   return old, new, false, worn
 end
 
@@ -446,13 +491,13 @@ end
 local function resetWeights()
   local kind = UP.kind
   UP.SetOwn(kind, nil)
-  UP.SetCap(kind, 0)
+  UP.ResetCaps(kind)
   UP.Changed()
   ns.Chat(ns.Format(L["Weights for {kind} are back to the defaults."], { kind = UP.Word(kind) }))
 end
 
--- A Vanguard weights string (/vg weights export) applied, for your class, to the kind it was made for, with its hit
--- cap when it has one; false and why when it can't be.
+-- A Vanguard weights string (/vg weights export) applied, for your class, to the kind it was made for, with its caps
+-- when it has them; false and why when it can't be.
 local function importVanguard(text)
   local scope, data = ns.Serialize.Decode(text)
   if not scope then return false, data end
@@ -460,16 +505,17 @@ local function importVanguard(text)
   local clean = {}
   for short, n in pairs(data.weights) do clean[short] = W.STATS[short] and UP.Weight(n) or nil end
   UP.SetOwn(data.kind, clean)
-  UP.SetCap(data.kind, UP.Weight(data.cap) or 0)
+  UP.ResetCaps(data.kind)
+  for short, n in pairs(type(data.caps) == "table" and data.caps or {}) do if UP.Weight(n) then UP.SetCap(data.kind, short, n) end end
   return true, data.kind
 end
 
 -- A guide string's weights as the whole set for the kind in use: the stats it leaves out are worth nothing, as they
 -- are in the tool it was written for (item level, which those strings never weigh, keeps its weight). A weight the
--- string gives per 1% becomes one per point of rating, as items carry it (W.RATING_PER_PERCENT).
+-- string gives per 1% becomes one per point of rating, as items carry it (W.RATING_PER_UNIT).
 local function guideSet(weights)
   local out = {}
-  for short in pairs(W.STATS) do if short ~= "ILVL" then out[short] = (weights[short] or 0) / (W.RATING_PER_PERCENT[short] or 1) end end
+  for short in pairs(W.STATS) do if short ~= "ILVL" then out[short] = (weights[short] or 0) / (W.RATING_PER_UNIT[short] or 1) end end
   out.ILVL = W.STATS.ILVL and (UP.Current()).ILVL or nil
   return out
 end
@@ -511,17 +557,27 @@ function UP.ImportDialog()
   end)
 end
 
--- /vg weights export: the weights in use, for the kind they're for, with the hit cap, as a string to copy.
-local function exportWeights()
-  local title = ns.Format(L["Vanguard weights ({kind})  Ctrl+C to copy"], { kind = UP.Word(UP.kind) })
-  ns.ShowText(title, ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current, cap = UP.Cap(UP.kind) }))
+-- The caps in use for the kind in use, short name -> cap (only the ones set).
+local function capsInUse()
+  local out = {}
+  for _, short in ipairs(W.CAP_STATS) do
+    local cap = UP.Cap(UP.kind, short)
+    if cap > 0 then out[short] = cap end
+  end
+  return out
 end
 
--- /vg weights: the weights in use, who they're for, and the hit cap when one is set.
+-- /vg weights export: the weights in use, for the kind they're for, with the caps, as a string to copy.
+local function exportWeights()
+  local title = ns.Format(L["Vanguard weights ({kind})  Ctrl+C to copy"], { kind = UP.Word(UP.kind) })
+  ns.ShowText(title, ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current, caps = capsInUse() }))
+end
+
+-- /vg weights: the weights in use, who they're for, and the caps when any is set.
 local function sayWeights()
   ns.Chat(ns.Format(L["Weights for {kind} (role {role}): {weights}"], { kind = UP.Word(UP.kind), role = UP.Word(UP.Role()), weights = weightsText(UP.current) }))
-  local cap = UP.Cap(UP.kind)
-  if cap > 0 then ns.Chat(ns.Format(L["Hit past {cap}% counts for nothing."], { cap = cap })) end
+  local caps = capsInUse()
+  if next(caps) then ns.Chat(ns.Format(L["Caps (past them a stat counts for nothing): {caps}"], { caps = weightsText(caps) })) end
 end
 
 -- /vg weights [wizard|set <stat> <n>|reset|export|import].
