@@ -262,6 +262,21 @@ function A.Dress(f, style)
   return remember(f, parts, style.holder)
 end
 
+-- Whether the client has closed any of an icon's parts to addons (an icon on a plate it keeps for
+-- itself, as a friendly one in an instance): touching one then is a taint error.
+local function forbidden(parts)
+  for _, region in ipairs({ parts.icon, parts.cooldown, parts.skin }) do
+    if region:IsForbidden() then return true end
+  end
+  return false
+end
+
+-- Puts one icon back on whole pixels. One the client has closed, or that fails to place, is forgotten,
+-- so the scale poll doesn't try it again (and report it again) every half second.
+local function refitIcon(icons, f, parts, holder)
+  if forbidden(parts) or not ns.Try("aura icon pixels", place, parts, holder) then icons[f] = nil end
+end
+
 -- Puts the icons a holder holds back on whole pixels where its scale has moved since they were placed,
 -- as `holds(scale, placed)` judges (true: still right). The client makes an icon when an aura first needs
 -- it, at whatever scale it has the holder then: on a nameplate it hands over at about 0.01, a one-pixel
@@ -269,9 +284,10 @@ end
 ---@param holder table
 ---@param holds function
 function A.Refit(holder, holds)
-  local scale = holder:GetEffectiveScale()
-  for _, parts in pairs(dressed[holder] or {}) do
-    if not holds(scale, parts.scale) then ns.Try("aura icon pixels", place, parts, holder) end
+  if holder:IsForbidden() then return end
+  local scale, icons = holder:GetEffectiveScale(), dressed[holder] or {}
+  for f, parts in pairs(icons) do
+    if not holds(scale, parts.scale) then refitIcon(icons, f, parts, holder) end
   end
 end
 

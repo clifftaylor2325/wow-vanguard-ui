@@ -4353,6 +4353,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Chat says "Imported weights for …" and names any stats it skipped; Set up stat weights shows the string's values and 0 for the stats it leaves out; the other class's string is refused with "the string is for another class".
 - If it fails, paste: the string, the chat lines and a screenshot of the wizard.
 
+### 33.342 Nameplate debuff icons in an instance (Forever)
+
+- Do: With nameplates on, go into a dungeon with a group, fight a few pulls so mobs carry your debuffs and friendly plates show, then type `/vg errors`.
+- Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge, no dark square around them.
+- If it fails, paste: the `/vg errors` text and a screenshot of a plate with debuffs.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, PLATE_ENV, UNITS_ENV, isTok, loggedIn, plate, tok } from "./helpers.mjs";
+import { CLICK_LUA, PLATE_ENV, UNITS_ENV, expectErrors, isTok, loggedIn, plate, tok } from "./helpers.mjs";
 
 it("nameplates repaint only what an event changed, and the border only when the target or the scale does", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + `__borders = 0
@@ -112,6 +112,47 @@ it("a debuff icon the client makes while it has the plate shrunk gets its one-pi
   addon.eval("__plates.nameplate1:SetScale(1.1)");
   addon.advance(0.5);
   expect(sizes(), "a drift under NP.SCALE_SLACK leaves them as placed (1.1 of the new, smaller pixel)").toEqual([1.1, 1.1]);
+});
+
+// The plate grown to scale 1, its first debuff icon's texture refusing addons as a forbidden object does.
+const GROWN_PLATE = `__plates.nameplate1:SetScale(1)
+  __debuffs = ns.FrameState('vgPlate')[__plates.nameplate1].debuffs.frame
+  __icon = __debuffs.__groups[1].buttons[1].__icon
+  -- TEST-ONLY: the client's refusal of a forbidden object, counted.
+  __touches = 0 __icon.ClearAllPoints = function() __touches = __touches + 1 error("Attempt to access forbidden object from code tainted by an AddOn") end`;
+// A login with one plate whose debuff icons the client made while it had the plate shrunk to 0.01, then grew.
+const shrunkPlate = () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "ns.GetModule('Nameplates').POOL = 0");
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  addon.eval(`local p = CreateFrame("Frame", nil, UIParent) p:SetSize(110, 45) p:SetPoint("CENTER")
+    p.UnitFrame = CreateFrame("Frame", nil, p) p.IsForbidden = function() return false end
+    __plates.nameplate1 = p p:SetScale(0.01)`);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.eval(GROWN_PLATE);
+  return addon;
+};
+// The kept errors: how many, and how often the first was reported (0 with none).
+const kept = (addon) => addon.eval("return { #ns.errors, ns.errors[1] and ns.errors[1].count or 0 }");
+
+it("an aura icon the client has closed to addons is left alone by the plate scale check", () => {
+  const addon = shrunkPlate();
+  addon.eval("__icon.IsForbidden = function() return true end");
+  addon.advance(2);
+  expect([addon.eval("return __touches"), kept(addon)], "a forbidden icon: never touched, nothing reported").toEqual([0, [0, 0]]);
+});
+
+it("a plate's aura holder the client has closed is not asked its scale", () => {
+  const addon = shrunkPlate();
+  addon.eval("__debuffs.IsForbidden = function() return true end");
+  addon.advance(2);
+  expect([addon.eval("return __touches"), kept(addon)], "a forbidden holder: no icon touched, nothing reported").toEqual([0, [0, 0]]);
+});
+
+it("an aura icon that fails to place is reported once and not tried again every scale check", () => {
+  expectErrors("aura icon pixels: eval:6: Attempt to access forbidden object from code tainted by an AddOn");
+  const addon = shrunkPlate();
+  addon.advance(2);
+  expect([addon.eval("return __touches"), kept(addon)], "four checks, one try, one report").toEqual([1, [1, 1]]);
 });
 
 it("a plate's border is not painted again while its scale drifts less than NP.SCALE_SLACK", () => {
