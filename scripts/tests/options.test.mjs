@@ -277,6 +277,7 @@ it("options: search jumps to the row, and the page edges fade", () => {
   const found = () => addon.eval(`local f = Vanguard_Options.found local w for _, x in ipairs(__wfgStub.frames) do if x.found == f and f then w = x end end
     return { ns.Options.current, w and w.caption, f ~= nil and f:IsShown() }`);
   expect(found(), "Enter opens the first page that matches and marks the row").toEqual(["modules", "Swing timer", true]);
+  expect(addon.eval("return Vanguard_Options.found:GetAlpha() == ns.Theme.ALPHA.found"), "the wash is the theme's found alpha").toBe(true);
   search("town and gear");
   expect(found()[2], "a new search clears the old mark (a page title match marks no row)").toBe(false);
   search("TEST-ONLY nothing matches");

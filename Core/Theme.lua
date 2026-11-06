@@ -1773,8 +1773,9 @@ T.SEARCH_INSET = T.SPACE.gap * 2 + T.SEARCH_ICON
 -- Panel opacity by tier: opaque for the options window, the quest log and a skinned game window; dialog
 -- for a dialog, setup, What's new and anything with an edit box; overlay for tooltips and cards (the panel
 -- token's own alpha); alert for an alert; calm for the Calm HUD's dimmed parts out of combat; dispelWash for
--- the raid tile's wash over a debuff you can dispel.
-T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35, dispelWash = 0.35 }
+-- the raid tile's wash over a debuff you can dispel; found for the accent wash on the options row a search, a
+-- What's new link or the keyboard marks.
+T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35, dispelWash = 0.35, found = 0.18 }
 -- A list row (W.Row, T.Row): how tall (units).
 T.ROW = { height = 28 }
 -- The chat background (Modules/Chat.lua, the panel's fill): the strengths the Chat background
