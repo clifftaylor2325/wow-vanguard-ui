@@ -471,6 +471,12 @@ it("the shop's view and the sell card share the search events: each search and e
   addon.fire("COMMODITY_SEARCH_RESULTS_ADDED", 10940);
   expect([saleRows(), card(addon)[0][0], pending(), addon.eval("return #ns.errors")], "it reaches the sell card").toEqual([9, "10s 0c", false, 0]);
 });
+it("the sell card's market money (Cheapest now, 7-day low, Deposit) is gold; Your price stays accent text (H27-9-2)", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  const colours = addon.eval(`local c = {} for i = 1, 4 do c[i] = ${CARD}.lines[i].value.__textColor end return c`);
+  expect(colours.map((c, i) => isTok(addon, c, i < 3 ? "gold" : "accentText")), "three gold, the last accent").toEqual([true, true, true, true]);
+});
 // The price line: [label, value, label in "bad", value in "bad"].
 const priceLine = (addon) => {
   const [label, value, labelColor, valueColor] = addon.eval(`local l = ${CARD}.lines[4] return { l:GetText(), l.value:GetText(), l.__textColor, l.value.__textColor }`);

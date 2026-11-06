@@ -750,7 +750,7 @@ local function sellLines(c)
     local l = T.Text(c:CreateFontString(nil, "OVERLAY"), "small", "text2")
     l:SetPoint("TOPLEFT", SLOT + T.SPACE.gap, -20 - (i - 1) * 14)
     l:SetText(label)
-    l.value = T.Text(c:CreateFontString(nil, "OVERLAY"), i == #AH.SELL_LINES and "number" or "small", i == #AH.SELL_LINES and "accentText" or "text")
+    l.value = T.Text(c:CreateFontString(nil, "OVERLAY"), i == #AH.SELL_LINES and "number" or "small", i == #AH.SELL_LINES and "accentText" or "gold")
     l.value:SetPoint("TOPRIGHT", 0, -20 - (i - 1) * 14)
     c.lines[i] = l
   end
