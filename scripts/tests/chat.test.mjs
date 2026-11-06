@@ -2577,3 +2577,16 @@ it("chat window size: the first size is each character's own: a character that p
   expect([size(addon), addon.eval("return VanguardCharDB.chatSize.sized")], "the profile's old flags are taken as this character's").toEqual([[600, 300], true]);
   expect(addon.eval("return ns.WithoutClientState({ Chat = { sized = true, widened = true, textSize = 14 } }).Chat"), "a string carries no window flags").toEqual({ textSize: 14 });
 });
+
+it("H27-4-5: the minimap drawer toggle's icon is text at rest and accent under the mouse, and T.Button's hover is kept", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV);
+  // The toggle icon's colour.
+  const icon = () => addon.eval("return Vanguard_MinimapDrawerToggle.icon.__vertexColor");
+  expect(isTok(addon, icon(), "text"), "the text colour at rest").toBe(true);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
+  expect(isTok(addon, icon(), "accent"), "accent under the mouse").toBe(true);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnLeave(t)");
+  expect(isTok(addon, icon(), "text"), "text again after").toBe(true);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.IsMouseOver = function() return true end t.__scripts.OnEnter(t) __wfgStub.advance(1)");
+  expect(addon.eval("return ns.Theme.HoverParts(Vanguard_MinimapDrawerToggle)[2]:GetAlpha() > 0"), "T.Button's hover line still comes up with the icon's paint").toBe(true);
+});
