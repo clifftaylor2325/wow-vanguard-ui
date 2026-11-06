@@ -2066,3 +2066,15 @@ it("options JumpTo marks the row for a Russian caption typed in small letters", 
   expect(marked, "the marked row is the one with that caption").toBe(caption);
 });
 
+
+it("options General: the accent swatch of the chosen preset carries a check, and it moves with the accent", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV);
+  addon.slash("");
+  const checked = () => addon.eval(`local row for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then row = w end end
+    local out = {} for i, s in ipairs(row.swatches) do if s.check:IsShown() then out[#out + 1] = ns.Theme.PRESET_ORDER[i] end end return out`);
+  expect(checked(), "brass, the default accent, is the checked one").toEqual(["brass"]);
+  addon.slash("accent jade");
+  expect(checked(), "after /vg accent jade only jade is").toEqual(["jade"]);
+  addon.slash("accent 123456");
+  expect(Object.keys(checked()), "an accent that is no preset checks none").toHaveLength(0);
+});
