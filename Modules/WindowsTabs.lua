@@ -38,13 +38,14 @@ GW.TAB_WINDOWS = ns.ClientData({
 -- Where those windows keep their side tabs, as parentKeys on the window (the Camelot character pane
 -- keeps its own in a ModeTabs frame, which has a Tabs array too). LargeSideTabButtonTemplate and
 -- RightSideTabTemplate (the guild window's) tabs; the professions window's (an overview tab and one for each
--- profession), the cooldown settings' three and the inspect window's guild tab.
+-- profession), the cooldown settings' three, the inspect window's guild tab and the housing dashboard's three.
 GW.SIDE_TABS = {
   "CharacterTab", "ReputationTab", "SkillsTab", "PvPTab", "CurrencyTab", "StatisticsTab",
   "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab", "GuildPreferredPlaySettingsTab",
   "LegacyTreeTab", "LegacyChallengeTab", "LegacyRewardTrackTab", "ListingTab", "BrowsingTab", "WhoListingTab",
   "ProfessionsOverviewTab", "Professions1Tab", "Professions2Tab", "Professions3Tab", "Professions4Tab",
   "Professions5Tab", "Professions6Tab", "Professions7Tab", "SpellsTab", "AurasTab", "GroupBuffsTab", "GuildTab",
+  "HouseInfoTabButton", "CatalogTabButton", "CollectionTabButton",
 }
 -- The frames a window keeps side tabs in besides itself, by parentKey: the character and inspect windows' ModeTabs and
 -- the collections window's TabContainer. Every tab in their Tabs array is a side tab; the container is also moved out
