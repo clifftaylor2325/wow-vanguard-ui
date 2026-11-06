@@ -314,9 +314,9 @@ end
 
 -- Building -----------------------------------------------------------------------------------
 
--- One text on a row: a small theme font string, placed by `place`.
+-- One text on a row: the outlined small bar text (barSmall), placed by `place`.
 local function rowText(row, place)
-  local fs = T.Text(row:CreateFontString(nil, "OVERLAY"), "small")
+  local fs = T.Text(row:CreateFontString(nil, "OVERLAY"), "barSmall")
   place(fs)
   return fs
 end

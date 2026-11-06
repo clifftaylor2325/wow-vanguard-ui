@@ -53,6 +53,16 @@ it("each line is a class-colored bar scaled to the top line, with a name and a s
   expect(isTok(addon, addon.eval("return Vanguard_Meter.rows[2].name.__textColor"), "text"), "another's in the text color").toBe(true);
 });
 
+it("the name and figure on a meter row and a spell row are the outlined small bar text, not plain text on the bar", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  const font = (path) => addon.eval(`local f = ${path}.__font return { f[2], f[3] }`);
+  const want = [addon.eval('return ns.Theme.RoleSize("barSmall")'), "OUTLINE"];
+  expect(font("Vanguard_Meter.rows[1].name"), "name").toEqual(want);
+  expect(font("Vanguard_Meter.rows[1].value"), "figure").toEqual(want);
+  addon.eval("ns.GetModule('Meter').OpenDetail({ name = 'Tess' })");
+  expect(font("Vanguard_MeterDetail.rows[1].name"), "a spell row's name").toEqual(want);
+});
+
 it("the figures follow the fight, in combat too, and a fight with no damage still has a one-unit scale", () => {
   const addon = loggedIn(METER_ENV, METER_ON);
   setLines(addon, "{ { name = 'Tess', amountPerSecond = 0 } }");
