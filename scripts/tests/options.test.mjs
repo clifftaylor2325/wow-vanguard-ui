@@ -252,6 +252,13 @@ it("options: profiles in the window", () => {
     w.input:SetText("${name}") local b = ${enter ? "w.input" : "w.create"} b:GetScript(${enter ? '"OnEnterPressed"' : '"OnClick"'})(b) return w.label.__text end end`);
   expect(create("TEST-ONLY Bad/Name"), "a bad name says why").toBe("Name taken or not allowed");
   expect([create("   "), create("Default ")], "blank, or a name with a space at an end: refused").toEqual(["Name taken or not allowed", "Name taken or not allowed"]);
+  const caption = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create then return { w.label.__text, ns.Theme.ColorToken(w.label) } end end`);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and ns.Options.RevealRow(w) then w.input:SetText("TEST-ONLY Fine") __wfgStub.runScript(w.input, "OnTextChanged", "TEST-ONLY Fine", true) end end`);
+  expect(caption(), "editing the name puts the caption back after a refusal").toEqual(["New profile", "text2"]);
+  create("   ");
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and ns.Options.RevealRow(w) then w:Hide() end end`);
+  expect(caption()[0], "leaving the page puts it back too").toBe("New profile");
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create then w:Show() end end`);
   create("TEST-ONLY Leveling", true);
   expect([addon.eval("return ns.SelectedProfileName()"), profileRow(addon, "TEST-ONLY Leveling")[0], profileRow(addon, "TEST-ONLY Healer")[0]], "a good name makes the profile and stages the switch to it").toEqual(["TEST-ONLY Leveling", "TEST-ONLY Leveling  (after reload)", "TEST-ONLY Healer"]);
   addon.eval('ns.Options.ShowTab("Profile")');
