@@ -266,7 +266,16 @@ it("a preset counts the items already attached against the game's 12 and reports
   full.world.openMailWindow();
   full.world.showSendMail();
   full.slash("mail send all");
-  expect([full.eval("return __wfgWorld.usedItems"), chatHas(full, /All: 0 items attached/)], "a full mail takes nothing more").toEqual([null, true]);
+  expect([full.eval("return __wfgWorld.usedItems"), chatHas(full, /All: the Send Mail tab already holds 12 items\. Press Send\./)], "a full mail takes nothing more, and chat says why").toEqual([null, true]);
+});
+
+it("H24-1-1 a preset with words on a full Send Mail tab says the tab is full, not that no item matches", () => {
+  const addon = mailer("__wfgWorld.bagSizes[0] = 20 for s = 1, 4 do __wfgWorld.bags[0][s] = { itemID = 900 } end __wfgWorld.sendMailSlots = {} for n = 1, 12 do __wfgWorld.sendMailSlots[n] = true end");
+  addon.slash("mail preset add Bars Bobalt iron bar");
+  addon.world.openMailWindow();
+  addon.world.showSendMail();
+  addon.slash("mail send bars");
+  expect([addon.eval("return __wfgWorld.usedItems"), chatHas(addon, /Bars: the Send Mail tab already holds 12 items/), chatHas(addon, /nothing you can mail has every word/)], "full line, no words hint, nothing attached").toEqual([null, true, false]);
 });
 
 it("a panel first built by the inbox update (the window shows after MAIL_SHOW) hides unset presets, says when there is nothing, and sits on the window's layer", () => {

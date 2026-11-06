@@ -344,6 +344,7 @@ function MT.Send(name)
   if not p then return ns.Chat(ns.Format(L["No preset called {name}. /vg mail preset lists them."], { name = tostring(name) })) end
   if ns.InCombat() or not (SendMailFrame and SendMailFrame:IsVisible()) then return ns.Chat(L["Open the Send Mail tab (out of combat) first."]) end
   SendMailNameEditBox:SetText(p.to)
+  if attachedNow() >= MT.ATTACH then return ns.Chat(ns.Format(L["{preset}: the Send Mail tab already holds {count} items. Press Send."], { preset = p.name, count = MT.ATTACH })) end
   ns.Chat(sentLine(p, MT.Attach(p.words)))
 end
 
