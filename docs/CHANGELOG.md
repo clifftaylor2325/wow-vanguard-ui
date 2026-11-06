@@ -4,6 +4,14 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
 
+## 0.9.2
+
+A hotfix for 0.9.1. Nothing in it has been checked in the game; see [SMOKE-TEST.md](SMOKE-TEST.md) (step 33.342).
+
+### Nameplates (0.9.2)
+
+- Nameplates no longer fill the error list with an "aura icon pixels" error, about four times a second, in a dungeon or anywhere the game keeps some plates for itself (friendly plates in an instance). Vanguard leaves the aura icons on those plates alone, and an icon it can't place is reported once.
+
 ## 0.9.1
 
 Nothing in this release has been checked in the game; see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md) (steps 33.317 to 33.335).
