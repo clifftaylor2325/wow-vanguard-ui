@@ -64,7 +64,7 @@ const tracker = (addon) => addon.eval(`local f, out = Vanguard_QuestTrackerFrame
   return out`);
 
 // The New mark as the addon paints it.
-const mark = (addon) => addon.eval('return "  " .. ns.Theme.Paint("New", "accent")');
+const mark = (addon) => addon.eval('return "  " .. ns.Theme.Paint("New", "accentText")');
 
 // The pins drawn: [questID, x offset, y offset] each.
 const pins = (addon) => addon.eval(`local QG, out = ns.QuestGuide, {}
@@ -107,6 +107,17 @@ it("quest guidance: a quest tag named for new quests works too; hidden values ma
   expect(addon.eval("return { ns.QuestGuide.IsNew(nil), ns.QuestGuide.IsNew('x') }"), "no quest ID").toEqual([false, false]);
   const bare = loggedIn("Enum.QuestClassification = nil Enum.QuestTag = nil");
   expect(bare.eval("return ns.QuestGuide.Flag()"), "a client without those enums").toBe(false);
+});
+
+it("quest guidance: the New mark is in the accent text colour and follows an accent change in the tracker and the open log", () => {
+  const addon = loggedIn(QUESTS_ENV + FLAG_ENV);
+  addon.update(0);
+  expect(tracker(addon)[0][0].includes(addon.eval("return ns.Theme.Hex('accentText')")), "accentText, not the bar accent").toBe(true);
+  addon.slash("quests");
+  addon.slash("accent jade");
+  addon.update(0);
+  const hex = addon.eval("return ns.Theme.Hex('accentText')");
+  expect([tracker(addon)[0][0].includes(hex), addon.eval("return Vanguard_QuestLog.lines[1].text:GetText()").includes(hex)], "tracker and log repainted").toEqual([true, true]);
 });
 
 it("quest guidance: Shift-click a tracked quest and the game's quest arrow follows it, with its next step in the tracker", () => {

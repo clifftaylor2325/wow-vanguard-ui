@@ -7,7 +7,7 @@
 -- tracker's titles open it on that quest.
 
 local ADDON, ns = ...
-local L = ns.L
+local L, T = ns.L, ns.Theme
 
 local QL = ns.Module("QuestLog", { defaults = { own = true, xp = true } })
 
@@ -340,6 +340,14 @@ local function bindKeys()
   ns.On("UPDATE_BINDINGS", QL.BindKeys)
 end
 
+-- Re-renders the log on the events that change it. Share is lit only in a group (as the game's quest map does
+-- on GROUP_ROSTER_UPDATE); an item's info arriving can settle the reward crown.
+local function watchEvents()
+  for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "GROUP_ROSTER_UPDATE", "GET_ITEM_INFO_RECEIVED" }) do
+    ns.On(event, refreshSoon)
+  end
+end
+
 -- Module entry point (Core/Modules.lua).
 function QL.Enable(settings)
   QL.settings = settings
@@ -348,9 +356,6 @@ function QL.Enable(settings)
   addToggle()
   bindKeys()
   hookGameToggle()
-  -- Share is lit only in a group (as the game's quest map does on GROUP_ROSTER_UPDATE); an item's info
-  -- arriving can settle the reward crown.
-  for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "GROUP_ROSTER_UPDATE", "GET_ITEM_INFO_RECEIVED" }) do
-    ns.On(event, refreshSoon)
-  end
+  watchEvents()
+  T.OnChanged(refreshSoon)
 end
