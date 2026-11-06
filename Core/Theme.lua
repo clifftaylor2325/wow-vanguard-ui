@@ -2835,8 +2835,9 @@ T.ROLES = {
 
 -- The game's own sizes for text Vanguard re-fonts but leaves at the game's size (Modules/GameAlerts.lua): a raid
 -- warning line (GameFontNormalHuge), the screenshot status line (GameFontNormalLarge) and the frame rate readout
--- (SystemFont_Shadow_Med1), before the Text size setting.
-T.GAME_TEXT = { warning = 20, status = 16, small = 12 }
+-- (SystemFont_Shadow_Med1), and the keystone window's dungeon name (QuestFont_Enormous) and its lines
+-- (GameFontHighlightLarge, GameFontHighlightLarge2), before the Text size setting.
+T.GAME_TEXT = { warning = 20, status = 16, small = 12, keystone = 30, keystoneLine = 16, keystoneNote = 18 }
 
 -- Every font string styled with a role: string -> role name. Weak, so text
 -- that gets collected doesn't stay; T.RefreshText re-fonts them all.

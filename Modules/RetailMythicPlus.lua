@@ -189,6 +189,19 @@ end
 -- come up with their animations.
 RM.KEYSTONE_KEEP = { "RuneBG", "RunesLarge", "RunesSmall", "SlotBG", "KeystoneFrame" }
 
+-- The keystone window's texts, by key: the game's size for each (T.GAME_TEXT), kept as the game draws them.
+RM.KEYSTONE_TEXT = {
+  DungeonName = "keystone", PowerLevel = "keystone", TimeLimit = "keystoneLine", Instructions = "keystoneNote",
+}
+
+-- A keystone window text in the theme font and the light text colour at the game's size (the game sets its words
+-- and never its font); anything that is not a font string is skipped.
+local function skinKeystoneText(fs, size)
+  if type(fs) ~= "table" or type(fs.SetFont) ~= "function" then return end
+  GW.SkinText(fs, "title", "text")
+  T.TextSize(fs, size)
+end
+
 -- The keystone window: on a theme panel with the corner brackets every window of its own has, its runes and slot kept,
 -- the close button and Start in the theme.
 function RM.SkinKeystone(frame)
@@ -197,6 +210,7 @@ function RM.SkinKeystone(frame)
   T.Ornament(frame, "corners")
   GW.DressClose(frame, frame.CloseButton)
   GW.SkinButton(frame.StartButton)
+  for key, size in pairs(RM.KEYSTONE_TEXT) do skinKeystoneText(frame[key], T.GAME_TEXT[size]) end
 end
 
 -- The Mythic+ tab, inside the group finder: its well's bronze border faded. The dungeon's painting behind the
