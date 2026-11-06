@@ -579,20 +579,25 @@ function NP.PaintSoftTarget(f, unit)
   f.soft:SetShown(softTargeted(unit) and ns.IsTrue(SetUnitCursorTexture(f.soft, unit, unpack(args, 1, args.n))))
 end
 
--- Whether a plate's unit is your target, while the target border is on.
+-- The colour of the border and diamond for your target and, quieter and with no glow, your focus.
+NP.MARK_COLORS = { target = "accent", focus = "text2" }
+
+-- What a plate marks while the target border is on: "target" for your target, "focus" for your focus
+-- (when it isn't your target too), or false.
 local function targetShown(unit)
-  return NP.settings.targetBorder and isUnit(unit, "target") or false
+  if not NP.settings.targetBorder then return false end
+  return isUnit(unit, "target") and "target" or isUnit(unit, "focus") and "focus" or false
 end
 
--- Paints a plate's target border, glow and marker, and records the state and scale they show.
+-- Paints a plate's target or focus border, the target's glow and the marker, and records the state and scale they show.
 local function paintTarget(f, unit)
-  local target, scale = targetShown(unit), f:GetEffectiveScale()
-  f.vgTarget, f.vgScale = target, scale
-  T.SetBorder(f, target and "accent" or nil)
+  local mark, scale = targetShown(unit), f:GetEffectiveScale()
+  f.vgTarget, f.vgScale = mark, scale
+  T.SetBorder(f, mark and NP.MARK_COLORS[mark] or nil)
   T.SizeGlow(f.glow, f, NP.GLOW)
-  T.ShowGlow(f.glow, target)
-  f.marker:SetShown(target)
-  if target then T.Tint(f.marker, "accent") end
+  T.ShowGlow(f.glow, mark == "target")
+  f.marker:SetShown(mark ~= false)
+  if mark then T.Tint(f.marker, NP.MARK_COLORS[mark]) end
 end
 
 -- True when a plate's scale now is within NP.SCALE_SLACK of the scale its border and glow were
@@ -605,8 +610,8 @@ function NP.ScaleHolds(scale, painted)
   return ratio <= NP.SCALE_SLACK and ratio * NP.SCALE_SLACK >= 1
 end
 
--- Your target's accent border, glow and marker. They are repainted only when
--- the plate's target state changed or its scale (the pixel size of the edge and
+-- Your target's accent border, glow and marker (your focus's quieter border and marker). They are repainted only when
+-- the plate's target or focus state changed or its scale (the pixel size of the edge and
 -- the glow) left NP.SCALE_SLACK of the one they were painted at.
 function NP.UpdateTarget(f, unit)
   local target, scale = targetShown(unit), f:GetEffectiveScale()
@@ -861,7 +866,7 @@ end
 local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
   NAME_PLATE_UNIT_ADDED = onAdded, NAME_PLATE_UNIT_REMOVED = onRemoved,
-  PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
+  PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, PLAYER_FOCUS_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
   -- Your new level changes how hard every unit is for you.
   PLAYER_LEVEL_UP = function() each(NP.UpdateName) end,
   PLAYER_REGEN_ENABLED = upgradeRows, UPDATE_MOUSEOVER_UNIT = onMouseover,
