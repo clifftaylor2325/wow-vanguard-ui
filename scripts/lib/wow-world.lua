@@ -679,6 +679,20 @@ function UnitHasIncomingResurrection(unit) return uf(unit, "incomingRes") == tru
 function UnitXP(unit) return uf(unit, "xp") or 0 end
 function UnitXPMax(unit) return uf(unit, "xpmax") or 0 end
 function GetXPExhaustion() return world.units.player.rested end
+-- The player's hit modifiers, per cent (melee, spell): Forever's character sheet (Camelot/PaperDollFrameStats.lua)
+-- and Retail's PaperDollFrame_SetHitChance read them. world.units.player.hit / .spellHit, 0 when unset.
+function GetHitModifier() return world.units.player.hit or 0 end
+function GetSpellHitModifier() return world.units.player.spellHit or 0 end
+-- The per cent a combat rating gives (Forever's sheet adds CR_HIT_MELEE 6 and CR_HIT_SPELL 8 to the modifiers):
+-- world.units.player.ratingBonus[cr], 0 when unset.
+function GetCombatRatingBonus(cr) return (world.units.player.ratingBonus or {})[cr] or 0 end
+-- The rating the player has in a combat rating: world.units.player.rating[cr], 0 when unset.
+function GetCombatRating(cr) return (world.units.player.rating or {})[cr] or 0 end
+-- The player's expertise, per cent (main hand, off hand, ranged), as Forever's character sheet shows it:
+-- world.units.player.expertise, 0 when unset.
+function GetExpertise() local e = world.units.player.expertise or 0 return e, e, e end
+-- A unit's defense skill: base and bonus (Forever's sheet adds them). world.units.player.defense = { base, bonus }.
+function UnitDefenseSkill(unit) local d = uf(unit, "defense") or { 0, 0 } return d[1], d[2] end
 function IsXPUserDisabled() return world.units.player.xpDisabled == true end
 function GetMaxPlayerLevel() return world.maxLevel end
 GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return world.units.player.level >= world.maxLevel end }

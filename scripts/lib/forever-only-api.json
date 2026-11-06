@@ -14,7 +14,8 @@
     "C_StableInfo.GetNextStableSlotCost",
     "C_SwingTimer.EnableRangeCheck",
     "C_SwingTimer.IsTargetWithinSwingRange",
-    "C_Trainer.GetTrainerType"
+    "C_Trainer.GetTrainerType",
+    "UnitDefenseSkill"
   ],
   "events": [
     "GAME_RULES_CHANGED",

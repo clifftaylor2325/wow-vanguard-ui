@@ -66,7 +66,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg guide probe` | What this client returns for the reads a levelling guide would use (chat only) |
 | `/vg probe [chat\|fight\|last]` | One out-of-combat run that asks the client the open questions and opens the answers in a copy box, among them which client this is (saved in SavedVariables); typed in a fight it takes only the party, mark and boss reads; `fight` takes the secrecy reads in the next fight; `last` reopens the saved report |
 | `/vg ah ...` | Auction prices, shopping lists, scans |
-| `/vg weights [wizard\|...]` | Stat weights for gear upgrades |
+| `/vg weights [wizard\|...]` | Stat weights for gear upgrades, per class; import also takes a guide site's weight string |
 | `/vg craft ...`, `/vg mail ...` | Craft queue; mail tools (off until switched on) |
 | `/vg prep [want <kind> <n>\|setup\|buffs]` | The Instance prep card, wanted amounts, and your buffs against the buff checks |
 | `/vg pets` | Your pets, out and stabled, with level, loyalty and happiness |

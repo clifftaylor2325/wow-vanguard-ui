@@ -4329,6 +4329,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: On the full-health player a thin bright line sits at the right end of the health bar while the shield lasts; it goes when the shield does. On the player missing health it shows only once the shield is bigger than what they are missing. Turning Shields off takes the line away.
 - If it fails, paste: a screenshot of the tile and `/vg errors`.
 
+### 33.338 Crit and hit on items are rating (Forever)
+
+- Do: Run `/run C_Item.RequestLoadItemDataByID(12640)`, wait a second, then `/dump C_Item.GetItemStats("item:12640")` (Lionheart Helm, 2% crit and 2% hit on its tooltip), then `/dump GetHitModifier(), GetSpellHitModifier()`.
+- Expect: `ITEM_MOD_CRIT_RATING_SHORT=28` and `ITEM_MOD_HIT_RATING_SHORT=20` (14 and 10 rating per 1%, which Vanguard's Balance weights, hit cap and guide string import count on; seen 2026-11-06 at level 17), and the two hit numbers in per cent.
+- If it fails, paste: both `/dump` outputs, your level and the helm's tooltip.
+
+### 33.339 Damage style for a druid or shaman (Forever)
+
+- Do: On a druid, open `/vg`, Town and gear, Gear upgrades; click Damage style to Balance, then hover a caster item and a leather agility item in your bags. Do the same on a shaman with Enhancement. On a warrior, look for the row.
+- Expect: The Damage style row shows Feral or Balance (Elemental or Enhancement on a shaman) and no row on a warrior; with Balance the caster item's line compares by spell damage, crit and hit, and `/vg weights` says "Weights for Balance"; changing the druid's weights doesn't change a mage's on the same profile.
+- If it fails, paste: a screenshot of the Gear upgrades card, the two tooltips and the `/vg weights` line.
+
+### 33.340 Caps on hit, expertise and defense (Forever)
+
+- Do: Open Set up stat weights and look at the three cap boxes; type your current hit per cent (the character sheet's Hit Chance) into Hit cap and Save. Hover an item with hit and an otherwise equal one without. On a warrior tank (Weigh stats for: tank), hover an item with defense.
+- Expect: The boxes start at the kind's caps (8 hit for melee, 17 for a caster or Balance druid; 6.5 expertise; 440 defense for a tank); with the cap at your hit, the item with hit is no better than the one without; `/vg weights` lists the caps; set the hit cap back to 0 and the item with hit is the upgrade again. Also `/dump GetExpertise()` and `/dump UnitDefenseSkill("player")` give the character sheet's numbers.
+- If it fails, paste: the two tooltips, `/vg weights`, and `/dump GetHitModifier(), GetSpellHitModifier(), GetExpertise(), UnitDefenseSkill("player")`.
+
+### 33.341 A guide site's weight string (both)
+
+- Do: Copy a stat weight string a guide site posts for your class (it starts with "( " and a tool name, then "v1:"), click Import stat weights under Gear upgrades, paste it and click Import. Then try one for another class.
+- Expect: Chat says "Imported weights for …" and names any stats it skipped; Set up stat weights shows the string's values and 0 for the stats it leaves out; the other class's string is refused with "the string is for another class".
+- If it fails, paste: the string, the chat lines and a screenshot of the wizard.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
