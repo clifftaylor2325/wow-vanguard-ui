@@ -1,7 +1,7 @@
 // officerloot: the officer loot tools (Modules/OfficerLoot.lua, OfficerRoster.lua), a soft-reserve list and a roster, in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: the game's English roll format.
 const ROLL_ENV = 'RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"\n';
@@ -188,6 +188,7 @@ it("the roster lists the raid by role then name, with leader marks, offline and 
     ["Roster 5", "1 offline"], ["Zed", "Tank Lead"], ["Amy", "Healer Asst"], ["Bob", "DPS Offline"], ["Cat", "DPS Dead"], ["Dan", ""],
   ]]);
   expect(addon.eval("return Vanguard_OfficerRoster.rows[2].left.__textColor[1]"), "class color").toBeCloseTo(0.78);
+  expect(isTok(addon, addon.eval("return Vanguard_OfficerRoster.rows[4].left.__textColor"), "muted"), "an offline name is muted, not disabled").toBe(true);
   addon.world.setUnit("raid3", { connected: true });
   addon.advance(0.5);
   expect(roster(addon)[1][3], "an event repaints it on the next frame").toEqual(["Bob", "DPS"]);
