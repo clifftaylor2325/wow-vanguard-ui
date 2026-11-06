@@ -2812,7 +2812,7 @@ function T.SetFont(fs, size)
   local _, current = fs:GetFont()
   fs:SetFont(path, size or current or 12, outline)
   fs:SetShadowOffset(1, -1)
-  fs:SetShadowColor(0, 0, 0, 1)
+  fs:SetShadowColor(T.RGB("textShadow"))
   return fs
 end
 

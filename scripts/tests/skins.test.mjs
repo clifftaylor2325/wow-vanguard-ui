@@ -141,3 +141,20 @@ it("a skin's window control on a secure button with no size is sized after the f
   setCombat(addon, false);
   expect(addon.eval("return __secure:GetWidth() >= 1"), "the secure button is sized once the fight ends").toBe(true);
 });
+
+it("a skin's S.OnChanged listener runs on an accent change, S.Text follows a Font change and S.SetFont shadows like the roles", () => {
+  const addon = loggedIn(`
+    -- TEST-ONLY skin: a listener, a role string and a one-shot font string.
+    __ran = 0
+    Vanguard.RegisterSkin("TESTONLY", function(S)
+      S.OnChanged(function() __ran = __ran + 1 end)
+      __roleFs = UIParent:CreateFontString() S.Text(__roleFs, "label")
+      __oneFs = UIParent:CreateFontString() S.SetFont(__oneFs, 14)
+    end)
+  `);
+  addon.slash("accent jade");
+  addon.eval('ns.Theme.Settings().font = "client" ns.Theme.Refresh()');
+  expect(addon.eval("return __ran > 0"), "the listener ran on a theme change").toBe(true);
+  expect(addon.eval("return (__roleFs:GetFont()) == (ns.Theme.Font())"), "S.Text follows the Font change").toBe(true);
+  expect(addon.eval("return __oneFs.__shadowColor[4] == select(4, ns.Theme.RGB('textShadow'))"), "S.SetFont's shadow is the roles' textShadow").toBe(true);
+});
