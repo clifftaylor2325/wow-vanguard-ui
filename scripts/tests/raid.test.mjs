@@ -39,6 +39,9 @@ it("raid frames", () => {
   expect(addon.eval("return Vanguard_RaidUnitButton1.name.__font[3]") === "OUTLINE", "names over the bar are outlined").toBeTruthy();
   expect(addon.eval("return Vanguard_RaidUnitButton1.power:IsShown()") === true, "a thin power bar along the bottom").toBeTruthy();
   expect(raidButton(addon, 3).status === "Offline", "offline players say so").toBeTruthy();
+  addon.eval("__units.raid3.dead = true");
+  addon.fire("UNIT_HEALTH", "raid3");
+  expect(raidButton(addon, 3).status, "H28-1-3: dead and then gone: Offline, as the game's raid frames say").toBe("Offline");
   expect(raidButton(addon, 2).status === "-100", "you, too, with your missing health").toBeTruthy();
   addon.eval("__units.raid1.hp = 900");
   addon.fire("UNIT_HEALTH", "raid1");

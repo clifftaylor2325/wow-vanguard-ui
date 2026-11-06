@@ -255,8 +255,8 @@ end
 -- follows the plate's unit (Core/Auras.lua).
 function NP.DebuffSpec(f, s)
   return { point = { "BOTTOMLEFT", f, "TOPLEFT", 0, 16 }, grow = "RIGHT", growY = "UP", lineSize = s.width, gap = 2, timer = s.timers, mouse = false,
-    groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = s.debuffs, size = ICON, debuff = true, sort = "ExpirationOnly" },
-      { filter = "HARMFUL|PLAYER|CROWD_CONTROL", max = s.debuffs > 0 and 1 or 0, size = ICON, debuff = true } } }
+    groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = s.debuffs, size = ICON, debuff = true, sort = "ExpirationOnly" },
+      { filter = "HARMFUL|PLAYER|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = s.debuffs > 0 and 1 or 0, size = ICON, debuff = true } } }
 end
 
 -- A player's buffs in a row right of the bar, past the target marker: big
@@ -268,7 +268,7 @@ end
 function NP.BuffSpec(f, s)
   local gap = 2
   -- One group of up to s.buffs icons through `filter`.
-  local function group(filter) return { filter = filter, max = s.buffs, size = NP.BUFF } end
+  local function group(filter) return { filter = filter .. "|INCLUDE_NAME_PLATE_ONLY", max = s.buffs, size = NP.BUFF } end
   return { point = { "BOTTOMLEFT", f, "BOTTOMRIGHT", NP.MARKER + 8, (s.height - NP.BUFF) / 2 }, grow = "RIGHT", growY = "UP",
     lineSize = s.buffs * (NP.BUFF + gap), gap = gap, timer = s.timers, mouse = false,
     groups = { group("HELPFUL|BIG_DEFENSIVE"), group("HELPFUL|EXTERNAL_DEFENSIVE|!BIG_DEFENSIVE"),
@@ -579,20 +579,25 @@ function NP.PaintSoftTarget(f, unit)
   f.soft:SetShown(softTargeted(unit) and ns.IsTrue(SetUnitCursorTexture(f.soft, unit, unpack(args, 1, args.n))))
 end
 
--- Whether a plate's unit is your target, while the target border is on.
+-- The colour of the border and diamond for your target and, quieter and with no glow, your focus.
+NP.MARK_COLORS = { target = "accent", focus = "text2" }
+
+-- What a plate marks while the target border is on: "target" for your target, "focus" for your focus
+-- (when it isn't your target too), or false.
 local function targetShown(unit)
-  return NP.settings.targetBorder and isUnit(unit, "target") or false
+  if not NP.settings.targetBorder then return false end
+  return isUnit(unit, "target") and "target" or isUnit(unit, "focus") and "focus" or false
 end
 
--- Paints a plate's target border, glow and marker, and records the state and scale they show.
+-- Paints a plate's target or focus border, the target's glow and the marker, and records the state and scale they show.
 local function paintTarget(f, unit)
-  local target, scale = targetShown(unit), f:GetEffectiveScale()
-  f.vgTarget, f.vgScale = target, scale
-  T.SetBorder(f, target and "accent" or nil)
+  local mark, scale = targetShown(unit), f:GetEffectiveScale()
+  f.vgTarget, f.vgScale = mark, scale
+  T.SetBorder(f, mark and NP.MARK_COLORS[mark] or nil)
   T.SizeGlow(f.glow, f, NP.GLOW)
-  T.ShowGlow(f.glow, target)
-  f.marker:SetShown(target)
-  if target then T.Tint(f.marker, "accent") end
+  T.ShowGlow(f.glow, mark == "target")
+  f.marker:SetShown(mark ~= false)
+  if mark then T.Tint(f.marker, NP.MARK_COLORS[mark]) end
 end
 
 -- True when a plate's scale now is within NP.SCALE_SLACK of the scale its border and glow were
@@ -605,8 +610,8 @@ function NP.ScaleHolds(scale, painted)
   return ratio <= NP.SCALE_SLACK and ratio * NP.SCALE_SLACK >= 1
 end
 
--- Your target's accent border, glow and marker. They are repainted only when
--- the plate's target state changed or its scale (the pixel size of the edge and
+-- Your target's accent border, glow and marker (your focus's quieter border and marker). They are repainted only when
+-- the plate's target or focus state changed or its scale (the pixel size of the edge and
 -- the glow) left NP.SCALE_SLACK of the one they were painted at.
 function NP.UpdateTarget(f, unit)
   local target, scale = targetShown(unit), f:GetEffectiveScale()
@@ -861,7 +866,7 @@ end
 local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
   NAME_PLATE_UNIT_ADDED = onAdded, NAME_PLATE_UNIT_REMOVED = onRemoved,
-  PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
+  PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, PLAYER_FOCUS_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
   -- Your new level changes how hard every unit is for you.
   PLAYER_LEVEL_UP = function() each(NP.UpdateName) end,
   PLAYER_REGEN_ENABLED = upgradeRows, UPDATE_MOUSEOVER_UNIT = onMouseover,
@@ -871,6 +876,13 @@ local EVENTS = {
   QUEST_LOG_UPDATE = NP.QuestsChanged, UNIT_QUEST_LOG_CHANGED = NP.QuestsChanged,
   CVAR_UPDATE = onSettingChanged,
 }
+
+-- Repaints a plate's look after a theme change: its target border and glow, and its bar's colour
+-- (tapped, threat, class or reaction follow the colour variant, and a quiet plate gets no event to repaint it).
+local function repaintLook(f, unit)
+  paintTarget(f, unit)
+  NP.UpdateColor(f, unit)
+end
 
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and
 -- dresses the game's personal resource display.
@@ -882,7 +894,7 @@ function NP.Enable(settings)
   watchPersonalResources()
   watchSoftTargets()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
-  T.OnChanged(function() each(paintTarget) end)
+  T.OnChanged(function() each(repaintLook) end)
   ns.Every("nameplate scale", NP.SCALE_POLL, NP.CheckScales)
 end
 

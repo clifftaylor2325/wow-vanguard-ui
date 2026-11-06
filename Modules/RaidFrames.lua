@@ -86,15 +86,16 @@ local function unitFrames()
   return ns.GetModule("UnitFrames")
 end
 
--- The raid's main tank and main assist get the shield in these colors.
-RF.ASSIGNMENTS = { MAINTANK = "accent", MAINASSIST = "text2" }
+-- The raid's main tank and main assist get the shield in these colors, in this order: a player
+-- who is both takes the main tank's.
+RF.ASSIGNMENTS = { { "MAINTANK", "accent" }, { "MAINASSIST", "text2" } }
 
 -- The color for a unit the raid assigned as main tank or main assist, or nil.
 local function assignment(unit)
   if type(GetPartyAssignment) ~= "function" then return nil end
-  for kind, color in pairs(RF.ASSIGNMENTS) do
-    local yes = GetPartyAssignment(kind, unit)
-    if ns.IsTrue(yes) then return color end
+  for _, a in ipairs(RF.ASSIGNMENTS) do
+    local yes = GetPartyAssignment(a[1], unit)
+    if ns.IsTrue(yes) then return a[2] end
   end
 end
 

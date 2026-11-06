@@ -152,10 +152,11 @@ local function deathWord(unit)
   return ns.PlainCall("UnitIsGhost", unit) == true and L["Ghost"] or L["Dead"]
 end
 
--- "Dead", "Ghost", "Offline", or nil when the unit is none of them. Safe with secret
--- values: they count as none, and nothing secret is compared.
+-- "Offline", "Dead", "Ghost", or nil when the unit is none of them; offline first, as the game's own raid
+-- frames read it (a player who died and then left still has the last dead flag, and can't be raised).
+-- Safe with secret values: they count as none, and nothing secret is compared.
 function UF.DownState(unit)
-  return deathWord(unit) or (isOffline(unit) and L["Offline"] or nil)
+  return isOffline(unit) and L["Offline"] or deathWord(unit)
 end
 
 -- Health as a percent ("84%"), from the client's own percent with its 0-100

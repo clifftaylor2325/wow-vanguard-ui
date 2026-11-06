@@ -182,6 +182,18 @@ it("ready check: a tile that takes another player after the check ends shows no 
   expect(marks(addon, 3).ready, "raid5 was not in the check: no cross carried over from raid3").toBe(false);
 });
 
+it("H28-1-2: after the check ends, the player who moves into a left player's raid slot shows no answer of the one before", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV + "UnitGUID = function(unit) local p = __units[unit] return p and (p.guid or p.name) end");
+  addon.eval('__spawn(3, "raid3") __status.ready = { raid3 = "waiting" }');
+  addon.fire("READY_CHECK");
+  addon.fire("READY_CHECK_FINISHED");
+  expect(/Icons\\Close$/.test(marks(addon, 3).ready), "the one who never answered: the cross").toBe(true);
+  addon.eval("__units.raid3 = __units.raid1 ns.GetModule('RaidStatus').UpdateAll()"); // raid3 left; raid3 now names someone else
+  expect(marks(addon, 3).ready, "the new raid3 was not asked: no cross carried over").toBe(false);
+  addon.eval("__units.raid3 = { name = 'TEST-ONLY Hidden', guid = { __secret = true }, hp = 1, maxhp = 1, player = true } ns.GetModule('RaidStatus').UpdateAll()");
+  expect(addon.eval("return #ns.errors"), "a hidden GUID falls back to the unit, with no error").toBe(0);
+});
+
 // Tile i's summon mark: its atlas while shown, else false; whether the resurrection mark and the status text show.
 const summonOf = (addon, i) => addon.eval(`local b = Vanguard_RaidUnitButton${i}
   return { b.summon:IsShown() and b.summon:GetAtlas(), b.rez:IsShown(), b.status:IsShown() }`);

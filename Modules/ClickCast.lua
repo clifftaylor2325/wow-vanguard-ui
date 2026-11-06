@@ -347,14 +347,20 @@ local function replaceAll(list)
   applySoon()
 end
 
+-- The bindings a click-casting string would put in place, checked whole, without changing anything;
+-- nil and the reason when it can't be imported.
+function CC.ReadImport(text)
+  local scope, data = ns.Serialize.Decode(text)
+  if not scope then return nil, data end
+  if scope ~= "clickcast" or type(data.bindings) ~= "table" then return nil, L["not a click-casting string"] end
+  return importable(data.bindings)
+end
+
 -- Replaces the current spec's bindings with the ones in a string: the whole string is checked first,
 -- then the old bindings are swapped for the new ones and applied once. A string that can't be imported
 -- changes nothing. Returns the number of bindings now, else nil and a reason.
 function CC.Import(text)
-  local scope, data = ns.Serialize.Decode(text)
-  if not scope then return nil, data end
-  if scope ~= "clickcast" or type(data.bindings) ~= "table" then return nil, L["not a click-casting string"] end
-  local list, why = importable(data.bindings)
+  local list, why = CC.ReadImport(text)
   if not list then return nil, why end
   replaceAll(list)
   return #CC.Bindings()
@@ -396,11 +402,14 @@ function CC.KeyText(key)
   return ns.Format(L["{key} (hover)"], { key = CC.KeyName(key) })
 end
 
--- What a binding does: the spell name (with its rank when one was picked), "Macro: ...", "Target", "Unit menu"...
+-- What a binding does, for display: the spell name (with its rank when one was picked), "Macro: ...", "Target",
+-- "Unit menu"... A spell name or macro text can come from an imported string, so its | shows as typed and never
+-- as a colour, icon or link escape (ns.Literal).
 function CC.ActionText(b)
-  if b.action == "spell" and b.rank then return ns.Format(L["{spell} (Rank {rank})"], { spell = b.value, rank = b.rank }) end
-  if b.action == "spell" then return b.value end
-  if b.action == "macro" then return ns.Format(L["Macro: {text}"], { text = b.value }) end
+  local value = type(b.value) == "string" and ns.Literal(b.value) or b.value
+  if b.action == "spell" and b.rank then return ns.Format(L["{spell} (Rank {rank})"], { spell = value, rank = b.rank }) end
+  if b.action == "spell" then return value end
+  if b.action == "macro" then return ns.Format(L["Macro: {text}"], { text = value }) end
   return ACTION_NAMES[b.action] or ACTION_NAMES.menu
 end
 
@@ -574,11 +583,17 @@ end
 
 -- Setup ------------------------------------------------------------------------------------
 
--- The raid buttons (existing and future) and, if turned on, the unit frames.
+-- Registers a module's tiles made so far (listed in mod[list]) and, through its hook, those it makes later.
+local function registerTiles(mod, list, hook)
+  for _, b in ipairs(mod[list] or {}) do CC.Register(b) end
+  mod[hook] = CC.Register
+end
+
+-- The raid buttons, the main tank tiles and the party pet tiles (existing and future) and, if turned on, the unit frames.
 local function registerFrames(settings)
-  local raid = ns.GetModule("RaidFrames")
-  for _, b in ipairs(raid.buttons) do CC.Register(b) end
-  raid.OnButtonCreated = CC.Register
+  registerTiles(ns.GetModule("RaidFrames"), "buttons", "OnButtonCreated")
+  registerTiles(ns.GetModule("MainTanks"), "tiles", "OnTileCreated")
+  registerTiles(ns.GetModule("PartyExtras"), "pets", "OnPetTile")
   if not settings.unitFrames then return end
   for _, f in pairs(ns.GetModule("UnitFrames").frames) do CC.Register(f) end
 end

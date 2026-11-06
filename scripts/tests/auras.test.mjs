@@ -113,6 +113,17 @@ it("raid auras listen for UNIT_AURA only on the fallback, where they paint the h
   expect(unitEvents(fallback, "UNIT_AURA").plain, "on the fallback, one listener for every tile").toBe(1);
 });
 
+it("H28-2-2: on the fallback an offline player's tile drops the dispel wash with its icons, in an aura event too", () => {
+  expectErrors(AURA_FALLBACK);
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true");
+  addon.eval('__spawn(1, "raid1")');
+  expect(addon.eval("return Vanguard_RaidUnitButton1.dispel:IsShown()"), "online with a dispellable debuff: washed").toBe(true);
+  addon.eval("__units.raid1.offline = true");
+  addon.fire("UNIT_CONNECTION", "raid1");
+  addon.fire("UNIT_AURA", "raid1");
+  expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { b.down == true, b.dispel:IsShown() }"), "offline: no wash, as no icon").toEqual([true, false]);
+});
+
 it("raid indicators on the fallback", () => {
   expectErrors(AURA_FALLBACK);
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true");

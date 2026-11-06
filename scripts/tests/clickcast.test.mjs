@@ -148,6 +148,9 @@ it("bindings carry spell ids and ranks, move, copy, export and import", () => {
   expect(addon.eval(`local n, err = ${CC}.Import(ns.Serialize.Encode("profile", { a = 1 })) return err`)).toBe("not a click-casting string");
   const odd = addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = { { key = 1 }, { key = "BUTTON4", action = "target" } } })`);
   expect(addon.eval(`return ${CC}.Import(${JSON.stringify(odd)})`), "malformed entries are skipped").toBe(1);
+  const spoof = addon.eval(`return ns.Serialize.Encode("clickcast", { bindings = { { key = "BUTTON4", action = "macro", value = "|cffff0000Reset|r" }, { key = "BUTTON5", action = "spell", value = "|Hitem:1|h[x]|h" } } })`);
+  addon.eval(`${CC}.Import(${JSON.stringify(spoof)})`);
+  expect(addon.eval(`return { ${CC}.ActionText(${CC}.Binding("BUTTON4")), ${CC}.ActionText(${CC}.Binding("BUTTON5")), ${CC}.Binding("BUTTON4").value }`), "H28-3-1: an imported string's | shows as typed, never as a colour or link; the macro itself is kept").toEqual(["Macro: ||cffff0000Reset||r", "||Hitem:1||h[x]||h", "|cffff0000Reset|r"]);
   addon.eval(`${CC}.ApplyLayout(${CS}.Layout())`);
   expect(bindings(addon)).toMatchObject({ BUTTON1: "target:nil:nil:nil", BUTTON2: "menu:nil:nil:nil", "alt-BUTTON2": "spell:Resurrection:2006:nil" });
   expect(bindings(addon).BUTTON3.startsWith("spell:Flash Heal:"), "the layout's spells bind by name").toBe(true);
@@ -387,6 +390,13 @@ it("sharing: export, import, copy to another spec, and the combat notice", () =>
   expect(chatHas(addon, /Can't import: not a Vanguard profile string\./)).toBe(true);
   addon.type("Vanguard_TextEdit", text);
   confirm(addon);
+  expect([addon.eval("return Vanguard_Question:IsShown()"), addon.texts("Replace your 1 click-casting bindings with the 1 from this string?").length, chatHas(addon, /Imported/)], "a list with bindings: it asks first, nothing replaced yet").toEqual([true, 1, false]);
+  addon.click("Vanguard_Question.no");
+  expect([chatHas(addon, /Imported/), addon.eval(`return #${CC}.Bindings()`)], "No keeps the list").toEqual([false, 1]);
+  addon.eval('__click("Import")');
+  addon.type("Vanguard_TextEdit", text);
+  confirm(addon);
+  addon.click("Vanguard_Question.confirm");
   expect(chatHas(addon, /Imported 1 click-casting bindings\./) && !addon.frame("Vanguard_TextDialog").visible).toBe(true);
   const copy = widget(addon, 'w.choices ~= nil and w.text ~= nil and w.text.__text == "Copy to spec..."');
   expect(addon.frame(copy).visible, "with specs, Copy to spec shows").toBe(true);
