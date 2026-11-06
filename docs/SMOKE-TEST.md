@@ -4197,6 +4197,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The first value is true; the next two say whether a font string and a button with no text answer nil (true) or an empty string (false).
 - If it fails, paste: the printed line, and which client.
 
+### 33.317 Price alert on a name entry for an item not yet cached (both)
+
+- Do: Put a shopping entry typed by name (not an ID) with a max price and Alert on, log in, open the auction house and press Scan before searching anything.
+- Expect: A listing of that item at or under the max price rings the alert and shows the toast, even if the item's name was not cached when the scan read it.
+- If it fails, paste: the entry's name and max price, and any red error text.
+
+### 33.318 Mail preset on a full Send Mail tab (both)
+
+- Do: At a mailbox open Send Mail, attach 12 items by hand, then press a mail preset that has words matching items in your bags.
+- Expect: Chat names the preset and says the Send Mail tab already holds 12 items; no "nothing you can mail has every word" line, and nothing more is attached.
+- If it fails, paste: the preset's words and the chat lines.
+
+### 33.319 Right-click menus on the flat panel (Retail)
+
+- Do: With Game windows > "Right-click menus, dropdowns and more tooltips" on, right-click your player frame, your target frame and a party member; hover the Raid Target Icon submenu and set an icon; right-click a chat tab; open the minimap tracking menu; open a filter dropdown in the Auction House or the game's Settings; with the character pane open, right-click a target and choose Inspect, then Set Focus out of combat.
+- Expect: Every menu and submenu opens on the flat Vanguard panel with no game dropdown art, its rows readable and never hidden behind the open window, the tracking menu's scroll bar a thin thumb, no flicker as a menu opens, and every action works with no "blocked because of an AddOn" message and nothing in Vanguard's error badge. With the switch off and a reload the game's menu art is back.
+- If it fails, paste: which menu, a screenshot of it, any "blocked" message, and the output of `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
