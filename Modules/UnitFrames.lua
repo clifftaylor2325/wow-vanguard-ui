@@ -403,14 +403,20 @@ function UF.PaintHealth(f)
   f.health:SetStatusBarColor(UF.HealthColor(f.unit))
 end
 
+-- The status colour for a down word: bad for Dead or Ghost, text2 for Offline (as on the raid tiles).
+function UF.DownToken(down)
+  return (down == L["Dead"] or down == L["Ghost"]) and "bad" or "text2"
+end
+
 -- Health bar value, color and text. Raw values go straight to the bar; the
--- text may be secret, so it goes to the font string untested.
+-- text may be secret, so it goes to the font string untested. A down word keeps its status colour.
 function UF.UpdateHealth(f)
-  local unit = f.unit
+  local unit, down = f.unit, UF.DownState(f.unit)
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
   UF.PaintHealth(f)
   if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit)) else f.healthText:SetText("") end
+  T.Color(f.healthText, down and UF.DownToken(down) or "text")
 end
 
 -- Power bar value and color.
@@ -789,7 +795,7 @@ end
 -- Gives a deck frame's name and health text the deck's larger role while it is on, their own otherwise.
 function UF.DeckText(f, on)
   T.Text(f.name, on and UF.DECK.text or "name")
-  T.Text(f.healthText, on and UF.DECK.text or "number")
+  T.Text(f.healthText, on and UF.DECK.text or "number", T.ColorToken(f.healthText))
 end
 
 -- How tall the target frame stands: its targetHeight setting (setup's role layouts raise it, a taller

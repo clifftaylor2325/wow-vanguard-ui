@@ -210,7 +210,7 @@ end
 function RF.PaintStatus(b, down, deficit)
   b.down = down ~= nil
   b.status:SetText(down or deficit)
-  T.Color(b.status, (down == L["Dead"] or down == L["Ghost"]) and "bad" or "text2")
+  T.Color(b.status, unitFrames().DownToken(down))
 end
 
 -- Dead / Offline, else the missing health, on the status line.
