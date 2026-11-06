@@ -285,6 +285,21 @@ it("setup look: accent swatches and the raid frame style apply at once", () => {
   expect(captions.map(([t, c]) => [t, ...c.slice(0, 3)]), "each tile's short name under it, the chosen one in the accent's text colour")
     .toEqual([["Softened", ...tok(addon, "text").slice(0, 3)], ["Dark", ...tok(addon, "accentText").slice(0, 3)], ["Bright", ...tok(addon, "text").slice(0, 3)]]);
 });
+it("setup look: an accent or look change made outside the wizard re-marks the swatches and keeps the dark tile's class-coloured name", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  setupClick(addon, "next");
+  setupClick(addon, "next");
+  addon.eval("local b = Vanguard_Setup.pages.look.styles[2] b:GetScript('OnClick')(b)");
+  addon.slash("accent jade");
+  addon.update(0.25);
+  const marks = addon.eval(`local out = {} for i, s in ipairs(Vanguard_Setup.pages.look.swatches) do
+    local jade = s.rgb[1] == ns.Theme.PRESETS.jade[1] and s.rgb[2] == ns.Theme.PRESETS.jade[2]
+    if s.check:IsShown() or jade then out[#out + 1] = { jade, s.check:IsShown() } end end return out`);
+  expect(marks, "only the jade swatch is checked").toEqual([[true, true]]);
+  const [name, class_] = addon.eval(`local c = Vanguard_Setup.pages.look.styles[2].name.__textColor
+    return { { c[1], c[2], c[3] }, { ns.GetModule("UnitFrames").HealthColor("player") } }`);
+  expect(name, "the dark tile's name stays in the class colour").toEqual(class_);
+});
 // The style tiles on setup's Look step: each one's size, bar color and fill, and its name's text and color.
 const styleTiles = (addon) => addon.eval(`local out = {}
   for i, b in ipairs(Vanguard_Setup.pages.look.styles) do

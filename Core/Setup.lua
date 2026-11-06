@@ -540,7 +540,7 @@ local function paintTile(b)
   b.name:SetText(UnitName("player"))
   if b.value == "dark" then
     T.BarColor(b.bar, "darkBar")
-    return b.name:SetTextColor(r, g, bl)
+    return T.ColorRGB(b.name, r, g, bl)
   end
   if b.value == "soft" then r, g, bl = ns.GetModule("RaidFrames").Soften(r, g, bl) end
   b.bar:SetStatusBarColor(r, g, bl)
@@ -608,6 +608,12 @@ local function refresh()
   look.larger:Refresh()
   look.assist:Refresh()
 end
+
+-- A theme change made outside the wizard (/vg accent, a look or text size change) re-marks it: the swatch outline
+-- and check, the tiles.
+T.OnChanged(function()
+  if frame and frame:IsShown() then refresh() end
+end)
 
 -- Building ------------------------------------------------------------------------------
 
