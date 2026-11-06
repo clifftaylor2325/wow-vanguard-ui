@@ -369,7 +369,8 @@ export const spellNames = (names) => Object.entries(names)
 
 // TEST-ONLY healing data: a prediction calculator, threat, known spells and buffs.
 export const HEALING_ENV = `
-  __pred = { raid1 = { max = 1000, heals = 200, shields = 150 }, raid2 = { max = 900, heals = { __secret = true }, shields = 0 }, raid3 = { max = 800, heals = 0, shields = 0 } }
+  __pred = { raid1 = { max = 1000, heals = 200, shields = 150, over = true }, raid2 = { max = 900, heals = { __secret = true }, shields = 0, over = { __secret = true } },
+    raid3 = { max = 800, heals = 0, shields = 0, over = false } }
   CreateUnitHealPredictionCalculator = function()
     local c = {}
     function c:SetIncomingHealClampMode(m) self.clamp = m end
@@ -377,6 +378,8 @@ export const HEALING_ENV = `
     function c:GetMaximumHealth() return __pred[self.unit].max end
     function c:GetIncomingHeals() return __pred[self.unit].heals end
     function c:GetTotalDamageAbsorbs() return __pred[self.unit].shields end
+    function c:SetDamageAbsorbClampMode(m) self.absorbClamp = m end
+    function c:GetDamageAbsorbs() return __pred[self.unit].shields, __pred[self.unit].over end
     __calc = c
     return c
   end

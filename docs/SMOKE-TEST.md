@@ -4317,6 +4317,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The cell, the hover-key row and the chat line show the text with its | characters as typed, never in red or as a link.
 - If it fails, paste: a screenshot of the grid and the chat line.
 
+### 33.336 Focus plate, import question, main tank and pet click casting
+
+- Do: Target one enemy and set another as your focus (`/focus`). Then, with click-casting bindings set, open Click casting, paste a string from another character into Import and press it. Last, in a raid with a main tank set (and in a party with a hunter or warlock pet), use a click-casting binding on a main tank tile and on a party pet tile.
+- Expect: The target's plate has the accent border and diamond; the focus's plate a quieter gray border and diamond, with no glow; clearing the focus takes its border away. Import asks "Replace your 6 click-casting bindings with the 4 from this string?" (your numbers) and changes nothing on No. The bindings cast on the main tank and pet tiles just as on raid tiles.
+- If it fails, paste: a screenshot of the two plates or the question, and `/vg errors`.
+
+### 33.337 Overshield mark
+
+- Do: With Shields on in Healing, put a shield (Power Word: Shield, or any absorb) on a player at full health in your group, then on a player missing a little health.
+- Expect: On the full-health player a thin bright line sits at the right end of the health bar while the shield lasts; it goes when the shield does. On the player missing health it shows only once the shield is bigger than what they are missing. Turning Shields off takes the line away.
+- If it fails, paste: a screenshot of the tile and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

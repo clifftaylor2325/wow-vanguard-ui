@@ -126,8 +126,9 @@ end
 
 local calc
 
--- The heal prediction calculator's clamp mode and overflow, as the client takes them (the numbers the calculator is set to).
-RH.CALC_CLAMP_MODE, RH.CALC_OVERFLOW = 0, 1
+-- The heal prediction calculator's clamp mode and overflow, as the client takes them (the numbers the calculator is set to),
+-- and its shield clamp: shields count up to the missing health less incoming heals, so past that the player is overshielded.
+RH.CALC_CLAMP_MODE, RH.CALC_OVERFLOW, RH.CALC_ABSORB_CLAMP_MODE = 0, 1, 0
 
 -- The client's heal prediction calculator (made once), or nil if this client has none.
 local function calculator()
@@ -135,6 +136,7 @@ local function calculator()
     calc = CreateUnitHealPredictionCalculator()
     pcall(calc.SetIncomingHealClampMode, calc, RH.CALC_CLAMP_MODE)
     pcall(calc.SetIncomingHealOverflowPercent, calc, RH.CALC_OVERFLOW)
+    pcall(calc.SetDamageAbsorbClampMode, calc, RH.CALC_ABSORB_CLAMP_MODE)
   end
   return calc
 end
@@ -148,12 +150,20 @@ local function ask(fn, unit)
   return nil
 end
 
--- max health, incoming heals and shields for a unit (any may be hidden or nil).
+-- Whether the calculator's shields run past its clamp (the player's missing health less incoming heals), so some of
+-- the shield sits beyond a full bar; nil on a client whose calculator can't say. It may be hidden: never tested here.
+local function overshielded(c)
+  if type(c.GetDamageAbsorbs) ~= "function" then return nil end
+  local _, clamped = c:GetDamageAbsorbs()
+  return clamped
+end
+
+-- max health, incoming heals, shields, and whether shields run past a full bar, for a unit (any may be hidden or nil).
 function RH.Prediction(unit)
   local c = calculator()
   if c and type(UnitGetDetailedHealPrediction) == "function" then
     UnitGetDetailedHealPrediction(unit, "player", c)
-    return c:GetMaximumHealth(), c:GetIncomingHeals(), c:GetTotalDamageAbsorbs()
+    return c:GetMaximumHealth(), c:GetIncomingHeals(), c:GetTotalDamageAbsorbs(), overshielded(c)
   end
   return UnitHealthMax(unit), ask(UnitGetIncomingHeals, unit), ask(UnitGetTotalAbsorbs, unit)
 end
@@ -290,6 +300,19 @@ local function addBuffMarker(b)
   b.missing:Hide()
 end
 
+-- The overshield mark's width in pixels.
+RH.OVERSHIELD_WIDTH = 2
+
+-- The overshield mark: a thin bright line at the health bar's right end, over the bars, for shields past a full bar.
+local function addOvershield(b)
+  b.overshield = T.Tint(T.Snap(b.overlay:CreateTexture(nil, "ARTWORK")), "text")
+  b.overshield:SetTexture(T.WHITE)
+  b.overshield:SetPoint("TOPRIGHT", b.health, "TOPRIGHT")
+  b.overshield:SetPoint("BOTTOMRIGHT", b.health, "BOTTOMRIGHT")
+  b.overshield:SetWidth(RH.OVERSHIELD_WIDTH)
+  b.overshield:Hide()
+end
+
 -- Adds the heal, shield, threat and buff parts to a raid button (RF setup hook).
 local function setup(b)
   b.health:SetClipsChildren(true)
@@ -300,6 +323,7 @@ local function setup(b)
   b.power:SetFrameLevel(b.shield:GetFrameLevel() + 1)
   addThreat(b)
   addBuffMarker(b)
+  addOvershield(b)
 end
 
 -- Updating ----------------------------------------------------------------------------------
@@ -316,11 +340,21 @@ local function fill(b, bar, max, value, on)
   bar:SetValue(value)
 end
 
--- Incoming heals and shields.
+-- Lights the overshield mark when shields run past a full bar (a hidden answer goes to its opacity as it is);
+-- shown only while shields are on.
+local function paintOvershield(b, over)
+  local mark = b.overshield
+  mark:SetShown(RH.settings.absorbs == true)
+  if ns.IsSecret(over) and mark.SetAlphaFromBoolean then return mark:SetAlphaFromBoolean(over, 1, 0) end
+  mark:SetAlpha(ns.IsTrue(over) and 1 or 0)
+end
+
+-- Incoming heals, shields and the overshield mark.
 local function updatePrediction(b, unit)
-  local max, incoming, shields = RH.Prediction(unit)
+  local max, incoming, shields, over = RH.Prediction(unit)
   fill(b, b.heal, max, incoming, RH.settings.healPrediction)
   fill(b, b.shield, max, shields, RH.settings.absorbs)
+  paintOvershield(b, over)
 end
 
 -- The threat strip.

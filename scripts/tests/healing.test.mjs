@@ -37,6 +37,23 @@ it("heal prediction, aggro, buff watch", () => {
   expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { b.heal:IsShown(), b.heal:GetValue() }"), "incoming heals turned off: the bar hides empty, so the shield starts at the health edge").toEqual([false, 0]);
 });
 
+it("H28-I4 overshield: a bright line at the health bar's end when shields run past a full bar, a hidden answer to its opacity", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  // Raid button i's overshield mark: [shown, opacity, the hidden answer it was handed].
+  const mark = (i) => addon.eval(`local m = Vanguard_RaidUnitButton${i}.overshield return { m:IsShown(), m:GetAlpha(), m.__alphaFromBoolean ~= nil }`);
+  expect(addon.eval("return __calc.absorbClamp"), "shields are clamped to missing health less incoming heals").toBe(0);
+  expect(mark(1), "shields past a full bar: lit").toEqual([true, 1, false]);
+  expect(mark(2)[2], "a hidden answer goes to its opacity untouched").toBe(true);
+  expect(mark(3), "shields within the bar: unlit").toEqual([true, 0, false]);
+  addon.eval("__calc.GetDamageAbsorbs = nil");
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "raid1");
+  expect(mark(1)[1], "a calculator that can't say: unlit").toBe(0);
+  addon.eval("VanguardDB.profiles.Default.RaidHealing.absorbs = false");
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "raid1");
+  expect(mark(1)[0], "shields turned off: no mark").toBe(false);
+});
+
 // TEST-ONLY: the client's all-at-once aura list (counted), the by-name lookup and the spell lookup (counted too),
 // and the aura restriction (__secretAuras).
 const AURA_LIST = `__auraCalls, __byName, __spellInfo, __secretAuras = 0, 0, 0, false
