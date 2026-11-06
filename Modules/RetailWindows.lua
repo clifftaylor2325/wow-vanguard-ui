@@ -105,12 +105,6 @@ GW.RETAIL_PARTS = {
 
 -- The art of a category card (the group finder's and the PvP tab's: a blue plate and a gold ring round its icon).
 GW.FINDER_CARD_ART = { "bg", "ring", "Background", "Ring" }
--- The open card's accent edge as an { r, g, b } that reads the current accent whenever the card is painted, so
--- T.Refresh's repaint after an accent or look change gives it the new one (as RaidFrames' target edge).
-GW.OPEN_CARD_EDGE = setmetatable({}, {
-  -- GW.OPEN_CARD_EDGE[i]: the i-th of the accent's r, g, b.
-  __index = function(_, i) return (select(i, T.Accent())) end,
-})
 -- The art of a list's column header (WhoFrameColumnHeaderTemplate: three tab pieces).
 GW.COLUMN_HEADER_ART = { "Left", "Middle", "Right" }
 
@@ -135,7 +129,7 @@ end
 local function markOpenCard(key, index)
   for i, path in ipairs(GW.RETAIL_PARTS[key].card) do
     local card = GW.Part(_G, path)
-    if card then T.SetBorder(card, i == index and GW.OPEN_CARD_EDGE or nil) end
+    if card then T.SetBorder(card, i == index and "accent" or nil) end
   end
 end
 

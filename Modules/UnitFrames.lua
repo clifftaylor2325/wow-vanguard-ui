@@ -416,7 +416,8 @@ function UF.UpdateHealth(f)
   T.SetBarValue(f.health, UnitHealth(unit))
   UF.PaintHealth(f)
   if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit)) else f.healthText:SetText("") end
-  T.Color(f.healthText, down and UF.DownToken(down) or "text")
+  local token = down and UF.DownToken(down) or "text"
+  if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
 end
 
 -- Power bar value and color.

@@ -3,7 +3,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { SURFACE_MAX_ALPHA } from "../lib/media-surfaces.mjs";
-import { CLICK_LUA, MICRO_ENV, TIDY_ENV, UI_ENV, WINDOWS_ENV, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, MICRO_ENV, TIDY_ENV, UI_ENV, WINDOWS_ENV, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -1616,10 +1616,10 @@ it("H27-4-2: with Safer colours the reputation bar and the zone name leave the r
   const addon = loggedIn("");
   // A token's colour as rrggbb.
   const hex = (name) => addon.eval(`return ns.Theme.Hex("${name}")`).slice(2);
-  const names = ["repHostile", "repNeutral", "repFriendly", "zoneHostile", "zoneFriendly", "zoneSanctuary"];
+  const names = ["repHostile", "repUnfriendly", "repNeutral", "repFriendly", "zoneHostile", "zoneFriendly", "zoneSanctuary"];
   addon.eval("ns.Theme.Settings().colorAssist = true");
-  expect(names.map(hex), "on: the reactions' vermilion, yellow and blue, and a light violet sanctuary").toEqual(["e0663a", "e8d25a", "4a9be8", "e0663a", "4a9be8", "dcc8ff"]);
-  expect(["repUnfriendly", "zoneContested"].map(hex), "the in-between standings keep their colours").toEqual(["bf4500", "ffb300"]);
+  expect(names.map(hex), "on: the reactions' vermilion, yellow and blue, an amber unfriendly, and a light violet sanctuary").toEqual(["e0663a", "f5a623", "e8d25a", "4a9be8", "e0663a", "4a9be8", "dcc8ff"]);
+  expect(hex("zoneContested"), "contested keeps its colour").toBe("ffb300");
   // The sanctuary violet's smallest CIELAB distance from the other zone colours under normal sight, protanopia, deuteranopia and tritanopia (Vienot simulations).
   const lin = (h) => [0, 2, 4].map((i) => { const c = parseInt(h.slice(i, i + 2), 16) / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
   // Linear RGB to CIELAB (D65).
@@ -1635,4 +1635,14 @@ it("H27-4-2: with Safer colours the reputation bar and the zone name leave the r
   const seen = (eye, h) => lab(eye.map((r) => Math.min(1, Math.max(0, r[0] * lin(h)[0] + r[1] * lin(h)[1] + r[2] * lin(h)[2]))));
   const apart = eyes.flatMap((eye) => ["4a9be8", "e8d25a", "e0663a", "ffb300"].map((h) => Math.hypot(...seen(eye, "dcc8ff").map((v, i) => v - seen(eye, h)[i]))));
   expect(Math.min(...apart) >= 18, `sanctuary stays at least 18 apart (got ${Math.min(...apart).toFixed(1)})`).toBe(true);
+  const unfriendly = eyes.flatMap((eye) => ["e0663a", "e8d25a"].map((h) => Math.hypot(...seen(eye, "f5a623").map((v, i) => v - seen(eye, h)[i]))));
+  expect(Math.min(...unfriendly) >= 14, `unfriendly stays apart from hostile and neutral (got ${Math.min(...unfriendly).toFixed(1)})`).toBe(true);
+});
+
+it("theme listeners run guarded: one that errors is reported and the listeners after it still run", () => {
+  const addon = loggedIn("");
+  addon.eval('ns.Theme.OnChanged(function() error("TEST-ONLY listener") end) ns.Theme.OnChanged(function() __afterBad = true end)');
+  expectErrors("theme change: eval:2: TEST-ONLY listener");
+  addon.slash("accent jade");
+  expect(addon.eval("return __afterBad"), "the next listener ran").toBe(true);
 });

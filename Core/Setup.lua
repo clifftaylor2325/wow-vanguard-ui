@@ -509,7 +509,7 @@ end
 -- unchanged); a swatch or tile is outlined in the accent (its label too).
 local function mark(b, on)
   if b.SetSelected then return b:SetSelected(on) end
-  T.SetBorder(b, on and { T.Accent() } or nil)
+  T.SetBorder(b, on and "accent" or nil)
   if b.text then T.Color(b.text, on and "accentText" or "text") end
   if b.check then b.check:SetShown(on) end
 end

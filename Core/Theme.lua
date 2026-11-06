@@ -150,7 +150,7 @@ end
 T.ASSIST = {
   friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a"),
   magic = fromHex("2f7fe0"), curse = fromHex("d86ac0"), disease = fromHex("e8b030"), poison = fromHex("7ad0b0"),
-  repHostile = fromHex("e0663a"), repNeutral = fromHex("e8d25a"), repFriendly = fromHex("4a9be8"),
+  repHostile = fromHex("e0663a"), repUnfriendly = fromHex("f5a623"), repNeutral = fromHex("e8d25a"), repFriendly = fromHex("4a9be8"),
   zoneHostile = fromHex("e0663a"), zoneFriendly = fromHex("4a9be8"), zoneSanctuary = fromHex("dcc8ff"),
 }
 
@@ -1720,7 +1720,7 @@ T.SLOT_WELL = { fill = "void", border = "darkBar" }
 local function slotOpts(opts)
   local well = opts ~= nil and opts.well == true
   return {
-    raised = not well, fill = well and T.SLOT_WELL.fill or nil, border = well and { T.RGB(T.SLOT_WELL.border) } or nil, well = well,
+    raised = not well, fill = well and T.SLOT_WELL.fill or nil, border = well and T.SLOT_WELL.border or nil, well = well,
     noSheen = true, noBevel = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true,
     noSurface = opts ~= nil and opts.noSurface == true,
   }
@@ -2036,7 +2036,7 @@ local function paintCheck(button, c)
   paintBoxMark(c, on, off, T.CHECK.markColor)
   c.fill:SetShown(on and T.CHECK.fill ~= nil)
   T.Tint(c.fill, off and "disabled" or T.CHECK.fill or "inset")
-  T.SetBorder(c.box, c.hover and not off and { T.RGB(T.CHECK.hover) } or nil)
+  T.SetBorder(c.box, c.hover and not off and T.CHECK.hover or nil)
   T.DisabledLook(button, off)
 end
 
@@ -3031,7 +3031,7 @@ end
 
 -- Calls fn() after every theme change (for custom elements colored by hand).
 function T.OnChanged(fn)
-  listeners[#listeners + 1] = fn
+  listeners[#listeners + 1] = ns.Guard("theme change", fn)
 end
 
 -- Repaints the crests, the ornaments and the game frame primitives (check boxes, radios, arrows,

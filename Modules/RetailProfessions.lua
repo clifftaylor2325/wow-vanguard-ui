@@ -116,7 +116,8 @@ local function dressBookSpell(button)
   if type(button) ~= "table" then return end
   GW.SkinText(button.spellString, "label", "text")
   GW.SkinText(button.subSpellString, "small", "muted")
-  GW.FadeNamed({ (button:GetName() or "") .. "NameFrame" })
+  local name = button:GetName()
+  if name then GW.FadeNamed({ name .. "NameFrame" }) end
   GW.HookAfter(button, "UpdateButton", function(b) GW.SkinText(b.spellString, "label", "text") end)
 end
 

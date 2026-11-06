@@ -588,7 +588,7 @@ end
 local function paintTarget(f, unit)
   local target, scale = targetShown(unit), f:GetEffectiveScale()
   f.vgTarget, f.vgScale = target, scale
-  T.SetBorder(f, target and { T.Accent() } or nil)
+  T.SetBorder(f, target and "accent" or nil)
   T.SizeGlow(f.glow, f, NP.GLOW)
   T.ShowGlow(f.glow, target)
   f.marker:SetShown(target)

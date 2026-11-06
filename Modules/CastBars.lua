@@ -226,7 +226,7 @@ end
 -- edge (an edge cannot follow it).
 local function paintCast(bar, name, icon, shielded, channel)
   paintKind(bar, shielded, channel)
-  T.SetBorder(bar, isTrue(shielded) and { T.RGB("shielded") } or nil)
+  T.SetBorder(bar, isTrue(shielded) and "shielded" or nil)
   bar.icon:SetTexture(icon)
   bar.text:SetText(name)
 end
