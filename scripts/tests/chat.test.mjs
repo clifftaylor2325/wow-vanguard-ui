@@ -1517,6 +1517,13 @@ it("quiet the game: turning Quiet off puts back the player's zoom, out of combat
   addon.eval("SetCVar, C_CVar = nil, nil ns.GetModule('Quiet').Disable()");
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe("1.9");
 });
+it("H26-1-1 quiet the game: turning Quiet off shows the red errors and the zone names again at once", () => {
+  const addon = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true, zoneText = true } } }" });
+  addon.eval("ns.SetModuleEnabled('Quiet', false)");
+  addon.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Not ready");
+  addon.eval("ZoneTextFrame:Show() SubZoneTextFrame:Show()");
+  expect(addon.eval("return { __shown, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown() }"), "the red line stays, both names show").toEqual([["TEST-ONLY Not ready"], true, true]);
+});
 it("quiet the game: a camera row changed after Quiet is switched off only saves the value", () => {
   const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.3')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
   addon.eval("ns.SetModuleEnabled('Quiet', false) local _, set = ns.Options.LiveMethod('Quiet', 'camera', 'ApplyCamera') set(1.9)");

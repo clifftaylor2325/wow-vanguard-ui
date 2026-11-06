@@ -11,10 +11,10 @@ local QU = ns.Module("Quiet", { defaults = { errors = false, zoneText = false, c
 -- The furthest-zoom choices (the game's cameraDistanceMaxZoomFactor); 0 is the game's own setting.
 QU.CAMERA = { { 0, L["The game's setting"] }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 2.6, L["2.6 x (furthest)"] } }
 
--- Hides a frame the game just showed, while `key` is switched on.
+-- Hides a frame the game just showed, while the module is on and `key` is switched on.
 local function quiet(frame, key)
   if type(frame) ~= "table" or type(frame.HookScript) ~= "function" then return end
-  frame:HookScript("OnShow", ns.Guard("quiet " .. key, function(f) if QU.settings[key] then f:Hide() end end))
+  frame:HookScript("OnShow", ns.Guard("quiet " .. key, function(f) if QU.active and QU.settings[key] then f:Hide() end end))
 end
 
 -- How long the error line shows a line, in seconds (Blizzard_UIErrorsFrame: displayDuration 2 plus
@@ -84,11 +84,11 @@ local function dropRed(frame, now)
   shown = others
 end
 
--- After the error line adds a line, while the switch is on: a red one (an error, whichever way it came)
+-- After the error line adds a line, while the module and the switch are on: a red one (an error, whichever way it came)
 -- is taken off, unless it is one of QU.KEEP; any other is remembered. An error the game doesn't show
 -- adds no line, so it clears nothing.
 local function onLine(frame, text, r, g, b, a, id)
-  if not QU.settings.errors or readding then return end
+  if not (QU.active and QU.settings.errors) or readding then return end
   local now = type(GetTime) == "function" and GetTime() or 0
   if isRed(r, g, b) and not kept(id) then return dropRed(frame, now) end
   shown = stillShown(now)
@@ -155,15 +155,18 @@ local function adoptProfilePrior(settings)
   settings.cameraPrior = nil
 end
 
--- The module switched off (Core/Modules.lua): the player's own furthest zoom comes back, out of combat.
+-- The module switched off (Core/Modules.lua): the red errors and zone names show again at once (the hooks stay, idle,
+-- until the reload), and the player's own furthest zoom comes back, out of combat.
 function QU.Disable()
+  QU.active = false
   local set = cvarSetter()
   if set then ns.OutOfCombat(function() restoreCamera(set) end, "quiet camera") end
 end
 
--- Module entry point (Core/Modules.lua): the hooks read their switch each time, so the options apply at once.
+-- Module entry point (Core/Modules.lua): the hooks read their switch and QU.active each time, so the options and a
+-- switch-off apply at once.
 function QU.Enable(settings)
-  QU.settings = settings
+  QU.settings, QU.active = settings, true
   adoptProfilePrior(settings)
   errorLine()
   quiet(_G.ZoneTextFrame, "zoneText")
