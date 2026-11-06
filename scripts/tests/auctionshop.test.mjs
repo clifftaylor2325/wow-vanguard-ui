@@ -818,8 +818,11 @@ it("a sortable column heading lights to the body text under the mouse and rests 
   dustFound(addon);
   addon.click(`${TABLE}.rows[1]`);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  // The path of the i-th column head.
   const head = (i) => `${VIEW}.table.heads[${i}]`;
+  // Whether the i-th head's label is coloured with the token.
   const colour = (i, tok) => isTok(addon, addon.eval(`return ${head(i)}.text.__textColor`), tok);
+  // Runs a mouse script on the i-th head.
   const run = (i, ev) => addon.eval(`local h = ${head(i)} h.__scripts.${ev}(h)`);
   run(2, "OnEnter");
   expect(colour(2, "text"), "hovered, unsorted: text").toBe(true);

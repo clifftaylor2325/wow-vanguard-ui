@@ -111,19 +111,23 @@ local function orderView(page)
   page.OrderView = view
 end
 
+-- One spell button of a book row, with its name plate; its UpdateButton paints the spell name gold, as the game's does.
+local function bookSpell(row, name, i)
+  local button = CreateFrame("CheckButton", name .. "SpellButton" .. i, row)
+  row["SpellButton" .. i] = button
+  button.spellString, button.subSpellString = button:CreateFontString(nil, "ARTWORK"), button:CreateFontString(nil, "ARTWORK")
+  art(button, name .. "SpellButton" .. i .. "NameFrame")
+  -- The game's update: the spell name back in its gold.
+  function button:UpdateButton() self.spellString:SetTextColor(1, 0.82, 0) end
+end
+
 -- A profession row of the book (PrimaryProfessionTemplate, SecondaryProfessionTemplate): its skill bar and texts.
 local function bookRow(book, name)
   local row = CreateFrame("Frame", name, book)
   row.statusBar = CreateFrame("StatusBar", nil, row)
   art(row.statusBar)
   for _, key in ipairs({ "professionName", "missingHeader", "missingText", "rank" }) do row[key] = row:CreateFontString(nil, "ARTWORK") end
-  for i = 1, 2 do
-    local button = CreateFrame("CheckButton", name .. "SpellButton" .. i, row)
-    row["SpellButton" .. i] = button
-    button.spellString, button.subSpellString = button:CreateFontString(nil, "ARTWORK"), button:CreateFontString(nil, "ARTWORK")
-    art(button, name .. "SpellButton" .. i .. "NameFrame")
-    function button:UpdateButton() self.spellString:SetTextColor(1, 0.82, 0) end
-  end
+  for i = 1, 2 do bookSpell(row, name, i) end
 end
 
 -- The windows each part of the game makes, by its name.

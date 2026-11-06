@@ -252,6 +252,7 @@ it("options: profiles in the window", () => {
     w.input:SetText("${name}") local b = ${enter ? "w.input" : "w.create"} b:GetScript(${enter ? '"OnEnterPressed"' : '"OnClick"'})(b) return w.label.__text end end`);
   expect(create("TEST-ONLY Bad/Name"), "a bad name says why").toBe("Name taken or not allowed");
   expect([create("   "), create("Default ")], "blank, or a name with a space at an end: refused").toEqual(["Name taken or not allowed", "Name taken or not allowed"]);
+  // The new-profile row's caption text and its colour token.
   const caption = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create then return { w.label.__text, ns.Theme.ColorToken(w.label) } end end`);
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and ns.Options.RevealRow(w) then w.input:SetText("TEST-ONLY Fine") __wfgStub.runScript(w.input, "OnTextChanged", "TEST-ONLY Fine", true) end end`);
   expect(caption(), "editing the name puts the caption back after a refusal").toEqual(["New profile", "text2"]);
@@ -2078,6 +2079,7 @@ it("options JumpTo marks the row for a Russian caption typed in small letters", 
 it("options General: the accent swatch of the chosen preset carries a check, and it moves with the accent", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV);
   addon.slash("");
+  // The presets whose swatch shows the check.
   const checked = () => addon.eval(`local row for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then row = w end end
     local out = {} for i, s in ipairs(row.swatches) do if s.check:IsShown() then out[#out + 1] = ns.Theme.PRESET_ORDER[i] end end return out`);
   expect(checked(), "brass, the default accent, is the checked one").toEqual(["brass"]);

@@ -1622,13 +1622,16 @@ it("H27-4-2: with Safer colours the reputation bar and the zone name leave the r
   expect(["repUnfriendly", "zoneContested"].map(hex), "the in-between standings keep their colours").toEqual(["bf4500", "ffb300"]);
   // The sanctuary violet's smallest CIELAB distance from the other zone colours under normal sight, protanopia, deuteranopia and tritanopia (Vienot simulations).
   const lin = (h) => [0, 2, 4].map((i) => { const c = parseInt(h.slice(i, i + 2), 16) / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  // Linear RGB to CIELAB (D65).
   const lab = (rgb) => {
     const xyz = [[0.4124, 0.3576, 0.1805, 0.9505], [0.2126, 0.7152, 0.0722, 1], [0.0193, 0.1192, 0.9505, 1.089]].map((r) => (r[0] * rgb[0] + r[1] * rgb[1] + r[2] * rgb[2]) / r[3]);
     const f = xyz.map((v) => (v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116));
     return [116 * f[1] - 16, 500 * (f[0] - f[1]), 200 * (f[1] - f[2])];
   };
+  // Normal sight, then protanopia, deuteranopia and tritanopia, as linear RGB matrices.
   const eyes = [[[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
     [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]], [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.3039]]];
+  // A colour in CIELAB as one eye sees it.
   const seen = (eye, h) => lab(eye.map((r) => Math.min(1, Math.max(0, r[0] * lin(h)[0] + r[1] * lin(h)[1] + r[2] * lin(h)[2]))));
   const apart = eyes.flatMap((eye) => ["4a9be8", "e8d25a", "e0663a", "ffb300"].map((h) => Math.hypot(...seen(eye, "dcc8ff").map((v, i) => v - seen(eye, h)[i]))));
   expect(Math.min(...apart) >= 18, `sanctuary stays at least 18 apart (got ${Math.min(...apart).toFixed(1)})`).toBe(true);

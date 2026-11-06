@@ -214,6 +214,7 @@ it("windows-retail: the open category card has an accent border, on the group fi
 
 it("windows-retail: the conquest and Adventure Guide tooltips get the tooltip panel when their addons load (H27-5-2)", () => {
   const addon = retail(["PVEFrame"]);
+  // Lua that makes a bare tooltip frame with a NineSlice.
   const tip = (name) => `local t = CreateFrame("Frame", "${name}", UIParent) t.NineSlice = CreateFrame("Frame", nil, t)`;
   addon.eval(`${tip("ConquestTooltip")} ${tip("EncounterJournalTooltip")}
     __wfgStub.fire("ADDON_LOADED", "Blizzard_PVPUI") __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterJournal")`);

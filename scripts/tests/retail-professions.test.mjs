@@ -91,6 +91,7 @@ it("retail professions: a page that fails is reported by name, and the other pag
 it("retail professions: a book row's spell buttons read in the theme (name light, sub-name quiet, plate gone), again after the game updates one (H27-6-4, H27-6-R2)", () => {
   const addon = professions();
   addon.eval("ProfessionsBookFrame:Show() PrimaryProfession1.SpellButton1:UpdateButton()");
+  // Whether a spell button's texts are light and muted, and its name plate's alpha.
   const look = (key) => addon.eval(`local b = PrimaryProfession1.${key}
     return { b.spellString.__textColor[1] == ns.Theme.RGB("text"), b.subSpellString.__textColor[1] == ns.Theme.RGB("muted"), PrimaryProfession1${key}NameFrame.__alpha }`);
   expect(look("SpellButton1"), "the name light after the game's own gold, the sub-name quiet, the plate faded").toEqual([true, true, 0]);
