@@ -163,11 +163,11 @@ local function dungeonColor(e)
   return QP.LevelColor(math.floor((e.dungeon.min + e.dungeon.max) / 2))
 end
 
--- A row's colors: the kind in the accent (LFM) or info blue (LFG), the dungeon in its difficulty color, the
+-- A row's colors: the kind in accentText (LFM) or info blue (LFG), the dungeon in its difficulty color, the
 -- rest in the text color; every cell muted for a post that Needs my role dims.
 local function paintColors(b, e)
   local dim = GB.Dimmed(e)
-  T.Color(b.kind, dim and "muted" or (e.kind == "LFM" and "accent" or "info"))
+  T.Color(b.kind, dim and "muted" or (e.kind == "LFM" and "accentText" or "info"))
   T.Color(b.dungeon, dim and "muted" or dungeonColor(e))
   for _, key in ipairs(GB.PLAIN_CELLS) do T.Color(b[key], dim and "muted" or "text") end
 end

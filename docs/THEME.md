@@ -60,7 +60,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | State | `good` | `3fbf9a` | Success, ready, full durability. Off the red-green axis with `warn` and `bad` (#235, after Okabe-Ito); where a state stands alone as a mark it has a glyph too (`T.STATE_GLYPHS`: `Check`, `Warn`, `Close`), as on the pet's mood. |
 | | `warn` | `f0b43c` | Warnings, middling values. |
 | | `bad` | `e8663f` | Errors, not ready, broken items. |
-| | `info` | `5aa2f0` | Informational state: the renown bar (`DB.RENOWN_COLOR`) and the group board's LFM tag. High contrast sets its own (`4da6ff`). |
+| | `info` | `5aa2f0` | Informational state: the renown bar (`DB.RENOWN_COLOR`) and the group board's LFG tag. High contrast sets its own (`4da6ff`). |
 | | `unknown` | `808080` | A value the client will not tell: a unit frame's reaction colour when the game hides the unit's reaction. |
 | | `tapped` | `8c8c8c` | A mob another player has tagged: its grey X tag mark (nameplate and target frame) and its nameplate bar. A plain grey, apart from the bluish text greys. |
 | Reaction | `hostile` | `cc4b45` | Hostile units (nameplates, unit frames). |
