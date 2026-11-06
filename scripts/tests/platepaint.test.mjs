@@ -86,6 +86,34 @@ it("a plate the client hands over at a tiny scale gets its one-pixel border back
   expect(Math.round(edge("nameplate2") * 1000) / 1000, "the scale check paints it again: one pixel").toBe(1);
 });
 
+it("a debuff icon the client makes while it has the plate shrunk gets its one-pixel inset and edge back once the plate grows", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "ns.GetModule('Nameplates').POOL = 0");
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  addon.eval(`local p = CreateFrame("Frame", nil, UIParent) p:SetSize(110, 45) p:SetPoint("CENTER")
+    p.UnitFrame = CreateFrame("Frame", nil, p) p.IsForbidden = function() return false end
+    __plates.nameplate1 = p p:SetScale(0.01)`);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.eval("__plates.nameplate1:SetScale(1)");
+  // The first debuff icon's inset (its icon from the button's edge) and the thinnest strip of its type
+  // edge, in screen pixels at the plate's scale now.
+  const sizes = () => addon.eval(`local b = ns.FrameState('vgPlate')[__plates.nameplate1].debuffs.frame.__groups[1].buttons[1]
+    local px, thinnest = ns.Theme.Pixel(b), math.huge
+    for _, w in ipairs(__wfgStub.frames) do
+      local holder = w.__parent
+      if holder and holder.__parent == b and w.__layer == "OVERLAY" and w.__sublevel == 7 and w.__texture == ns.Theme.WHITE then
+        thinnest = math.min(thinnest, w:GetWidth(), w:GetHeight())
+      end
+    end
+    return { math.floor(b.__icon.__points.TOPLEFT.x / px * 1000 + 0.5) / 1000, math.floor(thinnest / px * 1000 + 0.5) / 1000 }`);
+  const [inset, edge] = sizes();
+  expect([inset > 50, edge > 20], "made at scale 0.01: the icon pushed in and the type edge grown into a dark square").toEqual([true, true]);
+  addon.advance(0.5);
+  expect(sizes(), "the scale check places them again: one pixel").toEqual([1, 1]);
+  addon.eval("__plates.nameplate1:SetScale(1.1)");
+  addon.advance(0.5);
+  expect(sizes(), "a drift under NP.SCALE_SLACK leaves them as placed (1.1 of the new, smaller pixel)").toEqual([1.1, 1.1]);
+});
+
 it("a plate's border is not painted again while its scale drifts less than NP.SCALE_SLACK", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + `__borders = 0
     local setBorder = ns.Theme.SetBorder

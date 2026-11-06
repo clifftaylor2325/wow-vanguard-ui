@@ -205,9 +205,11 @@ local function layout(c, spec)
   c:SetFlowLayoutMaximumLineSize(spec.lineSize)
 end
 
--- The client's options for one group: count, spacing, a new row if asked, sort, dressing.
-local function groupOptions(spec, def)
+-- The client's options for one group in container `frame`: count, spacing, a new row if asked, sort,
+-- dressing (each icon noted under the container, for A.Refit).
+local function groupOptions(spec, def, frame)
   local gap, style = spec.gap or 2, A.Style(spec, def)
+  style.holder = frame
   local sorts = AuraContainerSortMethod
   return {
     maxFrameCount = def.max, sortMethod = def.sort and sorts and sorts[def.sort] or nil,
@@ -223,7 +225,7 @@ Container.__index = Container
 local function fill(frame, spec, unit)
   layout(frame, spec)
   -- A filter token this client doesn't know is refused: that group is left out, not the rest.
-  for i, def in ipairs(spec.groups) do ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "vg" .. i, def.filter, groupOptions(spec, def)) end
+  for i, def in ipairs(spec.groups) do ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "vg" .. i, def.filter, groupOptions(spec, def, frame)) end
   local c = setmetatable({ frame = frame }, Container)
   c:SetUnit(unit)
   return c
