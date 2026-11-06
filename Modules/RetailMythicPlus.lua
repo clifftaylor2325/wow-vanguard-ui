@@ -189,10 +189,12 @@ end
 -- come up with their animations.
 RM.KEYSTONE_KEEP = { "RuneBG", "RunesLarge", "RunesSmall", "SlotBG", "KeystoneFrame" }
 
--- The keystone window: on a theme panel, its runes and slot kept, the close button and Start in the theme.
+-- The keystone window: on a theme panel with the corner brackets every window of its own has, its runes and slot kept,
+-- the close button and Start in the theme.
 function RM.SkinKeystone(frame)
   T.FadeRegions(frame, GW.KeepKeys(frame, RM.KEYSTONE_KEEP))
   T.Panel(frame, { shadow = true, pad = GW.PAD, alpha = 1 })
+  T.Ornament(frame, "corners")
   GW.DressClose(frame, frame.CloseButton)
   GW.SkinButton(frame.StartButton)
 end
