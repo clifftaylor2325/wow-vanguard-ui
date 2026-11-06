@@ -338,7 +338,7 @@ local function paintCommunityRow(row)
   if type(icon) == "table" and icon.GetAtlas then
     local plus = icon:GetAtlas() == GW.ADD_COMMUNITY_ATLAS
     if plus then icon:SetDesaturated(true) end
-    icon:SetVertexColor(T.RGB(plus and "text" or "white"))
+    T.Tint(icon, plus and "text" or "white")
   end
   GW.FollowMark(row, row.Selection)
 end
