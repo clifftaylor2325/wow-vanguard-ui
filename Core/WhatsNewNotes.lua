@@ -10,6 +10,11 @@
 local ADDON, ns = ...
 
 ns.WHATS_NEW = {
+  { version = "0.9.2", groups = {
+    { module = "Nameplates", label = "Nameplates", items = {
+      { text = "Nameplates no longer fill the error list with an \"aura icon pixels\" error in a dungeon: Vanguard leaves the aura icons alone on plates the game keeps for itself." },
+    } },
+  } },
   { version = "0.9.1", groups = {
     { module = "Upgrades", label = "Gear upgrades", items = {
       { text = "Gear upgrades weigh stats per class: on WoW Forever a druid picks Feral or Balance and a shaman Elemental or Enhancement under Damage style, and changed weights stay with their class." },
