@@ -477,7 +477,7 @@ CB.ABOVE_BARS = 4
 -- part of the block under your frames (Core/Layout.lua, HudLift).
 function CB.PlayerPoint()
   local p, AB = LAYOUT.player.point, ns.GetModule("ActionBars")
-  if not ns.ModuleEnabled("ActionBars") then return p end
+  if not ns.ModuleLive("ActionBars") then return p end
   return { p[1], p[2], p[3], AB.StackTop(ns.Settings("ActionBars", AB.defaults)) + CB.ABOVE_BARS, underFrames = true }
 end
 

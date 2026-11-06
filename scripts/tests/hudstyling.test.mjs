@@ -37,6 +37,12 @@ it("P4-3: the swing timer follows a stack that grows after login, and stays at i
   const off = loggedIn(SWING, { savedVariables: profile(`${SWING_ALWAYS}, modules = { ActionBars = false }`) });
   expect(off.eval('local _, _, _, y = ns.MoverPoint("swing") return y'), "with the action bars off it sits at its fixed spot, risen with the block").toBe(170 + RISE.under);
 });
+it("H26-1-2 the swing timer keeps riding the action bars switched off this session, still on screen until the reload", () => {
+  const addon = loggedIn(SWING, { savedVariables: profile(SWING_ALWAYS) });
+  const before = addon.eval("return ns.GetModule('SwingTimer').Point()[4]");
+  addon.eval("ns.SetModuleEnabled('ActionBars', false)");
+  expect(addon.eval("return ns.GetModule('SwingTimer').Point()[4]"), "the same spot over the cast bar").toBe(before);
+});
 
 // A rect (left, right, top, bottom) of a frame, font string or texture by ref.
 const rectOf = (addon, ref) => addon.frame(ref)?.rect;

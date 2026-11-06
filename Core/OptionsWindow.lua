@@ -931,6 +931,13 @@ local function setFocus(w)
   if w then T.FocusRing(w, true) end
 end
 
+-- The keyboard's row while it is in sight; one a fold, a tab click or a rebuild hid is let go, so no key acts on a
+-- setting the player can't see.
+local function shownFocus()
+  if window.focusRow and not window.focusRow:IsVisible() then setFocus(nil) end
+  return window.focusRow
+end
+
 -- Moves the keyboard's row to the next (dir 1) or previous (dir -1) one, wrapping, marked and in view.
 local function stepRow(dir)
   local rows, at = pressableRows(), 0
@@ -959,7 +966,7 @@ end
 local function useKey(key)
   if key == "UP" or key == "DOWN" then stepPage(key == "UP" and -1 or 1) return true end
   if key == "TAB" then stepRow(IsShiftKeyDown and IsShiftKeyDown() and -1 or 1) return true end
-  local w, dir = window.focusRow, key == "RIGHT" and 1 or -1
+  local w, dir = shownFocus(), key == "RIGHT" and 1 or -1
   if (key == "LEFT" or key == "RIGHT") and w and w.Step then w:Step(dir) return true end
   if key == "LEFT" or key == "RIGHT" then return stepTab(dir) end
   if not ((key == "ENTER" or key == "SPACE") and w) then return false end

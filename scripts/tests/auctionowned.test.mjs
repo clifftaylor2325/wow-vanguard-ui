@@ -721,6 +721,40 @@ it("price alerts: a name entry typed in small letters alerts for a Russian item 
   expect(alertRings(addon), "Железная руда rings for the term железная").toBe(1);
 });
 
+// A name entry for Strange Dust whose item the client has not named when the scan lists it at 500.
+function unnamedScan() {
+  const lists = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = {}, lists = { ["TEST-ONLY Mats"] = { { term = "Strange Dust", maxPrice = 600, alert = true } } } }`;
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV + "__saved = __wfgWorld.items[10940] __wfgWorld.items[10940] = nil", { savedVariables: lists });
+  scan(addon, "{ { itemID = 10940, count = 1, buyoutPrice = 500 } }");
+  return addon;
+}
+it("H25-3-1 price alerts: a name entry rings once the name of an item seen before it was cached arrives", () => {
+  const addon = unnamedScan();
+  expect(alertRings(addon), "no name yet: nothing to judge").toBe(0);
+  addon.eval("__wfgWorld.items[10940] = __saved");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 10941, true);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 10940, true);
+  addon.update(0.01);
+  expect([alertRings(addon), alertToast(addon).slice(1, 3)], "rings for the price seen at the scan").toEqual([1, ["Price alert", "Strange Dust (max 6s 0c)"]]);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 10940, true);
+  addon.update(0.01);
+  expect(alertRings(addon), "the price is no longer waiting").toBe(1);
+});
+it("H25-3-1 price alerts: an item that fails to load, or a house that closes, drops the waiting price", () => {
+  const failed = unnamedScan();
+  failed.eval("__wfgWorld.items[10940] = __saved");
+  failed.fire("GET_ITEM_INFO_RECEIVED", 10940, false);
+  failed.fire("GET_ITEM_INFO_RECEIVED", 10940, true);
+  failed.update(0.01);
+  expect(alertRings(failed), "failed: dropped").toBe(0);
+  const closed = unnamedScan();
+  closed.eval("__wfgWorld.items[10940] = __saved");
+  closed.fire("AUCTION_HOUSE_CLOSED");
+  closed.fire("GET_ITEM_INFO_RECEIVED", 10940, true);
+  closed.update(0.01);
+  expect(alertRings(closed), "closed: forgotten").toBe(0);
+});
+
 it("Z10-3 a scan lowers each alert term once and each item name once, not once for every pair", () => {
   const terms = ["dust", "pouch", "железная", "silk", "linen", "ore"].map((t) => `{ term = "${t}", maxPrice = 600, alert = true }`).join(", ");
   const lists = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = {}, lists = { ["TEST-ONLY Mats"] = { ${terms} } } }`;

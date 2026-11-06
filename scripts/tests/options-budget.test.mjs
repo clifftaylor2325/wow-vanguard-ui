@@ -108,6 +108,17 @@ it("options fold: a folded row found by search, a link or OpenHit opens its fold
   expect(addon.eval("return Vanguard_Options.found:IsShown()"), "a jump to a folded row finds it").toBe(true);
 });
 
+it("H24-2-1 options fold: folding the card with the mouse lets go of a keyboard row inside it, so Enter goes on to the game and the row is unchanged", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval(`${RAID} card.fold.__scripts.OnClick(card.fold, "LeftButton")`);
+  addon.eval(`${RAID} for i = 1, 60 do Vanguard_Options.__scripts.OnKeyDown(Vanguard_Options, "TAB")
+    local w = Vanguard_Options.focusRow if w and w.folded and w.source then __row = w break end end`);
+  expect(addon.eval("return __row ~= nil and __row:IsVisible()"), "the keyboard is on a folded row").toBe(true);
+  addon.eval(`${RAID} card.fold.__scripts.OnClick(card.fold, "LeftButton")`);
+  addon.key("Vanguard_Options", "ENTER");
+  expect(addon.eval("return { __row:IsVisible(), ns.Options.RowChanged(__row.source), Vanguard_Options.focusRow == nil }"), "hidden, not flipped, let go").toEqual([false, false, true]);
+});
+
 it("options fold: the fold line wears the accent dot while a folded row is changed, and Tab reaches the line", () => {
   const addon = loggedIn(CLICK_LUA);
   expect(addon.eval(`${RAID} return card.fold.changed:IsShown()`), "no dot with every folded row at its default").toBe(false);

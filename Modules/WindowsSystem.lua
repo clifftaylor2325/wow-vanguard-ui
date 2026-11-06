@@ -812,11 +812,11 @@ local function dressLogParts()
 end
 
 -- The combat log's filter bar: its black strip faded, an inset panel (a borderless band while the
--- Chat module is on, whose panel seats it under the bar's rule; with Chat off the game's own layout
--- stands and the strip keeps its border), its own parts, its filter buttons themed now and whenever
--- the game shows or refreshes the bar or picks a filter (that is when it makes buttons).
+-- Chat module's panels are on screen, whose panel seats it under the bar's rule; with Chat off the game's
+-- own layout stands and the strip keeps its border), its own parts, its filter buttons themed now and
+-- whenever the game shows or refreshes the bar or picks a filter (that is when it makes buttons).
 function GW.SkinCombatLogBar(frame)
-  local band = ns.ModuleEnabled("Chat")
+  local band = ns.ModuleLive("Chat")
   T.FadeRegions(frame)
   T.Panel(frame, { inset = true, noBorder = band, noSheen = band })
   dressLogParts()

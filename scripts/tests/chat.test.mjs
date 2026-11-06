@@ -45,6 +45,17 @@ it("Y4-1 with the Minimap module off the shape is the game's round map, or the a
   expect(off().eval("return GetMinimapShape()"), "off: the game's map is round").toBe("ROUND");
   expect(off('GetMinimapShape = function() return "CORNER-TOPLEFT" end\n').eval("return GetMinimapShape()"), "off, after SexyMap's own answer: that answer stands").toBe("CORNER-TOPLEFT");
 });
+it("H26-1-2 a Minimap switched on since login is still the game's round map until the reload", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
+  addon.eval("ns.SetModuleEnabled('Minimap', true)");
+  expect(addon.eval("return GetMinimapShape()"), "the game's map, round").toBe("ROUND");
+});
+it("H26-1-2 on a narrow screen chat keeps clear of the action bars switched off this session, still on screen until the reload", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1280, 720)");
+  const before = addon.eval("return ChatFrame1:GetWidth()");
+  addon.eval("ns.SetModuleEnabled('ActionBars', false) ns.GetModule('Chat').ApplySize()");
+  expect(addon.eval("return ChatFrame1:GetWidth()"), "the same narrow width").toBe(before);
+});
 it("a round minimap: masked to a disc, an outline on its rim, bands cut to the disc, buttons on the rim, no corner diamonds", () => {
   const M = "ns.GetModule('Minimap')";
   // A client logged in with this profile (a Lua table literal) saved.
@@ -1516,6 +1527,13 @@ it("quiet the game: turning Quiet off puts back the player's zoom, out of combat
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "after the fight").toBe("1.9");
   addon.eval("SetCVar, C_CVar = nil, nil ns.GetModule('Quiet').Disable()");
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "no CVar call, no change").toBe("1.9");
+});
+it("H26-1-1 quiet the game: turning Quiet off shows the red errors and the zone names again at once", () => {
+  const addon = loggedIn(QUIET_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { errors = true, zoneText = true } } }" });
+  addon.eval("ns.SetModuleEnabled('Quiet', false)");
+  addon.fire("UI_ERROR_MESSAGE", 50, "TEST-ONLY Not ready");
+  addon.eval("ZoneTextFrame:Show() SubZoneTextFrame:Show()");
+  expect(addon.eval("return { __shown, ZoneTextFrame:IsShown(), SubZoneTextFrame:IsShown() }"), "the red line stays, both names show").toEqual([["TEST-ONLY Not ready"], true, true]);
 });
 it("quiet the game: a camera row changed after Quiet is switched off only saves the value", () => {
   const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.3')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });

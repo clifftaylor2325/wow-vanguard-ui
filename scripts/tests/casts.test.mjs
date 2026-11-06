@@ -48,6 +48,12 @@ it("cast bars", () => {
   expect(addon.eval("return PlayerCastingBarFrame:IsEventRegistered('UNIT_SPELLCAST_START')") === false, "the default cast bar is silenced").toBeTruthy();
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.cast_player and out.cast_target and out.cast_focus") === true, "all three are movable").toBeTruthy();
 });
+it("H26-1-2 your cast bar keeps riding the action bars switched off this session, still on screen until the reload", () => {
+  const addon = loggedIn("");
+  const before = addon.eval("return ns.GetModule('CastBars').PlayerPoint()[4]");
+  addon.eval("ns.SetModuleEnabled('ActionBars', false)");
+  expect(addon.eval("return ns.GetModule('CastBars').PlayerPoint()[4]"), "the same spot over the bars' stack").toBe(before);
+});
 
 it("the game's cast bar stays put away after Edit Mode hands it back to UIParent and shows it", () => {
   // TEST-ONLY: the game's bar shows itself in Edit Mode (CastingBarMixin:UpdateShownState).

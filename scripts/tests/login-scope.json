@@ -83,11 +83,14 @@
     ],
     "scripts/tests/broker.test.mjs": [],
     "scripts/tests/casts.test.mjs": [
+      "H26-1-2 your cast bar keeps riding the action bars switched off this session, still on screen until the reload",
       "your cast bar sits above the action bars and moves up when they grow, so they never hide it"
     ],
     "scripts/tests/characterextras.test.mjs": [],
     "scripts/tests/chat-bubbles.test.mjs": [],
-    "scripts/tests/chat.test.mjs": [],
+    "scripts/tests/chat.test.mjs": [
+      "H26-1-2 on a narrow screen chat keeps clear of the action bars switched off this session, still on screen until the reload"
+    ],
     "scripts/tests/chatfilter.test.mjs": [],
     "scripts/tests/chathistory.test.mjs": [],
     "scripts/tests/chatwatch.test.mjs": [],
@@ -168,6 +171,7 @@
     "scripts/tests/home.test.mjs": [],
     "scripts/tests/hudstyling.test.mjs": [
       "B6-6: the vehicle exit button keeps clear of action bar 1 at big button sizes, and keeps its spot at 38 and below",
+      "H26-1-2 the swing timer keeps riding the action bars switched off this session, still on screen until the reload",
       "P4-3: the swing timer follows a stack that grows after login, and stays at its spot with the action bars off",
       "P4-3: the swing timer rides above the cast bar when the action bar stack grows",
       "P4-4: the pet's health text ends left of the happiness glyph",

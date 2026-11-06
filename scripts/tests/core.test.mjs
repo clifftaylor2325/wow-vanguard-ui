@@ -102,6 +102,18 @@ it("modules", () => {
   addon.slash("disable Good");
   expect(addon.eval("return ns.ModuleEnabled('Good')") === false, "/vg disable turns a module off").toBeTruthy();
 });
+it("H26-1-2 modules: ns.ModuleLive answers whether a module's frames are built this session, not its switch", () => {
+  const addon = loggedIn(`
+    ns.Module("TESTONLY_Early", { Enable = function() __early = { ns.ModuleLive("TESTONLY_Late"), ns.ModuleLive("TESTONLY_Off") } end })
+    ns.Module("TESTONLY_Late", { Enable = function() end })
+    ns.Module("TESTONLY_Off", { Enable = function() end })
+    ns.Module("TESTONLY_Plain", {})
+  `, { savedVariables: "VanguardDB.profiles = { Default = { modules = { TESTONLY_Off = false } } }" });
+  expect(addon.eval("return __early"), "before the login pass reaches a module: its switch").toEqual([true, false]);
+  expect(addon.eval("return { ns.ModuleLive('TESTONLY_Late'), ns.ModuleLive('TESTONLY_Off'), ns.ModuleLive('TESTONLY_Plain'), ns.ModuleLive('TESTONLY_None') }"), "after login: built, off, nothing to build, unknown").toEqual([true, false, false, false]);
+  addon.eval("ns.SetModuleEnabled('TESTONLY_Late', false) ns.SetModuleEnabled('TESTONLY_Off', true)");
+  expect(addon.eval("return { ns.ModuleLive('TESTONLY_Late'), ns.ModuleLive('TESTONLY_Off') }"), "a switch changed this session waits for the reload").toEqual([true, false]);
+});
 it("modules: a module whose saved settings fail to upgrade is reported, and the modules after it still load", () => {
   expectErrors(/^module DataBars: Modules\/DataBars\.lua:\d+: attempt to compare number with string$/, "module TESTONLY_Broken: eval:3: attempt to compare number with string");
   const addon = loggedIn(`

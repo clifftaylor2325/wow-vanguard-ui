@@ -56,6 +56,7 @@ local write
 
 -- A table as {[key]=value,...}; functions and other types are left out.
 local function writeTable(t, depth)
+  if depth >= MAX_DEPTH then error("settings nest too deeply") end
   local parts = {}
   for _, k in ipairs(sortedKeys(t)) do
     local v = write(t[k], depth + 1)
@@ -67,7 +68,6 @@ end
 -- Any supported value as text, or nil for one that can't be written.
 write = function(v, depth)
   local t = type(v)
-  if depth > MAX_DEPTH then error("settings nest too deeply") end
   if t == "table" then return writeTable(v, depth) end
   if t == "string" then return quote(v) end
   if t == "number" and v == v and v ~= math.huge and v ~= -math.huge then return number(v) end
@@ -135,8 +135,8 @@ local function place(p, value, pos)
   p.pos = pos
 end
 
--- Opens a table at pos (its opening brace). The cap matches the encoder's, so a string that imports can
--- always be written again (one level deeper imported and then broke every export and the logout backup).
+-- Opens a table at pos (its opening brace). The cap matches the encoder's (a table MAX_DEPTH below the
+-- root is refused when written and when read), so a string that imports can always be written again.
 local function open(p, pos)
   if #p.stack >= MAX_DEPTH then error("settings nest too deeply") end
   p.stack[#p.stack + 1] = { t = {} }
@@ -300,6 +300,17 @@ function S.Checksum(text)
 end
 
 -- Public -----------------------------------------------------------------------------------
+
+-- True when t, depth levels below a string's root, holds a table at MAX_DEPTH or deeper (one a
+-- string can neither carry nor be written with).
+function S.TooDeep(t, depth)
+  if type(t) ~= "table" then return false end
+  if depth >= MAX_DEPTH then return true end
+  for _, v in pairs(t) do
+    if S.TooDeep(v, depth + 1) then return true end
+  end
+  return false
+end
 
 -- A settings table as a VG1 string for scope ("profile" or a module name).
 function S.Encode(scope, data)

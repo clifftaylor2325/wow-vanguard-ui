@@ -13,7 +13,7 @@ const ITEMS = `
 `;
 
 // The text on an icon's key label ("" or false: none made yet).
-const key = (addon, viewer) => addon.eval(`local fs = ns.FrameState('vgKey')[${viewer}.items[1]] return fs and fs:GetText() or false`);
+const key = (addon, viewer) => (addon.update(0), addon.eval(`local fs = ns.FrameState('vgKey')[${viewer}.items[1]] return fs and fs:GetText() or false`));
 
 it("cooldown keys: off by default, no label is made", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS);
@@ -108,4 +108,13 @@ it("cooldown keys: the command says so when the module is off", () => {
   addon.eval("ns.GetModule('CooldownKeys').settings = nil");
   addon.slash("cdmkeys on");
   expect(chatHas(addon, /keys module is off/)).toBe(true);
+});
+
+it("H25-1-1 cooldown keys: a burst of slot events in one frame scans the buttons once", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS, { savedVariables: ON });
+  addon.eval("local CK = ns.GetModule('CooldownKeys') _G.SCANS = 0 local keys = CK.Keys CK.Keys = function(...) SCANS = SCANS + 1 return keys(...) end");
+  for (let i = 1; i <= 20; i++) addon.fire("ACTIONBAR_SLOT_CHANGED", i);
+  expect(addon.eval("return SCANS"), "none until the frame ends").toBe(0);
+  addon.update(0);
+  expect(addon.eval("return SCANS"), "one for all twenty").toBe(1);
 });

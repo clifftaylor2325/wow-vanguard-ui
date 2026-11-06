@@ -745,6 +745,10 @@ it("combat log bar: a panel, its filter buttons themed as the game makes them", 
   noChat.eval("__logBar() __quickButton(1)");
   noChat.fire("ADDON_LOADED", "Blizzard_CombatLog");
   expect([edges(noChat), noChat.eval(`return __panelled(${bar})`)], "with the Chat module off the game's own layout stands, so the strip keeps its border").toEqual([4, true]);
+  const chatOffLate = loggedIn(RECAP_ENV);
+  chatOffLate.eval("ns.SetModuleEnabled('Chat', false) __logBar() __quickButton(1)");
+  chatOffLate.fire("ADDON_LOADED", "Blizzard_CombatLog");
+  expect(edges(chatOffLate), "Chat switched off since login: its panels are still on screen until the reload, so still the band").toBe(0);
   expect(addon.eval(`local bar = CombatLogQuickButtonFrame_CustomProgressBar local r, g, b = ns.Theme.RGB("accent") local c = bar.__barColor
     return { ns.Theme.ArrowParts(CombatLogQuickButtonFrame_CustomAdditionalFilterButton) ~= nil, bar:GetStatusBarTexture().__texture ~= "TEST-ONLY-ART", c ~= nil and c[1] == r and c[2] == g and c[3] == b }`),
     "the additional filters button a theme arrow button, the progress bar in the bar texture and the accent").toEqual([true, true, true]);

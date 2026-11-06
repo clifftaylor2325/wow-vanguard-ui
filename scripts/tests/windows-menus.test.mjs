@@ -3,6 +3,7 @@
 
 import { expect, it } from "vitest";
 import { expectErrors, loggedIn } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 
 it("the menus group loads cleanly on a client without its windows", () => {
   const addon = loggedIn("");
@@ -79,6 +80,72 @@ it("12.x menus: with the menus group off they stay the game's; a client without 
     const bare = loggedIn(`${env} ns.GetModule("Windows").WatchMenus()`);
     expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), `${env}: nothing errors`).toBe("none");
   }
+});
+
+// TEST-ONLY Retail 12.1.5 menu system, loaded before the addon's files as Blizzard_Menu is (LoadFirst): the default
+// style MenuStyle1Mixin, whose Generate attaches the menu's background at alpha 0.925 (live Mainline/MenuTemplates.lua),
+// and Mixin. Retail fires no "MenuProxy.OnShow". The compositor attaches the background (__createTexture, the frame's own).
+const RETAIL_MENU_CLIENT = `${RETAIL_CLIENT}
+  function Mixin(o, ...) for i = 1, select("#", ...) do for k, v in pairs((select(i, ...))) do o[k] = v end end return o end
+  MenuStyle1Mixin = {}
+  function MenuStyle1Mixin:Generate()
+    local bg = __createTexture(self, nil, "ARTWORK") bg:SetTexture("TEST-ONLY-MENU-BG") bg:SetAlpha(0.925)
+    __retailBg = bg
+  end
+`;
+
+// TEST-ONLY a pooled Retail menu frame, and __openRetailMenu() opening it as live Menu.lua does: SecureGenerate copies the
+// style onto the frame and calls Generate (:2094-2097), then AcquireMenu sets its strata (:2151) and the opener its level
+// (:2404) and shows it, with no event. __retailKeys holds the frame's keys as the game left them before Generate.
+const RETAIL_MENU_ENV = `
+  __menu = CreateFrame("Frame", nil, UIParent)
+  __menu:SetFrameStrata("MEDIUM") __menu:SetFrameLevel(2)
+  __menu.GetFrameStrata = function(self) return self.__strata end
+  __createTexture = __menu.CreateTexture
+  __menu.CreateTexture = function() error("TEST-ONLY: the compositor refuses CreateTexture on an open menu") end
+  function __openRetailMenu()
+    Mixin(__menu, MenuStyle1Mixin)
+    __retailKeys = __menuKeys()
+    __menu:Generate()
+    __menu:SetFrameStrata("FULLSCREEN_DIALOG") __menu:SetFrameLevel(510) __menu:Show()
+  end
+  function __menuKeys()
+    local out = {} for k in pairs(__menu) do out[#out + 1] = tostring(k) end table.sort(out) return table.concat(out, " ")
+  end
+`;
+
+// The Retail menu's state: its background's alpha, Vanguard's panel behind it (the menu's only child), its level and strata.
+const retailState = (addon) => addon.eval(`local panel = __menu:GetChildren()
+  return { bg = __retailBg.__alpha, panel = panel ~= nil and select("#", panel:GetRegions()) > 0,
+    level = panel and panel:GetFrameLevel(), strata = panel and panel.__strata, keys = __menuKeys() == __retailKeys }`);
+
+it("H25-2-1 Retail 12.x menus: an open fades the background the style attached and the panel is level with the menu a frame later", () => {
+  const addon = loggedIn(RETAIL_MENU_ENV, { client: RETAIL_MENU_CLIENT });
+  addon.eval("__openRetailMenu()");
+  expect(retailState(addon), "skinned as Generate runs, before the game places the menu").toMatchObject({ bg: 0, panel: true, level: 2, keys: true });
+  addon.advance(0.05);
+  expect(retailState(addon), "the next frame the panel is where the game put the menu").toMatchObject({ level: 510, strata: "FULLSCREEN_DIALOG" });
+  expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
+});
+
+it("H25-2-1 Retail 12.x menus: with the menus group off they stay the game's", () => {
+  const off = loggedIn(RETAIL_MENU_ENV, { client: RETAIL_MENU_CLIENT, ...MENUS_OFF });
+  off.eval("__openRetailMenu()");
+  off.advance(0.05);
+  expect(retailState(off), "the background stays, no panel").toMatchObject({ bg: 0.925, panel: false });
+});
+
+it("H25-2-1 Retail 12.x menus: a client without the menu style loads cleanly", () => {
+  for (const style of ["", "MenuStyle1Mixin = {}"]) {
+    const bare = loggedIn("", { client: `${RETAIL_CLIENT} ${style}` });
+    expect(bare.eval("for _, e in ipairs(ns.errors) do if e.text:find('Windows') then return e.text end end return 'none'"), `${style || "none"}: nothing errors`).toBe("none");
+  }
+});
+
+it("H25-2-1 Forever 12.x menus: the event is used and the menu style's Generate is not hooked", () => {
+  const addon = loggedIn(MENU_ENV, { client: "MenuStyle1Mixin = {} function MenuStyle1Mixin:Generate() end __generate = MenuStyle1Mixin.Generate" });
+  expect(addon.eval("return MenuStyle1Mixin.Generate == __generate"), "Generate is the game's own").toBe(true);
+  expect(menuState(addon), "the event still skins the menu").toMatchObject({ bg: 0, panel: true, level: 510 });
 });
 
 // TEST-ONLY old dropdown lists as UIDropDownListTemplate builds them on Forever

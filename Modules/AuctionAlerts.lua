@@ -20,9 +20,10 @@ local L = ns.L
 local W, AP = ns.Widgets, ns.AuctionPrices
 local AH = ns.GetModule("AuctionHelper")
 
--- This session's alerts: itemID -> the price it last alerted at; and the alerts waiting for the
--- next frame, as { id, price, max }.
-AH.alerted, AH.ringing = {}, {}
+-- This session's alerts: itemID -> the price it last alerted at; the alerts waiting for the
+-- next frame, as { id, price, max }; and the items seen this visit before the client had their
+-- names (itemID -> the cheapest price seen), checked again when the name comes.
+AH.alerted, AH.ringing, AH.alertUnnamed = {}, {}, {}
 
 -- The filter dialog's alert switch, under its max price (Modules/AuctionShop.lua builds the dialog;
 -- Save keeps the switch only with a max price).
@@ -76,23 +77,26 @@ local function nameFits(named, item)
   return item.name == named.term or (not e.exact and item.name:find(named.term, 1, true) ~= nil)
 end
 
--- The highest max price among the name entries that find item id; nil when none does.
+-- The highest max price among the name entries that find item id; nil when none does, with true
+-- second when there are name entries and the client hasn't the item's name yet.
 local function maxNamePrice(index, id)
-  local item, best = #index.names > 0 and itemFacts(id), nil
-  if not item then return nil end
+  if #index.names == 0 then return nil end
+  local item, best = itemFacts(id), nil
+  if not item then return nil, true end
   for _, named in ipairs(index.names) do
     if nameFits(named, item) then best = math.max(best or 0, named.entry.maxPrice) end
   end
   return best
 end
 
--- The highest max price among the alerting entries that find item id; nil when none does.
+-- The highest max price among the alerting entries that find item id; nil when none does, with true
+-- second when a name entry can't judge it yet (the client hasn't its name).
 local function maxPrice(id)
   local index, best = alertIndex(), nil
   for _, e in ipairs(index.ids[id] or {}) do best = math.max(best or 0, e.maxPrice) end
-  local named = maxNamePrice(index, id)
+  local named, unnamed = maxNamePrice(index, id)
   if named then best = math.max(best or 0, named) end
-  return best
+  return best, unnamed
 end
 
 -- Alerting -----------------------------------------------------------------------------------
@@ -106,11 +110,28 @@ function AH.Alert(id, price, max)
   ns.Soon("auction price alerts", AH.RingAlerts)
 end
 
--- A price recorded (AP.OnSeen) while the house is open, checked against the entries that alert.
+-- A price recorded (AP.OnSeen) while the house is open, checked against the entries that alert; an
+-- item the client hasn't named yet keeps its cheapest price to be checked again when its name comes.
 function AH.CheckAlert(id, price)
   if not AH.open then return end
-  local max = maxPrice(id)
+  local max, unnamed = maxPrice(id)
+  if unnamed then AH.alertUnnamed[id] = math.min(AH.alertUnnamed[id] or price, price) end
   if max then AH.Alert(id, price, max) end
+end
+
+-- An item's name came (GET_ITEM_INFO_RECEIVED): a price it was seen at before is checked again (an ID
+-- entry that already rang at it stays quiet: AH.Alert); an item the client couldn't load is dropped.
+local function itemNamed(_, id, success)
+  local price = AH.alertUnnamed[id]
+  if not price then return end
+  AH.alertUnnamed[id] = nil
+  if success then AH.CheckAlert(id, price) end
+end
+
+-- The alerts' events: an item's name arriving, and the house closing (the unnamed prices are forgotten).
+function AH.ListenAlerts(on)
+  on("GET_ITEM_INFO_RECEIVED", itemNamed)
+  on("AUCTION_HOUSE_CLOSED", function() AH.alertUnnamed = {} end)
 end
 
 -- An entry's own search found its row (AH.TakeBrowse, which leaves out what is over the entry's

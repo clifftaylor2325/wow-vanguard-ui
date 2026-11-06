@@ -200,7 +200,7 @@ SW.FREE_Y = 170
 -- The holder's default point: SW.ABOVE_CAST over your cast bar, which rides the action bars' stack; part of the
 -- block under your frames (Core/Layout.lua, HudLift).
 function SW.Point()
-  if not ns.ModuleEnabled("ActionBars") then return { "BOTTOM", "BOTTOM", 0, SW.FREE_Y, underFrames = true } end
+  if not ns.ModuleLive("ActionBars") then return { "BOTTOM", "BOTTOM", 0, SW.FREE_Y, underFrames = true } end
   return { "BOTTOM", "BOTTOM", 0, CB.PlayerPoint()[4] + CB.LAYOUT.player.h + SW.ABOVE_CAST, underFrames = true }
 end
 

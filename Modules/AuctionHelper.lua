@@ -687,7 +687,7 @@ local function listen()
   for _, e in ipairs(AH.SELL_EVENTS) do on(e, function() AH.PaintSell() end) end
   -- What the game answers to a post, said in chat.
   for e in pairs(AH.POST_ANSWERS) do on(e, AH.OnPostAnswer) end
-  for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades }) do each(on) end
+  for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades, AH.ListenAlerts }) do each(on) end
 end
 
 -- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.
