@@ -83,6 +83,18 @@ function ns.ModuleEnabled(name)
   return enabled[name] ~= false
 end
 
+-- Whether a module's frames are on screen this session: built at login (a switch changed since then waits
+-- for the reload), or, while the login pass has not reached it yet, switched on. For code that places
+-- itself against another module's frames.
+---@param name string
+---@return boolean
+function ns.ModuleLive(name)
+  local def = modules[name]
+  if def == nil then return false end
+  if def.enabled == nil then return ns.ModuleEnabled(name) end
+  return def.enabled == true
+end
+
 -- Turns a module on or off for this profile. Takes effect on /reload, except
 -- that a module with a Disable(settings) gives back what it changed at once.
 ---@param name string
@@ -108,6 +120,8 @@ ns.On("PLAYER_LOGIN", function()
     local def = modules[name]
     if def.Enable and ns.ModuleEnabled(name) then
       enable(def)
+    else
+      def.enabled = false
     end
   end
 end)

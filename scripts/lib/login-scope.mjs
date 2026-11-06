@@ -33,6 +33,9 @@ export const FULL_CASES = [
   "scripts/tests/meter.test.mjs|the spell panel opens on the meter's side away from the screen's middle, else on the other side above the action bars", // needs bar 1's rect to lift above and to check against
   "scripts/tests/meter.test.mjs|the meter's default spot clears the action bars on any canvas 1110 wide or more: today's spot where it fits, the game meter's spot where it does not", // with ActionBars off the overlap check passes vacuously
   "scripts/tests/units.test.mjs|threat and happiness only where the client and settings allow", // coverage: the only case that runs Modules/UnitExtras.lua:46 (it passes vacuously with UnitFrames off, since nothing is built)
+  "scripts/tests/casts.test.mjs|H26-1-2 your cast bar keeps riding the action bars switched off this session, still on screen until the reload", // ActionBars still built after its switch goes off; scoped, ActionBars is never built and the before/after check passes vacuously
+  "scripts/tests/hudstyling.test.mjs|H26-1-2 the swing timer keeps riding the action bars switched off this session, still on screen until the reload", // ActionBars still built after its switch goes off; scoped, ActionBars is never built and the before/after check passes vacuously
+  "scripts/tests/chat.test.mjs|H26-1-2 on a narrow screen chat keeps clear of the action bars switched off this session, still on screen until the reload", // ActionBars still built after its switch goes off; scoped, ActionBars is never built and the before/after check passes vacuously
 ];
 
 // The account file version a fresh install is stamped with, read from Core/DB.lua so a scoped

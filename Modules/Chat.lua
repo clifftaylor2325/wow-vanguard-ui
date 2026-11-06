@@ -80,7 +80,7 @@ CH.NARROW_WIDTH, CH.MIN_WIDTH = 1365, 296
 -- are off, and MIN_WIDTH where even that meets the bars (1024 wide; setup's Fit my screen is the answer).
 local function narrowWidth(width)
   local AB = ns.GetModule("ActionBars")
-  local stack = AB and ns.ModuleEnabled("ActionBars") and AB.StackWidth() or 0
+  local stack = AB and ns.ModuleLive("ActionBars") and AB.StackWidth() or 0
   if stack == 0 then return CH.SMALL[1] end
   local room = width / 2 - stack / 2 - CH.CLEARANCE - CH.SPOT[1] - CH.SIDE_COLUMN - T.SPACE.tight
   return math.max(CH.MIN_WIDTH, math.floor(room / 4) * 4)
