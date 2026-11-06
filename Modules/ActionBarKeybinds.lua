@@ -1,5 +1,5 @@
 -- Keybind mode (/vg keybind, or Keybind mode on the Action bars page): hover
--- one of Vanguard's action buttons and press a key, the middle or a side mouse
+-- one of Vanguard's action buttons (or the game's stance or pet buttons) and press a key, the middle or a side mouse
 -- button, or roll the wheel to bind it, as the game's own quick keybind mode
 -- does. The key is bound to the button's game command (ACTIONBUTTON1,
 -- MULTIACTIONBAR1BUTTON1, ...) in place of the keys it had, and saved in the
@@ -47,8 +47,48 @@ function AB.KeyChord(key)
   return key
 end
 
--- "Bar 2 button 5" for a button.
+-- The game's own stance and pet buttons, bound in the mode too: their names, the game command each one's
+-- key runs (SHAPESHIFTBUTTON1 runs the first stance) and how the mode names them.
+AB.GAME_KEY_BUTTONS = {
+  { prefix = "StanceButton", command = "SHAPESHIFTBUTTON", label = L["Stance {n}"] },
+  { prefix = "PetActionButton", command = "BONUSACTIONBUTTON", label = L["Pet button {n}"] },
+}
+
+-- One of the game's buttons as a key target, a table of Vanguard's own (no field goes on the game's button):
+-- its frame, command and label.
+local function gameTarget(def, i, frame)
+  return { frame = frame, binding = def.command .. i, label = ns.Format(def.label, { n = i }) }
+end
+
+-- The key targets for the game's buttons this client has, made once they exist (an empty list is looked for again).
+local function gameTargets()
+  if AB.gameTargets and AB.gameTargets[1] then return AB.gameTargets end
+  AB.gameTargets = {}
+  for _, def in ipairs(AB.GAME_KEY_BUTTONS) do
+    for i = 1, 10 do
+      local frame = _G[def.prefix .. i]
+      if type(frame) == "table" and frame.GetObjectType then table.insert(AB.gameTargets, gameTarget(def, i, frame)) end
+    end
+  end
+  return AB.gameTargets
+end
+
+-- Every button the mode binds: Vanguard's action buttons, then the game's stance and pet buttons.
+function AB.KeyTargets()
+  local all = {}
+  for _, b in ipairs(AB.buttons) do all[#all + 1] = b end
+  for _, t in ipairs(gameTargets()) do all[#all + 1] = t end
+  return all
+end
+
+-- The frame a target stands on: a game button's, or Vanguard's button itself.
+local function frameOf(b)
+  return b.frame or b
+end
+
+-- "Bar 2 button 5" for a button ("Stance 2" for one of the game's).
 local function buttonLabel(b)
+  if b.label then return b.label end
   return ns.Format(L["Bar {bar} button {button}"], { bar = b.vgBar.vgIndex, button = b:GetAttribute("index") })
 end
 
@@ -64,7 +104,7 @@ end
 local function keyOwner(key, b)
   local command = type(GetBindingAction) == "function" and GetBindingAction(key) or ""
   if type(command) ~= "string" or command == "" or command == b.binding then return nil end
-  for _, other in ipairs(AB.buttons) do
+  for _, other in ipairs(AB.KeyTargets()) do
     if other.binding == command then return buttonLabel(other) end
   end
   return _G["BINDING_NAME_" .. command] or command
@@ -72,7 +112,7 @@ end
 
 -- The tooltip over a button while the mode is on: its place, its keys, and how to bind or clear.
 local function showTip(b)
-  GameTooltip_SetDefaultAnchor(GameTooltip, b)
+  GameTooltip_SetDefaultAnchor(GameTooltip, frameOf(b))
   GameTooltip:SetText(buttonLabel(b))
   GameTooltip:AddLine(ns.Format(L["Keys: {keys}"], { keys = keysText(b) }), T.RGB("text"))
   local r, g, bl = T.RGB("text2")
@@ -208,14 +248,14 @@ end
 -- that takes the mouse and the wheel, with the accent wash on it.
 local function catcher(b)
   if b.vgCatcher then return b.vgCatcher end
-  local c = CreateFrame("Frame", nil, b)
+  local frame = frameOf(b)
+  local c = CreateFrame("Frame", nil, frame)
   c:SetAllPoints()
-  c:SetFrameLevel(b:GetFrameLevel() + 5)
-  c.vgButton = b
+  c:SetFrameLevel(frame:GetFrameLevel() + 5)
+  c.vgButton, b.vgCatcher = b, c
   addWash(c)
   wireCatcher(c)
   c:Hide()
-  b.vgCatcher = c
   return c
 end
 
@@ -256,7 +296,7 @@ end
 -- Shows or hides every button's catcher (the one under the mouse lets go first).
 local function setCatchers(on)
   if AB.bindHover then onLeave(AB.bindHover.vgCatcher) end
-  for _, b in ipairs(AB.buttons) do
+  for _, b in ipairs(AB.KeyTargets()) do
     catcher(b):SetShown(on)
   end
 end

@@ -58,7 +58,7 @@ it("a plate's click area and stacking box are our name and bar, padded, whatever
 // TEST-ONLY buffs: a big defensive and one of yours on any player, through the buff row's filters.
 const BUFF_ENV = `
   local debuffs = C_UnitAuras.GetAuraDataByIndex
-  __buffs = { ["HELPFUL|BIG_DEFENSIVE"] = "TEST-ONLY-WALL", ["HELPFUL|PLAYER|!IMPORTANT|!BIG_DEFENSIVE|!EXTERNAL_DEFENSIVE"] = "TEST-ONLY-FORT" }
+  __buffs = { ["HELPFUL|BIG_DEFENSIVE|INCLUDE_NAME_PLATE_ONLY"] = "TEST-ONLY-WALL", ["HELPFUL|PLAYER|!IMPORTANT|!BIG_DEFENSIVE|!EXTERNAL_DEFENSIVE|INCLUDE_NAME_PLATE_ONLY"] = "TEST-ONLY-FORT" }
   C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter)
     if i == 1 and __buffs[filter] and __units[unit] and __units[unit].player then return { icon = __buffs[filter], expirationTime = 0, duration = 0 } end
     return debuffs(unit, i, filter)

@@ -5,9 +5,9 @@
 -- rebuilding them is where UI addons most often cause "action blocked"
 -- errors. This module restyles them (template art faded, the icon cropped, a
 -- thin themed border; the active stance, the attack flash and the auto-cast
--- mark kept) and gives the pet and stance bars a spot of their own to move
+-- mark kept) and gives the pet and stance buttons a spot of their own to move
 -- in unlock mode, clear of Vanguard's stacked bars (the game's own spot for
--- them is under Edit Mode's control and lies over those bars).
+-- their bars is under Edit Mode's control and lies over those bars).
 --
 -- With Masque loaded, the pet, stance and extra buttons are handed to Masque
 -- (one group) instead of restyled (Core/Masque.lua).
@@ -90,26 +90,55 @@ end
 -- default spot (bottom left, above the chat and below the raid frames, where
 -- the Centered layout has room) and the spot's size: a row of ten 30-unit
 -- buttons for the pet, about six forms for the stance bar (it grows to the right).
+-- Then the name of the bar's buttons and when the row hides, as the game hides
+-- the bar: in a vehicle, on an override bar, and for stances while you mind-control
+-- (the pet bar then holds the possessed creature's actions) or the pet bar with no pet.
 SB.SPOTS = {
-  { "PetActionBar", "petbar", L["Pet bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 250 }, 320, 32 },
-  { "StanceBar", "stancebar", L["Stance bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 288 }, 200, 32 },
+  { "PetActionBar", "petbar", L["Pet bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 250 }, 320, 32,
+    buttons = "PetActionButton", hides = "[vehicleui][overridebar][nopet] hide; show" },
+  { "StanceBar", "stancebar", L["Stance bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 288 }, 200, 32,
+    buttons = "StanceButton", hides = "[vehicleui][possessbar][overridebar] hide; show" },
 }
 
--- Puts one of the game's bars on its spot, its bottom left corner on the spot's.
-local function seat(bar, holder)
-  bar:ClearAllPoints()
-  bar:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", 0, 0)
+-- How many buttons each bar has, and the room between two of them (the game's own least padding).
+SB.ROW = { count = 10, gap = 2 }
+
+-- The row's secure visibility driver: the spot's, after the pet battle clause on a client that has pet battles.
+function SB.RowDriver(spot)
+  return (ns.IsForever() and "" or ns.GetModule("ActionBars").PET_BATTLE_CLAUSE) .. spot.hides
 end
 
--- A movable spot for one of the game's bars, with the bar kept on it (the game
--- puts it back where Edit Mode says; the pin undoes that). A client without the bar skips it.
+-- Puts button i of a bar on its spot, the spot its parent, so it goes where the spot goes.
+local function seatButton(b, holder, i)
+  b:SetParent(holder)
+  b:ClearAllPoints()
+  b:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", (i - 1) * (b:GetWidth() + SB.ROW.gap), 0)
+end
+
+-- Moves a bar's buttons onto its spot. Edit Mode lays its bottom bars out again in a fight too (a data bar
+-- showing or hiding), over Vanguard's bars, and a bar holding secure buttons can't be moved back until the
+-- fight ends; the buttons no longer ride on it. The bar stays the game's (its code still updates, shows and
+-- hides the buttons) but stops taking the mouse where it lies, and Edit Mode shows no handle for it.
+local function seatButtons(spot, bar, holder)
+  for i = 1, SB.ROW.count do
+    local b = _G[spot.buttons .. i]
+    if type(b) == "table" and b.SetParent then seatButton(b, holder, i) end
+  end
+  bar:EnableMouse(false)
+  ns.EditModeReplaced(bar)
+end
+
+-- A movable spot for one of the game's bars, holding the bar's buttons, drawn at the bar's frame level
+-- and hidden by a secure driver when the game hides the bar. A client without the bar skips it.
 local function placeBar(spot)
   local bar = _G[spot[1]]
   if type(bar) ~= "table" or not bar.SetPoint then return end
   local holder = CreateFrame("Frame", "Vanguard_" .. spot[1] .. "Spot", UIParent)
   holder:SetSize(spot[5], spot[6])
+  holder:SetFrameLevel(bar:GetFrameLevel())
   ns.Mover(holder, spot[2], spot[3], spot[4])
-  ns.Pin(bar, function(f) seat(f, holder) end)
+  seatButtons(spot, bar, holder)
+  RegisterStateDriver(holder, "visibility", SB.RowDriver(spot))
 end
 
 -- A label in the theme font, centered and fitted to the button (shrunk a little when a translation runs wider).

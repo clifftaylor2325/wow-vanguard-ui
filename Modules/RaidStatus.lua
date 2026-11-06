@@ -211,14 +211,23 @@ local function showAtlas(t, atlas)
   t:SetShown(atlas ~= nil and t:SetAtlas(atlas) ~= false)
 end
 
--- The answers of the check under way, by unit: once it ended, the client no longer says. Kept by unit, not
--- by tile, so a tile that shows or takes another unit after the check ends shows no older answer.
+-- The answers of the check under way, by player: once it ended, the client no longer says. Kept by player, not
+-- by tile, so a tile that shows or takes another player after the check ends (a raid7 that names someone else
+-- once a player left) shows no older answer.
 RS.readyAnswers = {}
+
+-- Who a unit is, for the answers: its GUID, or the unit itself where the client hides the GUID.
+local function answerKey(unit)
+  local guid = UnitGUID(unit)
+  if type(guid) == "string" and not ns.IsSecret(guid) then return guid end
+  return unit
+end
 
 -- The ready check mark { texture, color } for a unit, or nil: "waiting" once the check ended means no answer, so not ready.
 local function readyMarkFor(unit)
-  if not RS.readyFinished then RS.readyAnswers[unit] = RS.ReadyStatus(unit) end
-  local answer = RS.readyAnswers[unit]
+  local key = answerKey(unit)
+  if not RS.readyFinished then RS.readyAnswers[key] = RS.ReadyStatus(unit) end
+  local answer = RS.readyAnswers[key]
   return RS.READY[RS.readyFinished and answer == "waiting" and "notready" or answer]
 end
 

@@ -708,6 +708,25 @@ it("keybind mode: hover a button and press a key to bind it; a modifier alone wa
   expect([tipLines(addon), addon.eval("return Vanguard_Bar1Button2.vgCatcher:IsShown()")], "the tooltip and the catchers go with it").toEqual([null, false]);
 });
 
+it("keybind mode: the game's stance and pet buttons bind to their own commands, with no field on the game's buttons", () => {
+  const addon = loggedIn(BIND_ENV + `
+    for i = 1, 2 do CreateFrame("CheckButton", "StanceButton" .. i, UIParent) end
+    CreateFrame("CheckButton", "PetActionButton1", UIParent)`);
+  addon.slash("keybind");
+  // The catcher over the game's button that the mode lists at position i.
+  const game = (i) => `ns.GetModule("ActionBars").gameTargets[${i}].vgCatcher`;
+  expect(addon.eval(`return { ${game(1)}:IsShown(), ${game(1)}:GetParent():GetName(), ${game(3)}:GetParent():GetName() }`), "a catcher over each stance and pet button").toEqual([true, "StanceButton1", "PetActionButton1"]);
+  addon.hover(game(2));
+  expect(tipLines(addon)[0], "the tooltip names the stance").toBe("Stance 2");
+  addon.key("Vanguard_KeybindMode", "F2");
+  expect([boundTo(addon, "SHAPESHIFTBUTTON2"), chatHas(addon, /F2 bound to Stance 2\.$/)], "the key runs the game's second stance command").toEqual(["F2", true]);
+  addon.hover(game(3));
+  addon.key("Vanguard_KeybindMode", "F2");
+  expect([boundTo(addon, "BONUSACTIONBUTTON1"), chatHas(addon, /F2 bound to Pet button 1, taken from Stance 2\.$/)], "the pet button takes it, and says from where").toEqual(["F2", true]);
+  addon.key("Vanguard_KeybindMode", "ESCAPE");
+  expect(addon.eval(`return ${game(1)}:IsShown()`), "the catchers go with the mode").toBe(false);
+});
+
 it("keybind mode: a drag that ends keeps the empty slots shown", () => {
   const addon = loggedIn(BIND_ENV);
   // The alpha of the empty bar 1 slot 4.

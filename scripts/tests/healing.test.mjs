@@ -37,6 +37,23 @@ it("heal prediction, aggro, buff watch", () => {
   expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { b.heal:IsShown(), b.heal:GetValue() }"), "incoming heals turned off: the bar hides empty, so the shield starts at the health edge").toEqual([false, 0]);
 });
 
+it("H28-I4 overshield: a bright line at the health bar's end when shields run past a full bar, a hidden answer to its opacity", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  // Raid button i's overshield mark: [shown, opacity, the hidden answer it was handed].
+  const mark = (i) => addon.eval(`local m = Vanguard_RaidUnitButton${i}.overshield return { m:IsShown(), m:GetAlpha(), m.__alphaFromBoolean ~= nil }`);
+  expect(addon.eval("return __calc.absorbClamp"), "shields are clamped to missing health less incoming heals").toBe(0);
+  expect(mark(1), "shields past a full bar: lit").toEqual([true, 1, false]);
+  expect(mark(2)[2], "a hidden answer goes to its opacity untouched").toBe(true);
+  expect(mark(3), "shields within the bar: unlit").toEqual([true, 0, false]);
+  addon.eval("__calc.GetDamageAbsorbs = nil");
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "raid1");
+  expect(mark(1)[1], "a calculator that can't say: unlit").toBe(0);
+  addon.eval("VanguardDB.profiles.Default.RaidHealing.absorbs = false");
+  addon.fire("UNIT_ABSORB_AMOUNT_CHANGED", "raid1");
+  expect(mark(1)[0], "shields turned off: no mark").toBe(false);
+});
+
 // TEST-ONLY: the client's all-at-once aura list (counted), the by-name lookup and the spell lookup (counted too),
 // and the aura restriction (__secretAuras).
 const AURA_LIST = `__auraCalls, __byName, __spellInfo, __secretAuras = 0, 0, 0, false
@@ -147,4 +164,13 @@ it("on a German client the class buffs are watched and listed under the client's
   expect(rowIcon("Divine Spirit"), "a buff the client can't name keeps its English label").toBe("TEST-ONLY-ICON-Divine Spirit");
   expect(addon.eval('local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.icon and w.label and w.label:GetText() == "Machtwort: Seelenstärke" then n = n + 1 end end return n'),
     "two ids the client names alike make one row").toBe(1);
+});
+
+it("H28-2-1: a player the client can't see (far away, another phase) gets no missing-buff mark until it can", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + "__unseen = { raid1 = true } UnitIsVisible = function(unit) return not __unseen[unit] end");
+  addon.eval('__spawn(1, "raid1")');
+  expect(healing(addon, 1).missing, "out of sight, without the buff: no mark").toBe(false);
+  addon.eval("__unseen.raid1 = nil");
+  addon.eval(`__wfgStub.fire("UNIT_AURA", "raid1", { isFullUpdate = true })`);
+  expect(healing(addon, 1).missing, "in sight again, its auras sent: the mark shows").toBe("TEST-ONLY-ICON-Arcane Intellect");
 });

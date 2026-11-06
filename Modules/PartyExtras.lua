@@ -30,14 +30,23 @@ local function tile(holder, unit, i, col)
   return b
 end
 
+-- Row i's pet tile, kept in PX.pets too: a friendly unit, so click casting takes it (PX.OnPetTile; not the
+-- target tiles, whose units are mostly enemies, where a heal on a click would replace targeting them).
+local function petTile(holder, i)
+  local b = tile(holder, "partypet" .. i, i, 0)
+  PX.pets[#PX.pets + 1] = b
+  if PX.OnPetTile then PX.OnPetTile(b) end
+  return b
+end
+
 -- The movable column, shown only in a party (a secure state driver, so it follows the group in combat too).
 local function build()
   local holder = CreateFrame("Frame", "Vanguard_PartyExtras", UIParent, "SecureHandlerStateTemplate")
   holder:SetSize(2 * PX.W + PX.COL_GAP, PX.ROWS * (PX.H + PX.GAP) - PX.GAP)
   ns.Mover(holder, "partyextras", L["Party pets and targets"], PX.SPOT)
-  PX.tiles = {}
+  PX.tiles, PX.pets = {}, {}
   for i = 1, PX.ROWS do
-    PX.tiles[#PX.tiles + 1] = tile(holder, "partypet" .. i, i, 0)
+    PX.tiles[#PX.tiles + 1] = petTile(holder, i)
     PX.tiles[#PX.tiles + 1] = tile(holder, "party" .. i .. "target", i, 1)
   end
   if type(RegisterAttributeDriver) == "function" then RegisterAttributeDriver(holder, "state-visibility", "[group:raid] hide; [group:party] show; hide") end

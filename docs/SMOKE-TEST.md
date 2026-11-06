@@ -4287,25 +4287,67 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The dungeon name, level and instruction lines are in the Vanguard font, in light text at the game's sizes, fitting the window; with Window ornaments on, the panel has corner brackets.
 - If it fails, paste: a screenshot of the keystone window.
 
-### 33.332 Crit and hit on items are rating (Forever)
+### 33.332 Stance and pet buttons in a fight
+
+- Do: On a warrior, druid or rogue (or a hunter or warlock for the pet bar), fight a few mobs while you gain XP or reputation, so the XP or reputation bar shows or changes during the fight. Enter a vehicle or mind-control a mob if you can. Then `/vg unlock`, right-click the stance bar's handle and drag its Scale and Opacity.
+- Expect: The stance and pet buttons stay at the bottom left over the chat the whole fight, never over action bars 1 to 3, and every Vanguard action button under where the game's bar used to be still takes clicks. In a vehicle or while mind-controlling, the stance buttons go and come back after; the pet buttons hide with no pet. The handle's Scale and Opacity change the buttons. Active stance highlight, cooldowns, tooltips and the stance keys work as before. `/vg errors` is empty.
+- If it fails, paste: a screenshot in the fight and `/vg errors`.
+
+### 33.332b Binding stance keys
+
+- Do: On a class with stances or forms (and a pet class for the pet bar), `/vg keybind`, hover the second stance button and press F2; hover a pet button and press F3. Leave with Escape, then press F2 and F3 out of combat and in a fight.
+- Expect: Each stance and pet button gets the accent wash and a tooltip ("Stance 2", "Pet button 1") while hovered; chat says "F2 bound to Stance 2."; F2 changes to the second stance and F3 runs the pet action, in a fight too; the stance button's hotkey text shows F2. The keys also show under the game's Key Bindings, Action Bar, Special Action Button 2.
+- If it fails, paste: `/vg errors` and what chat said when you pressed the key.
+
+### 33.333 Raid tiles: far players, offline players and lingering ready checks
+
+- Do: In a raid with the missing-buff mark on, let some players be far away (another zone or phase). Watch a player who dies and then disconnects. Run a ready check and have someone leave in the six seconds after it ends.
+- Expect: Far players show no missing-buff mark until they come close. The dead-then-gone player reads Offline, with no dispel wash on the tile. After the leave, nobody's tile shows the leaver's tick or cross. A player who is both main tank and main assist always has the accent shield.
+- If it fails, paste: a screenshot of the raid tiles and `/vg errors`.
+
+### 33.334 Nameplates after a look change
+
+- Do: Stand near a few enemy plates out of combat, then switch `/vg variant contrast` (or Safer colours) and back.
+- Expect: Every plate's bar takes the new reaction colour at once. Debuffs and buffs the game shows only on nameplates (some class and boss auras) appear on Vanguard's plates too.
+- If it fails, paste: a screenshot of the plates before and after.
+
+### 33.335 Imported click-casting strings
+
+- Do: Import a click-casting string whose macro text holds colour codes (`|cffff0000Reset|r`), then open Click casting and type `/vg binds`.
+- Expect: The cell, the hover-key row and the chat line show the text with its | characters as typed, never in red or as a link.
+- If it fails, paste: a screenshot of the grid and the chat line.
+
+### 33.336 Focus plate, import question, main tank and pet click casting
+
+- Do: Target one enemy and set another as your focus (`/focus`). Then, with click-casting bindings set, open Click casting, paste a string from another character into Import and press it. Last, in a raid with a main tank set (and in a party with a hunter or warlock pet), use a click-casting binding on a main tank tile and on a party pet tile.
+- Expect: The target's plate has the accent border and diamond; the focus's plate a quieter gray border and diamond, with no glow; clearing the focus takes its border away. Import asks "Replace your 6 click-casting bindings with the 4 from this string?" (your numbers) and changes nothing on No. The bindings cast on the main tank and pet tiles just as on raid tiles.
+- If it fails, paste: a screenshot of the two plates or the question, and `/vg errors`.
+
+### 33.337 Overshield mark
+
+- Do: With Shields on in Healing, put a shield (Power Word: Shield, or any absorb) on a player at full health in your group, then on a player missing a little health.
+- Expect: On the full-health player a thin bright line sits at the right end of the health bar while the shield lasts; it goes when the shield does. On the player missing health it shows only once the shield is bigger than what they are missing. Turning Shields off takes the line away.
+- If it fails, paste: a screenshot of the tile and `/vg errors`.
+
+### 33.338 Crit and hit on items are rating (Forever)
 
 - Do: Run `/run C_Item.RequestLoadItemDataByID(12640)`, wait a second, then `/dump C_Item.GetItemStats("item:12640")` (Lionheart Helm, 2% crit and 2% hit on its tooltip), then `/dump GetHitModifier(), GetSpellHitModifier()`.
 - Expect: `ITEM_MOD_CRIT_RATING_SHORT=28` and `ITEM_MOD_HIT_RATING_SHORT=20` (14 and 10 rating per 1%, which Vanguard's Balance weights, hit cap and guide string import count on; seen 2026-11-06 at level 17), and the two hit numbers in per cent.
 - If it fails, paste: both `/dump` outputs, your level and the helm's tooltip.
 
-### 33.333 Damage style for a druid or shaman (Forever)
+### 33.339 Damage style for a druid or shaman (Forever)
 
 - Do: On a druid, open `/vg`, Town and gear, Gear upgrades; click Damage style to Balance, then hover a caster item and a leather agility item in your bags. Do the same on a shaman with Enhancement. On a warrior, look for the row.
 - Expect: The Damage style row shows Feral or Balance (Elemental or Enhancement on a shaman) and no row on a warrior; with Balance the caster item's line compares by spell damage, crit and hit, and `/vg weights` says "Weights for Balance"; changing the druid's weights doesn't change a mage's on the same profile.
 - If it fails, paste: a screenshot of the Gear upgrades card, the two tooltips and the `/vg weights` line.
 
-### 33.334 Caps on hit, expertise and defense (Forever)
+### 33.340 Caps on hit, expertise and defense (Forever)
 
 - Do: Open Set up stat weights and look at the three cap boxes; type your current hit per cent (the character sheet's Hit Chance) into Hit cap and Save. Hover an item with hit and an otherwise equal one without. On a warrior tank (Weigh stats for: tank), hover an item with defense.
 - Expect: The boxes start at the kind's caps (8 hit for melee, 17 for a caster or Balance druid; 6.5 expertise; 440 defense for a tank); with the cap at your hit, the item with hit is no better than the one without; `/vg weights` lists the caps; set the hit cap back to 0 and the item with hit is the upgrade again. Also `/dump GetExpertise()` and `/dump UnitDefenseSkill("player")` give the character sheet's numbers.
 - If it fails, paste: the two tooltips, `/vg weights`, and `/dump GetHitModifier(), GetSpellHitModifier(), GetExpertise(), UnitDefenseSkill("player")`.
 
-### 33.335 A guide site's weight string (both)
+### 33.341 A guide site's weight string (both)
 
 - Do: Copy a stat weight string a guide site posts for your class (it starts with "( " and a tool name, then "v1:"), click Import stat weights under Gear upgrades, paste it and click Import. Then try one for another class.
 - Expect: Chat says "Imported weights for …" and names any stats it skipped; Set up stat weights shows the string's values and 0 for the stats it leaves out; the other class's string is refused with "the string is for another class".

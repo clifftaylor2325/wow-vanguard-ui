@@ -99,6 +99,7 @@ function MT.Setup(b)
   b:RegisterForClicks("AnyUp")
   b:HookScript("OnShow", MT.Paint)
   MT.tiles[#MT.tiles + 1] = b
+  if MT.OnTileCreated then MT.OnTileCreated(b) end
 end
 
 -- Who shows and how: the raid's main tanks and assists, in a column down from the top.

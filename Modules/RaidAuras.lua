@@ -89,9 +89,10 @@ local function engineDispel(b)
   end
 end
 
--- Paints the fallback wash and edge for the first debuff you can dispel, or hides them.
+-- Paints the fallback wash and edge for the first debuff you can dispel, or hides them (on the dead
+-- and offline too, whose icons are hidden; on the engine the wash hides with its icon).
 local function paintDispel(b, unit)
-  local aura = RA.settings.dispel and ns.Auras.Get(unit, 1, RA.DISPELLABLE)
+  local aura = RA.settings.dispel and not b.down and ns.Auras.Get(unit, 1, RA.DISPELLABLE)
   b.dispel:SetShown(aura ~= nil and aura ~= false)
   if not aura then return end
   local r, g, bl = ns.Auras.DispelColor(unit, aura)

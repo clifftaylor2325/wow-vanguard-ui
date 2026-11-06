@@ -72,6 +72,7 @@
       "keybind mode: a key the game refuses leaves the button's keys as they were; a key with no name is ignored",
       "keybind mode: hover a button and press a key to bind it; a modifier alone waits; Escape leaves",
       "keybind mode: out of combat only, ends when a fight starts; from the options; needs the bars",
+      "keybind mode: the game's stance and pet buttons bind to their own commands, with no field on the game's buttons",
       "keybind mode: the mouse's side buttons and wheel bind too; Backspace clears; a taken key says whose it was",
       "mouseover bars are revealed during a drag and restored after",
       "reagent and item counts show even at 0 and 1",
