@@ -29,7 +29,7 @@ TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingToolt
 TT.MORE_NAMES = {
   "ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "GameNoHeaderTooltip", "GameSmallHeaderTooltip", "BuffFrameTooltip",
   "QuickKeybindTooltip", "SettingsTooltip", "PartyMemberBuffTooltip", "AutoCompleteBox",
-  "BattlePetTooltip", "FloatingBattlePetTooltip",
+  "BattlePetTooltip", "FloatingBattlePetTooltip", "FriendsTooltip",
 }
 
 -- Skinning ---------------------------------------------------------------------------------
