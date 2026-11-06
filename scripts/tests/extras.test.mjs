@@ -332,6 +332,15 @@ it("keep stocked: Edit list... on Town and gear opens the window, empty at first
   off.eval("ns.GetModule('Errands').StockWindow.Open()");
   expect([chatHas(off, /Errands is off/), off.eval("return Vanguard_StockList == nil")], "Errands off: it says so and builds nothing").toEqual([true, true]);
 });
+it("keep stocked: the Item and Carry labels are section-heading column heads: muted capitals in the section size (H27-9-3)", () => {
+  const addon = loggedIn(STOCK_WINDOW_ENV);
+  addon.eval("ns.GetModule('Errands').StockWindow.Open()");
+  const heads = addon.eval(`local out = {} for _, r in ipairs({ Vanguard_StockList:GetRegions() }) do
+    local t = r.GetText and r:GetText() if t == "ITEM" or t == "CARRY" then out[#out + 1] = { t, r.__textColor, select(2, r:GetFont()) } end end
+    return out`);
+  expect(heads.map((h) => h[0]), "both labels, in capitals").toEqual(["ITEM", "CARRY"]);
+  expect(heads.map((h) => isTok(addon, h[1], "muted") && h[2] === addon.eval('return ns.Theme.RoleSize("section")')), "muted, section size").toEqual([true, true]);
+});
 it("keep stocked: an item dragged onto the slot is added with a stack, a row shows where to buy it, and Remove takes it off", () => {
   const addon = loggedIn(STOCK_WINDOW_ENV);
   addon.eval("ns.GetModule('Errands').StockWindow.Open()");

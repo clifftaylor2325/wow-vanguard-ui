@@ -168,6 +168,14 @@ local function note(f, text, role, x, y)
   return fs
 end
 
+-- A column label over the rows in the section heading's look (W.SectionHeader's role and colour: muted capitals).
+local function columnLabel(f, text, x)
+  local fs = T.Text(f:CreateFontString(nil, "OVERLAY"), "section", "muted")
+  fs:SetPoint("TOPLEFT", x, -f.top)
+  T.SetText(fs, text)
+  return fs
+end
+
 -- The note under the title and the Item and Carry column labels over the rows, under the note however many
 -- lines it wraps to (a translation often runs longer): f.top is where the labels sit.
 local function labels(f)
@@ -175,9 +183,9 @@ local function labels(f)
   f.note:SetWidth(SW.WIDTH - 2 * SW.PAD)
   f.note:SetJustifyH("LEFT")
   f.top = ns.DIALOG.head + math.max(SW.LINE_H, math.ceil(f.note:GetStringHeight()) + T.SPACE.tight)
-  note(f, L["Item"], "small", SW.PAD + SW.ICON + T.SPACE.tight + T.SPACE.gap, f.top)
+  columnLabel(f, L["Item"], SW.PAD + SW.ICON + T.SPACE.tight + T.SPACE.gap)
   local carry = LIST_W - T.SPACE.tight - SW.REMOVE_W - T.SPACE.gap - SW.AMOUNT_W
-  note(f, L["Carry"], "small", SW.PAD + carry, f.top)
+  columnLabel(f, L["Carry"], SW.PAD + carry)
 end
 
 -- The scrolling rows (made as they are needed) and the line an empty list shows instead.
