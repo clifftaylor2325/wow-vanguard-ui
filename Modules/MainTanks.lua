@@ -47,7 +47,7 @@ end
 local function paintTarget(b, unit)
   if not yes(UnitExists(unit)) then return b.target:SetText("") end
   b.target:SetText(UnitName(unit))
-  b.target:SetTextColor(ns.GetModule("UnitFrames").HealthColor(unit))
+  T.ColorRGB(b.target, ns.GetModule("UnitFrames").HealthColor(unit))
 end
 
 -- Paints a tile from its unit: health in its color, its name, and its target line if it has one.

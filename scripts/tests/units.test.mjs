@@ -934,3 +934,13 @@ it("in-combat mark: the Unit frames page switches it at once, and the health tex
   const room = addon.eval("return { select(4, Vanguard_player.healthText:GetPoint()) }");
   expect(room, "the health text ends left of the swords").toEqual([-addon.eval("return ns.GetModule('UnitFrames').CLASS_MARK_ROOM"), 0]);
 });
+
+it("H27-3-1: a difficulty-coloured level keeps its colour through a look, accent and text-size change", () => {
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + `
+    UnitLevel = function(unit) return 60 end
+    GetCreatureDifficultyColor = function(level) return { r = 1, g = 0.1, b = 0.1 } end`, NO_RAID);
+  addon.slash("variant classic");
+  addon.slash("accent jade");
+  addon.eval("ns.Theme.Settings().textScale = 1.1 ns.Theme.Refresh()");
+  expect(addon.eval("return Vanguard_player.level.__textColor").slice(0, 3), "still the difficulty colour, not the text colour").toEqual([1, 0.1, 0.1]);
+});

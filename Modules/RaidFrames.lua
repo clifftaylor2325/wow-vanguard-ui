@@ -228,7 +228,7 @@ function RF.PaintColors(b, r, g, bl)
   if b.down then return T.BarColor(b.health, "darkBar") end
   if RF.settings.look == "dark" then
     T.BarColor(b.health, "darkBar")
-    return b.name:SetTextColor(r, g, bl)
+    return T.ColorRGB(b.name, r, g, bl)
   end
   if RF.settings.look == "soft" then r, g, bl = RF.Soften(r, g, bl) end
   b.health:SetStatusBarColor(r, g, bl)

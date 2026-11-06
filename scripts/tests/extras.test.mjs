@@ -913,3 +913,10 @@ it("the AFK screen: a long zone line wraps clear of the faction crest and above 
   expect(where.bottom, "and its second line stays above the away row").toBeGreaterThanOrEqual(away.top);
   expect(addon.eval("return Vanguard_AfkScreen.where:GetMaxLines()"), "at most two lines").toBe(2);
 });
+
+it("H27-3-1: a main tank's target line keeps its reaction colour through a look change", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
+  addon.eval('__mt(1, "raid1") __wfgStub.advance(0.5)');
+  addon.slash("variant classic");
+  expect(isTok(addon, addon.eval("return Vanguard_MainTanksUnitButton1.target.__textColor"), "hostile"), "still the target's reaction colour").toBe(true);
+});

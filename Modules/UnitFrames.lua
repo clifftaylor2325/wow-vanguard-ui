@@ -438,7 +438,7 @@ end
 function UF.PaintLevel(fs, unit)
   fs:SetText(UF.LevelText(unit))
   local r, g, b = UF.LevelColor(unit)
-  if r then fs:SetTextColor(r, g, b) else T.Color(fs, "text2") end
+  if r then T.ColorRGB(fs, r, g, b) else T.Color(fs, "text2") end
 end
 
 -- The level, colored by how hard the unit is for you.
