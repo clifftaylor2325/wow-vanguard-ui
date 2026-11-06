@@ -1147,6 +1147,8 @@ it("quest log: an objective's count is found at either end or inside it (French 
     ["TEST-ONLY Wolf slain", "3/8", false, true, 3, 8], ["TEST-ONLY Explore the vale", "", false, false, 0, 1],
     ["2/2", "2/2", false, true, 2, 2], ["TEST-ONLY Pelt", "1/1", true, false, 1, 1],
     ["TEST-ONLY Sanglier TEST-ONLY tués", "3/8", false, true, 3, 8]]);
+  const tokens = addon.eval("local r = Vanguard_QuestLog.objectiveRows return { r[1].label.__textColor, r[1].count.__textColor, r[4].label.__textColor, r[4].count.__textColor }");
+  expect(["text", "text2", "muted", "muted"].map((name, i) => isTok(addon, tokens[i], name)), "an open row: text and text2; a done one: label and count muted, as the tracker's").toEqual([true, true, true, true]);
   expect(addon.eval("local f = Vanguard_QuestLog return { f.objectiveBox:GetHeight(), select(5, f.objectiveRows[2]:GetPoint(1)) }"), "rows are 28 px apart in a box as tall as they are").toEqual([140, -28]);
 });
 it("quest log: a long list and long quest text scroll, a short one does not", () => {
