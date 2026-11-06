@@ -77,7 +77,7 @@ function QG.PinTooltip(pin)
   local tip = GameTooltip
   if not tip or not pin.start then return end
   tip:SetOwner(pin, "ANCHOR_RIGHT")
-  tip:SetText(pin.start.name or L["Quest start"])
+  tip:SetText(pin.start.name or L["Quest start"], T.RGB("text"))
   local level, repeats = startFacts(pin.start.questID)
   if level then tip:AddLine(ns.Format(L["Level {level}"], { level = level }), QP.LevelColor(level)) end
   if repeats then tip:AddLine(T.Paint(L["Repeatable"], "text2")) end
