@@ -638,8 +638,10 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   click("Vanguard_ExportDialog.none");
   expect(panel().rows.every((r) => r[1] === false), "None turns every switch off").toBe(true);
   click("Vanguard_ExportDialog.export");
-  expect(panel().title, "with nothing on, Export says so").toBe("Switch on at least one part to export.");
+  expect(addon.eval("return Vanguard_ExportDialog.problem:GetText()"), "with nothing on, Export says so above the buttons").toBe("Switch on at least one part to export.");
+  expect([panel().title, addon.eval("return ns.Theme.ColorToken(Vanguard_ExportDialog.problem)")], "the title stays the window's name; the line is warn").toEqual(["Export: what to include", "warn"]);
   click("Vanguard_ExportDialog.rows[1]");
+  expect(addon.eval("return Vanguard_ExportDialog.problem:GetText()"), "switching a part on clears it").toBe("");
   click("Vanguard_ExportDialog.export");
   expect([panel().shown, addon.eval("return Vanguard_TextDialog.title:GetText()")], "Export closes the panel and shows the string for what is on").toEqual([false, "Vanguard export (layout)  Ctrl+C to copy"]);
   expect(holds("Vanguard_TextEdit:GetText()"), "only the layout").toEqual([true, false, false, "layout"]);

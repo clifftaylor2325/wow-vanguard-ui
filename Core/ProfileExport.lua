@@ -25,10 +25,16 @@ local function partLabel(part)
   return ns.PART_LABELS[part] or (ns.Options.MODULE_INFO[part] or {})[1] or part
 end
 
+-- Switches the i-th part, and drops the "switch on at least one part" line, which no longer holds.
+local function setPart(i, on)
+  panel.on[panel.parts[i]] = on
+  panel.problem:SetText("")
+end
+
 -- The switch for the panel's i-th part, made once and reused as the parts change.
 local function partRow(i)
   if panel.rows[i] then return panel.rows[i] end
-  local r = W.Check(panel.list, "", function() return panel.on[panel.parts[i]] end, function(on) panel.on[panel.parts[i]] = on end, ROW_WIDTH)
+  local r = W.Check(panel.list, "", function() return panel.on[panel.parts[i]] end, function(on) setPart(i, on) end, ROW_WIDTH)
   panel.rows[i] = r
   return r
 end
@@ -68,6 +74,7 @@ end
 -- Turns every switch on or off.
 local function setAll(on)
   for _, part in ipairs(panel.parts) do panel.on[part] = on end
+  panel.problem:SetText("")
   for _, r in ipairs(panel.rows) do r:Refresh() end
 end
 
@@ -81,10 +88,10 @@ local function ticked()
 end
 
 -- Export: the panel closes and the string for the parts switched on is shown to copy; with
--- none on, the title says so instead.
+-- none on, the line above the buttons says so instead (the title stays the window's name).
 local function export()
   local parts = ticked()
-  if #parts == 0 then return panel.title:SetText(L["Switch on at least one part to export."]) end
+  if #parts == 0 then return panel.problem:SetText(L["Switch on at least one part to export."]) end
   local whole = #parts == #panel.parts
   local text = ns.ExportProfile(not whole and parts or nil)
   panel:Hide()
@@ -96,8 +103,16 @@ end
 local function addList(f)
   f.view = ns.ScrollView(f, { width = ROW_WIDTH })
   f.view:SetPoint("TOPLEFT", f.note, "BOTTOMLEFT", 0, -T.SPACE.gap)
-  f.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), ns.DIALOG.foot)
+  f.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), ns.DIALOG.foot + T.RoleSize("label") + T.SPACE.gap)
   f.list = f.view.child
+end
+
+-- The line above the buttons that says why Export did nothing (empty until it is needed).
+local function addProblem(f)
+  f.problem = T.Text(f:CreateFontString(nil, "OVERLAY"), "label", "warn")
+  f.problem:SetJustifyH("LEFT")
+  f.problem:SetPoint("BOTTOMLEFT", T.SPACE.pad, ns.DIALOG.foot)
+  f.problem:SetPoint("BOTTOMRIGHT", -T.SPACE.pad, ns.DIALOG.foot)
 end
 
 -- The buttons along the foot: All and None on the left, Cancel and the Export primary on the right.
@@ -120,6 +135,7 @@ local function build()
   panel.note:SetPoint("TOPLEFT", T.SPACE.pad, -ns.DIALOG.head)
   panel.note:SetWidth(WIDTH - 2 * T.SPACE.pad)
   addList(panel)
+  addProblem(panel)
   addButtons(panel)
 end
 
@@ -127,6 +143,7 @@ end
 function ns.ExportDialog()
   if not panel then build() end
   panel.title:SetText(TITLE)
+  panel.problem:SetText("")
   fill()
   panel:Show()
 end
