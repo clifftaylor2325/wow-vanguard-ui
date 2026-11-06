@@ -486,7 +486,7 @@ function UF.PaintCombat(f, fighting)
   local on = fighting == true and UF.settings.combatMark == true
   if f.vgFighting == on then return end
   f.vgFighting = on
-  T.SetBorder(f, on and { T.RGB(UF.COMBAT.color) } or nil)
+  T.SetBorder(f, on and UF.COMBAT.color or nil)
   if f.combat then f.combat:SetShown(on) end
 end
 

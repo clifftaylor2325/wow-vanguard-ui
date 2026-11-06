@@ -467,6 +467,8 @@ it("chat scroll-to-bottom tile: a one-pixel accentText ring round it while the g
   expect(ring()[0], "finished: hidden").toBe(false);
   addon.eval("ns.GetModule('Chat').SkinAll()");
   expect(addon.eval("return #ChatFrame1.ScrollToBottomButton.Flash.FlashAnim.scripts"), "skinned again, the hooks are not piled on").toBe(0);
+  addon.slash("accent jade");
+  expect(isTok(addon, ring()[3], "accentText"), "after an accent change the ring is the new accentText").toBe(true);
   const playing = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + CHAT_FLASH_ENV + "ChatFrame1.ScrollToBottomButton.Flash.FlashAnim.playing = true");
   expect(playing.eval("return ns.FrameState('vgRing')[ChatFrame1.ScrollToBottomButton]:IsShown()"), "a flash already playing when the tile is skinned shows the ring at once").toBe(true);
   const plain = loggedIn(UI_ENV + CHAT_BUTTONS_ENV);

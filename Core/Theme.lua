@@ -967,10 +967,11 @@ end
 
 -- Painting -------------------------------------------------------------------------
 
--- The border color for a painted entry: a color set with T.SetBorder, the
--- accent when asked for, else the theme border.
+-- The border color for a painted entry: a color set with T.SetBorder (a token name read now, so it follows a
+-- refresh, or a fixed { r, g, b }), the accent when asked for, else the theme border.
 local function borderColor(entry)
   local own = entry.opts.border
+  if type(own) == "string" then return T.RGB(own) end
   if own then return own[1], own[2], own[3], 1 end
   if entry.opts.accent then return T.Accent() end
   if entry.focused then return T.RGB("accentText") end
@@ -1383,7 +1384,7 @@ function T.SetRound(frame, on)
   repaint(frame, entry)
 end
 
--- Sets a painted frame's border to { r, g, b }, or back to the theme's with nil.
+-- Sets a painted frame's border to a token name (followed live) or { r, g, b }, or back to the theme's with nil.
 function T.SetBorder(frame, rgb)
   local entry = painted[frame]
   if not entry then return end

@@ -923,7 +923,7 @@ local function tileRing(button)
   ring:SetPoint("CENTER")
   T.PixelSize(ring, T.CONTROL.tile, T.CONTROL.tile, true)
   T.Panel(ring, { noBg = true, noSheen = true })
-  T.SetBorder(ring, { T.RGB("accentText") })
+  T.SetBorder(ring, "accentText")
   ring:Hide()
   return ring
 end

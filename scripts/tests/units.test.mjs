@@ -903,6 +903,8 @@ it("in-combat mark: crossed swords and a vermilion edge on your frame from the f
   expect(addon.eval("return __fight()"), "out of combat: the theme's edge, no swords").toEqual(["theme", "none", "theme"]);
   addon.world.combat(true);
   expect(addon.eval("return __fight()"), "the fight starts: swords and the vermilion edge on yours at once").toEqual(["bad", "swords", "theme"]);
+  addon.slash("variant contrast");
+  expect(addon.eval("return __fight()[1]"), "a look change mid-fight: the edge is the new variant's bad").toBe("bad");
   addon.world.combat(false);
   expect(addon.eval("return __fight()"), "it ends: both gone").toEqual(["theme", "none", "theme"]);
 });
