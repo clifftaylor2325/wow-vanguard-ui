@@ -611,6 +611,9 @@ it("raid frames: groups as rows, and the main tank's shield", () => {
   expect(raidButton(addon, 1).role === addon.eval("return ns.Theme.Icon('RoleTank')") && isTok(addon, tint(1)[1], "accent"), "the main tank's shield in the accent").toBe(true);
   expect(raidButton(addon, 2).role === addon.eval("return ns.Theme.Icon('RoleTank')") && isTok(addon, tint(2)[1], "text2"), "the main assist's in text2").toBe(true);
   expect(tint(3)[0], "no assignment, no role: no mark").toBe(false);
+  addon.eval('GetPartyAssignment = function(kind, unit) return unit == "raid1" end');
+  addon.eval("Vanguard_RaidUnitButton1:SetAttribute('unit', 'raid1')");
+  expect(isTok(addon, tint(1)[1], "accent"), "H28-1-1: main tank and main assist at once: the main tank's accent, every time").toBe(true);
 });
 // TEST-ONLY merchant: repairs for 50s; bag 0 holds a gray item, a gray with no value, and a white.
 const MERCHANT_ENV = `
