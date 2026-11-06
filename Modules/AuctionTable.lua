@@ -122,12 +122,24 @@ local function setColumns(t, columns)
   return t
 end
 
+-- A heading under the mouse in the body text, when its table sorts and it is not the sorted column.
+local function lightHead(t, h)
+  if t.onSort and h.key and h.key ~= t.sort then T.Color(h.text, "text") end
+end
+
+-- A heading the mouse left, back in its rest colour.
+local function restHead(t, h)
+  if h.key ~= t.sort then T.Color(h.text, "text2") end
+end
+
 -- Heading i: a button on the header line, sorting by its column on a click (the owner's onSort).
 local function head(t)
   local h = CreateFrame("Button", nil, t)
   h:SetHeight(AH.TABLE_HEAD)
   h.text = T.Text(h:CreateFontString(nil, "OVERLAY"), "small", "text2")
   h:SetScript("OnClick", ns.Guard("click sort header", function(self) if t.onSort and self.key then t.onSort(self.key) end end))
+  h:SetScript("OnEnter", ns.Guard("sort header hover", function(self) lightHead(t, self) end))
+  h:SetScript("OnLeave", ns.Guard("sort header rest", function(self) restHead(t, self) end))
   return h
 end
 

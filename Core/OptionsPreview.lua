@@ -19,6 +19,13 @@ local function applyHex(self)
   self:ClearFocus()
 end
 
+-- Shows the current accent as #rrggbb, and a check on the swatch of the preset that is the accent.
+local function refreshAccent(self)
+  self.hex:SetText("#" .. T.Hex("accent"):sub(3):upper())
+  local r, g, b = T.Accent()
+  for _, s in ipairs(self.swatches) do s.check:SetShown(s.rgb[1] == r and s.rgb[2] == g and s.rgb[3] == b) end
+end
+
 -- The accent row: a swatch per preset and a hex box (Enter applies).
 local function accentRow(parent, width)
   local r = CreateFrame("Frame", nil, parent)
@@ -29,19 +36,26 @@ local function accentRow(parent, width)
   r.hex = W.Input(r, 74)
   r.hex:SetPoint("RIGHT", -8, 0)
   r.hex:SetScript("OnEnterPressed", ns.Guard("apply the accent hex", applyHex))
-  -- Shows the current accent as #rrggbb.
-  r.Refresh = function(self) self.hex:SetText("#" .. T.Hex("accent"):sub(3):upper()) end
+  r.Refresh = refreshAccent
   return r
 end
 
--- The preset swatches, right to left before the hex box.
+-- One preset swatch, number i from the left: right to left before the hex box, with a void check for the chosen one.
+local function generalSwatch(r, i, name)
+  local rgb = T.PRESETS[name]
+  local s = W.Swatch(r, rgb, function() T.SetAccent(rgb[1], rgb[2], rgb[3]) end)
+  s:SetSize(22, 22)
+  s:SetPoint("RIGHT", r.hex, "LEFT", -12 - (#T.PRESET_ORDER - i) * 26, 0)
+  s.rgb = rgb
+  s.check = W.IconTexture(s, "Check", 12, "void")
+  s.check:SetPoint("CENTER")
+  r.swatches[i] = s
+end
+
+-- The preset swatches.
 local function addSwatches(r)
-  for i, name in ipairs(T.PRESET_ORDER) do
-    local rgb = T.PRESETS[name]
-    local s = W.Swatch(r, rgb, function() T.SetAccent(rgb[1], rgb[2], rgb[3]) end)
-    s:SetSize(22, 22)
-    s:SetPoint("RIGHT", r.hex, "LEFT", -12 - (#T.PRESET_ORDER - i) * 26, 0)
-  end
+  r.swatches = {}
+  for i, name in ipairs(T.PRESET_ORDER) do generalSwatch(r, i, name) end
 end
 
 -- A bar on the sample unit frame, h tall, at value (of 100).

@@ -16,7 +16,7 @@
 -- there are never two.
 
 local ADDON, ns = ...
-local L = ns.L
+local L, T = ns.L, ns.Theme
 
 local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, levelXp = true, autoTrack = true, expanded = false } })
 
@@ -481,4 +481,5 @@ function QT.Enable(settings)
   ns.On("ZONE_CHANGED_NEW_AREA", QT.SortWatches)
   ns.On("ZONE_CHANGED", QT.SortOnMapChange)
   ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)
+  T.OnChanged(QT.Redraw)
 end

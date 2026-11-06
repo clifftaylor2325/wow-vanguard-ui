@@ -7,7 +7,7 @@
 -- tracker's titles open it on that quest.
 
 local ADDON, ns = ...
-local L = ns.L
+local L, T = ns.L, ns.Theme
 
 local QL = ns.Module("QuestLog", { defaults = { own = true, xp = true } })
 
@@ -155,7 +155,7 @@ function QL.Details(id)
   local text = ns.CallIf(_G, "GetQuestLogQuestText")
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
-    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), abandonable = QL.CanAbandon(id), done = ns.GetModule("QuestHistory").Muted(id) })
+    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), abandonable = QL.CanAbandon(id), done = ns.GetModule("QuestHistory").Line(id) })
 end
 
 -- Actions ----------------------------------------------------------------------------------------
@@ -340,6 +340,14 @@ local function bindKeys()
   ns.On("UPDATE_BINDINGS", QL.BindKeys)
 end
 
+-- Re-renders the log on the events that change it. Share is lit only in a group (as the game's quest map does
+-- on GROUP_ROSTER_UPDATE); an item's info arriving can settle the reward crown.
+local function watchEvents()
+  for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "GROUP_ROSTER_UPDATE", "GET_ITEM_INFO_RECEIVED" }) do
+    ns.On(event, refreshSoon)
+  end
+end
+
 -- Module entry point (Core/Modules.lua).
 function QL.Enable(settings)
   QL.settings = settings
@@ -348,9 +356,6 @@ function QL.Enable(settings)
   addToggle()
   bindKeys()
   hookGameToggle()
-  -- Share is lit only in a group (as the game's quest map does on GROUP_ROSTER_UPDATE); an item's info
-  -- arriving can settle the reward crown.
-  for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "GROUP_ROSTER_UPDATE", "GET_ITEM_INFO_RECEIVED" }) do
-    ns.On(event, refreshSoon)
-  end
+  watchEvents()
+  T.OnChanged(refreshSoon)
 end

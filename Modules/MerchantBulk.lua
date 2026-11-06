@@ -407,7 +407,7 @@ end
 -- window with its bottom left on the clicked item, so this covers the rows below it; it takes their clicks too.
 local function makeDrawer(frame)
   local drawer = T.Panel(CreateFrame("Frame", nil, frame), { inset = true })
-  local height = 3 * T.SPACE.gap + T.BUTTON_H + math.ceil(T.RoleSize("barSmall")) + T.SPACE.tight
+  local height = 3 * T.SPACE.gap + T.BUTTON_H + math.ceil(T.RoleSize("small")) + T.SPACE.tight
   drawer:SetSize(math.max(frame:GetWidth(), MC.DRAWER_W), height)
   drawer:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, 0)
   drawer:EnableMouse(true)
@@ -416,7 +416,7 @@ end
 
 -- The cost line under the buttons, on one line inside the drawer (shrunk a little when it runs long).
 local function costText(drawer, stack)
-  local line = T.Text(drawer:CreateFontString(nil, "OVERLAY"), "barSmall", "muted")
+  local line = T.Text(drawer:CreateFontString(nil, "OVERLAY"), "small", "text2")
   line:SetPoint("TOPLEFT", stack, "BOTTOMLEFT", 0, -T.SPACE.gap)
   line:SetPoint("TOPRIGHT", drawer, "TOPRIGHT", -T.SPACE.gap, -(2 * T.SPACE.gap + T.BUTTON_H))
   return T.FitText(ns.SingleLine(line), drawer)

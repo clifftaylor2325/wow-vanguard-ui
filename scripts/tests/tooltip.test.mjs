@@ -179,7 +179,7 @@ it("item tooltips: how many you have, and the item ID when asked", () => {
 
 // TEST-ONLY: the client's other tooltips (GameTooltipTemplate / TooltipBackdropTemplate frames with a
 // NineSlice), all but QuickKeybindTooltip, which this client lacks.
-const MORE_TIPS = ["ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "GameNoHeaderTooltip", "GameSmallHeaderTooltip", "BuffFrameTooltip", "SettingsTooltip", "PartyMemberBuffTooltip", "AutoCompleteBox"];
+const MORE_TIPS = ["ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "GameNoHeaderTooltip", "GameSmallHeaderTooltip", "BuffFrameTooltip", "SettingsTooltip", "PartyMemberBuffTooltip", "AutoCompleteBox", "FriendsTooltip"];
 const MORE_TIPS_ENV = MORE_TIPS.map((n) => `local tt = CreateFrame("Frame", "${n}", UIParent) tt.NineSlice = CreateFrame("Frame", nil, tt)`).join("\n");
 // Each of those tooltips' state: skinned (its NineSlice faded under a panel) or not.
 const moreTips = (addon) => addon.eval(`local out = {} for _, n in ipairs({ "${MORE_TIPS.join('", "')}" }) do

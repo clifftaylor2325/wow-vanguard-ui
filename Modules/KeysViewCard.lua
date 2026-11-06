@@ -120,13 +120,19 @@ local function showTip(cap)
   if changedHere(cap.chord) then GameTooltip:AddLine(L["Right-click to put back what this key did before key setup."], T.RGB("accentText")) end
 end
 
+-- A key's label colour for what it holds now: text with an icon, accentText for one bound to something without
+-- one, muted when free (the Your keys card and key setup's preview share it).
+function KV.CapColor(entry)
+  return entry and (entry.icon and "text" or "accentText") or "muted"
+end
+
 -- Paints a key for what it holds now: the icon and label of what is on it, or the muted label of a free key.
 local function paintCap(cap)
   cap.chord = KV.Chord(KV.TabById(KV.tab), cap.key)
   cap.entry = KV.Lookup(cap.chord)
   local icon = cap.entry and cap.entry.icon
   KV.SetCapIcon(cap, icon)
-  T.Color(cap.label, cap.entry and (icon and "text" or "accentText") or "muted")
+  T.Color(cap.label, KV.CapColor(cap.entry))
 end
 
 -- A right-click on a key key setup changed asks, then puts back what it did before. The window is read again

@@ -113,14 +113,14 @@ local function endName(row, note)
   row.left:SetPoint("RIGHT", row.right, "LEFT", -T.SPACE.tight, 0)
 end
 
--- The name's color: the class color, gray when offline; the note red when dead.
+-- The name's color: the class color, muted gray when offline; the note red when dead.
 local function paintLine(row, line)
   local m = line[3]
   row.left:SetText(line[1])
   row.right:SetText(line[2])
   endName(row, line[2])
   local c = m and m.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[m.class]
-  if m and not m.online then T.Color(row.left, "disabled") elseif c then T.Color(row.left, c.r, c.g, c.b) else T.Color(row.left, m and "text2" or "text") end
+  if m and not m.online then T.Color(row.left, "muted") elseif c then T.Color(row.left, c.r, c.g, c.b) else T.Color(row.left, m and "text2" or "text") end
   T.Color(row.right, m and m.dead and "bad" or (m and "text2" or "muted"))
 end
 

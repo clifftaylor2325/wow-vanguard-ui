@@ -4221,6 +4221,72 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Every debuff icon on a plate shows its picture with a thin one-pixel edge; no icon shows a black or dark square around it, or a dark square in its place. If one flickers in, it is gone within half a second.
 - If it fails, paste: a screenshot, whether the square went away after half a second, your resolution and UI scale, and the output of `/vg errors`.
 
+### 33.321 Colours follow a live look and accent change (both)
+
+- Do: Show your target, put a debuff with a timer on it, start a cast with the cursor ring on, open a book page or a letter at a mailbox, and scroll the chat up so its scroll-to-bottom ring flashes. Then under General change the accent to Jade and the look to Classic, without a reload.
+- Expect: The target's level number keeps its difficulty colour, the aura timer numbers take the new text colour, the cursor ring's sweep turns jade, the book page or letter text takes the Classic text colour, and the chat ring flashes in the jade text colour. Nothing stays brass or in the old grey until a reload.
+- If it fails, paste: which piece kept its old colour, a screenshot, and the output of `/vg errors`.
+
+### 33.322 A disconnected main tank's bar goes dark (both)
+
+- Do: In a raid with a main tank or main assist set, watch the Main tank tiles while that player logs out or loses connection.
+- Expect: The tile's bar turns the dark bar colour, as an offline raid tile does, instead of keeping the class colour.
+- If it fails, paste: a screenshot of the tile beside the raid tile for the same player.
+
+### 33.323 Dead and Offline on the unit frames (both)
+
+- Do: Target a dead player (or die with the player frame showing), then target an offline party member's frame.
+- Expect: "Dead" or "Ghost" on the health text is the red the raid tiles use, "Offline" is the lighter grey, the same as on the raid tiles; after switching the frame layout they keep those colours.
+- If it fails, paste: a screenshot of the frame and the raid tile for the same unit.
+
+### 33.324 Damage meter rows stay readable (both)
+
+- Do: Fight a few mobs in a group with a priest, a rogue or a mage, open the damage meter and then a row's spell breakdown.
+- Expect: Every row's name and figure has a thin dark outline and reads clearly even on the white priest and yellow rogue bars; your own name is in the accent's text colour.
+- If it fails, paste: a screenshot of the meter and your class.
+
+### 33.325 Reputation bar and zone name under Safer colours (both)
+
+- Do: Turn on Safer colours under General, reload, watch a faction on the reputation bar, then fly or ride through a friendly, a hostile, a contested and a sanctuary zone (a capital or Shattrath-style city) watching the minimap's zone name.
+- Expect: The reputation bar and the zone name use the Safer colours set: friendly blue, hostile vermilion, neutral yellow, and a light violet for a sanctuary, never red against green.
+- If it fails, paste: a screenshot of the bar and the zone name, and the zone's name.
+
+### 33.326 Quest log checks (both)
+
+- Do: Open the quest log on a quest with one objective done and one not, then on a quest ready to turn in.
+- Expect: A done objective's text, count and check are muted grey, as in the tracker; a quest ready to turn in has a green check after its title.
+- If it fails, paste: a screenshot of the log and the tracker for the same quest.
+
+### 33.327 Quest-start pin tooltip title (Forever)
+
+- Do: Set the look to Vellum or Classic, open the world map on a zone with a gold quest-start "!" pin, and hover the pin.
+- Expect: The quest's name on the tooltip's first line is in the look's text colour, like the tracker's quest tooltips, not the game's white or yellow.
+- If it fails, paste: a screenshot of the pin tooltip beside a tracker quest tooltip.
+
+### 33.328 Chat edit box rail inside the rounded corners (both)
+
+- Do: Press Enter to open the chat edit box and look at the channel-coloured strip on its left edge, at the top and bottom.
+- Expect: The strip stops a few pixels short of the top and bottom, inside the rounded corners, with no square coloured corners poking out past the arcs.
+- If it fails, paste: a screenshot of the edit box's left end and your UI scale.
+
+### 33.329 Friends, conquest and Adventure Guide tooltips (Retail)
+
+- Do: With the game windows on, open the friends list and hover a friend; open the PvP tab and hover a conquest rating line; open the Adventure Guide and hover an item in a boss's loot list.
+- Expect: Each tooltip is the flat Vanguard tooltip panel, with no bronze game border.
+- If it fails, paste: a screenshot of each tooltip and the output of `/vg errors`.
+
+### 33.330 Transmog, housing and profession book tabs and rows (Retail)
+
+- Do: Open the transmog window and click Items, Sets and Custom Sets; open the housing dashboard and its House info, Catalog and Collection side tabs and the House info sub-tabs; open the profession book with a profession learned.
+- Expect: Every tab is Vanguard's flat tab, the selected one marked by the theme with no game glow; the profession book's spell names sit straight on the dark panel with no game name plate behind them, in light text.
+- If it fails, paste: a screenshot of each window and the output of `/vg errors`.
+
+### 33.331 Keystone window (Retail)
+
+- Do: With the group finder skin on, open the keystone slot window at the Mythic+ pedestal.
+- Expect: The dungeon name, level and instruction lines are in the Vanguard font, in light text at the game's sizes, fitting the window; with Window ornaments on, the panel has corner brackets.
+- If it fails, paste: a screenshot of the keystone window.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

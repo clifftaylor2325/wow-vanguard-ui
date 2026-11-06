@@ -1147,6 +1147,9 @@ it("quest log: an objective's count is found at either end or inside it (French 
     ["TEST-ONLY Wolf slain", "3/8", false, true, 3, 8], ["TEST-ONLY Explore the vale", "", false, false, 0, 1],
     ["2/2", "2/2", false, true, 2, 2], ["TEST-ONLY Pelt", "1/1", true, false, 1, 1],
     ["TEST-ONLY Sanglier TEST-ONLY tués", "3/8", false, true, 3, 8]]);
+  const tokens = addon.eval("local r = Vanguard_QuestLog.objectiveRows return { r[1].label.__textColor, r[1].count.__textColor, r[4].label.__textColor, r[4].count.__textColor }");
+  expect(isTok(addon, addon.eval("return Vanguard_QuestLog.objectiveRows[4].mark.__vertexColor"), "muted"), "the done row's check is muted, as the tracker's").toBe(true);
+  expect(["text", "text2", "muted", "muted"].map((name, i) => isTok(addon, tokens[i], name)), "an open row: text and text2; a done one: label and count muted, as the tracker's").toEqual([true, true, true, true]);
   expect(addon.eval("local f = Vanguard_QuestLog return { f.objectiveBox:GetHeight(), select(5, f.objectiveRows[2]:GetPoint(1)) }"), "rows are 28 px apart in a box as tall as they are").toEqual([140, -28]);
 });
 it("quest log: a long list and long quest text scroll, a short one does not", () => {
@@ -1269,14 +1272,14 @@ it("quest log: the chosen quest's line shows the rail and wash of W.Row, the oth
   expect(addon.eval("return ns.Theme.RowParts(Vanguard_QuestLog.lines[2]).hover:GetParent() == Vanguard_QuestLog.lines[2]"), "W.Row's hover wash is on the line").toBe(true);
   expect(addon.eval("return Vanguard_QuestLog.lines[1].text:GetText()"), "no numbers in the log").toBe("[8] TEST-ONLY Wolves");
 });
-it("quest log: a ready quest keeps the log's check, untinted, and a quest in progress has no mark", () => {
+it("quest log: a ready quest has the log's check in the good color, and a quest in progress has no mark", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("ns.GetModule('QuestLog').Open()");
   const icons = addon.eval(`local f, out = Vanguard_QuestLog, {}
     for i = 1, f.lines.used do local b = f.lines[i] out[i] = { b.icon:IsShown(), tostring(b.icon.__texture):match("[^\\\\]+$"), b.icon.__vertexColor } end
     return out`);
   expect(icons.map((i) => [i[0], i[1]]), "the letter (ready to turn in) has the check; the wolves and the far quest none").toEqual([[false, "nil"], [true, "Check"], [false, "nil"]]);
-  expect(isTok(addon, icons[1][2], "white"), "the check is untinted").toBe(true);
+  expect(isTok(addon, icons[1][2], "good"), "the check is in the good color, as the tracker's ready line").toBe(true);
 });
 // TEST-ONLY counters: how often the tracker and the quest log rebuild (__rebuilds.tracker, __rebuilds.log).
 const COUNT_REBUILDS = `__rebuilds = { tracker = 0, log = 0 }
@@ -1715,11 +1718,15 @@ it("quest history: a client that hides your name, or has no clock, does not fail
 });
 it("quest history: the quest log says which character did the quest, and the setting turns it all off", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED });
-  const muted = addon.eval("return ns.Theme.Hex('muted')");
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
-  expect([questLog(addon).objectives, questLog(addon).history], "another character's turn-in, muted, under the objectives").toEqual(["Objectives", `|c${muted}Done on Thrall-Forever · 3 days ago|r`]);
+  expect([questLog(addon).objectives, questLog(addon).history], "another character's turn-in, muted, under the objectives").toEqual(["Objectives", "Done on Thrall-Forever · 3 days ago"]);
+  // Whether the log's history line is in the muted token (a colour set on the font string, so a refresh repaints it).
+  const historyMuted = () => isTok(addon, addon.eval("return Vanguard_QuestLog.history.__textColor"), "muted");
+  expect(historyMuted(), "the line is a muted font string, not a baked color").toBe(true);
+  addon.slash("variant classic");
+  expect(historyMuted(), "and follows a look change").toBe(true);
   logLine(addon, 2);
-  expect([questLog(addon).objectives, questLog(addon).history], "this character's own, for a quest with no objectives: today, on this character").toEqual(["", `|c${muted}Done on this character · today|r`]);
+  expect([questLog(addon).objectives, questLog(addon).history], "this character's own, for a quest with no objectives: today, on this character").toEqual(["", "Done on this character · today"]);
   logLine(addon, 3);
   expect(questLog(addon).history.includes("Done on"), "a quest nobody finished has no line").toBe(false);
   const off = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED + ` VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });

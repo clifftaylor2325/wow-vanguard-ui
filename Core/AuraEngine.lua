@@ -86,11 +86,20 @@ local function formatter()
   return f
 end
 
--- The timer's color by time left: red under 4 s, orange under 11 s, else the text color.
+-- The timer colour's steps by time left: red under 4 s, orange under 11 s, else the text colour.
+E.TIMER_STEPS = { { 0, "bad" }, { 4, "warn" }, { 11, "text" } }
+
+-- Fills the timer's colour curve from the theme's colours (again after a theme change: bound timers keep the same curve).
+local function fillTimerCurve(c)
+  c:ClearPoints()
+  for _, p in ipairs(E.TIMER_STEPS) do c:AddPoint(p[1], CreateColor(T.RGB(p[2]))) end
+end
+
+-- The timer's color by time left, as a curve the client reads while it binds the text.
 local function timerColor()
   local c = C_CurveUtil.CreateColorCurve()
   c:SetType(Enum.LuaCurveType.Step)
-  for _, point in ipairs({ { 0, "bad" }, { 4, "warn" }, { 11, "text" } }) do c:AddPoint(point[1], CreateColor(T.RGB(point[2]))) end
+  fillTimerCurve(c)
   return { curve = c, property = Enum.DurationTextBindingProperty.RemainingDuration }
 end
 
@@ -268,3 +277,9 @@ end
 function Container:Refresh()
   self.frame:UpdateAllAuras()
 end
+
+-- A theme change refills the timer curve the bound timers hold.
+T.OnChanged(function()
+  local timer = cache.timerColor
+  if timer then fillTimerCurve(timer.curve) end
+end)

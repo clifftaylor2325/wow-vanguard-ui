@@ -332,6 +332,15 @@ it("keep stocked: Edit list... on Town and gear opens the window, empty at first
   off.eval("ns.GetModule('Errands').StockWindow.Open()");
   expect([chatHas(off, /Errands is off/), off.eval("return Vanguard_StockList == nil")], "Errands off: it says so and builds nothing").toEqual([true, true]);
 });
+it("keep stocked: the Item and Carry labels are section-heading column heads: muted capitals in the section size (H27-9-3)", () => {
+  const addon = loggedIn(STOCK_WINDOW_ENV);
+  addon.eval("ns.GetModule('Errands').StockWindow.Open()");
+  const heads = addon.eval(`local out = {} for _, r in ipairs({ Vanguard_StockList:GetRegions() }) do
+    local t = r.GetText and r:GetText() if t == "ITEM" or t == "CARRY" then out[#out + 1] = { t, r.__textColor, select(2, r:GetFont()) } end end
+    return out`);
+  expect(heads.map((h) => h[0]), "both labels, in capitals").toEqual(["ITEM", "CARRY"]);
+  expect(heads.map((h) => isTok(addon, h[1], "muted") && h[2] === addon.eval('return ns.Theme.RoleSize("section")')), "muted, section size").toEqual([true, true]);
+});
 it("keep stocked: an item dragged onto the slot is added with a stack, a row shows where to buy it, and Remove takes it off", () => {
   const addon = loggedIn(STOCK_WINDOW_ENV);
   addon.eval("ns.GetModule('Errands').StockWindow.Open()");
@@ -903,4 +912,35 @@ it("the AFK screen: a long zone line wraps clear of the faction crest and above 
   expect(where.left, "the zone line starts right of the crest").toBeGreaterThanOrEqual(crest.right);
   expect(where.bottom, "and its second line stays above the away row").toBeGreaterThanOrEqual(away.top);
   expect(addon.eval("return Vanguard_AfkScreen.where:GetMaxLines()"), "at most two lines").toBe(2);
+});
+
+it("H27-3-1: a main tank's target line keeps its reaction colour through a look change", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
+  addon.eval('__mt(1, "raid1") __wfgStub.advance(0.5)');
+  addon.slash("variant classic");
+  expect(isTok(addon, addon.eval("return Vanguard_MainTanksUnitButton1.target.__textColor"), "hostile"), "still the target's reaction colour").toBe(true);
+});
+
+it("H27-3-2: an offline main tank's bar goes dark, as on the unit frames and raid tiles", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + "UnitIsConnected = function(unit) return unit ~= 'raid1' end");
+  addon.eval('__mt(1, "raid1") __wfgStub.advance(0.5)');
+  expect(isTok(addon, addon.eval("return Vanguard_MainTanksUnitButton1.bar.__barColor"), "darkBar"), "the dark bar, not the class colour").toBe(true);
+});
+
+it("keep stocked: the add slot's accent edge follows the mouse: brighter on hover, darker held", () => {
+  const addon = loggedIn(STOCK_WINDOW_ENV);
+  addon.eval("ns.GetModule('Errands').StockWindow.Open()");
+  const SLOT = "Vanguard_StockList.slot";
+  // The slot's accent edge colours, as one string (the edge's textures sit on its BORDER layer).
+  const edges = () => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
+    if w.__parent == ${SLOT} and w.__kind == "Texture" and w.__layer == "BORDER" and w.__vertexColor then out[#out + 1] = table.concat(w.__vertexColor, ",") end end
+    return table.concat(out, ";")`);
+  const rest = edges();
+  addon.hover(SLOT);
+  const hover = edges();
+  addon.hover(null);
+  addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseDown')`);
+  const held = edges();
+  addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseUp')`);
+  expect([hover !== rest, held !== rest, held !== hover, edges()], "hover and pressed repaint the accent edge, and leaving brings it back").toEqual([true, true, true, rest]);
 });

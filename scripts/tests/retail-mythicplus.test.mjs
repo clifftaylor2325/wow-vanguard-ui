@@ -195,6 +195,23 @@ it("retail mythic+: the keystone window sits on a theme panel with its runes and
   expect(alphas(addon, "ChallengesFrame", ["Background"]), "the dungeon's painting stays").toEqual([1]);
 });
 
+it("retail mythic+: the keystone window has the corner brackets other windows have (H27-6-3)", () => {
+  const addon = challenges();
+  expect(addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do
+      if w.__kind == "Texture" and w.__parent and w.__parent:GetParent() == ChallengesKeystoneFrame and tostring(w.__texture):find("OrnamentCorner") then n = n + 1 end end
+    return n`), "four brackets").toBe(4);
+});
+
+it("retail mythic+: the keystone window's dungeon name and lines are theme text at the game's sizes (H27-6-3, choice A)", () => {
+  const addon = loggedIn("", { client: RETAIL_CLIENT });
+  addon.eval(`__wfgWorld.loadChallenges() for _, key in ipairs({ "DungeonName", "PowerLevel", "TimeLimit", "Instructions" }) do ChallengesKeystoneFrame[key] = ChallengesKeystoneFrame:CreateFontString(nil, "ARTWORK") end`);
+  addon.fire("ADDON_LOADED", "Blizzard_ChallengesUI");
+  expect(addon.eval(`local f, out = ChallengesKeystoneFrame, {}
+    for _, key in ipairs({ "DungeonName", "PowerLevel", "TimeLimit", "Instructions" }) do
+      local fs = f[key] out[#out + 1] = fs.__textColor[1] == ns.Theme.RGB("text") and select(2, fs:GetFont()) end
+    return out`), "light text at 30, 30, 16 and 18").toEqual([30, 30, 16, 18]);
+});
+
 it("retail mythic+: with the group finder switch off the Mythic+ windows stay the game's", () => {
   const addon = challenges("VanguardDB.profiles = { Default = { Windows = { finder = false } } }");
   expect(alphas(addon, "ChallengesKeystoneFrame", ["Divider"]), "untouched").toEqual([1]);

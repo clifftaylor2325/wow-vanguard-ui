@@ -107,6 +107,18 @@ local function create(r)
   O.RebuildPage("profiles")
 end
 
+-- Puts the caption back after a refused name.
+local function restoreCaption(r)
+  r.label:SetText(L["New profile"])
+  T.Color(r.label, "text2")
+end
+
+-- Restores the caption once the name changes or the page is left.
+local function watchCaption(r)
+  r.input:HookScript("OnTextChanged", ns.Guard("new profile name changed", function() restoreCaption(r) end))
+  r:HookScript("OnHide", ns.Guard("new profile row hidden", function() restoreCaption(r) end))
+end
+
 -- The new-profile row: a name box and Create (Enter creates too).
 local function newProfileRow(parent, _, width)
   local r = captioned(parent, width, L["New profile"], "text2")
@@ -115,6 +127,7 @@ local function newProfileRow(parent, _, width)
   r.input:SetScript("OnEnterPressed", ns.Guard("create profile from the box", function() create(r) end))
   r.create = W.Primary(r, L["Create"], function() create(r) end, SMALL)
   r.create:SetPoint("RIGHT", -T.SPACE.gap, 0)
+  watchCaption(r)
   return r
 end
 

@@ -620,3 +620,11 @@ it("Y1-1 raid frames: a roster change at an unchanged scale works out no pixel s
   addon.advance(0.1);
   expect(addon.eval("return __rescales"), "a real change (40 players: the compact size) still is").toBe(1);
 });
+
+it("H27-3-1: a class-coloured name in the Dark look keeps its colour through a look change", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { look = "dark" } } } }' });
+  addon.eval('__spawn(1, "raid1")');
+  const before = addon.eval("return Vanguard_RaidUnitButton1.name.__textColor");
+  addon.slash("variant classic");
+  expect(addon.eval("return Vanguard_RaidUnitButton1.name.__textColor"), "the class colour, not the look's text colour").toEqual(before);
+});

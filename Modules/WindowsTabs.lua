@@ -21,10 +21,12 @@ local GW = ns.GetModule("Windows")
 -- How many tabs a PanelTemplates window can have (they are named <window>Tab1 ... Tab8).
 GW.MAX_TABS = 8
 -- Where a window keeps a tab system (TabSystemTemplate, Blizzard_SharedXML/Shared/TabSystem), as a path of
--- parentKeys: the window's own, the spellbook's categories, the talents page, the friends window's header.
+-- parentKeys: the window's own, the spellbook's categories, the talents page, the friends window's header, the
+-- transmog window's Items / Sets / Custom Sets tabs and the housing dashboard's house info tabs.
 GW.TAB_SYSTEMS = {
   { "TabSystem" }, { "CategoryTabSystem" }, { "TabHeaders" }, { "FriendsTabHeader", "TabSystem" },
   { "SpellBookFrame", "CategoryTabSystem" }, { "TalentsFrame", "TabSystem" },
+  { "WardrobeCollection", "TabHeaders" }, { "HouseInfoContent", "ContentFrame", "TabSystem" },
 }
 -- The windows with side tabs, dressed by name whether or not another group registered them, on each client: the
 -- character pane, the guild window (Communities), the inspect window and, on WoW Forever, the Legacy window and the
@@ -36,13 +38,14 @@ GW.TAB_WINDOWS = ns.ClientData({
 -- Where those windows keep their side tabs, as parentKeys on the window (the Camelot character pane
 -- keeps its own in a ModeTabs frame, which has a Tabs array too). LargeSideTabButtonTemplate and
 -- RightSideTabTemplate (the guild window's) tabs; the professions window's (an overview tab and one for each
--- profession), the cooldown settings' three and the inspect window's guild tab.
+-- profession), the cooldown settings' three, the inspect window's guild tab and the housing dashboard's three.
 GW.SIDE_TABS = {
   "CharacterTab", "ReputationTab", "SkillsTab", "PvPTab", "CurrencyTab", "StatisticsTab",
   "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab", "GuildPreferredPlaySettingsTab",
   "LegacyTreeTab", "LegacyChallengeTab", "LegacyRewardTrackTab", "ListingTab", "BrowsingTab", "WhoListingTab",
   "ProfessionsOverviewTab", "Professions1Tab", "Professions2Tab", "Professions3Tab", "Professions4Tab",
   "Professions5Tab", "Professions6Tab", "Professions7Tab", "SpellsTab", "AurasTab", "GroupBuffsTab", "GuildTab",
+  "HouseInfoTabButton", "CatalogTabButton", "CollectionTabButton",
 }
 -- The frames a window keeps side tabs in besides itself, by parentKey: the character and inspect windows' ModeTabs and
 -- the collections window's TabContainer. Every tab in their Tabs array is a side tab; the container is also moved out

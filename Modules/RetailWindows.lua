@@ -129,7 +129,7 @@ end
 local function markOpenCard(key, index)
   for i, path in ipairs(GW.RETAIL_PARTS[key].card) do
     local card = GW.Part(_G, path)
-    if card then T.SetBorder(card, i == index and { T.Accent() } or nil) end
+    if card then T.SetBorder(card, i == index and "accent" or nil) end
   end
 end
 
@@ -212,6 +212,8 @@ GW.CONTENT_ART.LFGListInviteDialog = { "RoleIcon" }
 GW.Add("finder", { "PVEFrame", "LFGListApplicationDialog", "LFGListInviteDialog" }, GW.SkinRetailWindow)
 GW.AddOnDemand("finder", "Blizzard_PVPUI", { "PVPUIFrame" }, GW.SkinRetailPage)
 GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournal" }, GW.SkinRetailWindow)
+GW.AddOnDemand("finder", "Blizzard_PVPUI", { "ConquestTooltip" }, GW.SkinTooltipFrame)
+GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournalTooltip" }, GW.SkinTooltipFrame)
 
 -- The friends window's inside on Retail: its Who tab (the window itself is a framed window, Modules/Windows.lua).
 GW.INSIDES.FriendsFrame = function()

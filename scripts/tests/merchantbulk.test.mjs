@@ -1,7 +1,7 @@
 // merchantbulk: the sell list, sell-all and the Stack/Max buttons at a merchant (Modules/MerchantBulk.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, loggedIn, RETAIL, setCombat } from "./helpers.mjs";
+import { chatHas, isTok, loggedIn, RETAIL, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY bags: slot 1 holds 5 of item 159 (listed), 2 holds item 4540 (not listed), 3 a set item (listed),
 // 4 a locked listed stack, 5 a hidden item, 6 another stack of item 159, and 7 seven more listed items.
@@ -395,6 +395,14 @@ it("Stack, Max and the cost line sit on a panel under the quantity window, wide 
   expect(place, "the panel hangs from the window's bottom left; the buttons and the line are children of it, inside it").toEqual(Array(12).fill(true));
   addon.eval("__owner('ContainerFrame1Item1', 1) StackSplitFrame:Hide() StackSplitFrame:Show()");
   expect(addon.eval(`return ns.FrameState("vgSplitBulk")[StackSplitFrame].drawer:IsShown()`), "an item in your bags: the panel goes too").toBe(false);
+});
+
+it("the cost line is a status on the drawer's panel: small text2, not the outlined bar role (H27-9-1)", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  const [color, , size, flags] = addon.eval(`local l = ns.FrameState("vgSplitBulk")[StackSplitFrame].line local f, z, fl = l:GetFont() return { l.__textColor, f, z, fl }`);
+  expect([isTok(addon, color, "text2"), size, String(flags || "").includes("OUTLINE")], "status colour, small size, no outline").toEqual([true, addon.eval('return ns.Theme.RoleSize("small")'), false]);
 });
 
 it("the tenth item on a merchant page gets Stack and Max too", () => {

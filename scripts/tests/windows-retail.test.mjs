@@ -207,6 +207,18 @@ it("windows-retail: the open category card has an accent border, on the group fi
   expect([2, 3].map((i) => accent(`GroupFinderFrame.groupButton${i}`)), "then the one the player picks").toEqual([false, true]);
   addon.eval("PVPQueueFrame_SelectButton(2)");
   expect([1, 2, 3].map((i) => accent(`PVPQueueFrame.CategoryButton${i}`)), "the PvP tab's cards").toEqual([false, true, false]);
+  addon.eval("PVPQueueFrame_SelectButton(2)");
+  addon.slash("accent jade");
+  expect(borderOf(addon, "PVPQueueFrame.CategoryButton2").slice(0, 3), "the open card follows a new accent (H27-6-1)").toEqual(addon.eval("return { ns.Theme.Accent() }"));
+});
+
+it("windows-retail: the conquest and Adventure Guide tooltips get the tooltip panel when their addons load (H27-5-2)", () => {
+  const addon = retail(["PVEFrame"]);
+  // Lua that makes a bare tooltip frame with a NineSlice.
+  const tip = (name) => `local t = CreateFrame("Frame", "${name}", UIParent) t.NineSlice = CreateFrame("Frame", nil, t)`;
+  addon.eval(`${tip("ConquestTooltip")} ${tip("EncounterJournalTooltip")}
+    __wfgStub.fire("ADDON_LOADED", "Blizzard_PVPUI") __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterJournal")`);
+  expect(addon.eval("return { ConquestTooltip.NineSlice.__alpha, EncounterJournalTooltip.NineSlice.__alpha, #ns.errors }"), "their game art is faded").toEqual([0, 0, 0]);
 });
 
 it("windows-retail: the Adventure Guide's first tab is moved out past the panel again each time the game anchors it (H7-4-1)", () => {

@@ -246,6 +246,8 @@ it("chat edit box: under the panel in the chat role, a rail in the channel's col
   expect(alphaAfter(0), "Reduce motion: at once").toBe(0.35);
   addon.eval("ns.Theme.Settings().reduceMotion = false __wfgStub.setScreen(2560, 1440) ns.GetModule('Chat').Refresh()");
   expect(rail(1)[1], "after a scale change the rail is two pixels again").toBe(true);
+  expect(addon.eval(`local box = ChatFrame1EditBox local p = ns.FrameState("vgRail")[box].__points local gap = ns.Theme.CORNER_RADIUS * ns.Theme.Pixel(box)
+    return { p.TOPLEFT.y == -gap, p.BOTTOMLEFT.y == gap, p.TOPLEFT.x }`), "the rail stops a corner radius short of each end, inside the rounded box").toEqual([true, true, 0]);
   // The main edit box's anchors: what its top-left hangs from and where, and whether it has a top-right.
   const boxPoints = () => addon.eval(`local p = ChatFrame1EditBox.__points return { p.TOPLEFT and p.TOPLEFT.rel == ${F}.outline, p.TOPLEFT and p.TOPLEFT.relPoint, p.TOPLEFT and p.TOPLEFT.y, p.TOPRIGHT ~= nil }`);
   addon.eval("ChatFrame1EditBox:ClearAllPoints() ChatFrame1EditBox:SetPoint('TOPLEFT', ChatFrame1, 'BOTTOMLEFT', 0, -10)");
@@ -465,6 +467,8 @@ it("chat scroll-to-bottom tile: a one-pixel accentText ring round it while the g
   expect(ring()[0], "finished: hidden").toBe(false);
   addon.eval("ns.GetModule('Chat').SkinAll()");
   expect(addon.eval("return #ChatFrame1.ScrollToBottomButton.Flash.FlashAnim.scripts"), "skinned again, the hooks are not piled on").toBe(0);
+  addon.slash("accent jade");
+  expect(isTok(addon, ring()[3], "accentText"), "after an accent change the ring is the new accentText").toBe(true);
   const playing = loggedIn(UI_ENV + CHAT_BUTTONS_ENV + CHAT_FLASH_ENV + "ChatFrame1.ScrollToBottomButton.Flash.FlashAnim.playing = true");
   expect(playing.eval("return ns.FrameState('vgRing')[ChatFrame1.ScrollToBottomButton]:IsShown()"), "a flash already playing when the tile is skinned shows the ring at once").toBe(true);
   const plain = loggedIn(UI_ENV + CHAT_BUTTONS_ENV);
@@ -1616,6 +1620,15 @@ it("more game windows: friends, books and letters, and windows that load later",
   addon.eval('ItemTextFrame.__scripts.OnEvent(ItemTextFrame, "ITEM_TEXT_READY")');
   expect(addon.eval("return ItemTextMaterialTopLeft.__alpha"), "a page without colors to set is left alone").toBe(0);
 });
+it("a book's page follows a look change while it is open, and is left alone when it is closed (H27-5-4)", () => {
+  const addon = loggedIn(ALERTS_ENV);
+  addon.eval('ItemTextFrame:Show() ItemTextFrame.__scripts.OnEvent(ItemTextFrame, "ITEM_TEXT_READY")');
+  addon.slash("variant classic");
+  expect(addon.eval("return ItemTextPageText.__colors.P[1] == ns.Theme.RGB('text')"), "the page takes the new text colour").toBe(true);
+  addon.eval("ItemTextFrame:Hide() ItemTextPageText.__colors = {}");
+  addon.slash("variant default");
+  expect(addon.eval("return next(ItemTextPageText.__colors) == nil"), "a closed book is not painted").toBe(true);
+});
 it("a Sort button on the combined bag, where the client can sort", () => {
   const addon = loggedIn(UI_ENV + "C_Container = { SortBags = function() __sorted = true end }");
   expect(addon.eval('local b = ns.GetModule("Bags").sort b:GetScript("OnClick")(b) return __sorted'), "Sort sorts your bags").toBe(true);
@@ -2565,4 +2578,17 @@ it("chat window size: the first size is each character's own: a character that p
   const addon = loggedIn(UI_ENV + TIDY_ENV + "ChatFrame1:SetSize(600, 300)", { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } }" });
   expect([size(addon), addon.eval("return VanguardCharDB.chatSize.sized")], "the profile's old flags are taken as this character's").toEqual([[600, 300], true]);
   expect(addon.eval("return ns.WithoutClientState({ Chat = { sized = true, widened = true, textSize = 14 } }).Chat"), "a string carries no window flags").toEqual({ textSize: 14 });
+});
+
+it("H27-4-5: the minimap drawer toggle's icon is text at rest and accent under the mouse, and T.Button's hover is kept", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV);
+  // The toggle icon's colour.
+  const icon = () => addon.eval("return Vanguard_MinimapDrawerToggle.icon.__vertexColor");
+  expect(isTok(addon, icon(), "text"), "the text colour at rest").toBe(true);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnEnter(t)");
+  expect(isTok(addon, icon(), "accent"), "accent under the mouse").toBe(true);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.__scripts.OnLeave(t)");
+  expect(isTok(addon, icon(), "text"), "text again after").toBe(true);
+  addon.eval("local t = Vanguard_MinimapDrawerToggle t.IsMouseOver = function() return true end t.__scripts.OnEnter(t) __wfgStub.advance(1)");
+  expect(addon.eval("return ns.Theme.HoverParts(Vanguard_MinimapDrawerToggle)[2]:GetAlpha() > 0"), "T.Button's hover line still comes up with the icon's paint").toBe(true);
 });

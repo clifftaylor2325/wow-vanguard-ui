@@ -76,7 +76,7 @@ end
 local function makeObjective(parent)
   local row = CreateFrame("Frame", nil, parent)
   row:SetSize(DETAIL_W, QP.LINE_H)
-  row.mark = T.Tint(QP.Square(row:CreateTexture(nil, "ARTWORK"), OBJECTIVE_MARK), "good")
+  row.mark = T.Tint(QP.Square(row:CreateTexture(nil, "ARTWORK"), OBJECTIVE_MARK), "muted")
   row.mark:SetTexture(T.Icon("Check"))
   row.mark:SetPoint("LEFT", row, "LEFT", 0, 0)
   row.count = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text2")
@@ -86,7 +86,7 @@ end
 
 -- The objectives under their header: a box the rows stack in, and the quest history line under it.
 local function addObjectives(f)
-  f.objectives, f.history = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "text2")
+  f.objectives, f.history = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "muted")
   f.needs = detailText(f.detail, "label", "text2")
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -TEXT_GAP)
   f.objectiveBox = CreateFrame("Frame", nil, f.detail)
@@ -208,9 +208,9 @@ function QL.Fold(zone, folded)
   QL.Refresh()
 end
 
--- A quest's line: its title in the level's color (a check when ready to turn in); a click shows it.
+-- A quest's line: its title in the level's color (a check in the good color when ready to turn in); a click shows it.
 local function questSpec(e)
-  return { id = e.id, text = QP.Titled(e.level, e.title, e.id), icon = e.ready and T.Icon("Check") or nil, color = { QP.LevelColor(e.level) }, select = function() pickQuest(e.id) end }
+  return { id = e.id, text = QP.Titled(e.level, e.title, e.id), icon = e.ready and T.Icon("Check") or nil, tint = "good", color = { QP.LevelColor(e.level) }, select = function() pickQuest(e.id) end }
 end
 
 -- A zone header at y (ZONE_GAP lower unless it is the first): its name in capitals, its chevron folded or open;
@@ -297,7 +297,8 @@ local function paintObjective(row, o)
   local label, count = QP.SplitCount(o.text)
   row.label:SetText(label)
   row.count:SetText(count or "")
-  T.Color(row.label, o.done and "text2" or "text")
+  T.Color(row.label, o.done and "muted" or "text")
+  T.Color(row.count, o.done and "muted" or "text2")
   row.mark:SetShown(o.done == true)
   paintProgress(row, count, o.done)
   row:Show()

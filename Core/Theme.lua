@@ -144,10 +144,14 @@ end
 -- Color assist, shown as Safer colours (#235): with it on, the reaction colors move off the red-green
 -- axis, to a friendly blue, a neutral yellow and a hostile vermilion, and the four dispel types keep
 -- apart under protanopia, deuteranopia and tritanopia (dE 18 or more; the usual set has 6 for Magic and
--- Curse under deuteranopia). Token name -> { r, g, b, a }.
+-- Curse under deuteranopia). The reputation bar's hostile, neutral and friendly standings and the minimap
+-- zone name's friendly and hostile follow the reactions; a sanctuary zone gets a light violet that stays
+-- apart from the friendly blue. Token name -> { r, g, b, a }.
 T.ASSIST = {
   friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a"),
   magic = fromHex("2f7fe0"), curse = fromHex("d86ac0"), disease = fromHex("e8b030"), poison = fromHex("7ad0b0"),
+  repHostile = fromHex("e0663a"), repUnfriendly = fromHex("f5a623"), repNeutral = fromHex("e8d25a"), repFriendly = fromHex("4a9be8"),
+  zoneHostile = fromHex("e0663a"), zoneFriendly = fromHex("4a9be8"), zoneSanctuary = fromHex("dcc8ff"),
 }
 
 -- The glyph (under Media/Icons) that goes with a state color where it stands alone (#235).
@@ -963,10 +967,11 @@ end
 
 -- Painting -------------------------------------------------------------------------
 
--- The border color for a painted entry: a color set with T.SetBorder, the
--- accent when asked for, else the theme border.
+-- The border color for a painted entry: a color set with T.SetBorder (a token name read now, so it follows a
+-- refresh, or a fixed { r, g, b }), the accent when asked for, else the theme border.
 local function borderColor(entry)
   local own = entry.opts.border
+  if type(own) == "string" then return T.RGB(own) end
   if own then return own[1], own[2], own[3], 1 end
   if entry.opts.accent then return T.Accent() end
   if entry.focused then return T.RGB("accentText") end
@@ -1379,7 +1384,7 @@ function T.SetRound(frame, on)
   repaint(frame, entry)
 end
 
--- Sets a painted frame's border to { r, g, b }, or back to the theme's with nil.
+-- Sets a painted frame's border to a token name (followed live) or { r, g, b }, or back to the theme's with nil.
 function T.SetBorder(frame, rgb)
   local entry = painted[frame]
   if not entry then return end
@@ -1715,7 +1720,7 @@ T.SLOT_WELL = { fill = "void", border = "darkBar" }
 local function slotOpts(opts)
   local well = opts ~= nil and opts.well == true
   return {
-    raised = not well, fill = well and T.SLOT_WELL.fill or nil, border = well and { T.RGB(T.SLOT_WELL.border) } or nil, well = well,
+    raised = not well, fill = well and T.SLOT_WELL.fill or nil, border = well and T.SLOT_WELL.border or nil, well = well,
     noSheen = true, noBevel = true, shadow = T.SLOT_SHADOW, quiet = opts ~= nil and opts.quiet == true,
     noSurface = opts ~= nil and opts.noSurface == true,
   }
@@ -1747,6 +1752,14 @@ function T.SlotState(frame, state)
   repaint(frame, entry)
 end
 
+-- A clickable slot's accent edge follows the mouse: brighter while it is over the slot, darker while it is held.
+function T.SlotStates(slot)
+  slot:HookScript("OnEnter", ns.Guard("hook OnEnter", function(self) T.SlotState(self, "hover") end))
+  slot:HookScript("OnLeave", ns.Guard("hook OnLeave", function(self) T.SlotState(self, nil) end))
+  slot:HookScript("OnMouseDown", ns.Guard("hook OnMouseDown", function(self) T.SlotState(self, "pressed") end))
+  slot:HookScript("OnMouseUp", ns.Guard("hook OnMouseUp", function(self) T.SlotState(self, self:IsMouseOver() and "hover" or nil) end))
+end
+
 -- Window controls (close, maximize, minimize), the same in every window (units): how big the
 -- square tile behind the glyph is while the mouse is over it, and the glyph (drawn on a 20-unit
 -- grid, one pixel each, its mark in the middle 9); a control with no size yet takes the tile's.
@@ -1768,8 +1781,9 @@ T.SEARCH_INSET = T.SPACE.gap * 2 + T.SEARCH_ICON
 -- Panel opacity by tier: opaque for the options window, the quest log and a skinned game window; dialog
 -- for a dialog, setup, What's new and anything with an edit box; overlay for tooltips and cards (the panel
 -- token's own alpha); alert for an alert; calm for the Calm HUD's dimmed parts out of combat; dispelWash for
--- the raid tile's wash over a debuff you can dispel.
-T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35, dispelWash = 0.35 }
+-- the raid tile's wash over a debuff you can dispel; found for the accent wash on the options row a search, a
+-- What's new link or the keyboard marks.
+T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35, dispelWash = 0.35, found = 0.18 }
 -- A list row (W.Row, T.Row): how tall (units).
 T.ROW = { height = 28 }
 -- The chat background (Modules/Chat.lua, the panel's fill): the strengths the Chat background
@@ -2022,7 +2036,7 @@ local function paintCheck(button, c)
   paintBoxMark(c, on, off, T.CHECK.markColor)
   c.fill:SetShown(on and T.CHECK.fill ~= nil)
   T.Tint(c.fill, off and "disabled" or T.CHECK.fill or "inset")
-  T.SetBorder(c.box, c.hover and not off and { T.RGB(T.CHECK.hover) } or nil)
+  T.SetBorder(c.box, c.hover and not off and T.CHECK.hover or nil)
   T.DisabledLook(button, off)
 end
 
@@ -2404,7 +2418,7 @@ end
 T.TAB_ART = {
   "Left", "Middle", "Right", "LeftActive", "MiddleActive", "RightActive", "LeftHighlight", "MiddleHighlight",
   "RightHighlight", "Background", "SelectedTexture", "HighlightTexture", "TabGlow",
-  "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow",
+  "SquareBackground", "SquareBackgroundActive", "SquareBackgroundActiveGlow", "SelectedHighlight",
 }
 
 -- Remembers a tab's checked (selected) state, for the tab look. Chat and the window tabs set it through here.
@@ -2808,7 +2822,7 @@ function T.SetFont(fs, size)
   local _, current = fs:GetFont()
   fs:SetFont(path, size or current or 12, outline)
   fs:SetShadowOffset(1, -1)
-  fs:SetShadowColor(0, 0, 0, 1)
+  fs:SetShadowColor(T.RGB("textShadow"))
   return fs
 end
 
@@ -2835,8 +2849,9 @@ T.ROLES = {
 
 -- The game's own sizes for text Vanguard re-fonts but leaves at the game's size (Modules/GameAlerts.lua): a raid
 -- warning line (GameFontNormalHuge), the screenshot status line (GameFontNormalLarge) and the frame rate readout
--- (SystemFont_Shadow_Med1), before the Text size setting.
-T.GAME_TEXT = { warning = 20, status = 16, small = 12 }
+-- (SystemFont_Shadow_Med1), and the keystone window's dungeon name (QuestFont_Enormous) and its lines
+-- (GameFontHighlightLarge, GameFontHighlightLarge2), before the Text size setting.
+T.GAME_TEXT = { warning = 20, status = 16, small = 12, keystone = 30, keystoneLine = 16, keystoneNote = 18 }
 
 -- Every font string styled with a role: string -> role name. Weak, so text
 -- that gets collected doesn't stay; T.RefreshText re-fonts them all.
@@ -3016,7 +3031,7 @@ end
 
 -- Calls fn() after every theme change (for custom elements colored by hand).
 function T.OnChanged(fn)
-  listeners[#listeners + 1] = fn
+  listeners[#listeners + 1] = ns.Guard("theme change", fn)
 end
 
 -- Repaints the crests, the ornaments and the game frame primitives (check boxes, radios, arrows,

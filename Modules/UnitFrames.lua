@@ -403,14 +403,21 @@ function UF.PaintHealth(f)
   f.health:SetStatusBarColor(UF.HealthColor(f.unit))
 end
 
+-- The status colour for a down word: bad for Dead or Ghost, text2 for Offline (as on the raid tiles).
+function UF.DownToken(down)
+  return (down == L["Dead"] or down == L["Ghost"]) and "bad" or "text2"
+end
+
 -- Health bar value, color and text. Raw values go straight to the bar; the
--- text may be secret, so it goes to the font string untested.
+-- text may be secret, so it goes to the font string untested. A down word keeps its status colour.
 function UF.UpdateHealth(f)
-  local unit = f.unit
+  local unit, down = f.unit, UF.DownState(f.unit)
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
   UF.PaintHealth(f)
   if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit)) else f.healthText:SetText("") end
+  local token = down and UF.DownToken(down) or "text"
+  if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
 end
 
 -- Power bar value and color.
@@ -438,7 +445,7 @@ end
 function UF.PaintLevel(fs, unit)
   fs:SetText(UF.LevelText(unit))
   local r, g, b = UF.LevelColor(unit)
-  if r then fs:SetTextColor(r, g, b) else T.Color(fs, "text2") end
+  if r then T.ColorRGB(fs, r, g, b) else T.Color(fs, "text2") end
 end
 
 -- The level, colored by how hard the unit is for you.
@@ -480,7 +487,7 @@ function UF.PaintCombat(f, fighting)
   local on = fighting == true and UF.settings.combatMark == true
   if f.vgFighting == on then return end
   f.vgFighting = on
-  T.SetBorder(f, on and { T.RGB(UF.COMBAT.color) } or nil)
+  T.SetBorder(f, on and UF.COMBAT.color or nil)
   if f.combat then f.combat:SetShown(on) end
 end
 
@@ -789,7 +796,7 @@ end
 -- Gives a deck frame's name and health text the deck's larger role while it is on, their own otherwise.
 function UF.DeckText(f, on)
   T.Text(f.name, on and UF.DECK.text or "name")
-  T.Text(f.healthText, on and UF.DECK.text or "number")
+  T.Text(f.healthText, on and UF.DECK.text or "number", T.ColorToken(f.healthText))
 end
 
 -- How tall the target frame stands: its targetHeight setting (setup's role layouts raise it, a taller

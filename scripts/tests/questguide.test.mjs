@@ -64,7 +64,7 @@ const tracker = (addon) => addon.eval(`local f, out = Vanguard_QuestTrackerFrame
   return out`);
 
 // The New mark as the addon paints it.
-const mark = (addon) => addon.eval('return "  " .. ns.Theme.Paint("New", "accent")');
+const mark = (addon) => addon.eval('return "  " .. ns.Theme.Paint("New", "accentText")');
 
 // The pins drawn: [questID, x offset, y offset] each.
 const pins = (addon) => addon.eval(`local QG, out = ns.QuestGuide, {}
@@ -109,6 +109,17 @@ it("quest guidance: a quest tag named for new quests works too; hidden values ma
   expect(bare.eval("return ns.QuestGuide.Flag()"), "a client without those enums").toBe(false);
 });
 
+it("quest guidance: the New mark is in the accent text colour and follows an accent change in the tracker and the open log", () => {
+  const addon = loggedIn(QUESTS_ENV + FLAG_ENV);
+  addon.update(0);
+  expect(tracker(addon)[0][0].includes(addon.eval("return ns.Theme.Hex('accentText')")), "accentText, not the bar accent").toBe(true);
+  addon.slash("quests");
+  addon.slash("accent jade");
+  addon.update(0);
+  const hex = addon.eval("return ns.Theme.Hex('accentText')");
+  expect([tracker(addon)[0][0].includes(hex), addon.eval("return Vanguard_QuestLog.lines[1].text:GetText()").includes(hex)], "tracker and log repainted").toEqual([true, true]);
+});
+
 it("quest guidance: Shift-click a tracked quest and the game's quest arrow follows it, with its next step in the tracker", () => {
   const addon = loggedIn(QUESTS_ENV + ARROW_ENV + "C_QuestLog.GetNextWaypointText = function(id) return id == 90052 and 'TEST-ONLY Take the boat' or nil end");
   addon.keys({ shift: true });
@@ -117,7 +128,7 @@ it("quest guidance: Shift-click a tracked quest and the game's quest arrow follo
   expect([addon.eval("return __super"), chatHas(addon, /Arrow: TEST-ONLY Letter\./)], "the game's arrow on the quest, and chat says so").toEqual([[90052], true]);
   const t = tracker(addon);
   expect(t[1], "the next step first under the followed quest").toEqual(["[12] TEST-ONLY Letter", ["> TEST-ONLY Take the boat"]]);
-  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[2].lines[1].text.__textColor"), "accent"), "in the accent").toBe(true);
+  expect(isTok(addon, addon.eval("return Vanguard_QuestTrackerFrame.blocks[2].lines[1].text.__textColor"), "accentText"), "in the accent text color").toBe(true);
   expect(t[0][1], "the other quest has no step line").toEqual(["TEST-ONLY Wolves slain 3/8"]);
   addon.eval("ns.QuestArrow.Pick()");
   addon.update(0);
@@ -304,6 +315,7 @@ it("quest guidance: a quest-start pin's tooltip gives the quest's level in its d
     local out = {} for j, l in ipairs(GameTooltip.__lines) do out[j] = { l.text, l.r } end return out`);
   const lines = tip(1);
   expect(lines.slice(0, 3).map((l) => l[0]), "the name, the level, Repeatable").toEqual(["TEST-ONLY Bandits", "Level 24", expect.stringContaining("Repeatable")]);
+  expect(lines[0][1], "the title in the look's text colour").toBe(addon.eval("return (ns.Theme.RGB('text'))"));
   expect(lines[1][1], "the level in the client's difficulty colour").toBe(1);
   expect(tip(2).length, "hidden answers add no line").toBe(2);
 });

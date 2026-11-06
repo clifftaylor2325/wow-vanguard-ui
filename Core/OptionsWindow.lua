@@ -1267,7 +1267,7 @@ function O.MarkRow(w)
   if window.found then window.found:Hide() end
   w.found = w.found or (w.CreateTexture and W.Flat(w, "BACKGROUND", "accent") or W.Flat(w.card, "BORDER", "accent"))
   w.found:SetAllPoints(w)
-  w.found:SetAlpha(0.18)
+  w.found:SetAlpha(T.ALPHA.found)
   w.found:Show()
   window.found = w.found
 end

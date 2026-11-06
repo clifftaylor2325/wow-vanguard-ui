@@ -49,8 +49,19 @@ it("each line is a class-colored bar scaled to the top line, with a name and a s
   const warrior = addon.eval("return Vanguard_Meter.rows[1].__barColor");
   expect(warrior.slice(0, 3).map((c) => Math.round(c * 100)), "a known class in its color").toEqual([78, 61, 43]);
   expect(isTok(addon, addon.eval("return Vanguard_Meter.rows[2].__barColor"), "accent"), "the accent for an unknown class").toBe(true);
-  expect(isTok(addon, addon.eval("return Vanguard_Meter.rows[1].name.__textColor"), "accent"), "your name in the accent").toBe(true);
+  expect(isTok(addon, addon.eval("return Vanguard_Meter.rows[1].name.__textColor"), "accentText"), "your name in the accent text color").toBe(true);
   expect(isTok(addon, addon.eval("return Vanguard_Meter.rows[2].name.__textColor"), "text"), "another's in the text color").toBe(true);
+});
+
+it("the name and figure on a meter row and a spell row are the outlined small bar text, not plain text on the bar", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  // A font string's size and flags.
+  const font = (path) => addon.eval(`local f = ${path}.__font return { f[2], f[3] }`);
+  const want = [addon.eval('return ns.Theme.RoleSize("barSmall")'), "OUTLINE"];
+  expect(font("Vanguard_Meter.rows[1].name"), "name").toEqual(want);
+  expect(font("Vanguard_Meter.rows[1].value"), "figure").toEqual(want);
+  addon.eval("ns.GetModule('Meter').OpenDetail({ name = 'Tess' })");
+  expect(font("Vanguard_MeterDetail.rows[1].name"), "a spell row's name").toEqual(want);
 });
 
 it("the figures follow the fight, in combat too, and a fight with no damage still has a one-unit scale", () => {

@@ -294,7 +294,7 @@ end
 local function paintAs(cap, icon, grey, color, alpha)
   KV.SetCapIcon(cap, icon)
   cap.icon:SetDesaturated(grey)
-  T.Color(cap.label, cap.chord == state.lit and "accent" or color)
+  T.Color(cap.label, cap.chord == state.lit and "accentText" or color)
   cap:SetAlpha(alpha)
 end
 
@@ -306,9 +306,9 @@ local function paintPreview(cap)
   local row = i and state.rows[i]
   if row and KA.WRITES[row.kind] then return paintAs(cap, rowIcon(row), false, "accentText", 1) end
   local later = not i and indexFor(state.laterEntries, cap.chord)
-  if later then return paintAs(cap, spellIcon(state.laterEntries[later].spell), true, "disabled", FADED) end
+  if later then return paintAs(cap, spellIcon(state.laterEntries[later].spell), true, "muted", FADED) end
   local now = KV.Lookup(cap.chord)
-  paintAs(cap, now and now.icon, false, now and "text" or "disabled", FADED)
+  paintAs(cap, now and now.icon, false, KV.CapColor(now), FADED)
 end
 
 -- The tooltip over a key on the preview: what it does now, and what key setup will make it do.

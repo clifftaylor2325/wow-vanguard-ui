@@ -48,6 +48,25 @@ it("retail housing: the dashboard and the house finder are game windows in the V
   expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
 });
 
+it("retail housing: the house info tabs and the dashboard's three side tabs are theme tabs (H27-6-2, H27-6-R1)", () => {
+  const addon = loggedIn(WINDOWS_ENV + HOUSING_LUA, { client: RETAIL_CLIENT });
+  addon.eval(`__wfgWorld.loadHousing("Blizzard_HousingDashboard")
+    local f = HousingDashboardFrame
+    local function tab(parent) local b = CreateFrame("Button", nil, parent) b.Left = b:CreateTexture() b.Icon = b:CreateTexture() return b end
+    f.TabButtons = {}
+    for _, key in ipairs({ "HouseInfoTabButton", "CatalogTabButton", "CollectionTabButton" }) do f[key] = tab(f) f.TabButtons[#f.TabButtons + 1] = f[key] end
+    f.HouseInfoContent.ContentFrame = CreateFrame("Frame", nil, f.HouseInfoContent)
+    local s = CreateFrame("Frame", nil, f.HouseInfoContent.ContentFrame) f.HouseInfoContent.ContentFrame.TabSystem = s
+    s.tabs = {}
+    function s:GetTabButton(id) return self.tabs[id] end
+    function s:AddTab() self.tabs[#self.tabs + 1] = tab(self) end`);
+  addon.fire("ADDON_LOADED", "Blizzard_HousingDashboard");
+  addon.eval("HousingDashboardFrame:Show() HousingDashboardFrame.HouseInfoContent.ContentFrame.TabSystem:AddTab()");
+  expect(addon.eval(`local f = HousingDashboardFrame
+    return { f.HouseInfoTabButton.Left.__alpha, f.CatalogTabButton.Left.__alpha, f.CollectionTabButton.Left.__alpha,
+      f.HouseInfoContent.ContentFrame.TabSystem.tabs[1].Left.__alpha, #ns.errors }`), "the side tabs and a house info tab (added after the window was dressed) lose the game's art").toEqual([0, 0, 0, 0, 0]);
+});
+
 it("retail housing: the decor catalog, the collection and the plot tooltips are dressed", () => {
   const addon = housing();
   addon.eval("HousingDashboardFrame:Show() HouseFinderFrame:Show()");

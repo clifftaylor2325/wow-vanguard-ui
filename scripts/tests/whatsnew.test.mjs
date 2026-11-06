@@ -60,7 +60,7 @@ it("what's new: the title is centred at the window offset with the X, the hint s
   expect(alpha, "T.ALPHA.dialog").toBe(addon.eval("return ns.Theme.ALPHA.dialog"));
 });
 
-it("what's new: a group's name is a section header (small muted capitals, 18 tall, the list's width) and a line with a setting is a list row (hover wash, accent text); a plain line is text", () => {
+it("what's new: a group's name is a section header (small muted capitals, 18 tall, the list's width) and a line with a setting is a list row (hover wash, accentText text); a plain line is text", () => {
   const addon = loggedIn(ENV);
   const [width, small] = addon.eval("return { Vanguard_WhatsNew.view.child:GetWidth(), ns.Theme.RoleSize('small') }");
   const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "TEST-ONLY RAID" then
@@ -68,7 +68,7 @@ it("what's new: a group's name is a section header (small muted capitals, 18 tal
   expect([head.slice(0, 5), isTok(addon, head[5], "muted")], "a Button 18 tall as wide as the list, at its left edge, in small muted capitals").toEqual([["Button", 18, width, 0, small], true]);
   const lines = addon.eval("local out = {} for i, l in ipairs(Vanguard_WhatsNew.lines) do out[i] = { l.__kind, l.SetSelected ~= nil, l.wash ~= nil, l.text.__textColor, l:GetWidth() } end return out");
   expect(lines.map((l) => l.slice(0, 3)), "the two lines with settings are rows with the selected look; the plain line is a Frame without it").toEqual([["Button", true, true], ["Button", true, true], ["Frame", false, false]]);
-  expect([isTok(addon, lines[0][3], "accent"), isTok(addon, lines[2][3], "text"), lines[0][4]], "a link line's words are in the accent, a plain one's in the text colour, and rows span the list").toEqual([true, true, width]);
+  expect([isTok(addon, lines[0][3], "accentText"), isTok(addon, lines[2][3], "text"), lines[0][4]], "a link line's words are in accentText, a plain one's in the text colour, and rows span the list").toEqual([true, true, width]);
 });
 
 it("what's new: a version without notes of its own shows nothing at login; /vg whatsnew shows the newest older notes", () => {
@@ -197,4 +197,14 @@ it("what's new: a Font change re-lays the lines out, and an unchanged window kee
   expect(addon.eval("return Vanguard_WhatsNew.lines == Vanguard_WhatsNew.first"), "nothing changed: the same list").toBe(true);
   addon.eval("Vanguard_WhatsNew:Hide() ns.Theme.Settings().font = 'client' ns.Theme.Refresh() ns.WhatsNew.Open()");
   expect(addon.eval("return Vanguard_WhatsNew.lines ~= Vanguard_WhatsNew.first"), "a new font: the lines are measured again").toBe(true);
+});
+
+it("what's new: a look change keeps the off-by-default tag in the current warn, live and after a reopen", () => {
+  const addon = loggedIn(ENV);
+  addon.slash("variant contrast");
+  const hex = addon.eval("return ns.Theme.Hex('warn')");
+  expect(addon.find("TEST%-ONLY a new switch").text, "live").toContain(`|c${hex}(off by default)|r`);
+  addon.click("Vanguard_WhatsNew.close");
+  addon.slash("whatsnew");
+  expect(addon.find("TEST%-ONLY a new switch").text, "after a reopen").toContain(`|c${hex}(off by default)|r`);
 });

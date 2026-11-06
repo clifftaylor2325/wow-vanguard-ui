@@ -243,3 +243,11 @@ it("the soft-target hook skips plates Vanguard leaves alone, and Retail's plates
   softUpdate(retail, "32, false, true, false");
   expect([softIcon(retail, "nameplate2")[0], retail.eval("return __cursorArgs.n")], "Retail: the icon, with no gamepad preference").toEqual([true, 0]);
 });
+
+it("H27-3-1: a plate's level keeps its difficulty colour through a look and text-size change", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + LEVELS_ENV);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.slash("variant classic");
+  addon.eval("ns.Theme.Settings().textScale = 1.1 ns.Theme.Refresh()");
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1].level.__textColor"), "the boar's level stays yellow").toEqual([1, 0.82, 0, 1]);
+});

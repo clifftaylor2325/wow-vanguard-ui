@@ -161,11 +161,16 @@ function MB.ToggleTip(t)
   GameTooltip:Show()
 end
 
--- The toggle's click and tooltip.
+-- Paints the drawer toggle's icon: the accent while the mouse is over it, else the text colour (as the minimap's slot buttons).
+local function paintToggle(t, over)
+  T.Tint(t.icon, over and "accent" or "text")
+end
+
+-- The toggle's click; its tooltip and icon hover are hooked, so T.Button's hover fill stays.
 local function wireToggle(t)
   t:SetScript("OnClick", ns.Guard("click minimap button drawer", MB.Toggle))
-  t:SetScript("OnEnter", ns.Guard("minimap drawer tip", MB.ToggleTip))
-  t:SetScript("OnLeave", ns.Guard("minimap drawer tip", function() GameTooltip:Hide() end))
+  t:HookScript("OnEnter", ns.Guard("minimap drawer tip", function(self) paintToggle(self, true) MB.ToggleTip(self) end))
+  t:HookScript("OnLeave", ns.Guard("minimap drawer tip", function(self) paintToggle(self, false) GameTooltip:Hide() end))
 end
 
 -- The "..." toggle on the map's left edge (hidden until a button is gathered).
@@ -174,7 +179,7 @@ local function buildToggle(map)
   t:SetSize(16, 16)
   t:SetPoint("LEFT", map, "LEFT", 2, 0)
   t:SetFrameLevel((map:GetFrameLevel() or 1) + 5)
-  t.icon = T.Tint(t:CreateTexture(nil, "OVERLAY"), "text2")
+  t.icon = T.Tint(t:CreateTexture(nil, "OVERLAY"), "text")
   t.icon:SetTexture(T.Icon("Waiting"))
   t.icon:SetAllPoints()
   wireToggle(t)

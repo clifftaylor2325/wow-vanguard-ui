@@ -805,3 +805,13 @@ it("H17-10-1: on the client's aura engine the type badge's backing is black in t
   addon.eval('__c = ns.Auras.Container(UIParent, __spec, "target") __g = __c.frame.__groups[1]');
   expect(badgeOf(addon, "__g.buttons[1]").back.slice(1), "a Magic debuff's backing: black at 0.8, not Classic's bronze edge").toEqual([0.8, 0, 0, 0]);
 });
+
+it("H27-3-4: the aura timer's colour curve is refilled in place when the look changes", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
+  addon.eval('__c = ns.Auras.Container(UIParent, __spec, "target")');
+  const curve = "__c.frame.__groups[1].buttons[1].__durationText.opts.textColor.curve";
+  addon.eval(`__curve = ${curve}`);
+  addon.slash("variant classic");
+  const steps = addon.eval(`return { __curve == ${curve}, #__curve.points, __curve.points[3][2].r == (ns.Theme.RGB("text")) }`);
+  expect(steps, "the same curve the timers hold, still three steps, the last in the new text colour").toEqual([true, 3, true]);
+});

@@ -31,14 +31,14 @@ function CP.Count()
   return ns.PlainNumber(n) or 0
 end
 
--- One pip: a small inset panel, and its fill in the energy color.
+-- One pip: a small inset panel, and its fill in the bar texture, in the energy color.
 local function pip(bar, i, size)
   local p = T.HudPanel(CreateFrame("Frame", nil, bar), { inset = true })
   p:SetSize(size, math.floor(size / 2))
   p:SetPoint("LEFT", bar, "LEFT", (i - 1) * (size + 3), 0)
   local px = T.Pixel(p)
-  p.fill = T.Tint(T.Snap(p:CreateTexture(nil, "ARTWORK")), "energy")
-  p.fill:SetTexture(T.WHITE)
+  p.fill = T.Tint(T.Snap(p:CreateTexture(nil, "ARTWORK"), "bar"), "energy")
+  p.fill:SetTexture(T.BarTexture())
   p.fill:SetPoint("TOPLEFT", px, -px); p.fill:SetPoint("BOTTOMRIGHT", -px, px)
   return p
 end

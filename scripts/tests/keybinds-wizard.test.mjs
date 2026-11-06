@@ -86,7 +86,7 @@ it("step 2: the keyboard shows each proposed key with its new icon, and the list
   expect(win(addon)).toEqual({ shown: true, step: 2, caption: "Step 2 of 3: Here's what changes", left: "Not now", back: "Back", main: "Next" });
   expect(cap(addon, "F")).toEqual({ chord: "F", icon: "TEST-ONLY-72", grey: false, color: "accentText", alpha: 1 });
   expect(cap(addon, "1"), "key 1 on the Battle Stance page").toMatchObject({ icon: "TEST-ONLY-78", color: "accentText" });
-  expect(cap(addon, "Q"), "a key that doesn't change is faint").toMatchObject({ icon: false, color: "disabled", alpha: 0.55 });
+  expect(cap(addon, "Q"), "a free key that doesn't change is faint and muted, as on the Your keys card").toMatchObject({ icon: false, color: "muted", alpha: 0.55 });
   expect(cap(addon, "`"), "the stance key shows the form's icon").toMatchObject({ icon: "TEST-ONLY-BS", color: "accentText" });
   expect(preview(addon).lines).toEqual(["F: Shield Bash added to your bar", "T: Hamstring added to your bar", "G: Bloodrage added to your bar",
     "Mouse Button 4: Charge added to your bar", "and 5 more"]);
@@ -115,7 +115,10 @@ it("step 2: a key pressed over the keyboard lights up and says what it will do, 
   expect(addon.eval(`return ${KEY}:IsKeyboardEnabled()`), "the keyboard reads keys while the pointer is over it").toBe(true);
   addon.key(KEY, "F");
   expect(preview(addon).result).toBe("F: Shield Bash added to your bar");
-  expect(cap(addon, "F").color, "the key pressed is lit").toBe("accent");
+  expect(cap(addon, "F").color, "the key pressed is lit, in accentText").toBe("accentText");
+  addon.key(KEY, "Q");
+  expect([cap(addon, "Q").color, cap(addon, "F").color], "a lit free key takes accentText, the one before goes back").toEqual(["accentText", "accentText"]);
+  addon.key(KEY, "F");
   addon.keys({ shift: true });
   addon.key(KEY, "W");
   expect([preview(addon).result, cap(addon, "W").chord], "Shift-W shows the Shift tab").toEqual(["SHIFT-W: Battle Shout added to your bar", "SHIFT-W"]);
@@ -143,7 +146,7 @@ it("step 2: Show what comes later greys in the spells the character will learn",
   addon.eval('__click("Show me")');
   expect(cap(addon, "X").icon, "Retaliation isn't learned yet").toBe(false);
   addon.eval('__click("Show what comes later")');
-  expect(cap(addon, "X")).toMatchObject({ grey: true, color: "disabled", alpha: 0.55 });
+  expect(cap(addon, "X")).toMatchObject({ grey: true, color: "muted", alpha: 0.55 });
   addon.eval(`for _, c in ipairs(${BOARD}.caps) do if c.key == "X" then c.__scripts.OnEnter(c) end end`);
   expect(tipText(addon)).toContain("Later: 20230, once you learn it");
   addon.eval(`for _, c in ipairs(${BOARD}.caps) do if c.key == "F" then c.__scripts.OnEnter(c) end end`);

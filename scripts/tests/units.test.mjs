@@ -903,6 +903,8 @@ it("in-combat mark: crossed swords and a vermilion edge on your frame from the f
   expect(addon.eval("return __fight()"), "out of combat: the theme's edge, no swords").toEqual(["theme", "none", "theme"]);
   addon.world.combat(true);
   expect(addon.eval("return __fight()"), "the fight starts: swords and the vermilion edge on yours at once").toEqual(["bad", "swords", "theme"]);
+  addon.slash("variant contrast");
+  expect(addon.eval("return __fight()[1]"), "a look change mid-fight: the edge is the new variant's bad").toBe("bad");
   addon.world.combat(false);
   expect(addon.eval("return __fight()"), "it ends: both gone").toEqual(["theme", "none", "theme"]);
 });
@@ -933,4 +935,34 @@ it("in-combat mark: the Unit frames page switches it at once, and the health tex
   expect(addon.eval("return __fight()"), "on again: back at once").toEqual(["bad", "swords", "bad"]);
   const room = addon.eval("return { select(4, Vanguard_player.healthText:GetPoint()) }");
   expect(room, "the health text ends left of the swords").toEqual([-addon.eval("return ns.GetModule('UnitFrames').CLASS_MARK_ROOM"), 0]);
+});
+
+it("H27-3-1: a difficulty-coloured level keeps its colour through a look, accent and text-size change", () => {
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + `
+    UnitLevel = function(unit) return 60 end
+    GetCreatureDifficultyColor = function(level) return { r = 1, g = 0.1, b = 0.1 } end`, NO_RAID);
+  addon.slash("variant classic");
+  addon.slash("accent jade");
+  addon.eval("ns.Theme.Settings().textScale = 1.1 ns.Theme.Refresh()");
+  expect(addon.eval("return Vanguard_player.level.__textColor").slice(0, 3), "still the difficulty colour, not the text colour").toEqual([1, 0.1, 0.1]);
+});
+
+it("H27-4-3: a combo point's fill is drawn in the bar texture, like the other class-resource pips", () => {
+  const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" GetComboPoints = function() return 3 end`, NO_RAID);
+  expect(addon.eval('return ns.GetModule("ComboPoints").pips[1].fill.__texture == ns.Theme.BarTexture()'), "not the flat white").toBe(true);
+});
+
+it("H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles, and keep it when the Versus deck restyles the text", () => {
+  const addon = loggedIn(UNITS_ENV + "__units.party1.dead = nil __units.party1.hp = 500 UnitIsConnected = function(unit) return unit ~= 'party1' end", NO_RAID);
+  // The party frame's health text colour token.
+  const token = () => addon.eval("return ns.Theme.ColorToken(Vanguard_party1.healthText)");
+  expect(token(), "offline: the secondary text colour").toBe("text2");
+  addon.eval("UnitIsConnected = function() return true end __units.party1.dead = true");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(token(), "dead: the bad state colour").toBe("bad");
+  addon.eval("ns.GetModule('UnitFrames').DeckText(Vanguard_party1, true)");
+  expect(token(), "a restyle for the deck keeps it").toBe("bad");
+  addon.eval("__units.party1.dead = nil");
+  addon.fire("UNIT_HEALTH", "party1");
+  expect(token(), "alive again: the plain text colour").toBe("text");
 });

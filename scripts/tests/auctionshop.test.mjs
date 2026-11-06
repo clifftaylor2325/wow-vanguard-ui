@@ -813,6 +813,26 @@ it("Z1-2 a burst of item-name events repaints the Shopping card once a frame", (
   expect([addon.eval("return __paints"), addon.eval("return #ns.errors")], "one repaint for the six events, no error").toEqual([1, 0]);
 });
 
+it("a sortable column heading lights to the body text under the mouse and rests in text2; the sorted one stays in the accent (H27-9-3)", () => {
+  const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
+  dustFound(addon);
+  addon.click(`${TABLE}.rows[1]`);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  // The path of the i-th column head.
+  const head = (i) => `${VIEW}.table.heads[${i}]`;
+  // Whether the i-th head's label is coloured with the token.
+  const colour = (i, tok) => isTok(addon, addon.eval(`return ${head(i)}.text.__textColor`), tok);
+  // Runs a mouse script on the i-th head.
+  const run = (i, ev) => addon.eval(`local h = ${head(i)} h.__scripts.${ev}(h)`);
+  run(2, "OnEnter");
+  expect(colour(2, "text"), "hovered, unsorted: text").toBe(true);
+  run(2, "OnLeave");
+  expect(colour(2, "text2"), "left: text2 again").toBe(true);
+  addon.click(head(2));
+  run(2, "OnEnter");
+  run(2, "OnLeave");
+  expect(colour(2, "accentText"), "the sorted heading keeps the accent through hover").toBe(true);
+});
 it("Z1-2 the Deals count in the pane is counted, not sorted", () => {
   const addon = atAuctionHouse();
   addon.eval(`local AH = ${HELPER} __sorts = 0

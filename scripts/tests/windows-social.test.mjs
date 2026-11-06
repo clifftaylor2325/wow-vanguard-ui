@@ -82,6 +82,17 @@ it("open mail: the letter window in the theme, its stationery faded, body text l
   expect(addon.eval("return { ns.FrameState('vgSkinned')[OpenMailLetterButton], ns.FrameState('vgSkinned')[OpenMailMoneyButton], ns.FrameState('vgSkinned')[OpenMailAttachmentButton1] }"), "the item buttons get the bags' border").toEqual([true, true, true]);
 });
 
+it("open mail: the open letter's body follows a look change, and is left alone with the group off (H27-5-4)", () => {
+  const addon = loggedIn(MAIL_ENV);
+  addon.eval("OpenMailFrame:Show()");
+  addon.slash("variant classic");
+  expect(addon.eval("return OpenMailBodyText.__colors.P[1] == ns.Theme.RGB('text')"), "the body takes the new text colour").toBe(true);
+  const off = loggedIn(MAIL_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { social = false } } }" });
+  off.eval("OpenMailFrame:Show()");
+  off.slash("variant classic");
+  expect(off.eval("return next(OpenMailBodyText.__colors) == nil"), "with the group off nothing is painted").toBe(true);
+});
+
 it("open mail: a redraw puts the look back, a second show paints nothing more, the switch off leaves the game's", () => {
   const addon = loggedIn(MAIL_ENV);
   addon.eval("OpenMailFrame:Show()");
@@ -434,6 +445,8 @@ it("guild window: the communities list rows are theme rows, art faded but their 
   expect(look("__b"), "a row acquired later, not selected").toEqual([true, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, false]);
   expect(addon.eval("local l1, s1 = __a.GuildTabardBackground:GetDrawLayer() local l2, s2 = __a.GuildTabardEmblem:GetDrawLayer() return { l1, s1, l2, s2 }"), "the banner drawn above the selected fill").toEqual(["ARTWORK", 4, "ARTWORK", 5]);
   expect([isText(addon, "__a.Name"), isText(addon, "__b.Name"), addon.eval("return { __a.Icon.__desaturated == true, __b.Icon.__desaturated == true }")], "names in the text colour, the add row's plus grey and an avatar left alone").toEqual([true, true, [false, true]]);
+  addon.slash("variant classic");
+  expect(addon.eval("local r = __b.Icon:GetVertexColor() return r == ns.Theme.RGB('text')"), "the add row's plus follows a look change (H27-5-5)").toBe(true);
   addon.eval("__selected = 2 __a:Init(1) __b:Init(2)");
   expect(addon.eval("return { ns.Theme.RowParts(__a).rail:IsShown(), ns.Theme.RowParts(__b).rail:IsShown() }"), "the rail follows the game's selection on the next Init").toEqual([false, true]);
   addon.hover("__a");

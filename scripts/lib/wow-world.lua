@@ -519,6 +519,8 @@ C_CurveUtil = {
     -- SetType picks the curve kind; AddPoint keeps a color at a value; Evaluate gives the color of the nearest point at or below.
     function curve:SetType(t) self.kind = t end
     function curve:AddPoint(x, color) self.points[#self.points + 1] = { x = x, color = color } end
+    -- ClearPoints drops every point, so the curve can be filled again.
+    function curve:ClearPoints() self.points = {} end
     -- The color of the nearest point at or below x.
     function curve:Evaluate(x)
       local best

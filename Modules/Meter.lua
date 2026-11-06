@@ -159,7 +159,7 @@ end
 local function fill(row, src, top)
   row:SetStatusBarColor(lineColor(src))
   give(row.name, "SetText", src.name)
-  T.Color(row.name, mine(src) and "accent" or "text")
+  T.Color(row.name, mine(src) and "accentText" or "text")
   if MT.settings.kind == "Deaths" then fillDeath(row, src) else fillFigure(row, src, top) end
   row.src = src
 end
@@ -314,9 +314,9 @@ end
 
 -- Building -----------------------------------------------------------------------------------
 
--- One text on a row: a small theme font string, placed by `place`.
+-- One text on a row: the outlined small bar text (barSmall), placed by `place`.
 local function rowText(row, place)
-  local fs = T.Text(row:CreateFontString(nil, "OVERLAY"), "small")
+  local fs = T.Text(row:CreateFontString(nil, "OVERLAY"), "barSmall")
   place(fs)
   return fs
 end

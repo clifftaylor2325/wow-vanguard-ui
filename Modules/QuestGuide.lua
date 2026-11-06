@@ -62,10 +62,10 @@ function QG.IsNew(questID)
   return flagValue(flag.source, questID) == flag.value
 end
 
--- "  New" in the accent after a quest's title, or "" (not new, mark off, or the module off).
+-- "  New" in the accent text colour after a quest's title, or "" (not new, mark off, or the module off).
 function QG.Mark(questID)
   if not (QG.settings and QG.settings.newMark) or not QG.IsNew(questID) then return "" end
-  return "  " .. T.Paint(L["New"], "accent")
+  return "  " .. T.Paint(L["New"], "accentText")
 end
 
 -- The arrow --------------------------------------------------------------------------------------
@@ -139,7 +139,7 @@ function QG.StepLine(questID)
   if not (QG.settings and QG.settings.stepLine) or questID ~= QG.Followed() then return nil end
   local text = ns.PlainText(ns.CallIf(C_QuestLog, "GetNextWaypointText", questID))
   if not text then return nil end
-  return { "> " .. text, "accent" }
+  return { "> " .. text, "accentText" }
 end
 
 -- The steps or the followed quest changed: the tracker redraws, if it shows.

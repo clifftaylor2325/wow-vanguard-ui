@@ -698,14 +698,15 @@ function GW.SkinLFGParent(frame)
   if type(_G.LFGParentFramePortrait) == "table" then GW.FadeParts(_G.LFGParentFramePortrait, { "texture" }) end
 end
 
--- The tooltip the browse list shows for a group.
-function GW.SkinLFGTooltip(frame)
+-- A tooltip-like box the game makes on demand (the browse list's group tooltip, the PvP conquest tooltip, the Adventure
+-- Guide's tooltip) as the flat tooltip panel.
+function GW.SkinTooltipFrame(frame)
   T.Tooltip(frame)
 end
 
 GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
 GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", GW.LFG_PAGES, GW.SkinLFGPage)
-GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinLFGTooltip)
+GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinTooltipFrame)
 
 -- Legacy system -------------------------------------------------------------------------------
 
