@@ -1715,11 +1715,15 @@ it("quest history: a client that hides your name, or has no clock, does not fail
 });
 it("quest history: the quest log says which character did the quest, and the setting turns it all off", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED });
-  const muted = addon.eval("return ns.Theme.Hex('muted')");
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
-  expect([questLog(addon).objectives, questLog(addon).history], "another character's turn-in, muted, under the objectives").toEqual(["Objectives", `|c${muted}Done on Thrall-Forever · 3 days ago|r`]);
+  expect([questLog(addon).objectives, questLog(addon).history], "another character's turn-in, muted, under the objectives").toEqual(["Objectives", "Done on Thrall-Forever · 3 days ago"]);
+  // Whether the log's history line is in the muted token (a colour set on the font string, so a refresh repaints it).
+  const historyMuted = () => isTok(addon, addon.eval("return Vanguard_QuestLog.history.__textColor"), "muted");
+  expect(historyMuted(), "the line is a muted font string, not a baked color").toBe(true);
+  addon.slash("variant classic");
+  expect(historyMuted(), "and follows a look change").toBe(true);
   logLine(addon, 2);
-  expect([questLog(addon).objectives, questLog(addon).history], "this character's own, for a quest with no objectives: today, on this character").toEqual(["", `|c${muted}Done on this character · today|r`]);
+  expect([questLog(addon).objectives, questLog(addon).history], "this character's own, for a quest with no objectives: today, on this character").toEqual(["", "Done on this character · today"]);
   logLine(addon, 3);
   expect(questLog(addon).history.includes("Done on"), "a quest nobody finished has no line").toBe(false);
   const off = loggedIn(TRACK_ENV + QLOG_ENV + HISTORY_ENV, { savedVariables: HISTORY_SAVED + ` VanguardDB.profiles = { Default = { QuestHistory = { track = false } } }` });

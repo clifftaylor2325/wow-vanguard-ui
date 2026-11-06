@@ -155,7 +155,7 @@ function QL.Details(id)
   local text = ns.CallIf(_G, "GetQuestLogQuestText")
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
-    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), abandonable = QL.CanAbandon(id), done = ns.GetModule("QuestHistory").Muted(id) })
+    shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), abandonable = QL.CanAbandon(id), done = ns.GetModule("QuestHistory").Line(id) })
 end
 
 -- Actions ----------------------------------------------------------------------------------------

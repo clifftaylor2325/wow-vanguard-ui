@@ -11,8 +11,6 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local T = ns.Theme
-
 local QH = ns.Module("QuestHistory", { defaults = { track = true } })
 
 -- Quests kept, and the share of them a prune keeps (1000 -> 900).
@@ -107,12 +105,6 @@ function QH.Line(questID)
   if not rec then return clientLine(questID) end
   if rec.who == QH.Me() then return ns.Format(L["Done on this character · {ago}"], { ago = QH.Ago(rec.t) }) end
   return ns.Format(L["Done on {character} · {ago}"], { character = rec.who, ago = QH.Ago(rec.t) })
-end
-
--- The same line in the muted color, for a text that holds more (nil for none).
-function QH.Muted(questID)
-  local line = QH.Line(questID)
-  return line and T.Paint(line, "muted") or nil
 end
 
 -- Orders two { id, rec } pairs: the newer turn-in first, the lower quest id on the same second. A strict

@@ -86,7 +86,7 @@ end
 
 -- The objectives under their header: a box the rows stack in, and the quest history line under it.
 local function addObjectives(f)
-  f.objectives, f.history = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "text2")
+  f.objectives, f.history = detailText(f.detail, "label", "text2"), detailText(f.detail, "label", "muted")
   f.needs = detailText(f.detail, "label", "text2")
   f.objectives:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -TEXT_GAP)
   f.objectiveBox = CreateFrame("Frame", nil, f.detail)
