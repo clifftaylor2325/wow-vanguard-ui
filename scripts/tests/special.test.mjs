@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, CLICK_LUA, SETUP_DONE, SPECIAL_BARS_ENV, UI_ENV, loggedIn, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, RETAIL, SETUP_DONE, SPECIAL_BARS_ENV, UI_ENV, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY pet buttons with the template art the client makes (a background and the state textures), a stance and an extra action button.
 const BUTTONS_ENV = `
@@ -101,31 +101,57 @@ it("the possess bar's buttons are restyled too, out of combat, and can be left a
   expect([one.eval("return ns.FrameState('vgSkinned')[PossessButton1]"), one.eval("return #ns.errors")], "a client with one bare button (or none) loads cleanly").toEqual([true, 0]);
 });
 
-// The bar's anchor: its point, the name of the frame it hangs from and that frame's point.
-const anchorOf = (addon, bar) => addon.eval(`local p, rel, rp = ${bar}:GetPoint() return { p, rel:GetName(), rp }`);
+// TEST-ONLY the game's pet and stance bars with their ten 30-unit buttons each, as the client makes them (mouse on, level 70).
+const SEATED_ENV = SPECIAL_BARS_ENV + `
+  for _, bar in ipairs({ PetActionBar, StanceBar }) do bar:EnableMouse(true) bar:SetFrameLevel(70) end
+  for i = 1, 10 do
+    CreateFrame("CheckButton", "PetActionButton" .. i, PetActionBar):SetSize(30, 30)
+    CreateFrame("CheckButton", "StanceButton" .. i, StanceBar):SetSize(30, 30)
+  end`;
 
-it("the pet and stance bars sit on movers of their own, kept there when the game re-places them", () => {
-  const addon = loggedIn(SPECIAL_BARS_ENV);
+// Where a button sits: its parent's name and its offsets from the parent's bottom left.
+const seatOf = (addon, button) => addon.eval(`local b = ${button} local p, rel, rp, x, y = b:GetPoint() return { b:GetParent():GetName(), rel:GetName(), p, rp, x, y }`);
+
+it("the pet and stance buttons sit on movers of their own, a row from the spot's bottom left", () => {
+  const addon = loggedIn(SEATED_ENV);
   expect([addon.eval('return { ns.MoverPoint("petbar") }'), addon.eval('return { ns.MoverPoint("stancebar") }')], "defaults at the bottom left, one above the other").toEqual([["BOTTOMLEFT", "BOTTOMLEFT", 8, 250], ["BOTTOMLEFT", "BOTTOMLEFT", 8, 288]]);
   expect(addon.eval("return { Vanguard_PetActionBarSpot:GetWidth(), Vanguard_PetActionBarSpot:GetHeight(), Vanguard_StanceBarSpot:GetWidth(), Vanguard_StanceBarSpot:GetHeight() }"), "each mover is as big as its bar's row of buttons").toEqual([320, 32, 200, 32]);
-  expect([anchorOf(addon, "PetActionBar"), anchorOf(addon, "StanceBar")], "the bars hang from their spots' bottom left corners").toEqual([["BOTTOMLEFT", "Vanguard_PetActionBarSpot", "BOTTOMLEFT"], ["BOTTOMLEFT", "Vanguard_StanceBarSpot", "BOTTOMLEFT"]]);
-  expect(addon.eval("local f = ns.MoverFrame('petbar') local l, b = f:GetLeft(), f:GetBottom() return { l, b }"), "the pet bar's spot is where its mover says").toEqual([8, 250]);
-  addon.eval('PetActionBar:ClearAllPoints() PetActionBar:SetPoint("CENTER", UIParent, "CENTER", 0, 0)'); // Edit Mode lays the bar out again
-  expect(anchorOf(addon, "PetActionBar"), "the game moving the bar puts it back on its spot").toEqual(["BOTTOMLEFT", "Vanguard_PetActionBarSpot", "BOTTOMLEFT"]);
+  expect([seatOf(addon, "PetActionButton1"), seatOf(addon, "StanceButton3")], "each button is the spot's, 32 units after the one before").toEqual([["Vanguard_PetActionBarSpot", "Vanguard_PetActionBarSpot", "BOTTOMLEFT", "BOTTOMLEFT", 0, 0], ["Vanguard_StanceBarSpot", "Vanguard_StanceBarSpot", "BOTTOMLEFT", "BOTTOMLEFT", 64, 0]]);
+  expect(addon.eval("return PetActionButton10:GetRight() - Vanguard_PetActionBarSpot:GetLeft()"), "the pet bar's ten buttons fit its spot").toBe(318);
+  expect(addon.eval("return { Vanguard_StanceBarSpot:GetFrameLevel(), StanceBar.__mouse, PetActionBar.__mouse }"), "the spot is drawn at the game bar's level; the emptied bars no longer take the mouse").toEqual([70, false, false]);
   addon.eval('ns.SetMoverPoint("stancebar", "BOTTOM", "BOTTOM", 100, 400)');
-  expect(addon.eval("return { StanceBar:GetLeft(), StanceBar:GetBottom() }"), "dragging the stance mover takes the bar with it").toEqual([960 + 100 - 100, 400]); // the screen's center, 100 right of it, less half the 200-wide spot
+  expect(addon.eval("return { StanceButton1:GetLeft(), StanceButton1:GetBottom() }"), "dragging the stance mover takes the buttons with it").toEqual([960 + 100 - 100, 400]); // the screen's center, 100 right of it, less half the 200-wide spot
+});
+
+it("the game re-stacking its bars in a fight leaves the buttons on their spots", () => {
+  const fight = loggedIn(SEATED_ENV);
+  setCombat(fight, true);
+  fight.eval('StanceBar:ClearAllPoints() StanceBar:SetPoint("BOTTOMLEFT", UIParent, "BOTTOM", -200, 100)'); // Edit Mode lays its bottom bars out again
+  expect(fight.eval("return { StanceButton1:GetLeft(), StanceButton1:GetBottom() }"), "the stance buttons stay over the chat, clear of the bar stack").toEqual([8, 288]);
+  setCombat(fight, false);
+  expect(fight.eval("return #ns.errors"), "nothing waits for the fight to end").toBe(0);
+});
+
+it("the spots hide as the game hides its bars: a vehicle, an override bar, mind control, no pet, a pet battle", () => {
+  const forever = loggedIn(SEATED_ENV);
+  const drivers = (addon) => addon.eval("return { Vanguard_PetActionBarSpot.__states.visibility, Vanguard_StanceBarSpot.__states.visibility }");
+  expect(drivers(forever), "Forever has no pet battles").toEqual(["[vehicleui][overridebar][nopet] hide; show", "[vehicleui][possessbar][overridebar] hide; show"]);
+  const retail = loggedIn(RETAIL + SEATED_ENV);
+  expect(drivers(retail).map((d) => d.startsWith("[petbattle] hide; ")), "Retail hides them in a pet battle too").toEqual([true, true]);
 });
 
 it("the pet and stance bars are placed after combat, and left to Edit Mode when placing is off", () => {
   const fight = createAddon({ savedVariables: SETUP_DONE });
-  fight.eval(SPECIAL_BARS_ENV);
+  fight.eval(SEATED_ENV);
   setCombat(fight, true);
   fight.login();
-  expect(fight.eval("return { PetActionBar:GetPoint() }")[0], "in a fight the game's bars are left where they are").toBe("CENTER");
+  expect(fight.eval("return PetActionButton1:GetParent():GetName()"), "in a fight the game's buttons are left on its bar").toBe("PetActionBar");
   setCombat(fight, false);
-  expect(anchorOf(fight, "PetActionBar"), "when it ends they move to their spots").toEqual(["BOTTOMLEFT", "Vanguard_PetActionBarSpot", "BOTTOMLEFT"]);
-  const off = loggedIn(SPECIAL_BARS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { SpecialBars = { place = false } } }" });
-  expect([off.eval('return ns.MoverPoint("petbar") == nil'), off.eval("return { PetActionBar:GetPoint() }")[0]], "with placing off there are no movers and the bars stay where Edit Mode puts them").toEqual([true, "CENTER"]);
+  expect(seatOf(fight, "PetActionButton1")[0], "when it ends they move to their spot").toBe("Vanguard_PetActionBarSpot");
+  const off = loggedIn(SEATED_ENV, { savedVariables: "VanguardDB.profiles = { Default = { SpecialBars = { place = false } } }" });
+  expect([off.eval('return ns.MoverPoint("petbar") == nil'), off.eval("return PetActionButton1:GetParent():GetName()"), off.eval("return StanceBar.__mouse")], "with placing off there are no movers and the bars and buttons are the game's").toEqual([true, "PetActionBar", true]);
+  const bare = loggedIn(SPECIAL_BARS_ENV);
+  expect([bare.eval('return ns.MoverPoint("stancebar") ~= nil'), bare.eval("return #ns.errors")], "a client whose bar has no buttons yet still gets the spot").toEqual([true, 0]);
   const none = loggedIn();
   expect(none.eval('return ns.MoverPoint("petbar") == nil and ns.MoverPoint("stancebar") == nil'), "a client without the bars has nothing to place").toBe(true);
 });
