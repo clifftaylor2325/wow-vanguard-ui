@@ -726,6 +726,18 @@ local function listen(units)
   ns.On("PLAYER_ENTERING_WORLD", function() for unit in pairs(CB.bars) do CB.Update(unit) end end)
 end
 
+-- Repaints the sweeps coloured by token after a theme change (a Cooldown's swipe colour is not a vertex colour, so
+-- T.Tint cannot keep it): the ring's accent, the interrupt marks' inset.
+function CB.PaintSweeps()
+  if CB.ring then
+    CB.ring.gcd:SetSwipeColor(T.RGB("accent"))
+    CB.ring.cast:SetSwipeColor(T.RGB("accent"))
+  end
+  for _, bar in pairs(CB.bars) do
+    if bar.mark then bar.mark.cd:SetSwipeColor(T.RGB("inset")) end
+  end
+end
+
 -- Module entry point (Core/Modules.lua).
 function CB.Enable(settings)
   CB.settings = settings
@@ -734,4 +746,5 @@ function CB.Enable(settings)
   CB.SkinOverlay()
   listen(units)
   CB.ApplyRing()
+  T.OnChanged(CB.PaintSweeps)
 end
