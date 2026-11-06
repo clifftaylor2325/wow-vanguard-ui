@@ -76,7 +76,7 @@ end
 local function makeObjective(parent)
   local row = CreateFrame("Frame", nil, parent)
   row:SetSize(DETAIL_W, QP.LINE_H)
-  row.mark = T.Tint(QP.Square(row:CreateTexture(nil, "ARTWORK"), OBJECTIVE_MARK), "good")
+  row.mark = T.Tint(QP.Square(row:CreateTexture(nil, "ARTWORK"), OBJECTIVE_MARK), "muted")
   row.mark:SetTexture(T.Icon("Check"))
   row.mark:SetPoint("LEFT", row, "LEFT", 0, 0)
   row.count = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text2")
