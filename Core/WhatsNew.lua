@@ -23,8 +23,6 @@ local LIST_W = WIDTH - 2 * PAD - T.SPACE.col
 local LINE_GAP, GROUP_GAP = T.SPACE.gap, T.SPACE.col
 
 local frame
--- The strings drawn in the accent (the links), repainted each time the window opens.
-local accented = {}
 
 -- Versions ----------------------------------------------------------------------------------
 
@@ -114,7 +112,6 @@ end
 
 -- Makes a line a link: a click opens its setting (the row already has its wash under the mouse).
 local function linkify(line, item)
-  accented[#accented + 1] = line.text
   line:SetScript("OnClick", ns.Guard("click what's new line", function() openSetting(item) end))
 end
 
@@ -122,7 +119,8 @@ end
 -- open, plain text otherwise.
 local function addItem(child, item, y)
   local line = item.page and W.Row(child) or CreateFrame("Frame", nil, child)
-  line.text = W.Label(line, itemText(item), "label", item.page and "accent" or "text")
+  line.item = item
+  line.text = W.Label(line, itemText(item), "label", item.page and "accentText" or "text")
   line.text:SetPoint("TOPLEFT", T.SPACE.gap, 0)
   line.text:SetWidth(LIST_W - 2 * T.SPACE.gap)
   line:SetSize(LIST_W, line.text:GetStringHeight())
@@ -148,7 +146,7 @@ local function newChild(view)
   if view.child then view.child:Hide() end
   view.child = CreateFrame("Frame", nil, view)
   view.child:SetWidth(LIST_W)
-  view.child.lines, accented = {}, {}
+  view.child.lines = {}
   view:SetScrollChild(view.child)
   return view.child
 end
@@ -190,13 +188,18 @@ local function stale(entry)
   return frame.version ~= entry.version or frame.textScale ~= settings.textScale or frame.font ~= settings.font
 end
 
--- Shows the window with these notes (in the current accent), fading it in; notes for the
+-- Sets each line's words again, so the "(off by default)" tag, a colour escape in the text, takes the current warn.
+local function repaintTags()
+  for _, line in ipairs(frame.lines or {}) do line.text:SetText(itemText(line.item)) end
+end
+
+-- Shows the window with these notes (in the current look), fading it in; notes for the
 -- running version count as seen.
 function WN.Show(entry)
   if not frame then build() end
   fit()
   if stale(entry) then fill(entry) end
-  for _, fs in ipairs(accented) do T.Color(fs, "accent") end
+  repaintTags()
   if entry.version == ns.AddonVersion() then VanguardDB.whatsNewSeen = entry.version end
   T.FadeIn(frame)
   frame.view:ScrollTo(frame.view:GetVerticalScroll() or 0)
@@ -230,4 +233,9 @@ table.insert(ns.Setup.onEnd, showIfOwed)
 ns.On("PLAYER_LOGIN", function()
   if not VanguardDB.setupDone then VanguardDB.whatsNewSeen = ns.AddonVersion() return end
   showIfOwed()
+end)
+
+-- A look change while the window is up reaches the tags too (T.RefreshText has already recoloured the lines).
+T.OnChanged(function()
+  if frame and frame:IsShown() then repaintTags() end
 end)
