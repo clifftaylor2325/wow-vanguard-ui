@@ -50,13 +50,20 @@ local function paintTarget(b, unit)
   T.ColorRGB(b.target, ns.GetModule("UnitFrames").HealthColor(unit))
 end
 
+-- A tile's bar colour: the dark bar for a dead or offline unit (as on the unit frames and raid tiles), else its class or reaction colour.
+local function paintBar(b, unit)
+  local UF = ns.GetModule("UnitFrames")
+  if UF.DownState(unit) then return T.BarColor(b.bar, "darkBar") end
+  b.bar:SetStatusBarColor(UF.HealthColor(unit))
+end
+
 -- Paints a tile from its unit: health in its color, its name, and its target line if it has one.
 function MT.Paint(b)
   local unit = b:GetAttribute("unit")
   if not unit or not yes(UnitExists(unit)) then return end
   b.bar:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(b.bar, UnitHealth(unit))
-  b.bar:SetStatusBarColor(ns.GetModule("UnitFrames").HealthColor(unit))
+  paintBar(b, unit)
   b.name:SetText(UnitName(unit))
   if b.target then paintTarget(b, unit .. "target") end
 end

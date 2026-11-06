@@ -27,7 +27,7 @@ Class/reaction/threat colors, the name in outlined text with the level (colored 
 
 ## Main tank frames
 
-In a raid, the players marked main tank or main assist get small tiles at the top left (beside the raid tools), with health in their class color and what each is targeting written beside it. Click one to target them. Move them with `/vg unlock`; turn them off under Modules.
+In a raid, the players marked main tank or main assist get small tiles at the top left (beside the raid tools), with health in their class color (a dark bar while offline) and what each is targeting written beside it. Click one to target them. Move them with `/vg unlock`; turn them off under Modules.
 
 ## Party pets and targets
 

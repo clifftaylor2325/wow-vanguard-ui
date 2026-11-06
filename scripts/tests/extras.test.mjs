@@ -920,3 +920,9 @@ it("H27-3-1: a main tank's target line keeps its reaction colour through a look 
   addon.slash("variant classic");
   expect(isTok(addon, addon.eval("return Vanguard_MainTanksUnitButton1.target.__textColor"), "hostile"), "still the target's reaction colour").toBe(true);
 });
+
+it("H27-3-2: an offline main tank's bar goes dark, as on the unit frames and raid tiles", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + "UnitIsConnected = function(unit) return unit ~= 'raid1' end");
+  addon.eval('__mt(1, "raid1") __wfgStub.advance(0.5)');
+  expect(isTok(addon, addon.eval("return Vanguard_MainTanksUnitButton1.bar.__barColor"), "darkBar"), "the dark bar, not the class colour").toBe(true);
+});
