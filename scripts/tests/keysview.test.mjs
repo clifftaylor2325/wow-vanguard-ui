@@ -37,6 +37,7 @@ it("your keys: a key shows the icon and name of what is on it, a game command sh
   expect(cap(addon, "1"), "key 1 is bar 1 button 1").toMatchObject({ chord: "1", label: "1", icon: "Interface\\Icons\\Spell_Fire_FlameBolt", place: "Bar 1 button 1", name: "Fireball", color: "text" });
   expect(cap(addon, "B"), "a game key shows its command, no icon").toMatchObject({ icon: false, place: "TOGGLEBACKPACK", color: "accentText" });
   expect(cap(addon, "Q"), "a free key is muted, at full alpha so its border and label stay crisp").toMatchObject({ icon: false, color: "muted", alpha: 1 });
+  expect(addon.eval("local C = ns.KeysView.CapColor return { C({ icon = 1 }), C({}), C(nil) }"), "the shared rule key setup's preview uses too").toEqual(["text", "accentText", "muted"]);
   expect(cap(addon, "SPACE").label, "the space bar uses the short name").toBe("Sp");
   expect(lines(addon).some((l) => l.includes("Bar 1 button 1 · Fireball")), "the list says what key 1 does").toBe(true);
 });
