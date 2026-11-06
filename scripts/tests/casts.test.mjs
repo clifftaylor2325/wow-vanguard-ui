@@ -648,3 +648,8 @@ it("H27-4-1: the ring's and the interrupt mark's sweeps follow the accent and th
   const sweeps = addon.eval("return { Vanguard_CursorRing.gcd.__swipeColor, Vanguard_CursorRing.cast.__swipeColor, Vanguard_CastBar_target.mark.cd.__swipeColor }");
   expect([isTok(addon, sweeps[0], "accent"), isTok(addon, sweeps[1], "accent"), isTok(addon, sweeps[2], "inset")], "both rings the new accent, the mark's sweep the new inset").toEqual([true, true, true]);
 });
+
+it("H27-4-4: the cast bar's time text is white, as the swing timer's seconds", () => {
+  const addon = loggedIn(CAST_ENV);
+  expect(isTok(addon, addon.eval("return Vanguard_CastBar_player.time.__textColor"), "white"), "white over the bar").toBe(true);
+});

@@ -319,7 +319,7 @@ local function addParts(bar, h)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), role)
   bar.text:SetPoint("LEFT", CB.TEXT_INSET, 0)
   ns.EndAt(bar.text, bar, CB.TEXT_INSET + CB.TIME_ROOM)
-  bar.time = T.Text(bar:CreateFontString(nil, "OVERLAY"), role, "text2")
+  bar.time = T.Text(bar:CreateFontString(nil, "OVERLAY"), role, "white")
   bar.time:SetPoint("RIGHT", -CB.TEXT_INSET, 0)
 end
 
