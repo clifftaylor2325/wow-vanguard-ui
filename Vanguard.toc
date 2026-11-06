@@ -239,6 +239,7 @@ Modules/Tooltips.lua
 Modules/Inventory.lua
 Modules/UpgradeWeights.lua
 Modules/Upgrades.lua
+Modules/UpgradeStrings.lua
 Modules/UpgradeWizard.lua
 Modules/VendorMemory.lua
 Modules/SpellRanks.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]

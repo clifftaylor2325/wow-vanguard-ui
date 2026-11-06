@@ -147,17 +147,30 @@ local function prepRows()
   return rows
 end
 
--- Gear upgrades: the role the weights are for, and where upgrades show.
+-- Gear upgrades' damage style row, for a class that has styles on WoW Forever (a druid's Feral or Balance); none for
+-- the rest. The style is kept per class, so the row reads and sets your class's.
+local function styleRows()
+  local UP, W = ns.GetModule("Upgrades"), ns.UpgradeWeights
+  local class = select(2, UnitClass("player"))
+  local styles = W.STYLES[class]
+  if not styles then return {} end
+  local choices = {}
+  for _, s in ipairs(styles) do choices[#choices + 1] = { s, UP.Word(s) } end
+  local saved = O.ModuleSettings("Upgrades").styles
+  return { { "cycle", L["Damage style"], choices, function() return W.Style(class, saved[class]) end, function(v) saved[class] = v UP.Changed() end } }
+end
+
+-- Gear upgrades: the role (and damage style) the weights are for, and where upgrades show.
 local function upgradeRows()
   local roles = { { "auto", L["group role, else damage"] }, { "damage", L["damage"] }, { "tank", L["tank"] }, { "healer", L["healer"] } }
-  return {
-    { "header", L["Gear upgrades"] },
-    { "cycle", L["Weigh stats for"], roles, liveMethod("Upgrades", "role", "Changed") },
+  local rows = { { "header", L["Gear upgrades"] }, { "cycle", L["Weigh stats for"], roles, liveMethod("Upgrades", "role", "Changed") } }
+  return append(append(rows, styleRows()), {
     check(L["Upgrade or downgrade on item tooltips"], setting("Upgrades", "tooltip")),
     check(L["Arrow on upgrades in the combined bag"], setting("Upgrades", "bags")), check(L["Arrow on quest rewards that are upgrades"], setting("Upgrades", "quests")),
     { "button", L["Set up stat weights"], function() O.Hide(); ns.GetModule("Upgrades").Wizard.Open() end },
+    { "button", L["Import stat weights"], function() O.Hide(); ns.GetModule("Upgrades").ImportDialog() end },
     { "text", L["/vg weights shows the stat weights in use; wizard, set <stat> <n>, reset, export and import change or share them."] },
-  }
+  })
 end
 
 -- Saved prices, sales and characters from the beta, and the button that clears them (Core/Home.lua).

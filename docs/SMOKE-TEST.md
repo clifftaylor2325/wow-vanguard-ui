@@ -4287,6 +4287,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The dungeon name, level and instruction lines are in the Vanguard font, in light text at the game's sizes, fitting the window; with Window ornaments on, the panel has corner brackets.
 - If it fails, paste: a screenshot of the keystone window.
 
+### 33.332 What gear stats and your hit look like to Vanguard (Forever)
+
+- Do: Wear an item with "+1% crit" or "+1% hit" (put its slot number in place of 2, the neck) and run `/dump C_Item.GetItemStats(GetInventoryItemLink("player", 2))`, then `/dump GetHitModifier(), GetSpellHitModifier()`, and open the character sheet's hit line.
+- Expect: The item's crit or hit shows under `ITEM_MOD_CRIT_RATING_SHORT` or `ITEM_MOD_HIT_RATING_SHORT` with 1 for 1% (the Balance weights and the hit cap count them that way); the two numbers are your melee and spell hit in per cent, the same as the character sheet.
+- If it fails, paste: both `/dump` outputs, the item's tooltip and the character sheet's hit numbers.
+
+### 33.333 Damage style for a druid or shaman (Forever)
+
+- Do: On a druid, open `/vg`, Town and gear, Gear upgrades; click Damage style to Balance, then hover a caster item and a leather agility item in your bags. Do the same on a shaman with Enhancement. On a warrior, look for the row.
+- Expect: The Damage style row shows Feral or Balance (Elemental or Enhancement on a shaman) and no row on a warrior; with Balance the caster item's line compares by spell damage, crit and hit, and `/vg weights` says "Weights for Balance"; changing the druid's weights doesn't change a mage's on the same profile.
+- If it fails, paste: a screenshot of the Gear upgrades card, the two tooltips and the `/vg weights` line.
+
+### 33.334 Hit cap (Forever)
+
+- Do: Open Set up stat weights, type your current hit per cent (from the character sheet) into Hit cap and Save. Hover an item with hit and an otherwise equal one without.
+- Expect: The item with hit is no better than the one without, since all its hit is past the cap; `/vg weights` says "Hit past N% counts for nothing."; set the cap back to 0 and the item with hit is the upgrade again.
+- If it fails, paste: the two tooltips, `/vg weights` and `/dump GetHitModifier(), GetSpellHitModifier()`.
+
+### 33.335 A guide site's weight string (both)
+
+- Do: Copy a stat weight string a guide site posts for your class (it starts with "( " and a tool name, then "v1:"), click Import stat weights under Gear upgrades, paste it and click Import. Then try one for another class.
+- Expect: Chat says "Imported weights for …" and names any stats it skipped; Set up stat weights shows the string's values and 0 for the stats it leaves out; the other class's string is refused with "the string is for another class".
+- If it fails, paste: the string, the chat lines and a screenshot of the wizard.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

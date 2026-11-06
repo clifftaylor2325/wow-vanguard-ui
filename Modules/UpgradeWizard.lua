@@ -2,7 +2,8 @@
 -- for every stat Gear upgrades knows, for the weights in use (the kind of character your
 -- class and the Weigh stats for role make). The stats that kind values come first, the
 -- biggest first, then the rest by name. Nothing is saved until Save; Cancel and closing
--- change nothing; Defaults puts the sliders back to the kind's defaults. /vg weights and
+-- change nothing; Defaults puts the sliders back to the kind's defaults. On a client whose
+-- items have hit (WoW Forever), a box over the sliders takes the hit cap. /vg weights and
 -- its set, reset, export and import stay.
 
 local ADDON, ns = ...
@@ -30,8 +31,9 @@ WZ.LABELS = {
 }
 
 local frame
--- kind: the kind of character the weights are for; draft: stat -> weight; stats: every stat, in slider order.
-local state = { kind = "strength", draft = {}, stats = {} }
+-- kind: the kind of character the weights are for; draft: stat -> weight; stats: every stat, in slider order;
+-- cap: the hit cap in the box, per cent (0: none).
+local state = { kind = "strength", draft = {}, stats = {}, cap = 0 }
 
 -- Every stat, the ones the kind values first (biggest default weight first), then the rest by name.
 function WZ.Order(kind)
@@ -49,13 +51,13 @@ end
 local function loadWeights()
   local weights, kind = UP.Weights()
   state.kind, state.stats = kind, WZ.Order(kind)
-  state.draft = weights
+  state.draft, state.cap = weights, UP.Cap(kind)
 end
 
 -- The draft as the kind's bare defaults (the Defaults button; the same kind and sliders as loadWeights).
 local function loadDefaults()
   loadWeights()
-  state.draft = ns.Copy(UW.KINDS[state.kind])
+  state.draft, state.cap = ns.Copy(UW.KINDS[state.kind]), 0
 end
 
 -- A weight rounded to two places (a slider's float noise never reaches the draft).
@@ -68,19 +70,21 @@ local function whom()
   return { kind = UP.Word(state.kind), role = UP.Word(UP.Role()) }
 end
 
--- Saves the draft: the weights that differ from the kind's defaults (none: the defaults).
+-- Saves the draft: the weights that differ from the kind's defaults (none: the defaults), and the hit cap.
 function WZ.Save()
-  local changed = {}
-  for short, n in pairs(state.draft) do if n ~= (UW.KINDS[state.kind][short] or 0) then changed[short] = n end end
-  UP.settings.weights[state.kind] = next(changed) and changed or nil
+  local changed, defaults = {}, UW.KINDS[state.kind]
+  for short, n in pairs(state.draft) do if n ~= (defaults[short] or 0) then changed[short] = n end end
+  UP.SetOwn(state.kind, next(changed) and changed or nil)
+  UP.SetCap(state.kind, state.cap)
   UP.Changed()
   ns.Chat(ns.Format(L["Stat weights saved for {kind} (role {role})."], whom()))
 end
 
--- Re-reads every slider and the line naming who the weights are for.
+-- Re-reads every slider, the hit cap box (unless you're typing there) and the line naming who the weights are for.
 local function refresh()
   frame.caption:SetText(ns.Format(L["Weights for {kind} (role {role}). The Weigh stats for choice under Gear upgrades picks the role; 0 makes a stat worthless."], whom()))
   for _, r in ipairs(frame.rows) do r:Refresh() end
+  if frame.cap and not frame.cap:HasFocus() then frame.cap:SetText(tostring(state.cap)) end
 end
 
 -- A slider's refresh that also names its stat and shows the exact weight in its box (unless you're typing there).
@@ -118,12 +122,34 @@ local function sliderRow(list, i)
   return r
 end
 
--- The scrolling list with a slider per stat: a dialog scroll view under the caption, over the buttons, with the
--- thumb in the right pad.
+-- Takes the hit cap typed in its box (a finite number, 0 or more); anything else puts the cap back.
+local function typedCap()
+  local n = UP.ParseWeight(frame.cap:GetText())
+  if n then state.cap = math.max(0, n) end
+  frame.cap:ClearFocus()
+  frame.cap:SetText(tostring(state.cap))
+end
+
+-- The hit cap row under the caption, on a client whose items have hit: its label and a box for the per cent, at
+-- the right where the sliders' boxes are. Returns the height it takes (0 without one).
+local function addCap()
+  if not UW.STATS.HIT then return 0 end
+  frame.cap = W.Input(frame, BOX_WIDTH)
+  frame.cap:SetPoint("TOPLEFT", frame.caption, "BOTTOMLEFT", ROW_WIDTH - BOX_WIDTH, -T.SPACE.gap)
+  frame.cap:SetScript("OnEnterPressed", ns.Guard("type hit cap", typedCap))
+  frame.cap:SetScript("OnEditFocusLost", ns.Guard("type hit cap", typedCap))
+  frame.capLabel = W.Text(frame, L["Hit cap in per cent (0 for none)"])
+  frame.capLabel:SetPoint("RIGHT", frame.cap, "LEFT", -T.SPACE.gap, 0)
+  frame.capLabel:SetWidth(ROW_WIDTH - BOX_WIDTH - T.SPACE.gap)
+  return T.CONTROL_H + T.SPACE.gap
+end
+
+-- The scrolling list with a slider per stat: a dialog scroll view under the caption (and the hit cap row), over the
+-- buttons, with the thumb in the right pad.
 local function addList()
   local stats = #WZ.Order("caster")
   frame.view = ns.ScrollView(frame, { width = ROW_WIDTH })
-  frame.view:SetPoint("TOPLEFT", frame.caption, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  frame.view:SetPoint("TOPLEFT", frame.caption, "BOTTOMLEFT", 0, -(T.SPACE.gap + addCap()))
   frame.view:SetPoint("BOTTOMRIGHT", -(T.SPACE.pad + T.SPACE.col), ns.DIALOG.foot)
   frame.view:Fit(T.ROW.height * stats)
   frame.list = frame.view.child

@@ -6,7 +6,9 @@
 -- always an upgrade. Gear you can't wear is left alone.
 --
 -- /vg weights shows the weights in use; set <stat> <n>, reset, export and
--- import change or share them (a profile keeps its own).
+-- import change or share them (a profile keeps its own, per class). On WoW
+-- Forever a druid or shaman picks a damage style, and a hit cap set in the
+-- wizard makes hit past it worth nothing.
 --
 -- Written for WoW Forever: C_Item.GetItemStats, GetItemInfoInstant and
 -- IsEquippableItem and C_PlayerInfo.CanUseItem are in its UI source (1.60.1).
@@ -21,7 +23,29 @@ local vgUpgrade = ns.FrameState("vgUpgrade")
 local T = ns.Theme
 local W = ns.UpgradeWeights
 
-local UP = ns.Module("Upgrades", { defaults = { tooltip = true, bags = true, quests = true, role = "auto", weights = {} } })
+
+-- weights: class -> kind -> this profile's changes to the defaults; caps: class -> kind -> hit cap (per cent);
+-- styles: class -> its damage style on WoW Forever (ns.UpgradeWeights.STYLES).
+local UP = ns.Module("Upgrades", { defaults = { tooltip = true, bags = true, quests = true, role = "auto", weights = {}, caps = {}, styles = {} } })
+
+-- Moves weights kept per kind ({ strength = { ... } }, as a profile had them before they were kept per class) to
+-- every class that uses the kind, so a shared profile keeps what each class had.
+local function perClass(weights)
+  local legacy = {}
+  for kind, changes in pairs(weights) do if W.KINDS[kind] and type(changes) == "table" then legacy[kind] = changes end end
+  for kind, changes in pairs(legacy) do
+    weights[kind] = nil
+    for class in pairs(W.ClassesOf(kind)) do
+      weights[class] = weights[class] or {}
+      weights[class][kind] = ns.Copy(changes)
+    end
+  end
+end
+
+-- Weights kept per kind become weights kept per class (perClass).
+ns.Migrate("Upgrades", function(saved)
+  if type(saved.weights) == "table" then perClass(saved.weights) end
+end)
 
 -- A change smaller than this (per cent) isn't shown.
 UP.MIN_PCT = 0.5
@@ -61,10 +85,12 @@ function UP.Role()
   return ns.GroupRole() or W.SpecRole() or "damage"
 end
 
--- What the lines call each kind of character and each role (the keys of ns.UpgradeWeights.KINDS and of a class's roles).
+-- What the lines call each kind of character, each role and each damage style (the keys of
+-- ns.UpgradeWeights.KINDS, of a class's roles and of STYLES; Balance is both a kind and a style).
 UP.WORDS = {
   strength = L["strength"], agility = L["agility"], caster = L["caster"],
   damage = L["damage"], tank = L["tank"], healer = L["healer"],
+  feral = L["Feral"], balance = L["Balance"], elemental = L["Elemental"], enhancement = L["Enhancement"],
 }
 
 -- A kind or a role as the lines name it (the key itself for one not listed).
@@ -74,12 +100,52 @@ function UP.Word(key)
   return UP.WORDS[key] or key
 end
 
--- The weights in use (the defaults with this profile's changes) and the kind of character they're for.
+-- Your class, as the client names it (WARRIOR).
+function UP.Class()
+  return (select(2, UnitClass("player")))
+end
+
+-- This profile's changes to a kind's weights for your class (nil: the defaults).
+function UP.Own(kind)
+  return (UP.settings.weights[UP.Class()] or {})[kind]
+end
+
+-- Keeps changes to a kind's weights for your class (nil: back to the defaults).
+function UP.SetOwn(kind, changes)
+  local all, class = UP.settings.weights, UP.Class()
+  all[class] = all[class] or {}
+  all[class][kind] = changes
+end
+
+-- The hit cap set for a kind for your class, per cent (0: none).
+function UP.Cap(kind)
+  return (UP.settings.caps[UP.Class()] or {})[kind] or 0
+end
+
+-- Sets the hit cap for a kind for your class (0 or less: none).
+function UP.SetCap(kind, cap)
+  local all, class = UP.settings.caps, UP.Class()
+  all[class] = all[class] or {}
+  all[class][kind] = cap > 0 and cap or nil
+end
+
+-- Your damage style on WoW Forever (a druid's Feral or Balance), nil for a class with none.
+function UP.Style()
+  local class = UP.Class()
+  return W.Style(class, UP.settings.styles[class])
+end
+
+-- Picks your damage style and scores gear afresh.
+function UP.SetStyle(style)
+  UP.settings.styles[UP.Class()] = style
+  UP.Changed()
+end
+
+-- The weights in use (the defaults with this profile's changes for your class) and the kind of character they're for.
 function UP.Weights()
-  local _, class = UnitClass("player")
-  local kind = W.Kind(class, UP.Role())
+  local kind = W.Kind(UP.Class(), UP.Role(), UP.Style())
   local out = ns.Copy(W.KINDS[kind])
-  for short, value in pairs(UP.settings.weights[kind] or {}) do out[short] = value end
+  for short, value in pairs(UP.Own(kind) or {}) do out[short] = value end
   return out, kind
 end
 
@@ -174,6 +240,59 @@ local function wornScore(loc, slots)
   return weakest(slots)
 end
 
+-- Hit cap ---------------------------------------------------------------------------------
+
+-- An item's hit (its HIT stat; 0 for none, no link, or stats not loaded).
+local function hitOf(link)
+  local key = W.STATS.HIT
+  local stats = key and link and C_Item.GetItemStats(link)
+  return stats and ns.PlainNumber(stats[key]) or 0
+end
+
+-- The combat ratings a kind's hit is counted from (the client's CR_HIT_SPELL and CR_HIT_MELEE).
+UP.HIT_RATING = { spell = 8, melee = 6 }
+
+-- Your chance to hit now, per cent, summed as WoW Forever's character sheet sums it (PaperDollFrameStats.lua): the
+-- hit rating's bonus plus the hit modifier, spell hit for a kind that casts, melee hit for the rest. nil when the
+-- client can't say or hides it (the 12.1 client can make both secret).
+local function hitNow(kind)
+  local spell = W.SPELL_KINDS[kind]
+  local read = spell and GetSpellHitModifier or GetHitModifier
+  local hit = type(read) == "function" and ns.PlainNumber(read())
+  local bonus = type(GetCombatRatingBonus) == "function" and ns.PlainNumber(GetCombatRatingBonus(UP.HIT_RATING[spell and "spell" or "melee"]))
+  return hit and hit + (bonus or 0) or nil
+end
+
+-- The hit of what an item of equip location loc would replace: both hands for a two-hander, else the worn item.
+local function wornHit(loc, worn)
+  if not UP.TWO_HANDED[loc] then return hitOf(worn) end
+  return hitOf(GetInventoryItemLink("player", UP.MAIN_HAND)) + hitOf(GetInventoryItemLink("player", UP.OFF_HAND))
+end
+
+-- The worn and the new scores with hit past the cap taken off both: from your hit less what the worn item gives,
+-- only the part of each item's hit that stays under the cap counts. Unchanged with no cap, no hit weight, or a client
+-- that won't say your hit.
+function UP.CapHit(old, new, link, loc, worn)
+  local weights, kind = UP.Current()
+  local cap, w = UP.Cap(kind), weights.HIT
+  local now = cap > 0 and w and hitNow(kind)
+  if not now then return old, new end
+  local oldHit = wornHit(loc, worn)
+  local room = math.max(0, cap - (now - oldHit))
+  return old - w * math.max(0, oldHit - room), new - w * math.max(0, hitOf(link) - room)
+end
+
+-- The worn score, the new one (both nil while either side's stats haven't loaded; hit past the cap taken off), whether
+-- the slot is empty, and the worn link.
+local function scores(link, loc, slots)
+  local old, empty, worn = wornScore(loc, slots)
+  if empty then return nil, nil, true end
+  local new = score(link)
+  if not (old and new) then return nil, nil, false, worn end
+  old, new = UP.CapHit(old, new, link, loc, worn)
+  return old, new, false, worn
+end
+
 -- How an item compares with what you wear: the change in per cent (nil when it isn't gear you
 -- can wear, there's nothing to measure, or either side's stats haven't loaded), true when it fills an empty slot,
 -- and the worn link.
@@ -182,10 +301,9 @@ function UP.Compare(link)
   local loc = select(4, C_Item.GetItemInfoInstant(link))
   local slots = UP.SLOTS[loc]
   if not slots or not usable(link) then return nil end
-  local old, empty, worn = wornScore(loc, slots)
+  local old, new, empty, worn = scores(link, loc, slots)
   if empty then return nil, true end
-  local new = score(link)
-  if not (old and new) then return nil, false, worn end
+  if not old then return nil, false, worn end
   if old <= 0 then return new > 0 and 100 or nil, false, worn end
   return (new - old) / old * 100, false, worn
 end
@@ -305,12 +423,20 @@ function UP.ParseWeight(text)
   if finite then return n end
 end
 
+-- A saved or pasted value as a weight: a finite number, else nil (text, even "3", is not one).
+---@param value any
+---@return number|nil
+function UP.Weight(value)
+  return type(value) == "number" and UP.ParseWeight(value) or nil
+end
+
 -- Sets one weight for the kind in use ("set STR 1.2"); 0 makes a stat worthless.
 local function setWeight(stat, value)
   local short, n = (stat or ""):upper(), UP.ParseWeight(value)
   if not W.STATS[short] or not n then return ns.Chat(ns.Format(L["Use /vg weights set <stat> <number>; stats: {stats}."], { stats = statNames() })) end
-  UP.settings.weights[UP.kind] = UP.settings.weights[UP.kind] or {}
-  UP.settings.weights[UP.kind][short] = n
+  local own = UP.Own(UP.kind) or {}
+  own[short] = n
+  UP.SetOwn(UP.kind, own)
   ns.Chat(ns.Format(L["{stat} is worth {weight} for {kind} now."], { stat = short, weight = n, kind = UP.Word(UP.kind) }))
   UP.Changed()
 end
@@ -318,31 +444,82 @@ end
 -- Puts the kind in use back to its default weights.
 local function resetWeights()
   local kind = UP.kind
-  UP.settings.weights[kind] = nil
+  UP.SetOwn(kind, nil)
+  UP.SetCap(kind, 0)
   UP.Changed()
   ns.Chat(ns.Format(L["Weights for {kind} are back to the defaults."], { kind = UP.Word(kind) }))
 end
 
--- Applies a pasted weights string to the kind it was made for; false and why when it can't.
-function UP.Import(text)
+-- A Vanguard weights string (/vg weights export) applied, for your class, to the kind it was made for, with its hit
+-- cap when it has one; false and why when it can't be.
+local function importVanguard(text)
   local scope, data = ns.Serialize.Decode(text)
   if not scope then return false, data end
   if scope ~= "weights" or not W.KINDS[data.kind] or type(data.weights) ~= "table" then return false, L["not a weights string"] end
   local clean = {}
-  for short, n in pairs(data.weights) do if W.STATS[short] and type(n) == "number" then clean[short] = n end end
-  UP.settings.weights[data.kind] = clean
-  UP.Changed()
+  for short, n in pairs(data.weights) do clean[short] = W.STATS[short] and UP.Weight(n) or nil end
+  UP.SetOwn(data.kind, clean)
+  UP.SetCap(data.kind, UP.Weight(data.cap) or 0)
   return true, data.kind
 end
 
--- The import box: paste a string from /vg weights export.
-local function importDialog()
-  ns.AskText(L["Paste a Vanguard weights string, then Import"], function(text)
-    local done, detail = UP.Import(text)
+-- A guide string's weights as the whole set for the kind in use: the stats it leaves out are worth nothing, as they
+-- are in the tool it was written for (item level, which those strings never weigh, keeps its weight).
+local function guideSet(weights)
+  local out = {}
+  for short in pairs(W.STATS) do if short ~= "ILVL" then out[short] = weights[short] or 0 end end
+  out.ILVL = W.STATS.ILVL and (UP.Current()).ILVL or nil
+  return out
+end
+
+-- A guide site's weight string (ns.UpgradeStrings) applied to the weights in use for your class; false and why when
+-- it is for another class or has no stat Vanguard knows.
+local function importGuide(guide)
+  local kind = select(2, UP.Current())
+  if guide.class and guide.class ~= UP.Class() then return false, ns.Format(L["the string is for another class ({class})"], { class = guide.class }) end
+  if not next(guide.weights) then return false, L["no stat in it that Vanguard weighs"] end
+  UP.SetOwn(kind, guideSet(guide.weights))
+  return true, kind, guide.skipped
+end
+
+-- Applies a pasted string: a Vanguard weights string, or a guide site's. True, the kind and (for a guide string) the
+-- names it skipped; false and why when it can't.
+function UP.Import(text)
+  local guide = ns.UpgradeStrings.Parse(text)
+  local done, kind, skipped = (guide and importGuide or importVanguard)(guide or text)
+  if done then UP.Changed() end
+  return done, kind, skipped
+end
+
+-- Says in chat what an import did: the kind, and the stats a guide string had that Vanguard doesn't weigh.
+local function sayImported(kind, skipped)
+  ns.Chat(ns.Format(L["Imported weights for {kind}."], { kind = UP.Word(kind) }))
+  if skipped and #skipped > 0 then ns.Chat(ns.Format(L["Skipped what Vanguard doesn't weigh: {stats}."], { stats = table.concat(skipped, ", ") })) end
+end
+
+-- The import box (Import stat weights under Gear upgrades, /vg weights import): paste a string from /vg weights
+-- export or a guide site.
+function UP.ImportDialog()
+  if not UP.settings then return UP.Wizard.SayNotStarted() end
+  ns.AskText(L["Paste a Vanguard or guide site weights string, then Import"], function(text)
+    local done, detail, skipped = UP.Import(text)
     if not done then return ns.Chat(ns.Format(L["Import failed: {why}."], { why = detail })) end
     ns.HideText()
-    ns.Chat(ns.Format(L["Imported weights for {kind}."], { kind = UP.Word(detail) }))
+    sayImported(detail, skipped)
   end)
+end
+
+-- /vg weights export: the weights in use, for the kind they're for, with the hit cap, as a string to copy.
+local function exportWeights()
+  local title = ns.Format(L["Vanguard weights ({kind})  Ctrl+C to copy"], { kind = UP.Word(UP.kind) })
+  ns.ShowText(title, ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current, cap = UP.Cap(UP.kind) }))
+end
+
+-- /vg weights: the weights in use, who they're for, and the hit cap when one is set.
+local function sayWeights()
+  ns.Chat(ns.Format(L["Weights for {kind} (role {role}): {weights}"], { kind = UP.Word(UP.kind), role = UP.Word(UP.Role()), weights = weightsText(UP.current) }))
+  local cap = UP.Cap(UP.kind)
+  if cap > 0 then ns.Chat(ns.Format(L["Hit past {cap}% counts for nothing."], { cap = cap })) end
 end
 
 -- /vg weights [wizard|set <stat> <n>|reset|export|import].
@@ -353,9 +530,9 @@ function UP.Command(rest)
   UP.Current()
   if word == "set" then return setWeight(a, b) end
   if word == "reset" then return resetWeights() end
-  if word == "export" then return ns.ShowText(ns.Format(L["Vanguard weights ({kind})  Ctrl+C to copy"], { kind = UP.Word(UP.kind) }), ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current })) end
-  if word == "import" then return importDialog() end
-  ns.Chat(ns.Format(L["Weights for {kind} (role {role}): {weights}"], { kind = UP.Word(UP.kind), role = UP.Word(UP.Role()), weights = weightsText(UP.current) }))
+  if word == "export" then return exportWeights() end
+  if word == "import" then return UP.ImportDialog() end
+  sayWeights()
 end
 
 -- Module entry point (Core/Modules.lua).

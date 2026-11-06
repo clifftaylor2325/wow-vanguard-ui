@@ -679,6 +679,13 @@ function UnitHasIncomingResurrection(unit) return uf(unit, "incomingRes") == tru
 function UnitXP(unit) return uf(unit, "xp") or 0 end
 function UnitXPMax(unit) return uf(unit, "xpmax") or 0 end
 function GetXPExhaustion() return world.units.player.rested end
+-- The player's hit modifiers, per cent (melee, spell): Forever's character sheet (Camelot/PaperDollFrameStats.lua)
+-- and Retail's PaperDollFrame_SetHitChance read them. world.units.player.hit / .spellHit, 0 when unset.
+function GetHitModifier() return world.units.player.hit or 0 end
+function GetSpellHitModifier() return world.units.player.spellHit or 0 end
+-- The per cent a combat rating gives (Forever's sheet adds CR_HIT_MELEE 6 and CR_HIT_SPELL 8 to the modifiers):
+-- world.units.player.ratingBonus[cr], 0 when unset.
+function GetCombatRatingBonus(cr) return (world.units.player.ratingBonus or {})[cr] or 0 end
 function IsXPUserDisabled() return world.units.player.xpDisabled == true end
 function GetMaxPlayerLevel() return world.maxLevel end
 GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return world.units.player.level >= world.maxLevel end }
