@@ -939,10 +939,20 @@ do
 end
 
 -- Imports a bindings string from the text dialog, saying how it went in chat.
-local function importText(text)
+local function doImport(text)
   local n, err = CC.Import(text)
   ns.Chat(n and ns.Format(L["Imported {count} click-casting bindings."], { count = n }) or ns.Format(L["Can't import: {why}."], { why = err }))
   if n then ns.HideText() changed() end
+end
+
+-- Imports the string, asking first when it would replace bindings you have (as Clear all and Copy to do);
+-- a string that can't be imported says why at once, the text dialog still open.
+local function importText(text)
+  local list, had = CC.ReadImport(text), #CC.Bindings()
+  if not list or had == 0 then return doImport(text) end
+  ns.HideText()
+  local question = ns.Format(L["Replace your {old} click-casting bindings with the {new} from this string?"], { old = had, new = #list })
+  ns.Ask(question, L["Replace"], function() doImport(text) end, nil, "danger")
 end
 
 -- The keys bindings are kept under on this client: the talent groups where the lists are kept per group, else the

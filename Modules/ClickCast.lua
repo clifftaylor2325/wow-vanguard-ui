@@ -347,14 +347,20 @@ local function replaceAll(list)
   applySoon()
 end
 
+-- The bindings a click-casting string would put in place, checked whole, without changing anything;
+-- nil and the reason when it can't be imported.
+function CC.ReadImport(text)
+  local scope, data = ns.Serialize.Decode(text)
+  if not scope then return nil, data end
+  if scope ~= "clickcast" or type(data.bindings) ~= "table" then return nil, L["not a click-casting string"] end
+  return importable(data.bindings)
+end
+
 -- Replaces the current spec's bindings with the ones in a string: the whole string is checked first,
 -- then the old bindings are swapped for the new ones and applied once. A string that can't be imported
 -- changes nothing. Returns the number of bindings now, else nil and a reason.
 function CC.Import(text)
-  local scope, data = ns.Serialize.Decode(text)
-  if not scope then return nil, data end
-  if scope ~= "clickcast" or type(data.bindings) ~= "table" then return nil, L["not a click-casting string"] end
-  local list, why = importable(data.bindings)
+  local list, why = CC.ReadImport(text)
   if not list then return nil, why end
   replaceAll(list)
   return #CC.Bindings()
