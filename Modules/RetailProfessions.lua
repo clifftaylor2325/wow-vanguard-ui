@@ -110,12 +110,13 @@ RP.BOOK_TEXTS = { "professionName", "missingHeader", "missingText" }
 RP.BOOK_SPELLS = { "SpellButton1", "SpellButton2" }
 
 -- A spell button of a profession row: its name (the game's gold, or grey for a passive spell) in the label role and the
--- light text colour, its sub-name small and quiet; the light colour again after each
+-- light text colour, its sub-name small and quiet, the name plate behind it faded; the light colour again after each
 -- UpdateButton, which sets the name's colour by hand. Like the spellbook's entries.
 local function dressBookSpell(button)
   if type(button) ~= "table" then return end
   GW.SkinText(button.spellString, "label", "text")
   GW.SkinText(button.subSpellString, "small", "muted")
+  GW.FadeNamed({ (button:GetName() or "") .. "NameFrame" })
   GW.HookAfter(button, "UpdateButton", function(b) GW.SkinText(b.spellString, "label", "text") end)
 end
 
