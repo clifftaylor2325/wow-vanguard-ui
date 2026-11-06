@@ -65,7 +65,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `tapped` | `8c8c8c` | A mob another player has tagged: its grey X tag mark (nameplate and target frame) and its nameplate bar. A plain grey, apart from the bluish text greys. |
 | Reaction | `hostile` | `cc4b45` | Hostile units (nameplates, unit frames). |
 | | `neutral` | `e0c24e` | Neutral units. |
-| | `friendly` | `4db86a` | Friendly units. With Safer colours on (`colorAssist`, #235; also on while the game's colour-blind mode is, `colorAssistGame`) the three reactions are `T.ASSIST`'s instead: friendly `4a9be8` (blue), neutral `e8d25a`, hostile `e0663a` (vermilion). |
+| | `friendly` | `4db86a` | Friendly units. With Safer colours on (`colorAssist`, #235; also on while the game's colour-blind mode is, `colorAssistGame`) the three reactions are `T.ASSIST`'s instead: friendly `4a9be8` (blue), neutral `e8d25a`, hostile `e0663a` (vermilion). The reputation bar's hostile, neutral and friendly standings and the minimap zone name's friendly and hostile take the same three. |
 | Resources | `mana` / `rage` / `energy` / `focus` | `3e7be0` / `cf4a3e` / `e6c24a` / `e0893c` | Power bars. |
 | | `runes` / `holyPower` / `soulShards` / `chi` / `arcaneCharges` / `essence` | `c84a5a` / `f0d878` / `9b6ad8` / `6fe0c0` / `6f8cf0` / `4fb8c8` | The class resource pips above the player frame on Retail (a Brewmaster's stagger bar under it takes `good`, `warn` and `bad` as it grows past 30% and 60% of your health). |
 | | `charged` | `5ab4f0` | A charged combo point (Retail). |
@@ -80,9 +80,9 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | | `shield` | `ffffff` at 0.35 | Absorb shields (over the Stripes texture: one 8 px diagonal tile, repeated both ways so the seams are exact and the stripes don't shimmer, #257). |
 | Action buttons | `outOfRange` / `noPower` / `unusable` | `e64d4d` / `6680ff` / `666666` | Icon tints. |
 | XP and reputation | `xp` / `rested` | `940090` / `0063e0` at 0.5 | The XP bar and its rested overlay. |
-| | `repHostile` / `repUnfriendly` / `repNeutral` / `repFriendly` | `cc2121` / `bf4500` / `e6b300` / `00991a` | Reputation bar by standing. |
+| | `repHostile` / `repUnfriendly` / `repNeutral` / `repFriendly` | `cc2121` / `bf4500` / `e6b300` / `00991a` | Reputation bar by standing. With Safer colours on, `repHostile` / `repNeutral` / `repFriendly` are `e0663a` / `e8d25a` / `4a9be8` (`T.ASSIST`); `repUnfriendly` stays. |
 | Faction look | `allianceCrest` / `hordeCrest` | `d6b25a` / `c8453a` | The crest's colour. |
-| Zone text | `zoneSanctuary` / `zoneFriendly` / `zoneHostile` / `zoneContested` | `69ccf0` / `1aff1a` / `ff1a1a` / `ffb300` | The minimap's zone name by PvP status. |
+| Zone text | `zoneSanctuary` / `zoneFriendly` / `zoneHostile` / `zoneContested` | `69ccf0` / `1aff1a` / `ff1a1a` / `ffb300` | The minimap's zone name by PvP status. With Safer colours on, `zoneHostile` and `zoneFriendly` are the vermilion and blue above and `zoneSanctuary` a light violet `dcc8ff` (kept apart from the blue); `zoneContested` stays. |
 
 Colours that are not tokens on purpose: class colours come from the client (`RAID_CLASS_COLORS`), item quality colours from the client, and the quest tracker's quest colours stay the game's. The raid style "Class colours, softened" mixes 70 % of the class colour with 30 % of `panel` (`RF.Soften`, `Modules/RaidFrames.lua`).
 

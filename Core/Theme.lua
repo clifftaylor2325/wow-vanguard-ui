@@ -144,10 +144,14 @@ end
 -- Color assist, shown as Safer colours (#235): with it on, the reaction colors move off the red-green
 -- axis, to a friendly blue, a neutral yellow and a hostile vermilion, and the four dispel types keep
 -- apart under protanopia, deuteranopia and tritanopia (dE 18 or more; the usual set has 6 for Magic and
--- Curse under deuteranopia). Token name -> { r, g, b, a }.
+-- Curse under deuteranopia). The reputation bar's hostile, neutral and friendly standings and the minimap
+-- zone name's friendly and hostile follow the reactions; a sanctuary zone gets a light violet that stays
+-- apart from the friendly blue. Token name -> { r, g, b, a }.
 T.ASSIST = {
   friendly = fromHex("4a9be8"), neutral = fromHex("e8d25a"), hostile = fromHex("e0663a"),
   magic = fromHex("2f7fe0"), curse = fromHex("d86ac0"), disease = fromHex("e8b030"), poison = fromHex("7ad0b0"),
+  repHostile = fromHex("e0663a"), repNeutral = fromHex("e8d25a"), repFriendly = fromHex("4a9be8"),
+  zoneHostile = fromHex("e0663a"), zoneFriendly = fromHex("4a9be8"), zoneSanctuary = fromHex("dcc8ff"),
 }
 
 -- The glyph (under Media/Icons) that goes with a state color where it stands alone (#235).
