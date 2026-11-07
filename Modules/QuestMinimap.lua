@@ -35,8 +35,9 @@ QM.EDGE_ALPHA = 0.5
 local function spot(q)
   if type(q) ~= "table" or ns.IsSecret(q.isQuestStart) or q.isQuestStart == true then return nil end
   local id, x, y = ns.PlainNumber(q.questID), ns.PlainNumber(q.x), ns.PlainNumber(q.y)
-  local quest = id and x and y and ns.GetModule("QuestTracker").Quest(id)
-  return quest and { id = id, x = x, y = y, ready = quest.ready } or nil
+  local QT = ns.GetModule("QuestTracker")
+  local inLog = id and x and y and QT.LogIndex(id) ~= nil
+  return inLog and { id = id, x = x, y = y, ready = QT.IsReady(id) } or nil
 end
 
 -- The spots of the quests in your log on a map, at most QM.MAX.
@@ -49,8 +50,9 @@ function QM.Spots(mapID)
   return out
 end
 
--- Reads the spots on the map you're on (each second and when the log or the zone changes).
+-- Reads the spots on the map you're on (each second and when the log or the zone changes); nothing while the marks are off.
 function QM.Read()
+  if not QM.settings.show then QM.spots = {} return end
   QM.mapID = not ns.Restricted("Map") and ns.PlainNumber(ns.CallIf(C_Map, "GetBestMapForUnit", "player")) or nil
   QM.spots = QM.mapID and QM.Spots(QM.mapID) or {}
 end
@@ -143,10 +145,10 @@ end
 -- Whether the marks show (also while the module is off, for the options).
 local function getShow() return ns.Settings("QuestMinimap", QM.defaults).show end
 
--- Switches the marks, redrawing them when the module is on.
+-- Switches the marks, reading and redrawing them at once when the module is on.
 local function setShow(v)
   ns.Settings("QuestMinimap", QM.defaults).show = v
-  if QM.settings then QM.Draw() end
+  if QM.settings then QM.Read() QM.Draw() end
 end
 
 -- The switch on the Quests page's "Finding your way" card (Core/OptionsQuests.lua places it).

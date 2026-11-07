@@ -131,3 +131,19 @@ it("quest minimap: an objective's dot is small and in the accent, a ? gold and d
   follow(90062);
   expect(looks().map((l) => l[1]), "a followed ? is the largest mark (QM.SIZE), the dot back to 8").toEqual([8, addon.eval("return ns.QuestMinimap.SIZE"), 8]);
 });
+
+it("quest minimap: with the switch off the client's spots aren't read, and ticking it shows the marks at once", () => {
+  const addon = loggedIn(MINIMAP_ENV);
+  addon.eval("ns.QuestMinimap.Rows()[1][4](false) __reads = 0 local get = C_QuestLog.GetQuestsOnMap C_QuestLog.GetQuestsOnMap = function(id) __reads = __reads + 1 return get(id) end");
+  addon.advance(5);
+  expect(addon.eval("return __reads"), "no reads in 5 seconds").toBe(0);
+  addon.eval("ns.QuestMinimap.Rows()[1][4](true)");
+  expect([addon.eval("return __reads"), marks(addon).length], "read and drawn without waiting for a tick").toEqual([1, 3]);
+});
+
+it("quest minimap: reading the spots builds no quest record, only whether each quest is in the log and ready", () => {
+  const addon = loggedIn(MINIMAP_ENV);
+  addon.eval("local QT = ns.GetModule('QuestTracker') __records = 0 local quest = QT.Quest QT.Quest = function(id) __records = __records + 1 return quest(id) end");
+  addon.advance(3);
+  expect([addon.eval("return __records"), marks(addon).length]).toEqual([0, 3]);
+});
