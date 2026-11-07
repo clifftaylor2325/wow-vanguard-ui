@@ -4359,6 +4359,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge, no dark square around them.
 - If it fails, paste: the `/vg errors` text and a screenshot of a plate with debuffs.
 
+### 33.343 Group finder button labels (Forever)
+
+- Do: Open the Looking For Group window's browse page, search for any dungeon, and look at Send Message and Group Invite before you pick a group. Then click a group in the list, hover each button, and click another group.
+- Expect: with nothing picked both labels are the theme's dim disabled grey (the game disables them until a group is picked); once a group is picked both turn the theme's bright text colour and stay bright under the mouse. Group Invite greys out alone only for a group the game says you can't invite or apply to. The trainer's Train and the mailbox's Open All behave the same way.
+- If it fails, paste: a screenshot with a group picked and one without, and the variant name from Options, General.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
