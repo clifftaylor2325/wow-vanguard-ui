@@ -25,6 +25,7 @@ ns.SettingsGuard = G
 G.LOST = L["Vanguard's saved settings didn't load this session (the account file came back {how}). This character kept a backup."]
 G.LOST_NO_BACKUP = L["Vanguard's saved settings didn't load this session (the account file came back {how}). Paste a profile string you exported to get them back."]
 G.ASK = L["Vanguard's saved settings didn't load. Restore profile {profile} from this character's backup?"]
+G.ASK_RESTORED = L["Vanguard's saved settings didn't load. Profile {profile} was already restored from a newer backup. Use it?"]
 G.ASK_NO_BACKUP = L["Vanguard's saved settings didn't load. Paste a profile string you exported?"]
 G.LATER = L["The General and Profiles pages in /vg can still restore them; Start fresh there runs setup instead."]
 -- The options' notice, one line.
@@ -136,9 +137,27 @@ local function restoreName(backup)
   return ns.ValidProfileName(backup.profile) and backup.profile or "Restored"
 end
 
--- Puts a restored profile in place: this character uses it after the reload, and setup has run.
-local function putRestored(name, data)
+-- The account file's guard, with its tables of characters and of restored profiles (repaired if damaged).
+local function accountGuard()
+  VanguardDB.guard = ns.Fill(tbl(VanguardDB.guard) or {}, { chars = {}, restored = {} })
+  return VanguardDB.guard
+end
+
+-- True when the profile this backup restores into is there and was restored already (by another character
+-- sharing it) from a backup as new as this one or newer: a Restore would put an older copy over it.
+local function alreadyRestored(backup)
+  local acct = tbl(VanguardDB.guard)
+  local restored = acct and tbl(acct.restored)
+  local name = restoreName(backup)
+  local stamp = restored and tonumber(restored[name])
+  return stamp ~= nil and stamp >= (tonumber(backup.stamp) or 0) and VanguardDB.profiles[name] ~= nil
+end
+
+-- Puts a restored profile in place, noting the backup's stamp (a character with an older backup of it
+-- is offered to use it instead): this character uses it after the reload, and setup has run.
+local function putRestored(name, data, stamp)
   VanguardDB.profiles[name] = data
+  accountGuard().restored[name] = tonumber(stamp)
   VanguardDB.setupDone, VanguardCharDB.setupDone = true, true
   ns.UseProfile(name)
   if name == ns.ProfileName() then ns.ProfileChanged() end
@@ -158,9 +177,21 @@ function G.Restore()
   local data, why = readBackup(backup and backup.backup or "")
   if not data then return ns.Chat(ns.Format(L["The backup can't be restored: {reason}."], { reason = tostring(why) })) end
   local name = restoreName(backup)
-  putRestored(name, data)
+  putRestored(name, data, backup.stamp)
   G.Resolve()
   ns.OfferReload(ns.Format(L["Restored profile {profile} from this character's backup."], { profile = name }))
+end
+
+-- Uses the profile another character already restored from a newer backup, leaving it as it is: this
+-- character uses it (after a reload, offered, when it isn't the profile in use) and setup has run.
+function G.UseRestored()
+  local name = restoreName(G.Backup())
+  VanguardCharDB.setupDone = true
+  ns.UseProfile(name)
+  G.Resolve()
+  local text = ns.Format(L["Using profile {profile}, which another character already restored from a newer backup."], { profile = name })
+  if ns.PendingProfileName() then return ns.OfferReload(text) end
+  ns.Chat(text)
 end
 
 -- Pastes a profile string (the import box); a whole profile imported from it answers the loss (G.Imported).
@@ -186,9 +217,11 @@ local function later()
   ns.Chat(G.LATER)
 end
 
--- Asks once at login: restore from the backup, or paste a string when there is none.
+-- Asks once at login: use the profile another character restored from a newer backup, restore from this
+-- character's backup, or paste a string when there is none.
 function G.Offer()
   local backup = G.Backup()
+  if backup and alreadyRestored(backup) then return ns.Ask(ns.Format(G.ASK_RESTORED, { profile = restoreName(backup) }), L["Use it"], G.UseRestored, later) end
   if backup then return ns.Ask(ns.Format(G.ASK, { profile = restoreName(backup) }), L["Restore"], G.Restore, later) end
   ns.Ask(G.ASK_NO_BACKUP, L["Paste a string"], G.Paste, later)
 end
@@ -210,12 +243,6 @@ end
 ns.On("PLAYER_LOGIN", G.OnLogin)
 
 -- Logout ------------------------------------------------------------------------------------
-
--- The account file's guard, with its table of characters (repaired if damaged).
-local function accountGuard()
-  VanguardDB.guard = ns.Fill(tbl(VanguardDB.guard) or {}, { chars = {} })
-  return VanguardDB.guard
-end
 
 -- A profile string of these settings: a top-level copy is stamped, so the profile itself isn't.
 local function encodeOwn(profile)
@@ -267,17 +294,26 @@ O.AddRowKind("notice", noticeRow, 22)
 
 -- What the notice card explains under its line.
 local function explain()
+  if G.Backup() and alreadyRestored(G.Backup()) then
+    return ns.Format(L["Another character already restored profile {profile} from a newer backup than this character's. Use it, paste a profile string you exported, or start fresh with setup."], { profile = restoreName(G.Backup()) })
+  end
   if G.Backup() then
     return ns.Format(L["This character kept a backup of profile {profile} from its last session. Restore it, paste a profile string you exported, or start fresh with setup."], { profile = restoreName(G.Backup()) })
   end
   return L["Paste a profile string you exported (/vg export), or start fresh with setup."]
 end
 
+-- The notice card's button for this character's backup: use the profile already restored from a newer one, or restore.
+local function backupButton(backup)
+  if alreadyRestored(backup) then return { "button", L["Use the restored profile"], G.UseRestored } end
+  return { "button", L["Restore the backup"], G.Restore }
+end
+
 -- The rows the General and Profiles pages start with while the account's settings didn't load; none otherwise.
 function G.Rows()
   if not G.lost then return {} end
   local rows = { { "header", L["Saved settings didn't load"] }, { "notice", G.NOTICE }, { "text", explain() } }
-  if G.Backup() then rows[#rows + 1] = { "button", L["Restore the backup"], G.Restore } end
+  if G.Backup() then rows[#rows + 1] = backupButton(G.Backup()) end
   rows[#rows + 1] = { "button", L["Paste a profile string"], G.Paste }
   rows[#rows + 1] = { "button", L["Start fresh: run setup"], G.StartFresh }
   return rows

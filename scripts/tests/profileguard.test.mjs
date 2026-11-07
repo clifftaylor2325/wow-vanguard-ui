@@ -297,3 +297,61 @@ it("settings-loss guard: a 0.7.4 profile name with a trailing space does not fre
   expect(backupName(next), "the name is kept as it is").toBe("Raid ");
   expect(next.eval("return VanguardCharDB.guard.backup") !== before, "and the backup is of the latest settings").toBe(true);
 });
+
+// The harness Lua that makes the player `name`, with the clock at `t` (each session logs out later than the last).
+const playerAt = (name, t) => CLICK_LUA + `__wfgWorld.units.player.name = "${name}"\ntime = function() return ${t} end\n`;
+
+// Two characters sharing profile Main play one after the other, each leaving its accent on it; returns
+// each one's character file as Lua, and the account file the second left.
+function playShared(p1, p2) {
+  const acct0 = `{ version = 2, setupDone = true, profiles = { Main = { theme = { accent = { 0.5, 0.5, 0.5 } } } } }`;
+  const first = createAddon({ savedVariables: `VanguardDB = ${acct0}\nVanguardCharDB = { profile = "Main", setupDone = true }\n` });
+  first.eval(playerAt(p1.name, 100));
+  first.login();
+  first.eval(`ns.Profile().theme.accent = { ${p1.accent}, 0.5, 0.5 }`);
+  const second = relog(first, { char: `{ profile = "Main", setupDone = true }`, extra: playerAt(p2.name, 200) });
+  second.eval(`ns.Profile().theme.accent = { ${p2.accent}, 0.5, 0.5 }`);
+  second.fire("PLAYER_LOGOUT");
+  return { [p1.name]: luaValue(first.savedVariables().char), [p2.name]: luaValue(second.savedVariables().char), last: second };
+}
+
+// After playShared, the account file comes back blank, `restorer` restores Main from its backup, and `other`
+// logs in (`otherPlaysLast` when its backup is the newer). Returns that last session.
+function sharedRestore(restorer, other, otherPlaysLast) {
+  const files = otherPlaysLast ? playShared(restorer, other) : playShared(other, restorer);
+  const restoring = relog(files.last, { account: "nil", char: files[restorer.name], extra: playerAt(restorer.name, 300) });
+  restoring.eval("ns.SettingsGuard.Restore()");
+  return relog(restoring, { char: files[other.name], extra: playerAt(other.name, 400) + (other.lua ?? "") });
+}
+
+it("settings-loss guard: a character whose backup is older than the restore a sharer made is offered that profile, and it stays", () => {
+  const bravo = sharedRestore({ name: "Tester", accent: 0.9 }, { name: "Bravo", accent: 0.1 }, false);
+  expect(question(bravo), "Bravo is offered the restored profile, not its older copy").toBe("Vanguard's saved settings didn't load. Profile Main was already restored from a newer backup. Use it?");
+  bravo.eval('ns.Options.Show("general")');
+  expect(bravo.texts("Use the restored profile").length, "the notice card's button says the same").toBe(1);
+  answer(bravo, true);
+  expect(bravo.eval("return VanguardDB.profiles.Main.theme.accent[1]"), "Main keeps Tester's newer copy").toBe(0.9);
+  expect([chatHas(bravo, /Using profile Main, which another character already restored from a newer backup\.$/), bravo.eval("return ns.SettingsGuard.Lost()")], "chat says so and the loss is answered").toEqual([true, null]);
+});
+
+it("settings-loss guard: using the restored profile from another profile stages it and offers the reload", () => {
+  const bravo = sharedRestore({ name: "Tester", accent: 0.9 }, { name: "Bravo", accent: 0.1, lua: 'VanguardCharDB.profile = "Default"' }, false);
+  bravo.eval("ns.SettingsGuard.UseRestored()");
+  expect([bravo.eval("return ns.PendingProfileName()"), bravo.eval("return Vanguard_Reload:IsShown()")], "Main is staged and the reload offered").toEqual(["Main", true]);
+});
+
+it("settings-loss guard: a backup newer than the restore a sharer made still restores over it", () => {
+  const tester = sharedRestore({ name: "Bravo", accent: 0.1 }, { name: "Tester", accent: 0.9 }, true);
+  expect(question(tester), "the plain question").toBe("Vanguard's saved settings didn't load. Restore profile Main from this character's backup?");
+  answer(tester, true);
+  expect(tester.eval("return VanguardDB.profiles.Main.theme.accent[1]"), "the newer copy wins").toBe(0.9);
+});
+
+it("settings-loss guard: a damaged record of restored profiles is repaired and asks the plain question", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('VanguardDB.guard = { chars = {}, restored = "oops" } VanguardCharDB.guard = { stamp = 5, profile = "Default", backup = "VG1:profile:x" } ns.SettingsGuard.lost = "account"');
+  addon.eval("ns.SettingsGuard.Offer()");
+  expect(question(addon), "no record to read: the plain question").toBe("Vanguard's saved settings didn't load. Restore profile Default from this character's backup?");
+  addon.eval("ns.SettingsGuard.lost = nil ns.SettingsGuard.Save()");
+  expect(addon.eval("return type(VanguardDB.guard.restored)"), "the record is a table again").toBe("table");
+});
