@@ -141,6 +141,7 @@ export function localeProblems(entries, keys, words = null) {
   for (const [key, text] of entries) {
     if (!keys.has(key)) out.push(`orphaned (no longer in the code): ${key}`);
     else if (text.trim() === "") out.push(`empty translation: ${key}`);
+    else if (/[\u0000-\u0008\u000b-\u001f\u007f]/.test(text)) out.push(`control character in translation: ${key}`);
     else if (placeholders(text) !== placeholders(key)) out.push(`placeholders differ from the English: ${key}`);
     else if (words && commandsIn(text, words).join("\n") !== commandsIn(key, words).join("\n")) out.push(`commands differ from the English: ${key}`);
   }
@@ -184,5 +185,7 @@ export function importCsv(text) {
   const [head, ...rows] = parseCsv(text);
   const col = Object.fromEntries(CSV_HEAD.map((name) => [name, head.indexOf(name)]));
   const filled = rows.filter((r) => (r[col.translation] ?? "").trim() !== "");
-  return new Map(filled.map((r) => [r[col.key], r[col.translation]]));
+  // CRLF from a Windows editor becomes the LF the keys use.
+  const lf = (s) => s.replace(/\r\n/g, "\n");
+  return new Map(filled.map((r) => [lf(r[col.key]), lf(r[col.translation])]));
 }

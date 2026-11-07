@@ -98,3 +98,13 @@ it("i18n: no locale gives another text the translation of a caption the options 
     }
   }
 });
+
+it("a translation holding a carriage return is a problem", () => {
+  const keys = new Map([["Bags", "x"]]);
+  expect(localeProblems(new Map([["Bags", "Ta\rschen"]]), keys)).toEqual(["control character in translation: Bags"]);
+});
+
+it("a CRLF line break inside a quoted CSV cell imports as a line feed", () => {
+  const csv = 'key,english,translation,context,note\n"two\r\nlines",x,"zwei\r\nZeilen",,\n';
+  expect(importCsv(csv)).toEqual(new Map([["two\nlines", "zwei\nZeilen"]]));
+});
