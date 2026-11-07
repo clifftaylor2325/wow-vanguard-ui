@@ -652,13 +652,13 @@ local function within(w, frame)
 end
 
 -- Raises a frame above every other frame of its strata (SimpleFrameAPIDocumentation.lua: Raise): its level becomes
--- one above the highest of theirs, and its children, one above the parent's, move with it.
+-- one above the highest of theirs, never lower than it was, and its children, one above the parent's, move with it.
 function methods:Raise()
   local strata, top = self:GetFrameStrata(), 0
   for _, w in ipairs(stub.frames) do
     if w.GetFrameLevel and not within(w, self) and w:GetFrameStrata() == strata then top = math.max(top, w:GetFrameLevel()) end
   end
-  self.__level = top + 1
+  self.__level = math.max(self:GetFrameLevel(), top + 1)
 end
 -- Keeps a frame's strata when it is reparented.
 function methods:SetFixedFrameStrata(on) self.__fixedStrata = on and true or nil end
