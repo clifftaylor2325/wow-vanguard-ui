@@ -117,6 +117,19 @@ it("runes: ready ones on the left, the others filling as they come back", () => 
   expect(addon.eval('return ns.Theme.barColored[ns.GetModule("ClassBars").resourceFrames.runes.pips[1].bar].token'), "in the rune colour").toBe("runes");
 });
 
+it("runes: a frame's sort reuses the row's table and one comparator", () => {
+  const addon = retail("DEATHKNIGHT", 2, "__wfgWorld.runes = { [2] = { start = GetTime() - 5, duration = 10 } }");
+  addon.eval(`local row = ns.GetModule("ClassBars").resourceFrames.runes
+    __first, __cmps = row.shares, {}
+    local sort = table.sort
+    table.sort = function(t, f) if t == row.shares then __cmps[#__cmps + 1] = f end return sort(t, f) end`);
+  addon.advance(1);
+  const seen = addon.eval(`local CB = ns.GetModule("ClassBars") local row = CB.resourceFrames.runes
+    local same = true for _, f in ipairs(__cmps) do same = same and f == CB.MOST_READY_FIRST end
+    return { type(__first) == "table" and rawequal(row.shares, __first), #__cmps > 1, same }`);
+  expect(seen, "the same table, sorted every frame with the shared comparator").toEqual([true, true, true]);
+});
+
 it("essence: the next point fills as it recharges, at the client's rate", () => {
   const addon = retail("EVOKER", 1, `__p.powers[19], __p.maxpowers[19] = 3, 5 __p.partial = { [19] = 500 }
     __wfgWorld.powerRegen = { [19] = 0.25 }`);
