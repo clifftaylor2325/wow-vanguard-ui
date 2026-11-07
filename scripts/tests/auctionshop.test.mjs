@@ -847,3 +847,16 @@ it("Z10-2 a leading 0 never starts a thousands group: German 0.125 is a fraction
   expect(pricesWith('",", "."', ["0.125", "0.005", "0.250", "2.125", "10.000"]), "0.125 gold is 12s 50c; 2.125 and 10.000 still have a thousands point").toEqual([1250, 50, 2500, 21250000, 100000000]);
   expect(pricesWith('".", ","', ["0,125", "0,5", "1,125"]), "English: 0,125 is nothing a price can be; 1,125 is 1125 gold").toEqual([false, false, 11250000]);
 });
+
+it("H29-6-1 a list row lights under the mouse and the table's own onEnter still runs", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust" }');
+  const row = `${TABLE}.rows[1]`;
+  addon.eval(`local r = ${row} r:Show() __entered = 0 ${TABLE}.onEnter = function() __entered = __entered + 1 end`);
+  // Whether the row's hover wash shows.
+  const hover = () => addon.eval(`return ns.Theme.RowParts(${row}).hover:IsShown()`);
+  addon.eval(`local r = ${row} r:GetScript("OnEnter")(r)`);
+  expect([hover(), addon.eval("return __entered")], "hover wash on, owner's onEnter ran").toEqual([true, 1]);
+  addon.eval(`local r = ${row} r:GetScript("OnLeave")(r)`);
+  expect(hover(), "left: the wash is off").toBe(false);
+});
