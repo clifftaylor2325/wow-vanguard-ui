@@ -172,3 +172,20 @@ it("a bag click while on Posting keeps the window on Posting; from the game's Bu
   addon.world.postFromBag(0, 3);
   expect(page(), "Posting, then the game's Sell: a bag click stays on the game's sell page").toEqual([false, "Sell", "ItemSell"]);
 });
+
+it("the game's own confirm box is closed when it answers a Vanguard post, and left alone outside the click's 3 seconds", () => {
+  const addon = atPosting("__wfgWorld.ah.needsConfirm = true");
+  bagClick(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  // The game's handler shows its box, then the event reaches us; true when the box is still up.
+  const warn = () => {
+    addon.eval(`StaticPopup_Show("AUCTION_HOUSE_POST_WARNING")`);
+    addon.fire("AUCTION_HOUSE_POST_WARNING");
+    return addon.eval(`return __wfgWorld.popups.AUCTION_HOUSE_POST_WARNING ~= nil`);
+  };
+  addon.click(`${CARD}.post`);
+  expect(warn(), "shown until the next frame").toBe(true);
+  addon.advance(0.1);
+  expect([addon.eval(`return __wfgWorld.popups.AUCTION_HOUSE_POST_WARNING ~= nil`), addon.eval(`return ${CARD}.post.text:GetText()`), chatHas(addon, /the game wants it confirmed/), errors(addon)], "closed, Post reads Confirm, chat says it").toEqual([false, "Confirm", true, []]);
+  addon.eval("__wfgStub.now = __wfgStub.now + 4");
+  expect(warn() && (addon.advance(0.1), addon.eval(`return __wfgWorld.popups.AUCTION_HOUSE_POST_WARNING ~= nil`)), "the game's own Sell tab warning is not touched").toBe(true);
+});
