@@ -734,3 +734,15 @@ it("H17-2-2: the Click casting page shows its combat notice as soon as a fight s
   addon.world.combat(true);
   expect(addon.eval("return __reads"), "a closed window is not re-read as a fight starts").toBe(0);
 });
+
+it("H29-6-R2 a spell picker row lights under the mouse and clears when it leaves", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(cell(addon, "ctrl-BUTTON2"));
+  // Whether the first picker row's hover wash shows.
+  const hover = () => addon.eval("return ns.Theme.RowParts(Vanguard_SpellPicker.rows[1]).hover:IsShown()");
+  addon.eval('local r = Vanguard_SpellPicker.rows[1] r:GetScript("OnEnter")(r)');
+  expect(hover(), "hover wash on").toBe(true);
+  addon.eval('local r = Vanguard_SpellPicker.rows[1] r:GetScript("OnLeave")(r)');
+  expect(hover(), "left: the wash is off").toBe(false);
+});
