@@ -24,8 +24,11 @@ S.NAMES = {
 S.ABOUT = { class = true, spec = true }
 
 -- The Name=value pairs of a guide string, or nil for text that isn't one.
+-- The prefix is matched with a lazy name and no greedy capture, so a long paste with no closing bracket is read in linear time.
 local function body(text)
-  return type(text) == "string" and text:match('^%s*%(%s*[%w_]+%s*:%s*v%d+%s*:%s*".-"%s*:(.*)%)%s*$') or nil
+  local start = type(text) == "string" and text:match('^%s*%(%s*[%w_]+%s*:%s*v%d+%s*:%s*".-"%s*:()')
+  local closeAt = start and text:find("%)%s*$", start)
+  return closeAt and text:sub(start, closeAt - 1) or nil
 end
 
 -- Reads one Name=value pair into out: the class, a stat Vanguard weighs (the biggest weight when names share it),

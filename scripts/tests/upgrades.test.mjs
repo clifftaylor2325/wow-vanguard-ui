@@ -117,6 +117,17 @@ it("upgrades: a cap set to 0 (none) goes out and comes back as 0, not the kind's
   expect(cap(), "the no-cap choice survives the string").toBe(0);
 });
 
+it("upgrades: a guide string parses, and a long hostile paste is refused quickly", () => {
+  const addon = loggedIn(GEAR_ENV);
+  // Whether a Lua string expression parses as a guide string.
+  const parse = (lua) => addon.eval(`return ns.UpgradeStrings.Parse(${lua}) ~= nil`);
+  expect(parse('\'(Pawn:v1:"Mine":Class=Warrior,Strength=1)\''), "a real guide string still parses").toBe(true);
+  expect(parse('\'(Pawn:v1:"My "odd" name":Class=Warrior,Strength=1)\''), "a name holding quotes still parses").toBe(true);
+  const start = Date.now();
+  expect(parse('\'(a:v1:"\' .. string.rep(\'":\', 16000)'), "no closing bracket: not a guide string").toBe(false);
+  expect(Date.now() - start, "and it takes no time").toBeLessThan(1000);
+});
+
 it("upgrades: the weights wizard has a slider for every stat, and saves only on Save", () => {
   const addon = loggedIn(GEAR_ENV);
   // Runs Lua in the client.
