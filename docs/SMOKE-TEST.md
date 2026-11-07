@@ -4362,7 +4362,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.343 Group finder button labels (Forever)
 
 - Do: Open the Looking For Group window's browse page, search for any dungeon, and look at Send Message and Group Invite before you pick a group. Then click a group in the list, hover each button, and click another group.
-- Expect: with nothing picked both labels are the theme's dim disabled grey (the game disables them until a group is picked); once a group is picked both turn the theme's bright text colour and stay bright under the mouse. Group Invite greys out alone only for a group the game says you can't invite or apply to. The trainer's Train and the mailbox's Open All behave the same way.
+- Expect: with nothing picked both labels are the theme's dim disabled grey (the game disables them until a group is picked); once a group is picked both turn the theme's bright text colour and stay bright under the mouse. Group Invite greys out alone only for a group the game says you can't invite or apply to. The trainer's Train and the mailbox's Open All behave the same way. Then open a few other game windows with buttons or check boxes that start greyed out (the mailbox's Send before you name someone, the auction house's Bid and Buyout before you pick an item, a disabled option in the game's settings): each one turns bright as soon as the game enables it, never stays grey.
 - If it fails, paste: a screenshot with a group picked and one without, and the variant name from Options, General.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.

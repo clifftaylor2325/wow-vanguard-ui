@@ -1231,6 +1231,18 @@ it("a variant switch recolours text drawn before it: with the options window ope
 const CHECK_BUTTON = `local b = CreateFrame("CheckButton", "TEST_Check", UIParent) b:SetSize(24, 24)
   b.Art = b:CreateTexture() b:SetCheckedTexture(b:CreateTexture()) b:SetFontString(b:CreateFontString()) b.text = b:GetFontString() b.text:SetPoint("LEFT", b, "RIGHT", 2, 0) b:SetChecked(true) ns.Theme.CheckBox(b)`;
 
+it("theme: a game check button skinned while the game has it greyed out gets the text tier once enabled, not the game's grey back", () => {
+  const addon = loggedIn(`local b = CreateFrame("CheckButton", "TEST_Greyed", UIParent) b:SetFontString(b:CreateFontString())
+    b.text = b:GetFontString() b.text:SetTextColor(0.5, 0.5, 0.5) b:Disable() ns.Theme.CheckBox(b)`);
+  // The label's colour token as the theme set it.
+  const label = () => addon.eval("return ns.Theme.ColorToken(TEST_Greyed.text)");
+  expect(label(), "greyed out: the disabled tier").toBe("disabled");
+  addon.eval("TEST_Greyed:Enable()");
+  expect(label(), "enabled: the text tier, though its colour before the skin was the game's grey").toBe("text");
+  addon.eval('ns.Theme.Color(TEST_Greyed.text, "accentText") TEST_Greyed:Disable() TEST_Greyed:Enable()');
+  expect(label(), "a label the theme coloured gets its own token back").toBe("accentText");
+});
+
 it("theme: a game check button becomes a 16 px inset box with the Check glyph in accentText while checked, following the game's state and the mouse (DESIGN-PRINCIPLES 2.6)", () => {
   const addon = loggedIn(CHECK_BUTTON);
   // The check button's state: { art faded, box width, mark shown, mark colour, mark size, press shown, fill shown, box regions, label colour }.
