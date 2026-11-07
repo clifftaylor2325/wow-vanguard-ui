@@ -104,6 +104,19 @@ it("upgrades: weights go out and come back as a string", () => {
   expect(chatHas(addon, /Import failed: not a Vanguard profile string\./), "a failed paste says why").toBe(true);
 });
 
+it("upgrades: a cap set to 0 (none) goes out and comes back as 0, not the kind's own cap", () => {
+  const addon = loggedIn(GEAR_ENV);
+  // The strength kind's hit cap in use.
+  const cap = () => addon.eval("return ns.GetModule('Upgrades').Cap('strength', 'HIT')");
+  expect(cap(), "a warrior's hit cap starts at the kind's own").toBe(8);
+  addon.eval("ns.GetModule('Upgrades').SetCap('strength', 'HIT', 0)");
+  addon.slash("weights export");
+  const text = addon.eval("return Vanguard_TextEdit:GetText()");
+  addon.eval("ns.GetModule('Upgrades').ResetCaps('strength')");
+  addon.eval(`ns.GetModule("Upgrades").Import(${JSON.stringify(text)})`);
+  expect(cap(), "the no-cap choice survives the string").toBe(0);
+});
+
 it("upgrades: the weights wizard has a slider for every stat, and saves only on Save", () => {
   const addon = loggedIn(GEAR_ENV);
   // Runs Lua in the client.
