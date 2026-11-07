@@ -109,6 +109,18 @@ it("the info strip under the minimap", () => {
   expect(addon.eval('return __click("Clock")') && block(addon, "clock").shown, "a block turns off at once").toBe(false);
   expect(addon.eval('return { ns.MoverPoint("infostrip") }'), "the strip is movable, under the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -12, -200]);
 });
+it("the info strip lays its blocks out again only when a block's text or shown state changed, not on every tick", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + CLICK_LUA);
+  addon.eval(`__moves = 0 for _, fs in pairs(ns.GetModule("InfoStrip").fonts) do
+    local clear = fs.ClearAllPoints fs.ClearAllPoints = function(self) __moves = __moves + 1 return clear(self) end end`);
+  addon.eval("__wfgStub.advance(10)");
+  expect(addon.eval("return __moves"), "ten quiet seconds leave every anchor alone").toBe(0);
+  addon.eval("__fps = 30 __wfgStub.advance(3.1)");
+  expect(addon.eval("return __moves") > 0, "a changed text lays the strip out once more").toBe(true);
+  addon.eval("__moves = 0 ns.GetModule('InfoStrip').UpdateAll()");
+  expect(addon.eval("return __moves") > 0, "UpdateAll always lands a full fit").toBe(true);
+});
+
 it("the info strip: the day and date with a calendar button", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + 'date = function(f) return f == "%a %d %b" and "Tue 13 Oct" or "21:04" end __opened = 0 ToggleCalendar = function() __opened = __opened + 1 end');
   const button = "Vanguard_InfoStripCalendar";
