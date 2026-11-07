@@ -270,6 +270,8 @@ it("S2.2 the trainer: Train keeps the game's label on a client without CreateFon
   old.fire("ADDON_LOADED", "Blizzard_TrainerUI");
   old.eval("ClassTrainerFrame:Show()");
   expect(old.eval("return ClassTrainerTrainButton:GetNormalFontObject() == TEST_GameFontNormal and ns.Theme.LabelFonts(ClassTrainerTrainButton) == nil"), "no copies").toBe(true);
+  old.eval("ClassTrainerTrainButton:Enable()");
+  expect(old.eval("return ns.Theme.ColorToken(ClassTrainerTrainButton:GetFontString())"), "skinned while greyed out, then enabled: the text tier, not the game's grey it had").toBe("text");
   const addon = loggedIn(TRAINER_ENV + "__trainer()" + TRAIN_FONTS);
   addon.fire("ADDON_LOADED", "Blizzard_TrainerUI");
   addon.eval('ClassTrainerFrame:Show() __first = ClassTrainerTrainButton:GetNormalFontObject() ns.Theme.ButtonLabel(ClassTrainerTrainButton)');

@@ -1521,21 +1521,32 @@ function T.PressButton(button, down)
   if not s.keepsLabel then dropLabel(button, s, on) end
 end
 
--- Each disabled themed button's label colour from before (weak), given back when it's enabled.
-local labelBefore = setmetatable({}, { __mode = "k" })
+-- A button's disabled look, kept in a block: Lua's 200-local limit.
+do
+  -- Each disabled themed button's label token from before (weak), given back when it's enabled.
+  local labelBefore = setmetatable({}, { __mode = "k" })
 
--- Gives a button its disabled look (#257): no hover or press, its label in the disabled tier; or,
--- enabled again, the label's colour from before. A label on the theme's font objects (T.ButtonLabel) is set to the
--- tier for the state each time, as a colour set on a label can hold over its font object's.
-function T.DisabledLook(button, disabled)
-  local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
-  if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
-  if not (fs and fs.GetTextColor) then return end
-  if T.LabelFonts(button) then return T.Color(fs, disabled and "disabled" or "text") end
-  if disabled then labelBefore[button] = labelBefore[button] or { token = T.ColorToken(fs), fs:GetTextColor() } return T.Color(fs, "disabled") end
-  local c = labelBefore[button]
-  labelBefore[button] = nil
-  if c and c.token then T.Color(fs, c.token) elseif c then T.ColorRGB(fs, c[1], c[2], c[3]) end
+  -- The token a label goes back to once its button is enabled: the theme token it has, or the text tier when it has
+  -- none or is greyed already. A game colour read as a button is disabled is the game's grey (its font object's, or a
+  -- button skinned while disabled), so giving that back left an enabled button's label dim.
+  local function enabledToken(fs)
+    local token = T.ColorToken(fs)
+    return token and token ~= "disabled" and token or "text"
+  end
+
+  -- Gives a button its disabled look (#257): no hover or press, its label in the disabled tier; or,
+  -- enabled again, the label's token from before. A label on the theme's font objects (T.ButtonLabel) is set to the
+  -- tier for the state each time, as a colour set on a label can hold over its font object's.
+  function T.DisabledLook(button, disabled)
+    local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
+    if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
+    if not (fs and fs.GetTextColor) then return end
+    if T.LabelFonts(button) then return T.Color(fs, disabled and "disabled" or "text") end
+    if disabled then labelBefore[button] = labelBefore[button] or enabledToken(fs) return T.Color(fs, "disabled") end
+    local token = labelBefore[button]
+    labelBefore[button] = nil
+    if token then T.Color(fs, token) end
+  end
 end
 
 -- A game push button's label (UIPanelButtonTemplate and kin, the trainer's Train, the group finder's Send Message):
