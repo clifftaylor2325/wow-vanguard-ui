@@ -260,7 +260,7 @@ local function watchFlyouts()
     ns.On(event, refresh)
   end
   ns.On("CVAR_UPDATE", onSettingChanged)
-  ns.OutOfCombat(ensureFlyout, "action bar flyouts")
+  ns.OutOfCombat(ensureFlyout, "action bar flyout list")
   refresh()
 end
 

@@ -160,6 +160,13 @@ it("forms the client reports only after login show the stance spot on entering t
   expect([drivers(addon)[1], addon.eval("return #ns.errors")], "the usual clause is back").toEqual(["[vehicleui][possessbar][overridebar] hide; show", 0]);
 });
 
+it("a forms update that changes nothing leaves the stance spot's driver alone", () => {
+  const addon = loggedIn(SEATED_ENV);
+  addon.eval("Vanguard_StanceBarSpot.__states.visibility = 'untouched'");
+  addon.fire("UPDATE_SHAPESHIFT_FORMS");
+  expect(drivers(addon)[1], "still no forms: the driver is not written again").toBe("untouched");
+});
+
 it("forms changing in a fight set the stance spot's driver once the fight ends", () => {
   const fight = loggedIn(SEATED_ENV + ONE_FORM);
   setCombat(fight, true);

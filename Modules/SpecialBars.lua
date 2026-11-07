@@ -151,7 +151,8 @@ local function placeBar(spot)
   holder:SetFrameLevel(bar:GetFrameLevel())
   ns.Mover(holder, spot[2], spot[3], spot[4])
   seatButtons(spot, bar, holder)
-  RegisterStateDriver(holder, "visibility", SB.RowDriver(spot))
+  holder.vgDriver = SB.RowDriver(spot)
+  RegisterStateDriver(holder, "visibility", holder.vgDriver)
   SB.holders[spot[1]] = holder
 end
 
@@ -162,7 +163,10 @@ local function redriveStance()
   local holder = SB.holders[SB.STANCE_SPOT[1]]
   if not holder then return end
   ns.OutOfCombat(function()
-    RegisterStateDriver(holder, "visibility", SB.RowDriver(SB.STANCE_SPOT))
+    local driver = SB.RowDriver(SB.STANCE_SPOT)
+    if holder.vgDriver == driver then return end
+    holder.vgDriver = driver
+    RegisterStateDriver(holder, "visibility", driver)
   end, "stancespot")
 end
 

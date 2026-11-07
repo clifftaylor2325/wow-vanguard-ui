@@ -536,13 +536,15 @@ local function reloadDialog()
   return reload
 end
 
--- Offers a reload, for changes that apply after one; the dialog grows to fit its reason. Showing raises it, so Reload's
--- overlay is laid over it again (out of combat; in combat it is put away and comes back after).
+-- Offers a reload, for changes that apply after one; the dialog grows to fit its reason. It is raised even when it was
+-- already open (Show then fires no OnShow), so Reload's overlay is laid over it again (out of combat; in combat it is
+-- put away and comes back after).
 function ns.OfferReload(why)
   local f = reloadDialog()
   f.title:SetText(ns.Format(L["{why} Reload the UI now to apply it?"], { why = why }))
   fitTitle(f)
   f:Show()
+  f:Raise()
   local o = f.accept.reloadOverlay
   if o and not ns.InCombat() then cover(o) end
 end
