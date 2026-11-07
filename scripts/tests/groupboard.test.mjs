@@ -369,3 +369,16 @@ it("group board: the note's two lines and the hint's two lines fit the board's h
   expect([body.bottom - n.top, n.bottom - h.top], "the note a tight gap under the rows; a gap between its second line and the hint, so the board is tall enough").toEqual([tight, gap]);
   addon.eval("__wfgStub.stringHeights = nil");
 });
+
+it("H29-6-R1 a post row lights under the mouse and its tooltip script still runs", () => {
+  const addon = board();
+  post(addon, "LFM SFK need heals", "Lightmend-Ruleset");
+  addon.slash("lfg");
+  addon.eval(`local f = Vanguard_GroupBoard
+    for _, w in ipairs({ f.body:GetChildren() }) do if w.kind and w.dungeon then __row = w end end
+    __tips = 0 local show = GameTooltip.Show GameTooltip.Show = function(...) __tips = __tips + 1 return show(...) end
+    __row:GetScript("OnEnter")(__row)`);
+  expect(addon.eval("return { ns.Theme.RowParts(__row).hover:IsShown(), __tips > 0 }"), "hover wash on, tooltip shown").toEqual([true, true]);
+  addon.eval(`__row:GetScript("OnLeave")(__row)`);
+  expect(addon.eval("return ns.Theme.RowParts(__row).hover:IsShown()"), "left: the wash is off").toBe(false);
+});

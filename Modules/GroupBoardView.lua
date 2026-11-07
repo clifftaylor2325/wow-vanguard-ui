@@ -57,8 +57,8 @@ local function makeRow(parent)
   b.kind, b.dungeon, b.roles = cell(b, INDENT, 34, "small"), cell(b, 40, 164), cell(b, 208, 92, "small")
   b.sender, b.age = cell(b, 304, 82), cell(b, 388, 48, "small")
   b:SetScript("OnClick", ns.Guard("click group board row", function(self) GB.Whisper(self.entry) end))
-  b:SetScript("OnEnter", GB.RowTooltip)
-  b:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  b:HookScript("OnEnter", GB.RowTooltip)
+  b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
   return b
 end
 
