@@ -79,6 +79,13 @@ local function oneLineTitle(f, w)
   f.title:SetMaxLines(1)
 end
 
+-- Puts a dialog on the dialog strata, raised above the others there each time it shows, so the one opened last takes
+-- the clicks (a question over the reload offer, not the offer's Reload overlay under it). Dialogs are unprotected.
+local function onTop(f)
+  f:SetFrameStrata("FULLSCREEN_DIALOG")
+  f:HookScript("OnShow", ns.Guard("raise dialog", function(d) d:Raise() end))
+end
+
 -- A centered, themed dialog frame at the dialog alpha, with the one window chrome (ns.WindowTitle: its title, set
 -- by the caller unless given and kept short of the close X that hides it, and Escape), a layer above the options window (which is
 -- on the dialog strata itself, its cards high in it, so a dialog there opened under them). The X is
@@ -92,7 +99,7 @@ local function dialog(name, w, h, title)
   local f = T.Panel(CreateFrame("Frame", name, UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   f:SetSize(w, h)
   f:SetPoint("CENTER")
-  f:SetFrameStrata("FULLSCREEN_DIALOG")
+  onTop(f)
   f:EnableMouse(true)
   f.chrome = ns.WindowTitle(f, title or name, { onClose = hide, escape = true })
   oneLineTitle(f, w)
@@ -529,10 +536,13 @@ local function reloadDialog()
   return reload
 end
 
--- Offers a reload, for changes that apply after one; the dialog grows to fit its reason.
+-- Offers a reload, for changes that apply after one; the dialog grows to fit its reason. Showing raises it, so Reload's
+-- overlay is laid over it again (out of combat; in combat it is put away and comes back after).
 function ns.OfferReload(why)
   local f = reloadDialog()
   f.title:SetText(ns.Format(L["{why} Reload the UI now to apply it?"], { why = why }))
   fitTitle(f)
   f:Show()
+  local o = f.accept.reloadOverlay
+  if o and not ns.InCombat() then cover(o) end
 end

@@ -637,7 +637,29 @@ end
 -- Strata and scroll child.
 function methods:SetFrameStrata(s) self.__strata = s end
 -- The strata set (or taken from the parent), MEDIUM when none was, as the client answers.
-function methods:GetFrameStrata() return self.__strata or "MEDIUM" end
+function methods:GetFrameStrata()
+  local parent = self.__parent
+  return self.__strata or (parent and parent.GetFrameStrata and parent:GetFrameStrata()) or "MEDIUM"
+end
+
+-- Whether w is frame or sits under it.
+local function within(w, frame)
+  while w do
+    if w == frame then return true end
+    w = w.__parent
+  end
+  return false
+end
+
+-- Raises a frame above every other frame of its strata (SimpleFrameAPIDocumentation.lua: Raise): its level becomes
+-- one above the highest of theirs, and its children, one above the parent's, move with it.
+function methods:Raise()
+  local strata, top = self:GetFrameStrata(), 0
+  for _, w in ipairs(stub.frames) do
+    if w.GetFrameLevel and not within(w, self) and w:GetFrameStrata() == strata then top = math.max(top, w:GetFrameLevel()) end
+  end
+  self.__level = top + 1
+end
 -- Keeps a frame's strata when it is reparented.
 function methods:SetFixedFrameStrata(on) self.__fixedStrata = on and true or nil end
 -- Records whether a frame is drawn into its own buffer.
