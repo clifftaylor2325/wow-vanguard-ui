@@ -35,6 +35,7 @@ const TRAITS_ENV = `
     GetConditionInfo = function(_, condID) return { isGate = true, spentAmountRequired = __nodes[math.floor(condID / 100)].gate } end,
     GetEntryInfo = function(_, entryID) return { definitionID = entryID } end,
     GetDefinitionInfo = function(defID) return { spellID = defID } end,
+    ConfigHasStagedChanges = function() return __staged == true end,
     PurchaseRank = function(_, id) __bought[#__bought + 1] = id __nodes[id].rank = __nodes[id].rank + 1 __points = __points - 1 return true end,
   }
   C_ClassTalents = { CommitConfig = function() __commits = __commits + 1 return true end }
@@ -175,6 +176,15 @@ it("talent planner: Spend planned stops at a rank the game refuses, says which, 
   expect(chatHas(addon, /Talent planner: the game refused Unbreakable Will; nothing after it was bought\./), "and names the refused pick").toBe(true);
   addon.eval(`${TP}.SpendPlanned()`);
   expect(addon.eval("return __commits"), "nothing bought: nothing to apply").toBe(1);
+});
+
+it("talent planner: Spend planned buys nothing while the talents window holds picks not yet applied", () => {
+  const addon = open();
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } } __staged = true ${TP}.SpendPlanned()`);
+  expect(addon.eval("return { #__bought, __commits }"), "nothing bought or applied").toEqual([0, 0]);
+  expect(chatHas(addon, /the talents window has picks you haven't applied/), "chat says why").toBe(true);
+  addon.eval(`__staged = nil C_Traits.ConfigHasStagedChanges = nil ${TP}.SpendPlanned()`);
+  expect(addon.eval("return { #__bought, __commits }"), "a client without the call still buys").toEqual([3, 1]);
 });
 
 it("talent planner: at a level-up chat names the next pick, or Spend by itself buys it", () => {

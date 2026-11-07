@@ -645,12 +645,16 @@ local function reportSpend(tree, order, bought, wanted)
   if bought < wanted then ns.Chat(ns.Format(L["Talent planner: the game refused {talent}; nothing after it was bought."], { talent = TP.NodeName(tree.nodes[order[bought + 1]]) })) end
 end
 
+-- True when the talents window holds picks that were never applied (a commit would apply them too).
+local function hasStaged(tree) return ask("C_Traits", "ConfigHasStagedChanges", tree.configID) == true end
+
 -- Buys the next n planned ranks (all the points you have when n is nil) in the plan's order and applies
 -- what was bought. Nothing in combat, without points, or with nothing planned to buy; chat says which.
 function TP.SpendPlanned(n)
   if ns.InCombat() then return ns.Chat(L["Talents can't be changed in combat."]) end
   local tree = TP.ReadTree()
   if not tree then return ns.Chat(L["Talent planner: no talent tree to spend in."]) end
+  if hasStaged(tree) then return ns.Chat(L["Talent planner: the talents window has picks you haven't applied; apply or undo them first."]) end
   local result = TP.Resolve(tree, TP.Plan())
   local count = math.min(tree.points, #result.order, n or #result.order)
   if count <= 0 then return ns.Chat(tree.points > 0 and L["Talent planner: nothing planned that can be bought now."] or L["Talent planner: no points to spend."]) end
