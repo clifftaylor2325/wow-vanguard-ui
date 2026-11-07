@@ -16,7 +16,7 @@ local ADDON, ns = ...
 local L = ns.L
 
 local T = ns.Theme
-local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true, listSell = false, junkList = {}, bulkBuy = true } })
+local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true, listSell = false, bulkBuy = true } })
 
 MC.RETRIES, MC.RETRY_AFTER = 3, 0.3
 -- The last bag scanned for sales: the reagent bag (Enum.BagIndex.ReagentBag), after the four ordinary bags.
@@ -174,6 +174,7 @@ ns.On("ADDON_LOADED", onLoaded)
 -- Module entry point (Core/Modules.lua).
 function MC.Enable(settings)
   MC.settings = settings
+  MC.MoveSellList(settings)
   ns.On("MERCHANT_SHOW", onMerchant)
   ns.On("MERCHANT_CLOSED", onMerchantClosed)
   MC.HookSplit()

@@ -1,5 +1,5 @@
 -- Bulk selling and buying at a merchant, part of the Merchant module (Modules/Merchant.lua):
---   * a sell list (/vg junk): items you never want, sold with your grays when you open a merchant
+--   * a sell list (/vg junk, each character's own): items you never want, sold with your grays when you open a merchant
 --     (off until switched on), after a question that lists them and what they fetch;
 --   * sell all of one item (/vg sell <item>): every stack of it in your bags, the same question;
 --   * Stack and Max buttons on the game's quantity window for a merchant's item, with a line saying
@@ -97,7 +97,7 @@ end
 
 -- The slots holding items on your sell list, or of the one item given, without the equipment sets' items.
 function MC.Listed(only)
-  local worn, list = setItems(), MC.settings.junkList
+  local worn, list = setItems(), MC.SellList()
   return scan(function(id) return not worn[id] and (only and id == only or (not only and list[id] == true)) end)
 end
 
@@ -201,16 +201,36 @@ end
 
 -- The merchant opened: offer your sell list's items (if switched on, out of combat).
 function MC.OfferList()
-  if not (MC.settings.listSell and next(MC.settings.junkList)) or ns.InCombat() then return end
+  if not (MC.settings.listSell and next(MC.SellList())) or ns.InCombat() then return end
   MC.OfferSale(MC.Listed)
 end
 
 -- The sell list --------------------------------------------------------------------------------
 
+-- The sell list, { [itemID] = true }: this character's own (VanguardCharDB), never the shared profile's,
+-- so an alt on the same profile is never offered a sale of what another character listed.
+function MC.SellList()
+  VanguardCharDB.sellList = type(VanguardCharDB.sellList) == "table" and VanguardCharDB.sellList or {}
+  return VanguardCharDB.sellList
+end
+
+-- 0.9.2 kept the list in the profile (junkList). The first character to log in on it since takes the
+-- profile's items into its own list, beside any it has already (so no list is lost), and the profile
+-- drops it, so the others start empty and a profile export carries none.
+function MC.MoveSellList(settings)
+  local old = settings.junkList
+  settings.junkList = nil
+  if type(old) ~= "table" then return end
+  local list = MC.SellList()
+  for id, on in pairs(old) do
+    if on == true then list[id] = true end
+  end
+end
+
 -- Prints the sell list.
 local function listJunk()
   local ids = {}
-  for id in pairs(MC.settings.junkList) do ids[#ids + 1] = id end
+  for id in pairs(MC.SellList()) do ids[#ids + 1] = id end
   if #ids == 0 then return ns.Chat(L["Your sell list is empty. /vg junk <shift-click an item> adds one."]) end
   table.sort(ids)
   for _, id in ipairs(ids) do ns.Chat(ns.Format(L["Sell list: {item}"], { item = itemName(id) })) end
@@ -218,7 +238,7 @@ end
 
 -- Puts an item on the sell list, or takes it off.
 local function setJunk(id, on)
-  MC.settings.junkList[id] = on or nil
+  MC.SellList()[id] = on or nil
   local said = ns.Format(on and L["{item} is on your sell list."] or L["{item} is off your sell list."], { item = itemName(id) })
   if on and not MC.settings.listSell then said = said .. " " .. L["Switch it on under Town and gear, Merchants."] end
   ns.Chat(said)
@@ -228,7 +248,7 @@ end
 function MC.JunkCommand(rest)
   rest = (rest or ""):match("^%s*(.-)%s*$")
   if rest == "" then return listJunk() end
-  if rest == "clear" then MC.settings.junkList = {} return ns.Chat(L["Your sell list is empty."]) end
+  if rest == "clear" then VanguardCharDB.sellList = {} return ns.Chat(L["Your sell list is empty."]) end
   local removing = rest:match("^remove%s+(.+)")
   local id = MC.ItemID(removing or rest)
   if not id then return ns.Chat(L["Usage: /vg junk <shift-click an item>, /vg junk remove <item>, /vg junk clear"]) end

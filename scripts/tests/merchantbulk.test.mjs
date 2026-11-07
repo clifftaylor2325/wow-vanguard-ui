@@ -27,8 +27,8 @@ const BULK_ENV = `
   C_Timer = { After = function(_, fn) fn() end }
 `;
 
-// Settings of the Merchant module, set from the test.
-const set = (addon, lua) => addon.eval(`local s = ns.GetModule("Merchant").settings ${lua}`);
+// Settings of the Merchant module (s) and this character's sell list (j), set from the test.
+const set = (addon, lua) => addon.eval(`local s, j = ns.GetModule("Merchant").settings, ns.GetModule("Merchant").SellList() ${lua}`);
 const ask = (addon) => addon.eval("local f = Vanguard_Question return f and { f:IsShown(), f.title:GetText() } or { false }");
 const used = (addon) => addon.eval("return __used");
 
@@ -61,8 +61,8 @@ it("the sell list: /vg junk adds, lists, removes and clears; the merchant asks f
 
 it("a sale of more than 12 stacks warns that the Buyback tab keeps only the last 12; 12 or fewer say nothing", () => {
   const addon = loggedIn(BULK_ENV);
-  set(addon, "s.listSell = true for n = 1, 7 do s.junkList[1000 + n] = true end s.junkList[159] = true");
-  addon.eval("for n = 1, 6 do __bag[#__bag + 1] = { itemID = 4540 } end s = ns.GetModule('Merchant').settings s.junkList[4540] = true");
+  set(addon, "s.listSell = true for n = 1, 7 do j[1000 + n] = true end j[159] = true");
+  addon.eval("for n = 1, 6 do __bag[#__bag + 1] = { itemID = 4540 } end local j = ns.GetModule('Merchant').SellList() j[4540] = true");
   addon.fire("MERCHANT_SHOW");
   expect(ask(addon)[1], "13 or more stacks: the question names the limit").toMatch(/\nOnly the last 12 stacks can be bought back\.$/);
   addon.click("Vanguard_Question.confirm");
@@ -71,7 +71,7 @@ it("a sale of more than 12 stacks warns that the Buyback tab keeps only the last
 
 it("a sale of 12 or fewer stacks keeps the plain Buyback promise", () => {
   const addon = loggedIn(BULK_ENV);
-  set(addon, "s.listSell = true s.junkList[159] = true");
+  set(addon, "s.listSell = true j[159] = true");
   addon.fire("MERCHANT_SHOW");
   expect(ask(addon)[1], "no limit line").not.toMatch(/Only the last/);
   addon.click("Vanguard_Question.confirm");
@@ -80,7 +80,7 @@ it("a sale of 12 or fewer stacks keeps the plain Buyback promise", () => {
 
 it("the question says 'and N more' past five items; a sale retries what is left and stops without a merchant or in a fight", () => {
   const addon = loggedIn(BULK_ENV);
-  set(addon, "s.listSell = true for n = 1, 7 do s.junkList[1000 + n] = true end");
+  set(addon, "s.listSell = true for n = 1, 7 do j[1000 + n] = true end");
   addon.eval("__sticky = 3");
   addon.fire("MERCHANT_SHOW");
   expect(ask(addon)[1], "five names, then a count of the rest").toMatch(/\nand 2 more$/);
@@ -99,12 +99,37 @@ it("the question says 'and N more' past five items; a sale retries what is left 
 
 it("the sell offer is a danger question (Enter never answers it) and sells only the rows it showed, still holding what was shown", () => {
   const addon = loggedIn(BULK_ENV);
-  set(addon, "s.listSell = true s.junkList[159] = true s.junkList[1001] = true");
+  set(addon, "s.listSell = true j[159] = true j[1001] = true");
   addon.fire("MERCHANT_SHOW");
   expect(addon.eval("return { Vanguard_Question.confirm == Vanguard_Question.sure, Vanguard_Question.confirm.kind }"), "a danger button: Enter never presses it").toEqual([true, "danger"]);
   addon.eval("__bag[8] = { itemID = 159, stackCount = 3 } __bag[6].stackCount = 9 __bag[7] = { itemID = 4540 }");
   addon.click("Vanguard_Question.confirm");
   expect(used(addon), "the new stack, the stack that grew and the slot that holds something else are not sold; the shown stack is").toEqual([1]);
+});
+
+// An account file from before the sell list moved to each character: the profile's list, and this character's own.
+const OLD_LIST = "VanguardDB.profiles = { Default = { Merchant = { listSell = true, junkList = { [159] = true, [1001] = 'x' } } } } VanguardCharDB.sellList = { [4540] = true }";
+
+it("an old profile's sell list moves to the first character that logs in, beside its own, and the profile drops it", () => {
+  const addon = loggedIn(BULK_ENV, { savedVariables: OLD_LIST });
+  expect(addon.eval("local j = VanguardCharDB.sellList return { j[159], j[4540], j[1001] or false }"), "the profile's items join the character's own; a hand-edited entry is left out").toEqual([true, true, false]);
+  expect(addon.eval("return VanguardDB.profiles.Default.Merchant.junkList == nil"), "the profile keeps no list").toBe(true);
+  expect(addon.eval("return ns.WithoutClientState({ Merchant = { junkList = { [159] = true }, listSell = true } }).Merchant.junkList == nil"), "a profile string never carries one").toBe(true);
+});
+
+it("the sell list is each character's own: another character on the same profile is not offered what one listed", () => {
+  const lister = loggedIn(BULK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Merchant = { listSell = true } } } VanguardCharDB.sellList = { [159] = true }" });
+  lister.fire("MERCHANT_SHOW");
+  expect(ask(lister)[0], "the character that listed the item is asked").toBe(true);
+  const alt = loggedIn(BULK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Merchant = { listSell = true } } }" });
+  alt.fire("MERCHANT_SHOW");
+  expect(ask(alt)[0], "its alt on the same profile is not").toBe(false);
+});
+
+it("a hand-edited sell list that isn't a table starts empty, without an error", () => {
+  const addon = loggedIn(BULK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Merchant = { junkList = 'oops' } } } VanguardCharDB.sellList = 7" });
+  addon.slash("junk");
+  expect([chatHas(addon, /Your sell list is empty/), addon.eval("return VanguardDB.profiles.Default.Merchant.junkList == nil")], "empty, and the profile's damaged list gone").toEqual([true, true]);
 });
 
 it("/vg sell sells every stack of one item after a question, only at a merchant", () => {
