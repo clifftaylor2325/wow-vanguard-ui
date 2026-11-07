@@ -141,6 +141,27 @@ it("an aura icon the client has closed to addons is left alone by the plate scal
   expect([addon.eval("return __touches"), kept(addon)], "a forbidden icon: never touched, nothing reported").toEqual([0, [0, 0]]);
 });
 
+it("a theme refresh leaves the aura icon parts the client has closed alone, forgets them and still tells the listeners", () => {
+  const addon = shrunkPlate();
+  addon.eval(`local button = __debuffs.__groups[1].buttons[1]
+    __bar = CreateFrame("StatusBar", nil, UIParent) ns.Theme.BarColor(__bar, "accent")
+    -- TEST-ONLY: every method but IsForbidden refuses, as the client does on a forbidden object.
+    local function close(w)
+      for name in pairs(__wfgWidgetApi.methods[w:GetObjectType()]) do w[name] = function() __touches = __touches + 1 error("Attempt to access forbidden object from code tainted by an AddOn") end end
+      w.IsForbidden = function() __asked = __asked + 1 return true end
+    end
+    -- TEST-ONLY: whether w sits under the aura button.
+    local function under(w) local p = w.__parent while p do if p == button then return true end p = p.__parent end end
+    for _, w in ipairs(__wfgStub.frames) do if under(w) then close(w) end end
+    close(__bar)
+    __asked, __listened = 0, 0 ns.Theme.OnChanged(function() __listened = __listened + 1 end)`);
+  // One theme refresh: whether it ran to the end, the refused calls, the listener runs, and whether a closed part was asked.
+  const refresh = () => addon.eval("__asked = 0 local ok = pcall(ns.Theme.Refresh) return { ok, __touches, __listened, __asked > 0 }");
+  expect(refresh(), "the icon, its edge, its text, its badge and a closed bar: untouched, the listeners told").toEqual([true, 0, 1, true]);
+  expect(refresh(), "forgotten: a second refresh asks them nothing").toEqual([true, 0, 2, false]);
+  expect(kept(addon), "nothing reported").toEqual([0, 0]);
+});
+
 it("a plate's aura holder the client has closed is not asked its scale", () => {
   const addon = shrunkPlate();
   addon.eval("__debuffs.IsForbidden = function() return true end");
