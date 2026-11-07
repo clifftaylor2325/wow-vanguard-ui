@@ -1525,21 +1525,25 @@ end
 local labelBefore = setmetatable({}, { __mode = "k" })
 
 -- Gives a button its disabled look (#257): no hover or press, its label in the disabled tier; or,
--- enabled again, the label's colour from before. A label on the theme's font objects (T.ButtonLabel) has its colours from them.
+-- enabled again, the label's colour from before. A label on the theme's font objects (T.ButtonLabel) is set to the
+-- tier for the state each time, as a colour set on a label can hold over its font object's.
 function T.DisabledLook(button, disabled)
   local fs = type(button.text) == "table" and button.text or button.GetFontString and button:GetFontString()
   if disabled then T.EaseHover(button, false, true) T.PressButton(button, false) end
-  if not (fs and fs.GetTextColor) or T.LabelFonts(button) then return end
+  if not (fs and fs.GetTextColor) then return end
+  if T.LabelFonts(button) then return T.Color(fs, disabled and "disabled" or "text") end
   if disabled then labelBefore[button] = labelBefore[button] or { token = T.ColorToken(fs), fs:GetTextColor() } return T.Color(fs, "disabled") end
   local c = labelBefore[button]
   labelBefore[button] = nil
   if c and c.token then T.Color(fs, c.token) elseif c then T.ColorRGB(fs, c[1], c[2], c[3]) end
 end
 
--- A game push button's label (UIPanelButtonTemplate and kin, the trainer's Train): the game's font objects paint it
--- gold at rest, white under the mouse and grey while disabled, and put those colours back each time its state changes,
--- so a SetTextColor doesn't hold. T.ButtonLabel gives such a button copies of its font objects in the theme's tiers,
--- so it reads like a Vanguard button beside it. Kept in a block: Lua's 200-local limit.
+-- A game push button's label (UIPanelButtonTemplate and kin, the trainer's Train, the group finder's Send Message):
+-- the game's font objects paint it gold at rest, white under the mouse and grey while disabled. T.ButtonLabel gives
+-- such a button copies of its font objects in the theme's tiers, so it reads like a Vanguard button beside it, and
+-- colours the label in the tier for its state, as T.DisabledLook does on each state change after. The label is coloured
+-- outright, not left to the font objects: a colour set on a label can hold over them (the group finder's labels showed
+-- the game's grey, the colour they had when skinned, in the theme's place). Kept in a block: Lua's 200-local limit.
 do
   -- Per game font object, Vanguard's copies (made once): { text = font, disabled = font }.
   local copiesOf = {}
@@ -1580,17 +1584,17 @@ do
   end
 
   -- Gives a game button whose label has a font object the theme's copies: `text` at rest and under the mouse (hover
-  -- never recolours text), `disabled` while disabled. The label's remembered colour is dropped first, so a theme
-  -- change leaves it to the copies. A button labelFont finds nothing on is left alone.
+  -- never recolours text), `disabled` while disabled, and the label that tier now (a theme change repaints it). A
+  -- button labelFont finds nothing on is left alone.
   function T.ButtonLabel(button)
     local fs, from = labelFont(button)
     if not fs then return end
     local c = copiesFor(from)
-    T.ColorRGB(fs, fs:GetTextColor())
     button:SetNormalFontObject(c.text)
     button:SetHighlightFontObject(c.text)
     button:SetDisabledFontObject(c.disabled)
     labelled[button] = c
+    T.Color(fs, isEnabled(button) and "text" or "disabled")
   end
 
   -- The copies a button was given ({ text, disabled }), or nil: its label's colours are theirs.

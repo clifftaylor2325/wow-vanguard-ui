@@ -550,6 +550,22 @@ it("group finder: the window, its listing and browse pages and the group tooltip
   expect(windowState(addon, "LFGListingFrame").painted, "showing them again paints nothing new").toBe(painted);
 });
 
+it("group finder: Send Message and Group Invite are grey only while the game disables them (no group picked), and in the text tier once one is", () => {
+  const addon = loggedIn(FINDER_ENV);
+  addon.eval(`__finder() local font = CreateFont("TEST_GameFontNormal") font:SetTextColor(1, 0.82, 0)
+    for _, b in ipairs({ LFGBrowseFrame.SendMessageButton, LFGBrowseFrame.GroupInviteButton }) do b:SetFontString(b:CreateFontString()) b:SetNormalFontObject(font) b:Disable() end`);
+  addon.fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle");
+  addon.eval("LFGParentFrame:Show() LFGBrowseFrame:Show()");
+  // Each label's colour token, as Vanguard set it outright on the label (a colour on a label can hold over its font object's).
+  const labels = () => addon.eval("local b = LFGBrowseFrame local t = ns.Theme.ColorToken return { t(b.SendMessageButton:GetFontString()), t(b.GroupInviteButton:GetFontString()) }");
+  expect(labels(), "nothing picked: both disabled, in the disabled tier").toEqual(["disabled", "disabled"]);
+  addon.eval("LFGBrowseFrame.SendMessageButton:Enable() LFGBrowseFrame.GroupInviteButton:Enable()");
+  expect(labels(), "a group picked: both enabled, in the text tier").toEqual(["text", "text"]);
+  expect(isTok(addon, addon.eval("return LFGBrowseFrame.SendMessageButton:GetFontString().__textColor"), "text"), "the label shows the text tier").toBe(true);
+  addon.eval("LFGBrowseFrame.GroupInviteButton:Disable()");
+  expect(labels(), "a group it can't invite: only Group Invite greys out").toEqual(["text", "disabled"]);
+});
+
 it("group finder: the who list page (the search view) loses the brass border and portrait badge and gets an inset panel like the other pages", () => {
   const addon = loggedIn(FINDER_ENV);
   addon.eval("__finder()");
