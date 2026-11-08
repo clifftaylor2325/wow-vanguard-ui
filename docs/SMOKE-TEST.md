@@ -4431,6 +4431,36 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the new waypoint is listed with its own button, and each button goes to the spot its label names.
 - If it fails, paste: the Recent waypoints labels and the chat line after the click
 
+### 33.355 Gossip options in the quest dialog act, by click and by number (both)
+
+- Do: With the quest dialog on, talk to an innkeeper and click a gossip line; talk again and press that line's number; then talk to a flight master that offers two or more options and pick one.
+- Expect: each option acts (the inn's text or bind prompt, the flight map) and no Lua error appears.
+- If it fails, paste: the NPC's name, the line picked, and the Lua error text (or /vg probe output if nothing happens).
+
+### 33.356 A Send-to-alt preset closes the To box's name suggestions (both)
+
+- Do: Open a mailbox and the Send Mail tab, type the first letters of a friend's or guild member's name in the To box until the game suggests a name, then (without clicking elsewhere) click a preset button on the Find mail panel, press Enter, and look at the To box before you press Send.
+- Expect: the name suggestion list closes when the preset is clicked, and after Enter the To box still holds the preset's character, not the suggested name.
+- If it fails, paste: the preset's name and character, the suggested name, and what the To box showed after Enter.
+
+### 33.357 A group with a long name keeps its items lit from Filter (both)
+
+- Do: Open the combined bag, click Groups > New group... and name it Profession-mats, pick up an item and choose Groups > Put held item in Profession-mats, then choose Filter > Group: Profession-mats; then open a bank and type cat:profession-mats in the bank's search box.
+- Expect: the bag's search box reads cat:profession-mats in full and the group's items stay lit while the rest dim; in the bank the group's items stay lit too.
+- If it fails, paste: what the search box reads after the Filter pick, and whether every item went dark.
+
+### 33.358 Toasts stay at the bottom centre during a talking head (both)
+
+- Do: With Game alerts on and Talking head set to move, trigger a talking head line (a quest NPC, a delve or a world event) and, while it is on screen, earn an achievement, win loot or finish a quest that shows a toast. Then open Edit Mode while a toast is up.
+- Expect: The toast appears in its usual place at the bottom centre, not stacked above the talking head at the top left, and a second toast is fully on the screen. With Edit Mode open the game lays toasts out as it does in its own layout.
+- If it fails, paste: A screenshot of the toast and the talking head, and the output of `/vg probe` if available.
+
+### 33.359 A preset applied while a profile switch waits lands in the profile you will use (both)
+
+- Do: On the Profiles page press Use on another profile and decline the reload; then press Apply Healer on the same page and accept the reload it offers.
+- Expect: Chat says the settings went into the profile you chose to use, and after the reload that profile shows the Healer settings.
+- If it fails, paste: the chat lines from the Apply Healer click and the profile name shown on the Profiles page after the reload.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
