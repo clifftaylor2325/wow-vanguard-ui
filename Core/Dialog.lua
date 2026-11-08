@@ -473,12 +473,13 @@ local function follow(o)
   if not ns.InCombat() then cover(o) end
 end
 
--- After a fight an overlay is laid over its button again; the dialog shown last is raised over it once more, so a
--- question asked in the fight keeps the clicks (the reload offer itself is left as covered).
+-- After a fight an overlay is laid over its button again; a dialog shown last that is not the reload offer is
+-- raised over it once more, so a question asked in the fight keeps the clicks. The reload offer itself is never
+-- raised here: that would lift its button over its own overlay, whichever overlay recovers first.
 local function recover(o)
   cover(o)
   local last = shownLast
-  if last and last:IsShown() and last ~= overlays[o]:GetParent() then last:Raise() end
+  if last and last ~= reload and last:IsShown() then last:Raise() end
 end
 
 -- A fight starts (just before the lockdown): every overlay hides and lets go of its

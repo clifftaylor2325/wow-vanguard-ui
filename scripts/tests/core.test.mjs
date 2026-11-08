@@ -724,6 +724,13 @@ it("a reload offered again over a question in a fight stays over it when the fig
   expect(addon.eval("return Vanguard_Reload:GetFrameLevel() > Vanguard_Question:GetFrameLevel()"), "the offer shown last is over the question").toBe(true);
 });
 
+it("the reload offer's Reload keeps its overlay on top when another reload button's overlay is laid", () => {
+  const addon = loggedIn();
+  addon.eval("ns.OfferReload('Changed.') ns.Options.Show('general')");
+  const [overlay, button] = addon.eval("local o = Vanguard_Reload.accept.reloadOverlay return { o:GetFrameLevel(), Vanguard_Reload.accept:GetFrameLevel() }");
+  expect(overlay > button, "the options footer's Reload now does not lift the offer over its own overlay").toBe(true);
+});
+
 it("string table: a text with no translation reads as its English key; a locale's file fills in only on that client", () => {
   const addon = loggedIn('GetLocale = function() return "deDE" end');
   expect(addon.eval('return { ns.L["Experience bar"], ns.Locale() }'), "no translation: the English key").toEqual(["Experience bar", "deDE"]);
