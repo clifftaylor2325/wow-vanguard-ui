@@ -4461,6 +4461,36 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Chat says the settings went into the profile you chose to use, and after the reload that profile shows the Healer settings.
 - If it fails, paste: the chat lines from the Apply Healer click and the profile name shown on the Profiles page after the reload.
 
+### 33.360 Your keys with the game's deprecation fallbacks off (both)
+
+- Do: in chat enter `/console loadDeprecationFallbacks 0`, then `/reload`. Open Options > Action bars > Your keys, hover a key bound to one of Vanguard's action buttons (one holding a spell and one holding a macro), then open key setup and look at its keyboard preview. Afterwards enter `/console loadDeprecationFallbacks 1` and `/reload`.
+- Expect: no Lua error; the keys show the spell's icon and the macro's name, in Your keys and in key setup's preview.
+- If it fails, paste: the error text from `/vg errors`, and the output of `/dump GetCVar("loadDeprecationFallbacks")`.
+
+### 33.361 The game menu buttons come back after a pet battle (Retail)
+
+- Do: with Vanguard's action bars and the bag and menu bar on (the defaults), start a wild pet battle and finish it (win, lose or forfeit), then look at the bag and menu bar in the bottom-right corner.
+- Expect: every game menu button (Character, Spellbook, Talents, Collections, Group Finder, the Game Menu cog and the rest) is back on the bar's lower row, at the same size as before the battle, with no Lua error.
+- If it fails, paste: `/dump MicroMenu:GetParent():GetName()` and `/dump MicroMenu.isStacked`, and the text from `/vg errors`.
+
+### 33.362 The game's quest tracker keeps to its spot (both)
+
+- Do: under Options > Quests switch Vanguard's own quest tracker off (leave the Bars and bags tracker switch on), watch 10 or more quests, `/reload`, then zone into or out of an instance and open and close your bags.
+- Expect: the game's quest tracker sits under the info strip and ends at the bottom of its 174-unit spot every time; its list never runs further down the right edge.
+- If it fails, paste: `/dump ObjectiveTrackerFrame:GetHeight()` and `/dump ObjectiveTrackerFrame:GetPoint(1)`, and the text from `/vg errors`.
+
+### 33.363 Commodity auction sold before the house loaded its item info (both)
+
+- Do: after a patch or fresh cache, open the auction house with a sold commodity auction (cloth, herbs, dust) in Your auctions, then read the "Auction successful" mail.
+- Expect: the sale in Your history counts once at the whole price (units times the per-unit price); the row appears once the game has the item's info.
+- If it fails, paste: the Your history lines for the item and the Your auctions row.
+
+### 33.364 Bags off on a second character gives back separate bags (both)
+
+- Do: with separate bags set in the game's options, log in on one character with Bags on (combined bag turns on), then log in on a second character with its own profile and switch Bags off under Modules.
+- Expect: the game goes back to separate bags on the second character.
+- If it fails, paste: the "Combine all bags" setting on each character before and after.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
