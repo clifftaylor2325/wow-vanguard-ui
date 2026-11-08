@@ -294,10 +294,8 @@ it("aura containers on the client's engine", () => {
 
 // TEST-ONLY weapons: a shaman's imbue on the main hand (30 minutes left), nothing on the off hand.
 const WEAPONS_ENV = `
-  Enum = Enum or {}
-  Enum.WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 }
-  __enchants = { [0] = { { hasEnchant = true, enchantType = 2, timeLeft = 1800000, enchantIconID = "TEST-ONLY-ICON-Imbue" } } }
-  C_Item = { GetWeaponEnchantInfo = function(slot) return __enchants[slot] end }
+  __enchants = __wfgWorld.enchants
+  __enchants[0] = { { hasEnchant = true, enchantType = 2, timeLeft = 1800000, enchantIconID = "TEST-ONLY-ICON-Imbue" } }
   GetInventoryItemTexture = function(unit, slot) return "TEST-ONLY-ICON-Weapon" .. slot end
   BuffFrame = CreateFrame("Frame", "BuffFrame", UIParent) BuffFrame:RegisterEvent("UNIT_AURA")
   DebuffFrame = CreateFrame("Frame", "DebuffFrame", UIParent)

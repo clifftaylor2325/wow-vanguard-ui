@@ -215,7 +215,7 @@ Enum = {
   -- A subset of Enum.TooltipDataLineType with the client's values (TooltipInfoSharedDocumentation.lua).
   TooltipDataLineType = { None = 0, Blank = 1, UnitName = 2, UnitThreat = 7, QuestObjective = 8, QuestTitle = 17, QuestPlayer = 18 },
   TooltipDataType = { Item = 0, Spell = 1, Unit = 2 },
-  WeaponSlot = { MainHand = 0, OffHand = 1 },
+  WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 },
 }
 
 STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
@@ -1063,13 +1063,13 @@ function world.removeAura(unit, name)
   auraChanged(unit, { removedAuraInstanceIDs = removed })
 end
 
--- Weapon enchants: { main = { name, expiration, charges, id }, off = ... }.
+-- Weapon enchants, keyed by Enum.WeaponSlot value: a list holding one WeaponEnchantInfo table, { hasEnchant,
+-- enchantType, timeLeft (ms), charges, enchantID, enchantIconID } (ItemDocumentation.lua).
 world.enchants = {}
 C_Item = C_Item or {}
--- hasMainHandEnchant, expiration, charges, id, then the same for the off hand.
-function C_Item.GetWeaponEnchantInfo()
-  local m, o = world.enchants.main, world.enchants.off
-  return m ~= nil, m and m.expiration or 0, m and m.charges or 0, m and m.id, o ~= nil, o and o.expiration or 0, o and o.charges or 0, o and o.id
+-- The enchants of one weapon slot; an empty table when it has none.
+function C_Item.GetWeaponEnchantInfo(slot)
+  return world.enchants[slot] or {}
 end
 
 -- Spells, action slots and cooldowns ---------------------------------------------------------

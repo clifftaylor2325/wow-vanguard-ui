@@ -8,3 +8,8 @@
 -- Pet happiness left Retail in 4.1.0. The world keeps the old global beside WoW Forever's documented
 -- C_PetInfo.GetPetHappiness (which forever-only-api.json removes), so Retail drops it here too.
 GetPetHappiness = nil
+
+-- Live Retail has no C_Item.GetWeaponEnchantInfo (PlayerAuras reads C_PaperDollInfo there) and its
+-- Enum.WeaponSlot has no Ranged.
+C_Item.GetWeaponEnchantInfo = nil
+Enum.WeaponSlot = { MainHand = 0, OffHand = 1 }
