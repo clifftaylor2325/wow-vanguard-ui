@@ -55,9 +55,10 @@ local function sortedOptions()
   return options
 end
 
--- A gossip option line.
+-- A gossip option line. It selects by orderIndex, as the game's own window does: the client may send an
+-- option with no gossipOptionID, and SelectOption errors on a nil id.
 local function optionLine(o)
-  return { text = QP.Plain(o.name), icon = o.icon, color = "text", select = function() gossip("SelectOption", o.gossipOptionID) end }
+  return { text = QP.Plain(o.name), icon = o.icon, color = "text", select = function() gossip("SelectOptionByIndex", o.orderIndex) end }
 end
 
 -- A gossip NPC's lines: quests to take, quests to turn in, then its options.

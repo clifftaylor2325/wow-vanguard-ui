@@ -27,6 +27,13 @@ it("quest dialog: Enter presses the main button (or Goodbye alone) out of combat
   key(addon, "NUMPADENTER");
   expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")], "out of combat, on a page with only Goodbye, Enter says goodbye").toEqual([["closeGossip nil", "closeQuest nil"], false]);
 });
+it("quest dialog: a gossip option the client sends with no gossipOptionID is still picked, by its orderIndex", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval('__options = { { name = "TEST-ONLY Tell me more", orderIndex = 2 } }');
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("local b = Vanguard_QuestDialog.lines[3] b.__scripts.OnClick(b)");
+  expect([calls(addon), addon.eval("return #ns.errors")], "the click selects by index, with no error").toEqual([["option 2"], 0]);
+});
 it("quest dialog: gossip lines, quest details, rewards and keys", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("GOSSIP_SHOW");
@@ -36,7 +43,7 @@ it("quest dialog: gossip lines, quest details, rewards and keys", () => {
   expect(isTok(addon, addon.eval("return Vanguard_QuestDialog.lines[2].text.__textColor"), "gold"), "a quest ready to turn in is gold").toBe(true);
   key(addon, "2"); key(addon, "7"); key(addon, "W");
   addon.eval("local b = Vanguard_QuestDialog.lines[3] b.__scripts.OnClick(b)");
-  expect(calls(addon), "a number key picks its line (keys with no line, and other keys, are left to the game); so does a click").toEqual(["active 90032", "option 90041"]);
+  expect(calls(addon), "a number key picks its line (keys with no line, and other keys, are left to the game); so does a click").toEqual(["active 90032", "option 0"]);
   addon.fire("GOSSIP_CLOSED");
   expect([dialog(addon).shown, calls(addon)], "the game closing the talk hides it without closing again").toEqual([false, []]);
   addon.fire("QUEST_DETAIL");
