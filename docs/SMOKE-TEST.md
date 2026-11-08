@@ -4557,6 +4557,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the unlock bar grows with the text: its note stays on one line with room above and below, and its buttons stay inside the bar.
 - If it fails, paste: a screenshot of the bar and the Text size value.
 
+### 33.376 A scenario stage's spell button in a fight (Retail)
+
+- Do: On Retail, with Vanguard's quest tracker on, enter a scenario or delve whose current stage gives a spell (a button appears beside the spell's row in the tracker). Pull a fight, cast that spell and a few others so the global cooldown and the spell's own cooldown run, then open `/vg` and look at the errors list (or the game's error frame).
+- Expect: no Lua error from Vanguard during the fight. The spell button's swipe shows the cooldown (and the global cooldown) as the game's own scenario spell button does, or stays blank; it never raises "Secret values are only allowed during untainted execution".
+- If it fails, paste: the full error text with its stack from the errors list, and the scenario's name and stage.
+
+### 33.377 A question asked in a fight keeps its Yes over the reload offer (both)
+
+- Do: Show a reload offer once out of combat and close it with Later. Enter a fight, run `/vg profile copy` with another profile's name so the reload offer opens, then open Reset this page in the options window. Leave combat and click Reset in the question.
+- Expect: The page resets and the UI does not reload; the reload offer is still open, and its Reload button still reloads when clicked.
+- If it fails, paste: what happened on the click (reload or reset), and the output of `/vg errors`.
+
+### 33.378 Check undercuts counts an auction whose item the game described late (both)
+
+- Do: On a first visit to the auction house in a session, with an auction up for an item the game has not shown you yet, open the Posting tab and press Check undercuts.
+- Expect: The heading's count settles on the right number of undercut auctions once the late item is described, with the red square on the undercut row, and Cancel next undercut offers it.
+- If it fails, paste: the Your auctions heading text and which rows carry the red square.
+
+### 33.379 Toast over a talking head that starts in a fight (both)
+
+- Do: With the talking head set to move, pull a boss (or any fight) where an NPC speaks, and let a loot or achievement toast appear while the head plays; then end the fight and trigger another toast.
+- Expect: During the fight the toast sits above the talking head, not drawn over it. After the fight the head is at Vanguard's spot (top left) and the next toast is at the bottom centre.
+- If it fails, paste: a screenshot during the fight and the output of `/vg probe`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
