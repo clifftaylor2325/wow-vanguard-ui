@@ -137,6 +137,12 @@ local function paintQuality(button, r, g, b)
   if anySecret(r, g, b) then vgBorder[button] = nil end
 end
 
+-- The game hides a slot's quality border with SetShown(false) when the slot has no color (empty,
+-- or a gray item); the theme's border then. A hook on Hide does not see SetShown.
+local function followShown(button, shown)
+  if not shown then paintQuality(button, nil) end
+end
+
 -- Puts the item's quality color (the game sets it on its own border, which is
 -- faded here) on Vanguard's border instead; no quality, the theme's border.
 local function followQuality(button)
@@ -144,6 +150,7 @@ local function followQuality(button)
   if type(border) ~= "table" or type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(border, "SetVertexColor", ns.Guard("hook SetVertexColor", function(_, r, g, b) paintQuality(button, r, g, b) end))
   hooksecurefunc(border, "Hide", ns.Guard("hook Hide", function() paintQuality(button, nil) end))
+  hooksecurefunc(border, "SetShown", ns.Guard("hook SetShown", function(_, shown) followShown(button, shown) end))
 end
 
 -- Fades an item button's slot art regions.
