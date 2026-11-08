@@ -585,6 +585,33 @@ it("search operators light each bag button whose bag holds a match; plain text l
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// TEST-ONLY key ring button as the Forever game builds it: ID -1, and the base GetBagID arithmetic
+// (its ID minus the first bag slot's ID plus one), which is not the key ring.
+const KEYRING_ENV = `
+  Enum.BagIndex = { Keyring = -1 }
+  local first = CreateFrame("Button", "CharacterBag0Slot", UIParent)
+  first.GetID = function() return 31 end
+  local ring = CreateFrame("Button", "KeyRingButton", UIParent)
+  ring.GetID = function() return -1 end
+  ring.GetBagID = function(self) return self:GetID() - first:GetID() + 1 end
+  ring.SetMatchesSearch = function(self, yes) self.matches = yes end
+  ring.UpdateBagMatchesSearch = function(self) self:SetMatchesSearch(false) end
+`;
+
+it("search operators light the key ring button by the key ring, not by the game's wrong bag number", () => {
+  const addon = loggedIn(KEYRING_ENV + ITEMS_ENV + fill([1, 4, 0, 0, 0], { consumables: 1 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval("__wfgWorld.items[90004] = { name = 'TEST-ONLY Key', quality = 1, classID = 13 } __wfgWorld.bags[-1] = { { itemID = 90004 } } __wfgWorld.bagSizes[-1] = 1 __openBag()");
+  // The key ring button's match after the game's own refresh of it.
+  const ring = () => addon.eval("KeyRingButton:UpdateBagMatchesSearch() return KeyRingButton.matches");
+  addon.eval("BagItemSearchBox:SetText('type:key')");
+  expect(ring(), "the key is in the key ring: its button lit").toBe(true);
+  addon.eval("BagItemSearchBox:SetText('q:epic')");
+  expect(ring(), "no epic key: dimmed").toBe(false);
+  addon.eval("BagItemSearchBox:SetText('key')");
+  expect(ring(), "a plain word: the game's answer").toBe(false);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 // TEST-ONLY game whose bag refill sets each slot's match from its own search, as Mainline/ContainerFrame.lua's
 // UpdateItems does (here the game's own search lights everything).
 const REFILL_ENV = `

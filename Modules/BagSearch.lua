@@ -162,12 +162,20 @@ end
 -- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState): bag buttons whose search is hooked.
 local vgBagButtonHooked = ns.FrameState("vgBagButtonHooked")
 
+-- The bag a bag-bar button stands for: the key ring by its constant (the game's GetBagID answers a wrong
+-- number for it on Forever), else the button's own.
+local function bagOfButton(button)
+  local index = type(Enum) == "table" and Enum.BagIndex
+  if index and index.Keyring and button:GetName() == "KeyRingButton" then return index.Keyring end
+  return button:GetBagID()
+end
+
 -- With search words in the bag's box, a bag button is lit when its bag holds a match (the game's own answer
 -- follows its text search, which knows nothing of the words).
 local function markBagButton(button)
   local tests = testsIn("BagItemSearchBox")
   if tests and type(button.GetBagID) == "function" and type(button.SetMatchesSearch) == "function" then
-    button:SetMatchesSearch(BG.ContainerMatches(tests, button:GetBagID()))
+    button:SetMatchesSearch(BG.ContainerMatches(tests, bagOfButton(button)))
   end
 end
 
