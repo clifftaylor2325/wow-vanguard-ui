@@ -407,3 +407,64 @@ it("retail quest tracker: a tracked recraft is drawn as 'Recrafting: Name' with 
   const lines = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines or {}) do out[i] = l.text end return out");
   expect(lines[lines.length - 1], "its tooltip names the one click").toBe("Right-click: stop tracking");
 });
+
+// TEST-ONLY scenario stage that gives two spells, the second also on a cooldown the client reports.
+const STAGE_SPELLS = `
+  __wfgWorld.spells[91501] = { name = "TEST-ONLY Free Prisoner", icon = "TEST-ONLY-ICON-Free" }
+  __wfgWorld.spells[91502] = { name = "TEST-ONLY Light Beacon", icon = "TEST-ONLY-ICON-Beacon" }
+  __wfgWorld.scenario = { name = "TEST-ONLY Scen", currentStage = 1, numStages = 1,
+    step = { title = "TEST-ONLY Rescue", numCriteria = 1, spells = { { spellID = 91501 }, { spellID = 91502 } } },
+    criteria = { { description = "TEST-ONLY Prisoners freed", quantity = 1, totalQuantity = 3, completed = false } } }
+  C_Spell.GetSpellCooldown = function(id) if id == 91502 then return { startTime = 5, duration = 30 } end return { startTime = 0, duration = 0 } end
+`;
+
+// Each shown item button as [type, the spell it casts, the title of the block beside it, its cooldown start].
+const spellButtons = (addon) => Object.values(addon.eval(`local out = {}
+  for _, b in ipairs(ns.GetModule("QuestTracker").items) do if b:IsShown() then
+    out[#out + 1] = { b:GetAttribute("type"), b:GetAttribute("spell"), b.__points.TOPRIGHT.rel.title:GetText(), (b.cooldown.__cooldown or {})[1] or false }
+  end end
+  return out`)).map((b) => Object.values(b));
+
+it("retail quests: a scenario stage's spells each get a row under the stage and a button beside it that casts the spell", () => {
+  const addon = retail(STAGE_SPELLS);
+  expect(titles(addon), "the stage, then one row per spell").toEqual(["TEST-ONLY Scen", "TEST-ONLY Rescue", "TEST-ONLY Free Prisoner", "TEST-ONLY Light Beacon"]);
+  expect(spellButtons(addon), "secure spell buttons by id, the second showing its cooldown").toEqual([
+    ["spell", 91501, "TEST-ONLY Free Prisoner", false], ["spell", 91502, "TEST-ONLY Light Beacon", 5]]);
+  expect(addon.eval("local b = Vanguard_QuestItem1 b:GetScript('OnEnter')(b) return { GameTooltip.__spellId, GameTooltip:IsShown(), b.icon.__texture }"),
+    "a hover shows the spell's tooltip; the icon is the spell's").toEqual([91501, true, "TEST-ONLY-ICON-Free"]);
+  addon.eval("C_Spell.GetSpellCooldown = function() return { startTime = 9, duration = 30 } end");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(spellButtons(addon)[0][3], "a spell cooldown event repaints the cooldown").toBe(9);
+  addon.eval("C_Spell.GetSpellCooldown = function() return __wfgWorld.secret(1) end");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(spellButtons(addon)[0][3], "a hidden cooldown table: no swipe").toBe(false);
+  expect(addon.eval("local QT = ns.GetModule('QuestTracker') QT.UpdateRange(Vanguard_QuestItem1) return { Vanguard_QuestItem1.icon:GetVertexColor() }"),
+    "no range check for a spell: the icon stays white").toEqual([1, 1, 1, 1]);
+});
+
+it("retail quests: a stage's spell list or spell id the client hides, or a stage drawn as one bar, gets no spell rows", () => {
+  const addon = retail(STAGE_SPELLS);
+  addon.eval("__wfgWorld.scenario.step.spells = __wfgWorld.secret(1)");
+  redraw(addon, "SCENARIO_SPELL_UPDATE");
+  expect([titles(addon), spellButtons(addon)], "a hidden list: the stage alone, no button").toEqual([["TEST-ONLY Scen", "TEST-ONLY Rescue"], []]);
+  addon.eval("__wfgWorld.scenario.step.spells = { { spellID = __wfgWorld.secret(91501) }, __wfgWorld.secret(2) }");
+  redraw(addon, "SCENARIO_SPELL_UPDATE");
+  expect(titles(addon), "a hidden id or entry: no row").toEqual(["TEST-ONLY Scen", "TEST-ONLY Rescue"]);
+  addon.eval("__wfgWorld.scenario.step.spells = { { spellID = 91501 } } __wfgWorld.scenario.step.description = 'TEST-ONLY Hold' __wfgWorld.scenario.step.weightedProgress = 40");
+  redraw(addon, "SCENARIO_SPELL_UPDATE");
+  expect([titles(addon), spellButtons(addon)], "drawn as one bar: no spell row, as in the game's tracker").toEqual([["TEST-ONLY Scen", "TEST-ONLY Rescue"], []]);
+  addon.eval("__wfgWorld.scenario.step.weightedProgress = __wfgWorld.secret(40)");
+  redraw(addon, "SCENARIO_SPELL_UPDATE");
+  expect(spellButtons(addon), "a hidden percent still counts as a bar: no button").toEqual([]);
+});
+
+it("retail quests: a stage spell given in a fight gets its row at once and its button once the fight ends", () => {
+  const addon = retail(STAGE_SPELLS.replace("spells = { { spellID = 91501 }, { spellID = 91502 } }", "spells = {}"));
+  setCombat(addon, true);
+  addon.eval("__wfgWorld.scenario.step.spells = { { spellID = 91501 } }");
+  redraw(addon, "SCENARIO_SPELL_UPDATE");
+  expect([titles(addon)[2], spellButtons(addon)], "in combat: the row, no button yet").toEqual(["TEST-ONLY Free Prisoner", []]);
+  setCombat(addon, false);
+  addon.update(0);
+  expect(spellButtons(addon), "the fight over: the button, casting the spell").toEqual([["spell", 91501, "TEST-ONLY Free Prisoner", false]]);
+});

@@ -481,8 +481,10 @@ end
 
 -- Item buttons ---------------------------------------------------------------------------------
 
--- A quest item's place in the log, for the button showing it (nil when the log no longer has it).
+-- A quest item's place in the log, for the button showing it (nil when the log no longer has it, and for a
+-- scenario stage's spell, which has none).
 local function indexOf(b)
+  if b.spellID then return nil end
   return b.questID and QT.LogIndex(b.questID)
 end
 
@@ -492,8 +494,16 @@ local function paintCooldown(b, start, duration)
   if type(start) == "number" and type(duration) == "number" and duration > 0 then b.cooldown:SetCooldown(start, duration) else b.cooldown:Clear() end
 end
 
--- Shows the game's cooldown for the button's quest item (a child frame: fine in combat).
+-- Draws a stage spell's cooldown from the game's info table, or none while the client hides the table.
+local function paintSpellCooldown(b)
+  local info = ns.PlainTable(ns.CallIf(C_Spell, "GetSpellCooldown", b.spellID))
+  if info then return paintCooldown(b, info.startTime, info.duration) end
+  b.cooldown:Clear()
+end
+
+-- Shows the game's cooldown for the button's quest item or stage spell (a child frame: fine in combat).
 function QT.UpdateCooldown(b)
+  if b.spellID then return paintSpellCooldown(b) end
   local index = indexOf(b)
   if index and type(GetQuestLogSpecialItemCooldown) == "function" then return paintCooldown(b, GetQuestLogSpecialItemCooldown(index)) end
   b.cooldown:Clear()
@@ -513,8 +523,18 @@ function QT.UpdateRange(b)
   T.Tint(b.icon, not ns.IsSecret(range) and range == 0 and "outOfRange" or "white")
 end
 
--- The game's tooltip for the quest item.
+-- The game's tooltip for a stage spell, as its own tracker shows it.
+local function spellTooltip(b)
+  local tip = GameTooltip
+  if not tip or type(tip.SetSpellByID) ~= "function" then return end
+  tip:SetOwner(b, "ANCHOR_RIGHT")
+  tip:SetSpellByID(b.spellID)
+  tip:Show()
+end
+
+-- The game's tooltip for the quest item or stage spell.
 function QT.ItemTooltip(b)
+  if b.spellID then return spellTooltip(b) end
   local tip, index = GameTooltip, indexOf(b)
   if not index or not tip or type(tip.SetQuestLogSpecialItem) ~= "function" then return end
   tip:SetOwner(b, "ANCHOR_RIGHT")
@@ -558,11 +578,17 @@ local function buttonFor(id)
   return itemButton(#QT.items + 1)
 end
 
--- Gives a button a quest's item and puts it beside the quest's block.
+-- The secure action a button takes: a scenario stage's spell cast by its id, else the quest's item by its link.
+local function setAction(b, item)
+  local kind = item.spell and "spell" or "item"
+  b:SetAttribute("type", kind)
+  b:SetAttribute(kind, item.spell or item.link)
+end
+
+-- Gives a button a quest's item (or a stage's spell) and puts it beside the row's block.
 local function placeItem(b, shown)
-  b.questID = shown.quest.id
-  b:SetAttribute("type", "item")
-  b:SetAttribute("item", shown.quest.item.link)
+  b.questID, b.spellID = shown.quest.id, shown.quest.item.spell
+  setAction(b, shown.quest.item)
   b.icon:SetTexture(shown.quest.item.texture)
   b:ClearAllPoints()
   b:SetPoint("TOPRIGHT", shown.block, "TOPLEFT", -T.SPACE.tight, 0)
