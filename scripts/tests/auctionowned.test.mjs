@@ -810,3 +810,23 @@ it("closing the auction house forgets the round's checked items", () => {
     "a round's set, forgotten on close",
   ).toEqual([true, true]);
 });
+
+it("Cancel and Cancel next undercut still ease their hover while showing their tip (H35-17-1)", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + MORE_DUST);
+  checkUndercuts(addon);
+  const out = addon.eval(`local T = ns.Theme
+    local seen, old = {}, T.EaseHover
+    T.EaseHover = function(b, on, now) seen[#seen + 1] = tostring(on) return old(b, on, now) end
+    local r = ${OWNED_CARD}.table.rows[1]
+    local shown = {}
+    for _, b in ipairs({ ${CANCEL_NEXT}, r.cancel }) do
+      b.IsMouseOver = function() return true end
+      b:GetScript("OnEnter")(b)
+      shown[#shown + 1] = GameTooltip:IsShown()
+      b:GetScript("OnLeave")(b)
+      shown[#shown + 1] = GameTooltip:IsShown()
+    end
+    T.EaseHover = old
+    return { table.concat(seen, ","), table.concat((function() local s = {} for i, v in ipairs(shown) do s[i] = tostring(v) end return s end)(), ",") }`);
+  expect(out, "both buttons ease in and out, and the tip shows then hides").toEqual(["true,false,true,false", "true,false,true,false"]);
+});
