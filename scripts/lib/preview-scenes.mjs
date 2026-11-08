@@ -89,7 +89,7 @@ const TOOLTIP = `
 const WORLD = `
   UIParent:SetSize(1920, 1080)
   Enum = Enum or {}
-  Enum.CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 3 }
+  Enum.CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 3, CustomAsset = 4 }
   Minimap = CreateFrame("Minimap", "Minimap", UIParent)
   GetMinimapZoneText = function() return "TEST-ONLY Zone" end
   GetZonePVPInfo = function() return "sanctuary" end

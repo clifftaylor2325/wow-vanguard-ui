@@ -421,9 +421,17 @@ const STAGE_SPELLS = `
 `;
 
 // Each shown item button as [type, the spell it casts, the title of the block beside it, its cooldown start].
-const spellButtons = (addon) => Object.values(addon.eval(`local out = {}
+// The button sits on the screen at its block's top, so the block beside it is the one whose (scaled) top matches.
+const spellButtons = (addon) => Object.values(addon.eval(`local out, f = {}, Vanguard_QuestTrackerFrame
+  local function beside(b)
+    for i = 1, f.blocks.used do
+      local block, k = f.blocks[i], f.blocks[i]:GetEffectiveScale() / UIParent:GetEffectiveScale()
+      if b.__points.TOPRIGHT.rel == UIParent and math.abs(b.__points.TOPRIGHT.y - block:GetTop() * k) < 0.01 then return block.title:GetText() end
+    end
+    return "none"
+  end
   for _, b in ipairs(ns.GetModule("QuestTracker").items) do if b:IsShown() then
-    out[#out + 1] = { b:GetAttribute("type"), b:GetAttribute("spell"), b.__points.TOPRIGHT.rel.title:GetText(), (b.cooldown.__cooldown or {})[1] or false }
+    out[#out + 1] = { b:GetAttribute("type"), b:GetAttribute("spell"), beside(b), (b.cooldown.__cooldown or {})[1] or false }
   end end
   return out`)).map((b) => Object.values(b));
 

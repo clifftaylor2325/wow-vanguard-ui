@@ -434,6 +434,11 @@ const TRACK_ENV = `
   GetQuestLogSpecialItemInfo = function(i) local q = __quests[__index(i)] if q.item then return q.item, "TEST-ONLY-ICON", 0, not q.goneWhenReady end end
   QuestMapFrame_OpenToQuestDetails = function(id) __opened = id end
   GetQuestDifficultyColor = function(level) return { r = level > 10 and 1 or 0.25, g = 0.75, b = 0.25 } end
+  function __besideBlock(button, block)
+    local p, k = button.__points.TOPRIGHT, block:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    local left, top = block:GetLeft(), block:GetTop()
+    return p.rel == UIParent and p.relPoint == "BOTTOMLEFT" and left ~= nil and math.abs(p.x - (left * k - 4)) < 0.01 and math.abs(p.y - top * k) < 0.01
+  end
 `;
 // The tracker: shown, count, each shown block's title and lines, and the "+N more" line.
 const tracker = (addon) => addon.eval(`local f = Vanguard_QuestTrackerFrame
@@ -461,7 +466,7 @@ it("quest tracker: watched quests with levels, objectives and items", () => {
   addon.eval("ObjectiveTrackerFrame:Show()");
   expect(addon.eval("return { ObjectiveTrackerFrame:IsVisible(), ObjectiveTrackerFrame:IsShown(), #ns.errors }"), "the game showing it in a fight draws nothing, and no Vanguard hide runs after it").toEqual([false, true, 0]);
   setCombat(addon, false);
-  expect(addon.eval(`local b = Vanguard_QuestItem1 return { b:GetAttribute("type"), b:GetAttribute("item"), b.__points.TOPRIGHT.rel == Vanguard_QuestTrackerFrame.blocks[1], b:IsShown() }`), "the wolves' item, beside its quest").toEqual(["item", "item:90061", true, true]);
+  expect(addon.eval(`local b = Vanguard_QuestItem1 return { b:GetAttribute("type"), b:GetAttribute("item"), __besideBlock(b, Vanguard_QuestTrackerFrame.blocks[1]), b:IsShown() }`), "the wolves' item, beside its quest (anchored to the screen at its block's spot, never to the block)").toEqual(["item", "item:90061", true, true]);
   expect(addon.eval("return { Vanguard_QuestTrackerFrame.__strata, Vanguard_QuestItem1.__strata }"),
     "the tracker (its clickable titles with it) and its items on LOW, as the game's tracker, under the game's windows (an open bag's items stay clickable)").toEqual(["LOW", "LOW"]);
   setCombat(addon, true);
@@ -628,10 +633,11 @@ const ITEM_ENV = `
   GameTooltip.SetOwner = function(self, owner) self.__owner = owner end
   GameTooltip.SetQuestLogSpecialItem = function(self, i) self.__special = i end
 `;
-// Each item button: the quest it is for, whether it shows, and the title of the block it sits beside.
-const questItems = (addon) => addon.eval(`local out = {}
+// Each item button: the quest it is for, whether it shows, and the title of the block it sits beside ("none" when none).
+const questItems = (addon) => addon.eval(`local out, f = {}, Vanguard_QuestTrackerFrame
+  local function beside(b) for i = 1, f.blocks.used do if __besideBlock(b, f.blocks[i]) then return f.blocks[i].title:GetText() end end return "none" end
   for i, b in ipairs(ns.GetModule("QuestTracker").items) do
-    out[i] = { b.questID or false, b:IsShown(), b:IsShown() and b.__points.TOPRIGHT.rel.title:GetText() or false }
+    out[i] = { b.questID or false, b:IsShown(), b:IsShown() and beside(b) or false }
   end
   return out`);
 // The tracker's block titles, top to bottom.
@@ -660,6 +666,29 @@ it("quest tracker: with Questie loaded, Questie's tracker shows instead unless V
   const without = loggedIn(TRACK_ENV);
   expect(tracker(without).shown, "no Questie: Vanguard's shows").toBe(true);
 });
+it("quest tracker: an item button sits at its block's spot on the screen, not anchored to the block", () => {
+  const addon = loggedIn(TRACK_ENV);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__left, b.__bottom = 100, 500 ns.MoverChanged('questtracker')");
+  expect(addon.eval("local p, b = Vanguard_QuestItem1.__points.TOPRIGHT, Vanguard_QuestTrackerFrame.blocks[1] return { p.rel == UIParent, p.relPoint, p.x, p.y == b:GetTop(), Vanguard_QuestItem1:IsShown() }"),
+    "a mover placement re-places it: left of the block by the tight gap, level with its top").toEqual([true, "BOTTOMLEFT", 96, true, true]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__left = 200 ns.MoverChanged('questbar')");
+  expect(addon.eval("return Vanguard_QuestItem1.__points.TOPRIGHT.x"), "another mover leaves it be").toBe(96);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__left = 300 ns.PlaceMover('questtracker')");
+  addon.update(0);
+  expect(addon.eval("return Vanguard_QuestItem1.__points.TOPRIGHT.x"), "the tracker's spot moved some other way (a linked frame): it follows a frame later").toBe(296);
+  addon.eval("Vanguard_QuestTrackerFrame.blocks[1].__left = 400");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0);
+  expect(addon.eval("return Vanguard_QuestItem1.__points.TOPRIGHT.x"), "and after the screen's scale changes").toBe(396);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__left = nil b.__bottom = nil __left = b.GetLeft b.GetLeft = function(self) __misses = (__misses or 0) + 1 if __misses == 1 then return nil end return __left(self) end ns.GetModule('QuestTracker').PlaceItems()");
+  expect(addon.eval("return Vanguard_QuestItem1:IsShown()"), "a block with no spot yet: the button stays hidden").toBe(false);
+  addon.update(0);
+  expect(addon.eval("return { Vanguard_QuestItem1:IsShown(), __besideBlock(Vanguard_QuestItem1, Vanguard_QuestTrackerFrame.blocks[1]) }"), "and is placed a frame later").toEqual([true, true]);
+  addon.eval("__misses = 0 Vanguard_QuestTrackerFrame.blocks[1].GetLeft = function() __misses = __misses + 1 end ns.GetModule('QuestTracker').PlaceItems()");
+  addon.update(0);
+  addon.update(0);
+  expect(addon.eval("return { Vanguard_QuestItem1:IsShown(), __misses }"), "a block that never gets a spot is tried once more, not every frame").toEqual([false, 2]);
+});
 it("quest tracker: each quest keeps its own item button; in combat counts update and the items wait", () => {
   const addon = loggedIn(TRACK_ENV);
   addon.eval("__quests[90054] = { index = 4, title = 'TEST-ONLY Boar', level = 9, dist = 50, item = 'item:90062', objectives = {} } __watches[4] = 90054");
@@ -677,13 +706,13 @@ it("quest tracker: each quest keeps its own item button; in combat counts update
   expect(blockTitles(addon), "the blocks as watched").toEqual(["[12] TEST-ONLY Letter", "[3] TEST-ONLY Far", "[9] TEST-ONLY Boar", "[8] TEST-ONLY Wolves"]);
   setCombat(addon, true);
   const waiting = addon.eval("return ns.QueuedCount()");
-  addon.eval("__rels = { ns.GetModule('QuestTracker').items[1].__points.TOPRIGHT.rel, ns.GetModule('QuestTracker').items[2].__points.TOPRIGHT.rel }");
+  addon.eval("__rels = { ns.GetModule('QuestTracker').items[1].__points.TOPRIGHT.y, ns.GetModule('QuestTracker').items[2].__points.TOPRIGHT.y }");
   addon.eval("__watches = { 90053, 90054, 90051 } __quests[90051].objectives[1].text = '5/8 TEST-ONLY Wolves slain'");
   addon.fire("QUEST_WATCH_LIST_CHANGED");
   for (let i = 0; i < 5; i++) addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
   expect([blockTitles(addon), tracker(addon).blocks[2][1][0]], "in combat the tracker redraws: the letter is gone and the wolves' count is up").toEqual([["[3] TEST-ONLY Far", "[9] TEST-ONLY Boar", "[8] TEST-ONLY Wolves"], "TEST-ONLY Wolves slain 5/8"]);
-  const anchors = "local items = ns.GetModule('QuestTracker').items return { items[1].__points.TOPRIGHT.rel == __rels[1], items[2].__points.TOPRIGHT.rel == __rels[2], ns.QueuedCount() }";
+  const anchors = "local items = ns.GetModule('QuestTracker').items return { items[1].__points.TOPRIGHT.y == __rels[1], items[2].__points.TOPRIGHT.y == __rels[2], ns.QueuedCount() }";
   expect(addon.eval(anchors).map((v, k) => (k === 2 ? v - waiting : v)), "the item buttons keep their anchors, and one placement waits").toEqual([true, true, 1]);
   setCombat(addon, false);
   expect([addon.eval(anchors).slice(0, 2), questItems(addon)], "after combat they move beside the right blocks").toEqual([

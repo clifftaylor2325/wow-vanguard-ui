@@ -196,6 +196,14 @@ it("chat tabs: the Combat Log and the game's other built-in windows are not clos
   expect(addon.eval("return __closed"), "a tab you made closes").toBe("ChatFrame3");
 });
 
+it("chat tabs: Close this tab hands the tab's chat back to the main window through the game's pop-in", () => {
+  const addon = loggedIn(ENV + TABS + "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end");
+  addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect(addon.eval("return __popped"), "the pop-in ran for the tab").toBe("ChatFrame2");
+  expect(addon.eval("return __closed"), "and the tab closed").toBe("ChatFrame2");
+});
+
 it("chat tabs: two tabs closed in one fight are both closed when it ends", () => {
   const addon = loggedIn(ENV + TABS + "local close = FCF_Close __allClosed = {} FCF_Close = function(f) close(f) table.insert(__allClosed, f:GetName()) end");
   addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
