@@ -100,8 +100,10 @@ it("presets: add, list, replace and remove; Send types the name and attaches the
   expect(say(addon, "mail send smith", /Open the Send Mail tab/), "tab closed").toBe(true);
   addon.world.openMailWindow();
   addon.world.showSendMail();
+  addon.eval("SendMailNameEditBox:SetFocus()");
   addon.slash("mail send smith");
   expect(addon.eval("return SendMailNameEditBox:GetText()"), "the character typed in").toBe("Bobalt");
+  expect(addon.eval("return SendMailNameEditBox:HasFocus()"), "the To box lets go of the keys, so the game's name suggestions close").toBe(false);
   expect(addon.eval("return __wfgWorld.usedItems"), "the iron items attached, not the herb").toEqual([[0, 1], [0, 2]]);
   expect(chatHas(addon, /smith: 2 items attached for Bobalt\. Press Send\./), "chat says so").toBe(true);
   addon.eval("__wfgWorld.usedItems = nil");

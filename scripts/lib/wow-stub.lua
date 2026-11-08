@@ -803,6 +803,12 @@ function methods:GetText()
   if self.__kind == "EditBox" then return self.__text or "" end
   return self.__text
 end
+-- An edit box's keyboard focus (the client's name suggestions under a box hide when it loses it).
+function methods:SetFocus() self.__focus = true end
+-- Takes the keyboard focus off the edit box.
+function methods:ClearFocus() self.__focus = false end
+-- Whether the edit box has the keyboard focus.
+function methods:HasFocus() return self.__focus == true end
 -- The rotation field.
 function methods:SetRotation(r) self.__rotation = r end
 function methods:GetRotation() return self.__rotation or 0 end
