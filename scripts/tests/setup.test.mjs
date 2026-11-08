@@ -183,6 +183,16 @@ it("Y8-2 first-run setup: once setup changes the shared profile, Back doesn't re
   expect([setupState(addon).step, addon.eval("return Vanguard_Setup.back:IsShown()")], "Back stops at the layout step, so the change can't be left in Default by a later profile of its own").toEqual([2, false]);
 });
 
+it("H30-3-1 first-run setup: once setup changed the shared profile, setup opened again doesn't ask for a profile", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  setupClick(addon, "next");
+  addon.eval('__click("Centered: healing")');
+  setupClick(addon, "next");
+  addon.eval("Vanguard_Setup:Hide()");
+  addon.slash("setup");
+  expect(addon.eval("return { Vanguard_Setup.caption:GetText(), VanguardCharDB.pickProfile == nil, ns.ProfileNames() }"), "it starts at the layout and the question is gone").toEqual(["Step 1 of 4 · Layout", true, ["Default", "Default backup"]]);
+});
+
 it("first-run setup: once a profile of its own is made, setup opened again doesn't offer the Profile step", () => {
   const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
   addon.eval('__click("A profile of its own")');
