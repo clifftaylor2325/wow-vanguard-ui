@@ -811,6 +811,21 @@ function MS.OwnTracker()
   return qt ~= nil and ns.ModuleEnabled("QuestTracker") and qt.Shows(ns.Settings("QuestTracker", qt.defaults))
 end
 
+-- Keeps the game's tracker at its spot's height: the game sizes it to its managed container (or its Edit Mode
+-- height) after each layout and on show (ObjectiveTrackerContainerMixin:UpdateHeight), with no SetPoint for
+-- the pin to see. ns.Repin waits out combat and skips while the pin itself runs.
+local function keepTrackerHeight(tracker)
+  if type(tracker.UpdateHeight) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(tracker, "UpdateHeight", ns.Guard("hook UpdateHeight", ns.Repin))
+end
+
+-- Puts the game's tracker on its spot, no taller than it (its pin).
+local function seatTracker(f)
+  f:ClearAllPoints()
+  f:SetPoint("TOPRIGHT", MS.trackerSpot, "TOPRIGHT", 0, 0)
+  f:SetHeight(MS.TRACKER_H)
+end
+
 -- The tracker's spot under the info strip, and the game's tracker pinned into it
 -- unless Vanguard's own tracker is on.
 local function buildTracker()
@@ -819,11 +834,8 @@ local function buildTracker()
   ns.Mover(MS.trackerSpot, "questtracker", L["Quest tracker"], ns.GetModule("InfoStrip").TrackerPoint())
   local tracker = _G.ObjectiveTrackerFrame
   if MS.OwnTracker() or type(tracker) ~= "table" or not tracker.SetPoint then return end
-  ns.Pin(tracker, function(f)
-    f:ClearAllPoints()
-    f:SetPoint("TOPRIGHT", MS.trackerSpot, "TOPRIGHT", 0, 0)
-    f:SetHeight(MS.TRACKER_H)
-  end)
+  ns.Pin(tracker, seatTracker)
+  keepTrackerHeight(tracker)
 end
 
 -- The quest tracker's look ------------------------------------------------------------------

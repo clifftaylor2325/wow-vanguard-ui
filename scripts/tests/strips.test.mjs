@@ -777,6 +777,29 @@ it("menu strip: the game's tracker is pinned into the spot only while Vanguard's
   expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ QuestTracker = { own = true } }"))), "Vanguard's tracker on: one owner only, the game's is not pinned").toEqual([false, 0]);
   expect(pinned(loggedIn(UI_ENV + TIDY_ENV, saved("{ modules = { QuestTracker = false } }"))), "the tracker module switched off altogether: the game's is pinned again").toEqual([true, 174]);
 });
+it("H31-13-1: menu strip: the game's tracker stays at its spot's height when the game sizes it again, after a fight if in one", () => {
+  // TEST-ONLY: the game's UpdateHeight stretches the tracker to its managed container, as on both clients.
+  const env = UI_ENV + TIDY_ENV + "function ObjectiveTrackerFrame:UpdateHeight() self:SetHeight(450) end";
+  const addon = loggedIn(env, { savedVariables: "VanguardDB.profiles.Default = { QuestTracker = { own = false } }" });
+  // Whether the tracker's TOPRIGHT sits on Vanguard's spot, and its height.
+  const height = () => addon.eval("local p = ObjectiveTrackerFrame.__points.TOPRIGHT return { p ~= nil and p.rel == Vanguard_QuestTracker, ObjectiveTrackerFrame:GetHeight() }");
+  addon.eval("ObjectiveTrackerFrame:ClearAllPoints() ObjectiveTrackerFrame:SetPoint('TOPRIGHT', UIParent, 'TOPRIGHT', 0, 0) ObjectiveTrackerFrame:UpdateHeight()");
+  expect(height(), "the game's layout then its UpdateHeight: back on the spot, 174 tall").toEqual([true, 174]);
+  addon.eval("ObjectiveTrackerFrame:UpdateHeight()");
+  expect(height(), "a bare UpdateHeight (the tracker's OnShow)").toEqual([true, 174]);
+  setCombat(addon, true);
+  addon.eval("ObjectiveTrackerFrame:UpdateHeight()");
+  expect(height(), "in combat the game's height stands").toEqual([true, 450]);
+  setCombat(addon, false);
+  expect([...height(), addon.eval("return #ns.errors")], "and the spot's height comes back after the fight").toEqual([true, 174, 0]);
+});
+it("H31-13-1: menu strip: without hooksecurefunc the game's tracker is still pinned, its later resizes left to the game", () => {
+  const env = UI_ENV + TIDY_ENV + "function ObjectiveTrackerFrame:UpdateHeight() self:SetHeight(450) end hooksecurefunc = nil";
+  const addon = loggedIn(env, { savedVariables: "VanguardDB.profiles.Default = { QuestTracker = { own = false } }" });
+  expect(addon.eval("return ObjectiveTrackerFrame:GetHeight()"), "pinned at login").toBe(174);
+  addon.eval("ObjectiveTrackerFrame:UpdateHeight()");
+  expect(addon.eval("return { ObjectiveTrackerFrame:GetHeight(), #ns.errors }"), "no hook to keep it, and no error").toEqual([450, 0]);
+});
 it("the game's extras: a protected frame is hidden once, out of combat, with no Show hook", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + "ProtectedBar = CreateFrame('Frame', 'ProtectedBar', UIParent) ProtectedBar.IsProtected = function() return true, false end __wfgStub.inCombat = true");
   // Shown, still under UIParent, and without a raw Show or SetShown hook.
