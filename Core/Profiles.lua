@@ -603,10 +603,13 @@ local function onLayouts()
 end
 
 -- Follows Edit Mode's layouts from a post-hook on its manager's UpdateLayoutInfo (it runs
--- whenever the layouts load or change); when they loaded before login, starts now.
+-- whenever the layouts load or change); when they loaded before login, starts now. The session's spec is
+-- fixed here, where its profile is settled, so a first layout load that saves nothing (a missing layout) can't
+-- leave a later spec change to claim the new spec as the session's.
 local function watchLayouts()
   local f = editModeManager()
   if not f or type(f.UpdateLayoutInfo) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  layoutSpec = ns.SpecKey()
   hooksecurefunc(f, "UpdateLayoutInfo", ns.Guard("hook UpdateLayoutInfo", onLayouts))
   if ns.EditModeLayout() then onLayouts() end
 end

@@ -532,6 +532,16 @@ VanguardCharDB = { profile = "Dps", editModeProfile = "Dps", specProfiles = { [1
   a.eval("C_EditMode.SetActiveLayout(2)");
   expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "a pick in the same spec is saved").toBe("Classic");
 });
+it("a spec change before the first layout save does not save the new spec's layout either", () => {
+  const a = specLayoutLogin(`VanguardDB = { version = 1, setupDone = true, profiles = { Dps = { editMode = { layout = "Gone" } }, Healer = { editMode = { layout = "Heal" } } } }
+VanguardCharDB = { profile = "Dps", editModeProfile = "Healer", specProfiles = { [1] = "Dps", [2] = "Healer" } }`);
+  expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "the missing layout is kept, nothing saved yet").toBe("Gone");
+  a.eval("__spec = 2 EditModeManagerFrame:UpdateLayoutInfo()");
+  a.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(a.eval("return { VanguardDB.profiles.Dps.editMode.layout, VanguardCharDB.pendingProfile }"), "Dps keeps Gone, Healer staged").toEqual(["Gone", "Healer"]);
+  a.eval("C_EditMode.SetActiveLayout(2)");
+  expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "a pick in the other spec is not saved into Dps").toBe("Gone");
+});
 it("a reload into the other spec's profile switches nothing when its layout is already active", () => {
   const b = specLayoutLogin(`VanguardDB = { version = 1, setupDone = true, profiles = { Dps = { editMode = { layout = "Modern" } }, Healer = { editMode = { layout = "Heal" } } } }
 VanguardCharDB = { profile = "Dps", pendingProfile = "Healer", editModeProfile = "Dps", specProfiles = { [1] = "Dps", [2] = "Healer" } }`, "__spec = 2");
