@@ -4533,6 +4533,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the icon sits under the mail corner, fully visible, and its tooltip lists the orders.
 - If it fails, paste: whether the icon shows, where it sits, and the minimap shape setting.
 
+### 33.372 A scenario stage's spells get buttons in Vanguard's tracker (Retail)
+
+- Do: With Vanguard's quest tracker on, enter a scenario whose stage gives you a spell to cast (the game's own tracker shows a spell button under the criteria). Point at the button beside the spell's row, click it, then pull a fight and wait for the stage to give a new spell while in combat.
+- Expect: under the stage's criteria, one row per spell with its name and its icon as a button to the row's left; pointing at it shows the spell's tooltip; clicking casts it; its cooldown swipe shows after a cast. A spell given mid-fight shows its row at once and its button once the fight ends. A stage drawn as one bar shows no spell rows.
+- If it fails, paste: the scenario's name and stage, /dump C_ScenarioInfo.GetScenarioStepInfo().spells, and /vg errors.
+
+### 33.373 Tracking a quest on the world map moves the accent line (Retail)
+
+- Do: With Vanguard's tracker showing two watched quests, click the other quest on the world map (or in the quest log) so the game tracks it, and look at the tracker without doing anything else.
+- Expect: the thin accent line down the tracker's left edge moves to the quest you just picked at once.
+- If it fails, paste: the two quest names and which one keeps the line.
+
+### 33.374 The Profiles page follows a profile switch made elsewhere (both)
+
+- Do: With a profile set for one spec (or Forever talent group), open `/vg` on Profiles once, close it, change spec, click Later on the reload offer, then open `/vg` on Profiles again and point at Copy here.
+- Expect: the page names the profile the switch staged as the one in use after the reload, and Copy here's warning names that profile, not Default.
+- If it fails, paste: the profile names the page shows and the Copy here warning.
+
+### 33.375 The unlock bar fits after a Text size change (both)
+
+- Do: Type /vg unlock, open `/vg` again while unlocked, and move Text size from 100% to 130%.
+- Expect: the unlock bar grows with the text: its note stays on one line with room above and below, and its buttons stay inside the bar.
+- If it fails, paste: a screenshot of the bar and the Text size value.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
