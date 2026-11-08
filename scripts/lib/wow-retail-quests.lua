@@ -184,3 +184,14 @@ C_ContentTracking = {
     stub.fire("CONTENT_TRACKING_UPDATE", kind, id, true)
   end,
 }
+
+-- world.warbandCounts[itemID] = how many the reagent and warband banks hold.
+world.warbandCounts = {}
+
+ItemUtil = ItemUtil or {}
+
+-- ItemUtil.lua's GetCraftingReagentCount: the bags plus the reagent and warband banks (the game passes
+-- includeBank, includeReagentBank and includeAccountBank).
+function ItemUtil.GetCraftingReagentCount(itemID)
+  return C_Item.GetItemCount(itemID) + (world.warbandCounts[itemID] or 0)
+end

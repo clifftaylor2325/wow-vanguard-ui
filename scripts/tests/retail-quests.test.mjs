@@ -372,3 +372,23 @@ it("retail quests: a weighted stage shows its description with its percent, a hi
   redraw(addon, "SCENARIO_UPDATE");
   expect(blocks(addon)[1][1], "no description: the criteria").toEqual(["TEST-ONLY Wave 1/3"]);
 });
+
+// TEST-ONLY recipe with a two-rank reagent slot (rank 1 item 90201, rank 2 item 90202, 4 needed).
+const RANK_ENV = `
+  __wfgWorld.items[90201] = { name = "TEST-ONLY Ore", icon = "TEST-ONLY-ICON", quality = 1 }
+  __wfgWorld.items[90202] = { name = "TEST-ONLY Ore R2", icon = "TEST-ONLY-ICON", quality = 1 }
+  __wfgWorld.recipes[90200] = { recipeID = 90200, name = "TEST-ONLY Ingot", reagentSlotSchematics = {
+    { reagents = { { itemID = 90201 }, { itemID = 90202 } }, quantityRequired = 4, reagentType = 1 } } }
+  __wfgWorld.trackRecipe(90200)
+`;
+it("retail quest tracker: a tracked recipe counts every quality rank and the banks, as the game's tracker does", () => {
+  const addon = retail(RANK_ENV);
+  addon.eval("__wfgWorld.bags[1][1] = { itemID = 90202, count = 3 }");
+  redraw(addon, "BAG_UPDATE_DELAYED");
+  expect(blocks(addon).slice(-1), "rank 2 in the bags counts for the slot").toEqual([["TEST-ONLY Ingot", ["TEST-ONLY Ore 3/4"]]]);
+  addon.eval("__wfgWorld.warbandCounts[90201] = 1");
+  redraw(addon, "BAG_UPDATE_DELAYED");
+  expect(blocks(addon).slice(-1)[0][1], "a rank in the warband bank counts too").toEqual(["TEST-ONLY Ore 4/4"]);
+  const done = addon.eval("local f = Vanguard_QuestTrackerFrame local b = f.blocks[f.blocks.used] return b.lines[1].text.__textColor");
+  expect(isTok(addon, done, "muted"), "and the line is done").toBe(true);
+});

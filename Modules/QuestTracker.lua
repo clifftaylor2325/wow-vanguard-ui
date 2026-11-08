@@ -299,7 +299,20 @@ end
 
 -- Recipes --------------------------------------------------------------------------------------
 
--- A reagent line for a recipe's slot: "2/4 Linen Cloth" (your bags and bank against what the recipe needs)
+-- How many of a slot's reagents you hold. Retail counts every quality rank the way the game's tracker does
+-- (ItemUtil.GetCraftingReagentCount: bags, reagent bank and warband bank); Forever counts its first rank in
+-- the bags and bank.
+local function slotCount(reagents)
+  local retail, have = not ns.IsForever(), 0
+  for _, r in ipairs(retail and reagents or { reagents[1] }) do
+    local id = ns.PlainTable(r) and ns.PlainNumber(r.itemID)
+    local n = id and (retail and ns.CallIf(ItemUtil, "GetCraftingReagentCount", id) or ns.CallIf(C_Item, "GetItemCount", id, true))
+    have = have + (ns.PlainNumber(n) or 0)
+  end
+  return have
+end
+
+-- A reagent line for a recipe's slot: "2/4 Linen Cloth" (what you hold against what the recipe needs)
 -- and whether you have enough; nil for an optional slot, a hidden value, or an item the client hasn't
 -- named yet (its data is asked for, and the line comes with it). The second value is true in that last case.
 local function reagentLine(slot)
@@ -309,7 +322,7 @@ local function reagentLine(slot)
   if ns.PlainNumber(slot.reagentType) ~= basic or not (id and need) then return nil end
   local name = ns.CallIf(C_Item, "GetItemInfo", id)
   if ns.IsSecret(name) or type(name) ~= "string" then ns.CallIf(C_Item, "RequestLoadItemDataByID", id) return nil, true end
-  local have = ns.PlainNumber(ns.CallIf(C_Item, "GetItemCount", id, true)) or 0
+  local have = slotCount(slot.reagents)
   return { text = have .. "/" .. need .. " " .. name, done = have >= need }
 end
 
