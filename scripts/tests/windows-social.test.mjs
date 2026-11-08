@@ -333,6 +333,17 @@ it("guild roster: an offline member's row in the theme's secondary text, an onli
   expect([rowColors(noEnum, "__early")[0], windowErrors(noEnum), noEnum.eval("return #ns.errors")], "a client without the presence enum").toEqual([1, "none", 0]);
 });
 
+it("guild roster: a row that showed an offline member keeps the game's colours for an online one through a theme refresh", () => {
+  const addon = loggedIn(PAGES_ENV);
+  addon.eval("CommunitiesFrame:Show() __early:UpdatePresence() __late = __row(Enum.ClubMemberPresence.Offline) __late:UpdatePresence()");
+  addon.eval("__early.memberInfo = { presence = Enum.ClubMemberPresence.Online } __early:UpdatePresence() ns.Theme.Refresh()");
+  const text2 = addon.eval("return math.floor(select(1, ns.Theme.RGB('text2')) * 100 + 0.5) / 100");
+  expect(rowColors(addon, "__early"), "the online member stays white").toEqual([1, 1, 1, 1, 1, 1]);
+  expect(rowColors(addon, "__late"), "a row still offline goes secondary text after the refresh").toEqual([text2, text2, text2, text2, text2, text2]);
+  addon.eval("__early.memberInfo = nil __early.Zone = nil __early:UpdatePresence() ns.Theme.Refresh()");
+  expect(addon.eval("return #ns.errors"), "a header row with a text missing").toBe(0);
+});
+
 it("guild info: a note in the empty Guild Information box, gone when the game fills it, back when it is emptied", () => {
   const addon = loggedIn(PAGES_ENV);
   addon.eval("CommunitiesFrame:Show()");
