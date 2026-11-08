@@ -170,7 +170,7 @@ it("a profile reset keeps the record of your own game settings and each characte
   const saved = `VanguardDB.profiles = { Default = { theme = { accent = { 1, 1, 1 } }, Bags = { applied = "1", prior = "0" }, Quiet = { camera = 2.6 }, Graphics = { undo = { graphicsQuality = 7 } }, CraftQueue = { on = true, chars = { ["Alt-Realm"] = { queue = {}, cooldowns = {} } } } } }`;
   const addon = loggedIn("", { savedVariables: saved });
   addon.eval("ns.Settings('Quiet').cameraPrior = 1.9 ns.ResetProfile()");
-  const kept = addon.eval("local p = VanguardDB.profiles.Default return { p.Bags.prior, p.Quiet.cameraPrior, p.Graphics.undo.graphicsQuality, p.CraftQueue.chars['Alt-Realm'] ~= nil, p.CraftQueue.on == nil, p.theme == nil or p.theme.accent == nil }");
+  const kept = addon.eval("local p = VanguardDB.profiles.Default return { VanguardDB.client.bagsPrior, p.Quiet.cameraPrior, p.Graphics.undo.graphicsQuality, p.CraftQueue.chars['Alt-Realm'] ~= nil, p.CraftQueue.on == nil, p.theme == nil or p.theme.accent == nil }");
   expect(kept, "the records stay, the settings go").toEqual(["0", 1.9, 7, true, true, true]);
 });
 it("profile copy, empty export and a taken import name", () => {

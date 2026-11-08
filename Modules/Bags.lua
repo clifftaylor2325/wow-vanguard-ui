@@ -50,22 +50,44 @@ local function setCombinedCVar(value)
   if set then pcall(set, "combinedBags", value) end
 end
 
+-- This computer's own notes (VanguardDB.client, shared by every profile): the combinedBags value is
+-- a game setting that outlives any profile, so the player's own value is kept here, not per profile.
+local function clientNotes()
+  return VanguardDB.client or {}
+end
+
+-- Keeps the player's own combinedBags value in the notes, only while the notes hold none (a value
+-- read after Vanguard set it is not the player's).
+local function keepPrior()
+  local notes, get = clientNotes(), cvarCall("GetCVar")
+  if notes.bagsPrior == nil and get then notes.bagsPrior = get("combinedBags") end
+end
+
+-- Moves a prior an older version kept in the profile into the notes, when the notes hold none.
+local function adoptProfilePrior(settings)
+  local notes = clientNotes()
+  if notes.bagsPrior == nil then notes.bagsPrior = settings.prior end
+  settings.prior = nil
+end
+
 -- Applies the combined setting to the client once: the first time, and again
 -- only when the setting changes, so the player's own choice in the game's
 -- options stands between. The player's value from before is kept for Disable.
 local function syncCombined(settings)
+  adoptProfilePrior(settings)
   if settings.applied == settings.combined then return end
-  local get = cvarCall("GetCVar")
-  if settings.applied == nil and get then settings.prior = get("combinedBags") end
+  keepPrior()
   settings.applied = settings.combined
   setCombinedCVar(settings.combined and "1" or "0")
 end
 
 -- The module switched off (Core/Modules.lua): the player's own bag layout comes back.
 function BG.Disable(settings)
-  if settings.applied == nil then return end
-  if settings.prior ~= nil then setCombinedCVar(settings.prior) end
-  settings.applied, settings.prior = nil, nil
+  adoptProfilePrior(settings)
+  local notes = clientNotes()
+  if settings.applied == nil and notes.bagsPrior == nil then return end
+  if notes.bagsPrior ~= nil then setCombinedCVar(notes.bagsPrior) end
+  notes.bagsPrior, settings.applied = nil, nil
 end
 
 -- Whether any of r, g, b is a secret (never compared).

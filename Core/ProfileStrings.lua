@@ -23,7 +23,7 @@ local META = { format = true, addonVersion = true, parts = true, display = true,
 -- Settings that record this computer's own state rather than a choice, by table: they never go in a
 -- string, and a string's are dropped as it is read, so they never reach another client.
 -- Graphics.undo: the game settings /vg graphics apply changed here, which its undo puts back.
--- Bags.applied and Bags.prior: what Vanguard set the game's combined bags to here, and the player's value before.
+-- Bags.applied and Bags.prior: what Vanguard set the game's combined bags to here, and the player's value before (prior now lives in VanguardDB.client.bagsPrior, like Quiet's; old strings still drop it).
 -- Quiet.cameraPrior: the player's own furthest camera zoom, from before Vanguard first changed it. Older versions
 -- kept it in the profile; it lives in VanguardDB.client now, and Quiet moves a profile's old one there.
 -- Chat.sized and Chat.widened: whether the chat window got its first size, from before those flags
