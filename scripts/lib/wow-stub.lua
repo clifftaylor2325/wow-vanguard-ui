@@ -795,6 +795,10 @@ function methods:SetText(text)
   if self.__needsFont and not (self.__font or self.__template or self.__fontObject) then error("FontString:SetText(): Font not set", 2) end
   self.__text = text
 end
+-- An edit box's letter limit (0: none). The stub's SetText doesn't cut to it; a test that needs the cut models it.
+function methods:SetMaxLetters(n) self.__maxLetters = n end
+-- The edit box's letter limit.
+function methods:GetMaxLetters() return self.__maxLetters or 0 end
 -- A button's label font string (as a template's own would be), once one is set.
 function methods:SetFontString(fs) self.__fontString = fs end
 function methods:GetFontString() return self.__fontString end
