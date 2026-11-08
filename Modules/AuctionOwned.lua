@@ -95,12 +95,22 @@ local function keep(old, new)
   return new
 end
 
+-- A price check for each item among your auctions not yet in checked (one per item); checked gains them.
+local function checkPrices(checked)
+  for _, a in ipairs(AH.owned) do
+    local id = a.key.itemID
+    if not checked[id] then checked[id] = true AH.Queue({ sell = C_AuctionHouse.MakeItemKey(id), check = true }) end
+  end
+end
+
 -- An item key's info came in: the auctions left out of the last read for lack of it are read again
--- (the client's cached list; no new search, so a check under way is untouched), shown and noted. Nothing
--- while the last read left none out (the info of browse and shop results comes in the same way).
+-- (the client's cached list; no new search, so a check under way is untouched), shown and noted, and the
+-- ones Check undercuts' round has not priced yet are checked (AH.checkedItems holds that round's items).
+-- Nothing while the last read left none out (the info of browse and shop results comes in the same way).
 function AH.OnOwnedInfo()
   if not AH.ownedMissing then return end
   AH.owned = keep(AH.owned, AH.ReadOwned())
+  if AH.checkedItems then checkPrices(AH.checkedItems) end
   AH.PaintOwned()
   ns.AuctionLedger.OnOwned()
 end
@@ -133,21 +143,14 @@ function AH.ListenOwned(on)
   on("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", AH.OnNotice)
 end
 
--- A price check for each item among your auctions (one per item).
-local function checkPrices()
-  local seen = {}
-  for _, a in ipairs(AH.owned) do
-    local id = a.key.itemID
-    if not seen[id] then seen[id] = true AH.Queue({ sell = C_AuctionHouse.MakeItemKey(id), check = true }) end
-  end
-end
-
--- Your auctions came in: kept and shown; after Check undercuts, each item's price is checked.
+-- Your auctions came in: kept and shown; after Check undercuts, each item's price is checked (a new round:
+-- AH.checkedItems starts empty).
 function AH.OnOwned()
   local s = AH.pending
   AH.owned = keep(AH.owned, AH.ReadOwned())
   if s and s.owned then
-    checkPrices()
+    AH.checkedItems = {}
+    checkPrices(AH.checkedItems)
     AH.Done()
   end
   AH.PaintOwned()

@@ -768,3 +768,45 @@ it("Z10-3 a scan lowers each alert term once and each item name once, not once f
   scan(addon, "{ { itemID = 10940, count = 1, buyoutPrice = 500 }, { itemID = 10941, count = 1, buyoutPrice = 500 }, { itemID = 11083, count = 1, buyoutPrice = 500 }, { itemID = 77777, count = 1, buyoutPrice = 1 } }");
   expect([alertRings(addon), addon.eval("return __lowers")], "rang once for the dusts; 6 terms once, 3 named items once each (the unknown one not at all)").toEqual([1, 9]);
 });
+
+// A competing blade, 30s under yours, on an item the client has not described yet (a late item key).
+const LATE_ITEM = "\n__wfgWorld.ah.items[9999] = { { itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, buyoutAmount = 3000, quantity = 1 } }\n__wfgWorld.items[9999].pending = true";
+// Check undercuts with item 9999 undescribed, then its info arriving after the dust check answered.
+function lateInfoAfterCheck(addon) {
+  addon.click(`${OWNED_CARD}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.advance(1);
+  addon.eval("__wfgWorld.items[9999].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 9999);
+  addon.advance(1);
+}
+
+it("an auction whose item info comes late after Check undercuts is price-checked and marked", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + LATE_ITEM);
+  lateInfoAfterCheck(addon);
+  expect(sent(addon)).toContain("SendSellSearchQuery:9999");
+  addon.fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.advance(5);
+  expect(countText(addon)).toBe("3 · 2 undercut");
+});
+
+it("an item info that comes late with no Check pressed sends no search", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + LATE_ITEM);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.eval("__wfgWorld.items[9999].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 9999);
+  addon.advance(1);
+  expect(sent(addon)).not.toContain("SendSellSearchQuery:9999");
+});
+
+it("closing the auction house forgets the round's checked items", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + LATE_ITEM);
+  addon.click(`${OWNED_CARD}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect(
+    addon.eval(`local was = ${HELPER}.checkedItems ~= nil ${HELPER}.OnClosed() return { was, ${HELPER}.checkedItems == nil }`),
+    "a round's set, forgotten on close",
+  ).toEqual([true, true]);
+});
