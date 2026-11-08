@@ -437,8 +437,13 @@ it("No to 'Use its UI scale?' keeps this player's scale: a Pixel-perfect profile
   b.login();
   expect(b.eval("local s = ns.Theme.Settings() return { ns.ProfileName(), UIParent:GetScale(), s.pixelScale, s.pixelMultiple }"), "after the reload: the imported profile at this player's scale").toEqual(["Imported", before, false, 0]);
 });
+it("a profile saved with a fixed pixel multiple by setup (0.9.0 to 0.9.2) follows the screen again", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true, pixelMultiple = 2 } }\n" });
+  expect(addon.eval("return { UIParent:GetScale(), ns.Theme.Settings().pixelMultiple }"), "768 / 1080, no longer doubled").toEqual([768 / 1080, 0]);
+});
 it("a whole-profile import keeps this player's own Pixel-perfect switch and multiple, even with no UI scale to ask about", () => {
-  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true, pixelMultiple = 2 } }\n" });
+  const addon = loggedIn();
+  addon.eval("ns.Theme.Settings().pixelScale = true ns.Theme.Settings().pixelMultiple = 2");
   importText(addon, addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" } }))'));
   expect(addon.eval("local t = VanguardDB.profiles.Imported.theme return { t.pixelScale, t.pixelMultiple, t.accent }"), "the string's settings with this player's scale").toEqual([true, 2, "jade"]);
 });
