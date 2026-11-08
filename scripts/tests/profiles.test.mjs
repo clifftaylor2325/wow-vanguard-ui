@@ -567,6 +567,18 @@ it("H30-5-1 a partial import while a switch waits goes into the profile used aft
   imports(addon, plain);
   expect(addon.eval("return { ns.Theme.Settings().reduceMotion, __heard }"), "with no switch waiting it lands in the running profile and the listeners hear it twice (after the one the reload switch made)").toEqual([false, 3]);
 });
+it("H30-5-1 a partial import into the waiting profile keeps that profile's own pixel-perfect scale, not the one on screen", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile Raid");
+  addon.eval("ns.Theme.Settings().pixelScale = true VanguardDB.profiles.Raid.theme = { pixelScale = false, pixelMultiple = 2 }");
+  const text = encoded(addon, "parts", `{ format = 2, parts = { "global" }, theme = { pixelScale = true, pixelMultiple = 1, reduceMotion = true } }`);
+  imports(addon, text);
+  expect(addon.eval("local t = VanguardDB.profiles.Raid.theme return { t.pixelScale, t.pixelMultiple, t.reduceMotion }"), "Raid keeps its own switch and multiple").toEqual([false, 2, true]);
+  addon.eval("VanguardDB.profiles.Raid.theme = nil");
+  imports(addon, text);
+  expect(addon.eval("local t = VanguardDB.profiles.Raid.theme return { t.pixelScale == nil, t.pixelMultiple == nil }"), "a waiting profile with no theme of its own takes neither from the string").toEqual([true, true]);
+});
 it("profile strings carry their format and version, and an older string is upgraded before anything is saved", () => {
   const addon = loggedIn();
   expect(addon.eval("local _, d = ns.Serialize.Decode(ns.ExportProfile()) return { d.format, type(d.addonVersion) }"), "every string says its format and the version that made it").toEqual([2, "string"]);

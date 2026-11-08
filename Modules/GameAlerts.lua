@@ -136,9 +136,11 @@ end
 
 -- Lays the game's pop-up toasts out again without the talking head. The game stacks them above it while it is shown
 -- and Edit Mode thinks it is still in its own spot, but Vanguard has moved it; so the toasts start from the base anchor
--- instead (the game's own chain, minus the talking head). Not while pins are paused: the head is then in the game's spot.
+-- instead (the game's own chain, minus the talking head). Not while pins are paused: the head is then in the game's spot;
+-- nor while the head is hidden, when the game's chain already skips it.
 function GA.ReanchorToasts(alerts)
-  if ns.PinsPaused() then return end
+  local head = _G.TalkingHeadFrame
+  if ns.PinsPaused() or not (head and head:IsShown()) then return end
   local relative = alerts.baseAnchorFrame
   for _, sub in ipairs(alerts.alertFrameSubSystems or {}) do
     if sub.anchorFrame ~= _G.TalkingHeadFrame then

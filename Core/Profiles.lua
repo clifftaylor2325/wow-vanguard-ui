@@ -200,7 +200,7 @@ end
 function ns.BackupProfile(source)
   source = source or ns.ProfileName()
   local name = ns.BackupName(source)
-  VanguardDB.profiles[name] = ownCopy(VanguardDB.profiles[source])
+  VanguardDB.profiles[name] = ownCopy(source == ns.ProfileName() and ns.Profile() or VanguardDB.profiles[source])
   VanguardDB.backupOf = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf or {}
   VanguardDB.backupOf[name] = source
   return name
@@ -223,12 +223,21 @@ local function importMatch(name, result)
   return ns.Format(L["This string matches profile {profile}, which this character already uses: nothing new to import."], { profile = name })
 end
 
+-- The theme settings of the profile an import lands in: the theme on screen for the profile in use, else the
+-- profile's saved theme (one staged for the reload), or none.
+local function landingTheme(name)
+  if name == ns.ProfileName() then return ns.Theme.Settings() end
+  local theme = (VanguardDB.profiles[name] or {}).theme
+  return type(theme) == "table" and theme or {}
+end
+
 -- Puts this player's own pixel-perfect switch and multiple in an imported profile's theme: like the
 -- display block they belong to the screen the string was made on, so that screen's never come along
--- (Use its UI scale? then turns the switch off where the game's scale runs).
-local function ownPixelScale(data)
+-- (Use its UI scale? then turns the switch off where the game's scale runs). They are those of the profile
+-- it lands in (default: the one in use).
+local function ownPixelScale(data, name)
   data.theme = type(data.theme) == "table" and data.theme or {}
-  local mine = ns.Theme.Settings()
+  local mine = landingTheme(name or ns.ProfileName())
   data.theme.pixelScale, data.theme.pixelMultiple = mine.pixelScale, mine.pixelMultiple
 end
 
@@ -258,7 +267,7 @@ end
 -- A partial string: its tables merge into the named profile, key by key; a theme it carries keeps
 -- this player's own pixel-perfect switch and multiple, as a whole profile does (ownPixelScale).
 local function importParts(data, name)
-  if type(data.theme) == "table" then ownPixelScale(data) end
+  if type(data.theme) == "table" then ownPixelScale(data, name) end
   ns.MergeParts(VanguardDB.profiles[name], data)
   local parts = ns.PartsText(data)
   if not parts then return ns.Format(L["Imported its settings into profile {profile}."], { profile = name }) end

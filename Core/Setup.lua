@@ -2,8 +2,8 @@
 -- opens on the account's first login until Done or Skip setup (VanguardDB.setupDone),
 -- and on a new character's first login after that, with a profile step first
 -- (VanguardCharDB.setupDone false, pickProfile). Closing it early asks again at the
--- next login, unless setup already changed the shared profile. Never in combat (it waits for combat to end, and steps aside if a fight
--- starts while it is open). It always opens with Keep picked (your role's layout and
+-- next login, unless setup already changed the shared profile. Never in combat (it
+-- waits for combat to end, and steps aside if a fight starts while it is open). It always opens with Keep picked (your role's layout and
 -- your screen's preset are marked), so Next, Next, Next, Done changes nothing you didn't
 -- pick. Before it changes anything it copies the profile to its backup profile, and Done
 -- ends with a reload.

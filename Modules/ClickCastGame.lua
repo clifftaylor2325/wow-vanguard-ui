@@ -27,10 +27,10 @@ CC.WONT_RUN = WONT_RUN
 
 -- The game's interactions Vanguard knows, by id: the button each stands for (the frames' attributes know only these:
 -- Target is Left click, Open menu is Right click, and the engine reads that button's attribute for a click bound to
--- it) and the name the reason gives it.
+-- it) and, as one whole sentence a translation can bend, what the reason says when the game moved it to another click.
 local INTERACTIONS = {
-  [1] = { button = 1, name = L["Target"] },
-  [2] = { button = 2, name = L["the unit menu"] },
+  [1] = { button = 1, remap = L["the game's own Click Casting window puts Target on this click, so it runs your {click} binding instead"] },
+  [2] = { button = 2, remap = L["the game's own Click Casting window puts the unit menu on this click, so it runs your {click} binding instead"] },
 }
 
 -- A mouse button's number from the game's name for it (its profile may use either name).
@@ -165,8 +165,7 @@ end
 -- now, so the reason names that click (such as "Shift + Left click"), not always the plain one.
 local function remapReason(entry, prefix)
   local interaction = INTERACTIONS[entry.interaction]
-  return ns.Format(L["the game's own Click Casting window puts {interaction} on this click, so it runs your {click} binding instead"],
-    { interaction = interaction.name, click = CC.KeyName(prefix .. "BUTTON" .. interaction.button) })
+  return ns.Format(interaction.remap, { click = CC.KeyName(prefix .. "BUTTON" .. interaction.button) })
 end
 
 -- Why a binding does nothing on this client, or nil when it works (or the client can't say). Where the game has

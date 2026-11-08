@@ -598,6 +598,8 @@ it("H30-18-1 game alerts: toasts stack from the base anchor, not the moved talki
   expect(addon.eval("return ns.PinsPaused()"), "no subsystems: nothing to lay out, no error").toBe(false);
   addon.eval("local r = { IsInDefaultPosition = function() return false end } AlertFrame.alertFrameSubSystems = { { AdjustAnchors = function() return r end }, { AdjustAnchors = function(_, rel) __seen = rel end } } AlertFrame:UpdateAnchors()");
   expect(addon.eval("return __seen == AlertFrame.baseAnchorFrame"), "a result not in its default position is not built on").toBe(true);
+  addon.eval("__seen = nil TalkingHeadFrame:Hide() AlertFrame:UpdateAnchors()");
+  expect(addon.eval("return __seen == nil"), "a hidden talking head: the game's chain already skips it, so nothing is laid out again").toBe(true);
   const bare = loggedIn(ALERTS_ENV + "AlertFrame = {}");
   expect(bare.eval("return AlertFrame.UpdateAnchors"), "a client without the call is left alone").toBe(null);
 });
