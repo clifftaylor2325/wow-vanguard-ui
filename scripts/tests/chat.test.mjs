@@ -202,8 +202,14 @@ it("chat text fades: lines stay 60 s then fade over 0.6 s by default, Never and 
   expect(fade()[2], "a fight starts: the fade is capped at 0.15 s").toBe(0.15);
   addon.world.combat(false);
   expect(fade()[2], "and goes back to 0.6 s after it").toBe(0.6);
-  addon.eval("ns.Theme.Settings().reduceMotion = true ns.Theme.Refresh()");
-  expect(fade()[2], "Reduce motion: a line goes at once").toBe(0);
+  addon.eval("ns.Options.Show('general')");
+  // The General page's Reduce motion row setter, called as the tick would.
+  const reduce = (on) => addon.eval(`local r for _, p in ipairs(ns.Options.PAGES) do if p.rows then for _, row in ipairs(p.rows()) do if row[2] == "Reduce motion (no fades or flashes)" then r = row end end end end r[4](${on})`);
+  reduce(true);
+  expect(fade()[2], "Reduce motion ticked: a line goes at once, without waiting for a fight").toBe(0);
+  reduce(false);
+  expect(fade()[2], "unticked: the line fades over 0.6 s again").toBe(0.6);
+  reduce(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 // TEST-ONLY chat edit boxes as the game has them: the main window's with a header the game colours from
