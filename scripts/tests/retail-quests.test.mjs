@@ -468,3 +468,20 @@ it("retail quests: a stage spell given in a fight gets its row at once and its b
   addon.update(0);
   expect(spellButtons(addon), "the fight over: the button, casting the spell").toEqual([["spell", 91501, "TEST-ONLY Free Prisoner", false]]);
 });
+
+// The title of the block that shows the followed quest's accent line ("" when none does).
+const edgeTitle = (addon) => addon.eval(`local f = Vanguard_QuestTrackerFrame
+  for i = 1, f.blocks.used do if f.blocks[i].edge:IsShown() then return f.blocks[i].title:GetText() end end
+  return ""`);
+
+it("retail quests: tracking another quest on the map moves the accent line at once", () => {
+  const addon = retail(`${QUESTS}
+    __wfgWorld.superTracked = 91001
+    C_SuperTrack = { GetSuperTrackedQuestID = function() return __wfgWorld.superTracked end, IsSuperTrackingAnything = function() return true end }`);
+  addon.update(0);
+  expect(edgeTitle(addon), "the super-tracked quest first").toBe("[70] TEST-ONLY Boars");
+  addon.eval("__wfgWorld.superTracked = 91003");
+  addon.fire("SUPER_TRACKING_CHANGED");
+  addon.update(0);
+  expect(edgeTitle(addon), "the map's pick without another quest event").toBe("[70] TEST-ONLY Herbs");
+});

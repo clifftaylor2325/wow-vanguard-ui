@@ -19,11 +19,12 @@ local RQ = {}
 ns.RetailQuests = RQ
 
 -- The events the game's own tracker follows for these blocks (Blizzard_ObjectiveTracker on Retail), each one
--- a redraw of Vanguard's tracker.
+-- a redraw of Vanguard's tracker. SUPER_TRACKING_CHANGED is the game tracker's own: a quest tracked on the world
+-- map moves the followed quest's accent line, and Forever's QuestGuide (not loaded on Retail) covers that there.
 RQ.EVENTS = { "SCENARIO_UPDATE", "SCENARIO_CRITERIA_UPDATE", "SCENARIO_COMPLETED", "TASK_PROGRESS_UPDATE",
   "QUEST_WATCH_UPDATE", "PERKS_ACTIVITY_COMPLETED", "PERKS_ACTIVITIES_TRACKED_UPDATED", "PERKS_ACTIVITIES_TRACKED_LIST_CHANGED",
   "INITIATIVE_TASKS_TRACKED_UPDATED", "INITIATIVE_TASKS_TRACKED_LIST_CHANGED", "NEIGHBORHOOD_INITIATIVE_UPDATED",
-  "TRACKING_TARGET_INFO_UPDATE", "TRACKABLE_INFO_UPDATE", "SCENARIO_SPELL_UPDATE" }
+  "TRACKING_TARGET_INFO_UPDATE", "TRACKABLE_INFO_UPDATE", "SCENARIO_SPELL_UPDATE", "SUPER_TRACKING_CHANGED" }
 
 -- A heading and its rows, or no rows at all when there are none (a heading never shows alone).
 local function section(name, rows)
