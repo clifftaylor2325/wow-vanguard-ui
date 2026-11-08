@@ -369,7 +369,21 @@ function MS.Reshow(f)
   ns.OutOfCombat(function() f:Show() end, "menustrip show " .. (f:GetName() or ""))
 end
 
--- Keeps the bags and the menu shown in the bar: now, and whenever the game hides them.
+-- After a pet battle the game leaves its menu in the hidden battle bar (its own way back is the main bar's
+-- OnShow, which Vanguard hides): put it back in the container with the game's own reset, which also undoes
+-- the battle bar's stacking and scale. A client without the menu, or one already home, is left alone.
+local function reclaimMenu()
+  local menu, home = _G.MicroMenu, _G.MicroMenuContainer
+  if type(menu) ~= "table" or type(home) ~= "table" or type(menu.ResetMicroMenuPosition) ~= "function" then return end
+  if menu:GetParent() ~= home then menu:ResetMicroMenuPosition() end
+end
+
+-- Gives the menu back when a pet battle ends, out of combat.
+function MS.ReclaimMenu()
+  ns.OutOfCombat(reclaimMenu, "menustrip reclaim")
+end
+
+-- Keeps the bags and the menu shown in the bar: now, whenever the game hides them, and after a pet battle.
 local function keepShown()
   for _, name in ipairs(MS.KEEP_SHOWN) do
     local f = _G[name]
@@ -378,6 +392,7 @@ local function keepShown()
       MS.Reshow(f)
     end
   end
+  ns.On("PET_BATTLE_CLOSE", MS.ReclaimMenu)
 end
 
 -- Slots ---------------------------------------------------------------------------------------
