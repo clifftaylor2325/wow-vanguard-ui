@@ -247,6 +247,16 @@ for (const [label, client, stage] of [
   });
 }
 
+it("options: after setup forks a profile of its own, the built Profiles page marks it and Copy here names it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles") ns.Options.Hide()');
+  addon.eval('ns.Setup.ApplyProfile("new")');
+  addon.eval('ns.Options.Show("profiles")');
+  expect(profileRow(addon, "Tester")[0], "the new profile is marked in use").toBe("Tester  (in use)");
+  expect(profileRow(addon, "Default"), "and Default is a plain row again").toEqual(["Default", true, true, true]);
+  expect(profileHover(addon, "TEST-ONLY Tank", "copy", "OnEnter")[1], "Copy here names the profile it writes into")
+    .toBe("Replaces every setting in profile Tester with profile TEST-ONLY Tank's. It can't be undone.");
+});
 it("options: profiles in the window", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');

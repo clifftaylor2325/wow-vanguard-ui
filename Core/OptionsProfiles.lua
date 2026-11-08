@@ -51,7 +51,8 @@ local function addEditButtons(r, name)
   r.delete = W.Danger(r, L["Delete"], function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -T.SPACE.gap, 0)
   ns.WidenToLabel(r.delete)
-  -- The page is built again on every staged switch, so {into} is always the profile ns.CopyProfile writes into.
+  -- The page is built again on every staged switch and after setup forks a profile, so {into} is always the profile
+  -- ns.CopyProfile writes into.
   lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.SelectedProfileName(), from = name })
   r.copy = W.Danger(r, L["Copy here"], function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -T.SPACE.gap, 0)
