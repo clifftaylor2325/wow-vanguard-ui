@@ -361,6 +361,16 @@ local function editNote(edit)
   return note
 end
 
+-- Makes the note as tall as its text needs at this text size.
+local function fitEditNote(note)
+  note:SetHeight(note.text:GetStringHeight() + 2 * T.SPACE.tight)
+end
+
+-- A change of Text size refits the note while it shows.
+T.OnChanged(function()
+  if editModeNote and editModeNote:IsShown() then fitEditNote(editModeNote) end
+end)
+
 -- Edit Mode opened: Vanguard's handles show too (without the grid: the game
 -- draws its own), with the note (as tall as its text needs at this text size, in the window's strata just above
 -- it), unless that's switched off.
@@ -370,7 +380,7 @@ function ns.EditModeOpened(edit)
   note.editOpen = true
   note:SetFrameStrata(edit:GetFrameStrata())
   note:SetFrameLevel(edit:GetFrameLevel() + 1)
-  note:SetHeight(note.text:GetStringHeight() + 2 * T.SPACE.tight)
+  fitEditNote(note)
   note:SetShown(unlocked)
 end
 
@@ -655,7 +665,9 @@ end
 
 -- Brings Edit Mode's note back when the handles come up while Edit Mode is still open (a lock inside it put it away).
 local function showEditNote()
-  if editModeNote and editModeNote.editOpen then editModeNote:Show() end
+  if not (editModeNote and editModeNote.editOpen) then return end
+  fitEditNote(editModeNote)
+  editModeNote:Show()
 end
 
 -- Shows every handle and the grid, and remembers every spot for Exit without saving (Core/UnlockBar.lua): an unlock
