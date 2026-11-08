@@ -399,13 +399,15 @@ it("retail quest tracker: a tracked recraft is drawn as 'Recrafting: Name' with 
     ["Recipes", []], ["Recrafting: TEST-ONLY Helm", ["TEST-ONLY Ore 0/2"]], ["TEST-ONLY Ingot", ["TEST-ONLY Ore 0/4"]]]);
   clickBlock(addon, "Recrafting: TEST-ONLY Helm", "LeftButton");
   expect(addon.eval("return __wfgWorld.openedRecipe"), "a left-click on a recraft opens nothing").toBe(null);
-  clickBlock(addon, "TEST-ONLY Ingot", "RightButton");
-  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a plain recipe untracks as one").toEqual([90200, false, false]);
-  clickBlock(addon, "Recrafting: TEST-ONLY Helm", "RightButton");
-  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a recraft untracks as a recraft").toEqual([90300, false, true]);
   addon.eval("__wfgStub.hover(Vanguard_QuestTrackerFrame.blocks[2])");
   const lines = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines or {}) do out[i] = l.text end return out");
   expect(lines[lines.length - 1], "its tooltip names the one click").toBe("Right-click: stop tracking");
+  clickBlock(addon, "Recrafting: TEST-ONLY Helm", "RightButton");
+  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a recraft untracks as a recraft").toEqual([90300, false, true]);
+  addon.update(0);
+  expect(blocks(addon).slice(-2), "the recraft row goes; the plain recipe stays").toEqual([["Recipes", []], ["TEST-ONLY Ingot", ["TEST-ONLY Ore 0/4"]]]);
+  clickBlock(addon, "TEST-ONLY Ingot", "RightButton");
+  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a plain recipe untracks as one").toEqual([90200, false, false]);
 });
 
 // TEST-ONLY scenario stage that gives two spells, the second also on a cooldown the client reports.
