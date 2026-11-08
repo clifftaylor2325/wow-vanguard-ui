@@ -392,3 +392,18 @@ it("retail quest tracker: a tracked recipe counts every quality rank and the ban
   const done = addon.eval("local f = Vanguard_QuestTrackerFrame local b = f.blocks[f.blocks.used] return b.lines[1].text.__textColor");
   expect(isTok(addon, done, "muted"), "and the line is done").toBe(true);
 });
+it("retail quest tracker: a tracked recraft is drawn as 'Recrafting: Name' with its reagents, takes no left-click, and untracks as a recraft", () => {
+  const addon = retail(RANK_ENV + "\n__wfgWorld.recraftTracked = { 90300 } __wfgWorld.recipes[90300] = { recipeID = 90300, name = 'TEST-ONLY Helm', reagentSlotSchematics = { { reagents = { { itemID = 90201 } }, quantityRequired = 2, reagentType = 1 } } }");
+  redraw(addon, "TRACKED_RECIPE_UPDATE");
+  expect(blocks(addon).slice(-3), "the recraft sits first under the heading, then the plain recipe").toEqual([
+    ["Recipes", []], ["Recrafting: TEST-ONLY Helm", ["TEST-ONLY Ore 0/2"]], ["TEST-ONLY Ingot", ["TEST-ONLY Ore 0/4"]]]);
+  clickBlock(addon, "Recrafting: TEST-ONLY Helm", "LeftButton");
+  expect(addon.eval("return __wfgWorld.openedRecipe"), "a left-click on a recraft opens nothing").toBe(null);
+  clickBlock(addon, "TEST-ONLY Ingot", "RightButton");
+  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a plain recipe untracks as one").toEqual([90200, false, false]);
+  clickBlock(addon, "Recrafting: TEST-ONLY Helm", "RightButton");
+  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a recraft untracks as a recraft").toEqual([90300, false, true]);
+  addon.eval("__wfgStub.hover(Vanguard_QuestTrackerFrame.blocks[2])");
+  const lines = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines or {}) do out[i] = l.text end return out");
+  expect(lines[lines.length - 1], "its tooltip names the one click").toBe("Right-click: stop tracking");
+});
