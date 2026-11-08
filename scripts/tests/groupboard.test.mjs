@@ -208,6 +208,21 @@ it("group board: Needs my role puts the posts that need you (or name no role) fi
   expect(addon.eval("local GB = ns.GetModule('GroupBoard') GB.filter = 'role' local out = {} for i, e in ipairs(GB.Shown()) do out[i] = e.sender end return out"), "Automatic: your group role").toEqual(["Anyone", "Tanky", "Lightmend", "Seeker"]);
 });
 
+it("group board: a row's dungeon is in its difficulty color, or muted when the row dims", () => {
+  const addon = board();
+  addon.eval("GetQuestDifficultyColor = function() return { r = 0.25, g = 0.75, b = 0.25 } end");
+  post(addon, "LFM SFK need heals", "Lightmend");
+  post(addon, "LFM BFD need tank", "Tanky");
+  addon.eval('ns.Settings("GroupBoard").role = "healer"');
+  addon.slash("lfg");
+  for (const caption of ["All posts", "Looking for more", "Looking for a group"]) addon.eval(`__click("${caption}")`);
+  // The text colour of row i's dungeon cell, as [r, g, b, a].
+  const dungeon = (i) => addon.eval(`local b = Vanguard_GroupBoard.rows[${i}] return { b.dungeon:GetTextColor() }`);
+  expect(rows(addon).map((r) => r[3]), "the healer post first, the tank post dimmed").toEqual(["Lightmend", "Tanky"]);
+  expect(dungeon(1).slice(0, 3), "all three channels of the difficulty color").toEqual([0.25, 0.75, 0.25]);
+  expect(isTok(addon, dungeon(2), "muted"), "a dimmed row's dungeon is muted").toBe(true);
+});
+
 it("group board: the filter, the level switch, the note, more posts than rows, and old posts going", () => {
   const addon = board(60);
   addon.slash("lfg");
