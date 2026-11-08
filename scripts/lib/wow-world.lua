@@ -2191,11 +2191,12 @@ function C_TradeSkillUI.OpenRecipe(recipeID) world.openedRecipe = recipeID retur
 
 -- world.trackedRecipes: the recipe IDs you track in the profession window, in order (world.trackRecipe).
 world.trackedRecipes = {}
--- The tracked recipes (Blizzard_ProfessionsRecipeTracker.lua reads both lists; recrafts are none here).
+-- world.recraftTracked: the recipe IDs you track as recrafts (none unless a test sets them).
+world.recraftTracked = {}
+-- The tracked recipes (Blizzard_ProfessionsRecipeTracker.lua reads both lists).
 function C_TradeSkillUI.GetRecipesTracked(isRecraft)
   local out = {}
-  if isRecraft then return out end
-  for i, id in ipairs(world.trackedRecipes) do out[i] = id end
+  for i, id in ipairs(isRecraft and world.recraftTracked or world.trackedRecipes) do out[i] = id end
   return out
 end
 -- Tracks (tracked true or nil) or untracks (false) a recipe, firing TRACKED_RECIPE_UPDATE(recipeID, tracked)
@@ -2207,8 +2208,12 @@ function world.trackRecipe(recipeID, tracked)
   world.trackedRecipes = kept
   stub.fire("TRACKED_RECIPE_UPDATE", recipeID, on)
 end
--- The game's own call to track or untrack a recipe (the tracker's right-click goes through it).
-function C_TradeSkillUI.SetRecipeTracked(recipeID, tracked) world.trackRecipe(recipeID, tracked) end
+-- The game's own call to track or untrack a recipe (the tracker's right-click goes through it);
+-- world.lastTrackCall = { recipeID, tracked, isRecraft } notes the last one.
+function C_TradeSkillUI.SetRecipeTracked(recipeID, tracked, isRecraft)
+  world.lastTrackCall = { recipeID, tracked, isRecraft }
+  world.trackRecipe(recipeID, tracked)
+end
 
 -- The window, made the first time a profession opens, with its crafting page's recipe form.
 local function professionsFrame()

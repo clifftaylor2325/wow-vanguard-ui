@@ -166,6 +166,23 @@ it("talent planner: Spend planned buys the next picks in order and applies them;
   expect(chatHas(addon, /the game refused to apply talents just now/), "a refused commit (the game's throttle) is said").toBe(true);
 });
 
+it("talent planner: a refused apply undoes the ranks it just bought, so the retry buys and applies them", () => {
+  const addon = open();
+  // TEST-ONLY staging as the game keeps it: bought ranks stay staged until a commit applies them or a rollback drops them.
+  addon.eval(`__applied = 0
+    C_Traits.ConfigHasStagedChanges = function() return #__bought > __applied end
+    C_Traits.RollbackConfig = function(id)
+      __rollback = id
+      for i = #__bought, __applied + 1, -1 do local n = __nodes[__bought[i]] n.rank = n.rank - 1 __points = __points + 1 __bought[i] = nil end
+    end
+    C_ClassTalents.CommitConfig = function() return false end
+    VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } } ${TP}.SpendPlanned()`);
+  expect(chatHas(addon, /the game refused to apply talents just now/), "the refusal is said").toBe(true);
+  expect(addon.eval("return { C_Traits.ConfigHasStagedChanges(), __rollback, __points, __nodes[101].rank }"), "nothing is left staged on the config it bought into").toEqual([false, 501, 3, 0]);
+  addon.eval(`C_ClassTalents.CommitConfig = function() __commits = __commits + 1 __applied = #__bought return true end ${TP}.SpendPlanned()`);
+  expect(addon.eval("return { __bought, __commits, C_Traits.ConfigHasStagedChanges() }"), "the retry buys and applies").toEqual([[101, 101, 101], 1, false]);
+});
+
 it("talent planner: Spend planned stops at a rank the game refuses, says which, and applies only what it bought", () => {
   const addon = open();
   addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } } ${TP}.Refresh()`);

@@ -613,6 +613,7 @@ export const TIDY_ENV = `
   MinimapCluster.Tracking = CreateFrame("Frame", nil, MinimapCluster)
   MinimapCluster.IndicatorFrame = CreateFrame("Frame", nil, MinimapCluster)
   MinimapCluster.IndicatorFrame.MailFrame = CreateFrame("Frame", nil, MinimapCluster.IndicatorFrame)
+  MinimapCluster.IndicatorFrame.CraftingOrderFrame = CreateFrame("Frame", nil, MinimapCluster.IndicatorFrame)
 `;
 
 // Whether one of the game's frames was put away (hidden, under another parent).

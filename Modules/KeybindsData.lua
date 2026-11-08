@@ -17,6 +17,7 @@
 -- A candidate is a spell ID, or { id, only = "tank fury" }: on the list only for those roles.
 -- UNVERIFIED on a Forever client (docs/SMOKE-TEST.md): every ID's name, and which bar page each stance, form and
 -- stealth shows (the vanilla bonus bars: Battle, Cat and Stealth 1, Defensive 2, Berserker and Bear 3).
+-- D.TALENTS is vanilla 1.12's list; a Forever talent rework would show in /vg probe's Key setup spells.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -90,7 +91,9 @@ D.TALENTS = {
   [S.FeralCharge] = true, [S.ColdBlood] = true, [S.AdrenalineRush] = true, [S.Premeditation] = true,
   [S.ArcanePower] = true, [S.Combustion] = true, [S.IceBlock] = true, [S.MindFlay] = true, [S.Silence] = true,
   [S.Shadowform] = true, [S.ScatterShot] = true, [S.SealOfCommand] = true, [S.HolyShield] = true,
-  [S.DivineFavor] = true, [S.Stormstrike] = true, [S.ElementalMastery] = true,
+  [S.DivineFavor] = true, [S.Stormstrike] = true, [S.ElementalMastery] = true, [S.DivineSpirit] = true,
+  [S.Consecration] = true, [S.BlessingOfKings] = true, [S.AimedShot] = true, [S.OmenOfClarity] = true,
+  [S.NaturesGrasp] = true,
 }
 
 -- A spell that takes the place of an older one on the same key (Ice Armor for Frost Armor): the older one is dropped

@@ -135,7 +135,7 @@ read_globals = {
   "ItemLocation",
   "BankUtil_IsAccountBankDepositRefundable",
   -- D1 Auction prices, disenchant values: whether you know Enchanting (your professions' skill lines).
-  "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo",
+  "GetProfessions", "GetProfessionInfo", "C_TradeSkillUI", "C_SkillInfo", "ItemUtil",
   -- Info strip ammo: whether your ranged weapon needs ammo. Player auras and prep: temporary weapon enchants.
   "C_PaperDollInfo",
   -- Action bars: pet battle state (the game's pet battle bar owns the number keys).

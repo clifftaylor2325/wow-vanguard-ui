@@ -147,6 +147,28 @@ it("retail auras: the raid tiles keep their private aura spot with Raid debuffs 
   expect(spots(addon).filter((s) => s[3].startsWith("Vanguard_Raid")).map((s) => s[0]), "the tile still has its spot, for its unit").toEqual(["raid1"]);
 });
 
+// TEST-ONLY weapon enchants on the main and off hand, through the Retail call.
+const TWO_ENCHANTS_ENV = `
+  GetInventoryItemTexture = function(unit, slot) return "TEST-ONLY-ICON-Weapon" .. slot end
+  __temp = { [16] = { enchantID = 5, remainingTimeMs = 1800000, chargesRemaining = 0, hasExpirationTime = true },
+             [17] = { enchantID = 6, remainingTimeMs = 1800000, chargesRemaining = 0, hasExpirationTime = true } }
+  C_PaperDollInfo = C_PaperDollInfo or {}
+  C_PaperDollInfo.GetTemporaryEnchantmentInfo = function(slot) return __temp[slot] end
+`;
+
+it("retail auras: with two weapon enchants your private aura spots move left, clear of a full row of buffs", () => {
+  const addon = loggedIn(UNITS_ENV + TWO_ENCHANTS_ENV, { client: RETAIL_CLIENT });
+  const r = addon.eval(`local PA = ns.GetModule("PlayerAuras")
+    local f = PA.auras.frame
+    local spot1
+    for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == "player" and a.auraIndex == 1 then spot1 = a.parent:GetRight() end end
+    return { cells = { PA.cells[1]:IsShown(), PA.cells[2]:IsShown() }, x = f.__points.TOPRIGHT.x, holderR = PA.holder:GetRight(),
+      perRow = PA.PerRow(PA.settings), size = PA.settings.size, gap = PA.GAP, spot1 = spot1 }`);
+  const lastBuffLeft = r.holderR + r.x - (r.perRow * r.size + (r.perRow - 1) * r.gap);
+  expect([r.cells, r.x], "both enchant cells show and push the buffs left").toEqual([[true, true], -2 * (r.size + r.gap)]);
+  expect(r.spot1 < lastBuffLeft, "spot 1's right edge is left of the 12th buff's left edge").toBe(true);
+});
+
 it("retail auras: the target frame has a spot right of it, over the target of target (H9-1-3), handed again on each new target", () => {
   const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
   // The target spot's unit, whether it sits by the target frame, and its anchor id.
@@ -168,10 +190,14 @@ it("retail auras: your own six private aura spots stand left of your buffs, outs
     table.sort(out, function(x, y) return x[1] < y[1] end)
     local holder = ns.GetModule("PlayerAuras").holder
     local row = out[1] and out[1][3]
-    return { #out, out[1] and out[1][1], out[6] and out[6][1], out[1] and out[1][2], row ~= nil and row:GetParent() == UIParent, row ~= nil and row.__points.RIGHT.rel == holder }`);
+    return { #out, out[1] and out[1][1], out[6] and out[6][1], out[1] and out[1][2], row ~= nil and row:GetParent() == UIParent, row ~= nil and row.__points.TOPRIGHT.rel == holder.vgHoverArea }`);
   const size = addon.eval("return ns.GetModule('PlayerAuras').settings.size + ns.PrivateAuras.GROW");
   expect(own, "six spots for the player's aura 1 to 6, a debuff and a bit across, in a row hung on the block's holder but not under it").toEqual([6, 1, 6, size, true, true]);
   expect(addon.eval("local n = 0 for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == 'target' then n = n + 1 end end return n"), "the target's spot still asks for the first").toBe(1);
+  const centred = addon.eval(`local holder = ns.GetModule("PlayerAuras").holder
+    for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == "player" and a.auraIndex == 1 then
+      local _, y = a.parent:GetCenter() local _, hy = holder:GetCenter() return math.abs(y - hy) < 0.01 end end`);
+  expect(centred, "the row stands level with the holder's row").toBe(true);
   const off = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { modules = { PlayerAuras = false } } }" });
   expect(off.eval("local n = 0 for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == 'player' then n = n + 1 end end return n"), "with the buffs block off the game's debuff frame is not parked and nothing is added").toBe(0);
 });

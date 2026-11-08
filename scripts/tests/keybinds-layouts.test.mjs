@@ -155,6 +155,15 @@ it("a talent takes its key once learned: Mortal Strike on 1 and Heroic Strike mo
   expect(battle('"all"')).toEqual(["1=MortalStrike@73", "2=Rend@74", "3=Overpower@75", "4=HeroicStrike@76", "6=Execute@78"]);
 });
 
+it("spells only a talent teaches are not trainer spells: a level-60 priest has no Divine Spirit key, a hunter's key 2 is Serpent Sting", () => {
+  const addon = client();
+  expect(keysFor(addon, `"PRIEST", "levelling", 60, "none"`).filter((k) => /DivineSpirit/.test(k)), "no talent, no key").toEqual([]);
+  // A level-60 hunter's keys 2 and 3 with the given talents.
+  const hunter = (talents) => keysFor(addon, `"HUNTER", "levelling", 60, ${talents}`).filter((k) => /^[23]=/.test(k));
+  expect(hunter('"none"'), "without Aimed Shot, key 2 is Serpent Sting and key 3 is empty").toEqual(["2=SerpentSting@2"]);
+  expect(hunter('"all"'), "with it, Aimed Shot takes key 2 and Serpent Sting key 3").toEqual(["2=AimedShot@2", "3=SerpentSting@3"]);
+});
+
 it("a mouse without side buttons puts Mouse 4 and 5 on Shift-X and Shift-T", () => {
   const addon = client();
   const keys = keysFor(addon, `"ROGUE", "levelling", 30, "none", false`);

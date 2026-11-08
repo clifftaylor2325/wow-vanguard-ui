@@ -299,7 +299,20 @@ end
 
 -- Recipes --------------------------------------------------------------------------------------
 
--- A reagent line for a recipe's slot: "2/4 Linen Cloth" (your bags and bank against what the recipe needs)
+-- How many of a slot's reagents you hold. Retail counts every quality rank the way the game's tracker does
+-- (ItemUtil.GetCraftingReagentCount: bags, reagent bank and warband bank); Forever counts its first rank in
+-- the bags and bank.
+local function slotCount(reagents)
+  local retail, have = not ns.IsForever(), 0
+  for _, r in ipairs(retail and reagents or { reagents[1] }) do
+    local id = ns.PlainTable(r) and ns.PlainNumber(r.itemID)
+    local n = id and (retail and ns.CallIf(ItemUtil, "GetCraftingReagentCount", id) or ns.CallIf(C_Item, "GetItemCount", id, true))
+    have = have + (ns.PlainNumber(n) or 0)
+  end
+  return have
+end
+
+-- A reagent line for a recipe's slot: "2/4 Linen Cloth" (what you hold against what the recipe needs)
 -- and whether you have enough; nil for an optional slot, a hidden value, or an item the client hasn't
 -- named yet (its data is asked for, and the line comes with it). The second value is true in that last case.
 local function reagentLine(slot)
@@ -309,7 +322,7 @@ local function reagentLine(slot)
   if ns.PlainNumber(slot.reagentType) ~= basic or not (id and need) then return nil end
   local name = ns.CallIf(C_Item, "GetItemInfo", id)
   if ns.IsSecret(name) or type(name) ~= "string" then ns.CallIf(C_Item, "RequestLoadItemDataByID", id) return nil, true end
-  local have = ns.PlainNumber(ns.CallIf(C_Item, "GetItemCount", id, true)) or 0
+  local have = slotCount(slot.reagents)
   return { text = have .. "/" .. need .. " " .. name, done = have >= need }
 end
 
@@ -326,23 +339,34 @@ local function recipeReagents(schematic)
   return out, loading
 end
 
--- One tracked recipe: { id, title, objectives, recipe = true }, or nil when the client has no schematic for it.
--- The second value is true while one of its reagent names is still loading.
-function QT.Recipe(id)
-  local s = id and ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipeSchematic", id, false))
-  if not s or ns.IsSecret(s.name) or type(s.name) ~= "string" then return nil end
-  local reagents, loading = recipeReagents(s)
-  return { id = id, title = s.name, objectives = reagents, recipe = true }, loading
+-- The two lists of tracked recipes the game reads, recrafts (isRecraft true) first, as its own tracker does.
+QT.RECIPE_KINDS = { true, false }
+
+-- A recipe's row title: its name, or "Recrafting: Name" for a recraft.
+local function recipeTitle(name, isRecraft)
+  if not isRecraft then return name end
+  return ns.Format(L["Recrafting: {recipe}"], { recipe = name })
 end
 
--- The recipes you track in a profession window, in the game's order (none on a client without the
--- tracking API; C_TradeSkillUI.GetRecipesTracked, TradeSkillUIDocumentation.lua).
+-- One tracked recipe: { id, title, objectives, recipe = true, recraft }, or nil when the client has no schematic
+-- for it. The second value is true while one of its reagent names is still loading.
+function QT.Recipe(id, isRecraft)
+  local s = id and ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipeSchematic", id, isRecraft))
+  if not s or ns.IsSecret(s.name) or type(s.name) ~= "string" then return nil end
+  local reagents, loading = recipeReagents(s)
+  return { id = id, title = recipeTitle(s.name, isRecraft), objectives = reagents, recipe = true, recraft = isRecraft }, loading
+end
+
+-- The recipes you track in a profession window, in the game's order: recrafts, then the rest (none on a client
+-- without the tracking API; C_TradeSkillUI.GetRecipesTracked, TradeSkillUIDocumentation.lua).
 function QT.Recipes()
   local out, loading = {}, false
-  for _, id in ipairs(ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", false)) or {}) do
-    local r, waiting = QT.Recipe(ns.PlainNumber(id))
-    loading = loading or waiting == true
-    if r then out[#out + 1] = r end
+  for _, isRecraft in ipairs(QT.RECIPE_KINDS) do
+    for _, id in ipairs(ns.PlainTable(ns.CallIf(C_TradeSkillUI, "GetRecipesTracked", isRecraft)) or {}) do
+      local r, waiting = QT.Recipe(ns.PlainNumber(id), isRecraft)
+      loading = loading or waiting == true
+      if r then out[#out + 1] = r end
+    end
   end
   QT.waitingItems = loading
   return out
@@ -424,11 +448,11 @@ function QT.OnAchievement(id, button)
   end
 end
 
--- A tracked recipe's title was clicked: left opens it in the profession window, right stops tracking it (the
--- game's own calls; its tracker's menu offers the same).
-function QT.OnRecipe(id, button)
-  if button == "RightButton" then return ns.CallIf(C_TradeSkillUI, "SetRecipeTracked", id, false, false) end
-  ns.CallIf(C_TradeSkillUI, "OpenRecipe", id)
+-- A tracked recipe's title was clicked: left opens it in the profession window (not a recraft, as the game's
+-- tracker opens none), right stops tracking it (the game's own calls; its tracker's menu offers the same).
+function QT.OnRecipe(row, button)
+  if button == "RightButton" then return ns.CallIf(C_TradeSkillUI, "SetRecipeTracked", row.id, false, row.recraft == true) end
+  if not row.recraft then ns.CallIf(C_TradeSkillUI, "OpenRecipe", row.id) end
 end
 
 -- Updates ---------------------------------------------------------------------------------------

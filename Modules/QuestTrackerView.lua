@@ -72,7 +72,7 @@ QT.KIND_CLICKS = {}
 local function onTitleClick(self, button)
   if self.kind then return ns.CallIf(QT.KIND_CLICKS, self.kind, self.id, button, self.row) end
   if self.achievement then return QT.OnAchievement(self.id, button) end
-  if self.recipe then return QT.OnRecipe(self.id, button) end
+  if self.recipe then return QT.OnRecipe(self.row, button) end
   if self.id then QT.OnTitle(self.id, button) end
 end
 
@@ -85,13 +85,14 @@ QT.CLICKS = {
   completeNoGuide = L["Click: complete · Right-click: stop watching"],
   achievement = L["Right-click: stop tracking"],
   recipe = L["Click: open · Right-click: stop tracking"],
+  recraft = L["Right-click: stop tracking"],
 }
 
 -- The clicks line for a row (nil for a client's own kind that takes no clicks).
 local function clicksFor(q)
   if q.kind then return QT.CLICKS[q.kind] end
   if q.achievement then return QT.CLICKS.achievement end
-  if q.recipe then return QT.CLICKS.recipe end
+  if q.recipe then return q.recraft and QT.CLICKS.recraft or QT.CLICKS.recipe end
   local guided = ns.QuestGuide.settings ~= nil
   if q.autoComplete and q.ready then return guided and QT.CLICKS.complete or QT.CLICKS.completeNoGuide end
   return guided and QT.CLICKS.quest or QT.CLICKS.questNoGuide

@@ -97,13 +97,14 @@ local function playerSpot(row, size, index)
   PA.Point(spot, "player")
 end
 
--- A row of your private aura spots left of your buffs and debuffs. It hangs on the block's holder but not under it,
--- so the Calm HUD's fade of the block never hides a mechanic. The token "player" is fixed: no re-pointing.
+-- A row of your private aura spots left of your buffs, debuffs and weapon enchant cells. It hangs on the block's hover
+-- pad (PA.PlaceAuras widens it by the enchant cells, so its left edge is the buffs' as they stand) but not under the
+-- holder, so the Calm HUD's fade of the block never hides a mechanic. The token "player" is fixed: no re-pointing.
 function PA.PlayerPart(holder, settings)
   local size = settings.size + PA.GROW
   local row = CreateFrame("Frame", nil, UIParent)
   row:SetSize(PA.PLAYER_SPOTS * (size + PA.GAP), size)
-  row:SetPoint("RIGHT", holder, "LEFT", -PA.GAP, 0)
+  row:SetPoint("TOPRIGHT", holder.vgHoverArea, "TOPLEFT", -PA.GAP, PA.GROW / 2)
   for index = 1, PA.PLAYER_SPOTS do playerSpot(row, size, index) end
 end
 

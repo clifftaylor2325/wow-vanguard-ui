@@ -168,7 +168,7 @@ end
 local function paintColors(b, e)
   local dim = GB.Dimmed(e)
   T.Color(b.kind, dim and "muted" or (e.kind == "LFM" and "accentText" or "info"))
-  T.Color(b.dungeon, dim and "muted" or dungeonColor(e))
+  if dim then T.Color(b.dungeon, "muted") else T.Color(b.dungeon, dungeonColor(e)) end
   for _, key in ipairs(GB.PLAIN_CELLS) do T.Color(b[key], dim and "muted" or "text") end
 end
 
