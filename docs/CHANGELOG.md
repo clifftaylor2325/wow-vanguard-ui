@@ -6,11 +6,10 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 
 ## 0.9.3
 
-The nameplate error hotfix, with the fixes from bug hunt rounds six to thirteen. Nothing in this release has been checked in the game; see [SMOKE-TEST.md](SMOKE-TEST.md) (steps 33.342 to 33.389). Version 0.9.2 was never published: it is in this release.
+The fixes from bug hunt rounds six to thirteen. Nothing in this release has been checked in the game; see [SMOKE-TEST.md](SMOKE-TEST.md) (steps 33.344 to 33.389).
 
-### Nameplates and theme (0.9.3)
+### Theme and nameplates (0.9.3)
 
-- Nameplates no longer fill the error list with an "aura icon pixels" error, about four times a second, in a dungeon or anywhere the game keeps some plates for itself (friendly plates in an instance). Vanguard leaves the aura icons on those plates alone, and an icon it can't place is reported once.
 - Changing the accent colour, the font or the UI scale after a dungeon no longer errors on plate icons the game has closed, and the change goes through to the end.
 - Pixel-perfect's multiple follows the screen, so a pick made on a 4K screen no longer makes the UI twice as big at 1080p; a fixed multiple saved by setup in 0.9.0 to 0.9.2 goes back to following the screen.
 - Debuff type badges show one letter again on WoW Forever (a typed debuff could show all four).
@@ -51,6 +50,14 @@ The nameplate error hotfix, with the fixes from bug hunt rounds six to thirteen.
 - On Retail, a spec change no longer saves the new spec's Edit Mode layout into the old spec's profile, and private aura spots no longer sit under a full buff row.
 - Unlock and Edit Mode work together: a lock ends Edit Mode's hold, `/vg unlock` inside Edit Mode keeps the moves made before it, and the unlock bar and Edit Mode's note fit again when Text size changes.
 - Options search finds its row again after a Text size or Font change, and the options window's page names fit the menu in every language.
+
+## 0.9.2
+
+A hotfix for 0.9.1. Nothing in it has been checked in the game; see [SMOKE-TEST.md](SMOKE-TEST.md) (step 33.342).
+
+### Nameplates (0.9.2)
+
+- Nameplates no longer fill the error list with an "aura icon pixels" error, about four times a second, in a dungeon or anywhere the game keeps some plates for itself (friendly plates in an instance). Vanguard leaves the aura icons on those plates alone, and an icon it can't place is reported once.
 
 ## 0.9.1
 
