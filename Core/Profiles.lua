@@ -206,12 +206,15 @@ function ns.BackupProfile(source)
   return name
 end
 
--- The display block taken out of an imported profile when its UI scale is a usable number, else nil.
+-- The display block taken out of an imported profile when its UI scale is a usable number, else nil
+-- (the number is stored back, so a scale saved as text reads the same everywhere).
 local function takeDisplay(data)
   local display = data.display
   data.display = nil
   local scale = type(display) == "table" and tonumber(display.uiScale)
-  return scale and scale > 0 and display or nil
+  if not (scale and scale > 0 and scale < math.huge) then return nil end
+  display.uiScale = scale
+  return display
 end
 
 -- A whole profile whose settings equal one this account has: this character uses that one
