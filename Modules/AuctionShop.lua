@@ -59,8 +59,6 @@ AH.TIME_BANDS = { [0] = { "TIME_LEFT_SHORT", L["Short"] }, [1] = { "TIME_LEFT_ME
 -- A shop row's right-click menu; the filter dialog's width (wide enough for the Quality row's caption to sit beside its
 -- dropdown on one line in the longest translation, "Qualidade").
 AH.ROW_CHOICES, AH.FILTER_W = { { "filters", L["Filters..."] }, { "remove", L["Remove"] } }, 316
--- Copper in one of each money unit typed into a max price.
-AH.MONEY_UNITS = { g = 10000, s = 100, c = 1 }
 -- The Recent pseudo-list: its pane key, and how many searched terms it keeps.
 AH.RECENT, AH.MAX_RECENT = "\1recent", 20
 -- How long a browse list waiting on item info gathers arrivals before it is priced again (seconds).
@@ -901,9 +899,10 @@ local function dropGroups(text, mark, decimal)
 end
 
 -- The text with the thousands mark dropped inside each figure that a coin letter follows ("1,500g 20s" in
--- English, "1.500g" in German); the figures without a letter after them are left alone.
+-- English, "1.500g" in German, "1.500 o" in Spanish: any letters, the client's own included); the figures
+-- without a letter after them are left alone.
 local function dropUnitGroups(text, mark, decimal)
-  return (text:gsub("(%d[^gsc%a]*)([gsc])", function(figure, unit)
+  return (text:gsub("(%d[%d%s%p]*)([^%d%s%p]+)", function(figure, unit)
     local number, gap = figure:match("^(.-)(%s*)$")
     return dropGroups(number, mark, decimal) .. gap .. unit
   end))
@@ -924,6 +923,18 @@ local function clientNumber(text)
   return text
 end
 
+-- Copper in each money unit typed into a max price: the English letters, and the client's own beside them (the
+-- letters AP.Money shows), built on first use.
+function AH.MoneyUnits()
+  if AH.clientUnits then return AH.clientUnits end
+  local units = { g = 10000, s = 100, c = 1 }
+  local gold, silver = trim(ns.Format(L["{gold}g {silver}s"], { gold = "", silver = "" })):match("^(%S+)%s+(%S+)$")
+  units[gold or "g"], units[silver or "s"] = 10000, 100
+  units[trim(ns.Format(L["{copper}c"], { copper = "" }))] = 1
+  AH.clientUnits = units
+  return units
+end
+
 -- Copper from a typed price: "1g 50s", "75s 20c", "1,500g", "12c" or a bare number of gold ("2.5"); nil for
 -- nothing, nothing above zero, more than the game's highest price, or text that isn't money (an
 -- exponent such as "1e5", hex such as "0x10" or "inf" is not a number here). Every price box reads
@@ -935,7 +946,8 @@ function AH.ParseMoney(text)
   if text:match("^%d+%.?%d*$") or text:match("^%.%d+$") then
     copper = tonumber(text) * 10000.0
   else
-    local rest = text:gsub("(%d+)%s*([gsc])", function(n, unit) copper = copper + (tonumber(n) + 0.0) * AH.MONEY_UNITS[unit] return "" end)
+    local units = AH.MoneyUnits()
+    local rest = text:gsub("(%d+)%s*([^%d%s%p]+)", function(n, unit) if units[unit] then copper = copper + (tonumber(n) + 0.0) * units[unit] return "" end end)
     if trim(rest) ~= "" then return nil end
   end
   if copper > 0 and copper <= AH.MAX_PRICE then return math.floor(copper + 0.5) end

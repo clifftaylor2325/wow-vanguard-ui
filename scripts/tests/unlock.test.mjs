@@ -209,6 +209,21 @@ it("H30-4-1 a lock inside Edit Mode takes its note down, and an unlock begun the
   expect(addon.eval("return ns.Unlocked()"), "Save and lock ends it").toBe(false);
 });
 
+it("H33-10-1 /vg unlock inside Edit Mode remembers the spots as of then: Exit without saving keeps the Edit Mode move", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The minimap's saved spot, or nil before one is saved.
+  const spot = () => addon.eval("local p = ns.Settings('positions').minimap return p and { p.point, p.x, p.y } or nil");
+  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeOpened(__edit)");
+  addon.eval("ns.Nudge('minimap', 10, 0)");
+  const edited = spot();
+  expect(edited, "the Edit Mode move is saved").not.toBeNull();
+  addon.slash("unlock");
+  expect(addon.eval("return Vanguard_UnlockBar:IsShown()"), "the player's own unlock shows its bar").toBe(true);
+  addon.eval("ns.Nudge('minimap', 0, 5)");
+  addon.eval("Vanguard_UnlockBar.exit:GetScript('OnClick')(Vanguard_UnlockBar.exit)");
+  expect([spot(), addon.eval("return ns.Unlocked()")], "Exit without saving undoes only the move after /vg unlock").toEqual([edited, false]);
+});
+
 it("Exit without saving tells what follows a frame that it moved back: the raid grid grows from its anchor again", () => {
   const addon = loggedIn();
   // The raid header's anchor point, and the raid mover's (BOTTOM until one is saved).
@@ -371,4 +386,13 @@ it("the position popover grows to hold the refusal line, clear of Reset and Done
   expect(addon.eval("return Vanguard_MoverPopover:GetHeight() > 372"), "the popover grew").toBe(true);
   addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
   expect(addon.eval("return Vanguard_MoverPopover:GetHeight()"), "and shrinks back once nothing is refused").toBe(372);
+});
+
+it("the unlock bar fits its note again when Text size changes while unlocked", () => {
+  const addon = fitClient(1920, 1080, 1);
+  addon.eval("ns.Unlock()");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(addon.eval(`local b, t = Vanguard_UnlockBar, Vanguard_UnlockBar.text
+    return b:GetHeight() >= t:GetStringHeight() + 16`), "the bar is as tall as its note and the edges").toBe(true);
+  expect(addon.textFit("Vanguard_UnlockBar").filter((f) => f.text.startsWith("Drag")), "the note is not cut").toEqual([]);
 });

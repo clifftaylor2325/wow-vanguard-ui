@@ -92,13 +92,13 @@ function AP.Migrate()
   store.prices, store.count, store.lastScan = nil, nil, nil
 end
 
--- Copper as "1g 23s 45c", "12s 50c" or "90c"; less than 0 (a loss) the same with a minus, "-5s 0c".
+-- Copper as "1g 23s 45c", "12s 50c" or "90c" (the client's coin letters); less than 0 (a loss) the same with a minus, "-5s 0c".
 function AP.Money(copper)
   local sign, size = copper < 0 and "-" or "", math.abs(copper)
-  local g, s, c = math.floor(size / 10000), math.floor(size / 100) % 100, size % 100
-  if g > 0 then return string.format("%s%dg %ds %dc", sign, g, s, c) end
-  if s > 0 then return string.format("%s%ds %dc", sign, s, c) end
-  return sign .. c .. "c"
+  local parts = { gold = math.floor(size / 10000), silver = math.floor(size / 100) % 100, copper = math.floor(size % 100) }
+  if parts.gold > 0 then return sign .. ns.Format(L["{gold}g {silver}s {copper}c"], parts) end
+  if parts.silver > 0 then return sign .. ns.Format(L["{silver}s {copper}c"], parts) end
+  return sign .. ns.Format(L["{copper}c"], parts)
 end
 
 -- Recording ----------------------------------------------------------------------------------
@@ -487,7 +487,7 @@ end
 -- Copper as a rough figure, for an estimate: "1g 20s" once there's gold (no copper), else as AP.Money.
 function AP.Rough(copper)
   if copper < 10000 then return AP.Money(copper) end
-  return string.format("%dg %ds", math.floor(copper / 10000), math.floor(copper / 100) % 100)
+  return ns.Format(L["{gold}g {silver}s"], { gold = math.floor(copper / 10000), silver = math.floor(copper / 100) % 100 })
 end
 
 -- "Disenchant: ~1g 20s" on an item tooltip, for gear that disenchants into materials priced here,

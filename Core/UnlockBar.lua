@@ -93,6 +93,9 @@ local function build()
   addButtons()
 end
 
+-- A Text size or font change while unlocked (the options window opened again with /vg) fits the bar again.
+T.OnChanged(function() if bar and bar:IsShown() then fitBar() end end)
+
 -- Unlocks the frames from the options window's page `page`, which closes; the bar's buttons open it again there.
 -- In a fight nothing unlocks, the window stays, and chat says why.
 ---@param page string

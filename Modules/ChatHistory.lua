@@ -25,8 +25,6 @@ CHH.DAY_CHOICES = { { 1, L["1 day"] }, { 3, L["3 days"] }, { 7, L["A week"] }, {
 CHH.MAX_LENGTH, CHH.SLACK = 600, 50
 -- Seconds in a day (the days setting counts in these).
 CHH.DAY = 86400
--- The chat events that carry a whisper.
-CHH.WHISPERS = { "CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM", "CHAT_MSG_BN_WHISPER", "CHAT_MSG_BN_WHISPER_INFORM" }
 
 -- Saved lines ---------------------------------------------------------------------------------
 
@@ -94,15 +92,10 @@ end
 
 -- Recording -----------------------------------------------------------------------------------
 
--- True when the text holds a whisper's sender link (the game's player links carry the chat type).
+-- True when the text holds a whisper's sender link. Every whisper line the game shows, in or out, carries the chat
+-- type there; a mark taken from the whisper event would outlive a line the game sent to a pop-out window only.
 local function whisperLine(text)
   return text:find(":WHISPER:", 1, true) ~= nil or text:find(":BN_WHISPER:", 1, true) ~= nil
-end
-
--- Whether this line is a whisper: the game just asked for one to be shown (this frame), or it carries a whisper link.
-local function isWhisper(text)
-  if CHH.whisperAt == GetTime() then CHH.whisperAt = nil return true end
-  return whisperLine(text)
 end
 
 -- Whether a window is left out: the combat log, and the chat filter's Filtered tab (it holds spam, and its window can move).
@@ -115,7 +108,7 @@ end
 -- Whether a line may be saved: plain text of a sane length, and a whisper only when asked for.
 local function keepable(text)
   if ns.IsSecret(text) or type(text) ~= "string" or text == "" or #text > CHH.MAX_LENGTH then return false end
-  return CHH.settings.whispers or not isWhisper(text)
+  return CHH.settings.whispers or not whisperLine(text)
 end
 
 -- Saves a line a window just showed (nothing while history is off or while old lines are being put back).
@@ -124,12 +117,6 @@ function CHH.Record(index, text, r, g, b)
   local list = listFor(index)
   list[#list + 1] = pack(text, r, g, b)
   if #list > CHH.settings.lines + CHH.SLACK then CHH.Store()[index] = trimmed(list) end
-end
-
--- The game is about to show a whisper: lines shown in this same frame are not kept.
-function CHH.NoteWhisper()
-  CHH.whisperAt = GetTime()
-  return false
 end
 
 -- Follows one chat window's new lines, once.
@@ -147,14 +134,12 @@ function CHH.Forget(frame, fallback)
   if index then CHH.Store()[index] = nil end
 end
 
--- Follows every permanent chat window, the game closing one, and the game's whisper events.
+-- Follows every permanent chat window, and the game closing one.
 function CHH.Watch()
   for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i) end
   if CHH.watching then return end
   CHH.watching = true
   if type(hooksecurefunc) == "function" and type(FCF_Close) == "function" then hooksecurefunc("FCF_Close", ns.Guard("hook FCF_Close history", CHH.Forget)) end
-  local guarded = ns.GuardResult("chat history whisper", CHH.NoteWhisper, false)
-  ns.AddChatFilters(CHH.WHISPERS, guarded)
 end
 
 -- Restoring -----------------------------------------------------------------------------------

@@ -566,3 +566,25 @@ it("the computer's day counts every day since 1970, over year ends and leap year
   const bare = loggedIn("");
   expect(bare.eval("return ns.AuctionPrices.LocalDay(1798675200)"), "no date(): the UTC day").toBe(20818);
 });
+
+it("auction money wears the client's coin letters, and a typed price reads them back", () => {
+  for (const [locale, price, copper] of [["deDE", "AH: 90k (heute)", "90k"], ["ruRU", "Аук: 90м (сегодня)", "90м"]]) {
+    const addon = atAuctionHouse("", { client: `__wfgWorld.locale = "${locale}"` });
+    scan(addon, LINEN);
+    expect(addon.eval('return __showItem("item:2589")[1][1]'), `${locale}: the tooltip line`).toBe(price);
+    expect(addon.eval(`return ns.AuctionPrices.Money(90)`), `${locale}: copper`).toBe(copper);
+    expect(addon.eval(`local AH = ns.GetModule("AuctionHelper")
+      return { AH.ParseMoney(ns.AuctionPrices.Money(123456)), AH.ParseMoney(ns.AuctionPrices.Money(5)), AH.ParseMoney("12g 34s 56c"), AH.ParseMoney("5x") or false }`),
+    `${locale}: Money round-trips through the price box; English letters and unknown ones behave`).toEqual([123456, 5, 123456, false]);
+    expect(addon.eval("return ns.AuctionPrices.Money(-500) == '-' .. ns.AuctionPrices.Money(500) and ns.AuctionPrices.Rough(123456) == ns.Format(ns.L['{gold}g {silver}s'], { gold = 12, silver = 34 })"), `${locale}: sign and rough figure`).toBe(true);
+  }
+  const spanish = atAuctionHouse("", { client: '__wfgWorld.locale = "esES"' });
+  expect(spanish.eval(`local AH = ns.GetModule("AuctionHelper")
+    return AH.ParseMoney(ns.AuctionPrices.Money(123456))`), "esES: a coin pair with spaces still round-trips").toBe(123456);
+});
+
+it("a typed price keeps the thousands mark before the client's own coin letters: 1.500o in Spanish", () => {
+  const addon = atAuctionHouse('DECIMAL_SEPERATOR, LARGE_NUMBER_SEPERATOR = ",", "."', { client: '__wfgWorld.locale = "esES"' });
+  expect(addon.eval(`local AH = ns.GetModule("AuctionHelper") return { AH.ParseMoney("1.500o"), AH.ParseMoney("1.500 o 20 p"), AH.ParseMoney("1.500g") }`),
+    "the Spanish letter reads like the English one").toEqual([15000000, 15002000, 15000000]);
+});

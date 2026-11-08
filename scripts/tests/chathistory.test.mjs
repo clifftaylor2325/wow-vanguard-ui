@@ -75,28 +75,25 @@ it("chat history: hidden text, other kinds of value and very long lines are neve
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-it("chat history: whispers are not kept unless asked for (by the game's whisper event, or the sender link)", () => {
+it("chat history: whispers are not kept unless asked for (by the sender link), and a whisper sent to a pop-out costs no line", () => {
   const addon = session();
   addon.eval(`for _, fn in ipairs(__wfgWorld.chatFilters.CHAT_MSG_WHISPER) do fn() end
-    ChatFrame1:AddMessage("by event") ChatFrame1:AddMessage("same frame, after")`);
+    ChatFrame1:AddMessage("Trade line") ChatFrame1:AddMessage("same frame, after")`);
   addon.update(0.1);
   addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:77:WHISPER:BOB|h[Bob]|h whispers: hi") ChatFrame1:AddMessage("|HBNplayer:Al:9:77:BN_WHISPER:Al|h[Al]|h whispers: yo") ChatFrame1:AddMessage("plain line")`);
-  expect(saved(addon)[0], "the whisper is not kept, the line after it is, once the game frame has moved on").toEqual(["1790000000|ffffff|same frame, after", "1790000000|ffffff|plain line"]);
+  expect(saved(addon)[0], "a whisper that only a pop-out showed costs no line; the whispers shown are not kept").toEqual(["1790000000|ffffff|Trade line", "1790000000|ffffff|same frame, after", "1790000000|ffffff|plain line"]);
   addon.slash("history whispers");
   expect(chatHas(addon, /Whispers are kept too\./), "says so").toBe(true);
   addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:77:WHISPER:BOB|h[Bob]|h whispers: hi again")`);
-  expect(saved(addon)[0].length, "a whisper is kept now").toBe(3);
+  expect(saved(addon)[0].length, "a whisper is kept now").toBe(4);
   addon.slash("history nowhispers");
   expect(chatHas(addon, /Whispers are not kept\./), "and can be turned off again").toBe(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-it("chat history: a client without the old ChatFrame_AddMessageEventFilter still leaves whispers out, through ChatFrameUtil", () => {
-  const addon = loggedIn(`${CLOCK} ChatFrame_AddMessageEventFilter = nil`);
-  addon.slash("history on");
-  addon.eval(`for _, fn in ipairs(__wfgWorld.chatFilters.CHAT_MSG_WHISPER) do fn() end ChatFrame1:AddMessage("by event")`);
-  addon.update(0.1);
-  addon.eval(`ChatFrame1:AddMessage("plain line")`);
+it("chat history: an outgoing whisper's link keeps it out too", () => {
+  const addon = session();
+  addon.eval(`ChatFrame1:AddMessage("To |Hplayer:Bob:78:WHISPER:BOB|h[Bob]|h: hello") ChatFrame1:AddMessage("plain line")`);
   expect(saved(addon)[0], "the whisper is not kept").toEqual(["1790000000|ffffff|plain line"]);
 });
 

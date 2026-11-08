@@ -1,7 +1,7 @@
 -- The Profiles page's own rows: one per profile, with Use, Copy here and
 -- Delete (the last two change settings for good, so they ask "Sure?" on the
 -- first click), and a box to name a new profile. Changing the list
--- rebuilds the page. Switching profiles applies on reload.
+-- rebuilds the page, and so does a switch staged anywhere. Switching profiles applies on reload.
 
 local ADDON, ns = ...
 
@@ -51,6 +51,7 @@ local function addEditButtons(r, name)
   r.delete = W.Danger(r, L["Delete"], function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -T.SPACE.gap, 0)
   ns.WidenToLabel(r.delete)
+  -- The page is built again on every staged switch, so {into} is always the profile ns.CopyProfile writes into.
   lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.SelectedProfileName(), from = name })
   r.copy = W.Danger(r, L["Copy here"], function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -T.SPACE.gap, 0)
@@ -63,7 +64,7 @@ end
 local function addProfileButtons(r, name)
   if name == ns.SelectedProfileName() then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
-  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL))
+  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() ns.UseProfile(name) O.NeedReload() end, SMALL))
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -T.SPACE.gap, 0) else r.use:SetPoint("RIGHT", -T.SPACE.gap, 0) end
 end
 
@@ -104,7 +105,6 @@ local function create(r)
   end
   ns.UseProfile(name)
   O.NeedReload()
-  O.RebuildPage("profiles")
 end
 
 -- Puts the caption back after a refused name.
@@ -130,6 +130,14 @@ local function newProfileRow(parent, _, width)
   watchCaption(r)
   return r
 end
+
+-- A switch staged from anywhere (a spec change, a command, an import, this page) builds the page again,
+-- so its marks and Copy here say which profile the reload brings; the header's picker follows.
+ns.OnProfileStaged(function()
+  O.RebuildPage("profiles")
+  local window = O.Frame()
+  if window and window:IsShown() then O.Refresh() end
+end)
 
 O.AddRowKind("profile", profileRow, ROW)
 O.AddRowKind("newprofile", newProfileRow, ROW + T.SPACE.tight)

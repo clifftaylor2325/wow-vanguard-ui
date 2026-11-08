@@ -1,7 +1,7 @@
 -- Retail's own quest tracker blocks (WoW Retail only: the TOC keeps this file off WoW Forever), added to
 -- Vanguard's tracker (Modules/QuestTracker.lua, QT.BLOCKS) where the game's own tracker shows them:
 --   * above the watched quests: the scenario you are in (a delve, a scenario, later Mythic+) under its name (a
---     kind of scenario may add to it: RQ.HEADINGS), with its stage and criteria; then the watched campaign
+--     kind of scenario may add to it: RQ.HEADINGS), with its stage, criteria and spells; then the watched campaign
 --     quests under their campaign's name and chapter;
 --   * after the watched quests: the appearances and decor you track (Collections);
 --   * after the achievements: the Traveler's Log activities you track, then the Housing Endeavor tasks you track;
@@ -19,11 +19,12 @@ local RQ = {}
 ns.RetailQuests = RQ
 
 -- The events the game's own tracker follows for these blocks (Blizzard_ObjectiveTracker on Retail), each one
--- a redraw of Vanguard's tracker.
+-- a redraw of Vanguard's tracker. SUPER_TRACKING_CHANGED is the game tracker's own: a quest tracked on the world
+-- map moves the followed quest's accent line, and Forever's QuestGuide (not loaded on Retail) covers that there.
 RQ.EVENTS = { "SCENARIO_UPDATE", "SCENARIO_CRITERIA_UPDATE", "SCENARIO_COMPLETED", "TASK_PROGRESS_UPDATE",
   "QUEST_WATCH_UPDATE", "PERKS_ACTIVITY_COMPLETED", "PERKS_ACTIVITIES_TRACKED_UPDATED", "PERKS_ACTIVITIES_TRACKED_LIST_CHANGED",
   "INITIATIVE_TASKS_TRACKED_UPDATED", "INITIATIVE_TASKS_TRACKED_LIST_CHANGED", "NEIGHBORHOOD_INITIATIVE_UPDATED",
-  "TRACKING_TARGET_INFO_UPDATE", "TRACKABLE_INFO_UPDATE" }
+  "TRACKING_TARGET_INFO_UPDATE", "TRACKABLE_INFO_UPDATE", "SCENARIO_SPELL_UPDATE", "SUPER_TRACKING_CHANGED" }
 
 -- A heading and its rows, or no rows at all when there are none (a heading never shows alone).
 local function section(name, rows)
@@ -121,14 +122,36 @@ local function scenarioHeading(info)
   return name
 end
 
--- The scenario you are in, under its heading: none outside one (no stages), once its last stage is done, or while
--- the client hides where you are in it.
+-- A stage spell's row: its name, with a button beside it that casts the spell (QT.PlaceItems gives a row with an
+-- item a button; item.spell makes it a spell's). Its id is the spell's negated, so it never meets a quest's. nil
+-- while the client hides the spell's id or name.
+local function spellRow(entry)
+  local id = ns.PlainTable(entry) and ns.PlainNumber(entry.spellID)
+  local name = id and ns.PlainText(ns.CallIf(C_Spell, "GetSpellName", id))
+  if not name then return nil end
+  local texture = ns.CallIf(C_Spell, "GetSpellTexture", id)
+  return { id = -id, title = name, objectives = {}, kind = "scenario", item = { spell = id, texture = texture } }
+end
+
+-- The stage's spells as rows, one per spell, as the game's tracker puts a spell button under the criteria; none
+-- while the stage is drawn as one bar (the game adds none then) or the list is hidden.
+local function spellRows(step)
+  local rows, oneBar = {}, ns.IsSecret(step.weightedProgress) or step.weightedProgress ~= nil
+  if oneBar then return rows end
+  for _, entry in ipairs(ns.PlainTable(step.spells) or {}) do rows[#rows + 1] = spellRow(entry) end
+  return rows
+end
+
+-- The scenario you are in, under its heading, with the stage's spells under the stage: none outside one (no
+-- stages), once its last stage is done, or while the client hides where you are in it.
 local function scenarioRows()
   local info = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioInfo"))
   local stage, stages = info and ns.PlainNumber(info.currentStage), info and ns.PlainNumber(info.numStages)
   if not (stage and stages and stages > 0 and stage <= stages) then return {} end
   local step = ns.PlainTable(ns.CallIf(C_ScenarioInfo, "GetScenarioStepInfo")) or {}
-  return section(scenarioHeading(info), { RQ.Stage(step, stage, stages) })
+  local rows = { RQ.Stage(step, stage, stages) }
+  for _, row in ipairs(spellRows(step)) do rows[#rows + 1] = row end
+  return section(scenarioHeading(info), rows)
 end
 
 -- Whether a row in the rows has a countdown line.
@@ -391,3 +414,5 @@ table.insert(QT.BLOCKS.afterQuests, RQ.Collectables)
 for _, block in ipairs({ RQ.Activities, RQ.Endeavors }) do table.insert(QT.BLOCKS.afterChallenges, block) end
 for _, block in ipairs({ RQ.BonusObjectives, RQ.WorldQuests }) do table.insert(QT.BLOCKS.last, block) end
 for _, event in ipairs(RQ.EVENTS) do table.insert(QT.EVENTS, event) end
+-- A stage spell's button follows the spell's cooldown, as the game's tracker does.
+table.insert(QT.COOLDOWN_EVENTS, "SPELL_UPDATE_COOLDOWN")

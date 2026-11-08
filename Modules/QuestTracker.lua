@@ -25,6 +25,8 @@ QT.W, QT.H, QT.SORT_EVERY, QT.TICK_EVERY = 260, 174, 1, 1
 QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_ENTERING_WORLD",
   "CONTENT_TRACKING_UPDATE", "TRACKED_ACHIEVEMENT_UPDATE", "TRACKED_ACHIEVEMENT_LIST_CHANGED", "ACHIEVEMENT_EARNED",
   "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP" }
+-- The events that repaint the item buttons' cooldowns (Modules/RetailQuests.lua adds the spells' for a stage's spells).
+QT.COOLDOWN_EVENTS = { "BAG_UPDATE_COOLDOWN" }
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
 QT.BASIC_REAGENT = 1
 
@@ -504,6 +506,6 @@ function QT.Enable(settings)
   ns.On("QUEST_ACCEPTED", QT.AutoTrack)
   ns.On("ZONE_CHANGED_NEW_AREA", QT.SortWatches)
   ns.On("ZONE_CHANGED", QT.SortOnMapChange)
-  ns.On("BAG_UPDATE_COOLDOWN", QT.UpdateCooldowns)
+  for _, event in ipairs(QT.COOLDOWN_EVENTS) do ns.On(event, QT.UpdateCooldowns) end
   T.OnChanged(QT.Redraw)
 end

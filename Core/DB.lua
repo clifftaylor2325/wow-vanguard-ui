@@ -154,6 +154,7 @@ local migrated = setmetatable({}, { __mode = "k" })
 -- key -> { t = the table ns.Settings filled, defaults = the defaults it was filled from }.
 local cache = {}
 local profileListeners = {}
+local stageListeners = {}
 
 -- Registers fn(saved) to upgrade the settings table `key` as older versions
 -- saved (or exported) it. It runs on the saved table before defaults are filled in, so it
@@ -185,6 +186,13 @@ end
 -- Tells every ns.OnProfileChanged listener that the active profile's settings changed.
 function ns.ProfileChanged()
   for _, fn in ipairs(profileListeners) do fn() end
+end
+
+-- Registers fn() to run whenever a profile switch is staged for the reload (ns.StageProfile), so a page
+-- that names the selected profile can say it again.
+---@param fn fun()
+function ns.OnProfileStaged(fn)
+  stageListeners[#stageListeners + 1] = ns.Guard("profile staged", fn)
 end
 
 -- Forgets the remembered settings tables, so the next ns.Settings call fills each again.
@@ -222,11 +230,13 @@ end
 
 -- Stages a switch to a profile (created empty if new). The running modules keep the active profile's
 -- tables until the reload, so VanguardCharDB.profile and the settings cache stay as they are (a drag
--- or an accent change still lands in the profile on screen); ns.ApplyPendingProfile applies it.
+-- or an accent change still lands in the profile on screen); ns.ApplyPendingProfile applies it. Tells
+-- the ns.OnProfileStaged listeners.
 ---@param name string
 function ns.StageProfile(name)
   VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
   VanguardCharDB.pendingProfile = name ~= VanguardCharDB.profile and name or nil
+  for _, fn in ipairs(stageListeners) do fn() end
 end
 
 -- Stages a profile the player picked (the list, the picker, a command, an import): it is also the
