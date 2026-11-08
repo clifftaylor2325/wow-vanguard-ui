@@ -1,6 +1,6 @@
 # Commands
 
-Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help` prints the same list in game. Seven words are WoW Forever only, because their parts are: `ranks`, `trainers`, `pets`, `legacy`, `talents`, `lfg` and `questdata`; on Retail they answer Unknown command and `/vg help` leaves them out. The full wording of each command is in [Every command, word for word](#every-command-word-for-word) at the end of this page, which is the reference the tables are checked against.
+Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help` prints the same list in game. Eight words are WoW Forever only: `ranks`, `trainers`, `pets`, `legacy`, `talents`, `lfg` and `questdata` because their parts are, and `launch` because the beta data went with Forever's launch; on Retail they answer Unknown command and `/vg help` leaves them out. The full wording of each command is in [Every command, word for word](#every-command-word-for-word) at the end of this page, which is the reference the tables are checked against.
 
 ## Options and setup
 
