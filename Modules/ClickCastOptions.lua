@@ -218,12 +218,18 @@ local function trim(text)
   return (text:gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
+-- Binds typed text to a key and closes the text dialog, or says in chat why it can't (the dialog stays for another try).
+local function bindTyped(key, action, text)
+  local ok, why = CC.Add(key, action, trim(text))
+  if not ok then return ns.Chat(ns.Format(L["Can't bind: {why}."], { why = why })) end
+  ns.HideText()
+  changed()
+end
+
 -- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key.
 local function askText(key, action)
   local what = action == "macro" and L["Macro for {key}"] or L["Spell for {key}"]
-  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), function(text)
-    if CC.Add(key, action, trim(text)) then ns.HideText() changed() end
-  end, L["Bind"])
+  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), function(text) bindTyped(key, action, text) end, L["Bind"])
 end
 
 -- Binds a plain action to the picker's key, or asks for the macro text or spell name.

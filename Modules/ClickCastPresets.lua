@@ -276,17 +276,28 @@ local function openKeys(id, bound)
   return open
 end
 
+-- Whether the list kept for Undo reads back through Import, and why not: a list saved before the length rule may hold a
+-- macro over CC.MAX_TEXT characters. A record's own undo isn't checked again (CP.Undo says why when it fails).
+local function undoable(old, undo)
+  if old.undo or undo == "" then return true end
+  return CC.ReadImport(undo)
+end
+
 -- Applies a preset to the list the page shows: the list as it was is kept for Undo ("" when it was empty), unless an
 -- earlier preset already kept the one from before it, then every mouse binding is replaced with the preset's
--- (CP.Resolve); hover keys stay. The frames take it once, out of combat.
+-- (CP.Resolve); hover keys stay. The frames take it once, out of combat. False and why, changing nothing, when the
+-- list couldn't be put back by Undo.
 function CP.Apply(id)
   local old, bound = CP.Record() or {}, CP.Resolve(id)
   local undo = old.undo or (#CC.Bindings() > 0 and CC.Export() or "")
+  local ok, why = undoable(old, undo)
+  if not ok then return false, why end
   records()[CC.CurrentKey()] = { preset = id, undo = undo, open = openKeys(id, bound), told = old.told or {}, kept = old.kept or {} }
   dropMouse()
   for _, b in ipairs(bound) do CC.Add(b.key, b.action, b.value, b.spellID) end
   CP.Record().made = mouseText()
   if CP.OnApplied then CP.OnApplied() end
+  return true
 end
 
 -- Whether the list shown can go back to what it was before its first preset (a record of a preset this version

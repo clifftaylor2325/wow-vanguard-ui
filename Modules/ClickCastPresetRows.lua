@@ -35,10 +35,12 @@ local function unlessOwn(fn)
   ns.Ask(L["Replace your own click-casting mouse bindings with this starter layout? Undo puts them back."], L["Replace"], fn, nil, "danger")
 end
 
--- Applies a layout now, puts the guide away and builds the page again.
+-- Applies a layout now, puts the guide away and builds the page again; when the list shown couldn't be put back by
+-- Undo, chat says why and nothing changes.
 local function applyNow(id)
+  local ok, why = CP.Apply(id)
+  if not ok then return ns.Chat(ns.Format(L["Can't apply this layout: {why}."], { why = why })) end
   guide.id = nil
-  CP.Apply(id)
   T.Sound("on")
   pageChanged()
 end
