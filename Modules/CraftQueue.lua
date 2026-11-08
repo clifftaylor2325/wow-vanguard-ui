@@ -321,11 +321,16 @@ local function mergeQueue(old)
   end
 end
 
--- Adds a character's old cooldowns to the account's (a note already there wins).
+-- True when the old note should replace the one kept: none kept yet, or the old one is ready later (the newer cast).
+local function newerNote(kept, cd)
+  return goodCooldown(cd) and not (goodCooldown(kept) and kept.ready >= cd.ready)
+end
+
+-- Adds a character's old cooldowns to the account's (the note ready latest wins: the newest cast).
 local function mergeCooldowns(key, old)
   local notes = savedTable(savedTable(VanguardDB, "craftCooldowns"), key)
   for id, cd in pairs(type(old) == "table" and old or {}) do
-    if notes[id] == nil and goodCooldown(cd) then notes[id] = cd end
+    if newerNote(notes[id], cd) then notes[id] = cd end
   end
 end
 
