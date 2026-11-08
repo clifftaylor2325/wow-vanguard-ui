@@ -11,14 +11,16 @@ local ADDON, ns = ...
 
 ns.WHATS_NEW = {
   { version = "0.9.3", groups = {
-    { module = "Nameplates", label = "Nameplates", items = {
-      { text = "Nameplates no longer fill the error list with an \"aura icon pixels\" error in a dungeon: Vanguard leaves the aura icons alone on plates the game keeps for itself." },
-    } },
     { module = "Other", label = "Safety and tools", items = {
       { text = "Fixes from eight more bug hunts: a theme change after a dungeon goes through, a flyout placed in a fight raises no error, Pixel-perfect follows the screen, and unlock and Edit Mode keep each other's moves." },
       { text = "The sell list and the craft queue are each character's own, and a profile another character already restored from a newer backup is offered instead of being overwritten." },
       { text = "On Retail, the quest tracker handles recipes, recrafts and scenario spells, and a spec change no longer saves its Edit Mode layout into the old spec's profile." },
       { text = "Close this tab gives its chat back to the main window, quest item buttons work in a fight, and a WoW Forever flyout shows each spell once, at its highest rank." },
+    } },
+  } },
+  { version = "0.9.2", groups = {
+    { module = "Nameplates", label = "Nameplates", items = {
+      { text = "Nameplates no longer fill the error list with an \"aura icon pixels\" error in a dungeon: Vanguard leaves the aura icons alone on plates the game keeps for itself." },
     } },
   } },
   { version = "0.9.1", groups = {
