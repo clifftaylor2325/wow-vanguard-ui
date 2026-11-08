@@ -4581,6 +4581,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: During the fight the toast sits above the talking head, not drawn over it. After the fight the head is at Vanguard's spot (top left) and the next toast is at the bottom centre.
 - If it fails, paste: a screenshot during the fight and the output of `/vg probe`.
 
+### 33.380 A long macro is refused, and Undo keeps a long Cyrillic macro (Forever)
+
+- Do: Open the Vanguard options, go to Click casting, click an empty grid cell, pick Macro..., paste a macro of 300 characters and press Bind. Then bind a macro of about 200 Cyrillic letters (for example "/say " followed by Ж repeated 200 times) to Right click the same way, pick a layout from Starter layout..., say Replace, then press Undo on the row "These bindings came from the starter layout ..." and confirm.
+- Expect: The 300-character macro is not bound: chat says "Can't bind: a text is longer than 255 characters." and the dialog stays open. The Cyrillic macro binds, and after Undo it is back on Right click with the rest of your old list; chat says nothing about "Can't undo".
+- If it fails, paste: the chat lines after Bind and after Undo, and the output of `/vg binds`.
+
+### 33.381 A flyout with ranks shows each spell once (Forever)
+
+- Do: Put a flyout whose spells have ranks (for example a Mage's Teleport or Portal, or any flyout the spellbook shows with several ranks of one spell) on a Vanguard action bar, then click its button; open the game's own flyout of the same spell from the spellbook to compare.
+- Expect: Vanguard's list shows one button per spell, at the highest rank you know, the same buttons as the game's own flyout.
+- If it fails, paste: the flyout's name, the spells (with ranks) the Vanguard list shows, and those the game's flyout shows.
+
+### 33.382 A slot emptied with the bag open loses its quality border (both)
+
+- Do: Open the combined bag. Pick up an uncommon (green) or better item, drop it on the ground or sell it to a vendor, then also drop a gray item into a slot that held a coloured one.
+- Expect: Each emptied slot goes back to the thin theme border at once. It does not keep the old item's green, blue or purple border. A gray item's slot has the theme border too.
+- If it fails, paste: a screenshot of the bag, and the item's quality colour that stayed.
+
+### 33.383 Item won on a bid under its buyout counts once (Forever)
+
+- Do: At the auction house post a blade with a bid under its buyout, win it with a bid from a second character, then open the mailbox on the seller and read the "Auction successful" mail.
+- Expect: Your history on the blade says sold 1 at the bid price, and the info strip's auction sales show the bid, not the buyout.
+- If it fails, paste: the Your history line and the info strip's auction sales figure.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

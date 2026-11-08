@@ -87,7 +87,8 @@ it("chat history: whispers are not kept unless asked for (by the sender link), a
   addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:77:WHISPER:BOB|h[Bob]|h whispers: hi again")`);
   expect(saved(addon)[0].length, "a whisper is kept now").toBe(4);
   addon.slash("history nowhispers");
-  expect(chatHas(addon, /Whispers are not kept\./), "and can be turned off again").toBe(true);
+  expect(chatHas(addon, /New whispers are not kept\. Whispers already saved stay until they age out or you clear them\./), "and can be turned off again, saying saved ones stay").toBe(true);
+  expect(saved(addon)[0].length, "the whisper saved earlier stays").toBe(4);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 

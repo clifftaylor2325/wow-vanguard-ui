@@ -563,6 +563,28 @@ it("import: a string that cannot be imported changes nothing (empty, too many, a
   expect(addon.eval(`return #${CC}.Bindings()`)).toBe(2);
 });
 
+it("Macro...: a macro over 255 characters isn't bound, chat says why and the dialog stays; 255 Cyrillic letters bind", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(cell(addon, "shift-BUTTON2"));
+  addon.wheel("Vanguard_SpellPicker", -9);
+  addon.click(pickerRow(addon, "Macro..."));
+  addon.type("Vanguard_TextEdit", "x".repeat(256));
+  confirm(addon);
+  expect([bindings(addon)["shift-BUTTON2"], addon.frame("Vanguard_TextDialog").visible], "not bound, and the dialog stays").toEqual([undefined, true]);
+  expect(chatHas(addon, /Can't bind: a text is longer than 255 characters\./), "chat says why").toBe(true);
+  addon.eval("ns.HideText()");
+  const letters = addon.eval(`return { ${CC}.Add("A", "macro", ${JSON.stringify("Ж".repeat(255))}), (${CC}.Add("B", "macro", ${JSON.stringify("Ж".repeat(256))})) }`);
+  expect(letters, "the limit counts letters, not bytes (255 Cyrillic letters are 510 bytes)").toEqual([true, false]);
+});
+
+it("import: a macro of 150 Cyrillic letters (300 bytes) is under the 255-character limit and imports", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  const text = encoded(addon, `{ { key = "A", action = "macro", value = "${"Ж".repeat(150)}" } }`);
+  expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`), "one binding imported").toBe(1);
+  expect(bindings(addon).A).toBe(`macro:${"Ж".repeat(150)}:nil:nil`);
+});
+
 it("import: the limits themselves are fine (200 bindings, a 255 character macro), and odd numbers are dropped", () => {
   const addon = priest("", { savedVariables: WITH_FRAMES });
   const list = Array.from({ length: 199 }, (_, i) => `{ key = "F${i}", action = "target" }`).join(", ");

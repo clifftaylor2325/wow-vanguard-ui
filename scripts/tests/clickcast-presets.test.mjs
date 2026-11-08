@@ -218,6 +218,35 @@ it("click presets: Undo of a saved list that no longer imports says why and keep
   expect([chatHas(addon, /^.*Can't undo: /), addon.eval(`return ${CP}.CanUndo()`), shortBindings(addon).BUTTON3], "chat says why; the layout and its Undo stay").toEqual([true, true, "Flash Heal"]);
 });
 
+it("click presets: Undo after a layout puts back a macro of 255 Cyrillic letters (over 255 bytes)", () => {
+  const addon = priestly(loggedIn(CLICK_LUA));
+  addon.eval(`${CC}.Add("BUTTON2", "macro", ${JSON.stringify("Ж".repeat(255))})`);
+  const before = bindings(addon);
+  addon.eval(`${CP}.Apply("select")`);
+  expect([addon.eval(`return ${CP}.Undo()`), bindings(addon)], "Undo works and the macro is back").toEqual([true, before]);
+});
+
+it("click presets: a list saved with a macro over 255 characters is left alone by a layout, and chat says why", () => {
+  const addon = priestly(loggedIn(CLICK_LUA));
+  addon.eval(`table.insert(${CC}.Bindings(), { key = "BUTTON2", action = "macro", value = ${JSON.stringify("x".repeat(300))} })`);
+  const before = bindings(addon);
+  addon.eval('ns.Options.Show("clickcast") __click("Starter layout...") __click("Healer: click to select")');
+  expect(addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()"), "no Replace question promises an Undo that can't work").toBe(false);
+  expect([bindings(addon), addon.eval(`return ${CP}.Record() == nil`)], "the list and its macro stay, and no layout is recorded").toEqual([before, true]);
+  expect(chatHas(addon, /Can't apply this layout: a text is longer than 255 characters\./), "chat says why").toBe(true);
+});
+
+it("click presets: the guide's button leaves a list Undo couldn't put back alone, and chat says why", () => {
+  const addon = priestly(loggedIn(CLICK_LUA));
+  gameProfile(addon, "shift-LeftButton", "shift-RightButton");
+  picked(addon, "Healer: click to select");
+  addon.eval(`table.insert(${CC}.Bindings(), { key = "BUTTON2", action = "macro", value = ${JSON.stringify("x".repeat(300))} })`);
+  const before = bindings(addon);
+  addon.eval('__click("Put the layout on")');
+  expect(addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()"), "no Replace question").toBe(false);
+  expect([bindings(addon), chatHas(addon, /Can't apply this layout: a text is longer than 255 characters\./)], "nothing changes; chat says why").toEqual([before, true]);
+});
+
 it("click presets: Click to select over a game profile with Target and the menu moved off Left and Right shows the guide", () => {
   const addon = priestly(loggedIn(CLICK_LUA));
   gameProfile(addon, "shift-LeftButton", "shift-RightButton");

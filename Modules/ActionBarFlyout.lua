@@ -196,13 +196,22 @@ local function hasPet(spell)
   return not index or (name ~= nil and name ~= "")
 end
 
+-- Keeps a flyout spell (name, nil when the client gives none) in the list. On WoW Forever the slots come lowest rank
+-- first and the game's own flyout shows one button per spell at its highest rank, so a slot named as the spell kept
+-- last takes its place; anything else is added while the list has buttons left.
+local function keepSpell(spells, names, spell, name)
+  local count = #spells
+  if name and count > 0 and names[count] == name and ns.IsForever() then spells[count] = spell return end
+  if count < AB.FLYOUT.max then spells[count + 1], names[count + 1] = spell, name end
+end
+
 -- The spells of a flyout the character can use, in the game's order (at most as many as the list has buttons).
 local function knownSpells(id)
-  local spells = {}
+  local spells, names = {}, {}
   local _, _, slots = GetFlyoutInfo(id)
   for k = 1, slots or 0 do
-    local spell, _, isKnown = GetFlyoutSlotInfo(id, k)
-    if isKnown and hasPet(spell) and #spells < AB.FLYOUT.max then spells[#spells + 1] = spell end
+    local spell, _, isKnown, name = GetFlyoutSlotInfo(id, k)
+    if isKnown and hasPet(spell) then keepSpell(spells, names, spell, ns.PlainText(name)) end
   end
   return spells
 end

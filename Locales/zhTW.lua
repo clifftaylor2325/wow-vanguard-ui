@@ -2176,7 +2176,6 @@ L["While moving frames, right-click one to anchor it to the screen or to another
 L["While you're away, the screen dims to a card with your character, zone, time away and XP."] = "你暫離時，螢幕會變暗並顯示一張卡片，包含你的角色、區域、暫離時間和經驗。"
 L["Whispers"] = "悄悄話"
 L["Whispers are kept too."] = "也保留悄悄話。"
-L["Whispers are not kept."] = "不保留悄悄話。"
 L["Why it would help"] = "為什麼會有幫助"
 L["Why would it help you?"] = "這對你有什麼幫助？"
 L["Width"] = "寬度"
