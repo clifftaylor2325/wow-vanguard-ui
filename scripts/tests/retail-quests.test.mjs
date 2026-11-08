@@ -442,6 +442,24 @@ it("retail quests: a scenario stage's spells each get a row under the stage and 
     "no range check for a spell: the icon stays white").toEqual([1, 1, 1, 1]);
 });
 
+it("retail quests: a stage spell's hidden cooldown numbers in a fight give no swipe and no error", () => {
+  const addon = retail(STAGE_SPELLS);
+  setCombat(addon, true);
+  addon.eval("C_Spell.GetSpellCooldown = function() return { startTime = __wfgWorld.secret(5), duration = __wfgWorld.secret(30), isEnabled = true } end");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return { Vanguard_QuestItem2.cooldown.__cooldown == nil, #(ns.errors or {}) }"),
+    "no secret reaches SetCooldown, nothing raised").toEqual([true, 0]);
+});
+
+it("retail quests: a stage spell's cooldown comes from the client's duration object where it has one", () => {
+  const addon = retail(STAGE_SPELLS + "C_Spell.GetSpellCooldownDuration = function(id) return { __duration = 'TEST-ONLY' .. id } end");
+  expect(addon.eval("return { Vanguard_QuestItem2.cooldown.__durationObject.__duration, Vanguard_QuestItem2.cooldown.__cooldown == nil }"),
+    "the object, not the numbers").toEqual(["TEST-ONLY91502", true]);
+  addon.eval("C_Spell.GetSpellCooldownDuration = function() error('TEST-ONLY') end");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return (Vanguard_QuestItem2.cooldown.__cooldown or {})[1]"), "the call refuses: the plain numbers instead").toBe(5);
+});
+
 it("retail quests: a stage's spell list or spell id the client hides, or a stage drawn as one bar, gets no spell rows", () => {
   const addon = retail(STAGE_SPELLS);
   addon.eval("__wfgWorld.scenario.step.spells = __wfgWorld.secret(1)");

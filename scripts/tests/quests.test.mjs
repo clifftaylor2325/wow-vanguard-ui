@@ -702,7 +702,7 @@ it("quest tracker: an item shows its cooldown and range, and the game's tooltip"
   expect(cooldown(), "over: cleared").toBeFalsy();
   addon.eval("__cd[1] = { { __secret = true }, { __secret = true } }");
   addon.fire("BAG_UPDATE_COOLDOWN");
-  expect(cooldown().map((v) => v.__secret), "hidden numbers go to the widget untouched").toEqual([true, true]);
+  expect(cooldown(), "hidden numbers clear the swipe, never reach SetCooldown").toBeFalsy();
   setCombat(addon, true);
   addon.eval("__cd[1] = { 600, 10 }");
   addon.fire("BAG_UPDATE_COOLDOWN");
