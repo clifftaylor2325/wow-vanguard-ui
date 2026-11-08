@@ -487,6 +487,13 @@ local function followRecipes()
   ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)
 end
 
+-- Follows what the quest item buttons show and where they sit: the bags' cooldowns, and the tracker's mover
+-- (they are anchored to the screen, not to the tracker, so a dragged or rescaled tracker re-places them).
+local function followItems()
+  for _, event in ipairs(QT.COOLDOWN_EVENTS) do ns.On(event, QT.UpdateCooldowns) end
+  ns.OnMoverPlaced(function(key) if key == "questtracker" then ns.OutOfCombat(QT.PlaceItems, "questitems") end end)
+end
+
 -- Builds the tracker (in its spot), parks the game's under a hidden frame, as the unit frames park theirs (hidden
 -- in place, the game showing it in a fight made Vanguard's hide lay out the game's right-side column, boss frames
 -- and all, from addon code), and follows the quest log.
@@ -506,6 +513,6 @@ function QT.Enable(settings)
   ns.On("QUEST_ACCEPTED", QT.AutoTrack)
   ns.On("ZONE_CHANGED_NEW_AREA", QT.SortWatches)
   ns.On("ZONE_CHANGED", QT.SortOnMapChange)
-  for _, event in ipairs(QT.COOLDOWN_EVENTS) do ns.On(event, QT.UpdateCooldowns) end
+  followItems()
   T.OnChanged(QT.Redraw)
 end
