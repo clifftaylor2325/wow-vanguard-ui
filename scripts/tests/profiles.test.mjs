@@ -552,6 +552,21 @@ const encoded = (addon, scope, lua, fui = false) => addon.eval(`local text = ns.
 const imports = (addon, text) => addon.eval(`local m, r = ns.ImportProfile(${JSON.stringify(text)})
   if not m then return { why = r } end
   return { m = m, notes = r.notes, reload = r.reload }`);
+it("H30-5-1 a partial import while a switch waits goes into the profile used after the reload", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile Raid");
+  addon.eval("__heard = 0 ns.OnProfileChanged(function() __heard = __heard + 1 end)");
+  const text = encoded(addon, "parts", `{ format = 2, parts = { "global" }, theme = { reduceMotion = true } }`);
+  const done = addon.eval(`local m, r = ns.ImportProfile(${JSON.stringify(text)}) return { m, r.notes[#r.notes], r.reload }`);
+  expect(done, "it names Raid, backs Raid up and still offers the reload").toEqual(["Imported global settings into profile Raid.", "Profile Raid as it was before this import is saved as profile Raid backup.", true]);
+  expect(addon.eval("return { VanguardDB.profiles.Raid.theme.reduceMotion, (VanguardDB.profiles.Default.theme or {}).reduceMotion == true, __heard }"), "Raid got it, the running profile is untouched, no listener heard").toEqual([true, false, 0]);
+  addon.eval("ns.ApplyPendingProfile()");
+  expect(addon.eval("return ns.Theme.Settings().reduceMotion"), "after the reload's switch the part is there").toBe(true);
+  const plain = encoded(addon, "parts", `{ format = 2, parts = { "global" }, theme = { reduceMotion = false } }`);
+  imports(addon, plain);
+  expect(addon.eval("return { ns.Theme.Settings().reduceMotion, __heard }"), "with no switch waiting it lands in the running profile and the listeners hear it twice (after the one the reload switch made)").toEqual([false, 3]);
+});
 it("profile strings carry their format and version, and an older string is upgraded before anything is saved", () => {
   const addon = loggedIn();
   expect(addon.eval("local _, d = ns.Serialize.Decode(ns.ExportProfile()) return { d.format, type(d.addonVersion) }"), "every string says its format and the version that made it").toEqual([2, "string"]);
@@ -561,11 +576,11 @@ it("profile strings carry their format and version, and an older string is upgra
   expect(whole.m, "it imports as a new profile, as before").toBe("Imported as profile Imported; this character will use it after a reload.");
   expect(addon.eval("local t = VanguardDB.profiles.Imported return { t.theme.barTexture, t.format == nil, t.addonVersion == nil }"), "its tables went through their upgrades (ns.Migrate) first; the string's own keys aren't kept").toEqual(["vanguard", true, true]);
   expect(whole.notes.length, "the renamed bar style is no missing texture: the only note is the backup").toBe(1);
-  addon.eval('ns.Theme.Settings().reduceMotion = true ns.Theme.Settings().barTexture = "soft"');
+  addon.eval('VanguardDB.profiles.Imported.theme.reduceMotion = true VanguardDB.profiles.Imported.theme.barTexture = "soft"');
   // TEST-ONLY module string from before formats: the theme table alone, under its name.
   const mod = imports(addon, encoded(addon, "theme", '{ barTexture = "forever" }', true));
-  expect(mod.m, "a module's string still imports into the active profile").toBe("Imported theme settings into profile Default.");
-  expect(addon.eval("return { ns.Theme.Settings().barTexture, ns.Theme.Settings().reduceMotion }"), "upgraded, and merged: what it doesn't carry keeps its local value").toEqual(["vanguard", true]);
+  expect(mod.m, "a module's string imports into the profile used after the reload (Imported is waiting)").toBe("Imported theme settings into profile Imported.");
+  expect(addon.eval("local t = VanguardDB.profiles.Imported.theme return { t.barTexture, t.reduceMotion }"), "upgraded, and merged: what it doesn't carry keeps its local value").toEqual(["vanguard", true]);
   expect(imports(addon, encoded(addon, "profile", "{ format = 3 }")).why, "a string from a newer Vanguard says so").toBe("it was made by a newer version of Vanguard: update Vanguard, then import it again");
   expect(imports(addon, encoded(addon, "talents", '{ class = "MAGE" }')).why, "another kind of Vanguard string is named").toBe("it's a talents string, not a profile string");
   expect(imports(addon, "garbage").why, "and the old reasons stand").toBe("not a Vanguard profile string");

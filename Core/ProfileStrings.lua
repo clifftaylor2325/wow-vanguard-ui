@@ -321,15 +321,17 @@ end
 
 -- Merges a partial payload's tables into the profile, key by key: the string's values win,
 -- and settings it doesn't carry keep their local values. The listeners hear of it before
--- (Situations puts the profile's own values back under an active override) and after.
+-- (Situations puts the profile's own values back under an active override) and after; they hear of it
+-- only for the profile on screen.
 function ns.MergeParts(profile, data)
-  ns.ProfileChanged()
+  local onScreen = profile == ns.Profile()
+  if onScreen then ns.ProfileChanged() end
   for key, t in pairs(data) do
     if not META[key] and type(t) == "table" then
       profile[key] = merge(type(profile[key]) == "table" and profile[key] or {}, t, MERGE_DEPTH[key] or DEEP)
     end
   end
-  ns.ProfileChanged()
+  if onScreen then ns.ProfileChanged() end
 end
 
 -- True when a and b hold the same settings, all the way down.

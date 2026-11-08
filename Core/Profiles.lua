@@ -194,11 +194,13 @@ end
 
 -- Copies the profile this character uses (its own values: an active Situations override is
 -- taken out, as for an export) into its one rolling backup profile, replacing the last
--- backup. Runs before every import. Returns the backup's name.
-function ns.BackupProfile()
-  local source = ns.ProfileName()
+-- backup. Runs before every import. Returns the backup's name. A profile's name (default: the one in use)
+-- backs up that one instead.
+---@param source string|nil
+function ns.BackupProfile(source)
+  source = source or ns.ProfileName()
   local name = ns.BackupName(source)
-  VanguardDB.profiles[name] = ownCopy(ns.Profile())
+  VanguardDB.profiles[name] = ownCopy(VanguardDB.profiles[source])
   VanguardDB.backupOf = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf or {}
   VanguardDB.backupOf[name] = source
   return name
@@ -246,36 +248,44 @@ local function importWhole(data, result)
   return ns.Format(L["Imported as profile {profile}; this character will use it after a reload."], { profile = name })
 end
 
--- A partial string: its tables merge into the active profile, key by key; a theme it carries keeps
+-- The profile an import of this kind lands in or backs up: a partial string goes into the profile used after
+-- the reload (as Copy here does, so the profile running until then is never overwritten), a whole one
+-- makes or picks a profile, so the running one is what a backup holds.
+local function importTarget(kind)
+  return kind == "parts" and ns.SelectedProfileName() or ns.ProfileName()
+end
+
+-- A partial string: its tables merge into the named profile, key by key; a theme it carries keeps
 -- this player's own pixel-perfect switch and multiple, as a whole profile does (ownPixelScale).
-local function importParts(data)
+local function importParts(data, name)
   if type(data.theme) == "table" then ownPixelScale(data) end
-  ns.MergeParts(ns.Profile(), data)
+  ns.MergeParts(VanguardDB.profiles[name], data)
   local parts = ns.PartsText(data)
-  if not parts then return ns.Format(L["Imported its settings into profile {profile}."], { profile = ns.ProfileName() }) end
-  return ns.Format(L["Imported {parts} settings into profile {profile}."], { parts = parts, profile = ns.ProfileName() })
+  if not parts then return ns.Format(L["Imported its settings into profile {profile}."], { profile = name }) end
+  return ns.Format(L["Imported {parts} settings into profile {profile}."], { parts = parts, profile = name })
 end
 
 -- The import's notes: each font or bar texture the string names that this client lacks, then where the backup is.
-local function importNotes(payload, backup)
+local function importNotes(payload, backup, name)
   local notes = ns.MissingMedia(payload)
-  notes[#notes + 1] = ns.Format(L["Profile {profile} as it was before this import is saved as profile {backup}."], { profile = ns.ProfileName(), backup = backup })
+  notes[#notes + 1] = ns.Format(L["Profile {profile} as it was before this import is saved as profile {backup}."], { profile = name, backup = backup })
   return notes
 end
 
 -- Applies a decoded string (scope and settings, or nil and why not; Core/Serialize.lua): an
 -- older string is upgraded first, the other computer's own state is left out (ns.WithoutClientState),
--- and the profile in use is backed up (ns.BackupProfile). A
+-- and the profile the import lands in is backed up (importTarget, ns.BackupProfile). A
 -- whole profile becomes a new profile this character switches to (or the one it matches); a
--- partial string merges into the active profile. Returns what happened and the result
+-- partial string merges into the profile used after the reload. Returns what happened and the result
 -- { display (a whole profile's UI scale block, or nil), reload, notes, backup }, or nil and why not.
 function ns.ApplyImport(scope, data)
   local kind, payload = ns.ReadPayload(scope, data)
   if not kind then return nil, payload end
   ns.WithoutOtherClientDefaults(ns.WithoutClientState(payload), kind)
-  local backup = ns.BackupProfile()
-  local result = { notes = importNotes(payload, backup), backup = backup, reload = true }
-  local text = kind == "profile" and importWhole(payload, result) or importParts(payload)
+  local target = importTarget(kind)
+  local backup = ns.BackupProfile(target)
+  local result = { notes = importNotes(payload, backup, target), backup = backup, reload = true }
+  local text = kind == "profile" and importWhole(payload, result) or importParts(payload, target)
   return text, result
 end
 
