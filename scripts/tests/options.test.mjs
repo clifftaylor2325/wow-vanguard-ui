@@ -1856,11 +1856,12 @@ it("options: pages built at another Text size are built again the next time they
   expect(Object.values(crowded("modules")), "after a Font change too (the game's font is wider)").toEqual([]);
 });
 
-it("options: a nav entry's title stops short of the changed-setting dot and never wraps", () => {
+it("options: a nav entry's title sits in a box that stops short of the changed-setting dot and never wraps", () => {
   const addon = fitOptions();
   addon.eval('ns.Options.Show("general")');
   const bad = addon.eval(`local out = {} for key, b in pairs(Vanguard_Options.nav) do
-    local p = b.text.__points.RIGHT
+    local box = b.text.__points.RIGHT and b.text.__points.RIGHT.rel
+    local p = box and box.__points and box.__points.RIGHT
     if not (p and p.rel == b.changed and p.relPoint == "LEFT" and b.text.__noWrap and b.text:GetRight() <= b.changed:GetLeft()) then out[#out + 1] = key end
   end return out`);
   expect(Object.values(bad), "every title is bound on the right by the dot").toEqual([]);

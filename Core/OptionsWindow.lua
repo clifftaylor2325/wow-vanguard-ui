@@ -816,15 +816,21 @@ local function navItem(nav, y, h)
   return b
 end
 
--- A nav entry's changed-setting dot at its right edge, and its title between the icon and the dot (never past it).
+-- The room a nav entry's title has: between its icon and its changed-setting dot (never past it).
+local function navTitleBox(b)
+  local box = CreateFrame("Frame", nil, b)
+  box:SetHeight(1)
+  box:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
+  box:SetPoint("RIGHT", b.changed, "LEFT", -T.SPACE.tight, 0)
+  return box
+end
+
+-- A nav entry's changed-setting dot at its right edge, and its title in the room beside it, shrunk to fit a long translation.
 local function navTitle(b, title)
   b.changed = changedDot(b)
   b.changed:SetPoint("RIGHT", -T.SPACE.col, 0)
-  b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2")
-  b.text:SetPoint("LEFT", b.icon, "RIGHT", T.SPACE.gap, 0)
-  b.text:SetPoint("RIGHT", b.changed, "LEFT", -T.SPACE.tight, 0)
+  b.text = T.FitText(T.Text(b:CreateFontString(nil, "OVERLAY"), "label", "text2"), navTitleBox(b), 0)
   b.text:SetJustifyH("LEFT")
-  b.text:SetWordWrap(false)
   b.text:SetText(title)
 end
 

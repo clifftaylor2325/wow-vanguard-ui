@@ -283,3 +283,12 @@ it("text fits: the quest tracker's objective lines are audited with or without a
     "TEST-ONLY Speak with the very long named quartermaster of the northern watch garrison",
     "TEST-ONLY Wolves slain in the very long named forest of the northern watch garrison"]));
 });
+
+it("text fits: the options window's page names fit the nav in Russian (H33-18-2)", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "ruRU" end' });
+  addon.login();
+  addon.slash("");
+  const names = Object.values(addon.eval("local out = {} for _, p in ipairs(ns.Options.PAGES) do out[#out + 1] = p.title end return out"));
+  expect(names, "the nav holds the page titles").toContain("Заклинания по щелчку");
+  expect(addon.textFit("Vanguard_Options").filter((finding) => finding.kind === "cut" && names.includes(finding.text)), "no page name in the nav is cut").toEqual([]);
+});
