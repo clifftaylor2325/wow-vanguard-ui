@@ -102,7 +102,7 @@ local function collect(wanted)
     for i, row in ipairs(rows) do
       local hit = isSetting(row) and wanted(row, noteUnder(rows, i))
       if hit and #out == MAX_HITS then more = more + 1 end
-      if hit and #out < MAX_HITS then out[#out + 1] = { page = page.key, title = page.title, caption = row[2], row = row } end
+      if hit and #out < MAX_HITS then out[#out + 1] = { page = page.key, title = page.title, caption = row[2], row = row, index = i } end
     end
   end
   return out, more
