@@ -183,6 +183,8 @@ local function call(name, ...)
   end
   return nil
 end
+-- Calls an action API by name, C_ActionBar's first, for the files that read slots (Your keys, key setup).
+AB.CallAction = call
 
 -- One key's short name, without its modifiers ("BACKSPACE" -> "Bs", "BUTTON4" -> "M4", "Q" -> "Q").
 local function shortKeyName(key)

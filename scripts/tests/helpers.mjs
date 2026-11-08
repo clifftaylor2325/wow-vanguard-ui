@@ -122,6 +122,7 @@ export const ACTIONS_ENV = `
   local function a(slot) return __actions[slot] or {} end
   issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
   GetActionTexture = function(slot) return a(slot).tex end
+  C_ActionBar.GetActionTexture = GetActionTexture
   GetActionCount = function(slot) return a(slot).count or 0 end
   IsUsableAction = function(slot) return a(slot).usable == true, a(slot).noPower == true end
   IsCurrentAction = function(slot) return a(slot).current == true end
