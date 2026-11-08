@@ -298,3 +298,24 @@ it("a client without the inbox calls doesn't read mail", () => {
   addon.world.openMailbox();
   expect([records(addon).length, addon.eval("return #ns.errors")]).toEqual([0, 0]);
 });
+
+it("a commodity read before its item key info is in waits for it: one sale at the whole price, and the mail joins it", () => {
+  const addon = atAuctionHouse(`__wfgWorld.items[10940].pending = true
+    __wfgWorld.ah.owned = {
+      { auctionID = 701, itemKey = { itemID = 10940 }, status = 1, quantity = 20, buyoutAmount = 100 },
+      { auctionID = 702, itemKey = { itemID = 10940 }, status = 0, quantity = 20, buyoutAmount = 100 } }`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect([records(addon).length, addon.eval(`return #${HELPER}.owned`)], "nothing guessed while the kind is unknown").toEqual([0, 0]);
+  addon.eval("__wfgWorld.items[10940].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10940);
+  addon.advance(1);
+  expect(records(addon)[0].slice(3, 5), "the info came in: 20 units at 100 each").toEqual([20, 2000]);
+  expect(addon.eval(`return ${HELPER}.owned[2].unit`), "the up row's price per unit").toBe(100);
+  addon.eval(`${HELPER}.owned = {}`);
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10941);
+  addon.advance(1);
+  expect(addon.eval(`return #${HELPER}.owned`), "with none left out, a later item's info reads nothing again").toBe(0);
+  addon.eval(`__wfgWorld.mail = { ${invoice("Strange Dust", 2000, 20)} }`);
+  addon.world.openMailbox();
+  expect(records(addon).length, "the mail is the same sale").toBe(1);
+});

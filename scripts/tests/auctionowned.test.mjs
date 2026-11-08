@@ -147,7 +147,11 @@ it("your auctions: refused cancels, scrolling, unknown names, hidden costs, and 
     __wfgWorld.items[9999].pending = true
     for i = 1, 4 do table.insert(__wfgWorld.ah.owned, { auctionID = 600 + i, itemKey = { itemID = 10940 }, status = 0, quantity = 1, buyoutAmount = 90 }) end`);
   addon.fire("OWNED_AUCTIONS_UPDATED");
-  expect([ownedRow(addon, 1), ownedRow(addon, 2).slice(1, 3), list(sent(addon))], "shown when the game sends them, nothing checked").toEqual([[true, "Strange Dust", "1s 50c", false], ["item 9999", "40s 0c"], []]);
+  expect([ownedRow(addon, 1), ownedRow(addon, 2).slice(1, 3), list(sent(addon))], "shown when the game sends them, nothing checked").toEqual([[true, "Strange Dust", "1s 50c", false], ["Strange Dust", "90c"], []]);
+  addon.eval("__wfgWorld.items[9999].pending = nil");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 9999);
+  addon.advance(1);
+  expect(ownedRow(addon, 2).slice(1, 3), "the blade's auctions wait for its info, then are listed in the game's order").toEqual(["TEST-ONLY Blade", "40s 0c"]);
   addon.click(`${OWNED_CARD}.table.rows[1].cancel`);
   addon.hover(`${OWNED_CARD}.table.rows[1].cancel`);
   expect([restrictedLog(addon).length, addon.eval("return #GameTooltip.__lines")], "the game won't cancel it; no cost shown when hidden").toEqual([0, 1]);
@@ -178,7 +182,8 @@ it("a free cancel goes on the click; a paid one or one whose cost is hidden asks
 it("a random-suffix auction is undercut only by its own variant", () => {
   // An "of the ..." cloak (suffix) listed by someone else at a buyout.
   const cloak = (suffix, buyout) => `{ itemKey = { itemID = 9999, itemLevel = 30, itemSuffix = ${suffix} }, buyoutAmount = ${buyout}, quantity = 1 }`;
-  const addon = atAuctionHouse(`__wfgWorld.ah.owned = { { auctionID = 502, itemKey = { itemID = 9999, itemLevel = 30, itemSuffix = -17 }, status = 0, quantity = 1, buyoutAmount = 4000 } }
+  const addon = atAuctionHouse(`__wfgWorld.items[9999] = { name = "TEST-ONLY Cloak", icon = "TEST-ONLY-CLOAK" }
+    __wfgWorld.ah.owned = { { auctionID = 502, itemKey = { itemID = 9999, itemLevel = 30, itemSuffix = -17 }, status = 0, quantity = 1, buyoutAmount = 4000 } }
     __wfgWorld.ah.items[9999] = { ${cloak(-15, 1000)}, ${cloak(-17, 5000)} }`);
   // Check undercuts, your auctions arriving, and the cloak's price check answered.
   const check = () => {

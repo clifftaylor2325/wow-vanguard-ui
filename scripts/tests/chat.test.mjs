@@ -202,8 +202,14 @@ it("chat text fades: lines stay 60 s then fade over 0.6 s by default, Never and 
   expect(fade()[2], "a fight starts: the fade is capped at 0.15 s").toBe(0.15);
   addon.world.combat(false);
   expect(fade()[2], "and goes back to 0.6 s after it").toBe(0.6);
-  addon.eval("ns.Theme.Settings().reduceMotion = true ns.Theme.Refresh()");
-  expect(fade()[2], "Reduce motion: a line goes at once").toBe(0);
+  addon.eval("ns.Options.Show('general')");
+  // The General page's Reduce motion row setter, called as the tick would.
+  const reduce = (on) => addon.eval(`local r for _, p in ipairs(ns.Options.PAGES) do if p.rows then for _, row in ipairs(p.rows()) do if row[2] == "Reduce motion (no fades or flashes)" then r = row end end end end r[4](${on})`);
+  reduce(true);
+  expect(fade()[2], "Reduce motion ticked: a line goes at once, without waiting for a fight").toBe(0);
+  reduce(false);
+  expect(fade()[2], "unticked: the line fades over 0.6 s again").toBe(0.6);
+  reduce(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 // TEST-ONLY chat edit boxes as the game has them: the main window's with a header the game colours from
@@ -1662,19 +1668,31 @@ const CVAR_ENV = `
 `;
 it("bags: the combined CVar is set once per change of the setting, and given back when the module is switched off", () => {
   const addon = loggedIn(UI_ENV + CVAR_ENV);
-  expect(addon.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied, ns.Settings('Bags').prior }"), "first login: turned on, the player's own value kept").toEqual(["1", true, "0"]);
+  expect(addon.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied, VanguardDB.client.bagsPrior }"), "first login: turned on, the player's own value kept").toEqual(["1", true, "0"]);
   const later = loggedIn(UI_ENV + CVAR_ENV, { savedVariables: "VanguardDB.profiles.Default = { Bags = { applied = true, prior = '0' } }" });
   expect(later.eval("return __cvars.combinedBags"), "a later login leaves the player's choice (separate bags) alone").toBe("0");
   const off = loggedIn(UI_ENV + "__cvars = { combinedBags = '1' } C_CVar.GetCVar = function(k) return __cvars[k] end", { savedVariables: "VanguardDB.profiles.Default = { Bags = { combined = false, applied = true, prior = '0' } }" });
   expect(off.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied }"), "turning the setting off sets it once, to separate bags").toEqual(["0", false]);
   addon.eval("ns.SetModuleEnabled('Bags', false)");
-  expect(addon.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil, ns.Settings('Bags').prior == nil }"), "switching the module off puts the player's value back").toEqual(["0", true, true]);
+  expect(addon.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil, VanguardDB.client.bagsPrior == nil }"), "switching the module off puts the player's value back").toEqual(["0", true, true]);
   addon.eval("__cvars.combinedBags = '1' ns.SetModuleEnabled('Bags', false)");
   expect(addon.eval("return __cvars.combinedBags"), "and a second time touches nothing").toBe("1");
   const blind = loggedIn(UI_ENV);
   blind.eval("ns.SetModuleEnabled('Bags', false)");
   expect(blind.eval("return { __cvars.combinedBags, ns.Settings('Bags').applied == nil }"), "a client that can't read the CVar has nothing to give back").toEqual(["1", true]);
-});it("bags: an imported profile turns combined bags on, since what Vanguard set on one computer never travels in a string", () => {
+});
+it("bags: the player's own value is kept for the whole computer, so a second profile gives it back too", () => {
+  const sv = "VanguardDB.client = { bagsPrior = '0' } VanguardDB.profiles.Main = { Bags = { applied = true } } VanguardDB.profiles.Alt = {} VanguardCharDB.profile = 'Alt'";
+  const addon = loggedIn(UI_ENV + "__cvars = { combinedBags = '1' } C_CVar.GetCVar = function(k) return __cvars[k] end", { savedVariables: sv });
+  expect(addon.eval("return { ns.ProfileName(), __cvars.combinedBags, VanguardDB.client.bagsPrior }"), "the second profile does not record Vanguard's own 1 as the player's").toEqual(["Alt", "1", "0"]);
+  addon.eval("ns.SetModuleEnabled('Bags', false)");
+  expect(addon.eval("return { __cvars.combinedBags, VanguardDB.client.bagsPrior == nil, ns.Settings('Bags').applied == nil }"), "switched off on the second profile: separate bags again").toEqual(["0", true, true]);
+});
+it("bags: a profile that never applied records the value only while the notes hold none", () => {
+  const addon = loggedIn(UI_ENV + "__cvars = { combinedBags = '0' } C_CVar.GetCVar = function(k) return __cvars[k] end", { savedVariables: "VanguardDB.profiles.Default = { Bags = { prior = '1' } }" });
+  expect(addon.eval("return { __cvars.combinedBags, VanguardDB.client.bagsPrior, ns.Settings('Bags').prior == nil }"), "an old profile's prior is moved to the notes before the CVar is read").toEqual(["1", "1", true]);
+});
+it("bags: an imported profile turns combined bags on, since what Vanguard set on one computer never travels in a string", () => {
   const me = loggedIn(UI_ENV + CVAR_ENV);
   expect(me.eval(`local _, data = ns.Serialize.Decode(ns.ExportProfile()) local s = ns.Settings("Bags") return { data.Bags.combined, data.Bags.applied == nil, data.Bags.prior == nil, s.applied }`), "the string has the setting, not the flags this computer keeps").toEqual([true, true, true, true]);
   // TEST-ONLY string from an older Vanguard that exported the flags of a computer on separate bags.
@@ -1684,7 +1702,7 @@ it("bags: the combined CVar is set once per change of the setting, and given bac
   const sv = me.savedVariables();
   // The next session on another computer (its own CVars: separate bags) with the imported profile.
   const next = loggedIn(UI_ENV + CVAR_ENV, { savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
-  expect(next.eval("return { ns.ProfileName(), __cvars.combinedBags, ns.Settings('Bags').prior }"), "the imported profile sets combined bags once, keeping this computer's value").toEqual(["Imported", "1", "0"]);
+  expect(next.eval("return { ns.ProfileName(), __cvars.combinedBags, VanguardDB.client.bagsPrior }"), "the imported profile sets combined bags once, keeping this computer's value").toEqual(["Imported", "1", "0"]);
 });
 
 

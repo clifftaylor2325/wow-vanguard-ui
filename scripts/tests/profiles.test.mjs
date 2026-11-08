@@ -170,7 +170,7 @@ it("a profile reset keeps the record of your own game settings and each characte
   const saved = `VanguardDB.profiles = { Default = { theme = { accent = { 1, 1, 1 } }, Bags = { applied = "1", prior = "0" }, Quiet = { camera = 2.6 }, Graphics = { undo = { graphicsQuality = 7 } }, CraftQueue = { on = true, chars = { ["Alt-Realm"] = { queue = {}, cooldowns = {} } } } } }`;
   const addon = loggedIn("", { savedVariables: saved });
   addon.eval("ns.Settings('Quiet').cameraPrior = 1.9 ns.ResetProfile()");
-  const kept = addon.eval("local p = VanguardDB.profiles.Default return { p.Bags.prior, p.Quiet.cameraPrior, p.Graphics.undo.graphicsQuality, p.CraftQueue.chars['Alt-Realm'] ~= nil, p.CraftQueue.on == nil, p.theme == nil or p.theme.accent == nil }");
+  const kept = addon.eval("local p = VanguardDB.profiles.Default return { VanguardDB.client.bagsPrior, p.Quiet.cameraPrior, p.Graphics.undo.graphicsQuality, p.CraftQueue.chars['Alt-Realm'] ~= nil, p.CraftQueue.on == nil, p.theme == nil or p.theme.accent == nil }");
   expect(kept, "the records stay, the settings go").toEqual(["0", 1.9, 7, true, true, true]);
 });
 it("profile copy, empty export and a taken import name", () => {
@@ -397,6 +397,14 @@ it("profile strings carry the UI scale and screen; importing one asks whether to
   importText(dst, old);
   expect(dst.eval("return { Vanguard_Question:IsShown(), Vanguard_Reload:IsShown(), VanguardDB.profiles['Imported 2'].display == nil }"), "a string with no usable UI scale goes straight to the reload").toEqual([false, true, true]);
   expect(dst.eval("return ns.DisplayQuestion({ uiScale = 0.8 })"), "a block with no screen size leaves it out").toBe("This profile was made at UI scale 80% (yours: 100%). Use its UI scale?");
+});
+it("a UI scale saved as text is stored as a number, so Use it sets the game's scale", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // TEST-ONLY whole profile whose UI scale is the text "0.7" (hand-edited).
+  const text = addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" }, display = { uiScale = "0.7" } }))');
+  importText(addon, text);
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { GetCVar('useUiScale'), GetCVar('uiScale') }"), "Use it sets the scale").toEqual(["1", "0.7"]);
 });
 it("Use it after an import turns Pixel-perfect off in the imported profile, not in the one being left", () => {
   const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true } }\n" });

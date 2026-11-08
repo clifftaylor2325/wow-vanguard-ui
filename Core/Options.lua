@@ -329,7 +329,7 @@ end
 local function motionRows()
   return {
     { "header", L["Motion and sound"] },
-    check(L["Reduce motion (no fades or flashes)"], function() return T.Settings().reduceMotion end, function(v) T.Settings().reduceMotion = v end),
+    check(L["Reduce motion (no fades or flashes)"], liveThemeSetting("reduceMotion")),
     check(L["Interface sounds"], function() return T.Settings().sounds end, function(v) T.Settings().sounds = v end),
   }
 end

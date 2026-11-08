@@ -141,6 +141,26 @@ it("group board: a click opens a whisper with the message filled in, never sends
   expect(addon.eval("return __tells[3]"), "without the call: a plain whisper to them").toBe("Anyone");
 });
 
+// TEST-ONLY client code that makes the string table (the first table whose lookup returns its key) translate
+// the Deadmines, as a German client's Locales file would, before the module reads its names.
+const GERMAN_DEADMINES = `
+  local real = setmetatable
+  setmetatable = function(t, mt)
+    local found = mt and type(mt.__index) == "function" and mt.__index(t, "probe") == "probe"
+    if not found then return real(t, mt) end
+    setmetatable = real
+    return real(t, { __index = function(_, key) return key == "The Deadmines" and "Die Todesminen" or key end })
+  end
+`;
+
+it("group board: dungeon names go through the string table, on the row's data and in the whisper", () => {
+  const addon = loggedIn(WHISPER_ENV + CLICK_LUA, { client: GERMAN_DEADMINES });
+  addon.eval("__wfgWorld.units.player.level = 24");
+  expect(parse(addon, "LFM dm need tank")[1], "the translated name").toBe("Die Todesminen");
+  expect(addon.eval("local GB = ns.GetModule('GroupBoard') return GB.Template(GB.Parse('LFG dm'))"), "the whisper carries it").toBe("Hi! We're forming Die Todesminen, want to join?");
+  expect(parse(addon, "LFM sfk need heals")[1], "an untranslated name reads as its English key").toBe("Shadowfang Keep");
+});
+
 it("group board: the whisper role is Automatic by default, your group role else DPS, and a hidden role counts as none", () => {
   const addon = board();
   post(addon, "LFM SFK need heals", "Lightmend-Ruleset");

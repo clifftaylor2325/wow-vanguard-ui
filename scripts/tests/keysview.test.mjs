@@ -60,8 +60,19 @@ it("your keys: a macro and an item slot are named by kind, an empty slot shows n
 
 it("your keys: a secret icon is never shown", () => {
   const addon = withKeys("issecretvalue = function(v) return type(v) == 'table' and v.__secret == true end");
-  addon.eval("GetActionTexture = function() return { __secret = true } end ns.Options.Refresh()");
+  addon.eval("C_ActionBar.GetActionTexture = function() return { __secret = true } end ns.Options.Refresh()");
   expect(cap(addon, "1").icon, "the icon is dropped").toBe(false);
+});
+
+it("H31-4-1: with the game's deprecation fallbacks off (no GetActionTexture or GetActionText globals), the card reads slots through C_ActionBar", () => {
+  const addon = withKeys("GetActionText = nil GetActionTexture = nil");
+  expect(addon.eval("return #ns.errors"), "opening Your keys raises nothing").toBe(0);
+  expect(cap(addon, "1"), "key 1 still shows Fireball's icon").toMatchObject({ icon: "Interface\\Icons\\Spell_Fire_FlameBolt", name: "Fireball" });
+  addon.world.setAction(1, { type: "macro", macro: "Pull", icon: "TEST-ONLY-M" });
+  addon.eval("ns.Options.Refresh()");
+  expect(cap(addon, "1"), "and a macro's name and icon").toMatchObject({ name: "Pull", icon: "TEST-ONLY-M" });
+  addon.eval("C_ActionBar.GetActionTexture = nil ns.Options.Refresh()");
+  expect(cap(addon, "1").icon, "a client with neither call shows no icon").toBe(false);
 });
 
 // Clicks the tab with this id on the card.
@@ -142,7 +153,7 @@ it("your keys: hidden values and odd buttons never break the card", () => {
   expect(cap(addon, "1").name ?? null, "a secret kind has no name").toBeNull();
   addon.eval("GetActionInfo = function() return 'spell', { __secret = true } end ns.Options.Refresh()");
   expect(cap(addon, "1").name ?? null, "a secret spell id has no name").toBeNull();
-  addon.eval("GetActionInfo = function() return 'macro' end GetActionText = function() return { __secret = true } end ns.Options.Refresh()");
+  addon.eval("GetActionInfo = function() return 'macro' end C_ActionBar.GetActionText = function() return { __secret = true } end ns.Options.Refresh()");
   expect(cap(addon, "1").name ?? null, "a secret macro name is dropped").toBeNull();
   addon.eval("Vanguard_Bar1Button1.action = nil ns.Options.Refresh()");
   expect(cap(addon, "1"), "a button with no slot yet still names its place").toMatchObject({ place: "Bar 1 button 1", icon: false });

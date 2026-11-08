@@ -1237,6 +1237,10 @@ C_ActionBar = {
   GetOverrideBarIndex = function() return world.overrideBarIndex or 18 end,
   GetTempShapeshiftBarIndex = function() return world.tempShapeshiftBarIndex or 17 end,
   HasAction = HasAction,
+  -- A slot's icon and a macro's name (ActionBarFrameDocumentation.lua; the globals of the same name are the
+  -- deprecation fallbacks' shims over these).
+  GetActionTexture = function(slot) return actionOf(slot).icon end,
+  GetActionText = function(slot) return actionOf(slot).macro end,
   -- Whether the slot's action is an item you wear (action.equipped); the client refuses a slot number
   -- outside the bars (ActionBarFrameDocumentation.lua: RequiresValidActionSlot).
   IsEquippedAction = function(slot)

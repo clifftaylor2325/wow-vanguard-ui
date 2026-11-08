@@ -41,6 +41,7 @@ const ACTIONS = `
   __actions[4].noPower = true
   local function a(slot) return __actions[slot] or {} end
   GetActionTexture = function(slot) return a(slot).tex end
+  C_ActionBar.GetActionTexture = GetActionTexture
   GetActionCount = function() return 0 end
   IsUsableAction = function(slot) return a(slot).noPower ~= true, a(slot).noPower == true end
   IsCurrentAction = function(slot) return slot == 2 end

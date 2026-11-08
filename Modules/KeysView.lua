@@ -78,7 +78,7 @@ end
 
 -- A macro's name, nil when it is hidden.
 local function macroName(slot)
-  local text = GetActionText(slot)
+  local text = AB.CallAction("GetActionText", slot)
   return not ns.IsSecret(text) and text or nil
 end
 
@@ -93,7 +93,7 @@ end
 
 -- The slot's icon, nil when it is empty or hidden (a secret value is never passed on).
 local function slotIcon(slot)
-  local texture = GetActionTexture(slot)
+  local texture = AB.CallAction("GetActionTexture", slot)
   return not ns.IsSecret(texture) and texture or nil
 end
 

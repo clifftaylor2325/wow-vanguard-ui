@@ -369,7 +369,21 @@ function MS.Reshow(f)
   ns.OutOfCombat(function() f:Show() end, "menustrip show " .. (f:GetName() or ""))
 end
 
--- Keeps the bags and the menu shown in the bar: now, and whenever the game hides them.
+-- After a pet battle the game leaves its menu in the hidden battle bar (its own way back is the main bar's
+-- OnShow, which Vanguard hides): put it back in the container with the game's own reset, which also undoes
+-- the battle bar's stacking and scale. A client without the menu, or one already home, is left alone.
+local function reclaimMenu()
+  local menu, home = _G.MicroMenu, _G.MicroMenuContainer
+  if type(menu) ~= "table" or type(home) ~= "table" or type(menu.ResetMicroMenuPosition) ~= "function" then return end
+  if menu:GetParent() ~= home then menu:ResetMicroMenuPosition() end
+end
+
+-- Gives the menu back when a pet battle ends, out of combat.
+function MS.ReclaimMenu()
+  ns.OutOfCombat(reclaimMenu, "menustrip reclaim")
+end
+
+-- Keeps the bags and the menu shown in the bar: now, whenever the game hides them, and after a pet battle.
 local function keepShown()
   for _, name in ipairs(MS.KEEP_SHOWN) do
     local f = _G[name]
@@ -378,6 +392,7 @@ local function keepShown()
       MS.Reshow(f)
     end
   end
+  ns.On("PET_BATTLE_CLOSE", MS.ReclaimMenu)
 end
 
 -- Slots ---------------------------------------------------------------------------------------
@@ -796,6 +811,21 @@ function MS.OwnTracker()
   return qt ~= nil and ns.ModuleEnabled("QuestTracker") and qt.Shows(ns.Settings("QuestTracker", qt.defaults))
 end
 
+-- Keeps the game's tracker at its spot's height: the game sizes it to its managed container (or its Edit Mode
+-- height) after each layout and on show (ObjectiveTrackerContainerMixin:UpdateHeight), with no SetPoint for
+-- the pin to see. ns.Repin waits out combat and skips while the pin itself runs.
+local function keepTrackerHeight(tracker)
+  if type(tracker.UpdateHeight) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(tracker, "UpdateHeight", ns.Guard("hook UpdateHeight", ns.Repin))
+end
+
+-- Puts the game's tracker on its spot, no taller than it (its pin).
+local function seatTracker(f)
+  f:ClearAllPoints()
+  f:SetPoint("TOPRIGHT", MS.trackerSpot, "TOPRIGHT", 0, 0)
+  f:SetHeight(MS.TRACKER_H)
+end
+
 -- The tracker's spot under the info strip, and the game's tracker pinned into it
 -- unless Vanguard's own tracker is on.
 local function buildTracker()
@@ -804,11 +834,8 @@ local function buildTracker()
   ns.Mover(MS.trackerSpot, "questtracker", L["Quest tracker"], ns.GetModule("InfoStrip").TrackerPoint())
   local tracker = _G.ObjectiveTrackerFrame
   if MS.OwnTracker() or type(tracker) ~= "table" or not tracker.SetPoint then return end
-  ns.Pin(tracker, function(f)
-    f:ClearAllPoints()
-    f:SetPoint("TOPRIGHT", MS.trackerSpot, "TOPRIGHT", 0, 0)
-    f:SetHeight(MS.TRACKER_H)
-  end)
+  ns.Pin(tracker, seatTracker)
+  keepTrackerHeight(tracker)
 end
 
 -- The quest tracker's look ------------------------------------------------------------------

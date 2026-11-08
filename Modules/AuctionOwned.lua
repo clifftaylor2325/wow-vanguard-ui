@@ -18,7 +18,7 @@
 -- auctions and each price check go through AH.Queue (one in flight, at most
 -- 60 a minute); every price and quantity goes through ns.PlainNumber before
 -- arithmetic; both paths work (a commodity's buyout is per unit, an item's
--- per auction); nothing writes into the game's frames.
+-- per auction; an auction waits for its item key info to say which); nothing writes into the game's frames.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -45,27 +45,32 @@ AH.defaults.recheck = false
 -- Your auctions ------------------------------------------------------------------------------
 
 -- An auction's price per unit and the whole auction's, from its buyout (a commodity's buyout is
--- per unit, an item's per auction); nothing without a buyout.
+-- per unit, an item's per auction); nothing without a buyout, and false while the game has not
+-- said what kind of item it is (guessing would price a commodity wrong).
 local function prices(key, buyout, qty)
   if not buyout then return nil, nil end
   local info = C_AuctionHouse.GetItemKeyInfo(key)
-  if info and info.isCommodity then return buyout, buyout * qty end
+  if not info then return false end
+  if info.isCommodity then return buyout, buyout * qty end
   return math.floor(buyout / qty), buyout
 end
 
 -- One of your auctions as a row's data, or nil (one up without a buyout, or a number the client
--- hides). A sold one's amount is the whole auction's buyout, else the bid it sold on.
+-- hides, or one whose item key info has not come in yet). A sold one's amount is the whole auction's buyout, else the bid it sold on.
 local function ownedAuction(a)
   local buyout, bid = ns.PlainNumber(a.buyoutAmount), ns.PlainNumber(a.bidAmount)
   local qty, id, status = ns.PlainNumber(a.quantity), ns.PlainNumber(a.auctionID), AH.STATUS[a.status]
   if not (status and qty and id) or qty < 1 or not (buyout or status == "sold" and bid) then return nil end
   local unit, total = prices(a.itemKey, buyout, qty)
+  if unit == false then AH.ownedMissing = true return nil end
   return { id = id, key = a.itemKey, buyout = buyout, qty = qty, unit = unit, amount = total or bid, status = status }
 end
 
--- Your auctions as the game lists them: up with a buyout, or sold.
+-- Your auctions as the game lists them: up with a buyout, or sold. AH.ownedMissing says whether one was
+-- left out for want of its item key info.
 function AH.ReadOwned()
   local out = {}
+  AH.ownedMissing = false
   for _, a in ipairs(C_AuctionHouse.GetOwnedAuctions() or {}) do out[#out + 1] = ownedAuction(a) end
   return out
 end
@@ -90,6 +95,16 @@ local function keep(old, new)
   return new
 end
 
+-- An item key's info came in: the auctions left out of the last read for lack of it are read again
+-- (the client's cached list; no new search, so a check under way is untouched), shown and noted. Nothing
+-- while the last read left none out (the info of browse and shop results comes in the same way).
+function AH.OnOwnedInfo()
+  if not AH.ownedMissing then return end
+  AH.owned = keep(AH.owned, AH.ReadOwned())
+  AH.PaintOwned()
+  ns.AuctionLedger.OnOwned()
+end
+
 -- Check undercuts: asks for your auctions (their prices are checked when they come in).
 function AH.CheckUndercuts()
   AH.checked = true
@@ -111,6 +126,7 @@ end
 -- for addons), one ran out, and the game's notices (one sold or ran out).
 function AH.ListenOwned(on)
   on("OWNED_AUCTIONS_UPDATED", AH.OnOwned)
+  on("ITEM_KEY_ITEM_INFO_RECEIVED", function() ns.Soon("auction owned info", AH.OnOwnedInfo) end)
   on("AUCTION_CANCELED", AH.OnCanceled)
   on("AUCTION_HOUSE_AUCTION_CREATED", AH.Recheck)
   on("AUCTION_HOUSE_AUCTIONS_EXPIRED", AH.OnExpired)

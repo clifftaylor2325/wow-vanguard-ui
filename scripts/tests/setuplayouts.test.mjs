@@ -352,7 +352,31 @@ it("setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale 
   expect(screenPage(addon)[1], "its hint says why and what it sets").toBe("Sharpest: every line on whole screen pixels. Vanguard's pixel-perfect scale at 53%; action buttons 50 px, raid tiles 110 x 48, text 130%.");
   setupClick(addon, "next");
   expect(screenSizes(addon), "the game's UI scale untouched; 50 px buttons (whole pixels already), 110 x 48 tiles, text 130%, pixel-perfect on").toEqual(["unset", "unset", 50, 50, 110, 48, 1.3, true]);
-  expect([addon.eval("return UIParent:GetScale()"), addon.eval("return ns.Theme.Settings().pixelMultiple")], "UIParent at 768 / 1440, one pixel per unit").toEqual([768 / 1440, 1]);
+  expect([addon.eval("return UIParent:GetScale()"), addon.eval("return ns.Theme.Settings().pixelMultiple")], "UIParent at 768 / 1440, one pixel per unit, the multiple left to the screen (0)").toEqual([768 / 1440, 0]);
+});
+// Setup on a w x h screen with Pixel-perfect picked, through the Screen step.
+const pixelPerfectOn = (w, h) => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + `__wfgStub.setScreen(${w}, ${h})`, { firstRun: true });
+  setupClick(addon, "next");
+  addon.eval('__click("Pixel-perfect (sharpest)")');
+  setupClick(addon, "next");
+  return addon;
+};
+// Changes the screen to w x h as the game does, and lets the scale follow.
+const changeScreen = (addon, w, h) => {
+  addon.eval(`__wfgStub.setScreen(${w}, ${h})`);
+  addon.fire("DISPLAY_SIZE_CHANGED");
+  addon.update(0.3);
+  return addon.eval("return UIParent:GetScale()");
+};
+it("H31-11-1: Pixel-perfect picked on a 4K screen follows a change to 1080p: one pixel per unit there, not a UI twice the size", () => {
+  const addon = pixelPerfectOn(3840, 2160);
+  expect(addon.eval("return UIParent:GetScale()"), "4K: two pixels per unit").toBeCloseTo((768 / 2160) * 2, 6);
+  expect(changeScreen(addon, 1920, 1080), "1080p: one pixel per unit").toBeCloseTo(768 / 1080, 6);
+});
+it("H31-11-1: Pixel-perfect picked at 1080p follows a change to 4K: two pixels per unit there, not a UI half the size", () => {
+  const addon = pixelPerfectOn(1920, 1080);
+  expect(changeScreen(addon, 3840, 2160)).toBeCloseTo((768 / 2160) * 2, 6);
 });
 it("setup screen: with Pixel-perfect, nothing overlaps or leaves the screen, in every layout, solo to 40-man (#225)", () => {
   const addon = wholeHud();
