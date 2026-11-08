@@ -158,6 +158,12 @@ local function rule(text)
   return T.Paint(CHH.RULE .. " " .. text .. " " .. CHH.RULE, "muted")
 end
 
+-- A saved line with the earlier session's chat line numbers zeroed: a stale number names someone else's line now,
+-- and the game would report that line's sender. 0 is what the game writes for a link with no line.
+function CHH.Unnumbered(text)
+  return (text:gsub("(|Hplayer:[^:|]+):%d+:", "%1:0:"):gsub("(|HBNplayer:[^:|]*:[^:|]*):%d+:", "%1:0:"):gsub("|Hreportcensoredmessage:[^|]*|h(.-)|h", "%1"))
+end
+
 -- Puts one window's saved lines back, between a rule that says when they are from and a closing rule.
 local function restoreWindow(index, list)
   local frame = _G["ChatFrame" .. index]
@@ -166,7 +172,7 @@ local function restoreWindow(index, list)
   frame:AddMessage(rule(ns.Format(L["Chat from your last session ({count} lines, until {time})"], { count = #list, time = when(newest) })))
   for _, line in ipairs(list) do
     local _, r, g, b, text = CHH.Unpack(line)
-    frame:AddMessage(text, r, g, b)
+    frame:AddMessage(CHH.Unnumbered(text), r, g, b)
   end
   frame:AddMessage(rule(L["End of the earlier chat"]))
 end
