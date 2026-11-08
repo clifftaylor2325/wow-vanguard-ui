@@ -27,16 +27,10 @@ CC.WONT_RUN = WONT_RUN
 
 -- The game's interactions Vanguard knows, by id: the button each stands for (the frames' attributes know only these:
 -- Target is Left click, Open menu is Right click, and the engine reads that button's attribute for a click bound to
--- it) and, whole, what the reason says when the game moved it to another click.
+-- it) and the name the reason gives it.
 local INTERACTIONS = {
-  [1] = {
-    button = 1,
-    remap = L["the game's own Click Casting window puts Target on this click, so it runs your Left click binding instead"],
-  },
-  [2] = {
-    button = 2,
-    remap = L["the game's own Click Casting window puts the unit menu on this click, so it runs your Right click binding instead"],
-  },
+  [1] = { button = 1, name = L["Target"] },
+  [2] = { button = 2, name = L["the unit menu"] },
 }
 
 -- A mouse button's number from the game's name for it (its profile may use either name).
@@ -167,6 +161,14 @@ local function gameVerdict(profile, prefix, n)
   return unsure and "unsure" or "unbound"
 end
 
+-- Why a remapped click runs another binding: the engine reads the interaction's own button with the modifiers held
+-- now, so the reason names that click (such as "Shift + Left click"), not always the plain one.
+local function remapReason(entry, prefix)
+  local interaction = INTERACTIONS[entry.interaction]
+  return ns.Format(L["the game's own Click Casting window puts {interaction} on this click, so it runs your {click} binding instead"],
+    { interaction = interaction.name, click = CC.KeyName(prefix .. "BUTTON" .. interaction.button) })
+end
+
 -- Why a binding does nothing on this client, or nil when it works (or the client can't say). Where the game has
 -- click bindings of its own, a Spell, Macro or PetAction it binds to the same click runs instead of a mouse binding,
 -- an interaction it moved to the click makes the engine read another button's attribute, and the units' click handler
@@ -179,7 +181,7 @@ function CC.WontRun(b)
   if not prefix then return GAME_GATED[b.action] and WONT_RUN.key or nil end
   local verdict, entry = gameVerdict(profile, prefix, n)
   if verdict == "unbound" and GAME_GATED[b.action] then return WONT_RUN.click end
-  if verdict == "remap" then return INTERACTIONS[entry.interaction].remap end
+  if verdict == "remap" then return remapReason(entry, prefix) end
   return verdict == "override" and WONT_RUN.override or nil
 end
 
