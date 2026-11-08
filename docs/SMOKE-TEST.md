@@ -4491,6 +4491,48 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the game goes back to separate bags on the second character.
 - If it fails, paste: the "Combine all bags" setting on each character before and after.
 
+### 33.365 Group board dungeon colour (Forever)
+
+- Do: Open the group board (Chat → Group board → Open the group board) while a kept post names a dungeon, such as "LFM SFK need heals".
+- Expect: The dungeon cell shows "Shadowfang Keep 22-30" in its difficulty colour (green, yellow, orange or red for your level), and the row's roles, sender and age are filled; no Lua error.
+- If it fails, paste: the Lua error text, or a screenshot of the row with your level.
+
+### 33.366 Spec profiles keep their own Edit Mode layouts (Retail)
+
+- Do: Give two specs their own profile on the Profiles page, and pick a different Edit Mode layout in each spec. Change spec, take the reload, change back, take the reload again, then open the Profiles page.
+- Expect: Each spec comes back on the Edit Mode layout you picked for it, with no "Edit Mode layout ..., from profile ..." line switching it to the other spec's layout.
+- If it fails, paste: the chat lines after each reload, and which layout each spec showed.
+
+### 33.367 Private aura spots clear of weapon enchants (Retail)
+
+- Do: Put a weapon oil or whetstone on both hands (or both imbues on an enhancement shaman), get 12 buffs, and stand in a raid fight where the boss puts a private aura on you.
+- Expect: The game's boss-mechanic icon shows just left of your buffs, beside the 12th buff, never under it; it moves back right when the enchants run out.
+- If it fails, paste: a screenshot of your buffs and the mechanic icon, and which enchants were up.
+
+### 33.368 Spend planned after a refused apply (Forever)
+
+- Do: With a talent plan and unspent points, press Spend planned on the talent plan bar twice in quick succession (or right after applying talents in the talents window), until chat says the game refused to apply talents; wait a few seconds and press Spend planned again.
+- Expect: After the refusal the talents window shows no unapplied picks; the second press buys the planned ranks and applies them, with no "the talents window has picks you haven't applied" line.
+- If it fails, paste: the chat lines from both presses, and whether the talents window showed unapplied picks after the first.
+
+### 33.369 Tracked recipe counts every quality rank and the banks (Retail)
+
+- Do: Track a recipe whose reagent has quality ranks, hold the needed amount as rank 2 or 3 or in the warband bank, and look at the Recipes section of Vanguard's tracker.
+- Expect: the reagent line reads the full count (such as 4/4) in muted gray with a check, matching what the game's tracker showed.
+- If it fails, paste: the recipe name, where the reagents sit (bags, reagent bank, warband bank) and the tracker line.
+
+### 33.370 A tracked recraft shows in the tracker (Retail)
+
+- Do: Start a recraft in the Professions window and track it, then look at Vanguard's tracker; hover the row, left-click it, then right-click it.
+- Expect: a "Recrafting: Name" row with its reagents sits first under the Recipes heading; the tooltip says "Right-click: stop tracking"; left-click does nothing; right-click removes it.
+- If it fails, paste: the row's text and what the tracker showed after the right-click.
+
+### 33.371 Crafting-order icon sits under the mail corner (Retail)
+
+- Do: With a personal crafting order waiting, look at the minimap's top-right corner and hover the crafting-order icon (on a round map it sits on the rim at 30 degrees).
+- Expect: the icon sits under the mail corner, fully visible, and its tooltip lists the orders.
+- If it fails, paste: whether the icon shows, where it sits, and the minimap shape setting.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
