@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { BUFF_NAMES, CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
 
 it("options window", () => {
@@ -226,6 +226,27 @@ it("options: after Copy here or Reset profile on the profile in use, the footer 
   typed.eval('ns.Options.Show("profiles")');
   expect(notice(typed), "and /vg profile copy, the window opened after it").toEqual([true, "Profile replaced: reload before you change more"]);
 });
+// A profile per spec (or talent group), the Profiles page open on Default, then a switch staged from outside it.
+const STAGED_SV = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, ["TEST-ONLY Raid"] = { Chat = { background = true } }, ["TEST-ONLY Old"] = { Chat = { background = false } } } }
+VanguardCharDB = { setupDone = true, profile = "Default", specProfiles = { [2] = "TEST-ONLY Raid" } }`;
+for (const [label, client, stage] of [
+  ["a Retail spec change", RETAIL_CLIENT, (a) => { a.eval("__spec = 2"); a.fire("PLAYER_SPECIALIZATION_CHANGED", "player"); }],
+  ["a Forever talent group swap", "", (a) => { a.eval("__wfgWorld.specGroup = 2"); a.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1); }],
+  ["/vg profile", "", (a) => a.slash("profile TEST-ONLY Raid")],
+]) {
+  it(`options: after ${label} stages a profile, the open Profiles page and Copy here name the staged one`, () => {
+    const addon = createAddon({ client, savedVariables: STAGED_SV });
+    addon.eval(CLICK_LUA + (client ? "GetSpecialization = function() return __spec end __spec = 1" : "__wfgWorld.spec = 1 __wfgWorld.specGroup = 1"));
+    addon.login();
+    addon.eval('ns.Options.Show("profiles")');
+    stage(addon);
+    expect(profileRow(addon, "TEST-ONLY Raid  (after reload)")[0], "the staged profile is marked").toBe("TEST-ONLY Raid  (after reload)");
+    expect(profileRow(addon, "Default  (in use until reload)")[0], "and the one running until then").toBe("Default  (in use until reload)");
+    expect(profileHover(addon, "TEST-ONLY Old", "copy", "OnEnter")[1], "Copy here names the profile it writes into")
+      .toBe("Replaces every setting in profile TEST-ONLY Raid with profile TEST-ONLY Old's. It can't be undone.");
+  });
+}
+
 it("options: profiles in the window", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.NewProfile("TEST-ONLY Healer") ns.NewProfile("TEST-ONLY Tank") ns.Options.Show("profiles")');

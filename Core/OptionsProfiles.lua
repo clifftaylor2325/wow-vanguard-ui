@@ -1,7 +1,7 @@
 -- The Profiles page's own rows: one per profile, with Use, Copy here and
 -- Delete (the last two change settings for good, so they ask "Sure?" on the
 -- first click), and a box to name a new profile. Changing the list
--- rebuilds the page. Switching profiles applies on reload.
+-- rebuilds the page, and so does a switch staged anywhere. Switching profiles applies on reload.
 
 local ADDON, ns = ...
 
@@ -14,10 +14,12 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 local ROW, SMALL = T.ROW.height, 84
 
 -- Shows a danger button's warning (what it loses for good) in the game's tooltip, where the client has one.
+-- A warning given as a function is read now, so it names what the click would change now.
 local function warnTip(b)
   if not GameTooltip or not b.warn then return end
+  local warn = type(b.warn) == "function" and b.warn() or b.warn
   GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
-  GameTooltip:SetText(b.warn, nil, nil, nil, nil, true)
+  GameTooltip:SetText(warn, nil, nil, nil, nil, true)
   GameTooltip:Show()
 end
 
@@ -28,7 +30,7 @@ local function disarmOnHide(b, text)
 end
 
 -- A destructive push button: its label in the danger color, and warn (what it loses) in a tooltip
--- under the mouse. The first click asks "Sure?" in its place, the second runs onClick.
+-- under the mouse (a string, or a function that returns one). The first click asks "Sure?" in its place, the second runs onClick.
 function W.Danger(parent, text, onClick, width, warn)
   local b = ns.DialogButton(parent, text, width or 120, "danger")
   b.warn = warn
@@ -51,7 +53,8 @@ local function addEditButtons(r, name)
   r.delete = W.Danger(r, L["Delete"], function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -T.SPACE.gap, 0)
   ns.WidenToLabel(r.delete)
-  lost = ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.SelectedProfileName(), from = name })
+  -- Read when pointed at: ns.CopyProfile writes into the profile selected at the click.
+  lost = function() return ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = ns.SelectedProfileName(), from = name }) end
   r.copy = W.Danger(r, L["Copy here"], function() O.ProfileCopied(ns.CopyProfile(name)) O.RebuildPage("profiles") end, SMALL, lost)
   r.copy:SetPoint("RIGHT", r.delete, "LEFT", -T.SPACE.gap, 0)
   ns.WidenToLabel(r.copy)
@@ -63,7 +66,7 @@ end
 local function addProfileButtons(r, name)
   if name == ns.SelectedProfileName() then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
-  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() ns.UseProfile(name) O.NeedReload() O.RebuildPage("profiles") end, SMALL))
+  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() ns.UseProfile(name) O.NeedReload() end, SMALL))
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -T.SPACE.gap, 0) else r.use:SetPoint("RIGHT", -T.SPACE.gap, 0) end
 end
 
@@ -104,7 +107,6 @@ local function create(r)
   end
   ns.UseProfile(name)
   O.NeedReload()
-  O.RebuildPage("profiles")
 end
 
 -- Puts the caption back after a refused name.
@@ -130,6 +132,14 @@ local function newProfileRow(parent, _, width)
   watchCaption(r)
   return r
 end
+
+-- A switch staged from anywhere (a spec change, a command, an import, this page) builds the page again,
+-- so its marks and Copy here say which profile the reload brings; the header's picker follows.
+ns.OnProfileStaged(function()
+  O.RebuildPage("profiles")
+  local window = O.Frame()
+  if window and window:IsShown() then O.Refresh() end
+end)
 
 O.AddRowKind("profile", profileRow, ROW)
 O.AddRowKind("newprofile", newProfileRow, ROW + T.SPACE.tight)

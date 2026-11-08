@@ -744,9 +744,9 @@ local function profileChoices()
   return out
 end
 
--- The profile picker: picking one switches on reload.
+-- The profile picker: picking one switches on reload (the Profiles page follows through ns.OnProfileStaged).
 local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.UseProfile(v); O.NeedReload(); O.RebuildPage("profiles") end, PROFILE_WIDTH)
+  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.UseProfile(v); O.NeedReload() end, PROFILE_WIDTH)
 end
 
 -- Enter in the search box: opens the first page that matches and jumps to the row.
