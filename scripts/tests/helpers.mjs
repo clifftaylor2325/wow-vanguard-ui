@@ -700,7 +700,7 @@ export const ENGINE_ENV = `
   Enum.NumericRuleFormatRounding = { Up = 1, Down = 2 }
   Enum.LuaCurveType = { Step = 1 }
   Enum.DurationTextBindingProperty = { RemainingDuration = 0 }
-  Enum.CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 3 }
+  Enum.CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 3, CustomAsset = 4 }
   AuraContainerSortMethod = { ExpirationOnly = 5 }
   C_StringUtil = { CreateNumericRuleFormatter = function() local f = {} function f:SetBreakpoints(p) self.points = p end return f end }
   C_CurveUtil = { CreateColorCurve = function() local c = { points = {} } function c:SetType(t) self.type = t end function c:AddPoint(x, color) self.points[#self.points + 1] = { x, color } end function c:ClearPoints() self.points = {} end return c end }

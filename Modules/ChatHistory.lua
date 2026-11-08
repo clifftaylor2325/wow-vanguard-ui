@@ -158,6 +158,13 @@ local function rule(text)
   return T.Paint(CHH.RULE .. " " .. text .. " " .. CHH.RULE, "muted")
 end
 
+-- A saved line with the earlier session's chat line numbers zeroed: a stale number names someone else's line now,
+-- and the game would report that line's sender. 0 is what the game writes for a link with no line. A Battle.net
+-- name is a protected string (|K...|k), so its field may hold a bar.
+function CHH.Unnumbered(text)
+  return (text:gsub("(|Hplayer:[^:|]+):%d+:", "%1:0:"):gsub("(|HBNplayer:[^:]*:[^:|]*):%d+:", "%1:0:"):gsub("|Hreportcensoredmessage:[^|]*|h(.-)|h", "%1"))
+end
+
 -- Puts one window's saved lines back, between a rule that says when they are from and a closing rule.
 local function restoreWindow(index, list)
   local frame = _G["ChatFrame" .. index]
@@ -166,7 +173,7 @@ local function restoreWindow(index, list)
   frame:AddMessage(rule(ns.Format(L["Chat from your last session ({count} lines, until {time})"], { count = #list, time = when(newest) })))
   for _, line in ipairs(list) do
     local _, r, g, b, text = CHH.Unpack(line)
-    frame:AddMessage(text, r, g, b)
+    frame:AddMessage(CHH.Unnumbered(text), r, g, b)
   end
   frame:AddMessage(rule(L["End of the earlier chat"]))
 end
@@ -228,7 +235,7 @@ end
 function CHH.Command(rest)
   local verb, s = (rest or ""):match("^(%S*)"), ns.Settings("ChatHistory", CHH.defaults)
   if verb == "on" or verb == "off" then s.on = verb == "on" return ns.Chat(s.on and L["Chat history on. Your chat comes back after a reload or the next login."] or L["Chat history off. What is saved stays until it ages out or you clear it."]) end
-  if verb == "whispers" or verb == "nowhispers" then s.whispers = verb == "whispers" return ns.Chat(s.whispers and L["Whispers are kept too."] or L["Whispers are not kept."]) end
+  if verb == "whispers" or verb == "nowhispers" then s.whispers = verb == "whispers" return ns.Chat(s.whispers and L["Whispers are kept too."] or L["New whispers are not kept. Whispers already saved stay until they age out or you clear them."]) end
   if verb == "clear" then return CHH.AskClear() end
   if verb == "" then return status() end
   ns.Chat(L["Usage: /vg history [on | off | whispers | nowhispers | clear]"])

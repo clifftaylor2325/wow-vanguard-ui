@@ -211,12 +211,23 @@ local function widenRankCell(row)
   if row.guildColumnIndex ~= nil and type(row.Note) == "table" and row.Note.SetWidth then row.Note:SetWidth(GW.GUILD_NOTE_BESIDE) end
 end
 
+-- Forgets Vanguard's colour token on a roster text the game has coloured again (an online member), keeping the game's colour.
+local function releaseText(fs)
+  if type(fs) == "table" and fs.GetTextColor and T.ColorToken(fs) then T.ColorRGB(fs, fs:GetTextColor()) end
+end
+
+-- Lets go of the colour tokens on a roster row's texts, so a later refresh does not repaint them grey.
+local function releaseRow(row)
+  for _, key in ipairs(GW.GUILD_ROSTER_TEXTS) do releaseText(row[key]) end
+  releaseText(type(row.NameFrame) == "table" and row.NameFrame.Name or nil)
+end
+
 -- After the game colors a row for its member's presence: an offline member's texts in the theme's secondary
 -- text (the game's grey is hard to read on the dark panel); online rows keep white text and class-colored names.
 local function lightOffline(row)
   local info, presence = row.memberInfo, type(Enum) == "table" and Enum.ClubMemberPresence
   local offline = type(presence) == "table" and presence.Offline or nil
-  if type(info) ~= "table" or offline == nil or ns.IsSecret(info.presence) or info.presence ~= offline then return end
+  if type(info) ~= "table" or offline == nil or ns.IsSecret(info.presence) or info.presence ~= offline then return releaseRow(row) end
   for _, key in ipairs(GW.GUILD_ROSTER_TEXTS) do paintText(row[key], "text2") end
   paintText(type(row.NameFrame) == "table" and row.NameFrame.Name, "text2")
 end

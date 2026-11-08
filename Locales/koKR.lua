@@ -2207,7 +2207,6 @@ L["While moving frames, right-click one to anchor it to the screen or to another
 L["While you're away, the screen dims to a card with your character, zone, time away and XP."] = "자리를 비우면 화면이 어두워지고 캐릭터, 지역, 자리 비운 시간, 경험치가 담긴 카드가 나옵니다."
 L["Whispers"] = "귓속말"
 L["Whispers are kept too."] = "귓속말도 보관합니다."
-L["Whispers are not kept."] = "귓속말은 보관하지 않습니다."
 L["Why it would help"] = "도움이 되는 이유"
 L["Why would it help you?"] = "어떻게 도움이 되나요?"
 L["Width"] = "너비"

@@ -409,8 +409,8 @@ end
 local function costButton(parent, text, onClick, width, tip)
   local b = W.Button(parent, text, onClick, width)
   b:SetHeight(T.CONTROL_H)
-  b:SetScript("OnEnter", tip)
-  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  b:HookScript("OnEnter", ns.Guard("cost tip", tip))
+  b:HookScript("OnLeave", ns.Guard("cost tip", function() GameTooltip:Hide() end))
   return b
 end
 

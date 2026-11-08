@@ -67,6 +67,15 @@ it("chat history: lines come back after a relog, in their own window and colour,
   void main;
 });
 
+it("chat history: restored lines carry no old chat line numbers, so Report Chat is not offered for them", () => {
+  const addon = session();
+  addon.slash("history whispers on");
+  addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:523:CHANNEL:2|h[Bob]|h: hi") ChatFrame1:AddMessage("|HBNplayer:Al:9:77:BN_WHISPER:Al|h[Al]|h: yo")
+    ChatFrame1:AddMessage("|Hplayer:Cy|h[Cy]|h: plain") ChatFrame1:AddMessage("|HBNplayer:|Kq12|k:9:78:BN_WHISPER:|Kq12|k|h[Di]|h: hey") ChatFrame1:AddMessage("|Hreportcensoredmessage:5|h[Report]|h hidden")`);
+  const back = lines(relog(addon));
+  expect(back.slice(1, 6)).toEqual(["|Hplayer:Bob:0:CHANNEL:2|h[Bob]|h: hi", "|HBNplayer:Al:9:0:BN_WHISPER:Al|h[Al]|h: yo", "|Hplayer:Cy|h[Cy]|h: plain", "|HBNplayer:|Kq12|k:9:0:BN_WHISPER:|Kq12|k|h[Di]|h: hey", "[Report] hidden"]);
+});
+
 it("chat history: hidden text, other kinds of value and very long lines are never saved", () => {
   const addon = session();
   addon.eval(`ChatFrame1:AddMessage(__wfgWorld.secret(), 1, 1, 1) ChatFrame1:AddMessage(nil) ChatFrame1:AddMessage(42) ChatFrame1:AddMessage("")
@@ -87,7 +96,8 @@ it("chat history: whispers are not kept unless asked for (by the sender link), a
   addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:77:WHISPER:BOB|h[Bob]|h whispers: hi again")`);
   expect(saved(addon)[0].length, "a whisper is kept now").toBe(4);
   addon.slash("history nowhispers");
-  expect(chatHas(addon, /Whispers are not kept\./), "and can be turned off again").toBe(true);
+  expect(chatHas(addon, /New whispers are not kept\. Whispers already saved stay until they age out or you clear them\./), "and can be turned off again, saying saved ones stay").toBe(true);
+  expect(saved(addon)[0].length, "the whisper saved earlier stays").toBe(4);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 

@@ -26,10 +26,11 @@ local TP = ns.Module("TalentPlanner", { clients = { forever = true }, defaults =
 -- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
 if not ns.ClientAllows(TP) then return end
 
--- The events after which the marks are painted again (the tree, its points or the spec group changed).
+-- The events after which the marks are painted again (the tree, its points or the spec group changed,
+-- or a fight began or ended, which greys or frees Spend planned).
 TP.EVENTS = {
   "TRAIT_CONFIG_UPDATED", "TRAIT_NODE_CHANGED", "TRAIT_TREE_CURRENCY_INFO_UPDATED", "PLAYER_TALENT_UPDATE",
-  "ACTIVE_COMBAT_CONFIG_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED",
+  "ACTIVE_COMBAT_CONFIG_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED",
 }
 -- Where the game keeps its talents window, as paths of globals and keys, first found wins: Forever's
 -- (the spellbook window's TalentsFrame), the retail class talents tab, the older talent window.

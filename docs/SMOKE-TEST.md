@@ -4581,6 +4581,66 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: During the fight the toast sits above the talking head, not drawn over it. After the fight the head is at Vanguard's spot (top left) and the next toast is at the bottom centre.
 - If it fails, paste: a screenshot during the fight and the output of `/vg probe`.
 
+### 33.380 A long macro is refused, and Undo keeps a long Cyrillic macro (Forever)
+
+- Do: Open the Vanguard options, go to Click casting, click an empty grid cell, pick Macro..., paste a macro of 300 characters and press Bind. Then bind a macro of about 200 Cyrillic letters (for example "/say " followed by Ж repeated 200 times) to Right click the same way, pick a layout from Starter layout..., say Replace, then press Undo on the row "These bindings came from the starter layout ..." and confirm.
+- Expect: The 300-character macro is not bound: chat says "Can't bind: a text is longer than 255 characters." and the dialog stays open. The Cyrillic macro binds, and after Undo it is back on Right click with the rest of your old list; chat says nothing about "Can't undo".
+- If it fails, paste: the chat lines after Bind and after Undo, and the output of `/vg binds`.
+
+### 33.381 A flyout with ranks shows each spell once (Forever)
+
+- Do: Put a flyout whose spells have ranks (for example a Mage's Teleport or Portal, or any flyout the spellbook shows with several ranks of one spell) on a Vanguard action bar, then click its button; open the game's own flyout of the same spell from the spellbook to compare.
+- Expect: Vanguard's list shows one button per spell, at the highest rank you know, the same buttons as the game's own flyout.
+- If it fails, paste: the flyout's name, the spells (with ranks) the Vanguard list shows, and those the game's flyout shows.
+
+### 33.382 A slot emptied with the bag open loses its quality border (both)
+
+- Do: Open the combined bag. Pick up an uncommon (green) or better item, drop it on the ground or sell it to a vendor, then also drop a gray item into a slot that held a coloured one.
+- Expect: Each emptied slot goes back to the thin theme border at once. It does not keep the old item's green, blue or purple border. A gray item's slot has the theme border too.
+- If it fails, paste: a screenshot of the bag, and the item's quality colour that stayed.
+
+### 33.383 Item won on a bid under its buyout counts once (Forever)
+
+- Do: At the auction house post a blade with a bid under its buyout, win it with a bid from a second character, then open the mailbox on the seller and read the "Auction successful" mail.
+- Expect: Your history on the blade says sold 1 at the bid price, and the info strip's auction sales show the bid, not the buyout.
+- If it fails, paste: the Your history line and the info strip's auction sales figure.
+
+### 33.384 Debuff type badge shows one letter (Forever)
+
+- Do: On Forever with the aura engine in use (the default), find a mob or player that puts a Magic and a Curse debuff on you or your target (for example a caster mob that casts a Magic slow, and a warlock or a mob with a curse), and look at the debuff icons on your target frame's debuff row, a raid tile and the enemy nameplate.
+- Expect: each typed debuff icon shows one letter in its top-left corner (M for Magic, C for Curse) in its type's colour on a dark, see-through square; no icon shows two or more letters drawn over each other, and a debuff with no type (or a bleed) shows no square at all. On the raid tile of a member with a debuff you can dispel, the health bar shows a faint wash of the type's colour rising from the bottom (the bar and its numbers still readable through it), not a solid block of colour.
+- If it fails, paste: a screenshot of the icon and the raid tile, and the output of `/vg errors`.
+
+### 33.385 Key ring button under a search word (Forever)
+
+- Do: with the key ring shown on the bag bar and a key in it, open the combined bag, click its search box and type `type:key`, then clear it and type `q:epic`.
+- Expect: with `type:key` the key ring button stays lit; with `q:epic` (no epic key) it dims.
+- If it fails, paste: a screenshot of the bag bar, and the output of `/dump C_Container.GetContainerNumSlots(-1)` and `/dump KeyRingButton:GetBagID()`.
+
+### 33.386 Close this tab gives the tab's chat back to General (Forever)
+
+- Do: In the game's chat settings, make a new tab, move Trade onto it and untick Trade on General. Open `/vg`, go to Chat, Chat tabs, pick that tab and press Close this tab.
+- Expect: The tab closes and Trade lines show in General again.
+- If it fails, paste: The chat tab's channel list from the game's chat settings for General, and any red error text.
+
+### 33.387 Quest item buttons in a fight (Forever)
+
+- Do: watch a quest with a usable quest item so its button shows beside it, then kill a mob for a watched quest; after the fight, type `/vg unlock`, drag and rescale the tracker and lock again, then `/reload`.
+- Expect: no "Interface action failed because of an AddOn" line in chat or in `/vg errors` during the fight; after it the button sits beside its quest, follows the tracker when it is dragged or scaled, and is there after login and `/reload` without a quest update.
+- If it fails, paste: the "Interface action failed" line or the `/vg errors` text, and a screenshot of where the button sits.
+
+### 33.388 Faster auto-loot under master loot (Forever)
+
+- Do: lead a party with the loot method set to master looter, turn on faster auto-loot (Game windows, Auto-accept) and the game's Auto Loot, then loot a corpse or boss that drops an item at or above the loot threshold.
+- Expect: no assign-loot menu pops up by itself; the items below the threshold go to your bags, the threshold item stays in the loot window, and clicking it opens the assign menu naming that item, which goes to the player you pick.
+- If it fails, paste: what the assign menu showed and who got which item, and any Lua error text.
+
+### 33.389 Restored chat lines can't be reported (Forever)
+
+- Do: In `/vg` → Chat switch Chat history on, read some Trade chat, log out and back in, play a minute, then right-click a sender's name in the restored block between the grey rules.
+- Expect: The menu has no Report Chat entry; Whisper, Invite and Ignore still work from it.
+- If it fails, paste: a screenshot of the menu and the restored line.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

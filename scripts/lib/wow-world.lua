@@ -203,7 +203,7 @@ function ClearCursor() world.cursor = nil end
 -- Enums the addon reads, with the client's values.
 Enum = {
   PowerType = { Mana = 0, Rage = 1, Focus = 2, Energy = 3, ComboPoints = 4, Runes = 5, RunicPower = 6, SoulShards = 7, LunarPower = 8, HolyPower = 9, Maelstrom = 11, Chi = 12, Insanity = 13, ArcaneCharges = 16, Fury = 17, Pain = 18 },
-  CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 0, Flat = 1 },
+  CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
   DurationTextBindingProperty = { RemainingDuration = 0, TotalDuration = 1 },
   LuaCurveType = { Linear = 0, Step = 1 },
   NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
@@ -215,7 +215,7 @@ Enum = {
   -- A subset of Enum.TooltipDataLineType with the client's values (TooltipInfoSharedDocumentation.lua).
   TooltipDataLineType = { None = 0, Blank = 1, UnitName = 2, UnitThreat = 7, QuestObjective = 8, QuestTitle = 17, QuestPlayer = 18 },
   TooltipDataType = { Item = 0, Spell = 1, Unit = 2 },
-  WeaponSlot = { MainHand = 0, OffHand = 1 },
+  WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 },
 }
 
 STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
@@ -974,10 +974,15 @@ C_UnitAuras = {
   GetAuraDataByAuraInstanceID = function(unit, id)
     for _, aura in ipairs(uf(unit, "auras") or {}) do if aura.auraInstanceID == id then return aura end end
   end,
-  -- The stack count the client would display (hidden ones become secrets).
-  GetAuraApplicationDisplayCount = function(unit, id)
+  -- The stack count the client would display, as text: "" under minCount (2 by default) or for no aura, "*" over
+  -- maxCount, else the count; a hidden count stays hidden.
+  GetAuraApplicationDisplayCount = function(unit, id, minCount, maxCount)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    return aura and aura.applications or 0
+    local n = aura and aura.applications or 0
+    if issecretvalue(n) then return n end
+    if n < (minCount or 2) then return "" end
+    if maxCount and n > maxCount then return "*" end
+    return tostring(n)
   end,
   -- The dispel type color through a curve (nil when the client has none).
   GetAuraDispelTypeColor = function(unit, id, curve)
@@ -1058,13 +1063,13 @@ function world.removeAura(unit, name)
   auraChanged(unit, { removedAuraInstanceIDs = removed })
 end
 
--- Weapon enchants: { main = { name, expiration, charges, id }, off = ... }.
+-- Weapon enchants, keyed by Enum.WeaponSlot value: a list holding one WeaponEnchantInfo table, { hasEnchant,
+-- enchantType, timeLeft (ms), charges, enchantID, enchantIconID } (ItemDocumentation.lua).
 world.enchants = {}
 C_Item = C_Item or {}
--- hasMainHandEnchant, expiration, charges, id, then the same for the off hand.
-function C_Item.GetWeaponEnchantInfo()
-  local m, o = world.enchants.main, world.enchants.off
-  return m ~= nil, m and m.expiration or 0, m and m.charges or 0, m and m.id, o ~= nil, o and o.expiration or 0, o and o.charges or 0, o and o.id
+-- The enchants of one weapon slot; an empty table when it has none.
+function C_Item.GetWeaponEnchantInfo(slot)
+  return world.enchants[slot] or {}
 end
 
 -- Spells, action slots and cooldowns ---------------------------------------------------------

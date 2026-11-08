@@ -2207,7 +2207,6 @@ L["While moving frames, right-click one to anchor it to the screen or to another
 L["While you're away, the screen dims to a card with your character, zone, time away and XP."] = "Пока вас нет, экран затемняется до карточки с персонажем, зоной, временем отсутствия и опытом."
 L["Whispers"] = "Шепот"
 L["Whispers are kept too."] = "Шепот тоже сохраняется."
-L["Whispers are not kept."] = "Шепот не сохраняется."
 L["Why it would help"] = "Чем это поможет"
 L["Why would it help you?"] = "Чем это вам поможет?"
 L["Width"] = "Ширина"

@@ -987,13 +987,31 @@ function methods:SetDurationText(fs, opts)
   self.__durationText = { fontString = fs, opts = opts }
 end
 
+-- Under the CustomAsset style, sets a debuff-type texture's art from its asset map, as the client does: none
+-- for a type the map leaves out, and a white vertex color before the color map applies.
+local function dispelAsset(d, kind)
+  local styles = Enum.CustomAuraButtonDispelTypeTextureStyle
+  if not (styles and styles.CustomAsset and d.opts.style == styles.CustomAsset) then return end
+  local entry = (d.opts.customDispelAssetMap or {})[kind]
+  d.texture:SetTexture(entry and entry.asset or nil)
+  d.texture:SetVertexColor(1, 1, 1, 1)
+end
+
+-- A color map entry's r, g, b, a as the client applies it. The map is typed colorRGB, and whether the game keeps
+-- an alpha put in it is unknown: with stub.dispelColorRGB on, the alpha is dropped (reads 1), so a test can try both.
+local function dispelRGBA(color)
+  local r, g, b, a = color:GetRGBA()
+  return r, g, b, stub.dispelColorRGB and 1 or a
+end
+
 -- Colors and shows a button's debuff-type textures for an aura, as the client does.
 local function paintDispel(b, aura, harmful)
   for _, d in ipairs(b.__dispel) do
     local kind = type(aura.dispelName) == "string" and aura.dispelName or "None"
     local color = (d.opts.customDispelColorMap or {})[kind]
     d.texture:SetShown(harmful and (kind ~= "None" or d.opts.showWithoutDispelType == true))
-    if color then d.texture:SetVertexColor(color:GetRGBA()) end
+    dispelAsset(d, kind)
+    if color then d.texture:SetVertexColor(dispelRGBA(color)) end
   end
 end
 

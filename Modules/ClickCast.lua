@@ -219,10 +219,17 @@ function CC.MouseParts(key)
   return prefix, tonumber(n)
 end
 
+-- Whether a text (a macro's, or a spell's name) is longer than the game's macro box holds: CC.MAX_TEXT characters,
+-- counted as letters, not bytes, so the rule is the same for the Macro... dialog, Import and Undo.
+local function tooLong(value)
+  return type(value) == "string" and ns.TextLength(value) > CC.MAX_TEXT
+end
+
 -- Why a binding can't be added, or nil if it can.
 local function problem(key, action, value)
   if type(key) ~= "string" or key == "" then return L["press a key or click first"] end
   if not ACTIONS[action] then return L["unknown action"] end
+  if tooLong(value) then return ns.Format(L["a text is longer than {count} characters"], { count = CC.MAX_TEXT }) end
   if (action == "spell" or action == "macro") and (type(value) ~= "string" or value:match("^%s*$")) then
     return action == "spell" and L["pick a spell"] or L["type the macro text"]
   end
@@ -327,7 +334,7 @@ local function importable(list)
   local out = {}
   for i, b in ipairs(list) do
     if i > CC.MAX_IMPORT then return nil, ns.Format(L["more than {count} bindings"], { count = CC.MAX_IMPORT }) end
-    if type(b) == "table" and type(b.value) == "string" and #b.value > CC.MAX_TEXT then
+    if type(b) == "table" and tooLong(b.value) then
       return nil, ns.Format(L["a text is longer than {count} characters"], { count = CC.MAX_TEXT })
     end
     if wellFormed(b) then out[#out + 1] = b end

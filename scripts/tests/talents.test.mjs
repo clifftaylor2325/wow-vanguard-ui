@@ -141,6 +141,18 @@ it("talent planner: buying order, rows' gates, prerequisites and unreachable ran
   expect(other.order, "a plan under or at what is bought counts for nothing; the third rank is one point").toEqual([201]);
 });
 
+it("talent planner: Spend planned greys when a fight starts and frees when it ends, window open (H35-1-1)", () => {
+  const addon = open();
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } } ${TP}.Refresh() InCombatLockdown = function() return true end`);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.update(0.5);
+  expect(addon.eval("return Vanguard_TalentPlan.spend:IsEnabled()"), "a fight begins: greyed").toBe(false);
+  addon.eval("InCombatLockdown = function() return false end");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  addon.update(0.5);
+  expect(addon.eval("return Vanguard_TalentPlan.spend:IsEnabled()"), "the fight ends: live again").toBe(true);
+});
+
 it("talent planner: Spend planned buys the next picks in order and applies them; chat says what", () => {
   const addon = open();
   addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 5, [102] = 2 }, hash = "1-2-3" } } ${TP}.Refresh()`);

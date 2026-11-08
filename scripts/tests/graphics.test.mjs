@@ -10,7 +10,7 @@ import { loggedIn } from "./helpers.mjs";
 const GFX_ENV = `
   __fps = 45
   GetFramerate = function() return __fps end
-  C_VideoOptions = { GetGxAdapterInfo = function() return { { name = "TEST-ONLY GPU", isLowPower = false, isExternal = false } } end }
+  C_VideoOptions = { IsSpellVisualDensitySystemSupported = function() return true end, GetGxAdapterInfo = function() return { { name = "TEST-ONLY GPU", isLowPower = false, isExternal = false } } end }
   __wfgWorld.cvars.graphicsQuality, __wfgWorld.cvars.renderScale = "6", "1"
   C_CVar.GetCVarDefault = function(name) return name == "graphicsQuality" and "8" or nil end
 `;
@@ -122,7 +122,7 @@ it("/vg graphics apply: sets the suggestion as the game's Options would, and und
   const addon = loggedIn(GFX_ENV + TABLE_ENV);
   check(addon);
   expect(said(addon, "graphics apply").pop(), "what it set").toBe("Set Graphics Quality 9, your screen's sizes. /vg graphics undo puts your settings back.");
-  expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "graphicsSpellDensity", "uiScale", "renderScale"]), "every detail from the game's table, then the step; the 1080p UI scale; a detail the client lacks left alone").toEqual(["8", "8", "8", "nil", "0.8", "1"]);
+  expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "graphicsSpellDensity", "graphicsOutlineMode", "uiScale", "renderScale"]), "every detail from the game's table, then the step (outline mode needs no check, as on Retail); the 1080p UI scale; a detail the client lacks left alone").toEqual(["8", "8", "8", "nil", "8", "0.8", "1"]);
   addon.eval("__fps = 90");
   check(addon);
   said(addon, "graphics apply");
@@ -130,6 +130,20 @@ it("/vg graphics apply: sets the suggestion as the game's Options would, and und
   expect(said(addon, "graphics undo"), "undo").toEqual(["Your graphics settings and UI scale are back as they were. If apply changed Vanguard's sizes, the backup profile it named in chat has the old ones."]);
   expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "uiScale", "useUiScale"]), "back to before the first apply; a setting that had no value stays").toEqual(["6", "4", "9", "0.9", "1"]);
   expect(said(addon, "graphics undo"), "and once only").toEqual(["Nothing to undo: /vg graphics apply hasn't changed anything."]);
+});
+it("/vg graphics apply: PBR water and lighting mode follow the step where the card supports them, and undo puts them back", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "C_VideoOptions.IsPBRWaterSupported = function() return true end C_VideoOptions.IsSecondaryLightingSupported = function() return true end __wfgWorld.cvars.graphicsPBRLiquidDetail, __wfgWorld.cvars.graphicsLightMode = '3', '2'");
+  check(addon);
+  said(addon, "graphics apply");
+  expect(cvars(addon, ["graphicsPBRLiquidDetail", "graphicsLightMode"]), "both set from the game's table").toEqual(["8", "8"]);
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsPBRLiquidDetail", "graphicsLightMode"]), "and back").toEqual(["3", "2"]);
+});
+it("/vg graphics apply: a detail the card does not support, or a check the client lacks, is left alone", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "C_VideoOptions.IsPBRWaterSupported = function() return false end C_VideoOptions.IsSecondaryLightingSupported = function() error('TEST-ONLY') end __wfgWorld.cvars.graphicsPBRLiquidDetail, __wfgWorld.cvars.graphicsLightMode = '3', '2'");
+  check(addon);
+  said(addon, "graphics apply");
+  expect(cvars(addon, ["graphicsPBRLiquidDetail", "graphicsLightMode", "graphicsShadowQuality"]), "unsupported or unknown: untouched; the rest set").toEqual(["3", "2", "8"]);
 });
 it("/vg graphics undo: a pixel-perfect player's scale comes back on, at the multiple for the screen", () => {
   const addon = loggedIn(GFX_ENV + TABLE_ENV);

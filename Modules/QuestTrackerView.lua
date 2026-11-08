@@ -599,14 +599,34 @@ local function setAction(b, item)
   b:SetAttribute(kind, item.spell or item.link)
 end
 
+-- Where a block's top left corner sits in UIParent's units (the tracker's mover scales the tracker), or nil
+-- while the block has no place on the screen yet (or the client hides its geometry).
+local function screenSpot(block)
+  local left, top = ns.PlainNumber(block:GetLeft()), ns.PlainNumber(block:GetTop())
+  local scale, screen = ns.PlainNumber(block:GetEffectiveScale()), ns.PlainNumber(UIParent:GetEffectiveScale())
+  if not (left and top and scale and screen) then return nil end
+  return left * scale / screen, top * scale / screen
+end
+
+-- Puts a secure button beside its block, anchored to UIParent at the block's spot, never to the block: a frame
+-- a protected button is anchored to can't move in combat, and the blocks redraw in a fight. A block not laid
+-- out yet leaves the button hidden, and the items are placed once more next frame (once, out of combat).
+local function anchorBeside(b, block)
+  local left, top = screenSpot(block)
+  if left then
+    b:ClearAllPoints()
+    b:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", left - T.SPACE.tight, top)
+    return b:Show()
+  end
+  if not QT.retryingItems then ns.Soon("questitems-rect", function() ns.OutOfCombat(QT.RetryItems, "questitems") end) end
+end
+
 -- Gives a button a quest's item (or a stage's spell) and puts it beside the row's block.
 local function placeItem(b, shown)
   b.questID, b.spellID = shown.quest.id, shown.quest.item.spell
   setAction(b, shown.quest.item)
   b.icon:SetTexture(shown.quest.item.texture)
-  b:ClearAllPoints()
-  b:SetPoint("TOPRIGHT", shown.block, "TOPLEFT", -T.SPACE.tight, 0)
-  b:Show()
+  anchorBeside(b, shown.block)
   QT.UpdateCooldown(b)
   QT.UpdateRange(b)
 end
@@ -637,4 +657,12 @@ function QT.PlaceItems()
   local list, ids = itemQuests()
   release(ids)
   for _, shown in ipairs(list) do placeItem(buttonFor(shown.quest.id), shown) end
+end
+
+-- Places the items once more, for a block that had no spot on the screen yet; one still without a spot waits
+-- for the next redraw, so this never repeats every frame.
+function QT.RetryItems()
+  QT.retryingItems = true
+  QT.PlaceItems()
+  QT.retryingItems = false
 end

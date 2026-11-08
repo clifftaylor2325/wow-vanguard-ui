@@ -1392,6 +1392,18 @@ it("faster auto-loot: every unlocked slot at once while the game auto-loots, off
   bare.fire("LOOT_READY", true);
   expect(bare.eval("return GetNumLootItems == nil"), "a client without the loot functions is left alone").toBe(true);
 });
+it("faster auto-loot: under master loot the game's loot window keeps every slot", () => {
+  const on = loggedIn(LOOT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { loot = true } } }" });
+  on.eval("Enum.LootMethod = { Freeforall = 0, Roundrobin = 1, Masterlooter = 2, Group = 3 } __method = 2 C_PartyInfo.GetLootMethod = function() return __method end");
+  on.fire("LOOT_READY", true);
+  expect(on.eval("return #__looted"), "master loot: nothing taken, so the master looter clicks each item to assign it").toBe(0);
+  on.eval("__method = 3");
+  on.fire("LOOT_READY", true);
+  expect(on.eval("return __looted"), "group loot: the open slots are still taken").toEqual([3, 1]);
+  on.eval("__looted = {} C_PartyInfo.GetLootMethod = nil");
+  on.fire("LOOT_READY", true);
+  expect(on.eval("return __looted"), "a client without GetLootMethod still takes them").toEqual([3, 1]);
+});
 // TEST-ONLY invites and death: every answer is recorded; the world is a battleground, nobody is a friend.
 const INVITE_ENV = `
   __answers = {}

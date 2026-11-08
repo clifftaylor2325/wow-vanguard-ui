@@ -2207,7 +2207,6 @@ L["While moving frames, right-click one to anchor it to the screen or to another
 L["While you're away, the screen dims to a card with your character, zone, time away and XP."] = "Während du abwesend bist, dunkelt der Bildschirm zu einer Karte mit deinem Charakter, Zone, Abwesenheitszeit und EP ab."
 L["Whispers"] = "Flüstern"
 L["Whispers are kept too."] = "Flüsternachrichten werden auch behalten."
-L["Whispers are not kept."] = "Flüsternachrichten werden nicht behalten."
 L["Why it would help"] = "Warum es helfen würde"
 L["Why would it help you?"] = "Warum würde es dir helfen?"
 L["Width"] = "Breite"

@@ -156,8 +156,8 @@ end
 
 -- Dispel type -> its badge glyph under Media/Icons (#235): a letter, so a type reads without its hue.
 A.DISPEL_GLYPHS = { Magic = "DispelMagic", Curse = "DispelCurse", Disease = "DispelDisease", Poison = "DispelPoison" }
--- The badge's side: a share of the icon's, and the least it may be (UI units).
-A.BADGE, A.BADGE_MIN = 0.45, 8
+-- The badge's side: a share of the icon's, and the least it may be (UI units); its backing's alpha.
+A.BADGE, A.BADGE_MIN, A.BADGE_SHADE = 0.45, 8, 0.8
 
 -- One badge letter on the badge's backing, in its type's color, hidden until shown.
 local function letter(f, back, kind)
@@ -171,7 +171,9 @@ end
 -- A debuff icon's type badge (#235) in its top-left corner: a dark backing and one letter per
 -- type, all hidden until a typed debuff shows. { back, letters = { type -> texture } }.
 local function badge(f, size)
-  local back = T.Tint(T.Snap(f:CreateTexture(nil, "OVERLAY", nil, 6)), "shade", 0.8)
+  -- The backing's alpha is the texture's own, not its color's: the client's engine recolors it without alpha.
+  local back = T.Tint(T.Snap(f:CreateTexture(nil, "OVERLAY", nil, 6)), "shade", 1)
+  back:SetAlpha(A.BADGE_SHADE)
   back:SetTexture(T.WHITE)
   back:SetSize(math.max(A.BADGE_MIN, size * A.BADGE), math.max(A.BADGE_MIN, size * A.BADGE))
   back:SetPoint("TOPLEFT")
