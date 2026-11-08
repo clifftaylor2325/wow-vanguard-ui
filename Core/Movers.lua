@@ -326,6 +326,12 @@ function ns.Repin(frame)
   runPin(frame)
 end
 
+-- Whether pins are paused (Edit Mode open), so the game's frames sit in its own spots.
+---@return boolean
+function ns.PinsPaused()
+  return pinsPaused
+end
+
 -- Pauses every pin (so the game's Edit Mode can move its frames freely), or
 -- ends the pause and puts every pinned frame back in its Vanguard spot.
 function ns.PausePins(paused)

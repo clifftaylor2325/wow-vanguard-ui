@@ -576,3 +576,28 @@ it("low-health vignette: a client without curves or the health percent shows not
   failing.fire("UNIT_HEALTH", "player");
   expect(vignette(failing).shown, "a call that errors counts as nothing to show").toBe(false);
 });
+
+// TEST-ONLY game toast stack (on top of ALERTS_ENV): AlertFrame with a base anchor, the talking head registered as an
+// externally anchored subsystem (shown, in the game's default position) and a queue with one toast.
+const TOAST_ENV = `
+  AlertFrame = { baseAnchorFrame = CreateFrame("Frame", "TestToastBase", UIParent), UpdateAnchors = function() end }
+  __toast = CreateFrame("Frame", "TestToast", UIParent)
+  TalkingHeadFrame.IsInDefaultPosition = function() return true end
+  AlertFrame.alertFrameSubSystems = {
+    { anchorFrame = TalkingHeadFrame, AdjustAnchors = function() return TalkingHeadFrame end },
+    { AdjustAnchors = function(_, rel) __toast:SetPoint("BOTTOM", rel, "TOP", 0, 10) return __toast end },
+  }
+`;
+it("H30-18-1 game alerts: toasts stack from the base anchor, not the moved talking head, and not while pins are paused", () => {
+  const addon = loggedIn(ALERTS_ENV + TOAST_ENV);
+  addon.eval("AlertFrame:UpdateAnchors()");
+  expect(addon.eval("return __toast.__points.BOTTOM.rel == TestToastBase"), "after the game's layout, the toast sits on the base").toBe(true);
+  addon.eval("ns.PausePins(true) __toast:ClearAllPoints() __toast:SetPoint('BOTTOM', TalkingHeadFrame, 'TOP', 0, 10) AlertFrame:UpdateAnchors()");
+  expect(addon.eval("return __toast.__points.BOTTOM.rel == TalkingHeadFrame"), "Edit Mode open: the game's own layout is left alone").toBe(true);
+  addon.eval("ns.PausePins(false) AlertFrame.alertFrameSubSystems = nil AlertFrame:UpdateAnchors()");
+  expect(addon.eval("return ns.PinsPaused()"), "no subsystems: nothing to lay out, no error").toBe(false);
+  addon.eval("local r = { IsInDefaultPosition = function() return false end } AlertFrame.alertFrameSubSystems = { { AdjustAnchors = function() return r end }, { AdjustAnchors = function(_, rel) __seen = rel end } } AlertFrame:UpdateAnchors()");
+  expect(addon.eval("return __seen == AlertFrame.baseAnchorFrame"), "a result not in its default position is not built on").toBe(true);
+  const bare = loggedIn(ALERTS_ENV + "AlertFrame = {}");
+  expect(bare.eval("return AlertFrame.UpdateAnchors"), "a client without the call is left alone").toBe(null);
+});
