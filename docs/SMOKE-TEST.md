@@ -4623,6 +4623,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The tab closes and Trade lines show in General again.
 - If it fails, paste: The chat tab's channel list from the game's chat settings for General, and any red error text.
 
+### 33.387 Quest item buttons in a fight (Forever)
+
+- Do: watch a quest with a usable quest item so its button shows beside it, then kill a mob for a watched quest; after the fight, type `/vg unlock`, drag and rescale the tracker and lock again, then `/reload`.
+- Expect: no "Interface action failed because of an AddOn" line in chat or in `/vg errors` during the fight; after it the button sits beside its quest, follows the tracker when it is dragged or scaled, and is there after login and `/reload` without a quest update.
+- If it fails, paste: the "Interface action failed" line or the `/vg errors` text, and a screenshot of where the button sits.
+
+### 33.388 Faster auto-loot under master loot (Forever)
+
+- Do: lead a party with the loot method set to master looter, turn on faster auto-loot (Game windows, Auto-accept) and the game's Auto Loot, then loot a corpse or boss that drops an item at or above the loot threshold.
+- Expect: no assign-loot menu pops up by itself; the items below the threshold go to your bags, the threshold item stays in the loot window, and clicking it opens the assign menu naming that item, which goes to the player you pick.
+- If it fails, paste: what the assign menu showed and who got which item, and any Lua error text.
+
+### 33.389 Restored chat lines can't be reported (Forever)
+
+- Do: In `/vg` → Chat switch Chat history on, read some Trade chat, log out and back in, play a minute, then right-click a sender's name in the restored block between the grey rules.
+- Expect: The menu has no Report Chat entry; Whisper, Invite and Ignore still work from it.
+- If it fails, paste: a screenshot of the menu and the restored line.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
