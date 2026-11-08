@@ -96,6 +96,29 @@ it("a flyout's known spells are stored for the snippet, a Call Pet slot without 
   expect(addon.eval("return Vanguard_Flyout:GetAttribute('edge')"), "key down is read again when its setting changes").toBe("down");
 });
 
+// TEST-ONLY flyout 7 with ranks, lowest first as the game gives them: two forms, then three ranks of one spell with an
+// unknown one between them.
+const RANKED = `
+  __wfgWorld.flyouts = { [7] = { name = "TEST-ONLY Ranked", slots = {
+    { spell = 5487, name = "TEST-ONLY Bear Form" }, { spell = 9634, name = "TEST-ONLY Dire Bear Form" }, { spell = 201, name = "TEST-ONLY Frost" },
+    { spell = 202, name = "TEST-ONLY Frost", known = false }, { spell = 203, name = "TEST-ONLY Frost" } } } }
+`;
+
+// Flyout 7's stored count and its spells.
+const ranked = (addon) => addon.eval(`local f = Vanguard_Flyout local n = f:GetAttribute("flyout-7-count") local out = { n } for i = 1, n do out[#out + 1] = f:GetAttribute("flyout-7-" .. i) end return out`);
+
+it("on WoW Forever a flyout lists one button per spell, at the highest rank known, as the game's own flyout does", () => {
+  const addon = loggedIn(RANKED);
+  place(addon, 1, 7);
+  expect(ranked(addon), "Frost's ranks are one button, its highest known rank").toEqual([3, 5487, 9634, 203]);
+});
+
+it("on Retail a flyout's slots are listed as they come, same names or not", () => {
+  const addon = loggedIn(RETAIL + RANKED);
+  place(addon, 1, 7);
+  expect(ranked(addon)).toEqual([4, 5487, 9634, 201, 203]);
+});
+
 it("a burst of slot changes in one frame stores the flyouts once, on the next frame", () => {
   const addon = loggedIn(FLYOUTS);
   place(addon, 1, 1);
