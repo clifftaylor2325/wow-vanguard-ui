@@ -367,6 +367,7 @@ end
 function ns.EditModeOpened(edit)
   if not unlocked and ns.MoverOptions().editMode then editUnlocked = ns.UnlockForEditMode() end
   local note = editNote(edit)
+  note.editOpen = true
   note:SetFrameStrata(edit:GetFrameStrata())
   note:SetFrameLevel(edit:GetFrameLevel() + 1)
   note:SetHeight(note.text:GetStringHeight() + 2 * T.SPACE.tight)
@@ -379,7 +380,9 @@ function ns.EditModeClosed(edit)
     editUnlocked = false
     ns.Lock()
   end
-  editNote(edit):Hide()
+  local note = editNote(edit)
+  note.editOpen = false
+  note:Hide()
 end
 
 -- The game's frames Vanguard hides or replaces (set): Edit Mode gets no handle for them.
@@ -650,6 +653,11 @@ local function showAllHandles(strata)
   for _, key in ipairs(order) do showHandle(movers[key], strata) end
 end
 
+-- Brings Edit Mode's note back when the handles come up while Edit Mode is still open (a lock inside it put it away).
+local function showEditNote()
+  if editModeNote and editModeNote.editOpen then editModeNote:Show() end
+end
+
 -- Shows every handle and the grid, and remembers every spot for Exit without saving (Core/UnlockBar.lua): an unlock
 -- begun inside the game's Edit Mode ends Edit Mode's hold first, so the spots remembered are the ones as of now.
 -- Refused in combat.
@@ -660,6 +668,7 @@ function ns.Unlock()
   if fromEditMode then ns.UnlockEnded() end
   ns.UnlockStarted()
   showAllHandles(nil)
+  showEditNote()
   local options = ns.MoverOptions()
   if options.grid then ns.ShowGrid(options.gridSize) end
   return true
