@@ -899,9 +899,10 @@ local function dropGroups(text, mark, decimal)
 end
 
 -- The text with the thousands mark dropped inside each figure that a coin letter follows ("1,500g 20s" in
--- English, "1.500g" in German); the figures without a letter after them are left alone.
+-- English, "1.500g" in German, "1.500 o" in Spanish: any letters, the client's own included); the figures
+-- without a letter after them are left alone.
 local function dropUnitGroups(text, mark, decimal)
-  return (text:gsub("(%d[^gsc%a]*)([gsc])", function(figure, unit)
+  return (text:gsub("(%d[%d%s%p]*)([^%d%s%p]+)", function(figure, unit)
     local number, gap = figure:match("^(.-)(%s*)$")
     return dropGroups(number, mark, decimal) .. gap .. unit
   end))

@@ -582,3 +582,9 @@ it("auction money wears the client's coin letters, and a typed price reads them 
   expect(spanish.eval(`local AH = ns.GetModule("AuctionHelper")
     return AH.ParseMoney(ns.AuctionPrices.Money(123456))`), "esES: a coin pair with spaces still round-trips").toBe(123456);
 });
+
+it("a typed price keeps the thousands mark before the client's own coin letters: 1.500o in Spanish", () => {
+  const addon = atAuctionHouse('DECIMAL_SEPERATOR, LARGE_NUMBER_SEPERATOR = ",", "."', { client: '__wfgWorld.locale = "esES"' });
+  expect(addon.eval(`local AH = ns.GetModule("AuctionHelper") return { AH.ParseMoney("1.500o"), AH.ParseMoney("1.500 o 20 p"), AH.ParseMoney("1.500g") }`),
+    "the Spanish letter reads like the English one").toEqual([15000000, 15002000, 15000000]);
+});
