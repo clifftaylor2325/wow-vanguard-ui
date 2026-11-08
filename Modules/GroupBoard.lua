@@ -49,21 +49,21 @@ GB.AUTO_ROLES = { tank = "tank", healer = "healer", damage = "dps" }
 -- Vanilla's dungeons and raids, the first that a line names wins (so Dire Maul's
 -- short names come before the Deadmines' "dm"): name, level range, short names.
 GB.DUNGEONS = {
-  { "Ragefire Chasm", 13, 18, { "rfc", "ragefire" } }, { "Wailing Caverns", 17, 24, { "wc", "wailing caverns" } },
-  { "Dire Maul", 55, 60, { "dire maul", "dme", "dmw", "dmn", "dm e", "dm w", "dm n", "dm east", "dm west", "dm north", "tribute" } },
-  { "The Deadmines", 17, 26, { "deadmines", "vc", "dm" } }, { "Shadowfang Keep", 22, 30, { "sfk", "shadowfang" } },
-  { "Blackfathom Deeps", 24, 32, { "bfd", "blackfathom" } }, { "The Stockade", 24, 32, { "stocks", "stockade", "stockades" } },
-  { "Gnomeregan", 29, 38, { "gnomer", "gnomeregan" } }, { "Razorfen Kraul", 29, 38, { "rfk", "kraul" } },
-  { "Scarlet Monastery", 34, 45, { "sm", "scarlet" } },
-  { "Razorfen Downs", 37, 46, { "rfd", "downs" } }, { "Uldaman", 41, 51, { "ulda", "uld", "uldaman" } },
-  { "Zul'Farrak", 44, 54, { "zf", "zul farrak", "zulfarrak" } }, { "Maraudon", 46, 55, { "mara", "maraudon" } },
-  { "Sunken Temple", 50, 56, { "st", "sunken temple", "atal hakkar" } }, { "Blackrock Depths", 52, 60, { "brd", "blackrock depths" } },
-  { "Upper Blackrock Spire", 58, 60, { "ubrs", "upper spire" } }, { "Lower Blackrock Spire", 55, 60, { "lbrs", "lower spire" } },
-  { "Stratholme", 58, 60, { "strat", "strath", "stratholme" } }, { "Scholomance", 58, 60, { "scholo", "scholomance" } },
-  { "Molten Core", 60, 60, { "mc", "molten core" } }, { "Onyxia's Lair", 60, 60, { "ony", "onyxia" } },
-  { "Zul'Gurub", 60, 60, { "zg", "zul gurub" } }, { "Blackwing Lair", 60, 60, { "bwl", "blackwing" } },
-  { "Ruins of Ahn'Qiraj", 60, 60, { "aq20", "aq 20" } }, { "Temple of Ahn'Qiraj", 60, 60, { "aq40", "aq 40" } },
-  { "Naxxramas", 60, 60, { "naxx", "naxxramas" } },
+  { L["Ragefire Chasm"], 13, 18, { "rfc", "ragefire" } }, { L["Wailing Caverns"], 17, 24, { "wc", "wailing caverns" } },
+  { L["Dire Maul"], 55, 60, { "dire maul", "dme", "dmw", "dmn", "dm e", "dm w", "dm n", "dm east", "dm west", "dm north", "tribute" } },
+  { L["The Deadmines"], 17, 26, { "deadmines", "vc", "dm" } }, { L["Shadowfang Keep"], 22, 30, { "sfk", "shadowfang" } },
+  { L["Blackfathom Deeps"], 24, 32, { "bfd", "blackfathom" } }, { L["The Stockade"], 24, 32, { "stocks", "stockade", "stockades" } },
+  { L["Gnomeregan"], 29, 38, { "gnomer", "gnomeregan" } }, { L["Razorfen Kraul"], 29, 38, { "rfk", "kraul" } },
+  { L["Scarlet Monastery"], 34, 45, { "sm", "scarlet" } },
+  { L["Razorfen Downs"], 37, 46, { "rfd", "downs" } }, { L["Uldaman"], 41, 51, { "ulda", "uld", "uldaman" } },
+  { L["Zul'Farrak"], 44, 54, { "zf", "zul farrak", "zulfarrak" } }, { L["Maraudon"], 46, 55, { "mara", "maraudon" } },
+  { L["Sunken Temple"], 50, 56, { "st", "sunken temple", "atal hakkar" } }, { L["Blackrock Depths"], 52, 60, { "brd", "blackrock depths" } },
+  { L["Upper Blackrock Spire"], 58, 60, { "ubrs", "upper spire" } }, { L["Lower Blackrock Spire"], 55, 60, { "lbrs", "lower spire" } },
+  { L["Stratholme"], 58, 60, { "strat", "strath", "stratholme" } }, { L["Scholomance"], 58, 60, { "scholo", "scholomance" } },
+  { L["Molten Core"], 60, 60, { "mc", "molten core" } }, { L["Onyxia's Lair"], 60, 60, { "ony", "onyxia" } },
+  { L["Zul'Gurub"], 60, 60, { "zg", "zul gurub" } }, { L["Blackwing Lair"], 60, 60, { "bwl", "blackwing" } },
+  { L["Ruins of Ahn'Qiraj"], 60, 60, { "aq20", "aq 20" } }, { L["Temple of Ahn'Qiraj"], 60, 60, { "aq40", "aq 40" } },
+  { L["Naxxramas"], 60, 60, { "naxx", "naxxramas" } },
 }
 -- Scarlet Monastery's wings, which name it when a line names no dungeon of its own.
 GB.SM_WINGS = { "lib", "library", "arms", "armory", "cath", "cathedral", "gy", "graveyard" }
