@@ -203,7 +203,7 @@ function ClearCursor() world.cursor = nil end
 -- Enums the addon reads, with the client's values.
 Enum = {
   PowerType = { Mana = 0, Rage = 1, Focus = 2, Energy = 3, ComboPoints = 4, Runes = 5, RunicPower = 6, SoulShards = 7, LunarPower = 8, HolyPower = 9, Maelstrom = 11, Chi = 12, Insanity = 13, ArcaneCharges = 16, Fury = 17, Pain = 18 },
-  CustomAuraButtonDispelTypeTextureStyle = { PreserveAsset = 0, Flat = 1 },
+  CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
   DurationTextBindingProperty = { RemainingDuration = 0, TotalDuration = 1 },
   LuaCurveType = { Linear = 0, Step = 1 },
   NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },

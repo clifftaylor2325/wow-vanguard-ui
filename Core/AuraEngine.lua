@@ -114,56 +114,58 @@ end
 
 -- Buttons ----------------------------------------------------------------------------------
 
--- Debuff type -> the theme's color for it at an alpha, as the client's Color objects.
-local function colorMap(alpha)
+-- Debuff type -> the theme's color for it, as the client's Color objects. The map is typed colorRGB, so it
+-- carries no alpha: a part drawn faint keeps that as its own texture alpha.
+local function colorMap()
   local r, g, b = T.RGB("bad")
-  local map = { None = CreateColor(r, g, b, alpha), Bleed = CreateColor(r, g, b, alpha) }
+  local map = { None = CreateColor(r, g, b), Bleed = CreateColor(r, g, b) }
   for kind in pairs(A.DISPEL_TOKENS) do
     r, g, b = T.RGB(A.DispelToken(kind))
-    map[kind] = CreateColor(r, g, b, alpha)
+    map[kind] = CreateColor(r, g, b)
   end
   return map
 end
 
 -- Hands textures to the client, which shows them while the button holds a
--- debuff and colors them by its type (at `alpha`), hidden types included.
-function E.RegisterDispel(button, textures, alpha)
+-- debuff and colors them by its type, hidden types included.
+function E.RegisterDispel(button, textures)
   local style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset
-  local map = once("colorMap" .. alpha, function() return colorMap(alpha) end)
+  local map = once("colorMap", colorMap)
   local opts = { style = style, showWhenHarmful = true, showWithoutDispelType = true, customDispelColorMap = map }
   for _, t in ipairs(textures) do button:AddDispelTypeTexture(t, opts) end
 end
 
--- The client's dispel types a badge map covers (the untyped ones map clear).
-local BADGE_TYPES = { "None", "Bleed", "Magic", "Curse", "Disease", "Poison" }
-
--- A color map for one badge part: `color(kind)` gives r, g, b, a for each type, as Color objects.
-local function badgeMap(color)
-  local map = {}
-  for _, kind in ipairs(BADGE_TYPES) do map[kind] = CreateColor(color(kind)) end
-  return map
-end
-
--- The backing's color for a type: dark for a type with a letter, clear for one without.
-local function backColor(kind)
-  local r, g, b = T.RGB("shade")
-  return r, g, b, A.DISPEL_GLYPHS[kind] and 0.8 or 0
-end
-
--- The client's options for a badge part colored by `map` (the art kept, shown with a debuff).
-local function badgeOpts(map)
-  return { style = Enum.CustomAuraButtonDispelTypeTextureStyle.PreserveAsset, showWhenHarmful = true, customDispelColorMap = map }
-end
-
--- Hands a debuff's type badge to the client (#235): the backing for any typed debuff, and each
--- letter in its type's color for its own type only (clear for every other), hidden types included.
-function E.RegisterBadge(button, badge)
-  button:AddDispelTypeTexture(badge.back, badgeOpts(once("badgeBack", function() return badgeMap(backColor) end)))
-  for kind, t in pairs(badge.letters) do
-    local r, g, b = T.RGB(A.DispelToken(kind))
-    local map = once("badge" .. kind, function() return badgeMap(function(k) return r, g, b, k == kind and 1 or 0 end) end)
-    button:AddDispelTypeTexture(t, badgeOpts(map))
+-- A badge part's maps for the four typed debuffs: { assets = type -> { asset = asset(kind) }, colors = type ->
+-- the color token(kind) names }. The client's color map is typed without alpha, so none is put in or relied on.
+local function badgeMaps(asset, token)
+  local assets, colors = {}, {}
+  for kind in pairs(A.DISPEL_GLYPHS) do
+    local r, g, b = T.RGB(token(kind))
+    assets[kind], colors[kind] = { asset = asset(kind) }, CreateColor(r, g, b)
   end
+  return { assets = assets, colors = colors }
+end
+
+-- The client's options for a badge part from its maps, shown with a debuff. The client sets the part's art from
+-- the asset map, and clears it for a type the map leaves out (None, Bleed), so those draw nothing.
+local function badgeOpts(maps)
+  return { style = Enum.CustomAuraButtonDispelTypeTextureStyle.CustomAsset, showWhenHarmful = true, customDispelAssetMap = maps.assets, customDispelColorMap = maps.colors }
+end
+
+-- The backing's art for a typed debuff: plain white, tinted dark (its 0.8 is the texture's own alpha, set in badge()).
+local function backArt() return T.WHITE end
+
+-- The backing's color token for a typed debuff.
+local function backToken() return "shade" end
+
+-- The letter's art for a typed debuff: that type's glyph.
+local function letterArt(kind) return T.Icon(A.DISPEL_GLYPHS[kind]) end
+
+-- Hands a debuff's type badge to the client (#235): the backing and one letter (the Magic one; the client swaps
+-- its art for each type's glyph and colors it), hidden types included. The other letters are the fallback's only.
+function E.RegisterBadge(button, badge)
+  button:AddDispelTypeTexture(badge.back, badgeOpts(once("badgeBack", function() return badgeMaps(backArt, backToken) end)))
+  button:AddDispelTypeTexture(badge.letters.Magic, badgeOpts(once("badgeLetter", function() return badgeMaps(letterArt, A.DispelToken) end)))
 end
 
 -- A soft accent wash the client shows while your HoT is in its refresh window
@@ -186,7 +188,7 @@ function E.Init(button, style)
   button:SetDurationCooldown(parts.cooldown)
   button:SetApplicationCount(parts.count, {})
   if parts.timer then durationText(button, parts.timer) end
-  if parts.ring then ns.Try("debuff type colors", E.RegisterDispel, button, parts.ring, 1) ns.Try("debuff type badge", E.RegisterBadge, button, parts.badge) end
+  if parts.ring then ns.Try("debuff type colors", E.RegisterDispel, button, parts.ring) ns.Try("debuff type badge", E.RegisterBadge, button, parts.badge) end
   if style.pandemic then ns.Try("HoT refresh window", pandemic, button, parts) end
   if style.register then ns.Try("aura icon extras", style.register, button) end
   if style.cancel and button.SetCancelAuraButtons then button:SetCancelAuraButtons("RightButtonUp") end

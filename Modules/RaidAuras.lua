@@ -68,10 +68,12 @@ end
 
 -- The wash rising from the tile's bottom and the edge around it, drawn on
 -- `host`. Hidden until a debuff shows them: if the client ever refuses to
--- drive them, they stay hidden rather than showing uncolored.
+-- drive them, they stay hidden rather than showing uncolored. The wash's faintness is its own
+-- alpha, since the client's color map carries none.
 function RA.DispelParts(host, b)
   local wash = T.Snap(host:CreateTexture(nil, "ARTWORK"))
   wash:SetTexture(T.Texture("Fade"))
+  wash:SetAlpha(T.ALPHA.dispelWash)
   wash:SetAllPoints(b.health)
   wash:Hide()
   local edges = {}
@@ -84,8 +86,8 @@ end
 local function engineDispel(b)
   return function(button)
     local wash, edges = RA.DispelParts(button, b)
-    ns.AuraEngine.RegisterDispel(button, { wash }, T.ALPHA.dispelWash)
-    ns.AuraEngine.RegisterDispel(button, edges, 1)
+    ns.AuraEngine.RegisterDispel(button, { wash })
+    ns.AuraEngine.RegisterDispel(button, edges)
   end
 end
 
@@ -96,7 +98,7 @@ local function paintDispel(b, unit)
   b.dispel:SetShown(aura ~= nil and aura ~= false)
   if not aura then return end
   local r, g, bl = ns.Auras.DispelColor(unit, aura)
-  b.dispel.wash:SetVertexColor(r, g, bl, T.ALPHA.dispelWash)
+  b.dispel.wash:SetVertexColor(r, g, bl)
   b.dispel.wash:Show()
   for _, t in ipairs(b.dispel.edges) do t:SetVertexColor(r, g, bl); t:Show() end
 end
