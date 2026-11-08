@@ -495,6 +495,46 @@ it("the Edit Mode layout: one this account lacks, combat, and a client without E
   const unhooked = editModeLogin('VanguardCharDB = { profile = "Raid", editModeProfile = "Default" }', "hooksecurefunc = nil __loaded = true");
   expect(layouts(unhooked), "without hooks nothing is followed").toEqual(["Modern", "TEST-ONLY Raid", "Default"]);
 });
+// TEST-ONLY Retail Edit Mode that keeps one active layout per spec, as the game's manager does on a spec change.
+const SPEC_EDIT_MODE_ENV = `
+  __layouts = { { layoutName = "Modern" }, { layoutName = "Classic" }, { layoutName = "Heal" } }
+  __perSpec = { [1] = 1, [2] = 3 }
+  __spec = 1
+  C_SpecializationInfo = C_SpecializationInfo or {}
+  C_SpecializationInfo.GetSpecialization = function() return __spec end
+  EditModeManagerFrame = CreateFrame("Frame", "EditModeManagerFrame", UIParent)
+  function EditModeManagerFrame:GetLayouts() return __layouts end
+  function EditModeManagerFrame:GetActiveLayoutInfo() return __loaded and __layouts[__perSpec[__spec]] or nil end
+  function EditModeManagerFrame:UpdateLayoutInfo() __loaded = true end
+  C_EditMode = { SetActiveLayout = function(i) __perSpec[__spec] = i EditModeManagerFrame:UpdateLayoutInfo() end }
+`;
+// A Retail character with a profile per spec and Edit Mode's per-spec layouts; Lua in before runs before login.
+function specLayoutLogin(saved, before = "") {
+  const addon = createAddon({ savedVariables: saved, client: RETAIL_CLIENT });
+  addon.eval(SPEC_EDIT_MODE_ENV + before);
+  addon.login();
+  addon.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  return addon;
+}
+it("the Edit Mode layout a spec change brings is not saved into the profile being left", () => {
+  const a = specLayoutLogin(`VanguardDB = { version = 1, setupDone = true, profiles = { Dps = {}, Healer = { editMode = { layout = "Heal" } } } }
+VanguardCharDB = { profile = "Dps", editModeProfile = "Dps", specProfiles = { [1] = "Dps", [2] = "Healer" } }`);
+  expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "the first save of the session").toBe("Modern");
+  a.eval("__spec = 2 EditModeManagerFrame:UpdateLayoutInfo()");
+  a.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(a.eval("return { VanguardDB.profiles.Dps.editMode.layout, VanguardCharDB.pendingProfile }"), "the game's order: Dps keeps Modern, Healer staged").toEqual(["Modern", "Healer"]);
+  a.eval("__spec = 1");
+  a.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  a.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(a.eval("return { VanguardDB.profiles.Dps.editMode.layout, VanguardCharDB.pendingProfile or 'none' }"), "the other order: still Modern, the switch dropped").toEqual(["Modern", "none"]);
+  a.eval("C_EditMode.SetActiveLayout(2)");
+  expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "a pick in the same spec is saved").toBe("Classic");
+});
+it("a reload into the other spec's profile switches nothing when its layout is already active", () => {
+  const b = specLayoutLogin(`VanguardDB = { version = 1, setupDone = true, profiles = { Dps = { editMode = { layout = "Modern" } }, Healer = { editMode = { layout = "Heal" } } } }
+VanguardCharDB = { profile = "Dps", pendingProfile = "Healer", editModeProfile = "Dps", specProfiles = { [1] = "Dps", [2] = "Healer" } }`, "__spec = 2");
+  expect(b.eval("return { ns.ProfileName(), ns.EditModeLayout(), __perSpec[2], VanguardDB.profiles.Healer.editMode.layout, VanguardDB.profiles.Dps.editMode.layout }"), "Healer with Heal: no switch, both profiles keep theirs").toEqual(["Healer", "Heal", 3, "Heal", "Modern"]);
+});
 it("strings and profiles from before the rename (ForeverUI 0.3.0)", () => {
   const addon = loggedIn();
   const old = addon.eval(`

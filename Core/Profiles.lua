@@ -551,11 +551,17 @@ local function editModeSettings()
   return ns.Settings("editMode")
 end
 
-local layoutsSeen, switching = false, false
+local layoutsSeen, switching, layoutSpec = false, false, nil
 
--- Remembers the layout in use in the active profile (not while a switch to the profile's own waits for combat to end).
+-- Remembers the layout in use in the active profile (not while a switch to the profile's own waits for combat to end,
+-- and not the layout a spec change brings: Edit Mode keeps one per spec, and the new spec's profile is only staged
+-- until the reload, so saving it would write that spec's layout into the profile being left).
 local function rememberLayout()
   if switching then return end
+  local spec = ns.SpecKey()
+  local specChanged = layoutSpec ~= nil and spec ~= layoutSpec
+  layoutSpec = spec
+  if specChanged then return end
   editModeSettings().layout = ns.EditModeLayout()
 end
 
