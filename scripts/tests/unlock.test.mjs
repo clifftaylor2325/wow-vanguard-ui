@@ -197,6 +197,18 @@ it("unlock mode's bar: Exit without saving puts every frame back as it was; Save
   expect([addon.eval("return ns.Settings('positions').a.y"), addon.eval("return ns.Unlocked()")], "closing it locks and keeps the change").toEqual([-292, false]);
 });
 
+it("H30-4-1 a lock inside Edit Mode takes its note down, and an unlock begun there is the player's own", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeOpened(__edit)");
+  addon.eval("ns.Lock()");
+  expect(addon.eval("return { ns.Unlocked(), Vanguard_EditModeNote:IsShown() }"), "a lock puts the handles and Edit Mode's note away").toEqual([false, false]);
+  addon.slash("unlock");
+  addon.eval("ns.EditModeClosed(__edit)");
+  expect([addon.eval("return ns.Unlocked()"), addon.eval("return Vanguard_UnlockBar:IsShown()")], "the player's own unlock survives closing Edit Mode, bar and all").toEqual([true, true]);
+  addon.eval("Vanguard_UnlockBar.save:GetScript('OnClick')(Vanguard_UnlockBar.save)");
+  expect(addon.eval("return ns.Unlocked()"), "Save and lock ends it").toBe(false);
+});
+
 it("Exit without saving tells what follows a frame that it moved back: the raid grid grows from its anchor again", () => {
   const addon = loggedIn();
   // The raid header's anchor point, and the raid mover's (BOTTOM until one is saved).
