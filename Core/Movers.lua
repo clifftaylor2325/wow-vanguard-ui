@@ -650,11 +650,14 @@ local function showAllHandles(strata)
   for _, key in ipairs(order) do showHandle(movers[key], strata) end
 end
 
--- Shows every handle and the grid, and remembers every spot for Exit without saving (Core/UnlockBar.lua).
+-- Shows every handle and the grid, and remembers every spot for Exit without saving (Core/UnlockBar.lua): an unlock
+-- begun inside the game's Edit Mode ends Edit Mode's hold first, so the spots remembered are the ones as of now.
 -- Refused in combat.
 function ns.Unlock()
   if ns.InCombat() then return false end
+  local fromEditMode = editUnlocked
   editUnlocked = false
+  if fromEditMode then ns.UnlockEnded() end
   ns.UnlockStarted()
   showAllHandles(nil)
   local options = ns.MoverOptions()

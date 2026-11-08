@@ -209,6 +209,21 @@ it("H30-4-1 a lock inside Edit Mode takes its note down, and an unlock begun the
   expect(addon.eval("return ns.Unlocked()"), "Save and lock ends it").toBe(false);
 });
 
+it("H33-10-1 /vg unlock inside Edit Mode remembers the spots as of then: Exit without saving keeps the Edit Mode move", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The minimap's saved spot, or nil before one is saved.
+  const spot = () => addon.eval("local p = ns.Settings('positions').minimap return p and { p.point, p.x, p.y } or nil");
+  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeOpened(__edit)");
+  addon.eval("ns.Nudge('minimap', 10, 0)");
+  const edited = spot();
+  expect(edited, "the Edit Mode move is saved").not.toBeNull();
+  addon.slash("unlock");
+  expect(addon.eval("return Vanguard_UnlockBar:IsShown()"), "the player's own unlock shows its bar").toBe(true);
+  addon.eval("ns.Nudge('minimap', 0, 5)");
+  addon.eval("Vanguard_UnlockBar.exit:GetScript('OnClick')(Vanguard_UnlockBar.exit)");
+  expect([spot(), addon.eval("return ns.Unlocked()")], "Exit without saving undoes only the move after /vg unlock").toEqual([edited, false]);
+});
+
 it("Exit without saving tells what follows a frame that it moved back: the raid grid grows from its anchor again", () => {
   const addon = loggedIn();
   // The raid header's anchor point, and the raid mover's (BOTTOM until one is saved).
