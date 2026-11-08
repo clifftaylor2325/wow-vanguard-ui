@@ -145,14 +145,19 @@ local function openWindow()
   return type(frame) == "table" and frame or nil
 end
 
--- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
--- Nothing while the module has not been enabled (switched off from login: no settings yet) or was
--- switched off since: no tab while nothing is filtered.
-function CF.Prepare()
+-- True while caught lines go to a Filtered tab: the module enabled (not switched off from login, when
+-- there are no settings yet), the filter on, and tab mode.
+local function wantsTab()
   local s = CF.settings
-  if not (CF.active and s and s.on and s.mode == "tab") or CF.window then return end
+  return CF.active and s and s.on and s.mode == "tab"
+end
+
+-- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
+-- Nothing while the module was switched off since: no tab while nothing is filtered.
+function CF.Prepare()
+  if not wantsTab() or CF.window then return end
   ns.OutOfCombat(function()
-    if CF.active then CF.window = CF.FindWindow() or openWindow() end
+    if wantsTab() then CF.window = CF.FindWindow() or openWindow() end
   end, "chatfilter window")
 end
 
@@ -193,6 +198,7 @@ end
 local function reopen()
   CF.window = nil
   ns.OutOfCombat(function()
+    if not wantsTab() then return end
     local found = CF.FindWindow()
     CF.window = found and isOpen(found) and found or openWindow()
   end, "chatfilter window")

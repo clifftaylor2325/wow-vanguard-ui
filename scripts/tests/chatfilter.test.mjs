@@ -276,6 +276,25 @@ it("chat filter: the closed Filtered tab coming back after a fight keeps the sel
   expect(dockState(addon).slice(0, 2), "General is still the tab shown").toEqual(["ChatFrame1", true]);
 });
 
+// A Filtered tab closed, then a spam line in a fight (the tab is queued), then `change` in the same fight, then the fight ends.
+const reopenedAfterFight = (change) => {
+  const addon = filtering(dockEnv());
+  addon.eval("local w = ns.GetModule('ChatFilter').window w:Hide() table.remove(GENERAL_CHAT_DOCK.frames, 2) w.isDocked = nil");
+  addon.eval("__wfgStub.inCombat = true");
+  deliver(addon, GOLD, "Goldy");
+  change(addon);
+  addon.eval("__wfgStub.inCombat = false");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  return addon.eval("return ns.GetModule('ChatFilter').window == nil");
+};
+
+it("chat filter: a closed Filtered tab queued in a fight is not made when the filter, tab mode or the module is switched off in that fight", () => {
+  expect(reopenedAfterFight(() => {}), "nothing changed: the tab is made again").toBe(false);
+  expect(reopenedAfterFight((a) => a.slash("filter off")), "filter off").toBe(true);
+  expect(reopenedAfterFight((a) => a.slash("filter hide")), "filter hide").toBe(true);
+  expect(reopenedAfterFight((a) => a.eval("ns.SetModuleEnabled('ChatFilter', false)")), "module off").toBe(true);
+});
+
 it("chat filter: a game whose new window does not take the selection, or has no dock, is left alone", () => {
   const stays = loggedIn(dockEnv(false));
   stays.slash("filter on");
@@ -376,6 +395,24 @@ it("chat filter: switched off on the Modules page, /vg filter on makes no empty 
   fight.eval("ns.SetModuleEnabled('ChatFilter', false) __wfgStub.inCombat = false");
   fight.fire("PLAYER_REGEN_ENABLED");
   expect(fight.eval("return ns.GetModule('ChatFilter').window == nil"), "switched off during the fight: no tab when it ends").toBe(true);
+});
+
+it("chat filter: filter off or hide later in the same fight leaves no tab made when it ends", () => {
+  for (const verb of ["off", "hide"]) {
+    const fight = loggedIn();
+    fight.eval("__wfgStub.inCombat = true");
+    fight.slash("filter on");
+    fight.slash(`filter ${verb}`);
+    fight.eval("__wfgStub.inCombat = false");
+    fight.fire("PLAYER_REGEN_ENABLED");
+    expect(fight.eval("return ns.GetModule('ChatFilter').window == nil"), `filter ${verb}: no tab`).toBe(true);
+  }
+  const kept = loggedIn();
+  kept.eval("__wfgStub.inCombat = true");
+  kept.slash("filter on");
+  kept.eval("__wfgStub.inCombat = false");
+  kept.fire("PLAYER_REGEN_ENABLED");
+  expect(kept.eval("return ns.GetModule('ChatFilter').window ~= nil"), "still on: the tab is made").toBe(true);
 });
 
 it("chat filter: a client without the old ChatFrame_AddMessageEventFilter still filters, through ChatFrameUtil", () => {
