@@ -605,8 +605,15 @@ end
 
 -- Spending ----------------------------------------------------------------------------------------
 
+-- A refused commit: drops the ranks Spend planned just staged (hasStaged made sure nothing else was), so a retry
+-- can buy them again, and says so.
+local function refused(configID)
+  ask("C_Traits", "RollbackConfig", configID)
+  ns.Chat(L["Talent planner: the game refused to apply talents just now; try again in a moment."])
+end
+
 -- Applies the staged ranks: the class talents' commit (nil: the talents in use, as the game's window
--- commits), else the trait commit for the config. Says so when the game refused (it throttles commits).
+-- commits), else the trait commit for the config. When the game refused (it throttles commits), see refused.
 function TP.Commit(configID)
   local done
   if type(_G.C_ClassTalents) == "table" and type(_G.C_ClassTalents.CommitConfig) == "function" then
@@ -614,7 +621,7 @@ function TP.Commit(configID)
   else
     done = ask("C_Traits", "CommitConfig", configID)
   end
-  if done == false then ns.Chat(L["Talent planner: the game refused to apply talents just now; try again in a moment."]) end
+  if done == false then refused(configID) end
   TP.Schedule()
 end
 
