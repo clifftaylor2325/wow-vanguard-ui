@@ -29,17 +29,19 @@ local function guideShown()
   return guide.id ~= nil and guide.key == CC.CurrentKey()
 end
 
--- Runs fn now, or after asking when the list shown has mouse bindings a layout didn't make (CP.HasOwnClicks).
+-- Runs fn now, or after asking when the list shown has mouse bindings a layout didn't make (CP.HasOwnClicks); when
+-- Undo couldn't put the list back (CP.Undoable), chat says why first and nothing is asked or changed.
 local function unlessOwn(fn)
+  local ok, why = CP.Undoable()
+  if not ok then return ns.Chat(ns.Format(L["Can't apply this layout: {why}."], { why = why })) end
   if not CP.HasOwnClicks() then return fn() end
   ns.Ask(L["Replace your own click-casting mouse bindings with this starter layout? Undo puts them back."], L["Replace"], fn, nil, "danger")
 end
 
--- Applies a layout now, puts the guide away and builds the page again; when the list shown couldn't be put back by
--- Undo, chat says why and nothing changes.
+-- Applies a layout now, puts the guide away and builds the page again; nothing when CP.Apply refuses (unlessOwn has
+-- told chat why).
 local function applyNow(id)
-  local ok, why = CP.Apply(id)
-  if not ok then return ns.Chat(ns.Format(L["Can't apply this layout: {why}."], { why = why })) end
+  if not CP.Apply(id) then return end
   guide.id = nil
   T.Sound("on")
   pageChanged()

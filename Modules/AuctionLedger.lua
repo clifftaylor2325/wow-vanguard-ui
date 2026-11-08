@@ -15,7 +15,7 @@
 --     whenever the inbox changes; nothing is opened, taken or deleted.
 -- A mail that tells of an outcome an event already recorded joins that record
 -- (the same item and kind, at the same price each or, for a sale, the mail's price under the buyout
--- the event knew, within AL.LINK_AGE) rather than adding one, and the mail's figures stand; a mail read again is known by its expiry
+-- the event knew, read within AL.BID_AGE; within AL.LINK_AGE otherwise) rather than adding one, and the mail's figures stand; a mail read again is known by its expiry
 -- time and contents. The Up now card's "Your history" shows the item's last
 -- records, how many of its auctions sold out of those that sold or ran out,
 -- and the average price each; the info strip can show this session's sales.
@@ -40,6 +40,9 @@ ns.AuctionLedger = AL
 -- auction seen up is remembered (the longest lasts 48 hours).
 AL.MAX, AL.MAX_AGE = 2000, 90
 AL.LINK_AGE, AL.SAME_MAIL, AL.OPEN_AGE = 30 * 86400, 120, 3 * 86400
+-- How far apart (seconds) an event's sale and a mail's are read at most to be one bid win (a cheaper mail weeks
+-- from the event is another sale of the item).
+AL.BID_AGE = 3 * 86400
 
 -- The ledger -----------------------------------------------------------------------------------
 
@@ -83,11 +86,13 @@ local function samePrice(r, o)
   return r.amount == o.amount or math.floor(r.amount / r.qty) == math.floor(o.amount / o.qty)
 end
 
--- Whether an event's sale and a mail's can be one bid win: the same units, and the mail's amount
--- (what the buyer paid) at most the event's (the buyout it knew).
-local function bidWin(r, o)
+-- How far an event's sale and a mail's are from one bid win (the buyout the event knew less what the mail says the
+-- buyer paid, plus one, so a same-price match still ranks first), or nil: the same units, read within AL.BID_AGE.
+local function bidGap(r, o)
   local mail, event = o.mail and o or r, o.mail and r or o
-  return r.kind == "sold" and r.qty == o.qty and mail.amount <= event.amount
+  local under = event.amount - mail.amount
+  local near = r.kind == "sold" and r.qty == o.qty and math.abs(r.t - o.t) <= AL.BID_AGE
+  return near and under >= 0 and under + 1 or nil
 end
 
 -- How far apart two reads put a mail's expiry time: as read, or once the change in the computer's clock
@@ -108,17 +113,17 @@ local function sourceGap(r, o)
   return gap <= AL.SAME_MAIL and gap or nil
 end
 
--- How record r may be the other source's telling of o (an event's for a mail, a mail's for an event),
--- within AL.LINK_AGE: 1 at the same price, 2 as a bid win under the buyout, else nil.
+-- How near record r is to being the other source's telling of o (an event's for a mail, a mail's for an event),
+-- within AL.LINK_AGE: 0 at the same price, a bid win's gap (bidGap) after that, else nil.
 local function otherSource(r, o)
   local only = o.auction and r.auction == nil or o.mail and r.mail == nil
   if not only or math.abs(r.t - o.t) > AL.LINK_AGE then return nil end
-  if samePrice(r, o) then return 1 end
-  return bidWin(r, o) and 2 or nil
+  if samePrice(r, o) then return 0 end
+  return bidGap(r, o)
 end
 
 -- The record o tells of again (the nearest, so alike mails a minute apart each keep their own), else nil
--- and the oldest record of the other source it joins, the closest in price first (or nil); records
+-- and the record of the other source it joins, the closest in price first, then the oldest (or nil); records
 -- already matched in this read of the inbox (used) are passed over.
 local function find(book, o, used)
   local same, best, other, rank = nil, math.huge, nil, math.huge

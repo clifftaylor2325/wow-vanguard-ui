@@ -283,13 +283,24 @@ local function undoable(old, undo)
   return CC.ReadImport(undo)
 end
 
+-- The list a preset put on now keeps for Undo: the one an earlier preset kept, else the list shown ("" when empty).
+local function undoText(old)
+  return old.undo or (#CC.Bindings() > 0 and CC.Export() or "")
+end
+
+-- Whether a preset put on the list shown now could be undone, and why not; asked before the player confirms.
+function CP.Undoable()
+  local old = CP.Record() or {}
+  return undoable(old, undoText(old))
+end
+
 -- Applies a preset to the list the page shows: the list as it was is kept for Undo ("" when it was empty), unless an
 -- earlier preset already kept the one from before it, then every mouse binding is replaced with the preset's
 -- (CP.Resolve); hover keys stay. The frames take it once, out of combat. False and why, changing nothing, when the
 -- list couldn't be put back by Undo.
 function CP.Apply(id)
   local old, bound = CP.Record() or {}, CP.Resolve(id)
-  local undo = old.undo or (#CC.Bindings() > 0 and CC.Export() or "")
+  local undo = undoText(old)
   local ok, why = undoable(old, undo)
   if not ok then return false, why end
   records()[CC.CurrentKey()] = { preset = id, undo = undo, open = openKeys(id, bound), told = old.told or {}, kept = old.kept or {} }
