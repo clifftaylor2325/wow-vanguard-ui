@@ -487,3 +487,16 @@ it("the walk from level 1 to 60: at every level each key holds the resolver's pi
   expect(spare(addon), "Heroic Strike lost its key to Mortal Strike").toEqual([78]);
   expect(said(addon)).toContain("Overpower is now on 3. Thunder Clap moved to 4.");
 });
+
+it("while key setup isn't offered, a learned spell waits (pending) and lands once it is offered again", () => {
+  const addon = warrior();
+  applyPreset(addon);
+  const before = keys(addon, ["2", "SHIFT-`"]);
+  addon.eval("__offered = false");
+  learn(addon, 772);
+  expect([slots(addon, [2]), keys(addon, ["2", "SHIFT-`"]), said(addon)], "nothing placed, bound or said").toEqual([[0], before, ""]);
+  expect(addon.eval("return VanguardCharDB.keysLearn.pending"), "it waits").toBe(true);
+  addon.eval("__offered = true");
+  learn(addon, 6343);
+  expect([slots(addon, [2]), keys(addon, ["2"])]).toEqual([[772], ["ACTIONBUTTON2"]]);
+});

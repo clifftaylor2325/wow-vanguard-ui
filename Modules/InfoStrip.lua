@@ -562,22 +562,30 @@ local function showButton(key, shown)
   if b then b:SetShown(shown) end
 end
 
--- Repaints one block: hidden when off or when the client can't answer; the strip fits what shows.
+-- Sets a block's shown state and text; true when either changed, so the strip's layout may differ.
+local function applyBlock(fs, text)
+  local changed = (text ~= nil) ~= fs:IsShown() or (text ~= nil and text ~= fs.last)
+  fs:SetShown(text ~= nil)
+  if text and text ~= fs.last then fs:SetText(text) fs.last = text end
+  return changed
+end
+
+-- Repaints one block: hidden when off or when the client can't answer; the strip refits only when it changed.
 function IS.Paint(key)
   local fs = IS.fonts and IS.fonts[key]
   if not fs then return end
   local text, color
   if IS.settings[key] then text, color = IS.TEXT[key]() end
-  fs:SetShown(text ~= nil)
+  local changed = applyBlock(fs, text)
   showButton(key, text ~= nil)
-  if text and text ~= fs.last then fs:SetText(text) fs.last = text end
   if color then T.Color(fs, color) end
-  fitRows()
+  if changed then fitRows() end
 end
 
 -- Repaints every block.
 function IS.UpdateAll()
   for key in pairs(IS.BLOCKS) do IS.Paint(key) end
+  fitRows()
 end
 
 -- Repaints the leveling blocks.

@@ -11,7 +11,7 @@ const asAddon = (addon, lua) => addon.eval(`assert(load(${JSON.stringify(lua)}, 
 const violations = (addon) => addon.eval(`local out = {} for _, v in ipairs(__wfgStub.violations) do out[#out + 1] = v.text end
   __wfgStub.clearViolations() return out`);
 
-// Protected calls from the documented set: three the stub models and one it leaves to a no-op (Raise).
+// Protected calls from the documented set; Raise leaves a frame already above the others where it is.
 const CALLS = 'local b = TestSecure b:SetFrameLevel(77) b:EnableMouse(false) b:RegisterForClicks("AnyDown") b:Raise()';
 
 it("documented protected methods are blocked on a secure button in combat and run out of combat", () => {

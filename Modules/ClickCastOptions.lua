@@ -319,8 +319,8 @@ end
 local function wireRow(b)
   b:SetScript("OnClick", ns.Guard("click spell picker item", function(self) pickItem(self.item) end))
   b.chevron:SetScript("OnClick", ns.Guard("click spell picker ranks", function() toggleRanks(b.item) end))
-  b:SetScript("OnEnter", rowTooltip)
-  b:SetScript("OnLeave", hideTooltip)
+  b:HookScript("OnEnter", rowTooltip)
+  b:HookScript("OnLeave", hideTooltip)
 end
 
 -- The picker's search box and the "more" line under the rows.

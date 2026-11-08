@@ -132,13 +132,58 @@ it("the game re-stacking its bars in a fight leaves the buttons on their spots",
   expect(fight.eval("return #ns.errors"), "nothing waits for the fight to end").toBe(0);
 });
 
+// The pet and stance spots' visibility drivers.
+const drivers = (addon) => addon.eval("return { Vanguard_PetActionBarSpot.__states.visibility, Vanguard_StanceBarSpot.__states.visibility }");
+
+// TEST-ONLY a character with one form (a warrior's Battle Stance, say).
+const ONE_FORM = "\n__wfgWorld.setStances({ { icon = 'A' } })";
+
 it("the spots hide as the game hides its bars: a vehicle, an override bar, mind control, no pet, a pet battle", () => {
-  const forever = loggedIn(SEATED_ENV);
-  // The pet and stance spots' visibility drivers.
-  const drivers = (addon) => addon.eval("return { Vanguard_PetActionBarSpot.__states.visibility, Vanguard_StanceBarSpot.__states.visibility }");
+  const forever = loggedIn(SEATED_ENV + ONE_FORM);
   expect(drivers(forever), "Forever has no pet battles").toEqual(["[vehicleui][overridebar][nopet] hide; show", "[vehicleui][possessbar][overridebar] hide; show"]);
-  const retail = loggedIn(RETAIL + SEATED_ENV);
+  const retail = loggedIn(RETAIL + SEATED_ENV + ONE_FORM);
   expect(drivers(retail).map((d) => d.startsWith("[petbattle] hide; ")), "Retail hides them in a pet battle too").toEqual([true, true]);
+});
+
+it("the stance spot hides for a character with no forms, and shows once one is learnt", () => {
+  const addon = loggedIn(SEATED_ENV);
+  expect(drivers(addon), "no forms: the stance spot hides, the pet spot is unchanged").toEqual(["[vehicleui][overridebar][nopet] hide; show", "hide"]);
+  addon.eval(ONE_FORM);
+  expect(drivers(addon)[1], "a form learnt: the usual clause is back").toBe("[vehicleui][possessbar][overridebar] hide; show");
+});
+
+it("forms the client reports only after login show the stance spot on entering the world", () => {
+  const addon = loggedIn(SEATED_ENV);
+  addon.eval("__wfgWorld.stances = { { icon = 'A' } }");
+  expect(drivers(addon)[1], "no event yet: still hidden").toBe("hide");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect([drivers(addon)[1], addon.eval("return #ns.errors")], "the usual clause is back").toEqual(["[vehicleui][possessbar][overridebar] hide; show", 0]);
+});
+
+it("a forms update that changes nothing leaves the stance spot's driver alone", () => {
+  const addon = loggedIn(SEATED_ENV);
+  addon.eval("Vanguard_StanceBarSpot.__states.visibility = 'untouched'");
+  addon.fire("UPDATE_SHAPESHIFT_FORMS");
+  expect(drivers(addon)[1], "still no forms: the driver is not written again").toBe("untouched");
+});
+
+it("forms changing in a fight set the stance spot's driver once the fight ends", () => {
+  const fight = loggedIn(SEATED_ENV + ONE_FORM);
+  setCombat(fight, true);
+  fight.eval("__wfgWorld.setStances({})");
+  expect(drivers(fight)[1], "in a fight the driver is left as it was").toBe("[vehicleui][possessbar][overridebar] hide; show");
+  setCombat(fight, false);
+  expect([drivers(fight)[1], fight.eval("return #ns.errors")], "the new one lands when it ends").toEqual(["hide", 0]);
+});
+
+it("forms changing before the spots are placed set nothing", () => {
+  const fight = createAddon({ savedVariables: SETUP_DONE });
+  fight.eval(SEATED_ENV);
+  setCombat(fight, true);
+  fight.login();
+  fight.eval(ONE_FORM);
+  setCombat(fight, false);
+  expect([drivers(fight)[1], fight.eval("return #ns.errors")], "the spot is placed after the fight with the forms then known").toEqual(["[vehicleui][possessbar][overridebar] hide; show", 0]);
 });
 
 it("the pet and stance bars are placed after combat, and left to Edit Mode when placing is off", () => {

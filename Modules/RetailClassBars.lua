@@ -163,18 +163,22 @@ local function runeShare(i, now)
   return math.max(0, math.min(1, (now - start) / duration))
 end
 
--- Every rune's share, most ready first (ready runes on the left, as the game sorts them).
-local function runeShares(count)
-  local now, shares = GetTime(), {}
-  for i = 1, count do shares[i] = runeShare(i, now) end
-  table.sort(shares, function(a, b) return a > b end)
-  return shares
+-- Sorts shares with the most ready first; one function, so a frame's sort allocates no closure.
+CB.MOST_READY_FIRST = function(a, b) return a > b end
+
+-- Every rune's share, most ready first (ready runes on the left, as the game sorts them), in the row's own table.
+local function runeShares(row)
+  local now = GetTime()
+  row.shares = row.shares or {}
+  for i = 1, #row.pips do row.shares[i] = runeShare(i, now) end
+  table.sort(row.shares, CB.MOST_READY_FIRST)
+  return row.shares
 end
 
 -- Fills the rune row; the ticker runs only while a rune is coming back.
 local function fillRunes()
   local row = CB.resourceFrames.runes
-  local shares, back = runeShares(#row.pips), true
+  local shares, back = runeShares(row), true
   for i, p in ipairs(row.pips) do
     p.bar:SetMinMaxValues(0, 1)
     p.bar:SetValue(shares[i])

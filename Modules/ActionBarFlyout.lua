@@ -10,8 +10,9 @@
 -- the snippet only reads them, so it works in combat. Nothing the addon
 -- writes is ever handed to a protected game frame.
 --
--- The frame is made when a flyout first sits on a bar, so a character with
--- none has nothing extra.
+-- The frame is made at login, out of combat, whether or not a flyout sits on
+-- a bar: the wrap that takes the click over can't be added in a fight, so a
+-- flyout dragged onto a bar in one can be opened at once.
 
 local ADDON, ns = ...
 
@@ -151,9 +152,11 @@ local function placeFlyout(flyout)
   flyout:SetSize(AB.FLYOUT.size, AB.FLYOUT.size)
 end
 
--- The list: a secure handler holding the spell buttons, shown by the bar buttons' snippet.
+-- The list: a secure handler holding the spell buttons, shown by the bar buttons' snippet. It starts hidden:
+-- a new frame is shown, and a closed list left shown would take Escape the next time the interface shows again.
 local function makeFlyout()
   local flyout = CreateFrame("Frame", AB.FLYOUT.frame, UIParent, "SecureHandlerShowHideTemplate")
+  flyout:Hide()
   placeFlyout(flyout)
   flyout:SetAttribute("gap", AB.FLYOUT.gap)
   flyout:SetAttribute("_onshow", AB.FLYOUT_ON_SHOW)
@@ -218,7 +221,7 @@ local function storeScreen(flyout)
   flyout:SetAttribute("edge", GetCVarBool(AB.FLYOUT.edgeCVar) and "down" or "up")
 end
 
--- Makes the list and wraps every bar button, once a flyout first sits on a bar.
+-- Makes the list and wraps every bar button, once (out of combat: the wraps are protected).
 local function ensureFlyout()
   if AB.flyout then return end
   AB.flyout = makeFlyout()
@@ -229,7 +232,6 @@ end
 -- Stores every flyout on the bars (out of combat: the frame's attributes are protected).
 function AB.ShowFlyouts()
   local ids = flyoutIds()
-  if not next(ids) and not AB.flyout then return end
   ensureFlyout()
   storeScreen(AB.flyout)
   for id in pairs(ids) do storeFlyout(AB.flyout, id) end
@@ -258,6 +260,7 @@ local function watchFlyouts()
     ns.On(event, refresh)
   end
   ns.On("CVAR_UPDATE", onSettingChanged)
+  ns.OutOfCombat(ensureFlyout, "action bar flyout list")
   refresh()
 end
 

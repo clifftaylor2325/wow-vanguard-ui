@@ -491,6 +491,15 @@ function AH.ErrorName(code)
   return tostring(code)
 end
 
+-- Closes the game's own "confirm this post" box on the next frame, after the game's handler has shown
+-- it: Vanguard's Confirm is the one confirmation, and the box's Accept would confirm whatever post
+-- the game's own Sell tab still holds. Nothing is written into the game's sell frames.
+function AH.HideGamePostWarning()
+  C_Timer.After(0, ns.Guard("hide game post warning", function()
+    ns.CallIf(_G, "StaticPopup_Hide", "AUCTION_HOUSE_POST_WARNING")
+  end))
+end
+
 -- An answer from the game (event e, its values ...) within AH.POST_ANSWER_TIME of a click on Post:
 -- chat says it ("Post: the game said ..."); a secret value shows as "?".
 function AH.OnPostAnswer(e, ...)
@@ -502,6 +511,7 @@ function AH.OnPostAnswer(e, ...)
   local text = ns.Format(a[1], { value = a[4] and not ns.IsSecret(v) and AH[a[4]](v) or tostring(v) })
   ns.Chat(ns.Format(L["Post: {answer}."], { answer = text }))
   if AH.sell then AH.sell.answer = text AH.PaintSell() end
+  if e == "AUCTION_HOUSE_POST_WARNING" then AH.HideGamePostWarning() end
 end
 
 -- Chat says what a click on Post sends, before the game sees it: the stack's place in the sale,

@@ -4365,6 +4365,72 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: with nothing picked both labels are the theme's dim disabled grey (the game disables them until a group is picked); once a group is picked both turn the theme's bright text colour and stay bright under the mouse. Group Invite greys out alone only for a group the game says you can't invite or apply to. The trainer's Train and the mailbox's Open All behave the same way. Then open a few other game windows with buttons or check boxes that start greyed out (the mailbox's Send before you name someone, the auction house's Bid and Buyout before you pick an item, a disabled option in the game's settings): each one turns bright as soon as the game enables it, never stays grey.
 - If it fails, paste: a screenshot with a group picked and one without, and the variant name from Options, General.
 
+### 33.344 Theme change with closed plate auras in a dungeon (Forever)
+
+- Do: enter a dungeon with friendly nameplates on and a party member carrying a buff or debuff, then in the Vanguard options window change the accent colour, and afterwards resize the game window.
+- Expect: no "forbidden object" Lua error; the target's plate border and the other windows take the new accent.
+- If it fails, paste: the full error text with its stack, and the output of `/vg plates`.
+
+### 33.345 A flyout dragged onto a bar in a fight raises no error (both)
+
+- Do: On a Mage with no Teleport or Portal on any Vanguard bar, attack a training dummy, drag Teleport from the spellbook onto an empty bar button and click it before the fight ends; then leave the fight and click it again. Also press Alt-Z twice, then Escape.
+- Expect: No Lua error; the click in the fight does nothing; after the fight the click opens the list of Teleport spells beside the button; after Alt-Z twice the first Escape opens the game menu.
+- If it fails, paste: The Lua error text from `/vg errors`, the client (Forever or Retail), and whether the list opened after the fight.
+
+### 33.346 No empty stance boxes for a class with no forms (both)
+
+- Do: On a mage (or any class with no stances or forms) with Vanguard's stance spot on, open Edit Mode with Show Stance Bar ticked, close it, then /reload; on a druid or warrior, check the stance spot.
+- Expect: The mage shows no boxes at the stance spot (bottom left, above the pet bar spot) after Edit Mode closes or after the reload; the druid's or warrior's forms still show on the spot, and a character learning their first form sees it appear there.
+- If it fails, paste: The class and level, whether it was after Edit Mode or the reload, and the output of `/run print(GetNumShapeshiftForms(), Vanguard_StanceBarSpot:IsShown())`.
+
+### 33.347 A dialog opened over the reload offer takes its own clicks (both)
+
+- Do: change a setting that offers a reload and leave the offer open; in the options window click Reset this page on any page, then click Reset in the question that opens over the offer; afterwards click Reload on the offer.
+- Expect: Reset resets the page with no reload and the reload offer stays open; then Reload reloads the UI (on Forever too).
+- If it fails, paste: which click reloaded or did nothing, any error text, and the client (Forever or Retail).
+
+### 33.348 The game's confirm box stays closed for a Vanguard post (both)
+
+- Do: At the auction house open Posting, drop an item and set a price the game warns about (far below market), then click Post. Then do the same from the game's own Sell tab.
+- Expect: On Posting no game confirm box shows, the sell card stays clickable, and Confirm on the card lists the stack. On the game's own Sell tab the game's box still appears.
+- If it fails, paste: a screenshot of the window and the chat lines starting "Post:".
+
+### 33.349 New spells wait while a bar addon is on (Forever)
+
+- Do: Apply a key preset with "Place new spells as I learn them" ticked, turn on another action bar addon, reload, then train a new spell.
+- Expect: nothing moves and no key changes; chat stays silent about it. Put everything back still works.
+- If it fails, paste: the chat lines
+
+### 33.350 Spend planned refuses while talent picks are unapplied (Forever)
+
+- Do: With unspent talent points and a plan set, open the talents window, click one talent to learn it without pressing Apply Changes, then press Spend planned.
+- Expect: Chat says "Talent planner: the talents window has picks you haven't applied; apply or undo them first." and no talent is learned by Vanguard. After applying or undoing your pick, Spend planned buys and applies as before.
+- If it fails, paste: the chat lines after pressing Spend planned and a screenshot of the talents window.
+
+### 33.351 Sell list is each character's own (both)
+
+- Do: On character A, switch on "Offer to sell the items on your sell list" under Town and gear, Merchants, put a stack of Linen Cloth on the sell list with /vg junk and shift-click, and log out. Log in character B on the same profile with Linen Cloth in its bags and open any merchant.
+- Expect: B is not asked to sell the Linen Cloth and /vg junk on B says the sell list is empty; back on A, the merchant still asks to sell it.
+- If it fails, paste: the /vg junk line from each character and /vg profile from each.
+
+### 33.352 Craft queue stays through a profile switch (both)
+
+- Do: Switch the craft queue on under Town and gear, Craft queue, open a profession, queue a recipe with /vg craft add 2, then pick another profile in the Profiles window and reload; on an alt on a third profile, open a profession with a cooldown and select that recipe, then log back to the first character and run /vg craft cd.
+- Expect: /vg craft still lists the 2 queued crafts after the switch, and /vg craft cd lists the alt's cooldown beside the character's own.
+- If it fails, paste: /vg craft and /vg craft cd output, and /vg profile.
+
+### 33.353 A shared profile restored once is not overwritten by an older backup (both)
+
+- Do: Log in character B on profile Main and log out; log in character A on Main, change the accent colour, and log out. With the game closed, move Vanguard.lua out of the account's SavedVariables folder. Log in A and answer Restore, reload, log out; log in B.
+- Expect: B is asked "Vanguard's saved settings didn't load. Profile Main was already restored from a newer backup. Use it?"; answering Use it keeps A's accent colour.
+- If it fails, paste: the question's text, the chat lines after login, and /vg profile.
+
+### 33.354 Map page Go to buttons follow new waypoints (both)
+
+- Do: Open the options window on the Map page, close it, Ctrl-click the world map to make a new waypoint, reopen the Map page and click an older Go to button.
+- Expect: the new waypoint is listed with its own button, and each button goes to the spot its label names.
+- If it fails, paste: the Recent waypoints labels and the chat line after the click
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

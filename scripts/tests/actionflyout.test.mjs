@@ -61,9 +61,9 @@ const list = (addon) => addon.eval(`local f = Vanguard_Flyout local out = { f:Is
   return out`);
 const PRE = "ns.GetModule('ActionBars').FLYOUT_PRE";
 
-it("a flyout on a bar makes the list once and wraps every bar button's click with it", () => {
+it("the list is made once at login and every bar button's click is wrapped with it", () => {
   const addon = loggedIn(FLYOUTS);
-  expect(addon.eval("return Vanguard_Flyout"), "with no flyout on a bar there is no list").toBe(null);
+  expect(addon.eval("return { Vanguard_Flyout:GetName(), Vanguard_Flyout:IsShown() }"), "with no flyout on a bar the list is there already, closed").toEqual(["Vanguard_Flyout", false]);
   place(addon, 1, 1);
   const wrapped = addon.eval(`local AB, n = ns.GetModule('ActionBars'), 0
     for _, b in ipairs(AB.buttons) do if b.__wraps and b.__wraps.OnClick == AB.FLYOUT_PRE and b.__wraps.OnHide == AB.FLYOUT_BUTTON_HIDE then n = n + 1 end end
@@ -114,6 +114,18 @@ it("a flyout stored in a fight waits for it to end, and a client without the Cal
   expect(addon.eval("return Vanguard_Flyout:GetAttribute('flyout-2-count')"), "nothing is written in combat").toBe(null);
   setCombat(addon, false);
   expect(addon.eval("return Vanguard_Flyout:GetAttribute('flyout-2-count')"), "written after it, both spells (no Call Pet call to ask)").toBe(2);
+});
+
+it("a first flyout dragged onto a bar in a fight is the list's to open: the click is stopped until the fight ends", () => {
+  const addon = loggedIn(FLYOUTS);
+  setCombat(addon, true);
+  place(addon, 1, 1);
+  expect(addon.eval("return { Vanguard_Bar1Button1.__wraps.OnClick == ns.GetModule('ActionBars').FLYOUT_PRE, Vanguard_Flyout:GetAttribute('flyout-1-count') == nil }"), "the button's click is wrapped; the spells wait for the fight's end").toEqual([true, true]);
+  expect(run(addon, PRE), "the click is stopped, so the game's SpellFlyout is never asked").toEqual([false, "nil"]);
+  expect(addon.eval("return Vanguard_Flyout:IsShown()"), "with nothing stored the list stays closed").toBe(false);
+  setCombat(addon, false);
+  run(addon, PRE);
+  expect([list(addon)[0], addon.eval("return #ns.errors")], "after the fight the click opens it").toEqual([true, 0]);
 });
 
 it("a click on a flyout slot opens the list above a bottom bar's button and stops the game's click", () => {

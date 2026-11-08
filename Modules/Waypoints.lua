@@ -181,6 +181,7 @@ function WP.OnWaypoint()
   local mapID, x, y = WP.Current()
   if not mapID then return end
   WP.Remember(mapID, x, y, pendingTitle(mapID, x, y))
+  ns.OutOfCombat(function() ns.Options.RebuildPage("map") end, "map waypoints")
   if WP.settings.follow and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
 end
 
@@ -195,12 +196,17 @@ local function recentList()
   return ns.Settings("Waypoints", WP.defaults).recent or {}
 end
 
--- Goes back to the nth recent waypoint; says why when there is none or the map can't hold one.
+-- Goes to a remembered waypoint; says why when the map can't hold one.
+function WP.Go(w)
+  if not WP.Set(w.map, w.x, w.y) then return ns.Chat(ns.Format(L["Can't put a waypoint on {map}."], { map = mapName(w.map) })) end
+  ns.Chat(ns.Format(L["Waypoint: {spot}."], { spot = WP.Describe(w) }))
+end
+
+-- Goes back to the nth recent waypoint; says why when there is none.
 function WP.Recall(n)
   local w = recentList()[n]
   if not w then return ns.Chat(ns.Format(L["No recent waypoint {number}."], { number = n })) end
-  if not WP.Set(w.map, w.x, w.y) then return ns.Chat(ns.Format(L["Can't put a waypoint on {map}."], { map = mapName(w.map) })) end
-  ns.Chat(ns.Format(L["Waypoint: {spot}."], { spot = WP.Describe(w) }))
+  WP.Go(w)
 end
 
 -- Takes the waypoint away and the arrow with it.
@@ -395,8 +401,8 @@ end
 -- The recent waypoints as one button each ("Go to ..."), or a line saying there are none.
 local function recentRows()
   local rows = {}
-  for i, w in ipairs(recentList()) do
-    rows[#rows + 1] = { "button", ns.Format(L["Go to {spot}"], { spot = WP.Describe(w) }), function() WP.Recall(i) end }
+  for _, w in ipairs(recentList()) do
+    rows[#rows + 1] = { "button", ns.Format(L["Go to {spot}"], { spot = WP.Describe(w) }), function() WP.Go(w) end }
   end
   if #rows == 0 then rows[1] = { "text", L["No recent waypoints yet. Ctrl-click the world map or use /way to make one."] } end
   return rows

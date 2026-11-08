@@ -226,3 +226,44 @@ it("on WoW Retail, reads the client's recipe list and recipe cooldowns as on For
   addon.slash("craft cd");
   expect([chatHas(addon, /TEST-ONLY Bandage, 2h 0m/), addon.eval("return #ns.errors")], "a recipe not on display, found through the recipe list, with its cooldown").toEqual([true, 0]);
 });
+
+// The account and character files as Lua, to log in again with what the last session saved.
+const savedFiles = (addon) => addon.eval(`
+  local function dump(v)
+    if type(v) ~= "table" then return type(v) == "string" and string.format("%q", v) or tostring(v) end
+    local parts = {}
+    for k, x in pairs(v) do parts[#parts + 1] = "[" .. dump(k) .. "] = " .. dump(x) end
+    return "{ " .. table.concat(parts, ", ") .. " }"
+  end
+  return "VanguardDB = " .. dump(VanguardDB) .. "\\nVanguardCharDB = " .. dump(VanguardCharDB)`);
+
+it("the queue is the character's own: it stays through a switch to another profile", () => {
+  const addon = crafter();
+  addon.world.openProfession(100);
+  addon.slash("craft add 2");
+  addon.eval('ns.UseProfile("Beta") VanguardDB.profiles.Beta.CraftQueue = { on = true }');
+  const next = crafter("", savedFiles(addon));
+  expect([next.eval("return VanguardCharDB.profile"), queue(next)], "on Beta, the queue is still there").toEqual(["Beta", [[100, 2]]]);
+});
+
+it("an old profile's queue and cooldowns move out of every profile once; /vg craft cd lists an alt noted on another profile", () => {
+  const me = crafter().eval("return ns.SettingsGuard.CharKey()");
+  const mine = `["${me}"] = { queue = { { id = 100, n = 3, name = "TEST-ONLY Linen Bag" }, "junk" }, cooldowns = {} }`;
+  const alt = `["Alt-Realm"] = { queue = { { id = 102, n = 1 } }, cooldowns = { [100] = { name = "TEST-ONLY Alt Bag", ready = 1790003600 }, [5] = "bad" } }`;
+  const beta = `Beta = { CraftQueue = { chars = { ${alt}, ["${me}"] = { queue = { { id = 100, n = 5 }, { id = 102, n = 1 } } } } } }`;
+  const saved = `VanguardDB.profiles = { Default = { CraftQueue = { on = true, chars = { ${mine} } } }, ${beta}, Odd = { CraftQueue = { chars = "bad" } }, Plain = {} }`;
+  const addon = crafter("", saved);
+  expect(queue(addon), "both profiles' queues join this character's, each recipe once at its larger count").toEqual([[100, 5], [102, 1]]);
+  const left = "local p = VanguardDB.profiles return { p.Default.CraftQueue.chars == nil, p.Odd.CraftQueue.chars == nil, p.Beta.CraftQueue.chars['Alt-Realm'] ~= nil, p.Beta.CraftQueue.chars[ns.SettingsGuard.CharKey()] == nil }";
+  expect(addon.eval(left), "this character's part leaves every profile; the alt's queue waits for the alt").toEqual([true, true, true, true]);
+  expect(say(addon, "craft cd", / Alt-Realm: TEST-ONLY Alt Bag, 1h 0m$/), "the alt's cooldown, noted under Beta, is listed on Default").toBe(true);
+  const again = crafter("", savedFiles(addon));
+  expect([queue(again), say(again, "craft cd", / Alt-Realm: TEST-ONLY Alt Bag, 1h 0m$/)], "the next login moves nothing twice").toEqual([[[100, 5], [102, 1]], true]);
+});
+
+it("a hand-edited queue or cooldown list starts empty, without an error", () => {
+  const addon = crafter("", `${ON} VanguardCharDB.craftQueue = 7 VanguardDB.craftCooldowns = { [5] = {}, ["Alt-Realm"] = { [1] = "bad" }, ["Odd-Realm"] = "bad" }`);
+  expect([say(addon, "craft", /The craft queue is empty/), say(addon, "craft cd", /No profession cooldowns noted yet/), addon.eval("return #ns.errors")], "empty, and no error").toEqual([true, true, 0]);
+  addon.eval("VanguardDB.craftCooldowns = 'oops'");
+  expect(say(addon, "craft clear", /Craft queue emptied/) && say(addon, "craft cd", /No profession cooldowns noted yet/), "a damaged account list too").toBe(true);
+});

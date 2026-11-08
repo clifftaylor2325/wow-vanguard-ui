@@ -1,7 +1,8 @@
 // officerloot: the officer loot tools (Modules/OfficerLoot.lua, OfficerRoster.lua), a soft-reserve list and a roster, in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: the game's English roll format.
 const ROLL_ENV = 'RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"\n';
@@ -156,6 +157,20 @@ it("many reserves on one item are cut between names, so every shared part fits t
   expect(parts[0].startsWith("/raid Soft reserves: Ashkandi: Raider00abcd, "), "the first part names the item").toBe(true);
   expect(parts[1].startsWith("/raid Ashkandi (cont.): "), "the next carries the item on").toBe(true);
   expect(parts.join(" ").match(/Raider\d\dabcd/g).length, "every name once").toBe(24);
+});
+
+it("H29-19-1 every shared part fits 255 bytes with /raid in front in French and Russian, whose Soft reserves head is longer", () => {
+  for (const locale of ["enUS", "frFR", "ruRU"]) {
+    const addon = createAddon({ client: `__wfgWorld.locale = "${locale}"`, savedVariables: ON.savedVariables });
+    addon.login();
+    // 16 reserves on items of 8 to 21 letters, so the first line meets every width.
+    for (let n = 8; n <= 21; n++) {
+      for (let i = 0; i < 16; i++) say(addon, `loot add Raider${String(i).padStart(2, "0")}abcd ${"I".repeat(n)}`);
+      const longest = addon.eval("local m = 0 for _, p in ipairs(ns.GetModule('OfficerLoot').Chunks()) do m = math.max(m, #('/raid ' .. p)) end return m");
+      expect(longest, `${locale}: item name of ${n} letters`).toBeLessThanOrEqual(255);
+      addon.eval("ns.GetModule('OfficerLoot').Clear()");
+    }
+  }
 });
 
 it("the options card has the switch, and Add a reserve asks for player and item", () => {

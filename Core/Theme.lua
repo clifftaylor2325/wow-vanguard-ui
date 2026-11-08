@@ -457,14 +457,21 @@ local function stillTinted(region, m)
     and math.abs(b - m.b) < 0.004 and math.abs((a or 1) - m.a) < 0.004
 end
 
+-- Whether the client has closed a region to addons (a plate's aura icon in an instance): every call on it but this
+-- one raises, and it has no way back, so the theme's walks leave it and forget it (on T: this file is close to Lua's
+-- limit on top-level locals).
+function T.Closed(region)
+  return type(region.IsForbidden) == "function" and region:IsForbidden() == true
+end
+
 -- Re-tints every remembered region whose colour is still what T.Tint set (after an accent or variant
--- change); one recoloured by hand since (a class colour, say) is forgotten instead.
+-- change); one recoloured by hand since (a class colour, say), or closed to addons, is forgotten instead.
 local function refreshTints()
   for region, m in pairs(tinted) do
-    if stillTinted(region, m) then T.Tint(region, m.token, m.alpha) else tinted[region] = nil end
+    if not T.Closed(region) and stillTinted(region, m) then T.Tint(region, m.token, m.alpha) else tinted[region] = nil end
   end
   for bar, m in pairs(T.barColored) do
-    if stillTinted(bar, m) then T.BarColor(bar, m.token) else T.barColored[bar] = nil end
+    if not T.Closed(bar) and stillTinted(bar, m) then T.BarColor(bar, m.token) else T.barColored[bar] = nil end
   end
 end
 
@@ -561,9 +568,12 @@ function T.Snap(texture, class)
   return texture
 end
 
--- Puts every texture T.Snap has seen under the policy again (after a switch or a profile load).
+-- Puts every texture T.Snap has seen under the policy again (after a switch or a profile load); one closed to
+-- addons is forgotten (T.Closed).
 local function reSnap()
-  for texture, class in pairs(snapClass) do applySnap(texture, class) end
+  for texture, class in pairs(snapClass) do
+    if T.Closed(texture) then snapClass[texture] = nil else applySnap(texture, class) end
+  end
 end
 
 -- Turns texel snapping for still textures on or off (the A/B test, #226), at once.
@@ -1302,9 +1312,12 @@ local function repaint(frame, entry)
   if entry.paint then entry.paint(entry, frame) end
 end
 
--- Repaints every painted frame at its pixel size now (a frame's own scale changed).
+-- Repaints every painted frame at its pixel size now (a frame's own scale changed); one closed to addons is
+-- forgotten (T.Closed).
 function T.Repaint()
-  for frame, entry in pairs(painted) do repaint(frame, entry) end
+  for frame, entry in pairs(painted) do
+    if T.Closed(frame) then painted[frame] = nil else repaint(frame, entry) end
+  end
 end
 
 -- Repaints one painted frame at its pixel size now, after SetScale on it (T.Repaint does every frame); a frame
@@ -3015,10 +3028,14 @@ local function shadowFor(fs, token)
 end
 
 -- Re-fonts every string styled with a role (after a font or text size change) and recolours every
--- string coloured by token (after a variant or accent change).
+-- string coloured by token (after a variant or accent change); one closed to addons is forgotten (T.Closed).
 function T.RefreshText()
-  for fs, role in pairs(styled) do T.ApplyRole(fs, role) end
-  for fs, token in pairs(colored) do fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
+  for fs, role in pairs(styled) do
+    if T.Closed(fs) then styled[fs] = nil else T.ApplyRole(fs, role) end
+  end
+  for fs, token in pairs(colored) do
+    if T.Closed(fs) then colored[fs] = nil else fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
+  end
 end
 
 -- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), or in

@@ -93,18 +93,31 @@ end
 -- Then the name of the bar's buttons and when the row hides, as the game hides
 -- the bar: in a vehicle, on an override bar, and for stances while you mind-control
 -- (the pet bar then holds the possessed creature's actions) or the pet bar with no pet.
+SB.STANCE_SPOT = { "StanceBar", "stancebar", L["Stance bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 288 }, 200, 32,
+  buttons = "StanceButton", hides = "[vehicleui][possessbar][overridebar] hide; show" }
 SB.SPOTS = {
   { "PetActionBar", "petbar", L["Pet bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 250 }, 320, 32,
     buttons = "PetActionButton", hides = "[vehicleui][overridebar][nopet] hide; show" },
-  { "StanceBar", "stancebar", L["Stance bar"], { "BOTTOMLEFT", "BOTTOMLEFT", 8, 288 }, 200, 32,
-    buttons = "StanceButton", hides = "[vehicleui][possessbar][overridebar] hide; show" },
+  SB.STANCE_SPOT,
 }
 
 -- How many buttons each bar has, and the room between two of them (the game's own least padding).
 SB.ROW = { count = 10, gap = 2 }
 
+-- Each placed bar's spot, by the game bar's name.
+SB.holders = {}
+
+-- How many forms the character has, plainly (0 for a class with none).
+local function formsCount()
+  return ns.PlainNumber(ns.CallIf(_G, "GetNumShapeshiftForms")) or 0
+end
+
 -- The row's secure visibility driver: the spot's, after the pet battle clause on a client that has pet battles.
+-- The stance row hides outright for a character with no forms: the game leaves its ten stance buttons shown
+-- inside its hidden bar then (StanceBar:Update skips UpdateState at 0 forms, and Edit Mode shows all ten),
+-- and no secure conditional says "no forms".
 function SB.RowDriver(spot)
+  if spot == SB.STANCE_SPOT and formsCount() == 0 then return "hide" end
   return (ns.IsForever() and "" or ns.GetModule("ActionBars").PET_BATTLE_CLAUSE) .. spot.hides
 end
 
@@ -138,7 +151,23 @@ local function placeBar(spot)
   holder:SetFrameLevel(bar:GetFrameLevel())
   ns.Mover(holder, spot[2], spot[3], spot[4])
   seatButtons(spot, bar, holder)
-  RegisterStateDriver(holder, "visibility", SB.RowDriver(spot))
+  holder.vgDriver = SB.RowDriver(spot)
+  RegisterStateDriver(holder, "visibility", holder.vgDriver)
+  SB.holders[spot[1]] = holder
+end
+
+-- Sets the stance spot's driver again on UPDATE_SHAPESHIFT_FORMS (a form learnt, a talent swap) and on
+-- PLAYER_ENTERING_WORLD (the forms may still read 0 at login), out of combat:
+-- RegisterStateDriver writes a secure attribute. The latest change wins.
+local function redriveStance()
+  local holder = SB.holders[SB.STANCE_SPOT[1]]
+  if not holder then return end
+  ns.OutOfCombat(function()
+    local driver = SB.RowDriver(SB.STANCE_SPOT)
+    if holder.vgDriver == driver then return end
+    holder.vgDriver = driver
+    RegisterStateDriver(holder, "visibility", driver)
+  end, "stancespot")
 end
 
 -- A label in the theme font, centered and fitted to the button (shrunk a little when a translation runs wider).
@@ -229,4 +258,8 @@ function SB.Enable(settings)
     if settings.place then for _, spot in ipairs(SB.SPOTS) do placeBar(spot) end end
     if settings.vehicleExit then SB.exit = vehicleExit() end
   end)
+  if settings.place then
+    ns.On("UPDATE_SHAPESHIFT_FORMS", redriveStance)
+    ns.On("PLAYER_ENTERING_WORLD", redriveStance)
+  end
 end

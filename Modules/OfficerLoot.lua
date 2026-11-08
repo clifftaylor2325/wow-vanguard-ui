@@ -16,7 +16,8 @@ local OL = ns.Module("OfficerLoot", { defaults = { on = false } })
 
 ns.Options.MODULE_INFO.OfficerLoot = { L["Officer loot tools"], L["A soft-reserve list shown next to the roll tracker, and a roster of the group; shared by hand, never synced (off until switched on)."] }
 
--- The longest chat line the game takes, kept under with room for the /p or /raid prefix.
+-- The longest chat line the game takes, kept under with room for the /p or /raid prefix and the
+-- translated "Soft reserves: " head (the longest is 29 bytes).
 OL.CHUNK = 230
 
 -- The text between two names on one line, and between two lines of one chat part.
@@ -155,13 +156,13 @@ local function lineHead(item, n)
   return ns.Format(n == 1 and L["{item}: "] or L["{item} (cont.): "], { item = item })
 end
 
--- One item's reserves as lines of at most OL.CHUNK bytes, cut between names (many reserves on one
+-- One item's reserves as lines of at most `room` bytes, cut between names (many reserves on one
 -- item would not fit the chat box's 255 bytes on one line).
-local function groupLines(g)
+local function groupLines(g, room)
   local out, names = {}, {}
   for _, name in ipairs(g.names) do
     local now = lineHead(g.item, #out + 1) .. table.concat(names, OL.NAME_SEP)
-    if #names > 0 and #now + #OL.NAME_SEP + #name > OL.CHUNK then out[#out + 1] = now names = {} end
+    if #names > 0 and #now + #OL.NAME_SEP + #name > room then out[#out + 1] = now names = {} end
     names[#names + 1] = name
   end
   out[#out + 1] = lineHead(g.item, #out + 1) .. table.concat(names, OL.NAME_SEP)
@@ -171,10 +172,11 @@ end
 -- The list cut into parts that each fit one chat line, the first starting "Soft reserves: ".
 function OL.Chunks()
   local parts, now = {}, ""
+  local head = L["Soft reserves: "]
   for _, g in ipairs(OL.Groups()) do
-    for _, line in ipairs(groupLines(g)) do
+    for _, line in ipairs(groupLines(g, OL.CHUNK - #head)) do
       if now ~= "" and #now + #OL.PART_SEP + #line > OL.CHUNK then parts[#parts + 1] = now now = "" end
-      now = now == "" and (#parts == 0 and L["Soft reserves: "] or "") .. line or now .. OL.PART_SEP .. line
+      now = now == "" and (#parts == 0 and head or "") .. line or now .. OL.PART_SEP .. line
     end
   end
   if now ~= "" then parts[#parts + 1] = now end

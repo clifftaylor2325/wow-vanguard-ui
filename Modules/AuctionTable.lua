@@ -194,12 +194,13 @@ local function rowParts(t, r)
 end
 
 -- Row i, AH.ROW_H tall under the header: a click goes to the owner's onClick with the row (its
--- item and index on it), the mouse over it to its onEnter and onLeave.
+-- item and index on it), the mouse over it to its onEnter and onLeave. The hover wash comes from
+-- W.Row's hooks, so these are hooked, never set, to keep it.
 local function row(t, i)
   local r = AH.Row(t, i, -AH.TABLE_HEAD, function(self, button) if t.onClick then t.onClick(self, button) end end)
   rowParts(t, r)
-  r:SetScript("OnEnter", enterRow)
-  r:SetScript("OnLeave", leaveRow)
+  r:HookScript("OnEnter", enterRow)
+  r:HookScript("OnLeave", leaveRow)
   return r
 end
 

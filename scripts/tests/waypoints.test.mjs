@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY maps: a world (1) holding two zones and a city whose names share a
 // start, the player on zone 10 at 45.67, 12.3. Every waypoint set is recorded.
@@ -341,4 +341,26 @@ it("waypoints: a comma between two digits is a decimal comma while two coordinat
   expect(way(addon, "test-only elwynn forest 42,5 65,5 Inn"), "after a zone name").toEqual([[10, 0.425, 0.655]]);
   expect(way(addon, "45,61 Inn"), "a pair with no space is still x,y").toEqual([[10, 0.45, 0.61]]);
   expect(way(addon, "45,61 70"), "and with a number for a title").toEqual([[10, 0.45, 0.61]]);
+});
+
+it("waypoints: a Map page built earlier lists a new waypoint, and each Go to button goes to the spot its label names", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV + CLICK_LUA);
+  click(addon, 10, 0.2, 0.3);
+  click(addon, 12, 0.5, 0.25);
+  addon.eval('ns.Options.Show("map") ns.Options.Hide()');
+  click(addon, 10, 0.7, 0.7);
+  addon.eval('ns.Options.Show("map")');
+  expect(addon.eval('return __click("Go to TEST-ONLY Elwynn Forest 70.0, 70.0")'), "the new waypoint has its button").toBe(true);
+  addon.eval('return __click("Go to TEST-ONLY Dun Morogh 50.0, 25.0")');
+  expect(addon.eval("return { __point[1], __point[2], __point[3] }"), "an older label goes to its own spot").toEqual([12, 0.5, 0.25]);
+});
+
+it("waypoints: a button of a page left stale still goes to its own spot", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV);
+  click(addon, 10, 0.2, 0.3);
+  const button = "local WP = ns.GetModule('Waypoints') for _, r in ipairs(WP.Rows()) do if r[1] == 'button' and r[2]:match('^Go to') then return r[3] end end";
+  addon.eval(`__stale = (function() ${button} end)()`);
+  click(addon, 12, 0.5, 0.25);
+  addon.eval("__stale()");
+  expect(addon.eval("return { __point[1], __point[2], __point[3] }")).toEqual([10, 0.2, 0.3]);
 });

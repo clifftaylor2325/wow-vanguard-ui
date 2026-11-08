@@ -351,13 +351,15 @@ end
 -- Running ------------------------------------------------------------------------------------------------
 
 -- Looks at the bars once spells or the level changed (out of combat): asks a player who never applied a preset,
--- or takes note of what the player changed and, with the switch on, updates the keys. `learned`: a spell was
+-- or takes note of what the player changed and, with the switch on, updates the keys (or waits while key setup
+-- isn't offered: another bar addon, Vanguard's bars off, the gamepad). `learned`: a spell was
 -- learned since the last look. WoW Forever only.
 function KN.Check(learned)
   local s = state()
   if not ns.IsForever() or not ns.KeybindsLayouts then return end
   if not s.preset then return ask(s, learned) end
   claimSlots(s)
+  if s.on and ns.KeybindsWizard and not ns.KeybindsWizard.Offered() then s.pending = true return end
   if s.on then update(s) end
 end
 

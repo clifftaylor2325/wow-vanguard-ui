@@ -691,6 +691,18 @@ it("the reload dialog: the reason is the title and the dialog grows to fit it; t
   expect([addon.frame(name).visible, addon.eval(`return ${name}.accept.reloadOverlay:IsShown()`)], "the X hides it and the overlay with it").toEqual([false, false]);
 });
 
+it("the dialog opened last sits over the others, so the reload offer's Reload overlay never covers a question's Yes", () => {
+  const addon = loggedIn();
+  // The levels of the overlay on Reload, Reload itself and the question's Yes.
+  const levels = () => addon.eval("return { Vanguard_Reload.accept.reloadOverlay:GetFrameLevel(), Vanguard_Reload.accept:GetFrameLevel(), Vanguard_Question.yes:GetFrameLevel() }");
+  addon.eval("ns.Ask('TEST-ONLY First?', 'Go', function() end) Vanguard_Question:Hide() ns.OfferReload('Changed.')");
+  let [overlay, reload, yes] = levels();
+  expect([overlay > reload, reload > yes], "the offer raised over the question shown before it, its overlay laid over Reload again").toEqual([true, true]);
+  addon.eval("ns.Ask('TEST-ONLY Reset every setting on this page?', 'Reset', function() end)");
+  [overlay, reload, yes] = levels();
+  expect([addon.eval("return Vanguard_Reload.accept.reloadOverlay:IsShown()"), yes > overlay], "the offer stays, the question over it and over its overlay").toEqual([true, true]);
+});
+
 it("string table: a text with no translation reads as its English key; a locale's file fills in only on that client", () => {
   const addon = loggedIn('GetLocale = function() return "deDE" end');
   expect(addon.eval('return { ns.L["Experience bar"], ns.Locale() }'), "no translation: the English key").toEqual(["Experience bar", "deDE"]);

@@ -1,5 +1,5 @@
--- Crafting queue (off until you switch it on): a list of crafts you mean to make (kept for each
--- character), a tracker for profession cooldowns, and a ranking of the recipes that pay best, all
+-- Crafting queue (off until you switch it on): a list of crafts you mean to make (each character's
+-- own, whatever profile it uses), a tracker for profession cooldowns, and a ranking of the recipes that pay best, all
 -- from the costs the Auction helper already works out (Modules/AuctionCrafting.lua).
 --   * /vg craft add [n]   queues n crafts (1 by default) of the recipe on display in the profession window;
 --   * /vg craft           lists the queue, with the reagents it still needs from your bags;
@@ -21,16 +21,28 @@ local L = ns.L
 local AH = ns.GetModule("AuctionHelper")
 local AP, CR = ns.AuctionPrices, AH.Crafting
 
-local CQ = ns.Module("CraftQueue", { defaults = { on = false, secs = 6, chars = {} } })
+local CQ = ns.Module("CraftQueue", { defaults = { on = false, secs = 6 } })
 
 -- The most recipes read for a ranking or a cooldown scan, and how many lines the ranking prints.
 CQ.SCAN, CQ.TOP = 300, 5
 
--- This character's part of the saved data: its queue (entries { id, n, name }) and cooldowns (by recipe, { name, ready }).
-function CQ.Mine()
+-- The table saved at t[key], made anew when the file holds none or something else (a hand-edited file).
+local function savedTable(t, key)
+  t[key] = type(t[key]) == "table" and t[key] or {}
+  return t[key]
+end
+
+-- This character's key, and its noted cooldowns (by recipe, { name, ready }) in the account's file.
+local function myCooldowns()
   local key = ns.SettingsGuard.CharKey() or "?"
-  CQ.settings.chars[key] = CQ.settings.chars[key] or { queue = {}, cooldowns = {} }
-  return CQ.settings.chars[key]
+  return savedTable(savedTable(VanguardDB, "craftCooldowns"), key)
+end
+
+-- This character's part of the saved data, kept out of the profiles so a profile switch (a spec's too) never
+-- hides it: its queue (entries { id, n, name }), its own (VanguardCharDB), and its cooldowns, kept for the
+-- account (VanguardDB) so /vg craft cd lists every character's.
+function CQ.Mine()
+  return { queue = savedTable(VanguardCharDB, "craftQueue"), cooldowns = myCooldowns() }
 end
 
 -- Now in seconds (the clock a cooldown is kept in).
@@ -70,11 +82,17 @@ local function recipeName(e)
   return e.name or ns.Format(L["recipe {id}"], { id = e.id })
 end
 
+-- The queue's entry for a recipe, or nil.
+local function entryFor(queue, id)
+  for _, e in ipairs(queue) do
+    if e.id == id then return e end
+  end
+end
+
 -- Queues n crafts of a recipe (joining the entry it has) and says so.
 function CQ.Add(id, n, name)
   local queue = CQ.Mine().queue
-  local entry
-  for _, e in ipairs(queue) do if e.id == id then entry = e end end
+  local entry = entryFor(queue, id)
   if not entry then entry = { id = id, n = 0, name = name } queue[#queue + 1] = entry end
   entry.n = entry.n + n
   ns.Chat(ns.Format(L["Queued: {count} x {recipe} ({queued} in the queue)."], { count = entry.n, recipe = recipeName(entry), queued = #queue }))
@@ -207,11 +225,24 @@ local function byCharThenName(a, b)
   return a.name < b.name
 end
 
+-- True for a noted cooldown with its name and time (a hand-edited file may hold anything).
+local function goodCooldown(cd) return type(cd) == "table" and type(cd.name) == "string" and type(cd.ready) == "number" end
+
+-- A character's noted cooldowns from the account's file, only the readable ones; none for anything else.
+local function readableCooldowns(char, cooldowns)
+  local out = {}
+  if type(char) ~= "string" or type(cooldowns) ~= "table" then return out end
+  for id, cd in pairs(cooldowns) do
+    if goodCooldown(cd) then out[id] = cd end
+  end
+  return out
+end
+
 -- Every noted cooldown as { char, name, line }, sorted, because pairs order is undefined.
 local function cooldownRows()
   local rows = {}
-  for char, c in pairs(CQ.settings.chars) do
-    for _, cd in pairs(c.cooldowns) do
+  for char, cooldowns in pairs(savedTable(VanguardDB, "craftCooldowns")) do
+    for _, cd in pairs(readableCooldowns(char, cooldowns)) do
       local line = string.format("%s: %s, %s", char, cd.name, remaining(cd.ready - now()))
       rows[#rows + 1] = { char = char, name = cd.name, line = line }
     end
@@ -262,7 +293,7 @@ function CQ.Command(rest)
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)$")
   if not CQ.settings or not CQ.settings.on then return ns.Chat(L["The craft queue is off (/vg > Town and gear > Craft queue)."]) end
   if word == "add" then return CQ.AddShown(arg) end
-  if word == "clear" then CQ.Mine().queue = {} return ns.Chat(L["Craft queue emptied."]) end
+  if word == "clear" then VanguardCharDB.craftQueue = {} return ns.Chat(L["Craft queue emptied."]) end
   if PLAIN[word] then return CQ[PLAIN[word]]() end
   CQ.List()
 end
@@ -275,9 +306,55 @@ function CQ.OnCast(_, unit, _, spellID)
   if id and first and first.id == id then CQ.Done(id) end
 end
 
+-- Moving the saved data out of the profiles ----------------------------------------------------
+
+-- True for a queue entry a hand-edited file can't break: a recipe and a count.
+local function goodEntry(e) return type(e) == "table" and type(e.id) == "number" and type(e.n) == "number" end
+
+-- Adds an old queue's entries to this character's queue, each recipe once (the larger count wins).
+local function mergeQueue(old)
+  local queue = CQ.Mine().queue
+  for _, e in ipairs(type(old) == "table" and old or {}) do
+    local have = goodEntry(e) and entryFor(queue, e.id)
+    if have then have.n = math.max(have.n, e.n) end
+    if goodEntry(e) and not have then queue[#queue + 1] = { id = e.id, n = e.n, name = type(e.name) == "string" and e.name or nil } end
+  end
+end
+
+-- Adds a character's old cooldowns to the account's (a note already there wins).
+local function mergeCooldowns(key, old)
+  local notes = savedTable(savedTable(VanguardDB, "craftCooldowns"), key)
+  for id, cd in pairs(type(old) == "table" and old or {}) do
+    if notes[id] == nil and goodCooldown(cd) then notes[id] = cd end
+  end
+end
+
+-- One profile's old chars table: every character's cooldowns join the account's; this character's queue joins
+-- its own and its part leaves the profile. Another character's queue stays until that character logs in.
+local function moveChars(chars, me)
+  for key, part in pairs(chars) do
+    if type(key) == "string" and type(part) == "table" then mergeCooldowns(key, part.cooldowns) end
+  end
+  if type(chars[me]) == "table" then mergeQueue(chars[me].queue) end
+  chars[me] = nil
+end
+
+-- 0.9.2 kept each character's queue and cooldowns in every profile it played on (CraftQueue.chars). Each
+-- login moves them out of every profile, in name order, and a profile's chars goes once it is empty. It
+-- runs again each login and leaves moved data as it is.
+local function moveFromProfiles()
+  local me = ns.SettingsGuard.CharKey() or "?"
+  for _, name in ipairs(ns.ProfileNames()) do
+    local cq = VanguardDB.profiles[name].CraftQueue
+    if type(cq) == "table" and type(cq.chars) == "table" then moveChars(cq.chars, me) end
+    if type(cq) == "table" and (type(cq.chars) ~= "table" or next(cq.chars) == nil) then cq.chars = nil end
+  end
+end
+
 -- Module entry point (Core/Modules.lua): every part checks its switch as it runs.
 function CQ.Enable(settings)
   CQ.settings = settings
+  moveFromProfiles()
   ns.OnUnit("UNIT_SPELLCAST_SUCCEEDED", ns.Guard("craft queue", CQ.OnCast), "player")
   ns.On("TRADE_SKILL_LIST_UPDATE", ns.Guard("craft cooldowns", CQ.Scan))
 end

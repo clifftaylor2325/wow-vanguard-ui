@@ -567,10 +567,17 @@ local function capsInUse()
   return out
 end
 
+-- The caps to share for the kind in use, 0 (none) included, so an import doesn't bring back the kind's own cap.
+local function capsToShare()
+  local out = {}
+  for _, short in ipairs(W.CAP_STATS) do out[short] = UP.Cap(UP.kind, short) end
+  return out
+end
+
 -- /vg weights export: the weights in use, for the kind they're for, with the caps, as a string to copy.
 local function exportWeights()
   local title = ns.Format(L["Vanguard weights ({kind})  Ctrl+C to copy"], { kind = UP.Word(UP.kind) })
-  ns.ShowText(title, ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current, caps = capsInUse() }))
+  ns.ShowText(title, ns.Serialize.Encode("weights", { kind = UP.kind, weights = UP.current, caps = capsToShare() }))
 end
 
 -- /vg weights: the weights in use, who they're for, and the caps when any is set.
