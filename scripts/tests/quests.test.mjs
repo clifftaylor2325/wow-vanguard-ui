@@ -995,6 +995,19 @@ it("quest log: hovering a list line shows the quest's whole title, leaving hides
   expect(addon.eval("return GameTooltip:IsShown()"), "in a fight there is none").toBe(false);
   addon.eval("__wfgStub.inCombat = false local g = GameTooltip GameTooltip = nil local b = Vanguard_QuestLog.lines[2] b.__scripts.OnEnter(b) b.__scripts.OnLeave(b) GameTooltip = g");
 });
+it("H30-14-1 quest log: pointing at a long objective shows it in full, leaving hides it, and a fight shows none", () => {
+  const long = "TEST-ONLY Speak with Lieutenant Horatio Laine about the gnolls that have been raiding the farms";
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval(`__quests[90051].objectives[1].text = "${long}" Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)`);
+  addon.eval("local r = Vanguard_QuestLog.objectiveRows[1] r.__scripts.OnEnter(r)");
+  expect(addon.eval("return { GameTooltip.__lines[1].text, GameTooltip:IsShown(), GameTooltip:GetOwner() == Vanguard_QuestLog.objectiveRows[1] }"), "the whole objective, by its row").toEqual([long, true, true]);
+  addon.eval("local r = Vanguard_QuestLog.objectiveRows[1] r.__scripts.OnLeave(r)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
+  addon.eval("__wfgStub.inCombat = true local r = Vanguard_QuestLog.objectiveRows[1] r.__scripts.OnEnter(r)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "in a fight there is none").toBe(false);
+  addon.eval("__wfgStub.inCombat = false local r = Vanguard_QuestLog.objectiveRows[1] r.full = nil r.__scripts.OnEnter(r) local g = GameTooltip GameTooltip = nil r.__scripts.OnEnter(r) r.__scripts.OnLeave(r) GameTooltip = g");
+  expect(addon.eval("return GameTooltip:IsShown()"), "no text or no tooltip: nothing").toBe(false);
+});
 it("quest log: hovering a reward card shows its item, leaving hides it", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
