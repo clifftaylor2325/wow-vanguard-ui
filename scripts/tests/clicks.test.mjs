@@ -299,6 +299,20 @@ it("H30-19-1 the remap reason names the click that runs, with the modifiers held
   expect(click("MiddleButton", "shift-"), "the engine casts the Shift + Left heal, not the plain Left Target").toBe("spell");
 });
 
+it("H34-20-1 with no binding on the click that runs, the remap reason says the click targets, and the engine agrees", () => {
+  const { why, click } = bindingClicks('CC.Add("shift-BUTTON3", "spell", "TEST-ONLY Prayer")',
+    'table.remove(__gameClicks, 1) table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 1, button = "MiddleButton", modifiers = __wfgWorld.modifierBits.shift })');
+  expect(why("shift-BUTTON3"), "no Shift + Left binding: the click targets").toBe("the game's own Click Casting window puts Target on this click, so the click targets instead");
+  expect(click("MiddleButton", "shift-"), "the engine targets").toBe("target");
+});
+
+it("H34-20-1 with no Right click binding, a unit menu moved to Middle says the click opens the menu", () => {
+  const { why, click } = bindingClicks('CC.Add("BUTTON3", "focus")',
+    'table.remove(__gameClicks, 2) table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 2, button = "MiddleButton", modifiers = 0 })');
+  expect(why("BUTTON3"), "no Right click binding: the click opens the menu").toBe("the game's own Click Casting window puts the unit menu on this click, so the click opens the unit menu instead");
+  expect(click("MiddleButton"), "the engine opens the menu").toBe("togglemenu");
+});
+
 it("the game's coverage is by the exact modifiers: a Target on Ctrl + Left does not cover Shift + Left", () => {
   const { why, click } = bindingClicks('CC.Add("shift-BUTTON1", "target") CC.Add("ctrl-BUTTON1", "target")',
     'table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 1, button = "LeftButton", modifiers = __wfgWorld.modifierBits.ctrl })');

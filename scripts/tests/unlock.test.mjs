@@ -209,6 +209,19 @@ it("H30-4-1 a lock inside Edit Mode takes its note down, and an unlock begun the
   expect(addon.eval("return ns.Unlocked()"), "Save and lock ends it").toBe(false);
 });
 
+it("H34-3-1 /vg unlock after a lock inside Edit Mode brings the note back, and not once Edit Mode is closed", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // Whether the handles are up and whether Edit Mode's note shows.
+  const state = () => addon.eval("return { ns.Unlocked(), Vanguard_EditModeNote:IsShown() }");
+  addon.eval("__edit = CreateFrame('Frame', nil, UIParent) ns.EditModeOpened(__edit) ns.Lock()");
+  addon.slash("unlock");
+  expect(state(), "handles and note are up again with Edit Mode still open").toEqual([true, true]);
+  addon.eval("ns.EditModeClosed(__edit)");
+  addon.slash("lock");
+  addon.slash("unlock");
+  expect(state(), "Edit Mode closed: the handles come up without its note").toEqual([true, false]);
+});
+
 it("H33-10-1 /vg unlock inside Edit Mode remembers the spots as of then: Exit without saving keeps the Edit Mode move", () => {
   const addon = loggedIn(CLICK_LUA);
   // The minimap's saved spot, or nil before one is saved.
@@ -395,4 +408,23 @@ it("the unlock bar fits its note again when Text size changes while unlocked", (
   expect(addon.eval(`local b, t = Vanguard_UnlockBar, Vanguard_UnlockBar.text
     return b:GetHeight() >= t:GetStringHeight() + 16`), "the bar is as tall as its note and the edges").toBe(true);
   expect(addon.textFit("Vanguard_UnlockBar").filter((f) => f.text.startsWith("Drag")), "the note is not cut").toEqual([]);
+});
+
+it("H34-3-2 Edit Mode's note fits its text again when Text size changes while Edit Mode is open", () => {
+  const addon = fitClient(1920, 1080, 1);
+  addon.eval("EditModeManagerFrame:Show()");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(addon.eval(`local n = Vanguard_EditModeNote
+    return n:GetHeight() >= n.text:GetStringHeight() + 2 * ns.Theme.SPACE.tight`), "the note is as tall as its text").toBe(true);
+  expect(addon.textFit("Vanguard_EditModeNote"), "nothing in the note is cut").toEqual([]);
+});
+
+it("H34-3-2 a note put away by a lock inside Edit Mode is refitted when /vg unlock brings it back", () => {
+  const addon = fitClient(1920, 1080, 1);
+  addon.eval("EditModeManagerFrame:Show() ns.Lock()");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  addon.slash("unlock");
+  expect(addon.eval(`local n = Vanguard_EditModeNote
+    return n:IsShown() and n:GetHeight() >= n.text:GetStringHeight() + 2 * ns.Theme.SPACE.tight`), "the note is shown as tall as its text").toBe(true);
+  expect(addon.textFit("Vanguard_EditModeNote"), "nothing in the note is cut").toEqual([]);
 });

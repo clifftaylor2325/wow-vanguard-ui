@@ -1688,6 +1688,13 @@ it("bags: the player's own value is kept for the whole computer, so a second pro
   addon.eval("ns.SetModuleEnabled('Bags', false)");
   expect(addon.eval("return { __cvars.combinedBags, VanguardDB.client.bagsPrior == nil, ns.Settings('Bags').applied == nil }"), "switched off on the second profile: separate bags again").toEqual(["0", true, true]);
 });
+it("bags: two profiles that both left a prior give the player's own back, whichever loads first", () => {
+  const sv = "VanguardDB.profiles.Main = { Bags = { applied = true, prior = '0' } } VanguardDB.profiles.Alt = { Bags = { applied = true, prior = '1' } } VanguardDB.profiles.Odd = { Bags = 5 } VanguardCharDB.profile = 'Alt'";
+  const addon = loggedIn(UI_ENV + "__cvars = { combinedBags = '1' } C_CVar.GetCVar = function(k) return __cvars[k] end", { savedVariables: sv });
+  expect(addon.eval("return { VanguardDB.client.bagsPrior, VanguardDB.profiles.Main.Bags.prior == nil, VanguardDB.profiles.Alt.Bags.prior == nil }"), "the real 0 wins and every profile's prior is cleared").toEqual(["0", true, true]);
+  addon.eval("ns.SetModuleEnabled('Bags', false)");
+  expect(addon.eval("return __cvars.combinedBags"), "Bags off gives separate bags back").toBe("0");
+});
 it("bags: a profile that never applied records the value only while the notes hold none", () => {
   const addon = loggedIn(UI_ENV + "__cvars = { combinedBags = '0' } C_CVar.GetCVar = function(k) return __cvars[k] end", { savedVariables: "VanguardDB.profiles.Default = { Bags = { prior = '1' } }" });
   expect(addon.eval("return { __cvars.combinedBags, VanguardDB.client.bagsPrior, ns.Settings('Bags').prior == nil }"), "an old profile's prior is moved to the notes before the CVar is read").toEqual(["1", "1", true]);

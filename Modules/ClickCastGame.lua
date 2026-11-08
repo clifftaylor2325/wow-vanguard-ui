@@ -29,8 +29,8 @@ CC.WONT_RUN = WONT_RUN
 -- Target is Left click, Open menu is Right click, and the engine reads that button's attribute for a click bound to
 -- it) and, as one whole sentence a translation can bend, what the reason says when the game moved it to another click.
 local INTERACTIONS = {
-  [1] = { button = 1, remap = L["the game's own Click Casting window puts Target on this click, so it runs your {click} binding instead"] },
-  [2] = { button = 2, remap = L["the game's own Click Casting window puts the unit menu on this click, so it runs your {click} binding instead"] },
+  [1] = { button = 1, remap = L["the game's own Click Casting window puts Target on this click, so it runs your {click} binding instead"], remapDefault = L["the game's own Click Casting window puts Target on this click, so the click targets instead"] },
+  [2] = { button = 2, remap = L["the game's own Click Casting window puts the unit menu on this click, so it runs your {click} binding instead"], remapDefault = L["the game's own Click Casting window puts the unit menu on this click, so the click opens the unit menu instead"] },
 }
 
 -- A mouse button's number from the game's name for it (its profile may use either name).
@@ -161,10 +161,17 @@ local function gameVerdict(profile, prefix, n)
   return unsure and "unsure" or "unbound"
 end
 
+-- Whether the list holds a binding on the click the engine reads for this interaction (with the modifiers held now).
+local function runsBinding(entry, prefix)
+  return CC.Binding(prefix .. "BUTTON" .. INTERACTIONS[entry.interaction].button) ~= nil
+end
+
 -- Why a remapped click runs another binding: the engine reads the interaction's own button with the modifiers held
--- now, so the reason names that click (such as "Shift + Left click"), not always the plain one.
+-- now, so the reason names that click (such as "Shift + Left click"), not always the plain one. With no binding on
+-- it, the frame's own attribute runs, so the reason says the click targets or opens the menu.
 local function remapReason(entry, prefix)
   local interaction = INTERACTIONS[entry.interaction]
+  if not runsBinding(entry, prefix) then return interaction.remapDefault end
   return ns.Format(interaction.remap, { click = CC.KeyName(prefix .. "BUTTON" .. interaction.button) })
 end
 

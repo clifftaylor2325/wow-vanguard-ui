@@ -63,18 +63,43 @@ local function keepPrior()
   if notes.bagsPrior == nil and get then notes.bagsPrior = get("combinedBags") end
 end
 
--- Moves a prior an older version kept in the profile into the notes, when the notes hold none.
-local function adoptProfilePrior(settings)
+-- The player's own combinedBags value from the priors older versions kept in the profiles. A prior
+-- that differs from the value its profile applied read the player's own; one that equals it may only
+-- have read another profile's write. If two profiles applied opposite settings the save is ambiguous
+-- and the first in name order wins, which is never worse than the first loaded winning.
+local function legacyPrior()
+  local any
+  for _, name in ipairs(ns.ProfileNames()) do
+    local bags = VanguardDB.profiles[name].Bags
+    local prior = type(bags) == "table" and bags.prior
+    if type(prior) == "string" then
+      if prior ~= (bags.applied and "1" or "0") then return prior end
+      any = any or prior
+    end
+  end
+  return any
+end
+
+-- Clears the prior an older version kept, in every profile.
+local function clearProfilePriors()
+  for _, name in ipairs(ns.ProfileNames()) do
+    local bags = VanguardDB.profiles[name].Bags
+    if type(bags) == "table" then bags.prior = nil end
+  end
+end
+
+-- Moves the priors older versions kept in the profiles into the notes, when the notes hold none.
+local function adoptProfilePrior()
   local notes = clientNotes()
-  if notes.bagsPrior == nil then notes.bagsPrior = settings.prior end
-  settings.prior = nil
+  if notes.bagsPrior == nil then notes.bagsPrior = legacyPrior() end
+  clearProfilePriors()
 end
 
 -- Applies the combined setting to the client once: the first time, and again
 -- only when the setting changes, so the player's own choice in the game's
 -- options stands between. The player's value from before is kept for Disable.
 local function syncCombined(settings)
-  adoptProfilePrior(settings)
+  adoptProfilePrior()
   if settings.applied == settings.combined then return end
   keepPrior()
   settings.applied = settings.combined
@@ -83,7 +108,7 @@ end
 
 -- The module switched off (Core/Modules.lua): the player's own bag layout comes back.
 function BG.Disable(settings)
-  adoptProfilePrior(settings)
+  adoptProfilePrior()
   local notes = clientNotes()
   if settings.applied == nil and notes.bagsPrior == nil then return end
   if notes.bagsPrior ~= nil then setCombinedCVar(notes.bagsPrior) end

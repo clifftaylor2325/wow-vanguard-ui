@@ -268,10 +268,12 @@ end
 
 -- Applies the profile step: "new" gives this character a profile of its own and keeps Back
 -- from returning to it, so the new profile stays (setup opened again doesn't ask again, either);
--- "share" changes nothing.
+-- "share" changes nothing. The Profiles page, if built, is built again for the new profile: forking stages nothing,
+-- so nothing else tells it.
 function S.ApplyProfile(key)
   if key ~= "new" then return end
   ns.ForkProfile(UnitName("player"))
+  ns.Options.RebuildPage("profiles")
   state.floor = state.step + 1
   VanguardCharDB.pickProfile = nil
 end

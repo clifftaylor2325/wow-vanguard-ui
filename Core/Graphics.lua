@@ -252,13 +252,13 @@ end
 local function keepPixel(undo)
   if undo.pixel ~= nil then return end
   local theme = ns.Theme.Settings()
-  undo.pixel = { on = theme.pixelScale == true, multiple = tonumber(theme.pixelMultiple) or 0 }
+  undo.pixel = { on = theme.pixelScale == true }
 end
 
--- Turns Vanguard's pixel-perfect scale back on, at its old multiple, when it was on before the first apply.
+-- Turns Vanguard's pixel-perfect scale back on, with the multiple for the screen, when it was on before the first apply.
 local function restorePixel(kept)
   if type(kept) ~= "table" or not kept.on then return end
-  ns.Theme.Settings().pixelMultiple = tonumber(kept.multiple) or 0
+  ns.Theme.Settings().pixelMultiple = 0
   ns.Theme.SetPixelScale(true)
 end
 

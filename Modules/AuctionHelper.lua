@@ -418,7 +418,7 @@ end
 -- window), and the modes it was in are forgotten.
 function AH.OnClosed()
   AH.open, AH.scan, AH.pending, AH.queue, AH.progress, AH.sell = false, nil, nil, {}, nil, nil
-  AH.mode, AH.lastMode, AH.lateScan = nil, nil, nil
+  AH.mode, AH.lastMode, AH.lateScan, AH.checkedItems = nil, nil, nil, nil
   AH.walker:Hide()
   ns.Every("auction scan countdown", nil)
 end

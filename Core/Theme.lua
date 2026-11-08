@@ -309,7 +309,9 @@ end
 -- Profiles saved or exported before the rename (ForeverUI 0.3.0 and earlier)
 -- call the bundled bar style "forever"; it is "vanguard" now. A profile that saved a
 -- variant since removed (Frost, the light look, dropped in 0.6.0) goes back to the default.
+-- A multiple setup stored as a fixed number (0.9.0 to 0.9.2) goes back to 0, so it follows the screen (H31-11-1).
 local function renamedTheme(saved)
+  if type(saved.pixelMultiple) == "number" and saved.pixelMultiple ~= 0 then saved.pixelMultiple = nil end
   if saved.barTexture == "forever" then saved.barTexture = "vanguard" end
   if saved.variant ~= nil and not T.VARIANTS[saved.variant] and saved.variant ~= "default" then saved.variant = nil end
 end

@@ -399,13 +399,15 @@ it("retail quest tracker: a tracked recraft is drawn as 'Recrafting: Name' with 
     ["Recipes", []], ["Recrafting: TEST-ONLY Helm", ["TEST-ONLY Ore 0/2"]], ["TEST-ONLY Ingot", ["TEST-ONLY Ore 0/4"]]]);
   clickBlock(addon, "Recrafting: TEST-ONLY Helm", "LeftButton");
   expect(addon.eval("return __wfgWorld.openedRecipe"), "a left-click on a recraft opens nothing").toBe(null);
-  clickBlock(addon, "TEST-ONLY Ingot", "RightButton");
-  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a plain recipe untracks as one").toEqual([90200, false, false]);
-  clickBlock(addon, "Recrafting: TEST-ONLY Helm", "RightButton");
-  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a recraft untracks as a recraft").toEqual([90300, false, true]);
   addon.eval("__wfgStub.hover(Vanguard_QuestTrackerFrame.blocks[2])");
   const lines = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines or {}) do out[i] = l.text end return out");
   expect(lines[lines.length - 1], "its tooltip names the one click").toBe("Right-click: stop tracking");
+  clickBlock(addon, "Recrafting: TEST-ONLY Helm", "RightButton");
+  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a recraft untracks as a recraft").toEqual([90300, false, true]);
+  addon.update(0);
+  expect(blocks(addon).slice(-2), "the recraft row goes; the plain recipe stays").toEqual([["Recipes", []], ["TEST-ONLY Ingot", ["TEST-ONLY Ore 0/4"]]]);
+  clickBlock(addon, "TEST-ONLY Ingot", "RightButton");
+  expect(addon.eval("local c = __wfgWorld.lastTrackCall return { c[1], c[2], c[3] }"), "a plain recipe untracks as one").toEqual([90200, false, false]);
 });
 
 // TEST-ONLY scenario stage that gives two spells, the second also on a cooldown the client reports.
@@ -440,6 +442,24 @@ it("retail quests: a scenario stage's spells each get a row under the stage and 
   expect(spellButtons(addon)[0][3], "a hidden cooldown table: no swipe").toBe(false);
   expect(addon.eval("local QT = ns.GetModule('QuestTracker') QT.UpdateRange(Vanguard_QuestItem1) return { Vanguard_QuestItem1.icon:GetVertexColor() }"),
     "no range check for a spell: the icon stays white").toEqual([1, 1, 1, 1]);
+});
+
+it("retail quests: a stage spell's hidden cooldown numbers in a fight give no swipe and no error", () => {
+  const addon = retail(STAGE_SPELLS);
+  setCombat(addon, true);
+  addon.eval("C_Spell.GetSpellCooldown = function() return { startTime = __wfgWorld.secret(5), duration = __wfgWorld.secret(30), isEnabled = true } end");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return { Vanguard_QuestItem2.cooldown.__cooldown == nil, #(ns.errors or {}) }"),
+    "no secret reaches SetCooldown, nothing raised").toEqual([true, 0]);
+});
+
+it("retail quests: a stage spell's cooldown comes from the client's duration object where it has one", () => {
+  const addon = retail(STAGE_SPELLS + "C_Spell.GetSpellCooldownDuration = function(id) return { __duration = 'TEST-ONLY' .. id } end");
+  expect(addon.eval("return { Vanguard_QuestItem2.cooldown.__durationObject.__duration, Vanguard_QuestItem2.cooldown.__cooldown == nil }"),
+    "the object, not the numbers").toEqual(["TEST-ONLY91502", true]);
+  addon.eval("C_Spell.GetSpellCooldownDuration = function() error('TEST-ONLY') end");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("return (Vanguard_QuestItem2.cooldown.__cooldown or {})[1]"), "the call refuses: the plain numbers instead").toBe(5);
 });
 
 it("retail quests: a stage's spell list or spell id the client hides, or a stage drawn as one bar, gets no spell rows", () => {

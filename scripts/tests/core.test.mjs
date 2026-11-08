@@ -703,6 +703,34 @@ it("the dialog opened last sits over the others, so the reload offer's Reload ov
   expect([addon.eval("return Vanguard_Reload.accept.reloadOverlay:IsShown()"), yes > overlay], "the offer stays, the question over it and over its overlay").toEqual([true, true]);
 });
 
+it("a question asked in a fight over the reload offer keeps the clicks when the fight ends", () => {
+  const addon = loggedIn();
+  addon.eval("ns.OfferReload('Changed.') Vanguard_Reload:Hide()");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  setCombat(addon, true);
+  addon.eval("ns.OfferReload('Changed.') ns.Ask('TEST-ONLY Reset every setting on this page?', 'Reset', function() end)");
+  setCombat(addon, false);
+  const [shown, overlay, yes] = addon.eval("local o = Vanguard_Reload.accept.reloadOverlay return { o:IsShown(), o:GetFrameLevel(), Vanguard_Question.yes:GetFrameLevel() }");
+  expect([shown, yes > overlay], "the overlay is back over Reload, and the question's Yes is over it").toEqual([true, true]);
+});
+
+it("a reload offered again over a question in a fight stays over it when the fight ends", () => {
+  const addon = loggedIn();
+  addon.eval("ns.OfferReload('Changed.')");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  setCombat(addon, true);
+  addon.eval("ns.Ask('TEST-ONLY Reset every setting on this page?', 'Reset', function() end) ns.OfferReload('Changed again.')");
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Reload:GetFrameLevel() > Vanguard_Question:GetFrameLevel()"), "the offer shown last is over the question").toBe(true);
+});
+
+it("the reload offer's Reload keeps its overlay on top when another reload button's overlay is laid", () => {
+  const addon = loggedIn();
+  addon.eval("ns.OfferReload('Changed.') ns.Options.Show('general')");
+  const [overlay, button] = addon.eval("local o = Vanguard_Reload.accept.reloadOverlay return { o:GetFrameLevel(), Vanguard_Reload.accept:GetFrameLevel() }");
+  expect(overlay > button, "the options footer's Reload now does not lift the offer over its own overlay").toBe(true);
+});
+
 it("string table: a text with no translation reads as its English key; a locale's file fills in only on that client", () => {
   const addon = loggedIn('GetLocale = function() return "deDE" end');
   expect(addon.eval('return { ns.L["Experience bar"], ns.Locale() }'), "no translation: the English key").toEqual(["Experience bar", "deDE"]);

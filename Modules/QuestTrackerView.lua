@@ -488,14 +488,28 @@ local function indexOf(b)
   return b.questID and QT.LogIndex(b.questID)
 end
 
--- Draws an item's cooldown: the swipe while one runs, nothing otherwise (hidden numbers go straight to the widget).
+-- Draws an item's cooldown: the swipe while one runs, nothing otherwise. Hidden (secret) numbers clear it:
+-- SetCooldown takes them only from untainted code, so passing them from here would raise an error.
 local function paintCooldown(b, start, duration)
-  if ns.IsSecret(start) or ns.IsSecret(duration) then return b.cooldown:SetCooldown(start, duration) end
-  if type(start) == "number" and type(duration) == "number" and duration > 0 then b.cooldown:SetCooldown(start, duration) else b.cooldown:Clear() end
+  local plainStart, plainDuration = ns.PlainNumber(start), ns.PlainNumber(duration)
+  if plainStart and plainDuration and plainDuration > 0 then b.cooldown:SetCooldown(plainStart, plainDuration) else b.cooldown:Clear() end
 end
 
--- Draws a stage spell's cooldown from the game's info table, or none while the client hides the table.
+-- Draws a stage spell's cooldown from the client's duration object (global cooldown included, as the game's
+-- own scenario spell button draws it), which stays drawable in a fight; false when the client gives none.
+local function spellObjectSweep(b)
+  local get = C_Spell and C_Spell.GetSpellCooldownDuration
+  if type(get) ~= "function" or not ns.Client.Has("cooldownObject") then return false end
+  local ok, object = pcall(get, b.spellID)
+  if not ok or object == nil then return false end
+  b.cooldown:SetCooldownFromDurationObject(object)
+  return true
+end
+
+-- Draws a stage spell's cooldown: the duration object where the client has one, else the plain numbers of
+-- the game's info table, or none while the client hides them.
 local function paintSpellCooldown(b)
+  if spellObjectSweep(b) then return end
   local info = ns.PlainTable(ns.CallIf(C_Spell, "GetSpellCooldown", b.spellID))
   if info then return paintCooldown(b, info.startTime, info.duration) end
   b.cooldown:Clear()

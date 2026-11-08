@@ -267,3 +267,12 @@ it("a hand-edited queue or cooldown list starts empty, without an error", () => 
   addon.eval("VanguardDB.craftCooldowns = 'oops'");
   expect(say(addon, "craft clear", /Craft queue emptied/) && say(addon, "craft cd", /No profession cooldowns noted yet/), "a damaged account list too").toBe(true);
 });
+
+it("H34-17-1 two profiles holding one alt recipe keep the note ready later, not the first profile's", () => {
+  const old = `["Alt-Realm"] = { queue = {}, cooldowns = { [100] = { name = "TEST-ONLY Alt Bag", ready = 1789996400 } } }`;
+  const newer = `["Alt-Realm"] = { queue = {}, cooldowns = { [100] = { name = "TEST-ONLY Alt Bag", ready = 1790036000 } } }`;
+  const saved = `VanguardDB.profiles = { Default = { CraftQueue = { on = true } }, Arms = { CraftQueue = { chars = { ${old} } } }, Fury = { CraftQueue = { chars = { ${newer} } } } }`;
+  const addon = crafter("", saved);
+  expect(say(addon, "craft cd", / Alt-Realm: TEST-ONLY Alt Bag, 10h 0m$/), "the newer cast shows its 10 hours").toBe(true);
+  expect(chatHas(addon, /Alt Bag, ready/), "the stale note is not kept").toBe(false);
+});

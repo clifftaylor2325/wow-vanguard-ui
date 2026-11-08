@@ -588,6 +588,16 @@ const TOAST_ENV = `
     { AdjustAnchors = function(_, rel) __toast:SetPoint("BOTTOM", rel, "TOP", 0, 10) return __toast end },
   }
 `;
+it("H34-15-1 game alerts: a talking head still in the game's container (a fight) keeps the toasts above it until its pin runs", () => {
+  const addon = loggedIn(ALERTS_ENV + TOAST_ENV);
+  setCombat(addon, true);
+  addon.eval("__cont = CreateFrame('Frame', 'TestBottomManagedContainer', UIParent) TalkingHeadFrame:ClearAllPoints() TalkingHeadFrame:SetPoint('TOP', __cont, 'TOP', 0, 0) TalkingHeadFrame:Show()");
+  addon.eval("__toast:ClearAllPoints() __toast:SetPoint('BOTTOM', TalkingHeadFrame, 'TOP', 0, 10) AlertFrame:UpdateAnchors()");
+  expect(addon.eval("return __toast.__points.BOTTOM.rel == TalkingHeadFrame"), "in the fight the toast stays on the head").toBe(true);
+  setCombat(addon, false);
+  expect(addon.eval("return __toast.__points.BOTTOM.rel == TestToastBase"), "once the head is moved the toast is laid out from the base").toBe(true);
+});
+
 it("H30-18-1 game alerts: toasts stack from the base anchor, not the moved talking head, and not while pins are paused", () => {
   const addon = loggedIn(ALERTS_ENV + TOAST_ENV);
   addon.eval("AlertFrame:UpdateAnchors()");

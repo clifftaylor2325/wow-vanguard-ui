@@ -10,7 +10,7 @@ local L = ns.L
 
 local T = ns.Theme
 
-local box, find, reload, question
+local box, find, reload, question, shownLast
 
 -- Where a dialog's contents start (units down): the title line (the close button's line) and a pad under it.
 local HEAD = T.CONTROL.inset + T.SPACE.pad
@@ -79,11 +79,17 @@ local function oneLineTitle(f, w)
   f.title:SetMaxLines(1)
 end
 
+-- Raises a dialog above the others of its strata and remembers it as the one shown last.
+local function raiseLast(d)
+  shownLast = d
+  d:Raise()
+end
+
 -- Puts a dialog on the dialog strata, raised above the others there each time it shows, so the one opened last takes
 -- the clicks (a question over the reload offer, not the offer's Reload overlay under it). Dialogs are unprotected.
 local function onTop(f)
   f:SetFrameStrata("FULLSCREEN_DIALOG")
-  f:HookScript("OnShow", ns.Guard("raise dialog", function(d) d:Raise() end))
+  f:HookScript("OnShow", ns.Guard("raise dialog", function(d) raiseLast(d) end))
 end
 
 -- A centered, themed dialog frame at the dialog alpha, with the one window chrome (ns.WindowTitle: its title, set
@@ -467,6 +473,15 @@ local function follow(o)
   if not ns.InCombat() then cover(o) end
 end
 
+-- After a fight an overlay is laid over its button again; a dialog shown last that is not the reload offer is
+-- raised over it once more, so a question asked in the fight keeps the clicks. The reload offer itself is never
+-- raised here: that would lift its button over its own overlay, whichever overlay recovers first.
+local function recover(o)
+  cover(o)
+  local last = shownLast
+  if last and last ~= reload and last:IsShown() then last:Raise() end
+end
+
 -- A fight starts (just before the lockdown): every overlay hides and lets go of its
 -- button, so no frame of the addon holds or hangs on a protected one in combat (the
 -- client would protect it too: the options window could not open or close). They come back after.
@@ -474,7 +489,7 @@ local function putAway()
   for o in pairs(overlays) do
     o:Hide()
     o:ClearAllPoints()
-    ns.AfterCombat(function() cover(o) end, o)
+    ns.AfterCombat(function() recover(o) end, o)
   end
 end
 
@@ -493,7 +508,7 @@ local function addReloadOverlay(btn)
   forwardHover(o, btn)
   for _, script in ipairs({ "OnShow", "OnHide" }) do btn:HookScript(script, function() follow(o) end) end
   btn.reloadOverlay = o
-  cover(o)
+  recover(o)
 end
 
 -- A click on a reload button before its overlay exists (it was built in combat):
@@ -544,7 +559,7 @@ function ns.OfferReload(why)
   f.title:SetText(ns.Format(L["{why} Reload the UI now to apply it?"], { why = why }))
   fitTitle(f)
   f:Show()
-  f:Raise()
+  raiseLast(f)
   local o = f.accept.reloadOverlay
   if o and not ns.InCombat() then cover(o) end
 end

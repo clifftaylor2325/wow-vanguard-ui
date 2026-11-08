@@ -437,8 +437,13 @@ it("No to 'Use its UI scale?' keeps this player's scale: a Pixel-perfect profile
   b.login();
   expect(b.eval("local s = ns.Theme.Settings() return { ns.ProfileName(), UIParent:GetScale(), s.pixelScale, s.pixelMultiple }"), "after the reload: the imported profile at this player's scale").toEqual(["Imported", before, false, 0]);
 });
+it("a profile saved with a fixed pixel multiple by setup (0.9.0 to 0.9.2) follows the screen again", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true, pixelMultiple = 2 } }\n" });
+  expect(addon.eval("return { UIParent:GetScale(), ns.Theme.Settings().pixelMultiple }"), "768 / 1080, no longer doubled").toEqual([768 / 1080, 0]);
+});
 it("a whole-profile import keeps this player's own Pixel-perfect switch and multiple, even with no UI scale to ask about", () => {
-  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true, pixelMultiple = 2 } }\n" });
+  const addon = loggedIn();
+  addon.eval("ns.Theme.Settings().pixelScale = true ns.Theme.Settings().pixelMultiple = 2");
   importText(addon, addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" } }))'));
   expect(addon.eval("local t = VanguardDB.profiles.Imported.theme return { t.pixelScale, t.pixelMultiple, t.accent }"), "the string's settings with this player's scale").toEqual([true, 2, "jade"]);
 });
@@ -531,6 +536,16 @@ VanguardCharDB = { profile = "Dps", editModeProfile = "Dps", specProfiles = { [1
   expect(a.eval("return { VanguardDB.profiles.Dps.editMode.layout, VanguardCharDB.pendingProfile or 'none' }"), "the other order: still Modern, the switch dropped").toEqual(["Modern", "none"]);
   a.eval("C_EditMode.SetActiveLayout(2)");
   expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "a pick in the same spec is saved").toBe("Classic");
+});
+it("a spec change before the first layout save does not save the new spec's layout either", () => {
+  const a = specLayoutLogin(`VanguardDB = { version = 1, setupDone = true, profiles = { Dps = { editMode = { layout = "Gone" } }, Healer = { editMode = { layout = "Heal" } } } }
+VanguardCharDB = { profile = "Dps", editModeProfile = "Healer", specProfiles = { [1] = "Dps", [2] = "Healer" } }`);
+  expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "the missing layout is kept, nothing saved yet").toBe("Gone");
+  a.eval("__spec = 2 EditModeManagerFrame:UpdateLayoutInfo()");
+  a.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(a.eval("return { VanguardDB.profiles.Dps.editMode.layout, VanguardCharDB.pendingProfile }"), "Dps keeps Gone, Healer staged").toEqual(["Gone", "Healer"]);
+  a.eval("C_EditMode.SetActiveLayout(2)");
+  expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "a pick in the other spec is not saved into Dps").toBe("Gone");
 });
 it("a reload into the other spec's profile switches nothing when its layout is already active", () => {
   const b = specLayoutLogin(`VanguardDB = { version = 1, setupDone = true, profiles = { Dps = { editMode = { layout = "Modern" } }, Healer = { editMode = { layout = "Heal" } } } }
