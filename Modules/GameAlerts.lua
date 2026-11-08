@@ -64,6 +64,7 @@ local function fitAlert(f, spot)
   tools.FitCenter(f, spot)
   tools.ScaleWithSpot(f, spot, editModeSize(f))
   T.RepaintFrame(f)
+  if f == _G.TalkingHeadFrame and type(_G.AlertFrame) == "table" then GA.ReanchorToasts(_G.AlertFrame) end
 end
 
 -- A movable spot for one of the game's alerts, with the alert kept centered on it and scaled with it.
@@ -134,13 +135,20 @@ function GA.SkinTalkingHead(f)
   watchTalkingHead(f)
 end
 
+-- True while the head sits on Vanguard's spot. In a fight the head's move is queued, so it stays in the game's own
+-- container (and at a login in combat the spot does not exist yet): the toasts then belong above it.
+local function headOnSpot(head)
+  local _, relative = head:GetPoint(1)
+  return relative ~= nil and relative == _G["Vanguard_TalkingHeadFrameSpot"]
+end
+
 -- Lays the game's pop-up toasts out again without the talking head. The game stacks them above it while it is shown
 -- and Edit Mode thinks it is still in its own spot, but Vanguard has moved it; so the toasts start from the base anchor
 -- instead (the game's own chain, minus the talking head). Not while pins are paused: the head is then in the game's spot;
--- nor while the head is hidden, when the game's chain already skips it.
+-- nor while the head is hidden, when the game's chain already skips it; nor while it has not reached its spot (a fight).
 function GA.ReanchorToasts(alerts)
   local head = _G.TalkingHeadFrame
-  if ns.PinsPaused() or not (head and head:IsShown()) then return end
+  if ns.PinsPaused() or not (head and head:IsShown() and headOnSpot(head)) then return end
   local relative = alerts.baseAnchorFrame
   for _, sub in ipairs(alerts.alertFrameSubSystems or {}) do
     if sub.anchorFrame ~= _G.TalkingHeadFrame then
