@@ -387,3 +387,12 @@ it("the position popover grows to hold the refusal line, clear of Reset and Done
   addon.eval("Vanguard_MoverPopover.reset:GetScript('OnClick')(Vanguard_MoverPopover.reset)");
   expect(addon.eval("return Vanguard_MoverPopover:GetHeight()"), "and shrinks back once nothing is refused").toBe(372);
 });
+
+it("the unlock bar fits its note again when Text size changes while unlocked", () => {
+  const addon = fitClient(1920, 1080, 1);
+  addon.eval("ns.Unlock()");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(addon.eval(`local b, t = Vanguard_UnlockBar, Vanguard_UnlockBar.text
+    return b:GetHeight() >= t:GetStringHeight() + 16`), "the bar is as tall as its note and the edges").toBe(true);
+  expect(addon.textFit("Vanguard_UnlockBar").filter((f) => f.text.startsWith("Drag")), "the note is not cut").toEqual([]);
+});
