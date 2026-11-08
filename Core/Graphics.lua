@@ -26,7 +26,12 @@ G.DETAILS = {
   graphicsShadowQuality = 0, graphicsLiquidDetail = 0, graphicsParticleDensity = 1, graphicsSSAO = 0,
   graphicsDepthEffects = 0, graphicsComputeEffects = 0, graphicsOutlineMode = 0, graphicsTextureResolution = 0,
   graphicsSpellDensity = 0, graphicsProjectedTextures = 0, graphicsViewDistance = 0,
-  graphicsEnvironmentDetail = 0, graphicsGroundClutter = 0,
+  graphicsEnvironmentDetail = 0, graphicsGroundClutter = 0, graphicsPBRLiquidDetail = 0, graphicsLightMode = 0,
+}
+-- The details the game's slider sets only on hardware that supports them: each one's C_VideoOptions check.
+G.DETAIL_SUPPORT = {
+  graphicsPBRLiquidDetail = "IsPBRWaterSupported", graphicsLightMode = "IsSecondaryLightingSupported",
+  graphicsSpellDensity = "IsSpellVisualDensitySystemSupported",
 }
 -- The render scale the 4K tip suggests.
 G.RENDER = 0.8
@@ -225,10 +230,19 @@ local function detailFor(name, q)
   return v and math.max(G.DETAILS[name], v) or nil
 end
 
+-- Whether the game's slider sets this detail on this computer (the details with no check always are).
+local function supported(name)
+  local check = G.DETAIL_SUPPORT[name]
+  if not check then return true end
+  local f = C_VideoOptions and C_VideoOptions[check]
+  local ok, yes = pcall(type(f) == "function" and f or error)
+  return ok and yes == true
+end
+
 -- Sets a Graphics Quality step as the game's Options do: each detail from its table, then the step itself.
 local function setQuality(set, undo, q)
   for name in pairs(G.DETAILS) do
-    local v = detailFor(name, q)
+    local v = supported(name) and detailFor(name, q)
     if v then put(set, undo, name, v) end
   end
   return put(set, undo, "graphicsQuality", q)
