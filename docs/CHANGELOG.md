@@ -6,26 +6,30 @@ Nothing here has been checked in the game by the people who wrote it down: see t
 
 ## 0.9.3
 
-The nameplate error hotfix, with the fixes from bug hunt rounds six to eleven. Nothing in this release has been checked in the game; see [SMOKE-TEST.md](SMOKE-TEST.md) (steps 33.342 to 33.379). Version 0.9.2 was never published: it is in this release.
+The nameplate error hotfix, with the fixes from bug hunt rounds six to thirteen. Nothing in this release has been checked in the game; see [SMOKE-TEST.md](SMOKE-TEST.md) (steps 33.342 to 33.389). Version 0.9.2 was never published: it is in this release.
 
 ### Nameplates and theme (0.9.3)
 
 - Nameplates no longer fill the error list with an "aura icon pixels" error, about four times a second, in a dungeon or anywhere the game keeps some plates for itself (friendly plates in an instance). Vanguard leaves the aura icons on those plates alone, and an icon it can't place is reported once.
 - Changing the accent colour, the font or the UI scale after a dungeon no longer errors on plate icons the game has closed, and the change goes through to the end.
 - Pixel-perfect's multiple follows the screen, so a pick made on a 4K screen no longer makes the UI twice as big at 1080p; a fixed multiple saved by setup in 0.9.0 to 0.9.2 goes back to following the screen.
+- Debuff type badges show one letter again on WoW Forever (a typed debuff could show all four).
 
 ### Bars, keys and click casting (0.9.3)
 
 - A flyout dragged onto a bar in a fight no longer raises an error, and a character with no forms or stances no longer gets empty stance boxes.
+- A WoW Forever flyout on a Vanguard bar shows each spell once, at its highest known rank.
 - New spells wait to be placed while key setup isn't offered (a bar addon or a gamepad is on), and six talent-only spells no longer show as trainer spells.
 - Your keys and key setup read slot icons and macro names the current way, so they no longer error when the game's older fallbacks are off.
 - Click casting's remap note names the click that actually runs (Shift + Left, not plain Left), or says the click targets when no binding of yours runs on it.
+- Click-casting macros follow one 255-character limit in the Macro dialog, Import and Undo, so a starter layout's Undo no longer loses your old bindings.
 
 ### Windows, bags and town (0.9.3)
 
-- A post from Vanguard's auction panel closes the game's own confirm box, so its Accept can't confirm an older post from the game's Sell tab. Auction prices use the client's coin letters, typed prices read them, a sold commodity goes into the ledger at its full price, and an auction whose item info comes late is still marked undercut.
+- A post from Vanguard's auction panel closes the game's own confirm box, so its Accept can't confirm an older post from the game's Sell tab. Auction prices use the client's coin letters, typed prices read them, a sold commodity goes into the ledger at its full price, and an auction whose item info comes late is still marked undercut. An item won on a bid under its buyout counts as one sale, at the bid.
 - The sell list and the craft queue are each character's own and stay through a profile switch (moved off the profile once).
-- Bag and bank search boxes have room for a group's search, and the combined-bag choice is kept for the whole computer.
+- Bag and bank search boxes have room for a group's search, the key ring button lights or dims with a search, a slot's quality border goes when the item leaves, and the combined-bag choice is kept for the whole computer.
+- Faster auto-loot leaves master loot to the game's loot window, and `/vg graphics apply` also sets PBR water and lighting where the game's slider does.
 - A Send-to-alt mail preset can no longer swap the alt for another player from an open name suggestion.
 - Auction, group board and click-casting spell picker rows keep the hover wash; group board rows show each dungeon in its difficulty colour, with dungeon names translated.
 - A dialog opened over the reload offer sits on top and takes its own clicks, also after a fight. The Map page's Go to buttons follow new waypoints.
@@ -33,9 +37,11 @@ The nameplate error hotfix, with the fixes from bug hunt rounds six to eleven. N
 
 ### Quests and chat (0.9.3)
 
-- Gossip options are picked the way the game's own window picks them, and a long objective in the quest log shows in full on hover.
+- Gossip options are picked the way the game's own window picks them, a long objective in the quest log shows in full on hover, and quest item buttons in the tracker work in a fight.
 - On Retail, the quest tracker counts every quality rank and the reagent and warband banks for a tracked recipe, shows a recraft as one, gives a scenario stage's spells rows and cast buttons, and follows the game's super-tracked quest at once.
 - Show Party, Raid and Whispers switch every chat group they stand for (leader lines, raid warnings, Battle.net whispers), and a whisper shown only in a pop-out window no longer costs the next chat line.
+- Close this tab gives the tab's chat types and channels back to the main window, as the game's own tab menu does, so Trade can't stop showing anywhere.
+- Restored chat lines can't be reported with Report Chat, and turning Keep whispers off says the saved whispers stay until they age out or are cleared.
 
 ### Talents, profiles and layout (0.9.3)
 
