@@ -6,7 +6,7 @@
 -- border art, the day/night ring (Forever) and zoom buttons are faded out (the zoom buttons take no mouse either), and the game's
 -- emptied cluster frame stops taking the mouse and loses its zone button.
 -- Nothing is unregistered. The game's small minimap buttons (tracking, mail,
--- dungeon difficulty, the addon compartment) move from the old minimap spot
+-- dungeon difficulty, Retail's crafting orders, the addon compartment) move from the old minimap spot
 -- onto this map's corners. A round map is masked to a disc with an outline over its edge; the bands are
 -- masked to it, the corner diamonds are left off and the buttons sit on the rim.
 
@@ -33,6 +33,9 @@ local MM = ns.Module("Minimap", {
 MM.LEFTOVERS = {
   { paths = { { "MinimapCluster", "Tracking" } }, point = "BOTTOMLEFT", x = 3, y = 3, slot = "MinimapTracking", angle = 225 },
   { paths = { { "MinimapCluster", "IndicatorFrame", "MailFrame" } }, point = "TOPRIGHT", x = -2, y = -2, angle = 45 },
+  -- The crafting-order icon (shown while personal orders wait), under the mail.
+  -- Retail only: WoW Forever's indicator frame has no such child, so first() skips it.
+  { paths = { { "MinimapCluster", "IndicatorFrame", "CraftingOrderFrame" } }, point = "TOPRIGHT", x = -2, y = -18, angle = 30 },
   { paths = { { "MinimapCluster", "InstanceDifficulty" } }, point = "TOPLEFT", x = 2, y = -2, angle = 135 },
   -- WoW Forever's event link (shown only while the game has one), smaller, under the dungeon difficulty. It lives
   -- inside the faded MinimapBackdrop, where it would stay clickable but unseen.
