@@ -53,7 +53,7 @@ end
 -- This computer's own notes (VanguardDB.client, shared by every profile): the combinedBags value is
 -- a game setting that outlives any profile, so the player's own value is kept here, not per profile.
 local function clientNotes()
-  return VanguardDB.client or {}
+  return type(VanguardDB) == "table" and VanguardDB.client or {}
 end
 
 -- Keeps the player's own combinedBags value in the notes, only while the notes hold none (a value

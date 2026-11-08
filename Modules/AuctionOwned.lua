@@ -62,13 +62,15 @@ local function ownedAuction(a)
   local qty, id, status = ns.PlainNumber(a.quantity), ns.PlainNumber(a.auctionID), AH.STATUS[a.status]
   if not (status and qty and id) or qty < 1 or not (buyout or status == "sold" and bid) then return nil end
   local unit, total = prices(a.itemKey, buyout, qty)
-  if unit == false then return nil end
+  if unit == false then AH.ownedMissing = true return nil end
   return { id = id, key = a.itemKey, buyout = buyout, qty = qty, unit = unit, amount = total or bid, status = status }
 end
 
--- Your auctions as the game lists them: up with a buyout, or sold.
+-- Your auctions as the game lists them: up with a buyout, or sold. AH.ownedMissing says whether one was
+-- left out for want of its item key info.
 function AH.ReadOwned()
   local out = {}
+  AH.ownedMissing = false
   for _, a in ipairs(C_AuctionHouse.GetOwnedAuctions() or {}) do out[#out + 1] = ownedAuction(a) end
   return out
 end
@@ -94,8 +96,10 @@ local function keep(old, new)
 end
 
 -- An item key's info came in: the auctions left out of the last read for lack of it are read again
--- (the client's cached list; no new search, so a check under way is untouched), shown and noted.
+-- (the client's cached list; no new search, so a check under way is untouched), shown and noted. Nothing
+-- while the last read left none out (the info of browse and shop results comes in the same way).
 function AH.OnOwnedInfo()
+  if not AH.ownedMissing then return end
   AH.owned = keep(AH.owned, AH.ReadOwned())
   AH.PaintOwned()
   ns.AuctionLedger.OnOwned()

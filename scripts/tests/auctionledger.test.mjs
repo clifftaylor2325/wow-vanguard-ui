@@ -311,6 +311,10 @@ it("a commodity read before its item key info is in waits for it: one sale at th
   addon.advance(1);
   expect(records(addon)[0].slice(3, 5), "the info came in: 20 units at 100 each").toEqual([20, 2000]);
   expect(addon.eval(`return ${HELPER}.owned[2].unit`), "the up row's price per unit").toBe(100);
+  addon.eval(`${HELPER}.owned = {}`);
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10941);
+  addon.advance(1);
+  expect(addon.eval(`return #${HELPER}.owned`), "with none left out, a later item's info reads nothing again").toBe(0);
   addon.eval(`__wfgWorld.mail = { ${invoice("Strange Dust", 2000, 20)} }`);
   addon.world.openMailbox();
   expect(records(addon).length, "the mail is the same sale").toBe(1);
