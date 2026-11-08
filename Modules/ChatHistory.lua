@@ -159,9 +159,10 @@ local function rule(text)
 end
 
 -- A saved line with the earlier session's chat line numbers zeroed: a stale number names someone else's line now,
--- and the game would report that line's sender. 0 is what the game writes for a link with no line.
+-- and the game would report that line's sender. 0 is what the game writes for a link with no line. A Battle.net
+-- name is a protected string (|K...|k), so its field may hold a bar.
 function CHH.Unnumbered(text)
-  return (text:gsub("(|Hplayer:[^:|]+):%d+:", "%1:0:"):gsub("(|HBNplayer:[^:|]*:[^:|]*):%d+:", "%1:0:"):gsub("|Hreportcensoredmessage:[^|]*|h(.-)|h", "%1"))
+  return (text:gsub("(|Hplayer:[^:|]+):%d+:", "%1:0:"):gsub("(|HBNplayer:[^:]*:[^:|]*):%d+:", "%1:0:"):gsub("|Hreportcensoredmessage:[^|]*|h(.-)|h", "%1"))
 end
 
 -- Puts one window's saved lines back, between a rule that says when they are from and a closing rule.

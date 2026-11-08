@@ -600,12 +600,12 @@ local function setAction(b, item)
 end
 
 -- Where a block's top left corner sits in UIParent's units (the tracker's mover scales the tracker), or nil
--- while the block has no place on the screen yet.
+-- while the block has no place on the screen yet (or the client hides its geometry).
 local function screenSpot(block)
-  local left, top = block:GetLeft(), block:GetTop()
-  if type(left) ~= "number" or type(top) ~= "number" then return nil end
-  local k = block:GetEffectiveScale() / UIParent:GetEffectiveScale()
-  return left * k, top * k
+  local left, top = ns.PlainNumber(block:GetLeft()), ns.PlainNumber(block:GetTop())
+  local scale, screen = ns.PlainNumber(block:GetEffectiveScale()), ns.PlainNumber(UIParent:GetEffectiveScale())
+  if not (left and top and scale and screen) then return nil end
+  return left * scale / screen, top * scale / screen
 end
 
 -- Puts a secure button beside its block, anchored to UIParent at the block's spot, never to the block: a frame

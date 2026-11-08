@@ -27,6 +27,8 @@ QT.EVENTS = { "QUEST_WATCH_LIST_CHANGED", "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", 
   "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP" }
 -- The events that repaint the item buttons' cooldowns (Modules/RetailQuests.lua adds the spells' for a stage's spells).
 QT.COOLDOWN_EVENTS = { "BAG_UPDATE_COOLDOWN" }
+-- The events that change where a spot on the screen is in UIParent's units (the quest item buttons are placed by it).
+QT.SCREEN_EVENTS = { "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
 QT.BASIC_REAGENT = 1
 
@@ -487,11 +489,26 @@ local function followRecipes()
   ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)
 end
 
--- Follows what the quest item buttons show and where they sit: the bags' cooldowns, and the tracker's mover
--- (they are anchored to the screen, not to the tracker, so a dragged or rescaled tracker re-places them).
+-- Places the quest item buttons again next frame, out of combat: they sit at fixed spots on the screen, so
+-- whatever moves the tracker's spot (a linked frame, a new default spot) or the screen's scale moves them too.
+local function itemsAgain()
+  ns.Soon("questitems-follow", function() ns.OutOfCombat(QT.PlaceItems, "questitems") end)
+end
+
+-- Places the items again when the tracker's spot is placed by something other than a drag of its own mover.
+local function onSpotPlaced(key)
+  if key == "questtracker" then itemsAgain() end
+end
+
+-- Follows what the quest item buttons show and where they sit: the bags' cooldowns, the tracker's mover (they
+-- are anchored to the screen, not to the tracker, so a dragged or rescaled tracker re-places them), the spot
+-- placed again (a linked frame moved, the info strip gave it a new default) and the screen's size and scale.
 local function followItems()
   for _, event in ipairs(QT.COOLDOWN_EVENTS) do ns.On(event, QT.UpdateCooldowns) end
   ns.OnMoverPlaced(function(key) if key == "questtracker" then ns.OutOfCombat(QT.PlaceItems, "questitems") end end)
+  for _, event in ipairs(QT.SCREEN_EVENTS) do ns.On(event, itemsAgain) end
+  if type(hooksecurefunc) ~= "function" then return end
+  for _, name in ipairs({ "PlaceMover", "SetMoverDefault" }) do hooksecurefunc(ns, name, ns.Guard("quest items follow", onSpotPlaced)) end
 end
 
 -- Builds the tracker (in its spot), parks the game's under a hidden frame, as the unit frames park theirs (hidden

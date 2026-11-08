@@ -673,6 +673,13 @@ it("quest tracker: an item button sits at its block's spot on the screen, not an
     "a mover placement re-places it: left of the block by the tight gap, level with its top").toEqual([true, "BOTTOMLEFT", 96, true, true]);
   addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__left = 200 ns.MoverChanged('questbar')");
   expect(addon.eval("return Vanguard_QuestItem1.__points.TOPRIGHT.x"), "another mover leaves it be").toBe(96);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__left = 300 ns.PlaceMover('questtracker')");
+  addon.update(0);
+  expect(addon.eval("return Vanguard_QuestItem1.__points.TOPRIGHT.x"), "the tracker's spot moved some other way (a linked frame): it follows a frame later").toBe(296);
+  addon.eval("Vanguard_QuestTrackerFrame.blocks[1].__left = 400");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0);
+  expect(addon.eval("return Vanguard_QuestItem1.__points.TOPRIGHT.x"), "and after the screen's scale changes").toBe(396);
   addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__left = nil b.__bottom = nil __left = b.GetLeft b.GetLeft = function(self) __misses = (__misses or 0) + 1 if __misses == 1 then return nil end return __left(self) end ns.GetModule('QuestTracker').PlaceItems()");
   expect(addon.eval("return Vanguard_QuestItem1:IsShown()"), "a block with no spot yet: the button stays hidden").toBe(false);
   addon.update(0);

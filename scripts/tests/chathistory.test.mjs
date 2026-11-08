@@ -71,9 +71,9 @@ it("chat history: restored lines carry no old chat line numbers, so Report Chat 
   const addon = session();
   addon.slash("history whispers on");
   addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:523:CHANNEL:2|h[Bob]|h: hi") ChatFrame1:AddMessage("|HBNplayer:Al:9:77:BN_WHISPER:Al|h[Al]|h: yo")
-    ChatFrame1:AddMessage("|Hplayer:Cy|h[Cy]|h: plain") ChatFrame1:AddMessage("|Hreportcensoredmessage:5|h[Report]|h hidden")`);
+    ChatFrame1:AddMessage("|Hplayer:Cy|h[Cy]|h: plain") ChatFrame1:AddMessage("|HBNplayer:|Kq12|k:9:78:BN_WHISPER:|Kq12|k|h[Di]|h: hey") ChatFrame1:AddMessage("|Hreportcensoredmessage:5|h[Report]|h hidden")`);
   const back = lines(relog(addon));
-  expect(back.slice(1, 5)).toEqual(["|Hplayer:Bob:0:CHANNEL:2|h[Bob]|h: hi", "|HBNplayer:Al:9:0:BN_WHISPER:Al|h[Al]|h: yo", "|Hplayer:Cy|h[Cy]|h: plain", "[Report] hidden"]);
+  expect(back.slice(1, 6)).toEqual(["|Hplayer:Bob:0:CHANNEL:2|h[Bob]|h: hi", "|HBNplayer:Al:9:0:BN_WHISPER:Al|h[Al]|h: yo", "|Hplayer:Cy|h[Cy]|h: plain", "|HBNplayer:|Kq12|k:9:0:BN_WHISPER:|Kq12|k|h[Di]|h: hey", "[Report] hidden"]);
 });
 
 it("chat history: hidden text, other kinds of value and very long lines are never saved", () => {
