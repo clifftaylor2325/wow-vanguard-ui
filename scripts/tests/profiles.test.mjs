@@ -523,6 +523,8 @@ VanguardCharDB = { profile = "Dps", editModeProfile = "Dps", specProfiles = { [1
   a.eval("__spec = 2 EditModeManagerFrame:UpdateLayoutInfo()");
   a.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(a.eval("return { VanguardDB.profiles.Dps.editMode.layout, VanguardCharDB.pendingProfile }"), "the game's order: Dps keeps Modern, Healer staged").toEqual(["Modern", "Healer"]);
+  a.eval("EditModeManagerFrame:UpdateLayoutInfo() C_EditMode.SetActiveLayout(3)");
+  expect(a.eval("return VanguardDB.profiles.Dps.editMode.layout"), "later layout updates in the other spec, before the reload, are not saved either").toBe("Modern");
   a.eval("__spec = 1");
   a.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   a.eval("EditModeManagerFrame:UpdateLayoutInfo()");
