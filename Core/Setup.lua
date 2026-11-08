@@ -447,11 +447,12 @@ function ns.SetUIScale(scale)
   if ns.SetGameUIScale(scale) then T.Settings().pixelScale = false end
 end
 
--- Sets a screen preset's scale: Pixel-perfect's whole multiple with Vanguard's pixel-perfect scale,
--- else the game's UI scale (which turns pixel-perfect off).
+-- Sets a screen preset's scale: Pixel-perfect turns Vanguard's pixel-perfect scale on with the multiple
+-- picked for the screen (0, so a later screen change picks again), else the game's UI scale (which turns
+-- pixel-perfect off).
 local function setScale(p)
   if not p.pixel then return ns.SetUIScale(S.PresetScale(p)) end
-  T.Settings().pixelMultiple = p.pixel
+  T.Settings().pixelMultiple = 0
   T.SetPixelScale(true)
 end
 
