@@ -724,6 +724,15 @@ it("a hidden debuff type follows the Safer colours a High contrast variant turns
   expect([after.curve, after.hidden === before.hidden], "after High contrast: the hidden type takes the new Magic color at once").toEqual([after.hidden.slice(2, 8), false]);
 });
 
+it("H36-1-2: the test client's stack text is the game's: text, empty under two stacks, '*' over the cap, a hidden count kept hidden", () => {
+  const addon = loggedIn(`__wfgWorld.units.player.auras = { { auraInstanceID = 1, applications = 1 }, { auraInstanceID = 2, applications = 3 },
+    { auraInstanceID = 3, applications = 120 }, { auraInstanceID = 4, applications = __wfgWorld.secret(5) } }`);
+  const out = addon.eval(`local A = ns.Auras
+    local text = function(id) return A.StackText("player", { auraInstanceID = id }) end
+    return { text(1), text(2), text(3), text(9), ns.IsSecret(text(4)), C_UnitAuras.GetAuraApplicationDisplayCount("player", 1, 1) }`);
+  expect(out, "one stack '', three '3', past 99 '*', no aura '', hidden stays hidden, a minimum of 1 shows '1'").toEqual(["", "3", "*", "", true, "1"]);
+});
+
 it("a hidden aura id is never handed to the client's color, stack or duration calls (it refuses one from addons); the plain fallbacks show", () => {
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + `__asked = 0
     C_UnitAuras = { GetAuraDispelTypeColor = function() __asked = __asked + 1 return CreateColor(0.1, 0.2, 0.3) end,

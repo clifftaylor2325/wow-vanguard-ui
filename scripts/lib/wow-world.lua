@@ -974,10 +974,15 @@ C_UnitAuras = {
   GetAuraDataByAuraInstanceID = function(unit, id)
     for _, aura in ipairs(uf(unit, "auras") or {}) do if aura.auraInstanceID == id then return aura end end
   end,
-  -- The stack count the client would display (hidden ones become secrets).
-  GetAuraApplicationDisplayCount = function(unit, id)
+  -- The stack count the client would display, as text: "" under minCount (2 by default) or for no aura, "*" over
+  -- maxCount, else the count; a hidden count stays hidden.
+  GetAuraApplicationDisplayCount = function(unit, id, minCount, maxCount)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    return aura and aura.applications or 0
+    local n = aura and aura.applications or 0
+    if issecretvalue(n) then return n end
+    if n < (minCount or 2) then return "" end
+    if maxCount and n > maxCount then return "*" end
+    return tostring(n)
   end,
   -- The dispel type color through a curve (nil when the client has none).
   GetAuraDispelTypeColor = function(unit, id, curve)
