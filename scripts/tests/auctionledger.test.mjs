@@ -319,3 +319,40 @@ it("a commodity read before its item key info is in waits for it: one sale at th
   addon.world.openMailbox();
   expect(records(addon).length, "the mail is the same sale").toBe(1);
 });
+
+// A blade up at a 40s buyout (auction 502) and a second at 15s (503), both with a bid under the buyout.
+const BID_OWNED = `__wfgWorld.ah.owned = {
+  { auctionID = 502, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = 4000, bidAmount = 1500 },
+  { auctionID = 503, itemKey = { itemID = 9999 }, status = 0, quantity = 1, buyoutAmount = 1500, bidAmount = 900 } }`;
+// How many of the blade's auctions sold and the average price each, as Your history shows them.
+const bidSummary = (addon) => addon.eval("local n, avg = ns.AuctionLedger.Summary(ns.AuctionLedger.History(9999)) return { n.sold, avg }");
+
+it("an item won on a bid under its buyout is one sale, at the bid (H35-18-1)", () => {
+  const addon = atAuctionHouse(BID_OWNED);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY Blade", 502);
+  addon.eval(`__now = __now + 3600 __wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 1500, 1)} }`);
+  addon.world.openMailbox();
+  expect(records(addon).map((r) => r.slice(4)), "the notice's record, now at what the buyer paid").toEqual([[1500, 502, true]]);
+  expect([addon.eval("return ns.AuctionLedger.SessionSales()"), bidSummary(addon)], "counted once, at the bid").toEqual([1500, [1, 1500]]);
+});
+
+it("a bid win's mail read first, then the sold row of its auction, is one sale", () => {
+  const addon = atAuctionHouse(BID_OWNED);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.eval(`__wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 1500, 1)} }`);
+  addon.world.openMailbox();
+  addon.eval("__wfgWorld.ah.owned[1].status = 1");
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  expect(records(addon).map((r) => r.slice(4)), "one record with both").toEqual([[1500, 502, true]]);
+});
+
+it("two blades sold at 40s and 15s with both mails stay two sales, each at its own price", () => {
+  const addon = atAuctionHouse(BID_OWNED);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY Blade", 502);
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY Blade", 503);
+  addon.eval(`__wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 1500, 1)}, ${invoice("TEST-ONLY Blade", 4000, 1, 28)} }`);
+  addon.world.openMailbox();
+  expect(records(addon).map((r) => r.slice(4)), "the 15s mail took the 15s sale, the 40s mail the 40s one").toEqual([[4000, 502, true], [1500, 503, true]]);
+});
