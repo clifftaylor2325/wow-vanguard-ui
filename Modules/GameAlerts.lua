@@ -134,6 +134,29 @@ function GA.SkinTalkingHead(f)
   watchTalkingHead(f)
 end
 
+-- Lays the game's pop-up toasts out again without the talking head. The game stacks them above it while it is shown
+-- and Edit Mode thinks it is still in its own spot, but Vanguard has moved it; so the toasts start from the base anchor
+-- instead (the game's own chain, minus the talking head). Not while pins are paused: the head is then in the game's spot;
+-- nor while the head is hidden, when the game's chain already skips it.
+function GA.ReanchorToasts(alerts)
+  local head = _G.TalkingHeadFrame
+  if ns.PinsPaused() or not (head and head:IsShown()) then return end
+  local relative = alerts.baseAnchorFrame
+  for _, sub in ipairs(alerts.alertFrameSubSystems or {}) do
+    if sub.anchorFrame ~= _G.TalkingHeadFrame then
+      local result = sub:AdjustAnchors(relative)
+      if not result or type(result.IsInDefaultPosition) ~= "function" or result:IsInDefaultPosition() then relative = result end
+    end
+  end
+end
+
+-- Hooks the game's toast layout so a moved talking head does not carry the toasts to its spot.
+local function watchToasts()
+  local alerts = _G.AlertFrame
+  if type(alerts) ~= "table" or type(alerts.UpdateAnchors) ~= "function" or type(hooksecurefunc) ~= "function" then return end
+  hooksecurefunc(alerts, "UpdateAnchors", ns.Guard("hook UpdateAnchors", GA.ReanchorToasts))
+end
+
 -- The talking head, as chosen: moved and restyled, hidden, or left to the game. Done once at login:
 -- on the 12.x engine the frame is part of the base UI (Blizzard_FrameXML), there from the start.
 local function talkingHead(choice)
@@ -142,6 +165,7 @@ local function talkingHead(choice)
   if choice == "hide" then return ns.GetModule("DataBars").Suppress("TalkingHeadFrame") end
   GA.SkinTalkingHead(f)
   ns.OutOfCombat(function() place("TalkingHeadFrame") end)
+  watchToasts()
   T.OnChanged(refitTalkingHead)
 end
 

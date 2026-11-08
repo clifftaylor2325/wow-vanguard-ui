@@ -1299,12 +1299,22 @@ function O.ShowTab(which)
   return false
 end
 
+-- The hit's row as its page holds it now: the page may have been built again since the search listed it (a Text size
+-- or Font change), so the row is looked up again by its place, and trusted only when it still carries the hit's caption.
+local function hitRow(hit)
+  for _, page in ipairs(navOrder()) do
+    local row = page.key == hit.page and rowsOf(page)[hit.index]
+    if row and row[2] == hit.caption then return row end
+  end
+  return hit.row
+end
+
 -- Opens a search hit: its page and tab, scrolled to its row, which is marked.
 function O.OpenHit(hit)
   O.Show(hit.page)
-  local view = pages[O.current]
+  local row, view = hitRow(hit), pages[O.current]
   for _, w in ipairs(widgets) do
-    if view and w.source == hit.row and O.RevealRow(w) then view:ScrollTo(w.pageY - JUMP_ABOVE) O.MarkRow(w) return end
+    if view and w.source == row and O.RevealRow(w) then view:ScrollTo(w.pageY - JUMP_ABOVE) O.MarkRow(w) return end
   end
 end
 

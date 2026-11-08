@@ -333,6 +333,32 @@ it("options: a search hit scrolls to its row and marks it after the window was c
   expect(openHit("reduce motion"), "after a reopen a row on a page built before is marked too").toMatch(/^Reduce motion/);
 });
 
+it("options: a search hit still opens its tab and marks its row after Text size rebuilt the page", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval(`for _, page in ipairs(ns.Options.NavOrder()) do if page.key == "general" then
+    for _, row in ipairs(ns.Options.RowsOf(page)) do if row[2] == "Text size" then row[5](1.1) end end end end`);
+  addon.eval('ns.Options.Search("reduce motion") ns.Options.OpenHit(ns.Options.hits[1])');
+  const tab = addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end return v.cards[v.tab].tabName`);
+  expect(tab, "the hit's tab shows").toBe("Motion and sound");
+  expect(addon.eval(`local hit = ns.Options.hits[1]
+    for _, w in ipairs(__wfgStub.frames) do if w.found and w.found == Vanguard_Options.found and w.found:IsShown() and w.source and w.source[2] == hit.caption then return w.caption end end
+    return false`), "the marked row is the hit's").toMatch(/^Reduce motion/);
+});
+
+it("options: a search hit whose caption the page no longer holds still marks the row it remembers", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval(`ns.Options.Search("reduce motion")
+    local hit = ns.Options.hits[1]
+    ns.Options.OpenHit({ page = hit.page, title = hit.title, row = hit.row, caption = "a caption the page no longer holds", index = hit.index })`);
+  const tab = addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end return v.cards[v.tab].tabName`);
+  expect(tab, "the remembered row's tab shows").toBe("Motion and sound");
+  expect(addon.eval(`local hit = ns.Options.hits[1]
+    for _, w in ipairs(__wfgStub.frames) do if w.found and w.found == Vanguard_Options.found and w.found:IsShown() and w.source == hit.row then return w.caption end end
+    return false`), "the remembered row is marked").toMatch(/^Reduce motion/);
+});
+
 it("options: search finds buttons, choice names, the note under a setting and reload rows, and says how many more there are", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');

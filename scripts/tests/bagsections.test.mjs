@@ -32,11 +32,18 @@ const ITEMS_ENV = `
 // places it (UpdateContainerFrameAnchors): 10 px from the screen's right, 85 px
 // up, scaled down (to 0.75 at the least) until it fits under the screen's top.
 const BAG_FRAME = `
+  -- The game's search boxes hold 15 letters (letters="15" in ContainerFrame.xml and BankFrame.xml): SetText keeps
+  -- no more than the box's limit, as the client does.
+  function __letters(box)
+    local setText = box.SetText
+    box:SetMaxLetters(15)
+    box.SetText = function(self, text) setText(self, text:sub(1, self:GetMaxLetters())) end
+  end
   local f = CreateFrame("Frame", "ContainerFrameCombinedBags", UIParent)
   f:Hide() f:SetSize(430, 200) f:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -100, 100)
   f.MoneyFrame = CreateFrame("Frame", nil, f) f.MoneyFrame:SetHeight(20)
   f.MoneyFrame:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 8, 8) f.MoneyFrame:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
-  BagItemSearchBox = CreateFrame("EditBox", "BagItemSearchBox", UIParent) BagItemSearchBox:SetSize(96, 18)
+  BagItemSearchBox = CreateFrame("EditBox", "BagItemSearchBox", UIParent) BagItemSearchBox:SetSize(96, 18) __letters(BagItemSearchBox)
   BagItemAutoSortButton = CreateFrame("Button", "BagItemAutoSortButton", UIParent) BagItemAutoSortButton:SetSize(28, 26)
   -- A slot's tooltip, as the client fills it on hover.
   local function enter(self)
@@ -595,7 +602,7 @@ const BANK_ENV = `
   __wfgWorld.bags[6] = { { itemID = 90001 }, { itemID = 159, count = 5 }, { itemID = 90002 } }
   BankFrame = CreateFrame("Frame", "BankFrame", UIParent) BankFrame:Hide()
   BankPanel = CreateFrame("Frame", "BankPanel", BankFrame)
-  BankItemSearchBox = CreateFrame("EditBox", "BankItemSearchBox", BankFrame)
+  BankItemSearchBox = CreateFrame("EditBox", "BankItemSearchBox", BankFrame) __letters(BankItemSearchBox)
   __bankSlots = {}
   local function gameMatch() return (BankItemSearchBox:GetText() or "") == "" end
   local function slot(i)
@@ -630,6 +637,14 @@ it("the bank's search box takes the search words too, and they hold through a re
   expect(bankLit(addon), "words and a plain word together").toEqual([159]);
   addon.eval("BankItemSearchBox:SetText('sword') BankPanel:UpdateSearchResults()");
   expect(bankLit(addon), "a plain word alone is the game's own search").toEqual([]);
+});
+
+it("the bank's search box holds a long group's search whole", () => {
+  const addon = loggedIn(ITEMS_ENV + BAG_FRAME + SEARCH_ENV + BANK_ENV);
+  addon.eval("__openBag() BankFrame:Show() BankPanel:GenerateItemSlotsForSelectedTab()");
+  addon.slash("bag add Profession-mats 159");
+  addon.eval("BankItemSearchBox:SetText('cat:profession-mats') BankPanel:UpdateSearchResults()");
+  expect([addon.eval("return BankItemSearchBox:GetText()"), bankLit(addon)], "the whole search, and the group's item lit").toEqual(["cat:profession-mats", [159]]);
 });
 
 it("the bank's item slots get the Vanguard slot look as the bank opens and as it shows another tab (V3-R2)", () => {
@@ -751,6 +766,16 @@ it("the bag's Filter button fills the search box with a ready-made search and re
   openTool(addon, "filter");
   addon.click("Vanguard_Menu.items[1]");
   expect(addon.eval("return BagItemSearchBox:GetText()"), "show everything empties the box, with no refresh call to make").toBe("");
+});
+
+it("a group with a long name: its Filter search fits the bag's search box whole, and only its items stay lit", () => {
+  const addon = loggedIn(ITEMS_ENV + fill([8, 4, 0, 0, 0], { equipment: 1, consumables: 2 }) + BAG_FRAME + SEARCH_ENV);
+  addon.eval("__openBag()");
+  addon.slash("bag add Profession-mats 159");
+  openTool(addon, "filter");
+  addon.click("Vanguard_Menu.items[7]");
+  expect(addon.eval("return BagItemSearchBox:GetText()"), "the whole search, not the game's 15 letters").toBe("cat:profession-mats");
+  expect(lit(addon, "cat:profession-mats"), "the group's items lit").toEqual([159, 159]);
 });
 
 it("the bag's Groups button makes groups, files the held item, sends to the bank, orders and deletes", () => {

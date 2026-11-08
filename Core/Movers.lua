@@ -326,6 +326,12 @@ function ns.Repin(frame)
   runPin(frame)
 end
 
+-- Whether pins are paused (Edit Mode open), so the game's frames sit in its own spots.
+---@return boolean
+function ns.PinsPaused()
+  return pinsPaused
+end
+
 -- Pauses every pin (so the game's Edit Mode can move its frames freely), or
 -- ends the pause and puts every pinned frame back in its Vanguard spot.
 function ns.PausePins(paused)
@@ -648,6 +654,7 @@ end
 -- Refused in combat.
 function ns.Unlock()
   if ns.InCombat() then return false end
+  editUnlocked = false
   ns.UnlockStarted()
   showAllHandles(nil)
   local options = ns.MoverOptions()
@@ -666,13 +673,14 @@ end
 
 -- Hides every handle, the grid and unlock mode's bar, keeping every change.
 function ns.Lock()
-  unlocked = false
+  unlocked, editUnlocked = false, false
   ns.UnlockEnded()
   selectMover(nil)
   if ns.CloseMoverPopover then ns.CloseMoverPopover() end
   for _, m in pairs(movers) do
     if m.handle then m.handle:Hide() end
   end
+  if editModeNote then editModeNote:Hide() end
   ns.HideGrid()
 end
 

@@ -2,8 +2,8 @@
 -- opens on the account's first login until Done or Skip setup (VanguardDB.setupDone),
 -- and on a new character's first login after that, with a profile step first
 -- (VanguardCharDB.setupDone false, pickProfile). Closing it early asks again at the
--- next login. Never in combat (it waits for combat to end, and steps aside if a fight
--- starts while it is open). It always opens with Keep picked (your role's layout and
+-- next login, unless setup already changed the shared profile. Never in combat (it
+-- waits for combat to end, and steps aside if a fight starts while it is open). It always opens with Keep picked (your role's layout and
 -- your screen's preset are marked), so Next, Next, Next, Done changes nothing you didn't
 -- pick. Before it changes anything it copies the profile to its backup profile, and Done
 -- ends with a reload.
@@ -136,10 +136,11 @@ end
 -- Before setup's first change in a run: copies the profile in use to its backup profile (once
 -- per run, and once until Done or Skip while setup is owed, so a later run never copies a
 -- half-set-up profile over it) and says so in chat. From then on Back doesn't return to the
--- Profile step: a profile of its own made after a change would leave that change in the shared profile.
+-- Profile step: a profile of its own made after a change would leave that change in the shared profile,
+-- and setup opened again doesn't ask again.
 function S.Backup()
   if state.backup then return end
-  if state.order[1] == "profile" then state.floor = math.max(state.floor, 2) end
+  if state.order[1] == "profile" then state.floor, VanguardCharDB.pickProfile = math.max(state.floor, 2), nil end
   state.backup = keptBackup() or ns.BackupProfile()
   if owed() then VanguardCharDB.setupBackup = state.backup end
   ns.Chat(ns.Format(L["Profile {profile} as it was before setup is saved as profile {backup}."], { profile = ns.ProfileName(), backup = state.backup }))

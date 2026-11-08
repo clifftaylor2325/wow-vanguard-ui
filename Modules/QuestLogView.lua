@@ -72,6 +72,29 @@ local function addObjectiveLabel(row)
   return row
 end
 
+-- An objective's tooltip: the objective in full, which the row cuts short. None in a fight, where it would cover
+-- the screen mid-pull (as the quest titles').
+local function showObjectiveTip(row)
+  if not GameTooltip or ns.InCombat() or not row.full then return end
+  local r, g, b = T.RGB("text")
+  GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+  GameTooltip:SetText(row.full, r, g, b, 1, true)
+  GameTooltip:Show()
+end
+
+-- Hides the tooltip an objective row showed.
+local function hideObjectiveTip()
+  if GameTooltip then GameTooltip:Hide() end
+end
+
+-- Makes an objective row show its whole objective on hover.
+local function watchObjective(row)
+  row:EnableMouse(true)
+  row:SetScript("OnEnter", ns.Guard("quest log objective tooltip", showObjectiveTip))
+  row:SetScript("OnLeave", ns.Guard("quest log objective tooltip", hideObjectiveTip))
+  return row
+end
+
 -- An objective row made on demand: a check when done, the objective, its count at the right edge and a progress bar.
 local function makeObjective(parent)
   local row = CreateFrame("Frame", nil, parent)
@@ -81,7 +104,7 @@ local function makeObjective(parent)
   row.mark:SetPoint("LEFT", row, "LEFT", 0, 0)
   row.count = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text2")
   row.count:SetPoint("RIGHT", row, "RIGHT", 0, 0)
-  return addObjectiveLabel(row)
+  return addObjectiveLabel(watchObjective(row))
 end
 
 -- The objectives under their header: a box the rows stack in, and the quest history line under it.
@@ -295,6 +318,7 @@ end
 -- Fills an objective row from { text, done }: a check and muted text when done, else the text, its count and a bar.
 local function paintObjective(row, o)
   local label, count = QP.SplitCount(o.text)
+  row.full = o.text
   row.label:SetText(label)
   row.count:SetText(count or "")
   T.Color(row.label, o.done and "muted" or "text")

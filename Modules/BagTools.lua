@@ -13,6 +13,17 @@ local BG = ns.GetModule("Bags")
 -- label has besides its text: the text's inset, its gap to the arrow, the arrow and its inset, and a little slack.
 local GAP, MENU_W, CHROME = 6, 210, 34
 
+-- How many letters the game's bag and bank search boxes hold. The game's XML gives both letters="15"
+-- (ContainerFrame.xml BagItemSearchBox, BankFrame.xml BankItemSearchBoxTemplate), which cuts a group's
+-- "cat:<name>" search short and dims every item.
+BG.SEARCH_LETTERS = 64
+
+-- Gives one of the game's search boxes room for the search words.
+function BG.WidenSearch(name)
+  local box = _G[name]
+  if type(box) == "table" and type(box.SetMaxLetters) == "function" then box:SetMaxLetters(BG.SEARCH_LETTERS) end
+end
+
 -- The ready-made searches: { search text, label }.
 local SEARCHES = {
   { "", L["Show everything"] }, { "q>=3", L["Rare or better"] }, { "q>=4", L["Epic or better"] },

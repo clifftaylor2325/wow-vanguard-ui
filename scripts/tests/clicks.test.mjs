@@ -292,6 +292,13 @@ it("the remap reason names what the game put on the click and the button whose b
   expect(why("BUTTON3"), "Target moved to Middle").toBe("the game's own Click Casting window puts Target on this click, so it runs your Left click binding instead");
 });
 
+it("H30-19-1 the remap reason names the click that runs, with the modifiers held, and the engine agrees", () => {
+  const { why, click } = bindingClicks('CC.Add("BUTTON1", "target") CC.Add("shift-BUTTON1", "spell", "TEST-ONLY Greater Heal") CC.Add("shift-BUTTON3", "spell", "TEST-ONLY Prayer")',
+    'table.remove(__gameClicks, 1) table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 1, button = "MiddleButton", modifiers = __wfgWorld.modifierBits.shift })');
+  expect(why("shift-BUTTON3"), "Target on Shift + Middle runs the Shift + Left binding").toMatch(/puts Target on this click, so it runs your Shift \+ Left click binding instead$/);
+  expect(click("MiddleButton", "shift-"), "the engine casts the Shift + Left heal, not the plain Left Target").toBe("spell");
+});
+
 it("the game's coverage is by the exact modifiers: a Target on Ctrl + Left does not cover Shift + Left", () => {
   const { why, click } = bindingClicks('CC.Add("shift-BUTTON1", "target") CC.Add("ctrl-BUTTON1", "target")',
     'table.insert(__gameClicks, { type = Enum.ClickBindingType.Interaction, actionID = 1, button = "LeftButton", modifiers = __wfgWorld.modifierBits.ctrl })');

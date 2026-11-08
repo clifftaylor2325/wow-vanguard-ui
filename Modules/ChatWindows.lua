@@ -133,10 +133,12 @@ end
 
 -- Tabs ------------------------------------------------------------------------------------
 
--- The message groups a tab can show or hide, as the game names them.
+-- The message groups a tab can show or hide: each row lists the game groups one switch stands for.
 CW.GROUPS = {
-  { "SAY", L["Say"] }, { "YELL", L["Yell"] }, { "GUILD", L["Guild"] }, { "PARTY", L["Party"] }, { "RAID", L["Raid"] },
-  { "WHISPER", L["Whispers"] }, { "LOOT", L["Loot"] }, { "SYSTEM", L["System messages"] }, { "OFFICER", L["Officer"] }, { "EMOTE", L["Emotes"] },
+  { { "SAY" }, L["Say"] }, { { "YELL" }, L["Yell"] }, { { "GUILD" }, L["Guild"] },
+  { { "PARTY", "PARTY_LEADER" }, L["Party"] }, { { "RAID", "RAID_LEADER", "RAID_WARNING" }, L["Raid"] },
+  { { "WHISPER", "BN_WHISPER" }, L["Whispers"] }, { { "LOOT" }, L["Loot"] }, { { "SYSTEM" }, L["System messages"] },
+  { { "OFFICER" }, L["Officer"] }, { { "EMOTE" }, L["Emotes"] },
 }
 -- The longest tab name.
 CW.MAX_NAME = 16
@@ -171,12 +173,26 @@ local function groupCall(frame, call, group)
   if type(fn) == "function" then return fn(frame, group) end
 end
 
--- get/set for whether the edited tab shows a message group.
-function CW.GroupSetting(group)
+-- Whether a tab shows any game group in the list: a tab mixed through the game's own settings (whispers
+-- without Battle.net ones, say) still shows that kind of message, so its switch reads on.
+local function showsAny(frame, groups)
+  for _, g in ipairs(groups) do
+    if groupCall(frame, "Contains", g) == true then return true end
+  end
+  return false
+end
+
+-- Shows or hides every game group in the list on a tab.
+local function setEvery(frame, groups, shown)
+  for _, g in ipairs(groups) do groupCall(frame, shown and "Add" or "Remove", g) end
+end
+
+-- get/set for whether the edited tab shows a switch's game groups (on while it shows any; set adds or removes them all).
+function CW.GroupSetting(groups)
   return function()
-    return groupCall(select(2, CW.Editing()), "Contains", group) == true
+    return showsAny(select(2, CW.Editing()), groups)
   end, function(v)
-    groupCall(select(2, CW.Editing()), v and "Add" or "Remove", group)
+    setEvery(select(2, CW.Editing()), groups, v)
   end
 end
 

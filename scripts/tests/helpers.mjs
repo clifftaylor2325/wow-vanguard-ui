@@ -727,7 +727,7 @@ export const QUEST_ENV = `
   __options = { { name = "TEST-ONLY Tell me more", icon = 90041, gossipOptionID = 90041, orderIndex = 0 } }
   C_GossipInfo = { GetText = function() return __greeting end, GetAvailableQuests = function() return __avail end,
     GetActiveQuests = function() return __active end, GetOptions = function() return __options end,
-    SelectAvailableQuest = log("avail"), SelectActiveQuest = log("active"), SelectOption = log("option"), CloseGossip = log("closeGossip") }
+    SelectAvailableQuest = log("avail"), SelectActiveQuest = log("active"), SelectOption = log("optionByID"), SelectOptionByIndex = log("option"), CloseGossip = log("closeGossip") }
   __greeting = "TEST-ONLY Well met, <name>."
   GetTitleText = function() return "TEST-ONLY Wolves" end
   GetQuestText = function() return "TEST-ONLY Wolves trouble the farm." end

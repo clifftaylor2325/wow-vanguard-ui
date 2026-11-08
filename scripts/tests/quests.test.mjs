@@ -27,6 +27,13 @@ it("quest dialog: Enter presses the main button (or Goodbye alone) out of combat
   key(addon, "NUMPADENTER");
   expect([calls(addon), addon.eval("return Vanguard_QuestDialog:IsShown()")], "out of combat, on a page with only Goodbye, Enter says goodbye").toEqual([["closeGossip nil", "closeQuest nil"], false]);
 });
+it("quest dialog: a gossip option the client sends with no gossipOptionID is still picked, by its orderIndex", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval('__options = { { name = "TEST-ONLY Tell me more", orderIndex = 2 } }');
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("local b = Vanguard_QuestDialog.lines[3] b.__scripts.OnClick(b)");
+  expect([calls(addon), addon.eval("return #ns.errors")], "the click selects by index, with no error").toEqual([["option 2"], 0]);
+});
 it("quest dialog: gossip lines, quest details, rewards and keys", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.fire("GOSSIP_SHOW");
@@ -36,7 +43,7 @@ it("quest dialog: gossip lines, quest details, rewards and keys", () => {
   expect(isTok(addon, addon.eval("return Vanguard_QuestDialog.lines[2].text.__textColor"), "gold"), "a quest ready to turn in is gold").toBe(true);
   key(addon, "2"); key(addon, "7"); key(addon, "W");
   addon.eval("local b = Vanguard_QuestDialog.lines[3] b.__scripts.OnClick(b)");
-  expect(calls(addon), "a number key picks its line (keys with no line, and other keys, are left to the game); so does a click").toEqual(["active 90032", "option 90041"]);
+  expect(calls(addon), "a number key picks its line (keys with no line, and other keys, are left to the game); so does a click").toEqual(["active 90032", "option 0"]);
   addon.fire("GOSSIP_CLOSED");
   expect([dialog(addon).shown, calls(addon)], "the game closing the talk hides it without closing again").toEqual([false, []]);
   addon.fire("QUEST_DETAIL");
@@ -987,6 +994,19 @@ it("quest log: hovering a list line shows the quest's whole title, leaving hides
   addon.eval("__wfgStub.inCombat = true local b = Vanguard_QuestLog.lines[2] b.__scripts.OnEnter(b)");
   expect(addon.eval("return GameTooltip:IsShown()"), "in a fight there is none").toBe(false);
   addon.eval("__wfgStub.inCombat = false local g = GameTooltip GameTooltip = nil local b = Vanguard_QuestLog.lines[2] b.__scripts.OnEnter(b) b.__scripts.OnLeave(b) GameTooltip = g");
+});
+it("H30-14-1 quest log: pointing at a long objective shows it in full, leaving hides it, and a fight shows none", () => {
+  const long = "TEST-ONLY Speak with Lieutenant Horatio Laine about the gnolls that have been raiding the farms";
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval(`__quests[90051].objectives[1].text = "${long}" Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)`);
+  addon.eval("local r = Vanguard_QuestLog.objectiveRows[1] r.__scripts.OnEnter(r)");
+  expect(addon.eval("return { GameTooltip.__lines[1].text, GameTooltip:IsShown(), GameTooltip:GetOwner() == Vanguard_QuestLog.objectiveRows[1] }"), "the whole objective, by its row").toEqual([long, true, true]);
+  addon.eval("local r = Vanguard_QuestLog.objectiveRows[1] r.__scripts.OnLeave(r)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "leaving hides it").toBe(false);
+  addon.eval("__wfgStub.inCombat = true local r = Vanguard_QuestLog.objectiveRows[1] r.__scripts.OnEnter(r)");
+  expect(addon.eval("return GameTooltip:IsShown()"), "in a fight there is none").toBe(false);
+  addon.eval("__wfgStub.inCombat = false local r = Vanguard_QuestLog.objectiveRows[1] r.full = nil r.__scripts.OnEnter(r) local g = GameTooltip GameTooltip = nil r.__scripts.OnEnter(r) r.__scripts.OnLeave(r) GameTooltip = g");
+  expect(addon.eval("return GameTooltip:IsShown()"), "no text or no tooltip: nothing").toBe(false);
 });
 it("quest log: hovering a reward card shows its item, leaving hides it", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);

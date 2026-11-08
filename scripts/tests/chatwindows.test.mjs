@@ -105,6 +105,20 @@ it("chat tabs: Officer and Emotes switches show and hide those message groups on
   expect(addon.eval(`${chatRow("Show Officer")} return { r[3](), __groups.OFFICER == nil }`), "and taken off again").toEqual([false, true]);
 });
 
+it("H30-10-1 chat tabs: Party, Raid and Whispers switch their leader, warning and Battle.net groups too, and read on while any is there", () => {
+  const addon = loggedIn(ENV + `__groups = {}
+    ChatFrame_ContainsMessageGroup = function(f, g) return __groups[g] == true end
+    ChatFrame_AddMessageGroup = function(f, g) __groups[g] = true end
+    ChatFrame_RemoveMessageGroup = function(f, g) __groups[g] = nil end`);
+  addon.eval(`${chatRow("Show Party")} r[4](true) ${chatRow("Show Raid")} r[4](true) ${chatRow("Show Whispers")} r[4](true)`);
+  expect(addon.eval("return { __groups.PARTY_LEADER, __groups.RAID_LEADER, __groups.RAID_WARNING, __groups.BN_WHISPER }"), "all added").toEqual([true, true, true, true]);
+  addon.eval("__groups.PARTY_LEADER = nil");
+  expect(addon.eval(`${chatRow("Show Party")} return r[3]()`), "a tab still showing party lines reads on").toBe(true);
+  addon.eval(`${chatRow("Show Party")} r[4](false) ${chatRow("Show Raid")} r[4](false) ${chatRow("Show Whispers")} r[4](false)`);
+  expect(addon.eval("return next(__groups) == nil"), "all removed").toBe(true);
+  expect(addon.eval(`${chatRow("Show Party")} return r[3]()`), "and then it reads off").toBe(false);
+});
+
 it("G3-1 chat tabs: the group switches use the window's own message-group calls when the old global ones aren't loaded", () => {
   const addon = loggedIn(ENV + `ChatFrame_ContainsMessageGroup, ChatFrame_AddMessageGroup, ChatFrame_RemoveMessageGroup = nil, nil, nil __groups = {}
     ChatFrame1.ContainsMessageGroup = function(f, g) return __groups[g] == true end
