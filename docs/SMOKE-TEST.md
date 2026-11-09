@@ -570,6 +570,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: out of combat the frames keep their usual edges and no swords show; your health text (100%) ends a little left of the frame's top-right corner. The moment the fight starts small vermilion crossed swords sit on your frame's top-right corner (clear of the pet frame above) and your frame's edge turns vermilion; your target's edge turns vermilion once it is fighting (the mob fighting the other player shows it at once). Both go when combat drops. With the deck on the edges still change, on the rounded frames. Unticking takes the marks off at once, mid-fight, and ticking brings them back. `/vg errors` stays empty. [Needs in game: that the one-pixel edge reads at 1440p, and that `UNIT_FLAGS` comes for the target as it starts and stops fighting.]
 - If it fails, paste: a screenshot of the two frames in and out of the fight, and `/vg errors`.
 
+### 7.2l Tooltips: a player's guild and rank, realm and role
+
+- Do: hover a player in a guild (in the world, then on their unit frame), a player from another realm if you can find one, and a party member with a role (in a dungeon group); hover a guildless player and a mob. Then `/vg` → Game windows → Tooltips: untick **Guild and rank**, open More settings and untick **Realm, for players of another realm** and **Group role**, hovering the same player after each, and tick them again.
+- Expect: under the game's own lines the tooltip adds the guild with the rank ("Guild: Night Watch (Officer)"), or only "Guild rank: Officer" when the game's tooltip already names the guild; "Realm: Emberfall" only for a player of another realm, and not when the name line already carries the realm; "Role: Tank", "Role: Healer" or "Role: DPS" for a player with a group role; all in the quiet text colour, above "Target: ...". The guildless player and the mob get none of them. Each switch takes its line off on the next hover, with no reload asked for, and brings it back. `/vg errors` stays empty. [Needs in game: whether WoW Forever's own tooltip already shows the guild and the realm, so which wording shows; that no line is doubled.]
+- If it fails, paste: a screenshot of the tooltip, `/run print(GetGuildInfo("mouseover"))` and `/run print(UnitName("mouseover"))` while hovering the player, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.

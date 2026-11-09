@@ -1,15 +1,17 @@
 -- Tooltips in the Vanguard look: a flat panel instead of the default art,
 -- a border in the class (or reaction) color of the unit you're looking at,
--- the unit's name in that color, and a "Target:" line. The default tooltip
+-- the unit's name in that color, and a "Target:" line. A player's tooltip
+-- adds the guild and rank, the realm and the group role. The default tooltip
 -- can sit in a movable corner, follow the cursor, or stay where the client
 -- puts it, and unit tooltips can be hidden in combat. Item tooltips show what
 -- the item sells for (the stack's worth, unless the client already shows it),
 -- how many you have (bags and bank), and optionally the item's ID; other modules
 -- add their own item lines after those (TT.AddItemLines).
 --
--- Written for WoW Forever. Every client call is looked up when used. The
--- tooltip's text is never read: in Midnight some of it is hidden from
--- addons, so this module only colors lines and adds its own.
+-- Written for WoW Forever. Every client call is looked up when used. In
+-- Midnight some of a tooltip's text is hidden from addons, so this module only
+-- colors lines and adds its own; a line's text is read (and only when it is
+-- plain) to keep from repeating what the client already shows.
 
 local ADDON, ns = ...
 
@@ -20,7 +22,8 @@ local T = ns.Theme
 local L = ns.L
 
 local TT = ns.Module("Tooltips", {
-  defaults = { anchor = "corner", classBorder = true, targetLine = true, hideInCombat = false, sellPrice = true, itemCount = true, itemID = false },
+  defaults = { anchor = "corner", classBorder = true, targetLine = true, guild = true, realm = true, role = true, hideInCombat = false,
+    sellPrice = true, itemCount = true, itemID = false },
 })
 
 TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "EmbeddedItemTooltip" }
@@ -102,6 +105,16 @@ local function forbidden(f)
   return type(f) == "table" and type(f.IsForbidden) == "function" and f:IsForbidden() == true
 end
 
+-- Whether a left-hand line of the tooltip carries `label` (plain text; a secret line never counts).
+local function hasLine(tt, label)
+  for i = 1, tt.NumLines and tt:NumLines() or 0 do
+    local line = _G[tt:GetName() .. "TextLeft" .. i]
+    local text = line and line.GetText and line:GetText()
+    if type(text) == "string" and not ns.IsSecret(text) and text:find(label, 1, true) then return true end
+  end
+  return false
+end
+
 -- Units -------------------------------------------------------------------------------------
 
 -- The unit a tooltip shows, or nil (none, or hidden from addons).
@@ -117,13 +130,71 @@ local function unitColor(unit)
   return ns.GetModule("UnitFrames").HealthColor(unit)
 end
 
+-- The named values of the unit line being written: one table for every line, so a tooltip refresh makes none.
+local slots = {}
+
+-- text with its {key} filled with a value (a name the client gave plainly).
+local function filled(text, key, value)
+  slots[key] = value
+  return ns.Format(text, slots)
+end
+
 -- "Target: <name>" in the target's color, when the unit has a target you can name.
 local function addTarget(tt, unit)
   local target = unit .. "target"
   if not ns.IsTrue(UnitExists(target)) then return end
   local name = UnitName(target)
   if ns.IsSecret(name) or type(name) ~= "string" then return end
-  tt:AddLine(ns.Format(L["Target: {name}"], { name = name }), unitColor(target))
+  tt:AddLine(filled(L["Target: {name}"], "name", name), unitColor(target))
+end
+
+-- Player lines ------------------------------------------------------------------------------
+
+-- The roles a group gives a player, by the client's name for each, as the tooltip words them (no line without one).
+TT.ROLES = { TANK = L["Tank"], HEALER = L["Healer"], DAMAGER = L["DPS"] }
+
+-- One of the module's own facts about a player, in the quiet text color.
+local function addFact(tt, text)
+  tt:AddLine(text, T.RGB("text2"))
+end
+
+-- The guild line's wording: the guild with the rank or alone, or only the rank where the client's own tooltip
+-- already names the guild (nil when that leaves nothing to add).
+local function guildText(named, rank)
+  if named then return rank and L["Guild rank: {rank}"] end
+  return rank and L["Guild: {guild} ({rank})"] or L["Guild: {guild}"]
+end
+
+-- A player's guild and rank (GetGuildInfo answers for a player near you; the name and rank may be hidden).
+local function addGuild(tt, unit)
+  local guild, rank = ns.CallIf(_G, "GetGuildInfo", unit)
+  slots.guild, slots.rank = ns.PlainText(guild), ns.PlainText(rank)
+  if not slots.guild then return end
+  local text = guildText(hasLine(tt, slots.guild), slots.rank)
+  if text then addFact(tt, ns.Format(text, slots)) end
+end
+
+-- "Realm: <name>" for a player from another realm (UnitName's second answer; none for your own), unless a line
+-- of the client's already carries the realm, as its name line does on some clients.
+local function addRealm(tt, unit)
+  local _, realm = UnitName(unit)
+  realm = ns.PlainText(realm)
+  if realm and not hasLine(tt, realm) then addFact(tt, filled(L["Realm: {realm}"], "realm", realm)) end
+end
+
+-- "Role: Tank" for a player the group has given a role.
+local function addRole(tt, unit)
+  local role = TT.ROLES[ns.PlainText(ns.CallIf(_G, "UnitGroupRolesAssigned", unit)) or ""]
+  if role then addFact(tt, filled(L["Role: {role}"], "role", role)) end
+end
+
+-- The module's lines about a player, as switched on: guild and rank, realm, then role. Other units get none.
+local function addPlayerLines(tt, unit)
+  local on = TT.settings
+  if not ns.IsTrue(UnitIsPlayer(unit)) then return end
+  if on.guild then addGuild(tt, unit) end
+  if on.realm then addRealm(tt, unit) end
+  if on.role then addRole(tt, unit) end
 end
 
 -- The unit color handed to the theme as the border's: one table, filled again on every refresh. Only the default
@@ -136,12 +207,13 @@ local function setUnitBorder(tt, r, g, b)
   T.SetBorder(tt, borderColor)
 end
 
--- Colors the name line and border, and adds the target line.
+-- Colors the name line and border, and adds the player lines and the target line.
 local function decorate(tt, unit)
   local r, g, b = unitColor(unit)
   local first = _G[tt:GetName() .. "TextLeft1"]
   if first then first:SetTextColor(r, g, b) end
   if TT.settings.classBorder then setUnitBorder(tt, r, g, b) end
+  addPlayerLines(tt, unit)
   if TT.settings.targetLine then addTarget(tt, unit) end
 end
 
@@ -184,16 +256,6 @@ function TT.StackOf(tt)
   local owner = tt.GetOwner and tt:GetOwner()
   local count = type(owner) == "table" and ns.PlainNumber(owner.count)
   return count and count > 1 and count or 1
-end
-
--- Whether a left-hand line of the tooltip carries `label` (plain text; a secret line never counts).
-local function hasLine(tt, label)
-  for i = 1, tt.NumLines and tt:NumLines() or 0 do
-    local line = _G[tt:GetName() .. "TextLeft" .. i]
-    local text = line and line.GetText and line:GetText()
-    if type(text) == "string" and not ns.IsSecret(text) and text:find(label, 1, true) then return true end
-  end
-  return false
 end
 
 -- Whether the client's own "Sell Price" is already on the tooltip: a money frame is up, or a line carries the

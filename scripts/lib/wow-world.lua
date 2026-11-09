@@ -705,6 +705,15 @@ function UnitHasIncomingResurrection(unit) return uf(unit, "incomingRes") == tru
 function UnitXP(unit) return uf(unit, "xp") or 0 end
 function UnitXPMax(unit) return uf(unit, "xpmax") or 0 end
 function GetXPExhaustion() return world.units.player.rested end
+-- A unit's guild, from its guild, guildRank, guildRankIndex and guildRealm fields: guildName, guildRankName,
+-- guildRankIndex (0 is the guild master) and the guild's realm (nil for one of your own realm); nothing for a unit
+-- without a guild. The client's docs leave GetGuildInfo out: the forever branch's InstanceDifficulty.lua and
+-- TabardFrame.lua call it, and the API wiki lists it for any nearby player on WoW Forever (1.60.1).
+function GetGuildInfo(unit)
+  local u = resolveUnit(unit)
+  if u == nil or u.guild == nil then return nil end
+  return u.guild, u.guildRank, u.guildRankIndex or 0, u.guildRealm
+end
 -- The player's hit modifiers, per cent (melee, spell): Forever's character sheet (Camelot/PaperDollFrameStats.lua)
 -- and Retail's PaperDollFrame_SetHitChance read them. world.units.player.hit / .spellHit, 0 when unset.
 function GetHitModifier() return world.units.player.hit or 0 end
