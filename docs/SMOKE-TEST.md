@@ -712,6 +712,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a small dot in your accent on the minimap over each quest's area (the same spots as the world map's quest blobs), a gold `?` for a quest ready to turn in, drawn over any dot it overlaps; Shift-click a quest in the tracker and its mark grows a size; a quest farther than the minimap shows sits faint on its edge in its direction and slides in as you approach. With Rotate Minimap on, the marks turn with the map. `/vg guide probe` shows `C_Minimap.GetViewRadius: present`. [Needs in game: that the marks sit on the right spots at every zoom, and that the dot reads clearly on busy ground (grass, snow, desert, a city) on both the square and the round minimap.]
 - If it fails, paste: a screenshot of the minimap and the world map, and `/vg errors`.
 
+### 8.4e The quest arrow and the minimap spots in a fight
+
+- Do: with the quest arrow showing and quest spots on the minimap, pull a mob and run about 50 yards while still in combat, turning as you go. Kill a mob a watched quest counts while still in combat. Then leave combat and stand still for two seconds.
+- Expect: while you run in combat the arrow keeps the turn and distance it had and the minimap spots stay where they were; the kill that changes the quest log redraws the arrow at once; within a second of the fight's end the arrow points the right way with the right distance and the spots are in the right places. No stutter and no Lua error. Say if the held arrow is misleading while you run: the rest in a fight is new in this build and can be limited to the heavier once-a-second work.
+- If it fails, paste: what the arrow and the spots showed and for how long after the fight, and `/vg errors`.
+
 ### 8.5 Levelling helpers
 
 - Do: watch a quest worth XP, hover the XP bar, kill a few mobs that give XP, turn in nothing yet, then let your food fall under the wanted count (`/vg prep want food 20`) by using or selling some.

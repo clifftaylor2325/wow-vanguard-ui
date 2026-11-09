@@ -147,3 +147,36 @@ it("quest minimap: reading the spots builds no quest record, only whether each q
   addon.advance(3);
   expect([addon.eval("return __records"), marks(addon).length]).toEqual([0, 3]);
 });
+
+// A1-3 (M13): the marks' two repeating jobs are tied to the marks' layer and rest in a fight.
+it("A1-3 quest minimap: its tickers are the layer's; in a fight the marks hold as you move and catch up when it ends", () => {
+  const addon = loggedIn(MINIMAP_ENV + "__px = 0.5 C_Map.GetPlayerMapPosition = function() return { GetXY = function() return __px, 0.5 end } end");
+  addon.advance(0.5);
+  expect(addon.eval('local j = ns.ticker.vgJobs return { j["quest minimap"].frame == Vanguard_QuestMinimap, j["quest minimap read"].frame == Vanguard_QuestMinimap }'), "both jobs count time only while the layer over the minimap shows").toEqual([true, true]);
+  // How far east of the minimap's centre the first mark sits.
+  const east = () => marks(addon)[0][1];
+  const before = east();
+  addon.world.combat(true);
+  addon.eval("__px = 0.55");
+  addon.advance(2);
+  expect(east(), "you moved 50 yards east in a fight: the mark is where it was").toBe(before);
+  addon.world.combat(false);
+  addon.advance(0.25);
+  expect([Math.abs(east() - before / 2) <= 1, addon.eval("return ns.QuestMinimap.scale.px")], "after the fight: half as far east, from the one scale table").toEqual([true, 0.55]);
+});
+
+it("A1-3 quest minimap: with the minimap hidden the quest spots aren't read", () => {
+  const addon = loggedIn(MINIMAP_ENV);
+  addon.eval("__asked = 0 local on = C_QuestLog.GetQuestsOnMap C_QuestLog.GetQuestsOnMap = function(id) __asked = __asked + 1 return on(id) end");
+  // How often the client was asked for the map's quests over the next three seconds.
+  const asked = () => { addon.eval("__asked = 0"); addon.advance(3.05); return addon.eval("return __asked"); };
+  expect(asked(), "shown: once a second").toBe(3);
+  addon.eval("Minimap:Hide()");
+  expect(asked(), "hidden: not at all").toBe(0);
+  addon.eval("Minimap:Show()");
+  addon.world.combat(true);
+  expect(asked(), "in a fight: not at all").toBe(0);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.advance(0.05);
+  expect(addon.eval("return __asked"), "a quest log change in a fight still reads them").toBe(1);
+});

@@ -8,7 +8,10 @@
 -- (QuestGuide.Target), the distance the client reports for the quest, your map position and facing.
 -- A quest on another map is pointed at by the client's next waypoint on this one (the zone exit
 -- or boat), when the client has that call; without it, or a value the client won't give, the
--- distance reads "no direction" instead of a guess. Nothing here is protected, so it updates in combat too.
+-- distance reads "no direction" instead of a guess. Nothing here is protected, but the work that repeats as you
+-- move (the pick each second, the redraw ten times a second) rests in a fight and while the arrow is hidden: in
+-- combat the arrow holds the quest, turn and distance it had, a change in the quest log still redraws it, and it
+-- catches up within a second of the fight's end.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -35,13 +38,19 @@ QA.PIN_TOP = 2
 
 -- Choosing the quest ------------------------------------------------------------------------------
 
+-- Whether the quest is in the log. The picks ask the log's own flags (this, QT.IsReady, QT.IsFailed), never a
+-- whole quest record: they run every second for every watched quest.
+local function inLog(id)
+  return ns.GetModule("QuestTracker").LogIndex(id) ~= nil
+end
+
 -- How near a quest counts (distance squared, less for a finished one); nil when it isn't in the log, it failed
 -- (nothing is left to do there), or the client won't say.
 local function rank(id)
-  local q = ns.GetModule("QuestTracker").Quest(id)
-  local d = q and ns.GetModule("QuestTracker").DistanceSq(id)
-  if not d or q.failed then return nil end
-  return q.ready and d * QA.READY_BIAS or d
+  local QT = ns.GetModule("QuestTracker")
+  local d = inLog(id) and QT.DistanceSq(id)
+  if not d or QT.IsFailed(id) then return nil end
+  return QT.IsReady(id) and d * QA.READY_BIAS or d
 end
 
 -- The watched quest with the lowest rank, its rank, and the rank of `current` (nil when it has none).
@@ -65,19 +74,18 @@ end
 -- The quest the player pinned (Shift-click) or the game super-tracks, when it is still in the log.
 local function pinned()
   local id = ns.QuestGuide.Followed()
-  return id and ns.GetModule("QuestTracker").Quest(id) and id or nil
+  return id and inLog(id) and id or nil
 end
 
 -- Whether a quest is finished, failed or gone from the log (the arrow moving on from it is worth a word).
 local function finished(id)
-  local q = ns.GetModule("QuestTracker").Quest(id)
-  return not q or q.ready or q.failed
+  local QT = ns.GetModule("QuestTracker")
+  return not inLog(id) or QT.IsReady(id) or QT.IsFailed(id)
 end
 
 -- Whether a quest is ready to turn in.
 local function readyToTurnIn(id)
-  local q = ns.GetModule("QuestTracker").Quest(id)
-  return q ~= nil and q.ready
+  return inLog(id) and ns.GetModule("QuestTracker").IsReady(id)
 end
 
 -- The quest title for the arrow, or "Quest".
@@ -96,7 +104,7 @@ end
 -- Shift-click whose quest has left the log is let go here, so it can't hold a quest the game tracks later.
 local function follow(old)
   local guide = ns.QuestGuide
-  if guide.pointed and logHasQuests() and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.DropPin() end
+  if guide.pointed and logHasQuests() and not inLog(guide.pointed) then guide.DropPin() end
   local pin = pinned()
   if pin and (ns.QuestGuide.pointed or not QA.settings.auto) then return pin, true end
   return QA.settings.auto and QA.Choose(old) or pin, false
@@ -116,6 +124,17 @@ local function sayMovedOn(old)
   if finished(old) and not ns.InCombat() then ns.Chat(ns.Format(L["Arrow: {quest}."], { quest = titleOf(QA.current) })) end
 end
 
+-- The spot table every pick fills (QA.target points at it while there is a quest), so a pick makes no new one.
+QA.spot = {}
+
+-- A quest's spot as { map, x, y } in QA.spot (nils where the client gives none); nil with no quest.
+local function targetOf(id)
+  if not id then return nil end
+  local spot = QA.spot
+  spot[1], spot[2], spot[3] = ns.QuestGuide.Target(id)
+  return spot
+end
+
 -- Picks the quest, whether it is held and ready to turn in, and its spot (map, x, y); says so when it moved on
 -- from a finished one, redraws, and has the tracker move its accent line when the quest changed.
 function QA.Pick()
@@ -123,7 +142,7 @@ function QA.Pick()
   local old = QA.current
   QA.current, QA.held = follow(old)
   QA.ready = QA.current ~= nil and readyToTurnIn(QA.current)
-  QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
+  QA.target = targetOf(QA.current)
   sayMovedOn(old)
   paintPick(QA.frame)
   QA.Draw()
@@ -232,15 +251,36 @@ local function turnFor(id, target)
   return x and QA.Turn(here, x, y)
 end
 
+-- What the two lines show now (title, and what the distance line was made from), so a redraw that has nothing
+-- new formats and sets no text: the arrow redraws ten times a second and the yards change far less often.
+QA.shown = {}
+
+-- Whether the distance line already shows these; remembers them when it doesn't.
+local function sameLine(d, turned, here, spot)
+  local s = QA.shown
+  if s.d == d and s.turned == turned and s.here == here and s.spot == spot and s.ready == QA.ready then return true end
+  s.d, s.turned, s.here, s.spot, s.ready = d, turned, here, spot, QA.ready
+  return false
+end
+
 -- The distance line and the arrow's look: "Here" in good with a faint arrow once you're there, else the
 -- distance. A state change, never a fade.
 local function paintState(f, id, turn)
   local d = yards(id)
   local spot = QA.target ~= nil and QA.target[1] ~= nil
   local here = spot and arrived(d)
+  f.arrow:SetAlpha(turn and not here and 1 or QA.FAINT)
+  if sameLine(d, turn ~= nil, here, spot) then return end
   f.dist:SetText((not spot and L["No spot from the game"]) or (here and L["Here"]) or distanceText(d, turn, QA.ready))
   T.Color(f.dist, here and "good" or "text2")
-  f.arrow:SetAlpha(turn and not here and 1 or QA.FAINT)
+end
+
+-- The quest's title on its line, set only when it changed.
+local function paintTitle(f, id)
+  local title = titleOf(id)
+  if QA.shown.title == title then return end
+  QA.shown.title = title
+  f.title:SetText(title)
 end
 
 -- Redraws the arrow's turn, title and distance for the current quest; hides the frame with none.
@@ -248,7 +288,7 @@ function QA.Draw()
   local f, id = QA.frame, QA.current
   if not (f and QA.settings.show and id) then return f and f:Hide() end
   local turn = turnFor(id, QA.target)
-  f.title:SetText(titleOf(id))
+  paintTitle(f, id)
   paintState(f, id, turn)
   f.arrow:SetRotation(turn or 0)
   f:Show()
@@ -351,15 +391,27 @@ function QA.Rows()
   }
 end
 
+-- The pick each second as you move. It rests in a fight, and where the client restricts the map (an instance:
+-- it gives no spot there); the log's and the zone's events still pick.
+local function tickPick()
+  if not (ns.InCombat() or ns.Restricted("Map")) then QA.Pick() end
+end
+
+-- The redraw of the turn and distance as you move. It rests in a fight.
+local function tickDraw()
+  if not ns.InCombat() then QA.Draw() end
+end
+
 -- Module entry point (Core/Modules.lua): the frame, a pick whenever the log or the zone changes, a pick
--- each second as you move, and the redraw of the turn a few times a second.
+-- each second as you move (while the interface shows), and the redraw of the turn a few times a second (while
+-- the arrow shows).
 function QA.Enable(settings)
   QA.settings = settings
   build()
   for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "SUPER_TRACKING_CHANGED", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }) do
     ns.On(event, function() QA.logLoaded = QA.logLoaded or event == "QUEST_LOG_UPDATE" ns.Soon("quest arrow", QA.Pick) end)
   end
-  ns.Every("quest arrow pick", QA.PICK, QA.Pick)
-  ns.Every("quest arrow", QA.DRAW, QA.Draw)
+  ns.Every("quest arrow pick", QA.PICK, tickPick, UIParent)
+  ns.Every("quest arrow", QA.DRAW, tickDraw, QA.frame)
   QA.Pick()
 end

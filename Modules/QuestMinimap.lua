@@ -6,7 +6,9 @@
 --
 -- Client data only, never a quest database: no spot from the client, no mark. The scale comes from the
 -- client's minimap view radius and the map's size in yards; without either, no marks are drawn rather
--- than guessed. Nothing here is protected (the marks are Vanguard's own textures over the minimap).
+-- than guessed. Nothing here is protected (the marks are Vanguard's own textures over the minimap), but the
+-- work that repeats as you move rests in a fight and while the minimap is hidden: in combat the marks stay
+-- where they were and catch up within a second of the fight's end.
 
 local ADDON, ns = ...
 local L = ns.L
@@ -67,13 +69,18 @@ local function rotated(east, north)
   return east * c + north * s, north * c - east * s
 end
 
--- The yards per minimap half-width, the map's size and your spot, or nil when the client won't say one of them.
+-- The table scale() fills: one, used again by every redraw (five a second).
+QM.scale = {}
+
+-- The yards per minimap half-width, the map's size and your spot (in QM.scale), or nil when the client won't say one of them.
 local function scale(mapID)
   local radius = ns.PlainNumber(ns.CallIf(C_Minimap, "GetViewRadius"))
   local w, h, known = ns.QuestArrow.WorldSize(mapID)
   local px, py = ns.QuestArrow.PlayerSpot(mapID)
   if not (radius and radius > 0 and known and px) then return nil end
-  return { radius = radius, w = w, h = h, px = px, py = py }
+  local s = QM.scale
+  s.radius, s.w, s.h, s.px, s.py = radius, w, h, px, py
+  return s
 end
 
 -- Whether the minimap is round: Vanguard's built round, or the game's own (round) one while Vanguard's is off.
@@ -156,8 +163,19 @@ function QM.Rows()
   return { { "check", L["Quest spots on the minimap"], getShow, setShow, QM.defaults.show } }
 end
 
+-- The read of the spots each second as you move. It rests in a fight; the log's and the zone's events still read.
+local function tickRead()
+  if not ns.InCombat() then QM.Read() end
+end
+
+-- The redraw of the marks as you move. It rests in a fight.
+local function tickDraw()
+  if not ns.InCombat() then QM.Draw() end
+end
+
 -- Module entry point (Core/Modules.lua): the marks' layer over the minimap, the spots read each second and
--- when the log or zone changes, and the marks redrawn a few times a second as you move.
+-- when the log or zone changes, and the marks redrawn a few times a second as you move (both only while the
+-- minimap shows).
 function QM.Enable(settings)
   QM.settings, QM.marks, QM.spots = settings, {}, {}
   QM.layer = CreateFrame("Frame", "Vanguard_QuestMinimap", Minimap)
@@ -165,7 +183,7 @@ function QM.Enable(settings)
   for _, event in ipairs({ "QUEST_LOG_UPDATE", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }) do
     ns.On(event, function() ns.Soon("quest minimap", QM.Read) end)
   end
-  ns.Every("quest minimap read", QM.READ, QM.Read)
-  ns.Every("quest minimap", QM.DRAW, QM.Draw)
+  ns.Every("quest minimap read", QM.READ, tickRead, QM.layer)
+  ns.Every("quest minimap", QM.DRAW, tickDraw, QM.layer)
   QM.Read()
 end
