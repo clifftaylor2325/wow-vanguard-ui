@@ -358,6 +358,7 @@ it("raid tiles: each event refreshes only its own part of the tile", () => {
 it("raid bursts: a roster burst is one refresh of every tile; a new target repaints edges only", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + MARK_CALLS + "__members = 5 GetNumGroupMembers = function() return __members end");
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  addon.update(0.016); // the third tile's aura rows, made on the frame after (two a frame at once)
   addon.eval(`__updates = 0 local RF = ns.GetModule("RaidFrames") local update = RF.Update
     RF.Update = function(...) __updates = __updates + 1 return update(...) end`);
   addon.eval(COUNT_LUA);

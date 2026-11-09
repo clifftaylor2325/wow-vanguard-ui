@@ -121,8 +121,8 @@ function CG.Items()
   for i = #out, 1, -1 do out[i] = nil end
   for _, name in ipairs(CG.VIEWERS) do
     local viewer = _G[name]
-    local items = type(viewer) == "table" and type(viewer.GetItemFrames) == "function" and viewer:GetItemFrames()
-    for _, item in ipairs(type(items) == "table" and items or {}) do out[#out + 1] = item end
+    local frames = type(viewer) == "table" and type(viewer.GetItemFrames) == "function" and viewer:GetItemFrames()
+    for _, item in ipairs(type(frames) == "table" and frames or {}) do out[#out + 1] = item end
   end
   return out
 end

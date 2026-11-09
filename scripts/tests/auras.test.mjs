@@ -116,6 +116,18 @@ it("raid aura rows are built when a tile needs them, not at login", () => {
   expect(builtTiles(), "in a raid, every tile once the fight is over").toEqual([true, true, true, true, true, true, true]);
 });
 
+it("a login or a join that fills many raid tiles at once builds two tiles' aura rows that frame, then one a frame", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3") __spawn(4, "raid1")');
+  // Which of tiles 1 to 4 have their rows, and the unit tile 4's rows follow.
+  const state = () => addon.eval(`local out = {} for i = 1, 4 do out[i] = _G["Vanguard_RaidUnitButton" .. i].debuffRow ~= nil end
+    local b = Vanguard_RaidUnitButton4 out[5] = b.debuffRow and b.debuffRow.frame.__unit or false return out`);
+  expect(state(), "the first two at once").toEqual([true, true, false, false, false]);
+  addon.update(0.016);
+  addon.update(0.016);
+  expect(state(), "then one a frame, each refreshed to show its unit").toEqual([true, true, true, true, "raid1"]);
+});
+
 it("a raid tile first given a unit in a fight gets its aura rows when the fight ends", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
   addon.eval("__spawn(1, nil)");

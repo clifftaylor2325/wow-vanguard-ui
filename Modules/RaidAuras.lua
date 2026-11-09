@@ -219,13 +219,20 @@ local function indicatorEmptied(b)
 end
 
 -- Building ahead -------------------------------------------------------------------------
--- An aura container takes the client some 12 ms to make, and a tile has four or five, so the 40
--- tiles' rows are not made at login (some 2 s). A tile gets them when it first shows a unit, and
--- the tiles a group may fill next are built ahead one a frame (RA.BuildAhead), since no container
--- can be made in a fight. A tile first given a unit in a fight gets its rows when the fight ends.
+-- An aura container takes the client some 12 ms to make, and a tile has four or five, so no
+-- more than RA.NOW_PER_FRAME tiles' rows are made in one frame (40 tiles at once is some 2 s): a
+-- tile that first shows a unit builds them at once while that share allows, and the rest are made
+-- one tile a frame (RA.BuildAhead): first the tiles that already show a unit (each refreshed once
+-- it has them), then the tiles the group may fill next, since no container can be made in a
+-- fight. A fight pauses it; a tile first given a unit in one gets its rows after it.
 
 -- How many tiles a party keeps built ahead: its own group's.
 RA.PARTY_TILES = 5
+-- How many tiles may build their rows at once in one frame when they first show a unit (a login
+-- or a join in a big raid fills 40 tiles in one frame; the rest go one a frame after).
+RA.NOW_PER_FRAME = 2
+-- Tiles that showed a unit before they had rows (a set), built first.
+RA.waiting = {}
 
 -- Whether the tile has its aura rows yet.
 local function built(b)
@@ -246,27 +253,50 @@ function RA.TilesAhead()
   return 0
 end
 
--- One frame's share of the building ahead: the first tile within RA.TilesAhead without rows gets
--- them. True while another is left.
-local function buildOne()
-  for i = 1, RA.TilesAhead() do
-    local b = RF.buttons[i]
-    if not built(b) then build(b) return true end
+-- The first tile, in the grid's order, still without rows: one waiting for them, else one of the
+-- RA.TilesAhead; nil when none is left.
+local function nextTile()
+  for _, b in ipairs(RF.buttons) do
+    if RA.waiting[b] and not built(b) then return b end
   end
-  return false
+  for i = 1, RA.TilesAhead() do
+    if not built(RF.buttons[i]) then return RF.buttons[i] end
+  end
 end
 
--- Builds the rows of the tiles the group may fill next, one tile a frame, out of combat.
+-- One frame's share: the next tile gets its rows (one that waited is refreshed, so they show its
+-- unit). True while another may be left.
+local function buildOne()
+  local b = nextTile()
+  if not b then return false end
+  build(b)
+  if RA.waiting[b] then RA.waiting[b] = nil RF.Update(b) end
+  return true
+end
+
+-- Builds the rows of the tiles that need them, one tile a frame, out of combat.
 function RA.BuildAhead()
   ns.Spread("raid aura rows", buildOne)
 end
 
--- A tile that shows a unit before its rows were built ahead gets them now, or (in a fight) once
--- it ends, and is refreshed then. True when the tile has its rows.
+-- Whether another tile's rows may be built at once this frame (out of combat, at most
+-- RA.NOW_PER_FRAME a frame, the frame told by GetTime), counting it when so.
+local function buildNow()
+  local now = GetTime()
+  if ns.InCombat() then return false end
+  if RA.nowAt ~= now then RA.nowAt, RA.nowCount = now, 0 end
+  if RA.nowCount >= RA.NOW_PER_FRAME then return false end
+  RA.nowCount = RA.nowCount + 1
+  return true
+end
+
+-- Whether a tile has its rows: one that shows a unit before they were built ahead gets them at
+-- once while this frame's share allows, else it is queued for them (RA.BuildAhead).
 local function ensure(b)
   if built(b) then return true end
-  if not ns.InCombat() then build(b) return true end
-  ns.OutOfCombat(function() if not built(b) then build(b) RF.Update(b) end end, b)
+  if buildNow() then build(b) return true end
+  RA.waiting[b] = true
+  RA.BuildAhead()
   return false
 end
 
