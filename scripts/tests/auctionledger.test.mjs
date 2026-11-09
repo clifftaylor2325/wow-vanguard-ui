@@ -195,6 +195,16 @@ it("a login with the computer's clock far ahead of the realm's prunes nothing", 
   const clock = "__now = 1790000000 + 100 * 86400 GetServerTime = function() return 1790000000 end";
   const addon = loggedIn(ENV + clock, { savedVariables: saved });
   expect(addon.eval("local b = VanguardDB.ah.ledgers['ForeverTest-Alliance'] return { #b.records, b.open[1] ~= nil }"), "the record and the open auction stay; only the broken entry goes").toEqual([1, true]);
+  expect(addon.eval("return VanguardDB.ah.ledgers['ForeverTest-Alliance'].records[1].t"), "the prune ran with no real time, so no time is moved").toBe(1790000000 - 86400);
+});
+
+it("a sale noted under a clock set ahead is moved back a day at the next login: no sale of this session, 'yesterday' in its history", () => {
+  const saved = `VanguardDB.ah = { ledgers = { ["ForeverTest-Alliance"] = { records = { { kind = "sold", id = 9999, name = "TEST-ONLY Blade", qty = 1, amount = 5000, auction = 7, t = 1790000000 + 20 * 86400 } },
+    open = { [1] = { t = 1790000000 + 3600 } } } } }`;
+  const clock = "GetServerTime = function() return 1790000000 end";
+  const addon = loggedIn(ENV + clock, { savedVariables: saved });
+  const book = "VanguardDB.ah.ledgers['ForeverTest-Alliance']";
+  expect(addon.eval(`return { ${book}.records[1].t <= ns.AuctionLedger.since - 86400, ns.AuctionLedger.SessionSales(), ns.AuctionPrices.Ago(${book}.records[1].t), ${book}.open[1].t <= ns.AuctionLedger.since - 86400 }`)).toEqual([true, 0, "yesterday", true]);
 });
 
 // The Up now card, which holds Your history.

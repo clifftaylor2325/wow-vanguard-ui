@@ -286,13 +286,24 @@ local function fresh(v, cutoff)
   return type(v) == "table" and (tonumber(v.t) or 0) >= cutoff
 end
 
+-- An entry stamped after now (noted under a clock that was set ahead) moves back a day, so it is no
+-- sale of this session and its history row says yesterday, not today. Not when now is no real time
+-- (0, or -math.huge from an untrusted clock).
+local function notAhead(v, now)
+  if now > 0 and tonumber(v.t) > now then v.t = now - AP.DAY end
+end
+
 -- Drops a ledger's records older than AL.MAX_AGE days and auctions first seen up more than
 -- AL.OPEN_AGE ago (and anything broken); true when nothing is left.
 local function pruneBook(book, now)
   local records = {}
-  for _, r in ipairs(book.records) do if fresh(r, now - AL.MAX_AGE * AP.DAY) then records[#records + 1] = r end end
+  for _, r in ipairs(book.records) do
+    if fresh(r, now - AL.MAX_AGE * AP.DAY) then notAhead(r, now) records[#records + 1] = r end
+  end
   book.records = records
-  for id, a in pairs(book.open) do if not fresh(a, now - AL.OPEN_AGE) then book.open[id] = nil end end
+  for id, a in pairs(book.open) do
+    if fresh(a, now - AL.OPEN_AGE) then notAhead(a, now) else book.open[id] = nil end
+  end
   return #records == 0 and next(book.open) == nil
 end
 
