@@ -1052,6 +1052,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the Vanguard button first, above Options, with a gap under it; clicking it closes the menu and opens the options window. [After P0.9. If P0.9 did not land, the button is last, under Return to Game, as in your first screenshot.]
 - If it fails, paste: a screenshot of the menu and `/vg errors`.
 
+### 12.1a The Vanguard button and the quest log button in a fight
+
+- Do: in combat (a training dummy will do), press Escape and click the Vanguard button; press Escape again. Still in combat, click the quest log button on the menu bar twice. Do both again out of combat.
+- Expect: in combat the options window opens and the game menu stays up until Escape closes it; the quest log button opens Vanguard's quest log with the game's own window left open behind it, and the second click closes both. No `Interface action failed because of an AddOn` message at any point. Out of combat the menu closes on the click and only Vanguard's quest log shows, as before.
+- If it fails, paste: that message text, which button it followed, and `/vg errors`.
+
 ### 12.2 The game's own buttons still work
 
 - Do: from the game menu click Edit Mode, Options, Macros and AddOns in turn, out of combat and then in combat.

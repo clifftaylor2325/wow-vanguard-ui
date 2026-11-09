@@ -73,7 +73,7 @@ Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until th
 
 - [ ] **A1-0 Release what is already on `main`** as the next patch version, today, with the `release` skill. It carries the login spread and the forbidden-icon guard. (Q1; closes H1 and H2 once seen in game)
 - [x] **A1-1** Off-hand upgrade verdict against a two-hander, with harness cases. (Q15, M11)
-- [ ] **A1-2** Combat checks on the two panel-manager calls, and add those functions to the quality scan's guarded list. Protected path: Opus. (Q16, M12)
+- [x] **A1-2** Combat checks on the two panel-manager calls, and add those functions to the quality scan's guarded list. Protected path: Opus. (Q16, M12)
 - [ ] **A1-3** Give the four quest tickers an owner frame, stop them in combat, reuse scratch tables, add a bench step. (Q17, M13)
 - [ ] **A1-4** First-run setup rows per D4. (Q18, M14)
 - [ ] **A1-5** Quest-log zone expansion registered from `Enable`, with a switch. (Q21, M16)
