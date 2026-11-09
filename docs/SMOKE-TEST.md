@@ -4971,6 +4971,36 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no saved settings line at any login (its notes under "CAMWOW US2 Realm 3 PvE" fold into "CAMWOWUS2Realm3PvE", and the newer one matches). If a character still shows it, the line shows at the first login only, not after the reload, and `/vg` → General has **Keep these settings**: after it chat says Vanguard keeps the settings that loaded, the notice goes, and the next login says nothing.
 - If it fails, paste: the chat lines from login, and both `Vanguard.lua` files (the account's `WTF/Account/<name>/SavedVariables/` one and the character's `WTF/Account/<name>/<realm>/<character>/SavedVariables/` one), or just their `guard` blocks.
 
+### 33.471 The Shield HUD look on the unit frames (Forever)
+
+- Do: log in after the update with a target. Look at your frame, the target, target of target, focus (set one) and pet (hunter or warlock) in and out of combat, with health below full on you and the target.
+- Expect: every frame is a shield: the outer end comes to a point at mid-height (left on yours, focus and pet; right on the target and its target), the inner end square, with no border running up the pointed end and the health and power bars cut to the point. Health fills toward you: yours drains from the left point in, the target's from its right point in, so the last sliver stands beside the number. On the target the name reads from the right and the health text, diamond and tag mark sit at its left end. A thin brass line runs a pixel inside your frame's and the target's rim, brighter in a fight. Nothing jumps when the target frame changes height (Setup's role layouts) and no text runs into the point.
+- If it fails, paste: a screenshot of both frames out of combat, one in combat, your UI scale and resolution, and `/vg errors`.
+
+### 33.472 Plain puts everything back (Forever)
+
+- Do: `/vg` → General → Look → HUD look: cycle to Plain, then back to Shield. With Plain on, flip Shield corners on unit frames off and on.
+- Expect: Plain gives the flat frames back at once, texts in their old places, cuts on the unit frames' corners while Shield corners is on and square corners with it off; the keystone goes with Plain. Shield brings the points back at once, with the hairline. No reload, no error.
+- If it fails, paste: a screenshot after each change and `/vg errors`.
+
+### 33.473 The tools' cuts and the plinth under the bars (Forever)
+
+- Do: with Shield on, cast a spell and look at your cast bar, then at the action bars. Flip Shield corners on unit frames off. Under Action bars, set Bar backing to Off, then Auto.
+- Expect: the cast bar's four corners are cut 8 pixels (its icon square, left of the bar); one dark plate with cut corners sits under the bar stack. Shield corners off takes the cuts off the cast bar and the plate but leaves the unit frames' points. Bar backing Off removes the plate at once (out of combat); Auto brings it back under Shield.
+- If it fails, paste: a screenshot of the cast bar and bars, and `/vg errors`.
+
+### 33.474 The keystone between your frame and your target's (Forever)
+
+- Do: with Shield on and a target, look between the two frames; enter combat and leave it. Then: turn on the Versus deck (Unit frames); turn it off; drag your frame a little in `/vg unlock` and lock; `/vg reset` the position. Set Unit frames → Keystone to Never, Always, and back to With the Shield look. If the Cooldown Manager's essential row shows between the frames, note whether the keystone shows with it.
+- Expect: the crest sits on a dim brass rail at the frames' mid-height, under them, and takes no clicks; crossed swords light under it in combat and go when the fight ends; it dims out of combat with the Calm HUD like your frames. It hides while the deck is on, while either frame has a moved position, and while the Cooldown Manager's essential row sits across it, and comes back when each of those ends. Never hides it; Always shows it under Plain too.
+- If it fails, paste: a screenshot of the gap between the frames in each state and `/vg errors`.
+
+### 33.475 Global cooldown on the keystone (Forever)
+
+- Do: Unit frames → Global cooldown on the keystone: on. Cast a few spells. Off again.
+- Expect: a ring round the crest sweeps with the global cooldown after each cast (the same sweep the cursor ring draws) and is gone with the switch off. If the ring never moves on WoW Forever, say so: it decides whether this switch ships on by default (7.2c).
+- If it fails, paste: whether the ring showed, whether it swept, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

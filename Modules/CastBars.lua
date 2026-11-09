@@ -337,11 +337,12 @@ local function addSpark(bar)
   bar.lag:Hide()
 end
 
--- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast.
+-- Makes a status bar a themed cast bar (w x h), hidden until CB.Show finds a cast. A tool of the HUD look: under
+-- Shield its corners take the shield cuts.
 function CB.Build(bar, w, h)
   bar:SetSize(w, h)
   T.StyleBar(bar)
-  T.HudPanel(bar, { inset = true })
+  T.HudPanel(bar, { inset = true, role = "tool" })
   addParts(bar, h)
   addSpark(bar)
   bar:Hide()
@@ -603,11 +604,17 @@ local function sweepRing(cd, object, start, length)
   cd:Clear()
 end
 
--- Sweeps the outer ring with the global cooldown now.
-function CB.RingGlobal()
+-- Sweeps a ring (a Cooldown frame) with the global cooldown now: the cursor ring's outer ring, the keystone's.
+---@param cd table a Cooldown frame
+function CB.SweepGlobal(cd)
   local info = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(CB.GCD_SPELL)
   local plain = type(info) == "table" and not ns.IsSecret(info)
-  sweepRing(CB.ring.gcd, gcdObject(), plain and info.startTime, plain and info.duration)
+  sweepRing(cd, gcdObject(), plain and info.startTime, plain and info.duration)
+end
+
+-- Sweeps the outer ring with the global cooldown now.
+function CB.RingGlobal()
+  CB.SweepGlobal(CB.ring.gcd)
 end
 
 -- Sweeps the inner ring with your cast or channel now, or clears it when you are not casting.
@@ -627,8 +634,12 @@ local function followCursor()
   if x and y then CB.ring:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x / UIParent:GetEffectiveScale(), y / UIParent:GetEffectiveScale()) end
 end
 
--- One ring of the pair: a faint full circle, with the accent sweep over it in the same shape.
-local function ringPart(parent, size)
+-- One ring: a faint full circle (kept as cd.back) with the accent sweep over it in the same shape, centred on
+-- parent. The cursor ring's pair, and the keystone's ring.
+---@param parent table
+---@param size number units
+---@return table cd  the Cooldown frame
+function CB.RingPart(parent, size)
   local back = T.Tint(parent:CreateTexture(nil, "BACKGROUND"), "text2", 0.35)
   back:SetTexture(T.Texture("KnobLine"))
   back:SetSize(size, size)
@@ -637,11 +648,13 @@ local function ringPart(parent, size)
   cd:SetAllPoints(back)
   cd:SetSwipeTexture(T.Texture("KnobLine"))
   cd:SetSwipeColor(T.RGB("accent"))
+  cd.back = back
   return cd
 end
 
 -- Makes the sweep of a ring plain and out of the mouse's way: no edge line, no end flash, no numbers, no clicks.
-local function quietRing(cd)
+---@param cd table a Cooldown frame
+function CB.QuietRing(cd)
   cd:SetDrawEdge(false)
   cd:SetDrawBling(false)
   cd:SetHideCountdownNumbers(true)
@@ -655,9 +668,9 @@ local function buildRing()
   ring:SetSize(CB.RING.outer, CB.RING.outer)
   ring:SetFrameStrata("FULLSCREEN_DIALOG")
   ring:EnableMouse(false)
-  ring.gcd, ring.cast = ringPart(ring, CB.RING.outer), ringPart(ring, CB.RING.inner)
-  quietRing(ring.gcd)
-  quietRing(ring.cast)
+  ring.gcd, ring.cast = CB.RingPart(ring, CB.RING.outer), CB.RingPart(ring, CB.RING.inner)
+  CB.QuietRing(ring.gcd)
+  CB.QuietRing(ring.cast)
   CB.ring = ring
   return ring
 end

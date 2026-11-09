@@ -815,7 +815,8 @@ const DECK_SWITCH = `for _, w in ipairs(__wfgStub.frames) do
   if w.source and w.source[2] == "Versus deck" and ns.Options.RevealRow(w) then w.__scripts.OnClick(w, "LeftButton") end end`;
 
 it("Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored", () => {
-  const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
+  // On the Plain HUD look: the shield corners this test watches are Plain's cuts (Shield's points are hudlook.test.mjs's).
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "plain" } } } }' });
   expect(deck(addon), "off by default: no panel, bars fill from the left").toEqual({ shown: false, fills: false });
   addon.slash("");
   addon.eval(`__click("Unit frames") ${DECK_SWITCH}`);

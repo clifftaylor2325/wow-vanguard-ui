@@ -45,8 +45,8 @@ end
 -- Vanguard meter is on, on a canvas under 1838 (the meter's narrow spot covers the default one up to there).
 local LAYOUT = {
   { key = "player", w = 240, h = 36, label = L["Player"], point = { "BOTTOM", "BOTTOM", -240, 196 } },
-  { key = "target", w = 240, h = 36, label = L["Target"], point = { "BOTTOM", "BOTTOM", 240, 196 } },
-  { key = "targettarget", w = 120, h = 24, label = L["Target of target"], point = { "BOTTOM", "BOTTOM", 426, 196,
+  { key = "target", w = 240, h = 36, outer = "RIGHT", label = L["Target"], point = { "BOTTOM", "BOTTOM", 240, 196 } },
+  { key = "targettarget", w = 120, h = 24, outer = "RIGHT", label = L["Target of target"], point = { "BOTTOM", "BOTTOM", 426, 196,
     narrow = { w = UF.NarrowWidth, spot = { "BOTTOM", "BOTTOM", 180, 280 } } } },
   { key = "focus", w = 160, h = 30, label = L["Focus"], point = { "BOTTOM", "BOTTOM", -270, 290 } },
   { key = "pet", w = 120, h = 24, label = L["Pet"], point = { "BOTTOM", "BOTTOM", -184, 240 } },
@@ -283,33 +283,27 @@ local function makeSecure(f, unit)
   f.UpdateTooltip = ns.Guard("unit frame tooltip", UF.ShowTooltip)
 end
 
--- The level left of the name (where levels are shown).
+-- The level beside the name, at the frame's outer end (where levels are shown; UF.PlaceParts anchors it).
 local function addLevel(f)
-  f.level = createText(f, "name", "LEFT", 4)
-  f.name:ClearAllPoints()
-  f.name:SetPoint("LEFT", f.level, "RIGHT", 4, 0)
+  f.level = createText(f, "name", "LEFT", UF.TEXT_INSET)
 end
 
--- How far from the right edge the health text ends on a frame with the diamond, so it stays clear.
+-- How far from the inner edge the health text ends on a frame with the diamond, so it stays clear.
 UF.CLASS_MARK_ROOM = 10
 
--- A small diamond (the Vanguard mark) over the top-right corner: elite, rare or boss. The health text
--- ends left of it.
+-- A small diamond (the Vanguard mark) over the top corner at the frame's inner end: elite, rare or boss. The health
+-- text ends short of it (UF.PlaceParts places both).
 local function addClassMark(f)
   f.class = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
   f.class:SetTexture(T.Texture("LogoLeft"))
   f.class:SetSize(14, 14)
-  f.class:SetPoint("CENTER", f, "TOPRIGHT", -2, -2)
   f.class:Hide()
-  f.healthText:ClearAllPoints()
-  f.healthText:SetPoint("RIGHT", f.health, "RIGHT", -UF.CLASS_MARK_ROOM, 0)
 end
 
--- A small tag mark left of the classification diamond (UF.TAG_LOOK: whose tag the target carries).
+-- A small tag mark beside the classification diamond (UF.TAG_LOOK: whose tag the target carries).
 local function addTagMark(f)
   f.tag = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
   f.tag:SetSize(12, 12)
-  f.tag:SetPoint("CENTER", f, "TOPRIGHT", -18, -2)
   f.tag:Hide()
 end
 
@@ -319,17 +313,14 @@ end
 -- the target has its diamond) and a vermilion edge, your target's the edge alone. Off with the combatMark switch.
 UF.COMBAT = { keys = { player = true, target = true }, icon = 14, color = "bad" }
 
--- The crossed swords over the player frame's top-right corner (hidden until a fight). The health text ends left of
--- them, fight or not, so it never jumps.
+-- The crossed swords over the player frame's inner top corner (hidden until a fight). The health text ends short of
+-- them, fight or not, so it never jumps (UF.PlaceParts places both).
 local function addCombatMark(f)
   f.combat = T.Snap(f.health:CreateTexture(nil, "OVERLAY"), "icon")
   f.combat:SetTexture(T.Icon("Combat"))
   f.combat:SetSize(UF.COMBAT.icon, UF.COMBAT.icon)
-  f.combat:SetPoint("CENTER", f, "TOPRIGHT", -2, -2)
   T.Tint(f.combat, UF.COMBAT.color)
   f.combat:Hide()
-  f.healthText:ClearAllPoints()
-  f.healthText:SetPoint("RIGHT", f.health, "RIGHT", -UF.CLASS_MARK_ROOM, 0)
 end
 
 -- The raid target icon's size: the raid tiles' 12 grown to the unit frames' scale.
@@ -358,13 +349,14 @@ local function addRaidIcon(f, h)
   f.raidIcon:Hide()
 end
 
--- The name (with the level left of it, where shown) and the health text. The
--- name stops short of the health text: a long one is cut off, not overlapped.
+-- How far in from a frame's ends its texts sit (units).
+UF.TEXT_INSET = 4
+
+-- The name (with the level beside it, where shown) and the health text, anchored by UF.PlaceParts: the name stops
+-- short of the health text, so a long one is cut off, not overlapped.
 local function addTexts(f, settings)
-  f.name, f.healthText = createText(f, "name", "LEFT", 4), createText(f, "number", "RIGHT", -4)
+  f.name, f.healthText = createText(f, "name", "LEFT", UF.TEXT_INSET), createText(f, "number", "RIGHT", -UF.TEXT_INSET)
   if settings.showLevel then addLevel(f) end
-  f.name:SetPoint("RIGHT", f.healthText, "LEFT", -4, 0)
-  f.name:SetJustifyH("LEFT")
   f.name:SetWordWrap(false)
 end
 
@@ -381,18 +373,112 @@ local function addBars(f, settings)
   shieldBars(f)
 end
 
--- Creates one unit frame (a secure unit button, its unit the same as its key) with its bars and texts,
--- its corners cut to the shield look (the bars cut with it) while the shield setting is on.
-local function createUnitFrame(key, w, h)
+-- Creates one unit frame (a secure unit button, its unit the same as its key) with its bars and texts, shaped by
+-- the HUD look (Core/HudLook.lua): a shield pointing from its outer side (`outer`, "LEFT" unless the row says
+-- "RIGHT") under the Shield look, its corners cut while the shield setting is on under Plain; the bars cut with it.
+local function createUnitFrame(key, w, h, outer)
   local f = CreateFrame("Button", "Vanguard_" .. key, UIParent, "SecureUnitButtonTemplate")
-  f.unit, f.key = key, key
+  f.unit, f.key, f.outer, f.vgHeight = key, key, outer or "LEFT", h
   T.PixelSize(f, w, h)
   makeSecure(f, key)
-  T.HudPanel(f, { shield = true })
+  T.HudPanel(f, { shield = true, role = "unit", outer = f.outer })
   addBars(f, UF.settings)
   addTexts(f, UF.settings)
   addRaidIcon(f, h)
   return f
+end
+
+-- The HUD look ---------------------------------------------------------------------------------
+
+-- The other end of a frame from a side.
+local INNER = { LEFT = "RIGHT", RIGHT = "LEFT" }
+
+-- The side a frame's shield points from ("LEFT" or "RIGHT"), or nil while its corners are not a shield's points (the
+-- Plain look, or the Versus deck rounding it).
+local function pointedSide(f)
+  if T.CornerLook(f, "TOP" .. f.outer) == "point" then return f.outer end
+  return nil
+end
+
+-- Whether a frame's bars fill from its right edge: your target's while the Versus deck mirrors it (their fills
+-- anchored at the deck's ends); else a shield's when it points left, so its fill grows from its inner edge toward
+-- the point (the Shield look: every fill reads toward your character).
+local function fillsFromRight(f)
+  if UF.settings.deck == true and UF.COMBAT.keys[f.key] then return f.key == "target" end
+  return pointedSide(f) == "LEFT"
+end
+
+-- An offset `x` pointing in from `side` (positive from the left edge, negative from the right).
+local function inward(side, x)
+  if side == "RIGHT" then return -x end
+  return x
+end
+
+-- How far in from a frame's `side` its name starts: the text inset, plus what a shield point takes at the health
+-- bar's middle (nothing at a square or 8-pixel cut corner). From the height the frame was given (f.vgHeight): a
+-- fight may hide the one it reports.
+local function nameInset(f, side)
+  local px = T.Pixel(f)
+  local health = f.vgHeight - UF.settings.powerHeight - 3 * px
+  return UF.TEXT_INSET + math.max(0, T.CornerAt(f, "TOP" .. side) - (px + health / 2))
+end
+
+-- The name (with the level outside it, where shown) from `side` of the health bar, reading toward the health text
+-- at the other end.
+local function placeName(f, side)
+  local far, first = INNER[side], f.level or f.name
+  first:ClearAllPoints()
+  first:SetPoint(side, f.health, side, inward(side, nameInset(f, side)), 0)
+  if f.level then
+    f.name:ClearAllPoints()
+    f.name:SetPoint(side, f.level, far, inward(side, UF.TEXT_INSET), 0)
+  end
+  f.name:SetPoint(far, f.healthText, side, inward(far, UF.TEXT_INSET), 0)
+  f.name:SetJustifyH(side)
+end
+
+-- The health text at the other end from the name, short of the marks on a frame that has them.
+local function placeHealthText(f, side)
+  local far = INNER[side]
+  local room = (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
+  f.healthText:ClearAllPoints()
+  f.healthText:SetPoint(far, f.health, far, inward(far, room), 0)
+  f.healthText:SetJustifyH(far)
+end
+
+-- The marks (the classification diamond, the tag mark, the swords) over the frame's top corner at the health text's end.
+local function placeMarks(f, side)
+  local far = INNER[side]
+  local point = "TOP" .. far
+  if f.class then f.class:ClearAllPoints() f.class:SetPoint("CENTER", f, point, inward(far, 2), -2) end
+  if f.combat then f.combat:ClearAllPoints() f.combat:SetPoint("CENTER", f, point, inward(far, 2), -2) end
+  if f.tag then f.tag:ClearAllPoints() f.tag:SetPoint("CENTER", f, point, inward(far, 18), -2) end
+end
+
+-- The hairline token for a frame: brass in your and your target's rims while they are shields, brighter in a
+-- fight (UF.PaintCombat); none otherwise.
+local function hairToken(f)
+  if not (UF.COMBAT.keys[f.key] and pointedSide(f)) then return nil end
+  if f.vgFighting then return "accent" end
+  return "accentDim"
+end
+
+-- Lays a frame's parts out for the HUD look: the name reading from the side its shield points from (the left
+-- otherwise), the health text and marks at the other end, the bars filling toward your character, and the hairline.
+function UF.PlaceParts(f)
+  local side = pointedSide(f) or "LEFT"
+  placeHealthText(f, side)
+  placeName(f, side)
+  placeMarks(f, side)
+  local reverse = fillsFromRight(f)
+  f.health:SetReverseFill(reverse)
+  f.power:SetReverseFill(reverse)
+  T.SetHairline(f, hairToken(f))
+end
+
+-- Lays every frame out for the HUD look again (the look, the deck or a frame's size changed).
+function UF.ApplyLook()
+  for _, f in pairs(UF.frames) do UF.PlaceParts(f) end
 end
 
 -- Updating ------------------------------------------------------------------------------
@@ -489,6 +575,7 @@ function UF.PaintCombat(f, fighting)
   if f.vgFighting == on then return end
   f.vgFighting = on
   T.SetBorder(f, on and UF.COMBAT.color or nil)
+  T.SetHairline(f, hairToken(f))
   if f.combat then f.combat:SetShown(on) end
 end
 
@@ -634,10 +721,11 @@ end
 
 -- Creates and wires one frame, its unit the same as its key. size has w and h (a LAYOUT row, PARTY or UF.BOSS).
 local function addFrame(key, size)
-  local f = createUnitFrame(key, size.w, size.h)
+  local f = createUnitFrame(key, size.w, size.h, size.outer)
   if key == "target" or key == "focus" then addClassMark(f) end
   if key == "target" then addTagMark(f) end
   if key == "player" then addCombatMark(f) end
+  UF.PlaceParts(f)
   UF.frames[key] = f
   listen(f)
   watch(f)
@@ -794,7 +882,8 @@ local function deckPanel(player, target)
   return d
 end
 
--- Shows or hides the deck (made the first time it shows) and mirrors the target's bars with it.
+-- Shows or hides the deck (made the first time it shows); the two frames round with it, and every frame's parts
+-- follow (the target's bars mirror on the deck).
 local function deckNow()
   local on, player, target = UF.settings.deck == true, UF.frames.player, UF.frames.target
   if not (player and target) then return end
@@ -802,8 +891,7 @@ local function deckNow()
   if UF.deck then UF.deck:SetShown(on) end
   UF.ApplySizes()
   for _, f in ipairs({ player, target }) do UF.DeckText(f, on) T.SetRound(f, on) end
-  target.health:SetReverseFill(on)
-  target.power:SetReverseFill(on)
+  UF.ApplyLook()
 end
 
 -- Gives a deck frame's name and health text the deck's larger role while it is on, their own otherwise.
@@ -828,21 +916,28 @@ local function fitDeckTop(player)
   UF.deck:SetPoint("BOTTOMRIGHT", UF.frames.target, "BOTTOMRIGHT", pad, -(pad + reach.bottom))
 end
 
--- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button) and the deck with it.
+-- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button), its shield point and texts
+-- with it, and the deck too.
 function UF.ApplySizes()
   local target = UF.frames.target
   if not target then return end
   ns.OutOfCombat(function()
-    T.PixelSize(target, UF.LAYOUT_BY_KEY.target.w, UF.TargetHeight())
+    target.vgHeight = UF.TargetHeight()
+    T.PixelSize(target, UF.LAYOUT_BY_KEY.target.w, target.vgHeight)
+    T.RepaintFrame(target)
+    UF.PlaceParts(target)
     fitDeckTop(UF.frames.player)
   end)
 end
 
--- Applies the Versus deck setting: now, or when combat ends (a new deck joins the Calm HUD).
+-- Applies the Versus deck setting: now, or when combat ends (a new deck joins the Calm HUD); the keystone steps
+-- aside for the deck.
 function UF.ApplyDeck()
   if not UF.settings then return end
   ns.OutOfCombat(deckNow)
   UF.ApplyCalm()
+  local KS = ns.GetModule("Keystone")
+  if KS then KS.Apply() end
 end
 
 -- Calm HUD ---------------------------------------------------------------------------------
@@ -887,4 +982,5 @@ function UF.Enable(settings)
   ns.On("RAID_TARGET_UPDATE", UF.RefreshRaidIcons)
   ns.On("PLAYER_REGEN_DISABLED", UF.CombatStarts)
   ns.On("PLAYER_REGEN_ENABLED", UF.RefreshCombat)
+  T.OnChanged(function() ns.OutOfCombat(UF.ApplyLook, "unit frame look") end)
 end

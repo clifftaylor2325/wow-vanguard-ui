@@ -70,6 +70,17 @@ local function combatRow()
     liveMethod("UnitFrames", "combatMark", "RefreshCombat"))
 end
 
+-- When the keystone shows: with the Shield look (the default), always, or never.
+local KEYSTONE_CHOICES = { { "auto", L["With the Shield look"] }, { "on", L["Always"] }, { "off", L["Never"] } }
+
+-- The keystone rows: when it shows, and whether the global cooldown sweeps its ring (both at once).
+local function keystoneRows()
+  return {
+    { "cycle", L["Keystone"], KEYSTONE_CHOICES, liveMethod("Keystone", "show", "Apply") },
+    check(L["Global cooldown on the keystone"], liveMethod("Keystone", "sweep", "Apply")),
+  }
+end
+
 -- The mana bar switch's name, and its tip (its caption before the names were shortened): druids only on WoW
 -- Forever, three more specs on Retail.
 O.MANA_BAR_NAME = ns.ClientData({
@@ -85,7 +96,7 @@ O.MANA_BAR_LABEL = ns.ClientData({
 local function unitFrameRows()
   return {
     { "header", L["Unit frames"] },
-    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
+    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(), keystoneRows()[1], keystoneRows()[2],
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], { { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] } }, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),

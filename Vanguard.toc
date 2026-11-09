@@ -57,6 +57,7 @@ Core/Profiles.lua
 Core/ProfileStrings.lua
 Core/Modules.lua
 Core/Theme.lua
+Core/HudLook.lua
 Core/SharedMedia.lua
 Core/PanelTexture.lua
 Core/Dialog.lua
@@ -110,6 +111,7 @@ Core/GameMenu.lua
 Core/Visibility.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua
+Modules/Keystone.lua
 Modules/FrameAuras.lua
 Modules/PlayerAuras.lua
 Modules/ComboPoints.lua
