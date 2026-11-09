@@ -11,7 +11,7 @@ A release is a version bump merged to `main`, then the `release` workflow. Nothi
 
 1. **Everything that ships is merged**: `main` is green (`verify.yml` on the last merge, the latest weekly or hand-started full suite), and no open `ci-failure` issue. A PR still open waits for the next release; it does not get rushed.
 2. **The notes exist in the addon**: `Core/WhatsNewNotes.lua` has an entry for this version at the top, one group per module or area, each line in player language with the options `page` and `row` a click opens. Lines are written from the merged PR titles since the last tag (`git log v<last>..main --merges`); a line never describes something that is not merged. A line names the fix a player sees, never a bug hunt, a round or a count. The same lines go into `docs/CHANGELOG.md`, and README's **Known issues** drops what this release fixes and adds what is new and confirmed. `/vg whatsnew` shows them; `scripts/tests` cover `Core/WhatsNew.lua`, so a malformed entry fails a test.
-3. **The in-game check**: every SMOKE step the version's changelog section names (`steps 33.344 to 33.389`, single ids) has an entry for this version in `docs/smoke-results.json` (`pass`, `fail`, `partial` or `skip`, with a note of what Cliff saw). Record what Cliff pastes there, one entry per step; never write an entry he did not report. A step he chose not to run is `skip` with his reason. The release refuses until each has one: `scripts/release-local.mjs` lists the missing steps in its preflight, and so does this skill. Nothing in this repo can replace the check itself. The changelog section names its steps in an HTML comment under the version heading (`<!-- SMOKE steps 33.440 to 33.449 -->`), so the gate reads them and players don't; player notes carry no per-release disclaimer (`docs/CHANGELOG.md` has one trust line at the top), and a release that skipped the in-game check says so in its release PR.
+3. **The in-game check**: every SMOKE step the version's changelog section names (`steps 33.344 to 33.389`, single ids) has an entry for this version in `docs/smoke-results.json` (`pass`, `fail`, `partial` or `skip`, with a note of what Cliff saw). Record what Cliff pastes there, one entry per step; never write an entry he did not report. A step he chose not to run is `skip` with his reason. The release refuses until each has one: `scripts/release-local.mjs` lists the missing steps in its preflight, and so does this skill. A major version (1.0.0, 2.0.0) also needs a `pass` for it on every step of SMOKE-TEST.md's **Core path**; `fail`, `partial` and `skip` all block, and a step that can't pass leaves the list in a commit that says why (README's Known issues names it). Nothing in this repo can replace the check itself. The changelog section names its steps in an HTML comment under the version heading (`<!-- SMOKE steps 33.440 to 33.449 -->`), so the gate reads them and players don't; player notes carry no per-release disclaimer (`docs/CHANGELOG.md` has one trust line at the top), and a release that skipped the in-game check says so in its release PR.
 
 ## The bump
 
@@ -26,10 +26,12 @@ A release is a version bump merged to `main`, then the `release` workflow. Nothi
 
 7. **The site** (`clifftaylor2325/wow-vanguard-ui-site`): `scripts/lib/changelog-content.mjs` gets the release's lines in player language, each with the PR numbers it came from, and `site.config.json`'s `sourceRef` moves to the released commit when the site should show the new release as current. That is a PR on the site repo (its own `CLAUDE.md` applies: nothing hand-copied from the addon, `npm run check` before the PR).
 8. **CurseForge** (issue #144): upload the zip or let the packager build from the tag with `.pkgmeta`. This is Cliff's step until the listing exists.
-9. Reply in the thread with the release link and what was skipped.
+9. **The frozen surface**: run `npm run freeze:update` on `main` after the release and commit `scripts/tests/frozen-surface.json` in the next PR, so every setting, `/vg` word and API function this release shipped stays frozen (docs/RELEASING.md, Version policy).
+10. Reply in the thread with the release link and what was skipped.
 
 ## Never
 
 - Bump the version outside a release, or in a PR that changes anything else.
 - Tag a commit the full suite has not passed on.
 - Edit a published release's zip; a fix is a new patch version.
+- Put a new feature or setting in a patch version, or remove a frozen name without a migration and a `retired` entry (docs/RELEASING.md, Version policy).

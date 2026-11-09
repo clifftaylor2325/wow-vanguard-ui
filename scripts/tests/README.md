@@ -33,6 +33,7 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
 | `scripts/tests/smoke.test.mjs` | The harness cases a pull request's CI runs (`npm run test:quick`): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
 | `scripts/tests/snapshot.test.mjs` | The Forever snapshot (see "The Forever snapshot" below): the frames, events and modules the addon leaves after a login, unlock and lock, compared with `forever-snapshot.json`. Also a `npm run test:quick` case. |
+| `scripts/tests/freeze.test.mjs` | The frozen surface (see "The frozen surface" below): saved settings, `/vg` words and API functions that a release shipped are all still there. A `npm run test:quick` case. |
 
 ## Writing a scenario
 
@@ -334,6 +335,15 @@ that gives the i-th the game's bar texture back). `windowState(addon, name)` rea
 insetNine, panel, title, painted }`
 (`art` is the marked texture's alpha; `panel` is whether Vanguard painted anything). The `windows-<area>.test.mjs`
 files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
+
+### The frozen surface
+
+`freeze.test.mjs` logs the addon in on WoW Forever and lists three things players and other addons rely on: every
+`Module.key` the active profile saves, every word in Core/Slash.lua's `COMMANDS` table, and every function reachable
+from the global `Vanguard` table. `frozen-surface.json` holds what earlier releases shipped. Adding a name never
+fails; a frozen name that is gone fails until the file lists it under `retired` with its migration or reason
+(docs/RELEASING.md, Version policy). `npm run freeze:update` adds today's names and keeps the rest; the release
+skill runs it after each release, so a branch doesn't touch the file unless it retires something.
 
 ### The Forever snapshot
 
