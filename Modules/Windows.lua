@@ -1489,8 +1489,10 @@ local function skinReagentSlot(slot)
   GW.SkinText(slot.Name, "small", false)
 end
 
--- Every reagent slot the form holds (form.reagentSlots: a list of slots for each section of the recipe).
+-- Every reagent slot the form holds (form.reagentSlots: a list of slots for each section of the recipe), and an
+-- enchant recipe's item slot (form.enchantSlot, which the form keeps apart from them).
 local function skinReagentSlots(form)
+  skinReagentSlot(form.enchantSlot)
   if type(form.reagentSlots) ~= "table" then return end
   for _, slots in pairs(form.reagentSlots) do
     for _, slot in ipairs(type(slots) == "table" and slots or {}) do skinReagentSlot(slot) end
