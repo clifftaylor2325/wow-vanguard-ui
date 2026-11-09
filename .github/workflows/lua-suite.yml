@@ -39,6 +39,10 @@ on:
         description: "Shuffle the test order and print the seed, so a failure can be replayed"
         type: boolean
         default: false
+      retail:
+        description: "Also run the Retail-only test files (off on a pull request: Retail support is new and best effort)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -84,7 +88,12 @@ jobs:
           seed=$(date +%s)
           echo "VG_SHUFFLE_SEED=$seed" >> "$GITHUB_ENV"
           printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
+      # With the retail input off (a pull request's run), VG_SKIP_RETAIL leaves out the Retail-only test
+      # files (vitest.config.mjs) and coverage counts only the Lua Forever loads (scripts/coverage-lua.mjs);
+      # the weekly, hand-started and release runs keep both clients.
       - run: npm run coverage
+        env:
+          VG_SKIP_RETAIL: ${{ inputs.retail == false && '1' || '' }}
       # The raid benchmark (scripts/bench.mjs, issue #255): time and Lua
       # instructions per event under a scripted 40-player raid, a harness
       # measurement until /vg perf confirms it in game. Its tables go to the

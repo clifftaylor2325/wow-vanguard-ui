@@ -4647,6 +4647,66 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge.
 - If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
 
+### 33.460 No skin left off on a normal login (Forever)
+
+- Do: log in with Vanguard on, open the world map, quest log, spellbook, auction house, mail, guild and communities, chat channels, calendar, Edit Mode's settings dialog and a PvP scoreboard if you can, then type `/vg errors` and `/vg report`.
+- Expect: `/vg errors` has no "Left off this session" part, and `/vg report` reads "Left off: none". Every window you opened wears the theme as before.
+- If it fails, paste: the "Left off" lines (each names a window and the part the game's window lacks) and the client build.
+
+### 33.461 One "Quiet the game" area after updating (Forever)
+
+- Do: before updating, note which of Decline duels, Decline guild invites, the stranger group invites, Battle.net friend requests, Release at once in a battleground and "Hide errors the action bar already shows" you had on. Update, log in and open `/vg` → Game windows.
+- Expect: the same switches are on, now all under Quiet the game; the Auto-accept part lists only summons, resurrections and faster auto-loot; the Modules page's Merchant line no longer mentions the error line.
+- If it fails, paste: a screenshot of the Game windows page and which switch changed.
+
+### 33.462 Duels and invites declined from Quiet (Forever)
+
+- Do: with Decline duels and Decline guild invites on, have a friend challenge you to a duel and invite you to a guild; then switch Quiet off on the Modules page and have them do it again.
+- Expect: the first time both prompts close by themselves with one chat line each; with Quiet off both prompts stay up for you to answer.
+- If it fails, paste: the chat lines and `/vg errors`.
+
+### 33.463 The action bar's error filter under Quiet (Forever)
+
+- Do: with "Hide errors the action bar already shows (reload)" on, `/reload`, then press a spell still cooling down, one you lack the rage or energy for, and an attack with no target; then try to loot with full bags.
+- Expect: the cooldown, rage or energy and no-target errors don't show in the red error line; the full-bags one still does. Switching it off and reloading brings them all back.
+- If it fails, paste: the error text that showed or went missing.
+
+### 33.464 Auto-accept still accepts (Forever)
+
+- Do: with Accept summons, Accept resurrections and faster auto-loot on, take a warlock's summon, a resurrection, and loot a corpse.
+- Expect: the summon and the resurrection are taken as before, and the loot is picked up at once.
+- If it fails, paste: what happened and `/vg errors`.
+
+### 33.465 An old profile string imports into Quiet (Forever)
+
+- Do: import (`/vg` → Profiles, Import) a profile string exported before this update with some declines on, as a new profile, and switch to it.
+- Expect: the declines it had on are on under Quiet the game, and nothing else in the profile changed.
+- If it fails, paste: the profile name and a screenshot of the Game windows page.
+
+### 33.466 The guide probe from its new home (Forever)
+
+- Do: accept a quest, then type `/vg guide probe`.
+- Expect: the same "Guide probe" lines as before this update, one per read and the two quest events, the accepted one with its argument types.
+- If it fails, paste: the chat lines and `/vg errors`.
+
+### 33.467 The Legacy probe from its new home (Forever)
+
+- Do: open the Legacy window once, close it, then type `/vg legacy probe`; then type it once in a fight.
+- Expect: the same lines as before: the window loaded, its three pages with their keys, the perk panel's ids and node count, and the globals with Legacy in the name. In the fight it says "Not in combat."
+- If it fails, paste: the chat lines.
+
+### 33.468 Probe and planner still answer (Forever)
+
+- Do: type `/vg probe`, then `/vg legacy plan add 2 TEST perk` with the Legacy perk planner on, then `/vg legacy plan` and `/vg legacy plan clear`.
+- Expect: the probe's copy box opens as before, and the planner keeps, lists and clears the perk.
+- If it fails, paste: the chat lines and `/vg errors`.
+
+### 33.469 Retail's best-effort note (Retail)
+
+- Do: on the character screen open AddOns and hover Vanguard; then log in on Retail and type `/vg errors`.
+- Expect: the description ends "Retail support is new and best effort."; on Retail `/vg errors` has no "Left off" part after you open the windows of 34.8 to 34.13 (one there names a Retail window the game reshaped).
+- If it fails, paste: the description text and the `/vg errors` text.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

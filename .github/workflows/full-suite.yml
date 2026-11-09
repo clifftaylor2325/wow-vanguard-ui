@@ -78,6 +78,8 @@ jobs:
       checks: ${{ github.event_name != 'pull_request' }}
       preview: ${{ github.event_name == 'schedule' || inputs.preview == true || contains(github.event.pull_request.labels.*.name, 'preview') }}
       shuffle: ${{ github.event_name == 'schedule' }}
+      # Retail-only test files run weekly, by hand and before a release, not on pull requests.
+      retail: ${{ github.event_name != 'pull_request' }}
 
   report:
     # The ci-failure issue: opened or commented on when the suite is red,

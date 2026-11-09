@@ -63,12 +63,13 @@ local function promptRows()
   }
 end
 
--- Quiet the game, its first part: declined duels and invites, and release in battlegrounds.
+-- Quiet the game, its first part: declined duels and invites, and release in battlegrounds. The card shows the
+-- duels, guild invites, error line and zone names; the rest fold under More settings (it would open on nine rows).
 local function quietInviteRows()
   return {
     { "header", L["Quiet the game"] },
-    check(L["Decline duels"], setting("Quiet", "duels")),
-    check(L["Decline guild invites"], setting("Quiet", "guildInvites")),
+    O.Essential(check(L["Decline duels"], setting("Quiet", "duels"))),
+    O.Essential(check(L["Decline guild invites"], setting("Quiet", "guildInvites"))),
     check(L["Decline group invites from people who aren't friends or guildmates"], setting("Quiet", "strangerGroups")),
     check(L["Decline Battle.net friend requests"], setting("Quiet", "friendRequests")),
     check(L["Release at once when you die in a battleground"], setting("Quiet", "pvpRelease")),
@@ -79,9 +80,9 @@ end
 -- names, and a further camera.
 local function quietScreenRows()
   return {
-    check(L["Hide the red error line (full bags and quest log still show)"], setting("Quiet", "errors")),
+    O.Essential(check(L["Hide the red error line (full bags and quest log still show)"], setting("Quiet", "errors"))),
     check(L["Hide errors the action bar already shows (reload)"], reloadSetting("Quiet", "barErrors")),
-    check(L["Hide the zone names that fade in"], setting("Quiet", "zoneText")),
+    O.Essential(check(L["Hide the zone names that fade in"], setting("Quiet", "zoneText"))),
     -- The setter must stay the row's last element: liveSetting returns a getter and a setter.
     { "cycle", L["Furthest the camera zooms out"], ns.GetModule("Quiet").CAMERA,
       O.LiveMethod("Quiet", "camera", "ApplyCamera") },
