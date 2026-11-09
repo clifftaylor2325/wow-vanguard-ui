@@ -437,7 +437,6 @@ L["Click: whisper with a message filled in"] = "Clic: susurrar con un mensaje ya
 L["Click: world map"] = "Clic: mapa del mundo"
 L["Clickable web links in chat"] = "Enlaces web en el chat en los que se puede hacer clic"
 L["Clickable web links in chat, and a Copy button for the recent chat."] = "Enlaces web en el chat en los que se puede hacer clic y un botón Copiar para el chat reciente."
-L["Clock"] = "Reloj"
 L["Close"] = "Cerrar"
 L["Close the game's Settings, Quick Keybind and Click Casting windows first."] = "Cierra primero las ventanas de Opciones, Asignación rápida y Lanzamiento con clic del juego."
 L["Close this tab"] = "Cerrar esta pestaña"

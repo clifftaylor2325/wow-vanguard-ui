@@ -437,7 +437,6 @@ L["Click: whisper with a message filled in"] = "클릭: 메시지가 채워진 �
 L["Click: world map"] = "클릭: 세계 지도"
 L["Clickable web links in chat"] = "대화의 웹 링크 클릭 가능"
 L["Clickable web links in chat, and a Copy button for the recent chat."] = "대화의 웹 링크를 클릭할 수 있고, 최근 대화용 복사 버튼."
-L["Clock"] = "시계"
 L["Close"] = "닫기"
 L["Close the game's Settings, Quick Keybind and Click Casting windows first."] = "먼저 게임의 설정, 빠른 단축키 지정, 클릭 시전 창을 닫으세요."
 L["Close this tab"] = "이 탭 닫기"

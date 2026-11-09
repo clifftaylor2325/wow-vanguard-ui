@@ -437,7 +437,6 @@ L["Click: whisper with a message filled in"] = "點擊：悄悄話並預填訊�
 L["Click: world map"] = "點擊：世界地圖"
 L["Clickable web links in chat"] = "聊天中可點擊的網址連結"
 L["Clickable web links in chat, and a Copy button for the recent chat."] = "聊天中可點擊的網址連結，以及最近聊天的複製按鈕。"
-L["Clock"] = "時鐘"
 L["Close"] = "關閉"
 L["Close the game's Settings, Quick Keybind and Click Casting windows first."] = "請先關閉遊戲的設定、快速按鍵綁定和點擊施法視窗。"
 L["Close this tab"] = "關閉此分頁"

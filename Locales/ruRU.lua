@@ -437,7 +437,6 @@ L["Click: whisper with a message filled in"] = "Щелчок: шепот с го
 L["Click: world map"] = "Щелчок: карта мира"
 L["Clickable web links in chat"] = "Кликабельные веб-ссылки в чате"
 L["Clickable web links in chat, and a Copy button for the recent chat."] = "Кликабельные веб-ссылки в чате и кнопка «Копировать» для недавнего чата."
-L["Clock"] = "Часы"
 L["Close"] = "Закрыть"
 L["Close the game's Settings, Quick Keybind and Click Casting windows first."] = "Сначала закройте окна игры «Настройки», «Быстрое назначение клавиш» и «Заклинания по щелчку»."
 L["Close this tab"] = "Закрыть вкладку"
