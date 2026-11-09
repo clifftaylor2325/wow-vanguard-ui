@@ -22,7 +22,7 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { tocPaths } from "./lib/toc.mjs";
-import { readLedger, smokeSteps, unrecordedSteps } from "./lib/smoke-results.mjs";
+import { coreSteps, readLedger, smokeSteps, unpassedCore, unrecordedSteps } from "./lib/smoke-results.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -83,6 +83,7 @@ function contentProblems(s, tag) {
   if (s.changelog?.version !== s.tocVersion || /not released yet/i.test(s.changelog?.rest ?? "")) out.push(`docs/CHANGELOG.md does not start with a released ${s.tocVersion} section`);
   if (!s.whatsNew) out.push(`Core/WhatsNewNotes.lua has no ${s.tocVersion} entry`);
   if (s.unrecorded?.length) out.push(`docs/smoke-results.json has no ${s.tocVersion} result for SMOKE steps ${s.unrecorded.join(", ")} (record pass, fail, partial or skip for each)`);
+  if (s.coreUnpassed?.length) out.push(`${s.tocVersion} is a major release: core path steps ${s.coreUnpassed.join(", ")} have no pass for it in docs/smoke-results.json`);
   if (s.listings && !(s.tokens.cf && s.tokens.wago)) out.push("CF_API_KEY and WAGO_API_TOKEN must both be set in the environment");
   return out;
 }
@@ -174,6 +175,7 @@ function collectState(opts) {
     changelog: changelogHeading(read("docs/CHANGELOG.md")),
     whatsNew: hasWhatsNew(read("Core/WhatsNewNotes.lua"), version),
     unrecorded: unrecordedSteps(readLedger(root), changelogSection(read("docs/CHANGELOG.md"), version), version, smokeSteps(read("docs/SMOKE-TEST.md"))),
+    coreUnpassed: unpassedCore(readLedger(root), coreSteps(read("docs/SMOKE-TEST.md")), version),
     tokens: { cf: Boolean(process.env.CF_API_KEY), wago: Boolean(process.env.WAGO_API_TOKEN) },
   };
 }

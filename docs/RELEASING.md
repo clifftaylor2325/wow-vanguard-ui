@@ -25,7 +25,19 @@ Options: `--no-listings` (GitHub only), `--no-github` (stores only), `--fast`, `
 
 ## What it checks before it publishes
 
-Clean working tree; on `main` and equal to `origin/main`; the tag exists locally and points at HEAD; the tag isn't already on `origin` (a published version is never replaced: fix it with a new version); the newest changelog heading is the TOC version and not "not released yet"; `Core/WhatsNewNotes.lua` has the version; both tokens are set. Then the checks above. Any failure stops the run before anything is uploaded.
+Clean working tree; on `main` and equal to `origin/main`; the tag exists locally and points at HEAD; the tag isn't already on `origin` (a published version is never replaced: fix it with a new version); the newest changelog heading is the TOC version and not "not released yet"; `Core/WhatsNewNotes.lua` has the version; every SMOKE step the version's changelog section names has an entry for it in `docs/smoke-results.json`; for a major version (1.0.0, 2.0.0), every step of SMOKE-TEST.md's core path has a `pass` for it; both tokens are set. Then the checks above. Any failure stops the run before anything is uploaded.
+
+## Version policy
+
+From 1.0.0 on, the version number tells players what an update can do to them:
+
+- **Patch (1.0.1):** fixes only. Nothing new to set up, nothing renamed, nothing removed.
+- **Minor (1.1.0):** new features and new settings. A new setting starts in a state that changes nothing a player already chose; nothing frozen is removed.
+- **Major (2.0.0):** something saved or typed changes meaning in a way a migration can't carry over. A major release passes the whole core path in the game first, as 1.0.0 does.
+
+**What is frozen** (`scripts/tests/frozen-surface.json`, checked by `scripts/tests/freeze.test.mjs` in the quick check): the settings a profile saves, the `/vg` words, and the functions other addons call on the global `Vanguard` table (`docs/API.md`). Profile strings follow the settings: a string from any earlier release still imports. Adding to any of these is free. Renaming or removing one needs a migration (`ns.MigrateProfile` or `ns.UpgradeDB`) or a reason, an entry under `retired` in the frozen file (`"settings:Module.key": "renamed to Module.other in 1.2.0, migrated"`), and a changelog line; removing one that can't be migrated needs a major version. The release skill runs `npm run freeze:update` after each release, so what a release shipped is what stays frozen.
+
+**From a release candidate to its release** (`1.0.0-rc1` builds, never published to the stores): fixes only.
 
 ## If the script itself fails
 

@@ -68,6 +68,11 @@ it("a version whose own SMOKE steps have no in-game result for it is refused, ea
   expect(preflightProblems({ ...READY, unrecorded: [] })).toEqual([]);
 });
 
+it("a major release whose core path steps have no pass is refused, each step named", () => {
+  expect(preflightProblems({ ...READY, coreUnpassed: ["1.3", "6.1"] }).join()).toContain("0.7.0 is a major release: core path steps 1.3, 6.1 have no pass for it");
+  expect(preflightProblems({ ...READY, coreUnpassed: [] })).toEqual([]);
+});
+
 it("tokens are only required when the listings are on", () => {
   expect(preflightProblems({ ...READY, listings: false, tokens: { cf: false, wago: false } })).toEqual([]);
 });

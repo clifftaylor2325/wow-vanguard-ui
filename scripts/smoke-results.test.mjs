@@ -4,10 +4,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect, it } from "vitest";
-import { ledgerProblems, namedSteps, readLedger, smokeSteps, unrecordedSteps } from "./lib/smoke-results.mjs";
+import { coreSteps, isMajor, ledgerProblems, namedSteps, readLedger, smokeSteps, unpassedCore, unrecordedSteps } from "./lib/smoke-results.mjs";
 import { root } from "./check-zip.mjs";
 
-const STEPS = smokeSteps(fs.readFileSync(path.join(root, "docs/SMOKE-TEST.md"), "utf8"));
+const SMOKE = fs.readFileSync(path.join(root, "docs/SMOKE-TEST.md"), "utf8");
+const STEPS = smokeSteps(SMOKE);
 const OK = { step: "33.390", build: "0.9.3", date: "2026-11-09", result: "pass", note: "TEST-ONLY seen" };
 
 it("the committed ledger is well formed and every entry names a SMOKE-TEST.md step", () => {
@@ -38,4 +39,39 @@ it("a release's steps without an entry for that build are listed; another build'
   const entries = [{ ...OK, step: "33.344", build: "0.9.4" }, { ...OK, step: "33.345", build: "0.9.3" }];
   expect(unrecordedSteps(entries, "steps 33.344 to 33.345", "0.9.4", steps)).toEqual(["33.345"]);
   expect(unrecordedSteps(entries, "no steps named", "0.9.4", steps)).toEqual([]);
+});
+
+it("the core path names 60 to 90 real steps, each once, each with exactly one heading in SMOKE-TEST.md", () => {
+  const core = coreSteps(SMOKE);
+  expect(core.length, "a core path the size of three sessions and a dungeon").toBeGreaterThanOrEqual(60);
+  expect(core.length).toBeLessThanOrEqual(90);
+  expect(core.filter((id) => !STEPS.has(id)), "every core id is a step").toEqual([]);
+  expect(new Set(core).size, "no step listed twice").toBe(core.length);
+  // How many headings carry the step id.
+  const headings = (id) => SMOKE.split("\n").filter((l) => l.startsWith(`### ${id} `)).length;
+  expect(core.filter((id) => headings(id) !== 1), "no core step shares its id with another heading").toEqual([]);
+});
+
+it("reads the core path from its own section only, in order", () => {
+  const md = "## Run order\n- `9.9` not core\n## Core path (the 1.0 gate)\n\n**Session 1**\n\n- `1.3` Status\n- `14.8.3` Pane\n- 6.2 not a core line\n## Report block\n- `1.4` after\n";
+  expect(coreSteps(md)).toEqual(["1.3", "14.8.3"]);
+  expect(coreSteps("## Report block\n- `1.4` x\n"), "no section, no core path").toEqual([]);
+});
+
+it("only a major release is gated by the core path", () => {
+  expect(["1.0.0", "2.0.0", "10.0.0"].map(isMajor)).toEqual([true, true, true]);
+  expect(["0.9.4", "1.0.1", "1.1.0", "0.0.0", undefined].map(isMajor)).toEqual([false, false, false, false, false]);
+});
+
+it("a major release needs a pass for that build on every core step; fail, partial, skip or another build do not count", () => {
+  const core = ["1.3", "1.4", "1.5", "2.1", "3.1"];
+  const entries = [
+    { ...OK, step: "1.3", build: "1.0.0", result: "pass" },
+    { ...OK, step: "1.4", build: "1.0.0", result: "partial" },
+    { ...OK, step: "1.5", build: "1.0.0", result: "skip" },
+    { ...OK, step: "2.1", build: "0.9.9", result: "pass" },
+    { ...OK, step: "3.1", build: "1.0.0", result: "fail" },
+  ];
+  expect(unpassedCore(entries, core, "1.0.0")).toEqual(["1.4", "1.5", "2.1", "3.1"]);
+  expect(unpassedCore(entries, core, "1.0.1"), "a patch is not gated by the core path").toEqual([]);
 });
