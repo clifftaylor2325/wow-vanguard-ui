@@ -239,6 +239,12 @@ it("quest arrow: a failed quest is not pointed at, and the arrow moves on from i
   expect([addon.eval("return ns.QuestArrow.current"), chatHas(addon, /Arrow: TEST-ONLY Far\./)]).toEqual([90062, true]);
 });
 
+it("quest arrow: with the arrow switched off, moving on from a failed quest says nothing in chat", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("ns.Settings('QuestArrow').show = false ns.QuestArrow.Pick() __wfgWorld.quests[1].failed = true ns.QuestArrow.Pick()");
+  expect([addon.eval("return ns.QuestArrow.current"), chatHas(addon, /Arrow:/)]).toEqual([90062, false]);
+});
+
 it("quest arrow: a pin whose quest left the log is let go, so a quest the game tracks later is not held", () => {
   const addon = loggedIn(ARROW_ENV + SUPER_ENV);
   addon.eval("ns.QuestGuide.Point(90062) table.remove(__wfgWorld.quests, 2) __tracked = 0 ns.QuestArrow.Pick()");

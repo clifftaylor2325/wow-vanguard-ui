@@ -104,6 +104,12 @@ local function paintPick(f)
   T.Tint(f.arrow, QA.ready and "gold" or "accent")
 end
 
+-- Says in chat that the arrow moved on from a finished quest, only while the arrow is shown and not in a fight.
+local function sayMovedOn(old)
+  if not (QA.settings.show and old and QA.current and old ~= QA.current) then return end
+  if finished(old) and not ns.InCombat() then ns.Chat(ns.Format(L["Arrow: {quest}."], { quest = titleOf(QA.current) })) end
+end
+
 -- Picks the quest, whether it is held and ready to turn in, and its spot (map, x, y); says so when it moved on
 -- from a finished one, redraws, and has the tracker move its accent line when the quest changed.
 function QA.Pick()
@@ -112,7 +118,7 @@ function QA.Pick()
   QA.current, QA.held = follow(old)
   QA.ready = QA.current ~= nil and readyToTurnIn(QA.current)
   QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
-  if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat(ns.Format(L["Arrow: {quest}."], { quest = titleOf(QA.current) })) end
+  sayMovedOn(old)
   paintPick(QA.frame)
   QA.Draw()
   if old ~= QA.current then ns.GetModule("QuestTracker").Redraw() end
