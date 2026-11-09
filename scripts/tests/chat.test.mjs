@@ -1420,7 +1420,7 @@ const INVITE_ENV = `
 // PARTY_INVITE_REQUEST with the client's payload (PartyInfoDocumentation): name, isTank, isHealer, isDamage,
 // isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
 const invite = (addon, guid) => addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false);
-const INVITES_ON = "VanguardDB.profiles = { Default = { AutoAccept = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
+const INVITES_ON = "VanguardDB.profiles = { Default = { Quiet = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
 it("quiet the game: guild invites, stranger group invites, friend requests and battleground release, off until switched on", () => {
   // Brings up all four prompts; the invites are answered on the next frame.
   const fire = (addon) => { addon.fire("GUILD_INVITE_REQUEST", "<name>"); invite(addon, "stranger"); addon.update(0); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.fire("PLAYER_DEAD"); };
@@ -1467,7 +1467,7 @@ it("quiet the game: a decline says so once per sender every 5 minutes", () => {
   const addon = loggedIn(INVITE_ENV, { savedVariables: INVITES_ON });
   // The sender asks four ways: a duel, a group (always <name>), a guild and a Battle.net friend request.
   const ask = (name) => { addon.fire("DUEL_REQUESTED", name); invite(addon, "stranger"); addon.fire("GUILD_INVITE_REQUEST", name); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.update(0); };
-  addon.eval("ns.GetModule('AutoAccept').settings.duels = true; CancelDuel = function() end");
+  addon.eval("ns.GetModule('Quiet').settings.duels = true; CancelDuel = function() end");
   ask("<name>"); ask("<name>");
   expect([/duel from <name>/, /group invite from <name>/, /guild invite from <name>/, /friend request/].map((re) => chatCount(addon, re)), "asked twice: one line each").toEqual([1, 1, 1, 1]);
   ask("<other>");
@@ -1475,6 +1475,37 @@ it("quiet the game: a decline says so once per sender every 5 minutes", () => {
   addon.update(300);
   ask("<name>");
   expect(chatCount(addon, /duel from <name>/), "5 minutes on: said again").toBe(2);
+});
+// A profile saved before 0.9.4: the declines and the battleground release under Auto-accept, the action-bar errors
+// switch under Merchant helpers; a second profile had Auto-accept switched off, a third already had Quiet's own.
+const OLD_PROFILES = `VanguardDB = { version = 2, profiles = {
+  Default = { AutoAccept = { summons = true, duels = true, guildInvites = true, strangerGroups = false, friendRequests = true, pvpRelease = true }, Merchant = { repair = true, errors = false } },
+  Alt = { modules = { AutoAccept = false }, AutoAccept = { guildInvites = true }, Merchant = { errors = true } },
+  Mixed = { AutoAccept = { duels = true }, Quiet = { duels = false } } } }`;
+it("quiet the game: a profile from before 0.9.4 keeps its declines and action-bar errors switch, now Quiet's", () => {
+  const addon = loggedIn(INVITE_ENV, { savedVariables: OLD_PROFILES });
+  // One saved profile as it stands after login.
+  const p = (name) => addon.eval(`return VanguardDB.profiles.${name}`);
+  expect(p("Default"), "moved into Quiet, Auto-accept keeping what it still does, Merchant its own").toMatchObject({
+    AutoAccept: { summons: true }, Merchant: { repair: true }, Quiet: { duels: true, guildInvites: true, strangerGroups: false, friendRequests: true, pvpRelease: true, barErrors: false } });
+  expect(addon.eval("local a, m = VanguardDB.profiles.Default.AutoAccept, VanguardDB.profiles.Default.Merchant return { a.duels, a.guildInvites, a.pvpRelease, m.errors }"), "and gone from the old tables").toEqual({});
+  expect(p("Alt").Quiet, "a module that was switched off moves its choices off, so nothing starts that wasn't running").toEqual({ guildInvites: false, barErrors: true });
+  expect(p("Mixed").Quiet, "a value Quiet already had stands").toEqual({ duels: false });
+  addon.fire("GUILD_INVITE_REQUEST", "<name>");
+  addon.update(0);
+  expect(addon.eval("return __answers"), "the moved switch works on the running profile").toEqual(["guild", "close GUILD_INVITE"]);
+  addon.eval("__answers = {} ns.SetModuleEnabled('Quiet', false)");
+  addon.fire("GUILD_INVITE_REQUEST", "<name>");
+  addon.update(0);
+  expect(addon.eval("return #__answers"), "and turning Quiet off stops the declines at once").toBe(0);
+});
+it("quiet the game: an older profile string's declines land in Quiet as it is imported", () => {
+  const src = loggedIn();
+  src.eval("ns.Profile().AutoAccept = { duels = true, summons = true } ns.Profile().Merchant.errors = false ns.Profile().Quiet = nil");
+  const dst = loggedIn();
+  dst.eval(`ns.ImportProfile(${JSON.stringify(src.eval("return ns.ExportProfile()"))})`);
+  const got = dst.eval("local p = VanguardDB.profiles.Imported return { p.Quiet.duels, p.Quiet.barErrors, p.AutoAccept.summons, p.AutoAccept.duels == nil, p.Merchant.errors == nil }");
+  expect(got, "the duel decline and the errors switch moved, the summons stayed").toEqual([true, false, true, true, true]);
 });
 // TEST-ONLY game text: the error line and the zone names record what they were given. The error line
 // works as Blizzard_UIErrorsFrame does: red errors (UI_ERROR_MESSAGE, a blacklisted type 99 never shown)

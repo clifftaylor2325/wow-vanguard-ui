@@ -53,33 +53,34 @@ local function windowRows()
   return rows
 end
 
--- Auto-accept: summons, resurrections, duels and faster auto-loot.
+-- Auto-accept: summons, resurrections and faster auto-loot.
 local function promptRows()
   return {
     { "header", L["Auto-accept"] },
     check(L["Accept summons (one offered in a fight is taken when it ends)"], setting("AutoAccept", "summons")),
-    check(L["Accept resurrections"], setting("AutoAccept", "resurrect")), check(L["Decline duels"], setting("AutoAccept", "duels")),
+    check(L["Accept resurrections"], setting("AutoAccept", "resurrect")),
     check(L["Faster auto-loot (when the game's auto-loot is on)"], setting("AutoAccept", "loot")),
   }
 end
 
--- Quiet the game, its first part: declined invites and release in battlegrounds.
+-- Quiet the game, its first part: declined duels and invites, and release in battlegrounds.
 local function quietInviteRows()
   return {
     { "header", L["Quiet the game"] },
-    check(L["Decline guild invites"], setting("AutoAccept", "guildInvites")),
-    check(L["Decline group invites from people who aren't friends or guildmates"], setting("AutoAccept", "strangerGroups")),
-    check(L["Decline Battle.net friend requests"], setting("AutoAccept", "friendRequests")),
-    check(L["Release at once when you die in a battleground"], setting("AutoAccept", "pvpRelease")),
+    check(L["Decline duels"], setting("Quiet", "duels")),
+    check(L["Decline guild invites"], setting("Quiet", "guildInvites")),
+    check(L["Decline group invites from people who aren't friends or guildmates"], setting("Quiet", "strangerGroups")),
+    check(L["Decline Battle.net friend requests"], setting("Quiet", "friendRequests")),
+    check(L["Release at once when you die in a battleground"], setting("Quiet", "pvpRelease")),
   }
 end
 
--- Quiet the game, its second part: the error line (all of it, or what the action bar already shows: the
--- Merchant module's filter), the zone names, and a further camera.
+-- Quiet the game, its second part: the error line (all of it, or what the action bar already shows), the zone
+-- names, and a further camera.
 local function quietScreenRows()
   return {
     check(L["Hide the red error line (full bags and quest log still show)"], setting("Quiet", "errors")),
-    check(L["Hide errors the action bar already shows (reload)"], reloadSetting("Merchant", "errors")),
+    check(L["Hide errors the action bar already shows (reload)"], reloadSetting("Quiet", "barErrors")),
     check(L["Hide the zone names that fade in"], setting("Quiet", "zoneText")),
     -- The setter must stay the row's last element: liveSetting returns a getter and a setter.
     { "cycle", L["Furthest the camera zooms out"], ns.GetModule("Quiet").CAMERA,
