@@ -22,7 +22,8 @@
 //      the next `local` past 200 stops the whole addon loading (Core/Theme.lua got
 //      within 2 of it). Locals inside a do ... end block or a function don't count.
 //   7. Addon Lua (Core/, Modules/) makes no secure call (SetAttribute, a state driver, an
-//      override binding) outside a combat guard (report-only under #263 until it was quiet on main).
+//      override binding, the panel manager's ShowUIPanel or HideUIPanel) outside a combat guard
+//      (report-only under #263 until it was quiet on main).
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 // More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
 // cleared, unguarded script handlers, unwrapped text, secret truth tests, pcall results tested
@@ -520,7 +521,7 @@ export function checkSource(file, src) {
 // rule becomes blocking once it is quiet on main, as the first did. All have false positives
 // by design.
 //   secure-outside-combat-guard (blocking now, rule 7 above): a call that changes a secure frame
-//     or a binding (refused in combat) sits in no function that runs under ns.OutOfCombat or
+//     or a binding, or asks the panel manager to show or hide a window (all refused in combat), sits in no function that runs under ns.OutOfCombat or
 //     checks InCombatLockdown() / ns.InCombat() before it. Code at a file's top level runs at
 //     load and counts as safe.
 //   unbounded-onupdate: an OnUpdate handler that neither waits on the elapsed time it adds up
@@ -544,6 +545,8 @@ const SECURE_CALLS = new Set([
   "SecureHandlerExecute", "SecureHandlerWrapScript", "SecureHandlerUnwrapScript", "SecureHandlerSetFrameRef",
   "RegisterUnitWatch", "UnregisterUnitWatch", "ClearOverrideBindings",
   "SetOverrideBinding", "SetOverrideBindingClick", "SetOverrideBindingSpell", "SetOverrideBindingMacro", "SetOverrideBindingItem",
+  // The game's panel manager: it refuses any run with addon code in it while in combat, whatever the window.
+  "ShowUIPanel", "HideUIPanel",
 ]);
 // Files whose secure calls all run where the frame is made and set up, in the same safe
 // window. Add a file only after reading every call in it; empty means none is excused.

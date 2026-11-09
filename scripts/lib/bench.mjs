@@ -21,6 +21,9 @@ export const RAID_SIZE = 40;
 // unit events, with one OnUpdate frame (1/60 s) for about every eight events.
 // "cast" starts a member's cast, or stops the one they are casting.
 export const MIX = [["UNIT_HEALTH", 40], ["UNIT_POWER_UPDATE", 18], ["UNIT_AURA", 16], ["cast", 12], ["OnUpdate", 12], ["GROUP_ROSTER_UPDATE", 2]];
+// One QUEST_TICK step is added for every this many seeded steps (at least one). They are not in MIX, so the
+// seeded steps of a given seed are the ones they were before the step existed.
+export const QUEST_TICK_EVERY = 25;
 // The defaults: steps per repetition, timed repetitions, untimed warm-ups, the seed.
 export const DEFAULTS = { events: 2000, reps: 5, warmup: 1, seed: 255 };
 // At most this many members are away at once; at most this many auras per member.
@@ -173,12 +176,17 @@ function closingSteps(members) {
   return steps;
 }
 
-// The script of one repetition: `events` seeded steps of [event, raid index, value], then the closing steps.
+// The quest-ticker steps of a script: one for every QUEST_TICK_EVERY seeded steps, on you (raid1).
+function questSteps(events) {
+  return Array.from({ length: Math.max(1, Math.round(events / QUEST_TICK_EVERY)) }, () => ["QUEST_TICK", 1, 0]);
+}
+
+// The script of one repetition: `events` seeded steps of [event, raid index, value], the quest-ticker steps, then the closing steps.
 export function makeScript({ seed, events }) {
   const rand = rng(seed);
   const members = raidState();
   const steps = Array.from({ length: events }, () => MAKERS[drawKind(rand)](rand, members));
-  return steps.concat(closingSteps(members));
+  return steps.concat(questSteps(events), closingSteps(members));
 }
 
 // How many steps of each event a script has.
@@ -225,8 +233,24 @@ local function spawn(i)
   b:SetAttribute("unit", "raid" .. i)
 end
 
+-- Three watched quests with spots on the map you are on (map 10, 1000 yards square, you in its middle facing
+-- north, the minimap showing 200 yards), so the quest arrow and the minimap marks have work to do.
+local function quests()
+  local spots = { { questID = 90061, x = 0.6, y = 0.5 }, { questID = 90062, x = 0.5, y = 0.3 }, { questID = 90063, x = 0.1, y = 0.5 } }
+  C_QuestLog.GetQuestsOnMap = function() return spots end
+  C_Map.GetBestMapForUnit = function() return 10 end
+  C_Map.GetMapWorldSize = function() return 1000, 1000 end
+  C_Map.GetPlayerMapPosition = function() return { GetXY = function() return 0.5, 0.5 end } end
+  C_Minimap = { GetViewRadius = function() return 200 end }
+  GetPlayerFacing = function() return 0 end
+  for i, s in ipairs(spots) do
+    world.addQuest({ questID = s.questID, title = "TEST-ONLY Quest " .. i, level = 60, watched = true, distanceSq = 10000 * i, objectives = {} })
+  end
+end
+
 -- The raid forms out of combat (you are raid1), its tiles are made, and the pull starts.
 function __vgBenchRaid()
+  quests()
   world.units.raid1 = world.units.player
   for i = 2, ${RAID_SIZE} do world.units["raid" .. i] = member(i) end
   for i = 1, ${RAID_SIZE} do spawn(i) end
@@ -264,6 +288,14 @@ function STEP.GROUP_ROSTER_UPDATE(token, _, v, i)
 end
 -- One frame of 1/60 s.
 function STEP.OnUpdate() stub.update(1 / 60) end
+-- One run of each quest ticker (the arrow's pick and redraw, the minimap marks' read and redraw) as out of a
+-- fight: the pull is in combat, where they rest, so the step lifts the combat flag for its own length (no event fires).
+local QUEST_JOBS = { "quest arrow pick", "quest arrow", "quest minimap read", "quest minimap" }
+function STEP.QUEST_TICK()
+  stub.inCombat = false
+  for _, key in ipairs(QUEST_JOBS) do ns.ticker.vgJobs[key].fn(key) end
+  stub.inCombat = true
+end
 
 -- Plays one step of the script.
 function __vgBenchStep(event, i, v)

@@ -135,6 +135,13 @@ function QT.IsReady(id)
   return ns.IsTrue(ns.CallIf(C_QuestLog, "ReadyForTurnIn", id)) or ns.IsTrue(ns.CallIf(C_QuestLog, "IsComplete", id))
 end
 
+-- Whether the game marks the quest failed (a timed one run out, say); a hidden answer counts as no.
+---@param id number
+---@return boolean
+function QT.IsFailed(id)
+  return ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id))
+end
+
 -- One watched quest: { id, title, level, ready, autoComplete, failed, objectives, item, xp }, or nil when the log doesn't have it.
 -- The XP switch is read from the profile: the arrow and the minimap marks ask with this module off, before any QT.Enable.
 function QT.Quest(id)
@@ -142,7 +149,7 @@ function QT.Quest(id)
   local info = index and ns.CallIf(C_QuestLog, "GetInfo", index)
   if type(info) ~= "table" then return nil end
   local ready = QT.IsReady(id)
-  return { id = id, title = info.title, level = info.level, ready = ready, autoComplete = ns.IsTrue(info.isAutoComplete), failed = ns.IsTrue(ns.CallIf(C_QuestLog, "IsFailed", id)), objectives = QT.Objectives(id), item = QT.QuestItem(index, ready),
+  return { id = id, title = info.title, level = info.level, ready = ready, autoComplete = ns.IsTrue(info.isAutoComplete), failed = QT.IsFailed(id), objectives = QT.Objectives(id), item = QT.QuestItem(index, ready),
     xp = ns.Settings("QuestTracker", QT.defaults).xp and ns.GetModule("DataBars").RewardXP(id) or 0 }
 end
 

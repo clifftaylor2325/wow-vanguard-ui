@@ -309,12 +309,19 @@ local function addToggle()
   QL.toggle:SetScript("OnClick", ns.Guard("click quest log toggle", QL.Toggle))
 end
 
+-- Puts away the game's window its quest log toggle just opened, out of a fight only: the panel manager refuses
+-- addon code in combat (Core/Combat.lua, ns.WindowWaitsForCombat), so there the window stays for the game to close.
+local function hideGameLog()
+  local map = _G.WorldMapFrame
+  if ns.InCombat() or type(map) ~= "table" or type(HideUIPanel) ~= "function" then return end
+  if map:IsShown() then HideUIPanel(map) end
+end
+
 -- The game's own quest log toggle ran (its micro button, or anything else that
--- calls it): open or close this log, and put away the game's window it just opened.
+-- calls it): open or close this log, and put away the game's window it just opened (hideGameLog).
 function QL.OnGameToggle()
   QL.Toggle()
-  local map = _G.WorldMapFrame
-  if type(map) == "table" and map:IsShown() and type(HideUIPanel) == "function" then HideUIPanel(map) end
+  hideGameLog()
 end
 
 -- Makes the game's quest log toggle (the micro button) open this log too.

@@ -1435,6 +1435,17 @@ it("quest log: the game's quest log button opens Vanguard's log instead of the g
   const none = loggedIn(TRACK_ENV + QLOG_ENV + "ToggleQuestLog = nil");
   expect(none.eval("return Vanguard_QuestLog ~= nil and ToggleQuestLog == nil"), "a client without the toggle loads cleanly").toBe(true);
 });
+// A1-2 (M12): the panel manager refuses addon code in a fight, so the hook must not ask it to close the map there.
+it("A1-2: in a fight the game's quest log button opens Vanguard's log and leaves the game's window to the game", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV);
+  // The state of Vanguard's log and the game's map after a press of the micro button.
+  const press = () => { addon.eval("ToggleQuestLog()"); return addon.eval("return { Vanguard_QuestLog:IsShown(), WorldMapFrame:IsShown() }"); };
+  addon.world.combat(true);
+  expect(press(), "this log opens; the game's window stays, as an addon may not close it in a fight").toEqual([true, true]);
+  expect(press(), "pressed again: the game closes its own window and this log closes").toEqual([false, false]);
+  addon.world.combat(false);
+  expect(press(), "after the fight the game's window is put away again").toEqual([true, false]);
+});
 it("nameplates: a gold ! by units your quests need", () => {
   const env = "__related = { nameplate1 = true, nameplate2 = { __secret = true } } C_QuestLog = { UnitIsRelatedToActiveQuest = function(unit) return __related[unit] end }";
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + CLICK_LUA + env);

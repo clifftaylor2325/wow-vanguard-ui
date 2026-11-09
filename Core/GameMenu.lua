@@ -10,10 +10,16 @@ local FIRST = 0
 -- The gap under the button: the menu's own section gap (MainMenuFrameMixin:AddSection's default).
 local SECTION_GAP = 20
 
--- Closes the game menu and opens Vanguard's options.
-function ns.OpenFromGameMenu()
-  local menu = _G.GameMenuFrame
+-- Closes the game menu, out of a fight only: the panel manager refuses addon code in combat (Core/Combat.lua,
+-- ns.WindowWaitsForCombat), so there the menu is left as it is and Escape closes it.
+local function closeMenu(menu)
+  if ns.InCombat() then return end
   if type(HideUIPanel) == "function" then HideUIPanel(menu) else menu:Hide() end
+end
+
+-- Closes the game menu (closeMenu) and opens Vanguard's options.
+function ns.OpenFromGameMenu()
+  closeMenu(_G.GameMenuFrame)
   ns.Options.Show()
 end
 

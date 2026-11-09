@@ -364,3 +364,73 @@ it("quest arrow: the title and the distance line grow away from the panel's midd
     expect(addon.textFit("Vanguard_QuestArrow").filter((f) => f.kind === "overlap"), `${scale * 100}%: nothing overlaps in the text-fit audit`).toEqual([]);
   }
 });
+
+// A1-3 (M13): the arrow's two repeating jobs are tied to frames and rest in a fight.
+const FACING_COUNT = "__reads = 0 local facing = GetPlayerFacing GetPlayerFacing = function() __reads = __reads + 1 return facing() end";
+
+it("A1-3 quest arrow: its tickers have owner frames, and the redraw rests while the arrow is hidden", () => {
+  const addon = loggedIn(ARROW_ENV + FACING_COUNT);
+  expect(addon.eval('local j = ns.ticker.vgJobs return { j["quest arrow"].frame == Vanguard_QuestArrow, j["quest arrow pick"].frame == UIParent }'), "the redraw is the arrow's, the pick the interface's").toEqual([true, true]);
+  // How often your facing was read over the next second.
+  const reads = () => { addon.eval("__reads = 0"); addon.advance(1); return addon.eval("return __reads"); };
+  expect(reads(), "shown: redrawn as the frames pass").toBeGreaterThan(1);
+  addon.eval("ns.Settings('QuestArrow').show = false ns.QuestArrow.Draw()");
+  expect([arrow(addon)[4], reads()], "hidden: nothing is read for a turn nobody sees").toEqual([false, 0]);
+  addon.eval("ns.Settings('QuestArrow').show = true ns.QuestArrow.Draw()");
+  expect([arrow(addon)[4], reads() > 1], "shown again by the switch: redrawn again").toEqual([true, true]);
+});
+
+it("A1-3 quest arrow: in a fight it holds its turn as you move, a quest log change still redraws it, and it catches up when the fight ends", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.update(0);
+  addon.eval("__picks = 0 local pick = ns.QuestArrow.Pick ns.QuestArrow.Pick = function() __picks = __picks + 1 return pick() end");
+  addon.world.combat(true);
+  addon.eval("__facing = math.pi / 2 __picks = 0");
+  addon.advance(3);
+  expect([arrow(addon)[0], addon.eval("return __picks")], "three seconds of a fight: the turn it had, and no pick").toEqual([-Math.PI / 2, 0]);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.advance(0.05);
+  expect([arrow(addon)[0], addon.eval("return __picks")], "the quest log changed: one pick, drawn with the facing now").toEqual([-Math.PI, 1]);
+  addon.eval("__facing = 0");
+  addon.advance(1);
+  expect(arrow(addon)[0], "still the fight: held again").toBeCloseTo(-Math.PI, 5);
+  addon.world.combat(false);
+  addon.eval("__picks = 0");
+  addon.advance(1.05);
+  expect([arrow(addon)[0], addon.eval("return __picks") >= 1], "after the fight: the turn and the pick are current within a second").toEqual([-Math.PI / 2, true]);
+});
+
+it("A1-3 quest arrow: the each-second pick rests where the client restricts the map; the zone's event still picks", () => {
+  const addon = loggedIn(ARROW_ENV + `Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4, Chat = 5 }
+  Enum.AddOnRestrictionState = { Inactive = 0, Activating = 1, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }`);
+  addon.update(0);
+  addon.eval("__picks = 0 local pick = ns.QuestArrow.Pick ns.QuestArrow.Pick = function() __picks = __picks + 1 return pick() end");
+  addon.advance(2.05);
+  expect(addon.eval("return __picks"), "unrestricted: a pick each second").toBe(2);
+  addon.eval("__restricted[4] = 2 __picks = 0");
+  addon.advance(3);
+  expect([addon.eval("return __picks"), arrow(addon)[2]], "restricted: no pick, and the redraw says no direction").toEqual([0, "100 yd, no direction"]);
+  addon.fire("ZONE_CHANGED_NEW_AREA");
+  addon.advance(0.05);
+  expect(addon.eval("return __picks"), "a new zone picks at once").toBe(1);
+});
+
+it("A1-3 quest arrow: a redraw with nothing new sets no text, and a pick fills the same spot table", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.update(0);
+  addon.eval(`__sets = 0 local f = Vanguard_QuestArrow
+    for _, fs in ipairs({ f.title, f.dist }) do local set = fs.SetText fs.SetText = function(...) __sets = __sets + 1 return set(...) end end`);
+  addon.advance(2);
+  expect(addon.eval("return __sets"), "two seconds standing still: every redraw, no text set").toBe(0);
+  addon.eval("C_QuestLog.GetDistanceSqToQuest = function(id) return id == 90061 and 8100 or 90000 end");
+  addon.advance(0.2);
+  expect([addon.eval("return __sets"), arrow(addon)[2]], "ten yards nearer: the distance line set once").toEqual([1, "90 yd"]);
+  addon.eval("__titles[90061] = 'TEST-ONLY Renamed'");
+  addon.advance(0.2);
+  expect([addon.eval("return __sets"), arrow(addon)[1]], "a title that arrived late: set once").toEqual([2, "TEST-ONLY Renamed"]);
+  expect(addon.eval("local QA = ns.QuestArrow local before = QA.target QA.Pick() return { before == QA.target, QA.target == QA.spot, QA.target[1] }"), "the pick's spot is one table, filled again").toEqual([true, true, 10]);
+  addon.eval("__wfgWorld.quests = {} ns.QuestArrow.Pick()");
+  expect(addon.eval("return ns.QuestArrow.target == nil"), "no quest: no spot").toBe(true);
+});
