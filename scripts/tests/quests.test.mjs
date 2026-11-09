@@ -978,6 +978,39 @@ it("quest log: zones the game's map panel folded are opened again when the panel
   addon.advance(0.25);
   expect(addon.eval("return { __log[4].isCollapsed, ns.GetModule('QuestLog').Count() }"), "the panel closing opens the zone again").toEqual([false, 3]);
 });
+// A1-5 (M16): the opening of folded zones belongs to the tracker and the quest log, and has a switch.
+it("A1-5: with Vanguard's tracker and quest log both off, a zone folded in the game's quest log stays folded", () => {
+  const off = "VanguardDB.profiles = { Default = { QuestTracker = { own = false }, QuestLog = { own = false } } }";
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV, { client: MAP_PANEL_CLIENT, savedVariables: off });
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, __expanded or 0 }"), "login leaves the fold alone").toEqual([true, 0]);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.eval("QuestMapFrame:Show() QuestMapFrame:Hide()");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, __expanded or 0 }"), "zoning in and closing the map's quest panel leave it alone too").toEqual([true, 0]);
+  const tracker = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestLog = { own = false } } }" });
+  tracker.fire("PLAYER_ENTERING_WORLD");
+  tracker.advance(0.25);
+  expect(tracker.eval("return __log[4].isCollapsed"), "the tracker alone is enough to open it").toBe(false);
+});
+it("A1-5: the switch on the Quests page stops zones being opened by themselves, at once; opening Vanguard's log still opens them", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + CLICK_LUA, { client: MAP_PANEL_CLIENT });
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, ns.Settings('QuestTracker').openFolds }"), "on by default: opened at login").toEqual([false, true]);
+  addon.eval('ns.Options.Show("quests") __click("Open folded zones in the quest log")');
+  expect(addon.eval("return ns.Settings('QuestTracker').openFolds"), "the row switches it off").toBe(false);
+  addon.eval("__log[4].isCollapsed = true");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.eval("QuestMapFrame:Show() QuestMapFrame:Hide()");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, ns.GetModule('QuestLog').Count() }"), "off: the zone you folded stays folded, and its quest is not counted").toEqual([true, 2]);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  expect(addon.eval("return __log[4].isCollapsed"), "Vanguard's own log, opened, still opens it: it could not list the quest otherwise").toBe(false);
+  addon.eval('Vanguard_QuestLog:Hide() __log[4].isCollapsed = true ns.Options.Show("quests") __click("Open folded zones in the quest log")');
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(0.25);
+  expect(addon.eval("return __log[4].isCollapsed"), "switched back on: opened again at the next zone-in, with no reload").toBe(false);
+});
 it("quest log: zones, a quest's details, and its buttons", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   expect(addon.eval("return __overrides"), "the game's quest log keys open this log").toEqual({ L: "Vanguard_QuestLogToggle:LeftButton", "SHIFT-L": "Vanguard_QuestLogToggle:LeftButton" });

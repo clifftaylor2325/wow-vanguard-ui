@@ -793,6 +793,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the whole window is on the screen, its quest list column included (nothing cut at the left edge). [Needs in-game check: that the client moves the clamped, centre-anchored window fully on screen.]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_QuestLog`.
 
+### 8.3c Zones you fold in the game's quest log
+
+- Do: under `/vg` → Quests switch **Open folded zones in the quest log** off (no reload). Open the world map's quest list, fold a zone by its header, close the map, then zone (a boat, a hearth or an instance door) and open the map's quest list again. Then open Vanguard's quest log. Switch the row back on and zone again. Last, switch Vanguard's quest tracker and Vanguard's quest log both off, reload, fold a zone in the game's quest log and zone.
+- Expect: with the row off the zone you folded is still folded after closing the map and after zoning, and its quests are missing from the tracker's `Quests: N% of the XP to level` line until you open it; opening Vanguard's quest log opens every zone. With the row on again every zone is open after the next zone-in. With the tracker and the quest log both off the game's quest log stays exactly as you fold it, whatever the row says.
+- If it fails, paste: which zone opened and when, the state of the three switches, and `/vg errors`.
+
 ### 8.3a Quest history
 
 - Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
