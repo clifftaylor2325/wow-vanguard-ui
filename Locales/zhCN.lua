@@ -835,7 +835,6 @@ L["In combat. Try again once combat ends."] = "战斗中。请在战斗结束后
 L["In combat. Try the preview again once combat ends."] = "战斗中。请在战斗结束后再试预览。"
 L["In combat: changes are kept and apply when the fight ends."] = "战斗中：更改会保留，并在战斗结束时生效。"
 L["In-combat mark: crossed swords and a red edge on your frame, a red edge on your target's while it fights"] = "战斗标记：你的框体上显示交叉双剑和红色边缘，目标战斗时其框体显示红色边缘"
-L["Include yourself"] = "包括你自己"
 L["Incoming heals (green, past the health)"] = "即将到来的治疗（绿色，超出生命值部分）"
 L["Incoming heals, shields, aggro and missing raid buffs. Needs Raid frames."] = "即将到来的治疗、护盾、仇恨和缺失的团队增益。需要团队框体。"
 L["Info strip"] = "信息条"

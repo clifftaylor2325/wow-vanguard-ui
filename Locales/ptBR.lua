@@ -835,7 +835,6 @@ L["In combat. Try again once combat ends."] = "Em combate. Tente de novo quando 
 L["In combat. Try the preview again once combat ends."] = "Em combate. Tente a prévia de novo quando o combate acabar."
 L["In combat: changes are kept and apply when the fight ends."] = "Em combate: as mudanças ficam guardadas e valem quando a luta acabar."
 L["In-combat mark: crossed swords and a red edge on your frame, a red edge on your target's while it fights"] = "Marca de combate: espadas cruzadas e uma borda vermelha no seu quadro, e uma borda vermelha no do seu alvo enquanto ele luta"
-L["Include yourself"] = "Incluir você"
 L["Incoming heals (green, past the health)"] = "Curas a caminho (verde, além da vida)"
 L["Incoming heals, shields, aggro and missing raid buffs. Needs Raid frames."] = "Curas a caminho, escudos, aggro e bônus de raide faltando. Precisa de Quadros de raide."
 L["Info strip"] = "Faixa de informações"

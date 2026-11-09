@@ -835,7 +835,6 @@ L["In combat. Try again once combat ends."] = "전투 중입니다. 전투가 �
 L["In combat. Try the preview again once combat ends."] = "전투 중입니다. 전투가 끝나면 미리보기를 다시 시도하세요."
 L["In combat: changes are kept and apply when the fight ends."] = "전투 중: 변경 사항은 보관되고 전투가 끝나면 적용됩니다."
 L["In-combat mark: crossed swords and a red edge on your frame, a red edge on your target's while it fights"] = "전투 표시: 내 창에 교차한 검과 붉은 테두리, 대상이 전투 중일 때 대상 창에 붉은 테두리"
-L["Include yourself"] = "나 포함"
 L["Incoming heals (green, past the health)"] = "받을 치유 (녹색, 생명력 너머)"
 L["Incoming heals, shields, aggro and missing raid buffs. Needs Raid frames."] = "받을 치유, 보호막, 어그로, 빠진 공격대 강화 효과. 공격대 창이 필요합니다."
 L["Info strip"] = "정보 띠"
