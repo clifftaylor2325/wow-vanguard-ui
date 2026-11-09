@@ -30,7 +30,7 @@ RH.CLASS_BUFFS = ns.ClientData({
     DRUID = { 1126, 21849 },
     WARRIOR = { 6673 },
     -- Any blessing, normal or greater, counts: a paladin gives one per player.
-    PALADIN = { 19740, 19742, 20217, 1038, 19977, 25782, 25894, 25898, 25895, 25890 },
+    PALADIN = { 19740, 19742, 20217, 1038, 19977, 20911, 25782, 25894, 25898, 25895, 25890, 25899 },
   },
   -- Retail's raid buffs (12.1.5): Power Word: Fortitude, Arcane Intellect, Mark of the Wild, Battle Shout, Skyfury,
   -- Blessing of the Bronze. Retail ranks nothing and has no group versions, so one id each.

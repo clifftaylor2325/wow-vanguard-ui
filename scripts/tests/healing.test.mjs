@@ -1,7 +1,7 @@
 // healing: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, HEALING_ENV, RAID_ENV, UNITS_ENV, healing, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, HEALING_ENV, RAID_ENV, UNITS_ENV, healing, isTok, loggedIn } from "./helpers.mjs";
 
 it("the power bar sits above the incoming-heal and shield bars and under the tile's texts, so a prediction never covers the mana strip", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
@@ -173,4 +173,24 @@ it("H28-2-1: a player the client can't see (far away, another phase) gets no mis
   addon.eval("__unseen.raid1 = nil");
   addon.eval(`__wfgStub.fire("UNIT_AURA", "raid1", { isFullUpdate = true })`);
   expect(healing(addon, 1).missing, "in sight again, its auras sent: the mark shows").toBe("TEST-ONLY-ICON-Arcane Intellect");
+});
+
+it("H40-4-1: a Forever paladin's watch counts Blessing of Sanctuary, normal or greater, so its holder isn't marked missing Might", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + FOREVER_ENV + `
+    __names = { [19740] = "Blessing of Might", [20911] = "Blessing of Sanctuary", [25899] = "Greater Blessing of Sanctuary" }
+    __known = { ["Blessing of Might"] = true, ["Blessing of Sanctuary"] = true }
+    local oldClass = UnitClass
+    UnitClass = function(unit) if unit == "player" then return "Paladin", "PALADIN" end return oldClass(unit) end
+  `);
+  addon.eval('__spawn(1, "raid1")');
+  addon.eval("ns.GetModule('RaidHealing').Forget()");
+  addon.eval("__buffs.raid1 = { ['Blessing of Sanctuary'] = true }");
+  addon.fire("UNIT_AURA", "raid1");
+  expect([healing(addon, 1).missing, addon.eval("return ns.GetModule('RaidHealing').MissingBuff('raid1')")], "Sanctuary: no mark").toEqual([false, null]);
+  addon.eval("__buffs.raid1 = { ['Greater Blessing of Sanctuary'] = true }");
+  addon.fire("UNIT_AURA", "raid1");
+  expect(healing(addon, 1).missing, "Greater Sanctuary: no mark").toBe(false);
+  addon.eval("__buffs.raid1 = {}");
+  addon.fire("UNIT_AURA", "raid1");
+  expect(healing(addon, 1).missing, "no blessing: marked").toBe("TEST-ONLY-ICON-Blessing of Might");
 });
