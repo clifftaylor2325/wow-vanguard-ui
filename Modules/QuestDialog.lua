@@ -193,8 +193,11 @@ function QD.Close()
   QD.frame:Hide()
 end
 
--- The game ended the talk (or moved to the next page): hide without closing it again.
+-- The game ended the talk (or moved to the next page): hide without closing it again. A question the dialog
+-- asked about the quest goes too, unanswered, so its Yes can't take the next quest that opens.
 function QD.Quiet()
+  ns.CancelAsk(QD.asked)
+  QD.asked = nil
   QD.quiet = true
   QD.frame:Hide()
   QD.quiet = false
@@ -234,7 +237,9 @@ local function acceptOffer()
   -- Takes the quest.
   local function accept() ns.CallIf(_G, "AcceptQuest") end
   if not QP.FlagsPVP() or type(CONFIRM_ACCEPT_PVP_QUEST) ~= "string" then return accept() end
-  ns.Ask(CONFIRM_ACCEPT_PVP_QUEST, L["Accept"], accept, function() ns.CallIf(_G, "DeclineQuest") end)
+  -- No: declines the quest. Kept on QD.asked so QD.Quiet can put the question away if the offer closes first.
+  QD.asked = function() ns.CallIf(_G, "DeclineQuest") end
+  ns.Ask(CONFIRM_ACCEPT_PVP_QUEST, L["Accept"], accept, QD.asked)
 end
 
 -- A quest's details: accept it (or acknowledge one the game already accepted), or decline.
@@ -281,7 +286,9 @@ function QD.Complete()
   local function take() ns.CallIf(_G, "GetQuestReward", choice) end
   if cost <= 0 then return take() end
   local text = ns.Format(L["Completing {quest} costs {money}. Complete it?"], { quest = QP.Plain(ns.CallIf(_G, "GetTitleText")), money = ns.GetModule("InfoStrip").Money(cost) })
-  ns.Ask(text, L["Complete"], take, function() ns.CallIf(_G, "DeclineQuest") end)
+  -- No: declines the hand-in and keeps the gold. Kept on QD.asked so QD.Quiet can put the question away.
+  QD.asked = function() ns.CallIf(_G, "DeclineQuest") end
+  ns.Ask(text, L["Complete"], take, QD.asked)
 end
 
 -- Showing --------------------------------------------------------------------------------------

@@ -441,6 +441,15 @@ function ns.Ask(text, yes, onYes, onNo, kind)
   f:Show()
 end
 
+-- Puts away the question whose No handler is onNo without answering it (the game ended what it asked about, as
+-- the game's own windows hide their popup without its cancel); any other question is left.
+---@param onNo function|nil
+function ns.CancelAsk(onNo)
+  if not (onNo and question and question.waiting == onNo) then return end
+  question.waiting = nil
+  question:Hide()
+end
+
 -- Whether the question dialog shows a question now (another ns.Ask would replace it).
 ---@return boolean
 function ns.Asking()
