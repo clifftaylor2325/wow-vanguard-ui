@@ -4752,8 +4752,20 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.408 Take all stops when the bags are full (both)
 
 - Do: Fill every general bag, open the mailbox with three mails that hold items only (Mail tools on), and click Take all.
-- Expect: One chat line "Take all: your bags are full." then "Take all: 0 of 3 done."; no red "Inventory is full" error for each mail.
+- Expect: One chat line "Take all: your bags are full." then "Take all: 0 of 3 done."; the game shows one red "Inventory is full" error, for the first mail only.
 - If it fails, paste: The chat lines after the click and how many red errors appeared.
+
+### 33.409 Take all stops with full general bags and room in a quiver (Forever)
+
+- Do: On a hunter (or a warlock with a soul bag) whose general bags are all full but whose quiver, ammo pouch or soul bag has free slots, open a mailbox with at least two mails holding items (not arrows or shards), turn on Mail tools and click Take all.
+- Expect: One red "Inventory is full" error for the first mail only, then one chat line "Take all: your bags are full." and the run stops; no "Mail: could not take from ..." line for each mail.
+- If it fails, paste: the chat lines from the run and which bags have free slots.
+
+### 33.410 Close this tab in a fight skips a tab that gained a channel (Forever)
+
+- Do: Open `/vg` > Chat > Chat tabs, pick a tab with no channel, enter combat, press Close this tab, then right-click that tab, choose Settings and tick Trade. Leave combat.
+- Expect: The tab stays open and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window." No error appears.
+- If it fails, paste: the chat lines and any Lua error text.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
