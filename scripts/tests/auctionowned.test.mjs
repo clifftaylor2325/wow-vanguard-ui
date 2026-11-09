@@ -617,6 +617,16 @@ it("deals: each search judges its item again; a low before today stands in for a
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
   expect([addon.eval("return ns.Settings('AuctionHelper').deals"), dealsCard(addon).slice(0, 3), addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the entry goes at once and gives way to no list, nothing is judged").toEqual([false, [false, false, "Shopping"], true]);
 });
+it("deals: a login with the entry left shown by another character, its switch off here, opens on the list source", () => {
+  const addon = loggedIn("");
+  addon.eval(`local AH = ${HELPER} AH.settings.deals = false VanguardDB.ah.list = AH.DEALS
+    VanguardDB.ah.lists.Mats = { "Strange Dust" }`);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(addon.eval(`local AH = ${HELPER}
+    return { AH.shopCard.title:GetText(), AH.shopCard.add:IsShown(), AH.Source() == AH.Sources.list }`)).toEqual(["Shopping", true, true]);
+});
+
 it("deals: what was found is forgotten 30 minutes after closing even if the house isn't opened again", () => {
   const addon = atAuctionHouse();
   addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");

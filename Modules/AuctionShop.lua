@@ -732,8 +732,12 @@ AH.Sources.list = { columns = AH.LIST_COLUMNS, paint = paintRow, click = AH.Clic
   items = function() local _, list = AH.CurrentList() return list or {} end }
 
 -- The source of what the card shows now: the entry picked in the pane (a list unless a file adds its own).
+-- The picked key is the account's and an entry's switch is the profile's, so an entry whose switch is
+-- off here (another character left it shown) gives way to the list source.
 function AH.Source()
-  return AH.Sources[AH.ListKey()] or AH.Sources.list
+  local s = AH.Sources[AH.ListKey()]
+  if s and (s.on == nil or s.on()) then return s end
+  return AH.Sources.list
 end
 
 -- The card's toolbar: the heading names the list (or the source), the count beside it, and the list buttons when they apply.
