@@ -42,12 +42,12 @@ local function now()
   return type(time) == "function" and ns.PlainNumber(time()) or 0
 end
 
--- This character's key in the account file, "Name-Realm"; nil while the client won't say the name.
+-- This character's key in the account file, "Name-Realm" with the realm normalized (ns.Home.Realm, the same
+-- spelling at login and logout); nil while the client won't say the name.
 function G.CharKey()
   local name = type(UnitName) == "function" and UnitName("player")
   if type(name) ~= "string" or ns.IsSecret(name) then return nil end
-  local realm = type(GetNormalizedRealmName) == "function" and GetNormalizedRealmName() or GetRealmName()
-  return name .. "-" .. tostring(realm or "?")
+  return name .. "-" .. ns.Home.Realm()
 end
 
 -- Checking ----------------------------------------------------------------------------------
@@ -247,9 +247,43 @@ local function announce(how)
   G.Offer()
 end
 
--- At login, before setup decides whether it is owed. A loss is told in chat once; after that only the
--- General and Profiles pages show it, until it is answered there.
+-- Repairing notes ---------------------------------------------------------------------------------
+-- Before 0.9.4 a logout where Forever's GetNormalizedRealmName answered nil noted the character under
+-- the realm's shown name ("Ava-CAMWOW US2 Realm 3 PvE") beside its normalized key, so a login reading
+-- the other key found an older stamp and reported a loss that never happened.
+
+-- A note's key with its realm spelled as the normalized name is ("Ava-CAMWOW US2" is "Ava-CAMWOWUS2").
+local function normalKey(key)
+  local name, realm = key:match("^([^%-]+)%-(.+)$")
+  if not name then return key end
+  return name .. "-" .. (realm:gsub("[ %-]", ""))
+end
+
+-- The newer of two notes of one character, by stamp (either may be missing or damaged).
+local function newerNote(a, b)
+  local sa, sb = tbl(a) and tonumber(a.stamp), tbl(b) and tonumber(b.stamp)
+  if not sb then return a end
+  if not sa then return b end
+  return sa >= sb and a or b
+end
+
+-- Folds the notes kept under a realm's shown name into its normalized key, the newer stamp winning.
+local function foldRealmSpellings(chars)
+  local spelled = {}
+  for key in pairs(chars) do
+    if type(key) == "string" and normalKey(key) ~= key then spelled[#spelled + 1] = key end
+  end
+  for _, key in ipairs(spelled) do
+    local to = normalKey(key)
+    chars[to], chars[key] = newerNote(chars[to], chars[key]), nil
+  end
+end
+
+-- At login, before setup decides whether it is owed (and after old notes are folded). A loss is told in
+-- chat once; after that only the General and Profiles pages show it, until it is answered there.
 function G.OnLogin()
+  local acct = tbl(VanguardDB.guard)
+  if acct and tbl(acct.chars) then foldRealmSpellings(acct.chars) end
   local lost, detail = G.Check()
   if lost == "character" then return restoreCharacter(detail) end
   G.lost, G.lostSeen = lost, lost

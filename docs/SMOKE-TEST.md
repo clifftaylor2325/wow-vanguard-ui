@@ -4649,8 +4649,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.391 Saved settings warning says it once, and Keep these settings ends it (Forever)
 
-- Do: On a character that has shown "Vanguard's saved settings didn't load this session" at login, log in once on this version, then `/reload`. Open `/vg` → General and press **Keep these settings**, then log out and back in.
-- Expect: the chat line and the question show at the first login only, not after the reload; the General page shows the notice with Keep these settings; after Keep, chat says Vanguard keeps the settings that loaded, the notice goes, and the next login says nothing about saved settings.
+- Do: Log in on Cliff (the character that showed "Vanguard's saved settings didn't load this session" at every login), then `/reload`, then log out and log in on each of the other characters.
+- Expect: no saved settings line at any login (its notes under "CAMWOW US2 Realm 3 PvE" fold into "CAMWOWUS2Realm3PvE", and the newer one matches). If a character still shows it, the line shows at the first login only, not after the reload, and `/vg` → General has **Keep these settings**: after it chat says Vanguard keeps the settings that loaded, the notice goes, and the next login says nothing.
 - If it fails, paste: the chat lines from login, and both `Vanguard.lua` files (the account's `WTF/Account/<name>/SavedVariables/` one and the character's `WTF/Account/<name>/<realm>/<character>/SavedVariables/` one), or just their `guard` blocks.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.

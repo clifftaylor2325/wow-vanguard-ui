@@ -279,7 +279,7 @@ it("migration keeps the newer price of each item; login forgets stale and broken
   expect(p, "the house's newer 5, the old store's newer 60, no junk; the later scan time").toEqual([5, 60, true, t]);
   expect(houses(addon), "a house not seen for 30 days and the broken ones are gone").toEqual(["ForeverTest-Alliance:2"]);
   const neutral = loggedIn(AH_ENV + "__wfgWorld.units.player.faction = 'Neutral' GetNormalizedRealmName = function() return nil end", { savedVariables: ACCOUNT_WIDE });
-  expect(houses(neutral), "no side yet, and no normalized name: the realm's own name and 'none'").toEqual(["Forever Test-none:1"]);
+  expect(houses(neutral), "no side yet, and no normalized name: the realm's own name without its spaces, and 'none'").toEqual(["ForeverTest-none:1"]);
 });
 it("a login with the computer's clock far behind the realm's keeps the prices and their day lows", () => {
   const t = 1790000000;
