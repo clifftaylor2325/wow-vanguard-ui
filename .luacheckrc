@@ -163,6 +163,6 @@ read_globals = {
   "UIPanelWindows",
   -- H22-2-1 Nameplates: the game's soft-target icon, drawn on Vanguard's plate, and the units it shows a widget for only.
   "NamePlateDriverFrame", "SetUnitCursorTexture", "UnitNameplateShowsWidgetsOnly",
-  -- A3-4 Tooltips: a player's guild and rank on the unit tooltip.
-  "GetGuildInfo",
+  -- A3-4 Tooltips: a player's guild and rank on the unit tooltip, and your own equipped item level.
+  "GetGuildInfo", "GetAverageItemLevel",
 }

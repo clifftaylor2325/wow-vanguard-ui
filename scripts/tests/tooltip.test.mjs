@@ -174,6 +174,25 @@ it("a player's tooltip: the Guild and rank, Realm and Group role switches on the
   expect(addon.eval("return { Vanguard_Options.reload:IsShown(), #ns.errors }"), "no reload button, no error").toEqual([false, 0]);
 });
 
+it("your own tooltip adds your equipped item level, rounded down; another player's has none", () => {
+  const addon = loggedIn(CLICK_LUA + WORLD_TIP_ENV);
+  addon.eval("__wfgWorld.units.player.itemLevel, __wfgWorld.units.player.itemLevelEquipped = 64, 62.8");
+  expect(addon.eval("return __showUnit('player')"), "after your role, the level the character pane shows").toBe("Role: DPS | Item level 62");
+  addon.world.setUnit("mouseover", ALDRIC);
+  expect(addon.eval("return __showUnit('mouseover')"), "another player: no item level (it would take an inspect request)").not.toMatch(/Item level/);
+  addon.eval('ns.Options.Show("windows")');
+  expect(addon.eval('return { __click("Your own item level"), __showUnit("player") }'), "its switch takes the line off at once").toEqual([true, "Role: DPS"]);
+  expect(addon.eval('return { __click("Your own item level"), __showUnit("player"), Vanguard_Options.reload:IsShown() }'), "and puts it back, with no reload asked for").toEqual([true, "Role: DPS | Item level 62", false]);
+  addon.eval("__wfgWorld.units.player.itemLevelEquipped = __wfgWorld.secret(62)");
+  expect(addon.eval("return __showUnit('player')"), "a hidden level: no line").toBe("Role: DPS");
+  addon.eval("__wfgWorld.units.player.itemLevel, __wfgWorld.units.player.itemLevelEquipped = nil, nil");
+  expect(addon.eval("return __showUnit('player')"), "no level yet (0): no line").toBe("Role: DPS");
+  addon.eval("__wfgWorld.units.player.itemLevelEquipped = 62 local same = UnitIsUnit UnitIsUnit = function() return __wfgWorld.secret(true) end __hidden = __showUnit('player') UnitIsUnit = same");
+  expect(addon.eval("return __hidden"), "a unit the client won't say is you gets none").toBe("Role: DPS");
+  addon.eval("GetAverageItemLevel = nil");
+  expect(addon.eval("return { __showUnit('player'), #ns.errors }"), "a client without the call: no line, no error").toEqual(["Role: DPS", 0]);
+});
+
 // TEST-ONLY items for the sell price: 90001 sells for 25c, 90002 has no value, 90003 isn't cached yet.
 const ITEM_TIP_ENV = `
   __prices = { ["item:90001"] = 25, ["item:90002"] = 0 }

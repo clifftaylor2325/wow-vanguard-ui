@@ -111,6 +111,7 @@ local function tooltipUnitRows()
     O.Essential(check(L["Guild and rank"], setting("Tooltips", "guild"))),
     check(L["Realm, for players of another realm"], setting("Tooltips", "realm")),
     check(L["Group role"], setting("Tooltips", "role")),
+    check(L["Your own item level"], setting("Tooltips", "itemLevel")),
     O.Essential(check(L["Hide unit tooltips in combat"], setting("Tooltips", "hideInCombat"))),
   }
 end

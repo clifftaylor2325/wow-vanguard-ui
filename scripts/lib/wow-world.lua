@@ -714,6 +714,13 @@ function GetGuildInfo(unit)
   if u == nil or u.guild == nil then return nil end
   return u.guild, u.guildRank, u.guildRankIndex or 0, u.guildRealm
 end
+-- The player's average item level (overall, equipped, PvP), as Forever's character pane reads it
+-- (Blizzard_UIPanels_Game/Camelot/PaperDollFrame.lua, PaperDollFrame_SetItemLevel shows the equipped one, floored):
+-- world.units.player.itemLevel and .itemLevelEquipped (the overall one when unset), 0 when unset.
+function GetAverageItemLevel()
+  local p = world.units.player
+  return p.itemLevel or 0, p.itemLevelEquipped or p.itemLevel or 0, p.itemLevelPvp or 0
+end
 -- The player's hit modifiers, per cent (melee, spell): Forever's character sheet (Camelot/PaperDollFrameStats.lua)
 -- and Retail's PaperDollFrame_SetHitChance read them. world.units.player.hit / .spellHit, 0 when unset.
 function GetHitModifier() return world.units.player.hit or 0 end

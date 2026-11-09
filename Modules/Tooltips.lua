@@ -1,7 +1,8 @@
 -- Tooltips in the Vanguard look: a flat panel instead of the default art,
 -- a border in the class (or reaction) color of the unit you're looking at,
 -- the unit's name in that color, and a "Target:" line. A player's tooltip
--- adds the guild and rank, the realm and the group role. The default tooltip
+-- adds the guild and rank, the realm and the group role, and your own adds
+-- your equipped item level. The default tooltip
 -- can sit in a movable corner, follow the cursor, or stay where the client
 -- puts it, and unit tooltips can be hidden in combat. Item tooltips show what
 -- the item sells for (the stack's worth, unless the client already shows it),
@@ -22,7 +23,7 @@ local T = ns.Theme
 local L = ns.L
 
 local TT = ns.Module("Tooltips", {
-  defaults = { anchor = "corner", classBorder = true, targetLine = true, guild = true, realm = true, role = true, hideInCombat = false,
+  defaults = { anchor = "corner", classBorder = true, targetLine = true, guild = true, realm = true, role = true, itemLevel = true, hideInCombat = false,
     sellPrice = true, itemCount = true, itemID = false },
 })
 
@@ -188,13 +189,24 @@ local function addRole(tt, unit)
   if role then addFact(tt, filled(L["Role: {role}"], "role", role)) end
 end
 
--- The module's lines about a player, as switched on: guild and rank, realm, then role. Other units get none.
+-- "Item level 62" on your own tooltip: the equipped average the character pane shows, rounded down as there.
+-- Another player's needs an inspect request, and WoW Forever's Inspect window opens itself again on any answer
+-- for the unit it last showed, so none is asked for from here and other players get no line.
+local function addItemLevel(tt, unit)
+  if not ns.IsTrue(UnitIsUnit(unit, "player")) then return end
+  local level = ns.PlainNumber((select(2, ns.CallIf(_G, "GetAverageItemLevel"))))
+  if level and level >= 1 then addFact(tt, filled(L["Item level {level}"], "level", math.floor(level))) end
+end
+
+-- The module's lines about a player, as switched on: guild and rank, realm, role, then your own item level. Other
+-- units get none.
 local function addPlayerLines(tt, unit)
   local on = TT.settings
   if not ns.IsTrue(UnitIsPlayer(unit)) then return end
   if on.guild then addGuild(tt, unit) end
   if on.realm then addRealm(tt, unit) end
   if on.role then addRole(tt, unit) end
+  if on.itemLevel then addItemLevel(tt, unit) end
 end
 
 -- The unit color handed to the theme as the border's: one table, filled again on every refresh. Only the default
