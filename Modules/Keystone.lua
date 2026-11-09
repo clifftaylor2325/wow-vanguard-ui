@@ -1,4 +1,4 @@
--- The keystone (/vg → Unit frames → Keystone): Vanguard's crest on a brass rail between your frame and your
+-- The keystone (/vg → Unit frames → Keystone → Show the keystone): Vanguard's crest on a brass rail between your frame and your
 -- target's, the one mark in the middle of the HUD. Crossed swords light under the crest in a fight, and, with its
 -- second switch, the global cooldown sweeps a ring round the crest. It shows with the Shield HUD look ("auto", the
 -- default), or always, or never; and it steps aside while the Versus deck holds the pair, while either frame of the
@@ -9,7 +9,11 @@ local ADDON, ns = ...
 
 local T, V = ns.Theme, ns.Visibility
 
-local KS = ns.Module("Keystone", { defaults = { show = "auto", sweep = false } })
+-- A part of the unit frames module (its keystone and keystoneSweep settings), in a file of its own; UF.Enable
+-- starts it.
+local UF = ns.GetModule("UnitFrames")
+local KS = {}
+UF.Keystone = KS
 
 -- Sizes in units: the rail's height, the crest, the ring the global cooldown sweeps, the swords and their gap under
 -- the crest.
@@ -34,14 +38,10 @@ local function addRails(f, inner)
   end
 end
 
--- The crest in the middle, the ring round it (a cast bars ring, hidden until the sweep switch), and the swords
--- under it (hidden until a fight).
+-- The crest in the middle and the swords under it (hidden until a fight); the ring waits for its switch.
 local function addMarks(f, inner)
-  local CB = ns.GetModule("CastBars")
   f.crest = T.Logo(inner, KS.SIZE.crest)
   f.crest:SetPoint("CENTER", inner, "CENTER")
-  f.ring = CB.RingPart(inner, KS.SIZE.ring)
-  CB.QuietRing(f.ring)
   f.swords = T.Tint(T.Snap(inner:CreateTexture(nil, "OVERLAY"), "icon"), "bad")
   f.swords:SetTexture(T.Icon("Combat"))
   f.swords:SetSize(KS.SIZE.swords, KS.SIZE.swords)
@@ -103,7 +103,7 @@ end
 -- Whether the keystone shows: by its setting ("on", "off", or "auto": with the Shield look), and never while the
 -- deck holds the pair, a frame of the pair has been moved, or the Cooldown Manager's essential row sits across it.
 local function wanted(f)
-  local show, UF = KS.settings.show, ns.GetModule("UnitFrames")
+  local show = UF.settings.keystone
   if show == "off" or (show ~= "on" and T.HudLook() ~= "shield") then return false end
   if not (UF and UF.frames and UF.frames[KS.ENDS[1]] and UF.frames[KS.ENDS[2]]) then return false end
   if UF.settings.deck == true then return false end
@@ -115,15 +115,28 @@ end
 
 -- Whether the ring sweeps: the sweep switch, where the client has duration objects.
 local function sweeping()
-  return KS.settings.sweep == true and ns.Client.Has("cooldownObject")
+  return UF.settings.keystoneSweep == true and ns.Client.Has("cooldownObject")
 end
 
--- Shows the ring and sweeps it with the global cooldown now, or hides it.
+-- The ring round the crest (a cast bars ring, a Cooldown frame), made the first time the sweep asks for it.
+local function ring(f)
+  if not f.ring then
+    local CB = ns.GetModule("CastBars")
+    f.ring = CB.RingPart(f.inner, KS.SIZE.ring)
+    CB.QuietRing(f.ring)
+  end
+  return f.ring
+end
+
+-- Shows the ring and sweeps it with the global cooldown now, or hides it (a ring never asked for stays unmade).
 local function applySweep(f)
-  local on = sweeping()
-  f.ring:SetShown(on)
-  f.ring.back:SetShown(on)
-  if on then ns.GetModule("CastBars").SweepGlobal(f.ring) end
+  if sweeping() then
+    local r = ring(f)
+    r:Show() r.back:Show()
+    ns.GetModule("CastBars").SweepGlobal(r)
+  elseif f.ring then
+    f.ring:Hide() f.ring.back:Hide()
+  end
 end
 
 -- Lights the swords while you fight (the fight's start and end, and every apply).
@@ -133,7 +146,7 @@ end
 
 -- Shows or hides the keystone to match its rules and its switches, out of combat (the rules read the row's place).
 function KS.Apply()
-  if not KS.settings then return end
+  if not UF.settings then return end
   ns.OutOfCombat(function()
     local f = build()
     f:SetShown(wanted(f))
@@ -145,7 +158,7 @@ end
 -- Sweeps the ring again when a cooldown changes, while it shows.
 local function sweepNow()
   local f = KS.frame
-  if f and f:IsShown() and f.ring:IsShown() then ns.GetModule("CastBars").SweepGlobal(f.ring) end
+  if f and f:IsShown() and f.ring and f.ring:IsShown() then ns.GetModule("CastBars").SweepGlobal(f.ring) end
 end
 
 -- Paints the swords for a fight starting or ending, once the keystone exists.
@@ -161,10 +174,9 @@ local function watchRow()
   row:HookScript("OnHide", ns.Guard("keystone row", KS.Apply))
 end
 
--- Module entry point (Core/Modules.lua): place it (again once the world is in, after the game's rows are placed),
--- then follow the look, the movers, the row, cooldowns and fights.
-function KS.Enable(settings)
-  KS.settings = settings
+-- Started by UF.Enable: place it (again once the world is in, after the game's rows are placed), then follow the
+-- look, the movers, the row, cooldowns and fights.
+function KS.Enable()
   KS.Apply()
   ns.On("PLAYER_ENTERING_WORLD", KS.Apply)
   T.OnChanged(KS.Apply)
@@ -173,4 +185,9 @@ function KS.Enable(settings)
   ns.On("PLAYER_REGEN_DISABLED", combatChanged)
   ns.On("PLAYER_REGEN_ENABLED", combatChanged)
   watchRow()
+end
+
+-- The options rows' apply: Show the keystone and Global cooldown on the keystone.
+function UF.ApplyKeystone()
+  KS.Apply()
 end

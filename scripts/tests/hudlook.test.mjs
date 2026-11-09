@@ -140,7 +140,7 @@ it("the tools: under Shield the cast bars and the bar backing take the shield cu
 const keystone = (addon) => addon.eval(`local f = Vanguard_Keystone
   if not f then return { made = false } end
   return { made = true, shown = f:IsShown(), left = f.__points.LEFT.rel == Vanguard_player, right = f.__points.RIGHT.rel == Vanguard_target, top = f.__points.TOP.rel == Vanguard_player,
-    strata = f.__strata, mouse = f.__mouse, rails = #f.rails, crest = math.floor(f.crest:GetWidth() + 0.5), ring = f.ring:IsShown(), swords = f.swords:IsShown(), sweep = f.ring.__durationObject and f.ring.__durationObject.__duration or "none" }`);
+    strata = f.__strata, mouse = f.__mouse, rails = #f.rails, crest = math.floor(f.crest:GetWidth() + 0.5), ring = f.ring ~= nil and f.ring:IsShown(), swords = f.swords:IsShown(), sweep = f.ring and f.ring.__durationObject and f.ring.__durationObject.__duration or "none" }`);
 
 it("the keystone: the crest on a rail between your frame and your target's, under them, taking no mouse, swords lit in a fight, no ring until its switch", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + GCD_ENV, NO_RAID);
@@ -154,7 +154,7 @@ it("the keystone: the crest on a rail between your frame and your target's, unde
   expect(keystone(addon).swords, "and go when it ends").toBe(false);
   addon.slash("");
   addon.eval('__click("Unit frames") __click("Global cooldown on the keystone")');
-  expect([addon.eval("return VanguardDB.profiles.Default.Keystone.sweep"), keystone(addon).ring, keystone(addon).sweep, addon.eval("return __gcdAsked[1]")], "the switch shows the ring and sweeps it with the global cooldown").toEqual([true, true, "gcd", 61304]);
+  expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.keystoneSweep"), keystone(addon).ring, keystone(addon).sweep, addon.eval("return __gcdAsked[1]")], "the switch shows the ring and sweeps it with the global cooldown").toEqual([true, true, "gcd", 61304]);
   addon.eval("Vanguard_Keystone.ring:Clear()");
   addon.fire("SPELL_UPDATE_COOLDOWN");
   expect(keystone(addon).sweep, "and again at each cooldown update").toBe("gcd");
@@ -179,11 +179,11 @@ it("the keystone steps aside: for the deck, a moved frame, the Cooldown Manager'
   addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
   expect(shown(), "Auto follows the look: off under Plain").toBe(false);
   addon.slash("");
-  addon.eval('__click("Unit frames") __click("Keystone")');
-  expect([addon.eval("return VanguardDB.profiles.Default.Keystone.show"), shown()], "the row cycles to Always, which shows it under Plain").toEqual(["on", true]);
-  addon.eval('__click("Keystone")');
-  expect([addon.eval("return VanguardDB.profiles.Default.Keystone.show"), shown()], "then Never").toEqual(["off", false]);
-  addon.eval('__click("Keystone") ns.Theme.Settings().hudLook = "shield" ns.Theme.Refresh()');
+  addon.eval('__click("Unit frames") __click("Show the keystone")');
+  expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.keystone"), shown()], "the row cycles to Always, which shows it under Plain").toEqual(["on", true]);
+  addon.eval('__click("Show the keystone")');
+  expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.keystone"), shown()], "then Never").toEqual(["off", false]);
+  addon.eval('__click("Show the keystone") ns.Theme.Settings().hudLook = "shield" ns.Theme.Refresh()');
   expect(shown(), "and round to Auto, shown again under Shield").toBe(true);
 });
 
@@ -199,14 +199,14 @@ it("the keystone hides while the Cooldown Manager's essential row sits across it
   expect(keystone(addon).shown, "shown again: it hides").toBe(false);
   addon.eval('ns.ResetMovers("cdm_essential")');
   expect(keystone(addon).shown, "the row back out of the way: it shows").toBe(true);
-  addon.eval("local h = EssentialCooldownViewer.GetTop EssentialCooldownViewer.GetTop = function() return { __secret = true } end ns.GetModule('Keystone').Apply() EssentialCooldownViewer.GetTop = h");
+  addon.eval("local h = EssentialCooldownViewer.GetTop EssentialCooldownViewer.GetTop = function() return { __secret = true } end ns.GetModule('UnitFrames').Keystone.Apply() EssentialCooldownViewer.GetTop = h");
   expect([keystone(addon).shown, addon.eval("return #ns.errors")], "a hidden rectangle counts as no overlap, without an error").toEqual([true, 0]);
 });
 
 it("the keystone waits for the fight to end before it changes, and is left unmade with the unit frames off", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
   setCombat(addon, true);
-  addon.eval('ns.GetModule("Keystone").settings.show = "off" ns.GetModule("Keystone").Apply()');
+  addon.eval('ns.GetModule("UnitFrames").settings.keystone = "off" ns.GetModule("UnitFrames").Keystone.Apply()');
   expect(keystone(addon).shown, "in a fight it stays").toBe(true);
   setCombat(addon, false);
   expect(keystone(addon).shown, "and goes when it ends").toBe(false);

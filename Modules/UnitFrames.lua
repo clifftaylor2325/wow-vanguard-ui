@@ -14,7 +14,7 @@ local L = ns.L
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true, combatMark = true,
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
     -- WoW Forever players read levels and health percent on every frame (as its own UI does),
     -- so a profile that hasn't chosen yet starts that way there.
     showLevel = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.showLevel), healthFormat = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.healthFormat),
@@ -936,8 +936,7 @@ function UF.ApplyDeck()
   if not UF.settings then return end
   ns.OutOfCombat(deckNow)
   UF.ApplyCalm()
-  local KS = ns.GetModule("Keystone")
-  if KS then KS.Apply() end
+  if UF.Keystone then UF.Keystone.Apply() end
 end
 
 -- Calm HUD ---------------------------------------------------------------------------------
@@ -983,4 +982,5 @@ function UF.Enable(settings)
   ns.On("PLAYER_REGEN_DISABLED", UF.CombatStarts)
   ns.On("PLAYER_REGEN_ENABLED", UF.RefreshCombat)
   T.OnChanged(function() ns.OutOfCombat(UF.ApplyLook, "unit frame look") end)
+  if UF.Keystone then UF.Keystone.Enable() end
 end

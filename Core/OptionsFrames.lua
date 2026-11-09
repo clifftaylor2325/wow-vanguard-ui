@@ -73,11 +73,12 @@ end
 -- When the keystone shows: with the Shield look (the default), always, or never.
 local KEYSTONE_CHOICES = { { "auto", L["With the Shield look"] }, { "on", L["Always"] }, { "off", L["Never"] } }
 
--- The keystone rows: when it shows, and whether the global cooldown sweeps its ring (both at once).
+-- The keystone card: when it shows, and whether the global cooldown sweeps its ring (both at once).
 local function keystoneRows()
   return {
-    { "cycle", L["Keystone"], KEYSTONE_CHOICES, liveMethod("Keystone", "show", "Apply") },
-    check(L["Global cooldown on the keystone"], liveMethod("Keystone", "sweep", "Apply")),
+    { "header", L["Keystone"] },
+    { "cycle", L["Show the keystone"], KEYSTONE_CHOICES, liveMethod("UnitFrames", "keystone", "ApplyKeystone") },
+    check(L["Global cooldown on the keystone"], liveMethod("UnitFrames", "keystoneSweep", "ApplyKeystone")),
   }
 end
 
@@ -96,7 +97,7 @@ O.MANA_BAR_LABEL = ns.ClientData({
 local function unitFrameRows()
   return {
     { "header", L["Unit frames"] },
-    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(), keystoneRows()[1], keystoneRows()[2],
+    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], { { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] } }, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
@@ -245,5 +246,5 @@ local function raidPageRows()
   }), raidPreviewRows())
 end
 
-O.AddPage({ key = "unitframes", title = L["Unit frames"], icon = "NavUnitFrames", order = 30, rows = function() return append(append(append(append(unitFrameRows(), readoutRows()), castRows()), playerAuraRows()), timerRows()) end })
+O.AddPage({ key = "unitframes", title = L["Unit frames"], icon = "NavUnitFrames", order = 30, rows = function() return append(append(append(append(append(unitFrameRows(), keystoneRows()), readoutRows()), castRows()), playerAuraRows()), timerRows()) end })
 O.AddPage({ key = "raid", title = L["Raid frames"], icon = "NavRaidFrames", order = 40, rows = raidPageRows })

@@ -218,9 +218,10 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- Look, the HUD's shape: the HUD look and the shield corners, each with its note.
-local function lookHudRows()
+-- HUD, the HUD's shape: the HUD look and the shield corners, each with its note.
+local function hudRows()
   return {
+    { "header", L["HUD"] },
     { "cycle", L["HUD look"], T.HudLookChoices(), liveThemeSetting("hudLook") },
     { "text", L["Shield: every unit frame a shield pointing away from you, the crest on a rail between your frame and your target's. Plain: flat frames."],
       "note" },
@@ -229,14 +230,13 @@ local function lookHudRows()
   }
 end
 
--- Look, the shape of things: variant, corners, panel texture, the HUD rows and the ornament rows.
+-- Look, the shape of things: variant, corners, panel texture and the ornament rows.
 local function lookShapeRows()
   local rows = {
     { "cycle", L["Theme variant"], VARIANT_CHOICES, variantSetting() },
     { "cycle", L["Corners"], CORNER_CHOICES, liveThemeSetting("corners") },
     { "cycle", L["Panel texture"], T.PanelTextureChoices(), liveThemeSetting("panelTexture") },
   }
-  append(rows, lookHudRows())
   rows[#rows + 1] = check(L["Window ornaments"], liveThemeSetting("ornaments"))
   rows[#rows + 1] = { "text", L["A brass rule or corners on large windows."], "note" }
   return rows
@@ -352,11 +352,11 @@ local function motionRows()
   }
 end
 
--- General: the settings-loss notice when there is one (Core/SettingsGuard.lua), look, bars, motion, the Calm HUD
+-- General: the settings-loss notice when there is one (Core/SettingsGuard.lua), look, HUD, bars, motion, the Calm HUD
 -- (Core/OptionsFrames.lua), layout and frame sizes.
 local function generalRows()
   local rows = append(ns.SettingsGuard.Rows(), lookRows())
-  for _, card in ipairs({ barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows() }) do append(rows, card) end
+  for _, card in ipairs({ hudRows(), barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows() }) do append(rows, card) end
   return rows
 end
 
@@ -380,8 +380,6 @@ O.MODULE_INFO = {
   RaidStatus = { L["Raid marks"], L["Range fade, raid icons, ready check, resurrection, leader. Needs Raid frames."] },
   MainTanks = { L["Main tank frames"], L["In a raid, the main tanks and assists as small tiles at the top left, with what each is targeting."] },
   PartyExtras = { L["Party pets and targets"], L["Small tiles for each party member's pet and target, above the party (switch it on under Unit frames)."] },
-  Keystone = { L["Keystone"],
-    L["The crest on a brass rail between your frame and your target's; swords on it in a fight, and the global cooldown round it if you like."] },
   GroupThreat = { L["Group threat"], L["A small panel of who in your group has the most threat on your target. Off until you switch it on (Unit frames); hides itself while the game hides threat values."] },
   RaidTools = { L["Raid tools"], L["For the leader and assistants: ready check, pull timer, role check, target icons and world markers."] },
   ClickCast = { L["Click casting"], L["Cast on a frame with a click or a hover key."] },
@@ -487,7 +485,7 @@ end
 
 -- The Modules page's groups, in the nav's order: a title and the modules under it (a module in none is under "More").
 O.MODULE_GROUPS = {
-  { L["Unit frames"], { "UnitFrames", "CastBars", "FrameAuras", "PlayerAuras", "ComboPoints", "ClassBars", "PowerTicks", "SwingTimer", "UnitExtras", "Keystone", "PartyExtras", "GroupThreat", "MainTanks", "ClickCast", "Situations" } },
+  { L["Unit frames"], { "UnitFrames", "CastBars", "FrameAuras", "PlayerAuras", "ComboPoints", "ClassBars", "PowerTicks", "SwingTimer", "UnitExtras", "PartyExtras", "GroupThreat", "MainTanks", "ClickCast", "Situations" } },
   { L["Raid frames"], { "RaidFrames", "RaidAuras", "RaidHealing", "RaidStatus", "RaidTools", "OfficerLoot" } },
   { L["Action bars"], { "ActionBars", "SpecialBars" } },
   { L["Map and info"], { "Minimap", "Waypoints", "BrokerStrip", "InfoStrip", "MenuStrip", "MinimapButtons", "DataBars" } },

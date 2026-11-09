@@ -51,6 +51,8 @@ G.ROWS = {
     { key = "calm", caption = L["Calm HUD: quiet the HUD out of combat"],
       get = function() return ns.Setup.Calm() end, set = function(v) ns.Setup.SetCalm(v) end },
     { key = "motion", caption = L["Reduce motion (no fades or flashes)"], options = { { "general", "Reduce motion (no fades or flashes)" } } },
+    { key = "hud", caption = L["Shield HUD look: frames point away from you"], recommend = true, on = "shield", off = "plain",
+      options = { { "general", "HUD look" } } },
   },
   game = {
     { key = "plates", caption = L["Enemy nameplates (the V key)"], recommend = true, game = true,

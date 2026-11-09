@@ -8,7 +8,7 @@ Player, target, target of target, focus and party frames (built when the raid fr
 
 ## Keystone
 
-The keystone (Unit frames → Keystone: With the Shield look, the default, Always or Never): Vanguard's crest, 36 units, on a two-pixel brass rail that runs at mid-height from your frame's right edge to your target's left, under the frames and taking no mouse. Crossed swords light under the crest while you are in combat. Global cooldown on the keystone (off by default, where the client reports cooldown durations) sweeps a ring round the crest with the global cooldown, as the cursor ring does. It steps aside while the Versus deck holds the pair, while your frame or your target's has a saved position of its own, and while the Cooldown Manager's essential row is shown across it; it dims with your frames under the Calm HUD. On by default only with the Shield HUD look.
+The keystone (Unit frames → Keystone → Show the keystone: With the Shield look, the default, Always or Never; part of the Unit frames module): Vanguard's crest, 36 units, on a two-pixel brass rail that runs at mid-height from your frame's right edge to your target's left, under the frames and taking no mouse. Crossed swords light under the crest while you are in combat. Global cooldown on the keystone (off by default, where the client reports cooldown durations) sweeps a ring round the crest with the global cooldown, as the cursor ring does. It steps aside while the Versus deck holds the pair, while your frame or your target's has a saved position of its own, and while the Cooldown Manager's essential row is shown across it; it dims with your frames under the Calm HUD. On by default only with the Shield HUD look.
 
 ## Combat timers
 

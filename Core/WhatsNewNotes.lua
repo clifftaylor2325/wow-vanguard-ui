@@ -13,7 +13,7 @@ ns.WHATS_NEW = {
   { version = "0.9.5", groups = {
     { module = "UnitFrames", label = "The Shield look", items = {
       { text = "Your frames point away from you as shields, bars filling toward you. HUD look keeps Plain.", page = "general", row = "HUD look" },
-      { text = "The keystone: the crest on a rail between your frame and your target's, swords on it in a fight.", page = "unitframes", row = "Keystone" },
+      { text = "The keystone: the crest on a rail between your frame and your target's, swords in a fight.", page = "unitframes", row = "Show the keystone" },
     } },
   } },
   { version = "0.9.3", groups = {

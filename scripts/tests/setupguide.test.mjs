@@ -27,7 +27,7 @@ it("guided setup: the four guided steps come after Look, each with its rows, the
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
   nexts(addon, 3);
   expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "Comfort is step 4").toBe("Step 4 of 9 · Comfort");
-  expect(rows(addon, "comfort"), "four comfort rows, offered (no controller, so Larger text isn't recommended), all off").toEqual([["larger", false, false], ["assist", false, false], ["calm", false, false], ["motion", false, false]]);
+  expect(rows(addon, "comfort"), "five comfort rows: four offered (no controller, so Larger text isn't recommended), all off, and the Shield HUD look recommended and on").toEqual([["larger", false, false], ["assist", false, false], ["calm", false, false], ["motion", false, false], ["hud", true, true]]);
   setupClick(addon, "next");
   expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "then the game's settings").toBe("Step 5 of 9 · Game settings");
   expect(rows(addon, "game").map((r) => [r[0], r[2]]), "three game rows, all recommended").toEqual([["plates", true], ["camera", true], ["classNames", true]]);
