@@ -1017,13 +1017,17 @@ ns.On("PLAYER_LOGOUT", KA.BackUp)
 -- spells are this character's copy from its last logout (none when it had none then), but only a copy newer than
 -- the one the account file holds: after a loss each character is told of it, and a second character's older copy
 -- must not replace the record a first one rebuilt since. A blank account file has no stamp, so any copy restores.
+-- An unstamped or missing copy (saved before copies were stamped) counts as the oldest, stamp 0, and keeps that
+-- stamp in this character's file, so its next logout (copyStamp) does not stamp the old record as new.
 function KA.RestoreBackup()
   if not ns.SettingsGuard.Lost() then return end
   local copy = type(VanguardCharDB.keyBackup) == "table" and VanguardCharDB.keyBackup or {}
-  if (tonumber(copy.stamp) or 0) <= (tonumber(VanguardDB.keyStamp) or -1) then return end
+  local stamp = tonumber(copy.stamp) or 0
+  if stamp <= (tonumber(VanguardDB.keyStamp) or -1) then return end
   for _, name in ipairs(KA.BACKED_UP) do
     VanguardDB[name] = type(copy[name]) == "table" and ns.Copy(copy[name]) or nil
   end
-  VanguardDB.keyStamp = copy.stamp
+  copy.stamp = stamp
+  VanguardCharDB.keyBackup, VanguardDB.keyStamp = copy, stamp
 end
 ns.On("PLAYER_LOGIN", KA.RestoreBackup)
