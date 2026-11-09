@@ -264,10 +264,11 @@ function A.Dress(f, style)
   return remember(f, parts, style.holder)
 end
 
--- Whether the client has closed any of an icon's parts to addons (an icon on a plate it keeps for
--- itself, as a friendly one in an instance): touching one then is a taint error.
-local function forbidden(parts)
-  for _, region in ipairs({ parts.icon, parts.cooldown, parts.skin }) do
+-- Whether the client has closed an icon to addons (an icon on a plate it keeps for itself, as a friendly
+-- one in an instance): its own button, or any part hung on it. The client can close an engine button and
+-- leave the parts on it answering no, yet refuse them all the same; touching one then is a taint error.
+local function forbidden(f, parts)
+  for _, region in ipairs({ f, parts.icon, parts.cooldown, parts.skin }) do
     if region:IsForbidden() then return true end
   end
   return false
@@ -276,7 +277,7 @@ end
 -- Puts one icon back on whole pixels. One the client has closed, or that fails to place, is forgotten,
 -- so the scale poll doesn't try it again (and report it again) every half second.
 local function refitIcon(icons, f, parts, holder)
-  if forbidden(parts) or not ns.Try("aura icon pixels", place, parts, holder) then icons[f] = nil end
+  if forbidden(f, parts) or not ns.Try("aura icon pixels", place, parts, holder) then icons[f] = nil end
 end
 
 -- Puts the icons a holder holds back on whole pixels where its scale has moved since they were placed,
