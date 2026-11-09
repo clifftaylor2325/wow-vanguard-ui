@@ -86,9 +86,10 @@ NP.NUMBERS_MIN_HEIGHT = 10
 NP.plates = {}
 -- Every frame we built for a plate (the client reuses plates, so each keeps one).
 NP.built = {}
--- How many plate frames are built ahead, at login: a pull that brings 30
--- plates at once then builds none (each is some 20 frames).
-NP.POOL = 40
+-- How many plate frames are built ahead, after login: a pull that brings 30
+-- plates at once then builds none (each is some 20 frames). They are built
+-- NP.POOL_STEP a frame (each takes the client some 20 ms), not all at login.
+NP.POOL, NP.POOL_STEP = 40, 2
 -- The frames built ahead that no plate has taken yet.
 NP.pool = {}
 -- Fallback aura rows put away after a fight, for the next plate drawn in one (by row).
@@ -363,13 +364,23 @@ local function upgradeRows()
   end
 end
 
--- Builds the plate frames ahead (out of combat, at login), hidden until a
--- plate takes one; none on a client without nameplates for addons.
+-- One frame's share of the frames built ahead: up to NP.POOL_STEP more, hidden until a plate
+-- takes one. True while the pool is short.
+local function fillSome()
+  for _ = 1, NP.POOL_STEP do
+    if #NP.pool >= NP.POOL then return false end
+    NP.pool[#NP.pool + 1] = build(NP.holder)
+  end
+  return #NP.pool < NP.POOL
+end
+
+-- Builds the plate frames ahead, a few a frame after login (out of combat: a fight pauses it);
+-- none on a client without nameplates for addons.
 function NP.FillPool()
   if type(_G.C_NamePlate) ~= "table" then return end
   NP.holder = NP.holder or CreateFrame("Frame")
   NP.holder:Hide()
-  for _ = #NP.pool + 1, NP.POOL do NP.pool[#NP.pool + 1] = build(NP.holder) end
+  ns.Spread("nameplate pool", fillSome)
 end
 
 -- A frame for a plate: one built ahead while any is left, else a new one, moved onto the plate.

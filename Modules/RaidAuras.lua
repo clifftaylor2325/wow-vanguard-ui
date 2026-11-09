@@ -153,10 +153,10 @@ function RA.HotSpec(b, z, s)
     groups = { { filter = "HELPFUL|PLAYER|RAID_IN_COMBAT", max = count, size = z.icon, pandemic = true } } }
 end
 
--- Adds the aura rows to a raid button (RF setup hook). The fallback highlight
--- follows the debuff row, which carries the engine's: it is read right after
--- that row is built, so a refusal on the hot row can't give the tile both.
-local function setup(b)
+-- Adds the aura rows to a raid tile. The fallback highlight follows the debuff
+-- row, which carries the engine's: it is read right after that row is built, so
+-- a refusal on the hot row can't give the tile both.
+local function addRows(b)
   local z, s = RF.TileZones(), RA.settings
   b.debuffRow = ns.Auras.Container(b, RA.DebuffSpec(b, z, s), nil)
   local legacy = ns.Auras.BackendName() == "fallback"
@@ -184,8 +184,8 @@ function RA.IndicatorSpec(b, z, n)
     level = b:GetFrameLevel() + RA.LEVEL_ABOVE, groups = { { filter = filter, max = 1, size = RA.IND_SIZE } } }
 end
 
--- Builds the tile's indicator icons (RF setup hook).
-local function indicatorSetup(b)
+-- Builds the tile's indicator icons.
+local function addIndicators(b)
   local z = RF.TileZones()
   b.indRows = {}
   for n = 1, RA.IND_SLOTS do
@@ -203,6 +203,7 @@ end
 
 -- Points the indicators at the tile's unit, hidden on the dead and offline (RF update hook).
 local function indicatorUpdate(b, unit)
+  if not b.indRows then return end
   for _, row in ipairs(b.indRows) do
     pointRow(row, unit, b.indUnit)
     row.frame:SetShown(not b.down)
@@ -217,11 +218,64 @@ local function indicatorEmptied(b)
   for _, row in ipairs(b.indRows) do row:SetUnit(nil) end
 end
 
+-- Building ahead -------------------------------------------------------------------------
+-- An aura container takes the client some 12 ms to make, and a tile has four or five, so the 40
+-- tiles' rows are not made at login (some 2 s). A tile gets them when it first shows a unit, and
+-- the tiles a group may fill next are built ahead one a frame (RA.BuildAhead), since no container
+-- can be made in a fight. A tile first given a unit in a fight gets its rows when the fight ends.
+
+-- How many tiles a party keeps built ahead: its own group's.
+RA.PARTY_TILES = 5
+
+-- Whether the tile has its aura rows yet.
+local function built(b)
+  return b.debuffRow ~= nil
+end
+
+-- Builds a tile's rows and indicators (out of combat).
+local function build(b)
+  addRows(b)
+  addIndicators(b)
+end
+
+-- How many tiles are kept built ahead: every one in a raid (it can grow in a fight), the first
+-- group's in a party, none alone.
+function RA.TilesAhead()
+  if type(IsInRaid) == "function" and IsInRaid() then return #RF.buttons end
+  if type(IsInGroup) == "function" and IsInGroup() then return math.min(RA.PARTY_TILES, #RF.buttons) end
+  return 0
+end
+
+-- One frame's share of the building ahead: the first tile within RA.TilesAhead without rows gets
+-- them. True while another is left.
+local function buildOne()
+  for i = 1, RA.TilesAhead() do
+    local b = RF.buttons[i]
+    if not built(b) then build(b) return true end
+  end
+  return false
+end
+
+-- Builds the rows of the tiles the group may fill next, one tile a frame, out of combat.
+function RA.BuildAhead()
+  ns.Spread("raid aura rows", buildOne)
+end
+
+-- A tile that shows a unit before its rows were built ahead gets them now, or (in a fight) once
+-- it ends, and is refreshed then. True when the tile has its rows.
+local function ensure(b)
+  if built(b) then return true end
+  if not ns.InCombat() then build(b) return true end
+  ns.OutOfCombat(function() if not built(b) then build(b) RF.Update(b) end end, b)
+  return false
+end
+
 -- Updating ------------------------------------------------------------------------------
 
 -- Points the rows at the button's unit, hides them on the dead and offline,
 -- and paints the fallback highlight (RF update hook).
 local function update(b, unit)
+  if not ensure(b) then return end
   pointRow(b.debuffRow, unit, b.auraUnit)
   pointRow(b.hotRow, unit, b.auraUnit)
   b.auraUnit = unit
@@ -239,14 +293,14 @@ local function emptied(b)
   if b.dispel then b.dispel:Hide() end
 end
 
--- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).
+-- Module entry point (Core/Modules.lua): hook into raid tiles (existing and new), and build the
+-- rows ahead now and whenever the group changes.
 function RA.Enable(settings)
   RA.settings = settings
-  for _, b in ipairs(RF.buttons) do setup(b); indicatorSetup(b) end
-  table.insert(RF.setupHooks, setup)
-  table.insert(RF.setupHooks, indicatorSetup)
   table.insert(RF.updateHooks, update)
   table.insert(RF.updateHooks, indicatorUpdate)
   table.insert(RF.emptyHooks, emptied)
   table.insert(RF.emptyHooks, indicatorEmptied)
+  ns.On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
+  RA.BuildAhead()
 end
