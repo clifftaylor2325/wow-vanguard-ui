@@ -4641,6 +4641,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The menu has no Report Chat entry; Whisper, Invite and Ignore still work from it.
 - If it fails, paste: a screenshot of the menu and the restored line.
 
+### 33.390 Nameplate aura icons in the open world (Forever)
+
+- Do: With nameplates on, quest in a starting zone for ten minutes, putting your debuffs on mobs and walking past friendly NPCs and players, then type `/vg errors`.
+- Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge.
+- If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
