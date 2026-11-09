@@ -240,6 +240,22 @@ function ns.Report(where, err)
   forward(record(where, err, 4))
 end
 
+-- What Vanguard left off this session on purpose because the client is not what it was written against (a window
+-- skin whose window a game patch changed): plain lines, oldest first, each once. Not errors: /vg errors and
+-- /vg report list them after the errors, and the error badge does not count them.
+ns.notes = {}
+local noted = {}  -- note line -> true once kept
+
+-- Keeps a line under `where` among the notes (ns.notes), once; the same line again is not kept twice.
+---@param where string  the site, as /vg errors shows it
+---@param text string
+function ns.Note(where, text)
+  local line = where .. ": " .. text
+  if noted[line] then return end
+  noted[line] = true
+  ns.notes[#ns.notes + 1] = line
+end
+
 -- Forgets every caught error (/vg errors clear).
 function ns.ClearErrors()
   ns.errors, byText, printed = {}, {}, {}

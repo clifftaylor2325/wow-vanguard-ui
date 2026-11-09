@@ -534,6 +534,7 @@ end
 
 GW.Add("system", { "EditModeManagerFrame" }, GW.SkinEditMode)
 GW.Add("system", { "EditModeSystemSettingsDialog" }, GW.SkinEditSettings)
+GW.Needs({ "EditModeSystemSettingsDialog" }, { methods = { "UpdateSettings", "UpdateExtraButtons" } })
 GW.Add("system", {
   "EditModeLayoutDialog", "EditModeImportLayoutDialog", "EditModeImportLayoutLinkDialog", "EditModeUnsavedChangesDialog",
 }, GW.SkinEditDialog)
@@ -674,6 +675,7 @@ end
 
 GW.Add("system", { "QuickKeybindFrame" }, GW.SkinQuickKeybind)
 GW.Add("system", { "CooldownViewerSettings" }, GW.SkinCooldownSettings)
+GW.Needs({ "CooldownViewerSettings" }, { methods = { "RefreshLayout" } })
 GW.Add("system", { "CooldownViewerLayoutDialog", "CooldownViewerImportLayoutDialog" }, GW.SkinEditDialog)
 GW.Add("system", { "CooldownViewerSettingsEditAlert", "GroupBuffFilterEditVisualAlert" }, GW.SkinCooldownAlert)
 GW.AddOnDemand("system", "Blizzard_MovePad", { "MovePadFrame" }, GW.SkinMovePad)
@@ -837,6 +839,7 @@ end
 GW.Add("system", { "HelpFrame" }, GW.SkinHelp)
 GW.Add("system", { "TicketStatusFrame" }, GW.SkinTicketStatus)
 GW.Add("system", { "ReportFrame" }, GW.SkinReport)
+GW.Needs({ "ReportFrame" }, { methods = { "AnchorMinorCategory" } })
 GW.Add("system", { "ReportCheatingDialog" }, GW.SkinReportCheating)
 GW.Add("system", { "SplashFrame" }, GW.SkinSplash)
 GW.Add("system", { "ColorPickerFrame" }, GW.SkinColorPicker)

@@ -110,8 +110,8 @@ it("open mail: a redraw puts the look back, a second show paints nothing more, t
 it("open mail: a client without the body text, the stationery, the items or the Update method loads cleanly", () => {
   const addon = loggedIn(WINDOWS_ENV + `__window("OpenMailFrame")`);
   addon.eval("OpenMailFrame:Show()");
-  expect(windowState(addon, "OpenMailFrame").panel).toBe(true);
-  const odd = loggedIn(WINDOWS_ENV + `__window("OpenMailFrame") OpenMailBodyText = {} OpenMailLetterButton = {}`);
+  expect([windowState(addon, "OpenMailFrame").panel, addon.eval("return ns.notes")], "without Update the letter keeps the game's look, said once under Left off").toEqual([false, ["window OpenMailFrame: skin left off, the game's window has no Update()"]]);
+  const odd = loggedIn(WINDOWS_ENV + `__window("OpenMailFrame") __needs("OpenMailFrame") OpenMailBodyText = {} OpenMailLetterButton = {}`);
   odd.eval("OpenMailFrame:Show()");
   expect([windowErrors(addon), windowErrors(odd), addon.eval("return #ns.errors")], "no errors").toEqual(["none", "none", 0]);
 });
@@ -162,6 +162,7 @@ it("open mail: a letter window missing its page, invoice or sum line loads clean
 // The guild window the way the game builds it: portrait overlay, panes with inset frames, a stream dropdown, a max/min pair.
 const GUILD_ENV = WINDOWS_ENV + `
   local f = __window("CommunitiesFrame")
+  CommunitiesGuildInfoFrame_UpdateText = CommunitiesGuildInfoFrame_UpdateText or function() end
   f.PortraitOverlay = CreateFrame("Frame", nil, f) f.PortraitOverlay.Emblem = f.PortraitOverlay:CreateTexture()
   for _, key in ipairs({ "CommunitiesList", "MemberList", "Chat" }) do
     local pane = CreateFrame("Frame", nil, f) pane.Art = pane:CreateTexture() f[key] = pane
@@ -690,7 +691,7 @@ it("guild dialogs: a client without them, or with their parts missing, loads cle
 // The channels window and the friends dialogs as the game builds them: a button-frame window, dialogs with a
 // border frame, headers, named edit boxes and buttons.
 const FRIENDS_ENV = DIALOG_ENV + `
-  __window("ChannelFrame")
+  __window("ChannelFrame") __needs("ChannelFrame")
   local pop = __dialog("CreateChannelPopup")
   pop.Header = CreateFrame("Frame", nil, pop) pop.Header.Art = pop.Header:CreateTexture()
   pop.BG = CreateFrame("Frame", nil, pop) pop.BG.Art = pop.BG:CreateTexture()
@@ -1221,9 +1222,12 @@ it("social toasts: the switch off leaves them the game's; a toast missing its pa
   off.eval("__showToast(true)");
   const t = toastLook(off);
   expect([t.art, t.panel, t.glyph, t.bottomText, off.eval("return ns.FrameState('vgWindow')[BNToastFrame] == nil")], "art kept, no panel, no glyph, the game's grey code left in the line, not watched").toEqual([[1, 1, 1, 1], false, false, "|cff999999TEST-ONLY has come online|r", true]);
-  const bare = loggedIn(WINDOWS_ENV + 'local f = CreateFrame("Frame", "BNToastFrame", UIParent) f:Hide()');
+  const bare = loggedIn(WINDOWS_ENV + 'local f = CreateFrame("Frame", "BNToastFrame", UIParent) f:Hide() function f:ShowToast() end');
   bare.eval("BNToastFrame:Show()");
   expect([windowErrors(bare), bare.eval("return #ns.errors"), bare.eval(`${PAINTED} return painted(BNToastFrame)`)], "a toast with no lines, icon, X or tooltip: a panel, no errors").toEqual(["none", 0, true]);
+  const gone = loggedIn(WINDOWS_ENV + 'local f = CreateFrame("Frame", "BNToastFrame", UIParent) f:Hide()');
+  gone.eval("BNToastFrame:Show()");
+  expect([gone.eval(`${PAINTED} return painted(BNToastFrame)`), gone.eval("return ns.notes")], "a toast the game no longer shows through ShowToast keeps its look, said once").toEqual([false, ["window BNToastFrame: skin left off, the game's window has no ShowToast()"]]);
 });
 
 // TEST-ONLY voice chat prompts: toasts with their icon under Icon, one or two lines, and the offer's Join button.

@@ -1804,7 +1804,7 @@ it("game windows in the Vanguard look: framed windows, popups, breath bar, and w
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval("MirrorTimerContainer:Hide() MirrorTimerContainer:Show() MirrorTimerContainer:SetupTimer(1)");
   expect([timers(), addon.eval("return ns.Theme.PaintedCount()")], "the container showing again (a timer starting) keeps the look and paints nothing new").toEqual([true, painted]);
-  addon.eval('__window("PlayerSpellsFrame")');
+  addon.eval('__window("PlayerSpellsFrame") __needs("PlayerSpellsFrame")');
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   expect(windowState(addon, "PlayerSpellsFrame"), "the spellbook is skinned when it loads").toMatchObject({ art: 0, panel: true });
   addon.fire("ADDON_LOADED", "TEST-ONLY_SomethingElse");
@@ -1815,7 +1815,7 @@ it("game windows: one skin that fails is reported and the other windows, and tho
   expect(addon.eval("return ns.errors[1].text:find('window CharacterFrame', 1, true) ~= nil"), "the failure is reported under the window's name").toBe(true);
   addon.eval("MerchantFrame:Show()");
   expect(windowState(addon, "MerchantFrame"), "windows after it are still skinned").toMatchObject({ art: 0, panel: true });
-  addon.eval('__window("PlayerSpellsFrame")');
+  addon.eval('__window("PlayerSpellsFrame") __needs("PlayerSpellsFrame")');
   addon.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   expect(windowState(addon, "PlayerSpellsFrame"), "and windows that load later too").toMatchObject({ art: 0, panel: true });
   addon.eval("CharacterFrame:Show()");

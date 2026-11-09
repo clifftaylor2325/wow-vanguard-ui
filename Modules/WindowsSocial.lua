@@ -124,6 +124,7 @@ function GW.SkinOpenMail(frame)
 end
 
 GW.Add("social", { "OpenMailFrame" }, GW.SkinOpenMail)
+GW.Needs({ "OpenMailFrame" }, { methods = { "Update" } })
 
 -- The open letter's body in the text colour again after a theme change (its tag colours are set by hand), while
 -- the social group is on.
@@ -555,6 +556,7 @@ function GW.SkinGuildWindow(frame)
 end
 
 GW.Add("social", { "CommunitiesFrame" }, GW.SkinGuildWindow)
+GW.Needs({ "CommunitiesFrame" }, { parts = { "MemberList" }, methods = { "SetDisplayMode" } })
 
 -- Dialogs -----------------------------------------------------------------------------------------
 
@@ -969,6 +971,7 @@ local function dressChannels(frame)
 end
 
 GW.Add("social", { "ChannelFrame" }, dressChannels)
+GW.Needs({ "ChannelFrame" }, { parts = { "ChannelRoster" }, methods = { "ChannelList.Update" } })
 
 -- The create channel dialog: its title (on the header when the client has one), its two field labels light, its voice check box.
 local function dressCreateChannel(popup)
@@ -1286,6 +1289,7 @@ function GW.SkinSocial(frame)
 end
 
 GW.Add("social", { "SocialUIFrame" }, GW.SkinSocial)
+GW.Needs({ "SocialUIFrame" }, { methods = { "RefreshTabs" } })
 
 -- Guild creation --------------------------------------------------------------------------------
 
@@ -1679,6 +1683,7 @@ function GW.SkinToast(frame)
 end
 
 GW.Add("social", { "BNToastFrame", "TimeAlertFrame" }, GW.SkinToast)
+GW.Needs({ "BNToastFrame" }, { methods = { "ShowToast" } })
 
 -- The voice chat prompts (the offer to join a party's or raid's voice channel, the note that it is on) are the same
 -- kind of toast, with their icon under Icon: the toast skin, and the offer's Join button themed.

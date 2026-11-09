@@ -148,7 +148,8 @@ it("S8.1 scoreboards: loaded later (on demand), switched off, or bare", () => {
   expect([windowState(off, "PVPMatchScoreboard").art !== 0, off.eval("return PVPMatchScoreboard.vgWindow == nil")], "with the group off").toEqual([true, true]);
   const bare = loggedIn(PVP_ENV + '__window("PVPMatchScoreboard") __window("PVPMatchResults")');
   bare.eval("PVPMatchScoreboard:Show() PVPMatchResults:Show()");
-  expect([windowState(bare, "PVPMatchResults").panel, windowErrors(bare)], "windows without a table, bar or buttons").toEqual([true, "none"]);
+  expect([windowState(bare, "PVPMatchResults").panel, windowErrors(bare), bare.eval("return ns.notes")], "windows without the game's artwork set-up keep its look, each said once under Left off").toEqual([false, "none", [
+    "window PVPMatchScoreboard: skin left off, the game's window has no SetupArtwork()", "window PVPMatchResults: skin left off, the game's window has no SetupArtwork()"]]);
 });
 
 // Queue dialogs -----------------------------------------------------------------------------------

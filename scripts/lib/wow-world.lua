@@ -1989,6 +1989,10 @@ local function auctionHouseFrame()
   f:SetSize(800, 538)
   f:SetPoint("CENTER")
   auctionTabs(f)
+  -- The search bar and the category list every client's window has (Blizzard_AuctionHouseFrame.xml), and the
+  -- function the list sets each category row up with (Blizzard_AuctionHouseCategoriesList.lua); a test's own wins.
+  f.SearchBar, f.CategoriesList = stub.newWidget("Frame", nil, f), stub.newWidget("Frame", nil, f)
+  AuctionHouseFilterButton_SetUp = AuctionHouseFilterButton_SetUp or function() end
   -- The item a bag click (or the game's sell frame) puts up for sale: recorded in world.ah.postItem.
   function f:SetPostItem(loc) world.ah.postItem = loc self:SetDisplayMode(AuctionHouseFrameDisplayMode.ItemSell) end
   stub.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI")

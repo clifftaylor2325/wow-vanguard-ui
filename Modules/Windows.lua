@@ -822,14 +822,21 @@ function GW.IsPagerCaption(text)
   return false
 end
 
+-- The value reached from frame by a dotted path of keys ("PagedSpellsFrame.PagingControls", "ChannelList.Update"):
+-- a part or a method; nil when a step is missing or is no table.
+function GW.Reach(frame, path)
+  local value = frame
+  for key in string.gmatch(path, "[^.]+") do
+    if type(value) ~= "table" then return nil end
+    value = value[key]
+  end
+  return value
+end
+
 -- The part reached from frame by a dotted path of parentKeys ("PagedSpellsFrame.PagingControls"); nil when a step
 -- is missing or is no table.
 function GW.Part(frame, path)
-  local part = frame
-  for key in string.gmatch(path, "[^.]+") do
-    if type(part) ~= "table" then return nil end
-    part = part[key]
-  end
+  local part = GW.Reach(frame, path)
   return type(part) == "table" and part or nil
 end
 
@@ -2312,11 +2319,51 @@ local function wanted(name, frame)
   return not vgWindow[frame] and not replaced(name)
 end
 
+-- Whether a value is of the kind a need asks for: a part is a table (a frame or region), a method or a game function
+-- a function.
+GW.NEED_KINDS = { parts = "table", methods = "function" }
+
+-- The first path of a list that does not reach a value of the type wanted from root, or nil.
+local function firstMissing(root, paths, wanted)
+  for _, path in ipairs(paths or {}) do
+    if type(GW.Reach(root, path)) ~= wanted then return path end
+  end
+end
+
+-- The first thing a window's skin is written against that this client lacks, as /vg errors names it: a part of the
+-- window ("MemberList"), a method ("ChannelList.Update()") or a game function ("QuestInfo_Display()"); nil when it
+-- has all of them (or the skin declares none, GW.Needs).
+---@param name string  the window's global name
+---@param frame table
+---@return string|nil
+function GW.Missing(name, frame)
+  local needs = GW.NEEDS[name] or {}
+  local part = firstMissing(frame, needs.parts, GW.NEED_KINDS.parts)
+  if part then return part end
+  local method = firstMissing(frame, needs.methods, GW.NEED_KINDS.methods)
+  if method then return method .. "()" end
+  local game = firstMissing(_G, needs.game, GW.NEED_KINDS.methods)
+  if game then return game .. "()" end
+end
+
+-- Every window whose skin was left off this session, with what its client lacks: name -> the missing part.
+GW.SKIPPED = {}
+
+-- Whether a window's skin is left off because the client lacks something the skin needs (a game patch changed the
+-- window): one line in /vg errors, the window stays as the game draws it, and every other window is still skinned.
+local function skipped(name, frame)
+  local gone = GW.SKIPPED[name] or GW.Missing(name, frame)
+  if gone == nil then return false end
+  if GW.SKIPPED[name] == nil then ns.Note("window " .. name, "skin left off, the game's window has no " .. gone) end
+  GW.SKIPPED[name] = gone
+  return true
+end
+
 -- Skins a registered window now and every time it shows (once hooked). A skin that fails
 -- is reported under the window's name and stops neither its OnShow hook nor the other windows.
 local function watch(name)
   local frame = _G[name]
-  if not wanted(name, frame) then return end
+  if not wanted(name, frame) or skipped(name, frame) then return end
   local skin = GW.REGISTERED[name].skin
   -- Runs the window's skin under ns.Try.
   local function run(f) ns.Try("window " .. name, skin, f) end
@@ -2348,7 +2395,7 @@ end
 -- Registers game windows under a group (docs/design/RESKIN.md 3.1), at file scope:
 --   GW.Add(group, names, skin)                      skinned now and on every show (popups too)
 --   GW.AddOnDemand(group, addon, names, skin)       once that part of the game loads
--- skin is a function(frame), GW.Skin when nil.
+-- skin is a function(frame), GW.Skin when nil. What a skin is written against is declared with GW.Needs.
 function GW.Add(group, names, skin)
   record(group, names, skin)
 end
@@ -2358,6 +2405,21 @@ function GW.AddOnDemand(group, addon, names, skin)
   GW.ON_DEMAND[addon] = GW.ON_DEMAND[addon] or {}
   for _, name in ipairs(names) do table.insert(GW.ON_DEMAND[addon], name) end
   record(group, names, skin)
+end
+
+-- What each window's skin is written against: name -> { parts = { dotted paths of parts of the window },
+-- methods = { dotted paths of its methods the skin hooks }, game = { names of game functions it hooks } }, checked when the window is first watched (at login, or
+-- when its part of the game loads). A window that lacks one keeps the game's look (GW.Missing), so a game patch
+-- that reshapes it costs one line in /vg errors instead of a half-dressed window. List only what the skin follows
+-- the window with (the methods it hooks to redress, the parts it is built on) on every client it runs on: the
+-- parts a skin only touches when they are there stay out.
+GW.NEEDS = {}
+
+-- Declares what the skin of each named window needs (see GW.NEEDS); at file scope, beside its GW.Add.
+---@param names string[]
+---@param needs { parts: string[]?, methods: string[]?, game: string[]? }
+function GW.Needs(names, needs)
+  for _, name in ipairs(names) do GW.NEEDS[name] = needs end
 end
 
 -- Push buttons a window keeps outside Button1-4, themed with it.
@@ -2413,6 +2475,9 @@ GW.Add("windows", { "LootFrame" }, GW.SkinLoot)
 GW.Add("popups", GW.POPUPS, GW.SkinFramed)
 GW.Add("timers", GW.TIMERS, GW.SkinTimerContainer)
 for addon, names in pairs(GW.LATER) do GW.AddOnDemand("windows", addon, names, GW.SkinFramed) end
+GW.Needs(GW.TIMERS, { methods = { "SetupTimer" } })
+GW.Needs({ "PlayerSpellsFrame" }, { parts = { "SpellBookFrame.PagedSpellsFrame", "TalentsFrame" } })
+GW.Needs({ "AuctionHouseFrame" }, { parts = { "SearchBar", "CategoriesList" }, game = { "AuctionHouseFilterButton_SetUp" } })
 
 -- Module entry point (Core/Modules.lua): every registered window whose group is on is
 -- watched (those loaded now and later), plus the game menu, readable text, durability

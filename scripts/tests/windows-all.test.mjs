@@ -34,14 +34,15 @@ const EXCEPTIONS = {
 };
 
 // Builds, before login, a stub window (WINDOWS_ENV's __window: a ButtonFrameTemplate-shaped frame) for every
-// window of the group the client loads at login that the stub world doesn't already have; the on-demand ones
+// window of the group the client loads at login that the stub world doesn't already have, with what its skin declares
+// it needs (__needs, GW.Needs); the on-demand ones
 // wait for their part of the game (__lazy). __panel(f): whether Vanguard painted a texture on the frame itself.
 const groupEnv = (group) => WINDOWS_ENV + `
   local GW = ns.GetModule("Windows")
   __lazy = {}
   for addon, names in pairs(GW.ON_DEMAND) do for _, n in ipairs(names) do __lazy[n] = addon end end
   for _, name in ipairs(GW.ORDER) do
-    if GW.REGISTERED[name].group == "${group}" and not __lazy[name] and not _G[name] then __window(name) end
+    if GW.REGISTERED[name].group == "${group}" and not __lazy[name] then _G[name] = _G[name] or __window(name) __needs(name) end
   end
   function __panel(f)
     for _, r in ipairs({ f:GetRegions() }) do if r.__kind == "Texture" and r.__texture ~= "TEST-ONLY-ART" and r.__alpha ~= 0 then return true end end
@@ -55,7 +56,7 @@ const openAll = (group) => `
   local GW, loaded = ns.GetModule("Windows"), {}
   for _, name in ipairs(GW.ORDER) do
     local addon = __lazy[name]
-    if GW.REGISTERED[name].group == "${group}" and addon and not _G[name] then __window(name) loaded[addon] = true end
+    if GW.REGISTERED[name].group == "${group}" and addon and not _G[name] then __window(name) __needs(name) loaded[addon] = true end
   end
   for addon in pairs(loaded) do __wfgStub.fire("ADDON_LOADED", addon) end
   for _, name in ipairs(GW.ORDER) do
@@ -116,3 +117,42 @@ for (const group of ["popups", "system"]) {
     for (const [name, r] of Object.entries(got)) expect(r, `${name}: no Vanguard piece in it; the backdrop on UIParent, filling it, painted`).toEqual([0, true, true, true]);
   });
 }
+
+// Dependency tables (GW.Needs): what a skin is written against, checked when its window is first watched.
+it("every window a skin declares needs for is a registered window, and each need names parts, methods or game functions", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local GW, odd = ns.GetModule("Windows"), {}
+    for name, needs in pairs(GW.NEEDS) do
+      if not GW.REGISTERED[name] then odd[#odd + 1] = name .. " (not registered)" end
+      for key in pairs(needs) do if key ~= "parts" and key ~= "methods" and key ~= "game" then odd[#odd + 1] = name .. " (" .. key .. ")" end end
+    end
+    table.sort(odd) return table.concat(odd, ", ")`), "no typo in a window's name or a need's kind").toBe("");
+});
+
+it("a window the game reshaped keeps the game's look, said once under Left off in /vg errors and /vg report; the rest of its group is skinned", () => {
+  const addon = loggedIn(groupEnv("social") + `
+    OpenMailFrame.Update = nil  -- TEST-ONLY: a patch renamed the method the letter's skin follows
+    SocialUIFrame.RefreshTabs = 1  -- TEST-ONLY: and one a value that is no method`);
+  addon.eval(openAll("social"));
+  addon.eval("OpenMailFrame:Hide() OpenMailFrame:Show()");
+  const got = results(addon, "social");
+  expect([got.OpenMailFrame, got.SocialUIFrame], "both left as the game draws them").toEqual([{ hooked: false, panel: false }, { hooked: false, panel: false }]);
+  expect(wrong(got).sort(), "every other window of the group is skinned").toEqual([`OpenMailFrame ${JSON.stringify(got.OpenMailFrame)}`, `SocialUIFrame ${JSON.stringify(got.SocialUIFrame)}`].sort());
+  const lines = ["window OpenMailFrame: skin left off, the game's window has no Update()", "window SocialUIFrame: skin left off, the game's window has no RefreshTabs()"];
+  expect([addon.eval("return ns.notes"), addon.eval("return #ns.errors")], "one line each however often it shows, and no error").toEqual([lines, 0]);
+  addon.eval("ns.ShowErrors = function(title, text) __shown = text end");
+  addon.slash("errors");
+  expect(addon.eval("return __shown"), "/vg errors opens with no error caught, the lines under Left off").toContain(`Left off this session:\n  ${lines[0]}\n  ${lines[1]}`);
+  expect(addon.eval("return ns.ReportText()"), "/vg report carries them on one line").toContain(`Left off: ${lines[0]}; ${lines[1]}`);
+  expect(addon.eval("return ns.GetModule('Windows').SKIPPED"), "and the module keeps what each lacks").toEqual({ OpenMailFrame: "Update()", SocialUIFrame: "RefreshTabs()" });
+});
+
+it("a window whose part of the game loads later is checked then: a missing game function leaves it off, the report says none were left off before", () => {
+  const addon = loggedIn(groupEnv("map"));
+  expect(addon.eval("return ns.ReportText()"), "nothing left off yet").toContain("Left off: none");
+  addon.eval(`local give = __needs
+    function __needs(name) give(name) if name == "CalendarFrame" then CalendarFrame_SetToday = nil end end  -- TEST-ONLY: the client lacks it
+    ${openAll("map")}`);
+  expect([results(addon, "map").CalendarFrame, addon.eval("return ns.notes")], "the calendar keeps the game's look").toEqual([
+    { hooked: false, panel: false }, ["window CalendarFrame: skin left off, the game's window has no CalendarFrame_SetToday()"]]);
+});

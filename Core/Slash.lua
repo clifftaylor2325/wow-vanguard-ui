@@ -644,10 +644,13 @@ local function errorBlock(e)
   return table.concat(out, "\n")
 end
 
--- The /vg errors text: the version line, the client line, then each caught error with its stack.
+-- The /vg errors text: the version line, the client line, each caught error with its stack, then what was left off
+-- because the client differs from what it was written against (ns.notes).
 local function errorsText()
   local lines = { string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()), clientLine() }
   for _, e in ipairs(ns.errors) do lines[#lines + 1] = errorBlock(e) end
+  if #ns.notes > 0 then lines[#lines + 1] = "Left off this session:" end
+  for _, note in ipairs(ns.notes) do lines[#lines + 1] = "  " .. note end
   return plain(table.concat(lines, "\n"))
 end
 
@@ -655,7 +658,7 @@ end
 -- copy window with the version, client and aura backend a bug report needs; clear empties the list.
 local function errorsCommand(rest)
   if rest == "clear" then ns.ClearErrors() return chat(L["Cleared."]) end
-  if #ns.errors == 0 then return chat(L["No errors caught this session."]) end
+  if #ns.errors + #ns.notes == 0 then return chat(L["No errors caught this session."]) end
   chat(ns.Format(L["{count} error(s), opened in the copy window."], { count = #ns.errors }))
   ns.ShowErrors(L["Vanguard errors: Ctrl+C to copy"], errorsText())
 end
@@ -696,6 +699,7 @@ local function reportHead()
   return { "### Vanguard report v1 ###",
     string.format("Vanguard %s  ·  interface %s  ·  profile %s  ·  %d/%d modules on", version(), interfaceText(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()),
     clientLine(), ns.Client.Line(), restrictionLine(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
+    "Left off: " .. (#ns.notes > 0 and table.concat(ns.notes, "; ") or "none"),
     string.format("Errors: %d (%d in all)", #ns.errors, occurrences()) }
 end
 
