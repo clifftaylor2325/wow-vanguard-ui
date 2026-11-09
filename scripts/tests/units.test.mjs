@@ -844,7 +844,7 @@ it("Versus deck: one rounded panel behind the player and target, the crest at th
 // The deck's top and bottom against the rows the player frame carries, as [deck top, deck bottom, row top, row bottom] (TEST-ONLY reads).
 const deckAgainst = (addon, rowA, rowB) => {
   addon.slash("");
-  addon.eval('__click("Unit frames") __click("Versus deck: your")');
+  addon.eval(`__click("Unit frames") ${DECK_SWITCH}`);
   return addon.eval(`local panel, first, second = ns.GetModule("UnitFrames").deck, ${rowA}, ${rowB}
     return { panel:GetTop(), panel:GetBottom(), first:GetTop(), first:GetBottom(), second:GetTop(), second:GetBottom() }`);
 };
