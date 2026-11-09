@@ -1,11 +1,11 @@
 # Vanguard: the plan from B- to A (handoff)
 
 Repo `clifftaylor2325/wow-vanguard-ui`, written 2026-11-09 against commit `c6853f7` (0.9.3 plus the guided-setup work, #794).
-Status: **in progress**. Phase 1 started 2026-11-09. Revised the same day for two calls Cliff made: the verification sprint is skipped (section 4), and every task is done by Fable 5.2 at high effort.
+Status: **in progress**. Phase 1 started 2026-11-09. Revised the same day for two calls Cliff made: the verification sprint is skipped (section 4), and the model rule changed twice (see the next paragraph).
 Source: the product and code review of the same date (`VANGUARD-REVIEW-2026-11-09.md`, to sit beside this file). Task lines below cite its item ids (Q1 to Q21, N1 to N21, B1 to B10) and its bug ids (H1 to H4, M1 to M16, L1 to L29); the review holds the `file:line` detail and the reasoning, so a thread reads the review entry for its task before it starts. If a line has moved, grep for the identifier quoted there.
 Naming rule for this file and everything made from it: no other addon or competing product is named; patterns are described generically.
 
-`CLAUDE.md` applies in full (working method, one commit per task, one PR per phase, drafts until ready), with one override Cliff set for this plan on 2026-11-09: every task is done by Fable 5.2 at high effort, not by the model-by-task table. Where a task below says "Opus" or "Haiku" it now only marks how much care the task needs.
+`CLAUDE.md` applies in full, including its model-by-task table. Cliff first set every task to Fable 5.2 at high effort (2026-11-09), then the same day went back to the table for everything started after the first five threads (the phase 1 fixes, the 0.9.4 release, tooltips, nameplates and auras, and the code-only look work, which finish on Fable 5.2). From here on: Sonnet at medium effort for fixes and feature work; Opus or Fable at high effort for protected and taint-prone paths, the lifecycle design and harness rules; Haiku for mechanical work; Fable for reviews and the phase 7 re-grade. The per-task notes below ("Opus", "Haiku") follow that table.
 
 Other threads are open on the same repo (section 10). A thread on this plan checks the open PRs before it starts and stays out of files another open PR owns.
 
@@ -211,7 +211,6 @@ Phase 0 (decisions)
 ## 11. Risks
 
 - **Verification is skipped.** A bug that only the game shows ships to players and comes back as a report, as the nameplate icon error did. Mitigation: the `/vg report` loop, fast patch releases, and A2-1 if the grade matters more than the ten minutes.
-- **Fable 5.2 at high effort for everything.** It uses the usage allowance far faster than the model-by-task table in `CLAUDE.md`. Mitigation: one thread per independent branch, and no thread for a task that waits on another PR.
 - **The lifecycle change regresses stable modules.** Mitigation: design note first, display-only modules first, batches of ten, the full test label on those PRs.
 - **The art pass lands in pieces and looks mixed.** Mitigation: D3 first, the crest and ornament set before any other asset, one icon family in one go.
 - **Scope creeps back in.** Mitigation: D2. A new idea goes in a list for after 1.0.
