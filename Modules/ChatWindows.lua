@@ -243,19 +243,35 @@ local function isBuiltin(frame)
   return type(IsBuiltinChatWindow) == "function" and IsBuiltinChatWindow(frame) == true
 end
 
--- Closes a permanent chat window as the game's tab menu does: its chat types and channels go back to the main
--- window first (FCF_PopInWindow), else a plain FCF_Close.
+-- Closes a permanent chat window that shows no channel as the game's tab menu does: its chat types go back to
+-- the main window first (FCF_PopInWindow), else a plain FCF_Close.
 local function closeWindow(frame)
   if type(FCF_PopInWindow) == "function" then return FCF_PopInWindow(frame) end
   FCF_Close(frame)
 end
 
--- Closes the edited tab (never the main one or another of the game's own), out of combat (each tab closed in a
--- fight is closed after it).
+-- Whether a tab shows any channel: the game's pop-in would then write those channels into the main window's
+-- channel list from Vanguard's code, and the game's channel-message code reads that list on every line (taint).
+local function hasChannels(frame)
+  return type(frame.channelList) == "table" and next(frame.channelList) ~= nil
+end
+
+-- Selects a docked tab that shows channels (a floating window is already in view; selecting it in the dock would
+-- hide every docked window) and points to its own tab menu, whose Close Chat Window gives them back.
+local function sendToTabMenu(index, frame)
+  if docked(index) and type(FCFDock_SelectWindow) == "function" and type(GENERAL_CHAT_DOCK) == "table" then
+    FCFDock_SelectWindow(GENERAL_CHAT_DOCK, frame)
+  end
+  ns.Chat(L["This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."])
+end
+
+-- Closes the edited tab (never the main one or another of the game's own, and one showing channels only from
+-- its own tab menu), out of combat (each tab closed in a fight is closed after it).
 function CW.Close()
   local index, frame = CW.Editing()
   if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat(L["The main chat tab can't be closed."]) end
   if isBuiltin(frame) then return ns.Chat(L["The game's own chat tabs can't be closed."]) end
+  if hasChannels(frame) then return sendToTabMenu(index, frame) end
   ns.OutOfCombat(function() closeWindow(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab " .. index)
 end
 

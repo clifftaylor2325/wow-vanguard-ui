@@ -206,6 +206,35 @@ it("chat tabs: Close this tab hands the tab's chat back to the main window throu
   expect(addon.eval("return __closed"), "and the tab closed").toBe("ChatFrame2");
 });
 
+it("chat tabs: a tab showing channels is not closed by Vanguard; it is selected and chat points to its tab menu", () => {
+  const stubs = "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end";
+  const addon = loggedIn(ENV + TABS + stubs);
+  addon.eval("GENERAL_CHAT_DOCK = {} FCFDock_SelectWindow = function(dock, frame) __selected = dock == GENERAL_CHAT_DOCK and frame:GetName() end");
+  addon.eval("GetChatWindowInfo = function(i) local name = __wfgWorld.chatWindows[i] if name then return name, 12, 1, 1, 1, 1, 1, 0, 1 end end");
+  addon.eval(`ChatFrame2.channelList = { "Trade" } local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect(addon.eval("return { __popped == nil, __closed == nil, __selected }"), "not popped in, not closed, selected").toEqual([true, true, "ChatFrame2"]);
+  expect(chatHas(addon, /This tab shows channels\. Right-click its tab and choose Close Chat Window/), "and says how").toBe(true);
+  addon.eval(`ChatFrame2.channelList = {} local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect(addon.eval("return __popped"), "with no channels left it closes through the pop-in").toBe("ChatFrame2");
+});
+
+it("chat tabs: a floating tab showing channels is not selected in the dock, so the docked windows stay in view", () => {
+  const addon = loggedIn(ENV + TABS);
+  addon.eval("GENERAL_CHAT_DOCK = {} FCFDock_SelectWindow = function(dock, frame) __selected = frame:GetName() end");
+  addon.eval(`ChatFrame2.channelList = { "Trade" } local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect(addon.eval("return { __selected == nil, __closed == nil }"), "not selected, not closed").toEqual([true, true]);
+  expect(chatHas(addon, /This tab shows channels\. Right-click its tab and choose Close Chat Window/), "and says how").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("chat tabs: a tab showing channels on a client without the dock calls still points to its tab menu", () => {
+  const addon = loggedIn(ENV + TABS);
+  addon.eval("FCFDock_SelectWindow = nil");
+  addon.eval(`ChatFrame2.channelList = { "Trade" } local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect([addon.eval("return __closed"), chatHas(addon, /This tab shows channels\./)], "not closed, told").toEqual([null, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat tabs: two tabs closed in one fight are both closed when it ends", () => {
   const addon = loggedIn(ENV + TABS + "local close = FCF_Close __allClosed = {} FCF_Close = function(f) close(f) table.insert(__allClosed, f:GetName()) end");
   addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
