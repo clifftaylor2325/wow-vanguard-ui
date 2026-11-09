@@ -4707,6 +4707,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The item's sale shows once in Your history, at what the buyer paid, and no sold row for it remains after the invoice arrived.
 - If it fails, paste: the Your history lines for the item and whether a sold row was still listed.
 
+### 33.401 Interrupt mark follows your stance (Forever)
+
+- Do: As a Warrior with Pummel and Shield Bash trained, stand in Defensive Stance, target a casting mob and use Shield Bash on its cast; then switch to Berserker Stance while the target casts.
+- Expect: In Defensive Stance the diamond beside the target cast bar sweeps Shield Bash's cooldown (hollow while it recovers); in Berserker Stance it switches to Pummel's cooldown.
+- If it fails, paste: the cast bar's interrupt mark state and `/run print(C_Spell.IsSpellUsable(6552))` in each stance.
+
+### 33.402 Enchanting's item-to-enchant slot is themed (Forever)
+
+- Do: With the Windows skin on, open the Enchanting window and select any enchant recipe.
+- Expect: The slot where you pick the item to enchant is a square with a thin border like the reagent slots, not the game's gold slot art.
+- If it fails, paste: a screenshot of the recipe form and `/vg` status of the Windows group.
+
+### 33.403 A shaman in the tank role weighs tank stats (Forever)
+
+- Do: On a Forever shaman, open Town and gear, Gear upgrades, set Weigh stats for to Tank (or take the Tank role in a group), then run `/vg weights`.
+- Expect: The chat line reads "Weights for tank (role tank)", and a shield or high-armor stamina piece hovered in the bags reads as an upgrade over spell-power gear.
+- If it fails, paste: The `/vg weights` chat line, and whether the Tank role was taken from the group or the setting.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
