@@ -164,14 +164,16 @@ local function takeFrom(m)
   return false
 end
 
--- Whether no bag at all (the backpack and bags 1 to 4) has a free slot; a client without the call is never full.
+-- Whether no general bag (the backpack and bags 1 to 4 of family 0) has a free slot; a quiver's or soul bag's free
+-- slots do not count, as the next mail's item may not fit there. A client without the call is never full.
 -- Only read after the game itself refused a take, so a take that stacks or fits a quiver is never stopped.
 local function bagsFull()
   local api = C_Container
   if type(api) ~= "table" or type(api.GetContainerNumFreeSlots) ~= "function" then return false end
   local free = 0
   for bag = 0, 4 do
-    free = free + (ns.PlainNumber(api.GetContainerNumFreeSlots(bag)) or 0)
+    local n, family = api.GetContainerNumFreeSlots(bag)
+    if (ns.PlainNumber(family) or 0) == 0 then free = free + (ns.PlainNumber(n) or 0) end
   end
   return free == 0
 end

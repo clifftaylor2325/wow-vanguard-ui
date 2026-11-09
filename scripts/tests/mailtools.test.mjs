@@ -531,6 +531,17 @@ it("Take all stops once with one line when the game refuses an item take and no 
   expect([chatHas(addon, /could not take/), chatHas(addon, /Take all: 1 of 6 done\./), addon.eval(`return ${MT}.running == nil`)]).toEqual([false, true, true]);
 });
 
+it("Take all stops once when the game refuses an item take and only a quiver (bag 4, family 1) has free slots", () => {
+  const quiver = "local free = C_Container.GetContainerNumFreeSlots C_Container.GetContainerNumFreeSlots = function(b) return free(b), b == 4 and 1 or 0 end";
+  const addon = mailer(SERVER + "TakeInboxItem = function(i, n) table.insert(__wfgWorld.taken, { 'item', i, n }) end __wfgWorld.bagSizes = { [0] = 1, 1, 1, 1, 4 } for b = 0, 4 do __wfgWorld.bags[b] = { [1] = { itemID = 1 } } end " + quiver);
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.takeAll");
+  addon.advance(5);
+  expect(taken(addon), "one item take is refused and the run ends").toEqual([["item", 2, 1]]);
+  expect(Array.from(addon.chat()).filter((l) => /Take all: your bags are full\./.test(l)).length, "said once").toBe(1);
+  expect(chatHas(addon, /could not take/), "no line per mail").toBe(false);
+});
+
 it("Take on a row takes the first attachment slot that still holds an item", () => {
   const addon = mailer("__wfgWorld.mail[2].slots = { [3] = true }");
   addon.world.openMailWindow();
