@@ -4725,6 +4725,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The chat line reads "Weights for tank (role tank)", and a shield or high-armor stamina piece hovered in the bags reads as an upgrade over spell-power gear.
 - If it fails, paste: The `/vg weights` chat line, and whether the Tank role was taken from the group or the setting.
 
+### 33.404 Raid frames moved to the top keep a big raid on screen (both)
+
+- Do: Open `/vg unlock`, drag the raid frames' handle to the top left of the screen, lock, then join a raid of 25 or more (a 40-player battleground such as Alterac Valley), or open the Raid frames page in `/vg` and set the sample players preview to Raid (40).
+- Expect: Every group's row is on the screen, the top row just under the screen's top edge; the grid slides down rather than running off the top (in unlock mode the handle stays at the top while the grid sits below it).
+- If it fails, paste: `/vg probe` output and a screenshot showing how many rows are on screen.
+
+### 33.405 The quest dialog's question goes when the quest closes (both)
+
+- Do: Pick up a quest that costs money to hand in (or have a party member share a quest that flags you for PvP), open its reward page (or the shared offer) and press Complete (or Accept) so the question shows, then walk away from the NPC (or let the sharer's offer end) without answering.
+- Expect: The question closes with the quest dialog; no quest is handed in, accepted or declined, and the next quest you open shows its own page with no question over it.
+- If it fails, paste: The chat lines after walking away, and whether the question was still on screen.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
