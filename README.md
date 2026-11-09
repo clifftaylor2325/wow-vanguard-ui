@@ -2,11 +2,14 @@
 
 <p align="center"><img src="art/painted/icon/C2.png" width="180" alt="Vanguard's crest: a navy shield with a brass rim that bears a gold V"></p>
 
-> **Formerly ForeverUI.** Renamed in 0.4.0 because another, unrelated addon called ForeverUI is published on CurseForge and Wago, and two addons with the same folder name overwrite each other. The slash commands are now `/vg` and `/vanguard`. Settings don't carry over by themselves (the saved-settings file is named after the addon): before updating, type `/fui export` in game and keep the string; after updating, `/vg import` it (old ForeverUI strings import fine). Then delete the old `Interface/AddOns/ForeverUI` folder.
->
-> **Not yet checked in the game.** Most of what follows is written from the code and the headless test harness; [docs/CHANGELOG.md](docs/CHANGELOG.md) and [docs/SMOKE-TEST.md](docs/SMOKE-TEST.md) say what has been seen working in the client.
+One addon for your whole WoW Forever UI: unit and raid frames with click casting, action bars, bags, nameplates, chat, the quest tracker and an auction helper, all in one look and one options window. Install it, pick a layout for how you play (or keep the one you have), and you're done. Every part can be switched off.
 
-A from-scratch UI suite for WoW Forever (the 12.1 engine with vanilla content) and, from 0.9.0, Retail 12.1.5: the TOC declares Interface 16001 for Forever and 120105 for Retail. A few parts are Forever only (they are listed in each feature page), and Retail adds its own windows and systems: Mythic+, delves, the Great Vault, housing, the warband bank and the class resources.
+Built for the 12.1 rules: Vanguard never reads a value the game hides from addons, never replaces the game's own scripts, and waits for a fight to end before it moves anything protected.
+
+Vanguard is new and made by one person. If something looks wrong, `/vg feedback` writes the report for you; the [known issues](#known-issues) are below.
+
+Also runs on Retail 12.1.5 from the same download, with Retail's class resources, Mythic+ and delve blocks and its windows in the Vanguard look. Retail support is new and best effort; a few WoW Forever-only parts stay off there, and each feature page lists them.
+
 Written from scratch. It contains no code, art or fonts from other UI addons. It bundles three small shared libraries, unmodified, in `Libs/`: LibStub, CallbackHandler-1.0 and LibSharedMedia-3.0, which addons use to share fonts and bar textures (see Credits).
 
 ## Install
@@ -38,7 +41,19 @@ The commands are in [docs/COMMANDS.md](docs/COMMANDS.md), and other addons can u
 
 ## What the client hides
 
-Every client call is checked before use, and values the client hides from addons go to the bars unread. Auras use the client's own aura containers where it has them (12.1 and WoW Forever), so icons, stacks, timers and debuff colors keep working while it hides aura values in instanced combat; if the client refuses one of those containers, Vanguard switches to its own icons for the rest of the session (it says so in `/vg errors`); on those icons, an aura filter word the client doesn't know (say crowd control) is dropped for the session, and it is listed in `/vg errors`; `/vg status` shows which aura backend is in use, which optional client calls were found and which add-on restrictions the game has on (Combat, Encounter, ChallengeMode, PvPMatch, Map, Chat; chat watch, the chat filter, web links in chat, the group board and the quest arrow and minimap marks skip their work while theirs is on). If the client can't compile secure snippets (a WoW Forever beta bug), Vanguard says so at login and in `/vg status` and turns hover keys off; mouse click-casting still works, bar 1 still pages with stances, forms and Shift+number (through the game's own page attribute rather than a snippet), and the raid and main tank tiles are set up without one. None of this has been checked in game yet: please report what breaks.
+Every client call is checked before use, and values the client hides from addons go to the bars unread. Auras use the client's own aura containers where it has them (12.1 and WoW Forever), so icons, stacks, timers and debuff colors keep working while it hides aura values in instanced combat; if the client refuses one of those containers, Vanguard switches to its own icons for the rest of the session (it says so in `/vg errors`); on those icons, an aura filter word the client doesn't know (say crowd control) is dropped for the session, and it is listed in `/vg errors`; `/vg status` shows which aura backend is in use, which optional client calls were found and which add-on restrictions the game has on (Combat, Encounter, ChallengeMode, PvPMatch, Map, Chat; chat watch, the chat filter, web links in chat, the group board and the quest arrow and minimap marks skip their work while theirs is on). If the client can't compile secure snippets (a WoW Forever beta bug), Vanguard says so at login and in `/vg status` and turns hover keys off; mouse click-casting still works, bar 1 still pages with stances, forms and Shift+number (through the game's own page attribute rather than a snippet), and the raid and main tank tiles are set up without one.
+
+## Known issues
+
+- On WoW Forever, 0.9.3 can show one "aura icon pixels" error from `Core/Auras.lua` in `/vg errors` each session. The fix is in the next release.
+- At login, the notice that your saved settings didn't load can come back at every login, even when your settings look right. It is being looked into; the backup it mentions is kept.
+- Logging in takes a few seconds longer while Vanguard builds the aura icons for raid tiles and nameplates. A faster start is planned.
+- The translations are machine drafts, so some lines read oddly. Report one with `/vg feedback`.
+- Retail support is new: report what looks wrong there with `/vg feedback`.
+
+## Coming from ForeverUI
+
+Vanguard was called ForeverUI up to 0.3.0. It was renamed in 0.4.0 because another, unrelated addon is published under that name, and two addons with the same folder name overwrite each other. The slash commands are now `/vg` and `/vanguard`. Settings don't carry over by themselves (the saved-settings file is named after the addon): before updating, type `/fui export` in game and keep the string; after updating, `/vg import` it (old ForeverUI strings import fine). Then delete the old `Interface/AddOns/ForeverUI` folder.
 
 ## More docs
 

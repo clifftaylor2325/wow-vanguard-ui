@@ -10,8 +10,8 @@ A release is a version bump merged to `main`, then the `release` workflow. Nothi
 ## Before the bump
 
 1. **Everything that ships is merged**: `main` is green (`verify.yml` on the last merge, the latest weekly or hand-started full suite), and no open `ci-failure` issue. A PR still open waits for the next release; it does not get rushed.
-2. **The notes exist in the addon**: `Core/WhatsNewNotes.lua` has an entry for this version at the top, one group per module or area, each line in player language with the options `page` and `row` a click opens. Lines are written from the merged PR titles since the last tag (`git log v<last>..main --merges`); a line never describes something that is not merged. `/vg whatsnew` shows them; `scripts/tests` cover `Core/WhatsNew.lua`, so a malformed entry fails a test.
-3. **The in-game check**: `docs/SMOKE-TEST.md` run order (section "Run order by crash risk") has been run on the release candidate, or Cliff has said to ship without it. Nothing in this repo can replace that; a release that skipped it says so in its notes.
+2. **The notes exist in the addon**: `Core/WhatsNewNotes.lua` has an entry for this version at the top, one group per module or area, each line in player language with the options `page` and `row` a click opens. Lines are written from the merged PR titles since the last tag (`git log v<last>..main --merges`); a line never describes something that is not merged. A line names the fix a player sees, never a bug hunt, a round or a count. The same lines go into `docs/CHANGELOG.md`, and README's **Known issues** drops what this release fixes and adds what is new and confirmed. `/vg whatsnew` shows them; `scripts/tests` cover `Core/WhatsNew.lua`, so a malformed entry fails a test.
+3. **The in-game check**: `docs/SMOKE-TEST.md` run order (section "Run order by crash risk") has been run on the release candidate, or Cliff has said to ship without it. Nothing in this repo can replace that; a release that skipped it says so in its release PR. Player notes carry no per-release disclaimer: `docs/CHANGELOG.md` has one trust line at the top.
 
 ## The bump
 
