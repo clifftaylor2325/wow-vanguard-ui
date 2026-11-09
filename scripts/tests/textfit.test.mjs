@@ -51,7 +51,7 @@ afterAll(() => {
 it("text fits: the setup wizard, every step", () => {
   const addon = fitClient(true);
   const findings = [];
-  for (let step = 1; step <= 8 && addon.eval("return Vanguard_Setup:IsShown()"); step++) {
+  for (let step = 1; step <= 10 && addon.eval("return Vanguard_Setup:IsShown()"); step++) {
     findings.push(...addon.textFit("Vanguard_Setup"));
     addon.eval("ns.Setup.Next()");
   }

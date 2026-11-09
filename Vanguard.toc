@@ -98,6 +98,7 @@ Core/ProfileExport.lua
 Core/SettingsGuard.lua
 Core/Banner.lua
 Core/Setup.lua
+Core/SetupGuide.lua
 Core/WhatsNewNotes.lua
 Core/WhatsNew.lua
 Core/FactionArt.lua

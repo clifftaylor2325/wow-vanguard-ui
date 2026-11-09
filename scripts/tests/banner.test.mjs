@@ -1,5 +1,5 @@
-// banner: the welcome banner strip (Core/Banner.lua) on setup's first step and on the What's new window, in the
-// TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
+// banner: the welcome banner strip (Core/Banner.lua) on setup's steps (the welcome banner, then the AFK scenes) and on
+// the What's new window, in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
 import { loggedIn } from "./helpers.mjs";
@@ -20,14 +20,38 @@ it("banner: the height is the whole picture when the room allows, as much as the
   expect(addon.eval("local B = ns.Banner return { B.Height(400, 900), B.Height(400, 150), B.Height(400, 80), B.Height(400, 79) }"), "200 whole, 150 cropped, 80 the least, 79 none").toEqual([200, 150, 80, 0]);
 });
 
-it("banner: setup's first step shows the picture under the title, the window grows by it, and the next step has none", () => {
+// Clicks setup's Next button `times` times.
+const next = (addon, times) => addon.eval(`for _ = 1, ${times} do Vanguard_Setup.next:GetScript('OnClick')(Vanguard_Setup.next, 'LeftButton') end`);
+
+// Setup's step caption, the picture's file and whether the brand mark shows, after `times` clicks on Next.
+const stepScene = (addon, times) => {
+  next(addon, times);
+  return addon.eval("local f = Vanguard_Setup return { f.caption:GetText(), f.banner.file, f.banner.mark:IsShown(), f:GetHeight() }");
+};
+
+it("banner: setup's first step shows the picture under the title, the window grows by it, and the next step keeps it at one height", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   const first = strip(addon, "Vanguard_Setup"), tall = addon.eval("return Vanguard_Setup:GetHeight()");
   expect([first.file, first.shown, first.art, first.crop], "the picture, whole (a 2:1 picture)").toEqual([FILE, true, first.width / 2, [0, 1, 0, 1]]);
   expect(addon.eval("local f = Vanguard_Setup return f.pages.profile.__points.TOPLEFT.rel == f.banner and f.pages.profile.__points.TOPLEFT.relPoint"), "the page hangs from the strip").toBe("BOTTOMLEFT");
-  addon.eval("Vanguard_Setup.next:GetScript('OnClick')(Vanguard_Setup.next, 'LeftButton')");
-  const next = strip(addon, "Vanguard_Setup");
-  expect([next.shown, next.whole < 1, Math.round(tall - addon.eval("return Vanguard_Setup:GetHeight()"))], "the second step hides it and the window gives its height back").toEqual([false, true, Math.round(first.whole)]);
+  next(addon, 1);
+  const second = strip(addon, "Vanguard_Setup");
+  expect([second.file, second.shown, second.whole, addon.eval("return Vanguard_Setup:GetHeight()")], "the second step keeps the welcome banner and the window its height").toEqual([FILE, true, first.whole, tall]);
+});
+
+it("banner: setup's steps are a journey through the shipped paintings: the welcome banner, your faction's AFK scene, then the camp at night", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  const art = "Interface\\AddOns\\Vanguard\\Media\\Art\\", tall = addon.eval("return Vanguard_Setup:GetHeight()");
+  expect(stepScene(addon, 2), "Look: the welcome banner with the crest and name").toEqual([expect.stringContaining("Look"), "banner-dusk", true, tall]);
+  expect(stepScene(addon, 1), "Comfort: the Alliance tester's keep, with no mark over it").toEqual([expect.stringContaining("Comfort"), "afk-keep", false, tall]);
+  expect(addon.eval("return Vanguard_Setup.banner.art.__texture"), "the picture's file is set").toBe(art + "afk-keep");
+  expect(stepScene(addon, 3)[1], "Combat: still the faction's scene").toBe("afk-keep");
+  expect(stepScene(addon, 1), "Move things: the camp at night").toEqual([expect.stringContaining("Move things"), "afk-camp", false, tall]);
+  expect(stepScene(addon, 1)[1], "All set: the camp").toBe("afk-camp");
+  addon.eval("Vanguard_Setup.back:GetScript('OnClick')(Vanguard_Setup.back, 'LeftButton')");
+  expect(stepScene(addon, 0), "Back to Move things: the camp again").toEqual([expect.stringContaining("Move things"), "afk-camp", false, tall]);
+  addon.eval("Vanguard_Setup:Hide() UnitFactionGroup = function() return 'Horde' end ns.Setup.Open()");
+  expect(stepScene(addon, 3), "a Horde character's guided steps show the canyon").toEqual([expect.stringContaining("Comfort"), "afk-canyon", false, tall]);
 });
 
 it("banner: a screen with no room for it leaves the strip out and never loads the picture", () => {

@@ -281,7 +281,7 @@ export const SCENES = [
     screen: { width: 1365, height: 768 }, before: "UIParent:SetSize(1365, 768)" },
   { name: "vanguard-raid", caption: "Raid frames, 20 players: heals, shields, aggro, missing buffs, dispel borders, HoTs, raid icons, ready check, leader, range fade (TEST-ONLY raid)", lua: RAID },
   { name: "vanguard-raid-secret", caption: "Raid frames in instanced combat: health is secret, so bars still draw but missing-health text hides; first-run setup open on top (TEST-ONLY raid)", lua: SECRET + RAID + "ns.Setup.Open()" },
-  { name: "vanguard-setup", caption: "First-run setup, step 3 of 4: accent and raid frame style, a tile drawn in each style (/vg setup)", lua: "ns.Setup.Open() ns.Setup.Next() ns.Setup.Next()" },
+  { name: "vanguard-setup", caption: "First-run setup, step 3 of 9: accent and raid frame style, a tile drawn in each style (/vg setup)", lua: "ns.Setup.Open() ns.Setup.Next() ns.Setup.Next()" },
   { name: "vanguard-classic", caption: "The Like the game's layout: player and target along the top left, the target of target and focus beside them, the party down the left side (TEST-ONLY party)", lua: '__group({ "player", "party1", "party2" }) ns.Setup.ApplyLayout("classic")' },
   { name: "vanguard-setup-healing", caption: "The Healing layout: party on the raid frames, centered just above the cast bar (TEST-ONLY party)", lua: '__group({ "player", "party1", "party2" }) ns.Setup.ApplyLayout("healing")' },
   { name: "vanguard-forever", caption: "On the WoW Forever client (interface 16001, no specializations): levels, health as a percent, a boss diamond, your threat on the target (TEST-ONLY units)", lua: '__group({ "player", "party1", "party2" })',
