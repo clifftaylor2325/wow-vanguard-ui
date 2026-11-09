@@ -22,6 +22,7 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { tocPaths } from "./lib/toc.mjs";
+import { readLedger, smokeSteps, unrecordedSteps } from "./lib/smoke-results.mjs";
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -75,12 +76,13 @@ export function preflightProblems(s) {
   return out.concat(contentProblems(s, tag));
 }
 
-// The release-content half of preflightProblems: remote tag, changelog, notes, tokens.
+// The release-content half of preflightProblems: remote tag, changelog, notes, in-game results, tokens.
 function contentProblems(s, tag) {
   const out = [];
   if (s.remoteTag) out.push(`tag ${tag} is already on origin; a published version is never replaced, bump ## Version`);
   if (s.changelog?.version !== s.tocVersion || /not released yet/i.test(s.changelog?.rest ?? "")) out.push(`docs/CHANGELOG.md does not start with a released ${s.tocVersion} section`);
   if (!s.whatsNew) out.push(`Core/WhatsNewNotes.lua has no ${s.tocVersion} entry`);
+  if (s.unrecorded?.length) out.push(`docs/smoke-results.json has no ${s.tocVersion} result for SMOKE steps ${s.unrecorded.join(", ")} (record pass, fail, partial or skip for each)`);
   if (s.listings && !(s.tokens.cf && s.tokens.wago)) out.push("CF_API_KEY and WAGO_API_TOKEN must both be set in the environment");
   return out;
 }
@@ -171,6 +173,7 @@ function collectState(opts) {
     ...gitState(`v${version}`), tocVersion: version, listings: opts.listings, toc,
     changelog: changelogHeading(read("docs/CHANGELOG.md")),
     whatsNew: hasWhatsNew(read("Core/WhatsNewNotes.lua"), version),
+    unrecorded: unrecordedSteps(readLedger(root), changelogSection(read("docs/CHANGELOG.md"), version), version, smokeSteps(read("docs/SMOKE-TEST.md"))),
     tokens: { cf: Boolean(process.env.CF_API_KEY), wago: Boolean(process.env.WAGO_API_TOKEN) },
   };
 }

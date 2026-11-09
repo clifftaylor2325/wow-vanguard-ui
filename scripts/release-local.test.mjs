@@ -63,6 +63,11 @@ it("a tag on another commit, an unreleased changelog heading and a detached HEAD
   expect(preflightProblems({ ...READY, changelog: null }).join()).toContain("CHANGELOG");
 });
 
+it("a version whose own SMOKE steps have no in-game result for it is refused, each step named", () => {
+  expect(preflightProblems({ ...READY, unrecorded: ["33.344", "33.390"] }).join()).toContain("docs/smoke-results.json has no 0.7.0 result for SMOKE steps 33.344, 33.390");
+  expect(preflightProblems({ ...READY, unrecorded: [] })).toEqual([]);
+});
+
 it("tokens are only required when the listings are on", () => {
   expect(preflightProblems({ ...READY, listings: false, tokens: { cf: false, wago: false } })).toEqual([]);
 });
