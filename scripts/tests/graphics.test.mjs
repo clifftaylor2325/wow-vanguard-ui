@@ -5,12 +5,13 @@
 
 import { expect, it } from "vitest";
 import { loggedIn } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 
 // TEST-ONLY client: a dedicated card, quality 6 in use (7 on the slider), 8 recommended, full render scale.
 const GFX_ENV = `
   __fps = 45
   GetFramerate = function() return __fps end
-  C_VideoOptions = { IsSpellVisualDensitySystemSupported = function() return true end, GetGxAdapterInfo = function() return { { name = "TEST-ONLY GPU", isLowPower = false, isExternal = false } } end }
+  C_VideoOptions = { IsOutlineModeSupported = function() return true end, IsSpellVisualDensitySystemSupported = function() return true end, GetGxAdapterInfo = function() return { { name = "TEST-ONLY GPU", isLowPower = false, isExternal = false } } end }
   __wfgWorld.cvars.graphicsQuality, __wfgWorld.cvars.renderScale = "6", "1"
   C_CVar.GetCVarDefault = function(name) return name == "graphicsQuality" and "8" or nil end
 `;
@@ -122,7 +123,7 @@ it("/vg graphics apply: sets the suggestion as the game's Options would, and und
   const addon = loggedIn(GFX_ENV + TABLE_ENV);
   check(addon);
   expect(said(addon, "graphics apply").pop(), "what it set").toBe("Set Graphics Quality 9, your screen's sizes. /vg graphics undo puts your settings back.");
-  expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "graphicsSpellDensity", "graphicsOutlineMode", "uiScale", "renderScale"]), "every detail from the game's table, then the step (outline mode needs no check, as on Retail); the 1080p UI scale; a detail the client lacks left alone").toEqual(["8", "8", "8", "nil", "8", "0.8", "1"]);
+  expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "graphicsSpellDensity", "graphicsOutlineMode", "uiScale", "renderScale"]), "every detail from the game's table, then the step (outline mode where the card supports it, as the game's slider does on Forever); the 1080p UI scale; a detail the client lacks left alone").toEqual(["8", "8", "8", "nil", "8", "0.8", "1"]);
   addon.eval("__fps = 90");
   check(addon);
   said(addon, "graphics apply");
@@ -196,6 +197,25 @@ it("/vg graphics undo: a record an older version kept in the profile moves to th
   said(addon, "graphics undo");
   expect(cvars(addon, ["graphicsQuality"]), "the notes' record wins").toEqual(["3"]);
   expect(addon.eval("return { ns.Settings('Graphics').undo == nil, VanguardDB.client.graphicsUndo == nil }"), "both are gone after the undo").toEqual([true, true]);
+});
+it("/vg graphics apply: outline mode on Forever is set and undone where the card supports it, and left alone where not", () => {
+  const yes = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsOutlineMode = '1'");
+  check(yes);
+  said(yes, "graphics apply");
+  expect(cvars(yes, ["graphicsOutlineMode"]), "supported: set").toEqual(["8"]);
+  said(yes, "graphics undo");
+  expect(cvars(yes, ["graphicsOutlineMode"]), "and undone").toEqual(["1"]);
+  const no = loggedIn(GFX_ENV + TABLE_ENV + "C_VideoOptions.IsOutlineModeSupported = function() return false end __wfgWorld.cvars.graphicsOutlineMode = '1'");
+  check(no);
+  said(no, "graphics apply");
+  expect(cvars(no, ["graphicsOutlineMode", "graphicsShadowQuality"]), "unsupported: untouched, the rest set").toEqual(["1", "8"]);
+  expect(no.eval("return VanguardDB.client.graphicsUndo.graphicsOutlineMode"), "and not recorded").toBe(null);
+});
+it("/vg graphics apply: Retail has no outline check and sets outline mode as before", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "C_VideoOptions.IsOutlineModeSupported = nil __wfgWorld.cvars.graphicsOutlineMode = '1'", { client: RETAIL_CLIENT });
+  check(addon);
+  said(addon, "graphics apply");
+  expect(cvars(addon, ["graphicsOutlineMode"]), "set without a check").toEqual(["8"]);
 });
 it("/vg graphics undo: a record an older version kept in a profile not in use is undone, and is gone from every profile", () => {
   const addon = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsQuality = '9'");

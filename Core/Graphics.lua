@@ -33,6 +33,8 @@ G.DETAIL_SUPPORT = {
   graphicsPBRLiquidDetail = "IsPBRWaterSupported", graphicsLightMode = "IsSecondaryLightingSupported",
   graphicsSpellDensity = "IsSpellVisualDensitySystemSupported",
 }
+-- Forever's GraphicsOverrides.lua also sets outline mode only where the card supports it (Retail always does).
+G.FOREVER_SUPPORT = { graphicsOutlineMode = "IsOutlineModeSupported" }
 -- The render scale the 4K tip suggests.
 G.RENDER = 0.8
 
@@ -230,9 +232,14 @@ local function detailFor(name, q)
   return v and math.max(G.DETAILS[name], v) or nil
 end
 
+-- A detail's C_VideoOptions check name: the shared one, or on Forever the extra ones, else nil.
+local function checkFor(name)
+  return G.DETAIL_SUPPORT[name] or (ns.IsForever() and G.FOREVER_SUPPORT[name]) or nil
+end
+
 -- Whether the game's slider sets this detail on this computer (the details with no check always are).
 local function supported(name)
-  local check = G.DETAIL_SUPPORT[name]
+  local check = checkFor(name)
   if not check then return true end
   local f = C_VideoOptions and C_VideoOptions[check]
   local ok, yes = pcall(type(f) == "function" and f or error)
