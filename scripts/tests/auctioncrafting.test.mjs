@@ -151,7 +151,7 @@ it("only post-hooks: the window's fields stay the game's; the helper off hooks n
 it("the options have the switch", () => {
   const addon = crafter();
   addon.eval('ns.Options.Show("town")');
-  expect(addon.find("^Crafting costs and profit beside the profession window").text, "under Auction house").toMatch(/^Crafting costs/);
+  expect(addon.find("^Crafting costs and profit").text, "under Auction house").toMatch(/^Crafting costs/);
 });
 
 it("the panel goes left of the profession window when the screen has no room at the right and the left has", () => {

@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { ACTIONS_ENV, RETAIL, SETUP_DONE, UNITS_ENV, bars, button, chatHas, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, RETAIL, SETUP_DONE, UNITS_ENV, bars, button, chatHas, expectErrors, key, loggedIn, overlaps, px, setCombat } from "./helpers.mjs";
 
 it("action bars", () => {
   const addon = loggedIn(ACTIONS_ENV);
@@ -157,6 +157,28 @@ it("action bar dragging", () => {
   expect([drag(), addon.eval("return __copy")], "with a macro's icon picker open, the drag only copies the action, as the game's buttons do").toEqual([2, true]);
   addon.eval("local b = Vanguard_Bar2Button5; b:GetScript('OnReceiveDrag')(b)");
   expect(addon.eval("return __placed") === 65, "dropping onto a button places the action in its slot").toBeTruthy();
+});
+it("action bar dragging waits out a fight: no pick-up and no drop in combat", () => {
+  const addon = loggedIn(ACTIONS_ENV + "IsShiftKeyDown = function() return true end");
+  setCombat(addon, true);
+  addon.eval("local b = Vanguard_Bar1Button2 b:GetScript('OnDragStart')(b) b = Vanguard_Bar2Button5 b:GetScript('OnReceiveDrag')(b)");
+  expect(addon.eval("return { __picked or false, __placed or false }"), "neither call reaches the client").toEqual([false, false]);
+  setCombat(addon, false);
+  addon.eval("local b = Vanguard_Bar1Button2 b:GetScript('OnDragStart')(b)");
+  expect(addon.eval("return __picked"), "after the fight, the drag works").toBe(2);
+});
+it("a client with cooldown duration objects never hands the numbers to SetCooldown", () => {
+  expectErrors("bar cooldown: TEST-ONLY refused");
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.eval(`GetActionCooldownDuration = function() return nil end GetActionCooldown = function() return 5, 2 end
+    local cd = Vanguard_Bar1Button1.cooldown cd.__cooldown = { 1, 1 } cd.SetCooldown = function() __numbers = true end`);
+  addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
+  expect(addon.eval("return { __numbers or false, Vanguard_Bar1Button1.cooldown.__cooldown == nil }"), "no duration object: the sweep is cleared, the numbers unused").toEqual([false, true]);
+  addon.eval(`GetActionCooldownDuration = function() return { __duration = true } end
+    Vanguard_Bar1Button1.cooldown.SetCooldownFromDurationObject = function() error("TEST-ONLY refused", 0) end`);
+  addon.clearChat();
+  addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
+  expect([addon.eval("return ns.errors[#ns.errors].text"), chatHas(addon, /bar cooldown/)], "a refused object is kept for /vg errors, not printed").toEqual(["bar cooldown: TEST-ONLY refused", false]);
 });
 
 // TEST-ONLY: runs the setter of bar n's row `label` on the action bar options page,
@@ -930,4 +952,29 @@ it("Y2-4 bars: a usable event repaints only the buttons whose state changed", ()
   addon.eval("__actions[3].usable = true");
   addon.fire("ACTIONBAR_UPDATE_USABLE");
   expect(button(addon, 1, 3).color[0] === 1 && button(addon, 1, 3).color[1] === 1, "usable now: painted, no longer dimmed").toBe(true);
+});
+
+// A full login (the bars built: createAddon is never scoped) whose saved bar 1 holds `bar` (Lua source).
+function loggedInWithBarOne(bar) {
+  const addon = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { ActionBars = { bars = { [1] = ${bar} } } } }\n` });
+  addon.eval(ACTIONS_ENV);
+  addon.login();
+  return addon;
+}
+
+it("a bar size that isn't a number, or rows of 0, are dropped at login: the bars build at the shared size, 12 per row", () => {
+  for (const bar of ["{ size = 'big' }", "{ size = {} }", "{ size = 0 }", "{ size = -5 }", "{ size = 1/0 }", "{ size = 0/0 }", "{ perRow = 0, buttons = 'x' }"]) {
+    const addon = loggedInWithBarOne(bar);
+    expect(addon.eval("return #ns.errors"), `${bar}: no error`).toBe(0);
+    const shape = addon.eval('local b = ns.GetModule("ActionBars").settings.bars[1] return { b.size == nil, b.perRow, b.buttons }');
+    expect(shape, `${bar}: the defaults fill it in`).toEqual([true, 12, 12]);
+    expect(addon.eval("return Vanguard_Bar1Button1:GetWidth()"), `${bar}: the shared size`).toBe(px(addon, 38));
+  }
+});
+
+it("an imported string's bar size that isn't a number is dropped before it is saved", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const size = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, ActionBars = { bars = { { size = "big", perRow = 0 } } } })
+    return { kind, data.ActionBars.bars[1].size == nil, data.ActionBars.bars[1].perRow == nil }`);
+  expect(size, "the payload is cleaned by the migration").toEqual(["parts", true, true]);
 });

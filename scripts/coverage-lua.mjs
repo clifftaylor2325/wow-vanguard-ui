@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { root } from "./lib/lua-harness.mjs";
-import { anyClientPaths, readToc } from "./lib/toc.mjs";
+import { anyClientPaths, clientPaths, readToc } from "./lib/toc.mjs";
 import { coverageReport, formatReport, loadHits } from "./lib/lua-coverage.mjs";
 import { appendJobSummary } from "./lib/lua-summary-reporter.mjs";
 
@@ -34,9 +34,14 @@ try {
 
 // The addon's own Lua that at least one client loads (a file the TOC's game-type tags keep to one
 // client counts once, covered by that client's cases); the vendored libraries in Libs/ are not counted.
-const luaFiles = anyClientPaths(readToc(root)).filter((file) => file.endsWith(".lua") && !file.startsWith("Libs/"));
+// With VG_SKIP_RETAIL (a pull request's run, without the Retail-only tests) only the Lua Forever loads counts.
+const tocLua = process.env.VG_SKIP_RETAIL ? clientPaths(readToc(root), "forever") : anyClientPaths(readToc(root));
+const luaFiles = tocLua.filter((file) => file.endsWith(".lua") && !file.startsWith("Libs/"));
 const report = coverageReport(root, luaFiles);
-const floor = JSON.parse(fs.readFileSync(path.join(root, "scripts/lua-coverage-floor.json"), "utf8")).lines;
+// Without the Retail-only tests the Retail branches of shared files go unrun, so that run has its own floor
+// (withoutRetail, which only goes up too); the weekly and release runs hold every line to "lines".
+const floors = JSON.parse(fs.readFileSync(path.join(root, "scripts/lua-coverage-floor.json"), "utf8"));
+const floor = process.env.VG_SKIP_RETAIL ? floors.withoutRetail : floors.lines;
 fs.writeFileSync(path.join(root, "coverage/lua-coverage.json"), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`\nLua line coverage (floor ${floor}%)\n${formatReport(report)}`);
 appendJobSummary(`Lua line coverage (floor ${floor}%)`, formatReport(report).split("\n"));

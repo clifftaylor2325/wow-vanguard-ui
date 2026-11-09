@@ -2,7 +2,7 @@
 -- your class and role (Modules/UpgradeWeights.lua). An item's tooltip says
 -- "Upgrade +12% (estimate) vs <worn item>" (or a drop), an arrow marks upgrades in the
 -- combined bag, and on quest reward cards. Rings, trinkets compare with the
--- weaker of the two you wear; a two-hander with both hands; an empty slot is
+-- weaker of the two you wear, a one-hand weapon too while you wear one in each hand; a two-hander with both hands; an empty slot is
 -- always an upgrade. Gear you can't wear is left alone.
 --
 -- /vg weights shows the weights in use; set <stat> <n>, reset, export and
@@ -76,6 +76,9 @@ UP.TWO_HANDED = ns.ClientData({
   forever = { INVTYPE_2HWEAPON = true },
   retail = { INVTYPE_2HWEAPON = true, INVTYPE_RANGED = true, INVTYPE_RANGEDRIGHT = true },
 })
+
+-- The equip locations of a weapon worn in either hand: compared with the weaker hand while a weapon is in each.
+UP.ONE_HAND = { INVTYPE_WEAPON = true }
 
 -- Weights ---------------------------------------------------------------------------------
 
@@ -155,7 +158,13 @@ end
 function UP.Weights()
   local kind = W.Kind(UP.Class(), UP.Role(), UP.Style())
   local out = ns.Copy(W.KINDS[kind])
-  for short, value in pairs(UP.Own(kind) or {}) do out[short] = value end
+  -- Only the stats this client weighs, as finite numbers: a profile made on the other client keeps that client's
+  -- stats (Retail's ILVL, MASTERY, VERS), which would score this client's items by item level. The saved table
+  -- stays as it is, so the profile still works back there.
+  for short, value in pairs(UP.Own(kind) or {}) do
+    local weight = W.STATS[short] and UP.Weight(value)
+    if weight then out[short] = weight end
+  end
   return out, kind
 end
 
@@ -244,9 +253,18 @@ local function canCompare()
   return type(item.GetItemStats) == "function" and type(item.GetItemInfoInstant) == "function" and type(GetInventoryItemLink) == "function"
 end
 
--- What an item of equip location loc is compared with: both hands for a two-hander, else the weakest of its slots.
+-- Whether a weapon is worn in the off hand (a shield, a held item or nothing is not).
+local function offHandWeapon()
+  local link = GetInventoryItemLink("player", UP.OFF_HAND)
+  local loc = link and select(4, C_Item.GetItemInfoInstant(link))
+  return loc == "INVTYPE_WEAPON" or loc == "INVTYPE_WEAPONOFFHAND"
+end
+
+-- What an item of equip location loc is compared with: both hands for a two-hander, the weaker hand for a
+-- one-hander while a weapon is worn in each, else the weakest of its slots.
 local function wornScore(loc, slots)
   if UP.TWO_HANDED[loc] then return bothHands() end
+  if UP.ONE_HAND[loc] and offHandWeapon() then return weakest({ UP.MAIN_HAND, UP.OFF_HAND }) end
   return weakest(slots)
 end
 

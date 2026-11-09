@@ -246,6 +246,7 @@ const OWN_LOG_OFF = "VanguardDB.profiles = { Default = { QuestLog = { own = fals
 // BorderFrame and scroll background and edge) holding the details of one quest (its Bg, borders, rewards tile and
 // buttons), and the pop-out QuestLogPopupDetailFrame (a ButtonFrameTemplate window with three push buttons).
 const QUEST_MAP_ENV = WINDOWS_ENV + `
+  function QuestLogQuests_Update() end
   local panel = CreateFrame("Frame", "QuestMapFrame", UIParent) panel:Hide()
   local list = CreateFrame("Frame", nil, panel) panel.QuestsFrame = list
   list.BorderFrame = CreateFrame("Frame", nil, list) list.BorderFrame:CreateTexture()
@@ -494,6 +495,8 @@ it("battlefield map: switched off it stays the game's; a client without the tab 
 // who list page (WhoList.xml: no Inset, its own backdrop, header stone, inside frame and lines, and a list). Made when
 // the game loads the part.
 const FINDER_ENV = WINDOWS_ENV + `
+  function LFGListingCategorySelection_UpdateCategoryButtons() end
+  function LFGBrowseSearchEntry_SetSelection() end
   function __button(parent, name) local b = CreateFrame("Button", name, parent) b:CreateTexture() return b end
   function __finder()
     local outer = CreateFrame("Frame", "LFGParentFrame", UIParent) outer:Hide()

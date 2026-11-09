@@ -8,11 +8,280 @@
 -- compared, formatted or concatenated. `/vg probe fight` takes the same secrecy and restriction
 -- reads once in the next fight; the lines are printed after it, not during. `/vg probe` typed in
 -- a fight takes only the party, mark and boss reads and keeps them for `/vg probe last`.
+--
+-- Every diagnostic probe lives in this file: `/vg probe`, the levelling guide's reads behind
+-- `/vg guide probe` (ns.GuideData, which later guide phases read the client through) and the
+-- Legacy system's window and globals behind `/vg legacy probe`. QUEST_ACCEPTED and
+-- QUEST_TURNED_IN record only the types of their first arguments, never the values.
 
 local ADDON, ns = ...
 
 local P = {}
 ns.Probe = P
+
+-- The levelling guide's reads -------------------------------------------------------------------
+
+local GD = {}
+ns.GuideData = GD
+
+-- The reads probed, and what each is called with: "quest" is the first quest in the log, "map" the
+-- map the player is on, "player" the unit. `/vg probe` also asks with "selected" (the quest picked in
+-- the log) and "done" (a quest this character has turned in).
+GD.PROBES = {
+  { "C_QuestLog.GetDistanceSqToQuest", "quest" },
+  { "C_QuestLog.IsQuestFlaggedCompleted", "quest" },
+  { "C_QuestLog.GetQuestDifficultyLevel", "quest" },
+  { "C_QuestLog.GetMaxNumQuestsCanAccept" },
+  { "C_QuestLog.GetTitleForQuestID", "quest" },
+  { "C_QuestLog.GetQuestsOnMap", "map" },
+  { "C_QuestLog.GetNextWaypoint", "quest" },
+  { "C_QuestLog.GetNextWaypointForMap", "quest", "map" },
+  { "C_Navigation.GetNextWaypointForMap", "map" },
+  { "C_SuperTrack.GetNextWaypointForMap", "map" },
+  { "C_Map.GetMapWorldSize", "map" },
+  { "C_Minimap.GetViewRadius" },
+  { "C_Map.GetMapLevels", "map" },
+  { "C_Map.GetPlayerMapPosition", "map", "player" },
+  { "C_Map.GetBestMapForUnit", "player" },
+  { "C_TaxiMap.GetAllTaxiNodes", "map" },
+  { "C_TaxiMap.GetTaxiNodesForMap", "map" },
+  { "UnitOnTaxi", "player" },
+  { "UnitIsDeadOrGhost", "player" },
+  { "C_TooltipInfo.GetUnit", "target" },
+  { "UnitLevel", "player" },
+  { "GetPlayerFacing" },
+  { "UnitPosition", "player" },
+  { "IsInInstance" },
+}
+
+-- The events whose first arguments are recorded as they happen.
+GD.EVENTS = { "QUEST_ACCEPTED", "QUEST_TURNED_IN" }
+
+-- The type words recorded per event this session: { "number", "number" } for its first two arguments.
+GD.seen = {}
+
+-- The read named "A.b" or "b" if this client has it as a function, else nil.
+function GD.Find(name)
+  local space, key = name:match("^(.-)%.?([%w_]+)$")
+  local holder = space == "" and _G or _G[space]
+  local fn = type(holder) == "table" and holder[key]
+  return type(fn) == "function" and fn or nil
+end
+
+-- The ids of the first quests in the log (headers skipped), up to limit.
+function GD.LogQuests(limit)
+  local get, ids = GD.Find("C_QuestLog.GetInfo"), {}
+  local n = GD.Find("C_QuestLog.GetNumQuestLogEntries")
+  for i = 1, n and ns.PlainNumber((n())) or 0 do
+    local info = get and get(i)
+    local id = type(info) == "table" and not (ns.IsSecret(info.isHeader) or info.isHeader) and ns.PlainNumber(info.questID)
+    if id then ids[#ids + 1] = id end
+    if #ids >= limit then break end
+  end
+  return ids
+end
+
+do
+  -- The first quest in the log (its id), or nil.
+  local function firstQuest()
+    return GD.LogQuests(1)[1]
+  end
+
+  -- The quest selected in the quest log, or nil when none is (the client gives 0).
+  local function selectedQuest()
+    local get = GD.Find("C_QuestLog.GetSelectedQuest")
+    local id = get and ns.PlainNumber(get())
+    return id and id > 0 and id or nil
+  end
+
+  -- A quest this character has turned in: the first plain id the client lists, or nil.
+  local function doneQuest()
+    local get = GD.Find("C_QuestLog.GetAllCompletedQuestIDs")
+    local ids = get and get()
+    return type(ids) == "table" and ns.PlainNumber(ids[1]) or nil
+  end
+
+  -- The map the player is on, if the client gives a plain one.
+  local function currentMap()
+    local get = GD.Find("C_Map.GetBestMapForUnit")
+    return get and ns.PlainNumber(get("player"))
+  end
+
+  -- "target" when you have one the client plainly says exists, else nil.
+  local function currentTarget()
+    local exists = GD.Find("UnitExists")
+    local has = exists and exists("target")
+    if not ns.IsSecret(has) and has == true then return "target" end
+  end
+
+  -- What each argument word stands for.
+  GD.ARGS = {
+    quest = firstQuest, selected = selectedQuest, done = doneQuest, map = currentMap,
+    player = function() return "player" end, target = currentTarget,
+  }
+end
+
+do
+  -- The arguments a probe wants, or nil and the word that could not be had.
+  local function argsFor(words)
+    local args = {}
+    for i, word in ipairs(words) do
+      args[i] = GD.ARGS[word]()
+      if args[i] == nil then return nil, word end
+    end
+    return args
+  end
+
+  -- A map position's x and y, as "plain" or "hidden".
+  local function positionNote(v)
+    local ok, x, y = pcall(v.GetXY, v)
+    return "position " .. (ok and ns.PlainNumber(x) and ns.PlainNumber(y) and "plain" or "hidden")
+  end
+
+  -- What a value is, as chat text: plain numbers and flags in full, a secret as "hidden", anything
+  -- else by its kind (a table by its length or as a position).
+  function GD.Describe(v)
+    if ns.IsSecret(v) then return "hidden" end
+    local kind = type(v)
+    if kind == "number" or kind == "boolean" then return kind .. " " .. tostring(v) end
+    if kind ~= "table" then return kind end
+    if type(v.GetXY) == "function" then return positionNote(v) end
+    if type(v.lines) == "table" then return "tooltip data, " .. #v.lines .. " lines" end
+    return "table of " .. #v
+  end
+
+  -- One probe's line: the name, then missing, not called (and why), the error, or the first return.
+  function GD.Line(probe)
+    local fn = GD.Find(probe[1])
+    if not fn then return probe[1] .. ": missing" end
+    local args, word = argsFor({ unpack(probe, 2) })
+    if not args then return probe[1] .. ": present, not called (no " .. word .. ")" end
+    local ok, value = pcall(fn, unpack(args))
+    if not ok then return probe[1] .. ": present, error " .. (type(value) == "string" and value:sub(1, 80) or "?") end
+    return probe[1] .. ": present, " .. GD.Describe(value)
+  end
+end
+
+do
+  -- The type word of one event argument: a secret is named so, and the type() the client gives it.
+  local function typeWord(v)
+    if ns.IsSecret(v) then return "secret (type " .. type(v) .. ")" end
+    return type(v)
+  end
+
+  -- Records the argument types of a quest event.
+  local function record(event, first, second)
+    GD.seen[event] = { typeWord(first), typeWord(second) }
+  end
+
+  -- Listens for the quest events; only their argument types are kept.
+  function GD.Listen()
+    for _, event in ipairs(GD.EVENTS) do ns.On(event, record) end
+  end
+
+  -- The line for one recorded event.
+  local function eventLine(event)
+    local seen = GD.seen[event]
+    if not seen then return event .. ": not seen this session" end
+    return event .. ": first arguments " .. seen[1] .. ", " .. seen[2]
+  end
+
+  -- /vg guide probe: prints a line per read and per event.
+  function GD.Probe()
+    ns.Chat("Guide probe (chat only, nothing is changed); in combat: " .. tostring(ns.InCombat()))
+    for _, probe in ipairs(GD.PROBES) do ns.Chat("  " .. GD.Line(probe)) end
+    for _, event in ipairs(GD.EVENTS) do ns.Chat("  " .. eventLine(event)) end
+  end
+end
+
+-- /vg guide <what>: only "probe" so far.
+function GD.Command(rest)
+  if (rest or ""):lower():match("^%s*(%S*)") == "probe" then return GD.Probe() end
+  ns.Chat("Usage: /vg guide probe  (what this client returns for the reads the levelling guide would use)")
+end
+
+GD.Listen()
+
+-- The Legacy system's window and globals (Forever) ---------------------------------------------
+
+-- The most globals the Legacy probe lists and the most keys it shows of a frame; the window's
+-- pages it looks into, by key, and the perk panel's key on the tree page.
+P.LEGACY = { maxGlobals = 20, maxKeys = 12, pages = { "TreePage", "ChallengesPage", "RewardTrackPage" }, panel = "LegacyTreeTraitPanel" }
+
+do
+  -- A value as a short word: its type, or the number or text itself.
+  local function shown(value)
+    if ns.IsSecret(value) then return "hidden" end
+    if type(value) == "number" or type(value) == "string" or type(value) == "boolean" then return tostring(value) end
+    return type(value)
+  end
+
+  -- A table's string keys, sorted, the first maxKeys of them, as one text.
+  local function keysOf(t)
+    local keys = {}
+    for key in pairs(t) do if type(key) == "string" then keys[#keys + 1] = key end end
+    table.sort(keys)
+    return #keys .. " keys" .. (#keys > 0 and ": " .. table.concat(keys, ", ", 1, math.min(#keys, P.LEGACY.maxKeys)) or "")
+  end
+
+  -- Globals with Legacy in their name, sorted, the first maxGlobals of them, and how many there are.
+  function P.LegacyGlobals()
+    local found = {}
+    for key, value in pairs(_G) do
+      if type(key) == "string" and key:find("Legacy") then found[#found + 1] = key .. " (" .. shown(value) .. ")" end
+    end
+    table.sort(found)
+    return { unpack(found, 1, P.LEGACY.maxGlobals) }, #found
+  end
+
+  -- How many nodes the game lists for a tree id (asked under pcall), or nil.
+  local function nodeCount(tree)
+    local traits = _G.C_Traits
+    if type(traits) ~= "table" or type(traits.GetTreeNodes) ~= "function" or type(tree) ~= "number" then return nil end
+    local ok, nodes = pcall(traits.GetTreeNodes, tree)
+    return ok and type(nodes) == "table" and #nodes or nil
+  end
+
+  -- The perk panel's ids and its node count, as one text.
+  local function panelLine(panel)
+    return string.format("perk panel: configID %s, treeID %s, nodes %s", shown(panel.configID), shown(panel.treeID), shown(nodeCount(panel.treeID) or "unknown"))
+  end
+
+  -- Lines for one page of the window: whether it is there and its keys.
+  local function pageLine(window, key)
+    local page = window[key]
+    if type(page) ~= "table" then return key .. ": missing" end
+    return key .. ": " .. keysOf(page)
+  end
+
+  -- The lines about the window once it is loaded: each page, then the perk panel.
+  local function windowLines(window)
+    local out = {}
+    for _, key in ipairs(P.LEGACY.pages) do out[#out + 1] = pageLine(window, key) end
+    local panel = type(window.TreePage) == "table" and window.TreePage[P.LEGACY.panel]
+    out[#out + 1] = type(panel) == "table" and panelLine(panel) or "perk panel: not found on TreePage"
+    return out
+  end
+
+  -- The Legacy probe's lines: the window and its pages when loaded, then the globals.
+  function P.LegacyLines()
+    local window = _G.LegacySystemFrame
+    local loaded = type(window) == "table"
+    local out = { "Legacy probe: LegacySystemFrame is " .. (loaded and "loaded" or "not loaded (open the Legacy window once, then run this again)") }
+    for _, line in ipairs(loaded and windowLines(window) or {}) do out[#out + 1] = line end
+    local names, total = P.LegacyGlobals()
+    out[#out + 1] = string.format("globals with Legacy in the name (%d): %s", total, table.concat(names, ", "))
+    return out
+  end
+end
+
+-- /vg legacy probe: the lines, out of combat.
+function P.Legacy()
+  if ns.InCombat() then return ns.Chat("Not in combat.") end
+  for _, line in ipairs(P.LegacyLines()) do ns.Chat(line) end
+end
+
+-- `/vg probe` ------------------------------------------------------------------------------------
 
 -- The spell the spell predicates are asked about; the answer is about the spell kind, not this one.
 P.SPELL = 1459

@@ -13,8 +13,8 @@ local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting
 local function questRows()
   return {
     { "header", L["Quest windows"] },
-    check(L["Vanguard's quest dialog at the bottom center (reload)"], reloadSetting("QuestDialog", "dialog")),
-    check(L["Vanguard's quest log on the quest log key (reload)"], reloadSetting("QuestLog", "own")),
+    check(L["Vanguard's quest dialog (reload)"], reloadSetting("QuestDialog", "dialog")),
+    check(L["Vanguard's quest log (reload)"], reloadSetting("QuestLog", "own")),
     check(L["Each quest's XP in the quest log list"], liveSetting("QuestLog", "xp", function() if ns.GetModule("QuestLog").frame then ns.GetModule("QuestLog").Refresh() end end)),
   }
 end
@@ -23,10 +23,10 @@ end
 local function trackerRows()
   return {
     { "header", L["Quest tracker"] },
-    check(L["Vanguard's quest tracker under the info strip (reload)"], reloadSetting("QuestTracker", "own")),
+    check(L["Vanguard's quest tracker (reload)"], reloadSetting("QuestTracker", "own")),
     { "cycle", L["With Questie loaded (reload)"], { { "questie", L["Questie's tracker"] }, { "vanguard", L["Vanguard's tracker"] } }, reloadSetting("QuestTracker", "withQuestie") },
     check(L["Each quest's XP under it"], liveMethod("QuestTracker", "xp", "Refresh")),
-    check(L["Under the quests, how much of the XP to level they give"], liveMethod("QuestTracker", "levelXp", "Refresh")),
+    check(L["Quest XP toward your level"], liveMethod("QuestTracker", "levelXp", "Refresh")),
     check(L["Watch a quest when you accept it"], setting("QuestTracker", "autoTrack")),
     { "cycle", L["Order"], { { "game", L["As the game orders them"] }, { "nearest", L["Nearest first"] } }, liveMethod("QuestTracker", "order", "ApplyOrder") },
   }
@@ -56,7 +56,7 @@ end
 local function questHistoryRows()
   return {
     { "header", L["Quest history"] },
-    check(L["Remember which character finished each quest (\"Done on Thrall-Realm\")"], setting("QuestHistory", "track")),
+    check(L["Remember who finished each quest"], setting("QuestHistory", "track")),
     { "button", L["List latest turn-ins"], function() ns.GetModule("QuestHistory").Command("") end, historyOn },
   }
 end
@@ -65,8 +65,8 @@ end
 local function questAutoRows()
   return {
     { "header", L["Automation (hold Shift while talking to skip it)"] },
-    check(L["Accept quests"], setting("QuestAuto", "accept")), check(L["Accept quests a party member shares with you"], setting("QuestAuto", "acceptShared")), check(L["Turn in finished quests"], setting("QuestAuto", "turnIn")),
-    check(L["With a choice of rewards, take the one that sells for most"], setting("QuestAuto", "bestReward")), check(L["Skip the chatter when an NPC has just one quest for you"], setting("QuestAuto", "skipGossip")),
+    check(L["Accept quests"], setting("QuestAuto", "accept")), check(L["Accept shared quests"], setting("QuestAuto", "acceptShared")), check(L["Turn in finished quests"], setting("QuestAuto", "turnIn")),
+    check(L["Pick the reward that sells for most"], setting("QuestAuto", "bestReward")), check(L["Skip chatter for a single quest"], setting("QuestAuto", "skipGossip")),
   }
 end
 

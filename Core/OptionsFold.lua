@@ -1,7 +1,7 @@
 -- The fold on the options window's cards (/vg): a card with rows marked essential shows those, then a "More settings"
--- line with the count of the rest, which opens below it. The tier rule and the reasons are in
--- docs/design/SETTINGS-SIMPLIFICATION.md (D1). Core/OptionsWindow.lua builds the cards and calls in here; a card with
--- no essential row, or with only essential rows, has no fold.
+-- line with the count of the rest, which opens below it and stays open for this character until it is folded again.
+-- The tier rule and the reasons are in docs/design/SETTINGS-SIMPLIFICATION.md (D1). Core/OptionsWindow.lua builds the
+-- cards and calls in here; a card with no essential row, or with only essential rows, has no fold.
 
 local ADDON, ns = ...
 
@@ -12,8 +12,12 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 local Fold = {}
 O.Fold = Fold
 
--- The cards the player opened, by page and card title, kept while the game runs (a reload folds every card again).
-local opened = {}
+-- The cards this character opened, by page and card title (true), kept in its saved variables so a card stays open
+-- across a reload and the next login.
+local function opened()
+  VanguardCharDB.openFolds = VanguardCharDB.openFolds or {}
+  return VanguardCharDB.openFolds
+end
 
 -- Marks a row as essential: it stays in view when its card is folded. Returns the row.
 function O.Essential(row)
@@ -54,7 +58,7 @@ end
 
 -- Whether a card's fold is open now.
 function Fold.IsOpen(card)
-  return opened[keyOf(card)] == true
+  return opened()[keyOf(card)] == true
 end
 
 -- Whether any folded row of the card differs from its default (the dot on the fold line).
@@ -80,7 +84,7 @@ end
 
 -- Opens or folds a card, then lets the window fit the new height (card.refit).
 function Fold.SetOpen(card, open)
-  opened[keyOf(card)] = open or nil
+  opened()[keyOf(card)] = open or nil
   card.fold:SetCollapsed(not open)
   Fold.Apply(card)
   card.refit(card)

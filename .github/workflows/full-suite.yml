@@ -8,10 +8,10 @@ name: full suite
 # tab. A later push without the label stops a run still in progress for that
 # pull request (the code it was testing is stale; both runs share the pull
 # request's concurrency group), and adding any other label neither starts
-# nor stops a run. Not after every merge: a private repository's Actions
-# minutes are counted, so the pull-request gate (verify.yml) is the check
-# every push gets, and the whole suite runs here and before each release
-# (release.yml). A red weekly or hand-started run opens an issue labelled
+# nor stops a run. Not after every merge: the pull-request gate (verify.yml)
+# is the check every push gets, and the whole suite runs here and before each
+# release (release.yml); a pull request's run skips coverage, which the weekly,
+# hand-started and release runs keep. A red weekly or hand-started run opens an issue labelled
 # ci-failure (later failures comment on it; GitHub's own failure mail for a
 # scheduled run goes to whoever last edited the cron line, which may be
 # nobody), and a green one closes it.
@@ -78,6 +78,9 @@ jobs:
       checks: ${{ github.event_name != 'pull_request' }}
       preview: ${{ github.event_name == 'schedule' || inputs.preview == true || contains(github.event.pull_request.labels.*.name, 'preview') }}
       shuffle: ${{ github.event_name == 'schedule' }}
+      coverage: ${{ github.event_name != 'pull_request' }}
+      # Retail-only test files run weekly, by hand and before a release, not on pull requests.
+      retail: ${{ github.event_name != 'pull_request' }}
 
   report:
     # The ci-failure issue: opened or commented on when the suite is red,

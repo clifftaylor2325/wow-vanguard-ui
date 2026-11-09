@@ -22,7 +22,7 @@ local META = { format = true, addonVersion = true, parts = true, display = true,
 
 -- Settings that record this computer's own state rather than a choice, by table: they never go in a
 -- string, and a string's are dropped as it is read, so they never reach another client.
--- Graphics.undo: the game settings /vg graphics apply changed here, which its undo puts back.
+-- Graphics.undo: the game settings /vg graphics apply changed here, which its undo puts back (now in VanguardDB.client.graphicsUndo, like Bags' and Quiet's; old strings still drop it).
 -- Bags.applied and Bags.prior: what Vanguard set the game's combined bags to here, and the player's value before (prior now lives in VanguardDB.client.bagsPrior, like Quiet's; old strings still drop it).
 -- Quiet.cameraPrior: the player's own furthest camera zoom, from before Vanguard first changed it. Older versions
 -- kept it in the profile; it lives in VanguardDB.client now, and Quiet moves a profile's old one there.
@@ -31,7 +31,8 @@ local META = { format = true, addonVersion = true, parts = true, display = true,
 -- CraftQueue.chars: each character's craft queue and profession cooldowns, from before they moved to the character's
 -- and the account's files (Modules/CraftQueue.lua moves them out); not for whoever imports a string.
 -- Merchant.junkList: the sell list from before it moved to each character's own file.
-local CLIENT_STATE = { Merchant = { junkList = true }, Graphics = { undo = true }, Bags = { applied = true, prior = true }, Quiet = { cameraPrior = true }, Chat = { sized = true, widened = true }, CraftQueue = { chars = true } }
+-- Errands.stockList: the Keep stocked list from before it moved to each character's own file.
+local CLIENT_STATE = { Merchant = { junkList = true }, Errands = { stockList = true }, Graphics = { undo = true }, Bags = { applied = true, prior = true }, Quiet = { cameraPrior = true }, Chat = { sized = true, widened = true }, CraftQueue = { chars = true } }
 
 -- The group parts, in the export panel's order, and what it calls them. Every other
 -- table is a module's own part (its name), or global when no module goes by its name.
@@ -233,9 +234,11 @@ local function moduleString(scope, data)
   return "parts", { [scope] = data, parts = { scope } }
 end
 
--- Runs each table's registered upgrade (ns.Migrate) on the payload's settings tables, so a
--- value an older version saved under an old name or meaning is upgraded before it is saved.
+-- Runs the whole-profile upgrades (ns.MigrateProfile), then each table's registered upgrade (ns.Migrate) on the
+-- payload's settings tables, so a value an older version saved under an old name, meaning or table is upgraded
+-- before it is saved.
 local function migrate(data)
+  ns.MigrateProfileTable(data)
   for key, t in pairs(data) do
     if not META[key] and type(t) == "table" then ns.MigrateTable(key, t) end
   end

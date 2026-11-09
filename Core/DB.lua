@@ -105,7 +105,27 @@ local function startOnLastUsedProfile()
   VanguardCharDB.profile = lastUsedProfile(chars) or DEFAULT_PROFILE
 end
 
--- Creates or repairs the saved tables, and upgrades an older account file.
+-- Whole-profile upgrades (ns.MigrateProfile), in the order registered.
+local profileMigrations = {}
+
+-- Registers fn(profile) to upgrade a whole profile as older versions saved (or exported) it: for a setting that
+-- moved from one module's table to another's, which a table's own upgrade (ns.Migrate) cannot see. It runs on every
+-- saved profile as the account file loads, and on an imported string's settings before they are saved, each time, so
+-- it must leave an upgraded profile as it is (and skip tables that are not there).
+---@param fn fun(profile: table)
+function ns.MigrateProfile(fn)
+  profileMigrations[#profileMigrations + 1] = fn
+end
+
+-- Runs every whole-profile upgrade on a profile, or on a payload of tables by name; returns it.
+---@param profile table
+---@return table profile
+function ns.MigrateProfileTable(profile)
+  for _, fn in ipairs(profileMigrations) do fn(profile) end
+  return profile
+end
+
+-- Creates or repairs the saved tables, and upgrades an older account file and its profiles.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
   local from = savedVersion()
@@ -114,6 +134,7 @@ local function initDB()
   dropBrokenProfiles(VanguardDB.profiles)
   VanguardDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
+  for _, profile in pairs(VanguardDB.profiles) do ns.MigrateProfileTable(profile) end
   VanguardCharDB = fill(type(VanguardCharDB) == "table" and VanguardCharDB or {}, { profile = DEFAULT_PROFILE })
   startOnLastUsedProfile()
   chooseProfile()
@@ -143,9 +164,12 @@ function ns.Profile()
   if type(VanguardDB) ~= "table" then
     return {}
   end
-  local name = ns.ProfileName()
-  VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
-  return VanguardDB.profiles[name]
+  local profiles, name = VanguardDB.profiles, ns.ProfileName()
+  local profile = profiles[name]
+  if profile then return profile end
+  profile = {}
+  profiles[name] = profile
+  return profile
 end
 
 local migrations = {}
@@ -228,6 +252,12 @@ function ns.ApplyPendingProfile()
   return true
 end
 
+-- Tells the ns.OnProfileStaged listeners that what loads after the reload changed (a staged switch or a spec map
+-- change), so a shown Profiles page rebuilds its marks.
+function ns.ProfileStagedChanged()
+  for _, fn in ipairs(stageListeners) do fn() end
+end
+
 -- Stages a switch to a profile (created empty if new). The running modules keep the active profile's
 -- tables until the reload, so VanguardCharDB.profile and the settings cache stay as they are (a drag
 -- or an accent change still lands in the profile on screen); ns.ApplyPendingProfile applies it. Tells
@@ -236,7 +266,7 @@ end
 function ns.StageProfile(name)
   VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
   VanguardCharDB.pendingProfile = name ~= VanguardCharDB.profile and name or nil
-  for _, fn in ipairs(stageListeners) do fn() end
+  ns.ProfileStagedChanged()
 end
 
 -- Stages a profile the player picked (the list, the picker, a command, an import): it is also the

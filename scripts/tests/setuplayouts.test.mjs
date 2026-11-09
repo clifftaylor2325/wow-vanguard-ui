@@ -291,7 +291,7 @@ it("meter: target of target takes its narrow spot while the meter is on and goes
   expect(spot(addon), "meter on at 1920 wide, where the meter sits at its wide spot: the default spot").toEqual(home(RISE.frames));
 });
 // The screen step's choices (their labels) and the hint under them.
-const screenPage = (addon) => addon.eval("local p = Vanguard_Setup.pages.screen local out = {} for i, b in ipairs(p.choices) do out[i] = b.text:GetText() end return { out, p.hint:GetText() }");
+const screenPage = (addon) => addon.eval("local p = Vanguard_Setup.pages.screen local out = {} for _, b in ipairs(p.choices) do if b:IsShown() then out[#out + 1] = b.text:GetText() end end return { out, p.hint:GetText() }");
 // What the screen presets set: the UI scale settings, the shared button size, bar 1's buttons, the raid tile size, the text size and pixel-perfect scale.
 const screenSizes = (addon) => addon.eval(`local AB, RF, t = ns.GetModule("ActionBars"), ns.Settings("RaidFrames"), ns.Theme.Settings()
   return { GetCVar("useUiScale") or "unset", GetCVar("uiScale") or "unset", AB.settings.size, Vanguard_Bar1Button1:GetWidth(), RF.width, RF.height, t.textScale, t.pixelScale }`);
@@ -300,7 +300,7 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   setupClick(addon, "next");
   const [labels, hint] = screenPage(addon);
   expect(labels, "four presets, this screen's marked, then Pixel-perfect and Keep").toEqual(["1080p (1920 x 1080)", "1440p (2560 x 1440)  ·  your screen", "4K (3840 x 2160)", "Ultrawide (3440 x 1440)", "Pixel-perfect (sharpest)", "Keep my current sizes"]);
-  expect(addon.eval("local c = Vanguard_Setup.pages.screen.choices return { c[6].selected, c[6 == 1 and 2 or 1].selected, c[6].rail:IsShown(), c[6 == 1 and 2 or 1].rail:IsShown() }"), "Keep is picked: it wears the selected rail; the others rest flat").toEqual([true, false, true, false]);
+  expect(addon.eval("local c = Vanguard_Setup.pages.screen.choices return { c[7].selected, c[1].selected, c[7].rail:IsShown(), c[1].rail:IsShown() }"), "Keep is picked: it wears the selected rail; the others rest flat").toEqual([true, false, true, false]);
   expect(hint, "Keep says it changes nothing, and who sets the UI scale now").toBe("Changes nothing: your UI scale stays with Vanguard's pixel-perfect scale (General, Look), your sizes as they are.");
   addon.eval('__click("1440p")');
   expect(screenPage(addon)[1], "a preset says what it sets, and that it moves the game's own slider").toBe("Moves the game's UI Scale slider to 70% (Vanguard's pixel-perfect scale goes off); action buttons 38 px, raid tiles 110 x 48, text 105%.");
@@ -433,7 +433,7 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   expect(state(5)[4], "Groups as rows is still rows for a party").toBe("rows");
   addon.eval(`${RF}.settings.layout = "columns"`);
   expect(state(40).slice(0, 4), "a raid of 40 at the left again").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames]);
-  addon.eval('ns.Options.Show("raid") __click("Stack big raids at the left (more than 10 players)")');
+  addon.eval('ns.Options.Show("raid") __click("Stack big raids at the left")');
   expect([addon.eval(`return ${RF}.settings.stackBig`), addon.eval("return { ns.MoverPoint('raid') }")], "the option turns it off at once, for the real frames").toEqual([false, ["BOTTOM", "BOTTOM", -240, 344 + RISE.frames]]);
   const moved = loggedIn(UNITS_ENV + RAID_ENV + "__members = 40 GetNumGroupMembers = function() return __members end", { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { raid = { point = "BOTTOMRIGHT", relPoint = "BOTTOMRIGHT", x = -20, y = 344 } } } } }' });
   moved.fire("GROUP_ROSTER_UPDATE");
@@ -534,4 +534,30 @@ it("setup layouts: Versus deck is your role's centered layout with the deck on; 
   const healer = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__wfgWorld.spec = 2 GetSpecializationRole = function() return 'HEALER' end", { firstRun: true });
   healer.eval("ns.Setup.ApplyLayout('versus')");
   expect(healer.eval("return { ns.Settings('UnitFrames').deck, ns.Settings('RaidFrames').showPower, ns.ModuleEnabled('ClickCast') }"), "a healer: the deck with the Healing layout (its settings, click casting on)").toEqual([true, true, true]);
+});
+it("setup screen: opened again after a screen change, the rows name the screen now and Fit shows or hides with it", () => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(1920, 1080)", { firstRun: true });
+  setupClick(addon, "next");
+  expect(screenPage(addon)[0], "16:9: your screen is 1080p, and Fit is not offered").toContain("1080p (1920 x 1080)  ·  your screen");
+  expect(screenPage(addon)[0], "no Fit row on 16:9").toHaveLength(6);
+  addon.eval("Vanguard_Setup:Hide() __wfgStub.setScreen(1229, 768)");
+  addon.slash("setup");
+  setupClick(addon, "next");
+  const [labels] = screenPage(addon);
+  expect(labels.filter((t) => t.includes("your screen")), "the mark moved off 1080p").not.toContain("1080p (1920 x 1080)  ·  your screen");
+  expect(labels.slice(-2), "Fit now shows above Keep").toEqual(["Fit my screen: UI scale 90%  ·  suggested", "Keep my current sizes"]);
+  addon.eval('__click("Pixel-perfect (sharpest)")');
+  expect(screenPage(addon)[1], "Pixel-perfect's hint follows the screen now").toContain(`scale at ${addon.eval("return math.floor(ns.Setup.PresetScale(ns.Setup.PixelPreset()) * 100 + 0.5)")}%`);
+  addon.eval("Vanguard_Setup:Hide() __wfgStub.setScreen(1920, 1080)");
+  addon.slash("setup");
+  setupClick(addon, "next");
+  expect(screenPage(addon)[0], "back on 16:9 Fit hides again").toHaveLength(6);
+  expect(addon.eval("local c = Vanguard_Setup.pages.screen.choices local keep = c[#c] local _, rel = keep:GetPoint() return rel == c[#c - 2]"), "Keep hangs under Pixel-perfect then").toBe(true);
+});
+it("setup layout: opened again with a group role set, the row for your role is the one marked", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true });
+  expect(addon.eval("return Vanguard_Setup.pages.layout.choices[3].text:GetText()"), "no role at first login").toBe("Centered: healing");
+  addon.eval("Vanguard_Setup:Hide() __wfgWorld.units.player.role = 'HEALER'");
+  addon.slash("setup");
+  expect(addon.eval("return Vanguard_Setup.pages.layout.choices[3].text:GetText()"), "Healing now marked").toBe("Centered: healing  ·  your role");
 });

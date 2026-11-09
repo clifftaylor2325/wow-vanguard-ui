@@ -1,0 +1,30 @@
+[
+  {
+    "step": "33.390",
+    "build": "0.9.3",
+    "date": "2026-11-09",
+    "result": "fail",
+    "note": "Questing in Darkshore and Ashenvale with nameplates on: one 'aura icon pixels: Core/Auras.lua:234: calling ClearAllPoints on bad self (Attempt to access forbidden object from code tainted by an AddOn)' in the session. 0.9.3 does not carry the fix (#784 merged after it was cut); check again on the next release."
+  },
+  {
+    "step": "1.5",
+    "build": "0.9.3",
+    "date": "2026-11-09",
+    "result": "partial",
+    "note": "/vg perf after questing and looting: CPU 0.19 ms a frame now, 0.48 on average, peak 3259.5 ms, 11 % of all addons, 137 frames over 5 ms; memory 49.3 MB. /vg perf slow: PLAYER_LOGIN longest 2782.8 ms (3146 ms in all), RaidAuras 1494 ms, Nameplates 881 ms. /vg mem: account file 858 KB of 16 MB, character file 21 KB; the 60 s measurement was not pasted."
+  },
+  {
+    "step": "8.5",
+    "build": "0.9.3",
+    "date": "2026-11-09",
+    "result": "partial",
+    "note": "One 'Running low: Potions 2 / 3' line in chat while levelling; the quest XP, the XP bar tooltip and the food count were not looked at."
+  },
+  {
+    "step": "8.4a",
+    "build": "0.9.3",
+    "date": "2026-11-09",
+    "result": "partial",
+    "note": "Arrow lines in chat as quests moved on while levelling; where the arrow pointed, the distances and the pin were not checked."
+  }
+]

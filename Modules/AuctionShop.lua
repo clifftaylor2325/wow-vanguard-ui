@@ -91,9 +91,14 @@ function AH.ListByName(name)
   return AP.Store().lists[name]
 end
 
--- The name of the list on the card, as AH.ListByName takes it.
+-- The name of the list on the card, as AH.ListByName takes it. The picked key is the account's and a
+-- source entry's switch is the profile's: a key whose entry is off here (another character left it
+-- shown) is dropped, so the card, the pane and the list actions never work on it.
 function AH.ListKey()
-  return AP.Store().list
+  local store = AP.Store()
+  local s = AH.Sources and AH.Sources[store.list]
+  if s and s.on and not s.on() then store.list = nil end
+  return store.list
 end
 
 -- The shopping list in use: its name and entries (nil when there's none yet).
@@ -501,11 +506,11 @@ function AH.OnBrowse()
   AH.Done()
 end
 
--- The auction house closed: its view and the browse list waiting on item info go, the list priced first when
--- info came in for it since its last pricing (priceLate's wait would find it gone).
+-- The auction house closed: its view, the browse list waiting on item info and the entries waiting on item names
+-- go, the list priced first when info came in for it since its last pricing (priceLate's wait would find it gone).
 local function shopClosed()
   local late = AH.lateBrowse
-  AH.view, AH.lateBrowse = nil, nil
+  AH.view, AH.lateBrowse, AH.unnamed = nil, nil, {}
   if late and late.due then AP.RecordBrowse(late.results) end
 end
 
@@ -732,8 +737,12 @@ AH.Sources.list = { columns = AH.LIST_COLUMNS, paint = paintRow, click = AH.Clic
   items = function() local _, list = AH.CurrentList() return list or {} end }
 
 -- The source of what the card shows now: the entry picked in the pane (a list unless a file adds its own).
+-- The picked key is the account's and an entry's switch is the profile's, so an entry whose switch is
+-- off here (another character left it shown) gives way to the list source.
 function AH.Source()
-  return AH.Sources[AH.ListKey()] or AH.Sources.list
+  local s = AH.Sources[AH.ListKey()]
+  if s and (s.on == nil or s.on()) then return s end
+  return AH.Sources.list
 end
 
 -- The card's toolbar: the heading names the list (or the source), the count beside it, and the list buttons when they apply.

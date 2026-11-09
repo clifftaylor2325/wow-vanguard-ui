@@ -12,7 +12,7 @@ const STABLE = `
     GetStabledPetList = function() return { { name = { __secret = true }, level = 5, familyName = "", loyaltyName = "", happinessLevel = 9, experience = 1, experienceNeeded = 0 } } end,
     GetNextStableSlotCost = function() return 50000 end,
   }
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end`;
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end`;
 
 it("/vg pets lists the pet that is out, then the stabled ones, hiding what the game hides", () => {
   const addon = loggedIn(STABLE);
@@ -43,6 +43,6 @@ it("the Town and gear page has the switch and a button that lists the pets", () 
   addon.eval('ns.Options.Show("town")');
   addon.eval('__click("List my pets in chat")');
   expect(Array.from(addon.chat()).slice(-3, -2), "the button prints the same list as /vg pets").toEqual([P + "Your pets:"]);
-  addon.eval('__click("Say how many pets you have, and the next slot\'s price, at a stable master (/vg pets)")');
+  addon.eval('__click("Pet count at a stable master")');
   expect(addon.eval("return ns.Settings('PetStable').announce"), "the switch turns the line off").toBe(false);
 });

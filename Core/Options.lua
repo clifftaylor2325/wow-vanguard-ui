@@ -292,13 +292,19 @@ local function setupRows()
   }
 end
 
+-- The Move frames button: the frames' handles, with the bar that brings the window back to the page it was on.
+---@return table
+function O.MoveFramesRow()
+  return { "button", L["Move frames"], function() ns.UnlockFromOptions(O.current) end }
+end
+
 -- General, part three: moving frames.
 local function layoutRows()
   return append(setupRows(), {
-    { "button", L["Move frames"], function() ns.UnlockFromOptions(O.current) end },
+    O.MoveFramesRow(),
     check(L["Show a grid while moving"], moverOption("grid")),
     check(L["Snap to other frames"], moverOption("snap")),
-    check(L["Show these handles in the game's Edit Mode too"], moverOption("editMode")),
+    check(L["Handles in the game's Edit Mode too"], moverOption("editMode")),
     { "text", L["While moving frames, right-click one to anchor it to the screen or to another frame's side, for its exact offsets, scale and opacity, or to match its width or height to another frame's."] },
   })
 end
@@ -375,7 +381,7 @@ O.MODULE_INFO = {
   MenuStrip = { L["Menu and quest tracker"], L["The game's bag and menu buttons on framed slots in one corner bar, and the quest tracker under the info strip."] },
   Chat = { L["Chat"], L["Themed chat windows and tabs."] },
   Bags = { L["Bags"], L["One combined bag, in sections by kind of item, with a Sort button."] },
-  Merchant = { L["Merchant helpers"], L["Repair, sell gray items and your sell list, buy in stacks, and a quieter error line (its switch is under Game windows, Quiet the game)."] },
+  Merchant = { L["Merchant helpers"], L["Repair, sell gray items and your sell list, and buy in stacks."] },
   ChatExtras = { L["Chat extras"], L["Clickable web links in chat, and a Copy button for the recent chat."] },
   ChatWatch = { L["Chat watch"], L["A sound and a toast when a phrase you watch for is said in chat; click to whisper."] },
   ChatFilter = { L["Chat filter"], L["Gold selling, boosting, guild recruiting and repeated lines in Trade and the other channels go to a Filtered tab. Off until you switch it on (Chat)."] },
@@ -383,8 +389,8 @@ O.MODULE_INFO = {
   ChatHistory = { L["Chat history"], L["Your chat comes back after a /reload or the next login, each window in its own tab. Off until you switch it on (Chat)."] },
   ChatWindows = { L["Chat windows"], L["Each chat window's width, height and lock from the Chat page, floating windows moved with /vg unlock, and Find in chat."] },
   MinimapButtons = { L["Minimap drawer"], L["Other addons' minimap buttons gathered into a drawer beside the map. Needs Minimap."] },
-  AutoAccept = { L["Auto-accept"], L["Accept summons and resurrections, decline duels, guild invites, stranger group invites and friend requests, loot faster, release in battlegrounds (each off until you switch it on)."] },
-  Quiet = { L["Quiet the game"], L["Hide the red error line and the zone names that fade in, and zoom the camera further out (each off until you switch it on)."] },
+  AutoAccept = { L["Auto-accept"], L["Accept summons and resurrections, and loot faster (each off until you switch it on)."] },
+  Quiet = { L["Quiet the game"], L["Hide the red error line or the errors the action bar shows, and the zone names; decline duels, invites and friend requests; zoom further out."] },
   QuestDialog = { L["Quest dialog"], L["Talking to quest givers in Vanguard's own dialog: numbered lines, reward cards, keys 1-9 and Space."] },
   QuestTracker = { L["Quest tracker"], L["Your watched quests under the info strip: levels in difficulty colors, objectives, quest items, nearest first if you like."] },
   QuestLog = { L["Quest log"], L["Your quests by zone, each quest's text, objectives and rewards, with Track, Share, Abandon and Map."] },
@@ -547,10 +553,9 @@ end
 
 -- "This character uses Default." or, with a switch staged, what it uses until the reload and after it.
 local function currentProfileText()
-  local later = ns.PendingProfileName()
+  local later = ns.ProfileAfterReload()
   if not later then return ns.Format(L["This character uses {profile}."], { profile = ns.ProfileName() }) end
-  local spec = ns.SpecProfile()
-  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = spec or later })
+  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = later })
 end
 
 -- Asks before a reset: what is lost (every setting in the profile in use, for every character
@@ -594,14 +599,22 @@ local function currentProfileRows()
   }
 end
 
+-- The "Use this profile for this spec" button: the selected profile becomes the spec's, and the reload is offered
+-- when it takes over at the next login (as /vg spec does).
+local function useForSpec()
+  local name = ns.SelectedProfileName()
+  ns.SetSpecProfile(name)
+  ns.OfferSpecReload(name)
+end
+
 -- Profiles, part two: the spec profile (nothing on a client with no specializations).
 local function specRows()
   if not ns.HasSpecs() then return {} end
   return {
     { "header", L["Specialization"] },
     { "text", specText },
-    { "button", L["Use this profile for this spec"], function() ns.SetSpecProfile(ns.SelectedProfileName()); O.Refresh() end },
-    { "button", L["Stop spec switching"], function() ns.SetSpecProfile(nil); O.Refresh() end },
+    { "button", L["Use this profile for this spec"], useForSpec },
+    { "button", L["Stop spec switching"], function() ns.SetSpecProfile(nil) end },
   }
 end
 
@@ -634,6 +647,30 @@ local function feedbackFormRows()
   }
 end
 
+-- Feedback: the parts paused after repeated errors (Core/Events.lua), and a button that runs them again; none while none is.
+local function pausedRows()
+  if #ns.paused == 0 then return {} end
+  local sites = {}
+  for _, p in ipairs(ns.paused) do sites[#sites + 1] = tostring(p.where) end
+  return {
+    { "header", L["Paused after repeated errors"] },
+    { "text", ns.Format(L["Paused after {count} failures, until you reload: {sites}. Resume them once the cause is fixed (/vg errors resume)."],
+      { count = ns.ERROR_BUDGET, sites = table.concat(sites, ", ") }) },
+    { "button", L["Resume paused parts"], ns.ResumePaused },
+  }
+end
+
+-- The Feedback page is built again when how many parts are paused changes (a part paused, Resume), so it
+-- never lists a part running again or misses one just paused.
+do
+  local pausedListed = 0
+  ns.OnErrorsChanged(function()
+    if #ns.paused == pausedListed then return end
+    pausedListed = #ns.paused
+    if O.Frame() then O.RebuildPage("feedback") end
+  end)
+end
+
 -- Feedback, part two: the Discord server and the X account, each copied to paste into a browser.
 local function communityRows()
   return {
@@ -644,9 +681,9 @@ local function communityRows()
   }
 end
 
--- Feedback: the form and the report, then the community links.
+-- Feedback: the paused parts (when there are any), the form and the report, then the community links.
 local function feedbackRows()
-  return append(feedbackFormRows(), communityRows())
+  return append(append(pausedRows(), feedbackFormRows()), communityRows())
 end
 
 -- Pages: key, title, nav icon (Media/Icons) and order in the nav (groups: under 30, under 90, the rest).

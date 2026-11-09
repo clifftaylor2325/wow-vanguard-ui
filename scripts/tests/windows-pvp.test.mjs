@@ -119,6 +119,18 @@ it("R2.35 match results: faction banner faded, title and headings in the text co
   expect(windowErrors(addon)).toBe("none");
 });
 
+it("H37-15-1: WoW Forever's scoreboard (ClosePanelButton, HeaderContainer.Text) gets the theme close button and its map name in the theme font", () => {
+  const addon = loggedIn(MATCH_ENV + `__matches()
+    local f = PVPMatchScoreboard
+    f.CloseButton, f.TitleContainer = nil, nil
+    f.ClosePanelButton = CreateFrame("Button", nil, f)
+    f.HeaderContainer = CreateFrame("Frame", nil, f) f.HeaderContainer.Text = f.HeaderContainer:CreateFontString()
+    f.HeaderContainer.Text:SetFont("TEST-ONLY-GAME", 18, "") f.HeaderContainer.Text:SetText("Warsong Gulch")`);
+  addon.eval("PVPMatchScoreboard:Show()");
+  expect(addon.eval(`return { select('#', PVPMatchScoreboard.ClosePanelButton:GetRegions()) > 0, __kept(PVPMatchScoreboard.HeaderContainer.Text, 18, "text") }`), "the close button is themed, the map name in the theme font and text colour at the game's size").toEqual([true, true]);
+  expect(windowErrors(addon)).toBe("none");
+});
+
 it("R2.35 match results: windows without the optional parts skip them", () => {
   const addon = loggedIn(MATCH_ENV + `__matches()
     PVPMatchResults.itemPool = {} PVPMatchResults.overlay = nil PVPMatchResults.header = {} PVPMatchResults.content.tabContainer.matchmakingText = {}
@@ -148,7 +160,7 @@ it("S8.1 scoreboards: loaded later (on demand), switched off, or bare", () => {
   expect([windowState(off, "PVPMatchScoreboard").art !== 0, off.eval("return PVPMatchScoreboard.vgWindow == nil")], "with the group off").toEqual([true, true]);
   const bare = loggedIn(PVP_ENV + '__window("PVPMatchScoreboard") __window("PVPMatchResults")');
   bare.eval("PVPMatchScoreboard:Show() PVPMatchResults:Show()");
-  expect([windowState(bare, "PVPMatchResults").panel, windowErrors(bare)], "windows without a table, bar or buttons").toEqual([true, "none"]);
+  expect([windowState(bare, "PVPMatchResults").panel, windowErrors(bare), bare.eval("return #ns.notes")], "windows without a table, bar or buttons, or Forever's without SetupArtwork: skinned, nothing left off").toEqual([true, "none", 0]);
 });
 
 // Queue dialogs -----------------------------------------------------------------------------------

@@ -44,6 +44,7 @@ const OPTIONS = {
   out: { type: "string" },
   compare: { type: "string" },
   budget: { type: "string" },
+  "instr-budget": { type: "string" },
   summary: { type: "string" },
   "no-profile": { type: "boolean" },
 };
@@ -71,6 +72,8 @@ export function readOptions(argv) {
   Object.assign(opts, { warmup: wholeOption(values.warmup, DEFAULTS.warmup, "--warmup", 0), seed: wholeOption(values.seed, DEFAULTS.seed, "--seed", 0) });
   Object.assign(opts, { out: values.out, compare: values.compare, summary: values.summary, profile: !values["no-profile"], budget: budgetOption(values.budget) });
   if (opts.budget !== undefined && !opts.compare) throw new Error("--budget needs --compare <file>: it limits the slowdown against an earlier result");
+  opts.instrBudget = values["instr-budget"];
+  if (opts.instrBudget !== undefined && !opts.profile) throw new Error("--instr-budget needs the profiled repetition: drop --no-profile");
   return opts;
 }
 
@@ -559,4 +562,14 @@ export function formatCompare(before, after, beforeName) {
 // The events whose median time per step grew by more than `budget` percent.
 export function overBudget(before, after, budget) {
   return compareEvents(before, after).filter((r) => r.beforeUs > 0 && r.afterUs != null && ((r.afterUs - r.beforeUs) / r.beforeUs) * 100 > budget);
+}
+
+// The events whose addon instructions per step (from the profiled repetition) are over their cap in
+// `caps` ({ event: most addon instructions per step }), as { event, instr, cap }. Instruction counts barely
+// move between runs of one commit, so unlike time this holds on a noisy shared runner. An event the caps
+// don't name, or that the run didn't play, is not judged.
+export function overInstructions(result, caps) {
+  return Object.entries(caps)
+    .map(([event, cap]) => ({ event, instr: result.events?.[event]?.addonInstr, cap }))
+    .filter((r) => typeof r.instr === "number" && r.instr > r.cap);
 }

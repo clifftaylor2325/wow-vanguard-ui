@@ -117,6 +117,17 @@ it("next opens the first recipe with its count typed in; stock raises Keep stock
   expect([chatHas(old, /Next: 1 x recipe 100/), old.eval("return #ns.errors")], "no OpenRecipe: told which, no error").toEqual([true, 0]);
 });
 
+it("with the Auction helper off, the queue still sees the recipe on display and notes its cooldown", () => {
+  const off = "VanguardDB.profiles = { Default = { CraftQueue = { on = true }, modules = { AuctionHelper = false } } }";
+  const addon = crafter("C_TradeSkillUI.GetAllRecipeIDs = nil __wfgWorld.cooldowns = { [100] = 72000 }", off);
+  addon.world.openProfession(100);
+  addon.slash("craft add 2");
+  addon.fire("TRADE_SKILL_LIST_UPDATE");
+  addon.slash("craft cd");
+  expect([queue(addon), chatHas(addon, /TEST-ONLY Linen Bag, 20h 0m/)], "queued, and the cooldown noted").toEqual([[[100, 2]], true]);
+  expect([addon.eval("return _G.Vanguard_CraftingPanel == nil"), addon.eval("return #ns.errors")], "no cost panel, no errors").toEqual([true, 0]);
+});
+
 it("/vg craft stock with the Auction helper off raises Keep stocked but makes no Restock list", () => {
   const addon = crafter("", "VanguardDB.profiles = { Default = { CraftQueue = { on = true }, modules = { AuctionHelper = false } } }");
   addon.eval(`${CQ}.Add(100, 4)`);
@@ -214,8 +225,8 @@ it("/vg craft top shows a losing recipe's loss with a minus, never as a profit",
 it("the options have the switch and the pace", () => {
   const addon = crafter();
   addon.eval('ns.Options.Show("town") ns.Options.ShowTab("Craft queue")');
-  expect(addon.find("^Craft queue, profession cooldowns and recipe ranking").text, "under Town and gear").toMatch(/^Craft queue/);
-  expect(addon.find("^Seconds a craft takes").text, "the pace").toMatch(/^Seconds a craft takes/);
+  expect(addon.find("^Craft queue and recipe ranking").text, "under Town and gear").toMatch(/^Craft queue/);
+  expect(addon.find("^Seconds per craft").text, "the pace").toBe("Seconds per craft");
 });
 
 it("on WoW Retail, reads the client's recipe list and recipe cooldowns as on Forever", () => {

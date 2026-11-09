@@ -295,11 +295,17 @@ local DEFAULTS = {
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
 -- that get collected don't stay here.
 local painted = setmetatable({}, { __mode = "k" })
+-- One function per registry the theme's walks read (each takes a region or frame and drops it from its registry), run by
+-- T.Forget on a dropped page. On T: this file is close to Lua's limit on top-level locals.
+T.forgetters = {}
+T.forgetters[#T.forgetters + 1] = function(r) painted[r] = nil end
 local listeners = {}
 -- Every crest texture (weak), repainted when the theme changes.
 local crests = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) crests[r] = nil end
 -- Every window with an ornament (#238): frame -> its pieces (weak), repainted when the theme changes.
 local ornaments = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) ornaments[r] = nil end
 
 -- Theme settings in the active profile, with defaults.
 function T.Settings()
@@ -372,17 +378,17 @@ local function fromOklab(L, a, b)
     gamma(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
 end
 
--- Variant name -> { key = the accent it was made from, c = its colour }, so it's worked out once per accent.
+-- Variant name -> { from = the accent's r, g, b it was made from, c = its colour }, so it's worked out once
+-- per accent (compared channel by channel: no string is built on the colour lookups of every bar update).
 local variants = {}
 
--- An accent variant's colour, made from the current accent (and cached until the accent changes).
-local function accentVariant(name)
-  local a, v, hit = T.Settings().accent, T.ACCENT_VARIANTS[name], variants[name]
-  local key = string.format("%.6f %.6f %.6f", a[1], a[2], a[3])
-  if hit and hit.key == key then return hit.c end
+-- An accent variant's colour, made from accent `a` (the theme settings' own; cached until it changes).
+local function accentVariant(name, a)
+  local v, hit = T.ACCENT_VARIANTS[name], variants[name]
+  if hit and hit.from[1] == a[1] and hit.from[2] == a[2] and hit.from[3] == a[3] then return hit.c end
   local L, A, B = toOklab(a[1], a[2], a[3])
   local r, g, b = fromOklab(math.max(0, math.min(1, L + v[1])), A * v[2], B * v[2])
-  variants[name] = { key = key, c = { r, g, b, 1 } }
+  variants[name] = { from = { a[1], a[2], a[3] }, c = { r, g, b, 1 } }
   return variants[name].c
 end
 
@@ -396,21 +402,26 @@ function T.GameColorBlind()
 end
 
 -- Whether Safer colours apply: the switch, the High contrast look, or the game's colour-blind mode.
-function T.ColorAssist()
-  local s, v = T.Settings(), T.Variant()
+-- `s` is the theme settings, for a caller that has them already (T.RGB); else they are read.
+---@param s table|nil
+---@return boolean
+function T.ColorAssist(s)
+  s = s or T.Settings()
+  local v = T.VARIANTS[s.variant]
   return s.colorAssist or (v and v.assist) or (s.colorAssistGame and T.GameColorBlind()) or false
 end
 
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
 -- accentText and accentDim follow the accent, and the reactions follow Color assist). The first
 -- source that has the name wins: the variant's tokens, the accent variant, the saved setting, Color
--- assist's colours, then TOKENS.
+-- assist's colours, then TOKENS. The settings are read once (this runs on every bar update).
 function T.RGB(name)
-  local v, key = T.Variant(), SETTING_TOKENS[name]
+  local s, key = T.Settings(), SETTING_TOKENS[name]
+  local v = T.VARIANTS[s.variant]
   local c = v and v.tokens[name]
-  if not c and T.ACCENT_VARIANTS[name] then c = accentVariant(name) end
-  if not c and key then c = T.Settings()[key] end
-  if not c and T.ColorAssist() then c = T.ASSIST[name] end
+  if not c and T.ACCENT_VARIANTS[name] then c = accentVariant(name, s.accent) end
+  if not c and key then c = s[key] end
+  if not c and T.ColorAssist(s) then c = T.ASSIST[name] end
   c = c or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
@@ -430,10 +441,12 @@ end
 -- Every region T.Tint coloured (weak): region -> { token, alpha, r, g, b, a } as last set, so T.Refresh
 -- re-tints it after an accent or variant change, and forgets one recoloured by hand since (refreshTints).
 local tinted = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) tinted[r] = nil end
 
 -- Every status bar T.BarColor coloured (weak): bar -> { token, r, g, b, a } as last set (a table on T, not a local:
 -- this file is close to Lua's limit on top-level locals).
 T.barColored = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) T.barColored[r] = nil end
 
 -- Colors a region with a named color (vertex color), at an optional alpha; remembered, so the
 -- colour follows the accent and the variant (a region recoloured by hand since is left alone).
@@ -551,6 +564,7 @@ T.SNAP_CLASSES = { border = true, fill = true, divider = true, sheen = true, bar
 T.SNAP_BIAS = 1
 -- Every texture T.Snap has seen -> its class (weak), so a switch reaches them all.
 local snapClass = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) snapClass[r] = nil end
 
 -- Sets a texture's pixel-grid snapping for its class: on (with the bias) only for a still
 -- class while texel snapping is on; off otherwise, as before #226.
@@ -619,6 +633,14 @@ function T.Pixel(frame)
   return pixelFactor() / scaleOf(frame)
 end
 
+-- T.Pixel for a frame whose effective scale the caller has read already (`scale`; 1 when it isn't a
+-- positive number), so a loop over a holder's icons reads it once.
+---@param scale number
+---@return number
+function T.PixelAtScale(scale)
+  return pixelFactor() / ((type(scale) == "number" and scale > 0) and scale or 1)
+end
+
 -- The UI scale that makes one UI unit one screen pixel (768 / screen height).
 function T.PixelPerfectScale()
   return pixelFactor()
@@ -632,6 +654,7 @@ end
 -- Sizes asked for through T.PixelSize: frame -> { w, h, even }. Weak, so a frame that is
 -- collected doesn't stay; a scale or screen change rounds them all again (T.Rescale).
 local pixelSized = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) pixelSized[r] = nil end
 -- Called after every scale or screen change has been rounded again (T.OnScale).
 local scaleListeners = {}
 
@@ -2039,6 +2062,7 @@ local checkOf, hookShown
 do
 -- Each themed check button's parts (weak): { box = the inset panel, fill = its checked fill, mark = the glyph }.
 checkOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) checkOf[r] = nil end
 
 -- A check button's themed parts, { box, fill, mark }, or nil for one T.CheckBox never painted.
 function T.CheckParts(button) return checkOf[button] end
@@ -2204,6 +2228,11 @@ end
 T.DIVIDER = { color = "divider" }
 -- Each themed divider (a texture or a frame) -> { holder = the frame its line is on, line }. Weak.
 local dividerOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r)
+  local d = dividerOf[r]
+  if d then tinted[d.line] = nil end
+  dividerOf[r] = nil
+end
 
 -- A themed divider's parts, { holder, line }, or nil for one T.Divider never painted.
 function T.DividerParts(region) return dividerOf[region] end
@@ -2270,6 +2299,7 @@ local ARROW_TURN = {
 }
 -- Each themed arrow button -> { glyph, hover }. Weak.
 local arrowOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) arrowOf[r] = nil end
 
 -- A themed arrow button's parts, { glyph, hover }, or nil for one T.ArrowButton never painted.
 function T.ArrowParts(button) return arrowOf[button] end
@@ -2325,6 +2355,7 @@ local SLIDER_AXES = {
 }
 -- Each themed slider -> its parts { bar, track, fill, line, knob, shade }. Weak.
 local sliderOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) sliderOf[r] = nil end
 
 -- A themed game slider's parts, or nil for one T.Slider never painted.
 function T.SliderParts(slider) return sliderOf[slider] end
@@ -2590,6 +2621,7 @@ end
 -- Every row T.Row dressed (weak): row -> { hover, press, fill, rail (its textures), over, down, selected,
 -- disabled (what it is showing) }.
 local rowOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) rowOf[r] = nil end
 -- The state names T.RowState takes, and the flag each sets.
 local ROW_FLAGS = { hover = "over", pressed = "down", selected = "selected", disabled = "disabled" }
 
@@ -2886,11 +2918,14 @@ T.GAME_TEXT = { warning = 20, status = 16, small = 12, keystone = 30, keystoneLi
 -- Every font string styled with a role: string -> role name. Weak, so text
 -- that gets collected doesn't stay; T.RefreshText re-fonts them all.
 local styled = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) styled[r] = nil end
 -- Styled strings drawn at a size of their own (T.TextSize): string -> size. Weak too.
 local sizes = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) sizes[r] = nil end
 -- Every font string coloured by token name (T.Color): string -> token. Weak; T.RefreshText recolours
 -- them all, so a variant switch reaches text that was drawn before it (a light look needs dark text).
 local colored = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) colored[r] = nil end
 
 -- The range of the Text size setting (General -> Look; the slider and the setup presets stay inside it).
 T.TEXT_SCALE = { min = 0.7, max = 1.3 }
@@ -2979,6 +3014,7 @@ do
   T.FIT_FLOOR = 0.84
   -- Every fitted font string -> { box = the frame it fits in, inset = the room kept each side }. Weak.
   local fitted = setmetatable({}, { __mode = "k" })
+  T.forgetters[#T.forgetters + 1] = function(r) fitted[r] = nil end
 
   -- The width a font string's text takes on one line at its full size, whatever shrink T.Refit gave it (for sizing
   -- a button to its label): measured at text scale 1, then the scale put back. 0 for text a secret value hides.
@@ -3076,6 +3112,29 @@ local function repaintArt()
   for button, c in pairs(checkOf) do c.paint(button, c) end
   for button in pairs(arrowOf) do paintArrow(button) end
   for _, d in pairs(dividerOf) do T.Tint(d.line, T.DIVIDER.color) end
+end
+
+do
+  -- Drops one region or frame from every registry the theme's walks read.
+  local function forgetOne(region)
+    for _, forget in ipairs(T.forgetters) do forget(region) end
+  end
+
+  -- Drops a frame's own regions (font strings, textures) from the registries.
+  local function forgetRegions(frame)
+    if type(frame.GetRegions) ~= "function" then return end
+    for _, region in ipairs({ frame:GetRegions() }) do forgetOne(region) end
+  end
+
+  -- Drops a frame, its regions and every child below it from the theme's registries, so a page thrown away stays out of
+  -- T.Refresh's walks (the game never frees a frame, and a hidden one would be repainted on every theme change).
+  ---@param frame Frame
+  function T.Forget(frame)
+    forgetOne(frame)
+    forgetRegions(frame)
+    if type(frame.GetChildren) ~= "function" then return end
+    for _, child in ipairs({ frame:GetChildren() }) do T.Forget(child) end
+  end
 end
 
 -- Repaints every painted frame, re-fonts styled text, re-tints remembered regions and tells the listeners.

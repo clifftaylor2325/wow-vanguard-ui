@@ -9,6 +9,7 @@
 -- Never shipped in game.
 
 local stub = __wfgStub
+local type = __wfgRawType
 local world = {}
 __wfgWorld = world
 stub.world = world
@@ -17,9 +18,12 @@ stub.world = world
 -- The client hides some values in instanced combat: a "secret" errors on
 -- arithmetic, comparison, concatenation, length, a call and a field read or
 -- write. Here it is a table under a metatable that raises on each of those, so
--- the same mistakes fail (a plain table would only fail some of them). What
--- the real client's type() returns for a secret number is not confirmed
--- (issue #284 records it); until then type(secret) is "table" here.
+-- the same mistakes fail (a plain table would only fail some of them). A
+-- secret keeps the Lua type of the value it hides (warcraft.wiki.gg, Secret
+-- Values: only operations on it are restricted), so the addon's type() answers
+-- "number" for a hidden number (world.secretTypes); a `type(v) == "number"`
+-- gate lets a secret through, as in game. The harness's own files read the
+-- raw type (__wfgRawType), which still says "table".
 
 -- What a secret refuses: every metamethod raises this.
 local function refuse()
@@ -40,6 +44,28 @@ end
 -- Whether a value is a secret.
 function issecretvalue(v)
   return type(v) == "table" and rawget(v, "__secret") == true
+end
+
+-- Whether a value is a secret world.secret made (a test's plain { __secret = true } stand-in keeps
+-- type() "table", so the test's own issecretvalue, if it has one, still knows it).
+local function madeSecret(v)
+  return type(v) == "table" and getmetatable(v) == SECRET
+end
+
+-- The type the client gives a secret: the hidden value's (a secret of nothing is taken for a number).
+local function secretType(v)
+  local hidden = rawget(v, "n")
+  return hidden == nil and "number" or type(hidden)
+end
+
+-- Gives the addon the client's type(): a secret answers as the value it hides. Run once the client
+-- is built, before the addon loads (scripts/lib/lua-harness.mjs startClient).
+function world.secretTypes()
+  -- The client's type(): a secret answers as what it hides, anything else as itself.
+  _G.type = function(v)
+    if madeSecret(v) then return secretType(v) end
+    return type(v)
+  end
 end
 
 world.aurasSecret = false
@@ -1115,6 +1141,14 @@ C_Spell = {
   end,
 }
 
+-- Whether the client says a spell can be cast now: isUsable, insufficientPower. A spell's usable = false
+-- (a stance or shield it needs) and noPower = true (short of its resource) are set by a test; the default is usable.
+function C_Spell.IsSpellUsable(key)
+  local _, s = spellOf(key)
+  if not s then return false, false end
+  return s.usable ~= false, s.noPower == true
+end
+
 -- Whether a spell is cast on friends (the healer's spells and buffs in the world).
 function C_Spell.IsSpellHelpful(key)
   local _, s = spellOf(key)
@@ -1989,6 +2023,10 @@ local function auctionHouseFrame()
   f:SetSize(800, 538)
   f:SetPoint("CENTER")
   auctionTabs(f)
+  -- The search bar and the category list every client's window has (Blizzard_AuctionHouseFrame.xml), and the
+  -- function the list sets each category row up with (Blizzard_AuctionHouseCategoriesList.lua); a test's own wins.
+  f.SearchBar, f.CategoriesList = stub.newWidget("Frame", nil, f), stub.newWidget("Frame", nil, f)
+  AuctionHouseFilterButton_SetUp = AuctionHouseFilterButton_SetUp or function() end
   -- The item a bag click (or the game's sell frame) puts up for sale: recorded in world.ah.postItem.
   function f:SetPostItem(loc) world.ah.postItem = loc self:SetDisplayMode(AuctionHouseFrameDisplayMode.ItemSell) end
   stub.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI")

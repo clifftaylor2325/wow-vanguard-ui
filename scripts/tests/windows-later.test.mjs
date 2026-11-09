@@ -154,7 +154,7 @@ it("R2.14 the spellbook and the talents: the windows group off leaves them the g
   const bare = loggedIn(`${WINDOWS_ENV}__window("PlayerSpellsFrame")`);
   bare.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   bare.eval("PlayerSpellsFrame:Show()");
-  expect([windowState(bare, "PlayerSpellsFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  expect([windowState(bare, "PlayerSpellsFrame").panel, bare.eval("return #ns.errors"), bare.eval("return ns.notes")], "a window without the book's pages keeps the game's look and says so once, under Left off").toEqual([false, 0, ["window PlayerSpellsFrame: skin left off, the game's window has no SpellBookFrame.PagedSpellsFrame"]]);
   const odd = loggedIn(`${SPELLS_ENV} PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame = 1 PlayerSpellsFrame.SpellBookFrame.SearchBox = {} PlayerSpellsFrame.TalentsFrame.ClassCurrencyDisplay = 1
     PlayerSpellsFrame.TalentsFrame.LoadSystem = {} PlayerSpellsFrame.TalentsFrame.ActiveSpec = 1`);
   odd.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
@@ -181,7 +181,7 @@ const PROF_ENV = `${READERS_ENV}
     form.RecipeSourceButton = CreateFrame("Button", nil, form) form.RecipeSourceButton.Text = __text(form.RecipeSourceButton, "Locked")
     form.FirstCraftBonus = CreateFrame("Frame", nil, form) form.FirstCraftBonus.Text = __text(form.FirstCraftBonus, "First")
     form.reagentSlots = { [1] = { __slot(form) } }
-    function form:Init() table.insert(self.reagentSlots[1], __slot(self)) end
+    function form:Init() table.insert(self.reagentSlots[1], __slot(self)) self.enchantSlot = self.enchantSlot or __slot(self) end
     return form
   end
   -- A recipe row as the game acquires it (SetSelected shows the selected overlay), or a category row (none).
@@ -214,7 +214,9 @@ const PROF_ENV = `${READERS_ENV}
     for _, slot in ipairs(form.reagentSlots[1]) do
       if slot.Button.icon.__texCoord ~= nil and __themed(slot.Name) then slots = slots + 1 end
     end
-    return { inset = __faded(form) and form.NineSlice.__alpha == 0 and __sunk(form), slots = slots, level = __button(form.RecipeLevelDropdown),
+    local enchant = form.enchantSlot
+    return { inset = __faded(form) and form.NineSlice.__alpha == 0 and __sunk(form), slots = slots,
+      enchant = enchant == nil or (enchant.Button.icon.__texCoord ~= nil and __themed(enchant.Name)), level = __button(form.RecipeLevelDropdown),
       checks = ns.Theme.CheckParts(form.TrackRecipeCheckbox) ~= nil and ns.Theme.CheckParts(form.AllocateBestQualityCheckbox) ~= nil,
       label = __lit(form.TrackRecipeCheckbox.Text, "small", "text"), sub = __lit(form.OutputSubText, "label", "text"),
       source = __lit(form.RecipeSourceButton.Text, "label", "text"), bonus = __lit(form.FirstCraftBonus.Text, "label", "text") }
@@ -300,6 +302,8 @@ it("R2.15 the professions window: reagent slots the form fills in when it shows 
   expect(addon.eval("return __formState(ProfessionsFrame.CraftingPage.SchematicForm).slots"), "three slots, each in the item look with its name in small text").toBe(3);
   addon.eval("ProfessionsFrame:Hide() ProfessionsFrame:Show() ProfessionsFrame.CraftingPage.SchematicForm:Init()");
   expect(addon.eval("return __formState(ProfessionsFrame.CraftingPage.SchematicForm).slots"), "the form is hooked once, a slot made later is skinned").toBe(4);
+  expect(addon.eval("local form = ProfessionsFrame.CraftingPage.SchematicForm return { form.enchantSlot ~= nil, __formState(form).enchant }"), "an enchant recipe's item slot is in the item look too").toEqual([true, true]);
+  expect(addon.eval("local form = __form(ProfessionsFrame) form.reagentSlots = nil form.enchantSlot = __slot(form) ns.GetModule('Windows').SkinSchematicForm(form) return form.enchantSlot.Button.icon.__texCoord ~= nil and __themed(form.enchantSlot.Name)"), "a form with no reagent slots still skins its enchant slot").toBe(true);
   // The first recipe row's selected fill and rail, as shown.
   const lit = () => addon.eval("return { ns.Theme.RowParts(__recipe).fill:IsShown(), ns.Theme.RowParts(__recipe).rail:IsShown() }");
   expect(lit(), "a row that is not selected shows no selected look").toEqual([false, false]);
@@ -1071,9 +1075,9 @@ it("R3.5 the auction house panels: the windows group off leaves them the game's;
   const bare = loggedIn(`${WINDOWS_ENV}__window("AuctionHouseFrame")`);
   bare.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
   bare.eval("AuctionHouseFrame:Show()");
-  expect([windowState(bare, "AuctionHouseFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  expect([windowState(bare, "AuctionHouseFrame").panel, bare.eval("return #ns.errors"), bare.eval("return ns.notes")], "a window without a search bar keeps the game's look and says so once, under Left off").toEqual([false, 0, ["window AuctionHouseFrame: skin left off, the game's window has no SearchBar"]]);
   const odd = loggedIn(`${AH_WINDOW}
-    local f = AuctionHouseFrame f.MoneyFrameBorder.MoneyFrame = 1 f.SearchBar = 1 f.CategoriesList = {} f.BuyDialog = 1 f.ItemSellFrame = 1 f.CommoditiesSellFrame = { GetRegions = 1 }
+    local f = AuctionHouseFrame f.MoneyFrameBorder.MoneyFrame = 1 f.SearchBar = {} f.CategoriesList = {} f.BuyDialog = 1 f.ItemSellFrame = 1 f.CommoditiesSellFrame = { GetRegions = 1 }
     f.CommoditiesBuyFrame.BuyDisplay = { GetRegions = function() end, QuantityInput = 1 } f.ItemBuyFrame.ItemList = {} f.BrowseResultsFrame.ItemList = 1
     f.ItemSellList.HeaderContainer = 1 f.ItemSellList.ScrollBox = {} f.AuctionsFrame.SummaryList = 1 f.AuctionsFrame.AuctionsTab = 1 f.AuctionsFrame.BidFrame = 1
     f.CommoditiesSellList.LoadingSpinner = 1 f.CommoditiesSellList.RefreshFrame = {}`);

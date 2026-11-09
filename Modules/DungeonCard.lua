@@ -21,7 +21,9 @@ DC.QUESTS, DC.KEY_RING, DC.LAST_BAG, DC.KEY_CLASS = 6, -1, 5, 13
 -- The first bag the key scan reads: the key ring. Retail has none (its bag -1 is the bank), so its card starts at
 -- the backpack (Modules/RetailMythicPlus.lua).
 DC.FIRST_BAG = DC.KEY_RING
--- The card's switch under Town and gear, as this client's card reads (Retail's says what its card shows instead).
+-- The card's switch under Town and gear: its name, and its tip, what this client's card shows (Retail's card shows
+-- other things).
+DC.NAME = L["Dungeon card"]
 DC.LABEL = L["Dungeon card: level range, your dungeon quests and keys on the checklist"]
 -- The quest tags (Enum.QuestTag names) that make a log quest a dungeon quest.
 DC.TAGS = { "Dungeon", "Raid", "Group" }

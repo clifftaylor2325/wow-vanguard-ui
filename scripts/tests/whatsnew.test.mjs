@@ -161,7 +161,7 @@ it("what's new notes: every version has groups of lines, and every line's settin
             ns.Options.Show(item.page) ns.Options.JumpTo(item.row)
             local f = Vanguard_Options.found local w
             for _, x in ipairs(__wfgStub.frames) do if x.found == f and f and f:IsShown() then w = x end end
-            if ns.Options.current ~= item.page or not w or not w.caption:lower():find(item.row:lower(), 1, true) then out[#out + 1] = item.text end
+            if ns.Options.current ~= item.page or not w or not (w.caption .. " " .. (w.source and w.source.was or "")):lower():find(item.row:lower(), 1, true) then out[#out + 1] = item.text end
           end
         end
       end

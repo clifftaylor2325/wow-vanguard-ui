@@ -1,5 +1,5 @@
 // guideprobe: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
-// Modules/GuideData.lua: /vg guide probe, which reports what the client returns for the reads a
+// Modules/Probe.lua: /vg guide probe, which reports what the client returns for the reads a
 // levelling guide would use, in chat only; and the Errands flight poll's secret guard (LG-0).
 
 import { expect, it } from "vitest";
@@ -63,7 +63,7 @@ it("guide probe: QUEST_ACCEPTED and QUEST_TURNED_IN record only the types of the
   addon.fire("QUEST_ACCEPTED", addon.world.secret(7), "log");
   const lines = probe(addon);
   expect(line(lines, "QUEST_TURNED_IN"), "numbers: their types, never the ids").toMatch(/^.*QUEST_TURNED_IN: first arguments number, number$/);
-  expect(line(lines, "QUEST_ACCEPTED"), "a secret is named, with the type() the client gave it").toMatch(/first arguments secret \(type table\), string$/);
+  expect(line(lines, "QUEST_ACCEPTED"), "a secret is named, with the type() the client gave it").toMatch(/first arguments secret \(type number\), string$/);
   expect(chatHas(addon, /90051|250/), "no argument value reaches chat").toBe(false);
 });
 it("/vg guide: with anything but probe it prints how to use it", () => {

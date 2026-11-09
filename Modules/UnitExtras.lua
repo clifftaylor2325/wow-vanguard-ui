@@ -150,6 +150,14 @@ function UX.Status()
   return missing, "warn", nil
 end
 
+-- The frame whose top edge the chip sits over: your class's row on the player frame (the totems, else the combo
+-- points) when it is made, else the player frame itself.
+local function aboveRow(player)
+  local totems = ns.GetModule("ClassBars").totems
+  local points = ns.GetModule("ComboPoints").bar
+  return totems or points or player
+end
+
 -- Puts the chip level with the player frame, a gap to its left when the chip fits there on the screen, else
 -- just above the frame's left end (the Classic layout puts the frame 20 from the edge; a narrow canvas too).
 local function placeChip(chip, player)
@@ -157,7 +165,10 @@ local function placeChip(chip, player)
   if (player:GetLeft() or 0) >= chip:GetWidth() + T.SPACE.gap then
     return chip:SetPoint("RIGHT", player, "LEFT", -T.SPACE.gap, 0)
   end
-  chip:SetPoint("BOTTOMLEFT", player, "TOPLEFT", UX.CHIP_ABOVE_X, UX.CHIP_ABOVE_Y)
+  local row = aboveRow(player)
+  local lift = math.max(0, (row:GetTop() or 0) - (player:GetTop() or 0))
+  chip:SetPoint("BOTTOMLEFT", row, "TOPLEFT", UX.CHIP_ABOVE_X, UX.CHIP_ABOVE_Y)
+  UF.RaiseDeckReach("top", lift + UX.CHIP_ABOVE_Y + UX.CHIP_HEIGHT)
 end
 
 -- Shows the chip with its icon and text, sized to them, or hides it for no text.

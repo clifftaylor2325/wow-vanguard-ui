@@ -15,7 +15,7 @@
 --     whenever the inbox changes; nothing is opened, taken or deleted.
 -- A mail that tells of an outcome an event already recorded joins that record
 -- (the same item and kind, at the same price each or, for a sale, the mail's price under the buyout
--- the event knew, read within AL.BID_AGE; within AL.LINK_AGE otherwise) rather than adding one, and the mail's figures stand; a mail read again is known by its expiry
+-- the event knew, read after it within AL.BID_AGE; within AL.LINK_AGE otherwise) rather than adding one, and the mail's figures stand; a mail read again is known by its expiry
 -- time and contents. The Up now card's "Your history" shows the item's last
 -- records, how many of its auctions sold out of those that sold or ran out,
 -- and the average price each; the info strip can show this session's sales.
@@ -87,11 +87,12 @@ local function samePrice(r, o)
 end
 
 -- How far an event's sale and a mail's are from one bid win (the buyout the event knew less what the mail says the
--- buyer paid, plus one, so a same-price match still ranks first), or nil: the same units, read within AL.BID_AGE.
+-- buyer paid, plus one, so a same-price match still ranks first), or nil: the same units, the mail read at or
+-- after the event and within AL.BID_AGE.
 local function bidGap(r, o)
   local mail, event = o.mail and o or r, o.mail and r or o
   local under = event.amount - mail.amount
-  local near = r.kind == "sold" and r.qty == o.qty and math.abs(r.t - o.t) <= AL.BID_AGE
+  local near = r.kind == "sold" and r.qty == o.qty and mail.t >= event.t and math.abs(r.t - o.t) <= AL.BID_AGE
   return near and under >= 0 and under + 1 or nil
 end
 
@@ -286,13 +287,24 @@ local function fresh(v, cutoff)
   return type(v) == "table" and (tonumber(v.t) or 0) >= cutoff
 end
 
+-- An entry stamped after now (noted under a clock that was set ahead) moves back a day, so it is no
+-- sale of this session and its history row says yesterday, not today. Not when now is no real time
+-- (0, or -math.huge from an untrusted clock).
+local function notAhead(v, now)
+  if now > 0 and (tonumber(v.t) or 0) > now then v.t = now - AP.DAY end
+end
+
 -- Drops a ledger's records older than AL.MAX_AGE days and auctions first seen up more than
 -- AL.OPEN_AGE ago (and anything broken); true when nothing is left.
 local function pruneBook(book, now)
   local records = {}
-  for _, r in ipairs(book.records) do if fresh(r, now - AL.MAX_AGE * AP.DAY) then records[#records + 1] = r end end
+  for _, r in ipairs(book.records) do
+    if fresh(r, now - AL.MAX_AGE * AP.DAY) then notAhead(r, now) records[#records + 1] = r end
+  end
   book.records = records
-  for id, a in pairs(book.open) do if not fresh(a, now - AL.OPEN_AGE) then book.open[id] = nil end end
+  for id, a in pairs(book.open) do
+    if fresh(a, now - AL.OPEN_AGE) then notAhead(a, now) else book.open[id] = nil end
+  end
   return #records == 0 and next(book.open) == nil
 end
 

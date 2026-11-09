@@ -570,12 +570,18 @@ local function applyBlock(fs, text)
   return changed
 end
 
+-- Whether a block is on: the clock as it was at login (its switch is a reload switch), every other block as set now.
+local function blockOn(key)
+  if IS.atLogin[key] ~= nil then return IS.atLogin[key] end
+  return IS.settings[key]
+end
+
 -- Repaints one block: hidden when off or when the client can't answer; the strip refits only when it changed.
 function IS.Paint(key)
   local fs = IS.fonts and IS.fonts[key]
   if not fs then return end
   local text, color
-  if IS.settings[key] then text, color = IS.TEXT[key]() end
+  if blockOn(key) then text, color = IS.TEXT[key]() end
   local changed = applyBlock(fs, text)
   showButton(key, text ~= nil)
   if color then T.Color(fs, color) end
@@ -701,12 +707,19 @@ IS.SLOT_NAMES = {
 -- What a bag that holds one kind of thing is called, by the game's bag family number; any other family is a "special bag".
 IS.BAG_KINDS = { [1] = L["quiver"], [2] = L["ammo pouch"], [4] = L["soul bag"] }
 
+-- One slot's durability in whole percent (rounded to the nearest, as the strip's block reads it), or nil
+-- for a slot without durability; the character pane's labels read it too so both agree.
+function IS.SlotPercent(slot)
+  local share = slotShare(slot)
+  return share and math.floor(share * 100 + 0.5) or nil
+end
+
 -- Each worn item under full durability, most worn first: { name, percent }.
 function IS.WornSlots()
   local out = {}
   for slot, name in pairs(IS.SLOT_NAMES) do
-    local share = slotShare(slot)
-    if share and share < 1 then out[#out + 1] = { name, math.floor(share * 100 + 0.5) } end
+    local percent = IS.SlotPercent(slot)
+    if percent and percent < 100 then out[#out + 1] = { name, percent } end
   end
   table.sort(out, function(a, b) return a[2] < b[2] or (a[2] == b[2] and a[1] < b[1]) end)
   return out
@@ -1014,6 +1027,8 @@ end
 -- Module entry point (Core/Modules.lua): the strip, laid out again whenever the Text size changes.
 function IS.Enable(settings)
   IS.settings = settings
+  -- The clock follows the login value because the game's clock is put away once (H42-15-1).
+  IS.atLogin = { clock = settings.clock }
   hideReplaced(settings)
   keepReminders(settings)
   IS.StartSession()

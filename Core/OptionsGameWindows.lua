@@ -10,16 +10,16 @@ local setting, reloadSetting, check, append = O.Setting, O.ReloadSetting, O.Chec
 
 -- The game's own windows in the Vanguard look, by group: setting key -> its switch's label.
 local WINDOW_GROUPS = {
-  { "windows", L["Character, merchant, quest, loot and other windows (reload)"] },
+  { "windows", L["Character and other windows (reload)"] },
   { "popups", L["Popups (reload)"] },
   { "timers", L["Breath and fatigue bars (reload)"] },
   { "durability", L["Durability on the character pane's gear (reload)"] },
-  { "social", L["Mail, guild, channels, friends and guild-creation windows (reload)"] },
-  { "town", L["Stable, trainer, merchant, bags, loot and item dialogs (reload)"] },
-  { "system", L["Game options, Edit Mode, keybinding and help windows (reload)"] },
-  { "map", L["World map, group finder, calendar and Legacy windows (reload)"] },
-  { "menus", L["Right-click menus, dropdowns and more tooltips (reload)"] },
-  { "tabs", L["Tab buttons and the inside of the character pane (reload)"] },
+  { "social", L["Mail, guild and social windows (reload)"] },
+  { "town", L["Town windows and item dialogs (reload)"] },
+  { "system", L["Options and help windows (reload)"] },
+  { "map", L["World map and calendar windows (reload)"] },
+  { "menus", L["Menus, dropdowns and tooltips (reload)"] },
+  { "tabs", L["Tabs and the character pane (reload)"] },
   { "pvp", L["Battleground windows (reload)"] },
   { "movable", L["Drag game windows by their title bar (reload)"] },
 }
@@ -53,36 +53,38 @@ local function windowRows()
   return rows
 end
 
--- Auto-accept: summons, resurrections, duels and faster auto-loot.
+-- Auto-accept: summons, resurrections and faster auto-loot.
 local function promptRows()
   return {
     { "header", L["Auto-accept"] },
-    check(L["Accept summons (one offered in a fight is taken when it ends)"], setting("AutoAccept", "summons")),
-    check(L["Accept resurrections"], setting("AutoAccept", "resurrect")), check(L["Decline duels"], setting("AutoAccept", "duels")),
-    check(L["Faster auto-loot (when the game's auto-loot is on)"], setting("AutoAccept", "loot")),
+    check(L["Accept summons"], setting("AutoAccept", "summons")),
+    check(L["Accept resurrections"], setting("AutoAccept", "resurrect")),
+    check(L["Faster auto-loot"], setting("AutoAccept", "loot")),
   }
 end
 
--- Quiet the game, its first part: declined invites and release in battlegrounds.
+-- Quiet the game, its first part: declined duels and invites, and release in battlegrounds. The card shows the
+-- duels, guild invites, error line and zone names; the rest fold under More settings (it would open on nine rows).
 local function quietInviteRows()
   return {
     { "header", L["Quiet the game"] },
-    check(L["Decline guild invites"], setting("AutoAccept", "guildInvites")),
-    check(L["Decline group invites from people who aren't friends or guildmates"], setting("AutoAccept", "strangerGroups")),
-    check(L["Decline Battle.net friend requests"], setting("AutoAccept", "friendRequests")),
-    check(L["Release at once when you die in a battleground"], setting("AutoAccept", "pvpRelease")),
+    O.Essential(check(L["Decline duels"], setting("Quiet", "duels"))),
+    O.Essential(check(L["Decline guild invites"], setting("Quiet", "guildInvites"))),
+    check(L["Decline group invites from strangers"], setting("Quiet", "strangerGroups")),
+    check(L["Decline Battle.net friend requests"], setting("Quiet", "friendRequests")),
+    check(L["Release at once in battlegrounds"], setting("Quiet", "pvpRelease")),
   }
 end
 
--- Quiet the game, its second part: the error line (all of it, or what the action bar already shows: the
--- Merchant module's filter), the zone names, and a further camera.
+-- Quiet the game, its second part: the error line (all of it, or what the action bar already shows), the zone
+-- names, and a further camera.
 local function quietScreenRows()
   return {
-    check(L["Hide the red error line (full bags and quest log still show)"], setting("Quiet", "errors")),
-    check(L["Hide errors the action bar already shows (reload)"], reloadSetting("Merchant", "errors")),
-    check(L["Hide the zone names that fade in"], setting("Quiet", "zoneText")),
+    O.Essential(check(L["Hide the red error line"], setting("Quiet", "errors"))),
+    check(L["Hide errors the action bar already shows (reload)"], reloadSetting("Quiet", "barErrors")),
+    O.Essential(check(L["Hide the zone names that fade in"], setting("Quiet", "zoneText"))),
     -- The setter must stay the row's last element: liveSetting returns a getter and a setter.
-    { "cycle", L["Furthest the camera zooms out"], ns.GetModule("Quiet").CAMERA,
+    { "cycle", L["Furthest camera zoom (the game's setting)"], ns.GetModule("Quiet").CAMERA,
       O.LiveMethod("Quiet", "camera", "ApplyCamera") },
   }
 end
@@ -95,7 +97,7 @@ end
 -- Vendor memory: where items are sold, in their tooltips.
 local function vendorRows()
   return {
-    check(L["Where an item is sold (merchants you've visited)"], setting("VendorMemory", "tooltip")),
+    check(L["Where an item is sold"], setting("VendorMemory", "tooltip")),
     check(L["Remember what merchants sell"], setting("VendorMemory", "remember")),
   }
 end
@@ -107,9 +109,9 @@ local function tooltipRows()
     { "cycle", L["Tooltip position"], { { "corner", L["corner (movable)"] }, { "cursor", L["at the cursor"] }, { "default", L["client default"] } }, setting("Tooltips", "anchor") },
     check(L["Border in the unit's class color"], setting("Tooltips", "classBorder")),
     check(L["Show who the unit is targeting"], setting("Tooltips", "targetLine")),
-    check(L["What an item sells for (when the game doesn't say)"], setting("Tooltips", "sellPrice")),
+    check(L["Item sell price"], setting("Tooltips", "sellPrice")),
     check(L["How many of an item you have"], setting("Tooltips", "itemCount")), check(L["Item IDs"], setting("Tooltips", "itemID")),
-    check(L["How many your other characters have (here, same side)"], setting("Inventory", "alts")),
+    check(L["Counts on your other characters"], setting("Inventory", "alts")),
     check(L["Hide unit tooltips in combat"], setting("Tooltips", "hideInCombat")),
   }, vendorRows())
 end

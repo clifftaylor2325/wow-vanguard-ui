@@ -120,28 +120,45 @@ local function rankText(i)
   end
 end
 
--- Where the trainer is: its name, zone and subzone (nil for any the client hides; the subzone drops when it is the zone).
-local function whereNow()
-  local zone, sub = ns.PlainText(ns.Client.Call("GetZoneText")), ns.PlainText(ns.Client.Call("GetSubZoneText"))
-  return ns.PlainText(ns.Client.Call("UnitName", "npc")), zone, sub ~= zone and sub or nil
+-- The player's side ("Alliance" or "Horde"), or nil when the client hides it.
+local function factionNow()
+  return ns.PlainText(ns.Client.Call("UnitFactionGroup", "player"))
 end
 
--- Service i as a record { name, rank, level, cost, trainer, zone, sub, t }, or nil (hidden name, already learned, no level to learn it at).
+-- Where the trainer is: its name, zone and subzone (nil for any the client hides; the subzone drops when it is the zone),
+-- and the side of the player visiting it.
+local function whereNow()
+  local zone, sub = ns.PlainText(ns.Client.Call("GetZoneText")), ns.PlainText(ns.Client.Call("GetSubZoneText"))
+  return ns.PlainText(ns.Client.Call("UnitName", "npc")), zone, sub ~= zone and sub or nil, factionNow()
+end
+
+-- Service i as a record { name, rank, level, cost, trainer, zone, sub, faction, t }, or nil (hidden name, already learned, no level to learn it at).
 -- The level is the fourth return of GetTrainerServiceInfo, as the game's own trainer window reads it, else GetTrainerServiceLevelReq's.
 local function service(i, where)
   local name, kind, _, reqLevel = ns.Client.Call("GetTrainerServiceInfo", i)
   local level = ns.PlainNumber(reqLevel) or ns.PlainNumber(ns.Client.Call("GetTrainerServiceLevelReq", i))
   if not ns.PlainText(name) or kind == "used" or not level or level < 1 then return nil end
   return { name = name, rank = rankText(i), level = level, cost = ns.PlainNumber(ns.Client.Call("GetTrainerServiceCost", i)) or 0,
-    trainer = where[1], zone = where[2], sub = where[3], t = ns.PlainNumber(ns.Client.Call("time")) or 0 }
+    trainer = where[1], zone = where[2], sub = where[3], faction = where[4], t = ns.PlainNumber(ns.Client.Call("time")) or 0 }
 end
 
--- Keeps a service for this class (a new one only below the cap).
+-- A record of the same service kept before sides were (its key ends in no side) gives way to the sided one.
+local function retireUnsided(c, s)
+  if not s.faction then return end
+  local old = s.name .. "\1" .. (s.rank or "")
+  if c.list[old] then
+    c.list[old] = nil
+    c.count = c.count - 1
+  end
+end
+
+-- Keeps a service for this class and side (a new one only below the cap; each side's copy counts).
 function SR.Remember(token, s)
   local store = SR.Store()
   local c = store[token] or { count = 0, list = {} }
   store[token] = c
-  local key = s.name .. "\1" .. (s.rank or "")
+  retireUnsided(c, s)
+  local key = s.name .. "\1" .. (s.rank or "") .. "\1" .. (s.faction or "")
   if c.list[key] == nil then
     if c.count >= SR.MAX_SERVICES then return end
     c.count = c.count + 1
@@ -174,11 +191,17 @@ local function byLevel(a, b)
   return a.name < b.name
 end
 
--- The remembered services for levels above fromLevel up to fromLevel + SR.AHEAD, lowest level first.
+-- Whether the player can use a service learned on side (a record from before sides were kept has none).
+local function ownSide(s, side)
+  return s.faction == nil or side == nil or s.faction == side
+end
+
+-- The remembered services for levels above fromLevel up to fromLevel + SR.AHEAD, lowest level first,
+-- leaving out those another side's trainer taught.
 function SR.Upcoming(fromLevel)
-  local c, out = SR.Store()[classToken() or ""], {}
+  local c, out, side = SR.Store()[classToken() or ""], {}, factionNow()
   for _, s in pairs(c and c.list or {}) do
-    if s.level > fromLevel and s.level <= fromLevel + SR.AHEAD then out[#out + 1] = s end
+    if s.level > fromLevel and s.level <= fromLevel + SR.AHEAD and ownSide(s, side) then out[#out + 1] = s end
   end
   table.sort(out, byLevel)
   return out

@@ -85,12 +85,18 @@ local function titleOf(id)
   return ns.PlainText(ns.CallIf(C_QuestLog, "GetTitleForQuestID", id)) or L["Quest"]
 end
 
+-- Whether the quest log has arrived (it is empty for a moment after login, so a restored pin must wait): it has
+-- entries, or the game has said it updated, which an emptied log (the last quest turned in) still does.
+local function logHasQuests()
+  return QA.logLoaded == true or (ns.PlainNumber(ns.CallIf(C_QuestLog, "GetNumQuestLogEntries")) or 0) > 0
+end
+
 -- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the
 -- nearest quest" off, also the game's tracked one), else the nearest, else the game's tracked one. A
 -- Shift-click whose quest has left the log is let go here, so it can't hold a quest the game tracks later.
 local function follow(old)
   local guide = ns.QuestGuide
-  if guide.pointed and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.DropPin() end
+  if guide.pointed and logHasQuests() and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.DropPin() end
   local pin = pinned()
   if pin and (ns.QuestGuide.pointed or not QA.settings.auto) then return pin, true end
   return QA.settings.auto and QA.Choose(old) or pin, false
@@ -104,6 +110,12 @@ local function paintPick(f)
   T.Tint(f.arrow, QA.ready and "gold" or "accent")
 end
 
+-- Says in chat that the arrow moved on from a finished quest, only while the arrow is shown and not in a fight.
+local function sayMovedOn(old)
+  if not (QA.settings.show and old and QA.current and old ~= QA.current) then return end
+  if finished(old) and not ns.InCombat() then ns.Chat(ns.Format(L["Arrow: {quest}."], { quest = titleOf(QA.current) })) end
+end
+
 -- Picks the quest, whether it is held and ready to turn in, and its spot (map, x, y); says so when it moved on
 -- from a finished one, redraws, and has the tracker move its accent line when the quest changed.
 function QA.Pick()
@@ -112,7 +124,7 @@ function QA.Pick()
   QA.current, QA.held = follow(old)
   QA.ready = QA.current ~= nil and readyToTurnIn(QA.current)
   QA.target = QA.current and { ns.QuestGuide.Target(QA.current) } or nil
-  if old and QA.current and old ~= QA.current and finished(old) and not ns.InCombat() then ns.Chat(ns.Format(L["Arrow: {quest}."], { quest = titleOf(QA.current) })) end
+  sayMovedOn(old)
   paintPick(QA.frame)
   QA.Draw()
   if old ~= QA.current then ns.GetModule("QuestTracker").Redraw() end
@@ -335,7 +347,7 @@ end
 function QA.Rows()
   return {
     { "check", L["Show the quest arrow"], setting("show", showChanged) },
-    { "check", L["Follow the nearest quest (off: only the one you pinned)"], setting("auto", QA.Pick) },
+    { "check", L["Follow the nearest quest"], setting("auto", QA.Pick) },
   }
 end
 
@@ -345,7 +357,7 @@ function QA.Enable(settings)
   QA.settings = settings
   build()
   for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "SUPER_TRACKING_CHANGED", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }) do
-    ns.On(event, function() ns.Soon("quest arrow", QA.Pick) end)
+    ns.On(event, function() QA.logLoaded = QA.logLoaded or event == "QUEST_LOG_UPDATE" ns.Soon("quest arrow", QA.Pick) end)
   end
   ns.Every("quest arrow pick", QA.PICK, QA.Pick)
   ns.Every("quest arrow", QA.DRAW, QA.Draw)

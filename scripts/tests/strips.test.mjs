@@ -27,7 +27,7 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   expect(block(addon, "dps").shown, "off until you turn it on").toBe(false);
   addon.slash("");
   addon.eval('ns.Options.Show("map")');
-  addon.eval(`__click("Your DPS in the last fight (from the game's damage meter)")`);
+  addon.eval(`__click("Your DPS in the last fight")`);
   expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a row of its own (the rows close up, so one more than before)").toEqual(["1.2K dps", [1, 1], before + 18]);
   setCombat(addon, true);
   addon.eval("__dps.combatSources[2].amountPerSecond = 2500");
@@ -53,7 +53,7 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   expect(block(addon, "rank").shown, "off until you turn it on").toBe(false);
   addon.slash("");
   addon.eval('ns.Options.Show("map")');
-  addon.eval(`__click("Your place in the last fight's DPS")`);
+  addon.eval(`__click("Your DPS place in the group")`);
   expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on a row of its own (the rows close up, so one more than before)").toEqual(["#2 of 2", true, before + 18]);
   addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
   addon.fire("PLAYER_REGEN_ENABLED");
@@ -106,7 +106,8 @@ it("the info strip under the minimap", () => {
   expect(isTok(addon, block(addon, "bags").color, "bad"), "full bags are red").toBe(true);
   addon.slash("");
   addon.eval('ns.Options.Show("map")');
-  expect(addon.eval('return __click("Clock")') && block(addon, "clock").shown, "a block turns off at once").toBe(false);
+  addon.eval('__click("Gold")');
+  expect(block(addon, "gold").shown, "a block turns off at once").toBe(false);
   expect(addon.eval('return { ns.MoverPoint("infostrip") }'), "the strip is movable, under the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -12, -200]);
 });
 it("the info strip lays its blocks out again only when a block's text or shown state changed, not on every tick", () => {
@@ -126,7 +127,7 @@ it("the info strip: the day and date with a calendar button", () => {
   const button = "Vanguard_InfoStripCalendar";
   const dateAnchor = 'local p = ns.GetModule("InfoStrip").fonts.date.__points.LEFT return { p.rel == ns.GetModule("InfoStrip").fonts.clock, p.relPoint, p.x }';
   expect(addon.eval(dateAnchor), "the date sits right after the time").toEqual([true, "RIGHT", 8]);
-  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").UpdateAll()');
+  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").atLogin.clock = false ns.GetModule("InfoStrip").UpdateAll()');
   expect(addon.eval(dateAnchor), "with the time off, the date takes the row's left edge").toEqual([false, "TOPLEFT", 6]);
   addon.eval('ns.Settings("InfoStrip").clock = true ns.GetModule("InfoStrip").UpdateAll()');
   expect([block(addon, "date").text, addon.eval(`return ${button}:IsShown()`)], "the day and date, with the button beside them").toEqual(["Tue 13 Oct", true]);
@@ -175,7 +176,7 @@ it("a click on the info strip's time opens the game's clock window, or turns off
   click();
   expect(addon.eval("return { __calls, Vanguard_InfoStripClock:IsShown(), Vanguard_InfoStripClock.__points.TOPLEFT.rel == ns.GetModule('InfoStrip').fonts.clock }"), "the window, then the ringing alarm off; the hit area covers the time")
     .toEqual([["window", "alarm off"], true, true]);
-  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").Paint("clock")');
+  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").atLogin.clock = false ns.GetModule("InfoStrip").Paint("clock")');
   expect(addon.eval("return Vanguard_InfoStripClock:IsShown()"), "with the time off, nothing takes its clicks").toBe(false);
 });
 it("the info strip's time follows the game's clock (realm or local, 12 or 24 hours), and its tooltip shows both", () => {
@@ -253,9 +254,9 @@ it("the quest tracker's spot moves down with the info strip's taller rows, after
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}
-    for _, p in ipairs(ns.Options.PAGES) do if p.key == "bars" then for _, r in ipairs(p.rows()) do if type(r[2]) == "string" and r[2]:find("quest tracker") then out[#out + 1] = r[2] end end end end
+    for _, p in ipairs(ns.Options.PAGES) do if p.key == "bars" then for _, r in ipairs(p.rows()) do if type(r[2]) == "string" and r[2]:find("game's tracker") then out[#out + 1] = r[2] end end end end
     return out`);
-  expect(labels, "each switch says it is the game's tracker's").toEqual(["The game's quest tracker under the info strip (reload)", "The game's quest tracker in the Vanguard look (reload)"]);
+  expect(labels, "each switch says it is the game's tracker's").toEqual(["The game's tracker under the info strip (reload)", "The game's tracker in the Vanguard look (reload)"]);
 });
 it("in a fight the info strip's calendar button says the calendar waits, and asks the game for nothing", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + PANEL_OPENERS);
@@ -299,7 +300,7 @@ it("the info strip: ammo, and clients that can't answer", () => {
   expect(["durability", "bags", "system", "gold", "clock"].map((k) => block(bare, k).shown), "no answer, no block").toEqual([false, false, false, false, false]);
 });
 it("the info strip: a warlock's soul shards, across the bags and the reagent bag", () => {
-  const SHARDS = `__units.player.class = "WARLOCK" issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  const SHARDS = `__units.player.class = "WARLOCK" issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
     __wfgWorld.bags[1][3] = { itemID = 6265 } __wfgWorld.bags[2][1] = { itemID = 2589, count = 5 }
     __wfgWorld.bags[5], __wfgWorld.bagSizes[5] = { [2] = { itemID = 6265, count = 2 } }, 4
 `;
@@ -1333,4 +1334,17 @@ it("H17-10-R1: the backpack's free count and the calendar's invite count sit on 
   addon.eval('ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()');
   const backs = addon.eval("return { ns.GetModule('MenuStrip').freeBack.__vertexColor, ns.GetModule('InfoStrip').invitesBack.__vertexColor }");
   expect(backs.map((c) => [c[0], c[1], c[2]]), "Classic's bronze edge does not tint either backing").toEqual([[0, 0, 0], [0, 0, 0]]);
+});
+it("the info strip's clock is a reload switch: the game's clock stays put away and the strip's clock stays until the reload", () => {
+  const addon = loggedIn(STRIP_ENV + UNITS_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('ns.Options.Show("map")');
+  const away = "return ns.GetModule('InfoStrip').fonts.clock:IsShown()";
+  expect(addon.eval(away), "the strip's clock shows at login").toBe(true);
+  addon.eval('__click("Clock")');
+  expect(addon.eval("return ns.Settings('InfoStrip').clock"), "the setting is off").toBe(false);
+  addon.eval("__wfgStub.advance(1.1)");
+  expect(addon.eval(away), "nothing changes until the reload, so no clock goes missing").toBe(true);
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "the reload button lights").toBe(true);
+  expect(addon.eval("local keys = ns.GetModule('Situations').LIVE.InfoStrip.keys for _, k in ipairs(keys) do if k == 'clock' then return true end end return false"), "a Situations override can't hold it").toBe(false);
 });

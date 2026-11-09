@@ -242,6 +242,17 @@ it("the account-wide prices move into this realm and faction once; the lists sta
   addon.click(SCAN_BUTTON);
   expect(addon.eval("return #__wfgWorld.ah.queries"), "a scan kept from before the account-wide time counts only for its own house: it scans at once").toBe(1);
 });
+it("past the cap on all houses together, login drops the houses with the oldest prices, never this one", () => {
+  const addon = atAuctionHouse();
+  addon.eval(`local AP = ns.AuctionPrices AP.MAX_ITEMS = 10 AP.MAX_ALL_ITEMS = 12
+    local function fill(realm, n, at) __wfgWorld.realm = realm for i = 1, n do AP.Record(100 + i, i, at) end end
+    fill("Oldest Realm", 5, __now - 300) fill("Older Realm", 5, __now - 200) fill("Newer Realm", 5, __now - 100)
+    __wfgWorld.realm = "Forever Test" fill("Forever Test", 1, __now - 400)`);
+  addon.eval("ns.AuctionPrices.Prune(__now)");
+  expect(houses(addon), "16 items over a cap of 12: the oldest other house goes, this one stays though it is older").toEqual(["ForeverTest-Alliance:1", "NewerRealm-Alliance:5", "OlderRealm-Alliance:5"]);
+  addon.eval("ns.AuctionPrices.Prune(__now)");
+  expect(houses(addon).length, "11 items: under the cap, nothing more goes").toBe(3);
+});
 it("each realm and faction keeps its own prices and its own cap", () => {
   const addon = atAuctionHouse();
   scan(addon, LINEN);

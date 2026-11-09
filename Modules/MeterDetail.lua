@@ -195,11 +195,19 @@ end
 
 -- Report ---------------------------------------------------------------------------------------
 
+-- A line's figure for a report: the time of death on the Deaths view (may be ""), else the short total; nil when hidden.
+local function reportFigure(src)
+  if MT.settings.kind == "Deaths" then return MT.DeathTime(src) end
+  local n = ns.PlainNumber(src[MT.Field()])
+  return n and MT.Short(n) or nil
+end
+
 -- A line's text for a report: "1. Tess 12.3K", or nil when its name or figure is hidden or missing.
 local function reportLine(i, src)
-  local name, n = src and src.name, src and ns.PlainNumber(src[MT.Field()])
-  if type(name) ~= "string" or ns.IsSecret(name) or not n then return nil end
-  return i .. ". " .. name .. " " .. MT.Short(n)
+  local name, figure = src and src.name, src and reportFigure(src)
+  if type(name) ~= "string" or ns.IsSecret(name) or not figure then return nil end
+  if figure == "" then return i .. ". " .. name end
+  return i .. ". " .. name .. " " .. figure
 end
 
 -- The report as one line: the kind and segment, then the top n lines whose figures are plain; nil with none.

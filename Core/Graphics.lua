@@ -33,6 +33,8 @@ G.DETAIL_SUPPORT = {
   graphicsPBRLiquidDetail = "IsPBRWaterSupported", graphicsLightMode = "IsSecondaryLightingSupported",
   graphicsSpellDensity = "IsSpellVisualDensitySystemSupported",
 }
+-- Forever's GraphicsOverrides.lua also sets outline mode only where the card supports it (Retail always does).
+G.FOREVER_SUPPORT = { graphicsOutlineMode = "IsOutlineModeSupported" }
 -- The render scale the 4K tip suggests.
 G.RENDER = 0.8
 
@@ -230,9 +232,14 @@ local function detailFor(name, q)
   return v and math.max(G.DETAILS[name], v) or nil
 end
 
+-- A detail's C_VideoOptions check name: the shared one, or on Forever the extra ones, else nil.
+local function checkFor(name)
+  return G.DETAIL_SUPPORT[name] or (ns.IsForever() and G.FOREVER_SUPPORT[name]) or nil
+end
+
 -- Whether the game's slider sets this detail on this computer (the details with no check always are).
 local function supported(name)
-  local check = G.DETAIL_SUPPORT[name]
+  local check = checkFor(name)
   if not check then return true end
   local f = C_VideoOptions and C_VideoOptions[check]
   local ok, yes = pcall(type(f) == "function" and f or error)
@@ -255,11 +262,48 @@ local function setAll(set, undo, last)
   return ok
 end
 
+-- This computer's own notes (VanguardDB.client, shared by every profile): the settings apply changed
+-- are the game's, which outlive any profile, so their undo record is kept here, not per profile.
+local function clientNotes()
+  return type(VanguardDB) == "table" and VanguardDB.client or {}
+end
+
+-- The record an older version kept in one profile (Graphics.undo, read raw so no profile is filled in), or nil.
+local function profileUndo(name)
+  local profile = VanguardDB.profiles[name]
+  local undo = type(profile) == "table" and type(profile.Graphics) == "table" and profile.Graphics.undo
+  return type(undo) == "table" and undo or nil
+end
+
+-- The record an older version kept: the active profile's, else the first other profile's that has one, or nil.
+local function legacyUndo()
+  local undo = profileUndo(ns.ProfileName())
+  for _, name in ipairs(ns.ProfileNames()) do
+    undo = undo or profileUndo(name)
+  end
+  return undo
+end
+
+-- Drops the old per-profile record from every profile.
+local function clearProfileUndo()
+  for _, profile in pairs(VanguardDB.profiles) do
+    if type(profile) == "table" and type(profile.Graphics) == "table" then profile.Graphics.undo = nil end
+  end
+end
+
+-- Moves the record an older version kept in a profile (Graphics.undo) to the notes, unless they hold one.
+local function adoptProfileUndo()
+  local notes = clientNotes()
+  if type(notes.graphicsUndo) ~= "table" then notes.graphicsUndo = legacyUndo() end
+  clearProfileUndo()
+end
+
 -- The kept settings: those from an earlier apply not yet undone stay, so undo goes back to before the first.
 local function undoTable()
-  local s = ns.Settings("Graphics")
-  s.undo = type(s.undo) == "table" and s.undo or {}
-  return s.undo
+  adoptProfileUndo()
+  local notes = clientNotes()
+  notes.graphicsUndo = type(notes.graphicsUndo) == "table" and notes.graphicsUndo or {}
+  return notes.graphicsUndo
 end
 
 -- Keeps Vanguard's pixel-perfect scale as it was before the first apply (a screen's sizes turn it off).
@@ -309,11 +353,12 @@ end
 
 -- /vg graphics undo: puts back what the last apply changed, out of combat.
 function G.Undo()
-  local s, set = ns.Settings("Graphics"), setter()
-  if type(s.undo) ~= "table" or not set then return ns.Chat(L["Nothing to undo: /vg graphics apply hasn't changed anything."]) end
+  local notes, set = clientNotes(), setter()
+  adoptProfileUndo()
+  if type(notes.graphicsUndo) ~= "table" or not set then return ns.Chat(L["Nothing to undo: /vg graphics apply hasn't changed anything."]) end
   if ns.InCombat() then return ns.Chat(L["Settings don't change in combat: try /vg graphics undo after the fight."]) end
-  restore(set, s.undo)
-  s.undo = nil
+  restore(set, notes.graphicsUndo)
+  notes.graphicsUndo = nil
   ns.Chat(L["Your graphics settings and UI scale are back as they were. If apply changed Vanguard's sizes, the backup profile it named in chat has the old ones."])
 end
 
