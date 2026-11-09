@@ -5137,6 +5137,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: a ring round the crest sweeps with the global cooldown after each cast (the same sweep the cursor ring draws) and is gone with the switch off. If the ring never moves on WoW Forever, say so: it decides whether this switch ships on by default (7.2c).
 - If it fails, paste: whether the ring showed, whether it swept, and `/vg errors`.
 
+### 33.476 The Hairline HUD look
+
+- Do: `/vg` → General → HUD → HUD look: cycle to Hairline. Look at your frame, your target's and the focus over a bright place (snow, sand) and a dark one; enter combat and leave it; open the Versus deck and close it; set Theme variant to High contrast and back.
+- Expect: the unit frames draw no plate: no fill, no border. Each is its name row (name, level, health number, all outlined) over its health and power lines, with one dim brass line a pixel inside the bottom edge, the lines a pixel further in than before. Your line and your target's turn to the accent in a fight and back after it. The cast bars keep their plates and the action bars have no plinth (Bar backing on Auto). The deck's two frames keep the deck's rounded plate and no line. High contrast brings every plate back. The frames still take clicks over their whole old rectangle. [Needs in-game check: whether a 10-unit health line in a pale class colour reads over snow; whether the name row's outlined text holds at Calm HUD's dim; the raid target icon clear above the frame.]
+- If it fails, paste: a screenshot of the three frames over a bright place, which look and variant, and `/vg errors`.
+
+### 33.477 The Rimmed HUD look
+
+- Do: HUD look: cycle to Rimmed. Look at every unit frame, the cast bars and the action bars; enter combat and leave it; open the Versus deck and close it; flip Shield corners on unit frames.
+- Expect: every unit frame and cast bar rounds four pixels with a two-line rim: the theme's border outside and a dim brass line a pixel inside, on all four sides, following the rounds. The bars sit a pixel further in than before, the health bar's top corners cut to the rounds, the texts outlined on the fill. The action bars get their plinth (Bar backing on Auto), rimmed the same way. Your rim's inner line and your target's turn to the accent in a fight. The deck's pair keeps the deck's rounding without the brass line. Shield corners changes nothing on this look (its note says so). [Needs in-game check: that both lines land on whole pixels at UI scale 0.8 and 0.7 and at Pixel-perfect; that the rim reads as one shape beside the Classic look variant and the brass accent.]
+- If it fails, paste: a screenshot of your frame and target frame with the cast bar up, the UI scale, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

@@ -240,15 +240,37 @@ local function createText(f, role, point, x)
   return fs
 end
 
--- Lays out the bars inside a frame: health on top, power along the bottom,
--- one screen pixel inside the border (not one UI unit, which shows a sliver
--- of panel when the UI scale isn't pixel-perfect).
-local function layoutBars(f, powerHeight)
+-- The height of the name row over the bars on a frame drawn bare (the Hairline look), in units.
+UF.NAME_ROW = 14
+
+-- How far the bars sit inside a frame's edge: a screen pixel (not one UI unit, which shows a sliver of panel when
+-- the UI scale isn't pixel-perfect), or two on a frame with a hairline (drawn a pixel inside the border).
+local function barInset(f)
   local px = T.Pixel(f)
-  f.health:SetPoint("TOPLEFT", px, -px)
-  f.health:SetPoint("BOTTOMRIGHT", -px, powerHeight + 2 * px)
-  f.power:SetPoint("TOPLEFT", f.health, "BOTTOMLEFT", 0, -px)
-  f.power:SetPoint("BOTTOMRIGHT", -px, px)
+  if T.HairlineOf(f) then return 2 * px end
+  return px
+end
+
+-- How far below a frame's top its health bar starts: the bar inset, or the name row on a frame drawn bare.
+local function barsTop(f)
+  if T.BareOf(f) then return UF.NAME_ROW end
+  return barInset(f)
+end
+
+-- The health bar's height on a frame h units tall (from the height the frame was given: a fight may hide the one it
+-- reports).
+local function healthHeight(f, h)
+  return h - barsTop(f) - UF.settings.powerHeight - 2 * barInset(f)
+end
+
+-- Lays out the bars inside a frame: health on top (under the name row on a bare frame), power along the bottom,
+-- each the bar inset from the border.
+local function layoutBars(f, powerHeight)
+  local inset = barInset(f)
+  f.health:SetPoint("TOPLEFT", inset, -barsTop(f))
+  f.health:SetPoint("BOTTOMRIGHT", -inset, powerHeight + 2 * inset)
+  f.power:SetPoint("TOPLEFT", f.health, "BOTTOMLEFT", 0, -inset)
+  f.power:SetPoint("BOTTOMRIGHT", -inset, inset)
 end
 
 -- Lines a readout adds under a frame's unit tooltip, by frame key: a function given the tooltip (UnitExtras: the pet's mood).
@@ -332,20 +354,25 @@ UF.RAID_ICON = 16
 UF.RAID_ICON_SHORT = 30
 
 -- How far the raid target icon's centre sits above the top edge of a frame h tall: on a short frame, enough for its
--- bottom to clear the top of the name (centred on the health bar, which stops over the power bar); else 0.
+-- bottom to clear the top of the name (centred on the health bar, which stops over the power bar); on a bare frame,
+-- whose name row is its top, clear of the frame; else 0.
 local function raidIconLift(f, h)
+  if T.BareOf(f) then return UF.RAID_ICON / 2 end
   if h >= UF.RAID_ICON_SHORT or f.key:match("^boss%d$") then return 0 end
-  local px = T.Pixel(f)
-  local health = h - UF.settings.powerHeight - 3 * px
-  local nameGap = px + (health - f.name:GetLineHeight()) / 2
+  local nameGap = barsTop(f) + (healthHeight(f, h) - f.name:GetLineHeight()) / 2
   return math.max(0, UF.RAID_ICON / 2 - nameGap)
 end
 
--- The raid target icon on the frame's top edge, lifted on a short frame (hidden until UF.UpdateRaidIcon paints it).
-local function addRaidIcon(f, h)
+-- Places the raid target icon on the frame's top edge, lifted on a short or bare frame (UF.PlaceParts, for the look).
+local function placeRaidIcon(f)
+  f.raidIcon:ClearAllPoints()
+  f.raidIcon:SetPoint("CENTER", f, "TOP", 0, raidIconLift(f, f.vgHeight))
+end
+
+-- The raid target icon over the frame's top edge (hidden until UF.UpdateRaidIcon paints it; UF.PlaceParts places it).
+local function addRaidIcon(f)
   f.raidIcon = f.health:CreateTexture(nil, "OVERLAY")
   f.raidIcon:SetSize(UF.RAID_ICON, UF.RAID_ICON)
-  f.raidIcon:SetPoint("CENTER", f, "TOP", 0, raidIconLift(f, h))
   f.raidIcon:Hide()
 end
 
@@ -384,7 +411,7 @@ local function createUnitFrame(key, w, h, outer)
   T.HudPanel(f, { shield = true, role = "unit", outer = f.outer })
   addBars(f, UF.settings)
   addTexts(f, UF.settings)
-  addRaidIcon(f, h)
+  addRaidIcon(f)
   return f
 end
 
@@ -418,9 +445,15 @@ end
 -- bar's middle (nothing at a square or 8-pixel cut corner). From the height the frame was given (f.vgHeight): a
 -- fight may hide the one it reports.
 local function nameInset(f, side)
-  local px = T.Pixel(f)
-  local health = f.vgHeight - UF.settings.powerHeight - 3 * px
-  return UF.TEXT_INSET + math.max(0, T.CornerAt(f, "TOP" .. side) - (px + health / 2))
+  local middle = barsTop(f) + healthHeight(f, f.vgHeight) / 2
+  return UF.TEXT_INSET + math.max(0, T.CornerAt(f, "TOP" .. side) - middle)
+end
+
+-- How far above the health bar's middle a frame's texts sit: on a bare frame, the middle of the name row over the
+-- bars (the Hairline look reads the name over its lines); else on the bar.
+local function textLift(f)
+  if T.BareOf(f) then return (healthHeight(f, f.vgHeight) + UF.NAME_ROW) / 2 end
+  return 0
 end
 
 -- The name (with the level outside it, where shown) from `side` of the health bar, reading toward the health text
@@ -428,7 +461,7 @@ end
 local function placeName(f, side)
   local far, first = INNER[side], f.level or f.name
   first:ClearAllPoints()
-  first:SetPoint(side, f.health, side, inward(side, nameInset(f, side)), 0)
+  first:SetPoint(side, f.health, side, inward(side, nameInset(f, side)), textLift(f))
   if f.level then
     f.name:ClearAllPoints()
     f.name:SetPoint(side, f.level, far, inward(side, UF.TEXT_INSET), 0)
@@ -442,7 +475,7 @@ local function placeHealthText(f, side)
   local far = INNER[side]
   local room = (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
   f.healthText:ClearAllPoints()
-  f.healthText:SetPoint(far, f.health, far, inward(far, room), 0)
+  f.healthText:SetPoint(far, f.health, far, inward(far, room), textLift(f))
   f.healthText:SetJustifyH(far)
 end
 
@@ -455,25 +488,44 @@ local function placeMarks(f, side)
   if f.tag then f.tag:ClearAllPoints() f.tag:SetPoint("CENTER", f, point, inward(far, 18), -2) end
 end
 
--- The hairline token for a frame: brass in your and your target's rims while they are shields, brighter in a
--- fight (UF.PaintCombat); none otherwise.
+-- The hairline token for a frame: brass in your and your target's rims while they are shields or the look lines
+-- every frame (Hairline, Rimmed), brighter in a fight (UF.PaintCombat); none otherwise (the look's own line, if any,
+-- stays on the other frames).
 local function hairToken(f)
-  if not (UF.COMBAT.keys[f.key] and pointedSide(f)) then return nil end
+  if not (UF.COMBAT.keys[f.key] and (pointedSide(f) or T.LookHairOf(f))) then return nil end
   if f.vgFighting then return "accent" end
   return "accentDim"
 end
 
--- Lays a frame's parts out for the HUD look: the name reading from the side its shield points from (the left
--- otherwise), the health text and marks at the other end, the bars filling toward your character, and the hairline.
+-- The roles a frame's name (and level) and health text take: the deck's while it holds the frame, the outlined HUD
+-- roles under a look that draws them on the world or a fill, else their own.
+local function textRoles(f)
+  if UF.settings.deck == true and UF.COMBAT.keys[f.key] then return UF.DECK.text, UF.DECK.text end
+  if T.HudOutlined() then return "hudName", "hudNumber" end
+  return "name", "number"
+end
+
+-- Gives a frame's texts their roles for the look and the deck (the level and the health text keep their colours).
+function UF.TextRoles(f)
+  local name, number = textRoles(f)
+  T.Text(f.name, name)
+  if f.level then T.Text(f.level, name, false) end
+  T.Text(f.healthText, number, T.ColorToken(f.healthText))
+end
+
+-- Lays a frame's parts out for the HUD look: the hairline (the bars step in past it), the bars (under the name row on
+-- a bare frame), the texts' roles, the name reading from the side its shield points from (the left otherwise), the
+-- health text and marks at the other end, the raid icon, and the bars filling toward your character.
 function UF.PlaceParts(f)
+  T.SetHairline(f, hairToken(f))
+  layoutBars(f, UF.settings.powerHeight)
+  UF.TextRoles(f)
   local side = pointedSide(f) or "LEFT"
   placeHealthText(f, side)
   placeName(f, side)
   placeMarks(f, side)
-  local reverse = fillsFromRight(f)
-  f.health:SetReverseFill(reverse)
-  f.power:SetReverseFill(reverse)
-  T.SetHairline(f, hairToken(f))
+  placeRaidIcon(f)
+  f.health:SetReverseFill(fillsFromRight(f)) f.power:SetReverseFill(fillsFromRight(f))
 end
 
 -- Lays every frame out for the HUD look again (the look, the deck or a frame's size changed).
@@ -890,14 +942,15 @@ local function deckNow()
   if on and not UF.deck then UF.deck = deckPanel(player, target) end
   if UF.deck then UF.deck:SetShown(on) end
   UF.ApplySizes()
-  for _, f in ipairs({ player, target }) do UF.DeckText(f, on) T.SetRound(f, on) end
+  for _, f in ipairs({ player, target }) do T.SetRound(f, on) end
   UF.ApplyLook()
 end
 
--- Gives a deck frame's name and health text the deck's larger role while it is on, their own otherwise.
+-- Gives a frame's name and health text the deck's larger role (on), or the roles the look gives them (UF.TextRoles).
 function UF.DeckText(f, on)
-  T.Text(f.name, on and UF.DECK.text or "name")
-  T.Text(f.healthText, on and UF.DECK.text or "number", T.ColorToken(f.healthText))
+  if not on then return UF.TextRoles(f) end
+  T.Text(f.name, UF.DECK.text)
+  T.Text(f.healthText, UF.DECK.text, T.ColorToken(f.healthText))
 end
 
 -- How tall the target frame stands: its targetHeight setting (setup's role layouts raise it, a taller

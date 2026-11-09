@@ -1,9 +1,13 @@
--- The HUD look (Settings > Look > HUD look): the shape of the unit frames and of the HUD's tools. "Plain" keeps the
+-- The HUD look (Settings > HUD > HUD look): the shape of the unit frames and of the HUD's tools. "Plain" keeps the
 -- flat frames as they were before 0.9.5 (the shield-corner switch cuts the unit frames' corners). "Shield", the
 -- default, turns every unit frame into a shield pointing away from your character, its two outer corners cut to a
--- point at mid-height, and gives the shield-corner cuts to the tools (the cast bars, the bar plinth) instead. Each
--- look is a table of shapes by a painted frame's role (T.HudPanel opts.role): a shape takes the frame and its painted
--- entry and gives a corner geometry (Core/Theme.lua), or nil for the plain corners.
+-- point at mid-height, and gives the shield-corner cuts to the tools (the cast bars, the bar plinth) instead.
+-- "Hairline" takes the unit frames' plates away (no fill, no border) and closes each with a brass line under it;
+-- "Rimmed" rounds every frame and tool four pixels and draws a two-line rim, the border outside and brass inside. A
+-- look is a table: corners (a shape by a painted frame's role, T.HudPanel opts.role: the frame and its painted entry
+-- give a corner geometry, Core/Theme.lua, false for square corners, or nil for the plain corners), bare (the roles drawn without a plate), hair
+-- (a hairline token by role), hairSides (the hairline's sides, when not all four), outlined (the frames' texts take
+-- the outlined roles) and backing (the bar backing's Auto comes on).
 
 local ADDON, ns = ...
 
@@ -11,8 +15,8 @@ local T = ns.Theme
 local L = ns.L
 
 -- The looks a player can pick, in the order the control cycles them, and their names.
-T.HUD_LOOKS = { "plain", "shield" }
-T.HUD_LOOK_LABELS = { plain = L["Plain"], shield = L["Shield"] }
+T.HUD_LOOKS = { "plain", "shield", "hairline", "rimmed" }
+T.HUD_LOOK_LABELS = { plain = L["Plain"], shield = L["Shield"], hairline = L["Hairline"], rimmed = L["Rimmed"] }
 
 -- The looks as a cycle row's choices, in order: { key, name } each.
 ---@return table
@@ -88,10 +92,27 @@ local function cutGeometry(frame)
   return T.UniformCorners(T.CORNER_CUT * T.Pixel(frame), "cut")
 end
 
--- Each look's shapes by role. Plain has none: every frame keeps its corner look.
+-- Square corners whatever the corner settings say (false: a shape, not the plain corners' nil).
+local function squareGeometry()
+  return false
+end
+
+-- The Rimmed look's corner radius, in screen pixels.
+local RIM_RADIUS = 4
+
+-- The Rimmed look's corners: four pixels round on every frame and tool.
+local function roundGeometry(frame)
+  return T.UniformCorners(RIM_RADIUS * T.Pixel(frame), "rounded")
+end
+
+-- The looks. Plain shapes nothing: every frame keeps its corner look. Shield points the unit frames and cuts the
+-- tools. Hairline bares the unit frames and runs its brass line along their bottom edge only. Rimmed rounds units and
+-- tools alike and gives each the brass line inside its border.
 local LOOKS = {
-  plain = {},
-  shield = { unit = pointGeometry, tool = cutGeometry },
+  plain = { corners = {} },
+  shield = { corners = { unit = pointGeometry, tool = cutGeometry }, backing = true },
+  hairline = { corners = { unit = squareGeometry }, bare = { unit = true }, hair = { unit = "accentDim" }, hairSides = { bottom = true }, outlined = true },
+  rimmed = { corners = { unit = roundGeometry, tool = roundGeometry }, hair = { unit = "accentDim", tool = "accentDim" }, outlined = true, backing = true },
 }
 
 -- The HUD look in force ("plain" for a saved name no release knows).
@@ -102,12 +123,51 @@ function T.HudLook()
   return "plain"
 end
 
--- The corner geometry the HUD look gives a painted frame with a role, or nil for its plain corners (Core/Theme.lua
--- corner.geometry asks before it reads the corner settings).
+-- The corner geometry the HUD look gives a painted frame with a role: a geometry, false for square corners whatever
+-- the corner settings say, or nil for its plain corners (Core/Theme.lua corner.geometry asks before it reads the
+-- corner settings).
 ---@param frame table a painted frame
 ---@param entry table its painted entry (opts.role, opts.outer)
----@return table|nil
+---@return table|boolean|nil
 function T.HudCorners(frame, entry)
-  local shape = LOOKS[T.HudLook()][entry.opts.role]
-  return shape and shape(frame, entry) or nil
+  local shape = LOOKS[T.HudLook()].corners[entry.opts.role]
+  if not shape then return nil end
+  return shape(frame, entry)
+end
+
+-- Whether the HUD look draws a painted frame with a role without its plate (no fill, no border): Hairline's unit
+-- frames, unless the High contrast variant (flat) is on, which keeps every plate.
+---@param entry table a painted entry (opts.role)
+---@return boolean
+function T.HudBare(entry)
+  if (T.Variant() or {}).flat then return false end
+  local bare = LOOKS[T.HudLook()].bare
+  return bare ~= nil and bare[entry.opts.role] == true
+end
+
+-- The hairline token the HUD look gives a painted frame with a role (a frame's own T.SetHairline token wins), or nil.
+---@param entry table a painted entry (opts.role)
+---@return string|nil
+function T.HudHair(entry)
+  local hair = LOOKS[T.HudLook()].hair
+  return hair and hair[entry.opts.role] or nil
+end
+
+-- The sides a hairline keeps under the HUD look ({ bottom = true } for Hairline's line under the frame), or nil for
+-- all four.
+---@return table|nil
+function T.HudHairSides()
+  return LOOKS[T.HudLook()].hairSides
+end
+
+-- Whether the HUD look's frames draw their texts in the outlined roles (text over the world or on a fill).
+---@return boolean
+function T.HudOutlined()
+  return LOOKS[T.HudLook()].outlined == true
+end
+
+-- Whether the HUD look brings the action bars' backing on under Auto.
+---@return boolean
+function T.HudBacking()
+  return LOOKS[T.HudLook()].backing == true
 end

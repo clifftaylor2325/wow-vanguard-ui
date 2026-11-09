@@ -75,7 +75,8 @@ it("Shield: fills grow toward the character, the target's texts and marks mirror
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
   const [player, target, focus] = ["player", "target", "focus"].map((k) => shape(addon, k));
   expect([player.reverse, target.reverse, focus.reverse, shape(addon, "pet").reverse], "left-pointing frames fill from the right (the inner edge), the target from the left").toEqual([true, false, true, true]);
-  const inset = addon.eval("local v = ns.GetModule('UnitFrames').TEXT_INSET + math.max(0, ns.Theme.CornerAt(Vanguard_player, 'TOPLEFT') - (ns.Theme.Pixel(Vanguard_player) + (Vanguard_player.vgHeight - ns.GetModule('UnitFrames').settings.powerHeight - 3 * ns.Theme.Pixel(Vanguard_player)) / 2)) return math.floor(v * 100 + 0.5) / 100");
+  // The plain inset plus the point's reach at the health bar's middle: the bars step two pixels in past the hairline.
+  const inset = addon.eval("local px, UF = ns.Theme.Pixel(Vanguard_player), ns.GetModule('UnitFrames') local health = Vanguard_player.vgHeight - UF.settings.powerHeight - 6 * px local v = UF.TEXT_INSET + math.max(0, ns.Theme.CornerAt(Vanguard_player, 'TOPLEFT') - (2 * px + health / 2)) return math.floor(v * 100 + 0.5) / 100");
   expect(inset > 4 && inset < 14, "the name starts past the point's reach at the health bar's middle (more than the plain inset of 4)").toBe(true);
   expect([player.name, player.health, player.justify], "the player's level and name read from the left, the health text ends short of the swords at the right").toEqual([`LEFT LEFT ${inset}`, "RIGHT RIGHT -10", "LEFT"]);
   expect([target.name, target.health, target.justify], "the target's read from the right, its health text at the left end, short of the diamond").toEqual([`RIGHT RIGHT -${inset}`, "LEFT LEFT 10", "RIGHT"]);
@@ -91,8 +92,8 @@ it("Shield: fills grow toward the character, the target's texts and marks mirror
 it("Plain: the HUD look row under Look gives the flat frames back at once, texts in their old places, the shield cuts following the switch", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
   addon.slash("");
-  addon.eval('__click("HUD look")');
-  expect(addon.eval("return VanguardDB.profiles.Default.theme.hudLook"), "the cycle row saves Plain").toBe("plain");
+  addon.eval('__click("HUD look") __click("HUD look") __click("HUD look")');
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.hudLook"), "the cycle row (Shield, Hairline, Rimmed, Plain) saves Plain").toBe("plain");
   const target = shape(addon, "target");
   expect([target.corners, target.edges, target.reverse, target.name, target.health, target.justify], "the target has 8-pixel cuts on every corner, four edges, fills from the left and reads from the left")
     .toEqual([["8 cut", "8 cut", "8 cut", "8 cut"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], false, "LEFT LEFT 4", "RIGHT RIGHT -10", "LEFT"]);
@@ -134,6 +135,54 @@ it("the tools: under Shield the cast bars and the bar backing take the shield cu
   expect([pieces(addon, "Vanguard_CastBar_player", "CornerCutLine"), addon.eval("return ns.GetModule('ActionBars').WantsBacking()")], "Plain: the cast bar is square again and Auto means no plinth").toEqual([0, false]);
   addon.eval("ns.GetModule('ActionBars').settings.backing = 'on'");
   expect(addon.eval("return ns.GetModule('ActionBars').WantsBacking()"), "On is on under any look").toBe(true);
+});
+
+// The frames on a look from the start (a profile that kept it), with no raid frames.
+const onLook = (look) => ({ savedVariables: `VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "${look}" } } } }` });
+
+// Where a frame's bars and texts sit (TEST-ONLY reads): the health bar's top-left offsets, the power bar's bottom inset,
+// the lift of the name row's first text (the level, where shown) over the health bar's middle, the raid icon's lift, and whether the name and number are outlined.
+const rows = (addon, key) => addon.eval(`local f = Vanguard_${key}
+  local h, p = f.health.__points.TOPLEFT, f.power.__points.BOTTOMRIGHT
+  local function lift(fs) local _, _, _, _, y = fs:GetPoint(1) return math.floor(y * 100 + 0.5) / 100 end
+  return { top = { math.floor(h.x * 100 + 0.5) / 100, math.floor(h.y * 100 + 0.5) / 100 }, bottom = math.floor(p.y * 100 + 0.5) / 100,
+    name = lift(f.level or f.name), icon = lift(f.raidIcon), outlined = f.name.__font[3] == "OUTLINE" and f.healthText.__font[3] == "OUTLINE" }`);
+
+it("Hairline: the unit frames lose their plates, the name reads over the lines, one brass line closes each frame at the bottom, the texts are outlined, the cast bar keeps its plate, and High contrast brings the plates back", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, onLook("hairline"));
+  const px = addon.eval("return ns.Theme.Pixel(Vanguard_player)");
+  // Rounded to two decimals, as the reads are.
+  const r2 = (v) => Math.round(v * 100) / 100;
+  expect([addon.eval("return ns.Theme.BareOf(Vanguard_player)"), shape(addon, "player").edges, shape(addon, "focus").edges], "no fill or border shows: the only line is the hairline along the bottom, on every frame").toEqual([true, ["BOTTOM"], ["BOTTOM"]]);
+  expect([hairlines(addon, "player", "accentDim"), hairlines(addon, "focus", "accentDim"), hairlines(addon, "target", "accent")], "one dim brass line per frame, none in the accent at rest").toEqual([1, 1, 0]);
+  const player = rows(addon, "player");
+  const health = 36 - 14 - 6 - 4 * px;
+  expect([player.top, player.bottom, player.name, player.icon, player.outlined], "the bars step two pixels in past the line and start under the 14-unit name row; the name sits in that row; the raid icon clears the frame; outlined text").toEqual([[r2(2 * px), -14], r2(2 * px), r2((health + 14) / 2), 8, true]);
+  expect(shape(addon, "player").corners, "square: no points, no cuts").toEqual(["0 nil", "0 nil", "0 nil", "0 nil"]);
+  expect([addon.eval("return ns.Theme.BareOf(Vanguard_CastBar_player)"), pieces(addon, "Vanguard_CastBar_player", "CornerCutLine"), addon.eval("return ns.GetModule('ActionBars').WantsBacking()")], "the cast bar keeps its plate, uncut; no plinth under the bars").toEqual([false, 0, false]);
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect([hairlines(addon, "player", "accent"), hairlines(addon, "focus", "accentDim")], "your line steps up to the accent in a fight, the focus's stays dim").toEqual([1, 1]);
+  setCombat(addon, false);
+  addon.slash("variant contrast");
+  expect([addon.eval("return ns.Theme.BareOf(Vanguard_player)"), shape(addon, "player").edges, rows(addon, "player").top], "High contrast wins: the plates come back, the bars back under the top edge (two pixels in, past the line)").toEqual([false, ["BOTTOM", "LEFT", "RIGHT", "TOP"], [r2(2 * px), r2(-2 * px)]]);
+  addon.slash("variant default");
+  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
+  expect([hairlines(addon, "player", "accentDim"), rows(addon, "player").top, rows(addon, "player").name, rows(addon, "player").outlined], "Plain: no line, the bars a pixel in, the name on the bar, shadowed text").toEqual([0, [r2(px), r2(-px)], 0, false]);
+});
+
+it("Rimmed: every unit frame and tool rounds four pixels with a two-line rim, the border outside and brass inside; the plinth comes on; the deck's frames keep the deck's rim", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, onLook("rimmed"));
+  expect([shape(addon, "player").corners, shape(addon, "target").corners[1], shape(addon, "player").masks], "four-pixel rounds on every corner, the health bar masked to them").toEqual([["4 rounded", "4 rounded", "4 rounded", "4 rounded"], "4 rounded", ["TOPLEFT CornerRoundMask", "TOPRIGHT CornerRoundMaskTR"]]);
+  expect([addon.eval("return { ns.Theme.CornerLook(Vanguard_CastBar_player, 'TOPLEFT'), math.floor(ns.Theme.CornerAt(Vanguard_CastBar_player, 'TOPLEFT') / ns.Theme.Pixel(Vanguard_CastBar_player) + 0.5) }"), addon.eval("return ns.GetModule('ActionBars').WantsBacking()")], "the cast bar rounds with them and the bars want their plinth").toEqual([["rounded", 4], true]);
+  expect([hairlines(addon, "player", "accentDim"), hairlines(addon, "focus", "accentDim"), hairlines(addon, "CastBar_player", "accentDim"), shape(addon, "player").edges], "a dim brass line inside the border on all four sides of every frame and tool, the border still drawn").toEqual([4, 4, 4, ["BOTTOM", "LEFT", "RIGHT", "TOP"]]);
+  expect([rows(addon, "player").outlined, rows(addon, "player").name, addon.eval("return ns.Theme.BareOf(Vanguard_player)")], "outlined text on the bar, plates kept").toEqual([true, 0, false]);
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect([hairlines(addon, "player", "accent"), hairlines(addon, "target", "accentDim")], "your rim's inner line steps up to the accent in a fight").toEqual([4, 4]);
+  setCombat(addon, false);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
+  expect([hairlines(addon, "player", "accentDim"), hairlines(addon, "focus", "accentDim"), shape(addon, "player").corners[0]], "the deck's pair drops the look's line and takes the deck's rounding; the focus keeps its rim").toEqual([0, 4, `${shape(addon, "player").corners[0]}`]);
 });
 
 // The keystone as drawn (TEST-ONLY reads): shown, its anchors, the rail, the ring and the swords.

@@ -218,15 +218,16 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- HUD, the HUD's shape: the HUD look and the shield corners, each with its note.
+-- HUD, the HUD's shape: the HUD look (two notes: the loud looks, the quiet ones) and the shield corners with its note.
 local function hudRows()
   return {
     { "header", L["HUD"] },
     { "cycle", L["HUD look"], T.HudLookChoices(), liveThemeSetting("hudLook") },
     { "text", L["Shield: every unit frame a shield pointing away from you, the crest on a rail between your frame and your target's. Plain: flat frames."],
       "note" },
+    { "text", L["Hairline: no plates, a brass line under each frame. Rimmed: rounded frames and tools with a two-line rim."], "note" },
     check(L["Shield corners on unit frames"], liveThemeSetting("shield")),
-    { "text", L["With the Shield look, the cuts go to the cast bars and the bar plinth instead."], "note" },
+    { "text", L["With the Shield look, the cuts go to the cast bars and the bar plinth instead; Hairline and Rimmed ignore the switch."], "note" },
   }
 end
 
