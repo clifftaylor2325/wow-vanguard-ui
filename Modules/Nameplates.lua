@@ -600,9 +600,9 @@ local function targetShown(unit)
   return isUnit(unit, "target") and "target" or isUnit(unit, "focus") and "focus" or false
 end
 
--- Paints a plate's target or focus border, the target's glow and the marker, and records the state and scale they show.
-local function paintTarget(f, unit)
-  local mark, scale = targetShown(unit), f:GetEffectiveScale()
+-- Paints a plate's target or focus border, the target's glow and the marker for `mark` (targetShown), and
+-- records the state and the plate's scale (read once by the caller) they show.
+local function paintTarget(f, mark, scale)
   f.vgTarget, f.vgScale = mark, scale
   T.SetBorder(f, mark and NP.MARK_COLORS[mark] or nil)
   T.SizeGlow(f.glow, f, NP.GLOW)
@@ -627,7 +627,7 @@ end
 function NP.UpdateTarget(f, unit)
   local target, scale = targetShown(unit), f:GetEffectiveScale()
   if target == f.vgTarget and NP.ScaleHolds(scale, f.vgScale) then return end
-  paintTarget(f, unit)
+  paintTarget(f, target, scale)
 end
 
 
@@ -891,7 +891,7 @@ local EVENTS = {
 -- Repaints a plate's look after a theme change: its target border and glow, and its bar's colour
 -- (tapped, threat, class or reaction follow the colour variant, and a quiet plate gets no event to repaint it).
 local function repaintLook(f, unit)
-  paintTarget(f, unit)
+  paintTarget(f, targetShown(unit), f:GetEffectiveScale())
   NP.UpdateColor(f, unit)
 end
 

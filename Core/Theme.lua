@@ -624,6 +624,14 @@ function T.Pixel(frame)
   return pixelFactor() / scaleOf(frame)
 end
 
+-- T.Pixel for a frame whose effective scale the caller has read already (`scale`; 1 when it isn't a
+-- positive number), so a loop over a holder's icons reads it once.
+---@param scale number
+---@return number
+function T.PixelAtScale(scale)
+  return pixelFactor() / ((type(scale) == "number" and scale > 0) and scale or 1)
+end
+
 -- The UI scale that makes one UI unit one screen pixel (768 / screen height).
 function T.PixelPerfectScale()
   return pixelFactor()
