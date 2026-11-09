@@ -29,7 +29,7 @@ Recommended: **nine steps** (ten for a new character, with Profile first): the e
 | 1 | Layout | Role layout or Keep | as today |
 | 2 | Screen | Screen preset, Pixel-perfect, Fit, or Keep | as today |
 | 3 | Look | Accent, raid frame style | as today, minus its three switches |
-| 4 | Comfort | Larger text, Safer colours, Calm HUD, Reduce motion | moves Look's switches here, adds Reduce motion |
+| 4 | Comfort | Larger text, Safer colours, Calm HUD, Reduce motion, Shield HUD look | moves Look's switches here, adds Reduce motion and the HUD look |
 | 5 | Game settings | The game's own settings Vanguard can set, each showing what the game has now | **new** |
 | 6 | Helpers | Vanguard's errand and chat helpers that ship off | **new** |
 | 7 | Combat | Role-based extras, extra action bars, key setup | **new** |
@@ -53,6 +53,7 @@ Each row shows its caption, with `· recommended` after it while Vanguard recomm
 | Colour vision: Safer colours | Off | Off | A need, not a taste; offered, never pushed |
 | Calm HUD out of combat | Off | Off | Some players love it, many miss their bars; offered |
 | Reduce motion | Off | Off | Offered here so players who need it find it |
+| Shield HUD look | On (Shield) | On | The signature look; the row turns it back on for a profile that kept Plain, or off for one that prefers the flat frames |
 
 ### Step 5, Game settings (the game's own; Vanguard records the old value so turning it back puts yours back)
 
@@ -69,7 +70,7 @@ Not offered (Vanguard has no control for them, and CLAUDE.md says not to add a s
 | Row | Recommended | Why |
 |---|---|---|
 | Faster auto-loot | On | Looting is half of levelling; no downside |
-| Filter chat (gold selling, boosting, recruiting, repeats) | On | Gold spam is the top Trade complaint on new realms; caught lines go to their own tab, nothing is lost |
+| Filter chat (gold selling, boosting, recruiting, repeats) | Offered (off) | Gold spam is the top Trade complaint on new realms and caught lines go to their own tab, but the filter's words are English only, so it is offered and not switched on (decision D4, 2026-11-09) until it matches by locale |
 | Keep chat history | On | Chat survives a reload and a relog |
 | Notice older ranks on bars, Remember what trainers teach (Forever) | On | Vanilla's spell ranks: after training, the bars still cast the old rank |
 | Inbox search and send-to-alt presets | On | Cheap, and only shows at a mailbox |
@@ -84,7 +85,7 @@ Not offered (Vanguard has no control for them, and CLAUDE.md says not to add a s
 | Timer numbers on target and focus auras | On | Most asked-for aura detail |
 | Group threat panel | On for **Tanking**, off otherwise | Tanks watch threat on the group |
 | Action bars | **Three plus the two right-edge bars** (bars 4 and 5, shown on mouseover) | Vanilla classes carry more spells than three bars hold by level 40 |
-| Key setup at your next login (Forever) | On | Key setup's once-only offer at the next login already exists; this gives it a switch, so a player can decline it here |
+| Key setup at your next login (Forever) | Offered (off) | Key setup's once-only offer at the next login; its key data is not yet confirmed in game, so the row starts off and only a player who ticks it gets the offer (decision D4, 2026-11-09) |
 
 Left alone, because Vanguard already uses the game's own: the game's damage meter is shown in the Vanguard look, so Vanguard's own meter stays off.
 

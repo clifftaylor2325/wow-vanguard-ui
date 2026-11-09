@@ -1158,7 +1158,8 @@ it("shield corners: a shield frame's corners are cut on by default, its bars mas
 const maskCorners = (addon, region) => addon.eval(`local out = {} for i, m in ipairs(${region}.__masks or {}) do out[i] = next(m.__points) .. " " .. tostring(m.__texture):match("[^\\\\]+$") end table.sort(out) return out`);
 
 it("shield corners: unit frames are shield frames, their health cut at the top and power at the bottom; cast bars stay square", () => {
-  const addon = loggedIn(UNITS_ENV + CLICK_LUA);
+  // On the Plain HUD look (a profile that kept it): under Shield the frames are points, not cuts (hudlook.test.mjs).
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { hudLook = "plain" } } } }' });
   expect([artCount(addon, "Vanguard_player", "CornerCutLine"), artCount(addon, "Vanguard_CastBar_player", "CornerCutLine")], "the player frame is cut, its cast bar is not").toEqual([4, 0]);
   expect([maskCorners(addon, "Vanguard_player.health:GetStatusBarTexture()"), maskCorners(addon, "Vanguard_player.power.bg"), masks(addon, "Vanguard_CastBar_player:GetStatusBarTexture()").n], "health is cut at its top corners, power at its bottom ones, each corner with its own mask image (the client ignores a mask's tex coords), no more than two masks each")
     .toEqual([["TOPLEFT CornerCutMask", "TOPRIGHT CornerCutMaskTR"], ["BOTTOMLEFT CornerCutMaskBL", "BOTTOMRIGHT CornerCutMaskBR"], 0]);

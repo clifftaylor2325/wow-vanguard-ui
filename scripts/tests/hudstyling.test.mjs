@@ -61,7 +61,9 @@ it("P4-7: the health text of the target, focus and boss frames ends left of the 
     addon.eval(`Vanguard_${key}:Show() Vanguard_${key}.class:Show() Vanguard_${key}.healthText:SetText("640")`);
     const text = rectOf(addon, `Vanguard_${key}.healthText`);
     const diamond = rectOf(addon, `Vanguard_${key}.class`);
-    expect(text.right, `${key}: the health text clears the diamond`).toBeLessThanOrEqual(diamond.left);
+    // A shield pointing right (the target under the Shield look) keeps its diamond and health text at its left end instead.
+    if (addon.eval(`return ns.Theme.CornerLook(Vanguard_${key}, "TOPRIGHT") == "point"`)) expect(text.left, `${key}: the health text clears the diamond at the left end`).toBeGreaterThanOrEqual(diamond.right);
+    else expect(text.right, `${key}: the health text clears the diamond`).toBeLessThanOrEqual(diamond.left);
   }
 });
 

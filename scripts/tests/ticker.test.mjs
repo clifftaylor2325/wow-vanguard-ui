@@ -67,3 +67,20 @@ it("ticker jobs: a failing job is reported and goes on, and a job may stop anoth
   expect(addon.eval("return { __runs.bad, __runs.stopped or 0 }"), "the failing job ran each second; the stopped one never did").toEqual([2, 0]);
   expect(addon.eval("return { ns.errors[1].text, ns.errors[1].count }"), "kept under the job's key").toEqual([expect.stringMatching(/^ticker TEST-ONLY bad: /), 2]);
 });
+
+it("ns.AfterStill runs the work once, a wait after the last time it was asked for", () => {
+  const addon = counting();
+  // How often the work has run, and whether the ticker still drives anything.
+  const state = () => addon.eval("return { __runs['TEST-ONLY still'] or 0, ns.ticker:GetScript('OnUpdate') ~= nil }");
+  for (let i = 0; i < 20; i++) {
+    addon.eval("ns.AfterStill('TEST-ONLY still', 0.3, __count('TEST-ONLY still'))");
+    addon.update(0.1);
+  }
+  expect(state(), "asked for every frame for two seconds (a slider being dragged): not run yet").toEqual([0, true]);
+  addon.advance(0.15, 0.05);
+  expect(state()[0], "still inside the wait").toBe(0);
+  addon.advance(0.1, 0.05);
+  expect(state(), "held still for the wait: run once, and the ticker lets go").toEqual([1, false]);
+  addon.advance(2, 0.1);
+  expect(state()[0], "and not again").toBe(1);
+});

@@ -94,6 +94,29 @@ function cut(size, w, kind, flipX, flipY) {
   });
 }
 
+// The depths, in screen pixels, a shield point's line is baked at (Core/HudLook.lua T.POINT_DEPTHS picks the nearest for
+// a frame: half its height in whole pixels, so 18 on a 36-pixel frame, 12 on a 24, 30 and 36 at twice the pixels).
+export const POINT_DEPTHS = [12, 14, 16, 18, 20, 22, 24, 30, 36];
+
+// The smallest power of two no smaller than n (textures keep power-of-two sides).
+function pot(n) {
+  let size = 16;
+  while (size < n) size *= 2;
+  return size;
+}
+
+// A shield point's line (Core/HudLook.lua): the one-pixel 45-degree line across the top-left `depth` x `depth` of a
+// power-of-two canvas, drawn as `cut` draws it for `depth` texels and clear past it; the addon crops the canvas to the
+// depth with tex coords, so each texel is one pixel at its depth (sharp, like the 8-pixel cut).
+function pointLine(depth) {
+  const size = pot(depth);
+  return fill(image(size, size), (x, y) => {
+    if (x >= depth || y >= depth) return [1, 1, 1, 0];
+    const s = x + y + 1 - depth;
+    return [1, 1, 1, clamp01(s + 1) - clamp01(s)];
+  });
+}
+
 // A window control's tile (Core/Theme.lua T.WindowControl, 20 units shown), drawn at 4 texels a unit: a square
 // with T.CORNER_RADIUS (4 units) arcs, by signed distance so the arcs are smooth and the sides stay hard. `w`
 // texels wide along the edge for its line (one unit), or the whole square for the fill under it.
@@ -242,6 +265,21 @@ export const TEXTURES = {
   CornerCutMaskTR: () => cut(8, 1, "mask", true, false),
   CornerCutMaskBL: () => cut(8, 1, "mask", false, true),
   CornerCutMaskBR: () => cut(8, 1, "mask", true, true),
+  // Shield points (the Shield HUD look, Core/HudLook.lua): the unit frames' outer end comes to a point half the frame's
+  // height deep, so the cut is drawn larger. The line is baked per depth (PointLine12 ... PointLine36, each cropped to
+  // its depth); the fill under it and the masks that stop a bar inside it are one 32-texel cut each, drawn down or up to
+  // the depth (the line covers their edge).
+  ...Object.fromEntries(POINT_DEPTHS.map((d) => [`PointLine${d}`, () => pointLine(d)])),
+  // The fill under a point's line.
+  PointFill: () => cut(32, 1, "fill"),
+  // The mask that stops a bar inside a top-left point.
+  PointMask: () => cut(32, 1, "mask"),
+  // The same for a top-right point.
+  PointMaskTR: () => cut(32, 1, "mask", true, false),
+  // The same for a bottom-left point.
+  PointMaskBL: () => cut(32, 1, "mask", false, true),
+  // The same for a bottom-right point.
+  PointMaskBR: () => cut(32, 1, "mask", true, true),
 };
 
 // Icons -------------------------------------------------------------------------------------

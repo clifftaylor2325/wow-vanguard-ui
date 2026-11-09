@@ -280,10 +280,12 @@ it("a fight: key setup steps aside and comes back on its step; opened in a fight
   expect([win(addon).shown, chatHas(addon, /Close the game's Settings, Quick Keybind and Click Casting windows first\.$/)]).toEqual([false, true]);
 });
 
-it("the offer: first-run setup leaves a note, and key setup opens once at the next login", () => {
+it("the offer: only the note first-run setup's own row leaves opens key setup, once, at the next login", () => {
   const first = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "VanguardDB = { version = 2, profiles = {} }\nVanguardCharDB = {}" });
   first.eval('__click("Skip setup")');
-  expect(first.eval("return VanguardCharDB.keysOffer")).toBe(true);
+  expect(first.eval("return VanguardCharDB.keysOffer == nil"), "A1-4: setup skipped, or finished without ticking the row, leaves no note").toBe(true);
+  const none = warrior("");
+  expect(none.eval("return Vanguard_KeysWizard == nil"), "no note: key setup does not open at login").toBe(true);
   const next = warrior("", { savedVariables: "VanguardCharDB.keysOffer = true" });
   expect([win(next).shown, next.eval("return VanguardCharDB.keysOffer")]).toEqual([true, false]);
   const later = warrior("", { savedVariables: "VanguardCharDB.keysOffer = false" });

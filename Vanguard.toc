@@ -12,7 +12,7 @@
 ## Notes-zhCN: 一个插件搞定整个 WoW Forever 界面：框体、动作条、背包、姓名板、聊天、任务和拍卖工具，统一风格。正式服支持为新增功能，尽力而为。输入 /vg。
 ## Notes-zhTW: 一個插件搞定整個 WoW Forever 介面：框架、快捷列、背包、名條、聊天、任務和拍賣工具，統一風格。正式服支援為新增功能，盡力而為。輸入 /vg。
 ## Author: Cliff Hearthvale
-## Version: 0.9.3
+## Version: 0.9.4
 ## SavedVariables: VanguardDB
 ## SavedVariablesPerCharacter: VanguardCharDB
 ## DefaultState: enabled
@@ -57,6 +57,7 @@ Core/Profiles.lua
 Core/ProfileStrings.lua
 Core/Modules.lua
 Core/Theme.lua
+Core/HudLook.lua
 Core/SharedMedia.lua
 Core/PanelTexture.lua
 Core/Dialog.lua
@@ -111,6 +112,7 @@ Core/GameMenu.lua
 Core/Visibility.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua
+Modules/Keystone.lua
 Modules/FrameAuras.lua
 Modules/PlayerAuras.lua
 Modules/ComboPoints.lua

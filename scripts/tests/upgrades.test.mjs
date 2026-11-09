@@ -314,3 +314,32 @@ it("H40-8-1: a one-hand weapon is compared with the weaker hand while a weapon i
   addon.eval("__worn[17] = __link(21)");
   expect(addon.eval("return __line(22)"), "a weapon in each hand: the weaker one").toBe("Upgrade +50% (estimate) vs TEST-ONLY Item 21");
 });
+
+// A1-1 (M11): a two-hander worn alone leaves the off-hand slot empty, and nothing can go in beside it.
+// Item 7 is the two-hander; 9 a shield, 23 a held item, 24 an off-hand weapon, 25 a one-hand main-hand weapon.
+const TWO_HANDER_ENV = GEAR_ENV + BAG_ENV + `
+  __gear[23] = { "INVTYPE_HOLDABLE", { ITEM_MOD_STRENGTH_SHORT = 6 } } __gear[24] = { "INVTYPE_WEAPONOFFHAND", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 4 } }
+  __gear[25] = { "INVTYPE_WEAPONMAINHAND", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 4 } }
+  __worn[16], __worn[17] = __link(7), nil
+`;
+
+it("A1-1: with a two-hander worn, a shield, a held item and an off-hand weapon get no upgrade line and no arrow", () => {
+  const addon = loggedIn(TWO_HANDER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  expect(addon.eval("return { __line(9), __line(23), __line(24) }"), "no 'fills an empty slot' line beside a two-hander").toEqual([false, false, false]);
+  expect(addon.eval("local pct, empty, worn = ns.GetModule('Upgrades').Compare(__link(9)) return { pct == nil, empty, worn == nil }"), "no verdict: not a change, not an empty slot, nothing named").toEqual([true, false, true]);
+  addon.eval("__wfgWorld.bags[0][1] = { itemID = 9, link = __link(9) } ContainerFrameCombinedBags:UpdateItems()");
+  expect(addon.eval("local a = ns.FrameState('vgUpgrade')[__buttons[1]] return a ~= nil and a:IsShown()"), "the shield in the bag gets no arrow").toBe(false);
+  expect(addon.eval("return __line(25)"), "a main-hand weapon is still judged against the two-hander").toBe("Downgrade -60% (estimate) vs TEST-ONLY Item 7");
+  addon.eval("__worn[16] = __link(25)");
+  expect(addon.eval("return { __line(9), __line(23) }"), "a one-hander worn with the off hand empty: an off-hand item fills the slot").toEqual(["Upgrade: fills an empty slot", "Upgrade: fills an empty slot"]);
+  addon.eval("__worn[16] = nil");
+  expect(addon.eval("return __line(9)"), "both hands empty: it fills the slot").toBe("Upgrade: fills an empty slot");
+});
+
+it("A1-1: on Retail a bow worn alone gives an off-hand item no verdict; a one-hand ranged weapon leaves the slot open", () => {
+  const retail = loggedIn(TWO_HANDER_ENV + `__gear[26] = { "INVTYPE_RANGED", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 9 } } __gear[27] = { "INVTYPE_RANGEDRIGHT", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 5 } }
+    __worn[16] = __link(26)`, { client: RETAIL_CLIENT });
+  expect(retail.eval("return __line(23)"), "a held item beside a bow: no line").toBe(false);
+  retail.eval("__worn[16] = __link(27)");
+  expect(retail.eval("return __line(23)"), "a wand shares the gun's equip location and takes one hand: the off hand is open").toBe("Upgrade: fills an empty slot");
+});

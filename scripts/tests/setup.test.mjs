@@ -60,7 +60,7 @@ it("first-run setup: once per account, nine clicks with the defaults; a first ru
   setupClick(addon, "next");
   expect(setupState(addon), "Done closes setup, locks the frames and remembers that setup ran").toEqual({ step: 0, done: true, unlocked: false });
   const kept = addon.eval("return { raid = (VanguardDB.profiles.Default.positions or {}).raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], backup = VanguardDB.profiles['Default backup'] ~= nil, loot = ns.Settings('AutoAccept').loot, filter = ns.Settings('ChatFilter').on }");
-  expect(kept, "Keep and Keep change no position, style or accent; a first run's helpers start recommended, after the backup").toEqual({ raid: true, look: "soft", brass: true, backup: true, loot: true, filter: true });
+  expect(kept, "Keep and Keep change no position, style or accent; a first run's helpers start recommended, after the backup; the chat filter is only offered (A1-4)").toEqual({ raid: true, look: "soft", brass: true, backup: true, loot: true, filter: false });
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a first run changed settings, so Done offers the reload").toBe("Setup is done. Reload the UI now to apply it?");
   const again = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { setupDone = true } VanguardCharDB = {}" });
@@ -473,14 +473,14 @@ it("the setup comfort step's switch rows grow to a wrapped caption and stack by 
   addon.login();
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
-  // For each of the four rows: whether its caption is inside it, its height, and whether the next row starts at its bottom.
+  // For each of the five rows: whether its caption is inside it, its height, and whether the next row starts at its bottom.
   const rows = addon.eval(`local p = Vanguard_Setup.pages.comfort local out = {}
     for i, r in ipairs(p.rows) do
       local nextRow = p.rows[i + 1]
       out[i] = { r.label:GetTop() <= r:GetTop() + 0.01 and r.label:GetBottom() >= r:GetBottom() - 0.01, r:GetHeight(), not nextRow or math.abs(nextRow:GetTop() - r:GetBottom()) < 0.01 }
     end return out`);
-  expect(rows.map((r) => r[0]), "every caption sits inside its row").toEqual([true, true, true, true]);
-  expect(rows.map((r) => r[2]), "each row starts where the one above ends").toEqual([true, true, true, true]);
+  expect(rows.map((r) => r[0]), "every caption sits inside its row").toEqual([true, true, true, true, true]);
+  expect(rows.map((r) => r[2]), "each row starts where the one above ends").toEqual([true, true, true, true, true]);
   expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
   expect(addon.eval("local p = Vanguard_Setup.pages.comfort return p.use:GetBottom() >= p:GetBottom() - 0.01"), "and the page is as tall as its last control").toBe(true);
 });

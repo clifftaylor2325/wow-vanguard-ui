@@ -67,6 +67,100 @@ If time is short, do these first and stop after any step that throws a Lua error
 5. Everything else, in section order.
 6. On Retail: 34.1 first (a login error stops the run), then 34.6 and 34.14 (a key and a raid pull), then the rest of 34.
 
+## Core path (the 1.0 gate)
+
+The steps every player meets, picked by how many players hit them rather than by area: what 1.0.0 promises was seen working. A major release (1.0.0, 2.0.0) refuses to publish until every step below has a `pass` for that version in [smoke-results.json](smoke-results.json) (`scripts/release-local.mjs`); `fail`, `partial` and `skip` all block. A step that can't pass for a good reason leaves this list in a commit that says why, and goes under Known issues in README.md. Other releases name their own steps in their changelog section, as before.
+
+Run the sessions in order; within a session, top to bottom. Each line is a step below in this file, with its full Do and Expect. End every session with `/vg errors` and `/vg report`: an error there counts against every step of that session.
+
+**Session 1: setup, options, moving frames and profiles (solo, in a town, about 45 minutes)**
+
+- `1.2b` What's new after an update
+- `1.3` Status
+- `1.4` No errors yet
+- `1.5` Memory over a minute
+- `1.5a` Frame rate check
+- `2.1` Every options page
+- `2.1f` The options window's height, search and changed dots
+- `2.1h` The fold on Raid frames
+- `2.1d` Escape closes Vanguard's panels
+- `2.2` The wizard, start to finish
+- `2.2a` The role layouts look different
+- `3.1` Unlock
+- `3.2` Drag two frames and keep them
+- `3.3` Combat while unlocked
+- `3.4` Edit Mode
+- `3.5` Reset
+- `3.7` Exit without saving
+- `4.1` Switch profile
+- `4.3` Export
+- `4.2` Import garbage
+- `4.8` Reset asks first and keeps a copy
+- `12.1` The Vanguard button
+- `12.2` The game's own buttons still work
+- `13.2` Every button works
+- `4.7` Lost settings come back
+
+**Session 2: questing and fighting (solo, open world, about 45 minutes)**
+
+- `7.1` Target and focus auras
+- `7.2` Cast bars
+- `7.2i` Unit frames act like the game's: tooltips, tapped grey, Ghost, raid marks, quiet threat
+- `7.3` Nameplates in a pull
+- `7.3b` Your debuffs on a plate drawn mid-fight
+- `7.5` Enemy nameplates (#377)
+- `33.390` Nameplate aura icons in the open world (Forever)
+- `8.1` Quest dialog
+- `8.3` Quest log
+- `8.4` Quest tracker overflow
+- `8.4a` Quest arrow
+- `8.5` Levelling helpers
+- `33.387` Quest item buttons in a fight (Forever)
+- `10.3` Bar 1 pages with stances and forms
+- `33.346` No empty stance boxes for a class with no forms (both)
+- `10.4` Keybind mode on the action bars
+- `9.1` Bag search
+- `9.2` Merchant repair and sell
+- `9.2a` Sell list, sell all and bulk buy
+- `9.3` Trainer: Train all
+- `15.6c` Chat windows
+- `15.6e` Chat tabs
+- `33.386` Close this tab gives the tab's chat back to General (Forever)
+
+**Session 3: town services, click casting and the game's windows (solo, about 40 minutes)**
+
+- `9.4` Lists and Posting tabs at the auction house
+- `9.4a` Typing a price on the Posting tab
+- `9.4b` The scan countdown, a refused scan, and deals kept through the mailbox
+- `14.14.2` Mail window
+- `2.3` The healing layout
+- `6.4` Preview the party and raid frames alone
+- `10.1` Make a binding
+- `10.2` Use it
+- `10.1h` Starter layouts on a low-level character, Undo and the better spells
+- `14.1` Switches
+- `14.4.2` Edit Mode
+- `14.8.3` Inside the character pane
+- `14.14.3` Quest and gossip windows
+- `14.14.7` Spellbook and talents
+- `14.10` Moving game windows
+- `22.1` Bar notice and swap
+- `18.1` Other addons
+- `18.4b` With OpenMap installed
+
+**Dungeon: one five-player run with party frames and nameplates on**
+
+- `6.1` Party frames (if you can)
+- `6.2b` Raid tiles in a fight: missing health, the tooltip, summons
+- `33.344` Theme change with closed plate auras in a dungeon (Forever)
+- `7.4` Nameplates in a crowd
+- `7.6` Fight recap
+- `28.1b` The glow in a dungeon fight
+- `24.1` The dungeon card on the Instance prep checklist
+- `15.6d` Chat while the game hides it (instanced fights)
+
+After the first raid night, steps 6.2, 6.2a and 6.3 (raid frames, raid indicators and main tank tiles in a raid) join this list. Until then they are not part of the gate, so 1.0.0 can ship before Forever's raids open; the release after that raid night records them.
+
 ## Report block
 
 For every failed step, paste all of this (steps below say "If it fails, paste:" for anything extra):
@@ -221,7 +315,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next eight times, then Done.
 - Expect: `Step 1 of 9 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the choices rest flat on the panel, each lifts only under the mouse, and the picked one alone carries the thin accent rail on its left over a lighter fill (its text stays the plain colour), the same on the Profile and Screen steps [Needs in game]; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 9 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 4 · Look` (the accent swatches, the raid frame style and the Calm HUD switch, off); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard and offers no reload, and no profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
-- Also after Look: `Step 4 of 9 · Comfort` has the switches **Larger text (115%)**, **Colour vision: Safer colours**, **Calm HUD** and **Reduce motion**, all off and inside the window, and a **Use recommended** button under them. Switch Larger text on and press Next: the wizard's own text gets bigger as you leave the step (a switch only picks until then); Back, Off and Next put it back. Safer colours moves hostile and friendly bars apart after the reload. Each first change says where the backup profile went. Steps 5 to 7 (Game settings, Helpers, Combat) are 33.456; Move things is step 8 and All set step 9.
+- Also after Look: `Step 4 of 9 · Comfort` has the switches **Larger text (115%)**, **Colour vision: Safer colours**, **Calm HUD** and **Reduce motion**, all off, and **Shield HUD look** on and marked `· recommended` (33.471), all inside the window, and a **Use recommended** button under them. Switch Larger text on and press Next: the wizard's own text gets bigger as you leave the step (a switch only picks until then); Back, Off and Next put it back. Safer colours moves hostile and friendly bars apart after the reload. Each first change says where the backup profile went. Steps 5 to 7 (Game settings, Helpers, Combat) are 33.456; Move things is step 8 and All set step 9.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
 ### 2.2a The role layouts look different
@@ -498,6 +592,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: when the main hand's enchant ends, the off hand's cell moves into the first place and its dark sweep keeps the share of time it showed before (it does not jump back to full). Putting an enchant on again starts its sweep full. `/vg errors` stays empty.
 - If it fails, paste: a screenshot before and after the main hand's enchant ends.
 
+### 7.1b Target and focus aura sliders (A3-3)
+
+- Do: target a mob that has a buff and carries one of your debuffs, and `/focus` it. Open `/vg` → Unit frames → Target and focus auras. Drag "Aura icon size" to 30, then let go. Set "Debuffs shown" to 3 and "Target's buffs shown" to 0, then back to 8. Untick "Only your debuffs". Set "Target's buffs" to Important, then Yours, then All. Tick "Timer numbers on the icons". Then pull the mob and, during the fight, drag "Aura icon size" back to 20.
+- Expect: none of the rows carries a reload tag and the Reload button never shows. About a third of a second after each change holds still, the rows under and over the frames are redrawn with it: larger icons (the focus's 2 smaller), three debuffs at most, no buff row at 0, other players' debuffs dimmed once "Only your debuffs" is off, timer numbers on the icons. A change made in the fight does nothing until the fight ends, then applies; `/vg errors` stays empty throughout. [Needs in game: that a row put away (hidden, on no unit) draws nothing beside the new one; that Important shows anything on a WoW Forever target (the client classes the buffs; none may be classed on vanilla spells); how a large buff row sits against the target cast bar above it.]
+- If it fails, paste: a screenshot of the target frame with its rows, the settings you had, and `/vg errors`.
+
 ### 7.2 Cast bars
 
 - Do: cast a spell with a long cast time, and have a mob cast at you.
@@ -582,6 +682,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: out of combat the frames keep their usual edges and no swords show; your health text (100%) ends a little left of the frame's top-right corner. The moment the fight starts small vermilion crossed swords sit on your frame's top-right corner (clear of the pet frame above) and your frame's edge turns vermilion; your target's edge turns vermilion once it is fighting (the mob fighting the other player shows it at once). Both go when combat drops. With the deck on the edges still change, on the rounded frames. Unticking takes the marks off at once, mid-fight, and ticking brings them back. `/vg errors` stays empty. [Needs in game: that the one-pixel edge reads at 1440p, and that `UNIT_FLAGS` comes for the target as it starts and stops fighting.]
 - If it fails, paste: a screenshot of the two frames in and out of the fight, and `/vg errors`.
 
+### 7.2l Tooltips: a player's guild and rank, realm and role, and your own item level
+
+- Do: hover a player in a guild (in the world, then on their unit frame), a player from another realm if you can find one, and a party member with a role (in a dungeon group); hover a guildless player and a mob; hover your own player frame with the character pane open. Then `/vg` → Game windows → Tooltips: untick **Guild and rank**, open More settings and untick **Realm, for players of another realm**, **Group role** and **Your own item level**, hovering the same player (or yourself) after each, and tick them again.
+- Expect: under the game's own lines the tooltip adds the guild with the rank ("Guild: Night Watch (Officer)"), or only "Guild rank: Officer" when the game's tooltip already names the guild; "Realm: Emberfall" only for a player of another realm, and not when the name line already carries the realm; "Role: Tank", "Role: Healer" or "Role: DPS" for a player with a group role; all in the quiet text colour, above "Target: ...". The guildless player and the mob get none of them. Your own tooltip ends its player lines with "Item level N", the same whole number as the character pane's item level, and no other player's tooltip has that line. Each switch takes its line off on the next hover, with no reload asked for, and brings it back. `/vg errors` stays empty. [Needs in game: whether WoW Forever's own tooltip already shows the guild and the realm, so which wording shows; that no line is doubled; that `GetAverageItemLevel` answers on WoW Forever as the character pane reads it.]
+- If it fails, paste: a screenshot of the tooltip, `/run print(GetGuildInfo("mouseover"))` and `/run print(UnitName("mouseover"))` while hovering the player, `/run print(GetAverageItemLevel())`, and `/vg errors`.
+
+### 7.2m Tooltips: item, spell and aura IDs behind one switch
+
+- Do: with a profile where **Item IDs** was ticked before this version, log in and hover an item, a spell on an action bar, a spell in the spellbook and one of your buffs. On a fresh profile do the same. Then `/vg` → Game windows → Tooltips → More settings: tick **IDs on item, spell and aura tooltips**, hover the same four, a debuff on a target and a buff on a raid tile, and untick it again.
+- Expect: the older profile shows the IDs at once (its switch is ticked); the fresh one shows none. With the switch on, the item's tooltip ends with "Item ID N", the spell's and each buff's or debuff's with "Spell ID N" in the quiet text colour, once per tooltip; with it off the lines are gone on the next hover, with no reload asked for. A macro's tooltip gets no ID. `/vg errors` stays empty, in a fight too. [Needs in game: that the aura tooltips Vanguard's own buff icons show go through the game's aura tooltip data, so they get the line; that no tooltip shows the line twice.]
+- If it fails, paste: a screenshot of the tooltip, what you hovered, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
@@ -614,9 +726,15 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 7.5a Health numbers on enemy plates
 
-- Do: stand near hostile mobs and a friendly NPC with plates on. Open the game's options → Nameplates → Info display and tick Current health percent; look at the plates. Tick Current health value too, then untick the percent. Open `/vg` → Nameplates and untick "Health value on enemy plates". Tick "Health percent on enemy plates" during a fight and watch the plates when it ends. Set Height to 8 on the same page and `/reload`.
+- Do: stand near hostile mobs and a friendly NPC with plates on. Open the game's options → Nameplates → Info display and tick Current health percent; look at the plates. Tick Current health value too, then untick the percent. Open `/vg` → Nameplates and untick "Health value on enemy plates". Tick "Health percent on enemy plates" during a fight and watch the plates when it ends. Drag Height to 8 on the same page.
 - Expect: each box shows its number at the right end of every enemy plate's bar, small and outlined (the value left of the percent when both are on), following the mob's health as you hit it; the friendly NPC's plate shows none. Vanguard's two rows tick and untick with the game's boxes, and the game's boxes follow Vanguard's rows; a row ticked in a fight takes effect when it ends. At height 8 no numbers show. [Needs in game: that the percent reads right on a mob whose health the client hides (it formats the hidden number, which the harness can't), that `CVAR_UPDATE` fires when the game's box changes so the plates follow at once, and how the numbers fit a 10-high bar.]
 - If it fails, paste: a screenshot of a plate and `/vg errors`.
+
+### 7.5b Nameplate sliders (A3-3)
+
+- Do: stand near three or more mobs with enemy plates on, one of them carrying your debuff, and open `/vg` → Nameplates. On the Size tab drag Width from end to end, then Height. On the Auras tab drag "Aura icon size" to 26 and let go, set "Your debuffs shown" to 1, then 6, set "Buffs on players" to 0 near a friendly player with a buff of yours, then to 4, and untick then tick "Timer numbers on your debuffs". On the Display tab untick "Cast bar" while a mob casts, then tick it. Pull the mobs, and during the fight drag Width to 200 and "Aura icon size" to 14; watch the plates when the fight ends. `/reload` and look again.
+- Expect: no row on the page carries a reload tag and the Reload button never shows. The bars follow the Width and Height sliders while you drag; the click area and the cast bar follow the bar. About a third of a second after an aura slider holds still, the icons on every plate are redrawn at the new size or count, with no leftover icons beside them and no hitch; the soft-target icon stays clear of the debuff row. The cast bar goes at once and comes back on the next cast. In the fight nothing changes until it ends, then every plate takes the last values. After the reload the plates look the same as before it. `/vg errors` stays empty throughout. [Needs in game: that a row put away (emptied, hidden) draws nothing; that moving a client aura container out of combat raises nothing; how long remaking the rows of 40 plates takes (`/vg perf`); that a plate first shown again after a change, in and out of combat, ends at the new size; and, in a dungeon with friendly plates the game keeps for itself, that changing a slider raises no forbidden-object error.]
+- If it fails, paste: a screenshot of the plates, the slider values, `/vg perf` if it hitched, and `/vg errors`.
 
 ### 7.6 Fight recap
 
@@ -723,6 +841,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with quests in your log in the zone you are in, look at the minimap, walk toward one quest's area and away from another, then turn on the game's Rotate Minimap option and turn round.
 - Expect: a small dot in your accent on the minimap over each quest's area (the same spots as the world map's quest blobs), a gold `?` for a quest ready to turn in, drawn over any dot it overlaps; Shift-click a quest in the tracker and its mark grows a size; a quest farther than the minimap shows sits faint on its edge in its direction and slides in as you approach. With Rotate Minimap on, the marks turn with the map. `/vg guide probe` shows `C_Minimap.GetViewRadius: present`. [Needs in game: that the marks sit on the right spots at every zoom, and that the dot reads clearly on busy ground (grass, snow, desert, a city) on both the square and the round minimap.]
 - If it fails, paste: a screenshot of the minimap and the world map, and `/vg errors`.
+
+### 8.4e The quest arrow and the minimap spots in a fight
+
+- Do: with the quest arrow showing and quest spots on the minimap, pull a mob and run about 50 yards while still in combat, turning as you go. Kill a mob a watched quest counts while still in combat. Then leave combat and stand still for two seconds.
+- Expect: while you run in combat the arrow keeps the turn and distance it had and the minimap spots stay where they were; the kill that changes the quest log redraws the arrow at once; within a second of the fight's end the arrow points the right way with the right distance and the spots are in the right places. No stutter and no Lua error. Say if the held arrow is misleading while you run: the rest in a fight is new in this build and can be limited to the heavier once-a-second work.
+- If it fails, paste: what the arrow and the spots showed and for how long after the fight, and `/vg errors`.
 
 ### 8.5 Levelling helpers
 
@@ -1063,6 +1187,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: press Escape, look at the menu, click the Vanguard button.
 - Expect: the Vanguard button first, above Options, with a gap under it; clicking it closes the menu and opens the options window. [After P0.9. If P0.9 did not land, the button is last, under Return to Game, as in your first screenshot.]
 - If it fails, paste: a screenshot of the menu and `/vg errors`.
+
+### 12.1a The Vanguard button and the quest log button in a fight
+
+- Do: in combat (a training dummy will do), press Escape and click the Vanguard button; press Escape again. Still in combat, click the quest log button on the menu bar twice. Do both again out of combat.
+- Expect: in combat the options window opens and the game menu stays up until Escape closes it; the quest log button opens Vanguard's quest log with the game's own window left open behind it, and the second click closes both. No `Interface action failed because of an AddOn` message at any point. Out of combat the menu closes on the click and only Vanguard's quest log shows, as before.
+- If it fails, paste: that message text, which button it followed, and `/vg errors`.
 
 ### 12.2 The game's own buttons still work
 
@@ -3304,8 +3434,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.166 Key setup's class layouts and its offer
 
-- Do: on WoW Forever, make a new character, finish or skip first-run setup, then log out and back in. In key setup, look at step 2 on a level-1 character and again around level 10 and 20 (a warrior after Defensive Stance, a druid after Bear Form, a hunter or warlock with a pet). Run `/vg probe` on any character and paste the Key setup spells, Key bindings and Action slots and stances sections (the last two on a brand-new character, before you move a button).
-- Expect: key setup opens by itself once at the second login (not with What's new on screen), and never again; a new character's starter buttons move to bar 3 and keys 1 to 4 work at once; each stance key presses the right form (` the first, Shift-` the second); a warrior's keys 1 to 6 change with the stance while F, T, G and X stay; a rogue's keys 1 to 6 change in Stealth, and a priest's keys 1 to 6 still show their spells in Shadowform (the layouts give priests one page, so a Shadowform that pages bar 1 would leave them empty; a paladin's auras on the stance bar likewise only the game can show); Pet Attack and Pet Follow work on ` and Shift-`. In the probe, every Key setup spells line names the spell its name says (a `nil` is an ID to fix). The class layouts assume vanilla's IDs and bar pages (Battle, Cat and Stealth on page 7, Defensive on 8, Berserker and Bear on 9), which only the game can confirm. After a spell's second rank is trained (Heroic Strike at 8, Frostbolt at 8), its key still holds it: `/dump C_SpellBook.IsSpellKnown(78)` reads true on a warrior who has rank 2 (if it reads false, key setup forgets ranked spells and needs a by-name check).
+- Do: on WoW Forever, make a new character, tick **Key setup at your next login** on first-run setup's Combat step (it starts off) and finish setup, then log out and back in. On another new character finish setup without ticking it, or skip setup, and log out and back in. In key setup, look at step 2 on a level-1 character and again around level 10 and 20 (a warrior after Defensive Stance, a druid after Bear Form, a hunter or warlock with a pet). Run `/vg probe` on any character and paste the Key setup spells, Key bindings and Action slots and stances sections (the last two on a brand-new character, before you move a button).
+- Expect: with the row ticked, key setup opens by itself once at the second login (not with What's new on screen), and never again; with the row left off or setup skipped it does not open by itself (Set up keys on the Your keys card still opens it); a new character's starter buttons move to bar 3 and keys 1 to 4 work at once; each stance key presses the right form (` the first, Shift-` the second); a warrior's keys 1 to 6 change with the stance while F, T, G and X stay; a rogue's keys 1 to 6 change in Stealth, and a priest's keys 1 to 6 still show their spells in Shadowform (the layouts give priests one page, so a Shadowform that pages bar 1 would leave them empty; a paladin's auras on the stance bar likewise only the game can show); Pet Attack and Pet Follow work on ` and Shift-`. In the probe, every Key setup spells line names the spell its name says (a `nil` is an ID to fix). The class layouts assume vanilla's IDs and bar pages (Battle, Cat and Stealth on page 7, Defensive on 8, Berserker and Bear on 9), which only the game can confirm. After a spell's second rank is trained (Heroic Strike at 8, Frostbolt at 8), its key still holds it: `/dump C_SpellBook.IsSpellKnown(78)` reads true on a warrior who has rank 2 (if it reads false, key setup forgets ranked spells and needs a by-name check).
 - If it fails, paste: the probe sections, a screenshot of step 2, and `/vg errors`.
 
 ### 33.167 New spells on keys
@@ -3613,6 +3743,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: On a Retail hunter wearing a bow, gun or crossbow, hover a better and a clearly worse ranged weapon in your bags.
 - Expect: The tooltips say "Upgrade +N%" and "Downgrade -N%" against your worn weapon, never "Upgrade: fills an empty slot", and the bag arrow marks only the better one.
 - If it fails, paste: the tooltip text of both bag weapons and of the worn one
+
+### 33.217a No upgrade line on an off-hand item beside a two-hander (WoW Forever and Retail)
+
+- Do: Wear a two-handed weapon with Gear upgrades on. Hover a shield, a held-in-off-hand item and an off-hand weapon you can use, in your bags and on a quest reward; open the combined bag. Then wear a one-hand weapon with the off hand empty and hover the same items.
+- Expect: Beside the two-hander none of them says "Upgrade: fills an empty slot" and none has an arrow. With the one-hand weapon worn and the off hand empty they say "Upgrade: fills an empty slot" again.
+- If it fails, paste: the tooltip text of the off-hand item and of the worn weapon
 
 ### 33.218 Gear weights follow the specialization (Retail)
 
@@ -4983,12 +5119,42 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no saved settings line at any login (its notes under "CAMWOW US2 Realm 3 PvE" fold into "CAMWOWUS2Realm3PvE", and the newer one matches). If a character still shows it, the line shows at the first login only, not after the reload, and `/vg` → General has **Keep these settings**: after it chat says Vanguard keeps the settings that loaded, the notice goes, and the next login says nothing.
 - If it fails, paste: the chat lines from login, and both `Vanguard.lua` files (the account's `WTF/Account/<name>/SavedVariables/` one and the character's `WTF/Account/<name>/<realm>/<character>/SavedVariables/` one), or just their `guard` blocks.
 
+### 33.471 The Shield HUD look on the unit frames (Forever)
+
+- Do: log in after the update with a target. Look at your frame, the target, target of target, focus (set one) and pet (hunter or warlock) in and out of combat, with health below full on you and the target.
+- Expect: every frame is a shield: the outer end comes to a point at mid-height (left on yours, focus and pet; right on the target and its target), the inner end square, with no border running up the pointed end and the health and power bars cut to the point. Health fills toward you: yours drains from the left point in, the target's from its right point in, so the last sliver stands beside the number. On the target the name reads from the right and the health text, diamond and tag mark sit at its left end. A thin brass line runs a pixel inside your frame's and the target's rim, brighter in a fight. Nothing jumps when the target frame changes height (Setup's role layouts) and no text runs into the point.
+- If it fails, paste: a screenshot of both frames out of combat, one in combat, your UI scale and resolution, and `/vg errors`.
+
+### 33.472 Plain puts everything back (Forever)
+
+- Do: `/vg` → General → HUD → HUD look: cycle to Plain, then back to Shield. With Plain on, flip Shield corners on unit frames off and on.
+- Expect: Plain gives the flat frames back at once, texts in their old places, cuts on the unit frames' corners while Shield corners is on and square corners with it off; the keystone goes with Plain. Shield brings the points back at once, with the hairline. No reload, no error.
+- If it fails, paste: a screenshot after each change and `/vg errors`.
+
+### 33.473 The tools' cuts and the plinth under the bars (Forever)
+
+- Do: with Shield on, cast a spell and look at your cast bar, then at the action bars. Flip Shield corners on unit frames off. Under Action bars, set Bar backing to Off, then Auto.
+- Expect: the cast bar's four corners are cut 8 pixels (its icon square, left of the bar); one dark plate with cut corners sits under the bar stack. Shield corners off takes the cuts off the cast bar and the plate but leaves the unit frames' points. Bar backing Off removes the plate at once (out of combat); Auto brings it back under Shield.
+- If it fails, paste: a screenshot of the cast bar and bars, and `/vg errors`.
+
+### 33.474 The keystone between your frame and your target's (Forever)
+
+- Do: with Shield on and a target, look between the two frames; enter combat and leave it. Then: turn on the Versus deck (Unit frames); turn it off; drag your frame a little in `/vg unlock` and lock; `/vg reset` the position. Set Unit frames → Keystone → Show the keystone to Never, Always, and back to With the Shield look. If the Cooldown Manager's essential row shows between the frames, note whether the keystone shows with it.
+- Expect: the crest sits on a dim brass rail at the frames' mid-height, under them, and takes no clicks; crossed swords light under it in combat and go when the fight ends; it dims out of combat with the Calm HUD like your frames. It hides while the deck is on, while either frame has a moved position, and while the Cooldown Manager's essential row sits across it, and comes back when each of those ends. Never hides it; Always shows it under Plain too.
+- If it fails, paste: a screenshot of the gap between the frames in each state and `/vg errors`.
+
+### 33.475 Global cooldown on the keystone (Forever)
+
+- Do: Unit frames → Global cooldown on the keystone: on. Cast a few spells. Off again.
+- Expect: a ring round the crest sweeps with the global cooldown after each cast (the same sweep the cursor ring draws) and is gone with the switch off. If the ring never moves on WoW Forever, say so: it decides whether this switch ships on by default (7.2c).
+- If it fails, paste: whether the ring showed, whether it swept, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
 
 - Do: on an account that has never run Vanguard (1.2), click Next three times to `Step 4 of 9 · Comfort`, then Next through Game settings, Helpers and Combat, reading each step, then Next twice more and Done. Then open `/vg` → Game windows, Chat, Town and gear and Cooldowns.
-- Expect: Comfort's four switches start off. `Step 5 of 9 · Game settings` shows Enemy nameplates, Camera zooms out furthest (2.6 x) and Class-coloured names in chat, each ending in `· recommended`, each on or off as the game has it now (not switched on for you). `Step 6 of 9 · Helpers` starts with Faster auto-loot, Filter chat, Keep chat history, Spell ranks and Inbox search on (each `· recommended`) and Accept and turn in quests off; `Step 7 of 9 · Combat` starts with the Cooldown Manager, the buff glow, the timer numbers, the two right-edge bars and Key setup at your next login on, the Group threat panel off and unmarked (it is marked and on when you picked Centered: tanking or your group role is tank). `Step 8 of 9 · Move things` unlocks the frames; `Step 9 of 9 · All set` lists every switch the run turned on, one line each ending in `: On`, with **Undo setup** under them, and chat said where the backup profile went when you left Helpers. After Done and the reload the pages show those switches on; the Combat step turned on bars 4 and 5 at the right edge (mouseover). The painting under the title changes with the steps and the window keeps one height: the dusk banner with the crest and name through Look, your faction's AFK scene (the misty keep or the red canyon, with no crest over it) on the four guided steps, and the camp under the stars on Move things and All set (26.3b). [Needs in-game check: all of it, that each step fits the window at Larger text, and how the three paintings read at the strip's size.]
+- Expect: Comfort's four switches start off and its fifth, Shield HUD look, starts on. `Step 5 of 9 · Game settings` shows Enemy nameplates, Camera zooms out furthest (2.6 x) and Class-coloured names in chat, each ending in `· recommended`, each on or off as the game has it now (not switched on for you). `Step 6 of 9 · Helpers` starts with Faster auto-loot, Keep chat history, Spell ranks and Inbox search on (each `· recommended`) and Filter chat and Accept and turn in quests off and unmarked; `Step 7 of 9 · Combat` starts with the Cooldown Manager, the buff glow, the timer numbers and the two right-edge bars on, Key setup at your next login off and unmarked, the Group threat panel off and unmarked (it is marked and on when you picked Centered: tanking or your group role is tank). `Step 8 of 9 · Move things` unlocks the frames; `Step 9 of 9 · All set` lists every switch the run turned on, one line each ending in `: On`, with **Undo setup** under them, and chat said where the backup profile went when you left Helpers. After Done and the reload the pages show those switches on; the Combat step turned on bars 4 and 5 at the right edge (mouseover). The painting under the title changes with the steps and the window keeps one height: the dusk banner with the crest and name through Look, your faction's AFK scene (the misty keep or the red canyon, with no crest over it) on the four guided steps, and the camp under the stars on Move things and All set (26.3b). [Needs in-game check: all of it, that each step fits the window at Larger text, and how the three paintings read at the strip's size.]
 - If it fails, paste: the step's caption, which rows were on, and `/vg errors`.
 
 ### 33.457 Guided setup: Use recommended, the game's settings and Undo setup

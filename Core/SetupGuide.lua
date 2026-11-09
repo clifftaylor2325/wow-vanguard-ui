@@ -28,9 +28,9 @@ local function tanking()
   return ns.Setup.ChosenRole() == "tank"
 end
 
--- Key setup's note for the next login (Modules/KeybindsWizard.lua): on until the player turns it off here.
+-- Key setup's note for the next login (Modules/KeybindsWizard.lua): off until the player turns it on here.
 local function keysOffered()
-  return VanguardCharDB.keysOffer ~= false
+  return VanguardCharDB.keysOffer == true
 end
 
 -- Turns key setup's next-login note on or off.
@@ -42,6 +42,8 @@ end
 -- caption }; a cycle row gives the value that counts as on and the one off is), or setup's own get and set; recommend
 -- is true, or a function answering for the role or the client; game marks the game's own settings, which start on
 -- what the game has now on a first run too. A row with no recommend is offered and left as it is by Use recommended.
+-- The chat filter and key setup are offered, not recommended (decision D4 of docs/handoff/A-GRADE-PLAN.md): the
+-- filter's words are English only and key setup's data is not yet confirmed in game.
 G.ROWS = {
   comfort = {
     { key = "larger", caption = L["Larger text (115%)"], recommend = gamepad,
@@ -51,6 +53,8 @@ G.ROWS = {
     { key = "calm", caption = L["Calm HUD: quiet the HUD out of combat"],
       get = function() return ns.Setup.Calm() end, set = function(v) ns.Setup.SetCalm(v) end },
     { key = "motion", caption = L["Reduce motion (no fades or flashes)"], options = { { "general", "Reduce motion (no fades or flashes)" } } },
+    { key = "hud", caption = L["Shield HUD look: frames point away from you"], recommend = true, on = "shield", off = "plain",
+      options = { { "general", "HUD look" } } },
   },
   game = {
     { key = "plates", caption = L["Enemy nameplates (the V key)"], recommend = true, game = true,
@@ -62,7 +66,7 @@ G.ROWS = {
   },
   helpers = {
     { key = "loot", caption = L["Faster auto-loot"], recommend = true, options = { { "windows", "Faster auto-loot" } } },
-    { key = "filter", caption = L["Filter chat: gold selling, boosting, recruiting, repeats"], recommend = true,
+    { key = "filter", caption = L["Filter chat: gold selling, boosting, recruiting, repeats"],
       options = { { "chat", "Filter chat" } } },
     { key = "history", caption = L["Keep chat history across reloads"], recommend = true, options = { { "chat", "Keep chat history" } } },
     { key = "ranks", caption = L["Spell ranks: notice older ranks, remember trainers"], recommend = true,
@@ -80,7 +84,7 @@ G.ROWS = {
     { key = "threat", caption = L["Group threat panel"], recommend = tanking, options = { { "unitframes", "Group threat panel" } } },
     { key = "bars", caption = L["Two more bars at the right edge (bars 4 and 5)"], recommend = true,
       options = { { "actionbars", "Show bar 4" }, { "actionbars", "Show bar 5" } } },
-    { key = "keys", caption = L["Key setup at your next login"], recommend = true, when = ns.IsForever, get = keysOffered, set = offerKeys },
+    { key = "keys", caption = L["Key setup at your next login"], when = ns.IsForever, get = keysOffered, set = offerKeys },
   },
 }
 
