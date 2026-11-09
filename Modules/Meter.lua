@@ -147,12 +147,17 @@ local function fillFigure(row, src, top)
   give(row.value, "SetText", MT.WithShare(src[MT.Field()], src.totalAmount, MT.total))
 end
 
+-- A death's time as the game's meter shows it ("3m 22s"), or "" for the overall session or a hidden time.
+function MT.DeathTime(src)
+  local at = ns.PlainNumber(src.deathTimeSeconds)
+  return at and at >= 0 and ns.GetModule("InfoStrip").FightLength(at) or ""
+end
+
 -- Fills a Deaths line as the game's meter does: a full bar and the time of death (none for the overall session).
 local function fillDeath(row, src)
   give(row, "SetMinMaxValues", 0, 1)
   give(row, "SetValue", 1)
-  local at = ns.PlainNumber(src.deathTimeSeconds)
-  give(row.value, "SetText", at and at >= 0 and ns.GetModule("InfoStrip").FightLength(at) or "")
+  give(row.value, "SetText", MT.DeathTime(src))
 end
 
 -- Fills one row's bar and texts from one line, scaled to the top line's figure.
