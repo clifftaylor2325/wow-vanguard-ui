@@ -7,6 +7,7 @@
 -- client's behaviour was not seen, the line says "unverified" and the keybind phases' in-game
 -- checks (docs/SMOKE-TEST.md) settle it.
 
+local type = __wfgRawType
 local stub = __wfgStub
 local world = stub.world
 

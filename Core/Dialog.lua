@@ -450,6 +450,23 @@ function ns.CancelAsk(onNo)
   question:Hide()
 end
 
+-- An irreversible move's Yes: in a fight, or with its target changed since the question (move.still says no),
+-- nothing moves and move.gone says why (or the fight line); otherwise move.act runs.
+local function moveConfirmed(move)
+  if ns.InCombat() then return ns.Chat(L["Nothing moved: a fight began. Try again after it."]) end
+  if move.still and not move.still() then return move.gone and move.gone() end
+  move.act()
+end
+
+-- The one path for a move that can't be undone (gold spent, items sold, mail returned, an auction cancelled):
+-- refused in a fight, asked as a "danger" question (Enter alone never answers it), and on Yes the target is read
+-- again before anything moves. move: { question, yes, act, still (optional), gone (optional) }.
+---@param move table
+function ns.Irreversible(move)
+  if ns.InCombat() then return ns.Chat(L["Not in a fight: try again after it."]) end
+  ns.Ask(move.question, move.yes, function() moveConfirmed(move) end, nil, "danger")
+end
+
 -- Whether the question dialog shows a question now (another ns.Ask would replace it).
 ---@return boolean
 function ns.Asking()

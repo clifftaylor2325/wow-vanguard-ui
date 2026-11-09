@@ -11,7 +11,7 @@ A release is a version bump merged to `main`, then the `release` workflow. Nothi
 
 1. **Everything that ships is merged**: `main` is green (`verify.yml` on the last merge, the latest weekly or hand-started full suite), and no open `ci-failure` issue. A PR still open waits for the next release; it does not get rushed.
 2. **The notes exist in the addon**: `Core/WhatsNewNotes.lua` has an entry for this version at the top, one group per module or area, each line in player language with the options `page` and `row` a click opens. Lines are written from the merged PR titles since the last tag (`git log v<last>..main --merges`); a line never describes something that is not merged. `/vg whatsnew` shows them; `scripts/tests` cover `Core/WhatsNew.lua`, so a malformed entry fails a test.
-3. **The in-game check**: `docs/SMOKE-TEST.md` run order (section "Run order by crash risk") has been run on the release candidate, or Cliff has said to ship without it. Nothing in this repo can replace that; a release that skipped it says so in its notes.
+3. **The in-game check**: every SMOKE step the version's changelog section names (`steps 33.344 to 33.389`, single ids) has an entry for this version in `docs/smoke-results.json` (`pass`, `fail`, `partial` or `skip`, with a note of what Cliff saw). Record what Cliff pastes there, one entry per step; never write an entry he did not report. A step he chose not to run is `skip` with his reason. The release refuses until each has one: `scripts/release-local.mjs` lists the missing steps in its preflight, and so does this skill. Nothing in this repo can replace the check itself.
 
 ## The bump
 

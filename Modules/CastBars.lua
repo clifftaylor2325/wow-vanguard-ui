@@ -82,13 +82,15 @@ local function withHold(unit, endMS)
 end
 
 -- The unit's channel from UnitChannelInfo as CB.Cast's values, or nothing when there is none. The uninterruptible
--- flag is its 7th return and the stages of an empowered cast its 10th (never hidden): that one fills as a cast.
+-- flag is its 7th return and the stages of an empowered cast its 10th: that one fills as a cast. A secret keeps
+-- its number type, so the stage count is read through ns.PlainNumber before it is compared.
 local function channelInfo(unit)
   local get = _G.UnitChannelInfo
   if type(get) ~= "function" then return nil end
   local name, _, icon, startMS, endMS, _, shielded, _, _, stages = get(unit)
   if type(name) == "nil" then return nil end
-  if type(stages) == "number" and stages > 0 then return name, icon, startMS, withHold(unit, endMS), shielded, false, stages end
+  stages = ns.PlainNumber(stages)
+  if stages and stages > 0 then return name, icon, startMS, withHold(unit, endMS), shielded, false, stages end
   return name, icon, startMS, endMS, shielded, true
 end
 

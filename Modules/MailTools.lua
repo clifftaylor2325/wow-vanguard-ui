@@ -285,7 +285,8 @@ end
 function MT.ReturnAll()
   local mails = MT.ReturnMails(MT.Find(MT.query))
   if #mails == 0 then return ns.Chat(L["Return all: nothing to return."]) end
-  ns.Ask(ns.Format(L["Return {count} mail(s) to their senders?"], { count = #mails }), L["Return"], function() start(L["Return all"], mails, returnNext, #mails) end, nil, "danger")
+  ns.Irreversible({ question = ns.Format(L["Return {count} mail(s) to their senders?"], { count = #mails }), yes = L["Return"],
+    act = function() start(L["Return all"], mails, returnNext, #mails) end })
 end
 
 -- Presets ------------------------------------------------------------------------------------

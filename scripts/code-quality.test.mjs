@@ -8,7 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import fengari from "fengari";
 import { describe, expect, it } from "vitest";
-import { MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, checkSource, compareToBaseline, reportSource, sourceFiles, topLevelLocals } from "./lib/code-quality.mjs";
+import { MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, reportSource, sourceFiles, topLevelLocals } from "./lib/code-quality.mjs";
 import { root } from "./check-zip.mjs";
 
 // n body lines of Lua, or of JS when js is true.
@@ -355,51 +355,53 @@ describe(
 
 // The report-only rules each finding of one TEST-ONLY source hit, in order.
 const reported = (src, file = "Modules/t.lua") => reportSource(file, src).map((f) => f.rule);
-const SECURE = "secure-outside-combat-guard";
+const SECURE = SECURE_RULE;
+// The blocking secure-call finding a TEST-ONLY source hits, one rule name per finding.
+const secured = (src, file = "Modules/t.lua") => (file.endsWith(".lua") ? checkSource(file, src) : []).filter((p) => /outside a combat guard/.test(p.message)).map(() => SECURE);
 const ONUPDATE = "unbounded-onupdate";
 const HANDLER = "unguarded-script-handler";
 
-// A bare SetAttribute in a function is reported with its line and fix, and does not block.
+// A bare SetAttribute in a function fails the scan with its line and fix (blocking since it was quiet on main).
 function secureBare() {
   const src = inFn('b:SetAttribute("type", "macro")');
-  expect(reported(src)).toEqual([SECURE]);
-  expect(reportSource("Modules/t.lua", src)[0]).toMatchObject({ line: 3, message: expect.stringMatching(/^SetAttribute\(\) outside a combat guard: run it through ns\.OutOfCombat/) });
-  expect(problems("Modules/t.lua", src)).toBe("");
+  expect(secured(src)).toEqual([SECURE]);
+  expect(checkSource("Modules/t.lua", src)[0]).toMatchObject({ line: 3, message: expect.stringMatching(/^SetAttribute\(\) outside a combat guard: run it through ns\.OutOfCombat/) });
+  expect(reported(src)).toEqual([]);
 }
 
 // Each kind of protected call is read.
 function secureKinds() {
   const calls = ['RegisterStateDriver(b, "visibility", "show")', "RegisterAttributeDriver(b, 'x', 'y')", "SecureHandlerWrapScript(b, 'OnClick', h, '')", "RegisterUnitWatch(b)", "ClearOverrideBindings(b)", 'SetOverrideBindingClick(b, true, "F", "B")'];
-  for (const call of calls) expect(reported(inFn(call)), call).toEqual([SECURE]);
+  for (const call of calls) expect(secured(inFn(call)), call).toEqual([SECURE]);
 }
 
 // A function passed to ns.OutOfCombat passes.
 function secureDeferred() {
-  expect(reported(inFn('ns.OutOfCombat(function() b:SetAttribute("x", 1) end, "key")'))).toEqual([]);
+  expect(secured(inFn('ns.OutOfCombat(function() b:SetAttribute("x", 1) end, "key")'))).toEqual([]);
 }
 
 // A function named inside ns.OutOfCombat passes, and so does one it calls.
 function secureDeferredByName() {
   const src = "-- doc\nlocal function set(b)\n  b:SetAttribute('x', 1)\nend\n-- doc\nlocal function apply(b)\n  set(b)\nend\n-- doc\nfunction M.Go(b)\n  ns.OutOfCombat(function() apply(b) end)\nend\n";
-  expect(reported(src)).toEqual([]);
-  expect(reported("-- doc\nfunction M.Apply(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(M.Apply)\n")).toEqual([]);
+  expect(secured(src)).toEqual([]);
+  expect(secured("-- doc\nfunction M.Apply(b)\n  b:SetAttribute('x', 1)\nend\nns.OutOfCombat(M.Apply)\n")).toEqual([]);
 }
 
 // A combat check before the call passes; one after it does not.
 function secureChecked() {
-  expect(reported(inFn('if InCombatLockdown() then return end\n  b:SetAttribute("x", 1)'))).toEqual([]);
-  expect(reported(inFn('if ns.InCombat() then return end\n  RegisterStateDriver(b, "x", "y")'))).toEqual([]);
-  expect(reported(inFn('b:SetAttribute("x", 1)\n  if InCombatLockdown() then return end'))).toEqual([SECURE]);
+  expect(secured(inFn('if InCombatLockdown() then return end\n  b:SetAttribute("x", 1)'))).toEqual([]);
+  expect(secured(inFn('if ns.InCombat() then return end\n  RegisterStateDriver(b, "x", "y")'))).toEqual([]);
+  expect(secured(inFn('b:SetAttribute("x", 1)\n  if InCombatLockdown() then return end'))).toEqual([SECURE]);
 }
 
 // Top-level (load time) calls, snippets in strings, mentions and other folders pass.
 function secureIgnored() {
-  expect(reported('local b = CreateFrame("Button")\nb:SetAttribute("type", "macro")\n')).toEqual([]);
-  expect(reported(inFn('SecureHandlerExecute(b, "self:SetAttribute(\'x\', 1)")'))).toEqual([SECURE]);
-  expect(reported(inFn('-- b:SetAttribute("x", 1)\n  local s = "RegisterStateDriver(b)"'))).toEqual([]);
-  expect(reported(inFn("if type(RegisterStateDriver) == 'function' then fn() end"))).toEqual([]);
-  expect(reported(inFn('b:SetAttribute("x", 1)'), "scripts/lib/t.lua")).toEqual([]);
-  expect(reported(inFn('b:SetAttribute("x", 1)'), "Modules/t.mjs")).toEqual([]);
+  expect(secured('local b = CreateFrame("Button")\nb:SetAttribute("type", "macro")\n')).toEqual([]);
+  expect(secured(inFn('SecureHandlerExecute(b, "self:SetAttribute(\'x\', 1)")'))).toEqual([SECURE]);
+  expect(secured(inFn('-- b:SetAttribute("x", 1)\n  local s = "RegisterStateDriver(b)"'))).toEqual([]);
+  expect(secured(inFn("if type(RegisterStateDriver) == 'function' then fn() end"))).toEqual([]);
+  expect(secured(inFn('b:SetAttribute("x", 1)'), "scripts/lib/t.lua")).toEqual([]);
+  expect(secured(inFn('b:SetAttribute("x", 1)'), "Modules/t.mjs")).toEqual([]);
 }
 
 // The allow-list is explicit and starts empty.
@@ -453,10 +455,10 @@ function onUpdateForms() {
 }
 
 describe(
-  "code quality, report-only",
+  "code quality",
   // Secure calls outside a combat guard.
   () => {
-    it("secure: a bare SetAttribute is reported, and does not block", secureBare);
+    it("secure: a bare SetAttribute fails the scan", secureBare);
     it("secure: each kind of protected call is read", secureKinds);
     it("secure: a function passed to ns.OutOfCombat passes", secureDeferred);
     it("secure: a function named under ns.OutOfCombat passes, and one it calls", secureDeferredByName);
@@ -531,6 +533,54 @@ function unwrappedPasses() {
   expect(reported(inFn('fs:SetText("Experience bar")'), "scripts/lib/t.lua")).toEqual([]);
 }
 
+const TRUTH = "secret-truth-test";
+const PCALL_OR = "pcall-result-or";
+const LONG = "long-line";
+
+// A client read tested for truth is reported with its line and fix, and does not block.
+function truthBare() {
+  const src = inFn("if UnitIsDead(u) then fn() end\n  local a = not UnitIsUnit(u, 'x')\n  local b = x and C_UnitAuras.GetAuraDataByIndex(u, 1) and y");
+  expect(reported(src)).toEqual([TRUTH, TRUTH, TRUTH]);
+  expect(reportSource("Modules/t.lua", src)[0]).toMatchObject({ line: 3, message: expect.stringMatching(/^UnitIsDead\(\) tested for truth/) });
+  expect(problems("Modules/t.lua", src)).toBe("");
+}
+
+// A read compared, wrapped, stored or read as a field, and other folders, pass.
+function truthPasses() {
+  const src = inFn("if ns.IsTrue(UnitIsDead(u)) then fn() end\n  local hp = UnitHealth(u)\n  if UnitIsDead(u) == true then end\n  if x.UnitIsDead(u) then end\n  if GetTime() then end");
+  expect(reported(src)).toEqual([]);
+  expect(reported(inFn("if UnitIsDead(u) then end"), "scripts/lib/t.lua")).toEqual([]);
+}
+
+// `ok and value or fallback` right after a pcall is reported; testing ok alone, or a use far below, is not.
+function pcallOr() {
+  expect(reported(inFn("local ok, v = pcall(get, 1)\n  return ok and v or nil"))).toEqual([PCALL_OR]);
+  expect(reportSource("Modules/t.lua", inFn("local ok, v = pcall(get, 1)\n  return ok and v or nil"))[0].line).toBe(4);
+  expect(reported(inFn("local ok, v = pcall(get, 1)\n  if not ok then return nil end\n  return v"))).toEqual([]);
+  expect(reported(inFn(`local ok, v = pcall(get, 1)${"\n  x()".repeat(12)}\n  return ok and v or nil`))).toEqual([]);
+}
+
+// A line over MAX_LINE characters of addon Lua is counted; one at it, and other folders, are not.
+function longLine() {
+  // The statement inFn indents by two spaces to MAX_LINE characters.
+  const at = `local s = "${"x".repeat(MAX_LINE - 14)}"`;
+  expect(at.length + 2).toBe(MAX_LINE);
+  expect(reported(inFn(at))).toEqual([]);
+  expect(reported(inFn(`${at}x`))).toEqual([LONG]);
+  expect(reported(inFn(`${at}x`), "scripts/lib/t.lua")).toEqual([]);
+}
+
+describe(
+  "code quality, report-only",
+  // Secret truth tests, pcall results tested for truth, and long lines: ratchets.
+  () => {
+    it("secret truth test: a client read tested for truth is reported, and does not block", truthBare);
+    it("secret truth test: compared, wrapped, stored, fields and other folders pass", truthPasses);
+    it("pcall result: ok and v or … right after a pcall is reported", pcallOr);
+    it("long lines: over the cap is counted in addon Lua only", longLine);
+  },
+);
+
 describe(
   "code quality, report-only",
   // Text a player reads goes through the string table.
@@ -541,14 +591,13 @@ describe(
 );
 
 it("baseline: a count above fails, below asks to lower it, a missing rule counts as 0", () => {
-  const rows = compareToBaseline({ [SECURE]: 3, [ONUPDATE]: 1 }, { [SECURE]: 2 });
-  expect(rows).toEqual([
-    { rule: SECURE, count: 3, baseline: 2, status: "above" },
-    { rule: ONUPDATE, count: 1, baseline: 0, status: "above" },
-    { rule: HANDLER, count: 0, baseline: 0, status: "at" },
+  const rows = compareToBaseline({ [ONUPDATE]: 3, [HANDLER]: 1 }, { [ONUPDATE]: 2 });
+  expect(rows.slice(0, 3)).toEqual([
+    { rule: ONUPDATE, count: 3, baseline: 2, status: "above" },
+    { rule: HANDLER, count: 1, baseline: 0, status: "above" },
     { rule: UNWRAPPED, count: 0, baseline: 0, status: "at" },
   ]);
-  expect(compareToBaseline({ [SECURE]: 1 }, { [SECURE]: 2, [ONUPDATE]: 0, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at", "at"]);
+  expect(compareToBaseline({ [ONUPDATE]: 1 }, { [ONUPDATE]: 2, [HANDLER]: 0 }).map((r) => r.status)).toEqual(["below", "at", "at", "at", "at", "at"]);
 });
 
 it("baseline: the committed file lists every report-only rule as a whole number", () => {
@@ -612,7 +661,7 @@ function topLocalsCounted() {
 // The scan fails a file one local above the limit and passes one at the limit.
 function topLocalsRule() {
   expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS))).toBe("");
-  expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS - 1) + "local a, b\n")).toMatch(/186 top-level locals/);
+  expect(problems("Core/T.lua", locals(MAX_TOP_LOCALS - 1) + "local a, b\n")).toMatch(new RegExp(`${MAX_TOP_LOCALS + 1} top-level locals \\(limit 170;`));
   expect(checkSource("Core/T.lua", locals(MAX_TOP_LOCALS + 1))[0].line).toBe(MAX_TOP_LOCALS + 1);
   expect(problems("scripts/lib/x.lua", locals(MAX_TOP_LOCALS + 5))).toBe("");
 }

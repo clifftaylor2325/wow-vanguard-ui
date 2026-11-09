@@ -1,6 +1,6 @@
 # Vanguard smoke test (for the owner)
 
-Run this once in the WoW Forever beta after the P0 branch is merged. **Nothing in it has been seen in the game.** Every "Expect" line is what the code intends, read from the source when this was written, not something anyone watched happen. A step that fails is the useful result: it tells us what to fix.
+The in-game checklist for Vanguard on WoW Forever (and Retail where a step says so). Every "Expect" line is what the code intends, read from the source when the step was written. What has really been seen lives beside it in [smoke-results.json](smoke-results.json): one entry per step and Vanguard version, with the date, `pass`, `fail`, `partial` or `skip`, and a note of what was seen. A step with no entry for a version has not been recorded for it, which is not the same as untried. A step that fails is the useful result: it tells us what to fix. A release refuses to publish while a step its changelog names has no entry for that version (`scripts/release-local.mjs`).
 
 Written against the Forever client build 1.60.1.70170 (the Blizzard UI source the code was checked against). `/vg status` prints the build you are really on.
 
@@ -11,9 +11,9 @@ Things to know before you start:
 - Where an Expect depends on an earlier fix, a bracketed note says which. If that fix did not land, the note says what you will see instead.
 - Quote chat lines as they appear; a missing or different line is a finding.
 
-## Run this before the beta closes (one page, about ten minutes)
+## Run the probe first (one page, about ten minutes)
 
-One command asks the client every open question the research left and writes the answers down. Nothing in it changes a setting or the game, and nothing in it has been seen in the game yet. Do it before anything else in this file: after the beta closes there is no Forever client until launch.
+One command asks the client every open question the research left and writes the answers down. Nothing in it changes a setting or the game. Do it before anything else in this file, and again after a game patch.
 
 1. Get ready, out of combat: stand in a town, have a quest in your log and super-track it (click its tracker), and target a mob or a critter (a training dummy is fine).
 2. Type `/vg probe`. A copy box opens; press Ctrl+C and paste it whole. Chat says `Probe done: N present, N missing, N errors`. If the box is empty or a Lua error shows, paste `/vg errors` too. `/vg probe chat` also prints every line to chat.
@@ -58,7 +58,7 @@ The report is also saved in `WTF\Account\<account>\SavedVariables\Vanguard.lua` 
 
 ## Run order by crash risk
 
-If the beta closes before you finish, do these first and stop after any step that throws a Lua error (paste the report block):
+If time is short, do these first and stop after any step that throws a Lua error (paste the report block):
 
 1. 1.1 to 1.4: install, first login, `/vg status` (also read the real Interface build from it and put it in `Vanguard.toc` before packaging), `/vg errors`.
 2. 7 and 3.3: combat with auras, cast bars, nameplates and unlocked frames.
@@ -4766,6 +4766,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: Open `/vg` > Chat > Chat tabs, pick a tab with no channel, enter combat, press Close this tab, then right-click that tab, choose Settings and tick Trade. Leave combat.
 - Expect: The tab stays open and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window." No error appears.
 - If it fails, paste: the chat lines and any Lua error text.
+
+### 33.430 Selling, buying and returning mail: the questions (Forever)
+
+- Do: at a merchant, with gray items in your bags, let the sell question show (or type `/vg sell <a gray item>`), pull a mob or get hit so a fight starts, and press Sell. Then out of combat ask again and press Sell. Shift-click a merchant item worth 150g or more, press Stack, and press Enter at the question. At the mailbox, with mail you can return, press Return all and answer Return.
+- Expect: Sell in a fight sells nothing and chat says `Nothing moved: a fight began. Try again after it.`; out of combat the sale goes through and chat names what was sold. Enter alone never answers the Buy question (it is the red button now); clicking Buy buys. Return all sends the mail back as before.
+- If it fails, paste: the chat lines and `/vg errors`.
+
+### 33.431 Raid tiles and the menu strip after a fight (Forever)
+
+- Do: join a group or raid while in combat (or have someone invite you mid-fight), then leave combat. With the menu strip set to a visibility other than Always, change that setting in a fight, then leave combat.
+- Expect: once the fight ends the raid tiles show everyone and left-click targets, right-click opens the unit menu; the menu strip takes its new visibility. No "Interface action failed because of an AddOn" line in chat.
+- If it fails, paste: `/vg errors` and what the tile or strip did.
+
+### 33.432 Tooltips, plates and tiles with units coming and going (Forever)
+
+- Do: hover a player whose target you can see, then one with no target. `/reload` in a city with many nameplates showing. In a group, watch a raid tile while its member goes out of range and back.
+- Expect: the tooltip names the target when there is one and adds nothing otherwise; every plate on screen gets Vanguard's look after the reload; the tile keeps its member. No Lua error.
+- If it fails, paste: `/vg errors`.
+
+### 33.433 An empowered cast's stages (Retail, Evoker)
+
+- Do: on an Evoker, hold an empowered spell (Fire Breath) to its last stage and let go, with the player cast bar showing.
+- Expect: the bar fills through the stages with a mark where each ends, as before; no Lua error.
+- If it fails, paste: `/vg errors` and a screenshot of the bar.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

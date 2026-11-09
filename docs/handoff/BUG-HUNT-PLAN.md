@@ -1,5 +1,7 @@
 # Twenty bug hunts: the test plan (written 2026-11-04)
 
+> **Done.** Every task in this plan is ticked (checked 2026-11-09). It stays here as the record of what was planned and why; new work goes in a new plan.
+
 Twenty hunts of ten waves each, run after the launch-week fixes (#733 to #743) and the retail build (its plan is in the project files under `research/retail-support/`: the research report and the week-one and week-two briefs). Hunters are Sonnet 5.5; every wave's findings go through an Opus 5.5 adversarial review before anything is fixed. Fixes land in four block PRs, not twenty. Nobody can run the game, so every kept finding that needs the game becomes a step in `docs/SMOKE-TEST.md` for Cliff.
 
 Read with `CLAUDE.md` (the rules), `docs/features/` (the spec), `scripts/tests/README.md` (the harness) and the hunt reports in the project files (`review/stability-hunt-*.md`, `review/ui-hunt-*.md`). This page is the brief every hunt thread points to; a thread's own brief adds only its hunt id, its block branch and the commit it hunts.
