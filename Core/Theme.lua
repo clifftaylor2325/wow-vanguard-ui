@@ -1218,8 +1218,8 @@ function corner.geometry(frame, entry)
   end
   local look, v = corner.look(frame, entry), T.Variant()
   if not look then return nil end
-  local ring = (entry.opts.accent or entry.opts.border) and v and v.ring or 1
-  return T.UniformCorners(T.CORNER_ART[look].size * T.Pixel(frame) * ring, look)
+  local scale = (entry.opts.accent or entry.opts.border) and v and v.ring or 1
+  return T.UniformCorners(T.CORNER_ART[look].size * T.Pixel(frame) * scale, look)
 end
 
 -- Colours and sizes a painted frame's edges, re-pinned short of the corners once it has been shaped.
