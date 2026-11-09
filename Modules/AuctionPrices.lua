@@ -24,6 +24,10 @@ ns.AuctionPrices = AP
 -- Items priced at most per house, and the share of them a prune keeps (6000 -> 5400); days of
 -- values kept per item (the 7 days every reader looks at); days a price is kept; seconds in a day.
 AP.MAX_ITEMS, AP.KEEP, AP.DAYS, AP.MAX_AGE, AP.DAY = 6000, 0.9, 7, 30, 86400
+-- Items priced at most in all houses together (two full ones): past it, login drops whole houses,
+-- the one with the oldest prices first and never this one, so scanning on many realms and factions
+-- can't grow the account file (written at every logout, read at every login) without end.
+AP.MAX_ALL_ITEMS = 2 * AP.MAX_ITEMS
 -- The share of an item's units (per cent) its market value is taken over: the cheapest 15 %.
 AP.MARKET_PCT = 15
 
@@ -268,13 +272,6 @@ local function pruneHouse(house, now)
   return n
 end
 
--- Prunes every realm and faction's house; one left without prices (or not a house) is forgotten.
-function AP.Prune(now)
-  local houses = AP.Store().houses
-  for key, house in pairs(houses) do
-    if type(house) ~= "table" or type(house.prices) ~= "table" or pruneHouse(house, now) == 0 then houses[key] = nil end
-  end
-end
 
 -- The newest price time in a price home (0 for none, or for a damaged home).
 local function newestPrice(house)
@@ -294,6 +291,29 @@ local function oldestHomes(houses, keep)
   end
   table.sort(keys, function(a, b) return a.newest < b.newest end)
   return keys
+end
+
+-- Drops price homes, the one with the oldest prices first and never the one in use, while the homes hold
+-- more than AP.MAX_ALL_ITEMS items together (`total`, as AP.Prune counted them).
+function AP.CapHomes(total)
+  if total <= AP.MAX_ALL_ITEMS then return end
+  local houses = AP.Store().houses
+  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
+    if total <= AP.MAX_ALL_ITEMS then return end
+    total = total - houses[home.key].count
+    houses[home.key] = nil
+  end
+end
+
+-- Prunes every realm and faction's house; one left without prices (or not a house) is forgotten. Then,
+-- past AP.MAX_ALL_ITEMS items in all, the houses with the oldest prices go (AP.CapHomes).
+function AP.Prune(now)
+  local houses, total = AP.Store().houses, 0
+  for key, house in pairs(houses) do
+    local n = type(house) == "table" and type(house.prices) == "table" and pruneHouse(house, now) or 0
+    if n == 0 then houses[key] = nil else total = total + n end
+  end
+  AP.CapHomes(total)
 end
 
 -- The price homes in VanguardDB.ah, or none when the file has no list (AP.Store would make an empty one).

@@ -184,7 +184,7 @@ it("retail data: a watched major faction shows its renown on the reputation bar 
 
 it("retail data: the info strip shows no ammo or shards block, where Forever's hunter and warlock still do", () => {
   for (const [class_, key] of [["HUNTER", "ammo"], ["WARLOCK", "shards"]]) {
-    const env = UNITS_ENV + (class_ === "HUNTER" ? STRIP_ENV : "") + `__units.player.class = "${class_}" issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+    const env = UNITS_ENV + (class_ === "HUNTER" ? STRIP_ENV : "") + `__units.player.class = "${class_}" issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
       __wfgWorld.bags[1][3] = { itemID = 6265 }` + CLICK_LUA;
     expect(block(retail(env), key).shown, `Retail ${class_}: no ${key} block`).toBe(false);
     expect(block(loggedIn(env), key).shown, `Forever ${class_}: the ${key} block shows`).toBe(true);

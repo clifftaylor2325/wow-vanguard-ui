@@ -21,10 +21,13 @@
 //      top level of the file. Lua allows 200 per function and the file is one function:
 //      the next `local` past 200 stops the whole addon loading (Core/Theme.lua got
 //      within 2 of it). Locals inside a do ... end block or a function don't count.
+//   7. Addon Lua (Core/, Modules/) makes no secure call (SetAttribute, a state driver, an
+//      override binding) outside a combat guard (report-only under #263 until it was quiet on main).
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
-// Two more rules are report-only (#263, reportSource below): secure calls
-// outside a combat guard, and OnUpdate handlers neither throttled nor cleared.
-// They fail the scan only when a count rises above scripts/code-quality-baseline.json.
+// More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
+// cleared, unguarded script handlers, unwrapped text, secret truth tests, pcall results tested
+// for truth and long lines. They fail the scan only when a count rises above
+// scripts/code-quality-baseline.json.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -32,8 +35,11 @@ import { execFileSync } from "node:child_process";
 import * as acorn from "acorn";
 
 export const MAX_BODY_LINES = 10;
-// Lua's limit is 200 active locals per function (LUAI_MAXVARS); the scan fails a file at more than this, leaving room to fix it.
-export const MAX_TOP_LOCALS = 185;
+// Lua's limit is 200 active locals per function (LUAI_MAXVARS); the scan fails a file at more than this, leaving
+// room to fix it (30 under the limit: a feature's locals arrive in a batch).
+export const MAX_TOP_LOCALS = 170;
+// The longest line of addon Lua the line-length ratchet lets through (report-only rule long-line).
+export const MAX_LINE = 160;
 
 const LUA_BLOCK_OPEN = new Set(["function", "if", "do", "repeat"]);
 const LUA_BLOCK_CLOSE = new Set(["end", "until"]);
@@ -503,24 +509,34 @@ export function checkSource(file, src) {
   const fns = lua ? luaFunctions(src) : jsFunctions(src);
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
-  return lua ? out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src), topLocalProblems(file, src)) : out;
+  if (!lua) return out;
+  return out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src), topLocalProblems(file, src), unguardedSecureCalls(file, src));
 }
 
 // Report-only rules (#263) -------------------------------------------------------------
-// Two heuristics for the game rules that cause the subtlest bugs. They count, they don't
+// Heuristics for the game rules that cause the subtlest bugs. They count, they don't
 // block: scripts/check-code-quality.mjs fails only when a count rises above its baseline in
 // scripts/code-quality-baseline.json (a ratchet, like scripts/lua-coverage-floor.json). A
-// rule becomes blocking once it is quiet on main. Both have false positives by design.
-//   secure-outside-combat-guard: a call that changes a secure frame or a binding (refused in
-//     combat) sits in no function that runs under ns.OutOfCombat or checks InCombatLockdown()
-//     / ns.InCombat() before it. Code at a file's top level runs at load and counts as safe.
+// rule becomes blocking once it is quiet on main, as the first did. All have false positives
+// by design.
+//   secure-outside-combat-guard (blocking now, rule 7 above): a call that changes a secure frame
+//     or a binding (refused in combat) sits in no function that runs under ns.OutOfCombat or
+//     checks InCombatLockdown() / ns.InCombat() before it. Code at a file's top level runs at
+//     load and counts as safe.
 //   unbounded-onupdate: an OnUpdate handler that neither waits on the elapsed time it adds up
 //     (or on GetTime()) nor is cleared anywhere in its file with SetScript("OnUpdate", nil).
 //   unguarded-script-handler: a SetScript or HookScript handler (OnEnter, OnShow, OnKeyDown...)
 //     that is not an ns.Guard(...) call, so its error reaches the game's popup but never
 //     /vg errors. OnClick on SetScript is the blocking rule above; OnUpdate has its own rule.
+//   unwrapped-text: English text handed to a widget, tooltip or chat line outside L[...].
+//   secret-truth-test: a Unit*, C_UnitAuras.* or GetAction* call tested for truth (if, not,
+//     and, or), which errors in game when the answer is a secret (docs/PATTERNS.md).
+//   pcall-result-or: `ok and value or fallback` just after a pcall, which tests value for truth.
+//   long-line: addon Lua lines longer than MAX_LINE characters; the count only goes down.
 
-export const REPORT_RULES = ["secure-outside-combat-guard", "unbounded-onupdate", "unguarded-script-handler", "unwrapped-text"];
+export const REPORT_RULES = ["unbounded-onupdate", "unguarded-script-handler", "unwrapped-text", "secret-truth-test", "pcall-result-or", "long-line"];
+// The blocking rule that grew out of the report-only list once it was quiet on main.
+export const SECURE_RULE = "secure-outside-combat-guard";
 
 // Calls the client refuses on protected frames, or for bindings, while in combat.
 const SECURE_CALLS = new Set([
@@ -607,7 +623,7 @@ function unguardedSecureCalls(file, src) {
   const line = lineIndex(src);
   const hits = tokens.flatMap((t, i) => (isSecureCall(tokens, i) && !isCombatSafeAt(ctx, i) ? [t] : []));
   const message = `outside a combat guard: run it through ns.OutOfCombat, or check InCombatLockdown() first`;
-  return hits.map((t) => ({ rule: REPORT_RULES[0], line: line(t.start), message: `${t.text}() ${message}` }));
+  return hits.map((t) => ({ rule: SECURE_RULE, line: line(t.start), message: `${t.text}() ${message}` }));
 }
 
 // The OnUpdate scripts set in code tokens, as { at, handler } (handler: the argument's tokens).
@@ -651,7 +667,7 @@ function unboundedOnUpdates(file, src) {
   const spans = functionSpans(tokens);
   const line = lineIndex(src);
   const loose = calls.filter((c) => !isThrottled(handlerBody(tokens, spans, c.handler)));
-  return loose.map((c) => ({ rule: REPORT_RULES[1], line: line(tokens[c.at].start), message: ONUPDATE_MESSAGE }));
+  return loose.map((c) => ({ rule: REPORT_RULES[0], line: line(tokens[c.at].start), message: ONUPDATE_MESSAGE }));
 }
 
 // The script handlers set in code tokens, as { at, script, handler }, except OnClick on
@@ -674,7 +690,7 @@ function unguardedScriptHandlers(file, src) {
   const tokens = codeTokens(src);
   const line = lineIndex(src);
   const loose = scriptHandlerCalls(tokens).filter((c) => !clearsScript(c.handler) && c.handler.slice(0, 4).map((t) => t.text).join("") !== "ns.Guard(");
-  return loose.map((c) => ({ rule: REPORT_RULES[2], line: line(tokens[c.at].start), message: `${c.script} handler is not an ns.Guard(where, fn) call, so its errors never reach /vg errors` }));
+  return loose.map((c) => ({ rule: REPORT_RULES[1], line: line(tokens[c.at].start), message: `${c.script} handler is not an ns.Guard(where, fn) call, so its errors never reach /vg errors` }));
 }
 
 // The calls whose first argument is text a player reads: widget text, tooltip lines, chat,
@@ -690,13 +706,65 @@ function unwrappedText(file, src) {
   const tokens = codeTokens(src);
   const line = lineIndex(src);
   const hits = tokens.filter((t, i) => t.kind === "string" && tokens[i - 1]?.text === "(" && TEXT_SINKS.has(tokens[i - 2]?.text) && isWords(t.text));
-  return hits.map((t) => ({ rule: REPORT_RULES[3], line: line(t.start), message: `English text not in L[…]: ${t.text.slice(0, 48)}` }));
+  return hits.map((t) => ({ rule: REPORT_RULES[2], line: line(t.start), message: `English text not in L[…]: ${t.text.slice(0, 48)}` }));
+}
+
+// Truth tests on client reads that can answer with a secret (the client errors on `if secret then`; the
+// harness's secret is a truthy table and cannot see it). Narrow on purpose: a call to a Unit*, C_UnitAuras.*
+// or GetAction* function tested for truth by if, elseif, while, not, and or or.
+const SECRET_READ = /^(Unit\w+|GetAction\w+)$/;
+const TRUTH_BEFORE = new Set(["if", "elseif", "while", "not", "and", "or"]);
+const TRUTH_AFTER = new Set(["then", "and", "or", "do"]);
+
+// The index of the "(" of a client read named at tokens[i] (UnitIsDead, C_UnitAuras.GetAuraDataByIndex), or -1.
+function secretReadOpen(tokens, i) {
+  if (tokens[i]?.text === "C_UnitAuras" && tokens[i + 1]?.text === "." && tokens[i + 3]?.text === "(") return i + 3;
+  return tokens[i]?.kind === "word" && SECRET_READ.test(tokens[i].text) && tokens[i + 1]?.text === "(" ? i + 1 : -1;
+}
+
+// True when the client read named at tokens[i] is tested for truth: after `not`, or between two truth words.
+function isTruthTested(tokens, i) {
+  const open = secretReadOpen(tokens, i);
+  if (open < 0 || !TRUTH_BEFORE.has(tokens[i - 1]?.text) || tokens[i - 2]?.text === ".") return false;
+  return tokens[i - 1].text === "not" || TRUTH_AFTER.has(tokens[closeParen(tokens, open) + 1]?.text);
+}
+
+// Client reads tested for truth (rule secret-truth-test): [{ rule, line, message }].
+function secretTruthTests(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  const tokens = codeTokens(src);
+  const line = lineIndex(src);
+  const hits = tokens.filter((t, i) => isTruthTested(tokens, i));
+  return hits.map((t) => ({ rule: REPORT_RULES[3], line: line(t.start), message: `${t.text}() tested for truth: a secret answer errors in game; compare through ns.IsSecret / ns.IsTrue first` }));
+}
+
+// How many lines after a pcall its result is looked for (a helper is at most 10 lines).
+const PCALL_REACH = 10;
+
+// `ok and value or fallback` after `local ok, value = pcall(...)` (rule pcall-result-or): value is tested for
+// truth, so a secret (or a false) answer errors or falls through to the fallback.
+function pcallResultOr(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  const code = luaCodeOnly(src);
+  const line = lineIndex(src);
+  return [...code.matchAll(/local\s+(\w+)\s*,\s*(\w+)[^=\n]*=\s*pcall\s*\(/g)].flatMap((m) => {
+    const near = code.slice(m.index).split("\n").slice(0, PCALL_REACH).join("\n");
+    const use = new RegExp(String.raw`\b${m[1]}\s+and\s+${m[2]}\s+or\b`).exec(near);
+    return use ? [{ rule: REPORT_RULES[4], line: line(m.index + use.index), message: `${m[1]} and ${m[2]} or …: the pcall result is tested for truth; test ${m[1]} alone, then read ${m[2]} as a plain value` }] : [];
+  });
+}
+
+// Lines of addon Lua longer than MAX_LINE characters (rule long-line).
+function longLines(file, src) {
+  if (!COLOR_SCOPE.test(file)) return [];
+  return src.split("\n").flatMap((text, i) => (text.length > MAX_LINE ? [{ rule: REPORT_RULES[5], line: i + 1, message: `${text.length} characters (keep new lines to ${MAX_LINE})` }] : []));
 }
 
 // Report-only findings in one file: [{ rule, line, message }]. They never fail on their own.
 export function reportSource(file, src) {
   if (!file.endsWith(".lua")) return [];
-  return unguardedSecureCalls(file, src).concat(unboundedOnUpdates(file, src), unguardedScriptHandlers(file, src), unwrappedText(file, src));
+  const rules = [unboundedOnUpdates, unguardedScriptHandlers, unwrappedText, secretTruthTests, pcallResultOr, longLines];
+  return rules.flatMap((rule) => rule(file, src));
 }
 
 // Each report-only rule's count against its baseline (a missing baseline is 0):

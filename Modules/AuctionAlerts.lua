@@ -150,6 +150,11 @@ local function toastText(list)
   return ns.Format(L["{count} price alerts"], { count = #list }), table.concat(names, ", ")
 end
 
+-- A click on the alert toast: the item in the game's own list, on its Buy page, while the house is open.
+local function showAlerted(key)
+  if AH.open then AH.QueueFirst({ open = key }) AH.ShowInGame() end
+end
+
 -- The alerts waiting ring once, by item ID: the alert sound and Chat watch's toast; a click on it
 -- shows the first one's item in the game's own list while the house is open.
 function AH.RingAlerts()
@@ -158,7 +163,7 @@ function AH.RingAlerts()
   table.sort(list, function(a, b) return a.id < b.id end)
   local key = C_AuctionHouse.MakeItemKey(list[1].id)
   local title, line, price = toastText(list)
-  ns.GetModule("ChatWatch").Notify(title, line, price, function() if AH.open then AH.QueueFirst({ open = key }) end end)
+  ns.GetModule("ChatWatch").Notify(title, line, price, function() showAlerted(key) end)
 end
 
 -- Every price the store records is checked against the alerts (only while the house is open).

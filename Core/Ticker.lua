@@ -25,7 +25,7 @@ local function advance(job, dt)
   job.elapsed = job.elapsed + dt
   if job.elapsed < job.period then return end
   job.elapsed = 0
-  ns.Try(job.label, job.fn, job.key)
+  ns.TryRepeating(job.label, job.fn, job.key)
 end
 
 -- The driver's OnUpdate: every job's time moves on, in the order they were added.

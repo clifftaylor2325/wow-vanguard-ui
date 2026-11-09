@@ -86,9 +86,10 @@ NP.NUMBERS_MIN_HEIGHT = 10
 NP.plates = {}
 -- Every frame we built for a plate (the client reuses plates, so each keeps one).
 NP.built = {}
--- How many plate frames are built ahead, at login: a pull that brings 30
--- plates at once then builds none (each is some 20 frames).
-NP.POOL = 40
+-- How many plate frames are built ahead, after login: a pull that brings 30
+-- plates at once then builds none (each is some 20 frames). They are built
+-- NP.POOL_STEP a frame (each takes the client some 20 ms), not all at login.
+NP.POOL, NP.POOL_STEP = 40, 2
 -- The frames built ahead that no plate has taken yet.
 NP.pool = {}
 -- Fallback aura rows put away after a fight, for the next plate drawn in one (by row).
@@ -363,13 +364,23 @@ local function upgradeRows()
   end
 end
 
--- Builds the plate frames ahead (out of combat, at login), hidden until a
--- plate takes one; none on a client without nameplates for addons.
+-- One frame's share of the frames built ahead: up to NP.POOL_STEP more, hidden until a plate
+-- takes one. True while the pool is short.
+local function fillSome()
+  for _ = 1, NP.POOL_STEP do
+    if #NP.pool >= NP.POOL then return false end
+    NP.pool[#NP.pool + 1] = build(NP.holder)
+  end
+  return #NP.pool < NP.POOL
+end
+
+-- Builds the plate frames ahead, a few a frame after login (out of combat: a fight pauses it);
+-- none on a client without nameplates for addons.
 function NP.FillPool()
   if type(_G.C_NamePlate) ~= "table" then return end
   NP.holder = NP.holder or CreateFrame("Frame")
   NP.holder:Hide()
-  for _ = #NP.pool + 1, NP.POOL do NP.pool[#NP.pool + 1] = build(NP.holder) end
+  ns.Spread("nameplate pool", fillSome)
 end
 
 -- A frame for a plate: one built ahead while any is left, else a new one, moved onto the plate.
@@ -589,9 +600,9 @@ local function targetShown(unit)
   return isUnit(unit, "target") and "target" or isUnit(unit, "focus") and "focus" or false
 end
 
--- Paints a plate's target or focus border, the target's glow and the marker, and records the state and scale they show.
-local function paintTarget(f, unit)
-  local mark, scale = targetShown(unit), f:GetEffectiveScale()
+-- Paints a plate's target or focus border, the target's glow and the marker for `mark` (targetShown), and
+-- records the state and the plate's scale (read once by the caller) they show.
+local function paintTarget(f, mark, scale)
   f.vgTarget, f.vgScale = mark, scale
   T.SetBorder(f, mark and NP.MARK_COLORS[mark] or nil)
   T.SizeGlow(f.glow, f, NP.GLOW)
@@ -616,7 +627,7 @@ end
 function NP.UpdateTarget(f, unit)
   local target, scale = targetShown(unit), f:GetEffectiveScale()
   if target == f.vgTarget and NP.ScaleHolds(scale, f.vgScale) then return end
-  paintTarget(f, unit)
+  paintTarget(f, target, scale)
 end
 
 
@@ -783,7 +794,7 @@ end
 local function scan()
   for i = 1, 40 do
     local unit = "nameplate" .. i
-    if UnitExists(unit) and not NP.plates[unit] then onAdded(nil, unit) end
+    if ns.IsTrue(UnitExists(unit)) and not NP.plates[unit] then onAdded(nil, unit) end
   end
 end
 
@@ -826,12 +837,17 @@ local function onMouseover()
   NP.WatchHover(any)
 end
 
+-- Hides a plate's mouseover wash.
+local function hideHover(f)
+  f.hover:Hide()
+end
+
 -- While a wash shows: clears the washes once the mouse is over no unit (a
 -- hidden answer counts as none), and stops watching.
 local function pollHover()
   local over = UnitExists("mouseover")
   if not ns.IsSecret(over) and over == true then return end
-  each(function(f) f.hover:Hide() end)
+  each(hideHover)
   NP.WatchHover(false)
 end
 
@@ -880,7 +896,7 @@ local EVENTS = {
 -- Repaints a plate's look after a theme change: its target border and glow, and its bar's colour
 -- (tapped, threat, class or reaction follow the colour variant, and a quiet plate gets no event to repaint it).
 local function repaintLook(f, unit)
-  paintTarget(f, unit)
+  paintTarget(f, targetShown(unit), f:GetEffectiveScale())
   NP.UpdateColor(f, unit)
 end
 
@@ -933,12 +949,27 @@ local function setEnemies(on)
   ns.Chat(said)
 end
 
--- Turns the game's enemy plates on once per character (#377: the game ships them off, so
--- Vanguard had nothing to dress); after that the V key and the Nameplates page decide.
+-- The offer below was answered (No, or closed): it is not made again on this character. An offer another
+-- question replaced before an answer counts as unanswered, and comes back at a later login.
+function NP.EnemyPlatesAnswered()
+  VanguardCharDB.enemyPlatesSet = true
+end
+
+-- The offer's Turn on: the game's enemy plates on (once out of combat), and the offer answered.
+function NP.EnemyPlatesOn()
+  NP.EnemyPlatesAnswered()
+  setGameSetting("nameplateShowEnemies", true)
+end
+
+-- Offers once per character to turn the game's enemy plates on while they are off (#377: the game ships
+-- them off, so Vanguard had nothing to dress). The game's setting changes only on the player's yes; after
+-- that the V key and the Nameplates page decide. Waits for a login after setup, with no other question open.
 function NP.EnemyPlatesOnce()
   if type(VanguardCharDB) ~= "table" or VanguardCharDB.enemyPlatesSet then return end
-  VanguardCharDB.enemyPlatesSet = true
-  setGameSetting("nameplateShowEnemies", true)
+  if ns.SetupOwed() or ns.Asking() then return end
+  if cvarState("nameplateShowEnemies") ~= "off" then VanguardCharDB.enemyPlatesSet = true return end
+  local ask = L["The game's enemy nameplates are off, so Vanguard has none to dress. Turn them on? The V key and the Nameplates page change it later."]
+  ns.Ask(ask, L["Turn on"], NP.EnemyPlatesOn, NP.EnemyPlatesAnswered)
 end
 
 -- get/set for a check row on one of the game's own plate settings (the V and Shift-V keys).

@@ -10,7 +10,7 @@
 
 import { expect, it } from "vitest";
 import { FOREVER_CLIENT, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { PLATE_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
 
 // The frames the default layout always draws.
 const DEFAULT_FRAMES = ["Vanguard_player", "Vanguard_Bar1", "Vanguard_Minimap"];
@@ -82,4 +82,28 @@ it("with every module switched off the addon still logs in, opens its options an
   addon.slash("errors");
   addon.advance(2);
   expect(addon.eval("return #ns.errors"), "nothing caught by ns.Try").toBe(0);
+});
+
+// Logs in as one client inside an instance: an enemy plate and a friendly one dressed, then the client
+// closes the friendly plate to addons (it keeps friendly plates for itself in an instance; a plate
+// dressed outside comes back closed) and a fight runs with the scale check, aura refits and a theme refresh.
+function forbiddenPlates(client) {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV, { client });
+  for (const unit of ["nameplate1", "nameplate2"]) addon.fire("NAME_PLATE_UNIT_ADDED", unit);
+  expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate2] ~= nil"), "the friendly plate was dressed outside").toBe(true);
+  addon.eval("__wfgWorld.forbid(__plates.nameplate2)");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate3");
+  addon.eval('__wfgWorld.combat(true) __plates.nameplate2:SetScale(0.6) __wfgStub.fire("UNIT_AURA", "nameplate2")');
+  addon.advance(2);
+  addon.eval("ns.Theme.Refresh() __wfgWorld.combat(false)");
+  addon.advance(1);
+  return addon;
+}
+
+it("in an instance with the friendly plates closed to addons, nothing errors and nothing closed is touched", () => {
+  expect(forbiddenPlates(FOREVER_CLIENT).eval("return #ns.errors"), "nothing caught by ns.Try").toBe(0);
+});
+
+it("as a Retail client, with the friendly plates closed the same way, nothing errors", () => {
+  expect(forbiddenPlates(RETAIL_CLIENT).eval("return #ns.errors"), "nothing caught by ns.Try").toBe(0);
 });

@@ -841,6 +841,34 @@ it("Versus deck: one rounded panel behind the player and target, the crest at th
     .toEqual(addon.eval("return { select(2, ns.Theme.Text(UIParent:CreateFontString(), 'name'):GetFont()), select(2, ns.Theme.Text(UIParent:CreateFontString(), 'number'):GetFont()) }"));
 });
 
+// The deck's top and bottom against the rows the player frame carries, as [deck top, deck bottom, row top, row bottom] (TEST-ONLY reads).
+const deckAgainst = (addon, rowA, rowB) => {
+  addon.slash("");
+  addon.eval('__click("Unit frames") __click("Versus deck: your")');
+  return addon.eval(`local panel, first, second = ns.GetModule("UnitFrames").deck, ${rowA}, ${rowB}
+    return { panel:GetTop(), panel:GetBottom(), first:GetTop(), first:GetBottom(), second:GetTop(), second:GetBottom() }`);
+};
+
+it("H37-5-1: the Versus deck grows to wrap a druid's mana bar and combo points, so neither lies on its border", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + `__units.player.class = "DRUID" UnitPowerType = function() return 3 end
+    GetComboPoints = function() return 3 end`, NO_RAID);
+  const [dTop, dBottom, comboTop, , , manaBottom] = deckAgainst(addon, "ns.GetModule('ComboPoints').bar", "ns.GetModule('ClassBars').manaHolder");
+  expect(dTop, "the panel's top edge clears the pips").toBeGreaterThan(comboTop);
+  expect(dBottom, "the panel's bottom edge clears the mana bar").toBeLessThan(manaBottom);
+  expect(addon.eval("return ns.GetModule('UnitFrames').deck.__points.BOTTOMRIGHT.rel == Vanguard_target"), "still anchored to the target").toBe(true);
+});
+
+it("H37-5-1: the deck wraps a shaman's totem row, and a row built after the deck moves the live panel", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + TOTEMS_ENV + '__units.player.class = "SHAMAN"', NO_RAID);
+  const [dTop, , totemTop] = deckAgainst(addon, "ns.GetModule('ClassBars').totems", "Vanguard_player");
+  expect(dTop, "the panel's top edge clears the totem cells").toBeGreaterThan(totemTop);
+  const before = addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()");
+  addon.eval("ns.GetModule('UnitFrames').RaiseDeckReach('top', 1)");
+  expect(addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()"), "a smaller reach changes nothing").toBe(before);
+  addon.eval("ns.GetModule('UnitFrames').RaiseDeckReach('top', 60)");
+  expect(addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()"), "a taller row lifts the panel").toBeGreaterThan(before);
+});
+
 // Each party frame's visibility driver and whether it has a unit watch, with `savedVariables` (UnitFrames builds them).
 const partyWatch = (savedVariables) => loggedIn(UNITS_ENV, { savedVariables }).eval(`local out = {}
   for i = 1, 4 do local f = _G["Vanguard_party" .. i] out[i] = { f.__drivers and f.__drivers["state-visibility"] or false, f.__watched or false } end

@@ -409,7 +409,7 @@ it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it
 // TEST-ONLY watched quests: wolves (one objective left, a usable item, 400 away), a letter ready
 // to turn in (100 away), and a far one whose distance the client hides.
 const TRACK_ENV = `
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
   hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
   ObjectiveTrackerFrame = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent)
   __watches = { 90051, 90052, 90053 }

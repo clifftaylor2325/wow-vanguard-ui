@@ -40,3 +40,14 @@ it("npm run bench plays the raid without errors, saves, compares, appends the su
   expect(text).toContain("### Against earlier.json (commit TEST-ONLY-ea, no date)");
   expect(run.stdout).toContain(`Saved ${path.relative(root, out)}`);
 });
+
+it("npm run bench --instr-budget fails a step whose addon instructions pass their cap", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vg-bench-"));
+  const [out, caps] = ["result.json", "caps.json"].map((f) => path.join(dir, f));
+  fs.writeFileSync(caps, JSON.stringify({ OnUpdate: 0 }));
+  const run = bench(["--events", "40", "--reps", "1", "--warmup", "0", "--seed", "11", "--out", out, "--instr-budget", caps]);
+  expect(run.status, run.stderr).toBe(1);
+  expect(run.stderr).toMatch(/Over the instruction budget: OnUpdate \d+ per step \(cap 0\)/);
+  fs.writeFileSync(caps, "not json");
+  expect(bench(["--events", "1", "--reps", "1", "--warmup", "0", "--out", out, "--instr-budget", caps]).status, "a caps file that isn't JSON stops the run").toBe(2);
+});

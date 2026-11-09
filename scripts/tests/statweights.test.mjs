@@ -86,6 +86,32 @@ it("stat weights: changes are kept per class, and weights a profile kept per kin
   expect(none.eval("return type(ns.GetModule('Upgrades').settings.weights)"), "a saved value that isn't a table is left to the defaults").toBe("table");
 });
 
+// TEST-ONLY item levels for the gear above: worn bracers 1 at 60, and bracers 8 (STR 75) at 200.
+const ITEM_LEVELS = `
+  __gear[8] = { "INVTYPE_WRIST", { ITEM_MOD_STRENGTH_SHORT = 75 } }
+  local levels = { [1] = 60, [8] = 200 }
+  C_Item.GetDetailedItemLevelInfo = function(link) return levels[tonumber(tostring(link):match("item:(%d+)"))] end
+`;
+
+// Saved variables with a warrior's strength weights changed to `weights` (Lua source).
+const warriorWeights = (weights) => `VanguardDB.profiles = { Default = { Upgrades = { weights = { WARRIOR = { strength = ${weights} } } } } }`;
+
+it("stat weights: a profile from Retail keeps only the stats Forever weighs, so item level doesn't flip a downgrade", () => {
+  const clean = loggedIn(GEAR + ITEM_LEVELS);
+  expect(clean.eval("return __pct(8)"), "fewer strength is a downgrade").toBe(-25);
+  const carried = loggedIn(GEAR + ITEM_LEVELS, { savedVariables: warriorWeights("{ ILVL = 1, STR = 1, MASTERY = 0, VERS = 0 }") });
+  expect(carried.eval("local w = ns.GetModule('Upgrades').Current() return { w.ILVL == nil, w.MASTERY == nil, w.STR }"), "Retail's stats are left out").toEqual([true, true, 1]);
+  expect(carried.eval("return __pct(8)"), "still a downgrade").toBe(-25);
+  expect(carried.eval("return ns.GetModule('Upgrades').settings.weights.WARRIOR.strength.ILVL"), "the saved set keeps them for Retail").toBe(1);
+});
+
+it("stat weights: a saved weight that isn't a number is left out rather than scored", () => {
+  const addon = loggedIn(GEAR + ITEM_LEVELS, { savedVariables: warriorWeights('{ STR = "abc" }') });
+  expect(addon.eval("return ns.GetModule('Upgrades').Current().STR"), "the default strength weight").toBe(1);
+  expect(addon.eval("return __pct(8)"), "and items score without an error").toBe(-25);
+  expect(addon.eval("return #ns.errors"), "no error").toBe(0);
+});
+
 it("stat weights: with a hit cap set, hit past it counts for nothing", () => {
   const addon = loggedIn(GEAR);
   const UP = "ns.GetModule('Upgrades')";

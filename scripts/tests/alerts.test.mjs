@@ -188,7 +188,7 @@ it("game alerts: the screenshot status line and the frame rate readout take the 
 });
 // TEST-ONLY minimap marks: a rare, a treasure, a dead rare, a rare with a hidden name, a rare elite.
 const VIGNETTE_ENV = `
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
   __vignettes = {
     rare = { name = "TEST-ONLY Rare", atlasName = "VignetteKill", isDead = false }, chest = { name = "TEST-ONLY Chest", atlasName = "VignetteLoot" },
     dead = { name = "TEST-ONLY Dead", atlasName = "VignetteKill", isDead = true }, hidden = { name = { __secret = true }, atlasName = "VignetteKill" },

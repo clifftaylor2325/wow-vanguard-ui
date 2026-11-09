@@ -158,6 +158,7 @@ local function placeChip(chip, player)
     return chip:SetPoint("RIGHT", player, "LEFT", -T.SPACE.gap, 0)
   end
   chip:SetPoint("BOTTOMLEFT", player, "TOPLEFT", UX.CHIP_ABOVE_X, UX.CHIP_ABOVE_Y)
+  UF.RaiseDeckReach("top", UX.CHIP_ABOVE_Y + UX.CHIP_HEIGHT)
 end
 
 -- Shows the chip with its icon and text, sized to them, or hides it for no text.

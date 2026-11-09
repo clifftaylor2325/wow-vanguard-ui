@@ -2380,9 +2380,7 @@ end
 -- One slot's durability as "62%" in the info strip's colors; hidden at full,
 -- for items without durability, or when the client hides it.
 function GW.PaintDurability(button)
-  local label, cur, max = slotLabel(button), GetInventoryItemDurability(button:GetID())
-  cur, max = ns.PlainNumber(cur), ns.PlainNumber(max)
-  local percent = cur and max and max > 0 and math.floor(cur * 100 / max)
+  local label, percent = slotLabel(button), ns.GetModule("InfoStrip").SlotPercent(button:GetID())
   label:SetShown(percent and percent < 100 or false)
   if not percent or percent >= 100 then return end
   label:SetText(percent .. "%")
