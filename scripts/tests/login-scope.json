@@ -311,7 +311,7 @@
     "scripts/tests/tooltip.test.mjs": [],
     "scripts/tests/units.test.mjs": [
       "Calm HUD: frames dim out of combat, come back for a fight, a hostile target or the mouse, and stay clickable",
-      "Calm HUD: setup's look step and the situations offer it",
+      "Calm HUD: setup's comfort step and the situations offer it",
       "Edit Mode closing does not bring the game's pet frame back: it is parked again",
       "H27-3-1: a difficulty-coloured level keeps its colour through a look, accent and text-size change",
       "H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles, and keep it when the Versus deck restyles the text",

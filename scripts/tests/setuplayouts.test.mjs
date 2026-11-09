@@ -29,7 +29,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   const role = "return { ns.Settings('RaidFrames').showPower, ns.Settings('RaidFrames').sortByRole, ns.Settings('RaidAuras').hots, ns.Settings('RaidHealing').healPrediction, ns.Settings('Nameplates').debuffs, ns.Settings('Nameplates').threat }";
   expect(addon.eval(role), "Healing sets power bars, sort by role, HoTs and incoming heals on the raid frames, short debuff rows and no threat colours on nameplates").toEqual([true, true, true, true, 2, false]);
   expect(chatHas(addon, /Profile Default as it was before setup is saved as profile Default backup\./), "the profile was backed up before Healing applied").toBe(true);
-  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
+  for (let i = 0; i < 8; i += 1) setupClick(addon, "next");
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return Vanguard_Reload.title:GetText()"), "nothing was off, so the reload is for the layout's settings").toMatch(/^The layout's raid frame, raid aura and nameplate settings show after a reload\./);
   const off = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: "VanguardDB = { profiles = { Default = { modules = { ClickCast = false, RaidFrames = false } } } }" });
@@ -38,7 +38,7 @@ it("setup layouts: Healing puts the raid frames under the character and turns cl
   expect(off.eval("return VanguardDB.profiles.Default.positions.raid.point == nil and VanguardDB.profiles.Default.positions.raid.scale"), "without raid frames built, no spot is saved (the default by group size applies), only the larger size").toBe(1.15);
   expect(off.eval("return ns.ModuleEnabled('ClickCast') and ns.ModuleEnabled('RaidFrames')"), "Healing turns click casting and the raid frames on").toBe(true);
   expect(off.eval(role), "with the raid frames off, Healing still saves their settings for when they load").toEqual([true, true, true, true, 2, false]);
-  for (let i = 0; i < 3; i += 1) setupClick(off, "next");
+  for (let i = 0; i < 8; i += 1) setupClick(off, "next");
   expect(off.eval("return Vanguard_Question:IsShown() and Vanguard_Reload == nil"), "a first run's Done asks about exporting first").toBe(true);
   off.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(off.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a module that was off offers a reload at the end").toMatch(/Setup turned on a module that was off/);
@@ -47,7 +47,7 @@ it("setup layouts: Damage restores Vanguard's defaults, undoing Healing", () => 
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const home = addon.eval("return { ns.MoverPoint('raid') }");
   addon.eval('__click("Centered: healing")');
-  for (let i = 0; i < 4; i += 1) setupClick(addon, "next");
+  for (let i = 0; i < 9; i += 1) setupClick(addon, "next");
   expect(addon.eval("return { ns.MoverPoint('raid') }"), "Healing leaves the raid frames at their default spot").toEqual(home);
   addon.slash("setup");
   expect(addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "running setup again picks Keep").toMatch(/^Moves nothing/);
@@ -73,7 +73,7 @@ it("setup layouts: Like the game's puts your frames at the top left; another lay
   setupClick(addon, "next");
   expect(spots(), "player at the top left, focus beside the target of target, party and raid down the left, bosses on the right").toEqual([["TOPLEFT", "TOPLEFT", 20, -40], ["TOPLEFT", "TOPLEFT", 540, -94], ["BOTTOMLEFT", "BOTTOMLEFT", 20, 330], ["TOPRIGHT", "TOPRIGHT", -290, -200]]);
   expect(addon.eval("return VanguardDB.profiles.Default.positions.maintanks"), "frames not built yet get their spot saved for later").toEqual({ point: "TOP", relPoint: "TOP", x: 100, y: -196 });
-  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
+  for (let i = 0; i < 8; i += 1) setupClick(addon, "next");
   addon.slash("setup");
   addon.eval('__click("Centered: healing")');
   setupClick(addon, "next");
@@ -312,8 +312,7 @@ it("setup screen: this screen's preset is picked; Keep changes nothing; a preset
   addon.eval('__click("1440p")');
   setupClick(addon, "next");
   expect(screenSizes(addon), "1440p: UI scale 70%, 38 px buttons laid out at once (in whole screen pixels), 110 x 48 tiles, text 105%, pixel-perfect scale off").toEqual(["1", "0.7", 38, px(addon, 38), 110, 48, 1.05, false]);
-  setupClick(addon, "next");
-  setupClick(addon, "next");
+  for (let i = 0; i < 7; i += 1) setupClick(addon, "next");
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "new tile sizes offer a reload at the end").toMatch(/^The new raid tile size shows after a reload/);
 });

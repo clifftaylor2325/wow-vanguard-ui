@@ -10,8 +10,8 @@ const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${whic
 const setupState = (addon) => addon.eval("return { step = ns.Setup.Step() or 0, done = VanguardDB.setupDone == true, unlocked = ns.Unlocked() }");
 it("the setup wizard sits above the unlock handles on the last step, so their labels never draw over it", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
-  for (let i = 0; i < 3; i++) setupClick(addon, "next");
-  expect(setupState(addon), "step 4 unlocks the frames").toEqual({ step: 4, done: false, unlocked: true });
+  for (let i = 0; i < 7; i++) setupClick(addon, "next");
+  expect(setupState(addon), "step 8 unlocks the frames").toEqual({ step: 8, done: false, unlocked: true });
   expect(addon.eval("return Vanguard_Setup.__strata"), "the wizard is on the full-screen dialog strata").toBe("FULLSCREEN_DIALOG");
   expect(addon.frames('w.__strata == "HIGH" and w.mover ~= nil and w:IsVisible()').length, "the unlock handles are up, on the HIGH strata under the wizard").toBeGreaterThan(0);
 });
@@ -42,26 +42,27 @@ it("the setup wizard is a dialog: the dialog alpha, the shared X at the window o
   setupClick(addon, "close");
   expect(setupState(addon).step, "the X closes setup").toBe(0);
 });
-it("first-run setup: once per account, four clicks with the defaults", () => {
+it("first-run setup: once per account, nine clicks with the defaults; a first run applies the recommended helpers", () => {
   const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
   expect(setupState(addon), "a new account opens setup at step 1").toEqual({ step: 1, done: false, unlocked: false });
-  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "the caption names the step").toBe("Step 1 of 4 · Layout");
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "the caption names the step").toBe("Step 1 of 9 · Layout");
   expect(addon.eval("return Vanguard_Setup.back:IsShown()"), "there is no Back on the first step").toBe(false);
   expect(addon.eval("return UISpecialFrames[#UISpecialFrames]"), "Escape closes setup").toBe("Vanguard_Setup");
   setupClick(addon, "next");
   expect(setupState(addon).step === 2 && addon.eval("return Vanguard_Setup.back:IsShown()"), "Next goes to Screen, which has Back").toBe(true);
-  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "the second step is the screen").toBe("Step 2 of 4 · Screen");
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "the second step is the screen").toBe("Step 2 of 9 · Screen");
   setupClick(addon, "next");
   expect(addon.eval("return { GetCVar('useUiScale'), GetCVar('uiScale') }"), "Keep is picked the first time too, so the UI scale is left alone").toEqual({});
+  for (let i = 0; i < 5; i += 1) setupClick(addon, "next");
+  expect(setupState(addon), "the move step unlocks the frames").toEqual({ step: 8, done: false, unlocked: true });
   setupClick(addon, "next");
-  expect(setupState(addon), "the last step unlocks the frames").toEqual({ step: 4, done: false, unlocked: true });
-  expect(addon.eval("return Vanguard_Setup.next.text:GetText()"), "the last step's button is Done").toBe("Done");
+  expect([setupState(addon), addon.eval("return Vanguard_Setup.next.text:GetText()")], "All set locks them again, and its button is Done").toEqual([{ step: 9, done: false, unlocked: false }, "Done"]);
   setupClick(addon, "next");
   expect(setupState(addon), "Done closes setup, locks the frames and remembers that setup ran").toEqual({ step: 0, done: true, unlocked: false });
-  const kept = addon.eval("return { raid = (VanguardDB.profiles.Default.positions or {}).raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], backup = VanguardDB.profiles['Default backup'] == nil }");
-  expect(kept, "Keep and Keep change no position, style or accent, so nothing is backed up").toEqual({ raid: true, look: "soft", brass: true, backup: true });
+  const kept = addon.eval("return { raid = (VanguardDB.profiles.Default.positions or {}).raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], backup = VanguardDB.profiles['Default backup'] ~= nil, loot = ns.Settings('AutoAccept').loot, filter = ns.Settings('ChatFilter').on }");
+  expect(kept, "Keep and Keep change no position, style or accent; a first run's helpers start recommended, after the backup").toEqual({ raid: true, look: "soft", brass: true, backup: true, loot: true, filter: true });
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
-  expect(addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()"), "Done after Keep at every step changed nothing, so it offers no reload").toBe(false);
+  expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a first run changed settings, so Done offers the reload").toBe("Setup is done. Reload the UI now to apply it?");
   const again = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { setupDone = true } VanguardCharDB = {}" });
   expect(again.eval("return Vanguard_Setup == nil"), "setup does not open again for a character that played on this account").toBe(true);
 });
@@ -70,13 +71,12 @@ it("setup: Done offers the reload once a step changed something, and not after a
   setupClick(changed, "next");
   setupClick(changed, "next");
   changed.eval("local b = Vanguard_Setup.pages.look.styles[3] b:GetScript('OnClick')(b)");
-  setupClick(changed, "next");
-  setupClick(changed, "next");
+  for (let i = 0; i < 7; i += 1) setupClick(changed, "next");
   changed.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(changed.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a new raid frame style is a change").toBe("Setup is done. Reload the UI now to apply it?");
   changed.eval("Vanguard_Reload:Hide()");
   changed.slash("setup");
-  for (let i = 0; i < 4; i += 1) setupClick(changed, "next");
+  for (let i = 0; i < 9; i += 1) setupClick(changed, "next");
   expect(changed.eval("return { ns.Setup.Step() or 0, Vanguard_Reload:IsShown() }"), "a rerun that kept everything ends with no offer").toEqual([0, false]);
 });
 it("first-run setup waits for combat and steps aside in a fight", () => {
@@ -88,14 +88,14 @@ it("first-run setup waits for combat and steps aside in a fight", () => {
   expect(addon.eval("return ns.QueuedCount()"), "asking again in combat queues nothing more").toBe(queued);
   setCombat(addon, false);
   expect(setupState(addon).step, "setup opens once combat ends").toBe(1);
-  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
+  for (let i = 0; i < 7; i += 1) setupClick(addon, "next");
   addon.eval("__wfgStub.inCombat = true");
   addon.fire("PLAYER_REGEN_DISABLED");
   expect(setupState(addon), "a fight hides setup and locks the frames, without finishing it").toEqual({ step: 0, done: false, unlocked: false });
   setCombat(addon, false);
-  expect(setupState(addon), "after the fight setup comes back on the same step, frames unlocked").toEqual({ step: 4, done: false, unlocked: true });
+  expect(setupState(addon), "after the fight setup comes back on the same step, frames unlocked").toEqual({ step: 8, done: false, unlocked: true });
   addon.slash("setup");
-  expect(setupState(addon), "/vg setup while it is open leaves it on its step, frames unlocked").toEqual({ step: 4, done: false, unlocked: true });
+  expect(setupState(addon), "/vg setup while it is open leaves it on its step, frames unlocked").toEqual({ step: 8, done: false, unlocked: true });
 });
 it("/vg setup reopens setup; Back and the close button", () => {
   const addon = loggedIn();
@@ -133,9 +133,10 @@ it("E6-1 setup stays open when the whole UI is hidden (Alt-Z, a movie or a cinem
   expect(setupState(addon), "the close button still ends it").toMatchObject({ step: 0, unlocked: false });
   expect(chatHas(addon, /Setup opens again at your next login/), "owed setup says it opens again").toBe(true);
   addon.slash("setup");
-  for (let i = 0; i < 3; i++) setupClick(addon, "next");
+  for (let i = 0; i < 7; i++) setupClick(addon, "next");
   addon.eval("UIParent:Hide() UIParent:Show()");
-  expect(setupState(addon), "on the last step the wizard is still open and unlocked").toMatchObject({ step: 4, unlocked: true });
+  expect(setupState(addon), "on the move step the wizard is still open and unlocked").toMatchObject({ step: 8, unlocked: true });
+  setupClick(addon, "next");
   setupClick(addon, "next");
   expect(setupState(addon), "Done still finishes it").toMatchObject({ step: 0, done: true });
 });
@@ -160,16 +161,16 @@ it("first-run setup: a new character on a set-up account picks its profile first
   const known = loggedIn("", { firstRun: true, savedVariables: SET_UP_ACCOUNT + "VanguardCharDB = { profile = 'Default' }" });
   expect(setupState(known).step, "a character that played before isn't asked").toBe(0);
   const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
-  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "a new character starts on the profile step").toBe("Step 1 of 5 · Profile");
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "a new character starts on the profile step").toBe("Step 1 of 10 · Profile");
   const choices = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages.profile.choices) do out[i] = b.text:GetText() end return out");
   expect(choices, "share the account's profile, or one named after the character").toEqual(["Share profile Default with your other characters", "A profile of its own: Tester"]);
   setupClick(addon, "next");
-  expect(addon.eval("return { ns.ProfileName(), Vanguard_Setup.caption:GetText(), Vanguard_Setup.back:IsShown() }"), "sharing keeps Default; Back still reaches the profile step").toEqual(["Default", "Step 2 of 5 · Layout", true]);
+  expect(addon.eval("return { ns.ProfileName(), Vanguard_Setup.caption:GetText(), Vanguard_Setup.back:IsShown() }"), "sharing keeps Default; Back still reaches the profile step").toEqual(["Default", "Step 2 of 10 · Layout", true]);
   expect(addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "a shared profile that ran setup starts on Keep").toMatch(/^Moves nothing/);
-  for (let i = 0; i < 4; i += 1) setupClick(addon, "next");
+  for (let i = 0; i < 9; i += 1) setupClick(addon, "next");
   expect(addon.eval("return { VanguardCharDB.setupDone, VanguardCharDB.pickProfile == nil, VanguardDB.profiles.Default.positions.raid.y }"), "Done finishes it for this character and moves nothing").toEqual([true, true, -300]);
   const again = loggedIn("", { firstRun: true, savedVariables: SET_UP_ACCOUNT + "VanguardCharDB = { profile = 'Default', setupDone = false, pickProfile = true }" });
-  expect(again.eval("return Vanguard_Setup.caption:GetText()"), "a new character that closed it early gets the profile step again").toBe("Step 1 of 5 · Profile");
+  expect(again.eval("return Vanguard_Setup.caption:GetText()"), "a new character that closed it early gets the profile step again").toBe("Step 1 of 10 · Profile");
 });
 it("first-run setup: a profile of its own copies the shared one without a reload, and your role's layout is marked", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV + "__units.player.role = 'HEALER'", { firstRun: true, savedVariables: SET_UP_ACCOUNT });
@@ -204,7 +205,7 @@ it("H30-3-1 first-run setup: once setup changed the shared profile, setup opened
   setupClick(addon, "next");
   addon.eval("Vanguard_Setup:Hide()");
   addon.slash("setup");
-  expect(addon.eval("return { Vanguard_Setup.caption:GetText(), VanguardCharDB.pickProfile == nil, ns.ProfileNames() }"), "it starts at the layout and the question is gone").toEqual(["Step 1 of 4 · Layout", true, ["Default", "Default backup"]]);
+  expect(addon.eval("return { Vanguard_Setup.caption:GetText(), VanguardCharDB.pickProfile == nil, ns.ProfileNames() }"), "it starts at the layout and the question is gone").toEqual(["Step 1 of 9 · Layout", true, ["Default", "Default backup"]]);
 });
 
 it("first-run setup: once a profile of its own is made, setup opened again doesn't offer the Profile step", () => {
@@ -213,7 +214,7 @@ it("first-run setup: once a profile of its own is made, setup opened again doesn
   setupClick(addon, "next");
   addon.eval("Vanguard_Setup:Hide()");
   addon.slash("setup");
-  expect(addon.eval("return { Vanguard_Setup.caption:GetText(), ns.ProfileNames() }"), "it starts at the layout, and no second copy is made").toEqual(["Step 1 of 4 · Layout", ["Default", "Tester"]]);
+  expect(addon.eval("return { Vanguard_Setup.caption:GetText(), ns.ProfileNames() }"), "it starts at the layout, and no second copy is made").toEqual(["Step 1 of 9 · Layout", ["Default", "Tester"]]);
 });
 it("first-run setup: the Profile step's choices name the profile in use when setup opens again", () => {
   const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
@@ -250,7 +251,7 @@ it("setup again: Keep and Keep change nothing; Run setup in the options; Start o
   addon.eval('ns.Options.Show("general")');
   expect(addon.eval('return __click("Run setup")') && setupState(addon).step, "General's Run setup opens setup").toBe(1);
   expect(addon.eval("return Vanguard_Options:IsShown()"), "with the options out of the way").toBe(false);
-  for (let i = 0; i < 4; i += 1) setupClick(addon, "next");
+  for (let i = 0; i < 9; i += 1) setupClick(addon, "next");
   expect(addon.eval("return { { ns.MoverPoint('raid') }, GetCVar('uiScale') or 'unset', ns.GetModule('ActionBars').settings.size }"), "clicking through keeps positions, UI scale and sizes").toEqual(before);
   addon.eval('ns.Options.Show("profiles")');
   expect(addon.eval('return __click("Start over")'), "Profiles has Start over").toBe(true);
@@ -260,7 +261,7 @@ it("setup again: Keep and Keep change nothing; Run setup in the options; Start o
   expect(addon.eval("return { VanguardCharDB.setupDone, VanguardDB.profiles.Default.positions == nil, VanguardDB.profiles['Default backup'].positions.raid.y, VanguardCharDB.setupBackup }"), "it backs the profile up, resets it, owes setup and hands setup the backup").toEqual([false, true, -300, "Default backup"]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
   const after = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {} } }\nVanguardCharDB = { setupDone = false }" });
-  expect(after.eval("return { Vanguard_Setup.caption:GetText(), Vanguard_Setup.pages.layout.hint:GetText() }"), "after the reload setup opens on its layouts, Keep picked").toEqual(["Step 1 of 4 · Layout", "Moves nothing: your frames stay where they are."]);
+  expect(after.eval("return { Vanguard_Setup.caption:GetText(), Vanguard_Setup.pages.layout.hint:GetText() }"), "after the reload setup opens on its layouts, Keep picked").toEqual(["Step 1 of 9 · Layout", "Moves nothing: your frames stay where they are."]);
 });
 it("setup after Start over keeps Start over's backup: its first change doesn't copy the reset profile over it", () => {
   const sv = "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, ['Default backup'] = { positions = { raid = { point = 'TOP', relPoint = 'TOP', x = 0, y = -300 } } } } }\nVanguardCharDB = { setupDone = false, setupBackup = 'Default backup' }";
@@ -278,7 +279,7 @@ it("setup closed early keeps its backup for the next owed run, until Done; a run
   addon.slash("setup");
   addon.eval("ns.Setup.Backup()");
   expect(size(), "the second run keeps the backup of the profile as it was before the first").toBe(40);
-  for (let i = 0; i < 4; i += 1) setupClick(addon, "next");
+  for (let i = 0; i < 9; i += 1) setupClick(addon, "next");
   expect(addon.eval("return VanguardCharDB.setupBackup"), "Done lets the backup go").toBe(null);
   addon.slash("setup");
   addon.eval("ns.Setup.Backup()");
@@ -331,26 +332,29 @@ const styleTiles = (addon) => addon.eval(`local out = {}
     out[i] = { b:GetWidth(), b:GetHeight(), { c[1], c[2], c[3] }, b.bar:GetValue(), b.name:GetText(), { t[1], t[2], t[3] } }
   end
   return out`);
-it("setup look: Larger text and Safer colours apply at once, back up the profile first, and fit the page", () => {
+it("setup comfort: Larger text and Safer colours stage a pick, apply when the step is left after the profile backup, and fit the page", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
-  setupClick(addon, "next");
-  setupClick(addon, "next");
-  // Text size, Safer colours and the two switches' states.
-  const state = () => addon.eval("local p = Vanguard_Setup.pages.look return { ns.Theme.Settings().textScale, ns.Theme.Settings().colorAssist == true, p.larger.get(), p.assist.get() }");
+  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
+  // Text size, Safer colours and the two switches' picks (rows 1 and 2 of the Comfort step).
+  const state = () => addon.eval("local p = Vanguard_Setup.pages.comfort return { ns.Theme.Settings().textScale, ns.Theme.Settings().colorAssist == true, p.rows[1].get(), p.rows[2].get() }");
   expect(state(), "both off to begin with").toEqual([1, false, false, false]);
-  addon.eval("local b = Vanguard_Setup.pages.look.larger b:GetScript('OnClick')(b)");
-  addon.eval("local b = Vanguard_Setup.pages.look.assist b:GetScript('OnClick')(b)");
-  expect(state(), "larger text is 115% and Safer colours is on").toEqual([1.15, true, true, true]);
+  addon.eval("local b = Vanguard_Setup.pages.comfort.rows[1] b:GetScript('OnClick')(b)");
+  addon.eval("local b = Vanguard_Setup.pages.comfort.rows[2] b:GetScript('OnClick')(b)");
+  expect(state(), "the switches are picked; nothing is set until the step is left").toEqual([1, false, true, true]);
+  setupClick(addon, "next");
+  expect(state().slice(0, 2), "leaving the step: larger text is 115% and Safer colours is on").toEqual([1.15, true]);
   expect(chatHas(addon, /as it was before setup is saved as profile/), "the profile was backed up before the first change").toBe(true);
-  addon.eval("local b = Vanguard_Setup.pages.look.larger b:GetScript('OnClick')(b)");
-  expect(state().slice(0, 1), "switching it off goes back to 100%").toEqual([1]);
-  expect(addon.eval("local p = Vanguard_Setup.pages.look return { p.assist:GetBottom() >= p:GetBottom(), p.calm:GetTop() < p.styles[1].text:GetBottom() }"), "the last switch is inside the page, and Calm HUD is under the style names").toEqual([true, true]);
+  setupClick(addon, "back");
+  addon.eval("local b = Vanguard_Setup.pages.comfort.rows[1] b:GetScript('OnClick')(b)");
+  setupClick(addon, "next");
+  expect(state().slice(0, 1), "switching it off and leaving goes back to 100%").toEqual([1]);
+  expect(addon.eval("local p = Vanguard_Setup.pages.comfort return { p.use:GetBottom() >= p:GetBottom(), p.rows[1]:GetTop() < p.question:GetBottom() }"), "Use recommended is inside the page, and the rows sit under the question").toEqual([true, true]);
 });
 it("setup look: each raid frame style is a small raid tile drawn in that style, in your class color", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
   setupClick(addon, "next");
   setupClick(addon, "next");
-  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "Look is step 3 of 4").toBe("Step 3 of 4 · Look");
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "Look is step 3 of 9").toBe("Step 3 of 9 · Look");
   const mage = [0.25, 0.78, 0.92];
   const soft = addon.eval(`return { ns.GetModule("RaidFrames").Soften(${mage.join(", ")}) }`);
   const [white, dark] = [tok(addon, "text").slice(0, 3), tok(addon, "darkBar").slice(0, 3)];
@@ -360,15 +364,14 @@ it("setup look: each raid frame style is a small raid tile drawn in that style, 
   addon.eval("local b = Vanguard_Setup.pages.look.styles[3] b:GetScript('OnClick')(b)");
   expect([addon.eval("return ns.Settings('RaidFrames').look"), borderOf(addon, "Vanguard_Setup.pages.look.styles[3]")], "clicking the bright tile picks it").toEqual(["class", tok(addon, "accent").slice(0, 3).concat(1)]);
   setupClick(addon, "next");
-  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "then Move things is step 4 of 4").toBe("Step 4 of 4 · Move things");
+  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "then Comfort is step 4 of 9").toBe("Step 4 of 9 · Comfort");
 });
 it("first-run setup: Done suggests exporting a profile string; Skip and a rerun don't", () => {
   const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
   setupClick(addon, "next");
   setupClick(addon, "next");
   addon.eval("local b = Vanguard_Setup.pages.look.styles[3] b:GetScript('OnClick')(b)");
-  setupClick(addon, "next");
-  setupClick(addon, "next");
+  for (let i = 0; i < 7; i += 1) setupClick(addon, "next");
   expect(addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()"), "Done asks about keeping a copy").toBe("Keep a copy of these settings outside the game? Export a profile string and save it somewhere safe; /vg import brings it back.");
   addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
   expect(addon.eval("return Vanguard_TextDialog:IsShown() and Vanguard_TextEdit:GetText():sub(1, 12)"), "Export shows the whole profile's string to copy").toBe("VG1:profile:");
@@ -378,7 +381,7 @@ it("first-run setup: Done suggests exporting a profile string; Skip and a rerun 
   skipped.eval('__click("Skip setup")');
   expect(skipped.eval("return Vanguard_Question == nil"), "Skip setup asks nothing").toBe(true);
   skipped.slash("setup");
-  for (let i = 0; i < 4; i += 1) setupClick(skipped, "next");
+  for (let i = 0; i < 9; i += 1) setupClick(skipped, "next");
   expect(skipped.eval("return Vanguard_Question == nil"), "nor does finishing setup again").toBe(true);
 });
 
@@ -424,10 +427,10 @@ it("setup: every layout's and screen preset's description, the questions and the
   expect(overflow(addon), "the layout step: Centered: healing's long description too").toBe("");
   setupClick(addon, "next");
   expect(overflow(addon), "the screen step: its question wraps inside the window").toBe("");
-  setupClick(addon, "next");
-  setupClick(addon, "next");
+  for (let i = 0; i < 6; i += 1) setupClick(addon, "next");
   expect(overflow(addon), "the move step").toBe("");
-  expect(addon.eval("local p = Vanguard_Setup.pages.look return p.assist:GetBottom() >= p:GetBottom()"), "the look step's last switch stays inside its page").toBe(true);
+  const inside = addon.eval(`local out = {} for _, key in ipairs({ "comfort", "game", "helpers", "combat" }) do local p = Vanguard_Setup.pages[key] out[#out + 1] = p.use:GetBottom() >= p:GetBottom() - 0.01 end return out`);
+  expect(inside, "every guided step's Use recommended button stays inside its page").toEqual([true, true, true, true]);
 });
 it("setup: the screen step's question wraps under itself, and its first choice sits under the wrapped lines", () => {
   const addon = loggedIn("", { firstRun: true });
@@ -465,21 +468,19 @@ it("the setup wizard's Skip button widens to its label when the first step shows
   expect(width, "wider than it was at 100%").toBeGreaterThan(normal);
   expect(clear, "into Back's empty slot, short of Next").toBe(true);
 });
-it("the setup look step's switch rows grow to a wrapped caption and stack by their heights, so captions never crowd (B2-4)", () => {
+it("the setup comfort step's switch rows grow to a wrapped caption and stack by their heights, so captions never crowd (B2-4)", () => {
   const addon = createAddon({ textFit: true, client: '__wfgWorld.locale = "deDE" UISpecialFrames = {}' });
   addon.login();
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
-  setupClick(addon, "next");
-  setupClick(addon, "next");
-  // For each of the three rows: whether its caption is inside it, its height, and whether the next row starts at its bottom.
-  const rows = addon.eval(`local p = Vanguard_Setup.pages.look local out = {}
-    local keys = { "calm", "larger", "assist" }
-    for i, key in ipairs(keys) do
-      local r, nextRow = p[key], keys[i + 1] and p[keys[i + 1]]
+  for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
+  // For each of the four rows: whether its caption is inside it, its height, and whether the next row starts at its bottom.
+  const rows = addon.eval(`local p = Vanguard_Setup.pages.comfort local out = {}
+    for i, r in ipairs(p.rows) do
+      local nextRow = p.rows[i + 1]
       out[i] = { r.label:GetTop() <= r:GetTop() + 0.01 and r.label:GetBottom() >= r:GetBottom() - 0.01, r:GetHeight(), not nextRow or math.abs(nextRow:GetTop() - r:GetBottom()) < 0.01 }
     end return out`);
-  expect(rows.map((r) => r[0]), "every caption sits inside its row").toEqual([true, true, true]);
-  expect(rows.map((r) => r[2]), "each row starts where the one above ends").toEqual([true, true, true]);
+  expect(rows.map((r) => r[0]), "every caption sits inside its row").toEqual([true, true, true, true]);
+  expect(rows.map((r) => r[2]), "each row starts where the one above ends").toEqual([true, true, true, true]);
   expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
-  expect(addon.eval("local f = Vanguard_Setup return f.pages.look.assist:GetBottom() >= f.pages.look:GetBottom() - 0.01"), "and the page is as tall as its last switch").toBe(true);
+  expect(addon.eval("local p = Vanguard_Setup.pages.comfort return p.use:GetBottom() >= p:GetBottom() - 0.01"), "and the page is as tall as its last control").toBe(true);
 });

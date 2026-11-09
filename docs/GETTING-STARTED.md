@@ -12,7 +12,7 @@ Updating from ForeverUI (before 0.4.0)? Settings don't carry over by themselves.
 
 ## First run
 
-The first login opens the setup wizard: pick a layout (Damage, Tanking or Healing, Versus deck, or like the game's), your screen, a look, then move things where you want them. Run it again any time with `/vg setup`.
+The first login opens the setup wizard: pick a layout (Damage, Tanking or Healing, Versus deck, or like the game's), your screen, a look, then the recommended settings (each step says what Vanguard recommends, and Use recommended takes them), then move things where you want them. Run it again any time with `/vg setup`.
 
 - `/vg` opens the options window. Press Escape to close it.
 - `/vg unlock` shows drag handles on every Vanguard frame; `/vg lock` saves them. Right-click the addons button by the minimap does the same.
