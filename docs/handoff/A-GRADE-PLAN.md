@@ -56,10 +56,10 @@ Targets marked `[DECIDE]` are proposals for Cliff to confirm or change in phase 
 
 ## 2. Phase 0: decisions (Cliff, about an hour, before anything else)
 
-- [ ] **D1 Retail.** Commit to it (a second verification sprint and Retail HUD work) or freeze it as "works, unsupported" until the A is reached. Recommended: freeze. (B9)
+- [x] **D1 Retail.** Commit to it (a second verification sprint and Retail HUD work) or freeze it as "works, unsupported" until the A is reached. Recommended: freeze. (B9) **Answered 2026-11-09: frozen as "works, unsupported" until this plan is done; fixes still must not break the Retail tests.**
 - [ ] **D2 Breadth freeze.** No new modules until the phase 7 re-review. Recommended: yes.
 - [ ] **D3 The crest.** The shipped mark is a shield with a V and no swords; the design chosen in October had two swords crossed behind the shield (L12). Pick one before any art is made: the crest system (A5-9) is built from it.
-- [ ] **D4 First-run setup.** Which rows stay pre-ticked. Recommended: untick the chat filter and the key-setup offer until the key data is confirmed and A6-3 lands; keep the rest. (M14, Q18)
+- [x] **D4 First-run setup.** Which rows stay pre-ticked. Recommended: untick the chat filter and the key-setup offer until the key data is confirmed and A6-3 lands; keep the rest. (M14, Q18) **Answered 2026-11-09: untick both; every other row stays as it is.**
 - [ ] **D5 Third-party names.** Recommended rule: names only where interoperability needs them (detection tables, the player string that says which addon was found), never in comments, notes or research. (L11, N19)
 - [ ] **D6 The 1.0 gate.** Draft PR #795 makes the release script refuse 1.0.0 until every step of a 74-step core path has a recorded pass. That and the skipped sprint pull in opposite directions: keep the gate (and walk the core path before 1.0), or drop or shorten it.
 - [ ] **D7 The numbers.** Confirm or change the three `[DECIDE]` targets in section 1. Memory and login targets are provisional until A4-6 has attributed the 49.3 MB.
@@ -75,7 +75,7 @@ Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until th
 - [x] **A1-1** Off-hand upgrade verdict against a two-hander, with harness cases. (Q15, M11)
 - [x] **A1-2** Combat checks on the two panel-manager calls, and add those functions to the quality scan's guarded list. Protected path: Opus. (Q16, M12)
 - [x] **A1-3** Give the four quest tickers an owner frame, stop them in combat, reuse scratch tables, add a bench step. (Q17, M13)
-- [ ] **A1-4** First-run setup rows per D4. (Q18, M14)
+- [x] **A1-4** First-run setup rows per D4. (Q18, M14)
 - [ ] **A1-5** Quest-log zone expansion registered from `Enable`, with a switch. (Q21, M16)
 - [ ] **A1-6** Per-unit events for the raid add-ons; by-name aura lookup before the full list; bench step. (Q2, M1)
 - [ ] **A1-7** Settings-guard stamp asymmetry, with a no-name-at-logout harness case. (Q3, M2)

@@ -60,7 +60,7 @@ it("first-run setup: once per account, nine clicks with the defaults; a first ru
   setupClick(addon, "next");
   expect(setupState(addon), "Done closes setup, locks the frames and remembers that setup ran").toEqual({ step: 0, done: true, unlocked: false });
   const kept = addon.eval("return { raid = (VanguardDB.profiles.Default.positions or {}).raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], backup = VanguardDB.profiles['Default backup'] ~= nil, loot = ns.Settings('AutoAccept').loot, filter = ns.Settings('ChatFilter').on }");
-  expect(kept, "Keep and Keep change no position, style or accent; a first run's helpers start recommended, after the backup").toEqual({ raid: true, look: "soft", brass: true, backup: true, loot: true, filter: true });
+  expect(kept, "Keep and Keep change no position, style or accent; a first run's helpers start recommended, after the backup; the chat filter is only offered (A1-4)").toEqual({ raid: true, look: "soft", brass: true, backup: true, loot: true, filter: false });
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a first run changed settings, so Done offers the reload").toBe("Setup is done. Reload the UI now to apply it?");
   const again = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { setupDone = true } VanguardCharDB = {}" });
