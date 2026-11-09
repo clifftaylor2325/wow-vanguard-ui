@@ -5,7 +5,7 @@
 -- combat), through the info strip's reads; a figure the client hides is kept as
 -- an empty slot, so the count stays right. The strip is off until switched on,
 -- but fights are recorded anyway, so turning it on shows the history at once.
--- It forgets on logout. The recap after a fight is in Modules/FightRecap.lua.
+-- It forgets at a /reload or on logout. The recap after a fight is in Modules/FightRecap.lua.
 
 local ADDON, ns = ...
 

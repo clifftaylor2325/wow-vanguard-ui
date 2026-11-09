@@ -442,6 +442,15 @@ it("raid preview: sample players in the raid tiles, laid out by the raid frame s
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/), addon.eval("return ns.RaidPreview.size")], "the options row steps from Raid (40) to Off").toEqual([0, true, 0]);
 });
 
+it("H41-16-1: moved to the top, a big raid's rows and the preview are kept on the screen", () => {
+  // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing).
+  const record = "__wfgStub.methods.SetClampedToScreen = function(self, on) self.__testClamped = on end\n";
+  const addon = loggedIn(record + UNITS_ENV + RAID_ENV);
+  addon.eval("ns.SetMoverPoint('raid', 'TOPLEFT', 'TOPLEFT', 20, -40)");
+  addon.slash("preview 40");
+  expect(addon.eval("return { Vanguard_Raid.__testClamped, Vanguard_RaidPreview.__testClamped }"), "the grid grows up from the holder, so the client slides it under the screen top").toEqual([true, true]);
+});
+
 it("raid preview: a real group or combat ends it; it won't start in a group, in combat or with the raid frames off; not saved", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + "__grouped = false IsInGroup = function() return __grouped end");
   addon.slash("preview");

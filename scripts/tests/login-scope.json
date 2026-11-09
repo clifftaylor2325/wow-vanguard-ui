@@ -103,6 +103,7 @@
     "scripts/tests/clickcast-notice.test.mjs": [],
     "scripts/tests/clickcast-presets.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
+      "H41-13-1: with the unit frames on, the boss frames keep their clicks to target and the menu",
       "a name-bound spell made in another client language casts by the name this client gives its id",
       "bindings carry spell ids and ranks, move, copy, export and import",
       "sharing: export, import, copy to another spec, and the combat notice",
@@ -298,7 +299,8 @@
       "status chip: in the Like the game's layout the chip sits above the player frame, not over its level and name (B4-4)",
       "status chip: off until switched on, then it names eating, drinking and being well fed with the buff's icon",
       "status chip: on a German client it knows eating, drinking and Well Fed by the client's names",
-      "status chip: with Instance prep's buff checks on it says what is missing, in a warning, with a glyph"
+      "status chip: with Instance prep's buff checks on it says what is missing, in a warning, with a glyph",
+      "status chip: with no room left of the frame it sits above the totem row, or the combo-point row, not over it"
     ],
     "scripts/tests/strips.test.mjs": [],
     "scripts/tests/talents.test.mjs": [],

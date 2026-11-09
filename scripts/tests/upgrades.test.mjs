@@ -301,3 +301,16 @@ it("upgrades: a new specialization on Retail scores gear afresh; Forever ignores
   forever.eval("__wfgWorld.spec = 1 ns.GetModule('Upgrades').Changed()");
   expect(forever.eval("return { select(2, ns.GetModule('Upgrades').Current()), ns.GetModule('Upgrades').Role() }"), "Forever: the warrior's class and damage").toEqual(["strength", "damage"]);
 });
+
+it("H40-8-1: a one-hand weapon is compared with the weaker hand while a weapon is worn in each, else with the main hand", () => {
+  const addon = loggedIn(GEAR_ENV + `
+    __gear[20] = { "INVTYPE_WEAPON", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 10 } } __gear[21] = { "INVTYPE_WEAPON", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 4 } }
+    __gear[22] = { "INVTYPE_WEAPON", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 6 } }
+    __worn[16] = __link(20)
+  `);
+  expect(addon.eval("return __line(22)"), "a shield in the off hand: the main hand").toBe("Downgrade -40% (estimate) vs TEST-ONLY Item 20");
+  addon.eval("__worn[17] = nil");
+  expect(addon.eval("return __line(22)"), "an empty off hand: the main hand").toBe("Downgrade -40% (estimate) vs TEST-ONLY Item 20");
+  addon.eval("__worn[17] = __link(21)");
+  expect(addon.eval("return __line(22)"), "a weapon in each hand: the weaker one").toBe("Upgrade +50% (estimate) vs TEST-ONLY Item 21");
+});

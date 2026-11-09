@@ -250,3 +250,13 @@ it("stat weights: on Retail a guide string keeps the item level weight; Import w
   off.eval("ns.GetModule('Upgrades').ImportDialog()");
   expect(chatHas(off, /Gear upgrades is switched off/), "the import box doesn't open with the module off").toBe(true);
 });
+
+it("H40-12-1: a Forever shaman in the tank role weighs tank stats, as key setup's Shaman tank role implies", () => {
+  const addon = loggedIn(GEAR);
+  becomeClass(addon, "SHAMAN");
+  addon.eval("__wfgWorld.units.player.role = 'TANK'");
+  addon.fire("PLAYER_ROLES_ASSIGNED");
+  expect(kindOf(addon), "a tank shaman").toBe("tank");
+  addon.slash("weights");
+  expect(chatHas(addon, /Weights for tank \(role tank\)/), "/vg weights names the tank kind").toBe(true);
+});

@@ -369,3 +369,18 @@ it("settings-loss guard: Restore, Later on the reload, logout keeps a backup of 
   again.eval("ns.SettingsGuard.Restore()");
   expect(again.eval("return VanguardDB.profiles.Main.positions.infostrip.x"), "and it restores Main's values").toBe(40);
 });
+
+it("settings guard: a logout while recording a situation backs up the profile with that situation's override", () => {
+  const addon = loggedIn(`__inside, __kind, __resting = false, "none", false IsInInstance = function() return __inside, __kind end IsResting = function() return __resting end ${CLICK_LUA}`);
+  addon.advance(0.5);
+  addon.slash("situation record raid");
+  addon.eval("ns.SetMoverScale('infostrip', 1.25)");
+  addon.fire("PLAYER_LOGOUT");
+  const scale = addon.eval(`
+    local _, payload = ns.ReadPayload(ns.Serialize.Decode(VanguardCharDB.guard.backup))
+    local s = ns.StripPayload(payload).Situations
+    return s and s.overrides and s.overrides.raid and s.overrides.raid.positions.infostrip.scale
+  `);
+  expect(scale, "the backup holds the override the logout saved").toBe(1.25);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

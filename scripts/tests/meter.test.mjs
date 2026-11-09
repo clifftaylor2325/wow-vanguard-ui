@@ -385,6 +385,14 @@ it("a report holds plain names and figures only, out of combat, to chat or a cha
   expect([chatHas(addon, /No report to show/), chatHas(addon, /Not in combat/)], "an empty meter, and no report in combat").toEqual([true, true]);
 });
 
+it("on the Deaths view a report sends each death's time as the panel shows it, names only for the overall session", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Tess', totalAmount = 5, deathTimeSeconds = 202 }, { name = 'Bo', totalAmount = 1, deathTimeSeconds = -1 } }");
+  addon.slash("meter deaths");
+  addon.slash("meter report raid 5");
+  expect(addon.eval("return __wfgWorld.sentChat"), "the time of death, not the amount").toEqual([["Deaths: 1. Tess 3m 22s  2. Bo", "RAID"]]);
+});
+
 it("the options page has buttons for the report and the reset", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
   setLines(addon, "{ { name = 'Tess', amountPerSecond = 300 } }");

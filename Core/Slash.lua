@@ -552,6 +552,7 @@ local function specCommand(rest)
   if rest ~= "off" and not VanguardDB.profiles[rest] then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
   ns.SetSpecProfile(rest ~= "off" and rest or nil, spec)
   chat(rest == "off" and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, rest))
+  if rest ~= "off" then ns.OfferSpecReload(rest) end
 end
 
 -- The addon version from the TOC (Core/WhatsNew.lua reads it).

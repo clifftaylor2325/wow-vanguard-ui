@@ -383,6 +383,21 @@ it("a bid win's mail joins the auction closest in price, not the oldest", () => 
   expect(records(addon).map((r) => r.slice(4)), "the 9s bid took the 15s auction, the 40s mail the 40s one").toEqual([[4000, 502, true], [900, 503, true]]);
 });
 
+it("a new sale's notice after an earlier cheaper mail-only sale stays its own sale (H39-6-1)", () => {
+  const addon = atAuctionHouse(BID_OWNED);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.eval(`__wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 1500, 1)} }`);
+  addon.world.openMailbox();
+  addon.eval("__now = __now + 3600");
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY Blade", 502);
+  expect(records(addon).map((r) => r.slice(4)), "two records").toEqual([[1500, false, true], [4000, 502, false]]);
+  expect(addon.eval("return ns.AuctionLedger.SessionSales()"), "the session's sale is the 40s one").toBe(4000);
+  addon.eval(`__now = __now + 3600 __wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 1500, 1, 29.9 - 7200 / 86400)}, ${invoice("TEST-ONLY Blade", 4000, 1, 29.99)} }`);
+  addon.world.openMailbox();
+  expect(records(addon).map((r) => r.slice(4)), "the 40s mail joins its notice").toEqual([[1500, false, true], [4000, 502, true]]);
+  expect(addon.eval("return ns.AuctionLedger.SessionSales()"), "still 40s").toBe(4000);
+});
+
 it("a cheaper sale read from the mail two weeks before is not taken for a new sale's bid win", () => {
   const addon = atAuctionHouse(BID_OWNED);
   addon.eval(`__wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 1500, 1)} }`);

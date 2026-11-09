@@ -386,17 +386,33 @@ CB.INTERRUPTS = {
   EVOKER = { { 351338 } },
 }
 
--- The interrupt you know and would use (the best rank of the first family you have), or nil.
+-- True unless the client plainly says the spell can't be cast now for a reason other than power (a stance or a
+-- shield it needs); a hidden or missing answer counts as castable.
+local function castableNow(id)
+  local usable, noPower = ns.CallIf(C_Spell, "IsSpellUsable", id)
+  if ns.IsSecret(usable) or ns.IsSecret(noPower) or usable == nil then return true end
+  return usable == true or noPower == true
+end
+
+-- The best known rank of a family (its ranks run highest first), or nil.
+local function bestKnown(family, known)
+  for _, id in ipairs(family) do
+    if known(id) then return id end
+  end
+end
+
+-- The interrupt you know and would use: the first family with a rank you know and can cast now (stance, shield),
+-- else the first you know, or nil.
 function CB.InterruptSpell()
   local _, class = UnitClass("player")
-  local known = ns.SpellKnownCall()
+  local known, fallback = ns.SpellKnownCall(), nil
   if not known then return nil end
   for _, family in ipairs(CB.INTERRUPTS[class] or {}) do
-    for _, id in ipairs(family) do
-      if known(id) then return id end
-    end
+    local id = bestKnown(family, known)
+    if id and castableNow(id) then return id end
+    fallback = fallback or id
   end
-  return nil
+  return fallback
 end
 
 -- Sweeps the mark from a spell's plain start and length when the client gives them; false when it hides them.
@@ -725,6 +741,8 @@ local function listen(units)
   ns.On("PLAYER_TARGET_CHANGED", function() CB.Update("target") end)
   ns.On("PLAYER_FOCUS_CHANGED", function() CB.Update("focus") end)
   ns.On("SPELL_UPDATE_COOLDOWN", CB.RefreshMarks)
+  ns.On("UPDATE_SHAPESHIFT_FORM", CB.RefreshMarks)
+  ns.On("PLAYER_EQUIPMENT_CHANGED", CB.RefreshMarks)
   ns.On("PLAYER_ENTERING_WORLD", function() for unit in pairs(CB.bars) do CB.Update(unit) end end)
 end
 

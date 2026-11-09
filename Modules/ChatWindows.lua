@@ -243,20 +243,42 @@ local function isBuiltin(frame)
   return type(IsBuiltinChatWindow) == "function" and IsBuiltinChatWindow(frame) == true
 end
 
--- Closes a permanent chat window as the game's tab menu does: its chat types and channels go back to the main
--- window first (FCF_PopInWindow), else a plain FCF_Close.
+-- Closes a permanent chat window that shows no channel as the game's tab menu does: its chat types go back to
+-- the main window first (FCF_PopInWindow), else a plain FCF_Close.
 local function closeWindow(frame)
   if type(FCF_PopInWindow) == "function" then return FCF_PopInWindow(frame) end
   FCF_Close(frame)
 end
 
--- Closes the edited tab (never the main one or another of the game's own), out of combat (each tab closed in a
--- fight is closed after it).
+-- Whether a tab shows any channel: the game's pop-in would then write those channels into the main window's
+-- channel list from Vanguard's code, and the game's channel-message code reads that list on every line (taint).
+local function hasChannels(frame)
+  return type(frame.channelList) == "table" and next(frame.channelList) ~= nil
+end
+
+-- Points a tab that shows channels to its own tab menu, whose Close Chat Window gives them back. Vanguard does not
+-- select the tab or close it itself: both write the dock's or the main window's channel state from addon code (taint).
+local function sendToTabMenu()
+  ns.Chat(L["This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."])
+end
+
+-- Closes a tab once out of combat unless it gained a channel while the close waited (then its tab menu is the
+-- way, as at the press).
+local function closeUnlessChannels(frame)
+  if hasChannels(frame) then return sendToTabMenu() end
+  closeWindow(frame)
+  CW.editing = nil
+  ns.Options.RebuildPage("chat")
+end
+
+-- Closes the edited tab (never the main one or another of the game's own, and one showing channels only from
+-- its own tab menu), out of combat (each tab closed in a fight is closed after it).
 function CW.Close()
   local index, frame = CW.Editing()
   if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat(L["The main chat tab can't be closed."]) end
   if isBuiltin(frame) then return ns.Chat(L["The game's own chat tabs can't be closed."]) end
-  ns.OutOfCombat(function() closeWindow(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab " .. index)
+  if hasChannels(frame) then return sendToTabMenu() end
+  ns.OutOfCombat(function() closeUnlessChannels(frame) end, "chat close tab " .. index)
 end
 
 -- Find ------------------------------------------------------------------------------------
@@ -279,14 +301,21 @@ local function frameLines(frame)
   return out
 end
 
+-- Whether a window shows this saved line: as saved, as Vanguard rewrote it, or with its line numbers zeroed as a restore puts it back.
+local function shownAlready(shown, text)
+  local CHH, CX = ns.GetModule("ChatHistory"), ns.GetModule("ChatExtras")
+  local restored = CHH.Unnumbered(text)
+  return shown[text] or shown[CX.Rewrite(text)] or shown[restored] or shown[CX.Rewrite(restored)]
+end
+
 -- Lines saved for the next login (Modules/ChatHistory.lua) that no window shows any more (as saved, or as Vanguard rewrote it on screen), oldest first.
 local function savedLines(shown)
-  local out, CHH, CX = {}, ns.GetModule("ChatHistory"), ns.GetModule("ChatExtras")
+  local out, CHH = {}, ns.GetModule("ChatHistory")
   local store = CHH.Store()
   for i = 1, windowCount() do
     for _, line in ipairs(type(store[i]) == "table" and store[i] or {}) do
       local text = select(5, CHH.Unpack(line))
-      if text and not (shown[text] or shown[CX.Rewrite(text)]) then out[#out + 1] = text end
+      if text and not shownAlready(shown, text) then out[#out + 1] = text end
     end
   end
   return out

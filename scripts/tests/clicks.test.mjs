@@ -56,8 +56,8 @@ it("click-casting validation, labels and unit frames", () => {
   expect(addon.eval(`return ${CC}.ActionText({ action = "target" })`) === "Target", "a target binding reads as Target").toBeTruthy();
   expect(addon.eval(`return ${CC}.ActionText({ action = "menu" })`) === "Unit menu", "a menu binding reads as Unit menu").toBeTruthy();
   expect(addon.eval(`return ${CC}.ActionText({ action = "what" })`) === "Unit menu", "anything unknown reads as Unit menu").toBeTruthy();
-  const frames = addon.eval(`local n = 0 for _ in pairs(ns.GetModule("UnitFrames").frames) do n = n + 1 end return n`);
-  expect(addon.eval(`return #${CC}.frames`) >= frames && frames > 0, "unit frames are registered when that setting is on").toBeTruthy();
+  const frames = addon.eval(`local n = 0 for key in pairs(ns.GetModule("UnitFrames").frames) do if not key:match("^boss%d$") then n = n + 1 end end return n`);
+  expect(addon.eval(`return #${CC}.frames`) >= frames && frames > 0, "unit frames other than the bosses are registered when that setting is on").toBeTruthy();
 });
 
 it("the game's click bindings: Vanguard's own step aside out of combat, and come back", () => {

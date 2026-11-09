@@ -362,6 +362,36 @@ it("on WoW Forever a staged profile the talents don't override is marked '(after
   addon.eval('ns.Options.Show("profiles")');
   expect([labelCount(addon, "Heal  (after reload)"), labelCount(addon, "Default  (in use until reload)")], "the pick and the running profile are marked").toEqual([1, 1]);
 });
+it("on WoW Forever /vg spec naming a profile for the current talents says it loads at the reload and offers it (H39-16-1)", () => {
+  const addon = foreverCharacter(1, "{}");
+  addon.slash("spec Heal");
+  expect(addon.eval("return ns.ProfileAfterReload()"), "the next login loads Heal").toBe("Heal");
+  expect(addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()"), "the reload is offered").toBe(true);
+  addon.eval('ns.Options.Show("profiles")');
+  expect([labelCount(addon, "Heal  (after reload)"), labelCount(addon, "Default  (in use until reload)")], "the rows say so").toEqual([1, 1]);
+  expect(addon.texts("This character uses Default until you reload, then Heal.").length, "and so does the top line").toBe(1);
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("return VanguardCharDB.guard.profile"), "the logout backup is of Heal").toBe("Heal");
+});
+// How many live (not on a hidden page view) labels say this text.
+function shownLabels(addon, text) {
+  return addon.eval(`local n = 0 __wfgInspectAll(function(w) if w.__kind == "FontString" and w.__text == ${JSON.stringify(text)} then local p, live = w, true while p do if p.__kind == "ScrollFrame" and not p.__shown then live = false end p = p.__parent end if live then n = n + 1 end end return false end) return n`);
+}
+it("on WoW Forever the open Profiles page follows Stop spec switching and /vg spec (H43-6-1)", () => {
+  const addon = foreverCharacter(1, "{}");
+  addon.slash("spec Heal");
+  addon.eval('ns.Options.Show("profiles")');
+  addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "profiles" then for _, r in ipairs(p.rows()) do if r[2] == "Stop spec switching" then r[3]() end end end end`);
+  expect([shownLabels(addon, "Default  (in use)"), shownLabels(addon, "Heal  (after reload)"), shownLabels(addon, "This character uses Default.")], "after Stop the marks drop Heal").toEqual([1, 0, 1]);
+  addon.slash("spec Heal");
+  expect([shownLabels(addon, "Heal  (after reload)"), shownLabels(addon, "This character uses Default until you reload, then Heal.")], "and /vg spec brings them back").toEqual([1, 1]);
+});
+it("on WoW Forever the Profiles page's 'Use this profile for this spec' button offers the reload like /vg spec", () => {
+  const addon = foreverCharacter(1, "{}");
+  addon.eval("ns.UseProfile('Heal') if Vanguard_Reload then Vanguard_Reload:Hide() end");
+  addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "profiles" then for _, r in ipairs(p.rows()) do if r[2] == "Use this profile for this spec" then r[3]() end end end end`);
+  expect([addon.eval("return ns.SpecProfile()"), addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()")], "Heal is the spec's and the reload is offered").toEqual(["Heal", true]);
+});
 it("on WoW Forever /vg spec and the Profiles page name the talent group, not the specialization", () => {
   const addon = foreverCharacter(2, "{}");
   addon.slash("spec Heal");
