@@ -16,10 +16,10 @@ local function minimapRows()
     { "header", L["Minimap and waypoints"] },
     { "cycle", L["Minimap shape (reload)"], { { "auto", L["Follow the theme"] }, { "square", L["Square"] }, { "round", L["Round"] } }, reloadSetting("Minimap", "shape") },
     check(L["Coordinates under the minimap"], reloadSetting("Minimap", "coords")), check(L["Coordinates on the world map (reload)"], reloadSetting("Waypoints", "mapCoords")),
-    check(L["/way sets map waypoints, unless another addon has it (reload)"], reloadSetting("Waypoints", "slash")),
-    check(L["Vanguard's pin and font on the game's floating waypoint pin (reload)"], reloadSetting("Waypoints", "pin")),
-    check(L["Tracking, mail and difficulty on the minimap's corners (reload)"], reloadSetting("Minimap", "icons")),
-    check(L["Gather addon minimap buttons into a drawer (reload)"], reloadSetting("MinimapButtons", "drawer")),
+    check(L["The /way command (reload)"], reloadSetting("Waypoints", "slash")),
+    check(L["Vanguard look on the waypoint pin (reload)"], reloadSetting("Waypoints", "pin")),
+    check(L["Icons on the minimap's corners (reload)"], reloadSetting("Minimap", "icons")),
+    check(L["Minimap button drawer (reload)"], reloadSetting("MinimapButtons", "drawer")),
   }
 end
 
@@ -51,7 +51,7 @@ local function stripRows()
   append(append(rows, { check(L["Clock"], stripSetting("clock")), check(L["Day, date and calendar button"], stripSetting("date")) }), supplyRows("shards", L["Soul shards (warlocks)"]))
   return append(append(rows, { check(L["XP per hour this session"], stripSetting("xprate")),
     check(L["Time to the next level"], stripSetting("leveltime")), check(L["Gold per hour this session"], stripSetting("goldrate")),
-    check(L["Your DPS in the last fight (from the game's damage meter)"], stripSetting("dps")), check(L["Your place in the last fight's DPS, in a group"], stripSetting("rank")) }), ledgerRows())
+    check(L["Your DPS in the last fight"], stripSetting("dps")), check(L["Your DPS place in the group"], stripSetting("rank")) }), ledgerRows())
 end
 
 -- Other addons' data feeds for the broker strip: one switch per feed, while any addon shares one.

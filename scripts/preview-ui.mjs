@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Screenshot Vanguard without the game client.
 //
-//   node scripts/preview-ui.mjs [--out dir]
+//   node scripts/preview-ui.mjs [--out dir] [--scenes name,name]
+//
+// With no --scenes it renders every scene, a few at a time, each batch in a process of its own: one process that
+// built every scene ran out of heap (V8) after about 19 of them, since every scene loads the whole addon.
 //
 // Runs the real addon Lua (same harness as the scripts/tests suite) against a TEST-ONLY
 // world (units, action slots, chat lines) and lays out the frames it built
@@ -12,7 +15,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { execSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { execFileSync, execSync } from "node:child_process";
 import { root } from "./lib/lua-harness.mjs";
 import { SCENES, buildScene } from "./lib/preview-scenes.mjs";
 import { renderScene } from "./lib/ui-preview.mjs";
@@ -33,14 +37,38 @@ async function loadPlaywright() {
   }
 }
 
+// How many scenes one process renders before the next process takes over.
+const BATCH = 8;
+
 const out = path.resolve(arg("out", path.join(root, "preview")));
 fs.mkdirSync(out, { recursive: true });
 
-const { chromium } = await loadPlaywright();
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+// The scenes in batches of BATCH names.
+function batches() {
+  const names = SCENES.map((scene) => scene.name);
+  const list = [];
+  for (let i = 0; i < names.length; i += BATCH) list.push(names.slice(i, i + BATCH));
+  return list;
+}
 
-for (const scene of SCENES) {
+// Renders each batch in a process of its own, one after the other; a batch that fails stops the run.
+function renderInBatches() {
+  for (const names of batches()) {
+    execFileSync(process.execPath, [fileURLToPath(import.meta.url), "--out", out, "--scenes", names.join(",")], { stdio: "inherit" });
+  }
+}
+
+// Renders the named scenes in one browser page.
+async function renderScenes(names) {
+  const { chromium } = await loadPlaywright();
+  const browser = await chromium.launch();
+  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+  for (const scene of SCENES.filter((s) => names.includes(s.name))) await renderOne(page, scene);
+  await browser.close();
+}
+
+// Builds one scene and writes its screenshot.
+async function renderOne(page, scene) {
   const addon = buildScene(scene);
   const file = path.join(out, `${scene.name}.png`);
   await renderScene(page, addon, {
@@ -52,4 +80,7 @@ for (const scene of SCENES) {
   });
   console.log(`wrote ${path.relative(process.cwd(), file)}`);
 }
-await browser.close();
+
+const only = arg("scenes", "");
+if (only) await renderScenes(only.split(","));
+else renderInBatches();

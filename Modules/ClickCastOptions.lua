@@ -1097,7 +1097,7 @@ local ROWS = {
   { "bindtest" },
   { "header", L["Share"] },
   { "bindshare" },
-  { "check", L["Also on your player, target and focus frames (reload)"], unitFramesOn, setUnitFrames },
+  { "check", L["Also on player, target and focus (reload)"], unitFramesOn, setUnitFrames },
 }
 
 -- Whether the game's click bindings are switched on.

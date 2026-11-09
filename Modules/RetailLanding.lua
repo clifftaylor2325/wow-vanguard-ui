@@ -96,5 +96,5 @@ GW.AddOnDemand("expansion", "Blizzard_PerksProgram", { "PerksProgramFrame" }, GW
 
 -- The switch on the Game windows page, under the other game window groups.
 ns.RetailRows(function()
-  return { O.Check(L["Expansion page, transmog and Trading Post windows (reload)"], O.ReloadSetting("Windows", "expansion")) }
+  return { O.Check(L["Expansion and transmog windows (reload)"], O.ReloadSetting("Windows", "expansion")) }
 end)

@@ -65,7 +65,7 @@ it("retail vault: with its switch off the vault stays the game's; its switches a
   const off = retail(["WeeklyRewardsFrame"], "VanguardDB.profiles = { Default = { Windows = { vault = false } } }");
   off.eval(`__wfgStub.fire("ADDON_LOADED", "Blizzard_WeeklyRewards") WeeklyRewardsFrame:Show()`);
   expect(off.eval("return WeeklyRewardsFrame.BorderContainer.__alpha ~= 0 and not __button(WeeklyRewardsFrame.SelectRewardButton)")).toBe(true);
-  const labels = ["Great Vault window (reload)", "Great Vault progress on the info strip", "Expansion page, transmog and Trading Post windows (reload)"];
+  const labels = ["Great Vault window (reload)", "Great Vault progress on the info strip", "Expansion and transmog windows (reload)"];
   expect(windowLabels(off)).toEqual(expect.arrayContaining(labels));
   expect(windowLabels(forever()).filter((l) => labels.includes(l))).toEqual([]);
 });

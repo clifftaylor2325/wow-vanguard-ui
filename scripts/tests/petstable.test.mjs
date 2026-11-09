@@ -43,6 +43,6 @@ it("the Town and gear page has the switch and a button that lists the pets", () 
   addon.eval('ns.Options.Show("town")');
   addon.eval('__click("List my pets in chat")');
   expect(Array.from(addon.chat()).slice(-3, -2), "the button prints the same list as /vg pets").toEqual([P + "Your pets:"]);
-  addon.eval('__click("Say how many pets you have, and the next slot\'s price, at a stable master (/vg pets)")');
+  addon.eval('__click("Pet count at a stable master")');
   expect(addon.eval("return ns.Settings('PetStable').announce"), "the switch turns the line off").toBe(false);
 });

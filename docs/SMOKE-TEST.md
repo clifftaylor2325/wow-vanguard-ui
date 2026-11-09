@@ -208,7 +208,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 2.2 The wizard, start to finish
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
-- Expect: `Step 1 of 4 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the choices rest flat on the panel, each lifts only under the mouse, and the picked one alone carries the thin accent rail on its left over a lighter fill (its text stays the plain colour), the same on the Profile and Screen steps [Needs in game]; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 4 · Look` (the accent swatches, the raid frame style and the Calm HUD switch, off); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard and offers `Setup is done. Reload the UI now to apply it?`. No profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
+- Expect: `Step 1 of 4 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the choices rest flat on the panel, each lifts only under the mouse, and the picked one alone carries the thin accent rail on its left over a lighter fill (its text stays the plain colour), the same on the Profile and Screen steps [Needs in game]; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 4 · Look` (the accent swatches, the raid frame style and the Calm HUD switch, off); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard and offers no reload, and no profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
 - Also on the Look step: under Calm HUD, switches **Larger text (115%)** and **Colour vision: Safer colours**, both off and inside the window. Larger text makes the wizard's own text bigger at once and Off puts it back; Safer colours moves hostile and friendly bars apart after the reload. Each first change says where the backup profile went.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
@@ -433,7 +433,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.2b Raid tiles in a fight: missing health, the tooltip, summons
 
-- Do: open `/vg` → Raid frames and read the indicator captions and **Mark players being resurrected or summoned**. In a party, let a member lose some health, out of combat and then in a dungeon fight; let them heal to full. Point at a tile out of combat, then pull with the pointer on it. With a warlock, summon a member who is away, and have them accept once and decline once. Then turn **Incoming heals** off under Healing while a heal is on its way to a shielded member.
+- Do: open `/vg` → Raid frames and read the indicator captions and **Mark resurrections and summons**. In a party, let a member lose some health, out of combat and then in a dungeon fight; let them heal to full. Point at a tile out of combat, then pull with the pointer on it. With a warlock, summon a member who is away, and have them accept once and decline once. Then turn **Incoming heals** off under Healing while a heal is on its way to a shielded member.
 - Expect: the captions read "Right edge, top (reload)", "Right edge, second (reload)" and "Right edge, third (reload)" with a note above them, and the choices start with a capital. The missing health reads like "-1234" both out of and in combat, and is blank at full health. The tooltip shows the player out of combat and goes on the pull; in the fight none shows. The summon icon shows on the tile while the summon is pending and changes when they accept or decline. The shield starts at the health edge once the heal bar is off. `/vg errors` stays empty. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the tile, `/vg errors`, and whether you were in an instance.
 
@@ -518,13 +518,13 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 7.2c Cursor ring
 
-- Do: `/vg` → Unit frames, tick **Ring at the cursor: the global cooldown and your cast** (nothing needs a reload). Move the mouse around, then cast an instant spell, then a spell with a long cast time, then a channel, and click and hover things under the ring (a button, a unit frame, a world object). Untick the switch.
+- Do: `/vg` → Unit frames, tick **Cast ring at the cursor** (nothing needs a reload). Move the mouse around, then cast an instant spell, then a spell with a long cast time, then a channel, and click and hover things under the ring (a button, a unit frame, a world object). Untick the switch.
 - Expect: two thin rings with a faint full circle behind them centred on the mouse pointer at every UI scale, following it without lag; the outer ring sweeps away for the length of the global cooldown after the instant spell; the inner ring fills as the long cast goes and empties for the channel, and clears when the cast ends or is interrupted; the sweeps have no numbers, no edge line and no flash; the ring does not stop clicks or tooltips, also in combat; with the switch off it is gone and the pointer is plain. [Needs in-game check: that the global cooldown shows on the outer ring on WoW Forever, and which way each sweep turns.]
 - If it fails, paste: a screenshot with the ring in view, `/vg status` and `/vg errors`.
 
 ### 7.2d Interrupt mark
 
-- Do: on a class with an interrupt (Rogue Kick, Warrior Pummel or Shield Bash, Mage Counterspell, Shaman Earth Shock, Priest Silence), target a mob that casts and watch the target cast bar. Cast on a mob that can't be interrupted if you can find one, press your interrupt on a cast, then watch the next cast while the interrupt recovers. Do the same with `/focus`. In `/vg` → Unit frames untick **Interrupt mark beside the target and focus cast bars**.
+- Do: on a class with an interrupt (Rogue Kick, Warrior Pummel or Shield Bash, Mage Counterspell, Shaman Earth Shock, Priest Silence), target a mob that casts and watch the target cast bar. Cast on a mob that can't be interrupted if you can find one, press your interrupt on a cast, then watch the next cast while the interrupt recovers. Do the same with `/focus`. In `/vg` → Unit frames untick **Interrupt mark on cast bars**.
 - Expect: a small diamond to the right of the target's bar and the focus's bar during a cast you can interrupt: filled and bright (accent) while your interrupt is ready, hollow and dim (darkened like a cooldown sweep that clears clockwise) while it recovers, ignoring the global cooldown; no mark on a cast with the gray edge, on your own bar, when you know no interrupt, or when the switch is off (gone from a cast on screen at once); it goes with the bar when the cast ends. [Needs in-game check: the spell IDs per class on WoW Forever, that the global cooldown is left out, and which way the sweep turns.]
 - If it fails, paste: a screenshot of the bar during a cast, your class and spec, `/vg status` and `/vg errors`.
 
@@ -702,7 +702,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 8.4b Questing conveniences
 
-- Do: with a quest or two in the log that give XP and a level below the cap, look at the foot of the tracker and open the quest log. Under `/vg > Quests` switch off the line under the quests, then each quest's XP in the quest log list, then tick them again. Accept a new quest from an NPC with Watch a quest when you accept it on, and again with it off. Then tick Accept quests a party member shares with you, have a party member share a quest (their Share button), and repeat it holding Shift.
+- Do: with a quest or two in the log that give XP and a level below the cap, look at the foot of the tracker and open the quest log. Under `/vg > Quests` switch off the line under the quests, then each quest's XP in the quest log list, then tick them again. Accept a new quest from an NPC with Watch a quest when you accept it on, and again with it off. Then tick Accept shared quests, have a party member share a quest (their Share button), and repeat it holding Shift.
 - Expect: a muted `Quests: 62% of the XP to level` line under the last quest (above `+N more` when that shows), which follows the quests you take and abandon and is gone at the level cap or when no quest gives XP; each quest line in the quest log shows `1,250 XP` in muted type at its right edge with the title cut short, not overlapped; the switches take effect at once. A newly accepted quest appears in the tracker without you watching it (off: it does not, unless the game's own auto-watch does). A shared quest is accepted for you with `Accepted: <title> (shared by <name>)` in chat and no dialog; with Shift held, or the switch off, the dialog opens as usual. With Turn in and the best-seller switch on, handing in a quest with a choice of rewards says `Turned in: <title> (took <item>: sells for most)`. With Accept quests on and a full quest log, an offered quest is not reported as `Accepted`; with no quests at all the quest log list reads `No quests yet. Quest givers show a ! over their heads.` [Needs in game: that the XP numbers match the quest dialog's, that QUEST_ACCEPTED arrives with the quest id in the log, that the game refuses a watch past its limit quietly, and that the quest dialog's `npc` unit is the sharing player for a shared quest.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
@@ -738,25 +738,25 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 8.6 Quiet the game
 
-- Do: `/vg` → Game windows → "Quiet the game". Switch on "Hide the red error line (full bags and quest log still show)", then press a key that fails (jump into a wall of mobs' "Not enough mana", or use an ability on cooldown). Switch on "Hide the zone names that fade in", then walk into a new zone and subzone. Pick a "Furthest the camera zooms out" value and scroll out. Have a stranger (or an alt) invite you to a group and to a guild with "Decline group invites..." and "Decline guild invites" on, then once from a friend. Die in a battleground with "Release at once..." on, then once more with a soulstone on you (or as a shaman with Reincarnation ready).
+- Do: `/vg` → Game windows → "Quiet the game". Switch on "Hide the red error line", then press a key that fails (jump into a wall of mobs' "Not enough mana", or use an ability on cooldown). Switch on "Hide the zone names that fade in", then walk into a new zone and subzone. Pick a "Furthest camera zoom (the game's setting)" value and scroll out. Have a stranger (or an alt) invite you to a group and to a guild with "Decline group invites..." and "Decline guild invites" on, then once from a friend. Die in a battleground with "Release at once..." on, then once more with a soulstone on you (or as a shaman with Reincarnation ready).
 - Expect: no red error text; no zone or subzone name fades in (switching either off brings it back without a reload); the camera zooms out further than the game's default; a declined invite closes its prompt (the guild invite window too: it does not stay up with its Join button) and says `Declined a ... from <name>.` in chat, a friend's or guildmate's group invite still shows; you release at once in a battleground and not in an arena or a dungeon; with a soulstone or Reincarnation ready the game's death dialog stays and offers it. [Needs in game: that `C_DeathInfo.GetSelfResurrectOptions` lists the soulstone with `canUse` true at PLAYER_DEAD.]
 - If it fails, paste: which switch, what you did, and `/vg errors`.
 
 ### 8.6a The error line keeps quest progress
 
-- Do: with "Hide the red error line (full bags and quest log still show)" on, kill a mob for a quest objective (or loot a quest item) and, while its yellow progress line is still up, cast at a target out of range. Then try to open the keyring (a red line the game adds outside the error event). Then, with full bags, loot an item; and cast out of range again while "Inventory is full" is still up. If you can, also try a 26th quest with a full log, and loot a corpse a party member just emptied.
+- Do: with "Hide the red error line" on, kill a mob for a quest objective (or loot a quest item) and, while its yellow progress line is still up, cast at a target out of range. Then try to open the keyring (a red line the game adds outside the error event). Then, with full bags, loot an item; and cast out of range again while "Inventory is full" is still up. If you can, also try a 26th quest with a full log, and loot a corpse a party member just emptied.
 - Expect: the yellow progress line (`<mob> slain: 3/10`) stays on screen for its usual time, the out-of-range and keyring red lines never show, and the error voice and sound play as they do without Vanguard. "Inventory is full" (and "Your quest log is full", "Already looted", "You can't carry any more of those") stays, also when an out-of-range error comes after it (then it may stay up to twice its usual time, never on and on). With the switch off, every line shows. [Needs in game: that those four come through the error event with their message type, not added outside it; if "Inventory is full" is hidden, say so.]
 - If it fails, paste: a screenshot of the top of the screen and `/vg errors`.
 
 ### 8.6b Camera zoom back to the game's setting
 
-- Do: with "Furthest the camera zooms out" on "The game's setting", scroll the camera all the way out and note how far it goes. Pick "2.6 x (furthest)" and scroll out, then pick "The game's setting" again and scroll out. Try picking "The game's setting" during a fight too.
+- Do: with "Furthest camera zoom (the game's setting)" on "The game's setting", scroll the camera all the way out and note how far it goes. Pick "2.6 x (furthest)" and scroll out, then pick "The game's setting" again and scroll out. Try picking "The game's setting" during a fight too.
 - Expect: 2.6 x zooms out further; back on "The game's setting" the camera stops where it did at first (in a fight, only once the fight ends), and it stays that way after `/reload`.
 - If it fails, paste: `/dump GetCVar("cameraDistanceMaxZoomFactor")` before and after, and `/vg errors`.
 
 ### 8.6c A summon in a fight, and repeated declines
 
-- Do: on Game windows, "Auto-accept", switch on "Accept summons (one offered in a fight is taken when it ends)" and "Decline duels", and under "Quiet the game", "Decline group invites from people who aren't friends or guildmates". Have a warlock summon you while you are fighting a mob, and finish the fight before the summon runs out. Then have someone who is not a friend or guildmate invite you to a group three times in a row, and ask you to duel three times.
+- Do: on Game windows, "Auto-accept", switch on "Accept summons" and "Decline duels", and under "Quiet the game", "Decline group invites from strangers". Have a warlock summon you while you are fighting a mob, and finish the fight before the summon runs out. Then have someone who is not a friend or guildmate invite you to a group three times in a row, and ask you to duel three times.
 - Expect: the summon prompt stays up during the fight; when the fight ends you are taken to the summoner and one chat line says from whom and to where. If you die in the fight, or the summon runs out first, you are not moved. [Needs in game: that the game lets you teleport the moment the fight ends; if the prompt stays up instead, say so.] Each invite and each duel is declined, but chat says "Declined a group invite from <name>." and "Declined a duel from <name>." once each, not three times; after 5 minutes a new one says it again.
 - If it fails, paste: the chat lines and `/vg errors`.
 
@@ -936,7 +936,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 10.1h Starter layouts on a low-level character, Undo and the better spells
 
-- Do: on WoW Forever, on a healer under level 10 (a priest is easiest), bind one spell of your own to Ctrl + Right click and add a hover key, then `/vg` > Click casting > **Starter layout...** > Healer: click to select. Look at the grid, middle-click and right-click a party or raid tile (or your own frame with "Also on your player, target and focus frames" on), Alt + middle-click and Ctrl + Shift + middle-click a tile. Say Replace when it asks about your own bindings. Then click **Undo** on the "These bindings came from the starter layout" row (say Undo again in the question). Pick the layout again, train a better heal at your trainer (Heal at 16 for a priest) and look at chat and the page; click **Use Heal**. On a second class, pick Damage or tank.
+- Do: on WoW Forever, on a healer under level 10 (a priest is easiest), bind one spell of your own to Ctrl + Right click and add a hover key, then `/vg` > Click casting > **Starter layout...** > Healer: click to select. Look at the grid, middle-click and right-click a party or raid tile (or your own frame with "Also on player, target and focus" on), Alt + middle-click and Ctrl + Shift + middle-click a tile. Say Replace when it asks about your own bindings. Then click **Undo** on the "These bindings came from the starter layout" row (say Undo again in the question). Pick the layout again, train a better heal at your trainer (Heal at 16 for a priest) and look at chat and the page; click **Use Heal**. On a second class, pick Damage or tank.
 - Expect: Middle click is your best heal (Lesser Heal at level 1), Left is Target, Right opens the menu, Alt + Middle sets focus and Ctrl + Shift + Middle assists; the Ctrl + Shift columns show on the grid without pressing More modifiers; clicks whose spells you haven't learned stay empty, and your hover key is still there. Undo brings back your Ctrl + Right click spell exactly as it was. On learning the heal, chat says once "Click casting: you can put Heal on Middle click now. /vg > Click casting offers it." and the page shows "Middle click could cast Heal instead of Lesser Heal." with **Use Heal** and **Keep as it is**; Use Heal puts it on Middle and the row goes. Damage or tank keeps Target and the menu and adds only the class's helpful clicks. [Needs in game: that every spell id is the one Forever uses (see 10.1k), that the spellbook lists a trained spell by the time the chat line comes (it waits for the spellbook to change), and that Focus and Assist work from a raid tile.]
 - If it fails, paste: `/vg binds`, the chat lines, a screenshot of the page and `/vg errors`.
 
@@ -1126,7 +1126,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.1 Switches
 
-- Do: under `/vg` → Game windows, untick one group (say "World map, group finder, calendar and Legacy windows"), reload, open the world map.
+- Do: under `/vg` → Game windows, untick one group (say "World map and calendar windows"), reload, open the world map.
 - Expect: the map is the game's own again; the other groups' windows keep the Vanguard look.
 - If it fails, paste: a screenshot and `/vg errors`.
 
@@ -1400,7 +1400,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 14.6 Menus and tooltips
 
 - Do: (1) in a party, right-click a party member's frame and use Whisper, then right-click it again for Set Focus (once out of combat, once in combat), then right-click yourself for Leave Party; (2) click the minimap's tracking button; (3) right-click a chat tab; (4) at the auction house, open a dropdown (the category or sort filter); (5) open the guild window's Preferred Play Settings and its language dropdown, if your guild window has it (the game's last old-style dropdown); (6) type `/w ` and the first letters of a friend's name in chat; (7) click an item link in chat and hold Shift over the tooltip that opens, to compare it with what you wear.
-- Expect: every menu and dropdown in (1)–(5) is a flat dark panel with a soft shadow and a thin border (no parchment or grey art behind it), its rows and hover highlight as the game draws them (the highlight is not tinted); in an old-style dropdown (5) a heading row, if there is one, is in the light text colour, not gold, a ticked row's tick is in the accent colour and an unticked row's empty box a quiet grey, a row with a coloured icon of its own keeps its colours; a menu long enough to scroll (the minimap tracking menu, or (4)'s filter on a small screen) shows a thin scroll bar, not the game's track and arrows; every action in (1) does what it says, in and out of combat (an entry the game itself greys out in combat may stay grey), and no `Interface action failed because of an AddOn` message appears; the name suggestion box in (6) and the comparison tooltips in (7) are flat Vanguard tooltip panels. With "Right-click menus, dropdowns and more tooltips" unticked and a reload, all of them are the game's own again.
+- Expect: every menu and dropdown in (1)–(5) is a flat dark panel with a soft shadow and a thin border (no parchment or grey art behind it), its rows and hover highlight as the game draws them (the highlight is not tinted); in an old-style dropdown (5) a heading row, if there is one, is in the light text colour, not gold, a ticked row's tick is in the accent colour and an unticked row's empty box a quiet grey, a row with a coloured icon of its own keeps its colours; a menu long enough to scroll (the minimap tracking menu, or (4)'s filter on a small screen) shows a thin scroll bar, not the game's track and arrows; every action in (1) does what it says, in and out of combat (an entry the game itself greys out in combat may stay grey), and no `Interface action failed because of an AddOn` message appears; the name suggestion box in (6) and the comparison tooltips in (7) are flat Vanguard tooltip panels. With "Menus, dropdowns and tooltips" unticked and a reload, all of them are the game's own again.
 - If it fails, paste: the step number, a screenshot of the menu or tooltip (the scroll bar and a ticked dropdown row in particular), the exact message text if one appeared, and `/vg errors`.
 
 ### 14.7.1 The game's swing timer
@@ -1490,7 +1490,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.8.5 Switch
 
-- Do: under `/vg` → Game windows untick "Tab buttons and the inside of the character pane", `/reload`, open the character pane and the friends window.
+- Do: under `/vg` → Game windows untick "Tabs and the character pane", `/reload`, open the character pane and the friends window.
 - Expect: the tabs, the pane's lists and the scroll bars are the game's own again; the windows keep their Vanguard panels.
 - If it fails, paste: a screenshot and `/vg errors`.
 
@@ -1865,13 +1865,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 18.4 /way and the floating waypoint pin
 
-- Do: type `/way 45 61`, then open the world map and supertrack a quest (click its pin or its entry in the quest panel), then `/way clear`. In a group, let the game track a party member (the group finder's "track" on their frame, where offered); on a corpse run, look at the pin while you are a ghost. Then untick **Vanguard's pin and font on the game's floating waypoint pin** under `/vg` → Map, `/reload`, and `/way 45 61` again.
+- Do: type `/way 45 61`, then open the world map and supertrack a quest (click its pin or its entry in the quest panel), then `/way clear`. In a group, let the game track a party member (the group finder's "track" on their frame, where offered); on a corpse run, look at the pin while you are a ghost. Then untick **Vanguard look on the waypoint pin** under `/vg` → Map, `/reload`, and `/way 45 61` again.
 - Expect: the floating marker in the world is Vanguard's teardrop pin in your accent colour, the distance under it (`12 yds`) in the theme's outlined font, and it still fades as you look away from it and when you reach the spot; a supertracked quest shows the same pin. A party member's portrait and the ghost's tombstone are the game's own, untinted. With the switch off, the game's own pin art and gold text come back. [Needs in game: the pin's size against the game's, its look after `/way` and on a supertracked quest, and that the game's `SuperTrackedFrame` is present on Forever.]
 - If it fails, paste: a screenshot of the pin, which step broke, and `/vg errors`.
 
 ### 18.4a Ctrl-click waypoint, Clear button and recent waypoints
 
-- Do: open the world map, hold Ctrl and click a spot; then click another spot, then press **Clear waypoint** on the map's bottom edge. Open `/vg` → Map → Waypoints and Recent waypoints; press a "Go to ..." button. Type `/way recent` and `/way recent 2`. Untick "Point the arrow at a waypoint you Ctrl-click on the map" and Ctrl-click again.
+- Do: open the world map, hold Ctrl and click a spot; then click another spot, then press **Clear waypoint** on the map's bottom edge. Open `/vg` → Map → Waypoints and Recent waypoints; press a "Go to ..." button. Type `/way recent` and `/way recent 2`. Untick "Arrow to a Ctrl-clicked waypoint" and Ctrl-click again.
 - Expect: with the switch on, the floating pin and its distance appear at once after each Ctrl-click; the Clear waypoint button shows only while a waypoint exists and removes it and the pin; the Map page lists up to eight spots, newest first, and each button puts that spot back with the pin; `/way recent` prints the same list; with the switch off the click only drops the map pin and the arrow stays off. [Needs in game: that the event is `USER_WAYPOINT_UPDATED`, that `C_Map.GetUserWaypoint` returns the position on Forever, and the Clear button's place on the map.]
 - Also expect (titles): type `/way 42 65 Inn`, then open `/vg` → Map → Waypoints: the first button reads `Go to Inn · <zone> 42.0, 65.0` and `/way recent` prints `1. Inn · <zone> 42.0, 65.0`; Ctrl-click the same spot on the map and the title stays. The card says `Shift-click the pin on the map to share it.`: Shift-click the map pin with chat open and the game puts a link in chat.
 - If it fails, paste: which step broke and `/vg errors`.
@@ -1946,13 +1946,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 22.1 Bar notice and swap
 
-- Do: in `/vg` open Town and gear and switch on "Notice older spell ranks on bar buttons (/vg ranks)". On a character with a ranked spell, put an old rank of it on a bar (drag it from the spellbook, or keep one on a bar after learning the next rank), and another on Vanguard's bar 2 (and on bar 6 if it is on). Type `/reload`, then `/vg ranks`, then `/vg ranks swap`. Try `/vg ranks swap` in combat.
+- Do: in `/vg` open Town and gear and switch on "Notice older ranks on bars". On a character with a ranked spell, put an old rank of it on a bar (drag it from the spellbook, or keep one on a bar after learning the next rank), and another on Vanguard's bar 2 (and on bar 6 if it is on). Type `/reload`, then `/vg ranks`, then `/vg ranks swap`. Try `/vg ranks swap` in combat.
 - Expect: after the reload (or after learning a rank), chat says "N button(s) on your bars hold an older spell rank." once. `/vg ranks` lists "Bar B button N: Spell Rank 2 -> Rank 4" for each, with B the Vanguard bar the button is on (the one on bar 2 says Bar 2, the one on bar 6 is listed too), and changes nothing. `/vg ranks swap` puts the newest rank on each, says "Put the newest rank on N button(s).", and leaves your cursor empty. In combat it says "Bars can't change in combat." [Needs in game: that C_Spell.PickupSpell with PlaceAction swaps a spell on a bar out of combat, that GetActionInfo gives the spell ID of the rank on the button, and that SPELLS_CHANGED fires when a rank is learned.]
 - If it fails, paste: the `/vg ranks` output and `/vg errors`.
 
 ### 22.2 Trainer memory
 
-- Do: switch on "Remember what trainers teach (/vg trainers)". Open your class trainer, close it, then type `/vg trainers`, `/vg trainers next`. Level up, if you can, and read chat.
+- Do: switch on "Remember what trainers teach". Open your class trainer, close it, then type `/vg trainers`, `/vg trainers next`. Level up, if you can, and read chat.
 - Expect: `/vg trainers` says how many services are remembered; `/vg trainers next` lists "Level N: Spell Rank R (Trainer, Zone, Subzone)" for the next five levels, lowest first (or says nothing is remembered). A level-up prints the same list under "Trainers you've visited teach, from this level:". `/vg trainers clear` says "Forgot every trainer." [Needs in game: that GetTrainerServiceLevelReq exists on Forever, where the rank text ("Rank 3") sits among GetTrainerServiceInfo's returns, and that TRAINER_SHOW and TRAINER_UPDATE fire.]
 - If it fails, paste: `/run print(GetTrainerServiceLevelReq, GetNumTrainerServices())` with the trainer open, and `/vg errors`.
 
@@ -2005,7 +2005,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 24.1 The dungeon card on the Instance prep checklist
 
-- Do: in `/vg` open Town and gear and switch on "Dungeon card: level range, your dungeon quests and keys on the checklist". With a quest for a dungeon in your log, walk into that dungeon (a character that carries nothing short, if you can). Then leave and type `/vg prep`.
+- Do: in `/vg` open Town and gear and switch on "Dungeon card". With a quest for a dungeon in your log, walk into that dungeon (a character that carries nothing short, if you can). Then leave and type `/vg prep`.
 - Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Last run: N days ago" (once you have been there before; "today" within a day), "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
 - If it fails, paste: what the card shows, `/run print(C_Map.GetMapLevels(C_Map.GetBestMapForUnit("player")))` and `/vg errors`.
 
@@ -2179,7 +2179,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 30.2 Sharing by hand
 
-- Do: under `/vg` → Combat tools → Officer loot tools, click **Put the list in the chat box for the party**, read the line, press Enter; then the raid button; with a long list click again for the next part. Click **Print the reserve list to my chat**.
+- Do: under `/vg` → Combat tools → Officer loot tools, click **Put the list in the party chat box**, read the line, press Enter; then the raid button; with a long list click again for the next part. Click **Print the reserve list to my chat**.
 - Expect: the chat box opens with `/p Soft reserves: ...` (or `/raid`) typed in and nothing is sent until you press Enter; the print shows to you alone. [Needs in game: that the client's ChatFrameUtil.OpenChat opens the chat box with text, and that a line this long is accepted. Without it the part prints to your chat instead.]
 - If it fails, paste: what the chat box showed and `/vg errors`.
 
@@ -2551,7 +2551,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.42 Chat tabs always visible and the stacked side buttons
 
-- Do: with two chat tabs, move the mouse away from the chat and wait a few seconds; then untick `/vg` → Chat → Keep chat tabs visible, wait again, and tick it back. Tick Hide the tab bar until the mouse is over the chat (under Chat), move the mouse away for five seconds, bring it back over the chat, then away again while a friend says something into the other tab; untick it. Look at the column of buttons beside the chat, with voice chat on and off (Options → Voice), and when a Quick Join toast shows.
+- Do: with two chat tabs, move the mouse away from the chat and wait a few seconds; then untick `/vg` → Chat → Keep chat tabs visible, wait again, and tick it back. Tick Hide the tab bar until hovered (under Chat), move the mouse away for five seconds, bring it back over the chat, then away again while a friend says something into the other tab; untick it. Look at the column of buttons beside the chat, with voice chat on and off (Options → Voice), and when a Quick Join toast shows.
 - Expect: both tabs stay at full strength with the mouse away; with Hide the tab bar ticked, the bar's rule and the Find and Copy tiles fade away about four seconds after the mouse leaves the chat and the tabs go with them (the tabs at the game's own pace), all back the moment the mouse is over the chat again, and the bar stays while the other tab flashes; unticked, the bar is back at once and stays; unticked, the tab you are not reading dims after a moment but stays readable (about 60 %, not the game's near-invisible 20 %), comes to full under the mouse, and the ticked switch brings it back at once; the side buttons stack down from the tab bar's top (chat menu, Quick Join, voice channel, deafen, mute, text to speech, each only when the client shows it), a tile's width apart, and close up when the voice buttons go; a Quick Join toast leaves the stack where it was. `/vg errors` is empty.
 - If it fails, paste: a screenshot of the chat's left column and tab bar, and `/vg errors`.
 
@@ -2839,7 +2839,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.90 Merchant quantity window: the panel under Stack, Max and the cost line
 
-- Do: at a vendor that sells stackable goods (a reagent or food vendor), with Town and gear, Merchants, "Stack and Max buttons on a merchant item's quantity window" on, shift-click an item in the middle of the list, then one at the top and one at the bottom; also try it with the item on the second column.
+- Do: at a vendor that sells stackable goods (a reagent or food vendor), with Town and gear, Merchants, "Stack and Max buttons at merchants" on, shift-click an item in the middle of the list, then one at the top and one at the bottom; also try it with the item on the second column.
 - Expect: the game's quantity window opens with a dark panel hung from its bottom left holding Stack, Max and the "Max N for <money>" line, all inside the panel and nothing drawn bare over the merchant's rows; the panel covers the clicked row and the one below it (so you cannot click through to them) and closes with the window; shift-clicking an item in your bags shows no panel. [Needs in-game check: where the game puts the window (its bottom left on the clicked item), how much of the list the panel covers, and whether the panel is wide enough for the real window.]
 - If it fails, paste: a screenshot with the window open on the middle row, and `/vg errors`.
 
@@ -3418,7 +3418,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.187 Shared quest follows its own switch and names the sharer (Forever)
 
-- Do: Switch on Accept quests and Accept quests a party member shares with you (Quests, Automation), then have a party member share a quest with you.
+- Do: Switch on Accept quests and Accept shared quests (Quests, Automation), then have a party member share a quest with you.
 - Expect: The quest is accepted and chat says "Accepted: <quest> (shared by <their name>)".
 - If it fails, paste: the chat line, and what the dialog's name and portrait showed if it stayed open
 
@@ -4211,7 +4211,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.319 Right-click menus on the flat panel (Retail)
 
-- Do: With Game windows > "Right-click menus, dropdowns and more tooltips" on, right-click your player frame, your target frame and a party member; hover the Raid Target Icon submenu and set an icon; right-click a chat tab; open the minimap tracking menu; open a filter dropdown in the Auction House or the game's Settings; with the character pane open, right-click a target and choose Inspect, then Set Focus out of combat.
+- Do: With Game windows > "Menus, dropdowns and tooltips" on, right-click your player frame, your target frame and a party member; hover the Raid Target Icon submenu and set an icon; right-click a chat tab; open the minimap tracking menu; open a filter dropdown in the Auction House or the game's Settings; with the character pane open, right-click a target and choose Inspect, then Set Focus out of combat.
 - Expect: Every menu and submenu opens on the flat Vanguard panel with no game dropdown art, its rows readable and never hidden behind the open window, the tracking menu's scroll bar a thin thumb, no flicker as a menu opens, and every action works with no "blocked because of an AddOn" message and nothing in Vanguard's error badge. With the switch off and a reload the game's menu art is back.
 - If it fails, paste: which menu, a screenshot of it, any "blocked" message, and the output of `/vg errors`.
 
@@ -4647,6 +4647,42 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge.
 - If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
 
+### 33.450 Short setting names, the old sentence on hover
+
+- Do: Open `/vg` → Unit frames and point at Group threat panel, then Tag mark on your target. Type `hostile target` in the search box. Then open `/vg` → Town and gear → Auction house and point at Lists and Posting tabs. Repeat on a German client at Larger text if you have one.
+- Expect: each name sits on one line; the tooltip reads the old sentence (Group threat panel's ends with "Takes effect after /reload." on its own line and no "(reload)" in the sentence); the search lists Calm HUD out of combat; nothing runs past its row in German at 130%.
+- If it fails, paste: a screenshot of the row and its tooltip.
+
+### 33.451 A folded card stays open after a reload
+
+- Do: Open `/vg` → Raid frames, press More settings, then `/reload` and open Raid frames again. Fold it, `/reload`, open it again. Log in on another character and open the page.
+- Expect: after the first reload the card is still open, after the second it is folded; the other character starts with it folded.
+- If it fails, paste: a screenshot after each reload.
+
+### 33.452 Setup that keeps everything asks for no reload
+
+- Do: Type `/vg setup` and press Next, Next, Next, Done without picking anything. Then `/vg setup` again, pick another raid frame style on the Look step and finish.
+- Expect: the first run ends with no reload dialog; the second ends with `Setup is done. Reload the UI now to apply it?`.
+- If it fails, paste: what showed after each Done, and the chat lines.
+
+### 33.453 Buttons for the chat-only commands
+
+- Do: After a few fights, open `/vg` → Combat tools → Fight history and press List this session's fights, then Recap the last fight in chat. Under Town and gear press List my sell list in chat (Merchants), List the craft queue in chat (with the queue on), Put the newest ranks on my bars and What trainers teach next (Spell ranks, Forever), and List the perk plan in chat (Legacy, Forever). Under Town and gear → Merchants press Forget every merchant..., answer No, then press it again and answer Forget.
+- Expect: each button prints what its `/vg` command prints (`/vg fights`, `/vg recap`, `/vg junk`, `/vg craft`, `/vg ranks swap`, `/vg trainers next`, `/vg legacy plan`); in a fight the ranks button says the bars can't change; No forgets nothing, Forget says "Forgot every merchant." and item tooltips stop naming where an item is sold until you visit a merchant.
+- If it fails, paste: the chat lines and which button.
+
+### 33.454 Move frames from Chat and Situations
+
+- Do: Press Move frames on Chat → Chat windows and on Situations, each time saving or leaving with the bar at the top.
+- Expect: the handles show (the floating chat windows' among them) and the window comes back on the page the button was on.
+- If it fails, paste: a screenshot with the handles showing.
+
+### 33.455 Settings that are the game's say so
+
+- Do: Open Game windows → Quiet the game and Bars and bags → Bags; point at Combined bag.
+- Expect: the camera row reads Furthest camera zoom (the game's setting); Combined bag's tooltip says it also sets the game's combined bags setting, then "Takes effect after /reload.".
+- If it fails, paste: a screenshot of the row and tooltip.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
@@ -4698,7 +4734,7 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 ### 34.8 Group finder, PvP and Adventure Guide
 
 - Do: on Retail, open the group finder (Dungeon Finder, Raid Finder, Premade Groups), its PvP tab (Quick Match, Rated, Training Grounds) and the Adventure Guide (Dungeons, Raids, a boss page, Loot, the search box). Drag each, `/reload` and reopen. Sign up for a premade group if you can.
-- Expect: the windows wear the theme with their art faded; the dungeon and raid finders' reward pages keep their parchment; the Adventure Guide's pages and pictures stay the game's. Each drags by its title and stays where you put it. Under Game windows the switch "Group finder, PvP and Adventure Guide windows (reload)" turned off and a reload leaves them the game's.
+- Expect: the windows wear the theme with their art faded; the dungeon and raid finders' reward pages keep their parchment; the Adventure Guide's pages and pictures stay the game's. Each drags by its title and stays where you put it. Under Game windows the switch "Group finder and PvP windows (reload)" turned off and a reload leaves them the game's.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
 ### 34.9 Character pane, Who list and the warband bank

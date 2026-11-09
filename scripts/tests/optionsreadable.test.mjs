@@ -158,7 +158,7 @@ const searched = (addon, text) => addon.eval(`local s = Vanguard_Options.search 
 
 it("options: a translated reload caption gives its last bracket to the reload tag, half-width or full-width", () => {
   const addon = loggedIn(CLICK_LUA);
-  translate(addon, { "Coordinates on the world map (reload)": "TEST-ONLY 世界地图坐标（重新加载）", "Gather addon minimap buttons into a drawer (reload)": "TEST-ONLY Knöpfe (Minikarte) (Neu laden)", "Tracking, mail and difficulty on the minimap's corners (reload)": "TEST-ONLY ohne Klammer" });
+  translate(addon, { "Coordinates on the world map (reload)": "TEST-ONLY 世界地图坐标（重新加载）", "Minimap button drawer (reload)": "TEST-ONLY Knöpfe (Minikarte) (Neu laden)", "Icons on the minimap's corners (reload)": "TEST-ONLY ohne Klammer" });
   addon.eval('ns.Options.Show("map")');
   // The shown row with this caption: whether it is there and its tag's words.
   const row = (caption) => addon.eval(`${FIND(caption)} return { w ~= nil, w and w.tag and w.tag.__text }`);
@@ -200,7 +200,7 @@ it("options: every search keyword belongs to a real caption", () => {
 it("options: picking a camera zoom on the Game windows page sets it and the game's zoom", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("windows")');
-  const clicked = addon.eval('return __click("Furthest the camera zooms out")');
+  const clicked = addon.eval('return __click("Furthest camera zoom (the game\'s setting)")');
   const out = addon.eval(`return { camera = ns.GetModule("Quiet").settings.camera, cvar = tostring(GetCVar("cameraDistanceMaxZoomFactor")) }`);
   expect([clicked, out]).toEqual([true, { camera: 1.5, cvar: "1.5" }]);
 });

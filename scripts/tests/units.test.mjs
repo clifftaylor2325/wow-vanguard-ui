@@ -810,11 +810,15 @@ const deck = (addon) => addon.eval(`local d, t = ns.GetModule("UnitFrames").deck
 const corners = (addon, name, art) => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
 const maskArt = (addon, region) => addon.eval(`local out = {} for i, m in ipairs(${region}.__masks or {}) do out[i] = next(m.__points) .. " " .. tostring(m.__texture):match("[^\\\\]+$") end table.sort(out) return out`);
 
+// Clicks the Versus deck switch on the Unit frames page (setup, open on this account, has a Versus deck layout too).
+const DECK_SWITCH = `for _, w in ipairs(__wfgStub.frames) do
+  if w.source and w.source[2] == "Versus deck" and ns.Options.RevealRow(w) then w.__scripts.OnClick(w, "LeftButton") end end`;
+
 it("Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
   expect(deck(addon), "off by default: no panel, bars fill from the left").toEqual({ shown: false, fills: false });
   addon.slash("");
-  addon.eval('__click("Unit frames") __click("Versus deck: your")');
+  addon.eval(`__click("Unit frames") ${DECK_SWITCH}`);
   expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.deck"), "the switch saves it").toBe(true);
   expect(deck(addon), "on: the panel spans both frames, under everything (background strata), the crest on its top edge, the target fills from the right")
     .toEqual({ shown: true, left: true, right: true, crest: "TOP", strata: "BACKGROUND", fills: true });
@@ -828,7 +832,7 @@ it("Versus deck: one rounded panel behind the player and target, the crest at th
   addon.eval('__click("General") __click("Calm HUD") __click("Unit frames")');
   expect(addon.eval("return ns.GetModule('UnitFrames').deck.vgStateString"), "the deck dims with the Calm HUD").toBe("[combat] show; [harm,nodead] show; dim");
   setCombat(addon, true);
-  addon.eval('__click("Versus deck: your")');
+  addon.eval(DECK_SWITCH);
   expect(deck(addon).shown, "switching it off in combat waits").toBe(true);
   setCombat(addon, false);
   expect(deck(addon), "and takes it away when the fight ends").toMatchObject({ shown: false, fills: false });
@@ -928,10 +932,10 @@ it("in-combat mark: the Unit frames page switches it at once, and the health tex
   addon.world.combat(true);
   addon.slash("");
   addon.eval('__click("Unit frames")');
-  addon.eval('__click("In-combat mark: crossed swords and a red edge on your frame, a red edge on your target\'s while it fights")');
+  addon.eval('__click("In-combat mark")');
   expect(addon.eval("return __fight()"), "off, in the fight: both marks go").toEqual(["theme", "none", "theme"]);
   expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.combatMark"), "the switch saves it").toBe(false);
-  addon.eval('__click("In-combat mark: crossed swords and a red edge on your frame, a red edge on your target\'s while it fights")');
+  addon.eval('__click("In-combat mark")');
   expect(addon.eval("return __fight()"), "on again: back at once").toEqual(["bad", "swords", "bad"]);
   const room = addon.eval("return { select(4, Vanguard_player.healthText:GetPoint()) }");
   expect(room, "the health text ends left of the swords").toEqual([-addon.eval("return ns.GetModule('UnitFrames').CLASS_MARK_ROOM"), 0]);

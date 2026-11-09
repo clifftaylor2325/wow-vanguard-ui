@@ -293,7 +293,7 @@ it("quest guidance: switched off, the tracker's Shift-click opens the quest and 
   addon.keys({ shift: true });
   addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
   expect([addon.eval("return #__super"), tracker(addon)[0][0], addon.eval("return ns.QuestGuide.pins")], "no arrow, no mark, no pins").toEqual([0, "[8] TEST-ONLY Wolves", null]);
-  addon.eval('ns.Options.Show("quests") __click("Quest-start pins on the world map") __click("New mark on quests")');
+  addon.eval('ns.Options.Show("quests") __click("Quest-start pins on the world map") __click("Mark quests new in WoW Forever")');
   expect(addon.eval("return { ns.Settings('QuestGuide').pins, ns.Settings('QuestGuide').newMark }"), "the switches still save").toEqual([false, false]);
 });
 

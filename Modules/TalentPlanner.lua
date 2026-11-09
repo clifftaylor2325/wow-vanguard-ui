@@ -811,8 +811,8 @@ local function rows()
   return {
     { "header", L["Talent planner"] },
     { "text", L["On the talents window, switch Plan on and click talents to set the ranks you want (right-click takes one back). The planned rank sits on each talent, the next point to buy wears a ring, and Spend planned buys the next picks in order. Plans are kept per character and spec."] },
-    { "check", L["At a level-up, say what the plan picks next"], setting("levelPrompt") },
-    { "check", L["Spend planned points by itself at a level-up (buys and applies them, no asking)"], setting("autoSpend") },
+    { "check", L["Say the next pick at a level-up"], setting("levelPrompt") },
+    { "check", L["Spend planned points at a level-up"], setting("autoSpend") },
     { "button", L["Export this spec's plan"], TP.ExportDialog },
     { "button", L["Import a plan"], TP.ImportDialog },
     { "button", L["Clear this spec's plan"], TP.AskClear },
