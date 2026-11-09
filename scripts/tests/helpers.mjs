@@ -843,6 +843,22 @@ export const WINDOWS_ENV = TITLE_LUA + `
   function MirrorTimerContainer:SetupTimer(i)
     local t = select(i, self:GetChildren()) t.StatusBar:SetStatusBarTexture("TEST-ONLY-ART") t:Show()
   end
+  -- Gives the window what its skin declares it needs (GW.Needs) and it lacks: each part a frame (made along its
+  -- path), each method a function that does nothing, each game function a global that does nothing.
+  function __reach(root, path)
+    local t = root
+    for key in path:gmatch("[^.]+") do
+      if key == path:match("([^.]+)$") then return t, key end
+      t[key] = t[key] or CreateFrame("Frame", nil, t)
+      t = t[key]
+    end
+  end
+  function __needs(name)
+    local needs, f = ns.GetModule("Windows").NEEDS[name] or {}, _G[name]
+    for _, path in ipairs(needs.parts or {}) do local t, key = __reach(f, path) t[key] = t[key] or CreateFrame("Frame", nil, t) end
+    for _, path in ipairs(needs.methods or {}) do local t, key = __reach(f, path) t[key] = t[key] or function() end end
+    for _, fn in ipairs(needs.game or {}) do _G[fn] = _G[fn] or function() end end
+  end
 `;
 
 // TEST-ONLY builders for what a game window holds inside its frame (the R2.8-R2.13 windows): __art(f, name) a

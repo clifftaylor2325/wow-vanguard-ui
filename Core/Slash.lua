@@ -662,13 +662,15 @@ local function blockedLines()
   return out
 end
 
--- The /vg errors text: the version line, the client line, the paused sites and blocked calls, then each
--- caught error with its stack.
+-- The /vg errors text: the version line, the client line, the paused sites and blocked calls, each caught error
+-- with its stack, then what was left off because the client differs from what it was written against (ns.notes).
 local function errorsText()
   local lines = { string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()), clientLine() }
   for _, line in ipairs(pausedLines()) do lines[#lines + 1] = line end
   for _, line in ipairs(blockedLines()) do lines[#lines + 1] = line end
   for _, e in ipairs(ns.errors) do lines[#lines + 1] = errorBlock(e) end
+  if #ns.notes > 0 then lines[#lines + 1] = "Left off this session:" end
+  for _, note in ipairs(ns.notes) do lines[#lines + 1] = "  " .. note end
   return plain(table.concat(lines, "\n"))
 end
 
@@ -683,7 +685,7 @@ end
 local function errorsCommand(rest)
   if rest == "clear" then ns.ClearErrors() return chat(L["Cleared."]) end
   if rest == "resume" then return resumeCommand() end
-  if #ns.errors + #ns.paused + #ns.blocked == 0 then return chat(L["No errors caught this session."]) end
+  if #ns.errors + #ns.paused + #ns.blocked + #ns.notes == 0 then return chat(L["No errors caught this session."]) end
   chat(ns.Format(L["{count} error(s), opened in the copy window."], { count = #ns.errors }))
   ns.ShowErrors(L["Vanguard errors: Ctrl+C to copy"], errorsText())
 end
@@ -724,6 +726,7 @@ local function reportHead()
   return { "### Vanguard report v1 ###",
     string.format("Vanguard %s  ·  interface %s  ·  profile %s  ·  %d/%d modules on", version(), interfaceText(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()),
     clientLine(), ns.Client.Line(), restrictionLine(), textLine(), screenLine(), "Modules off: " .. modulesOff(), "Skins: " .. skinsText(),
+    "Left off: " .. (#ns.notes > 0 and table.concat(ns.notes, "; ") or "none"),
     string.format("Errors: %d (%d in all)", #ns.errors, occurrences()) }
 end
 

@@ -234,9 +234,11 @@ local function moduleString(scope, data)
   return "parts", { [scope] = data, parts = { scope } }
 end
 
--- Runs each table's registered upgrade (ns.Migrate) on the payload's settings tables, so a
--- value an older version saved under an old name or meaning is upgraded before it is saved.
+-- Runs the whole-profile upgrades (ns.MigrateProfile), then each table's registered upgrade (ns.Migrate) on the
+-- payload's settings tables, so a value an older version saved under an old name, meaning or table is upgraded
+-- before it is saved.
 local function migrate(data)
+  ns.MigrateProfileTable(data)
   for key, t in pairs(data) do
     if not META[key] and type(t) == "table" then ns.MigrateTable(key, t) end
   end

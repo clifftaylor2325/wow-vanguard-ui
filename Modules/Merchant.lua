@@ -1,13 +1,9 @@
--- Small helpers at a merchant, and a quieter error line:
+-- Small helpers at a merchant, and the game's text in the theme font:
 --   * repair everything with your own gold when you open a merchant who repairs;
 --   * sell your gray items (the server limits how fast items sell, so what's
 --     left is tried again a few times, only while the merchant stays open);
 --   * sell the items on your own sell list, ask first, and buy a stack or the most you can in one click
 --     (off until switched on; Modules/MerchantBulk.lua);
---   * drop the error messages that only repeat what the action bar already
---     shows (ability not ready, not enough rage or energy, no target...).
---     Errors you can act on (out of range, not enough mana, bags full) stay,
---     and still go through the client's own error line.
 --   * the error line, and the zone names shown as you enter a place, in the theme font;
 --     so are the game's scrolling combat text (when you turn it on) and the floating
 --     damage numbers over your target.
@@ -16,18 +12,11 @@ local ADDON, ns = ...
 local L = ns.L
 
 local T = ns.Theme
-local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, errors = true, listSell = false, bulkBuy = true } })
+local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, listSell = false, bulkBuy = true } })
 
 MC.RETRIES, MC.RETRY_AFTER = 3, 0.3
 -- The last bag scanned for sales: the reagent bag (Enum.BagIndex.ReagentBag), after the four ordinary bags.
 MC.LAST_BAG = 5
--- How many of the client's message types the noisy-error scan looks at, at most.
-MC.LAST_MESSAGE_TYPE = 2000
--- The client's own names for the noisy errors (their text is in the player's language).
-MC.NOISE = {
-  "ERR_ABILITY_COOLDOWN", "ERR_SPELL_COOLDOWN", "ERR_ITEM_COOLDOWN", "ERR_OUT_OF_ENERGY", "ERR_OUT_OF_RAGE",
-  "ERR_OUT_OF_FOCUS", "ERR_NO_ATTACK_TARGET", "ERR_GENERIC_NO_TARGET", "SPELL_FAILED_SPELL_IN_PROGRESS",
-}
 
 -- Money as text, the info strip's way.
 local function money(copper)
@@ -99,30 +88,6 @@ local function onMerchantClosed()
   MC.SetOpen(false)
 end
 
--- Errors ------------------------------------------------------------------------------------
-
--- The client's message types for the noisy errors, found by their names (GetGameMessageInfo).
--- The scan stops at the first index the client refuses, or at MC.LAST_MESSAGE_TYPE.
-function MC.NoisyTypes()
-  local names, out = {}, {}
-  for _, name in ipairs(MC.NOISE) do names[name] = true end
-  for index = 1, MC.LAST_MESSAGE_TYPE do
-    local ok, name = pcall(GetGameMessageInfo, index)
-    if not ok then break end
-    if names[name] then out[#out + 1] = index end
-  end
-  return out
-end
-
--- Turns the noisy errors off through the client's own switch for each message type
--- (UIErrorsFrame:SetMessageTypeEnabled). The game's handler stays as it is, with its lines,
--- throttling and sounds, and Vanguard never replaces one of its methods (that would taint it).
-local function filterErrors()
-  local frame = _G.UIErrorsFrame
-  if type(frame) ~= "table" or type(frame.SetMessageTypeEnabled) ~= "function" or type(GetGameMessageInfo) ~= "function" then return end
-  for _, index in ipairs(MC.NoisyTypes()) do frame:SetMessageTypeEnabled(index, false) end
-end
-
 -- HUD text ----------------------------------------------------------------------------------
 
 -- The HUD text in the theme font, with the theme's drop shadow in place of the game's
@@ -178,7 +143,6 @@ function MC.Enable(settings)
   ns.On("MERCHANT_SHOW", onMerchant)
   ns.On("MERCHANT_CLOSED", onMerchantClosed)
   MC.HookSplit()
-  if settings.errors then filterErrors() end
   MC.ThemeFonts()
   MC.ThemeCombatText()
   MC.ThemeDamageFont()

@@ -553,6 +553,13 @@ it("the pull request template has the sections CLAUDE.md asks a pull request for
   expect(headings).toEqual(["## Tasks", "## Tests added", "## Skipped", "## Needs in-game check"]);
 });
 
+it("a pull request's suite run leaves the Retail-only tests to the weekly, hand-started and release runs", () => {
+  const input = workflow("lua-suite.yml").match(/^ {6}retail:\n((?: {8}.*\n)+)/m)?.[1] ?? "";
+  expect(input, "release.yml and a hand-started run keep the default, both clients").toMatch(/^ {8}default: true$/m);
+  expect(workflow("lua-suite.yml"), "the suite skips them only when the input is off").toContain("VG_SKIP_RETAIL: ${{ inputs.retail == false && '1' || '' }}");
+  expect(workflow("full-suite.yml"), "off on a pull request only").toMatch(/^ {6}retail: \$\{\{ github\.event_name != 'pull_request' \}\}$/m);
+});
+
 it("lua-suite runs coverage only when asked, the plain suite otherwise; full-suite turns it off for pull requests", () => {
   const text = workflow("lua-suite.yml");
   expect(text).toMatch(/^ {6}coverage:\n(?: {8}.*\n)* {8}type: boolean\n {8}default: true$/m);
