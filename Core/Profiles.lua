@@ -428,6 +428,7 @@ function ns.SetSpecProfile(profile, spec)
   spec = spec or ns.SpecKey()
   if not spec then return false end
   specMap()[spec] = profile
+  ns.ProfileStagedChanged()
   return true
 end
 

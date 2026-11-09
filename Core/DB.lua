@@ -228,6 +228,12 @@ function ns.ApplyPendingProfile()
   return true
 end
 
+-- Tells the ns.OnProfileStaged listeners that what loads after the reload changed (a staged switch or a spec map
+-- change), so a shown Profiles page rebuilds its marks.
+function ns.ProfileStagedChanged()
+  for _, fn in ipairs(stageListeners) do fn() end
+end
+
 -- Stages a switch to a profile (created empty if new). The running modules keep the active profile's
 -- tables until the reload, so VanguardCharDB.profile and the settings cache stay as they are (a drag
 -- or an accent change still lands in the profile on screen); ns.ApplyPendingProfile applies it. Tells
@@ -236,7 +242,7 @@ end
 function ns.StageProfile(name)
   VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
   VanguardCharDB.pendingProfile = name ~= VanguardCharDB.profile and name or nil
-  for _, fn in ipairs(stageListeners) do fn() end
+  ns.ProfileStagedChanged()
 end
 
 -- Stages a profile the player picked (the list, the picker, a command, an import): it is also the

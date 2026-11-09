@@ -599,7 +599,6 @@ local function useForSpec()
   local name = ns.SelectedProfileName()
   ns.SetSpecProfile(name)
   ns.OfferSpecReload(name)
-  O.Refresh()
 end
 
 -- Profiles, part two: the spec profile (nothing on a client with no specializations).
@@ -609,7 +608,7 @@ local function specRows()
     { "header", L["Specialization"] },
     { "text", specText },
     { "button", L["Use this profile for this spec"], useForSpec },
-    { "button", L["Stop spec switching"], function() ns.SetSpecProfile(nil); O.Refresh() end },
+    { "button", L["Stop spec switching"], function() ns.SetSpecProfile(nil) end },
   }
 end
 
