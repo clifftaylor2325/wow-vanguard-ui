@@ -362,6 +362,17 @@ it("on WoW Forever a staged profile the talents don't override is marked '(after
   addon.eval('ns.Options.Show("profiles")');
   expect([labelCount(addon, "Heal  (after reload)"), labelCount(addon, "Default  (in use until reload)")], "the pick and the running profile are marked").toEqual([1, 1]);
 });
+it("on WoW Forever /vg spec naming a profile for the current talents says it loads at the reload and offers it (H39-16-1)", () => {
+  const addon = foreverCharacter(1, "{}");
+  addon.slash("spec Heal");
+  expect(addon.eval("return ns.ProfileAfterReload()"), "the next login loads Heal").toBe("Heal");
+  expect(addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()"), "the reload is offered").toBe(true);
+  addon.eval('ns.Options.Show("profiles")');
+  expect([labelCount(addon, "Heal  (after reload)"), labelCount(addon, "Default  (in use until reload)")], "the rows say so").toEqual([1, 1]);
+  expect(addon.texts("This character uses Default until you reload, then Heal.").length, "and so does the top line").toBe(1);
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("return VanguardCharDB.guard.profile"), "the logout backup is of Heal").toBe("Heal");
+});
 it("on WoW Forever /vg spec and the Profiles page name the talent group, not the specialization", () => {
   const addon = foreverCharacter(2, "{}");
   addon.slash("spec Heal");

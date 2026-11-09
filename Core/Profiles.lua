@@ -472,11 +472,9 @@ function ns.WarnSpecWins(picked)
 end
 
 -- The profile the next login loads when it differs from the one in use: the current spec's own
--- profile wins over a staged pick (followSpec), else the staged one; nil when nothing changes.
+-- profile (followSpec takes it at login, over a staged pick), else the staged one; nil when nothing changes.
 function ns.ProfileAfterReload()
-  local staged = ns.PendingProfileName()
-  if not staged then return nil end
-  local name = ns.SpecProfile() or staged
+  local name = ns.SpecProfile() or ns.PendingProfileName()
   return name ~= ns.ProfileName() and name or nil
 end
 
