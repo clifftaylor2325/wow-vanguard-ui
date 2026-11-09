@@ -580,6 +580,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: when the main hand's enchant ends, the off hand's cell moves into the first place and its dark sweep keeps the share of time it showed before (it does not jump back to full). Putting an enchant on again starts its sweep full. `/vg errors` stays empty.
 - If it fails, paste: a screenshot before and after the main hand's enchant ends.
 
+### 7.1b Target and focus aura sliders (A3-3)
+
+- Do: target a mob that has a buff and carries one of your debuffs, and `/focus` it. Open `/vg` → Unit frames → Target and focus auras. Drag "Aura icon size" to 30, then let go. Set "Debuffs shown" to 3 and "Target's buffs shown" to 0, then back to 8. Untick "Only your debuffs". Set "Target's buffs" to Important, then Yours, then All. Tick "Timer numbers on the icons". Then pull the mob and, during the fight, drag "Aura icon size" back to 20.
+- Expect: none of the rows carries a reload tag and the Reload button never shows. About a third of a second after each change holds still, the rows under and over the frames are redrawn with it: larger icons (the focus's 2 smaller), three debuffs at most, no buff row at 0, other players' debuffs dimmed once "Only your debuffs" is off, timer numbers on the icons. A change made in the fight does nothing until the fight ends, then applies; `/vg errors` stays empty throughout. [Needs in game: that a row put away (hidden, on no unit) draws nothing beside the new one; that Important shows anything on a WoW Forever target (the client classes the buffs; none may be classed on vanilla spells); how a large buff row sits against the target cast bar above it.]
+- If it fails, paste: a screenshot of the target frame with its rows, the settings you had, and `/vg errors`.
+
 ### 7.2 Cast bars
 
 - Do: cast a spell with a long cast time, and have a mob cast at you.
@@ -696,9 +702,15 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 7.5a Health numbers on enemy plates
 
-- Do: stand near hostile mobs and a friendly NPC with plates on. Open the game's options → Nameplates → Info display and tick Current health percent; look at the plates. Tick Current health value too, then untick the percent. Open `/vg` → Nameplates and untick "Health value on enemy plates". Tick "Health percent on enemy plates" during a fight and watch the plates when it ends. Set Height to 8 on the same page and `/reload`.
+- Do: stand near hostile mobs and a friendly NPC with plates on. Open the game's options → Nameplates → Info display and tick Current health percent; look at the plates. Tick Current health value too, then untick the percent. Open `/vg` → Nameplates and untick "Health value on enemy plates". Tick "Health percent on enemy plates" during a fight and watch the plates when it ends. Drag Height to 8 on the same page.
 - Expect: each box shows its number at the right end of every enemy plate's bar, small and outlined (the value left of the percent when both are on), following the mob's health as you hit it; the friendly NPC's plate shows none. Vanguard's two rows tick and untick with the game's boxes, and the game's boxes follow Vanguard's rows; a row ticked in a fight takes effect when it ends. At height 8 no numbers show. [Needs in game: that the percent reads right on a mob whose health the client hides (it formats the hidden number, which the harness can't), that `CVAR_UPDATE` fires when the game's box changes so the plates follow at once, and how the numbers fit a 10-high bar.]
 - If it fails, paste: a screenshot of a plate and `/vg errors`.
+
+### 7.5b Nameplate sliders (A3-3)
+
+- Do: stand near three or more mobs with enemy plates on, one of them carrying your debuff, and open `/vg` → Nameplates. On the Size tab drag Width from end to end, then Height. On the Auras tab drag "Aura icon size" to 26 and let go, set "Your debuffs shown" to 1, then 6, set "Buffs on players" to 0 near a friendly player with a buff of yours, then to 4, and untick then tick "Timer numbers on your debuffs". On the Display tab untick "Cast bar" while a mob casts, then tick it. Pull the mobs, and during the fight drag Width to 200 and "Aura icon size" to 14; watch the plates when the fight ends. `/reload` and look again.
+- Expect: no row on the page carries a reload tag and the Reload button never shows. The bars follow the Width and Height sliders while you drag; the click area and the cast bar follow the bar. About a third of a second after an aura slider holds still, the icons on every plate are redrawn at the new size or count, with no leftover icons beside them and no hitch; the soft-target icon stays clear of the debuff row. The cast bar goes at once and comes back on the next cast. In the fight nothing changes until it ends, then every plate takes the last values. After the reload the plates look the same as before it. `/vg errors` stays empty throughout. [Needs in game: that a row put away (emptied, hidden) draws nothing; that moving a client aura container out of combat raises nothing; how long remaking the rows of 40 plates takes (`/vg perf`); that a plate first shown again after a change, in and out of combat, ends at the new size; and, in a dungeon with friendly plates the game keeps for itself, that changing a slider raises no forbidden-object error.]
+- If it fails, paste: a screenshot of the plates, the slider values, `/vg perf` if it hitched, and `/vg errors`.
 
 ### 7.6 Fight recap
 
