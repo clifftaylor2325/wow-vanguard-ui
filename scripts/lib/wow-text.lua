@@ -10,6 +10,7 @@
 --     line as tall as the font's size. The text-fit audit (scripts/lib/wow-textfit.lua) runs in it.
 
 local stub = __wfgStub
+local type = __wfgRawType
 local methods = stub.methods
 local EMS = __wfgFontEms or {}
 

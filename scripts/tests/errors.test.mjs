@@ -83,7 +83,7 @@ it("caught errors: without debugstack or an error handler (this stub), and a hid
   expect(lines[0], "the header names the version, an unknown interface version and the counts").toMatch(/^Vanguard \S+  ·  interface \?  ·  1 error\(s\) caught this session \(1 in all\), newest last:$/);
   expect(lines[1], "then the client line").toMatch(/^Client Retail  ·  auras on the/);
   expect(lines.slice(2), "then the error with its count and no stack lines").toEqual([expect.stringMatching(/^TEST-ONLY bare: x  \(x1\)$/)]);
-  const secret = loggedIn('issecretvalue = function(v) return type(v) == "table" and v.__secret == true end');
+  const secret = loggedIn('issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end');
   expect(secret.eval('ns.Report("TEST-ONLY", { __secret = true }) return ns.errors[#ns.errors].text'), "a hidden error value is named, never read").toBe("TEST-ONLY: (a hidden error message)");
 });
 it("caught errors: a game handler that fails or reports again cannot loop, and an empty handler slot", () => {
@@ -239,7 +239,7 @@ it("events: a game handler that fails inside a failing handler keeps the record,
 it("secret checks: the client's check is chosen once and called bare, with no pcall per value", () => {
   const addon = loggedIn(`__asked = 0
     -- TEST-ONLY check: counts each question.
-    issecretvalue = function(v) __asked = __asked + 1 return type(v) == "table" and v.__secret == true end`);
+    issecretvalue = function(v) __asked = __asked + 1 return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end`);
   const out = addon.eval(`local calls, raw = 0, pcall
     __asked = 0
     pcall = function(...) calls = calls + 1 return raw(...) end
@@ -249,7 +249,7 @@ it("secret checks: the client's check is chosen once and called bare, with no pc
   expect(out, "three values asked: three calls to the client's check, none through pcall").toEqual([0, 3, [true, false, 7]]);
 });
 it("plain checks: IsTrue passes only a plain true, and CallIf calls only a function the client has", () => {
-  const addon = loggedIn(`issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  const addon = loggedIn(`issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
     __probeGlobal = function(a) return a * 2 end
     __probe = { Known = function(a) return a + 1 end, Other = 5 }`);
   expect(addon.eval("return { ns.IsTrue(true), ns.IsTrue(false), ns.IsTrue(1), ns.IsTrue({ __secret = true }) }"), "only a plain true is true; a hidden one is no").toEqual([true, false, false, false]);

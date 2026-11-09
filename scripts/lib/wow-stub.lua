@@ -1,6 +1,11 @@
 -- Minimal WoW API stub so addon Lua runs under Node (fengari, Lua 5.3).
 -- TEST-ONLY. Not listed in the TOC and never shipped in game.
 
+-- The harness's own type(): the addon's is replaced once the client is built (wow-world.lua's
+-- world.secretTypes), so a secret answers as the value it hides; every harness file reads this one.
+__wfgRawType = __wfgRawType or type
+local type = __wfgRawType
+
 -- Lua 5.1 fidelity -----------------------------------------------------------------------
 -- The game runs Lua 5.1; fengari is 5.3. These shims make the differences
 -- the addon could meet behave as in game: 5.1 names, and numbers that print

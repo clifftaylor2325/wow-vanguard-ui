@@ -12,7 +12,7 @@ const STABLE = `
     GetStabledPetList = function() return { { name = { __secret = true }, level = 5, familyName = "", loyaltyName = "", happinessLevel = 9, experience = 1, experienceNeeded = 0 } } end,
     GetNextStableSlotCost = function() return 50000 end,
   }
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end`;
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end`;
 
 it("/vg pets lists the pet that is out, then the stabled ones, hiding what the game hides", () => {
   const addon = loggedIn(STABLE);

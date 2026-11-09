@@ -59,7 +59,7 @@ it("your keys: a macro and an item slot are named by kind, an empty slot shows n
 });
 
 it("your keys: a secret icon is never shown", () => {
-  const addon = withKeys("issecretvalue = function(v) return type(v) == 'table' and v.__secret == true end");
+  const addon = withKeys("issecretvalue = function(v) return __wfgRawType(v) == 'table' and rawget(v, '__secret') == true end");
   addon.eval("C_ActionBar.GetActionTexture = function() return { __secret = true } end ns.Options.Refresh()");
   expect(cap(addon, "1").icon, "the icon is dropped").toBe(false);
 });
@@ -148,7 +148,7 @@ it("your keys: a hidden card ignores the modifier", () => {
 });
 
 it("your keys: hidden values and odd buttons never break the card", () => {
-  const addon = withKeys("issecretvalue = function(v) return type(v) == 'table' and v.__secret == true end");
+  const addon = withKeys("issecretvalue = function(v) return __wfgRawType(v) == 'table' and rawget(v, '__secret') == true end");
   addon.eval("GetActionInfo = function() return { __secret = true }, { __secret = true } end ns.Options.Refresh()");
   expect(cap(addon, "1").name ?? null, "a secret kind has no name").toBeNull();
   addon.eval("GetActionInfo = function() return 'spell', { __secret = true } end ns.Options.Refresh()");
