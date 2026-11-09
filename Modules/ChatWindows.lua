@@ -262,6 +262,15 @@ local function sendToTabMenu()
   ns.Chat(L["This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."])
 end
 
+-- Closes a tab once out of combat unless it gained a channel while the close waited (then its tab menu is the
+-- way, as at the press).
+local function closeUnlessChannels(frame)
+  if hasChannels(frame) then return sendToTabMenu() end
+  closeWindow(frame)
+  CW.editing = nil
+  ns.Options.RebuildPage("chat")
+end
+
 -- Closes the edited tab (never the main one or another of the game's own, and one showing channels only from
 -- its own tab menu), out of combat (each tab closed in a fight is closed after it).
 function CW.Close()
@@ -269,7 +278,7 @@ function CW.Close()
   if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat(L["The main chat tab can't be closed."]) end
   if isBuiltin(frame) then return ns.Chat(L["The game's own chat tabs can't be closed."]) end
   if hasChannels(frame) then return sendToTabMenu() end
-  ns.OutOfCombat(function() closeWindow(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab " .. index)
+  ns.OutOfCombat(function() closeUnlessChannels(frame) end, "chat close tab " .. index)
 end
 
 -- Find ------------------------------------------------------------------------------------

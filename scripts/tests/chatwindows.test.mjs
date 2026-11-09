@@ -235,6 +235,17 @@ it("chat tabs: two tabs closed in one fight are both closed when it ends", () =>
   expect(addon.eval("return __allClosed"), "both closed after the fight").toEqual(["ChatFrame2", "ChatFrame3"]);
 });
 
+it("chat tabs: a tab given a channel while its close waited for the fight is not popped in; chat points to its tab menu", () => {
+  const addon = loggedIn(ENV + TABS + "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end");
+  addon.world.combat(true);
+  addon.eval(`ChatFrame2.channelList = {} local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  addon.eval(`ChatFrame2.channelList = { "Trade" }`);
+  addon.world.combat(false);
+  expect(addon.eval("return { __popped == nil, __closed == nil }"), "not popped in, not closed").toEqual([true, true]);
+  expect(chatHas(addon, /This tab shows channels\./), "the hint shows").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat tabs: a new tab with every chat window in use says so and keeps the tab being edited", () => {
   const addon = loggedIn(ENV + "FCF_OpenNewWindow = function() return nil end");
   addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 1 CW.New("Trade")`);
