@@ -296,7 +296,8 @@
       "status chip: in the Like the game's layout the chip sits above the player frame, not over its level and name (B4-4)",
       "status chip: off until switched on, then it names eating, drinking and being well fed with the buff's icon",
       "status chip: on a German client it knows eating, drinking and Well Fed by the client's names",
-      "status chip: with Instance prep's buff checks on it says what is missing, in a warning, with a glyph"
+      "status chip: with Instance prep's buff checks on it says what is missing, in a warning, with a glyph",
+      "status chip: with no room left of the frame it sits above the totem row, or the combo-point row, not over it"
     ],
     "scripts/tests/strips.test.mjs": [],
     "scripts/tests/talents.test.mjs": [],
