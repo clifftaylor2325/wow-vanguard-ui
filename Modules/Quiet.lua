@@ -1,12 +1,62 @@
--- Quiet the game (each off until you switch it on): hide the red error line (but for four errors you
--- must act on: full bags, a full quest log, too many of an item, loot gone), hide the zone and subzone
--- names that fade in on entering an area, and let the camera zoom out further.
+-- Quiet the game (each off until you switch it on, but for the action-bar errors): hide the red error line (but
+-- for four errors you must act on: full bags, a full quest log, too many of an item, loot gone), or only the errors
+-- that repeat what the action bar already shows; hide the zone and subzone names that fade in on entering an area;
+-- let the camera zoom out further; and decline duels, invites and friend requests (Modules/QuietDeclines.lua).
 
 local ADDON, ns = ...
 
 local L = ns.L
 
-local QU = ns.Module("Quiet", { defaults = { errors = false, zoneText = false, camera = 0 } })
+local QU = ns.Module("Quiet", { defaults = {
+  errors = false, barErrors = true, zoneText = false, camera = 0,
+  duels = false, guildInvites = false, strangerGroups = false, friendRequests = false, pvpRelease = false,
+} })
+
+-- Whether a switch of the module is on, while the module is (a switch-off applies at once).
+---@param key string
+---@return boolean
+function QU.Switched(key)
+  return QU.active == true and type(QU.settings) == "table" and QU.settings[key] == true
+end
+
+-- Settings older versions kept in other modules' tables (0.9.4 gathered them here): table -> { old key -> key }.
+QU.MOVED = {
+  AutoAccept = { duels = "duels", guildInvites = "guildInvites", strangerGroups = "strangerGroups", friendRequests = "friendRequests", pvpRelease = "pvpRelease" },
+  Merchant = { errors = "barErrors" },
+}
+
+-- Moves one older table's settings into the profile's Quiet table: a value the player had keeps, off when its
+-- module was switched off (so nothing starts that wasn't running); a value Quiet already has stands. True when
+-- anything moved.
+local function moveFrom(profile, from, keys)
+  local old, off, moved = profile[from], type(profile.modules) == "table" and profile.modules[from] == false, false
+  if type(old) ~= "table" then return false end
+  for oldKey, key in pairs(keys) do
+    if type(old[oldKey]) == "boolean" then
+      profile.Quiet = type(profile.Quiet) == "table" and profile.Quiet or {}
+      if profile.Quiet[key] == nil then profile.Quiet[key] = old[oldKey] and not off end
+      old[oldKey], moved = nil, true
+    end
+  end
+  return moved
+end
+
+-- Quiet's own switches as a switched-off Quiet left the screen: the error line, the zone names, the camera.
+QU.WAS_OFF = { errors = false, zoneText = false, camera = 0 }
+
+-- A profile that had Quiet switched off while its declines and action-bar errors ran under the other modules:
+-- Quiet is switched on with its own switches as they were in effect, so the moved ones keep running and nothing
+-- else on screen changes.
+local function wakeForMoved(profile)
+  if type(profile.modules) ~= "table" or profile.modules.Quiet ~= false then return end
+  profile.modules.Quiet = true
+  for key, value in pairs(QU.WAS_OFF) do profile.Quiet[key] = value end
+end
+ns.MigrateProfile(function(profile)
+  local moved = false
+  for from, keys in pairs(QU.MOVED) do moved = moveFrom(profile, from, keys) or moved end
+  if moved then wakeForMoved(profile) end
+end)
 
 -- The furthest-zoom choices (the game's cameraDistanceMaxZoomFactor); 0 is the game's own setting.
 QU.CAMERA = { { 0, L["The game's setting"] }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 2.6, L["2.6 x (furthest)"] } }
@@ -14,7 +64,7 @@ QU.CAMERA = { { 0, L["The game's setting"] }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 
 -- Hides a frame the game just showed, while the module is on and `key` is switched on.
 local function quiet(frame, key)
   if type(frame) ~= "table" or type(frame.HookScript) ~= "function" then return end
-  frame:HookScript("OnShow", ns.Guard("quiet " .. key, function(f) if QU.active and QU.settings[key] then f:Hide() end end))
+  frame:HookScript("OnShow", ns.Guard("quiet " .. key, function(f) if QU.Switched(key) then f:Hide() end end))
 end
 
 -- How long the error line shows a line, in seconds (Blizzard_UIErrorsFrame: displayDuration 2 plus
@@ -88,11 +138,45 @@ end
 -- is taken off, unless it is one of QU.KEEP; any other is remembered. An error the game doesn't show
 -- adds no line, so it clears nothing.
 local function onLine(frame, text, r, g, b, a, id)
-  if not (QU.active and QU.settings.errors) or readding then return end
+  if not QU.Switched("errors") or readding then return end
   local now = type(GetTime) == "function" and GetTime() or 0
   if isRed(r, g, b) and not kept(id) then return dropRed(frame, now) end
   shown = stillShown(now)
   shown[#shown + 1] = { text = text, r = r, g = g, b = b, a = a, id = id, at = now }
+end
+
+-- The action bar's errors --------------------------------------------------------------------
+
+-- How many of the client's message types the noisy-error scan looks at, at most.
+QU.LAST_MESSAGE_TYPE = 2000
+-- The client's own names for the errors that only repeat what the action bar already shows (their text is in the
+-- player's language): ability not ready, not enough rage or energy, no target. Errors you can act on (out of range,
+-- not enough mana, bags full) stay.
+QU.NOISE = {
+  "ERR_ABILITY_COOLDOWN", "ERR_SPELL_COOLDOWN", "ERR_ITEM_COOLDOWN", "ERR_OUT_OF_ENERGY", "ERR_OUT_OF_RAGE",
+  "ERR_OUT_OF_FOCUS", "ERR_NO_ATTACK_TARGET", "ERR_GENERIC_NO_TARGET", "SPELL_FAILED_SPELL_IN_PROGRESS",
+}
+
+-- The client's message types for the noisy errors, found by their names (GetGameMessageInfo).
+-- The scan stops at the first index the client refuses, or at QU.LAST_MESSAGE_TYPE.
+function QU.NoisyTypes()
+  local names, out = {}, {}
+  for _, name in ipairs(QU.NOISE) do names[name] = true end
+  for index = 1, QU.LAST_MESSAGE_TYPE do
+    local ok, name = pcall(GetGameMessageInfo, index)
+    if not ok then break end
+    if names[name] then out[#out + 1] = index end
+  end
+  return out
+end
+
+-- Turns the noisy errors off through the client's own switch for each message type
+-- (UIErrorsFrame:SetMessageTypeEnabled), at login (a reload applies the switch). The game's handler stays as it
+-- is, with its lines, throttling and sounds, and Vanguard never replaces one of its methods (that would taint it).
+local function filterBarErrors()
+  local frame = _G.UIErrorsFrame
+  if type(frame) ~= "table" or type(frame.SetMessageTypeEnabled) ~= "function" or type(GetGameMessageInfo) ~= "function" then return end
+  for _, index in ipairs(QU.NoisyTypes()) do frame:SetMessageTypeEnabled(index, false) end
 end
 
 -- The error line (UIErrorsFrame): a post-hook on its AddMessage, which never replaces the game's own.
@@ -155,8 +239,9 @@ local function adoptProfilePrior(settings)
   settings.cameraPrior = nil
 end
 
--- The module switched off (Core/Modules.lua): the red errors and zone names show again at once (the hooks stay, idle,
--- until the reload), and the player's own furthest zoom comes back, out of combat.
+-- The module switched off (Core/Modules.lua): the red errors and zone names show again and the declines stop at
+-- once (the hooks stay, idle, until the reload; the action bar's errors come back with it), and the player's own
+-- furthest zoom comes back, out of combat.
 function QU.Disable()
   QU.active = false
   local set = cvarSetter()
@@ -169,7 +254,9 @@ function QU.Enable(settings)
   QU.settings, QU.active = settings, true
   adoptProfilePrior(settings)
   errorLine()
+  if settings.barErrors then filterBarErrors() end
   quiet(_G.ZoneTextFrame, "zoneText")
   quiet(_G.SubZoneTextFrame, "zoneText")
   QU.ApplyCamera()
+  QU.ListenForPrompts()
 end

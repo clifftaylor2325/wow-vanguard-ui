@@ -274,6 +274,7 @@ end
 
 GW.Add("map", { "WorldMapFrame" }, GW.SkinWorldMap)
 GW.AddOnDemand("map", "Blizzard_WorldMap", { "WorldMapFrame" }, GW.SkinWorldMap)
+GW.Needs({ "WorldMapFrame" }, { parts = { "BorderFrame", "NavBar" }, methods = { "SynchronizeDisplayState" } })
 
 -- Quest log inside the map -------------------------------------------------------------------
 
@@ -468,6 +469,7 @@ end
 GW.AddButtons("QuestLogPopupDetailFrame", { "QuestLogPopupDetailFrameAbandonButton", "QuestLogPopupDetailFrameShareButton", "QuestLogPopupDetailFrameTrackButton" })
 GW.Add("map", { "QuestMapFrame" }, GW.SkinQuestMap)
 GW.Add("map", { "QuestLogPopupDetailFrame" }, GW.SkinQuestPopup)
+GW.Needs({ "QuestMapFrame" }, { parts = { "QuestsFrame" }, game = { "QuestLogQuests_Update" } })
 
 -- Battlefield map -----------------------------------------------------------------------------
 
@@ -480,6 +482,7 @@ function GW.SkinBattlefieldMap(map)
 end
 
 GW.AddOnDemand("map", "Blizzard_BattlefieldMap", { "BattlefieldMapFrame" }, GW.SkinBattlefieldMap)
+GW.Needs({ "BattlefieldMapFrame" }, { parts = { "BorderFrame" } })
 
 -- Group finder --------------------------------------------------------------------------------
 
@@ -706,6 +709,8 @@ end
 
 GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGParentFrame" }, GW.SkinLFGParent)
 GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", GW.LFG_PAGES, GW.SkinLFGPage)
+GW.Needs({ "LFGListingFrame" }, { game = { "LFGListingCategorySelection_UpdateCategoryButtons" } })
+GW.Needs({ "LFGBrowseFrame" }, { game = { "LFGBrowseSearchEntry_SetSelection" } })
 GW.AddOnDemand("map", "Blizzard_GroupFinder_VanillaStyle", { "LFGBrowseSearchEntryTooltip" }, GW.SkinTooltipFrame)
 
 -- Legacy system -------------------------------------------------------------------------------
@@ -978,6 +983,7 @@ function GW.SkinLegacy(frame)
 end
 
 GW.AddOnDemand("map", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
+GW.Needs({ "LegacySystemFrame" }, { parts = { "TreePage", "ChallengesPage", "RewardTrackPage" } })
 
 -- Queue status ---------------------------------------------------------------------------------
 
@@ -1005,6 +1011,7 @@ function GW.SkinQueueStatus(frame)
 end
 
 GW.Add("map", { "QueueStatusFrame" }, GW.SkinQueueStatus)
+GW.Needs({ "QueueStatusFrame" }, { methods = { "Update" } })
 
 -- Calendar ---------------------------------------------------------------------------------------
 
@@ -1244,6 +1251,7 @@ function GW.SkinCalendarDialog(frame)
 end
 
 GW.AddOnDemand("map", "Blizzard_Calendar", { "CalendarFrame" }, GW.SkinCalendar)
+GW.Needs({ "CalendarFrame" }, { game = { "CalendarFrame_SetToday" } })
 GW.AddOnDemand("map", "Blizzard_Calendar", {
   "CalendarViewHolidayFrame", "CalendarViewRaidFrame", "CalendarViewEventFrame", "CalendarCreateEventFrame",
   "CalendarMassInviteFrame", "CalendarEventPickerFrame", "CalendarTexturePickerFrame",

@@ -1631,6 +1631,7 @@ const MAP_DETAILS_ENV = PARCHMENT_ENV + `
   panel.QuestsFrame = CreateFrame("Frame", nil, panel)
   panel.QuestsFrame.DetailsFrame = CreateFrame("Frame", nil, panel.QuestsFrame)
   function QuestInfo_Display(_, parent) QuestInfoDescriptionText:SetParent(parent) QuestInfoDescriptionText:SetTextColor(0.2, 0.1, 0) end
+  QuestLogQuests_Update = QuestLogQuests_Update or function() end
 `;
 // Shows a quest in the map's details panel, and whether its text came out light.
 const lightInMap = (addon) => {

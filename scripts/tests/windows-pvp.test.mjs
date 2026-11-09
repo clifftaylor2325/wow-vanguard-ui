@@ -160,7 +160,7 @@ it("S8.1 scoreboards: loaded later (on demand), switched off, or bare", () => {
   expect([windowState(off, "PVPMatchScoreboard").art !== 0, off.eval("return PVPMatchScoreboard.vgWindow == nil")], "with the group off").toEqual([true, true]);
   const bare = loggedIn(PVP_ENV + '__window("PVPMatchScoreboard") __window("PVPMatchResults")');
   bare.eval("PVPMatchScoreboard:Show() PVPMatchResults:Show()");
-  expect([windowState(bare, "PVPMatchResults").panel, windowErrors(bare)], "windows without a table, bar or buttons").toEqual([true, "none"]);
+  expect([windowState(bare, "PVPMatchResults").panel, windowErrors(bare), bare.eval("return #ns.notes")], "windows without a table, bar or buttons, or Forever's without SetupArtwork: skinned, nothing left off").toEqual([true, "none", 0]);
 });
 
 // Queue dialogs -----------------------------------------------------------------------------------
