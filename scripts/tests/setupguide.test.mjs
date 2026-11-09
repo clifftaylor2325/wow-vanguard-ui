@@ -63,12 +63,21 @@ it("guided setup: Undo setup asks, then puts every row and the profile back and 
   nexts(addon, 8);
   expect(allSet(addon)[0].slice(0, 3), "setup's own change leads the list").toEqual(["All set. Done closes setup. This run changed:", "Layout: Centered: healing", "Faster auto-loot: On"]);
   addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b)");
-  expect(addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()"), "it asks first").toBe("Undo everything this setup changed and put the profile back as it was? Done then offers the reload that applies it.");
+  expect(addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()"), "it asks first").toBe("Undo everything this setup changed and put the profile back as it was? Setup then ends and offers the reload that applies it.");
   addon.eval('Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(applied(addon), "every guided row is back as it was").toEqual([false, false, false, false, false, false, false, false, false, false, false, false, false]);
   expect(addon.eval("return { ns.Setup.Step() or 0, VanguardDB.setupDone, ns.Settings('RaidFrames').sortByRole, ns.Settings('positions').uf_player == nil }"), "setup ended as Done, with the profile from before Healing back (no role sort, your frame at its default size)").toEqual([0, true, false, true]);
-  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
-  expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "then the reload that shows the restored profile").toBe("Setup was undone: the profile as it was is back. Reload the UI now to apply it?");
+  expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "then the reload that shows the restored profile, with no export question first (nothing new to keep)").toBe("Setup was undone: the profile as it was is back. Reload the UI now to apply it?");
+});
+
+it("guided setup: Undo setup with the backup profile gone still puts the guided rows back, says so in chat, and ends as an ordinary Done", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  nexts(addon, 8);
+  addon.eval("VanguardDB.profiles['Default backup'] = nil local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b) Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(applied(addon), "every guided row is back as it was").toEqual(Array(13).fill(false));
+  expect(chatHas(addon, /The backup profile is gone, so only the guided steps' settings went back\./), "chat says the profile couldn't come back").toBe(true);
+  expect(addon.eval("return { ns.Setup.Step() or 0, VanguardDB.setupDone, ns.Settings('RaidFrames').sortByRole }"), "setup ended as Done and Healing's settings stay").toEqual([0, true, true]);
 });
 it("guided setup: the game's own rows start on what the game has, Use recommended takes them, and Undo puts the game's values back", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + "__wfgWorld.cvars.nameplateShowEnemies = '0'", { firstRun: true });
@@ -80,7 +89,7 @@ it("guided setup: the game's own rows start on what the game has, Use recommende
   // The game's enemy plates, the furthest-zoom setting and class-coloured names, as they stand now.
   const game = () => addon.eval("return { GetCVar('nameplateShowEnemies'), ns.Settings('Quiet').camera, GetCVar('chatClassColorOverride') }");
   expect(game(), "leaving the step sets the game's plates, the furthest zoom and class-coloured names").toEqual(["1", 2.6, "0"]);
-  expect(addon.eval("return VanguardDB.profiles['Default backup'] == nil"), "the game's settings aren't in the profile, so no backup yet").toBe(true);
+  expect(addon.eval("return VanguardDB.profiles['Default backup'] ~= nil and VanguardDB.profiles['Default backup'].Quiet.camera"), "the profile was backed up first, with the camera as it was").toBe(0);
   nexts(addon, 3);
   expect(allSet(addon)[0].slice(1, 4), "the list names them").toEqual(["Enemy nameplates (the V key): On", "Camera zooms out furthest (2.6 x): On", "Class-coloured names in chat: On"]);
   addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b)");

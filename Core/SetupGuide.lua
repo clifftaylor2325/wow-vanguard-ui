@@ -15,8 +15,8 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 local G = {}
 ns.SetupGuide = G
 
--- The page's width (setup's, inside its margins) and how far the rows' column sits under a page's question.
-local PAGE_W = 440 - 2 * T.SPACE.pad
+-- The page's width: setup's, inside its margins.
+local PAGE_W = ns.Setup.PAGE_W
 
 -- Whether the game's gamepad interface is on (InputUtil, where the client has it): Larger text is recommended then.
 local function gamepad()
@@ -40,8 +40,8 @@ end
 
 -- The rows of each guided step, in order. A row is a caption, the options row(s) it sets ({ page key, English
 -- caption }; a cycle row gives the value that counts as on and the one off is), or setup's own get and set; recommend
--- is true, or a function answering for the role or the client; game marks the game's own settings (no profile backup).
--- A row with no recommend is offered and left as it is by Use recommended.
+-- is true, or a function answering for the role or the client; game marks the game's own settings, which start on
+-- what the game has now on a first run too. A row with no recommend is offered and left as it is by Use recommended.
 G.ROWS = {
   comfort = {
     { key = "larger", caption = L["Larger text (115%)"], recommend = gamepad,
@@ -166,10 +166,10 @@ local function recommended(spec)
   return spec.recommend
 end
 
--- Where a row's pick starts: on a first run, a recommendation for Vanguard's own rows; else what is set now.
+-- Where a row's pick starts: on a first run, on for Vanguard's own rows it recommends on; else what is set now (so
+-- a row the player turned on before a first run ends isn't switched off for them).
 local function startPick(spec)
-  local rec = recommended(spec)
-  if firstRun and not spec.game and rec ~= nil then return rec end
+  if firstRun and not spec.game and recommended(spec) == true then return true end
   return isOn(spec)
 end
 
@@ -218,9 +218,8 @@ local function putBack()
   end
 end
 
--- Undo setup: setup puts the profile back as it was before this run's first change, then every guided row goes
--- back to what it was when setup opened (ns.Setup.Undo runs putBack after the profile, since the backup can hold a
--- game setting's row changed before the first profile change).
+-- Undo setup: every guided row goes back to what it was when setup opened (through its setter, so the screen
+-- follows), then setup puts the profile back as it was before this run's first change (ns.Setup.Undo).
 function G.Undo()
   ns.Setup.Undo(putBack)
 end
@@ -247,11 +246,12 @@ function G.Show(key)
 end
 
 -- Leaving a guided step applies the picks that differ from what is set, after setup's profile backup (the game's
--- own settings aren't in the profile, so they take none). Other steps apply nothing here.
+-- own rows too: the camera's value and the record of the game's old values live in the profile). Other steps apply
+-- nothing here.
 function G.Leave(key)
   for _, spec in ipairs(G.ROWS[key] or {}) do
     if spec.access and picks[spec.key] ~= isOn(spec) then
-      if not spec.game then ns.Setup.Backup() end
+      ns.Setup.Backup()
       setOn(spec, picks[spec.key])
     end
   end
@@ -295,7 +295,7 @@ end
 
 -- Undo setup asks first (what this run changed goes, the profile as it was comes back), then undoes.
 local function askUndo()
-  ns.Ask(L["Undo everything this setup changed and put the profile back as it was? Done then offers the reload that applies it."],
+  ns.Ask(L["Undo everything this setup changed and put the profile back as it was? Setup then ends and offers the reload that applies it."],
     L["Undo"], G.Undo, nil, "danger")
 end
 

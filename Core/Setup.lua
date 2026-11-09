@@ -20,8 +20,9 @@ ns.Setup = S
 
 -- The window's width and its inner margin (a dialog's: T.SPACE.pad); its height fits its tallest page.
 local WIDTH, PAD = 440, T.SPACE.pad
--- A page's width: the window's, inside its margins.
+-- A page's width: the window's, inside its margins (the guided steps, Core/SetupGuide.lua, build to it too).
 local PAGE_W = WIDTH - 2 * PAD
+S.PAGE_W = PAGE_W
 -- Where the pages start: the title line (T.CONTROL.inset), the title and the step caption under it (about 36
 -- units), and a column gap. And where they stop: the footer's pad, button and the gap over it.
 local TOP = T.CONTROL.inset + 36 + T.SPACE.col
@@ -975,26 +976,29 @@ local function afterSetup(firstRun, why)
 end
 
 -- Setup ended (Done, Skip setup, the close button or Escape): lock the frames; after Done or Skip
--- remember that setup ran, else (when it was owed) say it opens again; after a first run's Done
--- suggest exporting a profile string; offer a reload when a module was turned on or the raid tiles changed size.
+-- remember that setup ran, else (when it was owed) say it opens again; after a first run's Done (not an Undo:
+-- there is nothing new to keep) suggest exporting a profile string; offer a reload when a module was turned on
+-- or the raid tiles changed size.
 -- A hide that comes down from UIParent (Alt-Z, a movie or a cinematic) leaves the wizard shown and is no end.
 local function finished()
   if state.paused or frame:IsShown() then return end
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
-  afterSetup(state.complete and state.owed and state.done, reloadReason())
+  afterSetup(state.complete and state.owed and state.done and not state.undone, reloadReason())
   state.reload, state.retile, state.role, state.backup, state.look, state.undone = false, false, false, nil, false, false
   for _, fn in ipairs(S.onEnd) do fn() end
 end
 
--- Undo setup (the All set step): the profile as it was before this run's first change comes back (its frames keep
--- the new spots until the reload Done then offers), then putBack (Core/SetupGuide.lua's) puts the guided rows back,
--- and setup ends as Done, so it doesn't open again.
+-- Undo setup (the All set step): putBack (Core/SetupGuide.lua's) puts the guided rows back through their setters, so
+-- the screen follows at once, then the profile as it was before this run's first change comes back (its frames keep
+-- the new spots until the reload setup then offers), and setup ends as Done, so it doesn't open again. A backup
+-- profile deleted during the run can't come back; chat says so and the end is an ordinary Done.
 ---@param putBack function
 function S.Undo(putBack)
-  if state.backup then ns.CopyProfile(state.backup) end
   putBack()
-  state.undone = true
+  local restored = not state.backup or ns.CopyProfile(state.backup) ~= false
+  if not restored then ns.Chat(L["The backup profile is gone, so only the guided steps' settings went back."]) end
+  state.undone = restored
   complete(true)
 end
 
