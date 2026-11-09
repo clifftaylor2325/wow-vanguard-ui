@@ -26,20 +26,36 @@ QU.MOVED = {
 }
 
 -- Moves one older table's settings into the profile's Quiet table: a value the player had keeps, off when its
--- module was switched off (so nothing starts that wasn't running); a value Quiet already has stands.
+-- module was switched off (so nothing starts that wasn't running); a value Quiet already has stands. True when
+-- anything moved.
 local function moveFrom(profile, from, keys)
-  local old, off = profile[from], type(profile.modules) == "table" and profile.modules[from] == false
-  if type(old) ~= "table" then return end
+  local old, off, moved = profile[from], type(profile.modules) == "table" and profile.modules[from] == false, false
+  if type(old) ~= "table" then return false end
   for oldKey, key in pairs(keys) do
     if type(old[oldKey]) == "boolean" then
       profile.Quiet = type(profile.Quiet) == "table" and profile.Quiet or {}
       if profile.Quiet[key] == nil then profile.Quiet[key] = old[oldKey] and not off end
-      old[oldKey] = nil
+      old[oldKey], moved = nil, true
     end
   end
+  return moved
+end
+
+-- Quiet's own switches as a switched-off Quiet left the screen: the error line, the zone names, the camera.
+QU.WAS_OFF = { errors = false, zoneText = false, camera = 0 }
+
+-- A profile that had Quiet switched off while its declines and action-bar errors ran under the other modules:
+-- Quiet is switched on with its own switches as they were in effect, so the moved ones keep running and nothing
+-- else on screen changes.
+local function wakeForMoved(profile)
+  if type(profile.modules) ~= "table" or profile.modules.Quiet ~= false then return end
+  profile.modules.Quiet = true
+  for key, value in pairs(QU.WAS_OFF) do profile.Quiet[key] = value end
 end
 ns.MigrateProfile(function(profile)
-  for from, keys in pairs(QU.MOVED) do moveFrom(profile, from, keys) end
+  local moved = false
+  for from, keys in pairs(QU.MOVED) do moved = moveFrom(profile, from, keys) or moved end
+  if moved then wakeForMoved(profile) end
 end)
 
 -- The furthest-zoom choices (the game's cameraDistanceMaxZoomFactor); 0 is the game's own setting.

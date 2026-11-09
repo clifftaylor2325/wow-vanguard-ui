@@ -2323,10 +2323,10 @@ end
 -- a function.
 GW.NEED_KINDS = { parts = "table", methods = "function" }
 
--- The first path of a list that does not reach a value of the type wanted from root, or nil.
-local function firstMissing(root, paths, wanted)
+-- The first path of a list that does not reach a value of that type (kind) from root, or nil.
+local function firstMissing(root, paths, kind)
   for _, path in ipairs(paths or {}) do
-    if type(GW.Reach(root, path)) ~= wanted then return path end
+    if type(GW.Reach(root, path)) ~= kind then return path end
   end
 end
 

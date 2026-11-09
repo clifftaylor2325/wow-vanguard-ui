@@ -131,8 +131,6 @@ end
 -- Blizzard_PVPMatch loads at login on Forever (LoadOnDemand 0); registered on demand as well, so a client
 -- that loads it later is covered too.
 GW.AddOnDemand("pvp", "Blizzard_PVPMatch", { "PVPMatchScoreboard", "PVPMatchResults" }, GW.SkinPvPMatch)
-GW.Needs({ "PVPMatchScoreboard" }, { methods = { "SetupArtwork" } })
-GW.Needs({ "PVPMatchResults" }, { methods = { "SetupArtwork", "AddItemReward" } })
 
 -- Queue dialogs ---------------------------------------------------------------------------------
 

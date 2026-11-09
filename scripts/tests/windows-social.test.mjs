@@ -110,8 +110,8 @@ it("open mail: a redraw puts the look back, a second show paints nothing more, t
 it("open mail: a client without the body text, the stationery, the items or the Update method loads cleanly", () => {
   const addon = loggedIn(WINDOWS_ENV + `__window("OpenMailFrame")`);
   addon.eval("OpenMailFrame:Show()");
-  expect([windowState(addon, "OpenMailFrame").panel, addon.eval("return ns.notes")], "without Update the letter keeps the game's look, said once under Left off").toEqual([false, ["window OpenMailFrame: skin left off, the game's window has no Update()"]]);
-  const odd = loggedIn(WINDOWS_ENV + `__window("OpenMailFrame") __needs("OpenMailFrame") OpenMailBodyText = {} OpenMailLetterButton = {}`);
+  expect([windowState(addon, "OpenMailFrame").panel, addon.eval("return #ns.notes")], "skinned without Update (Retail's letter has none), nothing left off").toEqual([true, 0]);
+  const odd = loggedIn(WINDOWS_ENV + `__window("OpenMailFrame") OpenMailBodyText = {} OpenMailLetterButton = {}`);
   odd.eval("OpenMailFrame:Show()");
   expect([windowErrors(addon), windowErrors(odd), addon.eval("return #ns.errors")], "no errors").toEqual(["none", "none", 0]);
 });

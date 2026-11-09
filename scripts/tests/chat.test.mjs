@@ -1477,11 +1477,14 @@ it("quiet the game: a decline says so once per sender every 5 minutes", () => {
   expect(chatCount(addon, /duel from <name>/), "5 minutes on: said again").toBe(2);
 });
 // A profile saved before 0.9.4: the declines and the battleground release under Auto-accept, the action-bar errors
-// switch under Merchant helpers; a second profile had Auto-accept switched off, a third already had Quiet's own.
+// switch under Merchant helpers; a second profile had Auto-accept switched off, a third already had Quiet's own, a fourth
+// had Quiet off while Auto-accept declined, and a fifth has Quiet off with nothing left to move.
 const OLD_PROFILES = `VanguardDB = { version = 2, profiles = {
   Default = { AutoAccept = { summons = true, duels = true, guildInvites = true, strangerGroups = false, friendRequests = true, pvpRelease = true }, Merchant = { repair = true, errors = false } },
   Alt = { modules = { AutoAccept = false }, AutoAccept = { guildInvites = true }, Merchant = { errors = true } },
-  Mixed = { AutoAccept = { duels = true }, Quiet = { duels = false } } } }`;
+  Mixed = { AutoAccept = { duels = true }, Quiet = { duels = false } },
+  Hushed = { modules = { Quiet = false }, AutoAccept = { guildInvites = true }, Quiet = { errors = true, zoneText = true, camera = 2 } },
+  Later = { modules = { Quiet = false }, Quiet = { duels = true } } } }`;
 it("quiet the game: a profile from before 0.9.4 keeps its declines and action-bar errors switch, now Quiet's", () => {
   const addon = loggedIn(INVITE_ENV, { savedVariables: OLD_PROFILES });
   // One saved profile as it stands after login.
@@ -1491,6 +1494,9 @@ it("quiet the game: a profile from before 0.9.4 keeps its declines and action-ba
   expect(addon.eval("local a, m = VanguardDB.profiles.Default.AutoAccept, VanguardDB.profiles.Default.Merchant return { a.duels, a.guildInvites, a.pvpRelease, m.errors }"), "and gone from the old tables").toEqual({});
   expect(p("Alt").Quiet, "a module that was switched off moves its choices off, so nothing starts that wasn't running").toEqual({ guildInvites: false, barErrors: true });
   expect(p("Mixed").Quiet, "a value Quiet already had stands").toEqual({ duels: false });
+  expect([p("Hushed").modules, p("Hushed").Quiet], "Quiet switched off while its declines ran under Auto-accept: on, with its own switches as they were in effect").toEqual([
+    { Quiet: true }, { guildInvites: true, errors: false, zoneText: false, camera: 0 }]);
+  expect(p("Later").modules, "a profile with nothing to move keeps Quiet off").toEqual({ Quiet: false });
   addon.fire("GUILD_INVITE_REQUEST", "<name>");
   addon.update(0);
   expect(addon.eval("return __answers"), "the moved switch works on the running profile").toEqual(["guild", "close GUILD_INVITE"]);
