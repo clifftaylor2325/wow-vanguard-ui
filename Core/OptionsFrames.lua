@@ -70,6 +70,18 @@ local function combatRow()
     liveMethod("UnitFrames", "combatMark", "RefreshCombat"))
 end
 
+-- When the keystone shows: with the Shield look (the default), always, or never.
+local KEYSTONE_CHOICES = { { "auto", L["With the Shield look"] }, { "on", L["Always"] }, { "off", L["Never"] } }
+
+-- The keystone card: when it shows, and whether the global cooldown sweeps its ring (both at once).
+local function keystoneRows()
+  return {
+    { "header", L["Keystone"] },
+    { "cycle", L["Show the keystone"], KEYSTONE_CHOICES, liveMethod("UnitFrames", "keystone", "ApplyKeystone") },
+    check(L["Global cooldown on the keystone"], liveMethod("UnitFrames", "keystoneSweep", "ApplyKeystone")),
+  }
+end
+
 -- The mana bar switch's name, and its tip (its caption before the names were shortened): druids only on WoW
 -- Forever, three more specs on Retail.
 O.MANA_BAR_NAME = ns.ClientData({
@@ -232,5 +244,5 @@ local function raidPageRows()
   }), raidPreviewRows())
 end
 
-O.AddPage({ key = "unitframes", title = L["Unit frames"], icon = "NavUnitFrames", order = 30, rows = function() return append(append(append(append(unitFrameRows(), readoutRows()), castRows()), playerAuraRows()), timerRows()) end })
+O.AddPage({ key = "unitframes", title = L["Unit frames"], icon = "NavUnitFrames", order = 30, rows = function() return append(append(append(append(append(unitFrameRows(), keystoneRows()), readoutRows()), castRows()), playerAuraRows()), timerRows()) end })
 O.AddPage({ key = "raid", title = L["Raid frames"], icon = "NavRaidFrames", order = 40, rows = raidPageRows })

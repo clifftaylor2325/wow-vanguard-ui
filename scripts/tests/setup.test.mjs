@@ -473,14 +473,14 @@ it("the setup comfort step's switch rows grow to a wrapped caption and stack by 
   addon.login();
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
   for (let i = 0; i < 3; i += 1) setupClick(addon, "next");
-  // For each of the four rows: whether its caption is inside it, its height, and whether the next row starts at its bottom.
+  // For each of the five rows: whether its caption is inside it, its height, and whether the next row starts at its bottom.
   const rows = addon.eval(`local p = Vanguard_Setup.pages.comfort local out = {}
     for i, r in ipairs(p.rows) do
       local nextRow = p.rows[i + 1]
       out[i] = { r.label:GetTop() <= r:GetTop() + 0.01 and r.label:GetBottom() >= r:GetBottom() - 0.01, r:GetHeight(), not nextRow or math.abs(nextRow:GetTop() - r:GetBottom()) < 0.01 }
     end return out`);
-  expect(rows.map((r) => r[0]), "every caption sits inside its row").toEqual([true, true, true, true]);
-  expect(rows.map((r) => r[2]), "each row starts where the one above ends").toEqual([true, true, true, true]);
+  expect(rows.map((r) => r[0]), "every caption sits inside its row").toEqual([true, true, true, true, true]);
+  expect(rows.map((r) => r[2]), "each row starts where the one above ends").toEqual([true, true, true, true, true]);
   expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
   expect(addon.eval("local p = Vanguard_Setup.pages.comfort return p.use:GetBottom() >= p:GetBottom() - 0.01"), "and the page is as tall as its last control").toBe(true);
 });

@@ -248,8 +248,12 @@ local DEFAULTS = {
   variant = "default",
   -- Panel corners: "square" (one border language, as always) or "rounded" (T.CORNER_RADIUS arcs).
   corners = "square",
-  -- Shield corners: the frames that ask for them (the unit frames) get T.CORNER_CUT cuts.
+  -- Shield corners: the frames that ask for them (the unit frames) get T.CORNER_CUT cuts; under the Shield HUD look,
+  -- the tools (cast bars, the bar plinth) get them instead.
   shield = true,
+  -- The HUD look (Core/HudLook.lua): "plain" (flat frames as before 0.9.5) or "shield" (every unit frame a shield
+  -- pointing away from your character, fills growing toward it, a brass hairline in your and your target's rims).
+  hudLook = "shield",
   accent = T.PRESETS.brass,
   panel = T.TOKENS.panel,
   inset = T.TOKENS.inset,
@@ -715,6 +719,24 @@ local function pin(t, frame, point, pad)
   t:SetPoint(point, frame, point, outward(point, T.PixelRound(frame, pad or 0)))
 end
 
+-- The corner look, geometry and shield mask helpers (one local: this file is near Lua 5.1's limit of 200 locals).
+-- A painted frame's corner geometry (corner.geometry) is a table: r (each corner's size in the frame's units, 0 for
+-- square), art (each corner's look: "rounded", "cut" or "point"), max (the largest), left and right (each side's
+-- largest) and sides (the corners a bar masked on a side reaches). A plain number stands for one size on all four.
+local corner = {}
+
+-- One corner's size in a geometry (a table or one number; nil is square).
+function corner.at(geo, point)
+  if type(geo) == "table" then return geo.r[point] end
+  return geo or 0
+end
+
+-- A side's largest corner in a geometry ("LEFT" or "RIGHT").
+function corner.sideOf(geo, side)
+  if type(geo) == "table" then return geo[side == "LEFT" and "left" or "right"] end
+  return geo or 0
+end
+
 -- The two corners each edge texture runs between.
 local EDGE_POINTS = {
   top = { "TOPLEFT", "TOPRIGHT" }, bottom = { "BOTTOMLEFT", "BOTTOMRIGHT" },
@@ -733,23 +755,35 @@ T.CORNER_CUT = 8
 T.CORNER_ART = {
   rounded = { line = "CornerLine", fill = "CornerFill", size = T.CORNER_RADIUS },
   cut = { line = "CornerCutLine", fill = "CornerCutFill", size = T.CORNER_CUT },
+  -- A shield point (the Shield HUD look, Core/HudLook.lua): its size is the frame's, and its line is baked per depth (T.PointLine).
+  point = { line = "PointLine", fill = "PointFill" },
 }
 
 -- Pins one edge texture between its two corner points, `out` units past frame, each end stopped
--- `r` units short of the corner (0 runs it into the corner).
-local function placeEdge(t, frame, side, points, out, r)
+-- short of its corner by the corner's size in geo (0 runs it into the corner).
+local function placeEdge(t, frame, side, points, out, geo)
   t:ClearAllPoints()
   for _, point in ipairs(points) do
     local x, y = outward(point, out)
-    local inX, inY = outward(point, -r)
+    local inX, inY = outward(point, -corner.at(geo, point))
     if side == "top" or side == "bottom" then x = x + inX else y = y + inY end
     t:SetPoint(point, frame, point, x, y)
   end
 end
 
--- Pins the four edges `pad` units out past frame (rounded to whole pixels), `r` units short of the corners.
-local function placeEdges(e, frame, pad, r)
-  for side, points in pairs(EDGE_POINTS) do placeEdge(e[side], frame, side, points, T.PixelRound(frame, pad or 0), r or 0) end
+-- Pins the four edges `pad` units out past frame (rounded to whole pixels), short of the corners by geo (a geometry, one
+-- size, or nil for square corners).
+local function placeEdges(e, frame, pad, geo)
+  for side, points in pairs(EDGE_POINTS) do placeEdge(e[side], frame, side, points, T.PixelRound(frame, pad or 0), geo) end
+end
+
+-- Shows the four edges, except a side cut to a shield point: its two cuts meet at mid-height, so the frame has no
+-- outer edge (judged from the geometry, never the frame's size, which a fight may hide).
+function corner.showEdges(e, geo)
+  e.top:Show() e.bottom:Show()
+  local art = type(geo) == "table" and geo.art or nil
+  e.left:SetShown(not (art and art.TOPLEFT == "point"))
+  e.right:SetShown(not (art and art.TOPRIGHT == "point"))
 end
 
 -- Four edge textures around frame, `pad` units out past its edges (sized to one pixel when painted).
@@ -1050,11 +1084,26 @@ local function paintBg(p, opts, rounded)
   if not rounded then shadeBg(p.bg, opts, r, g, b, opts.alpha or a) end
 end
 
--- The corner look and shield mask helpers (one local: this file is near Lua 5.1's limit of 200 locals).
-local corner = {}
-
 -- Texcoords (left, right, top, bottom) flipping the corner art, drawn for the top left, to each corner.
 local CORNERS = { TOPLEFT = { 0, 1, 0, 1 }, TOPRIGHT = { 1, 0, 0, 1 }, BOTTOMLEFT = { 0, 1, 1, 0 }, BOTTOMRIGHT = { 1, 0, 1, 0 } }
+T.CORNER_FLIPS = CORNERS
+
+-- One size and one art on all four corners, as a geometry (art nil with size 0: square, to be shaped per corner).
+function T.UniformCorners(r, art)
+  local geo = { r = {}, art = {} }
+  for point in pairs(CORNERS) do geo.r[point], geo.art[point] = r, art end
+  return corner.finish(geo)
+end
+
+-- Finishes a geometry from its corner sizes: each side's largest, the largest of all, and the mask sides (corner.SIDES
+-- unless the look gave its own).
+function corner.finish(geo)
+  local r = geo.r
+  geo.left, geo.right = math.max(r.TOPLEFT, r.BOTTOMLEFT), math.max(r.TOPRIGHT, r.BOTTOMRIGHT)
+  geo.max = math.max(geo.left, geo.right)
+  geo.sides = geo.sides or corner.SIDES
+  return geo
+end
 
 -- The four corner pieces of `art` on frame at a layer (and sublevel): point -> texture.
 local function cornerPieces(frame, art, layer, sublevel)
@@ -1077,51 +1126,71 @@ local function roundParts(frame, p)
   p.roundSides = p.bg and { solid(frame, "BACKGROUND", nil, "fill"), solid(frame, "BACKGROUND", nil, "fill") } or nil
 end
 
--- Places a set of corner pieces, each an r square at its corner, `out` past frame.
-local function placeCorners(set, frame, out, r)
+-- Places a set of corner pieces, each a square its corner's size at its corner, `out` past frame; a square corner's
+-- piece is hidden.
+local function placeCorners(set, frame, out, geo)
   for point, t in pairs(set or NO_PARTS) do
+    local r = corner.at(geo, point)
     t:ClearAllPoints()
     t:SetPoint(point, frame, point, outward(point, out))
-    t:SetSize(r, r)
+    t:SetSize(math.max(r, 1), math.max(r, 1))
+    t:SetShown(r > 0)
   end
 end
 
--- Places the background between the corners: pulled in r on the left and right, with an r-wide
--- strip down each side between the top and bottom corners (r 0 is the plain full background).
-local function placeSides(p, frame, out, r)
+-- Places one side strip ("LEFT" or "RIGHT") between that side's top and bottom corners, as wide as its larger corner;
+-- hidden when both are square.
+local function placeSideStrip(t, frame, side, out, geo)
+  local r, x = corner.sideOf(geo, side), side == "LEFT" and -out or out
+  t:ClearAllPoints()
+  t:SetPoint("TOP" .. side, frame, "TOP" .. side, x, out - corner.at(geo, "TOP" .. side))
+  t:SetPoint("BOTTOM" .. side, frame, "BOTTOM" .. side, x, corner.at(geo, "BOTTOM" .. side) - out)
+  t:SetWidth(math.max(r, 1))
+  t:SetShown(r > 0)
+end
+
+-- Places the background between the corners: pulled in by each side's largest corner, with a strip down each side
+-- between its top and bottom corners (square corners on a side give the plain full background there).
+local function placeSides(p, frame, out, geo)
   p.bg:ClearAllPoints()
-  p.bg:SetPoint("TOPLEFT", frame, "TOPLEFT", r - out, out)
-  p.bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", out - r, -out)
-  for i, side in ipairs({ "LEFT", "RIGHT" }) do
-    local t, x = p.roundSides[i], side == "LEFT" and -out or out
-    t:ClearAllPoints()
-    t:SetPoint("TOP" .. side, frame, "TOP" .. side, x, out - r)
-    t:SetPoint("BOTTOM" .. side, frame, "BOTTOM" .. side, x, r - out)
-    t:SetWidth(math.max(r, 1))
+  p.bg:SetPoint("TOPLEFT", frame, "TOPLEFT", corner.sideOf(geo, "LEFT") - out, out)
+  p.bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", out - corner.sideOf(geo, "RIGHT"), -out)
+  placeSideStrip(p.roundSides[1], frame, "LEFT", out, geo)
+  placeSideStrip(p.roundSides[2], frame, "RIGHT", out, geo)
+end
+
+-- The art each corner piece shows (weak): piece -> its image and tex coords as one key, so a texture is set only when it changes.
+corner.pieceArt = setmetatable({}, { __mode = "k" })
+
+-- Gives one corner piece (kind "line" or "fill") the art of its corner's look, flipped to its corner: for a point's
+-- line, the one baked for its depth in pixels, cropped to it (T.PointLine, Core/HudLook.lua).
+function corner.piece(t, frame, point, art, r, kind)
+  local name, tc = T.CORNER_ART[art][kind], CORNERS[point]
+  if art == "point" and kind == "line" then name, tc = T.PointLine(r / T.Pixel(frame), point) end
+  local key = name .. table.concat(tc, ",")
+  if corner.pieceArt[t] == key then return end
+  corner.pieceArt[t] = key
+  t:SetTexture(T.Texture(name))
+  t:SetTexCoord(unpack(tc))
+end
+
+-- Gives a set of corner pieces (lines or fills) the art of each corner's look in a geometry.
+function corner.art(set, frame, geo, kind)
+  for point, t in pairs(set or NO_PARTS) do
+    local r = corner.at(geo, point)
+    if r > 0 then corner.piece(t, frame, point, geo.art[point], r, kind) end
   end
 end
 
--- Gives a frame's corner pieces the art of a corner look ("rounded" or "cut") when it changes.
-function corner.art(p, look)
-  if not p.hasRounded or not look or p.look == look then return end
-  p.look = look
-  local art = T.CORNER_ART[look]
-  for _, t in pairs(p.roundLine or NO_PARTS) do t:SetTexture(T.Texture(art.line)) end
-  for _, t in pairs(p.roundFill or NO_PARTS) do t:SetTexture(T.Texture(art.fill)) end
-end
-
--- Shows and places a frame's rounded (or cut) parts for radius r (units), or hides them (r 0) and
--- gives the background its corners back. Nothing is made for a frame that was never rounded.
-local function paintRound(frame, entry, r)
+-- Shows and places a frame's rounded, cut or pointed parts for a geometry, or hides them (geo nil) and
+-- gives the background its corners back. Nothing is made for a frame that was never shaped.
+local function paintRound(frame, entry, geo)
   local p, out = entry.parts, T.PixelRound(frame, entry.opts.pad or 0)
-  if r == 0 and not p.hasRounded then return end
+  if not geo and not p.hasRounded then return end
   if not p.hasRounded then roundParts(frame, p) p.hasRounded = true end
-  for _, key in ipairs({ "roundLine", "roundFill", "roundSides" }) do
-    for _, t in pairs(p[key] or NO_PARTS) do t:SetShown(r > 0) end
-  end
-  if p.bg then placeSides(p, frame, out, r) end
-  placeCorners(p.roundLine, frame, out, r)
-  placeCorners(p.roundFill, frame, out, r)
+  if p.bg then placeSides(p, frame, out, geo) end
+  placeCorners(p.roundLine, frame, out, geo)
+  placeCorners(p.roundFill, frame, out, geo)
   if p.roundLine then colorEdges(p.roundLine, borderColor(entry)) end
 end
 
@@ -1139,20 +1208,27 @@ function corner.look(frame, entry)
   return "rounded"
 end
 
--- How far a painted frame's corners round or cut, in its units, and the look: the look's size in pixels
--- (times the variant's ring on an accent-bordered frame), or 0 for square corners.
-local function roundRadius(frame, entry)
+-- A painted frame's corner geometry now: the HUD look's own for a HUD frame with a role (T.HudCorners, Core/HudLook.lua)
+-- unless the deck rounds it; else one size from its corner look, in pixels (times the variant's ring on an
+-- accent-bordered frame); else nil for square corners.
+function corner.geometry(frame, entry)
+  if not entry.opts.round and entry.opts.role and T.HudCorners then
+    local geo = T.HudCorners(frame, entry)
+    if geo then return corner.finish(geo) end
+  end
   local look, v = corner.look(frame, entry), T.Variant()
-  if not look then return 0 end
-  return T.CORNER_ART[look].size * T.Pixel(frame) * ((entry.opts.accent or entry.opts.border) and v and v.ring or 1), look
+  if not look then return nil end
+  local scale = (entry.opts.accent or entry.opts.border) and v and v.ring or 1
+  return T.UniformCorners(T.CORNER_ART[look].size * T.Pixel(frame) * scale, look)
 end
 
--- Colours and sizes a painted frame's edges, re-pinned `r` short of the corners once it has been rounded.
-local function paintEdges(frame, entry, r)
+-- Colours and sizes a painted frame's edges, re-pinned short of the corners once it has been shaped.
+local function paintEdges(frame, entry, geo)
   local p = entry.parts
   colorEdges(p.edges, borderColor(entry))
   sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
-  if r > 0 or p.hasRounded then placeEdges(p.edges, frame, entry.opts.pad, r) end
+  if geo or p.hasRounded then placeEdges(p.edges, frame, entry.opts.pad, geo) end
+  corner.showEdges(p.edges, geo)
 end
 
 -- Fills (T.FillParts) ------------------------------------------------------------------------
@@ -1167,28 +1243,28 @@ local function roundFillParts(frame, fill)
   for _, t in pairs(fill.roundFill) do fill.textures[#fill.textures + 1] = t t:SetAlpha(alpha) end
 end
 
--- Places a fill's parts `pad` units out past frame for radius r (units): the centre alone while the frame
--- has never been rounded, else the centre pulled in r with the strips and discs around it (as placeSides
--- and placeCorners place the painted background).
-local function placeFill(frame, fill, pad, r)
+-- Places a fill's parts `pad` units out past frame for a geometry: the centre alone while the frame
+-- has never been shaped, else the centre pulled in with the strips and corner pieces around it (as placeSides
+-- and placeCorners place the painted background), in each corner's art.
+local function placeFill(frame, fill, pad, geo)
   local out = T.PixelRound(frame, pad or 0)
-  if r > 0 and not fill.roundSides then roundFillParts(frame, fill) end
+  if geo and not fill.roundSides then roundFillParts(frame, fill) end
   if not fill.roundSides then
     fill.bg:ClearAllPoints()
     pin(fill.bg, frame, "TOPLEFT", pad) pin(fill.bg, frame, "BOTTOMRIGHT", pad)
     return
   end
-  placeSides(fill, frame, out, r)
-  placeCorners(fill.roundFill, frame, out, r)
+  placeSides(fill, frame, out, geo)
+  placeCorners(fill.roundFill, frame, out, geo)
+  corner.art(fill.roundFill, frame, geo, "fill")
 end
 
--- Shows a fill's parts as its state says: the centre while the fill is shown, the strips and discs only
--- while the frame is rounded too.
+-- Shows a fill's parts as its state says: the centre while the fill is shown, each strip and corner piece only
+-- while the fill is shown and its corner (or side) is shaped.
 local function showFillParts(fill)
   fill.bg:SetShown(fill.shown)
-  for _, t in ipairs(fill.textures) do
-    if t ~= fill.bg then t:SetShown(fill.shown and fill.radius > 0) end
-  end
+  for point, t in pairs(fill.roundFill or NO_PARTS) do t:SetShown(fill.shown and corner.at(fill.geo, point) > 0) end
+  for i, t in ipairs(fill.roundSides or NO_PARTS) do t:SetShown(fill.shown and corner.sideOf(fill.geo, i == 1 and "LEFT" or "RIGHT") > 0) end
 end
 
 -- Colours a fill's textures in a token's colour, at an alpha (the token's unless given); remembered for repaints.
@@ -1210,10 +1286,10 @@ function T.FillAlpha(fill, a)
   for _, t in ipairs(fill.textures) do t:SetAlpha(a) end
 end
 
--- Places, shows and tints one of a painted frame's fills, `pad` units out, for radius r.
-local function repaintFill(frame, fill, pad, r)
-  fill.radius = r
-  placeFill(frame, fill, pad, r)
+-- Places, shows and tints one of a painted frame's fills, `pad` units out, for a geometry (nil: square).
+local function repaintFill(frame, fill, pad, geo)
+  fill.geo, fill.radius = geo, geo and geo.max or 0
+  placeFill(frame, fill, pad, geo)
   showFillParts(fill)
   T.TintFill(fill, fill.token, fill.alpha)
 end
@@ -1231,7 +1307,7 @@ function T.FillParts(frame, layer, sublevel, token, alpha)
     entry.fills = entry.fills or {}
     entry.fills[#entry.fills + 1] = fill
   end
-  repaintFill(frame, fill, entry and entry.opts.pad, entry and entry.radius or 0)
+  repaintFill(frame, fill, entry and entry.opts.pad, entry and entry.geo)
   return fill
 end
 
@@ -1246,51 +1322,57 @@ corner.SIDES = { TOP = { "TOPLEFT", "TOPRIGHT" }, BOTTOM = { "BOTTOMLEFT", "BOTT
 corner.MASK_ART = {
   cut = { TOPLEFT = "CornerCutMask", TOPRIGHT = "CornerCutMaskTR", BOTTOMLEFT = "CornerCutMaskBL", BOTTOMRIGHT = "CornerCutMaskBR" },
   rounded = { TOPLEFT = "CornerRoundMask", TOPRIGHT = "CornerRoundMaskTR", BOTTOMLEFT = "CornerRoundMaskBL", BOTTOMRIGHT = "CornerRoundMaskBR" },
+  point = { TOPLEFT = "PointMask", TOPRIGHT = "PointMaskTR", BOTTOMLEFT = "PointMaskBL", BOTTOMRIGHT = "PointMaskBR" },
 }
 
--- Two masks on owner (the frame a masked texture belongs to), one at each of frame's corners on side;
--- their art follows the frame's corner look (corner.maskArt).
-function corner.maskSet(owner, frame, side)
-  local set = {}
-  for _, point in ipairs(corner.SIDES[side]) do
-    local m = owner:CreateMaskTexture()
+-- Two masks on owner (the frame a masked texture belongs to) for the textures that reach frame's corners on a
+-- side; corner.placeMasks puts each at a corner with its art.
+function corner.maskSet(owner, side)
+  return { side = side, masks = { owner:CreateMaskTexture(), owner:CreateMaskTexture() } }
+end
+
+-- The image each mask shows (weak): mask -> image name.
+corner.maskLook = setmetatable({}, { __mode = "k" })
+
+-- Gives a mask its corner's image for a look, clamped to white past its edges so it masks only its corner; plain
+-- white (nothing masked) at a square corner.
+function corner.maskArt(m, art, point)
+  local name = art and T.Texture(corner.MASK_ART[art][point]) or T.WHITE
+  if corner.maskLook[m] == name then return end
+  corner.maskLook[m] = name
+  m:SetTexture(name, "CLAMPTOWHITE", "CLAMPTOWHITE")
+end
+
+-- Places a set's two masks at the corners its side reaches under frame's geometry, each its corner's size
+-- (never under a pixel) with its corner's art.
+function corner.placeMasks(set, frame, geo)
+  local px = T.Pixel(frame)
+  for i, point in ipairs(geo.sides[set.side]) do
+    local m, r = set.masks[i], corner.at(geo, point)
+    m:ClearAllPoints()
     m:SetPoint(point, frame, point)
-    set[point] = m
+    m:SetSize(math.max(r, px), math.max(r, px))
+    corner.maskArt(m, r > 0 and geo.art[point] or nil, point)
   end
-  return set
 end
 
--- The corner look each set of masks has art for (set -> look).
-corner.setLook = setmetatable({}, { __mode = "k" })
-
--- Gives a set of masks the art of a corner look (cut or rounded) when it changes, each corner's own
--- image, clamped to white past its edges so each one masks only its corner.
-function corner.maskArt(set, look)
-  if corner.setLook[set] == look then return end
-  for point, m in pairs(set) do
-    m:SetTexture(T.Texture(corner.MASK_ART[look][point]), "CLAMPTOWHITE", "CLAMPTOWHITE")
-  end
-  corner.setLook[set] = look
-end
-
--- Puts a masked texture's masks on while its frame's corners are cut, and takes them off otherwise.
+-- Puts a masked texture's masks on while its frame's corners are shaped, and takes them off otherwise.
 function corner.maskTexture(item, on)
   if item.on == on then return end
   item.on = on
-  for _, m in pairs(item.set) do
+  for _, m in ipairs(item.set.masks) do
     if on then item.region:AddMaskTexture(m) else item.region:RemoveMaskTexture(m) end
   end
 end
 
--- Sizes a painted frame's masks to its corners, gives them its look's art, and puts them on its masked
--- textures while its corners are cut or rounded.
+-- Places a painted frame's masks at its shaped corners with their art, and puts them on its masked textures
+-- while its corners are shaped.
 function corner.paintMasks(frame, entry)
-  local size = math.max(entry.radius, T.Pixel(frame))
+  local geo = entry.geo
   for _, set in pairs(entry.maskSets) do
-    if entry.look then corner.maskArt(set, entry.look) end
-    for _, m in pairs(set) do m:SetSize(size, size) end
+    if geo then corner.placeMasks(set, frame, geo) end
   end
-  for _, item in ipairs(entry.masked) do corner.maskTexture(item, entry.look ~= nil) end
+  for _, item in ipairs(entry.masked) do corner.maskTexture(item, geo ~= nil) end
 end
 
 -- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners on one
@@ -1305,7 +1387,7 @@ function T.ShieldMask(frame, regions, side)
   entry.masked, entry.maskSets, entry.maskedBy = entry.masked or {}, entry.maskSets or {}, entry.maskedBy or {}
   for _, region in ipairs(regions) do
     local key = tostring(region:GetParent()) .. side
-    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(region:GetParent(), frame, side)
+    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(region:GetParent(), side)
     if not entry.maskedBy[region] then corner.addMasked(entry, region, entry.maskSets[key]) end
   end
   corner.paintMasks(frame, entry)
@@ -1317,23 +1399,53 @@ function corner.addMasked(entry, region, set)
   entry.masked[#entry.masked + 1] = { region = region, set = set }
 end
 
--- Paints a frame's corners for radius r in a look: the rounded or cut parts, their art, and its shield masks.
-function corner.paintCorners(frame, entry, r, look)
-  paintRound(frame, entry, r)
-  corner.art(entry.parts, look)
+-- Paints a frame's corners for a geometry: the shaped parts, their art, and its shield masks.
+function corner.paintCorners(frame, entry, geo)
+  paintRound(frame, entry, geo)
+  corner.art(entry.parts.roundLine, frame, geo, "line")
+  corner.art(entry.parts.roundFill, frame, geo, "fill")
   if entry.masked then corner.paintMasks(frame, entry) end
+end
+
+-- A HUD frame's hairline parts (opts.hair): four edges and four corner pieces, drawn one pixel inside the border.
+local function hairParts(frame)
+  local layer, sub = edgeLayer(frame)
+  return { edges = edges(frame, 0), corners = cornerPieces(frame, T.CORNER_ART.cut.line, layer, sub) }
+end
+
+-- Places and colours a frame's hairline (opts.hair, a token): one-pixel lines a pixel inside the border, following its
+-- corners (each corner's piece shifted a pixel in, so a point's line runs parallel to its cut), or hides it with the
+-- token nil. Made the first time a frame asks for one.
+function corner.paintHair(frame, entry, geo)
+  local p, token, inset = entry.parts, entry.opts.hair, -T.Pixel(frame)
+  if not p.hair then if not token then return end p.hair = hairParts(frame) end
+  if token then
+    placeEdges(p.hair.edges, frame, inset, geo) sizeEdges(p.hair.edges, frame)
+    placeCorners(p.hair.corners, frame, inset, geo) corner.art(p.hair.corners, frame, geo, "line")
+    for _, t in pairs(p.hair.edges) do T.Tint(t, token) end
+    for _, t in pairs(p.hair.corners) do T.Tint(t, token) end
+  end
+  for _, t in pairs(p.hair.edges) do t:SetShown(token ~= nil) end
+  if token then corner.showEdges(p.hair.edges, geo) else for _, t in pairs(p.hair.corners) do t:Hide() end end
+end
+
+-- The sheen and bevel lines of a painted frame, clear of its corners' largest size.
+local function paintTrim(frame, entry)
+  local p, r = entry.parts, entry.radius
+  if p.sheen then T.Tint(placeSheen(p.sheen, frame, entry.opts.pad, p.bevel and T.BEVEL.sheenRow, r), "sheen") end
+  if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
 end
 
 -- Applies the current colors (and pixel size) to one painted frame.
 local function repaint(frame, entry)
-  local p, r, look = entry.parts, roundRadius(frame, entry)
-  entry.radius, entry.look = r, look
-  corner.paintCorners(frame, entry, r, look)
-  if p.bg then paintBg(p, entry.opts, r > 0); T.PaintPanelSurface(frame, entry) end
-  if p.edges then paintEdges(frame, entry, r) end
-  if p.sheen then T.Tint(placeSheen(p.sheen, frame, entry.opts.pad, p.bevel and T.BEVEL.sheenRow, r), "sheen") end
-  if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
-  for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, r) end
+  local p, geo = entry.parts, corner.geometry(frame, entry)
+  entry.geo, entry.radius, entry.look = geo, geo and geo.max or 0, geo and "shaped" or nil
+  corner.paintCorners(frame, entry, geo)
+  if p.bg then paintBg(p, entry.opts, geo ~= nil); T.PaintPanelSurface(frame, entry) end
+  if p.edges then paintEdges(frame, entry, geo) end
+  if p.hair or entry.opts.hair then corner.paintHair(frame, entry, geo) end
+  paintTrim(frame, entry)
+  for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, geo) end
   if entry.paint then entry.paint(entry, frame) end
 end
 
@@ -1430,6 +1542,35 @@ function T.SetBorder(frame, rgb)
   repaint(frame, entry)
 end
 
+-- Sets a painted HUD frame's hairline to a token name (followed live), or takes it off with nil.
+---@param frame table a painted frame
+---@param token string|nil
+function T.SetHairline(frame, token)
+  local entry = painted[frame]
+  if not entry or entry.opts.hair == token then return end
+  entry.opts.hair = token
+  repaint(frame, entry)
+end
+
+-- How far a painted frame's corner is shaped, in its units (0 for a square corner or an unpainted frame).
+---@param frame table
+---@param point string "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT" or "BOTTOMRIGHT"
+---@return number
+function T.CornerAt(frame, point)
+  local entry = painted[frame]
+  return corner.at(entry and entry.geo, point)
+end
+
+-- A painted frame's corner look at a corner ("rounded", "cut" or "point"), or nil for a square one.
+---@param frame table
+---@param point string "TOPLEFT", "TOPRIGHT", "BOTTOMLEFT" or "BOTTOMRIGHT"
+---@return string|nil
+function T.CornerLook(frame, point)
+  local entry = painted[frame]
+  local geo = entry and entry.geo
+  return type(geo) == "table" and geo.art[point] or nil
+end
+
 -- How far a painted panel reaches out past its frame (units; 0 when it doesn't, or the frame isn't painted).
 function T.Padding(frame)
   local entry = painted[frame]
@@ -1496,7 +1637,7 @@ end
 function T.ShowInnerRing(e, frame, token, on)
   if on then
     local entry = painted[frame]
-    placeEdges(e, frame, -T.Pixel(frame), entry and roundRadius(frame, entry) or 0)
+    placeEdges(e, frame, -T.Pixel(frame), entry and entry.geo)
     for _, t in pairs(e) do T.Tint(t, token) end
     sizeEdges(e, frame)
   end

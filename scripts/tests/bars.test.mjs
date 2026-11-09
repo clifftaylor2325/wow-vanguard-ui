@@ -905,8 +905,9 @@ it("bar 1's special pages fall back to 16, 18 and 17 when the client has no gett
 it("bar backing: a flat panel under each bar's buttons on Classic look or when asked for, live with the setting and the theme", () => {
   // Bar 1's backing as [shown, child of the bar, left offset, bottom offset], or false when it was never made.
   const backing = (addon) => addon.eval("local f = Vanguard_Bar1.vgBacking return f and { f:IsShown(), f:GetParent() == Vanguard_Bar1, f.__points.TOPLEFT.x, f.__points.BOTTOMRIGHT.y } or false");
-  const plain = loggedIn(ACTIONS_ENV);
-  expect(backing(plain), "the default theme has no backing").toBe(false);
+  // On the Plain HUD look: Shield's Auto puts a plinth under the bars (hudlook.test.mjs).
+  const plain = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { hudLook = "plain" } } } }' });
+  expect(backing(plain), "the default theme on Plain has no backing").toBe(false);
   plain.eval('ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()');
   expect(backing(plain), "switching to Classic look puts one under the bar, a unit and a half out past the buttons' edge, no reload").toEqual([true, true, -4, -4]);
   plain.eval('ns.GetModule("ActionBars").settings.backing = "off" ns.GetModule("ActionBars").UpdateBackings()');

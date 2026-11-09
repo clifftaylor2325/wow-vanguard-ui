@@ -27,9 +27,10 @@ it("guided setup: the four guided steps come after Look, each with its rows, the
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
   nexts(addon, 3);
   expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "Comfort is step 4").toBe("Step 4 of 9 · Comfort");
-  expect(rows(addon, "comfort"), "four comfort rows, offered (no controller, so Larger text isn't recommended), all off").toEqual([["larger", false, false], ["assist", false, false], ["calm", false, false], ["motion", false, false]]);
+  expect(rows(addon, "comfort"), "five comfort rows: four offered (no controller, so Larger text isn't recommended), all off, and the Shield HUD look recommended and on").toEqual([["larger", false, false], ["assist", false, false], ["calm", false, false], ["motion", false, false], ["hud", true, true]]);
+  flip(addon, "comfort", 5);
   setupClick(addon, "next");
-  expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "then the game's settings").toBe("Step 5 of 9 · Game settings");
+  expect(addon.eval("return { Vanguard_Setup.caption:GetText(), ns.Theme.Settings().hudLook }"), "then the game's settings; the HUD look row switched off left Plain behind").toEqual(["Step 5 of 9 · Game settings", "plain"]);
   expect(rows(addon, "game").map((r) => [r[0], r[2]]), "three game rows, all recommended").toEqual([["plates", true], ["camera", true], ["classNames", true]]);
   setupClick(addon, "next");
   expect(rows(addon, "helpers"), "a first run starts the helpers on their recommendation: all but the chat filter (A1-4: offered, not recommended) and quest automation").toEqual([["loot", true, true], ["filter", false, false], ["history", true, true], ["ranks", true, true], ["mail", true, true], ["quests", false, false]]);
@@ -185,6 +186,11 @@ it("guided setup: All set names a screen preset, Pixel-perfect or Fit, and the l
   preset.eval('__click("1440p")');
   nexts(preset, 7);
   expect(allSet(preset)[0][1], "a preset by its name").toBe("Screen: 1440p");
+  // TEST-ONLY: the layout list loses the picked layout before All set, as a client that dropped a layout would stand.
+  const dropped = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  dropped.eval('__click("Centered: tanking") table.remove(ns.Setup.LAYOUTS, 2)');
+  nexts(dropped, 8);
+  expect(allSet(dropped)[0][1], "a layout the list no longer has is named by its key").toBe("Layout: tank");
 });
 it("guided setup: a game row switched off again gets the value the game counts as off, not a plain false", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });

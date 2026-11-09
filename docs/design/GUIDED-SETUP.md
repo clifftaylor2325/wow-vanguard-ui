@@ -29,7 +29,7 @@ Recommended: **nine steps** (ten for a new character, with Profile first): the e
 | 1 | Layout | Role layout or Keep | as today |
 | 2 | Screen | Screen preset, Pixel-perfect, Fit, or Keep | as today |
 | 3 | Look | Accent, raid frame style | as today, minus its three switches |
-| 4 | Comfort | Larger text, Safer colours, Calm HUD, Reduce motion | moves Look's switches here, adds Reduce motion |
+| 4 | Comfort | Larger text, Safer colours, Calm HUD, Reduce motion, Shield HUD look | moves Look's switches here, adds Reduce motion and the HUD look |
 | 5 | Game settings | The game's own settings Vanguard can set, each showing what the game has now | **new** |
 | 6 | Helpers | Vanguard's errand and chat helpers that ship off | **new** |
 | 7 | Combat | Role-based extras, extra action bars, key setup | **new** |
@@ -53,6 +53,7 @@ Each row shows its caption, with `· recommended` after it while Vanguard recomm
 | Colour vision: Safer colours | Off | Off | A need, not a taste; offered, never pushed |
 | Calm HUD out of combat | Off | Off | Some players love it, many miss their bars; offered |
 | Reduce motion | Off | Off | Offered here so players who need it find it |
+| Shield HUD look | On (Shield) | On | The signature look; the row turns it back on for a profile that kept Plain, or off for one that prefers the flat frames |
 
 ### Step 5, Game settings (the game's own; Vanguard records the old value so turning it back puts yours back)
 

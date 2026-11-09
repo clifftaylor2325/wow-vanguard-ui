@@ -218,16 +218,28 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- Look, the shape of things: variant, corners, panel texture and ornament rows.
-local function lookShapeRows()
+-- HUD, the HUD's shape: the HUD look and the shield corners, each with its note.
+local function hudRows()
   return {
+    { "header", L["HUD"] },
+    { "cycle", L["HUD look"], T.HudLookChoices(), liveThemeSetting("hudLook") },
+    { "text", L["Shield: every unit frame a shield pointing away from you, the crest on a rail between your frame and your target's. Plain: flat frames."],
+      "note" },
+    check(L["Shield corners on unit frames"], liveThemeSetting("shield")),
+    { "text", L["With the Shield look, the cuts go to the cast bars and the bar plinth instead."], "note" },
+  }
+end
+
+-- Look, the shape of things: variant, corners, panel texture and the ornament rows.
+local function lookShapeRows()
+  local rows = {
     { "cycle", L["Theme variant"], VARIANT_CHOICES, variantSetting() },
     { "cycle", L["Corners"], CORNER_CHOICES, liveThemeSetting("corners") },
     { "cycle", L["Panel texture"], T.PanelTextureChoices(), liveThemeSetting("panelTexture") },
-    check(L["Shield corners on unit frames"], liveThemeSetting("shield")),
-    check(L["Window ornaments"], liveThemeSetting("ornaments")),
-    { "text", L["A brass rule or corners on large windows."], "note" },
   }
+  rows[#rows + 1] = check(L["Window ornaments"], liveThemeSetting("ornaments"))
+  rows[#rows + 1] = { "text", L["A brass rule or corners on large windows."], "note" }
+  return rows
 end
 
 -- Look, the font, text size and faction rows, then the shape rows. A caption is a noun; what it needs
@@ -340,11 +352,11 @@ local function motionRows()
   }
 end
 
--- General: the settings-loss notice when there is one (Core/SettingsGuard.lua), look, bars, motion, the Calm HUD
+-- General: the settings-loss notice when there is one (Core/SettingsGuard.lua), look, HUD, bars, motion, the Calm HUD
 -- (Core/OptionsFrames.lua), layout and frame sizes.
 local function generalRows()
   local rows = append(ns.SettingsGuard.Rows(), lookRows())
-  for _, card in ipairs({ barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows() }) do append(rows, card) end
+  for _, card in ipairs({ hudRows(), barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows() }) do append(rows, card) end
   return rows
 end
 

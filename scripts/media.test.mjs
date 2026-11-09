@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { orphanMedia, staleMedia } from "./build-media.mjs";
 import { fontFacts } from "./lib/truetype.mjs";
 import { crest, crestNames } from "./lib/media-crests.mjs";
-import { ICONS, ICON_SIZES, MEDIA, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
+import { ICONS, ICON_SIZES, MEDIA, POINT_DEPTHS, SILHOUETTES, SIZED_ICONS } from "./lib/media-sources.mjs";
 import { SURFACES, SURFACE_MAX_ALPHA } from "./lib/media-surfaces.mjs";
 import { SCENES, readPng, scene } from "./lib/media-scenes.mjs";
 import { paintedArt } from "./lib/media-painted.mjs";
@@ -125,6 +125,8 @@ const SIZED_NAMES = SIZED_ICONS.flatMap((n) => ICON_SIZES.map((s) => `Media/Icon
 const ORNAMENT_NAMES = [32, 64].flatMap((size) => ["TL", "TR", "BL", "BR"].map((key) => `Media/Textures/OrnamentCorner${size}${key}.tga`));
 // The rule motif (A2) and the ornate ring (A3), each at two bakes, and the plain ring the ornate one replaces while ornaments are on (all picked by name in the Lua).
 const RULE_RING_NAMES = [...Object.keys(ORNAMENT_RULES), ...Object.keys(ORNAMENT_ROUND), "RoundRing"].map((n) => `Media/Textures/${n}.tga`);
+// The shield points (Core/HudLook.lua): the line at each baked depth, picked by T.PointLine, and the fill and masks.
+const POINT_NAMES = [...POINT_DEPTHS.map((d) => `Media/Textures/PointLine${d}.tga`), ...["PointFill", "PointMask", "PointMaskTR", "PointMaskBL", "PointMaskBR"].map((n) => `Media/Textures/${n}.tga`)];
 const BUILT_NAMES = ["Media/Textures/Shadow.tga", "Media/Textures/Glow.tga", "Media/Textures/CornerLine.tga", "Media/Textures/CornerFill.tga", "Media/Textures/CornerCutLine.tga", "Media/Textures/CornerCutFill.tga", "Media/Textures/CornerCutMask.tga", "Media/Textures/CornerCutMaskTR.tga", "Media/Textures/CornerCutMaskBL.tga", "Media/Textures/CornerCutMaskBR.tga", "Media/Textures/CornerRoundMask.tga", "Media/Textures/CornerRoundMaskTR.tga", "Media/Textures/CornerRoundMaskBL.tga", "Media/Textures/CornerRoundMaskBR.tga", "Media/Icons/Maximize.tga", "Media/Icons/Minimize.tga",
   ...["Magic", "Curse", "Disease", "Poison"].map((t) => `Media/Icons/Dispel${t}.tga`), "Media/Icons/Warn.tga", "Media/Icons/QuestBang.tga", "Media/Icons/QuestQuery.tga", "Media/Icons/Pin.tga"];
 
@@ -136,7 +138,7 @@ function mediaImages() {
 
 // Every image in Media/ is named by the addon (or built by name), so none ships unused.
 function noUnusedMedia() {
-  const used = new Set([...namedMedia(), ...BUILT_NAMES, ...ORNAMENT_NAMES, ...RULE_RING_NAMES, ...SIZED_NAMES]);
+  const used = new Set([...namedMedia(), ...BUILT_NAMES, ...ORNAMENT_NAMES, ...RULE_RING_NAMES, ...SIZED_NAMES, ...POINT_NAMES]);
   expect(mediaImages().filter((f) => !used.has(f)), "Media images the addon never uses (remove them in scripts/lib/media-sources.mjs)").toEqual([]);
 }
 

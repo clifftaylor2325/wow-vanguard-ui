@@ -257,20 +257,22 @@ end
 -- How far (units) a bar's backing reaches out past its buttons.
 AB.BACKING_PAD = T.SPACE.tight
 
--- Whether the bars wear a backing: the setting says "on", or says "auto" (the default) and the
--- theme variant asks for it (Classic look).
+-- Whether the bars wear a backing: the setting says "on", or says "auto" (the default) and the theme variant
+-- (Classic look) or the Shield HUD look asks for it (the plinth under the bars).
 function AB.WantsBacking()
   local mode = AB.settings.backing
-  return mode == "on" or (mode ~= "off" and (T.Variant() or {}).barBacking == true)
+  if mode == "on" or mode == "off" then return mode == "on" end
+  return (T.Variant() or {}).barBacking == true or T.HudLook() == "shield"
 end
 
--- Makes a bar's backing: a flat panel in the HUD look a level under the buttons, taking no mouse.
+-- Makes a bar's backing: a flat panel in the HUD look a level under the buttons, taking no mouse; a tool of the
+-- look, so under Shield its corners take the shield cuts.
 local function makeBacking(bar)
   local f = CreateFrame("Frame", nil, bar)
   f:SetFrameLevel(math.max(0, bar:GetFrameLevel() - 1))
   f:SetPoint("TOPLEFT", bar, "TOPLEFT", -AB.BACKING_PAD, AB.BACKING_PAD)
   f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", AB.BACKING_PAD, -AB.BACKING_PAD)
-  T.HudPanel(f)
+  T.HudPanel(f, { role = "tool" })
   bar.vgBacking = f
   return f
 end
