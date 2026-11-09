@@ -141,7 +141,6 @@ Modules/KeybindsLearn.lua
 Modules/SpecialBars.lua
 Modules/Minimap.lua
 Modules/Waypoints.lua
-Modules/GuideData.lua
 Modules/Probe.lua
 Modules/MinimapButtons.lua
 Modules/Chat.lua
