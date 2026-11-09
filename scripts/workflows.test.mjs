@@ -73,12 +73,12 @@ it("the seed step comes before the coverage run", () => {
   expect(text.indexOf("- run: npm run coverage")).toBeGreaterThan(seed);
 });
 
-it("the raid bench runs after the coverage run, appends to the job summary, has no budget and keeps its JSON", () => {
+it("the raid bench runs after the coverage run, appends to the job summary, budgets instructions not time, and keeps its JSON", () => {
   const text = workflow("lua-suite.yml");
   const step = stepNamed(text, "Raid benchmark (harness measurement)");
-  expect(runBlocks(step)).toEqual(['npm run bench -- --summary "$GITHUB_STEP_SUMMARY"']);
+  expect(runBlocks(step)).toEqual(['npm run bench -- --summary "$GITHUB_STEP_SUMMARY" --instr-budget scripts/bench-budget.json']);
   expect(text.indexOf("- name: Raid benchmark (harness measurement)")).toBeGreaterThan(text.indexOf("- run: npm run coverage"));
-  expect(step, "a slowdown never fails the run").not.toContain("--budget");
+  expect(step, "a slowdown in time never fails the run").not.toMatch(/--budget /);
   expect(text).toMatch(/^ {12}coverage\/bench\/\*\.json$/m);
 });
 
