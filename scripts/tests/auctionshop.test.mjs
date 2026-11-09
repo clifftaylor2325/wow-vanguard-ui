@@ -100,6 +100,19 @@ it("result rows show name, cheapest price and quantity; a click opens the item's
   addon.click(`${VIEW}.back`);
   expect([shopRow(addon, 1)[2], addon.eval(`return ${HELPER}.pending == nil`)], "back: the row keeps its price; nothing waits").toEqual(["12s 50c", true]);
 });
+it("a browse list still waiting on an item's name is let go with the house: no alert, no queued cost search later", () => {
+  const lists = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = {}, lists = { ["TEST-ONLY Mats"] = { { term = "Strange Dust", maxPrice = 600, alert = true, want = 5 } } } }`;
+  const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[10940].pending = true", { savedVariables: lists });
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 500, totalQuantity = 5 } }");
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  expect(addon.eval(`return next(${HELPER}.unnamed) ~= nil`), "the entry waits on the name").toBe(true);
+  addon.world.closeAuctionHouse();
+  addon.eval("__wfgWorld.items[10940].pending = nil __wfgWorld.ah.browse = {}");
+  addon.fire("ITEM_KEY_ITEM_INFO_RECEIVED", 10940);
+  addon.update(0.01);
+  expect(addon.eval(`local out = {} for i, s in ipairs(${HELPER}.queue) do out[i] = s.cost and "cost" or "other" end return { next(${HELPER}.unnamed) == nil, #out, next(${HELPER}.found or {}) == nil }`), "nothing waits, queued or found").toEqual([true, 0, true]);
+});
 it("entries by item link, ID or name; Remove on the right-click menu; the wheel scrolls", () => {
   const addon = atAuctionHouse(DUSTS);
   makeList(addon, "TEST-ONLY Mats", '{ "|cffffffff|Hitem:2589::::|h[Linen Cloth]|h|r", "99999", "  ", "Soul Dust", "a", "b", "c", "d" }');
