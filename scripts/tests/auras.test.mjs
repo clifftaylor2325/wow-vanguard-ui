@@ -480,6 +480,22 @@ it("fallback containers skip a UNIT_AURA that changes nothing they show, and re-
   aura("nil");
   expect(aura("{ updatedAuraInstanceIDs = { 99 } }")[0] > 0, "while it shows an aura whose id is hidden, every update reads again").toBe(true);
 });
+it("fallback containers read in full after a boss fight, keystone or PvP match starts, when the client draws aura ids anew", () => {
+  expectErrors(AURA_FALLBACK);
+  const addon = loggedIn(UNITS_ENV + CONTAINER_AURAS + "__wfgStub.noAuraContainer = true");
+  addon.eval(`__c = ns.Auras.Container(UIParent, __spec, "target") __reads = 0
+    local get = ns.Auras.Get
+    -- TEST-ONLY spy: aura reads.
+    ns.Auras.Get = function(...) __reads = __reads + 1 return get(...) end`);
+  // UNIT_AURA on the target for an aura it doesn't show, after `event` fired (none: nothing first); how many reads it caused.
+  const after = (event) => addon.eval(`${event ? `__wfgStub.fire("${event}")` : ""} __reads = 0
+    __wfgStub.fire("UNIT_AURA", "target", { updatedAuraInstanceIDs = { 99 } }) return __reads`);
+  expect(after(null), "before: an aura it doesn't show changing reads nothing").toBe(0);
+  for (const event of ["ENCOUNTER_START", "CHALLENGE_MODE_START", "PVP_MATCH_ACTIVE"]) {
+    expect(after(event) > 0, `after ${event}: the old ids may name other auras, so it reads again`).toBe(true);
+    expect(after(null), `then, with this round's ids noted, it skips again (${event})`).toBe(0);
+  }
+});
 
 it("a fallback row steps over an aura the client refuses to read and still shows the ones after it", () => {
   expectErrors(AURA_FALLBACK);
@@ -693,6 +709,7 @@ it("a raid tile whose second container is refused keeps one dispel highlight", (
 });
 
 it("aura colors and stacks when the client hides the values", () => {
+  expectErrors(/^aura stack text: eval:\d+: TEST-ONLY$/);
   const addon = loggedIn(UNITS_ENV + ENGINE_ENV + `
     C_UnitAuras = { GetAuraDispelTypeColor = function(unit, id, curve) __curve = curve return CreateColor(0.1, 0.2, 0.3) end,
       GetAuraApplicationDisplayCount = function() error("TEST-ONLY") end }`);
@@ -704,6 +721,7 @@ it("aura colors and stacks when the client hides the values", () => {
   expect(out.color[0] === 0.1 && out.points === 7 && out.step === 1, "a hidden type is colored by the client through the theme's curve").toBeTruthy();
   expect(isTok(addon, out.plain, "poison") && out.typeless === "bad" && out.unknown === "bad", "plain types use their token; none or unknown is 'bad'").toBeTruthy();
   expect(out.stacks === "4" && out.one === "" && out.hidden === "", "stacks: plain counts above 1 when the client's formatter fails; nothing when hidden").toBeTruthy();
+  expect(addon.eval("return ns.errors[#ns.errors].count") === 1 && !chatHas(addon, /aura stack text/), "the formatter's failure is kept for /vg errors, never printed").toBe(true);
   const noCurve = loggedIn(UNITS_ENV + `C_UnitAuras = { GetAuraDispelTypeColor = function() return nil end }`);
   expect(noCurve.eval('return ns.Auras.DispelToken("Magic")') === "magic" && isTok(noCurve, noCurve.eval('return { ns.Auras.DispelColor("target", { dispelName = { __secret = true } }) }'), "bad"), "no curve support: a hidden type shows as 'bad'").toBeTruthy();
 });

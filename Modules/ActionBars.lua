@@ -274,19 +274,28 @@ local function updateCount(b)
   b.count:SetText(shown and tostring(count) or "")
 end
 
--- The cooldown sweep. A duration object (Midnight) goes to the widget as is;
--- otherwise start and duration are passed through without being inspected
--- (a failed call just leaves the sweep as it was).
-local function updateCooldown(b)
-  local duration = call("GetActionCooldownDuration", b.action)
-  if duration ~= nil and b.cooldown.SetCooldownFromDurationObject then
-    return pcall(b.cooldown.SetCooldownFromDurationObject, b.cooldown, duration)
-  end
+-- Whether this client sweeps action cooldowns from a duration object (12.x): then the numbers,
+-- which may be hidden there, are never handed to SetCooldown, which refuses hidden values.
+local function sweepsFromObject(b)
+  return b.cooldown.SetCooldownFromDurationObject ~= nil and type(api("GetActionCooldownDuration")) == "function"
+end
+
+-- The cooldown sweep on an older client: start and duration passed through without being inspected.
+local function sweepFromNumbers(b)
   local start, length = call("GetActionCooldown", b.action)
   if type(start) == "table" and not ns.IsSecret(start) then
     start, length = start.startTime, start.duration
   end
-  pcall(b.cooldown.SetCooldown, b.cooldown, start, length)
+  ns.Quiet("bar cooldown", b.cooldown.SetCooldown, b.cooldown, start, length)
+end
+
+-- The cooldown sweep: the slot's duration object goes to the widget as is (no object: no sweep), or the
+-- numbers on an older client. A call the client refuses leaves the sweep as it was and is kept for /vg errors.
+local function updateCooldown(b)
+  if not sweepsFromObject(b) then return sweepFromNumbers(b) end
+  local duration = call("GetActionCooldownDuration", b.action)
+  if duration == nil then return b.cooldown:Clear() end
+  ns.Quiet("bar cooldown", b.cooldown.SetCooldownFromDurationObject, b.cooldown, duration)
 end
 
 -- Icon tint tokens, by state. Out of range wins over the others.
@@ -427,16 +436,19 @@ local function copiesOnly()
   return type(IsAnyIconSelectorPopupFrameShown) == "function" and IsAnyIconSelectorPopupFrameShown() == true
 end
 
--- Drag an action off the button (Shift needed while buttons are locked).
+-- Drag an action off the button (Shift needed while buttons are locked); not in a fight, where the
+-- client refuses moving actions from addon code.
 local function onDragStart(b)
+  if ns.InCombat() then return end
   if not AB.settings.lockButtons or (IsShiftKeyDown and IsShiftKeyDown()) then
     call("PickupAction", b.action, copiesOnly())
     AB.UpdateButton(b)
   end
 end
 
--- Drop what's on the cursor onto the button.
+-- Drop what's on the cursor onto the button (not in a fight, as above).
 local function onReceiveDrag(b)
+  if ns.InCombat() then return end
   call("PlaceAction", b.action)
   AB.UpdateButton(b)
 end
@@ -815,9 +827,9 @@ end
 function AB.WatchRange(b)
   if not rangeEvents() then return updateRange(b) end
   if b.rangeSlot == b.action then return end
-  if b.rangeSlot then pcall(C_ActionBar.EnableActionRangeCheck, b.rangeSlot, false) end
+  if b.rangeSlot then ns.Quiet("bar range check", C_ActionBar.EnableActionRangeCheck, b.rangeSlot, false) end
   b.rangeSlot = b.action
-  pcall(C_ActionBar.EnableActionRangeCheck, b.action, true)
+  ns.Quiet("bar range check", C_ActionBar.EnableActionRangeCheck, b.action, true)
   updateRange(b)
 end
 

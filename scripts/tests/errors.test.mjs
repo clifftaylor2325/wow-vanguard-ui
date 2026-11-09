@@ -448,3 +448,80 @@ it("A-14 the errors window: Report a bug opens the feedback form on a bug, Clear
   addon.eval('ns.ShowText("TEST-ONLY", "TEST-ONLY text")');
   expect(buttons(), "a plain text window opened over it shows Close only").toEqual(["Close"]);
 });
+it("error budget: a handler that fails 10 times is paused, and the rest of the event's handlers run on", () => {
+  expectErrors("event TEST_EVENT: TEST-ONLY boom");
+  const addon = loggedIn(`__runs, __others = 0, 0
+    __broken = function() __runs = __runs + 1 error("TEST-ONLY boom", 0) end
+    ns.On("TEST_EVENT", __broken) ns.On("TEST_EVENT", function() __others = __others + 1 end)`);
+  addon.clearChat();
+  for (let i = 0; i < 12; i++) addon.fire("TEST_EVENT");
+  expect(addon.eval("return { __runs, __others }"), "the 11th and 12th calls don't run it; the other handler runs all 12 times").toEqual([10, 12]);
+  expect(addon.eval("return { #ns.paused, ns.paused[1].where, ns.paused[1].count, ns.errors[#ns.errors].count }"), "the site is listed with its failures").toEqual([1, "event TEST_EVENT", 10, 10]);
+  expect(addon.chat().filter((l) => /event TEST_EVENT failed 10 times and is paused/.test(l)).length, "chat says so once").toBe(1);
+  expect(addon.eval("return { ns.TryRepeating('event TEST_EVENT', __broken) }"), "it answers as a failure without calling it").toEqual([false, "paused after repeated errors"]);
+  addon.slash("errors resume");
+  addon.fire("TEST_EVENT");
+  expect(addon.eval("return { __runs, #ns.paused }"), "/vg errors resume runs it again, its count started over").toEqual([11, 0]);
+});
+it("error budget: the same function under another site, or another function at the site, keeps running", () => {
+  expectErrors("TEST-ONLY a: TEST-ONLY boom", "TEST-ONLY b: TEST-ONLY boom", "TEST-ONLY a: TEST-ONLY other", "TEST-ONLY a: attempt to call a nil value");
+  const addon = loggedIn(`__fail = function() error("TEST-ONLY boom", 0) end __other = function() error("TEST-ONLY other", 0) end`);
+  addon.eval("for i = 1, 10 do ns.TryRepeating('TEST-ONLY a', __fail) end ns.TryRepeating('TEST-ONLY b', __fail) ns.TryRepeating('TEST-ONLY a', __other)");
+  expect(addon.eval("return { #ns.paused, ns.errors[#ns.errors - 1].count, ns.errors[#ns.errors].count }"), "only the pair that failed 10 times is paused").toEqual([1, 1, 1]);
+  expect(addon.eval("local n = #ns.paused ns.TryRepeating('TEST-ONLY a', nil) return #ns.paused == n"), "a missing function is never counted").toBe(true);
+  expect(addon.eval("for i = 1, 20 do ns.Try('TEST-ONLY b', __fail) end return { #ns.paused, (ns.Try('TEST-ONLY b', __fail)) }"), "a plain ns.Try (one helper over many frames) is never paused").toEqual([1, false]);
+  expect(addon.eval("for _, e in ipairs(ns.errors) do if e.text == 'TEST-ONLY b: TEST-ONLY boom' then return e.count end end"), "and it still ran each time").toBe(22);
+});
+it("error budget: the footer, /vg errors and the Feedback page show the paused parts, and the page's button resumes them", () => {
+  expectErrors("TEST-ONLY site: TEST-ONLY boom", "TEST-ONLY other site: TEST-ONLY boom");
+  const addon = loggedIn(CLICK_LUA + `__fail = function() error("TEST-ONLY boom", 0) end`);
+  addon.eval("for i = 1, 10 do ns.TryRepeating('TEST-ONLY site', __fail) end ns.ShowErrors = function(_, text) __shown = text end");
+  addon.advance(0.5);
+  addon.slash("errors");
+  expect(addon.eval("return __shown"), "/vg errors lists the paused site before the errors").toMatch(/Paused after 10 failures[^\n]*\n {4}TEST-ONLY site\n/);
+  addon.slash("");
+  expect(addon.eval("return Vanguard_OptionsErrors.text:GetText()"), "the footer counts the paused parts").toBe("1 part paused after repeated errors: click to list them");
+  addon.slash("errors clear");
+  addon.advance(0.5);
+  expect(addon.eval("return { Vanguard_OptionsErrors:IsShown(), Vanguard_OptionsErrors.text:GetText() }"), "/vg errors clear leaves the paused part in the footer").toEqual([true, "1 part paused after repeated errors: click to list them"]);
+  addon.eval("for i = 1, 10 do ns.TryRepeating('TEST-ONLY other site', __fail) end");
+  addon.advance(0.5);
+  expect(addon.eval("return Vanguard_OptionsErrors.text:GetText()"), "two paused: the count").toBe("2 parts paused after repeated errors: click to list them");
+  addon.eval('__click("Feedback")');
+  expect(addon.eval('return __click("Resume paused parts")'), "the Feedback page has the button").toBeTruthy();
+  addon.advance(0.5);
+  expect(addon.eval("return { #ns.paused, Vanguard_OptionsErrors:IsShown(), Vanguard_OptionsErrors.text:GetText() }"), "it resumes them; the footer is back to the error count").toEqual([0, true, "1 error caught this session: click to list them"]);
+  expect(addon.eval('return __click("Resume paused parts")'), "with none paused, the page has no button").toBeFalsy();
+  addon.eval("ns.ClearErrors()");
+  addon.slash("errors");
+  expect(chatHas(addon, /No errors caught this session/), "nothing kept, nothing paused: it says so").toBe(true);
+});
+it("ns.Quiet keeps a refused client call for /vg errors without printing it", () => {
+  expectErrors("TEST-ONLY quiet: TEST-ONLY no");
+  const addon = loggedIn();
+  addon.clearChat();
+  expect(addon.eval("return { ns.Quiet('TEST-ONLY quiet', function(a) return a * 2 end, 4) }"), "a call that works passes its results through").toEqual([true, 8]);
+  expect(addon.eval("local a = { ns.Quiet('TEST-ONLY quiet', error, 'TEST-ONLY no', 0) } local b = { ns.Quiet('TEST-ONLY quiet', error, 'TEST-ONLY no', 0) } return { a[1], a[2], b[1] }"), "a failure answers as pcall does").toEqual([false, "TEST-ONLY no", false]);
+  expect(addon.eval("return { ns.errors[#ns.errors].text, ns.errors[#ns.errors].count }"), "kept once, counted twice").toEqual(["TEST-ONLY quiet: TEST-ONLY no", 2]);
+  expect(addon.chat().some((l) => /TEST-ONLY no/.test(l)), "never in chat").toBe(false);
+  expect(addon.eval("return { #ns.errors, ns.LoudErrorCount() }"), "the badge doesn't count it").toEqual([1, 0]);
+  addon.eval("ns.Report('TEST-ONLY quiet', 'TEST-ONLY no')");
+  expect(addon.eval("return ns.LoudErrorCount()"), "once reported loudly too, it counts").toBe(1);
+});
+it("a call the game blocks from Vanguard is kept for /vg errors; another addon's is not", () => {
+  const addon = loggedIn("ns.ShowErrors = function(_, text) __shown = text end");
+  addon.clearChat();
+  addon.fire("ADDON_ACTION_BLOCKED", "TEST-ONLY other addon", "TEST-ONLY:Theirs()");
+  addon.fire("ADDON_ACTION_BLOCKED", "Vanguard", "TEST-ONLY:CallProtected()");
+  addon.fire("ADDON_ACTION_FORBIDDEN", "Vanguard", "TEST-ONLY:Forbidden()");
+  addon.fire("ADDON_ACTION_FORBIDDEN", "Vanguard", "TEST-ONLY:Forbidden()");
+  addon.eval("__wfgStub.fire('ADDON_ACTION_FORBIDDEN', { __secret = true }, 'TEST-ONLY:Hidden()')");
+  expect(addon.eval("local out = {} for _, e in ipairs(ns.blocked) do out[#out + 1] = e.text .. ' x' .. e.count end return out"), "Vanguard's two, by event, counted").toEqual(["action blocked: TEST-ONLY:CallProtected() x1", "action forbidden: TEST-ONLY:Forbidden() x2"]);
+  expect([chatHas(addon, /TEST-ONLY:CallProtected/), addon.eval("return #ns.errors")], "nothing printed, the badge's list untouched").toEqual([false, 0]);
+  addon.slash("errors");
+  expect(addon.eval("return __shown"), "/vg errors lists them").toMatch(/Calls the game blocked from Vanguard:\n {4}action blocked: TEST-ONLY:CallProtected\(\) {2}\(x1\)/);
+  addon.eval("for i = 1, 25 do __wfgStub.fire('ADDON_ACTION_BLOCKED', 'Vanguard', 'TEST-ONLY:' .. i) end");
+  expect(addon.eval("return { #ns.blocked, ns.blocked[1].text }"), "the last 20 distinct calls are kept").toEqual([20, "action blocked: TEST-ONLY:6"]);
+  addon.slash("errors clear");
+  expect(addon.eval("return #ns.blocked"), "/vg errors clear empties them too").toBe(0);
+});
