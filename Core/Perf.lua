@@ -197,11 +197,9 @@ ns.On("PLAYER_LOGIN", function()
   if C_Timer and C_Timer.After then C_Timer.After(P.TIMED_AFTER_LOGIN, ns.Guard("timer perf timing", loginTimed)) end
 end)
 
--- Turns handler timing on for the rest of the session, saying so when it was off.
+-- Turns handler timing on for the rest of the session (the list's heading says so).
 local function armTiming()
-  local was = ns.timingOn
   P.timingArmed, ns.timingOn = true, true
-  if not was then ns.Chat("Timing Vanguard's handlers from now until you reload (a small cost on each); /vg perf slow again shows what it caught.") end
 end
 
 -- Longest call first; equal ones by the most slow calls, then by name.
@@ -234,7 +232,7 @@ end
 function P.SlowList()
   local list = P.Slowest()
   if #list == 0 then return ns.Chat("No handler timings yet (the client has no fine clock, or nothing has run).") end
-  ns.Chat(string.format("Vanguard's slowest handlers, timed through login and since /vg perf slow (calls over %d ms):", ns.SLOW_MS))
+  ns.Chat(string.format("Vanguard's slowest handlers, timed through login and from your first /vg perf slow until you reload (calls over %d ms):", ns.SLOW_MS))
   for i = 1, math.min(P.TOP, #list) do
     local t = list[i]
     ns.Chat(string.format("  %d. %s  longest %.1f ms, %d over %d ms, %d calls, %.0f ms in all", i, t.where, t.longest, t.slow, ns.SLOW_MS, t.calls, t.total))

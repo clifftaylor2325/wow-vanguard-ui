@@ -88,11 +88,12 @@ jobs:
       # The raid benchmark (scripts/bench.mjs, issue #255): time and Lua
       # instructions per event under a scripted 40-player raid, a harness
       # measurement until /vg perf confirms it in game. Its tables go to the
-      # job summary and its JSON into the lua-coverage artifact. It runs
-      # without --budget, so a slowdown never fails the run (shared runners
-      # are noisy); an error the addon catches under the raid load does.
+      # job summary and its JSON into the lua-coverage artifact. Time is not
+      # budgeted (shared runners are noisy), but the addon's Lua instructions
+      # per step are: past a cap in scripts/bench-budget.json the run fails,
+      # and so does an error the addon catches under the raid load.
       - name: Raid benchmark (harness measurement)
-        run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY"
+        run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY" --instr-budget scripts/bench-budget.json
       - name: Code quality
         if: inputs.checks
         run: npm run quality

@@ -34,11 +34,15 @@
 //   --budget <pct>   with --compare, exit 1 when an event's median time per step
 //                    grew by more than this percent (off by default: shared
 //                    runners are noisy)
+//   --instr-budget <file>  exit 1 when an event's addon instructions per step pass its
+//                    cap in the JSON file ({ event: most per step }; CI passes
+//                    scripts/bench-budget.json). Instructions, not time: they hold
+//                    on shared runners
 //   --summary <file> also append the tables as markdown (CI passes the job summary)
 
 import fs from "node:fs";
 import path from "node:path";
-import { formatCompare, formatResult, overBudget, readOptions, resultFile, runBench, writeResult } from "./lib/bench.mjs";
+import { formatCompare, formatResult, overBudget, overInstructions, readOptions, resultFile, runBench, writeResult } from "./lib/bench.mjs";
 import { root } from "./lib/lua-harness.mjs";
 
 // Prints a message and exits with a status.
@@ -56,27 +60,45 @@ function options(argv) {
   }
 }
 
-// An earlier result read from a file, or a stop when it is missing or not JSON.
-function earlier(file) {
+// A JSON file read for `flag` (an earlier result, or the instruction caps), or a stop when it is missing or not JSON.
+function readJson(file, flag) {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8"));
   } catch (err) {
-    return stop(`--compare: cannot read ${file}: ${err.message}`, 2);
+    return stop(`${flag}: cannot read ${file}: ${err.message}`, 2);
   }
 }
 
-// Runs the bench, prints and saves the result, compares it and applies the budget.
+// Stops with status 1 when an event's addon instructions per step pass their cap (no caps, no check).
+function checkInstructions(result, caps) {
+  const over = caps ? overInstructions(result, caps) : [];
+  if (over.length) stop(`Over the instruction budget: ${over.map((r) => `${r.event} ${r.instr} per step (cap ${r.cap})`).join(", ")}`, 1);
+}
+
+// Writes the result to `file` and returns the file.
+function save(result, file) {
+  writeResult(file, result);
+  return file;
+}
+
+// Stops with status 1 when an event's time per step grew past the --budget percent against `before`.
+function checkTime(before, result, opts) {
+  const over = before && opts.budget !== undefined ? overBudget(before, result, opts.budget) : [];
+  if (over.length) stop(`Over the ${opts.budget}% budget: ${over.map((r) => `${r.event} ${r.timeChange}`).join(", ")}`, 1);
+}
+
+// Runs the bench, prints and saves the result, compares it and applies the budgets.
 function main(argv) {
   const opts = options(argv);
-  const before = opts.compare ? earlier(opts.compare) : null;
+  const before = opts.compare ? readJson(opts.compare, "--compare") : null;
+  const caps = opts.instrBudget && readJson(opts.instrBudget, "--instr-budget");
   const result = runBench(opts, (step) => console.error(`bench: ${step}`));
-  const file = opts.out ?? resultFile(result);
-  writeResult(file, result);
+  const file = save(result, opts.out ?? resultFile(result));
   const text = [formatResult(result), ...(before ? ["", formatCompare(before, result, path.basename(opts.compare))] : [])].join("\n");
   console.log(`${text}\n\nSaved ${path.relative(root, path.resolve(file))}`);
   if (opts.summary) fs.appendFileSync(opts.summary, `${text}\n\n`);
-  const over = before && opts.budget !== undefined ? overBudget(before, result, opts.budget) : [];
-  if (over.length) stop(`Over the ${opts.budget}% budget: ${over.map((r) => `${r.event} ${r.timeChange}`).join(", ")}`, 1);
+  checkTime(before, result, opts);
+  checkInstructions(result, caps);
 }
 
 main(process.argv.slice(2));

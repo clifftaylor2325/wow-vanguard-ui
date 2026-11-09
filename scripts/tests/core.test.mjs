@@ -347,13 +347,13 @@ it("/vg perf slow: each guarded handler's longest call, slow calls and time in a
   const bare = loggedIn("");
   expect(said(bare, "perf slow"), "no fine clock: nothing timed").toEqual(["No handler timings yet (the client has no fine clock, or nothing has run)."]);
   const addon = loggedIn(CLOCK_ENV);
-  expect(said(addon, "perf slow reset"), "reset; timing is on through login, so arming says nothing").toEqual(["Vanguard's handler timings start over."]);
+  expect(said(addon, "perf slow reset"), "reset").toEqual(["Vanguard's handler timings start over."]);
   addon.eval(`local function took(ms) return function() __clock = __clock + ms end end
     ns.Try("TEST-ONLY heavy", took(12)) ns.Try("TEST-ONLY heavy", took(3)) ns.Try("TEST-ONLY light", took(1))
     ns.Try("TEST-ONLY tie", took(1)) ns.Try("TEST-ONLY outer", function() ns.Try("TEST-ONLY inner", took(7)) end)`);
   const lines = said(addon, "perf slow");
   expect(lines.slice(0, 5), "the slowest first: the outer call includes the inner").toEqual([
-    "Vanguard's slowest handlers, timed through login and since /vg perf slow (calls over 5 ms):",
+    "Vanguard's slowest handlers, timed through login and from your first /vg perf slow until you reload (calls over 5 ms):",
     "  1. TEST-ONLY heavy  longest 12.0 ms, 1 over 5 ms, 2 calls, 15 ms in all",
     "  2. TEST-ONLY inner  longest 7.0 ms, 1 over 5 ms, 1 calls, 7 ms in all",
     "  3. TEST-ONLY outer  longest 7.0 ms, 1 over 5 ms, 1 calls, 7 ms in all",
@@ -372,13 +372,11 @@ it("/vg perf slow: handlers are timed through login, then only once it is asked 
   addon.advance(11);
   addon.eval("ns.Try('TEST-ONLY later', function() __clock = __clock + 6 end)");
   expect(addon.eval("return { ns.timings['TEST-ONLY at login'] ~= nil, ns.timings['TEST-ONLY later'] == nil }"), "login's calls are kept; ten seconds on, nothing more is timed").toEqual([true, true]);
-  const lines = said(addon, "perf slow");
-  expect(lines[lines.length - 1], "asking turns timing back on, and says so").toBe("Timing Vanguard's handlers from now until you reload (a small cost on each); /vg perf slow again shows what it caught.");
+  expect(said(addon, "perf slow")[0], "the heading says when handlers are timed").toBe("Vanguard's slowest handlers, timed through login and from your first /vg perf slow until you reload (calls over 5 ms):");
   addon.eval("ns.Try('TEST-ONLY later', function() __clock = __clock + 6 end)");
   addon.advance(11);
   addon.eval("ns.Try('TEST-ONLY later', function() __clock = __clock + 6 end)");
-  expect(addon.eval("return ns.timings['TEST-ONLY later'].calls"), "and keeps it on for the session").toBe(2);
-  expect(said(addon, "perf slow").some((l) => l.startsWith("Timing Vanguard")), "asked again, it says nothing new").toBe(false);
+  expect(addon.eval("return ns.timings['TEST-ONLY later'].calls"), "asking turns timing back on for the session").toBe(2);
 });
 // TEST-ONLY memory counter: Vanguard's KB follow the list __mem, one reading each call of the game's Update;
 // a client that refuses a full garbage collection, so the run judges by its low point (LIVE_ENV allows it).

@@ -32,6 +32,7 @@ const morePlates = (from, to) => `for i = ${from}, ${to} do
   end`;
 it("nameplate frames are built ahead after login, two a frame, so a pull of 30 plates builds none", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  // How many frames are built ahead and not yet taken.
   const pool = () => addon.eval("return #ns.GetModule('Nameplates').pool");
   expect(pool(), "none built at login itself").toBe(0);
   addon.update(0.016);
