@@ -31,7 +31,8 @@ local META = { format = true, addonVersion = true, parts = true, display = true,
 -- CraftQueue.chars: each character's craft queue and profession cooldowns, from before they moved to the character's
 -- and the account's files (Modules/CraftQueue.lua moves them out); not for whoever imports a string.
 -- Merchant.junkList: the sell list from before it moved to each character's own file.
-local CLIENT_STATE = { Merchant = { junkList = true }, Graphics = { undo = true }, Bags = { applied = true, prior = true }, Quiet = { cameraPrior = true }, Chat = { sized = true, widened = true }, CraftQueue = { chars = true } }
+-- Errands.stockList: the Keep stocked list from before it moved to each character's own file.
+local CLIENT_STATE = { Merchant = { junkList = true }, Errands = { stockList = true }, Graphics = { undo = true }, Bags = { applied = true, prior = true }, Quiet = { cameraPrior = true }, Chat = { sized = true, widened = true }, CraftQueue = { chars = true } }
 
 -- The group parts, in the export panel's order, and what it calls them. Every other
 -- table is a module's own part (its name), or global when no module goes by its name.

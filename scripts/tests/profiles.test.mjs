@@ -370,6 +370,15 @@ it("on WoW Forever /vg spec and the Profiles page name the talent group, not the
   addon.slash("spec");
   expect(chatHas(addon, /Primary talents use the character's profile \(no spec profile set\)\.$/), "the Primary group has none").toBe(true);
 });
+it("a profile that still holds a Keep stocked list (Errands off) neither exports it nor takes one in an import", () => {
+  const src = loggedIn();
+  src.eval("ns.Profile().modules = { Errands = false } ns.Profile().Errands = { stock = true, stockList = { [90011] = 5 } }");
+  const text = src.eval("return ns.ExportProfile()");
+  const dst = loggedIn();
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(dst.eval("local e = VanguardDB.profiles.Imported.Errands return { e and e.stock, e and e.stockList or false }"), "the setting travels, the list stays home").toEqual([true, false]);
+  expect(dst.eval("return ns.WithoutClientState({ Errands = { stock = true, stockList = { [1] = 2 } } }).Errands"), "an incoming table loses it too").toEqual({ stock: true });
+});
 it("the craft queue and profession cooldowns of your characters stay out of an export, an import and a profile compare; the module's own settings travel", () => {
   const src = loggedIn();
   src.eval('ns.Profile().CraftQueue = { on = true, secs = 9, chars = { ["Alt-Realm"] = { queue = { { id = 1 } }, cooldowns = {} } } }');
