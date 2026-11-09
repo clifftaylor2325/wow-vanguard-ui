@@ -4647,6 +4647,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge.
 - If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
 
+### 33.391 Saved settings warning says it once, and Keep these settings ends it (Forever)
+
+- Do: On a character that has shown "Vanguard's saved settings didn't load this session" at login, log in once on this version, then `/reload`. Open `/vg` → General and press **Keep these settings**, then log out and back in.
+- Expect: the chat line and the question show at the first login only, not after the reload; the General page shows the notice with Keep these settings; after Keep, chat says Vanguard keeps the settings that loaded, the notice goes, and the next login says nothing about saved settings.
+- If it fails, paste: the chat lines from login, and both `Vanguard.lua` files (the account's `WTF/Account/<name>/SavedVariables/` one and the character's `WTF/Account/<name>/<realm>/<character>/SavedVariables/` one), or just their `guard` blocks.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
