@@ -85,12 +85,17 @@ local function titleOf(id)
   return ns.PlainText(ns.CallIf(C_QuestLog, "GetTitleForQuestID", id)) or L["Quest"]
 end
 
+-- Whether the quest log has arrived (it is empty for a moment after login, so a restored pin must wait).
+local function logHasQuests()
+  return (ns.PlainNumber(ns.CallIf(C_QuestLog, "GetNumQuestLogEntries")) or 0) > 0
+end
+
 -- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the
 -- nearest quest" off, also the game's tracked one), else the nearest, else the game's tracked one. A
 -- Shift-click whose quest has left the log is let go here, so it can't hold a quest the game tracks later.
 local function follow(old)
   local guide = ns.QuestGuide
-  if guide.pointed and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.DropPin() end
+  if guide.pointed and logHasQuests() and not ns.GetModule("QuestTracker").Quest(guide.pointed) then guide.DropPin() end
   local pin = pinned()
   if pin and (ns.QuestGuide.pointed or not QA.settings.auto) then return pin, true end
   return QA.settings.auto and QA.Choose(old) or pin, false

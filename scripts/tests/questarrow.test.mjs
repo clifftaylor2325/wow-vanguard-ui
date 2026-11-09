@@ -245,6 +245,30 @@ it("quest arrow: with the arrow switched off, moving on from a failed quest says
   expect([addon.eval("return ns.QuestArrow.current"), chatHas(addon, /Arrow:/)]).toEqual([90062, false]);
 });
 
+// Simulates a reload: the module's own state is gone, the character's saved data stays, the module enables again.
+const RELOAD = "ns.QuestGuide.pointed = nil ns.QuestGuide.Enable(ns.Settings('QuestGuide')) ns.QuestArrow.Pick()";
+
+it("quest arrow: a Shift-click hold survives a reload, with the Pin button back", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("ns.QuestGuide.Point(90062)");
+  addon.eval(RELOAD);
+  expect([addon.eval("return ns.QuestArrow.current"), pinState(addon)[0]]).toEqual([90062, true]);
+});
+
+it("quest arrow: a restored hold whose quest left the log is dropped and forgotten", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("ns.QuestGuide.Point(90062) table.remove(__wfgWorld.quests, 2)");
+  addon.eval(RELOAD);
+  expect([addon.eval("return { ns.QuestGuide.pointed == nil, VanguardCharDB.questPin == nil, ns.QuestArrow.current }")]).toEqual([[true, true, 90061]]);
+});
+
+it("quest arrow: a restored hold is kept while the quest log is still empty at login", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("ns.QuestGuide.Point(90062) __wfgWorld.quests = {}");
+  addon.eval(RELOAD);
+  expect(addon.eval("return ns.QuestGuide.pointed")).toBe(90062);
+});
+
 it("quest arrow: a pin whose quest left the log is let go, so a quest the game tracks later is not held", () => {
   const addon = loggedIn(ARROW_ENV + SUPER_ENV);
   addon.eval("ns.QuestGuide.Point(90062) table.remove(__wfgWorld.quests, 2) __tracked = 0 ns.QuestArrow.Pick()");

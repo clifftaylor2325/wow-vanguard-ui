@@ -99,10 +99,16 @@ local function titleOf(questID)
   return (not ns.IsSecret(title) and type(title) == "string") and title or L["that quest"]
 end
 
+-- Sets the Shift-click pin and keeps it for this character across a reload.
+local function setPin(id)
+  QG.pointed = id
+  if type(VanguardCharDB) == "table" then VanguardCharDB.questPin = id end
+end
+
 -- Shift-click on a tracked quest: the arrow points at its next step, the game's quest arrow or a
 -- map waypoint as the Arrow setting says (the other when that one can't); chat says which.
 function QG.Point(questID)
-  QG.pointed = questID
+  setPin(questID)
   local first, second = questArrow, waypointArrow
   if QG.settings.arrow == "waypoint" then first, second = waypointArrow, questArrow end
   if first(questID) or second(questID) then
@@ -117,7 +123,7 @@ end
 -- that one (0 is how the game's own tracker stops tracking, Blizzard_QuestObjectiveTracker.lua). A map waypoint,
 -- your /way or Ctrl-click, is the game's other kind of tracking and is left alone.
 function QG.Unpin()
-  QG.pointed = nil
+  setPin(nil)
   local id = ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID"))
   if id and id > 0 then ns.CallIf(C_SuperTrack, "SetSuperTrackedQuestID", 0) end
   QG.StepsChanged()
@@ -125,7 +131,7 @@ end
 
 -- Drops the Shift-click pin without redrawing the tracker (the arrow's own pick redraws it).
 function QG.DropPin()
-  QG.pointed = nil
+  setPin(nil)
 end
 
 -- The quest the arrow follows: the game's super-tracked quest, else the one last pointed at.
@@ -221,6 +227,7 @@ end
 -- now: it was built at login before this module, so without its marks).
 function QG.Enable(settings)
   QG.settings = settings
+  QG.pointed = type(VanguardCharDB) == "table" and ns.PlainNumber(VanguardCharDB.questPin) or nil
   for _, event in ipairs({ "SUPER_TRACKING_CHANGED", "WAYPOINT_UPDATE" }) do ns.On(event, QG.StepsChanged) end
   QG.EnableMap()
   QG.StepsChanged()
