@@ -380,7 +380,8 @@ local function pause(where, fn, count)
   pausedAt[fn] = pausedAt[fn] or {}
   pausedAt[fn][where] = true
   ns.paused[#ns.paused + 1] = { where = where, count = count }
-  pcall(ns.Chat, ns.Format(L["{site} failed {count} times and is paused until you reload, or resume it on the Feedback page."], { site = where, count = count }))
+  local said = L["{site} failed {count} times and is paused until you reload, or resume it on the Feedback page."]
+  pcall(ns.Chat, ns.Format(said, { site = where, count = count }))
   errorsChanged()
 end
 

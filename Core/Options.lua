@@ -640,7 +640,8 @@ local function pausedRows()
   for _, p in ipairs(ns.paused) do sites[#sites + 1] = tostring(p.where) end
   return {
     { "header", L["Paused after repeated errors"] },
-    { "text", ns.Format(L["These parts failed {count} times and are paused until you reload: {sites}. Resume them once whatever broke them is fixed (/vg errors resume)."], { count = ns.ERROR_BUDGET, sites = table.concat(sites, ", ") }) },
+    { "text", ns.Format(L["Paused after {count} failures, until you reload: {sites}. Resume them once the cause is fixed (/vg errors resume)."],
+      { count = ns.ERROR_BUDGET, sites = table.concat(sites, ", ") }) },
     { "button", L["Resume paused parts"], ns.ResumePaused },
   }
 end

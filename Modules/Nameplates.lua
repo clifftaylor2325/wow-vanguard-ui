@@ -952,7 +952,8 @@ function NP.EnemyPlatesOnce()
   if type(VanguardCharDB) ~= "table" or VanguardCharDB.enemyPlatesSet then return end
   if ns.SetupOwed() or ns.Asking() then return end
   if cvarState("nameplateShowEnemies") ~= "off" then VanguardCharDB.enemyPlatesSet = true return end
-  ns.Ask(L["The game's enemy nameplates are off, so Vanguard has none to dress. Turn them on? The V key and the Nameplates page change it later."], L["Turn on"], NP.EnemyPlatesOn, NP.EnemyPlatesAnswered)
+  local ask = L["The game's enemy nameplates are off, so Vanguard has none to dress. Turn them on? The V key and the Nameplates page change it later."]
+  ns.Ask(ask, L["Turn on"], NP.EnemyPlatesOn, NP.EnemyPlatesAnswered)
 end
 
 -- get/set for a check row on one of the game's own plate settings (the V and Shift-V keys).
