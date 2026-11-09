@@ -187,6 +187,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each window's title and the options page's name are the largest text in their window (18 points at Text size 100%), a clear step above card titles and rows. No title is cut short, runs under its close button or out of its window, at 130% either; a long dialog title wraps short of the X. Card headings in the options are small grey capitals, and so are the prep card's "DUNGEON QUESTS IN YOUR LOG" (or the dungeon's own line at its door) and "YOUR QUESTS HERE". [Needs in-game check: how the larger titles sit on the close button's line in the real font.]
 - If it fails, paste: a screenshot of the window, your Text size and client language, and `/vg errors`.
 
+### 2.1j The options window's header and footer
+
+- Do: type `/vg` and look at the header and the footer. Set Font to the game's font, then pick another Theme variant, then set Faction look to Off and back. Set Text size to 130%. If you can, look at it on a 4K screen too.
+- Expect: the header shows Vanguard's painted shield about 40 units tall, sharp (not blurred or blocky), with "Vanguard" beside it in a serif face in pale gold, larger than any other text in the window; neither touches the search box, and both stay as they are when the font or the variant changes. Your faction's mark (crossed swords or axes) is at the left of the footer with the version line right of it; with Faction look Off the mark goes and the version line moves to the footer's left edge. [Needs in-game check: the crest's sharpness at 40 units, the serif face's weight beside the crest, and the gold over each variant's header.]
+- If it fails, paste: a screenshot of the window's top and bottom, your resolution and UI scale, and `/vg errors`.
+
 ### 2.1h The fold on Raid frames
 
 - Do: type `/vg` → Raid frames. Count the rows, then press the **More settings** line, press it again, then press it open and change Power bar. Fold it, and look at the line. Reset Power bar with its accent arrow. Type "leader" in the search box and press Enter on the first hit. Then `/reload`, open Raid frames again, press Tab until the line is marked and press Enter. Repeat at Text size 130% and in a non-English client if you have one.

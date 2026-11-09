@@ -1358,13 +1358,17 @@ it("options: the General page's captions are nouns, with a note under the two th
     return { f:IsShown(), f:GetParent() == n:GetParent(), f:GetTop() == n:GetTop(), f:GetBottom() == n:GetBottom() }`), "a jump to a note marks it through its card (a font string holds no texture), over the note's text").toEqual([true, true, true, true]);
 });
 
-it("options: the header keeps its bar but wears the window tier: 48 tall, the title role in the text colour centred on the 24 line with the crest beside it, the logo and close at the window offsets, the opaque alpha", () => {
+it("options: the hero header: 48 tall, the painted crest at T.LOGO.header, the wordmark in the brand's serif face and gold beside it, the close at the window offset, the opaque alpha", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
-  const head = addon.eval(`local o = Vanguard_Options
-    return { o.header:GetHeight(), o.title:GetText(), select(2, o.title:GetFont()), o.title.__textColor, o.crest:GetWidth(), o.crest.__points.LEFT.rel == o.title, o.logo.__points.LEFT.x, o.title.__points.LEFT.y }`);
-  expect(head.slice(0, 3).concat(head.slice(4)), "48 tall; the title role; the crest T.CREST.title right of the title; the logo T.SPACE.pad in; the title on the header's middle line").toEqual([48, "Vanguard", addon.eval("return ns.Theme.RoleSize('title')"), addon.eval("return ns.Theme.CREST.title"), true, addon.eval("return ns.Theme.SPACE.pad"), 0]);
-  expect(isTok(addon, head[3], "text"), "the title is in the text colour").toBe(true);
+  const head = addon.eval(`local o, T = Vanguard_Options, ns.Theme
+    return { o.header:GetHeight(), o.title:GetText(), select(2, o.title:GetFont()), (o.title:GetFont()):match("[^\\\\]+$"), math.floor(o.logo:GetWidth() + 0.5), o.logo.art.__texture:match("[^\\\\]+$"),
+      o.logo.__points.LEFT.x, o.title.__points.LEFT.rel == o.logo, o.title.__points.LEFT.y, T.ColorToken(o.title) }`);
+  expect(head, "48 tall; the wordmark in Cinzel at the wordmark role's size; the crest 40 (to the whole pixel) from the 256 px painting, T.SPACE.pad in; the wordmark on the header's middle line, in brandGold")
+    .toEqual([48, "Vanguard", addon.eval("return ns.Theme.RoleSize('wordmark')"), "Cinzel-SemiBold.ttf", addon.eval("return ns.Theme.LOGO.header"), "banner-crest", addon.eval("return ns.Theme.SPACE.pad"), true, 0, "brandGold"]);
+  expect(addon.eval("local T = ns.Theme return { T.LOGO.header, T.RoleSize('wordmark') > T.RoleSize('display'), T.LOGO.header <= Vanguard_Options.header:GetHeight() }"), "a 40-unit crest inside the header, the wordmark the largest text in the window").toEqual([40, true, true]);
+  addon.eval('ns.Theme.Settings().font = "client" ns.Theme.Settings().variant = "midnight" ns.Theme.Refresh()');
+  expect(addon.eval('return { (Vanguard_Options.title:GetFont()):match("[^\\\\]+$"), ns.Theme.ColorToken(Vanguard_Options.title) }'), "the wordmark keeps its face and gold whatever the Font setting and the variant").toEqual(["Cinzel-SemiBold.ttf", "brandGold"]);
   const close = addon.eval(`local b = CreateFrame("Button", nil, UIParent) ns.Theme.PlaceClose(b, Vanguard_Options) local p, c = b.__points.CENTER, Vanguard_Options.close.__points.CENTER return { p.x == c.x and p.y == c.y, c.relPoint }`);
   expect(close, "the close button is where T.PlaceClose puts every window's: on the top right corner").toEqual([true, "TOPRIGHT"]);
   const alpha = addon.eval(`for _, t in ipairs(__wfgStub.frames) do if t.__kind == "Texture" and t.__parent == Vanguard_Options and t.__layer == "BACKGROUND" then return t.__vertexColor[4] end end`);
@@ -2082,6 +2086,21 @@ it("options tabs: Reset this page sits at the right of the page's bar, the page'
   expect(addon.eval('return __click("Reset this page") and Vanguard_Question:IsShown()'), "and the button still asks first").toBe(true);
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no) ns.Options.Show("feedback")');
   expect(bar(), "Feedback: no settings with defaults, so the title alone").toEqual(["Feedback", true, false, false]);
+});
+
+it("options: your faction's crest sits in the footer, left of the version line, and the line takes its place while no crest shows", () => {
+  const addon = loggedIn(CLICK_LUA + 'UnitFactionGroup = function() return __faction end __faction = "Alliance" ');
+  addon.eval('ns.Options.Show("general")');
+  // The footer's crest: whether it shows, its parent, size and inset, and where the version line starts.
+  const foot = () => addon.eval(`local o = Vanguard_Options
+    return { o.crest:IsShown(), o.crest:GetParent() == o.footer, o.crest:GetWidth(), o.crest.__points.LEFT.x, o.version.__points.LEFT.rel == o.footer, o.version.__points.LEFT.x }`);
+  const [pad, gap, size] = addon.eval("local T = ns.Theme return { T.SPACE.pad, T.SPACE.gap, T.CREST.footer }");
+  expect(foot(), "an Alliance character: the crest in the footer at the pad, the version a gap right of it").toEqual([true, true, size, pad, true, pad + size + gap]);
+  addon.eval('ns.Theme.Settings().faction = "off" ns.Theme.Refresh()');
+  expect([foot()[0], foot()[5]], "the faction look off: no crest, the version line at the pad").toEqual([false, pad]);
+  addon.eval('ns.Theme.Settings().faction = "crest" __faction = "Horde" ns.Theme.Refresh()');
+  expect([foot()[0], foot()[5]], "back on (a Horde character now): the crest shows and the line moves over again").toEqual([true, pad + size + gap]);
+  expect(addon.eval("for _, r in ipairs({ Vanguard_Options.header:GetRegions() }) do if r == Vanguard_Options.crest then return false end end return true"), "the header no longer holds the faction crest").toBe(true);
 });
 
 it("type scale: a page's name is in the display tier, above its cards' section headings and its rows", () => {

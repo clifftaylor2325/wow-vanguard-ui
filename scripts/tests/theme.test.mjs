@@ -216,14 +216,15 @@ it("bundled font and logo", () => {
   expect(addon.eval("return (ns.Theme.Font(true))") === FIRA + "SemiBold.ttf", "bold asks for its SemiBold weight").toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   expect(addon.eval('return __click("Font")') && addon.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "the Font option switches to the game's font").toBeTruthy();
-  expect([addon.eval("return Vanguard_Options.title:GetFont()"), addon.eval("return Vanguard_Options.reload:IsShown()")], "a font change re-fonts the text already on screen, with no reload").toEqual(["Fonts\\FRIZQT__.TTF", false]);
+  expect([addon.eval("return Vanguard_Options.version:GetFont()"), addon.eval("return Vanguard_Options.reload:IsShown()")], "a font change re-fonts the text already on screen, with no reload").toEqual(["Fonts\\FRIZQT__.TTF", false]);
   const korean = loggedIn('GetLocale = function() return "koKR" end');
   expect(korean.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "Korean and Chinese clients keep the game's font (Fira has no Hangul or Han)").toBeTruthy();
   const logo = addon.eval(`local l = Vanguard_Options.logo
     local out = {}
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == l then out[#out + 1] = w.__texture end end
     return out`);
-  expect(logo.length === 1 && /Media\\Textures\\Icon$/.test(logo[0]), "the options title shows the crest, the same pre-colored art as the addons-list icon").toBeTruthy();
+  expect(logo.length === 1 && /Media\\Art\\banner-crest$/.test(logo[0]), "the options header shows the crest from the 256 px painting the addons-list icon was made from").toBeTruthy();
+  expect(addon.eval(`local f = ns.Theme.Logo(UIParent, 28) return f.art.__texture`), "any other crest (T.Logo) keeps the 64 px icon").toMatch(/Media\\Textures\\Icon$/);
 });
 
 it("text roles, sheen and shadows", () => {
@@ -320,7 +321,7 @@ it("shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bar
   const fonts = addon.eval("return __menuTexts()");
   expect(fonts, "the Font picker: Vanguard's own two fonts only (other addons' fonts are not listed)").toEqual(["Fira Sans Condensed", "the game's font"]);
   addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font" ns.Theme.Refresh()');
-  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()) }"), "a font another addon shares, once in use, is used for all text at once")
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.version:GetFont()) }"), "a font another addon shares, once in use, is used for all text at once")
     .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf"]);
   addon.eval('__dropdown("Bar texture")');
   const bars = addon.eval("return __menuTexts()");

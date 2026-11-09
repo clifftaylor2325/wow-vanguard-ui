@@ -31,9 +31,11 @@ T.FONTS = {
 }
 -- The faction look's crest (Media/Art) and its color, by faction.
 T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "lorc-crossed-axes", "hordeCrest" } }
--- Where a crest goes and how big (units): beside a window title (title), on the AFK card (card), and as a
--- watermark on the two reading windows (the quest dialog and quest log) at the wash alpha.
-T.CREST = { title = 20, card = 44, watermark = 96, wash = 0.1 }
+-- Where a crest goes and how big (units): beside a window title (title), in the options window's footer (footer), on
+-- the AFK card (card), and as a watermark on the two reading windows (the quest dialog and quest log) at the wash alpha.
+T.CREST = { title = 20, footer = 20, card = 44, watermark = 96, wash = 0.1 }
+-- Vanguard's own crest in the options window's header (T.PaintedLogo): its size in units.
+T.LOGO = { header = 40 }
 -- The AFK screen's painted scene (Media/Art, full colour, 2:1), by faction; everyone else gets the camp.
 T.AFK_SCENES = { Alliance = "afk-keep", Horde = "afk-canyon", none = "afk-camp" }
 -- The welcome banner's brand mark (Core/Banner.lua): the painted crest (Media/Art) and the name in the Alliance heading
@@ -2859,6 +2861,15 @@ function T.Logo(parent, size)
   local t = f:CreateTexture(nil, "ARTWORK")
   t:SetTexture(T.Texture("Icon"))
   t:SetAllPoints()
+  f.art = t
+  return f
+end
+
+-- The Vanguard crest from the 256 px painting the icon was made from (Media/Art, T.BANNER_MARK.file), for a crest drawn
+-- larger than the 64 px icon holds on a dense screen: the options window's header.
+function T.PaintedLogo(parent, size)
+  local f = T.Logo(parent, size)
+  f.art:SetTexture(T.MEDIA .. "Art\\" .. T.BANNER_MARK.file)
   return f
 end
 
@@ -2909,6 +2920,9 @@ T.ROLES = {
   zone = { size = 13, bold = true },
   -- A section header: small, and upper-cased by T.SetText (T.Upper) instead of by :upper() on the string.
   section = { size = 10, bold = false, upper = true },
+  -- The wordmark: the addon's name in the options window's header, in the brand's serif face (T.FONTS.alliance, the
+  -- welcome banner's) on every client and whatever the Font setting says: the name is Latin and never translated.
+  wordmark = { size = 20, face = "alliance" },
 }
 
 -- The game's own sizes for text Vanguard re-fonts but leaves at the game's size (Modules/GameAlerts.lua): a raid
@@ -2995,6 +3009,7 @@ function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
   local path, outline = T.Font(r.bold)
   if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
+  if r.face then path = T.FONTS[r.face] end
   fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r.outline or outline, r.outline ~= nil))
   fs:SetShadowOffset(r.outline and 0 or 1, r.outline and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
