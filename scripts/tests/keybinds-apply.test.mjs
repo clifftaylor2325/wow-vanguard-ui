@@ -436,6 +436,46 @@ it("the settings guard's backup: logout keeps a copy of the account's key record
   expect(Object.keys(fine.savedVariables().account.keyRestore.keys).length, "no loss: the account's own record stays").toBe(4);
 });
 
+// Aren applies the preset and logs out at time `t`; then Thrall logs in with that account file and his own file,
+// whose guard stamp tells him the account file lost him, with `keyBackup` as his key copy.
+function thrallAfterAren(t, keyBackup) {
+  const aren = rogue();
+  ka(aren, `KA.Apply(${PRESET})`);
+  aren.eval(`time = function() return ${t} end`);
+  aren.fire("PLAYER_LOGOUT");
+  const char = `VanguardCharDB = { guard = { stamp = 1, profile = "Default", backup = "x" }, keyBackup = ${keyBackup} }`;
+  return loggedIn('__wfgWorld.setUnit("player", { name = "Thrall" })', { savedVariables: `VanguardDB = ${dump(aren, "VanguardDB")}\n${char}\n` });
+}
+
+it("the settings guard's backup: a second character's older key copy leaves the record the first one rebuilt", () => {
+  for (const copy of ["{ stamp = 50 }", "{}"]) {
+    const thrall = thrallAfterAren(100, copy);
+    expect(thrall.eval("return ns.SettingsGuard.Lost()"), "Thrall is told of the loss").toBe("account");
+    expect(Object.keys(thrall.savedVariables().account.keyRestore.keys).length, `${copy}: Aren's record stays`).toBe(4);
+  }
+});
+
+it("the settings guard's backup: a newer key copy still replaces an older account record", () => {
+  const thrall = thrallAfterAren(100, "{ stamp = 200, keyRestore = { set = 1, keys = {} } }");
+  const account = thrall.savedVariables().account;
+  expect(Object.keys(account.keyRestore.keys).length, "Thrall's newer copy").toBe(0);
+  expect(account.keyStamp, "the account notes its stamp").toBe(200);
+});
+
+// A key record of one set holding `keys`, each one moved key.
+const keyRecord = (keys) => `{ set = 1, keys = { ${keys.map((k) => `${k} = { before = "", after = "X", by = {} }`).join(", ")} } }`;
+
+it("the settings guard's backup: a session that only restored keeps its copy's stamp, so a newer copy still wins", () => {
+  const lostChar = (stamp, keys) => `VanguardCharDB = { guard = { stamp = 1, profile = "Default", backup = "x" }, keyBackup = { stamp = ${stamp}, keyRestore = ${keyRecord(keys)} } }`;
+  const aren = loggedIn('__wfgWorld.setUnit("player", { name = "Aren" })', { savedVariables: `${lostChar(50, ["A"])}\n` });
+  aren.eval("time = function() return 100 end");
+  aren.fire("PLAYER_LOGOUT");
+  const thrall = loggedIn('__wfgWorld.setUnit("player", { name = "Thrall" })', { savedVariables: `VanguardDB = ${dump(aren, "VanguardDB")}\n${lostChar(80, ["A", "B", "C", "D"])}\n` });
+  const account = thrall.savedVariables().account;
+  expect(Object.keys(account.keyRestore.keys).length, "Thrall's newer copy").toBe(4);
+  expect(account.keyStamp, "the account notes its stamp").toBe(80);
+});
+
 it("two characters set the same account key: putting it back reaches both", () => {
   const first = rogue();
   ka(first, `KA.Apply({ { key = "F", spell = 1766, slot = 61 } })`);
