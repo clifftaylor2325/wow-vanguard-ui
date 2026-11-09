@@ -122,7 +122,7 @@ T.OnChanged(function() dispelCurve = nil end)
 function A.DispelColor(unit, aura)
   local get, id = C_UnitAuras and C_UnitAuras.GetAuraDispelTypeColor, ns.PlainNumber(aura.auraInstanceID)
   if ns.IsSecret(aura.dispelName) and id and type(get) == "function" and curve() then
-    local ok, color = pcall(get, unit, id, curve())
+    local ok, color = ns.Quiet("aura dispel color", get, unit, id, curve())
     if ok and color then return color:GetRGB() end
   end
   return T.RGB(A.DispelToken(aura.dispelName))
@@ -132,7 +132,7 @@ end
 function A.StackText(unit, aura)
   local get, id = C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount, ns.PlainNumber(aura.auraInstanceID)
   if type(get) == "function" and id then
-    local ok, text = pcall(get, unit, id, 2, 99)
+    local ok, text = ns.Quiet("aura stack text", get, unit, id, 2, 99)
     if ok then return text end
   end
   local stacks = ns.PlainNumber(aura.applications)
@@ -226,17 +226,18 @@ end
 -- a holder the client has rescaled can put its icons back on whole pixels (A.Refit). Weak, as the frames.
 local dressed = setmetatable({}, { __mode = "k" })
 
--- Puts an icon's pixel-sized parts on whole pixels at `ref`'s scale now (the icon and sweep one pixel
--- in, the type edge one pixel wide, its own edge painted again) and notes that scale.
-local function place(parts, ref)
-  local px = T.Pixel(ref)
+-- Puts an icon's pixel-sized parts on whole pixels for the effective scale `scale`, read once by the
+-- caller (the icon and sweep one pixel in, the type edge one pixel wide, its own edge painted again), and
+-- notes that scale.
+local function place(parts, scale)
+  local px = T.PixelAtScale(scale)
   for _, region in ipairs({ parts.icon, parts.cooldown }) do
     region:ClearAllPoints()
     region:SetPoint("TOPLEFT", px, -px); region:SetPoint("BOTTOMRIGHT", -px, px)
   end
   for i, t in ipairs(parts.ring or {}) do if i <= 2 then t:SetHeight(px) else t:SetWidth(px) end end
   T.RepaintFrame(parts.skin)
-  parts.scale = ref:GetEffectiveScale()
+  parts.scale = scale
 end
 
 -- Notes a dressed icon's parts under the holder its style names (nothing when it names none); returns the parts.
@@ -260,7 +261,7 @@ function A.Dress(f, style)
   local count, clock = texts(f, cd, style.size, style.timer)
   ns.Masque.Add(style.masque, f, { Icon = icon, Cooldown = cd, Count = count }, "Aura")
   local parts = { icon = icon, cooldown = cd, count = count, timer = clock, skin = skin, ring = style.debuff and ring(skin) or nil, badge = style.debuff and badge(skin, style.size) or nil }
-  place(parts, f)
+  place(parts, f:GetEffectiveScale())
   return remember(f, parts, style.holder)
 end
 
@@ -276,21 +277,22 @@ end
 
 -- Puts one icon back on whole pixels. One the client has closed, or that fails to place, is forgotten,
 -- so the scale poll doesn't try it again (and report it again) every half second.
-local function refitIcon(icons, f, parts, holder)
-  if forbidden(f, parts) or not ns.Try("aura icon pixels", place, parts, holder) then icons[f] = nil end
+local function refitIcon(icons, f, parts, scale)
+  if forbidden(f, parts) or not ns.Try("aura icon pixels", place, parts, scale) then icons[f] = nil end
 end
 
 -- Puts the icons a holder holds back on whole pixels where its scale has moved since they were placed,
 -- as `holds(scale, placed)` judges (true: still right). The client makes an icon when an aura first needs
 -- it, at whatever scale it has the holder then: on a nameplate it hands over at about 0.01, a one-pixel
--- edge placed then is some 50 units thick once the plate grows, a dark square around the icon.
+-- edge placed then is some 50 units thick once the plate grows, a dark square around the icon. The
+-- holder's scale is read once for all its icons (each icon is placed at its holder's scale, as before).
 ---@param holder table
 ---@param holds function
 function A.Refit(holder, holds)
   if holder:IsForbidden() then return end
   local scale, icons = holder:GetEffectiveScale(), dressed[holder] or {}
   for f, parts in pairs(icons) do
-    if not holds(scale, parts.scale) then refitIcon(icons, f, parts, holder) end
+    if not holds(scale, parts.scale) then refitIcon(icons, f, parts, scale) end
   end
 end
 

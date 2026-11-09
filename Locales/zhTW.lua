@@ -2419,7 +2419,6 @@ L["one block to copy for a bug report: what /vg status and /vg errors say, ready
 L["one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation, quest and map reads, party health and marks, bar defaults) and opens a copy box; in a fight it takes only the party, mark and boss reads; fight takes the secrecy reads in the next fight; last reopens the saved report"] = "在非戰鬥中執行一次，向用戶端詢問待解答的問題（已儲存的任務標記、仇恨保密、隊伍列表、安全翻頁、伺服器格式、秘密判定、限制、導航、任務和地圖讀取、隊伍生命力和標記、快捷列預設值），並開啟複製框；戰鬥中只讀取隊伍、標記和首領；fight 在下一場戰鬥中讀取保密相關內容；last 重新開啟儲存的報告"
 L["open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in"] = "開啟或關閉Vanguard的任務日誌（遊戲的任務日誌按鍵也可以）；history 列出你任何角色最近交回的任務"
 L["open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard"] = "開啟或關閉組隊公告板：依地城、職責和等級顯示聊天中的找隊員和找隊伍貼文；probe 顯示它收到了哪些聊天"
-L["opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list"] = "在複製視窗中開啟Vanguard本次登入捕捉的錯誤，含堆疊和次數（用於錯誤回報）；clear 清空清單"
 L["panel corners: square (default) or rounded, on every theme"] = "面板邊角：方形（預設）或圓角，適用於所有主題"
 L["paste a string from /vg export: a whole profile becomes a new profile, a partial one merges into yours (backed up first)"] = "貼上來自 /vg export 的字串：完整設定檔會成為新設定檔，部分設定會合併到你的設定中（先備份）"
 L["pay {money} on delivery"] = "貨到付款{money}"

@@ -125,6 +125,12 @@ local function owed()
   return not VanguardDB.setupDone or VanguardCharDB.setupDone == false
 end
 
+-- Whether setup still owes a run (see owed), for a login offer that must not sit on top of it.
+---@return boolean
+function ns.SetupOwed()
+  return owed()
+end
+
 -- The backup an owed setup already has (made by Start over, or by an earlier run closed before Done),
 -- while that profile is still there and is still the backup of the profile in use.
 local function keptBackup()

@@ -238,7 +238,7 @@ end
 ---@param spellID number
 ---@return boolean
 function ns.PlaceSpell(slot, spellID)
-  if cursorKind() ~= nil then return false end
+  if ns.InCombat() or cursorKind() ~= nil then return false end
   local ok = pickupSpell(spellID)
   if ok then C.Call("PlaceAction", slot) end
   C.Call("ClearCursor")

@@ -13,8 +13,11 @@ local BADGE_H, BADGE_PAD = 14, 8
 local EB = {}
 ns.ErrorBadge = EB
 
--- The footer line: "1 error caught this session: …" or "3 errors caught this session: …".
+-- The footer line: "1 error caught this session: …" or "3 errors caught this session: …"; with a part
+-- paused after repeated errors (Core/Events.lua), how many are paused instead.
 local function footerText(n)
+  if #ns.paused == 1 then return L["1 part paused after repeated errors: click to list them"] end
+  if #ns.paused > 1 then return ns.Format(L["{count} parts paused after repeated errors: click to list them"], { count = #ns.paused }) end
   if n == 1 then return L["1 error caught this session: click to list them"] end
   return ns.Format(L["{count} errors caught this session: click to list them"], { count = n })
 end
@@ -40,11 +43,12 @@ local function show(badge, n, text)
   badge:SetShown(n > 0)
 end
 
--- Shows the count on both badges (none at zero).
+-- Shows the count on both badges (none at zero): the errors kept, but for those ns.Quiet kept for a
+-- fallback that works as designed; the footer also shows while a part is paused.
 function EB.Update()
-  local n = #ns.errors
+  local n = ns.LoudErrorCount()
   show(EB.button, n, n > 99 and "99+" or tostring(n))
-  show(EB.footer, n, footerText(n))
+  show(EB.footer, n + #ns.paused, footerText(n))
 end
 
 -- The footer line, right of the version: the count in the bad color; a click lists the errors in chat (/vg errors).

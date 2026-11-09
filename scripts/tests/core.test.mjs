@@ -323,7 +323,7 @@ it("/vg perf: CPU and memory with the change since the last report, the busiest 
 });
 // TEST-ONLY always-on profiler: Vanguard's and all addons' metrics by the documented metric numbers, and whether it's on.
 const PROFILER_ENV = PERF_ENV + `
-  __mine = { [0] = 0.25, [1] = 0.4, [4] = 12.5, [6] = 3 }
+  __mine = { [0] = 0.25, [1] = 0.4, [2] = 0.1, [4] = 12.5, [5] = 9, [6] = 3, [7] = 1 }
   __on = true
   C_AddOnProfiler = { IsEnabled = function() return __on end,
     GetAddOnMetric = function(name, m) if name ~= "Vanguard" then return 99 end return __mine[m] end,
@@ -331,15 +331,15 @@ const PROFILER_ENV = PERF_ENV + `
 `;
 it("/vg perf: the game's always-on profiler gives the CPU line without script profiling, else the old counter", () => {
   const addon = loggedIn(PROFILER_ENV);
-  expect(said(addon, "perf"), "ms a frame now, on average, the peak, the share of all addons and the slow frames").toEqual(["CPU 0.40 ms a frame now (0.25 on average, peak 12.5 ms, 25 % of all addons; 3 frames over 5 ms)  ·  memory 2.0 MB"]);
+  expect(said(addon, "perf"), "ms a frame now, on average, in boss fights, the peak, the share of all addons and the frames over 1, 5 and 10 ms").toEqual(["CPU 0.40 ms a frame now (0.25 on average, 0.10 in boss fights, peak 12.5 ms, 25 % of all addons; frames over 1 / 5 / 10 ms: 9 / 3 / 1)  ·  memory 2.0 MB"]);
   addon.eval("Enum.AddOnProfilerMetric = { RecentAverageTime = 6, SessionAverageTime = 0, PeakTime = 4, CountTimeOver5Ms = 1 } C_AddOnProfiler.GetOverallMetric = nil");
-  expect(said(addon, "perf")[0], "the client's own metric numbers win; no total, no share").toBe("CPU 3.00 ms a frame now (0.25 on average, peak 12.5 ms; 0 frames over 5 ms)  ·  memory 2.0 MB");
+  expect(said(addon, "perf")[0], "the client's own metric numbers win; no total, no share").toBe("CPU 3.00 ms a frame now (0.25 on average, 0.10 in boss fights, peak 12.5 ms; frames over 1 / 5 / 10 ms: 9 / 0 / 1)  ·  memory 2.0 MB");
   addon.eval("Enum.AddOnProfilerMetric = nil __mine[1] = nil");
-  expect(said(addon, "perf")[0], "a hidden value reads 0").toBe("CPU 0.00 ms a frame now (0.25 on average, peak 12.5 ms; 3 frames over 5 ms)  ·  memory 2.0 MB");
+  expect(said(addon, "perf")[0], "a hidden value reads 0").toBe("CPU 0.00 ms a frame now (0.25 on average, 0.10 in boss fights, peak 12.5 ms; frames over 1 / 5 / 10 ms: 9 / 3 / 1)  ·  memory 2.0 MB");
   addon.eval("__on = false");
   expect(said(addon, "perf")[0], "profiler off: the script profiler's line").toBe("CPU off (/vg perf cpu turns the game's profiling on)  ·  memory 2.0 MB");
   addon.eval("C_AddOnProfiler = { GetAddOnMetric = function() return 1 end }");
-  expect(said(addon, "perf")[0], "a profiler with no switch counts as on").toBe("CPU 1.00 ms a frame now (1.00 on average, peak 1.0 ms; 1 frames over 5 ms)  ·  memory 2.0 MB");
+  expect(said(addon, "perf")[0], "a profiler with no switch counts as on").toBe("CPU 1.00 ms a frame now (1.00 on average, 1.00 in boss fights, peak 1.0 ms; frames over 1 / 5 / 10 ms: 1 / 1 / 1)  ·  memory 2.0 MB");
 });
 // TEST-ONLY fine clock: debugprofilestop answers __clock (ms), which a test moves.
 const CLOCK_ENV = "__clock = 0 debugprofilestop = function() return __clock end\n";
@@ -347,13 +347,13 @@ it("/vg perf slow: each guarded handler's longest call, slow calls and time in a
   const bare = loggedIn("");
   expect(said(bare, "perf slow"), "no fine clock: nothing timed").toEqual(["No handler timings yet (the client has no fine clock, or nothing has run)."]);
   const addon = loggedIn(CLOCK_ENV);
-  said(addon, "perf slow reset");
+  expect(said(addon, "perf slow reset"), "reset").toEqual(["Vanguard's handler timings start over."]);
   addon.eval(`local function took(ms) return function() __clock = __clock + ms end end
     ns.Try("TEST-ONLY heavy", took(12)) ns.Try("TEST-ONLY heavy", took(3)) ns.Try("TEST-ONLY light", took(1))
     ns.Try("TEST-ONLY tie", took(1)) ns.Try("TEST-ONLY outer", function() ns.Try("TEST-ONLY inner", took(7)) end)`);
   const lines = said(addon, "perf slow");
   expect(lines.slice(0, 5), "the slowest first: the outer call includes the inner").toEqual([
-    "Vanguard's slowest handlers since login or /vg perf slow reset (calls over 5 ms):",
+    "Vanguard's slowest handlers, timed through login and from your first /vg perf slow until you reload (calls over 5 ms):",
     "  1. TEST-ONLY heavy  longest 12.0 ms, 1 over 5 ms, 2 calls, 15 ms in all",
     "  2. TEST-ONLY inner  longest 7.0 ms, 1 over 5 ms, 1 calls, 7 ms in all",
     "  3. TEST-ONLY outer  longest 7.0 ms, 1 over 5 ms, 1 calls, 7 ms in all",
@@ -364,6 +364,19 @@ it("/vg perf slow: each guarded handler's longest call, slow calls and time in a
   expect(addon.eval("local n = 0 for _ in pairs(ns.timings) do n = n + 1 end return { n, ns.timingCount }"), "past the cap new sites are not kept").toEqual([2, 2]);
   addon.eval("ns.Try('TEST-ONLY site 1', function() end)");
   expect(addon.eval("return ns.timings['TEST-ONLY site 1'].calls"), "a kept site still counts").toBe(2);
+});
+
+it("/vg perf slow: handlers are timed through login, then only once it is asked for", () => {
+  const addon = loggedIn(CLOCK_ENV);
+  addon.eval("ns.Try('TEST-ONLY at login', function() __clock = __clock + 6 end)");
+  addon.advance(11);
+  addon.eval("ns.Try('TEST-ONLY later', function() __clock = __clock + 6 end)");
+  expect(addon.eval("return { ns.timings['TEST-ONLY at login'] ~= nil, ns.timings['TEST-ONLY later'] == nil }"), "login's calls are kept; ten seconds on, nothing more is timed").toEqual([true, true]);
+  expect(said(addon, "perf slow")[0], "the heading says when handlers are timed").toBe("Vanguard's slowest handlers, timed through login and from your first /vg perf slow until you reload (calls over 5 ms):");
+  addon.eval("ns.Try('TEST-ONLY later', function() __clock = __clock + 6 end)");
+  addon.advance(11);
+  addon.eval("ns.Try('TEST-ONLY later', function() __clock = __clock + 6 end)");
+  expect(addon.eval("return ns.timings['TEST-ONLY later'].calls"), "asking turns timing back on for the session").toBe(2);
 });
 // TEST-ONLY memory counter: Vanguard's KB follow the list __mem, one reading each call of the game's Update;
 // a client that refuses a full garbage collection, so the run judges by its low point (LIVE_ENV allows it).
@@ -528,11 +541,11 @@ it("add-on restrictions: ns.Restricted reads one kind, starting counts, chat add
   const kinds = loggedIn(RESTRICT_ENV);
   expect(kinds.eval("return ns.Restricted('Nonsense')"), "a kind the client doesn't name").toBe(false);
 });
-it("a 12.x build with the Forever ruleset call still reads as WoW Forever", () => {
+it("a 12.x build is told apart by its interface number and project, never by the Forever ruleset call", () => {
   const addon = loggedIn('WOW_PROJECT_ID = 1 GetBuildInfo = function() return "12.1.5", "TEST-ONLY", "Nov 4 2026", 120105 end C_GameRules = { GetForeverExperiencePreset = function() return 1 end }');
-  expect(addon.eval("return ns.IsForever()"), "120105 plus the ruleset call is Forever").toBe(true);
-  addon.eval("C_GameRules = {}");
-  expect(addon.eval("return ns.IsForever()"), "120105 without the call is Retail").toBe(false);
+  expect(addon.eval("return ns.IsForever()"), "120105 on Retail's project is Retail, ruleset call or not").toBe(false);
+  addon.eval("WOW_PROJECT_CAMELOT = 18 WOW_PROJECT_ID = 18");
+  expect(addon.eval("return ns.IsForever()"), "120105 on Forever's project is Forever").toBe(true);
 });
 it("a retail client is not WoW Forever and keeps its aura state readable", () => {
   const addon = loggedIn('WOW_PROJECT_ID = 1 GetBuildInfo = function() return "12.1.5", "TEST-ONLY", "Nov 4 2026", 120105 end');
@@ -761,4 +774,11 @@ it("command syntax in chat doubles its pipes, so the chat frame doesn't eat |r, 
   expect(lines.some((l) => /\|[a-z<[]/.test(l.replace(/\|\|/g, "").replace(/\|c[0-9a-fA-F]{8}|\|r/g, ""))), "no bare pipe left before a letter in /vg help").toBe(false);
   addon.slash("corners sideways");
   expect(chatHas(addon, /Usage: \/vg corners square\|\|rounded/), "a usage line too").toBe(true);
+});
+it("ns.PlaceSpell does nothing in a fight, and places the spell once it ends", () => {
+  const addon = loggedIn();
+  setCombat(addon, true);
+  expect(addon.eval("return { ns.PlaceSpell(7, 133), __wfgWorld.placed or false, __wfgWorld.cursor == nil }"), "in combat: refused, nothing picked up or placed").toEqual([false, false, true]);
+  setCombat(addon, false);
+  expect(addon.eval("return { ns.PlaceSpell(7, 133), __wfgWorld.placed }"), "out of combat: placed").toEqual([true, 7]);
 });
