@@ -596,13 +596,16 @@ local function registerTiles(mod, list, hook)
   mod[hook] = CC.Register
 end
 
--- The raid buttons, the main tank tiles and the party pet tiles (existing and future) and, if turned on, the unit frames.
+-- The raid buttons, the main tank tiles and the party pet tiles (existing and future) and, if turned on, the unit
+-- frames except the bosses, whose units are enemies: their clicks keep targeting and the menu.
 local function registerFrames(settings)
   registerTiles(ns.GetModule("RaidFrames"), "buttons", "OnButtonCreated")
   registerTiles(ns.GetModule("MainTanks"), "tiles", "OnTileCreated")
   registerTiles(ns.GetModule("PartyExtras"), "pets", "OnPetTile")
   if not settings.unitFrames then return end
-  for _, f in pairs(ns.GetModule("UnitFrames").frames) do CC.Register(f) end
+  for key, f in pairs(ns.GetModule("UnitFrames").frames) do
+    if not key:match("^boss%d$") then CC.Register(f) end
+  end
 end
 
 -- Switches between the game's click bindings and Vanguard's (applied out of combat).

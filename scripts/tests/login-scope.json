@@ -101,6 +101,7 @@
     "scripts/tests/clickcast-notice.test.mjs": [],
     "scripts/tests/clickcast-presets.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
+      "H41-13-1: with the unit frames on, the boss frames keep their clicks to target and the menu",
       "a name-bound spell made in another client language casts by the name this client gives its id",
       "bindings carry spell ids and ranks, move, copy, export and import",
       "sharing: export, import, copy to another spec, and the combat notice",
