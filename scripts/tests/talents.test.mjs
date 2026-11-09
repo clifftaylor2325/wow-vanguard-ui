@@ -242,12 +242,14 @@ it("talent planner: export and import share a plan as a string, for your class; 
   expect(text.startsWith("VG1:talents:"), "the export is a VG1 string in the talents scope").toBe(true);
   addon.eval(`${TP}.Clear()`);
   expect(addon.eval("return { next(VanguardCharDB.talentPlans[1].ranks) == nil, __mark(101).badge:IsShown() }"), "clear empties the plan and the badges go").toEqual([true, false]);
-  expect(addon.eval(`return { ${TP}.Import(${JSON.stringify(text)}) }`), "importing it brings the plan back, with its points").toEqual([true, 7]);
+  expect(addon.eval(`local ranks, hash = ${TP}.ReadImport(${JSON.stringify(text)}) ${TP}.ApplyImport(ranks, hash) return { ranks[101], hash }`), "importing it brings the plan back").toEqual([5, "1-2-3"]);
+  expect(chatHas(addon, /Talent plan imported: 7 points\./), "and says its points").toBe(true);
   expect(addon.eval("return { VanguardCharDB.talentPlans[1].ranks[101], VanguardCharDB.talentPlans[1].ranks[103], __mark(101).badge:GetText() }"), "ranks and badges are back").toEqual([5, 2, "5"]);
   const priest = addon.eval(`return ns.Serialize.Encode("talents", { class = "PRIEST", ranks = { [101] = 1 } })`);
-  expect(addon.eval(`return { ${TP}.Import(${JSON.stringify(priest)}) }`), "another class's plan is refused").toEqual([false, "that plan is for a Priest"]);
-  expect(addon.eval(`return { ${TP}.Import(ns.Serialize.Encode("profile", {})) }`), "a profile string is not a plan").toEqual([false, "that is not a talent plan"]);
-  expect(addon.eval(`return { ${TP}.Import("hello") }`), "junk is refused with the serializer's reason").toEqual([false, "not a Vanguard profile string"]);
+  expect(addon.eval(`return { ${TP}.ReadImport(${JSON.stringify(priest)}) }`), "another class's plan is refused").toEqual([false, "that plan is for a Priest"]);
+  expect(addon.eval(`return { ${TP}.ReadImport(ns.Serialize.Encode("profile", {})) }`), "a profile string is not a plan").toEqual([false, "that is not a talent plan"]);
+  expect(addon.eval(`return { ${TP}.ReadImport("hello") }`), "junk is refused with the serializer's reason").toEqual([false, "not a Vanguard profile string"]);
+  expect(addon.eval(`return { ${TP}.ReadImport(ns.Serialize.Encode("talents", { ranks = { [101] = 0, x = 3 } })) }`), "a string with no usable rank is refused").toEqual([false, "that plan has no talents in it"]);
   addon.eval(`${TP}.Clear() ${TP}.ExportDialog()`);
   expect(chatHas(addon, /Nothing to export: this spec's plan is empty\./), "an empty plan has nothing to export").toBe(true);
 });
@@ -339,6 +341,16 @@ it("talent planner: a mark's tooltip, the import box, /vg talents spend, and the
   const text = addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 2 }, hash = "1-2-3" } } ${TP}.ExportDialog() return Vanguard_TextEdit:GetText()`);
   addon.eval(`${TP}.Clear() ${TP}.ImportDialog() Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
   expect([addon.eval("return Vanguard_TextDialog:IsShown()"), chatHas(addon, /Talent plan imported: 2 points./)], "a good paste imports the plan, closes the box and says how many points").toEqual([false, true]);
+  // A spec that already has a plan is asked first; No keeps it, Replace swaps it.
+  const paste = `${TP}.ImportDialog() Vanguard_TextEdit:SetText(${JSON.stringify(text)}) Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`;
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [103] = 3, [104] = 1 }, hash = "1-2-3" } } ${paste}`);
+  expect([addon.eval("return Vanguard_Question:IsShown()"), addon.eval("return Vanguard_TextDialog:IsShown()"), addon.texts("Replace this spec's talent plan (planned points: 4) with the plan from this string (planned points: 2)? This can't be undone.").length], "a plan with points is not replaced until asked").toEqual([true, false, 1]);
+  expect(addon.eval("return VanguardCharDB.talentPlans[1].ranks[103]"), "still the old plan while the question is open").toBe(3);
+  addon.click("Vanguard_Question.no");
+  expect(addon.eval("return { VanguardCharDB.talentPlans[1].ranks[103], VanguardCharDB.talentPlans[1].ranks[101] or false }"), "No keeps the plan").toEqual([3, false]);
+  addon.eval(paste);
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("return { VanguardCharDB.talentPlans[1].ranks[103] or false, VanguardCharDB.talentPlans[1].ranks[101] }"), "Replace swaps in the string's plan").toEqual([false, 2]);
 });
 
 // TEST-ONLY talents window at Forever's size (Camelot Blizzard_PlayerSpellsFrame.xml: the window 1618 x 883,

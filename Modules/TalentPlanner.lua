@@ -723,18 +723,25 @@ function TP.Export()
   return ns.Serialize.Encode("talents", { class = not ns.IsSecret(class) and class or nil, hash = plan.hash, ranks = plan.ranks })
 end
 
--- A pasted plan string into this spec group's plan, for your class only: true and its points, or false and why.
--- The tree it was made on is checked at the next repaint (TP.Reconcile).
-function TP.Import(text)
+-- Checks a pasted plan string, for your class only: its ranks and tree hash, or false and why (a string with
+-- no usable rank is refused). Changes nothing; the tree it was made on is checked at the next repaint (TP.Reconcile).
+function TP.ReadImport(text)
   local scope, data = ns.Serialize.Decode(text)
   if not scope then return false, data end
   if scope ~= "talents" or type(data) ~= "table" or type(data.ranks) ~= "table" then return false, L["that is not a talent plan"] end
   local _, class = UnitClass("player")
   if type(data.class) == "string" and type(class) == "string" and data.class ~= class then return false, ns.Format(L["that plan is for a {class}"], { class = classWord(data.class) }) end
+  local ranks = cleanRanks(data.ranks)
+  if not next(ranks) then return false, L["that plan has no talents in it"] end
+  return ranks, type(data.hash) == "string" and data.hash or nil
+end
+
+-- Makes checked ranks (TP.ReadImport) this spec group's plan, and says how many points it holds.
+function TP.ApplyImport(ranks, hash)
   local plan = TP.Plan()
-  plan.ranks, plan.hash = cleanRanks(data.ranks), type(data.hash) == "string" and data.hash or nil
+  plan.ranks, plan.hash = ranks, hash
   TP.Refresh()
-  return true, countRanks(plan.ranks)
+  ns.Chat(TP.Plural(countRanks(ranks), L["Talent plan imported: 1 point."], L["Talent plan imported: {count} points."]))
 end
 
 -- /vg talents export, and the options button: the plan as a string in a box to copy.
@@ -744,13 +751,20 @@ function TP.ExportDialog()
   ns.ShowText(L["Vanguard talent plan  Ctrl+C to copy"], text)
 end
 
--- /vg talents import, and the options button: a box to paste a plan into.
+-- Asks before checked ranks replace a plan that holds points (a "danger" question: the old plan is not kept).
+local function askReplace(ranks, hash)
+  local question = ns.Format(L["Replace this spec's talent plan (planned points: {old}) with the plan from this string (planned points: {new})? This can't be undone."], { old = countRanks(TP.Plan().ranks), new = countRanks(ranks) })
+  ns.Ask(question, L["Replace"], function() TP.ApplyImport(ranks, hash) end, nil, "danger")
+end
+
+-- /vg talents import, and the options button: a box to paste a plan into; a plan that holds points is replaced only on a Yes.
 function TP.ImportDialog()
   ns.AskText(L["Paste a talent plan, then Import"], function(text)
-    local ok, detail = TP.Import(text)
-    if not ok then return ns.Chat(ns.Format(L["Import failed: {reason}."], { reason = detail })) end
+    local ranks, hash = TP.ReadImport(text)
+    if not ranks then return ns.Chat(ns.Format(L["Import failed: {reason}."], { reason = hash })) end
     ns.HideText()
-    ns.Chat(TP.Plural(detail, L["Talent plan imported: 1 point."], L["Talent plan imported: {count} points."]))
+    if not next(TP.Plan().ranks) then return TP.ApplyImport(ranks, hash) end
+    askReplace(ranks, hash)
   end)
 end
 
