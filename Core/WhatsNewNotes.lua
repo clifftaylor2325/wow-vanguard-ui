@@ -81,7 +81,7 @@ ns.WHATS_NEW = {
       { text = "Calm HUD quiets the whole HUD out of combat, not only the unit frames: on the General page's Calm HUD card each part dims, hides until the mouse is over it, or is left as it is." },
     } },
     { module = "Other", label = "Safety and tools", items = {
-      { text = "The game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons." },
+      { text = "Fixed on the game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons." },
     } },
   } },
   { version = "0.7.5", groups = {

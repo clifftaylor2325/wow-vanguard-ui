@@ -2,10 +2,10 @@
 ## Title: Vanguard
 ## Notes: One addon for your whole WoW Forever UI: frames, bars, bags, nameplates, chat, quests and auction tools in one look. Also runs on Retail. Type /vg.
 ## Notes-deDE: Ein Addon für deine ganze WoW-Forever-Oberfläche: Rahmen, Leisten, Taschen, Namensplaketten, Chat, Quests und Auktionshilfen in einem Look. Läuft auch auf Retail. Tippe /vg.
-## Notes-frFR: Un seul addon pour toute votre interface WoW Forever : cadres, barres, sacs, barres de nom, discussion, quêtes et outils d’enchères dans un même style. Fonctionne aussi sur Retail. Tapez /vg.
+## Notes-frFR: Un seul addon pour toute votre interface WoW Forever : cadres, barres, sacs, plaques de nom, discussion, quêtes et outils d’enchères dans un même style. Fonctionne aussi sur Retail. Tapez /vg.
 ## Notes-esES: Un addon para toda tu interfaz de WoW Forever: marcos, barras, bolsas, placas de nombre, chat, misiones y herramientas de subasta con un mismo estilo. También funciona en Retail. Escribe /vg.
 ## Notes-esMX: Un addon para toda tu interfaz de WoW Forever: marcos, barras, bolsas, placas de nombre, chat, misiones y herramientas de subasta con un mismo estilo. También funciona en Retail. Escribe /vg.
-## Notes-itIT: Un solo addon per tutta l’interfaccia di WoW Forever: riquadri, barre, borse, targhette, chat, missioni e strumenti d’asta con un unico stile. Funziona anche su Retail. Scrivi /vg.
+## Notes-itIT: Un solo addon per tutta l’interfaccia di WoW Forever: riquadri, barre, borse, barre dei nomi, chat, missioni e strumenti d’asta con un unico stile. Funziona anche su Retail. Scrivi /vg.
 ## Notes-ptBR: Um addon para toda a sua interface do WoW Forever: quadros, barras, bolsas, placas de nome, bate-papo, missões e ferramentas de leilão em um só visual. Também roda no Retail. Digite /vg.
 ## Notes-ruRU: Один аддон для всего интерфейса WoW Forever: рамки, панели, сумки, индикаторы здоровья, чат, задания и инструменты аукциона в одном стиле. Работает и на Retail. Введите /vg.
 ## Notes-koKR: WoW Forever UI 전체를 위한 하나의 애드온: 프레임, 단축바, 가방, 이름표, 대화창, 퀘스트와 경매 도구를 하나의 모습으로. Retail에서도 작동합니다. /vg를 입력하세요.

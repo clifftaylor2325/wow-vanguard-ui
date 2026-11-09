@@ -160,7 +160,7 @@ A hotfix for 0.9.1.
 
 ### Fixes (0.8.0)
 
-- The game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons.
+- Fixed on the game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons.
 
 ## 0.7.5
 
