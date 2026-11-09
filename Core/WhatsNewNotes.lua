@@ -12,7 +12,7 @@ local ADDON, ns = ...
 ns.WHATS_NEW = {
   { version = "0.9.3", groups = {
     { module = "Other", label = "Safety and tools", items = {
-      { text = "Fixes from eight more bug hunts: a theme change after a dungeon goes through, a flyout placed in a fight raises no error, Pixel-perfect follows the screen, and unlock and Edit Mode keep each other's moves." },
+      { text = "A theme change after a dungeon goes through, a flyout placed in a fight raises no error, Pixel-perfect follows the screen, and unlock and Edit Mode keep each other's moves." },
       { text = "The sell list and the craft queue are each character's own, and a profile another character already restored from a newer backup is offered instead of being overwritten." },
       { text = "On Retail, the quest tracker handles recipes, recrafts and scenario spells, and a spec change no longer saves its Edit Mode layout into the old spec's profile." },
       { text = "Close this tab gives its chat back to the main window, quest item buttons work in a fight, and a WoW Forever flyout shows each spell once, at its highest rank." },
@@ -34,7 +34,7 @@ ns.WHATS_NEW = {
       { text = "A thin bright line marks a shield past a full health bar, your focus's nameplate gets a quieter border, and raid tiles read Offline, ready checks and missing buffs right." },
     } },
     { module = "Other", label = "Safety and tools", items = {
-      { text = "Colours and the theme agree across every module (41 fixes), and fixes from three more bug hunts, Retail's right-click menus among them." },
+      { text = "Colours and the theme agree across every module, Retail's right-click menus wear the theme, and Quiet gives back red errors and zone names once it is off." },
       { text = "The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback)." },
     } },
   } },
@@ -61,8 +61,8 @@ ns.WHATS_NEW = {
     } },
     { module = "Other", label = "Safety and tools", items = {
       { text = "Nameplates no longer draw a dark box when the game hands a plate over at a tiny scale, and the Calm HUD's hover no longer reports an error on your buff buttons." },
-      { text = "Fixes from twenty bug hunts across both clients: key setup and click casting, action bar flyouts, frames and raid marks, quests and the arrow, the reagent bag in selling, mail, auctions and the bank, profiles and setup, chat tabs, and the Retail windows." },
-      { text = "Fixes from three more bug hunts: the merchant's Stack and Your auctions' Cancel ask first when it costs gold, bag and bank search lights the tabs and bag buttons that hold a match, the quest dialog sorts reward spells into Teaches, Unlocks and Grants, nameplates show the soft-target icon, the Calm HUD brings action bars back in a vehicle, and chat links and the Retail Delve layout behave." },
+      { text = "Fixed on both clients: key setup and click casting, action bar flyouts, frames and raid marks, quests and the arrow, the reagent bag in selling, mail, auctions and the bank, profiles and setup, chat tabs, and the Retail windows." },
+      { text = "The merchant's Stack and Your auctions' Cancel ask first when it costs gold, bag and bank search lights the tabs and bag buttons that hold a match, the quest dialog sorts reward spells into Teaches, Unlocks and Grants, nameplates show the soft-target icon, the Calm HUD brings action bars back in a vehicle, and chat links and the Retail Delve layout behave." },
       { text = "The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback)." },
     } },
   } },
@@ -81,7 +81,7 @@ ns.WHATS_NEW = {
       { text = "Calm HUD quiets the whole HUD out of combat, not only the unit frames: on the General page's Calm HUD card each part dims, hides until the mouse is over it, or is left as it is." },
     } },
     { module = "Other", label = "Safety and tools", items = {
-      { text = "Fixes from two hunts on the game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons." },
+      { text = "Fixed on the game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons." },
     } },
   } },
   { version = "0.7.5", groups = {
@@ -100,7 +100,7 @@ ns.WHATS_NEW = {
       { text = "On narrow or short screens, default frame spots move just enough to stay on screen and clear of each other; wider screens are unchanged." },
     } },
     { module = "Other", label = "Safety and tools", items = {
-      { text = "Fixes from two bug hunts, a clean-code review and twelve stability hunts across combat, frames, chat, quests, bags, the auction house, mail, profiles and options." },
+      { text = "Stability fixes across combat, frames, chat, quests, bags, the auction house, mail, profiles and options." },
     } },
   } },
   { version = "0.7.4", groups = {

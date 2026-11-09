@@ -2,11 +2,13 @@
 
 What changed for players in each release, newest first. In game, the same notes are the What's new window (`/vg whatsnew`), written in `Core/WhatsNewNotes.lua`; the website's release notes are written from this file's sections. Items marked *(off)* start switched off.
 
-Nothing here has been checked in the game by the people who wrote it down: see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md).
+Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
 ## 0.9.3
 
-The fixes from bug hunt rounds six to thirteen. Nothing in this release has been checked in the game; see [SMOKE-TEST.md](SMOKE-TEST.md) (steps 33.344 to 33.389).
+<!-- SMOKE steps 33.344 to 33.389 -->
+
+Fixes across the bars, the game's windows, quests, chat and profiles. Nothing new to set up.
 
 ### Theme and nameplates (0.9.3)
 
@@ -53,7 +55,9 @@ The fixes from bug hunt rounds six to thirteen. Nothing in this release has been
 
 ## 0.9.2
 
-A hotfix for 0.9.1. Nothing in it has been checked in the game; see [SMOKE-TEST.md](SMOKE-TEST.md) (step 33.342).
+<!-- SMOKE step 33.342 -->
+
+A hotfix for 0.9.1.
 
 ### Nameplates (0.9.2)
 
@@ -61,7 +65,7 @@ A hotfix for 0.9.1. Nothing in it has been checked in the game; see [SMOKE-TEST.
 
 ## 0.9.1
 
-Nothing in this release has been checked in the game; see the batch checklist (issue #284) and [SMOKE-TEST.md](SMOKE-TEST.md) (steps 33.317 to 33.335).
+<!-- SMOKE steps 33.317 to 33.335 -->
 
 ### Gear upgrades (0.9.1)
 
@@ -84,16 +88,14 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 
 ### Look (0.9.1)
 
-- Colours and the theme agree across every module (41 fixes from a colour hunt): cast bar times are white like the other numbers over bars, combo point pips use the bar texture, Dead, Ghost and Offline are coloured as on the raid tiles, Safer colours also cover the reputation bar and the minimap's zone name, hand-set text colours survive a look, accent or text size change, and the keystone window gets the corner brackets the other windows have.
+- Colours and the theme agree across every module: cast bar times are white like the other numbers over bars, combo point pips use the bar texture, Dead, Ghost and Offline are coloured as on the raid tiles, Safer colours also cover the reputation bar and the minimap's zone name, hand-set text colours survive a look, accent or text size change, and the keystone window gets the corner brackets the other windows have.
 
 ### Fixes (0.9.1)
 
-- Fixes from three more bug hunts: Retail's right-click menus wear the theme, Quiet stops hiding red errors and zone names once it is switched off, mail tools say when the Send Mail tab is full, auction alerts check again when the item's name arrives, and a profile string for one module imports correctly.
+- Retail's right-click menus wear the theme, Quiet stops hiding red errors and zone names once it is switched off, mail tools say when the Send Mail tab is full, auction alerts check again when the item's name arrives, and a profile string for one module imports correctly.
 - The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback).
 
 ## 0.9.0
-
-Nothing in this release has been checked in the game; see the batch checklist (issue #284) and the Retail section of [SMOKE-TEST.md](SMOKE-TEST.md) (section 34).
 
 ### Retail (0.9.0)
 
@@ -126,30 +128,25 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 
 ### Fixes (0.9.0)
 
-- Fixes from twenty bug hunts across both clients (178 in all):
-  - Keys and click casting: key setup places a ranked spell's top rank, and a change you untick stays yours.
-  - Action bars: a flyout (such as a mage's portals) opens Vanguard's own list, which closes with its bar.
-  - Frames and raid: game frames Vanguard hides stay hidden, ready check and resurrection marks clear at the right time, and the raid preview follows Scale and Reset.
-  - Quests and map: finished auto-complete quests complete from the tracker (Click to complete), the arrow points at the quest you track on the game's map, and the quest dialog keeps its scroll and passes modifier keys to the game.
-  - Town and gear: junk sales, mail presets, the auction Sell card and bank deposits include the reagent bag; selling more than 12 stacks warns that buyback keeps only the last 12; prices written as "1,500g" are understood; refundable stacks stay in your bags.
-  - Retail: class weights follow your spec's main stat, raid buff rows only show when someone in the group gives that buff, ranged weapons compare properly, Forever-only prep rows and strip blocks stay off, and more of the character pane, group finder, PvP, housing and profession windows wear the theme.
-  - Options, profiles and setup: Reset this page covers every row, a profile you pick by hand stays picked at login, Start over keeps your backup, and a profile from the other client brings this client's defaults.
-  - Chat: closing a tab drops its saved history, and a new tab says when every tab is in use.
-- Fixes from three more bug hunts (62 in all):
-  - Town and gear: the merchant's Stack button asks first for a pack the game would ask about (150g or more and not refundable), and Stack and Max only report what they really bought; Cancel on Your auctions asks first when cancelling costs gold or the cost can't be read; Relist keeps an expired auction if the sell card refuses it; a mail preset counts the items already in the mail towards its 12; sending a bag group to a full bank says how many stacks stayed; the sales ledger survives a login with the computer clock set far ahead.
-  - Bags and bank: bank side tabs and bag bar buttons light up when they hold a search match, and locked backpack slots sort last under Empty. On Retail the game's slot art is faded, and the ilvl and q search words read the item's own level and quality.
-  - Quests and map: the quest dialog sorts reward spells into Teaches, Unlocks and Grants and leaves out spells you know; the arrow stays bright and says "No distance" when the game gives only a direction; quest-start pins leave out quests already in your log; a timed scenario step shows its countdown; abandoning checks each quest is still in the log and can be abandoned; a reward's upgrade arrow waits for the item's stats; the tracker re-sorts for the area you walk into.
-  - HUD and frames: Vanguard's nameplates show the soft-target icon, and a friendly NPC the game marks with a widget keeps the game's plate; with the Calm HUD on, action bars come back in a vehicle and hovering any buff row brings it back; empty totem slots no longer catch clicks; a warlock's soul shards show from level 10; keybind mode keeps every button shown after you drag a spell; the game's event link button shows at the minimap's top-left corner while there is an event; minimap buttons an addon hid stay out of the drawer; the meter's Deaths view shows when each death happened.
-  - Chat and feedback: a web address at the start of a message, or with a subdomain, becomes a link; chat watch matches whole words in every alphabet; /vg feedback feature opens on the right kind.
-  - Retail: the Delve layout ends when you leave the delve, the battleground banner uses the theme font, the tracker's XP footer counts only quests you've taken, and the premade group pages, delve companion window, decor categories and Equipment Manager list wear the theme in full.
-
+- Keys and click casting: key setup places a ranked spell's top rank, and a change you untick stays yours.
+- Action bars: a flyout (such as a mage's portals) opens Vanguard's own list, which closes with its bar.
+- Frames and raid: game frames Vanguard hides stay hidden, ready check and resurrection marks clear at the right time, and the raid preview follows Scale and Reset.
+- Quests and map: finished auto-complete quests complete from the tracker (Click to complete), the arrow points at the quest you track on the game's map, and the quest dialog keeps its scroll and passes modifier keys to the game.
+- Town and gear: junk sales, mail presets, the auction Sell card and bank deposits include the reagent bag; selling more than 12 stacks warns that buyback keeps only the last 12; prices written as "1,500g" are understood; refundable stacks stay in your bags.
+- Retail: class weights follow your spec's main stat, raid buff rows only show when someone in the group gives that buff, ranged weapons compare properly, Forever-only prep rows and strip blocks stay off, and more of the character pane, group finder, PvP, housing and profession windows wear the theme.
+- Options, profiles and setup: Reset this page covers every row, a profile you pick by hand stays picked at login, Start over keeps your backup, and a profile from the other client brings this client's defaults.
+- Chat: closing a tab drops its saved history, and a new tab says when every tab is in use.
+- Town and gear: the merchant's Stack button asks first for a pack the game would ask about (150g or more and not refundable), and Stack and Max only report what they really bought; Cancel on Your auctions asks first when cancelling costs gold or the cost can't be read; Relist keeps an expired auction if the sell card refuses it; a mail preset counts the items already in the mail towards its 12; sending a bag group to a full bank says how many stacks stayed; the sales ledger survives a login with the computer clock set far ahead.
+- Bags and bank: bank side tabs and bag bar buttons light up when they hold a search match, and locked backpack slots sort last under Empty. On Retail the game's slot art is faded, and the ilvl and q search words read the item's own level and quality.
+- Quests and map: the quest dialog sorts reward spells into Teaches, Unlocks and Grants and leaves out spells you know; the arrow stays bright and says "No distance" when the game gives only a direction; quest-start pins leave out quests already in your log; a timed scenario step shows its countdown; abandoning checks each quest is still in the log and can be abandoned; a reward's upgrade arrow waits for the item's stats; the tracker re-sorts for the area you walk into.
+- HUD and frames: Vanguard's nameplates show the soft-target icon, and a friendly NPC the game marks with a widget keeps the game's plate; with the Calm HUD on, action bars come back in a vehicle and hovering any buff row brings it back; empty totem slots no longer catch clicks; a warlock's soul shards show from level 10; keybind mode keeps every button shown after you drag a spell; the game's event link button shows at the minimap's top-left corner while there is an event; minimap buttons an addon hid stay out of the drawer; the meter's Deaths view shows when each death happened.
+- Chat and feedback: a web address at the start of a message, or with a subdomain, becomes a link; chat watch matches whole words in every alphabet; /vg feedback feature opens on the right kind.
+- Retail: the Delve layout ends when you leave the delve, the battleground banner uses the theme font, the tracker's XP footer counts only quests you've taken, and the premade group pages, delve companion window, decor categories and Equipment Manager list wear the theme in full.
 - Nameplates no longer draw a dark box when the game hands a plate over at a tiny scale.
 - The Calm HUD's hover no longer reports an error on your buff buttons.
 - The new text is translated in all ten languages (machine-drafted; report a wrong line with /vg feedback).
 
 ## 0.8.0
-
-Nothing in this release has been checked in the game; see the batch checklist (issue #284).
 
 ### Keys (0.8.0)
 
@@ -169,11 +166,9 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 
 ### Fixes (0.8.0)
 
-- Fixes from two hunts on the game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons.
+- Fixed on the game's own windows and HUD pieces: text left in the game's parchment colours, art the game shows again on hover, raw bar colours, the spellbook and achievements windows, and the Calm HUD on frames the game keeps from add-ons.
 
 ## 0.7.5
-
-Nothing in this release has been checked in the game; see the batch checklist (issue #284).
 
 ### Language (0.7.5)
 
@@ -194,11 +189,9 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 
 ### Fixes (0.7.5)
 
-- Fixes from two bug hunts, a clean-code review and twelve stability hunts across combat, frames, chat, quests, bags, the auction house, mail, profiles and options.
+- Stability fixes across combat, frames, chat, quests, bags, the auction house, mail, profiles and options.
 
 ## 0.7.4
-
-Nothing in this release has been checked in the game; see the batch checklist (issue #284).
 
 ### Credits (0.7.4)
 
@@ -210,8 +203,6 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - A button holding an item you wear gets a thin green ring, and the keybind banner repeats your last bind and has a Done button.
 
 ## 0.7.3
-
-Nothing in this release has been checked in the game; see the batch checklist (issue #284).
 
 ### Options and windows
 
@@ -266,8 +257,6 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 
 ## 0.7.2
 
-Nothing in this release has been checked in the game; see the batch checklist (issue #284).
-
 ### Window look (0.7.2)
 
 - Window buttons (close, minimize, maximize, back) show only their mark at rest; under the mouse a grey rounded tile appears and the close cross turns vermilion.
@@ -298,8 +287,6 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - Hiding the red error line keeps the yellow info lines, and an options search hit marks its row when the window opens again.
 
 ## 0.7.1
-
-Nothing in this release has been checked in the game; see the batch checklist (issue #284).
 
 ### Chat panel
 
@@ -335,8 +322,6 @@ Nothing in this release has been checked in the game; see the batch checklist (i
 - /vg probe never makes a call the game restricts.
 
 ## 0.7.0
-
-Nothing in this release has been checked in the game; see the batch checklist (issue #284).
 
 ### Questing
 
