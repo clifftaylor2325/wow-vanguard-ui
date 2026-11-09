@@ -1297,6 +1297,8 @@ it("auto-accept: summons, resurrections and duels, each off until switched on", 
   fire(on);
   expect(on.eval("return __answers"), "each answered, its prompt closed (all three resurrection prompts, whichever the game showed)").toEqual(["summon", "close CONFIRM_SUMMON", "close CONFIRM_SUMMON_SCENARIO", "close CONFIRM_SUMMON_STARTING_AREA", "resurrect", "close RESURRECT", "close RESURRECT_NO_SICKNESS", "close RESURRECT_NO_TIMER", "decline", "close DUEL_REQUESTED"]);
   expect(chatHas(on, /summon from <name> to TEST-ONLY Vale/) && chatHas(on, /resurrection from <name>/) && chatHas(on, /duel from someone/), "and said in chat (a hidden name reads as someone)").toBe(true);
+  on.fire("RESURRECT_REQUEST", { __secret: true });
+  expect(chatHas(on, /resurrection from someone/), "a resurrection from a hidden name reads as someone too").toBe(true);
 });
 
 it("auto-accept: a duel to the death is declined and its prompt closed too", () => {

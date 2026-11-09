@@ -38,7 +38,10 @@ try {
 const tocLua = process.env.VG_SKIP_RETAIL ? clientPaths(readToc(root), "forever") : anyClientPaths(readToc(root));
 const luaFiles = tocLua.filter((file) => file.endsWith(".lua") && !file.startsWith("Libs/"));
 const report = coverageReport(root, luaFiles);
-const floor = JSON.parse(fs.readFileSync(path.join(root, "scripts/lua-coverage-floor.json"), "utf8")).lines;
+// Without the Retail-only tests the Retail branches of shared files go unrun, so that run has its own floor
+// (withoutRetail, which only goes up too); the weekly and release runs hold every line to "lines".
+const floors = JSON.parse(fs.readFileSync(path.join(root, "scripts/lua-coverage-floor.json"), "utf8"));
+const floor = process.env.VG_SKIP_RETAIL ? floors.withoutRetail : floors.lines;
 fs.writeFileSync(path.join(root, "coverage/lua-coverage.json"), `${JSON.stringify(report, null, 2)}\n`);
 console.log(`\nLua line coverage (floor ${floor}%)\n${formatReport(report)}`);
 appendJobSummary(`Lua line coverage (floor ${floor}%)`, formatReport(report).split("\n"));
