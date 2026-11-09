@@ -30,19 +30,29 @@ const morePlates = (from, to) => `for i = ${from}, ${to} do
     p.UnitFrame, p.IsForbidden = CreateFrame("Frame", nil, p), function() return false end
     __plates["nameplate" .. i], __units["nameplate" .. i] = p, __units.target
   end`;
-it("nameplate frames are built ahead at login, so a pull of 30 plates builds none", () => {
+it("nameplate frames are built ahead after login, two a frame, so a pull of 30 plates builds none", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
-  expect(addon.eval("return #ns.GetModule('Nameplates').pool"), "40 built ahead, two taken by the plates on screen at login").toBe(38);
+  // How many frames are built ahead and not yet taken.
+  const pool = () => addon.eval("return #ns.GetModule('Nameplates').pool");
+  expect(pool(), "none built at login itself").toBe(0);
+  addon.update(0.016);
+  expect(pool(), "two on the first frame after").toBe(2);
+  setCombat(addon, true);
+  for (let i = 0; i < 5; i++) addon.update(0.016);
+  expect(pool(), "a fight pauses the building").toBe(2);
+  setCombat(addon, false);
+  for (let i = 0; i < 25; i++) addon.update(0.016);
+  expect(pool(), "40 built ahead once the fight is over").toBe(40);
   addon.eval(morePlates(4, 33));
   const before = addon.eval("return #__wfgStub.frames");
   for (let i = 4; i <= 33; i++) addon.fire("NAME_PLATE_UNIT_ADDED", `nameplate${i}`);
   expect(addon.eval("return #__wfgStub.frames") - before, "30 plates added: no new frame").toBe(0);
   const p = addon.eval(`local plate = __plates.nameplate20 local f = ns.FrameState('vgPlate')[plate] local at = f.__points.CENTER
     return { f:IsVisible(), f:GetParent() == plate, at.rel == plate, f.events.__unitEvents.UNIT_HEALTH[1], #ns.GetModule('Nameplates').pool }`);
-  expect(p, "each frame moved onto its plate, shown, listening for its unit").toEqual([true, true, true, "nameplate20", 8]);
-  addon.eval(morePlates(34, 42));
-  for (let i = 34; i <= 42; i++) addon.fire("NAME_PLATE_UNIT_ADDED", `nameplate${i}`);
-  expect(addon.eval("return { #ns.GetModule('Nameplates').pool, ns.FrameState('vgPlate')[__plates.nameplate42]:IsVisible() }"), "past the pool, a plate still gets a frame").toEqual([0, true]);
+  expect(p, "each frame moved onto its plate, shown, listening for its unit").toEqual([true, true, true, "nameplate20", 10]);
+  addon.eval(morePlates(34, 44));
+  for (let i = 34; i <= 44; i++) addon.fire("NAME_PLATE_UNIT_ADDED", `nameplate${i}`);
+  expect(addon.eval("return { #ns.GetModule('Nameplates').pool, ns.FrameState('vgPlate')[__plates.nameplate44]:IsVisible() }"), "past the pool, a plate still gets a frame").toEqual([0, true]);
   expect(loggedIn(UNITS_ENV).eval("return #ns.GetModule('Nameplates').pool"), "a client without addon nameplates builds none").toBe(0);
 });
 it("a fallback debuff row put away after a fight is reused by the next plate drawn in one", () => {

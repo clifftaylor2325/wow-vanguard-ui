@@ -4755,6 +4755,36 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the bar fills through the stages with a mark where each ends, as before; no Lua error.
 - If it fails, paste: `/vg errors` and a screenshot of the bar.
 
+### 33.440 Login takes less of Vanguard's time (Forever)
+
+- Do: Log in alone (no group), wait ten seconds, then type `/vg perf slow`.
+- Expect: PLAYER_LOGIN's longest call is well under a second (it was some 2.8 s), "module RaidAuras" is no longer near the top, "module Nameplates" is far under its old 881 ms, and "aura container" has far fewer than 408 calls. The heading says handlers are timed through login and from your first `/vg perf slow` until you reload.
+- If it fails, paste: the whole `/vg perf slow` output.
+
+### 33.441 Raid frame auras after joining a group, and in a fight (Forever)
+
+- Do: Join a party, then (if you can) a raid. Look at the tiles' debuffs and your HoTs within a few seconds. Then have someone join while you are in a fight.
+- Expect: Each tile shows its debuffs and HoTs as before, with no hitch when you join; the player who joined in the fight gets icons on their tile as soon as the fight ends, and `/vg errors` is empty.
+- If it fails, paste: a screenshot of the raid frames and the `/vg errors` text.
+
+### 33.442 A pull right after login draws every nameplate (Forever)
+
+- Do: Log in next to a group of mobs and pull several within the first two seconds.
+- Expect: Every enemy plate is drawn in Vanguard's look with its debuffs, and there is no error; a minute later `/vg plates` reports the plates drawn.
+- If it fails, paste: the `/vg plates` and `/vg errors` text.
+
+### 33.443 Raid frames still follow health, power and names (Forever)
+
+- Do: In a party or raid, fight next to nameplates for a minute: watch the tiles' health and power bars, and have a member go offline or change name if you can.
+- Expect: Each tile's health and power follow its player as before, the offline tile greys out, and nothing on the tiles reacts to a nameplate's health.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.444 /vg perf's new counters (Forever)
+
+- Do: After some play (a boss fight if you can), type `/vg perf`.
+- Expect: The CPU part reads "... on average, N in boss fights, peak ...; frames over 1 / 5 / 10 ms: a / b / c" with numbers, and no error.
+- If it fails, paste: the `/vg perf` line.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail

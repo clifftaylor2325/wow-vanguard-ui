@@ -297,3 +297,15 @@ function ns.Soon(key, fn)
   soon[key] = fn
   if not waiting then C_Timer.After(0, function() runSoon(key) end) end
 end
+
+-- Runs step() once a frame, from the next one, while it returns true: work too big for one frame (frames
+-- built ahead at login) spread over the frames after it. A fight pauses it (no container or secure frame
+-- can be made then) until the fight ends. Asked again while it runs, it still runs one step a frame.
+---@param key string
+---@param step fun(): boolean  does one frame's share; true while more is left
+function ns.Spread(key, step)
+  ns.Soon(key, function()
+    if ns.InCombat() then return ns.OutOfCombat(function() ns.Spread(key, step) end, key) end
+    if step() then ns.Spread(key, step) end
+  end)
+end

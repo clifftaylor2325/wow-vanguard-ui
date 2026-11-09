@@ -140,11 +140,12 @@ local function mine(src)
   return not ns.IsSecret(src.isLocalPlayer) and src.isLocalPlayer == true
 end
 
--- Fills a row's bar and figure from a line, scaled to the top line's figure.
-local function fillFigure(row, src, top)
-  give(row, "SetMinMaxValues", 0, scale(top))
-  give(row, "SetValue", figure(src[MT.Field()]))
-  give(row.value, "SetText", MT.WithShare(src[MT.Field()], src.totalAmount, MT.total))
+-- Fills a row's bar and figure from a line, on the bars' full scale `full` (scale of the top line).
+local function fillFigure(row, src, full)
+  local amount = src[MT.Field()]
+  give(row, "SetMinMaxValues", 0, full)
+  give(row, "SetValue", figure(amount))
+  give(row.value, "SetText", MT.WithShare(amount, src.totalAmount, MT.total))
 end
 
 -- Fills a Deaths line as the game's meter does: a full bar and the time of death (none for the overall session).
@@ -155,12 +156,12 @@ local function fillDeath(row, src)
   give(row.value, "SetText", at and at >= 0 and ns.GetModule("InfoStrip").FightLength(at) or "")
 end
 
--- Fills one row's bar and texts from one line, scaled to the top line's figure.
-local function fill(row, src, top)
+-- Fills one row's bar and texts from one line, on the bars' full scale `full`.
+local function fill(row, src, full)
   row:SetStatusBarColor(lineColor(src))
   give(row.name, "SetText", src.name)
   T.Color(row.name, mine(src) and "accentText" or "text")
-  if MT.settings.kind == "Deaths" then fillDeath(row, src) else fillFigure(row, src, top) end
+  if MT.settings.kind == "Deaths" then fillDeath(row, src) else fillFigure(row, src, full) end
   row.src = src
 end
 
@@ -173,13 +174,20 @@ end
 
 MT.LineAt, MT.Short, MT.Give, MT.Figure = lineAt, short, give, figure
 
--- Paints one row from the list's line i, hidden when it has none or the row is past the setting.
-local function paintRow(i, list)
+-- Paints one row from the list's line i on the bars' full scale `full` (worked out once a paint),
+-- hidden when it has none or the row is past the setting.
+local function paintRow(i, list, full)
   local row = MT.frame.rows[i]
   local src = i <= MT.settings.rows and lineAt(list, i) or nil
   row:SetShown(src ~= nil)
   row.src = nil
-  if src then fill(row, src, lineAt(list, 1)) end
+  if src then fill(row, src, full) end
+end
+
+-- Paints every row, on the full scale of the list's top line (worked out once, not per row).
+local function paintRows(f, list)
+  local full = scale(lineAt(list, 1))
+  for i = 1, #f.rows do paintRow(i, list, full) end
 end
 
 -- The title: the kind's words, with the segment's after a dot when it is not this fight's.
@@ -206,7 +214,7 @@ function MT.Paint()
   f.title:SetText(MT.TitleText())
   f.empty:SetText(MT.EmptyText())
   f.empty:SetShown(list == nil or list[1] == nil)
-  for i = 1, #f.rows do paintRow(i, list) end
+  paintRows(f, list)
 end
 
 -- Built the first time the panel is wanted (defined under "Building").

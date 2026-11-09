@@ -372,17 +372,17 @@ local function fromOklab(L, a, b)
     gamma(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s)
 end
 
--- Variant name -> { key = the accent it was made from, c = its colour }, so it's worked out once per accent.
+-- Variant name -> { from = the accent's r, g, b it was made from, c = its colour }, so it's worked out once
+-- per accent (compared channel by channel: no string is built on the colour lookups of every bar update).
 local variants = {}
 
--- An accent variant's colour, made from the current accent (and cached until the accent changes).
-local function accentVariant(name)
-  local a, v, hit = T.Settings().accent, T.ACCENT_VARIANTS[name], variants[name]
-  local key = string.format("%.6f %.6f %.6f", a[1], a[2], a[3])
-  if hit and hit.key == key then return hit.c end
+-- An accent variant's colour, made from accent `a` (the theme settings' own; cached until it changes).
+local function accentVariant(name, a)
+  local v, hit = T.ACCENT_VARIANTS[name], variants[name]
+  if hit and hit.from[1] == a[1] and hit.from[2] == a[2] and hit.from[3] == a[3] then return hit.c end
   local L, A, B = toOklab(a[1], a[2], a[3])
   local r, g, b = fromOklab(math.max(0, math.min(1, L + v[1])), A * v[2], B * v[2])
-  variants[name] = { key = key, c = { r, g, b, 1 } }
+  variants[name] = { from = { a[1], a[2], a[3] }, c = { r, g, b, 1 } }
   return variants[name].c
 end
 
@@ -396,21 +396,26 @@ function T.GameColorBlind()
 end
 
 -- Whether Safer colours apply: the switch, the High contrast look, or the game's colour-blind mode.
-function T.ColorAssist()
-  local s, v = T.Settings(), T.Variant()
+-- `s` is the theme settings, for a caller that has them already (T.RGB); else they are read.
+---@param s table|nil
+---@return boolean
+function T.ColorAssist(s)
+  s = s or T.Settings()
+  local v = T.VARIANTS[s.variant]
   return s.colorAssist or (v and v.assist) or (s.colorAssistGame and T.GameColorBlind()) or false
 end
 
 -- r, g, b, a of a named color (see TOKENS; accent, panel, inset and edge follow the settings,
 -- accentText and accentDim follow the accent, and the reactions follow Color assist). The first
 -- source that has the name wins: the variant's tokens, the accent variant, the saved setting, Color
--- assist's colours, then TOKENS.
+-- assist's colours, then TOKENS. The settings are read once (this runs on every bar update).
 function T.RGB(name)
-  local v, key = T.Variant(), SETTING_TOKENS[name]
+  local s, key = T.Settings(), SETTING_TOKENS[name]
+  local v = T.VARIANTS[s.variant]
   local c = v and v.tokens[name]
-  if not c and T.ACCENT_VARIANTS[name] then c = accentVariant(name) end
-  if not c and key then c = T.Settings()[key] end
-  if not c and T.ColorAssist() then c = T.ASSIST[name] end
+  if not c and T.ACCENT_VARIANTS[name] then c = accentVariant(name, s.accent) end
+  if not c and key then c = s[key] end
+  if not c and T.ColorAssist(s) then c = T.ASSIST[name] end
   c = c or T.TOKENS[name]
   if not c then error("Vanguard: no color named " .. tostring(name), 2) end
   return c[1], c[2], c[3], c[4] or 1
@@ -617,6 +622,14 @@ end
 -- GetNearestPixelSize(1, scale, 1) would give 2 px at 1440p and 3 px at 4K.
 function T.Pixel(frame)
   return pixelFactor() / scaleOf(frame)
+end
+
+-- T.Pixel for a frame whose effective scale the caller has read already (`scale`; 1 when it isn't a
+-- positive number), so a loop over a holder's icons reads it once.
+---@param scale number
+---@return number
+function T.PixelAtScale(scale)
+  return pixelFactor() / ((type(scale) == "number" and scale > 0) and scale or 1)
 end
 
 -- The UI scale that makes one UI unit one screen pixel (768 / screen height).

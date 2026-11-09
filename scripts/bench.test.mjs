@@ -6,7 +6,7 @@
 import { expect, it } from "vitest";
 import {
   DEFAULTS, LABEL, RAID_SIZE, change, compareEvents, compareModules, countEvents, eventRows, formatCompare, formatResult,
-  isAddonFile, makeScript, moduleCounts, overBudget, readOptions, rng, stats,
+  isAddonFile, makeScript, moduleCounts, overBudget, overInstructions, readOptions, rng, stats,
 } from "./lib/bench.mjs";
 
 // A small result as runBench makes it: two events, two modules and a harness file.
@@ -54,9 +54,16 @@ function replay(steps) {
 }
 
 it("options: the defaults, every flag read, and --no-profile turns the profiled repetition off", () => {
-  expect(readOptions([])).toEqual({ ...DEFAULTS, out: undefined, compare: undefined, summary: undefined, profile: true, budget: undefined });
+  expect(readOptions([])).toEqual({ ...DEFAULTS, out: undefined, compare: undefined, summary: undefined, profile: true, budget: undefined, instrBudget: undefined });
   const opts = readOptions(["--events", "50", "--reps", "2", "--warmup", "0", "--seed", "9", "--out", "a.json", "--compare", "b.json", "--budget", "12.5", "--summary", "s.md", "--no-profile"]);
-  expect(opts).toEqual({ events: 50, reps: 2, warmup: 0, seed: 9, out: "a.json", compare: "b.json", summary: "s.md", profile: false, budget: 12.5 });
+  expect(opts).toEqual({ events: 50, reps: 2, warmup: 0, seed: 9, out: "a.json", compare: "b.json", summary: "s.md", profile: false, budget: 12.5, instrBudget: undefined });
+  expect(readOptions(["--instr-budget", "caps.json"]).instrBudget).toBe("caps.json");
+});
+
+it("instruction budget: an event over its cap is named; one under it, unnamed or not played is not", () => {
+  const result = { events: { UNIT_HEALTH: { addonInstr: 1200 }, UNIT_AURA: { addonInstr: 300 }, OnUpdate: {} } };
+  expect(overInstructions(result, { UNIT_HEALTH: 1100, UNIT_AURA: 400, OnUpdate: 10, PLAYER_LOGIN: 5 })).toEqual([{ event: "UNIT_HEALTH", instr: 1200, cap: 1100 }]);
+  expect(overInstructions({}, { UNIT_HEALTH: 1 }), "a result without events").toEqual([]);
 });
 
 it("options: bad values and an unknown flag are refused with the reason", () => {
@@ -66,6 +73,7 @@ it("options: bad values and an unknown flag are refused with the reason", () => 
   expect(() => readOptions(["--seed", "x"])).toThrow("--seed must be a whole number");
   expect(() => readOptions(["--compare", "b.json", "--budget", "0"])).toThrow("--budget must be a percent above 0");
   expect(() => readOptions(["--budget", "10"])).toThrow("--budget needs --compare <file>");
+  expect(() => readOptions(["--instr-budget", "caps.json", "--no-profile"])).toThrow("--instr-budget needs the profiled repetition");
   expect(() => readOptions(["--fast"])).toThrow(/Unknown option/);
 });
 

@@ -74,7 +74,7 @@ it("raid indicators", () => {
   addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", nil)');
   expect(rows(1), "an emptied tile's rows are bound to the null unit and show nothing").toEqual(none);
   addon.eval('__spawn(4, nil)');
-  expect(rows(4), "a tile made with no unit starts on the null unit").toEqual(none);
+  expect(addon.eval("return Vanguard_RaidUnitButton4.debuffRow == nil"), "a tile made with no unit has no rows yet: they are built when it first shows one").toBe(true);
   addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid2")');
   const b1 = "Vanguard_RaidUnitButton1";
   addon.eval(`${b1}:GetScript("OnEnter")(${b1})`);
@@ -90,6 +90,53 @@ it("raid indicators", () => {
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(!isTok(addon, edgeOf(), "accent"), "and loses it when you target someone else").toBeTruthy();
   expect(isTok(addon, addon.eval("return Vanguard_RaidUnitButton3.health.__barColor"), "darkBar"), "the offline get a dark bar").toBeTruthy();
+});
+
+it("raid aura rows are built when a tile needs them, not at login", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  for (let i = 1; i <= 7; i++) addon.eval(`__spawn(${i}, nil)`);
+  // Which of tiles 1 to 7 have their rows.
+  const builtTiles = () => addon.eval(`local out = {} for i = 1, 7 do out[i] = _G["Vanguard_RaidUnitButton" .. i].debuffRow ~= nil end return out`);
+  addon.update(0.016);
+  expect(builtTiles(), "alone: no tile has rows").toEqual([false, false, false, false, false, false, false]);
+  addon.eval("IsInGroup = function() return true end");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0.016);
+  expect(builtTiles(), "in a party, one tile a frame from the next").toEqual([true, false, false, false, false, false, false]);
+  for (let i = 0; i < 8; i++) addon.update(0.016);
+  expect(builtTiles(), "the party's group of five, and no more").toEqual([true, true, true, true, true, false, false]);
+  expect(addon.eval("return #Vanguard_RaidUnitButton1.indRows"), "with their indicators").toBe(2);
+  addon.eval("IsInRaid = function() return true end");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  setCombat(addon, true);
+  for (let i = 0; i < 4; i++) addon.update(0.016);
+  expect(builtTiles()[5], "a fight pauses the building ahead").toBe(false);
+  setCombat(addon, false);
+  for (let i = 0; i < 4; i++) addon.update(0.016);
+  expect(builtTiles(), "in a raid, every tile once the fight is over").toEqual([true, true, true, true, true, true, true]);
+});
+
+it("a login or a join that fills many raid tiles at once builds two tiles' aura rows that frame, then one a frame", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3") __spawn(4, "raid1")');
+  // Which of tiles 1 to 4 have their rows, and the unit tile 4's rows follow.
+  const state = () => addon.eval(`local out = {} for i = 1, 4 do out[i] = _G["Vanguard_RaidUnitButton" .. i].debuffRow ~= nil end
+    local b = Vanguard_RaidUnitButton4 out[5] = b.debuffRow and b.debuffRow.frame.__unit or false return out`);
+  expect(state(), "the first two at once").toEqual([true, true, false, false, false]);
+  addon.update(0.016);
+  addon.update(0.016);
+  expect(state(), "then one a frame, each refreshed to show its unit").toEqual([true, true, true, true, "raid1"]);
+});
+
+it("a raid tile first given a unit in a fight gets its aura rows when the fight ends", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval("__spawn(1, nil)");
+  setCombat(addon, true);
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid1")');
+  expect(addon.eval("return Vanguard_RaidUnitButton1.debuffRow == nil"), "no container is made in a fight").toBe(true);
+  setCombat(addon, false);
+  expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { b.debuffRow.frame.__unit, b.hotRow.frame.__unit, b.indRows[1].frame.__unit }"),
+    "after it the rows are built and follow the tile's unit").toEqual(["raid1", "raid1", "raid1"]);
 });
 
 it("a client that won't drive the dispel highlight never shows it uncolored", () => {
