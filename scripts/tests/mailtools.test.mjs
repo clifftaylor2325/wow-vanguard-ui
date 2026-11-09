@@ -521,6 +521,16 @@ it("Take all passes a mail whose take the game refuses (bags full), says so, and
   expect([chatHas(addon, /Take all: 1 of 6 done\./), addon.eval(`return ${MT}.running == nil`)], "the run ended, counting only the money").toEqual([true, true]);
 });
 
+it("Take all stops once with one line when no general bag has a free slot, after the money already walked", () => {
+  const addon = mailer(SERVER + "__wfgWorld.bagSizes = { [0] = 1, 1, 1, 1, 1 } for b = 0, 4 do __wfgWorld.bags[b] = { [1] = { itemID = 1 } } end __wfgWorld.mail = { __wfgWorld.mail[2], __wfgWorld.mail[1] }");
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.takeAll");
+  addon.advance(5);
+  expect(taken(addon), "Bobalt's money (walked first) comes in; no item take goes out").toEqual([["money", 2]]);
+  expect(Array.from(addon.chat()).filter((l) => /Take all: your bags are full\./.test(l)).length, "said once").toBe(1);
+  expect([chatHas(addon, /could not take/), chatHas(addon, /Take all: 1 of 6 done\./), addon.eval(`return ${MT}.running == nil`)]).toEqual([false, true, true]);
+});
+
 it("Take on a row takes the first attachment slot that still holds an item", () => {
   const addon = mailer("__wfgWorld.mail[2].slots = { [3] = true }");
   addon.world.openMailWindow();

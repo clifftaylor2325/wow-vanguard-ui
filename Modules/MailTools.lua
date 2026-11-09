@@ -181,6 +181,33 @@ local function took(run, now)
   return true
 end
 
+-- Whether no general bag (the backpack and bags 1 to 4, family 0) has a free slot, so an item take would be refused;
+-- a quiver's or soul bag's free slots do not count, and a client without the call is never full.
+local function bagsFull()
+  local api = C_Container
+  if type(api) ~= "table" or type(api.GetContainerNumFreeSlots) ~= "function" then return false end
+  local free = 0
+  for bag = 0, 4 do
+    local n, family = api.GetContainerNumFreeSlots(bag)
+    if (ns.PlainNumber(family) or 0) == 0 then free = free + (ns.PlainNumber(n) or 0) end
+  end
+  return free == 0
+end
+
+-- Whether the next take from mail now would be an item with no room for it; says so once.
+local function noRoom(now)
+  if now.money > 0 or now.items == 0 or not bagsFull() then return false end
+  ns.Chat(L["Take all: your bags are full."])
+  return true
+end
+
+-- One take from mail now unless the bags have no room for it: "stop" when the run ends there, "took" after a
+-- take, nil when nothing was taken from this mail.
+local function tryTake(run, now)
+  if noRoom(now) then return "stop" end
+  return takeFrom(now) and took(run, now) and "took" or nil
+end
+
 -- Take all's next step: while the game is still busy with the last take, nothing (and the run waits);
 -- else one take from the first mail left on the run's list that is still itself, passing those that are
 -- empty, gone, changed or refused. False once none is left.
@@ -189,7 +216,8 @@ local function takeNext(run)
   local m = run.mails[1]
   while m do
     local now = MT.Read(m.index)
-    if now and sameMail(now, m) and not refused(run, now) and takeFrom(now) then return took(run, now) end
+    local result = now and sameMail(now, m) and not refused(run, now) and tryTake(run, now)
+    if result then return result == "took" end
     table.remove(run.mails, 1)
     m = run.mails[1]
   end
