@@ -1238,7 +1238,7 @@ it("quest log: the title line is the one window chrome (role, colour, offsets, c
   addon.eval("ns.GetModule('QuestLog').Open()");
   const [inset, pad, , gap] = layout(addon);
   const title = addon.frame("Vanguard_QuestLog.title"), count = addon.frame("Vanguard_QuestLog.count");
-  expect([title.text, title.font.size, isTok(addon, title.textColor, "text")], "Quest log, in the title role and the text colour (gold is for content)").toEqual(["Quest log", addon.eval("return ns.Theme.RoleSize('title')"), true]);
+  expect([title.text, title.font.size, isTok(addon, title.textColor, "text")], "Quest log, in the display role and the text colour (gold is for content)").toEqual(["Quest log", addon.eval("return ns.Theme.RoleSize('display')"), true]);
   expect([count.text, count.font.size, isTok(addon, count.textColor, "text2")], "the quest count beside it in small text2").toEqual(["3 quests", addon.eval("return ns.Theme.RoleSize('small')"), true]);
   const offsets = addon.eval(`local f, t, c = Vanguard_QuestLog, Vanguard_QuestLog.title, Vanguard_QuestLog.count
     return { t:GetLeft() - f:GetLeft(), (t:GetTop() + t:GetBottom()) / 2 - f:GetTop(), c:GetLeft() - t:GetRight() }`);

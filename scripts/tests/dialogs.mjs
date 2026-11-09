@@ -4,8 +4,8 @@
 
 import { isTok } from "./helpers.mjs";
 
-// The size of the title role, the same for every window title.
-export const titleSize = (addon) => addon.eval("return ns.Theme.RoleSize('title')");
+// The size of the display role, the same for every window title.
+export const titleSize = (addon) => addon.eval("return ns.Theme.RoleSize('display')");
 
 // A window's title as the player sees it, from its frame's global name: the title's size (a text role's), whether it
 // is in the text colour, how far in from the frame's left it starts and how far down from its top its middle is.

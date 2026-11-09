@@ -128,7 +128,7 @@ it("T.Refresh never compares a hidden vertex colour: a region the client colours
   expect(addon.eval("return { __plain.c[1] == ns.Theme.PRESETS.arcane[1], __badge.c[1] == ns.Theme.PRESETS.brass[1], __veiled.c[1] == ns.Theme.PRESETS.brass[1] }"), "the plain region follows the accent; the hidden ones are forgotten and keep theirs, with no error").toEqual([true, true, true]);
 });
 
-it("the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the control heights, with the two display roles unchanged", () => {
+it("the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the control heights, with the three title roles", () => {
   const addon = loggedIn();
   expect(addon.eval("return { ns.Theme.SPACE, ns.Theme.ALPHA, ns.Theme.CREST, ns.Theme.ROW, ns.Theme.SCROLL, { ns.Theme.CONTROL_H, ns.Theme.BUTTON_H }, ns.Theme.HEADING_ROLES }")).toEqual([
     { tight: 4, gap: 8, col: 12, pad: 16, section: 24 },
@@ -137,7 +137,7 @@ it("the layout constants: T.SPACE, T.ALPHA, T.CREST, T.ROW, T.SCROLL and the con
     { height: 28 },
     { thumb: 4, rest: 0.5, lit: 1 },
     [20, 26],
-    { title: true, heading: true },
+    { display: true, title: true, heading: true },
   ]);
 });
 

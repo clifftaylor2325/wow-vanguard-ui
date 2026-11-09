@@ -40,8 +40,8 @@ T.AFK_SCENES = { Alliance = "afk-keep", Horde = "afk-canyon", none = "afk-camp" 
 -- font, each a share of the picture's height, in brandGold over a shade (the left edge's alpha) that fades out across
 -- `reach` of the picture's width, so the name stays clear of the bright sky.
 T.BANNER_MARK = { file = "banner-crest", crest = 0.5, name = 0.12, color = "brandGold", shade = 0.6, reach = 0.7 }
--- Text roles that take the faction's heading font: the two display roles, used only for window and card titles.
-T.HEADING_ROLES = { title = true, heading = true }
+-- Text roles that take the faction's heading font: the three title roles, used only for window, page and card titles.
+T.HEADING_ROLES = { display = true, title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.
 local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
 -- Clients whose script the faction look's heading fonts (Cinzel, Metamorphous:
@@ -2892,6 +2892,8 @@ end
 -- text such as nameplates, and text drawn over a bright bar, such as raid frame names), and upper
 -- (T.SetText capitals the text).
 T.ROLES = {
+  -- The display tier: a window's title and an options page's, a clear step above every other role.
+  display = { size = 18, bold = true },
   title = { size = 15, bold = true }, heading = { size = 13, bold = true }, name = { size = 12, bold = true },
   cell = { size = 11, bold = true },
   -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.

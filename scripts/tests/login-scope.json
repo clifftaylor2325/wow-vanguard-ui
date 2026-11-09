@@ -148,6 +148,7 @@
       "the card counts calendar days: a run at 23:00 reads yesterday at 01:00 the next day, two hours later",
       "the card is off until switched on, and says nothing in combat or on a client without the calls",
       "the card says when you last came: nothing the first time, then days ago; a quick way back in is the same visit",
+      "the card's headings are section headers (small muted capitals), its lines body text",
       "the level range, size and difficulty drop what the client does not give"
     ],
     "scripts/tests/errorrail.test.mjs": [],

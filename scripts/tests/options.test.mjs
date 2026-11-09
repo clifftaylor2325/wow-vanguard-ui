@@ -2084,6 +2084,18 @@ it("options tabs: Reset this page sits at the right of the page's bar, the page'
   expect(bar(), "Feedback: no settings with defaults, so the title alone").toEqual(["Feedback", true, false, false]);
 });
 
+it("type scale: a page's name is in the display tier, above its cards' section headings and its rows", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("nameplates")');
+  // The open page's title, its card's heading and a row caption: each one's font size, then the roles' sizes.
+  const sizes = addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+    local card, T = v.cards[1], ns.Theme
+    local function size(fs) return select(2, fs:GetFont()) end
+    return { size(v.bar.title), size(card.title), card.title:GetText() == T.Upper(card.title:GetText()), T.RoleSize("display"), T.RoleSize("section"), T.RoleSize("title") }`);
+  expect(sizes.slice(0, 3), "the page title in display, the card's heading in section capitals").toEqual([sizes[3], sizes[4], true]);
+  expect([sizes[3], sizes[5]], "display is 18 at Text size 100%, three above the title role").toEqual([18, 15]);
+});
+
 it("options tabs: a Text size change sizes the open page's tabs to their names again, and they wrap to fit the strip", () => {
   // Font metrics, so a name's width follows its font size (the rough metrics count characters).
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });

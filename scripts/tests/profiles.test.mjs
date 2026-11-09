@@ -782,7 +782,7 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   const labelOf = (part) => addon.eval(`for i, p in ipairs(ns.ProfileParts()) do if p == "${part}" then return Vanguard_ExportDialog.rows[i].label:GetText() end end`);
   expect(labelOf("ActionBars"), "a module row reads as the Modules page names it, not by its key (B2-8)").toBe("Action bars");
   const dialog = "Vanguard_ExportDialog";
-  expect(titleOf(addon, dialog), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect(titleOf(addon, dialog), "a window title: the display role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
   expect(closeOf(addon, dialog), "with the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, dialog), alphaOf(addon, dialog)], "Escape closes it; the dialog alpha").toEqual([true, 0.98]);
   const note = addon.frame(`${dialog}.note`);

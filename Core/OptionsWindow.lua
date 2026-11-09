@@ -650,7 +650,7 @@ local function addPageBar(view, page)
   bar:SetPoint("TOPLEFT", NAV_WIDTH + T.SPACE.col, -(HEAD + T.SPACE.col))
   bar:SetSize(CARD_WIDTH, T.BUTTON_H)
   bar.child, view.bar = view.child, bar
-  bar.title = T.Text(bar:CreateFontString(nil, "OVERLAY"), "heading", "text")
+  bar.title = T.Text(bar:CreateFontString(nil, "OVERLAY"), "display", "text")
   bar.title:SetPoint("LEFT")
   bar.title:SetPoint("RIGHT")
   bar.title:SetJustifyH("LEFT")

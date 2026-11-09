@@ -393,6 +393,16 @@ it("the faction look on a Russian client keeps Fira Sans for headings (the facti
   expect(look(german)[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
 });
 
+it("the display tier: 18 at Text size 100%, scaled with Text size, and a title role (the faction look's heading font)", () => {
+  const addon = loggedIn('UnitFactionGroup = function() return "Horde" end');
+  // A new display string's font file and size.
+  const display = () => addon.eval('local fs = ns.Theme.Text(UIParent:CreateFontString(), "display") return { fs.__font[1]:match("[^\\\\]+$"), fs.__font[2] }');
+  expect(display(), "Fira Sans SemiBold at 18").toEqual(["FiraSansCondensed-SemiBold.ttf", 18]);
+  addon.eval('ns.Theme.Settings().textScale = 1.3 ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
+  expect(display(), "the Horde heading font with the faction look on auto, 23 at 130%").toEqual(["Metamorphous-Regular.ttf", 23]);
+  expect(addon.eval("local T = ns.Theme return T.RoleSize('display') > T.RoleSize('title') and T.RoleSize('title') > T.RoleSize('heading')"), "display above title above heading").toBe(true);
+});
+
 // TEST-ONLY game tab buttons shaped like the game's three tab templates, and readers for a
 // tab's art alpha and its fill: the selected tab is raised (the theme's raised colour), the
 // others inset. The fill is the last BACKGROUND texture T.Tab tints.
