@@ -167,11 +167,21 @@ local function rule(text)
   return T.Paint(CHH.RULE .. " " .. text .. " " .. CHH.RULE, "muted")
 end
 
--- A saved line with the earlier session's chat line numbers zeroed: a stale number names someone else's line now,
--- and the game would report that line's sender. 0 is what the game writes for a link with no line. A Battle.net
--- name is a protected string (|K...|k), so its field may hold a bar.
+-- Each sender link's line-number field, as a pattern and its zeroed form (0 is what the game writes for a link
+-- with no line), and the censored-line report link reduced to its text. A Battle.net name is a protected string
+-- (|K...|k), so its field may hold a bar. A Discord guild line's sender is |Hdiscorduser:account:user:line:...
+CHH.NUMBERED = {
+  { "(|Hplayer:[^:|]+):%d+:", "%1:0:" },
+  { "(|HBNplayer:[^:]*:[^:|]*):%d+:", "%1:0:" },
+  { "(|Hdiscorduser:[^:|]*:[^:|]*):%d+:", "%1:0:" },
+  { "|Hreportcensoredmessage:[^|]*|h(.-)|h", "%1" },
+}
+
+-- A saved line with the earlier session's chat line numbers zeroed (CHH.NUMBERED): a stale number names someone
+-- else's line now, and the game would report that line's sender.
 function CHH.Unnumbered(text)
-  return (text:gsub("(|Hplayer:[^:|]+):%d+:", "%1:0:"):gsub("(|HBNplayer:[^:]*:[^:|]*):%d+:", "%1:0:"):gsub("|Hreportcensoredmessage:[^|]*|h(.-)|h", "%1"))
+  for _, link in ipairs(CHH.NUMBERED) do text = text:gsub(link[1], link[2]) end
+  return text
 end
 
 -- Puts one window's saved lines back, between a rule that says when they are from and a closing rule.
