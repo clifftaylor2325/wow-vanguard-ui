@@ -155,6 +155,33 @@ it("trainer memory keeps what a trainer teaches and at what level, and /vg train
   expect(count(addon, /Level 8: TEST-ONLY Frostbolt/), "a service more than five levels ahead is left out").toBe(1);
 });
 
+it("trainer memory keeps each side's trainer apart, and /vg trainers next names only the player's side's", () => {
+  const addon = mage();
+  addon.eval(TRAINER);
+  visit(addon);
+  addon.eval('__wfgWorld.units.player.faction = "Horde" __wfgWorld.units.npc = { name = "Horde Archmage" } __wfgWorld.zone.name = "Orgrimmar"');
+  visit(addon);
+  addon.eval('__wfgWorld.units.player.faction = "Alliance" __wfgWorld.units.player.level = 5');
+  addon.slash("trainers next");
+  expect(count(addon, /Level 6: TEST-ONLY Fireball Rank 3 \(Archmage Test,/), "the Alliance trainer is named").toBe(1);
+  expect(count(addon, /Horde Archmage/), "the Horde trainer is not").toBe(0);
+  expect(remembered(addon).length, "both sides' copies are kept").toBe(4);
+  addon.eval('VanguardDB.trainers.MAGE.list["TEST-ONLY Old\\1Rank 1\\1"] = { name = "TEST-ONLY Old", rank = "Rank 1", level = 7, trainer = "Elder" }');
+  addon.slash("trainers next");
+  expect(count(addon, /Level 7: TEST-ONLY Old Rank 1 \(Elder\)/), "a record from before sides were kept still shows").toBe(1);
+});
+
+it("a service remembered before sides were kept gives way to the sided record on the next visit", () => {
+  const addon = mage();
+  addon.eval(TRAINER);
+  addon.eval('VanguardDB.trainers = { MAGE = { count = 1, list = { ["TEST-ONLY Fireball\\1Rank 3\\1"] = { name = "TEST-ONLY Fireball", rank = "Rank 3", level = 6, trainer = "Old Archmage" } } } }');
+  visit(addon);
+  expect(addon.eval("return VanguardDB.trainers.MAGE.count"), "the old record is replaced, not doubled").toBe(2);
+  addon.eval("__wfgWorld.units.player.level = 5");
+  addon.slash("trainers next");
+  expect(count(addon, /Level 6: TEST-ONLY Fireball Rank 3/), "named once").toBe(1);
+});
+
 it("a client without GetTrainerServiceLevelReq still remembers: the level is GetTrainerServiceInfo's fourth return", () => {
   const addon = mage();
   addon.eval(TRAINER + " GetTrainerServiceLevelReq = nil");
