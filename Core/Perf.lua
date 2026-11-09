@@ -108,8 +108,10 @@ function P.Top()
 end
 
 -- The always-on profiler's metrics (AddOnProfilerConstantsDocumentation.lua's AddOnProfilerMetric):
--- the average over the last 60 frames, since login, the highest, and how many frames took over 5 ms.
-P.METRICS = { RecentAverageTime = 1, SessionAverageTime = 0, PeakTime = 4, CountTimeOver5Ms = 6 }
+-- the average over the last 60 frames, since login, in boss fights, the highest, and how many frames
+-- took over 1, 5 and 10 ms (players compare addons by the 10 ms spikes).
+P.METRICS = { SessionAverageTime = 0, RecentAverageTime = 1, EncounterAverageTime = 2, PeakTime = 4,
+  CountTimeOver1Ms = 5, CountTimeOver5Ms = 6, CountTimeOver10Ms = 7 }
 
 -- The game's always-on addon profiler (C_AddOnProfiler, on WoW Forever and Retail; no script
 -- profiling needed), or nil where the client has none or has it off.
@@ -126,8 +128,9 @@ local function metric(get, name)
   return ns.PlainNumber(get((enum and enum[name]) or P.METRICS[name])) or 0
 end
 
--- The profiler's CPU part: ms a frame now, on average and at most, its share of all addons' time now
--- (when the client gives the total) and how many frames took over 5 ms; nil without the profiler.
+-- The profiler's CPU part: ms a frame now, on average, in boss fights and at most, its share of all
+-- addons' time now (when the client gives the total) and how many frames took over 1, 5 and 10 ms; nil
+-- without the profiler.
 function P.ProfilerText()
   local p = P.Profiler()
   if not p then return nil end
@@ -135,8 +138,9 @@ function P.ProfilerText()
   local function mine(m) return p.GetAddOnMetric(ADDON, m) end
   local recent, all = metric(mine, "RecentAverageTime"), type(p.GetOverallMetric) == "function" and metric(p.GetOverallMetric, "RecentAverageTime") or 0
   local share = all > 0 and string.format(", %.0f %% of all addons", recent / all * 100) or ""
-  return string.format("CPU %.2f ms a frame now (%.2f on average, peak %.1f ms%s; %d frames over 5 ms)",
-    recent, metric(mine, "SessionAverageTime"), metric(mine, "PeakTime"), share, metric(mine, "CountTimeOver5Ms"))
+  return string.format("CPU %.2f ms a frame now (%.2f on average, %.2f in boss fights, peak %.1f ms%s; frames over 1 / 5 / 10 ms: %d / %d / %d)",
+    recent, metric(mine, "SessionAverageTime"), metric(mine, "EncounterAverageTime"), metric(mine, "PeakTime"), share,
+    metric(mine, "CountTimeOver1Ms"), metric(mine, "CountTimeOver5Ms"), metric(mine, "CountTimeOver10Ms"))
 end
 
 -- The report's CPU part: the always-on profiler's, else the script profiler's total, else why there's none.
@@ -178,6 +182,28 @@ end
 
 -- /vg perf slow -----------------------------------------------------------------------------
 
+-- How long after PLAYER_LOGIN every handler is still timed (seconds): login's own cost, and the work it
+-- spreads over the frames after, is what /vg perf slow is most often asked about. Then timing stops
+-- until /vg perf slow turns it on (P.timingArmed) for the rest of the session.
+P.TIMED_AFTER_LOGIN = 10
+
+-- Login's timing window is over: timing stops, unless /vg perf slow has turned it on.
+local function loginTimed()
+  if not P.timingArmed then ns.timingOn = false end
+end
+
+-- At login: timing stops P.TIMED_AFTER_LOGIN seconds on (it stays on for a client without timers).
+ns.On("PLAYER_LOGIN", function()
+  if C_Timer and C_Timer.After then C_Timer.After(P.TIMED_AFTER_LOGIN, ns.Guard("timer perf timing", loginTimed)) end
+end)
+
+-- Turns handler timing on for the rest of the session, saying so when it was off.
+local function armTiming()
+  local was = ns.timingOn
+  P.timingArmed, ns.timingOn = true, true
+  if not was then ns.Chat("Timing Vanguard's handlers from now until you reload (a small cost on each); /vg perf slow again shows what it caught.") end
+end
+
 -- Longest call first; equal ones by the most slow calls, then by name.
 local function slower(a, b)
   if a.longest ~= b.longest then return a.longest > b.longest end
@@ -197,11 +223,18 @@ end
 
 -- /vg perf slow [reset]: Vanguard's slowest handlers since login (or the last reset), each with its
 -- longest call, how many calls took over ns.SLOW_MS, and its time in all; reset starts the count over.
+-- Either turns timing on for the rest of the session (it stops after login otherwise).
 function P.SlowCommand(rest)
-  if rest == "reset" then ns.timings, ns.timingCount = {}, 0 return ns.Chat("Vanguard's handler timings start over.") end
+  if rest == "reset" then ns.timings, ns.timingCount = {}, 0 ns.Chat("Vanguard's handler timings start over.") return armTiming() end
+  P.SlowList()
+  armTiming()
+end
+
+-- Prints the slowest handlers timed so far (/vg perf slow).
+function P.SlowList()
   local list = P.Slowest()
   if #list == 0 then return ns.Chat("No handler timings yet (the client has no fine clock, or nothing has run).") end
-  ns.Chat(string.format("Vanguard's slowest handlers since login or /vg perf slow reset (calls over %d ms):", ns.SLOW_MS))
+  ns.Chat(string.format("Vanguard's slowest handlers, timed through login and since /vg perf slow (calls over %d ms):", ns.SLOW_MS))
   for i = 1, math.min(P.TOP, #list) do
     local t = list[i]
     ns.Chat(string.format("  %d. %s  longest %.1f ms, %d over %d ms, %d calls, %.0f ms in all", i, t.where, t.longest, t.slow, ns.SLOW_MS, t.calls, t.total))

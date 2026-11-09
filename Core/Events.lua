@@ -270,7 +270,9 @@ end
 -- How long each ns.Try site took (/vg perf slow): where -> { calls, total (ms), longest (ms), slow (calls
 -- over ns.SLOW_MS) }, timed with the game's debugprofilestop (ms, fine-grained). At most ns.MAX_TIMINGS sites
 -- are kept, so sites named from typed text can't grow it without end. ns.timingCount counts them.
-ns.timings, ns.timingCount, ns.SLOW_MS, ns.MAX_TIMINGS = {}, 0, 5, 400
+-- ns.timingOn says whether calls are timed now: from load through login, then only once /vg perf slow
+-- asks (Core/Perf.lua), since two clock reads and a table write on every handler are a cost of their own.
+ns.timings, ns.timingCount, ns.SLOW_MS, ns.MAX_TIMINGS, ns.timingOn = {}, 0, 5, 400, true
 
 -- Notes one call of `where` that took ms milliseconds.
 local function note(where, ms)
@@ -294,7 +296,7 @@ end
 
 -- Calls fn(...) with any error reported under `where` (see ns.Report) and
 -- returns what pcall would: true and fn's results, or false and the error.
--- The time it took is noted under `where` (ns.timings).
+-- The time it took is noted under `where` (ns.timings) while timing is on (ns.timingOn).
 ---@param where string
 ---@param fn function
 ---@param ... any  arguments for fn
@@ -302,7 +304,7 @@ end
 function ns.Try(where, fn, ...)
   local outer, clock = current, debugprofilestop
   current = where
-  local start = type(clock) == "function" and clock() or nil
+  local start = ns.timingOn and type(clock) == "function" and clock() or nil
   return finished(outer, where, start, xpcall(fn, traced, ...))
 end
 
