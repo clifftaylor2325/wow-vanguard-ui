@@ -355,3 +355,17 @@ it("settings-loss guard: a damaged record of restored profiles is repaired and a
   addon.eval("ns.SettingsGuard.lost = nil ns.SettingsGuard.Save()");
   expect(addon.eval("return type(VanguardDB.guard.restored)"), "the record is a table again").toBe("table");
 });
+it("settings-loss guard: Restore, Later on the reload, logout keeps a backup of the restored profile, not the Default on screen", () => {
+  const first = loggedIn(CLICK_LUA);
+  first.eval('ns.NewProfile("Main") ns.UseProfile("Main")');
+  const onMain = relog(first);
+  onMain.eval('ns.SetMoverPoint("infostrip", "TOPLEFT", "TOPLEFT", 40, -60)');
+  const lost = relog(onMain, { account: "nil" });
+  lost.eval("ns.SettingsGuard.Restore()");
+  expect(lost.eval("return { ns.PendingProfileName(), ns.ProfileName() }"), "Main is staged, Default still on screen").toEqual(["Main", "Default"]);
+  lost.fire("PLAYER_LOGOUT");
+  expect(lost.eval("return VanguardCharDB.guard.profile"), "the backup names the profile the account note names").toBe("Main");
+  const again = relog(lost, { account: "nil" });
+  again.eval("ns.SettingsGuard.Restore()");
+  expect(again.eval("return VanguardDB.profiles.Main.positions.infostrip.x"), "and it restores Main's values").toBe(40);
+});

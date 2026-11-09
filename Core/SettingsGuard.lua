@@ -2,7 +2,8 @@
 -- settings between sessions. At logout Vanguard leaves the same stamp (the
 -- time) in the account file (VanguardDB.guard, which also notes the profile
 -- each character uses) and in this character's file (VanguardCharDB.guard,
--- with a backup of the character's profile as a profile string). At login:
+-- with a backup, as a profile string, of the profile the character uses
+-- after the next reload: the one staged, else the one in use). At login:
 --   * the account file came back without this character's stamp, or older than it: chat
 --     says the saved settings didn't load, a question offers to restore the
 --     profile from this character's backup (or to paste a profile string),
@@ -251,21 +252,27 @@ local function encodeOwn(profile)
   return ns.Serialize.Encode("profile", ns.StampPayload(data))
 end
 
--- The backup string of the profile in use: its own values (no Situations override, ns.OwnValues) with
--- this computer's own state kept (the combined bags flags, the graphics undo record), which an export
--- for another client leaves out, since the backup only ever comes back here.
-local function backupString()
+-- The backup string of profile `name`: its own values (for the profile in use, no Situations override,
+-- ns.OwnValues; a staged profile has none) with this computer's own state kept (the combined bags flags,
+-- the graphics undo record), which an export for another client leaves out, since the backup only ever
+-- comes back here.
+local function backupString(name)
+  if name ~= ns.ProfileName() then return encodeOwn(VanguardDB.profiles[name]) end
   if ns.OwnValues then return ns.OwnValues(encodeOwn, ns.Profile()) end
   return encodeOwn(ns.Profile())
 end
 
 -- The backup this character keeps: in a session that found a loss, the old one while the profile it
--- names is still missing (a pasted string or a fresh start must not erase its only copy); else one
--- of the profile in use (a deleted profile, or a name that restores as "Restored", must not freeze it).
+-- names is still missing (a pasted string or a fresh start must not erase its only copy); else one of
+-- the profile the character uses after the next reload, the one the account note names (a restored
+-- profile that is only staged would otherwise lose its only copy to the profile still on screen; a
+-- deleted profile, or a name that restores as "Restored", must not freeze it).
 local function keptBackup()
   local old = G.Backup()
   if old and G.lostSeen and not VanguardDB.profiles[restoreName(old)] then return old.profile, old.backup end
-  return ns.ProfileName(), backupString()
+  local name = ns.SelectedProfileName()
+  if not VanguardDB.profiles[name] then name = ns.ProfileName() end
+  return name, backupString(name)
 end
 
 -- Leaves the stamp in both files, the profile each character uses in the account file and
