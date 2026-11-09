@@ -295,11 +295,17 @@ local DEFAULTS = {
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
 -- that get collected don't stay here.
 local painted = setmetatable({}, { __mode = "k" })
+-- One function per registry the theme's walks read (each takes a region or frame and drops it from its registry), run by
+-- T.Forget on a dropped page. On T: this file is close to Lua's limit on top-level locals.
+T.forgetters = {}
+T.forgetters[#T.forgetters + 1] = function(r) painted[r] = nil end
 local listeners = {}
 -- Every crest texture (weak), repainted when the theme changes.
 local crests = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) crests[r] = nil end
 -- Every window with an ornament (#238): frame -> its pieces (weak), repainted when the theme changes.
 local ornaments = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) ornaments[r] = nil end
 
 -- Theme settings in the active profile, with defaults.
 function T.Settings()
@@ -430,10 +436,12 @@ end
 -- Every region T.Tint coloured (weak): region -> { token, alpha, r, g, b, a } as last set, so T.Refresh
 -- re-tints it after an accent or variant change, and forgets one recoloured by hand since (refreshTints).
 local tinted = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) tinted[r] = nil end
 
 -- Every status bar T.BarColor coloured (weak): bar -> { token, r, g, b, a } as last set (a table on T, not a local:
 -- this file is close to Lua's limit on top-level locals).
 T.barColored = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) T.barColored[r] = nil end
 
 -- Colors a region with a named color (vertex color), at an optional alpha; remembered, so the
 -- colour follows the accent and the variant (a region recoloured by hand since is left alone).
@@ -551,6 +559,7 @@ T.SNAP_CLASSES = { border = true, fill = true, divider = true, sheen = true, bar
 T.SNAP_BIAS = 1
 -- Every texture T.Snap has seen -> its class (weak), so a switch reaches them all.
 local snapClass = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) snapClass[r] = nil end
 
 -- Sets a texture's pixel-grid snapping for its class: on (with the bias) only for a still
 -- class while texel snapping is on; off otherwise, as before #226.
@@ -632,6 +641,7 @@ end
 -- Sizes asked for through T.PixelSize: frame -> { w, h, even }. Weak, so a frame that is
 -- collected doesn't stay; a scale or screen change rounds them all again (T.Rescale).
 local pixelSized = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) pixelSized[r] = nil end
 -- Called after every scale or screen change has been rounded again (T.OnScale).
 local scaleListeners = {}
 
@@ -2886,11 +2896,14 @@ T.GAME_TEXT = { warning = 20, status = 16, small = 12, keystone = 30, keystoneLi
 -- Every font string styled with a role: string -> role name. Weak, so text
 -- that gets collected doesn't stay; T.RefreshText re-fonts them all.
 local styled = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) styled[r] = nil end
 -- Styled strings drawn at a size of their own (T.TextSize): string -> size. Weak too.
 local sizes = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) sizes[r] = nil end
 -- Every font string coloured by token name (T.Color): string -> token. Weak; T.RefreshText recolours
 -- them all, so a variant switch reaches text that was drawn before it (a light look needs dark text).
 local colored = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) colored[r] = nil end
 
 -- The range of the Text size setting (General -> Look; the slider and the setup presets stay inside it).
 T.TEXT_SCALE = { min = 0.7, max = 1.3 }
@@ -2979,6 +2992,7 @@ do
   T.FIT_FLOOR = 0.84
   -- Every fitted font string -> { box = the frame it fits in, inset = the room kept each side }. Weak.
   local fitted = setmetatable({}, { __mode = "k" })
+  T.forgetters[#T.forgetters + 1] = function(r) fitted[r] = nil end
 
   -- The width a font string's text takes on one line at its full size, whatever shrink T.Refit gave it (for sizing
   -- a button to its label): measured at text scale 1, then the scale put back. 0 for text a secret value hides.
@@ -3076,6 +3090,29 @@ local function repaintArt()
   for button, c in pairs(checkOf) do c.paint(button, c) end
   for button in pairs(arrowOf) do paintArrow(button) end
   for _, d in pairs(dividerOf) do T.Tint(d.line, T.DIVIDER.color) end
+end
+
+do
+  -- Drops one region or frame from every registry the theme's walks read.
+  local function forgetOne(region)
+    for _, forget in ipairs(T.forgetters) do forget(region) end
+  end
+
+  -- Drops a frame's own regions (font strings, textures) from the registries.
+  local function forgetRegions(frame)
+    if type(frame.GetRegions) ~= "function" then return end
+    for _, region in ipairs({ frame:GetRegions() }) do forgetOne(region) end
+  end
+
+  -- Drops a frame, its regions and every child below it from the theme's registries, so a page thrown away stays out of
+  -- T.Refresh's walks (the game never frees a frame, and a hidden one would be repainted on every theme change).
+  ---@param frame Frame
+  function T.Forget(frame)
+    forgetOne(frame)
+    forgetRegions(frame)
+    if type(frame.GetChildren) ~= "function" then return end
+    for _, child in ipairs({ frame:GetChildren() }) do T.Forget(child) end
+  end
 end
 
 -- Repaints every painted frame, re-fonts styled text, re-tints remembered regions and tells the listeners.

@@ -1133,6 +1133,15 @@ local function forgetRows(view)
   end
 end
 
+-- Hides a page thrown away and takes its frames out of the theme's walks (T.Forget), so a rebuilt page costs
+-- nothing on later theme changes.
+local function dropView(view)
+  showView(view, false)
+  for _, part in ipairs({ view, view.bar, view.strip, view.lead or false }) do
+    if part then T.Forget(part) end
+  end
+end
+
 -- True when a built page was laid out at the current Text size and font.
 local function laidOutNow(view)
   return view.textScale == T.Settings().textScale and view.font == (T.Font())
@@ -1145,7 +1154,7 @@ local function dropStale(key)
   if not view or laidOutNow(view) then return end
   rowCache[key] = nil
   forgetRows(view)
-  showView(view, false)
+  dropView(view)
   pages[key] = nil
 end
 
@@ -1254,7 +1263,7 @@ function O.RebuildPage(key)
   rowCache[key] = nil
   local old = pages[key]
   local scroll = old and old:GetVerticalScroll() or 0
-  if old then forgetRows(old) showView(old, false) pages[key] = nil end
+  if old then forgetRows(old) dropView(old) pages[key] = nil end
   if not (window and window:IsShown() and O.current == key) then return end
   O.Show(key)
   if pages[key] then pages[key]:ScrollTo(scroll) end
