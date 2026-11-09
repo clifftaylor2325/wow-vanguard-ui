@@ -354,15 +354,26 @@ function RF.ForUnit(unit, fn)
   if b and b:IsShown() then fn(b, unit) end
 end
 
--- A unit event handler that runs one part, RF[part](tile, unit), on the tile
--- showing the event's unit, with the tile's own unit token.
-local function onUnit(part)
-  -- The part, on a tile whose unit still exists.
-  local run = function(b)
-    local unit = tileUnit(b)
-    if unit then RF[part](b, unit) end
-  end
-  return function(_, unit) RF.ForUnit(unit, run) end
+-- Unit event -> the part of the tile it refreshes (rare ones refresh all of it). Each tile listens
+-- for its own unit only (ns.OnUnit, RegisterUnitEvent), so a nameplate's or the target's health
+-- never reaches a tile.
+RF.UNIT_EVENTS = {
+  UNIT_HEALTH = "UpdateHealth", UNIT_MAXHEALTH = "UpdateHealth",
+  UNIT_POWER_UPDATE = "UpdatePower", UNIT_MAXPOWER = "UpdatePower", UNIT_DISPLAYPOWER = "UpdatePower",
+  UNIT_CONNECTION = "Update", UNIT_NAME_UPDATE = "Update", UNIT_FACTION = "Update",
+}
+
+-- A unit event on tile b: its part, while the tile shows and its unit still exists.
+function RF.OnTileEvent(b, event)
+  local unit = b:IsShown() and tileUnit(b)
+  if unit then RF[RF.UNIT_EVENTS[event]](b, unit) end
+end
+
+-- A tile's own unit-event subscription, pointed at its unit by track.
+local function listen(b)
+  local events = {}
+  for event in pairs(RF.UNIT_EVENTS) do events[#events + 1] = event end
+  b.unitEvents = ns.OnUnit(events, function(event) RF.OnTileEvent(b, event) end)
 end
 
 -- Zones ------------------------------------------------------------------------------------
@@ -556,7 +567,9 @@ local function track(b, unit)
   if RF.byUnit.player == b then RF.byUnit.player = nil end
   b.tracked = unit
   if unit then RF.byUnit[unit] = b end
-  if unit and RF.Same(unit, "player") then RF.byUnit.player = b end
+  local isPlayer = unit and RF.Same(unit, "player")
+  if isPlayer then RF.byUnit.player = b end
+  ns.SetUnits(b.unitEvents, unit, isPlayer and "player" or nil)
 end
 
 -- A button's unit changed (roster change): track it and refresh it.
@@ -613,6 +626,7 @@ end
 function RF.Setup(b)
   RF.Dress(b)
   addScripts(b)
+  listen(b)
   RF.buttons[#RF.buttons + 1] = b
   track(b, b:GetAttribute("unit"))
   for _, hook in ipairs(RF.setupHooks) do hook(b) end
@@ -715,12 +729,6 @@ function RF.WithoutSnippets()
 end
 
 local hiddenParent
--- Unit event -> the part of the tile it refreshes (rare ones refresh all of it).
-local UNIT_EVENTS = {
-  UNIT_HEALTH = onUnit("UpdateHealth"), UNIT_MAXHEALTH = onUnit("UpdateHealth"),
-  UNIT_POWER_UPDATE = onUnit("UpdatePower"), UNIT_MAXPOWER = onUnit("UpdatePower"), UNIT_DISPLAYPOWER = onUnit("UpdatePower"),
-  UNIT_CONNECTION = onUnit("Update"), UNIT_NAME_UPDATE = onUnit("Update"), UNIT_FACTION = onUnit("Update"),
-}
 
 -- Hides a default raid/party frame by parenting it to a hidden frame, and
 -- silences it (no events), so it does no work while hidden (out of combat, from build).
@@ -859,7 +867,6 @@ function RF.Enable(settings)
   RF.settings = settings
   migrateStyle(settings)
   ns.OutOfCombat(function() build(settings) end)
-  for e, fn in pairs(UNIT_EVENTS) do ns.On(e, fn) end
   for e, part in pairs(TILE_EVENTS) do ns.On(e, function() RF.EachTile(RF[part]) end) end
   for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RF.RosterChanged) end
   -- A drag, a nudge or a reset of the raid frames' spot: the grid is pinned to the spot's new side.

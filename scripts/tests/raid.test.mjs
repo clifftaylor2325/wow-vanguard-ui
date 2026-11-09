@@ -13,6 +13,11 @@ it("a unit event reaches only the tile showing that unit", () => {
     UnitIsUnit = function(a, b) if b ~= "target" and b ~= "player" then __asked = __asked + 1 end return isUnit(a, b) end`);
   addon.fire("UNIT_HEALTH", "raid3");
   expect(addon.eval("return { __updates, __asked }"), "one tile is updated, and the client is never asked which tile shows raid3").toEqual([["Vanguard_RaidUnitButton3"], 0]);
+  expect(addon.eval("local s = Vanguard_RaidUnitButton3.unitEvents.__unitEvents return { s.UNIT_HEALTH[1], s.UNIT_POWER_UPDATE[1], s.UNIT_NAME_UPDATE[1] }"),
+    "each tile asks the client for its own unit's events only").toEqual(["raid3", "raid3", "raid3"]);
+  addon.eval("__updates = {}");
+  addon.fire("UNIT_HEALTH", "nameplate1");
+  expect(addon.eval("return #__updates"), "another unit's health reaches no tile").toBe(0);
   expect(addon.eval('local RF = ns.GetModule("RaidFrames") return RF.byUnit.player == Vanguard_RaidUnitButton2'), "the tile showing you is also found by player").toBe(true);
   addon.eval('__updates = {} Vanguard_RaidUnitButton3:SetAttribute("unit", "raid9")');
   addon.fire("UNIT_HEALTH", "raid3");
