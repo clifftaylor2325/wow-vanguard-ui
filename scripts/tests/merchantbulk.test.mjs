@@ -262,11 +262,31 @@ it("Max and Stack count a quiver's or soul bag's free slots only for an item tha
   addon.eval("StackSplitFrame:Show()");
   addon.eval("__family, __bagFamily = 0, 1");
   addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");
-  expect(split(addon)[3], "the cost line follows: no room for water in a quiver").toBe("Can't afford one");
+  expect(split(addon)[3], "the cost line follows: no room for water in a quiver").toBe("No room in your bags");
 });
 
 // Presses one of the quantity window's buttons.
 const press = (addon, which) => addon.eval(`local b = ns.FrameState("vgSplitBulk")[StackSplitFrame].${which} b:GetScript("OnClick")(b)`);
+
+it("with every bag full and gold to spare the line says no room, and Stack and Max say so in chat and buy nothing", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("C_Container.GetContainerNumFreeSlots = function() return 0 end StackSplitFrame:Show()");
+  expect(split(addon)[3], "gold is plenty, so the line names the room").toBe("No room in your bags");
+  press(addon, "max");
+  press(addon, "stack");
+  const said = addon.chat().filter((l) => /No room in your bags/.test(l)).length;
+  expect([Object.keys(bought(addon)).length, said], "nothing bought; one chat line for each press").toEqual([0, 2]);
+});
+
+it("an item with none left says sold out, and no gold says can't afford one", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("__wfgWorld.merchant.items[3].left = 0 __owner('MerchantItem3ItemButton', 3) StackSplitFrame:Show()");
+  expect(split(addon)[3], "stock at 0").toBe("Sold out");
+  addon.eval("__gold = 5 __owner('MerchantItem1ItemButton', 1) StackSplitFrame:Hide() StackSplitFrame:Show()");
+  expect(split(addon)[3], "5 copper for a 10 copper pack").toBe("Can't afford one");
+});
 
 it("Stack buys one merchant stack; Max asks first when it is more, then buys in chunks and says what it bought", () => {
   const addon = loggedIn(BUY_ENV);
@@ -468,4 +488,27 @@ it("the reagent bag (bag 5) is scanned for the sell list and for junk", () => {
     for _, spot in ipairs(MC.Junk()) do if spot[1] == 5 then junk[#junk + 1] = spot[2] end end
     return { found, junk }`);
   expect(bags, "the listed stack and the gray item in bag 5 are both found").toEqual([[1], [2]]);
+});
+
+it("an irreversible move answered after a fight began moves nothing, and one answered out of combat is recorded as a move", () => {
+  const addon = loggedIn(BULK_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.slash("sell 159");
+  addon.world.combat(true);
+  addon.click("Vanguard_Question.confirm");
+  expect([addon.world.get("moves"), chatHas(addon, /Nothing moved: a fight began/)], "Yes in a fight: no gold or item call at all").toEqual([{}, true]);
+  addon.slash("sell 159");
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "in a fight no question is asked").toBe(false);
+  addon.world.combat(false);
+  addon.slash("sell 159");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local out = {} for _, m in ipairs(__wfgWorld.moves) do out[#out + 1] = m.call .. ' ' .. m.at:match('^[^:]+') end return out"), "the sale's two stacks, from the module")
+    .toEqual(["C_Container.UseContainerItem Modules/MerchantBulk.lua", "C_Container.UseContainerItem Modules/MerchantBulk.lua"]);
+});
+
+it("an irreversible move started in a fight is refused before any question, with a line saying so", () => {
+  const addon = loggedIn(BULK_ENV);
+  addon.world.combat(true);
+  addon.eval(`ns.Irreversible({ question = "TEST-ONLY?", yes = "TEST-ONLY", act = function() __acted = true end })`);
+  expect([addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false"), addon.eval("return __acted == true"), chatHas(addon, /Not in a fight: try again after it/)]).toEqual([false, false, true]);
 });

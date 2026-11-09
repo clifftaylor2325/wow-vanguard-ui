@@ -120,7 +120,7 @@ end
 -- "Target: <name>" in the target's color, when the unit has a target you can name.
 local function addTarget(tt, unit)
   local target = unit .. "target"
-  if not UnitExists(target) then return end
+  if not ns.IsTrue(UnitExists(target)) then return end
   local name = UnitName(target)
   if ns.IsSecret(name) or type(name) ~= "string" then return end
   tt:AddLine(ns.Format(L["Target: {name}"], { name = name }), unitColor(target))

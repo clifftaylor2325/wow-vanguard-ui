@@ -701,12 +701,19 @@ IS.SLOT_NAMES = {
 -- What a bag that holds one kind of thing is called, by the game's bag family number; any other family is a "special bag".
 IS.BAG_KINDS = { [1] = L["quiver"], [2] = L["ammo pouch"], [4] = L["soul bag"] }
 
+-- One slot's durability in whole percent (rounded to the nearest, as the strip's block reads it), or nil
+-- for a slot without durability; the character pane's labels read it too so both agree.
+function IS.SlotPercent(slot)
+  local share = slotShare(slot)
+  return share and math.floor(share * 100 + 0.5) or nil
+end
+
 -- Each worn item under full durability, most worn first: { name, percent }.
 function IS.WornSlots()
   local out = {}
   for slot, name in pairs(IS.SLOT_NAMES) do
-    local share = slotShare(slot)
-    if share and share < 1 then out[#out + 1] = { name, math.floor(share * 100 + 0.5) } end
+    local percent = IS.SlotPercent(slot)
+    if percent and percent < 100 then out[#out + 1] = { name, percent } end
   end
   table.sort(out, function(a, b) return a[2] < b[2] or (a[2] == b[2] and a[1] < b[1]) end)
   return out

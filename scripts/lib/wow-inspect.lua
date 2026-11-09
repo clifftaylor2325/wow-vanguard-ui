@@ -2,6 +2,7 @@
 -- what it draws (the harness turns it into JS). Loaded into each addon by
 -- scripts/lib/lua-harness.mjs; never shipped in game.
 
+local type = __wfgRawType
 local stub = __wfgStub
 
 -- A color table { r, g, b, a } or nil.

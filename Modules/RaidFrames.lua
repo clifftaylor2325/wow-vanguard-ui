@@ -271,7 +271,7 @@ end
 -- The unit a tile shows, when it exists; else nil.
 local function tileUnit(b)
   local unit = b:GetAttribute("unit")
-  if unit and UnitExists(unit) then return unit end
+  if unit and ns.IsTrue(UnitExists(unit)) then return unit end
   return nil
 end
 

@@ -122,7 +122,7 @@ T.OnChanged(function() dispelCurve = nil end)
 function A.DispelColor(unit, aura)
   local get, id = C_UnitAuras and C_UnitAuras.GetAuraDispelTypeColor, ns.PlainNumber(aura.auraInstanceID)
   if ns.IsSecret(aura.dispelName) and id and type(get) == "function" and curve() then
-    local ok, color = pcall(get, unit, id, curve())
+    local ok, color = ns.Quiet("aura dispel color", get, unit, id, curve())
     if ok and color then return color:GetRGB() end
   end
   return T.RGB(A.DispelToken(aura.dispelName))
@@ -132,7 +132,7 @@ end
 function A.StackText(unit, aura)
   local get, id = C_UnitAuras and C_UnitAuras.GetAuraApplicationDisplayCount, ns.PlainNumber(aura.auraInstanceID)
   if type(get) == "function" and id then
-    local ok, text = pcall(get, unit, id, 2, 99)
+    local ok, text = ns.Quiet("aura stack text", get, unit, id, 2, 99)
     if ok then return text end
   end
   local stacks = ns.PlainNumber(aura.applications)

@@ -794,7 +794,7 @@ end
 local function scan()
   for i = 1, 40 do
     local unit = "nameplate" .. i
-    if UnitExists(unit) and not NP.plates[unit] then onAdded(nil, unit) end
+    if ns.IsTrue(UnitExists(unit)) and not NP.plates[unit] then onAdded(nil, unit) end
   end
 end
 
@@ -949,12 +949,27 @@ local function setEnemies(on)
   ns.Chat(said)
 end
 
--- Turns the game's enemy plates on once per character (#377: the game ships them off, so
--- Vanguard had nothing to dress); after that the V key and the Nameplates page decide.
+-- The offer below was answered (No, or closed): it is not made again on this character. An offer another
+-- question replaced before an answer counts as unanswered, and comes back at a later login.
+function NP.EnemyPlatesAnswered()
+  VanguardCharDB.enemyPlatesSet = true
+end
+
+-- The offer's Turn on: the game's enemy plates on (once out of combat), and the offer answered.
+function NP.EnemyPlatesOn()
+  NP.EnemyPlatesAnswered()
+  setGameSetting("nameplateShowEnemies", true)
+end
+
+-- Offers once per character to turn the game's enemy plates on while they are off (#377: the game ships
+-- them off, so Vanguard had nothing to dress). The game's setting changes only on the player's yes; after
+-- that the V key and the Nameplates page decide. Waits for a login after setup, with no other question open.
 function NP.EnemyPlatesOnce()
   if type(VanguardCharDB) ~= "table" or VanguardCharDB.enemyPlatesSet then return end
-  VanguardCharDB.enemyPlatesSet = true
-  setGameSetting("nameplateShowEnemies", true)
+  if ns.SetupOwed() or ns.Asking() then return end
+  if cvarState("nameplateShowEnemies") ~= "off" then VanguardCharDB.enemyPlatesSet = true return end
+  local ask = L["The game's enemy nameplates are off, so Vanguard has none to dress. Turn them on? The V key and the Nameplates page change it later."]
+  ns.Ask(ask, L["Turn on"], NP.EnemyPlatesOn, NP.EnemyPlatesAnswered)
 end
 
 -- get/set for a check row on one of the game's own plate settings (the V and Shift-V keys).

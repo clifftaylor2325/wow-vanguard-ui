@@ -312,7 +312,7 @@ AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 
 -- What the card shows for Upgrades: the columns, this visit's upgrades best first, the count
 -- beside the heading, and the line shown while there are none.
-AH.Sources[AH.UPGRADES] = { name = L["Upgrades"], columns = AH.UPGRADE_COLUMNS, items = AH.SortedUpgrades, paint = paintUpgrade, click = AH.OpenUpgrade,
+AH.Sources[AH.UPGRADES] = { name = L["Upgrades"], on = function() return AH.settings.upgrades end, columns = AH.UPGRADE_COLUMNS, items = AH.SortedUpgrades, paint = paintUpgrade, click = AH.OpenUpgrade,
   enter = upgradeTip, status = upgradeStatus, count = AH.FoundCount }
 
 -- The Upgrades entry painted: the listings judged again if the weights changed, its count in the

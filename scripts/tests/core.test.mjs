@@ -541,11 +541,11 @@ it("add-on restrictions: ns.Restricted reads one kind, starting counts, chat add
   const kinds = loggedIn(RESTRICT_ENV);
   expect(kinds.eval("return ns.Restricted('Nonsense')"), "a kind the client doesn't name").toBe(false);
 });
-it("a 12.x build with the Forever ruleset call still reads as WoW Forever", () => {
+it("a 12.x build is told apart by its interface number and project, never by the Forever ruleset call", () => {
   const addon = loggedIn('WOW_PROJECT_ID = 1 GetBuildInfo = function() return "12.1.5", "TEST-ONLY", "Nov 4 2026", 120105 end C_GameRules = { GetForeverExperiencePreset = function() return 1 end }');
-  expect(addon.eval("return ns.IsForever()"), "120105 plus the ruleset call is Forever").toBe(true);
-  addon.eval("C_GameRules = {}");
-  expect(addon.eval("return ns.IsForever()"), "120105 without the call is Retail").toBe(false);
+  expect(addon.eval("return ns.IsForever()"), "120105 on Retail's project is Retail, ruleset call or not").toBe(false);
+  addon.eval("WOW_PROJECT_CAMELOT = 18 WOW_PROJECT_ID = 18");
+  expect(addon.eval("return ns.IsForever()"), "120105 on Forever's project is Forever").toBe(true);
 });
 it("a retail client is not WoW Forever and keeps its aura state readable", () => {
   const addon = loggedIn('WOW_PROJECT_ID = 1 GetBuildInfo = function() return "12.1.5", "TEST-ONLY", "Nov 4 2026", 120105 end');
@@ -774,4 +774,11 @@ it("command syntax in chat doubles its pipes, so the chat frame doesn't eat |r, 
   expect(lines.some((l) => /\|[a-z<[]/.test(l.replace(/\|\|/g, "").replace(/\|c[0-9a-fA-F]{8}|\|r/g, ""))), "no bare pipe left before a letter in /vg help").toBe(false);
   addon.slash("corners sideways");
   expect(chatHas(addon, /Usage: \/vg corners square\|\|rounded/), "a usage line too").toBe(true);
+});
+it("ns.PlaceSpell does nothing in a fight, and places the spell once it ends", () => {
+  const addon = loggedIn();
+  setCombat(addon, true);
+  expect(addon.eval("return { ns.PlaceSpell(7, 133), __wfgWorld.placed or false, __wfgWorld.cursor == nil }"), "in combat: refused, nothing picked up or placed").toEqual([false, false, true]);
+  setCombat(addon, false);
+  expect(addon.eval("return { ns.PlaceSpell(7, 133), __wfgWorld.placed }"), "out of combat: placed").toEqual([true, 7]);
 });

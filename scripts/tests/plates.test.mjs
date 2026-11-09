@@ -149,13 +149,32 @@ it("the Nameplates page switches the game's enemy and friendly plates, out of co
   setCombat(addon, false);
   expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "once the fight ends").toBe("0");
 });
-it("enemy plates are turned on once per character, then left to the player", () => {
+// The question dialog: whether it shows, and its question.
+const question = (addon) => addon.eval("local f = Vanguard_Question return { f ~= nil and f:IsShown(), f and f.title:GetText() or false }");
+it("enemy plates off: Vanguard offers once per character to turn them on, and only a yes changes the game's setting", () => {
   const addon = loggedIn("SetCVar('nameplateShowEnemies', 0)");
-  expect(addon.eval("return { GetCVar('nameplateShowEnemies'), VanguardCharDB.enemyPlatesSet }"), "on at the first login").toEqual(["1", true]);
+  expect(question(addon), "asked at the first login").toEqual([true, expect.stringMatching(/enemy nameplates are off/)]);
+  expect(addon.eval("return { GetCVar('nameplateShowEnemies'), VanguardCharDB.enemyPlatesSet == nil }"), "nothing changed or marked before the answer").toEqual(["0", true]);
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "Turn on: on").toBe("1");
   addon.eval("SetCVar('nameplateShowEnemies', 0) ns.GetModule('Nameplates').EnemyPlatesOnce()");
-  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "the player turned them off: they stay off").toBe("0");
-  expect(addon.eval("VanguardCharDB = nil ns.GetModule('Nameplates').EnemyPlatesOnce() return GetCVar('nameplateShowEnemies')"), "no saved settings yet: nothing changes").toBe("0");
-  expect(loggedIn("SetCVar = nil").eval("return VanguardCharDB.enemyPlatesSet"), "a client without SetCVar: no error, marked done").toBe(true);
+  expect([addon.eval("return GetCVar('nameplateShowEnemies')"), question(addon)[0]], "the player turned them off: they stay off, unasked").toEqual(["0", false]);
+  const declined = loggedIn("SetCVar('nameplateShowEnemies', 0)");
+  declined.click("Vanguard_Question.no");
+  expect(declined.eval("return { GetCVar('nameplateShowEnemies'), VanguardCharDB.enemyPlatesSet }"), "No: they stay off, and the offer is not made again").toEqual(["0", true]);
+  expect(question(loggedIn())[0], "already on: nothing to ask").toBe(false);
+  expect(declined.eval("VanguardCharDB = nil ns.GetModule('Nameplates').EnemyPlatesOnce() return GetCVar('nameplateShowEnemies')"), "no saved settings yet: nothing changes").toBe("0");
+});
+it("the enemy plates offer waits while setup is owed or another question is open", () => {
+  const owed = loggedIn("SetCVar('nameplateShowEnemies', 0)", { firstRun: true });
+  expect(owed.eval("return VanguardCharDB.enemyPlatesSet"), "setup owed: not asked, kept for a later login").toBe(null);
+  const busy = loggedIn("SetCVar('nameplateShowEnemies', 0)");
+  busy.click("Vanguard_Question.no");
+  busy.eval("VanguardCharDB.enemyPlatesSet = nil ns.Ask('TEST-ONLY other', 'TEST-ONLY', function() end) ns.GetModule('Nameplates').EnemyPlatesOnce()");
+  expect([busy.eval("return VanguardCharDB.enemyPlatesSet"), question(busy)[1]], "another question open: it stays, the offer waits").toEqual([null, "TEST-ONLY other"]);
+  const replaced = loggedIn("SetCVar('nameplateShowEnemies', 0)");
+  replaced.eval("ns.Ask('TEST-ONLY later', 'TEST-ONLY', function() end)");
+  expect(replaced.eval("return VanguardCharDB.enemyPlatesSet"), "a later question replaced it before an answer: asked again at a later login").toBe(null);
 });
 // TEST-ONLY the game's personal resource display (Blizzard_PersonalResourceDisplay.xml): the health, power and
 // alternate power bars, each with a backdrop texture, a heal prediction texture and the three value texts.

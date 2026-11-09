@@ -32,6 +32,7 @@
 -- the addon's caught errors: a test fails unless it names each with expectErrors.
 
 local stub = __wfgStub
+local type = __wfgRawType
 local methods = stub.methods
 local world = stub.world
 
@@ -223,19 +224,44 @@ local PROTECTED_CALLS = {
   "SetScrollChild", "SetVerticalScroll", "SetHorizontalScroll",
 }
 
--- The game's frames the client protects (secure unit buttons in the real UI).
-local GAME_PROTECTED = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame" }
-for _, name in ipairs(GAME_PROTECTED) do
-  if type(_G[name]) == "table" then rawset(_G[name], "__protected", true) end
+-- The game's frames the client protects, by global name (Lua patterns): the frames Blizzard's XML
+-- builds from a secure template (wow-ui-source: Blizzard_UnitFrame's PlayerFrame, TargetFrame,
+-- FocusFrame, PetFrame, the party and boss frames, which inherit SecureUnitButtonTemplate;
+-- Blizzard_CompactRaidFrames' CompactUnitFrameTemplate members; Blizzard_ArenaUI's enemy frames;
+-- Blizzard_ActionBar's ActionBarButtonTemplate, PetActionButtonTemplate and StanceButtonTemplate
+-- buttons, which inherit SecureActionButtonTemplate or SecureFrameTemplate). The harness has none of
+-- those templates and a test makes these frames by name as stand-ins, so the name decides; whatever
+-- holds one (a bar, a container) is protected through it.
+-- A nameplate's UnitFrame is left out: the client lets addons hide and move it in a fight.
+local GAME_PROTECTED = {
+  "^PlayerFrame$", "^TargetFrame$", "^FocusFrame$", "^PetFrame$",
+  "^PartyMemberFrame%d$", "^PartyFrame$", "^Boss%dTargetFrame$", "^ArenaEnemyMatchFrame%d$", "^ArenaEnemyFrame%d$",
+  "^CompactRaidFrame%d+$", "^CompactPartyFrameMember%d$", "^CompactRaidGroup%dMember%d$",
+  "^ActionButton%d+$", "^MultiBar%w+Button%d+$", "^PetActionButton%d+$", "^StanceButton%d+$", "^PossessButton%d$",
+  "^OverrideActionBarButton%d$", "^ExtraActionButton1$",
+}
+-- Whether a frame name is one of the game's protected frames.
+local function gameProtectedName(name)
+  if type(name) ~= "string" then return false end
+  for _, pattern in ipairs(GAME_PROTECTED) do
+    if name:find(pattern) then return true end
+  end
+  return false
+end
+
+-- Whether a template list names a secure template.
+local function protectedTemplate(template)
+  return type(template) == "string" and template:find("Secure") ~= nil
 end
 
 -- Marks a frame protected (a test's stand-in for one of the game's secure frames).
 function stub.protect(w) rawset(w, "__protected", true) end
 
--- Whether a frame is protected itself: marked, or made from a Secure template.
+-- Whether a frame is protected itself: marked, made from a Secure template, or one of the game's
+-- protected frames by name (never one the addon made: its names are its own).
 local function protectedItself(w)
-  local template = rawget(w, "__template")
-  return rawget(w, "__protected") == true or (type(template) == "string" and template:find("Secure") ~= nil)
+  if rawget(w, "__protected") == true or protectedTemplate(rawget(w, "__template")) then return true end
+  return rawget(w, "__byGame") == true and gameProtectedName(rawget(w, "__name"))
 end
 
 -- Whether the client protects a frame: itself, or through a protected frame inside it.
@@ -493,4 +519,87 @@ rewrap("GetVerticalScrollRange", function(get) return function(self) return rawC
 function world.secretGeometry(mode)
   assert(mode == nil or mode == false or mode == "derived" or mode == "strict", "secretGeometry: derived, strict or off")
   stub.secretGeometry = mode or nil
+end
+
+-- Forbidden objects ------------------------------------------------------------------------
+-- The client closes some of its own frames to addons: a friendly nameplate in an instance, a
+-- chat bubble there, the aura buttons on such a plate. IsForbidden answers true, and every other
+-- method raises when addon code calls it (harness and test code still reach the frame).
+-- world.forbid(frame) closes one of the game's frames that way, with every game widget under it;
+-- the addon's own frames under it stay open, as the addon made them.
+local FORBIDDEN = "Attempt to access forbidden object from code tainted by an AddOn"
+
+-- Whether w is top or sits under it.
+local function under(w, top)
+  local p = w
+  while p do
+    if p == top then return true end
+    p = rawget(p, "__parent")
+  end
+  return false
+end
+
+-- A method that refuses addon code as a forbidden object does.
+local function refusing(orig)
+  return function(self, ...)
+    if byAddon(callerOf(1)) then error(FORBIDDEN, 2) end
+    return orig(self, ...)
+  end
+end
+
+-- The names a widget kind lists (wow-stub.lua keeps each list behind a watching proxy).
+local function listedNames(kind)
+  local listed = __wfgWidgetApi.methods[kind] or {}
+  local meta = getmetatable(listed)
+  return meta and meta.__index or listed
+end
+
+-- One game widget closed: IsForbidden says so, every listed method refuses the addon.
+local function close(w)
+  for name in pairs(listedNames(w.__kind)) do
+    if name ~= "IsForbidden" and type(w[name]) == "function" then rawset(w, name, refusing(w[name])) end
+  end
+  rawset(w, "IsForbidden", function() return true end)
+end
+
+-- Closes a game frame and the game's widgets under it to addons (a test's instance plate).
+function world.forbid(frame)
+  for _, w in ipairs(stub.frames) do
+    if rawget(w, "__byGame") and under(w, frame) then close(w) end
+  end
+end
+
+-- Moves ------------------------------------------------------------------------------------
+-- Every call addon code makes that moves gold, an item, a mail or an auction is recorded in world.moves as
+-- { call, at } (at: "Modules/MailTools.lua:205"), so a scenario can assert that nothing moved (an answer
+-- given after the merchant closed, a question answered in a fight). The harness wraps the calls as the
+-- player logs in (lua-harness.mjs login), so a test's own stand-in set up before login is watched too.
+local MOVES = {
+  { nil, "TakeInboxMoney" }, { nil, "TakeInboxItem" }, { nil, "ReturnInboxItem" }, { nil, "DeleteInboxItem" },
+  { nil, "AutoLootMailItem" }, { nil, "SendMail" }, { nil, "BuyMerchantItem" }, { nil, "BuybackItem" },
+  { "C_Container", "UseContainerItem" }, { "C_AuctionHouse", "CancelAuction" }, { "C_AuctionHouse", "PostItem" },
+  { "C_AuctionHouse", "PostCommodity" }, { "C_AuctionHouse", "PlaceBid" }, { "C_AuctionHouse", "ConfirmCommoditiesPurchase" },
+}
+world.moves = {}
+local watched = setmetatable({}, { __mode = "k" })
+
+-- A move call that notes addon code's calls, then makes them.
+local function noted(name, call)
+  -- The call itself, noted first when addon code made it.
+  local wrapped = function(...)
+    local at = callerOf(1)
+    if byAddon(at) then world.moves[#world.moves + 1] = { call = name, at = where(at) } end
+    return call(...)
+  end
+  watched[wrapped] = true
+  return wrapped
+end
+
+-- Wraps each move call the client (or a test's stand-in) has now; a call already wrapped is left as it is.
+function world.watchMoves()
+  for _, m in ipairs(MOVES) do
+    local holder = m[1] and _G[m[1]] or _G
+    local call = type(holder) == "table" and rawget(holder, m[2])
+    if type(call) == "function" and not watched[call] then rawset(holder, m[2], noted((m[1] and m[1] .. "." or "") .. m[2], call)) end
+  end
 end

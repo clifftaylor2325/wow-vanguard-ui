@@ -352,12 +352,14 @@ function worldClient(L) {
 }
 
 // Runs the client Lua before the addon's files load, with the font metrics on for the text-fit
-// audit, then a Retail world's own stubs; returns the client the world is.
+// audit, then a Retail world's own stubs, then gives the addon the client's type() for secrets;
+// returns the client the world is.
 function startClient(L, client, textFit) {
   if (textFit) run(L, '__wfgStub.textMetrics = "font"', "=textFit", false, 0);
   if (client) run(L, client, "=client", false, 0);
   const name = worldClient(L);
   if (name === "retail") for (const file of retailStubs()) runLib(L, file);
+  run(L, "__wfgWorld.secretTypes()", "=secretTypes", false, 0);
   return name;
 }
 
@@ -402,8 +404,9 @@ function drivers(addon) {
 // Login and SavedVariables, as WoW sequences them.
 function lifecycle(addon) {
   return {
-    // ADDON_LOADED, PLAYER_LOGIN, PLAYER_ENTERING_WORLD.
+    // ADDON_LOADED, PLAYER_LOGIN, PLAYER_ENTERING_WORLD, with the gold and item moves watched first (world.moves).
     login: () => {
+      addon.eval("__wfgWorld.watchMoves()");
       addon.fire("ADDON_LOADED", ADDON);
       addon.fire("PLAYER_LOGIN");
       addon.fire("PLAYER_ENTERING_WORLD", true, false);

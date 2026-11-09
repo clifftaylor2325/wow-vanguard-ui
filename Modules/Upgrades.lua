@@ -155,7 +155,13 @@ end
 function UP.Weights()
   local kind = W.Kind(UP.Class(), UP.Role(), UP.Style())
   local out = ns.Copy(W.KINDS[kind])
-  for short, value in pairs(UP.Own(kind) or {}) do out[short] = value end
+  -- Only the stats this client weighs, as finite numbers: a profile made on the other client keeps that client's
+  -- stats (Retail's ILVL, MASTERY, VERS), which would score this client's items by item level. The saved table
+  -- stays as it is, so the profile still works back there.
+  for short, value in pairs(UP.Own(kind) or {}) do
+    local weight = W.STATS[short] and UP.Weight(value)
+    if weight then out[short] = weight end
+  end
   return out, kind
 end
 

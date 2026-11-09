@@ -547,10 +547,9 @@ end
 
 -- "This character uses Default." or, with a switch staged, what it uses until the reload and after it.
 local function currentProfileText()
-  local later = ns.PendingProfileName()
+  local later = ns.ProfileAfterReload()
   if not later then return ns.Format(L["This character uses {profile}."], { profile = ns.ProfileName() }) end
-  local spec = ns.SpecProfile()
-  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = spec or later })
+  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = later })
 end
 
 -- Asks before a reset: what is lost (every setting in the profile in use, for every character
@@ -634,6 +633,30 @@ local function feedbackFormRows()
   }
 end
 
+-- Feedback: the parts paused after repeated errors (Core/Events.lua), and a button that runs them again; none while none is.
+local function pausedRows()
+  if #ns.paused == 0 then return {} end
+  local sites = {}
+  for _, p in ipairs(ns.paused) do sites[#sites + 1] = tostring(p.where) end
+  return {
+    { "header", L["Paused after repeated errors"] },
+    { "text", ns.Format(L["Paused after {count} failures, until you reload: {sites}. Resume them once the cause is fixed (/vg errors resume)."],
+      { count = ns.ERROR_BUDGET, sites = table.concat(sites, ", ") }) },
+    { "button", L["Resume paused parts"], ns.ResumePaused },
+  }
+end
+
+-- The Feedback page is built again when how many parts are paused changes (a part paused, Resume), so it
+-- never lists a part running again or misses one just paused.
+do
+  local pausedListed = 0
+  ns.OnErrorsChanged(function()
+    if #ns.paused == pausedListed then return end
+    pausedListed = #ns.paused
+    if O.Frame() then O.RebuildPage("feedback") end
+  end)
+end
+
 -- Feedback, part two: the Discord server and the X account, each copied to paste into a browser.
 local function communityRows()
   return {
@@ -644,9 +667,9 @@ local function communityRows()
   }
 end
 
--- Feedback: the form and the report, then the community links.
+-- Feedback: the paused parts (when there are any), the form and the report, then the community links.
 local function feedbackRows()
-  return append(feedbackFormRows(), communityRows())
+  return append(append(pausedRows(), feedbackFormRows()), communityRows())
 end
 
 -- Pages: key, title, nav icon (Media/Icons) and order in the nav (groups: under 30, under 90, the rest).
