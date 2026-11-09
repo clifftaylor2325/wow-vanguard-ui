@@ -247,5 +247,5 @@ end
 
 -- The switch on the Game windows page, under the other game window groups.
 ns.RetailRows(function()
-  return { O.Check(L["Group finder, PvP and Adventure Guide windows (reload)"], O.ReloadSetting("Windows", "finder")) }
+  return { O.Check(L["Group finder and PvP windows (reload)"], O.ReloadSetting("Windows", "finder")) }
 end)

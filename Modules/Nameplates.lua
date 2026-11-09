@@ -1023,7 +1023,7 @@ end
 -- The game's own plate settings Vanguard mirrors: which plates it draws (the V and Shift-V keys)
 -- and, where the client has them, the Info display's health numbers.
 function NP.GameRows()
-  local rows = { { "check", L["Enemy nameplates (the game's setting, the V key)"], NP.GameSetting("nameplateShowEnemies") }, { "check", L["Friendly players' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyPlayers") }, { "check", L["Friendly NPCs' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyNPCs") } }
+  local rows = { { "check", L["Enemy nameplates (the game's setting)"], NP.GameSetting("nameplateShowEnemies") }, { "check", L["Friendly players' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyPlayers") }, { "check", L["Friendly NPCs' nameplates (the game's setting)"], NP.GameSetting("nameplateShowFriendlyNPCs") } }
   if not hasInfoDisplay() then return rows end
   rows[#rows + 1] = { "check", L["Health percent on enemy plates (the game's setting)"], NP.InfoSetting("CurrentHealthPercent") }
   rows[#rows + 1] = { "check", L["Health value on enemy plates (the game's setting)"], NP.InfoSetting("CurrentHealthValue") }
@@ -1033,11 +1033,11 @@ end
 -- This module's own rows: looks first, then debuffs, buffs and size (after a reload).
 local function lookRows()
   return {
-    { "check", L["Levels, colored by how hard the unit is for you"], setting("level", NP.RefreshAll) },
+    { "check", L["Levels, colored by difficulty"], setting("level", NP.RefreshAll) },
     { "check", L["Threat colors while you have aggro"], setting("threat", NP.RefreshAll) },
-    { "check", L["Accent border, glow and marker on your target"], setting("targetBorder", NP.RefreshAll) }, { "check", L["Cast bar"], setting("castBar", ns.Options.NeedReload) },
-    { "check", L["A gold ! by units your quests need"], setting("questMarks", NP.RefreshAll) }, { "check", L["Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's"], setting("tagMarks", NP.RefreshAll) },
-    { "cycle", L["Your debuffs shown"], { { 0, L["none"] }, { 2, "2" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", ns.Options.NeedReload) }, { "cycle", L["Buffs on players (defensives, and yours on friends)"], { { 0, L["none"] }, { 3, "3" }, { 5, "5" } }, setting("buffs", ns.Options.NeedReload) },
+    { "check", L["Mark your target's plate"], setting("targetBorder", NP.RefreshAll) }, { "check", L["Cast bar"], setting("castBar", ns.Options.NeedReload) },
+    { "check", L["A gold ! by units your quests need"], setting("questMarks", NP.RefreshAll) }, { "check", L["Tag marks"], setting("tagMarks", NP.RefreshAll) },
+    { "cycle", L["Your debuffs shown"], { { 0, L["none"] }, { 2, "2" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", ns.Options.NeedReload) }, { "cycle", L["Buffs on players"], { { 0, L["none"] }, { 3, "3" }, { 5, "5" } }, setting("buffs", ns.Options.NeedReload) },
     { "check", L["Timer numbers on your debuffs (reload)"], setting("timers", ns.Options.NeedReload) },
     { "cycle", L["Width"], { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", ns.Options.NeedReload) }, { "cycle", L["Height"], { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", ns.Options.NeedReload) } }
 end

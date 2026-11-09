@@ -108,6 +108,16 @@ it("options fold: a folded row found by search, a link or OpenHit opens its fold
   expect(addon.eval("return Vanguard_Options.found:IsShown()"), "a jump to a folded row finds it").toBe(true);
 });
 
+it("options fold: an opened card is kept for this character, so it opens the same after a reload", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval(`${RAID} card.fold.__scripts.OnClick(card.fold, "LeftButton")`);
+  const kept = addon.eval("local n = 0 for _ in pairs(VanguardCharDB.openFolds) do n = n + 1 end return n");
+  expect(kept, "the open card is noted in the character's saved variables").toBe(1);
+  const saved = `VanguardCharDB = { openFolds = { ["raid\\nRaid frames"] = true } }`;
+  const after = loggedIn(CLICK_LUA, { savedVariables: saved });
+  expect(after.eval(`${RAID} return { card.fold.collapsed, visibleRows() }`), "the next session opens it as it was left").toEqual([false, 15]);
+});
+
 it("H24-2-1 options fold: folding the card with the mouse lets go of a keyboard row inside it, so Enter goes on to the game and the row is unchanged", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval(`${RAID} card.fold.__scripts.OnClick(card.fold, "LeftButton")`);

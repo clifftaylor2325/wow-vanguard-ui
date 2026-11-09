@@ -86,7 +86,7 @@ it("player plates show defensives, important buffs and yours right of the bar; o
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
   expect(buffs("nameplate2"), "the plate reused for a mob shows none").toMatchObject({ shown: false, unit: false });
   addon.eval('ns.Options.Show("nameplates")');
-  addon.eval('__click("Buffs on players (defensives, and yours on friends)")');
+  addon.eval('__click("Buffs on players")');
   expect(addon.eval("return VanguardDB.profiles.Default.Nameplates.buffs"), "the options page sets how many").toBe(5);
   const off = loggedIn(UNITS_ENV + PLATE_ENV + BUFF_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { Nameplates = { buffs = 0 } } } }" });
   expect(off.eval("return { ns.FrameState('vgPlate')[__plates.nameplate2].buffs == nil, #ns.errors }"), "switched off: no buff row is built").toEqual([true, 0]);

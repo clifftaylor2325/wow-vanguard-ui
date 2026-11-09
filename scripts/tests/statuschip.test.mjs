@@ -137,5 +137,5 @@ it("status chip: in the Like the game's layout the chip sits above the player fr
 it("status chip: its switch on the Unit frames page says the chip sits beside the frame, not above it", () => {
   const labels = loggedIn("").eval('local out = {} for _, p in ipairs(ns.Options.PAGES) do if p.key == "unitframes" then for _, r in ipairs(p.rows()) do out[#out + 1] = r[2] end end end return out');
   const row = Object.values(labels).find((text) => typeof text === "string" && text.startsWith("Status chip"));
-  expect(row, "the row exists and names where the chip sits").toMatch(/^Status chip beside your frame:/);
+  expect(row, "the row exists and names where the chip sits").toMatch(/^Status chip beside your frame/);
 });

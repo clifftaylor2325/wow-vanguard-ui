@@ -329,7 +329,7 @@ function GB.Rows()
     { "button", L["Open the group board"], function() GB.Toggle() end },
     { "cycle", L["Your role, for the whisper"], { { "auto", L["Automatic"] }, { "tank", L["Tank"] }, { "healer", L["Healer"] }, { "dps", L["DPS"] } }, setting("role") },
     { "cycle", L["Keep posts for"], { { 5, L["5 minutes"] }, { 10, L["10 minutes"] }, { 20, L["20 minutes"] } }, setting("minutes") },
-    { "check", L["Numbered channels (General, Trade, LookingForGroup)"], channel("channel") },
+    { "check", L["Numbered channels"], channel("channel") },
     { "check", L["Yell"], channel("yell") }, { "check", L["Say"], channel("say") }, { "check", L["Guild"], channel("guild") },
   }
 end

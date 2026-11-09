@@ -124,23 +124,23 @@ it("a finished item is not the one rolls are flagged for, and a hidden item text
 it("the list goes in the chat box for the party or raid on a click, in parts, and is printed where the game has no chat box call", () => {
   const addon = loggedIn("ChatFrameUtil = { OpenChat = function(t) __box = t end }", ON);
   addon.chat();
-  press(addon, "Put the list in the chat box for the party");
+  press(addon, "Put the list in the party chat box");
   expect(chatHas(addon, /No reserves to share/), "empty").toBe(true);
   say(addon, "loot add Thrall Boots");
-  press(addon, "Put the list in the chat box for the party");
+  press(addon, "Put the list in the party chat box");
   expect(addon.eval("return __box"), "one part").toBe("/p Soft reserves: Boots: Thrall");
   for (let i = 0; i < 12; i++) say(addon, `loot add Player${i} TEST-ONLY-Long-Item-Name-Number-${i}-xxxxxxxxxxxxx`);
-  press(addon, "Put the list in the chat box for the raid");
+  press(addon, "Put the list in the raid chat box");
   const first = addon.eval("return __box");
   expect(first.startsWith("/raid Soft reserves: "), "starts with the label").toBe(true);
   expect(first.length, "fits a chat line").toBeLessThan(255);
   expect(chatHas(addon, /Part 1 of \d/)).toBe(true);
-  press(addon, "Put the list in the chat box for the raid");
+  press(addon, "Put the list in the raid chat box");
   expect(addon.eval("return __box").startsWith("/raid Soft reserves"), "the next part has no label").toBe(false);
   const bare = loggedIn("", ON);
   say(bare, "loot add Thrall Boots");
   bare.chat();
-  press(bare, "Put the list in the chat box for the party");
+  press(bare, "Put the list in the party chat box");
   expect(chatHas(bare, /Soft reserves: Boots: Thrall/), "printed instead").toBe(true);
   press(bare, "Print the reserve list to my chat");
   press(bare, "Clear every reserve");
@@ -175,7 +175,7 @@ it("H29-19-1 every shared part fits 255 bytes with /raid in front in French and 
 
 it("the options card has the switch, and Add a reserve asks for player and item", () => {
   const addon = loggedIn("", ON);
-  expect(rows(addon).map((r) => r[1])).toContain("Turn on the soft-reserve list and the roster");
+  expect(rows(addon).map((r) => r[1])).toContain("Soft-reserve list and roster");
   addon.eval("ns.AskText = function(title, fn) __ask = fn end");
   press(addon, "Add a reserve");
   addon.eval('__ask("Thrall Boots")');

@@ -535,6 +535,7 @@ SI.ELSEWHERE = L["Everything else, including any setting that needs a reload, ch
 function SI.HoldRows(rows)
   rows[#rows + 1] = { "header", L["What an override holds"] }
   rows[#rows + 1] = { "text", L["Frame spots, scale and opacity (move frames with /vg unlock)."] }
+  rows[#rows + 1] = ns.Options.MoveFramesRow()
   for _, module in ipairs(SI.ORDER) do rows[#rows + 1] = { "text", SI.HOLDS[module] } end
   rows[#rows + 1] = { "text", SI.ELSEWHERE }
   return rows

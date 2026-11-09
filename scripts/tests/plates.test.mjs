@@ -279,9 +279,9 @@ it("the Nameplates and Unit frames pages switch the tag marks and the grey bar",
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(addon.eval("return __look()"), "another player's mob, switches on").toEqual(["x tapped", "tapped", "x tapped"]);
   addon.eval('ns.Options.Show("nameplates")');
-  addon.eval('__click("Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player\'s")');
+  addon.eval('__click("Tag marks")');
   addon.eval('ns.Options.Show("unitframes")');
-  addon.eval('__click("Tag mark on your target: a green check if you tagged it, a grey X if another player did")');
+  addon.eval('__click("Tag mark on your target")');
   expect(addon.eval("return __look()"), "both off, at once: no marks, the plate back to its reaction colour").toEqual(["hidden", "hostile", "hidden"]);
 });
 
@@ -378,7 +378,7 @@ it("the Nameplates page mirrors the game's health number boxes and writes them o
 it("the debuffs and buffs rows offer every count a role preset saves", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
   const missing = addon.eval(`local out = {}
-    local want = { [ns.L["Your debuffs shown"]] = "debuffs", [ns.L["Buffs on players (defensives, and yours on friends)"]] = "buffs" }
+    local want = { [ns.L["Your debuffs shown"]] = "debuffs", [ns.L["Buffs on players"]] = "buffs" }
     for _, row in ipairs(ns.GetModule("Nameplates").OptionRows()) do
       local key = want[row[2]]
       for role, parts in pairs(key and ns.ROLE_SETTINGS or {}) do

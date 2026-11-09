@@ -59,7 +59,7 @@ it("your target's plate glows 2 px in the accent, names are outlined world text,
   expect([icon.width, icon.height, icon.left], "the cast icon: as tall as the cast bar, square, at the plate's left edge").toEqual([cast.height, cast.height, bar.left]);
   addon.slash("");
   addon.eval('__click("Nameplates")');
-  addon.eval('__click("Accent border, glow and marker on your target")');
+  addon.eval('__click("Mark your target\'s plate")');
   expect(glow("nameplate1")[0], "switched off, the glow goes at once").toBe(false);
   const tall = loggedIn(UNITS_ENV + PLATE_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { Nameplates = { height = 14 } } } }" });
   expect(tall.frame("ns.FrameState('vgPlate')[__plates.nameplate1].cast.icon").rect.height, "taller plates: a taller cast icon").toBe(14);

@@ -845,13 +845,25 @@ local function controls(f)
   f.skip:SetPoint("BOTTOMLEFT", PAD, PAD)
 end
 
--- Why setup offers a reload: a module turned on, new raid tile sizes, or Done (setup always ends
--- with one, so everything it set shows as it will from now on); nil otherwise.
+-- The modules whose settings the steps read (raid style, Calm HUD, button sizes), filled before setup's snapshot.
+S.READ_FIRST = { "RaidFrames", "UnitFrames", "ActionBars" }
+
+-- The profile in use and its settings as an export string (sorted, so the same settings give the same string), which
+-- setup takes as it opens to tell at Done whether anything changed. What the steps read is read first (the unlock
+-- options, and the settings of modules that may be off): a first read fills defaults into the profile, which is no change.
+local function settingsNow()
+  ns.MoverOptions()
+  for _, name in ipairs(S.READ_FIRST) do moduleSettings(name) end
+  return ns.ProfileName() .. "\n" .. tostring(ns.ExportProfile())
+end
+
+-- Why setup offers a reload: a module turned on, new raid tile sizes, or Done after a change (so everything it set
+-- shows as it will from now on); nil otherwise, so a Done that kept everything as it was ends without one.
 local function reloadReason()
   if state.reload then return L["Setup turned on a module that was off."] end
   if state.retile then return L["The new raid tile size shows after a reload."] end
   if state.role then return L["The layout's raid frame, raid aura and nameplate settings show after a reload."] end
-  if state.complete and state.done then return L["Setup is done."] end
+  if state.complete and state.done and settingsNow() ~= state.before then return L["Setup is done."] end
 end
 
 -- Remembers that setup ran, on the account and for this character (dropping the backup an owed run
@@ -996,7 +1008,7 @@ function S.Open()
   frame = frame or build()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
-  state.layout, state.screen, state.backup = "keep", "keep", nil
+  state.layout, state.screen, state.backup, state.before = "keep", "keep", nil, settingsNow()
   state.reload, state.paused, state.done, state.role = false, false, false, false
   relabelProfile()
   T.OpenWindow(frame)
