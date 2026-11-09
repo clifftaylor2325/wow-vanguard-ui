@@ -594,7 +594,7 @@ it("chat bar hidden until hover (off by default): the bar goes after 4 s away, c
   // The bar: visible; the hover job: running; the six tab alphas.
   const state = () => addon.eval(`local out = {} for _, name in ipairs(ns.GetModule('Chat').TAB_ALPHAS) do out[#out + 1] = _G[name] end return { ${B}:IsVisible(), ns.ticker.vgJobs["chat bar hover"] ~= nil, out }`);
   expect(state(), "off by default: the bar stays, no job, the tabs at 1").toEqual([true, false, [1, 1, 1, 1, 1, 1]]);
-  addon.eval(`${chatRow("Hide the tab bar until the mouse is over the chat")} r[4](true)`);
+  addon.eval(`${chatRow("Hide the tab bar until hovered")} r[4](true)`);
   expect(state(), "on (the Chat page's row under its Chat header): the job runs and the tabs show only under the mouse or alerting").toEqual([true, true, [1, 0, 1, 1, 1, 0]]);
   addon.advance(3.9, 0.1);
   expect(state()[0], "3.9 s away: still there").toBe(true);
@@ -619,7 +619,7 @@ it("chat bar hidden until hover (off by default): the bar goes after 4 s away, c
   addon.eval("ChatFrame1EditBox.HasFocus = function() return false end");
   addon.advance(4.5, 0.1);
   expect(state()[0], "the box left, it goes after the idle time again").toBe(false);
-  addon.eval(`${chatRow("Hide the tab bar until the mouse is over the chat")} r[4](false)`);
+  addon.eval(`${chatRow("Hide the tab bar until hovered")} r[4](false)`);
   expect(state(), "off again: the bar is back at once, the job gone, the tabs at 1").toEqual([true, false, [1, 1, 1, 1, 1, 1]]);
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat.barHover, #ns.errors }"), "saved, no errors").toEqual([false, 0]);
 });

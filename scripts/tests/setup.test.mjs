@@ -61,9 +61,23 @@ it("first-run setup: once per account, four clicks with the defaults", () => {
   const kept = addon.eval("return { raid = (VanguardDB.profiles.Default.positions or {}).raid == nil, look = ns.Settings('RaidFrames').look, brass = select(1, ns.Theme.Accent()) == ns.Theme.PRESETS.brass[1], backup = VanguardDB.profiles['Default backup'] == nil }");
   expect(kept, "Keep and Keep change no position, style or accent, so nothing is backed up").toEqual({ raid: true, look: "soft", brass: true, backup: true });
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
-  expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "Done always ends with a reload").toBe("Setup is done. Reload the UI now to apply it?");
+  expect(addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()"), "Done after Keep at every step changed nothing, so it offers no reload").toBe(false);
   const again = loggedIn("", { firstRun: true, savedVariables: "VanguardDB = { setupDone = true } VanguardCharDB = {}" });
   expect(again.eval("return Vanguard_Setup == nil"), "setup does not open again for a character that played on this account").toBe(true);
+});
+it("setup: Done offers the reload once a step changed something, and not after a run that kept everything", () => {
+  const changed = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  setupClick(changed, "next");
+  setupClick(changed, "next");
+  changed.eval("local b = Vanguard_Setup.pages.look.styles[3] b:GetScript('OnClick')(b)");
+  setupClick(changed, "next");
+  setupClick(changed, "next");
+  changed.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
+  expect(changed.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "a new raid frame style is a change").toBe("Setup is done. Reload the UI now to apply it?");
+  changed.eval("Vanguard_Reload:Hide()");
+  changed.slash("setup");
+  for (let i = 0; i < 4; i += 1) setupClick(changed, "next");
+  expect(changed.eval("return { ns.Setup.Step() or 0, Vanguard_Reload:IsShown() }"), "a rerun that kept everything ends with no offer").toEqual([0, false]);
 });
 it("first-run setup waits for combat and steps aside in a fight", () => {
   const addon = loggedIn("__wfgStub.inCombat = true", { firstRun: true });
@@ -350,7 +364,11 @@ it("setup look: each raid frame style is a small raid tile drawn in that style, 
 });
 it("first-run setup: Done suggests exporting a profile string; Skip and a rerun don't", () => {
   const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
-  for (let i = 0; i < 4; i += 1) setupClick(addon, "next");
+  setupClick(addon, "next");
+  setupClick(addon, "next");
+  addon.eval("local b = Vanguard_Setup.pages.look.styles[3] b:GetScript('OnClick')(b)");
+  setupClick(addon, "next");
+  setupClick(addon, "next");
   expect(addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()"), "Done asks about keeping a copy").toBe("Keep a copy of these settings outside the game? Export a profile string and save it somewhere safe; /vg import brings it back.");
   addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
   expect(addon.eval("return Vanguard_TextDialog:IsShown() and Vanguard_TextEdit:GetText():sub(1, 12)"), "Export shows the whole profile's string to copy").toBe("VG1:profile:");

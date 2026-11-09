@@ -164,7 +164,7 @@ it("options slider, search, scroll, special bars and profile switch", () => {
     return { wrapped = wrapped, dragged = dragged, hint = hint }
   `);
   expect(scale.wrapped === 0.7 && Math.abs(scale.dragged - 1) < 1e-9 && scale.hint === true, "a slider wraps at the max, drags with the cursor, and the search hint shows while empty").toBeTruthy();
-  expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle the pet, stance, possess and extra action buttons")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
+  expect(addon.eval('ns.Options.Show("actionbars") return __click("Restyle pet, stance and extra buttons")') === true, "the special-bars switch is on the action bar page").toBeTruthy();
   expect(addon.eval("return VanguardDB.profiles.Default.SpecialBars.skinPet") === false, "it turns pet, stance and extra bars off together").toBeTruthy();
 });
 
@@ -414,7 +414,7 @@ it("options: a live row of a module that is off saves its value without an error
   addon.eval('ns.Options.Show("cooldowns")');
   addon.eval('__click("Glow a buff near its end")');
   addon.eval('ns.Options.Show("tools")');
-  addon.eval('__click("Low health: a soft tint")');
+  addon.eval('__click("Low health screen tint")');
   addon.eval('ns.Options.Show("actionbars")');
   addon.eval('__click("Bar backing")');
   expect(addon.eval("return { #ns.errors, ns.Settings('CooldownGlow').glow }"), "no error, and the switch is saved").toEqual([0, true]);
@@ -452,7 +452,7 @@ it("choice fallback, key capture and the mouse wheel", () => {
   `);
   expect(captured.key === "F (hover)" && captured.cancelled === true, "a key is captured, and Escape cancels").toBeTruthy();
   expect(captured.wheel === "Wheel down (hover)", "the wheel is captured as a hover binding").toBeTruthy();
-  expect(addon.eval('return __click("Also on your player, target and focus frames")') === true, "unit-frame click casting is a switch on the page").toBeTruthy();
+  expect(addon.eval('return __click("Also on player, target and focus")') === true, "unit-frame click casting is a switch on the page").toBeTruthy();
   expect(addon.eval("return ns.Settings('ClickCast').unitFrames") === true, "the switch turns it on").toBeTruthy();
 });
 
@@ -956,9 +956,9 @@ it("options: a switch for each group of game windows, under Game windows", () =>
   const addon = loggedIn(UI_ENV + CLICK_LUA);
   addon.slash("");
   addon.eval('ns.Options.Show("windows")');
-  const groups = { social: "Mail, guild, channels, friends and guild-creation windows", town: "Stable, trainer, merchant, bags, loot and item dialogs",
-    system: "Game options, Edit Mode, keybinding and help windows", map: "World map, group finder, calendar and Legacy windows",
-    menus: "Right-click menus, dropdowns and more tooltips", tabs: "Tab buttons and the inside of the character pane", pvp: "Battleground windows" };
+  const groups = { social: "Mail, guild and social windows", town: "Town windows and item dialogs",
+    system: "Options and help windows", map: "World map and calendar windows",
+    menus: "Menus, dropdowns and tooltips", tabs: "Tabs and the character pane", pvp: "Battleground windows" };
   for (const [key, label] of Object.entries(groups)) {
     addon.eval(`__click(${JSON.stringify(label)})`);
     expect(addon.eval(`return VanguardDB.profiles.Default.Windows.${key}`), `${key} switches off from its row`).toBe(false);
@@ -1026,9 +1026,9 @@ it("options: the pages, their nav order and each page's row count stay as they w
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|52", "modules|Modules|20|87", "unitframes|Unit frames|30|34", "raid|Raid frames|40|26",
-    "actionbars|Action bars|60|84", "quests|Quests|70|29", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|82", "windows|Game windows|83|47", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|39", "town|Town and gear|85|58", "profiles|Profiles|90|22",
+    "actionbars|Action bars|60|84", "quests|Quests|70|29", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|47", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|41", "town|Town and gear|85|64", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|18",
-    "situations|Situations|86|16", "clickcast|Click casting|46|16",
+    "situations|Situations|86|17", "clickcast|Click casting|46|16",
   ]);
   addon.eval('ns.Options.Show("general")');
   // The nav entries top to bottom, by each one's offset from the top of the nav.
@@ -1790,7 +1790,7 @@ it("options: a card's buttons share one width, wide enough for its longest label
   // The width of the shown button whose label starts so, and its label's width as drawn.
   const width = (label) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
     if w.text and w.card and ns.Options.RevealRow(w) and (w.text.__text or ""):sub(1, ${label.length}) == "${label}" then return { w:GetWidth(), w.text:GetUnboundedStringWidth() } end end`);
-  const [party, partyText] = width("Put the list in the chat box for the party");
+  const [party, partyText] = width("Put the list in the party chat box");
   expect(party, "the longest loot label sets its card's width, with 12 of air each side").toBe(partyText + 24);
   expect(width("Clear every reserve")[0], "the card's short labels take the same width").toBe(party);
   expect(width("Report the meter's top lines")[0], "the meter's buttons fit in the usual 220").toBe(220);
@@ -1935,7 +1935,8 @@ it("options: in German at 130% a choice or slider row whose caption wraps grows 
         if w.label:GetTop() > w:GetTop() + 0.01 or w.label:GetBottom() < w:GetBottom() - 0.01 then out[#out + 1] = w.caption end
       end
     end return out`);
-  for (const page of ["chat", "town"]) {
+  // Town and gear had one too (Seconds a craft takes) until its caption became a short name with the sentence as its tip.
+  for (const page of ["chat"]) {
     const found = spill(page);
     expect(found.tall, `${page}: a wrapped caption's row is taller than a one-line row`).toBeGreaterThan(0);
     expect(Object.values(found).filter((v) => typeof v === "string"), `${page}: no caption runs past its row`).toEqual([]);

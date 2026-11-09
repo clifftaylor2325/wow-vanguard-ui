@@ -34,7 +34,7 @@ end
 
 -- The Calm HUD switch, on the General page (applied at once, also from a situation).
 local function calmRow()
-  return check(L["Calm HUD: quiet the HUD out of combat until a fight, a hostile target or the mouse"], calmSetting("calm"))
+  return check(L["Calm HUD out of combat"], calmSetting("calm"))
 end
 
 -- What a part of the HUD does out of combat with the Calm HUD on; your unit frames can't fade away (V.CALM_PARTS).
@@ -60,17 +60,22 @@ end
 
 -- The Versus deck switch: one shield panel behind your frame and your target's, the crest between (at once).
 local function deckRow()
-  return check(L["Versus deck: your frame and your target's joined in one panel, the crest between"],
+  return check(L["Versus deck"],
     liveMethod("UnitFrames", "deck", "ApplyDeck"))
 end
 
 -- The in-combat mark switch: crossed swords and a red edge on your frame, the edge on your target's (at once).
 local function combatRow()
-  return check(L["In-combat mark: crossed swords and a red edge on your frame, a red edge on your target's while it fights"],
+  return check(L["In-combat mark"],
     liveMethod("UnitFrames", "combatMark", "RefreshCombat"))
 end
 
--- The mana bar switch's caption: druids only on WoW Forever, three more specs on Retail.
+-- The mana bar switch's name, and its tip (its caption before the names were shortened): druids only on WoW
+-- Forever, three more specs on Retail.
+O.MANA_BAR_NAME = ns.ClientData({
+  forever = L["Druid mana in bear and cat form (reload)"],
+  retail = L["Mana under the player frame (reload)"],
+})
 O.MANA_BAR_LABEL = ns.ClientData({
   forever = L["Druid mana under the player frame in bear and cat form (reload)"],
   retail = L["Mana under the player frame when your power bar shows another power: druid forms, Shadow, Elemental and Balance (reload)"],
@@ -81,12 +86,12 @@ local function unitFrameRows()
   return {
     { "header", L["Unit frames"] },
     check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
-    check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target: a green check if you tagged it, a grey X if another player did"], unitFrameSetting("tagMark")),
+    check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], { { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] } }, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
-    check(L["Group threat panel: who has the most threat on your target (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
-    check(O.MANA_BAR_LABEL, reloadSetting("ClassBars", "druidMana")),
+    check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
+    O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
   }
 end
 
@@ -96,8 +101,8 @@ local function castRows()
     { "header", L["Cast bars"] },
     check(L["Your cast bar (and your pet's)"], reloadSetting("CastBars", "player")),
     check(L["Target cast bar"], reloadSetting("CastBars", "target")), check(L["Focus cast bar"], reloadSetting("CastBars", "focus")),
-    check(L["Ring at the cursor: the global cooldown and your cast"], liveMethod("CastBars", "ring", "ApplyRing")),
-    check(L["Interrupt mark beside the target and focus cast bars"], liveMethod("CastBars", "interruptMark", "RefreshMarks")),
+    check(L["Cast ring at the cursor"], liveMethod("CastBars", "ring", "ApplyRing")),
+    check(L["Interrupt mark on cast bars"], liveMethod("CastBars", "interruptMark", "RefreshMarks")),
     { "header", L["Target and focus auras"] },
     check(L["Only your debuffs (reload)"], reloadSetting("FrameAuras", "onlyMine")),
     check(L["Timer numbers on the icons (reload)"], reloadSetting("FrameAuras", "timers")),
@@ -123,9 +128,9 @@ end
 local function readoutCard()
   return {
     { "header", L["Readouts"] },
-    check(L["Your threat on your target, above its frame (reload)"], reloadSetting("UnitExtras", "threat")),
-    check(L["Your pet's happiness, a dot on the pet frame (reload)"], reloadSetting("UnitExtras", "happiness")),
-    check(L["Status chip beside your frame: Eating, Drinking, Well Fed, or a missing buff from Instance prep's checks, out of combat (reload)"], reloadSetting("UnitExtras", "chip")),
+    check(L["Your threat on your target (reload)"], reloadSetting("UnitExtras", "threat")),
+    check(L["Pet happiness dot (reload)"], reloadSetting("UnitExtras", "happiness")),
+    check(L["Status chip beside your frame (reload)"], reloadSetting("UnitExtras", "chip")),
   }
 end
 
@@ -177,7 +182,7 @@ local function raidRows()
     check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty")), check(L["Include yourself (in a party)"], reloadSetting("RaidFrames", "showPlayer")),
     essential(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole"))),
     essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
-    essential(check(L["Stack big raids at the left (more than 10 players)"], stackSetting())), essential(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard"))),
+    essential(check(L["Stack big raids at the left"], stackSetting())), essential(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard"))),
     essential({ "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") }),
     essential({ "cycle", L["Width"], ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), previewedSetting("width") }),
     essential({ "cycle", L["Height"], { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, previewedSetting("height") }),
@@ -224,7 +229,7 @@ local function raidPageRows()
     check(L["Fade players out of range"], statusSetting("rangeFade")),
     check(L["Raid target icons"], raidIconSetting()),
     check(L["Ready check answers"], statusSetting("readyCheck")),
-    check(L["Mark players being resurrected or summoned"], statusSetting("resurrect")),
+    check(L["Mark resurrections and summons"], statusSetting("resurrect")),
     check(L["Leader and assistant marks"], statusSetting("leader")),
   }), raidPreviewRows())
 end

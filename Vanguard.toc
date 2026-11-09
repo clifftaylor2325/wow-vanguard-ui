@@ -76,6 +76,7 @@ Core/MoverPopover.lua
 Core/UnlockBar.lua
 Core/Options.lua
 Core/OptionsFold.lua
+Core/OptionsNames.lua
 Core/OptionsFrames.lua
 Core/OptionsBars.lua
 Core/OptionsQuests.lua

@@ -17,11 +17,11 @@ end
 -- The game's alerts (Modules/GameAlerts.lua) and the low-health vignette.
 local function alertRows()
   return {
-    check(L["Loss of control in the Vanguard look, above your character (reload)"], reloadSetting("GameAlerts", "lossOfControl")),
+    check(L["Loss of control in the Vanguard look (reload)"], reloadSetting("GameAlerts", "lossOfControl")),
     { "cycle", L["Talking head (reload)"], { { "move", L["Vanguard look, top left"] }, { "hide", L["Hidden"] }, { "game", L["The game's"] } }, reloadSetting("GameAlerts", "talkingHead") },
-    check(L["Hardcore death notices in the Vanguard look (reload)"], reloadSetting("GameAlerts", "hardcore")),
-    check(L["A rare nearby: a sound and a chat line, out of combat"], setting("GameAlerts", "rares")),
-    check(L["Low health: a soft tint round the screen edge that grows as your health drops (no pulse)"], liveSetting("GameAlerts", "vignette", applyVignette)),
+    check(L["Hardcore notices in the Vanguard look (reload)"], reloadSetting("GameAlerts", "hardcore")),
+    check(L["Announce a rare nearby"], setting("GameAlerts", "rares")),
+    check(L["Low health screen tint"], liveSetting("GameAlerts", "vignette", applyVignette)),
   }
 end
 
@@ -31,7 +31,7 @@ local function gameToolRows()
     { "header", L["The game's tools"] },
     { "text", L["The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page."], "note" },
     check(L["Damage meter in the Vanguard look (reload)"], reloadSetting("GameTools", "meter")),
-    check(L["Place them to fit the layout; off leaves them to Edit Mode (reload)"], reloadSetting("GameTools", "place")),
+    check(L["Place them to fit the layout (reload)"], reloadSetting("GameTools", "place")),
   }, alertRows())
 end
 
@@ -48,9 +48,11 @@ local function fightRows()
   local fightVisibility, fightWhen = O.VisibilityRows(L["Fight history visibility"], "FightHistory", "visibility", "showWhen")
   return {
     { "header", L["Fight history"] },
-    check(L["Sparkline of your DPS in the last 20 fights, under the damage meter"], liveMethod("FightHistory", "strip", "Paint")),
-    check(L["Recap in chat after each fight: interrupts, dispels, damage taken, deaths (/vg recap)"], setting("FightHistory", "recap")),
+    check(L["DPS sparkline of the last 20 fights"], liveMethod("FightHistory", "strip", "Paint")),
+    check(L["Recap in chat after each fight"], setting("FightHistory", "recap")),
     fightVisibility, fightWhen,
+    { "button", L["List this session's fights"], function() ns.GetModule("FightHistory").Command() end },
+    { "button", L["Recap the last fight in chat"], function() ns.GetModule("FightHistory").RecapCommand("") end },
   }
 end
 
@@ -76,7 +78,7 @@ end
 local function meterButtons()
   local MT = ns.GetModule("Meter")
   return {
-    check(L["Show each line's share of the total (45%) when the game gives plain figures"], liveSetting("Meter", "percent", paint)),
+    check(L["Show each line's share"], liveSetting("Meter", "percent", paint)),
     { "cycle", L["Report the meter to"], { { "chat", L["Your chat"] }, { "say", L["Say"] }, { "party", L["Party"] }, { "raid", L["Raid"] }, { "instance", L["Instance"] }, { "guild", L["Guild"] } }, liveSetting("Meter", "reportTo", paint) },
     { "button", L["Report the meter's top lines"], MT.ReportClick, function() return MT.settings ~= nil end, tip = L["The same as the Report button on the meter."] },
     { "button", L["Reset the game's damage meter"], MT.Reset },
@@ -89,7 +91,7 @@ local function meterRows()
   local meterVisibility, meterWhen = O.VisibilityRows(L["Vanguard meter visibility"], "Meter", "visibility", "showWhen")
   return {
     { "header", L["Vanguard meter"] },
-    check(L["Vanguard's own damage and healing meter: the top lines of the game's meter (/vg meter)"], liveSetting("Meter", "on", paint)),
+    check(L["Vanguard's own meter"], liveSetting("Meter", "on", paint)),
     meterCycle(L["Meter shows"], "kind", MT.KIND_ORDER, MT.KINDS, paint),
     meterCycle(L["Meter segment"], "session", MT.SESSION_ORDER, MT.SESSIONS, paint),
     { "slider", L["Lines in the meter"], { min = 3, max = MT.MAXROWS, step = 1 }, liveSetting("Meter", "rows", paint) },
@@ -105,8 +107,8 @@ local function rollRows()
   local function repaint() if R.enabled then R.Paint() end end
   return {
     { "header", L["Roll tracker"] },
-    check(L["Show the group's /roll results in a small panel"], liveSetting("Rolls", "show", repaint)),
-    check(L["Show loot rolls (who rolled what) where the client has them"], liveMethod("Rolls", "loot", "ReadLoot")),
+    check(L["Group roll results panel"], liveSetting("Rolls", "show", repaint)),
+    check(L["Show loot rolls"], liveMethod("Rolls", "loot", "ReadLoot")),
     rollVisibility, rollWhen,
   }
 end

@@ -1985,7 +1985,7 @@ it("quest history: /vg quests history sorts a long history newest first, by turn
 it("quest tracker: the XP switches save while Vanguard's tracker isn't built", () => {
   const addon = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
   addon.eval(`for _, page in ipairs(ns.Options.PAGES) do if page.key == "quests" then for _, row in ipairs(page.rows()) do
-    if row[2] == "Each quest's XP under it" or row[2] == "Under the quests, how much of the XP to level they give" then row[4](false) end end end end`);
+    if row[2] == "Each quest's XP under it" or row[2] == "Quest XP toward your level" then row[4](false) end end end end`);
   expect(addon.eval("local s = ns.Settings('QuestTracker') return { s.xp, s.levelXp, Vanguard_QuestTrackerFrame == nil }"), "both saved, no tracker drawn").toEqual([false, false, true]);
 });
 it("quest dialog: a fight lets go of the keys, and they come back when it ends with the dialog still open", () => {

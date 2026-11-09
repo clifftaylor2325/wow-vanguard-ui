@@ -265,7 +265,7 @@ it("chat watch: a line linking an item with an auction price shows it beside the
   const plain = priceLook(addon);
   expect([plain.text, plain.lineRight], "no priced item: no price, the line to the toast's edge again").toEqual(["", plain.toastRight - 8]);
   addon.eval('ns.Options.Show("chat")');
-  addon.eval('__click("Auction price of a linked item")');
+  addon.eval('__click("Auction price on the toast")');
   say(addon, "CHANNEL", WTS_LINE, "Third");
   expect([priceLook(addon).text, addon.eval("return ns.Settings('ChatWatch').prices")], "switched off in the Chat watch options").toEqual(["", false]);
   addon.eval("ns.Settings('ChatWatch').prices = true");

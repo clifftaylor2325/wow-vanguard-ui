@@ -153,7 +153,7 @@ it("quest arrow: a Shift-click pin wins; with auto off only the pinned quest is 
 it("quest arrow: its options sit on the Quests page and change the settings", () => {
   const addon = loggedIn(ARROW_ENV);
   const rows = addon.eval("local out = {} for i, row in ipairs(ns.QuestArrow.Rows()) do out[i] = row[2] end return out");
-  expect(rows, "its rows on the Finding your way card").toEqual(["Show the quest arrow", "Follow the nearest quest (off: only the one you pinned)"]);
+  expect(rows, "its rows on the Finding your way card").toEqual(["Show the quest arrow", "Follow the nearest quest"]);
   addon.eval("local rows = ns.QuestArrow.Rows() rows[1][4](false) rows[2][4](false)");
   expect(addon.eval("local s = ns.Settings('QuestArrow') return { s.show, s.auto }"), "both switched off").toEqual([false, false]);
 });

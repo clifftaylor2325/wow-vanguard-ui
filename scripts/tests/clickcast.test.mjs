@@ -421,7 +421,7 @@ it("without specializations the page speaks of this character", () => {
   addon.eval('ns.Options.Show("clickcast")');
   expect(addon.frames('w.__kind == "FontString" and w:IsVisible() and type(w.__text) == "string" and w.__text:find("Bindings for this character", 1, true)').length).toBe(1);
   expect(addon.eval(`return #${CC}.frames > 0`), "unit frames join when that setting is on").toBe(true);
-  addon.eval('__click("Also on your player, target and focus frames")');
+  addon.eval('__click("Also on player, target and focus")');
   expect(addon.eval('return ns.Settings("ClickCast", ns.GetModule("ClickCast").defaults).unitFrames')).toBe(false);
 });
 

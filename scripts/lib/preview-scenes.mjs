@@ -2,7 +2,9 @@
 // and a function that logs the real addon in to one of them. Kept apart from the script so a
 // test can build every scene without Playwright (scripts/preview-scenes.test.mjs).
 
-import { createAddon } from "./lua-harness.mjs";
+import fs from "node:fs";
+import path from "node:path";
+import { createAddon, root } from "./lua-harness.mjs";
 
 // TEST-ONLY units: you (a mage), a hostile target, two party members.
 const UNITS = `
@@ -448,7 +450,7 @@ export const SCENES = [
       GetNumQuestChoices = function() return 2 end GetNumQuestRewards = function() return 1 end
       GetQuestItemInfo = function(kind, i) local x = kind == "choice" and choices[i] or { "TEST-ONLY Farm Bread", "TEST-ONLY-ICON", 5, 1 } return x[1], x[2], x[3], x[4] end
       GetRewardMoney = function() return 1500 end GetRewardXP = function() return 650 end` },
-  { name: "vanguard-quest-tracker", caption: "Vanguard's quest tracker under the info strip: levels in difficulty colors, objectives gray until done, a quest ready to turn in, a quest item beside its quest (TEST-ONLY quests)",
+  { name: "vanguard-quest-tracker", caption: "Vanguard's quest tracker: levels in difficulty colors, objectives gray until done, a quest ready to turn in, a quest item beside its quest (TEST-ONLY quests)",
     lua: '__wfgStub.fire("QUEST_WATCH_LIST_CHANGED")',
     before: `local quests = {
         { 90051, "TEST-ONLY The Wolves of the Fold", 9, { { "3/8 TEST-ONLY Hill Wolves slain", false }, { "1/1 TEST-ONLY Wolf Pelt", true } }, "item:90061" },
@@ -564,13 +566,18 @@ export const SCENES = [
       ns.GetModule("AuctionHelper").EditFilters("Enchanting mats", 1)` },
 ];
 
-// Setup has run on this TEST-ONLY account, so it only shows in the scenes that open it.
-const SAVED = "VanguardDB = { version = 2, profiles = {}, setupDone = true }";
+// The version Vanguard.toc declares, which the client reports for the addon, so a window's footer reads as it will.
+export const TOC_VERSION = fs.readFileSync(path.join(root, "Vanguard.toc"), "utf8").match(/^## Version:\s*(\S+)/m)[1];
+
+// Setup has run on this TEST-ONLY account and character, and What's new for this version was read, so neither shows
+// except in the scenes that open it (with no character table the character is new, and a new character owes setup).
+const SAVED = `VanguardDB = { version = 2, profiles = {}, setupDone = true, whatsNewSeen = "${TOC_VERSION}" }\nVanguardCharDB = {}`;
 
 // The addon logged in to a scene and settled for a quarter second, as the preview draws it. textFit loads it in
 // the text-fit client (real font widths, every string a third longer: scripts/tests/textfit.test.mjs).
 export function buildScene(scene, { textFit = false } = {}) {
   const addon = createAddon({ savedVariables: SAVED, textFit });
+  addon.eval(`__wfgWorld.addons.Vanguard.Version = "${TOC_VERSION}"`);
   addon.eval(UNITS + ACTIONS + WORLD + TOOLTIP + GROUP + "GetSpecialization = function() return 1 end");
   if (scene.before) addon.eval(scene.before);
   addon.login();

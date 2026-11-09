@@ -347,7 +347,7 @@ end
 function QA.Rows()
   return {
     { "check", L["Show the quest arrow"], setting("show", showChanged) },
-    { "check", L["Follow the nearest quest (off: only the one you pinned)"], setting("auto", QA.Pick) },
+    { "check", L["Follow the nearest quest"], setting("auto", QA.Pick) },
   }
 end
 

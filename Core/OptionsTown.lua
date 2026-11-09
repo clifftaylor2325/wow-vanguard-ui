@@ -13,11 +13,11 @@ local setting, reloadSetting, liveMethod, check, append = O.Setting, O.ReloadSet
 local function auctionScanRows()
   return {
     check(L["Scan button (one scan every 15 minutes)"], setting("AuctionHelper", "scanButton")),
-    check(L["Check your auctions for undercuts again after each post and cancel"], setting("AuctionHelper", "recheck")),
-    check(L["Disenchant values in tooltips (on for enchanters until you choose)"], ns.AuctionPrices.DisenchantSetting()),
-    check(L["Crafting costs and profit beside the profession window"], setting("AuctionHelper", "crafting")),
-    check(L["Deals list in the Lists tab: listings under the 7-day market or vendor price"], liveMethod("AuctionHelper", "deals", "PaintDeals")),
-    check(L["Upgrades list in the Lists tab: armor and weapons that beat what you wear, by Gear upgrades' weights"], liveMethod("AuctionHelper", "upgrades", "PaintUpgrades")),
+    check(L["Recheck undercuts after posting"], setting("AuctionHelper", "recheck")),
+    check(L["Disenchant values in tooltips"], ns.AuctionPrices.DisenchantSetting()),
+    check(L["Crafting costs and profit"], setting("AuctionHelper", "crafting")),
+    check(L["Deals list"], liveMethod("AuctionHelper", "deals", "PaintDeals")),
+    check(L["Upgrades list"], liveMethod("AuctionHelper", "upgrades", "PaintUpgrades")),
   }
 end
 
@@ -25,22 +25,32 @@ end
 local function auctionRows()
   return append({
     { "header", L["Auction house"] },
-    check(L["Lists and Posting tabs on the auction house (lists, deals, upgrades, sell helper, your auctions, scan)"], setting("AuctionHelper", "panel")),
-    check(L["Auction prices in tooltips (from your scans)"], setting("AuctionHelper", "tooltip")),
+    check(L["Lists and Posting tabs"], setting("AuctionHelper", "panel")),
+    check(L["Auction prices in tooltips"], setting("AuctionHelper", "tooltip")),
     { "cycle", L["Undercut by"], { { "copper", L["1 copper"] }, { "silver", L["1 silver"] }, { "percent", "1 %" }, { "match", L["Match"] } }, setting("AuctionHelper", "undercut") },
     { "cycle", L["Auction length"], ns.GetModule("AuctionHelper").DurationSettingChoices(), setting("AuctionHelper", "duration") },
     check(L["Never post under vendor price"], setting("AuctionHelper", "vendorFloor")),
   }, auctionScanRows())
 end
 
--- At a merchant (the error line's switch is under Game windows, Quiet the game).
+-- Asks before forgetting every merchant Vanguard remembers (/vg vendors clear), which can't be undone.
+local function askForgetMerchants()
+  local VM = ns.GetModule("VendorMemory")
+  ns.Ask(L["Forget every merchant Vanguard remembers? Tooltips and the stock list know them again as you visit them."], L["Forget"],
+    function() VM.Command("clear") end, function() end, "danger")
+end
+
+-- At a merchant (the error line's switch is under Game windows, Quiet the game), the sell list and the merchants
+-- Vanguard remembers.
 local function merchantRows()
   return {
     { "header", L["Merchants"] },
     check(L["Repair with your own gold at a merchant"], setting("Merchant", "repair")),
     check(L["Sell gray items at a merchant"], setting("Merchant", "junk")),
-    check(L["Offer to sell the items on your sell list (/vg junk)"], setting("Merchant", "listSell")),
-    check(L["Stack and Max buttons on a merchant item's quantity window"], setting("Merchant", "bulkBuy")),
+    check(L["Offer to sell your sell list"], setting("Merchant", "listSell")),
+    check(L["Stack and Max buttons at merchants"], setting("Merchant", "bulkBuy")),
+    { "button", L["List my sell list in chat"], function() ns.GetModule("Merchant").JunkCommand("") end, function() return ns.GetModule("Merchant").settings ~= nil end },
+    { "button", L["Forget every merchant..."], askForgetMerchants },
   }
 end
 
@@ -49,7 +59,7 @@ local function errandRows()
   return {
     { "header", L["Errands"] },
     check(L["Train all button at trainers"], setting("Errands", "trainAll")),
-    check(L["Keep items stocked from merchants (/vg stock)"], setting("Errands", "stock")),
+    check(L["Keep items stocked from merchants"], setting("Errands", "stock")),
     { "button", L["Edit list..."], function() ns.GetModule("Errands").StockWindow.Open() end, function() return ns.GetModule("Errands").settings ~= nil end },
     check(L["Flight timer (reload)"], reloadSetting("Errands", "flightTimer")),
     check(L["Boat and zeppelin timer (reload)"], reloadSetting("Errands", "boatTimer")),
@@ -60,8 +70,9 @@ end
 local function craftRows()
   return {
     { "header", L["Craft queue"] },
-    check(L["Craft queue, profession cooldowns and recipe ranking (/vg craft)"], setting("CraftQueue", "on")),
-    { "slider", L["Seconds a craft takes, for the per-hour ranking"], { min = 1, max = 60, step = 1 }, setting("CraftQueue", "secs") },
+    check(L["Craft queue and recipe ranking"], setting("CraftQueue", "on")),
+    { "slider", L["Seconds per craft"], { min = 1, max = 60, step = 1 }, setting("CraftQueue", "secs") },
+    { "button", L["List the craft queue in chat"], function() ns.GetModule("CraftQueue").Command("") end },
   }
 end
 
@@ -69,7 +80,7 @@ end
 local function mailRows()
   return {
     { "header", L["Mail tools"] },
-    check(L["Search the inbox and send-to-alt presets beside the mail window (/vg mail)"], liveMethod("MailTools", "on", "Paint")),
+    check(L["Inbox search and send-to-alt presets"], liveMethod("MailTools", "on", "Paint")),
   }
 end
 
@@ -77,8 +88,10 @@ end
 local function spellRankCard()
   return {
     { "header", L["Spell ranks"] },
-    check(L["Notice older spell ranks on bar buttons (/vg ranks)"], setting("SpellRanks", "barNotice")),
-    check(L["Remember what trainers teach (/vg trainers)"], setting("SpellRanks", "trainerMemory")),
+    check(L["Notice older ranks on bars"], setting("SpellRanks", "barNotice")),
+    check(L["Remember what trainers teach"], setting("SpellRanks", "trainerMemory")),
+    { "button", L["Put the newest ranks on my bars"], function() ns.GetModule("SpellRanks").RanksCommand("swap") end },
+    { "button", L["What trainers teach next"], function() ns.GetModule("SpellRanks").TrainersCommand("next") end },
   }
 end
 
@@ -91,7 +104,7 @@ end
 local function petStableCard()
   return {
     { "header", L["Pet stable"] },
-    check(L["Say how many pets you have, and the next slot's price, at a stable master (/vg pets)"], setting("PetStable", "announce")),
+    check(L["Pet count at a stable master"], setting("PetStable", "announce")),
     { "button", L["List my pets in chat"], function() ns.GetModule("PetStable").Command() end },
   }
 end
@@ -105,7 +118,8 @@ end
 local function legacyCard()
   return {
     { "header", L["Legacy"] },
-    check(L["Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)"], setting("Legacy", "planner")),
+    check(L["Legacy perk planner"], setting("Legacy", "planner")),
+    { "button", L["List the perk plan in chat"], function() ns.GetModule("Legacy").Command("plan") end },
   }
 end
 
@@ -118,15 +132,15 @@ end
 local PREP_SECONDS = { min = 5, max = 60, step = 5, format = function(v) return ns.Format(L["{seconds} s"], { seconds = v }) end }
 local PREP_PERCENT = { min = 10, max = 90, step = 5, format = function(v) return string.format("%d%%", v) end }
 
--- The dungeon card's switch, named for what this client's card shows (Modules/DungeonCard.lua, DC.LABEL).
+-- The dungeon card's switch, its tip saying what this client's card shows (Modules/DungeonCard.lua, DC.LABEL).
 local function dungeonCardRows()
-  return { check(ns.DungeonCard.LABEL, setting("InstancePrep", "dungeonCard")) }
+  return { O.Renamed(check(ns.DungeonCard.NAME, setting("InstancePrep", "dungeonCard")), ns.DungeonCard.LABEL) }
 end
 
 -- Instance prep's dungeon card and buff checks (flask, food, oil or poison, raid buffs; world buffs), and the note on wanted amounts.
 local function prepBuffRows()
   return append(dungeonCardRows(), {
-    check(L["Buff checks on the card: flask, food, oil or poison, raid buffs"], setting("InstancePrep", "buffs")),
+    check(L["Buff checks on the card"], setting("InstancePrep", "buffs")),
     check(L["World buffs among them"], setting("InstancePrep", "worldBuffs")),
     { "button", L["Set wanted amounts..."], function() ns.GetModule("InstancePrep").Wizard.Open() end, function() return ns.GetModule("InstancePrep").settings ~= nil end },
     { "text", L["Wanted amounts (food, bandages, potions, ammo, shards) are set in the window above or with /vg prep want <kind> <n>; items from /vg stock are checked too."] },
@@ -137,9 +151,9 @@ end
 local function prepRows()
   local rows = {
     { "header", L["Instance prep"] },
-    check(L["Checklist when you enter a dungeon or raid (only when something is low)"], setting("InstancePrep", "onEnter")),
+    check(L["Checklist when you enter an instance"], setting("InstancePrep", "onEnter")),
     check(L["Checklist on a ready check"], setting("InstancePrep", "onReadyCheck")),
-    check(L["Warn in chat when a supply runs low (once, out of combat)"], setting("InstancePrep", "lowWarn")),
+    check(L["Warn when a supply runs low"], setting("InstancePrep", "lowWarn")),
     { "slider", L["Hide after"], PREP_SECONDS, setting("InstancePrep", "hideAfter") },
     { "slider", L["Durability warning under"], PREP_PERCENT, setting("InstancePrep", "durability") },
   }

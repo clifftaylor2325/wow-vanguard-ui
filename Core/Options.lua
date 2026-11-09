@@ -292,13 +292,19 @@ local function setupRows()
   }
 end
 
+-- The Move frames button: the frames' handles, with the bar that brings the window back to the page it was on.
+---@return table
+function O.MoveFramesRow()
+  return { "button", L["Move frames"], function() ns.UnlockFromOptions(O.current) end }
+end
+
 -- General, part three: moving frames.
 local function layoutRows()
   return append(setupRows(), {
-    { "button", L["Move frames"], function() ns.UnlockFromOptions(O.current) end },
+    O.MoveFramesRow(),
     check(L["Show a grid while moving"], moverOption("grid")),
     check(L["Snap to other frames"], moverOption("snap")),
-    check(L["Show these handles in the game's Edit Mode too"], moverOption("editMode")),
+    check(L["Handles in the game's Edit Mode too"], moverOption("editMode")),
     { "text", L["While moving frames, right-click one to anchor it to the screen or to another frame's side, for its exact offsets, scale and opacity, or to match its width or height to another frame's."] },
   })
 end

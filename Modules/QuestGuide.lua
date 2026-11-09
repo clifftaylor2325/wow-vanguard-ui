@@ -217,9 +217,9 @@ end
 function QG.Rows()
   return {
     { "cycle", L["Shift-click points"], { { "quest", L["The game's quest marker"] }, { "waypoint", L["A map waypoint"] } }, setting("arrow", function() end) },
-    { "check", L["The followed quest's next step in the tracker"], setting("stepLine", QG.StepsChanged) },
+    { "check", L["Next step in the tracker"], setting("stepLine", QG.StepsChanged) },
     { "check", L["Quest-start pins on the world map"], setting("pins", function() QG.MapChanged() end) },
-    { "check", L["New mark on quests new in WoW Forever (when the client flags them)"], setting("newMark", QG.StepsChanged) },
+    { "check", L["Mark quests new in WoW Forever"], setting("newMark", QG.StepsChanged) },
   }
 end
 

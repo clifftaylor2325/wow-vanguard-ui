@@ -587,7 +587,7 @@ local function switchRows()
     { "header", L["On the raid frames"] },
     { "check", L["Incoming heals (green, past the health)"], switch("healPrediction") },
     { "check", L["Shields (white, after incoming heals)"], switch("absorbs") },
-    { "check", L["Aggro strip along the top (yellow, orange, red)"], switch("aggro") },
+    { "check", L["Aggro strip along the top"], switch("aggro") },
     { "check", L["Mark players missing a buff you can give"], switch("buffWatch") },
     { "header", L["Buffs to watch"] },
   }

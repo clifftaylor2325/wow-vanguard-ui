@@ -16,7 +16,7 @@ local function dataBarRows()
     { "header", L["XP and reputation"] },
     check(L["Experience bar"], reloadSetting("DataBars", "xp")), check(L["Reputation bar"], reloadSetting("DataBars", "reputation")),
     { "cycle", L["Numbers"], { { "hover", L["on hover"] }, { "always", L["always"] } }, reloadSetting("DataBars", "text") },
-    check(L["Tooltips on hover (XP: kills to level, rested, quest XP; reputation: standing and the next)"], setting("DataBars", "tooltip")),
+    check(L["Tooltips on hover"], setting("DataBars", "tooltip")),
     barsVisibility, barsWhen,
   }
 end
@@ -26,7 +26,7 @@ local function bagRows()
   return {
     { "header", L["Bags"] },
     check(L["Combined bag (reload)"], reloadSetting("Bags", "combined")), check(L["Bank in the Vanguard look (reload)"], reloadSetting("Bags", "bank")),
-    check(L["Combined bag in sections: equipment, consumables, quest items, junk"],
+    check(L["Combined bag in sections"],
       liveMethod("Bags", "sections", "SectionsChanged")),
   }
 end
@@ -38,8 +38,8 @@ local function gamePartRows()
     { "header", L["The game's extras"] },
     menuVisibility, menuWhen,
     check(L["Vanguard icons on the menu buttons (reload)"], reloadSetting("MenuStrip", "glyphs")),
-    check(L["The game's quest tracker under the info strip (reload)"], reloadSetting("MenuStrip", "tracker")),
-    check(L["The game's quest tracker in the Vanguard look (reload)"], reloadSetting("MenuStrip", "trackerLook")),
+    check(L["The game's tracker under the info strip (reload)"], reloadSetting("MenuStrip", "tracker")),
+    check(L["The game's tracker in the Vanguard look (reload)"], reloadSetting("MenuStrip", "trackerLook")),
   }
 end
 

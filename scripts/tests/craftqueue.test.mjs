@@ -225,8 +225,8 @@ it("/vg craft top shows a losing recipe's loss with a minus, never as a profit",
 it("the options have the switch and the pace", () => {
   const addon = crafter();
   addon.eval('ns.Options.Show("town") ns.Options.ShowTab("Craft queue")');
-  expect(addon.find("^Craft queue, profession cooldowns and recipe ranking").text, "under Town and gear").toMatch(/^Craft queue/);
-  expect(addon.find("^Seconds a craft takes").text, "the pace").toMatch(/^Seconds a craft takes/);
+  expect(addon.find("^Craft queue and recipe ranking").text, "under Town and gear").toMatch(/^Craft queue/);
+  expect(addon.find("^Seconds per craft").text, "the pace").toBe("Seconds per craft");
 });
 
 it("on WoW Retail, reads the client's recipe list and recipe cooldowns as on Forever", () => {
