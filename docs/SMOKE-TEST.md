@@ -3602,6 +3602,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The tooltips say "Upgrade +N%" and "Downgrade -N%" against your worn weapon, never "Upgrade: fills an empty slot", and the bag arrow marks only the better one.
 - If it fails, paste: the tooltip text of both bag weapons and of the worn one
 
+### 33.217a No upgrade line on an off-hand item beside a two-hander (WoW Forever and Retail)
+
+- Do: Wear a two-handed weapon with Gear upgrades on. Hover a shield, a held-in-off-hand item and an off-hand weapon you can use, in your bags and on a quest reward; open the combined bag. Then wear a one-hand weapon with the off hand empty and hover the same items.
+- Expect: Beside the two-hander none of them says "Upgrade: fills an empty slot" and none has an arrow. With the one-hand weapon worn and the off hand empty they say "Upgrade: fills an empty slot" again.
+- If it fails, paste: the tooltip text of the off-hand item and of the worn weapon
+
 ### 33.218 Gear weights follow the specialization (Retail)
 
 - Do: On a Retail Holy paladin or Restoration druid outside a group, with Gear upgrades on, run `/vg weights` and hover an Intellect piece in the bags; then switch to a damage specialization (Retribution or Balance) and do the same.
