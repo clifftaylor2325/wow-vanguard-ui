@@ -106,7 +106,8 @@ it("the info strip under the minimap", () => {
   expect(isTok(addon, block(addon, "bags").color, "bad"), "full bags are red").toBe(true);
   addon.slash("");
   addon.eval('ns.Options.Show("map")');
-  expect(addon.eval('return __click("Clock")') && block(addon, "clock").shown, "a block turns off at once").toBe(false);
+  addon.eval('__click("Gold")');
+  expect(block(addon, "gold").shown, "a block turns off at once").toBe(false);
   expect(addon.eval('return { ns.MoverPoint("infostrip") }'), "the strip is movable, under the minimap").toEqual(["TOPRIGHT", "TOPRIGHT", -12, -200]);
 });
 it("the info strip lays its blocks out again only when a block's text or shown state changed, not on every tick", () => {
@@ -126,7 +127,7 @@ it("the info strip: the day and date with a calendar button", () => {
   const button = "Vanguard_InfoStripCalendar";
   const dateAnchor = 'local p = ns.GetModule("InfoStrip").fonts.date.__points.LEFT return { p.rel == ns.GetModule("InfoStrip").fonts.clock, p.relPoint, p.x }';
   expect(addon.eval(dateAnchor), "the date sits right after the time").toEqual([true, "RIGHT", 8]);
-  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").UpdateAll()');
+  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").atLogin.clock = false ns.GetModule("InfoStrip").UpdateAll()');
   expect(addon.eval(dateAnchor), "with the time off, the date takes the row's left edge").toEqual([false, "TOPLEFT", 6]);
   addon.eval('ns.Settings("InfoStrip").clock = true ns.GetModule("InfoStrip").UpdateAll()');
   expect([block(addon, "date").text, addon.eval(`return ${button}:IsShown()`)], "the day and date, with the button beside them").toEqual(["Tue 13 Oct", true]);
@@ -175,7 +176,7 @@ it("a click on the info strip's time opens the game's clock window, or turns off
   click();
   expect(addon.eval("return { __calls, Vanguard_InfoStripClock:IsShown(), Vanguard_InfoStripClock.__points.TOPLEFT.rel == ns.GetModule('InfoStrip').fonts.clock }"), "the window, then the ringing alarm off; the hit area covers the time")
     .toEqual([["window", "alarm off"], true, true]);
-  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").Paint("clock")');
+  addon.eval('ns.Settings("InfoStrip").clock = false ns.GetModule("InfoStrip").atLogin.clock = false ns.GetModule("InfoStrip").Paint("clock")');
   expect(addon.eval("return Vanguard_InfoStripClock:IsShown()"), "with the time off, nothing takes its clicks").toBe(false);
 });
 it("the info strip's time follows the game's clock (realm or local, 12 or 24 hours), and its tooltip shows both", () => {
@@ -1333,4 +1334,17 @@ it("H17-10-R1: the backpack's free count and the calendar's invite count sit on 
   addon.eval('ns.Theme.Settings().variant = "classic" ns.Theme.Refresh()');
   const backs = addon.eval("return { ns.GetModule('MenuStrip').freeBack.__vertexColor, ns.GetModule('InfoStrip').invitesBack.__vertexColor }");
   expect(backs.map((c) => [c[0], c[1], c[2]]), "Classic's bronze edge does not tint either backing").toEqual([[0, 0, 0], [0, 0, 0]]);
+});
+it("the info strip's clock is a reload switch: the game's clock stays put away and the strip's clock stays until the reload", () => {
+  const addon = loggedIn(STRIP_ENV + UNITS_ENV + CLICK_LUA);
+  addon.slash("");
+  addon.eval('ns.Options.Show("map")');
+  const away = "return ns.GetModule('InfoStrip').fonts.clock:IsShown()";
+  expect(addon.eval(away), "the strip's clock shows at login").toBe(true);
+  addon.eval('__click("Clock")');
+  expect(addon.eval("return ns.Settings('InfoStrip').clock"), "the setting is off").toBe(false);
+  addon.eval("__wfgStub.advance(1.1)");
+  expect(addon.eval(away), "nothing changes until the reload, so no clock goes missing").toBe(true);
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "the reload button lights").toBe(true);
+  expect(addon.eval("local keys = ns.GetModule('Situations').LIVE.InfoStrip.keys for _, k in ipairs(keys) do if k == 'clock' then return true end end return false"), "a Situations override can't hold it").toBe(false);
 });
