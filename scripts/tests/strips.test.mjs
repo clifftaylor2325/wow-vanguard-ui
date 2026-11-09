@@ -469,6 +469,16 @@ it("a Vanguard button on the game menu opens the options", () => {
   expect(old.eval("return GameMenuFrame:IsShown()"), "which closes the menu too").toBe(false);
   expect(loggedIn("").eval("return ns.gameMenuButton == nil"), "no game menu, nothing added").toBe(true);
 });
+// A1-2 (M12): the panel manager refuses addon code in a fight, so the button must not ask it to close the menu there.
+it("A1-2: in a fight the Vanguard button on the game menu opens the options and leaves the menu to the game", () => {
+  const addon = loggedIn("GameMenuFrame = CreateFrame('Frame', 'GameMenuFrame', UIParent)");
+  // Shows the menu, clicks the Vanguard button, and answers whether the menu and the options show.
+  const click = () => addon.eval("GameMenuFrame:Show() ns.Options.Hide() ns.gameMenuButton.__scripts.OnClick() return { GameMenuFrame:IsShown(), Vanguard_Options:IsShown() }");
+  addon.world.combat(true);
+  expect(click(), "in a fight: the options open, the menu stays (Escape closes it)").toEqual([true, true]);
+  addon.world.combat(false);
+  expect(click(), "out of a fight: the menu closes through the panel manager and the options open").toEqual([false, true]);
+});
 // TEST-ONLY the game menu's button pool (AddButton takes from it, Reset empties it; each button has template art)
 // and its header plate, as MainMenuFrameTemplates.lua and DialogHeaderTemplate make them.
 const MENU_POOL_ENV = `

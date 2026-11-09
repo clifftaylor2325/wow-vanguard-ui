@@ -1,15 +1,19 @@
 -- Tooltips in the Vanguard look: a flat panel instead of the default art,
 -- a border in the class (or reaction) color of the unit you're looking at,
--- the unit's name in that color, and a "Target:" line. The default tooltip
+-- the unit's name in that color, and a "Target:" line. A player's tooltip
+-- adds the guild and rank, the realm and the group role, and your own adds
+-- your equipped item level. The default tooltip
 -- can sit in a movable corner, follow the cursor, or stay where the client
 -- puts it, and unit tooltips can be hidden in combat. Item tooltips show what
 -- the item sells for (the stack's worth, unless the client already shows it),
--- how many you have (bags and bank), and optionally the item's ID; other modules
--- add their own item lines after those (TT.AddItemLines).
+-- how many you have (bags and bank); other modules add their own item lines
+-- after those (TT.AddItemLines). One switch, off by default, adds IDs: an
+-- item's to its tooltip, a spell's to a spell's and an aura's.
 --
--- Written for WoW Forever. Every client call is looked up when used. The
--- tooltip's text is never read: in Midnight some of it is hidden from
--- addons, so this module only colors lines and adds its own.
+-- Written for WoW Forever. Every client call is looked up when used. In
+-- Midnight some of a tooltip's text is hidden from addons, so this module only
+-- colors lines and adds its own; a line's text is read (and only when it is
+-- plain) to keep from repeating what the client already shows.
 
 local ADDON, ns = ...
 
@@ -20,8 +24,14 @@ local T = ns.Theme
 local L = ns.L
 
 local TT = ns.Module("Tooltips", {
-  defaults = { anchor = "corner", classBorder = true, targetLine = true, hideInCombat = false, sellPrice = true, itemCount = true, itemID = false },
+  defaults = { anchor = "corner", classBorder = true, targetLine = true, guild = true, realm = true, role = true, itemLevel = true, hideInCombat = false,
+    sellPrice = true, itemCount = true, ids = false },
 })
+
+-- After 0.9.3: the "Item IDs" switch (itemID) became one switch for item, spell and aura IDs (ids).
+ns.Migrate("Tooltips", function(saved)
+  if saved.itemID ~= nil then saved.ids, saved.itemID = saved.itemID, nil end
+end)
 
 TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "EmbeddedItemTooltip" }
 -- More of the client's tooltips and tooltip-like boxes, skinned while the game windows' "menus" group is
@@ -102,6 +112,16 @@ local function forbidden(f)
   return type(f) == "table" and type(f.IsForbidden) == "function" and f:IsForbidden() == true
 end
 
+-- Whether a left-hand line of the tooltip carries `label` (plain text; a secret line never counts).
+local function hasLine(tt, label)
+  for i = 1, tt.NumLines and tt:NumLines() or 0 do
+    local line = _G[tt:GetName() .. "TextLeft" .. i]
+    local text = line and line.GetText and line:GetText()
+    if type(text) == "string" and not ns.IsSecret(text) and text:find(label, 1, true) then return true end
+  end
+  return false
+end
+
 -- Units -------------------------------------------------------------------------------------
 
 -- The unit a tooltip shows, or nil (none, or hidden from addons).
@@ -117,21 +137,101 @@ local function unitColor(unit)
   return ns.GetModule("UnitFrames").HealthColor(unit)
 end
 
+-- The named values of the unit line being written: one table for every line, so a tooltip refresh makes none.
+local slots = {}
+
+-- text with its {key} filled with a value (a name the client gave plainly).
+local function filled(text, key, value)
+  slots[key] = value
+  return ns.Format(text, slots)
+end
+
 -- "Target: <name>" in the target's color, when the unit has a target you can name.
 local function addTarget(tt, unit)
   local target = unit .. "target"
   if not ns.IsTrue(UnitExists(target)) then return end
   local name = UnitName(target)
   if ns.IsSecret(name) or type(name) ~= "string" then return end
-  tt:AddLine(ns.Format(L["Target: {name}"], { name = name }), unitColor(target))
+  tt:AddLine(filled(L["Target: {name}"], "name", name), unitColor(target))
 end
 
--- Colors the name line and border, and adds the target line.
+-- Player lines ------------------------------------------------------------------------------
+
+-- The roles a group gives a player, by the client's name for each, as the tooltip words them (no line without one).
+TT.ROLES = { TANK = L["Tank"], HEALER = L["Healer"], DAMAGER = L["DPS"] }
+
+-- One of the module's own facts about a player, in the quiet text color.
+local function addFact(tt, text)
+  tt:AddLine(text, T.RGB("text2"))
+end
+
+-- The guild line's wording: the guild with the rank or alone, or only the rank where the client's own tooltip
+-- already names the guild (nil when that leaves nothing to add).
+local function guildText(named, rank)
+  if named then return rank and L["Guild rank: {rank}"] end
+  return rank and L["Guild: {guild} ({rank})"] or L["Guild: {guild}"]
+end
+
+-- A player's guild and rank (GetGuildInfo answers for a player near you; the name and rank may be hidden).
+local function addGuild(tt, unit)
+  local guild, rank = ns.CallIf(_G, "GetGuildInfo", unit)
+  slots.guild, slots.rank = ns.PlainText(guild), ns.PlainText(rank)
+  if not slots.guild then return end
+  local text = guildText(hasLine(tt, slots.guild), slots.rank)
+  if text then addFact(tt, ns.Format(text, slots)) end
+end
+
+-- "Realm: <name>" for a player from another realm (UnitName's second answer; none for your own), unless a line
+-- of the client's already carries the realm, as its name line does on some clients.
+local function addRealm(tt, unit)
+  local _, realm = UnitName(unit)
+  realm = ns.PlainText(realm)
+  if realm and not hasLine(tt, realm) then addFact(tt, filled(L["Realm: {realm}"], "realm", realm)) end
+end
+
+-- "Role: Tank" for a player the group has given a role.
+local function addRole(tt, unit)
+  local role = TT.ROLES[ns.PlainText(ns.CallIf(_G, "UnitGroupRolesAssigned", unit)) or ""]
+  if role then addFact(tt, filled(L["Role: {role}"], "role", role)) end
+end
+
+-- "Item level 62" on your own tooltip: the equipped average the character pane shows, rounded down as there.
+-- Another player's needs an inspect request, and WoW Forever's Inspect window opens itself again on any answer
+-- for the unit it last showed, so none is asked for from here and other players get no line.
+local function addItemLevel(tt, unit)
+  if not ns.IsTrue(UnitIsUnit(unit, "player")) then return end
+  local level = ns.PlainNumber((select(2, ns.CallIf(_G, "GetAverageItemLevel"))))
+  if level and level >= 1 then addFact(tt, filled(L["Item level {level}"], "level", math.floor(level))) end
+end
+
+-- The module's lines about a player, as switched on: guild and rank, realm, role, then your own item level. Other
+-- units get none.
+local function addPlayerLines(tt, unit)
+  local on = TT.settings
+  if not ns.IsTrue(UnitIsPlayer(unit)) then return end
+  if on.guild then addGuild(tt, unit) end
+  if on.realm then addRealm(tt, unit) end
+  if on.role then addRole(tt, unit) end
+  if on.itemLevel then addItemLevel(tt, unit) end
+end
+
+-- The unit color handed to the theme as the border's: one table, filled again on every refresh. Only the default
+-- tooltip is decorated, so nothing else holds it, and the theme reads it at each repaint.
+local borderColor = {}
+
+-- The tooltip's border in a unit's color, with no table made per refresh.
+local function setUnitBorder(tt, r, g, b)
+  borderColor[1], borderColor[2], borderColor[3] = r, g, b
+  T.SetBorder(tt, borderColor)
+end
+
+-- Colors the name line and border, and adds the player lines and the target line.
 local function decorate(tt, unit)
   local r, g, b = unitColor(unit)
   local first = _G[tt:GetName() .. "TextLeft1"]
   if first then first:SetTextColor(r, g, b) end
-  if TT.settings.classBorder then T.SetBorder(tt, { r, g, b }) end
+  if TT.settings.classBorder then setUnitBorder(tt, r, g, b) end
+  addPlayerLines(tt, unit)
   if TT.settings.targetLine then addTarget(tt, unit) end
 end
 
@@ -174,16 +274,6 @@ function TT.StackOf(tt)
   local owner = tt.GetOwner and tt:GetOwner()
   local count = type(owner) == "table" and ns.PlainNumber(owner.count)
   return count and count > 1 and count or 1
-end
-
--- Whether a left-hand line of the tooltip carries `label` (plain text; a secret line never counts).
-local function hasLine(tt, label)
-  for i = 1, tt.NumLines and tt:NumLines() or 0 do
-    local line = _G[tt:GetName() .. "TextLeft" .. i]
-    local text = line and line.GetText and line:GetText()
-    if type(text) == "string" and not ns.IsSecret(text) and text:find(label, 1, true) then return true end
-  end
-  return false
 end
 
 -- Whether the client's own "Sell Price" is already on the tooltip: a money frame is up, or a line carries the
@@ -242,7 +332,7 @@ local function ownItemLines(tt, link)
   if not on then return end
   if on.sellPrice then addPrice(tt, link) end
   if on.itemCount then addCount(tt, link) end
-  if on.itemID then addID(tt, link) end
+  if on.ids then addID(tt, link) end
 end
 
 -- An item tooltip was filled in: add the switched-on lines, then other modules' (one
@@ -255,17 +345,33 @@ function TT.OnItem(tt)
   for _, fn in ipairs(TT.itemLines) do ns.Try("tooltip lines", fn, tt, link) end
 end
 
+-- Spell and aura IDs ------------------------------------------------------------------------
+
+-- "Spell ID 133" under a spell's tooltip and an aura's (an aura's ID is its spell's), with IDs switched on. The ID
+-- is the one in the client's tooltip data; a hidden one adds nothing, and a tooltip kept from addons is left alone.
+function TT.OnSpell(tt, data)
+  if not TT.settings.ids or forbidden(tt) then return end
+  local plain = ns.PlainTable(data)
+  local id = plain and ns.PlainNumber(plain.id)
+  if id then tt:AddLine(filled(L["Spell ID {id}"], "id", id), T.RGB("text2")) end
+end
+
 -- Hooks ------------------------------------------------------------------------------------
+
+-- Calls fn(tooltip, data) after the client fills a tooltip of one kind through its tooltip data API; true when it
+-- has that API and that kind.
+local function hookData(kind, fn)
+  local processor, kinds = _G.TooltipDataProcessor, _G.Enum and _G.Enum.TooltipDataType
+  if type(processor) ~= "table" or not processor.AddTooltipPostCall or not (kinds and kinds[kind]) then return false end
+  processor.AddTooltipPostCall(kinds[kind], ns.Guard("tooltip " .. kind, fn))
+  return true
+end
 
 -- Calls fn after the client fills a tooltip of one kind (new data API, else the old script).
 local function hookFilled(kind, script, fn)
-  fn = ns.Guard("tooltip " .. kind, fn)
-  local processor, kinds = _G.TooltipDataProcessor, _G.Enum and _G.Enum.TooltipDataType
-  if type(processor) == "table" and processor.AddTooltipPostCall and kinds and kinds[kind] then
-    return processor.AddTooltipPostCall(kinds[kind], fn)
-  end
+  if hookData(kind, fn) then return end
   local tt = _G.GameTooltip
-  if tt and tt.HasScript and tt:HasScript(script) then tt:HookScript(script, fn) end
+  if tt and tt.HasScript and tt:HasScript(script) then tt:HookScript(script, ns.Guard("tooltip " .. kind, fn)) end
 end
 
 -- Calls fn before the client fills a tooltip of one kind, where the client has the data API; fn's true stops the fill.
@@ -287,10 +393,13 @@ function TT.HookItems()
   hookFilled("Item", "OnTooltipSetItem", TT.OnItem)
 end
 
--- Decorates unit tooltips and adds sell prices to item tooltips as the client fills them.
+-- Decorates unit tooltips and adds the module's lines to item, spell and aura tooltips as the client fills them
+-- (spell and aura IDs only where the client has the tooltip data API, as the 12.1 client does).
 local function hookTooltips()
   hookBefore("Unit", TT.BeforeUnit)
   hookFilled("Unit", "OnTooltipSetUnit", TT.OnUnit)
+  hookData("Spell", TT.OnSpell)
+  hookData("UnitAura", TT.OnSpell)
   TT.HookItems()
 end
 

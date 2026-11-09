@@ -10,6 +10,11 @@
 -- nameplateShowSelf setting on) takes the same look: the theme's bar texture on
 -- flat panels, texts in the plate font; its colours, values and place stay the game's.
 --
+-- The bar's width and height, how many debuffs and buffs show and how large their icons are are
+-- sliders on the Nameplates page; every one applies without a reload, out of combat: the plates on
+-- screen are sized at once, and each plate's aura rows are made again where their icons changed (a
+-- client aura container's groups are fixed once made), a few plates a frame.
+--
 -- Vanguard draws its own frame on each nameplate the client gives it and
 -- hides the default one; the client still places, sizes and stacks the
 -- plates. Plates the client keeps from addons (forbidden ones, such as
@@ -41,12 +46,27 @@ local RS = ns.GetModule("RaidStatus")
 local UF = ns.GetModule("UnitFrames")
 
 local NP = ns.Module("Nameplates", {
-  defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true, questMarks = true, tagMarks = true },
+  defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true,
+    questMarks = true, tagMarks = true, auraSize = 18 },
 })
 
-local ICON = 18
--- A player's buff icons, right of the bar.
-NP.BUFF = 16
+-- The sliders' ranges (the Nameplates page). A saved number is kept inside its range (readLayout), since a
+-- crafted or hand-edited profile can hold any; each range holds the sizes the fixed choices before it offered.
+NP.RANGES = {
+  width = { min = 80, max = 200, step = 2 }, height = { min = 6, max = 16, step = 1 },
+  debuffs = { min = 0, max = 8, step = 1 }, buffs = { min = 0, max = 6, step = 1 }, auraSize = { min = 12, max = 28, step = 1 },
+}
+-- The raid target icon's size, left of the bar.
+NP.RAID_ICON = 18
+-- A player's buff icons, right of the bar, are this much smaller than the debuff icons (the Aura icon size).
+NP.BUFF_LESS = 2
+-- The name sits this far above the bar, and the debuff row this far above the name (and the soft-target
+-- icon this far above the debuff row).
+NP.NAME_GAP, NP.ROW_GAP = 3, 2
+-- How long (seconds) a changed size or count holds still before every plate built follows it.
+NP.SETTLE = 0.3
+-- The layout's number: each plate notes the one it was last sized and given rows for (f.version).
+NP.version = 0
 -- How far the click area reaches past each side of the bar (as the client's own plates).
 NP.HIT_PAD = 10
 -- The mouseover wash's opacity over the bar.
@@ -66,10 +86,8 @@ NP.GLOW = 2
 NP.SCALE_SLACK = 1.2
 -- How often (seconds) every plate's scale is looked at again.
 NP.SCALE_POLL = 0.5
--- The soft-target icon's size (the game's own is 24 square) and how far above the bar it sits:
--- clear of one row of debuffs (16 up, ICON tall) with a gap.
+-- The soft-target icon's size (the game's own is 24 square); it sits clear of one row of debuffs (sizePlate).
 NP.SOFT = 24
-NP.SOFT_RISE = 36
 -- The soft targets whose icon the game draws over a plate, in the order of their switches among
 -- its icon arguments (enemy, friend, interact), as its own plates check them.
 NP.SOFT_UNITS = { "softenemy", "softfriend", "softinteract" }
@@ -80,7 +98,7 @@ NP.softIcons = {}
 -- value bits Vanguard's enemy plates follow; NP.info holds them as last read.
 NP.INFO_CVAR = "nameplateInfoDisplay"
 NP.info = { percent = false, value = false }
--- Plates shorter than this (the smallest Height) have no room for the health numbers.
+-- Plates shorter than this have no room for the health numbers.
 NP.NUMBERS_MIN_HEIGHT = 10
 
 NP.plates = {}
@@ -94,6 +112,8 @@ NP.POOL, NP.POOL_STEP = 40, 2
 NP.pool = {}
 -- Fallback aura rows put away after a fight, for the next plate drawn in one (by row).
 NP.spare = { debuffs = {}, buffs = {} }
+-- A plate's aura rows, in the order they are made: its debuffs, a player's buffs.
+NP.ROWS = { "debuffs", "buffs" }
 
 -- Values -----------------------------------------------------------------------------------
 
@@ -185,7 +205,6 @@ end
 local function addSoftTarget(f)
   f.soft = f:CreateTexture(nil, "OVERLAY")
   f.soft:SetSize(NP.SOFT, NP.SOFT)
-  f.soft:SetPoint("BOTTOM", f, "TOP", 0, NP.SOFT_RISE)
   f.soft:Hide()
 end
 
@@ -215,7 +234,7 @@ local function addTexts(f)
   f.level = T.Text(f:CreateFontString(nil, "OVERLAY"), "world")
   f.level:SetPoint("RIGHT", f.name, "LEFT", -3, 0)
   f.raidIcon = f:CreateTexture(nil, "OVERLAY")
-  f.raidIcon:SetSize(ICON, ICON)
+  f.raidIcon:SetSize(NP.RAID_ICON, NP.RAID_ICON)
   f.raidIcon:SetPoint("RIGHT", f, "LEFT", -4, 0)
   f.raidIcon:Hide()
   addMarker(f)
@@ -234,12 +253,10 @@ end
 
 -- The box the mouse hits and the client stacks by (nothing drawn, no mouse of
 -- its own): from the top of the name to half a bar under the bar, reaching
--- NP.HIT_PAD past each side of it, as the client's own plates do.
-local function addHitArea(f, s)
+-- NP.HIT_PAD past each side of it, as the client's own plates do (sizePlate gives it its width and bottom).
+local function addHitArea(f)
   f.hit = CreateFrame("Frame", nil, f)
   f.hit:SetPoint("TOP", f.name, "TOP", 0, 0)
-  f.hit:SetPoint("BOTTOM", f, "BOTTOM", 0, -s.height / 2)
-  f.hit:SetWidth(s.width + 2 * NP.HIT_PAD)
 end
 
 -- A faint white wash over the bar, shown while the mouse is over the plate's unit.
@@ -253,38 +270,65 @@ end
 
 -- Your debuffs in a row over the name, soonest to expire first, with timers
 -- (a plate is where you watch your damage over time): an aura container that
--- follows the plate's unit (Core/Auras.lua).
-function NP.DebuffSpec(f, s)
-  return { point = { "BOTTOMLEFT", f, "TOPLEFT", 0, 16 }, grow = "RIGHT", growY = "UP", lineSize = s.width, gap = 2, timer = s.timers, mouse = false,
-    groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = s.debuffs, size = ICON, debuff = true, sort = "ExpirationOnly" },
-      { filter = "HARMFUL|PLAYER|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = s.debuffs > 0 and 1 or 0, size = ICON, debuff = true } } }
+-- follows the plate's unit (Core/Auras.lua). `l` is the layout (readLayout).
+function NP.DebuffSpec(f, l)
+  return { point = { "BOTTOMLEFT", f, "TOPLEFT", 0, l.rise }, grow = "RIGHT", growY = "UP", lineSize = l.width, gap = 2, timer = l.timers, mouse = false,
+    groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = l.debuffs, size = l.auraSize, debuff = true, sort = "ExpirationOnly" },
+      { filter = "HARMFUL|PLAYER|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY", max = l.debuffs > 0 and 1 or 0, size = l.auraSize, debuff = true } } }
 end
 
 -- A player's buffs in a row right of the bar, past the target marker: big
 -- defensives, then external ones, then important buffs (immunities, major
 -- cooldowns), then yours (none on an enemy). A container's groups are fixed
 -- and a plate is reused for friend and foe, so the same groups serve both;
--- each leaves out what an earlier one shows. Up to s.buffs a row; a player
+-- each leaves out what an earlier one shows. Up to l.buffs a row; a player
 -- with more gets a row above.
-function NP.BuffSpec(f, s)
-  local gap = 2
-  -- One group of up to s.buffs icons through `filter`.
-  local function group(filter) return { filter = filter .. "|INCLUDE_NAME_PLATE_ONLY", max = s.buffs, size = NP.BUFF } end
-  return { point = { "BOTTOMLEFT", f, "BOTTOMRIGHT", NP.MARKER + 8, (s.height - NP.BUFF) / 2 }, grow = "RIGHT", growY = "UP",
-    lineSize = s.buffs * (NP.BUFF + gap), gap = gap, timer = s.timers, mouse = false,
+function NP.BuffSpec(f, l)
+  local gap, size = 2, l.auraSize - NP.BUFF_LESS
+  -- One group of up to l.buffs icons through `filter`.
+  local function group(filter) return { filter = filter .. "|INCLUDE_NAME_PLATE_ONLY", max = l.buffs, size = size } end
+  return { point = { "BOTTOMLEFT", f, "BOTTOMRIGHT", NP.MARKER + 8, (l.height - size) / 2 }, grow = "RIGHT", growY = "UP",
+    lineSize = l.buffs * (size + gap), gap = gap, timer = l.timers, mouse = false,
     groups = { group("HELPFUL|BIG_DEFENSIVE"), group("HELPFUL|EXTERNAL_DEFENSIVE|!BIG_DEFENSIVE"),
       group("HELPFUL|IMPORTANT|!BIG_DEFENSIVE|!EXTERNAL_DEFENSIVE"),
       group("HELPFUL|PLAYER|!IMPORTANT|!BIG_DEFENSIVE|!EXTERNAL_DEFENSIVE") } }
 end
 
 -- The cast bar under the health bar; its icon (left of it) lines up with the plate's left edge.
-local function addCastBar(f, s)
-  f.cast = CB.Build(CreateFrame("StatusBar", nil, f), s.width - s.height - 3, s.height)
+local function addCastBar(f, l)
+  f.cast = CB.Build(CreateFrame("StatusBar", nil, f), l.width - l.height - 3, l.height)
   f.cast:SetPoint("TOPRIGHT", f, "BOTTOMRIGHT", 0, -4)
+end
+
+-- A plate's cast bar at the plate's size now: made the first time the Cast bar switch is on for this
+-- plate, and hidden while it is off.
+local function sizeCast(f, l)
+  if l.castBar and not f.cast then addCastBar(f, l) end
+  if not f.cast then return end
+  f.cast:SetSize(l.width - l.height - 3, l.height)
+  f.cast.icon:SetSize(l.height, l.height)
+  if not l.castBar then f.cast:Hide() end
+end
+
+-- Sizes a plate and the parts that follow its size: the bar, the click area around it, the soft-target
+-- icon (clear of one row of debuffs) and the cast bar. A new plate and a changed setting both come
+-- through here, so a plate reads the same either way.
+local function sizePlate(f, l)
+  f:SetSize(l.width, l.height)
+  f.hit:SetPoint("BOTTOM", f, "BOTTOM", 0, -l.height / 2)
+  f.hit:SetWidth(l.width + 2 * NP.HIT_PAD)
+  f.soft:SetPoint("BOTTOM", f, "TOP", 0, l.rise + l.auraSize + NP.ROW_GAP)
+  sizeCast(f, l)
 end
 
 -- A plate's aura rows (its debuffs, a player's buffs) -> the NP function giving each one's spec.
 local ROW_SPECS = { debuffs = "DebuffSpec", buffs = "BuffSpec" }
+
+-- The spec of one of a plate's rows at the layout now, or nil for a row that is switched off (buffs at 0).
+local function rowSpec(f, key)
+  if key == "buffs" and NP.layout.buffs == 0 then return nil end
+  return NP[ROW_SPECS[key]](f, NP.layout)
+end
 
 -- The unit a plate's row follows while the plate shows `unit` (buffs only on players).
 local function rowUnit(key, unit)
@@ -292,65 +336,78 @@ local function rowUnit(key, unit)
   return unit
 end
 
+-- A fallback row put away after a fight whose icons are what the layout asks for now (its signature), or
+-- nil; one made for other settings is dropped (it stays hidden).
+local function takeSpare(key, sig)
+  local row = table.remove(NP.spare[key])
+  while row and row.sig ~= sig do row = table.remove(NP.spare[key]) end
+  return row
+end
+
 -- A fallback row put away after a fight, moved over another plate's frame.
-local function reuseRow(row, f, key)
+local function reuseRow(row, f, spec)
   row.frame:SetParent(f)
   row.frame:ClearAllPoints()
-  row.frame:SetPoint(unpack(NP[ROW_SPECS[key]](f, NP.settings).point))
+  row.frame:SetPoint(unpack(spec.point))
   row.frame:Show()
   return row
 end
 
--- One of a plate's aura rows on the backend in use, noting whether that was
--- the client's engine (a plate first drawn in combat gets the fallback: a row
--- put away after an earlier fight when there is one, else a new one).
-local function addRow(f, key)
-  local spare = ns.Auras.Backend() ~= ns.AuraEngine and table.remove(NP.spare[key])
-  f[key] = spare and reuseRow(spare, f, key) or ns.Auras.Container(f, NP[ROW_SPECS[key]](f, NP.settings), rowUnit(key, f.unit))
-  f[key .. "OnEngine"] = ns.Auras.Backend() == ns.AuraEngine
+-- One of a plate's aura rows on the backend in use, noting its signature (what of it is fixed once made,
+-- Core/Auras.lua) and whether that was the client's engine (a plate first drawn in combat gets the
+-- fallback: a row put away after an earlier fight when there is one, else a new one).
+local function addRow(f, key, spec)
+  local sig = ns.Auras.Signature(spec)
+  local spare = ns.Auras.Backend() ~= ns.AuraEngine and takeSpare(key, sig)
+  f[key] = spare and reuseRow(spare, f, spec) or ns.Auras.Container(f, spec, rowUnit(key, f.unit))
+  f[key].sig, f[key .. "OnEngine"] = sig, ns.Auras.Backend() == ns.AuraEngine
 end
 
 -- A plate's texts, tag mark, soft-target icon, click area and mouseover wash.
-local function addOverlays(f, s)
+local function addOverlays(f)
   addTexts(f)
   addSoftTarget(f)
   addNumbers(f)
   addTagMark(f)
-  addHitArea(f, s)
+  addHitArea(f)
   addHover(f)
 end
 
 -- A plate's debuff row, and its buff row unless switched off.
-local function addRows(f, s)
-  addRow(f, "debuffs")
-  if s.buffs > 0 then addRow(f, "buffs") end
+local function addRows(f)
+  for _, key in ipairs(NP.ROWS) do
+    local spec = rowSpec(f, key)
+    if spec then addRow(f, key, spec) end
+  end
 end
 
 -- Our frame for a client nameplate: health bar, texts, click area, mouseover
 -- wash, debuffs, a player's buffs, cast bar, and its own unit events
--- (ns.SetUnits points them at the plate's unit). `parent` is the plate, or the
+-- (ns.SetUnits points them at the plate's unit), at the layout now. `parent` is the plate, or the
 -- hidden holder of the frames built ahead.
 local function build(parent)
-  local s = NP.settings
   local f = CreateFrame("StatusBar", nil, parent)
-  f:SetSize(s.width, s.height)
+  f:SetSize(NP.layout.width, NP.layout.height)
   f:SetPoint("CENTER")
   T.HudPanel(T.StyleBar(f), { inset = true })
-  addOverlays(f, s)
-  addRows(f, s)
-  if s.castBar then addCastBar(f, s) end
-  f.events, NP.built[#NP.built + 1] = ns.OnUnit(NP.UNIT_EVENTS, NP.OnUnitEvent), f
+  addOverlays(f)
+  addRows(f)
+  sizePlate(f, NP.layout)
+  f.events, f.version, NP.built[#NP.built + 1] = ns.OnUnit(NP.UNIT_EVENTS, NP.OnUnitEvent), NP.version, f
   return f
 end
 
--- A plate's fallback row swapped for one on the client's engine, on the
--- plate's unit; the fallback row is put away for the next fight.
-local function upgradeRow(f, key)
-  f[key]:SetUnit(nil)
-  f[key].frame:Hide()
-  table.insert(NP.spare[key], f[key])
-  addRow(f, key)
+-- Swaps one of a plate's rows for the one the layout asks for now (none, for a row switched off). The
+-- old row is put away, a fallback row for the next plate drawn in a fight. False when the client has
+-- closed the old row to addons: it stays, and the plate is tried again later.
+local function replaceRow(f, key)
+  local old, spec = f[key], rowSpec(f, key)
+  if old and not ns.Auras.Retire(old) then return false end
+  if old and not f[key .. "OnEngine"] then table.insert(NP.spare[key], old) end
+  f[key] = nil
+  if spec then addRow(f, key, spec) end
   NP.UpdateAuras(f, f.unit)
+  return true
 end
 
 -- After a fight: plates first drawn in it got the fallback icons, so give
@@ -358,10 +415,52 @@ end
 local function upgradeRows()
   if not ns.AuraEngine.Available() then return end
   for _, f in ipairs(NP.built) do
-    for key in pairs(ROW_SPECS) do
-      if f[key] and not f[key .. "OnEngine"] then upgradeRow(f, key) end
+    for _, key in ipairs(NP.ROWS) do
+      if f[key] and not f[key .. "OnEngine"] then replaceRow(f, key) end
     end
   end
+end
+
+-- Whether a plate's row is not the one the layout asks for now, by its signature (counts, icon size,
+-- filters, timers, row width); a row it lacks, or has and should not, counts.
+local function staleRow(f, key)
+  local spec = rowSpec(f, key)
+  return (f[key] and f[key].sig) ~= (spec and ns.Auras.Signature(spec))
+end
+
+-- Moves one of a plate's rows to where the layout puts it now. False for a row the client has closed
+-- to addons (it is left where it is).
+local function placeRow(f, key)
+  local row, spec = f[key], rowSpec(f, key)
+  if not row or not spec then return true end
+  if row.frame:IsForbidden() then return false end
+  row.frame:ClearAllPoints()
+  row.frame:SetPoint(unpack(spec.point))
+  return true
+end
+
+-- One of a plate's rows brought up to the layout: made again where its icons changed, else moved to
+-- its place. False when a row the client has closed had to stay as it was.
+local function catchUpRow(f, key)
+  if staleRow(f, key) then return replaceRow(f, key) end
+  return placeRow(f, key)
+end
+
+-- Brings one plate up to the layout now: its sizes, then its rows. It counts as up to date (f.version)
+-- unless a row had to stay as it was.
+local function catchUp(f)
+  local current = true
+  sizePlate(f, NP.layout)
+  for _, key in ipairs(NP.ROWS) do current = catchUpRow(f, key) and current end
+  if current then f.version = NP.version end
+end
+
+-- Whether a plate may be brought up to the layout now: one still waiting among the frames built ahead,
+-- or one Vanguard is drawing on a plate the client has not closed to addons. A plate put away sits on
+-- a client plate that may be closed by now, so it waits until it is next drawn (onAdded).
+local function reachable(f)
+  local parent = f:GetParent()
+  return parent == NP.holder or (f.unit ~= nil and not parent:IsForbidden())
 end
 
 -- One frame's share of the frames built ahead: up to NP.POOL_STEP more, hidden until a plate
@@ -526,7 +625,7 @@ end
 local function wantsNumbers(unit)
   local can = type(UnitCanAttack) == "function" and UnitCanAttack("player", unit)
   local enemy = not ns.IsSecret(can) and can == true
-  return enemy and (NP.info.percent or NP.info.value) and NP.settings.height >= NP.NUMBERS_MIN_HEIGHT
+  return enemy and (NP.info.percent or NP.info.value) and NP.layout.height >= NP.NUMBERS_MIN_HEIGHT
 end
 
 -- The value sits at the bar's right end, or left of the percent while that shows.
@@ -670,6 +769,11 @@ function NP.UpdateHover(f, unit)
   return on
 end
 
+-- Shows the unit's cast under its plate, while plates have a cast bar.
+local function showCast(f, unit)
+  if f.cast and NP.layout.castBar then CB.Show(f.cast, unit) end
+end
+
 -- Everything on one plate (a plate under the mouse wakes the mouseover watch).
 local function refresh(f, unit)
   NP.ShowNumbers(f, unit)
@@ -678,7 +782,7 @@ local function refresh(f, unit)
   NP.PaintTag(f, unit)
   NP.UpdateAuras(f, unit)
   if NP.UpdateHover(f, unit) then NP.WatchHover(true) end
-  if f.cast then CB.Show(f.cast, unit) end
+  showCast(f, unit)
   NP.PaintSoftTarget(f, unit)
 end
 
@@ -695,9 +799,75 @@ end
 
 -- A plate's aura icons back on whole pixels where the client has rescaled the plate since it made them.
 local function refitAuras(f)
-  for key in pairs(ROW_SPECS) do
+  for _, key in ipairs(NP.ROWS) do
     if f[key] then ns.Auras.Refit(f[key].frame, NP.ScaleHolds) end
   end
+end
+
+-- Layout -----------------------------------------------------------------------------------
+
+-- The sizes the plates are built at, read from the settings: each number kept to its slider's range, the
+-- timers and the cast bar, and how far the debuff row sits above the bar (clear of the name, whose size
+-- follows the theme's text size). Plates read this, not the settings, so they change only out of combat.
+local function readLayout(s)
+  local l = { timers = s.timers == true, castBar = s.castBar == true }
+  for key, range in pairs(NP.RANGES) do l[key] = math.max(range.min, math.min(range.max, s[key])) end
+  l.rise = NP.NAME_GAP + T.RoleSize("world") + NP.ROW_GAP
+  return l
+end
+
+-- Whether two layouts read the same (both hold the same keys).
+local function sameLayout(a, b)
+  for key, value in pairs(a) do
+    if b[key] ~= value then return false end
+  end
+  return true
+end
+
+-- A plate on screen sized for the layout at once, its rows moved to their places; a row whose icons
+-- changed is made again in the catch-up.
+local function sizeShown(f)
+  if not reachable(f) then return end
+  sizePlate(f, NP.layout)
+  for _, key in ipairs(NP.ROWS) do placeRow(f, key) end
+end
+
+-- One frame's share of a catch-up: up to NP.POOL_STEP plates that are behind the layout brought up to it
+-- (each makes frames where its rows changed). True while there are plates left to look at.
+local function catchUpSome()
+  local done = 0
+  while done < NP.POOL_STEP and NP.cursor <= #NP.built do
+    local f = NP.built[NP.cursor]
+    if f.version ~= NP.version and reachable(f) then ns.Try("nameplate layout", catchUp, f) done = done + 1 end
+    NP.cursor = NP.cursor + 1
+  end
+  return NP.cursor <= #NP.built
+end
+
+-- Brings every plate built up to the layout, a few a frame and out of combat (ns.Spread waits out a fight,
+-- under its own key in the after-combat queue: the same key as ApplyLayout's would replace that work).
+function NP.CatchUp()
+  NP.cursor = 1
+  ns.Spread("nameplate catch-up", catchUpSome)
+end
+
+-- Reads the layout again. When it changed, the plates on screen are sized at once, and every plate
+-- built follows once the setting has held still for NP.SETTLE seconds: a slider being dragged asks many
+-- times a second, and a row with other icons is a new container.
+local function relayout()
+  local l = readLayout(NP.settings)
+  if sameLayout(l, NP.layout) then return end
+  NP.layout, NP.version = l, NP.version + 1
+  each(sizeShown)
+  NP.RefreshAll()
+  ns.AfterStill("nameplate settle", NP.SETTLE, NP.CatchUp)
+end
+
+-- A size, count, timer or cast bar setting changed, or the theme's text size (the Nameplates page and
+-- the theme call this): the plates follow out of combat, since rows can't be made in a fight and a
+-- plate holds client-run aura containers. Nothing while the module is off.
+function NP.ApplyLayout()
+  if NP.layout then ns.OutOfCombat(relayout, "nameplate layout") end
 end
 
 -- One plate's scale check: its border and glow, and its aura icons.
@@ -758,15 +928,24 @@ local function stackByPlate(plate)
   vgStacked[plate] = not pcall(plate.SetStackingBoundsFrame, plate, plate)
 end
 
--- A nameplate appeared: draw on it (once per plate, with a frame built ahead) and fill it in. A
--- unit the client shows only a widget for keeps the client's own plate.
-local function onAdded(_, unit)
-  local plate = NP.PlateFor(unit)
-  if not plate or NP.WidgetsOnly(unit) then return stackByPlate(plate) end
+-- Vanguard's frame on a plate given `unit` (one built ahead, the first time), noted as that unit's, with
+-- the client's own frame hidden.
+local function frameFor(plate, unit)
   local f = vgPlate[plate] or claim(plate)
   vgPlate[plate] = f
   f.gameFrame = hideDefault(plate)
   NP.plates[unit], f.unit = f, unit
+  return f
+end
+
+-- A nameplate appeared: draw on it (once per plate, with a frame built ahead) and fill it in. A
+-- unit the client shows only a widget for keeps the client's own plate. A frame put away while the
+-- layout changed is brought up to it first, out of combat.
+local function onAdded(_, unit)
+  local plate = NP.PlateFor(unit)
+  if not plate or NP.WidgetsOnly(unit) then return stackByPlate(plate) end
+  local f = frameFor(plate, unit)
+  if f.version ~= NP.version and not ns.InCombat() then catchUp(f) end
   takeHitArea(plate)
   ns.SetUnits(f.events, unit)
   f:Show()
@@ -796,11 +975,6 @@ local function scan()
     local unit = "nameplate" .. i
     if ns.IsTrue(UnitExists(unit)) and not NP.plates[unit] then onAdded(nil, unit) end
   end
-end
-
--- Shows the unit's cast under its plate, where the plate has a cast bar.
-local function showCast(f, unit)
-  if f.cast then CB.Show(f.cast, unit) end
 end
 
 -- A plate's unit event -> what it repaints on that plate. Each plate asks the
@@ -885,7 +1059,8 @@ local EVENTS = {
   PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, PLAYER_FOCUS_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
   -- Your new level changes how hard every unit is for you.
   PLAYER_LEVEL_UP = function() each(NP.UpdateName) end,
-  PLAYER_REGEN_ENABLED = upgradeRows, UPDATE_MOUSEOVER_UNIT = onMouseover,
+  -- After a fight: the client's containers for plates first drawn in it, then any plate still behind the layout.
+  PLAYER_REGEN_ENABLED = function() upgradeRows() NP.CatchUp() end, UPDATE_MOUSEOVER_UNIT = onMouseover,
   -- Joining or leaving the tagger's group changes who tagged each mob.
   GROUP_ROSTER_UPDATE = function() each(NP.PaintTag) end,
   -- Your quests changed: which units they need may have too.
@@ -903,14 +1078,14 @@ end
 -- Module entry point (Core/Modules.lua): builds the plate frames ahead, out of combat, and
 -- dresses the game's personal resource display.
 function NP.Enable(settings)
-  NP.settings = settings
+  NP.settings, NP.layout = settings, readLayout(settings)
   NP.ReadInfoDisplay()
   ns.OutOfCombat(NP.FillPool)
   NP.EnemyPlatesOnce()
   watchPersonalResources()
   watchSoftTargets()
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end
-  T.OnChanged(function() each(repaintLook) end)
+  T.OnChanged(function() each(repaintLook) NP.ApplyLayout() end)
   ns.Every("nameplate scale", NP.SCALE_POLL, NP.CheckScales)
 end
 
@@ -1030,23 +1205,44 @@ function NP.GameRows()
   return rows
 end
 
--- This module's own rows: looks first, then debuffs, buffs and size (after a reload).
-local function lookRows()
+-- What a plate shows: each switch repaints the plates at once (the cast bar through the layout).
+local function displayRows()
   return {
+    { "header", L["Display"] },
     { "check", L["Levels, colored by difficulty"], setting("level", NP.RefreshAll) },
     { "check", L["Threat colors while you have aggro"], setting("threat", NP.RefreshAll) },
-    { "check", L["Mark your target's plate"], setting("targetBorder", NP.RefreshAll) }, { "check", L["Cast bar"], setting("castBar", ns.Options.NeedReload) },
-    { "check", L["A gold ! by units your quests need"], setting("questMarks", NP.RefreshAll) }, { "check", L["Tag marks"], setting("tagMarks", NP.RefreshAll) },
-    { "cycle", L["Your debuffs shown"], { { 0, L["none"] }, { 2, "2" }, { 4, "4" }, { 6, "6" } }, setting("debuffs", ns.Options.NeedReload) }, { "cycle", L["Buffs on players"], { { 0, L["none"] }, { 3, "3" }, { 5, "5" } }, setting("buffs", ns.Options.NeedReload) },
-    { "check", L["Timer numbers on your debuffs (reload)"], setting("timers", ns.Options.NeedReload) },
-    { "cycle", L["Width"], { { 110, "110" }, { 130, "130" }, { 160, "160" } }, setting("width", ns.Options.NeedReload) }, { "cycle", L["Height"], { { 8, "8" }, { 10, "10" }, { 14, "14" } }, setting("height", ns.Options.NeedReload) } }
+    { "check", L["Mark your target's plate"], setting("targetBorder", NP.RefreshAll) },
+    { "check", L["Cast bar"], setting("castBar", NP.ApplyLayout) },
+    { "check", L["A gold ! by units your quests need"], setting("questMarks", NP.RefreshAll) },
+    { "check", L["Tag marks"], setting("tagMarks", NP.RefreshAll) },
+  }
 end
 
--- The Nameplates page: the game's plate settings it mirrors, then this module's own.
+-- A slider row on one of this module's sizes or counts (its range is NP.RANGES'), applied through the layout.
+local function slider(caption, key)
+  return { "slider", caption, NP.RANGES[key], setting(key, NP.ApplyLayout) }
+end
+
+-- The bar's size.
+local function sizeRows()
+  return { { "header", L["Size"] }, slider(L["Width"], "width"), slider(L["Height"], "height") }
+end
+
+-- The aura rows: how many of your debuffs and of a player's buffs, how large, and the timers.
+local function auraRows()
+  return {
+    { "header", L["Auras"] }, slider(L["Your debuffs shown"], "debuffs"), slider(L["Buffs on players"], "buffs"),
+    slider(L["Aura icon size"], "auraSize"), { "check", L["Timer numbers on your debuffs"], setting("timers", NP.ApplyLayout) },
+  }
+end
+
+-- The Nameplates page: the game's plate settings it mirrors, then this module's own, a card each for
+-- what a plate shows, its size and its auras. Every row applies without a reload.
 function NP.OptionRows()
   local rows = { { "header", L["Nameplates"] }, { "text", L["Turn the whole module off under Modules to keep the default plates."] } }
-  for _, row in ipairs(NP.GameRows()) do rows[#rows + 1] = row end
-  for _, row in ipairs(lookRows()) do rows[#rows + 1] = row end
+  for _, card in ipairs({ NP.GameRows(), displayRows(), sizeRows(), auraRows() }) do
+    for _, row in ipairs(card) do rows[#rows + 1] = row end
+  end
   return rows
 end
 

@@ -33,6 +33,7 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
 | `scripts/tests/smoke.test.mjs` | The harness cases a pull request's CI runs (`npm run test:quick`): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
 | `scripts/tests/snapshot.test.mjs` | The Forever snapshot (see "The Forever snapshot" below): the frames, events and modules the addon leaves after a login, unlock and lock, compared with `forever-snapshot.json`. Also a `npm run test:quick` case. |
+| `scripts/tests/freeze.test.mjs` | The frozen surface (see "The frozen surface" below): saved settings, `/vg` words and API functions that a release shipped are all still there. A `npm run test:quick` case. |
 
 ## Writing a scenario
 
@@ -194,6 +195,8 @@ change fires the events the client would.
 | `secret(n)` | A secret value (as the client hides numbers in instanced combat): `set("units.player.hp", secret(100))`. It raises on arithmetic, ordering comparison (`<`, `>`), concatenation, length, a call and any field read or write, but not on `==` or `~=` (equality with another value is just false), so a guard that only compares needs reading by eye; `issecretvalue` is the one way to look at it. `type()` answers the type of the value it hides (`"number"` for `secret(100)`, and for `secret()`), as the client keeps a secret's type, so a `type(v) == "number"` gate lets it through; the harness's own files read the raw type with `__wfgRawType`. A test's plain `{ __secret = true }` stand-in keeps `type()` `"table"`. |
 | `secretGeometry(mode)` | Secret positions and sizes, as the client hides them: `"derived"` (a bar's fill while its value is secret, a font string showing secret text, and anything anchored to those), `"strict"` (those, and every frame of the game's but UIParent), or off (`null`). Geometry getters then answer with secrets. |
 | `secretReads` (Lua, through `addon.eval`) | A set of client reads that answer with `secret(0)` while on, as the client does in instanced combat: `__wfgWorld.secretReads.UnitOnTaxi = true`. Names: `UnitOnTaxi`, `UnitLevel`, `UnitXP`, `UnitIsDeadOrGhost`, `C_Map.GetPlayerMapPosition`, `C_QuestLog.GetDistanceSqToQuest`. Empty by default. A read the world lacks (`GetPlayerFacing`, `UnitPosition`) is stubbed in the test instead. |
+| `units.<token>.guild`, `.guildRank`, `.guildRankIndex`, `.guildRealm` | What `GetGuildInfo(token)` answers for a unit: the guild's name, the unit's rank name and rank index (0 is the guild master; 0 when unset) and the guild's realm (nil for one of your own realm); nothing for a unit with no `guild`. A unit's own realm is `units.<token>.realm`, `UnitName`'s second answer (none by default). |
+| `units.player.itemLevel`, `.itemLevelEquipped`, `.itemLevelPvp` | What `GetAverageItemLevel()` answers, in that order: your average item level, the equipped one (the overall one when unset) and the PvP one; 0 each when unset. |
 | `units.<token>.tooltipLines` | The lines `C_TooltipInfo.GetUnit(token)` returns for a unit: `{ { type = Enum.TooltipDataLineType.QuestObjective, leftText = "..." } }` (none by default; a unit that does not exist gives nothing). The enum holds None, Blank, UnitName, UnitThreat, QuestObjective, QuestTitle and QuestPlayer. |
 | `world.modifierBits`, `world.modifierNames` (Lua, through `addon.eval`) | What `GetStringFromModifiers(modifiers)` answers for a click-binding modifier mask: `{ alt = 1, ctrl = 2, shift = 4 }` and `{ alt = "ALT", ctrl = "CTRL", shift = "SHIFT" }` by default, joined as `ALT-CTRL-SHIFT-` (in that order, for the bits set, `""` for 0). The signature is documented, the bits and the text's format are not, so this is an unverified model and the addon reads the text by the key names; a test changes the names to try another format or language. |
 | `GAME_CLICKS_LUA`, `GAME_ENGINE_LUA` (from `helpers.mjs`, run through `addon.eval` or a `client` string) | The game's click bindings: `GAME_CLICKS_LUA` is `C_ClickBindings` with the game's default profile (Target on Left, the menu on Right) in `__gameClicks`; `GAME_ENGINE_LUA` adds `__engineClick(frame, button, prefix)`, a model of what `SecureUnitButton_OnClick` does with a click. UNVERIFIED: only the order of its checks is from `SecureTemplates.lua`, and the modifier masks are the world's unverified `modifierBits`; `scripts/lua-engine.test.mjs` tests the model itself. |
@@ -334,6 +337,15 @@ that gives the i-th the game's bar texture back). `windowState(addon, name)` rea
 insetNine, panel, title, painted }`
 (`art` is the marked texture's alpha; `panel` is whether Vanguard painted anything). The `windows-<area>.test.mjs`
 files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
+
+### The frozen surface
+
+`freeze.test.mjs` logs the addon in on WoW Forever and lists three things players and other addons rely on: every
+`Module.key` the active profile saves, every word in Core/Slash.lua's `COMMANDS` table, and every function reachable
+from the global `Vanguard` table. `frozen-surface.json` holds what earlier releases shipped. Adding a name never
+fails; a frozen name that is gone fails until the file lists it under `retired` with its migration or reason
+(docs/RELEASING.md, Version policy). `npm run freeze:update` adds today's names and keeps the rest; the release
+skill runs it after each release, so a branch doesn't touch the file unless it retires something.
 
 ### The Forever snapshot
 

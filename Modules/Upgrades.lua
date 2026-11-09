@@ -3,7 +3,7 @@
 -- "Upgrade +12% (estimate) vs <worn item>" (or a drop), an arrow marks upgrades in the
 -- combined bag, and on quest reward cards. Rings, trinkets compare with the
 -- weaker of the two you wear, a one-hand weapon too while you wear one in each hand; a two-hander with both hands; an empty slot is
--- always an upgrade. Gear you can't wear is left alone.
+-- always an upgrade, except the off hand beside a two-hander (an off-hand item gets no verdict there). Gear you can't wear is left alone.
 --
 -- /vg weights shows the weights in use; set <stat> <n>, reset, export and
 -- import change or share them (a profile keeps its own, per class). On WoW
@@ -79,6 +79,16 @@ UP.TWO_HANDED = ns.ClientData({
 
 -- The equip locations of a weapon worn in either hand: compared with the weaker hand while a weapon is in each.
 UP.ONE_HAND = { INVTYPE_WEAPON = true }
+
+-- The equip locations that go in the off hand only: a weapon made for it, a shield, a held item.
+UP.OFF_HAND_ONLY = { INVTYPE_WEAPONOFFHAND = true, INVTYPE_SHIELD = true, INVTYPE_HOLDABLE = true }
+
+-- The equip locations of a main-hand item that leaves no room for an off hand. Retail's INVTYPE_RANGEDRIGHT is
+-- left out on purpose: a wand shares it with guns and crossbows and takes one hand.
+UP.FILLS_BOTH_HANDS = ns.ClientData({
+  forever = { INVTYPE_2HWEAPON = true },
+  retail = { INVTYPE_2HWEAPON = true, INVTYPE_RANGED = true },
+})
 
 -- Weights ---------------------------------------------------------------------------------
 
@@ -260,11 +270,20 @@ local function offHandWeapon()
   return loc == "INVTYPE_WEAPON" or loc == "INVTYPE_WEAPONOFFHAND"
 end
 
+-- Whether a two-hander is worn with nothing in the off hand: the empty slot is not one an off-hand item can fill.
+local function twoHanderAlone()
+  if GetInventoryItemLink("player", UP.OFF_HAND) then return false end
+  local link = GetInventoryItemLink("player", UP.MAIN_HAND)
+  return link ~= nil and UP.FILLS_BOTH_HANDS[select(4, C_Item.GetItemInfoInstant(link))] == true
+end
+
 -- What an item of equip location loc is compared with: both hands for a two-hander, the weaker hand for a
--- one-hander while a weapon is worn in each, else the weakest of its slots.
+-- one-hander while a weapon is worn in each, else the weakest of its slots. An off-hand item beside a two-hander
+-- worn alone has nothing to be compared with (nil, and not an empty slot): it would need a main hand to go with it.
 local function wornScore(loc, slots)
   if UP.TWO_HANDED[loc] then return bothHands() end
   if UP.ONE_HAND[loc] and offHandWeapon() then return weakest({ UP.MAIN_HAND, UP.OFF_HAND }) end
+  if UP.OFF_HAND_ONLY[loc] and twoHanderAlone() then return nil, false, nil end
   return weakest(slots)
 end
 

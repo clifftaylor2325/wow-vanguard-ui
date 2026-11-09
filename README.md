@@ -45,9 +45,7 @@ Every client call is checked before use, and values the client hides from addons
 
 ## Known issues
 
-- On WoW Forever, 0.9.3 can show an "aura icon pixels" line in `/vg errors`. The next release fixes it.
-- At login, the notice that your saved settings didn't load can come back at every login, even when your settings look right. It is being looked into; the backup it mentions is kept.
-- In 0.9.3, logging in takes a few seconds longer while Vanguard builds the aura icons for raid tiles and nameplates. The next release builds them when they are first needed instead.
+- Setting names and other text new in 0.9.4 show in English in the other languages until their translations are in.
 - The translations are machine drafts, so some lines read oddly. Report one with `/vg feedback`.
 - Retail support is new: report what looks wrong there with `/vg feedback`.
 

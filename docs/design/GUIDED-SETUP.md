@@ -70,7 +70,7 @@ Not offered (Vanguard has no control for them, and CLAUDE.md says not to add a s
 | Row | Recommended | Why |
 |---|---|---|
 | Faster auto-loot | On | Looting is half of levelling; no downside |
-| Filter chat (gold selling, boosting, recruiting, repeats) | On | Gold spam is the top Trade complaint on new realms; caught lines go to their own tab, nothing is lost |
+| Filter chat (gold selling, boosting, recruiting, repeats) | Offered (off) | Gold spam is the top Trade complaint on new realms and caught lines go to their own tab, but the filter's words are English only, so it is offered and not switched on (decision D4, 2026-11-09) until it matches by locale |
 | Keep chat history | On | Chat survives a reload and a relog |
 | Notice older ranks on bars, Remember what trainers teach (Forever) | On | Vanilla's spell ranks: after training, the bars still cast the old rank |
 | Inbox search and send-to-alt presets | On | Cheap, and only shows at a mailbox |
@@ -85,7 +85,7 @@ Not offered (Vanguard has no control for them, and CLAUDE.md says not to add a s
 | Timer numbers on target and focus auras | On | Most asked-for aura detail |
 | Group threat panel | On for **Tanking**, off otherwise | Tanks watch threat on the group |
 | Action bars | **Three plus the two right-edge bars** (bars 4 and 5, shown on mouseover) | Vanilla classes carry more spells than three bars hold by level 40 |
-| Key setup at your next login (Forever) | On | Key setup's once-only offer at the next login already exists; this gives it a switch, so a player can decline it here |
+| Key setup at your next login (Forever) | Offered (off) | Key setup's once-only offer at the next login; its key data is not yet confirmed in game, so the row starts off and only a player who ticks it gets the offer (decision D4, 2026-11-09) |
 
 Left alone, because Vanguard already uses the game's own: the game's damage meter is shown in the Vanguard look, so Vanguard's own meter stays off.
 

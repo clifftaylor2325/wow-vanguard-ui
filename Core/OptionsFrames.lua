@@ -107,18 +107,16 @@ local function unitFrameRows()
   }
 end
 
--- Cast bars and the target/focus aura rows.
+-- Cast bars, and the target and focus auras' card (its rows are Modules/FrameAuras.lua's).
 local function castRows()
-  return {
+  return append({
     { "header", L["Cast bars"] },
     check(L["Your cast bar (and your pet's)"], reloadSetting("CastBars", "player")),
     check(L["Target cast bar"], reloadSetting("CastBars", "target")), check(L["Focus cast bar"], reloadSetting("CastBars", "focus")),
     check(L["Cast ring at the cursor"], liveMethod("CastBars", "ring", "ApplyRing")),
     check(L["Interrupt mark on cast bars"], liveMethod("CastBars", "interruptMark", "RefreshMarks")),
     { "header", L["Target and focus auras"] },
-    check(L["Only your debuffs (reload)"], reloadSetting("FrameAuras", "onlyMine")),
-    check(L["Timer numbers on the icons (reload)"], reloadSetting("FrameAuras", "timers")),
-  }
+  }, ns.GetModule("FrameAuras").OptionRows())
 end
 
 -- get/set for the weapon enchant cells, which show or hide at once.

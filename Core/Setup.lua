@@ -947,11 +947,11 @@ local function reloadReason()
 end
 
 -- Remembers that setup ran, on the account and for this character (dropping the backup an owed run
--- kept), and says how to run it again. On WoW Forever it also leaves key setup's note (Modules/KeybindsWizard.lua), which offers it once at the next login.
+-- kept), and says how to run it again. Key setup's note for the next login (Modules/KeybindsWizard.lua) is left only
+-- by the Combat step's "Key setup at your next login" row (Core/SetupGuide.lua), which starts off.
 local function markDone()
   VanguardDB.setupDone, VanguardCharDB.setupDone, VanguardCharDB.pickProfile = true, true, nil
   VanguardCharDB.setupBackup = nil
-  if ns.IsForever() and VanguardCharDB.keysOffer == nil then VanguardCharDB.keysOffer = true end
   ns.Chat(AGAIN)
 end
 

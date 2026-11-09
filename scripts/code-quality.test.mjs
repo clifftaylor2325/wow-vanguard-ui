@@ -375,6 +375,13 @@ function secureKinds() {
   for (const call of calls) expect(secured(inFn(call)), call).toEqual([SECURE]);
 }
 
+// A1-2: the panel manager's two calls are read like the secure ones, and a combat check before them passes.
+function securePanelCalls() {
+  for (const call of ["HideUIPanel(WorldMapFrame)", "ShowUIPanel(f)"]) expect(secured(inFn(call)), call).toEqual([SECURE]);
+  expect(secured(inFn("if ns.InCombat() then return end\n  HideUIPanel(f)"))).toEqual([]);
+  expect(secured(inFn("if type(HideUIPanel) == 'function' then fn() end")), "a mention is not a call").toEqual([]);
+}
+
 // A function passed to ns.OutOfCombat passes.
 function secureDeferred() {
   expect(secured(inFn('ns.OutOfCombat(function() b:SetAttribute("x", 1) end, "key")'))).toEqual([]);
@@ -460,6 +467,7 @@ describe(
   () => {
     it("secure: a bare SetAttribute fails the scan", secureBare);
     it("secure: each kind of protected call is read", secureKinds);
+    it("secure: the panel manager's ShowUIPanel and HideUIPanel are read too", securePanelCalls);
     it("secure: a function passed to ns.OutOfCombat passes", secureDeferred);
     it("secure: a function named under ns.OutOfCombat passes, and one it calls", secureDeferredByName);
     it("secure: a combat check before the call passes, after it does not", secureChecked);

@@ -16,6 +16,35 @@ ns.WHATS_NEW = {
       { text = "The keystone: the crest on a rail between your frame and your target's, swords in a fight.", page = "unitframes", row = "Show the keystone" },
     } },
   } },
+  { version = "0.9.4", groups = {
+    { module = "Other", label = "Setup and options", items = {
+      { text = "Setup walks you through Vanguard's recommended settings, each step under a painting.", page = "general", row = "Run setup" },
+      { text = "New setup steps: Comfort, Game settings, Helpers and Combat, then All set, which lists what changed and has Undo setup." },
+      { text = "A run again starts on what you have now, with Use recommended on each step, so Next through to Done changes nothing." },
+      { text = "Long setting names are short, with the old sentence as the row's tip; options search still finds it." },
+      { text = "Buttons for what used to be typed: the session's fights, the sell list, the craft queue, spell ranks and the perk plan." },
+      { text = "The Chat and Situations pages get Move frames, and a card you fold stays as you left it for that character." },
+    } },
+    { module = "Quiet", label = "Quiet the game", items = {
+      { text = "Declining duels and invites and hiding the action bar's errors are under Quiet the game now.", page = "windows", row = "Decline duels" },
+      { text = "The choices you had under Auto-accept and Merchant helpers carry over, also from an older profile string." },
+    } },
+    { module = "Other", label = "Speed", items = {
+      { text = "Logging in is quicker: aura icons for raid tiles and nameplates are made when first needed, not all at login." },
+      { text = "Raid frames, nameplates, the group threat panel, the cooldown glow and the meter do less work in a fight." },
+    } },
+    { module = "Other", label = "Safety and tools", items = {
+      { text = "The notice that your saved settings didn't load no longer comes back at every login when nothing was lost." },
+      { text = "Keep these settings answers that notice when what loaded is right." },
+      { text = "On WoW Forever, nameplates no longer raise an \"aura icon pixels\" error out in the world." },
+      { text = "A part that fails ten times is paused instead of repeating its error; the Feedback page has Resume paused parts." },
+      { text = "A game window a patch has reshaped keeps the game's own look instead of raising errors; /vg errors names it." },
+      { text = "The questions before a sale, a costly buy, Return all or an auction cancel aren't asked in a fight." },
+      { text = "Dragging actions on the bars does nothing in a fight, and works again once it ends." },
+      { text = "Fixed: mail's Take all with full bags, Close this tab on a channel tab, and backups after lost settings." },
+      { text = "Fixed: a big raid moved to the top of the screen, the interrupt mark per stance, and weapon comparisons in Gear upgrades." },
+    } },
+  } },
   { version = "0.9.3", groups = {
     { module = "Other", label = "Safety and tools", items = {
       { text = "A theme change after a dungeon goes through, a flyout placed in a fight raises no error, Pixel-perfect follows the screen, and unlock and Edit Mode keep each other's moves." },

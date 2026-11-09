@@ -11,7 +11,10 @@
 // the same steps) then plays a raid's mix of steps (MIX in scripts/lib/bench.mjs):
 // health and power changes, auras gained and lost, casts started and stopped,
 // members leaving and rejoining, and one OnUpdate frame of 1/60 s for about every
-// eight events. It ends with steps that put the raid back as it started, so each
+// eight events. After those come the QUEST_TICK steps, one per 25 seeded steps: one
+// run of each quest ticker (the arrow's pick and redraw, the minimap marks' read and
+// redraw, three watched quests on the map) with the combat flag lifted for the step,
+// since they rest in a fight. It ends with steps that put the raid back as it started, so each
 // repetition starts alike. Each step is one call into Lua (no chunk compiled),
 // timed with performance.now(): --warmup untimed repetitions, then --reps timed
 // ones; per event the median time per step over the repetitions, its range and

@@ -33,9 +33,9 @@ it("guided setup: the four guided steps come after Look, each with its rows, the
   expect(addon.eval("return { Vanguard_Setup.caption:GetText(), ns.Theme.Settings().hudLook }"), "then the game's settings; the HUD look row switched off left Plain behind").toEqual(["Step 5 of 9 · Game settings", "plain"]);
   expect(rows(addon, "game").map((r) => [r[0], r[2]]), "three game rows, all recommended").toEqual([["plates", true], ["camera", true], ["classNames", true]]);
   setupClick(addon, "next");
-  expect(rows(addon, "helpers"), "a first run starts the helpers on their recommendation: all but quest automation").toEqual([["loot", true, true], ["filter", true, true], ["history", true, true], ["ranks", true, true], ["mail", true, true], ["quests", false, false]]);
+  expect(rows(addon, "helpers"), "a first run starts the helpers on their recommendation: all but the chat filter (A1-4: offered, not recommended) and quest automation").toEqual([["loot", true, true], ["filter", false, false], ["history", true, true], ["ranks", true, true], ["mail", true, true], ["quests", false, false]]);
   setupClick(addon, "next");
-  expect(rows(addon, "combat"), "combat: the manager, the glow, the timers and the two bars on; the threat panel is for tanks; key setup on WoW Forever").toEqual([["manager", true, true], ["glow", true, true], ["timers", true, true], ["threat", false, false], ["bars", true, true], ["keys", true, true]]);
+  expect(rows(addon, "combat"), "combat: the manager, the glow, the timers and the two bars on; the threat panel is for tanks; key setup (WoW Forever) is offered and starts off (A1-4)").toEqual([["manager", true, true], ["glow", true, true], ["timers", true, true], ["threat", false, false], ["bars", true, true], ["keys", false, false]]);
   expect(addon.eval("return { Vanguard_Setup.pages.helpers.use.text:GetText(), Vanguard_Setup.pages.helpers.use:IsShown() }"), "each step has Use recommended").toEqual(["Use recommended", true]);
 });
 it("guided setup: picks apply when a step is left, after the profile backup; nothing is set while the step shows", () => {
@@ -45,18 +45,18 @@ it("guided setup: picks apply when a step is left, after the profile backup; not
   expect(addon.eval("return VanguardDB.profiles['Default backup'] == nil"), "and no backup was made").toBe(true);
   flip(addon, "helpers", 6);
   setupClick(addon, "next");
-  expect(applied(addon).slice(0, 7), "leaving Helpers switches on the five recommended ones and the quest automation picked").toEqual([true, true, true, true, true, true, true]);
+  expect(applied(addon).slice(0, 7), "leaving Helpers switches on the four recommended ones (five settings) and the quest automation picked; the chat filter stays off").toEqual([true, false, true, true, true, true, true]);
   expect(chatHas(addon, /Profile Default as it was before setup is saved as profile Default backup/), "the profile was backed up first").toBe(true);
   setupClick(addon, "next");
   expect(applied(addon).slice(7), "leaving Combat: the manager, the glow, the timers and bars 4 and 5, not the threat panel").toEqual([true, true, true, false, true, true]);
   expect(addon.eval("return Vanguard_Setup.caption:GetText()"), "Move things follows").toBe("Step 8 of 9 · Move things");
   setupClick(addon, "next");
   const [lines, undo] = allSet(addon);
-  expect(lines, "All set lists every change, with On or Off").toEqual(["All set. Done closes setup. This run changed:", "Faster auto-loot: On", "Filter chat: gold selling, boosting, recruiting, repeats: On",
+  expect(lines, "All set lists every change, with On or Off").toEqual(["All set. Done closes setup. This run changed:", "Faster auto-loot: On",
     "Keep chat history across reloads: On", "Spell ranks: notice older ranks, remember trainers: On", "Inbox search and send-to-alt presets: On", "Accept and turn in quests (hold Shift to skip): On",
     "Show the game's Cooldown Manager: On", "Glow a buff near its end: On", "Timer numbers on target and focus auras: On", "Two more bars at the right edge (bars 4 and 5): On"]);
   expect(undo, "and offers Undo setup").toBe(true);
-  expect(addon.eval("local p = Vanguard_Setup.pages.done return p.undo:GetTop() < p.lines[10]:GetBottom() and p.undo:GetBottom() >= p:GetBottom() - 0.01"), "Undo setup sits under the last line, inside the page").toBe(true);
+  expect(addon.eval("local p = Vanguard_Setup.pages.done return p.undo:GetTop() < p.lines[9]:GetBottom() and p.undo:GetBottom() >= p:GetBottom() - 0.01"), "Undo setup sits under the last line, inside the page").toBe(true);
 });
 it("guided setup: Undo setup asks, then puts every row and the profile back and ends setup with a reload offer", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
@@ -126,9 +126,9 @@ it("guided setup: a run again starts every row on what is set, so Next through t
   nexts(addon, 5);
   flip(addon, "helpers", 6);
   addon.eval("local b = Vanguard_Setup.pages.helpers.use b:GetScript('OnClick')(b)");
-  expect(rows(addon, "helpers").map((r) => r[1]), "Use recommended turns the recommended rows on and leaves the quest automation as picked").toEqual([true, true, true, true, true, true]);
+  expect(rows(addon, "helpers").map((r) => r[1]), "Use recommended turns the recommended rows on and leaves the offered ones as picked: quest automation on, the chat filter off").toEqual([true, false, true, true, true, true]);
   setupClick(addon, "next");
-  expect(applied(addon).slice(0, 7), "leaving applies them").toEqual([true, true, true, true, true, true, true]);
+  expect(applied(addon).slice(0, 7), "leaving applies them").toEqual([true, false, true, true, true, true, true]);
 });
 it("guided setup on Retail: the WoW Forever rows (spell ranks, key setup) aren't built, and the rest stand", () => {
   const addon = loggedIn("", { firstRun: true, client: RETAIL_CLIENT });
@@ -138,15 +138,35 @@ it("guided setup on Retail: the WoW Forever rows (spell ranks, key setup) aren't
   expect(rows(addon, "combat").map((r) => r[0]), "five combat rows").toEqual(["manager", "glow", "timers", "threat", "bars"]);
   expect(addon.eval("local p = Vanguard_Setup.pages.combat return p.use:GetTop() < p.rows[5]:GetBottom()"), "Use recommended sits under the last row built").toBe(true);
 });
-it("guided setup: key setup's next-login note is the Combat step's last row on WoW Forever; off, setup leaves no note", () => {
+it("A1-4 guided setup: key setup's next-login note is the Combat step's last row on WoW Forever, off unless you tick it", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
-  nexts(addon, 6);
-  flip(addon, "combat", 6);
-  nexts(addon, 3);
-  expect(addon.eval("return VanguardCharDB.keysOffer"), "turned off, Done leaves key setup's note off").toBe(false);
-  const kept = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
-  nexts(kept, 9);
-  expect(kept.eval("return VanguardCharDB.keysOffer"), "left on, Done leaves the note for the next login").toBe(true);
+  nexts(addon, 9);
+  expect(addon.eval("return VanguardCharDB.keysOffer == nil"), "Next through a first run: Done leaves no note for key setup").toBe(true);
+  const ticked = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  nexts(ticked, 6);
+  flip(ticked, "combat", 6);
+  ticked.eval("local b = Vanguard_Setup.pages.combat.use b:GetScript('OnClick')(b)");
+  expect(rows(ticked, "combat")[5], "ticked, and Use recommended leaves an offered row as picked").toEqual(["keys", true, false]);
+  nexts(ticked, 3);
+  expect(ticked.eval("return VanguardCharDB.keysOffer"), "ticked, Done leaves the note for the next login").toBe(true);
+  const again = loggedIn(UNITS_ENV + RAID_ENV);
+  again.eval("VanguardCharDB.keysOffer = true");
+  again.slash("setup");
+  nexts(again, 6);
+  expect(rows(again, "combat")[5][1], "a run again shows a note still waiting as on").toBe(true);
+  flip(again, "combat", 6);
+  nexts(again, 3);
+  expect(again.eval("return VanguardCharDB.keysOffer"), "switched off, leaving the step takes the note away").toBe(false);
+});
+it("A1-4 guided setup: on a first run the chat filter is offered, not switched on, and All set does not list it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  nexts(addon, 8);
+  expect([addon.eval("return ns.Settings('ChatFilter').on"), allSet(addon)[0].some((line) => /Filter chat/.test(line))], "Next through every step: the filter is still off and not among the changes").toEqual([false, false]);
+  const picked = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  nexts(picked, 5);
+  flip(picked, "helpers", 2);
+  setupClick(picked, "next");
+  expect(picked.eval("return ns.Settings('ChatFilter').on"), "ticked by the player, leaving the step switches it on").toBe(true);
 });
 it("guided setup: All set names a screen preset, Pixel-perfect or Fit, and the look, after the layout", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
@@ -171,4 +191,25 @@ it("guided setup: All set names a screen preset, Pixel-perfect or Fit, and the l
   dropped.eval('__click("Centered: tanking") table.remove(ns.Setup.LAYOUTS, 2)');
   nexts(dropped, 8);
   expect(allSet(dropped)[0][1], "a layout the list no longer has is named by its key").toBe("Layout: tank");
+});
+it("guided setup: a game row switched off again gets the value the game counts as off, not a plain false", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  nexts(addon, 4);
+  addon.eval("local b = Vanguard_Setup.pages.game.use b:GetScript('OnClick')(b)");
+  setupClick(addon, "next");
+  // The furthest-zoom setting and the game's class-coloured names setting, as they stand now.
+  const game = () => addon.eval("return { ns.Settings('Quiet').camera, GetCVar('chatClassColorOverride') }");
+  expect(game(), "Use recommended and Next switch both on").toEqual([2.6, "0"]);
+  setupClick(addon, "back");
+  flip(addon, "game", 2);
+  flip(addon, "game", 3);
+  setupClick(addon, "next");
+  expect(game(), "picked off and left again: the camera's 0 and the game's own value for names").toEqual([0, "2"]);
+});
+it("guided setup: All set names a picked layout by its key when the list holds no name for it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Like the game\'s")');
+  addon.eval("for _, l in ipairs(ns.Setup.LAYOUTS) do if l.key == 'classic' then l.key = 'TEST-ONLY gone' end end");
+  nexts(addon, 8);
+  expect(allSet(addon)[0][1], "the key stands in for the missing name").toBe("Layout: classic");
 });

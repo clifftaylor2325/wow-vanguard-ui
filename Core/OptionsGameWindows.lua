@@ -102,18 +102,40 @@ local function vendorRows()
   }
 end
 
+-- Tooltips on units: the border, who a unit targets, and what a player's tooltip adds. The card shows the first
+-- three; the rest fold under More settings, as do the last item rows (the card would open on fourteen rows).
+local function tooltipUnitRows()
+  return {
+    O.Essential(check(L["Border in the unit's class color"], setting("Tooltips", "classBorder"))),
+    O.Essential(check(L["Show who the unit is targeting"], setting("Tooltips", "targetLine"))),
+    O.Essential(check(L["Guild and rank"], setting("Tooltips", "guild"))),
+    check(L["Realm, for players of another realm"], setting("Tooltips", "realm")),
+    check(L["Group role"], setting("Tooltips", "role")),
+    check(L["Your own item level"], setting("Tooltips", "itemLevel")),
+    O.Essential(check(L["Hide unit tooltips in combat"], setting("Tooltips", "hideInCombat"))),
+  }
+end
+
+-- Tooltips on items: the sell price, how many you have (and your other characters), IDs (spell and aura IDs go
+-- with the same switch), and where an item is sold.
+local function tooltipItemRows()
+  local rows = {
+    O.Essential(check(L["Item sell price"], setting("Tooltips", "sellPrice"))),
+    O.Essential(check(L["How many of an item you have"], setting("Tooltips", "itemCount"))),
+    O.Essential(check(L["Counts on your other characters"], setting("Inventory", "alts"))),
+    check(L["IDs on item, spell and aura tooltips"], setting("Tooltips", "ids")),
+  }
+  for _, row in ipairs(vendorRows()) do rows[#rows + 1] = O.Essential(row) end
+  return rows
+end
+
 -- Tooltips: where they sit and what they add.
 local function tooltipRows()
-  return append({
+  local rows = {
     { "header", L["Tooltips"] },
-    { "cycle", L["Tooltip position"], { { "corner", L["corner (movable)"] }, { "cursor", L["at the cursor"] }, { "default", L["client default"] } }, setting("Tooltips", "anchor") },
-    check(L["Border in the unit's class color"], setting("Tooltips", "classBorder")),
-    check(L["Show who the unit is targeting"], setting("Tooltips", "targetLine")),
-    check(L["Item sell price"], setting("Tooltips", "sellPrice")),
-    check(L["How many of an item you have"], setting("Tooltips", "itemCount")), check(L["Item IDs"], setting("Tooltips", "itemID")),
-    check(L["Counts on your other characters"], setting("Inventory", "alts")),
-    check(L["Hide unit tooltips in combat"], setting("Tooltips", "hideInCombat")),
-  }, vendorRows())
+    O.Essential({ "cycle", L["Tooltip position"], { { "corner", L["corner (movable)"] }, { "cursor", L["at the cursor"] }, { "default", L["client default"] } }, setting("Tooltips", "anchor") }),
+  }
+  return append(append(rows, tooltipUnitRows()), tooltipItemRows())
 end
 
 -- Your characters: level, money, rested XP and time played of each one remembered here (Modules/Inventory.lua).

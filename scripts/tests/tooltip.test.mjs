@@ -1,14 +1,14 @@
 // tooltip: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { UNITS_ENV, calls, expectErrors, isTok, loggedIn, tooltip } from "./helpers.mjs";
+import { CLICK_LUA, UNITS_ENV, calls, expectErrors, isTok, loggedIn, tooltip } from "./helpers.mjs";
 
 // TEST-ONLY tooltip: GameTooltip as a plain frame with the tooltip calls the module uses.
 const TOOLTIP_ENV = `
   __hooks, __post, __pre = {}, {}, {}
   hooksecurefunc = function(name, fn) __hooks[name] = fn end
   GameTooltip_SetDefaultAnchor = function() end
-  Enum = Enum or {} Enum.TooltipDataType = { Item = 0, Unit = 2 }
+  Enum = Enum or {} Enum.TooltipDataType = { Item = 0, Spell = 1, Unit = 2, UnitAura = 7 }
   TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end, AddTooltipPreCall = function(kind, fn) __pre[kind] = fn end }
   local tt = CreateFrame("Frame", "GameTooltip", UIParent)
   tt.NineSlice = CreateFrame("Frame", nil, tt)
@@ -56,6 +56,19 @@ it("tooltips", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.tooltip") === true, "the tooltip corner is movable").toBeTruthy();
 });
 
+it("tooltips: every unit refresh hands the theme the same border table, refilled with that unit's color", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV);
+  // Every border the tooltip was given while it was shown (the table itself, and its red at that moment).
+  addon.eval(`__borders = {}
+    local set = ns.Theme.SetBorder
+    ns.Theme.SetBorder = function(frame, rgb) if rgb then __borders[#__borders + 1] = { rgb = rgb, r = rgb[1] } end return set(frame, rgb) end`);
+  addon.eval("__showUnit('target') __showUnit('party1') __showUnit('target')");
+  expect(addon.eval("return { #__borders, __borders[1].rgb == __borders[2].rgb, __borders[2].rgb == __borders[3].rgb }"), "three refreshes, one table").toEqual([3, true, true]);
+  expect(addon.eval("return { __borders[1].r == __borders[3].r, __borders[1].r ~= __borders[2].r }"), "holding the hostile color, the rogue's, then the hostile one again").toEqual([true, true]);
+  const edge = addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.__parent == GameTooltip and w.__layer == "BORDER" then return w.__vertexColor end end');
+  expect(isTok(addon, edge, "hostile"), "and the border drawn is the last unit's").toBe(true);
+});
+
 it("tooltips: the default anchor is left to the client when the owner is forbidden or the tooltip's anchoring is restricted", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV);
   // The client's own SetDefaultAnchor just owned the tooltip to `owner` (ANCHOR_NONE); then Vanguard's hook runs.
@@ -73,6 +86,111 @@ it("tooltips: the default anchor is left to the client when the owner is forbidd
   addon.eval('GameTooltip.IsAnchoringRestricted = nil VanguardDB.profiles.Default.Tooltips.anchor = "corner"');
   expect(hooked("UIParent"), "an ordinary owner: the corner, as before").toEqual([true, "ANCHOR_NONE", true]);
   expect(addon.eval("return #ns.errors"), "no error caught").toBe(0);
+});
+
+// TEST-ONLY: the 12.1 client's tooltip data API on the world's GameTooltip (TooltipDataHandler.lua): __showUnit(unit, texts)
+// fills it as the client does (the pre-calls, whose true stops the fill; the client's own lines, readable as its font
+// strings are; the post-calls with the tooltip and its data; then Show) and returns the lines Vanguard added.
+const WORLD_TIP_ENV = `
+  __post, __pre = {}, {}
+  TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end, AddTooltipPreCall = function(kind, fn) __pre[kind] = fn end }
+  local tt = GameTooltip
+  tt.GetUnit = function(self) return "TEST-ONLY", self.__unit end
+  local function clientLines(texts)
+    tt.__lines = {}
+    for i = 1, 8 do
+      _G["GameTooltipTextLeft" .. i] = texts[i] and { GetText = function() return texts[i] end, SetTextColor = function() end } or nil
+      tt.__lines[i] = texts[i] and { text = texts[i] } or nil
+    end
+  end
+  function __showUnit(unit, texts)
+    tt.__unit = unit
+    clientLines(texts or { (UnitName(unit)) })
+    local client, added = #tt.__lines, {}
+    if __pre[2] and __pre[2](tt, { type = 2 }) then return "" end
+    __post[2](tt, { type = 2 })
+    tt:Show()
+    for i = client + 1, #tt.__lines do added[#added + 1] = tt.__lines[i].text end
+    return table.concat(added, " | ")
+  end
+`;
+
+// A player under the mouse: a warrior of another realm, an officer of a guild, the group's tank.
+const ALDRIC = { name: "Aldric", isPlayer: true, class: "WARRIOR", realm: "Emberfall", guild: "Night Watch", guildRank: "Officer", guildRankIndex: 1, role: "TANK" };
+
+it("a player's tooltip adds the guild and rank, the realm and the group role, before the Target line", () => {
+  const addon = loggedIn(WORLD_TIP_ENV);
+  addon.world.setUnit("mouseover", ALDRIC);
+  addon.world.setUnit("mouseovertarget", { name: "TEST-ONLY Boar", reaction: 2 });
+  expect(addon.eval("return __showUnit('mouseover')"), "the three facts, then who the player targets").toBe("Guild: Night Watch (Officer) | Realm: Emberfall | Role: Tank | Target: TEST-ONLY Boar");
+  const colors = addon.eval("local out = {} for i = 2, 4 do local l = GameTooltip.__lines[i] out[#out + 1] = { l.r, l.g, l.b } end return out");
+  expect(colors.every((c) => isTok(addon, c, "text2")), "each in the quiet text color").toBe(true);
+  addon.world.setUnit("mouseover", { role: "HEALER" });
+  expect(addon.eval("return __showUnit('mouseover')"), "a healer").toMatch(/ \| Role: Healer \| /);
+  addon.world.setUnit("mouseover", { role: "DAMAGER" });
+  expect(addon.eval("return __showUnit('mouseover')"), "a damage dealer").toMatch(/ \| Role: DPS \| /);
+  expect(addon.eval("return #ns.errors"), "no error caught").toBe(0);
+});
+
+it("a player's tooltip: no line is repeated where the client's own tooltip already carries the guild or the realm", () => {
+  const addon = loggedIn(WORLD_TIP_ENV);
+  addon.world.setUnit("mouseover", ALDRIC);
+  expect(addon.eval("return __showUnit('mouseover', { 'Aldric-Emberfall', 'Night Watch', 'Level 60 Human Warrior' })"), "the client names both: only the rank and the role are new").toBe("Guild rank: Officer | Role: Tank");
+  addon.world.setUnit("mouseover", { guildRank: "" });
+  expect(addon.eval("return __showUnit('mouseover', { 'Aldric', 'Night Watch' })"), "a guild the client names, with no rank to add: no guild line").toBe("Realm: Emberfall | Role: Tank");
+  expect(addon.eval("return __showUnit('mouseover')"), "a guild the client leaves out, with no rank: the guild alone").toBe("Guild: Night Watch | Realm: Emberfall | Role: Tank");
+  expect(addon.eval("return __showUnit('mouseover', { 'Aldric', __wfgWorld.secret('Night Watch') })"), "a hidden line of the client's never counts as naming it").toMatch(/^Guild: Night Watch \| /);
+});
+
+it("a player's tooltip: nothing is added for a player with no guild, realm or role, for a creature, or from hidden values", () => {
+  const addon = loggedIn(WORLD_TIP_ENV);
+  addon.world.setUnit("mouseover", { name: "Brenna", isPlayer: true, class: "PRIEST", role: "NONE" });
+  expect(addon.eval("return __showUnit('mouseover')"), "a guildless player of your realm outside a group").toBe("");
+  addon.world.setUnit("mouseover", { realm: "" });
+  expect(addon.eval("return __showUnit('mouseover')"), "an empty realm is your own").toBe("");
+  addon.world.setUnit("target", { ...ALDRIC, name: "TEST-ONLY Guard", isPlayer: false });
+  expect(addon.eval("return __showUnit('target')"), "a creature, whatever the client would answer for it").toBe("");
+  addon.world.setUnit("mouseover", { ...ALDRIC, guildRank: null });
+  addon.eval(`local u, secret = __wfgWorld.units.mouseover, __wfgWorld.secret
+    u.guild, u.guildRank, u.realm, u.role = secret("Night Watch"), secret("Officer"), secret("Emberfall"), secret("TANK")`);
+  expect(addon.eval("return __showUnit('mouseover')"), "a hidden guild, realm and role: no lines").toBe("");
+  addon.eval("__wfgWorld.units.mouseover.guild = 'Night Watch'");
+  expect(addon.eval("return __showUnit('mouseover')"), "a plain guild with a hidden rank: the guild alone").toBe("Guild: Night Watch");
+  addon.eval("__wfgWorld.units.mouseover.isPlayer = __wfgWorld.secret(true)");
+  expect(addon.eval("return __showUnit('mouseover')"), "a unit the client won't say is a player gets none").toBe("");
+  addon.eval("__wfgWorld.units.mouseover.isPlayer = true GetGuildInfo, UnitGroupRolesAssigned = nil, nil");
+  expect(addon.eval("return __showUnit('mouseover')"), "a client without the guild and role calls: no lines, no error").toBe("");
+  expect(addon.eval("return #ns.errors"), "no error caught").toBe(0);
+});
+
+it("a player's tooltip: the Guild and rank, Realm and Group role switches on the Game windows page apply at once", () => {
+  const addon = loggedIn(CLICK_LUA + WORLD_TIP_ENV);
+  addon.world.setUnit("mouseover", ALDRIC);
+  addon.eval('ns.Options.Show("windows")');
+  expect(addon.eval('return { __click("Guild and rank"), __showUnit("mouseover") }'), "the guild switch off").toEqual([true, "Realm: Emberfall | Role: Tank"]);
+  expect(addon.eval('return { __click("Realm, for players of another realm"), __showUnit("mouseover") }'), "the realm switch off").toEqual([true, "Role: Tank"]);
+  expect(addon.eval('return { __click("Group role"), __showUnit("mouseover") }'), "the role switch off").toEqual([true, ""]);
+  expect(addon.eval('return { __click("Guild and rank"), __showUnit("mouseover") }'), "and on again, with no reload asked for").toEqual([true, "Guild: Night Watch (Officer)"]);
+  expect(addon.eval("return { Vanguard_Options.reload:IsShown(), #ns.errors }"), "no reload button, no error").toEqual([false, 0]);
+});
+
+it("your own tooltip adds your equipped item level, rounded down; another player's has none", () => {
+  const addon = loggedIn(CLICK_LUA + WORLD_TIP_ENV);
+  addon.eval("__wfgWorld.units.player.itemLevel, __wfgWorld.units.player.itemLevelEquipped = 64, 62.8");
+  expect(addon.eval("return __showUnit('player')"), "after your role, the level the character pane shows").toBe("Role: DPS | Item level 62");
+  addon.world.setUnit("mouseover", ALDRIC);
+  expect(addon.eval("return __showUnit('mouseover')"), "another player: no item level (it would take an inspect request)").not.toMatch(/Item level/);
+  addon.eval('ns.Options.Show("windows")');
+  expect(addon.eval('return { __click("Your own item level"), __showUnit("player") }'), "its switch takes the line off at once").toEqual([true, "Role: DPS"]);
+  expect(addon.eval('return { __click("Your own item level"), __showUnit("player"), Vanguard_Options.reload:IsShown() }'), "and puts it back, with no reload asked for").toEqual([true, "Role: DPS | Item level 62", false]);
+  addon.eval("__wfgWorld.units.player.itemLevelEquipped = __wfgWorld.secret(62)");
+  expect(addon.eval("return __showUnit('player')"), "a hidden level: no line").toBe("Role: DPS");
+  addon.eval("__wfgWorld.units.player.itemLevel, __wfgWorld.units.player.itemLevelEquipped = nil, nil");
+  expect(addon.eval("return __showUnit('player')"), "no level yet (0): no line").toBe("Role: DPS");
+  addon.eval("__wfgWorld.units.player.itemLevelEquipped = 62 local same = UnitIsUnit UnitIsUnit = function() return __wfgWorld.secret(true) end __hidden = __showUnit('player') UnitIsUnit = same");
+  expect(addon.eval("return __hidden"), "a unit the client won't say is you gets none").toBe("Role: DPS");
+  addon.eval("GetAverageItemLevel = nil");
+  expect(addon.eval("return { __showUnit('player'), #ns.errors }"), "a client without the call: no line, no error").toEqual(["Role: DPS", 0]);
 });
 
 // TEST-ONLY items for the sell price: 90001 sells for 25c, 90002 has no value, 90003 isn't cached yet.
@@ -171,10 +289,47 @@ it("item tooltips: how many you have, and the item ID when asked", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + "C_Item.GetItemCount = function(link, bank) if link == 'item:90002' then return 3, 3 end return bank and 12 or 7 end");
   expect(addon.eval('local l = __showItem("item:90002", 1) return l[1].text'), "all in your bags").toBe("You have 3");
   expect(addon.eval('local l = __showItem("item:90001", 1) return { l[2].text, #l }'), "some in the bank; no ID line by default").toEqual(["You have 12 (5 in the bank)", 2]);
-  addon.eval("VanguardDB.profiles.Default.Tooltips.itemID = true VanguardDB.profiles.Default.Tooltips.itemCount = false");
+  addon.eval("VanguardDB.profiles.Default.Tooltips.ids = true VanguardDB.profiles.Default.Tooltips.itemCount = false");
   expect(addon.eval('local l = __showItem("item:90002", 1) return l[#l].text'), "the ID line, when switched on").toBe("Item ID 90002");
-  addon.eval("C_Item.GetItemCount = function() return 0, 0 end VanguardDB.profiles.Default.Tooltips.itemCount = true VanguardDB.profiles.Default.Tooltips.itemID = false");
+  addon.eval("C_Item.GetItemCount = function() return 0, 0 end VanguardDB.profiles.Default.Tooltips.itemCount = true VanguardDB.profiles.Default.Tooltips.ids = false");
   expect(addon.eval('return #__showItem("item:90002", 1)'), "none of it: no count line").toBe(0);
+});
+
+// The lines a spell (kind 1) or aura (kind 7) tooltip ends up with, filled as the client does: its own name line,
+// then the post-call with the tooltip and the tooltip data (`data` is Lua for that table).
+const spellTip = (addon, kind, data) => addon.eval(`local tt = GameTooltip
+  tt.__lines = { { text = "TEST-ONLY spell" } }
+  __post[${kind}](tt, ${data})
+  local out = {} for i, l in ipairs(tt.__lines) do out[i] = l.text end
+  return table.concat(out, " | ")`);
+
+it("spell and aura tooltips show the spell ID with the IDs switch on, which is off by default and applies at once", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
+  expect([spellTip(addon, 1, "{ type = 1, id = 133 }"), spellTip(addon, 7, "{ type = 7, id = 1459 }")], "off by default: the client's lines only").toEqual(["TEST-ONLY spell", "TEST-ONLY spell"]);
+  expect(addon.eval('ns.Options.Show("windows") return __click("IDs on item, spell and aura tooltips")'), "the one switch, on the Game windows page").toBe(true);
+  expect(spellTip(addon, 1, "{ type = 1, id = 133 }"), "a spell's ID").toBe("TEST-ONLY spell | Spell ID 133");
+  expect(spellTip(addon, 7, "{ type = 7, id = 1459 }"), "an aura's (its spell's)").toBe("TEST-ONLY spell | Spell ID 1459");
+  expect(addon.eval("return GameTooltip.__lines[2].r == (ns.Theme.RGB('text2'))"), "in the quiet text color").toBe(true);
+  expect(addon.eval('local l = __showItem("item:90001", 1) return l[#l].text'), "and an item's, from the same switch").toBe("Item ID 90001");
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "no reload asked for").toBe(false);
+  expect([spellTip(addon, 1, "{ type = 1, id = { __secret = true } }"), spellTip(addon, 1, "{ __secret = true }"), spellTip(addon, 1, "nil"), spellTip(addon, 1, "{ type = 1 }")],
+    "a hidden ID, hidden data, no data or no ID: no line").toEqual(["TEST-ONLY spell", "TEST-ONLY spell", "TEST-ONLY spell", "TEST-ONLY spell"]);
+  addon.eval("GameTooltip.IsForbidden = function() return true end");
+  expect(spellTip(addon, 1, "{ type = 1, id = 133 }"), "a tooltip the client keeps from addons is left alone").toBe("TEST-ONLY spell");
+  addon.eval("GameTooltip.IsForbidden = nil __click('IDs on item, spell and aura tooltips')");
+  expect([spellTip(addon, 1, "{ type = 1, id = 133 }"), addon.eval("return #ns.errors")], "switched off again: no line, and no error on the way").toEqual(["TEST-ONLY spell", 0]);
+});
+
+it("a profile saved with the old Item IDs switch keeps it as the one IDs switch; clients without the tooltip data API get no spell hook", () => {
+  const saved = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Tooltips = { itemID = true } } }" });
+  expect(saved.eval("local s = VanguardDB.profiles.Default.Tooltips return { s.ids, s.itemID == nil }"), "itemID = true became ids = true, and the old key is gone").toEqual([true, true]);
+  expect(spellTip(saved, 1, "{ type = 1, id = 133 }"), "so spell IDs show for that player too").toBe("TEST-ONLY spell | Spell ID 133");
+  const fresh = loggedIn(UNITS_ENV + TOOLTIP_ENV);
+  expect(fresh.eval("local s = VanguardDB.profiles.Default.Tooltips return { s.ids, s.itemID == nil }"), "a new profile: off, with no old key").toEqual([false, true]);
+  const old = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace("TooltipDataProcessor =", "__noProcessor =") + OLD_TOOLTIP_SCRIPT);
+  expect(old.eval("return { __post[1] == nil, __post[7] == nil, #ns.errors }"), "an older client: no spell or aura post-call, and no error").toEqual([true, true, 0]);
+  const noAura = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace(", UnitAura = 7", ""));
+  expect(noAura.eval("return { __post[1] ~= nil, __post[7] == nil, #ns.errors }"), "a client whose data API has no aura kind: spells only").toEqual([true, true, 0]);
 });
 
 // TEST-ONLY: the client's other tooltips (GameTooltipTemplate / TooltipBackdropTemplate frames with a
