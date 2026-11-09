@@ -1,7 +1,8 @@
 // The in-game results ledger, docs/smoke-results.json: what Cliff has seen pass or fail in the game,
 // one entry per SMOKE-TEST.md step and build. The checks here are pure; scripts/smoke-results.test.mjs
 // runs them on the committed file, and scripts/release-local.mjs refuses a version whose own steps
-// (the ones its changelog section names) have no entry for that build.
+// (the ones its changelog section names) have no entry for that build, and a major version (1.0.0)
+// whose core path (SMOKE-TEST.md, "Core path") has a step without a pass for that build.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -64,4 +65,24 @@ export function namedSteps(section, steps) {
 export function unrecordedSteps(entries, section, version, steps) {
   const seen = new Set(entries.filter((e) => e.build === version).map((e) => e.step));
   return namedSteps(section, steps).filter((id) => !seen.has(id));
+}
+
+// The step ids the "## Core path" section of SMOKE-TEST.md lists ("- `1.3` Status"), in its order.
+export function coreSteps(md) {
+  const start = md.indexOf("\n## Core path");
+  if (start < 0) return [];
+  const rest = md.slice(start + 1);
+  const end = rest.indexOf("\n## ");
+  const section = end < 0 ? rest : rest.slice(0, end);
+  return [...section.matchAll(/^- `(\d+(?:\.\d+)*[a-z]?)` /gm)].map((m) => m[1]);
+}
+
+// Whether a version is a major release (1.0.0, 2.0.0), the ones the core path gates.
+export const isMajor = (version) => /^[1-9]\d*\.0\.0$/.test(version ?? "");
+
+// The core steps with no pass for a version: every core step for a major release, none for any other.
+export function unpassedCore(entries, core, version) {
+  if (!isMajor(version)) return [];
+  const passed = new Set(entries.filter((e) => e.build === version && e.result === "pass").map((e) => e.step));
+  return core.filter((id) => !passed.has(id));
 }

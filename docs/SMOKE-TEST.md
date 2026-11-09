@@ -67,6 +67,100 @@ If time is short, do these first and stop after any step that throws a Lua error
 5. Everything else, in section order.
 6. On Retail: 34.1 first (a login error stops the run), then 34.6 and 34.14 (a key and a raid pull), then the rest of 34.
 
+## Core path (the 1.0 gate)
+
+The steps every player meets, picked by how many players hit them rather than by area: what 1.0.0 promises was seen working. A major release (1.0.0, 2.0.0) refuses to publish until every step below has a `pass` for that version in [smoke-results.json](smoke-results.json) (`scripts/release-local.mjs`); `fail`, `partial` and `skip` all block. A step that can't pass for a good reason leaves this list in a commit that says why, and goes under Known issues in README.md. Other releases name their own steps in their changelog section, as before.
+
+Run the sessions in order; within a session, top to bottom. Each line is a step below in this file, with its full Do and Expect. End every session with `/vg errors` and `/vg report`: an error there counts against every step of that session.
+
+**Session 1: setup, options, moving frames and profiles (solo, in a town, about 45 minutes)**
+
+- `1.2b` What's new after an update
+- `1.3` Status
+- `1.4` No errors yet
+- `1.5` Memory over a minute
+- `1.5a` Frame rate check
+- `2.1` Every options page
+- `2.1f` The options window's height, search and changed dots
+- `2.1h` The fold on Raid frames
+- `2.1d` Escape closes Vanguard's panels
+- `2.2` The wizard, start to finish
+- `2.2a` The role layouts look different
+- `3.1` Unlock
+- `3.2` Drag two frames and keep them
+- `3.3` Combat while unlocked
+- `3.4` Edit Mode
+- `3.5` Reset
+- `3.7` Exit without saving
+- `4.1` Switch profile
+- `4.3` Export
+- `4.2` Import garbage
+- `4.8` Reset asks first and keeps a copy
+- `12.1` The Vanguard button
+- `12.2` The game's own buttons still work
+- `13.2` Every button works
+- `4.7` Lost settings come back
+
+**Session 2: questing and fighting (solo, open world, about 45 minutes)**
+
+- `7.1` Target and focus auras
+- `7.2` Cast bars
+- `7.2i` Unit frames act like the game's: tooltips, tapped grey, Ghost, raid marks, quiet threat
+- `7.3` Nameplates in a pull
+- `7.3b` Your debuffs on a plate drawn mid-fight
+- `7.5` Enemy nameplates (#377)
+- `33.390` Nameplate aura icons in the open world (Forever)
+- `8.1` Quest dialog
+- `8.3` Quest log
+- `8.4` Quest tracker overflow
+- `8.4a` Quest arrow
+- `8.5` Levelling helpers
+- `33.387` Quest item buttons in a fight (Forever)
+- `10.3` Bar 1 pages with stances and forms
+- `33.346` No empty stance boxes for a class with no forms (both)
+- `10.4` Keybind mode on the action bars
+- `9.1` Bag search
+- `9.2` Merchant repair and sell
+- `9.2a` Sell list, sell all and bulk buy
+- `9.3` Trainer: Train all
+- `15.6c` Chat windows
+- `15.6e` Chat tabs
+- `33.386` Close this tab gives the tab's chat back to General (Forever)
+
+**Session 3: town services, click casting and the game's windows (solo, about 40 minutes)**
+
+- `9.4` Lists and Posting tabs at the auction house
+- `9.4a` Typing a price on the Posting tab
+- `9.4b` The scan countdown, a refused scan, and deals kept through the mailbox
+- `14.14.2` Mail window
+- `2.3` The healing layout
+- `6.4` Preview the party and raid frames alone
+- `10.1` Make a binding
+- `10.2` Use it
+- `10.1h` Starter layouts on a low-level character, Undo and the better spells
+- `14.1` Switches
+- `14.4.2` Edit Mode
+- `14.8.3` Inside the character pane
+- `14.14.3` Quest and gossip windows
+- `14.14.7` Spellbook and talents
+- `14.10` Moving game windows
+- `22.1` Bar notice and swap
+- `18.1` Other addons
+- `18.4b` With OpenMap installed
+
+**Dungeon: one five-player run with party frames and nameplates on**
+
+- `6.1` Party frames (if you can)
+- `6.2b` Raid tiles in a fight: missing health, the tooltip, summons
+- `33.344` Theme change with closed plate auras in a dungeon (Forever)
+- `7.4` Nameplates in a crowd
+- `7.6` Fight recap
+- `28.1b` The glow in a dungeon fight
+- `24.1` The dungeon card on the Instance prep checklist
+- `15.6d` Chat while the game hides it (instanced fights)
+
+After the first raid night, steps 6.2, 6.2a and 6.3 (raid frames, raid indicators and main tank tiles in a raid) join this list. Until then they are not part of the gate, so 1.0.0 can ship before Forever's raids open; the release after that raid night records them.
+
 ## Report block
 
 For every failed step, paste all of this (steps below say "If it fails, paste:" for anything extra):
