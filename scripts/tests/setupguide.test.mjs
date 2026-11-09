@@ -166,3 +166,24 @@ it("guided setup: All set names a screen preset, Pixel-perfect or Fit, and the l
   nexts(preset, 7);
   expect(allSet(preset)[0][1], "a preset by its name").toBe("Screen: 1440p");
 });
+it("guided setup: a game row switched off again gets the value the game counts as off, not a plain false", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { firstRun: true });
+  nexts(addon, 4);
+  addon.eval("local b = Vanguard_Setup.pages.game.use b:GetScript('OnClick')(b)");
+  setupClick(addon, "next");
+  // The furthest-zoom setting and the game's class-coloured names setting, as they stand now.
+  const game = () => addon.eval("return { ns.Settings('Quiet').camera, GetCVar('chatClassColorOverride') }");
+  expect(game(), "Use recommended and Next switch both on").toEqual([2.6, "0"]);
+  setupClick(addon, "back");
+  flip(addon, "game", 2);
+  flip(addon, "game", 3);
+  setupClick(addon, "next");
+  expect(game(), "picked off and left again: the camera's 0 and the game's own value for names").toEqual([0, "2"]);
+});
+it("guided setup: All set names a picked layout by its key when the list holds no name for it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Like the game\'s")');
+  addon.eval("for _, l in ipairs(ns.Setup.LAYOUTS) do if l.key == 'classic' then l.key = 'TEST-ONLY gone' end end");
+  nexts(addon, 8);
+  expect(allSet(addon)[0][1], "the key stands in for the missing name").toBe("Layout: classic");
+});
