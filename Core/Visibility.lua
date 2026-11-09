@@ -248,13 +248,18 @@ function V.ApplyNow(frame, mode, when)
   settle(frame)
 end
 
--- As V.ApplyNow, and also registers the frame's "visibility" driver (secure: out of combat only), which the
--- client uses to show and hide a protected frame such as the menu strip.
-function V.ApplySecureNow(frame, mode, when)
+-- Registers the frame's "visibility" driver and its state for a setting, and repaints it.
+local function applySecure(frame, mode, when)
   local state = noteMode(frame, mode, when)
   RegisterStateDriver(frame, "visibility", V.Driver(state))
   V.ApplyState(frame, state)
   settle(frame)
+end
+
+-- As V.ApplyNow, and also registers the frame's "visibility" driver, which the client uses to show and hide a
+-- protected frame such as the menu strip. Secure: in a fight it waits for the fight to end (one per frame).
+function V.ApplySecureNow(frame, mode, when)
+  ns.OutOfCombat(function() applySecure(frame, mode, when) end, frame)
 end
 
 -- Registers a state string as the frame's "vgvis" driver (out of combat only); the caller repaints (V.Refresh).

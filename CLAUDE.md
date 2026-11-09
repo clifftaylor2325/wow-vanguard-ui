@@ -30,7 +30,7 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 ## Hard rules (CI enforces these)
 
 - **Functions:** every function has a comment on the line directly above it, and its body is at most 10 lines of code. Nested functions count toward the parent. Checked by `scripts/lib/code-quality.mjs`.
-- **Top-level locals:** a Lua file's main chunk holds at most 200 active locals, and past that the whole addon fails to load. The scanner fails a Core/ or Modules/ file above 185. Group the locals of one feature in a `do ... end` block (predeclare the few the rest of the file uses) or keep them on a table.
+- **Top-level locals:** a Lua file's main chunk holds at most 200 active locals, and past that the whole addon fails to load. The scanner fails a Core/ or Modules/ file above 170. Group the locals of one feature in a `do ... end` block (predeclare the few the rest of the file uses) or keep them on a table.
 - **Player text:** goes through the string table, `L["English text"]`, with `ns.Format` for values (`docs/PATTERNS.md`). The `unwrapped-text` count in `scripts/code-quality-baseline.json` only goes down. `Locales/` is written by `scripts/i18n.mjs import`, never by hand.
 - **Text fits:** `scripts/tests/textfit.test.mjs` fails on text cut short, running out of its frame or drawn over other text or a control, with every string a third longer as a translation might be. Leave the room or fit the label (`T.FitText`); `scripts/tests/textfit-baseline.json` lists the old overflows and only shrinks.
 - **Colours and font sizes:** only in `Core/Theme.lua`. Elsewhere use `T.RGB`, `T.Color`, `T.Text` or theme tokens.

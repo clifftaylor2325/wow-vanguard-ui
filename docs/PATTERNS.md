@@ -79,7 +79,7 @@ end
 
 `ns.PlainNumber` returns the number or nil, never a secret; compare only after it. `ns.PlainText` and `ns.PlainTable` do the same for a non-empty string and a table (an info table the client may hide whole). `ns.IsTrue(v)` is true only for a plain `true` (a hidden value counts as no), so `ns.IsTrue(C_QuestLog.IsComplete(id))` is safe to test. For any other boolean or a string, `ns.IsSecret` first. A secret may be handed to a widget (`bar:SetValue(v)`), not computed with. Unknown is never "readable": a call that errors counts as hidden.
 
-Truthiness is a test too: `if v then`, `not v`, `a or b` and `a and b or nil` all test `v`, and the client raises an error when addon code tests a secret that way, so none of them is safe on a value that may be secret. Read the call into a local, check `ns.IsSecret` (or `ns.IsTrue`, `flag`) first, and only then test or default it; `type(fn) == "function" and fn(unit)` is fine because the test is on `type(...)`, not on the result. Pass the raw value to a widget. The harness cannot catch this (a harness secret is a table, always truthy, and Lua has no `__bool`), so review for it by eye: grep for `or nil`, `or "` and `and ... or` on the direct result of a `Unit*` call.
+Truthiness is a test too: `if v then`, `not v`, `a or b` and `a and b or nil` all test `v`, and the client raises an error when addon code tests a secret that way, so none of them is safe on a value that may be secret. Read the call into a local, check `ns.IsSecret` (or `ns.IsTrue`, `flag`) first, and only then test or default it; `type(fn) == "function" and fn(unit)` is fine because the test is on `type(...)`, not on the result. Pass the raw value to a widget. The harness cannot catch this (a harness secret is a table, always truthy, and Lua has no `__bool`), so the scan does what it can: `secret-truth-test` counts a `Unit*`, `C_UnitAuras.*` or `GetAction*` call tested for truth, and `pcall-result-or` counts `ok and value or fallback` right after a pcall (both ratchets in `scripts/code-quality-baseline.json`). Review the rest by eye: grep for `or nil`, `or "` and `and ... or` on the direct result of a `Unit*` call. A secret keeps its type, so `type(v) == "number"` is no guard: read it through `ns.PlainNumber`.
 
 ## Work that must wait for combat to end
 
@@ -94,6 +94,17 @@ ns.On("PLAYER_REGEN_DISABLED", function() ns.AfterCombat(AB.HideHandles, "hide h
 ```
 
 The key makes repeated calls collapse into one. Anything that calls `Show`, `Hide`, `SetPoint`, `SetSize` or `SetAttribute` on a protected frame goes through this; the harness blocks the call in combat and fails the test.
+
+## A move that can't be undone
+
+```lua
+-- Sells the shown rows after a question; a Yes given after the merchant closed sells nothing.
+ns.Irreversible({ question = MC.SellQuestion(rows), yes = L["Sell"], still = trading,
+  gone = function() ns.Chat(L["Nothing sold: the merchant is closed."]) end,
+  act = function() MC.SellRows(stillShown(rows), MC.RETRIES) end })
+```
+
+Gold spent, items sold, mail returned, an auction cancelled: one path (`Core/Dialog.lua`). It is refused in a fight, asks a danger question (Enter alone never answers it), and on Yes reads the target again (`still`) before `act` runs. A scenario checks what moved with `world.get("moves")` (scripts/tests/README.md).
 
 ## Events and timers
 
