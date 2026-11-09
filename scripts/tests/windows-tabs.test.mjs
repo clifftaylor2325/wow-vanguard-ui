@@ -688,7 +688,7 @@ it("scroll bars: only on registered windows whose groups are on; a bar that isn'
 
 it("tabs and the window's padding: a tab set outside the window moves out to the panel's edge, once", () => {
   const addon = loggedIn(WINDOWS_ENV + SIDE_ENV + `
-    __window("CommunitiesFrame") CommunitiesFrame:SetSize(400, 300) CommunitiesFrame:SetPoint("CENTER")
+    __window("CommunitiesFrame") __needs("CommunitiesFrame") CommunitiesFrame:SetSize(400, 300) CommunitiesFrame:SetPoint("CENTER")
     local chat = __right(CommunitiesFrame, "ChatTab", true) chat:SetSize(32, 32) chat:SetPoint("TOPLEFT", CommunitiesFrame, "TOPRIGHT", 2, -40)
     local roster = __right(CommunitiesFrame, "RosterTab") roster:SetSize(32, 32) roster:SetPoint("TOP", chat, "BOTTOM", 0, -8)
     __window("TestOnlyBottom") TestOnlyBottom:SetSize(300, 200) TestOnlyBottom:SetPoint("CENTER")

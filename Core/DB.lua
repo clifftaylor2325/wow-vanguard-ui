@@ -105,7 +105,27 @@ local function startOnLastUsedProfile()
   VanguardCharDB.profile = lastUsedProfile(chars) or DEFAULT_PROFILE
 end
 
--- Creates or repairs the saved tables, and upgrades an older account file.
+-- Whole-profile upgrades (ns.MigrateProfile), in the order registered.
+local profileMigrations = {}
+
+-- Registers fn(profile) to upgrade a whole profile as older versions saved (or exported) it: for a setting that
+-- moved from one module's table to another's, which a table's own upgrade (ns.Migrate) cannot see. It runs on every
+-- saved profile as the account file loads, and on an imported string's settings before they are saved, each time, so
+-- it must leave an upgraded profile as it is (and skip tables that are not there).
+---@param fn fun(profile: table)
+function ns.MigrateProfile(fn)
+  profileMigrations[#profileMigrations + 1] = fn
+end
+
+-- Runs every whole-profile upgrade on a profile, or on a payload of tables by name; returns it.
+---@param profile table
+---@return table profile
+function ns.MigrateProfileTable(profile)
+  for _, fn in ipairs(profileMigrations) do fn(profile) end
+  return profile
+end
+
+-- Creates or repairs the saved tables, and upgrades an older account file and its profiles.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
   local from = savedVersion()
@@ -114,6 +134,7 @@ local function initDB()
   dropBrokenProfiles(VanguardDB.profiles)
   VanguardDB.version = from or DB_VERSION
   if from and from < DB_VERSION then ns.MigrateDB(from, DB_VERSION) end
+  for _, profile in pairs(VanguardDB.profiles) do ns.MigrateProfileTable(profile) end
   VanguardCharDB = fill(type(VanguardCharDB) == "table" and VanguardCharDB or {}, { profile = DEFAULT_PROFILE })
   startOnLastUsedProfile()
   chooseProfile()

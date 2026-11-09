@@ -1,5 +1,5 @@
 // guideprobe: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
-// Modules/GuideData.lua: /vg guide probe, which reports what the client returns for the reads a
+// Modules/Probe.lua: /vg guide probe, which reports what the client returns for the reads a
 // levelling guide would use, in chat only; and the Errands flight poll's secret guard (LG-0).
 
 import { expect, it } from "vitest";

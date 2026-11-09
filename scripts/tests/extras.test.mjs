@@ -673,12 +673,12 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   addon.eval("__allOn = true");
   addon.fire("MERCHANT_SHOW");
   expect(addon.eval("return __all"), "the client's own one-step sale where it has one").toBe(true);
-  const off = loggedIn(MERCHANT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Merchant = { repair = false, junk = false, errors = false } } }" });
+  const off = loggedIn(MERCHANT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Merchant = { repair = false, junk = false }, Quiet = { barErrors = false } } }" });
   off.fire("MERCHANT_SHOW");
   expect(off.eval("return { #__repairs, #__used, UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE') }"), "each part can be turned off").toEqual([0, 0, true]);
   const bare = loggedIn("CanMerchantRepair = nil");
   bare.fire("MERCHANT_SHOW");
-  expect(bare.eval("return #ns.GetModule('Merchant').NoisyTypes()"), "a client without these calls does nothing").toBe(0);
+  expect(bare.eval("return #ns.GetModule('Quiet').NoisyTypes()"), "a client without these calls does nothing").toBe(0);
 });
 it("junk selling stops when the merchant closes or a fight starts: no retry uses a bag item with no merchant open", () => {
   const addon = loggedIn(MERCHANT_ENV + "__sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
@@ -696,7 +696,7 @@ it("junk selling stops when the merchant closes or a fight starts: no retry uses
   addon.eval(`${MC}.SellJunk(3)`);
   expect(addon.eval("return __used"), "nor one in combat").toEqual({});
 });
-it("the error line drops what the action bar already shows, and the rest takes the game's own path", () => {
+it("quiet the game: the error line drops what the action bar already shows, and the rest takes the game's own path", () => {
   const addon = loggedIn(MERCHANT_ENV);
   expect(addon.eval("return UIErrorsFrame:IsEventRegistered('UI_ERROR_MESSAGE')"), "the game's own handler keeps the event").toBe(true);
   addon.fire("UI_ERROR_MESSAGE", 51, "TEST-ONLY not ready");
@@ -708,7 +708,7 @@ it("the error line drops what the action bar already shows, and the rest takes t
   expect(addon.eval("return __sounds"), "and the game's handler still ran for what showed (sounds)").toBe(2);
   expect(addon.eval("return UIErrorsFrame.ShouldDisplayMessageType == __askGame"), "the game's own method is never replaced").toBe(true);
   const none = loggedIn("UIErrorsFrame = nil");
-  expect(none.eval("return ns.GetModule('Merchant').settings.errors"), "no error line on this client: nothing to filter").toBe(true);
+  expect(none.eval("return ns.GetModule('Quiet').settings.barErrors"), "no error line on this client: nothing to filter").toBe(true);
   const old = loggedIn(MERCHANT_ENV + "UIErrorsFrame.SetMessageTypeEnabled = nil");
   old.fire("UI_ERROR_MESSAGE", 51, "TEST-ONLY not ready");
   expect(old.eval("return UIErrorsFrame.__lines"), "an error line without the per-type switch is left alone").toEqual([["TEST-ONLY not ready", 51]]);

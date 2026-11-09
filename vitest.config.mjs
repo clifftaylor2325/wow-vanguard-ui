@@ -32,6 +32,10 @@ const ciReporters = process.env.GITHUB_ACTIONS ? ["github-actions", ["junit", { 
 // a case that fails in some order is fixed at its cause.
 const asked = Number(process.env.VG_SHUFFLE_SEED);
 const shuffleSeed = Number.isSafeInteger(asked) && asked > 0 ? asked : 0;
+// The Retail-only test files. A pull request's suite run sets VG_SKIP_RETAIL and leaves them out
+// (Retail support is new and best effort); the weekly, hand-started and release runs keep them.
+const RETAIL_ONLY = ["scripts/tests/retail*.test.mjs", "scripts/tests/windows-retail.test.mjs"];
+const skipped = process.env.VG_SKIP_RETAIL ? RETAIL_ONLY : [];
 const shuffle = shuffleSeed ? { sequence: { shuffle: { files: true, tests: true }, seed: shuffleSeed } } : {};
 
 export default defineConfig({
@@ -63,7 +67,7 @@ export default defineConfig({
     projects: [
       { extends: true, test: { name: "quick", include: ["scripts/*.test.mjs", "scripts/tests/smoke.test.mjs", "scripts/tests/snapshot.test.mjs"], exclude: [...configDefaults.exclude, "scripts/lua-engine.test.mjs", "scripts/agent-check.test.mjs"] } },
       { extends: true, test: { name: "hooks", include: ["scripts/agent-check.test.mjs"], sequence: { groupOrder: 1 } } },
-      { extends: true, test: { name: "lua", isolate: false, include: ["scripts/tests/*.test.mjs", "scripts/lua-engine.test.mjs"], exclude: [...configDefaults.exclude, "scripts/tests/smoke.test.mjs", "scripts/tests/snapshot.test.mjs"] } },
+      { extends: true, test: { name: "lua", isolate: false, include: ["scripts/tests/*.test.mjs", "scripts/lua-engine.test.mjs"], exclude: [...configDefaults.exclude, "scripts/tests/smoke.test.mjs", "scripts/tests/snapshot.test.mjs", ...skipped] } },
     ],
   },
 });

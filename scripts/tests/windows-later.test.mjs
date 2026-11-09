@@ -154,7 +154,7 @@ it("R2.14 the spellbook and the talents: the windows group off leaves them the g
   const bare = loggedIn(`${WINDOWS_ENV}__window("PlayerSpellsFrame")`);
   bare.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
   bare.eval("PlayerSpellsFrame:Show()");
-  expect([windowState(bare, "PlayerSpellsFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  expect([windowState(bare, "PlayerSpellsFrame").panel, bare.eval("return #ns.errors"), bare.eval("return ns.notes")], "a window without the book's pages keeps the game's look and says so once, under Left off").toEqual([false, 0, ["window PlayerSpellsFrame: skin left off, the game's window has no SpellBookFrame.PagedSpellsFrame"]]);
   const odd = loggedIn(`${SPELLS_ENV} PlayerSpellsFrame.SpellBookFrame.PagedSpellsFrame = 1 PlayerSpellsFrame.SpellBookFrame.SearchBox = {} PlayerSpellsFrame.TalentsFrame.ClassCurrencyDisplay = 1
     PlayerSpellsFrame.TalentsFrame.LoadSystem = {} PlayerSpellsFrame.TalentsFrame.ActiveSpec = 1`);
   odd.fire("ADDON_LOADED", "Blizzard_PlayerSpells");
@@ -1075,9 +1075,9 @@ it("R3.5 the auction house panels: the windows group off leaves them the game's;
   const bare = loggedIn(`${WINDOWS_ENV}__window("AuctionHouseFrame")`);
   bare.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
   bare.eval("AuctionHouseFrame:Show()");
-  expect([windowState(bare, "AuctionHouseFrame").panel, bare.eval("return #ns.errors")], "a bare window is skinned, no part missing is an error").toEqual([true, 0]);
+  expect([windowState(bare, "AuctionHouseFrame").panel, bare.eval("return #ns.errors"), bare.eval("return ns.notes")], "a window without a search bar keeps the game's look and says so once, under Left off").toEqual([false, 0, ["window AuctionHouseFrame: skin left off, the game's window has no SearchBar"]]);
   const odd = loggedIn(`${AH_WINDOW}
-    local f = AuctionHouseFrame f.MoneyFrameBorder.MoneyFrame = 1 f.SearchBar = 1 f.CategoriesList = {} f.BuyDialog = 1 f.ItemSellFrame = 1 f.CommoditiesSellFrame = { GetRegions = 1 }
+    local f = AuctionHouseFrame f.MoneyFrameBorder.MoneyFrame = 1 f.SearchBar = {} f.CategoriesList = {} f.BuyDialog = 1 f.ItemSellFrame = 1 f.CommoditiesSellFrame = { GetRegions = 1 }
     f.CommoditiesBuyFrame.BuyDisplay = { GetRegions = function() end, QuantityInput = 1 } f.ItemBuyFrame.ItemList = {} f.BrowseResultsFrame.ItemList = 1
     f.ItemSellList.HeaderContainer = 1 f.ItemSellList.ScrollBox = {} f.AuctionsFrame.SummaryList = 1 f.AuctionsFrame.AuctionsTab = 1 f.AuctionsFrame.BidFrame = 1
     f.CommoditiesSellList.LoadingSpinner = 1 f.CommoditiesSellList.RefreshFrame = {}`);
