@@ -126,12 +126,22 @@ local function addTarget(tt, unit)
   tt:AddLine(ns.Format(L["Target: {name}"], { name = name }), unitColor(target))
 end
 
+-- The unit color handed to the theme as the border's: one table, filled again on every refresh. Only the default
+-- tooltip is decorated, so nothing else holds it, and the theme reads it at each repaint.
+local borderColor = {}
+
+-- The tooltip's border in a unit's color, with no table made per refresh.
+local function setUnitBorder(tt, r, g, b)
+  borderColor[1], borderColor[2], borderColor[3] = r, g, b
+  T.SetBorder(tt, borderColor)
+end
+
 -- Colors the name line and border, and adds the target line.
 local function decorate(tt, unit)
   local r, g, b = unitColor(unit)
   local first = _G[tt:GetName() .. "TextLeft1"]
   if first then first:SetTextColor(r, g, b) end
-  if TT.settings.classBorder then T.SetBorder(tt, { r, g, b }) end
+  if TT.settings.classBorder then setUnitBorder(tt, r, g, b) end
   if TT.settings.targetLine then addTarget(tt, unit) end
 end
 

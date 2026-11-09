@@ -56,6 +56,19 @@ it("tooltips", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.tooltip") === true, "the tooltip corner is movable").toBeTruthy();
 });
 
+it("tooltips: every unit refresh hands the theme the same border table, refilled with that unit's color", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV);
+  // Every border the tooltip was given while it was shown (the table itself, and its red at that moment).
+  addon.eval(`__borders = {}
+    local set = ns.Theme.SetBorder
+    ns.Theme.SetBorder = function(frame, rgb) if rgb then __borders[#__borders + 1] = { rgb = rgb, r = rgb[1] } end return set(frame, rgb) end`);
+  addon.eval("__showUnit('target') __showUnit('party1') __showUnit('target')");
+  expect(addon.eval("return { #__borders, __borders[1].rgb == __borders[2].rgb, __borders[2].rgb == __borders[3].rgb }"), "three refreshes, one table").toEqual([3, true, true]);
+  expect(addon.eval("return { __borders[1].r == __borders[3].r, __borders[1].r ~= __borders[2].r }"), "holding the hostile color, the rogue's, then the hostile one again").toEqual([true, true]);
+  const edge = addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.__parent == GameTooltip and w.__layer == "BORDER" then return w.__vertexColor end end');
+  expect(isTok(addon, edge, "hostile"), "and the border drawn is the last unit's").toBe(true);
+});
+
 it("tooltips: the default anchor is left to the client when the owner is forbidden or the tooltip's anchoring is restricted", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV);
   // The client's own SetDefaultAnchor just owned the tooltip to `owner` (ANCHOR_NONE); then Vanguard's hook runs.
