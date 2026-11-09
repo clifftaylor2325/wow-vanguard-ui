@@ -312,6 +312,28 @@ function A.Backend()
   return not ns.InCombat() and ns.AuraEngine.Available() and ns.AuraEngine or ns.AuraLegacy
 end
 
+-- What of a spec is fixed once its container is made, as one string: the row width, the timer, and each
+-- group's filter, count and icon size. A container whose signature still reads the same needs no remaking;
+-- where it sits is not part of it (a container can be moved).
+---@param spec table
+---@return string
+function A.Signature(spec)
+  local parts = { spec.lineSize, tostring(spec.timer == true) }
+  for _, def in ipairs(spec.groups) do parts[#parts + 1] = def.filter .. ":" .. def.max .. ":" .. def.size end
+  return table.concat(parts, " ")
+end
+
+-- Puts a container away for good (a setting asked for other icons): emptied and hidden. One the client has
+-- closed to addons (on a plate it keeps for itself) is left as it is; false then, so the caller keeps it.
+---@param c table  a container from A.Container
+---@return boolean put
+function A.Retire(c)
+  if c.frame:IsForbidden() then return false end
+  c:SetUnit(nil)
+  c.frame:Hide()
+  return true
+end
+
 -- "engine" or "fallback", for /vg status.
 function A.BackendName()
   return A.Backend() == ns.AuraEngine and "engine" or "fallback"

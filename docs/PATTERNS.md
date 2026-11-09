@@ -113,6 +113,7 @@ ns.On("PLAYER_TARGET_CHANGED", UF.UpdateTarget)                 -- one shared fr
 local sub = ns.OnUnit({ "UNIT_HEALTH", "UNIT_MAXHEALTH" }, UF.UpdateHealth, "player", "target")
 ns.Every("action bar range", 0.2, function() each(updateRange) end) -- one shared OnUpdate; stops when unregistered
 ns.Soon("layout", relayout)                                      -- once, on the next frame, however often asked
+ns.AfterStill("frame auras settle", 0.3, rebuild)                -- once, 0.3 s after the last time it was asked for (a dragged slider)
 ```
 
 No module makes its own event frame or its own `OnUpdate` loop. An event the client lacks is skipped and reported, not raised.

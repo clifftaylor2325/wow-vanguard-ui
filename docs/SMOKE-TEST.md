@@ -486,6 +486,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: when the main hand's enchant ends, the off hand's cell moves into the first place and its dark sweep keeps the share of time it showed before (it does not jump back to full). Putting an enchant on again starts its sweep full. `/vg errors` stays empty.
 - If it fails, paste: a screenshot before and after the main hand's enchant ends.
 
+### 7.1b Target and focus aura sliders (A3-3)
+
+- Do: target a mob that has a buff and carries one of your debuffs, and `/focus` it. Open `/vg` → Unit frames → Target and focus auras. Drag "Aura icon size" to 30, then let go. Set "Debuffs shown" to 3 and "Target's buffs shown" to 0, then back to 8. Untick "Only your debuffs". Set "Target's buffs" to Important, then Yours, then All. Tick "Timer numbers on the icons". Then pull the mob and, during the fight, drag "Aura icon size" back to 20.
+- Expect: none of the rows carries a reload tag and the Reload button never shows. About a third of a second after each change holds still, the rows under and over the frames are redrawn with it: larger icons (the focus's 2 smaller), three debuffs at most, no buff row at 0, other players' debuffs dimmed once "Only your debuffs" is off, timer numbers on the icons. A change made in the fight does nothing until the fight ends, then applies; `/vg errors` stays empty throughout. [Needs in game: that a row put away (hidden, on no unit) draws nothing beside the new one; that Important shows anything on a WoW Forever target (the client classes the buffs; none may be classed on vanilla spells); how a large buff row sits against the target cast bar above it.]
+- If it fails, paste: a screenshot of the target frame with its rows, the settings you had, and `/vg errors`.
+
 ### 7.2 Cast bars
 
 - Do: cast a spell with a long cast time, and have a mob cast at you.

@@ -86,6 +86,17 @@ function ns.Every(key, seconds, fn, frame, now)
   job.period, job.fn, job.frame = seconds, fn, frame
 end
 
+-- Runs fn once, `seconds` after the last time it was asked for under key: each call starts the wait
+-- again. A slider being dragged sets its value many times a second; work that makes frames (new aura
+-- rows) waits here until the value holds still, and then happens once.
+---@param key string  a ticker key of its own (ns.Every's are the same list)
+---@param seconds number
+---@param fn function
+function ns.AfterStill(key, seconds, fn)
+  stop(key)
+  ns.Every(key, seconds, function() stop(key) fn() end)
+end
+
 -- Whether the client has its timer (C_Timer.After). Read at each call, so a test can take the timer away.
 ---@return boolean
 function ns.HasTimer()
