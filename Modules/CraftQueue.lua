@@ -8,6 +8,8 @@
 --   * /vg craft cd        profession cooldowns of your characters, and when each is ready;
 --   * /vg craft top       the recipes you know that pay best per craft and per hour, from the prices;
 --   * /vg craft done|clear  takes the first craft off, or empties the queue.
+-- The recipe on display is tracked by the form hook in AuctionCrafting.lua, which this module also
+-- installs, so the queue works with the Auction helper off.
 -- Forever documents neither a recipe list nor a recipe cooldown call: where the client lacks them, the
 -- recipes met (on display, queued, or with a cooldown noted) are read, and a cooldown is the recipe
 -- spell's own (C_Spell). That part is unverified in the game. WoW Retail documents neither call either, but its own
@@ -362,4 +364,6 @@ function CQ.Enable(settings)
   moveFromProfiles()
   ns.OnUnit("UNIT_SPELLCAST_SUCCEEDED", ns.Guard("craft queue", CQ.OnCast), "player")
   ns.On("TRADE_SKILL_LIST_UPDATE", ns.Guard("craft cooldowns", CQ.Scan))
+  ns.On("ADDON_LOADED", function(_, name) if name == "Blizzard_Professions" then CR.Hook() end end)
+  ns.On("TRADE_SKILL_SHOW", CR.Hook)
 end

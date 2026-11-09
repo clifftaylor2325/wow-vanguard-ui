@@ -295,7 +295,7 @@ it("picking a profile on a spec with a profile of its own says the spec's takes 
   expect(chatHas(addon, /Spec 2 uses Heal\. It switches back at the reload; Stop spec switching on the Profiles page keeps your pick\./), "the pick says the spec wins").toBe(true);
   // The Profiles page's line about the profile in use, as the window draws it.
   const text = addon.eval("for _, page in ipairs(ns.Options.PAGES) do if page.key == 'profiles' then for _, r in ipairs(page.rows()) do if r[1] == 'text' and type(r[2]) == 'function' then return r[2]() end end end end");
-  expect(text, "and the page names what login will load").toMatch(/until you reload, then Heal\./);
+  expect(text, "and the page says nothing changes at the reload, since the spec's profile is the one in use").toBe("This character uses Heal.");
   addon.clearChat();
   addon.eval("ns.UseProfile('Heal')");
   expect(chatHas(addon, /switches back/), "picking the spec's own profile says nothing").toBe(false);
@@ -336,6 +336,32 @@ it("on WoW Forever a spec profile follows the talent group: swapping groups stag
   swapGroup(addon, 1);
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "back in the Primary group (after a reload) the character's profile is staged again").toBe("Default");
 });
+// How many drawn profile labels (shown or not, as the rows scroll) read exactly `text`.
+function labelCount(addon, text) {
+  return addon.eval(`local n = 0 for _, w in ipairs(__wfgInspectAll(function(w) return w.__kind == "FontString" and w.__text == ${JSON.stringify(text)} end)) do n = n + 1 end return n`);
+}
+it("on WoW Forever a hand pick that the talents' profile overrides is not marked '(after reload)': the talents' profile is", () => {
+  const addon = foreverCharacter(2);
+  addon.eval("ns.UseProfile('Default')");
+  expect(addon.eval("return ns.ProfileAfterReload()"), "the Secondary talents' profile loads at the reload, not the pick").toBe(null);
+  addon.eval('ns.Options.Show("profiles")');
+  expect(labelCount(addon, "Default  (after reload)"), "the picked row is not the one that loads").toBe(0);
+  expect(labelCount(addon, "Heal  (in use)"), "the running profile is the one that stays").toBe(1);
+  expect(addon.texts("This character uses Heal.").length, "the top line says nothing changes").toBe(1);
+});
+it("on WoW Forever the logout backup is of the profile the talents' group loads, not the hand pick it overrides", () => {
+  const addon = foreverCharacter(2);
+  addon.eval("ns.UseProfile('Default')");
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("return VanguardCharDB.guard.profile"), "the Secondary talents' profile is the one kept").toBe("Heal");
+});
+it("on WoW Forever a staged profile the talents don't override is marked '(after reload)'", () => {
+  const addon = foreverCharacter(1);
+  addon.eval("ns.UseProfile('Heal')");
+  expect(addon.eval("return ns.ProfileAfterReload()"), "the pick loads, since Primary has no profile").toBe("Heal");
+  addon.eval('ns.Options.Show("profiles")');
+  expect([labelCount(addon, "Heal  (after reload)"), labelCount(addon, "Default  (in use until reload)")], "the pick and the running profile are marked").toEqual([1, 1]);
+});
 it("on WoW Forever /vg spec and the Profiles page name the talent group, not the specialization", () => {
   const addon = foreverCharacter(2, "{}");
   addon.slash("spec Heal");
@@ -349,6 +375,15 @@ it("on WoW Forever /vg spec and the Profiles page name the talent group, not the
   swapGroup(addon, 1);
   addon.slash("spec");
   expect(chatHas(addon, /Primary talents use the character's profile \(no spec profile set\)\.$/), "the Primary group has none").toBe(true);
+});
+it("a profile that still holds a Keep stocked list (Errands off) neither exports it nor takes one in an import", () => {
+  const src = loggedIn();
+  src.eval("ns.Profile().modules = { Errands = false } ns.Profile().Errands = { stock = true, stockList = { [90011] = 5 } }");
+  const text = src.eval("return ns.ExportProfile()");
+  const dst = loggedIn();
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(dst.eval("local e = VanguardDB.profiles.Imported.Errands return { e and e.stock, e and e.stockList or false }"), "the setting travels, the list stays home").toEqual([true, false]);
+  expect(dst.eval("return ns.WithoutClientState({ Errands = { stock = true, stockList = { [1] = 2 } } }).Errands"), "an incoming table loses it too").toEqual({ stock: true });
 });
 it("the craft queue and profession cooldowns of your characters stay out of an export, an import and a profile compare; the module's own settings travel", () => {
   const src = loggedIn();

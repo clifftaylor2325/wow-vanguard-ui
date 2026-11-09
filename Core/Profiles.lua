@@ -471,6 +471,15 @@ function ns.WarnSpecWins(picked)
   ns.Chat(line .. " " .. L["It switches back at the reload; Stop spec switching on the Profiles page keeps your pick."])
 end
 
+-- The profile the next login loads when it differs from the one in use: the current spec's own
+-- profile wins over a staged pick (followSpec), else the staged one; nil when nothing changes.
+function ns.ProfileAfterReload()
+  local staged = ns.PendingProfileName()
+  if not staged then return nil end
+  local name = ns.SpecProfile() or staged
+  return name ~= ns.ProfileName() and name or nil
+end
+
 -- Remembers the profile the character picked, before a spec's profile takes over from it.
 local function rememberOwn()
   local selected = ns.SelectedProfileName()

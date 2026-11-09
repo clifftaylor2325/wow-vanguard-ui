@@ -15,6 +15,8 @@ local CP = ns.Module("ComboPoints", { defaults = { size = 14 } })
 -- The usual number of pips (all of WoW Forever's), and the most the row grows to on retail.
 CP.MAX = 5
 CP.CAP = 7
+-- The distance between the top of the player frame and the row of pips.
+CP.ROW_OFFSET = 2
 local CLASSES = { ROGUE = true, DRUID = true }
 -- Your own events that change your points, and on retail the one that charges a point.
 CP.EVENTS = ns.ClientData({
@@ -65,7 +67,8 @@ local function build(settings)
   CP.size, CP.pips = settings.size, {}
   CP.bar = CreateFrame("Frame", nil, player)
   CP.bar:SetSize(CP.MAX * (CP.size + 3), CP.size)
-  CP.bar:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 0, 2)
+  CP.bar:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 0, CP.ROW_OFFSET)
+  UF.RaiseDeckReach("top", CP.ROW_OFFSET + CP.size)
   CP.Update()
 end
 

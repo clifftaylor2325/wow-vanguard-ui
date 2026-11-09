@@ -415,11 +415,21 @@ function MC.SplitIndex(frame)
   if type(name) == "string" and name:match("^MerchantItem%d+ItemButton$") then return ns.PlainNumber(owner:GetID()) end
 end
 
--- Writes what Max would buy under the quantity window's amount.
+-- What a buy of nothing says, by the limit that stopped it (see zeroReason).
+MC.ZERO_REASON = { gold = L["Can't afford one"], stock = L["Sold out"], room = L["No room in your bags"] }
+
+-- The first limit at zero for merchant item index, in the order a player checks them: gold, stock, bag room.
+local function zeroReason(index)
+  local price, _, left = wares(index)
+  if price and math.floor((ns.PlainNumber(GetMoney()) or 0) / price) == 0 then return "gold" end
+  return left == 0 and "stock" or "room"
+end
+
+-- Writes what Max would buy under the quantity window's amount, or which limit stops a buy.
 local function costLine(entry, index)
   local packs = MC.MaxPacks(index)
   local price, quantity = wares(index)
-  entry.line:SetText(packs > 0 and ns.Format(L["Max {count} for {money}"], { count = packs * quantity, money = money(packs * price) }) or L["Can't afford one"])
+  entry.line:SetText(packs > 0 and ns.Format(L["Max {count} for {money}"], { count = packs * quantity, money = money(packs * price) }) or MC.ZERO_REASON[zeroReason(index)])
 end
 
 -- The drawer that holds Stack, Max and the cost line, hung under the quantity window: a panel, so they read as
@@ -448,7 +458,9 @@ end
 local function press(entry, frame, packsOf)
   local same = MC.SplitIndex(frame) == entry.index and MC.Sells(entry.index, entry.id) and wares(entry.index) == entry.price
   if not same then return ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end
-  MC.Order(entry.index, packsOf(entry.index), frame)
+  local packs = packsOf(entry.index)
+  if packs <= 0 then return ns.Chat(MC.ZERO_REASON[zeroReason(entry.index)]) end
+  MC.Order(entry.index, packs, frame)
 end
 
 -- The window's drawer with its Stack and Max buttons and the cost line, made once.

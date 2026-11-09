@@ -157,10 +157,28 @@ local function centeredSpacing(saved)
   saved.layout = 2
 end
 
+-- Whether v is a finite number of 1 or more (NaN and infinity are not).
+local function atLeastOne(v)
+  return type(v) == "number" and v >= 1 and v < math.huge
+end
+
+-- A bar's saved size, button count or buttons per row that is not a finite number of 1 or more (a hand-edited
+-- file or a crafted string) is dropped, so the defaults fill it in. The settings may have no bars yet (before ns.Fill).
+local function cleanBars(saved)
+  for _, b in pairs(type(saved.bars) == "table" and saved.bars or {}) do
+    if type(b) == "table" then
+      for _, field in ipairs({ "size", "buttons", "perRow" }) do
+        if not atLeastOne(b[field]) then b[field] = nil end
+      end
+    end
+  end
+end
+
 -- Every upgrade of saved action bar settings, oldest first.
 local function migrate(saved)
   keepOldRightBars(saved)
   centeredSpacing(saved)
+  cleanBars(saved)
 end
 ns.Migrate("ActionBars", migrate)
 
@@ -557,7 +575,7 @@ end
 -- the bar stacked above it starts on its top edge at any UI scale and at any scale of its own.
 local function barHeight(settings, barSettings, k)
   local f = AB.bars[k] or UIParent
-  local size, gap = T.PixelRound(f, barSettings.size or settings.size), T.PixelRound(f, settings.spacing)
+  local size, gap = T.PixelRound(f, AB.BarSize(settings, k)), T.PixelRound(f, settings.spacing)
   local scale = ns.MoverLook("bar" .. k)
   return (math.ceil(barSettings.buttons / barSettings.perRow) * (size + gap) - gap) * scale
 end
@@ -566,7 +584,7 @@ end
 -- (the buttons it has, at most its buttons per row) of its own button size.
 local function barWidth(settings, barSettings, k)
   local f = AB.bars[k] or UIParent
-  local size, gap = T.PixelRound(f, barSettings.size or settings.size), T.PixelRound(f, settings.spacing)
+  local size, gap = T.PixelRound(f, AB.BarSize(settings, k)), T.PixelRound(f, settings.spacing)
   local columns = math.min(barSettings.buttons, barSettings.perRow)
   return (columns * (size + gap) - gap) * ns.MoverLook("bar" .. k)
 end

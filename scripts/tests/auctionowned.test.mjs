@@ -617,6 +617,16 @@ it("deals: each search judges its item again; a low before today stands in for a
   addon.eval("ns.AuctionPrices.RecordSeen(50001, 1)");
   expect([addon.eval("return ns.Settings('AuctionHelper').deals"), dealsCard(addon).slice(0, 3), addon.eval(`return next(${HELPER}.deals) == nil`)], "switched off under Auction house: the entry goes at once and gives way to no list, nothing is judged").toEqual([false, [false, false, "Shopping"], true]);
 });
+it("deals: a login with the entry left shown by another character, its switch off here, opens on the list source", () => {
+  const addon = loggedIn("");
+  addon.eval(`local AH = ${HELPER} AH.settings.deals = false VanguardDB.ah.list = AH.DEALS
+    VanguardDB.ah.lists.Mats = { "Strange Dust" }`);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(addon.eval(`local AH = ${HELPER}
+    return { AH.shopCard.title:GetText(), AH.shopCard.add:IsShown(), AH.Source() == AH.Sources.list, AH.ListKey() == nil }`), "the stored key is dropped too").toEqual(["Shopping", true, true, true]);
+});
+
 it("deals: what was found is forgotten 30 minutes after closing even if the house isn't opened again", () => {
   const addon = atAuctionHouse();
   addon.eval("ns.AuctionPrices.RecordSeen(2589, 5)");
@@ -693,8 +703,10 @@ it("price alerts: the filter dialog's switch alerts at the max price; a search a
   dustAt(addon, 8000);
   expect([alertRings(addon), alertToast(addon)[3]], "cheaper than when it alerted: again").toEqual([2, "80s 0c"]);
   addon.advance(1);
+  pickTab(addon, 4);
   addon.click("Vanguard_ChatWatchToast");
   expect([sent(addon).at(-1), restrictedLog(addon), alertToast(addon)[0]], "a click on the toast shows the item in the game's list; nothing is bought").toEqual(["SearchForItemKeys:10940", [], false]);
+  expect(addon.eval("return AuctionHouseFrame.displayMode == AuctionHouseFrameDisplayMode.Buy"), "the window is on the Buy page, not Vanguard's tab").toBe(true);
 });
 it("price alerts: a scan or any search rings for named lists' entries by ID or name, several on one toast", () => {
   const lists = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = { { term = 9999, maxPrice = 99999, alert = true } }, lists = { ["TEST-ONLY Mats"] = {

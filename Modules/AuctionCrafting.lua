@@ -129,7 +129,7 @@ end
 -- switch is on; hidden for a recipe the client gives no schematic for.
 function CR.Paint()
   local form = CR.Form()
-  local data = AH.settings.crafting and CR.recipe and form and form:IsVisible() and CR.Read(CR.recipe) or nil
+  local data = AH.settings and AH.settings.crafting and CR.recipe and form and form:IsVisible() and CR.Read(CR.recipe) or nil
   if CR.frame then CR.frame:SetShown(data ~= nil) end
   if not data then return end
   local f = CR.Place(CR.frame or CR.Build())
@@ -269,7 +269,7 @@ function CR.Hook()
   form:HookScript("OnHide", function() if CR.frame then CR.frame:Hide() end end)
 end
 
--- The window's part of the game loads: the form is hooked while the Auction helper is on.
+-- The window's part of the game loads: the form is hooked while the Auction helper is on (the Craft queue hooks it too).
 ns.On("ADDON_LOADED", function(_, name) if name == "Blizzard_Professions" and AH.settings then CR.Hook() end end)
 -- A profession opens: the same, should the window have loaded before the helper started.
 ns.On("TRADE_SKILL_SHOW", function() if AH.settings then CR.Hook() end end)
