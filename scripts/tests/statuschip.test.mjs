@@ -2,7 +2,7 @@
 // The status chip left of the player frame (Modules/UnitExtras.lua): Eating, Drinking, Well Fed, and a missing-buff hint.
 
 import { expect, it } from "vitest";
-import { BUFF_NAMES, BUFF_NAMES_DE, expectErrors, isTok, loggedIn, setCombat, spellNames } from "./helpers.mjs";
+import { BUFF_NAMES, BUFF_NAMES_DE, TOTEMS_ENV, UNITS_ENV, expectErrors, isTok, loggedIn, setCombat, spellNames } from "./helpers.mjs";
 
 // The names the client gives the food, drink and buff ids the chip and Instance prep look for.
 const NAMES = spellNames(BUFF_NAMES) + "\n";
@@ -138,4 +138,17 @@ it("status chip: its switch on the Unit frames page says the chip sits beside th
   const labels = loggedIn("").eval('local out = {} for _, p in ipairs(ns.Options.PAGES) do if p.key == "unitframes" then for _, r in ipairs(p.rows()) do out[#out + 1] = r[2] end end end return out');
   const row = Object.values(labels).find((text) => typeof text === "string" && text.startsWith("Status chip"));
   expect(row, "the row exists and names where the chip sits").toMatch(/^Status chip beside your frame/);
+});
+
+const DECK = "VanguardDB.profiles = { Default = { UnitExtras = { chip = true }, InstancePrep = { buffs = true }, UnitFrames = { deck = true } } }";
+
+it("status chip: with no room left of the frame it sits above the totem row, or the combo-point row, not over it", () => {
+  for (const [name, env, row, saved] of [["a shaman's totems", TOTEMS_ENV, "ns.GetModule('ClassBars').totems", CHIP_AND_PREP], ["a rogue's combo points", '__units.player.class = "ROGUE"', "ns.GetModule('ComboPoints').bar", CHIP_AND_PREP], ["a shaman's totems under the Versus deck", TOTEMS_ENV, "ns.GetModule('ClassBars').totems", DECK]]) {
+    const addon = loggedIn(UNITS_ENV + env, { savedVariables: saved });
+    addon.advance(1);
+    addon.eval("ns.Setup.ApplyLayout('classic') ns.GetModule('UnitExtras').PaintChip('Missing: Mark of the Wild +3', 'warn')");
+    expect(addon.eval(`return Vanguard_StatusChip:GetBottom() >= ${row}:GetTop()`), `${name}: the chip clears the row`).toBe(true);
+    const deck = addon.eval("local d = ns.GetModule('UnitFrames').deck return d and d:GetTop() >= Vanguard_StatusChip:GetTop()");
+    expect(deck ?? true, `${name}: the deck's border stays clear of the chip`).toBe(true);
+  }
 });

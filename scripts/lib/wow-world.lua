@@ -1141,6 +1141,14 @@ C_Spell = {
   end,
 }
 
+-- Whether the client says a spell can be cast now: isUsable, insufficientPower. A spell's usable = false
+-- (a stance or shield it needs) and noPower = true (short of its resource) are set by a test; the default is usable.
+function C_Spell.IsSpellUsable(key)
+  local _, s = spellOf(key)
+  if not s then return false, false end
+  return s.usable ~= false, s.noPower == true
+end
+
 -- Whether a spell is cast on friends (the healer's spells and buffs in the world).
 function C_Spell.IsSpellHelpful(key)
   local _, s = spellOf(key)

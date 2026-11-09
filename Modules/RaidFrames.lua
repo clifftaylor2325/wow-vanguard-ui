@@ -702,6 +702,8 @@ end
 -- The secure group header, its button template and setup hook.
 local function createHeader(s)
   local header = CreateFrame("Frame", "Vanguard_Raid", UIParent, "SecureGroupHeaderTemplate")
+  -- A big raid's rows grow up from the holder: near the top they would run off the screen.
+  header:SetClampedToScreen(true)
   header:SetAttribute("template", "SecureUnitButtonTemplate")
   header:SetAttribute("vg-width", s.width)
   header:SetAttribute("vg-height", s.height)

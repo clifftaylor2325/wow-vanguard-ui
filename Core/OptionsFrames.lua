@@ -179,7 +179,7 @@ end
 local function raidRows()
   return {
     { "header", L["Raid frames"] },
-    check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty")), check(L["Include yourself"], reloadSetting("RaidFrames", "showPlayer")),
+    check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty")), check(L["Include yourself (in a party)"], reloadSetting("RaidFrames", "showPlayer")),
     essential(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole"))),
     essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
     essential(check(L["Stack big raids at the left"], stackSetting())), essential(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard"))),

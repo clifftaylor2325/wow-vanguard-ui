@@ -562,12 +562,15 @@ end
 -- How tall a page of choices stands: its question, its rows, and the tallest of its hints under them (each
 -- is set in turn to measure it; the chosen one's goes back when the page is marked).
 local function choiceHeight(page)
-  local tallest = 0
+  local tallest, shown = 0, 0
   for _, b in ipairs(page.choices) do
-    page.hint:SetText(hintText(b))
-    tallest = math.max(tallest, page.hint:GetStringHeight())
+    if b:IsShown() then
+      shown = shown + 1
+      page.hint:SetText(hintText(b))
+      tallest = math.max(tallest, page.hint:GetStringHeight())
+    end
   end
-  local rows = #page.choices * (T.BUTTON_H + T.SPACE.tight)
+  local rows = shown * (T.BUTTON_H + T.SPACE.tight)
   return page.question:GetStringHeight() + T.SPACE.gap + rows + tallest
 end
 
@@ -708,18 +711,22 @@ end
 -- The Fit choice for a narrow canvas: the UI scale that gives the layout its room, suggested.
 local function fitChoice()
   local p = S.FitPreset()
-  return { key = p.key, hint = screenHint(p), text = ns.Format(L["Fit my screen: UI scale {scale}%  ·  suggested"], { scale = percent(p.ui) }) }
+  return { key = p.key, hint = function() return screenHint(S.FitPreset()) end,
+    text = ns.Format(L["Fit my screen: UI scale {scale}%  ·  suggested"], { scale = percent(p.ui or 1) }) }
 end
 
--- The screen choices: each preset (the one for this screen marked), Pixel-perfect, Fit on a narrow screen, then Keep.
+-- A screen preset's choice, the one for this screen marked; its hint is worked out when shown.
+local function presetChoice(p, detected)
+  local text = p.key == detected and L["{screen} ({width} x {height})  ·  your screen"] or L["{screen} ({width} x {height})"]
+  return { key = p.key, hint = function() return screenHint(p) end, text = ns.Format(text, { screen = p.text, width = p.w, height = p.h }) }
+end
+
+-- The screen choices: each preset (the one for this screen marked), Pixel-perfect, Fit (shown on a narrow screen only), then Keep.
 local function screenChoices()
   local detected, out = S.DetectScreen(), {}
-  for i, p in ipairs(S.SCREENS) do
-    local text = p.key == detected and L["{screen} ({width} x {height})  ·  your screen"] or L["{screen} ({width} x {height})"]
-    out[i] = { key = p.key, hint = screenHint(p), text = ns.Format(text, { screen = p.text, width = p.w, height = p.h }) }
-  end
-  out[#out + 1] = { key = S.PIXEL.key, text = S.PIXEL.text, hint = screenHint(S.PixelPreset()) }
-  if S.OfferFit() then out[#out + 1] = fitChoice() end
+  for i, p in ipairs(S.SCREENS) do out[i] = presetChoice(p, detected) end
+  out[#out + 1] = { key = S.PIXEL.key, text = S.PIXEL.text, hint = function() return screenHint(S.PixelPreset()) end }
+  out[#out + 1] = fitChoice()
   out[#out + 1] = { key = "keep", text = L["Keep my current sizes"], hint = function() return screenHint(nil) end }
   return out
 end
@@ -727,6 +734,40 @@ end
 -- The screen step: a button per screen preset and Keep, then the chosen one's hint.
 local function screenPage(page)
   choicePage(page, L["Sizes for your screen (yours is marked). /vg graphics checks your frame rate."], screenChoices(), "screen")
+end
+
+-- Sets the rows' labels from a fresh list of choices (the page is built once, at setup's first open).
+local function relabelRows(page, list)
+  for i, l in ipairs(list) do page.choices[i].text:SetText(l.text) end
+end
+
+-- Hangs Keep under the Fit row while it shows, else under Pixel-perfect, and shows the Fit row only on a narrow screen.
+local function placeFit(page)
+  local keep, fitRow = page.choices[#page.choices], page.choices[#page.choices - 1]
+  local above = fitRow:IsShown() and fitRow or page.choices[#page.choices - 2]
+  keep:ClearAllPoints()
+  keep:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -T.SPACE.tight)
+end
+
+-- Names the screen step's rows for the screen now (which preset is yours, Fit's scale) and offers Fit only
+-- while it widens the canvas; the hints are worked out as they show.
+local function relabelScreen()
+  local page = frame.pages.screen
+  relabelRows(page, screenChoices())
+  page.choices[#page.choices - 1]:SetShown(S.OfferFit())
+  placeFit(page)
+end
+
+-- Marks the layout step's row for your role now (the group role can change between openings).
+local function relabelLayout()
+  relabelRows(frame.pages.layout, layoutChoices())
+end
+
+-- Words the steps built once at setup's first open for the profile, role and screen of now.
+local function relabelSteps()
+  relabelProfile()
+  relabelLayout()
+  relabelScreen()
 end
 
 -- A style tile's health bar, three quarters full, one pixel inside the border, with your name over it.
@@ -1010,7 +1051,7 @@ function S.Open()
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen, state.backup, state.before = "keep", "keep", nil, settingsNow()
   state.reload, state.paused, state.done, state.role = false, false, false, false
-  relabelProfile()
+  relabelSteps()
   T.OpenWindow(frame)
   showStep(1)
 end

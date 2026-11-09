@@ -283,8 +283,8 @@ it("options: profiles in the window", () => {
     w.input:SetText("${name}") local b = ${enter ? "w.input" : "w.create"} b:GetScript(${enter ? '"OnEnterPressed"' : '"OnClick"'})(b) return w.label.__text end end`);
   expect(create("TEST-ONLY Bad/Name"), "a bad name says why").toBe("Name taken or not allowed");
   expect([create("   "), create("Default ")], "blank, or a name with a space at an end: refused").toEqual(["Name taken or not allowed", "Name taken or not allowed"]);
-  // The new-profile row's caption text and its colour token.
-  const caption = () => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create then return { w.label.__text, ns.Theme.ColorToken(w.label) } end end`);
+  // The caption text and colour token of the newest new-profile row (the page now, not a dropped page's).
+  const caption = () => addon.eval(`local out for _, w in ipairs(__wfgStub.frames) do if w.input and w.create then out = { w.label.__text, ns.Theme.ColorToken(w.label) } end end return out`);
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.input and w.create and ns.Options.RevealRow(w) then w.input:SetText("TEST-ONLY Fine") __wfgStub.runScript(w.input, "OnTextChanged", "TEST-ONLY Fine", true) end end`);
   expect(caption(), "editing the name puts the caption back after a refusal").toEqual(["New profile", "text2"]);
   create("   ");
@@ -2146,4 +2146,24 @@ it("options General: the accent swatch of the chosen preset carries a check, and
   expect(checked(), "after /vg accent jade only jade is").toEqual(["jade"]);
   addon.slash("accent 123456");
   expect(Object.keys(checked()), "an accent that is no preset checks none").toHaveLength(0);
+});
+it("a page thrown away and rebuilt leaves no frames for the theme's repaint to walk: the refreshed strings stay the same", () => {
+  const addon = loggedIn();
+  addon.slash("");
+  addon.eval('ns.Options.Show("modules") local T, ApplyRole = ns.Theme, ns.Theme.ApplyRole __touched = 0 T.ApplyRole = function(fs, role) __touched = __touched + 1 return ApplyRole(fs, role) end');
+  // How many styled strings one T.RefreshText repaints.
+  const touched = () => addon.eval("__touched = 0 ns.Theme.RefreshText() return __touched");
+  const first = touched();
+  for (let i = 0; i < 3; i++) addon.eval('ns.Options.RebuildPage("modules")');
+  expect(touched(), "three rebuilds repaint no more text than the page did").toBe(first);
+});
+it("T.Forget drops a frame's check box, arrow and divider parts from the theme's repaint walks", () => {
+  const addon = loggedIn();
+  const parts = addon.eval(`local T = ns.Theme local f = CreateFrame("Frame", nil, UIParent)
+    local c, a = CreateFrame("CheckButton", nil, f), CreateFrame("Button", nil, f)
+    local d = f:CreateTexture(nil, "ARTWORK") T.CheckBox(c) T.ArrowButton(a, "down") T.Divider(d)
+    local before = { T.CheckParts(c) ~= nil, T.ArrowParts(a) ~= nil, T.DividerParts(d) ~= nil }
+    T.Forget(f) T.Forget(d)
+    return { before[1], before[2], before[3], T.CheckParts(c) == nil, T.ArrowParts(a) == nil, T.DividerParts(d) == nil }`);
+  expect(parts, "built, then forgotten").toEqual([true, true, true, true, true, true]);
 });

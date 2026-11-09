@@ -539,6 +539,49 @@ it("the interrupt mark: which interrupt, by class and rank", () => {
   expect(addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false'), "a client that cannot say what you know").toBe(false);
 });
 
+it("the interrupt mark: Pummel or Shield Bash by what you can use in your stance", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(`UnitClass = function() return "Warrior", "WARRIOR", 1 end ${KNOWS(6552)} ${KNOWS(72)}`);
+  // The interrupt the mark would track now, or false.
+  const pick = () => addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false');
+  // Sets a test spell's usable or noPower flag in the world stub.
+  const setSpell = (id, field) => addon.eval(`__wfgWorld.spells[${id}].${field}`);
+  expect(pick(), "both castable: Pummel first").toBe(6552);
+  setSpell(6552, "usable = false");
+  expect(pick(), "Pummel unusable in Defensive Stance: Shield Bash").toBe(72);
+  setSpell(6552, "noPower = true");
+  expect(pick(), "Pummel unusable only for lack of rage is still Pummel").toBe(6552);
+  setSpell(6552, "noPower = nil usable = false");
+  setSpell(72, "usable = false");
+  expect(pick(), "neither castable: the first known family").toBe(6552);
+  setSpell(72, "usable = nil");
+  addon.eval("C_Spell.IsSpellUsable = function() return { __secret = true }, { __secret = true } end");
+  expect(pick(), "a hidden answer keeps the first known family").toBe(6552);
+  addon.eval("C_Spell.IsSpellUsable = function() end");
+  expect(pick(), "a client that will not say keeps the first known family").toBe(6552);
+});
+
+it("the interrupt mark follows a stance change while a cast shows", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(`UnitClass = function() return "Warrior", "WARRIOR", 1 end ${KNOWS(6552)} ${KNOWS(72)}`);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(addon, "target").object, "Pummel's cooldown in Berserker Stance").toBe("tag6552");
+  addon.eval("__wfgWorld.spells[6552].usable = false");
+  addon.fire("UPDATE_SHAPESHIFT_FORM");
+  expect(mark(addon, "target").object, "Shield Bash's after the stance change").toBe("tag72");
+});
+
+it("the interrupt mark follows equipping a shield while a cast shows", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(`UnitClass = function() return "Warrior", "WARRIOR", 1 end ${KNOWS(6552)} ${KNOWS(72)}`);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  addon.eval("__wfgWorld.spells[6552].usable = false");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 17, true);
+  expect(mark(addon, "target").object, "Shield Bash's after the shield goes on").toBe("tag72");
+});
+
 it("the interrupt mark asks C_SpellBook what you know, so it shows without the game's deprecation fallbacks", () => {
   // As Forever with loadDeprecationFallbacks off: no IsPlayerSpell global, C_SpellBook.IsSpellKnown still there.
   const addon = loggedIn(CAST_ENV + MARK_ENV + "IsPlayerSpell = nil");

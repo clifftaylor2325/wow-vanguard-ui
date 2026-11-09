@@ -1938,6 +1938,19 @@ it("quest dialog: No on the PvP question declines the quest, as the game's does"
   addon.click("Vanguard_Question.no");
   expect(calls(addon)).toEqual(["decline nil"]);
 });
+it("H41-18-1: the PvP question goes when the offer closes first, and answers nothing", () => {
+  const addon = pvpAsked();
+  addon.fire("QUEST_FINISHED");
+  expect([addon.eval("return Vanguard_Question:IsShown()"), calls(addon)], "hidden, with no accept and no decline").toEqual([false, []]);
+  addon.fire("QUEST_DETAIL");
+  expect([addon.eval("return Vanguard_Question:IsShown()"), calls(addon)], "the next quest's page opens without it").toEqual([false, []]);
+});
+it("H41-18-1: a question another part of Vanguard asked stays when a quest closes", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval('__answer = nil ns.Ask("TEST-ONLY Other?", "Yes", function() __answer = "yes" end, function() __answer = "no" end)');
+  addon.fire("QUEST_FINISHED");
+  expect(addon.eval("return { Vanguard_Question:IsShown(), __answer }")).toEqual([true]);
+});
 it("quest dialog: Accept goes straight through without the flag, or without the game's warning text", () => {
   const plain = loggedIn(QUEST_ENV + PVP_ENV);
   plain.eval("__pvp = false");
@@ -2074,6 +2087,12 @@ it("quest cost: No declines the hand-in, as the game's does", () => {
   const addon = costAsked();
   addon.click("Vanguard_Question.no");
   expect(calls(addon)).toEqual(["decline nil"]);
+});
+
+it("H41-18-1: the cost question goes when the quest closes first, and pays or declines nothing", () => {
+  const addon = costAsked();
+  addon.fire("QUEST_FINISHED");
+  expect([addon.eval("return Vanguard_Question:IsShown()"), calls(addon)]).toEqual([false, []]);
 });
 
 it("quest cost: a cost the client hides counts as none (no cost line)", () => {

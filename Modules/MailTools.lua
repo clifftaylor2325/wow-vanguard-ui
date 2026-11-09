@@ -164,13 +164,37 @@ local function takeFrom(m)
   return false
 end
 
+-- Whether no general bag (the backpack and bags 1 to 4 of family 0) has a free slot; a quiver's or soul bag's free
+-- slots do not count, as the next mail's item may not fit there. A client without the call is never full.
+-- Only read after the game itself refused a take, so a take that stacks or fits a quiver is never stopped.
+local function bagsFull()
+  local api = C_Container
+  if type(api) ~= "table" or type(api.GetContainerNumFreeSlots) ~= "function" then return false end
+  local free = 0
+  for bag = 0, 4 do
+    local n, family = api.GetContainerNumFreeSlots(bag)
+    if (ns.PlainNumber(family) or 0) == 0 then free = free + (ns.PlainNumber(n) or 0) end
+  end
+  return free == 0
+end
+
+-- Says a take was refused: once the bags have no room at all the run ends there (one line), else the mail is
+-- named and the run goes on.
+local function noteRefusal(run, now)
+  if bagsFull() then
+    run.mails = {}
+    return ns.Chat(L["Take all: your bags are full."])
+  end
+  ns.Chat(ns.Format(L["Mail: could not take from {mail} (bags full?)."], { mail = now.subject ~= "" and now.subject or now.sender }))
+end
+
 -- Whether the last take from mail now (read again, the game done answering) changed nothing: the game refused
 -- it (bags full, a unique item you already carry). It no longer counts, and chat says so once, as the run passes the mail.
 local function refused(run, now)
   local last = run.last
   if not (last and last.index == now.index and last.money == now.money and last.items == now.items) then return false end
   run.last, run.done = nil, run.done - 1
-  ns.Chat(ns.Format(L["Mail: could not take from {mail} (bags full?)."], { mail = now.subject ~= "" and now.subject or now.sender }))
+  noteRefusal(run, now)
   return true
 end
 
@@ -181,6 +205,11 @@ local function took(run, now)
   return true
 end
 
+-- One take from mail now: "took" after a take, nil when nothing was taken from this mail.
+local function tryTake(run, now)
+  return takeFrom(now) and took(run, now) and "took" or nil
+end
+
 -- Take all's next step: while the game is still busy with the last take, nothing (and the run waits);
 -- else one take from the first mail left on the run's list that is still itself, passing those that are
 -- empty, gone, changed or refused. False once none is left.
@@ -189,7 +218,8 @@ local function takeNext(run)
   local m = run.mails[1]
   while m do
     local now = MT.Read(m.index)
-    if now and sameMail(now, m) and not refused(run, now) and takeFrom(now) then return took(run, now) end
+    local result = now and sameMail(now, m) and not refused(run, now) and tryTake(run, now)
+    if result then return result == "took" end
     table.remove(run.mails, 1)
     m = run.mails[1]
   end

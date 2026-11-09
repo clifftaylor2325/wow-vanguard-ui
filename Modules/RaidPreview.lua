@@ -189,11 +189,12 @@ end
 
 -- The preview's frame, sized for n tiles, drawn as large as the real grid for n
 -- players, and pinned to the raid frames' holder as their header is (the holder moves to the spot
--- the real grid would take for n players, which RF.Fit puts back when the preview ends).
+-- the real grid would take for n players, which RF.Fit puts back when the preview ends), kept on the screen as the header is.
 local function fit(n)
   RF.PlaceFor(n)
   local point = RF.HeaderPoint()
   RP.frame = RP.frame or CreateFrame("Frame", "Vanguard_RaidPreview", UIParent)
+  RP.frame:SetClampedToScreen(true)
   setScale(RP.frame, RF.Scale(n) * RF.LookScale(n))
   RP.frame:SetSize(gridSize(n, RF.settings))
   RP.frame:ClearAllPoints()

@@ -285,7 +285,11 @@ function G.Save()
   local profile, backup = keptBackup()
   VanguardCharDB.guard = { stamp = t, profile = profile, backup = backup }
 end
-ns.On("PLAYER_LOGOUT", G.Save)
+
+-- Logout's stamp and backup run after every module's own logout work (a situation's recording saved, say), so the backup
+-- holds the profile as it is written. Module files register their handlers after this file, so this waits for login.
+local function saveLast() ns.On("PLAYER_LOGOUT", G.Save) end
+ns.On("PLAYER_LOGIN", saveLast)
 
 -- Options --------------------------------------------------------------------------------------
 

@@ -48,7 +48,7 @@ local function stripRows()
     check(L["Durability"], stripSetting("durability")), check(L["Free bag slots"], stripSetting("bags")),
     check(L["Frame rate and latency"], stripSetting("system")), check(L["Gold"], stripSetting("gold")) }
   append(rows, supplyRows("ammo", L["Ammo (hunters, warriors, rogues)"]))
-  append(append(rows, { check(L["Clock"], stripSetting("clock")), check(L["Day, date and calendar button"], stripSetting("date")) }), supplyRows("shards", L["Soul shards (warlocks)"]))
+  append(append(rows, { check(L["Clock (reload)"], reloadSetting("InfoStrip", "clock")), check(L["Day, date and calendar button"], stripSetting("date")) }), supplyRows("shards", L["Soul shards (warlocks)"]))
   return append(append(rows, { check(L["XP per hour this session"], stripSetting("xprate")),
     check(L["Time to the next level"], stripSetting("leveltime")), check(L["Gold per hour this session"], stripSetting("goldrate")),
     check(L["Your DPS in the last fight"], stripSetting("dps")), check(L["Your DPS place in the group"], stripSetting("rank")) }), ledgerRows())

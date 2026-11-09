@@ -3,6 +3,8 @@
 // floating windows as /vg unlock handles.
 
 import { expect, it } from "vitest";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { luaValue } from "../lib/lua-emit.mjs";
 import { chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY game chat layout calls, two windows in use (the second one pulled out of the dock).
@@ -204,6 +206,26 @@ it("chat tabs: Close this tab hands the tab's chat back to the main window throu
   expect(addon.eval("return __closed"), "and the tab closed").toBe("ChatFrame2");
 });
 
+it("chat tabs: a tab showing channels is neither closed nor selected by Vanguard; chat points to its tab menu", () => {
+  const stubs = "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end";
+  const addon = loggedIn(ENV + TABS + stubs);
+  addon.eval("GENERAL_CHAT_DOCK = {} FCFDock_SelectWindow = function(dock, frame) __selected = dock == GENERAL_CHAT_DOCK and frame:GetName() end");
+  addon.eval("GetChatWindowInfo = function(i) local name = __wfgWorld.chatWindows[i] if name then return name, 12, 1, 1, 1, 1, 1, 0, 1 end end");
+  addon.eval(`ChatFrame2.channelList = { "Trade" } local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect(addon.eval("return { __popped == nil, __closed == nil, __selected == nil }"), "not popped in, not closed, not selected").toEqual([true, true, true]);
+  expect(chatHas(addon, /This tab shows channels\. Right-click its tab and choose Close Chat Window/), "and says how").toBe(true);
+  addon.eval(`ChatFrame2.channelList = {} local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect(addon.eval("return __popped"), "with no channels left it closes through the pop-in").toBe("ChatFrame2");
+});
+
+it("chat tabs: a tab showing channels on a client without the dock calls still points to its tab menu", () => {
+  const addon = loggedIn(ENV + TABS);
+  addon.eval("FCFDock_SelectWindow = nil");
+  addon.eval(`ChatFrame2.channelList = { "Trade" } local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  expect([addon.eval("return __closed"), chatHas(addon, /This tab shows channels\./)], "not closed, told").toEqual([null, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat tabs: two tabs closed in one fight are both closed when it ends", () => {
   const addon = loggedIn(ENV + TABS + "local close = FCF_Close __allClosed = {} FCF_Close = function(f) close(f) table.insert(__allClosed, f:GetName()) end");
   addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
@@ -211,6 +233,17 @@ it("chat tabs: two tabs closed in one fight are both closed when it ends", () =>
   addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close() CW.editing = 3 CW.Close()`);
   addon.world.combat(false);
   expect(addon.eval("return __allClosed"), "both closed after the fight").toEqual(["ChatFrame2", "ChatFrame3"]);
+});
+
+it("chat tabs: a tab given a channel while its close waited for the fight is not popped in; chat points to its tab menu", () => {
+  const addon = loggedIn(ENV + TABS + "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end");
+  addon.world.combat(true);
+  addon.eval(`ChatFrame2.channelList = {} local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
+  addon.eval(`ChatFrame2.channelList = { "Trade" }`);
+  addon.world.combat(false);
+  expect(addon.eval("return { __popped == nil, __closed == nil }"), "not popped in, not closed").toEqual([true, true]);
+  expect(chatHas(addon, /This tab shows channels\./), "the hint shows").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
 it("chat tabs: a new tab with every chat window in use says so and keeps the tab being edited", () => {
@@ -359,4 +392,22 @@ it("chat tabs: a tab name is cut at 16 characters, not 16 bytes: keeps 16 whole 
   const clean = (text) => addon.eval(`local n = ns.GetModule('ChatWindows').CleanName("${text}") return { n, #n }`);
   expect(clean("Ventes à l’hôtel des ventes"), "16 letters, ending on a whole one").toEqual(["Ventes à l’hôtel", 20]);
   expect(clean("Торговля и обмен"), "a 16-letter Cyrillic name is kept whole").toEqual(["Торговля и обмен", 30]);
+});
+
+it("chat windows: Find lists a restored player line once, though the window shows it with its line number zeroed", () => {
+  const history = `__now = 1790000000 time = function() return __now end
+    __wfgWorld.chatWindows[1] = "General"
+    ChatFrame1.GetNumMessages = function(self) return #(self.__messages or {}) end
+    ChatFrame1.GetMessageInfo = function(self, i) return self.__messages[i] end`;
+  const addon = loggedIn(history);
+  addon.slash("history on");
+  addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:523:CHANNEL:2|h[Bob]|h: wts sword")`);
+  addon.fire("PLAYER_LOGOUT");
+  const sv = addon.savedVariables();
+  const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  next.eval(history);
+  next.login();
+  const found = next.eval("return { ns.GetModule('ChatWindows').Find('sword') }");
+  expect(found[0], "one line, not the window's copy and the saved copy").toBe('Chat: 1 lines with "sword"');
+  expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });

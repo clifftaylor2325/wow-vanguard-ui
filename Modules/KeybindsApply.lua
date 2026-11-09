@@ -990,11 +990,13 @@ local function recordText(copy)
   return ns.Serialize.Encode("keys", data)
 end
 
--- The stamp of this logout's copy: the restored copy's own while the account's record is still what that copy
--- restored (a session that only restored must not make an old copy outrank another character's newer one), else now.
+-- The stamp of this logout's copy: this character's last copy's own while the account file still notes that
+-- stamp and the record is what that copy holds (a character that only restored, across any number of sessions,
+-- must not make an old copy outrank another character's newer one), else now, when the record changed.
 local function copyStamp(copy)
-  local restored = KA.restoredCopy
-  if restored and recordText(copy) == recordText(restored) then return restored.stamp end
+  local old = type(VanguardCharDB.keyBackup) == "table" and VanguardCharDB.keyBackup
+  local stamp = old and tonumber(old.stamp)
+  if stamp and stamp == tonumber(VanguardDB.keyStamp) and recordText(copy) == recordText(old) then return stamp end
   return ns.PlainNumber(ns.Client.Call("time")) or 0
 end
 
@@ -1015,13 +1017,17 @@ ns.On("PLAYER_LOGOUT", KA.BackUp)
 -- spells are this character's copy from its last logout (none when it had none then), but only a copy newer than
 -- the one the account file holds: after a loss each character is told of it, and a second character's older copy
 -- must not replace the record a first one rebuilt since. A blank account file has no stamp, so any copy restores.
+-- An unstamped or missing copy (saved before copies were stamped) counts as the oldest, stamp 0, and keeps that
+-- stamp in this character's file, so its next logout (copyStamp) does not stamp the old record as new.
 function KA.RestoreBackup()
   if not ns.SettingsGuard.Lost() then return end
   local copy = type(VanguardCharDB.keyBackup) == "table" and VanguardCharDB.keyBackup or {}
-  if (tonumber(copy.stamp) or 0) <= (tonumber(VanguardDB.keyStamp) or -1) then return end
+  local stamp = tonumber(copy.stamp) or 0
+  if stamp <= (tonumber(VanguardDB.keyStamp) or -1) then return end
   for _, name in ipairs(KA.BACKED_UP) do
     VanguardDB[name] = type(copy[name]) == "table" and ns.Copy(copy[name]) or nil
   end
-  VanguardDB.keyStamp, KA.restoredCopy = copy.stamp, copy
+  copy.stamp = stamp
+  VanguardCharDB.keyBackup, VanguardDB.keyStamp = copy, stamp
 end
 ns.On("PLAYER_LOGIN", KA.RestoreBackup)

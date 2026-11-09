@@ -4683,6 +4683,90 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the line under Stack and Max reads "No room in your bags" (not "Can't afford one"), and pressing Max or Stack prints the same line in chat and buys nothing
 - If it fails, paste: the line's text and the chat lines after the press
 
+### 33.397 Close this tab leaves channel tabs to the game's menu (Forever)
+
+- Do: make a chat tab that shows Trade or LookingForGroup (right-click the tab, Settings, tick the channel). Open the Vanguard options, Chat page, Chat tabs, pick that tab and press Close this tab. Then right-click the tab and choose Close Chat Window. Repeat Close this tab on a floating (undocked) channel window. Next, make a second tab that shows no channel and close it with Close this tab. Without reloading, enter `/console taintLog 1`, go into a dungeon and watch LookingForGroup or a custom channel in the main window for a few minutes.
+- Expect: the channel tab stays open (Vanguard does not select it), and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."; after the game's Close Chat Window the channel shows in the main window. On the floating channel window the main chat window stays visible and the same line shows in it. The tab with no channel closes from Vanguard's button. In the dungeon, channel lines keep showing in the main window with no Lua error and no taint line naming Vanguard.
+- If it fails, paste: the chat line shown, any Lua error, and the lines naming Vanguard in Logs/taint.log.
+
+### 33.398 Restored Discord guild lines offer no Report Chat (Forever)
+
+- Do: in a guild whose chat is linked to Discord, with Chat history on, wait for a Discord member's guild line, log out and back in, chat a while, then right-click that member's name in the restored block between the dash rules.
+- Expect: the name's menu shows no Report Chat entry (or no menu at all); a live Discord line said after the login still offers Report Chat.
+- If it fails, paste: the entries the menu showed and the restored line copied from chat.
+
+### 33.399 Graphics apply leaves outline mode alone without card support (Forever)
+
+- Do: On a computer whose Options > Graphics hides the Outline Mode setting, note the Outline Mode value, run `/vg graphics`, wait for the report, then run `/vg graphics apply`.
+- Expect: Outline Mode is unchanged (the other detail settings and Graphics Quality are set); `/vg graphics undo` leaves it as it was.
+- If it fails, paste: the Outline Mode value before and after apply, and the chat lines from apply.
+
+### 33.400 A sold row never outlives its invoice (both)
+
+- Do: Sell an auction by bid win, open the mailbox and read its invoice, then check Your history for that item on the Up now card at the auction house, and look at the Auctions tab's sold rows an hour later.
+- Expect: The item's sale shows once in Your history, at what the buyer paid, and no sold row for it remains after the invoice arrived.
+- If it fails, paste: the Your history lines for the item and whether a sold row was still listed.
+
+### 33.401 Interrupt mark follows your stance (Forever)
+
+- Do: As a Warrior with Pummel and Shield Bash trained, stand in Defensive Stance, target a casting mob and use Shield Bash on its cast; then switch to Berserker Stance while the target casts.
+- Expect: In Defensive Stance the diamond beside the target cast bar sweeps Shield Bash's cooldown (hollow while it recovers); in Berserker Stance it switches to Pummel's cooldown.
+- If it fails, paste: the cast bar's interrupt mark state and `/run print(C_Spell.IsSpellUsable(6552))` in each stance.
+
+### 33.402 Enchanting's item-to-enchant slot is themed (Forever)
+
+- Do: With the Windows skin on, open the Enchanting window and select any enchant recipe.
+- Expect: The slot where you pick the item to enchant is a square with a thin border like the reagent slots, not the game's gold slot art.
+- If it fails, paste: a screenshot of the recipe form and `/vg` status of the Windows group.
+
+### 33.403 A shaman in the tank role weighs tank stats (Forever)
+
+- Do: On a Forever shaman, open Town and gear, Gear upgrades, set Weigh stats for to Tank (or take the Tank role in a group), then run `/vg weights`.
+- Expect: The chat line reads "Weights for tank (role tank)", and a shield or high-armor stamina piece hovered in the bags reads as an upgrade over spell-power gear.
+- If it fails, paste: The `/vg weights` chat line, and whether the Tank role was taken from the group or the setting.
+
+### 33.404 Raid frames moved to the top keep a big raid on screen (both)
+
+- Do: Open `/vg unlock`, drag the raid frames' handle to the top left of the screen, lock, then join a raid of 25 or more (a 40-player battleground such as Alterac Valley), or open the Raid frames page in `/vg` and set the sample players preview to Raid (40).
+- Expect: Every group's row is on the screen, the top row just under the screen's top edge; the grid slides down rather than running off the top (in unlock mode the handle stays at the top while the grid sits below it).
+- If it fails, paste: `/vg probe` output and a screenshot showing how many rows are on screen.
+
+### 33.405 The quest dialog's question goes when the quest closes (both)
+
+- Do: Pick up a quest that costs money to hand in (or have a party member share a quest that flags you for PvP), open its reward page (or the shared offer) and press Complete (or Accept) so the question shows, then walk away from the NPC (or let the sharer's offer end) without answering.
+- Expect: The question closes with the quest dialog; no quest is handed in, accepted or declined, and the next quest you open shows its own page with no question over it.
+- If it fails, paste: The chat lines after walking away, and whether the question was still on screen.
+
+### 33.406 Setup's screen and layout steps follow the screen you have now (both)
+
+- Do: Open setup from the options (Run setup), go to the Screen step and note which row says "your screen"; close setup, change the game's resolution or window size, then open setup again and go to the Screen step.
+- Expect: The "your screen" mark, the descriptions under each row and the Fit row (shown only on a narrow screen) match the new screen, and the window is not taller than its rows need.
+- If it fails, paste: a screenshot of the Screen step and the game's resolution.
+
+### 33.407 A held quest arrow survives a reload (Forever)
+
+- Do: With Follow the nearest quest on and two watched quests, Shift-click the farther one in the tracker, then reload the UI (or relog).
+- Expect: The arrow still points at the Shift-clicked quest and its Pin button shows; clicking Pin lets it go.
+- If it fails, paste: The arrow panel's title and whether the Pin button is shown, plus the chat lines after the reload.
+
+### 33.408 Take all stops when the bags are full (both)
+
+- Do: Fill every general bag, open the mailbox with three mails that hold items only (Mail tools on), and click Take all.
+- Expect: One chat line "Take all: your bags are full." then "Take all: 0 of 3 done."; the game shows one red "Inventory is full" error, for the first mail only.
+- If it fails, paste: The chat lines after the click and how many red errors appeared.
+
+### 33.409 Take all stops with full general bags and room in a quiver (Forever)
+
+- Do: On a hunter (or a warlock with a soul bag) whose general bags are all full but whose quiver, ammo pouch or soul bag has free slots, open a mailbox with at least two mails holding items (not arrows or shards), turn on Mail tools and click Take all.
+- Expect: One red "Inventory is full" error for the first mail only, then one chat line "Take all: your bags are full." and the run stops; no "Mail: could not take from ..." line for each mail.
+- If it fails, paste: the chat lines from the run and which bags have free slots.
+
+### 33.410 Close this tab in a fight skips a tab that gained a channel (Forever)
+
+- Do: Open `/vg` > Chat > Chat tabs, pick a tab with no channel, enter combat, press Close this tab, then right-click that tab, choose Settings and tick Trade. Leave combat.
+- Expect: The tab stays open and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window." No error appears.
+- If it fails, paste: the chat lines and any Lua error text.
+
 ### 33.420 Action bar cooldown sweeps after the sweep change (Forever)
 
 - Do: Cast three spells with cooldowns from Vanguard's action bars (one of a few seconds, one of a minute or more, one shared with another button), use a potion or other item on a bar, then type `/vg errors`.

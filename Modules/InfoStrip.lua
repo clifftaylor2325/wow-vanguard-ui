@@ -570,12 +570,18 @@ local function applyBlock(fs, text)
   return changed
 end
 
+-- Whether a block is on: the clock as it was at login (its switch is a reload switch), every other block as set now.
+local function blockOn(key)
+  if IS.atLogin[key] ~= nil then return IS.atLogin[key] end
+  return IS.settings[key]
+end
+
 -- Repaints one block: hidden when off or when the client can't answer; the strip refits only when it changed.
 function IS.Paint(key)
   local fs = IS.fonts and IS.fonts[key]
   if not fs then return end
   local text, color
-  if IS.settings[key] then text, color = IS.TEXT[key]() end
+  if blockOn(key) then text, color = IS.TEXT[key]() end
   local changed = applyBlock(fs, text)
   showButton(key, text ~= nil)
   if color then T.Color(fs, color) end
@@ -1021,6 +1027,8 @@ end
 -- Module entry point (Core/Modules.lua): the strip, laid out again whenever the Text size changes.
 function IS.Enable(settings)
   IS.settings = settings
+  -- The clock follows the login value because the game's clock is put away once (H42-15-1).
+  IS.atLogin = { clock = settings.clock }
   hideReplaced(settings)
   keepReminders(settings)
   IS.StartSession()

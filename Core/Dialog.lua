@@ -441,6 +441,15 @@ function ns.Ask(text, yes, onYes, onNo, kind)
   f:Show()
 end
 
+-- Puts away the question whose No handler is onNo without answering it (the game ended what it asked about, as
+-- the game's own windows hide their popup without its cancel); any other question is left.
+---@param onNo function|nil
+function ns.CancelAsk(onNo)
+  if not (onNo and question and question.waiting == onNo) then return end
+  question.waiting = nil
+  question:Hide()
+end
+
 -- An irreversible move's Yes: in a fight, or with its target changed since the question (move.still says no),
 -- nothing moves and move.gone says why (or the fight line); otherwise move.act runs.
 local function moveConfirmed(move)

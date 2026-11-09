@@ -71,9 +71,11 @@ it("chat history: restored lines carry no old chat line numbers, so Report Chat 
   const addon = session();
   addon.slash("history whispers on");
   addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:523:CHANNEL:2|h[Bob]|h: hi") ChatFrame1:AddMessage("|HBNplayer:Al:9:77:BN_WHISPER:Al|h[Al]|h: yo")
-    ChatFrame1:AddMessage("|Hplayer:Cy|h[Cy]|h: plain") ChatFrame1:AddMessage("|HBNplayer:|Kq12|k:9:78:BN_WHISPER:|Kq12|k|h[Di]|h: hey") ChatFrame1:AddMessage("|Hreportcensoredmessage:5|h[Report]|h hidden")`);
+    ChatFrame1:AddMessage("|Hplayer:Cy|h[Cy]|h: plain") ChatFrame1:AddMessage("|HBNplayer:|Kq12|k:9:78:BN_WHISPER:|Kq12|k|h[Di]|h: hey") ChatFrame1:AddMessage("|Hreportcensoredmessage:5|h[Report]|h hidden")
+    ChatFrame1:AddMessage("|Hdiscorduser:12:987654:523:GUILD:|h[Al]|h: gg")`);
   const back = lines(relog(addon));
-  expect(back.slice(1, 6)).toEqual(["|Hplayer:Bob:0:CHANNEL:2|h[Bob]|h: hi", "|HBNplayer:Al:9:0:BN_WHISPER:Al|h[Al]|h: yo", "|Hplayer:Cy|h[Cy]|h: plain", "|HBNplayer:|Kq12|k:9:0:BN_WHISPER:|Kq12|k|h[Di]|h: hey", "[Report] hidden"]);
+  expect(back.slice(1, 7)).toEqual(["|Hplayer:Bob:0:CHANNEL:2|h[Bob]|h: hi", "|HBNplayer:Al:9:0:BN_WHISPER:Al|h[Al]|h: yo", "|Hplayer:Cy|h[Cy]|h: plain", "|HBNplayer:|Kq12|k:9:0:BN_WHISPER:|Kq12|k|h[Di]|h: hey", "[Report] hidden",
+    "|Hdiscorduser:12:987654:0:GUILD:|h[Al]|h: gg"]);
 });
 
 it("chat history: hidden text, other kinds of value and very long lines are never saved", () => {
@@ -187,4 +189,22 @@ it("chat history: windows the client lacks, a missing clock and a client without
   bare.login();
   expect(bare.eval("return #ns.errors"), "no clock, no hooks, a window that is gone: no errors").toBe(0);
   expect(bare.eval("return ns.GetModule('ChatHistory').Unpack('x')"), "a broken entry is nothing").toBeNull();
+});
+
+it("chat history: a line printed at login, before the world is entered, is not replayed in the earlier block and is kept for the next session", () => {
+  const addon = session();
+  addon.eval(`ChatFrame1:AddMessage("old session line")`);
+  addon.fire("PLAYER_LOGOUT");
+  const sv = addon.savedVariables();
+  const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  next.eval(`${CLOCK} __now = __now + 3600`);
+  next.fire("ADDON_LOADED", "Vanguard");
+  next.fire("PLAYER_LOGIN");
+  next.eval(`ChatFrame1:AddMessage("SomeAddon loaded")`);
+  next.fire("PLAYER_ENTERING_WORLD", true, false);
+  const shown = lines(next);
+  expect(shown.filter((l) => l === "SomeAddon loaded").length, "shown once").toBe(1);
+  expect(shown.some((l) => /1 lines, until Mon 1790000000/.test(l)), "the block counts and dates only the old line").toBe(true);
+  expect(saved(next)[0], "kept after the restored line, for the next session").toEqual(["1790000000|ffffff|old session line", "1790003600|ffffff|SomeAddon loaded"]);
+  expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });
