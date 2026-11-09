@@ -261,11 +261,27 @@ local function clientNotes()
   return type(VanguardDB) == "table" and VanguardDB.client or {}
 end
 
--- Moves the record an older version kept in the profile (Graphics.undo) to the notes, unless they hold one.
+-- The first record an older version kept in any profile (Graphics.undo, read raw so no profile is filled in), or nil.
+local function legacyUndo()
+  for _, name in ipairs(ns.ProfileNames()) do
+    local profile = VanguardDB.profiles[name]
+    local undo = type(profile) == "table" and type(profile.Graphics) == "table" and profile.Graphics.undo
+    if type(undo) == "table" then return undo end
+  end
+end
+
+-- Drops the old per-profile record from every profile.
+local function clearProfileUndo()
+  for _, profile in pairs(VanguardDB.profiles) do
+    if type(profile) == "table" and type(profile.Graphics) == "table" then profile.Graphics.undo = nil end
+  end
+end
+
+-- Moves the record an older version kept in a profile (Graphics.undo) to the notes, unless they hold one.
 local function adoptProfileUndo()
-  local settings, notes = ns.Settings("Graphics"), clientNotes()
-  if type(settings.undo) == "table" and type(notes.graphicsUndo) ~= "table" then notes.graphicsUndo = settings.undo end
-  settings.undo = nil
+  local notes = clientNotes()
+  if type(notes.graphicsUndo) ~= "table" then notes.graphicsUndo = legacyUndo() end
+  clearProfileUndo()
 end
 
 -- The kept settings: those from an earlier apply not yet undone stay, so undo goes back to before the first.

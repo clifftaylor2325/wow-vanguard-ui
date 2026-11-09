@@ -197,6 +197,13 @@ it("/vg graphics undo: a record an older version kept in the profile moves to th
   expect(cvars(addon, ["graphicsQuality"]), "the notes' record wins").toEqual(["3"]);
   expect(addon.eval("return { ns.Settings('Graphics').undo == nil, VanguardDB.client.graphicsUndo == nil }"), "both are gone after the undo").toEqual([true, true]);
 });
+it("/vg graphics undo: a record an older version kept in a profile not in use is undone, and is gone from every profile", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsQuality = '9'");
+  addon.eval("VanguardDB.profiles.Spec1 = { Graphics = { undo = { graphicsQuality = '3' } } } VanguardDB.profiles.Spec2 = { Graphics = { undo = { graphicsQuality = '4' } } }");
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsQuality"]), "the first profile in name order wins").toEqual(["3"]);
+  expect(addon.eval("return { VanguardDB.profiles.Spec1.Graphics.undo == nil, VanguardDB.profiles.Spec2.Graphics.undo == nil }"), "gone everywhere").toEqual([true, true]);
+});
 it("/vg graphics apply: a slow 4K screen gets the render scale; low steps keep the game's lowest particle density", () => {
   const addon = loggedIn(GFX_ENV + TABLE_ENV + "__fps = 10 __wfgWorld.cvars.graphicsQuality = '3'");
   addon.eval("__wfgStub.setScreen(3840, 2160)");
