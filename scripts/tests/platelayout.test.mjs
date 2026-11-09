@@ -186,3 +186,22 @@ it("the debuff row sits clear of the name at any theme text size, and the module
   off.eval('__plateSet("Width", 150)');
   expect(off.eval("return { ns.Settings('Nameplates').width, #ns.errors }"), "with the module off the value is saved for later, nothing else").toEqual([150, 0]);
 });
+
+it("name and health text sizes are shares of the theme's sizes, applied at once out of combat, with the debuff row kept clear of the name", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL, saved("healthSize = 500"));
+  // The sizes of the boar's name, level, health percent and health value texts, and how high its debuff row sits.
+  const texts = () => addon.eval(`local f = __plateOf("nameplate1") local function size(fs) return (select(2, fs:GetFont())) end
+    return { size(f.name), size(f.level), size(f.healthPercent), size(f.healthValue), __row("nameplate1", "debuffs").y }`);
+  expect(texts(), "the theme's 11 for the name; a saved share past the slider is kept to its 160%").toEqual([11, 11, 16, 16, 16]);
+  addon.eval('__plateSet("Name text size", 150) __plateSet("Health text size", 120)');
+  expect(texts(), "150% of 11 and 120% of 10, the level with the name, the row lifted clear").toEqual([17, 17, 12, 12, 22]);
+  expect(addon.eval("return __plateOf('nameplate1').soft.__points.BOTTOM.y"), "and the soft-target icon above the row").toBe(42);
+  expect(addon.eval('for _, row in ipairs(ns.GetModule("Nameplates").OptionRows()) do if row[2] == ns.L["Name text size"] then return row[3].format(150) end end'), "the slider reads in percent").toBe("150%");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(texts(), "the theme's Text size carries through: shares of 14 and 13").toEqual([21, 21, 16, 16, 26]);
+  setCombat(addon, true);
+  addon.eval('__plateSet("Name text size", 100)');
+  expect(texts()[0], "in a fight the texts wait").toBe(21);
+  setCombat(addon, false);
+  expect(texts(), "at 100% the name is the theme's size again").toEqual([14, 14, 16, 16, 19]);
+});

@@ -47,7 +47,7 @@ local UF = ns.GetModule("UnitFrames")
 
 local NP = ns.Module("Nameplates", {
   defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true,
-    questMarks = true, tagMarks = true, auraSize = 18 },
+    questMarks = true, tagMarks = true, auraSize = 18, nameSize = 100, healthSize = 100 },
 })
 
 -- The sliders' ranges (the Nameplates page). A saved number is kept inside its range (readLayout), since a
@@ -56,6 +56,11 @@ NP.RANGES = {
   width = { min = 80, max = 200, step = 2 }, height = { min = 6, max = 16, step = 1 },
   debuffs = { min = 0, max = 8, step = 1 }, buffs = { min = 0, max = 6, step = 1 }, auraSize = { min = 12, max = 28, step = 1 },
 }
+-- A slider's text for a value that is a percent.
+function NP.Percent(v) return string.format("%d%%", v) end
+-- The text sizes are shares (percent) of the theme's own sizes for those texts, so the sizes themselves stay the theme's.
+NP.RANGES.nameSize = { min = 80, max = 160, step = 5, format = NP.Percent }
+NP.RANGES.healthSize = { min = 80, max = 160, step = 5, format = NP.Percent }
 -- The raid target icon's size, left of the bar.
 NP.RAID_ICON = 18
 -- A player's buff icons, right of the bar, are this much smaller than the debuff icons (the Aura icon size).
@@ -310,10 +315,21 @@ local function sizeCast(f, l)
   if not l.castBar then f.cast:Hide() end
 end
 
+-- A plate's name and level, and its health numbers, at the layout's text sizes; nothing when the plate has
+-- them already. At 100 the theme's own size is put back (nil), which follows the theme's Text size by itself.
+local function sizeTexts(f, l)
+  local name, health = l.nameSize ~= 100 and l.nameText or nil, l.healthSize ~= 100 and l.healthText or nil
+  if name == f.nameText and health == f.healthText then return end
+  f.nameText, f.healthText = name, health
+  for _, fs in ipairs({ f.name, f.level }) do T.TextSize(fs, name) end
+  for _, fs in ipairs({ f.healthPercent, f.healthValue }) do T.TextSize(fs, health) end
+end
+
 -- Sizes a plate and the parts that follow its size: the bar, the click area around it, the soft-target
--- icon (clear of one row of debuffs) and the cast bar. A new plate and a changed setting both come
--- through here, so a plate reads the same either way.
+-- icon (clear of one row of debuffs), the texts and the cast bar. A new plate and a changed setting both
+-- come through here, so a plate reads the same either way.
 local function sizePlate(f, l)
+  sizeTexts(f, l)
   f:SetSize(l.width, l.height)
   f.hit:SetPoint("BOTTOM", f, "BOTTOM", 0, -l.height / 2)
   f.hit:SetWidth(l.width + 2 * NP.HIT_PAD)
@@ -806,13 +822,20 @@ end
 
 -- Layout -----------------------------------------------------------------------------------
 
+-- A text role's size at a share (percent) of the theme's size for it now.
+local function textSize(role, percent)
+  return math.floor(T.RoleSize(role) * percent / 100 + 0.5)
+end
+
 -- The sizes the plates are built at, read from the settings: each number kept to its slider's range, the
--- timers and the cast bar, and how far the debuff row sits above the bar (clear of the name, whose size
--- follows the theme's text size). Plates read this, not the settings, so they change only out of combat.
+-- timers and the cast bar, the name's and the health numbers' text sizes (shares of the theme's, which
+-- follow its Text size), and how far the debuff row sits above the bar: clear of the name. Plates read
+-- this, not the settings, so they change only out of combat.
 local function readLayout(s)
   local l = { timers = s.timers == true, castBar = s.castBar == true }
   for key, range in pairs(NP.RANGES) do l[key] = math.max(range.min, math.min(range.max, s[key])) end
-  l.rise = NP.NAME_GAP + T.RoleSize("world") + NP.ROW_GAP
+  l.nameText, l.healthText = textSize("world", l.nameSize), textSize("barSmall", l.healthSize)
+  l.rise = NP.NAME_GAP + l.nameText + NP.ROW_GAP
   return l
 end
 
@@ -1223,9 +1246,12 @@ local function slider(caption, key)
   return { "slider", caption, NP.RANGES[key], setting(key, NP.ApplyLayout) }
 end
 
--- The bar's size.
+-- The bar's size, and the sizes of the texts on it.
 local function sizeRows()
-  return { { "header", L["Size"] }, slider(L["Width"], "width"), slider(L["Height"], "height") }
+  return {
+    { "header", L["Size"] }, slider(L["Width"], "width"), slider(L["Height"], "height"),
+    slider(L["Name text size"], "nameSize"), slider(L["Health text size"], "healthSize"),
+  }
 end
 
 -- The aura rows: how many of your debuffs and of a player's buffs, how large, and the timers.
