@@ -39,6 +39,10 @@ on:
         description: "Shuffle the test order and print the seed, so a failure can be replayed"
         type: boolean
         default: false
+      coverage:
+        description: "Run the suite with line coverage and its floor (off: the plain suite, about half the time)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -84,7 +88,13 @@ jobs:
           seed=$(date +%s)
           echo "VG_SHUFFLE_SEED=$seed" >> "$GITHUB_ENV"
           printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
+      # A pull request runs the plain suite (full-suite.yml turns coverage off): coverage roughly
+      # doubles a case's cost, and the floor is checked before every pull request locally, weekly,
+      # by hand and before each release.
       - run: npm run coverage
+        if: inputs.coverage
+      - run: npm test
+        if: ${{ !inputs.coverage }}
       # The raid benchmark (scripts/bench.mjs, issue #255): time and Lua
       # instructions per event under a scripted 40-player raid, a harness
       # measurement until /vg perf confirms it in game. Its tables go to the
@@ -135,9 +145,12 @@ jobs:
     # A screenshot of the default layout from the addon's real Lua (art
     # approximated), so a UI change can be reviewed from the run's artifacts.
     # It needs no green tests job: a UI change is reviewable even when a
-    # test fails.
+    # test fails. Its failure never fails the run (continue-on-error): it is a
+    # picture to review, not a test, and its out-of-memory runs kept the weekly
+    # suite red while every test passed (issue #780).
     name: UI preview
     if: inputs.preview
+    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
