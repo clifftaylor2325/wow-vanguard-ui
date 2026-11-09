@@ -6,8 +6,9 @@
 -- can sit in a movable corner, follow the cursor, or stay where the client
 -- puts it, and unit tooltips can be hidden in combat. Item tooltips show what
 -- the item sells for (the stack's worth, unless the client already shows it),
--- how many you have (bags and bank), and optionally the item's ID; other modules
--- add their own item lines after those (TT.AddItemLines).
+-- how many you have (bags and bank); other modules add their own item lines
+-- after those (TT.AddItemLines). One switch, off by default, adds IDs: an
+-- item's to its tooltip, a spell's to a spell's and an aura's.
 --
 -- Written for WoW Forever. Every client call is looked up when used. In
 -- Midnight some of a tooltip's text is hidden from addons, so this module only
@@ -24,8 +25,13 @@ local L = ns.L
 
 local TT = ns.Module("Tooltips", {
   defaults = { anchor = "corner", classBorder = true, targetLine = true, guild = true, realm = true, role = true, itemLevel = true, hideInCombat = false,
-    sellPrice = true, itemCount = true, itemID = false },
+    sellPrice = true, itemCount = true, ids = false },
 })
+
+-- After 0.9.3: the "Item IDs" switch (itemID) became one switch for item, spell and aura IDs (ids).
+ns.Migrate("Tooltips", function(saved)
+  if saved.itemID ~= nil then saved.ids, saved.itemID = saved.itemID, nil end
+end)
 
 TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "EmbeddedItemTooltip" }
 -- More of the client's tooltips and tooltip-like boxes, skinned while the game windows' "menus" group is
@@ -326,7 +332,7 @@ local function ownItemLines(tt, link)
   if not on then return end
   if on.sellPrice then addPrice(tt, link) end
   if on.itemCount then addCount(tt, link) end
-  if on.itemID then addID(tt, link) end
+  if on.ids then addID(tt, link) end
 end
 
 -- An item tooltip was filled in: add the switched-on lines, then other modules' (one
@@ -339,17 +345,33 @@ function TT.OnItem(tt)
   for _, fn in ipairs(TT.itemLines) do ns.Try("tooltip lines", fn, tt, link) end
 end
 
+-- Spell and aura IDs ------------------------------------------------------------------------
+
+-- "Spell ID 133" under a spell's tooltip and an aura's (an aura's ID is its spell's), with IDs switched on. The ID
+-- is the one in the client's tooltip data; a hidden one adds nothing, and a tooltip kept from addons is left alone.
+function TT.OnSpell(tt, data)
+  if not TT.settings.ids or forbidden(tt) then return end
+  local plain = ns.PlainTable(data)
+  local id = plain and ns.PlainNumber(plain.id)
+  if id then tt:AddLine(filled(L["Spell ID {id}"], "id", id), T.RGB("text2")) end
+end
+
 -- Hooks ------------------------------------------------------------------------------------
+
+-- Calls fn(tooltip, data) after the client fills a tooltip of one kind through its tooltip data API; true when it
+-- has that API and that kind.
+local function hookData(kind, fn)
+  local processor, kinds = _G.TooltipDataProcessor, _G.Enum and _G.Enum.TooltipDataType
+  if type(processor) ~= "table" or not processor.AddTooltipPostCall or not (kinds and kinds[kind]) then return false end
+  processor.AddTooltipPostCall(kinds[kind], ns.Guard("tooltip " .. kind, fn))
+  return true
+end
 
 -- Calls fn after the client fills a tooltip of one kind (new data API, else the old script).
 local function hookFilled(kind, script, fn)
-  fn = ns.Guard("tooltip " .. kind, fn)
-  local processor, kinds = _G.TooltipDataProcessor, _G.Enum and _G.Enum.TooltipDataType
-  if type(processor) == "table" and processor.AddTooltipPostCall and kinds and kinds[kind] then
-    return processor.AddTooltipPostCall(kinds[kind], fn)
-  end
+  if hookData(kind, fn) then return end
   local tt = _G.GameTooltip
-  if tt and tt.HasScript and tt:HasScript(script) then tt:HookScript(script, fn) end
+  if tt and tt.HasScript and tt:HasScript(script) then tt:HookScript(script, ns.Guard("tooltip " .. kind, fn)) end
 end
 
 -- Calls fn before the client fills a tooltip of one kind, where the client has the data API; fn's true stops the fill.
@@ -371,10 +393,13 @@ function TT.HookItems()
   hookFilled("Item", "OnTooltipSetItem", TT.OnItem)
 end
 
--- Decorates unit tooltips and adds sell prices to item tooltips as the client fills them.
+-- Decorates unit tooltips and adds the module's lines to item, spell and aura tooltips as the client fills them
+-- (spell and aura IDs only where the client has the tooltip data API, as the 12.1 client does).
 local function hookTooltips()
   hookBefore("Unit", TT.BeforeUnit)
   hookFilled("Unit", "OnTooltipSetUnit", TT.OnUnit)
+  hookData("Spell", TT.OnSpell)
+  hookData("UnitAura", TT.OnSpell)
   TT.HookItems()
 end
 

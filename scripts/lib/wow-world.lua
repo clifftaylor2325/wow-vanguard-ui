@@ -240,7 +240,9 @@ Enum = {
   StatusBarInterpolation = { Immediate = 0, Smooth = 1 },
   -- A subset of Enum.TooltipDataLineType with the client's values (TooltipInfoSharedDocumentation.lua).
   TooltipDataLineType = { None = 0, Blank = 1, UnitName = 2, UnitThreat = 7, QuestObjective = 8, QuestTitle = 17, QuestPlayer = 18 },
-  TooltipDataType = { Item = 0, Spell = 1, Unit = 2 },
+  -- A subset of Enum.TooltipDataType with the client's values (TooltipInfoSharedDocumentation.lua): UnitAura is what
+  -- SetUnitAura, SetUnitBuff and SetUnitDebuff (and their ByAuraInstanceID forms) fill a tooltip with.
+  TooltipDataType = { Item = 0, Spell = 1, Unit = 2, UnitAura = 7 },
   WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 },
 }
 

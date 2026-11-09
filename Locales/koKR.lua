@@ -854,7 +854,6 @@ L["It isn't in your bags now: put it on the card again."] = "지금 가방에 �
 L["It switches back at the reload; Stop spec switching on the Profiles page keeps your pick."] = "UI 재시작 시 되돌아갑니다. 프로필 페이지의 전문화 전환 중지로 선택을 유지하세요."
 L["Item"] = "아이템"
 L["Item ID {id}"] = "아이템 ID {id}"
-L["Item IDs"] = "아이템 ID"
 L["Item level"] = "아이템 레벨"
 L["Item level on each gear slot of the character pane"] = "캐릭터 창 장비 칸마다 아이템 레벨"
 L["Item level on each gear slot of the character pane, optional marks for missing enchants, and /vg gear."] = "캐릭터 창 장비 칸마다 아이템 레벨, 마법부여 누락 표시(선택), /vg gear."

@@ -576,6 +576,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: under the game's own lines the tooltip adds the guild with the rank ("Guild: Night Watch (Officer)"), or only "Guild rank: Officer" when the game's tooltip already names the guild; "Realm: Emberfall" only for a player of another realm, and not when the name line already carries the realm; "Role: Tank", "Role: Healer" or "Role: DPS" for a player with a group role; all in the quiet text colour, above "Target: ...". The guildless player and the mob get none of them. Your own tooltip ends its player lines with "Item level N", the same whole number as the character pane's item level, and no other player's tooltip has that line. Each switch takes its line off on the next hover, with no reload asked for, and brings it back. `/vg errors` stays empty. [Needs in game: whether WoW Forever's own tooltip already shows the guild and the realm, so which wording shows; that no line is doubled; that `GetAverageItemLevel` answers on WoW Forever as the character pane reads it.]
 - If it fails, paste: a screenshot of the tooltip, `/run print(GetGuildInfo("mouseover"))` and `/run print(UnitName("mouseover"))` while hovering the player, `/run print(GetAverageItemLevel())`, and `/vg errors`.
 
+### 7.2m Tooltips: item, spell and aura IDs behind one switch
+
+- Do: with a profile where **Item IDs** was ticked before this version, log in and hover an item, a spell on an action bar, a spell in the spellbook and one of your buffs. On a fresh profile do the same. Then `/vg` → Game windows → Tooltips → More settings: tick **IDs on item, spell and aura tooltips**, hover the same four, a debuff on a target and a buff on a raid tile, and untick it again.
+- Expect: the older profile shows the IDs at once (its switch is ticked); the fresh one shows none. With the switch on, the item's tooltip ends with "Item ID N", the spell's and each buff's or debuff's with "Spell ID N" in the quiet text colour, once per tooltip; with it off the lines are gone on the next hover, with no reload asked for. A macro's tooltip gets no ID. `/vg errors` stays empty, in a fight too. [Needs in game: that the aura tooltips Vanguard's own buff icons show go through the game's aura tooltip data, so they get the line; that no tooltip shows the line twice.]
+- If it fails, paste: a screenshot of the tooltip, what you hovered, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.

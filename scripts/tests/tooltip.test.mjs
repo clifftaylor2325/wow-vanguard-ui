@@ -8,7 +8,7 @@ const TOOLTIP_ENV = `
   __hooks, __post, __pre = {}, {}, {}
   hooksecurefunc = function(name, fn) __hooks[name] = fn end
   GameTooltip_SetDefaultAnchor = function() end
-  Enum = Enum or {} Enum.TooltipDataType = { Item = 0, Unit = 2 }
+  Enum = Enum or {} Enum.TooltipDataType = { Item = 0, Spell = 1, Unit = 2, UnitAura = 7 }
   TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end, AddTooltipPreCall = function(kind, fn) __pre[kind] = fn end }
   local tt = CreateFrame("Frame", "GameTooltip", UIParent)
   tt.NineSlice = CreateFrame("Frame", nil, tt)
@@ -289,10 +289,47 @@ it("item tooltips: how many you have, and the item ID when asked", () => {
   const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV + "C_Item.GetItemCount = function(link, bank) if link == 'item:90002' then return 3, 3 end return bank and 12 or 7 end");
   expect(addon.eval('local l = __showItem("item:90002", 1) return l[1].text'), "all in your bags").toBe("You have 3");
   expect(addon.eval('local l = __showItem("item:90001", 1) return { l[2].text, #l }'), "some in the bank; no ID line by default").toEqual(["You have 12 (5 in the bank)", 2]);
-  addon.eval("VanguardDB.profiles.Default.Tooltips.itemID = true VanguardDB.profiles.Default.Tooltips.itemCount = false");
+  addon.eval("VanguardDB.profiles.Default.Tooltips.ids = true VanguardDB.profiles.Default.Tooltips.itemCount = false");
   expect(addon.eval('local l = __showItem("item:90002", 1) return l[#l].text'), "the ID line, when switched on").toBe("Item ID 90002");
-  addon.eval("C_Item.GetItemCount = function() return 0, 0 end VanguardDB.profiles.Default.Tooltips.itemCount = true VanguardDB.profiles.Default.Tooltips.itemID = false");
+  addon.eval("C_Item.GetItemCount = function() return 0, 0 end VanguardDB.profiles.Default.Tooltips.itemCount = true VanguardDB.profiles.Default.Tooltips.ids = false");
   expect(addon.eval('return #__showItem("item:90002", 1)'), "none of it: no count line").toBe(0);
+});
+
+// The lines a spell (kind 1) or aura (kind 7) tooltip ends up with, filled as the client does: its own name line,
+// then the post-call with the tooltip and the tooltip data (`data` is Lua for that table).
+const spellTip = (addon, kind, data) => addon.eval(`local tt = GameTooltip
+  tt.__lines = { { text = "TEST-ONLY spell" } }
+  __post[${kind}](tt, ${data})
+  local out = {} for i, l in ipairs(tt.__lines) do out[i] = l.text end
+  return table.concat(out, " | ")`);
+
+it("spell and aura tooltips show the spell ID with the IDs switch on, which is off by default and applies at once", () => {
+  const addon = loggedIn(CLICK_LUA + UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
+  expect([spellTip(addon, 1, "{ type = 1, id = 133 }"), spellTip(addon, 7, "{ type = 7, id = 1459 }")], "off by default: the client's lines only").toEqual(["TEST-ONLY spell", "TEST-ONLY spell"]);
+  expect(addon.eval('ns.Options.Show("windows") return __click("IDs on item, spell and aura tooltips")'), "the one switch, on the Game windows page").toBe(true);
+  expect(spellTip(addon, 1, "{ type = 1, id = 133 }"), "a spell's ID").toBe("TEST-ONLY spell | Spell ID 133");
+  expect(spellTip(addon, 7, "{ type = 7, id = 1459 }"), "an aura's (its spell's)").toBe("TEST-ONLY spell | Spell ID 1459");
+  expect(addon.eval("return GameTooltip.__lines[2].r == (ns.Theme.RGB('text2'))"), "in the quiet text color").toBe(true);
+  expect(addon.eval('local l = __showItem("item:90001", 1) return l[#l].text'), "and an item's, from the same switch").toBe("Item ID 90001");
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "no reload asked for").toBe(false);
+  expect([spellTip(addon, 1, "{ type = 1, id = { __secret = true } }"), spellTip(addon, 1, "{ __secret = true }"), spellTip(addon, 1, "nil"), spellTip(addon, 1, "{ type = 1 }")],
+    "a hidden ID, hidden data, no data or no ID: no line").toEqual(["TEST-ONLY spell", "TEST-ONLY spell", "TEST-ONLY spell", "TEST-ONLY spell"]);
+  addon.eval("GameTooltip.IsForbidden = function() return true end");
+  expect(spellTip(addon, 1, "{ type = 1, id = 133 }"), "a tooltip the client keeps from addons is left alone").toBe("TEST-ONLY spell");
+  addon.eval("GameTooltip.IsForbidden = nil __click('IDs on item, spell and aura tooltips')");
+  expect([spellTip(addon, 1, "{ type = 1, id = 133 }"), addon.eval("return #ns.errors")], "switched off again: no line, and no error on the way").toEqual(["TEST-ONLY spell", 0]);
+});
+
+it("a profile saved with the old Item IDs switch keeps it as the one IDs switch; clients without the tooltip data API get no spell hook", () => {
+  const saved = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Tooltips = { itemID = true } } }" });
+  expect(saved.eval("local s = VanguardDB.profiles.Default.Tooltips return { s.ids, s.itemID == nil }"), "itemID = true became ids = true, and the old key is gone").toEqual([true, true]);
+  expect(spellTip(saved, 1, "{ type = 1, id = 133 }"), "so spell IDs show for that player too").toBe("TEST-ONLY spell | Spell ID 133");
+  const fresh = loggedIn(UNITS_ENV + TOOLTIP_ENV);
+  expect(fresh.eval("local s = VanguardDB.profiles.Default.Tooltips return { s.ids, s.itemID == nil }"), "a new profile: off, with no old key").toEqual([false, true]);
+  const old = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace("TooltipDataProcessor =", "__noProcessor =") + OLD_TOOLTIP_SCRIPT);
+  expect(old.eval("return { __post[1] == nil, __post[7] == nil, #ns.errors }"), "an older client: no spell or aura post-call, and no error").toEqual([true, true, 0]);
+  const noAura = loggedIn(UNITS_ENV + TOOLTIP_ENV.replace(", UnitAura = 7", ""));
+  expect(noAura.eval("return { __post[1] ~= nil, __post[7] == nil, #ns.errors }"), "a client whose data API has no aura kind: spells only").toEqual([true, true, 0]);
 });
 
 // TEST-ONLY: the client's other tooltips (GameTooltipTemplate / TooltipBackdropTemplate frames with a

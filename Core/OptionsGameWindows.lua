@@ -116,13 +116,14 @@ local function tooltipUnitRows()
   }
 end
 
--- Tooltips on items: the sell price, how many you have (and your other characters), IDs, and where an item is sold.
+-- Tooltips on items: the sell price, how many you have (and your other characters), IDs (spell and aura IDs go
+-- with the same switch), and where an item is sold.
 local function tooltipItemRows()
   local rows = {
     O.Essential(check(L["Item sell price"], setting("Tooltips", "sellPrice"))),
     O.Essential(check(L["How many of an item you have"], setting("Tooltips", "itemCount"))),
     O.Essential(check(L["Counts on your other characters"], setting("Inventory", "alts"))),
-    check(L["Item IDs"], setting("Tooltips", "itemID")),
+    check(L["IDs on item, spell and aura tooltips"], setting("Tooltips", "ids")),
   }
   for _, row in ipairs(vendorRows()) do rows[#rows + 1] = O.Essential(row) end
   return rows

@@ -854,7 +854,6 @@ L["It isn't in your bags now: put it on the card again."] = "它現在不在你�
 L["It switches back at the reload; Stop spec switching on the Profiles page keeps your pick."] = "重新載入後會切換回去；在設定檔頁面使用「停止專精切換」可保留你的選擇。"
 L["Item"] = "物品"
 L["Item ID {id}"] = "物品ID {id}"
-L["Item IDs"] = "物品ID"
 L["Item level"] = "物品等級"
 L["Item level on each gear slot of the character pane"] = "在角色面板的每個裝備欄位顯示物品等級"
 L["Item level on each gear slot of the character pane, optional marks for missing enchants, and /vg gear."] = "在角色面板的每個裝備欄位顯示物品等級，可選標記缺少的附魔，以及 /vg gear。"
