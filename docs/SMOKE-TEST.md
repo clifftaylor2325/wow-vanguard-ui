@@ -4647,6 +4647,54 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge.
 - If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
 
+### 33.420 Action bar cooldown sweeps after the sweep change (Forever)
+
+- Do: Cast three spells with cooldowns from Vanguard's action bars (one of a few seconds, one of a minute or more, one shared with another button), use a potion or other item on a bar, then type `/vg errors`.
+- Expect: each button shows its cooldown sweep and the numbers count down as before; the sweep clears when the cooldown ends; no "bar cooldown" or "bar range check" line in `/vg errors`.
+- If it fails, paste: the `/vg errors` text and which button lost its sweep.
+
+### 33.421 Dragging actions in a fight (Forever)
+
+- Do: In a fight, Shift-drag a spell off one of Vanguard's bars, and drag a spell from the spellbook onto an empty button. Leave the fight and do both again.
+- Expect: in the fight nothing moves and no "Interface action failed" message shows; after the fight both work as before.
+- If it fails, paste: what moved, and any message the game showed.
+
+### 33.422 The enemy nameplates offer (Forever)
+
+- Do: Make a new character, finish setup, turn the game's enemy nameplates off with V, and `/reload`.
+- Expect: after the reload one question asks whether to turn the game's enemy nameplates on; **Turn on** turns them on (enemy plates show), **No** leaves them off; after either, later logins and reloads don't ask again. A character whose enemy plates are already on is never asked.
+- If it fails, paste: whether the question showed, what you answered, and the `/vg plates` line.
+
+### 33.423 Debuff edges, stack counts and aura sweeps (Forever)
+
+- Do: In a dungeon, put stacking debuffs and a poison or curse on yourself or a party member (or let mobs do it), watch the party frames, your player frame's auras and the target's nameplate for a minute, then type `/vg errors`.
+- Expect: debuff icons keep their type-coloured edge, stack counts and the timer sweep as before; the error badge by the minimap doesn't appear for them; no "aura dispel color", "aura stack text", "aura duration" or "aura sweep" line in `/vg errors` (if there is one, the icons still show and the line is the report).
+- If it fails, paste: the `/vg errors` text.
+
+### 33.424 Auras through a boss pull (Forever)
+
+- Do: Pull a dungeon boss with buffs and debuffs on your party; during the fight watch your buffs, the party frames' debuffs and the boss's nameplate; let a debuff fall off.
+- Expect: icons that fall off go away and new ones appear during the boss fight as they do on trash; nothing stays stuck after it ends.
+- If it fails, paste: which frame kept a stale icon, and `/vg status`.
+
+### 33.425 Edit Mode layout from a profile (Forever)
+
+- Do: In Edit Mode make a second layout, save it into a Vanguard profile (switch to that layout while the profile is on), switch to another profile and back so Vanguard switches the layout for you, `/reload`, then fight a few mobs using your action bars.
+- Expect: chat says "Edit Mode layout …, from profile …"; in the fight no "Interface action failed because of an AddOn" message, and `/vg errors` has no "action blocked" or "action forbidden" line.
+- If it fails, paste: the `/vg errors` text and the message the game showed.
+
+### 33.426 Blocked actions are on record (Forever)
+
+- Do: Play for an evening as usual. Whenever the game says "Interface action failed because of an AddOn", type `/vg errors`.
+- Expect: if the message was Vanguard's, `/vg errors` lists an "action blocked" or "action forbidden" line naming the call under "Calls the game blocked from Vanguard"; if the list has none, the message came from another addon.
+- If it fails, paste: the `/vg errors` text and what you were doing when the message showed.
+
+### 33.427 Paused parts and the Feedback page (Forever)
+
+- Do: Open `/vg` → Feedback, then type `/vg errors resume`.
+- Expect: with nothing paused, the page starts with the Feedback card (no **Paused after repeated errors** card) and chat says "Paused parts run again."; the footer's error line, when there is one, counts errors, not paused parts.
+- If it fails, paste: a screenshot of the Feedback page.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
