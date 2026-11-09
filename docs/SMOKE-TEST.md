@@ -4683,6 +4683,30 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the line under Stack and Max reads "No room in your bags" (not "Can't afford one"), and pressing Max or Stack prints the same line in chat and buys nothing
 - If it fails, paste: the line's text and the chat lines after the press
 
+### 33.397 Close this tab leaves channel tabs to the game's menu (Forever)
+
+- Do: make a chat tab that shows Trade or LookingForGroup (right-click the tab, Settings, tick the channel). Open the Vanguard options, Chat page, Chat tabs, pick that tab and press Close this tab. Then right-click the tab and choose Close Chat Window. Repeat Close this tab on a floating (undocked) channel window. Next, make a second tab that shows no channel and close it with Close this tab. Without reloading, enter `/console taintLog 1`, go into a dungeon and watch LookingForGroup or a custom channel in the main window for a few minutes.
+- Expect: the channel tab stays open and is selected, and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."; after the game's Close Chat Window the channel shows in the main window. On the floating channel window the main chat window stays visible and the same line shows in it. The tab with no channel closes from Vanguard's button. In the dungeon, channel lines keep showing in the main window with no Lua error and no taint line naming Vanguard.
+- If it fails, paste: the chat line shown, any Lua error, and the lines naming Vanguard in Logs/taint.log.
+
+### 33.398 Restored Discord guild lines offer no Report Chat (Forever)
+
+- Do: in a guild whose chat is linked to Discord, with Chat history on, wait for a Discord member's guild line, log out and back in, chat a while, then right-click that member's name in the restored block between the dash rules.
+- Expect: the name's menu shows no Report Chat entry (or no menu at all); a live Discord line said after the login still offers Report Chat.
+- If it fails, paste: the entries the menu showed and the restored line copied from chat.
+
+### 33.399 Graphics apply leaves outline mode alone without card support (Forever)
+
+- Do: On a computer whose Options > Graphics hides the Outline Mode setting, note the Outline Mode value, run `/vg graphics`, wait for the report, then run `/vg graphics apply`.
+- Expect: Outline Mode is unchanged (the other detail settings and Graphics Quality are set); `/vg graphics undo` leaves it as it was.
+- If it fails, paste: the Outline Mode value before and after apply, and the chat lines from apply.
+
+### 33.400 A sold row never outlives its invoice (both)
+
+- Do: Sell an auction by bid win, open the mailbox and read its invoice, then check Your history for that item on the Up now card at the auction house, and look at the Auctions tab's sold rows an hour later.
+- Expect: The item's sale shows once in Your history, at what the buyer paid, and no sold row for it remains after the invoice arrived.
+- If it fails, paste: the Your history lines for the item and whether a sold row was still listed.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
