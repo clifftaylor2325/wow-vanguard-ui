@@ -93,7 +93,7 @@ it("what's new: clicking a line opens its setting, on its options page, scrolled
 it("what's new: a new account gets setup first, and this version's notes are marked seen without showing", () => {
   const addon = loggedIn(ENV, { firstRun: true });
   expect([addon.eval("return ns.Setup.Step()"), state(addon)], "setup opens; what's new doesn't").toEqual([1, { shown: false, title: "", seen: "9.9.9" }]);
-  for (let i = 0; i < 4; i++) addon.eval("local b = Vanguard_Setup.next b:GetScript('OnClick')(b, 'LeftButton')");
+  for (let i = 0; i < 9; i++) addon.eval("local b = Vanguard_Setup.next b:GetScript('OnClick')(b, 'LeftButton')");
   expect([addon.eval("return ns.Setup.Step() == nil and VanguardDB.setupDone"), state(addon).shown], "after setup it still doesn't show").toEqual([true, false]);
 });
 

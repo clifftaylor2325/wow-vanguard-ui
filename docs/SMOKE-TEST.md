@@ -95,7 +95,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.2 First login opens the setup wizard
 
 - Do: at character select open AddOns and tick Vanguard, then log in on an account that has never run it (or delete both `WTF/Account/<account>/SavedVariables/Vanguard.lua` and the character's `WTF/Account/<account>/<realm>/<character>/SavedVariables/Vanguard.lua` first; deleting only the account's file is the settings-loss check in 4.7).
-- Expect: the setup wizard opens by itself with the caption `Step 1 of 4 · Layout` and Keep my current layout picked; the layout for your role says `your role`. If you log in during combat it waits and says `Setup opens when combat ends.`
+- Expect: the setup wizard opens by itself with the caption `Step 1 of 9 · Layout` and Keep my current layout picked; the layout for your role says `your role`. If you log in during combat it waits and says `Setup opens when combat ends.`
 - If it fails, paste: the Report block.
 
 ### 1.2a Closing early, Skip, and a new character
@@ -207,9 +207,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 2.2 The wizard, start to finish
 
-- Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next three times, then Done.
-- Expect: `Step 1 of 4 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the choices rest flat on the panel, each lifts only under the mouse, and the picked one alone carries the thin accent rail on its left over a lighter fill (its text stays the plain colour), the same on the Profile and Screen steps [Needs in game]; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 4 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 4 · Look` (the accent swatches, the raid frame style and the Calm HUD switch, off); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard and offers no reload, and no profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
-- Also on the Look step: under Calm HUD, switches **Larger text (115%)** and **Colour vision: Safer colours**, both off and inside the window. Larger text makes the wizard's own text bigger at once and Off puts it back; Safer colours moves hostile and friendly bars apart after the reload. Each first change says where the backup profile went.
+- Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next eight times, then Done.
+- Expect: `Step 1 of 9 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the choices rest flat on the panel, each lifts only under the mouse, and the picked one alone carries the thin accent rail on its left over a lighter fill (its text stays the plain colour), the same on the Profile and Screen steps [Needs in game]; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 9 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 4 · Look` (the accent swatches, the raid frame style and the Calm HUD switch, off); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard and offers no reload, and no profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
+- Also after Look: `Step 4 of 9 · Comfort` has the switches **Larger text (115%)**, **Colour vision: Safer colours**, **Calm HUD** and **Reduce motion**, all off and inside the window, and a **Use recommended** button under them. Switch Larger text on and press Next: the wizard's own text gets bigger as you leave the step (a switch only picks until then); Back, Off and Next put it back. Safer colours moves hostile and friendly bars apart after the reload. Each first change says where the backup profile went. Steps 5 to 7 (Game settings, Helpers, Combat) are 33.456; Move things is step 8 and All set step 9.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
 ### 2.2a The role layouts look different
@@ -4883,7 +4883,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.452 Setup that keeps everything asks for no reload
 
-- Do: Type `/vg setup` and press Next, Next, Next, Done without picking anything. Then `/vg setup` again, pick another raid frame style on the Look step and finish.
+- Do: Type `/vg setup` and press Next through to All set (it says `This run changed nothing`), then Done, without picking anything. Then `/vg setup` again, pick another raid frame style on the Look step and finish.
 - Expect: the first run ends with no reload dialog; the second ends with `Setup is done. Reload the UI now to apply it?`.
 - If it fails, paste: what showed after each Done, and the chat lines.
 
@@ -4906,6 +4906,18 @@ The order is the order to play in: looks you can check quickly first, then the g
 - If it fails, paste: a screenshot of the row and tooltip.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
+
+### 33.456 Guided setup: the recommended settings on a first run
+
+- Do: on an account that has never run Vanguard (1.2), click Next three times to `Step 4 of 9 · Comfort`, then Next through Game settings, Helpers and Combat, reading each step, then Next twice more and Done. Then open `/vg` → Game windows, Chat, Town and gear and Cooldowns.
+- Expect: Comfort's four switches start off. `Step 5 of 9 · Game settings` shows Enemy nameplates, Camera zooms out furthest (2.6 x) and Class-coloured names in chat, each ending in `· recommended`, each on or off as the game has it now (not switched on for you). `Step 6 of 9 · Helpers` starts with Faster auto-loot, Filter chat, Keep chat history, Spell ranks and Inbox search on (each `· recommended`) and Accept and turn in quests off; `Step 7 of 9 · Combat` starts with the Cooldown Manager, the buff glow, the timer numbers, the two right-edge bars and Key setup at your next login on, the Group threat panel off and unmarked (it is marked and on when you picked Centered: tanking or your group role is tank). `Step 8 of 9 · Move things` unlocks the frames; `Step 9 of 9 · All set` lists every switch the run turned on, one line each ending in `: On`, with **Undo setup** under them, and chat said where the backup profile went when you left Helpers. After Done and the reload the pages show those switches on; the Combat step turned on bars 4 and 5 at the right edge (mouseover). [Needs in-game check: all of it, and that each step fits the window at Larger text.]
+- If it fails, paste: the step's caption, which rows were on, and `/vg errors`.
+
+### 33.457 Guided setup: Use recommended, the game's settings and Undo setup
+
+- Do: with Enemy nameplates off in the game (press V until plates hide), type `/vg setup`, Next to Game settings, press **Use recommended**, Next, then on Helpers switch Accept and turn in quests on and press **Use recommended**; Next through to All set and read it. Press **Undo setup** and answer Undo; answer No to the export question if asked; reload when offered. Then `/vg setup` again and Next through to All set.
+- Expect: Use recommended on Game settings switches all three rows on; leaving the step turns the game's enemy plates on at once (the V key state) and zooms the camera out further. On Helpers, Use recommended turns the recommended rows on and leaves your quest-automation pick on. All set lists each change with On, and Undo setup's question reads `Undo everything this setup changed and put the profile back as it was? Done then offers the reload that applies it.`; after Undo the enemy plates are off again and the camera zoom back as it was, setup is closed, chat shows no error, and the reload dialog reads `Setup was undone: the profile as it was is back. Reload the UI now to apply it?`. The second run's All set says `This run changed nothing` and shows no Undo setup. [Needs in-game check: all of it.]
+- If it fails, paste: the All set lines, the question text, the V key state before and after, and `/vg errors`.
 
 ## 34. Retail
 

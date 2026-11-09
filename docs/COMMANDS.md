@@ -97,7 +97,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 ```
 /vg               the options window (also: left-click the addons button by the minimap; /vanguard, /vg options and /vg config do the same)
 /vg help          every command with a line on what it does
-/vg setup         the first-run setup again: layout, screen, look, then move things
+/vg setup         the first-run setup again: layout, screen, look, the guided steps, then move things
 /vg whatsnew      what's new in this version, grouped by module; click a line to open its setting
 /vg unlock | lock drag handles on every Vanguard frame (also: right-click the addons button); /vg move is unlock
 /vg reset <frame|all>

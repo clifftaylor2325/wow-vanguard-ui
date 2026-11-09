@@ -1,4 +1,6 @@
--- First-run setup: a four-step wizard (layout, screen, look, move things). It
+-- First-run setup: a nine-step wizard (layout, screen, look, comfort, the game's settings, helpers, combat, move
+-- things, all set). The four guided steps and All set are Core/SetupGuide.lua's; this file holds the window, the
+-- order, the layout, screen and look steps and the move step. It
 -- opens on the account's first login until Done or Skip setup (VanguardDB.setupDone),
 -- and on a new character's first login after that, with a profile step first
 -- (VanguardCharDB.setupDone false, pickProfile). Closing it early asks again at the
@@ -25,9 +27,10 @@ local PAGE_W = WIDTH - 2 * PAD
 local TOP = T.CONTROL.inset + 36 + T.SPACE.col
 local FOOT = T.SPACE.pad + T.BUTTON_H + T.SPACE.gap
 -- The pages in order, each with its caption name; a wizard shows STEPS, or PROFILE_STEPS for a new character.
-local NAMES = { profile = L["Profile"], layout = L["Layout"], screen = L["Screen"], look = L["Look"], move = L["Move things"] }
-local STEPS = { "layout", "screen", "look", "move" }
-local PROFILE_STEPS = { "profile", "layout", "screen", "look", "move" }
+local NAMES = { profile = L["Profile"], layout = L["Layout"], screen = L["Screen"], look = L["Look"], comfort = L["Comfort"],
+  game = L["Game settings"], helpers = L["Helpers"], combat = L["Combat"], move = L["Move things"], done = L["All set"] }
+local STEPS = { "layout", "screen", "look", "comfort", "game", "helpers", "combat", "move", "done" }
+local PROFILE_STEPS = { "profile", "layout", "screen", "look", "comfort", "game", "helpers", "combat", "move", "done" }
 -- In chat when setup ends: after Done or Skip, and after closing it while it is still owed.
 local AGAIN = L["Run setup again any time: /vg setup, or Run setup on the General page of /vg."]
 local LATER = L["Setup opens again at your next login. /vg setup opens it now; Skip setup on its first page turns it off."]
@@ -95,8 +98,8 @@ S.STYLES = { { "soft", L["Class colors, softened"], L["Softened"] }, { "dark", L
 -- The style tiles on the Look step: a raid tile's default size, side by side this far apart.
 local TILE_W, TILE_H, TILE_GAP = 100, 48, 16
 -- The look step's rows, down the page from its top (negative); the swatches sit this far apart across, and the move
--- step's lines a gap apart (the switches stack by their own heights).
-local LOOK_Y = { swatches = -20, styleCaption = -62, tiles = -82, switches = -154 }
+-- step's lines a gap apart.
+local LOOK_Y = { swatches = -20, styleCaption = -62, tiles = -82 }
 -- skipWidth: the room left of Back on the footer (120 is a dialog button's default width), so a long Skip label fits.
 local STEP = { swatchAcross = 34, moveLineGap = T.SPACE.gap,
   skipWidth = PAGE_W - 2 * 120 - 2 * T.SPACE.gap }
@@ -107,7 +110,7 @@ S.onEnd = {}
 -- order: the pages showing; floor: the first step Back reaches; owed: setup opened owing a run;
 -- complete: Done or Skip was clicked (closing otherwise doesn't count as setup having run).
 local state = { step = 1, order = STEPS, floor = 1, profile = "share", layout = S.LAYOUTS[1].key, screen = "keep",
-  owed = false, complete = false, paused = false, reload = false, role = false, backup = nil }
+  owed = false, complete = false, paused = false, reload = false, role = false, backup = nil, look = false, undone = false }
 local waiting = false
 
 -- Presets -------------------------------------------------------------------------------
@@ -272,6 +275,16 @@ function S.GuessLayout()
   return S.ROLE_LAYOUT[playerRole()] or "damage"
 end
 
+-- The role each role layout is for.
+local LAYOUT_ROLE = { damage = "damage", tank = "tank", healing = "healer" }
+
+-- The role the guided steps recommend for (Core/SetupGuide.lua): the layout step's, or your role on Keep,
+-- Versus deck or Like the game's.
+---@return string
+function S.ChosenRole()
+  return LAYOUT_ROLE[state.layout] or playerRole()
+end
+
 -- Applies the profile step: "new" gives this character a profile of its own and keeps Back
 -- from returning to it, so the new profile stays (setup opened again doesn't ask again, either);
 -- "share" changes nothing. The Profiles page, if built, is built again for the new profile: forking stages nothing,
@@ -292,6 +305,7 @@ end
 -- Sets the raid frame style, repainting the raid frames when they are built.
 function S.SetStyle(look)
   S.Backup()
+  state.look = true
   raidSettings().look = look
   local RF = ns.GetModule("RaidFrames")
   if RF.settings then RF.UpdateAll() end
@@ -574,15 +588,10 @@ local function choiceHeight(page)
   return page.question:GetStringHeight() + T.SPACE.gap + rows + tallest
 end
 
--- Grows the look step's three switch rows to their captions (they stack under one another, so the rest follow); a
--- caption wraps at a large Text size or in a long translation.
-local function growSwitches(page)
-  for _, row in ipairs({ page.calm, page.larger, page.assist }) do W.GrowRow(row) end
-end
-
--- How tall the look step stands: down to the bottom of its last switch.
+-- How tall the look step stands: down to the bottom of the style tiles' names.
 local function lookHeight(page)
-  return -LOOK_Y.switches + page.calm:GetHeight() + page.larger:GetHeight() + page.assist:GetHeight()
+  local name = page.styles[1].text
+  return -LOOK_Y.tiles + TILE_H + T.SPACE.tight + name:GetStringHeight()
 end
 
 -- How tall the move step stands: its lines, a gap apart.
@@ -592,24 +601,53 @@ local function moveHeight(page)
   return h
 end
 
--- How tall each step's page stands, by key.
+-- How tall each step's page stands, by key; the guided steps' pages (Core/SetupGuide.lua) measure themselves.
 local HEIGHTS = { profile = choiceHeight, layout = choiceHeight, screen = choiceHeight, look = lookHeight, move = moveHeight }
+
+-- How tall a step's page stands: its own measure, or the guided steps'.
+local function pageHeight(key)
+  return (HEIGHTS[key] or ns.SetupGuide.Height)(frame.pages[key])
+end
 
 -- Sizes the window to the tallest of this run's pages, so no hint or line reaches the buttons however long a
 -- translation runs or however large the text is (it fits again on each step and pick, so after Larger text too).
 -- It stays centred, growing up and down alike.
 local function fit()
   local tallest = 0
-  growSwitches(frame.pages.look)
-  for _, key in ipairs(state.order) do tallest = math.max(tallest, HEIGHTS[key](frame.pages[key])) end
+  for _, key in ipairs(state.order) do tallest = math.max(tallest, pageHeight(key)) end
   local base = TOP + math.ceil(tallest) + FOOT
   ns.Banner.Show(frame.banner, state.step == 1 and ns.Banner.Height(PAGE_W, ns.Banner.Room(base)) or 0)
   T.PixelSize(frame, WIDTH, base + frame.banner:GetHeight(), true)
 end
 
+-- The name of a layout or screen choice, by key.
+local function choiceName(list, key)
+  for _, l in ipairs(list) do
+    if l.key == key then return l.text end
+  end
+  return key
+end
+
+-- A screen choice's name, by key: a preset's, Pixel-perfect's or Fit's.
+local function screenName(key)
+  if key == S.PIXEL.key then return S.PIXEL.text end
+  if key == S.FIT.key then return L["Fit my screen"] end
+  return choiceName(S.SCREENS, key)
+end
+
+-- What this run changed on setup's own steps, as lines for the All set step: a layout, a screen preset, the look.
+local function ownChanges()
+  local out = {}
+  if state.layout ~= "keep" then out[#out + 1] = ns.Format(L["Layout: {name}"], { name = choiceName(S.LAYOUTS, state.layout) }) end
+  if state.screen ~= "keep" then out[#out + 1] = ns.Format(L["Screen: {name}"], { name = screenName(state.screen) }) end
+  if state.look then out[#out + 1] = L["Accent or raid frame style"] end
+  return out
+end
+
 -- Fits the window, then re-marks the chosen profile, layout and screen (and shows their hints), accent and style
--- (its tiles redrawn).
+-- (its tiles redrawn), and the guided steps' switches and list.
 local function refresh()
+  ns.SetupGuide.Refresh(frame.pages, ownChanges())
   fit()
   local look = frame.pages.look
   markChoice(frame.pages.profile, state.profile)
@@ -617,9 +655,6 @@ local function refresh()
   markChoice(frame.pages.screen, state.screen)
   for _, s in ipairs(look.swatches) do mark(s, isAccent(s.rgb)) end
   for _, b in ipairs(look.styles) do mark(b, b.value == raidSettings().look) paintTile(b) end
-  look.calm:Refresh()
-  look.larger:Refresh()
-  look.assist:Refresh()
 end
 
 -- A theme change made outside the wizard (/vg accent, a look or text size change) re-marks it: the swatch outline
@@ -805,7 +840,7 @@ end
 
 -- One accent swatch, with a check when chosen: picking it sets the accent at once.
 local function swatch(page, i, rgb)
-  local s = W.Swatch(page, rgb, function() S.Backup(); T.SetAccent(rgb[1], rgb[2], rgb[3]); refresh() end)
+  local s = W.Swatch(page, rgb, function() S.Backup(); state.look = true; T.SetAccent(rgb[1], rgb[2], rgb[3]); refresh() end)
   s:SetPoint("TOPLEFT", (i - 1) * STEP.swatchAcross, LOOK_Y.swatches)
   s.rgb = rgb
   s.check = W.IconTexture(s, "Check", 14, "void")
@@ -813,18 +848,8 @@ local function swatch(page, i, rgb)
   return s
 end
 
--- The Calm HUD switch and the two readability switches (larger text, safer colours) under the style tiles.
-local function lookSwitches(page)
-  page.calm = W.Check(page, L["Calm HUD: quiet the HUD out of combat"], S.Calm, S.SetCalm, PAGE_W)
-  page.calm:SetPoint("TOPLEFT", 0, LOOK_Y.switches)
-  page.larger = W.Check(page, L["Larger text (115%)"], S.Larger, S.SetLarger, PAGE_W)
-  page.larger:SetPoint("TOPLEFT", page.calm, "BOTTOMLEFT", 0, 0)
-  page.assist = W.Check(page, L["Colour vision: Safer colours (colour blindness)"], S.Assist, S.SetAssist, PAGE_W)
-  page.assist:SetPoint("TOPLEFT", page.larger, "BOTTOMLEFT", 0, 0)
-  growSwitches(page)
-end
-
--- The look step: the accent presets, the raid frame style, then Calm HUD and the readability switches.
+-- The look step: the accent presets, then the raid frame style (Calm HUD and the readability switches are the
+-- Comfort step's, Core/SetupGuide.lua).
 local function lookPage(page)
   W.Label(page, L["Accent"], "label", "text"):SetPoint("TOPLEFT")
   page.swatches = {}
@@ -832,7 +857,6 @@ local function lookPage(page)
     page.swatches[i] = swatch(page, i, T.PRESETS[name])
   end
   stylePicker(page)
-  lookSwitches(page)
 end
 
 -- The last step: how to move frames (they are unlocked while this step shows), a line each, a gap apart
@@ -898,9 +922,11 @@ local function settingsNow()
   return ns.ProfileName() .. "\n" .. tostring(ns.ExportProfile())
 end
 
--- Why setup offers a reload: a module turned on, new raid tile sizes, or Done after a change (so everything it set
--- shows as it will from now on); nil otherwise, so a Done that kept everything as it was ends without one.
+-- Why setup offers a reload: Undo setup (the profile as it was is back), a module turned on, new raid tile sizes, or
+-- Done after a change (so everything it set shows as it will from now on); nil otherwise, so a Done that kept
+-- everything as it was ends without one.
 local function reloadReason()
+  if state.undone then return L["Setup was undone: the profile as it was is back."] end
   if state.reload then return L["Setup turned on a module that was off."] end
   if state.retile then return L["The new raid tile size shows after a reload."] end
   if state.role then return L["The layout's raid frame, raid aura and nameplate settings show after a reload."] end
@@ -945,10 +971,22 @@ local function finished()
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done, reloadReason())
-  state.reload, state.retile, state.role, state.backup = false, false, false, nil
+  state.reload, state.retile, state.role, state.backup, state.look, state.undone = false, false, false, nil, false, false
   for _, fn in ipairs(S.onEnd) do fn() end
 end
 
+-- Undo setup (the All set step): the profile as it was before this run's first change comes back (its frames keep
+-- the new spots until the reload Done then offers), then putBack (Core/SetupGuide.lua's) puts the guided rows back,
+-- and setup ends as Done, so it doesn't open again.
+---@param putBack function
+function S.Undo(putBack)
+  if state.backup then ns.CopyProfile(state.backup) end
+  putBack()
+  state.undone = true
+  complete(true)
+end
+
+-- Setup's own steps' builders, by key; the guided steps' pages are Core/SetupGuide.lua's.
 local BUILDERS = { profile = profilePage, layout = layoutPage, screen = screenPage, look = lookPage, move = movePage }
 
 -- A page per step, between the caption (under the welcome banner on the first step) and the footer, by key.
@@ -956,11 +994,12 @@ local function addPages(f)
   f.pages = {}
   f.banner = ns.Banner.Create(f, PAGE_W)
   f.banner:SetPoint("TOPLEFT", PAD, -TOP)
-  for key, builder in pairs(BUILDERS) do
+  for _, key in ipairs(PROFILE_STEPS) do
     f.pages[key] = CreateFrame("Frame", nil, f)
     f.pages[key]:SetPoint("TOPLEFT", f.banner, "BOTTOMLEFT")
     f.pages[key]:SetPoint("BOTTOMRIGHT", -PAD, FOOT)
-    builder(f.pages[key])
+    local builder = BUILDERS[key] or ns.SetupGuide.Build
+    builder(f.pages[key], key)
   end
 end
 
@@ -991,21 +1030,28 @@ local function showSkip(n)
   if n == 1 then ns.WidenToLabel(frame.skip) end
 end
 
--- Shows step n: its page, caption and buttons. The last step (move things) unlocks the frames.
-local function showStep(n)
-  local key, last = state.order[n], #state.order
-  state.step = n
-  ns.FocusClear(frame)
-  for k, page in pairs(frame.pages) do page:SetShown(k == key) end
-  frame.caption:SetText(ns.Format(L["Step {step} of {count} · {name}"], { step = n, count = last, name = NAMES[key] }))
+-- Step n's caption and buttons: Back past the floor, Skip on the first step, Done on the last (All set).
+local function showControls(n)
+  local last = #state.order
+  frame.caption:SetText(ns.Format(L["Step {step} of {count} · {name}"], { step = n, count = last, name = NAMES[state.order[n]] }))
   frame.back:SetShown(n > state.floor)
   showSkip(n)
   frame.next.text:SetText(n == last and L["Done"] or L["Next"])
-  if n == last then ns.Unlock() elseif ns.Unlocked() then ns.Lock() end
+end
+
+-- Shows step n: its page, caption and buttons. The move step unlocks the frames.
+local function showStep(n)
+  local key = state.order[n]
+  state.step = n
+  ns.FocusClear(frame)
+  for k, page in pairs(frame.pages) do page:SetShown(k == key) end
+  showControls(n)
+  if key == "move" then ns.Unlock() elseif ns.Unlocked() then ns.Lock() end
+  ns.SetupGuide.Show(key)
   refresh()
 end
 
--- What leaving a page applies (pages not listed apply as you click).
+-- What leaving a page applies (the look step applies as you click; the guided steps are Core/SetupGuide.lua's).
 local LEAVE = {
   -- The profile choice, the layout, the screen preset.
   profile = function() S.ApplyProfile(state.profile) end,
@@ -1013,10 +1059,10 @@ local LEAVE = {
   screen = function() S.ApplyScreen(state.screen) end,
 }
 
--- Next: applies what the page leaves behind (LEAVE); on the last step it is Done.
+-- Next: applies what the page leaves behind (LEAVE, or a guided step's picks); on the last step it is Done.
 function S.Next()
-  local leave = LEAVE[state.order[state.step]]
-  if leave then leave() end
+  local key = state.order[state.step]
+  if LEAVE[key] then LEAVE[key]() else ns.SetupGuide.Leave(key) end
   if state.step == #state.order then return complete(true) end
   showStep(state.step + 1)
 end
@@ -1026,7 +1072,7 @@ function S.Back()
   showStep(math.max(state.step - 1, state.floor))
 end
 
--- The step showing (1 to 4, or 5 with the profile step), or nil while setup is closed.
+-- The step showing (1 to 9, or 10 with the profile step), or nil while setup is closed.
 function S.Step()
   return frame and frame:IsShown() and state.step or nil
 end
@@ -1039,18 +1085,27 @@ function S.Defer()
   ns.OutOfCombat(function() waiting = false; S.Open() end)
 end
 
+-- A run's starting state: the steps (the profile step first for a new character), Keep and Keep, nothing changed
+-- yet, the guided steps' picks (Core/SetupGuide.lua) and then the snapshot Done compares against.
+local function startRun()
+  local owe, pick = owed(), VanguardCharDB.pickProfile == true
+  state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
+  state.layout, state.screen, state.backup, state.look, state.undone = "keep", "keep", nil, false, false
+  state.reload, state.paused, state.done, state.role = false, false, false, false
+  ns.SetupGuide.Begin(not VanguardDB.setupDone)
+  state.before = settingsNow()
+end
+
 -- Opens setup at step 1 (the profile step for a new character); in combat it waits. Keep and Keep
 -- are picked, the first time too, so Vanguard starts from where you are and clicking through
--- changes nothing; your role's layout and your screen's preset are marked. Already open, it stays as it is
--- (a restart would reset the run's backup and Back's floor).
+-- changes nothing; your role's layout and your screen's preset are marked. The guided steps start their picks
+-- (Core/SetupGuide.lua) before the snapshot Done compares against, since their first read fills defaults in. Already
+-- open, it stays as it is (a restart would reset the run's backup and Back's floor).
 function S.Open()
   if ns.InCombat() then return S.Defer() end
   if frame and frame:IsShown() then return end
   frame = frame or build()
-  local owe, pick = owed(), VanguardCharDB.pickProfile == true
-  state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
-  state.layout, state.screen, state.backup, state.before = "keep", "keep", nil, settingsNow()
-  state.reload, state.paused, state.done, state.role = false, false, false, false
+  startRun()
   relabelSteps()
   T.OpenWindow(frame)
   showStep(1)
