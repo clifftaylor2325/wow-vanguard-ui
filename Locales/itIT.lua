@@ -854,7 +854,6 @@ L["It isn't in your bags now: put it on the card again."] = "Non è più nelle t
 L["It switches back at the reload; Stop spec switching on the Profiles page keeps your pick."] = "Torna indietro al ricaricamento; Smetti di cambiare per spec. nella pagina Profili mantiene la tua scelta."
 L["Item"] = "Oggetto"
 L["Item ID {id}"] = "ID oggetto {id}"
-L["Item IDs"] = "ID oggetto"
 L["Item level"] = "Livello oggetto"
 L["Item level on each gear slot of the character pane"] = "Livello oggetto su ogni slot di equipaggiamento della scheda personaggio"
 L["Item level on each gear slot of the character pane, optional marks for missing enchants, and /vg gear."] = "Livello oggetto su ogni slot di equipaggiamento della scheda personaggio, segni facoltativi per gli incantamenti mancanti, e /vg gear."

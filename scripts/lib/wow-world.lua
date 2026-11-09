@@ -240,7 +240,9 @@ Enum = {
   StatusBarInterpolation = { Immediate = 0, Smooth = 1 },
   -- A subset of Enum.TooltipDataLineType with the client's values (TooltipInfoSharedDocumentation.lua).
   TooltipDataLineType = { None = 0, Blank = 1, UnitName = 2, UnitThreat = 7, QuestObjective = 8, QuestTitle = 17, QuestPlayer = 18 },
-  TooltipDataType = { Item = 0, Spell = 1, Unit = 2 },
+  -- A subset of Enum.TooltipDataType with the client's values (TooltipInfoSharedDocumentation.lua): UnitAura is what
+  -- SetUnitAura, SetUnitBuff and SetUnitDebuff (and their ByAuraInstanceID forms) fill a tooltip with.
+  TooltipDataType = { Item = 0, Spell = 1, Unit = 2, UnitAura = 7 },
   WeaponSlot = { MainHand = 0, OffHand = 1, Ranged = 2 },
 }
 
@@ -705,6 +707,22 @@ function UnitHasIncomingResurrection(unit) return uf(unit, "incomingRes") == tru
 function UnitXP(unit) return uf(unit, "xp") or 0 end
 function UnitXPMax(unit) return uf(unit, "xpmax") or 0 end
 function GetXPExhaustion() return world.units.player.rested end
+-- A unit's guild, from its guild, guildRank, guildRankIndex and guildRealm fields: guildName, guildRankName,
+-- guildRankIndex (0 is the guild master) and the guild's realm (nil for one of your own realm); nothing for a unit
+-- without a guild. The client's docs leave GetGuildInfo out: the forever branch's InstanceDifficulty.lua and
+-- TabardFrame.lua call it, and the API wiki lists it for any nearby player on WoW Forever (1.60.1).
+function GetGuildInfo(unit)
+  local u = resolveUnit(unit)
+  if u == nil or u.guild == nil then return nil end
+  return u.guild, u.guildRank, u.guildRankIndex or 0, u.guildRealm
+end
+-- The player's average item level (overall, equipped, PvP), as Forever's character pane reads it
+-- (Blizzard_UIPanels_Game/Camelot/PaperDollFrame.lua, PaperDollFrame_SetItemLevel shows the equipped one, floored):
+-- world.units.player.itemLevel and .itemLevelEquipped (the overall one when unset), 0 when unset.
+function GetAverageItemLevel()
+  local p = world.units.player
+  return p.itemLevel or 0, p.itemLevelEquipped or p.itemLevel or 0, p.itemLevelPvp or 0
+end
 -- The player's hit modifiers, per cent (melee, spell): Forever's character sheet (Camelot/PaperDollFrameStats.lua)
 -- and Retail's PaperDollFrame_SetHitChance read them. world.units.player.hit / .spellHit, 0 when unset.
 function GetHitModifier() return world.units.player.hit or 0 end
