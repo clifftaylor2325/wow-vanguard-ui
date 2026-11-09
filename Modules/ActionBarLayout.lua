@@ -32,9 +32,15 @@ AB.dragShown = false
 
 -- Layout ------------------------------------------------------------------------------
 
--- Bar n's button size: its own, else the shared size older profiles set.
+-- Bar n's button size in `settings`: its own when it is a number, else the shared size older profiles set.
+function AB.BarSize(settings, n)
+  local own = settings.bars[n].size
+  return type(own) == "number" and own or settings.size
+end
+
+-- Bar n's button size with the settings in use.
 function AB.ButtonSize(n)
-  return AB.settings.bars[n].size or AB.settings.size
+  return AB.BarSize(AB.settings, n)
 end
 
 -- Places button i in a grid of perRow columns, step px apart.

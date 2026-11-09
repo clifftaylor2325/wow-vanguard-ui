@@ -157,10 +157,23 @@ local function centeredSpacing(saved)
   saved.layout = 2
 end
 
+-- A bar's saved size, button count or buttons per row of the wrong type or below 1 (a hand-edited file or a
+-- crafted string) is dropped, so the defaults fill it in. The settings may have no bars yet (before ns.Fill).
+local function cleanBars(saved)
+  for _, b in pairs(type(saved.bars) == "table" and saved.bars or {}) do
+    if type(b) == "table" then
+      if type(b.size) ~= "number" then b.size = nil end
+      if not (type(b.buttons) == "number" and b.buttons >= 1) then b.buttons = nil end
+      if not (type(b.perRow) == "number" and b.perRow >= 1) then b.perRow = nil end
+    end
+  end
+end
+
 -- Every upgrade of saved action bar settings, oldest first.
 local function migrate(saved)
   keepOldRightBars(saved)
   centeredSpacing(saved)
+  cleanBars(saved)
 end
 ns.Migrate("ActionBars", migrate)
 
@@ -557,7 +570,7 @@ end
 -- the bar stacked above it starts on its top edge at any UI scale and at any scale of its own.
 local function barHeight(settings, barSettings, k)
   local f = AB.bars[k] or UIParent
-  local size, gap = T.PixelRound(f, barSettings.size or settings.size), T.PixelRound(f, settings.spacing)
+  local size, gap = T.PixelRound(f, AB.BarSize(settings, k)), T.PixelRound(f, settings.spacing)
   local scale = ns.MoverLook("bar" .. k)
   return (math.ceil(barSettings.buttons / barSettings.perRow) * (size + gap) - gap) * scale
 end
@@ -566,7 +579,7 @@ end
 -- (the buttons it has, at most its buttons per row) of its own button size.
 local function barWidth(settings, barSettings, k)
   local f = AB.bars[k] or UIParent
-  local size, gap = T.PixelRound(f, barSettings.size or settings.size), T.PixelRound(f, settings.spacing)
+  local size, gap = T.PixelRound(f, AB.BarSize(settings, k)), T.PixelRound(f, settings.spacing)
   local columns = math.min(barSettings.buttons, barSettings.perRow)
   return (columns * (size + gap) - gap) * ns.MoverLook("bar" .. k)
 end
