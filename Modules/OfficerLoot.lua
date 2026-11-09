@@ -279,8 +279,8 @@ end
 function OL.ShareRows()
   return {
     { "button", L["Print the reserve list to my chat"], OL.Print },
-    { "button", L["Put the list in the chat box for the party"], function() OL.Share("/p ") end },
-    { "button", L["Put the list in the chat box for the raid"], function() OL.Share("/raid ") end },
+    { "button", L["Put the list in the party chat box"], function() OL.Share("/p ") end },
+    { "button", L["Put the list in the raid chat box"], function() OL.Share("/raid ") end },
     { "button", L["Clear every reserve"], OL.AskClear },
   }
 end
@@ -291,7 +291,7 @@ function OL.Rows()
   local rows = {
     { "header", L["Officer loot tools"] },
     { "text", L["A soft-reserve list next to the roll tracker and a roster of the group, for a raid leader or officer. Kept on this character and shared by hand; nothing is synced, sent or rolled for you.\nFrom the chat box: /vg loot"] },
-    { "check", L["Turn on the soft-reserve list and the roster"], get, set, default },
+    { "check", L["Soft-reserve list and roster"], get, set, default },
     { "button", L["Add a reserve"], OL.AskAdd },
     { "button", L["Show or hide the roster"], function() OL.ToggleRoster() end },
   }

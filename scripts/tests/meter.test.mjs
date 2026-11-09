@@ -165,7 +165,7 @@ it("the lines setting limits the rows, and the switch and the options apply at o
   setLines(addon, "{ { name = 'A', amountPerSecond = 8 }, { name = 'B', amountPerSecond = 7 }, { name = 'C', amountPerSecond = 6 }, { name = 'D', amountPerSecond = 5 }, { name = 'E', amountPerSecond = 4 }, { name = 'F', amountPerSecond = 3 } }");
   addon.slash("");
   addon.eval('ns.Options.Show("tools")');
-  expect(addon.eval('return __click("Vanguard\'s own damage and healing meter")'), "the switch is on the meter's section").toBe(true);
+  expect(addon.eval('return __click("Vanguard\'s own meter")'), "the switch is on the meter's section").toBe(true);
   expect(addon.frame("Vanguard_Meter").visible, "on at once").toBe(true);
   expect(rows(addon).filter((r) => r[0]).length, "every line the fight has, up to eight by default").toBe(6);
   addon.eval("ns.GetModule('Meter').settings.rows = 3 ns.GetModule('Meter').Paint()");
@@ -383,6 +383,14 @@ it("a report holds plain names and figures only, out of combat, to chat or a cha
   addon.world.combat(true);
   addon.slash("meter report");
   expect([chatHas(addon, /No report to show/), chatHas(addon, /Not in combat/)], "an empty meter, and no report in combat").toEqual([true, true]);
+});
+
+it("on the Deaths view a report sends each death's time as the panel shows it, names only for the overall session", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, "{ { name = 'Tess', totalAmount = 5, deathTimeSeconds = 202 }, { name = 'Bo', totalAmount = 1, deathTimeSeconds = -1 } }");
+  addon.slash("meter deaths");
+  addon.slash("meter report raid 5");
+  expect(addon.eval("return __wfgWorld.sentChat"), "the time of death, not the amount").toEqual([["Deaths: 1. Tess 3m 22s  2. Bo", "RAID"]]);
 });
 
 it("the options page has buttons for the report and the reset", () => {

@@ -13,6 +13,11 @@ it("a unit event reaches only the tile showing that unit", () => {
     UnitIsUnit = function(a, b) if b ~= "target" and b ~= "player" then __asked = __asked + 1 end return isUnit(a, b) end`);
   addon.fire("UNIT_HEALTH", "raid3");
   expect(addon.eval("return { __updates, __asked }"), "one tile is updated, and the client is never asked which tile shows raid3").toEqual([["Vanguard_RaidUnitButton3"], 0]);
+  expect(addon.eval("local s = Vanguard_RaidUnitButton3.unitEvents.__unitEvents return { s.UNIT_HEALTH[1], s.UNIT_POWER_UPDATE[1], s.UNIT_NAME_UPDATE[1] }"),
+    "each tile asks the client for its own unit's events only").toEqual(["raid3", "raid3", "raid3"]);
+  addon.eval("__updates = {}");
+  addon.fire("UNIT_HEALTH", "nameplate1");
+  expect(addon.eval("return #__updates"), "another unit's health reaches no tile").toBe(0);
   expect(addon.eval('local RF = ns.GetModule("RaidFrames") return RF.byUnit.player == Vanguard_RaidUnitButton2'), "the tile showing you is also found by player").toBe(true);
   addon.eval('__updates = {} Vanguard_RaidUnitButton3:SetAttribute("unit", "raid9")');
   addon.fire("UNIT_HEALTH", "raid3");
@@ -353,6 +358,7 @@ it("raid tiles: each event refreshes only its own part of the tile", () => {
 it("raid bursts: a roster burst is one refresh of every tile; a new target repaints edges only", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + MARK_CALLS + "__members = 5 GetNumGroupMembers = function() return __members end");
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
+  addon.update(0.016); // the third tile's aura rows, made on the frame after (two a frame at once)
   addon.eval(`__updates = 0 local RF = ns.GetModule("RaidFrames") local update = RF.Update
     RF.Update = function(...) __updates = __updates + 1 return update(...) end`);
   addon.eval(COUNT_LUA);
@@ -434,6 +440,15 @@ it("raid preview: sample players in the raid tiles, laid out by the raid frame s
   expect([addon.eval("return __secureSets"), addon.eval('return #ns.GetModule("RaidFrames").buttons'), raidButton(addon, 1).name], "the secure header and its buttons are never touched").toEqual([0, 1, "TEST-ONLY Tank"]);
   addon.eval('__click("Preview with sample players")');
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/), addon.eval("return ns.RaidPreview.size")], "the options row steps from Raid (40) to Off").toEqual([0, true, 0]);
+});
+
+it("H41-16-1: moved to the top, a big raid's rows and the preview are kept on the screen", () => {
+  // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing).
+  const record = "__wfgStub.methods.SetClampedToScreen = function(self, on) self.__testClamped = on end\n";
+  const addon = loggedIn(record + UNITS_ENV + RAID_ENV);
+  addon.eval("ns.SetMoverPoint('raid', 'TOPLEFT', 'TOPLEFT', 20, -40)");
+  addon.slash("preview 40");
+  expect(addon.eval("return { Vanguard_Raid.__testClamped, Vanguard_RaidPreview.__testClamped }"), "the grid grows up from the holder, so the client slides it under the screen top").toEqual([true, true]);
 });
 
 it("raid preview: a real group or combat ends it; it won't start in a group, in combat or with the raid frames off; not saved", () => {

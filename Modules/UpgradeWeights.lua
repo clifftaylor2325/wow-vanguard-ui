@@ -102,7 +102,7 @@ W.CLASSES = ns.ClientData({
     HUNTER = { damage = "agility" },
     ROGUE = { damage = "agility" },
     PRIEST = { damage = "caster", healer = "healer" },
-    SHAMAN = { damage = "caster", healer = "healer" },
+    SHAMAN = { damage = "caster", tank = "tank", healer = "healer" },
     MAGE = { damage = "caster" },
     WARLOCK = { damage = "caster" },
     DRUID = { damage = "agility", tank = "tank", healer = "healer" },

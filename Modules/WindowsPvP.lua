@@ -92,7 +92,7 @@ local function dressRewards(frame)
   GW.EachActive(frame.itemPool, dressReward)
 end
 
--- The results' title (Victory, Defeat): the heading font and the text colour at the game's big size, its place unchanged.
+-- The title (Victory, Defeat on the results, the map name on WoW Forever's scoreboard): the heading font and the text colour at the game's big size, its place unchanged.
 local function skinMatchTitle(title)
   if type(title) ~= "table" or not title.GetFont then return end
   local _, size = title:GetFont()
@@ -103,7 +103,7 @@ end
 -- The results' texts: the title, the Rewards and Progress headings, and the matchmaking line under the table (the
 -- scoreboard's has the same).
 local function skinMatchTexts(frame, content)
-  skinMatchTitle(frame.header)
+  skinMatchTitle(frame.header or GW.Part(frame, "HeaderContainer.Text"))
   textAt(content, "earningsContainer.rewardsContainer.header", "heading")
   textAt(content, "earningsContainer.progressContainer.header", "heading")
   local strip = partOf(content, GW.PVP_TAB_STRIP)
@@ -111,13 +111,20 @@ local function skinMatchTexts(frame, content)
   if line and line.GetFont then themeFont(line, "label", "text") end
 end
 
+-- The window skin on the frame, WoW Forever's red close button (ClosePanelButton on the scoreboard; the
+-- results' CloseButton is dressed by the skin itself) and the faction banner's decorator faded away.
+local function skinMatchFrame(frame)
+  GW.Skin(frame, 0)
+  GW.DressClose(frame, frame.ClosePanelButton)
+  GW.FadeParts(frame.overlay or {}, { "decorator" })
+end
+
 -- The scoreboard and the match results: the window skin hugging the frame (the room its border art had is
 -- inside the frame), the table, the reward band, the faction banner over the top edge, the scroll bar and the push
 -- buttons; again after the game lays the match's faction border on the frame (SetupArtwork). The tabs are dressed by
 -- WindowsTabs.lua.
 function GW.SkinPvPMatch(frame)
-  GW.Skin(frame, 0)
-  GW.FadeParts(frame.overlay or {}, { "decorator" })
+  skinMatchFrame(frame)
   local content = partOf(frame, GW.PVP_CONTENT)
   if content then skinTable(content) skinEarnings(content) skinMatchTexts(frame, content) end
   local bar = frame.ScrollBar or frame.scrollBar

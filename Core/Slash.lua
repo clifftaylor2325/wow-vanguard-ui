@@ -83,7 +83,8 @@ local HELP = {
   { "launch", L["prices, sales and characters saved from before launch (the beta); launch clear removes them once the game has launched"] },
   { "realm", L["your realm, ruleset, game rules (preset, self-found, game mode) and side as the client gives them, and the key your prices, sales and characters are kept under"] },
   { "frame <name> [deep]", L["what the client says about a frame now: shown, alpha, scale, size, its rect (or none), anchors and its parents; deep adds its textures and child frames (for a frame that draws empty)"] },
-  { "errors [clear]", L["opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list"] },
+  { "errors [clear|resume]",
+    L["opens the errors Vanguard caught this session, with stacks and counts, in the copy window (for a bug report); clear empties the list; resume runs parts paused after repeated errors again"] },
   { "report", L["one block to copy for a bug report: what /vg status and /vg errors say, ready to paste at vanguardui.com/feedback"] },
   { "feedback [bug|feature]", L["a bug report or feature request written here: the questions vanguardui.com/feedback asks, then one block to paste there (it fills the form)"] },
   { "gaps [add <item>|remove <item>|spell add <spell>|spell remove <spell>|clear]", L["Cooldown gaps (switch it on under Cooldowns): choose items such as a Healthstone or potion, and spells, to show beside trinkets, pet abilities and totems; no verb lists them"] },
@@ -551,6 +552,7 @@ local function specCommand(rest)
   if rest ~= "off" and not VanguardDB.profiles[rest] then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
   ns.SetSpecProfile(rest ~= "off" and rest or nil, spec)
   chat(rest == "off" and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, rest))
+  if rest ~= "off" then ns.OfferSpecReload(rest) end
 end
 
 -- The addon version from the TOC (Core/WhatsNew.lua reads it).
@@ -644,21 +646,46 @@ local function errorBlock(e)
   return table.concat(out, "\n")
 end
 
--- The /vg errors text: the version line, the client line, each caught error with its stack, then what was left off
--- because the client differs from what it was written against (ns.notes).
+-- The paused sites (the error budget, Core/Events.lua) as lines: a heading, then each site and its failures.
+local function pausedLines()
+  if #ns.paused == 0 then return {} end
+  local out = { string.format("Paused after %d failures (the Feedback page's Resume, /vg errors resume or /reload runs them again):", ns.ERROR_BUDGET) }
+  for _, p in ipairs(ns.paused) do out[#out + 1] = "    " .. tostring(p.where) end
+  return out
+end
+
+-- The calls the game blocked from Vanguard (Core/Events.lua) as lines: a heading, then each call and how often.
+local function blockedLines()
+  if #ns.blocked == 0 then return {} end
+  local out = { "Calls the game blocked from Vanguard:" }
+  for _, e in ipairs(ns.blocked) do out[#out + 1] = string.format("    %s  (x%d)", e.text, e.count) end
+  return out
+end
+
+-- The /vg errors text: the version line, the client line, the paused sites and blocked calls, each caught error
+-- with its stack, then what was left off because the client differs from what it was written against (ns.notes).
 local function errorsText()
   local lines = { string.format("Vanguard %s  ·  interface %s  ·  %d error(s) caught this session (%d in all), newest last:", version(), interfaceText(), #ns.errors, occurrences()), clientLine() }
+  for _, line in ipairs(pausedLines()) do lines[#lines + 1] = line end
+  for _, line in ipairs(blockedLines()) do lines[#lines + 1] = line end
   for _, e in ipairs(ns.errors) do lines[#lines + 1] = errorBlock(e) end
   if #ns.notes > 0 then lines[#lines + 1] = "Left off this session:" end
   for _, note in ipairs(ns.notes) do lines[#lines + 1] = "  " .. note end
   return plain(table.concat(lines, "\n"))
 end
 
--- /vg errors [clear]: the errors Vanguard caught this session, newest last, in the
--- copy window with the version, client and aura backend a bug report needs; clear empties the list.
+-- /vg errors resume: runs the paused sites again.
+local function resumeCommand()
+  ns.ResumePaused()
+  chat(L["Paused parts run again."])
+end
+
+-- /vg errors [clear|resume]: the errors Vanguard caught this session, newest last, in the copy window with the
+-- version, client and aura backend a bug report needs; clear empties the list, resume runs paused parts again.
 local function errorsCommand(rest)
   if rest == "clear" then ns.ClearErrors() return chat(L["Cleared."]) end
-  if #ns.errors + #ns.notes == 0 then return chat(L["No errors caught this session."]) end
+  if rest == "resume" then return resumeCommand() end
+  if #ns.errors + #ns.paused + #ns.blocked + #ns.notes == 0 then return chat(L["No errors caught this session."]) end
   chat(ns.Format(L["{count} error(s), opened in the copy window."], { count = #ns.errors }))
   ns.ShowErrors(L["Vanguard errors: Ctrl+C to copy"], errorsText())
 end

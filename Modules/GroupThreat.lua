@@ -35,36 +35,67 @@ function GT.Hidden()
   return not ok or ns.IsSecret(secret) or secret == true
 end
 
--- The units to compare: you, then your party or raid.
+-- The group's unit tokens, made once: GT.TOKENS.raid[i] is "raid" .. i, GT.TOKENS.party[i] "party" .. i.
+GT.TOKENS, GT.MAX_GROUP = { raid = {}, party = {} }, 40
+for i = 1, GT.MAX_GROUP do GT.TOKENS.raid[i], GT.TOKENS.party[i] = "raid" .. i, "party" .. i end
+
+-- The lists a threat read fills, reused by every tick (four a second in a fight) so a tick makes no
+-- garbage: the units, the rows shown, and a table per row slot.
+local scratch = { units = {}, rows = {}, slots = {} }
+
+-- Empties a list in place and returns it.
+local function emptied(list)
+  for i = #list, 1, -1 do list[i] = nil end
+  return list
+end
+
+-- The units to compare: you, then your party or raid (a list filled again on the next call).
 function GT.Units()
-  local units = { "player" }
+  local units = emptied(scratch.units)
   local raid = type(IsInRaid) == "function" and IsInRaid()
   local n = (type(GetNumGroupMembers) == "function" and ns.PlainNumber(GetNumGroupMembers()) or 1) - (raid and 0 or 1)
-  for i = 1, n do units[#units + 1] = (raid and "raid" or "party") .. i end
+  local tokens = raid and GT.TOKENS.raid or GT.TOKENS.party
+  units[1] = "player"
+  for i = 1, math.min(n, GT.MAX_GROUP) do units[i + 1] = tokens[i] end
   return units
 end
 
 
--- One unit's row { name, percent, status } on your target, nil when it has none; false when the client hid a value.
-local function read(unit)
+-- One unit's row { name, percent, status } on your target, written into `row` (a reused slot), nil when it
+-- has none; false when the client hid a value.
+local function read(unit, row)
   if not ns.IsTrue(UnitExists(unit)) or ns.IsTrue(UnitIsUnit(unit, "player")) and unit ~= "player" then return nil end
   local _, status, percent = UnitDetailedThreatSituation(unit, "target")
   local name = UnitName(unit)
   if ns.IsSecret(status) or ns.IsSecret(percent) or ns.IsSecret(name) then return false end
   if type(status) ~= "number" or type(percent) ~= "number" or percent <= 0 then return nil end
-  return { name = name, percent = percent, status = status }
+  row.name, row.percent, row.status = name, percent, status
+  return row
 end
 
--- The rows, highest threat first and at most GT.MAX, or nil when any value is hidden.
+-- Row slot i's table, made the first time it is needed and kept.
+local function slot(i)
+  scratch.slots[i] = scratch.slots[i] or {}
+  return scratch.slots[i]
+end
+
+-- Highest threat first.
+local function byThreat(a, b)
+  return a.percent > b.percent
+end
+
+-- The rows, highest threat first and at most GT.MAX, or nil when any value is hidden (a list filled
+-- again on the next call).
 function GT.Rows()
-  local rows = {}
+  local rows = emptied(scratch.rows)
   for _, unit in ipairs(GT.Units()) do
-    local row = read(unit)
+    local row = read(unit, slot(#rows + 1))
     if row == false then return nil end
     rows[#rows + 1] = row
   end
-  table.sort(rows, function(a, b) return a.percent > b.percent end)
-  return { unpack(rows, 1, GT.MAX) }
+  table.sort(rows, byThreat)
+  for i = #rows, GT.MAX + 1, -1 do rows[i] = nil end
+  return rows
 end
 
 -- Whether there is something to compare against: a client that has the call, a group and a hostile target.

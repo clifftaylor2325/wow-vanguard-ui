@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 import { ACTIONS_ENV, DATA_ENV, STRIP_ENV, UNITS_ENV, loggedIn, setCombat } from "./helpers.mjs";
 
 const ENV = UNITS_ENV + ACTIONS_ENV + STRIP_ENV + DATA_ENV;
-const SWITCH = "Calm HUD: quiet the HUD out of combat until a fight, a hostile target or the mouse";
+const SWITCH = "Calm HUD out of combat";
 const DIM = "[combat] show; [harm,nodead] show; dim";
 const HIDE = "[combat] show; [harm,nodead] show; fade";
 // The action bars' wake clause: they also come back in a vehicle, a possess or an override bar.

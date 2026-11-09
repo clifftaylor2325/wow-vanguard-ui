@@ -86,7 +86,7 @@ export const UNITS_ENV = `
     party1 = { name = "TEST-ONLY Friend", hp = 0, maxhp = 500, power = 0, maxpower = 0, ptype = "ENERGY", player = true, class = "ROGUE", dead = true },
   }
   local function u(unit) return __units[unit] end
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
   UnitExists = function(unit) return u(unit) ~= nil end
   UnitName = function(unit) return u(unit) and u(unit).name end
   UnitHealth = function(unit) return u(unit).hp end
@@ -120,7 +120,7 @@ export const ACTIONS_ENV = `
     [73] = { tex = "TEST-ONLY-PAGE7", count = 0, usable = true },
   }
   local function a(slot) return __actions[slot] or {} end
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
   GetActionTexture = function(slot) return a(slot).tex end
   C_ActionBar.GetActionTexture = GetActionTexture
   GetActionCount = function(slot) return a(slot).count or 0 end
@@ -717,7 +717,7 @@ export const QUEST_ENV = `
   __calls, __prices = {}, { ["item:90021"] = 50, ["item:90022"] = 300 }
   local function log(name) return function(...) __calls[#__calls + 1] = name .. " " .. tostring((...)) end end
   UISpecialFrames = {}
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
   UnitName = function(unit) if unit == "npc" then return "TEST-ONLY Farmer" end return "<name>" end
   __npc = true
   UnitExists = (function(old) return function(unit) if unit == "npc" then return __npc end return old(unit) end end)(UnitExists)

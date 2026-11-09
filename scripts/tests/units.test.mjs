@@ -810,11 +810,15 @@ const deck = (addon) => addon.eval(`local d, t = ns.GetModule("UnitFrames").deck
 const corners = (addon, name, art) => addon.eval(`local n = 0 for _, r in ipairs({ ${name}:GetRegions() }) do if tostring(r.__texture):find("${art}") and r:IsShown() then n = n + 1 end end return n`);
 const maskArt = (addon, region) => addon.eval(`local out = {} for i, m in ipairs(${region}.__masks or {}) do out[i] = next(m.__points) .. " " .. tostring(m.__texture):match("[^\\\\]+$") end table.sort(out) return out`);
 
+// Clicks the Versus deck switch on the Unit frames page (setup, open on this account, has a Versus deck layout too).
+const DECK_SWITCH = `for _, w in ipairs(__wfgStub.frames) do
+  if w.source and w.source[2] == "Versus deck" and ns.Options.RevealRow(w) then w.__scripts.OnClick(w, "LeftButton") end end`;
+
 it("Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
   expect(deck(addon), "off by default: no panel, bars fill from the left").toEqual({ shown: false, fills: false });
   addon.slash("");
-  addon.eval('__click("Unit frames") __click("Versus deck: your")');
+  addon.eval(`__click("Unit frames") ${DECK_SWITCH}`);
   expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.deck"), "the switch saves it").toBe(true);
   expect(deck(addon), "on: the panel spans both frames, under everything (background strata), the crest on its top edge, the target fills from the right")
     .toEqual({ shown: true, left: true, right: true, crest: "TOP", strata: "BACKGROUND", fills: true });
@@ -828,13 +832,41 @@ it("Versus deck: one rounded panel behind the player and target, the crest at th
   addon.eval('__click("General") __click("Calm HUD") __click("Unit frames")');
   expect(addon.eval("return ns.GetModule('UnitFrames').deck.vgStateString"), "the deck dims with the Calm HUD").toBe("[combat] show; [harm,nodead] show; dim");
   setCombat(addon, true);
-  addon.eval('__click("Versus deck: your")');
+  addon.eval(DECK_SWITCH);
   expect(deck(addon).shown, "switching it off in combat waits").toBe(true);
   setCombat(addon, false);
   expect(deck(addon), "and takes it away when the fight ends").toMatchObject({ shown: false, fills: false });
   expect([corners(addon, "Vanguard_player", "CornerCutLine"), maskArt(addon, "Vanguard_target.health.bg")], "the two frames get their shield corners back, bars too").toEqual([4, ["TOPLEFT CornerCutMask", "TOPRIGHT CornerCutMaskTR"]]);
   expect(addon.eval("return { select(2, Vanguard_player.name:GetFont()), select(2, Vanguard_target.healthText:GetFont()) }"), "the texts back in their own sizes")
     .toEqual(addon.eval("return { select(2, ns.Theme.Text(UIParent:CreateFontString(), 'name'):GetFont()), select(2, ns.Theme.Text(UIParent:CreateFontString(), 'number'):GetFont()) }"));
+});
+
+// The deck's top and bottom against the rows the player frame carries, as [deck top, deck bottom, row top, row bottom] (TEST-ONLY reads).
+const deckAgainst = (addon, rowA, rowB) => {
+  addon.slash("");
+  addon.eval(`__click("Unit frames") ${DECK_SWITCH}`);
+  return addon.eval(`local panel, first, second = ns.GetModule("UnitFrames").deck, ${rowA}, ${rowB}
+    return { panel:GetTop(), panel:GetBottom(), first:GetTop(), first:GetBottom(), second:GetTop(), second:GetBottom() }`);
+};
+
+it("H37-5-1: the Versus deck grows to wrap a druid's mana bar and combo points, so neither lies on its border", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + `__units.player.class = "DRUID" UnitPowerType = function() return 3 end
+    GetComboPoints = function() return 3 end`, NO_RAID);
+  const [dTop, dBottom, comboTop, , , manaBottom] = deckAgainst(addon, "ns.GetModule('ComboPoints').bar", "ns.GetModule('ClassBars').manaHolder");
+  expect(dTop, "the panel's top edge clears the pips").toBeGreaterThan(comboTop);
+  expect(dBottom, "the panel's bottom edge clears the mana bar").toBeLessThan(manaBottom);
+  expect(addon.eval("return ns.GetModule('UnitFrames').deck.__points.BOTTOMRIGHT.rel == Vanguard_target"), "still anchored to the target").toBe(true);
+});
+
+it("H37-5-1: the deck wraps a shaman's totem row, and a row built after the deck moves the live panel", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + TOTEMS_ENV + '__units.player.class = "SHAMAN"', NO_RAID);
+  const [dTop, , totemTop] = deckAgainst(addon, "ns.GetModule('ClassBars').totems", "Vanguard_player");
+  expect(dTop, "the panel's top edge clears the totem cells").toBeGreaterThan(totemTop);
+  const before = addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()");
+  addon.eval("ns.GetModule('UnitFrames').RaiseDeckReach('top', 1)");
+  expect(addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()"), "a smaller reach changes nothing").toBe(before);
+  addon.eval("ns.GetModule('UnitFrames').RaiseDeckReach('top', 60)");
+  expect(addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()"), "a taller row lifts the panel").toBeGreaterThan(before);
 });
 
 // Each party frame's visibility driver and whether it has a unit watch, with `savedVariables` (UnitFrames builds them).
@@ -928,10 +960,10 @@ it("in-combat mark: the Unit frames page switches it at once, and the health tex
   addon.world.combat(true);
   addon.slash("");
   addon.eval('__click("Unit frames")');
-  addon.eval('__click("In-combat mark: crossed swords and a red edge on your frame, a red edge on your target\'s while it fights")');
+  addon.eval('__click("In-combat mark")');
   expect(addon.eval("return __fight()"), "off, in the fight: both marks go").toEqual(["theme", "none", "theme"]);
   expect(addon.eval("return VanguardDB.profiles.Default.UnitFrames.combatMark"), "the switch saves it").toBe(false);
-  addon.eval('__click("In-combat mark: crossed swords and a red edge on your frame, a red edge on your target\'s while it fights")');
+  addon.eval('__click("In-combat mark")');
   expect(addon.eval("return __fight()"), "on again: back at once").toEqual(["bad", "swords", "bad"]);
   const room = addon.eval("return { select(4, Vanguard_player.healthText:GetPoint()) }");
   expect(room, "the health text ends left of the swords").toEqual([-addon.eval("return ns.GetModule('UnitFrames').CLASS_MARK_ROOM"), 0]);

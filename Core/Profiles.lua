@@ -428,6 +428,7 @@ function ns.SetSpecProfile(profile, spec)
   spec = spec or ns.SpecKey()
   if not spec then return false end
   specMap()[spec] = profile
+  ns.ProfileStagedChanged()
   return true
 end
 
@@ -469,6 +470,20 @@ function ns.WarnSpecWins(picked)
   if not spec or spec == picked then return end
   local line = ns.SpecUsesLine(ns.SpecKey(), spec)
   ns.Chat(line .. " " .. L["It switches back at the reload; Stop spec switching on the Profiles page keeps your pick."])
+end
+
+-- The profile the next login loads when it differs from the one in use: the current spec's own
+-- profile (followSpec takes it at login, over a staged pick), else the staged one; nil when nothing changes.
+function ns.ProfileAfterReload()
+  local name = ns.SpecProfile() or ns.PendingProfileName()
+  return name ~= ns.ProfileName() and name or nil
+end
+
+-- Offers the reload when the spec's profile just set (/vg spec, or the Profiles page's button) is not the one in use.
+---@param profile string
+function ns.OfferSpecReload(profile)
+  if not ns.ProfileAfterReload() then return end
+  ns.OfferReload(ns.Format(L["Your specialization uses profile {profile}."], { profile = profile }))
 end
 
 -- Remembers the profile the character picked, before a spec's profile takes over from it.

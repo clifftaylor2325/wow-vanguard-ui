@@ -6,7 +6,7 @@
 // so two workers share them.
 
 import { describe, expect, it } from "vitest";
-import { SCENES, buildScene } from "../lib/preview-scenes.mjs";
+import { SCENES, TOC_VERSION, buildScene } from "../lib/preview-scenes.mjs";
 
 describe("UI preview scenes", () => {
   it("there are scenes, each with a unique name and a caption", () => {
@@ -19,4 +19,11 @@ describe("UI preview scenes", () => {
     const addon = buildScene(scene);
     expect(addon.eval("return #ns.errors")).toBe(0);
   });
+});
+
+it("an options scene shows the window, not setup or What's new over it, and its footer names the TOC's version", () => {
+  const addon = buildScene(SCENES.find((scene) => scene.name === "vanguard-options"));
+  const shown = addon.eval(`return { setup = Vanguard_Setup ~= nil and Vanguard_Setup:IsShown(),
+    news = Vanguard_WhatsNew ~= nil and Vanguard_WhatsNew:IsShown(), footer = Vanguard_Options.version:GetText() }`);
+  expect(shown, "setup is done and this version's notes were read").toEqual({ setup: false, news: false, footer: `Vanguard ${TOC_VERSION}  ·  /vg` });
 });

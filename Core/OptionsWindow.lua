@@ -576,14 +576,17 @@ local function withoutReload(caption)
   return caption
 end
 
--- Notes a row's English caption (row.english, for the search) and moves a setting row's reload bracket from its
--- caption to row.reload (the tag). The English says whether it has one, so a translated caption loses its bracket too.
+-- Notes a row's English caption (row.english, for the search), moves a setting row's reload bracket from its
+-- caption to row.reload (the tag), and names the row (O.NameRow: a renamed row's old caption is its tip, without the
+-- bracket). The English says whether it has one, so a translated caption loses its bracket too.
 local function moveReload(row)
   if type(row[2]) ~= "string" then return end
   row.english = ns.English(row[2])
   if setterOf(row) and row.english:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
     row[2], row.english, row.reload = withoutReload(row[2]), row.english:sub(1, -#RELOAD_SUFFIX - 1), true
   end
+  O.NameRow(row)
+  if row.reload and row.tip and ns.English(row.tip):sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then row.tip = withoutReload(row.tip) end
 end
 
 -- Whether a row has a default to go back to.
@@ -1133,6 +1136,15 @@ local function forgetRows(view)
   end
 end
 
+-- Hides a page thrown away and takes its frames out of the theme's walks (T.Forget), so a rebuilt page costs
+-- nothing on later theme changes.
+local function dropView(view)
+  showView(view, false)
+  for _, part in ipairs({ view, view.bar, view.strip, view.lead or false }) do
+    if part then T.Forget(part) end
+  end
+end
+
 -- True when a built page was laid out at the current Text size and font.
 local function laidOutNow(view)
   return view.textScale == T.Settings().textScale and view.font == (T.Font())
@@ -1145,7 +1157,7 @@ local function dropStale(key)
   if not view or laidOutNow(view) then return end
   rowCache[key] = nil
   forgetRows(view)
-  showView(view, false)
+  dropView(view)
   pages[key] = nil
 end
 
@@ -1225,9 +1237,10 @@ function O.MarkChanged(key)
   end
 end
 
--- Whether a row's caption, as shown or in English (row.english), contains the (lower-case) text.
+-- Whether a row's caption, as shown, in English (row.english) or as it read before a rename (row.was, O.Renamed),
+-- contains the (lower-case) text.
 local function captionHas(row, text)
-  return type(row[2]) == "string" and ns.Lower(row[2] .. " " .. (row.english or "")):find(text, 1, true) ~= nil
+  return type(row[2]) == "string" and ns.Lower(row[2] .. " " .. (row.english or "") .. " " .. (row.was or "")):find(text, 1, true) ~= nil
 end
 
 -- Whether a page's title (or its English) or any row's caption (a card title is no row's) contains the (lower-case)
@@ -1254,7 +1267,7 @@ function O.RebuildPage(key)
   rowCache[key] = nil
   local old = pages[key]
   local scroll = old and old:GetVerticalScroll() or 0
-  if old then forgetRows(old) showView(old, false) pages[key] = nil end
+  if old then forgetRows(old) dropView(old) pages[key] = nil end
   if not (window and window:IsShown() and O.current == key) then return end
   O.Show(key)
   if pages[key] then pages[key]:ScrollTo(scroll) end

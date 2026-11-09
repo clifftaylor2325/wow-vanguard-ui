@@ -409,7 +409,7 @@ it("quest automation: accept, turn in, best reward, skip chatter; Shift skips it
 // TEST-ONLY watched quests: wolves (one objective left, a usable item, 400 away), a letter ready
 // to turn in (100 away), and a far one whose distance the client hides.
 const TRACK_ENV = `
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
   hooksecurefunc = function(t, name, fn) if type(t) == "string" then return end local orig = t[name] t[name] = function(...) local r = orig(...) fn(...) return r end end
   ObjectiveTrackerFrame = CreateFrame("Frame", "ObjectiveTrackerFrame", UIParent)
   __watches = { 90051, 90052, 90053 }
@@ -1939,6 +1939,19 @@ it("quest dialog: No on the PvP question declines the quest, as the game's does"
   addon.click("Vanguard_Question.no");
   expect(calls(addon)).toEqual(["decline nil"]);
 });
+it("H41-18-1: the PvP question goes when the offer closes first, and answers nothing", () => {
+  const addon = pvpAsked();
+  addon.fire("QUEST_FINISHED");
+  expect([addon.eval("return Vanguard_Question:IsShown()"), calls(addon)], "hidden, with no accept and no decline").toEqual([false, []]);
+  addon.fire("QUEST_DETAIL");
+  expect([addon.eval("return Vanguard_Question:IsShown()"), calls(addon)], "the next quest's page opens without it").toEqual([false, []]);
+});
+it("H41-18-1: a question another part of Vanguard asked stays when a quest closes", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.eval('__answer = nil ns.Ask("TEST-ONLY Other?", "Yes", function() __answer = "yes" end, function() __answer = "no" end)');
+  addon.fire("QUEST_FINISHED");
+  expect(addon.eval("return { Vanguard_Question:IsShown(), __answer }")).toEqual([true]);
+});
 it("quest dialog: Accept goes straight through without the flag, or without the game's warning text", () => {
   const plain = loggedIn(QUEST_ENV + PVP_ENV);
   plain.eval("__pvp = false");
@@ -1973,7 +1986,7 @@ it("quest history: /vg quests history sorts a long history newest first, by turn
 it("quest tracker: the XP switches save while Vanguard's tracker isn't built", () => {
   const addon = loggedIn(TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
   addon.eval(`for _, page in ipairs(ns.Options.PAGES) do if page.key == "quests" then for _, row in ipairs(page.rows()) do
-    if row[2] == "Each quest's XP under it" or row[2] == "Under the quests, how much of the XP to level they give" then row[4](false) end end end end`);
+    if row[2] == "Each quest's XP under it" or row[2] == "Quest XP toward your level" then row[4](false) end end end end`);
   expect(addon.eval("local s = ns.Settings('QuestTracker') return { s.xp, s.levelXp, Vanguard_QuestTrackerFrame == nil }"), "both saved, no tracker drawn").toEqual([false, false, true]);
 });
 it("quest dialog: a fight lets go of the keys, and they come back when it ends with the dialog still open", () => {
@@ -2075,6 +2088,12 @@ it("quest cost: No declines the hand-in, as the game's does", () => {
   const addon = costAsked();
   addon.click("Vanguard_Question.no");
   expect(calls(addon)).toEqual(["decline nil"]);
+});
+
+it("H41-18-1: the cost question goes when the quest closes first, and pays or declines nothing", () => {
+  const addon = costAsked();
+  addon.fire("QUEST_FINISHED");
+  expect([addon.eval("return Vanguard_Question:IsShown()"), calls(addon)]).toEqual([false, []]);
 });
 
 it("quest cost: a cost the client hides counts as none (no cost line)", () => {

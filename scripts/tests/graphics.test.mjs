@@ -5,12 +5,13 @@
 
 import { expect, it } from "vitest";
 import { loggedIn } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 
 // TEST-ONLY client: a dedicated card, quality 6 in use (7 on the slider), 8 recommended, full render scale.
 const GFX_ENV = `
   __fps = 45
   GetFramerate = function() return __fps end
-  C_VideoOptions = { IsSpellVisualDensitySystemSupported = function() return true end, GetGxAdapterInfo = function() return { { name = "TEST-ONLY GPU", isLowPower = false, isExternal = false } } end }
+  C_VideoOptions = { IsOutlineModeSupported = function() return true end, IsSpellVisualDensitySystemSupported = function() return true end, GetGxAdapterInfo = function() return { { name = "TEST-ONLY GPU", isLowPower = false, isExternal = false } } end }
   __wfgWorld.cvars.graphicsQuality, __wfgWorld.cvars.renderScale = "6", "1"
   C_CVar.GetCVarDefault = function(name) return name == "graphicsQuality" and "8" or nil end
 `;
@@ -122,7 +123,7 @@ it("/vg graphics apply: sets the suggestion as the game's Options would, and und
   const addon = loggedIn(GFX_ENV + TABLE_ENV);
   check(addon);
   expect(said(addon, "graphics apply").pop(), "what it set").toBe("Set Graphics Quality 9, your screen's sizes. /vg graphics undo puts your settings back.");
-  expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "graphicsSpellDensity", "graphicsOutlineMode", "uiScale", "renderScale"]), "every detail from the game's table, then the step (outline mode needs no check, as on Retail); the 1080p UI scale; a detail the client lacks left alone").toEqual(["8", "8", "8", "nil", "8", "0.8", "1"]);
+  expect(cvars(addon, ["graphicsQuality", "graphicsShadowQuality", "graphicsParticleDensity", "graphicsSpellDensity", "graphicsOutlineMode", "uiScale", "renderScale"]), "every detail from the game's table, then the step (outline mode where the card supports it, as the game's slider does on Forever); the 1080p UI scale; a detail the client lacks left alone").toEqual(["8", "8", "8", "nil", "8", "0.8", "1"]);
   addon.eval("__fps = 90");
   check(addon);
   said(addon, "graphics apply");
@@ -166,19 +167,68 @@ it("/vg graphics undo: what apply kept stays on this computer: a profile string 
   said(friend, "graphics apply");
   const exported = friend.eval(`local out = {}
     for _, scope in ipairs({ "profile", "Graphics" }) do local _, data = ns.Serialize.Decode(ns.ExportProfile(scope)) out[scope] = data.Graphics ~= nil and data.Graphics.undo ~= nil end
-    return { out.profile, out.Graphics, ns.Settings("Graphics").undo.graphicsQuality }`);
-  expect(exported, "neither a whole nor a partial string holds the undo record, which stays in the profile").toEqual([false, false, "6"]);
+    return { out.profile, out.Graphics, VanguardDB.client.graphicsUndo.graphicsQuality }`);
+  expect(exported, "neither a whole nor a partial string holds the undo record, which stays in this computer's notes").toEqual([false, false, "6"]);
   // TEST-ONLY strings from an older Vanguard that exported another computer's undo record (quality 9 there).
   const strings = friend.eval(`local undo = { graphicsQuality = "9", renderScale = "1" }
     return { ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" }, Graphics = { undo = undo } })),
       ns.Serialize.Encode("parts", ns.StampPayload({ parts = { "Graphics" }, Graphics = { undo = undo } })) }`);
   const me = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsQuality = '2'");
   me.eval(`ns.ImportProfile(${JSON.stringify(strings[0])}) ns.ImportProfile(${JSON.stringify(strings[1])})`);
-  expect(me.eval("return { VanguardDB.profiles.Imported.Graphics == nil or VanguardDB.profiles.Imported.Graphics.undo == nil, ns.Settings('Graphics').undo == nil }"), "the record is dropped as either string is read").toEqual([true, true]);
+  expect(me.eval("return { VanguardDB.profiles.Imported.Graphics == nil or VanguardDB.profiles.Imported.Graphics.undo == nil, VanguardDB.client.graphicsUndo == nil }"), "the record is dropped as either string is read").toEqual([true, true]);
   check(me);
   said(me, "graphics apply");
   said(me, "graphics undo");
   expect(cvars(me, ["graphicsQuality"]), "so undo puts this computer's own quality back").toEqual(["2"]);
+});
+it("/vg graphics undo: the record is this computer's, so a whole profile import and a reload on the imported profile still undo", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "__fps = 45 __wfgWorld.cvars.graphicsQuality = '6'");
+  check(addon);
+  said(addon, "graphics apply");
+  expect(addon.eval("return { ns.Settings('Graphics').undo == nil, VanguardDB.client.graphicsUndo.graphicsQuality }"), "the record is in the notes, not the profile").toEqual([true, "6"]);
+  const text = addon.eval("return ns.Serialize.Encode('profile', ns.StampPayload({ theme = { accent = 'jade' } }))");
+  addon.eval(`ns.ImportProfile(${JSON.stringify(text)}) VanguardCharDB.profile = 'Imported' ns.ProfileChanged()`);
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsQuality"]), "undo on the imported profile puts the player's own quality back").toEqual(["6"]);
+});
+it("/vg graphics undo: a record an older version kept in the profile moves to the notes unless they hold one", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsQuality = '9'");
+  addon.eval("VanguardDB.client.graphicsUndo = { graphicsQuality = '3' } ns.Settings('Graphics').undo = { graphicsQuality = '5' }");
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsQuality"]), "the notes' record wins").toEqual(["3"]);
+  expect(addon.eval("return { ns.Settings('Graphics').undo == nil, VanguardDB.client.graphicsUndo == nil }"), "both are gone after the undo").toEqual([true, true]);
+});
+it("/vg graphics undo: an older record in the active profile wins over one in an alphabetically earlier profile", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsQuality = '9'");
+  addon.eval("VanguardDB.client.graphicsUndo = nil VanguardDB.profiles.Aaa = { Graphics = { undo = { graphicsQuality = '1' } } } ns.Settings('Graphics').undo = { graphicsQuality = '5' }");
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsQuality"]), "the active profile's record").toEqual(["5"]);
+});
+it("/vg graphics apply: outline mode on Forever is set and undone where the card supports it, and left alone where not", () => {
+  const yes = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsOutlineMode = '1'");
+  check(yes);
+  said(yes, "graphics apply");
+  expect(cvars(yes, ["graphicsOutlineMode"]), "supported: set").toEqual(["8"]);
+  said(yes, "graphics undo");
+  expect(cvars(yes, ["graphicsOutlineMode"]), "and undone").toEqual(["1"]);
+  const no = loggedIn(GFX_ENV + TABLE_ENV + "C_VideoOptions.IsOutlineModeSupported = function() return false end __wfgWorld.cvars.graphicsOutlineMode = '1'");
+  check(no);
+  said(no, "graphics apply");
+  expect(cvars(no, ["graphicsOutlineMode", "graphicsShadowQuality"]), "unsupported: untouched, the rest set").toEqual(["1", "8"]);
+  expect(no.eval("return VanguardDB.client.graphicsUndo.graphicsOutlineMode"), "and not recorded").toBe(null);
+});
+it("/vg graphics apply: Retail has no outline check and sets outline mode as before", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "C_VideoOptions.IsOutlineModeSupported = nil __wfgWorld.cvars.graphicsOutlineMode = '1'", { client: RETAIL_CLIENT });
+  check(addon);
+  said(addon, "graphics apply");
+  expect(cvars(addon, ["graphicsOutlineMode"]), "set without a check").toEqual(["8"]);
+});
+it("/vg graphics undo: a record an older version kept in a profile not in use is undone, and is gone from every profile", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsQuality = '9'");
+  addon.eval("VanguardDB.profiles.Spec1 = { Graphics = { undo = { graphicsQuality = '3' } } } VanguardDB.profiles.Spec2 = { Graphics = { undo = { graphicsQuality = '4' } } }");
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsQuality"]), "the first profile in name order wins").toEqual(["3"]);
+  expect(addon.eval("return { VanguardDB.profiles.Spec1.Graphics.undo == nil, VanguardDB.profiles.Spec2.Graphics.undo == nil }"), "gone everywhere").toEqual([true, true]);
 });
 it("/vg graphics apply: a slow 4K screen gets the render scale; low steps keep the game's lowest particle density", () => {
   const addon = loggedIn(GFX_ENV + TABLE_ENV + "__fps = 10 __wfgWorld.cvars.graphicsQuality = '3'");
@@ -208,7 +258,7 @@ it("/vg graphics apply: a refused Graphics Quality is named, and an unreadable s
   addon.eval("local get = GetCVar GetCVar = function(n) if n == 'uiScale' then error('TEST-ONLY') end return get(n) end C_CVar.GetCVar = GetCVar");
   expect(said(addon, "graphics apply").pop(), "refused").toBe("Set not Graphics Quality (the client refused it), your screen's sizes. /vg graphics undo puts your settings back.");
   addon.eval("C_CVar.GetCVar = nil GetCVar = nil");
-  expect(addon.eval("local u = ns.Settings('Graphics').undo return { u.uiScale, u.graphicsShadowQuality }"), "kept: false when unreadable").toEqual([false, "4"]);
+  expect(addon.eval("local u = VanguardDB.client.graphicsUndo return { u.uiScale, u.graphicsShadowQuality }"), "kept: false when unreadable").toEqual([false, "4"]);
   said(addon, "graphics undo");
   expect(cvars(addon, ["graphicsShadowQuality", "uiScale"]), "the readable one back, the other as apply left it").toEqual(["4", "0.8"]);
 });

@@ -188,7 +188,7 @@ it("game alerts: the screenshot status line and the frame rate readout take the 
 });
 // TEST-ONLY minimap marks: a rare, a treasure, a dead rare, a rare with a hidden name, a rare elite.
 const VIGNETTE_ENV = `
-  issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
   __vignettes = {
     rare = { name = "TEST-ONLY Rare", atlasName = "VignetteKill", isDead = false }, chest = { name = "TEST-ONLY Chest", atlasName = "VignetteLoot" },
     dead = { name = "TEST-ONLY Dead", atlasName = "VignetteKill", isDead = true }, hidden = { name = { __secret = true }, atlasName = "VignetteKill" },
@@ -204,7 +204,7 @@ it("game alerts: a rare nearby is announced with a sound and a chat line, out of
   expect(rares(), "off until you switch it on").toEqual([]);
   addon.slash("");
   addon.eval('ns.Options.Show("tools")');
-  expect(addon.eval('return __click("A rare nearby")'), "the switch is under Combat tools").toBe(true);
+  expect(addon.eval('return __click("Announce a rare nearby")'), "the switch is under Combat tools").toBe(true);
   addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
   addon.fire("VIGNETTE_MINIMAP_UPDATED", "rare", true);
   expect([rares().length, /Rare nearby: TEST-ONLY Rare$/.test(rares()[0]), addon.eval("return __wfgWorld.sounds[#__wfgWorld.sounds]")], "one line and the raid warning sound, once per rare").toEqual([1, true, "RAID_WARNING"]);
@@ -437,7 +437,7 @@ it("Edit Mode shows Vanguard's handles too, with a note under its window", () =>
   addon.eval("EditModeManagerFrame:Hide()");
   setCombat(addon, false);
   addon.slash("");
-  addon.eval(`__click("Show these handles in the game's Edit Mode too")`);
+  addon.eval(`__click("Handles in the game's Edit Mode too")`);
   addon.eval("EditModeManagerFrame:Show()");
   expect(state().slice(0, 3), "the switch under General turns it off").toEqual([false, 0, false]);
 });
@@ -549,9 +549,9 @@ it("low-health vignette: hidden while dead, gone with the switch, and the switch
   expect(vignette(addon).shown, "back when you rise").toBe(true);
   addon.slash("");
   addon.eval('ns.Options.Show("tools")');
-  expect(addon.eval('return __click("Low health: a soft tint")'), "the switch is under Combat tools").toBe(true);
+  expect(addon.eval('return __click("Low health screen tint")'), "the switch is under Combat tools").toBe(true);
   expect(vignette(addon).shown, "switched off at once").toBe(false);
-  expect(addon.eval('return __click("Low health: a soft tint")') && vignette(addon).shown, "and on again at once").toBe(true);
+  expect(addon.eval('return __click("Low health screen tint")') && vignette(addon).shown, "and on again at once").toBe(true);
 });
 it("low-health vignette: in a fight with hidden health the client's curve gets it; no error, and no animation", () => {
   const addon = loggedIn("", VIGNETTE_ON);

@@ -446,15 +446,15 @@ it("a client that cannot make cooldown frames gets no ring, and no error when th
 it("the cursor ring's switch under Unit frames turns it on and off at once", () => {
   const addon = loggedIn(CAST_ENV + RING_ENV + CLICK_LUA);
   addon.eval('ns.Options.Show("unitframes")');
-  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  addon.eval('__click("Cast ring at the cursor")');
   expect([addon.eval("return VanguardDB.profiles.Default.CastBars.ring"), ring(addon).shown, ring(addon).gcd.object, addon.eval("return ns.ticker.vgJobs['cursor ring'] ~= nil")], "on: shown, sweeping, following").toEqual([true, true, "gcd", true]);
-  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  addon.eval('__click("Cast ring at the cursor")');
   addon.eval("Vanguard_CursorRing.gcd:Clear()");
   addon.fire("SPELL_UPDATE_COOLDOWN");
   addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
   addon.fire("UNIT_SPELLCAST_START", "player");
   expect([ring(addon).shown, ring(addon).gcd.object, ring(addon).cast.object, addon.eval("return ns.ticker.vgJobs['cursor ring']")], "off: hidden, not following, deaf to events").toEqual([false, null, null, null]);
-  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  addon.eval('__click("Cast ring at the cursor")');
   expect([ring(addon).shown, ring(addon).cast.object, addon.eval("return #ns.errors")], "on again, with the cast in progress, using the same ring").toEqual([true, "cast", 0]);
 });
 
@@ -539,6 +539,49 @@ it("the interrupt mark: which interrupt, by class and rank", () => {
   expect(addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false'), "a client that cannot say what you know").toBe(false);
 });
 
+it("the interrupt mark: Pummel or Shield Bash by what you can use in your stance", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(`UnitClass = function() return "Warrior", "WARRIOR", 1 end ${KNOWS(6552)} ${KNOWS(72)}`);
+  // The interrupt the mark would track now, or false.
+  const pick = () => addon.eval('return ns.GetModule("CastBars").InterruptSpell() or false');
+  // Sets a test spell's usable or noPower flag in the world stub.
+  const setSpell = (id, field) => addon.eval(`__wfgWorld.spells[${id}].${field}`);
+  expect(pick(), "both castable: Pummel first").toBe(6552);
+  setSpell(6552, "usable = false");
+  expect(pick(), "Pummel unusable in Defensive Stance: Shield Bash").toBe(72);
+  setSpell(6552, "noPower = true");
+  expect(pick(), "Pummel unusable only for lack of rage is still Pummel").toBe(6552);
+  setSpell(6552, "noPower = nil usable = false");
+  setSpell(72, "usable = false");
+  expect(pick(), "neither castable: the first known family").toBe(6552);
+  setSpell(72, "usable = nil");
+  addon.eval("C_Spell.IsSpellUsable = function() return { __secret = true }, { __secret = true } end");
+  expect(pick(), "a hidden answer keeps the first known family").toBe(6552);
+  addon.eval("C_Spell.IsSpellUsable = function() end");
+  expect(pick(), "a client that will not say keeps the first known family").toBe(6552);
+});
+
+it("the interrupt mark follows a stance change while a cast shows", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(`UnitClass = function() return "Warrior", "WARRIOR", 1 end ${KNOWS(6552)} ${KNOWS(72)}`);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  expect(mark(addon, "target").object, "Pummel's cooldown in Berserker Stance").toBe("tag6552");
+  addon.eval("__wfgWorld.spells[6552].usable = false");
+  addon.fire("UPDATE_SHAPESHIFT_FORM");
+  expect(mark(addon, "target").object, "Shield Bash's after the stance change").toBe("tag72");
+});
+
+it("the interrupt mark follows equipping a shield while a cast shows", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(`UnitClass = function() return "Warrior", "WARRIOR", 1 end ${KNOWS(6552)} ${KNOWS(72)}`);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  addon.eval("__wfgWorld.spells[6552].usable = false");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 17, true);
+  expect(mark(addon, "target").object, "Shield Bash's after the shield goes on").toBe("tag72");
+});
+
 it("the interrupt mark asks C_SpellBook what you know, so it shows without the game's deprecation fallbacks", () => {
   // As Forever with loadDeprecationFallbacks off: no IsPlayerSpell global, C_SpellBook.IsSpellKnown still there.
   const addon = loggedIn(CAST_ENV + MARK_ENV + "IsPlayerSpell = nil");
@@ -603,9 +646,9 @@ it("the interrupt mark's switch under Unit frames applies at once", () => {
   addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
   addon.fire("UNIT_SPELLCAST_START", "target");
   expect(mark(addon, "target").shown, "on by default").toBe(true);
-  addon.eval('ns.Options.Show("unitframes") __click("Interrupt mark beside the target and focus cast bars")');
+  addon.eval('ns.Options.Show("unitframes") __click("Interrupt mark on cast bars")');
   expect([addon.eval("return VanguardDB.profiles.Default.CastBars.interruptMark"), mark(addon, "target").shown], "unticked: gone from the cast on screen").toEqual([false, false]);
-  addon.eval('__click("Interrupt mark beside the target and focus cast bars")');
+  addon.eval('__click("Interrupt mark on cast bars")');
   expect(mark(addon, "target").shown, "ticked: back").toBe(true);
 });
 

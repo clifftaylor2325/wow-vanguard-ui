@@ -30,19 +30,29 @@ const morePlates = (from, to) => `for i = ${from}, ${to} do
     p.UnitFrame, p.IsForbidden = CreateFrame("Frame", nil, p), function() return false end
     __plates["nameplate" .. i], __units["nameplate" .. i] = p, __units.target
   end`;
-it("nameplate frames are built ahead at login, so a pull of 30 plates builds none", () => {
+it("nameplate frames are built ahead after login, two a frame, so a pull of 30 plates builds none", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
-  expect(addon.eval("return #ns.GetModule('Nameplates').pool"), "40 built ahead, two taken by the plates on screen at login").toBe(38);
+  // How many frames are built ahead and not yet taken.
+  const pool = () => addon.eval("return #ns.GetModule('Nameplates').pool");
+  expect(pool(), "none built at login itself").toBe(0);
+  addon.update(0.016);
+  expect(pool(), "two on the first frame after").toBe(2);
+  setCombat(addon, true);
+  for (let i = 0; i < 5; i++) addon.update(0.016);
+  expect(pool(), "a fight pauses the building").toBe(2);
+  setCombat(addon, false);
+  for (let i = 0; i < 25; i++) addon.update(0.016);
+  expect(pool(), "40 built ahead once the fight is over").toBe(40);
   addon.eval(morePlates(4, 33));
   const before = addon.eval("return #__wfgStub.frames");
   for (let i = 4; i <= 33; i++) addon.fire("NAME_PLATE_UNIT_ADDED", `nameplate${i}`);
   expect(addon.eval("return #__wfgStub.frames") - before, "30 plates added: no new frame").toBe(0);
   const p = addon.eval(`local plate = __plates.nameplate20 local f = ns.FrameState('vgPlate')[plate] local at = f.__points.CENTER
     return { f:IsVisible(), f:GetParent() == plate, at.rel == plate, f.events.__unitEvents.UNIT_HEALTH[1], #ns.GetModule('Nameplates').pool }`);
-  expect(p, "each frame moved onto its plate, shown, listening for its unit").toEqual([true, true, true, "nameplate20", 8]);
-  addon.eval(morePlates(34, 42));
-  for (let i = 34; i <= 42; i++) addon.fire("NAME_PLATE_UNIT_ADDED", `nameplate${i}`);
-  expect(addon.eval("return { #ns.GetModule('Nameplates').pool, ns.FrameState('vgPlate')[__plates.nameplate42]:IsVisible() }"), "past the pool, a plate still gets a frame").toEqual([0, true]);
+  expect(p, "each frame moved onto its plate, shown, listening for its unit").toEqual([true, true, true, "nameplate20", 10]);
+  addon.eval(morePlates(34, 44));
+  for (let i = 34; i <= 44; i++) addon.fire("NAME_PLATE_UNIT_ADDED", `nameplate${i}`);
+  expect(addon.eval("return { #ns.GetModule('Nameplates').pool, ns.FrameState('vgPlate')[__plates.nameplate44]:IsVisible() }"), "past the pool, a plate still gets a frame").toEqual([0, true]);
   expect(loggedIn(UNITS_ENV).eval("return #ns.GetModule('Nameplates').pool"), "a client without addon nameplates builds none").toBe(0);
 });
 it("a fallback debuff row put away after a fight is reused by the next plate drawn in one", () => {
@@ -139,13 +149,32 @@ it("the Nameplates page switches the game's enemy and friendly plates, out of co
   setCombat(addon, false);
   expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "once the fight ends").toBe("0");
 });
-it("enemy plates are turned on once per character, then left to the player", () => {
+// The question dialog: whether it shows, and its question.
+const question = (addon) => addon.eval("local f = Vanguard_Question return { f ~= nil and f:IsShown(), f and f.title:GetText() or false }");
+it("enemy plates off: Vanguard offers once per character to turn them on, and only a yes changes the game's setting", () => {
   const addon = loggedIn("SetCVar('nameplateShowEnemies', 0)");
-  expect(addon.eval("return { GetCVar('nameplateShowEnemies'), VanguardCharDB.enemyPlatesSet }"), "on at the first login").toEqual(["1", true]);
+  expect(question(addon), "asked at the first login").toEqual([true, expect.stringMatching(/enemy nameplates are off/)]);
+  expect(addon.eval("return { GetCVar('nameplateShowEnemies'), VanguardCharDB.enemyPlatesSet == nil }"), "nothing changed or marked before the answer").toEqual(["0", true]);
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "Turn on: on").toBe("1");
   addon.eval("SetCVar('nameplateShowEnemies', 0) ns.GetModule('Nameplates').EnemyPlatesOnce()");
-  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "the player turned them off: they stay off").toBe("0");
-  expect(addon.eval("VanguardCharDB = nil ns.GetModule('Nameplates').EnemyPlatesOnce() return GetCVar('nameplateShowEnemies')"), "no saved settings yet: nothing changes").toBe("0");
-  expect(loggedIn("SetCVar = nil").eval("return VanguardCharDB.enemyPlatesSet"), "a client without SetCVar: no error, marked done").toBe(true);
+  expect([addon.eval("return GetCVar('nameplateShowEnemies')"), question(addon)[0]], "the player turned them off: they stay off, unasked").toEqual(["0", false]);
+  const declined = loggedIn("SetCVar('nameplateShowEnemies', 0)");
+  declined.click("Vanguard_Question.no");
+  expect(declined.eval("return { GetCVar('nameplateShowEnemies'), VanguardCharDB.enemyPlatesSet }"), "No: they stay off, and the offer is not made again").toEqual(["0", true]);
+  expect(question(loggedIn())[0], "already on: nothing to ask").toBe(false);
+  expect(declined.eval("VanguardCharDB = nil ns.GetModule('Nameplates').EnemyPlatesOnce() return GetCVar('nameplateShowEnemies')"), "no saved settings yet: nothing changes").toBe("0");
+});
+it("the enemy plates offer waits while setup is owed or another question is open", () => {
+  const owed = loggedIn("SetCVar('nameplateShowEnemies', 0)", { firstRun: true });
+  expect(owed.eval("return VanguardCharDB.enemyPlatesSet"), "setup owed: not asked, kept for a later login").toBe(null);
+  const busy = loggedIn("SetCVar('nameplateShowEnemies', 0)");
+  busy.click("Vanguard_Question.no");
+  busy.eval("VanguardCharDB.enemyPlatesSet = nil ns.Ask('TEST-ONLY other', 'TEST-ONLY', function() end) ns.GetModule('Nameplates').EnemyPlatesOnce()");
+  expect([busy.eval("return VanguardCharDB.enemyPlatesSet"), question(busy)[1]], "another question open: it stays, the offer waits").toEqual([null, "TEST-ONLY other"]);
+  const replaced = loggedIn("SetCVar('nameplateShowEnemies', 0)");
+  replaced.eval("ns.Ask('TEST-ONLY later', 'TEST-ONLY', function() end)");
+  expect(replaced.eval("return VanguardCharDB.enemyPlatesSet"), "a later question replaced it before an answer: asked again at a later login").toBe(null);
 });
 // TEST-ONLY the game's personal resource display (Blizzard_PersonalResourceDisplay.xml): the health, power and
 // alternate power bars, each with a backdrop texture, a heal prediction texture and the three value texts.
@@ -250,9 +279,9 @@ it("the Nameplates and Unit frames pages switch the tag marks and the grey bar",
   addon.fire("PLAYER_TARGET_CHANGED");
   expect(addon.eval("return __look()"), "another player's mob, switches on").toEqual(["x tapped", "tapped", "x tapped"]);
   addon.eval('ns.Options.Show("nameplates")');
-  addon.eval('__click("Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player\'s")');
+  addon.eval('__click("Tag marks")');
   addon.eval('ns.Options.Show("unitframes")');
-  addon.eval('__click("Tag mark on your target: a green check if you tagged it, a grey X if another player did")');
+  addon.eval('__click("Tag mark on your target")');
   expect(addon.eval("return __look()"), "both off, at once: no marks, the plate back to its reaction colour").toEqual(["hidden", "hostile", "hidden"]);
 });
 
@@ -349,7 +378,7 @@ it("the Nameplates page mirrors the game's health number boxes and writes them o
 it("the debuffs and buffs rows offer every count a role preset saves", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
   const missing = addon.eval(`local out = {}
-    local want = { [ns.L["Your debuffs shown"]] = "debuffs", [ns.L["Buffs on players (defensives, and yours on friends)"]] = "buffs" }
+    local want = { [ns.L["Your debuffs shown"]] = "debuffs", [ns.L["Buffs on players"]] = "buffs" }
     for _, row in ipairs(ns.GetModule("Nameplates").OptionRows()) do
       local key = want[row[2]]
       for role, parts in pairs(key and ns.ROLE_SETTINGS or {}) do

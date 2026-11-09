@@ -43,6 +43,10 @@ on:
         description: "Also run the Retail-only test files (off on a pull request: Retail support is new and best effort)"
         type: boolean
         default: true
+      coverage:
+        description: "Run the suite with line coverage and its floor (off: the plain suite, about half the time)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -58,6 +62,9 @@ jobs:
     # the 0.9.0 release run hit 40 min on 2026-11-05; 75 leaves room. A runaway
     # still dies inside it (the harness's instruction budget, the workers' heap cap).
     timeout-minutes: 75
+    # Off for a pull request's run (the retail input): leaves out the Retail-only test files.
+    env:
+      VG_SKIP_RETAIL: ${{ inputs.retail == false && '1' || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -88,20 +95,24 @@ jobs:
           seed=$(date +%s)
           echo "VG_SHUFFLE_SEED=$seed" >> "$GITHUB_ENV"
           printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
-      # With the retail input off (a pull request's run), VG_SKIP_RETAIL leaves out the Retail-only test
-      # files (vitest.config.mjs) and coverage counts only the Lua Forever loads (scripts/coverage-lua.mjs);
-      # the weekly, hand-started and release runs keep both clients.
+      # A pull request runs the plain suite (full-suite.yml turns coverage off): coverage roughly
+      # doubles a case's cost, and the floor is checked before every pull request locally, weekly,
+      # by hand and before each release. With the retail input off (a pull request's run too),
+      # VG_SKIP_RETAIL leaves out the Retail-only test files (vitest.config.mjs), and coverage, when on,
+      # counts only the Lua Forever loads against its own floor (scripts/coverage-lua.mjs).
       - run: npm run coverage
-        env:
-          VG_SKIP_RETAIL: ${{ inputs.retail == false && '1' || '' }}
+        if: inputs.coverage
+      - run: npm test
+        if: ${{ !inputs.coverage }}
       # The raid benchmark (scripts/bench.mjs, issue #255): time and Lua
       # instructions per event under a scripted 40-player raid, a harness
       # measurement until /vg perf confirms it in game. Its tables go to the
-      # job summary and its JSON into the lua-coverage artifact. It runs
-      # without --budget, so a slowdown never fails the run (shared runners
-      # are noisy); an error the addon catches under the raid load does.
+      # job summary and its JSON into the lua-coverage artifact. Time is not
+      # budgeted (shared runners are noisy), but the addon's Lua instructions
+      # per step are: past a cap in scripts/bench-budget.json the run fails,
+      # and so does an error the addon catches under the raid load.
       - name: Raid benchmark (harness measurement)
-        run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY"
+        run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY" --instr-budget scripts/bench-budget.json
       - name: Code quality
         if: inputs.checks
         run: npm run quality
@@ -144,9 +155,12 @@ jobs:
     # A screenshot of the default layout from the addon's real Lua (art
     # approximated), so a UI change can be reviewed from the run's artifacts.
     # It needs no green tests job: a UI change is reviewable even when a
-    # test fails.
+    # test fails. Its failure never fails the run (continue-on-error): it is a
+    # picture to review, not a test, and its out-of-memory runs kept the weekly
+    # suite red while every test passed (issue #780).
     name: UI preview
     if: inputs.preview
+    continue-on-error: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

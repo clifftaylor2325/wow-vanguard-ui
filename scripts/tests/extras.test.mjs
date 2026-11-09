@@ -103,7 +103,7 @@ it("/vg factionart: which of the game's own faction pictures the client has", ()
   expect([/you're Horde/.test(lines), /atlas MountJournalIcons-Horde\s+\|c\w+yes/.test(lines), /atlas UI-HUD-UnitFrame-Player-PVP-HordeIcon\s+\|c\w+missing/.test(lines)], "your faction, and each atlas found or missing").toEqual([true, true, true]);
   addon.eval("ns.FactionArt.tester.SetTexture = function(_, file) return file:find('Timer') ~= nil end");
   expect(addon.eval("return { ns.FactionArt.HasFile('Interface\\\\Timer\\\\Horde-Logo'), ns.FactionArt.HasFile('Interface\\\\TargetingFrame\\\\UI-PVP-Horde') }"), "a file counts when the client loads it").toEqual([true, false]);
-  addon.eval("UnitFactionGroup = function() return { __secret = true } end issecretvalue = function(v) return type(v) == 'table' and v.__secret end");
+  addon.eval("UnitFactionGroup = function() return { __secret = true } end issecretvalue = function(v) return __wfgRawType(v) == 'table' and rawget(v, '__secret') == true end");
   expect(addon.eval("return ns.FactionArt.Faction()"), "a hidden answer counts as none").toBe("none");
   const bare = loggedIn("C_Texture = nil UnitFactionGroup = nil");
   expect(bare.eval("return { ns.FactionArt.HasAtlas('MountJournalIcons-Horde'), ns.FactionArt.Faction() }"), "a client without these calls has none, and no faction").toEqual([false, "none"]);

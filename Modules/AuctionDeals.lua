@@ -214,7 +214,7 @@ AH.PANE_EXTRAS[#AH.PANE_EXTRAS + 1] = paneEntry
 
 -- What the card shows for Deals: the columns, this visit's deals best first, the count beside the
 -- heading, and the line shown while there are none.
-AH.Sources[AH.DEALS] = { name = L["Deals"], columns = AH.DEAL_COLUMNS, items = AH.SortedDeals, paint = paintDeal, click = AH.OpenDeal, enter = dealTip,
+AH.Sources[AH.DEALS] = { name = L["Deals"], on = function() return AH.settings.deals end, columns = AH.DEAL_COLUMNS, items = AH.SortedDeals, paint = paintDeal, click = AH.OpenDeal, enter = dealTip,
   count = AH.FoundCount, status = function(items) return #items == 0 and L["None yet: a scan or a search finds them."] or "" end }
 
 -- The Deals entry painted: its count in the pane and, while it is the entry shown, its rows (the

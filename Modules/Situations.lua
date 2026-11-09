@@ -60,7 +60,7 @@ end
 -- The settings an override may hold: each module's keys that its apply functions
 -- (run once after the writes) re-read at once. Keys that need a reload are left out.
 SI.LIVE = {
-  InfoStrip = { keys = { "visibility", "showWhen", "durability", "bags", "system", "gold", "ammo", "clock", "shards", "xprate", "leveltime", "goldrate", "dps", "rank", "ahgold", "date" }, apply = { "ApplyVisibility", "UpdateAll" } },
+  InfoStrip = { keys = { "visibility", "showWhen", "durability", "bags", "system", "gold", "ammo", "shards", "xprate", "leveltime", "goldrate", "dps", "rank", "ahgold", "date" }, apply = { "ApplyVisibility", "UpdateAll" } },
   MenuStrip = { keys = { "menu", "menuWhen" }, apply = { "ApplyVisibility" } },
   DataBars = { keys = { "visibility", "showWhen" }, apply = { "ApplyVisibility" } },
   Nameplates = { keys = { "level", "threat", "targetBorder", "questMarks" }, apply = { "RefreshAll" } },
@@ -535,6 +535,7 @@ SI.ELSEWHERE = L["Everything else, including any setting that needs a reload, ch
 function SI.HoldRows(rows)
   rows[#rows + 1] = { "header", L["What an override holds"] }
   rows[#rows + 1] = { "text", L["Frame spots, scale and opacity (move frames with /vg unlock)."] }
+  rows[#rows + 1] = ns.Options.MoveFramesRow()
   for _, module in ipairs(SI.ORDER) do rows[#rows + 1] = { "text", SI.HOLDS[module] } end
   rows[#rows + 1] = { "text", SI.ELSEWHERE }
   return rows

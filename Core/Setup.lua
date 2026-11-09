@@ -125,6 +125,12 @@ local function owed()
   return not VanguardDB.setupDone or VanguardCharDB.setupDone == false
 end
 
+-- Whether setup still owes a run (see owed), for a login offer that must not sit on top of it.
+---@return boolean
+function ns.SetupOwed()
+  return owed()
+end
+
 -- The backup an owed setup already has (made by Start over, or by an earlier run closed before Done),
 -- while that profile is still there and is still the backup of the profile in use.
 local function keptBackup()
@@ -556,12 +562,15 @@ end
 -- How tall a page of choices stands: its question, its rows, and the tallest of its hints under them (each
 -- is set in turn to measure it; the chosen one's goes back when the page is marked).
 local function choiceHeight(page)
-  local tallest = 0
+  local tallest, shown = 0, 0
   for _, b in ipairs(page.choices) do
-    page.hint:SetText(hintText(b))
-    tallest = math.max(tallest, page.hint:GetStringHeight())
+    if b:IsShown() then
+      shown = shown + 1
+      page.hint:SetText(hintText(b))
+      tallest = math.max(tallest, page.hint:GetStringHeight())
+    end
   end
-  local rows = #page.choices * (T.BUTTON_H + T.SPACE.tight)
+  local rows = shown * (T.BUTTON_H + T.SPACE.tight)
   return page.question:GetStringHeight() + T.SPACE.gap + rows + tallest
 end
 
@@ -702,18 +711,22 @@ end
 -- The Fit choice for a narrow canvas: the UI scale that gives the layout its room, suggested.
 local function fitChoice()
   local p = S.FitPreset()
-  return { key = p.key, hint = screenHint(p), text = ns.Format(L["Fit my screen: UI scale {scale}%  ·  suggested"], { scale = percent(p.ui) }) }
+  return { key = p.key, hint = function() return screenHint(S.FitPreset()) end,
+    text = ns.Format(L["Fit my screen: UI scale {scale}%  ·  suggested"], { scale = percent(p.ui or 1) }) }
 end
 
--- The screen choices: each preset (the one for this screen marked), Pixel-perfect, Fit on a narrow screen, then Keep.
+-- A screen preset's choice, the one for this screen marked; its hint is worked out when shown.
+local function presetChoice(p, detected)
+  local text = p.key == detected and L["{screen} ({width} x {height})  ·  your screen"] or L["{screen} ({width} x {height})"]
+  return { key = p.key, hint = function() return screenHint(p) end, text = ns.Format(text, { screen = p.text, width = p.w, height = p.h }) }
+end
+
+-- The screen choices: each preset (the one for this screen marked), Pixel-perfect, Fit (shown on a narrow screen only), then Keep.
 local function screenChoices()
   local detected, out = S.DetectScreen(), {}
-  for i, p in ipairs(S.SCREENS) do
-    local text = p.key == detected and L["{screen} ({width} x {height})  ·  your screen"] or L["{screen} ({width} x {height})"]
-    out[i] = { key = p.key, hint = screenHint(p), text = ns.Format(text, { screen = p.text, width = p.w, height = p.h }) }
-  end
-  out[#out + 1] = { key = S.PIXEL.key, text = S.PIXEL.text, hint = screenHint(S.PixelPreset()) }
-  if S.OfferFit() then out[#out + 1] = fitChoice() end
+  for i, p in ipairs(S.SCREENS) do out[i] = presetChoice(p, detected) end
+  out[#out + 1] = { key = S.PIXEL.key, text = S.PIXEL.text, hint = function() return screenHint(S.PixelPreset()) end }
+  out[#out + 1] = fitChoice()
   out[#out + 1] = { key = "keep", text = L["Keep my current sizes"], hint = function() return screenHint(nil) end }
   return out
 end
@@ -721,6 +734,40 @@ end
 -- The screen step: a button per screen preset and Keep, then the chosen one's hint.
 local function screenPage(page)
   choicePage(page, L["Sizes for your screen (yours is marked). /vg graphics checks your frame rate."], screenChoices(), "screen")
+end
+
+-- Sets the rows' labels from a fresh list of choices (the page is built once, at setup's first open).
+local function relabelRows(page, list)
+  for i, l in ipairs(list) do page.choices[i].text:SetText(l.text) end
+end
+
+-- Hangs Keep under the Fit row while it shows, else under Pixel-perfect, and shows the Fit row only on a narrow screen.
+local function placeFit(page)
+  local keep, fitRow = page.choices[#page.choices], page.choices[#page.choices - 1]
+  local above = fitRow:IsShown() and fitRow or page.choices[#page.choices - 2]
+  keep:ClearAllPoints()
+  keep:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -T.SPACE.tight)
+end
+
+-- Names the screen step's rows for the screen now (which preset is yours, Fit's scale) and offers Fit only
+-- while it widens the canvas; the hints are worked out as they show.
+local function relabelScreen()
+  local page = frame.pages.screen
+  relabelRows(page, screenChoices())
+  page.choices[#page.choices - 1]:SetShown(S.OfferFit())
+  placeFit(page)
+end
+
+-- Marks the layout step's row for your role now (the group role can change between openings).
+local function relabelLayout()
+  relabelRows(frame.pages.layout, layoutChoices())
+end
+
+-- Words the steps built once at setup's first open for the profile, role and screen of now.
+local function relabelSteps()
+  relabelProfile()
+  relabelLayout()
+  relabelScreen()
 end
 
 -- A style tile's health bar, three quarters full, one pixel inside the border, with your name over it.
@@ -839,13 +886,25 @@ local function controls(f)
   f.skip:SetPoint("BOTTOMLEFT", PAD, PAD)
 end
 
--- Why setup offers a reload: a module turned on, new raid tile sizes, or Done (setup always ends
--- with one, so everything it set shows as it will from now on); nil otherwise.
+-- The modules whose settings the steps read (raid style, Calm HUD, button sizes), filled before setup's snapshot.
+S.READ_FIRST = { "RaidFrames", "UnitFrames", "ActionBars" }
+
+-- The profile in use and its settings as an export string (sorted, so the same settings give the same string), which
+-- setup takes as it opens to tell at Done whether anything changed. What the steps read is read first (the unlock
+-- options, and the settings of modules that may be off): a first read fills defaults into the profile, which is no change.
+local function settingsNow()
+  ns.MoverOptions()
+  for _, name in ipairs(S.READ_FIRST) do moduleSettings(name) end
+  return ns.ProfileName() .. "\n" .. tostring(ns.ExportProfile())
+end
+
+-- Why setup offers a reload: a module turned on, new raid tile sizes, or Done after a change (so everything it set
+-- shows as it will from now on); nil otherwise, so a Done that kept everything as it was ends without one.
 local function reloadReason()
   if state.reload then return L["Setup turned on a module that was off."] end
   if state.retile then return L["The new raid tile size shows after a reload."] end
   if state.role then return L["The layout's raid frame, raid aura and nameplate settings show after a reload."] end
-  if state.complete and state.done then return L["Setup is done."] end
+  if state.complete and state.done and settingsNow() ~= state.before then return L["Setup is done."] end
 end
 
 -- Remembers that setup ran, on the account and for this character (dropping the backup an owed run
@@ -990,9 +1049,9 @@ function S.Open()
   frame = frame or build()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
-  state.layout, state.screen, state.backup = "keep", "keep", nil
+  state.layout, state.screen, state.backup, state.before = "keep", "keep", nil, settingsNow()
   state.reload, state.paused, state.done, state.role = false, false, false, false
-  relabelProfile()
+  relabelSteps()
   T.OpenWindow(frame)
   showStep(1)
 end

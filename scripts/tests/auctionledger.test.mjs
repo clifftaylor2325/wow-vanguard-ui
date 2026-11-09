@@ -195,6 +195,22 @@ it("a login with the computer's clock far ahead of the realm's prunes nothing", 
   const clock = "__now = 1790000000 + 100 * 86400 GetServerTime = function() return 1790000000 end";
   const addon = loggedIn(ENV + clock, { savedVariables: saved });
   expect(addon.eval("local b = VanguardDB.ah.ledgers['ForeverTest-Alliance'] return { #b.records, b.open[1] ~= nil }"), "the record and the open auction stay; only the broken entry goes").toEqual([1, true]);
+  expect(addon.eval("return VanguardDB.ah.ledgers['ForeverTest-Alliance'].records[1].t"), "the prune ran with no real time, so no time is moved").toBe(1790000000 - 86400);
+});
+
+it("a sale noted under a clock set ahead is moved back a day at the next login: no sale of this session, 'yesterday' in its history", () => {
+  const saved = `VanguardDB.ah = { ledgers = { ["ForeverTest-Alliance"] = { records = { { kind = "sold", id = 9999, name = "TEST-ONLY Blade", qty = 1, amount = 5000, auction = 7, t = 1790000000 + 20 * 86400 } },
+    open = { [1] = { t = 1790000000 + 3600 } } } } }`;
+  const clock = "GetServerTime = function() return 1790000000 end";
+  const addon = loggedIn(ENV + clock, { savedVariables: saved });
+  const book = "VanguardDB.ah.ledgers['ForeverTest-Alliance']";
+  expect(addon.eval(`return { ${book}.records[1].t <= ns.AuctionLedger.since - 86400, ns.AuctionLedger.SessionSales(), ns.AuctionPrices.Ago(${book}.records[1].t), ${book}.open[1].t <= ns.AuctionLedger.since - 86400 }`)).toEqual([true, 0, "yesterday", true]);
+});
+
+it("pruning under a small clock leaves a record with no time alone instead of erroring", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("VanguardDB.ah.ledgers = { K = { records = { { kind = 'sold', id = 1 } }, open = { [1] = { t = 'x' } } } }");
+  expect(addon.eval("local ok = pcall(ns.AuctionLedger.Prune, 1000) return ok"), "no error on a missing or non-numeric t").toBe(true);
 });
 
 // The Up now card, which holds Your history.
@@ -365,6 +381,21 @@ it("a bid win's mail joins the auction closest in price, not the oldest", () => 
   addon.eval(`__wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 900, 1)}, ${invoice("TEST-ONLY Blade", 4000, 1, 28)} }`);
   addon.world.openMailbox();
   expect(records(addon).map((r) => r.slice(4)), "the 9s bid took the 15s auction, the 40s mail the 40s one").toEqual([[4000, 502, true], [900, 503, true]]);
+});
+
+it("a new sale's notice after an earlier cheaper mail-only sale stays its own sale (H39-6-1)", () => {
+  const addon = atAuctionHouse(BID_OWNED);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.eval(`__wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 1500, 1)} }`);
+  addon.world.openMailbox();
+  addon.eval("__now = __now + 3600");
+  addon.fire("AUCTION_HOUSE_SHOW_FORMATTED_NOTIFICATION", 4, "TEST-ONLY Blade", 502);
+  expect(records(addon).map((r) => r.slice(4)), "two records").toEqual([[1500, false, true], [4000, 502, false]]);
+  expect(addon.eval("return ns.AuctionLedger.SessionSales()"), "the session's sale is the 40s one").toBe(4000);
+  addon.eval(`__now = __now + 3600 __wfgWorld.mail = { ${invoice("TEST-ONLY Blade", 1500, 1, 29.9 - 7200 / 86400)}, ${invoice("TEST-ONLY Blade", 4000, 1, 29.99)} }`);
+  addon.world.openMailbox();
+  expect(records(addon).map((r) => r.slice(4)), "the 40s mail joins its notice").toEqual([[1500, false, true], [4000, 502, true]]);
+  expect(addon.eval("return ns.AuctionLedger.SessionSales()"), "still 40s").toBe(4000);
 });
 
 it("a cheaper sale read from the mail two weeks before is not taken for a new sale's bid win", () => {

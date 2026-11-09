@@ -47,3 +47,47 @@ it("game or test code overwriting a field on the game's frame is not recorded", 
   addon.eval(`${GAME_FRAME} TestGameFrame.layoutIndex = 7`);
   expect(addon.eval("return { #__wfgStub.violations, TestGameFrame.layoutIndex }")).toEqual([0, 7]);
 });
+
+it("the game's action, pet, stance, raid and boss frames are protected by name, and a bar holding one is too", () => {
+  const addon = createAddon();
+  addon.eval(`TestBar = CreateFrame("Frame", "TestBar", UIParent)
+    for _, name in ipairs({ "ActionButton1", "MultiBarBottomLeftButton3", "PetActionButton2", "StanceButton1", "CompactRaidFrame12", "Boss2TargetFrame" }) do
+      CreateFrame("CheckButton", name, TestBar)
+    end
+    TestPlain = CreateFrame("Frame", "ActionButtonless", UIParent)`);
+  addon.world.combat(true);
+  asAddon(addon, "ActionButton1:Hide() Boss2TargetFrame:SetPoint('CENTER') CompactRaidFrame12:Hide() TestBar:Hide() TestPlain:Hide()");
+  const texts = violations(addon);
+  expect(texts.map((t) => t.replace(/^.* called (\w+) on the protected frame /, "$1 ")), "blocked: the button, the boss frame, the raid tile and the bar; not a look-alike name")
+    .toEqual(["Hide ActionButton1", "SetPoint Boss2TargetFrame", "Hide CompactRaidFrame12", "Hide TestBar"]);
+});
+
+it("an addon frame given a game frame's name is not taken for the game's", () => {
+  const addon = createAddon();
+  asAddon(addon, 'CreateFrame("Button", "ActionButton1", UIParent)');
+  addon.world.combat(true);
+  asAddon(addon, "ActionButton1:Hide()");
+  expect(addon.eval("return #__wfgStub.violations")).toBe(0);
+});
+
+it("world.forbid closes a game frame and the game's widgets under it to addon code, and leaves the addon's own open", () => {
+  const addon = createAddon();
+  addon.eval(`TestPlate = CreateFrame("Frame", nil, UIParent) TestIcon = TestPlate:CreateTexture()`);
+  asAddon(addon, "TestMine = CreateFrame('Frame', nil, TestPlate)");
+  addon.eval("__wfgWorld.forbid(TestPlate)");
+  // Whether an addon call on that widget raised, and the text it raised with.
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) return { ok, ok and "" or tostring(e) }`);
+  expect(tryAddon("TestPlate:ClearAllPoints()"), "the plate refuses").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
+  expect(tryAddon("TestIcon:SetTexture(1)")[0], "its texture refuses").toBe(false);
+  expect(tryAddon("return TestPlate:IsForbidden() and TestIcon:IsForbidden()"), "both say so, to the addon too").toEqual([true, ""]);
+  expect(tryAddon("TestMine:SetAlpha(0.5)"), "the addon's own frame stays open").toEqual([true, ""]);
+  expect(addon.eval("TestPlate:SetAlpha(0.5) return TestPlate:GetAlpha()"), "test code still reaches it").toBe(0.5);
+});
+
+it("a secret answers type() as the value it hides, to the addon and to test code; the harness reads the raw type", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local s, t = __wfgWorld.secret(5), __wfgWorld.secret("TEST-ONLY")
+    return { type(s), type(t), type(__wfgWorld.secret(nil)), __wfgRawType(s), issecretvalue(s), type({}), type(3) }`))
+    .toEqual(["number", "string", "number", "table", true, "table", "number"]);
+  expect(addon.eval("local ok = pcall(function() local s = __wfgWorld.secret(5) return type(s) == 'number' and s > 0 end) return ok"), "a type gate lets it through to the compare, which errors").toBe(false);
+});

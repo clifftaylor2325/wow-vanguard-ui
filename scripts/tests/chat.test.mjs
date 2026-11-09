@@ -594,7 +594,7 @@ it("chat bar hidden until hover (off by default): the bar goes after 4 s away, c
   // The bar: visible; the hover job: running; the six tab alphas.
   const state = () => addon.eval(`local out = {} for _, name in ipairs(ns.GetModule('Chat').TAB_ALPHAS) do out[#out + 1] = _G[name] end return { ${B}:IsVisible(), ns.ticker.vgJobs["chat bar hover"] ~= nil, out }`);
   expect(state(), "off by default: the bar stays, no job, the tabs at 1").toEqual([true, false, [1, 1, 1, 1, 1, 1]]);
-  addon.eval(`${chatRow("Hide the tab bar until the mouse is over the chat")} r[4](true)`);
+  addon.eval(`${chatRow("Hide the tab bar until hovered")} r[4](true)`);
   expect(state(), "on (the Chat page's row under its Chat header): the job runs and the tabs show only under the mouse or alerting").toEqual([true, true, [1, 0, 1, 1, 1, 0]]);
   addon.advance(3.9, 0.1);
   expect(state()[0], "3.9 s away: still there").toBe(true);
@@ -619,7 +619,7 @@ it("chat bar hidden until hover (off by default): the bar goes after 4 s away, c
   addon.eval("ChatFrame1EditBox.HasFocus = function() return false end");
   addon.advance(4.5, 0.1);
   expect(state()[0], "the box left, it goes after the idle time again").toBe(false);
-  addon.eval(`${chatRow("Hide the tab bar until the mouse is over the chat")} r[4](false)`);
+  addon.eval(`${chatRow("Hide the tab bar until hovered")} r[4](false)`);
   expect(state(), "off again: the bar is back at once, the job gone, the tabs at 1").toEqual([true, false, [1, 1, 1, 1, 1, 1]]);
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat.barHover, #ns.errors }"), "saved, no errors").toEqual([false, 0]);
 });
@@ -973,6 +973,15 @@ it("bags: each slot is skinned once, the window on show, a border only when its 
   addon.eval("ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()");
   expect(painted(addon), "reopening fades and panels the window again, no slot").toEqual([1, 1, 0]);
 });
+it("H37-8-1: the character pane's durability label rounds as the info strip does (31 of 120 reads 26% in the text colour)", () => {
+  const addon = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV);
+  addon.eval("__dur[1] = { 31, 120 } CharacterFrame:Show()");
+  const head = addon.eval("local l = ns.FrameState('vgDurability')[CharacterHeadSlot] return { l:GetText(), l.__textColor }");
+  expect(head[0], "the slot label rounds to the nearest, not down").toBe("26%");
+  expect(isTok(addon, head[1], "text"), "so it is not yet in the warning colour").toBe(true);
+  expect(addon.eval("for _, w in ipairs(ns.GetModule('InfoStrip').WornSlots()) do if w[1] == 'Head' then return w[2] end end"), "the strip's tooltip agrees").toBe(26);
+});
+
 it("character pane durability, the mail's Open All button", () => {
   const addon = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV);
   // A gear slot's durability label: shown, text and color.

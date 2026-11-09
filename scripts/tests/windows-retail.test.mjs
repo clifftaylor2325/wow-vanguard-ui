@@ -145,7 +145,7 @@ it("windows-retail: with the Retail windows' switch off the group finder stays t
   const labels = (addon) => addon.eval(`local out = {}
     for _, page in ipairs(ns.Options.PAGES) do if page.key == "windows" then for _, r in ipairs(page.rows()) do out[#out + 1] = r[2] end end end
     return out`);
-  const label = "Group finder, PvP and Adventure Guide windows (reload)";
+  const label = "Group finder and PvP windows (reload)";
   expect(labels(off)).toContain(label);
   expect(labels(forever())).not.toContain(label);
 });

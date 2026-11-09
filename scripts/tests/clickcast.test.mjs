@@ -421,8 +421,19 @@ it("without specializations the page speaks of this character", () => {
   addon.eval('ns.Options.Show("clickcast")');
   expect(addon.frames('w.__kind == "FontString" and w:IsVisible() and type(w.__text) == "string" and w.__text:find("Bindings for this character", 1, true)').length).toBe(1);
   expect(addon.eval(`return #${CC}.frames > 0`), "unit frames join when that setting is on").toBe(true);
-  addon.eval('__click("Also on your player, target and focus frames")');
+  addon.eval('__click("Also on player, target and focus")');
   expect(addon.eval('return ns.Settings("ClickCast", ns.GetModule("ClickCast").defaults).unitFrames')).toBe(false);
+});
+
+it("H41-13-1: with the unit frames on, the boss frames keep their clicks to target and the menu", () => {
+  const healOnLeft = '{ { key = "BUTTON1", action = "spell", value = "Flash Heal" } }';
+  const addon = priest("__wfgWorld.spec = 1", {
+    savedVariables: `VanguardDB = { profiles = { Default = { ClickCast = { unitFrames = true } } } } VanguardCharDB = { clickcast = { [1] = ${healOnLeft}, [2] = ${healOnLeft} } }`,
+  });
+  // The Left click action set on unit frame key's frame.
+  const type1 = (key) => addon.eval(`return ns.GetModule("UnitFrames").frames.${key}:GetAttribute("type1")`);
+  expect([type1("player"), type1("boss1"), type1("boss5")], "your frame casts the heal; a boss frame does not").toEqual(["spell", null, null]);
+  expect(addon.eval(`local UF = ns.GetModule("UnitFrames") for _, f in ipairs(${CC}.frames) do if f == UF.frames.boss1 then return true end end return false`), "no boss frame is registered").toBe(false);
 });
 
 it("the hover keys tab shows Add key and its hint at the top of its card, inside the page as it opens", () => {

@@ -95,7 +95,7 @@ it("clients: on Retail the Forever-only modules' options rows and pages don't sh
   // Rows by page that only WoW Forever's modules (or features) put there.
   const rows = {
     unitframes: ["Combat timers", "Swing timer (reload)", "Five-second rule spark on your mana bar", "Readouts"],
-    town: ["Spell ranks", "Pet stable", "Legacy", "Dungeon card: level range, your dungeon quests and keys on the checklist"],
+    town: ["Spell ranks", "Pet stable", "Legacy"],
     quests: ["Shift-click points", "Quest-start pins on the world map"],
     actionbars: ["Your keys", "Set up keys"],
     chat: ["Group board", "Open the group board"],
