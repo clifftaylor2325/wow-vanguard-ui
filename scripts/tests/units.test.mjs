@@ -789,12 +789,12 @@ it("Calm HUD: frames dim out of combat, come back for a fight, a hostile target 
   expect(calm(addon), "and brings the frame back when the fight ends").toEqual({ driver: "show", now: "show", alpha: 1 });
 });
 
-it("Calm HUD: setup's look step and the situations offer it", () => {
+it("Calm HUD: setup's comfort step and the situations offer it", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
-  addon.eval("ns.Setup.Open()");
-  expect(addon.eval("return Vanguard_Setup.pages.look.calm ~= nil and ns.Setup.Calm()"), "the look step has the switch, off").toBe(false);
-  addon.eval("local r = Vanguard_Setup.pages.look.calm r:GetScript('OnClick')(r)");
-  expect(addon.eval("return ns.Setup.Calm()") && calm(addon).alpha === 0.35, "turning it on there dims the frames at once").toBe(true);
+  addon.eval("ns.Setup.Open() ns.Setup.Next() ns.Setup.Next() ns.Setup.Next()");
+  expect(addon.eval("return Vanguard_Setup.pages.comfort.rows[3].spec.key == 'calm' and ns.Setup.Calm()"), "the comfort step has the switch, off").toBe(false);
+  addon.eval("local r = Vanguard_Setup.pages.comfort.rows[3] r:GetScript('OnClick')(r) ns.Setup.Next()");
+  expect(addon.eval("return ns.Setup.Calm()") && calm(addon).alpha === 0.35, "turning it on there and leaving the step dims the frames").toBe(true);
   expect(addon.eval('return VanguardDB.profiles["Default backup"] ~= nil'), "after the usual backup").toBe(true);
   expect(addon.eval('return ns.GetModule("Situations").Holds("UnitFrames", "calm")'), "a situation can hold it").toBe(true);
 });
