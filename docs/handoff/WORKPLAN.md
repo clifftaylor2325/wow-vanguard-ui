@@ -1,5 +1,7 @@
 # Vanguard work plan (handoff)
 
+> **Done.** Every task in this plan is ticked (checked 2026-11-09). It stays here as the record of what was planned and why; new work goes in a new plan.
+
 Repo: `clifftaylor2325/wow-forever-ui`, reviewed at commit `619d5c9` (v0.3.0) on 2026-10-02.
 This file is the backlog produced by that review, written so that a model with less context can carry it out.
 Every `file:line` below is as of `619d5c9`; if a line has moved, grep for the identifier quoted next to it.

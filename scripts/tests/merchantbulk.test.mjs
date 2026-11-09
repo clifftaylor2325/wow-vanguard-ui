@@ -489,3 +489,26 @@ it("the reagent bag (bag 5) is scanned for the sell list and for junk", () => {
     return { found, junk }`);
   expect(bags, "the listed stack and the gray item in bag 5 are both found").toEqual([[1], [2]]);
 });
+
+it("an irreversible move answered after a fight began moves nothing, and one answered out of combat is recorded as a move", () => {
+  const addon = loggedIn(BULK_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.slash("sell 159");
+  addon.world.combat(true);
+  addon.click("Vanguard_Question.confirm");
+  expect([addon.world.get("moves"), chatHas(addon, /Nothing moved: a fight began/)], "Yes in a fight: no gold or item call at all").toEqual([{}, true]);
+  addon.slash("sell 159");
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "in a fight no question is asked").toBe(false);
+  addon.world.combat(false);
+  addon.slash("sell 159");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local out = {} for _, m in ipairs(__wfgWorld.moves) do out[#out + 1] = m.call .. ' ' .. m.at:match('^[^:]+') end return out"), "the sale's two stacks, from the module")
+    .toEqual(["C_Container.UseContainerItem Modules/MerchantBulk.lua", "C_Container.UseContainerItem Modules/MerchantBulk.lua"]);
+});
+
+it("an irreversible move started in a fight is refused before any question, with a line saying so", () => {
+  const addon = loggedIn(BULK_ENV);
+  addon.world.combat(true);
+  addon.eval(`ns.Irreversible({ question = "TEST-ONLY?", yes = "TEST-ONLY", act = function() __acted = true end })`);
+  expect([addon.eval("return Vanguard_Question and Vanguard_Question:IsShown() or false"), addon.eval("return __acted == true"), chatHas(addon, /Not in a fight: try again after it/)]).toEqual([false, false, true]);
+});

@@ -8,6 +8,7 @@
 -- as the UI preview draws it. Rects are recomputed after any change that
 -- can move something (stub.layoutGen counts those).
 
+local type = __wfgRawType
 local stub = __wfgStub
 local methods = stub.methods
 

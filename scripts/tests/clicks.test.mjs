@@ -223,7 +223,7 @@ it("German modifier names are read through the client's own key texts, the longe
 
 it("a modifier text that is secret or not a string gives no warning", () => {
   const { addon, flagged } = modifiedSpells();
-  addon.eval('GetStringFromModifiers = function() return { __secret = true } end issecretvalue = function(v) return type(v) == "table" and v.__secret == true end');
+  addon.eval('GetStringFromModifiers = function() return { __secret = true } end issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end');
   expect(flagged("shift-BUTTON2"), "a secret text is no text").toBe(false);
   addon.eval("GetStringFromModifiers = function() return 5 end");
   expect(flagged("shift-BUTTON2"), "nor is a number").toBe(false);

@@ -164,7 +164,7 @@ it("a secret raises on arithmetic, concatenation, length, ordering, a call and a
   expect(tried).toHaveLength(SECRET_USES.length + 1);
   for (const [i, message] of tried.entries()) expect(message, SECRET_USES[i] ?? "s.y = 1").toContain("attempt to use a secret value");
   expect(addon.eval('local s = UnitHealth("player") return { issecretvalue(s), rawget(s, "n"), s == s, s == 100, type(s), pcall(function() return s + 1 end) }').slice(0, 6))
-    .toEqual([true, 100, true, false, "table", false]);
+    .toEqual([true, 100, true, false, "number", false]);
 });
 
 it("an aura change refreshes every aura container showing that unit, including one made after the last change", () => {
