@@ -229,6 +229,18 @@ function ns.Mover(frame, key, label, default)
   return m
 end
 
+-- A copy of a default spot ({ point, relPoint, x, y, ... }) raised dy units (a cast bar's spot over a frame that
+-- grew a tab; nothing else about it changes).
+---@param default table
+---@param dy number
+---@return table
+function ns.RaisedDefault(default, dy)
+  local spot = {}
+  for k, v in pairs(default) do spot[k] = v end
+  spot[4] = default[4] + dy
+  return spot
+end
+
 -- Changes a mover's default point (a stacked bar whose neighbors changed
 -- size) and moves its frame, and its handle in unlock mode, there, unless a
 -- saved position wins; frames linked to it follow.

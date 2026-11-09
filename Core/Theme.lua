@@ -1223,6 +1223,13 @@ function corner.geometry(frame, entry)
   return T.UniformCorners(T.CORNER_ART[look].size * T.Pixel(frame) * scale, look)
 end
 
+-- Hides the edges the HUD look leaves undrawn on a painted frame with a role (T.HudOpenSides, Core/HudLook.lua: a
+-- tab's bottom, where it joins its frame).
+function corner.hideOpen(e, entry)
+  local open = entry.opts.role and T.HudOpenSides and T.HudOpenSides(entry)
+  for side in pairs(open or NO_PARTS) do e[side]:Hide() end
+end
+
 -- Colours and sizes a painted frame's edges, re-pinned short of the corners once it has been shaped.
 local function paintEdges(frame, entry, geo)
   local p = entry.parts
@@ -1230,6 +1237,7 @@ local function paintEdges(frame, entry, geo)
   sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
   if geo or p.hasRounded then placeEdges(p.edges, frame, entry.opts.pad, geo) end
   corner.showEdges(p.edges, geo)
+  corner.hideOpen(p.edges, entry)
 end
 
 -- Fills (T.FillParts) ------------------------------------------------------------------------

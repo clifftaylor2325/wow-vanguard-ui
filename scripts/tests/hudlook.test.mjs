@@ -92,8 +92,8 @@ it("Shield: fills grow toward the character, the target's texts and marks mirror
 it("Plain: the HUD look row under Look gives the flat frames back at once, texts in their old places, the shield cuts following the switch", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, NO_RAID);
   addon.slash("");
-  addon.eval('__click("HUD look") __click("HUD look") __click("HUD look")');
-  expect(addon.eval("return VanguardDB.profiles.Default.theme.hudLook"), "the cycle row (Shield, Hairline, Rimmed, Plain) saves Plain").toBe("plain");
+  addon.eval('__click("HUD look") __click("HUD look") __click("HUD look") __click("HUD look")');
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.hudLook"), "the cycle row (Shield, Hairline, Rimmed, Tabs, Plain) saves Plain").toBe("plain");
   const target = shape(addon, "target");
   expect([target.corners, target.edges, target.reverse, target.name, target.health, target.justify], "the target has 8-pixel cuts on every corner, four edges, fills from the left and reads from the left")
     .toEqual([["8 cut", "8 cut", "8 cut", "8 cut"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], false, "LEFT LEFT 4", "RIGHT RIGHT -10", "LEFT"]);
@@ -183,6 +183,56 @@ it("Rimmed: every unit frame and tool rounds four pixels with a two-line rim, th
   setCombat(addon, false);
   addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
   expect([hairlines(addon, "player", "accentDim"), hairlines(addon, "focus", "accentDim"), shape(addon, "player").corners[0]], "the deck's pair drops the look's line and takes the deck's rounding; the focus keeps its rim").toEqual([0, 4, `${shape(addon, "player").corners[0]}`]);
+});
+
+// A frame's name tab as drawn (TEST-ONLY reads): shown, its anchor on the frame (its point, the frame's point, the y in
+// pixels), its width against the width its name asks for, the edges it draws, where the name's first text is anchored,
+// where the raid target icon is anchored, and whether the crown's top is the tab's (or the frame's own, without one).
+const TAB_LUA = `local f, T, UF = Vanguard_%KEY%, ns.Theme, ns.GetModule("UnitFrames")
+  local px, point, edges = T.Pixel(f), next(f.tab.__points), {}
+  local p = f.tab.__points[point]
+  for _, r in ipairs({ f.tab:GetRegions() }) do
+    if tostring(r.__texture):find("WHITE8X8") and r:IsShown() then
+      if r:GetWidth() == px then edges[#edges + 1] = r.__points.TOPLEFT and "LEFT" or "RIGHT" end
+      if r:GetHeight() == px then edges[#edges + 1] = r.__points.TOPLEFT and "TOP" or "BOTTOM" end
+    end
+  end
+  table.sort(edges)
+  local level = f.level and f.level:GetUnboundedStringWidth() or 0
+  local want = 8 + f.name:GetUnboundedStringWidth() + (level > 0 and level + 4 or 0)
+  local _, home = (f.level or f.name):GetPoint(1)
+  local _, _, iconPoint, iconX = f.raidIcon:GetPoint(1)
+  local crown = UF.Crown(f)
+  return { shown = f.tab:IsShown(), at = point .. " " .. p.relPoint .. " " .. math.floor(p.y / px + 0.5), fits = f.tab:GetWidth() == T.PixelRound(f, math.min(f.vgWidth / 2, math.max(48, want))),
+    width = f.tab:GetWidth(), edges = edges, home = home == f.tab and "tab" or (home == f.health and "health" or "?"), icon = iconPoint .. " " .. iconX,
+    crown = crown:GetTop() == f.tab:GetTop() and "tab" or (crown:GetTop() == f:GetTop() and "frame" or "?") }`;
+
+// The tab of the unit frame `key`.
+const tab = (addon, key) => addon.eval(TAB_LUA.replace("%KEY%", key));
+
+it("Tabs: square frames and tools, each name on a tab over the frame's outer corner joined to the body, the rows over a frame and the cast bars' spots risen by it, the deck dropping it", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, onLook("tabs"));
+  const player = tab(addon, "player");
+  expect([player.shown, player.at, player.fits, player.width >= 48, player.edges, player.home, player.crown], "your tab stands on the frame's top-left corner a pixel down, sized to your name, open at the bottom, the name in it, the crown risen to its top").toEqual([true, "BOTTOMLEFT TOPLEFT -1", true, true, ["LEFT", "RIGHT", "TOP"], "tab", "tab"]);
+  const target = tab(addon, "target");
+  const body = shape(addon, "target");
+  expect([target.at, target.home, target.icon, body.corners, body.edges, body.name, body.health, body.justify, body.reverse], "the target's tab sits on its right corner, the name reading from the right in it, the health text and the raid icon at the inner (left) end of a square body with four edges, filling from the left").toEqual(["BOTTOMRIGHT TOPRIGHT -1", "tab", "TOPLEFT 34", ["0 nil", "0 nil", "0 nil", "0 nil"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], "RIGHT RIGHT -4", "LEFT LEFT 10", "RIGHT", false]);
+  expect([addon.eval("return ns.Theme.CornerLook(Vanguard_CastBar_player, 'TOPLEFT')"), addon.eval("return ns.GetModule('ActionBars').WantsBacking()"), rows(addon, "player").outlined], "the cast bar is square, no plinth, shadowed text").toEqual([null, false, false]);
+  // The cast bars' default y, less the block's rise on this canvas (Core/Layout.lua HudLift).
+  const castY = () => addon.eval("local rise = ns.Layout.HudLift({ 'BOTTOM', 'BOTTOM', 0, 0 }, UIParent:GetHeight()) return { select(4, ns.MoverPoint('cast_target')) - rise, select(4, ns.MoverPoint('cast_focus')) - rise }");
+  expect([castY(), addon.eval("return ns.GetModule('UnitFrames').TabLift()")], "the target's and focus's cast bars' default spots rise by the tab's 18 units").toEqual([[262 + 18, 324 + 18], 18]);
+  addon.eval('Vanguard_target.name:SetText("TEST-ONLY A very long name that no tab holds") ns.GetModule("UnitFrames").FitTab(Vanguard_target)');
+  expect(addon.eval("return Vanguard_target.tab:GetWidth() <= 120 + ns.Theme.Pixel(Vanguard_target)"), "a long name's tab stops at half the frame (whole pixels)").toBe(true);
+  addon.eval("__wfgStub.setScreen(1229, 768)");
+  addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(1);
+  expect(addon.eval("return { ns.MoverPoint('uf_targettarget') }"), "on a narrow canvas the target of target's spot over the target's cast bar rises with the bar").toEqual(["BOTTOM", "BOTTOM", 180, 280 + 18]);
+  addon.eval("__wfgStub.setScreen(1920, 1080)");
+  addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(1);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
+  expect([tab(addon, "player").shown, tab(addon, "player").crown, tab(addon, "focus").shown], "the deck's pair drops its tabs (the crown back on the frame); the focus keeps its tab").toEqual([false, "frame", true]);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = false UF.ApplyDeck()");
+  addon.eval('ns.Theme.Settings().hudLook = "shield" ns.Theme.Refresh()');
+  expect([tab(addon, "player").shown, tab(addon, "player").home, tab(addon, "player").crown, castY()], "Shield: the tabs go, the name back on the bar, the crown on the frame, the cast bars back down").toEqual([false, "health", "frame", [262, 324]]);
 });
 
 // The keystone as drawn (TEST-ONLY reads): shown, its anchors, the rail, the ring and the swords.

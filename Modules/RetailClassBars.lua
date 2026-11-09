@@ -94,11 +94,11 @@ local function fitPips(row)
   row:SetWidth(most * (CB.PIP.size + CB.PIP.gap))
 end
 
--- A row of pips just above the player frame, as the combo points sit.
+-- A row of pips just above the player frame (over its tab, where the look gives it one: UF.Crown), as the combo points sit.
 local function buildPips(player, def)
   local row = CreateFrame("Frame", nil, player)
   row:SetHeight(CB.PIP.size)
-  row:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 0, 2)
+  row:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, 2)
   row.def, row.pips = def, {}
   fitPips(row)
   return row

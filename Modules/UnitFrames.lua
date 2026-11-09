@@ -243,6 +243,19 @@ end
 -- The height of the name row over the bars on a frame drawn bare (the Hairline look), in units.
 UF.NAME_ROW = 14
 
+-- A unit frame's name tab under the Tabs look (Core/HudLook.lua): its height in units, and its least width.
+UF.TAB = { height = 18, min = 48 }
+
+-- Whether the Versus deck holds a frame now (your frame and your target's while the deck is on).
+local function decked(f)
+  return UF.settings.deck == true and UF.COMBAT.keys[f.key] == true
+end
+
+-- Whether a frame wears its name tab now: the look gives one (T.HudTab) and the deck doesn't hold the frame.
+local function tabbed(f)
+  return f.tab ~= nil and T.HudTab() and not decked(f)
+end
+
 -- How far the bars sit inside a frame's edge: a screen pixel (not one UI unit, which shows a sliver of panel when
 -- the UI scale isn't pixel-perfect), or two on a frame with a hairline (drawn a pixel inside the border).
 local function barInset(f)
@@ -363,12 +376,6 @@ local function raidIconLift(f, h)
   return math.max(0, UF.RAID_ICON / 2 - nameGap)
 end
 
--- Places the raid target icon on the frame's top edge, lifted on a short or bare frame (UF.PlaceParts, for the look).
-local function placeRaidIcon(f)
-  f.raidIcon:ClearAllPoints()
-  f.raidIcon:SetPoint("CENTER", f, "TOP", 0, raidIconLift(f, f.vgHeight))
-end
-
 -- The raid target icon over the frame's top edge (hidden until UF.UpdateRaidIcon paints it; UF.PlaceParts places it).
 local function addRaidIcon(f)
   f.raidIcon = f.health:CreateTexture(nil, "OVERLAY")
@@ -400,15 +407,27 @@ local function addBars(f, settings)
   shieldBars(f)
 end
 
+-- The name tab over a frame's outer corner (the Tabs look): a painted panel in the "tab" role, square and open at
+-- the bottom under that look, without the HUD shadow (it would fall on the frame), hidden until UF.PlaceParts shows
+-- it; made before the bars so the name (on the health bar) draws over it.
+local function addTab(f)
+  f.tab = CreateFrame("Frame", nil, f)
+  T.PixelSize(f.tab, UF.TAB.min, UF.TAB.height)
+  T.Panel(f.tab, { role = "tab", noSheen = true, noSurface = true })
+  f.tab:Hide()
+end
+
 -- Creates one unit frame (a secure unit button, its unit the same as its key) with its bars and texts, shaped by
 -- the HUD look (Core/HudLook.lua): a shield pointing from its outer side (`outer`, "LEFT" unless the row says
--- "RIGHT") under the Shield look, its corners cut while the shield setting is on under Plain; the bars cut with it.
+-- "RIGHT") under the Shield look, its corners cut while the shield setting is on under Plain, a name tab over the
+-- outer corner under Tabs; the bars cut with it.
 local function createUnitFrame(key, w, h, outer)
   local f = CreateFrame("Button", "Vanguard_" .. key, UIParent, "SecureUnitButtonTemplate")
-  f.unit, f.key, f.outer, f.vgHeight = key, key, outer or "LEFT", h
+  f.unit, f.key, f.outer, f.vgWidth, f.vgHeight = key, key, outer or "LEFT", w, h
   T.PixelSize(f, w, h)
   makeSecure(f, key)
   T.HudPanel(f, { shield = true, role = "unit", outer = f.outer })
+  addTab(f)
   addBars(f, UF.settings)
   addTexts(f, UF.settings)
   addRaidIcon(f)
@@ -431,7 +450,7 @@ end
 -- anchored at the deck's ends); else a shield's when it points left, so its fill grows from its inner edge toward
 -- the point (the Shield look: every fill reads toward your character).
 local function fillsFromRight(f)
-  if UF.settings.deck == true and UF.COMBAT.keys[f.key] then return f.key == "target" end
+  if decked(f) then return f.key == "target" end
   return pointedSide(f) == "LEFT"
 end
 
@@ -439,6 +458,31 @@ end
 local function inward(side, x)
   if side == "RIGHT" then return -x end
   return x
+end
+
+-- How far in from a frame's inner top corner the raid target icon's centre sits under the Tabs look: past the marks.
+UF.RAID_ICON_BESIDE = 34
+
+-- Places the raid target icon: in from the inner top corner, past the marks, on a frame wearing a tab (the tab may
+-- cover the top's middle); else on the frame's top edge, lifted on a short or bare frame (UF.PlaceParts, for the look).
+local function placeRaidIcon(f, side)
+  local far = INNER[side]
+  f.raidIcon:ClearAllPoints()
+  if tabbed(f) then return f.raidIcon:SetPoint("CENTER", f, "TOP" .. far, inward(far, UF.RAID_ICON_BESIDE), 0) end
+  f.raidIcon:SetPoint("CENTER", f, "TOP", 0, raidIconLift(f, f.vgHeight))
+end
+
+-- The frame a frame's name sits in: its tab while it wears one, else its health bar.
+local function nameHome(f)
+  if tabbed(f) then return f.tab end
+  return f.health
+end
+
+-- Where a frame's name stops: at its tab's far end while it wears one, else short of the health text.
+local function endName(f, side)
+  local far = INNER[side]
+  if tabbed(f) then return f.name:SetPoint(far, f.tab, far, inward(far, UF.TEXT_INSET), 0) end
+  f.name:SetPoint(far, f.healthText, side, inward(far, UF.TEXT_INSET), 0)
 end
 
 -- How far in from a frame's `side` its name starts: the text inset, plus what a shield point takes at the health
@@ -456,17 +500,17 @@ local function textLift(f)
   return 0
 end
 
--- The name (with the level outside it, where shown) from `side` of the health bar, reading toward the health text
--- at the other end.
+-- The name (with the level outside it, where shown) from `side` of its home (the health bar, or the tab), reading
+-- toward the health text at the other end, or the tab's end.
 local function placeName(f, side)
   local far, first = INNER[side], f.level or f.name
   first:ClearAllPoints()
-  first:SetPoint(side, f.health, side, inward(side, nameInset(f, side)), textLift(f))
+  first:SetPoint(side, nameHome(f), side, inward(side, nameInset(f, side)), textLift(f))
   if f.level then
     f.name:ClearAllPoints()
     f.name:SetPoint(side, f.level, far, inward(side, UF.TEXT_INSET), 0)
   end
-  f.name:SetPoint(far, f.healthText, side, inward(far, UF.TEXT_INSET), 0)
+  endName(f, side)
   f.name:SetJustifyH(side)
 end
 
@@ -500,7 +544,7 @@ end
 -- The roles a frame's name (and level) and health text take: the deck's while it holds the frame, the outlined HUD
 -- roles under a look that draws them on the world or a fill, else their own.
 local function textRoles(f)
-  if UF.settings.deck == true and UF.COMBAT.keys[f.key] then return UF.DECK.text, UF.DECK.text end
+  if decked(f) then return UF.DECK.text, UF.DECK.text end
   if T.HudOutlined() then return "hudName", "hudNumber" end
   return "name", "number"
 end
@@ -513,24 +557,105 @@ function UF.TextRoles(f)
   T.Text(f.healthText, number, T.ColorToken(f.healthText))
 end
 
+-- Spans a frame's crown from its bottom corners up to its tab's top while it wears one, else to its own top.
+local function placeCrown(f)
+  local crown = f.crown
+  if not crown then return end
+  crown:ClearAllPoints()
+  crown:SetPoint("BOTTOMLEFT") crown:SetPoint("BOTTOMRIGHT")
+  crown:SetPoint("TOP", tabbed(f) and f.tab or f, "TOP")
+end
+
+-- The frame the rows over a unit frame anchor to (the combo points, the totems, the target's buffs and threat text):
+-- the frame's own span, its top raised to the tab's while the frame wears one. Made the first time a module asks.
+---@param f table a unit frame
+---@return table
+function UF.Crown(f)
+  if not f.crown then
+    f.crown = CreateFrame("Frame", nil, f)
+    placeCrown(f)
+  end
+  return f.crown
+end
+
+-- The width a frame's tab needs: the name (and the level before it, where shown) with the text inset at each end, or
+-- nil while the client hides a text's width (a fight with secret geometry).
+local function tabWidth(f)
+  local name = ns.PlainNumber(f.name:GetUnboundedStringWidth())
+  local level = f.level and ns.PlainNumber(f.level:GetUnboundedStringWidth()) or 0
+  if not (name and level) then return nil end
+  if level > 0 then level = level + UF.TEXT_INSET end
+  return 2 * UF.TEXT_INSET + name + level
+end
+
+-- Sizes a frame's tab to its name, no narrower than UF.TAB.min nor wider than half the frame (a longer name is cut
+-- off at the tab's end), while the frame wears one; a width the client hides leaves the tab as it was.
+---@param f table a unit frame
+function UF.FitTab(f)
+  if not tabbed(f) then return end
+  local width = tabWidth(f)
+  if not width then return end
+  T.PixelSize(f.tab, math.min(f.vgWidth / 2, math.max(UF.TAB.min, width)), UF.TAB.height)
+end
+
+-- Shows a frame's tab at its outer top corner, a pixel down over the body's top border so the two read as one shape,
+-- sized to the name (UF.FitTab), while the look gives it one; hides it otherwise. The crown follows.
+local function placeTab(f)
+  local on = tabbed(f)
+  f.tab:SetShown(on)
+  if on then
+    f.tab:ClearAllPoints()
+    f.tab:SetPoint("BOTTOM" .. f.outer, f, "TOP" .. f.outer, 0, -T.Pixel(f))
+    UF.FitTab(f)
+  end
+  placeCrown(f)
+end
+
+-- The side a frame's name reads from: the side its shield points from, its outer side while it wears a tab (the tab
+-- sits over that corner), else the left.
+local function readSide(f)
+  if tabbed(f) then return f.outer end
+  return pointedSide(f) or "LEFT"
+end
+
 -- Lays a frame's parts out for the HUD look: the hairline (the bars step in past it), the bars (under the name row on
--- a bare frame), the texts' roles, the name reading from the side its shield points from (the left otherwise), the
--- health text and marks at the other end, the raid icon, and the bars filling toward your character.
+-- a bare frame), the texts' roles, the tab, the name reading from the side its shield points from or its tab sits over
+-- (the left otherwise), the health text and marks at the other end, the raid icon, and the bars filling toward your character.
 function UF.PlaceParts(f)
   T.SetHairline(f, hairToken(f))
   layoutBars(f, UF.settings.powerHeight)
   UF.TextRoles(f)
-  local side = pointedSide(f) or "LEFT"
+  local side = readSide(f)
+  placeTab(f)
   placeHealthText(f, side)
   placeName(f, side)
   placeMarks(f, side)
-  placeRaidIcon(f)
+  placeRaidIcon(f, side)
   f.health:SetReverseFill(fillsFromRight(f)) f.power:SetReverseFill(fillsFromRight(f))
 end
 
--- Lays every frame out for the HUD look again (the look, the deck or a frame's size changed).
+-- How far the Tabs look lifts what sits over a unit frame (a cast bar's default spot, the target of target's narrow
+-- spot): the tab's height while the unit frames are live and wear tabs, else 0.
+---@return number
+function UF.TabLift()
+  if ns.ModuleLive("UnitFrames") and T.HudTab() then return UF.TAB.height end
+  return 0
+end
+
+-- The target of target's default spot for the look: on a narrow canvas it sits over the target's cast bar, so its
+-- narrow spot rises with that bar's under Tabs (Modules/CastBars.lua CB.FitLook).
+local function targetOfTargetDefault()
+  local def, spot = UF.LAYOUT_BY_KEY.targettarget.point, {}
+  for k, v in pairs(def) do spot[k] = v end
+  spot.narrow = { w = def.narrow.w, spot = ns.RaisedDefault(def.narrow.spot, UF.TabLift()) }
+  return spot
+end
+
+-- Lays every frame out for the HUD look again (the look, the deck or a frame's size changed), and moves the target
+-- of target's narrow spot with the look.
 function UF.ApplyLook()
   for _, f in pairs(UF.frames) do UF.PlaceParts(f) end
+  ns.SetMoverDefault("uf_targettarget", targetOfTargetDefault())
 end
 
 -- Updating ------------------------------------------------------------------------------
@@ -605,6 +730,7 @@ function UF.UpdateName(f)
   f.name:SetText(UnitName(f.unit))
   if f.level then updateLevel(f) end
   if f.class then updateClass(f) end
+  UF.FitTab(f)
 end
 
 -- The target frame's tag mark: a green check while the target looks tagged by you, a grey X while

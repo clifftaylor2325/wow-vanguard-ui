@@ -205,7 +205,7 @@ UX.THREAT_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED", "GROUP_ROS
 -- own threat situation (the client names you, not the mob, when it changes).
 local function addThreat(target)
   UX.threat = T.Text(target:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  UX.threat:SetPoint("BOTTOMRIGHT", target, "TOPRIGHT", -12, 3)
+  UX.threat:SetPoint("BOTTOMRIGHT", UF.Crown(target), "TOPRIGHT", -12, 3)
   ns.OnUnit("UNIT_THREAT_LIST_UPDATE", UX.UpdateThreat, "target")
   ns.OnUnit({ "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PET" }, UX.UpdateThreat, "player")
   for _, e in ipairs(UX.THREAT_EVENTS) do ns.On(e, UX.UpdateThreat) end

@@ -3,11 +3,14 @@
 -- default, turns every unit frame into a shield pointing away from your character, its two outer corners cut to a
 -- point at mid-height, and gives the shield-corner cuts to the tools (the cast bars, the bar plinth) instead.
 -- "Hairline" takes the unit frames' plates away (no fill, no border) and closes each with a brass line under it;
--- "Rimmed" rounds every frame and tool four pixels and draws a two-line rim, the border outside and brass inside. A
--- look is a table: corners (a shape by a painted frame's role, T.HudPanel opts.role: the frame and its painted entry
--- give a corner geometry, Core/Theme.lua, false for square corners, or nil for the plain corners), bare (the roles drawn without a plate), hair
--- (a hairline token by role), hairSides (the hairline's sides, when not all four), outlined (the frames' texts take
--- the outlined roles) and backing (the bar backing's Auto comes on).
+-- "Rimmed" rounds every frame and tool four pixels and draws a two-line rim, the border outside and brass inside.
+-- "Tabs" squares every frame and tool and lifts each unit frame's name onto a tab over its outer corner, the body
+-- holding the bars alone. A look is a table: corners (a shape by a painted frame's role, T.HudPanel opts.role: the
+-- frame and its painted entry give a corner geometry, Core/Theme.lua, false for square corners, or nil for the plain
+-- corners), bare (the roles drawn without a plate), hair (a hairline token by role), hairSides (the hairline's sides,
+-- when not all four), open (by role, the edges a frame leaves undrawn: a tab's bottom, where it joins its frame),
+-- tab (the roles that wear a name tab), outlined (the frames' texts take the outlined roles) and backing (the bar
+-- backing's Auto comes on).
 
 local ADDON, ns = ...
 
@@ -15,8 +18,8 @@ local T = ns.Theme
 local L = ns.L
 
 -- The looks a player can pick, in the order the control cycles them, and their names.
-T.HUD_LOOKS = { "plain", "shield", "hairline", "rimmed" }
-T.HUD_LOOK_LABELS = { plain = L["Plain"], shield = L["Shield"], hairline = L["Hairline"], rimmed = L["Rimmed"] }
+T.HUD_LOOKS = { "plain", "shield", "hairline", "rimmed", "tabs" }
+T.HUD_LOOK_LABELS = { plain = L["Plain"], shield = L["Shield"], hairline = L["Hairline"], rimmed = L["Rimmed"], tabs = L["Tabs"] }
 
 -- The looks as a cycle row's choices, in order: { key, name } each.
 ---@return table
@@ -107,12 +110,14 @@ end
 
 -- The looks. Plain shapes nothing: every frame keeps its corner look. Shield points the unit frames and cuts the
 -- tools. Hairline bares the unit frames and runs its brass line along their bottom edge only. Rimmed rounds units and
--- tools alike and gives each the brass line inside its border.
+-- tools alike and gives each the brass line inside its border. Tabs squares units, tools and the tabs, each unit
+-- frame wearing a name tab whose bottom edge is left open where it joins the frame.
 local LOOKS = {
   plain = { corners = {} },
   shield = { corners = { unit = pointGeometry, tool = cutGeometry }, backing = true },
   hairline = { corners = { unit = squareGeometry }, bare = { unit = true }, hair = { unit = "accentDim" }, hairSides = { bottom = true }, outlined = true },
   rimmed = { corners = { unit = roundGeometry, tool = roundGeometry }, hair = { unit = "accentDim", tool = "accentDim" }, outlined = true, backing = true },
+  tabs = { corners = { unit = squareGeometry, tool = squareGeometry, tab = squareGeometry }, tab = { unit = true }, open = { tab = { bottom = true } } },
 }
 
 -- The HUD look in force ("plain" for a saved name no release knows).
@@ -158,6 +163,22 @@ end
 ---@return table|nil
 function T.HudHairSides()
   return LOOKS[T.HudLook()].hairSides
+end
+
+-- The edges the HUD look leaves undrawn on a painted frame with a role ({ bottom = true } for a tab, which joins its
+-- frame there), or nil for all four drawn.
+---@param entry table a painted entry (opts.role)
+---@return table|nil
+function T.HudOpenSides(entry)
+  local open = LOOKS[T.HudLook()].open
+  return open and open[entry.opts.role] or nil
+end
+
+-- Whether the HUD look gives the unit frames a name tab over their outer corner (Tabs).
+---@return boolean
+function T.HudTab()
+  local tab = LOOKS[T.HudLook()].tab
+  return tab ~= nil and tab.unit == true
 end
 
 -- Whether the HUD look's frames draw their texts in the outlined roles (text over the world or on a fill).
