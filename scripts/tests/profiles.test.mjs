@@ -349,6 +349,12 @@ it("on WoW Forever a hand pick that the talents' profile overrides is not marked
   expect(labelCount(addon, "Heal  (in use)"), "the running profile is the one that stays").toBe(1);
   expect(addon.texts("This character uses Heal.").length, "the top line says nothing changes").toBe(1);
 });
+it("on WoW Forever the logout backup is of the profile the talents' group loads, not the hand pick it overrides", () => {
+  const addon = foreverCharacter(2);
+  addon.eval("ns.UseProfile('Default')");
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("return VanguardCharDB.guard.profile"), "the Secondary talents' profile is the one kept").toBe("Heal");
+});
 it("on WoW Forever a staged profile the talents don't override is marked '(after reload)'", () => {
   const addon = foreverCharacter(1);
   addon.eval("ns.UseProfile('Heal')");

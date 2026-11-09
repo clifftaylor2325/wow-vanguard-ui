@@ -995,7 +995,7 @@ end
 local function copyStamp(copy)
   local restored = KA.restoredCopy
   if restored and recordText(copy) == recordText(restored) then return restored.stamp end
-  return type(time) == "function" and ns.PlainNumber(time()) or 0
+  return ns.PlainNumber(ns.Client.Call("time")) or 0
 end
 
 -- At logout this character keeps a copy of the account's key record and waiting spells (the settings guard's

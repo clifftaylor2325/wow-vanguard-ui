@@ -466,6 +466,7 @@ it("the settings guard's backup: a newer key copy still replaces an older accoun
 const keyRecord = (keys) => `{ set = 1, keys = { ${keys.map((k) => `${k} = { before = "", after = "X", by = {} }`).join(", ")} } }`;
 
 it("the settings guard's backup: a session that only restored keeps its copy's stamp, so a newer copy still wins", () => {
+  // A lost character file: a guard note, and a key copy stamped `stamp` holding `keys`.
   const lostChar = (stamp, keys) => `VanguardCharDB = { guard = { stamp = 1, profile = "Default", backup = "x" }, keyBackup = { stamp = ${stamp}, keyRestore = ${keyRecord(keys)} } }`;
   const aren = loggedIn('__wfgWorld.setUnit("player", { name = "Aren" })', { savedVariables: `${lostChar(50, ["A"])}\n` });
   aren.eval("time = function() return 100 end");

@@ -736,9 +736,9 @@ function TP.ReadImport(text)
   return ranks, type(data.hash) == "string" and data.hash or nil
 end
 
--- Makes checked ranks (TP.ReadImport) this spec group's plan, and says how many points it holds.
-function TP.ApplyImport(ranks, hash)
-  local plan = TP.Plan()
+-- Makes checked ranks (TP.ReadImport) the plan of a spec group (the current one when none is named), and says how many points it holds.
+function TP.ApplyImport(ranks, hash, group)
+  local plan = TP.Plan(group)
   plan.ranks, plan.hash = ranks, hash
   TP.Refresh()
   ns.Chat(TP.Plural(countRanks(ranks), L["Talent plan imported: 1 point."], L["Talent plan imported: {count} points."]))
@@ -752,9 +752,11 @@ function TP.ExportDialog()
 end
 
 -- Asks before checked ranks replace a plan that holds points (a "danger" question: the old plan is not kept).
+-- The group is taken when the question is asked: a switch of talent group before the click must not write the other group's plan.
 local function askReplace(ranks, hash)
-  local question = ns.Format(L["Replace this spec's talent plan (planned points: {old}) with the plan from this string (planned points: {new})? This can't be undone."], { old = countRanks(TP.Plan().ranks), new = countRanks(ranks) })
-  ns.Ask(question, L["Replace"], function() TP.ApplyImport(ranks, hash) end, nil, "danger")
+  local group = TP.SpecGroup()
+  local question = ns.Format(L["Replace this spec's talent plan (planned points: {old}) with the plan from this string (planned points: {new})? This can't be undone."], { old = countRanks(TP.Plan(group).ranks), new = countRanks(ranks) })
+  ns.Ask(question, L["Replace"], function() TP.ApplyImport(ranks, hash, group) end, nil, "danger")
 end
 
 -- /vg talents import, and the options button: a box to paste a plan into; a plan that holds points is replaced only on a Yes.
@@ -763,7 +765,7 @@ function TP.ImportDialog()
     local ranks, hash = TP.ReadImport(text)
     if not ranks then return ns.Chat(ns.Format(L["Import failed: {reason}."], { reason = hash })) end
     ns.HideText()
-    if not next(TP.Plan().ranks) then return TP.ApplyImport(ranks, hash) end
+    if countRanks(TP.Plan().ranks) == 0 then return TP.ApplyImport(ranks, hash) end
     askReplace(ranks, hash)
   end)
 end

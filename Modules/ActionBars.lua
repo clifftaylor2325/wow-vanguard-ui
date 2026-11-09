@@ -157,14 +157,19 @@ local function centeredSpacing(saved)
   saved.layout = 2
 end
 
--- A bar's saved size, button count or buttons per row of the wrong type or below 1 (a hand-edited file or a
--- crafted string) is dropped, so the defaults fill it in. The settings may have no bars yet (before ns.Fill).
+-- Whether v is a finite number of 1 or more (NaN and infinity are not).
+local function atLeastOne(v)
+  return type(v) == "number" and v >= 1 and v < math.huge
+end
+
+-- A bar's saved size, button count or buttons per row that is not a finite number of 1 or more (a hand-edited
+-- file or a crafted string) is dropped, so the defaults fill it in. The settings may have no bars yet (before ns.Fill).
 local function cleanBars(saved)
   for _, b in pairs(type(saved.bars) == "table" and saved.bars or {}) do
     if type(b) == "table" then
-      if type(b.size) ~= "number" then b.size = nil end
-      if not (type(b.buttons) == "number" and b.buttons >= 1) then b.buttons = nil end
-      if not (type(b.perRow) == "number" and b.perRow >= 1) then b.perRow = nil end
+      for _, field in ipairs({ "size", "buttons", "perRow" }) do
+        if not atLeastOne(b[field]) then b[field] = nil end
+      end
     end
   end
 end

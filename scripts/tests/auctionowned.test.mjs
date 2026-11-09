@@ -624,7 +624,7 @@ it("deals: a login with the entry left shown by another character, its switch of
   addon.world.openAuctionHouse();
   addon.update(0);
   expect(addon.eval(`local AH = ${HELPER}
-    return { AH.shopCard.title:GetText(), AH.shopCard.add:IsShown(), AH.Source() == AH.Sources.list }`)).toEqual(["Shopping", true, true]);
+    return { AH.shopCard.title:GetText(), AH.shopCard.add:IsShown(), AH.Source() == AH.Sources.list, AH.ListKey() == nil }`), "the stored key is dropped too").toEqual(["Shopping", true, true, true]);
 });
 
 it("deals: what was found is forgotten 30 minutes after closing even if the house isn't opened again", () => {

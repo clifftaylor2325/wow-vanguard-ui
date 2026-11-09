@@ -290,7 +290,7 @@ end
 -- sale of this session and its history row says yesterday, not today. Not when now is no real time
 -- (0, or -math.huge from an untrusted clock).
 local function notAhead(v, now)
-  if now > 0 and tonumber(v.t) > now then v.t = now - AP.DAY end
+  if now > 0 and (tonumber(v.t) or 0) > now then v.t = now - AP.DAY end
 end
 
 -- Drops a ledger's records older than AL.MAX_AGE days and auctions first seen up more than

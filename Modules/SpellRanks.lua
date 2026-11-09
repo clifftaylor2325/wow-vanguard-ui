@@ -145,7 +145,7 @@ end
 -- A record of the same service kept before sides were (its key ends in no side) gives way to the sided one.
 local function retireUnsided(c, s)
   if not s.faction then return end
-  local old = s.name .. "\1" .. (s.rank or "") .. "\1"
+  local old = s.name .. "\1" .. (s.rank or "")
   if c.list[old] then
     c.list[old] = nil
     c.count = c.count - 1

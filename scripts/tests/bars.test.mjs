@@ -941,7 +941,7 @@ function loggedInWithBarOne(bar) {
 }
 
 it("a bar size that isn't a number, or rows of 0, are dropped at login: the bars build at the shared size, 12 per row", () => {
-  for (const bar of ["{ size = 'big' }", "{ size = {} }", "{ perRow = 0, buttons = 'x' }"]) {
+  for (const bar of ["{ size = 'big' }", "{ size = {} }", "{ size = 0 }", "{ size = -5 }", "{ size = 1/0 }", "{ size = 0/0 }", "{ perRow = 0, buttons = 'x' }"]) {
     const addon = loggedInWithBarOne(bar);
     expect(addon.eval("return #ns.errors"), `${bar}: no error`).toBe(0);
     const shape = addon.eval('local b = ns.GetModule("ActionBars").settings.bars[1] return { b.size == nil, b.perRow, b.buttons }');

@@ -91,9 +91,14 @@ function AH.ListByName(name)
   return AP.Store().lists[name]
 end
 
--- The name of the list on the card, as AH.ListByName takes it.
+-- The name of the list on the card, as AH.ListByName takes it. The picked key is the account's and a
+-- source entry's switch is the profile's: a key whose entry is off here (another character left it
+-- shown) is dropped, so the card, the pane and the list actions never work on it.
 function AH.ListKey()
-  return AP.Store().list
+  local store = AP.Store()
+  local s = AH.Sources and AH.Sources[store.list]
+  if s and s.on and not s.on() then store.list = nil end
+  return store.list
 end
 
 -- The shopping list in use: its name and entries (nil when there's none yet).

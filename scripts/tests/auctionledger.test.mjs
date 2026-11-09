@@ -207,6 +207,12 @@ it("a sale noted under a clock set ahead is moved back a day at the next login: 
   expect(addon.eval(`return { ${book}.records[1].t <= ns.AuctionLedger.since - 86400, ns.AuctionLedger.SessionSales(), ns.AuctionPrices.Ago(${book}.records[1].t), ${book}.open[1].t <= ns.AuctionLedger.since - 86400 }`)).toEqual([true, 0, "yesterday", true]);
 });
 
+it("pruning under a small clock leaves a record with no time alone instead of erroring", () => {
+  const addon = loggedIn(ENV);
+  addon.eval("VanguardDB.ah.ledgers = { K = { records = { { kind = 'sold', id = 1 } }, open = { [1] = { t = 'x' } } } }");
+  expect(addon.eval("local ok = pcall(ns.AuctionLedger.Prune, 1000) return ok"), "no error on a missing or non-numeric t").toBe(true);
+});
+
 // The Up now card, which holds Your history.
 const UP = `${HELPER}.upCard`;
 

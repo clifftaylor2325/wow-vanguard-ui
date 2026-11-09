@@ -351,6 +351,13 @@ it("talent planner: a mark's tooltip, the import box, /vg talents spend, and the
   addon.eval(paste);
   addon.click("Vanguard_Question.confirm");
   expect(addon.eval("return { VanguardCharDB.talentPlans[1].ranks[103] or false, VanguardCharDB.talentPlans[1].ranks[101] }"), "Replace swaps in the string's plan").toEqual([false, 2]);
+  // A plan of zero-rank entries holds no points: no question. A switch of group before the click leaves the other group's plan alone.
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [103] = 0 }, hash = "1-2-3" } } ${paste}`);
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "no points planned, so no question").toBe(false);
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [103] = 3 }, hash = "1-2-3" }, { ranks = { [104] = 1 } } } ${paste}`);
+  addon.eval("C_SpecializationInfo.GetActiveSpecGroup = function() return 2 end");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("return { VanguardCharDB.talentPlans[1].ranks[101], VanguardCharDB.talentPlans[2].ranks[104] }"), "the group asked about gets the plan; the other keeps its own").toEqual([2, 1]);
 });
 
 // TEST-ONLY talents window at Forever's size (Camelot Blizzard_PlayerSpellsFrame.xml: the window 1618 x 883,

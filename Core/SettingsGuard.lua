@@ -253,9 +253,9 @@ local function encodeOwn(profile)
 end
 
 -- The backup string of profile `name`: its own values (for the profile in use, no Situations override,
--- ns.OwnValues; a staged profile has none) with this computer's own state kept (the combined bags flags,
--- the graphics undo record), which an export for another client leaves out, since the backup only ever
--- comes back here.
+-- ns.OwnValues; a staged profile has none) with this computer's own state kept (the combined bags
+-- flags; the graphics undo record is in VanguardDB.client, so no profile holds it), which an export
+-- for another client leaves out, since the backup only ever comes back here.
 local function backupString(name)
   if name ~= ns.ProfileName() then return encodeOwn(VanguardDB.profiles[name]) end
   if ns.OwnValues then return ns.OwnValues(encodeOwn, ns.Profile()) end
@@ -270,7 +270,7 @@ end
 local function keptBackup()
   local old = G.Backup()
   if old and G.lostSeen and not VanguardDB.profiles[restoreName(old)] then return old.profile, old.backup end
-  local name = ns.SelectedProfileName()
+  local name = ns.ProfileAfterReload() or ns.ProfileName()
   if not VanguardDB.profiles[name] then name = ns.ProfileName() end
   return name, backupString(name)
 end

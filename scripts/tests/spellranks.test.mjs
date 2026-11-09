@@ -166,7 +166,7 @@ it("trainer memory keeps each side's trainer apart, and /vg trainers next names 
   expect(count(addon, /Level 6: TEST-ONLY Fireball Rank 3 \(Archmage Test,/), "the Alliance trainer is named").toBe(1);
   expect(count(addon, /Horde Archmage/), "the Horde trainer is not").toBe(0);
   expect(remembered(addon).length, "both sides' copies are kept").toBe(4);
-  addon.eval('VanguardDB.trainers.MAGE.list["TEST-ONLY Old\\1Rank 1\\1"] = { name = "TEST-ONLY Old", rank = "Rank 1", level = 7, trainer = "Elder" }');
+  addon.eval('VanguardDB.trainers.MAGE.list["TEST-ONLY Old\\1Rank 1"] = { name = "TEST-ONLY Old", rank = "Rank 1", level = 7, trainer = "Elder" }');
   addon.slash("trainers next");
   expect(count(addon, /Level 7: TEST-ONLY Old Rank 1 \(Elder\)/), "a record from before sides were kept still shows").toBe(1);
 });
@@ -174,7 +174,7 @@ it("trainer memory keeps each side's trainer apart, and /vg trainers next names 
 it("a service remembered before sides were kept gives way to the sided record on the next visit", () => {
   const addon = mage();
   addon.eval(TRAINER);
-  addon.eval('VanguardDB.trainers = { MAGE = { count = 1, list = { ["TEST-ONLY Fireball\\1Rank 3\\1"] = { name = "TEST-ONLY Fireball", rank = "Rank 3", level = 6, trainer = "Old Archmage" } } } }');
+  addon.eval('VanguardDB.trainers = { MAGE = { count = 1, list = { ["TEST-ONLY Fireball\\1Rank 3"] = { name = "TEST-ONLY Fireball", rank = "Rank 3", level = 6, trainer = "Old Archmage" } } } }');
   visit(addon);
   expect(addon.eval("return VanguardDB.trainers.MAGE.count"), "the old record is replaced, not doubled").toBe(2);
   addon.eval("__wfgWorld.units.player.level = 5");
