@@ -314,6 +314,8 @@
       "H27-3-1: a difficulty-coloured level keeps its colour through a look, accent and text-size change",
       "H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles, and keep it when the Versus deck restyles the text",
       "H27-4-3: a combo point's fill is drawn in the bar texture, like the other class-resource pips",
+      "H37-5-1: the Versus deck grows to wrap a druid's mana bar and combo points, so neither lies on its border",
+      "H37-5-1: the deck wraps a shaman's totem row, and a row built after the deck moves the live panel",
       "Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
       "a creature someone else tagged is grey on the unit frames, as on the game's frames",

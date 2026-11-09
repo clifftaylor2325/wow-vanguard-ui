@@ -469,6 +469,20 @@ it("bag categories: your own sections above the built-in ones, in list order, fi
   expect(chat(), "the list names each category and its items").toMatch(/Mix: /);
 });
 
+it("bag categories saved under names that fold to one key show as one section holding both groups' items", () => {
+  const addon = openFilled([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 });
+  addon.eval(`local c = ns.Settings("Bags").categories
+    c[1] = { name = "\\208\\151\\208\\181\\208\\187\\209\\140\\209\\143", items = { [159] = true } }
+    c[2] = { name = "\\208\\183\\208\\181\\208\\187\\209\\140\\209\\143", items = { [90001] = true } }
+    ns.GetModule("Bags").SectionsChanged()`);
+  expect(addon.eval(`local BG = ns.GetModule("Bags")
+    local buttons = {}
+    for _, b in ContainerFrameCombinedBags:EnumerateValidItems() do buttons[#buttons + 1] = b end
+    local out = {}
+    for _, s in ipairs(BG.Group(buttons)) do if s.key:find("^cat:") then out[#out + 1] = s.key .. "=" .. #s.buttons end end
+    return { #BG.CategorySections(), table.concat(out, ",") }`)).toEqual([1, "cat:\u0437\u0435\u043b\u044c\u044f=3"]);
+});
+
 it("bag categories: Make first moves the category's section first at once, with the same items", () => {
   const addon = openFilled([8, 4, 0, 0, 0], { quest: 1, equipment: 1, consumables: 2, junk: 1 });
   addon.slash("bag add Potions |Hitem:159::|h[TEST-ONLY Water]|h");

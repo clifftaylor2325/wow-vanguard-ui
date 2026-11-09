@@ -255,16 +255,24 @@ end
 -- The clicks every unit button gets, as the init snippets set them.
 C.HEADER_CLICKS = { ["*type1"] = "target", ["*type2"] = "togglemenu" }
 
--- Turns a header's init snippet off and has the header copy the clicks onto each new button.
-function C.HeaderWithoutSnippets(header)
-  header.vgNoSnippets = true
+-- Clears a header's init snippet and gives it the clicks to copy onto each new button (secure attributes).
+local function copyClicks(header)
   header:SetAttribute("initialConfigFunction", nil)
   header:SetAttribute("_initialAttributeNames", "*type1,*type2")
   for name, value in pairs(C.HEADER_CLICKS) do header:SetAttribute("_initialAttribute-" .. name, value) end
 end
 
--- One button of a header without snippets: its size and clicks, then setup(button). Once.
+-- Turns a header's init snippet off and has the header copy the clicks onto each new button; in a fight the
+-- attributes wait for it to end.
+function C.HeaderWithoutSnippets(header)
+  header.vgNoSnippets = true
+  ns.OutOfCombat(function() copyClicks(header) end, header)
+end
+
+-- One button of a header without snippets: its size and clicks, then setup(button). Once, and never in a
+-- fight (the client refuses the attributes then; the next roster change out of combat sets it up).
 local function setupHeaderButton(header, b, setup)
+  if ns.InCombat() then return end
   b.vgHeaderSetup = true
   b:SetSize(header:GetAttribute("vg-width"), header:GetAttribute("vg-height"))
   for name, value in pairs(C.HEADER_CLICKS) do b:SetAttribute(name, value) end

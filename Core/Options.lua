@@ -547,10 +547,9 @@ end
 
 -- "This character uses Default." or, with a switch staged, what it uses until the reload and after it.
 local function currentProfileText()
-  local later = ns.PendingProfileName()
+  local later = ns.ProfileAfterReload()
   if not later then return ns.Format(L["This character uses {profile}."], { profile = ns.ProfileName() }) end
-  local spec = ns.SpecProfile()
-  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = spec or later })
+  return ns.Format(L["This character uses {profile} until you reload, then {next}."], { profile = ns.ProfileName(), next = later })
 end
 
 -- Asks before a reset: what is lost (every setting in the profile in use, for every character

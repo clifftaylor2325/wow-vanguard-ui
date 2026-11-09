@@ -221,7 +221,7 @@ end
 local function cancelOrAsk(id, onSent)
   local cost = ns.PlainNumber(C_AuctionHouse.GetCancelCost(id))
   if cost == 0 then return sendCancel(id) and onSent() end
-  ns.Ask(cancelQuestion(cost), L["Cancel auction"], function() if sendCancel(id) then onSent() end end, nil, "danger")
+  ns.Irreversible({ question = cancelQuestion(cost), yes = L["Cancel auction"], act = function() if sendCancel(id) then onSent() end end })
 end
 
 -- Cancel (the row's click, never a timer or an event): cancels one of your auctions if the game allows it,

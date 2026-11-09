@@ -953,3 +953,28 @@ it("Y2-4 bars: a usable event repaints only the buttons whose state changed", ()
   addon.fire("ACTIONBAR_UPDATE_USABLE");
   expect(button(addon, 1, 3).color[0] === 1 && button(addon, 1, 3).color[1] === 1, "usable now: painted, no longer dimmed").toBe(true);
 });
+
+// A full login (the bars built: createAddon is never scoped) whose saved bar 1 holds `bar` (Lua source).
+function loggedInWithBarOne(bar) {
+  const addon = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { ActionBars = { bars = { [1] = ${bar} } } } }\n` });
+  addon.eval(ACTIONS_ENV);
+  addon.login();
+  return addon;
+}
+
+it("a bar size that isn't a number, or rows of 0, are dropped at login: the bars build at the shared size, 12 per row", () => {
+  for (const bar of ["{ size = 'big' }", "{ size = {} }", "{ size = 0 }", "{ size = -5 }", "{ size = 1/0 }", "{ size = 0/0 }", "{ perRow = 0, buttons = 'x' }"]) {
+    const addon = loggedInWithBarOne(bar);
+    expect(addon.eval("return #ns.errors"), `${bar}: no error`).toBe(0);
+    const shape = addon.eval('local b = ns.GetModule("ActionBars").settings.bars[1] return { b.size == nil, b.perRow, b.buttons }');
+    expect(shape, `${bar}: the defaults fill it in`).toEqual([true, 12, 12]);
+    expect(addon.eval("return Vanguard_Bar1Button1:GetWidth()"), `${bar}: the shared size`).toBe(px(addon, 38));
+  }
+});
+
+it("an imported string's bar size that isn't a number is dropped before it is saved", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const size = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, ActionBars = { bars = { { size = "big", perRow = 0 } } } })
+    return { kind, data.ActionBars.bars[1].size == nil, data.ActionBars.bars[1].perRow == nil }`);
+  expect(size, "the payload is cleaned by the migration").toEqual(["parts", true, true]);
+});

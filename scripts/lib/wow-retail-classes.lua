@@ -64,13 +64,15 @@ function GetUnitChargedPowerPoints(unit)
 end
 
 local baseChannel = UnitChannelInfo
--- Retail's channel: the world's eight values, then whether it is empowered and its stages (never hidden).
+-- Retail's channel: the world's eight values, then whether it is empowered and its stages (the docs never
+-- hide them; a test may, to check the addon still reads them safely).
 function UnitChannelInfo(unit)
   local u = world.unit(unit)
   local c = u and u.cast
   if not c or not c.channel then return nil end
   local name, text, icon, startMs, endMs, trade, notInterruptible, spellId = baseChannel(unit)
-  return name, text, icon, startMs, endMs, trade, notInterruptible, spellId, (c.stages or 0) > 0, c.stages or 0
+  local empowered = issecretvalue(c.stages) or (c.stages or 0) > 0
+  return name, text, icon, startMs, endMs, trade, notInterruptible, spellId, empowered, c.stages or 0
 end
 
 -- How long stage `index` (from 0) of a unit's empowered cast lasts, in ms (unit.cast.stageMs).

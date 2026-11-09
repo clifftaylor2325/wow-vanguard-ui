@@ -260,11 +260,11 @@ end
 
 -- Groups --------------------------------------------------------------------------------------
 
--- The player's class token ("PRIEST"), or nil where the client can't say.
+-- The player's class token ("PRIEST"), or nil where the client can't say or hides it.
 function CS.PlayerClass()
   if type(UnitClass) ~= "function" then return nil end
   local _, token = UnitClass("player")
-  return type(token) == "string" and token or nil
+  return ns.PlainText(token)
 end
 
 -- The class table for the player's class (empty for classes without one).

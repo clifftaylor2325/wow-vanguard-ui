@@ -783,7 +783,7 @@ end
 local function scan()
   for i = 1, 40 do
     local unit = "nameplate" .. i
-    if UnitExists(unit) and not NP.plates[unit] then onAdded(nil, unit) end
+    if ns.IsTrue(UnitExists(unit)) and not NP.plates[unit] then onAdded(nil, unit) end
   end
 end
 

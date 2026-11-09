@@ -192,6 +192,10 @@ it("an Evoker's empowered cast fills to the end of its hold, with a mark where e
   addon.eval(`__wfgWorld.units.player.cast = { name = "TEST-ONLY Living Flame", startMs = ${start}, endMs = ${start + 2000} }`);
   addon.fire("UNIT_SPELLCAST_START", "player", "TEST-ONLY-GUID2", 361469);
   expect(bar().marks, "a plain cast after it clears the marks").toEqual({});
+  addon.eval(`__wfgWorld.units.player.cast = { name = "TEST-ONLY Fire Breath", channel = true, startMs = ${start}, endMs = ${start + 2000},
+    stages = __wfgWorld.secret(3), stageMs = { 500, 750, 750 }, holdMs = 1000 }`);
+  addon.fire("UNIT_SPELLCAST_EMPOWER_START", "player", "TEST-ONLY-GUID3", 357208);
+  expect([bar().channel, bar().marks, addon.eval("return #ns.errors")], "a hidden stage count (a number to type()) is never compared: a plain channel").toEqual([true, {}, 0]);
 });
 
 it("an empowered cast's end: let go is done, cut short is interrupted", () => {

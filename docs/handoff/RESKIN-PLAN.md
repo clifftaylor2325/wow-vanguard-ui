@@ -1,5 +1,7 @@
 # Reskin plan: the rest of the game's frames, in parallel (handoff)
 
+> **Done.** Every task in this plan is ticked (checked 2026-11-09). It stays here as the record of what was planned and why; new work goes in a new plan.
+
 Repo `clifftaylor2325/wow-vanguard-ui`, written 2026-10-06 against commit `757c0c7` (v0.4.0, after PR #125).
 Design: `docs/design/RESKIN.md` (read it first; §5 there is the inventory every task below points at).
 Repo rules: `docs/handoff/WORKPLAN.md` §0 ("How to work") applies word for word except where §0 below overrides it.

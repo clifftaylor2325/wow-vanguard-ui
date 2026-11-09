@@ -299,7 +299,7 @@ it("the info strip: ammo, and clients that can't answer", () => {
   expect(["durability", "bags", "system", "gold", "clock"].map((k) => block(bare, k).shown), "no answer, no block").toEqual([false, false, false, false, false]);
 });
 it("the info strip: a warlock's soul shards, across the bags and the reagent bag", () => {
-  const SHARDS = `__units.player.class = "WARLOCK" issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  const SHARDS = `__units.player.class = "WARLOCK" issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
     __wfgWorld.bags[1][3] = { itemID = 6265 } __wfgWorld.bags[2][1] = { itemID = 2589, count = 5 }
     __wfgWorld.bags[5], __wfgWorld.bagSizes[5] = { [2] = { itemID = 6265, count = 2 } }, 4
 `;
