@@ -143,9 +143,12 @@ function ns.Profile()
   if type(VanguardDB) ~= "table" then
     return {}
   end
-  local name = ns.ProfileName()
-  VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
-  return VanguardDB.profiles[name]
+  local profiles, name = VanguardDB.profiles, ns.ProfileName()
+  local profile = profiles[name]
+  if profile then return profile end
+  profile = {}
+  profiles[name] = profile
+  return profile
 end
 
 local migrations = {}
