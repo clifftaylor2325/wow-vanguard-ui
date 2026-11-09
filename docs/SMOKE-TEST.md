@@ -4737,6 +4737,24 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: The question closes with the quest dialog; no quest is handed in, accepted or declined, and the next quest you open shows its own page with no question over it.
 - If it fails, paste: The chat lines after walking away, and whether the question was still on screen.
 
+### 33.406 Setup's screen and layout steps follow the screen you have now (both)
+
+- Do: Open setup from the options (Run setup), go to the Screen step and note which row says "your screen"; close setup, change the game's resolution or window size, then open setup again and go to the Screen step.
+- Expect: The "your screen" mark, the descriptions under each row and the Fit row (shown only on a narrow screen) match the new screen, and the window is not taller than its rows need.
+- If it fails, paste: a screenshot of the Screen step and the game's resolution.
+
+### 33.407 A held quest arrow survives a reload (Forever)
+
+- Do: With Follow the nearest quest on and two watched quests, Shift-click the farther one in the tracker, then reload the UI (or relog).
+- Expect: The arrow still points at the Shift-clicked quest and its Pin button shows; clicking Pin lets it go.
+- If it fails, paste: The arrow panel's title and whether the Pin button is shown, plus the chat lines after the reload.
+
+### 33.408 Take all stops when the bags are full (both)
+
+- Do: Fill every general bag, open the mailbox with three mails that hold items only (Mail tools on), and click Take all.
+- Expect: One chat line "Take all: your bags are full." then "Take all: 0 of 3 done."; no red "Inventory is full" error for each mail.
+- If it fails, paste: The chat lines after the click and how many red errors appeared.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
