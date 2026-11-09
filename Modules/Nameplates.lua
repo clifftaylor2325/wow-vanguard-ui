@@ -837,12 +837,17 @@ local function onMouseover()
   NP.WatchHover(any)
 end
 
+-- Hides a plate's mouseover wash.
+local function hideHover(f)
+  f.hover:Hide()
+end
+
 -- While a wash shows: clears the washes once the mouse is over no unit (a
 -- hidden answer counts as none), and stops watching.
 local function pollHover()
   local over = UnitExists("mouseover")
   if not ns.IsSecret(over) and over == true then return end
-  each(function(f) f.hover:Hide() end)
+  each(hideHover)
   NP.WatchHover(false)
 end
 

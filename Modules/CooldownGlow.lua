@@ -111,9 +111,14 @@ function CG.Light(item, strength)
   for _, piece in ipairs(glow) do if given then piece:SetAlpha(strength) end end
 end
 
--- Every item the Cooldown Manager's rows hold right now.
+-- The list CG.Items fills, reused by every look (four a second), so a look makes no garbage.
+local items = {}
+
+-- Every item the Cooldown Manager's rows hold right now, in a list that is filled again on the next
+-- call (read it before then).
 function CG.Items()
-  local out = {}
+  local out = items
+  for i = #out, 1, -1 do out[i] = nil end
   for _, name in ipairs(CG.VIEWERS) do
     local viewer = _G[name]
     local items = type(viewer) == "table" and type(viewer.GetItemFrames) == "function" and viewer:GetItemFrames()
