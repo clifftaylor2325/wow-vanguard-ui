@@ -279,14 +279,21 @@ local function frameLines(frame)
   return out
 end
 
+-- Whether a window shows this saved line: as saved, as Vanguard rewrote it, or with its line numbers zeroed as a restore puts it back.
+local function shownAlready(shown, text)
+  local CHH, CX = ns.GetModule("ChatHistory"), ns.GetModule("ChatExtras")
+  local restored = CHH.Unnumbered(text)
+  return shown[text] or shown[CX.Rewrite(text)] or shown[restored] or shown[CX.Rewrite(restored)]
+end
+
 -- Lines saved for the next login (Modules/ChatHistory.lua) that no window shows any more (as saved, or as Vanguard rewrote it on screen), oldest first.
 local function savedLines(shown)
-  local out, CHH, CX = {}, ns.GetModule("ChatHistory"), ns.GetModule("ChatExtras")
+  local out, CHH = {}, ns.GetModule("ChatHistory")
   local store = CHH.Store()
   for i = 1, windowCount() do
     for _, line in ipairs(type(store[i]) == "table" and store[i] or {}) do
       local text = select(5, CHH.Unpack(line))
-      if text and not (shown[text] or shown[CX.Rewrite(text)]) then out[#out + 1] = text end
+      if text and not shownAlready(shown, text) then out[#out + 1] = text end
     end
   end
   return out

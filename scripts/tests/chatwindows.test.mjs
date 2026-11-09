@@ -3,6 +3,8 @@
 // floating windows as /vg unlock handles.
 
 import { expect, it } from "vitest";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { luaValue } from "../lib/lua-emit.mjs";
 import { chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY game chat layout calls, two windows in use (the second one pulled out of the dock).
@@ -359,4 +361,22 @@ it("chat tabs: a tab name is cut at 16 characters, not 16 bytes: keeps 16 whole 
   const clean = (text) => addon.eval(`local n = ns.GetModule('ChatWindows').CleanName("${text}") return { n, #n }`);
   expect(clean("Ventes à l’hôtel des ventes"), "16 letters, ending on a whole one").toEqual(["Ventes à l’hôtel", 20]);
   expect(clean("Торговля и обмен"), "a 16-letter Cyrillic name is kept whole").toEqual(["Торговля и обмен", 30]);
+});
+
+it("chat windows: Find lists a restored player line once, though the window shows it with its line number zeroed", () => {
+  const history = `__now = 1790000000 time = function() return __now end
+    __wfgWorld.chatWindows[1] = "General"
+    ChatFrame1.GetNumMessages = function(self) return #(self.__messages or {}) end
+    ChatFrame1.GetMessageInfo = function(self, i) return self.__messages[i] end`;
+  const addon = loggedIn(history);
+  addon.slash("history on");
+  addon.eval(`ChatFrame1:AddMessage("|Hplayer:Bob:523:CHANNEL:2|h[Bob]|h: wts sword")`);
+  addon.fire("PLAYER_LOGOUT");
+  const sv = addon.savedVariables();
+  const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  next.eval(history);
+  next.login();
+  const found = next.eval("return { ns.GetModule('ChatWindows').Find('sword') }");
+  expect(found[0], "one line, not the window's copy and the saved copy").toBe('Chat: 1 lines with "sword"');
+  expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });
