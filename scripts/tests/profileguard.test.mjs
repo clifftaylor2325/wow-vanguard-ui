@@ -69,6 +69,42 @@ it("settings-loss guard: an account file older than this character's last sessio
   const same = relog(first, { account: luaValue({ ...old, guard: note(sv.char.guard.stamp) }) });
   expect(question(same), "an account file as new as the character's stamp is fine").toBe(null);
 });
+it("settings-loss guard: an unanswered loss is told in chat once, stays on the pages, and Keep these settings answers it", () => {
+  const first = loggedIn(CLICK_LUA);
+  first.fire("PLAYER_LOGOUT");
+  const sv = first.savedVariables();
+  const stamp = sv.char.guard.stamp - 100;
+  const old = { ...sv.account, guard: { stamp, chars: { "Tester-ForeverTest": { profile: "Default", stamp } } } };
+  const lost = relog(first, { account: luaValue(old) });
+  expect([chatHas(lost, /didn't load this session/), question(lost) !== null], "the first login tells it").toEqual([true, true]);
+  answer(lost, false);
+  expect(chatHas(lost, /or keep the settings that loaded/), "Not now names Keep").toBe(true);
+  const again = relog(lost);
+  expect([chatHas(again, /didn't load/), question(again)], "the next login doesn't say it again").toEqual([false, null]);
+  again.eval('ns.Options.Show("general")');
+  expect(again.texts("Vanguard's saved settings didn't load this session.").length, "the General page still shows it").toBe(1);
+  expect(again.eval('return __click("Keep these settings")'), "with Keep these settings on it").toBe(true);
+  expect([again.eval("return ns.SettingsGuard.Lost()"), chatHas(again, /keeps the settings that loaded/)], "Keep answers the loss and says so").toEqual([null, true]);
+  expect(again.texts("Vanguard's saved settings didn't load this session.").length, "the notice goes").toBe(0);
+  again.fire("PLAYER_LOGOUT");
+  expect(again.eval("return VanguardCharDB.guard.told == nil and VanguardDB.guard.chars['Tester-ForeverTest'].stamp == VanguardCharDB.guard.stamp"), "logout stamps both files again").toBe(true);
+  const fine = relog(again);
+  expect([fine.eval("return ns.SettingsGuard.Lost()"), question(fine)], "so the next login finds nothing").toEqual([null, null]);
+});
+it("settings-loss guard: a logout where the client won't give the normalized realm still notes the same key", () => {
+  const addon = loggedIn('GetNormalizedRealmName = function() return nil end');
+  expect(addon.eval("return { ns.SettingsGuard.CharKey(), ns.Home.Realm() }"), "the shown name loses its spaces").toEqual(["Tester-ForeverTest", "ForeverTest"]);
+});
+it("settings-loss guard: notes kept under the realm's shown name fold into the normalized key, the newer winning, and report no loss", () => {
+  const first = loggedIn(CLICK_LUA);
+  first.fire("PLAYER_LOGOUT");
+  const sv = first.savedVariables();
+  const stamp = sv.char.guard.stamp;
+  const chars = { "Tester-ForeverTest": { profile: "Default", stamp: stamp - 100 }, "Tester-Forever Test": { profile: "Default", stamp }, "Other-Forever Test": { profile: "Other", stamp: 7 }, "Odd-Forever Test": "TEST-ONLY" };
+  const next = relog(first, { account: luaValue({ ...sv.account, guard: { stamp, chars } }) });
+  expect([next.eval("return ns.SettingsGuard.Lost()"), chatHas(next, /didn't load/)], "the newer note is this character's stamp: nothing was lost").toEqual([null, false]);
+  expect(next.eval("local c = VanguardDB.guard.chars return { c['Tester-ForeverTest'].stamp, c['Tester-Forever Test'] == nil, c['Other-ForeverTest'].stamp, c['Odd-ForeverTest'] == nil and c['Odd-Forever Test'] == nil }"), "each spelling folds into one key, and a damaged note is dropped").toEqual([stamp, true, 7, true]);
+});
 it("settings-loss guard: without a backup it offers to paste a string; Not now leaves the notice, and an unanswered loss keeps the stamps", () => {
   const lost = relog(loggedIn(CLICK_LUA), { account: "nil", char: "{ guard = { stamp = 5 } }" });
   expect(chatHas(lost, /Paste a profile string you exported to get them back\.$/), "chat says to paste a string").toBe(true);

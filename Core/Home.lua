@@ -39,9 +39,11 @@ function H.RealmName()
   return call("GetRealmName") or "?"
 end
 
--- Your realm's normalized name (no spaces or hyphens, as in "Name-Realm"), else its shown name.
+-- Your realm's normalized name (no spaces or hyphens, as in "Name-Realm"): the client's, else its shown name
+-- with those taken out. Forever sometimes answers nil at login or logout, and the shown name there would
+-- split one realm's keys in two ("CAMWOW US2" beside "CAMWOWUS2").
 function H.Realm()
-  return call("GetNormalizedRealmName") or H.RealmName()
+  return call("GetNormalizedRealmName") or (H.RealmName():gsub("[ %-]", ""))
 end
 
 -- The ruleset the client names, else nil: "season<N>" while a season is on (C_Seasons), else

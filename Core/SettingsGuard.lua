@@ -7,7 +7,8 @@
 --   * the account file came back without this character's stamp, or older than it: chat
 --     says the saved settings didn't load, a question offers to restore the
 --     profile from this character's backup (or to paste a profile string),
---     the General and Profiles pages show the same, and setup waits;
+--     the General and Profiles pages show the same (with Keep these settings), and setup waits;
+--     a later login with the loss still unanswered leaves it to the pages: chat says it once;
 --   * this character's file came back blank while the account file
 --     remembers the character: it uses its profile again, and setup stays shut.
 -- A first run, or a file saved before the guard, has no stamps, so nothing fires.
@@ -28,7 +29,7 @@ G.LOST_NO_BACKUP = L["Vanguard's saved settings didn't load this session (the ac
 G.ASK = L["Vanguard's saved settings didn't load. Restore profile {profile} from this character's backup?"]
 G.ASK_RESTORED = L["Vanguard's saved settings didn't load. Profile {profile} was already restored from a newer backup. Use it?"]
 G.ASK_NO_BACKUP = L["Vanguard's saved settings didn't load. Paste a profile string you exported?"]
-G.LATER = L["The General and Profiles pages in /vg can still restore them; Start fresh there runs setup instead."]
+G.LATER = L["The General and Profiles pages in /vg can still restore them, or keep the settings that loaded; Start fresh there runs setup instead."]
 -- The options' notice, one line.
 G.NOTICE = L["Vanguard's saved settings didn't load this session."]
 
@@ -42,12 +43,12 @@ local function now()
   return type(time) == "function" and ns.PlainNumber(time()) or 0
 end
 
--- This character's key in the account file, "Name-Realm"; nil while the client won't say the name.
+-- This character's key in the account file, "Name-Realm" with the realm normalized (ns.Home.Realm, the same
+-- spelling at login and logout); nil while the client won't say the name.
 function G.CharKey()
   local name = type(UnitName) == "function" and UnitName("player")
   if type(name) ~= "string" or ns.IsSecret(name) then return nil end
-  local realm = type(GetNormalizedRealmName) == "function" and GetNormalizedRealmName() or GetRealmName()
-  return name .. "-" .. tostring(realm or "?")
+  return name .. "-" .. ns.Home.Realm()
 end
 
 -- Checking ----------------------------------------------------------------------------------
@@ -213,6 +214,12 @@ function G.StartFresh()
   ns.Setup.Open()
 end
 
+-- Keep these settings: what loaded is right, so the loss is answered and logout stamps both files again.
+function G.Keep()
+  G.Resolve()
+  ns.Chat(L["Vanguard keeps the settings that loaded and won't ask about them again."])
+end
+
 -- Not now: says where the restore still is.
 local function later()
   ns.Chat(G.LATER)
@@ -227,19 +234,61 @@ function G.Offer()
   ns.Ask(G.ASK_NO_BACKUP, L["Paste a string"], G.Paste, later)
 end
 
+-- True when an earlier login already told this loss: the character file's guard notes it until a
+-- logout stamps both files again (an unanswered loss leaves the guard as it was, note and all).
+local function told()
+  return VanguardCharDB.guard.told == true
+end
+
 -- The account's settings didn't load: chat says so (how the file came back), then the question.
 local function announce(how)
+  VanguardCharDB.guard.told = true
   local text = G.Backup() and G.LOST or G.LOST_NO_BACKUP
   ns.Chat(ns.Format(text, { how = how == "older" and L["older than this character's last session"] or L["blank"] }))
   G.Offer()
 end
 
--- At login, before setup decides whether it is owed.
+-- Repairing notes ---------------------------------------------------------------------------------
+-- Before 0.9.4 a logout where Forever's GetNormalizedRealmName answered nil noted the character under
+-- the realm's shown name ("Ava-CAMWOW US2 Realm 3 PvE") beside its normalized key, so a login reading
+-- the other key found an older stamp and reported a loss that never happened.
+
+-- A note's key with its realm spelled as the normalized name is ("Ava-CAMWOW US2" is "Ava-CAMWOWUS2").
+local function normalKey(key)
+  local name, realm = key:match("^([^%-]+)%-(.+)$")
+  if not name then return key end
+  return name .. "-" .. (realm:gsub("[ %-]", ""))
+end
+
+-- The newer of two notes of one character, by stamp (either may be missing or damaged).
+local function newerNote(a, b)
+  local sa, sb = tbl(a) and tonumber(a.stamp), tbl(b) and tonumber(b.stamp)
+  if not sb then return a end
+  if not sa then return b end
+  return sa >= sb and a or b
+end
+
+-- Folds the notes kept under a realm's shown name into its normalized key, the newer stamp winning.
+local function foldRealmSpellings(chars)
+  local spelled = {}
+  for key in pairs(chars) do
+    if type(key) == "string" and normalKey(key) ~= key then spelled[#spelled + 1] = key end
+  end
+  for _, key in ipairs(spelled) do
+    local to = normalKey(key)
+    chars[to], chars[key] = newerNote(chars[to], chars[key]), nil
+  end
+end
+
+-- At login, before setup decides whether it is owed (and after old notes are folded). A loss is told in
+-- chat once; after that only the General and Profiles pages show it, until it is answered there.
 function G.OnLogin()
+  local acct = tbl(VanguardDB.guard)
+  if acct and tbl(acct.chars) then foldRealmSpellings(acct.chars) end
   local lost, detail = G.Check()
   if lost == "character" then return restoreCharacter(detail) end
   G.lost, G.lostSeen = lost, lost
-  if lost then announce(detail) end
+  if lost and not told() then announce(detail) end
 end
 ns.On("PLAYER_LOGIN", G.OnLogin)
 
@@ -306,12 +355,12 @@ O.AddRowKind("notice", noticeRow, 22)
 -- What the notice card explains under its line.
 local function explain()
   if G.Backup() and alreadyRestored(G.Backup()) then
-    return ns.Format(L["Another character already restored profile {profile} from a newer backup than this character's. Use it, paste a profile string you exported, or start fresh with setup."], { profile = restoreName(G.Backup()) })
+    return ns.Format(L["Another character already restored profile {profile} from a newer backup than this character's. Use it, paste a profile string you exported, keep the settings that loaded, or start fresh with setup."], { profile = restoreName(G.Backup()) })
   end
   if G.Backup() then
-    return ns.Format(L["This character kept a backup of profile {profile} from its last session. Restore it, paste a profile string you exported, or start fresh with setup."], { profile = restoreName(G.Backup()) })
+    return ns.Format(L["This character kept a backup of profile {profile} from its last session. Restore it, paste a profile string you exported, keep the settings that loaded, or start fresh with setup."], { profile = restoreName(G.Backup()) })
   end
-  return L["Paste a profile string you exported (/vg export), or start fresh with setup."]
+  return L["Paste a profile string you exported (/vg export), keep the settings that loaded, or start fresh with setup."]
 end
 
 -- The notice card's button for this character's backup: use the profile already restored from a newer one, or restore.
@@ -326,6 +375,7 @@ function G.Rows()
   local rows = { { "header", L["Saved settings didn't load"] }, { "notice", G.NOTICE }, { "text", explain() } }
   if G.Backup() then rows[#rows + 1] = backupButton(G.Backup()) end
   rows[#rows + 1] = { "button", L["Paste a profile string"], G.Paste }
+  rows[#rows + 1] = { "button", L["Keep these settings"], G.Keep }
   rows[#rows + 1] = { "button", L["Start fresh: run setup"], G.StartFresh }
   return rows
 end

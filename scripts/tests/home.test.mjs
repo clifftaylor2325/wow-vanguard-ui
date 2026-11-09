@@ -30,7 +30,7 @@ it("home: the key is realm and side, with the ruleset when the client names one"
 it("home: without the realm calls or a side the key still builds", () => {
   const addon = loggedIn();
   addon.eval("GetNormalizedRealmName = function() return '' end");
-  expect(home(addon)[1], "an empty normalized name: the shown name").toBe("Forever Test");
+  expect(home(addon)[1], "an empty normalized name: the shown name without its spaces").toBe("ForeverTest");
   addon.eval("GetNormalizedRealmName = nil GetRealmName = function() error('TEST-ONLY') end UnitFactionGroup = nil");
   expect([home(addon)[1], home(addon)[3], addon.eval("return ns.Home.OldKeys()")], "no realm, no side")
     .toEqual(["?", "none", ["?-none", "? - ?"]]);

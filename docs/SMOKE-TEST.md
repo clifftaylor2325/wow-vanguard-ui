@@ -4965,6 +4965,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the description ends "Retail support is new and best effort."; on Retail `/vg errors` has no "Left off" part after you open the windows of 34.8 to 34.13 (one there names a Retail window the game reshaped).
 - If it fails, paste: the description text and the `/vg errors` text.
 
+### 33.470 No false saved settings warning, and Keep these settings ends a real one (Forever)
+
+- Do: Log in on Cliff (the character that showed "Vanguard's saved settings didn't load this session" at every login), then `/reload`, then log out and log in on each of the other characters.
+- Expect: no saved settings line at any login (its notes under "CAMWOW US2 Realm 3 PvE" fold into "CAMWOWUS2Realm3PvE", and the newer one matches). If a character still shows it, the line shows at the first login only, not after the reload, and `/vg` → General has **Keep these settings**: after it chat says Vanguard keeps the settings that loaded, the notice goes, and the next login says nothing.
+- If it fails, paste: the chat lines from login, and both `Vanguard.lua` files (the account's `WTF/Account/<name>/SavedVariables/` one and the character's `WTF/Account/<name>/<realm>/<character>/SavedVariables/` one), or just their `guard` blocks.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ## 34. Retail
