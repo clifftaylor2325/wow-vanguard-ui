@@ -188,3 +188,21 @@ it("chat history: windows the client lacks, a missing clock and a client without
   expect(bare.eval("return #ns.errors"), "no clock, no hooks, a window that is gone: no errors").toBe(0);
   expect(bare.eval("return ns.GetModule('ChatHistory').Unpack('x')"), "a broken entry is nothing").toBeNull();
 });
+
+it("chat history: a line printed at login, before the world is entered, is not replayed in the earlier block and is kept for the next session", () => {
+  const addon = session();
+  addon.eval(`ChatFrame1:AddMessage("old session line")`);
+  addon.fire("PLAYER_LOGOUT");
+  const sv = addon.savedVariables();
+  const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  next.eval(`${CLOCK} __now = __now + 3600`);
+  next.fire("ADDON_LOADED", "Vanguard");
+  next.fire("PLAYER_LOGIN");
+  next.eval(`ChatFrame1:AddMessage("SomeAddon loaded")`);
+  next.fire("PLAYER_ENTERING_WORLD", true, false);
+  const shown = lines(next);
+  expect(shown.filter((l) => l === "SomeAddon loaded").length, "shown once").toBe(1);
+  expect(shown.some((l) => /1 lines, until Mon 1790000000/.test(l)), "the block counts and dates only the old line").toBe(true);
+  expect(saved(next)[0], "kept after the restored line, for the next session").toEqual(["1790000000|ffffff|old session line", "1790003600|ffffff|SomeAddon loaded"]);
+  expect(next.eval("return #ns.errors"), "no errors").toBe(0);
+});

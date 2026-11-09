@@ -111,12 +111,21 @@ local function keepable(text)
   return CHH.settings.whispers or not whisperLine(text)
 end
 
+-- Where a new line goes: its window's saved list, or a separate early list while the world has not been entered
+-- (the restore replays the saved list, so a line shown at login would come back twice and date the block as now).
+local function targetList(index)
+  if CHH.arrived then return listFor(index) end
+  CHH.early = CHH.early or {}
+  CHH.early[index] = CHH.early[index] or {}
+  return CHH.early[index]
+end
+
 -- Saves a line a window just showed (nothing while history is off or while old lines are being put back).
 function CHH.Record(index, text, r, g, b)
   if not (CHH.active and CHH.settings.on) or CHH.restoring or CHH.Skipped(index) or not keepable(text) then return end
-  local list = listFor(index)
+  local list = targetList(index)
   list[#list + 1] = pack(text, r, g, b)
-  if #list > CHH.settings.lines + CHH.SLACK then CHH.Store()[index] = trimmed(list) end
+  if CHH.arrived and #list > CHH.settings.lines + CHH.SLACK then CHH.Store()[index] = trimmed(list) end
 end
 
 -- Follows one chat window's new lines, once.
@@ -264,4 +273,15 @@ function CHH.Arrived()
   if CHH.arrived then return end
   CHH.arrived = true
   if CHH.settings.on then CHH.Restore() end
+  CHH.KeepEarly()
+end
+
+-- Adds the lines shown before the world was entered after the restored ones, so the next session gets them once.
+function CHH.KeepEarly()
+  for index, early in pairs(CHH.early or {}) do
+    local list = listFor(index)
+    for _, line in ipairs(early) do list[#list + 1] = line end
+    CHH.Store()[index] = trimmed(list)
+  end
+  CHH.early = nil
 end
