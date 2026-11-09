@@ -740,6 +740,7 @@ local function listen(units)
   ns.On("PLAYER_FOCUS_CHANGED", function() CB.Update("focus") end)
   ns.On("SPELL_UPDATE_COOLDOWN", CB.RefreshMarks)
   ns.On("UPDATE_SHAPESHIFT_FORM", CB.RefreshMarks)
+  ns.On("PLAYER_EQUIPMENT_CHANGED", CB.RefreshMarks)
   ns.On("PLAYER_ENTERING_WORLD", function() for unit in pairs(CB.bars) do CB.Update(unit) end end)
 end
 

@@ -373,6 +373,12 @@ it("on WoW Forever /vg spec naming a profile for the current talents says it loa
   addon.fire("PLAYER_LOGOUT");
   expect(addon.eval("return VanguardCharDB.guard.profile"), "the logout backup is of Heal").toBe("Heal");
 });
+it("on WoW Forever the Profiles page's 'Use this profile for this spec' button offers the reload like /vg spec", () => {
+  const addon = foreverCharacter(1, "{}");
+  addon.eval("ns.UseProfile('Heal') if Vanguard_Reload then Vanguard_Reload:Hide() end");
+  addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "profiles" then for _, r in ipairs(p.rows()) do if r[2] == "Use this profile for this spec" then r[3]() end end end end`);
+  expect([addon.eval("return ns.SpecProfile()"), addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()")], "Heal is the spec's and the reload is offered").toEqual(["Heal", true]);
+});
 it("on WoW Forever /vg spec and the Profiles page name the talent group, not the specialization", () => {
   const addon = foreverCharacter(2, "{}");
   addon.slash("spec Heal");

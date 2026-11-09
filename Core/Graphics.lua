@@ -268,13 +268,20 @@ local function clientNotes()
   return type(VanguardDB) == "table" and VanguardDB.client or {}
 end
 
--- The first record an older version kept in any profile (Graphics.undo, read raw so no profile is filled in), or nil.
+-- The record an older version kept in one profile (Graphics.undo, read raw so no profile is filled in), or nil.
+local function profileUndo(name)
+  local profile = VanguardDB.profiles[name]
+  local undo = type(profile) == "table" and type(profile.Graphics) == "table" and profile.Graphics.undo
+  return type(undo) == "table" and undo or nil
+end
+
+-- The record an older version kept: the active profile's, else the first other profile's that has one, or nil.
 local function legacyUndo()
+  local undo = profileUndo(ns.ProfileName())
   for _, name in ipairs(ns.ProfileNames()) do
-    local profile = VanguardDB.profiles[name]
-    local undo = type(profile) == "table" and type(profile.Graphics) == "table" and profile.Graphics.undo
-    if type(undo) == "table" then return undo end
+    undo = undo or profileUndo(name)
   end
+  return undo
 end
 
 -- Drops the old per-profile record from every profile.

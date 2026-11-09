@@ -256,12 +256,9 @@ local function hasChannels(frame)
   return type(frame.channelList) == "table" and next(frame.channelList) ~= nil
 end
 
--- Selects a docked tab that shows channels (a floating window is already in view; selecting it in the dock would
--- hide every docked window) and points to its own tab menu, whose Close Chat Window gives them back.
-local function sendToTabMenu(index, frame)
-  if docked(index) and type(FCFDock_SelectWindow) == "function" and type(GENERAL_CHAT_DOCK) == "table" then
-    FCFDock_SelectWindow(GENERAL_CHAT_DOCK, frame)
-  end
+-- Points a tab that shows channels to its own tab menu, whose Close Chat Window gives them back. Vanguard does not
+-- select the tab or close it itself: both write the dock's or the main window's channel state from addon code (taint).
+local function sendToTabMenu()
   ns.Chat(L["This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."])
 end
 
@@ -271,7 +268,7 @@ function CW.Close()
   local index, frame = CW.Editing()
   if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat(L["The main chat tab can't be closed."]) end
   if isBuiltin(frame) then return ns.Chat(L["The game's own chat tabs can't be closed."]) end
-  if hasChannels(frame) then return sendToTabMenu(index, frame) end
+  if hasChannels(frame) then return sendToTabMenu() end
   ns.OutOfCombat(function() closeWindow(frame) CW.editing = nil ns.Options.RebuildPage("chat") end, "chat close tab " .. index)
 end
 

@@ -478,6 +478,13 @@ function ns.ProfileAfterReload()
   return name ~= ns.ProfileName() and name or nil
 end
 
+-- Offers the reload when the spec's profile just set (/vg spec, or the Profiles page's button) is not the one in use.
+---@param profile string
+function ns.OfferSpecReload(profile)
+  if not ns.ProfileAfterReload() then return end
+  ns.OfferReload(ns.Format(L["Your specialization uses profile {profile}."], { profile = profile }))
+end
+
 -- Remembers the profile the character picked, before a spec's profile takes over from it.
 local function rememberOwn()
   local selected = ns.SelectedProfileName()

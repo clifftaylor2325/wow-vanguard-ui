@@ -198,6 +198,12 @@ it("/vg graphics undo: a record an older version kept in the profile moves to th
   expect(cvars(addon, ["graphicsQuality"]), "the notes' record wins").toEqual(["3"]);
   expect(addon.eval("return { ns.Settings('Graphics').undo == nil, VanguardDB.client.graphicsUndo == nil }"), "both are gone after the undo").toEqual([true, true]);
 });
+it("/vg graphics undo: an older record in the active profile wins over one in an alphabetically earlier profile", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsQuality = '9'");
+  addon.eval("VanguardDB.client.graphicsUndo = nil VanguardDB.profiles.Aaa = { Graphics = { undo = { graphicsQuality = '1' } } } ns.Settings('Graphics').undo = { graphicsQuality = '5' }");
+  said(addon, "graphics undo");
+  expect(cvars(addon, ["graphicsQuality"]), "the active profile's record").toEqual(["5"]);
+});
 it("/vg graphics apply: outline mode on Forever is set and undone where the card supports it, and left alone where not", () => {
   const yes = loggedIn(GFX_ENV + TABLE_ENV + "__wfgWorld.cvars.graphicsOutlineMode = '1'");
   check(yes);

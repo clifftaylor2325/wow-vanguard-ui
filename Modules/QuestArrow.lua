@@ -85,9 +85,10 @@ local function titleOf(id)
   return ns.PlainText(ns.CallIf(C_QuestLog, "GetTitleForQuestID", id)) or L["Quest"]
 end
 
--- Whether the quest log has arrived (it is empty for a moment after login, so a restored pin must wait).
+-- Whether the quest log has arrived (it is empty for a moment after login, so a restored pin must wait): it has
+-- entries, or the game has said it updated, which an emptied log (the last quest turned in) still does.
 local function logHasQuests()
-  return (ns.PlainNumber(ns.CallIf(C_QuestLog, "GetNumQuestLogEntries")) or 0) > 0
+  return QA.logLoaded == true or (ns.PlainNumber(ns.CallIf(C_QuestLog, "GetNumQuestLogEntries")) or 0) > 0
 end
 
 -- The quest to follow and whether the arrow holds it as a pin: the Shift-clicked quest (with "Follow the
@@ -356,7 +357,7 @@ function QA.Enable(settings)
   QA.settings = settings
   build()
   for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "SUPER_TRACKING_CHANGED", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }) do
-    ns.On(event, function() ns.Soon("quest arrow", QA.Pick) end)
+    ns.On(event, function() QA.logLoaded = QA.logLoaded or event == "QUEST_LOG_UPDATE" ns.Soon("quest arrow", QA.Pick) end)
   end
   ns.Every("quest arrow pick", QA.PICK, QA.Pick)
   ns.Every("quest arrow", QA.DRAW, QA.Draw)

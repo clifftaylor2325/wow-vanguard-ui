@@ -164,13 +164,35 @@ local function takeFrom(m)
   return false
 end
 
+-- Whether no bag at all (the backpack and bags 1 to 4) has a free slot; a client without the call is never full.
+-- Only read after the game itself refused a take, so a take that stacks or fits a quiver is never stopped.
+local function bagsFull()
+  local api = C_Container
+  if type(api) ~= "table" or type(api.GetContainerNumFreeSlots) ~= "function" then return false end
+  local free = 0
+  for bag = 0, 4 do
+    free = free + (ns.PlainNumber(api.GetContainerNumFreeSlots(bag)) or 0)
+  end
+  return free == 0
+end
+
+-- Says a take was refused: once the bags have no room at all the run ends there (one line), else the mail is
+-- named and the run goes on.
+local function noteRefusal(run, now)
+  if bagsFull() then
+    run.mails = {}
+    return ns.Chat(L["Take all: your bags are full."])
+  end
+  ns.Chat(ns.Format(L["Mail: could not take from {mail} (bags full?)."], { mail = now.subject ~= "" and now.subject or now.sender }))
+end
+
 -- Whether the last take from mail now (read again, the game done answering) changed nothing: the game refused
 -- it (bags full, a unique item you already carry). It no longer counts, and chat says so once, as the run passes the mail.
 local function refused(run, now)
   local last = run.last
   if not (last and last.index == now.index and last.money == now.money and last.items == now.items) then return false end
   run.last, run.done = nil, run.done - 1
-  ns.Chat(ns.Format(L["Mail: could not take from {mail} (bags full?)."], { mail = now.subject ~= "" and now.subject or now.sender }))
+  noteRefusal(run, now)
   return true
 end
 
@@ -181,30 +203,8 @@ local function took(run, now)
   return true
 end
 
--- Whether no general bag (the backpack and bags 1 to 4, family 0) has a free slot, so an item take would be refused;
--- a quiver's or soul bag's free slots do not count, and a client without the call is never full.
-local function bagsFull()
-  local api = C_Container
-  if type(api) ~= "table" or type(api.GetContainerNumFreeSlots) ~= "function" then return false end
-  local free = 0
-  for bag = 0, 4 do
-    local n, family = api.GetContainerNumFreeSlots(bag)
-    if (ns.PlainNumber(family) or 0) == 0 then free = free + (ns.PlainNumber(n) or 0) end
-  end
-  return free == 0
-end
-
--- Whether the next take from mail now would be an item with no room for it; says so once.
-local function noRoom(now)
-  if now.money > 0 or now.items == 0 or not bagsFull() then return false end
-  ns.Chat(L["Take all: your bags are full."])
-  return true
-end
-
--- One take from mail now unless the bags have no room for it: "stop" when the run ends there, "took" after a
--- take, nil when nothing was taken from this mail.
+-- One take from mail now: "took" after a take, nil when nothing was taken from this mail.
 local function tryTake(run, now)
-  if noRoom(now) then return "stop" end
   return takeFrom(now) and took(run, now) and "took" or nil
 end
 

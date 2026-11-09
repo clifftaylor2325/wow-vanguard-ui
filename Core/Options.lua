@@ -593,13 +593,22 @@ local function currentProfileRows()
   }
 end
 
+-- The "Use this profile for this spec" button: the selected profile becomes the spec's, and the reload is offered
+-- when it takes over at the next login (as /vg spec does).
+local function useForSpec()
+  local name = ns.SelectedProfileName()
+  ns.SetSpecProfile(name)
+  ns.OfferSpecReload(name)
+  O.Refresh()
+end
+
 -- Profiles, part two: the spec profile (nothing on a client with no specializations).
 local function specRows()
   if not ns.HasSpecs() then return {} end
   return {
     { "header", L["Specialization"] },
     { "text", specText },
-    { "button", L["Use this profile for this spec"], function() ns.SetSpecProfile(ns.SelectedProfileName()); O.Refresh() end },
+    { "button", L["Use this profile for this spec"], useForSpec },
     { "button", L["Stop spec switching"], function() ns.SetSpecProfile(nil); O.Refresh() end },
   }
 end

@@ -2049,6 +2049,7 @@ local checkOf, hookShown
 do
 -- Each themed check button's parts (weak): { box = the inset panel, fill = its checked fill, mark = the glyph }.
 checkOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) checkOf[r] = nil end
 
 -- A check button's themed parts, { box, fill, mark }, or nil for one T.CheckBox never painted.
 function T.CheckParts(button) return checkOf[button] end
@@ -2214,6 +2215,11 @@ end
 T.DIVIDER = { color = "divider" }
 -- Each themed divider (a texture or a frame) -> { holder = the frame its line is on, line }. Weak.
 local dividerOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r)
+  local d = dividerOf[r]
+  if d then tinted[d.line] = nil end
+  dividerOf[r] = nil
+end
 
 -- A themed divider's parts, { holder, line }, or nil for one T.Divider never painted.
 function T.DividerParts(region) return dividerOf[region] end
@@ -2280,6 +2286,7 @@ local ARROW_TURN = {
 }
 -- Each themed arrow button -> { glyph, hover }. Weak.
 local arrowOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) arrowOf[r] = nil end
 
 -- A themed arrow button's parts, { glyph, hover }, or nil for one T.ArrowButton never painted.
 function T.ArrowParts(button) return arrowOf[button] end
@@ -2335,6 +2342,7 @@ local SLIDER_AXES = {
 }
 -- Each themed slider -> its parts { bar, track, fill, line, knob, shade }. Weak.
 local sliderOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) sliderOf[r] = nil end
 
 -- A themed game slider's parts, or nil for one T.Slider never painted.
 function T.SliderParts(slider) return sliderOf[slider] end
@@ -2600,6 +2608,7 @@ end
 -- Every row T.Row dressed (weak): row -> { hover, press, fill, rail (its textures), over, down, selected,
 -- disabled (what it is showing) }.
 local rowOf = setmetatable({}, { __mode = "k" })
+T.forgetters[#T.forgetters + 1] = function(r) rowOf[r] = nil end
 -- The state names T.RowState takes, and the flag each sets.
 local ROW_FLAGS = { hover = "over", pressed = "down", selected = "selected", disabled = "disabled" }
 

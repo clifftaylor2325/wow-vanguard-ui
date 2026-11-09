@@ -572,6 +572,16 @@ it("the interrupt mark follows a stance change while a cast shows", () => {
   expect(mark(addon, "target").object, "Shield Bash's after the stance change").toBe("tag72");
 });
 
+it("the interrupt mark follows equipping a shield while a cast shows", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV);
+  addon.eval(`UnitClass = function() return "Warrior", "WARRIOR", 1 end ${KNOWS(6552)} ${KNOWS(72)}`);
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  addon.eval("__wfgWorld.spells[6552].usable = false");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 17, true);
+  expect(mark(addon, "target").object, "Shield Bash's after the shield goes on").toBe("tag72");
+});
+
 it("the interrupt mark asks C_SpellBook what you know, so it shows without the game's deprecation fallbacks", () => {
   // As Forever with loadDeprecationFallbacks off: no IsPlayerSpell global, C_SpellBook.IsSpellKnown still there.
   const addon = loggedIn(CAST_ENV + MARK_ENV + "IsPlayerSpell = nil");

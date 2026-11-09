@@ -2156,3 +2156,13 @@ it("a page thrown away and rebuilt leaves no frames for the theme's repaint to w
   for (let i = 0; i < 3; i++) addon.eval('ns.Options.RebuildPage("modules")');
   expect(touched(), "three rebuilds repaint no more text than the page did").toBe(first);
 });
+it("T.Forget drops a frame's check box, arrow and divider parts from the theme's repaint walks", () => {
+  const addon = loggedIn();
+  const parts = addon.eval(`local T = ns.Theme local f = CreateFrame("Frame", nil, UIParent)
+    local c, a = CreateFrame("CheckButton", nil, f), CreateFrame("Button", nil, f)
+    local d = f:CreateTexture(nil, "ARTWORK") T.CheckBox(c) T.ArrowButton(a, "down") T.Divider(d)
+    local before = { T.CheckParts(c) ~= nil, T.ArrowParts(a) ~= nil, T.DividerParts(d) ~= nil }
+    T.Forget(f) T.Forget(d)
+    return { before[1], before[2], before[3], T.CheckParts(c) == nil, T.ArrowParts(a) == nil, T.DividerParts(d) == nil }`);
+  expect(parts, "built, then forgotten").toEqual([true, true, true, true, true, true]);
+});

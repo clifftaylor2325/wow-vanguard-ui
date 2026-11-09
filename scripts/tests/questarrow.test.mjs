@@ -269,6 +269,14 @@ it("quest arrow: a restored hold is kept while the quest log is still empty at l
   expect(addon.eval("return ns.QuestGuide.pointed")).toBe(90062);
 });
 
+it("quest arrow: once the log has updated, a pin on the last quest is dropped when it is turned in and the log is empty", () => {
+  const addon = loggedIn(ARROW_ENV);
+  addon.eval("ns.QuestGuide.Point(90062) __wfgWorld.quests = {}");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.advance(1);
+  expect(addon.eval("return { ns.QuestGuide.pointed == nil, VanguardCharDB.questPin == nil }")).toEqual([true, true]);
+});
+
 it("quest arrow: a pin whose quest left the log is let go, so a quest the game tracks later is not held", () => {
   const addon = loggedIn(ARROW_ENV + SUPER_ENV);
   addon.eval("ns.QuestGuide.Point(90062) table.remove(__wfgWorld.quests, 2) __tracked = 0 ns.QuestArrow.Pick()");
