@@ -30,9 +30,9 @@ local function chatTextRows()
   return {
     { "cycle", L["Chat text size (follows Text size)"], CH.SIZES, chatLive("textSize", "Refresh") },
     { "cycle", L["Chat text fades"], CH.LINE_FADES, chatLive("lineFade", "ApplyFades") },
-    check(L["Keep chat tabs visible (the game fades them until the mouse comes near)"], chatLive("tabsVisible", "ApplyTabAlpha")),
-    check(L["Hide the tab bar until the mouse is over the chat"], chatLive("barHover", "ApplyBarHover")),
-    check(L["Text-only bubbles: no panel behind the words over heads (reload)"], reloadSetting("ChatBubbles", "textOnly")),
+    check(L["Keep chat tabs visible"], chatLive("tabsVisible", "ApplyTabAlpha")),
+    check(L["Hide the tab bar until hovered"], chatLive("barHover", "ApplyBarHover")),
+    check(L["Text-only bubbles (reload)"], reloadSetting("ChatBubbles", "textOnly")),
   }
 end
 
@@ -65,8 +65,8 @@ local function chatRows()
   local rows = { { "header", L["Chat extras"] }, check(L["Clickable web links in chat"], setting("ChatExtras", "links")) }
   append(rows, copyFindRows(CX))
   return append(rows, {
-    check(L["Short channel names: [2. Trade] shows as [2]"], setting("ChatExtras", "shortChannels")),
-    check(L["Ctrl + mouse wheel jumps to the top or bottom of chat"], setting("ChatExtras", "ctrlScroll")),
+    check(L["Short channel names"], setting("ChatExtras", "shortChannels")),
+    check(L["Ctrl + wheel jumps to top or bottom"], setting("ChatExtras", "ctrlScroll")),
     { "cycle", L["Chat timestamps (the game's setting)"], CX.TimestampChoices(), CX.CVarSetting("showTimestamps", timestampChoice) },
     { "cycle", L["Class-colored names in chat (the game's setting)"], CLASS_NAMES, CX.CVarSetting("chatClassColorOverride", classNameChoice) },
   })
@@ -79,7 +79,7 @@ local function chatWatchSwitches(CW)
     check(L["Say"], CW.ChannelSetting("say")), check(L["Yell"], CW.ChannelSetting("yell")), check(L["Guild"], CW.ChannelSetting("guild")),
     check(L["Party and raid"], CW.ChannelSetting("party", "raid")), check(L["Whispers"], CW.ChannelSetting("whisper")),
     check(L["Sound"], setting("ChatWatch", "sound")), check(L["Toast"], setting("ChatWatch", "toast")),
-    check(L["Auction price of a linked item on the toast"], setting("ChatWatch", "prices")),
+    check(L["Auction price on the toast"], setting("ChatWatch", "prices")),
   }
 end
 
@@ -132,11 +132,8 @@ local function chatFilterRows()
   return append(append(rows, chatFilterStatusRows(CF)), chatFilterWordRows(CF))
 end
 
--- Chat windows: the game's lock, the movers for floating windows, then a width and a height for the main window and each floating window showing.
-local function chatWindowsRows()
-  local CW = ns.GetModule("ChatWindows")
-  local rows = { { "header", L["Chat windows"] }, { "text", L["Size each chat window here instead of dragging its corner. Lock stops the game's drag."] },
-    check(L["Lock chat windows"], CW.LockSetting()), check(L["Move floating windows with /vg unlock (reload)"], reloadSetting("ChatWindows", "movers")) }
+-- A width and a height slider for the main chat window and each floating window showing, added to rows.
+local function chatSizeRows(CW, rows)
   for _, w in ipairs(CW.Sized()) do
     local wGet, wSet = CW.WidthSetting(w.frame)
     local hGet, hSet = CW.HeightSetting(w.frame)
@@ -144,6 +141,16 @@ local function chatWindowsRows()
     append(rows, { { "slider", ns.Format(L["{window}: width"], window), CW.WIDTH, wGet, wSet }, { "slider", ns.Format(L["{window}: height"], window), CW.HEIGHT, hGet, hSet } })
   end
   return rows
+end
+
+-- Chat windows: the game's lock, the movers for floating windows and the Move frames button, then a width and a height
+-- for the main window and each floating window showing.
+local function chatWindowsRows()
+  local CW = ns.GetModule("ChatWindows")
+  local rows = { { "header", L["Chat windows"] }, { "text", L["Size each chat window here instead of dragging its corner. Lock stops the game's drag."] },
+    check(L["Lock chat windows"], CW.LockSetting()), check(L["Movers for floating windows (reload)"], reloadSetting("ChatWindows", "movers")),
+    O.MoveFramesRow() }
+  return chatSizeRows(CW, rows)
 end
 
 -- Chat tabs: pick a tab, make, rename or close one, and choose what it shows.

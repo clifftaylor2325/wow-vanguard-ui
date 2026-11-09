@@ -110,7 +110,7 @@ it("chat bubbles: the module off leaves them the game's; a client without C_Chat
 
 it("chat bubbles: the Text-only switch applies on reload: ticking or unticking it asks for the reload that redresses the bubbles the engine reuses", () => {
   const addon = loggedIn(CLICK_LUA);
-  const row = "Text-only bubbles: no panel behind the words over heads";
+  const row = "Text-only bubbles";
   addon.eval('ns.Options.Show("chat")');
   expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "no reload asked for yet").toBe(false);
   expect(addon.eval(`return __click("${row}") and ns.GetModule("ChatBubbles").settings.textOnly`), "ticked and saved").toBe(true);

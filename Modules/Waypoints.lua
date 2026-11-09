@@ -421,7 +421,7 @@ end
 -- The waypoint card on the Map page.
 function WP.Rows()
   local rows = { { "header", L["Waypoints"] }, { "text", L["Shift-click the pin on the map to share it."] },
-    { "check", L["Point the arrow at a waypoint you Ctrl-click on the map"], followSetting() },
+    { "check", L["Arrow to a Ctrl-clicked waypoint"], followSetting() },
     { "button", L["Clear waypoint"], WP.Clear }, { "header", L["Recent waypoints"] } }
   for _, row in ipairs(recentRows()) do rows[#rows + 1] = row end
   addOpenMapRows(rows)

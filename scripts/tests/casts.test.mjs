@@ -446,15 +446,15 @@ it("a client that cannot make cooldown frames gets no ring, and no error when th
 it("the cursor ring's switch under Unit frames turns it on and off at once", () => {
   const addon = loggedIn(CAST_ENV + RING_ENV + CLICK_LUA);
   addon.eval('ns.Options.Show("unitframes")');
-  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  addon.eval('__click("Cast ring at the cursor")');
   expect([addon.eval("return VanguardDB.profiles.Default.CastBars.ring"), ring(addon).shown, ring(addon).gcd.object, addon.eval("return ns.ticker.vgJobs['cursor ring'] ~= nil")], "on: shown, sweeping, following").toEqual([true, true, "gcd", true]);
-  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  addon.eval('__click("Cast ring at the cursor")');
   addon.eval("Vanguard_CursorRing.gcd:Clear()");
   addon.fire("SPELL_UPDATE_COOLDOWN");
   addon.eval('__casts.player = { kind = "cast", start = 1000, finish = 3000 }');
   addon.fire("UNIT_SPELLCAST_START", "player");
   expect([ring(addon).shown, ring(addon).gcd.object, ring(addon).cast.object, addon.eval("return ns.ticker.vgJobs['cursor ring']")], "off: hidden, not following, deaf to events").toEqual([false, null, null, null]);
-  addon.eval('__click("Ring at the cursor: the global cooldown and your cast")');
+  addon.eval('__click("Cast ring at the cursor")');
   expect([ring(addon).shown, ring(addon).cast.object, addon.eval("return #ns.errors")], "on again, with the cast in progress, using the same ring").toEqual([true, "cast", 0]);
 });
 
@@ -603,9 +603,9 @@ it("the interrupt mark's switch under Unit frames applies at once", () => {
   addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
   addon.fire("UNIT_SPELLCAST_START", "target");
   expect(mark(addon, "target").shown, "on by default").toBe(true);
-  addon.eval('ns.Options.Show("unitframes") __click("Interrupt mark beside the target and focus cast bars")');
+  addon.eval('ns.Options.Show("unitframes") __click("Interrupt mark on cast bars")');
   expect([addon.eval("return VanguardDB.profiles.Default.CastBars.interruptMark"), mark(addon, "target").shown], "unticked: gone from the cast on screen").toEqual([false, false]);
-  addon.eval('__click("Interrupt mark beside the target and focus cast bars")');
+  addon.eval('__click("Interrupt mark on cast bars")');
   expect(mark(addon, "target").shown, "ticked: back").toBe(true);
 });
 

@@ -2,9 +2,11 @@
 
 What changed for players in each release, newest first. In game, the same notes are the What's new window (`/vg whatsnew`), written in `Core/WhatsNewNotes.lua`; the website's release notes are written from this file's sections. Items marked *(off)* start switched off.
 
-Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded in [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
+Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
 ## 0.9.3
+
+<!-- SMOKE steps 33.344 to 33.389 -->
 
 Fixes across the bars, the game's windows, quests, chat and profiles. Nothing new to set up.
 
@@ -53,6 +55,8 @@ Fixes across the bars, the game's windows, quests, chat and profiles. Nothing ne
 
 ## 0.9.2
 
+<!-- SMOKE step 33.342 -->
+
 A hotfix for 0.9.1.
 
 ### Nameplates (0.9.2)
@@ -60,6 +64,8 @@ A hotfix for 0.9.1.
 - Nameplates no longer fill the error list with an "aura icon pixels" error, about four times a second, in a dungeon or anywhere the game keeps some plates for itself (friendly plates in an instance). Vanguard leaves the aura icons on those plates alone, and an icon it can't place is reported once.
 
 ## 0.9.1
+
+<!-- SMOKE steps 33.317 to 33.335 -->
 
 ### Gear upgrades (0.9.1)
 

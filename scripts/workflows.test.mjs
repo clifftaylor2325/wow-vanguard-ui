@@ -73,12 +73,12 @@ it("the seed step comes before the coverage run", () => {
   expect(text.indexOf("- run: npm run coverage")).toBeGreaterThan(seed);
 });
 
-it("the raid bench runs after the coverage run, appends to the job summary, has no budget and keeps its JSON", () => {
+it("the raid bench runs after the coverage run, appends to the job summary, budgets instructions not time, and keeps its JSON", () => {
   const text = workflow("lua-suite.yml");
   const step = stepNamed(text, "Raid benchmark (harness measurement)");
-  expect(runBlocks(step)).toEqual(['npm run bench -- --summary "$GITHUB_STEP_SUMMARY"']);
+  expect(runBlocks(step)).toEqual(['npm run bench -- --summary "$GITHUB_STEP_SUMMARY" --instr-budget scripts/bench-budget.json']);
   expect(text.indexOf("- name: Raid benchmark (harness measurement)")).toBeGreaterThan(text.indexOf("- run: npm run coverage"));
-  expect(step, "a slowdown never fails the run").not.toContain("--budget");
+  expect(step, "a slowdown in time never fails the run").not.toMatch(/--budget /);
   expect(text).toMatch(/^ {12}coverage\/bench\/\*\.json$/m);
 });
 
@@ -551,4 +551,15 @@ it("the markdownlint settings keep the defaults on and say why each rule is off"
 it("the pull request template has the sections CLAUDE.md asks a pull request for", () => {
   const headings = repoText(".github/PULL_REQUEST_TEMPLATE.md").split("\n").filter((l) => l.startsWith("## "));
   expect(headings).toEqual(["## Tasks", "## Tests added", "## Skipped", "## Needs in-game check"]);
+});
+
+it("lua-suite runs coverage only when asked, the plain suite otherwise; full-suite turns it off for pull requests", () => {
+  const text = workflow("lua-suite.yml");
+  expect(text).toMatch(/^ {6}coverage:\n(?: {8}.*\n)* {8}type: boolean\n {8}default: true$/m);
+  expect(text).toContain("- run: npm run coverage\n        if: inputs.coverage\n      - run: npm test\n        if: ${{ !inputs.coverage }}\n");
+  expect(workflow("full-suite.yml")).toContain("coverage: ${{ github.event_name != 'pull_request' }}");
+});
+
+it("the UI preview job can fail without failing the run", () => {
+  expect(workflow("lua-suite.yml").split(/^ {2}preview:$/m)[1]).toMatch(/^ {4}continue-on-error: true$/m);
 });

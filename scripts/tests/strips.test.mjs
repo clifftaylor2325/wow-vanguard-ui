@@ -27,7 +27,7 @@ it("the info strip: your DPS in the last fight, from the game's damage meter", (
   expect(block(addon, "dps").shown, "off until you turn it on").toBe(false);
   addon.slash("");
   addon.eval('ns.Options.Show("map")');
-  addon.eval(`__click("Your DPS in the last fight (from the game's damage meter)")`);
+  addon.eval(`__click("Your DPS in the last fight")`);
   expect([block(addon, "dps").text, addon.eval("return __asked"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "your line's figure, the current fight's DPS, on a row of its own (the rows close up, so one more than before)").toEqual(["1.2K dps", [1, 1], before + 18]);
   setCombat(addon, true);
   addon.eval("__dps.combatSources[2].amountPerSecond = 2500");
@@ -53,7 +53,7 @@ it("the info strip: your place in the last fight's DPS, in a group", () => {
   expect(block(addon, "rank").shown, "off until you turn it on").toBe(false);
   addon.slash("");
   addon.eval('ns.Options.Show("map")');
-  addon.eval(`__click("Your place in the last fight's DPS")`);
+  addon.eval(`__click("Your DPS place in the group")`);
   expect([block(addon, "rank").text, isTok(addon, block(addon, "rank").color, "text2"), addon.eval("return Vanguard_InfoStrip:GetHeight()")], "second of two, on a row of its own (the rows close up, so one more than before)").toEqual(["#2 of 2", true, before + 18]);
   addon.eval("__dps.combatSources = { __dps.combatSources[2], __dps.combatSources[1], { isLocalPlayer = false } }");
   addon.fire("PLAYER_REGEN_ENABLED");
@@ -253,9 +253,9 @@ it("the quest tracker's spot moves down with the info strip's taller rows, after
 it("the Bars and bags page's two tracker switches name the game's tracker, the one they change", () => {
   const addon = loggedIn(UI_ENV);
   const labels = addon.eval(`local out = {}
-    for _, p in ipairs(ns.Options.PAGES) do if p.key == "bars" then for _, r in ipairs(p.rows()) do if type(r[2]) == "string" and r[2]:find("quest tracker") then out[#out + 1] = r[2] end end end end
+    for _, p in ipairs(ns.Options.PAGES) do if p.key == "bars" then for _, r in ipairs(p.rows()) do if type(r[2]) == "string" and r[2]:find("game's tracker") then out[#out + 1] = r[2] end end end end
     return out`);
-  expect(labels, "each switch says it is the game's tracker's").toEqual(["The game's quest tracker under the info strip (reload)", "The game's quest tracker in the Vanguard look (reload)"]);
+  expect(labels, "each switch says it is the game's tracker's").toEqual(["The game's tracker under the info strip (reload)", "The game's tracker in the Vanguard look (reload)"]);
 });
 it("in a fight the info strip's calendar button says the calendar waits, and asks the game for nothing", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + PANEL_OPENERS);
@@ -299,7 +299,7 @@ it("the info strip: ammo, and clients that can't answer", () => {
   expect(["durability", "bags", "system", "gold", "clock"].map((k) => block(bare, k).shown), "no answer, no block").toEqual([false, false, false, false, false]);
 });
 it("the info strip: a warlock's soul shards, across the bags and the reagent bag", () => {
-  const SHARDS = `__units.player.class = "WARLOCK" issecretvalue = function(v) return type(v) == "table" and v.__secret == true end
+  const SHARDS = `__units.player.class = "WARLOCK" issecretvalue = function(v) return __wfgRawType(v) == "table" and rawget(v, "__secret") == true end
     __wfgWorld.bags[1][3] = { itemID = 6265 } __wfgWorld.bags[2][1] = { itemID = 2589, count = 5 }
     __wfgWorld.bags[5], __wfgWorld.bagSizes[5] = { [2] = { itemID = 6265, count = 2 } }, 4
 `;

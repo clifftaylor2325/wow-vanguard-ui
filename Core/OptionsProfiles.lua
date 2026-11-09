@@ -81,9 +81,10 @@ end
 
 -- A profile's name, marked when it is in use, in use until the reload, or the one that takes over then.
 local function profileLabel(name)
-  if name == ns.PendingProfileName() then return ns.Format(L["{profile}  (after reload)"], { profile = name }) end
+  local after = ns.ProfileAfterReload()
+  if name == after then return ns.Format(L["{profile}  (after reload)"], { profile = name }) end
   if name ~= ns.ProfileName() then return name end
-  local mark = ns.PendingProfileName() and L["{profile}  (in use until reload)"] or L["{profile}  (in use)"]
+  local mark = after and L["{profile}  (in use until reload)"] or L["{profile}  (in use)"]
   return ns.Format(mark, { profile = name })
 end
 

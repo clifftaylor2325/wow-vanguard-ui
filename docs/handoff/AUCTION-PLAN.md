@@ -1,5 +1,7 @@
 # Auction helper: gap analysis and the work plan
 
+> **Done.** Every task in this plan is ticked (checked 2026-11-09). It stays here as the record of what was planned and why; new work goes in a new plan.
+
 Date: 2026-10-04. Vanguard at `bfef4e2` (main, after PR #81). Compared with what established auction addons offer on the modern auction house, which is what WoW Forever runs.
 
 ## How this was gathered, and what it rests on

@@ -69,11 +69,11 @@ end
 local function actionBarRows()
   return {
     { "header", L["Action bars"] },
-    check(L["Lock buttons (Shift-drag to move actions)"], setting("ActionBars", "lockButtons")), check(L["Red when out of range"], liveMethod("ActionBars", "rangeTint", "RepaintIcons")),
+    check(L["Lock buttons"], setting("ActionBars", "lockButtons")), check(L["Red when out of range"], liveMethod("ActionBars", "rangeTint", "RepaintIcons")),
     { "cycle", L["Bar backing"], { { "auto", L["Follow the theme"] }, { "on", L["Always"] }, { "off", L["Never"] } }, backingSetting() },
     check(L["Hide the default bars"], reloadSetting("ActionBars", "hideBlizzard")),
-    check(L["Restyle the pet, stance, possess and extra action buttons (reload)"], skinSpecial()),
-    check(L["Pet and stance bars in their own movable spots (reload)"], reloadSetting("SpecialBars", "place")),
+    check(L["Restyle pet, stance and extra buttons (reload)"], skinSpecial()),
+    check(L["Movable pet and stance bars (reload)"], reloadSetting("SpecialBars", "place")),
     check(L["Vehicle exit button (reload)"], reloadSetting("SpecialBars", "vehicleExit")),
     { "text", L["Empty slots stay hidden until you drag a spell or item onto the bars."] }, { "button", L["Keybind mode"], keybindMode },
   }

@@ -155,8 +155,8 @@ end
 function CE.Rows()
   return {
     { "header", L["Character sheet extras"] },
-    { "check", L["Item level on each gear slot of the character pane"], setting("itemLevel") },
-    { "check", L["Mark worn pieces missing an enchant with a !"], setting("enchant") },
+    { "check", L["Item level on gear slots"], setting("itemLevel") },
+    { "check", L["Mark missing enchants"], setting("enchant") },
     { "button", L["Show my gear summary in chat"], CE.Command },
   }
 end

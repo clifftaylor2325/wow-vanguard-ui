@@ -215,7 +215,8 @@ it("prep: /vg prep want sets the wanted amounts; the options page has the sectio
   addon.slash("prep");
   expect(rows(addon), "the new amount counts").toEqual([["Food & drink", "20 / 30"]]);
   addon.eval('ns.Options.Show("town") ns.Options.ShowTab("Instance prep")');
-  expect(addon.find("^Checklist when you enter a dungeon or raid").text, "the switches").toMatch(/only when something is low/);
+  const tip = addon.eval('for _, p in ipairs(ns.Options.PAGES) do for _, r in ipairs(ns.Options.RowsOf(p)) do if r.english == "Checklist when you enter an instance" then return r.tip end end end');
+  expect([addon.find("^Checklist when you enter an instance") != null, tip], "the switches, the old sentence on hover").toEqual([true, expect.stringMatching(/only when something is low/)]);
   expect(addon.find("^20 s$").text, "Hide after, in seconds").toBe("20 s");
   expect(addon.find("^50%%$").text, "the durability warning, in percent").toBe("50%");
   addon.eval('__click("Checklist on a ready check")');
@@ -397,7 +398,7 @@ it("prep buffs: a retail client lists enchants by inventory slot, so a bare weap
 it("prep buffs: the options page has the switches", () => {
   const addon = character("WARRIOR", 60);
   addon.eval('ns.Options.Show("town")');
-  addon.eval('__click("Buff checks on the card: flask, food, oil or poison, raid buffs")');
+  addon.eval('__click("Buff checks on the card")');
   expect(addon.eval("return ns.Settings('InstancePrep').buffs"), "a switch sets the profile").toBe(true);
   addon.eval('__click("World buffs among them")');
   expect(addon.eval("return ns.Settings('InstancePrep').worldBuffs"), "and the other").toBe(true);

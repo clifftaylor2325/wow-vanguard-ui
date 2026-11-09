@@ -225,6 +225,7 @@ end
 local function record(where, err, level)
   local text = where .. ": " .. errorText(err)
   local e = byText[text] or keep(text, stack(level))
+  e.quiet = false
   if not printed[text] then
     printed[text] = true
     ns.Chat(ns.Format(L["{error}  (once per error; /vg errors has the stack)"], { error = text }))
@@ -240,9 +241,50 @@ function ns.Report(where, err)
   forward(record(where, err, 4))
 end
 
+-- The `where` of the ns.Quiet under way, for its message handler.
+local quietWhere
+
+-- ns.Quiet's message handler: keeps and counts the error with the failing stack (level 3: the
+-- frame that failed), never in chat or the game's handler. An entry only ns.Quiet made is marked
+-- quiet: /vg errors lists it, the badge doesn't count it (a fallback that works as designed).
+local function quietly(err)
+  local text = quietWhere .. ": " .. errorText(err)
+  local e = byText[text]
+  if not e then e = keep(text, stack(3)) e.quiet = true end
+  e.count = e.count + 1
+  return err
+end
+
+-- Puts the outer ns.Quiet's site back; passes xpcall's results through.
+local function quietDone(outer, ...)
+  quietWhere = outer
+  return ...
+end
+
+-- Calls fn(...) like pcall, for a client call that may refuse what it is given (a hidden value,
+-- an option this client lacks): a failure is kept in ns.errors under `where` (/vg errors, the
+-- badge) but never printed, so a call that fails on every aura update can't flood chat.
+---@param where string  the site, as /vg errors shows it
+---@param fn function
+---@param ... any  arguments for fn
+---@return boolean ok, ...  as pcall
+function ns.Quiet(where, fn, ...)
+  local outer = quietWhere
+  quietWhere = where
+  return quietDone(outer, xpcall(fn, quietly, ...))
+end
+
+-- How many kept errors the badge counts: every one but those only ns.Quiet kept.
+---@return integer
+function ns.LoudErrorCount()
+  local n = 0
+  for _, e in ipairs(ns.errors) do n = n + (e.quiet and 0 or 1) end
+  return n
+end
+
 -- Forgets every caught error (/vg errors clear).
 function ns.ClearErrors()
-  ns.errors, byText, printed = {}, {}, {}
+  ns.errors, byText, printed, ns.blocked = {}, {}, {}, {}
   errorsChanged()
 end
 
@@ -270,7 +312,9 @@ end
 -- How long each ns.Try site took (/vg perf slow): where -> { calls, total (ms), longest (ms), slow (calls
 -- over ns.SLOW_MS) }, timed with the game's debugprofilestop (ms, fine-grained). At most ns.MAX_TIMINGS sites
 -- are kept, so sites named from typed text can't grow it without end. ns.timingCount counts them.
-ns.timings, ns.timingCount, ns.SLOW_MS, ns.MAX_TIMINGS = {}, 0, 5, 400
+-- ns.timingOn says whether calls are timed now: from load through login, then only once /vg perf slow
+-- asks (Core/Perf.lua), since two clock reads and a table write on every handler are a cost of their own.
+ns.timings, ns.timingCount, ns.SLOW_MS, ns.MAX_TIMINGS, ns.timingOn = {}, 0, 5, 400, true
 
 -- Notes one call of `where` that took ms milliseconds.
 local function note(where, ms)
@@ -294,7 +338,7 @@ end
 
 -- Calls fn(...) with any error reported under `where` (see ns.Report) and
 -- returns what pcall would: true and fn's results, or false and the error.
--- The time it took is noted under `where` (ns.timings).
+-- The time it took is noted under `where` (ns.timings) while timing is on (ns.timingOn).
 ---@param where string
 ---@param fn function
 ---@param ... any  arguments for fn
@@ -302,9 +346,78 @@ end
 function ns.Try(where, fn, ...)
   local outer, clock = current, debugprofilestop
   current = where
-  local start = type(clock) == "function" and clock() or nil
+  local start = ns.timingOn and type(clock) == "function" and clock() or nil
   return finished(outer, where, start, xpcall(fn, traced, ...))
 end
+
+-- Error budget ---------------------------------------------------------------------------------
+-- A handler that fails on every UNIT_AURA would otherwise fail all fight long behind one chat line.
+-- The calls the client repeats on its own (event and unit event handlers, ticker jobs) run through
+-- ns.TryRepeating: after ns.ERROR_BUDGET failures in a session a handler is paused at its site, skipped
+-- until the player resumes it (the Feedback page, /vg errors resume) or reloads. A site is the pair of
+-- `where` and the function, so one broken handler of an event pauses alone. Plain ns.Try calls (one
+-- helper run over many frames, where one frame failing is expected) are never paused.
+-- ns.paused lists them for /vg errors, the badge and the Feedback page: { where, count }, oldest first.
+
+ns.ERROR_BUDGET, ns.PAUSED = 10, "paused after repeated errors"
+ns.paused = {}
+
+-- A table whose keys (functions) don't keep them alive.
+local function weakKeys()
+  return setmetatable({}, { __mode = "k" })
+end
+
+-- fn -> { [where] = failures this session }, and fn -> { [where] = true } once paused there.
+local failures, pausedAt = weakKeys(), weakKeys()
+
+-- Whether fn is paused at `where`.
+local function isPaused(where, fn)
+  local sites = pausedAt[fn]
+  return sites ~= nil and sites[where] == true
+end
+
+-- Pauses fn at `where` after `count` failures, and says so in chat once (under pcall: a chat
+-- addon that fails must not break the dispatch this runs in).
+local function pause(where, fn, count)
+  pausedAt[fn] = pausedAt[fn] or {}
+  pausedAt[fn][where] = true
+  ns.paused[#ns.paused + 1] = { where = where, count = count }
+  local said = L["{site} failed {count} times and is paused until you reload, or resume it on the Feedback page."]
+  pcall(ns.Chat, ns.Format(said, { site = where, count = count }))
+  errorsChanged()
+end
+
+-- Counts one failure of fn at `where`; at the budget, pauses it there.
+local function countFailure(where, fn)
+  if fn == nil or where == nil then return end
+  local sites = failures[fn] or {}
+  failures[fn], sites[where] = sites, (sites[where] or 0) + 1
+  if sites[where] == ns.ERROR_BUDGET then pause(where, fn, sites[where]) end
+end
+
+-- Runs every paused site again, each with its count started over (a reload does the same).
+function ns.ResumePaused()
+  ns.paused, failures, pausedAt = {}, weakKeys(), weakKeys()
+  errorsChanged()
+end
+
+-- Counts a failed call of fn at `where`; passes ns.Try's results through.
+local function counted(where, fn, ok, ...)
+  if not ok then countFailure(where, fn) end
+  return ok, ...
+end
+
+-- ns.Try for a handler the client calls again and again (an event, a unit event, a ticker job):
+-- failures count toward the error budget, and a paused handler is not called (false, ns.PAUSED).
+---@param where string
+---@param fn function
+---@param ... any  arguments for fn
+---@return boolean ok, ...  as pcall
+function ns.TryRepeating(where, fn, ...)
+  if isPaused(where, fn) then return false, ns.PAUSED end
+  return counted(where, fn, ns.Try(where, fn, ...))
+end
+
 
 -- Wraps a hook, OnClick or timer callback so a failure is reported under
 -- `where` (ns.errors, /vg errors, the game's handler) instead of escaping.
@@ -380,7 +493,7 @@ local function label(event)
   return text
 end
 
--- Each handler runs under ns.Try: a failure is reported (/vg errors, the
+-- Each handler runs under ns.TryRepeating (the error budget): a failure is reported (/vg errors, the
 -- game's handler) and does not stop the others, so one broken module can't
 -- take the rest down at PLAYER_LOGIN.
 frame:SetScript("OnEvent", function(_, event, ...)
@@ -390,7 +503,7 @@ frame:SetScript("OnEvent", function(_, event, ...)
   end
   local where = label(event)
   for _, fn in ipairs(list) do
-    ns.Try(where, fn, event, ...)
+    ns.TryRepeating(where, fn, event, ...)
   end
 end)
 
@@ -437,10 +550,10 @@ end
 -- client only sends the units asked for; a client without that call gets the
 -- plain event, and the other units are dropped here.
 
--- A subscription's OnEvent: its handler under ns.Try, for its own units only.
+-- A subscription's OnEvent: its handler under ns.TryRepeating, for its own units only.
 local function onUnitEvent(sub, event, unit, ...)
   if sub.vgPlain and not sub.vgUnits[unit] then return end
-  ns.Try(label(event), sub.vgHandler, event, unit, ...)
+  ns.TryRepeating(label(event), sub.vgHandler, event, unit, ...)
 end
 
 -- The events this client has, from one name or a list (one it lacks is skipped and noted).
@@ -484,3 +597,35 @@ function ns.OnUnit(events, fn, unit1, unit2, unit3)
   ns.SetUnits(sub, unit1, unit2, unit3)
   return sub
 end
+
+-- Blocked actions --------------------------------------------------------------------------
+-- The game blocks or refuses a protected call from tainted code with ADDON_ACTION_BLOCKED or
+-- ADDON_ACTION_FORBIDDEN, naming the addon and the call. Vanguard's own are kept in ns.blocked
+-- ({ text, count }, one per distinct call, at most ns.MAX_ERRORS, oldest dropped), which /vg errors
+-- lists, so taint met in the field is on record. Nothing is printed: the game shows its own message,
+-- and the module that made the call (key setup, the auction house) says what it means for it.
+
+ns.blocked = {}
+
+-- What /vg errors names each event's entry by.
+local REFUSED = { ADDON_ACTION_BLOCKED = "action blocked", ADDON_ACTION_FORBIDDEN = "action forbidden" }
+
+-- The ns.blocked entry for a text, made (and the oldest dropped past ns.MAX_ERRORS) when new.
+local function blockedEntry(text)
+  for _, e in ipairs(ns.blocked) do
+    if e.text == text then return e end
+  end
+  local e = { text = text, count = 0 }
+  ns.blocked[#ns.blocked + 1] = e
+  if #ns.blocked > ns.MAX_ERRORS then table.remove(ns.blocked, 1) end
+  return e
+end
+
+-- Keeps a blocked or refused call when the addon named is Vanguard (a hidden name or call is never read).
+local function actionRefused(event, addon, call)
+  if ns.IsSecret(addon) or addon ~= ADDON then return end
+  local e = blockedEntry(REFUSED[event] .. ": " .. errorText(call or "?"))
+  e.count = e.count + 1
+end
+ns.On("ADDON_ACTION_BLOCKED", actionRefused)
+ns.On("ADDON_ACTION_FORBIDDEN", actionRefused)

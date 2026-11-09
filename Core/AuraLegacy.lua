@@ -49,8 +49,8 @@ end
 function A.Sweep(cd, unit, aura)
   local getDuration, id = C_UnitAuras and C_UnitAuras.GetAuraDuration, ns.PlainNumber(aura.auraInstanceID)
   if type(getDuration) == "function" and cd.SetCooldownFromDurationObject and id then
-    local ok, duration = pcall(getDuration, unit, id)
-    if ok and duration then return pcall(cd.SetCooldownFromDurationObject, cd, duration) end
+    local ok, duration = ns.Quiet("aura duration", getDuration, unit, id)
+    if ok and duration then return ns.Quiet("aura sweep", cd.SetCooldownFromDurationObject, cd, duration) end
   end
   local exp, dur = ns.PlainNumber(aura.expirationTime), ns.PlainNumber(aura.duration)
   if exp and dur and dur > 0 then cd:SetCooldown(exp - dur, dur) else cd:Clear() end
@@ -210,11 +210,23 @@ local function touches(c, ids)
   return false
 end
 
+-- The client draws aura instance ids anew when a boss fight, a keystone or a PvP match starts (12.1),
+-- so an id a container noted before then may name another aura now. Each start begins a new round, and
+-- a container whose ids are from an earlier round reads again in full on its next update.
+local round = 0
+
+-- Begins a new round of aura ids.
+local function newRound()
+  round = round + 1
+end
+for _, event in ipairs({ "ENCOUNTER_START", "CHALLENGE_MODE_START", "PVP_MATCH_ACTIVE" }) do ns.On(event, newRound) end
+
 -- True when a UNIT_AURA's update info can't change what the container shows:
 -- not a full update, nothing added, and nothing it shows updated or removed.
--- Without update info (an older client, or a unit change) it reads again.
+-- Without update info (an older client, or a unit change), or with ids from
+-- an earlier round, it reads again.
 local function untouched(c, info)
-  if type(info) ~= "table" or info.isFullUpdate or c.anyHidden then return false end
+  if type(info) ~= "table" or info.isFullUpdate or c.anyHidden or c.round ~= round then return false end
   if info.addedAuras and #info.addedAuras > 0 then return false end
   return not touches(c, info.updatedAuraInstanceIDs) and not touches(c, info.removedAuraInstanceIDs)
 end
@@ -225,7 +237,7 @@ end
 function Container:Refresh(info)
   if untouched(self, info) then return end
   clear(seen) clear(shown) clear(self.ids)
-  self.anyHidden = false
+  self.anyHidden, self.round = false, round
   for _, g in ipairs(self.groups) do fill(self, g) end
   if reordered(self) then place(self) end
   clear(auras)

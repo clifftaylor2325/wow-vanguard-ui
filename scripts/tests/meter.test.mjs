@@ -165,7 +165,7 @@ it("the lines setting limits the rows, and the switch and the options apply at o
   setLines(addon, "{ { name = 'A', amountPerSecond = 8 }, { name = 'B', amountPerSecond = 7 }, { name = 'C', amountPerSecond = 6 }, { name = 'D', amountPerSecond = 5 }, { name = 'E', amountPerSecond = 4 }, { name = 'F', amountPerSecond = 3 } }");
   addon.slash("");
   addon.eval('ns.Options.Show("tools")');
-  expect(addon.eval('return __click("Vanguard\'s own damage and healing meter")'), "the switch is on the meter's section").toBe(true);
+  expect(addon.eval('return __click("Vanguard\'s own meter")'), "the switch is on the meter's section").toBe(true);
   expect(addon.frame("Vanguard_Meter").visible, "on at once").toBe(true);
   expect(rows(addon).filter((r) => r[0]).length, "every line the fight has, up to eight by default").toBe(6);
   addon.eval("ns.GetModule('Meter').settings.rows = 3 ns.GetModule('Meter').Paint()");

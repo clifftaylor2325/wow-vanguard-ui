@@ -170,13 +170,13 @@ end
 -- True on the WoW Forever client (game type "camelot"): the 12.1 engine with
 -- vanilla content, reporting a 1.x interface number (16001). A build that
 -- reports the 12.x number instead still counts when its project is Forever's
--- (WOW_PROJECT_CAMELOT, 18) or it has the Forever ruleset call, which Retail lacks.
+-- (WOW_PROJECT_CAMELOT, 18). Never by whether a call exists: a Retail build
+-- may gain any of Forever's calls.
 ---@return boolean
 function ns.IsForever()
   local iface = type(GetBuildInfo) == "function" and select(4, GetBuildInfo())
   if type(iface) == "number" and iface >= 16000 and iface < 20000 then return true end
-  if WOW_PROJECT_CAMELOT ~= nil and WOW_PROJECT_ID == WOW_PROJECT_CAMELOT then return true end
-  return type(C_GameRules) == "table" and type(C_GameRules.GetForeverExperiencePreset) == "function"
+  return WOW_PROJECT_CAMELOT ~= nil and WOW_PROJECT_ID == WOW_PROJECT_CAMELOT
 end
 
 -- True while the client hides aura values from addons (instanced combat).
@@ -296,4 +296,16 @@ function ns.Soon(key, fn)
   local waiting = soon[key] ~= nil
   soon[key] = fn
   if not waiting then C_Timer.After(0, function() runSoon(key) end) end
+end
+
+-- Runs step() once a frame, from the next one, while it returns true: work too big for one frame (frames
+-- built ahead at login) spread over the frames after it. A fight pauses it (no container or secure frame
+-- can be made then) until the fight ends. Asked again while it runs, it still runs one step a frame.
+---@param key string
+---@param step fun(): boolean  does one frame's share; true while more is left
+function ns.Spread(key, step)
+  ns.Soon(key, function()
+    if ns.InCombat() then return ns.OutOfCombat(function() ns.Spread(key, step) end, key) end
+    if step() then ns.Spread(key, step) end
+  end)
 end

@@ -191,11 +191,9 @@ end
 function MC.OfferSale(find)
   local rows = find()
   if #rows == 0 then return false end
-  ns.Ask(MC.SellQuestion(rows), L["Sell"], function()
-    if not trading() then return ns.Chat(L["Nothing sold: the merchant is closed."]) end
-    MC.SellRows(stillShown(rows), MC.RETRIES)
-    ns.Chat(soldLine(rows))
-  end, nil, "danger")
+  ns.Irreversible({ question = MC.SellQuestion(rows), yes = L["Sell"], still = trading,
+    gone = function() ns.Chat(L["Nothing sold: the merchant is closed."]) end,
+    act = function() MC.SellRows(stillShown(rows), MC.RETRIES) ns.Chat(soldLine(rows)) end })
   return true
 end
 
@@ -378,12 +376,16 @@ function MC.StackPacks(index)
   return math.min(per, MC.MaxPacks(index))
 end
 
--- The answer to a Buy question: buys the packs when the merchant is still open and still sells, at index,
--- the item asked about (id) at the same pack price; a question left open past its merchant buys nothing.
-local function buyAsked(index, packs, id, price)
-  local same = trading() and MC.Sells(index, id) and wares(index) == price
-  if not same then return ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end
-  MC.Buy(index, packs)
+-- Asks before buying packs (an irreversible move); Yes buys them when the merchant is still open and still
+-- sells, at index, the item asked about (id) at the same pack price; a question left open past its merchant buys nothing.
+local function askToBuy(index, packs, id, price)
+  local count = packs * select(2, wares(index))
+  ns.Irreversible({
+    question = ns.Format(L["Buy {count} × {item} for {money}?"], { count = count, item = itemName(id or 0), money = money(packs * price) }),
+    yes = L["Buy"], act = function() MC.Buy(index, packs) end,
+    still = function() return trading() and MC.Sells(index, id) and wares(index) == price end,
+    gone = function() ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end,
+  })
 end
 
 -- True when the game's own quantity window would ask before this buy: a pack of 150g or more that the
@@ -394,15 +396,15 @@ function MC.AsksFirst(index)
   return price ~= nil and price >= MC.HIGH_PRICE and not ns.IsSecret(refundable) and refundable == false
 end
 
--- Buys packs after a question when it is more than one merchant stack, or a pack the game itself would ask
--- about (see MC.AsksFirst); hides the quantity window.
+-- Buys packs after a question (an irreversible move: refused in a fight, read again on Yes) when it is more
+-- than one merchant stack, or a pack the game itself would ask about (see MC.AsksFirst); hides the quantity window.
 function MC.Order(index, packs, frame)
   if packs <= 0 then return end
-  local price, quantity = wares(index)
+  local price = wares(index)
   local id = MC.ItemID(ask("GetMerchantItemLink", index))
   if frame and frame.Hide then frame:Hide() end
   if packs <= MC.StackPacks(index) and not MC.AsksFirst(index) then return MC.Buy(index, packs) end
-  ns.Ask(ns.Format(L["Buy {count} × {item} for {money}?"], { count = packs * quantity, item = itemName(id or 0), money = money(packs * price) }), L["Buy"], function() buyAsked(index, packs, id, price) end)
+  askToBuy(index, packs, id, price)
 end
 
 -- The quantity window ----------------------------------------------------------------------------
@@ -415,11 +417,21 @@ function MC.SplitIndex(frame)
   if type(name) == "string" and name:match("^MerchantItem%d+ItemButton$") then return ns.PlainNumber(owner:GetID()) end
 end
 
--- Writes what Max would buy under the quantity window's amount.
+-- What a buy of nothing says, by the limit that stopped it (see zeroReason).
+MC.ZERO_REASON = { gold = L["Can't afford one"], stock = L["Sold out"], room = L["No room in your bags"] }
+
+-- The first limit at zero for merchant item index, in the order a player checks them: gold, stock, bag room.
+local function zeroReason(index)
+  local price, _, left = wares(index)
+  if price and math.floor((ns.PlainNumber(GetMoney()) or 0) / price) == 0 then return "gold" end
+  return left == 0 and "stock" or "room"
+end
+
+-- Writes what Max would buy under the quantity window's amount, or which limit stops a buy.
 local function costLine(entry, index)
   local packs = MC.MaxPacks(index)
   local price, quantity = wares(index)
-  entry.line:SetText(packs > 0 and ns.Format(L["Max {count} for {money}"], { count = packs * quantity, money = money(packs * price) }) or L["Can't afford one"])
+  entry.line:SetText(packs > 0 and ns.Format(L["Max {count} for {money}"], { count = packs * quantity, money = money(packs * price) }) or MC.ZERO_REASON[zeroReason(index)])
 end
 
 -- The drawer that holds Stack, Max and the cost line, hung under the quantity window: a panel, so they read as
@@ -448,7 +460,9 @@ end
 local function press(entry, frame, packsOf)
   local same = MC.SplitIndex(frame) == entry.index and MC.Sells(entry.index, entry.id) and wares(entry.index) == entry.price
   if not same then return ns.Chat(L["Nothing bought: the merchant closed or changed what it sells."]) end
-  MC.Order(entry.index, packsOf(entry.index), frame)
+  local packs = packsOf(entry.index)
+  if packs <= 0 then return ns.Chat(MC.ZERO_REASON[zeroReason(entry.index)]) end
+  MC.Order(entry.index, packs, frame)
 end
 
 -- The window's drawer with its Stack and Max buttons and the cost line, made once.

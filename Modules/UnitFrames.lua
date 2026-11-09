@@ -769,6 +769,18 @@ end
 -- their corners while it is on (Cliff, 2026-10-19: no cut corners on the deck), their bars with them.
 UF.DECK = { crest = 28, pad = 6, text = "title" }
 
+-- How far the rows the player frame carries stand past its top and bottom edges (combo points, totems,
+-- the druid's mana bar, the status chip); the deck's panel reaches that much further so none lies on its
+-- border. A row raises it once, when built, and it stays (moving the panel on every shapeshift would lag in a fight).
+UF.DeckReach = { top = 0, bottom = 0 }
+
+-- Raises the deck's reach on a side ("top" or "bottom") to at least extent and refits a live panel.
+function UF.RaiseDeckReach(side, extent)
+  if extent <= UF.DeckReach[side] then return end
+  UF.DeckReach[side] = extent
+  UF.ApplySizes()
+end
+
 -- Makes the deck's panel from the player frame to the target frame, reaching UF.DECK.pad past them,
 -- with an accent border and the crest centred on its top edge.
 local function deckPanel(player, target)
@@ -806,12 +818,14 @@ function UF.TargetHeight()
   return tonumber(UF.settings.targetHeight) or UF.LAYOUT_BY_KEY.target.h
 end
 
--- Lifts the deck's top edge by however far the target frame stands taller than the player frame, so
--- the panel keeps its UF.DECK.pad above the taller of the two. The deck's other corner stays anchored.
+-- Lifts the deck's top edge by the taller of the target frame's extra height and the rows above the player
+-- frame, and drops its bottom edge by the rows under it, so the panel keeps its UF.DECK.pad clear of all.
 local function fitDeckTop(player)
   if not UF.deck then return end
-  local taller = math.max(0, UF.TargetHeight() - UF.LAYOUT_BY_KEY.player.h)
-  UF.deck:SetPoint("TOPLEFT", player, "TOPLEFT", -UF.DECK.pad, UF.DECK.pad + taller)
+  local pad, reach = UF.DECK.pad, UF.DeckReach
+  local taller = math.max(0, UF.TargetHeight() - UF.LAYOUT_BY_KEY.player.h, reach.top)
+  UF.deck:SetPoint("TOPLEFT", player, "TOPLEFT", -pad, pad + taller)
+  UF.deck:SetPoint("BOTTOMRIGHT", UF.frames.target, "BOTTOMRIGHT", pad, -(pad + reach.bottom))
 end
 
 -- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button) and the deck with it.
