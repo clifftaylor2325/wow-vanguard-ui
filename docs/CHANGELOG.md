@@ -4,6 +4,87 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
+## 0.9.4
+
+<!-- SMOKE steps 33.390 to 33.470 -->
+
+A guided setup, one Quiet the game area, a quicker login, and fixes across saved settings, chat, mail, the auction house and group play.
+
+### Setup and options (0.9.4)
+
+- Setup walks you through Vanguard's recommended settings. After Layout, Screen and Look come four guided steps, **Comfort**, **Game settings**, **Helpers** and **Combat**, with the rows Vanguard recommends for your role marked; then Move things and **All set**, which lists what the run changed and has **Undo setup** to put your settings and the game's back. A first run starts Vanguard's own rows on the recommended value. A run again (`/vg setup`, or Run setup on the General page) starts every row on what you have now, with **Use recommended** on each step, so Next through to Done changes nothing.
+- Every setup step sits under a painting: the dusk banner, then your faction's scene, then the camp at night.
+- Setup's Done offers no reload when you kept everything, and its screen and layout steps follow the screen and group role you have now each time setup opens.
+- Long setting names are short. The old sentence is the row's tip, and options search still finds a row by it.
+- A card you fold open or closed stays that way for that character, also after a reload.
+- Buttons for what used to be typed: List this session's fights and Recap the last fight in chat (Combat tools), List my sell list in chat and Forget every merchant, which asks first (Town and gear), List the craft queue in chat, Put the newest ranks on my bars, What trainers teach next and List the perk plan in chat. The Chat and Situations pages get Move frames.
+- A setting that is the game's own says so in its name (the camera zoom, enemy nameplates, timestamps, class colours), and Include yourself is labelled as applying in a party.
+
+### Quiet the game (0.9.4)
+
+- Declining duels, guild invites, group invites from strangers and Battle.net friend requests, and releasing at once in battlegrounds, move from Auto-accept to **Quiet the game** (Game windows). Hiding the errors the action bar already shows moves there from Merchant helpers. Auto-accept now only accepts.
+- The choices you had carry over at login, and an older profile string carries them over as it is imported.
+
+### Speed (0.9.4)
+
+- Logging in is quicker: the aura icons for raid tiles and the nameplate frames are made when they are first needed, a few a frame, instead of all at login. A fight pauses the rest, and a player who lands on a tile in a fight gets its icons when the fight ends.
+- Raid frames, nameplates, the group threat panel, the cooldown glow and the meter do less work in a fight.
+- Saved auction prices stop growing: past 12000 items across realms and factions, the realm and faction with the oldest prices is forgotten first, never the one you are on.
+- `/vg perf` also shows the time in boss fights and how many frames ran long. `/vg perf slow` times handlers through login, then only once you ask.
+
+### Safety (0.9.4)
+
+- The notice that your saved settings didn't load no longer comes back at every login when nothing was lost (a realm name spelled two ways made a character look older than it was). When a real one shows and what loaded is right, **Keep these settings** answers it, and chat mentions it only at the first login that finds it.
+- On WoW Forever, nameplates no longer raise an "aura icon pixels" error out in the world.
+- A part of Vanguard that fails ten times in a session is paused instead of repeating the error. `/vg errors` lists paused parts first and the Feedback page gets **Resume paused parts**; `/vg errors resume` and a reload run them again.
+- `/vg errors` also lists the actions the game blocked Vanguard from taking.
+- A game window a patch has reshaped keeps the game's own look instead of raising errors; `/vg errors` and `/vg report` name it once under Left off, and every other window is still skinned.
+- The questions asked before gold, items, mail or an auction leave you (selling, a costly Stack buy, Return all, cancelling an auction) behave alike: none is asked in a fight, Enter alone never answers one, a Yes given after a fight began moves nothing, and what the question named is read again before anything moves. A buy also checks that the merchant still sells the item at the same price.
+- Dragging an action off a bar button or dropping one onto it does nothing in a fight, and neither does placing a newly learned spell; both work again once the fight ends.
+- When the game's enemy nameplates are off, Vanguard asks once per character whether to turn them on, and changes them only on a yes.
+- Raid tiles and the menu strip finish their set-up after a fight when a fight got in the way, and aura icons are read afresh at a boss pull, a Mythic+ start and a PvP match start.
+
+### Profiles and saved settings (0.9.4)
+
+- After restoring lost settings and choosing Later on the reload, logout backs up the profile the next login loads, and the backup is taken after the modules' own logout work.
+- After lost settings, only a newer copy of your key setup replaces the account's record, so one character's older copy no longer overwrites another's, also across a reload.
+- A saved bar size, button count or row count that isn't a number of 1 or more is dropped at load instead of breaking every login.
+- A profile brought over from Retail no longer makes WoW Forever's gear upgrades weigh item level.
+- The Profiles page marks the profile the reload really loads when a talent group's own profile wins over your pick, follows Stop spec switching, and `/vg spec` for the current talents offers the reload.
+- `/vg graphics undo` keeps its record with this computer, so a profile import or switch no longer loses it, and still finds a record an older Vanguard kept in a profile. Graphics apply sets outline mode only where your graphics card supports it on WoW Forever.
+- Importing a talent plan asks before it replaces a plan that has points.
+- A leftover Keep stocked list from 0.7.1 stays out of exports, imports and copies.
+
+### Chat, quests and mail (0.9.4)
+
+- Close this tab on a tab that shows a channel points you to the tab's own menu (Close Chat Window), which gives the channel back to the main window, also when the channel was added while the close waited for a fight to end.
+- Restored chat: a restored Discord guild line can't be reported with Report Chat, a line printed while the game was still loading stays out of the restored block, and Find in chat lists a restored line once.
+- The quest dialog's PvP and cost question goes away when the quest closes.
+- A quest held on the arrow with Shift-click stays held through a reload, and chat prints no "Arrow:" line while the arrow is switched off.
+- Mail's Take all stops with "your bags are full" at the first item that has no free bag slot, counting only general bags, so a quiver or a soul bag with room no longer keeps it trying every mail.
+
+### Auction house, merchants and gear (0.9.4)
+
+- Clicking a price alert toast shows the Buy page from any tab.
+- The merchant's Stack and Max line names the limit that stops a buy (gold, stock or bag room), and a press says it in chat.
+- The craft queue and the profession cooldowns work with the Auction helper off.
+- A ledger sale stamped while the computer's clock ran ahead stops counting as this session's, and a bid win's mail joins only a sale it was read after.
+- A shopping entry whose Deals or Upgrades switch is off on this profile gives way to your shopping lists.
+- Gear upgrades compare a one-hand weapon with the weaker hand while you wear a weapon in each, and a WoW Forever shaman in the tank role weighs tank stats.
+- Trainer memory is kept per faction, so a Horde alt's visit no longer fills an Alliance character's level-up lines.
+- Two bag groups whose names differ only in capitals show as one section.
+
+### Frames, bars and windows (0.9.4)
+
+- A big raid's rows and the preview stay on the screen when the raid frames sit near the top.
+- The Versus deck grows to wrap the rows your class adds to the player frame (combo points, totems, a druid's mana bar, the status chip), and the status chip sits clear of the totem and combo-point rows.
+- The interrupt mark follows the interrupt you can use in your stance.
+- Click casting's "Also on your unit frames" leaves the boss frames out, so a click there still targets the boss.
+- A WoW Forever paladin's buff watch counts Blessing of Sanctuary.
+- The meter's Deaths report says when each death happened, not an amount, and the Fights page says that a reload also forgets the fights.
+- The info strip's Clock switch applies at the next reload, since the game puts its own minimap clock away only at login.
+- WoW Forever's battleground scoreboard gets the themed close button and map name, an Enchanting recipe's item slot is themed, and the character pane's durability label rounds as the info strip does.
+
 ## 0.9.3
 
 <!-- SMOKE steps 33.344 to 33.389 -->
