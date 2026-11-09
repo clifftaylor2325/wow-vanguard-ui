@@ -462,5 +462,7 @@
     "RegisterPreset",
     "RegisterSkin"
   ],
-  "retired": {}
+  "retired": {
+    "settings:Tooltips.itemID": "renamed to Tooltips.ids in 0.9.5 (one switch for item, spell and aura IDs), migrated in Modules/Tooltips.lua"
+  }
 }
