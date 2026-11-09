@@ -4647,6 +4647,42 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge.
 - If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
 
+### 33.391 Versus deck wraps the class rows (Forever)
+
+- Do: Switch on Versus deck under Unit frames on a druid, shift into cat form with combo points on a target, and on a shaman drop a totem
+- Expect: The deck's border runs clear above the combo points or totem row and below the druid's mana bar; no row lies on the border
+- If it fails, paste: a screenshot of the player frame with the deck on and your class
+
+### 33.392 Scoreboard close button and map name are themed (Forever)
+
+- Do: In a battleground open the scoreboard with H and look at its top corner and heading
+- Expect: The close button is Vanguard's flat close cross (not the game's red and gold one), and the map name above the table is in the theme font and light text colour, not gold
+- If it fails, paste: a screenshot of the scoreboard and the output of `/vg errors`
+
+### 33.393 Match results on Forever carry only what the game draws (Forever)
+
+- Do: Finish a Warsong Gulch match and look at the end-of-match results window beside the page text in the smoke steps for the scoreboard and results (14.9.2), which still lists Queue again, the Rewards and Progress headings, the matchmaking line and reward tiles
+- Expect: The results show a flat Leave button and a themed title (Victory or Defeat); there is no Queue again button, rewards band, matchmaking line or reward tile on Forever, and the 14.9.2 step should say those are Retail only
+- If it fails, paste: a screenshot of the results window
+
+### 33.394 Craft queue with the Auction helper off (Forever)
+
+- Do: Turn the Auction helper off under `/vg` > Modules and reload, switch on Town and gear > Craft queue, open a profession, select a recipe, then run `/vg craft add 2`
+- Expect: chat says "Queued: 2 x <recipe>"; no cost panel shows beside the recipe
+- If it fails, paste: the chat lines and any Lua error text
+
+### 33.395 Price alert toast opens the Buy page (Forever)
+
+- Do: At the auction house, give a shopping list entry "Alert at or under the max price", search it from the Lists tab so the alert toast shows, then click the toast
+- Expect: the window moves to the game's Buy page showing that item's listings
+- If it fails, paste: which tab the window is on after the click, and any Lua error text
+
+### 33.396 Merchant Stack/Max line with full bags (both)
+
+- Do: Fill every bag slot, keep gold to spare, shift-click a merchant item to open the quantity window, then press Max
+- Expect: the line under Stack and Max reads "No room in your bags" (not "Can't afford one"), and pressing Max or Stack prints the same line in chat and buys nothing
+- If it fails, paste: the line's text and the chat lines after the press
+
 ### 33.430 Selling, buying and returning mail: the questions (Forever)
 
 - Do: at a merchant, with gray items in your bags, let the sell question show (or type `/vg sell <a gray item>`), pull a mob or get hit so a fight starts, and press Sell. Then out of combat ask again and press Sell. Shift-click a merchant item worth 150g or more, press Stack, and press Enter at the question. At the mailbox, with mail you can return, press Return all and answer Return.

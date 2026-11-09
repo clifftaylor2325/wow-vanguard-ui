@@ -973,6 +973,15 @@ it("bags: each slot is skinned once, the window on show, a border only when its 
   addon.eval("ContainerFrameCombinedBags:Hide() ContainerFrameCombinedBags:Show()");
   expect(painted(addon), "reopening fades and panels the window again, no slot").toEqual([1, 1, 0]);
 });
+it("H37-8-1: the character pane's durability label rounds as the info strip does (31 of 120 reads 26% in the text colour)", () => {
+  const addon = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV);
+  addon.eval("__dur[1] = { 31, 120 } CharacterFrame:Show()");
+  const head = addon.eval("local l = ns.FrameState('vgDurability')[CharacterHeadSlot] return { l:GetText(), l.__textColor }");
+  expect(head[0], "the slot label rounds to the nearest, not down").toBe("26%");
+  expect(isTok(addon, head[1], "text"), "so it is not yet in the warning colour").toBe(true);
+  expect(addon.eval("for _, w in ipairs(ns.GetModule('InfoStrip').WornSlots()) do if w[1] == 'Head' then return w[2] end end"), "the strip's tooltip agrees").toBe(26);
+});
+
 it("character pane durability, the mail's Open All button", () => {
   const addon = loggedIn(UNITS_ENV + UI_ENV + STRIP_ENV + GEAR_ENV);
   // A gear slot's durability label: shown, text and color.

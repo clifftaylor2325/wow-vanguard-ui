@@ -19,6 +19,8 @@ local UF = ns.GetModule("UnitFrames")
 local CB = ns.Module("ClassBars", { defaults = { totems = true, druidMana = true, size = 22, manaHeight = 6 } })
 
 CB.SLOTS = 4
+-- The distance between the player frame's edge and the totem row above it or the mana bar under it.
+CB.ROW_OFFSET = 3
 -- The classes whose mana goes under the frame while their power bar shows another power, by client.
 CB.MANA_CLASSES = ns.ClientData({ forever = { DRUID = true }, retail = { DRUID = true, PRIEST = true, SHAMAN = true } })
 -- The mana power type (Enum.PowerType.Mana).
@@ -47,7 +49,8 @@ end
 local function buildTotems(player, size)
   CB.totems = CreateFrame("Frame", nil, player)
   CB.totems:SetSize(CB.SLOTS * (size + 3), size)
-  CB.totems:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 0, 3)
+  CB.totems:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 0, CB.ROW_OFFSET)
+  UF.RaiseDeckReach("top", CB.ROW_OFFSET + size)
   CB.cells = {}
   for slot = 1, CB.SLOTS do CB.cells[slot] = totemCell(CB.totems, slot, size) end
   CB.UpdateTotems()
@@ -119,9 +122,10 @@ end
 -- The thin mana bar just under the player frame, in the mana color.
 local function buildMana(player, height)
   CB.manaHolder = T.HudPanel(CreateFrame("Frame", nil, player), { inset = true })
-  CB.manaHolder:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -3)
-  CB.manaHolder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -3)
+  CB.manaHolder:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -CB.ROW_OFFSET)
+  CB.manaHolder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -CB.ROW_OFFSET)
   CB.manaHolder:SetHeight(height)
+  UF.RaiseDeckReach("bottom", CB.ROW_OFFSET + height)
   local px = T.Pixel(CB.manaHolder)
   CB.mana = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, CB.manaHolder)), "mana")
   CB.mana:SetPoint("TOPLEFT", px, -px); CB.mana:SetPoint("BOTTOMRIGHT", -px, px)

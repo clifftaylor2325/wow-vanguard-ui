@@ -22,10 +22,14 @@ local function find(name)
   end
 end
 
--- The sections of your categories, as BG.SECTIONS lists the built-in ones.
+-- The sections of your categories, as BG.SECTIONS lists the built-in ones. Names that fold to one key
+-- (groups saved before names were compared case-folded) give one section, the first, as CategoryOf does.
 function BG.CategorySections()
-  local out = {}
-  for _, cat in ipairs(list()) do out[#out + 1] = { key = KEY .. ns.Lower(cat.name), label = cat.name } end
+  local out, seen = {}, {}
+  for _, cat in ipairs(list()) do
+    local key = KEY .. ns.Lower(cat.name)
+    if not seen[key] then out[#out + 1], seen[key] = { key = key, label = cat.name }, true end
+  end
   return out
 end
 

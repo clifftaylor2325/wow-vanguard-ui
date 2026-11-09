@@ -207,6 +207,16 @@ it("upgrades: the switch under Auction house, the Gear upgrades module off, and 
   expect([card(bare)[1], addon.eval("return #ns.errors"), chatHas(bare, /Auction house scanned: 11 listings/)], "no links to judge by: the scan still records prices").toEqual([0, 0, true]);
 });
 
+it("upgrades: a login with the entry left shown by another character, its switch off here, opens on the list source", () => {
+  const addon = loggedIn("");
+  addon.eval(`local AH = ${HELPER} AH.settings.upgrades = false VanguardDB.ah.list = AH.UPGRADES
+    VanguardDB.ah.lists.Mats = { "Strange Dust" }`);
+  addon.world.openAuctionHouse();
+  addon.update(0);
+  expect(addon.eval(`local AH = ${HELPER}
+    return { AH.shopCard.title:GetText(), AH.shopCard.add:IsShown(), AH.Source() == AH.Sources.list }`)).toEqual(["Shopping", true, true]);
+});
+
 it("Z1-2 the pane's Upgrades count is counted without sorting, and still equals the rows the list shows", () => {
   const addon = warrior();
   scan(addon, SCAN);

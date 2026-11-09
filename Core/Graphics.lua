@@ -255,11 +255,25 @@ local function setAll(set, undo, last)
   return ok
 end
 
+-- This computer's own notes (VanguardDB.client, shared by every profile): the settings apply changed
+-- are the game's, which outlive any profile, so their undo record is kept here, not per profile.
+local function clientNotes()
+  return type(VanguardDB) == "table" and VanguardDB.client or {}
+end
+
+-- Moves the record an older version kept in the profile (Graphics.undo) to the notes, unless they hold one.
+local function adoptProfileUndo()
+  local settings, notes = ns.Settings("Graphics"), clientNotes()
+  if type(settings.undo) == "table" and type(notes.graphicsUndo) ~= "table" then notes.graphicsUndo = settings.undo end
+  settings.undo = nil
+end
+
 -- The kept settings: those from an earlier apply not yet undone stay, so undo goes back to before the first.
 local function undoTable()
-  local s = ns.Settings("Graphics")
-  s.undo = type(s.undo) == "table" and s.undo or {}
-  return s.undo
+  adoptProfileUndo()
+  local notes = clientNotes()
+  notes.graphicsUndo = type(notes.graphicsUndo) == "table" and notes.graphicsUndo or {}
+  return notes.graphicsUndo
 end
 
 -- Keeps Vanguard's pixel-perfect scale as it was before the first apply (a screen's sizes turn it off).
@@ -309,11 +323,12 @@ end
 
 -- /vg graphics undo: puts back what the last apply changed, out of combat.
 function G.Undo()
-  local s, set = ns.Settings("Graphics"), setter()
-  if type(s.undo) ~= "table" or not set then return ns.Chat(L["Nothing to undo: /vg graphics apply hasn't changed anything."]) end
+  local notes, set = clientNotes(), setter()
+  adoptProfileUndo()
+  if type(notes.graphicsUndo) ~= "table" or not set then return ns.Chat(L["Nothing to undo: /vg graphics apply hasn't changed anything."]) end
   if ns.InCombat() then return ns.Chat(L["Settings don't change in combat: try /vg graphics undo after the fight."]) end
-  restore(set, s.undo)
-  s.undo = nil
+  restore(set, notes.graphicsUndo)
+  notes.graphicsUndo = nil
   ns.Chat(L["Your graphics settings and UI scale are back as they were. If apply changed Vanguard's sizes, the backup profile it named in chat has the old ones."])
 end
 
