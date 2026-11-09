@@ -141,6 +141,13 @@ it("an aura icon the client has closed to addons is left alone by the plate scal
   expect([addon.eval("return __touches"), kept(addon)], "a forbidden icon: never touched, nothing reported").toEqual([0, [0, 0]]);
 });
 
+it("an aura icon whose button the client has closed is left alone by the plate scale check, its parts answering no", () => {
+  const addon = shrunkPlate();
+  addon.eval("__debuffs.__groups[1].buttons[1].IsForbidden = function() return true end");
+  addon.advance(2);
+  expect([addon.eval("return __touches"), kept(addon)], "a closed button: its icon never touched, nothing reported").toEqual([0, [0, 0]]);
+});
+
 it("a theme refresh leaves the aura icon parts the client has closed alone, forgets them and still tells the listeners", () => {
   const addon = shrunkPlate();
   addon.eval(`local button = __debuffs.__groups[1].buttons[1]
