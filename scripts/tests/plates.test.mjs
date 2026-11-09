@@ -375,19 +375,21 @@ it("the Nameplates page mirrors the game's health number boxes and writes them o
   unwritable.eval("local _, set = ns.GetModule('Nameplates').InfoSetting('CurrentHealthValue') set(true)");
   expect(unwritable.eval('return C_CVar.GetCVarBitfield("nameplateInfoDisplay", 2)'), "a client that can't write the bit is left as it is").toBe(false);
 });
-it("the debuffs and buffs rows offer every count a role preset saves", () => {
+it("the debuffs and buffs sliders reach every count a role preset saves", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
   const missing = addon.eval(`local out = {}
     local want = { [ns.L["Your debuffs shown"]] = "debuffs", [ns.L["Buffs on players"]] = "buffs" }
     for _, row in ipairs(ns.GetModule("Nameplates").OptionRows()) do
       local key = want[row[2]]
       for role, parts in pairs(key and ns.ROLE_SETTINGS or {}) do
-        local value, found = parts.Nameplates[key], false
-        for _, choice in ipairs(row[3]) do found = found or choice[1] == value end
-        if value ~= nil and not found then out[#out + 1] = role .. " " .. key .. "=" .. value end
+        local value, range = parts.Nameplates[key], row[3]
+        local reached = value == nil or (value >= range.min and value <= range.max and (value - range.min) % range.step == 0)
+        if not reached then out[#out + 1] = role .. " " .. key .. "=" .. value end
       end
+      want[row[2] or ""] = nil
     end
+    for _, key in pairs(want) do out[#out + 1] = "no row for " .. key end
     return out`);
-  // The Healer preset (and setup's Healing layout) saves two debuffs: the row must light it.
+  // The Healer preset (and setup's Healing layout) saves two debuffs: the slider must be able to show it.
   expect(Object.values(missing ?? {})).toEqual([]);
 });
