@@ -609,14 +609,26 @@ local function pageHeight(key)
   return (HEIGHTS[key] or ns.SetupGuide.Height)(frame.pages[key])
 end
 
+-- The painting over each step's title, a journey through the shipped art (all 2:1, Media/Art): the welcome banner
+-- while the profile, layout, screen and look are chosen, your faction's AFK scene (T.AFK_SCENES) through the guided
+-- steps, and the camp at night for Move things and All set. A step not listed shows the welcome banner.
+local SCENES = { comfort = "faction", game = "faction", helpers = "faction", combat = "faction", move = "camp", done = "camp" }
+
+-- The picture file a step shows (Core/Banner.lua): the faction's scene, the camp, or nil for the welcome banner.
+local function scene(key)
+  local act = SCENES[key]
+  if act == "faction" then return T.AFK_SCENES[ns.FactionArt.Faction()] end
+  if act == "camp" then return T.AFK_SCENES.none end
+end
+
 -- Sizes the window to the tallest of this run's pages, so no hint or line reaches the buttons however long a
 -- translation runs or however large the text is (it fits again on each step and pick, so after Larger text too).
--- It stays centred, growing up and down alike.
+-- It stays centred, growing up and down alike, and the picture over the title keeps it one height from step to step.
 local function fit()
   local tallest = 0
   for _, key in ipairs(state.order) do tallest = math.max(tallest, pageHeight(key)) end
   local base = TOP + math.ceil(tallest) + FOOT
-  ns.Banner.Show(frame.banner, state.step == 1 and ns.Banner.Height(PAGE_W, ns.Banner.Room(base)) or 0)
+  ns.Banner.Show(frame.banner, ns.Banner.Height(PAGE_W, ns.Banner.Room(base)), scene(state.order[state.step]))
   T.PixelSize(frame, WIDTH, base + frame.banner:GetHeight(), true)
 end
 

@@ -112,6 +112,8 @@ Alternatives: every row always starts on what is set now, with Use recommended o
 
 Docs: `features/options-and-setup.md` First-run setup and Guided steps, `SMOKE-TEST.md` 1.2, 2.2, 33.452, 33.456 and 33.457, `GETTING-STARTED.md`, `COMMANDS.md`. No fade or sound was added. The What's new line is written at the release, as the other notes are.
 
+**Banner art (Cliff, 2026-11-09, "include banner art in the setup experience too").** The welcome banner's strip stays on every step, so the window keeps one height, and the picture is a journey through the art that has shipped (all four paintings are 2:1, so one strip fits them): the dusk banner with the crest and name while the profile, layout, screen and look are chosen, the player's faction's AFK scene (`T.AFK_SCENES`) through the four guided steps, and the camp at night on Move things and All set. No new art; `Core/Banner.lua` takes the scene's file and shows the brand mark only over the welcome banner.
+
 ## 7. Needs in-game check (once built)
 
 The wizard at 1080p and at Larger text in German; that every step fits without scrolling; that Enemy nameplates, camera zoom and class colours apply and that turning them back puts the old values back; Undo setup after a first run; a new character sharing a profile sees Keep everywhere.

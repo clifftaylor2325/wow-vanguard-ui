@@ -1,6 +1,8 @@
--- The welcome banner (art plan M3): Cliff's painted dusk landscape, a strip under the title on setup's first step and
--- on the What's new window, with Vanguard's crest and name over its open sky like the store banner. It is part of its window (it fades and hides with it), so it adds no fade or sound of
--- its own. The picture's file is set the first time a strip shows, so it costs nothing until a window opens.
+-- The welcome banner (art plan M3): Cliff's painted dusk landscape, a strip under the title on setup's steps and
+-- on the What's new window, with Vanguard's crest and name over its open sky like the store banner. Setup's later
+-- steps show the AFK screen's painted scenes in the same strip (Core/Setup.lua). It is part of its window (it fades
+-- and hides with it), so it adds no fade or sound of its own. A picture's file is set the first time a strip shows
+-- it, so it costs nothing until a window opens.
 
 local ADDON, ns = ...
 local T = ns.Theme
@@ -58,11 +60,14 @@ function B.Create(window, width)
   return strip
 end
 
--- Sets the picture's and the crest's files and the name once, when the strip first has room to show.
-local function load(strip)
+-- Sets the picture's file when it changes, and the crest's once, when the strip first has room to show.
+local function load(strip, file)
+  if strip.file ~= file then
+    strip.file = file
+    strip.art:SetTexture(T.MEDIA .. "Art\\" .. file)
+  end
   if strip.loaded then return end
   strip.loaded = true
-  strip.art:SetTexture(T.MEDIA .. "Art\\" .. B.FILE)
   strip.mark.crest:SetTexture(T.MEDIA .. "Art\\" .. T.BANNER_MARK.file)
 end
 
@@ -87,13 +92,16 @@ local function crop(strip, shown)
 end
 
 -- Shows the strip with `height` units of picture (0 hides it), and the gap under it. `height` comes from B.Height.
-function B.Show(strip, height)
+-- `scene` names another 2:1 painting from Media/Art in place of the welcome banner (setup's later steps show the
+-- AFK screen's scenes); the brand mark sits only over the welcome banner's open sky.
+function B.Show(strip, height, scene)
+  local file = scene or B.FILE
   strip.art:SetHeight(math.max(height, B.EMPTY))
   strip.art:SetShown(height > 0)
-  strip.mark:SetShown(height > 0)
+  strip.mark:SetShown(height > 0 and file == B.FILE)
   strip:SetHeight(height > 0 and height + T.SPACE.col or B.EMPTY)
   if height <= 0 then return end
-  load(strip)
+  load(strip, file)
   crop(strip, height)
   sizeMark(strip, height)
 end
