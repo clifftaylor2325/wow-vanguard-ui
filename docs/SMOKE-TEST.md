@@ -1260,6 +1260,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: icons and short key names on bound keys, tooltips with the place ("Bar 2 button 1") and the spell; the tabs follow the held modifier; the list under the keyboard matches the caps; nothing is written (check Key Bindings is unchanged); the tab stays open in combat; no error.
 - If it fails, paste: a screenshot, your keyboard layout, and `/vg errors`.
 
+### 10.4d Your keys: function row, number pad and layout
+
+- Do: open /vg, Action bars, the Your keys tab. Bind a spell to F5 and to a number pad key (for example 7), reopen the tab. Open the dropdown at the right of the tabs and pick QWERTZ, then AZERTY, then Automatic. Hold Shift.
+- Expect: a row of F1 to F12 over the number row and the number pad right of the letters, all inside the card; F5 and the pad key show their icon and name; QWERTZ swaps Y and Z, AZERTY moves A, Z, Q, W and M as on a French keyboard; Automatic matches your client's language; every key still shows what is on it and the Shift tab repaints them; no error.
+- If it fails, paste: a screenshot, your keyboard layout, and `/vg errors`.
+
 ### 10.4b Long keys stay on one line
 
 - Do: bind Page Up, Insert, Caps Lock and Shift+Ctrl+Alt+Delete to four bar 1 buttons in the game's Key Bindings, then look at the buttons at your smallest button size.
