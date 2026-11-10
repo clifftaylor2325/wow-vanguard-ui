@@ -62,7 +62,7 @@ it("raid indicators", () => {
   expect(i.hots.filter === "HELPFUL|PLAYER|RAID_IN_COMBAT" && i.hots.max === 3 && i.hots.icon === "TEST-ONLY-HOT-A" && i.hots.count === "2", "your HoTs, with stacks").toBeTruthy();
   expect(i.hots.pandemic === 1 && i.hots.timer == null, "HoTs light in their refresh window; no timer numbers on raid icons").toBeTruthy();
   expect(i.mouse === false && i.unit === "raid1" && i.rowsShown, "icons let clicks through to the tile, and follow its unit").toBeTruthy();
-  expect(i.dPoint[0] === 2 && i.dPoint[1] === -43 && i.hPoint[0] === 98 && i.hPoint[1] === -43, "debuffs sit bottom left and HoTs bottom right, above the power bar").toBeTruthy();
+  expect(i.dPoint[0] === 2 && i.dPoint[1] === 5 && i.hPoint[0] === -2 && i.hPoint[1] === 5, "debuffs sit bottom left and HoTs bottom right, above the power bar (5 up from the tile's bottom, so a new height moves them)").toBeTruthy();
   expect(addon.eval("return Vanguard_RaidUnitButton3.debuffRow.frame.__shown") === false, "the offline show no auras").toBeTruthy();
   addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid2")');
   expect(addon.eval("return Vanguard_RaidUnitButton1.debuffRow.frame.__unit") === "raid2", "a roster change points the rows at the new unit").toBeTruthy();

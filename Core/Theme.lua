@@ -126,8 +126,8 @@ local TOKENS = {
   cast = "e6a93a", channel = "4fc27a", shielded = "8b9099",
   -- Healing overlays
   heal = { "4fc27a", 0.45 }, shield = { "ffffff", 0.35 },
-  -- Action button tints
-  outOfRange = "e64d4d", noPower = "6680ff", unusable = "666666",
+  -- Action button tints, and the attack flash over a button while auto-attack or Auto Shot runs (the state vermilion)
+  outOfRange = "e64d4d", noPower = "6680ff", unusable = "666666", attackFlash = { "e8663f", 0.45 },
   -- Experience and reputation
   xp = "940090", rested = { "0063e0", 0.5 },
   repHostile = "cc2121", repUnfriendly = "bf4500", repNeutral = "e6b300", repFriendly = "00991a",
@@ -293,6 +293,8 @@ local DEFAULTS = {
   colorAssistGame = true,
   smoothBars = true,
   reduceMotion = false,
+  -- The state cues (T.PlayCue): combat start, proc ring, cooldown ready, low health. Reduce motion turns them off too.
+  motionCues = true,
   sounds = true,
   -- The faction look: "crest" (your faction's crest only), "auto" (the crest and the heading font) or "off".
   faction = "crest",
@@ -3884,6 +3886,108 @@ local SOUNDS = {
 function T.Sound(use)
   local kit = type(SOUNDKIT) == "table" and SOUNDKIT[SOUNDS[use] or ""]
   if T.Settings().sounds and kit and type(PlaySound) == "function" then PlaySound(kit) end
+end
+
+-- State cues --------------------------------------------------------------------------
+
+-- Short alpha cues on Vanguard's own textures (never a secure frame): each is a chain of steps no longer than
+-- T.COMBAT_FADE, so it is the same in a fight. `loop` shapes breathe until stopped.
+do
+local vgCue = ns.FrameState("vgCue")
+local vgRing = ns.FrameState("vgRing")
+
+T.CUE = {
+  edge = { levels = { 0, 1, 0 }, step = 0.1 },
+  flash = { levels = { 0, 0.6, 0 }, step = 0.06 },
+  breath = { levels = { 0.45, 0.7, 1, 0.7, 0.45 }, step = 0.15, loop = true },
+  slow = { levels = { 0.2, 0.3, 0.45, 0.6, 0.75, 0.9, 1, 0.9, 0.75, 0.6, 0.45, 0.3, 0.2 }, step = 0.15, loop = true },
+}
+
+-- Whether cues play: the kit's switch is on and Reduce motion is off.
+function T.CuesOn()
+  local s = T.Settings()
+  return s.motionCues == true and not s.reduceMotion
+end
+
+-- What a cue does when its group ends or loops: a one-shot hides the texture, a loop stops once cues are off.
+local function wireGroup(group, tex, shape)
+  if shape.loop then
+    return group:SetScript("OnLoop", ns.Guard("cue loop", function() if not T.CuesOn() then group:Stop() end end))
+  end
+  group:SetScript("OnFinished", ns.Guard("cue done", function() tex:Hide() end))
+end
+
+-- The alpha group of a shape on a texture: one Alpha animation per step, or false where the client can't animate.
+local function buildGroup(tex, shape)
+  local group = tex.CreateAnimationGroup and tex:CreateAnimationGroup()
+  if not group then return false end
+  group:SetLooping(shape.loop and "REPEAT" or "NONE")
+  for i = 2, #shape.levels do
+    local step = group:CreateAnimation("Alpha")
+    step:SetOrder(i - 1) step:SetDuration(shape.step)
+    step:SetFromAlpha(shape.levels[i - 1]) step:SetToAlpha(shape.levels[i])
+  end
+  wireGroup(group, tex, shape)
+  return group
+end
+
+-- The texture's group for a cue name, made once.
+local function groupFor(tex, name)
+  local made = vgCue[tex] or {}
+  vgCue[tex] = made
+  if made[name] == nil then made[name] = buildGroup(tex, T.CUE[name]) end
+  return made[name]
+end
+
+-- A texture, or a glow ring (a list of textures), as a list.
+local function listOf(parts)
+  return parts.SetShown and { parts } or parts
+end
+
+-- Plays a cue once on a texture or a glow ring, then hides it. Nothing with cues off.
+function T.PlayCue(parts, name)
+  if not T.CuesOn() then return end
+  for _, tex in ipairs(listOf(parts)) do
+    local group = groupFor(tex, name)
+    if group then tex:Show() group:Stop() group:Play() end
+  end
+end
+
+-- Starts (on) or stops a looping cue on a texture or a glow ring; started only with cues on. The caller shows or
+-- hides the ring itself.
+function T.LoopCue(parts, name, on)
+  for _, tex in ipairs(listOf(parts)) do
+    local group = groupFor(tex, name)
+    if group and not on then group:Stop() end
+    if group and on and T.CuesOn() and not group:IsPlaying() then group:Play() end
+  end
+end
+
+-- A hidden glow ring round a frame for one cue, tinted with a theme token (left as it is without one), made once.
+function T.CueRing(frame, name, token, size)
+  local rings = vgRing[frame] or {}
+  vgRing[frame] = rings
+  if not rings[name] then
+    rings[name] = T.Glow(frame, size)
+    for _, tex in ipairs(rings[name]) do if token then T.Tint(tex, token) end end
+  end
+  return rings[name]
+end
+
+-- One flash over a button's cooldown area each time its cooldown widget finishes (the widget's own
+-- OnCooldownDone, hooked, never polled), when allowed(button) says so. Returns the flash texture.
+function T.ReadyFlash(button, cooldown, allowed)
+  local tex = button:CreateTexture(nil, "OVERLAY", nil, 6)
+  tex:SetAllPoints(cooldown)
+  tex:SetTexture(T.WHITE)
+  tex:SetBlendMode("ADD")
+  T.Tint(tex, "accentText")
+  tex:Hide()
+  cooldown:HookScript("OnCooldownDone", ns.Guard("cooldown ready", function()
+    if allowed(button) then T.PlayCue(tex, "flash") end
+  end))
+  return tex
+end
 end
 
 -- Pixel-perfect scale ----------------------------------------------------------------
