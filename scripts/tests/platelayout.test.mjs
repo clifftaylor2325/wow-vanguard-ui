@@ -186,3 +186,76 @@ it("the debuff row sits clear of the name at any theme text size, and the module
   off.eval('__plateSet("Width", 150)');
   expect(off.eval("return { ns.Settings('Nameplates').width, #ns.errors }"), "with the module off the value is saved for later, nothing else").toEqual([150, 0]);
 });
+
+it("name and health text sizes are shares of the theme's sizes, applied at once out of combat, with the debuff row kept clear of the name", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL, saved("healthSize = 500"));
+  // The sizes of the boar's name, level, health percent and health value texts, and how high its debuff row sits.
+  const texts = () => addon.eval(`local f = __plateOf("nameplate1") local function size(fs) return (select(2, fs:GetFont())) end
+    return { size(f.name), size(f.level), size(f.healthPercent), size(f.healthValue), __row("nameplate1", "debuffs").y }`);
+  expect(texts(), "the theme's 11 for the name; a saved share past the slider is kept to its 160%").toEqual([11, 11, 16, 16, 16]);
+  addon.eval('__plateSet("Name text size", 150) __plateSet("Health text size", 120)');
+  expect(texts(), "150% of 11 and 120% of 10, the level with the name, the row lifted clear").toEqual([17, 17, 12, 12, 22]);
+  expect(addon.eval("return __plateOf('nameplate1').soft.__points.BOTTOM.y"), "and the soft-target icon above the row").toBe(42);
+  expect(addon.eval('for _, row in ipairs(ns.GetModule("Nameplates").OptionRows()) do if row[2] == ns.L["Name text size"] then return row[3].format(150) end end'), "the slider reads in percent").toBe("150%");
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  expect(texts(), "the theme's Text size carries through: shares of 14 and 13").toEqual([21, 21, 16, 16, 26]);
+  setCombat(addon, true);
+  addon.eval('__plateSet("Name text size", 100)');
+  expect(texts()[0], "in a fight the texts wait").toBe(21);
+  setCombat(addon, false);
+  expect(texts(), "at 100% the name is the theme's size again").toEqual([14, 14, 16, 16, 19]);
+});
+
+it("your target's plate is drawn larger by the Target plate size slider, and goes back when you target something else", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL);
+  // The boar's (your target's) and the friend's plate scale, and the scale the boar's first debuff icon was last placed at.
+  const scales = () => addon.eval(`local f = __plateOf("nameplate1") local parts
+    for _, w in ipairs(__wfgStub.frames) do if w.__kind == "Cooldown" and w:GetParent() == f.debuffs.frame.__groups[1].buttons[1] then parts = w end end
+    return { f:GetScale(), __plateOf("nameplate2"):GetScale(), f.vgScale / f:GetParent():GetEffectiveScale(), parts ~= nil }`);
+  expect(scales().slice(0, 2), "at the default 100% no plate is larger").toEqual([1, 1]);
+  addon.eval('__plateSet("Target plate size", 130)');
+  expect(scales().slice(0, 3), "your target's plate at 130%, its border painted for that scale; the others as they were").toEqual([1.3, 1, 1.3]);
+  expect(addon.eval("return __plateOf('nameplate1').glow[1]:IsShown()"), "it keeps its accent glow").toBe(true);
+  addon.eval("__units.target = __units.party1 ns.Settings('Nameplates').targetBorder = false");
+  setCombat(addon, true);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(scales().slice(0, 3), "a new target in a fight: the larger plate moves to it, with the border switch off too, each border painted at its plate's scale").toEqual([1, 1.3, 1]);
+  setCombat(addon, false);
+  addon.eval('__plateSet("Target plate size", 100)');
+  expect(scales().slice(0, 2), "back at 100%: no plate larger").toEqual([1, 1]);
+  expect(addon.eval("return { ns.GetModule('Nameplates').ScaleSame({ __secret = true }, 1), ns.GetModule('Nameplates').ScaleSame(1.3, 1), #ns.errors }"), "a hidden scale counts as unchanged, another scale as changed").toEqual([true, false, 0]);
+});
+
+it("Names only on friendly plates: a unit you can't attack shows its name alone, in its colour, and an enemy's plate stays whole", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + PLATE_ENV + SET_LUA + NO_POOL + " __hostile = { nameplate1 = true } UnitCanAttack = function(_, unit) return __hostile[unit] == true end");
+  // A plate: its frame's opacity, whether the name, quest mark and raid icon stand apart from it, the name's colour, and the units its rows read.
+  const look = (unit) => addon.eval(`local f = __plateOf("${unit}") local r, g, b = f.name:GetTextColor()
+    return { alpha = f:GetAlpha(), kept = { f.name:IsIgnoringParentAlpha() == true, f.quest:IsIgnoringParentAlpha() == true, f.raidIcon:IsIgnoringParentAlpha() == true },
+      name = { r, g, b }, debuffs = f.debuffs.frame.__enabled and f.debuffs.frame.__unit or false, buffs = f.buffs.frame:IsShown() }`);
+  // TEST-ONLY: the stub only accepts SetIgnoreParentAlpha, so each kept region of both plates records what it was told.
+  addon.eval(`for _, unit in ipairs({ "nameplate1", "nameplate2" }) do for _, key in ipairs(ns.GetModule("Nameplates").NAME_ONLY_KEEPS) do
+    local region = __plateOf(unit)[key]
+    region.SetIgnoreParentAlpha = function(self, on) self.__ignoresAlpha = on end
+    region.IsIgnoringParentAlpha = function(self) return self.__ignoresAlpha == true end
+  end end`);
+  const white = addon.eval('return { ns.Theme.RGB("text") }').slice(0, 3);
+  expect(look("nameplate2"), "off by default: the friend's plate is whole").toMatchObject({ alpha: 1, kept: [false, false, false], name: white, debuffs: "nameplate2", buffs: true });
+  addon.eval('ns.Options.Show("nameplates") __click("Names only on friendly plates")');
+  expect(look("nameplate2"), "on: the frame fades out whole, the name stays in the rogue's colour, and its aura rows read no unit").toMatchObject({ alpha: 0, kept: [true, true, true], name: [1, 0.96, 0.41], debuffs: false, buffs: false });
+  expect(look("nameplate1"), "the boar, which you can attack, keeps its whole plate").toMatchObject({ alpha: 1, kept: [false, false, false], debuffs: "nameplate1" });
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "no reload is asked for").toBe(false);
+  setCombat(addon, true);
+  addon.eval("__hostile.nameplate2 = true");
+  addon.fire("UNIT_FACTION", "nameplate2");
+  expect(look("nameplate2"), "the friend turns hostile in a fight: whole again at once, the name in the text colour, its rows on the unit").toMatchObject({ alpha: 1, kept: [false, false, false], name: white, debuffs: "nameplate2", buffs: true });
+  addon.eval("__hostile.nameplate2 = nil");
+  addon.fire("UNIT_FLAGS", "nameplate2");
+  expect(look("nameplate2").alpha, "and name-only again when it is friendly").toBe(0);
+  setCombat(addon, false);
+  addon.eval("UnitCanAttack = function() return { __secret = true } end ns.GetModule('Nameplates').RefreshAll()");
+  expect(look("nameplate2").alpha, "a hidden answer: the plate is whole, never put away on a guess").toBe(1);
+  addon.eval("UnitCanAttack = function() return false end ns.GetModule('Nameplates').RefreshAll() UnitCanAttack = nil ns.GetModule('Nameplates').RefreshAll()");
+  expect([look("nameplate1").alpha, look("nameplate2").alpha], "a client without the call: every plate whole").toEqual([1, 1]);
+  addon.eval("UnitCanAttack = function() return false end ns.GetModule('Nameplates').RefreshAll() __click('Names only on friendly plates')");
+  expect([look("nameplate1").alpha, look("nameplate2").alpha, addon.eval("return #ns.errors")], "switched off: whole plates again").toEqual([1, 1, 0]);
+});
