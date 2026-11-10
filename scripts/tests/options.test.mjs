@@ -2290,3 +2290,14 @@ it("options: one row whose refresh fails does not stop the rows after it from re
     return out`);
   expect(result, "the last row refreshed, the failure was kept once").toEqual([true, 1, true]);
 });
+
+it("reload overlays: one that cannot let go at the start of a fight does not leave the others up", () => {
+  const addon = loggedIn();
+  addon.eval(`ns.OfferReload("Changed.")
+    local second = ns.ReloadButton(ns.Widgets.Primary(UIParent, "TEST-ONLY Reload")) second:Show()
+    __overlays = { Vanguard_Reload.accept.reloadOverlay, second.reloadOverlay }
+    for _, o in ipairs(__overlays) do o.ClearAllPoints = function() error("TEST-ONLY locked") end end`);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return { __overlays[1]:IsShown(), __overlays[2]:IsShown() }"), "both overlays are put away").toEqual([false, false]);
+  addon.eval("local n = #ns.errors for i = n, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY locked') then table.remove(ns.errors, i) end end");
+});
