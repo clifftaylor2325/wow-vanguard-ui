@@ -78,7 +78,7 @@ Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until th
 - [x] **A1-4** First-run setup rows per D4. (Q18, M14)
 - [x] **A1-5** Quest-log zone expansion registered from `Enable`, with a switch. (Q21, M16)
 - [x] **A1-6** Per-unit events for the raid add-ons; by-name aura lookup before the full list; bench step. (Q2, M1)
-- [ ] **A1-7** Settings-guard stamp asymmetry, with a no-name-at-logout harness case. (Q3, M2)
+- [x] **A1-7** Settings-guard stamp asymmetry, with a no-name-at-logout harness case. (Q3, M2)
 - [ ] **A1-8** Load only the active locale; keep the in-file guard as the fallback. Needs an in-game check that the directive works on the Forever client. (Q4, M6)
 - [ ] **A1-9** Recent whisper partners count as known for stranger-invite declines. (Q5, M4)
 - [ ] **A1-10** Never auto-pick a quest reward over a flagged upgrade. (Q6, M5)
