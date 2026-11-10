@@ -575,6 +575,18 @@ it("a game divider whose shown state the client hides never hands the secret to 
   expect(press, "the shade was never asked whether it is shown, and it shows while held and hides after").toEqual([0, true, false]);
 });
 
+it("a repaint with every region's Shown held secret by the client raises nothing: the #838 line read an edge's back into SetShown", () => {
+  const addon = loggedIn();
+  addon.eval(`local T = ns.Theme
+    local f = CreateFrame("Frame", nil, UIParent) f:SetSize(100, 40) f:SetPoint("CENTER")
+    T.Panel(f)
+    for _, owner in ipairs({ f, f:GetChildren() }) do
+      for _, r in ipairs({ owner:GetRegions() }) do __wfgWorld.holdSecret(r, "Shown") end
+    end
+    T.RepaintFrame(f)`);
+  expect(addon.eval("return #ns.errors"), "nothing raised (the old line raised: bad argument #1 to 'SetShown')").toBe(0);
+});
+
 it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
   const addon = loggedIn();
   const out = addon.eval(`

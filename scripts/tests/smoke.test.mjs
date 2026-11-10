@@ -3,7 +3,7 @@
 // finished-setup account, draws its default layout, unlocks and locks its
 // frames, plays a couple of seconds, and has caught no error: once as each
 // client the TOC declares (WoW Forever 16001, Retail 120105), and once more
-// as each client with the client's secret geometry on through a fight. Every case also
+// as each client with the client's secret geometry and secret aspects on through a fight. Every case also
 // passes the harness's taint rules (scripts/lib/wow-taint.lua): no field
 // stored on a game frame, no protected call blocked in combat. Anything
 // deeper is the full suite (.github/workflows/full-suite.yml).
@@ -42,10 +42,11 @@ it("as a Retail 12.1.5 client (interface 120105) it does the same", () => {
   expect(addon.eval("return ns.IsForever()"), "the Forever-only defaults stay off").toBe(false);
 });
 
-// Logs in as one client and fights with secret geometry and hidden numbers; returns the addon.
+// Logs in as one client and fights with secret geometry, every game frame's shown state, alpha, text and bar
+// value held secret, and hidden numbers; returns the addon.
 function hiddenNumbersFight(client) {
   const addon = loggedIn("", { client });
-  addon.world.secretGeometry("strict");
+  addon.eval('__wfgWorld.secretGeometry("strict") __wfgWorld.secretAspects("strict")');
   addon.world.setUnit("target", { name: "TEST-ONLY Boar", hp: addon.world.secret(640), maxhp: addon.world.secret(800), reaction: 2 });
   addon.world.combat(true);
   addon.world.setUnit("player", { hp: addon.world.secret(900), power: addon.world.secret(50) });

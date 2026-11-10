@@ -68,11 +68,13 @@ stub.callerOf = callerOf
 local function byAddon(info)
   return info ~= nil and isAddonSource(info.source)
 end
+stub.byAddon = byAddon
 
 -- "Core/Movers.lua:187" for a stack frame.
 local function where(info)
   return info.source:sub(2) .. ":" .. tostring(info.currentline)
 end
+stub.where = where
 
 -- A widget's name for a message: its global name, else its kind and number.
 local function label(w)
@@ -438,10 +440,16 @@ for _, name in ipairs(UNTAINTED_ONLY) do C_UnitAuras[name] = untaintedOnly(name,
 --   "derived"  the regions above;
 --   "strict"   those, and every frame of the game's but UIParent (code that measures
 --              the game's frames fails: anchor to them instead).
+-- Whatever the mode, a region whose anchoring the client made secret (wow-aspects.lua: a secret the
+-- game's code gave SetPoint or SetSize, a secret texture, or world.holdSecret(w, "Anchoring")) answers
+-- with secrets, and so does anything anchored to it, until its points are cleared.
 
 -- The getters that answer with a secret when a region's geometry is (each SecretWhenAnchoringSecret in
 -- the client's API documentation).
-local GEOMETRY = { "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect", "GetStringWidth", "GetUnboundedStringWidth" }
+local GEOMETRY = {
+  "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect",
+  "GetPoint", "GetPointByName", "GetStringWidth", "GetUnboundedStringWidth", "GetStringHeight", "GetNumLines", "IsTruncated",
+}
 
 -- Whether a value is a secret (the global, which a test may replace).
 local function isSecret(v)
@@ -454,11 +462,15 @@ local function secretFill(w)
   return bar ~= nil and rawget(bar, "__barTexture") == w and (isSecret(bar.__value) or isSecret(bar.__min) or isSecret(bar.__max))
 end
 
--- Whether a region's own geometry is secret: a secret fill, secret text, or (strict) a game frame.
+-- Whether a region's own geometry is secret: anchoring the client made secret, or with a mode on a secret
+-- fill, secret text, or (strict) a game frame.
 local function secretItself(w)
+  if rawget(w, "__anchorSecret") then return true end
+  local mode = stub.secretGeometry
+  if not mode then return false end
   if w.__kind == "FontString" and isSecret(w.__text) then return true end
   if secretFill(w) then return true end
-  return stub.secretGeometry == "strict" and rawget(w, "__byGame") == true and w ~= UIParent
+  return mode == "strict" and rawget(w, "__byGame") == true and w ~= UIParent
 end
 
 local secretGeometry
@@ -505,7 +517,7 @@ end
 -- A geometry getter that answers with secrets while the region's geometry is secret.
 local function secretGetter(get)
   return function(self, ...)
-    if rawDepth > 0 or not stub.secretGeometry then return get(self, ...) end
+    if rawDepth > 0 or not (stub.secretGeometry or stub.anchorSecrets) then return get(self, ...) end
     if not secretGeometry(self, 0) then return rawCall(get, self, ...) end
     return hidden(rawCall(get, self, ...))
   end
