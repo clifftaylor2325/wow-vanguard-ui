@@ -306,10 +306,17 @@ function QL.BindKeys()
   end, "quest log keys")
 end
 
--- The button the quest log key clicks (made once a session; a click on it works while it is hidden).
+-- The button the quest log key clicks (made once a session; the scope hides it when the module stops).
 local function addToggle()
   QL.toggle = CreateFrame("Button", "Vanguard_QuestLogToggle", UIParent)
   QL.toggle:SetScript("OnClick", ns.Guard("click quest log toggle", QL.Toggle))
+  return QL.toggle
+end
+
+-- The key's button, made once and shown again by each start (the scope hides it when the module stops).
+local function keyButton(scope)
+  local button = scope:Frame(QL.toggle or addToggle())
+  button:Show()
 end
 
 -- Puts away the game's window its quest log toggle just opened, out of a fight only: the panel manager refuses
@@ -374,7 +381,7 @@ function QL.Enable(settings, scope)
   ns.GetModule("QuestTracker").KeepFoldsOpen()
   if not QL.frame then QL.Build() end
   scope:Mover(QL.frame, "questlog", L["Quest log"], QL.SPOT)
-  if not QL.toggle then addToggle() end
+  keyButton(scope)
   bindKeys(scope)
   hookGameToggle(scope)
   watchEvents(scope)

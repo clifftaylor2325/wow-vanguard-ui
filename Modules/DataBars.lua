@@ -496,6 +496,7 @@ DB.RENOWN_COLOR = "info"
 -- visibility hides it).
 function DB.UpdateXP()
   local bar, xp = DB.xpBar, DB.Line()
+  if not bar then return end
   DB.PlaceRepBar(xp)
   bar:SetShown(xp ~= nil and V.Shows(bar))
   if not xp then return end
@@ -510,6 +511,7 @@ end
 -- faction (or while its visibility hides it).
 function DB.UpdateReputation()
   local bar, rep = DB.repBar, DB.Reputation()
+  if not bar then return end
   bar:SetShown(rep ~= nil and V.Shows(bar))
   if not rep then return end
   bar:SetMinMaxValues(0, rep.max)
