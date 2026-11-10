@@ -974,6 +974,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with only Merchant helpers off, the error line, the zone names and the damage numbers are still in Vanguard's font. With HUD text font off they are in the game's own font. The damage numbers follow after a relog if a reload alone does not change them.
 - If it fails, paste: which text was in which font after each step, and `/vg errors`.
 
+### 8.6g A weapon enchant gained or lost in a fight
+
+- Do: with Vanguard's buffs block showing, apply a weapon oil, poison or imbue while in combat (or let one run out in combat), then leave combat. On Retail, hover an upgraded item's slot on the character sheet.
+- Expect: no `Interface action failed because of an AddOn` message. In combat the enchant's cell shows at once and may lie over the first buff; when the fight ends the buffs move over to make room. The character sheet's number on an upgraded item is the level its tooltip shows.
+- If it fails, paste: the message text, a screenshot of the buffs block in and after the fight, and `/vg errors`.
+
 ## 9. Bags, merchant, trainer
 
 ### 9.1 Bag search
