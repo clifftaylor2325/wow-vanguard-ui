@@ -149,14 +149,14 @@ it("a listing with a buyout of 0 is bid-only, never the cheapest price", () => {
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(card(addon)[0].slice(0, 1).concat(card(addon)[0][3]), "cheapest 50s, asking 49s, not 1c").toEqual(["50s 0c", "49s 0c"]);
 });
-it("an item posted with a quantity above one sends its bid and buyout for the whole auction", () => {
+it("an item posted with a quantity above one sends its bid and buyout as the price of each item (the game's sell frame hands over the price box's value)", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.bags[0][2] = { itemID = 9999, count = 3 } __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   addon.type(`${CARD}.qty`, "2");
   addon.type(`${CARD}.stack`, "2");
   addon.type(`${CARD}.bid`, "10s");
   addon.click(`${CARD}.post`);
-  expect(restrictedLog(addon)[0], "two items at 49s each: buyout 98s, bid 20s, for the pair").toEqual(["PostItem", true, "0:2", 1, 2, 2000, 9800]);
+  expect(restrictedLog(addon)[0], "two items at 49s each: PostItem takes each one's price, not the pair's").toEqual(["PostItem", true, "0:2", 1, 2, 1000, 4900]);
 });
 it("a true return asks for a confirm, and the next click on Post (Confirm) confirms it", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
