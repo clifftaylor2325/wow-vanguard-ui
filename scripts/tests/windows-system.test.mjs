@@ -1229,3 +1229,20 @@ it("placing a layout window's close button reads the panel's padding without mak
   const [padded, afterwards] = placed();
   expect([afterwards, Math.round(padded - bare)], "once the panel is painted, the button sits its 12 padding closer to the window").toEqual([true, 12]);
 });
+
+// The client keeps a secret "aspect" on a game widget fed a secret, and the matching getter answers with a secret from then on
+// (FOREVER-API-FACTS 3): Modules/Windows.lua's shared helpers read the game's state, text and sizes through the plain helpers.
+it("Windows.lua helpers: a hidden shown state, text, height or colour from a game widget is not tested, copied or measured", () => {
+  const addon = loggedIn(SYSTEM_ENV);
+  expect(addon.eval(`local GW, S = ns.GetModule("Windows"), __wfgWorld.secret
+    local pane = CreateFrame("Frame", "CharacterFrame", UIParent) pane.IsShown = function() return S(true) end
+    local slot = CreateFrame("Button", "CharacterHeadSlot", pane) slot:SetID(1)
+    GW.PaintAllDurability()
+    local head = CreateFrame("Frame", nil, UIParent) local fs = head:CreateFontString() fs.GetText = function() return S("Hidden") end
+    GW.SkinSection(fs)
+    local a, b = CreateFrame("Button", nil, UIParent), CreateFrame("Button", nil, UIParent) a:SetHeight(10) b.GetHeight = function() return S(30) end
+    GW.AlignBeside(a, b)
+    local box = CreateFrame("Frame", nil, UIParent) local cap = box:CreateFontString() cap.GetText = function() return S("Next") end
+    GW.TextRegions(box, { "NEXT" }, "small", "text2")
+    return { select("#", slot:GetRegions()), fs.__text == nil, a:GetHeight(), #ns.errors }`), "nothing painted on the hidden pane, no text copied, no height copied, nothing raised").toEqual([0, true, 10, 0]);
+});
