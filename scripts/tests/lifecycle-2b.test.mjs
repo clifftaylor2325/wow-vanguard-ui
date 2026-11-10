@@ -102,3 +102,15 @@ it("lifecycle: instance prep switched off closes its card and its wanted-amounts
   addon.eval('local PR = ns.GetModule("InstancePrep") PR.Command("") PR.ShowOnDemand() PR.Wizard.Open()');
   expect(addon.eval("return { Vanguard_PrepCard:IsShown(), Vanguard_PrepWizard:IsShown(), #ns.GetModule('InstancePrep').BuyRows() }")).toEqual([false, false, 0]);
 });
+
+// QuestArrow ----------------------------------------------------------------------------------------------------
+
+lifecycleCases("QuestArrow", loginWith());
+
+it("lifecycle: the quest arrow's tickers keep their owner frames after a restart, and a stopped arrow follows no quest", () => {
+  const addon = loginWith()();
+  addon.eval('ns.SetModuleEnabled("QuestArrow", false) ns.SetModuleEnabled("QuestArrow", true)');
+  expect(addon.eval('local jobs = ns.ticker.vgJobs return { jobs["quest arrow pick"].frame == UIParent, jobs["quest arrow"].frame == Vanguard_QuestArrow }')).toEqual([true, true]);
+  addon.eval('local QA = ns.GetModule("QuestArrow") QA.current = 7 ns.SetModuleEnabled("QuestArrow", false)');
+  expect(addon.eval("return { ns.QuestArrow.Current() == nil, ns.QuestArrow.Followed() == nil, Vanguard_QuestArrow:IsShown() }")).toEqual([true, true, false]);
+});
