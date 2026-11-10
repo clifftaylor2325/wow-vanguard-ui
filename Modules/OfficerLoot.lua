@@ -12,7 +12,7 @@ local ADDON, ns = ...
 
 local L = ns.L
 
-local OL = ns.Module("OfficerLoot", { defaults = { on = false } })
+local OL = ns.Module("OfficerLoot", { defaults = { on = false }, live = true })
 
 ns.Options.MODULE_INFO.OfficerLoot = { L["Officer loot tools"], L["A soft-reserve list shown next to the roll tracker, shared by hand, never synced (off until switched on)."] }
 
@@ -71,11 +71,11 @@ function OL.On()
   return OL.enabled == true and OL.settings ~= nil and OL.settings.on == true
 end
 
--- The list changed: the next chat-box part starts over and the roll tracker is drawn again.
+-- The list changed: the next chat-box part starts over and the roll tracker is drawn again (while it runs).
 function OL.Changed()
   OL.part = 0
   local R = ns.GetModule("Rolls")
-  if R and R.frame then R.Paint() end
+  if R and R.frame and ns.ModuleLive("Rolls") then R.Paint() end
 end
 
 -- The list --------------------------------------------------------------------------------------
@@ -303,8 +303,17 @@ function OL.Apply()
   OL.Changed()
 end
 
--- Module entry point (Core/Modules.lua): hands the roll tracker the list.
+-- Module entry point (Core/Modules.lua): hands the roll tracker the list, and draws it again a frame later (the
+-- module counts as running by then), so a start after login shows the [SR] flags at once.
 function OL.Enable(settings)
   OL.settings = settings
   ns.GetModule("Rolls").reserve = OL
+  if ns.ModulesBuilt() then ns.Soon("officer loot repaint", OL.Changed) end
+end
+
+-- Switched off: the roll tracker no longer has the list (no [SR] flags, no "Reserved:" lines) and is drawn again.
+-- The reserves themselves stay on the character.
+function OL.Disable()
+  ns.GetModule("Rolls").reserve = nil
+  OL.Changed()
 end

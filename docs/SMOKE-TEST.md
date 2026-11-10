@@ -5453,6 +5453,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, the range fade, raid icons, crown and any ready check, resurrection and summon marks are gone from every tile at once and the status text shows; the ready check draws nothing; on, the marks and the fade return.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
+### 35.4 Officer loot tools
+
+- Do: with `/vg loot on` and a reserve added, have the reserving member roll so the tracker shows "[SR]". Switch **Officer loot tools** off under `/vg` → Modules, then on again.
+- Expect: off, the roll tracker loses its "[SR]" flags at once and `/vg loot list` says the module is off; on, the flags and the list return, with the reserves as they were.
+- If it fails, paste: the roll tracker's lines and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

@@ -75,3 +75,14 @@ it("RaidStatus: switched off, every tile loses its marks and its range fade and 
   switchTo(addon, "RaidStatus", true);
   expect([marks(addon, 1).leader !== false, marks(addon, 3).alpha, addon.eval('return ns.ticker.vgJobs["raid range"] ~= nil')]).toEqual([true, 0.4, true]);
 });
+
+lifecycleCases("OfficerLoot", login);
+
+it("OfficerLoot: switched off, the roll tracker has no list (nothing is flagged), and on again it has it back", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB = { version = 2, profiles = { Default = { OfficerLoot = { on = true } } }, setupDone = true }\nVanguardCharDB = {}" });
+  expect(addon.eval('return ns.GetModule("Rolls").reserve == ns.GetModule("OfficerLoot")'), "the tracker has the list").toBe(true);
+  switchTo(addon, "OfficerLoot", false);
+  expect(addon.eval('return ns.GetModule("Rolls").reserve'), "no list").toBe(null);
+  switchTo(addon, "OfficerLoot", true);
+  expect(addon.eval('return ns.GetModule("Rolls").reserve == ns.GetModule("OfficerLoot")'), "the list again").toBe(true);
+});
