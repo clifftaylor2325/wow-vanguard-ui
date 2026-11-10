@@ -393,6 +393,8 @@ end
 
 -- Hands the quest and gossip windows to the game for the session (on), or takes them back (off): the
 -- dialog stops showing, and a talk that is open moves to the game's window. Not saved; a reload starts over.
+-- While the dialog doesn't run (QD.had is cleared when the module stops, and never set while its dialog setting is
+-- off) the switch only records the choice: taking the events then would leave no window at all for a talk.
 function QD.HandBack(on)
   if QD.handedBack == on or not QD.had then QD.handedBack = on return end
   QD.handedBack = on
@@ -442,6 +444,7 @@ end
 -- registering these events on the game's windows from here leaves them untainted.
 function QD.Disable()
   handOver()
+  QD.had = nil
 end
 
 -- Module entry point (Core/Modules.lua): the dialog is built once a session; its mover and handlers go through the

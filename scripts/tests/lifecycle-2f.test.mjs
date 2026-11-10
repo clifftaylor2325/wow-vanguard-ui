@@ -35,6 +35,18 @@ it("lifecycle: QuestDialog switched off gives the game's quest and gossip window
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
 
+it("lifecycle: with QuestDialog off, the hand-back switch never takes the game's windows' events", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) });
+  addon.eval('QuestFrame = CreateFrame("Frame", "QuestFrame") QuestFrame:RegisterEvent("QUEST_DETAIL")');
+  addon.login();
+  addon.eval('ns.SetModuleEnabled("QuestDialog", false) local QD = ns.GetModule("QuestDialog") QD.HandBack(true) QD.HandBack(false)');
+  expect(addon.eval('return QuestFrame:IsEventRegistered("QUEST_DETAIL")'), "switched off: the game keeps its window").toBe(true);
+  addon.eval('ns.SetModuleEnabled("QuestDialog", true)');
+  expect(addon.eval('return QuestFrame:IsEventRegistered("QUEST_DETAIL")'), "switched on again: the dialog takes it").toBe(false);
+  addon.eval('local _, set = ns.Options.RestartSetting("QuestDialog", "dialog") set(false) local QD = ns.GetModule("QuestDialog") QD.HandBack(true) QD.HandBack(false)');
+  expect(addon.eval('return QuestFrame:IsEventRegistered("QUEST_DETAIL")'), "its dialog row off: the game keeps it too").toBe(true);
+});
+
 it("lifecycle: QuestLog switched off clears its override binding and goes quiet", () => {
   const addon = login();
   addon.eval('ns.SetModuleEnabled("QuestLog", false)');
