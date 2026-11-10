@@ -71,12 +71,15 @@ end
 -- Narrow enough to sit between the trainer's money line (bottom left) and its Train button.
 ER.TRAIN_WIDTH = 96
 
--- Whether the open trainer is the pet's: its costs are training points, not gold, and the game's own
--- Train button checks the pet's balance.
-local function petTrainer()
+-- Whether the open trainer is known to charge gold: not the pet's (its costs are training points, and the game's
+-- own Train button checks the pet's balance). On WoW Forever only the trainer type tells, so a client that cannot
+-- say (no call, no pet type, a hidden or empty answer) is not a gold trainer; Retail has no pet trainers.
+local function goldTrainer()
   local get = C_Trainer and C_Trainer.GetTrainerType
-  local pet = type(Enum) == "table" and type(Enum.TrainerType) == "table" and Enum.TrainerType.Pet
-  return type(get) == "function" and pet ~= nil and ns.PlainNumber(get()) == pet
+  local pet = type(Enum) == "table" and type(Enum.TrainerType) == "table" and Enum.TrainerType.Pet or nil
+  local kind = type(get) == "function" and pet ~= nil and ns.PlainNumber(get()) or nil
+  if kind == nil then return not ns.IsForever() end
+  return kind ~= pet
 end
 
 -- Whether service i takes up a profession (GetTrainerServiceCost's second answer): the game's own
@@ -86,11 +89,11 @@ local function newProfession(i)
   return not ns.IsSecret(isProfession) and isProfession == true
 end
 
--- The trainer's services you can learn now, as { index, cost, name }; none at a pet trainer, and a new
+-- The trainer's services you can learn now, as { index, cost, name }; none unless the trainer is known to take gold, and a new
 -- profession is left to the game's own Train button.
 function ER.Trainable()
   local out = {}
-  if petTrainer() then return out end
+  if not goldTrainer() then return out end
   for i = 1, ns.PlainNumber(ask("GetNumTrainerServices")) or 0 do
     if available(i) and not newProfession(i) then out[#out + 1] = { index = i, cost = ns.PlainNumber(ask("GetTrainerServiceCost", i)) or 0, name = serviceName(i) } end
   end
