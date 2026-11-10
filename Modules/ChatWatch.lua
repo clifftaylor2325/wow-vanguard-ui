@@ -22,7 +22,14 @@ local CW = ns.Module("ChatWatch", {
     phrases = {}, sound = true, toast = true, prices = true,
     channels = { channel = true, say = false, yell = true, guild = false, party = false, raid = false, whisper = false },
   },
+  live = true,
 })
+
+-- Whether the module runs now: a stopped Chat watch alerts nothing (its scope is closed), though another module's
+-- alert (CW.Notify) still uses the toast.
+function CW.Running()
+  return CW.scope ~= nil and CW.scope:Running()
+end
 
 -- At most this many phrases, each at most this many characters.
 CW.MAX_PHRASES, CW.MAX_LENGTH = 20, 40
@@ -142,7 +149,7 @@ end
 -- The alert sound and the toast for a phrase, as switched on, unless this sender rang for it lately (noted
 -- when it shows, so an alert a fight's newer one replaced never mutes its sender).
 local function alertNow(sender, text, phrase)
-  if not fresh(sender, phrase, GetTime()) then return end
+  if not (CW.Running() and fresh(sender, phrase, GetTime())) then return end
   if CW.settings.sound then ring() end
   if CW.settings.toast then CW.ShowToast(sender, text, phrase) end
 end
@@ -249,7 +256,11 @@ local function toastPrice(f)
   f.price:SetPoint("TOPRIGHT", f.sender, "BOTTOMRIGHT", 0, -4)
 end
 
--- The toast: an accent-edged panel you can move (/vg unlock), hidden until a phrase is said.
+-- Where the toast starts.
+CW.TOAST_SPOT = { "TOP", "TOP", 0, -216 }
+
+-- The toast: an accent-edged panel, hidden until a phrase is said; made once a session, by Chat watch or by another
+-- module's first alert, whichever comes first.
 local function buildToast()
   local f = CreateFrame("Button", "Vanguard_ChatWatchToast", UIParent)
   T.Panel(f, { accent = true, shadow = true })
@@ -260,7 +271,6 @@ local function buildToast()
   toastPrice(f)
   f:Hide()
   CW.toast = f
-  ns.Mover(f, "chatwatch", L["Chat alert"], { "TOP", "TOP", 0, -216 })
 end
 
 -- Rings and shows another module's alert on the toast.
@@ -276,6 +286,7 @@ end
 -- waits out a fight, and the newest waiting alert of either kind wins.
 function CW.Notify(title, text, price, onClick)
   if not CW.toast then buildToast() end
+  if not ns.MoverFrame("chatwatch") then ns.Mover(CW.toast, "chatwatch", L["Chat alert"], CW.TOAST_SPOT) end
   ns.OutOfCombat(function() notifyNow(title, text, price, onClick) end, "chatwatch toast")
 end
 
@@ -354,9 +365,11 @@ function CW.ChannelSetting(key, ...)
     CW.defaults.channels[key]
 end
 
--- Module entry point (Core/Modules.lua).
-function CW.Enable(settings)
+-- Module entry point (Core/Modules.lua): the toast (movable with /vg unlock) in the scope's hands, and the chat events
+-- through the scope, so switching it off needs no Disable. The toast and its alert counts are kept for the session.
+function CW.Enable(settings, scope)
   CW.settings = settings
-  buildToast()
-  for event in pairs(CW.EVENTS) do ns.On(event, CW.OnChat) end
+  if not CW.toast then buildToast() end
+  scope:Mover(CW.toast, "chatwatch", L["Chat alert"], CW.TOAST_SPOT)
+  for event in pairs(CW.EVENTS) do scope:On(event, CW.OnChat) end
 end

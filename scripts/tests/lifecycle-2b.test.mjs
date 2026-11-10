@@ -149,3 +149,17 @@ it("lifecycle: the gaps row switched off with its module hides its row, says it 
   addon.eval('ns.GetModule("CooldownGaps").Refresh() ns.SetModuleEnabled("CooldownGaps", false) ns.GetModule("CooldownGaps").Refresh()');
   expect(addon.eval('return { Vanguard_CooldownGaps:IsShown(), ns.GetModule("CooldownGaps").settings == nil }')).toEqual([false, true]);
 });
+
+// ChatWatch -----------------------------------------------------------------------------------------------------
+
+const WATCH = loginWith('\nVanguardDB.profiles.Default.ChatWatch = { phrases = { "lfm" }, toast = true }');
+
+lifecycleCases("ChatWatch", WATCH);
+
+it("lifecycle: chat watch switched off stops alerting, drops an alert waiting for the fight, and another module's alert still shows", () => {
+  const addon = WATCH();
+  addon.eval('ns.SetModuleEnabled("ChatWatch", false) ns.GetModule("ChatWatch").Alert("TEST-ONLY Sender", "lfm", "lfm")');
+  expect(addon.eval("return Vanguard_ChatWatchToast:IsShown()")).toBe(false);
+  addon.eval('ns.GetModule("ChatWatch").Notify("TEST-ONLY", "an alert", nil, function() end)');
+  expect(addon.eval("return Vanguard_ChatWatchToast:IsShown()")).toBe(true);
+});
