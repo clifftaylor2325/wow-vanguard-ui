@@ -420,29 +420,64 @@ local function skinsCommand(rest)
   chat(ns.Format(on == "on" and L["Skin for {addon} on. /reload to apply."] or L["Skin for {addon} off. /reload to apply."], { addon = name }))
 end
 
--- /vg profile <name>: stage the switch, creating the profile if new, and offer the reload that applies it.
+-- Stages a switch to a profile and offers the reload that applies it.
+local function switchTo(name)
+  ns.UseProfile(name)
+  if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  ns.OfferReload(ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }))
+end
+
+-- The existing profile a typed name means: its exact name, else the first (in name order) that differs
+-- only by case; nil when none does.
+local function findProfile(name)
+  if VanguardDB.profiles[name] then return name end
+  for _, existing in ipairs(ns.ProfileNames()) do
+    if existing:lower() == name:lower() then return existing end
+  end
+end
+
+-- /vg profile <name>: switch to the profile (matched in any case), after the reload; a name that matches nothing
+-- asks before making an empty profile (a typo would otherwise load all defaults).
 local function useProfile(name)
   if not ns.ValidProfileName(name) then
     return chat(L["Profile names are 1-32 letters, digits, spaces, - or _."])
   end
-  ns.UseProfile(name)
-  if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
-  ns.OfferReload(ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }))
+  local found = findProfile(name)
+  if found then return switchTo(found) end
+  ns.Ask(ns.Format(L["Create a new profile named {profile}?"], { profile = name }), L["Create"], function() switchTo(name) end)
+end
+
+-- Asks, with the Profiles page's own warning, before a typed copy or delete runs.
+local function confirmProfile(text, yes, run)
+  ns.Ask(text, yes, run, nil, "danger")
+end
+
+-- /vg profile copy <from>: after asking, replaces the settings of the profile used after the reload.
+local function copyProfile(name)
+  local into = ns.SelectedProfileName()
+  if not VanguardDB.profiles[name] or name == into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
+  confirmProfile(ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = into, from = name }), L["Copy here"], function()
+    local copied = ns.CopyProfile(name)
+    if not copied then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
+    ns.Options.ProfileCopied(copied)
+    ns.OfferReload(ns.Format(L["Copied {from} into {profile}."], { from = name, profile = copied }))
+  end)
+end
+
+-- /vg profile delete <name>: after asking, deletes a profile that is neither in use nor staged.
+local function deleteProfile(name)
+  if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then return chat(L["Can't delete that one (missing, or in use)."]) end
+  confirmProfile(ns.Format(L["Deletes profile {profile} for every character on this account. It can't be undone."], { profile = name }), L["Delete"], function()
+    chat(ns.DeleteProfile(name) and ns.Format(L["Deleted profile {profile}."], { profile = name }) or L["Can't delete that one (missing, or in use)."])
+  end)
 end
 
 -- profile subcommands: new, copy, delete, reset.
 local PROFILE_ACTIONS = {
   -- /vg profile new <name>
   new = function(name) chat(ns.NewProfile(name) and ns.Format(L["Created profile {profile}."], { profile = name }) or L["That name is taken or not allowed."]) end,
-  -- /vg profile copy <from>
-  copy = function(name)
-    local into = ns.CopyProfile(name)
-    if not into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
-    ns.Options.ProfileCopied(into)
-    ns.OfferReload(ns.Format(L["Copied {from} into {profile}."], { from = name, profile = into }))
-  end,
-  -- /vg profile delete <name>
-  delete = function(name) chat(ns.DeleteProfile(name) and ns.Format(L["Deleted profile {profile}."], { profile = name }) or L["Can't delete that one (missing, or in use)."]) end,
+  copy = copyProfile,
+  delete = deleteProfile,
   -- /vg profile reset: asks and backs up first, as the Profiles page's Reset profile does
   reset = function() ns.Options.AskResetProfile() end,
 }
@@ -454,7 +489,7 @@ local function profileCommand(rest)
     return chat(ns.Format(text, { profile = ns.ProfileName(), next = ns.PendingProfileName(), all = table.concat(ns.ProfileNames(), ", ") }))
   end
   -- A profile's exact name wins over a verb, so /vg profile Copy Raid switches to "Copy Raid".
-  if VanguardDB.profiles[rest] then return useProfile(rest) end
+  if VanguardDB.profiles[rest] then return switchTo(rest) end
   local action, name = rest:match("^(%S+)%s*(.-)$")
   local handler = PROFILE_ACTIONS[action:lower()]
   if handler then return handler(name) end
