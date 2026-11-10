@@ -21,7 +21,7 @@ end
 -- talk. Neither needs a reload; the switch is not saved (a reload starts with the dialog again).
 local function fallbackRows()
   local dialog = ns.GetModule("QuestDialog")
-  local switch = check(L["Use the game's quest and gossip windows for now"], dialog.IsHandedBack, dialog.HandBack)
+  local switch = check(L["Use the game's quest windows for now"], dialog.IsHandedBack, dialog.HandBack)
   switch.tip = L["A way out if the dialog misbehaves: the game's own windows open for every quest giver until you switch this off or reload. Not saved."]
   local keys = { { "none", L["Off"] }, { "shift", L["Shift"] }, { "ctrl", L["Ctrl"] }, { "alt", L["Alt"] } }
   local held = { "cycle", L["Hold a key to open the game's windows"], keys, setting("QuestDialog", "bypass") }
