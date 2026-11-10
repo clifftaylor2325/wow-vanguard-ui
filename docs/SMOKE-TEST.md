@@ -5447,6 +5447,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, the heal and shield bars, aggro strip and missing-buff marker are gone from every tile at once and stay gone while the heal lands; on, they return on every tile without a reload.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
+### 35.3 Raid status
+
+- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid status** off under `/vg` → Modules, then on again. Run a ready check while it is off.
+- Expect: off, the range fade, raid icons, crown and any ready check, resurrection and summon marks are gone from every tile at once and the status text shows; the ready check draws nothing; on, the marks and the fade return.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
