@@ -522,6 +522,7 @@ end
 
 -- The cost panel painting moves the panel under it (and a profession window that closed hides it).
 function CQ.HookCostPanel()
+  if type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(CR, "Paint", ns.Guard("craft queue panel", CQ.Show))
 end
 
