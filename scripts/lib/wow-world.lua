@@ -498,6 +498,8 @@ end
 -- Colors and utilities ----------------------------------------------------------------------
 
 -- Class colors, as the client has them.
+-- The client's class icon squares on its class sheet (left, right, top, bottom).
+CLASS_ICON_TCOORDS = { MAGE = { 0.25, 0.5, 0, 0.25 }, ROGUE = { 0.5, 0.75, 0, 0.25 }, WARRIOR = { 0, 0.25, 0, 0.25 } }
 RAID_CLASS_COLORS = {
   WARRIOR = CreateColor(0.78, 0.61, 0.43), PALADIN = CreateColor(0.96, 0.55, 0.73), HUNTER = CreateColor(0.67, 0.83, 0.45),
   ROGUE = CreateColor(1, 0.96, 0.41), PRIEST = CreateColor(1, 1, 1), SHAMAN = CreateColor(0, 0.44, 0.87),

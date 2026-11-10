@@ -757,6 +757,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a green bar grows from the end of the health fill for the heals on their way, a striped one after it for the shield, on the player, target and party frames only; they fill the same way the health does (toward the character under Shield and the deck, mirrored on the target), the names, numbers and marks stay readable over them, and each switch hides its bar at once. A small crown, tank shield or healer cross, "Zzz" (player frame, resting) and "PvP" row stands over the frame's outer top corner (over the name tab under the Tabs look, inside the party column's gaps), following each change without a reload and moving only out of combat. Nothing overlaps the raid target icon, the combo points or the target's buff row badly (report where it does). `/vg errors` is empty. [Needs in game: all of it, above all the bars at the shield point corners and the row's room.]
 - If it fails, paste: a screenshot of the frames with a heal incoming and `/vg errors`.
 
+### 7.2r Portraits and the focus target frame (A3-1b)
+
+- Do: `/vg` → Unit frames → Portraits. Set **Player portrait** to 2D portrait, **Target portrait** to Class icon and **Focus portrait** to 2D portrait. Cycle General → **HUD look** through Shield, Hairline, Rimmed, Tabs and Plain, with the Versus deck on and off, and target a player and a mob. Set a focus that has a target, then clear its target and your focus. Drag Focus target: width and height (under More settings) and unlock to move the frame.
+- Expect: no portrait under Shield, Plain with the shield corners on, or the Versus deck, with the bars at their plain width and the row's tip naming them; under Hairline, Rimmed and Tabs a square portrait stands at each frame's outer end (left on the player and focus, right on the target) and the bars step in from it, at once and with no reload. A player target shows its class icon, a mob its portrait. The focus target frame shows beside the focus while the focus has a target, follows it, vanishes when it has none, takes the sliders and has its own handle in unlock mode.
+- If it fails, paste: a screenshot of the frames, the three rows' choices, the HUD look, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.

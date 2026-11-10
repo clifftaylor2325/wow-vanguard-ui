@@ -46,7 +46,7 @@ S.LAYOUTS = {
   { key = "keep", text = L["Keep my current layout"], hint = L["Moves nothing: your frames stay where they are."] },
 }
 -- Like the game's: player and target along the top left (the pet under the
--- player, the target of target beside the target and the focus under that, both 20 right of the target's
+-- player, the target of target beside the target and the focus under that (the focus target right of the focus), both 20 right of the target's
 -- cast bar so its interrupt mark clears the focus frame), the
 -- party and raid down the left side (the raid grows up from above the bars'
 -- height, so a full raid stays clear of the middle), the boss frames on the
@@ -57,7 +57,7 @@ S.CLASSIC = {
   uf_player = { "TOPLEFT", "TOPLEFT", 20, -40 }, uf_pet = { "TOPLEFT", "TOPLEFT", 20, -84 },
   uf_target = { "TOPLEFT", "TOPLEFT", 270, -40 }, uf_targettarget = { "TOPLEFT", "TOPLEFT", 540, -46 },
   cast_target = { "TOPLEFT", "TOPLEFT", 270, -108 }, cast_pet = { "TOPLEFT", "TOPLEFT", 20, -112 },
-  cast_focus = { "TOPLEFT", "TOPLEFT", 540, -76 }, uf_focus = { "TOPLEFT", "TOPLEFT", 540, -94 },
+  cast_focus = { "TOPLEFT", "TOPLEFT", 540, -76 }, uf_focus = { "TOPLEFT", "TOPLEFT", 540, -94 }, uf_focustarget = { "TOPLEFT", "TOPLEFT", 710, -94 },
   raid = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 330 }, uf_party1 = { "TOPLEFT", "TOPLEFT", 20, -310 },
   partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
   raidtools = { "TOP", "TOP", 200, -120 }, maintanks = { "TOP", "TOP", 100, -196 },

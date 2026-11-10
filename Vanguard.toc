@@ -117,6 +117,7 @@ Modules/CastBars.lua
 Modules/Keystone.lua
 Modules/UnitPrediction.lua
 Modules/UnitStatus.lua
+Modules/UnitPortrait.lua
 Modules/FrameAuras.lua
 Modules/PlayerAuras.lua
 Modules/ComboPoints.lua

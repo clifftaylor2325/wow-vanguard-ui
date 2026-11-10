@@ -106,7 +106,7 @@ local POWER_FORMAT_CHOICES = { { "none", L["Off"] }, TEXT_FORMATS[1], TEXT_FORMA
 -- The frames the sliders size, in the order the page lists them: the settings group (UF.FrameSize) and its caption.
 local SIZED_FRAMES = {
   { "player", L["Player"] }, { "target", L["Target"] }, { "targettarget", L["Target of target"] },
-  { "focus", L["Focus"] }, { "pet", L["Pet"] }, { "party", L["Party"] },
+  { "focus", L["Focus"] }, { "focustarget", L["Focus target"] }, { "pet", L["Pet"] }, { "party", L["Party"] },
 }
 
 -- A width or height slider for one frame (range from UnitFrames.RANGES), applied at once, out of combat.
@@ -118,12 +118,22 @@ local function sizeSlider(frame, dimension)
   return { "slider", ns.Format(label, { frame = caption }), range, liveMethod("UnitFrames", key, "ApplySizes") }
 end
 
+-- The frames whose sliders stay in view when the Frame sizes card is folded; the rest open under More settings.
+local ESSENTIAL_SIZES = { player = true, target = true }
+
+-- A frame's slider, kept in view when the card is folded for the frames in ESSENTIAL_SIZES.
+local function foldedSlider(frame, dimension)
+  local row = sizeSlider(frame, dimension)
+  if ESSENTIAL_SIZES[frame[1]] then return essential(row) end
+  return row
+end
+
 -- The Frame sizes card: a width and a height slider for each frame (the target's height is the one setup's role layouts raise).
 local function sizeRows()
   local rows = { { "header", L["Frame sizes"] } }
   for _, frame in ipairs(SIZED_FRAMES) do
-    rows[#rows + 1] = sizeSlider(frame, "width")
-    rows[#rows + 1] = sizeSlider(frame, "height")
+    rows[#rows + 1] = foldedSlider(frame, "width")
+    rows[#rows + 1] = foldedSlider(frame, "height")
   end
   return rows
 end
@@ -134,6 +144,28 @@ local function powerTextRows()
     { "header", L["Power text"] },
     { "cycle", L["Show power as"], POWER_FORMAT_CHOICES, liveMethod("UnitFrames", "powerFormat", "ApplyPowerText") },
     { "text", L["Where the game hides numbers, Both shows the percent alone and Missing leaves out the minus sign."], "note" },
+  }
+end
+
+-- The portrait choices of the player, target and focus frames (Modules/UnitPortrait.lua), and what a look that points
+-- or cuts the frame's outer end does to them.
+local PORTRAIT_CHOICES = { { "off", L["Off"] }, { "portrait", L["2D portrait"] }, { "class", L["Class icon"] } }
+local PORTRAIT_TIP =
+  L["Creatures show their portrait. Hidden under the Shield look, Plain with shield corners and the Versus deck: their corners leave no room."]
+
+-- A frame's portrait choice row, applied at once, out of combat.
+local function portraitRow(label, key)
+  local row = { "cycle", label, PORTRAIT_CHOICES, liveMethod("UnitFrames", key, "ApplyPortraits") }
+  row.tip = PORTRAIT_TIP
+  return row
+end
+
+-- The portrait rows: one choice each for the player, target and focus frames.
+local function portraitRows()
+  return {
+    { "header", L["Portraits"] },
+    portraitRow(L["Player portrait"], "playerPortrait"), portraitRow(L["Target portrait"], "targetPortrait"),
+    portraitRow(L["Focus portrait"], "focusPortrait"),
   }
 end
 
@@ -159,7 +191,7 @@ local function unitFrameRows()
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
     check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
     O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
-  }, append(append(powerTextRows(), predictionRows()), sizeRows()))
+  }, append(append(append(powerTextRows(), predictionRows()), portraitRows()), sizeRows()))
 end
 
 -- Cast bars, and the target and focus auras' card (its rows are Modules/FrameAuras.lua's).

@@ -17,7 +17,10 @@ local UF = ns.Module("UnitFrames", {
   defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true,
     -- Each frame's size (units), on the Unit frames page: the sizes the frames had before they were adjustable.
     playerWidth = 240, playerHeight = 36, targetWidth = 240, targettargetWidth = 120, targettargetHeight = 24,
-    focusWidth = 160, focusHeight = 30, petWidth = 120, petHeight = 24, partyWidth = 160, partyHeight = 32, calm = false, deck = false, powerFormat = "none", healPrediction = true, absorbs = true, statusMarks = true, targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
+    focusWidth = 160, focusHeight = 30, focustargetWidth = 80, focustargetHeight = 24,
+    petWidth = 120, petHeight = 24, partyWidth = 160, partyHeight = 32, calm = false, deck = false, powerFormat = "none", healPrediction = true, absorbs = true, statusMarks = true, targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
+    -- Each portrait choice (Modules/UnitPortrait.lua): "off", "portrait" or "class".
+    playerPortrait = "off", targetPortrait = "off", focusPortrait = "off",
     -- WoW Forever players read levels and health percent on every frame (as its own UI does),
     -- so a profile that hasn't chosen yet starts that way there.
     showLevel = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.showLevel), healthFormat = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.healthFormat),
@@ -42,7 +45,8 @@ end
 -- your character, the target of target sits outside the target on the same
 -- line, the pet sits over the player frame's right end (combo points take its
 -- left end, and the chat reaches up beside the frame), and the focus sits
--- above the player (its debuffs under it, its cast bar over it; Modules/CastBars.lua).
+-- above the player (its debuffs under it, its cast bar over it; Modules/CastBars.lua), and the focus target sits
+-- beside it, on its inner side.
 -- On a canvas under 1365 wide the target of target would reach the tooltip's corner (and past the
 -- edge under 972), so there it sits over the target's cast bar instead, at the target's inner end; while the
 -- Vanguard meter is on, on a canvas under 1838 (the meter's narrow spot covers the default one up to there).
@@ -52,6 +56,7 @@ local LAYOUT = {
   { key = "targettarget", w = 120, h = 24, outer = "RIGHT", label = L["Target of target"], point = { "BOTTOM", "BOTTOM", 426, 196,
     narrow = { w = UF.NarrowWidth, spot = { "BOTTOM", "BOTTOM", 180, 280 } } } },
   { key = "focus", w = 160, h = 30, label = L["Focus"], point = { "BOTTOM", "BOTTOM", -270, 290 } },
+  { key = "focustarget", w = 80, h = 24, outer = "RIGHT", label = L["Focus target"], point = { "BOTTOM", "BOTTOM", -146, 290 } },
   { key = "pet", w = 120, h = 24, label = L["Pet"], point = { "BOTTOM", "BOTTOM", -184, 240 } },
 }
 UF.LAYOUT = LAYOUT
@@ -398,17 +403,25 @@ end
 ---@param f table a unit frame
 ---@return number
 function UF.BarWidth(f)
-  return f.vgWidth - 2 * barInset(f)
+  return f.vgWidth - 2 * barInset(f) - UF.Portrait.Room(f)
+end
+
+-- How far the bars sit inside a frame's edge (units).
+---@param f table a unit frame
+---@return number
+function UF.BarInset(f)
+  return barInset(f)
 end
 
 -- Lays out the bars inside a frame: health on top (under the name row on a bare frame), power along the bottom,
--- each the bar inset from the border.
+-- each the bar inset from the border (the outer end's also clear of a portrait, UF.Portrait).
 local function layoutBars(f, powerHeight)
-  local inset = barInset(f)
-  f.health:SetPoint("TOPLEFT", inset, -barsTop(f))
-  f.health:SetPoint("BOTTOMRIGHT", -inset, powerHeight + 2 * inset)
+  local inset, room = barInset(f), UF.Portrait.Room(f)
+  local left, right = inset + (f.outer == "LEFT" and room or 0), inset + (f.outer == "RIGHT" and room or 0)
+  f.health:SetPoint("TOPLEFT", left, -barsTop(f))
+  f.health:SetPoint("BOTTOMRIGHT", -right, powerHeight + 2 * inset)
   f.power:SetPoint("TOPLEFT", f.health, "BOTTOMLEFT", 0, -inset)
-  f.power:SetPoint("BOTTOMRIGHT", -inset, inset)
+  f.power:SetPoint("BOTTOMRIGHT", -right, inset)
 end
 
 -- Lines a readout adds under a frame's unit tooltip, by frame key: a function given the tooltip (UnitExtras: the pet's mood).
@@ -808,10 +821,11 @@ local function placeTexts(f, side)
   placeName(f, side)
 end
 
--- Lays out the heal and shield bars and the status row on the frames that carry them (they follow the fill's side and the tab).
+-- Lays out the heal and shield bars, the status row and the portrait on the frames that carry them (they follow the fill's side and the tab).
 local function placeExtras(f)
   if f.heal then UF.Prediction.Place(f) end
   if f.status then UF.Status.Place(f) end
+  if f.portrait then UF.Portrait.Place(f) end
 end
 
 -- Lays a frame's parts out for the HUD look: the hairline (the bars step in past it), the bars (under the name row on
@@ -915,6 +929,12 @@ function UF.ApplyStatus()
   UF.Status.Apply()
 end
 
+-- A portrait choice changed (Unit frames page): the bars make room or take it back, and the portrait paints, out of combat.
+function UF.ApplyPortraits()
+  if not UF.frames.player then return end
+  ns.OutOfCombat(UF.Portrait.Apply, "unit frame portraits")
+end
+
 -- The power format changed (Unit frames page): every frame lays its texts out again and repaints, out of combat.
 function UF.ApplyPowerText()
   if not UF.frames.player then return end
@@ -1015,6 +1035,12 @@ function UF.RefreshRaidIcons()
   for _, f in pairs(UF.frames) do UF.UpdateRaidIcon(f) end
 end
 
+-- The status row and the portrait, on the frames that carry them.
+local function updateExtras(f)
+  if f.status then UF.Status.Update(f) end
+  if f.portrait then UF.Portrait.Update(f) end
+end
+
 -- Everything on a frame, if its unit exists.
 function UF.UpdateFrame(f)
   if not ns.IsTrue(UnitExists(f.unit)) then
@@ -1026,7 +1052,7 @@ function UF.UpdateFrame(f)
   UF.UpdateTag(f)
   UF.UpdateRaidIcon(f)
   UF.UpdateCombat(f)
-  if f.status then UF.Status.Update(f) end
+  updateExtras(f)
 end
 
 -- Unit event -> what it updates.
@@ -1081,9 +1107,13 @@ local function refreshTargetOfTarget(f)
   if identityChanged(f) then UF.UpdateName(f) UF.UpdateRaidIcon(f) end
 end
 
--- Target of target has no events of its own; refresh it a few times a second while it shows.
-local function pollTargetOfTarget(f)
-  ns.Every(f, 0.2, refreshTargetOfTarget, f)
+-- The frames of a unit that has no events of its own (the target's target, the focus's): they refresh a few times a
+-- second while they show.
+local POLLED = { "targettarget", "focustarget" }
+
+-- Refreshes the target of target and the focus target a few times a second while they show.
+local function pollTargetsOfTargets()
+  for _, key in ipairs(POLLED) do ns.Every(UF.frames[key], 0.2, refreshTargetOfTarget, UF.frames[key]) end
 end
 
 -- Updates every frame whose key is listed (all frames with no list).
@@ -1099,7 +1129,7 @@ end
 local GLOBAL_EVENTS = {
   PLAYER_ENTERING_WORLD = false,
   PLAYER_TARGET_CHANGED = { target = true, targettarget = true },
-  PLAYER_FOCUS_CHANGED = { focus = true },
+  PLAYER_FOCUS_CHANGED = { focus = true, focustarget = true },
   UNIT_PET = { pet = true },
   -- The party frames, and the target's tag mark: joining or leaving the tagger's group changes who tagged it.
   GROUP_ROSTER_UPDATE = { party1 = true, party2 = true, party3 = true, party4 = true, target = true },
@@ -1245,6 +1275,7 @@ end
 local function attachExtras()
   UF.Prediction.Attach()
   UF.Status.Attach()
+  UF.Portrait.Attach()
 end
 
 -- Builds every frame. Secure frames can't be set up in combat, so this waits.
@@ -1254,7 +1285,7 @@ local function build(settings)
   end
   if not UF.RaidCoversParty() then addParty() end
   if settings.boss then addBosses() end
-  pollTargetOfTarget(UF.frames.targettarget)
+  pollTargetsOfTargets()
   if settings.hideBlizzard then hideReplaced(settings) end
   attachExtras()
   UF.Refresh()
@@ -1373,7 +1404,7 @@ end
 
 -- Your frames and the Versus deck are the Calm HUD's "frames" part (Core/Visibility.lua): they
 -- dim out of combat and come back in a fight, on a living hostile target or under the mouse.
-UF.CALM_KEYS = { "player", "pet", "target", "targettarget", "focus" }
+UF.CALM_KEYS = { "player", "pet", "target", "targettarget", "focus", "focustarget" }
 -- The Calm HUD's choices for the rest of the HUD (V.CALM_PARTS), which a profile saved before they came keeps on Leave.
 UF.CALM_OTHERS = { "calmBars", "calmAuras", "calmStrips", "calmXP", "calmMeter", "calmMinimap" }
 
