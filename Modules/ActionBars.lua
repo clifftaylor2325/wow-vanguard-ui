@@ -535,9 +535,11 @@ local function each(fn)
   end
 end
 
--- Repaints every button's icon tint, for a change to "Red when out of range".
+-- Repaints every button's icon tint, for a change to "Red when out of range", and starts or stops the range
+-- polling it needs on a client without range events.
 function AB.RepaintIcons()
   each(paintIcon)
+  AB.FollowRangeTint()
 end
 
 -- Repaints every button's macro name and key text, for a change to Macro names or Key text.
@@ -1006,6 +1008,13 @@ local function pollRange()
   ns.Every("action bar range", 0.2, function() each(updateRange) end)
 end
 
+-- Polls range while "Red when out of range" is on and the client sends no range events; stops otherwise. Run at
+-- enable and whenever the setting changes, so turning it on needs no reload.
+function AB.FollowRangeTint()
+  if AB.settings.rangeTint and not rangeEvents() then return pollRange() end
+  ns.Every("action bar range", nil)
+end
+
 -- What you carry or wear changed: item counts, and whether an item can be used.
 local function refreshCarried()
   each(updateCount)
@@ -1127,7 +1136,7 @@ function AB.Enable(settings)
   for event, fn in pairs(EVENTS) do
     ns.On(event, fn)
   end
-  if settings.rangeTint and not rangeEvents() then pollRange() end
+  AB.FollowRangeTint()
   ns.OnUnit("UNIT_INVENTORY_CHANGED", refreshCarried, "player")
   T.OnChanged(function() ns.OutOfCombat(AB.UpdateBackings, "action bar backings") end)
 end

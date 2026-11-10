@@ -466,6 +466,23 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
   addon.update(0);
   const cd = addon.eval("return Vanguard_Bar1Button1.cooldown.__cooldown");
   expect(cd[0] === 5 && cd[1] === 2, "a cooldown given as a table uses its start and duration").toBeTruthy();
+  // Red when out of range turned on after a login with it off: polling starts then (no reload), and stops when off.
+  const off = loggedIn(ACTIONS_ENV + `
+    C_ActionBar = nil
+    __rangeAsks = 0
+    IsActionInRange = function() __rangeAsks = __rangeAsks + 1 return nil end`, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { rangeTint = false } } }" });
+  const asks = () => off.eval("local n = __rangeAsks __rangeAsks = 0 return n");
+  asks();
+  off.update(0.25);
+  expect(asks(), "off at login: no polling").toBe(0);
+  setSharedOption(off, "Red when out of range", "true");
+  asks();
+  off.update(0.25);
+  expect(asks() > 0, "turned on: the buttons are polled at once, without a reload").toBe(true);
+  setSharedOption(off, "Red when out of range", "false");
+  asks();
+  off.update(0.25);
+  expect(asks(), "turned off again: polling stops").toBe(0);
 });
 
 it("a dropped spell named by GetSpellInfo", () => {
