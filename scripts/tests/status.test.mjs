@@ -244,3 +244,16 @@ it("raid status: a summon on its way shows the game's summon icon, over the resu
   addon.eval("C_IncomingSummon = nil");
   expect(addon.eval("return ns.GetModule('RaidStatus').SummonAtlas('raid1')"), "nor without the namespace").toBe(null);
 });
+
+it("raid status: the center marks are never asked whether they show, so a secret answer raises nothing and every tile is painted", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval(`__spawn(1, "raid1") __spawn(3, "raid3") __asked = 0
+    for _, i in ipairs({ 1, 3 }) do local b = _G["Vanguard_RaidUnitButton" .. i]
+      for _, key in ipairs({ "ready", "rez", "summon" }) do b[key].IsShown = function() __asked = __asked + 1 return __wfgWorld.secret(true) end end
+    end
+    __status.ready.raid1 = "ready" __status.rez.raid3 = true`);
+  addon.fire("READY_CHECK");
+  addon.fire("INCOMING_RESURRECT_CHANGED", "raid3");
+  const status = addon.eval("return { Vanguard_RaidUnitButton1.status:IsShown(), Vanguard_RaidUnitButton3.status:IsShown(), __asked, #ns.errors }");
+  expect(status, "both tiles' status texts step aside for their center marks, no mark was asked, and nothing raised").toEqual([false, false, 0, 0]);
+});
