@@ -13,6 +13,7 @@ local L = ns.L
 
 local CF = ns.Module("ChatFilter", {
   defaults = { on = false, mode = "tab", gold = true, boosting = true, recruiting = true, repeats = true, keywords = {} },
+  live = true,
 })
 
 -- At most this many keywords, each at most this many characters.
@@ -196,11 +197,15 @@ local function openWindow()
   return type(frame) == "table" and remember(frame) or nil
 end
 
--- True while caught lines go to a Filtered tab: the module enabled (not switched off from login, when
--- there are no settings yet), the filter on, and tab mode.
+-- Whether the module runs now (its scope is open: false from login with it off, and after a switch off).
+local function running()
+  return CF.scope ~= nil and CF.scope:Running()
+end
+
+-- True while caught lines go to a Filtered tab: the module running, the filter on, and tab mode.
 local function wantsTab()
   local s = CF.settings
-  return CF.active and s and s.on and s.mode == "tab"
+  return running() and s and s.on and s.mode == "tab"
 end
 
 -- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
@@ -292,7 +297,7 @@ end
 -- The chat filter (ns.AddChatFilters): true keeps the line out of the window it was asked for.
 -- A hidden (or missing) text or sender passes before anything reads it.
 function CF.Filter(_, _, text, sender, ...)
-  if not (CF.active and CF.settings.on) or ns.Restricted("Chat") or ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return false end
+  if not (running() and CF.settings.on) or ns.Restricted("Chat") or ns.IsSecret(text) or ns.IsSecret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return false end
   return CF.Judge(text, sender, ns.PlainNumber((select(9, ...)))) == true
 end
 
@@ -468,19 +473,20 @@ function CF.Changed()
   ns.Options.Refresh()
 end
 
--- Module switched off: the filter lets everything through (it stays registered with the game until a reload).
-function CF.Disable()
-  CF.active = false
+-- Hooks the chat filter and the sender-link click once a session, through the scope's gates: the game's filter list
+-- and callback registry keep them, and they let everything through while the module is switched off.
+local function hookChat(scope)
+  scope:Gate("chat filter", ns.GuardResult("chat filter", CF.Filter, false), function(gate) ns.AddChatFilters(CF.EVENTS, gate) end)
+  local registry = _G.EventRegistry
+  if type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
+  scope:Gate("chat filter link click", ns.Guard("chat filter link click", CF.OnLink), function(gate) registry:RegisterCallback("SetItemRef", gate, CF) end)
 end
 
--- Module entry point (Core/Modules.lua).
-function CF.Enable(settings)
-  CF.settings, CF.active = settings, true
-  if CF.registered then return CF.Prepare() end
-  CF.registered = true
-  local guarded = ns.GuardResult("chat filter", CF.Filter, false)
-  ns.AddChatFilters(CF.EVENTS, guarded)
-  local registry = _G.EventRegistry
-  if type(registry) == "table" and type(registry.RegisterCallback) == "function" then registry:RegisterCallback("SetItemRef", ns.Guard("chat filter link click", CF.OnLink), CF) end
-  ns.On("PLAYER_ENTERING_WORLD", CF.Prepare)
+-- Module entry point (Core/Modules.lua). Everything goes through the scope: switched off, the filter lets every line
+-- through, so it has no Disable. A start after login makes the Filtered tab at once (the world is entered already).
+function CF.Enable(settings, scope)
+  CF.settings, CF.scope = settings, scope
+  hookChat(scope)
+  scope:On("PLAYER_ENTERING_WORLD", CF.Prepare)
+  if ns.ModulesBuilt() then CF.Prepare() end
 end

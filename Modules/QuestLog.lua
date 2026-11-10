@@ -9,7 +9,10 @@
 local ADDON, ns = ...
 local L, T = ns.L, ns.Theme
 
-local QL = ns.Module("QuestLog", { defaults = { own = true, xp = true } })
+local QL = ns.Module("QuestLog", { defaults = { own = true, xp = true }, live = true })
+
+-- The window's default spot (its mover, registered by Enable).
+QL.SPOT = { "CENTER", "CENTER", -200, 40 }
 
 QL.collapsed = {}
 -- Quests marked with Ctrl-click for Abandon (id -> true).
@@ -303,10 +306,17 @@ function QL.BindKeys()
   end, "quest log keys")
 end
 
--- The button the quest log key clicks.
+-- The button the quest log key clicks (made once a session; the scope hides it when the module stops).
 local function addToggle()
   QL.toggle = CreateFrame("Button", "Vanguard_QuestLogToggle", UIParent)
   QL.toggle:SetScript("OnClick", ns.Guard("click quest log toggle", QL.Toggle))
+  return QL.toggle
+end
+
+-- The key's button, made once and shown again by each start (the scope hides it when the module stops).
+local function keyButton(scope)
+  local button = scope:Frame(QL.toggle or addToggle())
+  button:Show()
 end
 
 -- Puts away the game's window its quest log toggle just opened, out of a fight only: the panel manager refuses
@@ -324,9 +334,11 @@ function QL.OnGameToggle()
   hideGameLog()
 end
 
--- Makes the game's quest log toggle (the micro button) open this log too.
-local function hookGameToggle()
-  if type(hooksecurefunc) == "function" and type(_G.ToggleQuestLog) == "function" then hooksecurefunc("ToggleQuestLog", ns.Guard("hook ToggleQuestLog", QL.OnGameToggle)) end
+-- Makes the game's quest log toggle (the micro button) open this log too: a hook that goes in once a session,
+-- through the scope's gate, and does nothing while the module is switched off.
+local function hookGameToggle(scope)
+  if type(hooksecurefunc) ~= "function" or type(_G.ToggleQuestLog) ~= "function" then return end
+  scope:Gate("quest log toggle", QL.OnGameToggle, function(gate) hooksecurefunc("ToggleQuestLog", ns.Guard("hook ToggleQuestLog", gate)) end)
 end
 
 -- Re-renders the log, if it is still open.
@@ -341,29 +353,37 @@ local function refreshSoon()
 end
 
 -- Binds the quest log key (and keeps it bound), on a client that can.
-local function bindKeys()
+local function bindKeys(scope)
   if type(SetOverrideBindingClick) ~= "function" or type(ClearOverrideBindings) ~= "function" then return end
   QL.BindKeys()
-  ns.On("UPDATE_BINDINGS", QL.BindKeys)
+  scope:On("UPDATE_BINDINGS", QL.BindKeys)
 end
 
 -- Re-renders the log on the events that change it. Share is lit only in a group (as the game's quest map does
 -- on GROUP_ROSTER_UPDATE); an item's info arriving can settle the reward crown.
-local function watchEvents()
+local function watchEvents(scope)
   for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "GROUP_ROSTER_UPDATE", "GET_ITEM_INFO_RECEIVED" }) do
-    ns.On(event, refreshSoon)
+    scope:On(event, refreshSoon)
   end
 end
 
--- Module entry point (Core/Modules.lua).
-function QL.Enable(settings)
+-- The module switched off (Core/Modules.lua): the quest log key goes back to the game's own (the override binding is
+-- cleared, out of combat). The window, its mover and its handlers go with the scope; the toggle hook goes quiet.
+function QL.Disable()
+  if QL.toggle and type(ClearOverrideBindings) == "function" then ns.OutOfCombat(function() ClearOverrideBindings(QL.toggle) end, "quest log keys") end
+end
+
+-- Module entry point (Core/Modules.lua): the window and the key's button are made once a session; everything else
+-- goes through the scope.
+function QL.Enable(settings, scope)
   QL.settings = settings
   if not settings.own then return end
   ns.GetModule("QuestTracker").KeepFoldsOpen()
-  QL.Build()
-  addToggle()
-  bindKeys()
-  hookGameToggle()
-  watchEvents()
-  T.OnChanged(refreshSoon)
+  if not QL.frame then QL.Build() end
+  scope:Mover(QL.frame, "questlog", L["Quest log"], QL.SPOT)
+  keyButton(scope)
+  bindKeys(scope)
+  hookGameToggle(scope)
+  watchEvents(scope)
+  scope:Gate("theme", refreshSoon, T.OnChanged)
 end

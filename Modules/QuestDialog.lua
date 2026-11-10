@@ -14,7 +14,7 @@ local L = ns.L
 
 local QP = ns.QuestParts
 
-local QD = ns.Module("QuestDialog", { defaults = { dialog = true, bypass = "none" } })
+local QD = ns.Module("QuestDialog", { defaults = { dialog = true, bypass = "none" }, live = true })
 
 -- The panel's width, its least and greatest height (it is sized to what the page
 -- holds; a longer text scrolls), and the reward cards in a row.
@@ -384,13 +384,19 @@ function QD.Forward(event, ...)
   end)
 end
 
+-- The game's windows get their events back, and a talk that is open moves to the game's window (the dialog hides
+-- without closing the talk). Shared by the session hand-back switch and by the module being switched off.
+local function handOver()
+  giveBack()
+  if QD.frame and QD.frame:IsShown() and QD.event then QD.Quiet() QD.Forward(QD.event) end
+end
+
 -- Hands the quest and gossip windows to the game for the session (on), or takes them back (off): the
 -- dialog stops showing, and a talk that is open moves to the game's window. Not saved; a reload starts over.
 function QD.HandBack(on)
   if QD.handedBack == on or not QD.had then QD.handedBack = on return end
   QD.handedBack = on
-  if on then giveBack() else takeOver() end
-  if on and QD.frame and QD.frame:IsShown() and QD.event then QD.Quiet() QD.Forward(QD.event) end
+  if on then handOver() else takeOver() end
 end
 
 -- Whether the game's windows have the talk for this session.
@@ -430,14 +436,24 @@ local function itemArrived()
   ns.Soon("questdialog items", QD.Redraw)
 end
 
--- Module entry point (Core/Modules.lua).
-function QD.Enable(settings)
+-- The module switched off (Core/Modules.lua), always out of combat: the game's gossip and quest windows get back the
+-- events Vanguard took, by the same path as the session hand-back switch, so the next talk opens them, and a talk
+-- that is open moves to them. Vanguard's dialog, mover and handlers go with the scope. Needs an in-game look: that
+-- registering these events on the game's windows from here leaves them untainted.
+function QD.Disable()
+  handOver()
+end
+
+-- Module entry point (Core/Modules.lua): the dialog is built once a session; its mover and handlers go through the
+-- scope. While the session hand-back switch is on the game keeps its events, as it does after a login.
+function QD.Enable(settings, scope)
   if not settings.dialog then return end
-  QD.Build()
-  takeOver()
-  for event, key in pairs(QD.EVENTS) do ns.On(event, function(_, ...) QD.Show(key, event, ...) end) end
-  for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do ns.On(event, function(_, ...) QD.TalkEnded(event, ...) end) end
-  ns.On("PLAYER_REGEN_DISABLED", releaseKeys)
-  ns.On("QUEST_ITEM_UPDATE", QD.Redraw)
-  ns.On("GET_ITEM_INFO_RECEIVED", itemArrived)
+  if not QD.frame then QD.Build() end
+  scope:Mover(QD.frame, "questdialog", L["Quest dialog"], QD.DefaultPoint())
+  if not QD.handedBack then takeOver() end
+  for event, key in pairs(QD.EVENTS) do scope:On(event, function(_, ...) QD.Show(key, event, ...) end) end
+  for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do scope:On(event, function(_, ...) QD.TalkEnded(event, ...) end) end
+  scope:On("PLAYER_REGEN_DISABLED", releaseKeys)
+  scope:On("QUEST_ITEM_UPDATE", QD.Redraw)
+  scope:On("GET_ITEM_INFO_RECEIVED", itemArrived)
 end

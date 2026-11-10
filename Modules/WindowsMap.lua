@@ -286,7 +286,7 @@ GW.QUEST_DETAIL_BUTTONS = { "AbandonButton", "ShareButton", "TrackButton" }
 -- Whether Vanguard's own quest log is on, standing in for the game's quest panel (it is built only when on).
 local function ownQuestLog()
   local log = ns.GetModule("QuestLog")
-  return log ~= nil and log.frame ~= nil
+  return log ~= nil and log.frame ~= nil and ns.ModuleLive("QuestLog")
 end
 
 -- The quest list's tools: the search box (its magnifier kept), the settings gear on a control tile, and the quest count's

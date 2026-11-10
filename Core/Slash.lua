@@ -262,7 +262,7 @@ local nineSliceCommand = switchCommand({
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
-  if not CG.settings then return chat(L["Cooldown glow is off: turn the module on in the options first."]) end
+  if not ns.ModuleLive("CooldownGlow") then return chat(L["Cooldown glow is off: turn the module on in the options first."]) end
   local percent = tonumber(rest)
   if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
@@ -281,7 +281,7 @@ local cdmKeysSwitch = switchCommand({
 
 -- /vg cdmkeys: the module must be on first (its settings exist only then).
 local function cdmKeysCommand(rest)
-  if not ns.GetModule("CooldownKeys").settings then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."]) end
+  if not ns.ModuleLive("CooldownKeys") then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."]) end
   return cdmKeysSwitch(rest)
 end
 
@@ -828,7 +828,7 @@ end
 local function questsCommand(rest)
   if rest:lower():match("^history") then return ns.GetModule("QuestHistory").Command(rest) end
   local QL = ns.GetModule("QuestLog")
-  if QL.frame then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
+  if QL.frame and ns.ModuleLive("QuestLog") then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
 end
 
 local COMMANDS = {

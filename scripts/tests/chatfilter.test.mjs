@@ -460,9 +460,9 @@ it("chat filter: a line without an ID is judged once across windows, hide mode c
   expect(addon.eval("return ns.GetModule('ChatFilter').count"), "a hidden line is counted").toBe(4);
   addon.slash("filter add [Bo|ost]");
   expect(addon.eval("return ns.Settings('ChatFilter').keywords"), "brackets and bars are not kept in a word").toEqual(["boost"]);
-  addon.eval("ns.GetModule('ChatFilter').Disable()");
+  addon.eval('ns.SetModuleEnabled("ChatFilter", false)');
   expect(deliver(addon, GOLD, "Goldy4"), "module off: everything passes").toBe(false);
-  addon.eval("ns.GetModule('ChatFilter').Enable(ns.Settings('ChatFilter'))");
+  addon.eval('ns.SetModuleEnabled("ChatFilter", true)');
   expect(deliver(addon, GOLD, "Goldy5"), "and on again, with one filter registered").toBe(true);
 });
 

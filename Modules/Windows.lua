@@ -2298,10 +2298,11 @@ end
 
 -- Hooking -------------------------------------------------------------------------------------
 
--- Whether Vanguard's quest dialog is on in place of this game window (QuestDialog loads before this module).
+-- Whether Vanguard's quest dialog is on in place of this game window (QuestDialog loads before this module); a
+-- dialog switched off since has given the game's windows back, and its frame stays.
 local function replaced(name)
   local dialog = ns.GetModule("QuestDialog")
-  return GW.QUEST_WINDOWS[name] == true and dialog ~= nil and dialog.frame ~= nil
+  return GW.QUEST_WINDOWS[name] == true and dialog ~= nil and dialog.frame ~= nil and ns.ModuleLive("QuestDialog")
 end
 
 -- Whether a frame is one the game keeps from addons (Retail's encounter timeline and warnings are): a game window

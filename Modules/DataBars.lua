@@ -17,6 +17,7 @@ local V = ns.Visibility
 
 local DB = ns.Module("DataBars", {
   defaults = { width = 478, height = 6, xp = true, reputation = true, text = "hover", tooltip = true },
+  live = true,
 })
 
 -- Profiles saved before the Centered layout hold the old size (476 x 10) as
@@ -423,15 +424,18 @@ local function resized(bar)
   if bar.vgOnState then bar.vgOnState() end
 end
 
--- Gives a bar the mouse and a tooltip on hover, hooked so the text's own hover scripts (wireText) stay.
-local function hoverTip(bar, label, show)
+-- Gives a bar the mouse and a tooltip on hover, hooked so the text's own hover scripts (wireText) stay. The hooks
+-- are on the module's own bar and go in once a session, through the scope's gate.
+local function hoverTip(bar, label, show, scope)
   bar:EnableMouse(true)
-  bar:HookScript("OnEnter", ns.Guard(label, show))
-  bar:HookScript("OnLeave", function() GameTooltip:Hide() end)
+  scope:Gate(label, show, function(gate)
+    bar:HookScript("OnEnter", ns.Guard(label, gate))
+    bar:HookScript("OnLeave", function() GameTooltip:Hide() end)
+  end)
 end
 
--- A themed status bar with its text, movable as `key`; Vanguard may set its size.
-local function createBar(key, label, point, settings)
+-- A themed status bar with its text; Vanguard may set its size. Made once a session (a frame is never freed).
+local function makeBar(key, settings)
   local bar = CreateFrame("StatusBar", "Vanguard_" .. key, UIParent)
   bar.vgKey, bar.vgCalm = key, "xp"
   bar:SetSize(settings.width, settings.height)
@@ -439,9 +443,17 @@ local function createBar(key, label, point, settings)
   T.HudPanel(bar, { inset = true })
   addText(bar, settings.text)
   V.WatchHover(bar)
-  ns.Mover(bar, key, label, point)
-  ns.MoverSizable(key, DB.SIZES, resized)
   return bar
+end
+
+-- The bar made for `key` (once a session), movable and sizable through the scope: its mover leaves unlock mode and
+-- the bar is hidden when the module stops.
+local function createBar(key, label, point, settings, scope)
+  DB.made = DB.made or {}
+  DB.made[key] = DB.made[key] or makeBar(key, settings)
+  scope:Mover(DB.made[key], key, label, point)
+  ns.MoverSizable(key, DB.SIZES, resized)
+  return DB.made[key]
 end
 
 -- The rested overlay: a lighter strip from the left edge, drawn under the
@@ -484,6 +496,7 @@ DB.RENOWN_COLOR = "info"
 -- visibility hides it).
 function DB.UpdateXP()
   local bar, xp = DB.xpBar, DB.Line()
+  if not bar then return end
   DB.PlaceRepBar(xp)
   bar:SetShown(xp ~= nil and V.Shows(bar))
   if not xp then return end
@@ -498,6 +511,7 @@ end
 -- faction (or while its visibility hides it).
 function DB.UpdateReputation()
   local bar, rep = DB.repBar, DB.Reputation()
+  if not bar then return end
   bar:SetShown(rep ~= nil and V.Shows(bar))
   if not rep then return end
   bar:SetMinMaxValues(0, rep.max)
@@ -513,26 +527,27 @@ local function onXPCVar(_, name)
 end
 
 -- The XP bar with its rested overlay, kept current.
-local function enableXP(settings)
-  DB.xpBar = createBar("xpbar", L["Experience"], DB.POINTS.xpbar, settings)
+local function enableXP(settings, scope)
+  DB.xpBar = createBar("xpbar", L["Experience"], DB.POINTS.xpbar, settings, scope)
   DB.xpBar.vgOnState = DB.UpdateXP
-  addRested(DB.xpBar)
-  for _, e in ipairs(DB.XP_EVENTS) do ns.On(e, DB.UpdateXP) end
-  if next(DB.XP_CVARS) then ns.On("CVAR_UPDATE", onXPCVar) end
-  ns.On("PLAYER_XP_UPDATE", DB.OnXPChange)
-  ns.On("CHAT_MSG_COMBAT_XP_GAIN", DB.OnKillMessage)
-  hoverTip(DB.xpBar, "show XP tooltip", DB.ShowXPTooltip)
+  if not DB.xpBar.rested then addRested(DB.xpBar) end
+  for _, e in ipairs(DB.XP_EVENTS) do scope:On(e, DB.UpdateXP) end
+  if next(DB.XP_CVARS) then scope:On("CVAR_UPDATE", onXPCVar) end
+  scope:On("PLAYER_XP_UPDATE", DB.OnXPChange)
+  scope:On("CHAT_MSG_COMBAT_XP_GAIN", DB.OnKillMessage)
+  hoverTip(DB.xpBar, "show XP tooltip", DB.ShowXPTooltip, scope)
   DB.UpdateXP()
 end
 
 -- The reputation bar for the watched faction, kept current, with its tooltip and a click to the reputation list.
-local function enableReputation(settings)
+local function enableReputation(settings, scope)
   DB.repPoint = DB.RepPoint(DB.Line())
-  DB.repBar = createBar("repbar", L["Reputation"], DB.repPoint, settings)
+  DB.repBar = createBar("repbar", L["Reputation"], DB.repPoint, settings, scope)
   DB.repBar.vgOnState = DB.UpdateReputation
-  hoverTip(DB.repBar, "show reputation tooltip", DB.ShowReputationTooltip)
-  DB.repBar:HookScript("OnMouseUp", ns.Guard("open reputation list", DB.OpenReputation))
-  for _, e in ipairs(DB.REP_EVENTS) do ns.On(e, DB.UpdateReputation) end
+  hoverTip(DB.repBar, "show reputation tooltip", DB.ShowReputationTooltip, scope)
+  local bar = DB.repBar
+  scope:Gate("open reputation list", DB.OpenReputation, function(gate) bar:HookScript("OnMouseUp", ns.Guard("open reputation list", gate)) end)
+  for _, e in ipairs(DB.REP_EVENTS) do scope:On(e, DB.UpdateReputation) end
   DB.UpdateReputation()
 end
 
@@ -544,11 +559,28 @@ local function protected(f)
   return type(f.IsProtected) == "function" and f:IsProtected() == true
 end
 
+-- The gates of the hooks Suppress puts on the game's frames: a scope of its own that is always open, because
+-- GameAlerts holds a frame with Suppress too, with this module off. A gate installs its hook once a session.
+local holds = ns.NewScope("DataBars frames")
+holds.on = true
+
+-- Hides a frame again when the game shows it, while Suppress holds it (a Suppress released since lets it show).
+local function holdHidden(f)
+  if vgSuppressed[f] then f:Hide() end
+end
+
+-- Hooks the frame's Show and SetShown to hold it hidden, once a session.
+local function holdFrame(name, f)
+  holds:Gate("Show " .. name, holdHidden, function(gate) hooksecurefunc(f, "Show", ns.Guard("hook Show", gate)) end)
+  holds:Gate("SetShown " .. name, holdHidden, function(gate) hooksecurefunc(f, "SetShown", ns.Guard("hook SetShown", gate)) end)
+end
+
 -- Keeps one of the game's frames hidden where it is. An XP bar frame isn't moved
 -- under another parent (the game and Edit Mode call methods on its own parent;
 -- moving it broke Edit Mode), and whenever the game shows it, it's hidden again.
 -- A protected frame gets no hook (the hook's Hide is blocked in combat): it is
--- hidden once, out of combat.
+-- hidden once, out of combat. Its state is true while held and false once released (DB.Release): the hooks
+-- go in only the first time, and do nothing while it is released.
 function DB.Suppress(name)
   local f = _G[name]
   if type(f) ~= "table" or not f.Hide or vgSuppressed[f] then return end
@@ -556,9 +588,16 @@ function DB.Suppress(name)
   ns.EditModeReplaced(f)
   if protected(f) then return ns.OutOfCombat(function() f:Hide() end, f) end
   f:Hide()
-  if type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(f, "Show", ns.Guard("hook Show", f.Hide))
-  hooksecurefunc(f, "SetShown", ns.Guard("hook SetShown", f.Hide))
+  if type(hooksecurefunc) == "function" then holdFrame(name, f) end
+end
+
+-- Lets a frame Suppress hid show again (its hooks stay and do nothing): the game's frame is shown, out of combat.
+-- The game's frame kept its events, so it fills itself again. Nothing for a frame that was never suppressed.
+function DB.Release(name)
+  local f = _G[name]
+  if type(f) ~= "table" or not vgSuppressed[f] then return end
+  vgSuppressed[f] = false
+  ns.OutOfCombat(function() f:Show() end, f)
 end
 
 -- Applies the bars' visibility setting (one for both): now, or when combat ends
@@ -575,13 +614,21 @@ function DB.PlaceTexts()
   for _, bar in pairs({ DB.xpBar, DB.repBar }) do DB.PlaceText(bar) end
 end
 
--- Module entry point (Core/Modules.lua). Data bars aren't protected, so no combat wait.
-function DB.Enable(settings)
-  DB.settings = settings
-  if settings.xp then enableXP(settings) end
-  if settings.reputation then enableReputation(settings) end
+-- The module switched off (Core/Modules.lua): the game's own status bars Suppress hid are shown again (their events
+-- were never taken). Needs an in-game look: that they come back in their Edit Mode spot, and that showing them from
+-- here taints nothing. The bars, their movers and handlers go with the scope.
+function DB.Disable()
+  for _, name in ipairs(DB.BLIZZARD) do DB.Release(name) end
+end
+
+-- Module entry point (Core/Modules.lua). Data bars aren't protected, so no combat wait. The bars are made once a
+-- session; a bar whose switch is off is not kept (DB.xpBar is nil), and everything else goes through the scope.
+function DB.Enable(settings, scope)
+  DB.settings, DB.xpBar, DB.repBar = settings, nil, nil
+  if settings.xp then enableXP(settings, scope) end
+  if settings.reputation then enableReputation(settings, scope) end
   DB.ApplyVisibility()
   if not (settings.xp or settings.reputation) then return end
-  T.OnChanged(DB.PlaceTexts)
+  scope:Gate("theme", DB.PlaceTexts, T.OnChanged)
   for _, name in ipairs(DB.BLIZZARD) do DB.Suppress(name) end
 end

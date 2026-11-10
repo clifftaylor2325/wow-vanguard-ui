@@ -14,7 +14,7 @@ local T = ns.Theme
 -- The labels, kept off the game's items (Core/Events.lua, ns.FrameState).
 local vgKey = ns.FrameState("vgKey")
 
-local CK = ns.Module("CooldownKeys", { defaults = { keys = false } })
+local CK = ns.Module("CooldownKeys", { defaults = { keys = false }, live = true })
 
 -- The rows whose icons are cast from a bar (the buff row is not).
 CK.VIEWERS = { "EssentialCooldownViewer", "UtilityCooldownViewer" }
@@ -93,8 +93,10 @@ function CK.Paint(keys)
   end
 end
 
--- Reads the bars again and repaints the rows; with the switch off, blanks them.
+-- Reads the bars again and repaints the rows; with the switch off, blanks them. Nothing while the module is
+-- switched off (a repaint that was waiting for the next frame comes after the switch).
 function CK.Refresh()
+  if not (CK.scope and CK.scope:Running()) then return end
   CK.Paint(CK.settings.keys and CK.Keys() or {})
 end
 
@@ -110,31 +112,38 @@ local function refreshSoon()
 end
 
 -- Repaints after a row lays itself out again (the game makes its items as you set what it tracks),
--- and on the next frame after it points the items it has at other cooldowns (a swap that keeps the count).
-local function watch(name)
+-- and on the next frame after it points the items it has at other cooldowns (a swap that keeps the count). The
+-- hooks go in once a session, through the scope's gates, and do nothing while the module is switched off.
+local function watch(name, scope)
   local viewer = _G[name]
   if type(viewer) ~= "table" or type(hooksecurefunc) ~= "function" then return end
   if type(viewer.RefreshLayout) == "function" then
-    hooksecurefunc(viewer, "RefreshLayout", ns.Guard("hook RefreshLayout keys", CK.Refresh))
+    scope:Gate("layout " .. name, CK.Refresh, function(gate) hooksecurefunc(viewer, "RefreshLayout", ns.Guard("hook RefreshLayout keys", gate)) end)
   end
   if type(viewer.RefreshData) == "function" then
-    hooksecurefunc(viewer, "RefreshData", ns.Guard("hook RefreshData keys", refreshSoon))
+    scope:Gate("data " .. name, refreshSoon, function(gate) hooksecurefunc(viewer, "RefreshData", ns.Guard("hook RefreshData keys", gate)) end)
   end
 end
 
 -- Repaints after a Vanguard bar button is pointed at another slot. A stance, form or
 -- Shift+number page lands a frame after its event (the secure state driver re-points
 -- bar 1 on its next update), so the bar, not the event, says when the keys moved.
-local function followButtons()
+local function followButtons(scope)
   if type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(ns.GetModule("ActionBars"), "UpdateButton", ns.Guard("hook UpdateButton keys", refreshSoon))
+  scope:Gate("update button", refreshSoon, function(gate) hooksecurefunc(ns.GetModule("ActionBars"), "UpdateButton", ns.Guard("hook UpdateButton keys", gate)) end)
+end
+
+-- The module switched off (Core/Modules.lua): the labels on the game's icons are blanked (the labels stay, empty; the
+-- handlers and hooks go with the scope).
+function CK.Disable()
+  CK.Paint({})
 end
 
 -- Module entry point (Core/Modules.lua): watch the events, the bars and the rows, then paint.
-function CK.Enable(settings)
-  CK.settings = settings
-  for _, event in ipairs(CK.EVENTS) do ns.On(event, ns.Guard("cooldown keys", refreshSoon)) end
-  followButtons()
-  for _, name in ipairs(CK.VIEWERS) do watch(name) end
+function CK.Enable(settings, scope)
+  CK.settings, CK.scope = settings, scope
+  for _, event in ipairs(CK.EVENTS) do scope:On(event, ns.Guard("cooldown keys", refreshSoon)) end
+  followButtons(scope)
+  for _, name in ipairs(CK.VIEWERS) do watch(name, scope) end
   CK.Refresh()
 end
