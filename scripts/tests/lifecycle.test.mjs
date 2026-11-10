@@ -477,3 +477,20 @@ it("lifecycle: a spec change that must wait names what differs in its reload off
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return Vanguard_Reload.title:GetText()")).toBe("Your specialization uses profile Raid. TestReload differs in Raid, so the switch waits for a reload. Reload the UI now to apply it?");
 });
+
+it("lifecycle: a module that fails at a login in a fight has its secure frame put away when the fight ends", () => {
+  expectErrors("module TestHalfSecure: half built");
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) });
+  asAddon(addon, `${MODULES}
+    local H = ns.Module("TestHalfSecure", { defaults = {}, live = true })
+    function H.Enable(settings, scope)
+      H.button = H.button or CreateFrame("Button", "VanguardTest_HalfSecure", UIParent, "SecureActionButtonTemplate")
+      scope:Frame(H.button)
+      error("half built", 0)
+    end`);
+  addon.eval("__wfgStub.inCombat = true");
+  addon.login();
+  expect(addon.eval("return VanguardTest_HalfSecure:IsShown()")).toBe(true);
+  setCombat(addon, false);
+  expect(addon.eval("return VanguardTest_HalfSecure:IsShown()")).toBe(false);
+});

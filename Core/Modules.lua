@@ -172,12 +172,19 @@ local function openScope(def)
   def.scope.on = true
 end
 
+-- Releases what a module that failed to build registered through its scope: its gates shut at once, the rest out of
+-- combat (a /reload in a fight runs the login pass in combat, and hiding a secure frame is protected).
+local function releaseFailed(def)
+  def.scope.on = false
+  ns.OutOfCombat(function() def.scope:Close() end, def.scope)
+end
+
 -- Builds one module; a failure, in its settings' upgrade too, is reported (see ns.Report) instead of stopping the
 -- others, and what it registered through its scope before it failed is released.
 local function start(def)
   openScope(def)
   def.enabled = (ns.Try("module " .. def.name, build, def))
-  if not def.enabled and def.scope then def.scope:Close() end
+  if not def.enabled and def.scope then releaseFailed(def) end
 end
 
 -- Takes a running live module down: its own Disable first (what the scope can't see), then its scope.
