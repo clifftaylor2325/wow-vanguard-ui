@@ -112,12 +112,12 @@ function QD.DefaultPoint()
   return { "BOTTOM", "BOTTOM", 0, cast.point[4] + cast.h + T.SPACE.gap }
 end
 
--- Builds the dialog (hidden, at its greatest height until a page sizes it), movable, closed by Escape.
+-- Builds the dialog (hidden, at its greatest height until a page sizes it), closed by Escape. Once a session: the
+-- module's Enable makes it movable through its scope.
 function QD.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestDialog", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   f:SetSize(QD.W, QD.MAX_H)
   f:SetFrameStrata("DIALOG")
-  ns.Mover(f, "questdialog", L["Quest dialog"], QD.DefaultPoint())
   addHeader(f)
   addBody(f)
   addFooter(f)
