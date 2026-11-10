@@ -4,7 +4,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
-import { SETUP_DONE } from "./helpers.mjs";
+import { AFK_ENV, SETUP_DONE, UNITS_ENV } from "./helpers.mjs";
 import { lifecycleCases } from "./lifecycle-helpers.mjs";
 
 // The modules these cases need on: the unit frames the others sit on, and the heavy ones this batch converts.
@@ -192,4 +192,28 @@ it("lifecycle: raid tools switched on again keep the roster closed and the same 
   addon.eval('local RT = ns.GetModule("RaidTools") RT.ToggleRoster() __bar, __roster = RT.bar, RT.rframe');
   addon.eval('ns.SetModuleEnabled("RaidTools", false) ns.SetModuleEnabled("RaidTools", true)');
   expect(addon.eval('local RT = ns.GetModule("RaidTools") return { RT.bar == __bar, RT.rframe == __roster, RT.rosterOpen, __roster:IsShown() }')).toEqual([true, true, false, false]);
+});
+
+// AfkScreen -----------------------------------------------------------------------------------------------------
+
+lifecycleCases("AfkScreen", login);
+
+const AFK_LOGIN = loginWith("", UNITS_ENV + AFK_ENV);
+
+it("lifecycle: the AFK screen switched off goes at once, stays away while you are away, and comes back on switching on", () => {
+  const addon = AFK_LOGIN();
+  addon.eval("__afk = true");
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.advance(1);
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()")).toBe(true);
+  addon.eval('ns.SetModuleEnabled("AfkScreen", false)');
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()")).toBe(false);
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.fire("PLAYER_REGEN_ENABLED");
+  addon.advance(1);
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()")).toBe(false);
+  addon.eval('ns.SetModuleEnabled("AfkScreen", true)');
+  addon.fire("PLAYER_FLAGS_CHANGED", "player");
+  addon.advance(1);
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()")).toBe(true);
 });
