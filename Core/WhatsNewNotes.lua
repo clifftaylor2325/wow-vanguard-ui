@@ -40,7 +40,7 @@ ns.WHATS_NEW = {
     { module = "Other", label = "Look", items = {
       { text = "Window and page titles are a size larger, a step above card headings." },
       { text = "The options header shows the painted crest and the Vanguard wordmark; your faction's crest moves to the footer." },
-      { text = "A class-colour swatch beside the accent presets sets the accent to your class colour.", page = "general", row = "Accent" },
+      { text = "A class-colour swatch beside the accent presets sets the accent to your class colour." },
       { text = "Each character on a shared profile gets its own class colour at login." },
       { text = "The game's own text, in windows Vanguard does not skin, takes the theme font's face.", page = "general", row = "Font" },
       { text = "The Modules page says so when its Show choice leaves nothing to list, with a Show all modules button." },
