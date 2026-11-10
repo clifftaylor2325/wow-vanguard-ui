@@ -270,7 +270,7 @@ it("setup again: Keep and Keep change nothing; Run setup in the options; Start o
   expect(after.eval("return { Vanguard_Setup.caption:GetText(), Vanguard_Setup.pages.layout.hint:GetText() }"), "after the reload setup opens on its layouts, Keep picked").toEqual(["Step 1 of 9 · Layout", "Moves nothing: your frames stay where they are."]);
 });
 it("setup after Start over keeps Start over's backup: its first change doesn't copy the reset profile over it", () => {
-  const sv = "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, ['Default backup'] = { positions = { raid = { point = 'TOP', relPoint = 'TOP', x = 0, y = -300 } } } } }\nVanguardCharDB = { setupDone = false, setupBackup = 'Default backup' }";
+  const sv = "VanguardDB = { version = 2, setupDone = true, backupOf = { ['Default backup'] = 'Default' }, profiles = { Default = {}, ['Default backup'] = { positions = { raid = { point = 'TOP', relPoint = 'TOP', x = 0, y = -300 } } } } }\nVanguardCharDB = { setupDone = false, setupBackup = 'Default backup' }";
   const addon = loggedIn("", { firstRun: true, savedVariables: sv });
   addon.clearChat();
   addon.eval("ns.Setup.Backup()");
