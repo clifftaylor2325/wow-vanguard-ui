@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
 import { SETUP_DONE } from "./helpers.mjs";
-import { lifecycleCases } from "./lifecycle-helpers.mjs";
+import { lifecycleCases, moduleOff } from "./lifecycle-helpers.mjs";
 
 // The addon logged in with the heavy modules off, and `saved` Lua run after the saved variables.
 function login(saved = "") {
@@ -86,4 +86,16 @@ it("lifecycle: DataBars stopped, a late visibility repaint does not show its bar
   const addon = login();
   addon.eval('ns.SetModuleEnabled("DataBars", false) local DB = ns.GetModule("DataBars") if DB.xpBar then DB.UpdateXP() DB.UpdateReputation() end');
   expect(addon.eval('local DB = ns.GetModule("DataBars") return { DB.xpBar == nil or not DB.xpBar:IsShown(), DB.repBar == nil or not DB.repBar:IsShown() }')).toEqual([true, true]);
+});
+
+it("lifecycle: QuestLog stopped with the tracker off, a zone-in no longer opens the game's folded quest zones", () => {
+  const addon = login(moduleOff("QuestTracker"));
+  addon.eval('local QT = ns.GetModule("QuestTracker") __opened = 0 QT.OpenFolds = function() __opened = __opened + 1 end');
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(0.2);
+  const running = addon.eval("return __opened");
+  addon.eval('ns.SetModuleEnabled("QuestLog", false) __opened = 0');
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(0.2);
+  expect([running > 0, addon.eval("return __opened")]).toEqual([true, 0]);
 });
