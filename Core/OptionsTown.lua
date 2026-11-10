@@ -7,7 +7,7 @@ local ADDON, ns = ...
 local L = ns.L
 
 local O = ns.Options
-local setting, reloadSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveMethod, O.Check, O.Append
+local setting, liveMethod, check, append = O.Setting, O.LiveMethod, O.Check, O.Append
 
 -- The auction helper's scan, auction check, disenchant, crafting, deals and upgrades rows.
 local function auctionScanRows()
