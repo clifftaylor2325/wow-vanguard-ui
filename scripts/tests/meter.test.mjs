@@ -536,3 +536,22 @@ it("the meter's default spot clears the action bars on any canvas 1110 wide or m
     expect([spot, hit.replace(/,?menustrip/, "")], `${w}x${h}: where it always was, left of the bags and menu bar, clear of the bars`).toEqual([["BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14], ""]);
   }
 });
+
+it("a meter or a spell panel whose only line is hidden shows its empty-state line, never comparing the hidden line", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  addon.eval(`C_DamageMeter.GetCombatSessionFromType = function() return { combatSources = { __wfgWorld.secret({}) } } end
+    C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { __wfgWorld.secret({}) } } end`);
+  addon.advance(1);
+  expect([heads(addon)[1], rows(addon)[0][0]], "the meter: the note, no row").toEqual([true, false]);
+  addon.eval("ns.GetModule('Meter').OpenDetail({ name = 'Tess' })");
+  expect([addon.eval("return Vanguard_MeterDetail.empty:IsShown()"), addon.eval("return #ns.errors")], "the spell panel: the note, no error").toEqual([true, 0]);
+});
+
+it("a hidden figure beside a plain share is joined by the client's own string call, never by Lua's join", () => {
+  const addon = loggedIn(METER_ENV, METER_ON);
+  addon.eval("ns.GetModule('Meter').total = 400");
+  const text = addon.eval("local t = ns.GetModule('Meter').WithShare(__wfgWorld.secret(900), 100, 400) return { issecretvalue(t), rawget(t, 'n') }");
+  expect([text, addon.eval("return #ns.errors")], "a hidden text that holds the figure and the share").toEqual([[true, "900  25%"], 0]);
+  const bare = addon.eval("C_StringUtil = nil return ns.GetModule('Meter').WithShare(__wfgWorld.secret(900), 100, 400) ~= nil");
+  expect([bare, addon.eval("return #ns.errors")], "a client without the call: the figure alone, no error").toEqual([true, 0]);
+});

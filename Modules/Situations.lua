@@ -343,14 +343,16 @@ local function pack(...)
 end
 
 -- Runs fn(...) with the profile holding its own values, as an export must (Core/Profiles.lua): what the
--- active override (or a recording) changed is taken out of the profile's tables for the call and put back after.
+-- active override (or a recording) changed is taken out of the profile's tables for the call and put back after,
+-- also when fn raises (its error is raised again once the override's values are back).
 function ns.OwnValues(fn, ...)
   if not SI.base then return fn(...) end
   local now = SI.Pick(SI.Snapshot(), SI.base)
   SI.PutBack()
-  local out = pack(fn(...))
+  local out = pack(pcall(fn, ...))
   putValues(now)
-  return unpack(out, 1, out.n)
+  if not out[1] then error(out[2], 0) end
+  return unpack(out, 2, out.n)
 end
 
 -- Puts the active situation's override on screen, the last one's base back first: nothing
