@@ -323,6 +323,9 @@ function T.Settings()
   return ns.Settings("theme", DEFAULTS)
 end
 
+-- The theme's defaults, for comparing another profile's theme with the one in use (Core/ProfileSwitch.lua).
+T.DEFAULTS = DEFAULTS
+
 -- Profiles saved or exported before the rename (ForeverUI 0.3.0 and earlier)
 -- call the bundled bar style "forever"; it is "vanguard" now. A profile that saved a
 -- variant since removed (Frost, the light look, dropped in 0.6.0) goes back to the default.
@@ -2136,7 +2139,7 @@ T.SEARCH_INSET = T.SPACE.gap * 2 + T.SEARCH_ICON
 -- token's own alpha); alert for an alert; calm for the Calm HUD's dimmed parts out of combat; dispelWash for
 -- the raid tile's wash over a debuff you can dispel; found for the accent wash on the options row a search, a
 -- What's new link or the keyboard marks.
-T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35, dispelWash = 0.35, found = 0.18 }
+T.ALPHA = { opaque = 1, dialog = 0.98, overlay = 0.94, alert = 0.92, calm = 0.35, dispelWash = 0.35, found = 0.18, unavailable = 0.4 }
 -- A list row (W.Row, T.Row): how tall (units).
 T.ROW = { height = 28 }
 -- The chat background (Modules/Chat.lua, the panel's fill): the strengths the Chat background

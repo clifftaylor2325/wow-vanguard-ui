@@ -181,9 +181,9 @@ local function unitFrameRows()
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], TEXT_FORMATS, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
-    check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
-    check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
-    O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
+    check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], O.RestartSetting("PartyExtras", "show")),
+    check(L["Group threat panel (reload)"], O.RestartSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], O.RestartSetting("ClassBars", "totems")),
+    O.Renamed(check(O.MANA_BAR_NAME, O.RestartSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
   }, append(append(append(powerTextRows(), predictionRows()), portraitRows()), sizeRows()))
 end
 
@@ -218,9 +218,9 @@ end
 local function readoutCard()
   return {
     { "header", L["Readouts"] },
-    check(L["Your threat on your target (reload)"], reloadSetting("UnitExtras", "threat")),
-    check(L["Pet happiness dot (reload)"], reloadSetting("UnitExtras", "happiness")),
-    check(L["Status chip beside your frame (reload)"], reloadSetting("UnitExtras", "chip")),
+    check(L["Your threat on your target (reload)"], O.RestartSetting("UnitExtras", "threat")),
+    check(L["Pet happiness dot (reload)"], O.RestartSetting("UnitExtras", "happiness")),
+    check(L["Status chip beside your frame (reload)"], O.RestartSetting("UnitExtras", "chip")),
   }
 end
 
@@ -300,16 +300,16 @@ local function raidPreviewRows()
   }
 end
 
--- The raid frames' auras: debuffs, the dispel highlight and your HoTs (after a reload).
+-- The raid frames' auras: debuffs, the dispel highlight and your HoTs (the tiles' rows are made again at once, out of combat).
 local function raidAuraRows()
   return {
-    check(L["Highlight debuffs you can dispel (reload)"], reloadSetting("RaidAuras", "dispel")),
-    { "cycle", L["Debuff icons (reload)"], { { 0, L["none"] }, { 2, "2" }, { 3, "3" } }, reloadSetting("RaidAuras", "debuffs") },
-    check(L["Show your HoTs (reload)"], reloadSetting("RaidAuras", "hots")),
+    check(L["Highlight debuffs you can dispel (reload)"], O.RestartSetting("RaidAuras", "dispel")),
+    { "cycle", L["Debuff icons (reload)"], { { 0, L["none"] }, { 2, "2" }, { 3, "3" } }, O.RestartSetting("RaidAuras", "debuffs") },
+    check(L["Show your HoTs (reload)"], O.RestartSetting("RaidAuras", "hots")),
     { "text", L["Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left."], "note" },
-    { "cycle", L["Right edge, top (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator1") },
-    { "cycle", L["Right edge, second (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator2") },
-    { "cycle", L["Right edge, third (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator3") },
+    { "cycle", L["Right edge, top (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, O.RestartSetting("RaidAuras", "indicator1") },
+    { "cycle", L["Right edge, second (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, O.RestartSetting("RaidAuras", "indicator2") },
+    { "cycle", L["Right edge, third (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, O.RestartSetting("RaidAuras", "indicator3") },
   }
 end
 
@@ -320,7 +320,14 @@ end
 
 -- get/set for the Raid target icons switch: it repaints the tiles and the unit frames' marks at once.
 local function raidIconSetting()
-  return liveSetting("RaidStatus", "raidIcons", function() ns.GetModule("RaidStatus").UpdateAll() ns.GetModule("UnitFrames").RefreshRaidIcons() end)
+  local get, set, initial = setting("RaidStatus", "raidIcons")
+  -- Saved, then shown on the raid tiles (while RaidStatus runs) and on the unit frames (which read the setting
+  -- themselves, so with the raid frames off, and RaidStatus with them, the unit frames still follow at once).
+  return get, function(v)
+    set(v)
+    if ns.ModuleLive("RaidStatus") then ns.GetModule("RaidStatus").UpdateAll() end
+    if ns.ModuleLive("UnitFrames") then ns.GetModule("UnitFrames").RefreshRaidIcons() end
+  end, initial
 end
 
 -- Raid frames plus their indicators.

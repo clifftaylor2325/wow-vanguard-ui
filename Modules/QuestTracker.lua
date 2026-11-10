@@ -100,7 +100,9 @@ end
 -- put away); a zone folded by hand stays folded until the next zone-in, that closing, or until Vanguard's log
 -- opens. The Quests page's switch (openFolds) turns this off; it is read from the profile each time, so it
 -- applies at once, and for the quest log while the tracker is off.
+-- Only while Vanguard's tracker or its quest log runs: either can stop live, and the handler and hook stay.
 local function openFoldsSoon()
+  if not (ns.ModuleLive("QuestTracker") or ns.ModuleLive("QuestLog")) then return end
   if ns.Settings("QuestTracker", QT.defaults).openFolds then ns.Soon("quest folds", QT.OpenFolds) end
 end
 
@@ -456,7 +458,7 @@ function QT.OnTitle(id, button)
   if IsShiftKeyDown() and guide.settings then return guide.Point(id) end
   if completeAuto(id) then return end
   local log = ns.GetModule("QuestLog")
-  if log and log.Open and log.frame then return log.Open(id) end
+  if log and log.Open and log.frame and ns.ModuleLive("QuestLog") then return log.Open(id) end
   if ns.WindowWaitsForCombat(L["The world map"]) then return end
   if type(QuestMapFrame_OpenToQuestDetails) == "function" then QuestMapFrame_OpenToQuestDetails(id) end
 end

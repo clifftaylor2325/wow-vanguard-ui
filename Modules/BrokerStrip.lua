@@ -17,7 +17,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 local L = ns.L
 
-local BS = ns.Module("BrokerStrip", { defaults = { feeds = {} } })
+local BS = ns.Module("BrokerStrip", { defaults = { feeds = {} }, live = true })
 
 -- How many feeds show at most, and the narrowest and widest a slot gets (its width before
 -- it is measured, and the strip's with nothing in it, is SLOT_W).
@@ -74,7 +74,7 @@ function BS.Choose(name, on)
   local list = chosenList()
   for i = #list, 1, -1 do if list[i] == name then table.remove(list, i) end end
   if on then list[#list + 1] = name end
-  if BS.frame then BS.Layout() end
+  if BS.frame and ns.ModuleLive("BrokerStrip") then BS.Layout() end
 end
 
 -- Slots -------------------------------------------------------------------------------------
@@ -235,16 +235,32 @@ function BS.Hook()
   BS.Layout()
 end
 
--- Module entry point (Core/Modules.lua): the strip on the top edge, its slots, and the feeds.
-function BS.Enable()
+-- The strip on the top edge and its slots, made once a session (a frame is never freed).
+local function build()
   BS.frame = T.HudPanel(CreateFrame("Frame", "Vanguard_BrokerStrip", UIParent))
   BS.frame:SetSize(BS.SLOT_W + 2 * BS.EDGE, BS.Height() + 2 * BS.PAD)
-  ns.Mover(BS.frame, "brokerstrip", L["Broker strip"], { "TOP", "TOP", -200, 0 })
   BS.slots = {}
   for i = 1, BS.MAX do BS.slots[i] = wireSlot(makeSlot(i)) end
+end
+
+-- The module switched off (Core/Modules.lua): the strip's callbacks are taken off LibDataBroker (the library has the
+-- call); the strip, its mover and its other handlers go with the scope.
+function BS.Disable()
+  local ldb = BS.Broker()
+  if ldb and BS.hooked then
+    ldb.UnregisterCallback(BS, "LibDataBroker_AttributeChanged")
+    ldb.UnregisterCallback(BS, "LibDataBroker_DataObjectCreated")
+  end
+  BS.hooked = nil
+end
+
+-- Module entry point (Core/Modules.lua): the strip made once, its mover and handlers through the scope, and the feeds.
+function BS.Enable(_, scope)
+  if not BS.frame then build() end
+  scope:Mover(BS.frame, "brokerstrip", L["Broker strip"], { "TOP", "TOP", -200, 0 })
   BS.Layout()
   BS.Hook()
-  ns.On("ADDON_LOADED", BS.Hook)
-  T.OnChanged(BS.Restyle)
+  scope:On("ADDON_LOADED", BS.Hook)
+  scope:Gate("theme", BS.Restyle, T.OnChanged)
   ns.Visibility.Calm(BS.frame, "strips")
 end

@@ -500,3 +500,23 @@ it("while key setup isn't offered, a learned spell waits (pending) and lands onc
   learn(addon, 6343);
   expect([slots(addon, [2]), keys(addon, ["2"])]).toEqual([[772], ["ACTIONBUTTON2"]]);
 });
+
+// L16: key setup's work registered at file scope does nothing for a player who doesn't use it.
+it("keys learn: a player who answered the question and never set up keys costs nothing: no work, nothing written", () => {
+  const addon = loggedIn(STANDINS, { savedVariables: "VanguardCharDB = { keysLearn = { asked = true } }\n" });
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(4);
+  addon.fire("LEARNED_SPELL_IN_SKILL_LINE", 78);
+  addon.fire("SPELL_PUSHED_TO_ACTIONBAR", 78, 1);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(1);
+  expect(addon.eval("return VanguardCharDB.keysLearn")).toEqual({ asked: true });
+});
+
+it("keys learn: a fresh character's logins and load screens write no learner state before it is asked", () => {
+  const addon = loggedIn(STANDINS);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(4);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  expect(addon.eval("return VanguardCharDB.keysLearn == nil")).toBe(true);
+});

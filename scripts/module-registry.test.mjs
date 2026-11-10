@@ -57,3 +57,45 @@ it("the reader finds the known load-time lookups", () => {
   expect(found).toContain("Modules/PowerTicks.lua:UnitFrames");
   expect(found.length).toBeGreaterThanOrEqual(3);
 });
+
+// The text of each ns.Module("Name", ...) call in a file, from its name to the call's closing bracket.
+function moduleCalls(src) {
+  return [...src.matchAll(/\bns\.Module\(\s*"([A-Za-z0-9_]+)"/g)].map((m) => {
+    let depth = 0;
+    let end = m.index + m[0].length - 1;
+    for (let i = src.indexOf("(", m.index); i < src.length; i++) {
+      depth += src[i] === "(" ? 1 : src[i] === ")" ? -1 : 0;
+      if (depth === 0) { end = i; break; }
+    }
+    return { name: m[1], text: src.slice(m.index, end + 1) };
+  });
+}
+
+// The modules a module declares it requires (def.requires = { "A", "B" }), from its ns.Module call's text.
+export function declaredRequires(callText) {
+  const list = callText.match(/\brequires\s*=\s*\{([^{}]*)\}/);
+  return list ? [...list[1].matchAll(/"([A-Za-z0-9_]+)"/g)].map((m) => m[1]) : [];
+}
+
+it("the requires reader finds the names a module declares", () => {
+  const src = 'local FA = ns.Module("FrameAuras", { defaults = { size = 20 }, live = true, requires = { "UnitFrames", "CastBars" } })';
+  const [call] = moduleCalls(src);
+  expect(call.name).toBe("FrameAuras");
+  expect(declaredRequires(call.text)).toEqual(["UnitFrames", "CastBars"]);
+  expect(declaredRequires('ns.Module("A", { defaults = {} })')).toEqual([]);
+});
+
+// Every requires entry names a module registered in a file Vanguard.toc lists before the module's own file, or
+// earlier in the same file: the registry builds modules in TOC order, so each parent is built first and no cycle
+// can form. Core/Modules.lua reports one that is not (a runtime check, lifecycle.test.mjs).
+it("every module's requires names a module registered before it in Vanguard.toc", () => {
+  const seen = new Set();
+  const late = [];
+  for (const file of files) {
+    for (const call of moduleCalls(sources.get(file))) {
+      for (const parent of declaredRequires(call.text)) if (!seen.has(parent)) late.push(`${call.name} requires ${parent}, not registered before it`);
+      seen.add(call.name);
+    }
+  }
+  expect(late).toEqual([]);
+});

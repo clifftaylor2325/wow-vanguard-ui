@@ -270,6 +270,18 @@ function V.ApplyState(frame, state)
   if frame.vgHoverRoot then motion(frame) end
 end
 
+-- Lets a frame go (its module stopped, Core/ModuleScope.lua): its "vgvis" and "visibility" drivers unregistered and
+-- its zone and Calm HUD tracking dropped; a frame Visibility never drove is left alone. Out of combat only (the
+-- drivers of a secure frame are protected; in a fight it does nothing, and the registry never calls it there). Its
+-- mode stays noted, so the module's next start applies it again.
+---@param frame Frame
+function V.Release(frame)
+  if not frame.vgStateString or ns.InCombat() then return end
+  UnregisterStateDriver(frame, "vgvis")
+  UnregisterStateDriver(frame, "visibility")
+  V.tracked[frame] = nil
+end
+
 -- Registers the frame's drivers again with reapply() on every zone change while
 -- its setting checks In an instance (out of combat; one entry per frame).
 function V.Track(frame, reapply)

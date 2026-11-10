@@ -124,8 +124,8 @@ One branch and one PR per HUD area, so each set of files is opened once and come
 
 Runs after phase 3 has merged, on its own, because A4-1 touches every module. Branches `work/a4-lifecycle`, then `work/a4-split`.
 
-- [x] **A4-1 Module lifecycle design.** Declared dependencies, a subscription scope the registry can tear down, generic disable for display-only modules, late enable. A decision that spans modules: Opus, as a short design note in `docs/design/` for Cliff to approve before code. (B1, M9) **Done 2026-11-09: `docs/design/MODULE-LIFECYCLE.md`; its decisions Q1 to Q11 wait for Cliff before A4-2.**
-- [ ] **A4-2 Convert modules in batches** of about ten, display-only first. Sonnet. Each batch removes its reload tags.
+- [x] **A4-1 Module lifecycle design.** Declared dependencies, a subscription scope the registry can tear down, generic disable for display-only modules, late enable. A decision that spans modules: Opus, as a short design note in `docs/design/` for Cliff to approve before code. (B1, M9) **Done 2026-11-09: `docs/design/MODULE-LIFECYCLE.md`; Cliff approved Q1 to Q11 as recommended on 2026-11-10.**
+- [ ] **A4-2 Convert modules in batches** of about ten, display-only first. Sonnet. Each batch removes its reload tags. A4-2a, the core with no module converted (the scope, `requires`, `live`/`reload`, late enable, the options side, live profile switching, the file-scope rule and the lifecycle test helpers), is PR #835; A4-3's scan rule and key setup's quiet logout came with it.
 - [ ] **A4-3 Lifecycle sweep** for work registered outside `Enable`, plus the quality-scan rule that blocks `ns.On` at file scope outside `Core/`. (N20, L16)
 - [ ] **A4-4 Live profile switching** for modules that support it; the rest say so plainly.
 - [ ] **A4-5 Bags in combat.** Settle the sectioned-layout behaviour during a fight with an in-game look, then guard or document it. (M10)

@@ -75,16 +75,33 @@ table.insert(RF.emptyHooks, PA.TileEmptied)
 -- The target's spot right of its frame, raised PA.GAP over the target of target that sits there (Modules/UnitFrames.lua
 -- LAYOUT; both stand on the same line), a debuff and a bit across, handed again on each new target (the token
 -- then means someone else). Left of the frame is the Cooldown Manager's row (Modules/GameTools.lua).
-function PA.TargetPart(f, key, settings)
+function PA.TargetPart(f, key, settings, scope)
   if key ~= "target" then return end
+  PA.target = PA.target or PA.TargetSpot(f, settings)
+  scope:Frame(PA.target):Show()
+  PA.Point(PA.target, "target")
+  scope:On("PLAYER_TARGET_CHANGED", PA.PointTarget)
+end
+
+-- The spot for the target frame, made once a session.
+function PA.TargetSpot(f, settings)
   local holder = PA.Spot(f, settings.size + PA.GROW, 1)
   local below = ns.GetModule("UnitFrames").LAYOUT_BY_KEY.targettarget.h
   holder:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", PA.CLEAR, below + PA.GAP)
-  PA.target = holder
-  PA.Point(holder, "target")
-  ns.On("PLAYER_TARGET_CHANGED", function() PA.Point(holder, "target") end)
+  return holder
 end
 
+-- A new target: the spot is handed its auras again.
+function PA.PointTarget()
+  PA.Point(PA.target, "target")
+end
+
+-- The module stopped: the target's spot gives its private aura back.
+function PA.TargetOff(_, key)
+  if key == "target" and PA.target then PA.Point(PA.target, nil) end
+end
+
+table.insert(FA.CLIENT_OFF, PA.TargetOff)
 table.insert(FA.CLIENT_PARTS, PA.TargetPart)
 
 -- Your own auras ------------------------------------------------------------------------------

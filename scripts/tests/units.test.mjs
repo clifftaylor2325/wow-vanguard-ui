@@ -293,7 +293,8 @@ it("combo points on retail grow to your maximum, and WoW Forever stays at five",
 
 // A1-11 (L13): an energy or mana tick is not a combo point change.
 it("A1-11 combo points: a power event that names another power repaints nothing; combo points, an unnamed or a hidden type do", () => {
-  const addon = loggedIn(UNITS_ENV + 'UnitClass = function() return "Rogue", "ROGUE" end __combo = 2');
+  // Combo points need the unit frames (requires), which this file's scoped login switches off: on again for this case.
+  const addon = loggedIn(UNITS_ENV + 'UnitClass = function() return "Rogue", "ROGUE" end __combo = 2 VanguardDB.profiles.Default.modules.UnitFrames = nil');
   addon.eval("__updates = 0 local CP = ns.GetModule('ComboPoints') local update = CP.Update CP.Update = function() __updates = __updates + 1 return update() end");
   // Fires your power event with a power type (Lua) and answers how many repaints it caused.
   const power = (event, type) => { addon.eval("__updates = 0"); addon.eval(`__wfgStub.fire("${event}", "player", ${type})`); return addon.eval("return __updates"); };

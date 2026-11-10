@@ -14,7 +14,7 @@ local ADDON, ns = ...
 
 local L = ns.L
 
-local CX = ns.Module("Coexist", { defaults = { answered = {}, told = {}, off = {} } })
+local CX = ns.Module("Coexist", { defaults = { answered = {}, told = {}, off = {} }, live = true })
 
 -- Addon folder name -> { the Vanguard module it overlaps, what both do }, plus optional
 -- keys (the module's settings to turn off instead of the whole module: a list, or the name
@@ -231,8 +231,10 @@ local function overlapRows(o, rows)
   if not o.answer then rows[#rows + 1] = { "button", L["Keep both"], function() CX.Keep(o) end } end
 end
 
--- The Modules page's "Other addons" card, first on the page; nothing when no loaded addon applies.
+-- The Modules page's "Other addons" card, first on the page; nothing when no loaded addon applies, or while the
+-- module is stopped (its answers stay in the profile).
 function CX.Rows()
+  if not (CX.scope and CX.scope:Running()) then return {} end
   local shown, rows = collect(), {}
   if #shown == 0 then return rows end
   rows[1] = { "header", L["Other addons"] }
@@ -252,7 +254,8 @@ function CX.Tell()
   end
 end
 
--- Module entry point (Core/Modules.lua): every addon has loaded by PLAYER_LOGIN.
+-- Module entry point (Core/Modules.lua): every addon has loaded by PLAYER_LOGIN. It listens for nothing, so the
+-- scope has nothing of it to release; stopped, the card is gone from the Modules page (CX.Rows).
 function CX.Enable(settings)
   CX.settings = settings
   CX.Tell()

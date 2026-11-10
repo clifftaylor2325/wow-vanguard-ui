@@ -172,14 +172,14 @@ function QU.OnDeath()
   RepopMe()
 end
 
--- Listens for the prompts the declines answer (from QU.Enable); each switch is read when its prompt comes, while
--- the module is on.
-function QU.ListenForPrompts()
-  ns.On("DUEL_REQUESTED", QU.OnDuel)
-  if ns.IsForever() then ns.On("DUEL_TO_THE_DEATH_REQUESTED", QU.OnDuel) end
-  ns.On("GUILD_INVITE_REQUEST", QU.OnGuildInvite)
-  ns.On("PARTY_INVITE_REQUEST", QU.OnGroupInvite)
-  ns.On("CHAT_MSG_WHISPER_INFORM", QU.OnWhisperSent)
-  ns.On("BN_FRIEND_INVITE_ADDED", QU.OnFriendRequest)
-  ns.On("PLAYER_DEAD", QU.OnDeath)
+-- Listens for the prompts the declines answer (from QU.Enable, through the module's scope, so a switch-off takes
+-- the handlers off); each switch is read when its prompt comes.
+function QU.ListenForPrompts(scope)
+  scope:On("DUEL_REQUESTED", QU.OnDuel)
+  if ns.IsForever() then scope:On("DUEL_TO_THE_DEATH_REQUESTED", QU.OnDuel) end
+  scope:On("GUILD_INVITE_REQUEST", QU.OnGuildInvite)
+  scope:On("PARTY_INVITE_REQUEST", QU.OnGroupInvite)
+  scope:On("CHAT_MSG_WHISPER_INFORM", QU.OnWhisperSent)
+  scope:On("BN_FRIEND_INVITE_ADDED", QU.OnFriendRequest)
+  scope:On("PLAYER_DEAD", QU.OnDeath)
 end

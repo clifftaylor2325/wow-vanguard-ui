@@ -10,7 +10,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 local UF = ns.GetModule("UnitFrames")
 
-local CP = ns.Module("ComboPoints", { defaults = { size = 14 } })
+local CP = ns.Module("ComboPoints", { defaults = { size = 14 }, live = true, requires = { "UnitFrames" } })
 
 -- The usual number of pips (all of WoW Forever's), and the most the row grows to on retail.
 CP.MAX = 5
@@ -60,15 +60,21 @@ local function fit(max)
   CP.bar:SetWidth(max * (CP.size + 3))
 end
 
--- The row of pips just above the player frame (over its tab, where the look gives it one: UF.Crown), hidden until you have points.
-local function build(settings)
-  local player = UF.frames.player
-  if not player then return end
+-- Makes the row of pips just above the player frame (over its tab, where the look gives it one: UF.Crown).
+local function makeBar(player, settings)
   CP.size, CP.pips = settings.size, {}
   CP.bar = CreateFrame("Frame", nil, player)
   CP.bar:SetSize(CP.MAX * (CP.size + 3), CP.size)
   CP.bar:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, CP.ROW_OFFSET)
   UF.RaiseDeckReach("top", CP.ROW_OFFSET + CP.size)
+end
+
+-- The row of pips, hidden until you have points. Made once a session: a later start hands the same row to its scope.
+local function build(settings, scope)
+  local player = UF.frames.player
+  if not player then return end
+  if not CP.bar then makeBar(player, settings) end
+  scope:Frame(CP.bar)
   CP.Update()
 end
 
@@ -121,11 +127,11 @@ end
 -- Module entry point (Core/Modules.lua): rogues and druids only, after the unit
 -- frames. Your points change with your own power events and when they move to a new target at the
 -- same count (no power event then); another unit's don't count.
-function CP.Enable(settings)
+function CP.Enable(settings, scope)
   local _, class = UnitClass("player")
   if ns.IsSecret(class) or not CLASSES[class] then return end
-  ns.OutOfCombat(function() build(settings) end)
-  ns.OnUnit(CP.EVENTS, CP.OnPower, "player")
-  ns.On("PLAYER_TARGET_CHANGED", CP.Update)
-  ns.On("COMBO_TARGET_CHANGED", CP.Update)
+  ns.OutOfCombat(function() build(settings, scope) end)
+  scope:OnUnit(CP.EVENTS, CP.OnPower, "player")
+  scope:On("PLAYER_TARGET_CHANGED", CP.Update)
+  scope:On("COMBO_TARGET_CHANGED", CP.Update)
 end

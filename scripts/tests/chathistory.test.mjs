@@ -176,7 +176,7 @@ it("chat history: the Chat page has its switch, limits, whispers and Clear butto
   expect([question(addon)[0], Object.keys(saved(addon)).length], "the Clear button asks first").toEqual([true, 1]);
   addon.click("Vanguard_Question.confirm");
   expect(saved(addon), "Clear forgets it").toEqual({});
-  addon.eval(`ns.GetModule("ChatHistory").Disable() ChatFrame1:AddMessage("after disable")`);
+  addon.eval(`ns.SetModuleEnabled("ChatHistory", false) ChatFrame1:AddMessage("after disable")`);
   expect(saved(addon), "a module switched off saves nothing").toEqual({});
 });
 

@@ -326,7 +326,7 @@ it("chat find: a saved channel line that a window shows shortened is listed once
   const on = loggedIn(ENV + lines, { savedVariables: saved });
   expect(find(on), "the shown short line stands for its long saved form").toEqual(['Chat: 1 lines with "wts"', `[2] Bob: ${lit(on, "wts")} sword`]);
   const off = loggedIn(ENV + lines, { savedVariables: saved });
-  off.eval("ns.GetModule('ChatExtras').settings = nil");
+  off.eval("ns.SetModuleEnabled('ChatExtras', false)");
   expect(find(off)[0], "with the module off nothing is rewritten, so both lines are listed").toBe('Chat: 2 lines with "wts"');
 });
 

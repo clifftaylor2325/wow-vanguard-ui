@@ -127,7 +127,7 @@ end
 -- Draws the pins for the map the world map shows (or none: see QG.DrawsPins), at most QG.MAX_PINS.
 function QG.RefreshPins()
   local map = _G.WorldMapFrame
-  if not (QG.pins and map and map:IsShown()) then return end
+  if not (QG.settings and QG.pins and map and map:IsShown()) then return end
   QG.pins.Reset()
   local mapID = ns.PlainNumber(map:GetMapID())
   if not mapID or not QG.DrawsPins(map) then return end
@@ -152,14 +152,25 @@ function QG.MapChanged()
   QG.ListsChanged()
 end
 
--- Follows the world map: its map changes and its showing (hooks run after the game's own).
+-- Hooks the world map: its map changes, its zoom and its showing (hooks run after the game's own). Through gates,
+-- installed once a session, inert while the module is off; asked again, it only points them at the current functions.
+local function hookMap(map)
+  local scope = QG.scope
+  if type(map.OnMapChanged) == "function" then
+    scope:Gate("map changed", QG.MapChanged, function(gate) hooksecurefunc(map, "OnMapChanged", ns.Guard("hook world map changed", gate)) end)
+  end
+  if type(map.OnCanvasScaleChanged) == "function" then
+    scope:Gate("map zoom", QG.ListsChanged, function(gate) hooksecurefunc(map, "OnCanvasScaleChanged", ns.Guard("hook world map zoom", gate)) end)
+  end
+  scope:Gate("map shown", QG.MapChanged, function(gate) map:HookScript("OnShow", ns.Guard("hook world map shown", gate)) end)
+end
+
+-- Follows the world map: the pin pool on its canvas (made once a session), its hooks and the quest list events.
 local function followMap(map)
   if not (map.GetCanvas and map.GetMapID) then return end
-  QG.pins = QP.Pool(map:GetCanvas(), makePin)
-  if type(map.OnMapChanged) == "function" then hooksecurefunc(map, "OnMapChanged", ns.Guard("hook world map changed", QG.MapChanged)) end
-  if type(map.OnCanvasScaleChanged) == "function" then hooksecurefunc(map, "OnCanvasScaleChanged", ns.Guard("hook world map zoom", QG.ListsChanged)) end
-  map:HookScript("OnShow", ns.Guard("hook world map shown", QG.MapChanged))
-  for _, event in ipairs({ "QUESTLINE_UPDATE", "QUEST_LOG_UPDATE", "QUEST_POI_UPDATE" }) do ns.On(event, QG.ListsChanged) end
+  QG.pins = QG.pins or QP.Pool(map:GetCanvas(), makePin)
+  hookMap(map)
+  for _, event in ipairs({ "QUESTLINE_UPDATE", "QUEST_LOG_UPDATE", "QUEST_POI_UPDATE" }) do QG.scope:On(event, QG.ListsChanged) end
 end
 
 -- The game's world map has loaded (when it wasn't there at login).
@@ -169,5 +180,10 @@ end
 
 -- Starts following the world map, now or once it loads.
 function QG.EnableMap()
-  if _G.WorldMapFrame then followMap(_G.WorldMapFrame) else ns.On("ADDON_LOADED", QG.OnLoaded) end
+  if _G.WorldMapFrame then followMap(_G.WorldMapFrame) else QG.scope:On("ADDON_LOADED", QG.OnLoaded) end
+end
+
+-- Takes the pins off the world map (the pool's pins hide; the map keeps its canvas).
+function QG.DisableMap()
+  if QG.pins then QG.pins.Reset() end
 end

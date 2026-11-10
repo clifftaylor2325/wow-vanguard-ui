@@ -15,12 +15,9 @@
 local ADDON, ns = ...
 local L = ns.L
 
--- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
-local vgWatched = ns.FrameState("vgWatched")
-
 local T = ns.Theme
 
-local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true, shortChannels = true, ctrlScroll = true } })
+local CX = ns.Module("ChatExtras", { defaults = { links = true, copy = true, shortChannels = true, ctrlScroll = true }, live = true })
 
 -- The chat message events whose text may hold a web address.
 CX.EVENTS = {
@@ -135,12 +132,15 @@ function CX.OnLink(_, link)
   ns.ShowText(L["Copy the address (Ctrl+C)"], link:sub(#PREFIX + 1))
 end
 
--- Links addresses in chat, where the game hands addon links back to addons.
-local function watchLinks()
+-- Links addresses in chat, where the game hands addon links back to addons. The filter and the click callback go in
+-- once a session through the scope's gates: the game keeps them, and they pass every line through while the module
+-- is switched off.
+local function watchLinks(scope)
   local registry = _G.EventRegistry
   if type(registry) ~= "table" or type(registry.RegisterCallback) ~= "function" then return end
-  if not ns.AddChatFilters(CX.EVENTS, ns.GuardResult("chat filter links", CX.Filter, false)) then return end
-  registry:RegisterCallback("SetItemRef", ns.Guard("chat link click", CX.OnLink), CX)
+  scope:Gate("chat filter links", ns.GuardResult("chat filter links", CX.Filter, false), function(gate)
+    if ns.AddChatFilters(CX.EVENTS, gate) then registry:RegisterCallback("SetItemRef", ns.Guard("chat link click", CX.OnLink), CX) end
+  end)
 end
 
 -- Copy ------------------------------------------------------------------------------------
@@ -301,7 +301,7 @@ end
 -- A line as Vanguard shows it: its channel tags short (switched on), and the guild message of the day linked.
 -- A line as it is while the module is off.
 function CX.Rewrite(text)
-  if not CX.settings then return text end
+  if not (CX.scope and CX.scope:Running()) then return text end
   if CX.settings.shortChannels then text = CX.ShortChannels(text) end
   return CX.LinkMotd(text)
 end
@@ -333,18 +333,21 @@ local function wheel(frame, delta)
   for _ = CX.GAME_WHEEL_LINES + 1, CX.WHEEL_LINES do step(frame) end
 end
 
--- Follows a chat window's new lines and wheel, once per window.
-local function watchWindow(frame)
-  if type(frame) ~= "table" or vgWatched[frame] then return end
-  vgWatched[frame] = true
-  if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", rewriteAdded)) end
-  frame:HookScript("OnMouseWheel", ns.Guard("chat wheel", wheel))
+-- Follows a chat window's new lines and wheel. Both hooks go in once per window a session, through the scope's gates
+-- (a hook can't be taken off, so each does nothing while the module is switched off).
+local function watchWindow(frame, scope)
+  if type(frame) ~= "table" then return end
+  local id = tostring(frame)
+  if type(frame.TransformMessages) == "function" and type(hooksecurefunc) == "function" then
+    scope:Gate("rewrite " .. id, rewriteAdded, function(gate) hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage", gate)) end)
+  end
+  scope:Gate("wheel " .. id, wheel, function(gate) frame:HookScript("OnMouseWheel", ns.Guard("chat wheel", gate)) end)
 end
 
 -- Follows every chat window, the temporary ones (whispers) too.
-function CX.WatchWindows()
-  for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(_G["ChatFrame" .. i]) end
-  for _, name in ipairs(CHAT_FRAMES or {}) do watchWindow(_G[name]) end
+function CX.WatchWindows(scope)
+  for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(_G["ChatFrame" .. i], scope) end
+  for _, name in ipairs(CHAT_FRAMES or {}) do watchWindow(_G[name], scope) end
 end
 
 -- The game's chat settings ------------------------------------------------------------------
@@ -384,11 +387,26 @@ function CX.TimestampChoices()
   return out
 end
 
--- Module entry point (Core/Modules.lua).
-function CX.Enable(settings)
-  CX.settings = settings
-  watchLinks()
+-- The module switched off (Core/Modules.lua): the Copy button goes from the tab bar (its filter, hooks and handlers
+-- go with the scope); the bar's other tiles close up over it.
+function CX.Disable()
+  if CX.copyButton then ns.GetModule("Chat").ApplyBarButton(CX.copyButton, false, addCopyButton) end
+end
+
+-- Hooks a temporary chat window's creation to follow it too (through a gate: once a session, inert while off).
+local function watchTemporary(scope)
+  if type(hooksecurefunc) ~= "function" or type(FCF_OpenTemporaryWindow) ~= "function" then return end
+  -- Follows the windows again, the new one among them.
+  local function follow() CX.WatchWindows(scope) end
+  scope:Gate("temporary window", follow, function(gate) hooksecurefunc("FCF_OpenTemporaryWindow", ns.Guard("hook FCF_OpenTemporaryWindow", gate)) end)
+end
+
+-- Module entry point (Core/Modules.lua): everything goes through the scope; the Copy button is made once and
+-- shown or hidden by its switch.
+function CX.Enable(settings, scope)
+  CX.settings, CX.scope = settings, scope
+  watchLinks(scope)
   CX.ApplyCopy()
-  CX.WatchWindows()
-  if type(hooksecurefunc) == "function" and type(FCF_OpenTemporaryWindow) == "function" then hooksecurefunc("FCF_OpenTemporaryWindow", ns.Guard("hook FCF_OpenTemporaryWindow", CX.WatchWindows)) end
+  CX.WatchWindows(scope)
+  watchTemporary(scope)
 end

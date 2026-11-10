@@ -192,7 +192,7 @@ it("with the Meter module switched off, /vg meter says so instead of failing", (
   addon.clearChat();
   addon.eval("ns.SetModuleEnabled('Meter', true)");
   addon.slash("meter on");
-  expect([chatHas(addon, /Vanguard's meter starts after a \/reload\./), chatHas(addon, /switched off/)], "switched on under Modules but not reloaded yet: it says it starts after a reload").toEqual([true, false]);
+  expect([chatHas(addon, /Vanguard's meter starts after a \/reload\./), chatHas(addon, /switched off/), addon.eval("return #ns.errors")], "switched on under Modules it starts at once (a live module), so the command works").toEqual([false, false, 0]);
 });
 
 it("the title is a card's heading on the click-to-switch button, the room above the bars fits it, and the empty line is label text2", () => {

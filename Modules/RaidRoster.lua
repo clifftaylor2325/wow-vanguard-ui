@@ -135,14 +135,17 @@ local function addRow(f, i)
   return { left = left, right = right }
 end
 
--- The movable panel, made the first time it is wanted.
+-- The roster's default spot: down from the screen's top, at the left.
+RT.ROSTER_SPOT = { "TOPLEFT", "TOPLEFT", 6, -RT.RTOP }
+
+-- The movable panel, made the first time it is wanted, and handed to the raid tools' scope.
 function RT.BuildRoster()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_RaidRoster", UIParent))
   RT.rframe = f
   f:SetSize(RT.RWIDTH, 2 * RT.RPAD + RT.RLINE)
   f:Hide()
   -- The mover keeps the key "officerroster" it was saved under, so a dragged spot survives the fold into raid tools.
-  ns.Mover(f, "officerroster", L["Raid roster"], { "TOPLEFT", "TOPLEFT", 6, -RT.RTOP })
+  RT.scope:Mover(f, "officerroster", L["Raid roster"], RT.ROSTER_SPOT)
   f.rows = {}
   for i = 1, RT.RMAX + 1 do f.rows[i] = addRow(f, i) end
   return f
@@ -186,13 +189,15 @@ end
 
 -- Starts or stops listening to the group: the roster hears events only while it is open.
 function RT.WatchRoster(on)
-  local sign = on and ns.On or ns.Off
-  for _, event in ipairs(RT.ROSTER_EVENTS) do sign(event, RT.SoonPaint) end
-  for _, event in ipairs(RT.ROSTER_UNIT_EVENTS) do sign(event, RT.SoonPaintMember) end
+  local sign = on and RT.scope.On or RT.scope.Off
+  for _, event in ipairs(RT.ROSTER_EVENTS) do sign(RT.scope, event, RT.SoonPaint) end
+  for _, event in ipairs(RT.ROSTER_UNIT_EVENTS) do sign(RT.scope, event, RT.SoonPaintMember) end
 end
 
--- Opens or closes the roster, listening to the group only while it is open.
+-- Opens or closes the roster, listening to the group only while it is open. With the raid tools off there is no
+-- roster to open.
 function RT.ToggleRoster()
+  if not (RT.scope and RT.scope:Running()) then return end
   RT.rframe = RT.rframe or RT.BuildRoster()
   RT.rosterOpen = not RT.rosterOpen
   RT.WatchRoster(RT.rosterOpen)
@@ -208,5 +213,8 @@ function RT.RosterRows()
 end
 ns.Options.AddRows("raid", RT.RosterRows)
 
--- Repaints the roster when the theme changes.
-T.OnChanged(RT.PaintRoster)
+-- The raid tools' start: the roster made earlier goes back to the scope (its mover), and the theme repaints it.
+function RT.EnableRoster(scope)
+  if RT.rframe then scope:Mover(RT.rframe, "officerroster", L["Raid roster"], RT.ROSTER_SPOT) end
+  scope:Gate("roster theme", RT.PaintRoster, T.OnChanged)
+end

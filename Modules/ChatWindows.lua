@@ -8,7 +8,7 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local CW = ns.Module("ChatWindows", { defaults = { movers = false, find = true } })
+local CW = ns.Module("ChatWindows", { defaults = { movers = false, find = true }, live = true })
 
 -- The sliders' ranges (width, height) in units.
 CW.WIDTH = { min = 250, max = 900, step = 10, format = function(v) return string.format("%d", math.floor(v + 0.5)) end }
@@ -372,7 +372,14 @@ function CW.ApplyFind()
   CW.findButton = ns.GetModule("Chat").ApplyBarButton(CW.findButton, CW.settings.find == true, addFindButton)
 end
 
--- Module entry point (Core/Modules.lua).
+-- The module switched off (Core/Modules.lua): the Find button goes from the tab bar. The movers of floating windows stay:
+-- their setting is a reload setting, and the windows are the game's own frames, which are never hidden from here.
+function CW.Disable()
+  if CW.findButton then ns.GetModule("Chat").ApplyBarButton(CW.findButton, false, addFindButton) end
+end
+
+-- Module entry point (Core/Modules.lua): it registers nothing with the scope (the Find button is made once and
+-- shown by its switch; the floating-window movers are set at login), so it takes no scope argument.
 function CW.Enable(settings)
   CW.settings = settings
   CW.ApplyFind()

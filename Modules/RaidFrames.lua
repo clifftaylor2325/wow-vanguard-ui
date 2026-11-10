@@ -577,8 +577,28 @@ end
 ---@param b Frame  a raid tile
 ---@param events string|string[]
 ---@param fn fun(b: Frame, unit: string, event: string, ...)
+---@return Frame sub  the subscription, for RF.PauseTileUnit
 function RF.OnTileUnit(b, events, fn)
   local sub = ns.OnUnit(events, function(event, unit, ...) if b:IsShown() then fn(b, unit, event, ...) end end)
+  RF.ResumeTileUnit(b, sub)
+  return sub
+end
+
+-- Stops a tile's subscription (from RF.OnTileUnit) and takes it off the tile, so a roster change doesn't point it
+-- at a unit again: a module that stops stops its tiles' events (RF.ResumeTileUnit gives it back).
+---@param b Frame  a raid tile
+---@param sub Frame  from RF.OnTileUnit
+function RF.PauseTileUnit(b, sub)
+  for i, s in ipairs(b.moreEvents or {}) do
+    if s == sub then table.remove(b.moreEvents, i) break end
+  end
+  ns.SetUnits(sub, nil)
+end
+
+-- Puts a tile's subscription (back) on the tile, following its unit from now on.
+---@param b Frame  a raid tile
+---@param sub Frame  from RF.OnTileUnit
+function RF.ResumeTileUnit(b, sub)
   b.moreEvents = b.moreEvents or {}
   b.moreEvents[#b.moreEvents + 1] = sub
   ns.SetUnits(sub, b.tracked, RF.byUnit.player == b and "player" or nil)

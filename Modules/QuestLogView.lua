@@ -167,8 +167,7 @@ end
 -- A quest line made on demand: a QP.Line that shows its title in full on hover.
 local function makeLine(parent)
   local b = QP.Line(parent)
-  b:HookScript("OnEnter", ns.Guard("quest log title tooltip", showTitleTip))
-  b:HookScript("OnLeave", ns.Guard("quest log title tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
+  QP.OnHover(b, ns.Guard("quest log title tooltip", showTitleTip), ns.Guard("quest log title tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
   return b
 end
 
@@ -183,12 +182,12 @@ local function addList(f)
   f.empty:SetText(QL.EMPTY)
 end
 
--- Builds the window (hidden, opaque), movable, closed by Escape.
+-- Builds the window (hidden, opaque), closed by Escape. Once a session: the module's Enable makes it movable
+-- through its scope.
 function QL.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_QuestLog", UIParent), { alpha = T.ALPHA.opaque, shadow = true })
   f:SetSize(QL.W, QL.H)
   f:SetFrameStrata("HIGH")
-  ns.Mover(f, "questlog", L["Quest log"], { "CENTER", "CENTER", -200, 40 })
   f:SetClampedToScreen(true)
   addTop(f)
   addList(f)

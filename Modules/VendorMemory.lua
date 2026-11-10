@@ -11,7 +11,7 @@ local L = ns.L
 
 local T = ns.Theme
 
-local VM = ns.Module("VendorMemory", { defaults = { tooltip = true, remember = true } })
+local VM = ns.Module("VendorMemory", { defaults = { tooltip = true, remember = true }, live = true })
 
 -- Merchants kept per item; items kept, and the share of them a prune keeps (2000 -> 1800).
 VM.PER_ITEM, VM.MAX_ITEMS, VM.KEEP = 3, 2000, 0.9
@@ -67,9 +67,14 @@ function VM.Remember(itemID, entry)
   if store.count > VM.MAX_ITEMS then VM.Prune() end
 end
 
+-- Whether the module runs now (stopped, nothing new is remembered, though what was is kept).
+function VM.Active()
+  return VM.scope ~= nil and VM.scope:Running()
+end
+
 -- The open merchant's wares, remembered (not in combat, and only when the merchant's name can be read).
 function VM.Record()
-  if not VM.settings.remember or ns.InCombat() then return end
+  if not VM.Active() or not VM.settings.remember or ns.InCombat() then return end
   local name, now = merchantName(), ns.PlainNumber(ns.Client.Call("time")) or 0
   if not name then return end
   local zone, sub = zoneNow()
@@ -137,11 +142,12 @@ local function onMerchant()
   ns.Soon("vendormemory", VM.Record)
 end
 
--- Module entry point (Core/Modules.lua).
-function VM.Enable(settings)
+-- Module entry point (Core/Modules.lua). The merchant events go through the scope; the tooltip lines through a
+-- gate, since the item tooltip's list of other modules' lines can't give one back (it does nothing while stopped).
+function VM.Enable(settings, scope)
   VM.settings = settings
   VM.Store()
-  ns.On("MERCHANT_SHOW", onMerchant)
-  ns.On("MERCHANT_UPDATE", onMerchant)
-  ns.GetModule("Tooltips").AddItemLines(VM.Lines)
+  scope:On("MERCHANT_SHOW", onMerchant)
+  scope:On("MERCHANT_UPDATE", onMerchant)
+  scope:Gate("item lines", VM.Lines, ns.GetModule("Tooltips").AddItemLines)
 end

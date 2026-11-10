@@ -21,7 +21,12 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local SI = ns.Module("Situations", { defaults = { enabled = true, overrides = {} } })
+local SI = ns.Module("Situations", { defaults = { enabled = true, overrides = {} }, live = true })
+
+-- Whether the module runs now (its scope is open): nothing applies while it is switched off.
+local function running()
+  return SI.scope ~= nil and SI.scope:Running()
+end
 
 -- The situations, in precedence order (the first that holds is the one you're in), and their names. Retail adds two
 -- before Instance: a Mythic+ key (its dungeon is a party instance) and a delve (its instance type, "scenario", is
@@ -316,19 +321,23 @@ function SI.ApplyOverride(ov)
   write(ov)
 end
 
--- Puts the base back on screen (what the override replaced) and forgets it.
-function SI.RestoreBase()
-  local base = SI.base
-  SI.base = nil
-  if base then write(base) end
-end
-
 -- Writes a set of values (a snapshot or a part of one) into the tables they were read from, without touching the screen.
 local function putValues(set)
   for key, spot in pairs(set.positions) do set.refs.positions[key] = next(spot) and ns.Copy(spot) or nil end
   for module, values in pairs(set.settings) do
     for key, v in pairs(values) do set.refs[module][key] = value(v) end
   end
+end
+
+-- Puts the base back (what the override replaced) and forgets it: first into the tables the snapshot read, so a
+-- frame or module that went away meanwhile (switched off live: no mover, not running) still gets its own values in
+-- the profile, then on screen for what is there now.
+function SI.RestoreBase()
+  local base = SI.base
+  SI.base = nil
+  if not base then return end
+  putValues(base)
+  write(base)
 end
 
 -- Writes the base's values back into the tables they were read from, without touching the screen:
@@ -356,10 +365,10 @@ function ns.OwnValues(fn, ...)
 end
 
 -- Puts the active situation's override on screen, the last one's base back first: nothing
--- while recording or while the module is off under Modules (nothing would take it off again),
+-- while recording or while the module is off under Modules (Disable takes the override off),
 -- nothing new while the right one is on. Run out of combat.
 function SI.Apply()
-  if SI.recording or not SI.settings then return end
+  if SI.recording or not running() then return end
   local name = SI.Where()
   local ov = db().enabled and SI.Override(name) or nil
   local want = ov and name or nil
@@ -427,7 +436,6 @@ function SI.Logout()
   if SI.recording then SI.StopRecording() end
   SI.PutBack()
 end
-ns.On("PLAYER_LOGOUT", SI.Logout)
 
 -- The profile's tables were replaced (copied, reset, imported): the base goes back into the tables it came
 -- from and is forgotten, a recording stops unsaved, and the profile's own override applies.
@@ -435,7 +443,7 @@ function SI.ProfileChanged()
   SI.PutBack()
   if SI.recording then ns.SetMoverSuffix(nil) end
   SI.base, SI.applied, SI.recording = nil, nil, nil
-  if SI.settings then SI.Refresh() end
+  if running() then SI.Refresh() end
 end
 ns.OnProfileChanged(SI.ProfileChanged)
 
@@ -446,7 +454,7 @@ SI.OFF_TEXT = L["Situations is off under Modules: overrides don't apply."]
 
 -- The page's status line: the situation you're in and what its override changes, or what's being recorded.
 function SI.StatusText()
-  if not SI.settings then return SI.OFF_TEXT end
+  if not running() then return SI.OFF_TEXT end
   if SI.recording then
     return ns.Format(L["Recording for {situation}: move frames and change settings, then stop recording."], { situation = SI.LABELS[SI.recording] })
   end
@@ -581,9 +589,18 @@ end
 
 ns.Options.AddPage({ key = "situations", title = L["Situations"], icon = "NavSituations", order = 86, rows = SI.Rows })
 
+-- The module switched off (Core/Modules.lua), out of combat: a recording is saved, and the profile's own values are
+-- written back over an applied override (SI.base), so nothing is left on screen that nothing would take off.
+function SI.Disable()
+  if SI.recording then SI.StopRecording() end
+  SI.RestoreBase()
+  SI.applied = nil
+end
+
 -- Module entry point (Core/Modules.lua): follows where you are, and applies the override for it.
-function SI.Enable(settings)
-  SI.settings = settings
-  for _, event in ipairs(SI.EVENTS) do ns.On(event, SI.Refresh) end
+function SI.Enable(settings, scope)
+  SI.settings, SI.scope = settings, scope
+  for _, event in ipairs(SI.EVENTS) do scope:On(event, SI.Refresh) end
+  scope:On("PLAYER_LOGOUT", SI.Logout)
   SI.Refresh()
 end

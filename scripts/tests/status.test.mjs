@@ -139,7 +139,7 @@ it("range ticker: only while the raid frames show, no repeat questions, no repai
 
 it("range ticker: with the raid frames off there is no header to follow, so no range job runs", () => {
   const addon = loggedIn("", NO_RAID);
-  expect(addon.eval('return { ns.GetModule("RaidStatus").enabled == true, ns.ticker.vgJobs["raid range"] ~= nil }'), "raid status on, no range job").toEqual([true, false]);
+  expect(addon.eval('return { ns.GetModule("RaidStatus").enabled == true, ns.ticker.vgJobs["raid range"] ~= nil }'), "raid status needs the raid frames (requires), so it is off too, and no range job runs").toEqual([false, false]);
 });
 
 it("ready check: a new check started while the last one's answers linger keeps its answers up", () => {

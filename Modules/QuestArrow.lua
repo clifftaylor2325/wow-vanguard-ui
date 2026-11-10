@@ -18,7 +18,7 @@ local L = ns.L
 
 local T = ns.Theme
 
-local QA = ns.Module("QuestArrow", { defaults = { show = true, auto = true } })
+local QA = ns.Module("QuestArrow", { defaults = { show = true, auto = true }, live = true })
 ns.QuestArrow = QA
 
 ns.Options.MODULE_INFO.QuestArrow = { L["Quest arrow"], L["A movable arrow on screen that turns toward the nearest unfinished quest objective, with its distance."] }
@@ -35,6 +35,11 @@ QA.HERE, QA.FAINT, QA.PAD = 15, 0.35, 8
 -- How far the Pin button sits below the panel's top: it fills the title's row, so the distance line under it can run to the
 -- panel's right edge.
 QA.PIN_TOP = 2
+
+-- Whether the module runs now: a stopped arrow picks, follows and answers nothing (its scope is closed).
+function QA.Running()
+  return QA.scope ~= nil and QA.scope:Running()
+end
 
 -- Choosing the quest ------------------------------------------------------------------------------
 
@@ -138,7 +143,7 @@ end
 -- Picks the quest, whether it is held and ready to turn in, and its spot (map, x, y); says so when it moved on
 -- from a finished one, redraws, and has the tracker move its accent line when the quest changed.
 function QA.Pick()
-  if not QA.frame then return end
+  if not (QA.frame and QA.Running()) then return end
   local old = QA.current
   QA.current, QA.held = follow(old)
   QA.ready = QA.current ~= nil and readyToTurnIn(QA.current)
@@ -152,13 +157,13 @@ end
 -- The quest the arrow holds (its pick), shown or not: the minimap marks it larger.
 ---@return number|nil
 function QA.Current()
-  return QA.current
+  return QA.Running() and QA.current or nil
 end
 
 -- The quest the arrow shows, for the tracker's accent line: its pick while the arrow is on, else nil.
 ---@return number|nil
 function QA.Followed()
-  if not (QA.settings and QA.settings.show) then return nil end
+  if not (QA.Running() and QA.settings.show) then return nil end
   return QA.current
 end
 
@@ -322,6 +327,11 @@ function QA.PinTooltip(b)
   tip:Show()
 end
 
+-- Hides the tooltip the Pin button showed.
+function QA.HideTooltip()
+  if GameTooltip then GameTooltip:Hide() end
+end
+
 -- The frame ---------------------------------------------------------------------------------------
 
 -- The distance line, hanging from the panel's middle on edge points only (the title stands on it), so the
@@ -345,28 +355,34 @@ local function fill(f)
 end
 
 -- The Pin button at the panel's top right, the one part of the panel that takes the mouse (the rest lets
--- clicks and camera turns through): a ghost tile, as the window controls.
-local function pinButton(f)
+-- clicks and camera turns through): a ghost tile, as the window controls. Its tooltip hooks go through the
+-- scope's gates (made once a session, with the button).
+local function pinButton(f, scope)
   local b = T.WindowControl(CreateFrame("Button", nil, f), "Pin")
   b:SetPoint("TOPRIGHT", f, "TOPRIGHT", -T.SPACE.tight, -QA.PIN_TOP)
   b:SetScript("OnClick", ns.Guard("unpin quest arrow", function() QA.Unpin() end))
-  b:HookScript("OnEnter", ns.Guard("quest arrow pin tip", QA.PinTooltip))
-  b:HookScript("OnLeave", ns.Guard("quest arrow pin tip", function() if GameTooltip then GameTooltip:Hide() end end))
+  scope:Gate("pin tip", QA.PinTooltip, function(gate) b:HookScript("OnEnter", ns.Guard("quest arrow pin tip", gate)) end)
+  scope:Gate("pin tip off", QA.HideTooltip, function(gate) b:HookScript("OnLeave", ns.Guard("quest arrow pin tip", gate)) end)
   b:Hide()
   f.pin = b
 end
 
--- The movable frame (/vg unlock), hidden until there is a quest to point at.
-local function build()
+-- The frame, made once a session: hidden until there is a quest to point at.
+local function build(scope)
   local f = CreateFrame("Frame", "Vanguard_QuestArrow", UIParent)
   T.Panel(f, { shadow = true })
   f:SetSize(QA.WIDTH, QA.HEIGHT)
   fill(f)
   distLine(f)
-  pinButton(f)
+  pinButton(f, scope)
   f:Hide()
-  QA.frame = f
-  ns.Mover(f, "questarrow", L["Quest arrow"], { "TOP", "TOP", 0, -150 })
+  return f
+end
+
+-- The movable frame (/vg unlock), found or built, and put in the scope's hands with its mover.
+local function arrow(scope)
+  QA.frame = QA.frame or build(scope)
+  scope:Mover(QA.frame, "questarrow", L["Quest arrow"], { "TOP", "TOP", 0, -150 })
 end
 
 -- Options ----------------------------------------------------------------------------------------
@@ -374,7 +390,7 @@ end
 -- get/set for one of the module's settings (also while it is off), after() running on each change, and the default.
 local function setting(key, after)
   return function() return ns.Settings("QuestArrow", QA.defaults)[key] end,
-    function(v) ns.Settings("QuestArrow", QA.defaults)[key] = v if QA.settings then after() end end, QA.defaults[key]
+    function(v) ns.Settings("QuestArrow", QA.defaults)[key] = v if QA.Running() then after() end end, QA.defaults[key]
 end
 
 -- Shows or hides the arrow, and the tracker's mark on its pick with it.
@@ -402,16 +418,31 @@ local function tickDraw()
   if not ns.InCombat() then QA.Draw() end
 end
 
+-- The events that move the pick: the log, the watch list, the tracked quest, the zone and the quest spots.
+QA.PICK_EVENTS = { "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "SUPER_TRACKING_CHANGED", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }
+
+-- A quest event came in: notes that the log has arrived (its first update), and picks on the next frame.
+function QA.OnChange(event)
+  QA.logLoaded = QA.logLoaded or event == "QUEST_LOG_UPDATE"
+  ns.Soon("quest arrow", QA.Pick)
+end
+
 -- Module entry point (Core/Modules.lua): the frame, a pick whenever the log or the zone changes, a pick
 -- each second as you move (while the interface shows), and the redraw of the turn a few times a second (while
--- the arrow shows).
-function QA.Enable(settings)
-  QA.settings = settings
-  build()
-  for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "SUPER_TRACKING_CHANGED", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }) do
-    ns.On(event, function() QA.logLoaded = QA.logLoaded or event == "QUEST_LOG_UPDATE" ns.Soon("quest arrow", QA.Pick) end)
-  end
-  ns.Every("quest arrow pick", QA.PICK, tickPick, UIParent)
-  ns.Every("quest arrow", QA.DRAW, tickDraw, QA.frame)
+-- the arrow shows). All through the scope; the two tickers keep their owner frames (UIParent for the pick, the
+-- arrow for the redraw) and rest in a fight, as before.
+function QA.Enable(settings, scope)
+  QA.settings, QA.current, QA.held, QA.ready, QA.target, QA.shown = settings, nil, nil, nil, nil, {}
+  arrow(scope)
+  for _, event in ipairs(QA.PICK_EVENTS) do scope:On(event, QA.OnChange) end
+  scope:Every("quest arrow pick", QA.PICK, tickPick, UIParent)
+  scope:Every("quest arrow", QA.DRAW, tickDraw, QA.frame)
   QA.Pick()
+end
+
+-- Switched off: the tracker's accent line stops marking the arrow's quest (it asks QA.Followed, which is nil once
+-- the arrow has no pick). The scope cannot see the tracker, so this is the one thing it does not undo.
+function QA.Disable()
+  QA.current = nil
+  ns.GetModule("QuestTracker").Redraw()
 end

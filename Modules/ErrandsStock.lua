@@ -261,8 +261,8 @@ function SW.Open()
   if not ER.settings then return ns.Chat(L["Errands is off (/vg > Modules)."]) end
   if not SW.frame then
     SW.frame = build()
-    ns.On("GET_ITEM_INFO_RECEIVED", refreshSoon)
   end
+  ER.scope:On("GET_ITEM_INFO_RECEIVED", refreshSoon)
   SW.Refresh()
   SW.frame:Show()
 end

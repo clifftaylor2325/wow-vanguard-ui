@@ -50,8 +50,8 @@ end
 -- The gaps row switches, by name.
 local function gapRows()
   return {
-    gaps = tip(check(L["Gaps row (reload)"], reloadSetting("CooldownGaps", "on")), L["A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."]),
-    tracked = tip(check(L["Add the manager's cooldowns (reload)"], reloadSetting("CooldownGaps", "tracked")), L["Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."]),
+    gaps = tip(check(L["Gaps row (reload)"], O.RestartSetting("CooldownGaps", "on")), L["A row of icons for what the game's manager misses: on-use trinkets, items and spells you choose (in the list below), pet abilities and totems."]),
+    tracked = tip(check(L["Add the manager's cooldowns (reload)"], O.RestartSetting("CooldownGaps", "tracked")), L["Also draws the spells the manager tracks in its essential and utility rows as Vanguard icons in the gaps row."]),
   }
 end
 

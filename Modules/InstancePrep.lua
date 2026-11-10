@@ -26,7 +26,13 @@ local PR = ns.Module("InstancePrep", {
     buffs = false, worldBuffs = false,
     want = { food = 20, bandages = ns.ClientData(ns.CLIENT_DEFAULTS.InstancePrep.want.bandages), potions = 3, ammo = 400, shards = 10 },
   },
+  live = true,
 })
+
+-- Whether the module runs now: a stopped one answers /vg prep, the wizard, the buy list and the buff rows as if off.
+function PR.Running()
+  return PR.scope ~= nil and PR.scope:Running()
+end
 
 -- The card's width, a line's height (the card's rows are text lines, not list rows), its padding (a HUD
 -- card's, T.SPACE.gap) and where its rows start (under the title and the Buy list button beside it).
@@ -196,7 +202,7 @@ end
 -- needs the larger amount. Ammo, soul shards, food, bandages and potions are kinds of item, not
 -- one item, so they're left out. The Auction helper's Restock list is made from these.
 function PR.BuyRows()
-  local rows, out, seen = PR.settings and PR.ReagentRows() or {}, {}, {}
+  local rows, out, seen = PR.Running() and PR.ReagentRows() or {}, {}, {}
   for _, r in ipairs(PR.StockRows()) do rows[#rows + 1] = r end
   for _, r in ipairs(rows) do
     local had = r.id and seen[r.id]
@@ -320,8 +326,8 @@ local function buyButton(f)
   f.buy:Hide()
 end
 
--- The card: a floating panel you can move (/vg unlock), hidden until called up. It is clamped to the screen, so
--- a long list that grows it about its centre slides it down from the top edge instead of past it.
+-- The card: a floating panel you can move (/vg unlock), hidden until called up, made once a session. It is clamped
+-- to the screen, so a long list that grows it about its centre slides it down from the top edge instead of past it.
 local function buildCard()
   local f = CreateFrame("Frame", "Vanguard_PrepCard", UIParent)
   T.Panel(f, { shadow = true })
@@ -331,14 +337,21 @@ local function buildCard()
   cardParts(f)
   buyButton(f)
   f:Hide()
-  PR.card = f
-  ns.Mover(f, "prepcard", L["Instance prep"], { "CENTER", "CENTER", 0, 164 })
+  return f
+end
+
+-- The card, found or built, and put in the scope's hands with its mover.
+local function card(scope)
+  PR.card = PR.card or buildCard()
+  scope:Mover(PR.card, "prepcard", L["Instance prep"], { "CENTER", "CENTER", 0, 164 })
 end
 
 -- Showing ---------------------------------------------------------------------------------------
 
--- Paints the card with these rows and dungeon lines and shows it, fading it out after Hide after seconds.
+-- Paints the card with these rows and dungeon lines and shows it, fading it out after Hide after seconds. A stopped
+-- module shows nothing (a call that waited for the fight can come after the stop).
 local function present(rows, lines)
+  if not PR.Running() then return end
   PR.Paint(rows, lines)
   T.FadeIn(PR.card)
   ns.AutoHide(PR.card, PR.settings.hideAfter)
@@ -414,6 +427,7 @@ end
 -- been back at its wanted count. The first look only notes what is already low (the door card
 -- covers that). Not in combat: the check waits for the fight to end.
 function PR.CheckSupplies()
+  if not PR.Running() then return end
   if ns.InCombat() then return ns.OutOfCombat(PR.CheckSupplies, "supplies") end
   local low, order = PR.LowSupplies()
   local before, fresh = PR.lowNow, {}
@@ -440,19 +454,30 @@ end
 -- /vg prep [want <key> <n>|setup]: the card now (after the fight, in one), a wanted amount, or the wanted-amounts window.
 function PR.Command(rest)
   rest = rest or ""
-  if not PR.settings then return ns.Chat(L["Instance prep is off (/vg > Modules)."]) end
+  if not PR.Running() then return ns.Chat(L["Instance prep is off (/vg > Modules)."]) end
   if rest:match("^want") then return setWant(rest) end
   if rest:match("^setup") then return PR.Wizard.Open() end
   if rest:match("^buffs") then return PR.BuffReport() end
   ns.OutOfCombat(PR.ShowOnDemand, "prep")
 end
 
--- Module entry point (Core/Modules.lua).
-function PR.Enable(settings)
-  PR.settings = settings
-  buildCard()
-  ns.On("PLAYER_ENTERING_WORLD", PR.OnEnter)
-  ns.On("READY_CHECK", PR.OnReadyCheck)
-  ns.On("BAG_UPDATE_DELAYED", PR.OnBags)
-  ns.On("PLAYER_ENTERING_WORLD", function() PR.lowNow = nil PR.OnBags() end)
+-- You came into a world: the low-supply look starts over (the first look only notes what is already low).
+function PR.OnWorld()
+  PR.lowNow = nil
+  PR.OnBags()
+end
+
+-- Module entry point (Core/Modules.lua). Everything goes through the scope.
+function PR.Enable(settings, scope)
+  PR.settings, PR.lowNow = settings, nil
+  card(scope)
+  scope:On("PLAYER_ENTERING_WORLD", PR.OnEnter)
+  scope:On("READY_CHECK", PR.OnReadyCheck)
+  scope:On("BAG_UPDATE_DELAYED", PR.OnBags)
+  scope:On("PLAYER_ENTERING_WORLD", PR.OnWorld)
+end
+
+-- Switched off: the wanted-amounts window, a second frame made when it is first opened, closes with the card.
+function PR.Disable()
+  if PR.Wizard.frame then PR.Wizard.frame:Hide() end
 end

@@ -16,7 +16,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 local L = ns.L
 
-local AFK = ns.Module("AfkScreen", { defaults = { scene = true } })
+local AFK = ns.Module("AfkScreen", { defaults = { scene = true }, live = true })
 
 AFK.CARD_W, AFK.CARD_H, AFK.BAR_H = 380, 132, 10
 -- How dark the dim is: over the screen alone, and lighter over the painted scene.
@@ -198,6 +198,7 @@ end
 -- Your away flag changed (or a fight ended): show the screen while you're away, put it away when you're
 -- back. The time away counts from when the flag came on, so a fight in between doesn't start it over.
 function AFK.Update()
+  if not AFK.scope:Running() then return end
   if AFK.Away() then
     AFK.since = AFK.since or ask("GetTime") or 0
     return AFK.Open()
@@ -304,35 +305,52 @@ function AFK.Dismiss()
   AFK.Close()
 end
 
--- Clicks and keys put the screen away; the time away and the clock tick once a second.
+-- Clicks and keys put the screen away (once: the frame is made once a session).
 local function wire(f)
   f:EnableMouse(true)
   f:SetScript("OnMouseDown", AFK.Dismiss)
   f:SetScript("OnKeyDown", AFK.Dismiss)
   ns.OutOfCombat(function() f:EnableKeyboard(true) if ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(true) end end)
-  ns.Every("afk screen", 1, AFK.Tick, f)
 end
 
 -- The screen steps aside after each prompt the game shows (calls the client lacks are skipped, and all of them on a
--- client without hooksecurefunc).
-local function watchPrompts()
+-- client without hooksecurefunc); a hook stays, inert while the module is off (a gate per call).
+local function watchPrompts(scope)
   if type(hooksecurefunc) ~= "function" then return end
   for _, fn in ipairs(AFK.PROMPTS) do
-    if type(_G[fn]) == "function" then hooksecurefunc(fn, ns.Guard("hook afk " .. fn, AFK.StepAside)) end
+    if type(_G[fn]) == "function" then scope:Gate("prompt " .. fn, AFK.StepAside, function(gate) hooksecurefunc(fn, ns.Guard("hook afk " .. fn, gate)) end) end
   end
+end
+
+-- The player's own away flag changed (the event names the unit).
+local function onFlags(_, unit)
+  if unit == "player" then AFK.Update() end
+end
+
+-- The events and timers that run the screen while the module does.
+local function listen(scope)
+  scope:Every("afk screen", 1, AFK.Tick, AFK.frame)
+  scope:On("PLAYER_FLAGS_CHANGED", onFlags)
+  scope:On("PLAYER_REGEN_DISABLED", AFK.Close)
+  scope:On("PLAYER_REGEN_ENABLED", AFK.Update)
+  scope:On("READY_CHECK", AFK.StepAside)
+  scope:Gate("passage theme", AFK.PaintPassage, T.OnChanged)
 end
 
 -- Module entry point (Core/Modules.lua): a fight puts the screen away, and it
 -- comes back after the fight if you're still away.
-function AFK.Enable(settings)
-  AFK.settings = settings
-  AFK.frame = build()
-  wire(AFK.frame)
-  AFK.frame:Hide()
-  ns.On("PLAYER_FLAGS_CHANGED", function(_, unit) if unit == "player" then AFK.Update() end end)
-  ns.On("PLAYER_REGEN_DISABLED", AFK.Close)
-  ns.On("PLAYER_REGEN_ENABLED", AFK.Update)
-  ns.On("READY_CHECK", AFK.StepAside)
-  T.OnChanged(AFK.PaintPassage)
-  watchPrompts()
+function AFK.Enable(settings, scope)
+  AFK.settings, AFK.scope = settings, scope
+  if not AFK.frame then
+    AFK.frame = build()
+    wire(AFK.frame)
+  end
+  scope:Frame(AFK.frame):Hide()
+  listen(scope)
+  watchPrompts(scope)
+end
+
+-- Switched off: the state of one away spell is forgotten, so a later start begins as a login does.
+function AFK.Disable()
+  AFK.since, AFK.dismissed, AFK.retried = nil, false, false
 end

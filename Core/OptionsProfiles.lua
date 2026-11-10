@@ -65,7 +65,7 @@ end
 local function addProfileButtons(r, name)
   if name == ns.SelectedProfileName() then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
-  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() ns.UseProfile(name) O.NeedReload() end, SMALL))
+  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() if not ns.PickProfile(name) then O.NeedReload() end end, SMALL))
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -T.SPACE.gap, 0) else r.use:SetPoint("RIGHT", -T.SPACE.gap, 0) end
 end
 
@@ -98,15 +98,15 @@ end
 
 -- A new profile ----------------------------------------------------------------------------
 
--- Makes the named profile and stages the switch to it (it applies on reload), or says why it can't.
+-- Makes the named profile and switches to it (at once when nothing waits for a reload, else after the reload), or
+-- says why it can't.
 local function create(r)
   local name = r.input:GetText()
   if not ns.NewProfile(name) then
     r.label:SetText(L["Name taken or not allowed"])
     return T.Color(r.label, "bad")
   end
-  ns.UseProfile(name)
-  O.NeedReload()
+  if not ns.PickProfile(name) then O.NeedReload() end
 end
 
 -- Puts the caption back after a refused name.

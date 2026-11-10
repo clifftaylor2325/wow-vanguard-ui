@@ -83,9 +83,18 @@ local function makeOwnSwitch(r)
   r.ownSwitch:SetJustifyH("LEFT")
 end
 
--- Beside a module's name, a quiet note while the module is on but its own switch inside is off (O.OwnSwitchNote).
+-- Greys a module's row while a module it requires is off: its name in the disabled tier, its switch faded (a click
+-- jumps to that module's row instead, moduleSetter).
+local function greyIfWaiting(r, name)
+  local waiting = O.MissingParent(name) ~= nil
+  T.Color(r.label, waiting and "disabled" or "text")
+  r.track:SetAlpha(waiting and T.ALPHA.unavailable or T.ALPHA.opaque)
+end
+
+-- Beside a module's name, a quiet note (O.ModuleNote): the module is on but its own switch inside is off, its switch
+-- waits for the fight to end, or it needs a module that is off (the row greyed).
 local function addOwnSwitchNote(r, name)
-  if not O.MODULE_LINKS[name] then return end
+  if not O.HasModuleNote(name) then return end
   makeOwnSwitch(r)
   local refresh = r.Refresh
   -- The switch's own refresh, then the note, read again each time (the own switch is on another page), placed after
@@ -93,14 +102,24 @@ local function addOwnSwitchNote(r, name)
   r.Refresh = function(self)
     refresh(self)
     placeOwnSwitch(self)
-    self.ownSwitch:SetText(O.OwnSwitchNote(name) or "")
+    self.ownSwitch:SetText(O.ModuleNote(name) or "")
+    greyIfWaiting(self, name)
   end
   r:Refresh()
 end
 
+-- A module row's setter: while a module it requires is off, a click jumps to that module's row instead of switching.
+local function moduleSetter(row)
+  return function(v)
+    local parent = O.MissingParent(row[7])
+    if parent then return O.JumpToModule(parent) end
+    row[4](v)
+  end
+end
+
 -- A module's switch: its name (and the own-switch note), and under it what the module does.
 local function moduleRow(parent, row, width)
-  local r = W.Check(parent, row[2], row[3], row[4], width)
+  local r = W.Check(parent, row[2], row[3], moduleSetter(row), width)
   r:SetHeight(ROW_HEIGHT.module)
   r.label:ClearAllPoints()
   r.label:SetPoint("TOPLEFT", T.SPACE.gap, -AIR)
@@ -333,17 +352,18 @@ end
 -- Shows a row's tip, then its own-switch note (while it has one) as a second line: the note on the row may be cut
 -- short beside a long name, and here it reads in full.
 local function showRowTip(w, row)
-  if not GameTooltip then return end
-  GameTooltip:SetOwner(w, "ANCHOR_RIGHT")
-  GameTooltip:SetText(row.tip, nil, nil, nil, nil, true)
   local note = w.ownSwitch and w.ownSwitch:GetText() or ""
+  if not GameTooltip or not (row.tip or note ~= "") then return end
+  GameTooltip:SetOwner(w, "ANCHOR_RIGHT")
+  GameTooltip:SetText(row.tip or row[2], nil, nil, nil, nil, true)
   if note ~= "" then GameTooltip:AddLine(note, T.RGB("text2")) end
   GameTooltip:Show()
 end
 
--- Gives a row that carries a tip (row.tip) that tip as its tooltip on hover.
+-- Gives a row that carries a tip (row.tip) that tip as its tooltip on hover, and a module row with a note beside its
+-- name (a live module's has no reload tip) its name and the note in full.
 local function addTip(w, row)
-  if not row.tip then return end
+  if not (row.tip or w.ownSwitch) then return end
   w:HookScript("OnEnter", ns.Guard("show row tip", function() showRowTip(w, row) end))
   w:HookScript("OnLeave", ns.Guard("hide row tip", hideNote))
 end
@@ -592,10 +612,10 @@ local function moveReload(row)
   if type(row[2]) ~= "string" then return end
   row.english = ns.English(row[2])
   if setterOf(row) and row.english:sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then
-    row[2], row.english, row.reload = withoutReload(row[2]), row.english:sub(1, -#RELOAD_SUFFIX - 1), true
+    row[2], row.english, row.reload = withoutReload(row[2]), row.english:sub(1, -#RELOAD_SUFFIX - 1), not O.AppliesLive(setterOf(row))
   end
   O.NameRow(row)
-  if row.reload and row.tip and ns.English(row.tip):sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then row.tip = withoutReload(row.tip) end
+  if row.tip and ns.English(row.tip):sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then row.tip = withoutReload(row.tip) end
 end
 
 -- Whether a row has a default to go back to.
@@ -764,7 +784,7 @@ end
 
 -- The profile picker: picking one switches on reload (the Profiles page follows through ns.OnProfileStaged).
 local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.UseProfile(v); O.NeedReload() end, PROFILE_WIDTH)
+  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) if not ns.PickProfile(v) then O.NeedReload() end end, PROFILE_WIDTH)
 end
 
 -- Enter in the search box: opens the first page that matches and jumps to the row.
@@ -1111,10 +1131,10 @@ local function build()
   wireKeys(window)
 end
 
--- Marks a change that applies on reload, and shows the reload notice.
+-- Marks a change that applies on reload, and shows the reload notice (it stays for the session).
 function O.NeedReload()
   needsReload = true
-  if window then ns.WidenToLabel(window.reload) window.reload:SetShown(true) window.notice:SetShown(true) window.notice:SetText(reloadNotice) end
+  O.ShowReloadNotice()
 end
 
 -- The profile in use had its settings replaced (Copy here, Reset profile): the running modules keep the
@@ -1217,12 +1237,16 @@ local function takeKeys(previous)
   if fight then ns.OutOfCombat(regainKeys, "options keyboard") end
 end
 
--- Shows the reload notice and button while a change needs a reload.
-local function showReloadNotice()
+-- Shows the reload notice and button while a change needs a reload: a change marked with O.NeedReload (the notice
+-- stays for the session), else the modules whose switch or reload settings wait (O.ReloadWaiting, gone again once
+-- they are switched back). Nothing before the window is first opened.
+function O.ShowReloadNotice()
+  if not window then return end
+  local text = needsReload and reloadNotice or O.WaitingText(O.ReloadWaiting())
   ns.WidenToLabel(window.reload)
-  window.reload:SetShown(needsReload)
-  window.notice:SetShown(needsReload)
-  window.notice:SetText(needsReload and reloadNotice or "")
+  window.reload:SetShown(text ~= nil)
+  window.notice:SetShown(text ~= nil)
+  window.notice:SetText(text or "")
 end
 
 -- Forgets the rows of the pages not built yet, so a new opening reads them afresh. A built page keeps
@@ -1242,7 +1266,7 @@ function O.Show(key)
   takeKeys(previous)
   showPage()
   markNav(O.current)
-  showReloadNotice()
+  O.ShowReloadNotice()
   O.Refresh()
   appear(previous)
 end
@@ -1326,6 +1350,18 @@ function O.JumpTo(text)
   O.MarkRow(w)
 end
 
+-- Scrolls the current page to a module's switch (the Modules page) and marks it; nothing when the row isn't shown.
+function O.JumpToModule(name)
+  local view = pages[O.current]
+  for _, w in ipairs(widgets) do
+    local row = w.source
+    if view and row and row[1] == "module" and row[7] == name and O.RevealRow(w) then
+      view:ScrollTo(w.pageY - JUMP_ABOVE)
+      return O.MarkRow(w)
+    end
+  end
+end
+
 -- Shows the tab holding row w (a row's widget on a built page) and says whether the row shows now (a row the page
 -- hides, such as a module the Modules page's Show choice leaves out, doesn't).
 function O.RevealRow(w)
@@ -1402,6 +1438,15 @@ local function replaceTabs()
     if view.cards[1] and view.cards[1].tab then placeTabs(view) end
   end
 end
+
+-- A settle of the module switches (Core/Modules.lua) started or stopped modules, or a switch made in a fight applied:
+-- the shown window reads every row again (the notes beside module names, the rows that check a module runs) and
+-- says again what waits for a reload.
+ns.OnModulesChanged(function()
+  if not (window and window:IsShown()) then return end
+  O.Refresh()
+  O.ShowReloadNotice()
+end)
 
 -- Accent changes recolor the window's switches, segments and nav at once; font and Text size changes re-lay the tabs.
 T.OnChanged(function()

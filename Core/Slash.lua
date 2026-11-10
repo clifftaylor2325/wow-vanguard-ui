@@ -262,7 +262,7 @@ local nineSliceCommand = switchCommand({
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
-  if not CG.settings then return chat(L["Cooldown glow is off: turn the module on in the options first."]) end
+  if not ns.ModuleLive("CooldownGlow") then return chat(L["Cooldown glow is off: turn the module on in the options first."]) end
   local percent = tonumber(rest)
   if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
@@ -281,7 +281,7 @@ local cdmKeysSwitch = switchCommand({
 
 -- /vg cdmkeys: the module must be on first (its settings exist only then).
 local function cdmKeysCommand(rest)
-  if not ns.GetModule("CooldownKeys").settings then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."]) end
+  if not ns.ModuleLive("CooldownKeys") then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."]) end
   return cdmKeysSwitch(rest)
 end
 
@@ -420,11 +420,13 @@ local function skinsCommand(rest)
   chat(ns.Format(on == "on" and L["Skin for {addon} on. /reload to apply."] or L["Skin for {addon} off. /reload to apply."], { addon = name }))
 end
 
--- Stages a switch to a profile and offers the reload that applies it.
+-- Switches to a profile: at once when nothing waits for a reload (ns.PickProfile), else staged, with the reload that
+-- applies it offered (naming what differs, when that alone waits).
 local function switchTo(name)
-  ns.UseProfile(name)
+  if ns.PickProfile(name) then return chat(ns.Format(L["This character now uses profile {profile}."], { profile = name })) end
   if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
-  ns.OfferReload(ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }))
+  local why, wait = ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }), ns.SwitchWaitText(name)
+  ns.OfferReload(wait and why .. " " .. wait or why)
 end
 
 -- The existing profile a typed name means: its exact name, else the first (in name order) that differs
@@ -436,7 +438,7 @@ local function findProfile(name)
   end
 end
 
--- /vg profile <name>: switch to the profile (matched in any case), after the reload; a name that matches nothing
+-- /vg profile <name>: switch to the profile (matched in any case), at once or after the reload (switchTo); a name that matches nothing
 -- asks before making an empty profile (a typo would otherwise load all defaults).
 local function useProfile(name)
   if not ns.ValidProfileName(name) then
@@ -864,7 +866,7 @@ end
 local function questsCommand(rest)
   if rest:lower():match("^history") then return ns.GetModule("QuestHistory").Command(rest) end
   local QL = ns.GetModule("QuestLog")
-  if QL.frame then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
+  if QL.frame and ns.ModuleLive("QuestLog") then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
 end
 
 local COMMANDS = {

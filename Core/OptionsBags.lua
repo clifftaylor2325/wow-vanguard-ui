@@ -14,7 +14,7 @@ local function dataBarRows()
   local barsVisibility, barsWhen = O.VisibilityRows(L["XP and reputation bars"], "DataBars", "visibility", "showWhen")
   return {
     { "header", L["XP and reputation"] },
-    check(L["Experience bar"], reloadSetting("DataBars", "xp")), check(L["Reputation bar"], reloadSetting("DataBars", "reputation")),
+    check(L["Experience bar"], O.RestartSetting("DataBars", "xp")), check(L["Reputation bar"], O.RestartSetting("DataBars", "reputation")),
     { "cycle", L["Numbers"], { { "hover", L["on hover"] }, { "always", L["always"] } }, reloadSetting("DataBars", "text") },
     check(L["Tooltips on hover"], setting("DataBars", "tooltip")),
     barsVisibility, barsWhen,

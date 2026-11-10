@@ -314,6 +314,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with nothing to list the page says "No module is switched off." in grey above a Show all modules button, and the button brings every module back. Each page's card fades in quickly (about a tenth of a second) while its name, tabs and the list's mark change at once; nothing flickers, and no card is left faint. With Reduce motion on, and never longer than 0.15 s in a fight, the page is simply there. [Needs in-game check: that the fade reads as polish and not as lag, and that a fast run of Up and Down leaves the last page fully opaque.]
 - If it fails, paste: what you saw (a short clip if you can) and `/vg errors`.
 
+### 2.1n The reload notice names what waits
+
+- Do: type `/vg` → Modules. Switch Chat off, then Bags off, then Minimap off. Look at the footer. Switch all three back on. Then on Map switch Clock off and back on. Then pick another profile in the header's picker.
+- Expect: after Chat the footer says "Waiting for a reload: Chat" beside Reload now; after Bags "Waiting for a reload: Chat, Bags"; after Minimap it adds "and 1 more" (the text stays left of the button and clear of the error line). Switching all three back on takes the notice and the button away, and so does Clock off and on again. Picking another profile shows "Some changes need a reload", which stays until the reload. Every module switch still wears "Reload to apply". No error. [Needs in-game check: no module goes on or off live yet; the wording and the notice clearing are the only change a player sees.]
+- If it fails, paste: a screenshot of the footer and `/vg errors`.
+
 ### 2.1h The fold on Raid frames
 
 - Do: type `/vg` → Raid frames. Count the rows, then press the **More settings** line, press it again, then press it open and change Power bar. Fold it, and look at the line. Reset Power bar with its accent arrow. Type "leader" in the search box and press Enter on the first hit. Then `/reload`, open Raid frames again, press Tab until the line is marked and press Enter. Repeat at Text size 130% and in a non-English client if you have one.
@@ -2902,7 +2908,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.53 Group threat panel on a narrow screen
 
-- Do: switch Group threat on (`/vg` -> Unit frames, then reload), join a group (or a raid of 25 or 40 and a hostile target), on a screen narrower than 1365 UI units (a 4:3 or 5:4 monitor, or a UI scale above about 1.07 on 1080p).
+- Do: switch Group threat on (`/vg` -> Unit frames; no reload), join a group (or a raid of 25 or 40 and a hostile target), on a screen narrower than 1365 UI units (a 4:3 or 5:4 monitor, or a UI scale above about 1.07 on 1080p).
 - Expect: the panel sits at the right, left of the minimap and under your buffs, clear of the raid grid; on a wider screen it is at the top left, as before. [Needs in-game check: the panel against the quest tracker and your buffs, and, on a 1365-wide screen with the "Like the game's" layout, whether it still covers the party tiles (it does not move there).]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_GroupThreat`.
 
@@ -5460,6 +5466,94 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 - Do: log in on WoW Forever with the same Vanguard folder and `/reload`. Open the character pane, the group finder, the professions window, the quest tracker, the bank and `/vg` → Situations; look at the player frame on a druid and a shaman.
 - Expect: nothing changed from 33: Situations shows its six situations, the dungeon card is the level-range one, the Modules page's Class bars row names shaman totems above the frame and druid mana in forms under it.
 - If it fails, paste: the `/vg report` block.
+
+### 34.16 Own-frame modules switch off and on without a reload (A4-2b)
+
+- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Group threat (and its row under Unit frames), Fight history (after a fight or two; `/vg fights` still lists them)), Vanguard meter (open a line's spell panel first; target of target moves back to its wide spot), Roll tracker (after a `/roll`; `/vg rolls` still lists it)), Instance prep (with `/vg prep` and the wanted-amounts window open)), Quest arrow (with a quest watched; the tracker's accent line goes with it)), Quest spots on the minimap (with a quest on the map you are on), Cooldown gaps (and its Gaps row and Cooldown Manager's cooldowns rows under Cooldowns: no reload tag, the row appears and goes at once)), Chat watch (say a watched phrase in a channel you tick, then switch it off and say it again: no sound, no toast).
+- Expect: each goes at once, with nothing of its own left on screen (no panel, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. A switch made in a fight applies when the fight ends. [Needs in-game check.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 34.17 Listener and data modules switch off and on without a reload (A4-2c)
+
+- Do: in `/vg` -> Modules, switch each of these off and on again, one at a time, out of combat: Auto-accept, Quest automation, Vendor memory, Inventory (alts), Quest history, Spell ranks, Other addons, Group board, Mail tools and Craft queue.
+- Expect: each goes at once, with nothing left on screen (the group board window, the mail panel beside the mailbox and the craft queue panel beside the profession window are gone and do not come back while it is off). Switched off, Auto-accept and Quest automation do nothing at all: a summon, a resurrection, a quest offer or a hand-in is left to you. What was stored stays (`/vg vendors`, `/vg alts`, `/vg quests history`, `/vg trainers`, the craft queue and presets); switched on again, they listen again without a reload.
+- If it fails, paste: the `/vg report` block and which module.
+
+### 34.18 Modules on the unit frames switch off and on without a reload (A4-2d)
+
+- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Target and focus auras, Combo points (on a rogue or druid, with points on a target), Class bars (a shaman's totems or a druid's mana in a form), Power bar sparks (cast a mana spell: the spark crosses the bar), Readouts (threat on a target in a group, the status chip, a hunter pet's mood), Main tank frames (in a raid with a main tank marked, out of combat), Party pets and targets (in a party), Raid tools (as leader in a group; the roster, if it is open, closes with it), AFK screen (switch it off while the screen shows: it goes at once; `/afk` then shows nothing). Then switch Unit frames off and look at its children's rows.
+- Expect: each goes at once, with nothing of its own left on screen (no icons under the target frame, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. With Unit frames off, a child's switch is greyed and says "Needs Unit frames". A switch made in a fight applies when the fight ends. [Needs in-game check.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
+## 35. Switching raid and town modules on and off (A4-2e)
+
+Each step is the same shape: switch the module off under `/vg` → Modules (or its own switch), look; switch it on, look again. Nothing needs a reload, and a switch made in a fight applies when it ends.
+
+### 35.1 Raid auras
+
+- Do: in a group (or a raid), with Raid frames on, switch **Raid auras** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
+- Expect: off, every tile loses its debuff and HoT icons, its indicators and the dispel wash at once, and nothing is left drawn; on, they come back on every tile; a changed debuff count or indicator shows on the tiles at once (out of combat), with no reload notice for these rows.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
+### 35.2 Raid healing
+
+- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid healing** off under `/vg` → Modules, then on again.
+- Expect: off, the heal and shield bars, aggro strip and missing-buff marker are gone from every tile at once and stay gone while the heal lands; on, they return on every tile without a reload.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
+### 35.3 Raid status
+
+- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid status** off under `/vg` → Modules, then on again. Run a ready check while it is off.
+- Expect: off, the range fade, raid icons, crown and any ready check, resurrection and summon marks are gone from every tile at once and the status text shows; the ready check draws nothing; on, the marks and the fade return.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
+### 35.4 Officer loot tools
+
+- Do: with `/vg loot on` and a reserve added, have the reserving member roll so the tracker shows "[SR]". Switch **Officer loot tools** off under `/vg` → Modules, then on again.
+- Expect: off, the roll tracker loses its "[SR]" flags at once and `/vg loot list` says the module is off; on, the flags and the list return, with the reserves as they were.
+- If it fails, paste: the roll tracker's lines and `/vg errors`.
+
+### 35.5 Gear upgrades
+
+- Do: open the combined bag and a quest reward window with an upgrade in each (an arrow shows), and hover an upgrade for its tooltip line. Switch **Gear upgrades** off under `/vg` → Modules, then on again.
+- Expect: off, the arrows on the bag slots and reward cards and the tooltip line are gone at once; on, they come back (the bag marks itself again), with no reload.
+- If it fails, paste: a screenshot of the bag and `/vg errors`.
+
+### 35.6 Character sheet extras
+
+- Do: open the character pane (item levels show on the gear slots). Switch **Character sheet extras** off under `/vg` → Modules, then on again, with the pane open and then closed.
+- Expect: off, every slot's item level and enchant mark go at once and the pane opens bare; on, they return on the open pane and when it next opens.
+- If it fails, paste: a screenshot of the pane and `/vg errors`.
+
+### 35.7 Errands
+
+- Do: at a class trainer, see the Train all button, then switch **Errands** off under `/vg` → Modules (trainer window open) and on again; then turn **Flight timer** off and on under Town and gear → Errands and take a flight.
+- Expect: off, the Train all button is gone from the trainer's window at once and a merchant buys nothing for your stock list; on, the button returns on the open window. The flight timer switch applies at once, with no reload notice, and a known route shows its countdown bar.
+- If it fails, paste: a screenshot of the trainer window and `/vg errors`.
+
+### 35.8 Merchant helpers
+
+- Do: at a merchant, open the quantity window on a stack of goods (Stack and Max show under it). With the window open, switch **Merchant helpers** off under `/vg` → Modules, then on again; visit a merchant while it is off.
+- Expect: off, the drawer under the quantity window is gone at once and a merchant repairs and sells nothing; on, the next merchant and quantity window work as before, with no reload.
+- If it fails, paste: a screenshot of the quantity window and `/vg errors`.
+
+### 35.9 Talent planner
+
+- Do: open the talents window, switch Plan on and plan a talent (a badge shows, the bar shows Spend planned). With the window open, switch **Talent planner** off under `/vg` → Modules, then click a talent and type `/vg talents spend`; switch it on again.
+- Expect: off, the badges, rings and the bar are gone at once, clicking a talent only does what the game does and the command says the planner is off; nothing is spent. On, the bar and your plan return on the open window.
+- If it fails, paste: a screenshot of the talents window and `/vg errors`.
+
+### 35.10 Quest guidance
+
+- Do: open the world map on a zone with quest starts (pins show). With it open, switch **Quest guidance** off under `/vg` → Modules, then on again; Shift-click a tracked quest in each state.
+- Expect: off, the pins vanish from the open map at once, the tracker loses its New marks and next-step line, and Shift-click does nothing; on, the pins return on the open map. The map itself keeps working.
+- If it fails, paste: a screenshot of the map and `/vg errors`.
+
+### 35.11 Chat, quest and HUD modules switch off live (A4-2f)
+
+- Do: type `/vg` → Modules. One at a time, switch off and on again Chat history, Chat filter, Chat extras, Chat windows, Quiet, Quest dialog, Quest log, Cooldown keys, Cooldown glow, Data bars, Broker strip, HUD text and Situations. After each switch off, look at the screen, talk to a quest giver (Quest dialog), press the quest log key (Quest log), and open `/vg errors`.
+- Expect: each goes at once with no reload tag and nothing of it left on screen: no Copy or Find button in the chat tab bar, no Vanguard quest dialog or log (the game's own windows open, and the quest log key is the game's), no key text or glow on the Cooldown Manager icons, no XP or reputation bar and the game's own status bars back in their Edit Mode spot, no broker strip, the game's fonts back on the error line and zone names. Quiet and HUD text print one line each about what stays until a reload (the action bar's own errors; the damage-number font). Switching each on again brings it back. A switch made in a fight waits for the fight to end. `/vg errors` stays empty. [Needs in-game check: that the game's gossip and quest windows open normally after Quest dialog goes off with no taint report, and that the status bars come back in their Edit Mode spot after Data bars goes off.]
+- If it fails, paste: the `/vg errors` text and the module's name.
 
 ## When you are done
 

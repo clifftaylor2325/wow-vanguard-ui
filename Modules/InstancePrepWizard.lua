@@ -162,7 +162,7 @@ end
 
 -- Opens the window on its first page (Instance prep must be on; out of combat only, since it has no use in a fight).
 function WZ.Open()
-  if not PR.settings then return ns.Chat(L["Instance prep is off (/vg > Modules)."]) end
+  if not PR.Running() then return ns.Chat(L["Instance prep is off (/vg > Modules)."]) end
   if ns.InCombat() then return ns.OutOfCombat(WZ.Open, "prep wizard") end
   WZ.frame = WZ.frame or build()
   WZ.pages = WZ.Pages()

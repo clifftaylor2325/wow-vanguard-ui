@@ -739,3 +739,10 @@ it("Apply puts the top rank of a ranked layout spell on the button", () => {
   expect(ka(addon, `return KA.Apply(ns.KeybindsLayouts.Resolve({ class = "MAGE", role = "frost" }, nil, function(id) return id == 837 end))`)).toBe(true);
   expect(slots(addon, [1])).toEqual([837]);
 });
+
+// L16: the logout backup only follows a key record.
+it("keys backup: a character on an account that never used key setup writes no key copy at logout", () => {
+  const addon = loggedIn();
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("return { VanguardCharDB.keyBackup == nil, VanguardDB.keyStamp == nil }")).toEqual([true, true]);
+});

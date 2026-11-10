@@ -51,14 +51,25 @@ local function cell(row, x, w, role)
   return fs
 end
 
+-- Hides the game's tooltip when the mouse leaves a row.
+function GB.HideTip()
+  if GameTooltip then GameTooltip:Hide() end
+end
+
+-- Hooks a row's hover tooltip through the scope's gates (one pair per row, installed once a session; the board's
+-- window is hidden while the module is off, so they are idle then too).
+local function hookTip(b)
+  GB.scope:Gate("row enter " .. tostring(b), GB.RowTooltip, function(gate) b:HookScript("OnEnter", gate) end)
+  GB.scope:Gate("row leave " .. tostring(b), GB.HideTip, function(gate) b:HookScript("OnLeave", gate) end)
+end
+
 -- A post's row (W.Row: a faint wash under the mouse): kind, dungeon, roles, sender, age.
 local function makeRow(parent)
   local b = W.Row(parent, GB.ROW_H, { width = SPAN })
   b.kind, b.dungeon, b.roles = cell(b, INDENT, 34, "small"), cell(b, 40, 164), cell(b, 208, 92, "small")
   b.sender, b.age = cell(b, 304, 82), cell(b, 388, 48, "small")
   b:SetScript("OnClick", ns.Guard("click group board row", function(self) GB.Whisper(self.entry) end))
-  b:HookScript("OnEnter", GB.RowTooltip)
-  b:HookScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+  hookTip(b)
   return b
 end
 
@@ -121,7 +132,7 @@ function GB.Build()
   local f = T.Panel(CreateFrame("Frame", "Vanguard_GroupBoard", UIParent), { alpha = T.ALPHA.dialog, shadow = true })
   f:SetSize(GB.W, GB.H)
   f:SetFrameStrata("HIGH")
-  ns.Mover(f, "groupboard", L["Group board"], { "CENTER", "CENTER", 220, 60 })
+  GB.Adopt(f)
   addTop(f)
   addFilters(f)
   addBody(f)
@@ -245,7 +256,7 @@ end
 
 -- Opens or closes the board (built the first time); says so when the module is off.
 function GB.Toggle()
-  if not GB.settings then return ns.Chat(L["The group board is off (/vg > Modules)."]) end
+  if not GB.Active() then return ns.Chat(L["The group board is off (/vg > Modules)."]) end
   if not GB.frame then GB.Build() end
   if GB.frame:IsShown() then return GB.frame:Hide() end
   GB.frame:Show()

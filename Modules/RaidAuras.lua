@@ -10,8 +10,8 @@
 -- the client hides debuff types in instanced combat; on the fallback they are
 -- painted here. The client's filters decide what counts: "HARMFUL|RAID" is
 -- what YOU can dispel, "HELPFUL|PLAYER|RAID_IN_COMBAT" your buffs worth
--- showing on raid frames. The groups are fixed once built, so the settings
--- apply after a reload.
+-- showing on raid frames. The groups are fixed once a row is made, so a changed
+-- setting makes the rows again (the module restarts, out of combat).
 --
 -- Indicators: up to three small icons down the tile's right edge, under the
 -- missing-buff mark, each showing the first aura the client's filter for the
@@ -28,6 +28,8 @@ local RF = ns.GetModule("RaidFrames")
 
 local RA = ns.Module("RaidAuras", {
   defaults = { dispel = true, debuffs = 3, hots = true, maxHots = 3, indicator1 = "external", indicator2 = "cc", indicator3 = "none" },
+  live = true,
+  requires = { "RaidFrames" },
 })
 
 -- The client's filter for debuffs you can dispel.
@@ -105,7 +107,7 @@ end
 
 -- Repaints a tile's fallback highlight, if it has one.
 local function repaint(b, unit)
-  if b.dispel then paintDispel(b, unit) end
+  if b.dispel and RA.scope.on then paintDispel(b, unit) end
 end
 
 -- On the fallback: the tile's own wash and edge, painted on each refresh.
@@ -156,7 +158,7 @@ local function addRows(b)
   b.debuffRow = ns.Auras.Container(b, RA.DebuffSpec(b, z, s), nil)
   local legacy = ns.Auras.BackendName() == "fallback"
   b.hotRow = ns.Auras.Container(b, RA.HotSpec(b, z, s), nil)
-  if legacy then legacyDispel(b) end
+  if legacy and not b.dispel then legacyDispel(b) end
 end
 
 -- Indicators ------------------------------------------------------------------------------
@@ -234,10 +236,23 @@ local function built(b)
   return b.debuffRow ~= nil
 end
 
+-- What is fixed in a tile's rows once they are made, as one string: the dispel switch and each row's signature
+-- (ns.Auras.Signature). A tile built with another string than the settings now give needs its rows made again.
+local function rowsSignature(b)
+  local z, s = RF.TileZones(), RA.settings
+  local parts = { tostring(s.dispel), ns.Auras.Signature(RA.DebuffSpec(b, z, s)), ns.Auras.Signature(RA.HotSpec(b, z, s)) }
+  for n = 1, RA.IND_SLOTS do
+    local spec = RA.IndicatorSpec(b, z, n)
+    parts[#parts + 1] = spec and ns.Auras.Signature(spec) or "-"
+  end
+  return table.concat(parts, "|")
+end
+
 -- Builds a tile's rows and indicators (out of combat).
 local function build(b)
   addRows(b)
   addIndicators(b)
+  b.auraSignature = rowsSignature(b)
 end
 
 -- How many tiles are kept built ahead: every one in a raid (it can grow in a fight), the first
@@ -318,14 +333,76 @@ local function emptied(b)
   if b.dispel then b.dispel:Hide() end
 end
 
+-- Every row of a tile that has them: debuffs, HoTs and the indicators.
+local function tileRows(b)
+  local rows = { b.debuffRow, b.hotRow }
+  for _, row in ipairs(b.indRows or {}) do rows[#rows + 1] = row end
+  return rows
+end
+
+-- Hides a tile's rows and highlight and lets go of its unit (the module stopped, or the rows are to be made again).
+local function clearTile(b)
+  for _, row in ipairs(tileRows(b)) do
+    row:SetUnit(nil)
+    row.frame:Hide()
+  end
+  if b.dispel then b.dispel:Hide() end
+  b.auraUnit, b.indUnit = nil, nil
+end
+
+-- Puts a tile's rows away for good, so the next update makes them from the settings (a container can't be reshaped).
+local function retireRows(b)
+  clearTile(b)
+  for _, row in ipairs(tileRows(b)) do ns.Auras.Retire(row) end
+  b.debuffRow, b.hotRow, b.indRows, b.auraSignature = nil, nil, nil, nil
+end
+
+-- A tile whose rows were made from other settings than now loses them.
+local function reconcile(b)
+  if built(b) and b.auraSignature ~= rowsSignature(b) then retireRows(b) end
+end
+
+-- Adds fn to one of the raid frames' tile hook lists (RF.updateHooks and the others) unless it is there already (the
+-- module started again). The raid modules keep their hooks on the lists only while they run, so a running tile
+-- update pays nothing for the lifecycle and a stopped module costs the tiles nothing.
+function RA.AddHook(list, fn)
+  for _, have in ipairs(list) do
+    if have == fn then return end
+  end
+  table.insert(list, fn)
+end
+
+-- Takes fn off a raid tile hook list (RA.AddHook).
+function RA.RemoveHook(list, fn)
+  for i = #list, 1, -1 do
+    if list[i] == fn then table.remove(list, i) end
+  end
+end
+
 -- Module entry point (Core/Modules.lua): hook into raid tiles (existing and new), and build the
--- rows ahead now and whenever the group changes.
-function RA.Enable(settings)
-  RA.settings = settings
-  table.insert(RF.updateHooks, update)
-  table.insert(RF.updateHooks, indicatorUpdate)
-  table.insert(RF.emptyHooks, emptied)
-  table.insert(RF.emptyHooks, indicatorEmptied)
-  ns.On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
+-- rows ahead now and whenever the group changes. The hooks are on the parent's lists for as long as the
+-- module runs (RA.Disable takes them off).
+function RA.Enable(settings, scope)
+  RA.settings, RA.scope = settings, scope
+  for _, b in ipairs(RF.buttons) do reconcile(b) end
+  RA.AddHook(RF.updateHooks, update)
+  RA.AddHook(RF.updateHooks, indicatorUpdate)
+  RA.AddHook(RF.emptyHooks, emptied)
+  RA.AddHook(RF.emptyHooks, indicatorEmptied)
+  scope:On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
   RA.BuildAhead()
+  if ns.ModulesBuilt() then RF.UpdateAll() end
+end
+
+-- Switched off: the hooks leave the tiles' lists and every tile's rows, indicators and highlight are cleared and
+-- hidden (kept for the next start, which makes them again only if the settings changed their shape).
+function RA.Disable()
+  RA.RemoveHook(RF.updateHooks, update)
+  RA.RemoveHook(RF.updateHooks, indicatorUpdate)
+  RA.RemoveHook(RF.emptyHooks, emptied)
+  RA.RemoveHook(RF.emptyHooks, indicatorEmptied)
+  RA.waiting = {}
+  for _, b in ipairs(RF.buttons) do
+    if built(b) then clearTile(b) end
+  end
 end

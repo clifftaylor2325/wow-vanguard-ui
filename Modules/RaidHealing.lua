@@ -19,10 +19,17 @@ local RF = ns.GetModule("RaidFrames")
 
 local RH = ns.Module("RaidHealing", {
   defaults = { healPrediction = true, absorbs = true, aggro = true, buffWatch = true, buffs = "" },
+  live = true,
+  requires = { "RaidFrames" },
 })
+local RA = ns.GetModule("RaidAuras")
 
 -- Buffs each class can give, by spell id (the single and group versions count alike); the client names
 -- each, and every rank shares that name. The ids are ALL_BUFFS' below.
+-- Each tile's unit event subscription (listen), and the tiles whose subscription is paused while the module is off
+-- (RH.Disable): weak keys, by tile.
+RH.subs, RH.paused = setmetatable({}, { __mode = "k" }), setmetatable({}, { __mode = "k" })
+
 RH.CLASS_BUFFS = ns.ClientData({
   forever = {
     PRIEST = { 1243, 21562 },
@@ -392,8 +399,10 @@ local function update(b, unit)
   updateBuff(b, unit)
 end
 
--- The missing-buff marker on every tile this module has set up.
+-- The missing-buff marker on every tile this module has set up (none once it stopped: a job asked for before the
+-- stop may still come).
 local function refreshBuffs()
+  if not RH.scope.on then return end
   RF.EachTile(function(b, unit) if b.heal then updateBuff(b, unit) end end)
 end
 
@@ -421,6 +430,7 @@ RH.TILE_EVENTS = {
 
 -- A unit event on a tile: its part, except for an aura event that only refreshed auras.
 local function onTileEvent(b, unit, event, info)
+  if not RH.scope.on then return end
   if event == "UNIT_AURA" and RH.RefreshOnly(info) then return end
   RH.TILE_EVENTS[event](b, unit)
 end
@@ -430,7 +440,7 @@ end
 local function listen(b)
   local events = {}
   for event in pairs(RH.TILE_EVENTS) do events[#events + 1] = event end
-  RF.OnTileUnit(b, events, onTileEvent)
+  RH.subs[b] = RF.OnTileUnit(b, events, onTileEvent)
 end
 
 -- The events that are not about one unit -> what each refreshes.
@@ -444,15 +454,48 @@ local EVENTS = {
   PLAYER_REGEN_ENABLED = function() RF.UpdateAll() end,
 }
 
--- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).
-function RH.Enable(settings)
-  RH.settings = settings
-  for _, b in ipairs(RF.buttons) do setup(b) listen(b) end
-  table.insert(RF.setupHooks, setup)
-  table.insert(RF.setupHooks, listen)
-  table.insert(RF.updateHooks, update)
-  table.insert(RF.healthHooks, updatePrediction)
-  for event, fn in pairs(EVENTS) do ns.On(event, fn) end
+-- Gives a raid button its parts and its own unit's events, once (a tile made while the module was off gets them at
+-- the next start); a tile that has them gets its events back at a start after a stop (RH.Disable paused them).
+local function attach(b)
+  if not b.heal then
+    setup(b)
+    return listen(b)
+  end
+  if RH.paused[b] then RF.ResumeTileUnit(b, RH.subs[b]) end
+  RH.paused[b] = nil
+end
+
+-- The parent's tile hook lists -> what this module keeps on each while it runs.
+local function hooks()
+  return { { RF.setupHooks, attach }, { RF.updateHooks, update }, { RF.healthHooks, updatePrediction } }
+end
+
+-- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new). The hooks stay on the parent's
+-- lists only while the module runs (RH.Disable), so the health path pays nothing for the lifecycle.
+function RH.Enable(settings, scope)
+  RH.settings, RH.scope = settings, scope
+  for _, b in ipairs(RF.buttons) do attach(b) end
+  for _, hook in ipairs(hooks()) do RA.AddHook(hook[1], hook[2]) end
+  for event, fn in pairs(EVENTS) do scope:On(event, fn) end
+  if ns.ModulesBuilt() then RF.UpdateAll() end
+end
+
+-- Hides a tile's heal, shield, threat, buff and overshield marks.
+local function clearTile(b)
+  for _, part in ipairs({ b.heal, b.shield, b.threat, b.missing, b.overshield }) do part:Hide() end
+end
+
+-- Switched off: the hooks leave the parent's lists, every tile that has the parts shows none of them (they stay
+-- for the next start), and each tile's unit events stop (RF.PauseTileUnit), so no tile listens while the module is off.
+function RH.Disable()
+  for _, hook in ipairs(hooks()) do RA.RemoveHook(hook[1], hook[2]) end
+  for _, b in ipairs(RF.buttons) do
+    if b.heal then clearTile(b) end
+  end
+  for b, sub in pairs(RH.subs) do
+    if not RH.paused[b] then RF.PauseTileUnit(b, sub) end
+    RH.paused[b] = true
+  end
 end
 
 -- Options ------------------------------------------------------------------------------------

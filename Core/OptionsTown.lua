@@ -7,7 +7,7 @@ local ADDON, ns = ...
 local L = ns.L
 
 local O = ns.Options
-local setting, reloadSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveMethod, O.Check, O.Append
+local setting, liveMethod, check, append = O.Setting, O.LiveMethod, O.Check, O.Append
 
 -- The auction helper's scan, auction check, disenchant, crafting, deals and upgrades rows.
 local function auctionScanRows()
@@ -61,8 +61,8 @@ local function errandRows()
     check(L["Train all button at trainers"], setting("Errands", "trainAll")),
     check(L["Keep items stocked from merchants"], setting("Errands", "stock")),
     { "button", L["Edit list..."], function() ns.GetModule("Errands").StockWindow.Open() end, function() return ns.GetModule("Errands").settings ~= nil end },
-    check(L["Flight timer (reload)"], reloadSetting("Errands", "flightTimer")),
-    check(L["Boat and zeppelin timer (reload)"], reloadSetting("Errands", "boatTimer")),
+    check(L["Flight timer (reload)"], O.RestartSetting("Errands", "flightTimer")),
+    check(L["Boat and zeppelin timer (reload)"], O.RestartSetting("Errands", "boatTimer")),
   }
 end
 
@@ -114,7 +114,7 @@ local function prepBuffRows()
   return append(dungeonCardRows(), {
     check(L["Buff checks on the card"], setting("InstancePrep", "buffs")),
     check(L["World buffs among them"], setting("InstancePrep", "worldBuffs")),
-    { "button", L["Set wanted amounts..."], function() ns.GetModule("InstancePrep").Wizard.Open() end, function() return ns.GetModule("InstancePrep").settings ~= nil end },
+    { "button", L["Set wanted amounts..."], function() ns.GetModule("InstancePrep").Wizard.Open() end, function() return ns.GetModule("InstancePrep").enabled == true end },
     { "text", L["Wanted amounts (food, bandages, potions, ammo, shards) are set in the window above or with /vg prep want <kind> <n>; items from /vg stock are checked too."] },
   })
 end

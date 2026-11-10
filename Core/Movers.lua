@@ -21,7 +21,11 @@ local DEFAULTS = { grid = true, gridSize = 32, snap = true, editMode = true }
 local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
 
 local movers, order = {}, {}
+-- Movers a stopped module let go (ns.ReleaseMover), by key: their handles, for the module's next start.
+local released = {}
 local unlocked = false
+-- Shows a mover's handle (defined with the unlock code below; ns.Mover calls it for a frame registered while unlocked).
+local showHandle
 -- Pins paused (Edit Mode open), the note under Edit Mode's window, and whether Edit Mode unlocked the handles.
 local pinsPaused, editModeNote, editUnlocked = false, nil, false
 local selected
@@ -253,15 +257,30 @@ local function reanchor()
 end
 T.OnScale(reanchor)
 
--- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent.
+-- Gives a mover registered again (after its module stopped, or a second registration of a key) the handle it had: a
+-- frame is never freed. The same mover table when it is the same frame, so its hook on the frame's SetAlpha
+-- (watchAlpha) comes back with it and a restart adds no hook; a new table, with the old handle, for another frame.
+local function reclaim(frame, key)
+  local old = released[key] or movers[key]
+  released[key] = nil
+  if old and old.frame == frame then return old end
+  local m = { frame = frame, key = key, handle = old and old.handle }
+  if m.handle then m.handle.mover = m end
+  return m
+end
+
+-- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent. One registered while the frames are
+-- unlocked (a module switched on meanwhile) gets its handle at once.
 function ns.Mover(frame, key, label, default)
-  local m = { frame = frame, key = key, label = label or key, default = default }
+  local m = reclaim(frame, key)
+  m.label, m.default = label or key, default
   if not movers[key] then
     order[#order + 1] = key
   end
   movers[key] = m
   place(m)
   ns.MoverLinks.Registered(key)
+  if unlocked then showHandle(m) end
   return m
 end
 
@@ -466,12 +485,13 @@ function ns.EditModeClosed(edit)
   note:Hide()
 end
 
--- The game's frames Vanguard hides or replaces (set): Edit Mode gets no handle for them.
+-- The game's frames Vanguard hides or replaces: true while it does (Edit Mode gets no handle for them), false once a
+-- module that stopped gave the frame back (ns.EditModeRestored; the hook stays, and does nothing).
 local replaced = {}
 
--- Hides a replaced frame's Edit Mode handle (runs after the game highlights the frame).
+-- Hides a replaced frame's Edit Mode handle (runs after the game highlights the frame), while it is replaced.
 local function hideHandle(frame)
-  if type(frame.Selection) == "table" then frame.Selection:Hide() end
+  if replaced[frame] and type(frame.Selection) == "table" then frame.Selection:Hide() end
 end
 
 -- Notes that Vanguard hides or replaces one of the game's frames, so Edit Mode shows no
@@ -482,9 +502,17 @@ end
 function ns.EditModeReplaced(frame)
   if type(frame) ~= "table" or replaced[frame] or type(frame.HighlightSystem) ~= "function" then return end
   if type(hooksecurefunc) ~= "function" then return end
+  local hookedBefore = replaced[frame] ~= nil
   replaced[frame] = true
-  hooksecurefunc(frame, "HighlightSystem", ns.Guard("hook HighlightSystem", hideHandle))
+  if not hookedBefore then hooksecurefunc(frame, "HighlightSystem", ns.Guard("hook HighlightSystem", hideHandle)) end
   hideHandle(frame)
+end
+
+-- Gives one of the game's frames its Edit Mode handle back (the module that hid it stopped): the next highlight shows
+-- it as the game draws it. A frame never replaced is left alone.
+---@param frame table
+function ns.EditModeRestored(frame)
+  if replaced[frame] then replaced[frame] = false end
 end
 
 -- While the game's Edit Mode window is open, pins pause and Vanguard's handles
@@ -722,7 +750,7 @@ end
 -- Lock / unlock -----------------------------------------------------------------------
 
 -- Shows a mover's handle on its strata: the one given, else its own (handleStrata).
-local function showHandle(m, strata)
+function showHandle(m, strata)
   local h = handleFor(m)
   h:SetFrameStrata(strata or handleStrata(m.frame))
   h:Show()
@@ -777,6 +805,21 @@ function ns.Lock()
   end
   if editModeNote then editModeNote:Hide() end
   ns.HideGrid()
+end
+
+-- Takes a stopped module's mover out of unlock mode (Core/ModuleScope.lua): its handle hides and it leaves the
+-- movers the handles, the resets and the Layout card walk. Its saved spot stays in the profile, so the frame comes
+-- back where it was when the module starts again and registers it (ns.Mover gives it its handle back).
+---@param key string
+function ns.ReleaseMover(key)
+  local m = movers[key]
+  if not m then return end
+  if m.handle then m.handle:Hide() end
+  if selected == m then selectMover(nil) end
+  released[key], movers[key] = m, nil
+  local kept = {}
+  for _, k in ipairs(order) do if k ~= key then kept[#kept + 1] = k end end
+  order = kept
 end
 
 -- True while the handles are showing.

@@ -13,7 +13,7 @@ local L = ns.L
 
 local T, V, W = ns.Theme, ns.Visibility, ns.Widgets
 
-local FH = ns.Module("FightHistory", { defaults = { strip = false, recap = false, visibility = "always", showWhen = {} } })
+local FH = ns.Module("FightHistory", { defaults = { strip = false, recap = false, visibility = "always", showWhen = {} }, live = true })
 
 -- Fights kept, the shortest one recorded (seconds), and the wait after combat for the meter to finish.
 FH.MAX, FH.MIN_SECONDS, FH.DELAY = 20, 2, 0.5
@@ -37,8 +37,10 @@ function FH.Read()
   return { duration = duration, dps = dps, rank = place, sources = ns.PlainNumber(count), at = GetTime() }
 end
 
--- Records the fight that just ended (if there is one), dropping the oldest past FH.MAX.
+-- Records the fight that just ended (if there is one), dropping the oldest past FH.MAX. A read still waiting when
+-- the module stops records nothing; the fights already kept stay for /vg fights.
 function FH.Record()
+  if not (FH.scope and FH.scope:Running()) then return end
   local fight = FH.Read()
   if not fight then return end
   table.insert(FH.fights, fight)
@@ -163,34 +165,41 @@ end
 
 -- Applies the strip's visibility setting: now, or when combat ends.
 function FH.ApplyVisibility()
+  if not (FH.scope and FH.scope:Running()) then return end
   ns.OutOfCombat(function() V.ApplyNow(FH.frame, FH.settings.visibility, FH.settings.showWhen) end, FH.frame)
 end
 
--- Follows the strip's visibility from the start: its state's changes repaint it.
+-- Follows the strip's visibility: its state's changes repaint it. Each start tracks the frame again (the stop
+-- released its driver and its tracking); the hover hooks are on the frame once.
 local function watchVisibility(f)
-  f.vgOnState, f.vgCalm = FH.Paint, "meter"
-  V.WatchHover(f)
   V.Track(f, FH.ApplyVisibility)
   FH.ApplyVisibility()
 end
 
--- The movable strip, just under the damage meter.
+-- The movable strip, just under the damage meter; made once a session.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_FightHistory", UIParent))
-  FH.frame = f
   f:SetSize(FH.WIDTH, FH.HEIGHT)
-  ns.Mover(f, "fighthistory", L["Fight history"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 103 })
   f.bars = {}
   for i = 1, FH.MAX do f.bars[i] = addBar(f, i) end
   watchMouse(f)
-  watchVisibility(f)
+  f.vgOnState, f.vgCalm = FH.Paint, "meter"
+  V.WatchHover(f)
+  return f
 end
 
--- Module entry point (Core/Modules.lua).
-function FH.Enable(settings)
+-- The strip's frame, found or built, put in the scope's hands with its mover.
+local function strip(scope)
+  FH.frame = FH.frame or build()
+  scope:Mover(FH.frame, "fighthistory", L["Fight history"], { "BOTTOMRIGHT", "BOTTOMRIGHT", -16, 103 })
+  watchVisibility(FH.frame)
+end
+
+-- Module entry point (Core/Modules.lua). Everything goes through the scope, so switching it off needs no Disable.
+function FH.Enable(settings, scope)
   FH.settings = settings
-  build()
-  ns.On("PLAYER_REGEN_ENABLED", onRegen)
-  ns.On("PLAYER_REGEN_DISABLED", onPull)
-  T.OnChanged(FH.Paint)
+  strip(scope)
+  scope:On("PLAYER_REGEN_ENABLED", onRegen)
+  scope:On("PLAYER_REGEN_DISABLED", onPull)
+  scope:Gate("theme", function() FH.Paint() end, T.OnChanged)
 end

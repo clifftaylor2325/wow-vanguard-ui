@@ -74,7 +74,7 @@ it("inventory: item tooltips list who else has it, in their class color, then th
   expect(addon.eval('return { #__tip("item:999"), #__tip("TEST-ONLY not a link") }'), "nobody else has it, or no item id: no lines").toEqual([0, 0]);
   addon.eval("ns.GetModule('Inventory').settings.alts = false");
   expect(addon.eval('return #__tip("item:2589")'), "switched off: no lines").toBe(0);
-  expect(addon.eval("local IV = ns.GetModule('Inventory') for _, fn in ipairs(ns.GetModule('Tooltips').itemLines) do if fn == IV.AddLines then return true end end"), "added to every item tooltip").toBe(true);
+  expect(addon.eval("local IV = ns.GetModule('Inventory') for _, fn in ipairs(ns.GetModule('Tooltips').itemLines) do if fn == IV.scope.gates['item lines'] then return true end end"), "added to every item tooltip (through its scope's gate)").toBe(true);
 });
 
 it("inventory: a crowd of characters is cut to six names", () => {

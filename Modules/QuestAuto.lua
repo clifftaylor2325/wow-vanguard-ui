@@ -14,7 +14,12 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local QA = ns.Module("QuestAuto", { defaults = { accept = false, acceptShared = false, turnIn = false, bestReward = false, skipGossip = false } })
+local QA = ns.Module("QuestAuto", { defaults = { accept = false, acceptShared = false, turnIn = false, bestReward = false, skipGossip = false }, live = true })
+
+-- Whether the module runs now. Stopped, it claims no page and answers none (the quest dialog shows them all).
+function QA.Active()
+  return QA.scope ~= nil and QA.scope:Running()
+end
 
 -- Calls a C_GossipInfo function by name, if this client has it.
 local function gossip(name, ...)
@@ -121,7 +126,7 @@ QA.ACTIONS = {
 
 -- The action automation would take for an event right now, or nil.
 local function actionFor(event)
-  local pick = QA.settings and QA.ACTIONS[event]
+  local pick = QA.Active() and QA.settings and QA.ACTIONS[event]
   if not pick or skipped() then return nil end
   return pick()
 end
@@ -140,7 +145,7 @@ local confirmAccept, dropAccept
 -- Forgets the waiting accept line: the game refused the quest (a full log, say) and another quest dialog opened.
 function dropAccept()
   waiting = nil
-  ns.Off("QUEST_ACCEPTED", confirmAccept)
+  QA.scope:Off("QUEST_ACCEPTED", confirmAccept)
 end
 
 -- Says the waiting accept line once the game takes that quest into the log.
@@ -157,7 +162,7 @@ local function awaitAccept(line)
   local id = ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))
   if not id or id == 0 then return ns.Chat(line) end
   waiting = { id = id, line = line }
-  ns.On("QUEST_ACCEPTED", confirmAccept)
+  QA.scope:On("QUEST_ACCEPTED", confirmAccept)
 end
 
 -- The accept line: the quest, and who shared it when a player did.
@@ -195,11 +200,18 @@ function QA.Finish()
 end
 
 -- Module entry point (Core/Modules.lua): each switch is read when its event comes. A new quest offer first
--- forgets an accept line still waiting, before automation may answer the offer.
-function QA.Enable(settings)
+-- forgets an accept line still waiting, before automation may answer the offer. The scope takes the listeners
+-- off when the module stops.
+function QA.Enable(settings, scope)
   QA.settings = settings
-  ns.On("QUEST_DETAIL", dropAccept)
+  scope:On("QUEST_DETAIL", dropAccept)
   for event in pairs(QA.ACTIONS) do
-    ns.On(event, function() local act = actionFor(event) if act then act() end end)
+    scope:On(event, function() local act = actionFor(event) if act then act() end end)
   end
+end
+
+-- Switched off: an accept line still waiting for the game's confirmation is forgotten (its listener goes
+-- with the scope), so it is never said after the module stopped.
+function QA.Disable()
+  waiting = nil
 end
