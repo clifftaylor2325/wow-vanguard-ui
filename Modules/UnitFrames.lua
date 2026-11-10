@@ -77,13 +77,16 @@ UF.frames = {}
 
 local isSecret = ns.IsSecret
 
--- The color for a unit's reaction to the player (hostile, neutral, friendly).
+-- r, g, b for a unit's reaction to the player (hostile, neutral, friendly); no table is made per call, as this
+-- runs on every health event of a frame whose unit is not a player.
 local function reactionColor(unit)
   local reaction = UnitReaction and UnitReaction(unit, "player")
-  if isSecret(reaction) or type(reaction) ~= "number" then
-    return T.TOKENS.unknown
+  local token = "unknown"
+  if not isSecret(reaction) and type(reaction) == "number" then
+    token = reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly"
   end
-  return { T.RGB(reaction <= 3 and "hostile" or reaction == 4 and "neutral" or "friendly") }
+  local r, g, b = T.RGB(token)
+  return r, g, b
 end
 
 -- True for a creature another player or group has tagged (the game's own test, as its target frame greys
@@ -100,8 +103,7 @@ function UF.UnitColor(unit)
     local c = not isSecret(class) and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
     if c then return c.r, c.g, c.b end
   end
-  local c = reactionColor(unit)
-  return c[1], c[2], c[3]
+  return reactionColor(unit)
 end
 
 -- r, g, b for a unit's health bar: grey for a creature someone else tagged, always, as the game's
@@ -173,9 +175,10 @@ function UF.PercentText(unit)
 end
 
 -- The health text: Dead, Offline, else the percent (if chosen) or current
--- health shortened. Either may itself be secret: show it, never compare it.
-function UF.HealthText(unit)
-  local down = UF.DownState(unit)
+-- health shortened. Either may itself be secret: show it, never compare it. `down` is the unit's DownState when
+-- the caller has it already (false for none); nil asks again.
+function UF.HealthText(unit, down)
+  if down == nil then down = UF.DownState(unit) end
   if down then return down end
   local percent = UF.settings and UF.settings.healthFormat == "percent" and UF.PercentText(unit)
   if isSecret(percent) or type(percent) == "string" then return percent end
@@ -661,9 +664,9 @@ end
 -- Updating ------------------------------------------------------------------------------
 
 -- The health bar's colour: the dark bar for an offline or dead unit (as on the raid
--- tiles), else its class or reaction colour.
-function UF.PaintHealth(f)
-  if UF.DownState(f.unit) then return T.BarColor(f.health, "darkBar") end
+-- tiles), else its class or reaction colour. `down` is the unit's DownState, read once by the caller.
+function UF.PaintHealth(f, down)
+  if down then return T.BarColor(f.health, "darkBar") end
   f.health:SetStatusBarColor(UF.HealthColor(f.unit))
 end
 
@@ -678,8 +681,8 @@ function UF.UpdateHealth(f)
   local unit, down = f.unit, UF.DownState(f.unit)
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
-  UF.PaintHealth(f)
-  if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit)) else f.healthText:SetText("") end
+  UF.PaintHealth(f, down)
+  if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit, down or false)) else f.healthText:SetText("") end
   local token = down and UF.DownToken(down) or "text"
   if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
 end
