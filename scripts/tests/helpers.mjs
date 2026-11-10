@@ -376,11 +376,13 @@ export const HEALING_ENV = `
     local c = {}
     function c:SetIncomingHealClampMode(m) self.clamp = m end
     function c:SetIncomingHealOverflowPercent() end
-    function c:GetMaximumHealth() return __pred[self.unit].max end
-    function c:GetIncomingHeals() return __pred[self.unit].heals end
-    function c:GetTotalDamageAbsorbs() return __pred[self.unit].shields end
+    -- A unit with no entry (a unit frame's) answers like a real calculator: full, nothing incoming, no shield.
+    local function pred(self) return __pred[self.unit] or { max = 100, heals = 0, shields = 0, over = false } end
+    function c:GetMaximumHealth() return pred(self).max end
+    function c:GetIncomingHeals() return pred(self).heals end
+    function c:GetTotalDamageAbsorbs() return pred(self).shields end
     function c:SetDamageAbsorbClampMode(m) self.absorbClamp = m end
-    function c:GetDamageAbsorbs() return __pred[self.unit].shields, __pred[self.unit].over end
+    function c:GetDamageAbsorbs() return pred(self).shields, pred(self).over end
     __calc = c
     return c
   end

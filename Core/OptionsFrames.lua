@@ -103,10 +103,11 @@ local TEXT_FORMATS = {
 -- The power text's choices: the same formats, and none (the default).
 local POWER_FORMAT_CHOICES = { { "none", L["Off"] }, TEXT_FORMATS[1], TEXT_FORMATS[2], TEXT_FORMATS[3], TEXT_FORMATS[4] }
 
--- The frames the sliders size, in the order the page lists them: the settings group (UF.FrameSize) and its caption.
+-- The frames the sliders size, in the order the page lists them: the settings group (UF.FrameSize), its caption, and
+-- whether its sliders show on the folded card (the frames a player resizes most; the rest sit under More settings).
 local SIZED_FRAMES = {
-  { "player", L["Player"] }, { "target", L["Target"] }, { "targettarget", L["Target of target"] },
-  { "focus", L["Focus"] }, { "pet", L["Pet"] }, { "party", L["Party"] },
+  { "player", L["Player"], true }, { "target", L["Target"], true }, { "targettarget", L["Target of target"] },
+  { "focus", L["Focus"] }, { "pet", L["Pet"] }, { "party", L["Party"], true },
 }
 
 -- A width or height slider for one frame (range from UnitFrames.RANGES), applied at once, out of combat.
@@ -115,7 +116,9 @@ local function sizeSlider(frame, dimension)
   local label = dimension == "width" and L["{frame}: width"] or L["{frame}: height"]
   local key = group .. (dimension == "width" and "Width" or "Height")
   local range = ns.GetModule("UnitFrames").RANGES[dimension]
-  return { "slider", ns.Format(label, { frame = caption }), range, liveMethod("UnitFrames", key, "ApplySizes") }
+  local row = { "slider", ns.Format(label, { frame = caption }), range, liveMethod("UnitFrames", key, "ApplySizes") }
+  row.essential = frame[3] == true
+  return row
 end
 
 -- The Frame sizes card: a width and a height slider for each frame (the target's height is the one setup's role layouts raise).

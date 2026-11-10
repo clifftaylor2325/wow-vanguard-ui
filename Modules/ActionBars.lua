@@ -292,8 +292,7 @@ local function sweepsFromObject(b)
 end
 
 -- The cooldown sweep on an older client: start and duration passed through without being inspected.
-local function sweepFromNumbers(b)
-  local start, length = call("GetActionCooldown", b.action)
+local function sweepFromNumbers(b, start, length)
   if type(start) == "table" and not ns.IsSecret(start) then
     start, length = start.startTime, start.duration
   end
@@ -302,17 +301,18 @@ end
 
 -- Whether the sweep now running is a real cooldown, not the global one: only when the client plainly says so (a
 -- hidden answer or a client without the field is no), so a ready flash never fires on every global cooldown.
-local function sweepIsReal(b)
-  local info = call("GetActionCooldown", b.action)
+local function sweepIsReal(info)
   if type(info) ~= "table" or ns.IsSecret(info) or ns.IsSecret(info.isOnGCD) then return false end
   return info.isOnGCD == false
 end
 
 -- The cooldown sweep: the slot's duration object goes to the widget as is (no object: no sweep), or the
 -- numbers on an older client. A call the client refuses leaves the sweep as it was and is kept for /vg errors.
+-- The slot's cooldown is read once, for both the sweep and the ready flash.
 local function updateCooldown(b)
-  b.realSweep = sweepIsReal(b)
-  if not sweepsFromObject(b) then return sweepFromNumbers(b) end
+  local start, length = call("GetActionCooldown", b.action)
+  b.realSweep = sweepIsReal(start)
+  if not sweepsFromObject(b) then return sweepFromNumbers(b, start, length) end
   local duration = call("GetActionCooldownDuration", b.action)
   if duration == nil then return b.cooldown:Clear() end
   ns.Quiet("bar cooldown", b.cooldown.SetCooldownFromDurationObject, b.cooldown, duration)
