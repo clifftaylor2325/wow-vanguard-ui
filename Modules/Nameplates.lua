@@ -73,9 +73,9 @@ NP.BUFF_LESS = 2
 NP.NAME_GAP, NP.ROW_GAP = 3, 2
 -- How long (seconds) a changed size or count holds still before every plate built follows it.
 NP.SETTLE = 0.3
--- What a name-only plate keeps in view (the keys on Vanguard's frame): the name, the quest mark by it and
--- the raid target icon.
-NP.NAME_ONLY_KEEPS = { "name", "quest", "raidIcon" }
+-- What a name-only plate keeps in view (the keys on Vanguard's frame): the name, the quest mark by it, the
+-- raid target icon and the game's soft-target icon (the speech bubble over someone you can talk to).
+NP.NAME_ONLY_KEEPS = { "name", "quest", "raidIcon", "soft" }
 -- The layout's number: each plate notes the one it was last sized and given rows for (f.version).
 NP.version = 0
 -- How far the click area reaches past each side of the bar (as the client's own plates).
