@@ -162,3 +162,16 @@ it("Errands: a flight timer switched off points its hooks at nothing, and switch
   addon.eval('VanguardDB.profiles.Default.Errands.flightTimer = true ns.RestartModule("Errands")');
   expect(target(), "on again").toBe("timer");
 });
+
+lifecycleCases("Merchant", login);
+
+it("Merchant: switched off, it reads as off and a merchant opening does nothing; on again it repairs and sells as before", () => {
+  const addon = loggedIn("CanMerchantRepair = function() return true end GetRepairAllCost = function() return 50, true end GetMoney = function() return 500 end __repairs = 0 RepairAllItems = function() __repairs = __repairs + 1 end");
+  const open = () => { addon.fire("MERCHANT_SHOW"); addon.fire("MERCHANT_CLOSED"); return addon.eval("return __repairs"); };
+  expect(open(), "repairs at a merchant").toBe(1);
+  switchTo(addon, "Merchant", false);
+  expect(addon.eval('return ns.GetModule("Merchant").settings == nil'), "off").toBe(true);
+  expect(open(), "nothing repaired while off").toBe(1);
+  switchTo(addon, "Merchant", true);
+  expect(open(), "repairs again").toBe(2);
+});

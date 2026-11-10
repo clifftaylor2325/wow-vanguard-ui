@@ -9,7 +9,7 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, listSell = false, bulkBuy = true } })
+local MC = ns.Module("Merchant", { defaults = { repair = true, junk = true, listSell = false, bulkBuy = true }, live = true })
 
 MC.RETRIES, MC.RETRY_AFTER = 3, 0.3
 -- The last bag scanned for sales: the reagent bag (Enum.BagIndex.ReagentBag), after the four ordinary bags.
@@ -85,11 +85,12 @@ local function onMerchantClosed()
   MC.SetOpen(false)
 end
 
--- Module entry point (Core/Modules.lua).
-function MC.Enable(settings)
-  MC.settings = settings
+-- Module entry point (Core/Modules.lua): the merchant events through the scope, and the quantity window's hooks
+-- (gates, installed once a session). MC.Disable, in Modules/MerchantBulk.lua, hides the drawers it drew.
+function MC.Enable(settings, scope)
+  MC.settings, MC.scope = settings, scope
   MC.MoveSellList(settings)
-  ns.On("MERCHANT_SHOW", onMerchant)
-  ns.On("MERCHANT_CLOSED", onMerchantClosed)
+  scope:On("MERCHANT_SHOW", onMerchant)
+  scope:On("MERCHANT_CLOSED", onMerchantClosed)
   MC.HookSplit()
 end

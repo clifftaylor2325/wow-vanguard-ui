@@ -5477,6 +5477,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, the Train all button is gone from the trainer's window at once and a merchant buys nothing for your stock list; on, the button returns on the open window. The flight timer switch applies at once, with no reload notice, and a known route shows its countdown bar.
 - If it fails, paste: a screenshot of the trainer window and `/vg errors`.
 
+### 35.8 Merchant helpers
+
+- Do: at a merchant, open the quantity window on a stack of goods (Stack and Max show under it). With the window open, switch **Merchant helpers** off under `/vg` → Modules, then on again; visit a merchant while it is off.
+- Expect: off, the drawer under the quantity window is gone at once and a merchant repairs and sells nothing; on, the next merchant and quantity window work as before, with no reload.
+- If it fails, paste: a screenshot of the quantity window and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
