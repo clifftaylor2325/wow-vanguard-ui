@@ -412,7 +412,7 @@ it("boat timer: off by default, and quiet where a ride can't be judged", () => {
   expect(quiet("UnitOnTaxi = function() return false end IsInInstance = function() return true end"), "an instance is not a boat").toBe(false);
   expect(quiet("IsInInstance = function() return false end UnitIsDeadOrGhost = function() return true end"), "a ghost is not a boat").toBe(false);
   expect(quiet("UnitIsDeadOrGhost = function() return false end C_Map.GetBestMapForUnit = function() return { __secret = true } end"), "a hidden map is not judged").toBe(false);
-  expect(quiet("UnitIsDeadOrGhost = function() return false end UnitOnTaxi = function() return { __secret = true } end"), "a hidden flight answer is not judged").toBe(false);
+  expect(quiet("C_Map.GetBestMapForUnit = function() return 37 end IsInInstance = function() return false end UnitIsDeadOrGhost = function() return false end UnitOnTaxi = function() return { __secret = true } end"), "a hidden flight answer is not judged").toBe(false);
   expect(quiet("UnitOnTaxi = function() return false end UnitIsDeadOrGhost = function() return { __secret = true } end"), "a hidden death answer is not judged").toBe(false);
   expect(quiet("UnitIsDeadOrGhost = function() return false end C_Map.GetPlayerMapPosition = function() return { __secret = true } end"), "a hidden position is not judged").toBe(false);
   expect(quiet("C_Map.GetBestMapForUnit = function() return 37 end ns.InCombat = function() return true end"), "nothing is read in combat").toBe(false);
