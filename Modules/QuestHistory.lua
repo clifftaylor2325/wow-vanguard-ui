@@ -11,7 +11,7 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local QH = ns.Module("QuestHistory", { defaults = { track = true } })
+local QH = ns.Module("QuestHistory", { defaults = { track = true }, live = true })
 
 -- Quests kept, and the share of them a prune keeps (1000 -> 900).
 QH.MAX_QUESTS, QH.KEEP = 1000, 0.9
@@ -26,9 +26,10 @@ function QH.Store()
   return VanguardDB.questHistory
 end
 
--- Whether history is on (Quests page); false before the module is enabled.
+-- Whether history is on: the module runs (false before it starts and once it is stopped, so the quest windows
+-- say nothing of it then) and its switch on the Quests page is on.
 function QH.On()
-  return QH.settings ~= nil and QH.settings.track == true
+  return QH.scope ~= nil and QH.scope:Running() and QH.settings ~= nil and QH.settings.track == true
 end
 
 -- This character as "Name-Realm" and its class file, or nil when the client hides the name.
@@ -139,9 +140,10 @@ function QH.Command(rest)
   for _, e in ipairs(list) do ns.Chat(listLine(e[1], e[2])) end
 end
 
--- Module entry point (Core/Modules.lua).
-function QH.Enable(settings)
+-- Module entry point (Core/Modules.lua): the turn-in listener goes through the scope; what is remembered stays
+-- when the module stops.
+function QH.Enable(settings, scope)
   QH.settings = settings
   QH.Store()
-  ns.On("QUEST_TURNED_IN", QH.OnTurnedIn)
+  scope:On("QUEST_TURNED_IN", QH.OnTurnedIn)
 end

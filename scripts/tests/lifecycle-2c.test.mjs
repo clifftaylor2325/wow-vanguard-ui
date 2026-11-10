@@ -142,3 +142,18 @@ it("lifecycle: inventory switched off reads nothing new and keeps its records, a
   addon.eval('ns.SetModuleEnabled("Inventory", true)');
   expect(addon.eval('return ns.GetModule("Inventory").Mine().money ~= -1'), "read again at the start").toBe(true);
 });
+
+// QuestHistory --------------------------------------------------------------------------------------------------
+
+lifecycleCases("QuestHistory", loginWith());
+
+it("lifecycle: quest history switched off records no turn-in and says nothing of the stored ones, which stay", () => {
+  const addon = loginWith()();
+  addon.fire("QUEST_TURNED_IN", 90101);
+  addon.eval('ns.SetModuleEnabled("QuestHistory", false)');
+  addon.fire("QUEST_TURNED_IN", 90102);
+  expect(addon.eval("local q = VanguardDB.questHistory.quests return { q[90101] ~= nil, q[90102] ~= nil }"), "the first is kept, the second not recorded").toEqual([true, false]);
+  expect(addon.eval("local QH = ns.GetModule('QuestHistory') return { QH.On(), QH.Line(90101) == nil }"), "no line on the quest windows while it is off").toEqual([false, true]);
+  addon.eval('ns.SetModuleEnabled("QuestHistory", true)');
+  expect(addon.eval("return ns.GetModule('QuestHistory').Line(90101) ~= nil"), "back on, the stored turn-in shows again").toBe(true);
+});
