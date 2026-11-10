@@ -5431,6 +5431,16 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 - Expect: nothing changed from 33: Situations shows its six situations, the dungeon card is the level-range one, the Modules page's Class bars row names shaman totems above the frame and druid mana in forms under it.
 - If it fails, paste: the `/vg report` block.
 
+## 35. Switching raid and town modules on and off (A4-2e)
+
+Each step is the same shape: switch the module off under `/vg` → Modules (or its own switch), look; switch it on, look again. Nothing needs a reload, and a switch made in a fight applies when it ends.
+
+### 35.1 Raid auras
+
+- Do: in a group (or a raid), with Raid frames on, switch **Raid auras** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
+- Expect: off, every tile loses its debuff and HoT icons, its indicators and the dispel wash at once, and nothing is left drawn; on, they come back on every tile; a changed debuff count or indicator shows on the tiles at once (out of combat), with no reload notice for these rows.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

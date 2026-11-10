@@ -300,16 +300,16 @@ local function raidPreviewRows()
   }
 end
 
--- The raid frames' auras: debuffs, the dispel highlight and your HoTs (after a reload).
+-- The raid frames' auras: debuffs, the dispel highlight and your HoTs (the tiles' rows are made again at once, out of combat).
 local function raidAuraRows()
   return {
-    check(L["Highlight debuffs you can dispel (reload)"], reloadSetting("RaidAuras", "dispel")),
-    { "cycle", L["Debuff icons (reload)"], { { 0, L["none"] }, { 2, "2" }, { 3, "3" } }, reloadSetting("RaidAuras", "debuffs") },
-    check(L["Show your HoTs (reload)"], reloadSetting("RaidAuras", "hots")),
+    check(L["Highlight debuffs you can dispel (reload)"], O.RestartSetting("RaidAuras", "dispel")),
+    { "cycle", L["Debuff icons (reload)"], { { 0, L["none"] }, { 2, "2" }, { 3, "3" } }, O.RestartSetting("RaidAuras", "debuffs") },
+    check(L["Show your HoTs (reload)"], O.RestartSetting("RaidAuras", "hots")),
     { "text", L["Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left."], "note" },
-    { "cycle", L["Right edge, top (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator1") },
-    { "cycle", L["Right edge, second (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator2") },
-    { "cycle", L["Right edge, third (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, reloadSetting("RaidAuras", "indicator3") },
+    { "cycle", L["Right edge, top (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, O.RestartSetting("RaidAuras", "indicator1") },
+    { "cycle", L["Right edge, second (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, O.RestartSetting("RaidAuras", "indicator2") },
+    { "cycle", L["Right edge, third (reload)"], ns.GetModule("RaidAuras").SOURCE_CHOICES, O.RestartSetting("RaidAuras", "indicator3") },
   }
 end
 
