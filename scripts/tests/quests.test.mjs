@@ -2502,8 +2502,8 @@ it("quest dialog: the Quests page has the session switch and the modifier row, w
   // Lua that finds the Quests page row with this caption in `row`.
   const row = (text) => `local rows for _, p in ipairs(ns.Options.PAGES) do if p.key == "quests" then rows = p.rows() end end
     local row for _, r in ipairs(rows) do if r[2] == "${text}" then row = r end end`;
-  addon.eval(`${row("Use the game's quest and gossip windows for now")} row[4](true)`);
-  expect(addon.eval(`${row("Use the game's quest and gossip windows for now")} return { row[3](), QuestFrame:IsEventRegistered("QUEST_DETAIL") }`), "the switch hands the windows back and reads true").toEqual([true, true]);
+  addon.eval(`${row("Use the game's quest windows for now")} row[4](true)`);
+  expect(addon.eval(`${row("Use the game's quest windows for now")} return { row[3](), QuestFrame:IsEventRegistered("QUEST_DETAIL") }`), "the switch hands the windows back and reads true").toEqual([true, true]);
   addon.eval(`${row("Hold a key to open the game's windows")} row[5]("ctrl")`);
   expect(addon.eval("return ns.Settings('QuestDialog').bypass"), "the modifier row saves its choice").toBe("ctrl");
 });

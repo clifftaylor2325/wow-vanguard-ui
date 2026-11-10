@@ -350,7 +350,7 @@ local function motionRows()
   return {
     { "header", L["Motion and sound"] },
     check(L["Reduce motion (no fades or flashes)"], liveThemeSetting("reduceMotion")),
-    check(L["State cues: combat, procs, cooldowns, low health"], liveThemeSetting("motionCues")),
+    check(L["State cues"], liveThemeSetting("motionCues")),
     check(L["Interface sounds"], function() return T.Settings().sounds end, function(v) T.Settings().sounds = v end),
   }
 end
