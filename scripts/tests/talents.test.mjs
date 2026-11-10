@@ -375,8 +375,8 @@ it("talent planner: the summary stops short of the game's Apply Changes button, 
   const full = "4 planned, 2 bought, 2 to buy; next: Unbreakable Will; 1 unreachable; 3 points to spend";
   expect(summary(addon), "a long summary").toBe(full);
   const room = addon.eval(`local s, a = Vanguard_TalentPlan.summary, PlayerSpellsFrame.TalentsFrame.ApplyButton
-    return { a:GetLeft() - s:GetRight(), s:GetLeft() - Vanguard_TalentPlan.spend:GetRight() }`);
-  expect(room, "it ends 12 px short of Apply Changes, 10 px after Spend planned").toEqual([12, 10]);
+    return { a:GetLeft() - s:GetRight(), s:GetLeft() - Vanguard_TalentPlan.order:GetRight() }`);
+  expect(room, "it ends 12 px short of Apply Changes, 10 px after the Order button").toEqual([12, 10]);
   addon.eval("local t = Vanguard_TalentPlan.tip t:GetScript('OnEnter')(t)");
   const lines = addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out");
   expect([addon.eval("return GameTooltip:IsShown()"), Object.values(lines).slice(-2)], "hovering it shows the whole summary").toEqual([true, [full, "Unreachable: a talent or row it needs is not in the plan."]]);
@@ -414,3 +414,69 @@ for (const [locale, textScale] of [["deDE", 1.3], ["esES", 1.3], ["ruRU", 1], ["
     expect(natural, "the label at full size fits inside the button").toBeLessThanOrEqual(room + 1e-6);
   });
 }
+
+// The order window's rows as text, and the planner's resolved buying order.
+const orderRows = (addon) => addon.eval(`local out = {} local f = ${TP}.orderFrame for i = 1, f.rows.used do out[i] = f.rows[i].text:GetText() end return out`);
+const buyOrder = (addon) => addon.eval(`return ${TP}.Resolve(${TP}.ReadTree(), ${TP}.Plan()).order`);
+
+it("talent planner: a plan with no order buys top row first; an order set by the player is followed, within what the tree allows", () => {
+  const addon = open();
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 2, [102] = 2 }, hash = "1-2-3" } } ${TP}.Refresh()`);
+  expect(Object.values(buyOrder(addon)), "no order: the top row, left to right").toEqual([101, 101, 102, 102]);
+  addon.eval(`VanguardCharDB.talentPlans[1].order = { 102, "junk", 102, 101 }`);
+  expect(Object.values(buyOrder(addon)), "the order's first talent first; junk and repeats ignored").toEqual([102, 102, 101, 101]);
+  addon.eval(`VanguardCharDB.talentPlans[1].order = "junk"`);
+  expect(Object.values(buyOrder(addon)), "a hand-edited order is no order").toEqual([101, 101, 102, 102]);
+  addon.eval(`VanguardCharDB.talentPlans[1].order = { 103, 102 } VanguardCharDB.talentPlans[1].ranks[103] = 1`);
+  expect(Object.values(buyOrder(addon)), "a talent whose row is not open yet waits; the rest follow the order").toEqual([102, 102, 101, 101]);
+});
+
+it("talent planner: Spend planned follows the order and spends exactly the points it did before", () => {
+  const addon = open();
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 2, [102] = 2 }, hash = "1-2-3", order = { 102, 101 } } } ${TP}.Refresh()`);
+  addon.eval(`${TP}.SpendPlanned()`);
+  expect(addon.eval("return { __bought, __commits, __points }"), "three points, one commit, in the player's order").toEqual([[102, 102, 101], 1, 0]);
+  expect(chatHas(addon, /spent 3 points on Wand Specialization x2, Unbreakable Will\./), "chat says what").toBe(true);
+});
+
+it("talent planner: the order window lists the plan, moves talents up and down, goes back to top row first, and follows clicks", () => {
+  const addon = open();
+  addon.eval(`${TP}.ToggleOrder()`);
+  expect(addon.eval(`return { ${TP}.orderFrame:IsShown(), ${TP}.orderFrame.empty:IsShown() }`), "opens with nothing planned").toEqual([true, true]);
+  addon.eval(`${TP}.SetPlanning(true)`);
+  addon.eval("__click(101) __click(101) __click(102)");
+  expect(orderRows(addon), "top row first at first").toEqual(["1. Unbreakable Will (2)", "2. Wand Specialization (1)"]);
+  addon.eval("local f = " + TP + ".orderFrame f.rows[2].up:GetScript('OnClick')(f.rows[2].up)");
+  expect(orderRows(addon), "Up on the second row").toEqual(["1. Wand Specialization (1)", "2. Unbreakable Will (2)"]);
+  addon.eval("local f = " + TP + ".orderFrame f.rows[2].down:GetScript('OnClick')(f.rows[2].down)");
+  expect(orderRows(addon), "Down on the last row changes nothing").toEqual(["1. Wand Specialization (1)", "2. Unbreakable Will (2)"]);
+  addon.eval(`${TP}.MoveInOrder(9999, 1)`);
+  addon.eval("__click(103)");
+  expect(Object.values(addon.eval(`return ${TP}.Plan().order`)).length, "a talent planned later joins the end of the order").toBeGreaterThanOrEqual(2);
+  addon.eval(`local f = ${TP}.orderFrame f.reset:GetScript('OnClick')(f.reset)`);
+  expect(addon.eval(`return ${TP}.Plan().order == nil`), "Top row first forgets the order").toBe(true);
+  expect(orderRows(addon)[0], "and the list follows").toBe("1. Unbreakable Will (2)");
+  addon.eval(`${TP}.ToggleOrder()`);
+  expect(addon.eval(`return ${TP}.orderFrame:IsShown()`), "the second toggle closes it").toBe(false);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("talent planner: the bar's Order button and /vg talents order open the window; import and clear drop the order; nothing is built in combat", () => {
+  const addon = open();
+  addon.eval("Vanguard_TalentPlan.order:GetScript('OnClick')(Vanguard_TalentPlan.order)");
+  expect(addon.eval(`return ${TP}.orderFrame:IsShown()`), "the bar's button").toBe(true);
+  addon.slash("talents order");
+  expect(addon.eval(`return ${TP}.orderFrame:IsShown()`), "the command closes it").toBe(false);
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 1 }, hash = "1-2-3", order = { 101 } } }`);
+  addon.eval(`${TP}.ApplyImport({ [102] = 1 }, "1-2-3")`);
+  expect(addon.eval(`return ${TP}.Plan().order == nil`), "an imported plan has no order").toBe(true);
+  addon.eval(`${TP}.Plan().order = { 102 } ${TP}.Clear()`);
+  expect(addon.eval(`return ${TP}.Plan().order == nil`), "a cleared plan has none either").toBe(true);
+  const fresh = open();
+  fresh.eval("InCombatLockdown = function() return true end");
+  fresh.eval(`${TP}.ToggleOrder()`);
+  expect(fresh.eval(`return ${TP}.orderFrame == nil`), "in a fight nothing is built").toBe(true);
+  fresh.eval("InCombatLockdown = function() return false end");
+  fresh.fire("PLAYER_REGEN_ENABLED");
+  expect(fresh.eval(`return ${TP}.orderFrame ~= nil and ${TP}.orderFrame:IsShown()`), "it opens when the fight ends").toBe(true);
+});

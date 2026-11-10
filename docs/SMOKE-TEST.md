@@ -3732,6 +3732,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the page tabs are the theme's side tabs, clear of the panel's edge, with their picture kept and the shown page raised; the bag slots take the item-slot look; the lines, money and Purchase button are in the theme, still after the page switch.
 - If it fails, paste: a screenshot of the bank and the `/vg errors` output.
 
+### 10.9b Talent plan order (WoW Forever)
+
+- Do: open the talents window, switch Plan on and plan two talents in different rows. Press Order... on the bar. Press Up on the lower one, then Top row first. Set the order again and, with points to spend, press Spend planned.
+- Expect: the list shows each planned talent numbered with the points still to buy; Up and Down reorder it at once; Top row first puts it back top row first; Spend planned buys in the list's order (a talent whose row is not open yet waits) and applies as before; nothing changes in a fight; no error.
+- If it fails, paste: `/vg errors`.
+
 ### 33.194 Talent planner on the other spec's tab and either-or parents (WoW Forever)
 
 - Do: on WoW Forever, on a dual-spec character, open the talents window with Plan on and a few talents planned (one of them, if the tree has one, a talent with two arrows into it, planned with only one of its parents); click the other spec's tab, then back.
