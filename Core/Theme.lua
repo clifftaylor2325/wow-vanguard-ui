@@ -3548,8 +3548,9 @@ function T.ResetAccent()
 end
 
 -- Your class colour as r, g, b (the client's own class colours, never a token), or nothing when the client hides
--- your class or has no colour for it.
+-- your class, has no colour for it or cannot say your class at all.
 function T.ClassColor()
+  if not UnitClass then return end
   local _, class = UnitClass("player")
   local c = not ns.IsSecret(class) and type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[class]
   if c then return c.r, c.g, c.b end
