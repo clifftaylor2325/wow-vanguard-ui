@@ -23,8 +23,8 @@ const shown = (addon, kind) => addon.eval(`local f = ns.GetModule("ClassBars").r
 it("holy power: a pip per point above the player frame, a hidden count still fills them", () => {
   const addon = retail("PALADIN", 1, "__p.powers[9], __p.maxpowers[9] = 3, 5");
   const place = addon.eval(`local row = ns.GetModule("ClassBars").resourceFrames.holyPower local p, rel, rp = row:GetPoint()
-    return { p, rel == Vanguard_player, rp, row:GetWidth() }`);
-  expect(place, "on the player frame's top left, five pips of 14 and a gap of 3").toEqual(["BOTTOMLEFT", true, "TOPLEFT", 5 * 17]);
+    return { p, rel == ns.GetModule("UnitFrames").Crown(Vanguard_player), rp, row:GetWidth() }`);
+  expect(place, "on the player frame's crown's top left (the frame's own, rising with a tab), five pips of 14 and a gap of 3").toEqual(["BOTTOMLEFT", true, "TOPLEFT", 5 * 17]);
   expect(fills(addon, "holyPower"), "three of five").toEqual([1, 1, 1, 0, 0]);
   addon.eval("__wfgWorld.units.player.powers[9] = __wfgWorld.secret(4)");
   addon.fire("UNIT_POWER_FREQUENT", "player", "HOLY_POWER");

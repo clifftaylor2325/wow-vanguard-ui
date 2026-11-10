@@ -107,7 +107,7 @@ it("class bars: the totem row sits above the player frame, clear of the chat's t
 
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
-  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells above the player frame").toEqual([4, true]);
+  expect(addon.eval('local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames") return { #CB.cells, select(2, CB.totems:GetPoint()) == UF.Crown(Vanguard_player) }'), "a shaman gets four totem cells above the player frame (its crown, which rises with a tab)").toEqual([4, true]);
   expect(totemCell(addon, 1), "a totem that is down shows its icon, its sweep and the client's numbers").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Totem", sweep: [100, 120], numbers: true, type2: "destroytotem", slot: 1 });
   expect(totemCell(addon, 2).alpha, "an empty slot is see-through (cells are secure, so alpha, not Hide)").toBe(0);
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
@@ -567,7 +567,7 @@ const EXTRAS_ENV = `
 it("threat on your target and your pet's happiness", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + CLICK_LUA);
   // The threat text above the target frame: its text and color.
-  const threat = () => addon.eval("local UX = ns.GetModule('UnitExtras') return { UX.threat:GetText(), UX.threat.__textColor, select(2, UX.threat:GetPoint()) == Vanguard_target }");
+  const threat = () => addon.eval("local UX, UF = ns.GetModule('UnitExtras'), ns.GetModule('UnitFrames') return { UX.threat:GetText(), UX.threat.__textColor, select(2, UX.threat:GetPoint()) == UF.Crown(Vanguard_target) }");
   expect(threat(), "under aggro, your share shows above the target frame in the secondary color").toEqual(["42%", tok(addon, "text2"), true]);
   addon.eval("__threatInfo = { true, 3, 100 }");
   addon.fire("UNIT_THREAT_SITUATION_UPDATE", "player");
