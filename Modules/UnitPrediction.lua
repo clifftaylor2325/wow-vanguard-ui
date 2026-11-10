@@ -43,11 +43,13 @@ local function follow(f, bar)
   bar:SetWidth(UF.BarWidth(f))
 end
 
--- Lays both bars out again (the look mirrored the fill, or the frame changed size).
+-- Lays both bars out again (the look mirrored the fill, or the frame changed size) and paints them: a frame that stood
+-- as a banner had them off.
 ---@param f table a unit frame with the bars
 function PR.Place(f)
   follow(f, f.heal)
   follow(f, f.shield)
+  PR.Update(f)
 end
 
 -- Gives a frame its heal bar, its shield bar and their events, once.
@@ -79,13 +81,15 @@ local function fill(bar, max, amount, on)
   bar:SetValue(amount)
 end
 
--- Paints a frame's heal and shield bars from the client's prediction for its unit.
+-- Paints a frame's heal and shield bars from the client's prediction for its unit. A standing banner's bars run up
+-- and these lie across its fill, so they stay off while the frame stands (UF.Standing).
 ---@param f table a unit frame with the bars
 function PR.Update(f)
   if not ns.IsTrue(UnitExists(f.unit)) then return end
   local max, incoming, shields = ns.GetModule("RaidHealing").Prediction(f.unit)
-  fill(f.heal, max, incoming, UF.settings.healPrediction == true)
-  fill(f.shield, max, shields, UF.settings.absorbs == true)
+  local lying = not UF.Standing(f)
+  fill(f.heal, max, incoming, lying and UF.settings.healPrediction == true)
+  fill(f.shield, max, shields, lying and UF.settings.absorbs == true)
 end
 
 -- A switch changed (the Unit frames page): every frame paints again.

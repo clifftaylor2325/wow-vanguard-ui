@@ -39,9 +39,9 @@ local CLIENT_STATE = { Merchant = { junkList = true }, Errands = { stockList = t
 local GROUPS = { "layout", "situations", "global" }
 ns.PART_LABELS = { layout = L["Layout (positions and movers)"], situations = L["Situations overrides"], global = L["Global settings (theme, modules list, skins)"] }
 -- The tables in the layout and situations parts.
-local KEY_PART = { positions = "layout", movers = "layout", editMode = "layout", Situations = "situations" }
+local KEY_PART = { positions = "layout", movers = "layout", editMode = "layout", hudLayout = "layout", Situations = "situations" }
 -- Core tables a module string from before format 2 may hold, besides a module's.
-local CORE = { theme = true, modules = true, skins = true, positions = true, movers = true, editMode = true }
+local CORE = { theme = true, modules = true, skins = true, positions = true, movers = true, editMode = true, hudLayout = true }
 
 -- How many levels deep a table merges key by key; below that the string's table replaces
 -- the local one whole (a frame's spot, a situation's override). Lists are always replaced.

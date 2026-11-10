@@ -32,10 +32,11 @@ function PT.Choice(f)
   return PT.CHOICES[choice] and choice or "off"
 end
 
--- Whether the frame's outer end is square enough to hold the portrait under the HUD look in force.
+-- Whether the frame's outer end is square enough to hold the portrait under the HUD look in force (never while the
+-- frame stands as a banner: its end is its hem).
 local function fits(f)
   local point = "TOP" .. f.outer
-  return T.CornerLook(f, point) ~= "point" and T.CornerAt(f, point) <= PT.MAX_CORNER
+  return not UF.Standing(f) and T.CornerLook(f, point) ~= "point" and T.CornerAt(f, point) <= PT.MAX_CORNER
 end
 
 -- The portrait's side: the frame's height less the bar inset above and below.

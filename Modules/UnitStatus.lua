@@ -113,13 +113,14 @@ local function showMarks(f, on)
   return sig
 end
 
--- Shows the marks the frame's unit has, and lays the row out again when the set changed (in a fight that waits for its end).
+-- Shows the marks the frame's unit has (none on a standing banner, whose name line takes its top), and lays the row out
+-- again when the set changed (in a fight that waits for its end).
 -- A frame with nothing shown and nothing to show (an empty party slot, the setting off) asks the client nothing: a
 -- roster update reaches every frame, and most of them have no marks.
 ---@param f table a unit frame with the row
 function ST.Update(f)
   if not f.status then return end
-  local on = UF.settings.statusMarks == true and ns.IsTrue(UnitExists(f.unit))
+  local on = UF.settings.statusMarks == true and ns.IsTrue(UnitExists(f.unit)) and not UF.Standing(f)
   if not on and f.vgStatusSig == ST.NONE then return end
   local sig = showMarks(f, on)
   if f.status.role:IsShown() then paintRole(f.status.role, f.unit) end

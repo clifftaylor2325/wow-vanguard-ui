@@ -128,13 +128,22 @@ function T.HudLook()
   return "plain"
 end
 
--- The corner geometry the HUD look gives a painted frame with a role: a geometry, false for square corners whatever
--- the corner settings say, or nil for its plain corners (Core/Theme.lua corner.geometry asks before it reads the
--- corner settings).
+-- Gives the HUD layout its say on a painted frame's shape (Modules/UnitFrameLayouts.lua: a banner's hem): fn(frame,
+-- entry) answers a geometry or false for the frames it shapes, nil for the rest. T.HudCorners asks it first.
+---@param fn function|nil
+function T.SetLayoutShape(fn)
+  T.layoutShape = fn
+end
+
+-- The corner geometry the HUD look gives a painted frame with a role: the HUD layout's shape for it where it has one
+-- (T.SetLayoutShape), else a geometry, false for square corners whatever the corner settings say, or nil for its
+-- plain corners (Core/Theme.lua corner.geometry asks before it reads the corner settings).
 ---@param frame table a painted frame
 ---@param entry table its painted entry (opts.role, opts.outer)
 ---@return table|boolean|nil
 function T.HudCorners(frame, entry)
+  local layout = T.layoutShape and T.layoutShape(frame, entry)
+  if layout ~= nil then return layout end
   local shape = LOOKS[T.HudLook()].corners[entry.opts.role]
   if not shape then return nil end
   return shape(frame, entry)

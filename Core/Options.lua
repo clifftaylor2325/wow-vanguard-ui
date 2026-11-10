@@ -269,6 +269,20 @@ local function hudRows()
   }
 end
 
+-- get/set for the profile's HUD layout (Core/HudLayout.lua), applied at once out of combat.
+local function hudLayoutSetting()
+  return function() return ns.HudLayout() end, function(v) ns.OutOfCombat(function() ns.SetHudLayout(v) end, "HUD layout") end
+end
+
+-- HUD layout: where the frames around your character stand, with a note on the two walled layouts.
+local function hudLayoutRows()
+  return {
+    { "header", L["HUD layout"] },
+    { "cycle", L["Where the frames stand"], ns.HudLayoutChoices(), hudLayoutSetting() },
+    { "text", L["The keep: one wall at the foot of the screen. Standards: tall banners either side of you. A frame you moved stays put."], "note" },
+  }
+end
+
 -- Look, the shape of things: variant, corners, panel texture and the ornament rows.
 local function lookShapeRows()
   local rows = {
@@ -396,7 +410,7 @@ end
 -- (Core/OptionsFrames.lua), layout and frame sizes.
 local function generalRows()
   local rows = append(ns.SettingsGuard.Rows(), lookRows())
-  for _, card in ipairs({ hudRows(), barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows() }) do append(rows, card) end
+  for _, card in ipairs({ hudRows(), barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows(), hudLayoutRows() }) do append(rows, card) end
   return rows
 end
 
