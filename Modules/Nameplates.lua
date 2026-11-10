@@ -858,9 +858,11 @@ local function refresh(f, unit)
   NP.PaintSoftTarget(f, unit)
 end
 
--- Runs fn(frame, unit) for every plate we drew on.
+-- Runs fn(frame, unit) for every plate we drew on, each plate on its own (ns.Try): a plate whose paint fails is
+-- reported and the rest are still painted, and a repeating job (the scale poll, which keeps aura icons off
+-- the dark blocks of a shrunk plate) is never paused for one plate.
 local function each(fn)
-  for unit, f in pairs(NP.plates) do fn(f, unit) end
+  for unit, f in pairs(NP.plates) do ns.Try("nameplate", fn, f, unit) end
 end
 
 -- Repaints everything on every plate on screen, as a live setting changed (levels,
