@@ -60,10 +60,11 @@ CF.allowed, CF.recent, CF.recentCount, CF.count, CF.counts = {}, {}, 0, 0, {}
 
 -- Matching ------------------------------------------------------------------------------------
 
--- True when the line holds any of the words (as plain text).
+-- True when the line holds any of the words (as plain text). An empty word or one that is no text (a saved list
+-- from an older version or an import may hold them) holds nothing: an empty one would be in every line.
 local function holdsAny(line, words)
   for _, word in ipairs(words) do
-    if line:find(ns.Lower(word), 1, true) then return true end
+    if type(word) == "string" and word ~= "" and line:find(ns.Lower(word), 1, true) then return true end
   end
   return false
 end
