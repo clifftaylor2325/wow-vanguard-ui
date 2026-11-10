@@ -706,11 +706,21 @@ local function powerTextOn(f)
   return T.BareOf(f) or healthHeight(f, f.vgHeight) >= UF.POWER_TEXT.room
 end
 
+-- Room a readout keeps clear at the end of a frame's health text (units), by frame key (UnitExtras: the pet's mood
+-- glyph). Read on every layout, so a look or size change keeps it.
+UF.TEXT_END_ROOM = {}
+
+-- How far in from its end a frame's health text stops: a readout's room, else short of the marks, else the inset.
+local function textEndRoom(f)
+  if UF.TEXT_END_ROOM[f.key] then return UF.TEXT_END_ROOM[f.key] end
+  return (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
+end
+
 -- The health text at the other end from the name, short of the marks on a frame that has them; on the bar's top line
 -- while the power text takes the bottom one.
 local function placeHealthText(f, side)
   local far = INNER[side]
-  local room = (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
+  local room = textEndRoom(f)
   f.healthText:ClearAllPoints()
   if powerTextOn(f) and not T.BareOf(f) then
     f.healthText:SetPoint("TOP" .. far, f.health, "TOP" .. far, inward(far, room), -UF.POWER_TEXT.pad)
