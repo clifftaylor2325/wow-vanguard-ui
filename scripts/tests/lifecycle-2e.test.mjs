@@ -100,3 +100,27 @@ it("Upgrades: switched off, it reads as off (no settings, no upgrade); its toolt
   expect(hooks(), "each hook once").toEqual([lines, cards]);
   expect(addon.eval('return ns.GetModule("Upgrades").settings ~= nil'), "on again").toBe(true);
 });
+
+// TEST-ONLY character pane with a head slot wearing a level 40 helm.
+const CHARACTER_PANE = `
+  CharacterFrame = CreateFrame("Frame", "CharacterFrame", UIParent) CharacterFrame:Hide()
+  CreateFrame("Button", "CharacterHeadSlot", CharacterFrame).GetID = function() return 1 end
+  __wfgWorld.items[1001] = { name = "TEST-ONLY Helm", quality = 3, level = 40, equipLoc = "INVTYPE_HEAD" }
+  __wfgWorld.worn[1] = "item:1001:0"
+`;
+const withPane = (saved) => loggedIn(CHARACTER_PANE, { savedVariables: saved });
+
+lifecycleCases("CharacterExtras", withPane);
+
+it("CharacterExtras: switched off, the item level on the game's slot goes and the pane draws none; on again it returns", () => {
+  const addon = withPane("");
+  const level = () => addon.eval("local l = ns.FrameState('vgGearInfo')[CharacterHeadSlot] return l and l.level:IsShown() or false");
+  addon.eval("CharacterFrame:Show()");
+  expect(level(), "shown").toBe(true);
+  switchTo(addon, "CharacterExtras", false);
+  expect(level(), "gone at once").toBe(false);
+  addon.eval("CharacterFrame:Hide() CharacterFrame:Show()");
+  expect(level(), "the pane opening draws nothing").toBe(false);
+  switchTo(addon, "CharacterExtras", true);
+  expect(level(), "back, the pane being open").toBe(true);
+});

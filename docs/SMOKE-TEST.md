@@ -5465,6 +5465,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, the arrows on the bag slots and reward cards and the tooltip line are gone at once; on, they come back (the bag marks itself again), with no reload.
 - If it fails, paste: a screenshot of the bag and `/vg errors`.
 
+### 35.6 Character sheet extras
+
+- Do: open the character pane (item levels show on the gear slots). Switch **Character sheet extras** off under `/vg` → Modules, then on again, with the pane open and then closed.
+- Expect: off, every slot's item level and enchant mark go at once and the pane opens bare; on, they return on the open pane and when it next opens.
+- If it fails, paste: a screenshot of the pane and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
