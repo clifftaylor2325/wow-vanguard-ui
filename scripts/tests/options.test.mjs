@@ -594,11 +594,12 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
   addon.eval(`GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent) function GameTooltip:SetOwner(o) self.__owner = o end
     function GameTooltip:SetText(t) self.__tip = t end function GameTooltip:AddLine(t) self.__line = t end`);
+  addon.eval('__click("Raid frames")');
+  addon.eval('__click("Style")');
+  expect(resetDot(addon, "Style"), "choices get one too").toEqual([true, true]);
+  addon.eval('__click("Style") __click("Style")');
+  expect(resetDot(addon, "Style")[0], "and lose it back at the default").toBe(false);
   addon.eval('__click("Nameplates")');
-  addon.eval('__click("Width")');
-  expect(resetDot(addon, "Width"), "choices get one too").toEqual([true, true]);
-  addon.eval('__click("Width") __click("Width")');
-  expect(resetDot(addon, "Width")[0], "and lose it back at the default").toBe(false);
   addon.eval('__click("Cast bar")');
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end __dot:GetScript("OnEnter")(__dot)`);
   expect(addon.eval("return { GameTooltip.__owner == __dot, GameTooltip:IsShown(), GameTooltip.__tip }"), "hovering the dot says what it does").toEqual([true, true, "Changed from the default. Click to put it back."]);
@@ -696,8 +697,8 @@ it("options: a dot on the nav marks each page with changed settings, as rows cha
   expect(dotted(addon), "changing a row marks its page at once").toEqual(["nameplates", "unitframes"]);
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and ns.Options.RevealRow(w) then __dot = w.reset end end __dot:GetScript("OnClick")(__dot)`);
   expect(dotted(addon), "putting the row back with its own dot clears the page's").toEqual(["nameplates"]);
-  addon.eval('__click("Nameplates") __click("Width") __click("Width")');
-  expect([addon.eval("return ns.Settings('Nameplates').width"), dotted(addon)], "stepping the width back to its default clears it too").toEqual([addon.eval("return ns.GetModule('Nameplates').defaults.width"), []]);
+  addon.eval(`__click("Nameplates") for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() and ns.Options.RevealRow(w) then __dot = w.reset end end __dot:GetScript("OnClick")(__dot)`);
+  expect([addon.eval("return ns.Settings('Nameplates').width"), dotted(addon)], "putting the width slider back at its default clears it too").toEqual([addon.eval("return ns.GetModule('Nameplates').defaults.width"), []]);
 });
 
 // Presses a key on the options window: { the page shown, whether the key went on to the game }.
@@ -1025,9 +1026,9 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|56", "modules|Modules|20|87", "unitframes|Unit frames|30|37", "raid|Raid frames|40|26",
+    "general|General|10|56", "modules|Modules|20|87", "unitframes|Unit frames|30|41", "raid|Raid frames|40|26",
     "actionbars|Action bars|60|84", "quests|Quests|70|29", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|41", "town|Town and gear|85|64", "profiles|Profiles|90|22",
-    "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|18",
+    "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|26",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
   ]);
   addon.eval('ns.Options.Show("general")');
@@ -1308,11 +1309,11 @@ it("options: the nav is a list of rows (T.ROW): the current page's row shows the
 
 it("options: a card's title (on a page of one card; tabs name the cards of the others) is a section header: capitals in small muted text, an 18 high band 12 in from the card's edge and as wide as the card's inside", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Options.Show("nameplates")');
-  const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "NAMEPLATES" and ns.Options.RevealRow(w) then
+  addon.eval('ns.Options.Show("talents")');
+  const head = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "TALENT PLANNER" and ns.Options.RevealRow(w) then
     return { w.__kind, w:GetHeight(), w:GetWidth(), w.__points.TOPLEFT.x, w.__points.TOPLEFT.y, w.__parent:GetWidth() } end end`);
   expect(head, "a Button 18 tall, the card less its 12 of padding on both sides wide, at 12 across and 12 down in the card").toEqual(["Button", 18, 568 - 24, 12, -12, 568]);
-  const title = '(function() for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "NAMEPLATES" and ns.Options.RevealRow(w) then return w.text end end end)()';
+  const title = '(function() for _, w in ipairs(__wfgStub.frames) do if w.text and w.text.__text == "TALENT PLANNER" and ns.Options.RevealRow(w) then return w.text end end end)()';
   expect(lookOf(addon, title, "muted"), "the title is small muted text, in capitals").toEqual([addon.eval("return ns.Theme.RoleSize('small')"), true]);
 });
 
@@ -1999,8 +2000,8 @@ it("options tabs: a page of several cards shows one at a time under a tab per ca
 
 it("options tabs: a page of one card has no tabs and keeps its card's title; a heading with no rows under it makes no tab", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Options.Show("nameplates")');
-  expect([Object.keys(tabsOf(addon)[0]).length, addon.texts("NAMEPLATES").length], "Nameplates: one card, its title in it, no tabs").toEqual([0, 1]);
+  addon.eval('ns.Options.Show("talents")');
+  expect([Object.keys(tabsOf(addon)[0]).length, addon.texts("TALENT PLANNER").length], "Talents: one card, its title in it, no tabs").toEqual([0, 1]);
   expect(addon.eval("return ns.Options.ShowTab(1)"), "so no tab to show").toBe(false);
   addon.eval('ns.Options.Show("healing")');
   const names = tabsOf(addon)[0].map((t) => t[0]);
@@ -2071,8 +2072,8 @@ it("options tabs: Left and Right step the tabs, wrapping, unless the keyboard's 
   const size = addon.eval("return ns.Theme.Settings().textScale");
   press(addon, "RIGHT");
   expect([tabsOf(addon)[1], addon.eval("return ns.Theme.Settings().textScale") !== size], "with the Text size slider under the keyboard, Right steps it and the tab stays").toEqual(["Look", true]);
-  addon.eval('ns.Options.Show("nameplates")');
-  expect(press(addon, "RIGHT"), "Nameplates has no tabs: Right goes on to the game").toEqual(["nameplates", true]);
+  addon.eval('ns.Options.Show("talents")');
+  expect(press(addon, "RIGHT"), "Talents has no tabs: Right goes on to the game").toEqual(["talents", true]);
 });
 
 it("options tabs: Reset this page sits at the right of the page's bar, the page's title at its left; a page with nothing to reset has the title alone", () => {

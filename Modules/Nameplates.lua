@@ -47,7 +47,8 @@ local UF = ns.GetModule("UnitFrames")
 
 local NP = ns.Module("Nameplates", {
   defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true,
-    questMarks = true, tagMarks = true, auraSize = 18 },
+    questMarks = true, tagMarks = true, auraSize = 18, nameSize = 100, healthSize = 100,
+    targetScale = 100, friendlyNames = false },
 })
 
 -- The sliders' ranges (the Nameplates page). A saved number is kept inside its range (readLayout), since a
@@ -56,6 +57,13 @@ NP.RANGES = {
   width = { min = 80, max = 200, step = 2 }, height = { min = 6, max = 16, step = 1 },
   debuffs = { min = 0, max = 8, step = 1 }, buffs = { min = 0, max = 6, step = 1 }, auraSize = { min = 12, max = 28, step = 1 },
 }
+-- A slider's text for a value that is a percent.
+function NP.Percent(v) return string.format("%d%%", v) end
+-- The text sizes are shares (percent) of the theme's own sizes for those texts, so the sizes themselves stay the theme's.
+NP.RANGES.nameSize = { min = 80, max = 160, step = 5, format = NP.Percent }
+NP.RANGES.healthSize = { min = 80, max = 160, step = 5, format = NP.Percent }
+-- How large your target's plate is drawn, as a share of the other plates' size (100: no larger).
+NP.RANGES.targetScale = { min = 100, max = 150, step = 5, format = NP.Percent }
 -- The raid target icon's size, left of the bar.
 NP.RAID_ICON = 18
 -- A player's buff icons, right of the bar, are this much smaller than the debuff icons (the Aura icon size).
@@ -65,6 +73,9 @@ NP.BUFF_LESS = 2
 NP.NAME_GAP, NP.ROW_GAP = 3, 2
 -- How long (seconds) a changed size or count holds still before every plate built follows it.
 NP.SETTLE = 0.3
+-- What a name-only plate keeps in view (the keys on Vanguard's frame): the name, the quest mark by it, the
+-- raid target icon and the game's soft-target icon (the speech bubble over someone you can talk to).
+NP.NAME_ONLY_KEEPS = { "name", "quest", "raidIcon", "soft" }
 -- The layout's number: each plate notes the one it was last sized and given rows for (f.version).
 NP.version = 0
 -- How far the click area reaches past each side of the bar (as the client's own plates).
@@ -310,10 +321,21 @@ local function sizeCast(f, l)
   if not l.castBar then f.cast:Hide() end
 end
 
+-- A plate's name and level, and its health numbers, at the layout's text sizes; nothing when the plate has
+-- them already. At 100 the theme's own size is put back (nil), which follows the theme's Text size by itself.
+local function sizeTexts(f, l)
+  local name, health = l.nameSize ~= 100 and l.nameText or nil, l.healthSize ~= 100 and l.healthText or nil
+  if name == f.nameText and health == f.healthText then return end
+  f.nameText, f.healthText = name, health
+  for _, fs in ipairs({ f.name, f.level }) do T.TextSize(fs, name) end
+  for _, fs in ipairs({ f.healthPercent, f.healthValue }) do T.TextSize(fs, health) end
+end
+
 -- Sizes a plate and the parts that follow its size: the bar, the click area around it, the soft-target
--- icon (clear of one row of debuffs) and the cast bar. A new plate and a changed setting both come
--- through here, so a plate reads the same either way.
+-- icon (clear of one row of debuffs), the texts and the cast bar. A new plate and a changed setting both
+-- come through here, so a plate reads the same either way.
 local function sizePlate(f, l)
+  sizeTexts(f, l)
   f:SetSize(l.width, l.height)
   f.hit:SetPoint("BOTTOM", f, "BOTTOM", 0, -l.height / 2)
   f.hit:SetWidth(l.width + 2 * NP.HIT_PAD)
@@ -692,11 +714,11 @@ end
 -- The colour of the border and diamond for your target and, quieter and with no glow, your focus.
 NP.MARK_COLORS = { target = "accent", focus = "text2" }
 
--- What a plate marks while the target border is on: "target" for your target, "focus" for your focus
--- (when it isn't your target too), or false.
-local function targetShown(unit)
+-- What a plate marks while the target border is on: "target" for your target (isTarget, asked once by the
+-- caller), "focus" for your focus (when it isn't your target too), or false.
+local function targetShown(unit, isTarget)
   if not NP.settings.targetBorder then return false end
-  return isUnit(unit, "target") and "target" or isUnit(unit, "focus") and "focus" or false
+  return isTarget and "target" or isUnit(unit, "focus") and "focus" or false
 end
 
 -- Paints a plate's target or focus border, the target's glow and the marker for `mark` (targetShown), and
@@ -720,12 +742,34 @@ function NP.ScaleHolds(scale, painted)
   return ratio <= NP.SCALE_SLACK and ratio * NP.SCALE_SLACK >= 1
 end
 
--- Your target's accent border, glow and marker (your focus's quieter border and marker). They are repainted only when
--- the plate's target or focus state changed or its scale (the pixel size of the edge and
--- the glow) left NP.SCALE_SLACK of the one they were painted at.
+-- True when a plate's scale now is the very one its aura icons were placed at (a hidden scale counts as
+-- yes): the test after Vanguard itself rescaled the plate, where the slack above would let a 15% step pass.
+function NP.ScaleSame(scale, placed)
+  scale = ns.PlainNumber(scale)
+  return scale == nil or scale == placed
+end
+
+-- Draws a plate at `scale` times its size (your target's, by the Target plate size setting; 1 for any
+-- other), around its centre. True when that changed: its aura icons are put back on whole pixels here
+-- (Core/Auras.lua leaves an icon the client has closed alone), and the caller paints its border again.
+local function emphasize(f, scale)
+  if scale == (f.vgEmphasis or 1) then return false end
+  f.vgEmphasis = scale
+  f:SetScale(scale)
+  for _, key in ipairs(NP.ROWS) do
+    if f[key] then ns.Auras.Refit(f[key].frame, NP.ScaleSame) end
+  end
+  return true
+end
+
+-- Your target's plate at its larger size, and its accent border, glow and marker (your focus's quieter border
+-- and marker). They are repainted only when the plate's size, its target or focus state changed or its
+-- scale (the pixel size of the edge and the glow) left NP.SCALE_SLACK of the one they were painted at.
 function NP.UpdateTarget(f, unit)
-  local target, scale = targetShown(unit), f:GetEffectiveScale()
-  if target == f.vgTarget and NP.ScaleHolds(scale, f.vgScale) then return end
+  local isTarget = isUnit(unit, "target")
+  local resized = emphasize(f, isTarget and NP.layout.targetScale / 100 or 1)
+  local target, scale = targetShown(unit, isTarget), f:GetEffectiveScale()
+  if not resized and target == f.vgTarget and NP.ScaleHolds(scale, f.vgScale) then return end
   paintTarget(f, target, scale)
 end
 
@@ -751,10 +795,37 @@ function NP.PaintTag(f, unit)
   NP.UpdateColor(f, unit)
 end
 
+-- Whether a plate shows only its unit's name: the Names only switch on, on a unit you can't attack. A
+-- hidden answer, or a client without the call, counts as one you can: an enemy's bar is never put away on a guess.
+local function nameOnly(unit)
+  if NP.settings.friendlyNames ~= true or type(UnitCanAttack) ~= "function" then return false end
+  local can = UnitCanAttack("player", unit)
+  return not ns.IsSecret(can) and can == false
+end
+
+-- Makes a plate name-only, or whole again. Name-only, Vanguard's frame is drawn at no opacity, so the bar,
+-- its border and glow, the level, marks, numbers, aura icons and cast bar all go with it, and the parts in
+-- NP.NAME_ONLY_KEEPS are told not to follow it; the name takes the bar's colour (class or reaction).
+local function setNameOnly(f, unit, only)
+  f.vgNameOnly = only
+  f:SetAlpha(only and 0 or 1)
+  for _, key in ipairs(NP.NAME_ONLY_KEEPS) do f[key]:SetIgnoreParentAlpha(only) end
+  if only then T.ColorRGB(f.name, UF.UnitColor(unit)) else T.Color(f.name, "text") end
+end
+
+-- Paints a plate name-only or whole for its unit now (when it is drawn, its unit's faction or flags change,
+-- or the switch does). A plate that is whole and stays whole is not touched. True when it changed.
+function NP.PaintNameOnly(f, unit)
+  local only, was = nameOnly(unit), f.vgNameOnly == true
+  if only or was then setNameOnly(f, unit, only) end
+  return only ~= was
+end
+
 -- Points the debuff row at the plate's unit (the client reuses plates for
 -- other units), and the buff row at it while it is a player; the buff row is
--- hidden otherwise. A nil unit empties both.
+-- hidden otherwise. A nil unit, or a name-only plate, empties both.
 function NP.UpdateAuras(f, unit)
+  if f.vgNameOnly then unit = nil end
   f.debuffs:SetUnit(unit)
   if not f.buffs then return end
   local player = NP.BuffUnit(unit)
@@ -776,6 +847,7 @@ end
 
 -- Everything on one plate (a plate under the mouse wakes the mouseover watch).
 local function refresh(f, unit)
+  NP.PaintNameOnly(f, unit)
   NP.ShowNumbers(f, unit)
   NP.Update(f, unit)
   NP.PaintQuest(f, unit)
@@ -806,13 +878,20 @@ end
 
 -- Layout -----------------------------------------------------------------------------------
 
+-- A text role's size at a share (percent) of the theme's size for it now.
+local function textSize(role, percent)
+  return math.floor(T.RoleSize(role) * percent / 100 + 0.5)
+end
+
 -- The sizes the plates are built at, read from the settings: each number kept to its slider's range, the
--- timers and the cast bar, and how far the debuff row sits above the bar (clear of the name, whose size
--- follows the theme's text size). Plates read this, not the settings, so they change only out of combat.
+-- timers and the cast bar, the name's and the health numbers' text sizes (shares of the theme's, which
+-- follow its Text size), and how far the debuff row sits above the bar: clear of the name. Plates read
+-- this, not the settings, so they change only out of combat.
 local function readLayout(s)
   local l = { timers = s.timers == true, castBar = s.castBar == true }
   for key, range in pairs(NP.RANGES) do l[key] = math.max(range.min, math.min(range.max, s[key])) end
-  l.rise = NP.NAME_GAP + T.RoleSize("world") + NP.ROW_GAP
+  l.nameText, l.healthText = textSize("world", l.nameSize), textSize("barSmall", l.healthSize)
+  l.rise = NP.NAME_GAP + l.nameText + NP.ROW_GAP
   return l
 end
 
@@ -985,6 +1064,7 @@ end
 local function onFaction(f, unit)
   NP.PaintTag(f, unit)
   NP.PaintNumbers(f, unit)
+  if NP.PaintNameOnly(f, unit) then NP.UpdateAuras(f, unit) end
 end
 
 -- Health moves the fill and its numbers only; threat, flags and faction (a tap change can come as any) repaint the tag mark and the bar.
@@ -1071,7 +1151,7 @@ local EVENTS = {
 -- Repaints a plate's look after a theme change: its target border and glow, and its bar's colour
 -- (tapped, threat, class or reaction follow the colour variant, and a quiet plate gets no event to repaint it).
 local function repaintLook(f, unit)
-  paintTarget(f, targetShown(unit), f:GetEffectiveScale())
+  paintTarget(f, targetShown(unit, isUnit(unit, "target")), f:GetEffectiveScale())
   NP.UpdateColor(f, unit)
 end
 
@@ -1215,6 +1295,7 @@ local function displayRows()
     { "check", L["Cast bar"], setting("castBar", NP.ApplyLayout) },
     { "check", L["A gold ! by units your quests need"], setting("questMarks", NP.RefreshAll) },
     { "check", L["Tag marks"], setting("tagMarks", NP.RefreshAll) },
+    { "check", L["Names only on friendly plates"], setting("friendlyNames", NP.RefreshAll) },
   }
 end
 
@@ -1223,9 +1304,13 @@ local function slider(caption, key)
   return { "slider", caption, NP.RANGES[key], setting(key, NP.ApplyLayout) }
 end
 
--- The bar's size.
+-- The bar's size, and the sizes of the texts on it.
 local function sizeRows()
-  return { { "header", L["Size"] }, slider(L["Width"], "width"), slider(L["Height"], "height") }
+  return {
+    { "header", L["Size"] }, slider(L["Width"], "width"), slider(L["Height"], "height"),
+    slider(L["Name text size"], "nameSize"), slider(L["Health text size"], "healthSize"),
+    slider(L["Target plate size"], "targetScale"),
+  }
 end
 
 -- The aura rows: how many of your debuffs and of a player's buffs, how large, and the timers.
