@@ -11,7 +11,7 @@
 --
 -- Every diagnostic probe lives in this file: `/vg probe`, the levelling guide's reads behind
 -- `/vg guide probe` (ns.GuideData, which later guide phases read the client through) and the
--- Legacy system's window and globals behind `/vg legacy probe`. QUEST_ACCEPTED and
+-- Legacy system's window and globals behind `/vg probe legacy`. QUEST_ACCEPTED and
 -- QUEST_TURNED_IN record only the types of their first arguments, never the values.
 
 local ADDON, ns = ...
@@ -275,7 +275,7 @@ do
   end
 end
 
--- /vg legacy probe: the lines, out of combat.
+-- /vg probe legacy: the lines, out of combat.
 function P.Legacy()
   if ns.InCombat() then return ns.Chat("Not in combat.") end
   for _, line in ipairs(P.LegacyLines()) do ns.Chat(line) end
@@ -1036,8 +1036,9 @@ function P.Command(rest)
   local word = (rest or ""):lower():match("^%s*(%S*)")
   if word == "fight" then return P.Fight() end
   if word == "last" then return P.Last() end
+  if word == "legacy" then return P.Legacy() end
   if word == "" or word == "chat" then return P.Run(word == "chat") end
-  ns.Chat(ns.Literal("Usage: /vg probe [chat|fight|last]  (one run asks the client the open questions and saves the answers)"))
+  ns.Chat(ns.Literal("Usage: /vg probe [chat|fight|last|legacy]  (one run asks the client the open questions and saves the answers)"))
 end
 
 -- A new id for this session, so a saved record from an earlier one can be told apart.

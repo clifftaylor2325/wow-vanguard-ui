@@ -1,7 +1,7 @@
 // raid: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, HEALING_ENV, RAID_ENV, RISE, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, overlaps, raidButton, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, HEALING_ENV, RAID_ENV, RISE, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, overlaps, raidButton, setCombat } from "./helpers.mjs";
 
 it("a unit event reaches only the tile showing that unit", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
@@ -535,6 +535,14 @@ it("raid frames: missing health stays in a fight, from the client's own secret n
 const hoverTile = (addon, name, script = "OnEnter") => addon.eval(`local b = ${name}
   b:GetScript("${script}")(b)
   return { owned = GameTooltip:GetOwner() == b, unit = GameTooltip.__unit, shown = GameTooltip:IsShown() }`);
+
+it("L8 a raid tile's own scripts run under ns.Guard: an error in one goes to /vg errors", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  addon.eval('local b = Vanguard_RaidUnitButton1 b.hover.Show = function() error("TEST-ONLY hover") end b:GetScript("OnEnter")(b)');
+  expect(addon.eval("return ns.errors[#ns.errors].text"), "the hover error is caught and recorded under the handler's name").toContain("raid tile hover");
+  expectErrors(/^raid tile hover: eval:\d+: TEST-ONLY hover$/);
+});
 
 it("raid frames: hovering a tile out of combat shows its unit's tooltip; a fight hides it and keeps it away", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);

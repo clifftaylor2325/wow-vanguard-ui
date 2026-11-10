@@ -33,7 +33,7 @@ One page per area, each with everything that part of Vanguard does:
 - [Chat](docs/features/chat.md): the chat window and its extras: watch, filter, history, windows, tabs, search, bubbles and the group board.
 - [Map, minimap, bags and more](docs/features/map-and-minimap.md): XP and reputation bars, the square minimap, bags and the rest of the everyday HUD, the strip under the minimap, the broker strip, the minimap drawer and waypoints.
 - [Quests](docs/features/quests.md): the quest dialog, tracker, log, history, guidance, arrow, minimap spots and automation.
-- [Town and gear](docs/features/town-and-gear.md): crafting, mail, pets, the character sheet, other characters' items, gear upgrades, merchants, spell ranks, errands, instance prep, the talent planner and Legacy.
+- [Town and gear](docs/features/town-and-gear.md): crafting, mail, the character sheet, other characters' items, gear upgrades, merchants, spell ranks, errands, instance prep and the talent planner.
 - [Auction house](docs/features/auction-house.md): the auction helper, deals, upgrades, price alerts, disenchant values, the sales ledger, crafting costs and prices for other addons.
 - [Options and setup](docs/features/options-and-setup.md): the options window, other addons, the first-run setup, the settings guard, What's new, situations and presets for other addons.
 
