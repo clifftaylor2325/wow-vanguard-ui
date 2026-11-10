@@ -174,9 +174,14 @@ end
 
 -- Releases what a module that failed to build registered through its scope: its gates shut at once, the rest out of
 -- combat (a /reload in a fight runs the login pass in combat, and hiding a secure frame is protected).
+-- Its own Disable runs too (under ns.Try), for what it did outside the scope before it failed. The module is marked
+-- failed: no settle builds it again until its own switch or one of its settings changes.
 local function releaseFailed(def)
-  def.scope.on = false
-  ns.OutOfCombat(function() def.scope:Close() end, def.scope)
+  def.scope.on, def.failed = false, true
+  ns.OutOfCombat(function()
+    if def.Disable then ns.Try("disable " .. def.name, def.Disable, ns.Settings(def.name, def.defaults)) end
+    def.scope:Close()
+  end, def.scope)
 end
 
 -- Builds one module; a failure, in its settings' upgrade too, is reported (see ns.Report) instead of stopping the
@@ -187,10 +192,11 @@ local function start(def)
   if not def.enabled and def.scope then releaseFailed(def) end
 end
 
--- Takes a running live module down: its own Disable first (what the scope can't see), then its scope.
+-- Takes a running live module down: its own Disable first (what the scope can't see), then its scope. Either may
+-- fail (reported); the module is off all the same, so the settle goes on.
 local function takeDown(def)
   if def.Disable then ns.Try("disable " .. def.name, def.Disable, ns.Settings(def.name, def.defaults)) end
-  def.scope:Close()
+  ns.Try("stop " .. def.name, def.scope.Close, def.scope)
   def.enabled = false
 end
 
@@ -214,7 +220,7 @@ end
 local function startPass()
   for _, name in ipairs(order) do
     local def = modules[name]
-    if def.live and def.Enable and not running(def) and startable(def) then start(def) end
+    if def.live and def.Enable and not def.failed and not running(def) and startable(def) then start(def) end
   end
 end
 
@@ -256,16 +262,19 @@ end
 function ns.SetModuleEnabled(name, on)
   ns.Settings("modules")[name] = on and true or false
   local def = modules[name]
+  if def then def.failed = nil end
   if not on and def and def.Disable and not def.live then ns.Try("disable " .. name, def.Disable, ns.Settings(name, def.defaults)) end
   ns.SettleModules()
 end
 
--- Builds a running live module again, out of combat (a setting that changes its shape: O.RestartSetting). Any
--- other module is left alone: its settings apply at the reload.
+-- Builds a running live module again, out of combat (a setting that changes its shape: O.RestartSetting); one whose
+-- start failed is tried again. Any other module is left alone: its settings apply at the reload.
 ---@param name string
 function ns.RestartModule(name)
   local def = modules[name]
-  if not (def and def.live and running(def)) then return end
+  if not (def and def.live) then return end
+  if def.failed then def.failed = nil return ns.SettleModules() end
+  if not running(def) then return end
   life.restarts[name] = true
   ns.SettleModules()
 end

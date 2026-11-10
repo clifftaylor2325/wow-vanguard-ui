@@ -568,3 +568,15 @@ it("lifecycle: a mover with a saved opacity, toggled three times, hooks its fram
   expect(hooks()).toBe(first);
   expect(addon.eval("return VanguardTest_Scoped:GetAlpha()")).toBe(0.5);
 });
+
+it("lifecycle: a module whose start failed gets its own Disable, and a change of one of its settings tries it again", () => {
+  expectErrors("module TestFlaky: flaky");
+  const addon = lifeAddon("", `${MODULES}
+    __life.flaky, __life.undone = true, 0
+    local F = ns.Module("TestFlaky", { defaults = {}, live = true })
+    function F.Enable() if __life.flaky then error("flaky", 0) end end
+    function F.Disable() __life.undone = __life.undone + 1 end`);
+  expect(addon.eval('return { ns.ModuleLive("TestFlaky"), __life.undone }')).toEqual([false, 1]);
+  addon.eval('__life.flaky = false ns.RestartModule("TestFlaky")');
+  expect(addon.eval('return ns.ModuleLive("TestFlaky")')).toBe(true);
+});
