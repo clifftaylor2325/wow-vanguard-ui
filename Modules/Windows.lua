@@ -145,6 +145,8 @@ do
 
   -- Lays a frame's backdrop just under it: in its strata, one level below it (the game moves a popup to another
   -- parent and level as it shows one), shown while the frame is visible and has what the backdrop waits for.
+  -- The game's frame may answer IsVisible with a secret (a widget container the client drives): it counts as
+  -- hidden (ns.IsTrue), never truth-tested or handed to SetShown, either of which raises from addon code.
   -- A frame without a backdrop is skipped.
   ---@param frame table
   function GW.FitBackdrop(frame)
@@ -152,7 +154,7 @@ do
     if not back then return end
     back:SetFrameStrata(frame:GetFrameStrata())
     back:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
-    back:SetShown(frame:IsVisible() and (when == nil or when(frame)))
+    back:SetShown(ns.IsTrue(frame:IsVisible()) and (when == nil or ns.IsTrue(when(frame))))
   end
 
   -- Hides a frame's backdrop as the frame hides.
@@ -195,13 +197,13 @@ local function onBackdrop(frame)
 end
 
 -- What a window's backdrop waits for (GW.Backdrop's `when`): the child it shows with being shown, for a window in
--- GW.PANEL_SHOWN_WITH; nil, nothing, for any other.
+-- GW.PANEL_SHOWN_WITH; nil, nothing, for any other. A secret answer counts as hidden.
 local function shownWith(frame)
   local child = GW.PANEL_SHOWN_WITH[frame:GetName() or ""]
   if not child then return nil end
   return function()
     local part = _G[child]
-    return type(part) == "table" and part:IsShown()
+    return type(part) == "table" and ns.IsTrue(part:IsShown())
   end
 end
 
