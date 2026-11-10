@@ -218,7 +218,7 @@ function MT.Paint()
   local list = MT.Sources()
   f.title:SetText(MT.TitleText())
   f.empty:SetText(MT.EmptyText())
-  f.empty:SetShown(list == nil or list[1] == nil)
+  f.empty:SetShown(lineAt(list, 1) == nil)
   paintRows(f, list)
 end
 
