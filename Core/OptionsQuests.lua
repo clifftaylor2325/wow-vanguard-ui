@@ -70,8 +70,7 @@ end
 
 -- Whether quest history is on (its module and its switch), so its list has something to say.
 local function historyOn()
-  local settings = ns.GetModule("QuestHistory").settings
-  return settings ~= nil and settings.track == true
+  return ns.GetModule("QuestHistory").On()
 end
 
 -- Quest history: which character finished each quest.

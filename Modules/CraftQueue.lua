@@ -26,7 +26,12 @@ local T, W = ns.Theme, ns.Widgets
 local AH = ns.GetModule("AuctionHelper")
 local AP, CR = ns.AuctionPrices, AH.Crafting
 
-local CQ = ns.Module("CraftQueue", { defaults = { on = false, secs = 6 } })
+local CQ = ns.Module("CraftQueue", { defaults = { on = false, secs = 6 }, live = true })
+
+-- Whether the queue works now: the module runs and its own switch (Town and gear -> Craft queue) is on.
+function CQ.Active()
+  return CQ.scope ~= nil and CQ.scope:Running() and CQ.settings ~= nil and CQ.settings.on == true
+end
 
 -- The most recipes read for a ranking or a cooldown scan, and how many lines the ranking prints.
 CQ.SCAN, CQ.TOP = 300, 5
@@ -217,7 +222,7 @@ end
 
 -- Reads the open profession's recipe cooldowns (out of combat, while the tracker is on).
 function CQ.Scan()
-  if not CQ.settings.on or ns.InCombat() then return end
+  if not CQ.Active() or ns.InCombat() then return end
   local cooldowns = CQ.Mine().cooldowns
   for _, id in ipairs(recipeIDs()) do noteCooldown(cooldowns, id) end
 end
@@ -398,6 +403,7 @@ function CQ.Build()
   addList(f)
   addButtons(f)
   CQ.frame = f
+  CQ.scope:Frame(f)
   f:Hide()
   return f
 end
@@ -413,7 +419,7 @@ end
 -- Whether the panel belongs on the screen: the switch is on and the recipe form of the profession window shows.
 local function wanted()
   local form = CR.Form()
-  return CQ.settings and CQ.settings.on and form and form:IsVisible()
+  return CQ.Active() and form and form:IsVisible()
 end
 
 -- Shows or hides the panel for the profession window, built the first time it is wanted (out of combat), and paints it.
@@ -438,13 +444,14 @@ function CQ.Repaint()
   if CQ.frame and CQ.frame:IsShown() then CQ.Paint() end
 end
 
--- Hooks the profession window's form once (the cost panel's hook is separate): showing it opens the panel, hiding it hides it.
+-- Hooks the profession window's form once (the cost panel's hook is separate): showing it opens the panel, hiding it
+-- hides it. The hooks are gates: they stay on the game's form and do nothing while the module is stopped.
 function CQ.HookForm()
   local form = CR.Form()
   if CQ.hooked or not form or type(form.HookScript) ~= "function" then return end
   CQ.hooked = true
-  form:HookScript("OnShow", ns.Guard("craft queue panel show", CQ.Open))
-  form:HookScript("OnHide", ns.Guard("craft queue panel hide", CQ.Show))
+  CQ.scope:Gate("form show", CQ.Open, function(gate) form:HookScript("OnShow", ns.Guard("craft queue panel show", gate)) end)
+  CQ.scope:Gate("form hide", CQ.Show, function(gate) form:HookScript("OnHide", ns.Guard("craft queue panel hide", gate)) end)
 end
 
 -- The command ---------------------------------------------------------------------------------
@@ -455,7 +462,7 @@ local PLAIN = { next = "Next", stock = "Stock", cd = "Cooldowns", top = "Top", d
 -- /vg craft [add [n]|next|stock|cd|top|done|clear].
 function CQ.Command(rest)
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)$")
-  if not CQ.settings or not CQ.settings.on then return ns.Chat(L["The craft queue is off (/vg > Town and gear > Craft queue)."]) end
+  if not CQ.Active() then return ns.Chat(L["The craft queue is off (/vg > Town and gear > Craft queue)."]) end
   if word == "add" then return CQ.AddShown(arg) end
   if word == "clear" then return CQ.Clear() end
   if PLAIN[word] then return CQ[PLAIN[word]]() end
@@ -464,7 +471,7 @@ end
 
 -- A craft finished: your cast of the first queued recipe's spell, out of combat, comes off the queue.
 function CQ.OnCast(_, unit, _, spellID)
-  if not CQ.settings.on or unit ~= "player" or ns.InCombat() then return end
+  if not CQ.Active() or unit ~= "player" or ns.InCombat() then return end
   local id = ns.PlainNumber(spellID)
   local first = CQ.Mine().queue[1]
   if id and first and first.id == id then CQ.Done(id) end
@@ -520,21 +527,30 @@ local function moveFromProfiles()
   end
 end
 
--- The cost panel painting moves the panel under it (and a profession window that closed hides it).
+-- The cost panel painting moves the panel under it (and a profession window that closed hides it). A client
+-- without hooksecurefunc gets no hook; the gate keeps it from being installed twice across a stop and a start.
 function CQ.HookCostPanel()
   if type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(CR, "Paint", ns.Guard("craft queue panel", CQ.Show))
+  CQ.scope:Gate("cost panel", CQ.Show, function(gate) hooksecurefunc(CR, "Paint", ns.Guard("craft queue panel", gate)) end)
 end
 
--- Module entry point (Core/Modules.lua): every part checks its switch as it runs.
-function CQ.Enable(settings)
+-- Module entry point (Core/Modules.lua): every part checks its switch as it runs. The events go through the scope;
+-- the panel (built when a profession window first wants it) is kept and handed to the new scope at a later start.
+function CQ.Enable(settings, scope)
   CQ.settings = settings
   moveFromProfiles()
-  ns.OnUnit("UNIT_SPELLCAST_SUCCEEDED", ns.Guard("craft queue", CQ.OnCast), "player")
-  ns.On("TRADE_SKILL_LIST_UPDATE", ns.Guard("craft cooldowns", CQ.Scan))
-  ns.On("ADDON_LOADED", function(_, name) if name == "Blizzard_Professions" then CR.Hook() CQ.HookForm() end end)
-  ns.On("TRADE_SKILL_SHOW", function() CR.Hook() CQ.HookForm() CQ.Open() end)
-  ns.On("TRADE_SKILL_CLOSE", function() CQ.Show() end)
-  ns.On("BAG_UPDATE_DELAYED", function() ns.Soon("craftqueuebags", CQ.Repaint) end)
+  scope:OnUnit("UNIT_SPELLCAST_SUCCEEDED", ns.Guard("craft queue", CQ.OnCast), "player")
+  scope:On("TRADE_SKILL_LIST_UPDATE", ns.Guard("craft cooldowns", CQ.Scan))
+  scope:On("ADDON_LOADED", function(_, name) if name == "Blizzard_Professions" then CR.Hook() CQ.HookForm() end end)
+  scope:On("TRADE_SKILL_SHOW", function() CR.Hook() CQ.HookForm() CQ.Open() end)
+  scope:On("TRADE_SKILL_CLOSE", function() CQ.Show() end)
+  scope:On("BAG_UPDATE_DELAYED", function() ns.Soon("craftqueuebags", CQ.Repaint) end)
   CQ.HookCostPanel()
+  CQ.Adopt(scope)
+end
+
+-- Hands the panel, if it was built in an earlier run, to the new scope, and shows it when a profession window is open.
+function CQ.Adopt(scope)
+  if CQ.frame then scope:Frame(CQ.frame) end
+  CQ.Show()
 end

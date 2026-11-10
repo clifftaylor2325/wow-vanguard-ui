@@ -21,7 +21,12 @@ local L = ns.L
 
 local T, W = ns.Theme, ns.Widgets
 
-local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} } })
+local MT = ns.Module("MailTools", { defaults = { on = false, presets = {} }, live = true })
+
+-- Whether the tools work now: the module runs and its own switch (Town and gear -> Mail tools) is on.
+function MT.Active()
+  return MT.scope ~= nil and MT.scope:Running() and MT.settings ~= nil and MT.settings.on == true
+end
 
 -- The panel's width and padding (a HUD card's, T.SPACE.gap), a row's height (T.ROW.height), rows, preset buttons,
 -- the last bag read (the backpack, the four bags, then the reagent bag, Enum.BagIndex.ReagentBag), the game's
@@ -250,7 +255,7 @@ end
 -- Runs a run's steps one at a time (the game needs a moment between them), stopping when the mailbox
 -- closes, combat starts or no step is left; says how many steps went through of those planned.
 function MT.Run(run)
-  if not MT.mailOpen or ns.InCombat() or not run.step(run) then
+  if not MT.Active() or not MT.mailOpen or ns.InCombat() or not run.step(run) then
     MT.running = nil
     return ns.Chat(ns.Format(L["{run}: {done} of {total} done."], { run = run.label, done = run.done, total = run.total }))
   end
@@ -410,7 +415,7 @@ end
 
 -- Draws the panel: shown while the mailbox is open and the tools are on; the matches in its rows.
 function MT.Paint()
-  local open = MT.settings and MT.settings.on and type(MailFrame) == "table" and MailFrame:IsVisible()
+  local open = MT.Active() and type(MailFrame) == "table" and MailFrame:IsVisible()
   local f = MT.frame or (open and MT.Build())
   if not f then return end
   f:SetShown(open and true or false)
@@ -534,14 +539,25 @@ local function slot(i)
   return MT.PAD + (i - 1) * (PRESET_W + T.SPACE.tight)
 end
 
+-- Hides the game's tooltip when the mouse leaves a preset button.
+function MT.HideTip()
+  GameTooltip:Hide()
+end
+
+-- Hooks a preset button's hover tooltip through the scope's gates (one pair per button, installed once a session;
+-- the panel is hidden while the module is off, so they are idle then too).
+local function hookTip(b, i)
+  MT.scope:Gate("preset enter " .. i, MT.PresetTip, function(gate) b:HookScript("OnEnter", ns.Guard("mail preset tip", gate)) end)
+  MT.scope:Gate("preset leave " .. i, MT.HideTip, function(gate) b:HookScript("OnLeave", ns.Guard("mail preset tip", gate)) end)
+end
+
 -- Preset button i: a click sends its preset, a right-click asks to remove it; pointing at it says what it sends.
 local function presetButton(f, i)
   local b
   b = W.Button(f, L["Preset"], function(_, button) MT.PresetClick(b.preset, button) end, PRESET_W)
   b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   b:SetPoint("BOTTOMLEFT", slot(i), MT.PAD)
-  b:HookScript("OnEnter", ns.Guard("mail preset tip", function(self) MT.PresetTip(self) end))
-  b:HookScript("OnLeave", ns.Guard("mail preset tip", function() GameTooltip:Hide() end))
+  hookTip(b, i)
   return b
 end
 
@@ -577,6 +593,7 @@ function MT.Build()
   buildBulk(f)
   buildPresets(f)
   MT.frame = f
+  MT.scope:Frame(f)
   return f
 end
 
@@ -704,7 +721,7 @@ end
 -- /vg mail [words]|preset ...|send <name>|takeall|returnall.
 function MT.Command(rest)
   rest = rest or ""
-  if not MT.settings or not MT.settings.on then return ns.Chat(L["The mail tools are off (/vg > Town and gear > Mail tools)."]) end
+  if not MT.Active() then return ns.Chat(L["The mail tools are off (/vg > Town and gear > Mail tools)."]) end
   local word, arg = rest:match("^(%S*)%s*(.-)$")
   if word == "preset" then return MT.PresetCommand(arg) end
   if word == "send" then return MT.Send(arg) end
@@ -713,10 +730,19 @@ function MT.Command(rest)
   MT.Search(rest)
 end
 
--- Module entry point (Core/Modules.lua): the panel follows the mailbox.
-function MT.Enable(settings)
+-- Whether the mailbox is open now (a start made at the mailbox, as when the module is switched on there).
+local function mailboxOpen()
+  return type(MailFrame) == "table" and MailFrame:IsVisible() == true
+end
+
+-- Module entry point (Core/Modules.lua): the panel follows the mailbox. The events go through the scope; the panel
+-- is built when the mailbox first opens with the tools on, kept, and handed to the new scope at a later start.
+function MT.Enable(settings, scope)
   MT.settings = settings
-  ns.On("MAIL_SHOW", ns.Guard("mail tools", function() MT.mailOpen, MT.offset = true, 0 MT.Paint() MT.PaintPresets() end))
-  ns.On("MAIL_INBOX_UPDATE", ns.Guard("mail tools", MT.Paint))
-  ns.On("MAIL_CLOSED", ns.Guard("mail tools", function() MT.mailOpen = false if MT.frame then MT.frame:Hide() end end))
+  scope:On("MAIL_SHOW", ns.Guard("mail tools", function() MT.mailOpen, MT.offset = true, 0 MT.Paint() MT.PaintPresets() end))
+  scope:On("MAIL_INBOX_UPDATE", ns.Guard("mail tools", MT.Paint))
+  scope:On("MAIL_CLOSED", ns.Guard("mail tools", function() MT.mailOpen = false if MT.frame then MT.frame:Hide() end end))
+  if MT.frame then scope:Frame(MT.frame) end
+  MT.mailOpen = mailboxOpen()
+  MT.Paint()
 end

@@ -19,7 +19,7 @@ local L = ns.L
 
 local T = ns.Theme
 
-local IV = ns.Module("Inventory", { defaults = { alts = true } })
+local IV = ns.Module("Inventory", { defaults = { alts = true }, live = true })
 
 -- The bags read: key ring, backpack, the four bags, the reagent bag (an empty id reads as no slots).
 IV.BAGS = { -1, 0, 1, 2, 3, 4, 5 }
@@ -100,9 +100,16 @@ function IV.OnPlayed(_, total)
   IV.Mine().played = ns.PlainNumber(total)
 end
 
--- Reads the bags now, and the bank too while it's open.
+-- Whether the module runs now (stopped, nothing new is read; the records it kept stay).
+function IV.Active()
+  return IV.scope ~= nil and IV.scope:Running()
+end
+
+-- Reads the bags now, and the bank too while it's open; nothing once the module is stopped (a scan still waiting
+-- for its timer ends here).
 function IV.Scan()
   IV.pending = false
+  if not IV.Active() then return end
   IV.Vitals()
   local mine = IV.Mine()
   mine.bags, mine.updated = countIn(IV.BAGS), ns.AuctionPrices.Now()
@@ -290,15 +297,22 @@ function IV.AltsCommand(rest)
   ns.Chat(ns.Format(L["No character called {name} is remembered here."], { name = rest }))
 end
 
--- Module entry point (Core/Modules.lua): reads the bags at login, then as they change.
-function IV.Enable(settings)
+-- Module entry point (Core/Modules.lua): reads the bags at login, then as they change. The events go through the
+-- scope; the tooltip lines through a gate (the item tooltip's list can't give a line back).
+function IV.Enable(settings, scope)
   IV.settings = settings
-  ns.GetModule("Tooltips").AddItemLines(IV.AddLines)
-  ns.On("BAG_UPDATE_DELAYED", IV.OnChanged)
-  ns.On("TIME_PLAYED_MSG", IV.OnPlayed)
-  ns.On("PLAYER_LOGOUT", IV.Vitals)
-  ns.On("PLAYERBANKSLOTS_CHANGED", IV.OnChanged)
-  ns.On("BANKFRAME_OPENED", IV.OnBankOpened)
-  ns.On("BANKFRAME_CLOSED", IV.OnBankClosed)
+  scope:Gate("item lines", IV.AddLines, ns.GetModule("Tooltips").AddItemLines)
+  scope:On("BAG_UPDATE_DELAYED", IV.OnChanged)
+  scope:On("TIME_PLAYED_MSG", IV.OnPlayed)
+  scope:On("PLAYER_LOGOUT", IV.Vitals)
+  scope:On("PLAYERBANKSLOTS_CHANGED", IV.OnChanged)
+  scope:On("BANKFRAME_OPENED", IV.OnBankOpened)
+  scope:On("BANKFRAME_CLOSED", IV.OnBankClosed)
   IV.Scan()
+end
+
+-- Switched off: the bank counts as closed (its close event is no longer heard), so the next start reads the
+-- bags only until the bank opens again.
+function IV.Disable()
+  IV.bankOpen = false
 end
