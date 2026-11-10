@@ -287,3 +287,53 @@ it("H34-17-1 two profiles holding one alt recipe keep the note ready later, not 
   expect(say(addon, "craft cd", / Alt-Realm: TEST-ONLY Alt Bag, 10h 0m$/), "the newer cast shows its 10 hours").toBe(true);
   expect(chatHas(addon, /Alt Bag, ready/), "the stale note is not kept").toBe(false);
 });
+
+// The panel beside the profession window, as the player sees it: [shown, row texts, note, add/next/clear enabled].
+const panel = (addon) => addon.eval(`
+  local f = ${CQ}.frame
+  if not f then return { false } end
+  local rows = {}
+  for i = 1, f.rows.used do rows[i] = f.rows[i].text:GetText() end
+  return { f:IsShown(), rows, f.note:GetText(), f.next:IsEnabled() and true or false, f.clear:IsEnabled() and true or false }
+`);
+
+it("shows a panel beside the profession window: rows, what is short, remove, add, next and clear", () => {
+  const addon = crafter("C_Item.GetItemCount = function() return 0 end");
+  expect(panel(addon)[0], "no panel before a profession opens").toBe(false);
+  addon.world.openProfession(100);
+  expect(panel(addon).slice(0, 3).map((v) => (typeof v === "object" ? Object.values(v) : v)), "shown, empty").toEqual([true, [], "Nothing queued. Pick a recipe, then Add to queue."]);
+  expect(panel(addon).slice(3), "next and clear wait for something queued").toEqual([false, false]);
+  addon.eval(`${CQ}.frame.add:Click()`);
+  addon.eval(`${CQ}.frame.add:Click()`);
+  addon.world.selectRecipe(102);
+  addon.eval(`${CQ}.frame.add:Click()`);
+  const [shown, rows, note, next, clear] = panel(addon);
+  expect([shown, Object.values(rows), next, clear], "two recipes").toEqual([true, ["2 x TEST-ONLY Linen Bag", "1 x TEST-ONLY Bandage"], true, true]);
+  expect(note, "the shortage").toMatch(/^Short of: .*Coarse Thread x2/);
+  addon.eval(`${CQ}.frame.next:Click()`);
+  expect(chatHas(addon, /Next: 2 x TEST-ONLY Linen Bag/), "Next").toBe(true);
+  addon.eval(`${CQ}.frame.rows[1].remove:Click()`);
+  expect(queue(addon), "the first entry is removed").toEqual([[102, 1]]);
+  expect(Object.values(panel(addon)[1]), "the row went").toEqual(["1 x TEST-ONLY Bandage"]);
+  addon.eval(`${CQ}.frame.clear:Click()`);
+  expect(Object.values(queue(addon)), "cleared").toEqual([]);
+  addon.slash("craft add");
+  expect(Object.values(panel(addon)[1]), "a command repaints it too").toEqual(["1 x TEST-ONLY Bandage"]);
+  addon.world.closeProfession();
+  expect(panel(addon)[0], "hidden with the window").toBe(false);
+});
+
+it("docks the panel under the cost panel while that shows, and builds nothing in combat or while off", () => {
+  const off = crafter("", "");
+  off.world.openProfession(100);
+  expect(panel(off)[0], "off: no panel").toBe(false);
+  const addon = loggedIn(ENV, { savedVariables: ON });
+  addon.world.combat(true);
+  addon.world.openProfession(100);
+  expect(panel(addon)[0], "no panel is made in a fight").toBe(false);
+  addon.world.combat(false);
+  expect(panel(addon)[0], "made when the fight ends").toBe(true);
+  addon.eval("__price(2589, 10) ns.AuctionPrices.Record(4238, 500, __now)");
+  addon.world.selectRecipe(100);
+  expect(addon.eval(`local _, rel = ${CQ}.frame:GetPoint() return rel:GetName()`), "under the cost panel").toBe("Vanguard_CraftingPanel");
+});

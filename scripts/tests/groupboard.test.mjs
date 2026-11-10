@@ -234,7 +234,12 @@ it("group board: the filter, the level switch, the note, more posts than rows, a
   expect(rows(addon).length, "the switch off shows it").toBe(1);
   for (let i = 1; i <= 12; i++) post(addon, `LFG MC ${i}`, `Raider${i}`);
   addon.update(0);
-  expect([rows(addon).length, status(addon)], "ten rows and the rest counted; a raid shows one level").toEqual([10, ["13 posts", "+3 more"]]);
+  expect([rows(addon).length, status(addon)], "a row for every post, none cut off; a raid shows one level").toEqual([13, ["13 posts", ""]]);
+  expect(addon.eval(`local v = Vanguard_GroupBoard.body return { v.child:GetHeight(), v:GetHeight(), v.thumb:IsShown() }`), "the content is taller than the view, so the thumb shows").toEqual([13 * 28, 10 * 28, true]);
+  addon.eval("local v = Vanguard_GroupBoard.body v.__scripts.OnMouseWheel(v, -1)");
+  expect(addon.eval("return Vanguard_GroupBoard.body:GetVerticalScroll()"), "the wheel scrolls toward the posts past the tenth").toBeGreaterThan(0);
+  addon.eval("Vanguard_GroupBoard.body:ScrollTo(10000)");
+  expect(addon.eval("local v = Vanguard_GroupBoard.body return v:GetVerticalScroll() == v.child:GetHeight() - v:GetHeight()"), "the last post is reachable").toBe(true);
   expect(rows(addon)[0][1], "a raid's single level").toBe("Molten Core 60");
   addon.eval('__click("All posts")');
   expect([addon.eval("return Vanguard_GroupBoard.filter.text:GetText()"), status(addon)[0]], "looking for more only").toEqual(["Looking for more", "1 posts"]);
@@ -410,7 +415,7 @@ it("H29-6-R1 a post row lights under the mouse and its tooltip script still runs
   post(addon, "LFM SFK need heals", "Lightmend-Ruleset");
   addon.slash("lfg");
   addon.eval(`local f = Vanguard_GroupBoard
-    for _, w in ipairs({ f.body:GetChildren() }) do if w.kind and w.dungeon then __row = w end end
+    for _, w in ipairs({ f.body.child:GetChildren() }) do if w.kind and w.dungeon then __row = w end end
     __tips = 0 local show = GameTooltip.Show GameTooltip.Show = function(...) __tips = __tips + 1 return show(...) end
     __row:GetScript("OnEnter")(__row)`);
   expect(addon.eval("return { ns.Theme.RowParts(__row).hover:IsShown(), __tips > 0 }"), "hover wash on, tooltip shown").toEqual([true, true]);

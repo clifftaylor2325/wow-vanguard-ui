@@ -28,6 +28,8 @@ local AB = ns.Module("ActionBars", {
     -- A macro's name along the bottom of its button, and the key text in the top corner (both live).
     macroNames = true,
     hotkeys = true,
+    -- The letter layout of the Your keys picture: "auto" (the client locale's), "qwerty", "qwertz" or "azerty".
+    keyLayout = "auto",
     -- Per bar: on/off, buttons shown, buttons per row, and visibility
     -- (always, mouseover, combat or hidden). A bar's own `size` wins over
     -- the shared size above once the player sets one. The right-edge bars

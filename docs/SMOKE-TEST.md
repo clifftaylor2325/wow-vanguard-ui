@@ -1266,6 +1266,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: icons and short key names on bound keys, tooltips with the place ("Bar 2 button 1") and the spell; the tabs follow the held modifier; the list under the keyboard matches the caps; nothing is written (check Key Bindings is unchanged); the tab stays open in combat; no error.
 - If it fails, paste: a screenshot, your keyboard layout, and `/vg errors`.
 
+### 10.4d Your keys: function row, number pad and layout
+
+- Do: open /vg, Action bars, the Your keys tab. Bind a spell to F5 and to a number pad key (for example 7), reopen the tab. Open the dropdown at the right of the tabs and pick QWERTZ, then AZERTY, then Automatic. Hold Shift.
+- Expect: a row of F1 to F12 over the number row and the number pad right of the letters, all inside the card; F5 and the pad key show their icon and name; QWERTZ swaps Y and Z, AZERTY moves A, Z, Q, W and M as on a French keyboard; Automatic matches your client's language; every key still shows what is on it and the Shift tab repaints them; no error.
+- If it fails, paste: a screenshot, your keyboard layout, and `/vg errors`.
+
 ### 10.4b Long keys stay on one line
 
 - Do: bind Page Up, Insert, Caps Lock and Shift+Ctrl+Alt+Delete to four bar 1 buttons in the game's Key Bindings, then look at the buttons at your smallest button size.
@@ -2161,6 +2167,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: a line per read: `present, <number or flag>`, `present, hidden` for a value the client hides, `present, not called (no quest)` with an empty log, or `missing`; a table reads `table of N` and a map position `position plain`. After the turn-in the `QUEST_TURNED_IN` line says `first arguments number, number` (or names the type it is); `QUEST_ACCEPTED` the same after you accept one. Nothing else on screen changes.
 - If it fails, paste: the whole `/vg guide probe` output from each place, which lines say `hidden` or `missing`, and `/vg errors`.
 
+### 18.2a Group board scrolls
+
+- Do: leave the group board open in a busy city until its title counts more than ten posts. Turn the mouse wheel over the list and drag the thumb at its right edge.
+- Expect: the list scrolls so every post is reachable, with a thumb at the right; the last line under the rows is empty while posts show; hovering a row still shows its line and a click still opens a whisper; no error.
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ## 19. Roll tracker
 
 ### 19.1 /roll results
@@ -2188,6 +2200,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Do: with the queue on, open a profession that has a cooldown (a transmute, say), then `/vg craft cd`. Visit the auction house, open a profession again and type `/vg craft top`.
 - Expect: `cd` lists the cooldown with its time left, for each character that noted one; `top` lists up to five recipes that pay best, per craft and per hour at the pace set under Craft queue. [Needs in game: whether C_TradeSkillUI.GetAllRecipeIDs and GetRecipeCooldown exist on Forever (the docs list neither). If not, `cd` only knows the recipe you selected, queued or already noted, with the time from C_Spell.GetSpellCooldown on the recipe's spell; select a transmute (or any recipe with a cooldown) in its profession window, then `/vg craft cd`. Also: that a recipe's spell cooldown is what the profession window shows, and that reading a few hundred recipes causes no stutter.]
 - If it fails, paste: `/vg errors` what `/run print(C_TradeSkillUI.GetAllRecipeIDs ~= nil, C_TradeSkillUI.GetRecipeCooldown ~= nil)` prints, and `/run print(C_Spell.GetSpellCooldown(<a recipe's spell ID>))`.
+
+### 20.3 The queue panel (off until switched on: /vg > Town and gear > Craft queue)
+
+- Do: switch the craft queue on, open a profession and pick a recipe. Press Add to queue twice, pick another recipe and press it once. Press Next, then Remove on the first row, then Clear. Queue five or more recipes to see the list scroll. Close the profession window.
+- Expect: a small panel sits under the crafting cost panel (or beside the window when that is off) with a row per queued recipe ("2 x <recipe>") and a note of the reagents you are short of; Next and Clear are greyed while nothing is queued; Remove and Clear change the list at once; the wheel and the thumb scroll a long list; the panel goes with the window; nothing is crafted for you.
+- If it fails, paste: `/vg errors`.
 
 ## 21. Presets (batch 2)
 
@@ -3725,6 +3743,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: on WoW Forever, open the bank and look at the page tabs on its right side, the row of bank bag slots at its foot and, with a bag slot left to buy, the Bag Slots and Costs lines, the money and the Purchase button; then switch pages.
 - Expect: the page tabs are the theme's side tabs, clear of the panel's edge, with their picture kept and the shown page raised; the bag slots take the item-slot look; the lines, money and Purchase button are in the theme, still after the page switch.
 - If it fails, paste: a screenshot of the bank and the `/vg errors` output.
+
+### 10.9b Talent plan order (WoW Forever)
+
+- Do: open the talents window, switch Plan on and plan two talents in different rows. Press Order... on the bar. Press Up on the lower one, then Top row first. Set the order again and, with points to spend, press Spend planned.
+- Expect: the list shows each planned talent numbered with the points still to buy; Up and Down reorder it at once; Top row first puts it back top row first; Spend planned buys in the list's order (a talent whose row is not open yet waits) and applies as before; nothing changes in a fight; no error.
+- If it fails, paste: `/vg errors`.
 
 ### 33.194 Talent planner on the other spec's tab and either-or parents (WoW Forever)
 

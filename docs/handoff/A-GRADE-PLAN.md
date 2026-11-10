@@ -173,7 +173,7 @@ Read with `docs/handoff/leonardo-art-plan.md`. That plan says how the art is mad
 Branch `work/a6-focus`. Can run alongside 5b.
 
 - [x] **A6-1** Retire or fold the placeholders: pet stable and Legacy helper out, boss docks into movers, officer roster into raid tools, graphics `apply` out. (N10) Done except: graphics `apply` stays (the second review pass found it safe), and the "List in chat" buttons stay (no small list panel was cheap).
-- [ ] **A6-2** Give the chat-only features a face or remove them: crafting queue panel, fuller keyboard with a layout choice, ordered talent plan, scrolling group board. One commit each. (N21, L20, L21)
+- [x] **A6-2** Give the chat-only features a face or remove them: crafting queue panel, fuller keyboard with a layout choice, ordered talent plan, scrolling group board. One commit each. (N21, L20, L21) Progress: crafting queue panel done; key map (function row, number pad, layout choice) done; ordered talent plan done; scrolling group board done.
 - [x] **A6-3** Locale-aware matchers for the chat filter and the group board; hide a category a locale has no words for. Then re-tick the chat filter in setup if D4 allows. (N9, M7) Per-locale lists are in `Core/MatchWords.lua`; the Filtered tab is found by a saved window number (L23, first part). Setup still leaves the chat filter unticked (D4's answer); it can be revisited once the lists are checked in the game.
 - [ ] **A6-4** Stat weights: simulate them, source them, or label the arrows as a guide. (M8)
 - [x] **A6-5** Clean non-functional third-party names from the repo per D5. (N19, L11)
