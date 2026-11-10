@@ -632,16 +632,21 @@ local function addLabels(b)
   addName(b)
 end
 
+-- The cooldown sweep over the icon, and the flash when a real cooldown ends (State cues).
+local function addCooldown(b)
+  b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
+  b.cooldown:SetAllPoints(b.icon)
+  skipShortCountdown(b.cooldown)
+  T.ReadyFlash(b, b.cooldown, function(button) return button.realSweep == true end)
+end
+
 -- The icon, attack flash, count, macro name, hotkey, cooldown and checked highlight on a button.
 local function addRegions(b)
   addIcon(b)
   addFlash(b)
   addLabels(b)
-  b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
-  b.cooldown:SetAllPoints(b.icon)
-  skipShortCountdown(b.cooldown)
+  addCooldown(b)
   b.glow = T.Glow(b, 6)
-  T.ReadyFlash(b, b.cooldown, function(button) return button.realSweep == true end)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")
   if not ns.Masque.Group(AB.MASQUE) then b.equipped = T.InnerRing(b) end
