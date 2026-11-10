@@ -45,3 +45,29 @@ it("lifecycle: fight history switched off keeps its fights for /vg fights, and a
   expect(addon.eval('return #ns.GetModule("FightHistory").fights')).toBe(1);
   expect(footprint(addon)).toEqual(footprint(loginWith()(moduleOff("FightHistory"))));
 });
+
+// Meter ---------------------------------------------------------------------------------------------------------
+
+const METER_ON = loginWith("\nVanguardDB.profiles.Default.Meter = { on = true }");
+
+lifecycleCases("Meter", METER_ON);
+lifecycleCases("Meter", loginWith());
+
+it("lifecycle: the meter switched off closes its spell panel, gives target of target its spot back and answers /vg meter as off", () => {
+  const addon = METER_ON();
+  expect(addon.eval("return ns.MeterWideFrom() > 0")).toBe(true);
+  addon.eval('local MT = ns.GetModule("Meter") MT.OpenDetail({ name = "TEST-ONLY", totalAmount = 1 })');
+  addon.eval('ns.SetModuleEnabled("Meter", false)');
+  expect(addon.eval("return { ns.MeterWideFrom(), Vanguard_MeterDetail:IsShown(), Vanguard_Meter:IsShown() }")).toEqual([0, false, false]);
+  addon.eval('ns.GetModule("Meter").Command("overall")');
+  expect(addon.eval('return ns.GetModule("Meter").settings.session')).not.toBe("Overall");
+});
+
+it("lifecycle: the meter's own switch turned on after the module started builds it once, and off then on keeps one frame", () => {
+  const addon = loginWith()();
+  expect(addon.eval("return Vanguard_Meter == nil")).toBe(true);
+  addon.eval('ns.GetModule("Meter").SetOn(true)');
+  const frames = addon.eval("return #__wfgStub.frames");
+  addon.eval('ns.SetModuleEnabled("Meter", false) ns.SetModuleEnabled("Meter", true)');
+  expect(addon.eval("return { #__wfgStub.frames, Vanguard_Meter:IsShown() }")).toEqual([frames, true]);
+});

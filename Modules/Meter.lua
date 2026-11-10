@@ -12,7 +12,7 @@ local L = ns.L
 
 local T, V, W = ns.Theme, ns.Visibility, ns.Widgets
 
-local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", session = "Current", reportTo = "chat", percent = true, rows = 8, visibility = "always", showWhen = {} } })
+local MT = ns.Module("Meter", { defaults = { on = false, kind = "Dps", session = "Current", reportTo = "chat", percent = true, rows = 8, visibility = "always", showWhen = {} }, live = true })
 
 -- The panel's width, a row's height (a bar, not a list row) and the title's (a card's heading line: T.SPACE.gap
 -- down and a control's height), the gap between rows (UI units) and the seconds between reads.
@@ -208,10 +208,15 @@ function MT.EmptyText()
   return MT.EMPTY[MT.settings.kind] or L["Nothing yet"]
 end
 
+-- Whether the module runs now: a stopped meter paints, reads and answers nothing (its scope is closed).
+function MT.Running()
+  return MT.scope ~= nil and MT.scope:Running()
+end
+
 -- Shows the panel while it's on and its visibility shows it, sized to its rows, and paints each row.
 function MT.Paint()
   local f = MT.frame
-  if not f then return end
+  if not (f and MT.Running()) then return end
   f:SetShown(MT.settings.on == true and V.Shows(f))
   f:SetHeight(MT.HEAD + MT.settings.rows * (MT.ROW + MT.GAP) + MT.GAP)
   if not f:IsShown() then return end
@@ -261,12 +266,24 @@ end
 -- target of target to keep its narrow spot up to there (Modules/UnitFrames.lua).
 ---@return number
 function ns.MeterWideFrom()
-  return MT.settings and MT.settings.on and MT.WIDE_FROM or 0
+  return MT.Running() and not MT.stopping and MT.settings.on and MT.WIDE_FROM or 0
 end
 
--- Builds the panel the first time it is wanted.
+-- The panel in the scope's hands for this run: its mover, its visibility and its read every MT.EVERY seconds (the
+-- scope's ticker, which stops with the module). Once a run: the frame and its hooks are made once a session.
+local function attach()
+  if MT.attached then return end
+  MT.attached = true
+  MT.scope:Mover(MT.frame, "meter", L["Vanguard meter"], MT.SPOT)
+  ns.MoverSizable("meter", { width = MT.WIDTHS }, MT.Resized)
+  MT.WatchVisibility(MT.frame)
+  MT.scope:Every("meter", MT.EVERY, MT.Paint, MT.frame, true)
+end
+
+-- Builds the panel the first time it is wanted in a session, and puts it in the scope's hands the first time in a run.
 local function ensure()
   if not MT.frame then build() end
+  attach()
 end
 
 -- Builds the panel when it is switched on and not yet built, then draws it.
@@ -317,7 +334,7 @@ end
 
 -- /vg meter [on|off|<kind>|<segment>|reset|report ...]: switch it, or say how it stands.
 function MT.Command(rest)
-  if not MT.settings then return MT.SayNotStarted() end
+  if not MT.Running() then return MT.SayNotStarted() end
   local word, arg = (rest or ""):lower():match("^%s*(%S*)%s*(.-)%s*$")
   if word == "reset" then return MT.Reset() end
   if word == "report" then return MT.Report(arg) end
@@ -403,14 +420,13 @@ end
 -- Applies the panel's visibility setting: now, or when combat ends. Nothing to do while the panel is not built (the
 -- meter is off): the saved setting is applied when the panel is.
 function MT.ApplyVisibility()
-  if not MT.frame then return end
+  if not (MT.frame and MT.Running()) then return end
   ns.OutOfCombat(function() V.ApplyNow(MT.frame, MT.settings.visibility, MT.settings.showWhen) end, MT.frame)
 end
 
--- Follows the panel's visibility from the start: its state's changes repaint it.
-local function watchVisibility(f)
-  f.vgOnState, f.vgCalm = MT.Paint, "meter"
-  V.WatchHover(f)
+-- Follows the panel's visibility: tracked for zone changes and applied now. Each run does it again (the stop released
+-- the driver and the tracking); the hover hooks and the repaint on a state change are on the frame once (build).
+function MT.WatchVisibility(f)
   V.Track(f, MT.ApplyVisibility)
   MT.ApplyVisibility()
 end
@@ -436,25 +452,31 @@ MT.SPOT, MT.SPOT_NARROW, MT.BARS_HALF = { "BOTTOMRIGHT", "BOTTOMRIGHT", -372, 14
 MT.WIDE_FROM = 2 * (MT.BARS_HALF + T.SPACE.gap + MT.WIDTH - MT.SPOT[3])
 MT.SPOT.narrow = { w = MT.WIDE_FROM, spot = MT.SPOT_NARROW }
 
--- The movable panel, placed by MT.SPOT so it clears the action bars. Built when
--- first needed, so an unused meter has no mover.
+-- The panel, made the first time it is wanted in a session (an unused meter has no frame, no mover and no ticker):
+-- placed by MT.SPOT when attach gives it its mover.
 function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Meter", UIParent))
   MT.frame = f
   f:SetSize(MT.WIDTH, MT.HEAD)
-  ns.Mover(f, "meter", L["Vanguard meter"], MT.SPOT)
   addChrome(f)
   f.rows = {}
   for i = 1, MT.MAXROWS do f.rows[i] = clickable(addRow(f, i)) end
-  ns.MoverSizable("meter", { width = MT.WIDTHS }, MT.Resized)
-  watchVisibility(f)
-  ns.Every("meter", MT.EVERY, MT.Paint, f, true)
+  f.vgOnState, f.vgCalm = MT.Paint, "meter"
+  V.WatchHover(f)
 end
 
--- Module entry point (Core/Modules.lua): the panel is built when it is switched on (at login if it
--- already is), and read twice a second while it shows.
-function MT.Enable(settings)
-  MT.settings = settings
-  T.OnChanged(MT.Paint)
+-- Module entry point (Core/Modules.lua): the panel is built when it is switched on (at login if it already is),
+-- and read twice a second while it shows. Everything goes through the scope; Disable (MeterDetail.lua) closes the
+-- spell breakdown, a second frame made only when a line is clicked.
+function MT.Enable(settings, scope)
+  MT.settings, MT.attached, MT.stopping = settings, false, false
+  scope:Gate("theme", function() MT.Paint() end, T.OnChanged)
   MT.Refresh()
+end
+
+-- The module is stopping (before its scope closes): target of target gets its spot back without the meter's width.
+function MT.Disable()
+  MT.stopping = true
+  ns.PlaceMover("uf_targettarget")
+  MT.CloseDetail()
 end
