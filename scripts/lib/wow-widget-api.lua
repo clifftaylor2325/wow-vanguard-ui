@@ -35,6 +35,9 @@ local REGION = {
   "SetMouseClickEnabled", "SetMouseMotionEnabled", "SetParent", "SetParentKey",
   "SetPassThroughButtons", "SetPoint", "SetScale", "SetScript", "SetShown", "SetSize",
   "SetWidth", "Show", "StopAnimating",
+  -- The secret-aspect checks: SimpleFrameScriptObjectAPIDocumentation.lua:197, :211, :228 (HasAnySecretAspect, HasSecretAspect,
+  -- HasSecretValues) on both clients, and SimpleScriptRegionAPIDocumentation.lua:414 (forever; :390 on Retail 12.1.5, IsAnchoringSecret).
+  "HasAnySecretAspect", "HasSecretAspect", "HasSecretValues", "IsAnchoringSecret",
 }
 
 -- Textures, font strings and lines.

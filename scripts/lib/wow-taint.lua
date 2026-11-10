@@ -68,11 +68,13 @@ stub.callerOf = callerOf
 local function byAddon(info)
   return info ~= nil and isAddonSource(info.source)
 end
+stub.byAddon = byAddon
 
 -- "Core/Movers.lua:187" for a stack frame.
 local function where(info)
   return info.source:sub(2) .. ":" .. tostring(info.currentline)
 end
+stub.where = where
 
 -- A widget's name for a message: its global name, else its kind and number.
 local function label(w)
@@ -438,9 +440,12 @@ for _, name in ipairs(UNTAINTED_ONLY) do C_UnitAuras[name] = untaintedOnly(name,
 --   "derived"  the regions above;
 --   "strict"   those, and every frame of the game's but UIParent (code that measures
 --              the game's frames fails: anchor to them instead).
+-- Whatever the mode, a region whose anchoring the client made secret (wow-aspects.lua: a secret the
+-- game's code gave SetPoint or SetSize, a secret texture, or world.holdSecret(w, "Anchoring")) answers
+-- with secrets, and so does anything anchored to it, until its points are cleared.
 
 -- The getters that answer with a secret when a region's geometry is (each SecretWhenAnchoringSecret in
--- the client's API documentation).
+-- the client's API documentation; wow-aspects.lua adds GetPoint, GetPointByName and the font string's other measures).
 local GEOMETRY = { "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect", "GetStringWidth", "GetUnboundedStringWidth" }
 
 -- Whether a value is a secret (the global, which a test may replace).
@@ -454,11 +459,15 @@ local function secretFill(w)
   return bar ~= nil and rawget(bar, "__barTexture") == w and (isSecret(bar.__value) or isSecret(bar.__min) or isSecret(bar.__max))
 end
 
--- Whether a region's own geometry is secret: a secret fill, secret text, or (strict) a game frame.
+-- Whether a region's own geometry is secret: anchoring the client made secret, or a secret fill, secret text,
+-- or (strict) a game frame. The "anchors" mode is only the first (wow-aspects.lua turns it on).
 local function secretItself(w)
+  if rawget(w, "__anchorSecret") then return true end
+  local mode = stub.secretGeometry
+  if mode == "anchors" then return false end
   if w.__kind == "FontString" and isSecret(w.__text) then return true end
   if secretFill(w) then return true end
-  return stub.secretGeometry == "strict" and rawget(w, "__byGame") == true and w ~= UIParent
+  return mode == "strict" and rawget(w, "__byGame") == true and w ~= UIParent
 end
 
 local secretGeometry
@@ -511,6 +520,7 @@ local function secretGetter(get)
   end
 end
 for _, name in ipairs(GEOMETRY) do rewrap(name, secretGetter) end
+stub.secretGetter = secretGetter
 
 -- How far a scroll frame scrolls is worked out from true heights.
 rewrap("GetVerticalScrollRange", function(get) return function(self) return rawCall(get, self) end end)
@@ -518,7 +528,7 @@ rewrap("GetVerticalScrollRange", function(get) return function(self) return rawC
 -- Turns secret geometry on ("derived" or "strict") or off (nil, false).
 function world.secretGeometry(mode)
   assert(mode == nil or mode == false or mode == "derived" or mode == "strict", "secretGeometry: derived, strict or off")
-  stub.secretGeometry = mode or nil
+  stub.secretGeometry = mode or (stub.anchorSecrets and "anchors") or nil
 end
 
 -- Forbidden objects ------------------------------------------------------------------------

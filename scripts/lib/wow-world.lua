@@ -36,6 +36,10 @@ local SECRET = {
   __concat = refuse, __len = refuse, __lt = refuse, __le = refuse,
 }
 
+-- The VM's checks (scripts/lib/lua-secret-ops.mjs) know a secret by this metatable: a truth test or `not` on one
+-- that hides a boolean, and `==` on any, raise in the addon's code (a secret number or string tests true in game).
+if __wfgMarkSecretMeta then __wfgMarkSecretMeta(SECRET) end
+
 -- A secret value (hides `n`, which only the harness reads, with rawget).
 function world.secret(n)
   return setmetatable({ __secret = true, n = n }, SECRET)
