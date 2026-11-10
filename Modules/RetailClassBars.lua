@@ -149,7 +149,7 @@ local function fillEssence()
   local row = CB.resourceFrames.essence
   local value, recharging = essenceValue(row, Enum.PowerType.Essence)
   fillPips(row, value, 1)
-  ns.Every("class essence", recharging and 0 or nil, fillEssence, row)
+  CB.scope:Every("class essence", recharging and 0 or nil, fillEssence, row)
 end
 
 -- Runes ------------------------------------------------------------------------------------
@@ -184,7 +184,7 @@ local function fillRunes()
     p.bar:SetValue(shares[i])
     back = back and shares[i] >= 1
   end
-  ns.Every("class runes", not back and 0 or nil, fillRunes, row)
+  CB.scope:Every("class runes", not back and 0 or nil, fillRunes, row)
 end
 
 -- Stagger ----------------------------------------------------------------------------------
@@ -204,7 +204,7 @@ end
 -- The stagger bar just under the player frame, read on a timer (the client sends no event for it).
 local function buildStagger(player)
   local holder = thinBar(player, "good")
-  ns.Every("class stagger", CB.STAGGER_PERIOD, CB.UpdateStagger, holder)
+  CB.scope:Every("class stagger", CB.STAGGER_PERIOD, CB.UpdateStagger, holder)
   return holder
 end
 
@@ -277,7 +277,7 @@ local function fillEbonMight(bar)
   local left = ebonMightLeft()
   bar:SetMinMaxValues(0, CB.ALT_AURAS.fallbackMax.ebonMight)
   T.SetBarValue(bar, left)
-  ns.Every(CB.EBON_MIGHT_JOB, left > 0 and CB.STAGGER_PERIOD or nil, CB.UpdateAlt, CB.altFrame)
+  CB.scope:Every(CB.EBON_MIGHT_JOB, left > 0 and CB.STAGGER_PERIOD or nil, CB.UpdateAlt, CB.altFrame)
 end
 
 -- How each alternate bar is filled (its kind is also its theme colour token).
@@ -288,14 +288,14 @@ CB.ALT_FILLS = { soulFragments = fillSoulFragments, ebonMight = fillEbonMight }
 function CB.UpdateAlt()
   local holder = CB.altFrame
   if holder and holder:IsShown() then return CB.ALT_FILLS[CB.altKind](holder.bar) end
-  ns.Every(CB.EBON_MIGHT_JOB, nil)
+  CB.scope:Every(CB.EBON_MIGHT_JOB, nil)
 end
 
 -- Shows the alternate bar of your spec now (building it the first time) and hides it in other specs.
 function CB.ShowAlt(player)
   CB.altKind = CB.AltKind(CB.class)
   if CB.altKind and not CB.altFrame then CB.altFrame = thinBar(player, CB.altKind) end
-  if CB.altFrame then CB.altFrame:SetShown(CB.altKind ~= nil) end
+  if CB.altFrame then CB.scope:Frame(CB.altFrame):SetShown(CB.altKind ~= nil) end
   CB.UpdateAlt()
 end
 
@@ -336,12 +336,12 @@ end
 -- Shows the resource of your spec now (building it the first time) and hides the others; none below its level.
 function CB.ShowResource()
   local player = UF.frames.player
-  if not player then return end
+  if not (player and CB.scope:Running()) then return end
   CB.kind = CB.ResourceKind(CB.class)
   local def = CB.kind and CB.RESOURCES[CB.kind]
   if def and not levelled(def) then CB.kind, def = nil, nil end
   if def and not CB.resourceFrames[CB.kind] then CB.resourceFrames[CB.kind] = buildResource(player, def) end
-  for kind, frame in pairs(CB.resourceFrames) do frame:SetShown(kind == CB.kind) end
+  for kind, frame in pairs(CB.resourceFrames) do CB.scope:Frame(frame):SetShown(kind == CB.kind) end
   CB.UpdateResource()
   CB.ShowAlt(player)
 end
@@ -361,13 +361,13 @@ end
 
 -- Your class resource (CB.Enable, Modules/ClassBars.lua): built out of combat after the unit frames
 -- (it hangs off the player frame), repainted on your power and rune changes, rebuilt on a spec change.
-function CB.EnableResources(class)
+function CB.EnableResources(class, scope)
   if not (CB.RESOURCE_KINDS[class] or CB.ALT_BARS[class]) then return end
-  CB.class, CB.resourceFrames = class, {}
+  CB.class, CB.scope, CB.resourceFrames = class, scope, CB.resourceFrames or {}
   ns.OutOfCombat(CB.ShowResource)
-  ns.OnUnit(CB.RESOURCE_EVENTS, CB.UpdateResource, "player")
-  ns.On("RUNE_POWER_UPDATE", CB.UpdateResource)
-  ns.On("PLAYER_SPECIALIZATION_CHANGED", onSpec)
-  ns.On("PLAYER_LEVEL_UP", onLevelUp)
-  if CB.ALT_BARS[class] then ns.OnUnit("UNIT_AURA", CB.UpdateAlt, "player") end
+  scope:OnUnit(CB.RESOURCE_EVENTS, CB.UpdateResource, "player")
+  scope:On("RUNE_POWER_UPDATE", CB.UpdateResource)
+  scope:On("PLAYER_SPECIALIZATION_CHANGED", onSpec)
+  scope:On("PLAYER_LEVEL_UP", onLevelUp)
+  if CB.ALT_BARS[class] then scope:OnUnit("UNIT_AURA", CB.UpdateAlt, "player") end
 end

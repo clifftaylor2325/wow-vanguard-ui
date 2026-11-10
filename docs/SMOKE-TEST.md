@@ -5443,6 +5443,12 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 - Expect: each goes at once, with nothing left on screen (the group board window, the mail panel beside the mailbox and the craft queue panel beside the profession window are gone and do not come back while it is off). Switched off, Auto-accept and Quest automation do nothing at all: a summon, a resurrection, a quest offer or a hand-in is left to you. What was stored stays (`/vg vendors`, `/vg alts`, `/vg quests history`, `/vg trainers`, the craft queue and presets); switched on again, they listen again without a reload.
 - If it fails, paste: the `/vg report` block and which module.
 
+### 34.17 Modules on the unit frames switch off and on without a reload (A4-2d)
+
+- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Target and focus auras, Combo points (on a rogue or druid, with points on a target), Class bars (a shaman's totems or a druid's mana in a form), Power bar sparks (cast a mana spell: the spark crosses the bar), Readouts (threat on a target in a group, the status chip, a hunter pet's mood), Main tank frames (in a raid with a main tank marked, out of combat), Party pets and targets (in a party), Raid tools (as leader in a group; the roster, if it is open, closes with it), AFK screen (switch it off while the screen shows: it goes at once; `/afk` then shows nothing). Then switch Unit frames off and look at its children's rows.
+- Expect: each goes at once, with nothing of its own left on screen (no icons under the target frame, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. With Unit frames off, a child's switch is greyed and says "Needs Unit frames". A switch made in a fight applies when the fight ends. [Needs in-game check.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

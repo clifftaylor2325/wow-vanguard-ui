@@ -10,7 +10,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 local L = ns.L
 
-local MT = ns.Module("MainTanks", { defaults = {} })
+local MT = ns.Module("MainTanks", { defaults = {}, live = true })
 
 MT.W, MT.H, MT.GAP, MT.TARGET_W, MT.MAX = 140, 22, 4, 90, 4
 -- How often the tiles read their units (they have no events of their own), in seconds.
@@ -68,14 +68,26 @@ function MT.Paint(b)
   if b.target then paintTarget(b, unit .. "target") end
 end
 
--- Reads the tile's unit a few times a second while it shows.
-local function poll(b)
-  ns.Every(b, MT.POLL, MT.Paint, b)
+-- Reads the tile's unit a few times a second while it shows, and while its module (the scope) runs: a tile the
+-- header makes after the module stopped waits for the next start, which polls every tile it has made.
+function MT.Poll(b, scope)
+  if scope:Running() then scope:Every("tile " .. (b:GetName() or tostring(b)), MT.POLL, MT.Paint, b) end
 end
 
--- Dresses a unit button as a small tile: a flat panel, a health bar one pixel
+-- Shows a secure frame by a macro-conditional state, as the client's own state driver (so it follows the group in
+-- combat too). Out of combat only. The frame is noted as driven (Core/Visibility.lua), so the scope releases the
+-- driver when its module stops, and the frame stays hidden then. It is shown first, as a new frame is, and the driver
+-- hides it where its state says so.
+function MT.Drive(frame, state)
+  if type(RegisterStateDriver) ~= "function" then return end
+  frame:Show()
+  RegisterStateDriver(frame, "visibility", state)
+  frame.vgStateString = state
+end
+
+-- Dresses a unit button as a small tile (read while `scope` runs): a flat panel, a health bar one pixel
 -- inside it, the name on the bar (cut off, never wrapped), and its unit's tooltip on hover.
-function MT.Tile(b)
+function MT.Tile(b, scope)
   local px = T.Pixel(b)
   T.HudPanel(b)
   b.bar = T.StyleBar(CreateFrame("StatusBar", nil, b))
@@ -84,7 +96,7 @@ function MT.Tile(b)
   b.name = T.Text(b.bar:CreateFontString(nil, "OVERLAY"), "small")
   b.name:SetPoint("LEFT", 4, 0) b.name:SetPoint("RIGHT", -4, 0)
   b.name:SetJustifyH("LEFT") b.name:SetWordWrap(false)
-  poll(b)
+  MT.Poll(b, scope)
   ns.GetModule("RaidFrames").UnitTooltip(b)
 end
 
@@ -94,10 +106,10 @@ MT.tiles = {}
 
 -- Insecure setup for a tile the header created (called from MT.INIT).
 function MT.Setup(b)
-  MT.Tile(b)
+  MT.Tile(b, MT.scope)
   addTargetLine(b)
   b:RegisterForClicks("AnyUp")
-  b:HookScript("OnShow", MT.Paint)
+  MT.scope:Gate("tile shown " .. tostring(b), MT.Paint, function(gate) b:HookScript("OnShow", gate) end)
   MT.tiles[#MT.tiles + 1] = b
   if MT.OnTileCreated then MT.OnTileCreated(b) end
 end
@@ -140,17 +152,28 @@ function MT.FollowHolder()
   MT.header:SetAlpha(alpha)
 end
 
--- The movable holder (room for four tiles and their target lines), the header pinned in it.
+-- The movable holder (room for four tiles and their target lines), the header pinned in it; made once a session.
 local function build()
   local holder = CreateFrame("Frame", "Vanguard_MainTanksHolder", UIParent)
   holder:SetSize(MT.W + 6 + MT.TARGET_W, MT.MAX * (MT.H + MT.GAP) - MT.GAP)
-  ns.Mover(holder, "maintanks", L["Main tanks"], { "TOPLEFT", "TOPLEFT", 400, -20 })
   MT.holder, MT.header = holder, createHeader()
   MT.header:SetPoint("TOPLEFT", holder, "TOPLEFT")
-  MT.FollowHolder()
   precreate(MT.header)
-  if type(RegisterAttributeDriver) == "function" then RegisterAttributeDriver(MT.header, "state-visibility", "[group:raid] show; hide") end
   ns.Client.WhenSnippetsKnown(function(worked) if worked == false then MT.WithoutSnippets() end end)
+end
+
+-- What the module starts with each time it runs (secure, so out of combat): the holder's mover and the header's
+-- look and visibility handed to the scope, and the tiles made so far read again.
+local function show(scope)
+  if not scope:Running() then return end
+  if not MT.header then build() end
+  scope:Mover(MT.holder, "maintanks", L["Main tanks"], { "TOPLEFT", "TOPLEFT", 400, -20 })
+  MT.holder:Show()
+  scope:Frame(MT.header)
+  MT.FollowHolder()
+  MT.Drive(MT.header, "[group:raid] show; hide")
+  for _, b in ipairs(MT.tiles) do MT.Poll(b, scope) end
+  if MT.snippetless then scope:On("GROUP_ROSTER_UPDATE", MT.SetupSoon) end
 end
 
 -- Sets up the tiles the header made without its init snippet (out of combat).
@@ -162,19 +185,26 @@ end
 -- the clicks, the tiles are made (again) and set up from here, now and on every
 -- roster change, out of combat.
 function MT.WithoutSnippets()
+  MT.snippetless = true
   ns.Client.HeaderWithoutSnippets(MT.header)
   precreate(MT.header)
   MT.SetupTiles()
-  ns.On("GROUP_ROSTER_UPDATE", function() ns.OutOfCombat(MT.SetupTiles, "maintanktiles") end)
+  if MT.scope:Running() then MT.scope:On("GROUP_ROSTER_UPDATE", MT.SetupSoon) end
 end
 
--- The holder's new scale or opacity (or a reset): the header follows, out of combat.
+-- A roster change on such a client: the tiles are set up again, out of combat.
+function MT.SetupSoon()
+  ns.OutOfCombat(MT.SetupTiles, "maintanktiles")
+end
+
+-- The holder's new scale or opacity (or a reset): the header follows, out of combat (while the module runs).
 local function onPlaced(key)
-  if key == "maintanks" and MT.header then ns.OutOfCombat(MT.FollowHolder, "maintankslook") end
+  if key == "maintanks" and MT.header and MT.scope:Running() then ns.OutOfCombat(MT.FollowHolder, "maintankslook") end
 end
 
 -- Module entry point (Core/Modules.lua): secure frames are made out of combat.
-function MT.Enable()
-  ns.OutOfCombat(build)
-  ns.OnMoverPlaced(onPlaced)
+function MT.Enable(_, scope)
+  MT.scope = scope
+  ns.OutOfCombat(function() show(scope) end)
+  scope:Gate("mover placed", onPlaced, ns.OnMoverPlaced)
 end

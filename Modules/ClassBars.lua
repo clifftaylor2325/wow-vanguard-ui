@@ -16,7 +16,10 @@ local T = ns.Theme
 local A = ns.Auras
 local UF = ns.GetModule("UnitFrames")
 
-local CB = ns.Module("ClassBars", { defaults = { totems = true, druidMana = true, size = 22, manaHeight = 6 } })
+local CB = ns.Module("ClassBars", {
+  defaults = { totems = true, druidMana = true, size = 22, manaHeight = 6 },
+  live = true, requires = { "UnitFrames" },
+})
 
 CB.SLOTS = 4
 -- The distance between the player frame's edge and the totem row above it or the mana bar under it.
@@ -52,9 +55,8 @@ local function buildTotems(player, size)
   CB.totems:SetSize(CB.SLOTS * (size + 3), size)
   CB.totems:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, CB.ROW_OFFSET)
   UF.RaiseDeckReach("top", CB.ROW_OFFSET + size)
-  CB.cells = {}
-  for slot = 1, CB.SLOTS do CB.cells[slot] = totemCell(CB.totems, slot, size) end
-  CB.UpdateTotems()
+  CB.totemCells = {}
+  for slot = 1, CB.SLOTS do CB.totemCells[slot] = totemCell(CB.totems, slot, size) end
 end
 
 -- The client's duration object for a totem slot, or nil when it has none to give.
@@ -143,27 +145,54 @@ end
 
 -- Enabling -----------------------------------------------------------------------------------
 
+-- The totem row on the player frame: made the first time (a frame is never freed), then handed to the scope and
+-- shown again, with its cells (CB.cells is the row's only while the module runs: Modules/CooldownGaps.lua reads it).
+local function showTotems(settings, scope)
+  local player = UF.frames.player
+  if not (player and scope:Running()) then return end
+  if not CB.totems then buildTotems(player, settings.size) end
+  CB.cells = CB.totemCells
+  scope:Frame(CB.totems):Show()
+  CB.UpdateTotems()
+end
+
 -- Shamans: build the totem row out of combat (after the unit frames) and follow totems.
-local function enableTotems(settings)
-  ns.OutOfCombat(function() if UF.frames.player then buildTotems(UF.frames.player, settings.size) end end)
-  ns.On("PLAYER_TOTEM_UPDATE", CB.UpdateTotems)
-  ns.On("PLAYER_ENTERING_WORLD", CB.UpdateTotems)
-  ns.On("PLAYER_REGEN_DISABLED", CB.ArmTotems)
+local function enableTotems(settings, scope)
+  ns.OutOfCombat(function() showTotems(settings, scope) end)
+  scope:On("PLAYER_TOTEM_UPDATE", CB.UpdateTotems)
+  scope:On("PLAYER_ENTERING_WORLD", CB.UpdateTotems)
+  scope:On("PLAYER_REGEN_DISABLED", CB.ArmTotems)
+end
+
+-- The druid mana bar on the player frame: made the first time, then handed to the scope again (UpdateMana shows it
+-- in a form).
+local function showMana(settings, scope)
+  local player = UF.frames.player
+  if not (player and scope:Running()) then return end
+  if not CB.manaHolder then buildMana(player, settings.manaHeight) end
+  scope:Frame(CB.manaHolder)
+  CB.UpdateMana()
 end
 
 -- Druids: build the mana bar out of combat and follow your mana and forms (only yours).
-local function enableMana(settings)
-  ns.OutOfCombat(function() if UF.frames.player then buildMana(UF.frames.player, settings.manaHeight) end end)
-  ns.OnUnit({ "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER" }, CB.UpdateMana, "player")
-  ns.On("UPDATE_SHAPESHIFT_FORM", CB.UpdateMana)
+local function enableMana(settings, scope)
+  ns.OutOfCombat(function() showMana(settings, scope) end)
+  scope:OnUnit({ "UNIT_POWER_UPDATE", "UNIT_POWER_FREQUENT", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER" }, CB.UpdateMana, "player")
+  scope:On("UPDATE_SHAPESHIFT_FORM", CB.UpdateMana)
 end
 
 -- Module entry point (Core/Modules.lua): each class gets only its own bars, and on Retail its class
 -- resource (CB.EnableResources, from Modules/RetailClassBars.lua, which only Retail loads).
-function CB.Enable(settings)
+function CB.Enable(settings, scope)
   local _, class = UnitClass("player")
   if ns.IsSecret(class) then return end
-  if class == "SHAMAN" and settings.totems then enableTotems(settings) end
-  if CB.MANA_CLASSES[class] and settings.druidMana then enableMana(settings) end
-  if CB.EnableResources then CB.EnableResources(class) end
+  if class == "SHAMAN" and settings.totems then enableTotems(settings, scope) end
+  if CB.MANA_CLASSES[class] and settings.druidMana then enableMana(settings, scope) end
+  if CB.EnableResources then CB.EnableResources(class, scope) end
+end
+
+-- Switched off: the totem cells are no longer the row CooldownGaps leaves to the class bars (the frames themselves
+-- go with the scope).
+function CB.Disable()
+  CB.cells = nil
 end

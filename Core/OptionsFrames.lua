@@ -181,9 +181,9 @@ local function unitFrameRows()
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], TEXT_FORMATS, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
-    check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
-    check(L["Group threat panel (reload)"], O.RestartSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
-    O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
+    check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], O.RestartSetting("PartyExtras", "show")),
+    check(L["Group threat panel (reload)"], O.RestartSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], O.RestartSetting("ClassBars", "totems")),
+    O.Renamed(check(O.MANA_BAR_NAME, O.RestartSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
   }, append(append(append(powerTextRows(), predictionRows()), portraitRows()), sizeRows()))
 end
 
@@ -218,9 +218,9 @@ end
 local function readoutCard()
   return {
     { "header", L["Readouts"] },
-    check(L["Your threat on your target (reload)"], reloadSetting("UnitExtras", "threat")),
-    check(L["Pet happiness dot (reload)"], reloadSetting("UnitExtras", "happiness")),
-    check(L["Status chip beside your frame (reload)"], reloadSetting("UnitExtras", "chip")),
+    check(L["Your threat on your target (reload)"], O.RestartSetting("UnitExtras", "threat")),
+    check(L["Pet happiness dot (reload)"], O.RestartSetting("UnitExtras", "happiness")),
+    check(L["Status chip beside your frame (reload)"], O.RestartSetting("UnitExtras", "chip")),
   }
 end
 

@@ -8,7 +8,7 @@ local ADDON, ns = ...
 
 local L = ns.L
 
-local PX = ns.Module("PartyExtras", { defaults = { show = false } })
+local PX = ns.Module("PartyExtras", { defaults = { show = false }, live = true })
 
 PX.W, PX.H, PX.GAP, PX.ROWS = 90, 16, 2, 4
 PX.COL_GAP = 4
@@ -17,42 +17,50 @@ PX.COL_GAP = 4
 -- it sits right of the party column instead (Healing's larger one too), above a party drawn as one row.
 PX.SPOT = { "BOTTOM", "BOTTOM", -240, 606, narrow = { h = 676, spot = { "BOTTOMLEFT", "BOTTOM", -66, 396 } } }
 
--- One secure unit tile at row i, column col (0 = pet, 1 = target).
-local function tile(holder, unit, i, col)
+-- One secure unit tile at row i, column col (0 = pet, 1 = target), read while its module (the scope) runs.
+local function tile(holder, unit, i, col, scope)
   local b = CreateFrame("Button", "Vanguard_" .. unit, holder, "SecureUnitButtonTemplate")
   b:SetSize(PX.W, PX.H)
   b:SetPoint("TOPLEFT", holder, "TOPLEFT", col * (PX.W + PX.COL_GAP), -(i - 1) * (PX.H + PX.GAP))
   b:SetAttribute("unit", unit)
   b:SetAttribute("*type1", "target")
   b:RegisterForClicks("AnyUp")
-  ns.GetModule("MainTanks").Tile(b)
+  ns.GetModule("MainTanks").Tile(b, scope)
   if type(RegisterUnitWatch) == "function" then RegisterUnitWatch(b) end
   return b
 end
 
 -- Row i's pet tile, kept in PX.pets too: a friendly unit, so click casting takes it (PX.OnPetTile; not the
 -- target tiles, whose units are mostly enemies, where a heal on a click would replace targeting them).
-local function petTile(holder, i)
-  local b = tile(holder, "partypet" .. i, i, 0)
+local function petTile(holder, i, scope)
+  local b = tile(holder, "partypet" .. i, i, 0, scope)
   PX.pets[#PX.pets + 1] = b
   if PX.OnPetTile then PX.OnPetTile(b) end
   return b
 end
 
--- The movable column, shown only in a party (a secure state driver, so it follows the group in combat too).
-local function build()
+-- The column's frame, with its tiles, a pet and a target per party member; made once a session.
+local function build(scope)
   local holder = CreateFrame("Frame", "Vanguard_PartyExtras", UIParent, "SecureHandlerStateTemplate")
   holder:SetSize(2 * PX.W + PX.COL_GAP, PX.ROWS * (PX.H + PX.GAP) - PX.GAP)
-  ns.Mover(holder, "partyextras", L["Party pets and targets"], PX.SPOT)
-  PX.tiles, PX.pets = {}, {}
+  PX.holder, PX.tiles, PX.pets = holder, {}, {}
   for i = 1, PX.ROWS do
-    PX.tiles[#PX.tiles + 1] = petTile(holder, i)
-    PX.tiles[#PX.tiles + 1] = tile(holder, "party" .. i .. "target", i, 1)
+    PX.tiles[#PX.tiles + 1] = petTile(holder, i, scope)
+    PX.tiles[#PX.tiles + 1] = tile(holder, "party" .. i .. "target", i, 1, scope)
   end
-  if type(RegisterAttributeDriver) == "function" then RegisterAttributeDriver(holder, "state-visibility", "[group:raid] hide; [group:party] show; hide") end
+end
+
+-- The movable column, shown only in a party (a secure state driver, so it follows the group in combat too): its
+-- mover and driver go to the scope on each start, and the tiles made so far are read again.
+local function show(scope)
+  if not scope:Running() then return end
+  if not PX.holder then build(scope) end
+  scope:Mover(PX.holder, "partyextras", L["Party pets and targets"], PX.SPOT)
+  ns.GetModule("MainTanks").Drive(PX.holder, "[group:raid] hide; [group:party] show; hide")
+  for _, b in ipairs(PX.tiles) do ns.GetModule("MainTanks").Poll(b, scope) end
 end
 
 -- Module entry point (Core/Modules.lua): built out of combat, and only when switched on.
-function PX.Enable(settings)
-  if settings.show then ns.OutOfCombat(build) end
+function PX.Enable(settings, scope)
+  if settings.show then ns.OutOfCombat(function() show(scope) end) end
 end
