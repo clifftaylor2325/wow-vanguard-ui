@@ -767,7 +767,7 @@ end
 local function addTitle(f)
   f.title = T.Text(f.header:CreateFontString(nil, "OVERLAY"), "wordmark", "brandGold")
   f.title:SetPoint("LEFT", f.logo, "RIGHT", T.SPACE.gap, 0)
-  f.title:SetText("Vanguard")
+  f.title:SetText(L["Vanguard"])
 end
 
 -- The header: the crest and the wordmark, search, profile, and the close button where every window has it (T.PlaceClose).
