@@ -2183,6 +2183,12 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: `cd` lists the cooldown with its time left, for each character that noted one; `top` lists up to five recipes that pay best, per craft and per hour at the pace set under Craft queue. [Needs in game: whether C_TradeSkillUI.GetAllRecipeIDs and GetRecipeCooldown exist on Forever (the docs list neither). If not, `cd` only knows the recipe you selected, queued or already noted, with the time from C_Spell.GetSpellCooldown on the recipe's spell; select a transmute (or any recipe with a cooldown) in its profession window, then `/vg craft cd`. Also: that a recipe's spell cooldown is what the profession window shows, and that reading a few hundred recipes causes no stutter.]
 - If it fails, paste: `/vg errors` what `/run print(C_TradeSkillUI.GetAllRecipeIDs ~= nil, C_TradeSkillUI.GetRecipeCooldown ~= nil)` prints, and `/run print(C_Spell.GetSpellCooldown(<a recipe's spell ID>))`.
 
+### 20.3 The queue panel (off until switched on: /vg > Town and gear > Craft queue)
+
+- Do: switch the craft queue on, open a profession and pick a recipe. Press Add to queue twice, pick another recipe and press it once. Press Next, then Remove on the first row, then Clear. Queue five or more recipes to see the list scroll. Close the profession window.
+- Expect: a small panel sits under the crafting cost panel (or beside the window when that is off) with a row per queued recipe ("2 x <recipe>") and a note of the reagents you are short of; Next and Clear are greyed while nothing is queued; Remove and Clear change the list at once; the wheel and the thumb scroll a long list; the panel goes with the window; nothing is crafted for you.
+- If it fails, paste: `/vg errors`.
+
 ## 21. Presets (batch 2)
 
 ### 21.1 Apply a built-in preset

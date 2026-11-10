@@ -8,6 +8,8 @@
 --   * /vg craft cd        profession cooldowns of your characters, and when each is ready;
 --   * /vg craft top       the recipes you know that pay best per craft and per hour, from the prices;
 --   * /vg craft done|clear  takes the first craft off, or empties the queue.
+--   * a small panel beside the profession window lists the queue (the count and recipe of each, what is short, a
+--     button to take one off, Add to queue, Next and Clear), so none of it needs a command.
 -- The recipe on display is tracked by the form hook in AuctionCrafting.lua, which this module also
 -- installs, so the queue works with the Auction helper off.
 -- Forever documents neither a recipe list nor a recipe cooldown call: where the client lacks them, the
@@ -20,6 +22,7 @@
 local ADDON, ns = ...
 local L = ns.L
 
+local T, W = ns.Theme, ns.Widgets
 local AH = ns.GetModule("AuctionHelper")
 local AP, CR = ns.AuctionPrices, AH.Crafting
 
@@ -98,6 +101,7 @@ function CQ.Add(id, n, name)
   if not entry then entry = { id = id, n = 0, name = name } queue[#queue + 1] = entry end
   entry.n = entry.n + n
   ns.Chat(ns.Format(L["Queued: {count} x {recipe} ({queued} in the queue)."], { count = entry.n, recipe = recipeName(entry), queued = #queue }))
+  CQ.Repaint()
 end
 
 -- /vg craft add [n]: queues the recipe on display.
@@ -128,15 +132,20 @@ function CQ.Short()
   return out
 end
 
+-- The reagents still short as one line ("Short of: Linen x6."), or that you have them all.
+function CQ.ShortText()
+  local short = {}
+  local itemName = ns.GetModule("Errands").ItemName
+  for _, s in ipairs(CQ.Short()) do short[#short + 1] = string.format("%s x%d", itemName(s.id), s.short) end
+  return #short == 0 and L["You have every reagent."] or ns.Format(L["Short of: {reagents}."], { reagents = table.concat(short, ", ") })
+end
+
 -- /vg craft: the queue and what it is short of.
 function CQ.List()
   local queue = CQ.Mine().queue
   if #queue == 0 then return ns.Chat(L["The craft queue is empty. Open a recipe in the profession window and /vg craft add."]) end
   for i, e in ipairs(queue) do ns.Chat(string.format("%d. %d x %s", i, e.n, recipeName(e))) end
-  local short = {}
-  local itemName = ns.GetModule("Errands").ItemName
-  for _, s in ipairs(CQ.Short()) do short[#short + 1] = string.format("%s x%d", itemName(s.id), s.short) end
-  ns.Chat(#short == 0 and L["You have every reagent."] or ns.Format(L["Short of: {reagents}."], { reagents = table.concat(short, ", ") }))
+  ns.Chat(CQ.ShortText())
 end
 
 -- Takes one craft off the first entry (the whole entry when it is the last craft); says what is left.
@@ -147,6 +156,7 @@ function CQ.Done(id)
   entry.n = entry.n - 1
   if entry.n <= 0 then table.remove(queue, 1) end
   ns.Chat(ns.Format(L["Crafted {recipe}. {count} left in the queue."], { recipe = entry.name or L["a recipe"], count = #queue }))
+  CQ.Repaint()
 end
 
 -- /vg craft next: the first recipe opened in the profession window with its count typed in.
@@ -285,6 +295,158 @@ function CQ.Top()
   end
 end
 
+-- The panel ----------------------------------------------------------------------------------
+
+-- The panel beside the profession window: its inset, how many queued recipes show before it scrolls, and the
+-- width it shares with the crafting cost panel (so the two stack as one column).
+CQ.PAD, CQ.ROWS, CQ.REMOVE_W = T.SPACE.gap, 5, 64
+CQ.WIDTH = CR.WIDTH
+
+-- Empties the queue (/vg craft clear and the panel's Clear).
+function CQ.Clear()
+  VanguardCharDB.craftQueue = {}
+  ns.Chat(L["Craft queue emptied."])
+  CQ.Repaint()
+end
+
+-- Takes a whole entry off the queue (the panel's remove button).
+function CQ.Remove(id)
+  local queue = CQ.Mine().queue
+  for i, e in ipairs(queue) do
+    if e.id == id then table.remove(queue, i) break end
+  end
+  CQ.Repaint()
+end
+
+-- A queue row (W.Row: the list's hover wash): "3 x Linen Bag" and a remove button at its right.
+local function makeRow(parent)
+  local row = W.Row(parent, T.ROW.height, { width = CQ.WIDTH - 2 * CQ.PAD })
+  row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
+  row.text:SetPoint("LEFT", row, "LEFT", T.SPACE.tight, 0)
+  row.text:SetWidth(CQ.WIDTH - 2 * CQ.PAD - CQ.REMOVE_W - T.SPACE.gap)
+  row.text:SetJustifyH("LEFT")
+  row.text:SetWordWrap(false)
+  row.remove = W.Button(row, L["Remove"], function() CQ.Remove(row.entryID) end, CQ.REMOVE_W)
+  row.remove:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+  return row
+end
+
+-- The rows, one per queued recipe, in the scroll view's content; the content is as tall as the rows.
+local function paintRows(f, queue)
+  f.rows.Reset()
+  for i, e in ipairs(queue) do
+    local row = f.rows.Next()
+    row:SetPoint("TOPLEFT", f.list.child, "TOPLEFT", 0, -(i - 1) * T.ROW.height)
+    row.entryID = e.id
+    row.text:SetText(string.format("%d x %s", e.n, recipeName(e)))
+    row:Show()
+  end
+  f.list:Fit(#queue * T.ROW.height)
+end
+
+-- The note under the rows: what the queue is short of, or that it is empty.
+local function paintNote(f, queue)
+  local empty = #queue == 0
+  f.note:SetText(empty and L["Nothing queued. Pick a recipe, then Add to queue."] or CQ.ShortText())
+  T.Color(f.note, empty and "muted" or "text2")
+end
+
+-- Paints the panel: the queue's rows and the note; Next and Clear work only while something is queued.
+function CQ.Paint()
+  local f, queue = CQ.frame, CQ.Mine().queue
+  if not f then return end
+  paintRows(f, queue)
+  paintNote(f, queue)
+  for _, b in ipairs({ f.next, f.clear }) do
+    if #queue > 0 then b:Enable() else b:Disable() end
+  end
+end
+
+-- Adds the recipe on display: one craft more each press (the count box of the cost panel is /vg craft add's).
+function CQ.AddButton()
+  CQ.AddShown("1")
+end
+
+-- The panel's bottom line: Add to queue, Next and Clear.
+local function addButtons(f)
+  f.add = W.Button(f, L["Add to queue"], function() CQ.AddButton() end, 100)
+  f.next = W.Button(f, L["Next"], function() CQ.Next() end, 60)
+  f.clear = W.Button(f, L["Clear"], function() CQ.Clear() end, 60)
+  f.add:SetPoint("BOTTOMLEFT", CQ.PAD, CQ.PAD)
+  f.next:SetPoint("LEFT", f.add, "RIGHT", T.SPACE.tight, 0)
+  f.clear:SetPoint("LEFT", f.next, "RIGHT", T.SPACE.tight, 0)
+end
+
+-- The list's scroll view and the note under it (small text, wrapped inside the panel).
+local function addList(f)
+  f.list = ns.ScrollView(f, { width = CQ.WIDTH - 2 * CQ.PAD })
+  f.list:SetPoint("TOPLEFT", f, "TOPLEFT", CQ.PAD, CR.TOP)
+  f.list:SetSize(CQ.WIDTH - 2 * CQ.PAD, CQ.ROWS * T.ROW.height)
+  f.rows = ns.QuestParts.Pool(f.list.child, makeRow)
+  f.note = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.note:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.SPACE.tight, -T.SPACE.tight)
+  f.note:SetWidth(CQ.WIDTH - 2 * CQ.PAD - T.SPACE.tight)
+  f.note:SetJustifyH("LEFT")
+end
+
+-- Builds the panel (once, out of combat; hidden): a card with the heading, the list, the note and the buttons.
+function CQ.Build()
+  local f = T.Panel(CreateFrame("Frame", "Vanguard_CraftQueuePanel", UIParent), { shadow = true })
+  f:SetSize(CQ.WIDTH, -CR.TOP + CQ.ROWS * T.ROW.height + 2 * T.SPACE.col + 2 * T.SPACE.gap + T.BUTTON_H)
+  f:SetClampedToScreen(true)
+  ns.WindowTitle(f, L["Craft queue"], { kind = "card" })
+  addList(f)
+  addButtons(f)
+  CQ.frame = f
+  f:Hide()
+  return f
+end
+
+-- Places the panel under the crafting cost panel while that shows, else where that one would go.
+function CQ.Place(f)
+  if not (CR.frame and CR.frame:IsShown()) then return CR.Place(f) end
+  f:ClearAllPoints()
+  f:SetPoint("TOPLEFT", CR.frame, "BOTTOMLEFT", 0, -T.SPACE.gap)
+  return f
+end
+
+-- Whether the panel belongs on the screen: the switch is on and the recipe form of the profession window shows.
+local function wanted()
+  local form = CR.Form()
+  return CQ.settings and CQ.settings.on and form and form:IsVisible()
+end
+
+-- Shows or hides the panel for the profession window, built the first time it is wanted (out of combat), and paints it.
+function CQ.Show()
+  if not wanted() then
+    if CQ.frame then CQ.frame:Hide() end
+    return
+  end
+  if not CQ.frame then return ns.OutOfCombat(CQ.Open, "craftqueuepanel") end
+  CQ.Place(CQ.frame):Show()
+  CQ.Paint()
+end
+
+-- Builds the panel when a profession window wants it and none exists; then CQ.Show.
+function CQ.Open()
+  if wanted() and not CQ.frame and not ns.InCombat() then CQ.Build() end
+  CQ.Show()
+end
+
+-- Repaints the panel while it shows (a change to the queue, or to what the bags hold).
+function CQ.Repaint()
+  if CQ.frame and CQ.frame:IsShown() then CQ.Paint() end
+end
+
+-- Hooks the profession window's form once (the cost panel's hook is separate): showing it opens the panel, hiding it hides it.
+function CQ.HookForm()
+  local form = CR.Form()
+  if CQ.hooked or not form then return end
+  CQ.hooked = true
+  form:HookScript("OnShow", ns.Guard("craft queue panel show", CQ.Open))
+  form:HookScript("OnHide", ns.Guard("craft queue panel hide", CQ.Show))
+end
+
 -- The command ---------------------------------------------------------------------------------
 
 -- The subcommands that need no argument.
@@ -295,7 +457,7 @@ function CQ.Command(rest)
   local word, arg = (rest or ""):match("^(%S*)%s*(.-)$")
   if not CQ.settings or not CQ.settings.on then return ns.Chat(L["The craft queue is off (/vg > Town and gear > Craft queue)."]) end
   if word == "add" then return CQ.AddShown(arg) end
-  if word == "clear" then VanguardCharDB.craftQueue = {} return ns.Chat(L["Craft queue emptied."]) end
+  if word == "clear" then return CQ.Clear() end
   if PLAIN[word] then return CQ[PLAIN[word]]() end
   CQ.List()
 end
@@ -358,12 +520,20 @@ local function moveFromProfiles()
   end
 end
 
+-- The cost panel painting moves the panel under it (and a profession window that closed hides it).
+function CQ.HookCostPanel()
+  hooksecurefunc(CR, "Paint", ns.Guard("craft queue panel", CQ.Show))
+end
+
 -- Module entry point (Core/Modules.lua): every part checks its switch as it runs.
 function CQ.Enable(settings)
   CQ.settings = settings
   moveFromProfiles()
   ns.OnUnit("UNIT_SPELLCAST_SUCCEEDED", ns.Guard("craft queue", CQ.OnCast), "player")
   ns.On("TRADE_SKILL_LIST_UPDATE", ns.Guard("craft cooldowns", CQ.Scan))
-  ns.On("ADDON_LOADED", function(_, name) if name == "Blizzard_Professions" then CR.Hook() end end)
-  ns.On("TRADE_SKILL_SHOW", CR.Hook)
+  ns.On("ADDON_LOADED", function(_, name) if name == "Blizzard_Professions" then CR.Hook() CQ.HookForm() end end)
+  ns.On("TRADE_SKILL_SHOW", function() CR.Hook() CQ.HookForm() CQ.Open() end)
+  ns.On("TRADE_SKILL_CLOSE", function() CQ.Show() end)
+  ns.On("BAG_UPDATE_DELAYED", function() ns.Soon("craftqueuebags", CQ.Repaint) end)
+  CQ.HookCostPanel()
 end
