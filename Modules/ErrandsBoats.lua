@@ -24,15 +24,26 @@ local function placeName()
   if type(zone) == "string" and zone ~= "" then return zone end
 end
 
+-- Whether nothing rules a ride out: you are not on a flight, dead or in an instance. A hidden answer rules it out
+-- too (nothing is judged from what the client hides), and is never compared.
+local function rideCanBe()
+  for _, name in ipairs({ "UnitOnTaxi", "UnitIsDeadOrGhost" }) do
+    local answer = ER.ask(name, "player")
+    if ns.IsSecret(answer) or answer == true then return false end
+  end
+  local inside = ER.ask("IsInInstance")
+  return not ns.IsSecret(inside) and not inside
+end
+
 -- True when the game gives no map position for you: on a boat or zeppelin, outside an
--- instance, a flight and the afterlife.
+-- instance, a flight and the afterlife. A hidden map or position is no answer.
 local function mapless()
   local map = C_Map
   if type(map) ~= "table" or type(map.GetBestMapForUnit) ~= "function" or type(map.GetPlayerMapPosition) ~= "function" then return false end
   local id = map.GetBestMapForUnit("player")
-  if not id or ns.IsSecret(id) then return false end
-  if ER.ask("UnitOnTaxi", "player") == true or ER.ask("UnitIsDeadOrGhost", "player") == true or ER.ask("IsInInstance") then return false end
-  return map.GetPlayerMapPosition(id, "player") == nil
+  if not id or ns.IsSecret(id) or not rideCanBe() then return false end
+  local position = map.GetPlayerMapPosition(id, "player")
+  return not ns.IsSecret(position) and position == nil
 end
 
 -- The destination of the route you took last from a place, and its saved seconds (either may be nil).
