@@ -117,6 +117,11 @@ it("the sell card suggests an undercut", () => {
   addon.click(`${CARD}.undercut.segments[1]`);
   expect(card(addon)[0].slice(2), "no copper on this client: whole silver up, deposit too").toEqual(["2s 0c · TEST-ONLY 12 Hours", "1s 0c"]);
 });
+it("a listing whose owner flag the client hides is left out of the price to beat and raises nothing", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.commodities[10940] = { { unitPrice = 100, quantity = 5, containsOwnerItem = __wfgWorld.secret(false) }, { unitPrice = 120, quantity = 3 } }");
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect([card(addon)[0][0], addon.eval("return #ns.errors")], "cheapest is the readable 120, no error").toEqual(["1s 20c", 0]);
+});
 it("posting calls the right function from a click, never from a timer", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);

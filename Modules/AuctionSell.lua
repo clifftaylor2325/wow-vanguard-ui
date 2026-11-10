@@ -235,13 +235,19 @@ local function ofSuffix(r, suffix)
   return want == 0 or (type(r.itemKey) == "table" and ns.PlainNumber(r.itemKey.itemSuffix) == want)
 end
 
+-- Whether a result may hold a listing of yours: it says so, or the client hides whether (left out of a
+-- price to beat, as the price store leaves it out).
+local function mayBeOwn(r)
+  return ns.IsSecret(r.containsOwnerItem) or r.containsOwnerItem == true
+end
+
 -- The cheapest unit price someone else asks for an item now (your listings left out), or nil:
 -- from the commodity results or the item results, whichever the search brought; of one random-suffix
 -- variant when a suffix is given.
 function AH.Cheapest(commodity, key, suffix)
   local best
   for _, r in ipairs(results(commodity, key)) do
-    local unit = not r.containsOwnerItem and ofSuffix(r, suffix) and resultUnit(r, commodity)
+    local unit = not mayBeOwn(r) and ofSuffix(r, suffix) and resultUnit(r, commodity)
     if unit and (not best or unit < best) then best = unit end
   end
   return best
@@ -261,7 +267,7 @@ function AH.Listings(commodity, key)
   local out = {}
   for _, r in ipairs(results(commodity, key)) do
     local unit, qty = resultUnit(r, commodity), ns.PlainNumber(r.quantity)
-    if unit and qty then out[#out + 1] = { unit = unit, qty = qty, time = AH.TimeLeft(r), mine = r.containsOwnerItem == true } end
+    if unit and qty then out[#out + 1] = { unit = unit, qty = qty, time = AH.TimeLeft(r), mine = ns.IsTrue(r.containsOwnerItem) } end
   end
   return out
 end
