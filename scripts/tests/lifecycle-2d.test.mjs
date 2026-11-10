@@ -10,13 +10,17 @@ import { lifecycleCases } from "./lifecycle-helpers.mjs";
 // The modules these cases need on: the unit frames the others sit on, and the heavy ones this batch converts.
 const KEEP = ["UnitFrames", "FrameAuras", "RaidTools"];
 
-// A login with the other heavy modules off and `settings` Lua run on the saved variables, then `saved` (a module
-// switch from moduleOff).
-const loginWith = (settings = "") => (saved = "") => {
+// A login with the other heavy modules off, `settings` Lua run on the saved variables, then `saved` (a module
+// switch from moduleOff), and `env` Lua run before the login (a class, a unit).
+const loginWith = (settings = "", env = "") => (saved = "") => {
   const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY.filter((n) => !KEEP.includes(n))) + settings + saved });
+  if (env) addon.eval(env);
   addon.login();
   return addon;
 };
+
+// The player is a rogue with some combo points.
+const ROGUE = 'UnitClass = function() return "Rogue", "ROGUE" end GetComboPoints = function() return 2 end';
 
 const login = loginWith();
 
@@ -38,4 +42,21 @@ it("lifecycle: frame auras can't start while the unit frames are off", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY.filter((n) => n !== "FrameAuras")) });
   addon.login();
   expect(addon.eval('return ns.ModuleLive("FrameAuras")')).toBe(false);
+});
+
+// ComboPoints ---------------------------------------------------------------------------------------------------
+
+const ROGUE_LOGIN = loginWith("", ROGUE);
+
+lifecycleCases("ComboPoints", ROGUE_LOGIN);
+
+it("lifecycle: combo points switched off hides the row, and on again shows the same row", () => {
+  const addon = ROGUE_LOGIN();
+  const shown = 'return ns.GetModule("ComboPoints").bar:IsShown()';
+  expect(addon.eval(shown)).toBe(true);
+  addon.eval('ns.SetModuleEnabled("ComboPoints", false)');
+  expect(addon.eval(shown)).toBe(false);
+  addon.eval('local CP = ns.GetModule("ComboPoints") local bar = CP.bar ns.SetModuleEnabled("ComboPoints", true) __same = bar == CP.bar');
+  expect(addon.eval("return __same")).toBe(true);
+  expect(addon.eval(shown)).toBe(true);
 });
