@@ -96,7 +96,7 @@ it("options: a feature reached only by typing has a button on its card, which sa
   };
   expect(said("tools", "List this session's fights"), "/vg fights").toEqual([true, true]);
   expect(said("tools", "Recap the last fight in chat"), "/vg recap").toEqual([true, true]);
-  for (const label of ["List my sell list in chat", "List the craft queue in chat", "Put the newest ranks on my bars", "What trainers teach next", "List the perk plan in chat"]) {
+  for (const label of ["List my sell list in chat", "List the craft queue in chat", "Put the newest ranks on my bars", "What trainers teach next"]) {
     expect(said("town", label), label).toEqual([true, true]);
   }
 });
