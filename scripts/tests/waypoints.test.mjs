@@ -78,7 +78,7 @@ it("waypoints: /way is left to another addon, /vg way always works, and the swit
   mine.slash("way 10 20");
   expect(mine.eval("return __set"), "/vg way sets one too").toEqual([[10, 0.1, 0.2]]);
   const tomtom = loggedIn(MAP_ENV + 'C_AddOns.IsAddOnLoaded = function(name) return name == "TomTom" end');
-  expect(tomtom.eval("return { SLASH_VANGUARDWAY1 == nil, SlashCmdList.VANGUARDWAY == nil }"), "TomTom loaded: /way is its").toEqual([true, true]);
+  expect(tomtom.eval("return { SLASH_VANGUARDWAY1 == nil, SlashCmdList.VANGUARDWAY == nil }"), "a waypoint addon loaded: /way is its").toEqual([true, true]);
   const taken = loggedIn(MAP_ENV + 'hash_SlashCmdList = { ["/WAY"] = function() end }');
   expect(taken.eval("return SLASH_VANGUARDWAY1 == nil"), "another addon's /way is left alone").toBe(true);
   const raw = loggedIn(MAP_ENV + 'SLASH_TESTONLYWAY1, SLASH_TESTONLYWAY2 = "/wp", "/Way" SlashCmdList.TESTONLYWAY = function() end');

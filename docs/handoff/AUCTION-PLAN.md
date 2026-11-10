@@ -81,7 +81,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 ### Phase B: shopping parity
 
-- [x] **B1 List management and import/export** (M): rename, delete, duplicate; export a list as text; import plain names, item IDs and Auctionator's `^`/`;` format (name and exact-match, level and quality fields; unsupported fields ignored and said so).
+- [x] **B1 List management and import/export** (M): rename, delete, duplicate; export a list as text; import plain names, item IDs and the common `^`/`;` format (name and exact-match, level and quality fields; unsupported fields ignored and said so).
 - [x] **B2 Search filters** (M): per entry, exact match, min/max level, quality, and a max price; the browse query carries `filters` and `minLevel`/`maxLevel`, and the exact-match flag uses `Enum.AuctionHouseFilter.ExactMatch`. Fixes the wrong-item fallback: a name entry matches only exact or contains-name results.
 - [x] **B3 Per-auction results** (L): clicking a shop row opens a second card (or replaces the shop rows) with every listing for that item from `SendSearchQuery`, sortable by unit price, quantity and time left, reading further pages on scroll; a row click still hands the game its listing for the buy. Keyboard: Up/Down rows, Enter to search.
 - [x] **B4 Recent searches** (S): the last 20 searched terms as a "Recent" pseudo-list.
@@ -97,7 +97,7 @@ Sizes: S under a day of lane time, M one to two, L more. Each is one commit with
 
 - [x] **D1 Disenchant values** (M): vanilla's disenchant tables by item level and quality (the fixed vanilla tables, marked unverified until checked in game), priced from the database; a tooltip line and a column on the sell card.
 - [x] **D2 Crafting info** (M): in the profession window, reagent cost and profit from the database, and "add reagents to a shopping list" (which also joins Keep-stocked).
-- [x] **D3 An API** (S): `Vanguard.API.v1` with `GetAuctionPriceByItemID/Link`, `GetVendorPriceByItemID/Link`, `GetDisenchantPriceByItemID/Link`, `RegisterForDBUpdate`, `MultiSearch`, `CreateShoppingList`/`AlterShoppingListItems`, mirroring Auctionator's names so addons written for it can switch with a one-line shim.
+- [x] **D3 An API** (S): `Vanguard.API.v1` with `GetAuctionPriceByItemID/Link`, `GetVendorPriceByItemID/Link`, `GetDisenchantPriceByItemID/Link`, `RegisterForDBUpdate`, `MultiSearch`, `CreateShoppingList`/`AlterShoppingListItems`, mirroring a widely used auction addon's names so addons written for it can switch with a one-line shim.
 
 ### Phase E: beyond parity
 

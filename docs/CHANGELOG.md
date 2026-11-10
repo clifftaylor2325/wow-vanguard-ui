@@ -462,9 +462,9 @@ A hotfix for 0.9.1.
 - Saved data is size-checked: Vanguard trims the oldest price data if the game says the file is too large.
 - /vg perf reads the game's addon profiler, and /vg perf slow names Vanguard's slowest handlers; /vg mem reads memory after a garbage collection.
 - /vg probe runs a batch of checks and /vg prep buffs checks the buff names, for reporting back what Forever does.
-- When another addon (EllesmereUI's unit frame, action bar, nameplate and raid frame addons) does a job a Vanguard module does, chat says so once.
+- When another addon (an all-in-one suite's unit frame, action bar, nameplate and raid frame parts) does a job a Vanguard module does, chat says so once.
 - Chat filters skip hidden text, saved-click-cast Import checks the whole string first, and a Quiet module can silence invite declines, battleground release, error and zone text and camera zoom.
-- Vanguard asks about ElvUI, Tukui, Auctionator and TradeSkillMaster when they do the same job.
+- Vanguard asks about leading all-in-one suites and auction addons when they do the same job.
 - The Vanguard meter gains each line's share of the total, kinds and segments, a spell panel, a chat report, a death recap link on the Deaths view, Report and Reset buttons and a width setting.
 - Slash and auction input is parsed more strictly, a stuck window drag ends cleanly, and a Forever build is recognised through the game's ruleset call.
 
