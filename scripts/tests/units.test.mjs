@@ -600,6 +600,18 @@ it("threat on your target and your pet's happiness", () => {
   expect(addon.eval('return __click("happiness") and VanguardDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
 });
 
+it("the pet's health text stays clear of its mood glyph after the frames are laid out again", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV);
+  // Where the pet's health text ends: its anchor point and how far in from the health bar's end.
+  const end = () => addon.eval("local p, _, rp, x = Vanguard_pet.healthText:GetPoint(1) return { p, rp, x }");
+  const built = end();
+  expect(built, "the number ends left of the glyph").toEqual(["RIGHT", "RIGHT", -17]);
+  addon.eval("ns.GetModule('UnitFrames').ApplyLook()");
+  expect(end(), "a look change keeps that room").toEqual(built);
+  addon.eval("ns.GetModule('UnitFrames').ApplySizes()");
+  expect([end(), addon.eval("return #ns.errors")], "and so does a size or scale change").toEqual([built, 0]);
+});
+
 it("a creature someone else tagged is grey on the unit frames, as on the game's frames", () => {
   const addon = loggedIn(UNITS_ENV + `__tapped = { target = true }
     UnitIsTapDenied = function(unit) return __tapped[unit] end
