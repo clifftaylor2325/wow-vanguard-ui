@@ -462,3 +462,13 @@ it("tooltips: the battle pet tooltips are skinned where the client has them", ()
   const off = loggedIn(PARTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { menus = false } } }" });
   expect(off.eval("return ns.FrameState('vgSkinned')[BattlePetTooltip]"), "with the menus group off they are the game's").toBeNull();
 });
+
+it("item tooltips: a stack under an owner the client keeps from addons, or with a hidden count, sells as one", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLTIP_ENV + ITEM_TIP_ENV);
+  const closed = addon.eval(`local real = __showItem
+    __showItem = function(link, count) GameTooltip.GetOwner = function() return { count = count, IsForbidden = function() return true end } end
+      GameTooltip.__link, GameTooltip.shownMoneyFrames, GameTooltip.__lines = link, nil, {} __post[0](GameTooltip) return GameTooltip.__lines end
+    local out = __showItem("item:90001", 20)[1].text __showItem = real return out`);
+  expect(closed, "a forbidden owner's count is not read").toBe("Sells for 0s 25c");
+  expect(addon.eval('return __showItem("item:90001", __wfgWorld.secret(20))[1].text'), "a hidden count is one").toBe("Sells for 0s 25c");
+});
