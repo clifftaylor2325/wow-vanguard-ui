@@ -528,6 +528,7 @@ it("lifecycle: a frame adopted after Enable is the scope's at every later start,
 
 it("lifecycle: a gate pointed at nothing does nothing while the module runs, and calls through when pointed again", () => {
   const addon = lifeAddon("", SCOPED);
+  // Calls the hook's gate and says how many calls reached the module.
   const call = () => addon.eval("__life.calls = 0 __life.hooks[1]() return __life.calls");
   addon.eval('__life.scopes[1]:Point("hook", nil)');
   expect(call()).toBe(0);
@@ -537,6 +538,7 @@ it("lifecycle: a gate pointed at nothing does nothing while the module runs, and
 
 it("lifecycle: a gate whose install could not hook yet is neither kept nor counted, and the next call installs it", () => {
   const addon = lifeAddon("", SCOPED);
+  // How many gates the scope has installed.
   const gates = () => addon.eval("return __life.scopes[1].gateCount");
   const before = gates();
   addon.eval('__life.scopes[1]:Gate("later", print, function() return false end)');

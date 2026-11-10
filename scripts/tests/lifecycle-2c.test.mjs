@@ -166,6 +166,7 @@ lifecycleCases("SpellRanks", SPELL_RANKS);
 
 it("lifecycle: spell ranks switched off says nothing about your bars, and on again says it", () => {
   const addon = SPELL_RANKS();
+  // How many older-rank notices chat has had.
   const notices = () => Array.from(addon.chat()).filter((l) => /hold an older spell rank/.test(l)).length;
   addon.eval('ns.SetModuleEnabled("SpellRanks", false)');
   addon.world.learn(100, { name: "TEST-ONLY Frostbolt", rank: 1 });
@@ -224,6 +225,7 @@ it("lifecycle: mail tools switched off at the mailbox takes the panel away and k
   const addon = MAIL_TOOLS();
   addon.eval(`__wfgWorld.mail = { { sender = "Mum", subject = "Hello", money = 0, itemCount = 0 } }`);
   addon.world.openMailWindow();
+  // Whether the mail tools' panel is shown.
   const shown = () => addon.eval("return Vanguard_MailTools ~= nil and Vanguard_MailTools:IsShown()");
   expect(shown(), "the panel beside the open mailbox").toBe(true);
   addon.eval('ns.SetModuleEnabled("MailTools", false)');
@@ -256,6 +258,7 @@ it("lifecycle: craft queue switched off at the profession window takes the panel
   addon.login();
   addon.world.setUnit("player", { class: "WARRIOR", level: 60 });
   const CQ = "ns.GetModule('CraftQueue')";
+  // Whether the craft queue's panel is shown.
   const shown = () => addon.eval(`local f = ${CQ}.frame return f ~= nil and f:IsShown()`);
   addon.world.openProfession(100);
   addon.eval(`${CQ}.Add(100, 2, "TEST-ONLY Linen Bag")`);

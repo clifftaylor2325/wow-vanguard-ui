@@ -24,6 +24,7 @@ lifecycleCases("RaidAuras", login);
 it("RaidAuras: switched off, a tile's rows and indicators are hidden and its unit let go; on again they come back, not made twice", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   addon.eval('__spawn(1, "raid1")');
+  // Whether the tile's debuff and HoT rows show, and the unit its auras read.
   const rows = () => addon.eval("local b = Vanguard_RaidUnitButton1 return { b.debuffRow ~= nil and b.debuffRow.frame:IsShown(), b.hotRow ~= nil and b.hotRow.frame:IsShown(), b.auraUnit }");
   expect(rows()[0], "a tile that shows a unit has its rows").toBe(true);
   const frames = addon.eval("return #__wfgStub.frames");
@@ -38,6 +39,7 @@ it("RaidAuras: switched off, a tile's rows and indicators are hidden and its uni
 it("RaidAuras: a changed setting makes the tile's rows again at the restart, an unchanged one keeps them", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   addon.eval('__spawn(1, "raid1") __row = Vanguard_RaidUnitButton1.debuffRow');
+  // Whether the tile still has the debuff row it had.
   const same = () => addon.eval("return Vanguard_RaidUnitButton1.debuffRow == __row");
   addon.eval('ns.RestartModule("RaidAuras")');
   expect(same(), "the same settings: the same rows").toBe(true);
@@ -92,6 +94,7 @@ lifecycleCases("Upgrades", login);
 
 it("Upgrades: switched off, it reads as off (no settings, no upgrade); its tooltip and card hooks stay one each, however often it is toggled", () => {
   const addon = loggedIn("");
+  // How many item-line providers and quest card painters are registered.
   const hooks = () => addon.eval('return { #ns.GetModule("Tooltips").itemLines, #ns.QuestParts.cardHooks }');
   const [lines, cards] = hooks();
   switchTo(addon, "Upgrades", false);
@@ -109,12 +112,14 @@ const CHARACTER_PANE = `
   __wfgWorld.items[1001] = { name = "TEST-ONLY Helm", quality = 3, level = 40, equipLoc = "INVTYPE_HEAD" }
   __wfgWorld.worn[1] = "item:1001:0"
 `;
+// The addon logged in with the TEST-ONLY character pane.
 const withPane = (saved) => loggedIn(CHARACTER_PANE, { savedVariables: saved });
 
 lifecycleCases("CharacterExtras", withPane);
 
 it("CharacterExtras: switched off, the item level on the game's slot goes and the pane draws none; on again it returns", () => {
   const addon = withPane("");
+  // Whether the head slot's item level shows.
   const level = () => addon.eval("local l = ns.FrameState('vgGearInfo')[CharacterHeadSlot] return l and l.level:IsShown() or false");
   addon.eval("CharacterFrame:Show()");
   expect(level(), "shown").toBe(true);
@@ -140,6 +145,7 @@ const TRAINER = `
 
 it("Errands: switched off, the Train all button on the game's trainer window is hidden and stays hidden; on again it returns, not made twice", () => {
   const addon = loggedIn(TRAINER);
+  // Whether the trainer's Train all button shows.
   const button = () => addon.eval('local b = ns.GetModule("Errands").trainButton return b ~= nil and b:IsShown()');
   addon.fire("TRAINER_SHOW");
   expect(button(), "shown on the trainer").toBe(true);
@@ -156,6 +162,7 @@ it("Errands: switched off, the Train all button on the game's trainer window is 
 
 it("Errands: a flight timer switched off points its hooks at nothing, and switched on again at the timer", () => {
   const addon = loggedIn("TakeTaxiNode = function() end TaxiRequestEarlyLanding = function() end");
+  // What the flight hook's gate points at: the timer, or the idle function.
   const target = () => addon.eval('local ER = ns.GetModule("Errands") return ER.scope.latest["take taxi"] == ER.OnTakeTaxi and "timer" or ER.scope.latest["take taxi"] == ER.Idle and "idle"');
   expect(target(), "on at login").toBe("timer");
   addon.eval('VanguardDB.profiles.Default.Errands.flightTimer = false ns.RestartModule("Errands")');
@@ -168,6 +175,7 @@ lifecycleCases("Merchant", login);
 
 it("Merchant: switched off, it reads as off and a merchant opening does nothing; on again it repairs and sells as before", () => {
   const addon = loggedIn("CanMerchantRepair = function() return true end GetRepairAllCost = function() return 50, true end GetMoney = function() return 500 end __repairs = 0 RepairAllItems = function() __repairs = __repairs + 1 end");
+  // Opens and closes a merchant; how many times repair ran.
   const open = () => { addon.fire("MERCHANT_SHOW"); addon.fire("MERCHANT_CLOSED"); return addon.eval("return __repairs"); };
   expect(open(), "repairs at a merchant").toBe(1);
   switchTo(addon, "Merchant", false);
