@@ -320,7 +320,14 @@ end
 
 -- get/set for the Raid target icons switch: it repaints the tiles and the unit frames' marks at once.
 local function raidIconSetting()
-  return liveSetting("RaidStatus", "raidIcons", function() ns.GetModule("RaidStatus").UpdateAll() ns.GetModule("UnitFrames").RefreshRaidIcons() end)
+  local get, set, initial = setting("RaidStatus", "raidIcons")
+  -- Saved, then shown on the raid tiles (while RaidStatus runs) and on the unit frames (which read the setting
+  -- themselves, so with the raid frames off, and RaidStatus with them, the unit frames still follow at once).
+  return get, function(v)
+    set(v)
+    if ns.ModuleLive("RaidStatus") then ns.GetModule("RaidStatus").UpdateAll() end
+    if ns.ModuleLive("UnitFrames") then ns.GetModule("UnitFrames").RefreshRaidIcons() end
+  end, initial
 end
 
 -- Raid frames plus their indicators.
