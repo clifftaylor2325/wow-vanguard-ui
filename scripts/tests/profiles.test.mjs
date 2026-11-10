@@ -173,6 +173,20 @@ it("hunt setup: /vg profile <name> matches an existing profile in any case, an e
   yes(addon);
   expect(addon.eval("return { VanguardDB.profiles.Typo ~= nil, ns.PendingProfileName() }"), "Yes creates it and stages it").toEqual([true, "Typo"]);
 });
+it("hunt setup: an old FUI1 string imports once (the second paste matches the profile it made, upgraded once) and a cut one changes nothing", () => {
+  const addon = loggedIn();
+  const make = 'local t = ns.Serialize.Encode("profile", { theme = { barTexture = "forever", reduceMotion = false } }):gsub("^VG1:", "FUI1:") return t';
+  const text = addon.eval(make);
+  const count = () => addon.eval("local n = 0 for _ in pairs(VanguardDB.profiles) do n = n + 1 end return n");
+  addon.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  const after = count();
+  expect(addon.eval(`local n = ns.ImportProfile(${JSON.stringify(text)}) return n`), "the same old string again uses the profile it made").toMatch(/matches profile/);
+  expect(count(), "and makes no second copy").toBe(after);
+  expect(addon.eval("local p for k, v in pairs(VanguardDB.profiles) do if v.theme and v.theme.barTexture == 'vanguard' then p = v end end return { p ~= nil, p.theme.reduceMotion }"), "the bar name is upgraded and a saved false stays a value").toEqual([true, false]);
+  const cut = text.slice(0, text.length - 12);
+  expect(addon.eval(`local a, b = ns.ImportProfile(${JSON.stringify(cut)}) return b`), "a cut string says so").toMatch(/incomplete|damaged/);
+  expect(count(), "and adds nothing").toBe(after);
+});
 it("spec profiles", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
   const addon = loggedIn(env);
