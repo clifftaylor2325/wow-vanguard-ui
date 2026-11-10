@@ -259,3 +259,15 @@ it("Names only on friendly plates: a unit you can't attack shows its name alone,
   addon.eval("UnitCanAttack = function() return false end ns.GetModule('Nameplates').RefreshAll() __click('Names only on friendly plates')");
   expect([look("nameplate1").alpha, look("nameplate2").alpha, addon.eval("return #ns.errors")], "switched off: whole plates again").toEqual([1, 1, 0]);
 });
+
+it("a plate's aura row the client has closed is never pointed at a unit: a removed plate is let go, a refresh paints the rest", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL);
+  // TEST-ONLY: the boar's debuff row closed as the client closes one it keeps; pointing it at a unit raises, as touching it would.
+  addon.eval(`__row1 = __plateOf("nameplate1").debuffs __row1.frame.IsForbidden = function() return true end
+    __row1.SetUnit = function() error("TEST-ONLY closed row touched") end`);
+  addon.eval("ns.GetModule('Nameplates').RefreshAll()");
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
+  expect(addon.eval("return { ns.GetModule('Nameplates').plates.nameplate1 == nil, #ns.errors }"), "the plate is let go, and nothing raised").toEqual([true, 0]);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  expect(addon.eval("return { __plateOf('nameplate1'):IsShown(), #ns.errors }"), "drawn again with the closed row left as it is").toEqual([true, 0]);
+});
