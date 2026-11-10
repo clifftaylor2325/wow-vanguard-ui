@@ -621,10 +621,10 @@ end
 -- A button's scripts: clicks, follow its unit, refresh on show, light on hover, its unit's tooltip.
 local function addScripts(b)
   b:RegisterForClicks("AnyUp")
-  b:HookScript("OnAttributeChanged", onAttributeChanged)
-  b:HookScript("OnShow", RF.Update)
-  b:HookScript("OnEnter", function() b.hover:Show() end)
-  b:HookScript("OnLeave", function() b.hover:Hide() end)
+  b:HookScript("OnAttributeChanged", ns.Guard("raid tile unit", onAttributeChanged))
+  b:HookScript("OnShow", ns.Guard("raid tile show", RF.Update))
+  b:HookScript("OnEnter", ns.Guard("raid tile hover", function() b.hover:Show() end))
+  b:HookScript("OnLeave", ns.Guard("raid tile hover", function() b.hover:Hide() end))
   RF.UnitTooltip(b)
 end
 

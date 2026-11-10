@@ -177,7 +177,7 @@ Branch `work/a6-focus`. Can run alongside 5b.
 - [ ] **A6-4** Stat weights: simulate them, source them, or label the arrows as a guide. (M8)
 - [ ] **A6-5** Clean non-functional third-party names from the repo per D5. (N19, L11)
 - [ ] **A6-6** Inventory window: item level and upgrade marks in bags, an offline view of other characters. Optional under the breadth freeze; it reuses stored data and closes a section 7.1 gap. (B6)
-- [ ] **A6-7** The remaining Low list (L8 to L10, L18, L19, L22 to L25, L27), one sweep.
+- [ ] **A6-7** The remaining Low list (L8 to L10, L18, L19, L22 to L25, L27), one sweep. Progress: L8 done for the raid tile scripts (95 other sites remain, tracked by the quality baseline); L18, L19, L22, L23, L25, L27 checked and left (see PR 820); L9 and L10 are design questions, not defects.
 - [ ] **A6-8** Player docs with real screenshots; the listing pages say which build was tested.
 - [ ] **A6-9** Follow through on D1: either the Retail verification sprint or the "unsupported" label. (B9)
 
