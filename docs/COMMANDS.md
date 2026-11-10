@@ -138,7 +138,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg alts [<name>]                every character's level, money, rested XP and time played; with a name, that character's bags and bank
 /vg inventory [forget <name>|clear]   your characters remembered here and when their bags were read
 /vg weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role
-/vg talents [plan|spend|clear|export|import]   the Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string
+/vg talents [plan|spend|order|clear|export|import]   the Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string
 /vg way [zone] x y [title]      a waypoint the game's arrow points to; /vg way clear removes it; /vg way recent [n] lists the last eight or goes back to one
 /vg factionart                  which of the game's own faction pictures this client has
 /vg launch [clear]               (WoW Forever only) prices, sales and characters saved from before launch (4 November 2026, the beta); clear removes them once the game has launched (the same button is under /vg > Town and gear)

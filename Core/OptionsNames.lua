@@ -11,6 +11,7 @@ local O = ns.Options
 
 -- The renamed rows: the new English name (without a reload bracket) -> the caption it had, reload bracket and all.
 O.RENAMED = {
+  ["State cues"] = L["State cues: combat, procs, cooldowns, low health"],
   ["Handles in the game's Edit Mode too"] = L["Show these handles in the game's Edit Mode too"],
   ["Combined bag in sections"] = L["Combined bag in sections: equipment, consumables, quest items, junk"],
   ["The game's tracker in the Vanguard look"] = L["The game's quest tracker in the Vanguard look (reload)"],

@@ -649,13 +649,10 @@ const PAGE_VIEW = "(function() for _, w in ipairs(__wfgStub.frames) do if w.fade
 const rowNamed = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
   if w.label and w.label.__text == "${text}" and ns.Options.RevealRow(w) then return w end end end)()`;
 
-it("options: a Width the presets don't list shows its value as a dropdown; a preset stays as segments", () => {
-  const preset = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { width = 90 } } } }' });
-  preset.eval('ns.Options.Show("raid")');
-  expect(preset.eval(`local r = ${rowNamed("Width")} return { r.segments ~= nil, r.dropdown == nil }`), "90 is a preset: the four segments").toEqual([true, true]);
+it("options: the raid Width is a slider that shows a value between the old steps, and the old steps sit on it", () => {
   const other = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { width = 84 } } } }' });
   other.eval('ns.Options.Show("raid")');
-  expect([other.eval(`local r = ${rowNamed("Width")} return { r.segments == nil, r.dropdown ~= nil }`), other.texts("84").length > 0], "84 isn't a preset: a dropdown, showing 84").toEqual([[true, true], true]);
+  expect([other.eval(`local r = ${rowNamed("Width")} return { r.segments == nil, r.dropdown == nil }`), other.texts("84").length > 0], "84 is on the slider and shown").toEqual([[true, true], true]);
 });
 
 it("options: the mouse wheel over a slider, a choice or a switch scrolls the page and never changes the value", () => {
@@ -1032,8 +1029,8 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|61", "modules|Modules|20|85", "unitframes|Unit frames|30|41", "raid|Raid frames|40|28",
-    "actionbars|Action bars|60|84", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|58", "profiles|Profiles|90|22",
+    "general|General|10|62", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
+    "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|58", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|26",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
   ]);

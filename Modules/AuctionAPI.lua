@@ -1,7 +1,7 @@
 -- Auction prices for other addons: Vanguard.API.v1, a table of functions
--- with the names and argument order of Auctionator's v1 API (as
+-- with the names and argument order of a widely used auction addon's v1 API (as
 -- docs/handoff/AUCTION-PLAN.md lists them; its source was not read), so an
--- addon written for Auctionator can read Vanguard's prices with a one-line
+-- addon written for that API can read Vanguard's prices with a one-line
 -- shim. docs/API.md documents it for addon authors.
 --
 -- Every function takes the calling addon's name first (callerID, a string);
@@ -113,7 +113,7 @@ end
 
 -- Shopping lists and searches ----------------------------------------------------------------
 
--- A search string as a shopping list entry: the name before the first ";" (Auctionator's search
+-- A search string as a shopping list entry: the name before the first ";" (the common search
 -- strings carry their filters after it and quote a name to match exactly) without quotes, read as
 -- the shop reads what is typed (an item link or ID, else a name); nil when blank.
 local function termEntry(term)

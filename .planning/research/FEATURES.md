@@ -29,7 +29,7 @@ For a levelling and grouping addon in the vanilla/Classic ecosystem, these are t
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| XP/hour and time-to-level ETA (EXISTS) | Every Classic XP addon (GrindCompanion, XPChronicle, XPLedger, EraEXP, XP Bar Tooltip) leads with it | LOW | Done. Keep the 60 s settle; early numbers jump |
+| XP/hour and time-to-level ETA (EXISTS) | Every Classic XP addon leads with it | LOW | Done. Keep the 60 s settle; early numbers jump |
 | XP bar tooltip with numbers: current/max, percent, rested (NEW, partial) | XP Bar Tooltip exists only to add this to the bar | LOW | Hook the existing `DB.XP()` table; add percent and rested-as-percent-of-level. Values the client hides show nothing (existing rule) |
 | Quest reward XP visible before turning in (EXISTS in log and dialog) | Players pick quests by XP value | LOW | Add to the tracker row (NEW, LOW); same `ns.PlainNumber` guard |
 | Supply low warning that is edge-triggered and not nagging (NEW) | Prepped, Blocky Buffet, Reagent Counter all do it; Blocky Buffet's repeating chat warning is a known annoyance | LOW | Reuse `InstancePrep` counts and `want` table; fire once when a count crosses the threshold downward, and when resting or opening a vendor. Never check in combat |
@@ -44,13 +44,13 @@ Aligned with the Core Value (loads clean, everything works): choose features tha
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| Live party quest progress under each tracker objective ("Ann 3/8, Bo 5/8") | The most-requested group feature; Questie, Bleakfiber's Quest Tracker and Party Passport HC all have it. Natively the client shows nothing | HIGH | Needs the comms layer (below) and every member running Vanguard. Fine for the author plus two friends; other players will see nothing, so degrade quietly. Do not try to speak Questie's protocol |
+| Live party quest progress under each tracker objective ("Ann 3/8, Bo 5/8") | The most-requested group feature; several quest addons have it. Natively the client shows nothing | HIGH | Needs the comms layer (below) and every member running Vanguard. Fine for the author plus two friends; other players will see nothing, so degrade quietly. Do not try to speak another addon's protocol |
 | Group comms layer in Core (prefix, version handshake, throttled queue, group gating) | Enables the above and later features | HIGH | See pitfalls below: 255-char limit, 16-char prefix, per-prefix throttle since 10.2.7, 12.0.0 `AddOnMessageLockdown` result. `Libs/` has no ChatThrottleLib; either write a tiny queue or add the library with a CREDITS note |
 | Roll history plus "is this an upgrade for me?" on the roll frame | Reuses existing `Upgrades`/`UpgradeWeights` (gear upgrade hints). No mainstream roll addon ties the two together | MEDIUM | Show a small badge on the roll frame and in the history row. Information only; the player still clicks |
 | `/roll` tracker (collect "X rolls N (1-100)", highlight highest, expire after N seconds) | Vanilla dungeons settle MS/OS and master-loot ties with `/roll`; a standalone tracker addon exists for exactly this | LOW | Parse via the localised `RANDOM_ROLL_RESULT` global string, not a hard-coded English pattern. Guard `ns.IsSecret` on every message |
 | Kills to level / XP per kill | Grinders want "~41 more of these"; GrindCompanion tracks per-mob stats | LOW | Compute from the `PLAYER_XP_UPDATE` delta already counted in `IS.CountXP`; no chat parsing, so no secret-string risk |
 | XP waiting in the quest log (sum of completed quests, as % of level) | Answers "should I turn in now or keep grinding" | LOW | Iterate the log, `GetQuestLogRewardXP` per completed quest, `ns.PlainNumber`. Show on the XP bar tooltip and tracker header |
-| Per-level history (time at level, XP/hr, gold gained) | XPLedger keeps leveling history per character; players like a record | MEDIUM | New per-character SavedVariables table through `Core/DB`. Needs `/played` or own session clock; XP Bar Tooltip uses `/played` |
+| Per-level history (time at level, XP/hr, gold gained) | One XP addon keeps leveling history per character; players like a record | MEDIUM | New per-character SavedVariables table through `Core/DB`. Needs `/played` or own session clock; XP Bar Tooltip uses `/played` |
 | Rested XP detail (rested until, inn/city status) | Rested XP drives vanilla levelling choices | LOW | `GetXPExhaustion`, `IsResting` already in use in `Situations`. Avoid a "time to full rested" figure unless the formula is verified for Forever |
 | Level-up toast: summary of the level plus nudges (unspent talents, visit trainer) | Cheap "something happened" feedback; doubles as UI-polish feedback work | LOW | `PLAYER_LEVEL_UP`. Trainer nudge is a simple message; the client gives no trainable-spell data away from the trainer. Talent nudge depends on `TalentPlanner` |
 | One-click vendor restock button (user presses it) | RestockReady does this; existing `want` table already knows the targets | MEDIUM | `BuyMerchantItem` is not protected, but keep it as a visible button press, not an automatic buy on window open (see anti-features) |
@@ -62,15 +62,15 @@ Aligned with the Core Value (loads clean, everything works): choose features tha
 |---------|---------------|-----------------|-------------|
 | Auto-Need or auto-roll on loot | "I'm tired of clicking" (aSmoothLootHelper does Need/Greed/Pass for you) | Not a clear Blizzard violation (roll calls are not protected), but it takes a decision for the player, and an auto-Need is the fastest way to be called a ninja in a three-person group. The policy lets Blizzard disable functionality at its sole discretion. Direct risk to the author's friends | Show information (upgrade badge, who can use it, timer). If anyone insists on automation, opt-in "auto-pass items I cannot equip" only, off by default, announces what it did, Shift to skip (the `QuestAuto` pattern). Never Need. Cut for launch |
 | Auto-buy when a vendor window opens | "Restock for free" | Silent spending; mistakes cost gold; blurs into automation | Restock button the player presses; prompt, not purchase |
-| Auto-announce every quest objective in party chat | Enhanced Quest Tracker does optional party announcements | Chat spam; addon-initiated chat is exactly what 12.0 locks down during encounters (`C_ChatInfo.InChatMessagingLockdown`), so it breaks unpredictably | Show progress in the tracker via addon messages (invisible to chat) |
+| Auto-announce every quest objective in party chat | one quest tracker addon does optional party announcements | Chat spam; addon-initiated chat is exactly what 12.0 locks down during encounters (`C_ChatInfo.InChatMessagingLockdown`), so it breaks unpredictably | Show progress in the tracker via addon messages (invisible to chat) |
 | Auto-share every accepted quest | Convenience | Shares to people who do not want it; quests that cannot be pushed are skipped anyway | Opt-in toggle, off by default, using the same pattern as `QuestAuto` |
-| Step-by-step levelling route guides (RestedXP/Zygor style) | The most popular levelling tools | Huge content database for a client whose content set is not yet public; paid guides conflict with the policy's free-distribution rule; the author cannot play-test them; Questie already fills map and quest-db territory | Defer entirely. Cooperate with Questie (the `withQuestie` setting exists) |
-| Own quest database / map pins | "Questie but in Vanguard" | Same data problem; duplicates a maintained addon; blows the 26-day schedule | Keep waypoints and native APIs only |
+| Step-by-step levelling route guides (paid and free guide-addon style) | The most popular levelling tools | Huge content database for a client whose content set is not yet public; paid guides conflict with the policy's free-distribution rule; the author cannot play-test them; a dedicated quest addon already fills map and quest-db territory | Defer entirely. Cooperate with the quest addon (the `withQuestie` setting exists) |
+| Own quest database / map pins | "a quest addon, but in Vanguard" | Same data problem; duplicates a maintained addon; blows the 26-day schedule | Keep waypoints and native APIs only |
 | Rotation / next-spell helpers, auto-targeting, bots, auto-walk or grind bots | Request appears in "levelling helper" threads | Automating gameplay is against the Terms of Use; the 12.0 Secret Values system exists specifically to stop addons computing combat logic from combat data | Not built. Ever |
 | Reading or comparing combat values that may be secret (e.g. kill-by-kill damage parsing from the combat log for XP) | Per-mob stats | Secret Values raise Lua errors on compare/arithmetic, breaking the "zero Lua errors" goal | Derive from plain deltas (`PLAYER_XP_UPDATE`) and `ns.PlainNumber` |
 | In-game donation prompts, ads, upsells | Monetisation | Banned by the UI Add-On Development Policy rules 4 and 5; the addon is free anyway | None |
 | Network/telemetry upload of player data | "Anonymous stats" | No external network from addons; unnecessary risk | Keep everything local |
-| Interop with Questie's wire protocol | "Show Questie users' progress" | Undocumented, version-fragile, needs every member on matching versions | Own versioned protocol for Vanguard users only |
+| Interop with a quest addon's wire protocol | "Show the other addon's users' progress" | Undocumented, version-fragile, needs every member on matching versions | Own versioned protocol for Vanguard users only |
 | Loot council / DKP / raid loot distribution | Looks like "group play" | Raid feature, already out of scope for launch | Defer past launch |
 
 ## Feature Dependencies
@@ -162,7 +162,7 @@ Small, event-driven, testable in the headless harness, and mostly extending exis
 
 ## UI Polish Expectations (mainstream addon baseline)
 
-This section is from experience of ElvUI, Details!, Bartender, Plater and similar; none of it was sourced from the web in this pass (MEDIUM/LOW). Project rules constrain implementation: colours and sizes only in `Core/Theme.lua`, fades at most 0.15 s in combat, Reduce motion honoured, every fade and sound listed in `docs/THEME.md`, and no `SetTexCoord` crops on atlas art (relative texcoords on Forever; size and anchor instead).
+This section is from experience of leading all-in-one suites and well-known meter, bar and nameplate addons; none of it was sourced from the web in this pass (MEDIUM/LOW). Project rules constrain implementation: colours and sizes only in `Core/Theme.lua`, fades at most 0.15 s in combat, Reduce motion honoured, every fade and sound listed in `docs/THEME.md`, and no `SetTexCoord` crops on atlas art (relative texcoords on Forever; size and anchor instead).
 
 ### Table stakes
 
@@ -198,9 +198,9 @@ This section is from experience of ElvUI, Details!, Bartender, Plater and simila
 
 | Feature | Competitor | How they do it | Our approach |
 |---------|------------|----------------|--------------|
-| XP rate, ETA | GrindCompanion, XPChronicle, XPLedger, EraEXP | Stand-alone panels with graphs and history | Keep the info-strip numbers; add kills to level and tooltip; history later |
+| XP rate, ETA | the Classic XP addons | Stand-alone panels with graphs and history | Keep the info-strip numbers; add kills to level and tooltip; history later |
 | Supply warnings | Prepped, Blocky Buffet, Reagent Counter, RestockReady | Chat warning, flashing icon, or auto-buy | Edge-triggered card or toast; button not auto-buy |
-| Party quest progress | Questie (QuestieComms), Bleakfiber's Quest Tracker, Party Passport HC | Addon messages; Questie needs everyone on the same version | Own comms for Vanguard users plus `IsUnitOnQuest` fallback |
+| Party quest progress | a dedicated quest addon, two quest tracker addons and a hardcore passport addon | Addon messages; the addon needs everyone on the same version | Own comms for Vanguard users plus `IsUnitOnQuest` fallback |
 | Roll history | Better Loot Rolls (observer, C_LootHistory), RollFlow (window replacement), RolyPoly (personal stats) | Observer or replacement | Observer plus Vanguard skin; upgrade badge as the unique part |
 | Auto rolling | aSmoothLootHelper | Automates Need/Greed/Pass | Do not build for launch |
 | Roll `/roll` results | standalone roll-tracker addons | Chat-parse | Same, localised patterns |
@@ -218,15 +218,15 @@ This section is from experience of ElvUI, Details!, Bartender, Plater and simila
 - Is `C_QuestLog.IsUnitOnQuest` present on the 12.1 client, and does it work for party members out of range? Needs an in-game check.
 - Which addon-message chat types and contexts are locked during encounters; no source states this. Needs an in-game check.
 - Does the quest XP the client returns already include level-based reduction? Verify with a low-level-quest turn-in.
-- Does Questie ship for Forever at launch? XPLedger lists Forever support; Questie was not checked.
+- Does the main quest addon ship for Forever at launch? One XP addon lists Forever support; the quest addon was not checked.
 - Everything visual in the polish section goes on the needs-in-game-check list.
 
 ## Sources
 
-- [GrindCompanion](https://www.curseforge.com/wow/addons/grindcompanion), [XPChronicle](https://www.curseforge.com/wow/addons/xpchronicle), [XPLedger](https://www.curseforge.com/wow/addons/xpledger) (lists WoW: Forever support), [EraEXP](https://www.curseforge.com/wow/addons/eraexp), [XP Bar Tooltip](https://www.curseforge.com/wow/addons/xp-bar-tooltip) — XP rate and ETA features (MEDIUM; listing pages)
-- [Prepped](https://www.curseforge.com/wow/addons/prepped), [Blocky Buffet](https://www.curseforge.com/wow/addons/blocky-buffet), [Reagent Counter](https://www.curseforge.com/wow/addons/reagentcounter), [RestockReady](https://www.curseforge.com/wow/addons/restockready) — supply reminders (MEDIUM)
-- [Better Loot Rolls](https://www.curseforge.com/wow/addons/better-loot-rolls), [RollFlow](https://www.curseforge.com/wow/addons/rollflow), [RolyPoly](https://www.curseforge.com/wow/addons/rolypoly), [aSmoothLootHelper](https://www.curseforge.com/wow/addons/asmoothloothelper) — loot roll tracking and automation (MEDIUM)
-- [Questie](https://www.curseforge.com/wow/addons/questie), [Bleakfiber's Quest Tracker - Classic](https://www.curseforge.com/wow/addons/bleakfibers-quest-tracker-classic), [BetterQuestLog](https://www.curseforge.com/wow/addons/betterquestlog), [Enhanced Quest Tracker](https://www.curseforge.com/wow/addons/enhancedquesttracker), [Party Passport HC](https://www.curseforge.com/wow/addons/party-passport-hc) — party quest progress (MEDIUM)
+- Listing pages of five Classic XP addons (one lists WoW: Forever support) — XP rate and ETA features (MEDIUM; listing pages)
+- Listing pages of four supply-reminder addons — supply reminders (MEDIUM)
+- Listing pages of four loot roll addons — loot roll tracking and automation (MEDIUM)
+- Listing pages of five quest addons — party quest progress (MEDIUM)
 - [UI Add-On Development Policy](https://us.forums.blizzard.com/en/wow/t/ui-add-on-development-policy/24534) — monetisation, visibility, realm impact, discretion; no automation clause (HIGH for what it says, dated 2009)
 - [Patch 12.0.0 Planned API changes](https://warcraft.wiki.gg/wiki/Patch_12.0.0/Planned_API_changes) and [Icy Veins coverage](https://www.icy-veins.com/wow/news/blizzard-relaxing-more-addon-limitations-in-midnight/) — Secret Values (MEDIUM)
 - [C_ChatInfo.SendAddonMessage](https://warcraft.wiki.gg/wiki/API:C_ChatInfo.SendAddonMessage) — limits and the 12.0.0 lockdown result code (MEDIUM; wiki under maintenance)

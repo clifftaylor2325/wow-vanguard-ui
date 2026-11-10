@@ -203,3 +203,43 @@ it("H17-2-1: a key's icon is cropped like every other game icon, so the art's be
   const edge = addon.eval("return ns.Theme.ICON_EDGE");
   expect(coords, "the icon shows the middle of the art, T.ICON_EDGE trimmed off each side").toEqual([edge, 1 - edge, edge, 1 - edge]);
 });
+
+// The key sitting at a place in the drawn main block (row 1 is the function row), by its slot.
+const keyAt = (addon, row, col) => addon.eval(`
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.slot and w.slot[1] == ${row} and w.slot[2] == ${col} and w:IsVisible() then return w.key end
+  end`);
+// Picks a layout in the card's dropdown (its set function, as a menu pick calls it) and returns the dropdown's text.
+const pickLayout = (addon, id) => addon.eval(`
+  for _, w in ipairs(__wfgStub.frames) do
+    if w.layout and w:IsVisible() then w.layout.set("${id}") w.layout:Refresh() return w.layout.text:GetText() end
+  end`);
+
+it("your keys: the picture has the function row and the number pad, and a bound one shows its place", () => {
+  const addon = withKeys('__wfgWorld.bindings.MULTIACTIONBAR1BUTTON2 = { "F5" } __wfgWorld.bindings.MULTIACTIONBAR1BUTTON3 = { "NUMPAD7" }');
+  expect(cap(addon, "F5"), "a function key").toMatchObject({ chord: "F5", place: "Bar 2 button 2" });
+  expect(cap(addon, "NUMPAD7"), "a number pad key").toMatchObject({ chord: "NUMPAD7", label: "N7" });
+  for (const key of ["F1", "F12", "NUMPADDIVIDE", "NUMPADPLUS", "NUMPAD0", "NUMPADDECIMAL"]) expect(cap(addon, key), key).toMatchObject({ chord: key });
+  expect(lines(addon).some((l) => l.includes("Bar 2 button 2")), "and the list says so").toBe(true);
+});
+
+it("your keys: the letters follow the layout of the client's locale until one is picked", () => {
+  const addon = withKeys();
+  expect([keyAt(addon, 3, 1), keyAt(addon, 5, 1)], "QWERTY by default").toEqual(["Q", "Z"]);
+  addon.eval('GetLocale = function() return "deDE" end ns.Options.Show("actionbars") ns.Options.ShowTab("Your keys")');
+  expect([keyAt(addon, 3, 6), keyAt(addon, 5, 1)], "German: Y and Z swap").toEqual(["Z", "Y"]);
+  addon.eval('GetLocale = function() return "frFR" end');
+  expect(pickLayout(addon, "bogus"), "an unknown pick is Automatic").toBe("Automatic");
+  expect([keyAt(addon, 3, 1), keyAt(addon, 4, 1), keyAt(addon, 4, 10)], "French: AZERTY").toEqual(["A", "Q", "M"]);
+});
+
+it("your keys: a layout picked wins over the locale and repaints the keys with what is on them", () => {
+  const addon = withKeys('__wfgWorld.bindings.MULTIACTIONBAR1BUTTON2 = { "W" }');
+  expect(pickLayout(addon, "azerty"), "the dropdown names it").toBe("AZERTY");
+  expect(keyAt(addon, 5, 1), "AZERTY's W is at the Z place").toBe("W");
+  expect(cap(addon, "W"), "and shows what is on W").toMatchObject({ place: "Bar 2 button 2" });
+  expect(pickLayout(addon, "qwertz"), "QWERTZ").toBe("QWERTZ");
+  expect(keyAt(addon, 3, 6), "Z is on the Y place").toBe("Z");
+  expect(pickLayout(addon, "auto"), "back to the locale's").toBe("Automatic");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

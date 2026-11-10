@@ -50,6 +50,8 @@ TP.RING = 6
 TP.BAR_WIDTH, TP.BAR_HEIGHT, TP.BAR_X, TP.BAR_Y, TP.SWITCH_WIDTH, TP.SPEND_WIDTH = 520, 24, 14, 10, 120, 110
 -- The summary's room: how far short of the game's Apply Changes button it ends, and its lines at most.
 TP.APPLY_GAP, TP.SUMMARY_LINES = 12, 2
+-- The Order button's width on the bar.
+TP.ORDER_BUTTON_WIDTH = 80
 TP.UNREACHABLE_NOTE = L["Unreachable: a talent or row it needs is not in the plan."]
 -- How long after a level-up the points are read (the game fills the new point in a moment).
 TP.LEVEL_DELAY = 1
@@ -231,19 +233,31 @@ function TP.SetPlanned(nodeID, rank)
   local node = tree and tree.nodes[nodeID]
   if not node then return end
   rank = math.max(0, math.min(node.max, rank))
-  TP.Plan().ranks[nodeID] = rank > node.rank and rank or nil
+  local plan = TP.Plan()
+  plan.ranks[nodeID] = rank > node.rank and rank or nil
+  TP.KeepOrder(plan, nodeID)
   TP.Refresh()
 end
 
+-- The place of each planned talent in the plan's order, by node ID (a plan with no order has none, and a
+-- hand-edited file may hold anything).
+local function priorities(plan)
+  local prio = {}
+  for place, id in ipairs(type(plan.order) == "table" and plan.order or {}) do
+    if type(id) == "number" and not prio[id] then prio[id] = place end
+  end
+  return prio
+end
+
 -- Where the buying simulation starts: each node's bought rank, the rank the plan wants (never under
--- what is bought), and the points spent per group.
+-- what is bought), the points spent per group, and the order the plan puts its talents in.
 local function startState(tree, plan)
   local state, want, spent = {}, {}, {}
   for id, node in pairs(tree.nodes) do
     state[id], want[id] = node.rank, math.max(node.rank, math.min(node.max, plan.ranks[id] or 0))
     spent[node.group] = (spent[node.group] or 0) + node.rank
   end
-  return state, want, spent
+  return state, want, spent, priorities(plan)
 end
 
 -- Whether the nodes in a list are all full in a simulated state (a node the tree lacks counts as full).
@@ -279,22 +293,30 @@ local function before(a, b)
   return a.nodeID < b.nodeID
 end
 
+-- Whether node a is bought before node b: the one the plan's order puts first (a talent it does not list comes
+-- after those it does), else the top-row-first order of `before`.
+local function earlier(prio, a, b)
+  local pa, pb = prio[a.nodeID] or math.huge, prio[b.nodeID] or math.huge
+  if pa ~= pb then return pa < pb end
+  return before(a, b)
+end
+
 -- The first node in buying order still short of its wanted rank that can be bought now, or nil.
-local function nextPick(tree, want, state, spent)
+local function nextPick(tree, want, state, spent, prio)
   local best
   for id, node in pairs(tree.nodes) do
-    if state[id] < want[id] and buyable(tree, state, spent, node) and (not best or before(node, best)) then best = node end
+    if state[id] < want[id] and buyable(tree, state, spent, node) and (not best or earlier(prio, node, best)) then best = node end
   end
   return best
 end
 
 -- Buys ranks in the simulation while something can be bought: the node IDs in order, one per point.
-local function simulate(tree, want, state, spent)
-  local order, pick = {}, nextPick(tree, want, state, spent)
+local function simulate(tree, want, state, spent, prio)
+  local order, pick = {}, nextPick(tree, want, state, spent, prio)
   while pick do
     state[pick.nodeID], spent[pick.group] = state[pick.nodeID] + 1, spent[pick.group] + 1
     order[#order + 1] = pick.nodeID
-    pick = nextPick(tree, want, state, spent)
+    pick = nextPick(tree, want, state, spent, prio)
   end
   return order
 end
@@ -302,10 +324,10 @@ end
 -- The plan against the tree: the order to buy the planned ranks in (one node ID per point), the nodes
 -- whose planned rank can never be reached (stuck), and the plan's size: points planned and bought.
 function TP.Resolve(tree, plan)
-  local state, want, spent = startState(tree, plan)
+  local state, want, spent, prio = startState(tree, plan)
   local out = { planned = 0, spent = 0, stuck = {} }
   for id, node in pairs(tree.nodes) do out.planned, out.spent = out.planned + want[id], out.spent + node.rank end
-  out.order = simulate(tree, want, state, spent)
+  out.order = simulate(tree, want, state, spent, prio)
   for id in pairs(tree.nodes) do out.stuck[id] = state[id] < want[id] or nil end
   return out
 end
@@ -531,7 +553,7 @@ end
 -- client cutting the rest), the whole of it in a tooltip on hover.
 local function barSummary(bar, frame)
   bar.summary = T.Text(bar:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  bar.summary:SetPoint("LEFT", bar.spend, "RIGHT", 10, 0)
+  bar.summary:SetPoint("LEFT", bar.order, "RIGHT", 10, 0)
   summaryEnd(bar, frame)
   bar.summary:SetJustifyH("LEFT")
   bar.summary:SetMaxLines(TP.SUMMARY_LINES)
@@ -550,6 +572,9 @@ local function barControls(bar, frame)
   bar.spend = ns.WidenToLabel(W.Button(bar, L["Spend planned"], function() TP.SpendPlanned() end, TP.SPEND_WIDTH))
   bar.spend:SetHeight(TP.BAR_HEIGHT - 4)
   bar.spend:SetPoint("LEFT", bar.plan, "RIGHT", 8, 0)
+  bar.order = ns.WidenToLabel(W.Button(bar, L["Order..."], function() TP.ToggleOrder() end, TP.ORDER_BUTTON_WIDTH))
+  bar.order:SetHeight(TP.BAR_HEIGHT - 4)
+  bar.order:SetPoint("LEFT", bar.spend, "RIGHT", 4, 0)
   barSummary(bar, frame)
 end
 
@@ -575,6 +600,7 @@ function TP.Refresh()
   TP.result = TP.Resolve(TP.tree, plan)
   paintAll(frame, TP.tree, plan, TP.result)
   paintBar(TP.tree, TP.result)
+  TP.RefreshOrder()
 end
 
 -- Paints on the next frame (several events in one frame paint once), or now on a client without C_Timer.
@@ -692,6 +718,137 @@ local function onLevelUp()
   if type(after) == "function" then after(TP.LEVEL_DELAY, go) else go() end
 end
 
+-- The order -----------------------------------------------------------------------------------------
+
+-- The talents the plan still has points for, in the order they are bought: the plan's order first, the rest
+-- top row first. Node IDs, as many as the plan has talents.
+function TP.OrderedIDs(tree, plan)
+  local prio, nodes = priorities(plan), {}
+  for id, node in pairs(tree.nodes) do
+    if (plan.ranks[id] or 0) > node.rank then nodes[#nodes + 1] = node end
+  end
+  table.sort(nodes, function(a, b) return earlier(prio, a, b) end)
+  for i, node in ipairs(nodes) do nodes[i] = node.nodeID end
+  return nodes
+end
+
+-- A talent planned after the player set an order joins its end (a plan with no order stays top row first).
+function TP.KeepOrder(plan, nodeID)
+  if type(plan.order) ~= "table" or not plan.ranks[nodeID] then return end
+  if not priorities(plan)[nodeID] then plan.order[#plan.order + 1] = nodeID end
+end
+
+-- The order window: the rows its list shows before it scrolls, its width, and its Up and Down buttons' width.
+TP.ORDER_ROWS, TP.ORDER_WIDTH, TP.ORDER_BUTTON = 8, 380, 52
+
+-- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on.
+function TP.MoveInOrder(nodeID, step)
+  local tree, plan = TP.tree or TP.ReadTree(), TP.Plan()
+  if not tree then return end
+  local ids = TP.OrderedIDs(tree, plan)
+  for i, id in ipairs(ids) do
+    if id == nodeID and ids[i + step] then ids[i], ids[i + step] = ids[i + step], id break end
+  end
+  plan.order = ids
+  TP.Refresh()
+  TP.RefreshOrder()
+end
+
+-- Goes back to the top-row-first order (the plan's own order forgotten).
+function TP.ResetOrder()
+  TP.Plan().order = nil
+  TP.Refresh()
+  TP.RefreshOrder()
+end
+
+-- An order row's text: the place, name and points still to buy, on one line left of the buttons.
+local function orderText(row)
+  row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
+  row.text:SetPoint("LEFT", row, "LEFT", T.SPACE.tight, 0)
+  row.text:SetWidth(TP.ORDER_WIDTH - 2 * T.SPACE.pad - 2 * TP.ORDER_BUTTON - T.SPACE.col)
+  row.text:SetJustifyH("LEFT")
+  row.text:SetWordWrap(false)
+end
+
+-- An order row: the talent's place and name, with the points still to buy, and Up and Down buttons.
+local function orderRow(parent)
+  local row = W.Row(parent, T.ROW.height, { width = TP.ORDER_WIDTH - 2 * T.SPACE.pad })
+  orderText(row)
+  row.down = W.Button(row, L["Down"], function() TP.MoveInOrder(row.nodeID, 1) end, TP.ORDER_BUTTON)
+  row.up = W.Button(row, L["Up"], function() TP.MoveInOrder(row.nodeID, -1) end, TP.ORDER_BUTTON)
+  row.down:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+  row.up:SetPoint("RIGHT", row.down, "LEFT", -T.SPACE.tight, 0)
+  return row
+end
+
+-- Paints one order row for the talent at place i of the order.
+local function paintOrderRow(row, tree, plan, id, i)
+  local node = tree.nodes[id]
+  row.nodeID = id
+  row.text:SetText(ns.Format(L["{place}. {talent} ({count})"], { place = i, talent = TP.NodeName(node), count = plan.ranks[id] - node.rank }))
+  row:SetPoint("TOPLEFT", row:GetParent(), "TOPLEFT", 0, -(i - 1) * T.ROW.height)
+  row:Show()
+end
+
+-- Repaints the order window, when it shows: a row per planned talent in the order they are bought, and a note
+-- when nothing is planned.
+function TP.RefreshOrder()
+  local f = TP.orderFrame
+  if not (f and f:IsShown()) then return end
+  local tree, plan = TP.tree or TP.ReadTree(), TP.Plan()
+  local ids = tree and TP.OrderedIDs(tree, plan) or {}
+  f.rows.Reset()
+  for i, id in ipairs(ids) do paintOrderRow(f.rows.Next(), tree, plan, id, i) end
+  f.list:Fit(#ids * T.ROW.height)
+  f.empty:SetShown(#ids == 0)
+end
+
+-- The order window's list (a scroll view of rows) and the note shown over it while nothing is planned.
+local function orderList(f)
+  local top = T.CONTROL.inset + T.SPACE.col
+  f.list = ns.ScrollView(f, { width = TP.ORDER_WIDTH - 2 * T.SPACE.pad })
+  f.list:SetPoint("TOPLEFT", f, "TOPLEFT", T.SPACE.pad, -top)
+  f.list:SetSize(TP.ORDER_WIDTH - 2 * T.SPACE.pad, TP.ORDER_ROWS * T.ROW.height)
+  f.rows = ns.QuestParts.Pool(f.list.child, orderRow)
+  f.empty = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "muted")
+  f.empty:SetPoint("TOPLEFT", f.list, "TOPLEFT", T.SPACE.tight, -T.SPACE.tight)
+  f.empty:SetWidth(TP.ORDER_WIDTH - 2 * T.SPACE.pad - T.SPACE.col)
+  f.empty:SetJustifyH("LEFT")
+  f.empty:SetText(L["Nothing is planned yet. Switch Plan on and click talents."])
+end
+
+-- The order window's foot: what the order means, and the button that goes back to top row first.
+local function orderFoot(f)
+  f.hint = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
+  f.hint:SetPoint("TOPLEFT", f.list, "BOTTOMLEFT", T.SPACE.tight, -T.SPACE.gap)
+  f.hint:SetWidth(TP.ORDER_WIDTH - 2 * T.SPACE.pad - T.SPACE.tight)
+  f.hint:SetJustifyH("LEFT")
+  f.hint:SetText(L["Spend planned buys in this order, as far as the talent tree allows. Move a talent up to buy it sooner."])
+  f.reset = W.Button(f, L["Top row first"], function() TP.ResetOrder() end, 120)
+  f.reset:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
+end
+
+-- Builds the order window (hidden; out of combat): a dialog with the list, the hint and the reset button.
+function TP.BuildOrder()
+  local height = T.CONTROL.inset + T.SPACE.col + TP.ORDER_ROWS * T.ROW.height + 2 * T.SPACE.col + T.BUTTON_H + 2 * T.SPACE.pad + 2 * T.SPACE.section
+  local f = ns.Dialog("Vanguard_TalentOrder", TP.ORDER_WIDTH, height, L["Talent plan order"])
+  TP.orderFrame = f
+  orderList(f)
+  orderFoot(f)
+  return f
+end
+
+-- Opens or closes the order window (built the first time, out of combat; in a fight it opens when the fight ends).
+function TP.ToggleOrder()
+  if not TP.settings then return ns.Chat(L["The Talent planner is off (/vg > Modules)."]) end
+  if not TP.orderFrame then
+    if ns.InCombat() then return ns.OutOfCombat(TP.ToggleOrder, "talentorder") end
+    TP.BuildOrder()
+  end
+  TP.orderFrame:SetShown(not TP.orderFrame:IsShown())
+  TP.RefreshOrder()
+end
+
 -- Sharing -----------------------------------------------------------------------------------------
 
 -- A class token as a word ("MAGE" -> "Mage").
@@ -739,7 +896,7 @@ end
 -- Makes checked ranks (TP.ReadImport) the plan of a spec group (the current one when none is named), and says how many points it holds.
 function TP.ApplyImport(ranks, hash, group)
   local plan = TP.Plan(group)
-  plan.ranks, plan.hash = ranks, hash
+  plan.ranks, plan.hash, plan.order = ranks, hash, nil
   TP.Refresh()
   ns.Chat(TP.Plural(countRanks(ranks), L["Talent plan imported: 1 point."], L["Talent plan imported: {count} points."]))
 end
@@ -772,7 +929,8 @@ end
 
 -- Empties this spec group's plan (the answer Yes to TP.AskClear).
 function TP.Clear()
-  TP.Plan().ranks = {}
+  local plan = TP.Plan()
+  plan.ranks, plan.order = {}, nil
   TP.Refresh()
   ns.Chat(L["Talent plan cleared."])
 end
@@ -805,9 +963,16 @@ local function spendCommand()
 end
 
 -- /vg talents <word>: what each word does.
-TP.COMMANDS = { plan = planCommand, spend = spendCommand, clear = TP.AskClear, export = TP.ExportDialog, import = TP.ImportDialog }
+-- /vg talents order: the order window.
+local function orderCommand()
+  TP.ToggleOrder()
+end
 
--- /vg talents [plan|spend|clear|export|import]: the plan's summary, or one of those.
+TP.COMMANDS = {
+  plan = planCommand, spend = spendCommand, order = orderCommand, clear = TP.AskClear, export = TP.ExportDialog, import = TP.ImportDialog,
+}
+
+-- /vg talents [plan|spend|order|clear|export|import]: the plan's summary, or one of those.
 function TP.Command(rest)
   if not TP.settings then return ns.Chat(L["The Talent planner is off (/vg > Modules)."]) end
   local sub = TP.COMMANDS[(rest or ""):match("^(%a*)"):lower()]

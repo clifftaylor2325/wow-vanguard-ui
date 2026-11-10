@@ -143,6 +143,25 @@ it("Standards: on a client without the percent curve a banner shows the health t
   expect(text, "the setting's own text (900 of 1000 health)").toEqual([text[1], text[1]]);
 });
 
+// The parts that ride a frame (TEST-ONLY): heals on their way, you lead, a class portrait on your frame.
+const RIDERS_ENV = UNITS_ENV + `
+  __units.player.incoming, __units.player.absorb, __units.player.leader = 200, 150, true
+  UnitGetIncomingHeals = function(unit) return __units[unit].incoming end
+  UnitGetTotalAbsorbs = function(unit) return __units[unit].absorb end
+  UnitIsGroupLeader = function(unit) return __units[unit].leader == true end
+`;
+// Whether your frame's heal bar, shield bar, leader mark and portrait show, and its health bar's width for the riders (units, two places).
+const riders = (addon) => addon.eval(`local f = Vanguard_player
+  return { f.heal:IsShown(), f.shield:IsShown(), f.status.leader:IsShown(), f.portrait:IsShown(), math.floor(ns.GetModule("UnitFrames").BarWidth(f) * 100 + 0.5) / 100 }`);
+
+it("Standards: the heal and shield bars, the status marks and the portrait stay off while a frame stands, and come back under Centered", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)" + RIDERS_ENV + CLICK_LUA, {
+    savedVariables: `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, hudLayout = "standards", theme = { hudLook = "hairline" }, UnitFrames = { playerPortrait = "class", statusMarks = true } }` });
+  expect(riders(addon), "nothing rides a banner; its bar is the banner less its edges and the power line").toEqual([false, false, false, false, 34.58]);
+  addon.eval("ns.SetHudLayout('centered')");
+  expect(riders(addon).slice(0, 4), "across the frame again, the riders return").toEqual([true, true, true, true]);
+});
+
 it("setup and options: The keep and Standards are layout choices in setup (your role's spots first, then the layout), another Centered layout clears them, and the General page cycles them", () => {
   const addon = loggedIn(WIDE + UNITS_ENV + CLICK_LUA, { firstRun: true });
   addon.eval('__click("The keep")');

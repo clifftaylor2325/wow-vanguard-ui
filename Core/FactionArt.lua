@@ -6,6 +6,7 @@
 local ADDON, ns = ...
 
 local T = ns.Theme
+local L = ns.L
 
 local FA = {}
 ns.FactionArt = FA
@@ -51,7 +52,7 @@ ns.On("NEUTRAL_FACTION_SELECT_RESULT", function() T.Refresh() end)
 
 -- Prints the report: your faction, then each atlas and file and whether it's there.
 function FA.Report()
-  ns.Chat("Faction art on this client (you're " .. FA.Faction() .. "):")
+  ns.Chat(ns.Format(L["Faction art on this client (you're {faction}):"], { faction = FA.Faction() }))
   for _, name in ipairs(FA.ATLASES) do line("atlas", name, FA.HasAtlas(name)) end
   for _, file in ipairs(FA.FILES) do line("file", file, FA.HasFile(file)) end
 end

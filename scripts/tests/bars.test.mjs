@@ -173,11 +173,13 @@ it("a client with cooldown duration objects never hands the numbers to SetCooldo
   addon.eval(`GetActionCooldownDuration = function() return nil end GetActionCooldown = function() return 5, 2 end
     local cd = Vanguard_Bar1Button1.cooldown cd.__cooldown = { 1, 1 } cd.SetCooldown = function() __numbers = true end`);
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
+  addon.update(0);
   expect(addon.eval("return { __numbers or false, Vanguard_Bar1Button1.cooldown.__cooldown == nil }"), "no duration object: the sweep is cleared, the numbers unused").toEqual([false, true]);
   addon.eval(`GetActionCooldownDuration = function() return { __duration = true } end
     Vanguard_Bar1Button1.cooldown.SetCooldownFromDurationObject = function() error("TEST-ONLY refused", 0) end`);
   addon.clearChat();
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
+  addon.update(0);
   expect([addon.eval("return ns.errors[#ns.errors].text"), chatHas(addon, /bar cooldown/)], "a refused object is kept for /vg errors, not printed").toEqual(["bar cooldown: TEST-ONLY refused", false]);
 });
 
@@ -453,6 +455,7 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
     Vanguard_Bar1Button1.cooldown.SetCooldownFromDurationObject = function() __obj = true return true end
   `);
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
+  addon.update(0);
   expect(addon.eval("return __obj") === true, "a cooldown duration object is passed straight to the sweep").toBeTruthy();
   addon.eval(`
     GetActionCooldownDuration = nil
@@ -460,6 +463,7 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
     GetActionCooldown = function() return { startTime = 5, duration = 2 } end
   `);
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
+  addon.update(0);
   const cd = addon.eval("return Vanguard_Bar1Button1.cooldown.__cooldown");
   expect(cd[0] === 5 && cd[1] === 2, "a cooldown given as a table uses its start and duration").toBeTruthy();
 });
@@ -549,6 +553,7 @@ it("the game's hidden action buttons are silenced, and one cooldown event refres
   expect(addon.eval("return __cooldowns"), "SPELL_UPDATE_COOLDOWN no longer re-reads every button's cooldown").toBe(0);
   addon.eval("__actions[1].cd = { 10, 30 }");
   addon.fire("ACTIONBAR_UPDATE_COOLDOWN");
+  addon.update(0);
   expect([addon.eval("return __cooldowns > 0"), addon.eval("return Vanguard_Bar1Button1.cooldown.__cooldown")], "ACTIONBAR_UPDATE_COOLDOWN does, and the sweep shows it").toEqual([true, [10, 30]]);
   const kept = loggedIn(ACTIONS_ENV + GAME_BUTTONS, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { hideBlizzard = false } } }" });
   expect(kept.eval('return ActionButton1:IsEventRegistered("ACTIONBAR_UPDATE_COOLDOWN")'), "with the game's bars kept, its buttons keep their events").toBe(true);
@@ -949,9 +954,11 @@ it("Y2-4 bars: a usable event repaints only the buttons whose state changed", ()
   addon.eval("Vanguard_Bar1Button3.icon:SetVertexColor(1, 0, 0, 1)");
   addon.fire("ACTIONBAR_UPDATE_USABLE");
   addon.fire("SPELL_UPDATE_USABLE");
+  addon.update(0);
   expect(button(addon, 1, 3).color.slice(0, 3), "still unusable: the icon not painted again").toEqual([1, 0, 0]);
   addon.eval("__actions[3].usable = true");
   addon.fire("ACTIONBAR_UPDATE_USABLE");
+  addon.update(0);
   expect(button(addon, 1, 3).color[0] === 1 && button(addon, 1, 3).color[1] === 1, "usable now: painted, no longer dimmed").toBe(true);
 });
 
@@ -978,4 +985,143 @@ it("an imported string's bar size that isn't a number is dropped before it is sa
   const size = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, ActionBars = { bars = { { size = "big", perRow = 0 } } } })
     return { kind, data.ActionBars.bars[1].size == nil, data.ActionBars.bars[1].perRow == nil }`);
   expect(size, "the payload is cleaned by the migration").toEqual(["parts", true, true]);
+});
+
+// TEST-ONLY: runs the setter of the shared Action bars card's row `label` with a Lua value, as its control would.
+const setSharedOption = (addon, label, lua) => addon.eval(`
+  for _, p in ipairs(ns.Options.PAGES) do
+    for _, row in ipairs(p.key == "actionbars" and p.rows() or {}) do
+      if row[2] == ${JSON.stringify(label)} then
+        local i = #row
+        while type(row[i]) ~= "function" do i = i - 1 end
+        row[i](${lua}) return true
+      end
+    end
+  end
+  return false`);
+
+it("A3-2 bars: a burst of usable, cooldown and state events repaints each button once, on the next frame", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  addon.eval(`__reads = { usable = 0, cooldown = 0, current = 0 }
+    local usable, cooldown, current = IsUsableAction, GetActionCooldown, IsCurrentAction
+    IsUsableAction = function(...) __reads.usable = __reads.usable + 1 return usable(...) end
+    GetActionCooldown = function(...) __reads.cooldown = __reads.cooldown + 1 return cooldown(...) end
+    IsCurrentAction = function(...) __reads.current = __reads.current + 1 return current(...) end`);
+  for (const event of ["ACTIONBAR_UPDATE_USABLE", "SPELL_UPDATE_USABLE", "ACTIONBAR_UPDATE_COOLDOWN", "ACTIONBAR_UPDATE_COOLDOWN", "ACTIONBAR_UPDATE_STATE", "START_AUTOREPEAT_SPELL"]) addon.fire(event);
+  expect(addon.eval("return __reads"), "nothing is read while the burst comes in").toEqual({ usable: 0, cooldown: 0, current: 0 });
+  addon.update(0);
+  const buttons = addon.eval('return #ns.GetModule("ActionBars").buttons');
+  // A state repaint asks IsCurrentAction once a button, for the checked highlight (the flash asks it only of an attack).
+  expect(addon.eval("return __reads"), "then each button is read once per part").toEqual({ usable: buttons, cooldown: buttons, current: buttons });
+  addon.update(0);
+  expect(addon.eval("return __reads.usable"), "and not again on the frame after").toBe(buttons);
+});
+
+it("A3-2 bars: a macro's name shows along the bottom of its button, live with Macro names", () => {
+  const addon = loggedIn(ACTIONS_ENV + `
+    __actions[1].macro = "TEST-ONLY Burst" __actions[3].macro = { __secret = true } __actions[2].macro = "TEST-ONLY Potion"
+    C_ActionBar.UsesActionText = function(slot) return slot ~= 2 end
+    C_ActionBar.GetActionText = function(slot) return (__actions[slot] or {}).macro end`);
+  // Bar 1 button n's macro name text.
+  const name = (n) => addon.eval(`return Vanguard_Bar1Button${n}.macroName:GetText()`);
+  expect([name(1), name(2), name(4)], "a macro's name; none where the game prints none (a potion's count); none on an empty slot").toEqual(["TEST-ONLY Burst", "", ""]);
+  expect(addon.eval("return Vanguard_Bar1Button3.macroName:GetText().__secret"), "a hidden name goes to the label as it is").toBe(true);
+  expect(addon.eval("local t = Vanguard_Bar1Button1.macroName return { t.__points.BOTTOMLEFT.rel == Vanguard_Bar1Button1, t.__points.BOTTOMRIGHT.rel == Vanguard_Bar1Button1, t.__noWrap }"),
+    "one line pinned to both bottom corners, so a long name is cut at the button's edge").toEqual([true, true, true]);
+  addon.eval('__actions[1].macro = "TEST-ONLY Renamed"');
+  addon.fire("UPDATE_MACROS");
+  expect(name(1), "editing the macro renames the button").toBe("TEST-ONLY Renamed");
+  setCombat(addon, true);
+  expect(setSharedOption(addon, "Macro names", "false") && name(1), "turned off, in combat too: no name").toBe("");
+  setSharedOption(addon, "Macro names", "true");
+  expect(name(1), "turned on again: the name is back").toBe("TEST-ONLY Renamed");
+});
+
+it("A3-2 bars: a client that cannot say whether an action prints its name still shows a macro's", () => {
+  const addon = loggedIn(ACTIONS_ENV + '__actions[1].macro = "TEST-ONLY Burst" GetActionText = function(slot) return (__actions[slot] or {}).macro end C_ActionBar.GetActionText = nil');
+  expect([addon.eval("return Vanguard_Bar1Button1.macroName:GetText()"), addon.eval("return Vanguard_Bar1Button2.macroName:GetText()")], "the global's answer; nothing for no text").toEqual(["TEST-ONLY Burst", ""]);
+});
+
+it("A3-2 bars: Key text off takes the key off every button at once, and on puts it back", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  setCombat(addon, true);
+  expect(setSharedOption(addon, "Key text", "false") && [button(addon, 1, 1).hotkey, button(addon, 2, 1).hotkey], "off, in combat too: no key text").toEqual(["", ""]);
+  expect(addon.eval("return __overrides['1']"), "the key still clicks the button").toBe("Vanguard_Bar1Button1:LeftButton");
+  addon.fire("UPDATE_BINDINGS");
+  setCombat(addon, false);
+  expect(button(addon, 1, 1).hotkey, "and stays off when the bindings are applied again").toBe("");
+  setSharedOption(addon, "Key text", "true");
+  expect([button(addon, 1, 1).hotkey, button(addon, 2, 1).hotkey], "on: the keys are back").toEqual(["1", "CM4"]);
+});
+
+it("A3-2 bars: Button spacing lays every bar out again without a reload, after the fight in one", () => {
+  const addon = loggedIn(STACK_ENV);
+  // Bar 2 button 2's x offset, bar 2's width, and the stack's default y offsets of bars 1 to 3.
+  const shape = () => [addon.eval("local _, _, _, x = Vanguard_Bar2Button2:GetPoint(1) return x"), addon.eval("return Vanguard_Bar2:GetWidth()"), stackY(addon).slice(0, 3)];
+  expect(shape(), "the default 2 px").toEqual([40, 12 * 40 - 2, [100, 62, 24]]);
+  setCombat(addon, true);
+  setSharedOption(addon, "Button spacing", 6);
+  setSharedOption(addon, "Button spacing", 8);
+  expect([shape()[0], addon.eval("return ns.QueuedCount()")], "in combat the bars wait (secure frames), one entry however often the slider moves").toEqual([40, 1]);
+  setCombat(addon, false);
+  expect(shape(), "then 8 px between the buttons, and the stack follows the bars' new heights").toEqual([46, 12 * 46 - 8, [100, 62, 24]]);
+  setSharedOption(addon, "Button spacing", 0);
+  expect(shape()[0], "0: the buttons touch, at once out of combat").toBe(38);
+});
+
+it("A3-2 bars: a saved spacing that is not a number of 0 or more is dropped at login", () => {
+  for (const spacing of ["'wide'", "-1", "1/0", "0/0"]) {
+    const addon = loggedIn(ACTIONS_ENV, { savedVariables: `VanguardDB = { profiles = { Default = { ActionBars = { spacing = ${spacing} } } } }` });
+    expect([addon.eval("return #ns.errors"), addon.eval('return ns.GetModule("ActionBars").settings.spacing')], `${spacing}: the default`).toEqual([0, 2]);
+  }
+});
+
+// TEST-ONLY: slot 1 (current in ACTIONS_ENV) is the attack action; slot 2 repeats while __repeat is set.
+const ATTACK_ENV = ACTIONS_ENV + `
+  C_ActionBar.IsAttackAction = function(slot) return slot == 1 end
+  IsAutoRepeatAction = function(slot) return slot == 2 and __repeat == true end`;
+// Whether bar 1 button n's attack flash shows, and whether the flash ticker runs.
+const flash = (addon, n) => addon.eval(`return Vanguard_Bar1Button${n}.flash:IsShown()`);
+const ticking = (addon) => addon.eval('return ns.ticker.vgJobs["action bar flash"] ~= nil');
+
+it("A3-2 bars: auto-attack flashes its button on and off every 0.4 s, and the flash stops with it", () => {
+  const addon = loggedIn(ATTACK_ENV);
+  expect([flash(addon, 1), flash(addon, 2), ticking(addon)], "auto-attack on: its button lights at once; other buttons don't").toEqual([true, false, true]);
+  addon.update(0.4);
+  expect(flash(addon, 1), "0.4 s later it goes dark").toBe(false);
+  addon.update(0.4);
+  expect(flash(addon, 1), "and lights again").toBe(true);
+  addon.eval("__actions[1].current = false");
+  addon.fire("PLAYER_LEAVE_COMBAT");
+  addon.update(0);
+  expect(flash(addon, 1), "auto-attack off: dark at once").toBe(false);
+  addon.update(0.4);
+  expect(ticking(addon), "and the ticker stops on its next beat").toBe(false);
+  expect(addon.eval("local f, b = Vanguard_Bar1Button1.flash, Vanguard_Bar1Button1 return { f.__layer, f.__points.TOPLEFT.rel == b.icon, f.__points.BOTTOMRIGHT.rel == b.icon }"),
+    "a wash over the icon, under the texts").toEqual(["ARTWORK", true, true]);
+});
+
+it("A3-2 bars: Auto Shot flashes while it repeats, and a hidden answer flashes nothing", () => {
+  const addon = loggedIn(ATTACK_ENV);
+  addon.eval("__repeat = true");
+  addon.fire("START_AUTOREPEAT_SPELL");
+  addon.update(0);
+  expect(flash(addon, 2), "auto-repeat on: its button lights").toBe(true);
+  addon.eval("__repeat = false");
+  addon.fire("STOP_AUTOREPEAT_SPELL");
+  addon.update(0);
+  expect(flash(addon, 2), "off: dark").toBe(false);
+  addon.eval("C_ActionBar.IsAttackAction = function() return { __secret = true } end IsAutoRepeatAction = function() return { __secret = true } end");
+  addon.fire("PLAYER_ENTER_COMBAT");
+  addon.update(0);
+  expect([flash(addon, 1), flash(addon, 2)], "the client hides the answers: no flash").toEqual([false, false]);
+});
+
+it("A3-2 bars: with Reduce motion the attack flash stays lit instead of blinking", () => {
+  const addon = loggedIn(ATTACK_ENV);
+  addon.eval("ns.Theme.Settings().reduceMotion = true");
+  addon.update(0.4);
+  expect(flash(addon, 1), "a beat later it is still lit").toBe(true);
+  addon.update(0.4);
+  expect(flash(addon, 1), "and the next").toBe(true);
 });

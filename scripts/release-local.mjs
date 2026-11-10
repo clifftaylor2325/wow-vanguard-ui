@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Local release route, for when GitHub Actions cannot run release.yml (billing block, outage) or
 // a fix has to ship in minutes. It does the same job as the workflow: the checks, the release zip,
-// CurseForge and Wago (through the pinned BigWigs packager, which reads the project IDs from
+// CurseForge and Wago (through the pinned release packager, which reads the project IDs from
 // Vanguard.toc) and the GitHub release.
 //
 //   node scripts/release-local.mjs                      rehearsal: every check and build, nothing uploaded
 //   node scripts/release-local.mjs --publish=v0.6.1     publish; the value must be v<## Version in the TOC>
 //
-//   --fast          skip `npm run coverage` (about 7 minutes); the output says it was skipped
+//   --fast          the whole suite without coverage (`npm test`, about half the time); the output says so
 //   --no-listings   leave out CurseForge and Wago
 //   --no-github     leave out the GitHub release
 //
@@ -92,7 +92,8 @@ function contentProblems(s, tag) {
 export function buildSteps(opts, ctx) {
   // An `npm run` step.
   const npm = (script) => ({ name: `npm run ${script}`, cmd: "npm", args: ["run", script] });
-  const gates = [npm("quality"), npm("test:quick"), ...(opts.fast ? [] : [npm("coverage")])];
+  // Every test runs before a publish, since no pull request runs them in CI; --fast only drops the coverage floor.
+  const gates = [npm("quality"), npm("test:quick"), npm(opts.fast ? "test" : "coverage")];
   const zip = path.join("dist", `Vanguard-${ctx.version}.zip`);
   const build = [
     { name: "build the zip", cmd: "node", args: ["scripts/package.mjs", "--ref", "HEAD"] },
@@ -225,7 +226,7 @@ export async function main(argv) {
 async function finish(opts, state) {
   const ctx = { version: state.tocVersion, head: state.head, luac: has("luac5.1"), tocFiles: tocFiles(state.toc) };
   if (!ctx.luac) console.log("\nluac5.1 is not installed: Lua 5.1 syntax NOT checked (apt-get install lua5.1)");
-  if (opts.fast) console.log("\n--fast: npm run coverage skipped");
+  if (opts.fast) console.log("\n--fast: every test ran, without coverage (npm test, not npm run coverage)");
   if (!runAll(buildSteps(opts, ctx))) return fail("a check failed; nothing was uploaded");
   writeNotes(ctx.version);
   if (opts.listings) ctx.script = await fetchPackager();

@@ -15,6 +15,7 @@
 -- QUEST_TURNED_IN record only the types of their first arguments, never the values.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local P = {}
 ns.Probe = P
@@ -188,7 +189,7 @@ do
 
   -- /vg guide probe: prints a line per read and per event.
   function GD.Probe()
-    ns.Chat("Guide probe (chat only, nothing is changed); in combat: " .. tostring(ns.InCombat()))
+    ns.Chat(ns.Format(L["Guide probe (chat only, nothing is changed); in combat: {combat}"], { combat = tostring(ns.InCombat()) }))
     for _, probe in ipairs(GD.PROBES) do ns.Chat("  " .. GD.Line(probe)) end
     for _, event in ipairs(GD.EVENTS) do ns.Chat("  " .. eventLine(event)) end
   end
@@ -197,7 +198,7 @@ end
 -- /vg guide <what>: only "probe" so far.
 function GD.Command(rest)
   if (rest or ""):lower():match("^%s*(%S*)") == "probe" then return GD.Probe() end
-  ns.Chat("Usage: /vg guide probe  (what this client returns for the reads the levelling guide would use)")
+  ns.Chat(L["Usage: /vg guide probe  (what this client returns for the reads the levelling guide would use)"])
 end
 
 GD.Listen()
@@ -277,7 +278,7 @@ end
 
 -- /vg probe legacy: the lines, out of combat.
 function P.Legacy()
-  if ns.InCombat() then return ns.Chat("Not in combat.") end
+  if ns.InCombat() then return ns.Chat(L["Not in combat."]) end
   for _, line in ipairs(P.LegacyLines()) do ns.Chat(line) end
 end
 
@@ -930,8 +931,9 @@ end
 -- Keeps the report in SavedVariables and opens it in the copy box.
 local function publish(lines)
   VanguardDB.probe.report = lines
-  ns.ShowText("Vanguard probe  Ctrl+C to copy", table.concat(lines, "\n"))
-  ns.Chat("Probe done: " .. P.Tally(lines) .. ". The report is in the copy box and saved in Vanguard.lua (SavedVariables) as probe.report.")
+  ns.ShowText(L["Vanguard probe  Ctrl+C to copy"], table.concat(lines, "\n"))
+  local done = L["Probe done: {tally}. The report is in the copy box and saved in Vanguard.lua (SavedVariables) as probe.report."]
+  ns.Chat(ns.Format(done, { tally = P.Tally(lines) }))
 end
 
 -- The most runs in a fight kept (VanguardDB.probeFights, apart from the report so the round trip's
@@ -951,7 +953,7 @@ local function combatRun(toChat)
   while #kept > P.COMBAT_MAX do table.remove(kept, 1) end
   VanguardDB.probeFights = kept
   if toChat then for _, line in ipairs(block) do ns.Chat(line) end end
-  ns.Chat("Probe: party, mark and boss reads taken in this fight. /vg probe last shows them after the main report.")
+  ns.Chat(L["Probe: party, mark and boss reads taken in this fight. /vg probe last shows them after the main report."])
 end
 
 -- Drops the fight runs kept from earlier sessions, so a new report is followed only by this session's.
@@ -985,8 +987,8 @@ end
 -- /vg probe last: what is kept in SavedVariables, from this or an earlier session.
 function P.Last()
   local lines = keptLines(type(VanguardDB.probe) == "table" and VanguardDB.probe or {})
-  if #lines == 0 then return ns.Chat("Probe: nothing saved yet. Run /vg probe.") end
-  ns.ShowText("Vanguard probe (saved)  Ctrl+C to copy", table.concat(lines, "\n"))
+  if #lines == 0 then return ns.Chat(L["Probe: nothing saved yet. Run /vg probe."]) end
+  ns.ShowText(L["Vanguard probe (saved)  Ctrl+C to copy"], table.concat(lines, "\n"))
 end
 
 -- The fight ---------------------------------------------------------------------------------
@@ -1010,7 +1012,7 @@ end
 local function fightDone()
   VanguardDB.probe = VanguardDB.probe or {}
   VanguardDB.probe.fight = P.fight
-  ns.Chat("Probe: the fight report is ready. /vg probe last shows it after the main report.")
+  ns.Chat(L["Probe: the fight report is ready. /vg probe last shows it after the main report."])
 end
 
 -- A fight starts while armed: one snapshot now and one three seconds in, the report kept after it.
@@ -1026,7 +1028,7 @@ ns.On("PLAYER_REGEN_DISABLED", fightStarted)
 -- /vg probe fight: arms the next fight.
 function P.Fight()
   P.armed = true
-  ns.Chat("Probe: armed. Start a fight (a target dummy or a mob); the reads are taken as it starts and 3 s in, and printed after it (/vg probe last).")
+  ns.Chat(L["Probe: armed. Start a fight (a target dummy or a mob); the reads are taken as it starts and 3 s in, and printed after it (/vg probe last)."])
 end
 
 -- Command ------------------------------------------------------------------------------------

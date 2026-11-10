@@ -196,23 +196,6 @@ local function currentText(choices, current)
   return choices[1] and choices[1][2] or ""
 end
 
--- A choice list marked by W.Keep also lists the value in use when that isn't one of its choices, so
--- the row can show it. A copy is made: the list as written stays as it was.
-local function withValue(choices, value)
-  if not choices.keep or value == nil then return choices end
-  if indexOf(choices, value) then return choices end
-  local out = {}
-  for i, c in ipairs(choices) do out[i] = c end
-  out[#out + 1] = { value, tostring(value) }
-  return out
-end
-
--- Marks a choice list so its row keeps in view a value that isn't one of the choices (see withValue).
-function W.Keep(choices)
-  choices.keep = true
-  return choices
-end
-
 -- Whether choices fit as segments: four or fewer, with short labels.
 local function fitsSegments(choices)
   local chars = 0
@@ -350,7 +333,6 @@ end
 -- A choice row: segments when they fit, else a dropdown. Clicking the caption steps to the next choice.
 function W.Choice(parent, caption, choices, get, set, width)
   local r = row(parent, caption, width)
-  choices = withValue(choices, get())
   r.caption, r.choices, r.get = caption, choices, get
   addControl(r, choices, get, set, width)
   r.Refresh = r.Refresh or refreshSegments

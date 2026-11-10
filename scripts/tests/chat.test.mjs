@@ -38,12 +38,19 @@ it("minimap", () => {
   expect(addon.eval("return { GameTooltip:IsShown(), Minimap:GetZoom() }"), "the tooltip goes when the mouse leaves, and the wheel over the name still zooms").toEqual([false, 4]);
   const bare = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
   expect(bare.eval(`return ${M}.bottom:IsShown()`), "coordinates off: no bottom band").toBe(false);
+  // The coordinates' band, text and ticker as the Coordinates under the minimap switch leaves them.
+  const coordsState = () => bare.eval(`return { ${M}.bottom:IsShown(), ${M}.coords:IsShown(), ns.ticker.vgJobs["minimap coords"] ~= nil }`);
+  expect(coordsState(), "coordinates off at login: no band and no ticker (the text is empty)").toEqual([false, true, false]);
+  bare.eval('local _, set = ns.Options.LiveMethod("Minimap", "coords", "ApplyCoords") set(true)');
+  expect(coordsState(), "switched on, at once: the band, the text and the ticker").toEqual([true, true, true]);
+  bare.eval('local _, set = ns.Options.LiveMethod("Minimap", "coords", "ApplyCoords") set(false)');
+  expect(coordsState(), "switched off again, at once").toEqual([false, false, false]);
 });
 it("Y4-1 with the Minimap module off the shape is the game's round map, or the answer a minimap addon loaded first gave", () => {
   // A client logged in with the Minimap module off, after `env` (Lua run before Vanguard loads).
   const off = (env = "") => loggedIn(env + UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(off().eval("return GetMinimapShape()"), "off: the game's map is round").toBe("ROUND");
-  expect(off('GetMinimapShape = function() return "CORNER-TOPLEFT" end\n').eval("return GetMinimapShape()"), "off, after SexyMap's own answer: that answer stands").toBe("CORNER-TOPLEFT");
+  expect(off('GetMinimapShape = function() return "CORNER-TOPLEFT" end\n').eval("return GetMinimapShape()"), "off, after another minimap addon's own answer: that answer stands").toBe("CORNER-TOPLEFT");
 });
 it("H26-1-2 a Minimap switched on since login is still the game's round map until the reload", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });

@@ -125,6 +125,15 @@ local function layoutShape(frame)
   return nil
 end
 
+-- What the parts riding a frame learn from a banner: the health bar's width (UF.BarWidth, the banner less its edges
+-- and the power line) and that the portrait has no room (UF.Portrait.Measure finds none on a standing frame); then they
+-- place themselves, each staying off while the frame stands.
+local function placeRiders(f)
+  f.vgBarWidth = f.vgWidth - 2 * T.Pixel(f) - LY.STANDARD.power
+  UF.Portrait.Measure(f)
+  UF.PlaceExtras(f)
+end
+
 -- Stands a banner's bars on end: the power line down the outer side a pixel in from the edge, the health bar filling
 -- the rest, both rising from the foot.
 local function layoutStandard(f)
@@ -176,6 +185,7 @@ function LY.PlaceStandard(f)
   placeNumber(f)
   UF.PlaceMarks(f, f.outer)
   placeIcon(f)
+  placeRiders(f)
 end
 
 -- After a canvas or scale change the keep may hold now or no longer (it needs a wide canvas): the frames take their

@@ -46,7 +46,7 @@ Every client call is checked before use, and values the client hides from addons
 ## Known issues
 
 - Setting names and other text new in 0.9.4 and 0.9.5 show in English in the other languages until their translations are in.
-- The translations are machine drafts, so some lines read oddly. Report one with `/vg feedback`.
+- The translations are machine drafts, so some lines read oddly. Report one with `/vg feedback`. A few chat lines (the probe and diagnostic output, the longest `/vg` help texts) are still English in every language.
 - Retail support is new: report what looks wrong there with `/vg feedback`.
 
 ## Coming from ForeverUI

@@ -13,6 +13,8 @@
 --     edge that strengthens as your health drops. The client works out its strength
 --     from your health through a curve, so it is never compared in Lua (health is
 --     hidden in some fights); it is static, with no pulse and no fade.
+--   * state cues on the player frame (General > Motion and sound > State cues): a pulse round its edge as a fight
+--     starts and a slow one at low health, the client's own curve deciding the strength (see docs/THEME.md).
 -- Both stay the game's own frames: Vanguard restyles them and gives each a
 -- spot you can move with /vg unlock (Edit Mode still wins while it's open).
 
@@ -278,22 +280,32 @@ GA.VIGNETTE_CURVE = { { 0, 0.6 }, { 0.2, 0.4 }, { 0.5, 0 }, { 1, 0 } }
 -- The events other than your health's own that move it: death, release, rising, and a new zone.
 GA.VIGNETTE_EVENTS = { "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_ENTERING_WORLD" }
 
--- The color curve that turns health into the vignette's color and opacity, or nil where the client has none.
-function GA.VignetteCurve()
+-- A color curve that turns health (0 to 1) into a theme token's color, its opacity from `points`; nil where the client has none.
+function GA.HealthCurve(points, token)
   local util = C_CurveUtil
   if type(util) ~= "table" or type(util.CreateColorCurve) ~= "function" or type(CreateColor) ~= "function" then return nil end
-  local r, g, b = T.RGB("vignette")
+  local r, g, b = T.RGB(token)
   local curve = util.CreateColorCurve()
-  for _, p in ipairs(GA.VIGNETTE_CURVE) do curve:AddPoint(p[1], CreateColor(r, g, b, p[2])) end
+  for _, p in ipairs(points) do curve:AddPoint(p[1], CreateColor(r, g, b, p[2])) end
   return curve
 end
 
--- The color object for your health now (its numbers may be hidden, which a texture takes as they are), or nil where the client can't say.
-function GA.VignetteColor()
+-- The curve that turns health into the vignette's color and opacity, or nil where the client has none.
+function GA.VignetteCurve()
+  return GA.HealthCurve(GA.VIGNETTE_CURVE, "vignette")
+end
+
+-- The color object a curve gives for your health now (its numbers may be hidden, which a texture takes as they are), or nil where the client can't say.
+function GA.HealthColor(curve)
   local get = _G.UnitHealthPercent
-  if type(get) ~= "function" or not GA.curve then return nil end
-  local ok, color = pcall(get, "player", false, GA.curve)
+  if type(get) ~= "function" or not curve then return nil end
+  local ok, color = pcall(get, "player", false, curve)
   if ok and type(color) == "table" and type(color.GetRGBA) == "function" then return color end
+end
+
+-- The color object for your health now through the vignette's curve.
+function GA.VignetteColor()
+  return GA.HealthColor(GA.curve)
 end
 
 -- The vignette's frame and its edge texture over the whole screen, made once and under the interface.
@@ -310,11 +322,16 @@ local function vignetteFrame()
   return f
 end
 
+-- Whether you are plainly dead or a ghost (a hidden answer counts as alive).
+function GA.PlayerDead()
+  local dead = type(UnitIsDeadOrGhost) == "function" and UnitIsDeadOrGhost("player")
+  return not ns.IsSecret(dead) and dead == true
+end
+
 -- Tints the screen edge for your health now; hidden when it is off, you are dead or the client can't say.
 function GA.UpdateVignette()
-  local dead = type(UnitIsDeadOrGhost) == "function" and UnitIsDeadOrGhost("player")
   local color = GA.VignetteColor()
-  if not GA.settings.vignette or not color or (not ns.IsSecret(dead) and dead) then
+  if not GA.settings.vignette or not color or GA.PlayerDead() then
     if GA.vignette then GA.vignette:Hide() end
     return
   end
@@ -325,17 +342,69 @@ end
 
 -- Starts or stops the vignette after a change of its switch or of the accent colors; applied at once.
 function GA.ApplyVignette()
-  if GA.settings.vignette then GA.WatchHealth() end
   GA.curve = GA.settings.vignette and GA.VignetteCurve() or nil
   GA.UpdateVignette()
+  GA.ApplyLowHealth()
 end
 
--- Looks at the vignette again whenever your health or your being alive changes; once, the first time it is switched on.
+-- State cues on the player frame (T.PlayCue; none with Reduce motion or the switch off) ---------------
+
+-- Health (0 = empty, 1 = full) and the low-health ring's strength: full under 30 %, gone from 35 % up. The client
+-- works it out through the curve, so a hidden health is never compared in Lua.
+GA.LOW_CURVE = { { 0, 1 }, { 0.3, 1 }, { 0.35, 0 }, { 1, 0 } }
+
+-- How far out the player frame's cue rings reach, in units.
+GA.CUE_RING = 6
+
+-- Your unit frame, or nil before it is made.
+local function playerFrame()
+  local frames = ns.GetModule("UnitFrames") and ns.GetModule("UnitFrames").frames
+  return frames and frames.player
+end
+
+-- A fight starts: one pulse round the player frame's edge.
+function GA.CombatCue()
+  local f = playerFrame()
+  if f then T.PlayCue(T.CueRing(f, "edge", "accent", GA.CUE_RING), "edge") end
+end
+
+-- Shows or clears the low-health ring: each piece in the client's color for your health (clear above the threshold).
+local function paintLow(ring, color, on)
+  for _, tex in ipairs(ring) do
+    tex:SetShown(on)
+    if on then tex:SetVertexColor(color:GetRGBA()) end
+  end
+  T.LoopCue(ring, "slow", on)
+end
+
+-- The low-health ring breathes slowly while cues are on and you are alive. It and the combat-start ring are made
+-- here, with the frame, and not in the fight.
+function GA.UpdateLowHealth()
+  local f = playerFrame()
+  if not f then return end
+  T.CueRing(f, "edge", "accent", GA.CUE_RING)
+  local color = GA.HealthColor(GA.lowCurve)
+  paintLow(T.CueRing(f, "low", nil, GA.CUE_RING), color, color ~= nil and T.CuesOn() and not GA.PlayerDead())
+end
+
+-- Builds the low-health curve (the "bad" color follows the theme) and looks at your health again.
+function GA.ApplyLowHealth()
+  GA.lowCurve = GA.HealthCurve(GA.LOW_CURVE, "bad")
+  GA.UpdateLowHealth()
+end
+
+-- The vignette and the low-health ring, for your health now.
+function GA.UpdateHealthViews()
+  GA.UpdateVignette()
+  GA.UpdateLowHealth()
+end
+
+-- Looks at the vignette and the low-health ring again whenever your health or your being alive changes; once.
 function GA.WatchHealth()
   if GA.watching then return end
   GA.watching = true
-  ns.OnUnit({ "UNIT_HEALTH", "UNIT_MAXHEALTH" }, GA.UpdateVignette, "player")
-  for _, event in ipairs(GA.VIGNETTE_EVENTS) do ns.On(event, GA.UpdateVignette) end
+  ns.OnUnit({ "UNIT_HEALTH", "UNIT_MAXHEALTH" }, GA.UpdateHealthViews, "player")
+  for _, event in ipairs(GA.VIGNETTE_EVENTS) do ns.On(event, GA.UpdateHealthViews) end
 end
 
 -- Loss of control in the theme and on its spot, when the setting is on and the game has it.
@@ -349,6 +418,9 @@ end
 -- Module entry point (Core/Modules.lua).
 function GA.Enable(settings)
   GA.settings = settings
+  GA.WatchHealth()
+  ns.On("PLAYER_REGEN_DISABLED", GA.CombatCue)
+  T.OnChanged(ns.Guard("low health ring", GA.ApplyLowHealth))
   GA.ApplyVignette()
   if type(C_VignetteInfo) == "table" then ns.On("VIGNETTE_MINIMAP_UPDATED", GA.OnVignette) end
   watchWarnings(settings.hardcore)

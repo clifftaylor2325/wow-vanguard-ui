@@ -87,7 +87,7 @@ Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until th
 - [x] **A1-13** `ns.Migrate` keeps a list per key or raises on a duplicate; a test runs every migration twice. (Q8, L1)
 - [x] **A1-14** HUD font theming out of Merchant into its own switch. (Q9, L2)
 - [ ] **A1-15** Small correctness batch, one commit each: durability figure, mail attach count and running flag, trainer loop, `/way` across continents, detailed item level. The player-aura re-anchor (L14) is a protected path: Opus. (Q20)
-- [ ] **A1-16** Wrap the last 33 strings and fill the 184 missing keys per locale. Haiku for the fill, through the CSV pipeline. (Q10, L7)
+- [x] **A1-16** Wrap the last 33 strings and fill the 184 missing keys per locale. Haiku for the fill, through the CSV pipeline. (Q10, L7)
 - [ ] **A1-17** Release again with the above. PR lists every item that needs an in-game check.
 
 **Gate.** H1, H2, M1, M2, M4 to M6 and M11 to M16 closed in code; released; the README's known issues updated.
@@ -108,12 +108,13 @@ Cliff's call, 2026-11-09: he has played with the addon on the live game for a we
 
 One branch and one PR per HUD area, so each set of files is opened once and comes out with depth, sliders and live apply together. The areas do not share files and can run as parallel threads. A3-1 and A3-2 work in files the HUD signature thread also changes (PR #796 and its three follow-ups: unit frames, cast bars, action bar layout), so they start from that work once it has merged, or from its branch.
 
-- [ ] **A3-1 Unit frames** (`work/a3-unitframes`). The unit-frame micro-allocations from Q7 (L3); width and height sliders per frame; text formats (value, percent, both, deficit); heal prediction and shields on player, target and party; a status row (leader, role, resting, PvP); then portraits and a focus target. All settings apply without a reload. (N4, N5, N3)
-- [ ] **A3-2 Action bars** (`work/a3-actionbars`). Macro names with a switch, attack and auto-shot flash, spacing and hotkey-text controls, coalesced repaint. Secure button work: Opus. (N6, L5)
+- [x] **A3-1 Unit frames** (`work/a3-unitframes`). The unit-frame micro-allocations from Q7 (L3); width and height sliders per frame; text formats (value, percent, both, deficit); heal prediction and shields on player, target and party; a status row (leader, role, resting, PvP). All settings apply without a reload. (N4, N5, N3)
+- [x] **A3-1b Unit frame portraits and a focus target** (`work/a3-unitframes-b`). The two items A3-1 left out: portraits on the player, target and focus frames (2D portrait or class icon; hidden under the looks whose outer corners are cut or pointed), and a focus-target frame. No 3D model portraits, no party portraits. (N4)
+- [x] **A3-2 Action bars** (`work/a3-actionbars`). Macro names with a switch, attack and auto-shot flash, spacing and hotkey-text controls, coalesced repaint. Secure button work: Opus. (N6, L5)
 - [ ] **A3-3 Nameplates and auras** (`work/a3-plates`). Size sliders, text sizes, friendly name-only mode, target emphasis, aura sizes and filters where the client allows a say. Rebuild rows out of combat. (N5, B5, N3)
 - [ ] **A3-4 Tooltips** (`work/a3-tooltips`). Guild and rank, realm, role, item level where exposed, ids behind a switch, anchor choice per tooltip type. (N7)
-- [ ] **A3-5 Quest dialog session fallback.** A switch and a modifier that hand the quest and gossip windows back to the game without a reload. (N8, M3)
-- [ ] **A3-6 The rest of live apply, wave one.** Minimap shape and icons, info strip blocks, chat toggles, raid-frame sizes. (N3, N5)
+- [x] **A3-5 Quest dialog session fallback.** A switch and a modifier that hand the quest and gossip windows back to the game without a reload. (N8, M3)
+- [ ] **A3-6 The rest of live apply, wave one.** Minimap shape and icons, info strip blocks, chat toggles, raid-frame sizes. (N3, N5) Done so far: raid-frame width and height sliders, minimap coordinates. Left: minimap shape and corner icons, the info strip clock, and chat place, bubbles and floating-window movers (each needs a way to give back what the build took: a pin, a mover, a panel).
 
 **Gate.** Unit frames and tooltips move from Needs work to Solid or better; reload tags under 40; no fixed-step size choice left on the HUD.
 
@@ -146,7 +147,7 @@ Read with `docs/handoff/leonardo-art-plan.md`. That plan says how the art is mad
 - [ ] **A5-4** Reskin coverage report in `/vg status` and as a generated doc. (Q14)
 - [ ] **A5-5** Global font pass, keeping the Korean and Chinese exemption. (N11)
 - [ ] **A5-6** Depth on by default (shadows, gradient, slate surface, bevel), decided by Cliff from an A and B look in game. (N13)
-- [ ] **A5-7** State motion kit: combat start, proc, cooldown ready, low health, all behind Reduce motion. (N16)
+- [x] **A5-7** State motion kit: combat start, proc, cooldown ready, low health, all behind Reduce motion. (N16)
 - [ ] **A5-8** Empty states and navigation polish in the menu. (N18)
 
 **5b, art-led** (`work/a5-look-art`)
@@ -172,10 +173,10 @@ Read with `docs/handoff/leonardo-art-plan.md`. That plan says how the art is mad
 Branch `work/a6-focus`. Can run alongside 5b.
 
 - [x] **A6-1** Retire or fold the placeholders: pet stable and Legacy helper out, boss docks into movers, officer roster into raid tools, graphics `apply` out. (N10) Done except: graphics `apply` stays (the second review pass found it safe), and the "List in chat" buttons stay (no small list panel was cheap).
-- [ ] **A6-2** Give the chat-only features a face or remove them: crafting queue panel, fuller keyboard with a layout choice, ordered talent plan, scrolling group board. One commit each. (N21, L20, L21)
+- [x] **A6-2** Give the chat-only features a face or remove them: crafting queue panel, fuller keyboard with a layout choice, ordered talent plan, scrolling group board. One commit each. (N21, L20, L21) Progress: crafting queue panel done; key map (function row, number pad, layout choice) done; ordered talent plan done; scrolling group board done.
 - [x] **A6-3** Locale-aware matchers for the chat filter and the group board; hide a category a locale has no words for. Then re-tick the chat filter in setup if D4 allows. (N9, M7) Per-locale lists are in `Core/MatchWords.lua`; the Filtered tab is found by a saved window number (L23, first part). Setup still leaves the chat filter unticked (D4's answer); it can be revisited once the lists are checked in the game.
 - [ ] **A6-4** Stat weights: simulate them, source them, or label the arrows as a guide. (M8)
-- [ ] **A6-5** Clean non-functional third-party names from the repo per D5. (N19, L11)
+- [x] **A6-5** Clean non-functional third-party names from the repo per D5. (N19, L11)
 - [ ] **A6-6** Inventory window: item level and upgrade marks in bags, an offline view of other characters. Optional under the breadth freeze; it reuses stored data and closes a section 7.1 gap. (B6)
 - [ ] **A6-7** The remaining Low list (L8 to L10, L18, L19, L22 to L25, L27), one sweep. Progress: L8 done for the raid tile scripts (95 other sites remain, tracked by the quality baseline); L18, L19, L22, L23, L25, L27 checked and left (see PR 820); L9 and L10 are design questions, not defects.
 - [ ] **A6-8** Player docs with real screenshots; the listing pages say which build was tested.

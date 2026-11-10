@@ -7,7 +7,7 @@
 
 ## Tests added
 
-<!-- Which test covers which new code. `npm run verify` and `npm run coverage` both pass. -->
+<!-- Which test covers which new code. No pull request runs the tests in CI: say that `npm run quality` and `npm run coverage` passed locally, with main brought in, and on which commit. -->
 
 - …
 

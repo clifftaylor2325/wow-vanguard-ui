@@ -5,12 +5,10 @@
 -- to turn Vanguard's part off or keep both. Nothing changes without a click, and
 -- an answer is kept in the profile, so it isn't asked again; while that addon is
 -- still loaded the card keeps the answer, with a button to change it.
--- Folder names: Glass, Aurora, BlizzMove and MoveAny are from each one's
--- published .toc, MovableWindowsForever and ForevermoreClassicUI from their
--- published zip names; Platynator, Chattynator, Sorted, BetterFriendlist and
--- the older rows are unchecked on the Forever client. A wrong name only means
--- no card (SMOKE-TEST 18.1 and 18.1a check them). An addon names one target,
--- so the whole-UI addons ElvUI and Tukui ask about action bars only.
+-- Folder names: the rows for the chat, window-skinning and window-moving addons are from
+-- each one's published .toc or zip name; the other rows are unchecked on the Forever
+-- client. A wrong name only means no card (SMOKE-TEST 18.1 and 18.1a check them). An
+-- addon names one target, so the whole-UI suites ask about action bars only.
 
 local ADDON, ns = ...
 

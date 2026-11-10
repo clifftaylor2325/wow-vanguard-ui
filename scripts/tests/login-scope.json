@@ -36,6 +36,15 @@
     ],
     "scripts/tests/bagsections.test.mjs": [],
     "scripts/tests/bars.test.mjs": [
+      "A3-2 bars: Auto Shot flashes while it repeats, and a hidden answer flashes nothing",
+      "A3-2 bars: Button spacing lays every bar out again without a reload, after the fight in one",
+      "A3-2 bars: Key text off takes the key off every button at once, and on puts it back",
+      "A3-2 bars: a burst of usable, cooldown and state events repaints each button once, on the next frame",
+      "A3-2 bars: a client that cannot say whether an action prints its name still shows a macro's",
+      "A3-2 bars: a macro's name shows along the bottom of its button, live with Macro names",
+      "A3-2 bars: a saved spacing that is not a number of 0 or more is dropped at login",
+      "A3-2 bars: auto-attack flashes its button on and off every 0.4 s, and the flash stops with it",
+      "A3-2 bars: with Reduce motion the attack flash stays lit instead of blinking",
       "Forever's bars carry no pet battle clause (its vanilla content has none)",
       "Hidden bar bindings stay intact",
       "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone",
@@ -118,7 +127,7 @@
       "client capability probe: what this client has, and /vg status says so"
     ],
     "scripts/tests/coexist.test.mjs": [
-      "coexist: EllesmereUI's unit frame, action bar, nameplate and raid frame addons are noticed",
+      "coexist: an all-in-one suite's unit frame, action bar, nameplate and raid frame addons are noticed",
       "coexist: the next login says nothing new; a module already off, or a client without the call, asks nothing"
     ],
     "scripts/tests/cooldowngaps.test.mjs": [],
@@ -192,8 +201,8 @@
     ],
     "scripts/tests/mailtools.test.mjs": [],
     "scripts/tests/masque.test.mjs": [
-      "with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin",
-      "without Masque (or without LibStub) nothing changes"
+      "with the skinning library loaded, action, pet and stance buttons and aura icons go to its groups, without Vanguard's skin",
+      "without the skinning library (or without LibStub) nothing changes"
     ],
     "scripts/tests/merchantbulk.test.mjs": [],
     "scripts/tests/meter.test.mjs": [
@@ -247,9 +256,7 @@
     ],
     "scripts/tests/probe.test.mjs": [],
     "scripts/tests/profileguard.test.mjs": [],
-    "scripts/tests/profiles.test.mjs": [
-      "a profile saved with the retired Pet stable, Legacy helper and boss docks loses their settings, and the Legacy perk list goes with them"
-    ],
+    "scripts/tests/profiles.test.mjs": [],
     "scripts/tests/questarrow.test.mjs": [],
     "scripts/tests/questguide.test.mjs": [],
     "scripts/tests/questminimap.test.mjs": [],

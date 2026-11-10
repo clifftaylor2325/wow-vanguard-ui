@@ -10,7 +10,7 @@
 -- Each bar has its own button count, row length, button size and
 -- visibility; empty slots stay invisible unless you are dragging a spell
 -- or item (Modules/ActionBarLayout.lua). The right-edge bars start off.
--- With Masque loaded, Masque skins the buttons instead (Core/Masque.lua).
+-- With the skinning library loaded, it skins the buttons instead (Core/Masque.lua).
 
 local ADDON, ns = ...
 
@@ -25,6 +25,11 @@ local AB = ns.Module("ActionBars", {
     rangeTint = true,
     size = 38,
     spacing = 2,
+    -- A macro's name along the bottom of its button, and the key text in the top corner (both live).
+    macroNames = true,
+    hotkeys = true,
+    -- The letter layout of the Your keys picture: "auto" (the client locale's), "qwerty", "qwertz" or "azerty".
+    keyLayout = "auto",
     -- Per bar: on/off, buttons shown, buttons per row, and visibility
     -- (always, mouseover, combat or hidden). A bar's own `size` wins over
     -- the shared size above once the player sets one. The right-edge bars
@@ -126,7 +131,7 @@ AB.bars = {}
 -- Where each stacked bar was last stacked (bar number -> its default y) and the stack's top then, so a
 -- re-stack after a scale change moves only what the bars' new rounded heights moved (AB.RestackMoved).
 AB.stacked, AB.stackedTop = {}, nil
--- The Masque group the action buttons are in, when Masque is loaded.
+-- The skinning group the action buttons are in, when the library is loaded.
 AB.MASQUE = "Action bars"
 
 -- Whether bar n sits on the right edge of the screen (bars 4 and 5; the
@@ -174,11 +179,19 @@ local function cleanBars(saved)
   end
 end
 
+-- A saved spacing that is not a finite number of 0 or more (a hand-edited file or a crafted string) is dropped,
+-- so the default fills it in.
+local function cleanSpacing(saved)
+  local gap = saved.spacing
+  if gap ~= nil and not (type(gap) == "number" and gap >= 0 and gap < math.huge) then saved.spacing = nil end
+end
+
 -- Every upgrade of saved action bar settings, oldest first.
 local function migrate(saved)
   keepOldRightBars(saved)
   centeredSpacing(saved)
   cleanBars(saved)
+  cleanSpacing(saved)
 end
 ns.Migrate("ActionBars", migrate)
 
@@ -281,18 +294,27 @@ local function sweepsFromObject(b)
 end
 
 -- The cooldown sweep on an older client: start and duration passed through without being inspected.
-local function sweepFromNumbers(b)
-  local start, length = call("GetActionCooldown", b.action)
+local function sweepFromNumbers(b, start, length)
   if type(start) == "table" and not ns.IsSecret(start) then
     start, length = start.startTime, start.duration
   end
   ns.Quiet("bar cooldown", b.cooldown.SetCooldown, b.cooldown, start, length)
 end
 
+-- Whether the sweep now running is a real cooldown, not the global one: only when the client plainly says so (a
+-- hidden answer or a client without the field is no), so a ready flash never fires on every global cooldown.
+local function sweepIsReal(info)
+  if type(info) ~= "table" or ns.IsSecret(info) or ns.IsSecret(info.isOnGCD) then return false end
+  return info.isOnGCD == false
+end
+
 -- The cooldown sweep: the slot's duration object goes to the widget as is (no object: no sweep), or the
 -- numbers on an older client. A call the client refuses leaves the sweep as it was and is kept for /vg errors.
+-- The slot's cooldown is read once, for both the sweep and the ready flash.
 local function updateCooldown(b)
-  if not sweepsFromObject(b) then return sweepFromNumbers(b) end
+  local start, length = call("GetActionCooldown", b.action)
+  b.realSweep = sweepIsReal(start)
+  if not sweepsFromObject(b) then return sweepFromNumbers(b, start, length) end
   local duration = call("GetActionCooldownDuration", b.action)
   if duration == nil then return b.cooldown:Clear() end
   ns.Quiet("bar cooldown", b.cooldown.SetCooldownFromDurationObject, b.cooldown, duration)
@@ -346,6 +368,56 @@ local function updateChecked(b)
   b:SetChecked(isTrue(call("IsCurrentAction", b.action)) or isTrue(call("IsAutoRepeatAction", b.action)))
 end
 
+-- Attack flash ----------------------------------------------------------------------------
+
+-- How long an attacking button's flash stays on, then off (the game's ATTACK_BUTTON_FLASH_TIME), and its ticker.
+AB.FLASH = { period = 0.4, key = "action bar flash" }
+
+-- Whether a slot's action is attacking now, as the game's buttons decide: auto-attack while it is on, or an
+-- auto-repeat (Auto Shot, Shoot) while it repeats. A hidden answer counts as no.
+local function attacking(slot)
+  local melee = isTrue(call("IsAttackAction", slot)) and isTrue(call("IsCurrentAction", slot))
+  return melee or isTrue(call("IsAutoRepeatAction", slot))
+end
+
+-- Whether a flashing button's flash shows now: always with Reduce motion on (lit, not blinking), else on the lit beat.
+local function flashLit()
+  return T.Settings().reduceMotion == true or AB.flashOn == true
+end
+
+-- One beat: every flashing button's flash turns on or off together; the ticker stops once none flashes.
+local function blink()
+  AB.flashOn = not AB.flashOn
+  local any = false
+  for _, b in ipairs(AB.buttons) do
+    any = any or b.flashing
+    b.flash:SetShown(b.flashing and flashLit())
+  end
+  if any then return end
+  AB.blinking = false
+  ns.Every(AB.FLASH.key, nil)
+end
+
+-- Starts the beat, lit first, unless it is running.
+local function startBlink()
+  if AB.blinking then return end
+  AB.blinking, AB.flashOn = true, true
+  ns.Every(AB.FLASH.key, AB.FLASH.period, blink)
+end
+
+-- The attack flash over the icon while the button's action attacks (a texture of the button's own, so in combat too).
+local function updateFlash(b)
+  b.flashing = b.hasAction == true and attacking(b.action)
+  if b.flashing then startBlink() end
+  b.flash:SetShown(b.flashing and flashLit())
+end
+
+-- The checked highlight and the attack flash, which the same state events change.
+local function updateState(b)
+  updateChecked(b)
+  updateFlash(b)
+end
+
 -- Shows the equipped-item ring (where Vanguard skins the button) while its action is an item you wear;
 -- the client is asked only about a slot with an action, and a hidden answer counts as no.
 local function updateEquipped(b)
@@ -354,10 +426,31 @@ local function updateEquipped(b)
   T.ShowInnerRing(b.equipped, b, "good", on)
 end
 
--- The hotkey text from the binding this button answers to.
+-- The hotkey text from the binding this button answers to; none with Key text off.
 local function updateHotkey(b)
-  local key = GetBindingKey and GetBindingKey(b.binding)
+  local key = AB.settings.hotkeys and GetBindingKey and GetBindingKey(b.binding)
   b.hotkey:SetText(AB.ShortKey(key))
+end
+
+-- The name the game prints on a slot's button (a macro's), or "" when the game says the action prints none. The
+-- name may be hidden: only SetText takes it.
+local function actionName(slot)
+  local uses = call("UsesActionText", slot)
+  if not ns.IsSecret(uses) and uses == false then return "" end
+  local text = call("GetActionText", slot)
+  return (ns.IsSecret(text) or type(text) == "string") and text or ""
+end
+
+-- The macro name along the bottom: only with Macro names on and an action in the slot.
+local function updateName(b)
+  b.macroName:SetText((AB.settings.macroNames and b.hasAction) and actionName(b.action) or "")
+end
+
+-- The count, macro name and hotkey texts.
+local function updateLabels(b)
+  updateCount(b)
+  updateName(b)
+  updateHotkey(b)
 end
 
 -- A button's action slot: on bar 1 without snippets, its ID on the page the
@@ -373,12 +466,11 @@ function AB.UpdateButton(b)
   b.action = AB.ActionSlot(b)
   AB.UpdateGlow(b)
   updateIcon(b)
-  updateCount(b)
+  updateLabels(b)
   updateCooldown(b)
   updateUsable(b)
-  updateChecked(b)
+  updateState(b)
   updateEquipped(b)
-  updateHotkey(b)
   AB.WatchRange(b)
 end
 
@@ -402,16 +494,22 @@ local function overlayed(spell)
   return not ns.IsSecret(lit) and lit == true
 end
 
+-- Lights the accent glow on a button, breathing while it is lit (State cues; static with them off), or clears it.
+local function lightGlow(b, on)
+  T.ShowGlow(b.glow, on)
+  T.LoopCue(b.glow, "breath", on)
+end
+
 -- Lights the accent glow while the button's spell is proc'd.
 function AB.UpdateGlow(b)
-  if b.glow then T.ShowGlow(b.glow, overlayed(AB.ActionSpell(b))) end
+  if b.glow then lightGlow(b, overlayed(AB.ActionSpell(b))) end
 end
 
 -- A proc started (on) or ended: light or clear every button with that spell.
 local function onOverlay(on)
   return function(_, spell)
     for _, b in ipairs(AB.buttons) do
-      if b.glow and not ns.IsSecret(spell) and AB.ActionSpell(b) == spell then T.ShowGlow(b.glow, on) end
+      if b.glow and not ns.IsSecret(spell) and AB.ActionSpell(b) == spell then lightGlow(b, on) end
     end
   end
 end
@@ -426,6 +524,20 @@ end
 -- Repaints every button's icon tint, for a change to "Red when out of range".
 function AB.RepaintIcons()
   each(paintIcon)
+end
+
+-- Repaints every button's macro name and key text, for a change to Macro names or Key text.
+function AB.RepaintLabels()
+  each(updateName)
+  each(updateHotkey)
+end
+
+-- Lays every bar out again at the new Button spacing and re-stacks them: now, or when combat ends (secure frames).
+function AB.SpacingChanged()
+  ns.OutOfCombat(function()
+    for n in pairs(AB.bars) do AB.LayoutBar(n) end
+    AB.Restack()
+  end, "action bar spacing")
 end
 
 -- Building ------------------------------------------------------------------------------
@@ -469,6 +581,24 @@ local function addIcon(b)
   T.Crop(b.icon)
 end
 
+-- The macro name: along the bottom, centred, one line cut at the button's width, as the game's buttons print it.
+local function addName(b)
+  b.macroName = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "white")
+  b.macroName:SetPoint("BOTTOMLEFT", 2, 2)
+  b.macroName:SetPoint("BOTTOMRIGHT", -2, 2)
+  b.macroName:SetJustifyH("CENTER")
+  b.macroName:SetWordWrap(false)
+end
+
+-- The attack flash: a wash over the icon, above it and under the texts, hidden until the action attacks.
+local function addFlash(b)
+  b.flash = b:CreateTexture(nil, "ARTWORK", nil, 1)
+  b.flash:SetAllPoints(b.icon)
+  b.flash:SetTexture(T.WHITE)
+  T.Tint(b.flash, "attackFlash")
+  b.flash:Hide()
+end
+
 -- The count (bottom right, white) and hotkey (top right, light gray, one line cut at the button's width) texts.
 local function addTexts(b)
   b.count = T.Text(b:CreateFontString(nil, "OVERLAY"), "small")
@@ -498,13 +628,26 @@ function AB.ThemeCountdown(b, size)
   if fs then T.Text(fs, size < AB.SMALL_BUTTON and "auraTimerSmall" or "cooldown", "white") end
 end
 
--- The icon, count, hotkey, cooldown and checked highlight on a button.
-local function addRegions(b)
-  addIcon(b)
+-- The count, hotkey and macro name texts.
+local function addLabels(b)
   addTexts(b)
+  addName(b)
+end
+
+-- The cooldown sweep over the icon, and the flash when a real cooldown ends (State cues).
+local function addCooldown(b)
   b.cooldown = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
   b.cooldown:SetAllPoints(b.icon)
   skipShortCountdown(b.cooldown)
+  T.ReadyFlash(b, b.cooldown, function(button) return button.realSweep == true end)
+end
+
+-- The icon, attack flash, count, macro name, hotkey, cooldown and checked highlight on a button.
+local function addRegions(b)
+  addIcon(b)
+  addFlash(b)
+  addLabels(b)
+  addCooldown(b)
   b.glow = T.Glow(b, 6)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")
@@ -560,14 +703,15 @@ local function wireButton(b, action, index)
   wireScripts(b)
 end
 
--- Hands a button and its regions to Masque, when it is loaded.
+-- Hands a button and its regions to the skinning library, when it is loaded.
 local function addToMasque(b)
-  local regions = { Icon = b.icon, Cooldown = b.cooldown, Count = b.count, HotKey = b.hotkey, Checked = b:GetCheckedTexture() }
+  local regions = { Icon = b.icon, Flash = b.flash, Cooldown = b.cooldown, Count = b.count, Name = b.macroName, HotKey = b.hotkey,
+    Checked = b:GetCheckedTexture() }
   ns.Masque.Add(AB.MASQUE, b, regions, "Action")
 end
 
 -- One secure action button on a bar (sized and placed by AB.LayoutBar), in
--- Vanguard's button skin, or Masque's when it is loaded.
+-- Vanguard's button skin, or the library's when it is loaded.
 local function createButton(bar, n, index, def)
   local name = string.format("Vanguard_Bar%dButton%d", n, index)
   local b = CreateFrame("CheckButton", name, bar, "SecureActionButtonTemplate")
@@ -859,6 +1003,34 @@ local function refreshIcons()
   each(updateIcon)
 end
 
+-- Macros were edited: their icons and names.
+local function refreshMacros()
+  refreshIcons()
+  each(updateName)
+end
+
+-- Repaints coalesced to one per frame ----------------------------------------------------
+
+-- The parts asked to repaint on the next frame (AB.dirty: part -> true), and what each part repaints.
+AB.dirty = {}
+local REPAINTS = { cooldown = updateCooldown, usable = updateUsable, state = updateState }
+
+-- Repaints every part asked for since the last frame, each on every button once.
+local function repaint()
+  local parts = AB.dirty
+  AB.dirty = {}
+  for part in pairs(parts) do each(REPAINTS[part]) end
+end
+
+-- An event handler that repaints `part` on the next frame: the client sends the usable, cooldown and state events
+-- in bursts (two usable events for most changes), so a burst repaints each button once.
+local function repaintSoon(part)
+  return function()
+    AB.dirty[part] = true
+    ns.Soon("action bar repaint", repaint)
+  end
+end
+
 -- Equipment changed: icons of equipped items, then counts and usability.
 local function onEquipment()
   refreshIcons()
@@ -881,17 +1053,22 @@ local EVENTS = {
   PLAYER_ENTERING_WORLD = function() each(AB.UpdateButton) end,
   ACTIONBAR_SLOT_CHANGED = onSlotChanged,
   -- One cooldown event: the client fires both for a cast, and its own action
-  -- buttons follow ACTIONBAR_UPDATE_COOLDOWN alone.
-  ACTIONBAR_UPDATE_COOLDOWN = function() each(updateCooldown) end,
-  ACTIONBAR_UPDATE_USABLE = function() each(updateUsable) end,
-  SPELL_UPDATE_USABLE = function() each(updateUsable) end,
-  ACTIONBAR_UPDATE_STATE = function() each(updateChecked) end,
+  -- buttons follow ACTIONBAR_UPDATE_COOLDOWN alone. These repaint on the next frame, once per burst.
+  ACTIONBAR_UPDATE_COOLDOWN = repaintSoon("cooldown"),
+  ACTIONBAR_UPDATE_USABLE = repaintSoon("usable"),
+  SPELL_UPDATE_USABLE = repaintSoon("usable"),
+  ACTIONBAR_UPDATE_STATE = repaintSoon("state"),
+  -- Auto-attack and auto-repeat starting and stopping: the attack flash (and the checked highlight).
+  PLAYER_ENTER_COMBAT = repaintSoon("state"),
+  PLAYER_LEAVE_COMBAT = repaintSoon("state"),
+  START_AUTOREPEAT_SPELL = repaintSoon("state"),
+  STOP_AUTOREPEAT_SPELL = repaintSoon("state"),
   -- What the game's own buttons also follow: items you carry or wear, forms,
   -- macros, and spells whose icon or charges change.
   BAG_UPDATE_DELAYED = refreshCarried,
   PLAYER_EQUIPMENT_CHANGED = onEquipment,
   UPDATE_SHAPESHIFT_FORM = refreshIcons,
-  UPDATE_MACROS = refreshIcons,
+  UPDATE_MACROS = refreshMacros,
   SPELL_UPDATE_ICON = refreshIcons,
   SPELL_UPDATE_CHARGES = function() each(updateCount) end,
   UPDATE_BINDINGS = function() ns.OutOfCombat(AB.ApplyBindings, "action bar keys") end,

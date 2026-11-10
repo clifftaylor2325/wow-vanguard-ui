@@ -224,10 +224,12 @@ function GB.Probe()
   local on = {}
   for key, v in pairs(GB.settings.channels) do if v then on[#on + 1] = key end end
   table.sort(on)
-  ns.Chat("Group board: " .. GB.Summary())
-  ns.Chat("Reading: " .. (#on > 0 and table.concat(on, ", ") or "no channel") .. ". You are in channels: " .. GB.Channels() .. ".")
-  ns.Chat("Last line that was not a post: " .. (GB.stats.lastPlain or "none yet"))
-  ns.Chat("Posts kept: " .. #GB.entries .. ", shown: " .. #GB.Shown() .. " (filter " .. GB.filter .. ", only my level " .. tostring(GB.settings.mine) .. ").")
+  ns.Chat(ns.Format(L["Group board: {summary}"], { summary = GB.Summary() }))
+  local reading = #on > 0 and table.concat(on, ", ") or L["no channel"]
+  ns.Chat(ns.Format(L["Reading: {channels}. You are in channels: {joined}."], { channels = reading, joined = GB.Channels() }))
+  ns.Chat(ns.Format(L["Last line that was not a post: {line}"], { line = GB.stats.lastPlain or L["none yet"] }))
+  local counts = { kept = #GB.entries, shown = #GB.Shown(), filter = GB.filter, mine = tostring(GB.settings.mine) }
+  ns.Chat(ns.Format(L["Posts kept: {kept}, shown: {shown} (filter {filter}, only my level {mine})."], counts))
 end
 
 -- /vg lfg [probe]: the board, or its probe; with the module off, Toggle says the board is off.

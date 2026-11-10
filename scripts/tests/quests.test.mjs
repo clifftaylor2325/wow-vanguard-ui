@@ -657,14 +657,14 @@ it("quest tracker: a ready quest keeps its item button only when the game keeps 
   addon.update(0);
   expect(questItems(addon)[0][1], "not ready yet: the item is back").toBe(true);
 });
-it("quest tracker: with Questie loaded, Questie's tracker shows instead unless Vanguard's is picked", () => {
+it("quest tracker: with a quest addon loaded, its tracker shows instead unless Vanguard's is picked", () => {
   const QUESTIE = 'C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Questie" end\n';
   const questie = loggedIn(QUESTIE + TRACK_ENV);
-  expect([questie.eval("return Vanguard_QuestTrackerFrame == nil"), questie.eval("return ns.GetModule('MenuStrip').OwnTracker()")], "Questie's tracker has the job: Vanguard's isn't built, and the game's isn't hidden").toEqual([true, false]);
+  expect([questie.eval("return Vanguard_QuestTrackerFrame == nil"), questie.eval("return ns.GetModule('MenuStrip').OwnTracker()")], "the quest addon's tracker has the job: Vanguard's isn't built, and the game's isn't hidden").toEqual([true, false]);
   const ours = loggedIn(QUESTIE + TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { withQuestie = 'vanguard' } } }" });
   expect([tracker(ours).shown, ours.eval("return ns.GetModule('MenuStrip').OwnTracker()")], "Vanguard's picked: it shows as usual").toEqual([true, true]);
   const without = loggedIn(TRACK_ENV);
-  expect(tracker(without).shown, "no Questie: Vanguard's shows").toBe(true);
+  expect(tracker(without).shown, "no quest addon: Vanguard's shows").toBe(true);
 });
 it("quest tracker: an item button sits at its block's spot on the screen, not anchored to the block", () => {
   const addon = loggedIn(TRACK_ENV);
@@ -2446,4 +2446,64 @@ it("quest history: the List latest turn-ins button is greyed while quest history
   expect(enabled(), "its switch off").toBe(false);
   addon.eval("ns.GetModule('QuestHistory').settings = nil");
   expect(enabled(), "its module off").toBe(false);
+});
+// TEST-ONLY game quest window: its OnEvent handler writes each event it is given to __gameSaw.
+const GAME_WINDOW = `__gameSaw = {}
+  QuestFrame:SetScript("OnEvent", function(_, event) __gameSaw[#__gameSaw + 1] = event end)
+  QuestFrame:RegisterEvent("QUEST_FINISHED")`;
+// The events the game window's handler was given, comma-separated.
+const gameSaw = (addon) => addon.eval("return table.concat(__gameSaw, ',')");
+// Whether the game's quest window and gossip manager hold their events, and whether Vanguard's dialog shows.
+const quest = (addon) => addon.eval("return { QuestFrame:IsEventRegistered('QUEST_DETAIL'), CustomGossipFrameManager:IsEventRegistered('GOSSIP_SHOW'), Vanguard_QuestDialog:IsShown() }");
+it("quest dialog: the session switch gives the game its windows back, and takes them again, with no reload", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_WINDOW);
+  expect(quest(addon), "the dialog holds the game's events at login").toEqual([false, false, false]);
+  addon.fire("QUEST_DETAIL");
+  addon.eval("ns.GetModule('QuestDialog').HandBack(true)");
+  expect([quest(addon), gameSaw(addon), addon.eval("return ns.GetModule('QuestDialog').IsHandedBack()")], "an open talk moves to the game's window; the events return").toEqual([[true, true, false], "QUEST_DETAIL", true]);
+  addon.fire("QUEST_DETAIL");
+  expect(quest(addon)[2], "handed back: a page event leaves the dialog hidden").toBe(false);
+  addon.eval("ns.GetModule('QuestDialog').HandBack(false)");
+  expect(quest(addon).slice(0, 2), "taken again").toEqual([false, false]);
+  addon.fire("QUEST_DETAIL");
+  expect(quest(addon)[2], "the dialog shows again").toBe(true);
+  addon.eval("local QD = ns.GetModule('QuestDialog') QD.HandBack(false)");
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("quest dialog: a held modifier hands one talk to the game, and the dialog is back for the next", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
+  addon.eval("__shift = true");
+  addon.fire("QUEST_DETAIL");
+  addon.eval("__shift = false");
+  addon.fire("QUEST_FINISHED");
+  addon.update(0.5);
+  expect([gameSaw(addon), quest(addon)[2]], "the game's handler had the page and the end; the dialog stayed hidden").toEqual(["QUEST_DETAIL,QUEST_FINISHED", false]);
+  addon.fire("QUEST_DETAIL");
+  expect([gameSaw(addon), quest(addon)[2]], "next talk without the key: the dialog's").toEqual(["QUEST_DETAIL,QUEST_FINISHED", true]);
+});
+it("quest dialog: a quest chosen in a game gossip window stays with the game; an unset modifier or none handed back is a no-op", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
+  addon.eval("__shift = true");
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("__shift = false");
+  addon.fire("GOSSIP_CLOSED");
+  addon.fire("QUEST_DETAIL");
+  addon.update(0.5);
+  expect([gameSaw(addon), quest(addon)[2]], "the quest page right after the gossip closes is the game's too").toEqual(["QUEST_DETAIL", false]);
+  const none = loggedIn(QUEST_ENV);
+  none.eval("__shift = true");
+  none.fire("QUEST_DETAIL");
+  expect(quest(none)[2], "with no modifier chosen, Shift changes nothing").toBe(true);
+  none.eval("local QD = ns.GetModule('QuestDialog') QD.HandBack(false) QD.HandBack(true) QD.HandBack(false)");
+  expect(none.eval("return #ns.errors"), "flipping the switch twice is clean").toBe(0);
+});
+it("quest dialog: the Quests page has the session switch and the modifier row, wired to the module", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_WINDOW);
+  // Lua that finds the Quests page row with this caption in `row`.
+  const row = (text) => `local rows for _, p in ipairs(ns.Options.PAGES) do if p.key == "quests" then rows = p.rows() end end
+    local row for _, r in ipairs(rows) do if r[2] == "${text}" then row = r end end`;
+  addon.eval(`${row("Use the game's quest windows for now")} row[4](true)`);
+  expect(addon.eval(`${row("Use the game's quest windows for now")} return { row[3](), QuestFrame:IsEventRegistered("QUEST_DETAIL") }`), "the switch hands the windows back and reads true").toEqual([true, true]);
+  addon.eval(`${row("Hold a key to open the game's windows")} row[5]("ctrl")`);
+  expect(addon.eval("return ns.Settings('QuestDialog').bypass"), "the modifier row saves its choice").toBe("ctrl");
 });

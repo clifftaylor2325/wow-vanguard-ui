@@ -31,7 +31,7 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, binding and placement calls refused in combat, secret arguments to aura calls, secret geometry. |
 | `scripts/lib/wow-inspect.lua` | A widget as a plain snapshot: what it draws, where, and its children. |
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
-| `scripts/tests/smoke.test.mjs` | The harness cases a pull request's CI runs (`npm run test:quick`): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
+| `scripts/tests/smoke.test.mjs` | The harness cases of the fast local run (`npm run test:quick`, and the pre-push hook): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
 | `scripts/tests/snapshot.test.mjs` | The Forever snapshot (see "The Forever snapshot" below): the frames, events and modules the addon leaves after a login, unlock and lock, compared with `forever-snapshot.json`. Also a `npm run test:quick` case. |
 | `scripts/tests/freeze.test.mjs` | The frozen surface (see "The frozen surface" below): saved settings, `/vg` words and API functions that a release shipped are all still there. A `npm run test:quick` case. |
 
@@ -178,7 +178,7 @@ change fires the events the client would.
 | `set("units.player.hit", n)` / `set("units.player.spellHit", n)` | The player's chance to hit from gear and talents, per cent, that `GetHitModifier` and `GetSpellHitModifier` report (0 when unset); `units.player.ratingBonus[cr]` is what `GetCombatRatingBonus(cr)` gives and `units.player.rating[cr]` what `GetCombatRating(cr)` gives; `units.player.expertise` (per cent) is `GetExpertise`'s and `units.player.defense = { base, bonus }` `UnitDefenseSkill`'s. |
 | `set("realm", name)` | The realm `GetRealmName` reports (default "Forever Test"); `GetNormalizedRealmName` gives it without spaces or hyphens. The player's side is `units.player.faction`. |
 | `openProfession(recipeID)` / `selectRecipe(recipeID)` / `closeProfession()` | The profession window: `ProfessionsFrame` (made on the first open, as Blizzard_Professions loads; ADDON_LOADED fires) shows on TRADE_SKILL_SHOW and its `CraftingPage.SchematicForm:Init({ recipeID })` is given the recipe; TRADE_SKILL_CLOSE fires and it hides. `C_TradeSkillUI.GetRecipeSchematic` answers from `world.recipes[recipeID]` (a CraftingRecipeSchematic: `name, outputItemID, quantityMin, quantityMax, reagentSlotSchematics = { { reagents = { { itemID } }, quantityRequired, reagentType } }`). |
-| `world.loaded` (Lua, through `addon.eval`) | The addons the client says are loaded, by folder name: `C_AddOns.IsAddOnLoaded(name)` is true for these. `{ Vanguard = true }` by default; a test adds one with `__wfgStub.world.loaded.Bagnon = true`. |
+| `world.loaded` (Lua, through `addon.eval`) | The addons the client says are loaded, by folder name: `C_AddOns.IsAddOnLoaded(name)` is true for these. `{ Vanguard = true }` by default; a test adds one with `__wfgStub.world.loaded.SomeAddon = true`. |
 | `UIPanelWindows` (Lua, through `addon.eval`) | The panel manager's list of the windows it lays out, by name (`{ area = "left", pushable = 3 }` each). Empty by default; a test lists the windows it opens (`UIPanelWindows.CharacterFrame = { area = "left" }`) and defines `UpdateUIPanelPositions` itself. |
 | `world.spec`, `world.specGroup` (Lua, through `addon.eval`) | The specialization index `GetSpecialization` answers, and the talent group `C_SpecializationInfo.GetActiveSpecGroup` answers (1 Primary, 2 Secondary, WoW Forever's dual spec). Both nil by default, so spec profiles have no key until a test sets one; with `world.specGroup` set on the Forever client they follow the talent group (fire `ACTIVE_TALENT_GROUP_CHANGED(group, previous)` after changing it), else the specialization index. |
 | `world.professions` | Your two primary professions, `{ name, skillLine, profession }` each (`profession` an `Enum.Profession`, Enchanting 9): `GetProfessions`, `GetProfessionInfo` and `C_TradeSkillUI.GetProfessionInfoBySkillLineID` answer from it. Empty by default. |
@@ -379,11 +379,10 @@ lines for the ones after it. A pull request that should change nothing on Foreve
   not on how the addon got there; internal fields (`w.__shown`) are for the
   predicates in `frames()`.
 - Coverage of the addon's Lua is enforced (`npm run coverage`, which runs
-  every test with coverage on; run it before opening a pull request, since CI
-  runs it when a pull request is opened ready or marked ready for review (not a
-  draft), on later pushes only while it carries the `full-tests` label, weekly,
-  before a release and from the Actions tab, not on every push): a new feature comes with the
-  scenario that exercises it. A pull request's own check runs only
-  `smoke.test.mjs` and `snapshot.test.mjs` from here.
+  every test with coverage on; run it on the branch before its pull request
+  merges, since no pull request runs a test in CI: CI runs the suite weekly,
+  before a release and from the Actions tab): a new feature comes with the
+  scenario that exercises it. `npm run test:quick` runs only `smoke.test.mjs`,
+  `snapshot.test.mjs` and `freeze.test.mjs` from here.
 - `npm run quality` applies to the tests too: every function has a comment
   above it and at most 10 lines of body code.
