@@ -58,7 +58,7 @@ end
 -- One of your auctions as a row's data, or nil (one up without a buyout, or a number the client
 -- hides, or one whose item key info has not come in yet). A sold one's amount is the whole auction's buyout, else the bid it sold on.
 local function ownedAuction(a)
-  local buyout, bid = ns.PlainNumber(a.buyoutAmount), ns.PlainNumber(a.bidAmount)
+  local buyout, bid = AH.Buyout(a.buyoutAmount), ns.PlainNumber(a.bidAmount)
   local qty, id, status = ns.PlainNumber(a.quantity), ns.PlainNumber(a.auctionID), AH.STATUS[a.status]
   if not (status and qty and id) or qty < 1 or not (buyout or status == "sold" and bid) then return nil end
   local unit, total = prices(a.itemKey, buyout, qty)
@@ -224,10 +224,22 @@ local function cancelOrAsk(id, onSent)
   ns.Irreversible({ question = cancelQuestion(cost), yes = L["Cancel auction"], act = function() if sendCancel(id) then onSent() end end })
 end
 
+-- The row of auction id and its place in the list, or nil.
+local function findOwned(id)
+  id = ns.PlainNumber(id)
+  if not id then return end
+  for i, a in ipairs(AH.owned) do
+    if a.id == id then return a, i end
+  end
+end
+
 -- Cancel (the row's click, never a timer or an event): cancels one of your auctions if the game allows it,
--- after a question when that costs anything.
+-- after a question when that costs anything. Marked as on its way (for AH.CANCEL_WAIT) as Cancel next
+-- undercut's is, so a second click on the row cannot send or ask again.
 function AH.Cancel(id)
-  if id and C_AuctionHouse.CanCancelAuction(id) then cancelOrAsk(id, function() end) end
+  local a = findOwned(id)
+  if not (id and C_AuctionHouse.CanCancelAuction(id)) or (a and onItsWay(a)) then return end
+  cancelOrAsk(id, function() if a then a.cancelling = GetTime() AH.PaintOwned() end end)
 end
 
 -- Cancel next undercut (the button's click, never a timer or an event): cancels one auction, the
@@ -240,15 +252,6 @@ function AH.CancelNext()
     a.cancelling = GetTime()
     AH.PaintOwned()
   end)
-end
-
--- The row of auction id and its place in the list, or nil.
-local function findOwned(id)
-  id = ns.PlainNumber(id)
-  if not id then return end
-  for i, a in ipairs(AH.owned) do
-    if a.id == id then return a, i end
-  end
 end
 
 -- An auction was cancelled: its row goes (and with "check again" on, the rest are checked again).

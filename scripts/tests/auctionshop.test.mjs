@@ -113,6 +113,14 @@ it("a browse list still waiting on an item's name is let go with the house: no a
   addon.update(0.01);
   expect(addon.eval(`local out = {} for i, s in ipairs(${HELPER}.queue) do out[i] = s.cost and "cost" or "other" end return { next(${HELPER}.unnamed) == nil, #out, next(${HELPER}.found or {}) == nil }`), "nothing waits, queued or found").toEqual([true, 0, true]);
 });
+it("a row's menu acts on the entry it opened on, even when the list changed meanwhile", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Alpha", "Beta", "Gamma" }');
+  addon.click(`${TABLE}.rows[2]`, "RightButton");
+  addon.eval("table.insert(VanguardDB.ah.lists['TEST-ONLY Mats'], 1, 'Zeta')");
+  addon.click("Vanguard_Menu.items[2]");
+  expect(addon.eval("return VanguardDB.ah.lists['TEST-ONLY Mats']"), "Beta went, not the entry that slid into its place").toEqual(["Zeta", "Alpha", "Gamma"]);
+});
 it("entries by item link, ID or name; Remove on the right-click menu; the wheel scrolls", () => {
   const addon = atAuctionHouse(DUSTS);
   makeList(addon, "TEST-ONLY Mats", '{ "|cffffffff|Hitem:2589::::|h[Linen Cloth]|h|r", "99999", "  ", "Soul Dust", "a", "b", "c", "d" }');

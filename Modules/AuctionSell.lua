@@ -223,8 +223,8 @@ end
 -- One result's unit price: a commodity's unit price, an item's buyout over its quantity; nil
 -- for one with only a bid, or a number the client hides.
 local function resultUnit(r, commodity)
-  if commodity then return ns.PlainNumber(r.unitPrice) end
-  local buyout, qty = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity)
+  if commodity then return AH.Buyout(r.unitPrice) end
+  local buyout, qty = AH.Buyout(r.buyoutAmount), ns.PlainNumber(r.quantity)
   return buyout and qty and qty > 0 and math.floor(buyout / qty) or nil
 end
 
@@ -235,13 +235,19 @@ local function ofSuffix(r, suffix)
   return want == 0 or (type(r.itemKey) == "table" and ns.PlainNumber(r.itemKey.itemSuffix) == want)
 end
 
+-- Whether a result may hold a listing of yours: it says so, or the client hides whether (left out of a
+-- price to beat, as the price store leaves it out).
+local function mayBeOwn(r)
+  return ns.IsSecret(r.containsOwnerItem) or r.containsOwnerItem == true
+end
+
 -- The cheapest unit price someone else asks for an item now (your listings left out), or nil:
 -- from the commodity results or the item results, whichever the search brought; of one random-suffix
 -- variant when a suffix is given.
 function AH.Cheapest(commodity, key, suffix)
   local best
   for _, r in ipairs(results(commodity, key)) do
-    local unit = not r.containsOwnerItem and ofSuffix(r, suffix) and resultUnit(r, commodity)
+    local unit = not mayBeOwn(r) and ofSuffix(r, suffix) and resultUnit(r, commodity)
     if unit and (not best or unit < best) then best = unit end
   end
   return best
@@ -261,7 +267,7 @@ function AH.Listings(commodity, key)
   local out = {}
   for _, r in ipairs(results(commodity, key)) do
     local unit, qty = resultUnit(r, commodity), ns.PlainNumber(r.quantity)
-    if unit and qty then out[#out + 1] = { unit = unit, qty = qty, time = AH.TimeLeft(r), mine = r.containsOwnerItem == true } end
+    if unit and qty then out[#out + 1] = { unit = unit, qty = qty, time = AH.TimeLeft(r), mine = ns.IsTrue(r.containsOwnerItem) } end
   end
   return out
 end
@@ -544,10 +550,11 @@ local function askConfirm(s, kind, args)
 end
 
 -- The post the game asked to confirm, while it is still what the card would send (the same length,
--- quantity, bid and price); nil once anything on the card changed it, so Post checks and posts anew.
+-- quantity, bid and price) and its slot still holds the sale's item (a confirm names a bag slot, so
+-- whatever moved into it would be posted at this price); nil otherwise, so Post checks and posts anew.
 function AH.Pending(s)
   local p = s and s.pending
-  if not p then return nil end
+  if not (p and holds(s, p.args[1]:GetBagAndSlot())) then return nil end
   local _, now = postCall(s, p.args[1], AH.SellPrice(s))
   for i = 2, p.args.n do
     if now[i] ~= p.args[i] then return nil end
