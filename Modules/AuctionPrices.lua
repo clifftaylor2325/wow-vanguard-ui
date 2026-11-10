@@ -149,7 +149,7 @@ end
 -- while it runs doesn't make this pass longer, and the new one hears the next time.
 local function tellListeners()
   local count = #AP.listeners
-  for i = 1, count do AP.listeners[i]() end
+  for i = 1, count do ns.Try("auction prices changed listener", AP.listeners[i]) end
 end
 
 -- What hears of each price as it is recorded (AP.OnSeen): functions called with the item ID, its
@@ -170,6 +170,12 @@ local function noteDay(p, day, unitPrice, scan)
   p.qtys[day], p.markets[day] = units or p.qtys[day], market or p.markets[day]
 end
 
+-- Tells each AP.OnSeen listener of a price; one that fails is reported and doesn't stop the others
+-- (or the scan recording the rest of its items).
+local function tellSeen(itemID, unitPrice, t)
+  for _, fn in ipairs(AP.seenListeners) do ns.Try("auction price seen", fn, itemID, unitPrice, t) end
+end
+
 -- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and from a
 -- scan (scan = { units, market, listings }, nil for a search) its units up, market value and how
 -- many listings (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items
@@ -184,7 +190,7 @@ function AP.Record(itemID, unitPrice, t, scan)
   noteDay(p, day, unitPrice, scan)
   if house.count > AP.MAX_ITEMS then AP.Evict() end
   ns.Soon("auction prices changed", tellListeners)
-  for _, fn in ipairs(AP.seenListeners) do fn(itemID, unitPrice, t) end
+  tellSeen(itemID, unitPrice, t)
 end
 
 -- A price a search saw (not a whole scan): the item's last-seen price and that day's low, never
