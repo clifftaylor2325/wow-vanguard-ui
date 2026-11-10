@@ -36,9 +36,13 @@ end
 
 -- Copies another profile's settings over the one this character uses after the next reload: the
 -- active one, or the one staged while a switch waits (so the profile running until then is never
--- overwritten). Returns the name copied into, or false.
-function ns.CopyProfile(from)
-  local source, into = VanguardDB.profiles[from], ns.SelectedProfileName()
+-- overwritten). `into` names another profile to copy into (setup's Undo puts the profile it backed up
+-- back, which a switch staged since is not). Returns the name copied into, or false.
+---@param from string
+---@param into string|nil
+function ns.CopyProfile(from, into)
+  local source = VanguardDB.profiles[from]
+  into = into or ns.SelectedProfileName()
   if not source or from == into then
     return false
   end

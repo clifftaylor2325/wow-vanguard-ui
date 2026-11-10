@@ -155,7 +155,7 @@ end
 function S.Backup()
   if state.backup then return end
   if state.order[1] == "profile" then state.floor, VanguardCharDB.pickProfile = math.max(state.floor, 2), nil end
-  state.backup = keptBackup() or ns.BackupProfile()
+  state.backup, state.backupOf = keptBackup() or ns.BackupProfile(), ns.ProfileName()
   if owed() then VanguardCharDB.setupBackup = state.backup end
   ns.Chat(ns.Format(L["Profile {profile} as it was before setup is saved as profile {backup}."], { profile = ns.ProfileName(), backup = state.backup }))
 end
@@ -1009,7 +1009,7 @@ end
 ---@param putBack function
 function S.Undo(putBack)
   putBack()
-  local restored = not state.backup or ns.CopyProfile(state.backup) ~= false
+  local restored = not state.backup or ns.CopyProfile(state.backup, state.backupOf) ~= false
   if not restored then ns.Chat(L["The backup profile is gone, so only the guided steps' settings went back."]) end
   state.undone = restored
   complete(true)
