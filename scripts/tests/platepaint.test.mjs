@@ -176,11 +176,20 @@ it("a plate's aura holder the client has closed is not asked its scale", () => {
   expect([addon.eval("return __touches"), kept(addon)], "a forbidden holder: no icon touched, nothing reported").toEqual([0, [0, 0]]);
 });
 
-it("an aura icon that fails to place is reported once and not tried again every scale check", () => {
+it("a plate whose frame the client has closed has its aura icons left alone, though the icon, button and holder answer no", () => {
+  const addon = shrunkPlate();
+  addon.eval("__debuffs:GetParent().IsForbidden = function() return true end");
+  addon.advance(2);
+  expect([addon.eval("return __touches"), kept(addon)], "a closed frame above the holder: no icon touched, nothing kept").toEqual([0, [0, 0]]);
+});
+
+it("an aura icon that fails to place is kept once for /vg errors, never printed, and not tried again every scale check", () => {
   expectErrors("aura icon pixels: eval:6: Attempt to access forbidden object from code tainted by an AddOn");
   const addon = shrunkPlate();
+  addon.clearChat();
   addon.advance(2);
-  expect([addon.eval("return __touches"), kept(addon)], "four checks, one try, one report").toEqual([1, [1, 1]]);
+  expect([addon.eval("return __touches"), kept(addon)], "four checks, one try, kept once").toEqual([1, [1, 1]]);
+  expect([addon.chat().some((l) => /aura icon pixels/.test(l)), addon.eval("return ns.LoudErrorCount()")], "not in chat, not on the badge").toEqual([false, 0]);
 });
 
 it("a plate's border is not painted again while its scale drifts less than NP.SCALE_SLACK", () => {
