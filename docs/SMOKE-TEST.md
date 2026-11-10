@@ -211,6 +211,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do also: in a dungeon, a battleground and in the open world, type `/vg status` and read the `Game restrictions:` line. [Needs in game: that it is `none` in the open world and names Chat, Encounter or ChallengeMode only where the game restricts add-ons, and that chat watch and the group board go quiet then without errors. Compare with `/vg probe`, section Restrictions and lockdown.]
 - If it fails, paste: the whole `/vg status` output and `/vg errors`.
 
+### 1.3a Game windows by state
+
+- Do: after login type `/vg status` and read its last line, then `/vg status windows`. Open your character pane, the spellbook and the auction house (or any window that loads later), and type both again. Switch off a group under Game windows, `/reload`, and type `/vg status` once more.
+- Expect: the last line reads "Game windows: N dressed · N left as the game's · N replaced · N switched off · N not made yet". "Left as the game's" is 0; if it is not, each such window is named with what it lacks, and that window looks stock. `/vg status windows` lists the names under dressed, missing, replaced, off and unseen (only the states that have any). Windows that load later move from not made yet to dressed once opened. A group switched off moves its windows to switched off. [Needs in-game check: which windows the real client reports as left as the game's or never made; compare with docs/design/RESKIN-COVERAGE.md.]
+- If it fails, paste: both outputs and `/vg errors`.
+
 ### 1.4 No errors yet
 
 - Do: type `/vg errors`.
