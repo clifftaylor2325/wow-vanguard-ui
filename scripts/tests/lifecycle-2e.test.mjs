@@ -86,3 +86,17 @@ it("OfficerLoot: switched off, the roll tracker has no list (nothing is flagged)
   switchTo(addon, "OfficerLoot", true);
   expect(addon.eval('return ns.GetModule("Rolls").reserve == ns.GetModule("OfficerLoot")'), "the list again").toBe(true);
 });
+
+lifecycleCases("Upgrades", login);
+
+it("Upgrades: switched off, it reads as off (no settings, no upgrade); its tooltip and card hooks stay one each, however often it is toggled", () => {
+  const addon = loggedIn("");
+  const hooks = () => addon.eval('return { #ns.GetModule("Tooltips").itemLines, #ns.QuestParts.cardHooks }');
+  const [lines, cards] = hooks();
+  switchTo(addon, "Upgrades", false);
+  expect(addon.eval('local UP = ns.GetModule("Upgrades") return { UP.settings == nil, UP.IsUpgrade("item:2") }'), "off").toEqual([true, false]);
+  for (let i = 0; i < 3; i++) addon.eval('ns.SetModuleEnabled("Upgrades", true) ns.SetModuleEnabled("Upgrades", false)');
+  switchTo(addon, "Upgrades", true);
+  expect(hooks(), "each hook once").toEqual([lines, cards]);
+  expect(addon.eval('return ns.GetModule("Upgrades").settings ~= nil'), "on again").toBe(true);
+});

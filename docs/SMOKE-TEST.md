@@ -5459,6 +5459,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, the roll tracker loses its "[SR]" flags at once and `/vg loot list` says the module is off; on, the flags and the list return, with the reserves as they were.
 - If it fails, paste: the roll tracker's lines and `/vg errors`.
 
+### 35.5 Gear upgrades
+
+- Do: open the combined bag and a quest reward window with an upgrade in each (an arrow shows), and hover an upgrade for its tooltip line. Switch **Gear upgrades** off under `/vg` → Modules, then on again.
+- Expect: off, the arrows on the bag slots and reward cards and the tooltip line are gone at once; on, they come back (the bag marks itself again), with no reload.
+- If it fails, paste: a screenshot of the bag and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

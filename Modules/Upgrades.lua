@@ -27,7 +27,7 @@ local W = ns.UpgradeWeights
 -- weights: class -> kind -> this profile's changes to the defaults; caps: class -> kind -> stat -> its cap where it
 -- differs from the kind's (ns.UpgradeWeights.CAPS; 0 for none);
 -- styles: class -> its damage style on WoW Forever (ns.UpgradeWeights.STYLES).
-local UP = ns.Module("Upgrades", { defaults = { tooltip = true, bags = true, quests = true, role = "auto", weights = {}, caps = {}, styles = {} } })
+local UP = ns.Module("Upgrades", { live = true, defaults = { tooltip = true, bags = true, quests = true, role = "auto", weights = {}, caps = {}, styles = {} } })
 
 -- Moves weights kept per kind ({ strength = { ... } }, as a profile had them before they were kept per class) to
 -- every class that uses the kind, so a shared profile keeps what each class had.
@@ -645,16 +645,32 @@ function UP.Command(rest)
   sayWeights()
 end
 
--- Module entry point (Core/Modules.lua).
-function UP.Enable(settings)
+-- The combined bag's slot update, marked through a gate once a session (a hook can't be taken off; the gate does
+-- nothing while the module is off). Only when the bag exists: a start before it does is tried again at the next.
+local function hookBag(scope)
+  local bag = _G.ContainerFrameCombinedBags
+  if not (bag and type(hooksecurefunc) == "function") then return end
+  scope:Gate("bag slots", markBagSafely, function(gate) hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", gate)) end)
+end
+
+-- Module entry point (Core/Modules.lua): everything goes through the scope; the tooltip line, the reward card
+-- painter and the bag hook are gates (they stay installed, inert while the module is off).
+function UP.Enable(settings, scope)
   UP.settings = settings
   UP.Changed()
-  ns.GetModule("Tooltips").AddItemLines(UP.AddLine)
-  ns.QuestParts.OnPaintCard(UP.MarkCard)
-  local bag = _G.ContainerFrameCombinedBags
-  if bag and type(hooksecurefunc) == "function" then hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", markBagSafely)) end
-  ns.On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
-  ns.On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
-  if not ns.IsForever() then ns.On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.OnRolesChanged) end -- a new spec, new main stat
-  ns.On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
+  scope:Gate("item lines", UP.AddLine, ns.GetModule("Tooltips").AddItemLines)
+  scope:Gate("reward cards", UP.MarkCard, ns.QuestParts.OnPaintCard)
+  hookBag(scope)
+  scope:On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
+  scope:On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
+  if not ns.IsForever() then scope:On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.OnRolesChanged) end -- a new spec, new main stat
+  scope:On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
+  if ns.ModulesBuilt() then UP.OnGearChanged() end
+end
+
+-- Switched off: the arrows already drawn on bag slots and reward cards go, and the module reads as off again
+-- (no settings: IsUpgrade is false, the wizard and the import say it is not started), as after a login with it off.
+function UP.Disable()
+  for _, arrow in pairs(vgUpgrade) do arrow:Hide() end
+  UP.settings = nil
 end
