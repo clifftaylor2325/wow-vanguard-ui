@@ -2319,3 +2319,13 @@ it("options: a card whose rows fail to build is kept as far as it got, the page 
   expect(addon.eval("return { __dbg, ns.Options.Frame().nav.general.changed:IsShown() }"), "a change afterwards still marks its page's dot").toEqual([true, true]);
   addon.eval("for i = #ns.errors, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY card build') then table.remove(ns.errors, i) end end");
 });
+
+it("ns.Ask: a question displaced by another answers No once, then the new one stands", () => {
+  const addon = loggedIn();
+  addon.eval(`__no = { a = 0, b = 0 } __yes = { a = 0, b = 0 }
+    ns.Ask("TEST-ONLY A?", "Go", function() __yes.a = __yes.a + 1 end, function() __no.a = __no.a + 1 end)
+    ns.Ask("TEST-ONLY B?", "Go", function() __yes.b = __yes.b + 1 end, function() __no.b = __no.b + 1 end)`);
+  expect(addon.eval("return { __no.a, __no.b, __yes.a, __yes.b, Vanguard_Question:IsShown(), Vanguard_Question.title:GetText() }"), "A answered No, B waits").toEqual([1, 0, 0, 0, true, "TEST-ONLY B?"]);
+  addon.click("Vanguard_Question.no");
+  expect(addon.eval("return { __no.a, __no.b }"), "B's No runs once and A's is not run again").toEqual([1, 1]);
+});

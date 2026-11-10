@@ -428,9 +428,10 @@ local function pickConfirm(f, kind)
 end
 
 -- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
--- any other way (the X, Escape) answers No. kind is "danger" for a question about something lost for good.
+-- any other way (the X, Escape, another question taking its place) answers No. kind is "danger" for a question about something lost for good.
 function ns.Ask(text, yes, onYes, onNo, kind)
   local f = questionDialog()
+  f:Hide()
   f.title:SetText(text)
   fitTitle(f)
   pickConfirm(f, kind)
