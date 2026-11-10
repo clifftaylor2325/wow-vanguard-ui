@@ -29,7 +29,7 @@ local HELP = {
   { "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]", L["surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember"] },
   { "corners [square|rounded]", L["panel corners: square (default) or rounded, on every theme"] },
   { "gradient [on|off]", L["windows a shade lighter toward the top (off by default)"] },
-  { "accent <rrggbb|name>", L["set the accent color (brass, arcane, jade, orchid, copper); accent reset"] },
+  { "accent <rrggbb|name|class>", L["set the accent color (brass, arcane, jade, orchid, copper); accent reset"] },
   { "theme reset", L["every theme setting back to default"] },
   { "modules", L["list modules; enable|disable <module> (then /reload)"] },
   { "skins", L["addons skinned through Vanguard.RegisterSkin; skins <addon> on|off"] },
@@ -78,7 +78,7 @@ local HELP = {
   { "preview [party|10|25|40|off]", L["the raid frames filled with sample players, to check them without a group (not saved)"] },
   { "binds", L["this spec's click-casting and hover-key bindings (set them in /vg > Click casting)"] },
   { "keybind", L["keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves"] },
-  { "status", L["version, profile, modules, skins, work waiting on combat, what the client has, game restrictions"] },
+  { "status [windows]", L["version, profile, modules, skins, work waiting on combat, what the client has, game restrictions"] },
   { "factionart", L["which of the game's own faction pictures this client has"] },
   { "launch", L["prices, sales and characters saved from before launch (the beta); launch clear removes them once the game has launched"] },
   { "realm", L["your realm, ruleset, game rules (preset, self-found, game mode) and side as the client gives them, and the key your prices, sales and characters are kept under"] },
@@ -176,8 +176,15 @@ local function resetAccent()
   chat(L["Accent back to default."])
 end
 
--- /vg accent <rrggbb> | reset
+-- /vg accent class
+local function classAccent()
+  if T.SetClassAccent() then return chat(L["The accent follows your class colour."]) end
+  chat(L["Your class colour isn't known yet."])
+end
+
+-- /vg accent <rrggbb> | <name> | class | reset
 local function accentCommand(rest)
+  if rest:lower() == "class" then return classAccent() end
   if rest == "reset" then
     return resetAccent()
   end
@@ -611,14 +618,47 @@ local function restrictionLine()
   return "Game restrictions: " .. (#active > 0 and table.concat(active, ", ") or "none")
 end
 
--- /vg status
-local function statusCommand()
+-- The game windows by state (Modules/Windows.lua, GW.Coverage), read once for a status line or list.
+local function windowCoverage()
+  return ns.GetModule("Windows").Coverage()
+end
+
+-- The windows left as the game draws them, each with what the client lacks: "ChannelFrame (no MemberList)".
+local function missingWindows(names)
+  local out, skipped = {}, ns.GetModule("Windows").SKIPPED
+  for i, name in ipairs(names) do out[i] = string.format("%s (no %s)", name, skipped[name]) end
+  return table.concat(out, ", ")
+end
+
+-- The game windows line of /vg status and the report: how many are in each state, and which ones a game patch left
+-- without their skin.
+local function windowsLine()
+  local c = windowCoverage()
+  local line = string.format("Game windows: %d dressed  ·  %d left as the game's  ·  %d replaced  ·  %d switched off  ·  %d not made yet",
+    #c.dressed, #c.missing, #c.replaced, #c.off, #c.unseen)
+  return #c.missing > 0 and (line .. "  ·  " .. missingWindows(c.missing)) or line
+end
+
+-- /vg status windows: every registered game window by state, one line a state.
+local function statusWindows()
+  local c = windowCoverage()
+  chat(windowsLine())
+  for _, state in ipairs(ns.GetModule("Windows").STATES) do
+    if #c[state] > 0 then chat(state .. ": " .. table.concat(c[state], ", ")) end
+  end
+end
+
+-- /vg status [windows]
+local function statusCommand(rest)
+  if rest:lower() == "windows" then return statusWindows() end
   chat(string.format("Vanguard %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
   chat(ns.Client.Line())
   chat(restrictionLine())
   chat(textLine())
+  chat(string.format("Game fonts: %d of %d standard font objects in the theme font", T.StandardFontCount()))
+  chat(windowsLine())
 end
 
 -- "16001": the client's interface version, or "?" when it can't say.

@@ -11,7 +11,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg whatsnew` | What changed in this version |
 | `/vg modules`, `/vg enable <module>`, `/vg disable <module>` | List the parts; switch one, then `/reload` |
 | `/vg skins` | Addons skinned through the API; `skins <addon> on\|off` |
-| `/vg status` | Version, profile, modules, skins, work waiting on combat, game restrictions |
+| `/vg status` | Version, profile, modules, skins, work waiting on combat, game restrictions, game windows by state (`/vg status windows` lists them) |
 
 ## Layout
 
@@ -116,7 +116,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg slug [on|off]               world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a side-by-side test, off by default)
 /vg framebuffer [on|off]        windows drawn through a frame buffer while they open and close, so inner borders don't ghost (a side-by-side test, off by default)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
-/vg accent <rrggbb|brass|arcane|jade|orchid|copper> | reset      /vg theme reset
+/vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour; /vg theme reset
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
@@ -166,7 +166,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg history [on|off|whispers|nowhispers|clear]   Chat history: your chat comes back after a reload or the next login, or show what is saved
 /vg situation [record <name>|stop|clear [name]|list]   Situations: record an override for solo, party, raid, pvp, instance or resting (on Retail also mythicplus or delve), stop and save it, clear one (the active one without a name), or list them
 /vg ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear]   auction prices from your scans: how many and when; pick or make a shopping list and say what's on it; add an item (a link, an ID or a name) to a list (an item with no list named goes on the list in use); rename, copy, delete (after asking), export or import the list in use; show the Recent list; make the Restock list of what you're short of (searched at the auction house); scan the auction house (while it's open); forget the prices
-/vg status                      version, profile, modules, skins, work waiting on combat, what the client has, game restrictions
+/vg status [windows]            version, profile, modules, skins, work waiting on combat, what the client has, game restrictions, how many of the game's standard font objects wear the theme font, and the game windows counted by state (dressed, left as the game's, replaced, switched off, not made yet); with windows, every registered game window listed under its state
 /vg report                      one block to copy for a bug report (what /vg status and /vg errors say), ready to paste at vanguardui.com/feedback
 /vg feedback [bug|feature]      a bug report or feature request written in game: the questions vanguardui.com/feedback asks (with the same limits), then one block to copy; pasted into the site's form, it fills the fields (a bug's block carries /vg report). Also Report a bug and Request a feature on the Feedback page in /vg, the last page in the list, which has a Copy a report button for the plain /vg report too
 /vg errors [clear|resume]       what Vanguard caught going wrong this session, opened in the copy window with the text selected (Ctrl+C) and a one-line note in chat: the version, client and aura backend, then each distinct error once with how often it happened and its stack (paste it in a bug report, or click Report a bug in that window for the feedback form; clear, or the window's Clear button, empties the list; with none caught, chat says so). Under Left off it also lists each game window whose skin Vanguard left off this session because the game's window no longer has a part or method the skin is built on (a game patch reshaped it): that window keeps the game's own look, and every other window is still skinned. An error is printed to chat the first time it happens and handed to the game's error popup or your error addon every time; an error in one module, skin, event handler, after-combat update, hook on a game function, button click or timer is kept here and doesn't stop the others; an event handler or timer that fails 10 times is paused and listed first (resume runs paused parts again, as the Feedback page's Resume paused parts button and a reload do), and the calls the game blocked from Vanguard are listed under their own heading as "action blocked" or "action forbidden"

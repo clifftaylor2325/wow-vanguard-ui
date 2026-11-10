@@ -267,8 +267,8 @@ end
 local function paintLine(fs, line, y)
   fs:SetShown(line ~= nil)
   if not line then return 0 end
-  T.Text(fs, line[2] == "head" and "heading" or "label", line[2] == "head" and "text" or "text2")
-  fs:SetText(line[1])
+  T.Text(fs, line[2] == "head" and "section" or "label", line[2] == "head" and "muted" or "text2")
+  T.SetText(fs, line[1])
   fs:SetPoint("TOPLEFT", PR.PAD, -y)
   return math.max(PR.ROW, math.ceil(fs:GetStringHeight()) + T.SPACE.tight)
 end

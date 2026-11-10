@@ -19,9 +19,9 @@ local FIT = { share = 0.75, margin = 50 }
 -- The header bar is centred on the title line (T.CONTROL.inset down, where every window's title and close button sit);
 -- the footer bar holds a standalone button (T.BUTTON_H) with air above and below.
 local HEAD, FOOT = 2 * T.CONTROL.inset, T.BUTTON_H + 14
--- The logo beside the title, a nav icon, and the dot that marks a page or a row with a changed setting (units);
--- and how far the nav dims a page the search misses.
-local LOGO, NAV_ICON, DOT, DIM = 28, 16, 6, 0.35
+-- The crest beside the wordmark (T.LOGO.header), a nav icon, and the dot that marks a page or a row with a changed
+-- setting (units); and how far the nav dims a page the search misses.
+local LOGO, NAV_ICON, DOT, DIM = T.LOGO.header, 16, 6, 0.35
 -- Right of a page: its scroll thumb sits T.SPACE.col out from the view (ns.ScrollView) and T.SPACE.col in from the window's edge.
 local VIEW_RIGHT = 2 * T.SPACE.col
 -- A card's width (the page is T.SPACE.col in from the nav), its inset (T.SPACE.col: a card inside a window) and its
@@ -153,12 +153,14 @@ local function buttonRow(c, r)
   return b
 end
 
--- A text row { "text", words, tier }: a line in label text2 (a status line), or with tier "note" a note in
--- small muted under the row it explains; it wraps to the card's inside width, as far from the right edge as it
+-- A text row { "text", words, tier }: a line in label text2 (a status line), with tier "note" a note in
+-- small muted under the row it explains, or with tier "empty" an empty-state line in label muted (it says what
+-- would fill the list); it wraps to the card's inside width, as far from the right edge as it
 -- starts from the left (its row grows to fit; see rowHeight).
 local function textRow(c, r)
   local fs = W.Text(c, r[2])
   if r[3] == "note" then T.Text(fs, "small", "muted") end
+  if r[3] == "empty" then T.Text(fs, "label", "muted") end
   fs:SetWidth(INNER)
   return fs
 end
@@ -650,7 +652,7 @@ local function addPageBar(view, page)
   bar:SetPoint("TOPLEFT", NAV_WIDTH + T.SPACE.col, -(HEAD + T.SPACE.col))
   bar:SetSize(CARD_WIDTH, T.BUTTON_H)
   bar.child, view.bar = view.child, bar
-  bar.title = T.Text(bar:CreateFontString(nil, "OVERLAY"), "heading", "text")
+  bar.title = T.Text(bar:CreateFontString(nil, "OVERLAY"), "display", "text")
   bar.title:SetPoint("LEFT")
   bar.title:SetPoint("RIGHT")
   bar.title:SetJustifyH("LEFT")
@@ -761,20 +763,17 @@ local function searchEnter(self)
   O.JumpTo(self:GetText())
 end
 
--- The title, in the window tier's role and the text colour, with your faction's crest (T.CREST.title) just right
--- of it while the faction look is on.
+-- The title: the wordmark, the addon's name in the brand's serif face and gold (the wordmark role), right of the crest.
 local function addTitle(f)
-  f.title = T.Text(f.header:CreateFontString(nil, "OVERLAY"), "title", "text")
+  f.title = T.Text(f.header:CreateFontString(nil, "OVERLAY"), "wordmark", "brandGold")
   f.title:SetPoint("LEFT", f.logo, "RIGHT", T.SPACE.gap, 0)
   f.title:SetText("Vanguard")
-  f.crest = T.Crest(f.header, T.CREST.title, "OVERLAY")
-  f.crest:SetPoint("LEFT", f.title, "RIGHT", T.SPACE.gap, 0)
 end
 
--- The header: logo and title, search, profile, and the close button where every window has it (T.PlaceClose).
+-- The header: the crest and the wordmark, search, profile, and the close button where every window has it (T.PlaceClose).
 local function addHeader(f)
   f.header = bar(f, "TOP", HEAD)
-  f.logo = T.Logo(f.header, LOGO)
+  f.logo = T.PaintedLogo(f.header, LOGO)
   f.logo:SetPoint("LEFT", T.SPACE.pad, 0)
   addTitle(f)
   f.close = T.PlaceClose(T.CloseButton(CreateFrame("Button", nil, f.header)), f)
@@ -800,11 +799,21 @@ local function version()
   return type(get) == "function" and get(ADDON, "Version") or nil
 end
 
--- The footer: version on the left; a reload notice and button on the right when needed.
+-- Starts the footer's version line right of your faction's crest, or at the footer's own inset while no crest shows
+-- (the faction look off, or a character with no faction yet).
+local function placeVersion(f)
+  local past = f.crest:IsShown() and T.CREST.footer + T.SPACE.gap or 0
+  f.version:SetPoint("LEFT", f.footer, "LEFT", T.SPACE.pad + past, 0)
+end
+
+-- The footer: your faction's crest (T.CREST.footer, while the faction look is on) and the version on the left; a
+-- reload notice and button on the right when needed.
 local function addFooter(f)
   f.footer = bar(f, "BOTTOM", FOOT)
+  f.crest = T.Crest(f.footer, T.CREST.footer, "OVERLAY")
+  f.crest:SetPoint("LEFT", T.SPACE.pad, 0)
   f.version = T.Text(f.footer:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  f.version:SetPoint("LEFT", T.SPACE.pad, 0)
+  placeVersion(f)
   f.version:SetText(version() and ("Vanguard " .. version() .. "  ·  /vg") or "Vanguard  ·  /vg")
   f.reload = ns.WidenToLabel(ns.ReloadButton(W.Primary(f.footer, L["Reload now"])))
   f.reload:SetPoint("RIGHT", -T.SPACE.pad, 0)
@@ -1115,7 +1124,7 @@ function O.Refresh()
     if w.Refresh then w:Refresh() end
   end
   quiet = false
-  if window then window.profile:Refresh() window.reload:Refresh() O.MarkChanged() end
+  if window then window.profile:Refresh() window.reload:Refresh() placeVersion(window) O.MarkChanged() end
 end
 
 -- Marks the current page's nav entry (the row's selected look, and its text and icon) and dims pages the search misses.
@@ -1171,10 +1180,12 @@ local function showPage()
 end
 
 -- Brings the window up (fading in as it rises into place, with a sound) or, when it was already
--- open, plays the page sound for a new page.
+-- open, plays the page sound for a new page and fades that page's card in (T.FadeIn: at once with Reduce motion,
+-- never over T.COMBAT_FADE in a fight).
 local function appear(previous)
   if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
   if previous then T.StopFade(window) else T.OpenWindow(window) end
+  if previous and previous ~= O.current and pages[O.current] then T.FadeIn(pages[O.current]) end
   if pages[O.current] then pages[O.current]:ScrollTo(pages[O.current]:GetVerticalScroll() or 0) end
 end
 

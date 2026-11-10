@@ -19,7 +19,7 @@ if Vanguard and Vanguard.RegisterSkin then
     S.ArrowButton(MyFrame.Next, "right")
     S.Slider(MyFrame.Volume)         -- a Slider (or MinimalSliderWithSteppers) as a pill track, quiet fill and round knob
     S.Divider(MyFrame.Rule)          -- a divider texture as one pixel of the divider colour
-    S.Text(MyFrame.Title, "title")  -- text roles: title, heading, name, cell, label, number, small, tiny, world
+    S.Text(MyFrame.Title, "title")  -- text roles: display, title, heading, name, cell, label, number, small, tiny, world
     S.Color(MyFrame.Hint, "text2")  -- theme colors by name: text, text2, muted, accent, accentText, good, bad...
     S.Tint(MyFrame.Glow, "accent")
     S.OnChanged(function() MyFrame.Hint:SetTextColor(S.RGB("warn")) end) -- runs after every theme change

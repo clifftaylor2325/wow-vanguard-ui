@@ -418,9 +418,9 @@ it("the filter dialog is a dialog: the window title and its X, Escape, the dialo
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "10941" }');
   openFilters(addon, 1);
   const D = "Vanguard_AuctionFilters";
-  const T = addon.eval("local T = ns.Theme return { T.RoleSize('title'), T.SPACE.pad, T.SPACE.gap, T.CONTROL.inset, T.ALPHA.dialog, T.ROW.height, T.BUTTON_H, T.CONTROL_H, ns.DIALOG.head, ns.DIALOG.foot }");
+  const T = addon.eval("local T = ns.Theme return { T.RoleSize('display'), T.SPACE.pad, T.SPACE.gap, T.CONTROL.inset, T.ALPHA.dialog, T.ROW.height, T.BUTTON_H, T.CONTROL_H, ns.DIALOG.head, ns.DIALOG.foot }");
   const [titleSize, pad, gap, inset, alpha, row, buttonH, controlH, head, foot] = T;
-  expect(titleOf(addon, D), "the title role in the text colour, the pad in from the left, level with the X").toEqual({ size: titleSize, text: true, left: pad, mid: -inset });
+  expect(titleOf(addon, D), "the display role in the text colour, the pad in from the left, level with the X").toEqual({ size: titleSize, text: true, left: pad, mid: -inset });
   expect(closeOf(addon, D), "an X at the window's corner").toEqual([px(addon, inset), px(addon, inset), true]);
   expect([alphaOf(addon, D), escapes(addon, D)], "the dialog alpha; Escape closes it").toEqual([alpha, true]);
   addon.click(`${D}.chrome.close`);

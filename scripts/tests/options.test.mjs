@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { BUFF_NAMES, CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
+import { BUFF_NAMES, CLICK_LUA, DATA_ENV, FAKE_FADES, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -1026,7 +1026,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
     "general|General|10|56", "modules|Modules|20|87", "unitframes|Unit frames|30|37", "raid|Raid frames|40|26",
-    "actionbars|Action bars|60|84", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|47", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|41", "town|Town and gear|85|64", "profiles|Profiles|90|22",
+    "actionbars|Action bars|60|84", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|41", "town|Town and gear|85|64", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|18",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
   ]);
@@ -1358,13 +1358,17 @@ it("options: the General page's captions are nouns, with a note under the two th
     return { f:IsShown(), f:GetParent() == n:GetParent(), f:GetTop() == n:GetTop(), f:GetBottom() == n:GetBottom() }`), "a jump to a note marks it through its card (a font string holds no texture), over the note's text").toEqual([true, true, true, true]);
 });
 
-it("options: the header keeps its bar but wears the window tier: 48 tall, the title role in the text colour centred on the 24 line with the crest beside it, the logo and close at the window offsets, the opaque alpha", () => {
+it("options: the hero header: 48 tall, the painted crest at T.LOGO.header, the wordmark in the brand's serif face and gold beside it, the close at the window offset, the opaque alpha", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
-  const head = addon.eval(`local o = Vanguard_Options
-    return { o.header:GetHeight(), o.title:GetText(), select(2, o.title:GetFont()), o.title.__textColor, o.crest:GetWidth(), o.crest.__points.LEFT.rel == o.title, o.logo.__points.LEFT.x, o.title.__points.LEFT.y }`);
-  expect(head.slice(0, 3).concat(head.slice(4)), "48 tall; the title role; the crest T.CREST.title right of the title; the logo T.SPACE.pad in; the title on the header's middle line").toEqual([48, "Vanguard", addon.eval("return ns.Theme.RoleSize('title')"), addon.eval("return ns.Theme.CREST.title"), true, addon.eval("return ns.Theme.SPACE.pad"), 0]);
-  expect(isTok(addon, head[3], "text"), "the title is in the text colour").toBe(true);
+  const head = addon.eval(`local o, T = Vanguard_Options, ns.Theme
+    return { o.header:GetHeight(), o.title:GetText(), select(2, o.title:GetFont()), (o.title:GetFont()):match("[^\\\\]+$"), math.floor(o.logo:GetWidth() + 0.5), o.logo.art.__texture:match("[^\\\\]+$"),
+      o.logo.__points.LEFT.x, o.title.__points.LEFT.rel == o.logo, o.title.__points.LEFT.y, T.ColorToken(o.title) }`);
+  expect(head, "48 tall; the wordmark in Cinzel at the wordmark role's size; the crest 40 (to the whole pixel) from the 256 px painting, T.SPACE.pad in; the wordmark on the header's middle line, in brandGold")
+    .toEqual([48, "Vanguard", addon.eval("return ns.Theme.RoleSize('wordmark')"), "Cinzel-SemiBold.ttf", addon.eval("return ns.Theme.LOGO.header"), "banner-crest", addon.eval("return ns.Theme.SPACE.pad"), true, 0, "brandGold"]);
+  expect(addon.eval("local T = ns.Theme return { T.LOGO.header, T.RoleSize('wordmark') > T.RoleSize('display'), T.LOGO.header <= Vanguard_Options.header:GetHeight() }"), "a 40-unit crest inside the header, the wordmark the largest text in the window").toEqual([40, true, true]);
+  addon.eval('ns.Theme.Settings().font = "client" ns.Theme.Settings().variant = "midnight" ns.Theme.Refresh()');
+  expect(addon.eval('return { (Vanguard_Options.title:GetFont()):match("[^\\\\]+$"), ns.Theme.ColorToken(Vanguard_Options.title) }'), "the wordmark keeps its face and gold whatever the Font setting and the variant").toEqual(["Cinzel-SemiBold.ttf", "brandGold"]);
   const close = addon.eval(`local b = CreateFrame("Button", nil, UIParent) ns.Theme.PlaceClose(b, Vanguard_Options) local p, c = b.__points.CENTER, Vanguard_Options.close.__points.CENTER return { p.x == c.x and p.y == c.y, c.relPoint }`);
   expect(close, "the close button is where T.PlaceClose puts every window's: on the top right corner").toEqual([true, "TOPRIGHT"]);
   const alpha = addon.eval(`for _, t in ipairs(__wfgStub.frames) do if t.__kind == "Texture" and t.__parent == Vanguard_Options and t.__layer == "BACKGROUND" then return t.__vertexColor[4] end end`);
@@ -2084,6 +2088,64 @@ it("options tabs: Reset this page sits at the right of the page's bar, the page'
   expect(bar(), "Feedback: no settings with defaults, so the title alone").toEqual(["Feedback", true, false, false]);
 });
 
+it("options: your faction's crest sits in the footer, left of the version line, and the line takes its place while no crest shows", () => {
+  const addon = loggedIn(CLICK_LUA + 'UnitFactionGroup = function() return __faction end __faction = "Alliance" ');
+  addon.eval('ns.Options.Show("general")');
+  // The footer's crest: whether it shows, its parent, size and inset, and where the version line starts.
+  const foot = () => addon.eval(`local o = Vanguard_Options
+    return { o.crest:IsShown(), o.crest:GetParent() == o.footer, o.crest:GetWidth(), o.crest.__points.LEFT.x, o.version.__points.LEFT.rel == o.footer, o.version.__points.LEFT.x }`);
+  const [pad, gap, size] = addon.eval("local T = ns.Theme return { T.SPACE.pad, T.SPACE.gap, T.CREST.footer }");
+  expect(foot(), "an Alliance character: the crest in the footer at the pad, the version a gap right of it").toEqual([true, true, size, pad, true, pad + size + gap]);
+  addon.eval('ns.Theme.Settings().faction = "off" ns.Theme.Refresh()');
+  expect([foot()[0], foot()[5]], "the faction look off: no crest, the version line at the pad").toEqual([false, pad]);
+  addon.eval('ns.Theme.Settings().faction = "crest" __faction = "Horde" ns.Theme.Refresh()');
+  expect([foot()[0], foot()[5]], "back on (a Horde character now): the crest shows and the line moves over again").toEqual([true, pad + size + gap]);
+  expect(addon.eval("for _, r in ipairs({ Vanguard_Options.header:GetRegions() }) do if r == Vanguard_Options.crest then return false end end return true"), "the header no longer holds the faction crest").toBe(true);
+});
+
+it("options Modules: a Show choice that leaves no module says so in an empty-state line, with a button back to every module", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('for _, name in ipairs(ns.ModuleNames()) do ns.SetModuleEnabled(name, true) end ns.Options.moduleFilter = "off" ns.Options.Show("modules")');
+  // The empty-state line: its text, font size and colour token; and how many module switches show.
+  const page = () => addon.eval(`local line, switches = false, 0
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__kind == "FontString" and w:IsVisible() and w:GetText() == "No module is switched off." then line = { w:GetText(), select(2, w:GetFont()), ns.Theme.ColorToken(w) } end
+      if w.desc and w:IsVisible() then switches = switches + 1 end
+    end
+    return { line, switches, ns.Theme.RoleSize("label") }`);
+  const empty = page();
+  expect([empty[0], empty[1]], "every module on, Show: Off: the line in label muted, and no switch").toEqual([["No module is switched off.", empty[2], "muted"], 0]);
+  expect(addon.eval('return __click("Show all modules")'), "the button is there").toBe(true);
+  expect([page()[0], page()[1] > 0, addon.eval("return ns.Options.moduleFilter")], "clicked: the modules are listed again, the line gone").toEqual([false, true, "all"]);
+  addon.eval('for _, name in ipairs(ns.ModuleNames()) do ns.SetModuleEnabled(name, false) end ns.Options.moduleFilter = "on" ns.Options.RebuildPage("modules")');
+  expect(addon.texts("No module is switched on.").length, "every module off, Show: On: the other line").toBe(1);
+});
+
+it("options: a new page's card fades in when the window is already open; opening the window fades no card, and Reduce motion shows it at once", () => {
+  const addon = loggedIn(CLICK_LUA + FAKE_FADES);
+  // The shown page's scroll view.
+  const VIEW = "(function() for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then return c end end end)()";
+  addon.eval(`ns.Options.Show("nameplates") __np = ${VIEW} ns.Options.Show("general") __fakeFader(__np) __fades = {}`);
+  addon.eval('ns.Options.Show("nameplates")');
+  expect(addon.eval("return { #__fades, __fades[1].from, __fades[1].to, __fades[1].duration, __np:IsShown() }"), "the page's view fades from 0 to 1 in 0.12 s").toEqual([1, 0, 1, 0.12, true]);
+  addon.eval('__fades = {} ns.Options.Show("nameplates") ns.Options.Hide() ns.Options.Show("nameplates")');
+  expect(addon.eval("local n = 0 for _, f in ipairs(__fades) do if f.owner == __np then n = n + 1 end end return n"), "the same page again, or the window opening on it, fades no card").toBe(0);
+  addon.eval('ns.Options.Show("general") ns.Theme.Settings().reduceMotion = true __fades = {} ns.Options.Show("nameplates")');
+  expect(addon.eval("return { #__fades, __np:GetAlpha() }"), "Reduce motion: at once").toEqual([0, 1]);
+});
+
+it("type scale: a page's name is in the display tier, above its cards' section headings and its rows", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("talents")');
+  // The open page's title, its card's heading and a row caption: each one's font size, then the roles' sizes.
+  const sizes = addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
+    local card, T = v.cards[1], ns.Theme
+    local function size(fs) return select(2, fs:GetFont()) end
+    return { size(v.bar.title), size(card.title), card.title:GetText() == T.Upper(card.title:GetText()), T.RoleSize("display"), T.RoleSize("section"), T.RoleSize("title") }`);
+  expect(sizes.slice(0, 3), "the page title in display, the card's heading in section capitals").toEqual([sizes[3], sizes[4], true]);
+  expect([sizes[3], sizes[5]], "display is 18 at Text size 100%, three above the title role").toEqual([18, 15]);
+});
+
 it("options tabs: a Text size change sizes the open page's tabs to their names again, and they wrap to fit the strip", () => {
   // Font metrics, so a name's width follows its font size (the rough metrics count characters).
   const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
@@ -2147,6 +2209,47 @@ it("options General: the accent swatch of the chosen preset carries a check, and
   addon.slash("accent 123456");
   expect(Object.keys(checked()), "an accent that is no preset checks none").toHaveLength(0);
 });
+it("options General: the class swatch, left of the presets, makes the accent follow your class colour; a preset or a hex takes it back", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  // The accent row's class swatch: shown, checked, its fill, where it sits against the first preset, then the presets checked and the setting.
+  const row = () => addon.eval(`local row for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then row = w end end
+    local c, n = row.classSwatch, 0
+    for _, s in ipairs(row.swatches) do if s.check:IsShown() then n = n + 1 end end
+    return { c:IsShown(), c.check:IsShown(), c.fill.__vertexColor, row.swatches[1].__points.RIGHT.x - c.__points.RIGHT.x, c:GetWidth(), n, ns.Theme.Settings().accentClass }`);
+  const mage = addon.eval("local c = RAID_CLASS_COLORS.MAGE return { c.r, c.g, c.b }");
+  const before = row();
+  expect([before[0], before[1], before[2].slice(0, 3), before[3], before[4], before[5], before[6]], "shown in the mage's colour, unchecked, a step and a gap left of brass, the same size; brass is the checked one")
+    .toEqual([true, false, mage, 34, 22, 1, false]);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then local c = w.classSwatch c.__scripts.OnEnter(c) c.__scripts.OnClick(c) end end`);
+  expect(JSON.stringify(addon.eval("return GameTooltip.__lines")), "its tooltip says what it does").toContain("The accent follows your class, on every character that uses this profile.");
+  expect([row()[1], row()[5], row()[6], addon.eval("return { ns.Theme.Accent() }")], "clicked: the class swatch is the checked one, the setting is on, the accent is the class colour").toEqual([true, 0, true, mage]);
+  expect(addon.eval("local r, g, b = ns.Theme.RGB('accentText') local m = RAID_CLASS_COLORS.MAGE return r ~= m.r or g ~= m.g or b ~= m.b"), "the accent's text shade is made from it, as for any accent").toBe(true);
+  addon.slash("accent jade");
+  expect([row()[1], row()[5], row()[6]], "a preset takes the accent back: jade checked, no longer following").toEqual([false, 1, false]);
+  addon.eval("UnitClass = function() return 'Tester', __wfgWorld.secret('MAGE') end ns.Theme.Refresh()");
+  expect([row()[0], addon.eval("return ns.Theme.SetClassAccent()")], "a client that hides your class: no class swatch, and nothing to follow").toEqual([false, false]);
+});
+
+it("the class accent: /vg accent class sets it, a shared profile gives each character its own at login, and reset puts brass back", () => {
+  const addon = loggedIn();
+  addon.slash("accent class");
+  const mage = addon.eval("local c = RAID_CLASS_COLORS.MAGE return { c.r, c.g, c.b }");
+  expect([chatHas(addon, /The accent follows your class colour\./), addon.eval("return { ns.Theme.Accent() }"), addon.eval("return ns.Theme.Settings().accentClass")], "said, set and remembered").toEqual([true, mage, true]);
+  addon.slash("accent reset");
+  expect(addon.eval("return { ns.Theme.Accent() == ns.Theme.PRESETS.brass[1], ns.Theme.Settings().accentClass }"), "reset: brass, and no longer following").toEqual([true, false]);
+  // A profile whose accent follows the class, last saved by a mage, loaded by a warrior.
+  const shared = "VanguardDB.profiles = { Default = { theme = { accentClass = true, accent = { 0.25, 0.78, 0.92 } } } }";
+  const warrior = loggedIn("__wfgWorld.units.player.class = 'WARRIOR'", { savedVariables: shared });
+  expect(warrior.eval("local c = RAID_CLASS_COLORS.WARRIOR local r, g, b = ns.Theme.Accent() return { r == c.r, g == c.g, b == c.b }"), "the warrior gets the warrior's colour at login").toEqual([true, true, true]);
+  const again = loggedIn("__repaints = 0", { savedVariables: shared });
+  again.eval("local T = ns.Theme local refresh = T.Refresh T.Refresh = function() __repaints = __repaints + 1 return refresh() end T.FollowClassAccent()");
+  expect(again.eval("return __repaints"), "a character whose colour the accent already is repaints nothing").toBe(0);
+  const hidden = loggedIn("UnitClass = function() return 'Tester', __wfgWorld.secret('MAGE') end");
+  hidden.slash("accent class");
+  expect([chatHas(hidden, /Your class colour isn't known yet\./), hidden.eval("return ns.Theme.Settings().accentClass")], "a hidden class: said so, nothing changed").toEqual([true, false]);
+});
+
 it("a page thrown away and rebuilt leaves no frames for the theme's repaint to walk: the refreshed strings stay the same", () => {
   const addon = loggedIn();
   addon.slash("");

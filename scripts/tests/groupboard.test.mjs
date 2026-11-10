@@ -346,9 +346,9 @@ it("group board: the probe's last line keeps its first 80 characters whole, neve
 });
 
 // The theme numbers the board is laid out with: pad, gap, row height, button height, dialog alpha, the close
-// button's inset, and the title and small role sizes.
+// button's inset, and the display (a window title's) and small role sizes.
 const tokens = (addon) => addon.eval(`local T = ns.Theme
-  return { T.SPACE.pad, T.SPACE.gap, T.ROW.height, T.BUTTON_H, T.ALPHA.dialog, T.CONTROL.inset, T.RoleSize("title"), T.RoleSize("small") }`);
+  return { T.SPACE.pad, T.SPACE.gap, T.ROW.height, T.BUTTON_H, T.ALPHA.dialog, T.CONTROL.inset, T.RoleSize("display"), T.RoleSize("small") }`);
 
 // A W.Row's look, from a Lua expression for it: its height, its hover wash (the vertex colour of its T.Row hover layer), and whether the selected look is there and hidden.
 const rowLook = (addon, row) => addon.eval(`local r = ${row}
@@ -360,7 +360,7 @@ it("group board: a window title with its count and X, a dialog's opacity, T.SPAC
   post(addon, "LFM SFK need heals", "Lightmend-Ruleset");
   addon.slash("lfg");
   const [pad, , , , dialog, inset, titleSize, smallSize] = tokens(addon);
-  expect(titleOf(addon, "Vanguard_GroupBoard"), "the title role in text, T.SPACE.pad in, on the X's line").toEqual({ size: titleSize, text: true, left: pad, mid: -inset });
+  expect(titleOf(addon, "Vanguard_GroupBoard"), "the display role in text, T.SPACE.pad in, on the X's line").toEqual({ size: titleSize, text: true, left: pad, mid: -inset });
   const count = addon.frame("Vanguard_GroupBoard.count");
   expect([count.text, count.font.size, isTok(addon, count.textColor, "text2")], "the count beside it, small text2").toEqual(["1 posts", smallSize, true]);
   const px = addon.eval("return ns.Theme.PixelRound(Vanguard_GroupBoard, ns.Theme.CONTROL.inset)");

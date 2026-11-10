@@ -50,14 +50,25 @@ it("at the door the card shows the dungeon, your quests on its map and your keys
   const addon = character(ON, "__onMap = { { questID = 1 }, { questID = 2 } }");
   expect(shown(addon), "nothing short, but the card has things to say").toBe(true);
   expect(text(addon), "heading, quests by level, keys once each").toEqual([
-    "TEST-ONLY Ragefire Chasm · levels 13-18 · 5-player Normal", "Your quests here", "[13] TEST-ONLY Taragaman", "[15] TEST-ONLY Fire Brand · done", "Keys: TEST-ONLY Skeleton Key, TEST-ONLY Gate Key",
+    "TEST-ONLY RAGEFIRE CHASM · LEVELS 13-18 · 5-PLAYER NORMAL", "YOUR QUESTS HERE", "[13] TEST-ONLY Taragaman", "[15] TEST-ONLY Fire Brand · done", "Keys: TEST-ONLY Skeleton Key, TEST-ONLY Gate Key",
   ]);
+});
+
+it("the card's headings are section headers (small muted capitals), its lines body text", () => {
+  const addon = character(ON, "__onMap = { { questID = 1 }, { questID = 2 } }");
+  expect(shown(addon), "the card is up").toBe(true);
+  // Each shown line's font size and the token its colour comes from.
+  const looks = addon.eval(`local out, T = {}, ns.Theme
+    for _, fs in ipairs(ns.GetModule("InstancePrep").card.info) do if fs:IsShown() then out[#out + 1] = { select(2, fs:GetFont()), T.ColorToken(fs) } end end
+    return { out[1], out[2], out[3], T.RoleSize("section"), T.RoleSize("label") }`);
+  expect(looks.slice(0, 3), "the dungeon and the quests heading in section muted, a quest line in label text2")
+    .toEqual([[looks[3], "muted"], [looks[3], "muted"], [looks[4], "text2"]]);
 });
 
 it("elsewhere /vg prep lists the dungeon and raid quests in your log, with a more line past six", () => {
   const addon = character(ON, "__inside = false __kind = 'none'");
   addon.slash("prep");
-  expect(text(addon).slice(0, 4), "tagged quests only, lowest level first, hidden ones skipped").toEqual(["Dungeon quests in your log", "[9] TEST-ONLY Forest Wolves", "[13] TEST-ONLY Taragaman", "[15] TEST-ONLY Fire Brand · done"]);
+  expect(text(addon).slice(0, 4), "tagged quests only, lowest level first, hidden ones skipped").toEqual(["DUNGEON QUESTS IN YOUR LOG", "[9] TEST-ONLY Forest Wolves", "[13] TEST-ONLY Taragaman", "[15] TEST-ONLY Fire Brand · done"]);
   const many = character(ON, `__inside = false __kind = 'none' for i = 20, 29 do __wfgWorld.quests[#__wfgWorld.quests + 1] = { questID = 100 + i, title = "TEST-ONLY Q" .. i, level = i } __tags[100 + i] = 81 end __wfgWorld.quests[#__wfgWorld.quests + 1] = { questID = 5, title = "TEST-ONLY Aardvark", level = 13 } __tags[5] = 81`);
   many.slash("prep");
   const out = text(many);
@@ -68,13 +79,13 @@ it("the level range, size and difficulty drop what the client does not give", ()
   const addon = character(ON, "__levels = nil");
   addon.eval("GetInstanceInfo = function() return 'TEST-ONLY Cave', 'party', 1, __wfgWorld.secret('Normal'), 5 end");
   addon.slash("prep");
-  expect(text(addon)[0], "no levels; a hidden difficulty left out").toBe("TEST-ONLY Cave · 5-player");
+  expect(text(addon)[0], "no levels; a hidden difficulty left out").toBe("TEST-ONLY CAVE · 5-PLAYER");
   addon.eval("__levels = { 20, 20 } GetInstanceInfo = function() return 'TEST-ONLY Cave', 'raid', 1, '', 0 end");
   addon.slash("prep");
-  expect(text(addon)[0], "one level; no size").toBe("TEST-ONLY Cave · level 20");
+  expect(text(addon)[0], "one level; no size").toBe("TEST-ONLY CAVE · LEVEL 20");
   addon.eval("__levels = { 0, 0 } GetInstanceInfo = function() return __wfgWorld.secret('x') end");
   addon.slash("prep");
-  expect(text(addon)[0], "no name: no heading, quests are the log's tagged ones").toBe("Dungeon quests in your log");
+  expect(text(addon)[0], "no name: no heading, quests are the log's tagged ones").toBe("DUNGEON QUESTS IN YOUR LOG");
 });
 
 it("the card is off until switched on, and says nothing in combat or on a client without the calls", () => {
@@ -94,7 +105,7 @@ it("an item the client has not cached shows by its number; without a map listing
   addon.eval("C_Item.GetItemInfo = function() end __onMap = nil");
   addon.slash("prep");
   expect(text(addon).slice(-1), "keys by number").toEqual(["Keys: item 7146, item 7147"]);
-  expect(text(addon)[1], "the tagged quests stand in for the map's").toBe("Your quests here");
+  expect(text(addon)[1], "the tagged quests stand in for the map's").toBe("YOUR QUESTS HERE");
 });
 
 // Z5-3: a key on the key ring (bag -1) next to the ones in the backpack.

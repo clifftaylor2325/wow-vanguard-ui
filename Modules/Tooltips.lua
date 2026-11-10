@@ -2,9 +2,10 @@
 -- a border in the class (or reaction) color of the unit you're looking at,
 -- the unit's name in that color, and a "Target:" line. A player's tooltip
 -- adds the guild and rank, the realm and the group role, and your own adds
--- your equipped item level. The default tooltip
+-- your equipped item level. A tooltip the client gives its default spot
 -- can sit in a movable corner, follow the cursor, or stay where the client
--- puts it, and unit tooltips can be hidden in combat. Item tooltips show what
+-- puts it, chosen apart for units in the world, units on frames and
+-- everything else, and unit tooltips can be hidden in combat. Item tooltips show what
 -- the item sells for (the stack's worth, unless the client already shows it),
 -- how many you have (bags and bank); other modules add their own item lines
 -- after those (TT.AddItemLines). One switch, off by default, adds IDs: an
@@ -24,13 +25,16 @@ local T = ns.Theme
 local L = ns.L
 
 local TT = ns.Module("Tooltips", {
-  defaults = { anchor = "corner", classBorder = true, targetLine = true, guild = true, realm = true, role = true, itemLevel = true, hideInCombat = false,
+  defaults = { anchor = "corner", unitAnchor = "corner", frameAnchor = "corner", classBorder = true, targetLine = true, guild = true, realm = true, role = true, itemLevel = true, hideInCombat = false,
     sellPrice = true, itemCount = true, ids = false },
 })
 
--- After 0.9.3: the "Item IDs" switch (itemID) became one switch for item, spell and aura IDs (ids).
+-- After 0.9.3: the "Item IDs" switch (itemID) became one switch for item, spell and aura IDs (ids), and the one
+-- tooltip position (anchor) became three: unit tooltips in the world and on frames start where anchor was.
 ns.Migrate("Tooltips", function(saved)
   if saved.itemID ~= nil then saved.ids, saved.itemID = saved.itemID, nil end
+  if saved.unitAnchor == nil then saved.unitAnchor = saved.anchor end
+  if saved.frameAnchor == nil then saved.frameAnchor = saved.anchor end
 end)
 
 TT.NAMES = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "EmbeddedItemTooltip" }
@@ -413,11 +417,27 @@ local function anchorRestricted(tt, parent)
   return type(tt.IsAnchoringRestricted) == "function" and tt:IsAnchoringRestricted() == true
 end
 
--- Moves a tooltip given the default anchor: to the corner frame, the cursor, or left alone (as it is when the
--- client restricts its anchoring).
+-- Whether the frame a tooltip is owned to shows a unit of its own: Vanguard's unit frames and the game's keep the
+-- unit's token in their unit field (a hidden one doesn't count).
+local function showsUnit(parent)
+  return ns.PlainText(type(parent) == "table" and parent.unit) ~= nil
+end
+
+-- Which position setting a tooltip given the default anchor follows: unitAnchor for a unit under the mouse in the
+-- world (the client owns that tooltip to UIParent), frameAnchor for a unit on a frame, anchor for everything else
+-- (a spell on a bar, a mailbox). The tooltip is not filled yet, so the mouse and the owner are what say.
+local function anchorSetting(parent)
+  local inWorld = parent == _G.UIParent
+  local onUnit = ns.IsTrue(UnitExists("mouseover")) or (not inWorld and showsUnit(parent))
+  if not onUnit then return "anchor" end
+  return inWorld and "unitAnchor" or "frameAnchor"
+end
+
+-- Moves a tooltip given the default anchor, as its kind is set: to the corner frame, the cursor, or left alone (as
+-- it is when the client restricts its anchoring).
 function TT.Anchor(tt, parent)
   if anchorRestricted(tt, parent) then return end
-  local where = TT.settings.anchor
+  local where = TT.settings[anchorSetting(parent)]
   if where == "cursor" then return tt:SetOwner(parent, "ANCHOR_CURSOR") end
   if where ~= "corner" then return end
   tt:SetOwner(parent, "ANCHOR_NONE")

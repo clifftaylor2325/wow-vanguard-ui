@@ -541,11 +541,25 @@ local function moduleTop()
   }
 end
 
--- Modules: a filter, then one switch per module under the group (a nav page's name) it belongs to.
+-- What the Modules page says when its Show choice leaves no module to list.
+local MODULE_EMPTY = { on = L["No module is switched on."], off = L["No module is switched off."] }
+
+-- The Modules page's empty state: what the list would hold, and the way back to every module.
+local function moduleEmptyRows()
+  return {
+    { "text", MODULE_EMPTY[O.moduleFilter], "empty" },
+    { "button", L["Show all modules"], function() O.moduleFilter = "all" O.RebuildPage("modules") end },
+  }
+end
+
+-- Modules: a filter, then one switch per module under the group (a nav page's name) it belongs to, or the empty
+-- state when the filter leaves none.
 local function moduleRows()
   local rows, listed = moduleTop(), {}
+  local top = #rows
   for _, group in ipairs(O.MODULE_GROUPS) do rows = append(rows, groupSection(group[1], groupModules(group[2], listed))) end
-  return append(rows, groupSection(L["More"], otherModules(listed)))
+  rows = append(rows, groupSection(L["More"], otherModules(listed)))
+  return #rows > top and rows or append(rows, moduleEmptyRows())
 end
 
 -- "Spec 2 uses Healer." ("Primary talents use Healer." on WoW Forever) or why there's no spec profile.

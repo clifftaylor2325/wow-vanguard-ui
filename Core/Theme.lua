@@ -31,17 +31,19 @@ T.FONTS = {
 }
 -- The faction look's crest (Media/Art) and its color, by faction.
 T.CRESTS = { Alliance = { "lorc-crossed-swords", "allianceCrest" }, Horde = { "lorc-crossed-axes", "hordeCrest" } }
--- Where a crest goes and how big (units): beside a window title (title), on the AFK card (card), and as a
--- watermark on the two reading windows (the quest dialog and quest log) at the wash alpha.
-T.CREST = { title = 20, card = 44, watermark = 96, wash = 0.1 }
+-- Where a crest goes and how big (units): beside a window title (title), in the options window's footer (footer), on
+-- the AFK card (card), and as a watermark on the two reading windows (the quest dialog and quest log) at the wash alpha.
+T.CREST = { title = 20, footer = 20, card = 44, watermark = 96, wash = 0.1 }
+-- Vanguard's own crest in the options window's header (T.PaintedLogo): its size in units.
+T.LOGO = { header = 40 }
 -- The AFK screen's painted scene (Media/Art, full colour, 2:1), by faction; everyone else gets the camp.
 T.AFK_SCENES = { Alliance = "afk-keep", Horde = "afk-canyon", none = "afk-camp" }
 -- The welcome banner's brand mark (Core/Banner.lua): the painted crest (Media/Art) and the name in the Alliance heading
 -- font, each a share of the picture's height, in brandGold over a shade (the left edge's alpha) that fades out across
 -- `reach` of the picture's width, so the name stays clear of the bright sky.
 T.BANNER_MARK = { file = "banner-crest", crest = 0.5, name = 0.12, color = "brandGold", shade = 0.6, reach = 0.7 }
--- Text roles that take the faction's heading font: the two display roles, used only for window and card titles.
-T.HEADING_ROLES = { title = true, heading = true }
+-- Text roles that take the faction's heading font: the three title roles, used only for window, page and card titles.
+T.HEADING_ROLES = { display = true, title = true, heading = true }
 -- Clients whose script the bundled font doesn't cover use the game's font.
 local CLIENT_FONT_LOCALES = { koKR = true, zhCN = true, zhTW = true }
 -- Clients whose script the faction look's heading fonts (Cinzel, Metamorphous:
@@ -294,6 +296,9 @@ local DEFAULTS = {
   sounds = true,
   -- The faction look: "crest" (your faction's crest only), "auto" (the crest and the heading font) or "off".
   faction = "crest",
+  -- The accent follows your class colour (T.SetClassAccent): each character that uses the profile gets its own at
+  -- login. Any picked accent (a preset, a hex, a reset) turns it off.
+  accentClass = false,
 }
 
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
@@ -2994,12 +2999,96 @@ function T.FontObjects(map)
   applyFontObjects()
 end
 
+-- The global font pass: the theme font on the game's standard font family, so a game frame Vanguard doesn't skin
+-- (and any addon that draws with the game's fonts) shares the typeface. Only the face changes: each object keeps the
+-- size and flags the game gave it, and Text size leaves them alone, because the game's own layouts are built for them.
+do
+  -- The base font objects of the game's shared fonts that the rest inherit from (GameFontNormal and its kin follow
+  -- their parent). A name this client lacks is skipped, and so is one whose face is not the game's standard text font
+  -- (the number, quest and mail faces), so a wrong guess here changes nothing. Left out on purpose: the tooltip,
+  -- nameplate, chat and chat bubble fonts, which their own modules set.
+  T.FONT_OBJECTS.standard = {
+    "SystemFont_Tiny", "SystemFont_Tiny2", "SystemFont_Small", "SystemFont_Small2", "SystemFont_Med1", "SystemFont_Med2", "SystemFont_Med3",
+    "SystemFont_Large", "SystemFont_Large2", "SystemFont_Huge1", "SystemFont_Huge2", "SystemFont_Huge1_Outline",
+    "SystemFont_Shadow_Small", "SystemFont_Shadow_Small2", "SystemFont_Shadow_Small_Outline", "SystemFont_Shadow_Med1", "SystemFont_Shadow_Med1_Outline",
+    "SystemFont_Shadow_Med2", "SystemFont_Shadow_Med2_Outline", "SystemFont_Shadow_Med3", "SystemFont_Shadow_Med3_Outline",
+    "SystemFont_Shadow_Large", "SystemFont_Shadow_Large2", "SystemFont_Shadow_Large_Outline", "SystemFont_Shadow_Outline_Large",
+    "SystemFont_Shadow_Huge1", "SystemFont_Shadow_Huge2", "SystemFont_Shadow_Huge3", "SystemFont_Shadow_Huge4",
+    "SystemFont_Outline_Small", "SystemFont_Outline", "SystemFont_OutlineThick_Huge2", "SystemFont_OutlineThick_Huge4", "SystemFont_OutlineThick_WTF",
+    "SystemFont_InverseShadow_Small",
+    "Game11Font", "Game12Font", "Game13Font", "Game15Font", "Game16Font", "Game18Font", "Game20Font", "Game24Font", "Game27Font", "Game30Font",
+    "Game32Font", "Game36Font", "Game40Font", "Game42Font", "Game46Font", "Game48Font", "Game60Font", "Game72Font", "Game120Font",
+    "Game11Font_o1", "Game12Font_o1", "Game13Font_o1", "Game15Font_o1", "Game13FontShadow", "Game15FontShadow",
+    "FriendsFont_Normal", "FriendsFont_Small", "FriendsFont_Large", "FriendsFont_UserText", "FriendsFont_11",
+    "ReputationDetailFont", "AchievementFont_Small", "CoreAbilityFont", "SpellFont_Small", "InvoiceFont_Med", "InvoiceFont_Small",
+  }
+  -- Each standard font object as the game had it when first seen: name -> { path, size, flags, now = the face it has }.
+  -- Kept here, never on the game's object.
+  T.gameFonts = {}
+
+  -- A font path in one spelling, to compare two of them: lower case, backslashes.
+  local function pathKey(path)
+    return (path:lower():gsub("/", "\\"))
+  end
+
+  -- A game font object's own face, size and flags, remembered the first time it is seen; nil for one this client lacks,
+  -- one whose values it hides, or one whose face is not the game's standard text font.
+  local function gameFont(name)
+    local font = _G[name]
+    if T.gameFonts[name] or type(font) ~= "table" or not font.GetFont then return T.gameFonts[name] end
+    local path, size, flags = font:GetFont()
+    path, size = ns.PlainText(path), ns.PlainNumber(size)
+    if path and size and pathKey(path) == pathKey(clientFont()) then T.gameFonts[name] = { path, size, ns.PlainText(flags) or "", now = path } end
+    return T.gameFonts[name]
+  end
+
+  -- Gives one standard font object a face (the theme's, or the game's own back), at its own size and flags; a call
+  -- that would change nothing is skipped, so a theme change that isn't a font change re-lays no game text.
+  local function setFace(name, themed)
+    local was = gameFont(name)
+    local path = was and (themed and (T.Font()) or was[1])
+    if not was or was.now == path then return end
+    _G[name]:SetFont(path, was[2], was[3])
+    was.now = path
+  end
+
+  -- Puts the theme font on the game's standard font family, or the game's own face back when the Font setting is the
+  -- game's font. A Korean or Chinese client (whose script the bundled font lacks) and a profile that has always used
+  -- the game's font are never touched at all. Run at login and after every theme change. SetFont on a font object is
+  -- not protected, so a fight changes nothing here; nothing is stored on the game's objects (T.gameFonts).
+  function T.ApplyStandardFonts()
+    local themed = not useClientFont(T.Settings())
+    if not themed and not T.standardThemed then return end
+    T.standardThemed = themed
+    for _, name in ipairs(T.FONT_OBJECTS.standard) do setFace(name, themed) end
+  end
+
+  -- How many of the listed standard font objects wear the theme font now, and how many are listed (for /vg status).
+  ---@return number themed
+  ---@return number listed
+  function T.StandardFontCount()
+    local n = 0
+    for _, was in pairs(T.gameFonts) do n = n + (was.now ~= was[1] and 1 or 0) end
+    return n, #T.FONT_OBJECTS.standard
+  end
+end
+ns.On("PLAYER_LOGIN", function() T.ApplyStandardFonts() end)
+
 -- The Vanguard crest (Media/Textures/Icon, the painted shield, pre-colored: the accent and theme don't tint it) at size x size.
 function T.Logo(parent, size)
   local f = T.PixelSize(CreateFrame("Frame", nil, parent), size, size)
   local t = f:CreateTexture(nil, "ARTWORK")
   t:SetTexture(T.Texture("Icon"))
   t:SetAllPoints()
+  f.art = t
+  return f
+end
+
+-- The Vanguard crest from the 256 px painting the icon was made from (Media/Art, T.BANNER_MARK.file), for a crest drawn
+-- larger than the 64 px icon holds on a dense screen: the options window's header.
+function T.PaintedLogo(parent, size)
+  local f = T.Logo(parent, size)
+  f.art:SetTexture(T.MEDIA .. "Art\\" .. T.BANNER_MARK.file)
   return f
 end
 
@@ -3033,6 +3122,8 @@ end
 -- text such as nameplates, and text drawn over a bright bar, such as raid frame names), and upper
 -- (T.SetText capitals the text).
 T.ROLES = {
+  -- The display tier: a window's title and an options page's, a clear step above every other role.
+  display = { size = 18, bold = true },
   title = { size = 15, bold = true }, heading = { size = 13, bold = true }, name = { size = 12, bold = true },
   cell = { size = 11, bold = true },
   -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.
@@ -3048,6 +3139,9 @@ T.ROLES = {
   zone = { size = 13, bold = true },
   -- A section header: small, and upper-cased by T.SetText (T.Upper) instead of by :upper() on the string.
   section = { size = 10, bold = false, upper = true },
+  -- The wordmark: the addon's name in the options window's header, in the brand's serif face (T.FONTS.alliance, the
+  -- welcome banner's) on every client and whatever the Font setting says: the name is Latin and never translated.
+  wordmark = { size = 20, face = "alliance" },
 }
 
 -- The game's own sizes for text Vanguard re-fonts but leaves at the game's size (Modules/GameAlerts.lua): a raid
@@ -3134,6 +3228,7 @@ function T.ApplyRole(fs, role)
   local r = T.ROLES[role]
   local path, outline = T.Font(r.bold)
   if T.HEADING_ROLES[role] then path = T.HeadingFont() or path end
+  if r.face then path = T.FONTS[r.face] end
   fs:SetFont(path, sizes[fs] or roleSize(r), T.FontFlags(r.outline or outline, r.outline ~= nil))
   fs:SetShadowOffset(r.outline and 0 or 1, r.outline and 0 or -1)
   fs:SetShadowColor(T.RGB("textShadow"))
@@ -3284,6 +3379,7 @@ function T.Refresh()
   T.RefreshText()
   refreshTints()
   applyFontObjects()
+  T.ApplyStandardFonts()
   T.RepaintLabelFonts()
   repaintArt()
   reSnap()
@@ -3437,17 +3533,49 @@ T.OnScale(function()
   for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
 end)
 
--- Sets the accent color (0-1 components) and repaints.
+-- Sets the accent color (0-1 components) and repaints; a picked accent no longer follows the class.
 function T.SetAccent(r, g, b)
-  T.Settings().accent = { r, g, b }
+  local s = T.Settings()
+  s.accent, s.accentClass = { r, g, b }, false
   T.Refresh()
 end
 
--- Puts the accent back to its default (brass) and repaints.
+-- Puts the accent back to its default (brass) and repaints; it no longer follows the class.
 function T.ResetAccent()
-  T.Settings().accent = ns.Copy(DEFAULTS.accent)
+  local s = T.Settings()
+  s.accent, s.accentClass = ns.Copy(DEFAULTS.accent), false
   T.Refresh()
 end
+
+-- Your class colour as r, g, b (the client's own class colours, never a token), or nothing when the client hides
+-- your class or has no colour for it.
+function T.ClassColor()
+  local _, class = UnitClass("player")
+  local c = not ns.IsSecret(class) and type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[class]
+  if c then return c.r, c.g, c.b end
+end
+
+-- Makes the accent follow your class colour, through the accent setting itself (so the accent's text and dim shades,
+-- every painted frame and the profile's export follow), and repaints. False when the class colour isn't known.
+---@return boolean followed
+function T.SetClassAccent()
+  local s, r, g, b = T.Settings(), T.ClassColor()
+  if not r then return false end
+  s.accent, s.accentClass = { r, g, b }, true
+  T.Refresh()
+  return true
+end
+
+-- At login, an accent that follows the class takes this character's colour: a profile shared by several characters
+-- gives each its own. Nothing is repainted when the accent is that colour already.
+function T.FollowClassAccent()
+  local s, r, g, b = T.Settings(), T.ClassColor()
+  local a = s.accent
+  if not (s.accentClass and r) or (a[1] == r and a[2] == g and a[3] == b) then return end
+  s.accent = { r, g, b }
+  T.Refresh()
+end
+ns.On("PLAYER_LOGIN", T.FollowClassAccent)
 
 -- Puts every theme setting back to its default and repaints.
 function T.Reset()

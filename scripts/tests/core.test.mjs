@@ -558,7 +558,7 @@ it("the text dialog: a window title with its X and Escape at the dialog alpha, i
   const addon = loggedIn();
   addon.eval("ns.AskText('Paste it', function() end) __selected = 0 Vanguard_TextEdit.HighlightText = function() __selected = __selected + 1 end");
   const name = "Vanguard_TextDialog";
-  expect(titleOf(addon, name), "the title role in the text colour, hung T.SPACE.pad in and down (its middle half a line, 7 here, below that: on the close button's line)").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -23 });
+  expect(titleOf(addon, name), "the display role in the text colour, hung T.SPACE.pad in and down (its middle half a line, 7 here, below that: on the close button's line)").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -23 });
   expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, name), alphaOf(addon, name), addon.frame(name).strata], "Escape closes it, at the dialog alpha, above the options window").toEqual([true, 0.98, "FULLSCREEN_DIALOG"]);
   expect(insets(addon, `${name}.view`, name), "the text area T.SPACE.pad in, under the head (40), its thumb's gutter (12) on the right, over the foot (50)").toEqual([16, 40, 28, 50]);
@@ -612,7 +612,7 @@ it("the question dialog: its text is the title, wrapped short of the X, the dial
   const addon = loggedIn();
   const name = "Vanguard_Question";
   addon.eval("__answers = {} function __ask(text) ns.Ask(text, 'Yes', function() __answers[#__answers + 1] = 'yes' end, function() __answers[#__answers + 1] = 'no' end) end __ask('Sure?')");
-  expect(titleOf(addon, name), "the title role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
+  expect(titleOf(addon, name), "the display role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
   expect(addon.eval(`return { ${name}.title:GetWidth(), ${name}:GetWidth(), ${name}:GetHeight() }`), "wrapped at the X's room (400 less 16 and 42); a pad, one line, a section gap, the buttons, a pad").toEqual([342, 400, 96]);
   expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, name), alphaOf(addon, name), insets(addon, `${name}.yes`, name).slice(2)], "Escape closes it, at the dialog alpha, the buttons a pad from the corner").toEqual([true, 0.98, [16, 16]]);
@@ -693,7 +693,7 @@ it("the reload dialog: the reason is the title and the dialog grows to fit it; t
   const addon = loggedIn();
   const name = "Vanguard_Reload";
   addon.eval("ns.OfferReload('Changed.')");
-  expect(titleOf(addon, name), "the title role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
+  expect(titleOf(addon, name), "the display role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
   expect(addon.eval(`return { ${name}.title:GetText(), ${name}:GetHeight() }`), "the reason and the question, one line").toEqual(["Changed. Reload the UI now to apply it?", 96]);
   expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, name), alphaOf(addon, name), insets(addon, `${name}.accept`, name).slice(2)], "Escape closes it, at the dialog alpha, the Reload button a pad from the corner").toEqual([true, 0.98, [16, 16]]);

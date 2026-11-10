@@ -193,6 +193,68 @@ it("your own tooltip adds your equipped item level, rounded down; another player
   expect(addon.eval("return { __showUnit('player'), #ns.errors }"), "a client without the call: no line, no error").toEqual(["Role: DPS", 0]);
 });
 
+// Where the tooltip ends up when the client gives it the default anchor on `owner` (Lua): "cursor", "corner"
+// (Vanguard's movable frame) or "client" (the owner and spot the client set, untouched).
+const spot = (addon, owner) => addon.eval(`local owner = ${owner}
+  GameTooltip:ClearAllPoints()
+  GameTooltip_SetDefaultAnchor(GameTooltip, owner)
+  if GameTooltip.__owner ~= owner then return "wrong owner" end
+  if GameTooltip.__anchor == "ANCHOR_CURSOR" then return "cursor" end
+  return select(2, GameTooltip:GetPoint(1)) == Vanguard_TooltipAnchor and "corner" or "client"`);
+// Picks the n-th choice of a dropdown row on the shown options page, as a click on the row and on the menu line does.
+const pick = (addon, label, n) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+    if w.dropdown and w.label:GetText() == "${label}" then
+      w.dropdown:GetScript("OnClick")(w.dropdown)
+      Vanguard_Menu.items[${n}]:GetScript("OnClick")(Vanguard_Menu.items[${n}])
+      return w.dropdown.text:GetText()
+    end
+  end`);
+// TEST-ONLY owners: a unit frame (its unit field), a frame whose unit the client hides, and a bar button.
+const OWNERS_ENV = `
+  __unitFrame = CreateFrame("Button", "TEST_ONLY_UnitFrame", UIParent) __unitFrame.unit = "target"
+  __hiddenUnit = CreateFrame("Button", "TEST_ONLY_HiddenUnit", UIParent) __hiddenUnit.unit = __wfgWorld.secret("target")
+  __barButton = CreateFrame("Button", "TEST_ONLY_BarButton", UIParent)
+`;
+// The spots of the four kinds of hover: a unit in the world, a unit frame, a bar button, and a world object.
+const spots = (addon) => {
+  addon.world.setUnit("mouseover", { name: "TEST-ONLY Boar", reaction: 2 });
+  const unit = spot(addon, "UIParent");
+  addon.world.removeUnit("mouseover");
+  return [unit, spot(addon, "__unitFrame"), spot(addon, "__barButton"), spot(addon, "UIParent")];
+};
+
+it("each kind of tooltip has its own position: units in the world, units on frames, and everything else", () => {
+  const addon = loggedIn(OWNERS_ENV);
+  expect(spots(addon), "all in the movable corner at first").toEqual(["corner", "corner", "corner", "corner"]);
+  addon.eval('ns.Options.Show("windows")');
+  expect(pick(addon, "Unit tooltips in the world", 2), "the world units' dropdown, on the Game windows page").toBe("at the cursor");
+  expect(spots(addon), "only the unit under the mouse in the world follows the cursor").toEqual(["cursor", "corner", "corner", "corner"]);
+  expect(pick(addon, "Unit tooltips on frames", 3)).toBe("client default");
+  expect(spots(addon), "a unit frame's tooltip stays where the client put it").toEqual(["cursor", "client", "corner", "corner"]);
+  expect(pick(addon, "Tooltip position", 2)).toBe("at the cursor");
+  expect(spots(addon), "the rest (a bar button, a world object) follow the cursor; the unit kinds keep theirs").toEqual(["cursor", "client", "cursor", "cursor"]);
+  expect(addon.eval("local s = VanguardDB.profiles.Default.Tooltips return { s.unitAnchor, s.frameAnchor, s.anchor }"), "three settings").toEqual(["cursor", "default", "cursor"]);
+  expect(addon.eval("return { Vanguard_Options.reload:IsShown(), #ns.errors }"), "no reload asked for, no error").toEqual([false, 0]);
+});
+
+it("tooltip positions: a frame counts as a unit's by its unit field or the unit under the mouse, never by a hidden unit", () => {
+  const addon = loggedIn(OWNERS_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { Tooltips = { anchor = "default", unitAnchor = "cursor", frameAnchor = "corner" } } }' });
+  expect(spot(addon, "__hiddenUnit"), "a frame whose unit the client hides: not a unit frame").toBe("client");
+  addon.world.setUnit("mouseover", { name: "TEST-ONLY Friend", isPlayer: true });
+  expect([spot(addon, "__hiddenUnit"), spot(addon, "__barButton")], "with a unit under the mouse, any frame's tooltip is a frame unit's").toEqual(["corner", "corner"]);
+  addon.eval("local exists = UnitExists UnitExists = function(unit) if unit == 'mouseover' then return __wfgWorld.secret(true) end return exists(unit) end");
+  expect([spot(addon, "UIParent"), spot(addon, "__unitFrame")], "the client won't say what is under the mouse: the world tooltip is not a unit's, the unit frame's still is").toEqual(["client", "corner"]);
+  expect(addon.eval("return #ns.errors"), "no error caught").toBe(0);
+});
+
+it("tooltip positions: a profile with the one earlier position keeps it for all three kinds", () => {
+  const addon = loggedIn(OWNERS_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { Tooltips = { anchor = "cursor" } } }' });
+  expect(addon.eval("local s = VanguardDB.profiles.Default.Tooltips return { s.unitAnchor, s.frameAnchor, s.anchor }"), "the saved position, copied to the two new settings").toEqual(["cursor", "cursor", "cursor"]);
+  expect(spots(addon), "so every tooltip still follows the cursor").toEqual(["cursor", "cursor", "cursor", "cursor"]);
+  const later = loggedIn(OWNERS_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { Tooltips = { anchor = "cursor", unitAnchor = "default", frameAnchor = "corner" } } }' });
+  expect(later.eval("local s = VanguardDB.profiles.Default.Tooltips return { s.unitAnchor, s.frameAnchor, s.anchor }"), "positions chosen since are left as they are").toEqual(["default", "corner", "cursor"]);
+});
+
 // TEST-ONLY items for the sell price: 90001 sells for 25c, 90002 has no value, 90003 isn't cached yet.
 const ITEM_TIP_ENV = `
   __prices = { ["item:90001"] = 25, ["item:90002"] = 0 }
