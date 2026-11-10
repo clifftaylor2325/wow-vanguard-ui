@@ -128,11 +128,21 @@ function MT.Percent(part, total)
   return string.format("%d%%", math.floor(n / t * 100 + 0.5))
 end
 
+-- Text with a plain suffix after it: joined here when the text is plain, else by the client's own string call,
+-- which takes a hidden text and gives one back (Lua's join raises on it); the text alone where the client refuses.
+local function withSuffix(text, suffix)
+  if not ns.IsSecret(text) then return text .. suffix end
+  local wrap = type(C_StringUtil) == "table" and C_StringUtil.WrapString
+  local ok, joined = pcall(wrap, text, "", suffix)
+  if ok then return joined end
+  return text
+end
+
 -- A figure as short text, with its part's share of the total after it ("12.3K  45%") when the share is known.
 function MT.WithShare(amount, part, total)
   local pct = MT.Percent(part, total)
   if not pct then return short(amount) end
-  return short(amount) .. "  " .. pct
+  return withSuffix(short(amount), "  " .. pct)
 end
 
 -- True when a line is yours (a hidden answer counts as no).
