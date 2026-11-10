@@ -173,7 +173,7 @@ Branch `work/a6-focus`. Can run alongside 5b.
 
 - [ ] **A6-1** Retire or fold the placeholders: pet stable and Legacy helper out, boss docks into movers, officer roster into raid tools, graphics `apply` out. (N10)
 - [ ] **A6-2** Give the chat-only features a face or remove them: crafting queue panel, fuller keyboard with a layout choice, ordered talent plan, scrolling group board. One commit each. (N21, L20, L21)
-- [ ] **A6-3** Locale-aware matchers for the chat filter and the group board; hide a category a locale has no words for. Then re-tick the chat filter in setup if D4 allows. (N9, M7)
+- [x] **A6-3** Locale-aware matchers for the chat filter and the group board; hide a category a locale has no words for. Then re-tick the chat filter in setup if D4 allows. (N9, M7) Per-locale lists are in `Core/MatchWords.lua`; the Filtered tab is found by a saved window number (L23, first part). Setup still leaves the chat filter unticked (D4's answer); it can be revisited once the lists are checked in the game.
 - [ ] **A6-4** Stat weights: simulate them, source them, or label the arrows as a guide. (M8)
 - [ ] **A6-5** Clean non-functional third-party names from the repo per D5. (N19, L11)
 - [ ] **A6-6** Inventory window: item level and upgrade marks in bags, an offline view of other characters. Optional under the breadth freeze; it reuses stored data and closes a section 7.1 gap. (B6)

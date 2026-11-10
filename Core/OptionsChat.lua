@@ -120,15 +120,24 @@ local function chatFilterWordRows(CF)
     items = moduleSettings("ChatFilter").keywords, empty = L["No words of your own yet."], remove = CF.Remove })
 end
 
+-- The chat filter's switch per category this locale has words for, then a note when some categories have none
+-- (their switches are not shown: nothing would be matched).
+local function chatFilterCategoryRows(CF)
+  local rows = {}
+  for _, cat in ipairs(CF.Available()) do rows[#rows + 1] = check(cat.switch, setting("ChatFilter", cat.key)) end
+  if #rows < #CF.CATEGORIES then rows[#rows + 1] = { "text", L["Some spam categories have no word list for your language yet, so their switches are not shown. Your own words and repeated lines still work."] } end
+  return rows
+end
+
 -- Chat filter: the switches, where caught lines go, what it caught (chatFilterStatusRows), then your words.
 local function chatFilterRows()
   local CF = ns.GetModule("ChatFilter")
   local changed = CF.Changed
   local rows = { { "header", L["Chat filter"] }, { "text", L["Spam in Trade and the other channels goes to a Filtered tab (click a sender there to let them through)."] },
     check(L["Filter chat"], liveSetting("ChatFilter", "on", changed)),
-    { "cycle", L["Caught lines"], { { "tab", L["Go to the Filtered tab"] }, { "hide", L["Are hidden"] } }, liveSetting("ChatFilter", "mode", changed) },
-    check(L["Gold selling"], setting("ChatFilter", "gold")), check(L["Boosting"], setting("ChatFilter", "boosting")),
-    check(L["Guild recruiting"], setting("ChatFilter", "recruiting")), check(L["Same line again within a minute"], setting("ChatFilter", "repeats")) }
+    { "cycle", L["Caught lines"], { { "tab", L["Go to the Filtered tab"] }, { "hide", L["Are hidden"] } }, liveSetting("ChatFilter", "mode", changed) } }
+  append(rows, chatFilterCategoryRows(CF))
+  rows[#rows + 1] = check(L["Same line again within a minute"], setting("ChatFilter", "repeats"))
   return append(append(rows, chatFilterStatusRows(CF)), chatFilterWordRows(CF))
 end
 
