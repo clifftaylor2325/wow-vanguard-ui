@@ -18,7 +18,7 @@ The harness (`scripts/lib/wow-*.lua`) models the 12.1 client. Anything the addon
 3. **The read-globals list**: every global the addon reads goes in `read_globals` in `.luacheckrc`, with a comment naming the module that uses it, or luacheck fails the PR.
 4. **Secrets and combat**: a function that can return a hidden value on Forever (`UnitHealth`, aura values, cooldowns) returns `world.secret(...)` when `world.aurasSecret` or the unit's field is secret, so the addon's `ns.PlainNumber` path is exercised. A protected method goes through the taint rules in `scripts/lib/wow-taint.lua` (blocked in combat for the addon's code).
 5. **The test**: a case in `scripts/lua-engine.test.mjs` for a harness feature with its own behaviour (a world field that fires an event), or the area test that needed it. The addon's own use is covered by the area test.
-6. **Docs**: `scripts/tests/README.md` lists the world's calls and fields; add the new one to its table. The `full-tests` label goes on the PR, because it adds game API surface.
+6. **Docs**: `scripts/tests/README.md` lists the world's calls and fields; add the new one to its table. It adds game API surface, so run `npm run coverage` on the branch with `main` brought in before it merges and say so in the PR.
 
 ## Do not
 
