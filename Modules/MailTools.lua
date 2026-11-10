@@ -249,10 +249,18 @@ function MT.ReturnMails(mails)
   return out
 end
 
+-- One step of a run, when the mailbox is open and no fight is on: whether there is more to do. A step that throws
+-- ends the run (kept in /vg errors), so a failed run never leaves "a run is already going" behind.
+local function runStep(run)
+  if not MT.mailOpen or ns.InCombat() then return false end
+  local ok, more = ns.Try("mail run step", run.step, run)
+  return ok and more
+end
+
 -- Runs a run's steps one at a time (the game needs a moment between them), stopping when the mailbox
 -- closes, combat starts or no step is left; says how many steps went through of those planned.
 function MT.Run(run)
-  if not MT.mailOpen or ns.InCombat() or not run.step(run) then
+  if not runStep(run) then
     MT.running = nil
     return ns.Chat(ns.Format(L["{run}: {done} of {total} done."], { run = run.label, done = run.done, total = run.total }))
   end
