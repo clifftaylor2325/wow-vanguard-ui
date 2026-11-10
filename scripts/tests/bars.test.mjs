@@ -16,7 +16,7 @@ it("action bars", () => {
   expect(b2.color[2] === 1 && b2.color[0] === 0.4, "out of power tints blue").toBeTruthy();
   const b3 = button(addon, 1, 3);
   expect(b3.color[0] === 0.4 && b3.color[2] === 0.4, "unusable dims gray").toBeTruthy();
-  expect(b3.cooldown[0]?.__secret && b3.cooldown[1]?.__secret, "a secret cooldown goes to the widget untouched").toBeTruthy();
+  expect(b3.cooldown, "a secret cooldown is never handed to SetCooldown, which refuses the addon's secrets: no sweep").toBeUndefined();
   expect(button(addon, 1, 4).shown === false, "an empty slot hides its icon").toBeTruthy();
   expect(button(addon, 2, 1).action === 61 && button(addon, 2, 1).hotkey === "CM4", "bar 2 is slots 61-72 on MULTIACTIONBAR1; CTRL-BUTTON4 shows CM4").toBeTruthy();
   const o = addon.eval("return __overrides");
