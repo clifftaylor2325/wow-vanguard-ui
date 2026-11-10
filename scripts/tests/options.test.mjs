@@ -1856,6 +1856,10 @@ it("options: a switch whose caption wraps takes the whole row, so the caption an
   const poking = addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
     if w.card and w.label and w.source and w.source[1] == "check" and ns.Options.RevealRow(w) and w.label:GetTop() > w:GetTop() + 0.01 then out[#out + 1] = w.caption end end return out`);
   expect(Object.values(poking), "no caption starts above its row").toEqual([]);
+  // The rows that wrapped here lost their reload tag when their modules went live (A4), so a TEST-ONLY switch with a
+  // long caption is added: it must wrap and grow.
+  addon.eval(`ns.Options.AddRows("general", function() return { { "header", "TEST-ONLY" }, { "check", "TEST-ONLY a switch whose caption is long enough to wrap onto a second line beside its switch", function() return false end, function() end } } end)
+    ns.Options.RebuildPage("general") ns.Options.Show("general") ns.Options.ShowTab("TEST-ONLY")`);
   const tall = addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source[1] == "check" and ns.Options.RevealRow(w) and w:GetHeight() > ns.Theme.ROW.height then n = n + 1 end end return n`);
   expect(tall, "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(0);
 });

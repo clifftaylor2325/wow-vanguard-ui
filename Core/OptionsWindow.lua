@@ -352,17 +352,18 @@ end
 -- Shows a row's tip, then its own-switch note (while it has one) as a second line: the note on the row may be cut
 -- short beside a long name, and here it reads in full.
 local function showRowTip(w, row)
-  if not GameTooltip then return end
-  GameTooltip:SetOwner(w, "ANCHOR_RIGHT")
-  GameTooltip:SetText(row.tip, nil, nil, nil, nil, true)
   local note = w.ownSwitch and w.ownSwitch:GetText() or ""
+  if not GameTooltip or not (row.tip or note ~= "") then return end
+  GameTooltip:SetOwner(w, "ANCHOR_RIGHT")
+  GameTooltip:SetText(row.tip or row[2], nil, nil, nil, nil, true)
   if note ~= "" then GameTooltip:AddLine(note, T.RGB("text2")) end
   GameTooltip:Show()
 end
 
--- Gives a row that carries a tip (row.tip) that tip as its tooltip on hover.
+-- Gives a row that carries a tip (row.tip) that tip as its tooltip on hover, and a module row with a note beside its
+-- name (a live module's has no reload tip) its name and the note in full.
 local function addTip(w, row)
-  if not row.tip then return end
+  if not (row.tip or w.ownSwitch) then return end
   w:HookScript("OnEnter", ns.Guard("show row tip", function() showRowTip(w, row) end))
   w:HookScript("OnLeave", ns.Guard("hide row tip", hideNote))
 end
@@ -614,7 +615,7 @@ local function moveReload(row)
     row[2], row.english, row.reload = withoutReload(row[2]), row.english:sub(1, -#RELOAD_SUFFIX - 1), not O.AppliesLive(setterOf(row))
   end
   O.NameRow(row)
-  if row.reload and row.tip and ns.English(row.tip):sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then row.tip = withoutReload(row.tip) end
+  if row.tip and ns.English(row.tip):sub(-#RELOAD_SUFFIX) == RELOAD_SUFFIX then row.tip = withoutReload(row.tip) end
 end
 
 -- Whether a row has a default to go back to.
