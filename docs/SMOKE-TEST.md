@@ -902,6 +902,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the summon prompt stays up during the fight; when the fight ends you are taken to the summoner and one chat line says from whom and to where. If you die in the fight, or the summon runs out first, you are not moved. [Needs in game: that the game lets you teleport the moment the fight ends; if the prompt stays up instead, say so.] Each invite and each duel is declined, but chat says "Declined a group invite from <name>." and "Declined a duel from <name>." once each, not three times; after 5 minutes a new one says it again.
 - If it fails, paste: the chat lines and `/vg errors`.
 
+### 8.6d A stranger you whispered may invite you
+
+- Do: with "Decline group invites from strangers" on, whisper a player who is not a friend or guildmate (answer a group advert, say) and have them invite you within ten minutes. Have another stranger you did not whisper invite you. Wait more than ten minutes and have the first invite you again.
+- Expect: the first invite stays up for you to answer; the second is declined with one chat line; after ten minutes the first player's invite is declined again.
+- If it fails, paste: the chat lines, how long after the whisper the invite came, and `/vg errors`.
+
 ## 9. Bags, merchant, trainer
 
 ### 9.1 Bag search

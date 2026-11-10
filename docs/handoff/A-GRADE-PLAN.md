@@ -80,7 +80,7 @@ Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until th
 - [x] **A1-6** Per-unit events for the raid add-ons; by-name aura lookup before the full list; bench step. (Q2, M1)
 - [x] **A1-7** Settings-guard stamp asymmetry, with a no-name-at-logout harness case. (Q3, M2)
 - [ ] **A1-8** Load only the active locale; keep the in-file guard as the fallback. Needs an in-game check that the directive works on the Forever client. (Q4, M6)
-- [ ] **A1-9** Recent whisper partners count as known for stranger-invite declines. (Q5, M4)
+- [x] **A1-9** Recent whisper partners count as known for stranger-invite declines. (Q5, M4)
 - [x] **A1-10** Never auto-pick a quest reward over a flagged upgrade. (Q6, M5)
 - [ ] **A1-11** Filter and coalesce the three hot handlers; one shared bag snapshot. (Q19, M15, L13, L17)
 - [ ] **A1-12** Micro-allocations on the hottest paths, except the unit-frame ones, which move to A3-1 to stay out of PR #796's files. (Q7, L4, L6)
