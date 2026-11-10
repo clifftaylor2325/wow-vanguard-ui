@@ -80,3 +80,51 @@ it("lifecycle: an accept line waiting for the game's confirmation is never said 
   addon.fire("QUEST_ACCEPTED", 90001);
   expect(chatHas(addon, /Accepted: /)).toBe(false);
 });
+
+// VendorMemory --------------------------------------------------------------------------------------------------
+
+// TEST-ONLY: a wall clock, the tooltip data API the Tooltips module hooks, a way to show an item's tooltip, and a visit to a merchant.
+const VENDOR_ENV = `
+  __now = 1000
+  time = function() return __now end
+  __post = {}
+  TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) __post[kind] = fn end }
+  GameTooltip.GetItem = function(self) return "TEST-ONLY Item", self.__link end
+  function __showItem(link)
+    local tt = GameTooltip
+    tt.__link, tt.__lines, tt.shownMoneyFrames = link, {}, 1
+    __post[Enum.TooltipDataType.Item](tt)
+    return #tt.__lines
+  end
+  function __visit(name)
+    __wfgWorld.units.npc = { name = name }
+    __wfgWorld.merchant = { items = { { itemID = 159, name = "TEST-ONLY Water" } } }
+  end
+`;
+
+// A login with Tooltips on (the item lines hang on it) and the merchant world.
+const VENDOR = (saved = "") => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) + saved });
+  addon.eval(VENDOR_ENV);
+  addon.login();
+  return addon;
+};
+
+lifecycleCases("VendorMemory", VENDOR);
+
+it("lifecycle: vendor memory switched off remembers and says nothing new, keeps what it had, and on again remembers", () => {
+  const addon = VENDOR();
+  addon.eval('__visit("Thomas Miller")');
+  addon.fire("MERCHANT_SHOW");
+  addon.advance(0.25);
+  expect(addon.eval('return __showItem("item:159")'), "a line for the remembered merchant").toBeGreaterThan(0);
+  addon.eval('ns.SetModuleEnabled("VendorMemory", false) __visit("Innkeeper Heather")');
+  addon.fire("MERCHANT_SHOW");
+  addon.advance(0.25);
+  expect(addon.eval("return #VanguardDB.vendors.items[159]"), "the first merchant is kept, the second not added").toBe(1);
+  expect(addon.eval('return __showItem("item:159")'), "no 'Sold by' line while it is off").toBe(0);
+  addon.eval('ns.SetModuleEnabled("VendorMemory", true)');
+  addon.fire("MERCHANT_SHOW");
+  addon.advance(0.25);
+  expect(addon.eval("return #VanguardDB.vendors.items[159]")).toBe(2);
+});

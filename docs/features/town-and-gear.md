@@ -26,6 +26,8 @@ On WoW Forever a shaman in the tank role (the one key setup offers) weighs tank 
 
 ## Vendor memory
 
+Vendor memory's switch on the Modules page applies at once: switched off, it remembers no merchant and adds no "Sold by" line, and what it already remembered stays for when it is on again.
+
 Tooltips say which merchant sells an item (and where) once you've visited one: "Sold by Thomas Miller (Elwynn Forest, Goldshire)", with "limited stock" when the merchant carries only a few, for up to three merchants per item, the one you saw last first. The Keep stocked list (`/vg stock`) says where to buy each item too. What merchants sell is remembered for every character on the account; `/vg vendors` says how many merchants are remembered and `/vg vendors clear` forgets them. Two switches under Game windows (Tooltips): the tooltip line, and remembering at all.
 
 ## At a merchant
