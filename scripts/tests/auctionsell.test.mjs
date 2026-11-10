@@ -144,6 +144,11 @@ it("posting calls the right function from a click, never from a timer", () => {
   expect(restrictedLog(addon)[1], "one blade, buyout only, for the second length").toEqual(["PostItem", true, "0:2", 2, 1, "nil", 4400]);
   expect(addon.eval("return __wfgWorld.ah.postItem.slotIndex"), "the game's own SetPostItem still ran").toBe(2);
 });
+it("a listing with a buyout of 0 is bid-only, never the cheapest price", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 0, quantity = 1 }, { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(card(addon)[0].slice(0, 1).concat(card(addon)[0][3]), "cheapest 50s, asking 49s, not 1c").toEqual(["50s 0c", "49s 0c"]);
+});
 it("an item posted with a quantity above one sends its bid and buyout for the whole auction", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.bags[0][2] = { itemID = 9999, count = 3 } __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });

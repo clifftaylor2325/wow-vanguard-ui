@@ -223,8 +223,8 @@ end
 -- One result's unit price: a commodity's unit price, an item's buyout over its quantity; nil
 -- for one with only a bid, or a number the client hides.
 local function resultUnit(r, commodity)
-  if commodity then return ns.PlainNumber(r.unitPrice) end
-  local buyout, qty = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity)
+  if commodity then return AH.Buyout(r.unitPrice) end
+  local buyout, qty = AH.Buyout(r.buyoutAmount), ns.PlainNumber(r.quantity)
   return buyout and qty and qty > 0 and math.floor(buyout / qty) or nil
 end
 

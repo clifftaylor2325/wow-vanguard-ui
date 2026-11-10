@@ -195,6 +195,10 @@ it("a second click on a row's Cancel neither sends nor asks again while the firs
   addon.click(cancel);
   expect([cancelAsk(addon)[0], restrictedLog(addon).length], "a paid one: Yes sends it, the next click asks nothing").toEqual([false, 2]);
 });
+it("a sold auction whose buyout reads 0 is priced by its bid", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + "\n__wfgWorld.ah.owned = { { auctionID = 601, itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, status = 1, quantity = 1, buyoutAmount = 0, bidAmount = 700 }, { auctionID = 602, itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, status = 0, quantity = 1, buyoutAmount = 0 } }");
+  expect(addon.eval(`local out = ${HELPER}.ReadOwned() return { #out, out[1].amount, out[1].unit == nil }`), "the sold one by its bid; the bid-only one up is left out").toEqual([1, 700, true]);
+});
 it("a random-suffix auction is undercut only by its own variant", () => {
   // An "of the ..." cloak (suffix) listed by someone else at a buyout.
   const cloak = (suffix, buyout) => `{ itemKey = { itemID = 9999, itemLevel = 30, itemSuffix = ${suffix} }, buyoutAmount = ${buyout}, quantity = 1 }`;

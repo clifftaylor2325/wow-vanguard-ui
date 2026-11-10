@@ -140,6 +140,13 @@ function AH.Row(c, i, y, onClick)
   return r
 end
 
+-- A listing's buyout in copper, or nil when it has none: the client leaves it out, or says 0 (a
+-- bid-only listing; 0 is never "free"), or hides the number.
+function AH.Buyout(amount)
+  local n = ns.PlainNumber(amount)
+  return n and n > 0 and n or nil
+end
+
 -- Searches -----------------------------------------------------------------------------------
 
 -- Sends one search: an item to open in the game's own list, an item's price check (a sell search),

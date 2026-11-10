@@ -540,7 +540,7 @@ end
 -- An item listing as a row: its buyout over its quantity, and its time-left band; nil with only a
 -- bid, or a number the client hides.
 local function itemListing(r)
-  local buyout, qty, band = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeft)
+  local buyout, qty, band = AH.Buyout(r.buyoutAmount), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeft)
   if not (buyout and qty) or qty < 1 then return nil end
   return { price = math.floor(buyout / qty), qty = qty, time = band or 0, timeText = AH.BandText(band) }
 end

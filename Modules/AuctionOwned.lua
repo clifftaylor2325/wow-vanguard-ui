@@ -58,7 +58,7 @@ end
 -- One of your auctions as a row's data, or nil (one up without a buyout, or a number the client
 -- hides, or one whose item key info has not come in yet). A sold one's amount is the whole auction's buyout, else the bid it sold on.
 local function ownedAuction(a)
-  local buyout, bid = ns.PlainNumber(a.buyoutAmount), ns.PlainNumber(a.bidAmount)
+  local buyout, bid = AH.Buyout(a.buyoutAmount), ns.PlainNumber(a.bidAmount)
   local qty, id, status = ns.PlainNumber(a.quantity), ns.PlainNumber(a.auctionID), AH.STATUS[a.status]
   if not (status and qty and id) or qty < 1 or not (buyout or status == "sold" and bid) then return nil end
   local unit, total = prices(a.itemKey, buyout, qty)
