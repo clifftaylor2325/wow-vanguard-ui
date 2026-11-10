@@ -682,6 +682,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the older profile shows the IDs at once (its switch is ticked); the fresh one shows none. With the switch on, the item's tooltip ends with "Item ID N", the spell's and each buff's or debuff's with "Spell ID N" in the quiet text colour, once per tooltip; with it off the lines are gone on the next hover, with no reload asked for. A macro's tooltip gets no ID. `/vg errors` stays empty, in a fight too. [Needs in game: that the aura tooltips Vanguard's own buff icons show go through the game's aura tooltip data, so they get the line; that no tooltip shows the line twice.]
 - If it fails, paste: a screenshot of the tooltip, what you hovered, and `/vg errors`.
 
+### 7.2n Tooltips: a position for each kind
+
+- Do: `/vg` → Game windows → Tooltips. Set **Unit tooltips in the world** to "at the cursor", **Unit tooltips on frames** to "client default" and leave **Tooltip position** on "corner (movable)". Hover a mob and a player in the world, your target frame, a party or raid tile, a spell on an action bar, a mailbox, and an item in your bags. Then `/vg unlock`, drag the **Tooltip** handle, lock, and hover the bar spell again. Try the other choices on each row, and hover a buff on a friendly nameplate in a dungeon.
+- Expect: the world mob's and player's tooltips follow the cursor; the unit frames' and tiles' tooltips sit where the game puts its tooltips; the bar spell's and the mailbox's sit in Vanguard's corner, and move with the handle. The bag item's tooltip stays beside its slot whatever is chosen. Each choice takes effect on the next tooltip, with no reload asked for. A profile from an earlier version shows its one position on all three rows. `/vg errors` stays empty, on the nameplate buff too. [Needs in game: that "mouseover" already names the unit when the game anchors a world unit's tooltip and a unit frame's, so each lands on its own row's choice; raid tiles and party frames count as unit frames.]
+- If it fails, paste: which hover landed where, the three rows' choices, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
