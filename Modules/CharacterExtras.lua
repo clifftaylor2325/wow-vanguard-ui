@@ -89,6 +89,7 @@ function CE.Melee()
   if type(UnitDamage) ~= "function" or type(UnitAttackSpeed) ~= "function" then return nil end
   local low, high, offLow, offHigh = UnitDamage("player")
   local main, off = UnitAttackSpeed("player")
+  off = ns.PlainNumber(off)
   return dps(low, high, main), ns.PlainNumber(main), off and dps(offLow, offHigh, off) or nil
 end
 

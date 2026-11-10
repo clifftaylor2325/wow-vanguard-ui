@@ -298,7 +298,7 @@ end
 function IS.MyLine()
   local sources = dpsSources()
   for i, source in ipairs(sources or {}) do
-    if source.isLocalPlayer == true then return source, i, #sources end
+    if ns.IsTrue(source.isLocalPlayer) then return source, i, #sources end
   end
 end
 
