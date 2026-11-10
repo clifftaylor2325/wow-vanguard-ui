@@ -19,7 +19,10 @@ local T = ns.Theme
 local L = ns.L
 local UF = ns.GetModule("UnitFrames")
 
-local UX = ns.Module("UnitExtras", { clients = { forever = true }, defaults = { threat = true, happiness = true, chip = false } })
+local UX = ns.Module("UnitExtras", {
+  clients = { forever = true }, defaults = { threat = true, happiness = true, chip = false },
+  live = true, requires = { "UnitFrames" },
+})
 
 -- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
 if not ns.ClientAllows(UX) then return end
@@ -48,8 +51,9 @@ function UX.Threat()
   return string.format("%d%%", math.floor(percent + 0.5)), status >= 1 and "threat" .. math.min(status, 3) or "text2"
 end
 
--- Shows your threat above the target frame, or nothing.
+-- Shows your threat above the target frame, or nothing (nothing at all once the module is off).
 function UX.UpdateThreat()
+  if not UX.scope:Running() then return end
   local text, color = UX.Threat()
   UX.threat:SetText(text or "")
   if color then T.Color(UX.threat, color) end
@@ -153,8 +157,8 @@ end
 -- The frame whose top edge the chip sits over: your class's row on the player frame (the totems, else the combo
 -- points) when it is made, else the player frame itself.
 local function aboveRow(player)
-  local totems = ns.GetModule("ClassBars").totems
-  local points = ns.GetModule("ComboPoints").bar
+  local totems = ns.ModuleLive("ClassBars") and ns.GetModule("ClassBars").totems
+  local points = ns.ModuleLive("ComboPoints") and ns.GetModule("ComboPoints").bar
   return totems or points or player
 end
 
@@ -184,9 +188,9 @@ function UX.PaintChip(text, token, icon)
   placeChip(f, UF.frames.player)
 end
 
--- Says what the chip should say now.
+-- Says what the chip should say now (nothing once the module is off: a draw still waiting runs after the stop).
 function UX.UpdateChip()
-  UX.PaintChip(UX.Status())
+  if UX.scope:Running() then UX.PaintChip(UX.Status()) end
 end
 
 -- A fight is starting: the chip goes at once (the lockdown has not begun, so the status would still read as out of combat).
@@ -200,34 +204,42 @@ end
 -- (whether threat can matter; your own pet coming or going is heard with your threat situation).
 UX.THREAT_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED", "GROUP_ROSTER_UPDATE" }
 
--- The threat text above the target frame, clear of its corner diamond,
--- following threat and target changes: your target's threat list, and your
--- own threat situation (the client names you, not the mob, when it changes).
-local function addThreat(target)
+-- The threat text above the target frame, clear of its corner diamond; made once a session.
+local function makeThreat(target)
   UX.threat = T.Text(target:CreateFontString(nil, "OVERLAY"), "small", "text2")
   UX.threat:SetPoint("BOTTOMRIGHT", UF.Crown(target), "TOPRIGHT", -12, 3)
-  ns.OnUnit("UNIT_THREAT_LIST_UPDATE", UX.UpdateThreat, "target")
-  ns.OnUnit({ "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PET" }, UX.UpdateThreat, "player")
-  for _, e in ipairs(UX.THREAT_EVENTS) do ns.On(e, UX.UpdateThreat) end
+end
+
+-- Follows threat and target changes: your target's threat list, and your own threat situation (the client names you,
+-- not the mob, when it changes).
+local function addThreat(target, scope)
+  if not UX.threat then makeThreat(target) end
+  scope:OnUnit("UNIT_THREAT_LIST_UPDATE", UX.UpdateThreat, "target")
+  scope:OnUnit({ "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PET" }, UX.UpdateThreat, "player")
+  for _, e in ipairs(UX.THREAT_EVENTS) do scope:On(e, UX.UpdateThreat) end
   UX.UpdateThreat()
 end
 
--- The mood glyph in the pet frame's top-right corner, following your pet, and its line on the pet's tooltip.
--- The pet's health text ends left of the glyph.
-local function addHappiness(pet)
+-- The mood glyph in the pet frame's top-right corner; made once a session.
+local function makeHappiness(pet)
   UX.happy = T.Snap(pet.health:CreateTexture(nil, "OVERLAY"), "icon")
   UX.happy:SetSize(UX.GLYPH, UX.GLYPH)
   UX.happy:SetPoint("TOPRIGHT", pet, "TOPRIGHT", -3, -3)
+end
+
+-- The glyph, following your pet, and its line on the pet's tooltip. The pet's health text ends left of the glyph.
+local function addHappiness(pet, scope)
+  if not UX.happy then makeHappiness(pet) end
   pet.healthText:ClearAllPoints()
   pet.healthText:SetPoint("RIGHT", pet.health, "RIGHT", -(UX.GLYPH + 7), 0)
-  for _, e in ipairs({ "UNIT_HAPPINESS", "UNIT_PET" }) do ns.On(e, UX.UpdateHappiness) end
+  for _, e in ipairs({ "UNIT_HAPPINESS", "UNIT_PET" }) do scope:On(e, UX.UpdateHappiness) end
   UF.TOOLTIP_LINES.pet = UX.AddHappinessLine
   UX.UpdateHappiness()
 end
 
--- The status chip left of the player frame (clear of the pet frame, its cast bar and the combo points above it), or
--- above its left end where there is no room left of it; following your auras, your gear and the fight.
-local function addChip()
+-- The status chip frame, left of the player frame (clear of the pet frame, its cast bar and the combo points above
+-- it); made once a session.
+local function makeChip()
   local f = CreateFrame("Frame", "Vanguard_StatusChip", UIParent)
   T.HudPanel(f, { alpha = 0.9 })
   f.icon = T.Snap(f:CreateTexture(nil, "ARTWORK"), "icon")
@@ -236,8 +248,15 @@ local function addChip()
   f.text = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text")
   f.text:SetPoint("LEFT", f.icon, "RIGHT", UX.CHIP_GAP, 0)
   f:SetClampedToScreen(true)
-  UX.chip = f
-  UX.WatchChip()
+  return f
+end
+
+-- The chip, above the player frame's left end where there is no room left of it; following your auras, your gear
+-- and the fight.
+local function addChip(scope)
+  UX.chip = UX.chip or makeChip()
+  scope:Frame(UX.chip)
+  UX.WatchChip(scope)
 end
 
 -- Says what the chip should say once a frame, however often your auras or gear change.
@@ -246,23 +265,33 @@ function UX.SoonChip()
 end
 
 -- Follows what changes the chip: your auras and gear, the fight and the life events.
-function UX.WatchChip()
-  ns.OnUnit({ "UNIT_AURA", "UNIT_INVENTORY_CHANGED" }, UX.SoonChip, "player")
-  for _, e in ipairs(UX.CHIP_EVENTS) do ns.On(e, UX.UpdateChip) end
-  ns.On("PLAYER_REGEN_DISABLED", UX.HideChip)
+function UX.WatchChip(scope)
+  scope:OnUnit({ "UNIT_AURA", "UNIT_INVENTORY_CHANGED" }, UX.SoonChip, "player")
+  for _, e in ipairs(UX.CHIP_EVENTS) do scope:On(e, UX.UpdateChip) end
+  scope:On("PLAYER_REGEN_DISABLED", UX.HideChip)
   UX.UpdateChip()
 end
 
 -- Adds what's switched on and what the client can answer, to the frames that exist.
-local function attach()
+local function attach(scope)
   local s, frames = UX.settings, UF.frames
-  if s.threat and frames.target and type(_G.UnitDetailedThreatSituation) == "function" then addThreat(frames.target) end
-  if s.happiness and frames.pet and UX.HappinessCall() then addHappiness(frames.pet) end
-  if s.chip and frames.player then addChip() end
+  if not scope:Running() then return end
+  if s.threat and frames.target and type(_G.UnitDetailedThreatSituation) == "function" then addThreat(frames.target, scope) end
+  if s.happiness and frames.pet and UX.HappinessCall() then addHappiness(frames.pet, scope) end
+  if s.chip and frames.player then addChip(scope) end
 end
 
 -- Module entry point (Core/Modules.lua): out of combat, once the unit frames are built.
-function UX.Enable(settings)
-  UX.settings = settings
-  ns.OutOfCombat(attach)
+function UX.Enable(settings, scope)
+  UX.settings, UX.scope = settings, scope
+  ns.OutOfCombat(function() attach(scope) end)
+end
+
+-- Switched off: the threat text is cleared, the mood glyph hidden and its tooltip line taken off, and the pet's health
+-- text goes back where the unit frames put it (the chip and the handlers go with the scope).
+function UX.Disable()
+  if UX.threat then UX.threat:SetText("") end
+  if UX.happy then UX.happy:Hide() end
+  UF.TOOLTIP_LINES.pet = nil
+  if UX.happy and UF.frames.pet then UF.PlaceParts(UF.frames.pet) end
 end

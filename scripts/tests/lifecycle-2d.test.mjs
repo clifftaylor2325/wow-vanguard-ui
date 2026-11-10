@@ -96,3 +96,31 @@ it("lifecycle: power ticks switched off ends a sweep and hides the spark, and on
   addon.eval('ns.SetModuleEnabled("PowerTicks", true)');
   expect(addon.eval('return ns.GetModule("PowerTicks").spark:IsShown()')).toBe(false);
 });
+
+// UnitExtras ----------------------------------------------------------------------------------------------------
+
+const CHIP_LOGIN = loginWith("\nVanguardDB.profiles.Default.UnitExtras = { chip = true }");
+
+lifecycleCases("UnitExtras", CHIP_LOGIN);
+
+it("lifecycle: unit extras switched off clears the readouts and hides the chip, and on again shows the same chip", () => {
+  const addon = CHIP_LOGIN();
+  addon.eval('local UX = ns.GetModule("UnitExtras") UX.chip:Show() UX.threat:SetText("87%")');
+  addon.eval('ns.SetModuleEnabled("UnitExtras", false)');
+  expect(addon.eval('local UX = ns.GetModule("UnitExtras") return { UX.chip:IsShown(), UX.threat:GetText() }')).toEqual([false, ""]);
+  addon.eval('local UX = ns.GetModule("UnitExtras") local chip = UX.chip ns.SetModuleEnabled("UnitExtras", true) __same = chip == UX.chip');
+  expect(addon.eval("return __same")).toBe(true);
+});
+
+it("lifecycle: a status chip draw still waiting when unit extras switches off does not show the chip", () => {
+  const addon = CHIP_LOGIN();
+  addon.eval('ns.GetModule("UnitExtras").SoonChip() ns.SetModuleEnabled("UnitExtras", false)');
+  addon.advance(0.1);
+  expect(addon.eval('return ns.GetModule("UnitExtras").chip:IsShown()')).toBe(false);
+});
+
+it("lifecycle: the chip's row switched off through its setting rebuilds the module without it", () => {
+  const addon = CHIP_LOGIN();
+  addon.eval("local _, set = ns.Options.RestartSetting('UnitExtras', 'chip') set(false)");
+  expect(addon.eval('return ns.GetModule("UnitExtras").chip:IsShown()')).toBe(false);
+});

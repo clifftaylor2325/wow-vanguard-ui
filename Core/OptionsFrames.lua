@@ -218,9 +218,9 @@ end
 local function readoutCard()
   return {
     { "header", L["Readouts"] },
-    check(L["Your threat on your target (reload)"], reloadSetting("UnitExtras", "threat")),
-    check(L["Pet happiness dot (reload)"], reloadSetting("UnitExtras", "happiness")),
-    check(L["Status chip beside your frame (reload)"], reloadSetting("UnitExtras", "chip")),
+    check(L["Your threat on your target (reload)"], O.RestartSetting("UnitExtras", "threat")),
+    check(L["Pet happiness dot (reload)"], O.RestartSetting("UnitExtras", "happiness")),
+    check(L["Status chip beside your frame (reload)"], O.RestartSetting("UnitExtras", "chip")),
   }
 end
 
