@@ -563,6 +563,54 @@ it("the game's font objects: the theme font at Text size, kept after a theme cha
   expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(18);
 });
 
+// TEST-ONLY game font objects of the standard family (font strings the stub can read back), made before login: three in
+// the game's standard face at their own sizes and flags, one in a number face, one whose values the client hides; and a
+// count of every SetFont the addon makes on them.
+const STANDARD_FONTS = `
+  __fontSets = 0
+  local holder = CreateFrame("Frame")
+  local function font(name, path, size, flags)
+    local fs = holder:CreateFontString() fs:SetFont(path, size, flags)
+    local set = fs.SetFont
+    fs.SetFont = function(...) __fontSets = __fontSets + 1 return set(...) end
+    _G[name] = fs
+  end
+  font("SystemFont_Small", "Fonts\\\\FRIZQT__.TTF", 10, "") font("SystemFont_Outline", "fonts/frizqt__.ttf", 13, "OUTLINE") font("Game18Font", "Fonts\\\\FRIZQT__.TTF", 18, "")
+  font("SystemFont_Med1", "Fonts\\\\ARIALN.TTF", 12, "")
+  font("SystemFont_Large", "Fonts\\\\FRIZQT__.TTF", 16, "") SystemFont_Large.GetFont = function() return __wfgWorld.secret("Fonts\\\\FRIZQT__.TTF"), 16, "" end
+`;
+// The five fonts as they are now: { face file, size, flags } each, then how many SetFont calls were made.
+const standardFonts = (addon) => addon.eval(`local out = {}
+  for _, name in ipairs({ "SystemFont_Small", "SystemFont_Outline", "Game18Font", "SystemFont_Med1" }) do
+    local path, size, flags = _G[name]:GetFont() out[#out + 1] = { path:match("[^\\\\/]+$"), size, flags }
+  end
+  out[#out + 1] = __fontSets return out`);
+
+it("the global font pass: the game's standard font family takes the theme font at its own sizes and flags; other faces and hidden ones are left", () => {
+  const addon = loggedIn(STANDARD_FONTS);
+  expect(standardFonts(addon), "three re-faced at the game's sizes and flags, the number face untouched, three SetFont calls in all")
+    .toEqual([["FiraSansCondensed-Medium.ttf", 10, ""], ["FiraSansCondensed-Medium.ttf", 13, "OUTLINE"], ["FiraSansCondensed-Medium.ttf", 18, ""], ["ARIALN.TTF", 12, ""], 3]);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.Theme.SetAccent(1, 0, 0)");
+  expect(standardFonts(addon).slice(0, 3).map((f) => f[1]).concat(standardFonts(addon)[4]), "Text size and an accent change leave the game's sizes alone and set no font again").toEqual([10, 13, 18, 3]);
+  addon.slash("status");
+  expect([chatHas(addon, /Game fonts: 3 of \d+ standard font objects in the theme font$/), addon.eval("return #ns.errors")], "/vg status counts them; no errors").toEqual([true, 0]);
+  expect(addon.eval('for _, name in ipairs(ns.Theme.FONT_OBJECTS.standard) do if name:find("Tooltip") or name:find("NamePlate") or name:find("Chat") then return name end end return "none"'), "the tooltip, nameplate and chat fonts are not on the list").toBe("none");
+});
+
+it("the global font pass follows the Font setting: the game's font puts the game's faces back, and a Korean client is never touched", () => {
+  const addon = loggedIn(STANDARD_FONTS);
+  addon.eval('ns.Theme.Settings().font = "client" ns.Theme.Refresh()');
+  expect(standardFonts(addon), "the game's font: each face as the game had it, spelled as it was").toEqual([["FRIZQT__.TTF", 10, ""], ["frizqt__.ttf", 13, "OUTLINE"], ["FRIZQT__.TTF", 18, ""], ["ARIALN.TTF", 12, ""], 6]);
+  expect(addon.eval("return (ns.Theme.StandardFontCount())"), "none counted as themed").toBe(0);
+  addon.eval('ns.Theme.Settings().font = "" ns.Theme.Refresh()');
+  expect(standardFonts(addon)[0], "Fira Sans again").toEqual(["FiraSansCondensed-Medium.ttf", 10, ""]);
+  const korean = loggedIn(STANDARD_FONTS + 'GetLocale = function() return "koKR" end');
+  korean.eval("ns.Theme.Refresh()");
+  expect(standardFonts(korean), "a Korean client: the game's fonts as they were, and not one SetFont").toEqual([["FRIZQT__.TTF", 10, ""], ["frizqt__.ttf", 13, "OUTLINE"], ["FRIZQT__.TTF", 18, ""], ["ARIALN.TTF", 12, ""], 0]);
+  const always = loggedIn(STANDARD_FONTS, { savedVariables: 'VanguardDB.profiles = { Default = { theme = { font = "client" } } }' });
+  expect(standardFonts(always)[4], "a profile on the game's font from the start sets none either").toBe(0);
+});
+
 it("a Text size outside the slider's range from a hand-edited profile is kept inside it: no font size of 0, below 1 or enormous", () => {
   // The label role's size, and whether no font is below 1, with this saved Text size.
   const sizes = (textScale) => {

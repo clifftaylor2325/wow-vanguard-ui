@@ -2999,6 +2999,81 @@ function T.FontObjects(map)
   applyFontObjects()
 end
 
+-- The global font pass: the theme font on the game's standard font family, so a game frame Vanguard doesn't skin
+-- (and any addon that draws with the game's fonts) shares the typeface. Only the face changes: each object keeps the
+-- size and flags the game gave it, and Text size leaves them alone, because the game's own layouts are built for them.
+do
+  -- The base font objects of the game's shared fonts that the rest inherit from (GameFontNormal and its kin follow
+  -- their parent). A name this client lacks is skipped, and so is one whose face is not the game's standard text font
+  -- (the number, quest and mail faces), so a wrong guess here changes nothing. Left out on purpose: the tooltip,
+  -- nameplate, chat and chat bubble fonts, which their own modules set.
+  T.FONT_OBJECTS.standard = {
+    "SystemFont_Tiny", "SystemFont_Tiny2", "SystemFont_Small", "SystemFont_Small2", "SystemFont_Med1", "SystemFont_Med2", "SystemFont_Med3",
+    "SystemFont_Large", "SystemFont_Large2", "SystemFont_Huge1", "SystemFont_Huge2", "SystemFont_Huge1_Outline",
+    "SystemFont_Shadow_Small", "SystemFont_Shadow_Small2", "SystemFont_Shadow_Small_Outline", "SystemFont_Shadow_Med1", "SystemFont_Shadow_Med1_Outline",
+    "SystemFont_Shadow_Med2", "SystemFont_Shadow_Med2_Outline", "SystemFont_Shadow_Med3", "SystemFont_Shadow_Med3_Outline",
+    "SystemFont_Shadow_Large", "SystemFont_Shadow_Large2", "SystemFont_Shadow_Large_Outline", "SystemFont_Shadow_Outline_Large",
+    "SystemFont_Shadow_Huge1", "SystemFont_Shadow_Huge2", "SystemFont_Shadow_Huge3", "SystemFont_Shadow_Huge4",
+    "SystemFont_Outline_Small", "SystemFont_Outline", "SystemFont_OutlineThick_Huge2", "SystemFont_OutlineThick_Huge4", "SystemFont_OutlineThick_WTF",
+    "SystemFont_InverseShadow_Small",
+    "Game11Font", "Game12Font", "Game13Font", "Game15Font", "Game16Font", "Game18Font", "Game20Font", "Game24Font", "Game27Font", "Game30Font",
+    "Game32Font", "Game36Font", "Game40Font", "Game42Font", "Game46Font", "Game48Font", "Game60Font", "Game72Font", "Game120Font",
+    "Game11Font_o1", "Game12Font_o1", "Game13Font_o1", "Game15Font_o1", "Game13FontShadow", "Game15FontShadow",
+    "FriendsFont_Normal", "FriendsFont_Small", "FriendsFont_Large", "FriendsFont_UserText", "FriendsFont_11",
+    "ReputationDetailFont", "AchievementFont_Small", "CoreAbilityFont", "SpellFont_Small", "InvoiceFont_Med", "InvoiceFont_Small",
+  }
+  -- Each standard font object as the game had it when first seen: name -> { path, size, flags, now = the face it has }.
+  -- Kept here, never on the game's object.
+  T.gameFonts = {}
+
+  -- A font path in one spelling, to compare two of them: lower case, backslashes.
+  local function pathKey(path)
+    return (path:lower():gsub("/", "\\"))
+  end
+
+  -- A game font object's own face, size and flags, remembered the first time it is seen; nil for one this client lacks,
+  -- one whose values it hides, or one whose face is not the game's standard text font.
+  local function gameFont(name)
+    local font = _G[name]
+    if T.gameFonts[name] or type(font) ~= "table" or not font.GetFont then return T.gameFonts[name] end
+    local path, size, flags = font:GetFont()
+    path, size = ns.PlainText(path), ns.PlainNumber(size)
+    if path and size and pathKey(path) == pathKey(clientFont()) then T.gameFonts[name] = { path, size, ns.PlainText(flags) or "", now = path } end
+    return T.gameFonts[name]
+  end
+
+  -- Gives one standard font object a face (the theme's, or the game's own back), at its own size and flags; a call
+  -- that would change nothing is skipped, so a theme change that isn't a font change re-lays no game text.
+  local function setFace(name, themed)
+    local was = gameFont(name)
+    local path = was and (themed and (T.Font()) or was[1])
+    if not was or was.now == path then return end
+    _G[name]:SetFont(path, was[2], was[3])
+    was.now = path
+  end
+
+  -- Puts the theme font on the game's standard font family, or the game's own face back when the Font setting is the
+  -- game's font. A Korean or Chinese client (whose script the bundled font lacks) and a profile that has always used
+  -- the game's font are never touched at all. Run at login and after every theme change. SetFont on a font object is
+  -- not protected, so a fight changes nothing here; nothing is stored on the game's objects (T.gameFonts).
+  function T.ApplyStandardFonts()
+    local themed = not useClientFont(T.Settings())
+    if not themed and not T.standardThemed then return end
+    T.standardThemed = themed
+    for _, name in ipairs(T.FONT_OBJECTS.standard) do setFace(name, themed) end
+  end
+
+  -- How many of the listed standard font objects wear the theme font now, and how many are listed (for /vg status).
+  ---@return number themed
+  ---@return number listed
+  function T.StandardFontCount()
+    local n = 0
+    for _, was in pairs(T.gameFonts) do n = n + (was.now ~= was[1] and 1 or 0) end
+    return n, #T.FONT_OBJECTS.standard
+  end
+end
+ns.On("PLAYER_LOGIN", function() T.ApplyStandardFonts() end)
+
 -- The Vanguard crest (Media/Textures/Icon, the painted shield, pre-colored: the accent and theme don't tint it) at size x size.
 function T.Logo(parent, size)
   local f = T.PixelSize(CreateFrame("Frame", nil, parent), size, size)
@@ -3304,6 +3379,7 @@ function T.Refresh()
   T.RefreshText()
   refreshTints()
   applyFontObjects()
+  T.ApplyStandardFonts()
   T.RepaintLabelFonts()
   repaintArt()
   reSnap()

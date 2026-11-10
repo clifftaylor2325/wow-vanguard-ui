@@ -657,6 +657,7 @@ local function statusCommand(rest)
   chat(ns.Client.Line())
   chat(restrictionLine())
   chat(textLine())
+  chat(string.format("Game fonts: %d of %d standard font objects in the theme font", T.StandardFontCount()))
   chat(windowsLine())
 end
 
