@@ -157,6 +157,13 @@ it("lifecycle: a main tank tile is read only while the module runs", () => {
   expect(addon.eval(read)).toBe(true);
 });
 
+it("lifecycle: a main tank tile's ticker paints its own tile, and nothing is paused", () => {
+  const addon = login();
+  addon.eval('local b = CreateFrame("Button", "Vanguard_TestTile", Vanguard_MainTanks, "SecureUnitButtonTemplate") ns.GetModule("MainTanks").Setup(b) b:SetAttribute("unit", "player") b:Show() b.name:SetText("")');
+  addon.advance(2);
+  expect(addon.eval('return { Vanguard_TestTile:IsVisible(), Vanguard_TestTile.name:GetText() == UnitName("player"), #ns.paused, #ns.errors }')).toEqual([true, true, 0, 0]);
+});
+
 // PartyExtras ---------------------------------------------------------------------------------------------------
 
 // The raid frames' tile tooltip hook registers its one fight handler when the first tile of any module is made, so a
@@ -165,6 +172,13 @@ const FIRST_TILE = 'ns.GetModule("RaidFrames").UnitTooltip(CreateFrame("Button",
 const PARTY_LOGIN = loginWith("\nVanguardDB.profiles.Default.PartyExtras = { show = true }", "", FIRST_TILE);
 
 lifecycleCases("PartyExtras", PARTY_LOGIN);
+
+it("lifecycle: a party extras tile's ticker paints its own tile, and nothing is paused", () => {
+  const addon = PARTY_LOGIN();
+  addon.eval('local b = ns.GetModule("PartyExtras").tiles[1] b:SetAttribute("unit", "player") Vanguard_PartyExtras:Show() b:Show() b.name:SetText("")');
+  addon.advance(2);
+  expect(addon.eval('local b = ns.GetModule("PartyExtras").tiles[1] return { b:IsVisible(), b.name:GetText() == UnitName("player"), #ns.paused, #ns.errors }')).toEqual([true, true, 0, 0]);
+});
 
 it("lifecycle: party extras switched off hides the column and its driver, and on again shows the same column", () => {
   const addon = PARTY_LOGIN();

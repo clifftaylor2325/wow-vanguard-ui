@@ -69,9 +69,13 @@ function MT.Paint(b)
 end
 
 -- Reads the tile's unit a few times a second while it shows, and while its module (the scope) runs: a tile the
--- header makes after the module stopped waits for the next start, which polls every tile it has made.
+-- header makes after the module stopped waits for the next start, which polls every tile it has made. The ticker
+-- has a string key (the scope stops it by key), so the job paints its own tile, not the key it is called with.
 function MT.Poll(b, scope)
-  if scope:Running() then scope:Every("tile " .. (b:GetName() or tostring(b)), MT.POLL, MT.Paint, b) end
+  if not scope:Running() then return end
+  -- Paints this tile on each tick.
+  local paint = function() MT.Paint(b) end
+  scope:Every("tile " .. (b:GetName() or tostring(b)), MT.POLL, paint, b)
 end
 
 -- Shows a secure frame by a macro-conditional state, as the client's own state driver (so it follows the group in
