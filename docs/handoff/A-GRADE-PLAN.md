@@ -123,7 +123,7 @@ One branch and one PR per HUD area, so each set of files is opened once and come
 
 Runs after phase 3 has merged, on its own, because A4-1 touches every module. Branches `work/a4-lifecycle`, then `work/a4-split`.
 
-- [ ] **A4-1 Module lifecycle design.** Declared dependencies, a subscription scope the registry can tear down, generic disable for display-only modules, late enable. A decision that spans modules: Opus, as a short design note in `docs/design/` for Cliff to approve before code. (B1, M9)
+- [x] **A4-1 Module lifecycle design.** Declared dependencies, a subscription scope the registry can tear down, generic disable for display-only modules, late enable. A decision that spans modules: Opus, as a short design note in `docs/design/` for Cliff to approve before code. (B1, M9) **Done 2026-11-09: `docs/design/MODULE-LIFECYCLE.md`; its decisions Q1 to Q11 wait for Cliff before A4-2.**
 - [ ] **A4-2 Convert modules in batches** of about ten, display-only first. Sonnet. Each batch removes its reload tags.
 - [ ] **A4-3 Lifecycle sweep** for work registered outside `Enable`, plus the quality-scan rule that blocks `ns.On` at file scope outside `Core/`. (N20, L16)
 - [ ] **A4-4 Live profile switching** for modules that support it; the rest say so plainly.
