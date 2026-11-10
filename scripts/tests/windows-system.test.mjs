@@ -283,6 +283,21 @@ it("Edit Mode window: skinned, its panel on a backdrop of Vanguard's own, and Va
   expect(addon.eval("return { Vanguard_EditModeNote:IsShown(), __panelHost(EditModeManagerFrame):IsShown() }"), "and the note and the backdrop hide with the window").toEqual([false, false]);
 });
 
+// Bug 1's shape (#838): the backdrop's shown state came from the game frame's IsVisible, which the client may answer with
+// a secret; a truth test on it, or handing it to SetShown, raises from addon code. A secret answer counts as hidden.
+it("a window's backdrop never takes a secret visibility from the game's frame: it counts as hidden, and nothing raises", () => {
+  const addon = loggedIn(EDIT_ENV);
+  addon.eval("EditModeManagerFrame:Show()");
+  const backShown = () => addon.eval(`local m = EditModeManagerFrame
+    m.IsVisible = function() return { __secret = true } end
+    ns.GetModule("Windows").FitBackdrop(m)
+    m.IsVisible = nil
+    return { __panelHost(m):IsShown(), #ns.errors }`);
+  expect(backShown(), "the window says its visibility is secret: the backdrop is hidden, not shown on a secret").toEqual([false, 0]);
+  addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
+  expect(addon.eval("return __panelHost(EditModeManagerFrame):IsShown()"), "and a plain answer shows it again").toBe(true);
+});
+
 it("Edit Mode window: switched off it stays the game's (the note still shows), and a bare client is fine", () => {
   const off = loggedIn(EDIT_ENV, SWITCH_OFF);
   off.eval("EditModeManagerFrame:Show()");
