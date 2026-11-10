@@ -468,15 +468,22 @@ end
 -- One card (a raised panel) at the top of the page, its rows under its title; on a page of tabs the tab names it
 -- (opts.tabbed), so it has no title of its own. Keeps its rows and height. Its essential rows come first, then the
 -- fold line over the rest.
-local function buildCard(child, spec, tabbed)
-  local card = T.Panel(CreateFrame("Frame", nil, child), { raised = true })
-  card:SetPoint("TOPLEFT")
-  card:SetWidth(CARD_WIDTH)
-  card.child, card.rows = child, spec.rows
+local function fillCard(card, spec, tabbed)
   local top = (spec.title and not tabbed) and addCardTitle(card, spec.title) or PAD
   local bottom = placeRows(card, spec.shown, top)
   card.height = (spec.folded and placeFold(card, spec, bottom) or bottom) + T.SPACE.gap
   card:SetHeight(card.height)
+end
+
+-- A card that builds to its place, or, when a row fails to build, stays as far as it got (its failure is kept in
+-- /vg errors) with no rows to read.
+local function buildCard(child, spec, tabbed)
+  local card = T.Panel(CreateFrame("Frame", nil, child), { raised = true })
+  card:SetPoint("TOPLEFT")
+  card:SetWidth(CARD_WIDTH)
+  card.child, card.rows, card.height = child, spec.rows, PAD
+  card:SetHeight(PAD)
+  if not ns.Try("build options card", fillCard, card, spec, tabbed) then card.rows = {} end
   return card
 end
 
@@ -695,16 +702,22 @@ local function addTabStrip(view, cards)
   markTabs(view)
 end
 
--- Builds a page's cards in its view, one shown at a time under its tab (the one it showed last), with its bar and strip.
-local function placeCards(view, page)
-  local specs = groupRows(rowsOf(page))
-  quiet = true
+-- A page's bar, lead, cards (each guarded), reset button and tab strip.
+local function placePage(view, page, specs)
   addPageBar(view, page)
   addLead(view, specs)
-  view.cards = {}
   for i, spec in ipairs(specs) do view.cards[i] = buildCard(view.child, spec, #specs > 1) end
   addReset(view.bar, specs.reset)
   addTabStrip(view, specs)
+end
+
+-- Builds a page's cards in its view, one shown at a time under its tab (the one it showed last), with its bar and strip.
+-- A failure is kept in /vg errors and never leaves the quiet flag set.
+local function placeCards(view, page)
+  local specs = groupRows(rowsOf(page))
+  quiet = true
+  view.cards = {}
+  ns.Try("build options page", placePage, view, page, specs)
   quiet = false
   if #view.cards > 0 then showCard(view, openingCard(view)) end
 end
