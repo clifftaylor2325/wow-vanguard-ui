@@ -508,12 +508,13 @@ local function specTarget()
   return ownTarget()
 end
 
--- Stages the current spec's profile (and applies it now when `now`, which is only safe before modules
--- read their settings). Returns true if a switch was staged.
+-- Switches to the current spec's profile: at once mid-session when nothing waits for a reload (ns.SwitchProfileNow),
+-- else staged (and applied now when `now`, which is only safe before modules read their settings). Returns true if
+-- the profile changed or a switch was staged.
 local function followSpec(now)
   local name = specTarget()
   if not name or name == ns.SelectedProfileName() then return false end
-  ns.StageProfile(name)
+  if not ns.SwitchProfileNow(name) then ns.StageProfile(name) end
   if now then ns.ApplyPendingProfile() end
   return true
 end
@@ -521,11 +522,15 @@ end
 -- At login (before modules read settings), take the spec's profile quietly.
 ns.On("PLAYER_LOGIN", function() followSpec(true) end)
 
--- On a spec change mid-session, stage the spec's profile and offer the reload that applies it.
+-- On a spec change mid-session, switch to the spec's profile: at once when nothing waits for a reload (chat says so),
+-- else staged, with the reload that applies it offered (naming what differs, ns.SwitchWaitText, when that alone waits).
 local function onSpecChanged()
-  if followSpec(false) then
-    ns.OfferReload(ns.Format(L["Your specialization uses profile {profile}."], { profile = ns.SelectedProfileName() }))
-  end
+  if not followSpec(false) then return end
+  local profile = ns.SelectedProfileName()
+  local why = ns.Format(L["Your specialization uses profile {profile}."], { profile = profile })
+  if not ns.PendingProfileName() then return ns.Chat(why) end
+  local wait = ns.SwitchWaitText(profile)
+  ns.OfferReload(wait and why .. " " .. wait or why)
 end
 
 -- PLAYER_SPECIALIZATION_CHANGED names the unit that changed; only the player's matters.

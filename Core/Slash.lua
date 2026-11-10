@@ -420,14 +420,16 @@ local function skinsCommand(rest)
   chat(ns.Format(on == "on" and L["Skin for {addon} on. /reload to apply."] or L["Skin for {addon} off. /reload to apply."], { addon = name }))
 end
 
--- /vg profile <name>: stage the switch, creating the profile if new, and offer the reload that applies it.
+-- /vg profile <name>: switch, creating the profile if new: at once when nothing waits for a reload, else staged, with
+-- the reload that applies it offered.
 local function useProfile(name)
   if not ns.ValidProfileName(name) then
     return chat(L["Profile names are 1-32 letters, digits, spaces, - or _."])
   end
-  ns.UseProfile(name)
+  if ns.PickProfile(name) then return chat(ns.Format(L["This character now uses profile {profile}."], { profile = name })) end
   if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
-  ns.OfferReload(ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }))
+  local why, wait = ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }), ns.SwitchWaitText(name)
+  ns.OfferReload(wait and why .. " " .. wait or why)
 end
 
 -- profile subcommands: new, copy, delete, reset.

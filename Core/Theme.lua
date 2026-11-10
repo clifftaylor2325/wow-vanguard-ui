@@ -323,6 +323,9 @@ function T.Settings()
   return ns.Settings("theme", DEFAULTS)
 end
 
+-- The theme's defaults, for comparing another profile's theme with the one in use (Core/ProfileSwitch.lua).
+T.DEFAULTS = DEFAULTS
+
 -- Profiles saved or exported before the rename (ForeverUI 0.3.0 and earlier)
 -- call the bundled bar style "forever"; it is "vanguard" now. A profile that saved a
 -- variant since removed (Frost, the light look, dropped in 0.6.0) goes back to the default.

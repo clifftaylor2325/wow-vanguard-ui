@@ -422,3 +422,101 @@ it("lifecycle: the reload notice naming two long module names fits the footer, a
   expect(addon.eval("return Vanguard_Options.notice:GetText()")).toMatch(/^Waiting for a reload: Pet, stance and extra buttons.* and 1 more/);
   expect(addon.textFit("Vanguard_Options").filter((f) => /Waiting for a reload/.test(`${f.text} ${f.other ?? ""}`))).toEqual([]);
 });
+
+// Live profile switching -------------------------------------------------------------------------------------------
+
+// Saved variables with two profiles, Default and Raid, that switch every real module off, so only the TEST-ONLY
+// modules run; `raid` is Lua run on the Raid profile's table (P) to make it differ.
+const twoProfiles = (raid = "") => `
+  VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {} }, Raid = { modules = {} } } }
+  VanguardCharDB = { profile = "Default" }
+  local P = VanguardDB.profiles.Raid
+  ${raid}
+`;
+
+// The TEST-ONLY modules, then every real module switched off in both profiles (before login).
+const ONLY_TEST = (extra = "") => `${MODULES}
+  ${extra}
+  for _, name in ipairs(ns.ModuleNames()) do
+    if not name:find("^Test") then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+  end
+`;
+
+// The addon logged in on Default with only the TEST-ONLY modules (TestReload made to rebind when `rebinds`).
+function profileAddon(raid = "", extra = "") {
+  const addon = createAddon({ savedVariables: twoProfiles(raid) });
+  asAddon(addon, ONLY_TEST(extra));
+  addon.login();
+  return addon;
+}
+
+// The rebinding reload-only module: TestReload keeps def.settings and declares rebinds.
+const REBINDS = 'local R = ns.GetModule("TestReload") R.rebinds = true function R.Enable(s) R.settings = s table.insert(__life.log, "on TestReload") end';
+
+it("lifecycle: a reload-only module that can't take new settings keeps a profile from applying now, unnamed", () => {
+  const addon = profileAddon();
+  expect(addon.eval('return { ns.SwitchBlockers("Raid") }')).toEqual([["TestReload"], {}]);
+  expect(addon.eval('return { ns.PickProfile("Raid"), VanguardCharDB.profile, VanguardCharDB.pendingProfile, ns.SwitchWaitText("Raid") }')).toEqual([false, "Default", "Raid"]);
+});
+
+it("lifecycle: profiles that differ only in live modules switch at once, with the footprint of a login with the new one", () => {
+  const raid = 'P.modules.TestChild = false P.TestParent = { shape = true }';
+  const atLogin = createAddon({ savedVariables: twoProfiles(raid).replace('profile = "Default"', 'profile = "Raid"') });
+  asAddon(atLogin, ONLY_TEST(REBINDS));
+  atLogin.login();
+  const addon = profileAddon(raid, REBINDS);
+  takeLog(addon);
+  addon.slash("profile Raid");
+  expect(takeLog(addon)).toEqual(["off TestKept", "off TestChild", "off TestParent", "on TestParent", "on TestKept"]);
+  expect(addon.eval('return { VanguardCharDB.profile, VanguardCharDB.pendingProfile == nil, ns.Settings("TestParent").shape, ns.GetModule("TestReload").settings == ns.Settings("TestReload") }')).toEqual(["Raid", true, true, true]);
+  expect(chatHas(addon, /This character now uses profile Raid\./)).toBe(true);
+  expect(footprint(addon, { frames: true })).toEqual(footprint(atLogin, { frames: true }));
+});
+
+it("lifecycle: a rebinding module whose settings differ blocks the switch, and the reload offer names it", () => {
+  const addon = profileAddon('P.TestReload = { size = 7 }', REBINDS);
+  addon.slash("profile Raid");
+  expect(addon.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }")).toEqual(["Default", "Raid"]);
+  expect(addon.eval("return Vanguard_Reload.title:GetText()")).toBe("This character will use profile Raid after the reload. TestReload differs in Raid, so the switch waits for a reload. Reload the UI now to apply it?");
+});
+
+it("lifecycle: a reload-only module's switch or the theme's reload settings differing block the switch", () => {
+  expect(profileAddon("P.modules.TestReload = false", REBINDS).eval('return { ns.SwitchBlockers("Raid") }')).toEqual([["TestReload"], ["TestReload"]]);
+  expect(profileAddon("P.theme = { hudShadow = true }", REBINDS).eval('return { ns.SwitchBlockers("Raid") }')).toEqual([["theme"], ["theme"]]);
+  expect(profileAddon('P.theme = { variant = "contrast" }', REBINDS).eval('return ns.SwitchWaitText("Raid")')).toBe("the theme differs in Raid, so the switch waits for a reload.");
+  expect(profileAddon('P.modules.TestReload = false P.theme = { variant = "contrast" }', REBINDS).eval('return ns.SwitchWaitText("Raid")')).toBe("TestReload, the theme differ in Raid, so the switch waits for a reload.");
+  expect(profileAddon("P.TestReload = { size = 2, extra = { 1 } }", REBINDS).eval('return { ns.SwitchBlockers("Raid") }')).toEqual([["TestReload"], ["TestReload"]]);
+  expect(profileAddon("P.TestReload = { size = 2 }", REBINDS).eval('return { ns.SwitchBlockers("Raid") }')).toEqual([{}, {}]);
+});
+
+it("lifecycle: a profile picked in a fight, or the profile in use picked again, is staged as before", () => {
+  const addon = profileAddon("", REBINDS);
+  setCombat(addon, true);
+  expect(addon.eval('return { ns.PickProfile("Raid"), VanguardCharDB.pendingProfile }')).toEqual([false, "Raid"]);
+  setCombat(addon, false);
+  expect(addon.eval('return { ns.PickProfile("Default"), VanguardCharDB.profile, VanguardCharDB.pendingProfile == nil }')).toEqual([false, "Default", true]);
+});
+
+it("lifecycle: the options window's picker and Use button switch at once when they can, with no reload notice", () => {
+  const addon = profileAddon("", REBINDS);
+  addon.eval('ns.Options.Show("profiles") ns.NewProfile("Spare")');
+  expect(addon.eval('return { ns.PickProfile("Raid"), VanguardCharDB.profile }')).toEqual([true, "Raid"]);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label and w.label.__text == "Default" and ns.Options.RevealRow(w) then w.use:GetScript("OnClick")(w.use) end end');
+  expect(addon.eval("return VanguardCharDB.profile")).toBe("Default");
+  expect(notice(addon)).toEqual([false, ""]);
+});
+
+it("lifecycle: a spec change switches to its profile at once when it can, and says so in chat", () => {
+  const addon = profileAddon("", `${REBINDS} GetSpecialization = function() return __spec end __spec = 1`);
+  addon.eval('VanguardCharDB.specProfiles = { [2] = "Raid" } __spec = 2');
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile == nil }")).toEqual(["Raid", true]);
+  expect(chatHas(addon, /Your specialization uses profile Raid\./)).toBe(true);
+});
+
+it("lifecycle: a spec change that must wait names what differs in its reload offer", () => {
+  const addon = profileAddon("P.TestReload = { size = 9 }", `${REBINDS} GetSpecialization = function() return __spec end __spec = 1`);
+  addon.eval('VanguardCharDB.specProfiles = { [2] = "Raid" } __spec = 2');
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return Vanguard_Reload.title:GetText()")).toBe("Your specialization uses profile Raid. TestReload differs in Raid, so the switch waits for a reload. Reload the UI now to apply it?");
+});

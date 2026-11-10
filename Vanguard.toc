@@ -58,6 +58,7 @@ Core/Profiles.lua
 Core/ProfileStrings.lua
 Core/Modules.lua
 Core/ModuleScope.lua
+Core/ProfileSwitch.lua
 Core/Theme.lua
 Core/HudLook.lua
 Core/SharedMedia.lua
