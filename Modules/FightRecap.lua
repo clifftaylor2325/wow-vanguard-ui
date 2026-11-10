@@ -23,17 +23,19 @@ FH.RECAP = {
 -- The channels /vg recap sends to, by the word typed.
 FH.CHANNELS = { say = "SAY", party = "PARTY", raid = "RAID", instance = "INSTANCE_CHAT", guild = "GUILD" }
 
--- Your line in a list, or nil.
+-- Your line in a list, or nil. A line the client hides, or a hidden "is it you", is never read or compared:
+-- it counts as someone else's (the meter's values can be hidden while the client restricts add-ons).
 local function mine(sources)
   for _, source in ipairs(sources) do
-    if source.isLocalPlayer == true then return source end
+    local line = ns.PlainTable(source)
+    if line and ns.IsTrue(line.isLocalPlayer) then return line end
   end
 end
 
 -- One meter's figure for the last fight: your total, or for a count meter how many lines it lists
--- (and whether one is yours); nil where the client has no such meter or hides it.
+-- (and whether one is yours); nil where the client has no such meter or hides it, or hides its list.
 local function figure(meter)
-  local sources = ns.GetModule("InfoStrip").MeterSources(meter.meter)
+  local sources = ns.PlainTable(ns.GetModule("InfoStrip").MeterSources(meter.meter))
   if not sources then return nil end
   if meter.count then return #sources, mine(sources) ~= nil end
   local line = mine(sources)
