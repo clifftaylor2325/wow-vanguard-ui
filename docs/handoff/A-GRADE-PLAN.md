@@ -123,7 +123,7 @@ One branch and one PR per HUD area, so each set of files is opened once and come
 
 Runs after phase 3 has merged, on its own, because A4-1 touches every module. Branches `work/a4-lifecycle`, then `work/a4-split`.
 
-- [ ] **A4-1 Module lifecycle design.** Declared dependencies, a subscription scope the registry can tear down, generic disable for display-only modules, late enable. A decision that spans modules: Opus, as a short design note in `docs/design/` for Cliff to approve before code. (B1, M9)
+- [x] **A4-1 Module lifecycle design.** Declared dependencies, a subscription scope the registry can tear down, generic disable for display-only modules, late enable. A decision that spans modules: Opus, as a short design note in `docs/design/` for Cliff to approve before code. (B1, M9) **Done 2026-11-09: `docs/design/MODULE-LIFECYCLE.md`; its decisions Q1 to Q11 wait for Cliff before A4-2.**
 - [ ] **A4-2 Convert modules in batches** of about ten, display-only first. Sonnet. Each batch removes its reload tags.
 - [ ] **A4-3 Lifecycle sweep** for work registered outside `Enable`, plus the quality-scan rule that blocks `ns.On` at file scope outside `Core/`. (N20, L16)
 - [ ] **A4-4 Live profile switching** for modules that support it; the rest say so plainly.
@@ -171,13 +171,13 @@ Read with `docs/handoff/leonardo-art-plan.md`. That plan says how the art is mad
 
 Branch `work/a6-focus`. Can run alongside 5b.
 
-- [ ] **A6-1** Retire or fold the placeholders: pet stable and Legacy helper out, boss docks into movers, officer roster into raid tools, graphics `apply` out. (N10)
+- [x] **A6-1** Retire or fold the placeholders: pet stable and Legacy helper out, boss docks into movers, officer roster into raid tools, graphics `apply` out. (N10) Done except: graphics `apply` stays (the second review pass found it safe), and the "List in chat" buttons stay (no small list panel was cheap).
 - [ ] **A6-2** Give the chat-only features a face or remove them: crafting queue panel, fuller keyboard with a layout choice, ordered talent plan, scrolling group board. One commit each. (N21, L20, L21)
 - [x] **A6-3** Locale-aware matchers for the chat filter and the group board; hide a category a locale has no words for. Then re-tick the chat filter in setup if D4 allows. (N9, M7) Per-locale lists are in `Core/MatchWords.lua`; the Filtered tab is found by a saved window number (L23, first part). Setup still leaves the chat filter unticked (D4's answer); it can be revisited once the lists are checked in the game.
 - [ ] **A6-4** Stat weights: simulate them, source them, or label the arrows as a guide. (M8)
 - [ ] **A6-5** Clean non-functional third-party names from the repo per D5. (N19, L11)
 - [ ] **A6-6** Inventory window: item level and upgrade marks in bags, an offline view of other characters. Optional under the breadth freeze; it reuses stored data and closes a section 7.1 gap. (B6)
-- [ ] **A6-7** The remaining Low list (L8 to L10, L18, L19, L22 to L25, L27), one sweep.
+- [ ] **A6-7** The remaining Low list (L8 to L10, L18, L19, L22 to L25, L27), one sweep. Progress: L8 done for the raid tile scripts (95 other sites remain, tracked by the quality baseline); L18, L19, L22, L23, L25, L27 checked and left (see PR 820); L9 and L10 are design questions, not defects.
 - [ ] **A6-8** Player docs with real screenshots; the listing pages say which build was tested.
 - [ ] **A6-9** Follow through on D1: either the Retail verification sprint or the "unsupported" label. (B9)
 

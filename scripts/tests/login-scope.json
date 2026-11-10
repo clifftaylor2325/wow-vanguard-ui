@@ -84,6 +84,7 @@
       "the mouseover fade still follows hovering an action button",
       "the right-edge bars start off and show on mouseover when turned on"
     ],
+    "scripts/tests/bossspots.test.mjs": [],
     "scripts/tests/broker.test.mjs": [],
     "scripts/tests/casts.test.mjs": [
       "H26-1-2 your cast bar keeps riding the action bars switched off this session, still on screen until the reload",
@@ -135,7 +136,6 @@
     ],
     "scripts/tests/craftqueue.test.mjs": [],
     "scripts/tests/data.test.mjs": [],
-    "scripts/tests/docks.test.mjs": [],
     "scripts/tests/dungeoncard.test.mjs": [
       "a long run with a way back in every 40 minutes stays one visit: the last run is still the one before",
       "a run earlier the same calendar day reads today, even 21 hours before",
@@ -186,7 +186,6 @@
     ],
     "scripts/tests/integration.test.mjs": [],
     "scripts/tests/inventory.test.mjs": [],
-    "scripts/tests/legacy.test.mjs": [],
     "scripts/tests/levelling.test.mjs": [
       "levelling: a supply running low is said once, and again only after it recovered",
       "levelling: supplies already low at login are not warned of, and a fight waits"
@@ -210,7 +209,6 @@
     "scripts/tests/optionsreadable.test.mjs": [
       "options: the Modules page is grouped like the nav, and a filter shows the ones on or off"
     ],
-    "scripts/tests/petstable.test.mjs": [],
     "scripts/tests/platebuffs.test.mjs": [],
     "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [
@@ -257,6 +255,7 @@
     "scripts/tests/raid.test.mjs": [
       "raid tools: a burst of roster events in combat queues one update of the bar, not one per event"
     ],
+    "scripts/tests/raidroster.test.mjs": [],
     "scripts/tests/range.test.mjs": [
       "range tint",
       "range tint: Red when out of range repaints the buttons at once, both ways",

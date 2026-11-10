@@ -69,7 +69,7 @@ const LEVELS_ENV = `
   UnitLevel = function(unit) return ({ target = 12, nameplate1 = 12, party1 = 14, nameplate2 = 14 })[unit] or 10 end
   GetCreatureDifficultyColor = function(level) if level == 12 then return { r = 1, g = 0.82, b = 0 } end end
 `;
-it("a plate the client hands over at a tiny scale gets its one-pixel border back once the plate grows", () => {
+it("a plate the client hands over at a tiny scale never gets a dark box for a border, and has one pixel once it grows", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
   // The plate's edges' thickness in screen pixels at its scale now (the thickest of the four).
   const edge = (unit) => addon.eval(`local f = ns.FrameState('vgPlate')[__plates.${unit}] local most = 0
@@ -81,12 +81,12 @@ it("a plate the client hands over at a tiny scale gets its one-pixel border back
   addon.eval("__plates.nameplate2:SetScale(0.01)");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
   addon.eval("__plates.nameplate2:SetScale(1)");
-  expect(edge("nameplate2"), "painted at scale 0.01: some 100 pixels thick at scale 1, a dark box").toBeGreaterThan(50);
+  expect(Math.round(edge("nameplate2") * 1000) / 1000, "painted while held at 0.01: sized for the screen, a pixel, not a dark box").toBe(1);
   addon.advance(0.5);
   expect(Math.round(edge("nameplate2") * 1000) / 1000, "the scale check paints it again: one pixel").toBe(1);
 });
 
-it("a debuff icon the client makes while it has the plate shrunk gets its one-pixel inset and edge back once the plate grows", () => {
+it("a debuff icon the client makes while it has the plate shrunk is never a dark square, and has its one-pixel inset and edge once the plate grows", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + "ns.GetModule('Nameplates').POOL = 0");
   addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
   addon.eval(`local p = CreateFrame("Frame", nil, UIParent) p:SetSize(110, 45) p:SetPoint("CENTER")
@@ -105,8 +105,7 @@ it("a debuff icon the client makes while it has the plate shrunk gets its one-pi
       end
     end
     return { math.floor(b.__icon.__points.TOPLEFT.x / px * 1000 + 0.5) / 1000, math.floor(thinnest / px * 1000 + 0.5) / 1000 }`);
-  const [inset, edge] = sizes();
-  expect([inset > 50, edge > 20], "made at scale 0.01: the icon pushed in and the type edge grown into a dark square").toEqual([true, true]);
+  expect(sizes(), "made while held at 0.01: sized for the screen, a pixel, not a dark square").toEqual([1, 1]);
   addon.advance(0.5);
   expect(sizes(), "the scale check places them again: one pixel").toEqual([1, 1]);
   addon.eval("__plates.nameplate1:SetScale(1.1)");
@@ -133,6 +132,28 @@ const shrunkPlate = () => {
 };
 // The kept errors: how many, and how often the first was reported (0 with none).
 const kept = (addon) => addon.eval("return { #ns.errors, ns.errors[1] and ns.errors[1].count or 0 }");
+
+// The thickest strip (UI units) among the edges Vanguard hung on the plate's first debuff icon: the theme
+// edge on its skin frame and the type-coloured ring. A strip is a texture with one side set, its thickness.
+const thickestEdge = (addon) => addon.eval(`local most = 0
+  for _, child in ipairs({ __debuffs.__groups[1].buttons[1]:GetChildren() }) do
+    for _, strip in ipairs({ child:GetRegions() }) do
+      local w, h = strip.__width, strip.__height
+      if (w == nil) ~= (h == nil) and (w or h) > most then most = w or h end
+    end
+  end
+  return most`);
+
+it("aura icons the client made on a plate it held shrunk get one-pixel edges, not blocks, also once it has closed them", () => {
+  const addon = shrunkPlate();
+  const pixel = addon.eval("return ns.Theme.Pixel(UIParent)");
+  addon.eval("__icon.IsForbidden = function() return true end");
+  expect(thickestEdge(addon) <= pixel * 1.01, "made at 0.01: each edge is sized for the screen, a pixel, not some 50 units").toBe(true);
+  addon.advance(2);
+  expect([addon.eval("return __touches"), thickestEdge(addon) <= pixel * 1.01], "closed since: never touched, and still a pixel").toEqual([0, true]);
+  expect(addon.eval("return { ns.Theme.DrawnScale(0.01) == UIParent:GetEffectiveScale(), ns.Theme.DrawnScale(0.5), ns.Theme.DrawnScale(-1), ns.Theme.DrawnScale(nil) }"),
+    "a held-shrunk scale reads as the screen's, a drawn one as itself, none as 1").toEqual([true, 0.5, 1, 1]);
+});
 
 it("an aura icon the client has closed to addons is left alone by the plate scale check", () => {
   const addon = shrunkPlate();

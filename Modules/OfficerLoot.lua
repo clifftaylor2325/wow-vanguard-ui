@@ -1,5 +1,5 @@
 -- Officer loot tools (off until switched on): a loot-rules / soft-reserve list kept on this
--- character, and a roster of the group (Modules/OfficerRoster.lua). A reserve is a player's
+-- character. A reserve is a player's
 -- name and an item (typed, or a link shift-clicked into /vg loot add). Next to the roll
 -- tracker (Modules/Rolls.lua), a roll by a player who reserved the item being rolled for is
 -- flagged "[SR]", and an item in the loot history lists who reserved it. The item a round is
@@ -14,7 +14,7 @@ local L = ns.L
 
 local OL = ns.Module("OfficerLoot", { defaults = { on = false } })
 
-ns.Options.MODULE_INFO.OfficerLoot = { L["Officer loot tools"], L["A soft-reserve list shown next to the roll tracker, and a roster of the group; shared by hand, never synced (off until switched on)."] }
+ns.Options.MODULE_INFO.OfficerLoot = { L["Officer loot tools"], L["A soft-reserve list shown next to the roll tracker, shared by hand, never synced (off until switched on)."] }
 
 -- The longest chat line the game takes, kept under with room for the /p or /raid prefix and the
 -- translated "Soft reserves: " head (the longest is 29 bytes).
@@ -241,16 +241,15 @@ end
 
 -- /vg loot with nothing, or with something it doesn't know: how to use it.
 function OL.Usage()
-  ns.Chat(L["Officer loot tools are on. /vg loot add <player> <item>, remove <player> <item>, list, clear, focus [item], roster, off."])
+  ns.Chat(L["Officer loot tools are on. /vg loot add <player> <item>, remove <player> <item>, list, clear, focus [item], off."])
 end
 
 -- The subcommands, by name.
 OL.SUB = {
   add = OL.CmdAdd, remove = OL.CmdRemove, list = OL.Print, clear = OL.AskClear, focus = OL.CmdFocus,
-  roster = function() OL.ToggleRoster() end,
 }
 
--- Switches the tools on or off (the roster goes with them).
+-- Switches the tools on or off.
 function OL.SetOn(on)
   if not OL.enabled then return ns.Chat(L["Officer loot tools are off in /vg > Modules."]) end
   OL.settings.on = on
@@ -263,6 +262,7 @@ function OL.Command(rest)
   local sub, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
   sub = sub:lower()
   if sub == "on" or sub == "off" then return OL.SetOn(sub == "on") end
+  if sub == "roster" then return ns.GetModule("RaidTools").ToggleRoster() end
   if not OL.On() then return ns.Chat(L["Officer loot tools are off. /vg loot on switches them on."]) end
   local fn = OL.SUB[sub] or OL.Usage
   fn(arg)
@@ -290,24 +290,21 @@ function OL.Rows()
   local get, set, default = ns.Options.LiveSetting("OfficerLoot", "on", function() OL.Apply() end)
   local rows = {
     { "header", L["Officer loot tools"] },
-    { "text", L["A soft-reserve list next to the roll tracker and a roster of the group, for a raid leader or officer. Kept on this character and shared by hand; nothing is synced, sent or rolled for you.\nFrom the chat box: /vg loot"] },
-    { "check", L["Soft-reserve list and roster"], get, set, default },
+    { "text", L["A soft-reserve list next to the roll tracker, for a raid leader or officer. Kept on this character and shared by hand; nothing is synced, sent or rolled for you.\nFrom the chat box: /vg loot"] },
+    { "check", L["Soft-reserve list"], get, set, default },
     { "button", L["Add a reserve"], OL.AskAdd },
-    { "button", L["Show or hide the roster"], function() OL.ToggleRoster() end },
   }
   return ns.Options.Append(rows, OL.ShareRows())
 end
 ns.Options.AddRows("tools", OL.Rows)
 
--- Follows the switch: the roll tracker and the roster are drawn again.
+-- Follows the switch: the roll tracker is drawn again.
 function OL.Apply()
   OL.Changed()
-  OL.PaintRoster()
 end
 
 -- Module entry point (Core/Modules.lua): hands the roll tracker the list.
 function OL.Enable(settings)
   OL.settings = settings
   ns.GetModule("Rolls").reserve = OL
-  OL.WatchRoster()
 end

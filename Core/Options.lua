@@ -412,8 +412,6 @@ O.MODULE_INFO = {
   Errands = { L["Errands"], L["Train all at a trainer, keep items stocked from merchants, and time your flights."] },
   InstancePrep = { L["Instance prep"], L["A checklist of what's low (ammo, reagents, food, bandages, potions, your stock list) when you enter an instance or a ready check starts."] },
   TalentPlanner = { L["Talent planner"], L["Plan your talent points on the talents window before you have them: planned ranks on each talent, the next pick ringed, Spend planned buys them in order."] },
-  Legacy = { L["Legacy"], L["A probe of what the client has for the Legacy system and a 16-point perk plan list (the planner is off until switched on)."] },
-  BossDocks = { L["Boss mod docks"], L["Two spots you can move for boss mods' timer bars; /vg dock lines up Deadly Boss Mods' bars with them."] },
   GameTools = { L["The game's tools"], L["The game's Cooldown Manager and damage meter, restyled and placed to fit the layout."] },
   CooldownGaps = { L["Cooldown gaps"], L["A small row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose, the manager's own cooldowns if you like, pet abilities and totems (off until switched on)."] },
   CooldownGlow = { L["Cooldown Manager glow"], L["A glow on a Cooldown Manager icon when its aura is in its last part (30 % by default), for spells without the game's own pandemic flag (off until switched on)."] },
@@ -428,7 +426,6 @@ O.MODULE_INFO = {
   Tooltips = { L["Tooltips"], L["Themed tooltips in a movable corner."] },
   Inventory = { L["Inventory"], L["Remembers your characters' bags and bank; item tooltips say who else has the item."] },
   Upgrades = { L["Gear upgrades"], L["Compares gear with what you wear by stat weights for your class and role: a tooltip line, arrows in the bag and on quest rewards, and the auction house's Upgrades list."] },
-  PetStable = { L["Pet stable"], L["/vg pets lists your pets with level, loyalty, happiness and progress, and a stable master's window says how many you have and what the next slot costs."] },
   SpellRanks = { L["Spell ranks"], L["Notices older spell ranks on your bars and swaps them when you ask; remembers what trainers teach and at what level (both off until switched on)."] },
   VendorMemory = { L["Vendor memory"], L["Remembers what each merchant sells; tooltips and the stock list say where to buy."] },
   AuctionHelper = { L["Auction helper"], L["Shopping lists with Deals and Upgrades, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions."] },
@@ -492,8 +489,8 @@ O.MODULE_GROUPS = {
   { L["Chat"], { "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatBubbles", "ChatHistory", "ChatWindows" } },
   { L["Quests"], { "QuestDialog", "QuestTracker", "QuestLog", "QuestAuto", "QuestArrow", "QuestGuide", "QuestMinimap", "QuestHistory" } },
   { L["Game windows"], { "Windows", "Tooltips", "GameAlerts", "GameTools", "AfkScreen", "Coexist", "Quiet", "CharacterExtras" } },
-  { L["Town and gear"], { "Bags", "Merchant", "AutoAccept", "Errands", "Inventory", "Upgrades", "VendorMemory", "AuctionHelper", "CraftQueue", "PetStable", "MailTools", "SpellRanks", "TalentPlanner", "Legacy", "InstancePrep" } },
-  { L["Combat tools"], { "Nameplates", "Rolls", "GroupBoard", "BossDocks", "CooldownGaps", "CooldownGlow", "CooldownKeys", "FightHistory", "Meter" } },
+  { L["Town and gear"], { "Bags", "Merchant", "AutoAccept", "Errands", "Inventory", "Upgrades", "VendorMemory", "AuctionHelper", "CraftQueue", "MailTools", "SpellRanks", "TalentPlanner", "InstancePrep" } },
+  { L["Combat tools"], { "Nameplates", "Rolls", "GroupBoard", "CooldownGaps", "CooldownGlow", "CooldownKeys", "FightHistory", "Meter" } },
 }
 
 -- Which modules the Modules page lists: all, the ones that are on, or the ones that are off.
