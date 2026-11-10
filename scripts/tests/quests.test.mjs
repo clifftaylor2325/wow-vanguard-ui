@@ -2528,3 +2528,29 @@ it("quest log: a hidden CanAbandonQuest answer counts as no", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + "C_QuestLog.CanAbandonQuest = function() return __wfgWorld.secret() end");
   expect(addon.eval("return ns.GetModule('QuestLog').CanAbandon(90052)")).toBe(false);
 });
+
+it("quest log: Abandon acts on the quest its row shows, by id; one that left the log, or that the game did not take, abandons nothing", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __abandoning end");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  logLine(addon, 1);
+  addon.eval("__quests[90051] = nil table.remove(__log, 2) __selected = 90052 __abandoning = 90052");
+  logButton(addon, "abandon");
+  expect([addon.eval("return __popup"), addon.eval("return __abandoning")], "the quest is gone: no question, and the game's other quest is not the one picked").toEqual([null, 90052]);
+  const other = loggedIn(TRACK_ENV + QLOG_ENV + "C_QuestLog.SetAbandonQuest = function() __abandoning = 90053 end");
+  other.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  logLine(other, 1);
+  logButton(other, "abandon");
+  expect(other.eval("return __popup"), "the game took another quest: no question").toBe(null);
+});
+
+it("quest log: a marked quest that left the log loses its mark, so taking it again does not bring it back marked", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle) __wfgWorld.keys.ctrl = true");
+  logLine(addon, 1);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  expect(addon.eval("return ns.GetModule('QuestLog').MarkedCount()"), "marked").toBe(1);
+  addon.eval("local q = __quests[90051] __quests[90051] = nil __gone_q = q");
+  addon.fire("QUEST_REMOVED", 90051);
+  addon.eval("__quests[90051] = __gone_q");
+  expect(addon.eval("return ns.GetModule('QuestLog').MarkedCount()"), "taken again: not marked").toBe(0);
+});

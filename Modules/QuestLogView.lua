@@ -279,6 +279,7 @@ end
 -- Redraws the list, and shows the chosen quest (the first one when none is chosen yet).
 function QL.Refresh()
   local f, entries = QL.frame, QL.Entries()
+  QL.ForgetGoneMarks()
   f.count:SetText(ns.Format(L["{count} quests"], { count = QL.Count() }))
   f.empty:SetShown(#entries == 0)
   f.lines.Reset()
