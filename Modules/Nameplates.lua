@@ -48,7 +48,7 @@ local UF = ns.GetModule("UnitFrames")
 local NP = ns.Module("Nameplates", {
   defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true,
     questMarks = true, tagMarks = true, auraSize = 18, nameSize = 100, healthSize = 100,
-    targetScale = 100 },
+    targetScale = 100, friendlyNames = false },
 })
 
 -- The sliders' ranges (the Nameplates page). A saved number is kept inside its range (readLayout), since a
@@ -73,6 +73,9 @@ NP.BUFF_LESS = 2
 NP.NAME_GAP, NP.ROW_GAP = 3, 2
 -- How long (seconds) a changed size or count holds still before every plate built follows it.
 NP.SETTLE = 0.3
+-- What a name-only plate keeps in view (the keys on Vanguard's frame): the name, the quest mark by it and
+-- the raid target icon.
+NP.NAME_ONLY_KEEPS = { "name", "quest", "raidIcon" }
 -- The layout's number: each plate notes the one it was last sized and given rows for (f.version).
 NP.version = 0
 -- How far the click area reaches past each side of the bar (as the client's own plates).
@@ -792,10 +795,37 @@ function NP.PaintTag(f, unit)
   NP.UpdateColor(f, unit)
 end
 
+-- Whether a plate shows only its unit's name: the Names only switch on, on a unit you can't attack. A
+-- hidden answer, or a client without the call, counts as one you can: an enemy's bar is never put away on a guess.
+local function nameOnly(unit)
+  if NP.settings.friendlyNames ~= true or type(UnitCanAttack) ~= "function" then return false end
+  local can = UnitCanAttack("player", unit)
+  return not ns.IsSecret(can) and can == false
+end
+
+-- Makes a plate name-only, or whole again. Name-only, Vanguard's frame is drawn at no opacity, so the bar,
+-- its border and glow, the level, marks, numbers, aura icons and cast bar all go with it, and the parts in
+-- NP.NAME_ONLY_KEEPS are told not to follow it; the name takes the bar's colour (class or reaction).
+local function setNameOnly(f, unit, only)
+  f.vgNameOnly = only
+  f:SetAlpha(only and 0 or 1)
+  for _, key in ipairs(NP.NAME_ONLY_KEEPS) do f[key]:SetIgnoreParentAlpha(only) end
+  if only then T.ColorRGB(f.name, UF.UnitColor(unit)) else T.Color(f.name, "text") end
+end
+
+-- Paints a plate name-only or whole for its unit now (when it is drawn, its unit's faction or flags change,
+-- or the switch does). A plate that is whole and stays whole is not touched. True when it changed.
+function NP.PaintNameOnly(f, unit)
+  local only, was = nameOnly(unit), f.vgNameOnly == true
+  if only or was then setNameOnly(f, unit, only) end
+  return only ~= was
+end
+
 -- Points the debuff row at the plate's unit (the client reuses plates for
 -- other units), and the buff row at it while it is a player; the buff row is
--- hidden otherwise. A nil unit empties both.
+-- hidden otherwise. A nil unit, or a name-only plate, empties both.
 function NP.UpdateAuras(f, unit)
+  if f.vgNameOnly then unit = nil end
   f.debuffs:SetUnit(unit)
   if not f.buffs then return end
   local player = NP.BuffUnit(unit)
@@ -817,6 +847,7 @@ end
 
 -- Everything on one plate (a plate under the mouse wakes the mouseover watch).
 local function refresh(f, unit)
+  NP.PaintNameOnly(f, unit)
   NP.ShowNumbers(f, unit)
   NP.Update(f, unit)
   NP.PaintQuest(f, unit)
@@ -1033,6 +1064,7 @@ end
 local function onFaction(f, unit)
   NP.PaintTag(f, unit)
   NP.PaintNumbers(f, unit)
+  if NP.PaintNameOnly(f, unit) then NP.UpdateAuras(f, unit) end
 end
 
 -- Health moves the fill and its numbers only; threat, flags and faction (a tap change can come as any) repaint the tag mark and the bar.
@@ -1263,6 +1295,7 @@ local function displayRows()
     { "check", L["Cast bar"], setting("castBar", NP.ApplyLayout) },
     { "check", L["A gold ! by units your quests need"], setting("questMarks", NP.RefreshAll) },
     { "check", L["Tag marks"], setting("tagMarks", NP.RefreshAll) },
+    { "check", L["Names only on friendly plates"], setting("friendlyNames", NP.RefreshAll) },
   }
 end
 
