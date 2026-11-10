@@ -5,7 +5,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
-import { SETUP_DONE, chatHas } from "./helpers.mjs";
+import { QUEST_ENV, SETUP_DONE, calls, chatHas } from "./helpers.mjs";
 import { lifecycleCases } from "./lifecycle-helpers.mjs";
 
 // A login with the heavy modules off (except those in `keep`) and `settings` Lua run on the saved variables, then
@@ -44,4 +44,39 @@ it("lifecycle: auto-accept switched off does nothing at all, and on again answer
   addon.eval('ns.SetModuleEnabled("AutoAccept", true)');
   addon.fire("RESURRECT_REQUEST", "<name>");
   expect(addon.eval("return __answers[1]")).toBe("resurrect");
+});
+
+// QuestAuto -----------------------------------------------------------------------------------------------------
+
+// A login with the quest dialog's test world, and every automation switch on.
+const QUEST_AUTO = (saved = "") => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) + "\nVanguardDB.profiles.Default.QuestAuto = { accept = true, turnIn = true, skipGossip = true }" + saved });
+  addon.eval(QUEST_ENV);
+  addon.login();
+  return addon;
+};
+
+lifecycleCases("QuestAuto", QUEST_AUTO);
+
+it("lifecycle: quest automation switched off does nothing at all and claims no page, and on again accepts as before", () => {
+  const addon = QUEST_AUTO();
+  addon.eval('ns.SetModuleEnabled("QuestAuto", false)');
+  addon.fire("QUEST_DETAIL");
+  addon.fire("QUEST_PROGRESS");
+  addon.fire("QUEST_COMPLETE");
+  expect(calls(addon), "nothing accepted, continued or completed").toEqual([]);
+  expect(addon.eval("return ns.GetModule('QuestAuto').Claims('QUEST_DETAIL')"), "and no page claimed").toBe(false);
+  expect(addon.eval("return Vanguard_QuestDialog:IsShown()"), "the quest dialog shows the offer").toBe(true);
+  addon.eval('ns.SetModuleEnabled("QuestAuto", true)');
+  addon.fire("QUEST_DETAIL");
+  expect(calls(addon)).toEqual(["accept nil"]);
+});
+
+it("lifecycle: an accept line waiting for the game's confirmation is never said once quest automation is switched off", () => {
+  const addon = QUEST_AUTO();
+  addon.eval("GetQuestID = function() return 90001 end");
+  addon.fire("QUEST_DETAIL");
+  addon.eval('ns.SetModuleEnabled("QuestAuto", false)');
+  addon.fire("QUEST_ACCEPTED", 90001);
+  expect(chatHas(addon, /Accepted: /)).toBe(false);
 });
