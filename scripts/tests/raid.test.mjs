@@ -78,17 +78,25 @@ it("raid frames", () => {
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[m.key] = true end return out.raid") === true, "the raid frames are movable").toBeTruthy();
 });
 
-it("a new tile size waits for the reload: the tiles' texts and the holder keep the size the tiles were built with", () => {
+it("a new tile size applies at once: the tiles, the header's attributes, the holder and the texts follow, out of combat", () => {
   const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV);
   addon.eval('__spawn(1, "raid1")');
-  // Tile 1's width, its name's right stop, its status width and the holder's size.
-  const look = () => addon.eval(`local b = Vanguard_RaidUnitButton1
-    return { b:GetWidth(), b.name.__points.TOPRIGHT.x, b.status:GetWidth(), Vanguard_RaidHolder:GetWidth(), Vanguard_RaidHolder:GetHeight() }`);
+  // Tile 1's size, its name's right stop, the header's size attributes and the holder's size.
+  const look = () => addon.eval(`local b, h = Vanguard_RaidUnitButton1, Vanguard_Raid
+    return { b:GetWidth(), b:GetHeight(), b.name.__points.TOPRIGHT.x, h:GetAttribute("vg-width"), h:GetAttribute("vg-height"), Vanguard_RaidHolder:GetWidth(), Vanguard_RaidHolder:GetHeight() }`);
   const before = look();
-  addon.eval(`local _, set = ns.Options.Setting("RaidFrames", "width") set(72)
-    local RF = ns.GetModule("RaidFrames") RF.layoutKey = "rows" RF.Arrange(0)`);
-  addon.fire("GROUP_ROSTER_UPDATE");
-  expect(look(), "texts and holder as they were, for tiles still 100 wide").toEqual(before);
+  addon.eval(`ns.GetModule("RaidFrames").settings.width = 72 ns.GetModule("RaidFrames").ApplySize()`);
+  const after = look();
+  expect([after[0], after[3], after[5]], "the tile, the header's attribute and the holder are 72 wide").toEqual([72, 72, 72]);
+  expect(after[2] < before[2], "the name stops sooner").toBe(true);
+  addon.eval('ns.GetModule("RaidFrames").settings.height = 56 ns.GetModule("RaidFrames").ApplySize()');
+  expect(look().slice(1, 2).concat(look()[4]), "the tile and the header's attribute are 56 tall").toEqual([56, 56]);
+  setCombat(addon, true);
+  addon.eval('ns.GetModule("RaidFrames").settings.width = 90 ns.GetModule("RaidFrames").ApplySize()');
+  expect(look()[0], "in combat the tile keeps its width").toBe(72);
+  setCombat(addon, false);
+  expect(look()[0], "when the fight ends it takes the new width").toBe(90);
+  expect(addon.eval("return #ns.errors"), "no error").toBe(0);
 });
 
 it("a 25 or 40 raid at its default spot on a 1365 x 768 UI clears the roll tracker at its tallest", () => {
@@ -430,14 +438,15 @@ it("raid preview: sample players in the raid tiles, laid out by the raid frame s
   expect([r(1).width, r(1).height, r(2).bottom - r(1).top, r(1).bottom, r(1).left + r(1).width / 2], "100 x 48 tiles in a column growing up from the holder, 4 apart, centered on it").toEqual([100, 48, 4, holder.bottom, holder.left + holder.width / 2]);
   addon.slash("preview 40");
   expect([shownTiles(addon), addon.eval("return Vanguard_RaidPreview:GetScale()"), Math.round((r(6).bottom - r(1).top) * 1000) / 1000], "a raid of 40: drawn at 72%, groups stacked as rows (a bigger raid does)").toEqual([40, 0.72, 2.88]);
-  addon.eval('ns.Options.Show("raid") __click("Width") __click("Sort by role") __click("Style")');
+  addon.eval('ns.Options.Show("raid") __click("Sort by role") __click("Style")');
+  addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then for _, r in ipairs(p.rows()) do if r[2] == "Width" then r[5](120) end end end end`);
   expect([Math.round(r(1).width / 0.72), addon.eval("return { Vanguard_RaidPreviewTile1.name:GetText(), Vanguard_RaidPreviewTile4.name:GetText(), Vanguard_RaidPreviewTile5.name:GetText() }"), addon.eval("return Vanguard_Options.reload:IsShown()")],
-    "a new width and sorting by role show at once (tanks first, then healers); the real frames wait for a reload").toEqual([120, ["Aldren", "Zelda", "Brielle"], true]);
+    "a new width and sorting by role show at once (tanks first, then healers); the reload notice is lit by the sorting").toEqual([120, ["Aldren", "Zelda", "Brielle"], true]);
   expect([isTok(addon, previewTile(addon, 1).bar, "darkBar"), previewTile(addon, 1).line], "a new style too").toEqual([true, false]);
   addon.eval('local s = VanguardDB.profiles.Default.RaidFrames s.layout = "rows" s.showPower = false RAID_CLASS_COLORS = nil ns.Theme.Refresh()');
   expect([r(2).bottom === r(1).bottom && r(2).left > r(1).right, r(6).bottom > r(1).top, previewTile(addon, 1).power], "groups as rows; the power bar off; redrawn on a theme change").toEqual([true, true, false]);
   expect(previewTile(addon, 1).name, "with no class colors the tiles still draw").toBe("Aldren");
-  expect([addon.eval("return __secureSets"), addon.eval('return #ns.GetModule("RaidFrames").buttons'), raidButton(addon, 1).name], "the secure header and its buttons are never touched").toEqual([0, 1, "TEST-ONLY Tank"]);
+  expect([addon.eval("return __secureSets"), addon.eval('return #ns.GetModule("RaidFrames").buttons'), raidButton(addon, 1).name], "the preview never touches the secure buttons; the header's two size attributes are set once each, by the new width").toEqual([2, 1, "TEST-ONLY Tank"]);
   addon.eval('__click("Preview with sample players")');
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/), addon.eval("return ns.RaidPreview.size")], "the options row steps from Raid (40) to Off").toEqual([0, true, 0]);
 });

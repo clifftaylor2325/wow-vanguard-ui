@@ -132,10 +132,10 @@ local function debuffGroups(b, z, s)
   }
 end
 
--- Debuffs from the bottom-left corner of the icon strip, growing right.
+-- Debuffs from the bottom-left corner of the icon strip, growing right (anchored to the tile's bottom, so a new tile height moves them with it).
 function RA.DebuffSpec(b, z, s)
   local x, bottom = z.debuffs[1], z.debuffs[2] + z.icon
-  return { point = { "BOTTOMLEFT", b, "TOPLEFT", x, -bottom }, grow = "RIGHT", growY = "UP", lineSize = z.debuffs[3] + 1,
+  return { point = { "BOTTOMLEFT", b, "BOTTOMLEFT", x, z.height - bottom }, grow = "RIGHT", growY = "UP", lineSize = z.debuffs[3] + 1,
     gap = 1, mouse = false, level = b:GetFrameLevel() + 10, groups = debuffGroups(b, z, s) }
 end
 
@@ -143,7 +143,7 @@ end
 function RA.HotSpec(b, z, s)
   local right, bottom = z.hots[1] + z.hots[3], z.hots[2] + z.icon
   local count = s.hots and math.min(s.maxHots, z.per) or 0
-  return { point = { "BOTTOMRIGHT", b, "TOPLEFT", right, -bottom }, grow = "LEFT", growY = "UP", lineSize = z.hots[3] + 1,
+  return { point = { "BOTTOMRIGHT", b, "BOTTOMRIGHT", right - z.width, z.height - bottom }, grow = "LEFT", growY = "UP", lineSize = z.hots[3] + 1,
     gap = 1, mouse = false, level = b:GetFrameLevel() + 10,
     groups = { { filter = "HELPFUL|PLAYER|RAID_IN_COMBAT", max = count, size = z.icon, pandemic = true } } }
 end
