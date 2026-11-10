@@ -100,14 +100,15 @@ end
 
 -- Showing -----------------------------------------------------------------------------------
 
--- Lights an item's glow to a strength, or turns it off (nil, 0 or a hidden item).
--- The strength may be secret, so only its type is tested.
+-- Lights an item's glow to a strength, or turns it off (nil or 0). The strength may be secret, so only its type is
+-- tested. The item's own shown state is never read: the client drives it from aura data and may answer a hidden
+-- value, which the glow can't test; the ring is drawn on the item, so a hidden item hides it anyway.
 function CG.Light(item, strength)
   local glow, given = vgGlow[item], type(strength) ~= "nil"
   if not glow and not given then return end
   glow = glow or T.Glow(item, 6)
   vgGlow[item] = glow
-  T.ShowGlow(glow, given and ns.PlainNumber(strength) ~= 0 and item:IsShown())
+  T.ShowGlow(glow, given and ns.PlainNumber(strength) ~= 0)
   for _, piece in ipairs(glow) do if given then piece:SetAlpha(strength) end end
 end
 
