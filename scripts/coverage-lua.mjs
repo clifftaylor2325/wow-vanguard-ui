@@ -34,7 +34,7 @@ try {
 
 // The addon's own Lua that at least one client loads (a file the TOC's game-type tags keep to one
 // client counts once, covered by that client's cases); the vendored libraries in Libs/ are not counted.
-// With VG_SKIP_RETAIL (a pull request's run, without the Retail-only tests) only the Lua Forever loads counts.
+// With VG_SKIP_RETAIL (a local run without the Retail-only tests) only the Lua Forever loads counts.
 const tocLua = process.env.VG_SKIP_RETAIL ? clientPaths(readToc(root), "forever") : anyClientPaths(readToc(root));
 const luaFiles = tocLua.filter((file) => file.endsWith(".lua") && !file.startsWith("Libs/"));
 const report = coverageReport(root, luaFiles);

@@ -1,5 +1,5 @@
-// smoke: the Lua harness cases the pull-request gate runs (npm run
-// test:quick, .github/workflows/verify.yml). The addon loads, logs in on a
+// smoke: the Lua harness cases of the fast local run (npm run test:quick,
+// and the pre-push hook). The addon loads, logs in on a
 // finished-setup account, draws its default layout, unlocks and locks its
 // frames, plays a couple of seconds, and has caught no error: once as each
 // client the TOC declares (WoW Forever 16001, Retail 120105), and once more

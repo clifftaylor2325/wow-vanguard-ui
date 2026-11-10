@@ -4,14 +4,13 @@ name: verify
 # "Quick checks" job in the main branch's ruleset). Spelling (typos), the
 # code-quality scan, the TOC against the files on disk
 # (scripts/check-toc.mjs), luacheck, Lua 5.1 syntax (the game runs Lua 5.1;
-# the test harness, fengari, is Lua 5.3), the JS tests plus one Lua smoke
-# test (npm run test:quick), and the release zip's contents. Built to finish
-# inside a minute: a private repository's Actions minutes are counted, and a
-# job bills by the started minute. The full Lua harness with the coverage
-# floor runs in full-suite.yml (when a pull request is opened ready for
-# review or marked ready for review, on later pushes while it carries the
-# "full-tests" label, weekly, and from the Actions tab) and on each release
-# (release.yml). Markdown lint is separate and not required (markdown.yml).
+# the test harness, fengari, is Lua 5.3), and the release zip's contents.
+# No tests run here (Cliff, 2026-11-10): the whole suite runs on the
+# branch on the agent's machine before the pull request merges (CLAUDE.md,
+# Working method), weekly on main (full-suite.yml), and as the gate in front
+# of each release (release.yml). Built to finish inside a minute, since a
+# job bills by the started minute. Markdown lint is separate and not
+# required (markdown.yml).
 # This check runs on every push of a pull request that is not a draft
 # (ready_for_review starts it), whatever the label. A draft skips the job
 # with its `if`, which counts as passing. There is deliberately no path
@@ -102,9 +101,6 @@ jobs:
             luac5.1 -p "$file" || status=1
           done < Vanguard.toc
           exit $status
-      - name: JS tests and the Lua smoke test
-        if: steps.changes.outputs.docs_only != 'true'
-        run: npm run test:quick
       - name: Release zip builds and holds every file it should
         if: steps.changes.outputs.docs_only != 'true'
         run: |

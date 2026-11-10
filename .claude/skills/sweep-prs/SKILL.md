@@ -19,6 +19,6 @@ Cheap work for the cheapest model and effort: list, read, decide, report. No cod
 
 ## Do not
 
-- Push to re-run a green check, or add the `full-tests` label to make a sweep feel thorough; CI minutes are counted.
+- Push to re-run a green check, or start a full suite on a branch to make a sweep feel thorough; CI minutes are counted. A PR's tests are the local run its body reports.
 - Mark a draft ready; only its own thread or Cliff does that.
 - Report time estimates; report what each PR waits on.
