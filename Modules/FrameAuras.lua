@@ -63,9 +63,19 @@ local function debuffGroups(look, size)
   }
 end
 
+-- The width an aura row wraps at: a banner's line (a big one stands too narrow for a row, under the Standards HUD
+-- layout: Modules/UnitFrameLayouts.lua), else the frame's own width.
+FA.BANNER_LINE = 160
+
+-- The width a frame's aura rows wrap at (when built: a layout change takes a reload to widen them).
+local function lineWidth(f)
+  if UF.Standing(f) and UF.Layouts.Big(f) then return FA.BANNER_LINE end
+  return f:GetWidth()
+end
+
 -- The debuff row under a frame, wrapping at its width.
 function FA.DebuffSpec(f, look, size)
-  return { point = { "TOPLEFT", f, "BOTTOMLEFT", 0, -3 }, grow = "RIGHT", growY = "DOWN", lineSize = f:GetWidth(),
+  return { point = { "TOPLEFT", f, "BOTTOMLEFT", 0, -3 }, grow = "RIGHT", growY = "DOWN", lineSize = lineWidth(f),
     gap = 2, timer = look.timers, masque = FA.MASQUE, groups = debuffGroups(look, size) }
 end
 
@@ -78,7 +88,7 @@ end
 
 -- The buff row above a frame (over its tab, where the look gives it one: UF.Crown), wrapping at its width.
 function FA.BuffSpec(f, look)
-  return { point = { "BOTTOMLEFT", UF.Crown(f), "TOPLEFT", 0, 3 }, grow = "RIGHT", growY = "UP", lineSize = f:GetWidth(),
+  return { point = { "BOTTOMLEFT", UF.Crown(f), "TOPLEFT", 0, 3 }, grow = "RIGHT", growY = "UP", lineSize = lineWidth(f),
     gap = 2, timer = look.timers, masque = FA.MASQUE, groups = buffGroups(look) }
 end
 

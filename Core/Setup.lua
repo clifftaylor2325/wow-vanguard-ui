@@ -43,6 +43,10 @@ S.LAYOUTS = {
   { key = "healing", text = L["Centered: healing"], hint = L["Party and raid above your frames, drawn larger (a big raid stacked at the left of your character), your own and your target's frames a little smaller, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on."] },
   { key = "versus", text = L["Versus deck"], hint = L["Centered for your role, with your frame and your target's joined by one shield panel under your character, the crest between them and your cast bar in the middle."] },
   { key = "classic", text = L["Like the game's"], hint = L["Your frames at the top left as the game has them, party and raid down the left side."] },
+  { key = "fort", text = L["The keep"],
+    hint = L["Centered for your role, then one wall at the foot of the screen: your frame and your target's at its ends, your cast bar in the gatehouse."] },
+  { key = "standards", text = L["Standards"],
+    hint = L["Centered for your role, then your frame and your target's stand as tall banners either side of you, the small frames beside them."] },
   { key = "keep", text = L["Keep my current layout"], hint = L["Moves nothing: your frames stay where they are."] },
 }
 -- Like the game's: player and target along the top left (the pet under the
@@ -177,8 +181,9 @@ local function presetKeys()
 end
 
 -- Puts everything a preset moves or sizes back at Vanguard's defaults, so picking one
--- layout undoes the others, Versus deck and Like the game's (the deck goes off too).
+-- layout undoes the others, Versus deck, Like the game's, the keep and Standards (the deck and the HUD layout go off too).
 local function restoreDefaults()
+  ns.SetHudLayout(nil)
   for key in pairs(presetKeys()) do
     ns.Settings("positions")[key] = nil
     ns.ResetMovers(key)
@@ -252,6 +257,14 @@ function APPLY.versus()
   end
   S.SetTargetHeight(nil)
   S.SetDeck(true)
+end
+
+-- The keep and Standards: your role's centered layout, then the HUD layout's spots and sizes on top (Core/HudLayout.lua).
+for _, layout in ipairs({ "fort", "standards" }) do
+  APPLY[layout] = function()
+    APPLY[S.GuessLayout()]()
+    ns.SetHudLayout(layout)
+  end
 end
 
 -- Applies a layout preset by key, backing the profile up first unless it is Keep.

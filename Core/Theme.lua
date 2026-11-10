@@ -797,13 +797,17 @@ local function placeEdges(e, frame, pad, geo)
   for side, points in pairs(EDGE_POINTS) do placeEdge(e[side], frame, side, points, T.PixelRound(frame, pad or 0), geo) end
 end
 
--- Shows the four edges, except a side cut to a shield point: its two cuts meet at mid-height, so the frame has no
--- outer edge (judged from the geometry, never the frame's size, which a fight may hide).
+-- Shows the four edges, except a side cut to a shield point (its two cuts meet at mid-height, so the frame has no
+-- outer edge) or the bottom of a banner's hem (both corners pointed, meeting under the middle), judged from the
+-- geometry, never the frame's size, which a fight may hide.
 function corner.showEdges(e, geo)
-  e.top:Show() e.bottom:Show()
   local art = type(geo) == "table" and geo.art or nil
-  e.left:SetShown(not (art and art.TOPLEFT == "point"))
-  e.right:SetShown(not (art and art.TOPRIGHT == "point"))
+  -- Whether a corner of the geometry is cut to a point.
+  local function pointed(point) return art ~= nil and art[point] == "point" end
+  e.top:Show()
+  e.bottom:SetShown(not (pointed("BOTTOMLEFT") and pointed("BOTTOMRIGHT")))
+  e.left:SetShown(not pointed("TOPLEFT"))
+  e.right:SetShown(not pointed("TOPRIGHT"))
 end
 
 -- Four edge textures around frame, `pad` units out past its edges (sized to one pixel when painted).
@@ -1243,10 +1247,10 @@ function corner.geometry(frame, entry)
   return T.UniformCorners(T.CORNER_ART[look].size * T.Pixel(frame) * scale, look)
 end
 
--- Hides the edges the HUD look leaves undrawn on a painted frame with a role (T.HudOpenSides, Core/HudLook.lua: a
--- tab's bottom, where it joins its frame).
+-- Hides the edges a painted frame leaves undrawn: its own open sides (opts.open: the keep's gatehouse where it meets
+-- the wall) or the HUD look's for its role (T.HudOpenSides, Core/HudLook.lua: a tab's bottom, where it joins its frame).
 function corner.hideOpen(e, entry)
-  local open = entry.opts.role and T.HudOpenSides and T.HudOpenSides(entry)
+  local open = entry.opts.open or (entry.opts.role and T.HudOpenSides and T.HudOpenSides(entry))
   for side in pairs(open or NO_PARTS) do e[side]:Hide() end
 end
 
@@ -1455,9 +1459,11 @@ function corner.hairToken(entry)
 end
 
 -- Places, sizes and colours a hairline's parts a pixel inside the border for a geometry, in a token, and shows the
--- edges on the sides the HUD look keeps (T.HudHairSides, all four unless it says).
-function corner.placeHair(p, frame, geo, token)
-  local inset, sides = -T.Pixel(frame), T.HudHairSides and T.HudHairSides()
+-- edges on the sides the frame keeps (opts.hairSides: the keep's parapet along the top) or the HUD look does
+-- (T.HudHairSides), all four unless one says.
+function corner.placeHair(entry, frame, geo, token)
+  local p = entry.parts
+  local inset, sides = -T.Pixel(frame), entry.opts.hairSides or (T.HudHairSides and T.HudHairSides())
   placeEdges(p.hair.edges, frame, inset, geo) sizeEdges(p.hair.edges, frame)
   placeCorners(p.hair.corners, frame, inset, geo) corner.art(p.hair.corners, frame, geo, "line")
   for _, t in pairs(p.hair.edges) do T.Tint(t, token) t:Show() end
@@ -1472,7 +1478,7 @@ end
 function corner.paintHair(frame, entry, geo, token)
   local p = entry.parts
   if not p.hair then if not token then return end p.hair = hairParts(frame) end
-  if token then return corner.placeHair(p, frame, geo, token) end
+  if token then return corner.placeHair(entry, frame, geo, token) end
   for _, t in pairs(p.hair.edges) do t:Hide() end
   for _, t in pairs(p.hair.corners) do t:Hide() end
 end

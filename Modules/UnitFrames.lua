@@ -246,14 +246,28 @@ UF.NAME_ROW = 14
 -- A unit frame's name tab under the Tabs look (Core/HudLook.lua): its height in units, and its least width.
 UF.TAB = { height = 18, min = 48 }
 
--- Whether the Versus deck holds a frame now (your frame and your target's while the deck is on).
-local function decked(f)
-  return UF.settings.deck == true and UF.COMBAT.keys[f.key] == true
+-- Whether a frame stands as a banner now: the Standards HUD layout (Core/HudLayout.lua) is in force and the frame is
+-- one of the five it plants (Modules/UnitFrameLayouts.lua lays its parts out).
+---@param f table a unit frame
+---@return boolean
+function UF.Standing(f)
+  return ns.HudLayout() == "standards" and UF.LAYOUT_BY_KEY[f.key] ~= nil
 end
 
--- Whether a frame wears its name tab now: the look gives one (T.HudTab) and the deck doesn't hold the frame.
+-- Whether the Versus deck is on now: switched on, under the Centered layout (the keep and Standards leave it off).
+local function deckOn()
+  return UF.settings.deck == true and ns.HudLayout() == "centered"
+end
+
+-- Whether the Versus deck holds a frame now (your frame and your target's while the deck is on).
+local function decked(f)
+  return deckOn() and UF.COMBAT.keys[f.key] == true
+end
+
+-- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame and it
+-- doesn't stand as a banner.
 local function tabbed(f)
-  return f.tab ~= nil and T.HudTab() and not decked(f)
+  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f)
 end
 
 -- How far the bars sit inside a frame's edge: a screen pixel (not one UI unit, which shows a sliver of panel when
@@ -276,10 +290,12 @@ local function healthHeight(f, h)
   return h - barsTop(f) - UF.settings.powerHeight - 2 * barInset(f)
 end
 
--- Lays out the bars inside a frame: health on top (under the name row on a bare frame), power along the bottom,
--- each the bar inset from the border.
+-- Lays out the bars across a frame: health on top (under the name row on a bare frame), power along the bottom,
+-- each the bar inset from the border; both filling along (a banner stood them on end).
 local function layoutBars(f, powerHeight)
   local inset = barInset(f)
+  f.health:SetOrientation("HORIZONTAL") f.power:SetOrientation("HORIZONTAL")
+  f.health:ClearAllPoints() f.power:ClearAllPoints()
   f.health:SetPoint("TOPLEFT", inset, -barsTop(f))
   f.health:SetPoint("BOTTOMRIGHT", -inset, powerHeight + 2 * inset)
   f.power:SetPoint("TOPLEFT", f.health, "BOTTOMLEFT", 0, -inset)
@@ -532,20 +548,21 @@ local function placeMarks(f, side)
   if f.tag then f.tag:ClearAllPoints() f.tag:SetPoint("CENTER", f, point, inward(far, 18), -2) end
 end
 
--- The hairline token for a frame: brass in your and your target's rims while they are shields or the look lines
--- every frame (Hairline, Rimmed), brighter in a fight (UF.PaintCombat); none otherwise (the look's own line, if any,
--- stays on the other frames).
+-- The hairline token for a frame: brass in your and your target's rims while they are shields or banners or the look
+-- lines every frame (Hairline, Rimmed), brighter in a fight (UF.PaintCombat); none otherwise (the look's own line, if
+-- any, stays on the other frames).
 local function hairToken(f)
-  if not (UF.COMBAT.keys[f.key] and (pointedSide(f) or T.LookHairOf(f))) then return nil end
+  if not (UF.COMBAT.keys[f.key] and (pointedSide(f) or UF.Standing(f) or T.LookHairOf(f))) then return nil end
   if f.vgFighting then return "accent" end
   return "accentDim"
 end
 
 -- The roles a frame's name (and level) and health text take: the deck's while it holds the frame, the outlined HUD
--- roles under a look that draws them on the world or a fill, else their own.
+-- roles under a look that draws them on the world or a fill, or on a banner (its name stands over the world, its
+-- number on the fill), else their own.
 local function textRoles(f)
   if decked(f) then return UF.DECK.text, UF.DECK.text end
-  if T.HudOutlined() then return "hudName", "hudNumber" end
+  if T.HudOutlined() or UF.Standing(f) then return "hudName", "hudNumber" end
   return "name", "number"
 end
 
@@ -557,13 +574,21 @@ function UF.TextRoles(f)
   T.Text(f.healthText, number, T.ColorToken(f.healthText))
 end
 
--- Spans a frame's crown from its bottom corners up to its tab's top while it wears one, else to its own top.
+-- The frame a crown's top follows: the tab while the frame wears one, the name line over a big banner (Standards),
+-- else the frame itself.
+local function crownTop(f)
+  if tabbed(f) then return f.tab end
+  if UF.Standing(f) and UF.Layouts.Big(f) then return f.name end
+  return f
+end
+
+-- Spans a frame's crown from its bottom corners up to its tab's or name line's top while it wears one, else to its own top.
 local function placeCrown(f)
   local crown = f.crown
   if not crown then return end
   crown:ClearAllPoints()
   crown:SetPoint("BOTTOMLEFT") crown:SetPoint("BOTTOMRIGHT")
-  crown:SetPoint("TOP", tabbed(f) and f.tab or f, "TOP")
+  crown:SetPoint("TOP", crownTop(f), "TOP")
 end
 
 -- The frame the rows over a unit frame anchor to (the combo points, the totems, the target's buffs and threat text):
@@ -618,20 +643,38 @@ local function readSide(f)
   return pointedSide(f) or "LEFT"
 end
 
--- Lays a frame's parts out for the HUD look: the hairline (the bars step in past it), the bars (under the name row on
--- a bare frame), the texts' roles, the tab, the name reading from the side its shield points from or its tab sits over
--- (the left otherwise), the health text and marks at the other end, the raid icon, and the bars filling toward your character.
-function UF.PlaceParts(f)
-  T.SetHairline(f, hairToken(f))
+-- Shows a frame's texts (a small banner hid its name and number).
+local function showTexts(f)
+  f.name:Show() f.healthText:Show()
+  if f.level then f.level:Show() end
+end
+
+-- Lays a frame's parts out across it (Centered and the keep): the bars (under the name row on a bare frame), the
+-- texts, the name reading from the side its shield points from or its tab sits over (the left otherwise), the health
+-- text and marks at the other end, the raid icon, and the bars filling toward your character.
+local function placeAcross(f)
   layoutBars(f, UF.settings.powerHeight)
-  UF.TextRoles(f)
+  showTexts(f)
   local side = readSide(f)
-  placeTab(f)
   placeHealthText(f, side)
   placeName(f, side)
   placeMarks(f, side)
   placeRaidIcon(f, side)
   f.health:SetReverseFill(fillsFromRight(f)) f.power:SetReverseFill(fillsFromRight(f))
+end
+
+-- The marks' placing, for the layouts' banners (Modules/UnitFrameLayouts.lua).
+UF.PlaceMarks = placeMarks
+
+-- Lays a frame's parts out for the HUD look and layout: the hairline (the bars step in past it), the texts' roles,
+-- the tab (sized to the name in its role), then the parts on end while the frame stands as a banner
+-- (UF.Layouts.PlaceStandard), else across the frame.
+function UF.PlaceParts(f)
+  T.SetHairline(f, hairToken(f))
+  UF.TextRoles(f)
+  placeTab(f)
+  if UF.Standing(f) then return UF.Layouts.PlaceStandard(f) end
+  placeAcross(f)
 end
 
 -- How far the Tabs look lifts what sits over a unit frame (a cast bar's default spot, the target of target's narrow
@@ -672,6 +715,15 @@ function UF.DownToken(down)
   return (down == L["Dead"] or down == L["Ghost"]) and "bad" or "text2"
 end
 
+-- The health text a frame shows: on a banner the percent (its top is too narrow for a number; secret, it is shown
+-- untested), a down word still; else the health text setting's form (UF.HealthText).
+local function healthWord(f)
+  if not UF.Standing(f) or UF.DownState(f.unit) then return UF.HealthText(f.unit) end
+  local percent = UF.PercentText(f.unit)
+  if isSecret(percent) or type(percent) == "string" then return percent end
+  return UF.HealthText(f.unit)
+end
+
 -- Health bar value, color and text. Raw values go straight to the bar; the
 -- text may be secret, so it goes to the font string untested. A down word keeps its status colour.
 function UF.UpdateHealth(f)
@@ -679,7 +731,7 @@ function UF.UpdateHealth(f)
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
   UF.PaintHealth(f)
-  if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit)) else f.healthText:SetText("") end
+  if UF.settings.healthText then f.healthText:SetText(healthWord(f)) else f.healthText:SetText("") end
   local token = down and UF.DownToken(down) or "text"
   if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
 end
@@ -897,9 +949,29 @@ local function watch(f)
   if f.unit ~= "player" and type(RegisterUnitWatch) == "function" then RegisterUnitWatch(f) end
 end
 
+-- A frame's size by key: the HUD layout's while it gives one (Core/HudLayout.lua ns.LayoutSize), else its row's,
+-- the target as tall as its height setting.
+---@param key string one of the five frame keys (player, target, targettarget, focus, pet)
+---@return number w
+---@return number h
+function UF.FrameSize(key)
+  local def = UF.LAYOUT_BY_KEY[key]
+  local w, h = ns.LayoutSize("uf_" .. key)
+  if w then return w, h end
+  if key == "target" then return def.w, UF.TargetHeight() end
+  return def.w, def.h
+end
+
+-- The size a frame is built at: one of the five's for the layout (UF.FrameSize), else its spec's.
+local function sizeOf(key, spec)
+  if UF.LAYOUT_BY_KEY[key] then return UF.FrameSize(key) end
+  return spec.w, spec.h
+end
+
 -- Creates and wires one frame, its unit the same as its key. size has w and h (a LAYOUT row, PARTY or UF.BOSS).
 local function addFrame(key, size)
-  local f = createUnitFrame(key, size.w, size.h, size.outer)
+  local w, h = sizeOf(key, size)
+  local f = createUnitFrame(key, w, h, size.outer)
   if key == "target" or key == "focus" then addClassMark(f) end
   if key == "target" then addTagMark(f) end
   if key == "player" then addCombatMark(f) end
@@ -1063,7 +1135,7 @@ end
 -- Shows or hides the deck (made the first time it shows); the two frames round with it, and every frame's parts
 -- follow (the target's bars mirror on the deck).
 local function deckNow()
-  local on, player, target = UF.settings.deck == true, UF.frames.player, UF.frames.target
+  local on, player, target = deckOn(), UF.frames.player, UF.frames.target
   if not (player and target) then return end
   if on and not UF.deck then UF.deck = deckPanel(player, target) end
   if UF.deck then UF.deck:SetShown(on) end
@@ -1095,18 +1167,31 @@ local function fitDeckTop(player)
   UF.deck:SetPoint("BOTTOMRIGHT", UF.frames.target, "BOTTOMRIGHT", pad, -(pad + reach.bottom))
 end
 
--- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button), its shield point and texts
--- with it, and the deck too.
+-- Sizes a frame to UF.FrameSize, its shape (a shield point, a banner's hem) and parts with it.
+local function resize(f)
+  f.vgWidth, f.vgHeight = UF.FrameSize(f.key)
+  T.PixelSize(f, f.vgWidth, f.vgHeight)
+  T.RepaintFrame(f)
+  UF.PlaceParts(f)
+end
+
+-- Sizes the five frames for the HUD layout and the target's height setting (out of combat: they are secure
+-- buttons), and the deck with them.
 function UF.ApplySizes()
-  local target = UF.frames.target
-  if not target then return end
+  if not UF.frames.target then return end
   ns.OutOfCombat(function()
-    target.vgHeight = UF.TargetHeight()
-    T.PixelSize(target, UF.LAYOUT_BY_KEY.target.w, target.vgHeight)
-    T.RepaintFrame(target)
-    UF.PlaceParts(target)
+    for _, def in ipairs(LAYOUT) do
+      if UF.frames[def.key] then resize(UF.frames[def.key]) end
+    end
     fitDeckTop(UF.frames.player)
   end)
+end
+
+-- Lays the HUD layout out again (Core/HudLayout.lua: it changed, or the canvas did and the keep holds on wide
+-- canvases only): the frames' sizes and the deck (UF.ApplyDeck, the keystone with it), then the keep's wall.
+function UF.ApplyLayout()
+  UF.ApplyDeck()
+  if UF.Layouts then UF.Layouts.ApplyKeep() end
 end
 
 -- Applies the Versus deck setting: now, or when combat ends (a new deck joins the Calm HUD); the keystone steps
@@ -1150,13 +1235,14 @@ function UF.ApplyCalm()
   V.ApplyCalm()
 end
 
--- Module entry point (Core/Modules.lua): build once out of combat, then listen.
+-- Module entry point (Core/Modules.lua): the layouts' part first (the frames take their shape as they are built),
+-- build once out of combat, then listen; the keystone last (it stands between the built frames). The parts are files
+-- of their own, loaded after this one.
 function UF.Enable(settings)
   UF.settings = settings
+  if UF.Layouts then UF.Layouts.Enable() end
   ns.OutOfCombat(function() build(settings) end)
-  for event in pairs(GLOBAL_EVENTS) do
-    ns.On(event, onGlobalEvent)
-  end
+  for event in pairs(GLOBAL_EVENTS) do ns.On(event, onGlobalEvent) end
   ns.On("RAID_TARGET_UPDATE", UF.RefreshRaidIcons)
   ns.On("PLAYER_REGEN_DISABLED", UF.CombatStarts)
   ns.On("PLAYER_REGEN_ENABLED", UF.RefreshCombat)

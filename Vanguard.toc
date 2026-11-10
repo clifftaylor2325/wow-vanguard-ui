@@ -71,6 +71,7 @@ Core/Layout.lua
 Core/Grid.lua
 Core/Movers.lua
 Core/MoverLinks.lua
+Core/HudLayout.lua
 Core/Widgets.lua
 Core/Controls.lua
 Core/Chrome.lua
@@ -115,6 +116,7 @@ Core/Visibility.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua
 Modules/Keystone.lua
+Modules/UnitFrameLayouts.lua
 Modules/FrameAuras.lua
 Modules/PlayerAuras.lua
 Modules/ComboPoints.lua
