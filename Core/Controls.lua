@@ -444,14 +444,15 @@ local function closeWhenOwnerGone(m)
   if host and not host:IsVisible() then W.CloseMenu() end
 end
 
--- Escape and a fight close the menu (a fight, so its click catcher is never up over the action bars). The menu
+-- Escape and a fight close the menu (a fight, so its click catcher is never up over the action bars; a menu opened in a
+-- fight gets no catcher at all, so the next click on a bar is not swallowed). The menu
 -- showed or hid: its catcher follows (just under it), and the dropdown that opened it keeps its hover
 -- look (T.HoldHover) only while it is open; while open it watches that its dropdown's window still shows.
 local function wireMenuState()
   ns.CloseOnEscape(menu)
   ns.On("PLAYER_REGEN_DISABLED", W.CloseMenu)
   menu:SetScript("OnUpdate", closeWhenOwnerGone)
-  menu:SetScript("OnShow", ns.Guard("menu show", function(m) m.catcher:Show() end))
+  menu:SetScript("OnShow", ns.Guard("menu show", function(m) m.catcher:SetShown(not ns.InCombat()) end))
   menu:SetScript("OnHide", ns.Guard("menu hide", function(m)
     m.catcher:Hide()
     if m.owner then T.HoldHover(m.owner, false) end

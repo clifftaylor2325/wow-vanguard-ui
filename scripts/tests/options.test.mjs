@@ -2329,3 +2329,14 @@ it("ns.Ask: a question displaced by another answers No once, then the new one st
   addon.click("Vanguard_Question.no");
   expect(addon.eval("return { __no.a, __no.b }"), "B's No runs once and A's is not run again").toEqual([1, 1]);
 });
+
+it("dropdowns: a menu opened in a fight puts no click catcher over the screen, one opened out of a fight does", () => {
+  const addon = loggedIn();
+  addon.eval(`local d = ns.Widgets.Dropdown(UIParent, { { "a", "A" }, { "b", "B" } }, function() return "a" end, function() end)
+    d:SetPoint("CENTER") d:Show() __d = d`);
+  const open = () => addon.eval("__d.__scripts.OnClick(__d) local out = { ns.Widgets.MenuOpen(), Vanguard_Menu.catcher:IsShown() } ns.Widgets.CloseMenu() return out");
+  expect(open(), "out of a fight: the catcher is up").toEqual([true, true]);
+  setCombat(addon, true);
+  expect(open(), "in a fight: the menu opens, no catcher").toEqual([true, false]);
+  setCombat(addon, false);
+});
