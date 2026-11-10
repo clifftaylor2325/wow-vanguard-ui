@@ -229,3 +229,13 @@ it("home: on Retail, which had no beta, the notice, /vg launch, /vg help and the
   expect(addon.eval(`local page for _, p in ipairs(ns.Options.PAGES) do if p.key == "town" then page = p end end
     for _, row in ipairs(page.rows()) do if row[2] == "Data from the beta" then return true end end return false`), "the Town page has no beta section").toBe(false);
 });
+
+it("home: Display hands back a hidden, missing or non-text name as it was", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local s = __wfgWorld.secret and __wfgWorld.secret("Ally-Elsewhere") or { __secret = true }
+    local ok1, a = pcall(ns.Home.Display, s)
+    local ok2, b = pcall(ns.Home.Display, nil)
+    local ok3, c = pcall(ns.Home.Display, 42)
+    return { ok1, a == s, ok2, b == nil, ok3, c }`);
+  expect(out).toEqual([true, true, true, true, true, 42]);
+});

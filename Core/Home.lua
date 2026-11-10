@@ -115,8 +115,9 @@ local function isMyRealm(realm)
 end
 
 -- A player's name to show: "Name" for someone on your realm, else as the client gave it
--- ("Name-Realm"). Whispers and comparisons keep the full name.
+-- ("Name-Realm"). Whispers and comparisons keep the full name. A hidden or non-text name comes back as it was.
 function H.Display(name)
+  if ns.IsSecret(name) or type(name) ~= "string" then return name end
   local base, realm = name:match("^([^%-]+)%-(.+)$")
   if base and isMyRealm(realm) then return base end
   return name
