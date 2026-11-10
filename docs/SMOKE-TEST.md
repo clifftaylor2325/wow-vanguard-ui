@@ -5483,6 +5483,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, the drawer under the quantity window is gone at once and a merchant repairs and sells nothing; on, the next merchant and quantity window work as before, with no reload.
 - If it fails, paste: a screenshot of the quantity window and `/vg errors`.
 
+### 35.9 Talent planner
+
+- Do: open the talents window, switch Plan on and plan a talent (a badge shows, the bar shows Spend planned). With the window open, switch **Talent planner** off under `/vg` → Modules, then click a talent and type `/vg talents spend`; switch it on again.
+- Expect: off, the badges, rings and the bar are gone at once, clicking a talent only does what the game does and the command says the planner is off; nothing is spent. On, the bar and your plan return on the open window.
+- If it fails, paste: a screenshot of the talents window and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
