@@ -17,7 +17,7 @@ local T = ns.Theme
 -- The glow rings, kept off the game's items (Core/Events.lua, ns.FrameState).
 local vgGlow = ns.FrameState("vgGlow")
 
-local CG = ns.Module("CooldownGlow", { defaults = { glow = false, percent = 30 } })
+local CG = ns.Module("CooldownGlow", { defaults = { glow = false, percent = 30 }, live = true })
 -- The share (per cent) the glow can be set to: the options slider's and /vg cdmglow's limits.
 CG.PERCENT = { min = 10, max = 60 }
 
@@ -132,14 +132,22 @@ function CG.Tick()
   for _, item in ipairs(CG.Items()) do CG.Light(item, CG.Strength(item, CG.settings.percent)) end
 end
 
--- Starts looking when the glow is on, and stops (putting the glows out) when it is off. Applied at once.
+-- Puts every glow out.
+local function clear()
+  for _, item in ipairs(CG.Items()) do CG.Light(item, nil) end
+end
+
+-- Starts looking when the glow is on (the scope's ticker), and stops (putting the glows out) when it is off. Applied
+-- at once; nothing while the module is switched off.
 function CG.Apply()
-  if CG.ticker then CG.ticker:Cancel() CG.ticker = nil end
-  if CG.settings.glow and C_Timer and C_Timer.NewTicker then
-    CG.ticker = C_Timer.NewTicker(CG.EVERY, ns.Guard("timer cooldown glow", CG.Tick))
+  local scope = CG.scope
+  if not (scope and scope:Running()) then return end
+  if CG.settings.glow then
+    scope:Every("cooldown glow", CG.EVERY, CG.Tick)
     return CG.Tick()
   end
-  for _, item in ipairs(CG.Items()) do CG.Light(item, nil) end
+  scope:Every("cooldown glow", nil, CG.Tick)
+  clear()
 end
 
 -- Sets the share (per cent), kept within CG.PERCENT; the glow takes it at its next look.
@@ -153,8 +161,13 @@ function CG.SetGlow(on)
   CG.Apply()
 end
 
+-- The module switched off (Core/Modules.lua): the glows on the game's items go out (the ticker goes with the scope).
+function CG.Disable()
+  clear()
+end
+
 -- Module entry point (Core/Modules.lua).
-function CG.Enable(settings)
-  CG.settings = settings
+function CG.Enable(settings, scope)
+  CG.settings, CG.scope = settings, scope
   CG.Apply()
 end

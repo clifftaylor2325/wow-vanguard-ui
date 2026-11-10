@@ -262,7 +262,7 @@ local nineSliceCommand = switchCommand({
 -- /vg cdmglow [on|off|<percent>]: the Cooldown Manager refresh-window glow (#252), at once.
 local function cdmGlowCommand(rest)
   local CG = ns.GetModule("CooldownGlow")
-  if not CG.settings then return chat(L["Cooldown glow is off: turn the module on in the options first."]) end
+  if not ns.ModuleLive("CooldownGlow") then return chat(L["Cooldown glow is off: turn the module on in the options first."]) end
   local percent = tonumber(rest)
   if percent then CG.SetPercent(percent) end
   local on = percent ~= nil or toggleWord(rest, CG.settings.glow)
