@@ -3365,6 +3365,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 - Do: with the minimap coordinates on, take a portal or hearth, and stand still once the loading screen ends; also `/reload` while standing still.
 - Expect: the coordinates show numbers within a second of the screen coming back, without taking a step.
+- Also do (the switch, no reload): under `/vg` → Map untick **Coordinates under the minimap**, then tick it again. Expect: the coordinates' band and text go and come back at once, and the numbers update as you move after ticking it. [Needs in game: that the bottom band and the buttons on it look right with the coordinates off.]
 - If it fails, paste: where you were, how long the coordinates stayed blank, and `/vg errors`.
 
 ### 33.141 A browsed item the game hadn't loaded is priced once it loads

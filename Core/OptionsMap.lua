@@ -15,7 +15,7 @@ local function minimapRows()
   return {
     { "header", L["Minimap and waypoints"] },
     { "cycle", L["Minimap shape (reload)"], { { "auto", L["Follow the theme"] }, { "square", L["Square"] }, { "round", L["Round"] } }, reloadSetting("Minimap", "shape") },
-    check(L["Coordinates under the minimap"], reloadSetting("Minimap", "coords")), check(L["Coordinates on the world map (reload)"], reloadSetting("Waypoints", "mapCoords")),
+    check(L["Coordinates under the minimap"], liveMethod("Minimap", "coords", "ApplyCoords")), check(L["Coordinates on the world map (reload)"], reloadSetting("Waypoints", "mapCoords")),
     check(L["The /way command (reload)"], reloadSetting("Waypoints", "slash")),
     check(L["Vanguard look on the waypoint pin (reload)"], reloadSetting("Waypoints", "pin")),
     check(L["Icons on the minimap's corners (reload)"], reloadSetting("Minimap", "icons")),
