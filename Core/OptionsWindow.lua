@@ -153,12 +153,14 @@ local function buttonRow(c, r)
   return b
 end
 
--- A text row { "text", words, tier }: a line in label text2 (a status line), or with tier "note" a note in
--- small muted under the row it explains; it wraps to the card's inside width, as far from the right edge as it
+-- A text row { "text", words, tier }: a line in label text2 (a status line), with tier "note" a note in
+-- small muted under the row it explains, or with tier "empty" an empty-state line in label muted (it says what
+-- would fill the list); it wraps to the card's inside width, as far from the right edge as it
 -- starts from the left (its row grows to fit; see rowHeight).
 local function textRow(c, r)
   local fs = W.Text(c, r[2])
   if r[3] == "note" then T.Text(fs, "small", "muted") end
+  if r[3] == "empty" then T.Text(fs, "label", "muted") end
   fs:SetWidth(INNER)
   return fs
 end
@@ -1178,10 +1180,12 @@ local function showPage()
 end
 
 -- Brings the window up (fading in as it rises into place, with a sound) or, when it was already
--- open, plays the page sound for a new page.
+-- open, plays the page sound for a new page and fades that page's card in (T.FadeIn: at once with Reduce motion,
+-- never over T.COMBAT_FADE in a fight).
 local function appear(previous)
   if not previous then T.Sound("open") elseif previous ~= O.current then T.Sound("page") end
   if previous then T.StopFade(window) else T.OpenWindow(window) end
+  if previous and previous ~= O.current and pages[O.current] then T.FadeIn(pages[O.current]) end
   if pages[O.current] then pages[O.current]:ScrollTo(pages[O.current]:GetVerticalScroll() or 0) end
 end
 

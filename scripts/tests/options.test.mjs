@@ -3,7 +3,7 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { BUFF_NAMES, CLICK_LUA, DATA_ENV, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
+import { BUFF_NAMES, CLICK_LUA, DATA_ENV, FAKE_FADES, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
 
 it("options window", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
@@ -2103,9 +2103,40 @@ it("options: your faction's crest sits in the footer, left of the version line, 
   expect(addon.eval("for _, r in ipairs({ Vanguard_Options.header:GetRegions() }) do if r == Vanguard_Options.crest then return false end end return true"), "the header no longer holds the faction crest").toBe(true);
 });
 
+it("options Modules: a Show choice that leaves no module says so in an empty-state line, with a button back to every module", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('for _, name in ipairs(ns.ModuleNames()) do ns.SetModuleEnabled(name, true) end ns.Options.moduleFilter = "off" ns.Options.Show("modules")');
+  // The empty-state line: its text, font size and colour token; and how many module switches show.
+  const page = () => addon.eval(`local line, switches = false, 0
+    for _, w in ipairs(__wfgStub.frames) do
+      if w.__kind == "FontString" and w:IsVisible() and w:GetText() == "No module is switched off." then line = { w:GetText(), select(2, w:GetFont()), ns.Theme.ColorToken(w) } end
+      if w.desc and w:IsVisible() then switches = switches + 1 end
+    end
+    return { line, switches, ns.Theme.RoleSize("label") }`);
+  const empty = page();
+  expect([empty[0], empty[1]], "every module on, Show: Off: the line in label muted, and no switch").toEqual([["No module is switched off.", empty[2], "muted"], 0]);
+  expect(addon.eval('return __click("Show all modules")'), "the button is there").toBe(true);
+  expect([page()[0], page()[1] > 0, addon.eval("return ns.Options.moduleFilter")], "clicked: the modules are listed again, the line gone").toEqual([false, true, "all"]);
+  addon.eval('for _, name in ipairs(ns.ModuleNames()) do ns.SetModuleEnabled(name, false) end ns.Options.moduleFilter = "on" ns.Options.RebuildPage("modules")');
+  expect(addon.texts("No module is switched on.").length, "every module off, Show: On: the other line").toBe(1);
+});
+
+it("options: a new page's card fades in when the window is already open; opening the window fades no card, and Reduce motion shows it at once", () => {
+  const addon = loggedIn(CLICK_LUA + FAKE_FADES);
+  // The shown page's scroll view.
+  const VIEW = "(function() for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then return c end end end)()";
+  addon.eval(`ns.Options.Show("nameplates") __np = ${VIEW} ns.Options.Show("general") __fakeFader(__np) __fades = {}`);
+  addon.eval('ns.Options.Show("nameplates")');
+  expect(addon.eval("return { #__fades, __fades[1].from, __fades[1].to, __fades[1].duration, __np:IsShown() }"), "the page's view fades from 0 to 1 in 0.12 s").toEqual([1, 0, 1, 0.12, true]);
+  addon.eval('__fades = {} ns.Options.Show("nameplates") ns.Options.Hide() ns.Options.Show("nameplates")');
+  expect(addon.eval("local n = 0 for _, f in ipairs(__fades) do if f.owner == __np then n = n + 1 end end return n"), "the same page again, or the window opening on it, fades no card").toBe(0);
+  addon.eval('ns.Options.Show("general") ns.Theme.Settings().reduceMotion = true __fades = {} ns.Options.Show("nameplates")');
+  expect(addon.eval("return { #__fades, __np:GetAlpha() }"), "Reduce motion: at once").toEqual([0, 1]);
+});
+
 it("type scale: a page's name is in the display tier, above its cards' section headings and its rows", () => {
   const addon = loggedIn(CLICK_LUA);
-  addon.eval('ns.Options.Show("nameplates")');
+  addon.eval('ns.Options.Show("talents")');
   // The open page's title, its card's heading and a row caption: each one's font size, then the roles' sizes.
   const sizes = addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end
     local card, T = v.cards[1], ns.Theme

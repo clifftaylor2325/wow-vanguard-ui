@@ -305,6 +305,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: text in those windows is in Fira Sans Condensed at the game's own sizes, and nothing is cut short, overlaps or spills out of its box that did not before. Number text (stack counts, cooldowns), quest titles in the game's serif and mail text keep their own faces. `/vg status` says "Game fonts: N of M standard font objects in the theme font" with N above 0. No "action blocked" message and no error in or after the fight. With the game's font chosen, the game's face is back at once and N is 0. On a Korean or Chinese client N is 0 and every game font is as without Vanguard. [Needs in-game check: all of it. The list of font objects is written from the game's shared font files, not seen in this client; whether a changed parent reaches the fonts that inherit from it, and how Fira's narrower letters sit in the game's layouts, only the game can show.]
 - If it fails, paste: a screenshot of the window, `/vg status`, your client language, and `/vg errors`.
 
+### 2.1m An empty Modules list and the page fade
+
+- Do: type `/vg`, open Modules and set Show to Off (with every module on) and click Show all modules. Click through four or five pages in the list, then press Up and Down. Turn Reduce motion on under General and click through the pages again. Then do the same in a fight.
+- Expect: with nothing to list the page says "No module is switched off." in grey above a Show all modules button, and the button brings every module back. Each page's card fades in quickly (about a tenth of a second) while its name, tabs and the list's mark change at once; nothing flickers, and no card is left faint. With Reduce motion on, and never longer than 0.15 s in a fight, the page is simply there. [Needs in-game check: that the fade reads as polish and not as lag, and that a fast run of Up and Down leaves the last page fully opaque.]
+- If it fails, paste: what you saw (a short clip if you can) and `/vg errors`.
+
 ### 2.1h The fold on Raid frames
 
 - Do: type `/vg` → Raid frames. Count the rows, then press the **More settings** line, press it again, then press it open and change Power bar. Fold it, and look at the line. Reset Power bar with its accent arrow. Type "leader" in the search box and press Enter on the first hit. Then `/reload`, open Raid frames again, press Tab until the line is marked and press Enter. Repeat at Text size 130% and in a non-English client if you have one.
