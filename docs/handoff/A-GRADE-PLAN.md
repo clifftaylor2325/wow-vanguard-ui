@@ -112,8 +112,8 @@ One branch and one PR per HUD area, so each set of files is opened once and come
 - [x] **A3-2 Action bars** (`work/a3-actionbars`). Macro names with a switch, attack and auto-shot flash, spacing and hotkey-text controls, coalesced repaint. Secure button work: Opus. (N6, L5)
 - [ ] **A3-3 Nameplates and auras** (`work/a3-plates`). Size sliders, text sizes, friendly name-only mode, target emphasis, aura sizes and filters where the client allows a say. Rebuild rows out of combat. (N5, B5, N3)
 - [ ] **A3-4 Tooltips** (`work/a3-tooltips`). Guild and rank, realm, role, item level where exposed, ids behind a switch, anchor choice per tooltip type. (N7)
-- [ ] **A3-5 Quest dialog session fallback.** A switch and a modifier that hand the quest and gossip windows back to the game without a reload. (N8, M3)
-- [ ] **A3-6 The rest of live apply, wave one.** Minimap shape and icons, info strip blocks, chat toggles, raid-frame sizes. (N3, N5)
+- [x] **A3-5 Quest dialog session fallback.** A switch and a modifier that hand the quest and gossip windows back to the game without a reload. (N8, M3)
+- [ ] **A3-6 The rest of live apply, wave one.** Minimap shape and icons, info strip blocks, chat toggles, raid-frame sizes. (N3, N5) Done so far: raid-frame width and height sliders, minimap coordinates. Left: minimap shape and corner icons, the info strip clock, and chat place, bubbles and floating-window movers (each needs a way to give back what the build took: a pin, a mover, a panel).
 
 **Gate.** Unit frames and tooltips move from Needs work to Solid or better; reload tags under 40; no fixed-step size choice left on the HUD.
 

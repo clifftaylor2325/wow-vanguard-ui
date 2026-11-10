@@ -1228,18 +1228,26 @@ function corner.look(frame, entry)
   return "rounded"
 end
 
--- A painted frame's corner geometry now: the HUD look's own for a HUD frame with a role (T.HudCorners, Core/HudLook.lua)
--- unless the deck rounds it; else one size from its corner look, in pixels (times the variant's ring on an
--- accent-bordered frame); else nil for square corners.
+-- A painted frame's corner geometry now: the HUD look's own for a HUD frame with a role (T.HudCorners, Core/HudLook.lua;
+-- false there is square whatever the settings say) unless the deck rounds it; else one size from its corner look, in
+-- pixels (times the variant's ring on an accent-bordered frame); else nil for square corners.
 function corner.geometry(frame, entry)
   if not entry.opts.round and entry.opts.role and T.HudCorners then
     local geo = T.HudCorners(frame, entry)
     if geo then return corner.finish(geo) end
+    if geo == false then return nil end
   end
   local look, v = corner.look(frame, entry), T.Variant()
   if not look then return nil end
   local scale = (entry.opts.accent or entry.opts.border) and v and v.ring or 1
   return T.UniformCorners(T.CORNER_ART[look].size * T.Pixel(frame) * scale, look)
+end
+
+-- Hides the edges the HUD look leaves undrawn on a painted frame with a role (T.HudOpenSides, Core/HudLook.lua: a
+-- tab's bottom, where it joins its frame).
+function corner.hideOpen(e, entry)
+  local open = entry.opts.role and T.HudOpenSides and T.HudOpenSides(entry)
+  for side in pairs(open or NO_PARTS) do e[side]:Hide() end
 end
 
 -- Colours and sizes a painted frame's edges, re-pinned short of the corners once it has been shaped.
@@ -1249,6 +1257,7 @@ local function paintEdges(frame, entry, geo)
   sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
   if geo or p.hasRounded then placeEdges(p.edges, frame, entry.opts.pad, geo) end
   corner.showEdges(p.edges, geo)
+  corner.hideOpen(p.edges, entry)
 end
 
 -- Fills (T.FillParts) ------------------------------------------------------------------------
@@ -1433,20 +1442,51 @@ local function hairParts(frame)
   return { edges = edges(frame, 0), corners = cornerPieces(frame, T.CORNER_ART.cut.line, layer, sub) }
 end
 
--- Places and colours a frame's hairline (opts.hair, a token): one-pixel lines a pixel inside the border, following its
+-- The hairline token the HUD look gives a painted frame for its role (Core/HudLook.lua T.HudHair), never one the
+-- deck rounds; nil otherwise.
+function corner.lookHair(entry)
+  if entry.opts.role and not entry.opts.round and T.HudHair then return T.HudHair(entry) end
+  return nil
+end
+
+-- The hairline token a painted frame draws: its own (T.SetHairline), else the HUD look's.
+function corner.hairToken(entry)
+  return entry.opts.hair or corner.lookHair(entry)
+end
+
+-- Places, sizes and colours a hairline's parts a pixel inside the border for a geometry, in a token, and shows the
+-- edges on the sides the HUD look keeps (T.HudHairSides, all four unless it says).
+function corner.placeHair(p, frame, geo, token)
+  local inset, sides = -T.Pixel(frame), T.HudHairSides and T.HudHairSides()
+  placeEdges(p.hair.edges, frame, inset, geo) sizeEdges(p.hair.edges, frame)
+  placeCorners(p.hair.corners, frame, inset, geo) corner.art(p.hair.corners, frame, geo, "line")
+  for _, t in pairs(p.hair.edges) do T.Tint(t, token) t:Show() end
+  for _, t in pairs(p.hair.corners) do T.Tint(t, token) end
+  corner.showEdges(p.hair.edges, geo)
+  for side, t in pairs(p.hair.edges) do if sides and not sides[side] then t:Hide() end end
+end
+
+-- Paints a frame's hairline in a token (corner.hairToken): one-pixel lines a pixel inside the border, following its
 -- corners (each corner's piece shifted a pixel in, so a point's line runs parallel to its cut), or hides it with the
 -- token nil. Made the first time a frame asks for one.
-function corner.paintHair(frame, entry, geo)
-  local p, token, inset = entry.parts, entry.opts.hair, -T.Pixel(frame)
+function corner.paintHair(frame, entry, geo, token)
+  local p = entry.parts
   if not p.hair then if not token then return end p.hair = hairParts(frame) end
-  if token then
-    placeEdges(p.hair.edges, frame, inset, geo) sizeEdges(p.hair.edges, frame)
-    placeCorners(p.hair.corners, frame, inset, geo) corner.art(p.hair.corners, frame, geo, "line")
-    for _, t in pairs(p.hair.edges) do T.Tint(t, token) end
-    for _, t in pairs(p.hair.corners) do T.Tint(t, token) end
-  end
-  for _, t in pairs(p.hair.edges) do t:SetShown(token ~= nil) end
-  if token then corner.showEdges(p.hair.edges, geo) else for _, t in pairs(p.hair.corners) do t:Hide() end end
+  if token then return corner.placeHair(p, frame, geo, token) end
+  for _, t in pairs(p.hair.edges) do t:Hide() end
+  for _, t in pairs(p.hair.corners) do t:Hide() end
+end
+
+-- Shows a painted frame's plate (its background and border), or hides it for a frame the HUD look draws bare.
+function corner.showPlate(p, shown)
+  if p.bg then p.bg:SetShown(shown) end
+  for _, t in pairs(p.edges or NO_PARTS) do t:SetShown(shown and t:IsShown()) end
+  for _, t in pairs(p.shadow or NO_PARTS) do t:SetShown(shown) end
+end
+
+-- Whether a painted frame with a role is drawn bare (no plate) by the HUD look (T.HudBare), never one the deck rounds.
+function corner.bare(entry)
+  return entry.opts.role ~= nil and not entry.opts.round and T.HudBare ~= nil and T.HudBare(entry)
 end
 
 -- The sheen and bevel lines of a painted frame, clear of its corners' largest size.
@@ -1456,16 +1496,18 @@ local function paintTrim(frame, entry)
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
 end
 
--- Applies the current colors (and pixel size) to one painted frame.
+-- Applies the current colors (and pixel size) to one painted frame; a HUD frame the look draws bare keeps its plate
+-- hidden (entry.bare).
 local function repaint(frame, entry)
-  local p, geo = entry.parts, corner.geometry(frame, entry)
-  entry.geo, entry.radius, entry.look = geo, geo and geo.max or 0, geo and "shaped" or nil
+  local p, geo, hair = entry.parts, corner.geometry(frame, entry), corner.hairToken(entry)
+  entry.geo, entry.radius, entry.look, entry.bare = geo, geo and geo.max or 0, geo and "shaped" or nil, corner.bare(entry)
   corner.paintCorners(frame, entry, geo)
   if p.bg then paintBg(p, entry.opts, geo ~= nil); T.PaintPanelSurface(frame, entry) end
   if p.edges then paintEdges(frame, entry, geo) end
-  if p.hair or entry.opts.hair then corner.paintHair(frame, entry, geo) end
+  if p.hair or hair then corner.paintHair(frame, entry, geo, hair) end
   paintTrim(frame, entry)
   for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, geo) end
+  corner.showPlate(p, not entry.bare)
   if entry.paint then entry.paint(entry, frame) end
 end
 
@@ -1589,6 +1631,30 @@ function T.CornerLook(frame, point)
   local entry = painted[frame]
   local geo = entry and entry.geo
   return type(geo) == "table" and geo.art[point] or nil
+end
+
+-- The hairline token a painted HUD frame draws now (its own or the HUD look's), or nil.
+---@param frame table
+---@return string|nil
+function T.HairlineOf(frame)
+  local entry = painted[frame]
+  return entry and corner.hairToken(entry) or nil
+end
+
+-- The hairline token the HUD look gives a painted HUD frame (not one it was given with T.SetHairline), or nil.
+---@param frame table
+---@return string|nil
+function T.LookHairOf(frame)
+  local entry = painted[frame]
+  return entry and corner.lookHair(entry) or nil
+end
+
+-- Whether a painted HUD frame is drawn bare (no plate) by the HUD look.
+---@param frame table
+---@return boolean
+function T.BareOf(frame)
+  local entry = painted[frame]
+  return entry ~= nil and entry.bare == true
 end
 
 -- How far a painted panel reaches out past its frame (units; 0 when it doesn't, or the frame isn't painted).
@@ -3144,6 +3210,8 @@ T.ROLES = {
   -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.
   label = { size = 12 }, number = { size = 12 }, small = { size = 10 }, tiny = { size = 10 }, badge = { size = 9 },
   world = { size = 11, bold = true, outline = "OUTLINE" },
+  -- The unit frames' name and number under a HUD look that draws them on the world or on a fill (Core/HudLook.lua).
+  hudName = { size = 12, bold = true, outline = "OUTLINE" }, hudNumber = { size = 12, outline = "OUTLINE" },
   barName = { size = 11, bold = true, outline = "OUTLINE" }, barSmall = { size = 10, bold = false, outline = "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
   cooldown = { size = 14, bold = true, outline = "OUTLINE" }, auraCount = { size = 10, bold = true, outline = "OUTLINE" },
