@@ -182,8 +182,8 @@ local function unitFrameRows()
     { "cycle", L["Health as"], TEXT_FORMATS, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
-    check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
-    O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
+    check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], O.RestartSetting("ClassBars", "totems")),
+    O.Renamed(check(O.MANA_BAR_NAME, O.RestartSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
   }, append(append(append(powerTextRows(), predictionRows()), portraitRows()), sizeRows()))
 end
 
