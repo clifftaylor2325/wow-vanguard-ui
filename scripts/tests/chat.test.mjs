@@ -1432,6 +1432,26 @@ const INVITE_ENV = `
 // isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
 const invite = (addon, guid) => addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false);
 const INVITES_ON = "VanguardDB.profiles = { Default = { Quiet = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
+// A1-9 (M4): a stranger you whispered in the last ten minutes may invite you.
+it("A1-9 quiet the game: a group invite from someone you just whispered is not declined; after ten minutes it is again", () => {
+  const addon = loggedIn(INVITE_ENV, { savedVariables: INVITES_ON });
+  // An invite from a named stranger, answered on the next frame; how many answers the game got.
+  const invited = (name) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", name, false, false, false, false, false, "stranger", false); addon.update(0); return addon.eval("return #__answers"); };
+  expect(invited("Thrall"), "a stranger: declined, its prompt closed").toBe(2);
+  addon.fire("CHAT_MSG_WHISPER_INFORM", "inv pls", "Thrall-ForeverTest");
+  addon.fire("CHAT_MSG_WHISPER_INFORM", "hidden", { __secret: true });
+  expect([invited("Thrall"), invited("thrall-OtherRealm"), invited("Jaina")], "whispered: the invite stands, with or without a realm on the name; another stranger is still declined").toEqual([0, 0, 2]);
+  addon.advance(601);
+  expect(invited("Thrall"), "ten minutes later: a stranger again").toBe(2);
+  addon.fire("CHAT_MSG_WHISPER_INFORM", "again", "Thrall");
+  expect([invited("Thrall"), addon.eval("return ns.GetModule('Quiet').WHISPERED_FOR")], "a new whisper renews it (and the old note was forgotten)").toEqual([0, 600]);
+  const off = loggedIn(INVITE_ENV);
+  off.fire("CHAT_MSG_WHISPER_INFORM", "hi", "Thrall");
+  off.eval("ns.GetModule('Quiet').settings.strangerGroups = true __answers = {}");
+  off.fire("PARTY_INVITE_REQUEST", "Thrall", false, false, false, false, false, "stranger", false);
+  off.update(0);
+  expect(off.eval("return #__answers"), "a whisper sent while the switch was off is not noted").toBe(2);
+});
 it("quiet the game: guild invites, stranger group invites, friend requests and battleground release, off until switched on", () => {
   // Brings up all four prompts; the invites are answered on the next frame.
   const fire = (addon) => { addon.fire("GUILD_INVITE_REQUEST", "<name>"); invite(addon, "stranger"); addon.update(0); addon.fire("BN_FRIEND_INVITE_ADDED", 7); addon.fire("PLAYER_DEAD"); };

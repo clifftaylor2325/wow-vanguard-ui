@@ -291,6 +291,17 @@ it("combo points on retail grow to your maximum, and WoW Forever stays at five",
   expect(forever.eval('local CP = ns.GetModule("ComboPoints") return { #CP.pips, CP.Max() }'), "WoW Forever: five, whatever the power says").toEqual([5, 5]);
 });
 
+// A1-11 (L13): an energy or mana tick is not a combo point change.
+it("A1-11 combo points: a power event that names another power repaints nothing; combo points, an unnamed or a hidden type do", () => {
+  const addon = loggedIn(UNITS_ENV + 'UnitClass = function() return "Rogue", "ROGUE" end __combo = 2');
+  addon.eval("__updates = 0 local CP = ns.GetModule('ComboPoints') local update = CP.Update CP.Update = function() __updates = __updates + 1 return update() end");
+  // Fires your power event with a power type (Lua) and answers how many repaints it caused.
+  const power = (event, type) => { addon.eval("__updates = 0"); addon.eval(`__wfgStub.fire("${event}", "player", ${type})`); return addon.eval("return __updates"); };
+  expect([power("UNIT_POWER_FREQUENT", '"ENERGY"'), power("UNIT_POWER_UPDATE", '"MANA"')], "energy and mana ticks: nothing").toEqual([0, 0]);
+  expect([power("UNIT_POWER_UPDATE", '"COMBO_POINTS"'), power("UNIT_POWER_FREQUENT", "nil"), power("UNIT_POWER_UPDATE", "{ __secret = true }"), power("UNIT_MAXPOWER", '"ENERGY"')],
+    "combo points, no type, a hidden type, and a new maximum of any power: repainted").toEqual([1, 1, 1, 1]);
+  expect(addon.eval("local CP = ns.GetModule('ComboPoints') return CP.Charged() == CP.Charged()"), "the charged set is one table, used again").toBe(true);
+});
 it("combo points that follow you to a new target at the same count show at once", () => {
   const addon = loggedIn(UNITS_ENV + `__units.player.class = "ROGUE" __cp = 0
     GetComboPoints = function() return __cp end`, NO_RAID);

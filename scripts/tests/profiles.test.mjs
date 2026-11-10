@@ -782,7 +782,7 @@ it("export with Include parts: /vg export <part ...>, and the export panel's swi
   const labelOf = (part) => addon.eval(`for i, p in ipairs(ns.ProfileParts()) do if p == "${part}" then return Vanguard_ExportDialog.rows[i].label:GetText() end end`);
   expect(labelOf("ActionBars"), "a module row reads as the Modules page names it, not by its key (B2-8)").toBe("Action bars");
   const dialog = "Vanguard_ExportDialog";
-  expect(titleOf(addon, dialog), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect(titleOf(addon, dialog), "a window title: the display role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
   expect(closeOf(addon, dialog), "with the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, dialog), alphaOf(addon, dialog)], "Escape closes it; the dialog alpha").toEqual([true, 0.98]);
   const note = addon.frame(`${dialog}.note`);
@@ -1026,4 +1026,15 @@ it("export panel: in Spanish at 130% its rows stack by their heights and None ho
   expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
   const cut = addon.textFit("Vanguard_ExportDialog").filter((f) => f.text === "None" || f.text === "All");
   expect(cut, "All and None are not cut short").toEqual([]);
+});
+
+it("a profile saved with the retired Pet stable, Legacy helper and boss docks loses their settings, and the Legacy perk list goes with them", () => {
+  const saved = `VanguardDB.legacyPlan = { { name = "Swift Travel", points = 3 } }
+    VanguardDB.profiles = { Default = { modules = { PetStable = false, Legacy = true, BossDocks = false, Meter = false }, PetStable = { announce = false }, Legacy = { planner = true }, BossDocks = {}, Meter = { x = 1 } } }`;
+  const addon = loggedIn("", { savedVariables: saved });
+  const left = addon.eval(`local p = VanguardDB.profiles.Default
+    return { p.PetStable == nil, p.Legacy == nil, p.BossDocks == nil, p.modules.PetStable == nil, p.modules.Legacy == nil, p.modules.BossDocks == nil, VanguardDB.legacyPlan == nil, p.modules.Meter, p.Meter.x }`);
+  expect(left, "the retired tables and switches are gone; another module's stay").toEqual([true, true, true, true, true, true, true, false, 1]);
+  const plain = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = 7 } }" });
+  expect(plain.eval("return type(VanguardDB.profiles.Default.modules)"), "a profile whose module switches are not a table is left alone").toBe("number");
 });

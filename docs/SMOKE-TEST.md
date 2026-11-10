@@ -211,6 +211,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do also: in a dungeon, a battleground and in the open world, type `/vg status` and read the `Game restrictions:` line. [Needs in game: that it is `none` in the open world and names Chat, Encounter or ChallengeMode only where the game restricts add-ons, and that chat watch and the group board go quiet then without errors. Compare with `/vg probe`, section Restrictions and lockdown.]
 - If it fails, paste: the whole `/vg status` output and `/vg errors`.
 
+### 1.3a Game windows by state
+
+- Do: after login type `/vg status` and read its last line, then `/vg status windows`. Open your character pane, the spellbook and the auction house (or any window that loads later), and type both again. Switch off a group under Game windows, `/reload`, and type `/vg status` once more.
+- Expect: the last line reads "Game windows: N dressed · N left as the game's · N replaced · N switched off · N not made yet". "Left as the game's" is 0; if it is not, each such window is named with what it lacks, and that window looks stock. `/vg status windows` lists the names under dressed, missing, replaced, off and unseen (only the states that have any). Windows that load later move from not made yet to dressed once opened. A group switched off moves its windows to switched off. [Needs in-game check: which windows the real client reports as left as the game's or never made; compare with docs/design/RESKIN-COVERAGE.md.]
+- If it fails, paste: both outputs and `/vg errors`.
+
 ### 1.4 No errors yet
 
 - Do: type `/vg errors`.
@@ -274,6 +280,36 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: in a non-English client (Italian, Spanish, Portuguese or Russian) type `/vg` and look at the list of pages on the left, changing a setting on a page with a long name (Combat tools, Town and gear) so its dot shows. Then open Modules, Unit frames and Combat tools, set Text size to 130% under General, and open those pages again.
 - Expect: each page name ends before the page's dot and the list's edge (a name too long is cut short), never over them. After the Text size change, each page you reopen is laid out for the new size: a module's description sits wholly inside its row, a "reload" tag sits after its caption without touching it, and a switch with a wrapped caption has the switch centred on the caption. [Needs in-game check: how far a real translation runs depends on the font's real widths.]
 - If it fails, paste: a screenshot of the list and the page, the client language, and `/vg errors`.
+
+### 2.1i Title sizes: windows, pages and card headings
+
+- Do: type `/vg` and look at the page's name along the top, a card's heading and a row under it. Open Profiles and click Import (a dialog), then `/vg whatsnew`, then the quest log (L). Set Text size to 130% under General and look at the same windows again. With Dungeon card on (Town and gear), type `/vg prep` with a dungeon quest in your log.
+- Expect: each window's title and the options page's name are the largest text in their window (18 points at Text size 100%), a clear step above card titles and rows. No title is cut short, runs under its close button or out of its window, at 130% either; a long dialog title wraps short of the X. Card headings in the options are small grey capitals, and so are the prep card's "DUNGEON QUESTS IN YOUR LOG" (or the dungeon's own line at its door) and "YOUR QUESTS HERE". [Needs in-game check: how the larger titles sit on the close button's line in the real font.]
+- If it fails, paste: a screenshot of the window, your Text size and client language, and `/vg errors`.
+
+### 2.1j The options window's header and footer
+
+- Do: type `/vg` and look at the header and the footer. Set Font to the game's font, then pick another Theme variant, then set Faction look to Off and back. Set Text size to 130%. If you can, look at it on a 4K screen too.
+- Expect: the header shows Vanguard's painted shield about 40 units tall, sharp (not blurred or blocky), with "Vanguard" beside it in a serif face in pale gold, larger than any other text in the window; neither touches the search box, and both stay as they are when the font or the variant changes. Your faction's mark (crossed swords or axes) is at the left of the footer with the version line right of it; with Faction look Off the mark goes and the version line moves to the footer's left edge. [Needs in-game check: the crest's sharpness at 40 units, the serif face's weight beside the crest, and the gold over each variant's header.]
+- If it fails, paste: a screenshot of the window's top and bottom, your resolution and UI scale, and `/vg errors`.
+
+### 2.1k The class-colour accent
+
+- Do: type `/vg`, open General and point at the swatch left of the five accent presets, then click it. Look at the switches, the selected page's rail, the sample button's glow and a unit frame's target edge. Click the jade swatch, then type `/vg accent class`. Log in on a character of another class that uses the same profile.
+- Expect: the swatch is in your class colour, set a little apart from the presets, and its tooltip says "Your class colour". Clicked, it carries the check, the hex box shows your class colour, and everything accent-coloured changes at once, with dark marks on accent fills still readable (a Priest's white and a Rogue's yellow are the hardest). Jade moves the check to jade; `/vg accent class` prints "The accent follows your class colour." and moves it back. The other character gets its own class colour at login. [Needs in-game check: text contrast on each class colour, and that no class colour reads as a warning or an item quality where the accent is used.]
+- If it fails, paste: a screenshot of the General page, your class, and `/vg errors`.
+
+### 2.1l The theme font on the game's own text
+
+- Do: log in with Font on Fira Sans Condensed. Open windows Vanguard does not skin or only partly dresses (the barber shop, item socketing, a help tip, an achievement toast, the game's Settings window) and any other addon's window. Type `/vg status`. Fight something with those windows closed, then open one mid-fight. Under General set Font to the game's font, look again, then set it back. On a Korean or Chinese client, only log in and type `/vg status`.
+- Expect: text in those windows is in Fira Sans Condensed at the game's own sizes, and nothing is cut short, overlaps or spills out of its box that did not before. Number text (stack counts, cooldowns), quest titles in the game's serif and mail text keep their own faces. `/vg status` says "Game fonts: N of M standard font objects in the theme font" with N above 0. No "action blocked" message and no error in or after the fight. With the game's font chosen, the game's face is back at once and N is 0. On a Korean or Chinese client N is 0 and every game font is as without Vanguard. [Needs in-game check: all of it. The list of font objects is written from the game's shared font files, not seen in this client; whether a changed parent reaches the fonts that inherit from it, and how Fira's narrower letters sit in the game's layouts, only the game can show.]
+- If it fails, paste: a screenshot of the window, `/vg status`, your client language, and `/vg errors`.
+
+### 2.1m An empty Modules list and the page fade
+
+- Do: type `/vg`, open Modules and set Show to Off (with every module on) and click Show all modules. Click through four or five pages in the list, then press Up and Down. Turn Reduce motion on under General and click through the pages again. Then do the same in a fight.
+- Expect: with nothing to list the page says "No module is switched off." in grey above a Show all modules button, and the button brings every module back. Each page's card fades in quickly (about a tenth of a second) while its name, tabs and the list's mark change at once; nothing flickers, and no card is left faint. With Reduce motion on, and never longer than 0.15 s in a fight, the page is simply there. [Needs in-game check: that the fade reads as polish and not as lag, and that a fast run of Up and Down leaves the last page fully opaque.]
+- If it fails, paste: what you saw (a short clip if you can) and `/vg errors`.
 
 ### 2.1h The fold on Raid frames
 
@@ -537,6 +573,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a small tile for that player at the top left, beside the raid tools, with health in their class colour.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 6.2c Raid tiles follow their own members' heals, shields, threat and buffs (if you can)
+
+- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf` after a fight with many nameplates up.
+- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf` lists no long UNIT_AURA handler from the raid frames.
+- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf` lines.
+
 ### 6.4 Preview the party and raid frames alone
 
 - Do: on a profile whose frames you haven't moved (for example a new one from `/vg` → Profiles), out of a group and out of combat, type `/vg preview party`, then `/vg preview 25` and `/vg preview 40`. Open `/vg` → Raid frames, change Width, Height, Style, Sort by role and Groups as, then pick Off under Preview. Turn it on again and attack a training dummy.
@@ -682,6 +724,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the older profile shows the IDs at once (its switch is ticked); the fresh one shows none. With the switch on, the item's tooltip ends with "Item ID N", the spell's and each buff's or debuff's with "Spell ID N" in the quiet text colour, once per tooltip; with it off the lines are gone on the next hover, with no reload asked for. A macro's tooltip gets no ID. `/vg errors` stays empty, in a fight too. [Needs in game: that the aura tooltips Vanguard's own buff icons show go through the game's aura tooltip data, so they get the line; that no tooltip shows the line twice.]
 - If it fails, paste: a screenshot of the tooltip, what you hovered, and `/vg errors`.
 
+### 7.2n Tooltips: a position for each kind
+
+- Do: `/vg` → Game windows → Tooltips. Set **Unit tooltips in the world** to "at the cursor", **Unit tooltips on frames** to "client default" and leave **Tooltip position** on "corner (movable)". Hover a mob and a player in the world, your target frame, a party or raid tile, a spell on an action bar, a mailbox, and an item in your bags. Then `/vg unlock`, drag the **Tooltip** handle, lock, and hover the bar spell again. Try the other choices on each row, and hover a buff on a friendly nameplate in a dungeon.
+- Expect: the world mob's and player's tooltips follow the cursor; the unit frames' and tiles' tooltips sit where the game puts its tooltips; the bar spell's and the mailbox's sit in Vanguard's corner, and move with the handle. The bag item's tooltip stays beside its slot whatever is chosen. Each choice takes effect on the next tooltip, with no reload asked for. A profile from an earlier version shows its one position on all three rows. `/vg errors` stays empty, on the nameplate buff too. [Needs in game: that "mouseover" already names the unit when the game anchors a world unit's tooltip and a unit frame's, so each lands on its own row's choice; raid tiles and party frames count as unit frames.]
+- If it fails, paste: which hover landed where, the three rows' choices, and `/vg errors`.
+
 ### 7.3 Nameplates in a pull
 
 - Do: pull three or more mobs.
@@ -720,9 +768,21 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 7.5b Nameplate sliders (A3-3)
 
-- Do: stand near three or more mobs with enemy plates on, one of them carrying your debuff, and open `/vg` → Nameplates. On the Size tab drag Width from end to end, then Height. On the Auras tab drag "Aura icon size" to 26 and let go, set "Your debuffs shown" to 1, then 6, set "Buffs on players" to 0 near a friendly player with a buff of yours, then to 4, and untick then tick "Timer numbers on your debuffs". On the Display tab untick "Cast bar" while a mob casts, then tick it. Pull the mobs, and during the fight drag Width to 200 and "Aura icon size" to 14; watch the plates when the fight ends. `/reload` and look again.
-- Expect: no row on the page carries a reload tag and the Reload button never shows. The bars follow the Width and Height sliders while you drag; the click area and the cast bar follow the bar. About a third of a second after an aura slider holds still, the icons on every plate are redrawn at the new size or count, with no leftover icons beside them and no hitch; the soft-target icon stays clear of the debuff row. The cast bar goes at once and comes back on the next cast. In the fight nothing changes until it ends, then every plate takes the last values. After the reload the plates look the same as before it. `/vg errors` stays empty throughout. [Needs in game: that a row put away (emptied, hidden) draws nothing; that moving a client aura container out of combat raises nothing; how long remaking the rows of 40 plates takes (`/vg perf`); that a plate first shown again after a change, in and out of combat, ends at the new size; and, in a dungeon with friendly plates the game keeps for itself, that changing a slider raises no forbidden-object error.]
+- Do: stand near three or more mobs with enemy plates on, one of them carrying your debuff, and open `/vg` → Nameplates. On the Size tab drag Width from end to end, then Height, then "Name text size" and "Health text size" (with the game's Health percent box ticked). On the Auras tab drag "Aura icon size" to 26 and let go, set "Your debuffs shown" to 1, then 6, set "Buffs on players" to 0 near a friendly player with a buff of yours, then to 4, and untick then tick "Timer numbers on your debuffs". On the Display tab untick "Cast bar" while a mob casts, then tick it. Pull the mobs, and during the fight drag Width to 200 and "Aura icon size" to 14; watch the plates when the fight ends. `/reload` and look again.
+- Expect: no row on the page carries a reload tag and the Reload button never shows. The bars follow the Width and Height sliders while you drag; the click area and the cast bar follow the bar. The name and level grow and shrink with "Name text size", the debuff row moving up to stay clear of the name, and the numbers on the bar with "Health text size"; at 100% both are as before. About a third of a second after an aura slider holds still, the icons on every plate are redrawn at the new size or count, with no leftover icons beside them and no hitch; the soft-target icon stays clear of the debuff row. The cast bar goes at once and comes back on the next cast. In the fight nothing changes until it ends, then every plate takes the last values. After the reload the plates look the same as before it. `/vg errors` stays empty throughout. [Needs in game: that a row put away (emptied, hidden) draws nothing; that moving a client aura container out of combat raises nothing; how long remaking the rows of 40 plates takes (`/vg perf`); that a plate first shown again after a change, in and out of combat, ends at the new size; and, in a dungeon with friendly plates the game keeps for itself, that changing a slider raises no forbidden-object error.]
 - If it fails, paste: a screenshot of the plates, the slider values, `/vg perf` if it hitched, and `/vg errors`.
+
+### 7.5c Target plate size (A3-3)
+
+- Do: with several enemy plates up, set `/vg` → Nameplates → Size → "Target plate size" to 130%. Target one mob, then another, then nothing (Escape); do the same during a fight. Untick "Mark your target's plate" on the Display tab and target a mob again. Click the larger plate's name and bar, and a plate that overlaps it.
+- Expect: the plate of your target is drawn about a third larger than the others (name, bar, debuff icons and cast bar together), growing around its centre, and the plate you leave goes back to the common size at once, in a fight too. Its border is still one crisp pixel and its debuff icons' edges are not thick or blurred. With the mark off the plate is still larger, without the accent border, glow and diamond. Clicks land on the plate you click. `/vg errors` stays empty. [Needs in game: that the client lets an addon rescale its frame on a plate in combat, as it lets it show and move one; how the larger plate stacks against its neighbours (the client stacks by Vanguard's box); that icons keep crisp edges at 115% and 130%.]
+- If it fails, paste: a screenshot with a target selected, the slider's value, and `/vg errors`.
+
+### 7.5d Names only on friendly plates (A3-3)
+
+- Do: in a city with Friendly players' and Friendly NPCs' nameplates on, tick `/vg` → Nameplates → Display → "Names only on friendly plates". Look at players, NPCs and a hostile or attackable unit (a training dummy, a duel partner before and after the duel starts). Click a friendly name. Walk so a friendly player is behind a wall. Untick the switch.
+- Expect: friendly players and NPCs show only their name, players in their class colour and NPCs in the friendly green, with no bar, level, border, buffs or cast bar; a quest `!`, a raid target icon and the game's soft-target icon (the speech bubble) still show. Attackable units keep the whole plate, and a duel partner gets the bar when the duel starts and loses it when it ends. A click on the name still targets the unit. Unticking brings every bar back at once, and no reload is asked for. `/vg errors` stays empty. [Needs in game: that a font string told to ignore its parent's opacity draws while Vanguard's frame is at zero opacity; whether the name then ignores the game's own fading of far or hidden plates (expected: yes, it reads at full strength); where the raid target icon sits without a bar; that the click area is unchanged.]
+- If it fails, paste: a screenshot of friendly and hostile plates side by side, and `/vg errors`.
 
 ### 7.6 Fight recap
 
@@ -793,6 +853,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the whole window is on the screen, its quest list column included (nothing cut at the left edge). [Needs in-game check: that the client moves the clamped, centre-anchored window fully on screen.]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_QuestLog`.
 
+### 8.3c Zones you fold in the game's quest log
+
+- Do: under `/vg` → Quests switch **Open folded zones in the quest log** off (no reload). Open the world map's quest list, fold a zone by its header, close the map, then zone (a boat, a hearth or an instance door) and open the map's quest list again. Then open Vanguard's quest log. Switch the row back on and zone again. Last, switch Vanguard's quest tracker and Vanguard's quest log both off, reload, fold a zone in the game's quest log and zone.
+- Expect: with the row off the zone you folded is still folded after closing the map and after zoning, and its quests are missing from the tracker's `Quests: N% of the XP to level` line until you open it; opening Vanguard's quest log opens every zone. With the row on again every zone is open after the next zone-in. With the tracker and the quest log both off the game's quest log stays exactly as you fold it, whatever the row says.
+- If it fails, paste: which zone opened and when, the state of the three switches, and `/vg errors`.
+
 ### 8.3a Quest history
 
 - Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
@@ -835,6 +901,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with the quest arrow showing and quest spots on the minimap, pull a mob and run about 50 yards while still in combat, turning as you go. Kill a mob a watched quest counts while still in combat. Then leave combat and stand still for two seconds.
 - Expect: while you run in combat the arrow keeps the turn and distance it had and the minimap spots stay where they were; the kill that changes the quest log redraws the arrow at once; within a second of the fight's end the arrow points the right way with the right distance and the spots are in the right places. No stutter and no Lua error. Say if the held arrow is misleading while you run: the rest in a fight is new in this build and can be limited to the heavier once-a-second work.
 - If it fails, paste: what the arrow and the spots showed and for how long after the fight, and `/vg errors`.
+
+### 8.4f Best-selling reward never picked over an upgrade
+
+- Do: with Turn in finished quests, Pick the reward that sells for most and Gear upgrades all on, hand in a quest whose reward choices include a piece with the green upgrade arrow that is not the one that sells for most. Then hand in one whose choices have no arrow.
+- Expect: with an arrow among the choices the reward page stays open for you to choose and nothing is taken; without one the best seller is taken and chat says `took <item>: sells for most`.
+- If it fails, paste: the rewards, which had the arrow, the chat line, and `/vg errors`.
 
 ### 8.5 Levelling helpers
 
@@ -883,6 +955,30 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: on Game windows, "Auto-accept", switch on "Accept summons" and "Decline duels", and under "Quiet the game", "Decline group invites from strangers". Have a warlock summon you while you are fighting a mob, and finish the fight before the summon runs out. Then have someone who is not a friend or guildmate invite you to a group three times in a row, and ask you to duel three times.
 - Expect: the summon prompt stays up during the fight; when the fight ends you are taken to the summoner and one chat line says from whom and to where. If you die in the fight, or the summon runs out first, you are not moved. [Needs in game: that the game lets you teleport the moment the fight ends; if the prompt stays up instead, say so.] Each invite and each duel is declined, but chat says "Declined a group invite from <name>." and "Declined a duel from <name>." once each, not three times; after 5 minutes a new one says it again.
 - If it fails, paste: the chat lines and `/vg errors`.
+
+### 8.6d A stranger you whispered may invite you
+
+- Do: with "Decline group invites from strangers" on, whisper a player who is not a friend or guildmate (answer a group advert, say) and have them invite you within ten minutes. Have another stranger you did not whisper invite you. Wait more than ten minutes and have the first invite you again.
+- Expect: the first invite stays up for you to answer; the second is declined with one chat line; after ten minutes the first player's invite is declined again.
+- If it fails, paste: the chat lines, how long after the whisper the invite came, and `/vg errors`.
+
+### 8.6e Combo points and the cooldown gaps row keep up in a fight
+
+- Do: on a rogue or a cat-form druid, fight a target dummy: build and spend combo points several times while energy ticks, then switch targets. With the Gaps row on (`/vg` → Cooldowns), use a trinket, a potion and a pet ability in quick succession.
+- Expect: each pip lights the moment its point lands and clears when spent, as before, with no pip a tick late or stuck; the gaps row's icons start their sweeps at once (within a frame). `/vg errors` is empty.
+- If it fails, paste: what the pips or the row showed, the class and form, and `/vg errors`.
+
+### 8.6f HUD text font has its own switch
+
+- Do: `/vg` → Modules: switch Merchant helpers off and reload; cause a red error line (cast with no target), walk into a new subzone, and hit a mob with floating damage numbers on. Then switch HUD text font off (Map and info) and reload, and do the same. Switch both back on.
+- Expect: with only Merchant helpers off, the error line, the zone names and the damage numbers are still in Vanguard's font. With HUD text font off they are in the game's own font. The damage numbers follow after a relog if a reload alone does not change them.
+- If it fails, paste: which text was in which font after each step, and `/vg errors`.
+
+### 8.6g A weapon enchant gained or lost in a fight
+
+- Do: with Vanguard's buffs block showing, apply a weapon oil, poison or imbue while in combat (or let one run out in combat), then leave combat. On Retail, hover an upgraded item's slot on the character sheet.
+- Expect: no `Interface action failed because of an AddOn` message. In combat the enchant's cell shows at once and may lie over the first buff; when the fight ends the buffs move over to make room. The character sheet's number on an upgraded item is the level its tooltip shows.
+- If it fails, paste: the message text, a screenshot of the buffs block in and after the fight, and `/vg errors`.
 
 ## 9. Bags, merchant, trainer
 
@@ -1862,10 +1958,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: as soon as you change the price or length, Confirm reads Post again and the guide says "Click Post to list stack 1 of 1."; the next click says "Post: sending stack 1 of 1 (... at <the new price> each, ...)" and the item goes up at the new price (the game may ask to confirm again). It never lists at the price you had before the change. [Needs in-game check: that the game takes a second Post after a confirm it was never sent.]
 - If it fails, paste: every chat line starting "Post:", the auction's price on the game's Auctions tab, and `/vg errors`.
 
-### 15.6 Legacy probe and perk plan (planner off until switched on)
+### 15.6 Legacy probe
 
-- Do: type `/vg legacy probe` before opening the Legacy window, open it (the Legacy button on the menu bar), click each of its three tabs, and type `/vg legacy probe` again. Under Town and gear tick "Legacy perk planner", then type `/vg legacy plan add 3 Test perk`, `/vg legacy plan add 14 Other perk`, `/vg legacy plan`, `/vg legacy plan remove test perk`, `/vg legacy plan clear`. Paste the second probe's whole output.
-- Expect: the first probe says LegacySystemFrame is not loaded; the second lists TreePage, ChallengesPage and RewardTrackPage with their keys, a "perk panel" line with ids and a node count (or "not found on TreePage"), and the globals with Legacy in the name. The plan lines say "Planned.", then that 17 points is over the tree's 16, then list "3  Test perk" and "3 of 16 points planned.", then "Perk dropped." and "Legacy plan cleared." [Needs in game: everything the probe prints; it is the data source the challenge tracker waits on.]
+- Do: type `/vg probe legacy` before opening the Legacy window, open it (the Legacy button on the menu bar), click each of its three tabs, and type `/vg probe legacy` again. Paste the second probe's whole output.
+- Expect: the first probe says LegacySystemFrame is not loaded; the second lists TreePage, ChallengesPage and RewardTrackPage with their keys, a "perk panel" line with ids and a node count (or "not found on TreePage"), and the globals with Legacy in the name. [Needs in game: everything the probe prints.]
 - If it fails, paste: the probe's output and `/vg errors`.
 
 ### 15.6a Chat filter (off until switched on)
@@ -1983,6 +2079,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the board has a title with its count, a close button at the top right, and Escape closes it; rows appear as people post, newest first, each with a faint wash under the mouse and LFM or LFG, a dungeon and its range (or "Any dungeon"), the roles named, the sender's name without its realm or ruleset part and the age; the tooltip shows the whole line and the full name. The click opens the chat box with `/w <full name> Hi! ...` filled in and sends nothing. Your own post does not appear. The whisper reaches the player when you send it (a two-part name that fails is a finding). Inside a dungeon nothing new appears and `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the board and the chat box, the line that was misread, and `/vg errors`.
 - Do also: on a healer whose role was never picked, open `/vg` → Chat → Group board and read **Your role, for the whisper** (it should read **Automatic**); then on the board click the filter button until it reads **Needs my role**, and click an LFM row with the healer role assigned in a group and with none. Every post should be listed, the LFM posts asking for heals (or naming no role) first, newest first, and the rest below them in grey; the whisper should say `(Healer)` with the healer role and `(DPS)` with none, and `/vg errors` stay empty. [Needs in-game check: all of it.]
+- Do also: on a German client, then a Russian one, post in a numbered channel "Suche Tank und Heiler für SFK" (German) or "Ищем хила и ДД в SFK" (Russian), then open the board and the Chat filter card. The post should be an LFM row for Shadowfang Keep with its roles; on a client in a language with no filter lists the card shows no Gold selling, Boosting or Guild recruiting switch and says why. Then rename the Filtered tab in the game's chat settings, send a spam line, and check no second Filtered tab is made. [Needs in-game check: all of it, and that the word lists match how players write.]
 
 ### 18.3 Quest guidance
 
@@ -2019,12 +2116,6 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - If it fails, paste: the whole `/vg guide probe` output from each place, which lines say `hidden` or `missing`, and `/vg errors`.
 
 ## 19. Roll tracker
-
-### 19.0a Pet stable
-
-- Do: on a hunter with a pet out and one stabled, open `/vg` → Town and gear → Pet stable and click List my pets in chat (or type `/vg pets`); then talk to a stable master. Run `/vg errors`.
-- Expect: `/vg pets` prints "Your pets:" and a line per pet, such as "Rex, level 12 Cat · Loyal · happy · 35% to next level (out)", the pet that is out first; at the stable master one chat line says "Stable: 2 pets (/vg pets lists them)." and the next slot's price (unobserved: the field meanings come from the API docs). On a character with no pets, `/vg pets` says there are none. Turn the line off under Town and gear → Pet stable.
-- If it fails, paste: the `/vg pets` output, the stable master's window and `/vg errors`.
 
 ### 19.1 /roll results
 
@@ -2136,7 +2227,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 24.1 The dungeon card on the Instance prep checklist
 
 - Do: in `/vg` open Town and gear and switch on "Dungeon card". With a quest for a dungeon in your log, walk into that dungeon (a character that carries nothing short, if you can). Then leave and type `/vg prep`.
-- Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Last run: N days ago" (once you have been there before; "today" within a day), "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
+- Expect: at the door the checklist shows even though nothing is short, with a heading in small grey capitals, "DUNGEON NAME · LEVELS A-B · 5-PLAYER NORMAL", "Last run: N days ago" (once you have been there before; "today" within a day), "YOUR QUESTS HERE" (small grey capitals too) and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "DUNGEON QUESTS IN YOUR LOG" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
 - If it fails, paste: what the card shows, `/run print(C_Map.GetMapLevels(C_Map.GetBestMapForUnit("player")))` and `/vg errors`.
 
 ### 24.1a A finished dungeon quest reads "done"
@@ -2313,10 +2404,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the chat box opens with `/p Soft reserves: ...` (or `/raid`) typed in and nothing is sent until you press Enter; the print shows to you alone. [Needs in game: that the client's ChatFrameUtil.OpenChat opens the chat box with text, and that a line this long is accepted. Without it the part prints to your chat instead.]
 - If it fails, paste: what the chat box showed and `/vg errors`.
 
-### 30.3 Roster
+### 30.3 Raid roster
 
-- Do: type `/vg loot roster` in a party or raid, ask a member to go offline or die, change a role in the game's group tools, then `/vg unlock` and drag the panel.
-- Expect: a small panel lists the group, tanks then healers then damage, names in class colors, with "Lead" or "Asst", "Offline" or "Dead"; it redraws when those change, and keeps its place. [Needs in game: that UNIT_FLAGS or the other listed events fire for another member's death, and that roles and leader marks read plainly in a Forever client.]
+- Do: with the Officer loot tools off, press Show or hide the roster under `/vg` → Raid frames (or type `/vg loot roster`) in a party or raid, ask a member to go offline or die, change a role in the game's group tools, then `/vg unlock` and drag the panel.
+- Expect: a small panel lists the group, tanks then healers then damage, names in class colors, with "Lead" or "Asst", "Offline" or "Dead"; it redraws when those change, and keeps its place (a spot you moved before this version is kept too); closing it stops it listening to the group. [Needs in game: that UNIT_FLAGS or the other listed events fire for another member's death, and that roles and leader marks read plainly in a Forever client.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ## 31. Sized icons (#232)
@@ -2739,11 +2830,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the panel sits at the bottom right, 16 in from the right edge and above the bags and menu bar, where the game's own meter sits; it does not cover bars 1 to 3. On a wider screen (a 2560 x 1440 monitor at 100%) it sits where it always did, left of the bags and menu bar. [Needs in-game check: the panel's top against the tooltip corner and the quest tracker on a 1365-wide screen.]
 - If it fails, paste: a screenshot of the corner and `/vg frame Vanguard_Meter`.
 
-### 33.52 Officer roster in a 40-player raid on a short screen
+### 33.52 Raid roster in a 40-player raid on a short screen
 
-- Do: with Officer loot tools on (`/vg loot on`), in a raid of 40 on a screen 768 units tall or less (1920 x 1080 at the game's UI scale 100% is 768 tall), open the roster (`/vg loot roster`).
+- Do: in a raid of 40 on a screen 768 units tall or less (1920 x 1080 at the game's UI scale 100% is 768 tall), open the roster (`/vg` → Raid frames → Show or hide the roster).
 - Expect: the panel ends above the bottom edge of the screen and its last line reads "+3 more" (or the number of members it had no room for); on a taller screen every member is listed with no count line. [Needs in-game check: the count at your screen's height, and the panel against the roll tracker at the left edge, which it still overlaps.]
-- If it fails, paste: a screenshot and `/vg frame Vanguard_OfficerRoster`.
+- If it fails, paste: a screenshot and `/vg frame Vanguard_RaidRoster`.
 
 ### 33.53 Group threat panel on a narrow screen
 
@@ -3114,9 +3205,9 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: `/vg frame` prints lines with no Lua error. Both dumps print true (the game's own state is not tainted), and no "Interface action failed because of an AddOn" shows at the start of the fight. [Needs in-game check: if either dump prints false and "Vanguard", say so in the project: the third stability hunt has a fix ready for the layout switch (offer a reload after it), and the nameplate setting would need a decision.]
 - If it fails, paste: both dump lines, any blocked-action line, and `/vg errors`.
 
-### 33.115 A raid of 11 or more: roster changes, the open Officer roster, Group threat and buff refreshes
+### 33.115 A raid of 11 or more: roster changes, the open raid roster, Group threat and buff refreshes
 
-- Do: in a raid of 11 or more (any raid scale; the Healing layout's 115% too), `/vg perf slow` and have members join, leave and move groups out of combat. Then open the Officer roster (`/vg loot roster`), pull a pack of mobs, and switch Group threat on for a boss fight. In a long fight, watch the raid frames' missing-buff marks as buffs are refreshed and fall off.
+- Do: in a raid of 11 or more (any raid scale; the Healing layout's 115% too), `/vg perf slow` and have members join, leave and move groups out of combat. Then open the raid roster (`/vg loot roster`), pull a pack of mobs, and switch Group threat on for a boss fight. In a long fight, watch the raid frames' missing-buff marks as buffs are refreshed and fall off.
 - Expect: no hitch on a roster change, and `/vg perf slow` shows no pixel-size work per change. The roster redraws when the group changes, not with every mob. Group threat follows threat about four times a second and switches at once with your target. A buff falling off still shows its mark. [Needs in-game check: the client stores a frame's scale as a float32; the fix compares scales with a tolerance.]
 - If it fails, paste: the `/vg perf slow` lines and `/vg errors`.
 
@@ -3126,10 +3217,10 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the icon dims (blue for power) and comes back exactly when the game's own buttons would; range red still works. The gaps row shows no cooldown the manager hides until you add it.
 - If it fails, paste: which button stayed the wrong colour, or which cooldown showed, and `/vg errors`.
 
-### 33.117 BigWigs, Clique and SexyMap alongside Vanguard
+### 33.117 Boss timer spots, Clique and SexyMap alongside Vanguard
 
-- Do: with BigWigs only (no DBM), outside an instance, `/vg dock` and open the Combat tools page. With Clique loaded, look at its row on the Modules page's Other addons card. With SexyMap and Vanguard's Minimap off, look at a LibDBIcon minimap button and a Questie or TomTom minimap pin.
-- Expect: `/vg dock` says where to drag BigWigs' bars, and the Boss mods row is there. Clique's row says its bindings don't reach Vanguard's frames. The buttons and pins sit on SexyMap's (or the game's round) map edge.
+- Do: open the Combat tools page and then `/vg unlock`. With Clique loaded, look at its row on the Modules page's Other addons card. With SexyMap and Vanguard's Minimap off, look at a LibDBIcon minimap button and a Questie or TomTom minimap pin.
+- Expect: The page has a Boss timers note naming the two spots, and unlock mode shows both handles (Boss timers and Boss timers, soon); a boss timer addon's bars can be dragged onto them. [Needs in-game check: that the handles are where the bars can reach.] Clique's row says its bindings don't reach Vanguard's frames. The buttons and pins sit on SexyMap's (or the game's round) map edge.
 - If it fails, paste: the chat lines, a screenshot of the minimap, and `/vg errors`.
 
 ### 33.118 German, French or Russian client: bag filters, searches in small letters, prices and /way
@@ -5025,8 +5116,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.453 Buttons for the chat-only commands
 
-- Do: After a few fights, open `/vg` → Combat tools → Fight history and press List this session's fights, then Recap the last fight in chat. Under Town and gear press List my sell list in chat (Merchants), List the craft queue in chat (with the queue on), Put the newest ranks on my bars and What trainers teach next (Spell ranks, Forever), and List the perk plan in chat (Legacy, Forever). Under Town and gear → Merchants press Forget every merchant..., answer No, then press it again and answer Forget.
-- Expect: each button prints what its `/vg` command prints (`/vg fights`, `/vg recap`, `/vg junk`, `/vg craft`, `/vg ranks swap`, `/vg trainers next`, `/vg legacy plan`); in a fight the ranks button says the bars can't change; No forgets nothing, Forget says "Forgot every merchant." and item tooltips stop naming where an item is sold until you visit a merchant.
+- Do: After a few fights, open `/vg` → Combat tools → Fight history and press List this session's fights, then Recap the last fight in chat. Under Town and gear press List my sell list in chat (Merchants), List the craft queue in chat (with the queue on), Put the newest ranks on my bars and What trainers teach next (Spell ranks, Forever). Under Town and gear → Merchants press Forget every merchant..., answer No, then press it again and answer Forget.
+- Expect: each button prints what its `/vg` command prints (`/vg fights`, `/vg recap`, `/vg junk`, `/vg craft`, `/vg ranks swap`, `/vg trainers next`); in a fight the ranks button says the bars can't change; No forgets nothing, Forget says "Forgot every merchant." and item tooltips stop naming where an item is sold until you visit a merchant.
 - If it fails, paste: the chat lines and which button.
 
 ### 33.454 Move frames from Chat and Situations
@@ -5085,14 +5176,14 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.467 The Legacy probe from its new home (Forever)
 
-- Do: open the Legacy window once, close it, then type `/vg legacy probe`; then type it once in a fight.
+- Do: open the Legacy window once, close it, then type `/vg probe legacy`; then type it once in a fight.
 - Expect: the same lines as before: the window loaded, its three pages with their keys, the perk panel's ids and node count, and the globals with Legacy in the name. In the fight it says "Not in combat."
 - If it fails, paste: the chat lines.
 
-### 33.468 Probe and planner still answer (Forever)
+### 33.468 Probe still answers (Forever)
 
-- Do: type `/vg probe`, then `/vg legacy plan add 2 TEST perk` with the Legacy perk planner on, then `/vg legacy plan` and `/vg legacy plan clear`.
-- Expect: the probe's copy box opens as before, and the planner keeps, lists and clears the perk.
+- Do: type `/vg probe`.
+- Expect: the probe's copy box opens as before. (The Legacy perk planner it was once checked beside is retired.)
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 33.469 Retail's best-effort note (Retail)
@@ -5176,7 +5267,7 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 ### 34.1 Retail login, and the parts that stay WoW Forever's
 
 - Do: log in on Retail with Vanguard on, then `/reload`. Run `/vg status`, `/vg modules` and `/vg help`, open `/vg` and look at the Modules, Unit frames, Town and gear, Quests, Action bars and Chat pages, then type `/vg pets`.
-- Expect: no Lua error and no "not on this client" line; `/vg status` names the Retail client and build 120105. None of the WoW Forever-only parts (spell ranks, the pet stable, Legacy, the talent planner, quest guidance's data, the group board, the swing timer, power bar sparks, readouts) is listed or has a row, there is no Talents page and no Your keys tab, and `/vg pets` says Unknown command. The Class bars row on the Modules page names the class resources, and the Quests page's arrow note doesn't mention `/vg questdata`.
+- Expect: no Lua error and no "not on this client" line; `/vg status` names the Retail client and build 120105. None of the WoW Forever-only parts (spell ranks, the talent planner, quest guidance's data, the group board, the swing timer, power bar sparks, readouts) is listed or has a row, there is no Talents page and no Your keys tab, and `/vg ranks` says Unknown command. The Class bars row on the Modules page names the class resources, and the Quests page's arrow note doesn't mention `/vg questdata`.
 - If it fails, paste: the `/vg report` block and a screenshot of the page.
 
 ### 34.2 Class resources above the player frame

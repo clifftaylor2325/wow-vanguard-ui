@@ -125,10 +125,12 @@ it("the faction look: the crest only by default, the crest and heading font, and
   const horde = look();
   expect([horde[0], horde[3], isTok(addon, horde[4], "hordeCrest")], "Horde: Metamorphous and the crossed axes, in Horde red").toEqual(["Metamorphous-Regular.ttf", "lorc-crossed-axes", true]);
   addon.slash("");
-  expect(addon.eval("return Vanguard_Options.crest:IsShown() and Vanguard_Options.crest.__points.LEFT.rel == Vanguard_Options.title"), "the crest beside the options window's title").toBe(true);
+  // The font file of the options page's name (a display title, so it takes the heading font).
+  const pageFont = () => addon.eval(`for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then return c.bar.title.__font[1]:match("[^\\\\]+$") end end`);
+  expect([addon.eval("return Vanguard_Options.crest:IsShown() and Vanguard_Options.crest:GetParent() == Vanguard_Options.footer"), pageFont()], "the crest in the options window's footer, the page's name in the Horde heading font").toEqual([true, "Metamorphous-Regular.ttf"]);
   addon.eval('__click("Faction look")');
   const off = look();
-  expect([off[0], off[2], addon.eval("return Vanguard_Options.title.__font[1]:find('Fira') ~= nil")], "Off: the usual heading font, no crests, at once").toEqual(["FiraSansCondensed-SemiBold.ttf", false, true]);
+  expect([off[0], off[2], pageFont()], "Off: the usual heading font, no crests, at once").toEqual(["FiraSansCondensed-SemiBold.ttf", false, "FiraSansCondensed-SemiBold.ttf"]);
   // Off, then Crest only, then Crest and heading font: the cycle's order.
   addon.eval('__click("Faction look") __click("Faction look") __faction = "Neutral" ns.Theme.Refresh()');
   expect(look().slice(0, 3), "a neutral character keeps the usual look").toEqual(["FiraSansCondensed-SemiBold.ttf", "FiraSansCondensed-Medium.ttf", false]);

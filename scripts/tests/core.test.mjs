@@ -558,7 +558,7 @@ it("the text dialog: a window title with its X and Escape at the dialog alpha, i
   const addon = loggedIn();
   addon.eval("ns.AskText('Paste it', function() end) __selected = 0 Vanguard_TextEdit.HighlightText = function() __selected = __selected + 1 end");
   const name = "Vanguard_TextDialog";
-  expect(titleOf(addon, name), "the title role in the text colour, hung T.SPACE.pad in and down (its middle half a line, 7 here, below that: on the close button's line)").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -23 });
+  expect(titleOf(addon, name), "the display role in the text colour, hung T.SPACE.pad in and down (its middle half a line, 7 here, below that: on the close button's line)").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -23 });
   expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, name), alphaOf(addon, name), addon.frame(name).strata], "Escape closes it, at the dialog alpha, above the options window").toEqual([true, 0.98, "FULLSCREEN_DIALOG"]);
   expect(insets(addon, `${name}.view`, name), "the text area T.SPACE.pad in, under the head (40), its thumb's gutter (12) on the right, over the foot (50)").toEqual([16, 40, 28, 50]);
@@ -612,7 +612,7 @@ it("the question dialog: its text is the title, wrapped short of the X, the dial
   const addon = loggedIn();
   const name = "Vanguard_Question";
   addon.eval("__answers = {} function __ask(text) ns.Ask(text, 'Yes', function() __answers[#__answers + 1] = 'yes' end, function() __answers[#__answers + 1] = 'no' end) end __ask('Sure?')");
-  expect(titleOf(addon, name), "the title role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
+  expect(titleOf(addon, name), "the display role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
   expect(addon.eval(`return { ${name}.title:GetWidth(), ${name}:GetWidth(), ${name}:GetHeight() }`), "wrapped at the X's room (400 less 16 and 42); a pad, one line, a section gap, the buttons, a pad").toEqual([342, 400, 96]);
   expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, name), alphaOf(addon, name), insets(addon, `${name}.yes`, name).slice(2)], "Escape closes it, at the dialog alpha, the buttons a pad from the corner").toEqual([true, 0.98, [16, 16]]);
@@ -693,7 +693,7 @@ it("the reload dialog: the reason is the title and the dialog grows to fit it; t
   const addon = loggedIn();
   const name = "Vanguard_Reload";
   addon.eval("ns.OfferReload('Changed.')");
-  expect(titleOf(addon, name), "the title role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
+  expect(titleOf(addon, name), "the display role in the text colour, T.SPACE.pad in").toMatchObject({ size: titleSize(addon), text: true, left: 16 });
   expect(addon.eval(`return { ${name}.title:GetText(), ${name}:GetHeight() }`), "the reason and the question, one line").toEqual(["Changed. Reload the UI now to apply it?", 96]);
   expect(closeOf(addon, name), "the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, name), alphaOf(addon, name), insets(addon, `${name}.accept`, name).slice(2)], "Escape closes it, at the dialog alpha, the Reload button a pad from the corner").toEqual([true, 0.98, [16, 16]]);
@@ -781,4 +781,28 @@ it("ns.PlaceSpell does nothing in a fight, and places the spell once it ends", (
   expect(addon.eval("return { ns.PlaceSpell(7, 133), __wfgWorld.placed or false, __wfgWorld.cursor == nil }"), "in combat: refused, nothing picked up or placed").toEqual([false, false, true]);
   setCombat(addon, false);
   expect(addon.eval("return { ns.PlaceSpell(7, 133), __wfgWorld.placed }"), "out of combat: placed").toEqual([true, 7]);
+});
+
+// A1-13 (L1): a second upgrade for one settings table used to replace the first.
+it("A1-13: two upgrades registered for one settings table both run, in order, once per table", () => {
+  const addon = loggedIn(`ns.Migrate("TESTONLY_Two", function(saved) saved.order = (saved.order or "") .. "a" end)
+    ns.Migrate("TESTONLY_Two", function(saved) saved.order = saved.order .. "b" end)`);
+  expect(addon.eval('local t = {} ns.MigrateTable("TESTONLY_Two", t) ns.MigrateTable("TESTONLY_Two", t) return { t.order, #ns.migrations.TESTONLY_Two }'), "first then second, and not again on the same table").toEqual(["ab", 2]);
+  expect(addon.eval('local t = {} return ns.MigrateTable("TESTONLY_None", t) == t'), "a table with no upgrade comes back as it is").toBe(true);
+});
+
+it("A1-13: every registered settings upgrade leaves an upgraded table as it is when it runs again", () => {
+  const addon = loggedIn("");
+  const changed = addon.eval(`local out = {}
+    local function text(v) return ns.Serialize.Encode("profile", { v = v }) end
+    for key, list in pairs(ns.migrations) do
+      for _, sample in ipairs({ {}, ns.Copy(VanguardDB.profiles.Default[key] or {}) }) do
+        for _, fn in ipairs(list) do fn(sample) end
+        local once = text(sample)
+        for _, fn in ipairs(list) do fn(sample) end
+        if text(sample) ~= once then out[#out + 1] = key end
+      end
+    end
+    table.sort(out) return { out, next(ns.migrations) ~= nil }`);
+  expect(changed, "no settings table changes on its second upgrade (an empty one, and the profile's own)").toEqual([{}, true]);
 });

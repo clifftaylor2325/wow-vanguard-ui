@@ -9,20 +9,20 @@ import { createAddon, RETAIL_CLIENT, root } from "../lib/lua-harness.mjs";
 import { loadsOn, tocEntries } from "../lib/toc.mjs";
 import { chatHas, loggedIn } from "./helpers.mjs";
 
-// The modules only WoW Forever has: vanilla's systems (swing timer, five-second rule, spell ranks, Legacy, the
-// talent tree, pet happiness and the stable) and the guides built on vanilla's quests and groups.
-const FOREVER_ONLY = ["PowerTicks", "SwingTimer", "UnitExtras", "TalentPlanner", "Legacy", "QuestGuide", "SpellRanks", "PetStable", "GroupBoard"];
+// The modules only WoW Forever has: vanilla's systems (swing timer, five-second rule, spell ranks, the
+// talent tree) and the guides built on vanilla's quests and groups.
+const FOREVER_ONLY = ["PowerTicks", "SwingTimer", "UnitExtras", "TalentPlanner", "QuestGuide", "SpellRanks", "GroupBoard"];
 
 // ns.ModuleNames() on WoW Forever before the gate: the gate must leave it exactly as it was.
 const FOREVER_MODULES = [
   "UnitFrames", "CastBars", "FrameAuras", "PlayerAuras", "ComboPoints", "ClassBars", "PowerTicks", "SwingTimer", "UnitExtras",
   "RaidFrames", "RaidAuras", "RaidHealing", "RaidStatus", "RaidTools", "MainTanks", "PartyExtras", "GroupThreat", "ActionBars",
   "SpecialBars", "Minimap", "Waypoints", "MinimapButtons", "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatHistory",
-  "ChatWindows", "ChatBubbles", "Bags", "InfoStrip", "BrokerStrip", "MenuStrip", "Merchant", "Errands", "InstancePrep",
-  "TalentPlanner", "Legacy", "AutoAccept", "Quiet", "QuestDialog", "QuestAuto", "QuestTracker", "QuestLog", "QuestHistory",
+  "ChatWindows", "ChatBubbles", "Bags", "InfoStrip", "BrokerStrip", "MenuStrip", "HudText", "Merchant", "Errands", "InstancePrep",
+  "TalentPlanner", "AutoAccept", "Quiet", "QuestDialog", "QuestAuto", "QuestTracker", "QuestLog", "QuestHistory",
   "QuestGuide", "QuestArrow", "QuestMinimap", "Windows", "CharacterExtras", "AuctionHelper", "GameTools", "CooldownGaps",
-  "CooldownGlow", "CooldownKeys", "BossDocks", "FightHistory", "Meter", "Rolls", "CraftQueue", "MailTools", "OfficerLoot",
-  "GameAlerts", "AfkScreen", "DataBars", "Tooltips", "Inventory", "Upgrades", "VendorMemory", "SpellRanks", "PetStable",
+  "CooldownGlow", "CooldownKeys", "FightHistory", "Meter", "Rolls", "CraftQueue", "MailTools", "OfficerLoot",
+  "GameAlerts", "AfkScreen", "DataBars", "Tooltips", "Inventory", "Upgrades", "VendorMemory", "SpellRanks",
   "Nameplates", "Situations", "ClickCast", "Coexist", "GroupBoard",
 ];
 
@@ -95,7 +95,7 @@ it("clients: on Retail the Forever-only modules' options rows and pages don't sh
   // Rows by page that only WoW Forever's modules (or features) put there.
   const rows = {
     unitframes: ["Combat timers", "Swing timer (reload)", "Five-second rule spark on your mana bar", "Readouts"],
-    town: ["Spell ranks", "Pet stable", "Legacy"],
+    town: ["Spell ranks"],
     quests: ["Shift-click points", "Quest-start pins on the world map"],
     actionbars: ["Your keys", "Set up keys"],
     chat: ["Group board", "Open the group board"],
@@ -130,10 +130,10 @@ it("clients: the class bars and quest arrow wording describe the running client"
 
 it("clients: on Retail the Forever-only /vg words are unknown and out of /vg help", () => {
   const retail = on(true);
-  retail.slash("pets");
-  expect(chatHas(retail, /Unknown command\. \/vg help/), "/vg pets is unknown").toBe(true);
+  retail.slash("ranks");
+  expect(chatHas(retail, /Unknown command\. \/vg help/), "/vg ranks is unknown").toBe(true);
   retail.slash("help");
-  for (const word of ["pets", "ranks", "trainers", "legacy", "talents", "lfg", "questdata"]) {
+  for (const word of ["ranks", "trainers", "talents", "lfg", "questdata"]) {
     expect(chatHas(retail, new RegExp(`\\|r ${word}\\b`)), `/vg help has no ${word}`).toBe(false);
   }
   expect(chatHas(retail, /\|r stock\b/), "Errands' word stays").toBe(true);
@@ -143,11 +143,11 @@ it("clients: on Retail the Forever-only /vg words are unknown and out of /vg hel
 it("clients: on WoW Forever the same words are commands and in /vg help", () => {
   const forever = on(false);
   forever.slash("help");
-  for (const word of ["pets", "ranks", "trainers", "legacy", "talents", "lfg", "questdata"]) {
+  for (const word of ["ranks", "trainers", "talents", "lfg", "questdata"]) {
     expect(chatHas(forever, new RegExp(`\\|r ${word}\\b`)), `/vg help has ${word}`).toBe(true);
   }
-  forever.slash("pets");
-  expect(chatHas(forever, /Unknown command/), "/vg pets runs").toBe(false);
+  forever.slash("ranks");
+  expect(chatHas(forever, /Unknown command/), "/vg ranks runs").toBe(false);
 });
 
 it("clients: rows added with ns.RetailRows show on the Game windows card, under the window switches", () => {

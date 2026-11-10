@@ -216,14 +216,15 @@ it("bundled font and logo", () => {
   expect(addon.eval("return (ns.Theme.Font(true))") === FIRA + "SemiBold.ttf", "bold asks for its SemiBold weight").toBeTruthy();
   addon.eval('ns.Options.Show("general")');
   expect(addon.eval('return __click("Font")') && addon.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "the Font option switches to the game's font").toBeTruthy();
-  expect([addon.eval("return Vanguard_Options.title:GetFont()"), addon.eval("return Vanguard_Options.reload:IsShown()")], "a font change re-fonts the text already on screen, with no reload").toEqual(["Fonts\\FRIZQT__.TTF", false]);
+  expect([addon.eval("return Vanguard_Options.version:GetFont()"), addon.eval("return Vanguard_Options.reload:IsShown()")], "a font change re-fonts the text already on screen, with no reload").toEqual(["Fonts\\FRIZQT__.TTF", false]);
   const korean = loggedIn('GetLocale = function() return "koKR" end');
   expect(korean.eval("return (ns.Theme.Font())") === "Fonts\\FRIZQT__.TTF", "Korean and Chinese clients keep the game's font (Fira has no Hangul or Han)").toBeTruthy();
   const logo = addon.eval(`local l = Vanguard_Options.logo
     local out = {}
     for _, w in ipairs(__wfgStub.frames) do if w.__parent == l then out[#out + 1] = w.__texture end end
     return out`);
-  expect(logo.length === 1 && /Media\\Textures\\Icon$/.test(logo[0]), "the options title shows the crest, the same pre-colored art as the addons-list icon").toBeTruthy();
+  expect(logo.length === 1 && /Media\\Art\\banner-crest$/.test(logo[0]), "the options header shows the crest from the 256 px painting the addons-list icon was made from").toBeTruthy();
+  expect(addon.eval(`local f = ns.Theme.Logo(UIParent, 28) return f.art.__texture`), "any other crest (T.Logo) keeps the 64 px icon").toMatch(/Media\\Textures\\Icon$/);
 });
 
 it("text roles, sheen and shadows", () => {
@@ -320,7 +321,7 @@ it("shared media: the bundled LibSharedMedia-3.0 carries Vanguard's font and bar
   const fonts = addon.eval("return __menuTexts()");
   expect(fonts, "the Font picker: Vanguard's own two fonts only (other addons' fonts are not listed)").toEqual(["Fira Sans Condensed", "the game's font"]);
   addon.eval('ns.Theme.Settings().font = "TEST-ONLY Font" ns.Theme.Refresh()');
-  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.title:GetFont()) }"), "a font another addon shares, once in use, is used for all text at once")
+  expect(addon.eval("return { (ns.Theme.Font()), (ns.Theme.Font(true)), (Vanguard_Options.version:GetFont()) }"), "a font another addon shares, once in use, is used for all text at once")
     .toEqual(["Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf", "Interface\\AddOns\\TestOnly\\Font.ttf"]);
   addon.eval('__dropdown("Bar texture")');
   const bars = addon.eval("return __menuTexts()");
@@ -391,6 +392,16 @@ it("the faction look on a Russian client keeps Fira Sans for headings (the facti
   const german = loggedIn(faction + 'GetLocale = function() return "deDE" end');
   german.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
   expect(look(german)[0], "a German client gets Cinzel (it has the Latin accents)").toBe("Cinzel-SemiBold.ttf");
+});
+
+it("the display tier: 18 at Text size 100%, scaled with Text size, and a title role (the faction look's heading font)", () => {
+  const addon = loggedIn('UnitFactionGroup = function() return "Horde" end');
+  // A new display string's font file and size.
+  const display = () => addon.eval('local fs = ns.Theme.Text(UIParent:CreateFontString(), "display") return { fs.__font[1]:match("[^\\\\]+$"), fs.__font[2] }');
+  expect(display(), "Fira Sans SemiBold at 18").toEqual(["FiraSansCondensed-SemiBold.ttf", 18]);
+  addon.eval('ns.Theme.Settings().textScale = 1.3 ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
+  expect(display(), "the Horde heading font with the faction look on auto, 23 at 130%").toEqual(["Metamorphous-Regular.ttf", 23]);
+  expect(addon.eval("local T = ns.Theme return T.RoleSize('display') > T.RoleSize('title') and T.RoleSize('title') > T.RoleSize('heading')"), "display above title above heading").toBe(true);
 });
 
 // TEST-ONLY game tab buttons shaped like the game's three tab templates, and readers for a
@@ -550,6 +561,54 @@ it("the game's font objects: the theme font at Text size, kept after a theme cha
   expect(before[1], "at the size given").toBe(14);
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
   expect(addon.eval("return select(2, __FontA:GetFont())"), "re-applied at the new Text size").toBe(18);
+});
+
+// TEST-ONLY game font objects of the standard family (font strings the stub can read back), made before login: three in
+// the game's standard face at their own sizes and flags, one in a number face, one whose values the client hides; and a
+// count of every SetFont the addon makes on them.
+const STANDARD_FONTS = `
+  __fontSets = 0
+  local holder = CreateFrame("Frame")
+  local function font(name, path, size, flags)
+    local fs = holder:CreateFontString() fs:SetFont(path, size, flags)
+    local set = fs.SetFont
+    fs.SetFont = function(...) __fontSets = __fontSets + 1 return set(...) end
+    _G[name] = fs
+  end
+  font("SystemFont_Small", "Fonts\\\\FRIZQT__.TTF", 10, "") font("SystemFont_Outline", "fonts/frizqt__.ttf", 13, "OUTLINE") font("Game18Font", "Fonts\\\\FRIZQT__.TTF", 18, "")
+  font("SystemFont_Med1", "Fonts\\\\ARIALN.TTF", 12, "")
+  font("SystemFont_Large", "Fonts\\\\FRIZQT__.TTF", 16, "") SystemFont_Large.GetFont = function() return __wfgWorld.secret("Fonts\\\\FRIZQT__.TTF"), 16, "" end
+`;
+// The five fonts as they are now: { face file, size, flags } each, then how many SetFont calls were made.
+const standardFonts = (addon) => addon.eval(`local out = {}
+  for _, name in ipairs({ "SystemFont_Small", "SystemFont_Outline", "Game18Font", "SystemFont_Med1" }) do
+    local path, size, flags = _G[name]:GetFont() out[#out + 1] = { path:match("[^\\\\/]+$"), size, flags }
+  end
+  out[#out + 1] = __fontSets return out`);
+
+it("the global font pass: the game's standard font family takes the theme font at its own sizes and flags; other faces and hidden ones are left", () => {
+  const addon = loggedIn(STANDARD_FONTS);
+  expect(standardFonts(addon), "three re-faced at the game's sizes and flags, the number face untouched, three SetFont calls in all")
+    .toEqual([["FiraSansCondensed-Medium.ttf", 10, ""], ["FiraSansCondensed-Medium.ttf", 13, "OUTLINE"], ["FiraSansCondensed-Medium.ttf", 18, ""], ["ARIALN.TTF", 12, ""], 3]);
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.Theme.SetAccent(1, 0, 0)");
+  expect(standardFonts(addon).slice(0, 3).map((f) => f[1]).concat(standardFonts(addon)[4]), "Text size and an accent change leave the game's sizes alone and set no font again").toEqual([10, 13, 18, 3]);
+  addon.slash("status");
+  expect([chatHas(addon, /Game fonts: 3 of \d+ standard font objects in the theme font$/), addon.eval("return #ns.errors")], "/vg status counts them; no errors").toEqual([true, 0]);
+  expect(addon.eval('for _, name in ipairs(ns.Theme.FONT_OBJECTS.standard) do if name:find("Tooltip") or name:find("NamePlate") or name:find("Chat") then return name end end return "none"'), "the tooltip, nameplate and chat fonts are not on the list").toBe("none");
+});
+
+it("the global font pass follows the Font setting: the game's font puts the game's faces back, and a Korean client is never touched", () => {
+  const addon = loggedIn(STANDARD_FONTS);
+  addon.eval('ns.Theme.Settings().font = "client" ns.Theme.Refresh()');
+  expect(standardFonts(addon), "the game's font: each face as the game had it, spelled as it was").toEqual([["FRIZQT__.TTF", 10, ""], ["frizqt__.ttf", 13, "OUTLINE"], ["FRIZQT__.TTF", 18, ""], ["ARIALN.TTF", 12, ""], 6]);
+  expect(addon.eval("return (ns.Theme.StandardFontCount())"), "none counted as themed").toBe(0);
+  addon.eval('ns.Theme.Settings().font = "" ns.Theme.Refresh()');
+  expect(standardFonts(addon)[0], "Fira Sans again").toEqual(["FiraSansCondensed-Medium.ttf", 10, ""]);
+  const korean = loggedIn(STANDARD_FONTS + 'GetLocale = function() return "koKR" end');
+  korean.eval("ns.Theme.Refresh()");
+  expect(standardFonts(korean), "a Korean client: the game's fonts as they were, and not one SetFont").toEqual([["FRIZQT__.TTF", 10, ""], ["frizqt__.ttf", 13, "OUTLINE"], ["FRIZQT__.TTF", 18, ""], ["ARIALN.TTF", 12, ""], 0]);
+  const always = loggedIn(STANDARD_FONTS, { savedVariables: 'VanguardDB.profiles = { Default = { theme = { font = "client" } } }' });
+  expect(standardFonts(always)[4], "a profile on the game's font from the start sets none either").toBe(0);
 });
 
 it("a Text size outside the slider's range from a hand-edited profile is kept inside it: no font size of 0, below 1 or enormous", () => {

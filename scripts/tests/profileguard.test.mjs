@@ -420,3 +420,30 @@ it("settings guard: a logout while recording a situation backs up the profile wi
   expect(scale, "the backup holds the override the logout saved").toBe(1.25);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+// A1-7 (M2): a logout where the client gives no name must not move this character's stamp past the account's note.
+it("A1-7 settings-loss guard: a logout where the client won't name the character reports no loss at the next login", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("UnitName = function() return nil end");
+  const next = relog(addon);
+  expect([question(next), next.eval("return ns.SettingsGuard.Lost() == true")], "the name was known at login, so the note and the stamp moved together: no question, no notice").toEqual([null, false]);
+  const sv = next.savedVariables();
+  expect(sv.account.guard.chars["Tester-ForeverTest"].stamp, "the account's note carries this character's stamp").toBe(sv.char.guard.stamp);
+});
+
+it("A1-7 settings-loss guard: a character never named in a session keeps its old stamp at logout, and its backup is still renewed", () => {
+  const first = loggedIn(CLICK_LUA);
+  first.fire("PLAYER_LOGOUT");
+  const sv = first.savedVariables();
+  const nameless = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n` });
+  nameless.eval("UnitName = function() return nil end");
+  nameless.login();
+  nameless.eval("time = function() return 120 end VanguardCharDB.guard.backup = nil");
+  nameless.fire("PLAYER_LOGOUT");
+  const after = nameless.savedVariables();
+  expect([after.char.guard.stamp, typeof after.char.guard.backup], "no name all session: the stamp stays where the note is, the backup is written").toEqual([sv.char.guard.stamp, "string"]);
+  const named = createAddon({ savedVariables: `VanguardDB = ${luaValue(after.account)}\nVanguardCharDB = ${luaValue(after.char)}\n` });
+  named.eval(CLICK_LUA);
+  named.login();
+  expect(question(named), "named again at the next login: no loss reported").toBe(null);
+});

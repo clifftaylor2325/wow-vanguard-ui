@@ -346,9 +346,9 @@ it("group board: the probe's last line keeps its first 80 characters whole, neve
 });
 
 // The theme numbers the board is laid out with: pad, gap, row height, button height, dialog alpha, the close
-// button's inset, and the title and small role sizes.
+// button's inset, and the display (a window title's) and small role sizes.
 const tokens = (addon) => addon.eval(`local T = ns.Theme
-  return { T.SPACE.pad, T.SPACE.gap, T.ROW.height, T.BUTTON_H, T.ALPHA.dialog, T.CONTROL.inset, T.RoleSize("title"), T.RoleSize("small") }`);
+  return { T.SPACE.pad, T.SPACE.gap, T.ROW.height, T.BUTTON_H, T.ALPHA.dialog, T.CONTROL.inset, T.RoleSize("display"), T.RoleSize("small") }`);
 
 // A W.Row's look, from a Lua expression for it: its height, its hover wash (the vertex colour of its T.Row hover layer), and whether the selected look is there and hidden.
 const rowLook = (addon, row) => addon.eval(`local r = ${row}
@@ -360,7 +360,7 @@ it("group board: a window title with its count and X, a dialog's opacity, T.SPAC
   post(addon, "LFM SFK need heals", "Lightmend-Ruleset");
   addon.slash("lfg");
   const [pad, , , , dialog, inset, titleSize, smallSize] = tokens(addon);
-  expect(titleOf(addon, "Vanguard_GroupBoard"), "the title role in text, T.SPACE.pad in, on the X's line").toEqual({ size: titleSize, text: true, left: pad, mid: -inset });
+  expect(titleOf(addon, "Vanguard_GroupBoard"), "the display role in text, T.SPACE.pad in, on the X's line").toEqual({ size: titleSize, text: true, left: pad, mid: -inset });
   const count = addon.frame("Vanguard_GroupBoard.count");
   expect([count.text, count.font.size, isTok(addon, count.textColor, "text2")], "the count beside it, small text2").toEqual(["1 posts", smallSize, true]);
   const px = addon.eval("return ns.Theme.PixelRound(Vanguard_GroupBoard, ns.Theme.CONTROL.inset)");
@@ -416,4 +416,44 @@ it("H29-6-R1 a post row lights under the mouse and its tooltip script still runs
   expect(addon.eval("return { ns.Theme.RowParts(__row).hover:IsShown(), __tips > 0 }"), "hover wash on, tooltip shown").toEqual([true, true]);
   addon.eval(`__row:GetScript("OnLeave")(__row)`);
   expect(addon.eval("return ns.Theme.RowParts(__row).hover:IsShown()"), "left: the wash is off").toBe(false);
+});
+
+// A logged-in addon on a client of this locale.
+const boardIn = (locale) => loggedIn(`GetLocale = function() return "${locale}" end`);
+
+it("group board words: a German client reads German looking-for-more and looking-for-group lines, with the shared acronyms and role words", () => {
+  const addon = boardIn("deDE");
+  expect(parse(addon, "Suche Tank und Heiler für SFK"), "looking for more").toEqual(["LFM", "Shadowfang Keep", "tank,healer"]);
+  expect(parse(addon, "Suche Gruppe für BRD"), "looking for group").toEqual(["LFG", "Blackrock Depths", ""]);
+  expect(parse(addon, "LFM Strat dd"), "the shared acronyms").toEqual(["LFM", "Stratholme", "dps"]);
+});
+
+it("group board words: Russian lines are read, Cyrillic capitals and all", () => {
+  const addon = boardIn("ruRU");
+  expect(parse(addon, "Ищем Хила и ДД в SFK")?.slice(0, 1), "looking for more").toEqual(["LFM"]);
+  expect(parse(addon, "ищу группу в ЛФМ")?.[0], "looking for group").toBe("LFG");
+});
+
+it("group board words: a locale's own dungeon name is read from the name the board shows", () => {
+  const addon = boardIn("deDE");
+  addon.eval("local GB = ns.GetModule('GroupBoard') GB.DUNGEONS[5][1] = 'Burg Schattenfang' GB.LoadWords()");
+  expect(parse(addon, "LFM Burg Schattenfang tank")?.[1], "the translated full name").toBe("Burg Schattenfang");
+});
+
+it("group board words: a Korean or Chinese client reads the shared acronyms, and English phrases are not its words", () => {
+  for (const locale of ["koKR", "zhCN", "zhTW"]) {
+    const addon = boardIn(locale);
+    expect(parse(addon, "LFM SFK tank"), `${locale} acronyms`).toEqual(["LFM", "Shadowfang Keep", "tank"]);
+    expect(parse(addon, "looking for more heals"), `${locale} no English phrases`).toBe(null);
+  }
+});
+
+it("group board words: an English client keeps the English phrases, and an enGB client too", () => {
+  for (const locale of ["enUS", "enGB"]) {
+    expect(parse(boardIn(locale), "looking for more heals for the deadmines"), locale).toEqual(["LFM", "The Deadmines", "healer"]);
+  }
+});
+
+it("group board words: a client of a locale with no list reads the shared acronyms", () => {
+  expect(parse(boardIn("xxXX"), "LFG ubrs"), "shared acronyms only").toEqual(["LFG", "Upper Blackrock Spire", ""]);
 });

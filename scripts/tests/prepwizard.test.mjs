@@ -31,7 +31,7 @@ it("prepwizard: a warrior has two steps, supplies then review, and Use suggested
   expect(addon.frame("Vanguard_PrepWizard").visible, "/vg prep setup opens it").toBe(true);
   expect(shownSliders(addon), "step 1: the three supplies").toEqual(["bandages", "food", "potions"]);
   const wizard = "Vanguard_PrepWizard";
-  expect(titleOf(addon, wizard), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect(titleOf(addon, wizard), "a window title: the display role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
   expect(closeOf(addon, wizard), "with the X where every window has it (the one ns.Dialog makes)").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([addon.eval(`return ${wizard}.close == ${wizard}.chrome.close`), addon.frames(`w.__kind == "Button" and w:GetParent() == ${wizard} and w.__points.CENTER ~= nil and w.__points.CENTER.relPoint == "TOPRIGHT"`).length], "and no second one of its own").toEqual([true, 1]);
   expect([escapes(addon, wizard), alphaOf(addon, wizard), addon.eval("local n = 0 for _, name in ipairs(UISpecialFrames) do if name == 'Vanguard_PrepWizard' then n = n + 1 end end return n")], "Escape closes it, once on the list; the dialog alpha").toEqual([true, 0.98, 1]);

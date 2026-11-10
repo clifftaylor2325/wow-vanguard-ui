@@ -1,6 +1,6 @@
 # Commands
 
-Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help` prints the same list in game. Eight words are WoW Forever only: `ranks`, `trainers`, `pets`, `legacy`, `talents`, `lfg` and `questdata` because their parts are, and `launch` because the beta data went with Forever's launch; on Retail they answer Unknown command and `/vg help` leaves them out. The full wording of each command is in [Every command, word for word](#every-command-word-for-word) at the end of this page, which is the reference the tables are checked against.
+Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help` prints the same list in game. Six words are WoW Forever only: `ranks`, `trainers`, `talents`, `lfg` and `questdata` because their parts are, and `launch` because the beta data went with Forever's launch; on Retail they answer Unknown command and `/vg help` leaves them out. The full wording of each command is in [Every command, word for word](#every-command-word-for-word) at the end of this page, which is the reference the tables are checked against.
 
 ## Options and setup
 
@@ -11,7 +11,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg whatsnew` | What changed in this version |
 | `/vg modules`, `/vg enable <module>`, `/vg disable <module>` | List the parts; switch one, then `/reload` |
 | `/vg skins` | Addons skinned through the API; `skins <addon> on\|off` |
-| `/vg status` | Version, profile, modules, skins, work waiting on combat, game restrictions |
+| `/vg status` | Version, profile, modules, skins, work waiting on combat, game restrictions, game windows by state (`/vg status windows` lists them) |
 
 ## Layout
 
@@ -20,7 +20,6 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg unlock`, `/vg lock`, `/vg move` | Drag handles on every Vanguard frame |
 | `/vg reset <frame\|all>`, `/vg frames` | Put a frame back; list the frames you can move |
 | `/vg grid`, `/vg snap` | The unlock-mode grid and snapping |
-| `/vg dock` | Line up Deadly Boss Mods' bars with the Boss timers spots |
 | `/vg preview [party\|10\|25\|40\|off]` | Raid frames with sample players |
 
 ## Look
@@ -50,7 +49,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg cooldowns [setup]`, `/vg cdmglow [on\|off\|<percent>]`, `/vg gaps ...` | The Cooldowns page and its setup wizard; the Cooldown Manager buff glow (off by default); the Cooldown gaps row |
 | `/vg cdmkeys [on\|off]` | The key for each Cooldown Manager spell on its icon (off by default) |
 | `/vg meter [on\|off\|dps\|hps]`, `/vg fights`, `/vg recap` | Vanguard's meter, DPS per fight, last fight's recap |
-| `/vg rolls`, `/vg loot` | Roll results; officer soft-reserve list and roster |
+| `/vg rolls`, `/vg loot` | Roll results; officer soft-reserve list |
 | `/vg lfg [probe]` | The group board |
 | `/vg plates [enemies on\|off]` | Nameplates drawn and the game's plate settings |
 | `/vg situation ...`, `/vg watch ...` | Situation overrides; Chat watch phrases |
@@ -64,17 +63,16 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg quests`, `/vg way`, `/vg questdata` | Quest log, waypoints, what the client says about a quest |
 | `/vg quests history [n]` | The latest quests any of your characters turned in, and who did each |
 | `/vg guide probe` | What this client returns for the reads a levelling guide would use (chat only) |
-| `/vg probe [chat\|fight\|last]` | One out-of-combat run that asks the client the open questions and opens the answers in a copy box, among them which client this is (saved in SavedVariables); typed in a fight it takes only the party, mark and boss reads; `fight` takes the secrecy reads in the next fight; `last` reopens the saved report |
+| `/vg probe [chat\|fight\|last\|legacy]` | One out-of-combat run that asks the client the open questions and opens the answers in a copy box, among them which client this is (saved in SavedVariables); typed in a fight it takes only the party, mark and boss reads; `fight` takes the secrecy reads in the next fight; `last` reopens the saved report |
 | `/vg ah ...` | Auction prices, shopping lists, scans |
 | `/vg weights [wizard\|...]` | Stat weights for gear upgrades, per class; import also takes a guide site's weight string |
 | `/vg craft ...`, `/vg mail ...` | Craft queue; mail tools (off until switched on) |
 | `/vg prep [want <kind> <n>\|setup\|buffs]` | The Instance prep card, wanted amounts, and your buffs against the buff checks |
-| `/vg pets` | Your pets, out and stabled, with level, loyalty and happiness |
 | `/vg bag [add\|remove\|delete\|top\|deposit ...]` | Your own bag categories: a name and its items |
 | `/vg gear` | Average item level, melee damage per second, pieces missing an enchant |
 | `/vg alts`, `/vg stock`, `/vg inventory`, `/vg vendors` | Alt overview, items to keep, characters remembered, merchants remembered |
 | `/vg junk`, `/vg sell` | Your sell list; sell every stack of one item at a merchant |
-| `/vg ranks`, `/vg trainers`, `/vg legacy` | Spell ranks, what trainers teach, the Legacy system |
+| `/vg ranks`, `/vg trainers` | Spell ranks, what trainers teach |
 | `/vg copy` | The recent chat of the shown tab as plain text, at its newest line |
 | `/vg talents [plan\|spend\|clear\|export\|import]` | The talent planner on the game's talents window |
 
@@ -116,7 +114,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg slug [on|off]               world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a side-by-side test, off by default)
 /vg framebuffer [on|off]        windows drawn through a frame buffer while they open and close, so inner borders don't ghost (a side-by-side test, off by default)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
-/vg accent <rrggbb|brass|arcane|jade|orchid|copper> | reset      /vg theme reset
+/vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour; /vg theme reset
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
@@ -131,7 +129,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg lfg [probe]                 open or close the group board: looking-for-more and looking-for-group posts from chat; `probe` says what chat it has heard and which channels you are in
 /vg questdata [questID]         what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever
 /vg guide probe                 what this client returns for the quest, map, taxi and unit reads a levelling guide would use, and for the unit tooltip data of your target (its line count only) (chat only; nothing changes)
-/vg probe [chat|fight|last]    one run out of combat asks the client the open questions (the client's project, interface and build, which of the 14 Forever-only calls it has (presence only; a retail client has none), how many C_Secrets functions it has, which of the game's class resource bars and the encounter timeline exist and whether they are shown or forbidden, SavedVariables round trip, new-quest flag, threat secrecy, group listing, secure paging, realm and name format, C_Secrets predicates, restriction states, navigation, reads Forever's API docs lack (which widget methods exist, among them the texture's slice, SVG and sprite-sheet ones; presence only, nothing is called), quest and map reads, party health, raid marks and boss units, the bars' CVar defaults, reward XP and watched faction, and the click-casting starter layouts' spell ids) and opens the report in a copy box; chat prints it too; typed in a fight it takes only the party, mark and boss reads and keeps them; fight takes the secrecy reads in the next fight; last reopens the saved report with the fight reads after it
+/vg probe [chat|fight|last|legacy]    one run out of combat asks the client the open questions (the client's project, interface and build, which of the 14 Forever-only calls it has (presence only; a retail client has none), how many C_Secrets functions it has, which of the game's class resource bars and the encounter timeline exist and whether they are shown or forbidden, SavedVariables round trip, new-quest flag, threat secrecy, group listing, secure paging, realm and name format, C_Secrets predicates, restriction states, navigation, reads Forever's API docs lack (which widget methods exist, among them the texture's slice, SVG and sprite-sheet ones; presence only, nothing is called), quest and map reads, party health, raid marks and boss units, the bars' CVar defaults, reward XP and watched faction, and the click-casting starter layouts' spell ids) and opens the report in a copy box; chat prints it too; typed in a fight it takes only the party, mark and boss reads and keeps them; fight takes the secrecy reads in the next fight; last reopens the saved report with the fight reads after it
 /vg junk [<item>|remove <item>|clear]   your sell list (this character's own): items a merchant offers to buy from you with your grays (off until switched on); the question sells only the stacks it lists, and Enter alone never answers it (the Buyback tab holds the last 12 stacks, so a bigger sale says so)
 /vg bag [add <name> <item>|remove <item>|delete <name>|top <name>|deposit <name>]   your bag categories: a name and its items, each under its own header in the combined bag, above the built-in sections; deposit sends one to the open bank tab (reagent bag included; refundable items bound for the Warband bank stay put)
 /vg sell <item>                 at a merchant: sell every stack of an item in your bags (of a random-suffix item, only the variant linked), after a question (past 12 stacks it says only the last 12 can be bought back)
@@ -141,9 +139,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg inventory [forget <name>|clear]   your characters remembered here and when their bags were read
 /vg weights [wizard|set <stat> <n>|reset|export|import]   the stat weights gear upgrades use for your class and role
 /vg talents [plan|spend|clear|export|import]   the Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string
-/vg legacy [probe|plan ...]     the Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)
 /vg way [zone] x y [title]      a waypoint the game's arrow points to; /vg way clear removes it; /vg way recent [n] lists the last eight or goes back to one
-/vg dock                        line up Deadly Boss Mods' bars with the Boss timers spots; for BigWigs, where to drag its bars
 /vg factionart                  which of the game's own faction pictures this client has
 /vg launch [clear]               (WoW Forever only) prices, sales and characters saved from before launch (4 November 2026, the beta); clear removes them once the game has launched (the same button is under /vg > Town and gear)
 /vg realm                       your realm, ruleset, the Classic or Modern preset and side as the client gives them, how it writes your name, and the key your prices, sales and characters are kept under
@@ -151,9 +147,8 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg plates [enemies on|off]   how many nameplates Vanguard drew and the game's enemy plate setting; enemies on|off sets it (out of combat)
 /vg craft [add [n]|next|stock|cd|top|done|clear]   the craft queue, profession cooldowns and best recipes (off until switched on)
 /vg mail [words]|preset ...|send <name>|takeall|returnall   search the inbox; presets for sending items to your alts; take everything shown or return it (off until switched on)
-/vg pets                        your pets, out and stabled, with level, loyalty, happiness and progress to the next level
 /vg rolls [clear]                the group's /roll results this session, newest first; clear forgets them
-/vg loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster
+/vg loot [on|off|add|remove|list|clear|focus|roster]   officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker; roster opens or closes the raid roster panel
 /vg meter [on|off|<kind>|<segment>|reset|report [channel] [lines]]   Vanguard's own meter (off until switched on): kinds dps hps damage healing taken interrupts dispels deaths; segments this overall previous; reset clears the game's meter; report prints the top lines or sends them to say, party, raid, instance or guild
 /vg fights                      your DPS, length and place in each fight this session, newest first
 /vg recap [say|party|raid|instance|guild]   the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel
@@ -166,7 +161,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg history [on|off|whispers|nowhispers|clear]   Chat history: your chat comes back after a reload or the next login, or show what is saved
 /vg situation [record <name>|stop|clear [name]|list]   Situations: record an override for solo, party, raid, pvp, instance or resting (on Retail also mythicplus or delve), stop and save it, clear one (the active one without a name), or list them
 /vg ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear]   auction prices from your scans: how many and when; pick or make a shopping list and say what's on it; add an item (a link, an ID or a name) to a list (an item with no list named goes on the list in use); rename, copy, delete (after asking), export or import the list in use; show the Recent list; make the Restock list of what you're short of (searched at the auction house); scan the auction house (while it's open); forget the prices
-/vg status                      version, profile, modules, skins, work waiting on combat, what the client has, game restrictions
+/vg status [windows]            version, profile, modules, skins, work waiting on combat, what the client has, game restrictions, how many of the game's standard font objects wear the theme font, and the game windows counted by state (dressed, left as the game's, replaced, switched off, not made yet); with windows, every registered game window listed under its state
 /vg report                      one block to copy for a bug report (what /vg status and /vg errors say), ready to paste at vanguardui.com/feedback
 /vg feedback [bug|feature]      a bug report or feature request written in game: the questions vanguardui.com/feedback asks (with the same limits), then one block to copy; pasted into the site's form, it fills the fields (a bug's block carries /vg report). Also Report a bug and Request a feature on the Feedback page in /vg, the last page in the list, which has a Copy a report button for the plain /vg report too
 /vg errors [clear|resume]       what Vanguard caught going wrong this session, opened in the copy window with the text selected (Ctrl+C) and a one-line note in chat: the version, client and aura backend, then each distinct error once with how often it happened and its stack (paste it in a bug report, or click Report a bug in that window for the feedback form; clear, or the window's Clear button, empties the list; with none caught, chat says so). Under Left off it also lists each game window whose skin Vanguard left off this session because the game's window no longer has a part or method the skin is built on (a game patch reshaped it): that window keeps the game's own look, and every other window is still skinned. An error is printed to chat the first time it happens and handed to the game's error popup or your error addon every time; an error in one module, skin, event handler, after-combat update, hook on a game function, button click or timer is kept here and doesn't stop the others; an event handler or timer that fails 10 times is paused and listed first (resume runs paused parts again, as the Feedback page's Resume paused parts button and a reload do), and the calls the game blocked from Vanguard are listed under their own heading as "action blocked" or "action forbidden"

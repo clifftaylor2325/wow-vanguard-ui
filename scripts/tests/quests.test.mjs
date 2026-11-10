@@ -978,6 +978,39 @@ it("quest log: zones the game's map panel folded are opened again when the panel
   addon.advance(0.25);
   expect(addon.eval("return { __log[4].isCollapsed, ns.GetModule('QuestLog').Count() }"), "the panel closing opens the zone again").toEqual([false, 3]);
 });
+// A1-5 (M16): the opening of folded zones belongs to the tracker and the quest log, and has a switch.
+it("A1-5: with Vanguard's tracker and quest log both off, a zone folded in the game's quest log stays folded", () => {
+  const off = "VanguardDB.profiles = { Default = { QuestTracker = { own = false }, QuestLog = { own = false } } }";
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV, { client: MAP_PANEL_CLIENT, savedVariables: off });
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, __expanded or 0 }"), "login leaves the fold alone").toEqual([true, 0]);
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.eval("QuestMapFrame:Show() QuestMapFrame:Hide()");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, __expanded or 0 }"), "zoning in and closing the map's quest panel leave it alone too").toEqual([true, 0]);
+  const tracker = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestLog = { own = false } } }" });
+  tracker.fire("PLAYER_ENTERING_WORLD");
+  tracker.advance(0.25);
+  expect(tracker.eval("return __log[4].isCollapsed"), "the tracker alone is enough to open it").toBe(false);
+});
+it("A1-5: the switch on the Quests page stops zones being opened by themselves, at once; opening Vanguard's log still opens them", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + CLICK_LUA, { client: MAP_PANEL_CLIENT });
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, ns.Settings('QuestTracker').openFolds }"), "on by default: opened at login").toEqual([false, true]);
+  addon.eval('ns.Options.Show("quests") __click("Open folded zones in the quest log")');
+  expect(addon.eval("return ns.Settings('QuestTracker').openFolds"), "the row switches it off").toBe(false);
+  addon.eval("__log[4].isCollapsed = true");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.eval("QuestMapFrame:Show() QuestMapFrame:Hide()");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, ns.GetModule('QuestLog').Count() }"), "off: the zone you folded stays folded, and its quest is not counted").toEqual([true, 2]);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  expect(addon.eval("return __log[4].isCollapsed"), "Vanguard's own log, opened, still opens it: it could not list the quest otherwise").toBe(false);
+  addon.eval('Vanguard_QuestLog:Hide() __log[4].isCollapsed = true ns.Options.Show("quests") __click("Open folded zones in the quest log")');
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.advance(0.25);
+  expect(addon.eval("return __log[4].isCollapsed"), "switched back on: opened again at the next zone-in, with no reload").toBe(false);
+});
 it("quest log: zones, a quest's details, and its buttons", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   expect(addon.eval("return __overrides"), "the game's quest log keys open this log").toEqual({ L: "Vanguard_QuestLogToggle:LeftButton", "SHIFT-L": "Vanguard_QuestLogToggle:LeftButton" });
@@ -1238,7 +1271,7 @@ it("quest log: the title line is the one window chrome (role, colour, offsets, c
   addon.eval("ns.GetModule('QuestLog').Open()");
   const [inset, pad, , gap] = layout(addon);
   const title = addon.frame("Vanguard_QuestLog.title"), count = addon.frame("Vanguard_QuestLog.count");
-  expect([title.text, title.font.size, isTok(addon, title.textColor, "text")], "Quest log, in the title role and the text colour (gold is for content)").toEqual(["Quest log", addon.eval("return ns.Theme.RoleSize('title')"), true]);
+  expect([title.text, title.font.size, isTok(addon, title.textColor, "text")], "Quest log, in the display role and the text colour (gold is for content)").toEqual(["Quest log", addon.eval("return ns.Theme.RoleSize('display')"), true]);
   expect([count.text, count.font.size, isTok(addon, count.textColor, "text2")], "the quest count beside it in small text2").toEqual(["3 quests", addon.eval("return ns.Theme.RoleSize('small')"), true]);
   const offsets = addon.eval(`local f, t, c = Vanguard_QuestLog, Vanguard_QuestLog.title, Vanguard_QuestLog.count
     return { t:GetLeft() - f:GetLeft(), (t:GetTop() + t:GetBottom()) / 2 - f:GetTop(), c:GetLeft() - t:GetRight() }`);
@@ -2146,6 +2179,21 @@ it("best reward: rewards that sell for nothing are left to you", () => {
 
 it("best reward: the one reward that sells for most is taken", () => {
   expect(calls(pricedRewards(300, 50))).toEqual(["reward 1"]);
+});
+
+// A1-10 (M5): the gloves (choice 2) sell for less and are an upgrade; Gear upgrades says which rewards are.
+it("A1-10 best reward: with a reward that Gear upgrades marks as an upgrade among the choices, the pick is left to you", () => {
+  const addon = pricedRewards(300, 50);
+  expect(calls(addon), "no upgrade among them: the best seller is taken").toEqual(["reward 1"]);
+  const guarded = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true, bestReward = true } } }" });
+  guarded.eval(`__prices["item:90021"], __prices["item:90022"] = 300, 50
+    ns.GetModule("Upgrades").Compare = function(link) if link == "item:90022" then return 12, false end end`);
+  guarded.fire("QUEST_COMPLETE");
+  expect(calls(guarded), "the cheaper reward is an upgrade: nothing is picked for you").toEqual([]);
+  const off = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true, bestReward = true }, modules = { Upgrades = false } } }" });
+  off.eval(`__prices["item:90021"], __prices["item:90022"] = 300, 50`);
+  off.fire("QUEST_COMPLETE");
+  expect([calls(off), off.eval("return ns.GetModule('Upgrades').IsUpgrade('item:90022')")], "Gear upgrades switched off: no reward is an upgrade, the best seller is taken").toEqual([["reward 1"], false]);
 });
 
 it("best reward: a stack is judged by what the whole stack sells for", () => {

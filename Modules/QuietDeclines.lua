@@ -89,6 +89,41 @@ local function knownPlayer(guid)
   return type(IsGuildMember) == "function" and IsGuildMember(guid) and true or false
 end
 
+-- Seconds a player you whispered counts as known for a group invite (groups here form by whispering strangers).
+QU.WHISPERED_FOR = 600
+
+-- When you last whispered each player, by name without its realm, in lower case.
+local whispered = {}
+
+-- A player's name as both events' key: without the realm, in lower case; nil for a hidden or empty one.
+local function nameKey(name)
+  local plain = ns.PlainText(name)
+  local short = plain and plain:match("^[^-]+")
+  return short and short:lower()
+end
+
+-- Forgets the whispers older than QU.WHISPERED_FOR, so the table stays small.
+local function forgetWhispers(now)
+  for key, at in pairs(whispered) do
+    if now - at >= QU.WHISPERED_FOR then whispered[key] = nil end
+  end
+end
+
+-- You whispered someone (CHAT_MSG_WHISPER_INFORM: the text, then the player you wrote to): noted while the
+-- stranger-invite switch is on, so the invite you just asked for is not declined.
+function QU.OnWhisperSent(_, _, target)
+  local key = QU.Switched("strangerGroups") and nameKey(target)
+  if not key then return end
+  forgetWhispers(GetTime())
+  whispered[key] = GetTime()
+end
+
+-- Whether you whispered this player within QU.WHISPERED_FOR seconds.
+local function whisperedLately(who)
+  local at = whispered[nameKey(who) or false]
+  return at ~= nil and GetTime() - at < QU.WHISPERED_FOR
+end
+
 -- Declines a group invite and closes its prompt: the game's popup, the role popup Forever shows for an
 -- invite with roles, or Retail's Party Sync dialog for an invite that carries a quest session (it would
 -- stay up for a minute with its Accept answering an invite already declined).
@@ -100,11 +135,13 @@ local function declineGroup()
   closePrompt("PARTY_INVITE")
 end
 
--- Someone invites you to a group: decline unless they are a friend or a guildmate, on the next frame
+-- Someone invites you to a group: decline unless they are a friend, a guildmate or someone you whispered in the
+-- last ten minutes, on the next frame
 -- (as for a guild invite, once the game has shown its popup). The payload is name, isTank, isHealer,
 -- isDamage, isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
 function QU.OnGroupInvite(_, who, _, _, _, _, _, guid)
-  if not QU.Switched("strangerGroups") or type(DeclineGroup) ~= "function" or knownPlayer(guid) then return end
+  if not QU.Switched("strangerGroups") or type(DeclineGroup) ~= "function" then return end
+  if knownPlayer(guid) or whisperedLately(who) then return end
   ns.Soon("decline group invite", declineGroup)
   who = sender(who)
   sayOnce("group", who, ns.Format(L["Declined a group invite from {who}."], { who = who }))
@@ -142,6 +179,7 @@ function QU.ListenForPrompts()
   if ns.IsForever() then ns.On("DUEL_TO_THE_DEATH_REQUESTED", QU.OnDuel) end
   ns.On("GUILD_INVITE_REQUEST", QU.OnGuildInvite)
   ns.On("PARTY_INVITE_REQUEST", QU.OnGroupInvite)
+  ns.On("CHAT_MSG_WHISPER_INFORM", QU.OnWhisperSent)
   ns.On("BN_FRIEND_INVITE_ADDED", QU.OnFriendRequest)
   ns.On("PLAYER_DEAD", QU.OnDeath)
 end

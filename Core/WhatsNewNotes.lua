@@ -12,9 +12,60 @@ local ADDON, ns = ...
 ns.WHATS_NEW = {
   { version = "0.9.5", groups = {
     { module = "UnitFrames", label = "The Shield look", items = {
-      { text = "Your frames point away from you as shields, bars filling toward you. HUD look keeps Plain.", page = "general", row = "HUD look" },
+      { text = "Your frames point away from you as shields, bars filling toward you. HUD look: Plain keeps flat frames.", page = "general", row = "HUD look" },
       { text = "The keystone: the crest on a rail between your frame and your target's, swords in a fight.", page = "unitframes", row = "Show the keystone" },
       { text = "More looks there: Hairline, a line under bare frames; Rimmed, rounded and rimmed; Tabs, names on tabs.", page = "general", row = "HUD look" },
+      { text = "A ring round the keystone can sweep with the global cooldown.", page = "unitframes", row = "Global cooldown on the keystone", off = true },
+      { text = "A thin line runs inside your frame's rim and your target's, brighter in a fight." },
+      { text = "Under Shield the cast bars and action bar backing get cut corners.", page = "general", row = "Shield corners on unit frames" },
+      { text = "Setup's Comfort step offers Shield HUD look, recommended." },
+    } },
+    { module = "Nameplates", label = "Nameplates and target auras", items = {
+      { text = "Plate width, height, aura counts and icon size are sliders, applied without a reload.", page = "nameplates", row = "Width" },
+      { text = "Name text size and Health text size set the plate's texts, with no reload.", page = "nameplates", row = "Name text size" },
+      { text = "Target plate size draws your target's plate larger, around its centre.", page = "nameplates", row = "Target plate size" },
+      { text = "A unit you can't attack can show just its name on its plate.", page = "nameplates", row = "Names only on friendly plates", off = true },
+      { text = "Target and focus auras get sliders for icon size and counts, all applied without a reload.", page = "unitframes", row = "Debuffs shown" },
+      { text = "Target's buffs shows All, Important or Yours.", page = "unitframes", row = "Target's buffs" },
+      { text = "On WoW Forever an aura icon the game has closed to addons is left alone, so no \"aura icon pixels\" line in chat." },
+      { text = "/vg errors keeps a quiet entry if the game still refuses an aura icon." },
+    } },
+    { module = "Tooltips", label = "Tooltips", items = {
+      { text = "A player's tooltip adds their guild and rank, their realm if another, and their role.", page = "windows", row = "Guild and rank" },
+      { text = "Your own tooltip shows your equipped item level.", page = "windows", row = "Your own item level" },
+      { text = "One switch adds Item ID and Spell ID to tooltips.", page = "windows", row = "IDs on item, spell and aura tooltips", off = true },
+      { text = "A profile that had Item IDs on keeps it on." },
+      { text = "Units in the world, units on frames and other tooltips each get a position.", page = "windows", row = "Unit tooltips in the world" },
+      { text = "A tooltip position you had saved applies to all three kinds until you change one." },
+    } },
+    { module = "Other", label = "Look", items = {
+      { text = "Window and page titles are a size larger, a step above card headings." },
+      { text = "The options header shows the painted crest and the Vanguard wordmark; your faction's crest moves to the footer." },
+      { text = "A class-colour swatch beside the accent presets sets the accent to your class colour.", page = "general", row = "Accent" },
+      { text = "Each character on a shared profile gets its own class colour at login." },
+      { text = "The game's own text, in windows Vanguard does not skin, takes the theme font's face.", page = "general", row = "Font" },
+      { text = "The Modules page says so when its Show choice leaves nothing to list, with a Show all modules button." },
+      { text = "A page's card fades in when you change pages." },
+    } },
+    { module = "QuestTracker", label = "Quests", items = {
+      { text = "Zones folded in the game's quest log stay folded unless Vanguard needs them.", page = "quests", row = "Open folded zones in the quest log" },
+      { text = "Pick the reward that sells for most leaves the choice to you when a reward is a gear upgrade." },
+      { text = "The quest arrow and minimap spots hold their place in a fight, and are right again within a second of its end." },
+    } },
+    { module = "Other", label = "Setup and group play", items = {
+      { text = "On a first run, setup no longer ticks Filter chat or Key setup at your next login for you." },
+      { text = "Key setup opens by itself at your next login only if you ticked it." },
+      { text = "A stranger you whispered in the last ten minutes may invite you.", page = "windows", row = "Decline group invites from strangers" },
+      { text = "Gear upgrades give no upgrade line or arrow to an off-hand item while you wear a two-hander alone." },
+      { text = "Merchant helpers off no longer drops the HUD text font, now its own module.", page = "modules", row = "HUD text font" },
+    } },
+    { module = "Other", label = "Speed and safety", items = {
+      { text = "Raid tiles listen for heals, shields, threat and aura changes of their own member only." },
+      { text = "Combo points ignore other powers' ticks, and the cooldown gaps row redraws once a frame." },
+      { text = "In a fight the game menu's Vanguard button and the quest log button leave the game's window to close after the fight." },
+      { text = "A character's saved-settings stamp no longer moves without its account note, which could bring a needless restore offer." },
+      { text = "/vg status ends with a count of game windows dressed, left as the game's, replaced, off or not made yet." },
+      { text = "/vg status windows names each window under its state." },
     } },
   } },
   { version = "0.9.4", groups = {
@@ -371,7 +422,7 @@ ns.WHATS_NEW = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "chat", row = "Open the group board" },
     } },
     { module = "OfficerLoot", label = "Officer loot tools", items = {
-      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "tools", row = "Turn on the soft-reserve list and the roster", off = true },
+      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "tools", row = "Turn on the soft-reserve list", off = true },
     } },
     { module = "InstancePrep", label = "Instance prep", items = {
       { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "town", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
@@ -390,9 +441,6 @@ ns.WHATS_NEW = {
     } },
     { module = "Errands", label = "Errands", items = {
       { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "town", row = "Boat and zeppelin timer", off = true },
-    } },
-    { module = "Legacy", label = "Legacy system", items = {
-      { text = "/vg legacy probe lists what the game has for the Legacy system, and a perk planner (off until you switch it on) keeps a list of perks within the tree's 16 points.", page = "town", row = "Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", off = true },
     } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },

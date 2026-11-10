@@ -18,7 +18,7 @@
 local ADDON, ns = ...
 local L, T = ns.L, ns.Theme
 
-local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, levelXp = true, autoTrack = true, expanded = false } })
+local QT = ns.Module("QuestTracker", { defaults = { own = true, order = "game", withQuestie = "questie", xp = true, levelXp = true, autoTrack = true, expanded = false, openFolds = true } })
 
 QT.W, QT.H, QT.SORT_EVERY, QT.TICK_EVERY = 260, 174, 1, 1
 -- The events that redraw the tracker; XP and a level-up move the "Quests: N% of the XP to level" line.
@@ -95,14 +95,14 @@ end
 
 -- The game folds every zone off the current map as you zone in (QuestMapFrame_ResetFilters, on
 -- PLAYER_ENTERING_WORLD): they are opened on the next frame, after it, so the quest log, the XP lines, the
--- dungeon card and the tracker read every quest. Shared by those modules, so it holds whichever are on.
--- The windowed world map's quest panel folds them again on each map change while it is up, so they are opened
--- again when the panel closes (the map closing, or its panel being put away); a zone folded by hand stays
--- folded until the next zone-in, that closing, or until Vanguard's log opens.
+-- dungeon card and the tracker read every quest. The windowed world map's quest panel folds them again on each
+-- map change while it is up, so they are opened again when the panel closes (the map closing, or its panel being
+-- put away); a zone folded by hand stays folded until the next zone-in, that closing, or until Vanguard's log
+-- opens. The Quests page's switch (openFolds) turns this off; it is read from the profile each time, so it
+-- applies at once, and for the quest log while the tracker is off.
 local function openFoldsSoon()
-  ns.Soon("quest folds", QT.OpenFolds)
+  if ns.Settings("QuestTracker", QT.defaults).openFolds then ns.Soon("quest folds", QT.OpenFolds) end
 end
-ns.On("PLAYER_ENTERING_WORLD", ns.Guard("quest folds", openFoldsSoon))
 
 -- Has the game's map quest panel (QuestMapFrame, there before any addon loads) open the folds when it hides.
 -- HookScript only: the game's frame keeps its own scripts.
@@ -110,7 +110,17 @@ local function hookMapPanel()
   local panel = _G.QuestMapFrame
   if type(panel) == "table" and panel.HookScript then panel:HookScript("OnHide", ns.Guard("quest folds", openFoldsSoon)) end
 end
-hookMapPanel()
+
+-- Starts the opening of folded zones (openFoldsSoon): now, at each zone-in and when the map's quest panel closes.
+-- Vanguard's tracker and its quest log each ask from their Enable, once between them; with both switched off
+-- nothing here runs and the game's quest log is left as the player folds it.
+function QT.KeepFoldsOpen()
+  if QT.keepsFolds then return end
+  QT.keepsFolds = true
+  ns.On("PLAYER_ENTERING_WORLD", ns.Guard("quest folds", openFoldsSoon))
+  hookMapPanel()
+  openFoldsSoon()
+end
 
 -- The quest id of a log row the game's own log lists, or nil: not a header, hidden or a task (a world quest or bonus
 -- objective), and a bounty only once it is complete. The quest log, the XP footer and the XP tooltip share this rule.
@@ -527,16 +537,22 @@ local function build()
   QT.ApplyOrder()
 end
 
+-- The watch list is put in the game's order again on a new area or map (QT.SortWatches, QT.SortOnMapChange).
+local function followZones()
+  ns.On("ZONE_CHANGED_NEW_AREA", QT.SortWatches)
+  ns.On("ZONE_CHANGED", QT.SortOnMapChange)
+end
+
 -- Module entry point (Core/Modules.lua): after the menu strip has made the tracker's spot.
 function QT.Enable(settings)
   QT.settings = settings
   if not QT.Shows(settings) then return end
+  QT.KeepFoldsOpen()
   ns.OutOfCombat(build)
   for _, event in ipairs(QT.EVENTS) do ns.On(event, refreshSoon) end
   followRecipes()
   ns.On("QUEST_ACCEPTED", QT.AutoTrack)
-  ns.On("ZONE_CHANGED_NEW_AREA", QT.SortWatches)
-  ns.On("ZONE_CHANGED", QT.SortOnMapChange)
+  followZones()
   followItems()
   T.OnChanged(QT.Redraw)
 end

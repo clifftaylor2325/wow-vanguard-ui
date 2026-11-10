@@ -125,6 +125,20 @@ function ns.MigrateProfileTable(profile)
   return profile
 end
 
+-- The modules taken out of Vanguard (their settings, and their names in the profile's module switches), and the
+-- account-wide key the Legacy perk list was kept under.
+local RETIRED_MODULES = { "PetStable", "Legacy", "BossDocks" }
+local RETIRED_ACCOUNT_KEYS = { "legacyPlan" }
+
+-- Forgets what a retired module saved in a profile, and its switch. Leaves an upgraded profile as it is.
+ns.MigrateProfile(function(profile)
+  for _, name in ipairs(RETIRED_MODULES) do
+    profile[name] = nil
+    if type(profile.modules) == "table" then profile.modules[name] = nil end
+  end
+  for _, key in ipairs(RETIRED_ACCOUNT_KEYS) do VanguardDB[key] = nil end
+end)
+
 -- Creates or repairs the saved tables, and upgrades an older account file and its profiles.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()
@@ -172,7 +186,10 @@ function ns.Profile()
   return profile
 end
 
+-- key -> the upgrades registered for that settings table (ns.Migrate), in the order they were registered.
 local migrations = {}
+-- The same table for a look from outside (a test runs every upgrade twice); nothing else writes it.
+ns.migrations = migrations
 -- Settings tables a migration has already run on (weak, so a replaced table is collected).
 local migrated = setmetatable({}, { __mode = "k" })
 -- key -> { t = the table ns.Settings filled, defaults = the defaults it was filled from }.
@@ -183,11 +200,13 @@ local stageListeners = {}
 -- Registers fn(saved) to upgrade the settings table `key` as older versions
 -- saved (or exported) it. It runs on the saved table before defaults are filled in, so it
 -- can tell a value the player had from one a new default would add. It runs again each
--- session, so it must leave an upgraded table as it is.
+-- session, so it must leave an upgraded table as it is. A second upgrade for the same key
+-- runs after the first (it used to replace it, silently).
 ---@param key string  the settings table (a module name, or layout, situations, global)
 ---@param fn fun(saved: table)
 function ns.Migrate(key, fn)
-  migrations[key] = fn
+  migrations[key] = migrations[key] or {}
+  table.insert(migrations[key], fn)
 end
 
 -- Runs the upgrade registered for the settings table `key` (ns.Migrate) on t, once per
@@ -197,7 +216,9 @@ end
 ---@param t table
 ---@return table t
 function ns.MigrateTable(key, t)
-  if migrations[key] and not migrated[t] then migrations[key](t) migrated[t] = true end
+  if not migrations[key] or migrated[t] then return t end
+  for _, fn in ipairs(migrations[key]) do fn(t) end
+  migrated[t] = true
   return t
 end
 

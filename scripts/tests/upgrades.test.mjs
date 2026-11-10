@@ -146,7 +146,7 @@ it("upgrades: the weights wizard has a slider for every stat, and saves only on 
   expect(opened.slice(0, 4), "what the kind values first, starting from this profile's weights").toEqual(["Weapon damage per second 2.5", "Strength 1", "Hit rating 1.5", "Crit rating 0.8"]);
   expect(opened.slice(-2), "then the stats it doesn't, by name").toEqual(["Spell power 0", "Spirit 0"]);
   const wizard = "Vanguard_WeightsWizard";
-  expect(titleOf(addon, wizard), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect(titleOf(addon, wizard), "a window title: the display role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
   expect(closeOf(addon, wizard), "with the X where every window has it").toEqual([px(addon, 24), px(addon, 24), true]);
   expect([escapes(addon, wizard), alphaOf(addon, wizard)], "Escape closes it; the dialog alpha").toEqual([true, 0.98]);
   const caption = addon.frame(`${wizard}.caption`);

@@ -2424,6 +2424,44 @@ function GW.Needs(names, needs)
   for _, name in ipairs(names) do GW.NEEDS[name] = needs end
 end
 
+-- Coverage ------------------------------------------------------------------------------------
+
+-- What a registered window can be this session, in the order /vg status lists them: "dressed" (its skin ran),
+-- "missing" (left as the game draws it: the client lacks something its skin needs, GW.SKIPPED), "replaced"
+-- (Vanguard's quest dialog stands in for it), "off" (its group is switched off, or the module is) and "unseen"
+-- (the game has not made it yet: its part of the game has not loaded, or this client has no such window).
+GW.STATES = { "dressed", "missing", "replaced", "off", "unseen" }
+
+-- The state of one registered window now (one of GW.STATES).
+---@param name string  the window's global name
+---@return string
+function GW.StateOf(name)
+  local frame = _G[name]
+  if GW.SKIPPED[name] then return "missing" end
+  if not GW.GroupOn(GW.REGISTERED[name].group) then return "off" end
+  if type(frame) == "table" and vgWindow[frame] then return "dressed" end
+  return replaced(name) and "replaced" or "unseen"
+end
+
+-- Every registered window by its state now: state -> the names in that state, in the order registered.
+---@return table<string, string[]>
+function GW.Coverage()
+  local out = {}
+  for _, state in ipairs(GW.STATES) do out[state] = {} end
+  for _, name in ipairs(GW.ORDER) do table.insert(out[GW.StateOf(name)], name) end
+  return out
+end
+
+-- The part of the game each on-demand window waits for: window name -> that part's name (GW.ON_DEMAND turned round).
+---@return table<string, string>
+function GW.LoadsWith()
+  local out = {}
+  for addon, names in pairs(GW.ON_DEMAND) do
+    for _, name in ipairs(names) do out[name] = addon end
+  end
+  return out
+end
+
 -- Push buttons a window keeps outside Button1-4, themed with it.
 function GW.AddButtons(name, buttonNames)
   GW.EXTRA_BUTTONS[name] = GW.EXTRA_BUTTONS[name] or {}

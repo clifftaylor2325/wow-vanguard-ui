@@ -24,12 +24,12 @@ const look = (addon, ref) => {
   return { size: f.font.size, text: isTok(addon, f.textColor, "text"), text2: isTok(addon, f.textColor, "text2"), muted: isTok(addon, f.textColor, "muted") };
 };
 
-it("a window title: the title role in the text colour on the close button's line, its count beside it, the close placed and working, Escape closes", () => {
+it("a window title: the display role in the text colour on the close button's line, its count beside it, the close placed and working, Escape closes", () => {
   const addon = loggedIn(PANEL_LUA);
   addon.eval(`__closed = {}
     local f = __panel("TestOnlyWindow")
     __parts = ns.WindowTitle(f, "Test only", { count = "3 quests", onClose = function(frame) __closed[#__closed + 1] = frame end, escape = true })`);
-  expect(look(addon, "TestOnlyWindow.title"), "the title role, in text").toMatchObject({ size: addon.eval("return ns.Theme.RoleSize('title')"), text: true });
+  expect(look(addon, "TestOnlyWindow.title"), "the display role, in text").toMatchObject({ size: addon.eval("return ns.Theme.RoleSize('display')"), text: true });
   expect(look(addon, "__parts.count"), "the count in small text2").toMatchObject({ size: addon.eval("return ns.Theme.RoleSize('small')"), text2: true });
   const offsets = addon.eval(`local f, t, c = TestOnlyWindow, TestOnlyWindow.title, __parts.count
     return { t:GetLeft() - f:GetLeft(), (t:GetTop() + t:GetBottom()) / 2 - f:GetTop(), c:GetLeft() - t:GetRight(), t:GetText(), c:GetText() }`);

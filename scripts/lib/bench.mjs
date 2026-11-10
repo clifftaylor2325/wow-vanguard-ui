@@ -176,9 +176,11 @@ function closingSteps(members) {
   return steps;
 }
 
-// The quest-ticker steps of a script: one for every QUEST_TICK_EVERY seeded steps, on you (raid1).
+// The fixed steps of a script, as many of each as one for every QUEST_TICK_EVERY seeded steps, on you (raid1):
+// QUEST_TICK (the quest tickers) and OTHER_UNIT_AURA (an aura change on a unit that is no raid member).
 function questSteps(events) {
-  return Array.from({ length: Math.max(1, Math.round(events / QUEST_TICK_EVERY)) }, () => ["QUEST_TICK", 1, 0]);
+  const each = Math.max(1, Math.round(events / QUEST_TICK_EVERY));
+  return ["QUEST_TICK", "OTHER_UNIT_AURA"].flatMap((event) => Array.from({ length: each }, () => [event, 1, 0]));
 }
 
 // The script of one repetition: `events` seeded steps of [event, raid index, value], the quest-ticker steps, then the closing steps.
@@ -290,6 +292,8 @@ end
 function STEP.OnUpdate() stub.update(1 / 60) end
 -- One run of each quest ticker (the arrow's pick and redraw, the minimap marks' read and redraw) as out of a
 -- fight: the pull is in combat, where they rest, so the step lifts the combat flag for its own length (no event fires).
+-- An aura change on a nameplate's unit: nothing of the raid's should run for it (the tiles hear their own units only).
+function STEP.OTHER_UNIT_AURA() stub.fire("UNIT_AURA", "nameplate1", { isFullUpdate = true }) end
 local QUEST_JOBS = { "quest arrow pick", "quest arrow", "quest minimap read", "quest minimap" }
 function STEP.QUEST_TICK()
   stub.inCombat = false

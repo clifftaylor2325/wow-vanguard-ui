@@ -72,10 +72,14 @@ local function build(settings)
   CP.Update()
 end
 
+-- The set CP.Charged fills: one table, emptied and used again on every update.
+CP.charged = {}
+
 -- Your charged combo points as a set of pip numbers (retail; empty where the client has none or hides them).
 function CP.Charged()
   local points = type(GetUnitChargedPowerPoints) == "function" and GetUnitChargedPowerPoints("player")
-  local set = {}
+  local set = CP.charged
+  for i in pairs(set) do set[i] = nil end
   if type(points) ~= "table" or ns.IsSecret(points) then return set end
   for _, i in ipairs(points) do
     local n = ns.PlainNumber(i)
@@ -104,6 +108,16 @@ function CP.Update()
   CP.bar:SetShown(count > 0)
 end
 
+-- The power events that name a power type; the others (a new maximum, a charged point) always count.
+CP.TYPED = { UNIT_POWER_UPDATE = true, UNIT_POWER_FREQUENT = true }
+
+-- One of your power events: the pips follow it unless it plainly names another power (an energy or mana tick,
+-- many a second). A type the client leaves out or hides counts as yours.
+function CP.OnPower(event, _, powerType)
+  if CP.TYPED[event] and ns.PlainText(powerType) and powerType ~= "COMBO_POINTS" then return end
+  CP.Update()
+end
+
 -- Module entry point (Core/Modules.lua): rogues and druids only, after the unit
 -- frames. Your points change with your own power events and when they move to a new target at the
 -- same count (no power event then); another unit's don't count.
@@ -111,7 +125,7 @@ function CP.Enable(settings)
   local _, class = UnitClass("player")
   if ns.IsSecret(class) or not CLASSES[class] then return end
   ns.OutOfCombat(function() build(settings) end)
-  ns.OnUnit(CP.EVENTS, CP.Update, "player")
+  ns.OnUnit(CP.EVENTS, CP.OnPower, "player")
   ns.On("PLAYER_TARGET_CHANGED", CP.Update)
   ns.On("COMBO_TARGET_CHANGED", CP.Update)
 end

@@ -32,12 +32,19 @@ local labels = ns.FrameState("vgGearInfo")
 
 -- Reading the worn item ---------------------------------------------------------------------------
 
+-- An item's level as worn (upgraded or scaled: C_Item.GetDetailedItemLevelInfo), or nil where the client lacks
+-- the call or won't say; the item's base level stands in then.
+local function detailedLevel(link)
+  local get = C_Item.GetDetailedItemLevelInfo
+  return type(get) == "function" and ns.PlainNumber((get(link))) or nil
+end
+
 -- The worn item in an inventory slot as { link, level, quality, loc }, or nil when the slot is empty or the client won't say.
 function CE.Worn(slot)
   local link = GetInventoryItemLink("player", slot)
   if ns.IsSecret(link) or type(link) ~= "string" then return nil end
   local _, _, quality, level, _, _, _, _, loc = C_Item.GetItemInfo(link)
-  return { link = link, level = ns.PlainNumber(level), quality = ns.PlainNumber(quality), loc = loc }
+  return { link = link, level = detailedLevel(link) or ns.PlainNumber(level), quality = ns.PlainNumber(quality), loc = loc }
 end
 
 -- Whether a worn piece could carry an enchant and has none (the link's enchant field is empty or 0).

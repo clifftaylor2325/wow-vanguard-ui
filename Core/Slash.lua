@@ -29,7 +29,7 @@ local HELP = {
   { "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]", L["surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember"] },
   { "corners [square|rounded]", L["panel corners: square (default) or rounded, on every theme"] },
   { "gradient [on|off]", L["windows a shade lighter toward the top (off by default)"] },
-  { "accent <rrggbb|name>", L["set the accent color (brass, arcane, jade, orchid, copper); accent reset"] },
+  { "accent <rrggbb|name|class>", L["set the accent color (brass, arcane, jade, orchid, copper); accent reset"] },
   { "theme reset", L["every theme setting back to default"] },
   { "modules", L["list modules; enable|disable <module> (then /reload)"] },
   { "skins", L["addons skinned through Vanguard.RegisterSkin; skins <addon> on|off"] },
@@ -45,7 +45,7 @@ local HELP = {
   { "filter [on|off|tab|hide|add|remove <word>|clear]", L["Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)"] },
   { "history [on|off|whispers|nowhispers|clear]", L["Chat history: your chat comes back after a reload or the next login (off until switched on)"] },
   { "quests [history [n]]", L["open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in"] },
-  { "probe [chat|fight|last]", L["one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation, quest and map reads, party health and marks, bar defaults) and opens a copy box; in a fight it takes only the party, mark and boss reads; fight takes the secrecy reads in the next fight; last reopens the saved report"] },
+  { "probe [chat|fight|last|legacy]", L["one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation, quest and map reads, party health and marks, bar defaults) and opens a copy box; in a fight it takes only the party, mark and boss reads; fight takes the secrecy reads in the next fight; last reopens the saved report; legacy lists what the client has for the Legacy window (read only)"] },
   { "guide probe", L["what this client returns for the reads a levelling guide would use (chat only; changes nothing)"] },
   { "questdata [questID]", L["what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever"] },
   { "lfg [probe]", L["open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard"] },
@@ -56,9 +56,8 @@ local HELP = {
   { "sell <item>", L["at a merchant: sell every stack of an item in your bags, after a question"] },
   { "craft [add [n]|next|stock|cd|top|done|clear]", L["the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)"] },
   { "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall", L["search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)"] },
-  { "pets", L["your pets, out and stabled, with level, loyalty, happiness and progress to the next level"] },
   { "rolls [clear]", L["the group's /roll results this session, newest first; clear forgets them"] },
-  { "loot [on|off|add|remove|list|clear|focus|roster]", L["officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster"] },
+  { "loot [on|off|add|remove|list|clear|focus|roster]", L["officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker; roster opens or closes the raid roster panel"] },
   { "fights", L["your DPS, length and place in each fight this session, newest first"] },
   { "meter [on|off|<kind>|<segment>|reset|report [channel] [lines]]", L["Vanguard's own meter: the top lines of the game's damage meter in a Vanguard panel (off until switched on); kinds dps hps damage healing taken interrupts dispels deaths, segments this overall previous"] },
   { "recap [say|party|raid|instance|guild]", L["the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel"] },
@@ -70,15 +69,13 @@ local HELP = {
   { "inventory [forget <name>|clear]", L["your characters remembered here and when their bags were read; forget drops one, clear forgets them all"] },
   { "weights [wizard|set <stat> <n>|reset|export|import]", L["the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them"] },
   { "prep [want <kind> <n>|setup|buffs]", L["the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window; buffs lists your buffs and which buff check each counts for"] },
-  { "legacy [probe|plan ...]", L["Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)"] },
   { "talents [plan|spend|clear|export|import]", L["Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string"] },
   { "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear]", L["shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched; restock: the list of what you're short of); scan the auction house (while it's open); forget the prices"] },
   { "way [zone] x y [title]", L["a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it; way recent lists the last eight and way recent <n> goes back to one"] },
-  { "dock", L["line up Deadly Boss Mods' bars with the Boss timers spots (move those with unlock); for BigWigs, where to drag its bars"] },
   { "preview [party|10|25|40|off]", L["the raid frames filled with sample players, to check them without a group (not saved)"] },
   { "binds", L["this spec's click-casting and hover-key bindings (set them in /vg > Click casting)"] },
   { "keybind", L["keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves"] },
-  { "status", L["version, profile, modules, skins, work waiting on combat, what the client has, game restrictions"] },
+  { "status [windows]", L["version, profile, modules, skins, work waiting on combat, what the client has, game restrictions"] },
   { "factionart", L["which of the game's own faction pictures this client has"] },
   { "launch", L["prices, sales and characters saved from before launch (the beta); launch clear removes them once the game has launched"] },
   { "realm", L["your realm, ruleset, game rules (preset, self-found, game mode) and side as the client gives them, and the key your prices, sales and characters are kept under"] },
@@ -105,7 +102,7 @@ end
 -- The /vg words of modules some clients don't have (Core/Modules.lua, ns.ClientAllows), by word: where the
 -- module isn't registered the word is unknown and /vg help leaves it out.
 local WORD_MODULES = {
-  ranks = "SpellRanks", trainers = "SpellRanks", pets = "PetStable", legacy = "Legacy",
+  ranks = "SpellRanks", trainers = "SpellRanks",
   talents = "TalentPlanner", lfg = "GroupBoard", questdata = "QuestGuide",
 }
 
@@ -176,8 +173,15 @@ local function resetAccent()
   chat(L["Accent back to default."])
 end
 
--- /vg accent <rrggbb> | reset
+-- /vg accent class
+local function classAccent()
+  if T.SetClassAccent() then return chat(L["The accent follows your class colour."]) end
+  chat(L["Your class colour isn't known yet."])
+end
+
+-- /vg accent <rrggbb> | <name> | class | reset
 local function accentCommand(rest)
+  if rest:lower() == "class" then return classAccent() end
   if rest == "reset" then
     return resetAccent()
   end
@@ -611,14 +615,47 @@ local function restrictionLine()
   return "Game restrictions: " .. (#active > 0 and table.concat(active, ", ") or "none")
 end
 
--- /vg status
-local function statusCommand()
+-- The game windows by state (Modules/Windows.lua, GW.Coverage), read once for a status line or list.
+local function windowCoverage()
+  return ns.GetModule("Windows").Coverage()
+end
+
+-- The windows left as the game draws them, each with what the client lacks: "ChannelFrame (no MemberList)".
+local function missingWindows(names)
+  local out, skipped = {}, ns.GetModule("Windows").SKIPPED
+  for i, name in ipairs(names) do out[i] = string.format("%s (no %s)", name, skipped[name]) end
+  return table.concat(out, ", ")
+end
+
+-- The game windows line of /vg status and the report: how many are in each state, and which ones a game patch left
+-- without their skin.
+local function windowsLine()
+  local c = windowCoverage()
+  local line = string.format("Game windows: %d dressed  ·  %d left as the game's  ·  %d replaced  ·  %d switched off  ·  %d not made yet",
+    #c.dressed, #c.missing, #c.replaced, #c.off, #c.unseen)
+  return #c.missing > 0 and (line .. "  ·  " .. missingWindows(c.missing)) or line
+end
+
+-- /vg status windows: every registered game window by state, one line a state.
+local function statusWindows()
+  local c = windowCoverage()
+  chat(windowsLine())
+  for _, state in ipairs(ns.GetModule("Windows").STATES) do
+    if #c[state] > 0 then chat(state .. ": " .. table.concat(c[state], ", ")) end
+  end
+end
+
+-- /vg status [windows]
+local function statusCommand(rest)
+  if rest:lower() == "windows" then return statusWindows() end
   chat(string.format("Vanguard %s  ·  profile %s  ·  %d/%d modules on", version(), ns.ProfileName(), modulesOn(), #ns.ModuleNames()))
   chat(string.format("%d skinned addon(s)  ·  %d painted frame(s)  ·  %d change(s) waiting on combat", #ns.SkinList(), T.PaintedCount(), ns.QueuedCount()))
   chat(clientLine())
   chat(ns.Client.Line())
   chat(restrictionLine())
   chat(textLine())
+  chat(string.format("Game fonts: %d of %d standard font objects in the theme font", T.StandardFontCount()))
+  chat(windowsLine())
 end
 
 -- "16001": the client's interface version, or "?" when it can't say.
@@ -844,7 +881,6 @@ local COMMANDS = {
   sell = merchantCommand("SellCommand"),
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
-  pets = function() ns.GetModule("PetStable").Command() end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   loot = function(rest) ns.GetModule("OfficerLoot").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
@@ -859,7 +895,6 @@ local COMMANDS = {
   weights = function(rest) ns.GetModule("Upgrades").Command(rest) end,
   prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,
   talents = function(rest) ns.GetModule("TalentPlanner").Command(rest) end,
-  legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
   filter = function(rest) ns.GetModule("ChatFilter").Command(rest) end,
   history = function(rest) ns.GetModule("ChatHistory").Command(rest) end,
@@ -872,7 +907,6 @@ local COMMANDS = {
   situation = function(rest) ns.GetModule("Situations").Command(rest) end,
   ah = function(rest) ns.GetModule("AuctionHelper").Command(rest) end,
   way = function(rest) ns.GetModule("Waypoints").Command(rest) end,
-  dock = function() ns.GetModule("BossDocks").Command() end,
   factionart = function() ns.FactionArt.Report() end,
   realm = function() ns.Home.Report() end,
   launch = function(rest) ns.Home.Launch(rest) end,

@@ -463,6 +463,11 @@
     "RegisterSkin"
   ],
   "retired": {
-    "settings:Tooltips.itemID": "renamed to Tooltips.ids in 0.9.5 (one switch for item, spell and aura IDs), migrated in Modules/Tooltips.lua"
+    "settings:Tooltips.itemID": "renamed to Tooltips.ids in 0.9.5 (one switch for item, spell and aura IDs), migrated in Modules/Tooltips.lua",
+    "settings:Legacy.planner": "Legacy helper retired (A6-1): the perk planner was a hand-typed list; Core/DB.lua forgets the Legacy table, its module switch and VanguardDB.legacyPlan",
+    "settings:PetStable.announce": "Pet stable retired (A6-1): a one-line chat note; Core/DB.lua forgets the PetStable table and its module switch",
+    "commands:legacy": "/vg legacy retired with the Legacy helper (A6-1); the read-only probe is now /vg probe legacy",
+    "commands:pets": "/vg pets retired with the Pet stable module (A6-1); nothing replaces it",
+    "commands:dock": "/vg dock retired with the boss docks module (A6-1): it wrote another addon's settings. The two Boss timers spots remain (Core/BossSpots.lua) and the Combat tools page says to drag that addon's anchors onto them"
   }
 }

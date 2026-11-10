@@ -335,6 +335,12 @@ function CG.Command(rest)
   list()
 end
 
+-- A cooldown, bag, pet-bar or totem event: one repaint on the next frame, however many came in this one (they
+-- come many times a second in a fight).
+local function refreshSoon()
+  ns.Soon("cooldown gaps", CG.Refresh)
+end
+
 -- Reads the manager's spells again and repaints.
 function CG.Rebuild()
   CG.ReadTracked()
@@ -348,7 +354,7 @@ function CG.Enable(settings)
   CG.holder = CreateFrame("Frame", "Vanguard_CooldownGaps", UIParent)
   CG.holder:SetSize(6 * (CG.SIZE + CG.GAP), CG.SIZE)
   ns.Mover(CG.holder, "cdm_gaps", L["Cooldown gaps"], { "BOTTOM", "BOTTOM", 0, 306 })
-  for _, event in ipairs(CG.EVENTS) do ns.On(event, CG.Refresh) end
+  for _, event in ipairs(CG.EVENTS) do ns.On(event, refreshSoon) end
   for _, event in ipairs(CG.REREAD) do ns.On(event, CG.Rebuild) end
   ns.OnUnit("PLAYER_SPECIALIZATION_CHANGED", CG.Rebuild, "player")
   CG.Rebuild()
