@@ -7,9 +7,10 @@
 local ADDON, ns = ...
 local L = ns.L
 
--- A setting's value as a table holds it, or its default when it holds none.
+-- A setting's value as a table holds it (a saved false included), or its default when it holds none.
 local function valueOf(t, defaults, key)
-  local v = type(t) == "table" and t[key] or nil
+  local v = nil
+  if type(t) == "table" then v = t[key] end
   if v == nil and type(defaults) == "table" then v = defaults[key] end
   return v
 end
