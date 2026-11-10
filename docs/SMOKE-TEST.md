@@ -287,6 +287,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the header shows Vanguard's painted shield about 40 units tall, sharp (not blurred or blocky), with "Vanguard" beside it in a serif face in pale gold, larger than any other text in the window; neither touches the search box, and both stay as they are when the font or the variant changes. Your faction's mark (crossed swords or axes) is at the left of the footer with the version line right of it; with Faction look Off the mark goes and the version line moves to the footer's left edge. [Needs in-game check: the crest's sharpness at 40 units, the serif face's weight beside the crest, and the gold over each variant's header.]
 - If it fails, paste: a screenshot of the window's top and bottom, your resolution and UI scale, and `/vg errors`.
 
+### 2.1k The class-colour accent
+
+- Do: type `/vg`, open General and point at the swatch left of the five accent presets, then click it. Look at the switches, the selected page's rail, the sample button's glow and a unit frame's target edge. Click the jade swatch, then type `/vg accent class`. Log in on a character of another class that uses the same profile.
+- Expect: the swatch is in your class colour, set a little apart from the presets, and its tooltip says "Your class colour". Clicked, it carries the check, the hex box shows your class colour, and everything accent-coloured changes at once, with dark marks on accent fills still readable (a Priest's white and a Rogue's yellow are the hardest). Jade moves the check to jade; `/vg accent class` prints "The accent follows your class colour." and moves it back. The other character gets its own class colour at login. [Needs in-game check: text contrast on each class colour, and that no class colour reads as a warning or an item quality where the accent is used.]
+- If it fails, paste: a screenshot of the General page, your class, and `/vg errors`.
+
 ### 2.1h The fold on Raid frames
 
 - Do: type `/vg` → Raid frames. Count the rows, then press the **More settings** line, press it again, then press it open and change Power bar. Fold it, and look at the line. Reset Power bar with its accent arrow. Type "leader" in the search box and press Enter on the first hit. Then `/reload`, open Raid frames again, press Tab until the line is marked and press Enter. Repeat at Text size 130% and in a non-English client if you have one.

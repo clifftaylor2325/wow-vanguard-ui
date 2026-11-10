@@ -21,7 +21,7 @@ The look in one line: flat dark slate panels, one-screen-pixel borders, one acce
 
 | Token | Default | Setting | Role |
 | --- | --- | --- | --- |
-| `accent` | `d9a441` (brass) | `accent` | The one highlight colour: selected nav items, focus and target edges, glows, links, header rules, the logo's left diamond, the minimap's corner diamonds. Changed by `/vg accent`, the swatches under General → Look, or the hex box beside them. |
+| `accent` | `d9a441` (brass) | `accent` | The one highlight colour: selected nav items, focus and target edges, glows, links, header rules, the logo's left diamond, the minimap's corner diamonds. Changed by `/vg accent`, the swatches under General → Look, or the hex box beside them; the class swatch (or `/vg accent class`) makes it your class colour. |
 | `accentText`, `accentDim` | `e6b45b`, `8a6a2f` (from brass) | `accent` | Made from the accent in OKLCH (`T.ACCENT_VARIANTS`: lightness +0.047 and chroma x0.94 for text, -0.207 and x0.67 for dim), so every preset and custom hex gets them, worked out once per accent. `accentText` is for accent-coloured text: selected choices, captions, tabs, headers, badges, links, the `Vanguard:` chat prefix, and `T.Color` with no colour. `accentDim` is for accent borders and ornament only, never text. The `accent` itself stays for bars, borders, glows and selected fills. |
 | `panel` | `13161c` at 0.94 | `panel` | The fill of every panel (`T.Panel`, `T.HudPanel`). Softened raid bars mix their class colour into it. |
 | `inset` | `0c0e13` at 0.95 | `inset` | The darker fill of buttons, edit boxes and inset panels (`opts.inset`). |
@@ -88,7 +88,9 @@ Colours that are not tokens on purpose: class colours come from the client (`RAI
 
 ## Accent presets
 
-`T.PRESET_ORDER` is the order of the swatches under General → Look and in the setup wizard; `/vg accent <name>` takes the same names, any `rrggbb` or `#rrggbb`, or `reset`.
+`T.PRESET_ORDER` is the order of the swatches under General → Look and in the setup wizard; `/vg accent <name>` takes the same names, any `rrggbb` or `#rrggbb`, `class`, or `reset`.
+
+**The class accent.** Left of the presets under General → Look, set `SWATCH.apart` (8) further off, is one more swatch in your class colour (`T.ClassColor`: the client's `RAID_CLASS_COLORS`, not a token, hidden while the client gives none). Clicking it, or `/vg accent class`, runs `T.SetClassAccent`: the class colour is written to the `accent` setting itself, so `accentText`, `accentDim`, every painted frame and the profile's export follow as for any accent, and `accentClass` is set. While `accentClass` is on, each character that uses the profile takes its own class colour at login (`T.FollowClassAccent`, on `PLAYER_LOGIN`, repainting only when the colour differs). Picking a preset, typing a hex or resetting the accent turns it off. A class colour is outside the presets' guarantees: it may sit near a state or item quality colour (a Hunter's green near `good`, a Shaman's blue near `info`), which is why it is a choice and not a default.
 
 | Preset | Hex | Older names that still work |
 | --- | --- | --- |
@@ -296,6 +298,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | Setting | Default | Control | Applies |
 | --- | --- | --- | --- |
 | `accent` | brass | swatches, hex box, `/vg accent` | at once |
+| `accentClass` | off | General → Look → the class swatch beside the presets, `/vg accent class` | at once; at login the accent becomes this character's class colour |
 | `panel`, `inset`, `border` | see tokens | none | at once (`T.Refresh`) |
 | `font` | `""` (Fira Sans Condensed) | General → Look → Font | at once |
 | `outline` | `""` | none | at once |

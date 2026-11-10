@@ -29,7 +29,7 @@ local HELP = {
   { "variant [default|contrast|vellum|classic|midnight|obsidian|moss|ember]", L["surfaces and text: Slate and brass, High contrast, Vellum and ink, Classic look, Midnight, Obsidian, Moss, Ash and ember"] },
   { "corners [square|rounded]", L["panel corners: square (default) or rounded, on every theme"] },
   { "gradient [on|off]", L["windows a shade lighter toward the top (off by default)"] },
-  { "accent <rrggbb|name>", L["set the accent color (brass, arcane, jade, orchid, copper); accent reset"] },
+  { "accent <rrggbb|name|class>", L["set the accent color (brass, arcane, jade, orchid, copper); accent reset"] },
   { "theme reset", L["every theme setting back to default"] },
   { "modules", L["list modules; enable|disable <module> (then /reload)"] },
   { "skins", L["addons skinned through Vanguard.RegisterSkin; skins <addon> on|off"] },
@@ -176,8 +176,15 @@ local function resetAccent()
   chat(L["Accent back to default."])
 end
 
--- /vg accent <rrggbb> | reset
+-- /vg accent class
+local function classAccent()
+  if T.SetClassAccent() then return chat(L["The accent follows your class colour."]) end
+  chat(L["Your class colour isn't known yet."])
+end
+
+-- /vg accent <rrggbb> | <name> | class | reset
 local function accentCommand(rest)
+  if rest:lower() == "class" then return classAccent() end
   if rest == "reset" then
     return resetAccent()
   end

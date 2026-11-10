@@ -296,6 +296,9 @@ local DEFAULTS = {
   sounds = true,
   -- The faction look: "crest" (your faction's crest only), "auto" (the crest and the heading font) or "off".
   faction = "crest",
+  -- The accent follows your class colour (T.SetClassAccent): each character that uses the profile gets its own at
+  -- login. Any picked accent (a preset, a hex, a reset) turns it off.
+  accentClass = false,
 }
 
 -- Painted frames: frame -> { kind, opts, parts }. Weak, so hidden frames
@@ -3454,17 +3457,49 @@ T.OnScale(function()
   for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
 end)
 
--- Sets the accent color (0-1 components) and repaints.
+-- Sets the accent color (0-1 components) and repaints; a picked accent no longer follows the class.
 function T.SetAccent(r, g, b)
-  T.Settings().accent = { r, g, b }
+  local s = T.Settings()
+  s.accent, s.accentClass = { r, g, b }, false
   T.Refresh()
 end
 
--- Puts the accent back to its default (brass) and repaints.
+-- Puts the accent back to its default (brass) and repaints; it no longer follows the class.
 function T.ResetAccent()
-  T.Settings().accent = ns.Copy(DEFAULTS.accent)
+  local s = T.Settings()
+  s.accent, s.accentClass = ns.Copy(DEFAULTS.accent), false
   T.Refresh()
 end
+
+-- Your class colour as r, g, b (the client's own class colours, never a token), or nothing when the client hides
+-- your class or has no colour for it.
+function T.ClassColor()
+  local _, class = UnitClass("player")
+  local c = not ns.IsSecret(class) and type(RAID_CLASS_COLORS) == "table" and RAID_CLASS_COLORS[class]
+  if c then return c.r, c.g, c.b end
+end
+
+-- Makes the accent follow your class colour, through the accent setting itself (so the accent's text and dim shades,
+-- every painted frame and the profile's export follow), and repaints. False when the class colour isn't known.
+---@return boolean followed
+function T.SetClassAccent()
+  local s, r, g, b = T.Settings(), T.ClassColor()
+  if not r then return false end
+  s.accent, s.accentClass = { r, g, b }, true
+  T.Refresh()
+  return true
+end
+
+-- At login, an accent that follows the class takes this character's colour: a profile shared by several characters
+-- gives each its own. Nothing is repainted when the accent is that colour already.
+function T.FollowClassAccent()
+  local s, r, g, b = T.Settings(), T.ClassColor()
+  local a = s.accent
+  if not (s.accentClass and r) or (a[1] == r and a[2] == g and a[3] == b) then return end
+  s.accent = { r, g, b }
+  T.Refresh()
+end
+ns.On("PLAYER_LOGIN", T.FollowClassAccent)
 
 -- Puts every theme setting back to its default and repaints.
 function T.Reset()

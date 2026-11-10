@@ -2178,6 +2178,47 @@ it("options General: the accent swatch of the chosen preset carries a check, and
   addon.slash("accent 123456");
   expect(Object.keys(checked()), "an accent that is no preset checks none").toHaveLength(0);
 });
+it("options General: the class swatch, left of the presets, makes the accent follow your class colour; a preset or a hex takes it back", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.slash("");
+  // The accent row's class swatch: shown, checked, its fill, where it sits against the first preset, then the presets checked and the setting.
+  const row = () => addon.eval(`local row for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then row = w end end
+    local c, n = row.classSwatch, 0
+    for _, s in ipairs(row.swatches) do if s.check:IsShown() then n = n + 1 end end
+    return { c:IsShown(), c.check:IsShown(), c.fill.__vertexColor, row.swatches[1].__points.RIGHT.x - c.__points.RIGHT.x, c:GetWidth(), n, ns.Theme.Settings().accentClass }`);
+  const mage = addon.eval("local c = RAID_CLASS_COLORS.MAGE return { c.r, c.g, c.b }");
+  const before = row();
+  expect([before[0], before[1], before[2].slice(0, 3), before[3], before[4], before[5], before[6]], "shown in the mage's colour, unchecked, a step and a gap left of brass, the same size; brass is the checked one")
+    .toEqual([true, false, mage, 34, 22, 1, false]);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then local c = w.classSwatch c.__scripts.OnEnter(c) c.__scripts.OnClick(c) end end`);
+  expect(JSON.stringify(addon.eval("return GameTooltip.__lines")), "its tooltip says what it does").toContain("The accent follows your class, on every character that uses this profile.");
+  expect([row()[1], row()[5], row()[6], addon.eval("return { ns.Theme.Accent() }")], "clicked: the class swatch is the checked one, the setting is on, the accent is the class colour").toEqual([true, 0, true, mage]);
+  expect(addon.eval("local r, g, b = ns.Theme.RGB('accentText') local m = RAID_CLASS_COLORS.MAGE return r ~= m.r or g ~= m.g or b ~= m.b"), "the accent's text shade is made from it, as for any accent").toBe(true);
+  addon.slash("accent jade");
+  expect([row()[1], row()[5], row()[6]], "a preset takes the accent back: jade checked, no longer following").toEqual([false, 1, false]);
+  addon.eval("UnitClass = function() return 'Tester', __wfgWorld.secret('MAGE') end ns.Theme.Refresh()");
+  expect([row()[0], addon.eval("return ns.Theme.SetClassAccent()")], "a client that hides your class: no class swatch, and nothing to follow").toEqual([false, false]);
+});
+
+it("the class accent: /vg accent class sets it, a shared profile gives each character its own at login, and reset puts brass back", () => {
+  const addon = loggedIn();
+  addon.slash("accent class");
+  const mage = addon.eval("local c = RAID_CLASS_COLORS.MAGE return { c.r, c.g, c.b }");
+  expect([chatHas(addon, /The accent follows your class colour\./), addon.eval("return { ns.Theme.Accent() }"), addon.eval("return ns.Theme.Settings().accentClass")], "said, set and remembered").toEqual([true, mage, true]);
+  addon.slash("accent reset");
+  expect(addon.eval("return { ns.Theme.Accent() == ns.Theme.PRESETS.brass[1], ns.Theme.Settings().accentClass }"), "reset: brass, and no longer following").toEqual([true, false]);
+  // A profile whose accent follows the class, last saved by a mage, loaded by a warrior.
+  const shared = "VanguardDB.profiles = { Default = { theme = { accentClass = true, accent = { 0.25, 0.78, 0.92 } } } }";
+  const warrior = loggedIn("__wfgWorld.units.player.class = 'WARRIOR'", { savedVariables: shared });
+  expect(warrior.eval("local c = RAID_CLASS_COLORS.WARRIOR local r, g, b = ns.Theme.Accent() return { r == c.r, g == c.g, b == c.b }"), "the warrior gets the warrior's colour at login").toEqual([true, true, true]);
+  const again = loggedIn("__repaints = 0", { savedVariables: shared });
+  again.eval("local T = ns.Theme local refresh = T.Refresh T.Refresh = function() __repaints = __repaints + 1 return refresh() end T.FollowClassAccent()");
+  expect(again.eval("return __repaints"), "a character whose colour the accent already is repaints nothing").toBe(0);
+  const hidden = loggedIn("UnitClass = function() return 'Tester', __wfgWorld.secret('MAGE') end");
+  hidden.slash("accent class");
+  expect([chatHas(hidden, /Your class colour isn't known yet\./), hidden.eval("return ns.Theme.Settings().accentClass")], "a hidden class: said so, nothing changed").toEqual([true, false]);
+});
+
 it("a page thrown away and rebuilt leaves no frames for the theme's repaint to walk: the refreshed strings stay the same", () => {
   const addon = loggedIn();
   addon.slash("");

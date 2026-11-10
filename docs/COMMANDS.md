@@ -116,7 +116,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg slug [on|off]               world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a side-by-side test, off by default)
 /vg framebuffer [on|off]        windows drawn through a frame buffer while they open and close, so inner borders don't ghost (a side-by-side test, off by default)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
-/vg accent <rrggbb|brass|arcane|jade|orchid|copper> | reset      /vg theme reset
+/vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour; /vg theme reset
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it

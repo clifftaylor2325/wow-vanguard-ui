@@ -19,11 +19,27 @@ local function applyHex(self)
   self:ClearFocus()
 end
 
--- Shows the current accent as #rrggbb, and a check on the swatch of the preset that is the accent.
+-- The swatches before the hex box (units): a swatch's size, the step from one to the next, the gap between the last
+-- one and the hex box, and the extra gap that sets the class swatch apart from the presets.
+local SWATCH = { size = 22, step = 26, gap = 12, apart = 8 }
+
+-- The class swatch as the accent is now: your class colour, shown only while the client gives one, with the check
+-- while the accent follows your class.
+local function refreshClassSwatch(s, following)
+  local r, g, b = T.ClassColor()
+  s:SetShown(r ~= nil)
+  if r then s.fill:SetVertexColor(r, g, b) end
+  s.check:SetShown(following)
+end
+
+-- Shows the current accent as #rrggbb, and a check on the swatch that is the accent: the class swatch while the
+-- accent follows your class, else the preset with its colour.
 local function refreshAccent(self)
   self.hex:SetText("#" .. T.Hex("accent"):sub(3):upper())
   local r, g, b = T.Accent()
-  for _, s in ipairs(self.swatches) do s.check:SetShown(s.rgb[1] == r and s.rgb[2] == g and s.rgb[3] == b) end
+  local following = T.Settings().accentClass == true
+  for _, s in ipairs(self.swatches) do s.check:SetShown(not following and s.rgb[1] == r and s.rgb[2] == g and s.rgb[3] == b) end
+  refreshClassSwatch(self.classSwatch, following)
 end
 
 -- The accent row: a swatch per preset and a hex box (Enter applies).
@@ -44,18 +60,41 @@ end
 local function generalSwatch(r, i, name)
   local rgb = T.PRESETS[name]
   local s = W.Swatch(r, rgb, function() T.SetAccent(rgb[1], rgb[2], rgb[3]) end)
-  s:SetSize(22, 22)
-  s:SetPoint("RIGHT", r.hex, "LEFT", -12 - (#T.PRESET_ORDER - i) * 26, 0)
+  s:SetSize(SWATCH.size, SWATCH.size)
+  s:SetPoint("RIGHT", r.hex, "LEFT", -SWATCH.gap - (#T.PRESET_ORDER - i) * SWATCH.step, 0)
   s.rgb = rgb
   s.check = W.IconTexture(s, "Check", 12, "void")
   s.check:SetPoint("CENTER")
   r.swatches[i] = s
 end
 
--- The preset swatches.
+-- The class swatch's tooltip, where the client has one: what a click does.
+local function classTip(s)
+  if not GameTooltip then return end
+  GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+  GameTooltip:SetText(L["Your class colour"])
+  GameTooltip:AddLine(L["The accent follows your class, on every character that uses this profile."], T.RGB("text2"))
+  GameTooltip:Show()
+end
+
+-- The class swatch, left of the presets and set a little apart from them: a click makes the accent follow your class
+-- colour (T.SetClassAccent); refreshClassSwatch gives it its colour and its check.
+local function addClassSwatch(r)
+  local s = W.Swatch(r, T.PRESETS.brass, function() T.SetClassAccent() end)
+  s:SetSize(SWATCH.size, SWATCH.size)
+  s:SetPoint("RIGHT", r.hex, "LEFT", -SWATCH.gap - #T.PRESET_ORDER * SWATCH.step - SWATCH.apart, 0)
+  s.check = W.IconTexture(s, "Check", 12, "void")
+  s.check:SetPoint("CENTER")
+  s:HookScript("OnEnter", ns.Guard("class swatch tip", classTip))
+  s:HookScript("OnLeave", ns.Guard("class swatch tip", function() if GameTooltip then GameTooltip:Hide() end end))
+  r.classSwatch = s
+end
+
+-- The preset swatches, and the class swatch before them.
 local function addSwatches(r)
   r.swatches = {}
   for i, name in ipairs(T.PRESET_ORDER) do generalSwatch(r, i, name) end
+  addClassSwatch(r)
 end
 
 -- A bar on the sample unit frame, h tall, at value (of 100).
