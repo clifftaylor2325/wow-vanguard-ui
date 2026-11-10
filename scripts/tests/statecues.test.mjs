@@ -129,3 +129,22 @@ it("state cues: low health pulses the player frame's edge below the threshold, t
   expect(ring()[0], "with the switch off the ring stays hidden").toBe(false);
   setCombat(addon, false);
 });
+
+it("hunt bars: a global cooldown never flashes a button as ready, whichever comes first: its end's read or the sweep's end", () => {
+  const addon = loggedIn(ENV + "GetActionInfo = function(slot) if slot == 2 then return 'spell', 424242 end end C_ActionBar = { GetActionCooldown = function() return __info end }");
+  // The client's answer for button 2, read as the coalesced repaint reads it; the sweep's own end (OnCooldownDone).
+  const read = (info) => addon.eval(`__info = ${info} ns.GetModule("ActionBars").UpdateButton(Vanguard_Bar1Button2)`);
+  const done = () => addon.eval("__played = {} local c = Vanguard_Bar1Button2.cooldown c:GetScript('OnCooldownDone')(c)");
+  const flashes = () => playing(addon).length;
+  const GCD = "{ isActive = true, isOnGCD = true, startTime = 100, duration = 1.5 }";
+  const REAL = "{ isActive = true, isOnGCD = false, startTime = 100, duration = 30 }";
+  const IDLE = "{ isActive = false, isOnGCD = false, startTime = 0, duration = 0 }";
+  read(GCD); read(IDLE); done();
+  expect(flashes(), "the global cooldown, its end read before the sweep ends: no flash").toBe(0);
+  read(GCD); done(); read(IDLE);
+  expect(flashes(), "the sweep ending first: no flash").toBe(0);
+  read(REAL); read(IDLE); done();
+  expect(flashes(), "a real cooldown, its end read first: one flash").toBe(1);
+  read(REAL); done();
+  expect(flashes(), "a real cooldown ending before the read: one flash").toBe(1);
+});
