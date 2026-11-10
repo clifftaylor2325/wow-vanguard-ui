@@ -11,11 +11,9 @@ local L = ns.L
 
 local T = ns.Theme
 
--- Per-frame state kept off the game's frames (Core/Events.lua, ns.FrameState).
-local vgHistory = ns.FrameState("vgHistory")
-
 local CHH = ns.Module("ChatHistory", {
   defaults = { on = false, lines = 200, days = 3, whispers = false },
+  live = true,
 })
 
 -- Choices for the options: lines kept per window, and how many days they are kept.
@@ -120,20 +118,25 @@ local function targetList(index)
   return CHH.early[index]
 end
 
--- Saves a line a window just showed (nothing while history is off or while old lines are being put back).
+-- Saves a line a window just showed (nothing while history is off or while old lines are being put back; the
+-- hooks that call it are gates, so nothing reaches it while the module is switched off either).
 function CHH.Record(index, text, r, g, b)
-  if not (CHH.active and CHH.settings.on) or CHH.restoring or CHH.Skipped(index) or not keepable(text) then return end
+  if not CHH.settings.on or CHH.restoring or CHH.Skipped(index) or not keepable(text) then return end
   local list = targetList(index)
   list[#list + 1] = pack(text, r, g, b)
   if CHH.arrived and #list > CHH.settings.lines + CHH.SLACK then CHH.Store()[index] = trimmed(list) end
 end
 
--- Follows one chat window's new lines, once.
-local function watchWindow(index)
+-- Follows one chat window's new lines. The hook goes in once a session, through the scope's gate (it can't be taken
+-- off, so it does nothing while the module is switched off).
+local function watchWindow(index, scope)
   local frame = _G["ChatFrame" .. index]
-  if type(frame) ~= "table" or vgHistory[frame] or type(hooksecurefunc) ~= "function" then return end
-  vgHistory[frame] = true
-  hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage history", function(_, text, r, g, b) CHH.Record(index, text, r, g, b) end))
+  if type(frame) ~= "table" or type(hooksecurefunc) ~= "function" then return end
+  -- Saves what the window just showed, under its number.
+  local function record(_, text, r, g, b) CHH.Record(index, text, r, g, b) end
+  scope:Gate("history window " .. index, record, function(gate)
+    hooksecurefunc(frame, "AddMessage", ns.Guard("hook AddMessage history", gate))
+  end)
 end
 
 -- A chat window was closed: its saved lines go with it, or the next tab to take its number would get them back.
@@ -143,12 +146,11 @@ function CHH.Forget(frame, fallback)
   if index then CHH.Store()[index] = nil end
 end
 
--- Follows every permanent chat window, and the game closing one.
-function CHH.Watch()
-  for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i) end
-  if CHH.watching then return end
-  CHH.watching = true
-  if type(hooksecurefunc) == "function" and type(FCF_Close) == "function" then hooksecurefunc("FCF_Close", ns.Guard("hook FCF_Close history", CHH.Forget)) end
+-- Follows every permanent chat window, and the game closing one (both through the scope's gates).
+function CHH.Watch(scope)
+  for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i, scope) end
+  if type(hooksecurefunc) ~= "function" or type(FCF_Close) ~= "function" then return end
+  scope:Gate("history close", CHH.Forget, function(gate) hooksecurefunc("FCF_Close", ns.Guard("hook FCF_Close history", gate)) end)
 end
 
 -- Restoring -----------------------------------------------------------------------------------
@@ -264,18 +266,15 @@ end
 function CHH.Logout()
   if CHH.settings then CHH.Prune() end
 end
-ns.On("PLAYER_LOGOUT", CHH.Logout)
 
--- Module switched off: nothing more is saved.
-function CHH.Disable()
-  CHH.active = false
-end
-
--- Module entry point (Core/Modules.lua).
-function CHH.Enable(settings)
-  CHH.settings, CHH.active = settings, true
-  CHH.Watch()
-  ns.On("PLAYER_ENTERING_WORLD", CHH.Arrived)
+-- Module entry point (Core/Modules.lua). Switched off, its gates go quiet and nothing more is saved, so it has no
+-- Disable. Switched on after the world was entered, the windows already show this session, so nothing is put back.
+function CHH.Enable(settings, scope)
+  CHH.settings = settings
+  CHH.arrived = CHH.arrived or ns.ModulesBuilt() or nil
+  CHH.Watch(scope)
+  scope:On("PLAYER_ENTERING_WORLD", CHH.Arrived)
+  scope:On("PLAYER_LOGOUT", CHH.Logout)
 end
 
 -- The first time the world is entered (the game has set its chat windows up by then): the saved lines come back.
