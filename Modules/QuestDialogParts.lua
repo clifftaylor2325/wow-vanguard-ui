@@ -136,8 +136,8 @@ end
 -- Adds hover handlers after a frame's own (a line's highlight). The frame is the module's own, so nothing here
 -- needs the scope: it is a hook on a frame that is built once and never given away.
 function QP.OnHover(frame, enter, leave)
-  frame:HookScript("OnEnter", enter)
-  frame:HookScript("OnLeave", leave)
+  frame:HookScript("OnEnter", ns.Guard("quest line hover", enter))
+  frame:HookScript("OnLeave", ns.Guard("quest line hover", leave))
 end
 
 -- Marks a line as the chosen one (the row's accent rail and wash), or clears it.
