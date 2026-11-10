@@ -85,9 +85,9 @@ end
 
 -- Building ---------------------------------------------------------------------------
 
--- A row put away by Disable shows again, on whoever the frame shows now (the container is kept, never made twice).
+-- A row (or none) put away by Disable shows again, on whoever the frame shows now (the container is kept, never made twice).
 local function wake(row, unit)
-  if not row.parked then return end
+  if not (row and row.parked) then return end
   row.parked = nil
   row.frame:Show()
   row:SetUnit(unit)

@@ -71,14 +71,16 @@ end
 -- Reads the tile's unit a few times a second while it shows, and while its module (the scope) runs: a tile the
 -- header makes after the module stopped waits for the next start, which polls every tile it has made.
 function MT.Poll(b, scope)
-  if scope:Running() then scope:Every(b, MT.POLL, MT.Paint, b) end
+  if scope:Running() then scope:Every("tile " .. (b:GetName() or tostring(b)), MT.POLL, MT.Paint, b) end
 end
 
 -- Shows a secure frame by a macro-conditional state, as the client's own state driver (so it follows the group in
 -- combat too). Out of combat only. The frame is noted as driven (Core/Visibility.lua), so the scope releases the
--- driver when its module stops, and the frame stays hidden then.
+-- driver when its module stops, and the frame stays hidden then. It is shown first, as a new frame is, and the driver
+-- hides it where its state says so.
 function MT.Drive(frame, state)
   if type(RegisterStateDriver) ~= "function" then return end
+  frame:Show()
   RegisterStateDriver(frame, "visibility", state)
   frame.vgStateString = state
 end
@@ -166,6 +168,7 @@ local function show(scope)
   if not scope:Running() then return end
   if not MT.header then build() end
   scope:Mover(MT.holder, "maintanks", L["Main tanks"], { "TOPLEFT", "TOPLEFT", 400, -20 })
+  MT.holder:Show()
   scope:Frame(MT.header)
   MT.FollowHolder()
   MT.Drive(MT.header, "[group:raid] show; hide")

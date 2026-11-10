@@ -10,12 +10,19 @@ import { lifecycleCases } from "./lifecycle-helpers.mjs";
 // The modules these cases need on: the unit frames the others sit on, and the heavy ones this batch converts.
 const KEEP = ["UnitFrames", "FrameAuras", "RaidTools"];
 
+// What the unit frames make or settle the first time a module builds on the player frame (its lazy tab frame, and the
+// deck's reach raised), done here for every login, so the cases compare the module's own footprint and no layout pass
+// is left pending after a late start.
+const SETTLED = 'local UF = ns.GetModule("UnitFrames") UF.Crown(UF.frames.player) UF.DeckReach.top, UF.DeckReach.bottom = 99, 99';
+
 // A login with the other heavy modules off, `settings` Lua run on the saved variables, then `saved` (a module
-// switch from moduleOff), and `env` Lua run before the login (a class, a unit).
-const loginWith = (settings = "", env = "") => (saved = "") => {
+// switch from moduleOff), `env` Lua run before the login (a class, a unit) and `after` Lua run once it is done.
+const loginWith = (settings = "", env = "", after = "") => (saved = "") => {
   const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY.filter((n) => !KEEP.includes(n))) + settings + saved });
   if (env) addon.eval(env);
   addon.login();
+  addon.eval(SETTLED + after);
+  addon.advance(1);
   return addon;
 };
 
@@ -141,8 +148,8 @@ it("lifecycle: main tanks switched off hides the holder and the header and lets 
 
 it("lifecycle: a main tank tile is read only while the module runs", () => {
   const addon = login();
-  addon.eval('ns.GetModule("MainTanks").Setup(CreateFrame("Button", nil, Vanguard_MainTanks, "SecureUnitButtonTemplate"))');
-  const read = 'local tiles = ns.GetModule("MainTanks").tiles return ns.ticker.vgJobs[tiles[#tiles]] ~= nil';
+  addon.eval('ns.GetModule("MainTanks").Setup(CreateFrame("Button", "Vanguard_TestTile", Vanguard_MainTanks, "SecureUnitButtonTemplate"))');
+  const read = 'return ns.ticker.vgJobs["tile Vanguard_TestTile"] ~= nil';
   expect(addon.eval(read)).toBe(true);
   addon.eval('ns.SetModuleEnabled("MainTanks", false)');
   expect(addon.eval(read)).toBe(false);
@@ -152,7 +159,10 @@ it("lifecycle: a main tank tile is read only while the module runs", () => {
 
 // PartyExtras ---------------------------------------------------------------------------------------------------
 
-const PARTY_LOGIN = loginWith("\nVanguardDB.profiles.Default.PartyExtras = { show = true }");
+// The raid frames' tile tooltip hook registers its one fight handler when the first tile of any module is made, so a
+// tile is made first here: the cases compare party extras' own footprint.
+const FIRST_TILE = 'ns.GetModule("RaidFrames").UnitTooltip(CreateFrame("Button", "Vanguard_TestFirstTile", UIParent))';
+const PARTY_LOGIN = loginWith("\nVanguardDB.profiles.Default.PartyExtras = { show = true }", "", FIRST_TILE);
 
 lifecycleCases("PartyExtras", PARTY_LOGIN);
 
