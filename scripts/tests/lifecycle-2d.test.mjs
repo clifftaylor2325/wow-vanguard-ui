@@ -149,3 +149,26 @@ it("lifecycle: a main tank tile is read only while the module runs", () => {
   addon.eval('ns.SetModuleEnabled("MainTanks", true)');
   expect(addon.eval(read)).toBe(true);
 });
+
+// PartyExtras ---------------------------------------------------------------------------------------------------
+
+const PARTY_LOGIN = loginWith("\nVanguardDB.profiles.Default.PartyExtras = { show = true }");
+
+lifecycleCases("PartyExtras", PARTY_LOGIN);
+
+it("lifecycle: party extras switched off hides the column and its driver, and on again shows the same column", () => {
+  const addon = PARTY_LOGIN();
+  addon.eval('ns.SetModuleEnabled("PartyExtras", false)');
+  expect(addon.eval("return { Vanguard_PartyExtras:IsShown(), Vanguard_PartyExtras.__states.visibility == nil }")).toEqual([false, true]);
+  addon.eval('local PX = ns.GetModule("PartyExtras") local holder = PX.holder ns.SetModuleEnabled("PartyExtras", true) __same = holder == PX.holder');
+  expect(addon.eval("return { __same, Vanguard_PartyExtras.__states.visibility }")).toEqual([true, "[group:raid] hide; [group:party] show; hide"]);
+});
+
+it("lifecycle: the party pets row switched on builds the column, and off hides it, without a reload", () => {
+  const addon = loginWith("\nVanguardDB.profiles.Default.PartyExtras = { show = false }")();
+  expect(addon.eval("return Vanguard_PartyExtras == nil")).toBe(true);
+  addon.eval("local _, set = ns.Options.RestartSetting('PartyExtras', 'show') set(true)");
+  expect(addon.eval("return Vanguard_PartyExtras:IsShown()")).toBe(true);
+  addon.eval("local _, set = ns.Options.RestartSetting('PartyExtras', 'show') set(false)");
+  expect(addon.eval("return Vanguard_PartyExtras:IsShown()")).toBe(false);
+});
