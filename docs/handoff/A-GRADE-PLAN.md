@@ -146,7 +146,7 @@ Read with `docs/handoff/leonardo-art-plan.md`. That plan says how the art is mad
 - [ ] **A5-4** Reskin coverage report in `/vg status` and as a generated doc. (Q14)
 - [ ] **A5-5** Global font pass, keeping the Korean and Chinese exemption. (N11)
 - [ ] **A5-6** Depth on by default (shadows, gradient, slate surface, bevel), decided by Cliff from an A and B look in game. (N13)
-- [ ] **A5-7** State motion kit: combat start, proc, cooldown ready, low health, all behind Reduce motion. (N16)
+- [x] **A5-7** State motion kit: combat start, proc, cooldown ready, low health, all behind Reduce motion. (N16)
 - [ ] **A5-8** Empty states and navigation polish in the menu. (N18)
 
 **5b, art-led** (`work/a5-look-art`)
