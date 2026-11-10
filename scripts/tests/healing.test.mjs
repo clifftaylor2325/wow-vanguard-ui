@@ -220,3 +220,16 @@ it("A1-6: with the raid frames off, raid healing takes no unit's heal, shield or
   const plain = ["UNIT_HEAL_PREDICTION", "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_THREAT_SITUATION_UPDATE"].map((event) => unitEvents(addon, event).plain);
   expect(plain, "no frame takes them for every unit").toEqual([0, 0, 0]);
 });
+
+// A1-12 (L6): the overlays' width is set when the tile's width changes, not on every health event.
+it("A1-12: a health event sets no overlay width again; a resized tile's overlays follow", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  addon.eval(`__widths = 0 local b = Vanguard_RaidUnitButton1
+    for _, bar in ipairs({ b.heal, b.shield }) do local set = bar.SetWidth bar.SetWidth = function(...) __widths = __widths + 1 return set(...) end end`);
+  for (let i = 0; i < 20; i++) { addon.eval(`__units.raid1.hp = ${300 + i}`); addon.fire("UNIT_HEALTH", "raid1"); }
+  expect(addon.eval("return __widths"), "twenty health events at one size: no width set").toBe(0);
+  addon.eval("local b = Vanguard_RaidUnitButton1 b:SetWidth(b:GetWidth() + 20) __units.raid1.hp = 400");
+  addon.fire("UNIT_HEALTH", "raid1");
+  expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { __widths, b.heal:GetWidth() == b:GetWidth() - 2 }"), "a wider tile: each overlay set once, to the health bar's width").toEqual([2, true]);
+});

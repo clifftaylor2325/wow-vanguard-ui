@@ -56,13 +56,23 @@ function PA.Spec(holder, s)
       { filter = "HARMFUL", max = s.debuffs, size = s.size, debuff = true, newLine = true } } }
 end
 
--- Moves the container over to leave room for n enchant cells at the right, and widens the hover pad (below) by as
--- much, so it still lies under every row.
-function PA.PlaceAuras(n)
-  local frame, shift = PA.auras.frame, n * (PA.settings.size + PA.GAP)
+-- Anchors the container `shift` units in from the holder's right edge, and remembers where.
+local function anchorAuras(shift)
+  local frame = PA.auras.frame
+  PA.placed = shift
   frame:ClearAllPoints()
   frame:SetPoint("TOPRIGHT", PA.holder, "TOPRIGHT", -shift, 0)
+end
+
+-- Moves the container over to leave room for n enchant cells at the right, and widens the hover pad (below) by as
+-- much, so it still lies under every row. The container is the client's aura container and may be protected, so
+-- it moves only when the room changes, and a move asked for in a fight (an enchant gained or run out) waits for
+-- the fight's end: until then the cells may lie over the first buffs.
+function PA.PlaceAuras(n)
+  local shift = n * (PA.settings.size + PA.GAP)
   PA.holder.vgHoverArea:SetWidth(PA.lineSize + shift)
+  if PA.placed == shift then return end
+  ns.OutOfCombat(function() anchorAuras(shift) end, "player auras place")
 end
 
 -- Weapon enchants ---------------------------------------------------------------------------

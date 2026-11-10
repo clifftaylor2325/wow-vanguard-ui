@@ -96,3 +96,13 @@ it("copes with no gear and no damage figures, and does nothing without the chara
   expect(chatHas(addon, /No worn piece is missing an enchant\./)).toBe(true);
   expect(addon.eval("return ns.GetModule('CharacterExtras').PaintAll()")).toBeNull();
 });
+
+// A1-15 (L26): an upgraded or scaled item shows the level it has as worn, not its base level.
+it("A1-15: a slot shows the item's detailed level where the client gives one, else its base level", () => {
+  const addon = loggedIn(ENV + 'C_Item.GetDetailedItemLevelInfo = function(link) if link == "item:1001:0" then return 52, false, 40 end if link == "item:1005:0:0" then return { __secret = true } end end');
+  addon.eval("CharacterFrame:Show()");
+  expect([label(addon, "Head", "level")[1], label(addon, "Chest", "level")[1], label(addon, "SecondaryHand", "level")[1]], "the helm as upgraded; a hidden answer and no answer keep the base level").toEqual([52, 30, 35]);
+  const without = loggedIn(ENV + "C_Item.GetDetailedItemLevelInfo = nil");
+  without.eval("CharacterFrame:Show()");
+  expect(label(without, "Head", "level")[1], "a client without the call: the base level").toBe(40);
+});

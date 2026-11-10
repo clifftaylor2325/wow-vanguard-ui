@@ -376,6 +376,19 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   expect(two.cells[0].sweep, "time passing keeps the sweep's full length, so it empties").toEqual([400, 1800]);
   expect(two.cells[1], "an oil on the off hand, drawn with the weapon's icon").toMatchObject({ shown: true, icon: "TEST-ONLY-ICON-Weapon17", sweep: [1000, 600] });
   expect([two.x, two.padReach], "and the buffs move over by two cells, the hover pad still under their last column").toEqual([-68, 68]);
+  // A1-15 (L14): the container may be protected, so it is not re-anchored in a fight, nor when nothing changed.
+  addon.eval("__moves = 0 local f = ns.GetModule('PlayerAuras').auras.frame local set = f.SetPoint f.SetPoint = function(...) __moves = __moves + 1 return set(...) end");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  expect([playerAuras(addon).x, addon.eval("return __moves")], "the same two enchants: nothing moves").toEqual([-68, 0]);
+  addon.world.combat(true);
+  addon.eval("__kept = __enchants[1] __enchants[1] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  const fight = playerAuras(addon);
+  expect([fight.cells[1].shown, fight.x, fight.padReach, addon.eval("return __moves")], "an enchant run out in a fight: its cell goes and the hover pad narrows, the container stays").toEqual([false, -68, 34, 0]);
+  addon.world.combat(false);
+  expect([playerAuras(addon).x, addon.eval("return __moves")], "after the fight: moved back by one cell, once").toEqual([-34, 1]);
+  addon.eval("__enchants[1] = __kept");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
   addon.eval("__enchants[1] = { { hasEnchant = { __secret = true }, timeLeft = 600000 } } local c = ns.GetModule('PlayerAuras').cells[1] c.cooldown:GetScript('OnCooldownDone')(c.cooldown)");
   expect(playerAuras(addon).cells[1].shown, "a hidden answer shows no cell").toBe(false);
   addon.eval("local c = ns.GetModule('PlayerAuras').cells[1] c:GetScript('OnEnter')(c)");
