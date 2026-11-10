@@ -133,6 +133,17 @@ it("state cues: under Hairline the cue ring is the frame's square outline a pixe
   expect(cuePieces(addon, "player", "low").filter((p) => p.tex.startsWith("PointLine")).length, "Shield again: the ring takes the point at once").toBe(2);
 });
 
+it("state cues: the low-health breath runs on the ring's holder, never on the pieces whose colour carries the curve's opacity", () => {
+  const addon = loggedIn(ENV);
+  addon.world.setUnit("player", { hp: 100, maxhp: 100 });
+  const state = addon.eval(`local ring = ns.Theme.CueRing(ns.GetModule("UnitFrames").frames.player, "low")
+    local kinds, clear = {}, true
+    for _, g in ipairs(__played) do if g.playing and g.loop == "REPEAT" then kinds[g.tex.__kind] = true end end
+    for _, t in ipairs({ ring[1]:GetRegions() }) do local _, _, _, a = t:GetVertexColor() clear = clear and a == 0 end
+    return { frame = kinds.Frame == true, texture = kinds.Texture == true, clear = clear }`);
+  expect(state, "at full health: the holder breathes (an alpha animation writes the alpha it plays on), its pieces stay clear").toEqual({ frame: true, texture: false, clear: true });
+});
+
 it("state cues: low health pulses the player frame's edge below the threshold, through the client's curve, and not while dead", () => {
   const addon = loggedIn(ENV);
   // The low-health ring's first piece as [shown, alpha].
