@@ -428,9 +428,9 @@ RH.TILE_EVENTS = {
   UNIT_THREAT_SITUATION_UPDATE = updateThreat, UNIT_AURA = updateBuff,
 }
 
--- A unit event on a tile: its part, except for an aura event that only refreshed auras.
+-- A unit event on a tile: its part, except for an aura event that only refreshed auras. No running check: a stopped
+-- module's tile subscriptions are paused (RH.Disable), so none reaches here, and the raid's aura path pays nothing.
 local function onTileEvent(b, unit, event, info)
-  if not RH.scope.on then return end
   if event == "UNIT_AURA" and RH.RefreshOnly(info) then return end
   RH.TILE_EVENTS[event](b, unit)
 end

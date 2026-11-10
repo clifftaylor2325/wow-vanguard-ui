@@ -31,9 +31,10 @@ QM.FOLLOWED = 4
 -- How faint a mark on the edge is (the spot is farther than the minimap shows).
 QM.EDGE_ALPHA = 0.5
 
--- Whether the module runs now: a stopped one reads and draws nothing (its scope is closed).
+-- Whether the module runs now: a stopped one reads and draws nothing (its scope is closed). Read on every tick, so
+-- the scope's flag is read directly, without a method call.
 function QM.Running()
-  return QM.scope ~= nil and QM.scope:Running()
+  return QM.scope ~= nil and QM.scope.on == true
 end
 
 -- The spots ---------------------------------------------------------------------------------------
