@@ -20,7 +20,7 @@ const MODULES = `
   end
   mod("TestParent", { defaults = {}, live = true })
   mod("TestChild", { defaults = {}, live = true, requires = { "TestParent" }, afterOff = "Test child keeps its font until you reload." })
-  mod("TestReload", { defaults = {}, reload = "It replaces a game frame." })
+  mod("TestReload", { defaults = { size = 2 }, reload = "It replaces a game frame." })
   mod("TestKept", { defaults = {}, live = true, requires = { "TestReload" } })
 `;
 
@@ -331,4 +331,94 @@ it("lifecycle: a live module's row says its switch applies after the fight, and 
   expect(moduleNote(addon, "TestReload")).toBe(null);
   setCombat(addon, false);
   expect(moduleNote(addon, "TestParent")).toBe("");
+});
+
+// The options window ----------------------------------------------------------------------------------------------
+
+// A module row's widget on the shown Modules page, by its caption, as Lua (nil when it isn't shown).
+const moduleRowLua = (caption) => `(function() for _, w in ipairs(__wfgStub.frames) do
+  if w.source and w.source[1] == "module" and w.source[2] == "${caption}" and ns.Options.RevealRow(w) then return w end end end)()`;
+
+// The footer's reload notice: shown, and its text.
+const notice = (addon) => addon.eval("return { Vanguard_Options.notice:IsShown(), Vanguard_Options.notice:GetText() }");
+
+it("lifecycle: a live module's switch has no reload tag; a reload-only one keeps it, with its reason in the tip", () => {
+  const addon = lifeAddon();
+  addon.eval('ns.Options.Show("modules")');
+  // Whether a module row wears the reload tag, and its tip.
+  const tagOf = (caption) => addon.eval(`local w = ${moduleRowLua(caption)} return { w.tag ~= nil, w.source.tip or "" }`);
+  expect(tagOf("TestParent")).toEqual([false, ""]);
+  expect(tagOf("TestReload")).toEqual([true, "It replaces a game frame.\nTakes effect after /reload."]);
+  expect(tagOf("Unit frames")).toEqual([true, "Takes effect after /reload."]);
+});
+
+it("lifecycle: a child whose parent is off is greyed, says it needs the parent, and a click jumps to the parent's row", () => {
+  const addon = lifeAddon(off("TestParent"));
+  addon.eval('ns.Options.Show("modules")');
+  expect(moduleNote(addon, "TestChild")).toBe("Needs TestParent");
+  expect(addon.eval(`local w = ${moduleRowLua("TestChild")} return { w.label:GetTextColor() }`)).toEqual(addon.eval('return { ns.Theme.RGB("disabled") }'));
+  addon.eval(`local w = ${moduleRowLua("TestChild")} w:GetScript("OnClick")(w)`);
+  expect(addon.eval('return ns.ModuleEnabled("TestChild")'), "the click switched nothing").toBe(true);
+  expect(addon.eval(`local w = ${moduleRowLua("TestParent")} return w.found ~= nil and w.found:IsShown()`), "and marked the parent").toBe(true);
+  addon.eval(`local w = ${moduleRowLua("TestParent")} w:GetScript("OnClick")(w)`);
+  expect(moduleNote(addon, "TestChild"), "the parent on: the note goes").toBe("");
+  expect(live(addon, "TestChild")).toEqual({ TestChild: true });
+});
+
+it("lifecycle: a live child of a reload-only parent switched off says it goes with the parent after a reload", () => {
+  const addon = lifeAddon();
+  addon.eval('ns.Options.Show("modules")');
+  addon.eval(`local w = ${moduleRowLua("TestReload")} w:GetScript("OnClick")(w)`);
+  expect(moduleNote(addon, "TestKept")).toBe("Off with TestReload after a reload");
+});
+
+it("lifecycle: the reload notice names what waits, and goes when the switches are back", () => {
+  const addon = lifeAddon();
+  addon.eval('ns.Options.Show("modules")');
+  expect(notice(addon)).toEqual([false, ""]);
+  addon.eval('ns.SetModuleEnabled("TestReload", false)');
+  expect(notice(addon)).toEqual([true, "Waiting for a reload: TestReload, TestKept"]);
+  addon.eval('ns.SetModuleEnabled("Chat", false)');
+  expect(notice(addon)).toEqual([true, "Waiting for a reload: Chat, TestReload and 1 more"]);
+  addon.eval('ns.SetModuleEnabled("Chat", true) ns.SetModuleEnabled("TestReload", true)');
+  expect(notice(addon)).toEqual([false, ""]);
+  addon.eval("ns.Options.NeedReload()");
+  expect(notice(addon), "a change marked for the reload keeps the usual notice").toEqual([true, "Some changes need a reload"]);
+});
+
+it("lifecycle: a reload setting's change is named until it is put back", () => {
+  const addon = lifeAddon();
+  addon.eval('ns.Options.Show("general") __get, __set = ns.Options.RestartSetting("TestReload", "size")');
+  addon.eval("__set(5)");
+  expect(notice(addon)).toEqual([true, "Waiting for a reload: TestReload"]);
+  addon.eval("__set(4)");
+  expect(notice(addon)).toEqual([true, "Waiting for a reload: TestReload"]);
+  addon.eval("__set(2)");
+  expect(notice(addon)).toEqual([false, ""]);
+  expect(addon.eval("return ns.Options.AppliesLive(__set)")).toBe(false);
+});
+
+it("lifecycle: a setting row that rebuilds a live module applies at once, with no reload tag on its caption", () => {
+  const addon = lifeAddon();
+  addon.eval(`ns.Options.AddRows("general", function()
+    local get, set = ns.Options.RestartSetting("TestParent", "shape")
+    local get2, set2 = ns.Options.RestartSetting("TestReload", "size")
+    return { { "header", "TEST-ONLY rows" }, { "check", "TEST-ONLY shape (reload)", get, set }, { "check", "TEST-ONLY size (reload)", get2, set2 } }
+  end) ns.Options.Show("general")`);
+  // Whether the setting row with this English caption wears the reload tag.
+  const tagged = (caption) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "${caption}" then return w.tag ~= nil end end`);
+  expect([tagged("TEST-ONLY shape"), tagged("TEST-ONLY size")]).toEqual([false, true]);
+  takeLog(addon);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "TEST-ONLY shape" then w:GetScript("OnClick")(w) end end`);
+  expect(takeLog(addon)).toEqual(["off TestParent", "on TestParent"]);
+  expect(addon.eval('return ns.Settings("TestParent").shape')).toBe(true);
+  expect(notice(addon)).toEqual([false, ""]);
+});
+
+it("lifecycle: the reload notice naming two long module names fits the footer, a third longer as a translation", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY), textFit: true });
+  addon.login();
+  addon.eval('ns.SetModuleEnabled("SpecialBars", false) ns.SetModuleEnabled("MenuStrip", false) ns.SetModuleEnabled("Chat", false) ns.Options.Show("modules")');
+  expect(addon.eval("return Vanguard_Options.notice:GetText()")).toMatch(/^Waiting for a reload: Pet, stance and extra buttons.* and 1 more/);
+  expect(addon.textFit("Vanguard_Options").filter((f) => /Waiting for a reload/.test(`${f.text} ${f.other ?? ""}`))).toEqual([]);
 });

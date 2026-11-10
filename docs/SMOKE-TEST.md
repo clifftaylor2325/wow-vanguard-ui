@@ -314,6 +314,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with nothing to list the page says "No module is switched off." in grey above a Show all modules button, and the button brings every module back. Each page's card fades in quickly (about a tenth of a second) while its name, tabs and the list's mark change at once; nothing flickers, and no card is left faint. With Reduce motion on, and never longer than 0.15 s in a fight, the page is simply there. [Needs in-game check: that the fade reads as polish and not as lag, and that a fast run of Up and Down leaves the last page fully opaque.]
 - If it fails, paste: what you saw (a short clip if you can) and `/vg errors`.
 
+### 2.1n The reload notice names what waits
+
+- Do: type `/vg` → Modules. Switch Chat off, then Bags off, then Minimap off. Look at the footer. Switch all three back on. Then on Map switch Clock off and back on. Then pick another profile in the header's picker.
+- Expect: after Chat the footer says "Waiting for a reload: Chat" beside Reload now; after Bags "Waiting for a reload: Chat, Bags"; after Minimap it adds "and 1 more" (the text stays left of the button and clear of the error line). Switching all three back on takes the notice and the button away, and so does Clock off and on again. Picking another profile shows "Some changes need a reload", which stays until the reload. Every module switch still wears "Reload to apply". No error. [Needs in-game check: no module goes on or off live yet; the wording and the notice clearing are the only change a player sees.]
+- If it fails, paste: a screenshot of the footer and `/vg errors`.
+
 ### 2.1h The fold on Raid frames
 
 - Do: type `/vg` → Raid frames. Count the rows, then press the **More settings** line, press it again, then press it open and change Power bar. Fold it, and look at the line. Reset Power bar with its accent arrow. Type "leader" in the search box and press Enter on the first hit. Then `/reload`, open Raid frames again, press Tab until the line is marked and press Enter. Repeat at Text size 130% and in a non-English client if you have one.

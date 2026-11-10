@@ -56,10 +56,47 @@ local function setting(module, key)
     default(module, key)
 end
 
--- get/set for a module setting that needs a reload: a change lights the reload notice.
+-- The reload settings changed this session, by "module\0key": { module, value } (the value the module was built
+-- with). The reload notice names their modules; a setting put back to that value drops out.
+local reloadChanges = {}
+
+-- Notes a reload setting changed from `before` to `after`: kept from its first change, forgotten once it is back.
+local function noteReloadChange(module, key, before, after)
+  local id = module .. "\0" .. key
+  local first = reloadChanges[id] or { module = module, value = before }
+  reloadChanges[id] = after ~= first.value and first or nil
+end
+
+-- get/set for a module setting that needs a reload: a change shows the reload notice, which names the module until
+-- the setting is back where the module was built with it.
 local function reloadSetting(module, key)
   local get, set, initial = setting(module, key)
-  return get, function(v) set(v) O.NeedReload() end, initial
+  return get, function(v) noteReloadChange(module, key, get(), v) set(v) O.ShowReloadNotice() end, initial
+end
+
+-- Setters made by O.RestartSetting -> their module (weak keys): such a row applies at once while its module is live.
+local restartSetters = setmetatable({}, { __mode = "k" })
+
+-- get/set for a setting that changes a live module's shape: the module is built again, out of combat
+-- (ns.RestartModule). On a module that is not live it is a reload setting, so a row can move to it before its
+-- module is converted. The caption keeps its " (reload)" words; the window tags the row only while it waits.
+---@param module string
+---@param key string
+function O.RestartSetting(module, key)
+  local def = ns.GetModule(module)
+  if not (def and def.live) then return reloadSetting(module, key) end
+  local get, set, initial = setting(module, key)
+  -- The value saved, then the module rebuilt with it.
+  local restart = function(v) set(v) ns.RestartModule(module) end
+  restartSetters[restart] = module
+  return get, restart, initial
+end
+
+-- Whether a row's setter applies at once by rebuilding a live module (O.RestartSetting), so it needs no reload tag.
+---@param set function|nil
+---@return boolean
+function O.AppliesLive(set)
+  return set ~= nil and restartSetters[set] ~= nil
 end
 
 -- True when a module was built this session and is still switched on, so its live callbacks have its settings to read.
@@ -475,26 +512,64 @@ function O.OwnSwitchNote(name)
   return ns.Format(L["On, but its own switch is off ({page})"], { page = pageTitle(link.page) })
 end
 
--- Whether a module's row has a note beside its name: one with its own switch inside, and one that goes on and off
--- live (its switch can wait for a fight).
-function O.HasModuleNote(name)
-  local def = ns.GetModule(name)
-  return O.MODULE_LINKS[name] ~= nil or (def ~= nil and def.live == true)
+-- A module's name as the window shows it.
+function O.ModuleTitle(name)
+  return (O.MODULE_INFO[name] or { name })[1]
 end
 
--- The note beside a module's name, or nil: its switch waits for the fight to end (a live module), else the
--- own-switch note.
+-- The first module a module requires that is not wanted (its row is greyed and points there), or nil.
+function O.MissingParent(name)
+  local def = ns.GetModule(name)
+  for _, parent in ipairs(def and def.requires or {}) do
+    if not ns.ModuleWanted(parent) then return parent end
+  end
+end
+
+-- Whether a module's row has a note beside its name: one with its own switch inside, one that goes on and off live
+-- (its switch can wait for a fight), and one that needs another module.
+function O.HasModuleNote(name)
+  local def = ns.GetModule(name)
+  return O.MODULE_LINKS[name] ~= nil or (def ~= nil and (def.live == true or def.requires ~= nil))
+end
+
+-- The note beside a module's name, or nil, most pressing first: its switch waits for the fight to end; it runs on
+-- with a reload-only parent switched off until the reload; it needs a module that is off; its own switch is off.
 function O.ModuleNote(name)
   if ns.ModuleAwaitsFight(name) then return L["Applies after the fight"] end
+  local parent = O.MissingParent(name)
+  local values = { module = parent and O.ModuleTitle(parent) }
+  if parent and ns.ModuleLive(name) then return ns.Format(L["Off with {module} after a reload"], values) end
+  if parent then return ns.Format(L["Needs {module}"], values) end
   return O.OwnSwitchNote(name)
 end
 
--- One module's switch, with its name and what it does; it applies on reload (Core/Modules.lua builds modules at login),
--- so it wears the reload tag.
+-- What the reload notice names: the modules whose switch or reload settings wait for a reload, by their window
+-- names, in load order.
+function O.ReloadWaiting()
+  local waiting, out = {}, {}
+  for _, name in ipairs(ns.ModulesWaiting()) do waiting[name] = true end
+  for _, change in pairs(reloadChanges) do waiting[change.module] = true end
+  for _, name in ipairs(ns.ModuleNames()) do
+    if waiting[name] then out[#out + 1] = O.ModuleTitle(name) end
+  end
+  return out
+end
+
+-- The reload notice's words for what waits: nil for nothing, else up to two names and how many more.
+function O.WaitingText(names)
+  if #names == 0 then return nil end
+  local values = { modules = table.concat({ names[1], names[2] }, ", "), count = #names - 2 }
+  if #names <= 2 then return ns.Format(L["Waiting for a reload: {modules}"], values) end
+  return ns.Format(L["Waiting for a reload: {modules} and {count} more"], values)
+end
+
+-- One module's switch, with its name and what it does. A live module's applies at once (Core/Modules.lua); any other
+-- applies on reload, so it wears the reload tag, and one that says why (def.reload) has that as its tip. The reload
+-- notice follows ns.ModulesWaiting, so switching back clears it.
 local function moduleRow(name)
-  local info = O.MODULE_INFO[name] or { name, "" }
+  local info, def = O.MODULE_INFO[name] or { name, "" }, ns.GetModule(name)
   return { "module", info[1], function() return ns.ModuleEnabled(name) end,
-    function(v) ns.SetModuleEnabled(name, v); O.NeedReload() end, nil, info[2], name, reload = true }
+    function(v) ns.SetModuleEnabled(name, v) end, nil, info[2], name, reload = not def.live, tip = def.reload }
 end
 
 -- The Modules page's groups, in the nav's order: a title and the modules under it (a module in none is under "More").
