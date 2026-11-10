@@ -28,7 +28,8 @@ it("RaidAuras: switched off, a tile's rows and indicators are hidden and its uni
   expect(rows()[0], "a tile that shows a unit has its rows").toBe(true);
   const frames = addon.eval("return #__wfgStub.frames");
   switchTo(addon, "RaidAuras", false);
-  expect(rows(), "hidden, and no unit").toEqual([false, false, null]);
+  expect(rows().slice(0, 2), "hidden").toEqual([false, false]);
+  expect(addon.eval("return Vanguard_RaidUnitButton1.auraUnit == nil"), "and no unit").toBe(true);
   switchTo(addon, "RaidAuras", true);
   expect(rows()[0], "shown again").toBe(true);
   expect(addon.eval("return #__wfgStub.frames"), "the same rows, not new ones").toBe(frames);
