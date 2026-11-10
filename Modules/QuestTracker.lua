@@ -11,8 +11,8 @@
 -- Quests are in the game's order, or nearest first. The game's objective
 -- tracker is hidden in place while this one shows (it's an Edit Mode frame).
 -- In combat the text still updates; the item buttons are secure, so they stay put
--- and are placed once, when combat ends. With Questie loaded, Questie's own
--- tracker shows instead (unless the With Questie setting picks Vanguard's), so
+-- and are placed once, when combat ends. With a dedicated quest addon loaded, its own
+-- tracker shows instead (unless the setting picks Vanguard's), so
 -- there are never two.
 
 local ADDON, ns = ...
@@ -32,7 +32,7 @@ QT.SCREEN_EVENTS = { "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
 QT.BASIC_REAGENT = 1
 
--- Whether Vanguard's tracker shows with these settings: it's on, and Questie (when it's
+-- Whether Vanguard's tracker shows with these settings: it's on, and the quest addon (when it's
 -- loaded) isn't set to show its own tracker instead.
 function QT.Shows(settings)
   if not settings.own then return false end

@@ -172,7 +172,7 @@ function ReloadUI() world.reloads = world.reloads + 1 end
 
 -- Addon metadata comes from the TOC the harness read.
 world.addons = { Vanguard = { Version = "0.3.0", Title = "Vanguard" } }
--- The addons the client says are loaded: Vanguard, and any a test adds (world.loaded.Bagnon = true).
+-- The addons the client says are loaded: Vanguard, and any a test adds (world.loaded.SomeAddon = true).
 world.loaded = { Vanguard = true }
 -- A TOC field of an addon.
 function GetAddOnMetadata(name, field) return (world.addons[name] or {})[field] end

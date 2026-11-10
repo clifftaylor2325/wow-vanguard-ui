@@ -292,7 +292,7 @@ it("quests page: its cards in the order a player meets them, the arrow, guidance
       if p.key == "quests" then for _, r in ipairs(p.rows()) do if r[1] == "header" or r[1] == "cycle" then out[#out + 1] = r[2] end end end
     end
     return out`);
-  expect(page).toEqual(["Quest windows", "Quest tracker", "With Questie loaded (reload)", "Order", "Finding your way", "Shift-click points", "Quest history", "Automation (hold Shift while talking to skip it)"]);
+  expect(page).toEqual(["Quest windows", "Quest tracker", "With a quest addon loaded (reload)", "Order", "Finding your way", "Shift-click points", "Quest history", "Automation (hold Shift while talking to skip it)"]);
   expect(addon.eval("local r = ns.QuestGuide.Rows()[1] return { r[3][1][2], r[3][2][2] }"), "the game's marker, not a second arrow").toEqual(["The game's quest marker", "A map waypoint"]);
 });
 

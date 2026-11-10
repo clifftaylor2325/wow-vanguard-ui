@@ -657,14 +657,14 @@ it("quest tracker: a ready quest keeps its item button only when the game keeps 
   addon.update(0);
   expect(questItems(addon)[0][1], "not ready yet: the item is back").toBe(true);
 });
-it("quest tracker: with Questie loaded, Questie's tracker shows instead unless Vanguard's is picked", () => {
+it("quest tracker: with a quest addon loaded, its tracker shows instead unless Vanguard's is picked", () => {
   const QUESTIE = 'C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Questie" end\n';
   const questie = loggedIn(QUESTIE + TRACK_ENV);
-  expect([questie.eval("return Vanguard_QuestTrackerFrame == nil"), questie.eval("return ns.GetModule('MenuStrip').OwnTracker()")], "Questie's tracker has the job: Vanguard's isn't built, and the game's isn't hidden").toEqual([true, false]);
+  expect([questie.eval("return Vanguard_QuestTrackerFrame == nil"), questie.eval("return ns.GetModule('MenuStrip').OwnTracker()")], "the quest addon's tracker has the job: Vanguard's isn't built, and the game's isn't hidden").toEqual([true, false]);
   const ours = loggedIn(QUESTIE + TRACK_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { withQuestie = 'vanguard' } } }" });
   expect([tracker(ours).shown, ours.eval("return ns.GetModule('MenuStrip').OwnTracker()")], "Vanguard's picked: it shows as usual").toEqual([true, true]);
   const without = loggedIn(TRACK_ENV);
-  expect(tracker(without).shown, "no Questie: Vanguard's shows").toBe(true);
+  expect(tracker(without).shown, "no quest addon: Vanguard's shows").toBe(true);
 });
 it("quest tracker: an item button sits at its block's spot on the screen, not anchored to the block", () => {
   const addon = loggedIn(TRACK_ENV);

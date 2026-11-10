@@ -80,7 +80,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Retail-only systems (Mythic+, covenants and similar) | Forever runs vanilla content |
 | Auto-Need or any automatic roll | Takes the player's decision and invites ninja accusations |
 | Auto-buy at a vendor | Takes the player's decision |
-| Levelling route guides, a quest database or map pins | Content and licensing problem; duplicates Questie |
+| Levelling route guides, a quest database or map pins | Content and licensing problem; duplicates a dedicated quest addon |
 | Bots, rotation helpers, auto-walk | Against the Terms of Use and the 12.0 restrictions |
 | Editing `Libs/` or hand-editing `Media/` | Repo rules: Libs stay upstream, Media is generated |
 | Repo rename, Cloudflare Pages, listing claims | Manual tasks for the author, not code work |

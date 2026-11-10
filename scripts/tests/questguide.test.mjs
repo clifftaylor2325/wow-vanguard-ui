@@ -159,7 +159,7 @@ it("quest guidance: the waypoint arrow goes to the next waypoint, else the quest
   expect(addon.eval("return #__set"), "hidden or missing spots set nothing").toBe(2);
 });
 
-it("quest guidance: quest-start pins on the world map, unless the game shows its own or Questie is loaded", () => {
+it("quest guidance: quest-start pins on the world map, unless the game shows its own or a quest addon is loaded", () => {
   const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA);
   addon.eval("WorldMapFrame:Show()");
   addon.update(0);
@@ -186,7 +186,7 @@ it("quest guidance: quest-start pins on the world map, unless the game shows its
   addon.update(0);
   expect([addon.eval("return ns.Settings('QuestGuide').pins"), pins(addon)], "the switch off").toEqual([false, {}]);
   addon.eval("ns.Settings('QuestGuide').pins = true C_AddOns.IsAddOnLoaded = function(n) return n == 'Questie' end ns.QuestGuide.RefreshPins()");
-  expect(pins(addon), "Questie loaded: its own pins, not Vanguard's").toEqual({});
+  expect(pins(addon), "a quest addon loaded: its own pins, not Vanguard's").toEqual({});
   addon.eval("C_AddOns.IsAddOnLoaded = function(n) return n == 'OpenMap' end ns.QuestGuide.RefreshPins()");
   expect(pins(addon), "OpenMap loaded: its canvas isn't the zone, so no Vanguard pins").toEqual({});
   addon.eval("WorldMapFrame:Hide() C_AddOns.IsAddOnLoaded = function() return false end ns.QuestGuide.MapChanged()");
