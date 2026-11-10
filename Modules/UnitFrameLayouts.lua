@@ -178,11 +178,19 @@ function LY.PlaceStandard(f)
   placeIcon(f)
 end
 
+-- After a canvas or scale change the keep may hold now or no longer (it needs a wide canvas): the frames take their
+-- sizes again and the wall follows. Never the whole layout here: UF.ApplyLook re-places a mover, which asks for a
+-- rescale, and a rescale calls back here, so that would run every frame for good.
+local function onScale()
+  UF.ApplySizes()
+  LY.ApplyKeep()
+end
+
 -- Part entry point (UF.Enable): the layout's shape for the frames, the wall after the world is entered (your cast bar
--- is a mover by then) and after a canvas change (the keep holds on wide canvases only).
+-- is a mover by then) and after a canvas change.
 function LY.Enable()
   T.SetLayoutShape(layoutShape)
   ns.On("PLAYER_ENTERING_WORLD", LY.ApplyKeep)
   ns.OnLayoutChanged(UF.ApplyLayout)
-  T.OnScale(UF.ApplyLayout)
+  T.OnScale(onScale)
 end
