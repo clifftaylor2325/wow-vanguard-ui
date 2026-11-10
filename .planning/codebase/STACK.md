@@ -72,8 +72,8 @@ last_mapped_at: 2026-10-09
 
 **Optional libraries and addons detected by the code (not bundled):**
 - `LibDataBroker-1.1` - Read via `LibStub("LibDataBroker-1.1", true)` (optional lookup). Feeds the broker strip (`Modules/BrokerStrip.lua`). Not shipped by Vanguard.
-- `Masque` - If installed, skins action button groups (`Core/Masque.lua`). Not shipped.
-- Auctionator-compatible API - `Vanguard.API.v1` in `Modules/AuctionAPI.lua` copies Auctionator function names. No Auctionator code is used.
+- A button-skinning library (folder `Masque`) - If installed, skins action button groups (`Core/Masque.lua`). Not shipped.
+- Auction API compatibility - `Vanguard.API.v1` in `Modules/AuctionAPI.lua` copies a widely used auction addon's function names. None of its code is used.
 
 ## Configuration
 

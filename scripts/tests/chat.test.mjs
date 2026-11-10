@@ -50,7 +50,7 @@ it("Y4-1 with the Minimap module off the shape is the game's round map, or the a
   // A client logged in with the Minimap module off, after `env` (Lua run before Vanguard loads).
   const off = (env = "") => loggedIn(env + UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(off().eval("return GetMinimapShape()"), "off: the game's map is round").toBe("ROUND");
-  expect(off('GetMinimapShape = function() return "CORNER-TOPLEFT" end\n').eval("return GetMinimapShape()"), "off, after SexyMap's own answer: that answer stands").toBe("CORNER-TOPLEFT");
+  expect(off('GetMinimapShape = function() return "CORNER-TOPLEFT" end\n').eval("return GetMinimapShape()"), "off, after another minimap addon's own answer: that answer stands").toBe("CORNER-TOPLEFT");
 });
 it("H26-1-2 a Minimap switched on since login is still the game's round map until the reload", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });

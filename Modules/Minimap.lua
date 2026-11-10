@@ -85,7 +85,7 @@ local FADE = {
   { "MinimapCluster", "MinimapContainer", "PlayerCoords" },
 }
 
--- The answer a minimap addon loaded before Vanguard gave (SexyMap sets GetMinimapShape as it loads), if any.
+-- The answer a minimap addon loaded before Vanguard gave (a minimap addon may set GetMinimapShape as it loads), if any.
 MM.earlierShape = GetMinimapShape
 
 -- Addons that place icons and pins around the minimap (LibDBIcon, HereBeDragons) ask this global for its

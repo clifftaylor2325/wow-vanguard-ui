@@ -127,7 +127,7 @@
       "client capability probe: what this client has, and /vg status says so"
     ],
     "scripts/tests/coexist.test.mjs": [
-      "coexist: EllesmereUI's unit frame, action bar, nameplate and raid frame addons are noticed",
+      "coexist: an all-in-one suite's unit frame, action bar, nameplate and raid frame addons are noticed",
       "coexist: the next login says nothing new; a module already off, or a client without the call, asks nothing"
     ],
     "scripts/tests/cooldowngaps.test.mjs": [],
@@ -201,8 +201,8 @@
     ],
     "scripts/tests/mailtools.test.mjs": [],
     "scripts/tests/masque.test.mjs": [
-      "with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin",
-      "without Masque (or without LibStub) nothing changes"
+      "with the skinning library loaded, action, pet and stance buttons and aura icons go to its groups, without Vanguard's skin",
+      "without the skinning library (or without LibStub) nothing changes"
     ],
     "scripts/tests/merchantbulk.test.mjs": [],
     "scripts/tests/meter.test.mjs": [

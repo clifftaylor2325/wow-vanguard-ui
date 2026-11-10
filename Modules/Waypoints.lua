@@ -4,7 +4,7 @@
 --   /way Elwynn Forest 42 65 Inn    a zone by name (any case, or a unique start of it), and a title
 --   /way #1429 42 65                a map by its id
 --   /way clear                      removes it
--- /way is Vanguard's only while no other addon (TomTom, say) has it; /vg way
+-- /way is Vanguard's only while no other addon (a waypoint addon, say) has it; /vg way
 -- always works. While the world map is open, a line along its bottom shows
 -- your coordinates and the cursor's. The floating pin and distance the game
 -- draws over the world for a waypoint or a supertracked quest (SuperTrackedFrame)
@@ -276,7 +276,7 @@ local function wayTaken()
   return false
 end
 
--- Takes /way unless another addon (TomTom, or any that registered it) has it; true when it did.
+-- Takes /way unless another addon (a waypoint addon, or any that registered it) has it; true when it did.
 local function claimWay()
   local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
   if wayTaken() or (loaded and loaded("TomTom")) then return false end
