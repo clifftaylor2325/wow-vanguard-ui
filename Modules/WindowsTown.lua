@@ -121,13 +121,15 @@ local function dressSlotTile(button, keepOf)
 end
 
 -- The window's foot (the slots, the purchase button, the money): the art strip the game sank it with replaced by an
--- inset panel on a frame of its own at the window's level, so everything the window holds draws over it.
+-- inset panel on a frame of its own at the window's level (a level the client hides is not copied), so everything the
+-- window holds draws over it.
 local function styleStableFoot(frame)
   local strip = frame.insideFrameBottom
   if type(strip) ~= "table" or not strip.GetPoint or vgStableFoot[frame] then return end
   local foot = CreateFrame("Frame", nil, frame)
   vgStableFoot[frame] = foot
-  foot:SetFrameLevel(frame:GetFrameLevel())
+  local level = ns.PlainNumber(frame:GetFrameLevel())
+  if level then foot:SetFrameLevel(level) end
   foot:SetPoint("TOPLEFT", strip, "TOPLEFT")
   foot:SetPoint("BOTTOMRIGHT", strip, "BOTTOMRIGHT")
   T.Panel(foot, { inset = true, noSheen = true })
@@ -186,10 +188,10 @@ local function skillKeep(row)
 end
 
 -- The row's selected look follows the game's own selection: its selected strip (faded here) is shown while it is the
--- chosen skill, and the game shows or hides it each time it fills the row.
+-- chosen skill, and the game shows or hides it each time it fills the row. A hidden answer is not chosen.
 local function followSelection(row)
   local mark = row.selectedTex
-  T.SelectRow(row, type(mark) == "table" and mark.IsShown ~= nil and mark:IsShown() == true)
+  T.SelectRow(row, type(mark) == "table" and mark.IsShown ~= nil and ns.IsTrue(mark:IsShown()))
 end
 
 -- A skill row's plate and hover strip faded (the game's normal and highlight textures, which a button keeps apart).
