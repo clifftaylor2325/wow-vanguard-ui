@@ -2340,3 +2340,27 @@ it("dropdowns: a menu opened in a fight puts no click catcher over the screen, o
   expect(open(), "in a fight: the menu opens, no catcher").toEqual([true, false]);
   setCombat(addon, false);
 });
+
+it("options: search text of any shape, a page change with a menu open, closing with a question open and reopening leave nothing floating", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  const out = addon.eval(`local O, res = ns.Options, {}
+    local function try(tag, fn, ...) local ok, err = pcall(fn, ...) if not ok then res[#res + 1] = tag .. ": " .. tostring(err):sub(1, 200) end end
+    for _, text in ipairs({ "", "%", "(", "[", "-", ".", "%d+", ("x"):rep(500), ("snap "):rep(100), "changed" }) do
+      try("search " .. text:sub(1, 12), O.Search, text)
+      try("jump " .. text:sub(1, 12), O.JumpTo, text)
+    end
+    O.Search("")
+    local d = ns.Widgets.Dropdown(UIParent, { { "a", "A" } }, function() return "a" end, function() end)
+    d:SetPoint("CENTER") d:Show() d.__scripts.OnClick(d)
+    O.Show("actionbars") try("tab", O.ShowTab, 2)
+    O.Show("chat")
+    local menuStillUp = ns.Widgets.MenuOpen() and Vanguard_Menu.owner:IsVisible()
+    d:Hide()
+    ns.Ask("TEST-ONLY open question?", "Yes", function() end, function() __no = (__no or 0) + 1 end)
+    O.Hide()
+    O.Show("general")
+    return { table.concat(res, " | "), menuStillUp == true or menuStillUp == false, ns.Widgets.MenuOpen() }`);
+  expect(out[0], "nothing raised").toBe("");
+  expect(out[2], "no menu is left open when its dropdown is hidden and the page changed").toBe(false);
+});
