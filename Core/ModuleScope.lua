@@ -33,8 +33,10 @@ end
 function Scope:On(event, fn)
   local key = event .. "\0" .. tostring(fn)
   if self.handlers[key] then return end
-  -- This module's own handler for fn (ns.Off and the error budget tell it apart from another module's).
-  local wrapped = function(...) return fn(...) end
+  -- This module's own handler for fn (ns.Off and the error budget tell it apart from another module's). It checks the
+  -- module still runs: the event that stopped it (a switch made in a fight settles at PLAYER_REGEN_ENABLED) still
+  -- walks the handler list it started with.
+  local wrapped = function(...) if self.on then return fn(...) end end
   self.handlers[key] = { event, wrapped }
   ns.On(event, wrapped)
 end
