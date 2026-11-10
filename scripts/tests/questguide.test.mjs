@@ -319,3 +319,8 @@ it("quest guidance: a quest-start pin's tooltip gives the quest's level in its d
   expect(lines[1][1], "the level in the client's difficulty colour").toBe(1);
   expect(tip(2).length, "hidden answers add no line").toBe(2);
 });
+
+it("quest guidance: a spot whose quest id the client hides is skipped, not matched", () => {
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV + "C_QuestLog.GetNextWaypoint = function() end C_QuestLog.GetQuestsOnMap = function() return { { questID = __wfgWorld.secret(), x = 0.1, y = 0.1 }, { questID = 90052, x = 0.75, y = 0.5 } } end");
+  expect(addon.eval("local m, x, y = ns.QuestGuide.Target(90052) return { m, x, y }"), "the plain spot answers").toEqual([10, 0.75, 0.5]);
+});

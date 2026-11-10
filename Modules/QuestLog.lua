@@ -141,7 +141,13 @@ end
 -- offering it, and a secret answer counts as no.
 function QL.CanAbandon(id)
   local answer = questLog("CanAbandonQuest", id)
-  return answer ~= false and not ns.IsSecret(answer)
+  return not ns.IsSecret(answer) and answer ~= false
+end
+
+-- Selects a quest in the game's log unless it is selected already: every render asks, and each Set would be one more
+-- thing the client may answer with a log update.
+local function selectInGame(id)
+  if ns.PlainNumber(questLog("GetSelectedQuest")) ~= id then questLog("SetSelectedQuest", id) end
 end
 
 -- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, abandonable,
@@ -151,7 +157,7 @@ function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
-  questLog("SetSelectedQuest", id)
+  selectInGame(id)
   local text = ns.CallIf(_G, "GetQuestLogQuestText")
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),

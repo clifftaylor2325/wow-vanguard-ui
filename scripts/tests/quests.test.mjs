@@ -2507,3 +2507,24 @@ it("quest dialog: the Quests page has the session switch and the modifier row, w
   addon.eval(`${row("Hold a key to open the game's windows")} row[5]("ctrl")`);
   expect(addon.eval("return ns.Settings('QuestDialog').bypass"), "the modifier row saves its choice").toBe("ctrl");
 });
+
+it("quest tracker: a quest whose title the client has not loaded gets a placeholder title in its tooltip, never a nil", () => {
+  const addon = loggedIn(TRACK_ENV);
+  addon.eval("__quests[90051].title = nil ns.GetModule('QuestTracker').Refresh()");
+  addon.update(0);
+  hoverBlock(addon, 1);
+  expect(trackerTip(addon)[1][0], "the tooltip's first line").toBe("Quest");
+});
+
+it("quest log: the details select the quest in the game's log once, however often they are drawn", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__sets = 0 C_QuestLog.SetSelectedQuest = function(id) __sets = __sets + 1 __selected = id end C_QuestLog.GetSelectedQuest = function() return __selected end");
+  addon.eval("ns.GetModule('QuestLog').Select(90051) ns.GetModule('QuestLog').Select(90051) ns.GetModule('QuestLog').Refresh()");
+  expect(addon.eval("return __sets"), "three renders of one quest, one selection").toBe(1);
+  addon.eval("ns.GetModule('QuestLog').Select(90052)");
+  expect(addon.eval("return { __sets, __selected }"), "another quest is selected").toEqual([2, 90052]);
+});
+
+it("quest log: a hidden CanAbandonQuest answer counts as no", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "C_QuestLog.CanAbandonQuest = function() return __wfgWorld.secret() end");
+  expect(addon.eval("return ns.GetModule('QuestLog').CanAbandon(90052)")).toBe(false);
+});
