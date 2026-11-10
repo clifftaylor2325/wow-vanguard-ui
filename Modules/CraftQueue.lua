@@ -441,7 +441,7 @@ end
 -- Hooks the profession window's form once (the cost panel's hook is separate): showing it opens the panel, hiding it hides it.
 function CQ.HookForm()
   local form = CR.Form()
-  if CQ.hooked or not form then return end
+  if CQ.hooked or not form or type(form.HookScript) ~= "function" then return end
   CQ.hooked = true
   form:HookScript("OnShow", ns.Guard("craft queue panel show", CQ.Open))
   form:HookScript("OnHide", ns.Guard("craft queue panel hide", CQ.Show))
