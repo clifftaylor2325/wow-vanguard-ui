@@ -722,3 +722,27 @@ it("file scope: every allowed file has exactly its count and a reason, so the li
   expect(counts).toEqual(Object.fromEntries(Object.entries(FILE_SCOPE_ALLOWED).map(([file, entry]) => [file, entry.calls])));
   for (const entry of Object.values(FILE_SCOPE_ALLOWED)) expect(entry.reason.length).toBeGreaterThan(20);
 });
+
+// bare-subscription (4.2): a live module's files register through its scope.
+it("bare subscription: a live module's file fails on its own ns.On, hook or theme listener, and passes through its scope or a gate", () => {
+  const src = [
+    "local ADDON, ns = ...",
+    'local GT = ns.Module("TestOnly", {',
+    "  defaults = { show = false }, live = true })",
+    "function GT.Enable(settings, scope)",
+    '  scope:On("PLAYER_TARGET_CHANGED", GT.Dirty)',
+    '  scope:Gate("anchor", GT.Anchor, function(gate) hooksecurefunc("GameTooltip_SetDefaultAnchor", gate) end)',
+    '  ns.On("PLAYER_LOGIN", GT.Dirty)',
+    '  hooksecurefunc("CloseMerchant", GT.Dirty) frame:HookScript("OnShow", GT.Dirty) T.OnChanged(GT.Paint)',
+    "end",
+  ].join("\n");
+  const found = checkSource("Modules/TEST-ONLY.lua", src).filter((p) => /live module's file/.test(p.message));
+  expect(found.map((p) => `${p.line} ${p.message.split("(")[0]}`)).toEqual(["7 ns.On", "8 hooksecurefunc", "8 :HookScript", "8 T.OnChanged"]);
+  expect(checkSource("Modules/TEST-ONLY.lua", src.replace("live = true", "reload = L[\"why\"]")).filter((p) => /live module's file/.test(p.message))).toEqual([]);
+  expect(checkSource("Core/TEST-ONLY.lua", src).filter((p) => /live module's file/.test(p.message))).toEqual([]);
+});
+
+it("bare subscription: no module is live yet, so a file that looks a module up is checked against nothing", () => {
+  const src = 'local ADDON, ns = ...\nlocal UF = ns.GetModule("UnitFrames")\nfunction UF.Extra() ns.On("PLAYER_LOGIN", UF.Extra) end\n';
+  expect(checkSource("Modules/TEST-ONLY.lua", src).filter((p) => /live module's file/.test(p.message))).toEqual([]);
+});

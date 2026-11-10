@@ -566,6 +566,89 @@ function fileScopeProblems(file, src) {
   return found.map((f) => ({ line: line(f.start), message: `${f.call}() ${SUBSCRIBE_MESSAGE}` }));
 }
 
+// Bare subscriptions in a live module's files (docs/design/MODULE-LIFECYCLE.md 4.2) ---------------------------------
+// A module that declares live = true goes on and off mid-session, so everything it registers goes through the scope
+// its Enable gets: an ns.On, ns.OnUnit, ns.Every, T.OnChanged, ns.OnMoverPlaced, hooksecurefunc or :HookScript of its
+// own fails, except inside a scope:Gate(...) call (the gate's install is where a hook belongs). A file belongs to the
+// module it registers (ns.Module("X", { ... live = true ... })), else to the one a top-level local names
+// (local X = ns.GetModule("X")). Core/ is exempt.
+const BARE_SCOPE = /^Modules\/.+\.lua$/;
+const BARE_MESSAGE = "in a live module's file: register it through the module's scope (scope:On, scope:OnUnit, scope:Every, scope:Gate)";
+const CODE_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+
+// The text of the call whose "(" is at `open`, to its matching ")" (or the end of the source).
+function callText(src, open) {
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    depth += src[i] === "(" ? 1 : src[i] === ")" ? -1 : 0;
+    if (depth === 0) return src.slice(open, i + 1);
+  }
+  return src.slice(open);
+}
+
+// The names of the modules a Lua source registers as live (live = true in the ns.Module call's definition).
+export function liveModulesIn(src) {
+  const calls = [...src.matchAll(/\bns\.Module(\()\s*"([A-Za-z0-9_]+)"/g)];
+  return calls.filter((m) => /\blive\s*=\s*true\b/.test(callText(src, m.index + m[0].indexOf("(")))).map((m) => m[2]);
+}
+
+let repoLive = null;
+
+// Every module the addon registers as live, read once from Modules/.
+function liveModules() {
+  if (repoLive) return repoLive;
+  const dir = path.join(CODE_ROOT, "Modules");
+  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(".lua")) : [];
+  repoLive = new Set(files.flatMap((f) => liveModulesIn(fs.readFileSync(path.join(dir, f), "utf8"))));
+  return repoLive;
+}
+
+// Whether a file belongs to a live module: one it registers as live, or one a top-level GetModule local names.
+function inLiveModule(src) {
+  if (liveModulesIn(src).length > 0) return true;
+  const named = [...src.matchAll(/^local\s+\w+\s*=\s*ns\.GetModule\(\s*"([A-Za-z0-9_]+)"\s*\)/gm)].map((m) => m[1]);
+  return named.some((name) => liveModules().has(name));
+}
+
+// The subscription a token starts, or null: "ns.On" and the rest, "T.OnChanged", "hooksecurefunc" or ":HookScript".
+function bareCall(tokens, i) {
+  // Text of the token at k, if there is one.
+  const at = (k) => tokens[k]?.text;
+  if (at(i) === "hooksecurefunc" && at(i + 1) === "(") return "hooksecurefunc";
+  if (at(i) === ":" && at(i + 1) === "HookScript" && at(i + 2) === "(") return ":HookScript";
+  if (at(i) === "T" && at(i + 1) === "." && at(i + 2) === "OnChanged" && at(i + 3) === "(") return "T.OnChanged";
+  const nsCall = at(i) === "ns" && at(i + 1) === "." && at(i + 3) === "(";
+  return nsCall && (SUBSCRIBE_CALLS.has(at(i + 2)) || at(i + 2) === "OnMoverPlaced") ? `ns.${at(i + 2)}` : null;
+}
+
+// Moves the depth of the Gate(...) argument lists the walk is inside on by one token.
+function stepGate(state, tokens, i) {
+  if (tokens[i].text === "Gate" && tokens[i + 1]?.text === "(") state.opens.push(state.depth);
+  if (tokens[i].text === "(") state.depth += 1;
+  if (tokens[i].text === ")") state.depth -= 1;
+  if (tokens[i].text === ")" && state.opens[state.opens.length - 1] === state.depth) state.opens.pop();
+}
+
+// The bare subscriptions in Lua source, outside every scope:Gate(...) call: [{ call, start }].
+export function bareSubscriptions(src) {
+  const tokens = codeTokens(src);
+  const state = { depth: 0, opens: [] };
+  const found = [];
+  tokens.forEach((t, i) => {
+    const call = state.opens.length === 0 && bareCall(tokens, i);
+    if (call) found.push({ call, start: t.start });
+    stepGate(state, tokens, i);
+  });
+  return found;
+}
+
+// Problems for each bare subscription in a live module's file.
+function bareSubscriptionProblems(file, src) {
+  if (!BARE_SCOPE.test(file) || !inLiveModule(src)) return [];
+  const line = lineIndex(src);
+  return bareSubscriptions(src).map((f) => ({ line: line(f.start), message: `${f.call}() ${BARE_MESSAGE}` }));
+}
+
 // Problems in one file: [{ line, message }].
 export function checkSource(file, src) {
   const lua = file.endsWith(".lua");
@@ -574,7 +657,7 @@ export function checkSource(file, src) {
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
   if (!lua) return out;
-  return out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src), topLocalProblems(file, src), unguardedSecureCalls(file, src), fileScopeProblems(file, src));
+  return out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src), topLocalProblems(file, src), unguardedSecureCalls(file, src), fileScopeProblems(file, src), bareSubscriptionProblems(file, src));
 }
 
 // Report-only rules (#263) -------------------------------------------------------------
