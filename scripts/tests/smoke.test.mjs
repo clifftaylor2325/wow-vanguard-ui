@@ -87,14 +87,15 @@ it("with every module switched off the addon still logs in, opens its options an
 
 // Logs in as one client inside an instance: an enemy plate and a friendly one dressed, then the client
 // closes the friendly plate to addons (it keeps friendly plates for itself in an instance; a plate
-// dressed outside comes back closed) and a fight runs with the scale check, aura refits and a theme refresh.
+// dressed outside comes back closed) and a fight runs with the scale check, aura refits and a theme refresh, every game
+// frame's shown state, alpha, text and bar value held secret.
 function forbiddenPlates(client) {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV, { client });
   for (const unit of ["nameplate1", "nameplate2"]) addon.fire("NAME_PLATE_UNIT_ADDED", unit);
   expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate2] ~= nil"), "the friendly plate was dressed outside").toBe(true);
   addon.eval("__wfgWorld.forbid(__plates.nameplate2)");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate3");
-  addon.eval('__wfgWorld.combat(true) __plates.nameplate2:SetScale(0.6) __wfgStub.fire("UNIT_AURA", "nameplate2")');
+  addon.eval('__wfgWorld.secretAspects("strict") __wfgWorld.combat(true) __plates.nameplate2:SetScale(0.6) __wfgStub.fire("UNIT_AURA", "nameplate2")');
   addon.advance(2);
   addon.eval("ns.Theme.Refresh() __wfgWorld.combat(false)");
   addon.advance(1);
