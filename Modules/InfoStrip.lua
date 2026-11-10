@@ -264,15 +264,27 @@ local function enum(kind, key)
   return t and t[key] or nil
 end
 
+-- The restrictions that hide the meter's lines: the fight itself and a boss encounter (which also holds between pulls
+-- of a boss fight and as a fight starts, before the combat flag is up).
+IS.METER_HIDDEN_BY = { "Combat", "Encounter" }
+
+-- Whether the client hides the meter's lines from add-ons now.
+local function meterHidden()
+  if ns.InCombat() then return true end
+  for _, kind in ipairs(IS.METER_HIDDEN_BY) do
+    if ns.Restricted(kind) then return true end
+  end
+  return false
+end
+
 -- The current (or last) fight's session of one kind of the game's damage meter (an Enum.DamageMeterType
 -- key such as "Dps"), and the session type it was asked with; nil in combat and wherever the client keeps it hidden.
 local function meterSession(what)
   local get = C_DamageMeter and C_DamageMeter.GetCombatSessionFromType
   local kind, which = enum("DamageMeterSessionType", "Current"), enum("DamageMeterType", what)
-  if type(get) ~= "function" or kind == nil or which == nil or ns.InCombat() then return nil end
-  local session = get(kind, which)
-  if type(session) ~= "table" or ns.IsSecret(session) then return nil end
-  return session, kind
+  if type(get) ~= "function" or kind == nil or which == nil or meterHidden() then return nil end
+  local session = ns.PlainTable(get(kind, which))
+  if session then return session, kind end
 end
 
 -- The damage per second session.
@@ -280,17 +292,20 @@ local function dpsSession()
   return meterSession("Dps")
 end
 
+-- A session's list of lines, top first, or nil when it has none or the client hides it (a hidden table passes type()).
+local function linesOf(session)
+  return session and ns.PlainTable(session.combatSources) or nil
+end
+
 -- One kind of meter's list of lines for the current (or last) fight, top first (the fight recap
 -- reads Interrupts, Dispels and so on); nil where the client has none.
 function IS.MeterSources(what)
-  local session = meterSession(what)
-  if session and type(session.combatSources) == "table" then return session.combatSources end
+  return linesOf(meterSession(what))
 end
 
 -- That session's list of lines, top first; nil where there's none.
 local function dpsSources()
-  local session = dpsSession()
-  if session and type(session.combatSources) == "table" then return session.combatSources end
+  return linesOf(dpsSession())
 end
 
 -- Your line in that list, its place in it and how many lines it has (nil without yours).
@@ -298,7 +313,8 @@ end
 function IS.MyLine()
   local sources = dpsSources()
   for i, source in ipairs(sources or {}) do
-    if ns.IsTrue(source.isLocalPlayer) then return source, i, #sources end
+    local line = ns.PlainTable(source)
+    if line and ns.IsTrue(line.isLocalPlayer) then return line, i, #sources end
   end
 end
 

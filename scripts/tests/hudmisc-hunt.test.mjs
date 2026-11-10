@@ -40,3 +40,34 @@ it("inventory: a bank answer that is missing or empty never wipes the remembered
   addon.fire("PLAYERBANKSLOTS_CHANGED");
   expect(bank(), "a real answer with no items clears it").toEqual({});
 });
+
+// TEST-ONLY damage meter: someone else's line, then yours at 1234.5 per second.
+const METER_ENV = `
+  __dps = { combatSources = { { isLocalPlayer = false, amountPerSecond = 999 }, { isLocalPlayer = true, amountPerSecond = 1234.5 } } }
+  Enum = Enum or {} Enum.DamageMeterSessionType = { Current = 1 } Enum.DamageMeterType = { Dps = 1 }
+  C_DamageMeter = { GetCombatSessionFromType = function() return __dps end }
+  Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1 } Enum.AddOnRestrictionState = { Inactive = 0, Active = 2 }
+  __restricted = {}
+  C_RestrictedActions = { GetAddOnRestrictionState = function(t) return __restricted[t] or 0 end }
+`;
+// Your DPS and your place, and how many errors were raised.
+const meter = (addon) => addon.eval("local IS = ns.GetModule('InfoStrip') return { IS.DPS() or 0, (IS.Rank()) or 0, #ns.errors }");
+
+it("info strip: a hidden damage-meter line, or list of lines, is skipped, not indexed", () => {
+  const addon = loggedIn(METER_ENV);
+  expect(meter(addon), "plain lines: your figure and place").toEqual([1234.5, 2, 0]);
+  addon.eval("__dps.combatSources[1] = __wfgWorld.secret(1)");
+  expect(meter(addon), "a hidden line beside yours: yours is still found, no error").toEqual([1234.5, 2, 0]);
+  addon.eval("__dps.combatSources = __wfgWorld.secret(2)");
+  expect([meter(addon), addon.eval("return ns.GetModule('InfoStrip').MeterSources('Dps') == nil")], "a hidden list: nothing, no error").toEqual([[0, 0, 0], true]);
+});
+
+it("info strip: no meter lines are read while the client restricts the fight or the encounter", () => {
+  const addon = loggedIn(METER_ENV);
+  for (const kind of [0, 1]) {
+    addon.eval(`__restricted[${kind}] = 2`);
+    expect(meter(addon), `restriction ${kind} active, no combat flag: nothing read`).toEqual([0, 0, 0]);
+    addon.eval(`__restricted[${kind}] = nil`);
+  }
+  expect(meter(addon), "restrictions over: read again").toEqual([1234.5, 2, 0]);
+});
