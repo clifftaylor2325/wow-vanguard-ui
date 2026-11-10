@@ -14,7 +14,7 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local SR = ns.Module("SpellRanks", { clients = { forever = true }, defaults = { barNotice = false, trainerMemory = false } })
+local SR = ns.Module("SpellRanks", { clients = { forever = true }, defaults = { barNotice = false, trainerMemory = false }, live = true })
 
 -- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
 if not ns.ClientAllows(SR) then return end
@@ -25,9 +25,11 @@ SR.SLOTS, SR.MAX_SERVICES, SR.AHEAD, SR.LINES = 180, 400, 5, 8
 
 -- Helpers ------------------------------------------------------------------------------------
 
--- The settings in use (the defaults while the module is off).
+-- The settings in use: the defaults (both switches off) before the module starts and once it is stopped, so a
+-- call still waiting does nothing then.
 local function settings()
-  return SR.settings or SR.defaults
+  if SR.scope ~= nil and SR.scope:Running() then return SR.settings end
+  return SR.defaults
 end
 
 -- Bar notice ---------------------------------------------------------------------------------
@@ -270,12 +272,12 @@ local function onTrainer()
   ns.Soon("spellranks trainer", SR.Record)
 end
 
--- Module entry point (Core/Modules.lua).
-function SR.Enable(settingsTable)
+-- Module entry point (Core/Modules.lua): the listeners go through the scope; what trainers taught stays when it stops.
+function SR.Enable(settingsTable, scope)
   SR.settings = settingsTable
   SR.Store()
-  for _, event in ipairs({ "SPELLS_CHANGED", "LEARNED_SPELL_IN_SKILL_LINE", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "ACTIONBAR_SLOT_CHANGED" }) do ns.On(event, onSpells) end
-  ns.On("TRAINER_SHOW", onTrainer)
-  ns.On("TRAINER_UPDATE", onTrainer)
-  ns.On("PLAYER_LEVEL_UP", onLevelUp)
+  for _, event in ipairs({ "SPELLS_CHANGED", "LEARNED_SPELL_IN_SKILL_LINE", "PLAYER_LEVEL_UP", "PLAYER_ENTERING_WORLD", "ACTIONBAR_SLOT_CHANGED" }) do scope:On(event, onSpells) end
+  scope:On("TRAINER_SHOW", onTrainer)
+  scope:On("TRAINER_UPDATE", onTrainer)
+  scope:On("PLAYER_LEVEL_UP", onLevelUp)
 end

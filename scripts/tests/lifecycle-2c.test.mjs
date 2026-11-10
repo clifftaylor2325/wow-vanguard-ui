@@ -157,3 +157,24 @@ it("lifecycle: quest history switched off records no turn-in and says nothing of
   addon.eval('ns.SetModuleEnabled("QuestHistory", true)');
   expect(addon.eval("return ns.GetModule('QuestHistory').Line(90101) ~= nil"), "back on, the stored turn-in shows again").toBe(true);
 });
+
+// SpellRanks ----------------------------------------------------------------------------------------------------
+
+const SPELL_RANKS = loginWith("\nVanguardDB.profiles.Default.SpellRanks = { barNotice = true, trainerMemory = true }");
+
+lifecycleCases("SpellRanks", SPELL_RANKS);
+
+it("lifecycle: spell ranks switched off says nothing about your bars, and on again says it", () => {
+  const addon = SPELL_RANKS();
+  const notices = () => Array.from(addon.chat()).filter((l) => /hold an older spell rank/.test(l)).length;
+  addon.eval('ns.SetModuleEnabled("SpellRanks", false)');
+  addon.world.learn(100, { name: "TEST-ONLY Frostbolt", rank: 1 });
+  addon.world.learn(101, { name: "TEST-ONLY Frostbolt", rank: 2 });
+  addon.eval("__wfgWorld.setAction(3, { id = 100 })");
+  addon.advance(0.5);
+  expect(notices(), "nothing said while it is off").toBe(0);
+  addon.eval('ns.SetModuleEnabled("SpellRanks", true)');
+  addon.world.learn(300, { name: "TEST-ONLY Other", rank: 1 });
+  addon.advance(0.5);
+  expect(notices(), "said once it listens again").toBe(1);
+});
