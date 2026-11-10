@@ -79,6 +79,7 @@ The surfaces (`inset`, `panel`, `raised`, `raisedHover`, `divider`, `borderHi`) 
 | Healing | `heal` | `4fc27a` at 0.45 | Incoming heals over a health bar. |
 | | `shield` | `ffffff` at 0.35 | Absorb shields (over the Stripes texture: one 8 px diagonal tile, repeated both ways so the seams are exact and the stripes don't shimmer, #257). |
 | Action buttons | `outOfRange` / `noPower` / `unusable` | `e64d4d` / `6680ff` / `666666` | Icon tints. |
+| | `attackFlash` | `e8663f` at 0.45 | The wash that blinks over an action button's icon while auto-attack or Auto Shot runs (the `bad` vermilion). |
 | XP and reputation | `xp` / `rested` | `940090` / `0063e0` at 0.5 | The XP bar and its rested overlay. |
 | | `repHostile` / `repUnfriendly` / `repNeutral` / `repFriendly` | `cc2121` / `bf4500` / `e6b300` / `00991a` | Reputation bar by standing. With Safer colours on, `repHostile` / `repUnfriendly` / `repNeutral` / `repFriendly` are `e0663a` / `f5a623` / `e8d25a` / `4a9be8` (`T.ASSIST`), so the two lowest standings stay apart (at least dE 14 under the three colour-vision filters). |
 | Faction look | `allianceCrest` / `hordeCrest` | `d6b25a` / `c8453a` | The crest's colour. |
@@ -362,6 +363,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Bars and strips on mouseover or conditions (action bars, the menu and bag strips, ...) | alpha 0 / 1 | instant | instant | - (no animation) |
 | Raid tiles out of range | alpha 40 % | instant | instant | Fade players out of range (Raid frames) |
 | Health and power bars | the client eases the value (`ExponentialEaseOut`) | the client's easing | the client's easing | Smooth health and power bars |
+| Action button attack flash (auto-attack while it is on, Auto Shot or Shoot while it repeats) | the `attackFlash` wash over the icon turns on and off, no fade | 0.4 s on, 0.4 s off | 0.4 s on, 0.4 s off | Reduce motion (stays lit, no blinking) |
 | Action button proc glow | the accent glow ring shows while the game highlights the spell | static, no animation | static | - |
 | Cooldown Manager icon with less than the set share of its aura left (`/vg cdmglow`) | the accent glow ring shows | static, no animation | static | - |
 | Aura and cooldown sweeps | the dark sweep, no edge line and no end flash (bling) | the aura's duration | the aura's duration | - |
