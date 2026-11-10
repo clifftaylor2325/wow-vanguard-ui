@@ -85,3 +85,20 @@ it("lifecycle: rolls switched off stops recording, keeps what it has for /vg rol
   addon.advance(31);
   expect(addon.eval("local R = ns.GetModule('Rolls') return { #R.rolls, Vanguard_Rolls:IsShown() }")).toEqual([1, false]);
 });
+
+// InstancePrep --------------------------------------------------------------------------------------------------
+
+// A login with Instance prep left on (it is one of the six heavy modules the scoped logins turn off).
+const PREP = loginWith("", ["InstancePrep"]);
+
+lifecycleCases("InstancePrep", PREP);
+
+it("lifecycle: instance prep switched off closes its card and its wanted-amounts window, and answers /vg prep as off", () => {
+  const addon = PREP();
+  addon.eval('local PR = ns.GetModule("InstancePrep") PR.ShowOnDemand() PR.Wizard.Open()');
+  expect(addon.eval("return { Vanguard_PrepCard:IsShown(), Vanguard_PrepWizard:IsShown() }")).toEqual([true, true]);
+  addon.eval('ns.SetModuleEnabled("InstancePrep", false)');
+  expect(addon.eval("return { Vanguard_PrepCard:IsShown(), Vanguard_PrepWizard:IsShown() }")).toEqual([false, false]);
+  addon.eval('local PR = ns.GetModule("InstancePrep") PR.Command("") PR.ShowOnDemand() PR.Wizard.Open()');
+  expect(addon.eval("return { Vanguard_PrepCard:IsShown(), Vanguard_PrepWizard:IsShown(), #ns.GetModule('InstancePrep').BuyRows() }")).toEqual([false, false, 0]);
+});

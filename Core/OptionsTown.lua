@@ -114,7 +114,7 @@ local function prepBuffRows()
   return append(dungeonCardRows(), {
     check(L["Buff checks on the card"], setting("InstancePrep", "buffs")),
     check(L["World buffs among them"], setting("InstancePrep", "worldBuffs")),
-    { "button", L["Set wanted amounts..."], function() ns.GetModule("InstancePrep").Wizard.Open() end, function() return ns.GetModule("InstancePrep").settings ~= nil end },
+    { "button", L["Set wanted amounts..."], function() ns.GetModule("InstancePrep").Wizard.Open() end, function() return ns.GetModule("InstancePrep").enabled == true end },
     { "text", L["Wanted amounts (food, bandages, potions, ammo, shards) are set in the window above or with /vg prep want <kind> <n>; items from /vg stock are checked too."] },
   })
 end

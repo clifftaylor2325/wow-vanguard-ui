@@ -195,7 +195,7 @@ end
 -- Every buff row (flask, food, weapon enchants, raid buffs, world buffs), or none: when the setting
 -- is off, in combat, or while the client hides aura values.
 function PR.BuffRows()
-  if not PR.settings.buffs or ns.InCombat() or ns.AurasSecret() then return {} end
+  if not (PR.Running() and PR.settings.buffs) or ns.InCombat() or ns.AurasSecret() then return {} end
   local rows = PR.AuraRows()
   for _, r in ipairs(PR.EnchantRows()) do rows[#rows + 1] = r end
   return rows
