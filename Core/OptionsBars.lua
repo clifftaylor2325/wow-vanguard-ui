@@ -9,6 +9,7 @@ local L = ns.L
 
 local O = ns.Options
 local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
+local essential = O.Essential
 
 -- Action bar n's default for key (Modules/ActionBars.lua defaults.bars), nil without the module.
 local function barDefault(n, key)
@@ -68,12 +69,13 @@ end
 -- Space between buttons: 0 to 10 px.
 local BAR_SPACING = { min = 0, max = 10, step = 1, format = function(v) return ns.Format(L["{size} px"], { size = v }) end }
 
--- The buttons' macro names, key text and spacing, each applied at once (the spacing out of combat).
+-- The buttons' macro names, key text and spacing, each applied at once (the spacing out of combat); kept in view
+-- when the card is folded.
 local function buttonRows()
   return {
-    check(L["Macro names"], liveMethod("ActionBars", "macroNames", "RepaintLabels")),
-    check(L["Key text"], liveMethod("ActionBars", "hotkeys", "RepaintLabels")),
-    { "slider", L["Button spacing"], BAR_SPACING, liveMethod("ActionBars", "spacing", "SpacingChanged") },
+    essential(check(L["Macro names"], liveMethod("ActionBars", "macroNames", "RepaintLabels"))),
+    essential(check(L["Key text"], liveMethod("ActionBars", "hotkeys", "RepaintLabels"))),
+    essential({ "slider", L["Button spacing"], BAR_SPACING, liveMethod("ActionBars", "spacing", "SpacingChanged") }),
   }
 end
 
@@ -88,15 +90,18 @@ local function gameBarRows()
 end
 
 -- Action bars, shared: locking, range tint, the backing, the button texts and spacing, the default bars, the
--- client's special buttons, keybind mode.
+-- client's special buttons, keybind mode. Folded (Core/OptionsFold.lua) to what you change on the buttons themselves:
+-- locking, range tint, the texts, spacing and keybind mode; the backing and the game's bars are under More settings.
 local function actionBarRows()
   local rows = {
     { "header", L["Action bars"] },
-    check(L["Lock buttons"], setting("ActionBars", "lockButtons")), check(L["Red when out of range"], liveMethod("ActionBars", "rangeTint", "RepaintIcons")),
+    essential(check(L["Lock buttons"], setting("ActionBars", "lockButtons"))),
+    essential(check(L["Red when out of range"], liveMethod("ActionBars", "rangeTint", "RepaintIcons"))),
     { "cycle", L["Bar backing"], { { "auto", L["Follow the theme"] }, { "on", L["Always"] }, { "off", L["Never"] } }, backingSetting() },
   }
   append(append(rows, buttonRows()), gameBarRows())
-  return append(rows, { { "text", L["Empty slots stay hidden until you drag a spell or item onto the bars."] }, { "button", L["Keybind mode"], keybindMode } })
+  local note = { "text", L["Empty slots stay hidden until you drag a spell or item onto the bars."] }
+  return append(rows, { note, essential({ "button", L["Keybind mode"], keybindMode }) })
 end
 
 -- Put everything back asks first: every key key setup changed, and the spells it moved, go back.
