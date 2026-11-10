@@ -10,13 +10,13 @@ local L = ns.L
 local QU = ns.Module("Quiet", { defaults = {
   errors = false, barErrors = true, zoneText = false, camera = 0,
   duels = false, guildInvites = false, strangerGroups = false, friendRequests = false, pvpRelease = false,
-} })
+}, live = true, afterOff = L["The action bar's own errors stay hidden until you reload."] })
 
 -- Whether a switch of the module is on, while the module is (a switch-off applies at once).
 ---@param key string
 ---@return boolean
 function QU.Switched(key)
-  return QU.active == true and type(QU.settings) == "table" and QU.settings[key] == true
+  return QU.scope ~= nil and QU.scope:Running() and type(QU.settings) == "table" and QU.settings[key] == true
 end
 
 -- Settings older versions kept in other modules' tables (0.9.4 gathered them here): table -> { old key -> key }.
@@ -61,10 +61,13 @@ end)
 -- The furthest-zoom choices (the game's cameraDistanceMaxZoomFactor); 0 is the game's own setting.
 QU.CAMERA = { { 0, L["The game's setting"] }, { 1.5, "1.5 x" }, { 2, "2 x" }, { 2.6, L["2.6 x (furthest)"] } }
 
--- Hides a frame the game just showed, while the module is on and `key` is switched on.
-local function quiet(frame, key)
+-- Hides a frame the game just showed, while the module is on and `key` is switched on. The hook goes in once a
+-- session, through the scope's gate (it can't be taken off, so it does nothing while the module is off).
+local function quiet(scope, frame, key)
   if type(frame) ~= "table" or type(frame.HookScript) ~= "function" then return end
-  frame:HookScript("OnShow", ns.Guard("quiet " .. key, function(f) if QU.Switched(key) then f:Hide() end end))
+  -- Hides the frame when its switch is on.
+  local function hide(f) if QU.Switched(key) then f:Hide() end end
+  scope:Gate("quiet " .. tostring(frame), hide, function(gate) frame:HookScript("OnShow", ns.Guard("quiet " .. key, gate)) end)
 end
 
 -- How long the error line shows a line, in seconds (Blizzard_UIErrorsFrame: displayDuration 2 plus
@@ -179,11 +182,12 @@ local function filterBarErrors()
   for _, index in ipairs(QU.NoisyTypes()) do frame:SetMessageTypeEnabled(index, false) end
 end
 
--- The error line (UIErrorsFrame): a post-hook on its AddMessage, which never replaces the game's own.
-local function errorLine()
+-- The error line (UIErrorsFrame): a post-hook on its AddMessage, which never replaces the game's own; gated, so it
+-- does nothing while the module is off.
+local function errorLine(scope)
   local f = _G.UIErrorsFrame
   if type(f) ~= "table" or type(f.AddMessage) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(f, "AddMessage", ns.Guard("quiet errors", onLine))
+  scope:Gate("quiet errors", onLine, function(gate) hooksecurefunc(f, "AddMessage", ns.Guard("quiet errors", gate)) end)
 end
 
 -- The camera's furthest zoom as the client has it now (nil when it can't say).
@@ -240,23 +244,22 @@ local function adoptProfilePrior(settings)
 end
 
 -- The module switched off (Core/Modules.lua): the red errors and zone names show again and the declines stop at
--- once (the hooks stay, idle, until the reload; the action bar's errors come back with it), and the player's own
--- furthest zoom comes back, out of combat.
+-- once (its gates and handlers go with the scope), and the player's own furthest zoom comes back, out of combat.
+-- The action bar's errors, turned off through the client's own switch, come back with a reload (afterOff).
 function QU.Disable()
-  QU.active = false
   local set = cvarSetter()
   if set then ns.OutOfCombat(function() restoreCamera(set) end, "quiet camera") end
 end
 
--- Module entry point (Core/Modules.lua): the hooks read their switch and QU.active each time, so the options and a
--- switch-off apply at once.
-function QU.Enable(settings)
-  QU.settings, QU.active = settings, true
+-- Module entry point (Core/Modules.lua): the hooks read their switch each time, so the options and a switch-off
+-- apply at once.
+function QU.Enable(settings, scope)
+  QU.settings, QU.scope = settings, scope
   adoptProfilePrior(settings)
-  errorLine()
+  errorLine(scope)
   if settings.barErrors then filterBarErrors() end
-  quiet(_G.ZoneTextFrame, "zoneText")
-  quiet(_G.SubZoneTextFrame, "zoneText")
+  quiet(scope, _G.ZoneTextFrame, "zoneText")
+  quiet(scope, _G.SubZoneTextFrame, "zoneText")
   QU.ApplyCamera()
-  QU.ListenForPrompts()
+  QU.ListenForPrompts(scope)
 end
