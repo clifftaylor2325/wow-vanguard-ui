@@ -18,7 +18,7 @@ local L = ns.L
 
 local T, V = ns.Theme, ns.Visibility
 
-local R = ns.Module("Rolls", { defaults = { show = true, loot = true, visibility = "always", showWhen = {} } })
+local R = ns.Module("Rolls", { defaults = { show = true, loot = true, visibility = "always", showWhen = {} }, live = true })
 
 -- Rolls kept, seconds a round of rolls stays on screen after its last roll, loot items kept, and lines drawn.
 R.MAX, R.ROUND, R.ITEMS, R.LINES = 40, 30, 4, 14
@@ -287,10 +287,11 @@ local function paintLine(row, line)
   T.Color(row.right, KIND_COLOR[line[3]])
 end
 
--- Draws the panel: shown while it's on, has lines and its visibility shows it.
+-- Draws the panel: shown while it's on, has lines and its visibility shows it. A stopped module draws nothing (the
+-- timer that repaints when a round has gone quiet may still fire after the stop).
 function R.Paint()
   local f = R.frame
-  if not f then return end
+  if not (f and R.scope and R.scope:Running()) then return end
   local lines = R.Lines()
   f:SetShown(R.settings.show == true and #lines > 0 and V.Shows(f))
   f:SetHeight(#lines * R.LINE + 2 * R.PAD)
@@ -315,41 +316,49 @@ end
 
 -- Applies the panel's visibility setting: now, or when combat ends.
 function R.ApplyVisibility()
+  if not (R.scope and R.scope:Running()) then return end
   ns.OutOfCombat(function() V.ApplyNow(R.frame, R.settings.visibility, R.settings.showWhen) end, R.frame)
 end
 
--- Follows the panel's visibility from the start: its state's changes repaint it.
+-- Follows the panel's visibility: tracked for zone changes and applied now, again at each start (the stop released the
+-- driver and the tracking). The repaint on a state change and the hover hooks are on the frame once (build).
 function R.WatchVisibility(f)
-  f.vgOnState = R.Paint
-  V.WatchHover(f)
   V.Track(f, R.ApplyVisibility)
   R.ApplyVisibility()
 end
 
--- The movable panel, below the quest tracker's corner.
+-- The panel, made once a session.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_Rolls", UIParent))
-  R.frame = f
   f:SetSize(R.WIDTH, 2 * R.PAD + R.LINE)
   f:Hide()
-  ns.Mover(f, "rolls", L["Roll tracker"], { "BOTTOMLEFT", "BOTTOMLEFT", 6, 330 })
   f.rows = {}
   for i = 1, R.LINES do f.rows[i] = addRow(f, i) end
-  R.WatchVisibility(f)
+  f.vgOnState = R.Paint
+  V.WatchHover(f)
+  return f
+end
+
+-- The movable panel, below the quest tracker's corner: found or built, and put in the scope's hands.
+local function panel(scope)
+  R.frame = R.frame or build()
+  scope:Mover(R.frame, "rolls", L["Roll tracker"], { "BOTTOMLEFT", "BOTTOMLEFT", 6, 330 })
+  R.WatchVisibility(R.frame)
 end
 
 -- Follows the loot history's events (only where the client has the loot history).
-function R.WatchLoot()
+function R.WatchLoot(scope)
   for _, event in ipairs({ "LOOT_HISTORY_UPDATE_DROP", "LOOT_HISTORY_UPDATE_ENCOUNTER", "LOOT_HISTORY_CLEAR_HISTORY" }) do
-    ns.On(event, ns.Guard("loot history", R.ReadLoot))
+    scope:On(event, R.ReadLoot)
   end
 end
 
--- Module entry point (Core/Modules.lua).
-function R.Enable(settings)
+-- Module entry point (Core/Modules.lua). Everything goes through the scope, so switching it off needs no Disable;
+-- the rolls and loot items already seen stay for /vg rolls.
+function R.Enable(settings, scope)
   R.settings = settings
-  build()
-  ns.On("CHAT_MSG_SYSTEM", onSystem)
-  if R.HasLoot() then R.WatchLoot() end
-  T.OnChanged(R.Paint)
+  panel(scope)
+  scope:On("CHAT_MSG_SYSTEM", onSystem)
+  if R.HasLoot() then R.WatchLoot(scope) end
+  scope:Gate("theme", function() R.Paint() end, T.OnChanged)
 end

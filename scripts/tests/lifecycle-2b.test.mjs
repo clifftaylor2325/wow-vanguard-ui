@@ -71,3 +71,17 @@ it("lifecycle: the meter's own switch turned on after the module started builds 
   addon.eval('ns.SetModuleEnabled("Meter", false) ns.SetModuleEnabled("Meter", true)');
   expect(addon.eval("return { #__wfgStub.frames, Vanguard_Meter:IsShown() }")).toEqual([frames, true]);
 });
+
+// Rolls ---------------------------------------------------------------------------------------------------------
+
+lifecycleCases("Rolls", loginWith());
+
+it("lifecycle: rolls switched off stops recording, keeps what it has for /vg rolls, and a late repaint leaves the panel hidden", () => {
+  const addon = loginWith()();
+  addon.eval('RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"');
+  addon.fire("CHAT_MSG_SYSTEM", "TEST-ONLY Tank rolls 87 (1-100)");
+  addon.eval('ns.SetModuleEnabled("Rolls", false)');
+  addon.fire("CHAT_MSG_SYSTEM", "TEST-ONLY Mage rolls 12 (1-100)");
+  addon.advance(31);
+  expect(addon.eval("local R = ns.GetModule('Rolls') return { #R.rolls, Vanguard_Rolls:IsShown() }")).toEqual([1, false]);
+});
