@@ -211,6 +211,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do also: in a dungeon, a battleground and in the open world, type `/vg status` and read the `Game restrictions:` line. [Needs in game: that it is `none` in the open world and names Chat, Encounter or ChallengeMode only where the game restricts add-ons, and that chat watch and the group board go quiet then without errors. Compare with `/vg probe`, section Restrictions and lockdown.]
 - If it fails, paste: the whole `/vg status` output and `/vg errors`.
 
+### 1.3a Game windows by state
+
+- Do: after login type `/vg status` and read its last line, then `/vg status windows`. Open your character pane, the spellbook and the auction house (or any window that loads later), and type both again. Switch off a group under Game windows, `/reload`, and type `/vg status` once more.
+- Expect: the last line reads "Game windows: N dressed · N left as the game's · N replaced · N switched off · N not made yet". "Left as the game's" is 0; if it is not, each such window is named with what it lacks, and that window looks stock. `/vg status windows` lists the names under dressed, missing, replaced, off and unseen (only the states that have any). Windows that load later move from not made yet to dressed once opened. A group switched off moves its windows to switched off. [Needs in-game check: which windows the real client reports as left as the game's or never made; compare with docs/design/RESKIN-COVERAGE.md.]
+- If it fails, paste: both outputs and `/vg errors`.
+
 ### 1.4 No errors yet
 
 - Do: type `/vg errors`.
@@ -274,6 +280,36 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: in a non-English client (Italian, Spanish, Portuguese or Russian) type `/vg` and look at the list of pages on the left, changing a setting on a page with a long name (Combat tools, Town and gear) so its dot shows. Then open Modules, Unit frames and Combat tools, set Text size to 130% under General, and open those pages again.
 - Expect: each page name ends before the page's dot and the list's edge (a name too long is cut short), never over them. After the Text size change, each page you reopen is laid out for the new size: a module's description sits wholly inside its row, a "reload" tag sits after its caption without touching it, and a switch with a wrapped caption has the switch centred on the caption. [Needs in-game check: how far a real translation runs depends on the font's real widths.]
 - If it fails, paste: a screenshot of the list and the page, the client language, and `/vg errors`.
+
+### 2.1i Title sizes: windows, pages and card headings
+
+- Do: type `/vg` and look at the page's name along the top, a card's heading and a row under it. Open Profiles and click Import (a dialog), then `/vg whatsnew`, then the quest log (L). Set Text size to 130% under General and look at the same windows again. With Dungeon card on (Town and gear), type `/vg prep` with a dungeon quest in your log.
+- Expect: each window's title and the options page's name are the largest text in their window (18 points at Text size 100%), a clear step above card titles and rows. No title is cut short, runs under its close button or out of its window, at 130% either; a long dialog title wraps short of the X. Card headings in the options are small grey capitals, and so are the prep card's "DUNGEON QUESTS IN YOUR LOG" (or the dungeon's own line at its door) and "YOUR QUESTS HERE". [Needs in-game check: how the larger titles sit on the close button's line in the real font.]
+- If it fails, paste: a screenshot of the window, your Text size and client language, and `/vg errors`.
+
+### 2.1j The options window's header and footer
+
+- Do: type `/vg` and look at the header and the footer. Set Font to the game's font, then pick another Theme variant, then set Faction look to Off and back. Set Text size to 130%. If you can, look at it on a 4K screen too.
+- Expect: the header shows Vanguard's painted shield about 40 units tall, sharp (not blurred or blocky), with "Vanguard" beside it in a serif face in pale gold, larger than any other text in the window; neither touches the search box, and both stay as they are when the font or the variant changes. Your faction's mark (crossed swords or axes) is at the left of the footer with the version line right of it; with Faction look Off the mark goes and the version line moves to the footer's left edge. [Needs in-game check: the crest's sharpness at 40 units, the serif face's weight beside the crest, and the gold over each variant's header.]
+- If it fails, paste: a screenshot of the window's top and bottom, your resolution and UI scale, and `/vg errors`.
+
+### 2.1k The class-colour accent
+
+- Do: type `/vg`, open General and point at the swatch left of the five accent presets, then click it. Look at the switches, the selected page's rail, the sample button's glow and a unit frame's target edge. Click the jade swatch, then type `/vg accent class`. Log in on a character of another class that uses the same profile.
+- Expect: the swatch is in your class colour, set a little apart from the presets, and its tooltip says "Your class colour". Clicked, it carries the check, the hex box shows your class colour, and everything accent-coloured changes at once, with dark marks on accent fills still readable (a Priest's white and a Rogue's yellow are the hardest). Jade moves the check to jade; `/vg accent class` prints "The accent follows your class colour." and moves it back. The other character gets its own class colour at login. [Needs in-game check: text contrast on each class colour, and that no class colour reads as a warning or an item quality where the accent is used.]
+- If it fails, paste: a screenshot of the General page, your class, and `/vg errors`.
+
+### 2.1l The theme font on the game's own text
+
+- Do: log in with Font on Fira Sans Condensed. Open windows Vanguard does not skin or only partly dresses (the barber shop, item socketing, a help tip, an achievement toast, the game's Settings window) and any other addon's window. Type `/vg status`. Fight something with those windows closed, then open one mid-fight. Under General set Font to the game's font, look again, then set it back. On a Korean or Chinese client, only log in and type `/vg status`.
+- Expect: text in those windows is in Fira Sans Condensed at the game's own sizes, and nothing is cut short, overlaps or spills out of its box that did not before. Number text (stack counts, cooldowns), quest titles in the game's serif and mail text keep their own faces. `/vg status` says "Game fonts: N of M standard font objects in the theme font" with N above 0. No "action blocked" message and no error in or after the fight. With the game's font chosen, the game's face is back at once and N is 0. On a Korean or Chinese client N is 0 and every game font is as without Vanguard. [Needs in-game check: all of it. The list of font objects is written from the game's shared font files, not seen in this client; whether a changed parent reaches the fonts that inherit from it, and how Fira's narrower letters sit in the game's layouts, only the game can show.]
+- If it fails, paste: a screenshot of the window, `/vg status`, your client language, and `/vg errors`.
+
+### 2.1m An empty Modules list and the page fade
+
+- Do: type `/vg`, open Modules and set Show to Off (with every module on) and click Show all modules. Click through four or five pages in the list, then press Up and Down. Turn Reduce motion on under General and click through the pages again. Then do the same in a fight.
+- Expect: with nothing to list the page says "No module is switched off." in grey above a Show all modules button, and the button brings every module back. Each page's card fades in quickly (about a tenth of a second) while its name, tabs and the list's mark change at once; nothing flickers, and no card is left faint. With Reduce motion on, and never longer than 0.15 s in a fight, the page is simply there. [Needs in-game check: that the fade reads as polish and not as lag, and that a fast run of Up and Down leaves the last page fully opaque.]
+- If it fails, paste: what you saw (a short clip if you can) and `/vg errors`.
 
 ### 2.1h The fold on Raid frames
 
@@ -2142,7 +2178,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 ### 24.1 The dungeon card on the Instance prep checklist
 
 - Do: in `/vg` open Town and gear and switch on "Dungeon card". With a quest for a dungeon in your log, walk into that dungeon (a character that carries nothing short, if you can). Then leave and type `/vg prep`.
-- Expect: at the door the checklist shows even though nothing is short, with a heading "Dungeon name · levels A-B · 5-player Normal", "Last run: N days ago" (once you have been there before; "today" within a day), "Your quests here" and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "Dungeon quests in your log" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
+- Expect: at the door the checklist shows even though nothing is short, with a heading in small grey capitals, "DUNGEON NAME · LEVELS A-B · 5-PLAYER NORMAL", "Last run: N days ago" (once you have been there before; "today" within a day), "YOUR QUESTS HERE" (small grey capitals too) and your quests for this dungeon as "[level] Title" (done ones with "· done"), and "Keys: ..." when you carry a key. Outside, `/vg prep` shows "DUNGEON QUESTS IN YOUR LOG" (your dungeon and raid quests) and any keys. With the switch off none of these lines show. [Needs in game: that GetInstanceInfo gives the name, size and difficulty, that C_Map.GetMapLevels answers for a dungeon map, that C_QuestLog.GetQuestsOnMap lists your quests inside a dungeon, that C_QuestLog.GetQuestTagInfo tags dungeon quests with Enum.QuestTag Dungeon, Raid or Group, and that keys are item class 13.]
 - If it fails, paste: what the card shows, `/run print(C_Map.GetMapLevels(C_Map.GetBestMapForUnit("player")))` and `/vg errors`.
 
 ### 24.1a A finished dungeon quest reads "done"

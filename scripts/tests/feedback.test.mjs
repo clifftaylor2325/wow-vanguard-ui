@@ -201,7 +201,7 @@ it("the Feedback page's Community card copies the Discord invite and the X addre
 it("the feedback form: a window title with its X and Escape at the dialog alpha, T.SPACE.pad insets, one thumb on each text area that overflows", () => {
   const addon = loggedIn("__view = function(edit) return __wfgStub.scrollOwners[edit] end");
   open(addon);
-  expect(titleOf(addon, BOX), "a window title: the title role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
+  expect(titleOf(addon, BOX), "a window title: the display role in the text colour, T.SPACE.pad in, on the close button's line").toEqual({ size: titleSize(addon), text: true, left: 16, mid: -24 });
   expect([addon.eval(`return ${BOX}.title:GetText()`), closeOf(addon, BOX), escapes(addon, BOX), alphaOf(addon, BOX)], "Send feedback, the X where every window has it, Escape, the dialog alpha")
     .toEqual(["Send feedback", [px(addon, 24), px(addon, 24), true], true, 0.98]);
   expect(insets(addon, `${BOX}.kindRow`, BOX).slice(0, 2), "the kind row T.SPACE.pad in, under the head").toEqual([16, 40]);

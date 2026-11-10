@@ -34,8 +34,8 @@ end
 
 -- Titles --------------------------------------------------------------------------------------
 
--- The text role of each title tier: a window's title, a card's heading (the two display roles).
-local TITLE_ROLES = { window = "title", card = "heading" }
+-- The text role of each title tier: a window's title in the display tier, a card's in the heading role.
+local TITLE_ROLES = { window = "display", card = "heading" }
 -- Where a title sits, by tier and alignment: its point, the frame's point it anchors to, x and y.
 -- A window's title sits on the close button's line (its middle T.CONTROL.inset down), T.SPACE.pad in from
 -- the left or centred; a card's top T.SPACE.gap in from its corner, or centred at that height.
