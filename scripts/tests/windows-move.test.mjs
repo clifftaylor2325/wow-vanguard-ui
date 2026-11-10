@@ -287,6 +287,7 @@ it("a click on a window's top edge saves nothing, a right press does nothing, an
 it("a window whose top, place or scale the client hides is not dragged, saved or put back, and nothing raises", () => {
   const addon = loggedIn(MOVE_ENV);
   addon.eval("CalendarFrame:Show()");
+  // Drags and saves the calendar with one getter answering a secret: whether it moved, saved nothing, and the error count.
   const hidden = (getter, value) => addon.eval(`local f, S = CalendarFrame, __wfgWorld.secret
     f.${getter} = function() return S(${value}) end
     __wfgStub.world.mouse.x, __wfgStub.world.mouse.y = 300, 970
