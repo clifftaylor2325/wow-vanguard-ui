@@ -5471,6 +5471,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, every slot's item level and enchant mark go at once and the pane opens bare; on, they return on the open pane and when it next opens.
 - If it fails, paste: a screenshot of the pane and `/vg errors`.
 
+### 35.7 Errands
+
+- Do: at a class trainer, see the Train all button, then switch **Errands** off under `/vg` → Modules (trainer window open) and on again; then turn **Flight timer** off and on under Town and gear → Errands and take a flight.
+- Expect: off, the Train all button is gone from the trainer's window at once and a merchant buys nothing for your stock list; on, the button returns on the open window. The flight timer switch applies at once, with no reload notice, and a known route shows its countdown bar.
+- If it fails, paste: a screenshot of the trainer window and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

@@ -124,3 +124,41 @@ it("CharacterExtras: switched off, the item level on the game's slot goes and th
   switchTo(addon, "CharacterExtras", true);
   expect(level(), "back, the pane being open").toBe(true);
 });
+
+lifecycleCases("Errands", login);
+
+// TEST-ONLY trainer window with one service to learn.
+const TRAINER = `
+  __services = { { "TEST-ONLY Bolt", "available", 500 } }
+  GetMoney = function() return 2200 end
+  GetNumTrainerServices = function() return #__services end
+  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], "", s[2], false end
+  GetTrainerServiceCost = function(i) return __services[i][3] end
+  ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
+`;
+
+it("Errands: switched off, the Train all button on the game's trainer window is hidden and stays hidden; on again it returns, not made twice", () => {
+  const addon = loggedIn(TRAINER);
+  const button = () => addon.eval('local b = ns.GetModule("Errands").trainButton return b ~= nil and b:IsShown()');
+  addon.fire("TRAINER_SHOW");
+  expect(button(), "shown on the trainer").toBe(true);
+  const frames = addon.eval("return #__wfgStub.frames");
+  switchTo(addon, "Errands", false);
+  expect(button(), "hidden at once").toBe(false);
+  addon.fire("TRAINER_SHOW");
+  expect(button(), "a trainer opening while off shows nothing").toBe(false);
+  expect(addon.eval('return ns.GetModule("Errands").settings == nil'), "the module reads as off").toBe(true);
+  switchTo(addon, "Errands", true);
+  expect(button(), "back").toBe(true);
+  expect(addon.eval("return #__wfgStub.frames"), "the same button, not a new one").toBe(frames);
+});
+
+it("Errands: a flight timer switched off points its hooks at nothing, and switched on again at the timer", () => {
+  const addon = loggedIn("TakeTaxiNode = function() end TaxiRequestEarlyLanding = function() end");
+  const target = () => addon.eval('local ER = ns.GetModule("Errands") return ER.scope.latest["take taxi"] == ER.OnTakeTaxi and "timer" or ER.scope.latest["take taxi"] == ER.Idle and "idle"');
+  expect(target(), "on at login").toBe("timer");
+  addon.eval('VanguardDB.profiles.Default.Errands.flightTimer = false ns.RestartModule("Errands")');
+  expect(target(), "off").toBe("idle");
+  addon.eval('VanguardDB.profiles.Default.Errands.flightTimer = true ns.RestartModule("Errands")');
+  expect(target(), "on again").toBe("timer");
+});

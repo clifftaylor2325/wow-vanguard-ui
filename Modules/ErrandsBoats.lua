@@ -81,7 +81,7 @@ function ER.PollBoat()
   afloat(ER.boat)
 end
 
--- The movable boat bar, hidden until a ride.
+-- The movable boat bar, hidden until a ride (made once a session).
 local function buildBar()
   ER.boatBar = ER.TimerBar("Vanguard_BoatTimer", "boattimer", L["Boat timer"])
 end
@@ -91,5 +91,5 @@ function ER.WatchBoats()
   if type(C_Map) ~= "table" then return end
   buildBar()
   ER.place = placeName()
-  ns.Every("boat poll", ER.BOAT_POLL, ER.PollBoat)
+  ER.scope:Every("boat poll", ER.BOAT_POLL, ER.PollBoat)
 end
