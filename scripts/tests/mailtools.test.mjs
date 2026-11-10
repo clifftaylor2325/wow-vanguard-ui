@@ -424,6 +424,16 @@ it("Return all asks, then sends back the shown mail a player can have returned, 
   expect(chatHas(addon, /Return all: nothing to return/), "nothing to return").toBe(true);
 });
 
+it("Return all leaves a mail the game deletes when it runs out (one already returned to you) where it is", () => {
+  const addon = mailer(BULK + "__wfgWorld.mail[2].deletes = true");
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.returnAll");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "only Carl's parcel is offered").toBe("Return 1 mail(s) to their senders?");
+  addon.click("Vanguard_Question.confirm");
+  addon.advance(2);
+  expect([returned(addon), chatHas(addon, /Return all: 1 of 1 done/)], "the returned mail is never asked of the game").toEqual([[4], true]);
+});
+
 it("a pay-on-delivery mail shows what it asks in its row, has no Take button, and Take never takes it", () => {
   const addon = mailer(BULK);
   addon.world.openMailWindow();

@@ -50,21 +50,23 @@ local function plain(value)
 end
 
 -- Whether the game deletes mail i when it runs out (InboxItemCanDelete: a sale, a returned or system mail)
--- rather than sending it back, while it still holds money or items that would be lost with it.
-local function lostAtExpiry(i, m)
+-- rather than sending it back; a hidden answer counts as no.
+local function deletable(i)
   local deletes = type(InboxItemCanDelete) == "function" and InboxItemCanDelete(i)
-  return not ns.IsSecret(deletes) and deletes == true and (m.money > 0 or m.items > 0)
+  return not ns.IsSecret(deletes) and deletes == true
 end
 
--- Mail i as { index, sender, subject, money, items, link, cod, returnable, sale, days (left, or nil), lost (deleted
--- with money or items in it when it runs out) }; nil when there is none.
+-- Mail i as { index, sender, subject, money, items, link, cod, returnable (a player's mail the game sends back, not
+-- one it deletes: a returned mail is not), sale, days (left, or nil), lost (deleted with money or items in it when
+-- it runs out) }; nil when there is none.
 function MT.Read(i)
   local _, _, sender, subject, money, cod, days, count, _, _, _, reply, gm, _, link = GetInboxHeaderInfo(i)
   if sender == nil and subject == nil then return nil end
   local m = { index = i, sender = plain(sender), subject = plain(subject), money = ns.PlainNumber(money) or 0,
     items = ns.PlainNumber(count) or 0, link = plain(link), cod = ns.PlainNumber(cod) or 0, days = ns.PlainNumber(days),
     returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true, sale = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i) ~= nil }
-  m.lost = lostAtExpiry(i, m)
+  local deletes = deletable(i)
+  m.lost, m.returnable = deletes and (m.money > 0 or m.items > 0), m.returnable and not deletes
   return m
 end
 
