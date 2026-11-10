@@ -203,10 +203,11 @@ local function running()
   return CF.scope ~= nil and CF.scope:Running()
 end
 
--- True while caught lines go to a Filtered tab: the module running, the filter on, and tab mode.
+-- True while caught lines go to a Filtered tab: the module running and still switched on (a switch made in a fight
+-- stops it only when the fight ends, after work queued earlier in it), the filter on, and tab mode.
 local function wantsTab()
   local s = CF.settings
-  return running() and s and s.on and s.mode == "tab"
+  return running() and ns.ModuleEnabled("ChatFilter") and s and s.on and s.mode == "tab"
 end
 
 -- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
