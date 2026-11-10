@@ -85,7 +85,7 @@ Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until th
 - [ ] **A1-11** Filter and coalesce the three hot handlers; one shared bag snapshot. (Q19, M15, L13, L17)
 - [ ] **A1-12** Micro-allocations on the hottest paths, except the unit-frame ones, which move to A3-1 to stay out of PR #796's files. (Q7, L4, L6)
 - [x] **A1-13** `ns.Migrate` keeps a list per key or raises on a duplicate; a test runs every migration twice. (Q8, L1)
-- [ ] **A1-14** HUD font theming out of Merchant into its own switch. (Q9, L2)
+- [x] **A1-14** HUD font theming out of Merchant into its own switch. (Q9, L2)
 - [ ] **A1-15** Small correctness batch, one commit each: durability figure, mail attach count and running flag, trainer loop, `/way` across continents, detailed item level. The player-aura re-anchor (L14) is a protected path: Opus. (Q20)
 - [ ] **A1-16** Wrap the last 33 strings and fill the 184 missing keys per locale. Haiku for the fill, through the CSV pipeline. (Q10, L7)
 - [ ] **A1-17** Release again with the above. PR lists every item that needs an in-game check.

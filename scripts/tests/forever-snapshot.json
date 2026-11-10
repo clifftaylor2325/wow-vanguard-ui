@@ -34,6 +34,7 @@
     {"name":"InfoStrip","enabled":true},
     {"name":"BrokerStrip","enabled":true},
     {"name":"MenuStrip","enabled":true},
+    {"name":"HudText","enabled":true},
     {"name":"Merchant","enabled":true},
     {"name":"Errands","enabled":true},
     {"name":"InstancePrep","enabled":true},

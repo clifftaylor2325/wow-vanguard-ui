@@ -914,6 +914,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: each pip lights the moment its point lands and clears when spent, as before, with no pip a tick late or stuck; the gaps row's icons start their sweeps at once (within a frame). `/vg errors` is empty.
 - If it fails, paste: what the pips or the row showed, the class and form, and `/vg errors`.
 
+### 8.6f HUD text font has its own switch
+
+- Do: `/vg` → Modules: switch Merchant helpers off and reload; cause a red error line (cast with no target), walk into a new subzone, and hit a mob with floating damage numbers on. Then switch HUD text font off (Map and info) and reload, and do the same. Switch both back on.
+- Expect: with only Merchant helpers off, the error line, the zone names and the damage numbers are still in Vanguard's font. With HUD text font off they are in the game's own font. The damage numbers follow after a relog if a reload alone does not change them.
+- If it fails, paste: which text was in which font after each step, and `/vg errors`.
+
 ## 9. Bags, merchant, trainer
 
 ### 9.1 Bag search

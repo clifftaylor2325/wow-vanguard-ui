@@ -146,8 +146,10 @@ it("the error line and the zone text in the theme font, kept after a Text size c
   expect(hudFonts(addon), "the theme font at the game's sizes, with the theme's shadow").toEqual([[true, 16, [1, -1]], [true, 32, [1, -1]], [true, 26, [1, -1]], [true, 22, [1, -1]]]);
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
   expect(hudFonts(addon).map((f) => f[1]), "re-applied at the new Text size").toEqual([21, 42, 34, 29]);
-  const off = loggedIn(HUD_FONTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
-  expect(off.eval("return { ErrorFont:GetFont() }"), "with the module off they are the game's").toEqual(["TEST-ONLY-FRIZQT", 10, "THICK"]);
+  const off = loggedIn(HUD_FONTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { HudText = false } } }" });
+  expect(off.eval("return { ErrorFont:GetFont() }"), "with HUD text font off they are the game's").toEqual(["TEST-ONLY-FRIZQT", 10, "THICK"]);
+  const noMerchant = loggedIn(HUD_FONTS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
+  expect(hudFonts(noMerchant).map((f) => f[0]), "A1-14: with the merchant helpers off the HUD text keeps the theme font").toEqual([true, true, true, true]);
   const some = loggedIn('ZoneTextFont = CreateFrame("Frame"):CreateFontString()');
   expect([some.eval("return select(2, ZoneTextFont:GetFont())"), some.eval("return #ns.errors")], "a client with only some of them gets those, and loads cleanly").toEqual([32, 0]);
 });
@@ -170,9 +172,12 @@ it("the scrolling combat text and the floating damage numbers in the theme font,
   expect(combatFont(addon)[1], "re-applied at the new Text size").toBe(83);
   const already = loggedIn(COMBAT_TEXT_ENV + ' C_AddOns.IsAddOnLoaded = function(name) return name == "Vanguard" or name == "Blizzard_CombatText" end');
   expect(combatFont(already), "already loaded at login: themed at once").toEqual([true, 64]);
-  const off = loggedIn(COMBAT_TEXT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
+  const off = loggedIn(COMBAT_TEXT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { HudText = false } } }" });
   off.fire("ADDON_LOADED", "Blizzard_CombatText");
-  expect([off.eval("return DAMAGE_TEXT_FONT"), combatFont(off)], "with the module off both are the game's").toEqual(["TEST-ONLY-DAMAGE", [false, 64]]);
+  expect([off.eval("return DAMAGE_TEXT_FONT"), combatFont(off)], "with HUD text font off both are the game's").toEqual(["TEST-ONLY-DAMAGE", [false, 64]]);
+  const noMerchant = loggedIn(COMBAT_TEXT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Merchant = false } } }" });
+  noMerchant.fire("ADDON_LOADED", "Blizzard_CombatText");
+  expect([noMerchant.eval("return DAMAGE_TEXT_FONT == ns.Theme.Font(true)"), combatFont(noMerchant)[0]], "A1-14: with the merchant helpers off both keep the theme font").toEqual([true, true]);
   const client = loggedIn(COMBAT_TEXT_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { theme = { font = "client" } } }' });
   expect(client.eval("return DAMAGE_TEXT_FONT"), "the game's font chosen: the game's damage font stays").toBe("TEST-ONLY-DAMAGE");
   const none = loggedIn("DAMAGE_TEXT_FONT = nil C_AddOns.IsAddOnLoaded = nil");

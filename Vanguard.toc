@@ -164,6 +164,7 @@ Modules/ForeverBank.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standar
 Modules/InfoStrip.lua
 Modules/BrokerStrip.lua
 Modules/MenuStrip.lua
+Modules/HudText.lua
 Modules/Merchant.lua
 Modules/MerchantBulk.lua
 Modules/Errands.lua
