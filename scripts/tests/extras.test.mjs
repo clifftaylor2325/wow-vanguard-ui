@@ -463,6 +463,11 @@ it("keep stocked: an item sold in stacks (ammo) is bought in whole stacks", () =
   expect(addon.eval("return __buys"), "450 wanted: two full stacks and the last 50 rounded up to a whole stack of 200").toEqual([[90014, 200], [90014, 200], [90014, 200]]);
   expect(chatHas(addon, /Bought 600 × item 90014 for 3s 0c\./), "and it says what it really bought").toBe(true);
 });
+it("keep stocked: a rounded-up purchase never passes the game's limit for one purchase", () => {
+  const addon = loggedIn(STOCK_ENV + "__goods[4] = { id = 90015, price = 60, stack = 6, left = -1, max = 20 }", { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90015] = 19 } } } }" });
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __buys"), "19 wanted in sixes, 20 at most a time: 18, then the last stack").toEqual([[90015, 18], [90015, 6]]);
+});
 // TEST-ONLY stock list wanting item 90011 (5 of it).
 const WANT_5 = { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90011] = 5 } } } }" };
 // Stock environment with item 90011 sold for 20 marks of honor: the copper price reads 0 (the table says it has an extended cost).

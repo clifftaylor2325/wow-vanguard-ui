@@ -357,6 +357,15 @@ local function wholeStacks(count, stack)
   return math.ceil(count / stack) * stack
 end
 
+-- How many units the next purchase of an order asks for: what is still needed, one merchant stack at least, in whole
+-- stacks, and no more than the game's limit for one purchase (GetMerchantItemMaxStack) unless one stack is already more.
+local function chunkSize(order)
+  local limit = math.max(ns.PlainNumber(ask("GetMerchantItemMaxStack", order.index)) or 1, 1)
+  local count = wholeStacks(math.min(order.need, limit), order.stack)
+  if count <= limit then return count end
+  return math.max(order.stack, math.floor(limit / order.stack) * order.stack)
+end
+
 -- Buys the next chunk (a stack at most, in whole merchant stacks) of the first order if you can pay; false when done.
 -- The game answers a buy later and says nothing when it fails, so the chunk is only noted as pending here
 -- (with how many you carried): settle notes what really arrived. A buy goes by merchant index, so the
@@ -364,7 +373,7 @@ end
 local function buyChunk(run)
   local order = run.orders[1]
   if not order or not ns.GetModule("Merchant").Sells(order.index, order.id) then return false end
-  local count = wholeStacks(math.min(order.need, math.max(ns.PlainNumber(ask("GetMerchantItemMaxStack", order.index)) or 1, 1)), order.stack)
+  local count = chunkSize(order)
   if math.ceil(order.unit * count) > cash() then return false end
   run.pending = { order = order, count = count, before = owned(order.id), checks = 0 }
   ask("BuyMerchantItem", order.index, count)
