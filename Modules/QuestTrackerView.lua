@@ -104,7 +104,8 @@ function QT.TitleTooltip(b)
   local tip, q = GameTooltip, b.row
   if not (tip and q) or q.section or ns.InCombat() then return end
   tip:SetOwner(b, "ANCHOR_LEFT")
-  tip:SetText(q.title, T.RGB("text"))
+  local title = QP.Plain(q.title)
+  tip:SetText(title ~= "" and title or L["Quest"], T.RGB("text"))
   for _, line in ipairs(QT.StateLines(q)) do tip:AddLine(T.Paint(line.full or line[1], line[2]), nil, nil, nil, true) end
   local clicks = clicksFor(q)
   if clicks then tip:AddLine(clicks, T.RGB("muted")) end
