@@ -908,6 +908,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the first invite stays up for you to answer; the second is declined with one chat line; after ten minutes the first player's invite is declined again.
 - If it fails, paste: the chat lines, how long after the whisper the invite came, and `/vg errors`.
 
+### 8.6e Combo points and the cooldown gaps row keep up in a fight
+
+- Do: on a rogue or a cat-form druid, fight a target dummy: build and spend combo points several times while energy ticks, then switch targets. With the Gaps row on (`/vg` → Cooldowns), use a trinket, a potion and a pet ability in quick succession.
+- Expect: each pip lights the moment its point lands and clears when spent, as before, with no pip a tick late or stuck; the gaps row's icons start their sweeps at once (within a frame). `/vg errors` is empty.
+- If it fails, paste: what the pips or the row showed, the class and form, and `/vg errors`.
+
 ## 9. Bags, merchant, trainer
 
 ### 9.1 Bag search
