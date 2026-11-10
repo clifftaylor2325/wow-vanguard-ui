@@ -155,7 +155,7 @@ end
 function S.Backup()
   if state.backup then return end
   if state.order[1] == "profile" then state.floor, VanguardCharDB.pickProfile = math.max(state.floor, 2), nil end
-  state.backup = keptBackup() or ns.BackupProfile()
+  state.backup, state.backupOf = keptBackup() or ns.BackupProfile(), ns.ProfileName()
   if owed() then VanguardCharDB.setupBackup = state.backup end
   ns.Chat(ns.Format(L["Profile {profile} as it was before setup is saved as profile {backup}."], { profile = ns.ProfileName(), backup = state.backup }))
 end
@@ -1005,14 +1005,19 @@ end
 -- Undo setup (the All set step): putBack (Core/SetupGuide.lua's) puts the guided rows back through their setters, so
 -- the screen follows at once, then the profile as it was before this run's first change comes back (its frames keep
 -- the new spots until the reload setup then offers), and setup ends as Done, so it doesn't open again. A backup
--- profile deleted during the run can't come back; chat says so and the end is an ordinary Done.
+-- profile deleted during the run can't come back; chat says so and the end is an ordinary Done. In a fight it waits
+-- for the fight to end, so it runs whole (a hidden setup, paused by the fight, ends here instead of coming back).
 ---@param putBack function
 function S.Undo(putBack)
+  if ns.InCombat() then return ns.OutOfCombat(function() S.Undo(putBack) end, "setup undo") end
+  local hidden = not frame:IsShown()
+  state.paused = false
   putBack()
-  local restored = not state.backup or ns.CopyProfile(state.backup) ~= false
+  local restored = not state.backup or ns.CopyProfile(state.backup, state.backupOf) ~= false
   if not restored then ns.Chat(L["The backup profile is gone, so only the guided steps' settings went back."]) end
   state.undone = restored
   complete(true)
+  if hidden then finished() end
 end
 
 -- Setup's own steps' builders, by key; the guided steps' pages are Core/SetupGuide.lua's.

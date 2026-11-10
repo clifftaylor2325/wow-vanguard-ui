@@ -75,6 +75,8 @@ local function setItems()
   return out
 end
 
+MC.SetItems = setItems
+
 -- The bag slot's item ID and stack size when the client says them plainly (not locked), else nil.
 local function slotItem(bag, slot)
   local info = C_Container.GetContainerItemInfo(bag, slot)

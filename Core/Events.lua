@@ -30,12 +30,19 @@ end
 -- Sends a message to a chat channel ("PARTY", "RAID", ...) for other players to read, through
 -- C_ChatInfo.SendChatMessage; the old SendChatMessage global is only a deprecation fallback on
 -- Forever (Blizzard_DeprecatedChatInfo, gone when the game drops its fallbacks), so it is used
--- only on a client without the C_ChatInfo call.
+-- only on a client without the C_ChatInfo call. While the client restricts chat (ns.Restricted: an encounter, a
+-- keystone, a PvP match, the chat lockdown) the call is refused to addons, so nothing is sent and chat says why.
 ---@param text string
 ---@param chatType string
+---@return boolean sent
 function ns.SendChat(text, chatType)
+  if ns.Restricted("Chat") then
+    ns.Chat(L["Vanguard can't send to chat while the game restricts it (a boss fight, a keystone or a PvP match). Try again after it."])
+    return false
+  end
   local send = C_ChatInfo and C_ChatInfo.SendChatMessage or SendChatMessage
   send(text, chatType)
+  return true
 end
 
 -- Adds fn as the game's chat message filter for each event. The old global is only an alias of

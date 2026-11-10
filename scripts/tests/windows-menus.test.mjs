@@ -65,6 +65,24 @@ it("12.x menus: each open fades the game's background and glow, the panel behind
   expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
 });
 
+// The game sets a menu's level from its owner region's (Forever Menu.lua AcquireMenu), and a widget fed a secret keeps
+// answering with one (FOREVER-API-FACTS 3); SetFrameLevel and SetFrameStrata refuse a secret from addon code.
+it("12.x menus: a menu whose strata, level or shown state the client hides keeps the panel where it was, and nothing raises", () => {
+  const addon = loggedIn(MENU_ENV);
+  menuState(addon);
+  const out = addon.eval(`local S = __wfgWorld.secret
+    __menu.GetFrameLevel = function() return S(900) end
+    __menu.__strata = S("DIALOG")
+    __openMenu()
+    __menu.IsShown = function() return S(true) end
+    __menu.GetFrameLevel = function() return 950 end
+    ns.GetModule("Windows").LevelMenuPanels()
+    __menu.IsShown, __menu.GetFrameLevel = nil, nil
+    local panel for _, c in ipairs({ __menu:GetChildren() }) do if c ~= __menu.FrameGlow and c ~= __menu.TestOnlyRow then panel = c end end
+    return { panel:GetFrameLevel(), panel.__strata, #ns.errors }`);
+  expect(out, "the panel keeps its level and strata; a hidden shown state is not followed").toEqual([510, "FULLSCREEN_DIALOG", 0]);
+});
+
 it("12.x menus: a skin that fails is reported and does not reach the game's menu code", () => {
   const addon = loggedIn(MENU_ENV);
   addon.eval("ns.Theme.FadeRegions = function() error('TEST-ONLY skin', 0) end");

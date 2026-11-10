@@ -4,7 +4,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { chatHas, loggedIn } from "./helpers.mjs";
+import { chatHas, expectErrors, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock, items and recipes. 100 makes a bag from 3 linen and a thread; 102 makes
 // 1 to 3 bandages from a linen.
@@ -144,6 +144,17 @@ it("a recipe with a charge left is not on cooldown, though the game gives the ti
   addon.eval("__charges = 0");
   addon.fire("TRADE_SKILL_LIST_UPDATE");
   expect(addon.eval(`return ${CQ}.Mine().cooldowns[100].ready - __now`), "no charge left: the five hours show").toBe(18000);
+});
+
+it("one recipe the client cannot answer for does not end the cooldown scan of the others", () => {
+  expectErrors("craft cooldown: eval:23: no such recipe");
+  const addon = crafter(`C_TradeSkillUI.GetAllRecipeIDs = function() return { 102, 100 } end
+    local schematic = C_TradeSkillUI.GetRecipeSchematic
+    C_TradeSkillUI.GetRecipeSchematic = function(id, r) if id == 102 then error("no such recipe") end return schematic(id, r) end`);
+  addon.eval("__wfgWorld.cooldowns = { [100] = 7500, [102] = 300000 }");
+  addon.fire("TRADE_SKILL_LIST_UPDATE");
+  expect(addon.eval(`return ${CQ}.Mine().cooldowns[100] ~= nil and ${CQ}.Mine().cooldowns[102] == nil`), "the recipe after the failing one is noted").toBe(true);
+  expect(addon.eval("return ns.LoudErrorCount()"), "and the failure is kept quietly, not flooded").toBe(0);
 });
 
 it("notes profession cooldowns for each character and says when they are ready", () => {

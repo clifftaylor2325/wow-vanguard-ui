@@ -86,6 +86,9 @@ it("the level range, size and difficulty drop what the client does not give", ()
   addon.eval("__levels = { 0, 0 } GetInstanceInfo = function() return __wfgWorld.secret('x') end");
   addon.slash("prep");
   expect(text(addon)[0], "no name: no heading, quests are the log's tagged ones").toBe("DUNGEON QUESTS IN YOUR LOG");
+  addon.eval("local kind = __wfgWorld.secret('party') IsInInstance = function() return true, kind end GetInstanceInfo = function() return 'TEST-ONLY Cave', 'party', 1, '', 5 end");
+  addon.slash("prep");
+  expect(text(addon)[0], "a type the client hides is no dungeon (ns.Where decides): no heading").toBe("DUNGEON QUESTS IN YOUR LOG");
 });
 
 it("the card is off until switched on, and says nothing in combat or on a client without the calls", () => {

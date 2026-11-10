@@ -371,3 +371,14 @@ it("H28-I: your focus's plate gets a quieter border and diamond, no glow; your t
   addon.fire("PLAYER_FOCUS_CHANGED");
   expect([marks("nameplate2")[0], isTok(addon, marks("nameplate1")[1], "accent"), marks("nameplate1")[2]], "focus on your target: the target's look; the old focus plate is plain again").toEqual([false, true, true]);
 });
+
+it("one plate that fails to paint leaves the other plates painted, and the scale poll is never paused for it", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV);
+  addon.eval(`__painted = 0
+    -- TEST-ONLY: every plate's target paint counts itself and then fails, as a paint the client refuses would.
+    ns.GetModule("Nameplates").UpdateTarget = function() __painted = __painted + 1 error("TEST-ONLY paint") end`);
+  addon.advance(0.5 * 12);
+  const plates = addon.eval('local n = 0 for _ in pairs(ns.GetModule("Nameplates").plates) do n = n + 1 end return n');
+  expect([plates, addon.eval("return __painted")], "12 polls past the error budget, each asking both plates").toEqual([2, 24]);
+  expectErrors("nameplate: eval:4: TEST-ONLY paint");
+});

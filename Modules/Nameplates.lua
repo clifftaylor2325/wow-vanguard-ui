@@ -419,12 +419,22 @@ local function build(parent)
   return f
 end
 
+-- Whether the client has closed a frame to addons, it or anything it hangs from: a region under a plate the
+-- client has closed still answers no for itself, so each frame up the chain is asked (as Core/Auras.lua does).
+local function closed(frame)
+  while frame do
+    if frame:IsForbidden() then return true end
+    frame = frame:GetParent()
+  end
+  return false
+end
+
 -- Swaps one of a plate's rows for the one the layout asks for now (none, for a row switched off). The
 -- old row is put away, a fallback row for the next plate drawn in a fight. False when the client has
 -- closed the old row to addons: it stays, and the plate is tried again later.
 local function replaceRow(f, key)
   local old, spec = f[key], rowSpec(f, key)
-  if old and not ns.Auras.Retire(old) then return false end
+  if old and (closed(old.frame) or not ns.Auras.Retire(old)) then return false end
   if old and not f[key .. "OnEngine"] then table.insert(NP.spare[key], old) end
   f[key] = nil
   if spec then addRow(f, key, spec) end
@@ -432,15 +442,18 @@ local function replaceRow(f, key)
   return true
 end
 
--- After a fight: plates first drawn in it got the fallback icons, so give
--- them the client's own aura containers now that they can be made.
+-- One plate's fallback rows swapped for the client's own containers.
+local function upgradePlate(f)
+  for _, key in ipairs(NP.ROWS) do
+    if f[key] and not f[key .. "OnEngine"] then replaceRow(f, key) end
+  end
+end
+
+-- After a fight: plates first drawn in it got the fallback icons, so give them the client's own aura
+-- containers now that they can be made, each plate on its own (one the client refuses stops no other).
 local function upgradeRows()
   if not ns.AuraEngine.Available() then return end
-  for _, f in ipairs(NP.built) do
-    for _, key in ipairs(NP.ROWS) do
-      if f[key] and not f[key .. "OnEngine"] then replaceRow(f, key) end
-    end
-  end
+  for _, f in ipairs(NP.built) do ns.Try("nameplate rows", upgradePlate, f) end
 end
 
 -- Whether a plate's row is not the one the layout asks for now, by its signature (counts, icon size,
@@ -455,7 +468,7 @@ end
 local function placeRow(f, key)
   local row, spec = f[key], rowSpec(f, key)
   if not row or not spec then return true end
-  if row.frame:IsForbidden() then return false end
+  if closed(row.frame) then return false end
   row.frame:ClearAllPoints()
   row.frame:SetPoint(unpack(spec.point))
   return true
@@ -482,7 +495,7 @@ end
 -- a client plate that may be closed by now, so it waits until it is next drawn (onAdded).
 local function reachable(f)
   local parent = f:GetParent()
-  return parent == NP.holder or (f.unit ~= nil and not parent:IsForbidden())
+  return parent == NP.holder or (f.unit ~= nil and not closed(parent))
 end
 
 -- One frame's share of the frames built ahead: up to NP.POOL_STEP more, hidden until a plate
@@ -821,16 +834,25 @@ function NP.PaintNameOnly(f, unit)
   return only ~= was
 end
 
+-- One of a plate's rows, or nil when it has none or the client has closed its frame to addons (touching
+-- it then raises; it stays as the client keeps it, and placeRow and replaceRow leave it alone too).
+local function openRow(f, key)
+  local row = f[key]
+  if row and not closed(row.frame) then return row end
+  return nil
+end
+
 -- Points the debuff row at the plate's unit (the client reuses plates for
 -- other units), and the buff row at it while it is a player; the buff row is
--- hidden otherwise. A nil unit, or a name-only plate, empties both.
+-- hidden otherwise. A nil unit, or a name-only plate, empties both. A row the client has closed is skipped.
 function NP.UpdateAuras(f, unit)
   if f.vgNameOnly then unit = nil end
-  f.debuffs:SetUnit(unit)
-  if not f.buffs then return end
+  local debuffs, buffs = openRow(f, "debuffs"), openRow(f, "buffs")
+  if debuffs then debuffs:SetUnit(unit) end
+  if not buffs then return end
   local player = NP.BuffUnit(unit)
-  f.buffs:SetUnit(player)
-  f.buffs.frame:SetShown(player ~= nil)
+  buffs:SetUnit(player)
+  buffs.frame:SetShown(player ~= nil)
 end
 
 -- Shows a plate's mouseover wash while the mouse is over its unit; true when shown.
@@ -858,9 +880,11 @@ local function refresh(f, unit)
   NP.PaintSoftTarget(f, unit)
 end
 
--- Runs fn(frame, unit) for every plate we drew on.
+-- Runs fn(frame, unit) for every plate we drew on, each plate on its own (ns.Try): a plate whose paint fails is
+-- reported and the rest are still painted, and a repeating job (the scale poll, which keeps aura icons off
+-- the dark blocks of a shrunk plate) is never paused for one plate.
 local function each(fn)
-  for unit, f in pairs(NP.plates) do fn(f, unit) end
+  for unit, f in pairs(NP.plates) do ns.Try("nameplate", fn, f, unit) end
 end
 
 -- Repaints everything on every plate on screen, as a live setting changed (levels,

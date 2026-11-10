@@ -544,3 +544,10 @@ it("chat filter tab: a tab an earlier version made (no saved number) is found by
   addon.eval("VanguardCharDB.filteredTab = nil ns.GetModule('ChatFilter').window = nil ns.GetModule('ChatFilter').Prepare()");
   expect(addon.eval("return { VanguardCharDB.filteredTab, ChatFrame4 == nil }"), "found by name, saved, not made again").toEqual([3, true]);
 });
+
+it("chat filter: an empty or non-text word in a saved keyword list holds nothing, instead of catching every line", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { ChatFilter = { on = true, keywords = { '', 5, 'zzz' } } } }" });
+  expect(deliver(addon, "LFM Deadmines need a healer", "Lightmend"), "an ordinary line passes").toBe(false);
+  expect(deliver(addon, "something with zzz in it", "Spammer"), "the real word still catches").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

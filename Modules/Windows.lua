@@ -145,14 +145,18 @@ do
 
   -- Lays a frame's backdrop just under it: in its strata, one level below it (the game moves a popup to another
   -- parent and level as it shows one), shown while the frame is visible and has what the backdrop waits for.
+  -- The game's frame may answer IsVisible with a secret (a widget container the client drives): it counts as
+  -- hidden (ns.IsTrue), never truth-tested or handed to SetShown, either of which raises from addon code; a hidden
+  -- strata or level is not copied (SetFrameStrata and SetFrameLevel refuse a secret from addon code).
   -- A frame without a backdrop is skipped.
   ---@param frame table
   function GW.FitBackdrop(frame)
     local back, when = vgBackdrop[frame], vgBackdropWhen[frame]
     if not back then return end
-    back:SetFrameStrata(frame:GetFrameStrata())
-    back:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
-    back:SetShown(frame:IsVisible() and (when == nil or when(frame)))
+    local strata, level = ns.PlainText(frame:GetFrameStrata()), ns.PlainNumber(frame:GetFrameLevel())
+    if strata then back:SetFrameStrata(strata) end
+    if level then back:SetFrameLevel(math.max(0, level - 1)) end
+    back:SetShown(ns.IsTrue(frame:IsVisible()) and (when == nil or ns.IsTrue(when(frame))))
   end
 
   -- Hides a frame's backdrop as the frame hides.
@@ -195,13 +199,13 @@ local function onBackdrop(frame)
 end
 
 -- What a window's backdrop waits for (GW.Backdrop's `when`): the child it shows with being shown, for a window in
--- GW.PANEL_SHOWN_WITH; nil, nothing, for any other.
+-- GW.PANEL_SHOWN_WITH; nil, nothing, for any other. A secret answer counts as hidden.
 local function shownWith(frame)
   local child = GW.PANEL_SHOWN_WITH[frame:GetName() or ""]
   if not child then return nil end
   return function()
     local part = _G[child]
-    return type(part) == "table" and part:IsShown()
+    return type(part) == "table" and ns.IsTrue(part:IsShown())
   end
 end
 
@@ -525,9 +529,10 @@ function GW.CenterLabel(button)
 end
 
 -- The money well hung under the pane above it: the same left and right edges, T.SPACE.tight clear of it, its bottom
--- where it was (its height less the gap).
+-- where it was (its height less the gap). A well whose height the client hides keeps its height and its place.
 local function hangUnder(well, above)
-  local height = well:GetHeight()
+  local height = ns.PlainNumber(well:GetHeight())
+  if not height then return end
   well:ClearAllPoints()
   well:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -T.SPACE.tight)
   well:SetPoint("TOPRIGHT", above, "BOTTOMRIGHT", 0, -T.SPACE.tight)
@@ -582,10 +587,12 @@ function GW.SkinDropdownChevron(dropdown)
 end
 
 -- A button lined up with another on the same row: its height the other's and its right edge T.SPACE.tight left of
--- the other's left edge; anything that is not a pair of frames is skipped.
+-- the other's left edge; anything that is not a pair of frames is skipped, and a height the client hides is not copied
+-- (SetHeight refuses a secret from addon code).
 function GW.AlignBeside(button, other)
   if type(button) ~= "table" or type(other) ~= "table" or not button.SetHeight or not other.GetHeight then return end
-  button:SetHeight(other:GetHeight())
+  local height = ns.PlainNumber(other:GetHeight())
+  if height then button:SetHeight(height) end
   button:ClearAllPoints()
   button:SetPoint("RIGHT", other, "LEFT", -T.SPACE.tight, 0)
 end
@@ -712,7 +719,7 @@ function GW.TextRegions(frame, names, role, token)
     if type(_G[name]) == "string" then texts[_G[name]] = true end
   end
   for _, region in ipairs({ frame:GetRegions() }) do
-    if region.SetFont and region.GetText and texts[region:GetText()] then T.Text(region, role, token) end
+    if region.SetFont and region.GetText and texts[ns.PlainText(region:GetText()) or false] then T.Text(region, role, token) end
   end
 end
 
@@ -767,7 +774,7 @@ end
 
 -- The row's selected look following a mark the game shows on the selected row (a Selection texture): lit while the mark is shown.
 function GW.FollowMark(row, mark)
-  T.SelectRow(row, type(mark) == "table" and type(mark.IsShown) == "function" and mark:IsShown() == true)
+  T.SelectRow(row, type(mark) == "table" and type(mark.IsShown) == "function" and ns.IsTrue(mark:IsShown()))
 end
 
 -- The row's selected look following the game's method `method` (SetChecked, SetSelected): each time the game calls it
@@ -807,7 +814,7 @@ end
 function GW.SpaceCaption(button, direction)
   local left = direction == "left"
   for _, region in ipairs({ button:GetRegions() }) do
-    if region.GetText and GW.IsPagerCaption(region:GetText()) then
+    if region.GetText and GW.IsPagerCaption(ns.PlainText(region:GetText())) then
       region:ClearAllPoints()
       region:SetPoint(left and "LEFT" or "RIGHT", button, left and "RIGHT" or "LEFT", left and T.SPACE.gap or -T.SPACE.gap, 0)
     end
@@ -1169,7 +1176,7 @@ do
   -- own colour may be the red a destroy popup left on this reused frame), else the colour from before the paint.
   -- The numeric T.ColorRGB drops the danger token, so a theme refresh doesn't paint it red again.
   local function unpaint(button, label)
-    if not (vgDanger[button] and button:IsEnabled()) then return end
+    if not (vgDanger[button] and ns.IsTrue(button:IsEnabled())) then return end
     local font = button:GetNormalFontObject()
     local c = font and { font:GetTextColor() } or vgDanger[button]
     vgDanger[button] = nil
@@ -1181,7 +1188,7 @@ do
   local function paintConfirm(button)
     local popup, label = vgConfirmOf[button], button:GetFontString()
     if not (popup and label) then return end
-    if not (GW.DANGER_POPUPS[popup.which] and button:IsEnabled()) then return unpaint(button, label) end
+    if not (GW.DANGER_POPUPS[popup.which] and ns.IsTrue(button:IsEnabled())) then return unpaint(button, label) end
     vgDanger[button] = vgDanger[button] or { label:GetTextColor() }
     T.Color(label, "bad")
   end
@@ -1534,7 +1541,7 @@ local function skinRecipeRow(row)
   if type(row) ~= "table" or type(row.SetSelected) ~= "function" or not row.CreateTexture then return end
   T.Row(row, { fade = true })
   local overlay = row.SelectedOverlay
-  T.SelectRow(row, type(overlay) == "table" and overlay.IsShown and overlay:IsShown() or false)
+  T.SelectRow(row, type(overlay) == "table" and overlay.IsShown and ns.IsTrue(overlay:IsShown()) or false)
   GW.HookAfter(row, "SetSelected", function(_, selected) T.SelectRow(row, selected and true or false) end)
 end
 
@@ -1738,8 +1745,8 @@ GW.ACH_KEEP = { "Check", "PlusMinus" }
 function GW.SkinSection(fs)
   if type(fs) ~= "table" or not fs.SetFont then return end
   T.Text(fs, "section", "text2")
-  local text = fs.GetText and fs:GetText()
-  if type(text) == "string" then T.SetText(fs, text) end
+  local text = fs.GetText and ns.PlainText(fs:GetText())
+  if text then T.SetText(fs, text) end
 end
 
 -- A list area: its dark tile, watermark and gold border faded for an inset. The border is a frame of its own over
@@ -1910,7 +1917,8 @@ GW.BLACK_TEXT = 0.3
 local function isBlackText(text)
   if type(text) ~= "table" or not text.GetTextColor then return false end
   local r, g, b = text:GetTextColor()
-  return type(r) == "number" and type(g) == "number" and type(b) == "number" and r + g + b < GW.BLACK_TEXT
+  r, g, b = ns.PlainNumber(r), ns.PlainNumber(g), ns.PlainNumber(b)
+  return r ~= nil and g ~= nil and b ~= nil and r + g + b < GW.BLACK_TEXT
 end
 
 -- The texts under key of each item in list (the objectives' criteria and meta achievements) that the game made black
@@ -2008,7 +2016,7 @@ end
 local function lightObjectives()
   local lines = GW.Part(_G.QuestInfoObjectivesFrame, "Objectives")
   for _, fs in ipairs(lines or {}) do
-    if fs:IsShown() and inDressedWindow(fs) then T.Color(fs, objectiveDone(fs) and "muted" or "text") end
+    if ns.IsTrue(fs:IsShown()) and inDressedWindow(fs) then T.Color(fs, objectiveDone(fs) and "muted" or "text") end
   end
 end
 
@@ -2072,7 +2080,7 @@ end
 -- has no one colour T.Color could remember).
 local function relightItemText()
   local frame = _G.ItemTextFrame
-  if type(frame) == "table" and frame:IsShown() then GW.LightItemText() end
+  if type(frame) == "table" and ns.IsTrue(frame:IsShown()) then GW.LightItemText() end
 end
 
 -- Keeps quest and gossip text readable: the game recolors it for parchment as
@@ -2492,7 +2500,7 @@ end
 
 -- Every gear slot on the character pane, while it's open.
 function GW.PaintAllDurability()
-  if not (_G.CharacterFrame and _G.CharacterFrame:IsShown()) then return end
+  if not (_G.CharacterFrame and ns.IsTrue(_G.CharacterFrame:IsShown())) then return end
   for _, slot in ipairs(GW.SLOTS) do
     local b = _G["Character" .. slot .. "Slot"]
     if type(b) == "table" and b.GetID then GW.PaintDurability(b) end

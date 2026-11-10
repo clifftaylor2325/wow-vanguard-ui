@@ -243,7 +243,7 @@ local function watchWarnings(deaths)
   local f = _G.RaidWarningFrame
   if type(f) ~= "table" or type(f.GetSortedMessages) ~= "function" or type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(f, "AddMessage", ns.Guard("hook AddMessage", GA.OnWarning))
-  if deaths then f:HookScript("OnEvent", GA.OnWarningEvent) end
+  if deaths then f:HookScript("OnEvent", ns.Guard("hook raid warning event", GA.OnWarningEvent)) end
 end
 
 -- Rares nearby -----------------------------------------------------------------------------------
@@ -370,10 +370,8 @@ end
 
 -- Shows or clears the low-health ring: each piece in the client's color for your health (clear above the threshold).
 local function paintLow(ring, color, on)
-  for _, tex in ipairs(ring) do
-    tex:SetShown(on)
-    if on then tex:SetVertexColor(color:GetRGBA()) end
-  end
+  for _, part in ipairs(ring) do part:SetShown(on) end
+  if on then T.CueColor(ring, color:GetRGBA()) end
   T.LoopCue(ring, "slow", on)
 end
 

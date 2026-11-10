@@ -106,7 +106,7 @@ end
 -- An item listing as { unit price, quantity, whole = its buyout (it's bought as one) }; nil when
 -- it's yours (or the client hides whether), has no buyout, or hides a number.
 local function itemRow(r)
-  local buyout, qty, mine = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity), r.containsOwnerItem
+  local buyout, qty, mine = AH.Buyout(r.buyoutAmount), ns.PlainNumber(r.quantity), r.containsOwnerItem
   if ns.IsSecret(mine) or mine or not (buyout and qty) or qty < 1 then return nil end
   return { unit = math.floor(buyout / qty), qty = qty, whole = buyout }
 end

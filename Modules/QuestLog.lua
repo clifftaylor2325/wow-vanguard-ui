@@ -144,7 +144,13 @@ end
 -- offering it, and a secret answer counts as no.
 function QL.CanAbandon(id)
   local answer = questLog("CanAbandonQuest", id)
-  return answer ~= false and not ns.IsSecret(answer)
+  return not ns.IsSecret(answer) and answer ~= false
+end
+
+-- Selects a quest in the game's log unless it is selected already: every render asks, and each Set would be one more
+-- thing the client may answer with a log update.
+local function selectInGame(id)
+  if ns.PlainNumber(questLog("GetSelectedQuest")) ~= id then questLog("SetSelectedQuest", id) end
 end
 
 -- The chosen quest's details: { id, title, level, text, objectives, rewards, money, watched, shareable, abandonable,
@@ -154,7 +160,7 @@ function QL.Details(id)
   local index = ns.PlainNumber(questLog("GetLogIndexForQuestID", id))
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
-  questLog("SetSelectedQuest", id)
+  selectInGame(id)
   local text = ns.CallIf(_G, "GetQuestLogQuestText")
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
     rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
@@ -197,11 +203,13 @@ local function abandonItems()
   return #names > 0 and table.concat(names, ", ") or nil
 end
 
--- Picks a quest to abandon (the client's SetAbandonQuest) and returns the items it destroys, or nil.
-local function pickToAbandon(id)
+-- Has the game take this very quest as the one to abandon, by its id: false when the log no longer has it or the game
+-- picked another (the row on screen can be a frame behind the log, and the next quest slides into a gone one's place).
+local function takeForAbandon(id)
+  if not ns.PlainNumber(questLog("GetLogIndexForQuestID", id)) then return false end
   questLog("SetSelectedQuest", id)
   questLog("SetAbandonQuest")
-  return abandonItems()
+  return ns.PlainNumber(questLog("GetAbandonQuest")) == id
 end
 
 -- Abandons the chosen quest, through the game's own confirmation (the one naming the items it destroys,
@@ -209,7 +217,8 @@ end
 -- question of Vanguard's.
 function QL.Abandon(d)
   if QL.MarkedCount() > 0 then return QL.AbandonMarked() end
-  local title, items = ns.QuestParts.Plain(d.title), pickToAbandon(d.id)
+  if not takeForAbandon(d.id) then return QL.Refresh() end
+  local title, items = ns.QuestParts.Plain(d.title), abandonItems()
   if items then return ns.CallIf(_G, "StaticPopup_Show", "ABANDON_QUEST_WITH_ITEMS", title, items) end
   ns.CallIf(_G, "StaticPopup_Show", "ABANDON_QUEST", title)
 end
@@ -228,14 +237,27 @@ function QL.MarkedCount()
   return #QL.MarkedQuests()
 end
 
+-- Forgets the marks of quests the log no longer has (abandoned or turned in elsewhere), so a quest taken again
+-- later does not come back marked.
+function QL.ForgetGoneMarks()
+  local held = {}
+  for _, e in ipairs(allQuests()) do held[e.id] = true end
+  for id in pairs(QL.marked) do
+    if not held[id] then QL.marked[id] = nil end
+  end
+end
+
+-- A quest left the log: its mark goes with it, whether or not the log window is open.
+local function forgetMark(_, questID)
+  local id = ns.PlainNumber(questID)
+  if id then QL.marked[id] = nil end
+end
+
 -- Abandons one marked quest if it is still in the log and the game took it as the quest to abandon
 -- (AbandonQuest names no quest, so a quest gone from the log must never fall through to the one still
 -- selected); whether it did.
 local function abandonOne(id)
-  if not ns.PlainNumber(questLog("GetLogIndexForQuestID", id)) then return false end
-  questLog("SetSelectedQuest", id)
-  questLog("SetAbandonQuest")
-  if ns.PlainNumber(questLog("GetAbandonQuest")) ~= id then return false end
+  if not takeForAbandon(id) then return false end
   questLog("AbandonQuest")
   return true
 end
@@ -254,7 +276,7 @@ end
 
 -- A marked quest's line in the abandon question: its title, and the items abandoning it destroys.
 local function markedLine(e)
-  local title, items = ns.QuestParts.Plain(e.title), pickToAbandon(e.id)
+  local title, items = ns.QuestParts.Plain(e.title), takeForAbandon(e.id) and abandonItems() or nil
   return items and ns.Format(L["{quest} (destroys {items})"], { quest = title, items = items }) or title
 end
 
@@ -365,6 +387,7 @@ local function watchEvents(scope)
   for _, event in ipairs({ "QUEST_LOG_UPDATE", "QUEST_WATCH_LIST_CHANGED", "GROUP_ROSTER_UPDATE", "GET_ITEM_INFO_RECEIVED" }) do
     scope:On(event, refreshSoon)
   end
+  scope:On("QUEST_REMOVED", forgetMark)
 end
 
 -- The module switched off (Core/Modules.lua): the quest log key goes back to the game's own (the override binding is

@@ -466,6 +466,24 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
   addon.update(0);
   const cd = addon.eval("return Vanguard_Bar1Button1.cooldown.__cooldown");
   expect(cd[0] === 5 && cd[1] === 2, "a cooldown given as a table uses its start and duration").toBeTruthy();
+  // Red when out of range turned on after a login with it off: polling starts then (no reload), and stops when off.
+  const off = loggedIn(ACTIONS_ENV + `
+    C_ActionBar = nil
+    __rangeAsks = 0
+    IsActionInRange = function() __rangeAsks = __rangeAsks + 1 return nil end`, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { rangeTint = false } } }" });
+  // How many range questions the bars asked since the last call.
+  const asks = () => off.eval("local n = __rangeAsks __rangeAsks = 0 return n");
+  asks();
+  off.update(0.25);
+  expect(asks(), "off at login: no polling").toBe(0);
+  setSharedOption(off, "Red when out of range", "true");
+  asks();
+  off.update(0.25);
+  expect(asks() > 0, "turned on: the buttons are polled at once, without a reload").toBe(true);
+  setSharedOption(off, "Red when out of range", "false");
+  asks();
+  off.update(0.25);
+  expect(asks(), "turned off again: polling stops").toBe(0);
 });
 
 it("a dropped spell named by GetSpellInfo", () => {
@@ -923,6 +941,39 @@ it("bar backing: a flat panel under each bar's buttons on Classic look or when a
   expect(backing(on)[0], "Always shows it on the default theme").toBe(true);
 });
 
+// The shown bar backings as { bar, l, b, r, t } (screen rects, to a tenth of a unit).
+const shownBackings = (addon) => Object.values(addon.eval(`local out = {}
+  local function at(v) return math.floor(v * 10 + 0.5) / 10 end
+  for n = 1, 8 do
+    local f = _G["Vanguard_Bar" .. n] and _G["Vanguard_Bar" .. n].vgBacking
+    if f and f:IsVisible() then out[#out + 1] = { bar = n, l = at(f:GetLeft()), b = at(f:GetBottom()), r = at(f:GetRight()), t = at(f:GetTop()) } end
+  end
+  return out`) || {});
+
+// Bar n's screen rect, as shownBackings gives a backing's.
+const barRect = (addon, n) => addon.eval(`local f = Vanguard_Bar${n} local function at(v) return math.floor(v * 10 + 0.5) / 10 end
+  return { l = at(f:GetLeft()), b = at(f:GetBottom()), r = at(f:GetRight()), t = at(f:GetTop()) }`);
+
+it("bar backing: the touching bars of the bottom stack share one plinth under Shield, no plate over another", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const plates = shownBackings(addon);
+  const [top, bottom] = [barRect(addon, 1), barRect(addon, 3)];
+  expect(plates.map((p) => p.bar), "one plinth, on the top bar, for the three stacked bars").toEqual([1]);
+  expect(plates[0], "it reaches the pad past bar 1's top and bar 3's bottom").toEqual({ bar: 1, l: top.l - 4, b: bottom.b - 4, r: top.r + 4, t: top.t + 4 });
+});
+
+it("bar backing: a stacked bar dragged away keeps a plate of its own, and no two plates overlap", () => {
+  const addon = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { positions = { bar2 = { point = "CENTER", relPoint = "CENTER", x = 0, y = 200 } } } }' });
+  const plates = shownBackings(addon);
+  expect(plates.map((p) => p.bar), "bar 2 left the stack, so bars 1 and 3 no longer touch").toEqual([1, 2, 3]);
+  const pairs = plates.flatMap((a, i) => plates.slice(i + 1).map((c) => [a.bar, c.bar, overlaps(a, c)]));
+  expect(pairs.filter((p) => p[2]), "no plate overlaps another").toEqual([]);
+  addon.eval('ns.ResetMovers("bar2")');
+  expect(shownBackings(addon).map((p) => p.bar), "reset into the stack, it joins the plinth again at once").toEqual([1]);
+  setBarOption(addon, 2, "Visibility", '"mouseover"');
+  expect(shownBackings(addon).map((p) => p.bar), "a bar that fades on its own keeps its own plate").toEqual([1, 2, 3]);
+});
+
 it("hotkey text stays on one line inside the button, right-aligned", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const hk = addon.eval(`local h = Vanguard_Bar1Button1.hotkey
@@ -1020,12 +1071,22 @@ it("A3-2 bars: a burst of usable, cooldown and state events repaints each button
 it("A3-2 bars: a macro's name shows along the bottom of its button, live with Macro names", () => {
   const addon = loggedIn(ACTIONS_ENV + `
     __actions[1].macro = "TEST-ONLY Burst" __actions[3].macro = { __secret = true } __actions[2].macro = "TEST-ONLY Potion"
+    -- While __falseIsSecret is on, a false is a hidden value: the harness's secrets are tables (always true), so this is
+    -- how a case sees a truth test (\`x and name or ""\`) misread a hidden name the client would raise on.
+    local plain = issecretvalue
+    __falseIsSecret = false
+    issecretvalue = function(v) return (__falseIsSecret and v == false) or plain(v) end
     C_ActionBar.UsesActionText = function(slot) return slot ~= 2 end
-    C_ActionBar.GetActionText = function(slot) return (__actions[slot] or {}).macro end`);
+    C_ActionBar.GetActionText = function(slot) if __falseIsSecret then return false end return (__actions[slot] or {}).macro end`);
   // Bar 1 button n's macro name text.
   const name = (n) => addon.eval(`return Vanguard_Bar1Button${n}.macroName:GetText()`);
   expect([name(1), name(2), name(4)], "a macro's name; none where the game prints none (a potion's count); none on an empty slot").toEqual(["TEST-ONLY Burst", "", ""]);
   expect(addon.eval("return Vanguard_Bar1Button3.macroName:GetText().__secret"), "a hidden name goes to the label as it is").toBe(true);
+  addon.eval("__falseIsSecret = true");
+  addon.fire("UPDATE_MACROS");
+  expect(addon.eval("local text = Vanguard_Bar1Button1.macroName:GetText() __falseIsSecret = false return text == false"),
+    "a hidden name is handed on, never truth-tested (a false hidden value is not read as no name)").toBe(true);
+  addon.fire("UPDATE_MACROS");
   expect(addon.eval("local t = Vanguard_Bar1Button1.macroName return { t.__points.BOTTOMLEFT.rel == Vanguard_Bar1Button1, t.__points.BOTTOMRIGHT.rel == Vanguard_Bar1Button1, t.__noWrap }"),
     "one line pinned to both bottom corners, so a long name is cut at the button's edge").toEqual([true, true, true]);
   addon.eval('__actions[1].macro = "TEST-ONLY Renamed"');

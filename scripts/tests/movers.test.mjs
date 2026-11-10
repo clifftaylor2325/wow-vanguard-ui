@@ -1,7 +1,7 @@
 // movers: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { TOOLS_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { TOOLS_ENV, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 it("movers", () => {
   const addon = loggedIn(`
@@ -575,4 +575,31 @@ it("Reset all positions also forgets the saved spot of a frame whose module is s
   addon.eval('ns.Settings("positions").box = { point = "TOP", relPoint = "TOP", x = 1, y = 1 }');
   expect(addon.eval('return ns.ResetMovers("all") == #ns.MoverList()'), "the count stays the frames registered this session").toBe(true);
   expect(spots(), "reset all forgets the switched-off module's spot too").toEqual([false, false]);
+});
+
+it("an opacity set on a mover whose alpha the client hides: applied over a full alpha, with no error", () => {
+  const addon = loggedIn(BOX);
+  addon.eval("__box.GetAlpha = function() return __wfgWorld.secret(1) end");
+  expect(addon.eval('return { pcall(ns.SetMoverAlpha, "box", 0.5) }'), "set without an error").toEqual([true]);
+  addon.eval("__box.GetAlpha = nil");
+  expect(addon.eval("return __box:GetAlpha()"), "the hidden alpha read as full: the frame at its opacity").toBe(0.5);
+});
+
+it("a HUD layout change places every frame and tells every listener, though one listener fails", () => {
+  expectErrors(/^HUD layout changed: eval:\d+: TEST-ONLY listener$/);
+  const addon = loggedIn('__told = 0 ns.OnLayoutChanged(function() error("TEST-ONLY listener") end) ns.OnLayoutChanged(function() __told = __told + 1 end)');
+  addon.eval('ns.SetHudLayout("standards")');
+  expect(addon.eval("return __told"), "the listener after the failing one heard").toBe(1);
+});
+
+it("a screen change moves every unsaved frame to its spot, though one frame fails to move", () => {
+  expectErrors(/^reanchor box: eval:\d+: TEST-ONLY anchor$/);
+  const addon = loggedIn(BOX + `
+    __box2 = CreateFrame("Frame", nil, UIParent) __box2:SetSize(50, 20)
+    ns.Mover(__box2, "box2", "TEST-ONLY box 2", { "TOPLEFT", "TOPLEFT", 10, -10 })`);
+  addon.eval(`__box.ClearAllPoints = function() error("TEST-ONLY anchor") end
+    __moved = 0 local set = __box2.SetPoint __box2.SetPoint = function(...) __moved = __moved + 1 return set(...) end`);
+  addon.eval("__wfgStub.setScreen(1000, 700)");
+  addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(1);
+  expect(addon.eval("return __moved > 0"), "the frame after the failing one was placed again").toBe(true);
 });

@@ -24,7 +24,7 @@ const CUES_ENV = `
     return g
   end
   local base = __wfgStub.methods.CreateAnimationGroup
-  __wfgStub.methods.CreateAnimationGroup = function(self) if self.__kind == "Texture" then return fakeGroup(self) end return base and base(self) end
+  __wfgStub.methods.CreateAnimationGroup = function(self) if self.__kind == "Texture" or self.__kind == "Frame" then return fakeGroup(self) end return base and base(self) end
   function __endCues() for _, g in ipairs(__played) do if g.playing and g.loop ~= "REPEAT" then g.playing = false g.scripts.OnFinished() end end __played = {} end
 `;
 const ENV = UNITS_ENV + ACTIONS_ENV + CUES_ENV;
@@ -103,10 +103,51 @@ it("state cues: a cooldown ending flashes the button once, only after a real coo
   expect(playing(addon).length, "a client with no answer: none").toBe(0);
 });
 
+// A cue ring's drawn pieces round a unit frame, the ring shown: each as { tex, l, b, r, t } in pixels out from the
+// frame's own rect (l and b grow leftward and downward), the texture's name without its folder.
+const cuePieces = (addon, key, name) => asList(addon.eval(`local f = ns.GetModule("UnitFrames").frames.${key}
+  local ring, px, out = ns.Theme.CueRing(f, "${name}"), ns.Theme.Pixel(f), {}
+  local function at(v) return math.floor(v / px + 0.5) end
+  for _, t in ipairs({ ring[1]:GetRegions() }) do
+    local tex = tostring(t:GetTexture()):match("([^\\\\/]+)$")
+    if t:IsShown() then out[#out + 1] = { tex = tex, l = at(f:GetLeft() - t:GetLeft()), b = at(f:GetBottom() - t:GetBottom()), r = at(t:GetRight() - f:GetRight()), t = at(t:GetTop() - f:GetTop()) } end
+  end
+  return out`));
+
+it("state cues: under Shield the player frame's cue rings follow its pointed plate, a pixel out, not its bounding box", () => {
+  const addon = loggedIn(ENV);
+  for (const name of ["edge", "low"]) {
+    const pieces = cuePieces(addon, "player", name);
+    const points = pieces.filter((p) => p.tex.startsWith("PointLine"));
+    expect(points.length, `${name}: a line piece on each of the point's two cuts`).toBe(2);
+    expect(pieces.every((p) => p.tex.startsWith("PointLine") || p.l < 0 || p.r < 0 || p.b <= 1), `${name}: no straight piece down the pointed left side`).toBe(true);
+    expect(pieces.every((p) => Math.max(p.l, p.b, p.r, p.t) === 1), `${name}: every piece reaches one pixel out past the plate`).toBe(true);
+  }
+});
+
+it("state cues: under Hairline the cue ring is the frame's square outline a pixel out, and follows a look change", () => {
+  const addon = loggedIn(ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { hudLook = "hairline" } } } }' });
+  const square = cuePieces(addon, "player", "low");
+  expect([square.length, square.every((p) => p.tex !== null && !p.tex.startsWith("PointLine"))], "four straight edges, no corner piece").toEqual([4, true]);
+  addon.eval('ns.Theme.Settings().hudLook = "shield" ns.Theme.Refresh()');
+  expect(cuePieces(addon, "player", "low").filter((p) => p.tex.startsWith("PointLine")).length, "Shield again: the ring takes the point at once").toBe(2);
+});
+
+it("state cues: the low-health breath runs on the ring's holder, never on the pieces whose colour carries the curve's opacity", () => {
+  const addon = loggedIn(ENV);
+  addon.world.setUnit("player", { hp: 100, maxhp: 100 });
+  const state = addon.eval(`local ring = ns.Theme.CueRing(ns.GetModule("UnitFrames").frames.player, "low")
+    local kinds, clear = {}, true
+    for _, g in ipairs(__played) do if g.playing and g.loop == "REPEAT" then kinds[g.tex.__kind] = true end end
+    for _, t in ipairs({ ring[1]:GetRegions() }) do local _, _, _, a = t:GetVertexColor() clear = clear and a == 0 end
+    return { frame = kinds.Frame == true, texture = kinds.Texture == true, clear = clear }`);
+  expect(state, "at full health: the holder breathes (an alpha animation writes the alpha it plays on), its pieces stay clear").toEqual({ frame: true, texture: false, clear: true });
+});
+
 it("state cues: low health pulses the player frame's edge below the threshold, through the client's curve, and not while dead", () => {
   const addon = loggedIn(ENV);
   // The low-health ring's first piece as [shown, alpha].
-  const ring = () => addon.eval("local r = ns.Theme.CueRing(ns.GetModule('UnitFrames').frames.player, 'low') local _, _, _, a = r[1]:GetVertexColor() return { r[1]:IsShown(), a }");
+  const ring = () => addon.eval("local r = ns.Theme.CueRing(ns.GetModule('UnitFrames').frames.player, 'low') local _, _, _, a = (r[1]:GetRegions()):GetVertexColor() return { r[1]:IsShown(), a }");
   // The player at v of 100 health.
   const hp = (v) => addon.world.setUnit("player", { hp: v, maxhp: 100 });
   hp(100);
@@ -128,4 +169,23 @@ it("state cues: low health pulses the player frame's edge below the threshold, t
   addon.eval("ns.Theme.Refresh()");
   expect(ring()[0], "with the switch off the ring stays hidden").toBe(false);
   setCombat(addon, false);
+});
+
+it("hunt bars: a global cooldown never flashes a button as ready, whichever comes first: its end's read or the sweep's end", () => {
+  const addon = loggedIn(ENV + "GetActionInfo = function(slot) if slot == 2 then return 'spell', 424242 end end C_ActionBar = { GetActionCooldown = function() return __info end }");
+  // The client's answer for button 2, read as the coalesced repaint reads it; the sweep's own end (OnCooldownDone).
+  const read = (info) => addon.eval(`__info = ${info} ns.GetModule("ActionBars").UpdateButton(Vanguard_Bar1Button2)`);
+  const done = () => addon.eval("__played = {} local c = Vanguard_Bar1Button2.cooldown c:GetScript('OnCooldownDone')(c)");
+  const flashes = () => playing(addon).length;
+  const GCD = "{ isActive = true, isOnGCD = true, startTime = 100, duration = 1.5 }";
+  const REAL = "{ isActive = true, isOnGCD = false, startTime = 100, duration = 30 }";
+  const IDLE = "{ isActive = false, isOnGCD = false, startTime = 0, duration = 0 }";
+  read(GCD); read(IDLE); done();
+  expect(flashes(), "the global cooldown, its end read before the sweep ends: no flash").toBe(0);
+  read(GCD); done(); read(IDLE);
+  expect(flashes(), "the sweep ending first: no flash").toBe(0);
+  read(REAL); read(IDLE); done();
+  expect(flashes(), "a real cooldown, its end read first: one flash").toBe(1);
+  read(REAL); done();
+  expect(flashes(), "a real cooldown ending before the read: one flash").toBe(1);
 });

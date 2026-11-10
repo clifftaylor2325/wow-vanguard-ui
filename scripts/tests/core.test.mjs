@@ -207,6 +207,8 @@ it("slash", () => {
   addon.slash("status");
   expect(chatHas(addon, /profile Default/), "/vg status shows the profile").toBeTruthy();
   addon.slash("profile Raid");
+  expect(addon.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }"), "a new name asks before it is made: nothing staged yet").toEqual(["Default"]);
+  addon.click("Vanguard_Question.confirm");
   expect(addon.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }"), "/vg profile stages this character's switch until the reload").toEqual(["Default", "Raid"]);
   addon.clearChat();
   addon.slash("bogus");

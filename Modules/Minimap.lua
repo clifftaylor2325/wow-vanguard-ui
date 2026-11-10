@@ -394,9 +394,11 @@ end
 MM.MAP_LEVEL = 2
 
 -- The map's box follows the game's own minimap switch (Toggle Minimap, the new-player tutorial): hidden with the
--- map, back with it.
+-- map, back with it. A shown state the client hides (secret) is never handed to the box: it keeps what it shows.
 local function syncShown()
-  MM.holder:SetShown(Minimap:IsShown())
+  local shown = Minimap:IsShown()
+  if ns.IsSecret(shown) then return end
+  MM.holder:SetShown(shown)
 end
 
 -- Mirrors the map's shown state onto the box now and whenever the game shows or hides the map. A hook on the

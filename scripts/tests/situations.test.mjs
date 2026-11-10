@@ -604,3 +604,13 @@ it("situations: a module switched on while an override names it comes up with it
   raid(addon, false);
   expect(addon.eval("return { ns.Settings('positions').xpbar == nil, ns.Settings('DataBars').visibility }")).toEqual(own);
 });
+
+it("situations: a call made with the profile's own values that raises still gets the override's values put back", () => {
+  const addon = situated(saved());
+  raid(addon);
+  const raised = addon.eval("local ok, err = pcall(ns.OwnValues, function() error('TEST-ONLY export failed', 0) end) return { ok, err }");
+  expect(raised, "the error reaches the caller as it was").toEqual([false, "TEST-ONLY export failed"]);
+  expect([savedSpot(addon).point, dps(addon)], "the override's spot and setting are back in the tables").toEqual(["TOP", true]);
+  raid(addon, false);
+  expect([savedSpot(addon), dps(addon)], "leaving the raid still puts the base back").toEqual([null, false]);
+});

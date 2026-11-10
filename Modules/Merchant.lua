@@ -35,19 +35,21 @@ end
 
 -- Junk --------------------------------------------------------------------------------------
 
--- True for a gray item worth something at the vendor.
-local function isJunk(bag, slot)
+-- True for a gray item worth something at the vendor that is free to sell: not locked (on the cursor, in a
+-- trade) and not part of an equipment set (worn: the set's item IDs, MC.SetItems).
+local function isJunk(bag, slot, worn)
   local info = C_Container.GetContainerItemInfo(bag, slot)
-  if type(info) ~= "table" or ns.IsSecret(info.quality) or ns.IsSecret(info.hasNoValue) then return false end
-  return info.quality == 0 and not info.hasNoValue
+  if type(info) ~= "table" or ns.IsSecret(info.quality) or ns.IsSecret(info.hasNoValue) or ns.IsSecret(info.isLocked) then return false end
+  if info.quality ~= 0 or info.hasNoValue or info.isLocked then return false end
+  return not worn[ns.PlainNumber(info.itemID) or 0]
 end
 
 -- Your junk as { bag, slot } pairs.
 function MC.Junk()
-  local out = {}
+  local out, worn = {}, MC.SetItems()
   for bag = 0, MC.LAST_BAG do
     for slot = 1, ns.PlainNumber(C_Container.GetContainerNumSlots(bag)) or 0 do
-      if isJunk(bag, slot) then out[#out + 1] = { bag, slot } end
+      if isJunk(bag, slot, worn) then out[#out + 1] = { bag, slot } end
     end
   end
   return out

@@ -265,8 +265,8 @@ function CR.Hook()
   if CR.hooked or not form or type(form.Init) ~= "function" then return end
   CR.hooked = true
   hooksecurefunc(form, "Init", ns.Guard("hook Init", function(_, info) CR.recipe = type(info) == "table" and ns.PlainNumber(info.recipeID) or nil CR.Paint() end))
-  form:HookScript("OnShow", function() CR.Paint() end)
-  form:HookScript("OnHide", function() if CR.frame then CR.frame:Hide() end end)
+  form:HookScript("OnShow", ns.Guard("hook form OnShow", function() CR.Paint() end))
+  form:HookScript("OnHide", ns.Guard("hook form OnHide", function() if CR.frame then CR.frame:Hide() end end))
 end
 
 -- The window's part of the game loads: the form is hooked while the Auction helper is on (the Craft queue hooks it too).

@@ -19,10 +19,22 @@ PR.KEYS = { player = true, target = true, party1 = true, party2 = true, party3 =
 -- The unit events that change what is on its way or soaked (health events repaint through UF.UpdateHealth).
 PR.EVENTS = { "UNIT_HEAL_PREDICTION", "UNIT_ABSORB_AMOUNT_CHANGED" }
 
+-- The frame the heal and shield bars sit in: the health bar's size, cutting them at its edges (heals past a full bar
+-- stop there). Only these bars are cut: the health bar itself clips nothing, since the client clips every descendant
+-- and the frame's text layer is one (the name row over a bare frame, the portrait, the marks and the raid icon all
+-- draw past the bar).
+local function clipFrame(f)
+  local clip = CreateFrame("Frame", nil, f.health)
+  clip:SetAllPoints()
+  clip:SetClipsChildren(true)
+  clip:SetFrameLevel(f.health:GetFrameLevel() + 1)
+  return clip
+end
+
 -- A bar over the health bar that starts where `after` ends, in a texture: the bar texture for heals, tiled stripes for
--- shields. One level over the fill, under the frame's text layer.
+-- shields. In the clip frame, one level over the fill, under the frame's text layer.
 local function overlay(f, after, color, texture)
-  local bar = CreateFrame("StatusBar", nil, f.health)
+  local bar = CreateFrame("StatusBar", nil, f.healClip)
   bar:SetStatusBarTexture(texture)
   T.BarColor(bar, color)
   bar:SetFrameLevel(f.health:GetFrameLevel() + 1)
@@ -54,7 +66,7 @@ end
 
 -- Gives a frame its heal bar, its shield bar and their events, once.
 local function add(f)
-  f.health:SetClipsChildren(true)
+  f.healClip = clipFrame(f)
   f.heal = overlay(f, f.health, "heal", T.BarTexture())
   f.shield = overlay(f, f.heal, "shield", T.Texture("Stripes"))
   f.shield:GetStatusBarTexture():SetHorizTile(true)

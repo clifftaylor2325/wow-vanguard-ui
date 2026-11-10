@@ -126,10 +126,17 @@ function GW.TabButtons(frame)
   return list
 end
 
--- A side tab's checked state now, or nil when it can't be told (a CheckButton knows; a LargeSideTab shows it).
+-- A flag the game gives as a plain boolean, or nil when the client hides it (it can't be told then).
+local function plainFlag(value)
+  if ns.IsSecret(value) then return nil end
+  return value == true
+end
+
+-- A side tab's checked state now, or nil when it can't be told (a CheckButton knows; a LargeSideTab shows it; the client
+-- may hide either).
 local function checkedNow(tab)
-  if type(tab.GetChecked) == "function" then return tab:GetChecked() == true end
-  if type(tab.SelectedTexture) == "table" then return tab.SelectedTexture:IsShown() end
+  if type(tab.GetChecked) == "function" then return plainFlag(tab:GetChecked()) end
+  if type(tab.SelectedTexture) == "table" then return plainFlag(tab.SelectedTexture:IsShown()) end
 end
 
 -- The game checks a side tab as the window loads, before T.Tab hooks SetChecked: says the state once
@@ -155,9 +162,10 @@ local function outside(point, relPoint, near, far, out, offset)
 end
 
 -- One anchor of a tab (as GetPoint gives it) moved out when it is set against an outer edge of its window, as the
--- arguments SetPoint takes; nothing when the anchor is not on the window.
+-- arguments SetPoint takes; nothing when the anchor is not on the window, or the client hides its offsets.
 local function movedOut(window, pad, point, rel, relPoint, x, y)
-  if rel ~= window or type(point) ~= "string" or type(relPoint) ~= "string" then return end
+  x, y = ns.PlainNumber(x), ns.PlainNumber(y)
+  if rel ~= window or type(point) ~= "string" or type(relPoint) ~= "string" or not (x and y) then return end
   x = outside(point, relPoint, "RIGHT", "LEFT", -pad, outside(point, relPoint, "LEFT", "RIGHT", pad, x))
   y = outside(point, relPoint, "BOTTOM", "TOP", pad, outside(point, relPoint, "TOP", "BOTTOM", -pad, y))
   return point, rel, relPoint, x, y
@@ -199,8 +207,8 @@ end
 -- centre alone, the point the game sets again on each selection. The game sizes the tab from its icon as it adds
 -- it, so this runs after every AddTab; the spellbook re-adds its tabs and lays them out each time it opens.
 local function fitIconTab(button)
-  local icon, side = button.Icon, button:GetHeight()
-  if not button.tabIcon or type(icon) ~= "table" or not icon.SetTexCoord or side <= 0 then return end
+  local icon, side = button.Icon, ns.PlainNumber(button:GetHeight())
+  if not button.tabIcon or type(icon) ~= "table" or not icon.SetTexCoord or not side or side <= 0 then return end
   unmaskIcon(button)
   local inner = T.PixelRound(button, side - 2 * T.Pixel(button))
   button:SetWidth(side)
@@ -407,7 +415,7 @@ local function followHighlight(row)
   if row.elementData == nil then return end
   local atWar = type(row.IsAtWar) == "function" and row:IsAtWar()
   if not atWar then row.Content.BackgroundHighlight:SetAlpha(0) end
-  if type(row.IsSelected) == "function" then T.SelectRow(row, row:IsSelected() == true) end
+  if type(row.IsSelected) == "function" then T.SelectRow(row, ns.IsTrue(row:IsSelected())) end
 end
 
 -- A list entry (a faction, a statistic, a sub-header) as a theme row: the game's rounded highlight pieces made flat
@@ -528,7 +536,7 @@ local function paneRows(pane)
   local rows, content = {}, pane.Content
   if type(content) ~= "table" or not content.GetChildren then return rows end
   for _, row in ipairs({ content:GetChildren() }) do
-    if row.IsShown and row:IsShown() then rows[#rows + 1] = row end
+    if row.IsShown and ns.IsTrue(row:IsShown()) then rows[#rows + 1] = row end
   end
   return rows
 end
@@ -546,7 +554,7 @@ local function iconSlot(row)
   local icon = row.Icon
   if vgSideSlot[row] or type(row.IconSlot) ~= "table" or type(icon) ~= "table" or not row.GetFrameLevel then return end
   local slot = CreateFrame("Frame", nil, row)
-  slot:SetFrameLevel(math.max(row:GetFrameLevel() - 1, 0))
+  slot:SetFrameLevel(math.max((ns.PlainNumber(row:GetFrameLevel()) or 1) - 1, 0))
   slot:SetAllPoints(icon)
   T.Slot(slot, { quiet = true })
   vgSideSlot[row] = slot
@@ -758,7 +766,7 @@ local function markSidebarTabs()
   local sideFrame = _G.GetPaperDollSideBarFrame
   for i, name in ipairs(GW.SIDEBAR_TABS) do
     local pane = type(sideFrame) == "function" and sideFrame(i)
-    if type(pane) == "table" and T.RowParts(_G[name]) then T.SelectRow(_G[name], pane:IsShown() == true) end
+    if type(pane) == "table" and T.RowParts(_G[name]) then T.SelectRow(_G[name], ns.IsTrue(pane:IsShown())) end
   end
 end
 

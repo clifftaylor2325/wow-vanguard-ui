@@ -18,6 +18,7 @@ function nextSession(addon, extra = "") {
 it("a session: what you set in one login comes back in the next", () => {
   const staged = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
   staged.slash("profile TEST-ONLY Alt");
+  staged.click("Vanguard_Question.confirm");
   // The switch applies at the next load, so the settings below are made on that profile.
   const first = nextSession(staged, UNITS_ENV + RAID_ENV + CLICK_LUA);
   first.slash("accent arcane");
