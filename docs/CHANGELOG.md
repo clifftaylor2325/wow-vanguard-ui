@@ -6,18 +6,29 @@ Vanguard is made by one person. Every change runs through a headless copy of the
 
 ## 0.9.5
 
-<!-- SMOKE steps 1.3a, 2.1i, 2.1j, 2.1k, 2.1l, 2.1m, 6.2c, 7.1b, 7.2l, 7.2m, 7.2n, 7.5b, 7.5c, 7.5d, 8.3c, 8.4e, 8.4f, 8.6d, 8.6e, 8.6f, 8.6g, 12.1a, 33.217a, 33.471, 33.472, 33.473, 33.474, 33.475 -->
+<!-- SMOKE steps 1.3a, 2.1i, 2.1j, 2.1k, 2.1l, 2.1m, 6.2c, 7.1b, 7.2l, 7.2m, 7.2n, 7.2o, 7.2p, 7.2q, 7.2r, 7.5b, 7.5c, 7.5d, 8.3c, 8.4e, 8.4f, 8.6d, 8.6e, 8.6f, 8.6g, 10.3c, 10.3d, 10.4d, 10.9b, 12.1a, 18.2a, 20.3, 30.3, 33.217a, 33.471, 33.472, 33.473, 33.474, 33.475, 33.476, 33.477, 33.478, 33.479, 33.480, 33.481, 33.482, 33.483, 33.484 -->
 
-The Shield look and the keystone, sliders for nameplates and target auras, more on tooltips, a class-colour accent, and fixes across quests, group play and raid frames.
+The Shield look and its siblings, deeper unit frames, nameplate, aura and action bar settings that apply at once, a keystone and two layouts, and fixes across profiles, chat, quests and the auction house.
 
-### The Shield look (0.9.5)
+### HUD looks and layouts (0.9.5)
 
 - Your frames point away from you as shields, bars filling toward you. HUD look: Plain keeps flat frames.
+- Three more looks: Hairline (bare frames, a name row over thin bars), Rimmed (rounded and rimmed) and Tabs (names on tabs).
+- Two layouts under General, Where the frames stand: The keep (a wall at the foot of the screen, on screens about 1100 units wide or wider) and Standards (tall banners either side of your character). Setup's layout step offers both. Picking a layout puts the frames it places at its spots.
 - The keystone: the crest on a rail between your frame and your target's, swords in a fight.
 - A ring round the keystone can sweep with the global cooldown. *(off)*
 - A thin line runs inside your frame's rim and your target's, brighter in a fight.
-- Under Shield the cast bars and action bar backing get cut corners.
+- Under Shield the cast bars and action bar backing get cut corners, and action bars that touch share one backing.
 - Setup's Comfort step offers Shield HUD look, recommended.
+
+### Unit frames (0.9.5)
+
+- Width and height sliders for the player, target, target of target, focus, pet and party frames, applied without a reload.
+- Health as gains Both and Missing, and Show power as adds a small power line. Where the game hides a number, Both shows the percent alone and Missing the amount without its minus sign.
+- Incoming heal and shield bars on your frame, your target's and the party's, and a row of status marks (leader, tank or healer, resting, PvP).
+- Portraits for you, your target and your focus under Hairline, Rimmed and Tabs, as a 2D portrait or a class icon.
+- A focus target frame stands beside your focus while it has a target.
+- The pet's health text keeps clear of its mood glyph, and a warlock's soul shards show at the level-up to 10 without a reload.
 
 ### Nameplates and target auras (0.9.5)
 
@@ -27,8 +38,16 @@ The Shield look and the keystone, sliders for nameplates and target auras, more 
 - A unit you can't attack can show just its name on its plate. *(off)*
 - Target and focus auras get sliders for icon size and counts, all applied without a reload.
 - Target's buffs shows All, Important or Yours.
+- Aura icons on nameplates get a one-pixel edge, not dark blocks, on plates the game hands over shrunk.
 - On WoW Forever an aura icon the game has closed to addons is left alone, so no "aura icon pixels" line in chat.
 - `/vg errors` keeps a quiet entry if the game still refuses an aura icon.
+
+### Action bars and motion (0.9.5)
+
+- Macro names, Key text and Button spacing apply without a reload; spacing waits for the end of a fight.
+- Auto-attack and Auto Shot buttons flash while the attack runs.
+- Your keys shows the function row and a number pad, and a layout choice (Automatic, QWERTZ, AZERTY).
+- State cues, one switch under General, Motion and sound: a brass pulse round your frame at the pull, a breathing ring on a proc button, a flash when a cooldown ends (none at the end of the global cooldown), and a vermilion ring at low health. The pulse and the ring are one-pixel outlines that follow your frame's shape. The cues follow Reduce motion.
 
 ### Tooltips (0.9.5)
 
@@ -48,29 +67,55 @@ The Shield look and the keystone, sliders for nameplates and target auras, more 
 - The game's own text, in windows Vanguard does not skin, takes the theme font's face.
 - The Modules page says so when its Show choice leaves nothing to list, with a Show all modules button.
 - A page's card fades in when you change pages.
+- Most texts that were still English now have translations in the ten other languages, as machine drafts.
 
 ### Quests (0.9.5)
 
+- Use the game's quest windows for now hands the quest and gossip windows back to the game at once (for the session, not saved), and Hold a key to open the game's windows hands one talk to it.
 - Zones folded in the game's quest log stay folded unless Vanguard needs them.
 - Pick the reward that sells for most leaves the choice to you when a reward is a gear upgrade.
 - The quest arrow and minimap spots hold their place in a fight, and are right again within a second of its end.
+- The game's quest tracker text stays hidden when the game brings its tracker back in a fight.
+- Abandon acts on the quest its row shows.
 
-### Setup and group play (0.9.5)
+### Chat, group board and town (0.9.5)
 
+- The chat filter's word lists and the group board's phrases come per language. A language with no filter lists shows no Gold selling, Boosting or Recruiting switch, with a note; your own words and the repeat rule work in every language.
+- The Filtered chat tab is found by its window number, so renaming it no longer makes a second one.
+- An empty saved keyword no longer makes the chat filter catch every line, and a damaged entry in a saved list no longer stops Chat watch or the waypoint list.
+- The group board scrolls, so every post is reachable.
+- The craft queue gets a panel beside the profession window, with a row per queued recipe.
+- The talent plan can be put in an order (Order... on the planner's bar), and Spend planned buys in it. It counts only purchases the game confirmed.
+- Return all never tries a mail the game deletes instead of returning, Keep stocked never asks for more than one purchase allows, and Train all does nothing at a pet trainer.
+- Selling junk skips locked items and items in an equipment set, and a remembered bank is no longer replaced by an empty answer.
+- At the auction house, Confirm posts only the item the sale was set up for, a buyout of 0 is no buyout, and a second click on Cancel doesn't repeat it.
+
+### Setup, profiles and group play (0.9.5)
+
+- `/vg profile <name>` matches the name in any case and asks before making a new profile; `/vg profile copy` and `delete` ask first, as the Profiles page does.
+- Undo setup restores the profile it backed up, and a backup never overwrites a profile it did not make.
 - On a first run, setup no longer ticks Filter chat or Key setup at your next login for you.
 - Key setup opens by itself at your next login only if you ticked it.
 - A stranger you whispered in the last ten minutes may invite you.
-- Gear upgrades give no upgrade line or arrow to an off-hand item while you wear a two-hander alone.
+- Gear upgrades give no upgrade line or arrow to an off-hand item while you wear a two-hander alone, and an arrow for an item the game has not told Vanguard about yet appears when its data arrives.
 - Merchant helpers off no longer drops the HUD text font, now its own module.
+
+### Moved and retired (0.9.5)
+
+- Pet stable and the Legacy helper are gone, with `/vg pets` and `/vg legacy`; the Legacy probe is `/vg probe legacy`. The two boss timer spots are movers under `/vg unlock` and `/vg dock` is gone. The officer roster is on the Raid frames page (Show or hide the roster) and works with the officer loot tools off. A profile's settings for the retired modules are dropped at load.
 
 ### Speed and safety (0.9.5)
 
-- Raid tiles listen for heals, shields, threat and aura changes of their own member only.
+- Raid tiles listen for heals, shields, threat and aura changes of their own member only, and their width and height are sliders that resize the tiles without a reload.
+- The minimap's coordinates switch applies at once.
 - Combo points ignore other powers' ticks, and the cooldown gaps row redraws once a frame.
 - In a fight the game menu's Vanguard button and the quest log button leave the game's window to close after the fight.
 - Your buff row is no longer moved in a fight when a weapon enchant comes or goes; it settles when the fight ends.
 - The character pane's item levels read the item's detailed level, as its tooltip does.
 - A character's saved-settings stamp no longer moves without its account note, which could bring a needless restore offer.
+- Game windows, the fight recap, the damage meter and the minimap read values the game hides from addons more carefully, and one frame, nameplate, chat window or options row that fails no longer leaves the rest unpainted or the options window quiet.
+- A dropdown opened in a fight puts no click catcher over the screen, and Exit without saving always locks the frames.
+- A chat report under the game's chat restriction says why it could not be sent.
 - `/vg status` ends with a count of game windows dressed, left as the game's, replaced, off or not made yet.
 - `/vg status windows` names each window under its state.
 
