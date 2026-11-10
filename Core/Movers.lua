@@ -477,12 +477,13 @@ function ns.EditModeClosed(edit)
   note:Hide()
 end
 
--- The game's frames Vanguard hides or replaces (set): Edit Mode gets no handle for them.
+-- The game's frames Vanguard hides or replaces: true while it does (Edit Mode gets no handle for them), false once a
+-- module that stopped gave the frame back (ns.EditModeRestored; the hook stays, and does nothing).
 local replaced = {}
 
--- Hides a replaced frame's Edit Mode handle (runs after the game highlights the frame).
+-- Hides a replaced frame's Edit Mode handle (runs after the game highlights the frame), while it is replaced.
 local function hideHandle(frame)
-  if type(frame.Selection) == "table" then frame.Selection:Hide() end
+  if replaced[frame] and type(frame.Selection) == "table" then frame.Selection:Hide() end
 end
 
 -- Notes that Vanguard hides or replaces one of the game's frames, so Edit Mode shows no
@@ -493,9 +494,17 @@ end
 function ns.EditModeReplaced(frame)
   if type(frame) ~= "table" or replaced[frame] or type(frame.HighlightSystem) ~= "function" then return end
   if type(hooksecurefunc) ~= "function" then return end
+  local hookedBefore = replaced[frame] ~= nil
   replaced[frame] = true
-  hooksecurefunc(frame, "HighlightSystem", ns.Guard("hook HighlightSystem", hideHandle))
+  if not hookedBefore then hooksecurefunc(frame, "HighlightSystem", ns.Guard("hook HighlightSystem", hideHandle)) end
   hideHandle(frame)
+end
+
+-- Gives one of the game's frames its Edit Mode handle back (the module that hid it stopped): the next highlight shows
+-- it as the game draws it. A frame never replaced is left alone.
+---@param frame table
+function ns.EditModeRestored(frame)
+  if replaced[frame] then replaced[frame] = false end
 end
 
 -- While the game's Edit Mode window is open, pins pause and Vanguard's handles

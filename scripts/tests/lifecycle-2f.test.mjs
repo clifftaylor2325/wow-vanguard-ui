@@ -67,3 +67,17 @@ it("lifecycle: Quiet and HudText say what stays until a reload when they stop", 
   addon.eval('ns.SetModuleEnabled("Quiet", false) ns.SetModuleEnabled("HudText", false)');
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
+
+it("lifecycle: DataBars switched off gives the game's XP bar its Edit Mode handle back, and on again takes it", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) });
+  addon.eval(`local f = CreateFrame("Frame", "StatusTrackingBarManager", UIParent) f.Selection = CreateFrame("Frame", nil, f)
+    function f:HighlightSystem() self.Selection:Show() end`);
+  addon.login();
+  // Whether the bar's Edit Mode handle shows after Edit Mode highlights it.
+  const handle = () => addon.eval("StatusTrackingBarManager:HighlightSystem() return StatusTrackingBarManager.Selection:IsShown()");
+  expect(handle(), "Vanguard's bars on: no handle").toBe(false);
+  addon.eval('ns.SetModuleEnabled("DataBars", false)');
+  expect(handle(), "off: the game's handle").toBe(true);
+  addon.eval('ns.SetModuleEnabled("DataBars", true)');
+  expect(handle(), "on again: none").toBe(false);
+});

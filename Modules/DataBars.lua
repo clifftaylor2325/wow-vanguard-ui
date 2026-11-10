@@ -597,6 +597,7 @@ function DB.Release(name)
   local f = _G[name]
   if type(f) ~= "table" or not vgSuppressed[f] then return end
   vgSuppressed[f] = false
+  ns.EditModeRestored(f)
   ns.OutOfCombat(function() f:Show() end, f)
 end
 
