@@ -21,7 +21,7 @@ local L = ns.L
 local A = ns.Auras
 local T, W = ns.Theme, ns.Widgets
 
-local CG = ns.Module("CooldownGaps", { defaults = { on = false, items = "", spells = "", tracked = false } })
+local CG = ns.Module("CooldownGaps", { defaults = { on = false, items = "", spells = "", tracked = false }, live = true })
 
 CG.SIZE, CG.GAP, CG.MAX, CG.PET_SLOTS, CG.TOTEM_SLOTS = 24, 3, 20, 10, 4
 -- The trinket slots (INVSLOT_TRINKET1, INVSLOT_TRINKET2).
@@ -237,8 +237,10 @@ local function place(n)
   end
 end
 
--- Repaints the row: one cell per entry the client could read.
+-- Repaints the row: one cell per entry the client could read. A repaint queued before the module stopped (or while its
+-- row is off) does nothing: CG.settings is set only while the row runs.
 function CG.Refresh()
+  if not CG.settings then return end
   local n = 0
   for _, entry in ipairs(CG.Entries(CG.settings)) do
     if n < CG.MAX and paint(cellAt(n + 1), entry) then n = n + 1 end
@@ -347,17 +349,36 @@ function CG.Rebuild()
   CG.Refresh()
 end
 
--- Module entry point (Core/Modules.lua): off until switched on.
-function CG.Enable(settings)
-  if not settings.on then return end
-  CG.settings = settings
-  CG.holder = CreateFrame("Frame", "Vanguard_CooldownGaps", UIParent)
-  CG.holder:SetSize(6 * (CG.SIZE + CG.GAP), CG.SIZE)
-  ns.Mover(CG.holder, "cdm_gaps", L["Cooldown gaps"], { "BOTTOM", "BOTTOM", 0, 306 })
-  for _, event in ipairs(CG.EVENTS) do ns.On(event, refreshSoon) end
-  for _, event in ipairs(CG.REREAD) do ns.On(event, CG.Rebuild) end
-  ns.OnUnit("PLAYER_SPECIALIZATION_CHANGED", CG.Rebuild, "player")
-  CG.Rebuild()
+-- The row's holder, made once a session (its cells hang from it and are made as needed), put in the scope's hands
+-- with its mover and shown.
+local function holder(scope)
+  if not CG.holder then
+    CG.holder = CreateFrame("Frame", "Vanguard_CooldownGaps", UIParent)
+    CG.holder:SetSize(6 * (CG.SIZE + CG.GAP), CG.SIZE)
+  end
+  scope:Mover(CG.holder, "cdm_gaps", L["Cooldown gaps"], { "BOTTOM", "BOTTOM", 0, 306 })
+  CG.holder:Show()
+end
+
+-- Module entry point (Core/Modules.lua): off until switched on. Its row's switch and the manager's-cooldowns switch
+-- build it again (O.RestartSetting); the Gaps card's list is built again to match.
+function CG.Enable(settings, scope)
+  CG.settings = nil
+  if settings.on then
+    CG.settings = settings
+    holder(scope)
+    for _, event in ipairs(CG.EVENTS) do scope:On(event, refreshSoon) end
+    for _, event in ipairs(CG.REREAD) do scope:On(event, CG.Rebuild) end
+    scope:OnUnit("PLAYER_SPECIALIZATION_CHANGED", CG.Rebuild, "player")
+    CG.Rebuild()
+  end
+  ns.Options.RebuildPage("cooldowns")
+end
+
+-- Switched off: the Gaps card, built from CG.settings, says the row is off (the scope hides the row itself).
+function CG.Disable()
+  CG.settings = nil
+  ns.Options.RebuildPage("cooldowns")
 end
 
 -- Options rows: the Cooldowns page's Gaps card ---------------------------------------------------

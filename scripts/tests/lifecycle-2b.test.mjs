@@ -126,3 +126,26 @@ it("lifecycle: the quest minimap's tickers keep the layer as owner after a resta
   addon.eval('local QM = ns.GetModule("QuestMinimap") ns.SetModuleEnabled("QuestMinimap", false) QM.spots = { 1 } QM.Read()');
   expect(addon.eval('return { #ns.GetModule("QuestMinimap").spots, Vanguard_QuestMinimap:IsShown() }')).toEqual([1, false]);
 });
+
+// CooldownGaps --------------------------------------------------------------------------------------------------
+
+const GAPS_ON = loginWith("\nVanguardDB.profiles.Default.CooldownGaps = { on = true }");
+
+lifecycleCases("CooldownGaps", GAPS_ON);
+
+it("lifecycle: the gaps row's own switch builds and takes it away at once, and the Gaps card follows", () => {
+  const addon = loginWith()();
+  // Whether the Gaps card says the row is off.
+  const card = () => addon.eval('return ns.GetModule("CooldownGaps").CardRows()[1][2] == ns.GetModule("CooldownGaps").OFF');
+  expect([addon.eval("return Vanguard_CooldownGaps == nil"), card()]).toEqual([true, true]);
+  addon.eval("local _, set = ns.Options.RestartSetting('CooldownGaps', 'on') set(true)");
+  expect([addon.eval("return Vanguard_CooldownGaps:IsShown()"), card()]).toEqual([true, false]);
+  addon.eval("local _, set = ns.Options.RestartSetting('CooldownGaps', 'on') set(false)");
+  expect([addon.eval("return Vanguard_CooldownGaps:IsShown()"), card()]).toEqual([false, true]);
+});
+
+it("lifecycle: the gaps row switched off with its module hides its row, says it is off, and ignores a repaint that was queued", () => {
+  const addon = GAPS_ON();
+  addon.eval('ns.GetModule("CooldownGaps").Refresh() ns.SetModuleEnabled("CooldownGaps", false) ns.GetModule("CooldownGaps").Refresh()');
+  expect(addon.eval('return { Vanguard_CooldownGaps:IsShown(), ns.GetModule("CooldownGaps").settings == nil }')).toEqual([false, true]);
+});
