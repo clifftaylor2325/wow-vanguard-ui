@@ -2908,7 +2908,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.53 Group threat panel on a narrow screen
 
-- Do: switch Group threat on (`/vg` -> Unit frames, then reload), join a group (or a raid of 25 or 40 and a hostile target), on a screen narrower than 1365 UI units (a 4:3 or 5:4 monitor, or a UI scale above about 1.07 on 1080p).
+- Do: switch Group threat on (`/vg` -> Unit frames; no reload), join a group (or a raid of 25 or 40 and a hostile target), on a screen narrower than 1365 UI units (a 4:3 or 5:4 monitor, or a UI scale above about 1.07 on 1080p).
 - Expect: the panel sits at the right, left of the minimap and under your buffs, clear of the raid grid; on a wider screen it is at the top left, as before. [Needs in-game check: the panel against the quest tracker and your buffs, and, on a 1365-wide screen with the "Like the game's" layout, whether it still covers the party tiles (it does not move there).]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_GroupThreat`.
 
@@ -5430,6 +5430,12 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 - Do: log in on WoW Forever with the same Vanguard folder and `/reload`. Open the character pane, the group finder, the professions window, the quest tracker, the bank and `/vg` → Situations; look at the player frame on a druid and a shaman.
 - Expect: nothing changed from 33: Situations shows its six situations, the dungeon card is the level-range one, the Modules page's Class bars row names shaman totems above the frame and druid mana in forms under it.
 - If it fails, paste: the `/vg report` block.
+
+### 34.16 Own-frame modules switch off and on without a reload (A4-2b)
+
+- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Group threat (and its row under Unit frames), Fight history (after a fight or two; `/vg fights` still lists them).
+- Expect: each goes at once, with nothing of its own left on screen (no panel, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. A switch made in a fight applies when the fight ends. [Needs in-game check.]
+- If it fails, paste: a screenshot and `/vg errors`.
 
 ## When you are done
 

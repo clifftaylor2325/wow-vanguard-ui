@@ -13,7 +13,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 local L = ns.L
 
-local GT = ns.Module("GroupThreat", { defaults = { show = false } })
+local GT = ns.Module("GroupThreat", { defaults = { show = false }, live = true })
 
 -- The panel's width, a line's height, its padding (a HUD card's, T.SPACE.gap), and most rows.
 GT.WIDTH, GT.ROW, GT.PAD, GT.MAX = 150, 16, T.SPACE.gap, 5
@@ -140,6 +140,7 @@ end
 
 -- Reads threat now and draws it; hides itself when threat is hidden, or there is no group or target.
 function GT.Update()
+  if not (GT.scope and GT.scope:Running()) then return end
   local rows = not GT.Hidden() and GT.CanShow() and GT.Rows()
   GT.Paint(rows or {})
 end
@@ -150,14 +151,20 @@ end
 GT.SPOT, GT.SPOT_NARROW, GT.NARROW = { "TOPLEFT", "TOPLEFT", 20, -186 }, { "TOPRIGHT", "TOPRIGHT", -206, -130 }, 1365
 GT.SPOT.narrow = { w = GT.NARROW, spot = GT.SPOT_NARROW }
 
--- The movable panel, hidden until there is something to show.
+-- The panel, hidden until there is something to show.
 local function build()
   local f = T.HudPanel(CreateFrame("Frame", "Vanguard_GroupThreat", UIParent))
   f:SetSize(GT.WIDTH, 2 * GT.PAD + GT.ROW)
   f.rows = {}
   f:Hide()
-  GT.panel = f
-  ns.Mover(f, "groupthreat", L["Group threat"], GT.SPOT)
+  return f
+end
+
+-- The movable panel, made once a session: a second Enable finds it and hands it to the new scope.
+local function panel(scope)
+  GT.panel = GT.panel or build()
+  scope:Mover(GT.panel, "groupthreat", L["Group threat"], GT.SPOT)
+  GT.panel:Hide()
 end
 
 -- A threat event came in: the next tick reads threat.
@@ -178,11 +185,13 @@ function GT.Soon()
   ns.Soon("group threat", GT.Update)
 end
 
--- Module entry point (Core/Modules.lua): built, and listening, only when switched on.
-function GT.Enable(settings)
+-- Module entry point (Core/Modules.lua): built, and listening, only when switched on. Everything goes through the
+-- scope, so switching the module or its panel row off needs no Disable. A draw still waiting for the next frame
+-- when it stops does nothing (GT.Update checks the scope).
+function GT.Enable(settings, scope)
   if not settings.show then return end
-  build()
-  for _, event in ipairs(GT.THREAT_EVENTS) do ns.On(event, GT.Dirty) end
-  for _, event in ipairs(GT.NOW_EVENTS) do ns.On(event, GT.Soon) end
-  ns.Every("group threat", GT.EVERY, GT.Tick)
+  panel(scope)
+  for _, event in ipairs(GT.THREAT_EVENTS) do scope:On(event, GT.Dirty) end
+  for _, event in ipairs(GT.NOW_EVENTS) do scope:On(event, GT.Soon) end
+  scope:Every("group threat", GT.EVERY, GT.Tick)
 end
