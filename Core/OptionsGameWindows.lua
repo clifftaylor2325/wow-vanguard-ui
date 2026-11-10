@@ -94,16 +94,29 @@ local function quietRows()
   return append(quietInviteRows(), quietScreenRows())
 end
 
--- Vendor memory: where items are sold, in their tooltips.
+-- Vendor memory: where items are sold, in their tooltips (the first stays in view on the folded Tooltips card).
 local function vendorRows()
   return {
-    check(L["Where an item is sold"], setting("VendorMemory", "tooltip")),
+    O.Essential(check(L["Where an item is sold"], setting("VendorMemory", "tooltip"))),
     check(L["Remember what merchants sell"], setting("VendorMemory", "remember")),
   }
 end
 
--- Tooltips on units: the border, who a unit targets, and what a player's tooltip adds. The card shows the first
--- three; the rest fold under More settings, as do the last item rows (the card would open on fourteen rows).
+-- Where a tooltip the game gives its default spot can sit.
+local TOOLTIP_SPOTS = { { "corner", L["corner (movable)"] }, { "cursor", L["at the cursor"] }, { "default", L["client default"] } }
+
+-- Tooltips: where each kind sits. Tooltip position is every tooltip that isn't a unit's.
+local function tooltipSpotRows()
+  return {
+    { "header", L["Tooltips"] },
+    O.Essential({ "cycle", L["Tooltip position"], TOOLTIP_SPOTS, setting("Tooltips", "anchor") }),
+    O.Essential({ "cycle", L["Unit tooltips in the world"], TOOLTIP_SPOTS, setting("Tooltips", "unitAnchor") }),
+    O.Essential({ "cycle", L["Unit tooltips on frames"], TOOLTIP_SPOTS, setting("Tooltips", "frameAnchor") }),
+  }
+end
+
+-- Tooltips on units: the border, who a unit targets, and what a player's tooltip adds. The card shows four of
+-- them; the rest fold under More settings, as do three of the item rows (the card would open on sixteen rows).
 local function tooltipUnitRows()
   return {
     O.Essential(check(L["Border in the unit's class color"], setting("Tooltips", "classBorder"))),
@@ -119,23 +132,17 @@ end
 -- Tooltips on items: the sell price, how many you have (and your other characters), IDs (spell and aura IDs go
 -- with the same switch), and where an item is sold.
 local function tooltipItemRows()
-  local rows = {
+  return append({
     O.Essential(check(L["Item sell price"], setting("Tooltips", "sellPrice"))),
     O.Essential(check(L["How many of an item you have"], setting("Tooltips", "itemCount"))),
-    O.Essential(check(L["Counts on your other characters"], setting("Inventory", "alts"))),
+    check(L["Counts on your other characters"], setting("Inventory", "alts")),
     check(L["IDs on item, spell and aura tooltips"], setting("Tooltips", "ids")),
-  }
-  for _, row in ipairs(vendorRows()) do rows[#rows + 1] = O.Essential(row) end
-  return rows
+  }, vendorRows())
 end
 
 -- Tooltips: where they sit and what they add.
 local function tooltipRows()
-  local rows = {
-    { "header", L["Tooltips"] },
-    O.Essential({ "cycle", L["Tooltip position"], { { "corner", L["corner (movable)"] }, { "cursor", L["at the cursor"] }, { "default", L["client default"] } }, setting("Tooltips", "anchor") }),
-  }
-  return append(append(rows, tooltipUnitRows()), tooltipItemRows())
+  return append(append(tooltipSpotRows(), tooltipUnitRows()), tooltipItemRows())
 end
 
 -- Your characters: level, money, rested XP and time played of each one remembered here (Modules/Inventory.lua).
