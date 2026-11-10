@@ -6,7 +6,7 @@
 import { expect, it } from "vitest";
 import {
   DEFAULTS, LABEL, QUEST_TICK_EVERY, RAID_SIZE, change, compareEvents, compareModules, countEvents, eventRows, formatCompare, formatResult,
-  isAddonFile, makeScript, moduleCounts, overBudget, overInstructions, readOptions, rng, stats,
+  BENCH_SAMPLE, benchSample, isAddonFile, makeScript, moduleCounts, overBudget, overInstructions, readOptions, rng, stats,
 } from "./lib/bench.mjs";
 
 // A small result as runBench makes it: two events, two modules and a harness file.
@@ -127,6 +127,8 @@ it("module counts: each file's own samples times 1000, in all and per event; fil
     OnUpdate: { files: { "Modules/RaidFrames.lua": { self: 2, incl: 2 } } },
   };
   expect(moduleCounts(byEvent)).toEqual({ "Modules/RaidFrames.lua": { self: 5000, byEvent: { UNIT_HEALTH: 3000, OnUpdate: 2000 } } });
+  expect(moduleCounts(byEvent, BENCH_SAMPLE), "at the bench's own period").toEqual({ "Modules/RaidFrames.lua": { self: 250, byEvent: { UNIT_HEALTH: 150, OnUpdate: 100 } } });
+  expect([benchSample({}), benchSample({ LUA_PROFILE: "1" })], "50 a sample in the bench's profiled repetition, the harness's 1000 under npm run profile").toEqual([50, 1000]);
   expect([isAddonFile("Modules/RaidFrames.lua"), isAddonFile("Core/DB.lua"), isAddonFile("Libs/LibStub/LibStub.lua"), isAddonFile("wow-stub.lua"), isAddonFile("eval")]).toEqual([true, true, true, false, false]);
 });
 
