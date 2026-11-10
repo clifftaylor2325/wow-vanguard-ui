@@ -390,3 +390,10 @@ it("chat watch: another module's alert waits out a fight too", () => {
   setCombat(addon, false);
   expect([rings(addon), toast(addon)[1]], "after it: rung and shown").toEqual([1, "TEST-ONLY price alert"]);
 });
+
+it("chat watch: a saved phrase list holding an empty or non-text entry still rings for the real phrase, without errors", () => {
+  const addon = loggedIn(WATCH_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { ChatWatch = { phrases = { 5, '', 'lfm' } } } }" });
+  say(addon, "CHANNEL", "LFM Deadmines need a healer", "Lightmend");
+  expect([rings(addon), toast(addon)[1]], "the real phrase rings").toEqual([1, "Lightmend"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

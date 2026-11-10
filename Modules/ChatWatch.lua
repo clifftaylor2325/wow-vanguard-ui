@@ -87,7 +87,7 @@ function CW.Match(text)
   if #CW.settings.phrases == 0 then return nil end
   local line = ns.GetModule("ChatExtras").Matchable(text)
   for _, phrase in ipairs(CW.settings.phrases) do
-    if holds(line, phrase) then return phrase end
+    if type(phrase) == "string" and holds(line, phrase) then return phrase end
   end
 end
 
