@@ -175,3 +175,17 @@ it("Merchant: switched off, it reads as off and a merchant opening does nothing;
   switchTo(addon, "Merchant", true);
   expect(open(), "repairs again").toBe(2);
 });
+
+lifecycleCases("TalentPlanner", login);
+
+it("TalentPlanner: switched off, it reads as off and plan mode ends, so /vg talents spends nothing; on again it is back", () => {
+  const addon = loggedIn("");
+  addon.eval('ns.GetModule("TalentPlanner").planning = true');
+  switchTo(addon, "TalentPlanner", false);
+  expect(addon.eval('local TP = ns.GetModule("TalentPlanner") return { TP.settings == nil, TP.planning }'), "off, not planning").toEqual([true, false]);
+  addon.chat();
+  addon.slash("talents spend");
+  expect(Array.from(addon.chat()).join("\n"), "the command says so").toMatch(/Talent planner is off/);
+  switchTo(addon, "TalentPlanner", true);
+  expect(addon.eval('return ns.GetModule("TalentPlanner").settings ~= nil'), "on again").toBe(true);
+});
