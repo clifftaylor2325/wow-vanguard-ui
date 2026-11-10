@@ -20,18 +20,18 @@ it("options: a setting that applies on reload wears a tag, not (reload) in its c
   expect(addon.eval("return Vanguard_Options.found:IsShown()"), "a link written with the old caption still finds the row").toBe(true);
 });
 
-it("options: a module's switch wears a Reload to apply tag, with the own-switch note after it", () => {
+it("options: a reload-only module's switch wears a Reload to apply tag; a live one has none, its own-switch note after its name", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("modules")');
-  const tagged = addon.eval(`${FIND("Chat history")} return { w ~= nil, w.tag and w.tag.__text, w.tag and w.tag:IsShown() }`);
-  expect(tagged, "the switch says it needs a reload").toEqual([true, "Reload to apply", true]);
-  const note = addon.eval(`${FIND("Chat history")} local p = w.ownSwitchBox.__points.LEFT return { p.rel == w.tag, p.relPoint }`);
-  expect(note, "the own-switch note sits after the tag, not over it").toEqual([true, "RIGHT"]);
-  const tip = addon.eval(`${FIND("Chat history")} w.__scripts.OnEnter(w) local t = GameTooltip.__lines[1] and GameTooltip.__lines[1].text w.__scripts.OnLeave(w) return t`);
+  const tagged = addon.eval(`${FIND("Unit frames")} return { w ~= nil, w.tag and w.tag.__text, w.tag and w.tag:IsShown() }`);
+  expect(tagged, "the reload-only switch says it needs a reload").toEqual([true, "Reload to apply", true]);
+  const tip = addon.eval(`${FIND("Unit frames")} w.__scripts.OnEnter(w) local t = GameTooltip.__lines[1] and GameTooltip.__lines[1].text w.__scripts.OnLeave(w) return t`);
   expect(tip, "hovering the switch says when it takes effect").toBe("Takes effect after /reload.");
-  const search = addon.eval(`local s = Vanguard_Options.search s:SetText("reload chat history") s:GetScript("OnTextChanged")(s)
+  const live = addon.eval(`${FIND("Chat history")} local p = w.ownSwitchBox.__points.LEFT return { w.tag == nil, p.rel == w.label, p.relPoint }`);
+  expect(live, "the live switch has no tag, and its own-switch note sits after its name").toEqual([true, true, "LEFT"]);
+  const search = addon.eval(`local s = Vanguard_Options.search s:SetText("reload unit frames") s:GetScript("OnTextChanged")(s)
     local out = {} for _, l in ipairs(Vanguard_Options.results.lines) do if l:IsShown() then out[#out + 1] = l.caption.__text .. "|" .. l.page.__text end end return out`);
-  expect(Object.values(search), "a search for reload finds the module's switch").toEqual(["Chat history|Modules"]);
+  expect(Object.values(search), "a search for reload finds the reload-only module's switch").toContain("Unit frames|Modules");
 });
 
 it("options: Reset this page asks, then puts back what changed on that page only", () => {
