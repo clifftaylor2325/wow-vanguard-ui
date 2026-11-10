@@ -135,6 +135,14 @@ it("Standards: your frame and your target's stand as 40 x 160 banners, health ri
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
 
+it("Standards: on a client without the percent curve a banner shows the health text setting's form instead", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)" + UNITS_ENV + CLICK_LUA, onLayout("standards"));
+  addon.eval("ns.GetModule('UnitFrames').UpdateHealth(Vanguard_player)");
+  const text = addon.eval("return { Vanguard_player.healthText:GetText(), ns.GetModule('UnitFrames').HealthText('player') }");
+  expect(text[0], "no percent to show").not.toMatch(/%$/);
+  expect(text, "the setting's own text (900 of 1000 health)").toEqual([text[1], text[1]]);
+});
+
 it("setup and options: The keep and Standards are layout choices in setup (your role's spots first, then the layout), another Centered layout clears them, and the General page cycles them", () => {
   const addon = loggedIn(WIDE + UNITS_ENV + CLICK_LUA, { firstRun: true });
   addon.eval('__click("The keep")');
