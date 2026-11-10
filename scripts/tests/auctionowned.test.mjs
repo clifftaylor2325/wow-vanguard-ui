@@ -164,6 +164,7 @@ it("a free cancel goes on the click; a paid one or one whose cost is hidden asks
   addon.fire("OWNED_AUCTIONS_UPDATED");
   addon.click(cancel);
   expect([restrictedLog(addon).map((c) => c[2]), cancelAsk(addon)[0]], "free: cancelled at once, no question").toEqual([[501], false]);
+  addon.advance(6);
   addon.eval("__wfgWorld.ah.cancelCost = 100");
   addon.click(cancel);
   expect([cancelAsk(addon), restrictedLog(addon).length], "paid: the question names the cost, nothing sent yet").toEqual([[true, "Cancel this auction? It costs 1s 0c."], 1]);
@@ -172,12 +173,27 @@ it("a free cancel goes on the click; a paid one or one whose cost is hidden asks
   addon.click(cancel);
   addon.click("Vanguard_Question.confirm");
   expect(restrictedLog(addon).map((c) => c[2]), "Yes: cancelled from that click").toEqual([501, 501]);
+  addon.advance(6);
   addon.eval("__wfgWorld.ah.cancelCost = __wfgWorld.secret(1)");
   addon.click(cancel);
   expect([cancelAsk(addon), restrictedLog(addon).length], "a hidden cost asks the other question").toEqual([[true, "Cancel this auction? The game would not say what it costs."], 2]);
   addon.eval("__wfgWorld.ah.noCancel[501] = true");
   addon.click("Vanguard_Question.confirm");
   expect(restrictedLog(addon).length, "the game no longer allows it by the time of Yes: nothing sent").toBe(2);
+});
+it("a second click on a row's Cancel neither sends nor asks again while the first is on its way", () => {
+  const addon = atAuctionHouse(BAGS + OWNED + "\n__wfgWorld.ah.cancelCost = 0");
+  const cancel = `${OWNED_CARD}.table.rows[1].cancel`;
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.click(cancel);
+  addon.click(cancel);
+  expect(restrictedLog(addon).map((c) => c[2]), "one cancel sent for two clicks").toEqual([501]);
+  addon.advance(6);
+  addon.eval("__wfgWorld.ah.cancelCost = 100");
+  addon.click(cancel);
+  addon.click("Vanguard_Question.confirm");
+  addon.click(cancel);
+  expect([cancelAsk(addon)[0], restrictedLog(addon).length], "a paid one: Yes sends it, the next click asks nothing").toEqual([false, 2]);
 });
 it("a random-suffix auction is undercut only by its own variant", () => {
   // An "of the ..." cloak (suffix) listed by someone else at a buyout.
