@@ -107,3 +107,84 @@ it("power text: sits under the health text, and mid-bar on a frame drawn bare", 
   addon.eval('ns.Theme.Settings().hudLook = "hairline" ns.Theme.Refresh()');
   expect(points(), "bare: the health text is in the name row, the power text mid-bar").toEqual([expect.stringMatching(/^(LEFT|RIGHT)$/), expect.stringMatching(/^(LEFT|RIGHT)$/)]);
 });
+
+// The unit environment with amounts on their way and soaked, the target's hidden (TEST-ONLY).
+const PREDICTION_ENV = UNITS_ENV + `
+  __units.player.incoming, __units.player.absorb = 200, 150
+  __units.target.incoming, __units.target.absorb = { __secret = true }, { __secret = true }
+  UnitGetIncomingHeals = function(unit) return __units[unit].incoming end
+  UnitGetTotalAbsorbs = function(unit) return __units[unit].absorb end
+`;
+
+// A frame's heal and shield bars: shown, value, maximum, the side they fill from, and whether the first is hidden or secret.
+const bars = (addon, key) => addon.eval(`local f = _G["Vanguard_${key}"]
+  local function v(x) if type(x) == "table" and x.__secret then return "secret" end return x end
+  return { f.heal:IsShown(), v(f.heal:GetValue()), v(select(2, f.heal:GetMinMaxValues())), f.shield:IsShown(), v(f.shield:GetValue()), f.heal.__reverse == f.health.__reverse }`);
+
+it("heal prediction and shields: bars on the player, target and party frames from the raid frames' calculator", () => {
+  const addon = loggedIn(PREDICTION_ENV, NO_RAID);
+  expect(bars(addon, "player"), "200 on its way and 150 soaked, against the health maximum").toEqual([true, 200, 1000, true, 150, true]);
+  expect(bars(addon, "target").slice(0, 5), "hidden amounts go to the bars whole").toEqual([true, "secret", "secret", true, "secret"]);
+  expect(addon.eval("return { Vanguard_pet.heal == nil, Vanguard_focus.heal == nil, Vanguard_party1.heal ~= nil }"), "not on the pet and focus frames").toEqual([true, true, true]);
+  addon.eval("__units.player.incoming = 300");
+  addon.fire("UNIT_HEAL_PREDICTION", "player");
+  expect(bars(addon, "player")[1], "its own event repaints").toBe(300);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("heal prediction and shields: each has a switch that applies at once, and the bars follow the fill's side", () => {
+  const addon = loggedIn(PREDICTION_ENV, NO_RAID);
+  addon.eval('local _, set = ns.Options.LiveMethod("UnitFrames", "healPrediction", "ApplyPrediction") set(false)');
+  expect(bars(addon, "player").slice(0, 5), "heals off: hidden and empty; the shield still shows").toEqual([false, 0, 1000, true, 150]);
+  addon.eval('local _, set = ns.Options.LiveMethod("UnitFrames", "absorbs", "ApplyPrediction") set(false)');
+  expect(bars(addon, "player")[3], "shields off").toBe(false);
+  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
+  expect(bars(addon, "target")[5] && bars(addon, "player")[5], "the Plain look: the bars fill the way the health does").toBe(true);
+});
+
+// The unit environment with the calls the status marks read (TEST-ONLY): you lead and rest, a party member tanks and is flagged.
+const STATUS_ENV = UNITS_ENV + `
+  __units.player.leader, __units.party1.role, __units.party1.pvp = true, "TANK", true
+  __rest = true
+  IsResting = function() return __rest end
+  UnitIsGroupLeader = function(unit) return __units[unit].leader == true end
+  UnitGroupRolesAssigned = function(unit) return __units[unit].role or "NONE" end
+  UnitIsPVP = function(unit) return __units[unit].pvp == true end
+`;
+
+// Which marks show on a frame, in the order they read: [leader, role, rest, pvp] as 1 or 0, and the first shown mark's anchor point.
+const marks = (addon, key) => addon.eval(`local row = _G["Vanguard_${key}"].status
+  local out = {} for i, n in ipairs({ "leader", "role", "rest", "pvp" }) do out[i] = row[n]:IsShown() and 1 or 0 end
+  out[5] = (row.leader:IsShown() and row.leader or row.role:IsShown() and row.role or row.rest):GetPoint() return out`);
+
+it("status marks: leader, role, resting and PvP over the frame's outer corner", () => {
+  const addon = loggedIn(STATUS_ENV, NO_RAID);
+  expect(marks(addon, "player").slice(0, 4), "you lead and rest; no role, not flagged").toEqual([1, 0, 1, 0]);
+  expect(marks(addon, "party1").slice(0, 4), "a tank, flagged, not leading, never resting").toEqual([0, 1, 0, 1]);
+  expect(marks(addon, "player")[4], "from the outer top corner of the player frame (its left)").toBe("BOTTOMLEFT");
+  addon.eval("__rest = false __units.player.leader = false");
+  addon.fire("PLAYER_UPDATE_RESTING");
+  expect(marks(addon, "player").slice(0, 4), "the events repaint").toEqual([0, 0, 0, 0]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("status marks: the switch takes them away at once, and a hidden answer shows nothing", () => {
+  const addon = loggedIn(STATUS_ENV, NO_RAID);
+  addon.eval('UnitIsGroupLeader = function() return { __secret = true } end');
+  addon.fire("PARTY_LEADER_CHANGED");
+  expect(marks(addon, "player").slice(0, 4), "a hidden leader answer is no mark").toEqual([0, 0, 1, 0]);
+  addon.eval('local _, set = ns.Options.LiveMethod("UnitFrames", "statusMarks", "ApplyStatus") set(false)');
+  expect(marks(addon, "player").slice(0, 4), "switched off").toEqual([0, 0, 0, 0]);
+});
+
+it("status marks: they follow a name tab, and wait for the fight to end to move", () => {
+  const addon = loggedIn(STATUS_ENV, NO_RAID);
+  addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
+  expect(addon.eval('return select(2, Vanguard_player.status.leader:GetPoint()) == Vanguard_player.tab'), "over the tab under the Tabs look").toBe(true);
+  setCombat(addon, true);
+  addon.eval("__rest = false __units.player.leader = false");
+  addon.fire("PLAYER_UPDATE_RESTING");
+  expect(marks(addon, "player").slice(0, 4), "the marks go at once even in a fight").toEqual([0, 0, 0, 0]);
+  setCombat(addon, false);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

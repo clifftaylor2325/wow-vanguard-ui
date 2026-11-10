@@ -137,6 +137,17 @@ local function powerTextRows()
   }
 end
 
+-- The Heals and shields card: the bars on the player, target and party frames and the status row (leader, role, resting,
+-- PvP) over their corner, each applied at once.
+local function predictionRows()
+  return {
+    { "header", L["Heals, shields and status marks"] },
+    check(L["Incoming heals on your frames"], liveMethod("UnitFrames", "healPrediction", "ApplyPrediction")),
+    check(L["Shields on your frames"], liveMethod("UnitFrames", "absorbs", "ApplyPrediction")),
+    check(L["Leader, role, resting and PvP marks"], liveMethod("UnitFrames", "statusMarks", "ApplyStatus")),
+  }
+end
+
 -- Unit frames, and the class bars under the player frame.
 local function unitFrameRows()
   return append({
@@ -148,7 +159,7 @@ local function unitFrameRows()
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
     check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
     O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
-  }, append(powerTextRows(), sizeRows()))
+  }, append(append(powerTextRows(), predictionRows()), sizeRows()))
 end
 
 -- Cast bars, and the target and focus auras' card (its rows are Modules/FrameAuras.lua's).

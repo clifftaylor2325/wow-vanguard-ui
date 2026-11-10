@@ -115,6 +115,8 @@ Core/Visibility.lua
 Modules/UnitFrames.lua
 Modules/CastBars.lua
 Modules/Keystone.lua
+Modules/UnitPrediction.lua
+Modules/UnitStatus.lua
 Modules/FrameAuras.lua
 Modules/PlayerAuras.lua
 Modules/ComboPoints.lua

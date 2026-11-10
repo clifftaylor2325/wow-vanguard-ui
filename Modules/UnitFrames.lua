@@ -17,7 +17,7 @@ local UF = ns.Module("UnitFrames", {
   defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true,
     -- Each frame's size (units), on the Unit frames page: the sizes the frames had before they were adjustable.
     playerWidth = 240, playerHeight = 36, targetWidth = 240, targettargetWidth = 120, targettargetHeight = 24,
-    focusWidth = 160, focusHeight = 30, petWidth = 120, petHeight = 24, partyWidth = 160, partyHeight = 32, calm = false, deck = false, powerFormat = "none", targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
+    focusWidth = 160, focusHeight = 30, petWidth = 120, petHeight = 24, partyWidth = 160, partyHeight = 32, calm = false, deck = false, powerFormat = "none", healPrediction = true, absorbs = true, statusMarks = true, targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
     -- WoW Forever players read levels and health percent on every frame (as its own UI does),
     -- so a profile that hasn't chosen yet starts that way there.
     showLevel = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.showLevel), healthFormat = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.healthFormat),
@@ -351,9 +351,9 @@ local function createBar(parent)
   return bar
 end
 
--- A font string in a text role on a unit frame's health bar.
+-- A font string in a text role on a unit frame's health bar (drawn on its layer, over the heal and shield bars).
 local function createText(f, role, point, x)
-  local fs = T.Text(f.health:CreateFontString(nil, "OVERLAY"), role)
+  local fs = T.Text(f.layer:CreateFontString(nil, "OVERLAY"), role)
   fs:SetPoint(point, f.health, point, x, 0)
   return fs
 end
@@ -392,6 +392,13 @@ end
 -- reports).
 local function healthHeight(f, h)
   return h - barsTop(f) - UF.settings.powerHeight - 2 * barInset(f)
+end
+
+-- The width of a frame's health bar (units), from the width the frame was given.
+---@param f table a unit frame
+---@return number
+function UF.BarWidth(f)
+  return f.vgWidth - 2 * barInset(f)
 end
 
 -- Lays out the bars inside a frame: health on top (under the name row on a bare frame), power along the bottom,
@@ -447,7 +454,7 @@ UF.CLASS_MARK_ROOM = 10
 -- A small diamond (the Vanguard mark) over the top corner at the frame's inner end: elite, rare or boss. The health
 -- text ends short of it (UF.PlaceParts places both).
 local function addClassMark(f)
-  f.class = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
+  f.class = T.Snap(f.layer:CreateTexture(nil, "OVERLAY"))
   f.class:SetTexture(T.Texture("LogoLeft"))
   f.class:SetSize(14, 14)
   f.class:Hide()
@@ -455,7 +462,7 @@ end
 
 -- A small tag mark beside the classification diamond (UF.TAG_LOOK: whose tag the target carries).
 local function addTagMark(f)
-  f.tag = T.Snap(f.health:CreateTexture(nil, "OVERLAY"))
+  f.tag = T.Snap(f.layer:CreateTexture(nil, "OVERLAY"))
   f.tag:SetSize(12, 12)
   f.tag:Hide()
 end
@@ -469,7 +476,7 @@ UF.COMBAT = { keys = { player = true, target = true }, icon = 14, color = "bad" 
 -- The crossed swords over the player frame's inner top corner (hidden until a fight). The health text ends short of
 -- them, fight or not, so it never jumps (UF.PlaceParts places both).
 local function addCombatMark(f)
-  f.combat = T.Snap(f.health:CreateTexture(nil, "OVERLAY"), "icon")
+  f.combat = T.Snap(f.layer:CreateTexture(nil, "OVERLAY"), "icon")
   f.combat:SetTexture(T.Icon("Combat"))
   f.combat:SetSize(UF.COMBAT.icon, UF.COMBAT.icon)
   T.Tint(f.combat, UF.COMBAT.color)
@@ -496,7 +503,7 @@ end
 
 -- The raid target icon over the frame's top edge (hidden until UF.UpdateRaidIcon paints it; UF.PlaceParts places it).
 local function addRaidIcon(f)
-  f.raidIcon = f.health:CreateTexture(nil, "OVERLAY")
+  f.raidIcon = f.layer:CreateTexture(nil, "OVERLAY")
   f.raidIcon:SetSize(UF.RAID_ICON, UF.RAID_ICON)
   f.raidIcon:Hide()
 end
@@ -526,9 +533,21 @@ local function shieldBars(f)
   T.ShieldMask(f, { f.power:GetStatusBarTexture(), f.power.bg }, "BOTTOM")
 end
 
+-- How far above the health bar its text layer stands: over the heal and shield bars (Modules/UnitPrediction.lua) that
+-- sit just over the fill, so the name, the numbers and the marks are never covered.
+UF.LAYER_LEVEL = 5
+
+-- The layer over the health bar that carries the texts and the marks, the size of the bar.
+local function addLayer(f)
+  f.layer = CreateFrame("Frame", nil, f.health)
+  f.layer:SetAllPoints()
+  f.layer:SetFrameLevel(f.health:GetFrameLevel() + UF.LAYER_LEVEL)
+end
+
 -- The health and power bars, laid out and cut to the shield corners.
 local function addBars(f, settings)
   f.health, f.power = createBar(f), createBar(f)
+  addLayer(f)
   layoutBars(f, settings.powerHeight)
   shieldBars(f)
 end
@@ -579,6 +598,7 @@ local function fillsFromRight(f)
   if decked(f) then return f.key == "target" end
   return pointedSide(f) == "LEFT"
 end
+UF.FillsFromRight = fillsFromRight
 
 -- An offset `x` pointing in from `side` (positive from the left edge, negative from the right).
 local function inward(side, x)
@@ -721,6 +741,14 @@ local function placeCrown(f)
   crown:SetPoint("TOP", tabbed(f) and f.tab or f, "TOP")
 end
 
+-- What the status row stands on: the frame's name tab while it wears one, else the frame.
+---@param f table a unit frame
+---@return table
+function UF.StatusHome(f)
+  if tabbed(f) then return f.tab end
+  return f
+end
+
 -- The frame the rows over a unit frame anchor to (the combo points, the totems, the target's buffs and threat text):
 -- the frame's own span, its top raised to the tab's while the frame wears one. Made the first time a module asks.
 ---@param f table a unit frame
@@ -780,6 +808,12 @@ local function placeTexts(f, side)
   placeName(f, side)
 end
 
+-- Lays out the heal and shield bars and the status row on the frames that carry them (they follow the fill's side and the tab).
+local function placeExtras(f)
+  if f.heal then UF.Prediction.Place(f) end
+  if f.status then UF.Status.Place(f) end
+end
+
 -- Lays a frame's parts out for the HUD look: the hairline (the bars step in past it), the bars (under the name row on
 -- a bare frame), the texts' roles, the tab, the name reading from the side its shield points from or its tab sits over
 -- (the left otherwise), the health text and marks at the other end, the raid icon, and the bars filling toward your character.
@@ -793,6 +827,7 @@ function UF.PlaceParts(f)
   placeMarks(f, side)
   placeRaidIcon(f, side)
   f.health:SetReverseFill(fillsFromRight(f)) f.power:SetReverseFill(fillsFromRight(f))
+  placeExtras(f)
 end
 
 -- How far the Tabs look lifts what sits over a unit frame (a cast bar's default spot, the target of target's narrow
@@ -833,6 +868,16 @@ function UF.DownToken(down)
   return (down == L["Dead"] or down == L["Ghost"]) and "bad" or "text2"
 end
 
+-- The health text and its colour: a down word keeps its status colour. The text may be secret: it goes to the font
+-- string untested.
+local function paintHealthText(f, down)
+  local text = ""
+  if UF.settings.healthText then text = UF.HealthText(f.unit, down or false) end
+  f.healthText:SetText(text)
+  local token = down and UF.DownToken(down) or "text"
+  if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
+end
+
 -- Health bar value, color and text. Raw values go straight to the bar; the
 -- text may be secret, so it goes to the font string untested. A down word keeps its status colour.
 function UF.UpdateHealth(f)
@@ -840,12 +885,9 @@ function UF.UpdateHealth(f)
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
   f.vgDown = down
+  if f.heal then UF.Prediction.Update(f) end
   UF.PaintHealth(f, down)
-  local text = ""
-  if UF.settings.healthText then text = UF.HealthText(unit, down or false) end
-  f.healthText:SetText(text)
-  local token = down and UF.DownToken(down) or "text"
-  if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
+  paintHealthText(f, down)
 end
 
 -- Power bar value and color.
@@ -861,6 +903,16 @@ end
 function UF.PaintPowerText(f)
   if not (f.powerText:IsShown() and ns.IsTrue(UnitExists(f.unit))) then return end
   f.powerText:SetText(f.vgDown and "" or UF.PowerText(f.unit))
+end
+
+-- The heal prediction or shield switch changed (Unit frames page): the player, target and party frames paint again.
+function UF.ApplyPrediction()
+  UF.Prediction.Apply()
+end
+
+-- The status marks switch changed (Unit frames page): the marks show or go at once.
+function UF.ApplyStatus()
+  UF.Status.Apply()
 end
 
 -- The power format changed (Unit frames page): every frame lays its texts out again and repaints, out of combat.
@@ -974,6 +1026,7 @@ function UF.UpdateFrame(f)
   UF.UpdateTag(f)
   UF.UpdateRaidIcon(f)
   UF.UpdateCombat(f)
+  if f.status then UF.Status.Update(f) end
 end
 
 -- Unit event -> what it updates.
@@ -1188,6 +1241,12 @@ local function hideReplaced(settings)
   for _, name in ipairs(BOSS_FRAMES) do hideBlizzard(name) end
 end
 
+-- Gives the frames that carry them their heal and shield bars and their status row.
+local function attachExtras()
+  UF.Prediction.Attach()
+  UF.Status.Attach()
+end
+
 -- Builds every frame. Secure frames can't be set up in combat, so this waits.
 local function build(settings)
   for _, def in ipairs(LAYOUT) do
@@ -1197,6 +1256,7 @@ local function build(settings)
   if settings.boss then addBosses() end
   pollTargetOfTarget(UF.frames.targettarget)
   if settings.hideBlizzard then hideReplaced(settings) end
+  attachExtras()
   UF.Refresh()
   UF.ApplyDeck()
 end

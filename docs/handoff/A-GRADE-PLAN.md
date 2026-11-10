@@ -108,7 +108,8 @@ Cliff's call, 2026-11-09: he has played with the addon on the live game for a we
 
 One branch and one PR per HUD area, so each set of files is opened once and comes out with depth, sliders and live apply together. The areas do not share files and can run as parallel threads. A3-1 and A3-2 work in files the HUD signature thread also changes (PR #796 and its three follow-ups: unit frames, cast bars, action bar layout), so they start from that work once it has merged, or from its branch.
 
-- [ ] **A3-1 Unit frames** (`work/a3-unitframes`). The unit-frame micro-allocations from Q7 (L3); width and height sliders per frame; text formats (value, percent, both, deficit); heal prediction and shields on player, target and party; a status row (leader, role, resting, PvP); then portraits and a focus target. All settings apply without a reload. (N4, N5, N3)
+- [x] **A3-1 Unit frames** (`work/a3-unitframes`). The unit-frame micro-allocations from Q7 (L3); width and height sliders per frame; text formats (value, percent, both, deficit); heal prediction and shields on player, target and party; a status row (leader, role, resting, PvP). All settings apply without a reload. (N4, N5, N3)
+- [ ] **A3-1b Unit frame portraits and a focus target** (`work/a3-unitportraits`). The two items A3-1 left out: portraits on the player, target and party frames, and a focus-target frame. (N4)
 - [ ] **A3-2 Action bars** (`work/a3-actionbars`). Macro names with a switch, attack and auto-shot flash, spacing and hotkey-text controls, coalesced repaint. Secure button work: Opus. (N6, L5)
 - [ ] **A3-3 Nameplates and auras** (`work/a3-plates`). Size sliders, text sizes, friendly name-only mode, target emphasis, aura sizes and filters where the client allows a say. Rebuild rows out of combat. (N5, B5, N3)
 - [ ] **A3-4 Tooltips** (`work/a3-tooltips`). Guild and rank, realm, role, item level where exposed, ids behind a switch, anchor choice per tooltip type. (N7)
