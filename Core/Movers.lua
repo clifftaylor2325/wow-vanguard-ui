@@ -199,9 +199,9 @@ end
 
 -- From the first opacity other than 1 on, an alpha the frame's module sets (a
 -- bar fading out on mouseover, say) is kept and multiplied by the opacity, so
--- the module's fades still work. A hidden (secret) alpha is left as it is.
+-- the module's fades still work. A hidden (secret) alpha, set or read, counts as full.
 local function watchAlpha(m)
-  m.ownAlpha = m.frame:GetAlpha() or 1
+  m.ownAlpha = ns.PlainNumber(m.frame:GetAlpha()) or 1
   if type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(m.frame, "SetAlpha", ns.Guard("hook SetAlpha", function(f, a)
     if vgFading[f] or ns.PlainNumber(a) == nil then return end

@@ -576,3 +576,11 @@ it("Reset all positions also forgets the saved spot of a frame whose module is s
   expect(addon.eval('return ns.ResetMovers("all") == #ns.MoverList()'), "the count stays the frames registered this session").toBe(true);
   expect(spots(), "reset all forgets the switched-off module's spot too").toEqual([false, false]);
 });
+
+it("an opacity set on a mover whose alpha the client hides: applied over a full alpha, with no error", () => {
+  const addon = loggedIn(BOX);
+  addon.eval("__box.GetAlpha = function() return __wfgWorld.secret(1) end");
+  expect(addon.eval('return { pcall(ns.SetMoverAlpha, "box", 0.5) }'), "set without an error").toEqual([true]);
+  addon.eval("__box.GetAlpha = nil");
+  expect(addon.eval("return __box:GetAlpha()"), "the hidden alpha read as full: the frame at its opacity").toBe(0.5);
+});
