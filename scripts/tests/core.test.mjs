@@ -621,10 +621,10 @@ it("the question dialog: its text is the title, wrapped short of the X, the dial
   expect(grown[0], "a pad, the wrapped title, a section gap, the buttons and a pad").toBe(grown[1]);
   expect(grown[2], "four lines of title").toBe(56);
   addon.click(`${name}.chrome.close`);
-  expect([addon.frame(name).visible, addon.eval("return __answers")], "the X closes it and answers No").toEqual([false, ["no"]]);
+  expect([addon.frame(name).visible, addon.eval("return __answers")], "the X closes it and answers No (the first question, displaced by the longer one, answered No too)").toEqual([false, ["no", "no"]]);
   addon.eval("__ask('Again?')");
   pressEscape(addon);
-  expect([addon.frame(name).visible, addon.eval("return __answers")], "Escape answers No too, once").toEqual([false, ["no", "no"]]);
+  expect([addon.frame(name).visible, addon.eval("return __answers")], "Escape answers No too, once").toEqual([false, ["no", "no", "no"]]);
   addon.eval("__answers = {} __ask('Again?')");
   addon.eval(`${name}:GetScript("OnHide")(${name})`);
   expect([addon.frame(name).visible, addon.eval("return #__answers")], "a hide that leaves it shown (the UI put away from above) answers nothing").toEqual([true, 0]);
@@ -643,7 +643,7 @@ it("the question dialog: Enter presses a Yes that is not a danger button, out of
   const addon = loggedIn();
   const name = "Vanguard_Question";
   // Asks the question (kind: "danger" or undefined) and keeps the answers.
-  const ask = (kind) => addon.eval(`__answers = {} __passed = {} ns.Ask("Sure?", "Go", function() __answers[#__answers + 1] = "yes" end, function() end, ${kind}) `);
+  const ask = (kind) => addon.eval(`__answers = {} __passed = {} ns.Ask("Sure?", "Go", function() __answers[#__answers + 1] = "yes" end, function() end, ${kind}) __passed = {} `);
   // Presses a key on the question.
   const press = (k) => addon.eval(`${name}.__scripts.OnKeyDown(${name}, "${k}") return {}`);
   ask(undefined);
