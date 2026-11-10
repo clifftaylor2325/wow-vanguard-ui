@@ -1822,12 +1822,15 @@ local function isEnabled(widget)
 end
 
 -- Shows or hides a button's press look; only an enabled button shows it. A shade marked `keepsLabel` (a check
--- box's today) leaves the label where it is; a push button's drops it a pixel.
+-- box's today) leaves the label where it is; a push button's drops it a pixel. Whether it is pressed is kept
+-- (s.pressed), never read back from the shade: the button may be the game's, and the client can hold a texture's
+-- shown state on it secret, as it did a painted edge's (#838).
 function T.PressButton(button, down)
   local s = pressOf[button]
   if not s then return end
-  local on = down == true and isEnabled(button)
-  if on == s.overlay:IsShown() then return end
+  local on = down == true and isEnabled(button) == true
+  if on == (s.pressed == true) then return end
+  s.pressed = on
   if s.fill then T.ShowFill(s.fill, on) else s.overlay:SetShown(on) end
   if not s.keepsLabel then dropLabel(button, s, on) end
 end
@@ -2341,10 +2344,11 @@ T.forgetters[#T.forgetters + 1] = function(r) checkOf[r] = nil end
 function T.CheckParts(button) return checkOf[button] end
 
 -- Whether a check button (or radio) is checked: the game's mark shown, for a plain frame whose mark the
--- game shows and hides (T.CheckBox's `mark`), else its checked state.
+-- game shows and hides (T.CheckBox's `mark`), else its checked state. Both are the game's, so a value the client
+-- hides counts as no and is never compared (ns.IsTrue).
 local function isChecked(button, c)
-  if c.source then return c.source:IsShown() == true end
-  return type(button.GetChecked) == "function" and button:GetChecked() == true
+  if c.source then return ns.IsTrue(c.source:IsShown()) end
+  return type(button.GetChecked) == "function" and ns.IsTrue(button:GetChecked())
 end
 
 -- The mark of a check box or radio for its state: shown while checked, in the disabled tier while
@@ -2539,10 +2543,11 @@ local function dividerLine(region, host, vertical)
   return d
 end
 
--- Shows a texture divider's line while the game shows the texture.
+-- Shows a texture divider's line while the game shows the texture. The texture's shown state is the game's: one the
+-- client hides is never handed to SetShown (from addon code that raises) or compared, and the line stays as it is.
 local function followDivider(region)
-  local d = dividerOf[region]
-  if d then d.holder:SetShown(region:IsShown()) end
+  local d, shown = dividerOf[region], region:IsShown()
+  if d and not ns.IsSecret(shown) then d.holder:SetShown(shown == true) end
 end
 
 -- One of the game's dividers (a texture, or a frame of divider art: Options_HorizontalDivider, the

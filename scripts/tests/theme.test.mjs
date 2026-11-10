@@ -548,6 +548,33 @@ it("a frame whose scale the client hides is painted at the screen's pixel, the h
   expect(out, "the repaint went through, each edge is one screen pixel, and a hidden scale reads as the screen's").toEqual([true, true, true]);
 });
 
+it("a game divider whose shown state the client hides never hands the secret to its line, and a press never reads its shade back", () => {
+  const addon = loggedIn();
+  const divider = addon.eval(`local T = ns.Theme
+    local host = CreateFrame("Frame", nil, UIParent)
+    local tex = host:CreateTexture()
+    T.Divider(tex)
+    local holder, handed = T.DividerParts(tex).holder, {}
+    local set = holder.SetShown
+    holder.SetShown = function(self, v) handed[#handed + 1] = issecretvalue(v) and "secret" or tostring(v) return set(self, v) end
+    tex.IsShown = function() return __wfgWorld.secret(true) end
+    tex:Show()
+    tex.IsShown = nil
+    tex:Hide()
+    return handed`);
+  expect(divider, "a hidden shown state is not passed on; a plain one still is").toEqual(["false"]);
+  const press = addon.eval(`local T = ns.Theme
+    local b = T.Button(CreateFrame("Button", nil, UIParent))
+    local shade, asked = T.PressOverlay(b), 0
+    shade.IsShown = function() asked = asked + 1 return __wfgWorld.secret(true) end
+    T.PressButton(b, true)
+    shade.IsShown = nil
+    local down = shade:IsShown()
+    T.PressButton(b, false)
+    return { asked, down, shade:IsShown() }`);
+  expect(press, "the shade was never asked whether it is shown, and it shows while held and hides after").toEqual([0, true, false]);
+});
+
 it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
   const addon = loggedIn();
   const out = addon.eval(`
