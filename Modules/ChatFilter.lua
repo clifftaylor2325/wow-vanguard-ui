@@ -20,26 +20,39 @@ CF.MAX_KEYWORDS, CF.MAX_LENGTH = 30, 40
 -- How long (seconds) an exact repeat from one sender is filtered, how many lines are remembered,
 -- and the least length of a line (as plain text) that counts as a repeat ("inv", "+1" never do).
 CF.REPEAT, CF.MAX_RECENT, CF.MIN_REPEAT = 60, 200, 12
--- The tab's name in the game's chat settings. It stays English: the tab is found again by this name,
--- so a translation would leave a player's existing tab behind and make a second one.
+-- The tab's name in the game's chat settings. It stays English so a tab made by an earlier version is still
+-- found by it; the tab is found again by its window number (saved per character, below), so a name the
+-- player gave it does not make a second one.
 CF.TAB = "Filtered"
 -- The chat events that are filtered.
 CF.EVENTS = { "CHAT_MSG_CHANNEL", "CHAT_MSG_SAY", "CHAT_MSG_YELL" }
 -- The link prefix of a sender's name in the Filtered tab (clicking it un-filters them).
 local PREFIX = "addon:Vanguard:allow:"
 
--- A line is in a category when it holds a word from each of the category's groups.
+-- The spam categories, in the card's order. What a line must hold for each is per locale (Core/MatchWords.lua):
+-- a locale with no words for a category has none of it, and the category is not offered or matched.
 CF.CATEGORIES = {
-  { key = "gold", label = L["Gold selling"], groups = {
-    { "gold", "coins" },
-    { "www.", "http", ".com", ".net", "paypal", "usd", "$", "\226\130\172", "fast delivery" } } },
-  { key = "boosting", label = L["Boosting"], groups = {
-    { "boost", "power level", "powerlevel" },
-    { "wts", "selling", "service", "cheap", "price", "discount", "gold", "usd", "$", "pm me", "whisper me" } } },
-  { key = "recruiting", label = L["Recruiting"], groups = {
-    { "recruiting", "looking for new members", "accepting applications", "join our guild" },
-    { "guild", "raid team", "casual", "social", "community" } } },
+  { key = "gold", label = L["Gold selling"], switch = L["Gold selling"] },
+  { key = "boosting", label = L["Boosting"], switch = L["Boosting"] },
+  { key = "recruiting", label = L["Recruiting"], switch = L["Guild recruiting"] },
 }
+
+-- The groups of words a line must each hold one of to be in the category, in the client's locale, or nil
+-- when the locale has no words for it.
+function CF.Groups(key)
+  return ns.FilterWords()[key]
+end
+
+-- The categories this client's locale has words for, in the card's order.
+function CF.Available()
+  if CF.available then return CF.available end
+  local out = {}
+  for _, cat in ipairs(CF.CATEGORIES) do
+    if CF.Groups(cat.key) then out[#out + 1] = cat end
+  end
+  CF.available = out
+  return out
+end
 
 -- This session's state: the senders let through, the last line judged, who said what lately, and how many
 -- lines were caught, in all and by reason.
@@ -65,8 +78,8 @@ end
 
 -- The label of the first switched-on category the line is in, or nil.
 function CF.Category(line)
-  for _, cat in ipairs(CF.CATEGORIES) do
-    if CF.settings[cat.key] and holdsAll(line, cat.groups) then return cat.label end
+  for _, cat in ipairs(CF.Available()) do
+    if CF.settings[cat.key] and holdsAll(line, CF.Groups(cat.key)) then return cat.label end
   end
 end
 
@@ -107,18 +120,56 @@ local function isOpen(frame)
   return frame:IsShown() or frame.isDocked or frame.minimized
 end
 
--- The chat window called Filtered, an open one first, or nil.
-function CF.FindWindow()
-  if type(GetChatWindowInfo) ~= "function" then return nil end
+-- The chat window number saved for this character's Filtered tab, or nil (window numbers are per character).
+local function savedNumber()
+  local number = type(VanguardCharDB) == "table" and VanguardCharDB.filteredTab
+  return type(number) == "number" and number or nil
+end
+
+-- Saves which window is the Filtered tab, by number, so a name the player gave it is not looked for; returns the window.
+local function remember(frame)
+  local number = frame and tonumber(frame:GetName():match("^ChatFrame(%d+)$"))
+  if number and type(VanguardCharDB) == "table" then VanguardCharDB.filteredTab = number end
+  return frame
+end
+
+-- Forgets the saved number (the tab was closed: the game may give its number to another window).
+local function forget()
+  if type(VanguardCharDB) == "table" then VanguardCharDB.filteredTab = nil end
+end
+
+-- The open window with the saved number, or nil.
+local function savedWindow()
+  local number = savedNumber()
+  local frame = number and _G["ChatFrame" .. number]
+  return frame and isOpen(frame) and frame or nil
+end
+
+-- The window named Filtered, an open one first (a closed one is kept in the game's list), or nil.
+local function windowNamed()
   local closed
   for i = 1, NUM_CHAT_WINDOWS or 10 do
     local frame = _G["ChatFrame" .. i]
     if GetChatWindowInfo(i) == CF.TAB and frame then
-      if isOpen(frame) then return frame end
+      if isOpen(frame) then return remember(frame) end
       closed = closed or frame
     end
   end
   return closed
+end
+
+-- The chat window called Filtered, or nil. The saved number comes first, so a tab the player renamed is still
+-- the one; a tab without a saved number (made by an earlier version) is found by its name.
+function CF.FindWindow()
+  local saved = savedWindow()
+  if saved or type(GetChatWindowInfo) ~= "function" then return saved end
+  return windowNamed()
+end
+
+-- Whether a chat window number is the Filtered tab (the saved number, or a window with the tab's name).
+function CF.IsTab(index)
+  if savedNumber() == index then return true end
+  return type(GetChatWindowInfo) == "function" and GetChatWindowInfo(index) == CF.TAB
 end
 
 -- The window the chat dock shows now, or nil on a client without the dock.
@@ -142,7 +193,7 @@ local function openWindow()
   local before = dockSelection()
   local frame = FCF_OpenNewWindow(CF.TAB, true)
   keepSelection(before)
-  return type(frame) == "table" and frame or nil
+  return type(frame) == "table" and remember(frame) or nil
 end
 
 -- True while caught lines go to a Filtered tab: the module enabled (not switched off from login, when
@@ -197,6 +248,7 @@ end
 -- Takes another open window called Filtered, or makes one, after the tab was closed or renamed; out of combat.
 local function reopen()
   CF.window = nil
+  forget()
   ns.OutOfCombat(function()
     if not wantsTab() then return end
     local found = CF.FindWindow()
@@ -268,7 +320,7 @@ end
 -- Every reason a line can be caught for, in the card's order.
 function CF.Reasons()
   local out = {}
-  for _, cat in ipairs(CF.CATEGORIES) do out[#out + 1] = cat.label end
+  for _, cat in ipairs(CF.Available()) do out[#out + 1] = cat.label end
   out[#out + 1], out[#out + 2] = L["Your word"], L["Repeat"]
   return out
 end
