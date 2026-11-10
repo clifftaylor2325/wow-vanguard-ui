@@ -327,6 +327,7 @@ All in the profile's `theme` table (`T.Settings()`), exported with the profile; 
 | `colorAssist` | off | General → Look → Safer colours | on reload |
 | `colorAssistGame` | on | General → Look → Follow the game's colour-blind mode | on reload; Safer colours apply while the `colorblindMode` CVar is on |
 | `reduceMotion` | off | General → Motion and sound → Reduce motion | at once |
+| `motionCues` | on | General → Motion and sound → State cues | at once (the low-health ring follows the next change of your health or of the theme) |
 | `sounds` | on | General → Motion and sound → Interface sounds | at once |
 
 ## Motion and sound
@@ -354,6 +355,10 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Cast bar ends, then | fade out | 0.35 s | 0.15 s | Reduce motion |
 | Cursor ring (Ring at the cursor, Cast bars) | the global cooldown and cast sweeps run with the client's duration objects; the ring shows and hides at once, no fade | the sweep's own length | the sweep's own length | - (the sweeps are information, not decoration) |
 | Interrupt mark beside the target and focus cast bars | shows and hides with the cast, no fade of its own; the cooldown sweep over its core runs with the client's duration object | the sweep's own length | the sweep's own length | - (the sweep is information, not decoration) |
+| State cue: a fight starts (State cues, `Modules/GameAlerts.lua`) | one edge pulse round the player frame: a ring of `accent` that steps 0, 1, 0 in two 0.1 s steps (`T.CUE.edge`, `T.PlayCue`), then hides | 0.2 s in all | the same (no step is over 0.15 s) | Reduce motion; State cues |
+| State cue: a proc (`Modules/ActionBars.lua`) | the button's accent glow ring breathes while the client's overlay event says it is lit: a looping chain of 0.15 s alpha steps, 0.45 up to 1 and back (`T.CUE.breath`, `T.LoopCue`), 0.6 s a breath; stops with the proc | 0.15 s steps | the same | Reduce motion and State cues (the ring shows still, no breath) |
+| State cue: a cooldown ends (`T.ReadyFlash`, `Modules/ActionBars.lua`) | one flash over the button's icon: `accentText` added, 0, 0.6, 0 in two 0.06 s steps (`T.CUE.flash`), driven by the cooldown widget's own `OnCooldownDone` (hooked, not polled), and only after a cooldown the client plainly says is not the global one (`isOnGCD` false; a hidden or missing answer gives no flash) | 0.12 s | the same | Reduce motion; State cues |
+| State cue: low health (`Modules/GameAlerts.lua`) | a slow pulse of a ring round the player frame, in the client's own colour for your health through a curve (`GA.LOW_CURVE`: clear from 35 % up, full under 30 %; never compared in Lua, so it works with hidden health), looping 0.15 s steps through 0.2 to 1 and back (`T.CUE.slow`, 1.8 s); hidden while you are dead | 0.15 s steps | the same | Reduce motion; State cues |
 | Bars and strips on mouseover or conditions (action bars, the menu and bag strips, ...) | alpha 0 / 1 | instant | instant | - (no animation) |
 | Raid tiles out of range | alpha 40 % | instant | instant | Fade players out of range (Raid frames) |
 | Health and power bars | the client eases the value (`ExponentialEaseOut`) | the client's easing | the client's easing | Smooth health and power bars |
@@ -371,9 +376,11 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | Battle.net and time-played toasts | the game's slide-in, glow flare and fade-out (kept; the backdrop under them is at alpha 0) | the game's | the game's | - (the game's) |
 | Chat bubbles (Modules/ChatBubbles.lua) | the engine's own appearance and fade of a bubble (kept; the bubble art under the panel is at alpha 0, the panel itself, a flat one with no sheen or shadow, has no animation; with Text-only bubbles there is no panel) | the engine's | the engine's | - (the engine's) |
 
+**State cues** (General → Motion and sound → State cues, on by default, `motionCues`) are four short alpha animations on Vanguard's own textures (`T.PlayCue` plays one once, `T.LoopCue` loops one, `T.CueRing` makes the ring, `T.ReadyFlash` hooks a cooldown widget): never on a secure frame, and each built from steps (`T.CUE`) no longer than `T.COMBAT_FADE`, so a pulse in a fight is the same as outside one. Reduce motion or the State cues switch turns every cue off (`T.CuesOn`); a running breath stops at its next loop.
+
 Sparks (cast bars, power ticks, the swing timer) move with what they show; they are not fades and Reduce motion leaves them.
 
-The low-health vignette (`Modules/GameAlerts.lua`, `Media/Textures/Vignette` tinted with the `vignette` token) has no fade, pulse or sound: the client works out its opacity from your health through a curve and the texture takes it as it is, so Reduce motion changes nothing and a fight adds no animation.
+The low-health vignette (`Modules/GameAlerts.lua`, `Media/Textures/Vignette` tinted with the `vignette` token) has no fade, pulse or sound: the client works out its opacity from your health through a curve and the texture takes it as it is, so Reduce motion changes nothing and a fight adds no animation. The low-health state cue (above) is a separate ring on the player frame.
 
 The status chip (`Modules/UnitExtras.lua`) has no fade or sound: it shows and hides at once, including the moment a fight starts. Its text is `text` (Eating, Drinking), `good` (Well Fed) or `warn` (a missing buff, with the `Warn` glyph in `warn`), on the HUD panel, so a state never rests on color alone.
 

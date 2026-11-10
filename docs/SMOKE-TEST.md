@@ -694,6 +694,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the totem you right-clicked is destroyed on the release of the button and its cell clears; the other stays. A left-click does nothing. No error, in combat too. [Needs in-game check: the key-down phase rule was read from the game's SecureTemplates.lua and modelled in the harness, not watched in game.]
 - If it fails, paste: what the CVar printed, what happened to the totem and `/vg errors`.
 
+### 7.2h1 State cues
+
+- Do: `/vg` > General > Motion and sound shows **State cues** ticked. Pull a mob and watch the player frame as the fight starts; on a class with a proc (Mage Hot Streak, Warrior Execute) watch the button as the proc lights and goes; use an ability with a cooldown of several seconds and watch its button when the cooldown ends (also a global-cooldown-only ability); take damage below a third of your health. Repeat with State cues unticked, then with Reduce motion ticked.
+- Expect: a brief brass edge pulse round the player frame at the pull; the proc button's glow ring breathing about once a second while the proc lasts; one short flash on the button when its cooldown ends and none at the end of the global cooldown; a slow vermilion pulse round the player frame under a third of your health (in an instance too, where health is hidden), gone when you heal or die. With either switch off none of the four moves (the proc ring still shows, still). [Needs in-game check: all of it; whether `isOnGCD` is plain for action slots in a fight.]
+- If it fails, paste: which cue, a screenshot, `/vg errors`.
+
 ### 7.2i Unit frames act like the game's: tooltips, tapped grey, Ghost, raid marks, quiet threat
 
 - Do: hover your player, target, target of target, focus and pet frames (a hunter's pet too), then hover the target and a boss frame during a dungeon boss fight. Target a mob another player has tagged. Die, release, and look at your frame (or a released party member's). Put a raid mark on your target (and on a party member). Fight a mob solo with no pet, then with a pet or in a group.

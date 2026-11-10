@@ -289,9 +289,18 @@ local function sweepFromNumbers(b)
   ns.Quiet("bar cooldown", b.cooldown.SetCooldown, b.cooldown, start, length)
 end
 
+-- Whether the sweep now running is a real cooldown, not the global one: only when the client plainly says so (a
+-- hidden answer or a client without the field is no), so a ready flash never fires on every global cooldown.
+local function sweepIsReal(b)
+  local info = call("GetActionCooldown", b.action)
+  if type(info) ~= "table" or ns.IsSecret(info) or ns.IsSecret(info.isOnGCD) then return false end
+  return info.isOnGCD == false
+end
+
 -- The cooldown sweep: the slot's duration object goes to the widget as is (no object: no sweep), or the
 -- numbers on an older client. A call the client refuses leaves the sweep as it was and is kept for /vg errors.
 local function updateCooldown(b)
+  b.realSweep = sweepIsReal(b)
   if not sweepsFromObject(b) then return sweepFromNumbers(b) end
   local duration = call("GetActionCooldownDuration", b.action)
   if duration == nil then return b.cooldown:Clear() end
@@ -402,16 +411,22 @@ local function overlayed(spell)
   return not ns.IsSecret(lit) and lit == true
 end
 
+-- Lights the accent glow on a button, breathing while it is lit (State cues; static with them off), or clears it.
+local function lightGlow(b, on)
+  T.ShowGlow(b.glow, on)
+  T.LoopCue(b.glow, "breath", on)
+end
+
 -- Lights the accent glow while the button's spell is proc'd.
 function AB.UpdateGlow(b)
-  if b.glow then T.ShowGlow(b.glow, overlayed(AB.ActionSpell(b))) end
+  if b.glow then lightGlow(b, overlayed(AB.ActionSpell(b))) end
 end
 
 -- A proc started (on) or ended: light or clear every button with that spell.
 local function onOverlay(on)
   return function(_, spell)
     for _, b in ipairs(AB.buttons) do
-      if b.glow and not ns.IsSecret(spell) and AB.ActionSpell(b) == spell then T.ShowGlow(b.glow, on) end
+      if b.glow and not ns.IsSecret(spell) and AB.ActionSpell(b) == spell then lightGlow(b, on) end
     end
   end
 end
@@ -506,6 +521,7 @@ local function addRegions(b)
   b.cooldown:SetAllPoints(b.icon)
   skipShortCountdown(b.cooldown)
   b.glow = T.Glow(b, 6)
+  T.ReadyFlash(b, b.cooldown, function(button) return button.realSweep == true end)
   b:SetCheckedTexture(T.WHITE)
   T.Tint(b:GetCheckedTexture(), "checked")
   if not ns.Masque.Group(AB.MASQUE) then b.equipped = T.InnerRing(b) end
