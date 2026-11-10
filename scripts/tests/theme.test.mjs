@@ -1037,6 +1037,21 @@ it("ornaments (#238): off by default; /vg ornaments puts a rule on the options w
   expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
 });
 
+// A cue ring on a frame the HUD look does not shape is still the soft glow: made once, tinted with its token, and
+// T.CueColor colours every piece of it.
+it("cue rings: a frame without a HUD role gets the glow ring, made once and coloured as one", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    local f = CreateFrame("Frame", nil, UIParent) f:SetSize(100, 40) f:SetPoint("CENTER")
+    local ring = T.CueRing(f, "edge", "accent", 6)
+    local same = T.CueRing(f, "edge", "accent", 6) == ring
+    T.CueColor(ring, 0.1, 0.2, 0.3, 0.4)
+    local coloured = #ring > 0
+    for _, tex in ipairs(ring) do local c = tex.__vertexColor if not (c and c[1] == 0.1 and c[4] == 0.4) then coloured = false end end
+    return { #ring > 0, same, coloured }`);
+  expect(out, "a list of glow pieces, the same list again, every piece coloured").toEqual([true, true, true]);
+});
+
 // A game window's frame level can be secret (the client's own code may have set it from one): the brackets' holder
 // must not do arithmetic on it. TEST-ONLY: the test window stands in for a game window.
 it("ornaments: a window whose frame level the client hides still gets its brackets, and nothing raises", () => {
