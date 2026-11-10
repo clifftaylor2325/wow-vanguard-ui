@@ -161,7 +161,16 @@ end
 
 -- Reads a module's settings (running its ns.Migrate upgrade) and builds it, handing it its scope (or nil).
 local function build(def)
-  return def.Enable(ns.Settings(def.name, def.defaults), def.scope)
+  local settings = ns.Settings(def.name, def.defaults)
+  def.entered = true
+  return def.Enable(settings, def.scope)
+end
+
+-- Runs a module's Disable with its settings, both under ns.Try (a settings table that fails to upgrade is reported
+-- under "disable <name>" instead of raising out of the caller).
+local function runDisable(def)
+  if not def.Disable then return end
+  ns.Try("disable " .. def.name, function() def.Disable(ns.Settings(def.name, def.defaults)) end)
 end
 
 -- Opens the scope of a module that declares live or reload (Core/ModuleScope.lua; made on its first start and kept
@@ -174,12 +183,13 @@ end
 
 -- Releases what a module that failed to build registered through its scope: its gates shut at once, the rest out of
 -- combat (a /reload in a fight runs the login pass in combat, and hiding a secure frame is protected).
--- Its own Disable runs too (under ns.Try), for what it did outside the scope before it failed. The module is marked
--- failed: no settle builds it again until its own switch or one of its settings changes.
+-- Its own Disable runs too (under ns.Try) when its Enable was reached (not when its settings failed to upgrade), for
+-- what it did outside the scope before it failed. The module is marked failed: no settle builds it again until its
+-- own switch or one of its settings changes.
 local function releaseFailed(def)
   def.scope.on, def.failed = false, true
   ns.OutOfCombat(function()
-    if def.Disable then ns.Try("disable " .. def.name, def.Disable, ns.Settings(def.name, def.defaults)) end
+    if def.entered then runDisable(def) end
     def.scope:Close()
   end, def.scope)
 end
@@ -188,6 +198,7 @@ end
 -- others, and what it registered through its scope before it failed is released.
 local function start(def)
   openScope(def)
+  def.entered = nil
   def.enabled = (ns.Try("module " .. def.name, build, def))
   if not def.enabled and def.scope then releaseFailed(def) end
 end
@@ -195,7 +206,7 @@ end
 -- Takes a running live module down: its own Disable first (what the scope can't see), then its scope. Either may
 -- fail (reported); the module is off all the same, so the settle goes on.
 local function takeDown(def)
-  if def.Disable then ns.Try("disable " .. def.name, def.Disable, ns.Settings(def.name, def.defaults)) end
+  runDisable(def)
   ns.Try("stop " .. def.name, def.scope.Close, def.scope)
   def.enabled = false
 end
@@ -263,7 +274,7 @@ function ns.SetModuleEnabled(name, on)
   ns.Settings("modules")[name] = on and true or false
   local def = modules[name]
   if def then def.failed = nil end
-  if not on and def and def.Disable and not def.live then ns.Try("disable " .. name, def.Disable, ns.Settings(name, def.defaults)) end
+  if not on and def and not def.live then runDisable(def) end
   ns.SettleModules()
 end
 
