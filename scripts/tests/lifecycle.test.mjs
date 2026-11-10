@@ -580,3 +580,9 @@ it("lifecycle: a module whose start failed gets its own Disable, and a change of
   addon.eval('__life.flaky = false ns.RestartModule("TestFlaky")');
   expect(addon.eval('return ns.ModuleLive("TestFlaky")')).toBe(true);
 });
+
+it("lifecycle: a frame handed to the scope twice in one run is kept once", () => {
+  const addon = lifeAddon("", SCOPED);
+  addon.eval("local s = __life.scopes[1] local n = #s.frames s:Frame(VanguardTest_Scoped) __life.kept = #s.frames - n");
+  expect(addon.eval("return __life.kept")).toBe(0);
+});

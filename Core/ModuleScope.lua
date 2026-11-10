@@ -106,10 +106,14 @@ function Scope:Point(key, fn)
   self.latest[key] = fn
 end
 
--- A frame of the module's own: hidden, and its visibility rules released, when the module stops. Returns the frame.
+-- A frame of the module's own: hidden, and its visibility rules released, when the module stops (handed over twice in
+-- one run, it is kept once). Returns the frame.
 ---@param f Frame
 ---@return Frame f
 function Scope:Frame(f)
+  for _, kept in ipairs(self.frames) do
+    if kept == f then return f end
+  end
   self.frames[#self.frames + 1] = f
   return f
 end

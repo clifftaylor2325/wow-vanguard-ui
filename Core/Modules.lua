@@ -313,11 +313,11 @@ function ns.ModulesBuilt()
 end
 
 -- Takes every running live module down, dependents first (a live profile switch, Core/ProfileSwitch.lua, then
--- settles to the new profile's switches).
+-- settles to the new profile's switches; no after-off line, as most start again at once).
 function ns.StopLiveModules()
   for i = #order, 1, -1 do
     local def = modules[order[i]]
-    if def.live and running(def) then stop(def) end
+    if def.live and running(def) then takeDown(def) end
   end
 end
 
