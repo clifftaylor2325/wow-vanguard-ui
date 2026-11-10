@@ -215,11 +215,12 @@ local function noteCooldown(cooldowns, id)
   cooldowns[id] = left > 0 and { name = type(s) == "table" and s.name or ns.Format(L["recipe {id}"], { id = id }), ready = now() + left } or nil
 end
 
--- Reads the open profession's recipe cooldowns (out of combat, while the tracker is on).
+-- Reads the open profession's recipe cooldowns (out of combat, while the tracker is on). A recipe the client
+-- cannot answer for (a call that throws) is skipped and the rest are still read.
 function CQ.Scan()
   if not CQ.settings.on or ns.InCombat() then return end
   local cooldowns = CQ.Mine().cooldowns
-  for _, id in ipairs(recipeIDs()) do noteCooldown(cooldowns, id) end
+  for _, id in ipairs(recipeIDs()) do ns.Quiet("craft cooldown", noteCooldown, cooldowns, id) end
 end
 
 -- "ready", or how long is left, as "2h 5m", "3d 4h" or "<1m" (not "0m", which reads as ready).

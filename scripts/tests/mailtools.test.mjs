@@ -4,7 +4,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { SETUP_DONE, chatHas, expectErrors, isTok, loggedIn } from "./helpers.mjs";
 import { alphaOf, insets } from "./dialogs.mjs";
 
 // TEST-ONLY: three mails (a sale with money, a letter with an item, a plain letter), and bag items.
@@ -422,6 +422,27 @@ it("Return all asks, then sends back the shown mail a player can have returned, 
   addon.eval("__wfgWorld.mail = { { sender = 'Mum', subject = 'Hello', itemCount = 0 } }");
   addon.slash("mail returnall");
   expect(chatHas(addon, /Return all: nothing to return/), "nothing to return").toBe(true);
+});
+
+it("Return all leaves a mail the game deletes when it runs out (one already returned to you) where it is", () => {
+  const addon = mailer(BULK + "__wfgWorld.mail[2].deletes = true");
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.returnAll");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "only Carl's parcel is offered").toBe("Return 1 mail(s) to their senders?");
+  addon.click("Vanguard_Question.confirm");
+  addon.advance(2);
+  expect([returned(addon), chatHas(addon, /Return all: 1 of 1 done/)], "the returned mail is never asked of the game").toEqual([[4], true]);
+});
+
+it("a run whose step throws ends, and the next run can start", () => {
+  expectErrors("mail run step: eval:20: the game threw");
+  const addon = mailer(BULK + "ReturnInboxItem = function() error('the game threw') end");
+  addon.world.openMailWindow();
+  addon.slash("mail returnall");
+  addon.click("Vanguard_Question.confirm");
+  addon.slash("mail takeall");
+  expect(chatHas(addon, /Mail: a run is already going/), "no run is left going").toBe(false);
+  expect(chatHas(addon, /Return all: 0 of 2 done/), "the failed run said how far it got").toBe(true);
 });
 
 it("a pay-on-delivery mail shows what it asks in its row, has no Take button, and Take never takes it", () => {
