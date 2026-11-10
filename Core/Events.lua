@@ -558,6 +558,14 @@ function ns.Off(event, fn)
   end
 end
 
+-- How many handlers each event has on the shared frame, by event (the harness's footprint of a module).
+---@return table<string, number>
+function ns.HandlerCounts()
+  local out = {}
+  for event, list in pairs(handlers) do out[event] = #list end
+  return out
+end
+
 -- Unit events -------------------------------------------------------------------------------
 -- A unit event (UNIT_HEALTH, UNIT_AURA, UNIT_SPELLCAST_START...) fires for
 -- every unit the client tracks: party, raid, every nameplate. On the shared
@@ -598,15 +606,17 @@ end
 
 -- Calls fn(event, unit, ...) when one of the events (a name or a list) fires
 -- for one of the units (up to three; none until ns.SetUnits gives some).
--- Returns the subscription, for ns.SetUnits.
+-- Returns the subscription, for ns.SetUnits. spare: a stopped subscription to use
+-- again (a module's scope keeps them, as the client never frees a frame).
 ---@param events string|string[]
 ---@param fn fun(event: string, unit: string, ...)
 ---@param unit1 string|nil
 ---@param unit2 string|nil
 ---@param unit3 string|nil
+---@param spare Frame|nil  a stopped subscription frame to use instead of a new one
 ---@return Frame sub  for ns.SetUnits
-function ns.OnUnit(events, fn, unit1, unit2, unit3)
-  local sub = CreateFrame("Frame")
+function ns.OnUnit(events, fn, unit1, unit2, unit3, spare)
+  local sub = spare or CreateFrame("Frame")
   sub.vgEvents, sub.vgHandler = knownEvents(events), fn
   sub.vgPlain = type(sub.RegisterUnitEvent) ~= "function"
   sub:SetScript("OnEvent", onUnitEvent)

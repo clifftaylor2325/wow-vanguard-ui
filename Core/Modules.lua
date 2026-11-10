@@ -164,14 +164,26 @@ local function build(def)
   return def.Enable(ns.Settings(def.name, def.defaults), def.scope)
 end
 
--- Builds one module; a failure, in its settings' upgrade too, is reported (see ns.Report) instead of stopping the others.
-local function start(def)
-  def.enabled = (ns.Try("module " .. def.name, build, def))
+-- Opens the scope of a module that declares live or reload (Core/ModuleScope.lua; made on its first start and kept
+-- for the session, so its gates and spare frames survive a stop). A module that declares neither gets none.
+local function openScope(def)
+  if not (def.live or def.reload) then return end
+  def.scope = def.scope or ns.NewScope(def.name)
+  def.scope.on = true
 end
 
--- Takes a running live module down: its own Disable first (what the scope can't see), then the module is off.
+-- Builds one module; a failure, in its settings' upgrade too, is reported (see ns.Report) instead of stopping the
+-- others, and what it registered through its scope before it failed is released.
+local function start(def)
+  openScope(def)
+  def.enabled = (ns.Try("module " .. def.name, build, def))
+  if not def.enabled and def.scope then def.scope:Close() end
+end
+
+-- Takes a running live module down: its own Disable first (what the scope can't see), then its scope.
 local function takeDown(def)
   if def.Disable then ns.Try("disable " .. def.name, def.Disable, ns.Settings(def.name, def.defaults)) end
+  def.scope:Close()
   def.enabled = false
 end
 

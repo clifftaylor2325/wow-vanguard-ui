@@ -21,6 +21,8 @@ local DEFAULTS = { grid = true, gridSize = 32, snap = true, editMode = true }
 local NUDGE = { UP = { 0, 1 }, DOWN = { 0, -1 }, LEFT = { -1, 0 }, RIGHT = { 1, 0 } }
 
 local movers, order = {}, {}
+-- Movers a stopped module let go (ns.ReleaseMover), by key: their handles, for the module's next start.
+local released = {}
 local unlocked = false
 -- Pins paused (Edit Mode open), the note under Edit Mode's window, and whether Edit Mode unlocked the handles.
 local pinsPaused, editModeNote, editUnlocked = false, nil, false
@@ -217,9 +219,18 @@ local function reanchor()
 end
 T.OnScale(reanchor)
 
+-- Gives a mover registered again after its module stopped the handle it had (a frame is never freed).
+local function reclaim(m)
+  local old = released[m.key]
+  released[m.key] = nil
+  m.handle = old and old.handle
+  if m.handle then m.handle.mover = m end
+end
+
 -- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent.
 function ns.Mover(frame, key, label, default)
   local m = { frame = frame, key = key, label = label or key, default = default }
+  reclaim(m)
   if not movers[key] then
     order[#order + 1] = key
   end
@@ -718,6 +729,21 @@ function ns.Lock()
   end
   if editModeNote then editModeNote:Hide() end
   ns.HideGrid()
+end
+
+-- Takes a stopped module's mover out of unlock mode (Core/ModuleScope.lua): its handle hides and it leaves the
+-- movers the handles, the resets and the Layout card walk. Its saved spot stays in the profile, so the frame comes
+-- back where it was when the module starts again and registers it (ns.Mover gives it its handle back).
+---@param key string
+function ns.ReleaseMover(key)
+  local m = movers[key]
+  if not m then return end
+  if m.handle then m.handle:Hide() end
+  if selected == m then selectMover(nil) end
+  released[key], movers[key] = m, nil
+  local kept = {}
+  for _, k in ipairs(order) do if k ~= key then kept[#kept + 1] = k end end
+  order = kept
 end
 
 -- True while the handles are showing.
