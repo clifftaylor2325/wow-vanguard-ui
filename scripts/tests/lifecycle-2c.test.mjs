@@ -235,3 +235,37 @@ it("lifecycle: mail tools switched off at the mailbox takes the panel away and k
   addon.eval('ns.SetModuleEnabled("MailTools", true)');
   expect(shown(), "back with the mailbox still open").toBe(true);
 });
+
+// CraftQueue ----------------------------------------------------------------------------------------------------
+
+const CRAFT_QUEUE = loginWith("\nVanguardDB.profiles.Default.CraftQueue = { on = true }");
+
+// TEST-ONLY: a wall clock and one recipe, for a profession window with something to show.
+const RECIPE_ENV = `
+  __now = 1790000000
+  time = function() return __now end
+  __wfgWorld.items[4238] = { name = "TEST-ONLY Linen Bag" }
+  __wfgWorld.recipes = { [100] = { recipeID = 100, name = "TEST-ONLY Linen Bag", outputItemID = 4238, quantityMin = 1, quantityMax = 1, reagentSlotSchematics = {} } }
+`;
+
+lifecycleCases("CraftQueue", CRAFT_QUEUE);
+
+it("lifecycle: craft queue switched off at the profession window takes the panel away, and on again brings it back; the queue stays", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) + "\nVanguardDB.profiles.Default.CraftQueue = { on = true }" });
+  addon.eval(RECIPE_ENV);
+  addon.login();
+  addon.world.setUnit("player", { class: "WARRIOR", level: 60 });
+  const CQ = "ns.GetModule('CraftQueue')";
+  const shown = () => addon.eval(`local f = ${CQ}.frame return f ~= nil and f:IsShown()`);
+  addon.world.openProfession(100);
+  addon.eval(`${CQ}.Add(100, 2, "TEST-ONLY Linen Bag")`);
+  expect(shown(), "the panel beside the profession window").toBe(true);
+  addon.eval('ns.SetModuleEnabled("CraftQueue", false)');
+  expect(shown(), "gone at once").toBe(false);
+  addon.world.selectRecipe(100);
+  expect(shown(), "and not back while it is off").toBe(false);
+  addon.slash("craft");
+  expect(chatHas(addon, /The craft queue is off/), "the command says so").toBe(true);
+  addon.eval('ns.SetModuleEnabled("CraftQueue", true)');
+  expect([shown(), addon.eval(`return #${CQ}.Mine().queue`)], "back with the window still open, the queue kept").toEqual([true, 1]);
+});
