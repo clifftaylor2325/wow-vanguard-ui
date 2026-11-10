@@ -1118,10 +1118,11 @@ function O.ProfileCopied(into)
 end
 
 -- Re-reads every widget's value (after a change elsewhere, e.g. a profile switch), then marks the nav's dots.
+-- A row whose refresh fails is kept in /vg errors and the rest still refresh.
 function O.Refresh()
   quiet = true
   for _, w in ipairs(widgets) do
-    if w.Refresh then w:Refresh() end
+    if w.Refresh then ns.Try("refresh options row", w.Refresh, w) end
   end
   quiet = false
   if window then window.profile:Refresh() window.reload:Refresh() placeVersion(window) O.MarkChanged() end

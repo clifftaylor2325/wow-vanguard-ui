@@ -2274,3 +2274,19 @@ it("T.Forget drops a frame's check box, arrow and divider parts from the theme's
     return { before[1], before[2], before[3], T.CheckParts(c) == nil, T.ArrowParts(a) == nil, T.DividerParts(d) == nil }`);
   expect(parts, "built, then forgotten").toEqual([true, true, true, true, true, true]);
 });
+
+it("options: one row whose refresh fails does not stop the rows after it from refreshing", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  const result = addon.eval(`local rows = {}
+    for _, w in ipairs(__wfgStub.frames) do if w.card and w.Refresh and w.card.child and w.card.child.pageKey == "general" then rows[#rows + 1] = w end end
+    local first, last = rows[1], rows[#rows]
+    first.Refresh = function() error("TEST-ONLY row refresh") end
+    last.Refresh = function() __lastRefreshed = true end
+    local before = #ns.errors
+    ns.Options.Refresh()
+    local out = { __lastRefreshed == true, #ns.errors - before, #rows > 1 }
+    ns.errors[#ns.errors] = nil
+    return out`);
+  expect(result, "the last row refreshed, the failure was kept once").toEqual([true, 1, true]);
+});
