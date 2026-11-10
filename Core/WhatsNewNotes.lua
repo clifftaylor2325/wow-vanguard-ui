@@ -14,6 +14,8 @@ ns.WHATS_NEW = {
     { module = "UnitFrames", label = "The Shield look", items = {
       { text = "Your frames point away from you as shields, bars filling toward you. HUD look: Plain keeps flat frames.", page = "general", row = "HUD look" },
       { text = "The keystone: the crest on a rail between your frame and your target's, swords in a fight.", page = "unitframes", row = "Show the keystone" },
+      { text = "More looks there: Hairline, a line under bare frames; Rimmed, rounded and rimmed; Tabs, names on tabs.", page = "general", row = "HUD look" },
+      { text = "Two layouts: The keep, a wall at the foot of the screen; Standards, banners beside you.", page = "general", row = "Where the frames stand" },
       { text = "A ring round the keystone can sweep with the global cooldown.", page = "unitframes", row = "Global cooldown on the keystone", off = true },
       { text = "A thin line runs inside your frame's rim and your target's, brighter in a fight." },
       { text = "Under Shield the cast bars and action bar backing get cut corners.", page = "general", row = "Shield corners on unit frames" },
@@ -40,7 +42,7 @@ ns.WHATS_NEW = {
     { module = "Other", label = "Look", items = {
       { text = "Window and page titles are a size larger, a step above card headings." },
       { text = "The options header shows the painted crest and the Vanguard wordmark; your faction's crest moves to the footer." },
-      { text = "A class-colour swatch beside the accent presets sets the accent to your class colour.", page = "general", row = "Accent" },
+      { text = "A class-colour swatch beside the accent presets sets the accent to your class colour." },
       { text = "Each character on a shared profile gets its own class colour at login." },
       { text = "The game's own text, in windows Vanguard does not skin, takes the theme font's face.", page = "general", row = "Font" },
       { text = "The Modules page says so when its Show choice leaves nothing to list, with a Show all modules button." },
@@ -349,9 +351,9 @@ ns.WHATS_NEW = {
       { text = "Saved data is size-checked: Vanguard trims the oldest price data if the game says the file is too large." },
       { text = "/vg perf reads the game's addon profiler, and /vg perf slow names Vanguard's slowest handlers; /vg mem reads memory after a garbage collection." },
       { text = "/vg probe runs a batch of checks and /vg prep buffs checks the buff names, for reporting back what Forever does." },
-      { text = "When another addon (EllesmereUI's unit frame, action bar, nameplate and raid frame addons) does a job a Vanguard module does, chat says so once." },
+      { text = "When another addon (an all-in-one suite's unit frame, action bar, nameplate or raid frame parts) does a job a Vanguard module does, chat says so once." },
       { text = "Chat filters skip hidden text, saved-click-cast Import checks the whole string first, and a Quiet module can silence invite declines, battleground release, error and zone text and camera zoom." },
-      { text = "Vanguard asks about ElvUI, Tukui, Auctionator and TradeSkillMaster when they do the same job." },
+      { text = "Vanguard asks about leading all-in-one suites and auction addons when they do the same job." },
       { text = "The Vanguard meter gains each line's share of the total, kinds and segments, a spell panel, a chat report, a death recap link on the Deaths view, Report and Reset buttons and a width setting." },
       { text = "Slash and auction input is parsed more strictly, a stuck window drag ends cleanly, and a Forever build is recognised through the game's ruleset call." },
     } },
@@ -421,7 +423,7 @@ ns.WHATS_NEW = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "chat", row = "Open the group board" },
     } },
     { module = "OfficerLoot", label = "Officer loot tools", items = {
-      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "tools", row = "Turn on the soft-reserve list and the roster", off = true },
+      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "tools", row = "Turn on the soft-reserve list", off = true },
     } },
     { module = "InstancePrep", label = "Instance prep", items = {
       { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "town", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
@@ -440,9 +442,6 @@ ns.WHATS_NEW = {
     } },
     { module = "Errands", label = "Errands", items = {
       { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "town", row = "Boat and zeppelin timer", off = true },
-    } },
-    { module = "Legacy", label = "Legacy system", items = {
-      { text = "/vg legacy probe lists what the game has for the Legacy system, and a perk planner (off until you switch it on) keeps a list of perks within the tree's 16 points.", page = "town", row = "Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", off = true },
     } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },

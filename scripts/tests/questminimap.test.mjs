@@ -180,3 +180,15 @@ it("A1-3 quest minimap: with the minimap hidden the quest spots aren't read", ()
   addon.advance(0.05);
   expect(addon.eval("return __asked"), "a quest log change in a fight still reads them").toBe(1);
 });
+
+it("quest minimap: a minimap the client has not sized (no room for a mark) draws none, never a point of NaN", () => {
+  const addon = loggedIn(MINIMAP_ENV);
+  addon.advance(0.5);
+  expect(marks(addon).length, "sized: marks").toBe(3);
+  addon.eval("ns.QuestMinimap.layer.GetWidth = function() return 0 end");
+  addon.advance(0.5);
+  const nan = addon.eval(`local bad = 0 for _, m in ipairs(ns.QuestMinimap.marks) do if m:IsShown() then
+    local _, _, _, x, y = m:GetPoint(1) if x ~= x or y ~= y then bad = bad + 1 end end end return bad`);
+  expect(nan, "no mark sits at a NaN offset").toBe(0);
+  expect(marks(addon).length, "no marks while the minimap has no room").toBe(0);
+});

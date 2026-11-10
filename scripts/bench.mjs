@@ -20,8 +20,9 @@
 // timed with performance.now(): --warmup untimed repetitions, then --reps timed
 // ones; per event the median time per step over the repetitions, its range and
 // spread ((max - min) / median). Then one more repetition runs with the profiler's
-// sampler (scripts/lib/lua-profile.mjs, 1,000 Lua VM instructions per sample),
-// each event's samples kept apart: instructions per step for the addon's files
+// sampler (scripts/lib/lua-profile.mjs) at 50 Lua VM instructions per sample (a
+// twentieth of the harness's period, so an event with few steps is still counted
+// to about 1%), each event's samples kept apart: instructions per step for the addon's files
 // and the harness's, and per module (addon file) the instructions run in its own
 // functions. Instruction counts barely move between runs of one commit; wall time
 // moves with the machine (and includes the harness's own world and widget code),

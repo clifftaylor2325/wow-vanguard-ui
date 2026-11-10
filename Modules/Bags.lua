@@ -223,14 +223,31 @@ end
 BG.BANK_PARTS = {}
 
 -- The bank window and its slots, whenever it opens or shows another tab, and the client's own bank parts.
+-- Returns false while the game has not made the bank window yet (it may load on demand).
 local function watchBank()
   local bank, panel = _G.BankFrame, _G.BankPanel
-  if type(bank) ~= "table" or type(panel) ~= "table" then return end
+  if type(bank) ~= "table" or type(panel) ~= "table" then return false end
   bank:HookScript("OnShow", ns.Guard("show bank window", skinBankWindow))
   if type(panel.GenerateItemSlotsForSelectedTab) == "function" and type(hooksecurefunc) == "function" then
     hooksecurefunc(panel, "GenerateItemSlotsForSelectedTab", ns.Guard("hook GenerateItemSlotsForSelectedTab", BG.SkinBankItems))
   end
   for _, watch in ipairs(BG.BANK_PARTS) do ns.Try("bank parts", watch, bank, panel) end
+  if bank:IsShown() then ns.Try("skin bank window", skinBankWindow) end
+  return true
+end
+
+-- A later try at watching the bank (a part of the game loaded, or the bank opened): done once it works.
+local function retryWatchBank()
+  if not watchBank() then return end
+  ns.Off("ADDON_LOADED", retryWatchBank)
+  ns.Off("BANKFRAME_OPENED", retryWatchBank)
+end
+
+-- Watches the bank now, or when the game makes it: when a part of the game loads or the bank first opens.
+local function watchBankWhenMade()
+  if watchBank() then return end
+  ns.On("ADDON_LOADED", retryWatchBank)
+  ns.On("BANKFRAME_OPENED", retryWatchBank)
 end
 
 -- Hides the game's sort button while it sits on the combined bag, where Vanguard's Sort takes its place. On
@@ -363,7 +380,7 @@ end
 -- adds (a bag swapped in) when it fills them, and its slots in sections.
 function BG.Enable(settings)
   syncCombined(settings)
-  if settings.bank then watchBank() end
+  if settings.bank then watchBankWhenMade() end
   local frame = combinedFrame()
   if not frame then return end
   BG.AddSort(frame)

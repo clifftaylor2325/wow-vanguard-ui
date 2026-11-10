@@ -6,7 +6,7 @@ The research it draws on: [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md) (PR #394:
 
 ## 1. What a stranger sees today, and after
 
-A public post called Vanguard "mis-matching textures and fonts" and "an ElvUI copy". The research agrees with the first half and explains it: a stranger is not reacting to one ugly control but to seams, and the seams are these.
+A public post called Vanguard "mis-matching textures and fonts" and "a copy of a known suite". The research agrees with the first half and explains it: a stranger is not reacting to one ugly control but to seams, and the seams are these.
 
 | Today (shot number from the walkthrough set, or `file:line`) | After | Closed by |
 |---|---|---|
@@ -19,7 +19,7 @@ A public post called Vanguard "mis-matching textures and fonts" and "an ElvUI co
 | Seven title styles, five section-header styles, dialogs where Reload and Later look the same, "Nothing to show" in an empty meter. | One title helper, one header style, one primary per view, destructive never brass, empty states that say what fills them. | consistency PR, 8.6, 8.8 |
 | The website's walkthrough shots 01 to 07a still show the pre-0.6.0 Cinzel-heading default. | Retaken from the launch build once these phases land (a task in `wow-vanguard-ui-site`, not a phase here). | after 8.11 |
 
-The second half of the post ("an ElvUI copy") reads as "another dark pixel-border suite". The earlier research found no shared code, names or art; what answers it is an identity made consistent: the brass sheen and bevel, the crest, the attached tab, the pill controls, the copy tone. No other suite has those, so they are what this plan makes uniform first.
+The second half of the post ("a copy of a known suite") reads as "another dark pixel-border suite". The earlier research found no shared code, names or art; what answers it is an identity made consistent: the brass sheen and bevel, the crest, the attached tab, the pill controls, the copy tone. No other suite has those, so they are what this plan makes uniform first.
 
 ## 2. The target, in one page
 

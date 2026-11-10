@@ -93,18 +93,98 @@ O.MANA_BAR_LABEL = ns.ClientData({
   retail = L["Mana under the player frame when your power bar shows another power: druid forms, Shadow, Elemental and Balance (reload)"],
 })
 
+-- The text formats of the health and power numbers (Modules/UnitFrames.lua, UF.FORMATS); a hidden value falls back to
+-- the value, or the percent alone, as the page's note says.
+local TEXT_FORMATS = {
+  { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] },
+  { "both", L["Both (42.8K  84%)"] }, { "deficit", L["Missing (-7.1K)"] },
+}
+
+-- The power text's choices: the same formats, and none (the default).
+local POWER_FORMAT_CHOICES = { { "none", L["Off"] }, TEXT_FORMATS[1], TEXT_FORMATS[2], TEXT_FORMATS[3], TEXT_FORMATS[4] }
+
+-- The frames the sliders size, in the order the page lists them: the settings group (UF.FrameSize), its caption, and
+-- whether its sliders show on the folded card (the frames a player resizes most; the rest sit under More settings).
+local SIZED_FRAMES = {
+  { "player", L["Player"], true }, { "target", L["Target"], true }, { "targettarget", L["Target of target"] },
+  { "focus", L["Focus"] }, { "focustarget", L["Focus target"] }, { "pet", L["Pet"] }, { "party", L["Party"], true },
+}
+
+-- A width or height slider for one frame (range from UnitFrames.RANGES), applied at once, out of combat.
+local function sizeSlider(frame, dimension)
+  local group, caption = frame[1], frame[2]
+  local label = dimension == "width" and L["{frame}: width"] or L["{frame}: height"]
+  local key = group .. (dimension == "width" and "Width" or "Height")
+  local range = ns.GetModule("UnitFrames").RANGES[dimension]
+  local row = { "slider", ns.Format(label, { frame = caption }), range, liveMethod("UnitFrames", key, "ApplySizes") }
+  row.essential = frame[3] == true
+  return row
+end
+
+-- The Frame sizes card: a width and a height slider for each frame (the target's height is the one setup's role layouts raise).
+local function sizeRows()
+  local rows = { { "header", L["Frame sizes"] } }
+  for _, frame in ipairs(SIZED_FRAMES) do
+    rows[#rows + 1] = sizeSlider(frame, "width")
+    rows[#rows + 1] = sizeSlider(frame, "height")
+  end
+  return rows
+end
+
+-- The Power text card: its format, and what a format does while the client hides the numbers.
+local function powerTextRows()
+  return {
+    { "header", L["Power text"] },
+    { "cycle", L["Show power as"], POWER_FORMAT_CHOICES, liveMethod("UnitFrames", "powerFormat", "ApplyPowerText") },
+    { "text", L["Where the game hides numbers, Both shows the percent alone and Missing leaves out the minus sign."], "note" },
+  }
+end
+
+-- The portrait choices of the player, target and focus frames (Modules/UnitPortrait.lua), and what a look that points
+-- or cuts the frame's outer end does to them.
+local PORTRAIT_CHOICES = { { "off", L["Off"] }, { "portrait", L["2D portrait"] }, { "class", L["Class icon"] } }
+local PORTRAIT_TIP =
+  L["Creatures show their portrait. Hidden under the Shield look, Plain with shield corners and the Versus deck: their corners leave no room."]
+
+-- A frame's portrait choice row, applied at once, out of combat.
+local function portraitRow(label, key)
+  local row = { "cycle", label, PORTRAIT_CHOICES, liveMethod("UnitFrames", key, "ApplyPortraits") }
+  row.tip = PORTRAIT_TIP
+  return row
+end
+
+-- The portrait rows: one choice each for the player, target and focus frames.
+local function portraitRows()
+  return {
+    { "header", L["Portraits"] },
+    portraitRow(L["Player portrait"], "playerPortrait"), portraitRow(L["Target portrait"], "targetPortrait"),
+    portraitRow(L["Focus portrait"], "focusPortrait"),
+  }
+end
+
+-- The Heals and shields card: the bars on the player, target and party frames and the status row (leader, role, resting,
+-- PvP) over their corner, each applied at once.
+local function predictionRows()
+  return {
+    { "header", L["Heals, shields and status marks"] },
+    check(L["Incoming heals on your frames"], liveMethod("UnitFrames", "healPrediction", "ApplyPrediction")),
+    check(L["Shields on your frames"], liveMethod("UnitFrames", "absorbs", "ApplyPrediction")),
+    check(L["Leader, role, resting and PvP marks"], liveMethod("UnitFrames", "statusMarks", "ApplyStatus")),
+  }
+end
+
 -- Unit frames, and the class bars under the player frame.
 local function unitFrameRows()
-  return {
+  return append({
     { "header", L["Unit frames"] },
     check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
-    { "cycle", L["Health as"], { { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] } }, unitFrameSetting("healthFormat") },
+    { "cycle", L["Health as"], TEXT_FORMATS, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
     check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
     O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
-  }
+  }, append(append(append(powerTextRows(), predictionRows()), portraitRows()), sizeRows()))
 end
 
 -- Cast bars, and the target and focus auras' card (its rows are Modules/FrameAuras.lua's).
@@ -178,6 +258,17 @@ local function previewedSetting(key)
   return get, function(v) set(v); ns.RaidPreview.Refresh() end, initial
 end
 
+-- get/set for the raid tiles' width or height: the real tiles resize at once (out of combat) and so does the preview.
+local function sizeSetting(key)
+  local get, set, initial = setting("RaidFrames", key)
+  return get, function(v) set(v); ns.GetModule("RaidFrames").ApplySize(); ns.RaidPreview.Refresh() end, initial
+end
+
+-- The raid tiles' width and height sliders: every step the choices used to have (72, 90, 100, 120 wide; 36, 40, 48, 56 tall)
+-- lies on them, so no saved size changes.
+local RAID_WIDTHS = { min = 72, max = 120, step = 2 }
+local RAID_HEIGHTS = { min = 36, max = 56, step = 2 }
+
 -- get/set for Stack big raids: the real frames and the preview follow at once.
 local function stackSetting()
   local get, set, initial = reloadSetting("RaidFrames", "stackBig")
@@ -194,8 +285,8 @@ local function raidRows()
     essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
     essential(check(L["Stack big raids at the left"], stackSetting())), essential(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard"))),
     essential({ "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") }),
-    essential({ "cycle", L["Width"], ns.Widgets.Keep({ { 72, "72" }, { 90, "90" }, { 100, "100" }, { 120, "120" } }), previewedSetting("width") }),
-    essential({ "cycle", L["Height"], { { 36, "36" }, { 40, "40" }, { 48, "48" }, { 56, "56" } }, previewedSetting("height") }),
+    essential({ "slider", L["Width"], RAID_WIDTHS, sizeSetting("width") }),
+    essential({ "slider", L["Height"], RAID_HEIGHTS, sizeSetting("height") }),
   }
 end
 
@@ -204,7 +295,7 @@ local function raidPreviewRows()
   local RP = ns.RaidPreview
   return {
     { "header", L["Preview"] },
-    { "text", L["Fills the raid tiles with sample players, so you can check their size, style and layout alone. A new width, height, sorting or Groups as shows in the preview at once (the real frames take a reload). It ends when you join a group, enter combat or reload."] },
+    { "text", L["Fills the raid tiles with sample players, so you can check their size, style and layout alone. A new width or height shows in the preview and on the real tiles at once (out of combat); sorting and Groups as show in the preview at once, the real frames take a reload. It ends when you join a group, enter combat or reload."] },
     { "cycle", L["Preview with sample players"], RP.CHOICES, function() return RP.size end, RP.Set },
   }
 end

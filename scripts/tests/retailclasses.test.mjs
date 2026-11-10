@@ -23,8 +23,8 @@ const shown = (addon, kind) => addon.eval(`local f = ns.GetModule("ClassBars").r
 it("holy power: a pip per point above the player frame, a hidden count still fills them", () => {
   const addon = retail("PALADIN", 1, "__p.powers[9], __p.maxpowers[9] = 3, 5");
   const place = addon.eval(`local row = ns.GetModule("ClassBars").resourceFrames.holyPower local p, rel, rp = row:GetPoint()
-    return { p, rel == Vanguard_player, rp, row:GetWidth() }`);
-  expect(place, "on the player frame's top left, five pips of 14 and a gap of 3").toEqual(["BOTTOMLEFT", true, "TOPLEFT", 5 * 17]);
+    return { p, rel == ns.GetModule("UnitFrames").Crown(Vanguard_player), rp, row:GetWidth() }`);
+  expect(place, "on the player frame's crown's top left (the frame's own, rising with a tab), five pips of 14 and a gap of 3").toEqual(["BOTTOMLEFT", true, "TOPLEFT", 5 * 17]);
   expect(fills(addon, "holyPower"), "three of five").toEqual([1, 1, 1, 0, 0]);
   addon.eval("__wfgWorld.units.player.powers[9] = __wfgWorld.secret(4)");
   addon.fire("UNIT_POWER_FREQUENT", "player", "HOLY_POWER");
@@ -38,6 +38,12 @@ it("a warlock below level 10 has no soul shard pips until the level-up to 10", (
   addon.eval("__wfgWorld.units.player.level = 10");
   addon.fire("PLAYER_LEVEL_UP", 10);
   expect(shown(addon, "soulShards"), "level 10: the pips show").toBe(true);
+});
+
+it("the soul shard pips show at the level-up to 10 while the client still gives the old level", () => {
+  const addon = retail("WARLOCK", 1, "__p.powers[7], __p.maxpowers[7] = 2, 5 __p.level = 9");
+  addon.fire("PLAYER_LEVEL_UP", 10);
+  expect(shown(addon, "soulShards"), "the event's level counts, not UnitLevel's 9").toBe(true);
 });
 
 it("soul shards fill by tenths for a Destruction warlock, whole for the others", () => {

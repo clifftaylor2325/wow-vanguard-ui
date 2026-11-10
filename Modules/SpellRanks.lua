@@ -46,7 +46,7 @@ function SR.Stale()
   local known, out = byID(), {}
   for slot = 1, SR.SLOTS do
     local kind, id = ns.Client.Call("GetActionInfo", slot)
-    local have = kind == "spell" and known[ns.PlainNumber(id) or 0]
+    local have = ns.PlainText(kind) == "spell" and known[ns.PlainNumber(id) or 0]
     if have and have.rank < have.spell.maxRank then
       out[#out + 1] = { slot = slot, name = have.spell.name, from = id, to = have.spell.spellID, old = have.rank, new = have.spell.maxRank }
     end

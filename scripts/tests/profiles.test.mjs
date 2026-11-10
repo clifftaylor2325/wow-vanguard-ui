@@ -114,10 +114,12 @@ it("profile management", () => {
   expect(chatHas(addon, /taken or not allowed/), "names are unique").toBeTruthy();
   addon.eval("VanguardDB.profiles.Raid.theme = { accent = { 0, 1, 0 } }");
   addon.slash("profile copy Raid");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect(addon.eval("return VanguardDB.profiles.Default.theme.accent[2]") === 1, "/vg profile copy copies into the active profile").toBeTruthy();
   addon.slash("profile delete Default");
   expect(chatHas(addon, /Can't delete/), "the active profile can't be deleted").toBeTruthy();
   addon.slash("profile delete Raid");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect(addon.eval("return VanguardDB.profiles.Raid") === null, "others can").toBeTruthy();
   addon.slash("profile reset");
   expect(addon.eval("return VanguardDB.profiles.Default.theme ~= nil and Vanguard_Question:IsShown()"), "/vg profile reset asks first").toBe(true);
@@ -134,6 +136,60 @@ it("/vg profile <name>: a profile's exact name wins over the verbs, so Copy Raid
   addon.slash("profile Copy Raid");
   expect(addon.eval("return { ns.PendingProfileName(), VanguardDB.profiles.Default.theme.accent[1], VanguardDB.profiles.Raid.theme.accent[2] }"), "it stages Copy Raid; Default and Raid are untouched")
     .toEqual(["Copy Raid", 1, 1]);
+});
+// Answers the open question Yes.
+const yes = (addon) => addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+// Answers the open question No.
+const no = (addon) => addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+// The open question's title, or false when none shows.
+const asking = (addon) => addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()");
+it("hunt setup: /vg profile copy and delete ask first with the Profiles page's warning, and No changes nothing", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.eval("VanguardDB.profiles.Raid.theme = { accent = { 0, 1, 0 } }");
+  addon.slash("profile copy Raid");
+  expect(asking(addon), "copy asks").toBe("Replaces every setting in profile Default with profile Raid's. It can't be undone.");
+  no(addon);
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.accent[2] ~= 1"), "No leaves the profile alone").toBe(true);
+  addon.slash("profile delete Raid");
+  expect(asking(addon), "delete asks").toBe("Deletes profile Raid for every character on this account. It can't be undone.");
+  no(addon);
+  expect(addon.eval("return VanguardDB.profiles.Raid ~= nil"), "No keeps it").toBe(true);
+  yes(addon);
+  addon.slash("profile delete Nothing");
+  expect(chatHas(addon, /Can't delete/), "a missing profile is refused without a question").toBe(true);
+});
+it("hunt setup: /vg profile <name> matches an existing profile in any case, an exact name wins, and a new name asks before creating", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile raid");
+  expect(addon.eval("return { ns.PendingProfileName(), VanguardDB.profiles.raid == nil }"), "a different case switches to Raid and makes nothing").toEqual(["Raid", true]);
+  addon.slash("profile new RAID");
+  addon.slash("profile RAID");
+  expect(addon.eval("return ns.PendingProfileName()"), "an exact match wins over the first in name order").toBe("RAID");
+  addon.eval("ns.UseProfile('Default')");
+  addon.slash("profile Typo");
+  expect(asking(addon), "a name that matches nothing asks").toBe("Create a new profile named Typo?");
+  no(addon);
+  expect(addon.eval("return { VanguardDB.profiles.Typo == nil, ns.PendingProfileName() == nil }"), "No creates nothing").toEqual([true, true]);
+  addon.slash("profile Typo");
+  yes(addon);
+  expect(addon.eval("return { VanguardDB.profiles.Typo ~= nil, ns.PendingProfileName() }"), "Yes creates it and stages it").toEqual([true, "Typo"]);
+});
+it("hunt setup: an old FUI1 string imports once (the second paste matches the profile it made, upgraded once) and a cut one changes nothing", () => {
+  const addon = loggedIn();
+  const make = 'local t = ns.Serialize.Encode("profile", { theme = { barTexture = "forever", reduceMotion = false } }):gsub("^VG1:", "FUI1:") return t';
+  const text = addon.eval(make);
+  // How many profiles are saved.
+  const count = () => addon.eval("local n = 0 for _ in pairs(VanguardDB.profiles) do n = n + 1 end return n");
+  addon.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  const after = count();
+  expect(addon.eval(`local n = ns.ImportProfile(${JSON.stringify(text)}) return n`), "the same old string again uses the profile it made").toMatch(/matches profile/);
+  expect(count(), "and makes no second copy").toBe(after);
+  expect(addon.eval("local p for k, v in pairs(VanguardDB.profiles) do if v.theme and v.theme.barTexture == 'vanguard' then p = v end end return { p ~= nil, p.theme.reduceMotion }"), "the bar name is upgraded and a saved false stays a value").toEqual([true, false]);
+  const cut = text.slice(0, text.length - 12);
+  expect(addon.eval(`local a, b = ns.ImportProfile(${JSON.stringify(cut)}) return b`), "a cut string says so").toMatch(/incomplete|damaged/);
+  expect(count(), "and adds nothing").toBe(after);
 });
 it("spec profiles", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
@@ -668,6 +724,7 @@ it("Copy here while a switch waits copies into the profile used after the reload
   expect(addon.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }"), "Raid is staged for the reload").toEqual(["Default", "Raid"]);
   addon.clearChat();
   addon.slash("profile copy Healer");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect(addon.eval("return VanguardDB.profiles.Raid.theme.accent[2]"), "/vg profile copy writes into the incoming profile").toBe(1);
   expect(addon.eval("return VanguardDB.profiles.Default.theme.accent[1]"), "and leaves the running profile alone").toBe(1);
   expect(addon.eval("return Vanguard_Reload.title:GetText()"), "the reload offer names the profile it copied into").toBe("Copied Healer into Raid. Reload the UI now to apply it?");
@@ -854,7 +911,7 @@ it("two long profile names that are cut alike each keep their own backup", () =>
   addon.eval(`VanguardCharDB.profile = "Default" ns.DeleteProfile("${two}")`);
   expect(addon.eval(`return VanguardDB.backupOf["${two}"]`), "deleting a backup frees its name").toBeNull();
   addon.eval("VanguardDB.backupOf = 7");
-  expect(backupFor(b), "a damaged note is ignored: the plain name is free again").toBe(`${"A".repeat(25)} backup`);
+  expect(backupFor(b), "with the notes gone (damaged), the plain name holds an unrecorded profile, which is never overwritten: the next free name").toBe(`${"A".repeat(23)} backup 2`);
 });
 // A profile string made on `maker` ("retail" or "forever") with the saved tables `lua`, then imported whole on the other client;
 // returns the imported profile's UnitFrames and InstancePrep.want.bandages as { levels, health, bandages }.
@@ -907,7 +964,18 @@ it("an import's backup never overwrites a profile another character or a spec us
   const backup = addon.eval('return (select(2, ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "copper" } }))))).backup');
   expect(backup, "the backup takes the next free name").toBe("Default backup 3");
   expect(addon.eval('return { VanguardDB.profiles["Default backup"].marker, VanguardDB.profiles["Default backup 2"].marker }'), "the profiles in use keep their settings").toEqual(["other", "spec"]);
-  expect(addon.eval('VanguardDB.profiles["Default backup 3"] = nil VanguardDB.guard = nil VanguardCharDB.specProfiles = nil return ns.BackupProfile()'), "a file without a guard or spec map backs up as before").toBe("Default backup");
+  expect(addon.eval('VanguardDB.profiles["Default backup 3"] = nil VanguardDB.guard = nil VanguardCharDB.specProfiles = nil return ns.BackupProfile()'), "a file without a guard or spec map: the two names still hold unrecorded profiles, so the next free one").toBe("Default backup 3");
+});
+it("hunt setup: a backup never overwrites a profile that is not a recorded backup of that source, and a recorded one is reused", () => {
+  const addon = loggedIn();
+  addon.eval('VanguardDB.profiles["Default backup"] = { marker = "mine" }');
+  const imported = addon.eval('return (select(2, ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "copper" } }))))).backup');
+  expect(imported, "a hand-made Default backup survives an import: the backup goes to the next name").toBe("Default backup 2");
+  expect(addon.eval('return { VanguardDB.profiles["Default backup"].marker, VanguardDB.backupOf["Default backup 2"] }'), "and it is recorded").toEqual(["mine", "Default"]);
+  addon.eval("VanguardCharDB.profile = 'Default' VanguardCharDB.pendingProfile = nil");
+  expect(addon.eval("return ns.BackupProfile()"), "the recorded backup is reused").toBe("Default backup 2");
+  addon.eval("VanguardDB.setupDone = true VanguardCharDB.setupDone = true");
+  expect(addon.eval("ns.Setup.Open() ns.Setup.Backup() return VanguardDB.profiles['Default backup'].marker"), "a setup backup leaves the hand-made one alone too").toBe("mine");
 });
 it("importing a string that matches a profile here uses that profile instead of making a copy", () => {
   const addon = loggedIn();
@@ -1026,4 +1094,15 @@ it("export panel: in Spanish at 130% its rows stack by their heights and None ho
   expect(Math.max(...rows.map((r) => r[1])), "a wrapped caption's row is taller than a one-line row").toBeGreaterThan(28);
   const cut = addon.textFit("Vanguard_ExportDialog").filter((f) => f.text === "None" || f.text === "All");
   expect(cut, "All and None are not cut short").toEqual([]);
+});
+
+it("a profile saved with the retired Pet stable, Legacy helper and boss docks loses their settings, and the Legacy perk list goes with them", () => {
+  const saved = `VanguardDB.legacyPlan = { { name = "Swift Travel", points = 3 } }
+    VanguardDB.profiles = { Default = { modules = { PetStable = false, Legacy = true, BossDocks = false, Meter = false }, PetStable = { announce = false }, Legacy = { planner = true }, BossDocks = {}, Meter = { x = 1 } } }`;
+  const addon = loggedIn("", { savedVariables: saved });
+  const left = addon.eval(`local p = VanguardDB.profiles.Default
+    return { p.PetStable == nil, p.Legacy == nil, p.BossDocks == nil, p.modules.PetStable == nil, p.modules.Legacy == nil, p.modules.BossDocks == nil, VanguardDB.legacyPlan == nil, p.modules.Meter, p.Meter.x }`);
+  expect(left, "the retired tables and switches are gone; another module's stay").toEqual([true, true, true, true, true, true, true, false, 1]);
+  const bare = addon.eval("local p = { modules = 7, PetStable = {} } ns.MigrateProfileTable(p) return { p.PetStable == nil, p.modules }");
+  expect(bare, "a profile whose module switches are not a table still loses the retired tables, and keeps what it has").toEqual([true, 7]);
 });

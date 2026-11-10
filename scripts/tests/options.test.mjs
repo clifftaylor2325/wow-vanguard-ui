@@ -223,6 +223,7 @@ it("options: after Copy here or Reset profile on the profile in use, the footer 
   const typed = loggedIn(CLICK_LUA);
   typed.eval('ns.NewProfile("TEST-ONLY Healer")');
   typed.slash("profile copy TEST-ONLY Healer");
+  typed.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   typed.eval('ns.Options.Show("profiles")');
   expect(notice(typed), "and /vg profile copy, the window opened after it").toEqual([true, "Profile replaced: reload before you change more"]);
 });
@@ -592,6 +593,12 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(resetDot(addon, "Health as"), "a default that depends on the client has one, and no dot while it is held").toEqual([false, true]);
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
+  addon.eval('__click("Action bars") __click("Bar backing")');
+  expect(resetDot(addon, "Bar backing"), "choices get one too").toEqual([true, true]);
+  addon.eval(`local def = ns.GetModule("ActionBars").defaults.backing
+    for _ = 1, 8 do if ns.Settings("ActionBars").backing == def then break end __click("Bar backing") end`);
+  expect(resetDot(addon, "Bar backing")[0], "and lose it back at the default, once the cycle comes round").toBe(false);
+  addon.eval('__click("Nameplates")');
   addon.eval(`GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent) function GameTooltip:SetOwner(o) self.__owner = o end
     function GameTooltip:SetText(t) self.__tip = t end function GameTooltip:AddLine(t) self.__line = t end`);
   addon.eval('__click("Raid frames")');
@@ -643,13 +650,10 @@ const PAGE_VIEW = "(function() for _, w in ipairs(__wfgStub.frames) do if w.fade
 const rowNamed = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
   if w.label and w.label.__text == "${text}" and ns.Options.RevealRow(w) then return w end end end)()`;
 
-it("options: a Width the presets don't list shows its value as a dropdown; a preset stays as segments", () => {
-  const preset = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { width = 90 } } } }' });
-  preset.eval('ns.Options.Show("raid")');
-  expect(preset.eval(`local r = ${rowNamed("Width")} return { r.segments ~= nil, r.dropdown == nil }`), "90 is a preset: the four segments").toEqual([true, true]);
+it("options: the raid Width is a slider that shows a value between the old steps, and the old steps sit on it", () => {
   const other = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { width = 84 } } } }' });
   other.eval('ns.Options.Show("raid")');
-  expect([other.eval(`local r = ${rowNamed("Width")} return { r.segments == nil, r.dropdown ~= nil }`), other.texts("84").length > 0], "84 isn't a preset: a dropdown, showing 84").toEqual([[true, true], true]);
+  expect([other.eval(`local r = ${rowNamed("Width")} return { r.segments == nil, r.dropdown == nil }`), other.texts("84").length > 0], "84 is on the slider and shown").toEqual([[true, true], true]);
 });
 
 it("options: the mouse wheel over a slider, a choice or a switch scrolls the page and never changes the value", () => {
@@ -1026,8 +1030,8 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|56", "modules|Modules|20|88", "unitframes|Unit frames|30|41", "raid|Raid frames|40|26",
-    "actionbars|Action bars|60|84", "quests|Quests|70|30", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|41", "town|Town and gear|85|64", "profiles|Profiles|90|22",
+    "general|General|10|62", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
+    "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|58", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|26",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
   ]);
@@ -2270,4 +2274,85 @@ it("T.Forget drops a frame's check box, arrow and divider parts from the theme's
     T.Forget(f) T.Forget(d)
     return { before[1], before[2], before[3], T.CheckParts(c) == nil, T.ArrowParts(a) == nil, T.DividerParts(d) == nil }`);
   expect(parts, "built, then forgotten").toEqual([true, true, true, true, true, true]);
+});
+
+it("options: one row whose refresh fails does not stop the rows after it from refreshing", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  const result = addon.eval(`local rows = {}
+    for _, w in ipairs(__wfgStub.frames) do if w.card and w.Refresh and w.card.child and w.card.child.pageKey == "general" then rows[#rows + 1] = w end end
+    local first, last = rows[1], rows[#rows]
+    first.Refresh = function() error("TEST-ONLY row refresh") end
+    last.Refresh = function() __lastRefreshed = true end
+    local before = #ns.errors
+    ns.Options.Refresh()
+    local out = { __lastRefreshed == true, #ns.errors - before, #rows > 1 }
+    ns.errors[#ns.errors] = nil
+    return out`);
+  expect(result, "the last row refreshed, the failure was kept once").toEqual([true, 1, true]);
+});
+
+it("reload overlays: one that cannot let go at the start of a fight does not leave the others up", () => {
+  const addon = loggedIn();
+  addon.eval(`ns.OfferReload("Changed.")
+    local second = ns.ReloadButton(ns.Widgets.Primary(UIParent, "TEST-ONLY Reload")) second:Show()
+    __overlays = { Vanguard_Reload.accept.reloadOverlay, second.reloadOverlay }
+    for _, o in ipairs(__overlays) do o.ClearAllPoints = function() error("TEST-ONLY locked") end end`);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return { __overlays[1]:IsShown(), __overlays[2]:IsShown() }"), "both overlays are put away").toEqual([false, false]);
+  addon.eval("local n = #ns.errors for i = n, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY locked') then table.remove(ns.errors, i) end end");
+});
+
+it("options: a card whose rows fail to build is kept as far as it got, the page still opens and the changed dots keep following", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  const out = addon.eval(`local O = ns.Options
+    O.AddRowKind("boom", function() error("TEST-ONLY card build") end, 20)
+    O.AddPage({ key = "zzboom", title = "TEST-ONLY page", icon = "NavProfiles", order = 99, rows = function()
+      return { { "header", "First" }, { "text", "fine" }, { "header", "Second" }, { "boom" } } end })
+    local before = #ns.errors
+    local ok = pcall(O.Show, "zzboom")
+    local failed = #ns.errors - before
+    O.Show("general")
+    return { ok, failed >= 1 }`);
+  expect(out, "the page opens and the failure is kept").toEqual([true, true]);
+  addon.eval('__dbg = __click("AFK scene")');
+  expect(addon.eval("return { __dbg, ns.Options.Frame().nav.general.changed:IsShown() }"), "a change afterwards still marks its page's dot").toEqual([true, true]);
+  addon.eval("for i = #ns.errors, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY card build') then table.remove(ns.errors, i) end end");
+});
+
+it("dropdowns: a menu opened in a fight puts no click catcher over the screen, one opened out of a fight does", () => {
+  const addon = loggedIn();
+  addon.eval(`local d = ns.Widgets.Dropdown(UIParent, { { "a", "A" }, { "b", "B" } }, function() return "a" end, function() end)
+    d:SetPoint("CENTER") d:Show() __d = d`);
+  // Opens the dropdown and returns whether its menu and its click catcher show.
+  const open = () => addon.eval("__d.__scripts.OnClick(__d) local out = { ns.Widgets.MenuOpen(), Vanguard_Menu.catcher:IsShown() } ns.Widgets.CloseMenu() return out");
+  expect(open(), "out of a fight: the catcher is up").toEqual([true, true]);
+  setCombat(addon, true);
+  expect(open(), "in a fight: the menu opens, no catcher").toEqual([true, false]);
+  setCombat(addon, false);
+});
+
+it("options: search text of any shape, a page change with a menu open, closing with a question open and reopening leave nothing floating", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  const out = addon.eval(`local O, res = ns.Options, {}
+    local function try(tag, fn, ...) local ok, err = pcall(fn, ...) if not ok then res[#res + 1] = tag .. ": " .. tostring(err):sub(1, 200) end end
+    for _, text in ipairs({ "", "%", "(", "[", "-", ".", "%d+", ("x"):rep(500), ("snap "):rep(100), "changed" }) do
+      try("search " .. text:sub(1, 12), O.Search, text)
+      try("jump " .. text:sub(1, 12), O.JumpTo, text)
+    end
+    O.Search("")
+    local d = ns.Widgets.Dropdown(UIParent, { { "a", "A" } }, function() return "a" end, function() end)
+    d:SetPoint("CENTER") d:Show() d.__scripts.OnClick(d)
+    O.Show("actionbars") try("tab", O.ShowTab, 2)
+    O.Show("chat")
+    local menuStillUp = ns.Widgets.MenuOpen() and Vanguard_Menu.owner:IsVisible()
+    d:Hide()
+    ns.Ask("TEST-ONLY open question?", "Yes", function() end, function() __no = (__no or 0) + 1 end)
+    O.Hide()
+    O.Show("general")
+    return { table.concat(res, " | "), menuStillUp == true or menuStillUp == false, ns.Widgets.MenuOpen() }`);
+  expect(out[0], "nothing raised").toBe("");
+  expect(out[2], "no menu is left open when its dropdown is hidden and the page changed").toBe(false);
 });

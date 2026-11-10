@@ -36,6 +36,15 @@
     ],
     "scripts/tests/bagsections.test.mjs": [],
     "scripts/tests/bars.test.mjs": [
+      "A3-2 bars: Auto Shot flashes while it repeats, and a hidden answer flashes nothing",
+      "A3-2 bars: Button spacing lays every bar out again without a reload, after the fight in one",
+      "A3-2 bars: Key text off takes the key off every button at once, and on puts it back",
+      "A3-2 bars: a burst of usable, cooldown and state events repaints each button once, on the next frame",
+      "A3-2 bars: a client that cannot say whether an action prints its name still shows a macro's",
+      "A3-2 bars: a macro's name shows along the bottom of its button, live with Macro names",
+      "A3-2 bars: a saved spacing that is not a number of 0 or more is dropped at login",
+      "A3-2 bars: auto-attack flashes its button on and off every 0.4 s, and the flash stops with it",
+      "A3-2 bars: with Reduce motion the attack flash stays lit instead of blinking",
       "Forever's bars carry no pet battle clause (its vanilla content has none)",
       "Hidden bar bindings stay intact",
       "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone",
@@ -65,6 +74,8 @@
       "bar 1 pages without secure snippets: the driver sets the bar's own actionpage, the buttons read it",
       "bar 1 with secure snippets keeps the snippet paging",
       "bar backing: a flat panel under each bar's buttons on Classic look or when asked for, live with the setting and the theme",
+      "bar backing: a stacked bar dragged away keeps a plate of its own, and no two plates overlap",
+      "bar backing: the touching bars of the bottom stack share one plinth under Shield, no plate over another",
       "counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)",
       "empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on",
       "hotkey text stays on one line inside the button, right-aligned",
@@ -84,6 +95,7 @@
       "the mouseover fade still follows hovering an action button",
       "the right-edge bars start off and show on mouseover when turned on"
     ],
+    "scripts/tests/bossspots.test.mjs": [],
     "scripts/tests/broker.test.mjs": [],
     "scripts/tests/casts.test.mjs": [
       "H26-1-2 your cast bar keeps riding the action bars switched off this session, still on screen until the reload",
@@ -117,7 +129,7 @@
       "client capability probe: what this client has, and /vg status says so"
     ],
     "scripts/tests/coexist.test.mjs": [
-      "coexist: EllesmereUI's unit frame, action bar, nameplate and raid frame addons are noticed",
+      "coexist: an all-in-one suite's unit frame, action bar, nameplate and raid frame addons are noticed",
       "coexist: the next login says nothing new; a module already off, or a client without the call, asks nothing"
     ],
     "scripts/tests/cooldowngaps.test.mjs": [],
@@ -135,7 +147,6 @@
     ],
     "scripts/tests/craftqueue.test.mjs": [],
     "scripts/tests/data.test.mjs": [],
-    "scripts/tests/docks.test.mjs": [],
     "scripts/tests/dungeoncard.test.mjs": [
       "a long run with a way back in every 40 minutes stays one visit: the last run is still the one before",
       "a run earlier the same calendar day reads today, even 21 hours before",
@@ -186,15 +197,14 @@
     ],
     "scripts/tests/integration.test.mjs": [],
     "scripts/tests/inventory.test.mjs": [],
-    "scripts/tests/legacy.test.mjs": [],
     "scripts/tests/levelling.test.mjs": [
       "levelling: a supply running low is said once, and again only after it recovered",
       "levelling: supplies already low at login are not warned of, and a fight waits"
     ],
     "scripts/tests/mailtools.test.mjs": [],
     "scripts/tests/masque.test.mjs": [
-      "with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin",
-      "without Masque (or without LibStub) nothing changes"
+      "with the skinning library loaded, action, pet and stance buttons and aura icons go to its groups, without Vanguard's skin",
+      "without the skinning library (or without LibStub) nothing changes"
     ],
     "scripts/tests/merchantbulk.test.mjs": [],
     "scripts/tests/meter.test.mjs": [
@@ -210,7 +220,6 @@
     "scripts/tests/optionsreadable.test.mjs": [
       "options: the Modules page is grouped like the nav, and a filter shows the ones on or off"
     ],
-    "scripts/tests/petstable.test.mjs": [],
     "scripts/tests/platebuffs.test.mjs": [],
     "scripts/tests/platepaint.test.mjs": [],
     "scripts/tests/plates.test.mjs": [
@@ -257,6 +266,7 @@
     "scripts/tests/raid.test.mjs": [
       "raid tools: a burst of roster events in combat queues one update of the bar, not one per event"
     ],
+    "scripts/tests/raidroster.test.mjs": [],
     "scripts/tests/range.test.mjs": [
       "range tint",
       "range tint: Red when out of range repaints the buttons at once, both ways",
@@ -322,10 +332,12 @@
       "Versus deck: one rounded panel behind the player and target, the crest at the seam, the target's bars mirrored",
       "a ?? (boss or far higher) level reads in the hardest difficulty color, not the easiest",
       "a creature someone else tagged is grey on the unit frames, as on the game's frames",
+      "a parked game frame the game brings back in a fight stays clear until the fight ends, then is parked again",
       "a parked game frame without UpdateShownState, or on a client without hooksecurefunc, is left alone",
       "a raid target icon on a short frame (target of target, pet) is lifted so its bottom clears the name; boss frames keep it centred",
       "a raid target icon sits on every unit frame's top edge, following the Raid target icons switch",
       "a released player reads Ghost and a feigning hunter reads alive",
+      "a unit tooltip whose shown state the client hides gets no extra line and raises nothing",
       "an offline or dead unit's health bar goes dark, an online one keeps its class colour",
       "class bars: a right-click on a totem cell destroys it, with key-down casting on or off",
       "class bars: an empty totem cell lets clicks through out of combat, and every cell takes clicks in a fight",
@@ -339,6 +351,7 @@
       "in-combat mark: crossed swords and a vermilion edge on your frame from the fight's start to its end",
       "in-combat mark: the Unit frames page switches it at once, and the health text ends clear of the swords",
       "in-combat mark: your target's edge follows the client's answer, a hidden one counting as no",
+      "one unit frame that fails to paint or lay out is reported, and every other frame still does",
       "power ticks: energy every two seconds, and forms switch",
       "power ticks: the energy spark stops its timer when no tick comes (full energy)",
       "power ticks: the five-second rule after a mana spell",
@@ -347,6 +360,7 @@
       "separate party frames hide in a raid: one visibility driver, no unit watch",
       "target of target: health and power on every look, its name only when it's someone else",
       "the pet frame's tooltip adds your hunter pet's mood",
+      "the pet's health text stays clear of its mood glyph after the frames are laid out again",
       "threat and happiness only where the client and settings allow",
       "threat is quiet solo: it shows in a group or with a pet",
       "threat on your target and your pet's happiness",

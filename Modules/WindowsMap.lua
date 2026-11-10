@@ -168,9 +168,10 @@ local function addMapGlyph(button, name)
   vgMapGlyph[button]:SetPoint("CENTER")
 end
 
--- A map button's glyph in the second text colour, or the disabled one while the game has the button disabled.
+-- A map button's glyph in the second text colour, or the disabled one while the game has the button disabled (or hides
+-- whether it is enabled).
 local function paintMapGlyph(button)
-  local enabled = not button.IsEnabled or button:IsEnabled()
+  local enabled = not button.IsEnabled or ns.IsTrue(button:IsEnabled())
   T.Tint(vgMapGlyph[button], enabled and "text2" or "disabled")
 end
 
@@ -806,7 +807,7 @@ GW.LEGACY_CARD_KEEP = { "NormalTexture", "HighlightTexture", "PushedTexture" }
 
 -- A tree card's selected look (the rail and fill of a selected row) while it is the picked tree (the game's checked state).
 local function markTreeCard(card)
-  if type(card.GetChecked) == "function" then T.SelectRow(card, card:GetChecked() and true or false) end
+  if type(card.GetChecked) == "function" then T.SelectRow(card, ns.IsTrue(card:GetChecked())) end
 end
 
 -- One tree card (a ringed icon button on a plate): the plate, glow and ring faded, the icon kept, on a raised tile
@@ -896,7 +897,7 @@ GW.CHALLENGE_ART = { "Background", "BackgroundTop", "BackgroundMiddle", "Backgro
 -- A challenge card's selected look (the rail and fill of a selected row) while the game has it selected (opened), and
 -- its texts at full strength (the game greys an unfinished card when it refreshes).
 local function markChallenge(card)
-  T.SelectRow(card, type(card.IsSelected) == "function" and card:IsSelected() == true)
+  T.SelectRow(card, type(card.IsSelected) == "function" and ns.IsTrue(card:IsSelected()))
   lightTexts(card)
 end
 
@@ -1113,10 +1114,10 @@ local function skinMonthArrow(button)
 end
 
 -- Sizes the today marker to its day cell (the game makes it 145x140 and centres it on the 91x91 cell, so its outline
--- spilled out of the grid); skipped when the cell is no day button.
+-- spilled out of the grid); skipped when the cell is no day button, or the client hides its size.
 function GW.FitToday(today, day)
   if type(day) ~= "table" or not day.GetWidth or day == _G.CalendarFrame or day == _G.UIParent then return end
-  local w, h = day:GetWidth(), day:GetHeight()
+  local w, h = ns.PlainNumber(day:GetWidth()), ns.PlainNumber(day:GetHeight())
   if (w or 0) > 0 and (h or 0) > 0 then today:SetSize(w, h) end
 end
 

@@ -62,7 +62,7 @@ it("raid indicators", () => {
   expect(i.hots.filter === "HELPFUL|PLAYER|RAID_IN_COMBAT" && i.hots.max === 3 && i.hots.icon === "TEST-ONLY-HOT-A" && i.hots.count === "2", "your HoTs, with stacks").toBeTruthy();
   expect(i.hots.pandemic === 1 && i.hots.timer == null, "HoTs light in their refresh window; no timer numbers on raid icons").toBeTruthy();
   expect(i.mouse === false && i.unit === "raid1" && i.rowsShown, "icons let clicks through to the tile, and follow its unit").toBeTruthy();
-  expect(i.dPoint[0] === 2 && i.dPoint[1] === -43 && i.hPoint[0] === 98 && i.hPoint[1] === -43, "debuffs sit bottom left and HoTs bottom right, above the power bar").toBeTruthy();
+  expect(i.dPoint[0] === 2 && i.dPoint[1] === 5 && i.hPoint[0] === -2 && i.hPoint[1] === 5, "debuffs sit bottom left and HoTs bottom right, above the power bar (5 up from the tile's bottom, so a new height moves them)").toBeTruthy();
   expect(addon.eval("return Vanguard_RaidUnitButton3.debuffRow.frame.__shown") === false, "the offline show no auras").toBeTruthy();
   addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid2")');
   expect(addon.eval("return Vanguard_RaidUnitButton1.debuffRow.frame.__unit") === "raid2", "a roster change points the rows at the new unit").toBeTruthy();
@@ -932,4 +932,27 @@ it("H27-3-4: the aura timer's colour curve is refilled in place when the look ch
   addon.slash("variant classic");
   const steps = addon.eval(`return { __curve == ${curve}, #__curve.points, __curve.points[3][2].r == (ns.Theme.RGB("text")) }`);
   expect(steps, "the same curve the timers hold, still three steps, the last in the new text colour").toEqual([true, 3, true]);
+});
+
+// TEST-ONLY: a fallback aura container on a frame the client then closes to addons (a nameplate handed to a friendly
+// unit): the frame above answers IsForbidden yes, while the container and its icons still answer no and refuse
+// every other call, as the client does to regions under a closed frame. __touches counts the refused calls.
+const CLOSED_ABOVE = `
+  __plate = CreateFrame("Frame", nil, UIParent)
+  __c = ns.AuraLegacy.Create(__plate, { point = { "CENTER" }, lineSize = 100, groups = { { filter = "HARMFUL", max = 2, size = 20 } } }, "target")
+  __touches = 0
+  local closed = { __c.frame, __c.frame:GetChildren() }
+  for _, w in ipairs(closed) do
+    for name in pairs(__wfgWidgetApi.methods[w:GetObjectType()]) do
+      if name ~= "IsForbidden" and name ~= "GetParent" then w[name] = function() __touches = __touches + 1 error("Attempt to access forbidden object from code tainted by an AddOn") end end
+    end
+  end
+  __plate.IsForbidden = function() return true end
+`;
+
+it("a container under a frame the client has closed is kept by Retire and never asked its scale by Refit, though it answers no itself", () => {
+  const addon = loggedIn(CLOSED_ABOVE);
+  expect(addon.eval("return { pcall(ns.Auras.Retire, __c) }"), "Retire keeps it (false), touching nothing").toEqual([true, false]);
+  expect(addon.eval("return { pcall(ns.Auras.Refit, __c.frame, function() return false end) }"), "Refit leaves it alone").toEqual([true]);
+  expect(addon.eval("return __touches"), "no refused call made").toBe(0);
 });

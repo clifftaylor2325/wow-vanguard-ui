@@ -98,11 +98,12 @@ function GT.Rows()
   return rows
 end
 
--- Whether there is something to compare against: a client that has the call, a group and a hostile target.
+-- Whether there is something to compare against: a client that has the call, a group and a hostile target
+-- (a hidden "can attack" answer counts as no: comparing it would raise).
 function GT.CanShow()
   if type(UnitDetailedThreatSituation) ~= "function" or type(IsInGroup) ~= "function" then return false end
   if not IsInGroup() or not ns.IsTrue(UnitExists("target")) then return false end
-  return type(UnitCanAttack) ~= "function" or UnitCanAttack("player", "target") == true
+  return type(UnitCanAttack) ~= "function" or ns.IsTrue(UnitCanAttack("player", "target"))
 end
 
 -- Drawing ---------------------------------------------------------------------------------------

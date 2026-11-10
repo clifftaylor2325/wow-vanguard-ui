@@ -109,13 +109,45 @@ local function sizeOnScreen(f)
   return { w = w * s, h = h * s }
 end
 
+-- HUD layouts ------------------------------------------------------------------------------
+
+-- Each HUD layout's default spots by mover key (ns.LayoutSpots). The layout in force is the profile's hudLayout
+-- (Core/Setup.lua sets it: the Keep, Standards; nil is the Centered layout, every module's own defaults). A
+-- layout's spot wins over a module's default (ns.SetMoverDefault too); a saved position wins over both.
+local layoutSpots = {}
+
+-- Registers a HUD layout's default spots ({ moverKey = { point, relPoint, x, y, ... } }).
+---@param layout string
+---@param spots table
+function ns.LayoutSpots(layout, spots)
+  layoutSpots[layout] = spots
+end
+
+-- The HUD layout in force: the profile's, or "centered" when it names none (or one no release knows).
+---@return string
+function ns.HudLayout()
+  local layout = ns.Profile().hudLayout
+  if layoutSpots[layout] then return layout end
+  return "centered"
+end
+
+-- A mover's default spot now: the HUD layout's for it (one with `under` only on a canvas at least that wide), else
+-- its module's.
+local function spotFor(m)
+  local spots = layoutSpots[ns.HudLayout()]
+  local spot = spots and spots[m.key]
+  local width = ns.PlainNumber(UIParent:GetWidth())
+  if spot and spot.under and width and width < spot.under then return m.default end
+  return spot or m.default
+end
+
 -- A mover's default point on this canvas (spotOn), raised with the block around your character on a tall canvas
 -- (LY.HudLift), then moved as little as it takes to keep its frame on the screen and out of the spot's room
 -- (spot.room: insets kept for frames beside it, the minimap's column for one).
 -- Worked out each time the frame is placed; a saved position never comes through here.
 local function defaultPoint(m)
   local screen, size = canvas(), sizeOnScreen(m.frame)
-  local d = spotOn(m.default, screen)
+  local d = spotOn(spotFor(m), screen)
   local y = d[4] + LY.HudLift(d, screen.h)
   if not size or screen.w == 0 then return d[1], d[2], d[3], y end
   local r = LY.Rect({ point = d[1], relPoint = d[2], x = d[3], y = y }, size, screen)
@@ -167,9 +199,9 @@ end
 
 -- From the first opacity other than 1 on, an alpha the frame's module sets (a
 -- bar fading out on mouseover, say) is kept and multiplied by the opacity, so
--- the module's fades still work. A hidden (secret) alpha is left as it is.
+-- the module's fades still work. A hidden (secret) alpha it sets is left as it is; one read at the start counts as full.
 local function watchAlpha(m)
-  m.ownAlpha = m.frame:GetAlpha() or 1
+  m.ownAlpha = ns.PlainNumber(m.frame:GetAlpha()) or 1
   if type(hooksecurefunc) ~= "function" then return end
   hooksecurefunc(m.frame, "SetAlpha", ns.Guard("hook SetAlpha", function(f, a)
     if vgFading[f] or ns.PlainNumber(a) == nil then return end
@@ -204,16 +236,20 @@ end
 -- After a UI scale or screen change: puts every anchored mover (and its handle) at its link's spot again, since
 -- the frame it follows moved with its edge of the screen, and every mover with no spot of its own at its default
 -- for the new canvas (the narrow-screen spots). Not through place(): that rescales, which runs this again.
-local function reanchor()
-  for _, key in ipairs(order) do
-    local m, p = movers[key], saved()[key]
-    local linked = type(p) == "table" and p.rel ~= nil
-    if linked then ns.MoverLinks.Remember(key, p) end
-    if linked or not ns.MoverSaved(key) then
-      anchor(m.frame, m)
-      if m.handle then anchor(m.handle, m) end
-    end
+-- One mover's part of that, under its own guard in the walk: a frame that fails is reported and the rest still move.
+local function reanchorOne(key)
+  local m, p = movers[key], saved()[key]
+  local linked = type(p) == "table" and p.rel ~= nil
+  if linked then ns.MoverLinks.Remember(key, p) end
+  if linked or not ns.MoverSaved(key) then
+    anchor(m.frame, m)
+    if m.handle then anchor(m.handle, m) end
   end
+end
+
+-- Runs reanchorOne for every mover, in registration order.
+local function reanchor()
+  for _, key in ipairs(order) do ns.Try("reanchor " .. key, reanchorOne, key) end
 end
 T.OnScale(reanchor)
 
@@ -227,6 +263,41 @@ function ns.Mover(frame, key, label, default)
   place(m)
   ns.MoverLinks.Registered(key)
   return m
+end
+
+-- Functions told when the HUD layout changed (ns.SetHudLayout): a module sizes or shows its layout's parts.
+local layoutListeners = {}
+
+-- Registers fn(layout) to run after the HUD layout changed.
+---@param fn fun(layout: string)
+function ns.OnLayoutChanged(fn)
+  layoutListeners[#layoutListeners + 1] = fn
+end
+
+-- Sets the profile's HUD layout ("centered" or nil for the modules' own defaults), forgets the saved positions of
+-- the frames the old and new layouts place (so their spots apply), puts every frame at its spot again, and tells
+-- the ns.OnLayoutChanged listeners; one frame or listener that fails is reported and the rest still run.
+---@param layout string|nil
+function ns.SetHudLayout(layout)
+  local before = ns.HudLayout()
+  ns.Profile().hudLayout = layoutSpots[layout] and layout or nil
+  for _, spots in ipairs({ layoutSpots[before] or {}, layoutSpots[ns.HudLayout()] or {} }) do
+    for key in pairs(spots) do saved()[key] = nil end
+  end
+  for _, key in ipairs(order) do ns.Try("place " .. key, ns.PlaceMover, key) end
+  for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end
+end
+
+-- A copy of a default spot ({ point, relPoint, x, y, ... }) raised dy units (a cast bar's spot over a frame that
+-- grew a tab; nothing else about it changes).
+---@param default table
+---@param dy number
+---@return table
+function ns.RaisedDefault(default, dy)
+  local spot = {}
+  for k, v in pairs(default) do spot[k] = v end
+  spot[4] = default[4] + dy
+  return spot
 end
 
 -- Changes a mover's default point (a stacked bar whose neighbors changed

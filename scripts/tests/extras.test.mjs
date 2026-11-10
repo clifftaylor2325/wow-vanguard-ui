@@ -1,6 +1,7 @@
 // extras: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { AFK_ENV, CLICK_LUA, FAKE_FADES, RAID_ENV, RISE, UNITS_ENV, chatHas, isTok, loggedIn, raidButton, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY group extras: a raid tank (raid1) targeting the boar, and a party pet targeting nothing.
@@ -149,6 +150,8 @@ const TRAINER_ENV = `
   GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], "", s[2], false end
   GetTrainerServiceCost = function(i) return __services[i][3] end
   BuyTrainerService = function(i) __learned[#__learned + 1] = __services[i][1] __money = __money - __services[i][3] __services[i][2] = "used" end
+  Enum.TrainerType = { General = 0, Tradeskills = 2, Pet = 3 }
+  C_Trainer = { GetTrainerType = function() return 0 end }
   C_Timer = { After = function(_, fn) fn() end }
   function __loadTrainer(withTrain)
     ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
@@ -214,6 +217,8 @@ const FOREVER_TRAINER_ENV = `
   GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], s[2], 134400, 1, "Rank 1" end
   GetTrainerServiceCost = function(i) return __services[i][3] end
   BuyTrainerService = function(i) __learned[#__learned + 1] = __services[i][1] if __shrink then table.remove(__services, i) end end
+  Enum.TrainerType = { General = 0, Tradeskills = 2, Pet = 3 }
+  C_Trainer = { GetTrainerType = function() return 0 end }
   ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
 `;
 it("Train all is narrow enough to leave the player's money line clear", () => {
@@ -256,6 +261,18 @@ it("Train all does nothing at a pet trainer: the costs are training points, not 
   addon.eval("__trainerType = 0");
   addon.fire("TRAINER_UPDATE");
   expect(trainButton(addon).text, "the same list at a class trainer is bought from").toBe("Train all (3)");
+});
+it("Train all does nothing at a trainer the Forever client cannot name the type of, and trains on Retail, which has no pet trainers", () => {
+  for (const blind of ["C_Trainer = nil", "C_Trainer.GetTrainerType = function() return nil end", "Enum.TrainerType = nil"]) {
+    const addon = loggedIn(FOREVER_TRAINER_ENV + "__money = 100000 " + blind);
+    addon.fire("TRAINER_SHOW");
+    addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+    expect(addon.eval("return #__learned"), `unknown is not "not a pet trainer" (${blind})`).toBe(0);
+  }
+  const retail = loggedIn(FOREVER_TRAINER_ENV + "__money = 100000 C_Trainer = nil Enum.TrainerType = nil", { client: RETAIL_CLIENT });
+  retail.fire("TRAINER_SHOW");
+  retail.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(retail.eval("return #__learned"), "Retail trains with no type call").toBe(3);
 });
 it("Train all skips a profession to take up: the game's own Train button asks first", () => {
   const addon = loggedIn(PET_TRAINER_ENV + "__money = 100000 __trainerType = 2 GetTrainerServiceCost = function(i) return __services[i][3], __services[i][1] == 'TEST-ONLY Blast' end");
@@ -445,6 +462,11 @@ it("keep stocked: an item sold in stacks (ammo) is bought in whole stacks", () =
   addon.fire("MERCHANT_SHOW");
   expect(addon.eval("return __buys"), "450 wanted: two full stacks and the last 50 rounded up to a whole stack of 200").toEqual([[90014, 200], [90014, 200], [90014, 200]]);
   expect(chatHas(addon, /Bought 600 × item 90014 for 3s 0c\./), "and it says what it really bought").toBe(true);
+});
+it("keep stocked: a rounded-up purchase never passes the game's limit for one purchase", () => {
+  const addon = loggedIn(STOCK_ENV + "__goods[4] = { id = 90015, price = 60, stack = 6, left = -1, max = 20 }", { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90015] = 19 } } } }" });
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __buys"), "19 wanted in sixes, 20 at most a time: 18, then the last stack").toEqual([[90015, 18], [90015, 6]]);
 });
 // TEST-ONLY stock list wanting item 90011 (5 of it).
 const WANT_5 = { savedVariables: "VanguardDB.profiles = { Default = { Errands = { stockList = { [90011] = 5 } } } }" };
@@ -682,6 +704,15 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   bare.fire("MERCHANT_SHOW");
   expect(bare.eval("return #ns.GetModule('Quiet').NoisyTypes()"), "a client without these calls does nothing").toBe(0);
 });
+it("selling junk leaves a gray item in an equipment set, and a locked one, alone", () => {
+  const addon = loggedIn(MERCHANT_ENV);
+  addon.eval(`C_EquipmentSet = { GetEquipmentSetIDs = function() return { 1 } end, GetItemIDs = function() return { [16] = 77 } end }
+    __repairs, __used, __sticky = {}, {}, 0
+    __bag = { { quality = 0, itemID = 77 }, { quality = 0, itemID = 78, isLocked = true }, { quality = 0, itemID = 79 } }`);
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __used"), "only the free gray item in slot 3 is sold").toEqual([3]);
+});
+
 it("junk selling stops when the merchant closes or a fight starts: no retry uses a bag item with no merchant open", () => {
   const addon = loggedIn(MERCHANT_ENV + "__sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
   const MC = "ns.GetModule('Merchant')";

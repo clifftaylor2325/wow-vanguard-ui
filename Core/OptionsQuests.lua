@@ -17,15 +17,28 @@ local function foldsRow()
   return row
 end
 
+-- The session switch that hands the quest and gossip windows to the game, and the modifier that does it for one
+-- talk. Neither needs a reload; the switch is not saved (a reload starts with the dialog again).
+local function fallbackRows()
+  local dialog = ns.GetModule("QuestDialog")
+  local switch = check(L["Use the game's quest windows for now"], dialog.IsHandedBack, dialog.HandBack)
+  switch.tip = L["A way out if the dialog misbehaves: the game's own windows open for every quest giver until you switch this off or reload. Not saved."]
+  local keys = { { "none", L["Off"] }, { "shift", L["Shift"] }, { "ctrl", L["Ctrl"] }, { "alt", L["Alt"] } }
+  local held = { "cycle", L["Hold a key to open the game's windows"], keys, setting("QuestDialog", "bypass") }
+  held.tip = L["Holding the key when you talk to a quest giver opens the game's windows for that talk. Shift is also the key that skips quest automation."]
+  return { switch, held }
+end
+
 -- Quests: the dialog, and the automation (each off until switched on).
 local function questRows()
-  return {
+  return append({
     { "header", L["Quest windows"] },
     check(L["Vanguard's quest dialog (reload)"], reloadSetting("QuestDialog", "dialog")),
+  }, append(fallbackRows(), {
     check(L["Vanguard's quest log (reload)"], reloadSetting("QuestLog", "own")),
     check(L["Each quest's XP in the quest log list"], liveSetting("QuestLog", "xp", function() if ns.GetModule("QuestLog").frame then ns.GetModule("QuestLog").Refresh() end end)),
     foldsRow(),
-  }
+  }))
 end
 
 -- Quests: the tracker.
@@ -33,7 +46,7 @@ local function trackerRows()
   return {
     { "header", L["Quest tracker"] },
     check(L["Vanguard's quest tracker (reload)"], reloadSetting("QuestTracker", "own")),
-    { "cycle", L["With Questie loaded (reload)"], { { "questie", L["Questie's tracker"] }, { "vanguard", L["Vanguard's tracker"] } }, reloadSetting("QuestTracker", "withQuestie") },
+    { "cycle", L["With a quest addon loaded (reload)"], { { "questie", L["The quest addon's tracker"] }, { "vanguard", L["Vanguard's tracker"] } }, reloadSetting("QuestTracker", "withQuestie") },
     check(L["Each quest's XP under it"], liveMethod("QuestTracker", "xp", "Refresh")),
     check(L["Quest XP toward your level"], liveMethod("QuestTracker", "levelXp", "Refresh")),
     check(L["Watch a quest when you accept it"], setting("QuestTracker", "autoTrack")),

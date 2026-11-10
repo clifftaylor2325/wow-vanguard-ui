@@ -1,5 +1,5 @@
 -- The Town and gear page (/vg): the auction house, merchants and errands,
--- the craft queue and mail tools, spell ranks, Legacy, instance prep and
+-- the craft queue and mail tools, spell ranks, instance prep and
 -- gear upgrades. Core/Options.lua has the helpers and the page list.
 
 local ADDON, ns = ...
@@ -100,34 +100,6 @@ local function spellRankRows()
   return O.ModuleRows("SpellRanks", spellRankCard)
 end
 
--- Pet stable: the line at a stable master (/vg pets).
-local function petStableCard()
-  return {
-    { "header", L["Pet stable"] },
-    check(L["Pet count at a stable master"], setting("PetStable", "announce")),
-    { "button", L["List my pets in chat"], function() ns.GetModule("PetStable").Command() end },
-  }
-end
-
--- The card above, on the clients that have the module (WoW Forever).
-local function petStableRows()
-  return O.ModuleRows("PetStable", petStableCard)
-end
-
--- The Legacy perk planner: its switch (/vg legacy plan).
-local function legacyCard()
-  return {
-    { "header", L["Legacy"] },
-    check(L["Legacy perk planner"], setting("Legacy", "planner")),
-    { "button", L["List the perk plan in chat"], function() ns.GetModule("Legacy").Command("plan") end },
-  }
-end
-
--- The card above, on the clients that have the module (WoW Forever).
-local function legacyRows()
-  return O.ModuleRows("Legacy", legacyCard)
-end
-
 -- Instance prep's sliders: how long the card stays (seconds), and the durability warning (percent).
 local PREP_SECONDS = { min = 5, max = 60, step = 5, format = function(v) return ns.Format(L["{seconds} s"], { seconds = v }) end }
 local PREP_PERCENT = { min = 10, max = 90, step = 5, format = function(v) return string.format("%d%%", v) end }
@@ -198,11 +170,11 @@ local function betaRows()
   }
 end
 
--- The Town and gear page: the auction house, merchants, errands, crafting, mail, spells, Legacy, instance prep and gear upgrades.
+-- The Town and gear page: the auction house, merchants, errands, crafting, mail, spells, instance prep and gear upgrades.
 local function townPageRows()
   local rows = append(append(auctionRows(), merchantRows()), errandRows())
-  append(append(append(append(rows, craftRows()), mailRows()), spellRankRows()), petStableRows())
-  return append(append(append(append(rows, legacyRows()), prepRows()), upgradeRows()), betaRows())
+  append(append(append(rows, craftRows()), mailRows()), spellRankRows())
+  return append(append(append(rows, prepRows()), upgradeRows()), betaRows())
 end
 
 O.AddPage({ key = "town", title = L["Town and gear"], icon = "NavTown", order = 85, rows = townPageRows })

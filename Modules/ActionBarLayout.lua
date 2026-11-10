@@ -91,6 +91,7 @@ function AB.Layout(n)
     AB.LayoutBar(n)
     AB.Restack()
     AB.ApplyBindings()
+    AB.UpdateBackings()
   end)
 end
 
@@ -249,6 +250,7 @@ function AB.SettingChanged(n, key)
     AB.Layout(n)
   elseif key == "visibility" or key == "showWhen" then
     AB.ApplyVisibility(n)
+    ns.OutOfCombat(AB.UpdateBackings, "action bar backings")
   end
 end
 
@@ -262,26 +264,75 @@ AB.BACKING_PAD = T.SPACE.tight
 function AB.WantsBacking()
   local mode = AB.settings.backing
   if mode == "on" or mode == "off" then return mode == "on" end
-  return (T.Variant() or {}).barBacking == true or T.HudLook() == "shield"
+  return (T.Variant() or {}).barBacking == true or T.HudBacking()
 end
 
 -- Makes a bar's backing: a flat panel in the HUD look a level under the buttons, taking no mouse; a tool of the
--- look, so under Shield its corners take the shield cuts.
+-- look, so under Shield its corners take the shield cuts. AB.PlaceBacking anchors it.
 local function makeBacking(bar)
   local f = CreateFrame("Frame", nil, bar)
   f:SetFrameLevel(math.max(0, bar:GetFrameLevel() - 1))
-  f:SetPoint("TOPLEFT", bar, "TOPLEFT", -AB.BACKING_PAD, AB.BACKING_PAD)
-  f:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", AB.BACKING_PAD, -AB.BACKING_PAD)
+  f:SetAllPoints(bar)
   T.HudPanel(f, { role = "tool" })
   bar.vgBacking = f
   return f
 end
 
--- Shows or hides every bar's backing (made when first wanted) to match the setting and the theme.
--- Out of combat, since the bars are secure frames.
+-- The enabled stacked bar right under bar n (the next one with a higher number, as AB.StackPoint stacks them), or nil.
+local function barBelow(n)
+  for k = n + 1, #AB.settings.bars do
+    local s = AB.settings.bars[k]
+    if AB.InStack(k) and s and s.enabled then return k end
+  end
+end
+
+-- Whether bar n stands at its spot in the stack, always shown: built, stacked and never dragged away.
+local function standsInStack(n)
+  return AB.bars[n] ~= nil and AB.InStack(n) and not ns.MoverSaved("bar" .. n) and AB.Visibility(n) == "always"
+end
+
+-- Bar n's width on the screen's units, or nil while the client hides it.
+local function spanOf(n)
+  local w = ns.PlainNumber(AB.bars[n]:GetWidth())
+  return w and w * AB.bars[n]:GetScale()
+end
+
+-- Whether bar n's backing runs on under bar k: k is the stacked bar right under it (the two touch), both stand in
+-- the stack and they are as wide, so one plinth covers both with no seam and no plate over another.
+local function joins(n, k)
+  if barBelow(n) ~= k or not (standsInStack(n) and standsInStack(k)) then return false end
+  local a, b = spanOf(n), spanOf(k)
+  return a ~= nil and b ~= nil and math.abs(a - b) < 0.01
+end
+
+-- Each built bar that carries a backing -> the last bar its backing covers: touching stacked bars share the top
+-- one's (the bars under it carry none); every other bar covers itself.
+local function backingRuns()
+  local ends, owner = {}, nil
+  for n = 1, #AB.settings.bars do
+    if AB.bars[n] and owner and AB.InStack(n) and joins(ends[owner], n) then ends[owner] = n
+    elseif AB.bars[n] then ends[n] = n
+      if AB.InStack(n) then owner = n end
+    end
+  end
+  return ends
+end
+
+-- Shows bar's backing (made when first wanted) from its top to the bottom of `last`, the pad out all round, or hides it.
+local function placeBacking(bar, last, shown)
+  local f = bar.vgBacking or makeBacking(bar)
+  f:ClearAllPoints()
+  f:SetPoint("TOPLEFT", bar, "TOPLEFT", -AB.BACKING_PAD, AB.BACKING_PAD)
+  f:SetPoint("BOTTOMRIGHT", last, "BOTTOMRIGHT", AB.BACKING_PAD, -AB.BACKING_PAD)
+  f:SetShown(shown)
+end
+
+-- Shows or hides every bar's backing to match the setting and the theme: one plinth under each run of touching
+-- stacked bars. Out of combat, since the bars are secure frames.
 function AB.UpdateBackings()
-  local on = AB.WantsBacking()
-  for _, bar in pairs(AB.bars) do
-    if on or bar.vgBacking then (bar.vgBacking or makeBacking(bar)):SetShown(on) end
+  local on, ends = AB.WantsBacking(), backingRuns()
+  for n, bar in pairs(AB.bars) do
+    local last = ends[n]
+    if (on and last) or bar.vgBacking then placeBacking(bar, AB.bars[last or n], on and last ~= nil) end
   end
 end

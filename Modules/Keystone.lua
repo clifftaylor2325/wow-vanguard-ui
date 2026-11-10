@@ -106,7 +106,7 @@ local function wanted(f)
   local show = UF.settings.keystone
   if show == "off" or (show ~= "on" and T.HudLook() ~= "shield") then return false end
   if not (UF and UF.frames and UF.frames[KS.ENDS[1]] and UF.frames[KS.ENDS[2]]) then return false end
-  if UF.settings.deck == true then return false end
+  if UF.settings.deck == true or ns.HudLayout() ~= "centered" then return false end
   for key in pairs(KS.MOVERS) do
     if key ~= "cdm_essential" and ns.MoverSaved(key) then return false end
   end

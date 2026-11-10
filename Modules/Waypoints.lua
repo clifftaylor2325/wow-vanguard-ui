@@ -4,7 +4,7 @@
 --   /way Elwynn Forest 42 65 Inn    a zone by name (any case, or a unique start of it), and a title
 --   /way #1429 42 65                a map by its id
 --   /way clear                      removes it
--- /way is Vanguard's only while no other addon (TomTom, say) has it; /vg way
+-- /way is Vanguard's only while no other addon (a waypoint addon, say) has it; /vg way
 -- always works. While the world map is open, a line along its bottom shows
 -- your coordinates and the cursor's. The floating pin and distance the game
 -- draws over the world for a waypoint or a supertracked quest (SuperTrackedFrame)
@@ -152,10 +152,20 @@ local function sameSpot(w, mapID, x, y)
   return w.map == mapID and math.abs(w.x - x) < 0.001 and math.abs(w.y - y) < 0.001
 end
 
+-- A saved list's usable entries, as a new list: a table with a map and plain coordinates (a profile from an
+-- older version or an import may hold anything), so one damaged entry cannot stop the list.
+local function soundSpots(list)
+  local out = {}
+  for _, w in ipairs(type(list) == "table" and list or {}) do
+    if type(w) == "table" and type(w.map) == "number" and type(w.x) == "number" and type(w.y) == "number" then out[#out + 1] = w end
+  end
+  return out
+end
+
 -- Puts a waypoint first among the recent ones, with its title if it has one (the same spot moves up instead of
 -- repeating, keeping the newest title it had when the new one has none), keeping WP.RECENT.
 function WP.Remember(mapID, x, y, title)
-  local list = WP.settings.recent or {}
+  local list = soundSpots(WP.settings.recent)
   WP.settings.recent = list
   for i = 1, #list do
     if sameSpot(list[i], mapID, x, y) then title = title or list[i].title end
@@ -193,7 +203,7 @@ end
 
 -- The recent waypoints, newest first, from the profile: /vg way and the options read them while the module is off too.
 local function recentList()
-  return ns.Settings("Waypoints", WP.defaults).recent or {}
+  return soundSpots(ns.Settings("Waypoints", WP.defaults).recent)
 end
 
 -- Goes to a remembered waypoint; says why when the map can't hold one.
@@ -276,7 +286,7 @@ local function wayTaken()
   return false
 end
 
--- Takes /way unless another addon (TomTom, or any that registered it) has it; true when it did.
+-- Takes /way unless another addon (a waypoint addon, or any that registered it) has it; true when it did.
 local function claimWay()
   local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
   if wayTaken() or (loaded and loaded("TomTom")) then return false end

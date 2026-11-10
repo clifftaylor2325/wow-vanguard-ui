@@ -5,6 +5,7 @@
 -- one simply leaves that number out.
 
 local ADDON, ns = ...
+local L = ns.L
 
 local P = {}
 ns.Perf = P
@@ -161,7 +162,7 @@ end
 -- /vg perf cpu: turns the game's script profiling on or off; it takes effect at the next reload.
 function P.ToggleProfiling()
   local set = (C_CVar and C_CVar.SetCVar) or api("SetCVar")
-  if not set then return ns.Chat("This client can't switch script profiling.") end
+  if not set then return ns.Chat(L["This client can't switch script profiling."]) end
   local on = not P.Profiling()
   set("scriptProfile", on and "1" or "0")
   ns.OfferReload(on and "CPU profiling starts after a reload; it slows every addon a little, so /vg perf cpu again when you're done."
@@ -173,9 +174,9 @@ function P.Watch()
   if P.ticker then
     P.ticker:Cancel()
     P.ticker = nil
-    return ns.Chat("Stopped printing Vanguard's CPU and memory.")
+    return ns.Chat(L["Stopped printing Vanguard's CPU and memory."])
   end
-  if not (C_Timer and C_Timer.NewTicker) then return ns.Chat("This client has no timers to print with.") end
+  if not (C_Timer and C_Timer.NewTicker) then return ns.Chat(L["This client has no timers to print with."]) end
   P.ticker = C_Timer.NewTicker(P.EVERY, ns.Guard("timer perf report", function() P.Report(false) end))
   ns.Chat(string.format("Printing Vanguard's CPU and memory every %d s; /vg perf watch again stops.", P.EVERY))
 end
@@ -223,7 +224,7 @@ end
 -- longest call, how many calls took over ns.SLOW_MS, and its time in all; reset starts the count over.
 -- Either turns timing on for the rest of the session (it stops after login otherwise).
 function P.SlowCommand(rest)
-  if rest == "reset" then ns.timings, ns.timingCount = {}, 0 ns.Chat("Vanguard's handler timings start over.") return armTiming() end
+  if rest == "reset" then ns.timings, ns.timingCount = {}, 0 ns.Chat(L["Vanguard's handler timings start over."]) return armTiming() end
   P.SlowList()
   armTiming()
 end
@@ -231,7 +232,7 @@ end
 -- Prints the slowest handlers timed so far (/vg perf slow).
 function P.SlowList()
   local list = P.Slowest()
-  if #list == 0 then return ns.Chat("No handler timings yet (the client has no fine clock, or nothing has run).") end
+  if #list == 0 then return ns.Chat(L["No handler timings yet (the client has no fine clock, or nothing has run)."]) end
   ns.Chat(string.format("Vanguard's slowest handlers, timed through login and from your first /vg perf slow until you reload (calls over %d ms):", ns.SLOW_MS))
   for i = 1, math.min(P.TOP, #list) do
     local t = list[i]
@@ -245,7 +246,7 @@ function P.Command(rest)
   if rest == "cpu" then return P.ToggleProfiling() end
   if rest == "watch" then return P.Watch() end
   if rest == "slow" or rest == "slow reset" then return P.SlowCommand(rest:sub(6)) end
-  if rest ~= "" then return ns.Chat("Usage: /vg perf [cpu | watch | slow [reset]]") end
+  if rest ~= "" then return ns.Chat(L["Usage: /vg perf [cpu | watch | slow [reset]]"]) end
   P.Report(true)
 end
 
@@ -290,7 +291,7 @@ end
 -- The memory run's result, as two chat lines: the readings, then what the clean readings (else the low point) say.
 local function memReport(r, now, liveEnd)
   local kb, secs = r.kb, math.max(1, now - r.at)
-  if #kb < 2 then return ns.Chat("Vanguard's memory: too few readings (the game's counter is not read in combat).") end
+  if #kb < 2 then return ns.Chat(L["Vanguard's memory: too few readings (the game's counter is not read in combat)."]) end
   local grew = kb[#kb] - kb[1]
   ns.Chat(string.format("Vanguard's memory over %d s: %.2f MB to %.2f MB (%+.0f KB, %+.1f KB/s), low %.2f, high %.2f MB.",
     secs, kb[1] / 1024, kb[#kb] / 1024, grew, grew / secs, lowest(kb, 1, #kb) / 1024, math.max(unpack(kb)) / 1024))
@@ -325,10 +326,11 @@ end
 function P.MemCommand()
   if run then return memFinish() end
   ns.SettingsGuard.SizeReport()
-  if not (C_Timer and C_Timer.NewTicker) then return ns.Chat("This client has no timers to measure with.") end
+  if not (C_Timer and C_Timer.NewTicker) then return ns.Chat(L["This client has no timers to measure with."]) end
   local live = P.LiveMemory()
   local kb = live or P.Memory()
-  if not kb then return ns.Chat("Vanguard's memory can't be read " .. (ns.InCombat() and "in combat; try again out of combat." or "on this client.")) end
+  local unreadable = ns.InCombat() and L["Vanguard's memory can't be read in combat; try again out of combat."]
+  if not kb then return ns.Chat(unreadable or L["Vanguard's memory can't be read on this client."]) end
   run = { kb = { kb }, live = live, ticks = 0, at = GetTime() }
   run.ticker = C_Timer.NewTicker(P.MEM_EVERY, ns.Guard("timer memory run", memTick))
   ns.Chat(string.format("Measuring Vanguard's memory for %d s (a reading every %d s). Stand still out of combat; /vg mem again ends it early.", P.MEM_EVERY * P.MEM_TICKS, P.MEM_EVERY))

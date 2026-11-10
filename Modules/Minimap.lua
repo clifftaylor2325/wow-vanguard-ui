@@ -85,7 +85,7 @@ local FADE = {
   { "MinimapCluster", "MinimapContainer", "PlayerCoords" },
 }
 
--- The answer a minimap addon loaded before Vanguard gave (SexyMap sets GetMinimapShape as it loads), if any.
+-- The answer a minimap addon loaded before Vanguard gave (a minimap addon may set GetMinimapShape as it loads), if any.
 MM.earlierShape = GetMinimapShape
 
 -- Addons that place icons and pins around the minimap (LibDBIcon, HereBeDragons) ask this global for its
@@ -394,9 +394,11 @@ end
 MM.MAP_LEVEL = 2
 
 -- The map's box follows the game's own minimap switch (Toggle Minimap, the new-player tutorial): hidden with the
--- map, back with it.
+-- map, back with it. A shown state the client hides (secret) is never handed to the box: it keeps what it shows.
 local function syncShown()
-  MM.holder:SetShown(Minimap:IsShown())
+  local shown = Minimap:IsShown()
+  if ns.IsSecret(shown) then return end
+  MM.holder:SetShown(shown)
 end
 
 -- Mirrors the map's shown state onto the box now and whenever the game shows or hides the map. A hook on the
@@ -615,6 +617,16 @@ local function dress(overlay, settings)
   addCorners(overlay)
 end
 
+-- Shows or hides the coordinates under the map at once: their band and rule, their text and the ticker that reads them.
+function MM.ApplyCoords()
+  if not MM.bottom then return end
+  local on = MM.settings.coords ~= false
+  MM.bottom:SetShown(on)
+  MM.rules[2]:SetShown(on)
+  MM.coords:SetShown(on)
+  if on then coordsTicker(MM.holder) else ns.Every("minimap coords", nil) end
+end
+
 -- Builds the minimap frame. Out of combat, since it moves Blizzard frames.
 local function build(settings)
   MM.round, MM.rim, MM.size = MM.IsRound(settings), settings.size / 2 - MM.RIM_INSET, settings.size
@@ -631,6 +643,7 @@ end
 
 -- Module entry point (Core/Modules.lua).
 function MM.Enable(settings)
+  MM.settings = settings
   ns.OutOfCombat(function() build(settings) MM.WatchHybrid() ns.Visibility.Calm(MM.holder, "minimap") end)
   for _, event in ipairs({ "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD" }) do
     ns.On(event, function() if MM.zone then MM.UpdateZone() end end)

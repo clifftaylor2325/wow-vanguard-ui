@@ -44,7 +44,7 @@ movers, hardened profile strings, harness secret modes, first-run window) still 
 | 1 | **Settings-loss guard.** Detect a blank DB at login, say so, offer one-click restore from an export string, prompt to export after setup. | 6 independent reports: a Blizzard forum thread, two workaround addons, a guide and two addon pages' comments. | Export/import exist; README admits memory is lost between sessions. No detection. | S / low. Whether an addon can stop the logout overwrite is unverified. | None | Yes, first |
 | 2 | **Ruleset-safe data keys.** Audit realm+faction keys (prices, sales ledger, characters, vendor memory); add the ruleset where the client exposes one; handle two-part names. | Rulesets replace realms, no cross-ruleset play; names are two-part; auction house scope unconfirmed. | Keyed by realm and faction → may merge or split data. | S–M / low | None | Yes |
 | 3 | **Quest guidance from client data.** "New Forever quest" mark in dialog, log, tracker; quest-start pins on the map; arrow to the next waypoint of a tracked quest. | 7 sources on quest and levelling demand; quest-marking addons at about 33K and 29K downloads; a [NEW]-tag addon; the same icon requested in a popular quest addon's tracker. | Dialog, log, tracker, `/way` exist → no new-quest flag, no pins. | M / low: `GetQuestsOnMap` and `GetNextWaypoint` are listed for Forever 1.60.1. | **High for the new-quest list.** Community quest databases are GPL-licensed; don't use them. | Yes |
-| 4 | **Coexistence manager.** At login, detect popular quest, waypoint, bag, nameplate, meter, action bar and levelling addons; offer (never force) to switch off the overlapping Vanguard module. | 4 conflict signals between UI skins, action bar, bag and levelling addons in beta issue trackers; guides' "pick one" advice. | Defers to Questie's tracker, another addon's `/way`, Masque → no general detector. | S–M / low | None | Yes (folder names) |
+| 4 | **Coexistence manager.** At login, detect popular quest, waypoint, bag, nameplate, meter, action bar and levelling addons; offer (never force) to switch off the overlapping Vanguard module. | 4 conflict signals between UI skins, action bar, bag and levelling addons in beta issue trackers; guides' "pick one" advice. | Defers to a quest addon's tracker, another addon's `/way`, a button-skinning library → no general detector. | S–M / low | None | Yes (folder names) |
 | 5 | **Chat-based LFG board.** Parse LFM/LFG lines into a list by dungeon, role and level; a click opens a whisper template. No auto-send. | No Dungeon Finder; manual chat and LFG. Chat tools draw the most addon traffic (about 40K and 83K downloads for two chat addons); the known LFG parsers list other game flavours only. | Chat watch alerts on phrases → no structured list. | M / low-moderate: chat is hidden from addons in instances, fine in cities. | None | Yes (events, two-part names) |
 
 Items 1 and 2 are hygiene, but they decide whether launch week is "it just works" or "it ate my settings". Item 3 is the
@@ -89,8 +89,8 @@ planner, the auction suite and the quest UI, so none of those belong on the list
 
 **Standalone specialists players already run** (quest maps and waypoints, map notes, levelling routes, bags, auction,
 nameplates, meters, boss mods) mostly have Forever builds. Vanguard should interoperate with them, as its
-Auctionator-compatible API and list import, Questie coexistence, `/way` hand-off, boss-mod docks and Masque support
-already do, not out-feature them. Item 3 uses only client data and leaves Questie's pins and tracker alone when Questie
+auction-API compatible interface and list import, quest addon coexistence, `/way` hand-off, boss-mod docks and button-skinning library support
+already do, not out-feature them. Item 3 uses only client data and leaves a quest addon's pins and tracker alone when one
 is loaded, as Vanguard's tracker already does.
 
 ## Blocked or risky features and the clean alternative

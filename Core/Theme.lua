@@ -126,8 +126,8 @@ local TOKENS = {
   cast = "e6a93a", channel = "4fc27a", shielded = "8b9099",
   -- Healing overlays
   heal = { "4fc27a", 0.45 }, shield = { "ffffff", 0.35 },
-  -- Action button tints
-  outOfRange = "e64d4d", noPower = "6680ff", unusable = "666666",
+  -- Action button tints, and the attack flash over a button while auto-attack or Auto Shot runs (the state vermilion)
+  outOfRange = "e64d4d", noPower = "6680ff", unusable = "666666", attackFlash = { "e8663f", 0.45 },
   -- Experience and reputation
   xp = "940090", rested = { "0063e0", 0.5 },
   repHostile = "cc2121", repUnfriendly = "bf4500", repNeutral = "e6b300", repFriendly = "00991a",
@@ -293,6 +293,8 @@ local DEFAULTS = {
   colorAssistGame = true,
   smoothBars = true,
   reduceMotion = false,
+  -- The state cues (T.PlayCue): combat start, proc ring, cooldown ready, low health. Reduce motion turns them off too.
+  motionCues = true,
   sounds = true,
   -- The faction look: "crest" (your faction's crest only), "auto" (the crest and the heading font) or "off".
   faction = "crest",
@@ -488,15 +490,31 @@ function T.Closed(region)
   return type(region.IsForbidden) == "function" and region:IsForbidden() == true
 end
 
--- Re-tints every remembered region whose colour is still what T.Tint set (after an accent or variant
--- change); one recoloured by hand since (a class colour, say), or closed to addons, is forgotten instead.
+-- Runs fn(key, value) for every entry of a registry, each under ns.Try (reported as `where`), so one entry that fails
+-- (a frame the client changed under Vanguard: a hidden value, a call it refuses) is reported and every other entry is
+-- still done. The theme's walks over every painted frame, string and texture go through here.
+---@param where string
+---@param registry table
+---@param fn function
+function T.EachTried(where, registry, fn)
+  for key, value in pairs(registry) do ns.Try(where, fn, key, value) end
+end
+
+-- Re-tints a remembered region whose colour is still what T.Tint set; one recoloured by hand since (a class colour,
+-- say), or closed to addons, is forgotten instead.
+local function retint(region, m)
+  if not T.Closed(region) and stillTinted(region, m) then T.Tint(region, m.token, m.alpha) else tinted[region] = nil end
+end
+
+-- Recolours a remembered status bar as retint does a region.
+local function recolorBar(bar, m)
+  if not T.Closed(bar) and stillTinted(bar, m) then T.BarColor(bar, m.token) else T.barColored[bar] = nil end
+end
+
+-- Re-tints every remembered region and bar (after an accent or variant change), each on its own (T.EachTried).
 local function refreshTints()
-  for region, m in pairs(tinted) do
-    if not T.Closed(region) and stillTinted(region, m) then T.Tint(region, m.token, m.alpha) else tinted[region] = nil end
-  end
-  for bar, m in pairs(T.barColored) do
-    if not T.Closed(bar) and stillTinted(bar, m) then T.BarColor(bar, m.token) else T.barColored[bar] = nil end
-  end
+  T.EachTried("re-tint", tinted, retint)
+  T.EachTried("re-colour bar", T.barColored, recolorBar)
 end
 
 -- Colors a status bar's fill with a named color; remembered (weak), so the fill follows the accent and the variant
@@ -593,12 +611,14 @@ function T.Snap(texture, class)
   return texture
 end
 
--- Puts every texture T.Snap has seen under the policy again (after a switch or a profile load); one closed to
--- addons is forgotten (T.Closed).
+-- Puts one texture T.Snap has seen under the policy again, or forgets it once it is closed to addons (T.Closed).
+local function snapOrForget(texture, class)
+  if T.Closed(texture) then snapClass[texture] = nil else applySnap(texture, class) end
+end
+
+-- Puts every texture T.Snap has seen under the policy again (after a switch or a profile load), each on its own.
 local function reSnap()
-  for texture, class in pairs(snapClass) do
-    if T.Closed(texture) then snapClass[texture] = nil else applySnap(texture, class) end
-  end
+  T.EachTried("texel snap", snapClass, snapOrForget)
 end
 
 -- Turns texel snapping for still textures on or off (the A/B test, #226), at once.
@@ -617,11 +637,34 @@ local function screenHeight()
   return type(h) == "number" and h > 0 and h or 768
 end
 
--- A frame's effective scale (UIParent's, or 1, when it has none).
+-- The least effective scale a frame is drawn at. Below it the client is only holding the frame shrunk: it
+-- hands a nameplate over at about 0.01, and a pixel sized for that is a dark block tens of units thick
+-- once the plate grows, on an aura icon the client has since closed to addons for good.
+T.MIN_SCALE = 0.1
+
+-- The screen's (UIParent's) effective scale, or 1 when it has none it can say plainly.
+---@return number
+function T.ScreenScale()
+  local ui = UIParent and UIParent.GetEffectiveScale and ns.PlainNumber(UIParent:GetEffectiveScale())
+  return ui and ui >= T.MIN_SCALE and ui or 1
+end
+
+-- The scale to size a pixel for: `scale` itself when a frame is drawn at it; the screen's (T.ScreenScale)
+-- for a frame held shrunk below T.MIN_SCALE or whose scale the client hides (a plate's: a hidden value is never
+-- compared); 1 when it is no positive number.
+---@param scale any
+---@return number
+function T.DrawnScale(scale)
+  if ns.IsSecret(scale) then return T.ScreenScale() end
+  if type(scale) ~= "number" or scale <= 0 then return 1 end
+  if scale >= T.MIN_SCALE then return scale end
+  return T.ScreenScale()
+end
+
+-- A frame's effective scale as a pixel is sized for it (T.DrawnScale; UIParent's, or 1, when it has none).
 local function scaleOf(frame)
   local f = frame and frame.GetEffectiveScale and frame or UIParent
-  local s = f and f.GetEffectiveScale and f:GetEffectiveScale()
-  return type(s) == "number" and s > 0 and s or 1
+  return T.DrawnScale(f and f.GetEffectiveScale and f:GetEffectiveScale())
 end
 
 -- One screen pixel in UI units at scale 1 (768 / screen height): the client's own
@@ -642,12 +685,12 @@ function T.Pixel(frame)
   return pixelFactor() / scaleOf(frame)
 end
 
--- T.Pixel for a frame whose effective scale the caller has read already (`scale`; 1 when it isn't a
--- positive number), so a loop over a holder's icons reads it once.
+-- T.Pixel for a frame whose effective scale the caller has read already (`scale`, as T.DrawnScale
+-- takes it), so a loop over a holder's icons reads it once.
 ---@param scale number
 ---@return number
 function T.PixelAtScale(scale)
-  return pixelFactor() / ((type(scale) == "number" and scale > 0) and scale or 1)
+  return pixelFactor() / T.DrawnScale(scale)
 end
 
 -- The UI scale that makes one UI unit one screen pixel (768 / screen height).
@@ -684,16 +727,22 @@ function T.PixelSize(frame, w, h, even)
 end
 
 -- Calls fn() (out of combat) after a UI scale, screen or frame scale change, once
--- T.PixelSize frames are rounded again: for layouts that place things on whole pixels.
+-- T.PixelSize frames are rounded again: for layouts that place things on whole pixels. Guarded, so one listener
+-- that fails stops no other.
 function T.OnScale(fn)
-  scaleListeners[#scaleListeners + 1] = fn
+  scaleListeners[#scaleListeners + 1] = ns.Guard("scale change", fn)
 end
 
--- Repaints every painted frame and rounds every T.PixelSize frame again for the scale now,
+-- Rounds one T.PixelSize frame's remembered size again for its scale now.
+local function reround(frame, s)
+  frame:SetSize(T.PixelRound(frame, s[1], s[3]), T.PixelRound(frame, s[2], s[3]))
+end
+
+-- Repaints every painted frame and rounds every T.PixelSize frame again for the scale now (each on its own),
 -- then tells the T.OnScale listeners.
 local function resizeAll()
   T.Repaint()
-  for frame, s in pairs(pixelSized) do frame:SetSize(T.PixelRound(frame, s[1], s[3]), T.PixelRound(frame, s[2], s[3])) end
+  T.EachTried("pixel size", pixelSized, reround)
   for _, fn in ipairs(scaleListeners) do fn() end
 end
 
@@ -782,13 +831,17 @@ local function placeEdges(e, frame, pad, geo)
   for side, points in pairs(EDGE_POINTS) do placeEdge(e[side], frame, side, points, T.PixelRound(frame, pad or 0), geo) end
 end
 
--- Shows the four edges, except a side cut to a shield point: its two cuts meet at mid-height, so the frame has no
--- outer edge (judged from the geometry, never the frame's size, which a fight may hide).
+-- Shows the four edges, except a side cut to a shield point (its two cuts meet at mid-height, so the frame has no
+-- outer edge) or the bottom of a banner's hem (both corners pointed, meeting under the middle), judged from the
+-- geometry, never the frame's size, which a fight may hide.
 function corner.showEdges(e, geo)
-  e.top:Show() e.bottom:Show()
   local art = type(geo) == "table" and geo.art or nil
-  e.left:SetShown(not (art and art.TOPLEFT == "point"))
-  e.right:SetShown(not (art and art.TOPRIGHT == "point"))
+  -- Whether a corner of the geometry is cut to a point.
+  local function pointed(point) return art ~= nil and art[point] == "point" end
+  e.top:Show()
+  e.bottom:SetShown(not (pointed("BOTTOMLEFT") and pointed("BOTTOMRIGHT")))
+  e.left:SetShown(not pointed("TOPLEFT"))
+  e.right:SetShown(not pointed("TOPRIGHT"))
 end
 
 -- Four edge textures around frame, `pad` units out past its edges (sized to one pixel when painted).
@@ -1213,18 +1266,26 @@ function corner.look(frame, entry)
   return "rounded"
 end
 
--- A painted frame's corner geometry now: the HUD look's own for a HUD frame with a role (T.HudCorners, Core/HudLook.lua)
--- unless the deck rounds it; else one size from its corner look, in pixels (times the variant's ring on an
--- accent-bordered frame); else nil for square corners.
+-- A painted frame's corner geometry now: the HUD look's own for a HUD frame with a role (T.HudCorners, Core/HudLook.lua;
+-- false there is square whatever the settings say) unless the deck rounds it; else one size from its corner look, in
+-- pixels (times the variant's ring on an accent-bordered frame); else nil for square corners.
 function corner.geometry(frame, entry)
   if not entry.opts.round and entry.opts.role and T.HudCorners then
     local geo = T.HudCorners(frame, entry)
     if geo then return corner.finish(geo) end
+    if geo == false then return nil end
   end
   local look, v = corner.look(frame, entry), T.Variant()
   if not look then return nil end
   local scale = (entry.opts.accent or entry.opts.border) and v and v.ring or 1
   return T.UniformCorners(T.CORNER_ART[look].size * T.Pixel(frame) * scale, look)
+end
+
+-- Hides the edges a painted frame leaves undrawn: its own open sides (opts.open: the keep's gatehouse where it meets
+-- the wall) or the HUD look's for its role (T.HudOpenSides, Core/HudLook.lua: a tab's bottom, where it joins its frame).
+function corner.hideOpen(e, entry)
+  local open = entry.opts.open or (entry.opts.role and T.HudOpenSides and T.HudOpenSides(entry))
+  for side in pairs(open or NO_PARTS) do e[side]:Hide() end
 end
 
 -- Colours and sizes a painted frame's edges, re-pinned short of the corners once it has been shaped.
@@ -1234,6 +1295,7 @@ local function paintEdges(frame, entry, geo)
   sizeEdges(p.edges, frame, entry.opts.accent or entry.opts.border)
   if geo or p.hasRounded then placeEdges(p.edges, frame, entry.opts.pad, geo) end
   corner.showEdges(p.edges, geo)
+  corner.hideOpen(p.edges, entry)
 end
 
 -- Fills (T.FillParts) ------------------------------------------------------------------------
@@ -1418,20 +1480,80 @@ local function hairParts(frame)
   return { edges = edges(frame, 0), corners = cornerPieces(frame, T.CORNER_ART.cut.line, layer, sub) }
 end
 
--- Places and colours a frame's hairline (opts.hair, a token): one-pixel lines a pixel inside the border, following its
+-- The hairline token the HUD look gives a painted frame for its role (Core/HudLook.lua T.HudHair), never one the
+-- deck rounds; nil otherwise.
+function corner.lookHair(entry)
+  if entry.opts.role and not entry.opts.round and T.HudHair then return T.HudHair(entry) end
+  return nil
+end
+
+-- The hairline token a painted frame draws: its own (T.SetHairline), else the HUD look's.
+function corner.hairToken(entry)
+  return entry.opts.hair or corner.lookHair(entry)
+end
+
+-- Places, sizes and colours a hairline's parts a pixel inside the border for a geometry, in a token, and shows the
+-- edges on the sides the frame keeps (opts.hairSides: the keep's parapet along the top) or the HUD look does
+-- (T.HudHairSides), all four unless one says.
+function corner.placeHair(entry, frame, geo, token)
+  local p = entry.parts
+  local inset, sides = -T.Pixel(frame), entry.opts.hairSides or (T.HudHairSides and T.HudHairSides())
+  placeEdges(p.hair.edges, frame, inset, geo) sizeEdges(p.hair.edges, frame)
+  placeCorners(p.hair.corners, frame, inset, geo) corner.art(p.hair.corners, frame, geo, "line")
+  for _, t in pairs(p.hair.edges) do T.Tint(t, token) t:Show() end
+  for _, t in pairs(p.hair.corners) do T.Tint(t, token) end
+  corner.showEdges(p.hair.edges, geo)
+  for side, t in pairs(p.hair.edges) do if sides and not sides[side] then t:Hide() end end
+end
+
+-- Paints a frame's hairline in a token (corner.hairToken): one-pixel lines a pixel inside the border, following its
 -- corners (each corner's piece shifted a pixel in, so a point's line runs parallel to its cut), or hides it with the
 -- token nil. Made the first time a frame asks for one.
-function corner.paintHair(frame, entry, geo)
-  local p, token, inset = entry.parts, entry.opts.hair, -T.Pixel(frame)
+function corner.paintHair(frame, entry, geo, token)
+  local p = entry.parts
   if not p.hair then if not token then return end p.hair = hairParts(frame) end
-  if token then
-    placeEdges(p.hair.edges, frame, inset, geo) sizeEdges(p.hair.edges, frame)
-    placeCorners(p.hair.corners, frame, inset, geo) corner.art(p.hair.corners, frame, geo, "line")
-    for _, t in pairs(p.hair.edges) do T.Tint(t, token) end
-    for _, t in pairs(p.hair.corners) do T.Tint(t, token) end
-  end
-  for _, t in pairs(p.hair.edges) do t:SetShown(token ~= nil) end
-  if token then corner.showEdges(p.hair.edges, geo) else for _, t in pairs(p.hair.corners) do t:Hide() end end
+  if token then return corner.placeHair(entry, frame, geo, token) end
+  for _, t in pairs(p.hair.edges) do t:Hide() end
+  for _, t in pairs(p.hair.corners) do t:Hide() end
+end
+
+-- A cue outline (T.CueRing on a HUD frame with a role): a hidden holder over frame, its four edges and four corner
+-- pieces in the line art, placed by corner.placeCue on every repaint so it follows the plate's shape.
+function corner.cueOutline(frame)
+  local holder = CreateFrame("Frame", nil, frame)
+  holder:SetAllPoints(frame)
+  holder:Hide()
+  return { holder = holder, edges = edges(holder, 0), corners = cornerPieces(holder, T.CORNER_ART.cut.line, "BORDER", 0) }
+end
+
+-- Places a cue outline one pixel out past the plate's border, following its corners as the hairline does inside it:
+-- the edges short of each shaped corner (none down a shield's point), each shaped corner's line piece there.
+function corner.placeCue(frame, entry, cue, geo)
+  local out = T.PixelRound(frame, entry.opts.pad or 0) + T.Pixel(frame)
+  placeEdges(cue.edges, frame, out, geo) sizeEdges(cue.edges, frame)
+  placeCorners(cue.corners, frame, out, geo) corner.art(cue.corners, frame, geo, "line")
+  corner.showEdges(cue.edges, geo)
+end
+
+-- Paints a frame's one-pixel lines for a geometry: its hairline (corner.paintHair) and its cue outlines.
+function corner.paintLines(frame, entry, geo, hair)
+  if entry.parts.hair or hair then corner.paintHair(frame, entry, geo, hair) end
+  for _, cue in pairs(entry.cues or NO_PARTS) do corner.placeCue(frame, entry, cue, geo) end
+end
+
+-- Shows a painted frame's plate (its background and border), or hides it for a frame the HUD look draws bare. A
+-- shown plate leaves each edge as the paint left it; an edge's own shown state is never read back, since the client
+-- can hold it secret, and a secret passed to SetShown from addon code raises.
+function corner.showPlate(p, shown)
+  if p.bg then p.bg:SetShown(shown) end
+  for _, t in pairs(p.shadow or NO_PARTS) do t:SetShown(shown) end
+  if shown then return end
+  for _, t in pairs(p.edges or NO_PARTS) do t:Hide() end
+end
+
+-- Whether a painted frame with a role is drawn bare (no plate) by the HUD look (T.HudBare), never one the deck rounds.
+function corner.bare(entry)
+  return entry.opts.role ~= nil and not entry.opts.round and T.HudBare ~= nil and T.HudBare(entry)
 end
 
 -- The sheen and bevel lines of a painted frame, clear of its corners' largest size.
@@ -1441,25 +1563,30 @@ local function paintTrim(frame, entry)
   if p.bevel then placeBevelLines(p.bevel, frame, entry.opts.pad, r) end
 end
 
--- Applies the current colors (and pixel size) to one painted frame.
+-- Applies the current colors (and pixel size) to one painted frame; a HUD frame the look draws bare keeps its plate
+-- hidden (entry.bare).
 local function repaint(frame, entry)
-  local p, geo = entry.parts, corner.geometry(frame, entry)
-  entry.geo, entry.radius, entry.look = geo, geo and geo.max or 0, geo and "shaped" or nil
+  local p, geo, hair = entry.parts, corner.geometry(frame, entry), corner.hairToken(entry)
+  entry.geo, entry.radius, entry.look, entry.bare = geo, geo and geo.max or 0, geo and "shaped" or nil, corner.bare(entry)
   corner.paintCorners(frame, entry, geo)
   if p.bg then paintBg(p, entry.opts, geo ~= nil); T.PaintPanelSurface(frame, entry) end
   if p.edges then paintEdges(frame, entry, geo) end
-  if p.hair or entry.opts.hair then corner.paintHair(frame, entry, geo) end
+  corner.paintLines(frame, entry, geo, hair)
   paintTrim(frame, entry)
   for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, geo) end
+  corner.showPlate(p, not entry.bare)
   if entry.paint then entry.paint(entry, frame) end
 end
 
--- Repaints every painted frame at its pixel size now (a frame's own scale changed); one closed to addons is
--- forgotten (T.Closed).
+-- Repaints one painted frame, or forgets it once the client has closed it to addons (T.Closed).
+local function repaintOrForget(frame, entry)
+  if T.Closed(frame) then painted[frame] = nil else repaint(frame, entry) end
+end
+
+-- Repaints every painted frame at its pixel size now (a theme, scale or HUD look change), each on its own: one
+-- that fails is reported and leaves every other frame painted (T.EachTried).
 function T.Repaint()
-  for frame, entry in pairs(painted) do
-    if T.Closed(frame) then painted[frame] = nil else repaint(frame, entry) end
-  end
+  T.EachTried("repaint", painted, repaintOrForget)
 end
 
 -- Repaints one painted frame at its pixel size now, after SetScale on it (T.Repaint does every frame); a frame
@@ -1574,6 +1701,30 @@ function T.CornerLook(frame, point)
   local entry = painted[frame]
   local geo = entry and entry.geo
   return type(geo) == "table" and geo.art[point] or nil
+end
+
+-- The hairline token a painted HUD frame draws now (its own or the HUD look's), or nil.
+---@param frame table
+---@return string|nil
+function T.HairlineOf(frame)
+  local entry = painted[frame]
+  return entry and corner.hairToken(entry) or nil
+end
+
+-- The hairline token the HUD look gives a painted HUD frame (not one it was given with T.SetHairline), or nil.
+---@param frame table
+---@return string|nil
+function T.LookHairOf(frame)
+  local entry = painted[frame]
+  return entry and corner.lookHair(entry) or nil
+end
+
+-- Whether a painted HUD frame is drawn bare (no plate) by the HUD look.
+---@param frame table
+---@return boolean
+function T.BareOf(frame)
+  local entry = painted[frame]
+  return entry ~= nil and entry.bare == true
 end
 
 -- How far a painted panel reaches out past its frame (units; 0 when it doesn't, or the frame isn't painted).
@@ -1695,12 +1846,15 @@ local function isEnabled(widget)
 end
 
 -- Shows or hides a button's press look; only an enabled button shows it. A shade marked `keepsLabel` (a check
--- box's today) leaves the label where it is; a push button's drops it a pixel.
+-- box's today) leaves the label where it is; a push button's drops it a pixel. Whether it is pressed is kept
+-- (s.pressed), never read back from the shade: the button may be the game's, and the client can hold a texture's
+-- shown state on it secret, as it did a painted edge's (#838).
 function T.PressButton(button, down)
   local s = pressOf[button]
   if not s then return end
-  local on = down == true and isEnabled(button)
-  if on == s.overlay:IsShown() then return end
+  local on = down == true and isEnabled(button) == true
+  if on == (s.pressed == true) then return end
+  s.pressed = on
   if s.fill then T.ShowFill(s.fill, on) else s.overlay:SetShown(on) end
   if not s.keepsLabel then dropLabel(button, s, on) end
 end
@@ -2214,10 +2368,11 @@ T.forgetters[#T.forgetters + 1] = function(r) checkOf[r] = nil end
 function T.CheckParts(button) return checkOf[button] end
 
 -- Whether a check button (or radio) is checked: the game's mark shown, for a plain frame whose mark the
--- game shows and hides (T.CheckBox's `mark`), else its checked state.
+-- game shows and hides (T.CheckBox's `mark`), else its checked state. Both are the game's, so a value the client
+-- hides counts as no and is never compared (ns.IsTrue).
 local function isChecked(button, c)
-  if c.source then return c.source:IsShown() == true end
-  return type(button.GetChecked) == "function" and button:GetChecked() == true
+  if c.source then return ns.IsTrue(c.source:IsShown()) end
+  return type(button.GetChecked) == "function" and ns.IsTrue(button:GetChecked())
 end
 
 -- The mark of a check box or radio for its state: shown while checked, in the disabled tier while
@@ -2412,10 +2567,11 @@ local function dividerLine(region, host, vertical)
   return d
 end
 
--- Shows a texture divider's line while the game shows the texture.
+-- Shows a texture divider's line while the game shows the texture. The texture's shown state is the game's: one the
+-- client hides is never handed to SetShown (from addon code that raises) or compared, and the line stays as it is.
 local function followDivider(region)
-  local d = dividerOf[region]
-  if d then d.holder:SetShown(region:IsShown()) end
+  local d, shown = dividerOf[region], region:IsShown()
+  if d and not ns.IsSecret(shown) then d.holder:SetShown(shown == true) end
 end
 
 -- One of the game's dividers (a texture, or a frame of divider art: Options_HorizontalDivider, the
@@ -3129,6 +3285,8 @@ T.ROLES = {
   -- No role is under 10 (#258) but badge, for a count or mark on a tiny badge.
   label = { size = 12 }, number = { size = 12 }, small = { size = 10 }, tiny = { size = 10 }, badge = { size = 9 },
   world = { size = 11, bold = true, outline = "OUTLINE" },
+  -- The unit frames' name and number under a HUD look that draws them on the world or on a fill (Core/HudLook.lua).
+  hudName = { size = 12, bold = true, outline = "OUTLINE" }, hudNumber = { size = 12, outline = "OUTLINE" },
   barName = { size = 11, bold = true, outline = "OUTLINE" }, barSmall = { size = 10, bold = false, outline = "OUTLINE" },
   -- Aura icons: stack counts, and the timer on larger and smaller icons.
   cooldown = { size = 14, bold = true, outline = "OUTLINE" }, auraCount = { size = 10, bold = true, outline = "OUTLINE" },
@@ -3301,15 +3459,21 @@ local function shadowFor(fs, token)
   elseif styled[fs] then fs:SetShadowColor(T.RGB("textShadow")) end
 end
 
+-- Re-fonts one string styled with a role, or forgets it once it is closed to addons (T.Closed).
+local function refont(fs, role)
+  if T.Closed(fs) then styled[fs] = nil else T.ApplyRole(fs, role) end
+end
+
+-- Recolours one string coloured by token, or forgets it once it is closed to addons.
+local function recolor(fs, token)
+  if T.Closed(fs) then colored[fs] = nil else fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
+end
+
 -- Re-fonts every string styled with a role (after a font or text size change) and recolours every
--- string coloured by token (after a variant or accent change); one closed to addons is forgotten (T.Closed).
+-- string coloured by token (after a variant or accent change), each on its own (T.EachTried).
 function T.RefreshText()
-  for fs, role in pairs(styled) do
-    if T.Closed(fs) then styled[fs] = nil else T.ApplyRole(fs, role) end
-  end
-  for fs, token in pairs(colored) do
-    if T.Closed(fs) then colored[fs] = nil else fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
-  end
+  T.EachTried("re-font text", styled, refont)
+  T.EachTried("re-colour text", colored, recolor)
 end
 
 -- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), or in
@@ -3341,13 +3505,13 @@ function T.OnChanged(fn)
 end
 
 -- Repaints the crests, the ornaments and the game frame primitives (check boxes, radios, arrows,
--- dividers).
+-- dividers), each on its own (T.EachTried).
 local function repaintArt()
-  for t in pairs(crests) do T.PaintCrest(t) end
-  for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
-  for button, c in pairs(checkOf) do c.paint(button, c) end
-  for button in pairs(arrowOf) do paintArrow(button) end
-  for _, d in pairs(dividerOf) do T.Tint(d.line, T.DIVIDER.color) end
+  T.EachTried("repaint crest", crests, T.PaintCrest)
+  T.EachTried("repaint ornament", ornaments, T.PaintOrnament)
+  T.EachTried("repaint check", checkOf, function(button, c) c.paint(button, c) end)
+  T.EachTried("repaint arrow", arrowOf, paintArrow)
+  T.EachTried("repaint divider", dividerOf, function(_, d) T.Tint(d.line, T.DIVIDER.color) end)
 end
 
 do
@@ -3442,12 +3606,14 @@ function T.OrnamentCornerArt(point)
 end
 
 -- The frame the brackets are drawn on: over the frame's whole panel (its T.Padding out past the frame, where a game
--- window's panel reaches) and T.ORNAMENT_LIFT levels above it, so the window's own child frames never hide them.
+-- window's panel reaches) and T.ORNAMENT_LIFT levels above it, so the window's own child frames never hide them. A
+-- game window's level can be secret; the holder then keeps the level it was made with, one above its window.
 local function cornerHolder(frame)
   local pad, holder = T.Padding(frame), CreateFrame("Frame", nil, frame)
   holder:SetPoint("TOPLEFT", -pad, pad)
   holder:SetPoint("BOTTOMRIGHT", pad, -pad)
-  holder:SetFrameLevel(frame:GetFrameLevel() + T.ORNAMENT_LIFT)
+  local level = ns.PlainNumber(frame:GetFrameLevel())
+  if level then holder:SetFrameLevel(level + T.ORNAMENT_LIFT) end
   return holder
 end
 
@@ -3530,7 +3696,7 @@ end
 
 -- A UI scale or screen change can move the brackets and the rule motif to the other bake.
 T.OnScale(function()
-  for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
+  T.EachTried("repaint ornament", ornaments, T.PaintOrnament)
 end)
 
 -- Sets the accent color (0-1 components) and repaints; a picked accent no longer follows the class.
@@ -3801,6 +3967,142 @@ local SOUNDS = {
 function T.Sound(use)
   local kit = type(SOUNDKIT) == "table" and SOUNDKIT[SOUNDS[use] or ""]
   if T.Settings().sounds and kit and type(PlaySound) == "function" then PlaySound(kit) end
+end
+
+-- State cues --------------------------------------------------------------------------
+
+-- Short alpha cues on Vanguard's own textures (never a secure frame): each is a chain of steps no longer than
+-- T.COMBAT_FADE, so it is the same in a fight. `loop` shapes breathe until stopped.
+do
+local vgCue = ns.FrameState("vgCue")
+local vgRing = ns.FrameState("vgRing")
+
+T.CUE = {
+  edge = { levels = { 0, 1, 0 }, step = 0.1 },
+  flash = { levels = { 0, 0.6, 0 }, step = 0.06 },
+  breath = { levels = { 0.45, 0.7, 1, 0.7, 0.45 }, step = 0.15, loop = true },
+  slow = { levels = { 0.2, 0.3, 0.45, 0.6, 0.75, 0.9, 1, 0.9, 0.75, 0.6, 0.45, 0.3, 0.2 }, step = 0.15, loop = true },
+}
+
+-- Whether cues play: the kit's switch is on and Reduce motion is off.
+function T.CuesOn()
+  local s = T.Settings()
+  return s.motionCues == true and not s.reduceMotion
+end
+
+-- What a cue does when its group ends or loops: a one-shot hides the texture, a loop stops once cues are off.
+local function wireGroup(group, tex, shape)
+  if shape.loop then
+    return group:SetScript("OnLoop", ns.Guard("cue loop", function() if not T.CuesOn() then group:Stop() end end))
+  end
+  group:SetScript("OnFinished", ns.Guard("cue done", function() tex:Hide() end))
+end
+
+-- The alpha group of a shape on a texture: one Alpha animation per step, or false where the client can't animate.
+local function buildGroup(tex, shape)
+  local group = tex.CreateAnimationGroup and tex:CreateAnimationGroup()
+  if not group then return false end
+  group:SetLooping(shape.loop and "REPEAT" or "NONE")
+  for i = 2, #shape.levels do
+    local step = group:CreateAnimation("Alpha")
+    step:SetOrder(i - 1) step:SetDuration(shape.step)
+    step:SetFromAlpha(shape.levels[i - 1]) step:SetToAlpha(shape.levels[i])
+  end
+  wireGroup(group, tex, shape)
+  return group
+end
+
+-- The texture's group for a cue name, made once.
+local function groupFor(tex, name)
+  local made = vgCue[tex] or {}
+  vgCue[tex] = made
+  if made[name] == nil then made[name] = buildGroup(tex, T.CUE[name]) end
+  return made[name]
+end
+
+-- A texture, or a glow ring (a list of textures), as a list.
+local function listOf(parts)
+  return parts.SetShown and { parts } or parts
+end
+
+-- Plays a cue once on a texture or a glow ring, then hides it. Nothing with cues off.
+function T.PlayCue(parts, name)
+  if not T.CuesOn() then return end
+  for _, tex in ipairs(listOf(parts)) do
+    local group = groupFor(tex, name)
+    if group then tex:Show() group:Stop() group:Play() end
+  end
+end
+
+-- Starts (on) or stops a looping cue on a texture or a glow ring; started only with cues on. The caller shows or
+-- hides the ring itself.
+function T.LoopCue(parts, name, on)
+  for _, tex in ipairs(listOf(parts)) do
+    local group = groupFor(tex, name)
+    if group and not on then group:Stop() end
+    if group and on and T.CuesOn() and not group:IsPlaying() then group:Play() end
+  end
+end
+
+-- A cue's ring for a frame: on a painted HUD frame with a role (the unit frames, which the HUD look shapes), an
+-- outline that follows its plate (corner.cueOutline), as a one-item list of its holder; else a glow ring of `size`.
+-- Returns the list and the textures to tint.
+local function newCueRing(frame, size)
+  local entry = painted[frame]
+  if not (entry and entry.opts.role) then
+    local glow = T.Glow(frame, size)
+    return glow, glow
+  end
+  local cue = corner.cueOutline(frame)
+  entry.cues = entry.cues or {}
+  entry.cues[#entry.cues + 1] = cue
+  corner.placeCue(frame, entry, cue, entry.geo)
+  return { cue.holder }, corner.cuePieces(cue)
+end
+
+-- A cue outline's textures: its edges and corner pieces.
+function corner.cuePieces(cue)
+  local list = {}
+  for _, t in pairs(cue.edges) do list[#list + 1] = t end
+  for _, t in pairs(cue.corners) do list[#list + 1] = t end
+  return list
+end
+
+-- The textures each cue ring draws with (weak): ring list -> textures, for T.CueColor.
+local cueTextures = setmetatable({}, { __mode = "k" })
+
+-- A hidden ring round a frame for one cue (newCueRing: an outline on a shaped HUD frame, a glow elsewhere), tinted
+-- with a theme token (left as it is without one), made once. Show, hide and animate the list's items.
+function T.CueRing(frame, name, token, size)
+  local rings = vgRing[frame] or {}
+  vgRing[frame] = rings
+  if not rings[name] then
+    local list, textures = newCueRing(frame, size)
+    rings[name], cueTextures[list] = list, textures
+    for _, tex in ipairs(textures) do if token then T.Tint(tex, token) end end
+  end
+  return rings[name]
+end
+
+-- Colours every texture of a cue ring (T.CueRing) with r, g, b, a as they are (a value the client hides included).
+function T.CueColor(cue, r, g, b, a)
+  for _, tex in ipairs(cueTextures[cue] or cue) do tex:SetVertexColor(r, g, b, a) end
+end
+
+-- One flash over a button's cooldown area each time its cooldown widget finishes (the widget's own
+-- OnCooldownDone, hooked, never polled), when allowed(button) says so. Returns the flash texture.
+function T.ReadyFlash(button, cooldown, allowed)
+  local tex = button:CreateTexture(nil, "OVERLAY", nil, 6)
+  tex:SetAllPoints(cooldown)
+  tex:SetTexture(T.WHITE)
+  tex:SetBlendMode("ADD")
+  T.Tint(tex, "accentText")
+  tex:Hide()
+  cooldown:HookScript("OnCooldownDone", ns.Guard("cooldown ready", function()
+    if allowed(button) then T.PlayCue(tex, "flash") end
+  end))
+  return tex
+end
 end
 
 -- Pixel-perfect scale ----------------------------------------------------------------

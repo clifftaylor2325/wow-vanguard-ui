@@ -159,7 +159,7 @@ it("quest guidance: the waypoint arrow goes to the next waypoint, else the quest
   expect(addon.eval("return #__set"), "hidden or missing spots set nothing").toBe(2);
 });
 
-it("quest guidance: quest-start pins on the world map, unless the game shows its own or Questie is loaded", () => {
+it("quest guidance: quest-start pins on the world map, unless the game shows its own or a quest addon is loaded", () => {
   const addon = loggedIn(QUESTS_ENV + ARROW_ENV + MAP_ENV + CLICK_LUA);
   addon.eval("WorldMapFrame:Show()");
   addon.update(0);
@@ -186,7 +186,7 @@ it("quest guidance: quest-start pins on the world map, unless the game shows its
   addon.update(0);
   expect([addon.eval("return ns.Settings('QuestGuide').pins"), pins(addon)], "the switch off").toEqual([false, {}]);
   addon.eval("ns.Settings('QuestGuide').pins = true C_AddOns.IsAddOnLoaded = function(n) return n == 'Questie' end ns.QuestGuide.RefreshPins()");
-  expect(pins(addon), "Questie loaded: its own pins, not Vanguard's").toEqual({});
+  expect(pins(addon), "a quest addon loaded: its own pins, not Vanguard's").toEqual({});
   addon.eval("C_AddOns.IsAddOnLoaded = function(n) return n == 'OpenMap' end ns.QuestGuide.RefreshPins()");
   expect(pins(addon), "OpenMap loaded: its canvas isn't the zone, so no Vanguard pins").toEqual({});
   addon.eval("WorldMapFrame:Hide() C_AddOns.IsAddOnLoaded = function() return false end ns.QuestGuide.MapChanged()");
@@ -318,4 +318,9 @@ it("quest guidance: a quest-start pin's tooltip gives the quest's level in its d
   expect(lines[0][1], "the title in the look's text colour").toBe(addon.eval("return (ns.Theme.RGB('text'))"));
   expect(lines[1][1], "the level in the client's difficulty colour").toBe(1);
   expect(tip(2).length, "hidden answers add no line").toBe(2);
+});
+
+it("quest guidance: a spot whose quest id the client hides is skipped, not matched", () => {
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV + "C_QuestLog.GetNextWaypoint = function() end C_QuestLog.GetQuestsOnMap = function() return { { questID = __wfgWorld.secret(), x = 0.1, y = 0.1 }, { questID = 90052, x = 0.75, y = 0.5 } } end");
+  expect(addon.eval("local m, x, y = ns.QuestGuide.Target(90052) return { m, x, y }"), "the plain spot answers").toEqual([10, 0.75, 0.5]);
 });

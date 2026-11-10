@@ -1,7 +1,7 @@
 -- The group board's window (Modules/GroupBoard.lua reads the posts): a title
 -- with the count, a filter button (all posts, looking for more, looking for a
 -- group, needs my role: posts that need your role first, the rest dimmed) and
--- the "only for my level" switch, then a row per post, newest first:
+-- the "only for my level" switch, then a row per post, newest first (the list scrolls past ten rows):
 -- the kind, the dungeon and its level range (in its difficulty color), the roles
 -- named, who posted and how long ago. Hover a row for the whole line; click it
 -- to open a whisper with a message filled in. /vg lfg opens and closes it.
@@ -76,12 +76,13 @@ local function addFilters(f)
   f.mine:SetPoint("LEFT", f.filter, "RIGHT", T.SPACE.gap, 0)
 end
 
--- The rows' area and the line under the last row (a count or status: small text2).
+-- The rows' area, a scroll view GB.ROWS rows tall (the wheel and its thumb reach the rest), and the line under it
+-- (a status: small text2).
 local function addBody(f)
-  f.body = CreateFrame("Frame", nil, f)
+  f.body = ns.ScrollView(f, { width = SPAN })
   f.body:SetPoint("TOPLEFT", f, "TOPLEFT", PAD, -BODY_TOP)
   f.body:SetSize(SPAN, GB.ROWS * GB.ROW_H)
-  f.rows = QP.Pool(f.body, makeRow)
+  f.rows = QP.Pool(f.body.child, makeRow)
   f.note = T.Text(f:CreateFontString(nil, "OVERLAY"), "small", "text2")
   f.note:SetPoint("TOPLEFT", f.body, "BOTTOMLEFT", INDENT, -T.SPACE.tight)
   f.note:SetWidth(SPAN - INDENT)
@@ -196,25 +197,25 @@ function GB.RowTooltip(b)
   tip:Show()
 end
 
--- Under the rows: "+3 more" when they don't all fit, or why the board is empty.
+-- Under the rows: why the board is empty (nothing while there are posts; the rest are a scroll away).
 local function noteText(shown, total)
-  if shown > GB.ROWS then return ns.Format(L["+{count} more"], { count = shown - GB.ROWS }) end
   if shown > 0 then return "" end
   if total > 0 then return L["No posts match. Show all posts, or turn off Only dungeons for my level."] end
   return ns.Format(L["No posts yet. {summary} More: /vg lfg probe."], { summary = GB.Summary() })
 end
 
--- The rows that fit, from the top.
+-- Every post as a row, from the top of the scroll view's content; the content is as tall as the rows.
 local function paintRows(f, shown, now)
   f.rows.Reset()
-  for i = 1, math.min(#shown, GB.ROWS) do
+  for i, e in ipairs(shown) do
     local b = f.rows.Next()
-    b:SetPoint("TOPLEFT", f.body, "TOPLEFT", 0, -(i - 1) * GB.ROW_H)
-    GB.PaintRow(b, shown[i], now)
+    b:SetPoint("TOPLEFT", f.body.child, "TOPLEFT", 0, -(i - 1) * GB.ROW_H)
+    GB.PaintRow(b, e, now)
   end
+  f.body:Fit(#shown * GB.ROW_H)
 end
 
--- Redraws the board, if it is built: old posts go, then the rows that fit and the line under them.
+-- Redraws the board, if it is built: old posts go, then a row for each post and the line under them.
 function GB.Refresh()
   local f = GB.frame
   if not f then return end

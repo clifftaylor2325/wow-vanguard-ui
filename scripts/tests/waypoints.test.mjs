@@ -78,7 +78,7 @@ it("waypoints: /way is left to another addon, /vg way always works, and the swit
   mine.slash("way 10 20");
   expect(mine.eval("return __set"), "/vg way sets one too").toEqual([[10, 0.1, 0.2]]);
   const tomtom = loggedIn(MAP_ENV + 'C_AddOns.IsAddOnLoaded = function(name) return name == "TomTom" end');
-  expect(tomtom.eval("return { SLASH_VANGUARDWAY1 == nil, SlashCmdList.VANGUARDWAY == nil }"), "TomTom loaded: /way is its").toEqual([true, true]);
+  expect(tomtom.eval("return { SLASH_VANGUARDWAY1 == nil, SlashCmdList.VANGUARDWAY == nil }"), "a waypoint addon loaded: /way is its").toEqual([true, true]);
   const taken = loggedIn(MAP_ENV + 'hash_SlashCmdList = { ["/WAY"] = function() end }');
   expect(taken.eval("return SLASH_VANGUARDWAY1 == nil"), "another addon's /way is left alone").toBe(true);
   const raw = loggedIn(MAP_ENV + 'SLASH_TESTONLYWAY1, SLASH_TESTONLYWAY2 = "/wp", "/Way" SlashCmdList.TESTONLYWAY = function() end');
@@ -235,6 +235,15 @@ it("waypoints: /way recent lists the spots and /way recent <n> goes back to one"
   addon.eval("ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent[1].map = 11");
   way(addon, "recent 1");
   expect(chatHas(addon, /Can't put a waypoint on TEST-ONLY Duskwood/), "a map that can't hold one now").toBe(true);
+});
+
+it("waypoints: a recent list holding damaged entries (an older version, an import) still lists, goes back and remembers the good ones", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Waypoints = { recent = { 5, 'x', { map = 10 }, { map = 10, x = 'a', y = 1 }, { map = 12, x = 0.5, y = 0.25 } } } } }" });
+  way(addon, "recent");
+  expect(chatHas(addon, /1\. TEST-ONLY Dun Morogh 50\.0, 25\.0/), "the good entry is listed").toBe(true);
+  click(addon, 10, 0.2, 0.3);
+  expect(addon.eval("local r = ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent return { #r, r[1].x, r[2].x }"), "a map click remembers beside it, the damaged ones dropped").toEqual([2, 0.2, 0.5]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
 it("waypoints: the options list the spots as buttons, and Clear waypoint takes it and the arrow away", () => {

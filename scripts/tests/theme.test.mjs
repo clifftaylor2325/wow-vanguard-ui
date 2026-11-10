@@ -490,6 +490,91 @@ it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, o
   expect(out, "faded, painted once, and a frame without a NineSlice works too").toEqual([0, 1, true]);
 });
 
+it("a repaint never reads an edge's shown state back: the client can hold it secret, and a secret passed to SetShown raises", () => {
+  const addon = loggedIn();
+  const [asked, shown, bareShown] = addon.eval(`local T = ns.Theme
+    local f = CreateFrame("Frame", nil, UIParent) f:SetSize(100, 40) f:SetPoint("CENTER")
+    T.Panel(f)
+    local asked, edges = 0, {}
+    for _, owner in ipairs({ f, f:GetChildren() }) do
+      for _, r in ipairs({ owner:GetRegions() }) do
+        if r.__height and not r.__width or r.__width and not r.__height then edges[#edges + 1] = r end
+      end
+    end
+    for _, r in ipairs(edges) do r.IsShown = function() asked = asked + 1 return { __secret = true } end end
+    T.RepaintFrame(f)
+    local shown = 0
+    for _, r in ipairs(edges) do r.IsShown = nil if r:IsShown() then shown = shown + 1 end end
+    return { asked, shown, #edges }`);
+  expect(bareShown, "the panel has its four edges").toBeGreaterThanOrEqual(4);
+  expect([asked, shown], "no edge was asked whether it is shown, and a shown plate left them as painted").toEqual([0, bareShown]);
+  expect(addon.eval("return #ns.errors"), "and nothing raised").toBe(0);
+});
+
+it("one painted frame whose repaint fails leaves every other frame repainted and the rest of a theme change done", () => {
+  const addon = loggedIn();
+  expectErrors("repaint: eval:11: TEST-ONLY refused", "re-tint: eval:11: TEST-ONLY refused");
+  const out = addon.eval(`local T = ns.Theme
+    local function edgesOf(f)
+      local out = {}
+      for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then out[#out + 1] = w end end
+      return out
+    end
+    local good = {}
+    for i = 1, 12 do good[i] = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true }) end
+    local bad = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })
+    for _, e in ipairs(edgesOf(bad)) do e.SetVertexColor = function() error("TEST-ONLY refused") end end
+    local fs = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "label", "accentText")
+    local heard = false
+    T.OnChanged(function() heard = true end)
+    T.Settings().accent = { 1, 0, 0 }
+    local ok = pcall(T.Refresh)
+    local repainted = 0
+    for _, f in ipairs(good) do if edgesOf(f)[1].__vertexColor[1] == 1 and edgesOf(f)[1].__vertexColor[2] == 0 then repainted = repainted + 1 end end
+    return { ok, repainted, heard, fs.__textColor and fs.__textColor[2] < 0.5 }`);
+  expect(out, "the refresh finished, all twelve good frames took the new accent, the listeners ran and text was recoloured").toEqual([true, 12, true, true]);
+});
+
+it("a frame whose scale the client hides is painted at the screen's pixel, the hidden scale never compared", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    local f = T.Panel(CreateFrame("Frame", nil, UIParent), { inset = true, noSheen = true })
+    f:SetSize(40, 40)
+    f.GetEffectiveScale = function() return __wfgWorld.secret(1) end
+    local ok = pcall(T.RepaintFrame, f)
+    local thick
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then thick = math.min(w.__width or 1e9, w.__height or 1e9) end end
+    return { ok, math.abs(thick - T.Pixel(UIParent)) < 1e-9, T.DrawnScale(__wfgWorld.secret(1)) == UIParent:GetEffectiveScale() }`);
+  expect(out, "the repaint went through, each edge is one screen pixel, and a hidden scale reads as the screen's").toEqual([true, true, true]);
+});
+
+it("a game divider whose shown state the client hides never hands the secret to its line, and a press never reads its shade back", () => {
+  const addon = loggedIn();
+  const divider = addon.eval(`local T = ns.Theme
+    local host = CreateFrame("Frame", nil, UIParent)
+    local tex = host:CreateTexture()
+    T.Divider(tex)
+    local holder, handed = T.DividerParts(tex).holder, {}
+    local set = holder.SetShown
+    holder.SetShown = function(self, v) handed[#handed + 1] = issecretvalue(v) and "secret" or tostring(v) return set(self, v) end
+    tex.IsShown = function() return __wfgWorld.secret(true) end
+    tex:Show()
+    tex.IsShown = nil
+    tex:Hide()
+    return handed`);
+  expect(divider, "a hidden shown state is not passed on; a plain one still is").toEqual(["false"]);
+  const press = addon.eval(`local T = ns.Theme
+    local b = T.Button(CreateFrame("Button", nil, UIParent))
+    local shade, asked = T.PressOverlay(b), 0
+    shade.IsShown = function() asked = asked + 1 return __wfgWorld.secret(true) end
+    T.PressButton(b, true)
+    shade.IsShown = nil
+    local down = shade:IsShown()
+    T.PressButton(b, false)
+    return { asked, down, shade:IsShown() }`);
+  expect(press, "the shade was never asked whether it is shown, and it shows while held and hides after").toEqual([0, true, false]);
+});
+
 it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
   const addon = loggedIn();
   const out = addon.eval(`
@@ -938,6 +1023,35 @@ it("ornaments (#238): off by default; /vg ornaments puts a rule on the options w
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.__parent and w.__parent:GetParent() == Vanguard_QuestLog and tostring(w.__texture):find("OrnamentCorner") then return w.__vertexColor end end`)[1], "follows the accent").not.toBeCloseTo(dim[0], 2);
   addon.slash("ornaments off");
   expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
+});
+
+// A cue ring on a frame the HUD look does not shape is still the soft glow: made once, tinted with its token, and
+// T.CueColor colours every piece of it.
+it("cue rings: a frame without a HUD role gets the glow ring, made once and coloured as one", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    local f = CreateFrame("Frame", nil, UIParent) f:SetSize(100, 40) f:SetPoint("CENTER")
+    local ring = T.CueRing(f, "edge", "accent", 6)
+    local same = T.CueRing(f, "edge", "accent", 6) == ring
+    T.CueColor(ring, 0.1, 0.2, 0.3, 0.4)
+    local coloured = #ring > 0
+    for _, tex in ipairs(ring) do local c = tex.__vertexColor if not (c and c[1] == 0.1 and c[4] == 0.4) then coloured = false end end
+    return { #ring > 0, same, coloured }`);
+  expect(out, "a list of glow pieces, the same list again, every piece coloured").toEqual([true, true, true]);
+});
+
+// A game window's frame level can be secret (the client's own code may have set it from one): the brackets' holder
+// must not do arithmetic on it. TEST-ONLY: the test window stands in for a game window.
+it("ornaments: a window whose frame level the client hides still gets its brackets, and nothing raises", () => {
+  const addon = loggedIn("", { firstRun: true });
+  addon.slash("ornaments");
+  const out = addon.eval(`local f = CreateFrame("Frame", "TestHiddenLevelWindow", UIParent)
+    f:SetSize(300, 200) f:SetPoint("CENTER")
+    f.GetFrameLevel = function() return __wfgWorld.secret(5) end
+    local ok = pcall(ns.Theme.Ornament, f, "corners")
+    return { ok, #ns.errors }`);
+  expect(out, "no raise, nothing reported").toEqual([true, 0]);
+  expect(artShown(addon, "TestHiddenLevelWindow", "OrnamentCorner"), "four brackets drawn").toBe(4);
 });
 
 it("ornaments (H1): High contrast shows no ornament even with Window ornaments on, and they come back with another variant", () => {

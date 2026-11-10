@@ -100,9 +100,9 @@ end
 
 -- Whether a window is left out: the combat log, and the chat filter's Filtered tab (it holds spam, and its window can move).
 function CHH.Skipped(index)
-  local frame, CF = _G["ChatFrame" .. index], ns.GetModule("ChatFilter")
+  local frame = _G["ChatFrame" .. index]
   if frame ~= nil and frame == _G.COMBATLOG then return true end
-  return type(GetChatWindowInfo) == "function" and GetChatWindowInfo(index) == CF.TAB
+  return ns.GetModule("ChatFilter").IsTab(index)
 end
 
 -- Whether a line may be saved: plain text of a sane length, and a whisper only when asked for.
@@ -201,9 +201,7 @@ end
 function CHH.Restore()
   CHH.Prune()
   CHH.restoring = true
-  ns.Try("restore chat history", function()
-    for index, list in pairs(CHH.Store()) do restoreWindow(index, list) end
-  end)
+  for index, list in pairs(CHH.Store()) do ns.Try("restore chat window", restoreWindow, index, list) end
   CHH.restoring = false
 end
 
@@ -278,11 +276,14 @@ function CHH.Enable(settings)
   ns.On("PLAYER_ENTERING_WORLD", CHH.Arrived)
 end
 
--- The first time the world is entered (the game has set its chat windows up by then): the saved lines come back.
-function CHH.Arrived()
+-- The first time the world is entered (the game has set its chat windows up by then): the saved lines come back,
+-- but only after a login or a reload: a module started later in the session meets a zone change, which must not
+-- replay last session's chat into this one.
+function CHH.Arrived(_, isInitialLogin, isReloadingUi)
   if CHH.arrived then return end
   CHH.arrived = true
-  if CHH.settings.on then CHH.Restore() end
+  local fresh = isInitialLogin == true or isReloadingUi == true
+  if CHH.settings.on and fresh then CHH.Restore() end
   CHH.KeepEarly()
 end
 

@@ -56,7 +56,7 @@ Must have for launch:
 
 Should have (after table stakes): roll tracker and history panel in Vanguard look (MEDIUM); roll-frame upgrade badge reusing `Upgrades`/`UpgradeWeights` (later); per-level history (new SavedVariables table, defer); level-up toast with trainer/talent nudge (LOW, if time); vendor restock button.
 
-Defer past launch: live party quest progress and comms (HIGH cost, lockdown risk); any auto-Need or auto-roll (anti-feature; opt-in "auto-pass items I cannot equip" only, later, never Need); levelling route guides, own quest database or map pins, Questie protocol interop, loot council or DKP; anything automating gameplay (permanently out).
+Defer past launch: live party quest progress and comms (HIGH cost, lockdown risk); any auto-Need or auto-roll (anti-feature; opt-in "auto-pass items I cannot equip" only, later, never Need); levelling route guides, own quest database or map pins, a quest addon's protocol interop, loot council or DKP; anything automating gameplay (permanently out).
 
 ### Architecture Approach
 

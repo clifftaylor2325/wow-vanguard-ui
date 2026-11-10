@@ -11,8 +11,8 @@
 -- Quests are in the game's order, or nearest first. The game's objective
 -- tracker is hidden in place while this one shows (it's an Edit Mode frame).
 -- In combat the text still updates; the item buttons are secure, so they stay put
--- and are placed once, when combat ends. With Questie loaded, Questie's own
--- tracker shows instead (unless the With Questie setting picks Vanguard's), so
+-- and are placed once, when combat ends. With a dedicated quest addon loaded, its own
+-- tracker shows instead (unless the setting picks Vanguard's), so
 -- there are never two.
 
 local ADDON, ns = ...
@@ -32,7 +32,7 @@ QT.SCREEN_EVENTS = { "UI_SCALE_CHANGED", "DISPLAY_SIZE_CHANGED" }
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
 QT.BASIC_REAGENT = 1
 
--- Whether Vanguard's tracker shows with these settings: it's on, and Questie (when it's
+-- Whether Vanguard's tracker shows with these settings: it's on, and the quest addon (when it's
 -- loaded) isn't set to show its own tracker instead.
 function QT.Shows(settings)
   if not settings.own then return false end
@@ -528,12 +528,30 @@ local function followItems()
   for _, name in ipairs({ "PlaceMover", "SetMoverDefault" }) do hooksecurefunc(ns, name, ns.Guard("quest items follow", onSpotPlaced)) end
 end
 
+-- Keeps the game's tracker clear (alpha 0) wherever the game brings it back: its managed-frame container re-parents it
+-- to the visible right-hand container and sets its alpha to 1 as objectives change, and Vanguard's own parking waits
+-- for the end of a fight, so its lines drew over ours meanwhile. Alpha is the one thing a fight does not lock.
+local function holdGameTrackerClear()
+  local tracker = _G.ObjectiveTrackerFrame
+  if type(tracker) ~= "table" or type(hooksecurefunc) ~= "function" then return end
+  -- Sets the alpha to 0; the flag stops the SetAlpha hook calling itself.
+  local function clear()
+    if QT.clearing then return end
+    QT.clearing = true
+    tracker:SetAlpha(0)
+    QT.clearing = false
+  end
+  clear()
+  for _, name in ipairs({ "SetAlpha", "SetParent", "Show" }) do hooksecurefunc(tracker, name, ns.Guard("quest tracker keeps the game's clear", clear)) end
+end
+
 -- Builds the tracker (in its spot), parks the game's under a hidden frame, as the unit frames park theirs (hidden
 -- in place, the game showing it in a fight made Vanguard's hide lay out the game's right-side column, boss frames
 -- and all, from addon code), and follows the quest log.
 local function build()
   QT.Build(ns.MoverFrame("questtracker"))
   ns.GetModule("UnitFrames").HideBlizzard("ObjectiveTrackerFrame")
+  holdGameTrackerClear()
   QT.ApplyOrder()
 end
 

@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, SETUP_DONE, chatHas, loggedIn, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, SETUP_DONE, chatHas, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 // Saved settings with the row on and the chosen items given.
 const saved = (items) => `VanguardDB.profiles = { Default = { CooldownGaps = { on = true, items = '${items}' } } }`;
@@ -364,4 +364,19 @@ it("the Gaps card's add row shows its buttons whole in German and Russian, and t
     const cut = addon.textFit(null).filter((f) => mine.includes(f.text));
     expect(cut, `${locale} ${scale}: nothing on the add row is cut or overlapping`).toEqual([]);
   }
+});
+
+it("hunt bars: a duration object the client refuses keeps its icon and leaves the rest of the row to be drawn", () => {
+  const addon = on(SPELLS_ENV + "__spellObj[501] = __wfgWorld.durationObject(0, 30)");
+  addon.slash("gaps spell add 501");
+  expect(shown(addon).map((c) => c.icon), "Strike and the trinket").toEqual(["TEST-ONLY-ICON-Strike", "TEST-ONLY-ICON-Trinket"]);
+  addon.eval(`local cd = ns.GetModule("CooldownGaps").cells[1].cooldown
+    cd.SetCooldownFromDurationObject = function() error("TEST-ONLY the client refuses this object", 0) end
+    ns.GetModule("CooldownGaps").settings.items = "5512"`);
+  expectErrors("bar cooldown gaps: TEST-ONLY the client refuses this object");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.update(0);
+  expect(shown(addon).map((c) => c.icon), "the refused sweep keeps Strike's icon, and the Healthstone after it is still placed").toEqual([
+    "TEST-ONLY-ICON-Strike", "TEST-ONLY-ICON-Trinket", "TEST-ONLY-ICON-Healthstone",
+  ]);
 });

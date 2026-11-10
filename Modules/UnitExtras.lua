@@ -205,7 +205,7 @@ UX.THREAT_EVENTS = { "PLAYER_TARGET_CHANGED", "PLAYER_REGEN_ENABLED", "GROUP_ROS
 -- own threat situation (the client names you, not the mob, when it changes).
 local function addThreat(target)
   UX.threat = T.Text(target:CreateFontString(nil, "OVERLAY"), "small", "text2")
-  UX.threat:SetPoint("BOTTOMRIGHT", target, "TOPRIGHT", -12, 3)
+  UX.threat:SetPoint("BOTTOMRIGHT", UF.Crown(target), "TOPRIGHT", -12, 3)
   ns.OnUnit("UNIT_THREAT_LIST_UPDATE", UX.UpdateThreat, "target")
   ns.OnUnit({ "UNIT_THREAT_SITUATION_UPDATE", "UNIT_PET" }, UX.UpdateThreat, "player")
   for _, e in ipairs(UX.THREAT_EVENTS) do ns.On(e, UX.UpdateThreat) end
@@ -213,13 +213,14 @@ local function addThreat(target)
 end
 
 -- The mood glyph in the pet frame's top-right corner, following your pet, and its line on the pet's tooltip.
--- The pet's health text ends left of the glyph.
+-- The pet's health text ends left of the glyph: the frame keeps that room on every layout (UF.TEXT_END_ROOM), so a
+-- look, size or scale change doesn't run the number under the glyph again.
 local function addHappiness(pet)
   UX.happy = T.Snap(pet.health:CreateTexture(nil, "OVERLAY"), "icon")
   UX.happy:SetSize(UX.GLYPH, UX.GLYPH)
   UX.happy:SetPoint("TOPRIGHT", pet, "TOPRIGHT", -3, -3)
-  pet.healthText:ClearAllPoints()
-  pet.healthText:SetPoint("RIGHT", pet.health, "RIGHT", -(UX.GLYPH + 7), 0)
+  UF.TEXT_END_ROOM.pet = UX.GLYPH + 7
+  UF.PlaceParts(pet)
   for _, e in ipairs({ "UNIT_HAPPINESS", "UNIT_PET" }) do ns.On(e, UX.UpdateHappiness) end
   UF.TOOLTIP_LINES.pet = UX.AddHappinessLine
   UX.UpdateHappiness()

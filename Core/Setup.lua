@@ -43,10 +43,14 @@ S.LAYOUTS = {
   { key = "healing", text = L["Centered: healing"], hint = L["Party and raid above your frames, drawn larger (a big raid stacked at the left of your character), your own and your target's frames a little smaller, raid frames sorted by role with power bars, raid debuffs, HoTs and incoming heals, short debuff rows on nameplates, click casting on."] },
   { key = "versus", text = L["Versus deck"], hint = L["Centered for your role, with your frame and your target's joined by one shield panel under your character, the crest between them and your cast bar in the middle."] },
   { key = "classic", text = L["Like the game's"], hint = L["Your frames at the top left as the game has them, party and raid down the left side."] },
+  { key = "fort", text = L["The keep"],
+    hint = L["Centered for your role, then one wall at the foot of the screen: your frame and your target's at its ends, your cast bar in the gatehouse."] },
+  { key = "standards", text = L["Standards"],
+    hint = L["Centered for your role, then your frame and your target's stand as tall banners either side of you, the small frames beside them."] },
   { key = "keep", text = L["Keep my current layout"], hint = L["Moves nothing: your frames stay where they are."] },
 }
 -- Like the game's: player and target along the top left (the pet under the
--- player, the target of target beside the target and the focus under that, both 20 right of the target's
+-- player, the target of target beside the target and the focus under that (the focus target right of the focus), both 20 right of the target's
 -- cast bar so its interrupt mark clears the focus frame), the
 -- party and raid down the left side (the raid grows up from above the bars'
 -- height, so a full raid stays clear of the middle), the boss frames on the
@@ -57,7 +61,7 @@ S.CLASSIC = {
   uf_player = { "TOPLEFT", "TOPLEFT", 20, -40 }, uf_pet = { "TOPLEFT", "TOPLEFT", 20, -84 },
   uf_target = { "TOPLEFT", "TOPLEFT", 270, -40 }, uf_targettarget = { "TOPLEFT", "TOPLEFT", 540, -46 },
   cast_target = { "TOPLEFT", "TOPLEFT", 270, -108 }, cast_pet = { "TOPLEFT", "TOPLEFT", 20, -112 },
-  cast_focus = { "TOPLEFT", "TOPLEFT", 540, -76 }, uf_focus = { "TOPLEFT", "TOPLEFT", 540, -94 },
+  cast_focus = { "TOPLEFT", "TOPLEFT", 540, -76 }, uf_focus = { "TOPLEFT", "TOPLEFT", 540, -94 }, uf_focustarget = { "TOPLEFT", "TOPLEFT", 710, -94 },
   raid = { "BOTTOMLEFT", "BOTTOMLEFT", 20, 330 }, uf_party1 = { "TOPLEFT", "TOPLEFT", 20, -310 },
   partyextras = { "TOPLEFT", "TOPLEFT", 190, -310 }, uf_boss1 = { "TOPRIGHT", "TOPRIGHT", -290, -200 },
   raidtools = { "TOP", "TOP", 200, -120 }, maintanks = { "TOP", "TOP", 100, -196 },
@@ -151,7 +155,7 @@ end
 function S.Backup()
   if state.backup then return end
   if state.order[1] == "profile" then state.floor, VanguardCharDB.pickProfile = math.max(state.floor, 2), nil end
-  state.backup = keptBackup() or ns.BackupProfile()
+  state.backup, state.backupOf = keptBackup() or ns.BackupProfile(), ns.ProfileName()
   if owed() then VanguardCharDB.setupBackup = state.backup end
   ns.Chat(ns.Format(L["Profile {profile} as it was before setup is saved as profile {backup}."], { profile = ns.ProfileName(), backup = state.backup }))
 end
@@ -177,8 +181,9 @@ local function presetKeys()
 end
 
 -- Puts everything a preset moves or sizes back at Vanguard's defaults, so picking one
--- layout undoes the others, Versus deck and Like the game's (the deck goes off too).
+-- layout undoes the others, Versus deck, Like the game's, the keep and Standards (the deck and the HUD layout go off too).
 local function restoreDefaults()
+  ns.SetHudLayout(nil)
   for key in pairs(presetKeys()) do
     ns.Settings("positions")[key] = nil
     ns.ResetMovers(key)
@@ -252,6 +257,14 @@ function APPLY.versus()
   end
   S.SetTargetHeight(nil)
   S.SetDeck(true)
+end
+
+-- The keep and Standards: your role's centered layout, then the HUD layout's spots and sizes on top (Core/HudLayout.lua).
+for _, layout in ipairs({ "fort", "standards" }) do
+  APPLY[layout] = function()
+    APPLY[S.GuessLayout()]()
+    ns.SetHudLayout(layout)
+  end
 end
 
 -- Applies a layout preset by key, backing the profile up first unless it is Keep.
@@ -992,14 +1005,19 @@ end
 -- Undo setup (the All set step): putBack (Core/SetupGuide.lua's) puts the guided rows back through their setters, so
 -- the screen follows at once, then the profile as it was before this run's first change comes back (its frames keep
 -- the new spots until the reload setup then offers), and setup ends as Done, so it doesn't open again. A backup
--- profile deleted during the run can't come back; chat says so and the end is an ordinary Done.
+-- profile deleted during the run can't come back; chat says so and the end is an ordinary Done. In a fight it waits
+-- for the fight to end, so it runs whole (a hidden setup, paused by the fight, ends here instead of coming back).
 ---@param putBack function
 function S.Undo(putBack)
+  if ns.InCombat() then return ns.OutOfCombat(function() S.Undo(putBack) end, "setup undo") end
+  local hidden = not frame:IsShown()
+  state.paused = false
   putBack()
-  local restored = not state.backup or ns.CopyProfile(state.backup) ~= false
+  local restored = not state.backup or ns.CopyProfile(state.backup, state.backupOf) ~= false
   if not restored then ns.Chat(L["The backup profile is gone, so only the guided steps' settings went back."]) end
   state.undone = restored
   complete(true)
+  if hidden then finished() end
 end
 
 -- Setup's own steps' builders, by key; the guided steps' pages are Core/SetupGuide.lua's.

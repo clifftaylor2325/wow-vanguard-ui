@@ -505,6 +505,17 @@ function CB.FitPlayer()
   ns.SetMoverDefault("cast_player", CB.PlayerPoint())
 end
 
+-- The cast bars whose default spot sits over their unit's frame: they rise with the frame's tab under the Tabs look.
+CB.OVER_FRAME = { target = true, focus = true }
+
+-- Moves the target's and the focus's cast bars' default spots up by the unit frames' tab (Modules/UnitFrames.lua
+-- UF.TabLift, 0 under the other looks); a position you dragged them to still wins.
+function CB.FitLook()
+  local UF = ns.GetModule("UnitFrames")
+  local lift = UF and UF.TabLift and UF.TabLift() or 0
+  for unit in pairs(CB.OVER_FRAME) do ns.SetMoverDefault("cast_" .. unit, ns.RaisedDefault(LAYOUT[unit].point, lift)) end
+end
+
 -- A themed cast bar for a unit, hidden until it casts; movable, and Vanguard may set its width. It
 -- draws over the action bars (high strata), so a bar dragged over it never hides a cast.
 local function createBar(unit)
@@ -775,9 +786,11 @@ end
 function CB.Enable(settings)
   CB.settings = settings
   local units = createBars(settings)
+  CB.FitLook()
   if settings.hideBlizzard then ns.OutOfCombat(function() for _, n in ipairs(BLIZZARD) do hideBlizzard(n) end end) end
   CB.SkinOverlay()
   listen(units)
   CB.ApplyRing()
   T.OnChanged(CB.PaintSweeps)
+  T.OnChanged(function() ns.OutOfCombat(CB.FitLook, "cast bar look") end)
 end

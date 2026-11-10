@@ -256,7 +256,7 @@ Every wave reads Blizzard's `live` branch for the frame and API facts and the re
   7. The options window: search index, text fit at every language, Tab and Escape, greyed rows, the changed-from-default mark, pages at 1280x720.
   8. Slash: every word in `docs/COMMANDS.md` real and documented, words for absent modules, `/vg` in combat.
   9. Settings guard, performance counters and the ticker: a guard that fires in combat, a timer that survives a reload, perf numbers that are secret.
-  10. Integrations: shared media, Masque, the hooks in `docs/API.md`, another addon registering before Vanguard loads.
+  10. Integrations: shared media, the skinning library, the hooks in `docs/API.md`, another addon registering before Vanguard loads.
 - [x] **H15 Spec drift: the docs against the code** (both; SMOKE 33.311 to 33.316). Files: `README.md`, `docs/features/*.md` (twelve pages), `docs/COMMANDS.md`, `docs/API.md`, `docs/GETTING-STARTED.md`, `docs/SMOKE-TEST.md`, `docs/THEME.md`, `Locales/`, against `Core/` and `Modules/`. The site generates its facts from these, so a wrong sentence here is a wrong page there. A finding is either a behaviour bug (the code is wrong) or a spec bug (the page is wrong); the reviewer says which.
   1. `look-and-layout.md` and `docs/THEME.md`: every fade, sound, colour role and spacing claim.
   2. `unit-frames.md` and `raid-frames.md`.

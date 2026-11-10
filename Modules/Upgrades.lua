@@ -199,6 +199,24 @@ local function itemLevel(link)
   return type(get) == "function" and ns.PlainNumber((get(link))) or nil
 end
 
+-- Item IDs whose stats the client has not sent (itemID -> true), marked again when the data arrives.
+UP.awaiting = {}
+
+-- Asks the client for an item's data once, and notes it, so the arrows are laid again when it comes.
+function UP.AwaitItem(link)
+  local id = tonumber(tostring(link):match("item:(%d+)"))
+  if not id or UP.awaiting[id] then return end
+  UP.awaiting[id] = true
+  ns.CallIf(C_Item, "RequestLoadItemDataByID", id)
+end
+
+-- The client sent an item's data: if an arrow waited for it, the open bag is marked again (only then).
+function UP.OnItemInfo(_, itemID)
+  if not UP.awaiting[itemID] then return end
+  UP.awaiting[itemID] = nil
+  UP.OnGearChanged()
+end
+
 -- What an item is worth with weights: weight x amount, summed over its stats (0 for none), plus its item level
 -- where the weights count it (Retail's ILVL; no item stat key holds it). nil while the client has no stats for
 -- the item yet (it isn't loaded), so nothing is judged, or remembered, on a guess.
@@ -219,6 +237,7 @@ local function score(link)
   local known = UP.scores[link]
   if known then return known end
   UP.scores[link] = UP.Score(link, (UP.Current()))
+  if not UP.scores[link] then UP.AwaitItem(link) end
   return UP.scores[link]
 end
 
@@ -645,6 +664,15 @@ function UP.Command(rest)
   sayWeights()
 end
 
+-- Re-scores and marks again when what is worn, the group role, the spec or an awaited item's data changes.
+local function watchChanges()
+  ns.On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
+  ns.On("GET_ITEM_INFO_RECEIVED", UP.OnItemInfo)
+  ns.On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
+  if not ns.IsForever() then ns.On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.OnRolesChanged) end -- a new spec, new main stat
+  ns.On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
+end
+
 -- Module entry point (Core/Modules.lua).
 function UP.Enable(settings)
   UP.settings = settings
@@ -653,8 +681,5 @@ function UP.Enable(settings)
   ns.QuestParts.OnPaintCard(UP.MarkCard)
   local bag = _G.ContainerFrameCombinedBags
   if bag and type(hooksecurefunc) == "function" then hooksecurefunc(bag, "UpdateItems", ns.Guard("hook UpdateItems", markBagSafely)) end
-  ns.On("PLAYER_EQUIPMENT_CHANGED", UP.OnGearChanged)
-  ns.On("PLAYER_ROLES_ASSIGNED", UP.OnRolesChanged)
-  if not ns.IsForever() then ns.On("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", UP.OnRolesChanged) end -- a new spec, new main stat
-  ns.On("GROUP_LEFT", UP.OnRolesChanged) -- out of a group the role is none again, which no role event may say
+  watchChanges()
 end

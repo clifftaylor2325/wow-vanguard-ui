@@ -16,7 +16,7 @@ const cardTexts = (addon) => addon.eval(`ns.Options.Show("modules")
   for _, row in ipairs(ns.GetModule("Coexist").Rows()) do out[#out + 1] = row[2] end
   return out`);
 
-it("coexist: EllesmereUI's unit frame, action bar, nameplate and raid frame addons are noticed", () => {
+it("coexist: an all-in-one suite's unit frame, action bar, nameplate and raid frame addons are noticed", () => {
   const addon = loggedIn(CLICK_LUA + loadedEnv("EllesmereUIUnitFrames", "EllesmereUIActionBars", "EllesmereUINameplates", "EllesmereUIRaidFrames"));
   expect(cardTexts(addon), "one question per overlap, sorted by addon name").toEqual([
     "Other addons",
@@ -69,7 +69,7 @@ it("coexist: the button names the module as the Modules page does, else by its o
   expect(cardTexts(addon)[2], "the module's own name").toBe("Turn off ClickCast");
 });
 
-it("coexist: ElvUI and Tukui ask about the action bars, Auctionator and TradeSkillMaster about the Auction helper", () => {
+it("coexist: the whole-UI suites ask about the action bars, the auction addons about the Auction helper", () => {
   const addon = loggedIn(CLICK_LUA + loadedEnv("ElvUI", "Tukui", "Auctionator", "TradeSkillMaster"));
   addon.eval('ns.SetModuleEnabled("ActionBars", true)'); // the scoped login leaves the action bars off
   const pending = addon.eval('local out = {} for i, o in ipairs(ns.GetModule("Coexist").Pending()) do out[i] = o.addon .. ">" .. o.module end return out');
@@ -161,7 +161,7 @@ it("coexist: an off answer whose keys another row turned partly back on still of
   expect(addon.eval('return ns.Settings("Windows").windows'), "and they come back").toBe(true);
 });
 
-it("Y3-2 coexist: Clique's row says its bindings don't reach Vanguard's unit and raid frames", () => {
+it("Y3-2 coexist: the click casting row says its bindings don't reach Vanguard's unit and raid frames", () => {
   const addon = loggedIn(CLICK_LUA + loadedEnv("Clique"));
   expect(cardTexts(addon), "the click-casting question, with the also sentence").toEqual([
     "Other addons",

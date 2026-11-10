@@ -396,7 +396,7 @@ A new top-level file or folder that players do not need must be in the `.pkgmeta
 | GitHub Actions on a private repo | Plan for public-repo runner speed and unlimited minutes | Measure on 2 vCPU; budget minutes; keep a break-glass merge path |
 | CurseForge / Wago | Find out the game version is unsupported at upload | Check the Forever game-version entry before release candidate; rehearse an upload |
 | `.pkgmeta` / TOC | Add a top-level folder without ignoring it | Run `node scripts/package.mjs && node scripts/check-zip.mjs` on every PR (already in `verify.yml`) |
-| Masque and other addon APIs (`Vanguard.API.v1`) | Change a function signature near launch | Freeze the API surface; changes need a version bump and a note in `docs/API.md` |
+| The skinning library and other addon APIs (`Vanguard.API.v1`) | Change a function signature near launch | Freeze the API surface; changes need a version bump and a note in `docs/API.md` |
 
 ## Performance Traps
 
@@ -493,7 +493,7 @@ A new top-level file or folder that players do not need must be in the `.pkgmeta
 
 - Repo, observed 2026-10-09 at `47f1e94`: `Core/Events.lua`, `Core/Combat.lua`, `Modules/AuctionSell.lua`, `scripts/lib/wow-stub.lua`, `scripts/lib/wow-world.lua`, `scripts/tests/helpers.mjs`, `scripts/tests/setup.mjs`, `scripts/tests/smoke.test.mjs`, `scripts/coverage-lua.mjs`, `vitest.config.mjs`, `.github/workflows/verify.yml`, `full-suite.yml`, `lua-suite.yml`, `.luacheckrc`, `docs/SMOKE-TEST.md`, and issue #169 (via `gh issue view 169`). Local timing from `npx vitest run --project lua` (HIGH for the counts, MEDIUM for the durations because the machine was shared).
 - [Patch 12.0.0 planned API changes, Warcraft Wiki](https://warcraft.wiki.gg/wiki/Patch_12.0.0/Planned_API_changes) (MEDIUM; alpha/beta-era text, the page says behaviour may change; only the first part of a long page was read)
-- [Recount - Revived file notes, CurseForge](https://www.curseforge.com/wow/addons/recount-revived/files/8225229) and the CombatAnalytics and EllesmereUI file pages found in the same search (LOW to MEDIUM; addon author reports on secret arithmetic, `pcall`, protected `EnableMouse`)
+- a damage meter revival's file notes on CurseForge and two other addon file pages found in the same search (LOW to MEDIUM; addon author reports on secret arithmetic, `pcall`, protected `EnableMouse`)
 - [WoW Forever loads your retail addons and keybinds, Warcraft Tavern](https://www.warcrafttavern.com/forever/news/wow-forever-loads-your-retail-addons-keybinds/) (LOW; disputed in the comments)
 - Search result summaries on Forever's addon policy and launch date from Icy Veins, Final Boss and Guild Order (LOW; the Icy Veins page returned HTTP 403 and was not read; the beta end date of 2026-10-21 is from search text only)
 - [How use of GitHub Actions is measured, GitHub Docs](https://docs.github.com/en/billing/concepts/product-billing/github-actions) (HIGH for the 2,000 included minutes and the $0 default spending limit; the 2-vCPU private-runner point and per-job rounding were not confirmed there, so check them on GitHub's runners page)

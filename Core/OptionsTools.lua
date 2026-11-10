@@ -1,4 +1,4 @@
--- The Combat tools page (/vg): the game's damage meter and alerts, boss mods, fight history, the
+-- The Combat tools page (/vg): the game's damage meter and alerts, boss timer spots, fight history, the
 -- Vanguard meter and the roll tracker. Core/Options.lua has the helpers and
 -- the page list.
 
@@ -35,12 +35,10 @@ local function gameToolRows()
   }, alertRows())
 end
 
--- Boss mods: a button to line their bars up with Vanguard's spots, only while one is loaded.
-local function bossDockRows()
-  local BD = ns.GetModule("BossDocks")
-  if not (BD.HasDBM() or BD.HasBigWigs()) then return {} end
-  return { { "header", L["Boss mods"] }, { "button", L["Line up boss mod bars with the Boss timers spots"], BD.Command },
-    { "text", L["Move the Boss timers spots with /vg unlock first. Deadly Boss Mods' bars move at once; for BigWigs, chat says where to drag them."] } }
+-- Boss timers: where the two spots are and how to use them (no boss mod is named or touched).
+local function bossTimerRows()
+  return { { "header", L["Boss timers"] },
+    { "text", L["Two spots for a boss timer addon's bars, Boss timers and Boss timers, soon: move them with /vg unlock, then drag that addon's bar anchors onto them."] } }
 end
 
 -- Fight history under the damage meter: its switch (applied at once) and its visibility.
@@ -115,7 +113,7 @@ end
 
 -- The Combat tools page: the game's tools, boss mods and the fight panels.
 local function toolsPageRows()
-  local rows = append(gameToolRows(), bossDockRows())
+  local rows = append(gameToolRows(), bossTimerRows())
   return append(append(append(append(rows, fightRows()), meterRows()), meterButtons()), rollRows())
 end
 

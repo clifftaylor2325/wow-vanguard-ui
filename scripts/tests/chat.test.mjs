@@ -38,12 +38,19 @@ it("minimap", () => {
   expect(addon.eval("return { GameTooltip:IsShown(), Minimap:GetZoom() }"), "the tooltip goes when the mouse leaves, and the wheel over the name still zooms").toEqual([false, 4]);
   const bare = loggedIn(UI_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Minimap = { coords = false } } }" });
   expect(bare.eval(`return ${M}.bottom:IsShown()`), "coordinates off: no bottom band").toBe(false);
+  // The coordinates' band, text and ticker as the Coordinates under the minimap switch leaves them.
+  const coordsState = () => bare.eval(`return { ${M}.bottom:IsShown(), ${M}.coords:IsShown(), ns.ticker.vgJobs["minimap coords"] ~= nil }`);
+  expect(coordsState(), "coordinates off at login: no band and no ticker (the text is empty)").toEqual([false, true, false]);
+  bare.eval('local _, set = ns.Options.LiveMethod("Minimap", "coords", "ApplyCoords") set(true)');
+  expect(coordsState(), "switched on, at once: the band, the text and the ticker").toEqual([true, true, true]);
+  bare.eval('local _, set = ns.Options.LiveMethod("Minimap", "coords", "ApplyCoords") set(false)');
+  expect(coordsState(), "switched off again, at once").toEqual([false, false, false]);
 });
 it("Y4-1 with the Minimap module off the shape is the game's round map, or the answer a minimap addon loaded first gave", () => {
   // A client logged in with the Minimap module off, after `env` (Lua run before Vanguard loads).
   const off = (env = "") => loggedIn(env + UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(off().eval("return GetMinimapShape()"), "off: the game's map is round").toBe("ROUND");
-  expect(off('GetMinimapShape = function() return "CORNER-TOPLEFT" end\n').eval("return GetMinimapShape()"), "off, after SexyMap's own answer: that answer stands").toBe("CORNER-TOPLEFT");
+  expect(off('GetMinimapShape = function() return "CORNER-TOPLEFT" end\n').eval("return GetMinimapShape()"), "off, after another minimap addon's own answer: that answer stands").toBe("CORNER-TOPLEFT");
 });
 it("H26-1-2 a Minimap switched on since login is still the game's round map until the reload", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
@@ -1414,6 +1421,24 @@ it("faster auto-loot: under master loot the game's loot window keeps every slot"
   on.eval("__looted = {} C_PartyInfo.GetLootMethod = nil");
   on.fire("LOOT_READY", true);
   expect(on.eval("return __looted"), "a client without GetLootMethod still takes them").toEqual([3, 1]);
+});
+it("faster auto-loot: with no plain loot method, a group's slots are left to the game and a solo player's are taken, on both clients", () => {
+  for (const client of ["", RETAIL]) {
+    const on = loggedIn(LOOT_ENV, { client, savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { loot = true } } }" });
+    // Opens loot in or out of a group after `setup` and returns what fast loot took.
+    const looted = (inGroup, setup) => {
+      on.eval(`__looted = {} Enum.LootMethod = nil C_PartyInfo.GetLootMethod = nil GetLootMethod = nil IsInGroup = function() return ${inGroup} end ${setup}`);
+      on.fire("LOOT_READY", true);
+      return on.eval("return __looted");
+    };
+    expect(looted(false, ""), "alone, with no loot method call at all: taken").toEqual([3, 1]);
+    expect(looted(true, ""), "in a group, with no loot method call at all: left to the game").toEqual({});
+    expect(looted(true, `GetLootMethod = function() return "master" end`), "the old global says master: left").toEqual({});
+    expect(looted(true, `GetLootMethod = function() return "group" end`), "the old global says group: taken").toEqual([3, 1]);
+    expect(looted(true, `Enum.LootMethod = { Masterlooter = 2 } C_PartyInfo.GetLootMethod = function() return __wfgWorld.secret() end`), "a hidden answer in a group: left").toEqual({});
+    expect(looted(true, `Enum.LootMethod = { Masterlooter = 2 } C_PartyInfo.GetLootMethod = function() return 3 end`), "a plain non-master answer: taken").toEqual([3, 1]);
+    expect(on.eval("return #ns.errors"), "no errors").toBe(0);
+  }
 });
 // TEST-ONLY invites and death: every answer is recorded; the world is a battleground, nobody is a friend.
 const INVITE_ENV = `

@@ -20,7 +20,7 @@ local PA = ns.Module("PlayerAuras", {
 })
 
 PA.GAP = 4
--- The Masque group your buffs, debuffs and weapon enchants are in, when Masque is loaded (Core/Masque.lua).
+-- The skinning group your buffs, debuffs and weapon enchants are in, when the library is loaded (Core/Masque.lua).
 PA.MASQUE = "Buffs and debuffs"
 -- The game's frames this replaces: the buff and debuff frames, and their newer companions
 -- (external defensives cast on you, the deadly debuff warning), where the client has them.

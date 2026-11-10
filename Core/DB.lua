@@ -125,6 +125,20 @@ function ns.MigrateProfileTable(profile)
   return profile
 end
 
+-- The modules taken out of Vanguard (their settings, and their names in the profile's module switches), and the
+-- account-wide key the Legacy perk list was kept under.
+local RETIRED_MODULES = { "PetStable", "Legacy", "BossDocks" }
+local RETIRED_ACCOUNT_KEYS = { "legacyPlan" }
+
+-- Forgets what a retired module saved in a profile, and its switch. Leaves an upgraded profile as it is.
+ns.MigrateProfile(function(profile)
+  for _, name in ipairs(RETIRED_MODULES) do
+    profile[name] = nil
+    if type(profile.modules) == "table" then profile.modules[name] = nil end
+  end
+  for _, key in ipairs(RETIRED_ACCOUNT_KEYS) do VanguardDB[key] = nil end
+end)
+
 -- Creates or repairs the saved tables, and upgrades an older account file and its profiles.
 -- Runs at ADDON_LOADED, when WoW has restored them.
 local function initDB()

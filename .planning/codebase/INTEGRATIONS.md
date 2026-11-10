@@ -26,15 +26,15 @@ Vanguard has no network services, no hosted database, and no authentication prov
 
 **Public API for other addons:**
 - Skin API: `Vanguard` global, implemented in `Core/Skin.lua`. Documented in `docs/API.md`. `S.apiVersion` is 1 and only grows (README, Skin API).
-- Auction prices API: `Vanguard.API.v1`, in `Modules/AuctionAPI.lua`. It mirrors Auctionator's function names so an addon written for Auctionator can switch to it. It reads prices, vendor prices and disenchant values, makes and changes shopping lists, and runs searches through the Shop card. It never posts, buys or cancels auctions (README, Auction prices for other addons).
+- Auction prices API: `Vanguard.API.v1`, in `Modules/AuctionAPI.lua`. It mirrors a widely used auction addon's function names so an addon written for it can switch to it. It reads prices, vendor prices and disenchant values, makes and changes shopping lists, and runs searches through the Shop card. It never posts, buys or cancels auctions (README, Auction prices for other addons).
 - Theme colours and fonts for other addons: `S.RGB(name)`, listed in `docs/THEME.md` (from `Core/Theme.lua`).
 
 **Other addons (optional, detected at runtime, not bundled):**
 - LibDataBroker-1.1 - Read with `LibStub("LibDataBroker-1.1", true)`. Feeds the broker strip (`Modules/BrokerStrip.lua`). Vanguard does not bundle it; with no feed-providing addon, the strip stays hidden.
-- Masque - If present, Masque skins Vanguard's button groups: Action bars; Pet, stance and extra buttons; Buffs and debuffs (with weapon enchants); Target and focus auras (`Core/Masque.lua`, README). Vanguard bundles nothing of Masque.
+- A button-skinning library (folder `Masque`) - If present, it skins Vanguard's button groups: Action bars; Pet, stance and extra buttons; Buffs and debuffs (with weapon enchants); Target and focus auras (`Core/Masque.lua`, README). Vanguard bundles nothing of it.
 - Minimap buttons from other addons - Gathered into a drawer (`Modules/MinimapButtons.lua`). No API dependency.
 - LibSharedMedia-3.0 - Bundled in `Libs/` and used for shared fonts and bar textures (`Core/SharedMedia.lua`). Vanguard also registers its own font and bar textures with it, so other addons can pick them.
-- Auctionator - Its shopping-list string format is accepted on import (`Modules/AuctionHelper.lua` area; README, Auction helper). No Auctionator code is used or required.
+- An auction addon's shopping-list string format is accepted on import (`Modules/AuctionHelper.lua` area; README, Auction helper). None of its code is used or required.
 - `/way` slash command - Vanguard claims `SLASH_VANGUARDWAY1` only when no other addon has `/way` (`Modules/Waypoints.lua`).
 
 ## Data Storage
@@ -102,7 +102,7 @@ Vanguard has no network services, no hosted database, and no authentication prov
 - Apt (Ubuntu) for `lua5.1` and `luacheck` in CI.
 - Upstream font: Fira Sans Condensed (`https://github.com/google/fonts`, SIL OFL 1.1), subset by `scripts/fonts/make-fonts.py`.
 - Art and icon sources, all credited in `art/CREDITS.md`: game-icons.net (CC BY 3.0, authors such as Lorc and Delapouite), OpenGameArt, the Cinzel font (`https://github.com/NDISCOVER/Cinzel`), and the Gethe/wow-ui-source reference (`https://github.com/Gethe/wow-ui-source`) used to check the game API.
-- WoWUIDev/Ace3 is referenced in the docs as a source of library conventions only; no Ace3 code is shipped.
+- The Ace3 project is referenced in the docs as a source of library conventions only; no Ace3 code is shipped.
 
 ## Environment Configuration
 

@@ -218,15 +218,31 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
--- HUD, the HUD's shape: the HUD look and the shield corners, each with its note.
+-- HUD, the HUD's shape: the HUD look (three notes: the loud looks, the quiet ones, Tabs) and the shield corners with its note.
 local function hudRows()
   return {
     { "header", L["HUD"] },
     { "cycle", L["HUD look"], T.HudLookChoices(), liveThemeSetting("hudLook") },
     { "text", L["Shield: every unit frame a shield pointing away from you, the crest on a rail between your frame and your target's. Plain: flat frames."],
       "note" },
+    { "text", L["Hairline: no plates, a brass line under each frame. Rimmed: rounded frames and tools with a two-line rim."], "note" },
+    { "text", L["Tabs: square frames, each name on a tab over the frame's outer corner."], "note" },
     check(L["Shield corners on unit frames"], liveThemeSetting("shield")),
-    { "text", L["With the Shield look, the cuts go to the cast bars and the bar plinth instead."], "note" },
+    { "text", L["With the Shield look, the cuts go to the cast bars and the bar plinth instead; Hairline and Rimmed ignore the switch."], "note" },
+  }
+end
+
+-- get/set for the profile's HUD layout (Core/HudLayout.lua), applied at once out of combat.
+local function hudLayoutSetting()
+  return function() return ns.HudLayout() end, function(v) ns.OutOfCombat(function() ns.SetHudLayout(v) end, "HUD layout") end
+end
+
+-- HUD layout: where the frames around your character stand, with a note on the two walled layouts.
+local function hudLayoutRows()
+  return {
+    { "header", L["HUD layout"] },
+    { "cycle", L["Where the frames stand"], ns.HudLayoutChoices(), hudLayoutSetting() },
+    { "text", L["The keep: one wall at the foot of the screen. Standards: tall banners either side of you. A frame you moved stays put."], "note" },
   }
 end
 
@@ -348,6 +364,7 @@ local function motionRows()
   return {
     { "header", L["Motion and sound"] },
     check(L["Reduce motion (no fades or flashes)"], liveThemeSetting("reduceMotion")),
+    check(L["State cues"], liveThemeSetting("motionCues")),
     check(L["Interface sounds"], function() return T.Settings().sounds end, function(v) T.Settings().sounds = v end),
   }
 end
@@ -356,7 +373,7 @@ end
 -- (Core/OptionsFrames.lua), layout and frame sizes.
 local function generalRows()
   local rows = append(ns.SettingsGuard.Rows(), lookRows())
-  for _, card in ipairs({ hudRows(), barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows() }) do append(rows, card) end
+  for _, card in ipairs({ hudRows(), barRows(), motionRows(), O.CalmRows(), layoutRows(), sizeRows(), hudLayoutRows() }) do append(rows, card) end
   return rows
 end
 
@@ -412,8 +429,6 @@ O.MODULE_INFO = {
   Errands = { L["Errands"], L["Train all at a trainer, keep items stocked from merchants, and time your flights."] },
   InstancePrep = { L["Instance prep"], L["A checklist of what's low (ammo, reagents, food, bandages, potions, your stock list) when you enter an instance or a ready check starts."] },
   TalentPlanner = { L["Talent planner"], L["Plan your talent points on the talents window before you have them: planned ranks on each talent, the next pick ringed, Spend planned buys them in order."] },
-  Legacy = { L["Legacy"], L["A probe of what the client has for the Legacy system and a 16-point perk plan list (the planner is off until switched on)."] },
-  BossDocks = { L["Boss mod docks"], L["Two spots you can move for boss mods' timer bars; /vg dock lines up Deadly Boss Mods' bars with them."] },
   GameTools = { L["The game's tools"], L["The game's Cooldown Manager and damage meter, restyled and placed to fit the layout."] },
   CooldownGaps = { L["Cooldown gaps"], L["A small row of icons for what the game's Cooldown Manager misses: on-use trinkets, items and spells you choose, the manager's own cooldowns if you like, pet abilities and totems (off until switched on)."] },
   CooldownGlow = { L["Cooldown Manager glow"], L["A glow on a Cooldown Manager icon when its aura is in its last part (30 % by default), for spells without the game's own pandemic flag (off until switched on)."] },
@@ -428,7 +443,6 @@ O.MODULE_INFO = {
   Tooltips = { L["Tooltips"], L["Themed tooltips in a movable corner."] },
   Inventory = { L["Inventory"], L["Remembers your characters' bags and bank; item tooltips say who else has the item."] },
   Upgrades = { L["Gear upgrades"], L["Compares gear with what you wear by stat weights for your class and role: a tooltip line, arrows in the bag and on quest rewards, and the auction house's Upgrades list."] },
-  PetStable = { L["Pet stable"], L["/vg pets lists your pets with level, loyalty, happiness and progress, and a stable master's window says how many you have and what the next slot costs."] },
   SpellRanks = { L["Spell ranks"], L["Notices older spell ranks on your bars and swaps them when you ask; remembers what trainers teach and at what level (both off until switched on)."] },
   VendorMemory = { L["Vendor memory"], L["Remembers what each merchant sells; tooltips and the stock list say where to buy."] },
   AuctionHelper = { L["Auction helper"], L["Shopping lists with Deals and Upgrades, a sell card that suggests an undercut and posts, prices in tooltips from your scans, and an undercut check on your auctions."] },
@@ -492,8 +506,8 @@ O.MODULE_GROUPS = {
   { L["Chat"], { "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatBubbles", "ChatHistory", "ChatWindows" } },
   { L["Quests"], { "QuestDialog", "QuestTracker", "QuestLog", "QuestAuto", "QuestArrow", "QuestGuide", "QuestMinimap", "QuestHistory" } },
   { L["Game windows"], { "Windows", "Tooltips", "GameAlerts", "GameTools", "AfkScreen", "Coexist", "Quiet", "CharacterExtras" } },
-  { L["Town and gear"], { "Bags", "Merchant", "AutoAccept", "Errands", "Inventory", "Upgrades", "VendorMemory", "AuctionHelper", "CraftQueue", "PetStable", "MailTools", "SpellRanks", "TalentPlanner", "Legacy", "InstancePrep" } },
-  { L["Combat tools"], { "Nameplates", "Rolls", "GroupBoard", "BossDocks", "CooldownGaps", "CooldownGlow", "CooldownKeys", "FightHistory", "Meter" } },
+  { L["Town and gear"], { "Bags", "Merchant", "AutoAccept", "Errands", "Inventory", "Upgrades", "VendorMemory", "AuctionHelper", "CraftQueue", "MailTools", "SpellRanks", "TalentPlanner", "InstancePrep" } },
+  { L["Combat tools"], { "Nameplates", "Rolls", "GroupBoard", "CooldownGaps", "CooldownGlow", "CooldownKeys", "FightHistory", "Meter" } },
 }
 
 -- Which modules the Modules page lists: all, the ones that are on, or the ones that are off.
@@ -770,7 +784,7 @@ do
   local function enter(_, button)
     if not GameTooltip then return end
     GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-    GameTooltip:SetText("Vanguard " .. ns.AddonVersion())
+    GameTooltip:SetText(ns.Format(L["Vanguard {version}"], { version = ns.AddonVersion() }))
     GameTooltip:AddLine(L["Left-click: options · Right-click: move frames (out of combat)"], T.RGB("text2"))
     local n = #ns.errors
     local caught = n == 1 and L["1 error caught this session (/vg errors)"] or L["{count} errors caught this session (/vg errors)"]

@@ -1,6 +1,7 @@
 -- The "Your keys" card on the Action bars page: a drawn keyboard and mouse where each
 -- key shows the icon of the spell, macro or item on it and a short key name, with the
--- None, Shift, Ctrl and Alt tabs over it and the tab's bound keys listed under it. The
+-- None, Shift, Ctrl and Alt tabs over it (and a choice of QWERTY, QWERTZ or AZERTY letters, the client locale's
+-- unless picked) and the tab's bound keys listed under it. The picture has the function keys and the number pad. The
 -- tabs follow the modifier held. Hover a key for what it does. It only reads: no key is
 -- written, so it stays open in combat. On WoW Forever, right-click a key key setup changed to
 -- put it back (Modules/KeybindsApply.lua). The drawn keyboard, KV.Keyboard, is shared with key
@@ -16,9 +17,9 @@ local KV = ns.KeysView
 local AB = ns.GetModule("ActionBars")
 
 -- Sizes (units): a key, the gap between keys, a tab's width, and the list's lines and line height.
-local SIZE = { cap = 34, gap = 3, tab = 84, tabRow = 30, lines = 8, line = 16 }
+local SIZE = { cap = 29, gap = 3, tab = 84, tabRow = 30, lines = 8, line = 16, layout = 150, padGap = 8 }
 -- The keyboard picture's height: its rows (the space bar's included), then the mouse row.
-KV.KEYBOARD_H = (#KV.ROWS + 1) * (SIZE.cap + SIZE.gap) + T.SPACE.gap
+KV.KEYBOARD_H = (KV.ROW_COUNT + 1) * (SIZE.cap + SIZE.gap) + T.SPACE.gap
 -- The page's current frames, replaced when the page is built again.
 local view = {}
 
@@ -54,7 +55,7 @@ local function newCap(r, key, width)
   cap:SetSize(width, SIZE.cap)
   cap.key = key
   cap.icon = T.Crop(cap:CreateTexture(nil, "ARTWORK"))
-  cap.icon:SetSize(SIZE.cap - 12, SIZE.cap - 12)
+  cap.icon:SetSize(SIZE.cap - 8, SIZE.cap - 8)
   cap.icon:SetPoint("CENTER")
   cap.label = T.Text(cap:CreateFontString(nil, "OVERLAY"), "barSmall")
   cap.label:SetText(AB.ShortKey(key))
@@ -62,16 +63,31 @@ local function newCap(r, key, width)
   return cap
 end
 
--- One keyboard row's keys, from its offset; the space bar is wide.
-local function buildRow(r, row, y)
-  local x = row.offset * (SIZE.cap + SIZE.gap)
-  for _, key in ipairs(row.keys) do
-    local width = row.wide and row.wide * SIZE.cap or SIZE.cap
+-- One keyboard row's keys, from x across (the row's offset in key widths): the row's first key is wide when the
+-- row says so (the space bar, the pad's 0). Each key notes its row and place, which the layout choice moves.
+local function buildRow(r, row, x, y)
+  x = x + row.offset * (SIZE.cap + SIZE.gap)
+  for i, key in ipairs(row.keys) do
+    local width = (i == 1 and row.wide) and row.wide * SIZE.cap + (row.wide - 1) * SIZE.gap or SIZE.cap
     local cap = newCap(r, key, width)
     cap:SetPoint("TOPLEFT", x, -y)
     r.caps[#r.caps + 1] = cap
     x = x + width + SIZE.gap
   end
+end
+
+-- The main block's rows, the layout's letters in the three middle ones: key slots by row and place.
+local function buildMain(r)
+  for i, row in ipairs(KV.Rows()) do
+    buildRow(r, row, 0, (i - 1) * (SIZE.cap + SIZE.gap))
+    for j = 1, #row.keys do r.caps[#r.caps - #row.keys + j].slot = { i, j } end
+  end
+end
+
+-- The number pad right of the main block, from the number row down.
+local function buildPad(r)
+  local x = KV.MAIN_COLS * (SIZE.cap + SIZE.gap) + SIZE.padGap
+  for i, row in ipairs(KV.PAD) do buildRow(r, row, x, i * (SIZE.cap + SIZE.gap)) end
 end
 
 -- The mouse row under the keyboard: the middle and side buttons and the wheel, wider keys.
@@ -83,8 +99,19 @@ local function buildMouse(r, y)
   end
 end
 
--- Repaints every key with the keyboard's painter.
+-- Puts each main-block key on the layout's letter for its place (the keys of every other row stay as they are).
+local function relayout(r)
+  local rows = KV.Rows()
+  for _, cap in ipairs(r.caps) do
+    local slot = cap.slot
+    cap.key = slot and rows[slot[1]].keys[slot[2]] or cap.key
+    cap.label:SetText(AB.ShortKey(cap.key))
+  end
+end
+
+-- Repaints every key with the keyboard's painter, after the layout's letters are on their keys.
 local function refreshKeyboard(r)
+  relayout(r)
   for _, cap in ipairs(r.caps) do r.opts.paint(cap) end
 end
 
@@ -99,8 +126,9 @@ function KV.Keyboard(parent, width, opts)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, KV.KEYBOARD_H)
   r.caps, r.opts, r.Refresh = {}, opts, refreshKeyboard
-  for i, row in ipairs(KV.ROWS) do buildRow(r, row, (i - 1) * (SIZE.cap + SIZE.gap)) end
-  buildMouse(r, #KV.ROWS * (SIZE.cap + SIZE.gap) + T.SPACE.gap)
+  buildMain(r)
+  buildPad(r)
+  buildMouse(r, KV.ROW_COUNT * (SIZE.cap + SIZE.gap) + T.SPACE.gap)
   return r
 end
 
@@ -192,12 +220,27 @@ local function newTab(parent, tab)
   return row
 end
 
--- Marks the tab showing.
+-- Marks the tab showing, and the layout chosen.
 local function refreshTabs(r)
   for _, row in ipairs(r.tabs) do row:SetSelected(row.tabId == KV.tab) end
+  r.layout:Refresh()
 end
 
--- The tabs row kind: None, Shift, Ctrl, Alt.
+-- The layout dropdown's choices: Automatic (the client locale's), then each layout.
+local function layoutChoices()
+  local choices = { { "auto", L["Automatic"] } }
+  for _, layout in ipairs(KV.LAYOUTS) do choices[#choices + 1] = { layout.id, layout.label } end
+  return choices
+end
+
+-- The keyboard layout dropdown at the tabs row's right end; a pick redraws the card.
+local function addLayoutChoice(r)
+  r.layout = W.Dropdown(r, layoutChoices(), KV.LayoutChoice, function(id) KV.SetLayout(id) refreshCard() end, SIZE.layout)
+  r.layout:SetPoint("RIGHT", r, "RIGHT", 0, 0)
+  view.tabs = r
+end
+
+-- The tabs row kind: None, Shift, Ctrl, Alt, and the keyboard layout choice.
 local function tabsBuilder(parent, _, width)
   local r = CreateFrame("Frame", nil, parent)
   r:SetSize(width, SIZE.tabRow)
@@ -207,7 +250,7 @@ local function tabsBuilder(parent, _, width)
     r.tabs[i]:SetPoint("LEFT", (i - 1) * (SIZE.tab + SIZE.gap), 0)
   end
   r.Refresh = refreshTabs
-  view.tabs = r
+  addLayoutChoice(r)
   return r
 end
 

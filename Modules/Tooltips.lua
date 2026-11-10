@@ -273,10 +273,11 @@ function TT.SellPrice(link)
 end
 
 -- How many the item button under the tooltip holds (1 when it can't say); auction prices use
--- it for their stack line too.
+-- it for their stack line too. An owner the client keeps from addons is not read, and a hidden count
+-- (a button whose count the client drives) counts as one.
 function TT.StackOf(tt)
   local owner = tt.GetOwner and tt:GetOwner()
-  local count = type(owner) == "table" and ns.PlainNumber(owner.count)
+  local count = type(owner) == "table" and not forbidden(owner) and ns.PlainNumber(owner.count)
   return count and count > 1 and count or 1
 end
 

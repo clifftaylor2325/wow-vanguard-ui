@@ -293,12 +293,13 @@ local function addThreat(b)
   b.threat:Hide()
 end
 
--- The missing-buff marker: the buff's icon in the tile's top-right corner zone.
+-- The missing-buff marker: the buff's icon in the tile's top-right corner zone (anchored to the corner, so a new width moves it).
 local function addBuffMarker(b)
-  local z = RF.TileZones().missing
+  local zones = RF.TileZones()
+  local z = zones.missing
   b.missing = T.Snap(b.overlay:CreateTexture(nil, "OVERLAY"))
   b.missing:SetSize(z[3], z[4])
-  b.missing:SetPoint("TOPLEFT", b, "TOPLEFT", z[1], -z[2])
+  b.missing:SetPoint("TOPRIGHT", b, "TOPRIGHT", z[1] + z[3] - zones.width, -z[2])
   T.Crop(b.missing)
   b.missing:Hide()
 end

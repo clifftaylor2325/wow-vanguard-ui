@@ -4,6 +4,7 @@
 -- buttons. A menu without that layout gets a themed button just under it.
 
 local ADDON, ns = ...
+local L = ns.L
 
 -- Sorts before the menu's own buttons, which the game numbers from 1 (MainMenuFrameTemplates.lua).
 local FIRST = 0
@@ -26,9 +27,9 @@ end
 -- A button that looks like the menu's own when the menu names their template, else a themed one.
 local function menuButton(menu)
   local template = menu.buttonTemplate
-  if type(template) ~= "string" then return ns.DialogButton(menu, "Vanguard", 200) end
+  if type(template) ~= "string" then return ns.DialogButton(menu, L["Vanguard"], 200) end
   local b = CreateFrame("Button", nil, menu, template)
-  b:SetText("Vanguard")
+  b:SetText(L["Vanguard"])
   return b
 end
 

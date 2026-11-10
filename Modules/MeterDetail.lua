@@ -57,7 +57,7 @@ function MT.PaintDetail()
   local d = MT.detail
   if not d or not d:IsShown() then return end
   local spells = MT.SpellList(d.src)
-  d.empty:SetShown(spells == nil or spells[1] == nil)
+  d.empty:SetShown(MT.LineAt(spells, 1) == nil)
   for i, row in ipairs(d.rows) do
     local spell = i <= MT.DETAIL_ROWS and MT.LineAt(spells, i) or nil
     row:SetShown(spell ~= nil)

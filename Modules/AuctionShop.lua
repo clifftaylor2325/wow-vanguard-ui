@@ -3,7 +3,7 @@
 -- and their entries (an item ID or a name, with filters: exact name, level,
 -- quality and a max price, set from a row's right-click menu), managed from
 -- the Lists pane's buttons or /vg ah (new, rename, duplicate, delete with a
--- confirm, export as text, import plain lines or Auctionator's `^`/`;`
+-- confirm, export as text, import plain lines or the common `^`/`;`
 -- strings), Search list, which runs the list's searches one after another
 -- (the last 20 terms searched are kept, account-wide, as the Recent
 -- pseudo-list), and each entry's best result. The pane on the left lists the
@@ -279,7 +279,7 @@ function AH.ImportTerm(term)
   return entry, ignored
 end
 
--- An import's entries and how many fields were ignored: Auctionator's terms (`^` between terms,
+-- An import's entries and how many fields were ignored: the common terms (`^` between terms,
 -- `;` between fields) or plain lines (item names, IDs or links), or both.
 function AH.ParseImport(text)
   local entries, ignored = {}, 0
@@ -540,7 +540,7 @@ end
 -- An item listing as a row: its buyout over its quantity, and its time-left band; nil with only a
 -- bid, or a number the client hides.
 local function itemListing(r)
-  local buyout, qty, band = ns.PlainNumber(r.buyoutAmount), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeft)
+  local buyout, qty, band = AH.Buyout(r.buyoutAmount), ns.PlainNumber(r.quantity), ns.PlainNumber(r.timeLeft)
   if not (buyout and qty) or qty < 1 then return nil end
   return { price = math.floor(buyout / qty), qty = qty, time = band or 0, timeText = AH.BandText(band) }
 end
@@ -1107,17 +1107,22 @@ function AH.EditFilters(listName, i)
   d:Show()
 end
 
--- A choice in a row's menu: its filters, or off the list.
+-- A choice in a row's menu: its filters, or off the list. The entry the menu opened on is looked up
+-- again, so a list that changed while the menu was open (an entry added or removed above it) never
+-- makes the choice act on the entry now at the old place.
 function AH.RowAction(v)
-  local c = AH.shopCard
-  if v == "remove" then return AH.RemoveEntry(AH.ListKey(), c.menuIndex) end
-  AH.EditFilters(AH.ListKey(), c.menuIndex)
+  local c, name = AH.shopCard, AH.ListKey()
+  local list = AH.ListByName(name)
+  local i = list and placeOf(list, c.menuEntry)
+  if not i then return end
+  if v == "remove" then return AH.RemoveEntry(name, i) end
+  AH.EditFilters(name, i)
 end
 
 -- A row's menu (the dropdown menu's, opened by a hidden dropdown under the row).
 function AH.RowMenu(r)
   local d = AH.shopCard.rowMenu
-  AH.shopCard.menuIndex = r.index
+  AH.shopCard.menuEntry = r.item
   W.CloseMenu()
   d:ClearAllPoints()
   d:SetPoint("BOTTOMLEFT", r, "BOTTOMLEFT", 22, 0)

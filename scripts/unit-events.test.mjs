@@ -21,6 +21,10 @@ const ALLOWED = {
     calls: 3,
     reason: "the helpers themselves: ns.On's one shared frame, and ns.OnUnit's subscription frames (RegisterUnitEvent, or RegisterEvent on a client without it)",
   },
+  "Modules/QuestDialog.lua": {
+    calls: 1,
+    reason: "gives the game's quest and gossip windows back the gossip and quest events it took (none is a unit event; the names come from its TAKEN table)",
+  },
 };
 
 // The 1-based line of a character offset in src.

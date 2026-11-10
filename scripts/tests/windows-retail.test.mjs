@@ -221,6 +221,21 @@ it("windows-retail: the conquest and Adventure Guide tooltips get the tooltip pa
   expect(addon.eval("return { ConquestTooltip.NineSlice.__alpha, EncounterJournalTooltip.NineSlice.__alpha, #ns.errors }"), "their game art is faded").toEqual([0, 0, 0]);
 });
 
+// The conquest tooltip is one of the game's layout frames (Blizzard_PVPUI.xml: TooltipBackdropTemplate, ResizeLayoutFrame),
+// sized from every shown child and region it holds: a panel and shadow painted on it were measured too, so it came out a
+// shadow's width too wide and too tall, laid out from Vanguard's values. Its panel goes on a backdrop of Vanguard's own.
+it("windows-retail: the conquest tooltip holds nothing of Vanguard's, its tooltip panel on a backdrop that shows with it", () => {
+  const addon = retail(["PVEFrame"]);
+  addon.eval(`local t = CreateFrame("Frame", "ConquestTooltip", UIParent) t.NineSlice = CreateFrame("Frame", nil, t) t:Hide()
+    __wfgStub.fire("ADDON_LOADED", "Blizzard_PVPUI") ConquestTooltip:Show()`);
+  expect(addon.eval(`local t = ConquestTooltip
+    local back = __panelHost(t)
+    return { __vanguardPieces(t), back ~= t and back:GetParent() == UIParent, back.__points.TOPLEFT.rel == t, select("#", back:GetRegions()) > 0, back:IsShown(), t.NineSlice.__alpha, #ns.errors }`),
+    "no Vanguard piece in the tooltip; the backdrop is UIParent's, on its corners, painted and shown; the game's border faded").toEqual([0, true, true, true, true, 0, 0]);
+  addon.eval("ConquestTooltip:Hide()");
+  expect(addon.eval("return __panelHost(ConquestTooltip):IsShown()"), "and the backdrop hides with it").toBe(false);
+});
+
 it("windows-retail: the Adventure Guide's first tab is moved out past the panel again each time the game anchors it (H7-4-1)", () => {
   const addon = retail();
   addon.eval(`__wfgRetailWindows.build("EncounterJournal") __wfgStub.fire("ADDON_LOADED", "Blizzard_EncounterJournal") EncounterJournal:Show()`);

@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -107,7 +107,7 @@ it("class bars: the totem row sits above the player frame, clear of the chat's t
 
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
-  expect(addon.eval('local CB = ns.GetModule("ClassBars") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells above the player frame").toEqual([4, true]);
+  expect(addon.eval('local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames") return { #CB.cells, select(2, CB.totems:GetPoint()) == UF.Crown(Vanguard_player) }'), "a shaman gets four totem cells above the player frame (its crown, which rises with a tab)").toEqual([4, true]);
   expect(totemCell(addon, 1), "a totem that is down shows its icon, its sweep and the client's numbers").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Totem", sweep: [100, 120], numbers: true, type2: "destroytotem", slot: 1 });
   expect(totemCell(addon, 2).alpha, "an empty slot is see-through (cells are secure, so alpha, not Hide)").toBe(0);
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
@@ -567,7 +567,7 @@ const EXTRAS_ENV = `
 it("threat on your target and your pet's happiness", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + CLICK_LUA);
   // The threat text above the target frame: its text and color.
-  const threat = () => addon.eval("local UX = ns.GetModule('UnitExtras') return { UX.threat:GetText(), UX.threat.__textColor, select(2, UX.threat:GetPoint()) == Vanguard_target }");
+  const threat = () => addon.eval("local UX, UF = ns.GetModule('UnitExtras'), ns.GetModule('UnitFrames') return { UX.threat:GetText(), UX.threat.__textColor, select(2, UX.threat:GetPoint()) == UF.Crown(Vanguard_target) }");
   expect(threat(), "under aggro, your share shows above the target frame in the secondary color").toEqual(["42%", tok(addon, "text2"), true]);
   addon.eval("__threatInfo = { true, 3, 100 }");
   addon.fire("UNIT_THREAT_SITUATION_UPDATE", "player");
@@ -598,6 +598,18 @@ it("threat on your target and your pet's happiness", () => {
   addon.eval('__click("Unit frames")');
   expect(addon.eval('return __click("Your threat on your target") and VanguardDB.profiles.Default.UnitExtras.threat'), "the threat switch is on the page").toBe(false);
   expect(addon.eval('return __click("happiness") and VanguardDB.profiles.Default.UnitExtras.happiness'), "and the pet's").toBe(false);
+});
+
+it("the pet's health text stays clear of its mood glyph after the frames are laid out again", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV);
+  // Where the pet's health text ends: its anchor point and how far in from the health bar's end.
+  const end = () => addon.eval("local p, _, rp, x = Vanguard_pet.healthText:GetPoint(1) return { p, rp, x }");
+  const built = end();
+  expect(built, "the number ends left of the glyph").toEqual(["RIGHT", "RIGHT", -17]);
+  addon.eval("ns.GetModule('UnitFrames').ApplyLook()");
+  expect(end(), "a look change keeps that room").toEqual(built);
+  addon.eval("ns.GetModule('UnitFrames').ApplySizes()");
+  expect([end(), addon.eval("return #ns.errors")], "and so does a size or scale change").toEqual([built, 0]);
 });
 
 it("a creature someone else tagged is grey on the unit frames, as on the game's frames", () => {
@@ -739,15 +751,23 @@ it("the pet frame's tooltip adds your hunter pet's mood", () => {
   expect([pet()[1], addon.eval("return GameTooltip:IsShown()")], "a tooltip hidden for the fight stays hidden, with no line added").toEqual([false, false]);
 });
 
+it("a unit tooltip whose shown state the client hides gets no extra line and raises nothing", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + `__units.pet = { name = "TEST-ONLY Wolf", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "FOCUS" }
+    GetPetHappiness = function() return __happy, 125, 0 end`);
+  addon.eval("GameTooltip.IsShown = function() return __wfgStub.world.secret(true) end");
+  const lines = addon.eval("Vanguard_pet:GetScript('OnEnter')(Vanguard_pet) return #GameTooltip.__lines");
+  expect([lines, addon.eval("return #ns.errors")], "a hidden answer counts as not shown: the unit's own line alone").toEqual([1, 0]);
+});
+
 it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + TICKS_ENV + `__units.player.class = "DRUID" __cp = 2
     GetComboPoints = function() return __cp end`, NO_RAID);
   // Who hears the event (see unitEvents).
   const heard = (event) => unitEvents(addon, event);
-  const frameUnits = ["boss1", "boss2", "boss3", "boss4", "boss5", "focus", "party1", "party2", "party3", "party4", "pet", "player", "target", "targettarget"];
+  const frameUnits = ["boss1", "boss2", "boss3", "boss4", "boss5", "focus", "focustarget", "party1", "party2", "party3", "party4", "pet", "player", "target", "targettarget"];
   // The unit frames' subscriptions (one per frame, for its unit) sorted in with `own`, as unitEvents lists them.
   const withFrames = (...own) => [...frameUnits, ...own].sort().join(" ");
-  expect(heard("UNIT_HEALTH"), "the unit frames: one subscription per frame, for its own unit").toEqual({ subs: withFrames(), plain: 0 });
+  expect(heard("UNIT_HEALTH"), "the unit frames: one subscription per frame, for its own unit, and the low-health cue's for the player").toEqual({ subs: withFrames("player"), plain: 0 });
   expect(heard("UNIT_POWER_UPDATE"), "combo points and the mana bar: your power only, nothing takes every unit's").toEqual({ subs: withFrames("player", "player"), plain: 0 });
   expect(heard("UNIT_POWER_FREQUENT"), "the energy tick too").toEqual({ subs: "player player player", plain: 0 });
   expect(heard("UNIT_MAXPOWER")).toEqual({ subs: withFrames("player", "player"), plain: 0 });
@@ -919,9 +939,22 @@ it("Edit Mode re-parenting the game's objective tracker parks it again", () => {
 // TEST-ONLY: a listed frame that also has UpdateShownState, so keepParked hooks it first.
 it("a re-parented game frame with UpdateShownState is parked again after SetParent too", () => {
   const addon = loggedIn(UNITS_ENV + '\nBothFrame = CreateFrame("Frame", "BothFrame", UIParent)\nfunction BothFrame:UpdateShownState() end', NO_RAID);
-  addon.eval("local UF = ns.GetModule('UnitFrames') UF.REPARENTED.BothFrame = true UF.HideBlizzard('BothFrame')");
+  addon.eval("ns.GetModule('UnitFrames').HideBlizzard('BothFrame')");
   addon.eval("BothFrame:Show() BothFrame:SetParent(UIParent)");
   expect(addon.eval("return { BothFrame:IsShown(), BothFrame:GetParent() == UIParent }"), "hidden and parked again").toEqual([false, false]);
+});
+// TEST-ONLY: the managed-frame container bringing a parked frame back in a fight, as ManagedFrameSystem.lua's UpdateFrame
+// and AnimInManagedFrames do (a new parent, then alpha 1).
+it("a parked game frame the game brings back in a fight stays clear until the fight ends, then is parked again", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  setCombat(addon, true);
+  addon.eval("PetFrame:Show() PlayerCastingBarFrame:Show() for _, f in ipairs({ PetFrame, PlayerCastingBarFrame }) do f:SetParent(UIParent) f:SetAlpha(1) end");
+  // Each parked frame's alpha, whether the game re-parented it, and whether it is shown.
+  const state = () => addon.eval("local out = {} for i, f in ipairs({ PetFrame, PlayerCastingBarFrame }) do out[i] = { f:GetAlpha(), f:GetParent() == UIParent, f:IsShown() } end return out");
+  expect(state(), "in the fight: re-parented and shown by the game, but clear").toEqual([[0, true, true], [0, true, true]]);
+  setCombat(addon, false);
+  expect(state(), "after it: hidden and parked again").toEqual([[0, false, false], [0, false, false]]);
+  expect(addon.eval("return #ns.errors"), "nothing raised").toBe(0);
 });
 it("a parked game frame without UpdateShownState, or on a client without hooksecurefunc, is left alone", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
@@ -1009,4 +1042,18 @@ it("H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles
   addon.eval("__units.party1.dead = nil");
   addon.fire("UNIT_HEALTH", "party1");
   expect(token(), "alive again: the plain text colour").toBe("text");
+});
+
+it("one unit frame that fails to paint or lay out is reported, and every other frame still does", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  // The frame the loops reach first breaks; the player frame (or the party's first, when the player is that one) must still paint.
+  const watched = addon.eval(`local UF = ns.GetModule("UnitFrames") local paint, place = UF.UpdateHealth, UF.PlaceParts
+    __broken = next(UF.frames)
+    UF.UpdateHealth = function(f) if f.key == __broken then error("TEST-ONLY broken frame") end return paint(f) end
+    UF.PlaceParts = function(f) if f.key == __broken then error("TEST-ONLY broken layout") end return place(f) end
+    __units.player.hp, __units.party1.hp = 500, 7
+    return __broken == "player" and "party1" or "player"`);
+  addon.eval('ns.GetModule("UnitFrames").Refresh() ns.GetModule("UnitFrames").ApplyLook()');
+  expect(ufState(addon, watched).hp, "a frame past the broken one still paints").toBe(watched === "player" ? 500 : 7);
+  expectErrors(/^unit frame refresh: eval:4: TEST-ONLY broken frame$/, /^unit frame layout: eval:5: TEST-ONLY broken layout$/);
 });

@@ -45,7 +45,7 @@ local HELP = {
   { "filter [on|off|tab|hide|add|remove <word>|clear]", L["Chat filter: gold selling, boosting, recruiting and repeat lines go to a Filtered tab (or are hidden)"] },
   { "history [on|off|whispers|nowhispers|clear]", L["Chat history: your chat comes back after a reload or the next login (off until switched on)"] },
   { "quests [history [n]]", L["open or close Vanguard's quest log (the game's quest log key does too); history lists the latest quests any of your characters turned in"] },
-  { "probe [chat|fight|last]", L["one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation, quest and map reads, party health and marks, bar defaults) and opens a copy box; in a fight it takes only the party, mark and boss reads; fight takes the secrecy reads in the next fight; last reopens the saved report"] },
+  { "probe [chat|fight|last|legacy]", L["one run out of combat asks the client the open questions (saved quest flag, threat secrecy, group listing, secure paging, realm format, secret predicates, restrictions, navigation, quest and map reads, party health and marks, bar defaults) and opens a copy box; in a fight it takes only the party, mark and boss reads; fight takes the secrecy reads in the next fight; last reopens the saved report; legacy lists what the client has for the Legacy window (read only)"] },
   { "guide probe", L["what this client returns for the reads a levelling guide would use (chat only; changes nothing)"] },
   { "questdata [questID]", L["what the client says about a quest (or the quests an open NPC offers and those you track), and whether it flags quests new in WoW Forever"] },
   { "lfg [probe]", L["open or close the group board: looking-for-more and looking-for-group posts from chat by dungeon, role and level; probe says what chat it has heard"] },
@@ -56,9 +56,8 @@ local HELP = {
   { "sell <item>", L["at a merchant: sell every stack of an item in your bags, after a question"] },
   { "craft [add [n]|next|stock|cd|top|done|clear]", L["the craft queue: queue the recipe on display, open the next one, raise Keep stocked to fit, show cooldowns, rank recipes (off until switched on)"] },
   { "mail [words]|preset [add <name> <character> [words]|remove <name>]|send <name>|takeall|returnall", L["search the inbox; presets for sending items to your alts; take everything listed or return it (off until switched on)"] },
-  { "pets", L["your pets, out and stabled, with level, loyalty, happiness and progress to the next level"] },
   { "rolls [clear]", L["the group's /roll results this session, newest first; clear forgets them"] },
-  { "loot [on|off|add|remove|list|clear|focus|roster]", L["officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker, and a group roster"] },
+  { "loot [on|off|add|remove|list|clear|focus|roster]", L["officer loot tools (off until switched on): a soft-reserve list flagged in the roll tracker; roster opens or closes the raid roster panel"] },
   { "fights", L["your DPS, length and place in each fight this session, newest first"] },
   { "meter [on|off|<kind>|<segment>|reset|report [channel] [lines]]", L["Vanguard's own meter: the top lines of the game's damage meter in a Vanguard panel (off until switched on); kinds dps hps damage healing taken interrupts dispels deaths, segments this overall previous"] },
   { "recap [say|party|raid|instance|guild]", L["the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel"] },
@@ -70,11 +69,9 @@ local HELP = {
   { "inventory [forget <name>|clear]", L["your characters remembered here and when their bags were read; forget drops one, clear forgets them all"] },
   { "weights [wizard|set <stat> <n>|reset|export|import]", L["the stat weights gear upgrades use for your class and role; the wizard walks you through them, or change one, go back to the defaults, or share them"] },
   { "prep [want <kind> <n>|setup|buffs]", L["the Instance prep card now: what you're short of (with Dungeon card on: the dungeon's level range, your quests for it and your keys); want sets how many food, bandages, potions, ammo or shards; setup opens the wanted-amounts window; buffs lists your buffs and which buff check each counts for"] },
-  { "legacy [probe|plan ...]", L["Legacy system: probe lists what the client has for it; plan [add <points> <name>|remove <name>|clear] keeps a list of perks for the tree's 16 points (planner off until switched on)"] },
   { "talents [plan|spend|clear|export|import]", L["Talent planner: the plan's summary; plan mode on or off, spend the planned points, clear the plan, share it as a string"] },
   { "ah [list <name>|add <list> <item>|rename <name>|duplicate|delete|export|import|recent|restock|scan|prices clear]", L["shopping lists (pick or make one, add an item: a link, an ID or a name; rename, copy, delete, export or import the list in use; recent: the last 20 items searched; restock: the list of what you're short of); scan the auction house (while it's open); forget the prices"] },
   { "way [zone] x y [title]", L["a waypoint on the map that the game's arrow points to (a zone by name, or #<map id>); way clear removes it; way recent lists the last eight and way recent <n> goes back to one"] },
-  { "dock", L["line up Deadly Boss Mods' bars with the Boss timers spots (move those with unlock); for BigWigs, where to drag its bars"] },
   { "preview [party|10|25|40|off]", L["the raid frames filled with sample players, to check them without a group (not saved)"] },
   { "binds", L["this spec's click-casting and hover-key bindings (set them in /vg > Click casting)"] },
   { "keybind", L["keybind mode: hover an action button and press a key, a side mouse button or the wheel to bind it; Backspace clears, Escape leaves"] },
@@ -105,7 +102,7 @@ end
 -- The /vg words of modules some clients don't have (Core/Modules.lua, ns.ClientAllows), by word: where the
 -- module isn't registered the word is unknown and /vg help leaves it out.
 local WORD_MODULES = {
-  ranks = "SpellRanks", trainers = "SpellRanks", pets = "PetStable", legacy = "Legacy",
+  ranks = "SpellRanks", trainers = "SpellRanks",
   talents = "TalentPlanner", lfg = "GroupBoard", questdata = "QuestGuide",
 }
 
@@ -423,29 +420,67 @@ local function skinsCommand(rest)
   chat(ns.Format(on == "on" and L["Skin for {addon} on. /reload to apply."] or L["Skin for {addon} off. /reload to apply."], { addon = name }))
 end
 
--- /vg profile <name>: stage the switch, creating the profile if new, and offer the reload that applies it.
+-- Stages a switch to a profile and offers the reload that applies it.
+local function switchTo(name)
+  ns.UseProfile(name)
+  if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  ns.OfferReload(ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }))
+end
+
+-- The existing profile a typed name means: its exact name, else the first (in name order) that differs
+-- only by case; nil when none does.
+local function findProfile(name)
+  if VanguardDB.profiles[name] then return name end
+  for _, existing in ipairs(ns.ProfileNames()) do
+    if existing:lower() == name:lower() then return existing end
+  end
+end
+
+-- /vg profile <name>: switch to the profile (matched in any case), after the reload; a name that matches nothing
+-- asks before making an empty profile (a typo would otherwise load all defaults).
 local function useProfile(name)
   if not ns.ValidProfileName(name) then
     return chat(L["Profile names are 1-32 letters, digits, spaces, - or _."])
   end
-  ns.UseProfile(name)
-  if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
-  ns.OfferReload(ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }))
+  local found = findProfile(name)
+  if found then return switchTo(found) end
+  ns.Ask(ns.Format(L["Create a new profile named {profile}?"], { profile = name }), L["Create"], function() switchTo(name) end)
+end
+
+-- Asks, with the Profiles page's own warning, before a typed copy or delete runs.
+local function confirmProfile(text, yes, run)
+  ns.Ask(text, yes, run, nil, "danger")
+end
+
+-- /vg profile copy <from>: after asking, replaces the settings of the profile used after the reload.
+local function copyProfile(name)
+  local into = ns.SelectedProfileName()
+  if not VanguardDB.profiles[name] or name == into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
+  local warning = L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."]
+  confirmProfile(ns.Format(warning, { into = into, from = name }), L["Copy here"], function()
+    local copied = ns.CopyProfile(name)
+    if not copied then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
+    ns.Options.ProfileCopied(copied)
+    ns.OfferReload(ns.Format(L["Copied {from} into {profile}."], { from = name, profile = copied }))
+  end)
+end
+
+-- /vg profile delete <name>: after asking, deletes a profile that is neither in use nor staged.
+local function deleteProfile(name)
+  local refused = L["Can't delete that one (missing, or in use)."]
+  if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then return chat(refused) end
+  local warning = L["Deletes profile {profile} for every character on this account. It can't be undone."]
+  confirmProfile(ns.Format(warning, { profile = name }), L["Delete"], function()
+    chat(ns.DeleteProfile(name) and ns.Format(L["Deleted profile {profile}."], { profile = name }) or refused)
+  end)
 end
 
 -- profile subcommands: new, copy, delete, reset.
 local PROFILE_ACTIONS = {
   -- /vg profile new <name>
   new = function(name) chat(ns.NewProfile(name) and ns.Format(L["Created profile {profile}."], { profile = name }) or L["That name is taken or not allowed."]) end,
-  -- /vg profile copy <from>
-  copy = function(name)
-    local into = ns.CopyProfile(name)
-    if not into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
-    ns.Options.ProfileCopied(into)
-    ns.OfferReload(ns.Format(L["Copied {from} into {profile}."], { from = name, profile = into }))
-  end,
-  -- /vg profile delete <name>
-  delete = function(name) chat(ns.DeleteProfile(name) and ns.Format(L["Deleted profile {profile}."], { profile = name }) or L["Can't delete that one (missing, or in use)."]) end,
+  copy = copyProfile,
+  delete = deleteProfile,
   -- /vg profile reset: asks and backs up first, as the Profiles page's Reset profile does
   reset = function() ns.Options.AskResetProfile() end,
 }
@@ -457,7 +492,7 @@ local function profileCommand(rest)
     return chat(ns.Format(text, { profile = ns.ProfileName(), next = ns.PendingProfileName(), all = table.concat(ns.ProfileNames(), ", ") }))
   end
   -- A profile's exact name wins over a verb, so /vg profile Copy Raid switches to "Copy Raid".
-  if VanguardDB.profiles[rest] then return useProfile(rest) end
+  if VanguardDB.profiles[rest] then return switchTo(rest) end
   local action, name = rest:match("^(%S+)%s*(.-)$")
   local handler = PROFILE_ACTIONS[action:lower()]
   if handler then return handler(name) end
@@ -884,7 +919,6 @@ local COMMANDS = {
   sell = merchantCommand("SellCommand"),
   craft = function(rest) ns.GetModule("CraftQueue").Command(rest) end,
   mail = function(rest) ns.GetModule("MailTools").Command(rest) end,
-  pets = function() ns.GetModule("PetStable").Command() end,
   rolls = function(rest) ns.GetModule("Rolls").Command(rest) end,
   loot = function(rest) ns.GetModule("OfficerLoot").Command(rest) end,
   fights = function() ns.GetModule("FightHistory").Command() end,
@@ -899,7 +933,6 @@ local COMMANDS = {
   weights = function(rest) ns.GetModule("Upgrades").Command(rest) end,
   prep = function(rest) ns.GetModule("InstancePrep").Command(rest) end,
   talents = function(rest) ns.GetModule("TalentPlanner").Command(rest) end,
-  legacy = function(rest) ns.GetModule("Legacy").Command(rest) end,
   watch = function(rest) ns.GetModule("ChatWatch").Command(rest) end,
   filter = function(rest) ns.GetModule("ChatFilter").Command(rest) end,
   history = function(rest) ns.GetModule("ChatHistory").Command(rest) end,
@@ -912,7 +945,6 @@ local COMMANDS = {
   situation = function(rest) ns.GetModule("Situations").Command(rest) end,
   ah = function(rest) ns.GetModule("AuctionHelper").Command(rest) end,
   way = function(rest) ns.GetModule("Waypoints").Command(rest) end,
-  dock = function() ns.GetModule("BossDocks").Command() end,
   factionart = function() ns.FactionArt.Report() end,
   realm = function() ns.Home.Report() end,
   launch = function(rest) ns.Home.Launch(rest) end,

@@ -51,7 +51,7 @@ const NAMES = ["AlterShoppingListItems", "CreateShoppingList", "GetAuctionPriceB
   "GetDisenchantPriceByItemID", "GetDisenchantPriceByItemLink",
   "GetVendorPriceByItemID", "GetVendorPriceByItemLink", "MultiSearch", "MultiSearchExact", "RegisterForDBUpdate"];
 
-it("Vanguard.API.v1 has Auctionator's function names, and every one wants a callerID string", () => {
+it("Vanguard.API.v1 has the function names of the auction API it mirrors, and every one wants a callerID string", () => {
   const addon = withApi();
   expect(addon.eval("local out = {} for k, v in pairs(Vanguard.API.v1) do if type(v) == 'function' then out[#out + 1] = k end end table.sort(out) return out")).toEqual(NAMES);
   for (const fn of NAMES) {
@@ -145,7 +145,7 @@ it("MultiSearch searches each term through the shop's queue, only at the open au
   expect([call(closed, "MultiSearch", "'TEST-ONLY Addon', { 'Strange Dust' }"), sent(closed), listOf(closed, "TEST-ONLY Addon search")], "closed: nothing").toEqual([false, [], null]);
   const addon = withApi();
   expect(call(addon, "MultiSearch", `'TEST-ONLY Addon', { 'Strange Dust', '"Soul Dust";0;0;0;0;0;0;0;0;0;0;', 2589, '   ', 'item:2592' }`), "queued").toBe(true);
-  expect(listOf(addon, "TEST-ONLY Addon search"), "the terms as a list (Auctionator's fields and quotes off, a non-string and a blank left out)").toEqual(["Strange Dust", "Soul Dust", 2592]);
+  expect(listOf(addon, "TEST-ONLY Addon search"), "the terms as a list (the other format's fields and quotes off, a non-string and a blank left out)").toEqual(["Strange Dust", "Soul Dust", 2592]);
   expect([sent(addon), addon.eval(`return ${HELPER}.shopCard.progress:GetText()`), addon.eval(`return ${HELPER}.shopCard.title:GetText()`)], "one search at a time, on the shop card, its list picked").toEqual([["SendBrowseQuery:Strange Dust"], "0 of 3", "TEST-ONLY Addon search"]);
   addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 1250, totalQuantity = 240 } }");
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");

@@ -115,8 +115,9 @@ local function isMyRealm(realm)
 end
 
 -- A player's name to show: "Name" for someone on your realm, else as the client gave it
--- ("Name-Realm"). Whispers and comparisons keep the full name.
+-- ("Name-Realm"). Whispers and comparisons keep the full name. A hidden or non-text name comes back as it was.
 function H.Display(name)
+  if ns.IsSecret(name) or type(name) ~= "string" then return name end
   local base, realm = name:match("^([^%-]+)%-(.+)$")
   if base and isMyRealm(realm) then return base end
   return name
@@ -159,8 +160,8 @@ end
 function H.Report()
   local me = call("UnitName", "player") or "?"
   ns.Chat(string.format("Realm: %s (as in names: %s)", H.RealmName(), H.Realm()))
-  ns.Chat("Ruleset: " .. (H.Ruleset() or "none named by the client"))
-  ns.Chat("Rules: " .. (H.Rules() or "none named by the client"))
+  ns.Chat(ns.Format(L["Ruleset: {name}"], { name = H.Ruleset() or L["none named by the client"] }))
+  ns.Chat(ns.Format(L["Rules: {name}"], { name = H.Rules() or L["none named by the client"] }))
   ns.Chat(string.format("Side: %s   Data key: %s", H.Side(), H.Key()))
   ns.Chat(string.format("Your name in chat: %s-%s (shown as %s)", me, H.NameRealm() or H.Realm(), me))
 end

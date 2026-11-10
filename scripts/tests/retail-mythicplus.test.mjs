@@ -112,13 +112,13 @@ it("retail mythic+: the dungeon card shows the dungeon's Mythic+ timer, your key
   const addon = retail(SEASON + DOOR, CARD);
   addon.eval("ns.GetModule('InstancePrep').ShowOnDemand()");
   expect(cardLines(addon), "no level range: the timer, then the key and the affixes").toEqual([
-    "TEST-ONLY Vault · Mythic+ timer 33:00 · 5-player Mythic", "Your keystone: TEST-ONLY Spire +9",
+    "TEST-ONLY VAULT · MYTHIC+ TIMER 33:00 · 5-PLAYER MYTHIC", "Your keystone: TEST-ONLY Spire +9",
     "Affixes: TEST-ONLY Fortified, TEST-ONLY Xal'atath's Bargain"]);
   startKey(addon, "{ mapID = 501, level = 12, affixes = { 9 } }");
   addon.eval("__wfgWorld.ownedKey = nil ns.GetModule('InstancePrep').ShowOnDemand()");
   expect(cardLines(addon).slice(1), "in a key: no keystone in the bags, the key's own affixes").toEqual(["Affixes: TEST-ONLY Tyrannical"]);
   addon.eval("GetInstanceInfo = function() return 'TEST-ONLY Crypt', 'party', 1, 'Normal', 5, 0, false, 1 end __wfgWorld.weekAffixes = {} __wfgWorld.key = nil ns.GetModule('InstancePrep').ShowOnDemand()");
-  expect(cardLines(addon), "a dungeon with no Mythic+ timer, no key, no affixes: the heading alone").toEqual(["TEST-ONLY Crypt · 5-player Normal"]);
+  expect(cardLines(addon), "a dungeon with no Mythic+ timer, no key, no affixes: the heading alone").toEqual(["TEST-ONLY CRYPT · 5-PLAYER NORMAL"]);
 });
 
 it("retail mythic+: the card's switch on Town and gear names what Retail's card shows", () => {

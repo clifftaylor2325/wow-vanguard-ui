@@ -3,7 +3,7 @@
 -- for the map, and the quest spots it marks as starts), as small "!" pins in
 -- the Vanguard look. Hover one for the quest; click it to point the arrow
 -- there. Vanguard's pins stay away when the game's own map already shows
--- quest offers on that map, while Questie (which has its own) is loaded, and while OpenMap draws the map
+-- quest offers on that map, while a dedicated quest addon (which has its own) is loaded, and while OpenMap draws the map
 -- (its canvas isn't the zone the map names, so a pin would land in the wrong spot).
 
 local ADDON, ns = ...
@@ -53,7 +53,7 @@ local function showsQuests(mapID)
   return not (mapType and ns.CallIf(MapUtil, "ShouldMapTypeShowQuests", mapType) == false)
 end
 
--- Whether Vanguard draws pins on this map: the setting is on, neither Questie nor OpenMap is loaded,
+-- Whether Vanguard draws pins on this map: the setting is on, neither the quest addon nor OpenMap is loaded,
 -- the map is a kind the game draws quests on, and the game's own map shows no quest offers.
 function QG.DrawsPins(map)
   if not QG.settings.pins or ns.CallIf(C_AddOns, "IsAddOnLoaded", "Questie") == true then return false end

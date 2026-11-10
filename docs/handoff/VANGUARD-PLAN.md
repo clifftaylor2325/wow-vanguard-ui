@@ -17,8 +17,8 @@ This file is written so that a model with less context can carry it out. Section
 | F1 | Gear upgrade indicator | A standalone upgrade addon | The common one has no Forever build, and Forever rewrote the stats on thousands of items, so players can't trust what they remember. |
 | F2 | Alt and bank inventory in tooltips | Bag addons | Tooltips already count this character's bags and bank; other characters are the missing half. |
 | F3 | `/way` waypoints and world map coordinates | Waypoint and map-note addons | Guides and Forever map sites hand out `/way` lines; coordinates only show on the minimap today. |
-| F4 | Questie coexistence | Questie (has a Forever build) | The most-used addon that ships for Forever; Vanguard replaces the quest tracker and quest log Questie works with. |
-| F5 | Docking spots for boss timers and warnings | DBM, BigWigs | Both ship for Forever; their bars should sit in a known place in the Centered layout. |
+| F4 | Quest addon coexistence | A dedicated quest addon (has a Forever build) | The most-used addon that ships for Forever; Vanguard replaces the quest tracker and quest log it works with. |
+| F5 | Docking spots for boss timers and warnings | The two main boss-timer addons | Both ship for Forever; their bars should sit in a known place in the Centered layout. |
 | F6 | LibDataBroker readouts on the info strip | Info-bar addons | The minimap drawer gathers other addons' buttons but can't show their text feeds. |
 | F7 | Faster auto-loot | Quality-of-life addons | The one common quality-of-life toggle Vanguard doesn't have. |
 
@@ -105,21 +105,21 @@ Every feature is a module made with `ns.Module(name, { defaults = ... })`, with 
 ### F3 `/way` waypoints and world map coordinates (`work/f3-waypoints`) — size M
 
 - [x] **F3.1 Check the client.** In `Gethe/wow-ui-source` branch `forever`, confirm `C_Map.SetUserWaypoint`, `C_Map.CanSetUserWaypointOnMap`, `UiMapPoint.CreateFromCoordinates` and `C_SuperTrack.SetSuperTrackedUserWaypoint` exist for Forever (the `SuperTrackedFrame` arrow). Record the result in the commit body. If they're missing, stop F3 and tell the owner (a self-drawn arrow is a separate, larger task).
-- [x] **F3.2 Command.** New `Modules/Waypoints.lua`. `/way [zone] x y [title]` and `/vg way ...`: `x y` accept `45.2 61.8`, `45.2, 61.8` and `45,61`; zone is a name (case-insensitive, matched against `C_Map.GetMapInfo(...).name` for the zone maps under the continents, `C_Map.GetMapChildrenInfo`) or `#<mapID>`; no zone means the player's map (`C_Map.GetBestMapForUnit("player")`, as `Modules/Minimap.lua:137`). Set the waypoint and super-track it; `/way clear` removes it. Register `/way` at `PLAYER_LOGIN` only if no other addon owns it (`hash_SlashCmdList["/WAY"]` is nil and `C_AddOns.IsAddOnLoaded("TomTom")` is false); `/vg way` always works.
+- [x] **F3.2 Command.** New `Modules/Waypoints.lua`. `/way [zone] x y [title]` and `/vg way ...`: `x y` accept `45.2 61.8`, `45.2, 61.8` and `45,61`; zone is a name (case-insensitive, matched against `C_Map.GetMapInfo(...).name` for the zone maps under the continents, `C_Map.GetMapChildrenInfo`) or `#<mapID>`; no zone means the player's map (`C_Map.GetBestMapForUnit("player")`, as `Modules/Minimap.lua:137`). Set the waypoint and super-track it; `/way clear` removes it. Register `/way` at `PLAYER_LOGIN` only if no other addon owns it (`hash_SlashCmdList["/WAY"]` is nil and `C_AddOns.IsAddOnLoaded(<waypoint addon>)` is false); `/vg way` always works.
 - [x] **F3.3 World map coordinates.** A small line on `WorldMapFrame`: the player's coordinates and the cursor's (`WorldMapFrame.ScrollContainer:GetNormalizedCursorPosition()`), updated at most every 0.1 s and only while the map is shown. Switch: on.
-- [x] **F3.4 Tests.** Coordinate parsing (all formats, out-of-range refused), zone matching, TomTom present → `/way` not registered, map hidden → no updates. **[VERIFY IN GAME]** the arrow shows and clears.
+- [x] **F3.4 Tests.** Coordinate parsing (all formats, out-of-range refused), zone matching, a waypoint addon present → `/way` not registered, map hidden → no updates. **[VERIFY IN GAME]** the arrow shows and clears.
 
-### F4 Questie coexistence (`work/f4-questie`) — size S, mostly in-game checking
+### F4 Quest addon coexistence (`work/f4-quest-coexistence`) — size S, mostly in-game checking
 
-- [x] **F4.1 Integration points.** List the game frames Vanguard must leave alone while Questie is loaded (quest tracker, quest log, map); copy no code. Note the frame names in the commit body.
-- [x] **F4.2 Who owns the tracker.** New setting under the quest tracker options: "With Questie: use Vanguard's tracker / use Questie's" (default: Questie's when Questie is loaded). Questie's choice → `Modules/QuestTracker.lua` leaves the game's tracker alone (no `Suppress("ObjectiveTrackerFrame")`, line 128) and doesn't build its own; and if Questie's tracker frame exists, skin it with the theme panel (the same primitives `Core/Skin.lua` hands out). Same for the quest log if Questie adds to the game's quest log.
-- [x] **F4.3 Tests and in-game check.** Stub tests for both settings with and without Questie loaded. **[VERIFY IN GAME]** with Questie's Forever build installed: no doubled trackers, Questie's map icons show, no errors in `/vg errors`.
+- [x] **F4.1 Integration points.** List the game frames Vanguard must leave alone while the quest addon is loaded (quest tracker, quest log, map); copy no code. Note the frame names in the commit body.
+- [x] **F4.2 Who owns the tracker.** New setting under the quest tracker options: "With a quest addon: use Vanguard's tracker / use its own" (default: the addon's when it is loaded). The addon's choice → `Modules/QuestTracker.lua` leaves the game's tracker alone (no `Suppress("ObjectiveTrackerFrame")`, line 128) and doesn't build its own; and if the addon's tracker frame exists, skin it with the theme panel (the same primitives `Core/Skin.lua` hands out). Same for the quest log if the addon adds to the game's quest log.
+- [x] **F4.3 Tests and in-game check.** Stub tests for both settings with and without the quest addon loaded. **[VERIFY IN GAME]** with the quest addon's Forever build installed: no doubled trackers, its map icons show, no errors in `/vg errors`.
 
 ### F5 Docking spots for boss timers and warnings (`work/f5-docks`) — size S
 
 - [x] **F5.1 Anchors.** Two movers (`ns.Mover`) in the Centered layout: "Boss timers" (`Vanguard_BossBarsAnchor`, above the right side of the action bars) and "Boss warnings" (`Vanguard_BossWarningsAnchor`, upper middle of the screen). They're empty frames with a label shown only in unlock mode.
-- [x] **F5.2 Hand-off.** When DBM or BigWigs is loaded, a "Line up DBM/BigWigs bars with Vanguard" button (options, and `/vg dock`) moves their bars to the anchors once, using only their public settings APIs; check each addon's current source for the supported way to set bar positions, and if none exists, show the anchor's exact coordinates in a popup instead. Never move their frames every frame or hook their code.
-- [x] **F5.3 Tests.** Anchors exist and save with the profile; the button is hidden when neither addon is loaded. **[VERIFY IN GAME]** with DBM and BigWigs Forever builds.
+- [x] **F5.2 Hand-off.** When a boss-timer addon is loaded, a "Line up boss timer bars with Vanguard" button (options, and `/vg dock`) moves their bars to the anchors once, using only their public settings APIs; check each addon's current source for the supported way to set bar positions, and if none exists, show the anchor's exact coordinates in a popup instead. Never move their frames every frame or hook their code.
+- [x] **F5.3 Tests.** Anchors exist and save with the profile; the button is hidden when no boss-timer addon is loaded. **[VERIFY IN GAME]** with the boss-timer addons' Forever builds.
 
 ### F6 LibDataBroker readouts on the info strip (`work/f6-broker`) — size M
 

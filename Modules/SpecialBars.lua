@@ -9,7 +9,7 @@
 -- in unlock mode, clear of Vanguard's stacked bars (the game's own spot for
 -- their bars is under Edit Mode's control and lies over those bars).
 --
--- With Masque loaded, the pet, stance and extra buttons are handed to Masque
+-- With the skinning library loaded, the pet, stance and extra buttons are handed to it
 -- (one group) instead of restyled (Core/Masque.lua).
 --
 -- The vehicle exit button is Vanguard's own: a secure button running
@@ -54,7 +54,7 @@ function SB.KeepSet(b)
   return keep
 end
 
--- The Masque group of the pet, stance and extra buttons, when Masque is loaded.
+-- The skinning group of the pet, stance and extra buttons, when the library is loaded.
 SB.MASQUE = "Pet, stance and extra buttons"
 
 -- The game's hotkey and count texts on a button in the theme's small font and the action bars' colours
@@ -65,7 +65,7 @@ local function themeTexts(b)
 end
 
 -- Restyles one client button: art faded (state textures kept), icon cropped,
--- themed border and texts; or hands it to Masque (which finds the game button's regions).
+-- themed border and texts; or hands it to the skinning library (which finds the game button's regions).
 function SB.Skin(b)
   if type(b) ~= "table" or vgSkinned[b] then return end
   vgSkinned[b] = true

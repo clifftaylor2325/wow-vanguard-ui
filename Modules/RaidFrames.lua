@@ -431,14 +431,13 @@ end
 function RF.Zones(w, h, scale)
   local icon, per, top = strip(w, h)
   local rowW = per * (icon + 1) - 1
-  local z = { icon = icon, per = per, missing = { w - 3 - CORNER, 3, CORNER, CORNER }, power = { 1, h - 1 - RF.POWER, w - 2, RF.POWER } }
+  local z = { width = w, height = h, icon = icon, per = per, missing = { w - 3 - CORNER, 3, CORNER, CORNER }, power = { 1, h - 1 - RF.POWER, w - 2, RF.POWER } }
   z.debuffs, z.hots = { 2, top, rowW, icon }, { w - 2 - rowW, top, rowW, icon }
   textZones(z, w, top, RF.StatusSize(h, scale or 1))
   return z
 end
 
--- The zones of the tiles at the size they were built with and the grid's current scale. A new size
--- reaches the secure tiles only at a reload, so until then their texts keep fitting the old one.
+-- The zones of the tiles at the size they have now (RF.ApplySize sets it) and the grid's current scale.
 function RF.TileZones()
   return RF.Zones(RF.builtSize.width, RF.builtSize.height, RF.tileScale)
 end
@@ -621,10 +620,10 @@ end
 -- A button's scripts: clicks, follow its unit, refresh on show, light on hover, its unit's tooltip.
 local function addScripts(b)
   b:RegisterForClicks("AnyUp")
-  b:HookScript("OnAttributeChanged", onAttributeChanged)
-  b:HookScript("OnShow", RF.Update)
-  b:HookScript("OnEnter", function() b.hover:Show() end)
-  b:HookScript("OnLeave", function() b.hover:Hide() end)
+  b:HookScript("OnAttributeChanged", ns.Guard("raid tile unit", onAttributeChanged))
+  b:HookScript("OnShow", ns.Guard("raid tile show", RF.Update))
+  b:HookScript("OnEnter", ns.Guard("raid tile hover", function() b.hover:Show() end))
+  b:HookScript("OnLeave", ns.Guard("raid tile hover", function() b.hover:Hide() end))
   RF.UnitTooltip(b)
 end
 
@@ -844,6 +843,21 @@ local function holder(s)
   RF.spot = RF.SPOT
   ns.Mover(f, "raid", L["Raid frames"], RF.SPOT)
   return f
+end
+
+-- Gives the header, its tiles and the holder the width and height now set, out of combat (the tiles and the
+-- header are secure), and lays the grid out again; a tile's icons stay at the size they were built with.
+function RF.ApplySize()
+  if not RF.header then return end
+  ns.OutOfCombat(function()
+    local s = RF.settings
+    RF.builtSize = { width = s.width, height = s.height, spacing = s.spacing }
+    RF.header:SetAttribute("vg-width", s.width)
+    RF.header:SetAttribute("vg-height", s.height)
+    for _, b in ipairs(RF.buttons) do b:SetSize(s.width, s.height) end
+    RF.SizeHolder(RF.holder, RF.builtSize, RF.layoutKey)
+    RF.Fit()
+  end, "raidsize")
 end
 
 -- Builds the header, precreates its buttons and replaces the default frames.

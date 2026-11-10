@@ -1,8 +1,8 @@
-// officerloot: the officer loot tools (Modules/OfficerLoot.lua, OfficerRoster.lua), a soft-reserve list and a roster, in the TEST-ONLY headless client.
+// officerloot: the officer loot tools (Modules/OfficerLoot.lua), a soft-reserve list, in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { SETUP_DONE, chatHas, isTok, loggedIn } from "./helpers.mjs";
+import { SETUP_DONE, chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: the game's English roll format.
 const ROLL_ENV = 'RANDOM_ROLL_RESULT = "%s rolls %d (%d-%d)"\n';
@@ -175,106 +175,13 @@ it("H29-19-1 every shared part fits 255 bytes with /raid in front in French and 
 
 it("the options card has the switch, and Add a reserve asks for player and item", () => {
   const addon = loggedIn("", ON);
-  expect(rows(addon).map((r) => r[1])).toContain("Soft-reserve list and roster");
+  expect(rows(addon).map((r) => r[1])).toContain("Soft-reserve list");
   addon.eval("ns.AskText = function(title, fn) __ask = fn end");
   press(addon, "Add a reserve");
   addon.eval('__ask("Thrall Boots")');
   expect(addon.eval("return #VanguardCharDB.lootReserves")).toBe(1);
   addon.eval('local r = ns.GetModule("OfficerLoot").Rows()[3] r[4](false) __g = r[3]()');
   expect(addon.eval("return __g"), "the switch turned the tools off").toBe(false);
-});
-
-// The roster panel: whether it is shown, and each line as [left, right].
-const roster = (addon) => addon.eval(`local f, out = Vanguard_OfficerRoster, {}
-  for i, row in ipairs(f.rows) do if row.left:IsShown() then out[#out + 1] = { row.left:GetText(), row.right:GetText() } end end
-  return { f:IsShown(), out }`);
-
-it("the roster lists the raid by role then name, with leader marks, offline and dead, and follows changes", () => {
-  const addon = loggedIn("RAID_CLASS_COLORS.WARRIOR = { r = 0.78, g = 0.61, b = 0.43 }", ON);
-  // Makes or changes a raid member.
-  const set = (t, f) => addon.world.setUnit(t, { isPlayer: true, ...f });
-  set("raid1", { name: "Zed", class: "WARRIOR", className: "Warrior", role: "TANK", leader: true });
-  set("raid2", { name: "Amy", class: "PRIEST", className: "Priest", role: "HEALER", assistant: true });
-  set("raid3", { name: "Bob", class: "MAGE", className: "Mage", role: "DAMAGER", connected: false });
-  set("raid4", { name: "Cat", class: "MAGE", className: "Mage", role: "DAMAGER", dead: true });
-  set("raid5", { name: "Dan", class: "MAGE", className: "Mage" });
-  say(addon, "loot roster");
-  expect(roster(addon)).toEqual([true, [
-    ["Roster 5", "1 offline"], ["Zed", "Tank Lead"], ["Amy", "Healer Asst"], ["Bob", "DPS Offline"], ["Cat", "DPS Dead"], ["Dan", ""],
-  ]]);
-  expect(addon.eval("return Vanguard_OfficerRoster.rows[2].left.__textColor[1]"), "class color").toBeCloseTo(0.78);
-  expect(isTok(addon, addon.eval("return Vanguard_OfficerRoster.rows[4].left.__textColor"), "muted"), "an offline name is muted, not disabled").toBe(true);
-  addon.world.setUnit("raid3", { connected: true });
-  addon.advance(0.5);
-  expect(roster(addon)[1][3], "an event repaints it on the next frame").toEqual(["Bob", "DPS"]);
-  say(addon, "loot roster");
-  expect(roster(addon)[0], "toggles off").toBe(false);
-  press(addon, "Show or hide the roster");
-  expect(roster(addon)[0]).toBe(true);
-  addon.eval('ns.Settings("OfficerLoot").on = false ns.GetModule("OfficerLoot").Apply()');
-  expect(roster(addon)[0], "off hides it").toBe(false);
-  expect(say(addon, "loot roster")).toMatch(/off/);
-});
-
-it("the roster handles a solo player, a party and a hidden name", () => {
-  const addon = loggedIn("", ON);
-  say(addon, "loot roster");
-  expect(roster(addon)[1].map((x) => x[0]), "alone: just you").toEqual(["Roster 1", "Tester"]);
-  addon.world.setUnit("party1", { name: "Pal", class: "MAGE", className: "Mage", isPlayer: true });
-  addon.fire("GROUP_ROSTER_UPDATE");
-  addon.advance(0.5);
-  expect(roster(addon)[1].map((x) => x[0]), "party").toEqual(["Roster 2", "Tester", "Pal"]);
-  addon.eval('__wfgWorld.units.party1.name = __wfgWorld.secret("Pal")');
-  addon.fire("GROUP_ROSTER_UPDATE");
-  addon.advance(0.5);
-  expect(roster(addon)[1].map((x) => x[0]), "a hidden name is left out").toEqual(["Roster 1", "Tester"]);
-  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
-});
-
-it("Y1-2 the open roster is drawn once a frame, and only for you and group members' unit events", () => {
-  const addon = loggedIn("", ON);
-  addon.world.setUnit("party1", { name: "Pal", class: "MAGE", className: "Mage", isPlayer: true });
-  say(addon, "loot roster");
-  addon.advance(0.5);
-  addon.eval(`__paints = 0 local OL = ns.GetModule("OfficerLoot") local draw = OL.DrawRows
-    OL.DrawRows = function(...) __paints = __paints + 1 return draw(...) end`);
-  for (let i = 1; i <= 30; i++) addon.fire("UNIT_FLAGS", `nameplate${i}`);
-  addon.fire("UNIT_FLAGS");
-  addon.advance(0.5);
-  expect(addon.eval("return __paints"), "30 mobs' flags (and one with no unit): not drawn").toBe(0);
-  addon.fire("UNIT_FLAGS", "party1");
-  addon.fire("UNIT_CONNECTION", "player");
-  addon.fire("GROUP_ROSTER_UPDATE");
-  addon.advance(0.5);
-  expect(addon.eval("return __paints"), "a member's, yours and the roster's: drawn once").toBe(1);
-});
-
-it("the roster: T.SPACE.gap in from the panel's edge on every side (a HUD card's padding), and as tall as its padding and lines", () => {
-  const addon = loggedIn("", ON);
-  addon.world.setUnit("party1", { name: "Pal", class: "MAGE", className: "Mage", isPlayer: true });
-  say(addon, "loot roster");
-  const gap = addon.eval("return ns.Theme.SPACE.gap");
-  const [panel, name] = ["", ".rows[1].left"].map((part) => addon.frame(`Vanguard_OfficerRoster${part}`).rect);
-  const note = addon.eval("local p = Vanguard_OfficerRoster.rows[1].right.__points.TOPRIGHT return { p.x, p.rel == Vanguard_OfficerRoster }");
-  expect([name.left - panel.left, panel.top - name.top, note[0], note[1]], "the heading a gap in from the left and top, its note a gap in from the right").toEqual([gap, gap, -gap, true]);
-  expect(addon.eval("return Vanguard_OfficerRoster:GetHeight() - 3 * ns.GetModule('OfficerLoot').RLINE"), "three lines (the heading, you and Pal) and two gaps").toBe(2 * gap);
-});
-
-it("the roster of 40 stays on the screen: the lines are cut to the room under its top, the last one counting the members left out", () => {
-  // The roster's bottom edge, its drawn lines' texts and the screen's height with 40 raid members on a w x h canvas.
-  const full = (w, h) => {
-    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h})`, ON);
-    for (let i = 1; i <= 40; i += 1) addon.world.setUnit(`raid${i}`, { name: `Pal${String(i).padStart(2, "0")}`, class: "MAGE", className: "Mage", isPlayer: true, role: "DAMAGER" });
-    say(addon, "loot roster");
-    return [addon.eval("return Vanguard_OfficerRoster:GetBottom()"), roster(addon)[1].map((x) => x[0])];
-  };
-  const [bottom768, at768] = full(1365, 768);
-  expect(bottom768, "1365x768: the bottom edge is on the screen").toBeGreaterThanOrEqual(0);
-  expect([at768.length, at768[0], at768[at768.length - 1]], "39 lines: the heading, 37 members and the count of the 3 left out").toEqual([39, "Roster 40", "+3 more"]);
-  const [bottom668, at668] = full(835, 668);
-  expect([bottom668 >= 0, at668.length, at668[at668.length - 1]], "835x668: cut shorter still").toEqual([true, 32, "+10 more"]);
-  const [bottom1080, at1080] = full(1920, 1080);
-  expect([bottom1080 >= 0, at1080.length, at1080[at1080.length - 1]], "a tall screen: every member, and no count line").toEqual([true, 41, "Pal40"]);
 });
 
 it("reserves compare Russian names and item names without regard to case, and the ones saved before still match", () => {

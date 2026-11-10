@@ -20,7 +20,7 @@ it("setup layouts: your specialization's role, else your group role, marks your 
 it("setup layouts: Healing puts the raid frames under the character and turns click casting on", () => {
   const addon = loggedIn(CLICK_LUA + UNITS_ENV + RAID_ENV, { firstRun: true });
   const layouts = addon.eval("local out = {} for i, b in ipairs(Vanguard_Setup.pages.layout.choices) do out[i] = b.text:GetText() end return out");
-  expect(layouts, "five layouts, damage first (marked as your role's: no role says healer or tank), then Keep").toEqual(["Centered: damage  ·  your role", "Centered: tanking", "Centered: healing", "Versus deck", "Like the game's", "Keep my current layout"]);
+  expect(layouts, "seven layouts, damage first (marked as your role's: no role says healer or tank), the HUD layouts, then Keep").toEqual(["Centered: damage  ·  your role", "Centered: tanking", "Centered: healing", "Versus deck", "Like the game's", "The keep", "Standards", "Keep my current layout"]);
   expect(addon.eval('return __click("Centered: healing")') && addon.eval("return Vanguard_Setup.pages.layout.hint:GetText()"), "picking Healing shows what it does").toMatch(/click casting on/);
   expect(addon.eval("local c = Vanguard_Setup.pages.layout.choices return { c[3].selected, c[3 == 1 and 2 or 1].selected, c[3].rail:IsShown(), c[3 == 1 and 2 or 1].rail:IsShown() }"), "the chosen layout wears the selected rail; the others rest flat").toEqual([true, false, true, false]);
   setupClick(addon, "next");

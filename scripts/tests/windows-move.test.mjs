@@ -282,6 +282,29 @@ it("a click on a window's top edge saves nothing, a right press does nothing, an
   expect(errors(addon)).toBe("none");
 });
 
+// A game window's geometry is secret while its anchoring is (SecretWhenAnchoringSecret), and its scale once the game set
+// it from a secret: a drag on such a window does nothing rather than raise, and nothing secret is saved or put back.
+it("a window whose top, place or scale the client hides is not dragged, saved or put back, and nothing raises", () => {
+  const addon = loggedIn(MOVE_ENV);
+  addon.eval("CalendarFrame:Show()");
+  // Drags and saves the calendar with one getter answering a secret: whether it moved, saved nothing, and the error count.
+  const hidden = (getter, value) => addon.eval(`local f, S = CalendarFrame, __wfgWorld.secret
+    f.${getter} = function() return S(${value}) end
+    __wfgStub.world.mouse.x, __wfgStub.world.mouse.y = 300, 970
+    f:GetScript("OnMouseDown")(f, "LeftButton")
+    local moving = f.__moving == true
+    f:GetScript("OnMouseUp")(f, "LeftButton")
+    ns.GetModule("Windows").SavePlace("TEST-ONLY-HIDDEN", f)
+    f.${getter} = nil
+    return { moving, ns.GetModule("Windows").Moved()["TEST-ONLY-HIDDEN"] == nil, #ns.errors }`);
+  expect(hidden("GetTop", 970), "a hidden top: no drag, no place saved").toEqual([false, true, 0]);
+  expect(hidden("GetLeft", 100)[1], "a hidden left edge: no place saved").toBe(true);
+  expect(addon.eval(`local f, W = CalendarFrame, ns.GetModule("Windows")
+    W.Moved().CalendarFrame = { x = 400, y = 500 } f.GetScale = function() return __wfgWorld.secret(1) end
+    local _, _, _, x = f:GetPoint(1) W.PutBack("CalendarFrame", f) f.GetScale = nil
+    local _, _, _, x2 = f:GetPoint(1) return { x == x2, #ns.errors }`), "a hidden scale: the window is not put back").toEqual([true, 0]);
+});
+
 it("the windows dragged by their top edge only are ones Vanguard skins, and the two lists share none", () => {
   const addon = loggedIn(MOVE_ENV);
   const lists = addon.eval(`local GW, bad, seen = ns.GetModule("Windows"), {}, {}

@@ -76,7 +76,7 @@ function QG.Target(questID)
   if ns.PlainNumber(mapID) and ns.PlainNumber(x) and ns.PlainNumber(y) then return mapID, x, y end
   local here = ns.PlainNumber(ns.CallIf(C_Map, "GetBestMapForUnit", "player"))
   for _, q in ipairs(here and ns.CallIf(C_QuestLog, "GetQuestsOnMap", here) or {}) do
-    if q.questID == questID and ns.PlainNumber(q.x) and ns.PlainNumber(q.y) then return here, q.x, q.y end
+    if ns.PlainNumber(q.questID) == questID and ns.PlainNumber(q.x) and ns.PlainNumber(q.y) then return here, q.x, q.y end
   end
 end
 
@@ -182,7 +182,7 @@ end
 -- The quests the open NPC offers, each with the NPC's own fields first.
 local function dumpOffered()
   for _, q in ipairs(ns.CallIf(C_GossipInfo, "GetAvailableQuests") or {}) do
-    ns.Chat("Offered: " .. fields(q))
+    ns.Chat(ns.Format(L["Offered: {fields}"], { fields = fields(q) }))
     if ns.PlainNumber(q.questID) then ns.Chat(QG.Describe(q.questID)) end
   end
 end

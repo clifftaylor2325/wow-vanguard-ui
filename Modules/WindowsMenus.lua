@@ -16,7 +16,9 @@ local GW = ns.GetModule("Windows")
 local menuPanels = {}
 
 -- The panel behind a menu (made the first time that pooled frame opens), level with the menu so
--- its rows (which the game puts 20 levels above it) draw over the panel.
+-- its rows (which the game puts 20 levels above it) draw over the panel. The game sets the menu's level from its
+-- owner's (Menu.lua AcquireMenu), and a strata or level the client hides is not copied: SetFrameStrata and
+-- SetFrameLevel refuse a secret from addon code, so the panel keeps the place it had.
 local function menuPanel(menu)
   local panel = menuPanels[menu]
   if not panel then
@@ -25,8 +27,9 @@ local function menuPanel(menu)
     T.Tooltip(panel)
     menuPanels[menu] = panel
   end
-  panel:SetFrameStrata(menu:GetFrameStrata())
-  panel:SetFrameLevel(menu:GetFrameLevel())
+  local strata, level = ns.PlainText(menu:GetFrameStrata()), ns.PlainNumber(menu:GetFrameLevel())
+  if strata then panel:SetFrameStrata(strata) end
+  if level then panel:SetFrameLevel(level) end
 end
 
 -- A menu just opened (on Forever EventRegistry "MenuProxy.OnShow", fired by MenuProxyMixin:OnShow; on Retail the
@@ -53,10 +56,11 @@ local function skinGeneratedMenu(menu)
   ns.Soon("menu panels", GW.LevelMenuPanels)
 end
 
--- Every shown menu's panel level with its menu again (after the game has placed a menu it just opened).
+-- Every shown menu's panel level with its menu again (after the game has placed a menu it just opened); a menu whose
+-- shown state the client hides is left as it is.
 function GW.LevelMenuPanels()
   for menu in pairs(menuPanels) do
-    if menu:IsShown() then menuPanel(menu) end
+    if ns.IsTrue(menu:IsShown()) then menuPanel(menu) end
   end
 end
 

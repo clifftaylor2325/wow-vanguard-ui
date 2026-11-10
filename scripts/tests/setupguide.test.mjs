@@ -4,7 +4,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, RAID_ENV, UNITS_ENV, chatHas, loggedIn, setCombat } from "./helpers.mjs";
 
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
@@ -69,6 +69,27 @@ it("guided setup: Undo setup asks, then puts every row and the profile back and 
   expect(applied(addon), "every guided row is back as it was").toEqual([false, false, false, false, false, false, false, false, false, false, false, false, false]);
   expect(addon.eval("return { ns.Setup.Step() or 0, VanguardDB.setupDone, ns.Settings('RaidFrames').sortByRole, ns.Settings('positions').uf_player == nil }"), "setup ended as Done, with the profile from before Healing back (no role sort, your frame at its default size)").toEqual([0, true, false, true]);
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "then the reload that shows the restored profile, with no export question first (nothing new to keep)").toBe("Setup was undone: the profile as it was is back. Reload the UI now to apply it?");
+});
+
+it("hunt setup: Undo setup puts back the profile it backed up, not one staged for the reload since (a spec change or /vg profile mid-setup)", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  nexts(addon, 8);
+  addon.eval("VanguardDB.profiles.Other = { marker = 1 } ns.UseProfile('Other')");
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b) Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(addon.eval("return { VanguardDB.profiles.Other.marker, VanguardDB.profiles.Other.RaidFrames == nil, ns.Settings('RaidFrames').sortByRole }"), "the staged profile keeps its own settings, and the running one has Healing's taken out").toEqual([1, true, false]);
+});
+
+it("hunt setup: a fight starting while the Undo question is open leaves setup's end whole, whenever Yes is answered", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  nexts(addon, 8);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b)");
+  addon.eval("__wfgStub.inCombat = true");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.eval('Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  setCombat(addon, false);
+  expect(addon.eval("return { ns.Setup.Step() or 0, VanguardDB.setupDone, ns.Settings('RaidFrames').sortByRole }"), "after the fight setup has ended as Done with the profile back, not reopened on a stale step").toEqual([0, true, false]);
 });
 
 it("guided setup: Undo setup with the backup profile gone still puts the guided rows back, says so in chat, and ends as an ordinary Done", () => {

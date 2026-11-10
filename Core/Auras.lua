@@ -214,7 +214,7 @@ local function texts(f, cd, size, timer)
 end
 
 -- The 1 px theme edge around an icon, on a frame of our own (so a theme
--- repaint never touches a client-owned button); no edge when Masque skins it.
+-- repaint never touches a client-owned button); no edge when a skinning library skins it.
 local function frameEdge(f, masque)
   local skin = CreateFrame("Frame", nil, f)
   skin:SetAllPoints()
@@ -250,7 +250,7 @@ end
 
 -- Dresses an icon frame (an engine button or one of ours). style: size, debuff
 -- (type-colored edge and type badge), dim (desaturated: others' auras), timer, masque (the
--- Masque group that skins it, when Masque is loaded), holder (the container frame it sits in,
+-- skinning group that skins it, when the library is loaded), holder (the container frame it sits in,
 -- for A.Refit). Returns its parts.
 function A.Dress(f, style)
   f:SetSize(style.size, style.size)
@@ -295,11 +295,12 @@ end
 -- as `holds(scale, placed)` judges (true: still right). The client makes an icon when an aura first needs
 -- it, at whatever scale it has the holder then: on a nameplate it hands over at about 0.01, a one-pixel
 -- edge placed then is some 50 units thick once the plate grows, a dark square around the icon. The
--- holder's scale is read once for all its icons (each icon is placed at its holder's scale, as before).
+-- holder's scale is read once for all its icons (each icon is placed at its holder's scale, as before). A holder
+-- under a frame the client has closed is not asked: the client refuses it while its own IsForbidden says no.
 ---@param holder table
 ---@param holds function
 function A.Refit(holder, holds)
-  if holder:IsForbidden() then return end
+  if closedFrom(holder) then return end
   local scale, icons = holder:GetEffectiveScale(), dressed[holder] or {}
   for f, parts in pairs(icons) do
     if not holds(scale, parts.scale) then refitIcon(icons, f, parts, scale) end
@@ -334,11 +335,12 @@ function A.Signature(spec)
 end
 
 -- Puts a container away for good (a setting asked for other icons): emptied and hidden. One the client has
--- closed to addons (on a plate it keeps for itself) is left as it is; false then, so the caller keeps it.
+-- closed to addons, or that hangs from a frame it has closed (on a plate it keeps for itself), is left as it is;
+-- false then, so the caller keeps it.
 ---@param c table  a container from A.Container
 ---@return boolean put
 function A.Retire(c)
-  if c.frame:IsForbidden() then return false end
+  if closedFrom(c.frame) then return false end
   c:SetUnit(nil)
   c.frame:Hide()
   return true

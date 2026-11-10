@@ -33,7 +33,7 @@ The callback runs once at login, or immediately if the addon registers after log
 
 ## Auction prices: Vanguard.API.v1
 
-Vanguard keeps auction prices per realm and faction (from the Auction helper's scans and from every search at the auction house) and hands them to other addons through `Vanguard.API.v1`. Its function names and argument order are those of Auctionator's v1 API, as Vanguard's auction plan lists them (Auctionator's own source was not read when this was written), so an addon written for Auctionator can switch with a one-line shim:
+Vanguard keeps auction prices per realm and faction (from the Auction helper's scans and from every search at the auction house) and hands them to other addons through `Vanguard.API.v1`. Its function names and argument order are those of a widely used auction addon's v1 API, as Vanguard's auction plan lists them (its source was not read when this was written), so an addon written for that API can switch with a one-line shim:
 
 ```lua
 -- ## OptionalDeps: Vanguard
@@ -64,7 +64,7 @@ local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
 
 ### Shopping lists and searches
 
-Search strings are item names, as you would type them in the game's search box. In Auctionator's form, `name;field;field...`, only the name is read (quotes around it are dropped); an item link or an item ID written as text works too. A string that is blank, and anything that isn't a string, is left out. A list holds at most 50 entries and there are at most 20 lists (Vanguard's caps); they are the player's lists, shown on the Shop card at the auction house.
+Search strings are item names, as you would type them in the game's search box. In the common form, `name;field;field...`, only the name is read (quotes around it are dropped); an item link or an item ID written as text works too. A string that is blank, and anything that isn't a string, is left out. A list holds at most 50 entries and there are at most 20 lists (Vanguard's caps); they are the player's lists, shown on the Shop card at the auction house.
 
 | Function | Does |
 | --- | --- |
