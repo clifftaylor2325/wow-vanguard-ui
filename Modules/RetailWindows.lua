@@ -209,10 +209,20 @@ GW.TABS_REANCHORED.EncounterJournal = true
 -- The premade group invite's role picture (tank, healer or damage, beside "Your role") is the dialog's content, kept
 -- as the window skin fades the dialog's own textures.
 GW.CONTENT_ART.LFGListInviteDialog = { "RoleIcon" }
+-- The conquest tooltip sizes itself from every shown child and region it holds (Blizzard_PVPUI.xml: TooltipBackdropTemplate,
+-- ResizeLayoutFrame), so a panel painted on it would be measured with its contents: its panel goes on a backdrop.
+GW.LAYOUT_WINDOWS.ConquestTooltip = true
+
+-- A tooltip the game lays out from its parts (GW.LAYOUT_WINDOWS): its NineSlice faded, the tooltip panel on its backdrop.
+local function skinLayoutTooltip(frame)
+  GW.FadeFrame(frame.NineSlice)
+  T.Tooltip(GW.PanelHost(frame))
+end
+
 GW.Add("finder", { "PVEFrame", "LFGListApplicationDialog", "LFGListInviteDialog" }, GW.SkinRetailWindow)
 GW.AddOnDemand("finder", "Blizzard_PVPUI", { "PVPUIFrame" }, GW.SkinRetailPage)
 GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournal" }, GW.SkinRetailWindow)
-GW.AddOnDemand("finder", "Blizzard_PVPUI", { "ConquestTooltip" }, GW.SkinTooltipFrame)
+GW.AddOnDemand("finder", "Blizzard_PVPUI", { "ConquestTooltip" }, skinLayoutTooltip)
 GW.AddOnDemand("finder", "Blizzard_EncounterJournal", { "EncounterJournalTooltip" }, GW.SkinTooltipFrame)
 
 -- The friends window's inside on Retail: its Who tab (the window itself is a framed window, Modules/Windows.lua).
