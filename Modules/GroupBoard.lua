@@ -18,6 +18,7 @@ local L = ns.L
 local GB = ns.Module("GroupBoard", {
   clients = { forever = true },
   defaults = { role = "auto", minutes = 10, mine = true, channels = { channel = true, yell = true, say = false, guild = false } },
+  live = true,
 })
 
 -- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
@@ -219,6 +220,11 @@ function GB.Channels()
   return #out > 0 and table.concat(out, ", ") or "none"
 end
 
+-- Whether the module runs now (the board's window opens only then).
+function GB.Active()
+  return GB.scope ~= nil and GB.scope:Running()
+end
+
 -- /vg lfg probe: what the board has heard, the channels you are in and the switches, to say why the board is empty.
 function GB.Probe()
   local on = {}
@@ -235,7 +241,7 @@ end
 -- /vg lfg [probe]: the board, or its probe; with the module off, Toggle says the board is off.
 function GB.Command(rest)
   local wantsProbe = (rest or ""):lower():match("^%s*probe") ~= nil
-  if wantsProbe and GB.settings then return GB.Probe() end
+  if wantsProbe and GB.Active() then return GB.Probe() end
   GB.Toggle()
 end
 
@@ -357,9 +363,20 @@ function GB.Rows()
 end
 ns.Options.AddRows("chat", GB.Rows)
 
--- Module entry point (Core/Modules.lua): the window is built the first time it opens.
-function GB.Enable(settings)
+-- Where the board's window sits until it is moved.
+GB.SPOT = { "CENTER", "CENTER", 220, 60 }
+
+-- Gives the board's window to the scope, with its mover: the window is hidden and its handle leaves unlock mode
+-- when the module stops, and the saved spot stays.
+function GB.Adopt(f)
+  GB.scope:Mover(f, "groupboard", L["Group board"], GB.SPOT)
+end
+
+-- Module entry point (Core/Modules.lua): the window is built the first time it opens, and kept (a start after a
+-- stop hands the same window to the new scope). Chat is read through the scope.
+function GB.Enable(settings, scope)
   GB.settings = settings
   GB.LoadWords()
-  for event in pairs(GB.EVENTS) do ns.On(event, GB.OnChat) end
+  for event in pairs(GB.EVENTS) do scope:On(event, GB.OnChat) end
+  if GB.frame then GB.Adopt(GB.frame) end
 end

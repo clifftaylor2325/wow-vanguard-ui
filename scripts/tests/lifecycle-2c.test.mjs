@@ -192,3 +192,24 @@ it("lifecycle: coexist switched off takes its card off the Modules page, and kee
   expect(addon.eval("return #ns.GetModule('Coexist').Rows()"), "no card while it is off").toBe(0);
   expect(addon.eval("return ns.Settings('Coexist').answered.Bagnon"), "the answer is kept").toBe("kept");
 });
+
+// GroupBoard ----------------------------------------------------------------------------------------------------
+
+lifecycleCases("GroupBoard", loginWith());
+
+it("lifecycle: group board switched off closes its window and mover, refuses to open, and on again reuses the window", () => {
+  const addon = loginWith()();
+  addon.slash("lfg");
+  expect(addon.eval("return Vanguard_GroupBoard:IsShown()"), "open").toBe(true);
+  const frames = addon.eval("return #__wfgStub.frames");
+  addon.eval('ns.SetModuleEnabled("GroupBoard", false)');
+  expect(addon.eval("return Vanguard_GroupBoard:IsShown()"), "closed at once").toBe(false);
+  expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return table.concat(out, ',')"), "no mover").not.toContain("groupboard");
+  addon.slash("lfg");
+  expect(addon.eval("return Vanguard_GroupBoard:IsShown()"), "/vg lfg does not open it while it is off").toBe(false);
+  expect(chatHas(addon, /group board is off/)).toBe(true);
+  addon.eval('ns.SetModuleEnabled("GroupBoard", true)');
+  addon.slash("lfg");
+  expect(addon.eval("return { Vanguard_GroupBoard:IsShown(), #__wfgStub.frames }"), "the same window opens, nothing new built").toEqual([true, frames]);
+  expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return table.concat(out, ',')"), "and its mover is back").toContain("groupboard");
+});
