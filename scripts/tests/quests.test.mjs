@@ -2554,3 +2554,12 @@ it("quest log: a marked quest that left the log loses its mark, so taking it aga
   addon.eval("__quests[90051] = __gone_q");
   expect(addon.eval("return ns.GetModule('QuestLog').MarkedCount()"), "taken again: not marked").toBe(0);
 });
+
+it("quest tracker: the game's tracker stays clear when its managed-frame container brings it back, also in a fight", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV);
+  addon.update(0);
+  const back = "ObjectiveTrackerFrame:SetParent(UIParent) ObjectiveTrackerFrame:Show() ObjectiveTrackerFrame:SetAlpha(1) return ObjectiveTrackerFrame:GetAlpha()";
+  expect(addon.eval(back), "out of a fight").toBe(0);
+  setCombat(addon, true);
+  expect(addon.eval(back), "in a fight, where the park waits for its end").toBe(0);
+});
