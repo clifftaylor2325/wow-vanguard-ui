@@ -205,3 +205,23 @@ it("name and health text sizes are shares of the theme's sizes, applied at once 
   setCombat(addon, false);
   expect(texts(), "at 100% the name is the theme's size again").toEqual([14, 14, 16, 16, 19]);
 });
+
+it("your target's plate is drawn larger by the Target plate size slider, and goes back when you target something else", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + SET_LUA + NO_POOL);
+  // The boar's (your target's) and the friend's plate scale, and the scale the boar's first debuff icon was last placed at.
+  const scales = () => addon.eval(`local f = __plateOf("nameplate1") local parts
+    for _, w in ipairs(__wfgStub.frames) do if w.__kind == "Cooldown" and w:GetParent() == f.debuffs.frame.__groups[1].buttons[1] then parts = w end end
+    return { f:GetScale(), __plateOf("nameplate2"):GetScale(), f.vgScale / f:GetParent():GetEffectiveScale(), parts ~= nil }`);
+  expect(scales().slice(0, 2), "at the default 100% no plate is larger").toEqual([1, 1]);
+  addon.eval('__plateSet("Target plate size", 130)');
+  expect(scales().slice(0, 3), "your target's plate at 130%, its border painted for that scale; the others as they were").toEqual([1.3, 1, 1.3]);
+  expect(addon.eval("return __plateOf('nameplate1').glow[1]:IsShown()"), "it keeps its accent glow").toBe(true);
+  addon.eval("__units.target = __units.party1 ns.Settings('Nameplates').targetBorder = false");
+  setCombat(addon, true);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(scales().slice(0, 3), "a new target in a fight: the larger plate moves to it, with the border switch off too, each border painted at its plate's scale").toEqual([1, 1.3, 1]);
+  setCombat(addon, false);
+  addon.eval('__plateSet("Target plate size", 100)');
+  expect(scales().slice(0, 2), "back at 100%: no plate larger").toEqual([1, 1]);
+  expect(addon.eval("return { ns.GetModule('Nameplates').ScaleSame({ __secret = true }, 1), ns.GetModule('Nameplates').ScaleSame(1.3, 1), #ns.errors }"), "a hidden scale counts as unchanged, another scale as changed").toEqual([true, false, 0]);
+});

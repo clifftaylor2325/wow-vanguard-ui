@@ -47,7 +47,8 @@ local UF = ns.GetModule("UnitFrames")
 
 local NP = ns.Module("Nameplates", {
   defaults = { width = 130, height = 10, level = true, threat = true, castBar = true, debuffs = 4, buffs = 3, targetBorder = true, timers = true,
-    questMarks = true, tagMarks = true, auraSize = 18, nameSize = 100, healthSize = 100 },
+    questMarks = true, tagMarks = true, auraSize = 18, nameSize = 100, healthSize = 100,
+    targetScale = 100 },
 })
 
 -- The sliders' ranges (the Nameplates page). A saved number is kept inside its range (readLayout), since a
@@ -61,6 +62,8 @@ function NP.Percent(v) return string.format("%d%%", v) end
 -- The text sizes are shares (percent) of the theme's own sizes for those texts, so the sizes themselves stay the theme's.
 NP.RANGES.nameSize = { min = 80, max = 160, step = 5, format = NP.Percent }
 NP.RANGES.healthSize = { min = 80, max = 160, step = 5, format = NP.Percent }
+-- How large your target's plate is drawn, as a share of the other plates' size (100: no larger).
+NP.RANGES.targetScale = { min = 100, max = 150, step = 5, format = NP.Percent }
 -- The raid target icon's size, left of the bar.
 NP.RAID_ICON = 18
 -- A player's buff icons, right of the bar, are this much smaller than the debuff icons (the Aura icon size).
@@ -708,11 +711,11 @@ end
 -- The colour of the border and diamond for your target and, quieter and with no glow, your focus.
 NP.MARK_COLORS = { target = "accent", focus = "text2" }
 
--- What a plate marks while the target border is on: "target" for your target, "focus" for your focus
--- (when it isn't your target too), or false.
-local function targetShown(unit)
+-- What a plate marks while the target border is on: "target" for your target (isTarget, asked once by the
+-- caller), "focus" for your focus (when it isn't your target too), or false.
+local function targetShown(unit, isTarget)
   if not NP.settings.targetBorder then return false end
-  return isUnit(unit, "target") and "target" or isUnit(unit, "focus") and "focus" or false
+  return isTarget and "target" or isUnit(unit, "focus") and "focus" or false
 end
 
 -- Paints a plate's target or focus border, the target's glow and the marker for `mark` (targetShown), and
@@ -736,12 +739,34 @@ function NP.ScaleHolds(scale, painted)
   return ratio <= NP.SCALE_SLACK and ratio * NP.SCALE_SLACK >= 1
 end
 
--- Your target's accent border, glow and marker (your focus's quieter border and marker). They are repainted only when
--- the plate's target or focus state changed or its scale (the pixel size of the edge and
--- the glow) left NP.SCALE_SLACK of the one they were painted at.
+-- True when a plate's scale now is the very one its aura icons were placed at (a hidden scale counts as
+-- yes): the test after Vanguard itself rescaled the plate, where the slack above would let a 15% step pass.
+function NP.ScaleSame(scale, placed)
+  scale = ns.PlainNumber(scale)
+  return scale == nil or scale == placed
+end
+
+-- Draws a plate at `scale` times its size (your target's, by the Target plate size setting; 1 for any
+-- other), around its centre. True when that changed: its aura icons are put back on whole pixels here
+-- (Core/Auras.lua leaves an icon the client has closed alone), and the caller paints its border again.
+local function emphasize(f, scale)
+  if scale == (f.vgEmphasis or 1) then return false end
+  f.vgEmphasis = scale
+  f:SetScale(scale)
+  for _, key in ipairs(NP.ROWS) do
+    if f[key] then ns.Auras.Refit(f[key].frame, NP.ScaleSame) end
+  end
+  return true
+end
+
+-- Your target's plate at its larger size, and its accent border, glow and marker (your focus's quieter border
+-- and marker). They are repainted only when the plate's size, its target or focus state changed or its
+-- scale (the pixel size of the edge and the glow) left NP.SCALE_SLACK of the one they were painted at.
 function NP.UpdateTarget(f, unit)
-  local target, scale = targetShown(unit), f:GetEffectiveScale()
-  if target == f.vgTarget and NP.ScaleHolds(scale, f.vgScale) then return end
+  local isTarget = isUnit(unit, "target")
+  local resized = emphasize(f, isTarget and NP.layout.targetScale / 100 or 1)
+  local target, scale = targetShown(unit, isTarget), f:GetEffectiveScale()
+  if not resized and target == f.vgTarget and NP.ScaleHolds(scale, f.vgScale) then return end
   paintTarget(f, target, scale)
 end
 
@@ -1094,7 +1119,7 @@ local EVENTS = {
 -- Repaints a plate's look after a theme change: its target border and glow, and its bar's colour
 -- (tapped, threat, class or reaction follow the colour variant, and a quiet plate gets no event to repaint it).
 local function repaintLook(f, unit)
-  paintTarget(f, targetShown(unit), f:GetEffectiveScale())
+  paintTarget(f, targetShown(unit, isUnit(unit, "target")), f:GetEffectiveScale())
   NP.UpdateColor(f, unit)
 end
 
@@ -1251,6 +1276,7 @@ local function sizeRows()
   return {
     { "header", L["Size"] }, slider(L["Width"], "width"), slider(L["Height"], "height"),
     slider(L["Name text size"], "nameSize"), slider(L["Health text size"], "healthSize"),
+    slider(L["Target plate size"], "targetScale"),
   }
 end
 
