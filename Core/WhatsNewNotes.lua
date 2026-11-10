@@ -31,6 +31,19 @@ ns.WHATS_NEW = {
       { text = "On WoW Forever an aura icon the game has closed to addons is left alone, so no \"aura icon pixels\" line in chat." },
       { text = "/vg errors keeps a quiet entry if the game still refuses an aura icon." },
     } },
+    { module = "UnitFrames", label = "Unit frames", items = {
+      { text = "Every unit frame has width and height sliders, applied without a reload.", page = "unitframes", row = "Player: width" },
+      { text = "Health as gains Both and Missing, and a small power line under it.", page = "unitframes", row = "Show power as" },
+      { text = "Incoming heal and shield bars and a row of status marks on your frame, your target's and the party's." },
+      { text = "Portraits for you, your target and your focus under Hairline, Rimmed and Tabs.", page = "unitframes", row = "Player portrait" },
+      { text = "A focus target frame stands beside your focus while it has a target." },
+    } },
+    { module = "ActionBars", label = "Action bars and motion", items = {
+      { text = "Macro names, key text and button spacing apply without a reload.", page = "actionbars", row = "Macro names" },
+      { text = "Auto-attack and Auto Shot buttons flash while the attack runs." },
+      { text = "Your keys gets a function row, a number pad and a layout choice." },
+      { text = "State cues: a pulse at the pull, a proc ring, a flash when a cooldown ends, a ring at low health.", page = "general", row = "State cues" },
+    } },
     { module = "Tooltips", label = "Tooltips", items = {
       { text = "A player's tooltip adds their guild and rank, their realm if another, and their role.", page = "windows", row = "Guild and rank" },
       { text = "Your own tooltip shows your equipped item level.", page = "windows", row = "Your own item level" },
@@ -49,6 +62,7 @@ ns.WHATS_NEW = {
       { text = "A page's card fades in when you change pages." },
     } },
     { module = "QuestTracker", label = "Quests", items = {
+      { text = "Hand the quest windows to the game at once, for the session.", page = "quests", row = "Use the game's quest windows for now" },
       { text = "Zones folded in the game's quest log stay folded unless Vanguard needs them.", page = "quests", row = "Open folded zones in the quest log" },
       { text = "Pick the reward that sells for most leaves the choice to you when a reward is a gear upgrade." },
       { text = "The quest arrow and minimap spots hold their place in a fight, and are right again within a second of its end." },
@@ -59,6 +73,19 @@ ns.WHATS_NEW = {
       { text = "A stranger you whispered in the last ten minutes may invite you.", page = "windows", row = "Decline group invites from strangers" },
       { text = "Gear upgrades give no upgrade line or arrow to an off-hand item while you wear a two-hander alone." },
       { text = "Merchant helpers off no longer drops the HUD text font, now its own module.", page = "modules", row = "HUD text font" },
+    } },
+    { module = "Other", label = "Chat, profiles and town", items = {
+      { text = "The chat filter's word lists and the group board's phrases come per language; a language with no filter lists shows no category switches." },
+      { text = "An empty saved keyword no longer makes the chat filter catch every line." },
+      { text = "/vg profile <name> matches in any case and asks before making a new profile; copy and delete ask first." },
+      { text = "A setup backup never overwrites a profile it did not make, and Undo setup restores the profile it backed up." },
+      { text = "The group board scrolls, the craft queue gets a panel beside the profession window, and the talent plan can be put in an order." },
+      { text = "Confirm at the auction house posts only the item the sale was set up for." },
+      { text = "Nameplate aura icons get a thin edge, not dark blocks, and the game's quest tracker text stays hidden after a fight." },
+    } },
+    { module = "Other", label = "Moved and retired", items = {
+      { text = "Pet stable and the Legacy helper are gone (/vg pets, /vg legacy); the Legacy probe is /vg probe legacy." },
+      { text = "The boss timer spots are movers; the officer roster is on the Raid frames page.", page = "raid", row = "Show or hide the roster" },
     } },
     { module = "Other", label = "Speed and safety", items = {
       { text = "Raid tiles listen for heals, shields, threat and aura changes of their own member only." },

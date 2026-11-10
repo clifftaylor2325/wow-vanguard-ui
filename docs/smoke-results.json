@@ -614,5 +614,152 @@
     "date": "2026-11-09",
     "result": "skip",
     "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "8.6g",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "7.2o",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "7.2p",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "7.2q",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "7.2r",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "10.3c",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "10.3d",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "10.4d",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "10.9b",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "18.2a",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "20.3",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "30.3",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.476",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.477",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.478",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.479",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.480",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.481",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.482",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.483",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "33.484",
+    "build": "0.9.5",
+    "date": "2026-11-10",
+    "result": "skip",
+    "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
   }
 ]
