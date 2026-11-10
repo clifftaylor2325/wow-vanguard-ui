@@ -128,3 +128,17 @@ it("lifecycle: vendor memory switched off remembers and says nothing new, keeps 
   addon.advance(0.25);
   expect(addon.eval("return #VanguardDB.vendors.items[159]")).toBe(2);
 });
+
+// Inventory -----------------------------------------------------------------------------------------------------
+
+lifecycleCases("Inventory", loginWith());
+
+it("lifecycle: inventory switched off reads nothing new and keeps its records, and on again reads the bags", () => {
+  const addon = loginWith()();
+  addon.eval('ns.GetModule("Inventory").Mine().money = -1 ns.SetModuleEnabled("Inventory", false)');
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.advance(2);
+  expect(addon.eval('return ns.GetModule("Inventory").Mine().money'), "the record is not touched while it is off").toBe(-1);
+  addon.eval('ns.SetModuleEnabled("Inventory", true)');
+  expect(addon.eval('return ns.GetModule("Inventory").Mine().money ~= -1'), "read again at the start").toBe(true);
+});
