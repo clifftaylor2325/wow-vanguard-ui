@@ -372,14 +372,34 @@ function samplesByEvent(addon, steps) {
   return byEvent;
 }
 
-// Plays the script once with the profiler's sampler on the state's count hook, and puts the hook back
-// after, so the timed repetitions run without it. Under npm run profile the state samples already.
+// Instructions per sample in the bench's profiled repetition: a twentieth of the harness's period. At the harness's
+// 1000 an event with few steps (a roster update: 34 in a repetition) gets about fifty samples, and its count then
+// moves by a tenth or more with where the samples happen to fall, change or no change; at 50 it holds to about 1%.
+export const BENCH_SAMPLE = 50;
+
+// The bench's hook: a sample on every count event, and the state's own hook on every (PER_SAMPLE / BENCH_SAMPLE)th,
+// so the state's instruction accounting still moves in its own steps.
+function fineHook(hook, sample) {
+  let events = 0;
+  return (state, ar) => {
+    if (ar.event !== lua.LUA_HOOKCOUNT) return hook(state, ar);
+    sample(state);
+    if (++events % (PER_SAMPLE / BENCH_SAMPLE) === 0) hook(state, ar);
+  };
+}
+
+// Instructions per sample in the profiled repetition: the bench's own fine period, or the harness's under
+// npm run profile, where the state samples already.
+export function benchSample(env = process.env) {
+  return env.LUA_PROFILE ? PER_SAMPLE : BENCH_SAMPLE;
+}
+
+// Plays the script once with the profiler's sampler on the state's count hook (at the bench's fine period), and puts
+// the hook back after, so the timed repetitions run without it. Under npm run profile the state samples already.
 function profiledPass(addon, steps) {
   const L = addon.L;
   const [hook, mask, every] = [lua.lua_gethook(L), lua.lua_gethookmask(L), lua.lua_gethookcount(L)];
-  const sample = process.env.LUA_PROFILE ? null : profileSampler();
-  // The state's own hook, then a sample on each count event.
-  if (sample) lua.lua_sethook(L, (state, ar) => { hook(state, ar); if (ar.event === lua.LUA_HOOKCOUNT) sample(state); }, mask, every);
+  if (!process.env.LUA_PROFILE) lua.lua_sethook(L, fineHook(hook, profileSampler()), mask, BENCH_SAMPLE);
   try {
     return samplesByEvent(addon, steps);
   } finally {
@@ -413,15 +433,15 @@ export function stats(values) {
   return { median, min, max, spreadPct: median ? ((max - min) / median) * 100 : 0 };
 }
 
-// The Lua instructions each file ran in its own functions, in all and per event (samples times PER_SAMPLE).
-export function moduleCounts(byEvent) {
+// The Lua instructions each file ran in its own functions, in all and per event (samples times perSample).
+export function moduleCounts(byEvent, perSample = PER_SAMPLE) {
   const modules = {};
   for (const [event, data] of Object.entries(byEvent)) {
     for (const [file, { self }] of Object.entries(data.files)) {
       if (!self) continue;
       const m = (modules[file] ??= { self: 0, byEvent: {} });
-      m.self += self * PER_SAMPLE;
-      m.byEvent[event] = (m.byEvent[event] ?? 0) + self * PER_SAMPLE;
+      m.self += self * perSample;
+      m.byEvent[event] = (m.byEvent[event] ?? 0) + self * perSample;
     }
   }
   return modules;
@@ -465,7 +485,7 @@ export function commitInfo(cwd = root) {
 export function runBench(opts, progress = () => {}) {
   const steps = makeScript(opts);
   const { reps, byEvent } = playAll(steps, opts, progress);
-  const modules = byEvent ? moduleCounts(byEvent) : null;
+  const modules = byEvent ? moduleCounts(byEvent, benchSample()) : null;
   const totals = reps.map((rep) => Object.values(rep).reduce((a, b) => a + b, 0));
   const settings = { seed: opts.seed, scriptEvents: opts.events, steps: steps.length, reps: opts.reps, warmup: opts.warmup, raid: RAID_SIZE, inCombat: true };
   return { label: LABEL, ...commitInfo(), date: new Date().toISOString(), node: process.version, ...settings,
