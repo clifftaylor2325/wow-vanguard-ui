@@ -137,6 +137,12 @@ or label is audited too. `scripts/tests/textfit.test.mjs` is the suite's check; 
 
 ### Timing and profiling
 
+- In an agent's shell Vitest picks its quiet reporter (failures, then the totals), so a full run
+  would print nothing for most of an hour. There a line prints as each test file finishes,
+  `[ 37/188] ok     35.2s  lua    scripts/tests/chat.test.mjs (152 tests)  12m04s in`
+  (`scripts/lib/progress-reporter.mjs`); `VG_PROGRESS=1` asks for the lines anywhere and
+  `VG_PROGRESS=0` turns them off. The longest files run first, so the count moves slowly at the
+  start: the first third of the files is about three quarters of the time.
 - `npm run timing` runs the suite on 2 workers (the hosted runner's size) and
   prints the total wall time, a per-file table and the test counts. `--workers <n>`
   changes the cap, `--budget <seconds>` the limit it fails over (default 300),
