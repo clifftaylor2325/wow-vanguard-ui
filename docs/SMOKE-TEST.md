@@ -1202,6 +1202,18 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the icon loses its red the moment you untick and turns red again the moment you tick; nothing waits for a reload or a step. No error.
 - If it fails, paste: what the icon showed and `/vg errors`.
 
+### 10.3c Macro names, key text and spacing, live
+
+- Do: put a macro on a bar 1 button (`/macro`, make one named "Burst", drag it onto the bar) and a potion or reagent spell on the next. Open `/vg` → Action bars, untick **Macro names**, then **Key text**, then tick both again; move **Button spacing** to 0, then 10, then back to 2, out of combat; then start a fight, move the slider again and end the fight. Rename the macro.
+- Expect: "Burst" along the bottom of its button on one line, cut at the button's edge; the potion shows its count, no name. Unticking Macro names or Key text takes those texts off every button at once (in a fight too), ticking brings them back; the keys still cast while Key text is off. The spacing changes at once out of combat and the bottom bars stay stacked with no overlap; moved in a fight it waits and applies when the fight ends. The renamed macro's new name shows. No reload is asked for and `/vg errors` stays empty. [Needs in game: that `C_ActionBar.UsesActionText` and `GetActionText` answer for a macro on this client, and that the name and the count don't cover each other on an item macro.]
+- If it fails, paste: a screenshot of the two buttons, the slider value, and `/vg errors`.
+
+### 10.3d Auto-attack and Auto Shot flash
+
+- Do: put Attack on a bar button and start auto-attacking a target dummy or mob, then stop (Escape or move away). On a hunter, put Auto Shot on a button, start shooting, then stop. Turn on General → **Reduce motion** and attack again.
+- Expect: while you auto-attack (or Auto Shot repeats) its button blinks a vermilion wash over the icon on and off about every 0.4 s, as the game's own buttons do, and stops at once when the attack stops; other buttons don't blink. With Reduce motion on the wash stays lit without blinking. `/vg errors` stays empty. [Needs in game: that `C_ActionBar.IsAttackAction` marks the Attack button and that `PLAYER_ENTER_COMBAT`, `PLAYER_LEAVE_COMBAT`, `START_AUTOREPEAT_SPELL` and `STOP_AUTOREPEAT_SPELL` fire on this client.]
+- If it fails, paste: your class, the button's action, what it showed, and `/vg errors`.
+
 ### 10.4 Keybind mode on the action bars
 
 - Do: out of combat, type `/vg keybind`. Hover an empty slot on bar 1 and press Shift+Q; then, still over it, press mouse button 4, roll the wheel down, and press Backspace. Hover a button that has a key and press W. Hover a button and left-click it. Press Escape.
