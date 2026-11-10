@@ -86,7 +86,7 @@ it("a spec change in a fight waits for it to end; with no player frame nothing i
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect([shown(addon, "stagger"), shown(addon, "chi")], "and back again, reusing the built row").toEqual([false, true]);
   const noFrames = retail("PALADIN", 1, "", { savedVariables: "VanguardDB.profiles = { Default = { modules = { UnitFrames = false } } }" });
-  expect(noFrames.eval('local CB = ns.GetModule("ClassBars") CB.ShowResource() return next(CB.resourceFrames)'), "no player frame, no row").toBe(null);
+  expect(noFrames.eval('local CB = ns.GetModule("ClassBars") return { ns.ModuleLive("ClassBars"), next(CB.resourceFrames or {}) }'), "no player frame: class bars need the unit frames (requires), so they don't run, and no row").toEqual([false]);
 });
 
 it("stagger: a thin bar under the player frame, amber past 30% of your health and vermilion past 60%", () => {

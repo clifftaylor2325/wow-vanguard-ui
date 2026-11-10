@@ -1,7 +1,11 @@
 // raidroster: the raid roster panel of the raid tools (Modules/RaidRoster.lua) in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { isTok, loggedIn } from "./helpers.mjs";
+import { isTok, loggedIn as login } from "./helpers.mjs";
+
+// The addon logged in with the raid tools on: the roster is theirs (a live module, which this file's scoped login
+// switches off with the other heavy modules).
+const loggedIn = (extra = "", opts) => login(`${extra}\nVanguardDB.profiles.Default.modules.RaidTools = nil`, opts);
 
 // Types a /vg command and returns the chat lines it printed, joined.
 const say = (addon, cmd) => { addon.chat(); addon.slash(cmd); return Array.from(addon.chat()).join("\n"); };
