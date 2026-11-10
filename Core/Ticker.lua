@@ -17,11 +17,20 @@ local driver = CreateFrame("Frame")
 ns.ticker = driver
 driver.vgJobs = jobs
 
+-- Whether a job counts time now: it has no frame, or its frame is plainly visible. A hidden (secret) answer
+-- counts as not visible, so it is never truth-tested.
+local function counting(job)
+  return job.frame == nil or ns.IsTrue(job.frame:IsVisible())
+end
+
 -- Moves a job's time on by dt and runs it once a period is up. A job tied
 -- to a frame counts time only while that frame is visible, as the frame's
--- own OnUpdate would.
+-- own OnUpdate would; a frame the client refuses to answer for (one it closed) fails
+-- that job alone, under its label, never the walk over the others.
 local function advance(job, dt)
-  if job.stopped or (job.frame and not job.frame:IsVisible()) then return end
+  if job.stopped then return end
+  local ok, counts = ns.TryRepeating(job.label, counting, job)
+  if not (ok and counts) then return end
   job.elapsed = job.elapsed + dt
   if job.elapsed < job.period then return end
   job.elapsed = 0

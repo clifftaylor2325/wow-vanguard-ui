@@ -84,3 +84,23 @@ it("ns.AfterStill runs the work once, a wait after the last time it was asked fo
   addon.advance(2, 0.1);
   expect(state()[0], "and not again").toBe(1);
 });
+
+it("ticker jobs: a job whose frame the client refuses (it raises on IsVisible) costs only that job; the others still run", () => {
+  expectErrors(/^ticker TEST-ONLY refused: eval:\d+: TEST-ONLY forbidden$/);
+  const addon = counting();
+  addon.eval(`__refused = CreateFrame("Frame", nil, UIParent)
+    __refused.IsVisible = function() error("TEST-ONLY forbidden") end
+    ns.Every("TEST-ONLY refused", 0.5, __count("refused"), __refused)
+    ns.Every("TEST-ONLY after", 0.5, __count("after"))`);
+  addon.advance(2, 0.25);
+  expect(addon.eval("return { __runs.refused or 0, __runs.after or 0 }"), "the refused job never runs; the job after it runs every half second").toEqual([0, 4]);
+});
+
+it("ticker jobs: a frame whose shown state the client hides counts as hidden, never truth-tested", () => {
+  const addon = counting();
+  addon.eval(`__hidden = CreateFrame("Frame", nil, UIParent)
+    __hidden.IsVisible = function() return __wfgWorld.secret(true) end
+    ns.Every("TEST-ONLY hidden", 0.5, __count("hidden"), __hidden)`);
+  addon.advance(2, 0.25);
+  expect(addon.eval("return __runs.hidden or 0"), "a hidden answer: the job waits").toBe(0);
+});

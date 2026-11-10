@@ -3,7 +3,7 @@
 // on the action bars, the info strip, the data bars and the menu strip.
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, DATA_ENV, MICRO_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, loggedIn, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, DATA_ENV, MICRO_ENV, STRIPS_ENV, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 // The state a setting compiles to, from Lua values.
 const state = (addon, mode, when = "nil") => addon.eval(`return ns.Visibility.State(${mode}, ${when})`);
@@ -236,4 +236,20 @@ it("ns.Where is the client's instance type, or none outside one or when the clie
   expect([where("true, 'party'"), where("true, 'raid'"), where("true, 'pvp'"), where("true, 'arena'")], "dungeon, raid, battleground, arena").toEqual(["party", "raid", "pvp", "arena"]);
   expect([where("false, 'none'"), where(null), where("true, __wfgWorld.secret()"), where("true, ''"), where("true, nil")], "outside, no client call, a hidden, empty or missing type")
     .toEqual(["none", "none", "none", "none", "none"]);
+});
+
+// TEST-ONLY: two tracked frames, one whose reapply fails; __good counts the other's runs.
+const TWO_TRACKED = `__good = 0
+  __bad, __fine = CreateFrame("Frame", nil, UIParent), CreateFrame("Frame", nil, UIParent)
+  __bad.vgInstance, __bad.vgCalm, __fine.vgInstance, __fine.vgCalm = true, "strips", true, "strips"
+  ns.Visibility.Track(__bad, function() error("TEST-ONLY reapply") end)
+  ns.Visibility.Track(__fine, function() __good = __good + 1 end)`;
+
+it("a zone change or a Calm HUD change reapplies every tracked frame, though one of them fails", () => {
+  expectErrors(/^visibility zone: eval:\d+: TEST-ONLY reapply$/, /^visibility calm: eval:\d+: TEST-ONLY reapply$/);
+  const addon = loggedIn(TWO_TRACKED);
+  addon.eval("__good = 0");
+  addon.fire("ZONE_CHANGED_NEW_AREA");
+  addon.eval("ns.Visibility.ApplyCalm()");
+  expect(addon.eval("return __good"), "the other frame took its state both times").toBe(2);
 });
