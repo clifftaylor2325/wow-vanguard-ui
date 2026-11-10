@@ -223,6 +223,7 @@ it("options: after Copy here or Reset profile on the profile in use, the footer 
   const typed = loggedIn(CLICK_LUA);
   typed.eval('ns.NewProfile("TEST-ONLY Healer")');
   typed.slash("profile copy TEST-ONLY Healer");
+  typed.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   typed.eval('ns.Options.Show("profiles")');
   expect(notice(typed), "and /vg profile copy, the window opened after it").toEqual([true, "Profile replaced: reload before you change more"]);
 });

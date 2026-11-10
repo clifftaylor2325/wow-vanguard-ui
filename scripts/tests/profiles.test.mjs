@@ -114,10 +114,12 @@ it("profile management", () => {
   expect(chatHas(addon, /taken or not allowed/), "names are unique").toBeTruthy();
   addon.eval("VanguardDB.profiles.Raid.theme = { accent = { 0, 1, 0 } }");
   addon.slash("profile copy Raid");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect(addon.eval("return VanguardDB.profiles.Default.theme.accent[2]") === 1, "/vg profile copy copies into the active profile").toBeTruthy();
   addon.slash("profile delete Default");
   expect(chatHas(addon, /Can't delete/), "the active profile can't be deleted").toBeTruthy();
   addon.slash("profile delete Raid");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect(addon.eval("return VanguardDB.profiles.Raid") === null, "others can").toBeTruthy();
   addon.slash("profile reset");
   expect(addon.eval("return VanguardDB.profiles.Default.theme ~= nil and Vanguard_Question:IsShown()"), "/vg profile reset asks first").toBe(true);
@@ -134,6 +136,42 @@ it("/vg profile <name>: a profile's exact name wins over the verbs, so Copy Raid
   addon.slash("profile Copy Raid");
   expect(addon.eval("return { ns.PendingProfileName(), VanguardDB.profiles.Default.theme.accent[1], VanguardDB.profiles.Raid.theme.accent[2] }"), "it stages Copy Raid; Default and Raid are untouched")
     .toEqual(["Copy Raid", 1, 1]);
+});
+const yes = (addon) => addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+const no = (addon) => addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+const asking = (addon) => addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()");
+it("hunt setup: /vg profile copy and delete ask first with the Profiles page's warning, and No changes nothing", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.eval("VanguardDB.profiles.Raid.theme = { accent = { 0, 1, 0 } }");
+  addon.slash("profile copy Raid");
+  expect(asking(addon), "copy asks").toBe("Replaces every setting in profile Default with profile Raid's. It can't be undone.");
+  no(addon);
+  expect(addon.eval("return VanguardDB.profiles.Default.theme.accent[2] ~= 1"), "No leaves the profile alone").toBe(true);
+  addon.slash("profile delete Raid");
+  expect(asking(addon), "delete asks").toBe("Deletes profile Raid for every character on this account. It can't be undone.");
+  no(addon);
+  expect(addon.eval("return VanguardDB.profiles.Raid ~= nil"), "No keeps it").toBe(true);
+  yes(addon);
+  addon.slash("profile delete Nothing");
+  expect(chatHas(addon, /Can't delete/), "a missing profile is refused without a question").toBe(true);
+});
+it("hunt setup: /vg profile <name> matches an existing profile in any case, an exact name wins, and a new name asks before creating", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile raid");
+  expect(addon.eval("return { ns.PendingProfileName(), VanguardDB.profiles.raid == nil }"), "a different case switches to Raid and makes nothing").toEqual(["Raid", true]);
+  addon.slash("profile new RAID");
+  addon.slash("profile RAID");
+  expect(addon.eval("return ns.PendingProfileName()"), "an exact match wins over the first in name order").toBe("RAID");
+  addon.eval("ns.UseProfile('Default')");
+  addon.slash("profile Typo");
+  expect(asking(addon), "a name that matches nothing asks").toBe("Create a new profile named Typo?");
+  no(addon);
+  expect(addon.eval("return { VanguardDB.profiles.Typo == nil, ns.PendingProfileName() == nil }"), "No creates nothing").toEqual([true, true]);
+  addon.slash("profile Typo");
+  yes(addon);
+  expect(addon.eval("return { VanguardDB.profiles.Typo ~= nil, ns.PendingProfileName() }"), "Yes creates it and stages it").toEqual([true, "Typo"]);
 });
 it("spec profiles", () => {
   const env = "GetSpecialization = function() return __spec end __spec = 2";
@@ -668,6 +706,7 @@ it("Copy here while a switch waits copies into the profile used after the reload
   expect(addon.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }"), "Raid is staged for the reload").toEqual(["Default", "Raid"]);
   addon.clearChat();
   addon.slash("profile copy Healer");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
   expect(addon.eval("return VanguardDB.profiles.Raid.theme.accent[2]"), "/vg profile copy writes into the incoming profile").toBe(1);
   expect(addon.eval("return VanguardDB.profiles.Default.theme.accent[1]"), "and leaves the running profile alone").toBe(1);
   expect(addon.eval("return Vanguard_Reload.title:GetText()"), "the reload offer names the profile it copied into").toBe("Copied Healer into Raid. Reload the UI now to apply it?");
