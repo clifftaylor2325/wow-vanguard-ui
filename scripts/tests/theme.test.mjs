@@ -490,6 +490,27 @@ it("tooltip-like frames: a panel with a shadow and the game's NineSlice faded, o
   expect(out, "faded, painted once, and a frame without a NineSlice works too").toEqual([0, 1, true]);
 });
 
+it("a repaint never reads an edge's shown state back: the client can hold it secret, and a secret passed to SetShown raises", () => {
+  const addon = loggedIn();
+  const [asked, shown, bareShown] = addon.eval(`local T = ns.Theme
+    local f = CreateFrame("Frame", nil, UIParent) f:SetSize(100, 40) f:SetPoint("CENTER")
+    T.Panel(f)
+    local asked, edges = 0, {}
+    for _, owner in ipairs({ f, f:GetChildren() }) do
+      for _, r in ipairs({ owner:GetRegions() }) do
+        if r.__height and not r.__width or r.__width and not r.__height then edges[#edges + 1] = r end
+      end
+    end
+    for _, r in ipairs(edges) do r.IsShown = function() asked = asked + 1 return { __secret = true } end end
+    T.RepaintFrame(f)
+    local shown = 0
+    for _, r in ipairs(edges) do r.IsShown = nil if r:IsShown() then shown = shown + 1 end end
+    return { asked, shown, #edges }`);
+  expect(bareShown, "the panel has its four edges").toBeGreaterThanOrEqual(4);
+  expect([asked, shown], "no edge was asked whether it is shown, and a shown plate left them as painted").toEqual([0, bareShown]);
+  expect(addon.eval("return #ns.errors"), "and nothing raised").toBe(0);
+});
+
 it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
   const addon = loggedIn();
   const out = addon.eval(`
