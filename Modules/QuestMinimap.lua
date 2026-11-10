@@ -140,7 +140,8 @@ end
 function QM.Draw()
   local s = QM.settings.show and QM.mapID and #QM.spots > 0 and scale(QM.mapID)
   local width, n = ns.PlainNumber(QM.layer:GetWidth()), 0
-  for _, sp in ipairs(s and width and QM.spots or {}) do
+  -- A minimap the client has not sized yet (or one too small for a mark) has no room: dividing by its reach gave NaN offsets.
+  for _, sp in ipairs(s and width and width > QM.SIZE and QM.spots or {}) do
     n = n + 1
     place(n, sp, QM.Offset(s, sp.x, sp.y, width / 2))
   end
