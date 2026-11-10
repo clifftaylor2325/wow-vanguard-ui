@@ -1,7 +1,7 @@
 // healing: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, FOREVER_ENV, HEALING_ENV, RAID_ENV, UNITS_ENV, healing, isTok, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, HEALING_ENV, RAID_ENV, UNITS_ENV, healing, isTok, loggedIn, unitEvents } from "./helpers.mjs";
 
 it("the power bar sits above the incoming-heal and shield bars and under the tile's texts, so a prediction never covers the mana strip", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
@@ -66,7 +66,7 @@ const AURA_LIST = `__auraCalls, __byName, __spellInfo, __secretAuras = 0, 0, 0, 
 // The buff watch's calls since the last look (then forgets them): { list, byName, spell }.
 const buffCalls = (addon) => addon.eval("local c = { list = __auraCalls, byName = __byName, spell = __spellInfo } __auraCalls, __byName, __spellInfo = 0, 0, 0 return c");
 
-it("buff watch: one aura pass per aura change, nothing on health, the names and known spells kept", () => {
+it("buff watch: by-name lookups and no aura list per aura change, nothing on health, the names and known spells kept", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);
   addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2"); __spawn(3, "raid3")');
   buffCalls(addon);
@@ -74,7 +74,7 @@ it("buff watch: one aura pass per aura change, nothing on health, the names and 
   expect([buffCalls(addon), healing(addon, 1).missing], "100 health events: no aura or spell lookups, the marker stays").toEqual([{ list: 0, byName: 0, spell: 0 }, "TEST-ONLY-ICON-Arcane Intellect"]);
   addon.eval("__buffs.raid1 = { ['Arcane Intellect'] = true }");
   addon.fire("UNIT_AURA", "raid1");
-  expect([buffCalls(addon), healing(addon, 1).missing], "one aura change: one pass over the unit's buffs, no by-name lookups, no spell lookups").toEqual([{ list: 1, byName: 0, spell: 0 }, false]);
+  expect([buffCalls(addon), healing(addon, 1).missing], "A1-6: one aura change: a by-name lookup that finds the first watched buff, no list of every buff built, no spell lookups").toEqual([{ list: 0, byName: 1, spell: 0 }, false]);
   expect(addon.eval('local RH = ns.GetModule("RaidHealing") return RH.BuffNames() == RH.BuffNames()'), "the name list is read once and kept").toBe(true);
   addon.eval("__buffs.raid1 = {} __known = { ['Arcane Brilliance'] = true } GetSpellInfo = nil");
   addon.fire("SPELLS_CHANGED");
@@ -86,7 +86,7 @@ it("buff watch: one aura pass per aura change, nothing on health, the names and 
   expect(healing(addon, 1).missing, "a fight that hides auras takes the marker away").toBe(false);
 });
 
-it("Y1-4 buff watch: an aura event that only refreshes auras reads no aura list; one that adds, removes or resets does", () => {
+it("Y1-4 buff watch: an aura event that only refreshes auras looks nothing up; one that adds, removes or resets does", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);
   addon.eval('__spawn(1, "raid1")');
   buffCalls(addon);
@@ -94,15 +94,15 @@ it("Y1-4 buff watch: an aura event that only refreshes auras reads no aura list;
   const aura = (info) => addon.eval(`__wfgStub.fire("UNIT_AURA", "raid1", ${info})`);
   aura("{ isFullUpdate = false, updatedAuraInstanceIDs = { 7, 8 } }");
   aura("{ isFullUpdate = false, addedAuras = {}, removedAuraInstanceIDs = {}, updatedAuraInstanceIDs = { 9 } }");
-  expect(buffCalls(addon).list, "two refreshes: no pass over the buffs").toBe(0);
+  expect(buffCalls(addon).byName, "two refreshes: no lookup").toBe(0);
   addon.eval("__buffs.raid1 = { ['Arcane Intellect'] = true }");
   aura("{ isFullUpdate = false, addedAuras = { { auraInstanceID = 10 } } }");
-  expect([buffCalls(addon).list, healing(addon, 1).missing], "a buff added: read, and the marker goes").toEqual([1, false]);
+  expect([buffCalls(addon).byName, healing(addon, 1).missing], "a buff added: looked up, and the marker goes").toEqual([1, false]);
   aura("{ isFullUpdate = false, removedAuraInstanceIDs = { 10 } }");
   aura("{ isFullUpdate = true }");
   aura("nil");
   aura("{ isFullUpdate = { __secret = true } }");
-  expect(buffCalls(addon).list, "removed, a full update, no info and a hidden flag: each read").toBe(4);
+  expect(buffCalls(addon).byName, "removed, a full update, no info and a hidden flag: each looked up").toBe(4);
 });
 
 it("healing reads: a hidden number goes through untouched, a missing call or a non-number is nil, never tested for truth", () => {
@@ -193,4 +193,30 @@ it("H40-4-1: a Forever paladin's watch counts Blessing of Sanctuary, normal or g
   addon.eval("__buffs.raid1 = {}");
   addon.fire("UNIT_AURA", "raid1");
   expect(healing(addon, 1).missing, "no blessing: marked").toBe("TEST-ONLY-ICON-Blessing of Might");
+});
+
+// A1-6 (M1): the raid add-ons' unit events are each tile's own, not every unit's.
+it("A1-6: heal prediction, shields, threat and auras are heard per tile, so another unit's events run nothing here", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);
+  addon.eval('__spawn(1, "raid1"); __spawn(2, "raid2")');
+  for (const event of ["UNIT_AURA", "UNIT_HEAL_PREDICTION", "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_THREAT_SITUATION_UPDATE"]) {
+    const heard = unitEvents(addon, event);
+    expect([heard.subs.includes("raid1") && heard.subs.includes("raid2"), heard.plain], event + ": each tile's own unit, nothing for every unit").toEqual([true, 0]);
+  }
+  buffCalls(addon);
+  addon.fire("UNIT_AURA", "nameplate3");
+  addon.fire("UNIT_AURA", "target");
+  expect(buffCalls(addon), "a nameplate's and the target's aura changes look nothing up").toEqual({ list: 0, byName: 0, spell: 0 });
+  addon.eval("C_UnitAuras.GetAuraDataBySpellName = nil __buffs.raid2 = { ['Arcane Intellect'] = true }");
+  addon.fire("UNIT_AURA", "raid2");
+  expect([buffCalls(addon).list, healing(addon, 2).missing], "a client without the by-name lookup: one pass over the list instead").toEqual([1, false]);
+  addon.eval('Vanguard_RaidUnitButton2:SetAttribute("unit", "raid7") __units.raid7 = __units.raid2 __buffs.raid7 = {}');
+  addon.fire("UNIT_AURA", "raid7");
+  expect(healing(addon, 2).missing, "the tile's unit changed: it hears the new unit").toBe("TEST-ONLY-ICON-Arcane Intellect");
+});
+
+it("A1-6: with the raid frames off, raid healing takes no unit's heal, shield or threat events", () => {
+  const addon = loggedIn(UNITS_ENV + HEALING_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidFrames = false, UnitFrames = false, GroupThreat = false, RaidTools = false } } }" });
+  const plain = ["UNIT_HEAL_PREDICTION", "UNIT_ABSORB_AMOUNT_CHANGED", "UNIT_THREAT_SITUATION_UPDATE"].map((event) => unitEvents(addon, event).plain);
+  expect(plain, "no frame takes them for every unit").toEqual([0, 0, 0]);
 });

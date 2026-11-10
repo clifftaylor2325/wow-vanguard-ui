@@ -14,7 +14,8 @@
 // eight events. After those come the QUEST_TICK steps, one per 25 seeded steps: one
 // run of each quest ticker (the arrow's pick and redraw, the minimap marks' read and
 // redraw, three watched quests on the map) with the combat flag lifted for the step,
-// since they rest in a fight. It ends with steps that put the raid back as it started, so each
+// since they rest in a fight, and as many OTHER_UNIT_AURA steps (an aura change on a
+// nameplate's unit, which no raid tile should hear). It ends with steps that put the raid back as it started, so each
 // repetition starts alike. Each step is one call into Lua (no chunk compiled),
 // timed with performance.now(): --warmup untimed repetitions, then --reps timed
 // ones; per event the median time per step over the repetitions, its range and

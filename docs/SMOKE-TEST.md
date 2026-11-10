@@ -537,6 +537,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a small tile for that player at the top left, beside the raid tools, with health in their class colour.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 6.2c Raid tiles follow their own members' heals, shields, threat and buffs (if you can)
+
+- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf` after a fight with many nameplates up.
+- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf` lists no long UNIT_AURA handler from the raid frames.
+- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf` lines.
+
 ### 6.4 Preview the party and raid frames alone
 
 - Do: on a profile whose frames you haven't moved (for example a new one from `/vg` → Profiles), out of a group and out of combat, type `/vg preview party`, then `/vg preview 25` and `/vg preview 40`. Open `/vg` → Raid frames, change Width, Height, Style, Sort by role and Groups as, then pick Off under Preview. Turn it on again and attack a training dummy.

@@ -570,6 +570,19 @@ local function track(b, unit)
   local isPlayer = unit and RF.Same(unit, "player")
   if isPlayer then RF.byUnit.player = b end
   ns.SetUnits(b.unitEvents, unit, isPlayer and "player" or nil)
+  for _, sub in ipairs(b.moreEvents or {}) do ns.SetUnits(sub, unit, isPlayer and "player" or nil) end
+end
+
+-- Another module's unit events on a tile, for the tile's own unit only (as the tile's own events: nobody else's
+-- aura, heal or threat reaches it): fn(b, unit, event, ...) while the tile shows. It follows the tile's unit (track).
+---@param b Frame  a raid tile
+---@param events string|string[]
+---@param fn fun(b: Frame, unit: string, event: string, ...)
+function RF.OnTileUnit(b, events, fn)
+  local sub = ns.OnUnit(events, function(event, unit, ...) if b:IsShown() then fn(b, unit, event, ...) end end)
+  b.moreEvents = b.moreEvents or {}
+  b.moreEvents[#b.moreEvents + 1] = sub
+  ns.SetUnits(sub, b.tracked, RF.byUnit.player == b and "player" or nil)
 end
 
 -- A button's unit changed (roster change): track it and refresh it.

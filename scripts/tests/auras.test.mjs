@@ -157,7 +157,8 @@ it("raid auras listen for UNIT_AURA only on the fallback, where they paint the h
   expect(unitEvents(engine, "UNIT_AURA").plain, "on the client's engine nothing takes every unit's UNIT_AURA").toBe(0);
   const fallback = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + "__wfgStub.noAuraContainer = true", noHealing);
   fallback.eval('__spawn(1, "raid1") __spawn(2, "raid2")');
-  expect(unitEvents(fallback, "UNIT_AURA").plain, "on the fallback, one listener for every tile").toBe(1);
+  const heard = unitEvents(fallback, "UNIT_AURA");
+  expect([heard.plain, /raid1/.test(heard.subs) && /raid2/.test(heard.subs)], "A1-6: on the fallback too nothing takes every unit's UNIT_AURA; each tile hears its own unit's").toEqual([0, true]);
 });
 
 it("H28-2-2: on the fallback an offline player's tile drops the dispel wash with its icons, in an aura event too", () => {

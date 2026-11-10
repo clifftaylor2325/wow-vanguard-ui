@@ -108,16 +108,11 @@ local function repaint(b, unit)
   if b.dispel then paintDispel(b, unit) end
 end
 
--- UNIT_AURA: repaint the fallback highlight on the tile showing that unit.
-local function onAura(_, unit)
-  RF.ForUnit(unit, repaint)
-end
-
 -- On the fallback: the tile's own wash and edge, painted on each refresh.
--- Only these need UNIT_AURA here (the rows follow their own units), so it is
--- registered with the first one.
+-- Only these need UNIT_AURA here (the rows follow their own units), and each tile
+-- listens for its own unit's only (RF.OnTileUnit).
 local function legacyDispel(b)
-  ns.On("UNIT_AURA", onAura)
+  RF.OnTileUnit(b, "UNIT_AURA", repaint)
   b.dispel = CreateFrame("Frame", nil, b)
   b.dispel:SetAllPoints()
   b.dispel:SetFrameLevel(b:GetFrameLevel() + RA.LEVEL_ABOVE)

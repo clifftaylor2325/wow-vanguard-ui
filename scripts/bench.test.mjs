@@ -89,8 +89,9 @@ it("the script is deterministic, has every kind of step, and only does what the 
   const steps = makeScript({ seed: 255, events: 2000 });
   expect(makeScript({ seed: 255, events: 2000 })).toEqual(steps);
   expect(makeScript({ seed: 256, events: 2000 })).not.toEqual(steps);
-  expect(Object.keys(countEvents(steps)).sort()).toEqual(["GROUP_ROSTER_UPDATE", "OnUpdate", "QUEST_TICK", "UNIT_AURA", "UNIT_HEALTH", "UNIT_POWER_UPDATE", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP"]);
+  expect(Object.keys(countEvents(steps)).sort()).toEqual(["GROUP_ROSTER_UPDATE", "OTHER_UNIT_AURA", "OnUpdate", "QUEST_TICK", "UNIT_AURA", "UNIT_HEALTH", "UNIT_POWER_UPDATE", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP"]);
   expect([countEvents(steps).QUEST_TICK, countEvents(makeScript({ seed: 1, events: 3 })).QUEST_TICK], "A1-3: one quest-ticker step per 25 seeded steps, at least one").toEqual([2000 / QUEST_TICK_EVERY, 1]);
+  expect(countEvents(steps).OTHER_UNIT_AURA, "A1-6: and as many aura changes on a unit outside the raid").toBe(2000 / QUEST_TICK_EVERY);
   expect(steps.slice(0, 2000).some(([event]) => event === "QUEST_TICK"), "they follow the seeded steps, so a seed's steps are unchanged").toBe(false);
   expect(steps.every(([event, i]) => event === "OnUpdate" || (i >= 1 && i <= RAID_SIZE))).toBe(true);
   expect(replay(steps), "no step on an absent member, you never leave, and the closing steps put the raid back").toEqual({ away: 0, casting: 0, auras: 0, impossible: 0 });
