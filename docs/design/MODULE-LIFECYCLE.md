@@ -262,6 +262,8 @@ end
 
 ### 2.9 Live profile switching (A4-4)
 
+As built in A4-2a: the rule, the switch and the named offer are in (`Core/ProfileSwitch.lua`, `ns.PickProfile`), but no reload-only module declares `rebinds = true` yet (that audit is A4-4) and none declares `reload = L["why"]`, so any running reload-only module blocks every switch and players see today's staged switch. The path is tested with every real module off and TEST-ONLY modules.
+
 The rule is all or nothing. A profile switches now when nothing that is reload-only would differ. Otherwise it is staged as today and the dialog says why.
 
 ```lua
