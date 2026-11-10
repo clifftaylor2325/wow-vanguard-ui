@@ -23,9 +23,9 @@ On launch day, Vanguard loads without errors and everything it replaces works, v
 
 - ✓ Slate & Brass theme, centered layout, faction look, text size scaling — existing
 - ✓ Unit frames (player, target, ToT, focus, party, boss), cast bars, swing timer, threat readout, auras — existing
-- ✓ Raid frames (VuhDo-style), raid auras and status, main tank frames, raid tools — existing
+- ✓ Raid frames (grid style), raid auras and status, main tank frames, raid tools — existing
 - ✓ Click casting with grid, picker, hover keys, import/export — existing
-- ✓ Action bars with keybind mode, visibility rules, Masque support — existing
+- ✓ Action bars with keybind mode, visibility rules, button-skinning library support — existing
 - ✓ Nameplates, tooltips, gear upgrade hints, vendor memory, other characters' items — existing
 - ✓ Bags (combined, sections), merchant auto-repair/sell, errands, instance prep — existing
 - ✓ Quest dialog, tracker, log and automation; waypoints — existing

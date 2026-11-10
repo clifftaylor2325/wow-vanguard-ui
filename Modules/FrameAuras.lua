@@ -22,7 +22,7 @@ local FA = ns.Module("FrameAuras", {
   defaults = { onlyMine = true, debuffs = 8, buffs = 8, size = 20, timers = false, buffFilter = "all" },
 })
 
--- The Masque group the target and focus auras are in, when Masque is loaded (Core/Masque.lua).
+-- The skinning group the target and focus auras are in, when the library is loaded (Core/Masque.lua).
 FA.MASQUE = "Target and focus auras"
 -- The frames that get rows.
 FA.FRAMES = { "target", "focus" }

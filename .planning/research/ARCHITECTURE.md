@@ -285,7 +285,7 @@ First bottleneck for the milestone: login cost in the harness. Second: the large
 |---------|---------------------|-------|
 | WoW client API (`C_Item`, `C_Spell`, `C_UnitAuras`, `C_Container`, ...) | Looked up when used, guarded; new globals added to `.luacheckrc` `read_globals` | Never read a value that may be secret; `ns.IsSecret`, `ns.PlainNumber` |
 | Blizzard frames (windows reskin) | Registered by name through `GW.Add`; on-demand frames via `onDemand` | Frame names must be confirmed for 12.1 before they join the allowlist |
-| Other addons | `Vanguard.API.v1` (auction prices), Skin API (`Core/Skin.lua`), Masque (`Core/Masque.lua`) | Public surface documented in `docs/API.md`; changing a signature is a breaking change |
+| Other addons | `Vanguard.API.v1` (auction prices), Skin API (`Core/Skin.lua`), the skinning library (`Core/Masque.lua`) | Public surface documented in `docs/API.md`; changing a signature is a breaking change |
 | GitHub Actions (hosted only) | `verify.yml` per PR; `full-suite.yml`/`lua-suite.yml` scheduled; `release.yml` | Free-tier private-repo minutes: avoid matrix sharding and duplicate full runs |
 
 ### Internal boundaries

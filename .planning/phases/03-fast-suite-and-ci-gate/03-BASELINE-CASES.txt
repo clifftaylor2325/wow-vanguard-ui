@@ -185,7 +185,7 @@ scripts/tests/auction.test.mjs|entries by item link, ID or name; Remove on the r
 scripts/tests/auction.test.mjs|filters travel: exact names export in quotes, import as exact, and copies have their own
 scripts/tests/auction.test.mjs|hidden numbers and stray results
 scripts/tests/auction.test.mjs|history: 30 days of values are kept, older ones go at login, and older versions' prices still read
-scripts/tests/auction.test.mjs|import: plain lines and Auctionator's strings, within the caps
+scripts/tests/auction.test.mjs|import: plain lines and the common caret-and-semicolon strings, within the caps
 scripts/tests/auction.test.mjs|item names the client hasn't loaded yet, and a hidden price
 scripts/tests/auction.test.mjs|keys: Up and Down mark a listing, Enter opens it, only while the mouse is over the view; other keys go on
 scripts/tests/auction.test.mjs|list management from the pane's buttons: rename, duplicate, export, and delete after asking
@@ -230,7 +230,7 @@ scripts/tests/auctionapi.test.mjs|CreateShoppingList makes or replaces a list; A
 scripts/tests/auctionapi.test.mjs|MultiSearch searches each term through the shop's queue, only at the open auction house
 scripts/tests/auctionapi.test.mjs|MultiSearchExact searches a name the client knows by its item ID
 scripts/tests/auctionapi.test.mjs|RegisterForDBUpdate: callbacks run once on the frame after a scan, and after a search records a price
-scripts/tests/auctionapi.test.mjs|Vanguard.API.v1 has Auctionator's function names, and every one wants a callerID string
+scripts/tests/auctionapi.test.mjs|Vanguard.API.v1 has the function names of the auction API it mirrors, and every one wants a callerID string
 scripts/tests/auctionapi.test.mjs|a list the shop card shows is repainted when an addon changes it
 scripts/tests/auctionapi.test.mjs|auction prices by item ID and link: this realm and faction's cheapest unit price last seen, in copper
 scripts/tests/auctionapi.test.mjs|disenchant prices by item ID and link, whether or not you know Enchanting
@@ -418,9 +418,9 @@ scripts/tests/core.test.mjs|unit events: a failing handler is reported, an event
 scripts/tests/core.test.mjs|unit events: a subscription hears only the units it asked the client for, and can be pointed at others
 scripts/tests/core.test.mjs|wrong-typed saved values are replaced by their defaults
 scripts/tests/data.test.mjs|data bars
-scripts/tests/docks.test.mjs|boss docks: BigWigs gets directions, neither loaded says so, and the module off says so
+scripts/tests/docks.test.mjs|boss docks: one boss-timer addon gets directions, neither loaded says so, and the module off says so
 scripts/tests/docks.test.mjs|boss docks: the options button shows only while a boss mod is loaded
-scripts/tests/docks.test.mjs|boss docks: two movable spots, and /vg dock lines up DBM's bars with them
+scripts/tests/docks.test.mjs|boss docks: two movable spots, and /vg dock lines up the boss-timer bars with them
 scripts/tests/errorrail.test.mjs|a caught error carries its stack, and the guard's failure message prints it
 scripts/tests/errorrail.test.mjs|a throwing OnClick callback is reported under its click label
 scripts/tests/errorrail.test.mjs|a throwing SetPostItem hook is reported and the Post path goes on
@@ -458,8 +458,8 @@ scripts/tests/inventory.test.mjs|inventory: a client that can't say your name or
 scripts/tests/inventory.test.mjs|inventory: a crowd of characters is cut to six names
 scripts/tests/inventory.test.mjs|inventory: item tooltips list who else has it, in their class color, then the total
 scripts/tests/inventory.test.mjs|inventory: the bags are read at login and half a second after they change, the bank while it's open
-scripts/tests/masque.test.mjs|with Masque loaded, action, pet and stance buttons and aura icons go to Masque groups, without Vanguard's skin
-scripts/tests/masque.test.mjs|without Masque (or without LibStub) nothing changes
+scripts/tests/masque.test.mjs|with the skinning library loaded, action, pet and stance buttons and aura icons go to its groups, without Vanguard's skin
+scripts/tests/masque.test.mjs|without the skinning library (or without LibStub) nothing changes
 scripts/tests/more.test.mjs|/vg factionart: which of the game's own faction pictures the client has
 scripts/tests/more.test.mjs|Edit Mode shows Vanguard's handles too, with a note under its window
 scripts/tests/more.test.mjs|Edit Mode: a game frame Vanguard hides or replaces gets no handle, every other system keeps its own
@@ -544,7 +544,7 @@ scripts/tests/more.test.mjs|quest tracker: each quest keeps its own item button;
 scripts/tests/more.test.mjs|quest tracker: nearest first, collapsing, too many quests, and switched off
 scripts/tests/more.test.mjs|quest tracker: the nearest-first sort ticks only while that order is on
 scripts/tests/more.test.mjs|quest tracker: watched quests with levels, objectives and items
-scripts/tests/more.test.mjs|quest tracker: with Questie loaded, Questie's tracker shows instead unless Vanguard's is picked
+scripts/tests/more.test.mjs|quest tracker: with a quest addon loaded, its tracker shows instead unless Vanguard's is picked
 scripts/tests/more.test.mjs|raid frames: groups as rows, and the main tank's shield
 scripts/tests/more.test.mjs|raid tools: calls, target icons and world markers for the leader and assistants
 scripts/tests/more.test.mjs|the AFK screen fades in over 0.4 s and, when a fight starts, out in 0.15 s
