@@ -13,7 +13,9 @@
 // exact fengari version.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { expect, it } from "vitest";
 import { root } from "./check-zip.mjs";
 
@@ -58,27 +60,32 @@ it("lua-suite takes a boolean shuffle input that defaults to off", () => {
   expect(input).toMatch(/^ {8}default: false$/m);
 });
 
-it("the seed step is conditional, exports the seed and prints both replay forms", () => {
+it("the seed step is conditional, outputs the seed and prints both replay forms", () => {
   const step = stepNamed(workflow("lua-suite.yml"), "Pick and print the shuffle seed");
   expect(step).toMatch(/^\s+if: inputs\.shuffle$/m);
-  expect(step).toMatch(/VG_SHUFFLE_SEED=.*>> "\$GITHUB_ENV"/);
+  expect(step).toMatch(/^\s+id: seed$/m);
+  expect(step).toMatch(/echo "seed=\$seed" >> "\$GITHUB_OUTPUT"/);
   expect(step).toContain("Replay: VG_SHUFFLE_SEED=");
   expect(step).toContain("$env:VG_SHUFFLE_SEED=");
   expect(step).toContain('tee -a "$GITHUB_STEP_SUMMARY"');
 });
 
-it("the seed step comes before the coverage run", () => {
+it("one seed is picked in the plan job and every shard gets it, so the whole run shares one order", () => {
   const text = workflow("lua-suite.yml");
-  const seed = text.indexOf("- name: Pick and print the shuffle seed");
-  expect(seed).toBeGreaterThan(-1);
-  expect(text.indexOf("- run: npm run coverage")).toBeGreaterThan(seed);
+  const plan = jobText(text, "plan");
+  expect(plan).toContain("- name: Pick and print the shuffle seed");
+  expect(plan).toMatch(/^ {6}seed: \$\{\{ steps\.seed\.outputs\.seed \}\}$/m);
+  const shards = jobText(text, "shards");
+  expect(shards).toMatch(/^ {6}VG_SHUFFLE_SEED: \$\{\{ needs\.plan\.outputs\.seed \}\}$/m);
+  expect(shards).toMatch(/^ {4}needs: plan$/m);
+  expect(shards, "no shard picks a seed of its own").not.toContain("date +%s");
 });
 
-it("the raid bench runs after the coverage run, appends to the job summary, budgets instructions not time, and keeps its JSON", () => {
+it("the raid bench runs after the merged coverage, appends to the job summary, budgets instructions not time, and keeps its JSON", () => {
   const text = workflow("lua-suite.yml");
   const step = stepNamed(text, "Raid benchmark (harness measurement)");
   expect(runBlocks(step)).toEqual(['npm run bench -- --summary "$GITHUB_STEP_SUMMARY" --instr-budget scripts/bench-budget.json']);
-  expect(text.indexOf("- name: Raid benchmark (harness measurement)")).toBeGreaterThan(text.indexOf("- run: npm run coverage"));
+  expect(text.indexOf("- name: Raid benchmark (harness measurement)")).toBeGreaterThan(text.indexOf("- name: Merge the shards' coverage and apply the floor"));
   expect(step, "a slowdown in time never fails the run").not.toMatch(/--budget /);
   expect(text).toMatch(/^ {12}coverage\/bench\/\*\.json$/m);
 });
@@ -93,7 +100,7 @@ it("release never shuffles", () => {
 
 it("no run script holds an input expression", () => {
   const all = ["lua-suite.yml", "full-suite.yml", "release.yml"].map((f) => runBlocks(workflow(f)));
-  expect(all[0].some((b) => b.includes("GITHUB_ENV")), "the reader finds the seed script").toBe(true);
+  expect(all[0].some((b) => b.includes("GITHUB_OUTPUT")), "the reader finds the seed script").toBe(true);
   for (const blocks of all) for (const b of blocks) expect(b).not.toContain("${{ inputs.");
 });
 
@@ -425,7 +432,7 @@ function setupNodeSteps(text) {
 }
 
 it("every setup-node step reads .nvmrc and keeps the npm cache", () => {
-  const counts = { "verify.yml": 1, "lua-suite.yml": 2, "release.yml": 1, "full-suite.yml": 0 };
+  const counts = { "verify.yml": 1, "lua-suite.yml": 3, "release.yml": 1, "full-suite.yml": 0 };
   for (const [file, count] of Object.entries(counts)) {
     const steps = setupNodeSteps(workflow(file));
     expect(steps.length, `${file} setup-node steps`).toBe(count);
@@ -532,8 +539,95 @@ it("every lua-suite run keeps the Retail-only tests and the coverage floor", () 
   const text = workflow("lua-suite.yml");
   expect(text, "no input leaves out the Retail-only test files").not.toContain("VG_SKIP_RETAIL");
   expect(text).not.toMatch(/^ {6}(retail|coverage):$/m);
-  expect(text).toContain("- run: npm run coverage\n");
+  expect(runBlocks(jobText(text, "shards"))).toContain('npm run coverage -- --shard "$SHARD/$COUNT"');
+  expect(runBlocks(jobText(text, "checks"))).toContain('npm run coverage -- --merge coverage/shards --shards "$COUNT"');
   expect(runBlocks(text), "never the plain suite instead").not.toContain("npm test");
+  expect(runBlocks(text), "no job runs one whole unsharded coverage run").not.toContain("npm run coverage");
+});
+
+// Sharding (the suite split over parallel jobs, its coverage merged and judged once) --------------------
+
+// The text of one job of a workflow: from its `  <name>:` line to the next job.
+function jobText(text, name) {
+  const lines = text.split("\n");
+  const at = lines.indexOf(`  ${name}:`);
+  expect(at, `the workflow has a job named ${name}`).toBeGreaterThan(-1);
+  return [lines[at], ...deeperLines(lines, at + 1, 2)].join("\n");
+}
+
+it("lua-suite takes a shards input, a number defaulting to 4", () => {
+  const input = workflow("lua-suite.yml").match(/^ {6}shards:\n((?: {8}.*\n)+)/m)?.[1] ?? "";
+  expect(input).toMatch(/^ {8}type: number$/m);
+  expect(input).toMatch(/^ {8}default: 4$/m);
+});
+
+// Runs the plan step's script with SHARDS as given: { status, output } (what it wrote to GITHUB_OUTPUT).
+function planShards(value) {
+  const script = stepScript("lua-suite.yml", "Plan the shards");
+  const outFile = path.join(os.tmpdir(), `vg-plan-${process.pid}-${Math.abs(hashOf(value))}.txt`);
+  fs.writeFileSync(outFile, "");
+  const run = spawnSync("sh", ["-c", script], { env: { PATH: process.env.PATH, SHARDS: value, GITHUB_OUTPUT: outFile }, encoding: "utf8" });
+  const output = fs.readFileSync(outFile, "utf8");
+  fs.rmSync(outFile, { force: true });
+  return { status: run.status, output };
+}
+
+// A small number from a text (only to keep scratch file names apart).
+function hashOf(text) {
+  return [...text].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7);
+}
+
+it("the plan step turns the shards input into a count and a matrix list, and refuses anything else", () => {
+  if (process.platform === "win32") return;
+  expect(planShards("4")).toEqual({ status: 0, output: "count=4\nshards=[1,2,3,4]\n" });
+  expect(planShards("1").output).toBe("count=1\nshards=[1]\n");
+  expect(planShards("16").output).toContain("shards=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]");
+  for (const bad of ["0", "17", "", "x", "4; echo hi", "-1", "2.5"]) expect(planShards(bad), bad).toEqual({ status: 1, output: "" });
+});
+
+it("the shards input reaches the plan step through its environment, never inside a script", () => {
+  const step = stepNamed(workflow("lua-suite.yml"), "Plan the shards");
+  expect(step).toMatch(/^\s+SHARDS: \$\{\{ inputs\.shards \}\}$/m);
+  expect(runBlocks(step).join("\n")).not.toContain("${{");
+});
+
+it("the shards job runs one matrix job per shard, never stops the others, and judges no floor", () => {
+  const text = jobText(workflow("lua-suite.yml"), "shards");
+  expect(text).toMatch(/^ {6}fail-fast: false$/m);
+  expect(text).toMatch(/^ {8}shard: \$\{\{ fromJSON\(needs\.plan\.outputs\.shards\) \}\}$/m);
+  expect(text).not.toMatch(/^ {4}continue-on-error:/m);
+  expect(text).not.toContain("--merge");
+  for (const noCheck of ["npm run bench", "npm run quality", "package.mjs"]) expect(text, noCheck).not.toContain(noCheck);
+  expect(text, "every shard has the tools some tests use when installed").toContain("- name: luacheck 1.2.0 and Lua 5.1");
+});
+
+it("each shard uploads its hits and JUnit file even when its tests fail", () => {
+  const text = jobText(workflow("lua-suite.yml"), "shards");
+  const upload = text.split("- uses: actions/upload-artifact")[1] ?? "";
+  expect(upload).toMatch(/^ {8}if: always\(\)$/m);
+  expect(upload).toMatch(/^ {10}name: lua-shard-\$\{\{ matrix\.shard \}\}$/m);
+  expect(upload).toMatch(/^ {12}coverage\/lua-hits\/\*\.json$/m);
+  expect(upload).toMatch(/^ {12}coverage\/junit\.xml$/m);
+});
+
+it("the last job needs every shard, downloads their hits, merges and applies the floor before any check", () => {
+  const text = workflow("lua-suite.yml");
+  const checks = jobText(text, "checks");
+  expect(checks).toMatch(/^ {4}needs: \[plan, shards\]$/m);
+  expect(checks).toMatch(/^ {6}- uses: actions\/download-artifact@[0-9a-f]{40} # v\d+\.\d+\.\d+$/m);
+  expect(checks).toMatch(/^ {10}pattern: lua-shard-\*$/m);
+  expect(checks).toMatch(/^ {10}path: coverage\/shards$/m);
+  expect(checks).not.toMatch(/continue-on-error|^\s+if: (?!always\(\))/m);
+  const order = ["- name: Merge the shards' coverage", "- name: Raid benchmark", "- name: Code quality", "- name: luacheck\n", "- name: Release zip"].map((n) => checks.indexOf(n.replace("\\n", "\n")));
+  expect(order.every((at, i) => at > (order[i - 1] ?? -1))).toBe(true);
+});
+
+it("full-suite and release both run the sharded lua-suite and neither turns sharding down", () => {
+  for (const file of ["full-suite.yml", "release.yml"]) {
+    const text = workflow(file);
+    expect(text, file).toContain("uses: ./.github/workflows/lua-suite.yml");
+    expect(text, file).not.toMatch(/^\s+shards:/m);
+  }
 });
 
 it("the UI preview job can fail without failing the run", () => {

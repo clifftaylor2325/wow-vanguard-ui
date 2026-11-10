@@ -9,6 +9,18 @@ name: lua suite
 # contents; and, with the preview input on, the UI preview as a second job
 # beside it.
 #
+# The tests are sharded: a plan job reads the shards input (6 by default)
+# and the shuffle seed, then that many jobs each run their share of the test
+# files of the lua project (Vitest's --project lua --shard i/n); the quick and
+# hooks projects run in their own job beside the shards, with the checks
+# that need no test, and the benchmark has its own job too. Each upload their coverage hits and
+# JUnit file. A shard that fails fails the run, but the others finish
+# (fail-fast: false), so the whole failure list is on the run. When every
+# test job passed, one last job downloads all of the hits, checks that no
+# job and no test file is missing, merges them and applies the coverage floor
+# once over the merged data (no job alone sees the whole suite, so none
+# judges the floor).
+#
 # This workflow has no triggers of its own: full-suite.yml calls it weekly
 # and from the Actions tab, and release.yml before each release. No pull
 # request runs it (Cliff, 2026-11-10); a branch's tests run on the agent's
@@ -33,21 +45,66 @@ on:
         description: "Shuffle the test order and print the seed, so a failure can be replayed"
         type: boolean
         default: false
+      shards:
+        description: "How many parallel jobs the Lua tests are split over (1 to 16)"
+        type: number
+        default: 6
 
 permissions:
   contents: read
 
 jobs:
-  tests:
-    name: Tests, coverage and checks
+  plan:
+    # The shard numbers and, on a shuffled run, the one seed every shard uses.
+    name: Plan the shards
     runs-on: ubuntu-latest
-    # On a 2-worker local proxy for a 2-vCPU runner the suite took 155.5 s and
-    # 158.7 s (170.7 s with coverage) on 2026-10-11. Hosted runs with coverage
-    # grew to 17-25 min by 2026-10-30 (the keybind phases' tests), and two hit
-    # the old 25 min limit. With the Retail lanes and the bug hunts (3583 tests)
-    # the 0.9.0 release run hit 40 min on 2026-11-05; 75 leaves room. A runaway
-    # still dies inside it (the harness's instruction budget, the workers' heap cap).
-    timeout-minutes: 75
+    timeout-minutes: 5
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+      count: ${{ steps.plan.outputs.count }}
+      seed: ${{ steps.seed.outputs.seed }}
+    steps:
+      - name: Plan the shards
+        id: plan
+        env:
+          SHARDS: ${{ inputs.shards }}
+        # The input reaches the script through the environment only; it must be a whole number from 1 to 16.
+        run: |
+          case "$SHARDS" in ''|*[!0-9]*) echo "shards must be a whole number from 1 to 16, not '$SHARDS'"; exit 1 ;; esac
+          if [ "$SHARDS" -lt 1 ] || [ "$SHARDS" -gt 16 ]; then echo "shards must be from 1 to 16, not $SHARDS"; exit 1; fi
+          echo "count=$SHARDS" >> "$GITHUB_OUTPUT"
+          echo "shards=$(seq -s, 1 "$SHARDS" | sed 's/^/[/; s/$/]/')" >> "$GITHUB_OUTPUT"
+      - name: Pick and print the shuffle seed
+        if: inputs.shuffle
+        id: seed
+        # The seed comes from the clock inside the script; no workflow
+        # expression is placed in this text. Every shard gets it as
+        # VG_SHUFFLE_SEED (vitest.config.mjs reads it; npm run coverage passes it
+        # on to Vitest), so the whole run shares one order.
+        run: |
+          seed=$(date +%s)
+          echo "seed=$seed" >> "$GITHUB_OUTPUT"
+          printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  shards:
+    name: Tests, shard ${{ matrix.shard }} of ${{ needs.plan.outputs.count }}
+    needs: plan
+    runs-on: ubuntu-latest
+    # A failed shard does not stop the others: the whole failure list is wanted.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    # One 4-core job took 26 to 45 minutes for the whole suite on 2026-11-10
+    # (and 40 minutes for the 0.9.0 release run on 2026-11-05). A shard of four
+    # takes about a quarter of that; 45 leaves room for a slow runner and a
+    # small shard count. A runaway still dies inside it (the harness's
+    # instruction budget, the workers' heap cap).
+    timeout-minutes: 45
+    env:
+      VG_SHUFFLE_SEED: ${{ needs.plan.outputs.seed }}
+      SHARD: ${{ matrix.shard }}
+      COUNT: ${{ needs.plan.outputs.count }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -57,7 +114,8 @@ jobs:
       - run: npm ci
       # The same pinned luacheck 1.2.0 release binary as verify.yml: installed
       # only after its SHA-256 matches. The chain is the last thing in the
-      # script, so a failed check fails the step before the install runs.
+      # script, so a failed check fails the step before the install runs. The
+      # shards have it too: some tests run luacheck and luac when they are installed.
       - name: luacheck 1.2.0 and Lua 5.1
         env:
           LUACHECK_SHA256: d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc
@@ -68,25 +126,52 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/luacheck" "$LUACHECK_URL" &&
           echo "$LUACHECK_SHA256  $RUNNER_TEMP/luacheck" | sha256sum -c - &&
           sudo install -m 0755 "$RUNNER_TEMP/luacheck" /usr/local/bin/luacheck
-      - name: Pick and print the shuffle seed
-        if: inputs.shuffle
-        # The seed comes from the clock inside the script; no workflow
-        # expression is placed in this text. vitest.config.mjs reads
-        # VG_SHUFFLE_SEED, which npm run coverage passes on to Vitest.
+      # Shard i of n of every test file (the Lua harness, the JS tests, the
+      # hooks file) with line coverage on. It dumps one hits file per test file
+      # and judges no floor: that is the last job's, over every shard's hits.
+      - run: npm run coverage -- --project lua --shard "$SHARD/$COUNT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lua-shard-${{ matrix.shard }}
+          path: |
+            coverage/lua-hits/*.json
+            coverage/junit.xml
+          if-no-files-found: ignore
+
+  quick:
+    # The quick and hooks projects (the JS tests, the smoke, snapshot and freeze tests), with coverage like
+    # a shard, and the checks that need no test: code quality, the TOC, luacheck, Lua 5.1 syntax and the
+    # release zip. It runs beside the shards. The checks come first so a red test does not hide them; the
+    # hooks file plants a Lua file under Modules/ for a moment, so it must run after them (it also runs
+    # after the quick files, by its group order).
+    name: Quick tests and checks
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VG_SHUFFLE_SEED: ${{ needs.plan.outputs.seed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The same pinned luacheck 1.2.0 release binary as verify.yml: installed
+      # only after its SHA-256 matches. The chain is the last thing in the
+      # script, so a failed check fails the step before the install runs. The
+      # shards have it too: some tests run luacheck and luac when they are installed.
+      - name: luacheck 1.2.0 and Lua 5.1
+        env:
+          LUACHECK_SHA256: d68da17fca0697d9e2fb04201f3884abd259fa558b3a449bccaed47f1390defc
+          LUACHECK_URL: https://github.com/lunarmodules/luacheck/releases/download/v1.2.0/luacheck
         run: |
-          seed=$(date +%s)
-          echo "VG_SHUFFLE_SEED=$seed" >> "$GITHUB_ENV"
-          printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
-      - run: npm run coverage
-      # The raid benchmark (scripts/bench.mjs, issue #255): time and Lua
-      # instructions per event under a scripted 40-player raid, a harness
-      # measurement until /vg perf confirms it in game. Its tables go to the
-      # job summary and its JSON into the lua-coverage artifact. Time is not
-      # budgeted (shared runners are noisy), but the addon's Lua instructions
-      # per step are: past a cap in scripts/bench-budget.json the run fails,
-      # and so does an error the addon catches under the raid load.
-      - name: Raid benchmark (harness measurement)
-        run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY" --instr-budget scripts/bench-budget.json
+          sudo apt-get update -qq &&
+          sudo apt-get install -y -qq lua5.1 &&
+          curl -fsSL -o "$RUNNER_TEMP/luacheck" "$LUACHECK_URL" &&
+          echo "$LUACHECK_SHA256  $RUNNER_TEMP/luacheck" | sha256sum -c - &&
+          sudo install -m 0755 "$RUNNER_TEMP/luacheck" /usr/local/bin/luacheck
       - name: Code quality
         run: npm run quality
       - name: The TOC against the files on disk
@@ -110,14 +195,74 @@ jobs:
           rm -rf dist
           node scripts/package.mjs
           node scripts/check-zip.mjs
+      # Like a shard, it dumps its hits and judges no floor: the merge job does.
+      - run: npm run coverage -- --project quick --project hooks
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lua-shard-quick
+          path: |
+            coverage/lua-hits/*.json
+            coverage/junit.xml
+          if-no-files-found: ignore
+
+  bench:
+    # Needs no test result, so it runs beside the shards.
+    name: Raid benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The raid benchmark (scripts/bench.mjs, issue #255): time and Lua
+      # instructions per event under a scripted 40-player raid, a harness
+      # measurement until /vg perf confirms it in game. Its tables go to the
+      # job summary and its JSON into the lua-coverage artifact. Time is not
+      # budgeted (shared runners are noisy), but the addon's Lua instructions
+      # per step are: past a cap in scripts/bench-budget.json the run fails,
+      # and so does an error the addon catches under the raid load.
+      - name: Raid benchmark (harness measurement)
+        run: npm run bench -- --summary "$GITHUB_STEP_SUMMARY" --instr-budget scripts/bench-budget.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lua-bench
+          path: coverage/bench/*.json
+          if-no-files-found: ignore
+
+  coverage:
+    name: Merged coverage and floor
+    needs: [plan, shards, quick]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COUNT: ${{ needs.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: lua-shard-*
+          path: coverage/shards
+      # Merges the hits of every shard and of the quick job, and applies the floor in
+      # scripts/lua-coverage-floor.json to the merged data. It fails when a folder is missing or
+      # empty, or when a test file Vitest lists has no hits file, so a job cannot lower the total unseen.
+      # The folders are the shards and the quick job: one more than the shard count.
+      - name: Merge the shards' coverage and apply the floor
+        run: npm run coverage -- --merge coverage/shards --shards "$((COUNT + 1))"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: lua-coverage
-          path: |
-            coverage/lua-coverage.json
-            coverage/junit.xml
-            coverage/bench/*.json
+          path: coverage/lua-coverage.json
           if-no-files-found: ignore
 
   preview:
