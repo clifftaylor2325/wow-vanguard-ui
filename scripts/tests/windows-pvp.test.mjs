@@ -266,6 +266,16 @@ it("S8.3 widget containers: a flat panel behind the widgets only while there are
   expect(addon.eval(`return ns.FrameState('vgBackdrop')[${top}]:IsShown()`), "and shows again with it").toBe(true);
 });
 
+// The container's answer is the game's (Blizzard_UIWidgetManager.lua: GetNumWidgetsShowing() > 0); a hidden one is taken as
+// no widgets, never compared from addon code (FOREVER-API-FACTS 3). The harness's secrets compare false, so this case
+// guards the reading rather than proving a raise.
+it("S8.3 widget containers: a hidden answer to whether any widget shows keeps the panel hidden, and nothing raises", () => {
+  const addon = loggedIn(WIDGET_ENV);
+  const top = "UIWidgetTopCenterContainerFrame";
+  addon.eval(`${top}.HasAnyWidgetsShowing = function() return __wfgWorld.secret(true) end ${top}:UpdateWidgetLayout()`);
+  expect(addon.eval(`return { ns.FrameState('vgBackdrop')[${top}]:IsShown(), #ns.errors }`), "the panel stays hidden").toEqual([false, 0]);
+});
+
 it("S8.3 widget containers: a new backdrop is fitted once, and skinning the container again fits it again", () => {
   const addon = loggedIn(WIDGET_ENV);
   addon.eval(`fits = 0 local GW = ns.GetModule("Windows") local fit = GW.FitBackdrop
