@@ -3,10 +3,11 @@
 // full-suite.yml turns it on for the schedule event only, and release.yml
 // never shuffles. The files are read as text with small readers (no YAML
 // parser is installed), the way scripts/pkgmeta.test.mjs reads .pkgmeta.
-// The full suite's pull-request trigger (D-04) is checked by evaluating the
-// suite job's `if` and the concurrency group of full-suite.yml for each
-// event, with a small evaluator for the part of the expression syntax those
-// two places use (anything else throws). The hosted run itself cannot be
+// No pull request runs a test in CI (Cliff, 2026-11-10): a workflow a pull
+// request triggers runs no test command and never calls lua-suite.yml, and
+// full-suite.yml runs only weekly and by hand. Its concurrency group is
+// checked by evaluating it for each event, with a small evaluator for the
+// part of the expression syntax it uses (anything else throws). The hosted run itself cannot be
 // checked here. The file also checks the toolchain pins (D-05): the luacheck
 // release binary's digest, Node's version in .nvmrc and what reads it, and the
 // exact fengari version.
@@ -96,7 +97,7 @@ it("no run script holds an input expression", () => {
   for (const blocks of all) for (const b of blocks) expect(b).not.toContain("${{ inputs.");
 });
 
-// The lua-suite steps that only repeat verify.yml on a pull request (#292 F2).
+// The lua-suite steps that check more than the tests: the release and weekly runs keep every one.
 const CHECK_STEPS = [
   "luacheck 1.2.0 and Lua 5.1",
   "Code quality",
@@ -106,26 +107,15 @@ const CHECK_STEPS = [
   "Release zip builds and holds every file it should",
 ];
 
-it("lua-suite takes a boolean checks input that defaults to on", () => {
-  const input = workflow("lua-suite.yml").match(/^ {6}checks:\n((?: {8}.*\n)+)/m)?.[1] ?? "";
-  expect(input).toMatch(/^ {8}type: boolean$/m);
-  expect(input).toMatch(/^ {8}default: true$/m);
-});
-
-it("every check step is gated on the checks input, and the tests, bench and upload are not", () => {
+it("every check step runs on every lua-suite run, and no input can turn the checks off", () => {
   const text = workflow("lua-suite.yml");
   for (const name of CHECK_STEPS) {
     const step = stepNamed(text, name);
     expect(step, `lua-suite has a step named "${name}"`).not.toBe("");
-    expect(step, name).toMatch(/^ {8}if: inputs\.checks$/m);
+    expect(step, name).not.toContain("if:");
   }
-  expect(text).toContain("- run: npm run coverage\n");
+  expect(text).not.toMatch(/^ {6}checks:$/m);
   expect(stepNamed(text, "Raid benchmark (harness measurement)")).not.toContain("if:");
-  expect(text.match(/^ {8}if: inputs\.checks$/gm)).toHaveLength(CHECK_STEPS.length);
-});
-
-it("full-suite runs the checks on every event but a pull request", () => {
-  expect(workflow("full-suite.yml")).toContain("checks: ${{ github.event_name != 'pull_request' }}");
 });
 
 it("release keeps the checks and skips the preview", () => {
@@ -231,60 +221,45 @@ function allWorkflows() {
 }
 
 const FULL = "full-tests";
-const SUITE_IF_CASES = [
-  ["opened, ready for review, no label", "opened", {}, true],
-  ["opened as a draft", "opened", { draft: true }, false],
-  ["marked ready for review", "ready_for_review", {}, true],
-  ["reopened, not a draft", "reopened", {}, true],
-  ["reopened as a draft", "reopened", { draft: true }, false],
-  ["a push without the label", "synchronize", {}, false],
-  ["a push with the label", "synchronize", { labels: [FULL] }, true],
-  ["a push to a draft with the label", "synchronize", { draft: true, labels: [FULL] }, false],
-  ["the label added", "labeled", { label: FULL, labels: [FULL] }, true],
-  ["another label added, no full-tests", "labeled", { label: "bug", labels: ["bug"] }, false],
-  ["another label added, full-tests already on", "labeled", { label: "bug", labels: [FULL, "bug"] }, false],
-  ["the label added to a draft", "labeled", { draft: true, label: FULL, labels: [FULL] }, false],
-  ["the weekly schedule", undefined, { name: "schedule" }, true],
-  ["a hand-started run", undefined, { name: "workflow_dispatch" }, true],
-];
 
-for (const [title, action, opts, runs] of SUITE_IF_CASES) {
-  it(`suite job if: ${title} ${runs ? "runs" : "is skipped"}`, () => {
-    const condition = jobCondition(workflow("full-suite.yml"), "suite");
-    expect(condition, "the reader finds the suite job's if").toContain("github.event_name");
-    expect(evaluate(condition, ghContext(action, opts))).toBe(runs);
-  });
+// The text before `permissions:`: a workflow's name, header and `on:` block.
+function triggers(text) {
+  return text.split(/^permissions:/m)[0];
 }
 
-it("concurrency: ready for review, a push and the label share the pull request's group", () => {
-  expect(groupFor("ready_for_review")).toBe("full-suite-pull_request-7");
-  expect(groupFor("synchronize")).toBe(groupFor("ready_for_review"));
-  expect(groupFor("labeled", { label: FULL, labels: [FULL] })).toBe(groupFor("ready_for_review"));
+// True when a workflow's `on:` block names the pull_request event.
+function runsOnPullRequests(text) {
+  return /^ {2}pull_request:/m.test(triggers(text));
+}
+
+it("full-suite runs weekly and by hand, never for a pull request", () => {
+  const on = triggers(workflow("full-suite.yml"));
+  expect(on).toMatch(/^ {2}schedule:$/m);
+  expect(on).toMatch(/^ {2}workflow_dispatch:$/m);
+  expect(runsOnPullRequests(workflow("full-suite.yml"))).toBe(false);
+  expect(workflow("full-suite.yml")).not.toContain("pull_request");
 });
 
-it("concurrency: another label lands in its own group, so it cannot cancel a run", () => {
-  const other = groupFor("labeled", { label: "bug", labels: [FULL, "bug"] });
-  expect(other).toBe("full-suite-pull_request-7-other-label");
-  expect(other).not.toBe(groupFor("ready_for_review"));
-  expect(other).not.toBe(groupFor("synchronize", { labels: [FULL] }));
+it("no workflow a pull request triggers runs a test or the suite", () => {
+  const onPr = allWorkflows().filter(({ text }) => runsOnPullRequests(text));
+  expect(onPr.map((w) => w.name).sort(), "the pull-request workflows").toEqual(["markdown.yml", "verify.yml"]);
+  for (const { name, text } of onPr) {
+    for (const b of runBlocks(text)) expect(b, name).not.toMatch(/npm (test|run (test|coverage|verify|bench))|vitest/);
+    expect(text, name).not.toContain("lua-suite.yml");
+  }
 });
 
-it("concurrency: other pull requests and other events get their own groups", () => {
-  expect(groupFor("opened", { number: 8 })).not.toBe(groupFor("opened"));
+it("concurrency: the weekly and the hand-started runs get their own groups", () => {
   expect(groupFor(undefined, { name: "schedule" })).toBe("full-suite-schedule-refs/heads/main");
-});
-
-it("full-suite types: opened, ready for review, labeled, push and reopened", () => {
-  const types = workflow("full-suite.yml").match(/^ {4}types: \[(.*)\]$/m)?.[1] ?? "";
-  expect(types.split(", ").sort()).toEqual(["labeled", "opened", "ready_for_review", "reopened", "synchronize"]);
+  expect(groupFor(undefined, { name: "workflow_dispatch" })).toBe("full-suite-workflow_dispatch-refs/heads/main");
 });
 
 it("full-suite keeps its schedule, hand start, inputs, report job and cancel setting", () => {
   const text = workflow("full-suite.yml");
   expect(text).toContain('- cron: "23 10 * * 0"');
   expect(text).toMatch(/^ {2}workflow_dispatch:\n {4}inputs:\n {6}preview:/m);
-  expect(text).toContain("preview: ${{ github.event_name == 'schedule' || inputs.preview == true || contains(github.event.pull_request.labels.*.name, 'preview') }}");
-  expect(text).toContain("if: always() && github.event_name != 'pull_request' && needs.suite.result != 'cancelled'");
+  expect(text).toContain("preview: ${{ github.event_name == 'schedule' || inputs.preview == true }}");
+  expect(text).toContain("if: always() && needs.suite.result != 'cancelled'");
   expect(text).toMatch(/^ {2}cancel-in-progress: true$/m);
 });
 
@@ -332,7 +307,7 @@ it("every verify step after the spelling check is skipped for a docs-only change
   const [spelling, ...later] = verifySteps().slice(2);
   expect(spelling).toMatch(/^ {6}- name: Spelling$/m);
   expect(spelling, "spelling also reads docs-only changes").not.toContain("if:");
-  expect(later.length).toBeGreaterThanOrEqual(8);
+  expect(later.length).toBeGreaterThanOrEqual(7);
   for (const step of later) expect(step.split("\n").map((l) => l.trim()), step.split("\n")[0]).toContain(DOCS_ONLY_IF);
   expect(jobCondition(workflow("verify.yml"), "quick")).toBe("${{ !github.event.pull_request.draft }}");
 });
@@ -553,18 +528,12 @@ it("the pull request template has the sections CLAUDE.md asks a pull request for
   expect(headings).toEqual(["## Tasks", "## Tests added", "## Skipped", "## Needs in-game check"]);
 });
 
-it("a pull request's suite run leaves the Retail-only tests to the weekly, hand-started and release runs", () => {
-  const input = workflow("lua-suite.yml").match(/^ {6}retail:\n((?: {8}.*\n)+)/m)?.[1] ?? "";
-  expect(input, "release.yml and a hand-started run keep the default, both clients").toMatch(/^ {8}default: true$/m);
-  expect(workflow("lua-suite.yml"), "the suite skips them only when the input is off").toContain("VG_SKIP_RETAIL: ${{ inputs.retail == false && '1' || '' }}");
-  expect(workflow("full-suite.yml"), "off on a pull request only").toMatch(/^ {6}retail: \$\{\{ github\.event_name != 'pull_request' \}\}$/m);
-});
-
-it("lua-suite runs coverage only when asked, the plain suite otherwise; full-suite turns it off for pull requests", () => {
+it("every lua-suite run keeps the Retail-only tests and the coverage floor", () => {
   const text = workflow("lua-suite.yml");
-  expect(text).toMatch(/^ {6}coverage:\n(?: {8}.*\n)* {8}type: boolean\n {8}default: true$/m);
-  expect(text).toContain("- run: npm run coverage\n        if: inputs.coverage\n      - run: npm test\n        if: ${{ !inputs.coverage }}\n");
-  expect(workflow("full-suite.yml")).toContain("coverage: ${{ github.event_name != 'pull_request' }}");
+  expect(text, "no input leaves out the Retail-only test files").not.toContain("VG_SKIP_RETAIL");
+  expect(text).not.toMatch(/^ {6}(retail|coverage):$/m);
+  expect(text).toContain("- run: npm run coverage\n");
+  expect(runBlocks(text), "never the plain suite instead").not.toContain("npm test");
 });
 
 it("the UI preview job can fail without failing the run", () => {

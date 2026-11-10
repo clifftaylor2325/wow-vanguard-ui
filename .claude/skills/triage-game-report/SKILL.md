@@ -15,7 +15,7 @@ The in-game check is the only ground truth this project has, and Cliff's time in
 4. **A step that passed closes what it was checking**: an issue whose fix was "pending an in-game check" (#186 to #204 style) gets a comment with the step id and the paste's version, then is closed as completed. `CONCERNS.md`'s "Known Bugs" list is updated in the same commit if it names the issue.
 5. **A step that failed without an error** (it looks wrong, nothing in `/vg errors`) is a `fix-visual-issue` or `fix-bug` task; ask for `/vg frame <name> deep` in the issue if the paste has none, as a checklist, not a question that blocks.
 6. **A batch checklist** (issue #284) is ticked item by item with the paste's version in the tick's comment; an item that could not be run is left unticked with why. An API probe's answer (what `type()` returns for a secret, whether addon messages work in instances) goes into the harness or the plan it was blocking, in its own PR, and the issue comment links that PR.
-7. **Then the fixes**, highest crash risk first, each by `fix-bug` or `fix-visual-issue`, one branch per issue. A fix for an error only the game showed is a `full-tests` candidate when it changes the harness.
+7. **Then the fixes**, highest crash risk first, each by `fix-bug` or `fix-visual-issue`, one branch per issue. A fix for an error only the game showed runs the whole suite locally before it merges, as every PR does.
 8. **Reply** with one line per error (issue link, what it is, what is next) and the facts recorded. No fix is claimed as seen; every PR from a report says "Needs in-game check" with the step to rerun.
 
 ## Do not

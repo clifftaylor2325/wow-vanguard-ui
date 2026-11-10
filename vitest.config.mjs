@@ -6,11 +6,12 @@ import { luaSummaryReporter } from "./scripts/lib/lua-summary-reporter.mjs";
 // none of which loads the addon), scripts/tests/smoke.test.mjs (one
 // addon load), scripts/tests/snapshot.test.mjs (the Forever snapshot) and
 // scripts/tests/freeze.test.mjs (the frozen surface, one addon load):
-// the pull-request gate (npm run test:quick). "lua" is the Lua
+// the fast run while iterating (npm run test:quick). "lua" is the Lua
 // harness (scripts/tests/*.test.mjs, one file per area, run in parallel)
 // and the client's own tests (scripts/lua-engine.test.mjs, a dozen loads).
 // npm test runs both; npm run coverage runs both with line coverage on,
-// which CI does after a merge (.github/workflows/full-suite.yml).
+// which a branch does before it merges, and CI weekly and before each release
+// (.github/workflows/full-suite.yml, release.yml).
 // The lua project does not isolate its files (isolate: false): a worker keeps
 // its compiled Lua chunks and its warmed-up JIT from one file to the next, which
 // takes about half the time off a run of small files. Nothing there mocks a module or
@@ -33,8 +34,8 @@ const ciReporters = process.env.GITHUB_ACTIONS ? ["github-actions", ["junit", { 
 // a case that fails in some order is fixed at its cause.
 const asked = Number(process.env.VG_SHUFFLE_SEED);
 const shuffleSeed = Number.isSafeInteger(asked) && asked > 0 ? asked : 0;
-// The Retail-only test files. A pull request's suite run sets VG_SKIP_RETAIL and leaves them out
-// (Retail support is new and best effort); the weekly, hand-started and release runs keep them.
+// The Retail-only test files. VG_SKIP_RETAIL leaves them out of a local run (Retail support is
+// new and best effort); every CI run (weekly, hand-started and release) keeps them.
 const RETAIL_ONLY = ["scripts/tests/retail*.test.mjs", "scripts/tests/windows-retail.test.mjs"];
 const skipped = process.env.VG_SKIP_RETAIL ? RETAIL_ONLY : [];
 const shuffle = shuffleSeed ? { sequence: { shuffle: { files: true, tests: true }, seed: shuffleSeed } } : {};
