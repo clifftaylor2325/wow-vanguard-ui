@@ -770,7 +770,7 @@ do
   local function enter(_, button)
     if not GameTooltip then return end
     GameTooltip:SetOwner(button, "ANCHOR_LEFT")
-    GameTooltip:SetText("Vanguard " .. ns.AddonVersion())
+    GameTooltip:SetText(ns.Format(L["Vanguard {version}"], { version = ns.AddonVersion() }))
     GameTooltip:AddLine(L["Left-click: options · Right-click: move frames (out of combat)"], T.RGB("text2"))
     local n = #ns.errors
     local caught = n == 1 and L["1 error caught this session (/vg errors)"] or L["{count} errors caught this session (/vg errors)"]

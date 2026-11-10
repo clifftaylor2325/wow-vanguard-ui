@@ -455,7 +455,7 @@ end
 -- What /vg mem says about the saved files: the account file's estimate against the budget and
 -- what holds the most, then this character's file. One walk, out of combat (it can take a moment).
 function G.SizeReport()
-  if ns.InCombat() then return ns.Chat("Saved data sizes are read out of combat; try /vg mem again after the fight.") end
+  if ns.InCombat() then return ns.Chat(L["Saved data sizes are read out of combat; try /vg mem again after the fight."]) end
   local account, char = G.Sizes(VanguardDB), G.Sizes(VanguardCharDB)
   local total = G.Bytes(VanguardDB)
   ns.Chat(string.format("Saved data (estimate): account file %s of a %s budget; largest: %s.", sizeText(total), sizeText(G.BUDGET), largest(account)))
