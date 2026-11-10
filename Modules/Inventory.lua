@@ -87,6 +87,13 @@ function IV.BankBags()
   return out
 end
 
+-- Reads the open bank into this character's record, only when the client names the bank's tabs: a missing or
+-- empty answer (tab data not in yet) means no data, so the remembered bank stays until a real one arrives.
+function IV.ReadBank(mine)
+  local tabs = IV.BankBags()
+  if #tabs > 0 then mine.bank = countIn(tabs) end
+end
+
 -- Notes this character's level, money and rested XP (as a percent of a level) on its record.
 function IV.Vitals()
   local mine = IV.Mine()
@@ -106,13 +113,13 @@ function IV.Scan()
   IV.Vitals()
   local mine = IV.Mine()
   mine.bags, mine.updated = countIn(IV.BAGS), ns.AuctionPrices.Now()
-  if IV.bankOpen then mine.bank = countIn(IV.BankBags()) end
+  if IV.bankOpen then IV.ReadBank(mine) end
 end
 
 -- Something in the bags or bank changed: the open bank is read at once (it may close before the scan,
 -- and a closed bank is not read), and everything SCAN_DELAY later, once for a burst of changes.
 function IV.OnChanged()
-  if IV.bankOpen then IV.Mine().bank = countIn(IV.BankBags()) end
+  if IV.bankOpen then IV.ReadBank(IV.Mine()) end
   if IV.pending then return end
   IV.pending = true
   C_Timer.After(IV.SCAN_DELAY, ns.Guard("timer bag scan", IV.Scan))

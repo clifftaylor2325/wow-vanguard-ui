@@ -213,6 +213,19 @@ const BAG_ENV = `
   __wfgWorld.bags[0] = { [1] = { itemID = 2, link = __link(2) }, [2] = { itemID = 3, link = __link(3) } }
 `;
 
+it("upgrades: an item whose stats arrive late gets its arrow when the client sends them, and only that item re-marks", () => {
+  const addon = loggedIn(GEAR_ENV + BAG_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  const arrows = () => addon.eval("local out = {} for i = 1, 2 do local a = ns.FrameState('vgUpgrade')[__buttons[i]] out[i] = a ~= nil and a:IsShown() end return out");
+  addon.eval("__stats = C_Item.GetItemStats __asked = {} C_Item.RequestLoadItemDataByID = function(id) __asked[#__asked + 1] = id end C_Item.GetItemStats = function(link) if __loaded then return __stats(link) end end");
+  addon.eval("ContainerFrameCombinedBags:UpdateItems() ContainerFrameCombinedBags:UpdateItems()");
+  expect([arrows(), addon.eval("local n = 0 for _, id in ipairs(__asked) do if id == 2 then n = n + 1 end end return n")], "stats not in: no arrow, the data asked for once per item").toEqual([[false, false], 1]);
+  addon.eval("__loaded = true");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 999, true);
+  expect(arrows(), "an item nobody waited for: nothing re-marked").toEqual([false, false]);
+  addon.fire("GET_ITEM_INFO_RECEIVED", 2, true);
+  expect(arrows(), "the waited item arrives: the better bracers get their arrow").toEqual([true, false]);
+});
+
 it("upgrades: arrows on upgrades in the combined bag and on quest rewards", () => {
   const addon = loggedIn(GEAR_ENV + BAG_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
   // Whether each of the three bag buttons shows its arrow.

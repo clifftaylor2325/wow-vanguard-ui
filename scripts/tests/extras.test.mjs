@@ -682,6 +682,15 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   bare.fire("MERCHANT_SHOW");
   expect(bare.eval("return #ns.GetModule('Quiet').NoisyTypes()"), "a client without these calls does nothing").toBe(0);
 });
+it("selling junk leaves a gray item in an equipment set, and a locked one, alone", () => {
+  const addon = loggedIn(MERCHANT_ENV);
+  addon.eval(`C_EquipmentSet = { GetEquipmentSetIDs = function() return { 1 } end, GetItemIDs = function() return { [16] = 77 } end }
+    __repairs, __used, __sticky = {}, {}, 0
+    __bag = { { quality = 0, itemID = 77 }, { quality = 0, itemID = 78, isLocked = true }, { quality = 0, itemID = 79 } }`);
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __used"), "only the free gray item in slot 3 is sold").toEqual([3]);
+});
+
 it("junk selling stops when the merchant closes or a fight starts: no retry uses a bag item with no merchant open", () => {
   const addon = loggedIn(MERCHANT_ENV + "__sticky = 5 __later = {} C_Timer = { After = function(s, fn) if s == 0.3 then __later[#__later + 1] = fn end end }");
   const MC = "ns.GetModule('Merchant')";
