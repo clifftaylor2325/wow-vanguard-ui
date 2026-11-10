@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -1029,4 +1029,18 @@ it("H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles
   addon.eval("__units.party1.dead = nil");
   addon.fire("UNIT_HEALTH", "party1");
   expect(token(), "alive again: the plain text colour").toBe("text");
+});
+
+it("one unit frame that fails to paint or lay out is reported, and every other frame still does", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  // The frame the loops reach first breaks; the player frame (or the party's first, when the player is that one) must still paint.
+  const watched = addon.eval(`local UF = ns.GetModule("UnitFrames") local paint, place = UF.UpdateHealth, UF.PlaceParts
+    __broken = next(UF.frames)
+    UF.UpdateHealth = function(f) if f.key == __broken then error("TEST-ONLY broken frame") end return paint(f) end
+    UF.PlaceParts = function(f) if f.key == __broken then error("TEST-ONLY broken layout") end return place(f) end
+    __units.player.hp, __units.party1.hp = 500, 7
+    return __broken == "player" and "party1" or "player"`);
+  addon.eval('ns.GetModule("UnitFrames").Refresh() ns.GetModule("UnitFrames").ApplyLook()');
+  expect(ufState(addon, watched).hp, "a frame past the broken one still paints").toBe(watched === "player" ? 500 : 7);
+  expectErrors(/^unit frame refresh: eval:4: TEST-ONLY broken frame$/, /^unit frame layout: eval:5: TEST-ONLY broken layout$/);
 });

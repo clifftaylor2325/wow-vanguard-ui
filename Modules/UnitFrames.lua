@@ -924,9 +924,9 @@ local function targetOfTargetDefault()
 end
 
 -- Lays every frame out for the HUD look again (the look, the deck or a frame's size changed), and moves the target
--- of target's narrow spot with the look.
+-- of target's narrow spot with the look. Each frame under its own guard: one that fails is reported, the rest still lay out.
 function UF.ApplyLook()
-  for _, f in pairs(UF.frames) do UF.PlaceParts(f) end
+  for _, f in pairs(UF.frames) do ns.Try("unit frame layout", UF.PlaceParts, f) end
   ns.SetMoverDefault("uf_targettarget", targetOfTargetDefault())
 end
 
@@ -1182,15 +1182,16 @@ local function pollTargetsOfTargets()
 end
 
 -- Updates every frame whose key is listed (all frames with no list). A list is walked by its own keys, so an event
--- for a few frames does not look at the rest.
+-- for a few frames does not look at the rest. Each frame under its own guard: one that fails (a unit gone between the
+-- event and its handler, a value the client hides) is reported and the others still paint.
 function UF.Refresh(keys)
   local frames = UF.frames
   if not keys then
-    for _, f in pairs(frames) do UF.UpdateFrame(f) end
+    for _, f in pairs(frames) do ns.Try("unit frame refresh", UF.UpdateFrame, f) end
     return
   end
   for key in pairs(keys) do
-    if frames[key] then UF.UpdateFrame(frames[key]) end
+    if frames[key] then ns.Try("unit frame refresh", UF.UpdateFrame, frames[key]) end
   end
 end
 
