@@ -153,6 +153,14 @@ it("a true return asks for a confirm, and the next click on Post (Confirm) confi
   expect(restrictedLog(addon).map((c) => c.slice(0, 7)), "the click confirms the same post").toEqual([["PostItem", true, "0:2", 1, 1, "nil", 4900], ["ConfirmPostItem", true, "0:2", 1, 1, "nil", 4900]]);
   expect([card(addon)[1], form(addon)[7], asking()[0]], "the blade is listed: the card empties, Post again").toEqual([false, "posted 1 of 1", "Post"]);
 });
+it("Confirm never posts what moved into the held post's bag slot", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][2] = { itemID = 10940, count = 20 }");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => c[0]), "no confirm for the stranger in the slot").toEqual(["PostItem"]);
+});
 it("a price typed after the game asks to confirm turns Confirm back into Post, and the next click posts the new price", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });

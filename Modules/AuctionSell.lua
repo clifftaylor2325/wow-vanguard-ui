@@ -544,10 +544,11 @@ local function askConfirm(s, kind, args)
 end
 
 -- The post the game asked to confirm, while it is still what the card would send (the same length,
--- quantity, bid and price); nil once anything on the card changed it, so Post checks and posts anew.
+-- quantity, bid and price) and its slot still holds the sale's item (a confirm names a bag slot, so
+-- whatever moved into it would be posted at this price); nil otherwise, so Post checks and posts anew.
 function AH.Pending(s)
   local p = s and s.pending
-  if not p then return nil end
+  if not (p and holds(s, p.args[1]:GetBagAndSlot())) then return nil end
   local _, now = postCall(s, p.args[1], AH.SellPrice(s))
   for i = 2, p.args.n do
     if now[i] ~= p.args[i] then return nil end
