@@ -33,7 +33,7 @@ Class/reaction/threat colors, the name in outlined text with the level (colored 
 
 ## Main tank frames
 
-In a raid, the players marked main tank or main assist get small tiles at the top left (beside the raid tools), with health in their class color (a dark bar while offline) and what each is targeting written beside it. Click one to target them; your click casting and hover keys work on them as on the raid tiles. Move them with `/vg unlock`; turn them off under Modules.
+In a raid, the players marked main tank or main assist get small tiles at the top left (beside the raid tools), with health in their class color (a dark bar while offline) and what each is targeting written beside it. The module switches off and on at once, out of combat (a switch made in a fight applies when it ends): the tiles and their handle go, and come back where they were. Click one to target them; your click casting and hover keys work on them as on the raid tiles. Move them with `/vg unlock`; turn them off under Modules.
 
 ## Party pets and targets
 

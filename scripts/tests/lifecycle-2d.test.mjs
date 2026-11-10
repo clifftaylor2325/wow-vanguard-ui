@@ -124,3 +124,28 @@ it("lifecycle: the chip's row switched off through its setting rebuilds the modu
   addon.eval("local _, set = ns.Options.RestartSetting('UnitExtras', 'chip') set(false)");
   expect(addon.eval('return ns.GetModule("UnitExtras").chip:IsShown()')).toBe(false);
 });
+
+// MainTanks -----------------------------------------------------------------------------------------------------
+
+lifecycleCases("MainTanks", login);
+
+it("lifecycle: main tanks switched off hides the holder and the header and lets go of the header's visibility driver, and on again drives it", () => {
+  const addon = login();
+  const state = 'return { Vanguard_MainTanks:IsShown(), Vanguard_MainTanks.__states.visibility, ns.MoverPoint("maintanks") ~= nil }';
+  expect(addon.eval(state)).toEqual([true, "[group:raid] show; hide", true]);
+  addon.eval('ns.SetModuleEnabled("MainTanks", false)');
+  expect(addon.eval("return { Vanguard_MainTanks:IsShown(), Vanguard_MainTanks.__states.visibility == nil, Vanguard_MainTanksHolder:IsShown() }")).toEqual([false, true, false]);
+  addon.eval('ns.SetModuleEnabled("MainTanks", true)');
+  expect(addon.eval(state)[1]).toBe("[group:raid] show; hide");
+});
+
+it("lifecycle: a main tank tile is read only while the module runs", () => {
+  const addon = login();
+  addon.eval('ns.GetModule("MainTanks").Setup(CreateFrame("Button", nil, Vanguard_MainTanks, "SecureUnitButtonTemplate"))');
+  const read = 'local tiles = ns.GetModule("MainTanks").tiles return ns.ticker.vgJobs[tiles[#tiles]] ~= nil';
+  expect(addon.eval(read)).toBe(true);
+  addon.eval('ns.SetModuleEnabled("MainTanks", false)');
+  expect(addon.eval(read)).toBe(false);
+  addon.eval('ns.SetModuleEnabled("MainTanks", true)');
+  expect(addon.eval(read)).toBe(true);
+});

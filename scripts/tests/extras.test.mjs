@@ -19,7 +19,7 @@ const GROUP_EXTRAS_ENV = `
 it("main tank frames: the raid's main tanks and assists, with what each is targeting", () => {
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
   const header = addon.eval(`local h = Vanguard_MainTanks
-    return { h:GetAttribute("groupFilter"), h:GetAttribute("showRaid"), h:GetAttribute("template"), h.__drivers["state-visibility"], h:GetAttribute("initialConfigFunction") == ns.GetModule("MainTanks").INIT }`);
+    return { h:GetAttribute("groupFilter"), h:GetAttribute("showRaid"), h:GetAttribute("template"), h.__states.visibility, h:GetAttribute("initialConfigFunction") == ns.GetModule("MainTanks").INIT }`);
   expect(header, "a secure header of the raid's main tanks and assists, shown in a raid").toEqual(["MAINTANK,MAINASSIST", true, "SecureUnitButtonTemplate", "[group:raid] show; hide", true]);
   expect([addon.eval("return { ns.MoverPoint('maintanks') }"), addon.eval("return { Vanguard_MainTanksHolder:GetWidth(), Vanguard_MainTanksHolder:GetHeight() }")], "movable, at the top left beside the raid tools, room for four").toEqual([["TOPLEFT", "TOPLEFT", 400, -20], [236, 100]]);
   addon.eval('__mt(1, "raid1") __wfgStub.advance(0.5)');
@@ -68,7 +68,7 @@ it("party pets and targets: small tiles above the party, only in a party, when s
   expect(loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV).eval("return Vanguard_PartyExtras == nil"), "off until you turn it on").toBe(true);
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true } } }" });
   const tiles = addon.eval(`local pet, target = Vanguard_partypet1, Vanguard_party4target
-    return { #ns.GetModule("PartyExtras").tiles, pet:GetAttribute("unit"), pet.__watched, target:GetAttribute("unit"), target.__points.TOPLEFT.x, target.__points.TOPLEFT.y, Vanguard_PartyExtras.__drivers["state-visibility"] }`);
+    return { #ns.GetModule("PartyExtras").tiles, pet:GetAttribute("unit"), pet.__watched, target:GetAttribute("unit"), target.__points.TOPLEFT.x, target.__points.TOPLEFT.y, Vanguard_PartyExtras.__states.visibility }`);
   expect(tiles, "a pet and a target tile per party member, each shown while its unit exists, the column only in a party").toEqual([8, "partypet1", true, "party4target", 94, -54, "[group:raid] hide; [group:party] show; hide"]);
   expect(addon.eval("return { ns.MoverPoint('partyextras') }"), "movable, just above the party, risen with the block around your character").toEqual(["BOTTOM", "BOTTOM", -240, 606 + RISE.frames]);
   addon.eval("ns.GetModule('MainTanks').Paint(Vanguard_partypet1)");
