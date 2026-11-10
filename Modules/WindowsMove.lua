@@ -97,17 +97,18 @@ function GW.Moved()
 end
 
 -- Saves where a frame sits now under key: its top-left corner in UIParent's units (its own scale taken out,
--- since the game scales the bags to fit the screen).
+-- since the game scales the bags to fit the screen). A place or scale the client hides is not saved.
 function GW.SavePlace(key, frame)
-  local scale, left, top = frame:GetScale(), frame:GetLeft(), frame:GetTop()
-  if not (left and top) then return end
+  local scale, left, top = ns.PlainNumber(frame:GetScale()), ns.PlainNumber(frame:GetLeft()), ns.PlainNumber(frame:GetTop())
+  if not (scale and left and top) then return end
   GW.Moved()[key] = { x = left * scale, y = top * scale }
 end
 
--- Puts a frame on the place saved under key; nothing when there is none. The caller keeps it out of combat.
+-- Puts a frame on the place saved under key; nothing when there is none, or when the client hides the frame's scale.
+-- The caller keeps it out of combat.
 function GW.PutBack(key, frame)
-  local at, scale = GW.Moved()[key], frame:GetScale()
-  if type(at) ~= "table" or type(at.x) ~= "number" or type(at.y) ~= "number" then return end
+  local at, scale = GW.Moved()[key], ns.PlainNumber(frame:GetScale())
+  if not scale or type(at) ~= "table" or type(at.x) ~= "number" or type(at.y) ~= "number" then return end
   frame:ClearAllPoints()
   frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ns.SaneOffset(at.x) / scale, ns.SaneOffset(at.y) / scale)
 end
@@ -138,11 +139,14 @@ end
 
 -- Putting windows home ----------------------------------------------------------------------------
 
--- Keeps a window's points as the game set them (plain reads), before Vanguard first moves it.
+-- Keeps a window's points as the game set them, before Vanguard first moves it; none when the client hides its
+-- anchoring (a hidden offset could never be handed back to SetPoint).
 local function recordHome(frame)
   local points = {}
   for i = 1, frame:GetNumPoints() do
     local point, relativeTo, relativePoint, x, y = frame:GetPoint(i)
+    x, y = ns.PlainNumber(x), ns.PlainNumber(y)
+    if not (x and y) then vgHome[frame] = {} return end
     points[i] = { point = point, relativeTo = relativeTo, relativePoint = relativePoint, x = x, y = y }
   end
   vgHome[frame] = points
@@ -175,7 +179,7 @@ local function putHome(name, calls)
   if type(frame) ~= "table" or not vgMovable[frame] then return end
   local layout = layoutOf(frame, name)
   if not layout then return goHome(frame) end
-  if frame:IsShown() then calls[layout] = true end
+  if ns.IsTrue(frame:IsShown()) then calls[layout] = true end
 end
 
 -- Puts the named windows where the game puts them, each layout call made once.
@@ -254,7 +258,8 @@ local function placeHandle(h, frame, bar)
     h:SetPoint("TOPLEFT", frame, "TOPLEFT", s.left, 0)
     h:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -s.right, -s.height)
   end
-  h:SetFrameLevel((bar or frame):GetFrameLevel() + 1)
+  local level = ns.PlainNumber((bar or frame):GetFrameLevel())
+  if level then h:SetFrameLevel(level + 1) end
 end
 
 -- Lays an invisible drag area over a title bar (or along a window's top); it moves `frame`, drawn on `parent`.
@@ -280,12 +285,12 @@ local function addHandle(frame, name)
   end
 end
 
--- Whether the mouse is over the top GW.MOVE_GRAB units of a window.
+-- Whether the mouse is over the top GW.MOVE_GRAB units of a window; never while the client hides its top or scale.
 local function overTop(frame)
   local _, y = GetCursorPosition()
-  local top = frame:GetTop()
-  if not top then return false end
-  local below = top - y / frame:GetEffectiveScale()
+  local top, scale = ns.PlainNumber(frame:GetTop()), ns.PlainNumber(frame:GetEffectiveScale())
+  if not (top and scale) then return false end
+  local below = top - y / scale
   return below >= 0 and below <= GW.MOVE_GRAB
 end
 
@@ -294,7 +299,7 @@ end
 local function pressTop(frame, button)
   if button ~= "LeftButton" or ns.InCombat() or vgDragging[frame] or not overTop(frame) then return end
   vgDragging[frame] = true
-  vgPress[frame] = { left = frame:GetLeft() or 0, top = frame:GetTop() }
+  vgPress[frame] = { left = ns.PlainNumber(frame:GetLeft()) or 0, top = ns.PlainNumber(frame:GetTop()) }
   frame:StartMoving()
 end
 
@@ -302,7 +307,7 @@ end
 -- place is saved unless it never left its spot (a click, within GW.MOVE_SLOP).
 local function released(frame, from)
   stop(frame)
-  local left, top = frame:GetLeft(), frame:GetTop()
+  local left, top = ns.PlainNumber(frame:GetLeft()), ns.PlainNumber(frame:GetTop())
   if left and top and (math.abs(left - from.left) >= GW.MOVE_SLOP or math.abs(top - from.top) >= GW.MOVE_SLOP) then
     GW.SavePlace(frame:GetName(), frame)
   end
