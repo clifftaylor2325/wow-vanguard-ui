@@ -941,6 +941,39 @@ it("bar backing: a flat panel under each bar's buttons on Classic look or when a
   expect(backing(on)[0], "Always shows it on the default theme").toBe(true);
 });
 
+// The shown bar backings as { bar, l, b, r, t } (screen rects, to a tenth of a unit).
+const shownBackings = (addon) => Object.values(addon.eval(`local out = {}
+  local function at(v) return math.floor(v * 10 + 0.5) / 10 end
+  for n = 1, 8 do
+    local f = _G["Vanguard_Bar" .. n] and _G["Vanguard_Bar" .. n].vgBacking
+    if f and f:IsVisible() then out[#out + 1] = { bar = n, l = at(f:GetLeft()), b = at(f:GetBottom()), r = at(f:GetRight()), t = at(f:GetTop()) } end
+  end
+  return out`) || {});
+
+// Bar n's screen rect, as shownBackings gives a backing's.
+const barRect = (addon, n) => addon.eval(`local f = Vanguard_Bar${n} local function at(v) return math.floor(v * 10 + 0.5) / 10 end
+  return { l = at(f:GetLeft()), b = at(f:GetBottom()), r = at(f:GetRight()), t = at(f:GetTop()) }`);
+
+it("bar backing: the touching bars of the bottom stack share one plinth under Shield, no plate over another", () => {
+  const addon = loggedIn(ACTIONS_ENV);
+  const plates = shownBackings(addon);
+  const [top, bottom] = [barRect(addon, 1), barRect(addon, 3)];
+  expect(plates.map((p) => p.bar), "one plinth, on the top bar, for the three stacked bars").toEqual([1]);
+  expect(plates[0], "it reaches the pad past bar 1's top and bar 3's bottom").toEqual({ bar: 1, l: top.l - 4, b: bottom.b - 4, r: top.r + 4, t: top.t + 4 });
+});
+
+it("bar backing: a stacked bar dragged away keeps a plate of its own, and no two plates overlap", () => {
+  const addon = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { positions = { bar2 = { point = "CENTER", relPoint = "CENTER", x = 0, y = 200 } } } }' });
+  const plates = shownBackings(addon);
+  expect(plates.map((p) => p.bar), "bar 2 left the stack, so bars 1 and 3 no longer touch").toEqual([1, 2, 3]);
+  const pairs = plates.flatMap((a, i) => plates.slice(i + 1).map((c) => [a.bar, c.bar, overlaps(a, c)]));
+  expect(pairs.filter((p) => p[2]), "no plate overlaps another").toEqual([]);
+  addon.eval('ns.ResetMovers("bar2")');
+  expect(shownBackings(addon).map((p) => p.bar), "reset into the stack, it joins the plinth again at once").toEqual([1]);
+  setBarOption(addon, 2, "Visibility", '"mouseover"');
+  expect(shownBackings(addon).map((p) => p.bar), "a bar that fades on its own keeps its own plate").toEqual([1, 2, 3]);
+});
+
 it("hotkey text stays on one line inside the button, right-aligned", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const hk = addon.eval(`local h = Vanguard_Bar1Button1.hotkey

@@ -134,6 +134,11 @@ AB.stacked, AB.stackedTop = {}, nil
 -- The skinning group the action buttons are in, when the library is loaded.
 AB.MASQUE = "Action bars"
 
+-- Whether bar n is one of the bottom stack's bars (a bar dragged away still counts: its default spot is in the stack).
+function AB.InStack(n)
+  return BARS[n] ~= nil and BARS[n].stack == true
+end
+
 -- Whether bar n sits on the right edge of the screen (bars 4 and 5; the
 -- stacked bottom bars have no fixed point).
 function AB.RightEdge(n)
@@ -1139,4 +1144,5 @@ function AB.Enable(settings)
   AB.FollowRangeTint()
   ns.OnUnit("UNIT_INVENTORY_CHANGED", refreshCarried, "player")
   T.OnChanged(function() ns.OutOfCombat(AB.UpdateBackings, "action bar backings") end)
+  ns.OnMoverPlaced(function(key) if key:match("^bar%d$") then ns.OutOfCombat(AB.UpdateBackings, "action bar backings") end end)
 end

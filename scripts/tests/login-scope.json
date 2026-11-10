@@ -74,6 +74,8 @@
       "bar 1 pages without secure snippets: the driver sets the bar's own actionpage, the buttons read it",
       "bar 1 with secure snippets keeps the snippet paging",
       "bar backing: a flat panel under each bar's buttons on Classic look or when asked for, live with the setting and the theme",
+      "bar backing: a stacked bar dragged away keeps a plate of its own, and no two plates overlap",
+      "bar backing: the touching bars of the bottom stack share one plinth under Shield, no plate over another",
       "counts show on a client without the deprecated GetActionCount (C_ActionBar.GetActionUseCount)",
       "empty slots take no mouse, so blank bar space passes clicks through; a drag turns it back on",
       "hotkey text stays on one line inside the button, right-aligned",

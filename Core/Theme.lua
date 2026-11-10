@@ -1517,6 +1517,30 @@ function corner.paintHair(frame, entry, geo, token)
   for _, t in pairs(p.hair.corners) do t:Hide() end
 end
 
+-- A cue outline (T.CueRing on a HUD frame with a role): a hidden holder over frame, its four edges and four corner
+-- pieces in the line art, placed by corner.placeCue on every repaint so it follows the plate's shape.
+function corner.cueOutline(frame)
+  local holder = CreateFrame("Frame", nil, frame)
+  holder:SetAllPoints(frame)
+  holder:Hide()
+  return { holder = holder, edges = edges(holder, 0), corners = cornerPieces(holder, T.CORNER_ART.cut.line, "BORDER", 0) }
+end
+
+-- Places a cue outline one pixel out past the plate's border, following its corners as the hairline does inside it:
+-- the edges short of each shaped corner (none down a shield's point), each shaped corner's line piece there.
+function corner.placeCue(frame, entry, cue, geo)
+  local out = T.PixelRound(frame, entry.opts.pad or 0) + T.Pixel(frame)
+  placeEdges(cue.edges, frame, out, geo) sizeEdges(cue.edges, frame)
+  placeCorners(cue.corners, frame, out, geo) corner.art(cue.corners, frame, geo, "line")
+  corner.showEdges(cue.edges, geo)
+end
+
+-- Paints a frame's one-pixel lines for a geometry: its hairline (corner.paintHair) and its cue outlines.
+function corner.paintLines(frame, entry, geo, hair)
+  if entry.parts.hair or hair then corner.paintHair(frame, entry, geo, hair) end
+  for _, cue in pairs(entry.cues or NO_PARTS) do corner.placeCue(frame, entry, cue, geo) end
+end
+
 -- Shows a painted frame's plate (its background and border), or hides it for a frame the HUD look draws bare. A
 -- shown plate leaves each edge as the paint left it; an edge's own shown state is never read back, since the client
 -- can hold it secret, and a secret passed to SetShown from addon code raises.
@@ -1547,7 +1571,7 @@ local function repaint(frame, entry)
   corner.paintCorners(frame, entry, geo)
   if p.bg then paintBg(p, entry.opts, geo ~= nil); T.PaintPanelSurface(frame, entry) end
   if p.edges then paintEdges(frame, entry, geo) end
-  if p.hair or hair then corner.paintHair(frame, entry, geo, hair) end
+  corner.paintLines(frame, entry, geo, hair)
   paintTrim(frame, entry)
   for _, fill in ipairs(entry.fills or NO_PARTS) do repaintFill(frame, fill, entry.opts.pad, geo) end
   corner.showPlate(p, not entry.bare)
@@ -4018,15 +4042,49 @@ function T.LoopCue(parts, name, on)
   end
 end
 
--- A hidden glow ring round a frame for one cue, tinted with a theme token (left as it is without one), made once.
+-- A cue's ring for a frame: on a painted HUD frame with a role (the unit frames, which the HUD look shapes), an
+-- outline that follows its plate (corner.cueOutline), as a one-item list of its holder; else a glow ring of `size`.
+-- Returns the list and the textures to tint.
+local function newCueRing(frame, size)
+  local entry = painted[frame]
+  if not (entry and entry.opts.role) then
+    local glow = T.Glow(frame, size)
+    return glow, glow
+  end
+  local cue = corner.cueOutline(frame)
+  entry.cues = entry.cues or {}
+  entry.cues[#entry.cues + 1] = cue
+  corner.placeCue(frame, entry, cue, entry.geo)
+  return { cue.holder }, corner.cuePieces(cue)
+end
+
+-- A cue outline's textures: its edges and corner pieces.
+function corner.cuePieces(cue)
+  local list = {}
+  for _, t in pairs(cue.edges) do list[#list + 1] = t end
+  for _, t in pairs(cue.corners) do list[#list + 1] = t end
+  return list
+end
+
+-- The textures each cue ring draws with (weak): ring list -> textures, for T.CueColor.
+local cueTextures = setmetatable({}, { __mode = "k" })
+
+-- A hidden ring round a frame for one cue (newCueRing: an outline on a shaped HUD frame, a glow elsewhere), tinted
+-- with a theme token (left as it is without one), made once. Show, hide and animate the list's items.
 function T.CueRing(frame, name, token, size)
   local rings = vgRing[frame] or {}
   vgRing[frame] = rings
   if not rings[name] then
-    rings[name] = T.Glow(frame, size)
-    for _, tex in ipairs(rings[name]) do if token then T.Tint(tex, token) end end
+    local list, textures = newCueRing(frame, size)
+    rings[name], cueTextures[list] = list, textures
+    for _, tex in ipairs(textures) do if token then T.Tint(tex, token) end end
   end
   return rings[name]
+end
+
+-- Colours every texture of a cue ring (T.CueRing) with r, g, b, a as they are (a value the client hides included).
+function T.CueColor(cue, r, g, b, a)
+  for _, tex in ipairs(cueTextures[cue] or cue) do tex:SetVertexColor(r, g, b, a) end
 end
 
 -- One flash over a button's cooldown area each time its cooldown widget finishes (the widget's own
