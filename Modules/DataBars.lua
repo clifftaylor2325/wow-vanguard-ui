@@ -492,11 +492,17 @@ DB.HONOR_COLOR = "focus"
 -- The renown bar's color token: the game draws a major faction's bar blue whatever its reaction.
 DB.RENOWN_COLOR = "info"
 
+-- Whether the bars' module runs (its scope, which the registry keeps on the module table, is open): a linger timer or
+-- a visibility reapply queued before a stop calls the bars' state hook afterwards, and must not show them again.
+function DB.Running()
+  return DB.scope == nil or DB.scope.on == true
+end
+
 -- Fills the XP bar (with honor at Retail's cap, in its own colour), or hides it at max level (or while its
 -- visibility hides it).
 function DB.UpdateXP()
   local bar, xp = DB.xpBar, DB.Line()
-  if not bar then return end
+  if not bar or not DB.Running() then return end
   DB.PlaceRepBar(xp)
   bar:SetShown(xp ~= nil and V.Shows(bar))
   if not xp then return end
@@ -511,7 +517,7 @@ end
 -- faction (or while its visibility hides it).
 function DB.UpdateReputation()
   local bar, rep = DB.repBar, DB.Reputation()
-  if not bar then return end
+  if not bar or not DB.Running() then return end
   bar:SetShown(rep ~= nil and V.Shows(bar))
   if not rep then return end
   bar:SetMinMaxValues(0, rep.max)

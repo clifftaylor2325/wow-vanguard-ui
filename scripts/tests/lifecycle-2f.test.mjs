@@ -81,3 +81,9 @@ it("lifecycle: DataBars switched off gives the game's XP bar its Edit Mode handl
   addon.eval('ns.SetModuleEnabled("DataBars", true)');
   expect(handle(), "on again: none").toBe(false);
 });
+
+it("lifecycle: DataBars stopped, a late visibility repaint does not show its bars again", () => {
+  const addon = login();
+  addon.eval('ns.SetModuleEnabled("DataBars", false) local DB = ns.GetModule("DataBars") if DB.xpBar then DB.UpdateXP() DB.UpdateReputation() end');
+  expect(addon.eval('local DB = ns.GetModule("DataBars") return { DB.xpBar == nil or not DB.xpBar:IsShown(), DB.repBar == nil or not DB.repBar:IsShown() }')).toEqual([true, true]);
+});
