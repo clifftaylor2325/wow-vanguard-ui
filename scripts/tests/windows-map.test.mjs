@@ -1291,3 +1291,13 @@ it("calendar: switched off it stays the game's; a client missing the window, its
   bare.eval("CalendarFrame:Show() CalendarViewRaidFrame:Show() CalendarCreateEventFrame:Show()");
   expect(bare.eval("return #ns.errors"), "no month buttons, day textures, header parts or text boxes: no errors").toBe(0);
 });
+
+// A day cell's size is secret while its anchoring is (SecretWhenAnchoringSecret), and a button's enabled state once the game
+// set it from a secret (FOREVER-API-FACTS 3): the today marker keeps its size, nothing is compared, nothing raises.
+it("calendar: the today marker is not sized from a day cell whose size the client hides", () => {
+  const addon = loggedIn("");
+  expect(addon.eval(`local today, day = CreateFrame("Frame", nil, UIParent), CreateFrame("Button", nil, UIParent)
+    today:SetSize(145, 140) day.GetWidth = function() return __wfgWorld.secret(91) end
+    ns.GetModule("Windows").FitToday(today, day)
+    return { today:GetWidth(), #ns.errors }`), "kept at the game's size").toEqual([145, 0]);
+});
