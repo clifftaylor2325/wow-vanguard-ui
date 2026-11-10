@@ -21,7 +21,7 @@ local vgPlanner = ns.FrameState("vgPlanner")
 
 local T, W = ns.Theme, ns.Widgets
 
-local TP = ns.Module("TalentPlanner", { clients = { forever = true }, defaults = { levelPrompt = true, autoSpend = false } })
+local TP = ns.Module("TalentPlanner", { clients = { forever = true }, defaults = { levelPrompt = true, autoSpend = false }, live = true })
 
 -- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
 if not ns.ClientAllows(TP) then return end
@@ -593,7 +593,7 @@ end
 -- Reads the tree and plan again and paints the marks and the bar; nothing while the window is away.
 function TP.Refresh()
   local frame = TP.Frame()
-  if not frame or not frame:IsVisible() then return end
+  if not TP.settings or not frame or not frame:IsVisible() then return end
   TP.tree = TP.ReadTree()
   if not TP.tree then return end
   local plan = TP.Reconcile(TP.tree, TP.Plan())
@@ -612,21 +612,33 @@ function TP.Schedule()
   after(0, function() TP.pending = false ns.Try("talent planner", TP.Refresh) end)
 end
 
--- A repaint each time the window is given another config (a spec tab picked, or a player inspected), where it can.
-local function watchConfig(frame)
+-- Hooks the game's talents window, through gates: installed once a session, inert while the module is off. A repaint
+-- on show and each time the window is given another config (a spec tab picked, or a player inspected, where the
+-- window can), the tooltip put away on hide.
+local function hookWindow(frame)
+  local scope = TP.scope
+  scope:Gate("window shown", TP.Schedule, function(gate) frame:HookScript("OnShow", ns.Guard("show talent window", gate)) end)
+  scope:Gate("window hidden", TP.HideTip, function(gate) frame:HookScript("OnHide", ns.Guard("hide talent window", gate)) end)
   if type(frame.SetConfigID) ~= "function" or type(hooksecurefunc) ~= "function" then return end
-  hooksecurefunc(frame, "SetConfigID", ns.Guard("talent window config", TP.Schedule))
+  scope:Gate("window config", TP.Schedule, function(gate) hooksecurefunc(frame, "SetConfigID", ns.Guard("talent window config", gate)) end)
 end
 
--- Hooks the game's talents window once it exists: the bar built, a repaint on show, the tooltip put away on hide.
+-- Puts the game tooltip away.
+function TP.HideTip()
+  GameTooltip:Hide()
+end
+
+-- Hooks the game's talents window once it exists: the bar built and the window hooked (both once a session), the
+-- bar shown (a restart finds it hidden), and a repaint.
 function TP.Attach()
   local frame = TP.Frame()
-  if not frame or vgPlanner[frame] then return end
-  vgPlanner[frame] = true
-  buildBar(frame)
-  frame:HookScript("OnShow", ns.Guard("show talent window", TP.Schedule))
-  frame:HookScript("OnHide", ns.Guard("hide talent window", function() GameTooltip:Hide() end))
-  watchConfig(frame)
+  if not frame then return end
+  if not vgPlanner[frame] then
+    vgPlanner[frame] = true
+    buildBar(frame)
+    hookWindow(frame)
+  end
+  TP.bar:Show()
   TP.Schedule()
 end
 
@@ -699,6 +711,7 @@ end
 
 -- The level-up line: how many points wait and what the plan buys next; Spend by itself buys them instead.
 function TP.Prompt()
+  if not TP.settings then return end
   local tree = TP.ReadTree()
   if not tree or tree.points <= 0 then return end
   local result = TP.Resolve(tree, TP.Plan())
@@ -711,7 +724,7 @@ end
 
 -- You gained a level: in a moment (the point lands first), after combat, the prompt or the spend, when either is on.
 local function onLevelUp()
-  if not (TP.settings.levelPrompt or TP.settings.autoSpend) then return end
+  if not TP.settings or not (TP.settings.levelPrompt or TP.settings.autoSpend) then return end
   local after = type(C_Timer) == "table" and C_Timer.After
   -- The prompt, out of combat.
   local function go() ns.OutOfCombat(function() ns.Try("talent planner", TP.Prompt) end, "talents") end
@@ -1002,12 +1015,26 @@ end
 
 ns.Options.AddPage({ key = "talents", title = L["Talents"], icon = "NavTalents", order = 47, rows = rows })
 
--- Module entry point (Core/Modules.lua): the window hooked now or when its part of the game loads,
--- repaints on tree changes, and the level-up prompt.
-function TP.Enable(settings)
-  TP.settings = settings
+-- Module entry point (Core/Modules.lua): the window hooked now or when its part of the game loads (the hooks are
+-- gates), repaints on tree changes, and the level-up prompt; all through the scope.
+function TP.Enable(settings, scope)
+  TP.settings, TP.scope = settings, scope
   TP.Attach()
-  ns.On("ADDON_LOADED", TP.Attach)
-  for _, event in ipairs(TP.EVENTS) do ns.On(event, TP.Schedule) end
-  ns.On("PLAYER_LEVEL_UP", onLevelUp)
+  scope:On("ADDON_LOADED", TP.Attach)
+  for _, event in ipairs(TP.EVENTS) do scope:On(event, TP.Schedule) end
+  scope:On("PLAYER_LEVEL_UP", onLevelUp)
+end
+
+-- Switched off: plan mode ends, the marks on the game's talent buttons stop taking the mouse and hide, the bar
+-- (with Spend planned) and the order window hide, and the module reads as off (no settings), so nothing can be
+-- spent or planned through it; the guards on spending are untouched. The window's hooks go inert with the scope.
+function TP.Disable()
+  TP.planning = false
+  for _, m in pairs(marks) do
+    m:EnableMouse(false)
+    m:Hide()
+  end
+  if TP.bar then TP.bar:Hide() end
+  if TP.orderFrame then TP.orderFrame:Hide() end
+  TP.settings = nil
 end

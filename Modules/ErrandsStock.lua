@@ -84,8 +84,8 @@ local function amountBox(row)
   local box = W.Input(row, SW.AMOUNT_W)
   box:SetNumeric(true)
   box:SetMaxLetters(5)
-  box:HookScript("OnTextChanged", ns.Guard("type stock amount", typeAmount))
-  box:HookScript("OnEditFocusLost", ns.Guard("leave stock amount", SW.LeaveAmount))
+  box:SetScript("OnTextChanged", ns.Guard("type stock amount", typeAmount))
+  box:SetScript("OnEditFocusLost", ns.Guard("leave stock amount", SW.LeaveAmount))
   return box
 end
 
@@ -261,8 +261,8 @@ function SW.Open()
   if not ER.settings then return ns.Chat(L["Errands is off (/vg > Modules)."]) end
   if not SW.frame then
     SW.frame = build()
-    ns.On("GET_ITEM_INFO_RECEIVED", refreshSoon)
   end
+  ER.scope:On("GET_ITEM_INFO_RECEIVED", refreshSoon)
   SW.Refresh()
   SW.frame:Show()
 end

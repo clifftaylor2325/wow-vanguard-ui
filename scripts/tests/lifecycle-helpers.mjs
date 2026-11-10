@@ -11,7 +11,7 @@ import { expect, it } from "vitest";
 const FOOTPRINT = `
   local stub = __wfgStub
   local out = { handlers = ns.HandlerCounts(), tickers = {}, events = {}, shown = {}, drivers = 0, movers = {}, gates = 0 }
-  for key in pairs(ns.ticker.vgJobs) do out.tickers[#out.tickers + 1] = type(key) == "table" and "frame" or tostring(key) end
+  for key in pairs(ns.ticker.vgJobs) do out.tickers[#out.tickers + 1] = type(key) == "table" and "table" or tostring(key) end
   for _, w in ipairs(stub.frames) do
     if w.__id > stub.firstAddonFrame then
       for event in pairs(w.__events) do out.events[#out.events + 1] = event end

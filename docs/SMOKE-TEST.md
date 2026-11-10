@@ -5449,6 +5449,70 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 - Expect: each goes at once, with nothing of its own left on screen (no icons under the target frame, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. With Unit frames off, a child's switch is greyed and says "Needs Unit frames". A switch made in a fight applies when the fight ends. [Needs in-game check.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
+## 35. Switching raid and town modules on and off (A4-2e)
+
+Each step is the same shape: switch the module off under `/vg` → Modules (or its own switch), look; switch it on, look again. Nothing needs a reload, and a switch made in a fight applies when it ends.
+
+### 35.1 Raid auras
+
+- Do: in a group (or a raid), with Raid frames on, switch **Raid auras** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
+- Expect: off, every tile loses its debuff and HoT icons, its indicators and the dispel wash at once, and nothing is left drawn; on, they come back on every tile; a changed debuff count or indicator shows on the tiles at once (out of combat), with no reload notice for these rows.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
+### 35.2 Raid healing
+
+- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid healing** off under `/vg` → Modules, then on again.
+- Expect: off, the heal and shield bars, aggro strip and missing-buff marker are gone from every tile at once and stay gone while the heal lands; on, they return on every tile without a reload.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
+### 35.3 Raid status
+
+- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid status** off under `/vg` → Modules, then on again. Run a ready check while it is off.
+- Expect: off, the range fade, raid icons, crown and any ready check, resurrection and summon marks are gone from every tile at once and the status text shows; the ready check draws nothing; on, the marks and the fade return.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
+### 35.4 Officer loot tools
+
+- Do: with `/vg loot on` and a reserve added, have the reserving member roll so the tracker shows "[SR]". Switch **Officer loot tools** off under `/vg` → Modules, then on again.
+- Expect: off, the roll tracker loses its "[SR]" flags at once and `/vg loot list` says the module is off; on, the flags and the list return, with the reserves as they were.
+- If it fails, paste: the roll tracker's lines and `/vg errors`.
+
+### 35.5 Gear upgrades
+
+- Do: open the combined bag and a quest reward window with an upgrade in each (an arrow shows), and hover an upgrade for its tooltip line. Switch **Gear upgrades** off under `/vg` → Modules, then on again.
+- Expect: off, the arrows on the bag slots and reward cards and the tooltip line are gone at once; on, they come back (the bag marks itself again), with no reload.
+- If it fails, paste: a screenshot of the bag and `/vg errors`.
+
+### 35.6 Character sheet extras
+
+- Do: open the character pane (item levels show on the gear slots). Switch **Character sheet extras** off under `/vg` → Modules, then on again, with the pane open and then closed.
+- Expect: off, every slot's item level and enchant mark go at once and the pane opens bare; on, they return on the open pane and when it next opens.
+- If it fails, paste: a screenshot of the pane and `/vg errors`.
+
+### 35.7 Errands
+
+- Do: at a class trainer, see the Train all button, then switch **Errands** off under `/vg` → Modules (trainer window open) and on again; then turn **Flight timer** off and on under Town and gear → Errands and take a flight.
+- Expect: off, the Train all button is gone from the trainer's window at once and a merchant buys nothing for your stock list; on, the button returns on the open window. The flight timer switch applies at once, with no reload notice, and a known route shows its countdown bar.
+- If it fails, paste: a screenshot of the trainer window and `/vg errors`.
+
+### 35.8 Merchant helpers
+
+- Do: at a merchant, open the quantity window on a stack of goods (Stack and Max show under it). With the window open, switch **Merchant helpers** off under `/vg` → Modules, then on again; visit a merchant while it is off.
+- Expect: off, the drawer under the quantity window is gone at once and a merchant repairs and sells nothing; on, the next merchant and quantity window work as before, with no reload.
+- If it fails, paste: a screenshot of the quantity window and `/vg errors`.
+
+### 35.9 Talent planner
+
+- Do: open the talents window, switch Plan on and plan a talent (a badge shows, the bar shows Spend planned). With the window open, switch **Talent planner** off under `/vg` → Modules, then click a talent and type `/vg talents spend`; switch it on again.
+- Expect: off, the badges, rings and the bar are gone at once, clicking a talent only does what the game does and the command says the planner is off; nothing is spent. On, the bar and your plan return on the open window.
+- If it fails, paste: a screenshot of the talents window and `/vg errors`.
+
+### 35.10 Quest guidance
+
+- Do: open the world map on a zone with quest starts (pins show). With it open, switch **Quest guidance** off under `/vg` → Modules, then on again; Shift-click a tracked quest in each state.
+- Expect: off, the pins vanish from the open map at once, the tracker loses its New marks and next-step line, and Shift-click does nothing; on, the pins return on the open map. The map itself keeps working.
+- If it fails, paste: a screenshot of the map and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

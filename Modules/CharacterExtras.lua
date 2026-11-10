@@ -13,7 +13,7 @@ local L = ns.L
 
 local T = ns.Theme
 
-local CE = ns.Module("CharacterExtras", { defaults = { itemLevel = true, enchant = false } })
+local CE = ns.Module("CharacterExtras", { defaults = { itemLevel = true, enchant = false }, live = true })
 
 ns.Options.MODULE_INFO.CharacterExtras = { L["Character sheet extras"], L["Item level on each gear slot of the character pane, optional marks for missing enchants, and /vg gear."] }
 
@@ -170,10 +170,22 @@ end
 ns.Options.AddRows("windows", CE.Rows)
 
 -- Module entry point (Core/Modules.lua): the labels when the pane opens and as gear changes. Nothing without the pane.
-function CE.Enable(settings)
+-- The pane's OnShow hook is a gate (a hook stays installed, inert while the module is off); the events go through the scope.
+function CE.Enable(settings, scope)
   CE.settings = settings
   local pane = _G.CharacterFrame
   if type(pane) ~= "table" or type(GetInventoryItemLink) ~= "function" then return end
-  pane:HookScript("OnShow", ns.Guard("character extras", CE.PaintAll))
-  for _, e in ipairs({ "PLAYER_EQUIPMENT_CHANGED", "UNIT_INVENTORY_CHANGED", "GET_ITEM_INFO_RECEIVED" }) do ns.On(e, CE.PaintAll) end
+  scope:Gate("pane shown", CE.PaintAll, function(gate) pane:HookScript("OnShow", ns.Guard("character extras", gate)) end)
+  for _, e in ipairs({ "PLAYER_EQUIPMENT_CHANGED", "UNIT_INVENTORY_CHANGED", "GET_ITEM_INFO_RECEIVED" }) do scope:On(e, CE.PaintAll) end
+  if ns.ModulesBuilt() then CE.PaintAll() end
+end
+
+-- Switched off: the item levels and enchant marks on the character pane's slots go (they were drawn on the game's
+-- own buttons, which the scope can't see), and the options rows stop repainting the pane.
+function CE.Disable()
+  for _, l in pairs(labels) do
+    l.level:Hide()
+    l.mark:Hide()
+  end
+  CE.settings = nil
 end

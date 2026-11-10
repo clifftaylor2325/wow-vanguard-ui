@@ -19,6 +19,7 @@ local T = ns.Theme
 local ER = ns.Module("Errands", {
   defaults = { trainAll = true, stock = true, flightTimer = true, flights = {},
     boatTimer = false, boats = {}, boatLast = {} },
+  live = true,
 })
 
 ER.TRAIN_STEPS, ER.BUY_EVERY = 30, 0.2
@@ -145,11 +146,17 @@ function ER.UpdateTrainButton()
   b:SetShown(ER.settings.trainAll)
 end
 
--- Gives the Train all button its tooltip, shown while it is greyed out too.
+-- Hides the game tooltip the Train all button showed.
+local function hideTrainTip()
+  if GameTooltip then GameTooltip:Hide() end
+end
+
+-- Gives the Train all button its tooltip, shown while it is greyed out too. The button is made once a session, so its
+-- two hooks are gates installed once, inert while the module is off.
 local function addTrainTip(b)
   b:SetMotionScriptsWhileDisabled(true)
-  b:HookScript("OnEnter", ns.Guard("train all tooltip", trainTip))
-  b:HookScript("OnLeave", ns.Guard("train all tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
+  ER.scope:Gate("train tip enter", trainTip, function(gate) b:HookScript("OnEnter", ns.Guard("train all tooltip", gate)) end)
+  ER.scope:Gate("train tip leave", hideTrainTip, function(gate) b:HookScript("OnLeave", ns.Guard("train all tooltip", gate)) end)
 end
 
 -- Learns the next affordable service not yet bought in this click; false when
@@ -476,7 +483,7 @@ function ER.OnTakeTaxi(index)
   if not (from and to) then return end
   local key = from .. " > " .. to
   ER.flight = { key = key, to = to, picked = ask("GetTime") or 0, known = ER.settings.flights[key] }
-  ns.Every("flight poll", ER.FLIGHT_POLL, ER.PollFlight)
+  ER.scope:Every("flight poll", ER.FLIGHT_POLL, ER.PollFlight)
 end
 
 -- Seconds as "1:05".
@@ -512,7 +519,7 @@ end
 -- flight that never took off is forgotten. With no flight to follow, it stops.
 function ER.PollFlight()
   local f, taxi, now = ER.flight, ask("UnitOnTaxi", "player"), ask("GetTime") or 0
-  if not f then return ns.Every("flight poll", nil) end
+  if not f then return ER.scope:Every("flight poll", nil) end
   if ns.IsSecret(taxi) then return end
   local flying = taxi == true
   if f.start and not flying then return land(f) end
@@ -520,17 +527,27 @@ function ER.PollFlight()
   if now - f.picked > ER.TAKEOFF_WAIT then ER.flight = nil end
 end
 
--- A movable timer bar at the travel spot, hidden until a route: the frame's name, its mover's key and label. Its
--- text is centred on one line inside the bar, cut short when a long destination's name runs past it.
-function ER.TimerBar(frameName, moverKey, label)
+-- A timer bar: its text is centred on one line inside the bar, cut short when a long destination's name runs past it.
+local function newTimerBar(frameName)
   local bar = T.BarColor(T.StyleBar(CreateFrame("StatusBar", frameName, UIParent)), "accent")
   T.HudPanel(bar)
   bar:SetSize(ER.BAR_W, ER.BAR_H)
-  ns.Mover(bar, moverKey, label, ER.TRAVEL_SPOT)
   bar.text = T.Text(bar:CreateFontString(nil, "OVERLAY"), "barSmall")
   bar.text:SetPoint("LEFT", T.SPACE.tight, 0)
   bar.text:SetPoint("RIGHT", -T.SPACE.tight, 0)
   bar.text:SetWordWrap(false)
+  return bar
+end
+
+-- The bars made this session, by frame name (a named frame is made once; a restart finds it).
+ER.bars = {}
+
+-- A movable timer bar at the travel spot, hidden until a route: the frame's name, its mover's key and label. Made
+-- once a session; each start hands its mover to the module's scope.
+function ER.TimerBar(frameName, moverKey, label)
+  local bar = ER.bars[frameName] or newTimerBar(frameName)
+  ER.bars[frameName] = bar
+  ER.scope:Mover(bar, moverKey, label, ER.TRAVEL_SPOT)
   bar:Hide()
   return bar
 end
@@ -545,32 +562,73 @@ function ER.OnEarlyLanding()
   if ER.flight then ER.flight.early = true end
 end
 
--- Times flights, where the client lets addons see you pick one.
-local function watchFlights()
+-- Does nothing (a gate's target for a timer that is switched off).
+function ER.Idle() end
+
+-- The hooks installed this session, by gate key: one stays installed after its timer is switched off, and is
+-- pointed at nothing.
+local gated = {}
+
+-- Points the gate of a hook on the game function `global` at fn, or at nothing for a timer that is off: a hook
+-- already installed is pointed away, and none is installed for a timer that never was on.
+local function pointGate(key, global, label, fn)
+  if type(_G[global]) ~= "function" or not (fn or gated[key]) then return end
+  gated[key] = true
+  ER.scope:Gate(key, fn or ER.Idle, function(gate) hooksecurefunc(global, ns.Guard(label, gate)) end)
+end
+
+-- Times flights, where the client lets addons see you pick one; the hooks go through gates and the bar is made once.
+local function watchFlights(on)
   if type(hooksecurefunc) ~= "function" or type(_G.TakeTaxiNode) ~= "function" then return end
-  hooksecurefunc("TakeTaxiNode", ns.Guard("hook TakeTaxiNode", ER.OnTakeTaxi))
-  if type(_G.TaxiRequestEarlyLanding) == "function" then
-    hooksecurefunc("TaxiRequestEarlyLanding", ns.Guard("hook early landing", ER.OnEarlyLanding))
-  end
-  buildBar()
+  pointGate("take taxi", "TakeTaxiNode", "hook TakeTaxiNode", on and ER.OnTakeTaxi)
+  pointGate("early landing", "TaxiRequestEarlyLanding", "hook early landing", on and ER.OnEarlyLanding)
+  if on then buildBar() end
 end
 
 -- Follows the trainer's window for the Train all button.
-local function watchTrainer()
-  ns.On("TRAINER_SHOW", trainerOpen(true))
-  ns.On("TRAINER_CLOSED", trainerOpen(false))
-  ns.On("TRAINER_UPDATE", ER.UpdateTrainButton)
+local function watchTrainer(scope)
+  scope:On("TRAINER_SHOW", trainerOpen(true))
+  scope:On("TRAINER_CLOSED", trainerOpen(false))
+  scope:On("TRAINER_UPDATE", ER.UpdateTrainButton)
 end
 
--- Module entry point (Core/Modules.lua).
-function ER.Enable(settings)
-  ER.settings = settings
-  moveStockList(settings)
+-- Shows the Train all button again, or makes it when the trainer window is already open (a module started with it
+-- open missed TRAINER_SHOW). The button is made once on the game's window.
+local function readyTrainButton()
+  local frame = _G.ClassTrainerFrame
+  ER.trainerOpen = type(frame) == "table" and frame:IsShown() == true
   ER.AddTrainButton()
-  ns.On("ADDON_LOADED", onLoaded)
-  watchTrainer()
-  ns.On("MERCHANT_SHOW", onMerchant)
-  ns.On("MERCHANT_CLOSED", onMerchantClosed)
-  if settings.flightTimer then watchFlights() end
+  if ER.trainButton then ER.UpdateTrainButton() end
+end
+
+-- Module entry point (Core/Modules.lua): everything through the scope. The flight hooks are gates, so a second
+-- start finds them.
+function ER.Enable(settings, scope)
+  ER.settings, ER.scope = settings, scope
+  moveStockList(settings)
+  readyTrainButton()
+  scope:On("ADDON_LOADED", onLoaded)
+  watchTrainer(scope)
+  scope:On("MERCHANT_SHOW", onMerchant)
+  scope:On("MERCHANT_CLOSED", onMerchantClosed)
+  watchFlights(settings.flightTimer)
   if settings.boatTimer then ER.WatchBoats() end
+end
+
+-- Hides what the module drew on the game's trainer window and its own bars and window (the ones that exist).
+local function hideDrawn()
+  for _, key in ipairs({ "trainButton", "bar", "boatBar" }) do
+    if ER[key] then ER[key]:Hide() end
+  end
+  if ER.StockWindow.frame then ER.StockWindow.frame:Hide() end
+end
+
+-- Switched off: the Train all button on the game's trainer window, the timer bars and the Keep stocked window are
+-- hidden, a run in progress (a purchase run, a flight, a ride) is forgotten, and the module reads as off (no
+-- settings: the stock window refuses to open), as after a login with it off. The hooks go inert with the scope.
+function ER.Disable()
+  ER.stocking, ER.flight, ER.boat = nil, nil, nil
+  ER.merchantOpen, ER.trainerOpen = false, false
+  hideDrawn()
+  ER.settings = nil
 end

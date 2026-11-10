@@ -61,8 +61,8 @@ local function errandRows()
     check(L["Train all button at trainers"], setting("Errands", "trainAll")),
     check(L["Keep items stocked from merchants"], setting("Errands", "stock")),
     { "button", L["Edit list..."], function() ns.GetModule("Errands").StockWindow.Open() end, function() return ns.GetModule("Errands").settings ~= nil end },
-    check(L["Flight timer (reload)"], reloadSetting("Errands", "flightTimer")),
-    check(L["Boat and zeppelin timer (reload)"], reloadSetting("Errands", "boatTimer")),
+    check(L["Flight timer (reload)"], O.RestartSetting("Errands", "flightTimer")),
+    check(L["Boat and zeppelin timer (reload)"], O.RestartSetting("Errands", "boatTimer")),
   }
 end
 

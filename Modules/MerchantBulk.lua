@@ -490,16 +490,15 @@ function MC.OnSplitShow(frame)
   end
 end
 
--- Hooks the quantity window (once), when the game has made it. Opening it for a second item while it is
--- open fires no OnShow, so the game's open call is hooked too.
+-- Hooks the quantity window, when the game has made it: through two gates, so the hooks are installed once a
+-- session and do nothing while the module is off. Opening it for a second item while it is open fires no OnShow, so
+-- the game's open call is hooked too. Asked again, it only points the gates at the current functions.
 function MC.HookSplit()
   local frame = _G.StackSplitFrame
-  if type(frame) ~= "table" or not frame.HookScript or MC.splitHooked then return end
-  MC.splitHooked = true
-  frame:HookScript("OnShow", ns.Guard("stack split bulk", MC.OnSplitShow))
-  if type(frame.OpenStackSplitFrame) == "function" then
-    hooksecurefunc(frame, "OpenStackSplitFrame", ns.Guard("hook OpenStackSplitFrame", MC.OnSplitShow))
-  end
+  if type(frame) ~= "table" or not frame.HookScript then return end
+  MC.scope:Gate("split shown", MC.OnSplitShow, function(gate) frame:HookScript("OnShow", ns.Guard("stack split bulk", gate)) end)
+  if type(frame.OpenStackSplitFrame) ~= "function" then return end
+  MC.scope:Gate("split opened", MC.OnSplitShow, function(gate) hooksecurefunc(frame, "OpenStackSplitFrame", ns.Guard("hook OpenStackSplitFrame", gate)) end)
 end
 
 -- The merchant opened or closed. Closing ends a running buy for good: its next chunk buys nothing,
@@ -509,4 +508,15 @@ function MC.SetOpen(open)
   if open then return MC.HookSplit() end
   if MC.buying then MC.buying.stopped = true end
   MC.buying = nil
+end
+
+-- Switched off (Merchant's Enable is in Modules/Merchant.lua): the drawers drawn on the game's quantity window go, a
+-- running buy ends, and the module reads as off (no settings: /vg junk and /vg sell say so), as after a login with
+-- it off. The hooks and merchant events go inert with the scope.
+function MC.Disable()
+  for _, entry in pairs(vgSplit) do
+    for _, part in ipairs({ entry.drawer, entry.stack, entry.max, entry.line }) do part:Hide() end
+  end
+  if MC.buying then MC.buying.stopped = true end
+  MC.buying, MC.open, MC.settings = nil, false, nil
 end

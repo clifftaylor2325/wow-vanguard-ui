@@ -20,7 +20,10 @@ local RF = ns.GetModule("RaidFrames")
 
 local RS = ns.Module("RaidStatus", {
   defaults = { rangeFade = true, fadeAlpha = 0.4, raidIcons = true, readyCheck = true, resurrect = true, leader = true },
+  live = true,
+  requires = { "RaidFrames" },
 })
+local RA = ns.GetModule("RaidAuras")
 
 local RANGE_EVERY = 0.2
 local READY_LINGER = 6
@@ -125,12 +128,13 @@ local function checkRange()
 end
 
 -- Checks range five times a second (range has no dependable event), only while the raid header is
--- visible. Nothing runs until the header exists: with the raid frames off there are no tiles to fade.
+-- visible. Nothing runs until the header exists: with the raid frames off there are no tiles to fade. The job is the
+-- module's scope's, so it stops with the module (RS.Disable lets the next start begin it again).
 local function followHeader()
   local header = RF.header
   if not header or RS.following then return end
   RS.following = true
-  ns.Every("raid range", RANGE_EVERY, checkRange, header)
+  RS.scope:Every("raid range", RANGE_EVERY, checkRange, header)
 end
 
 -- Parts ------------------------------------------------------------------------------------
@@ -257,8 +261,10 @@ local function update(b, unit)
   RS.UpdateRange(b, unit)
 end
 
--- Runs fn(button, unit) on every shown raid button that has the marks.
+-- Runs fn(button, unit) on every shown raid button that has the marks (none once the module stopped: a linger
+-- timer asked for before the stop may still come).
 local function each(fn)
+  if not RS.scope.on then return end
   for _, b in ipairs(RF.buttons) do
     local unit = b:GetAttribute("unit")
     if b.raidIcon and b:IsShown() and unit then fn(b, unit) end
@@ -328,12 +334,38 @@ local EVENTS = {
   INCOMING_RESURRECT_CHANGED = onUnit, INCOMING_SUMMON_CHANGED = onUnit,
 }
 
--- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new), then listen.
-function RS.Enable(settings)
-  RS.settings = settings
-  for _, b in ipairs(RF.buttons) do setup(b) end
-  table.insert(RF.setupHooks, setup)
-  table.insert(RF.updateHooks, update)
-  for event, fn in pairs(EVENTS) do ns.On(event, fn) end
+-- Gives a raid button its marks, once (a tile made while the module was off gets them at the next start).
+local function attach(b)
+  if not b.raidIcon then setup(b) end
+end
+
+-- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new), then listen. The hooks stay on
+-- the parent's lists only while the module runs (RS.Disable), so a tile update pays nothing for the lifecycle.
+function RS.Enable(settings, scope)
+  RS.settings, RS.scope = settings, scope
+  for _, b in ipairs(RF.buttons) do attach(b) end
+  RA.AddHook(RF.setupHooks, attach)
+  RA.AddHook(RF.updateHooks, update)
+  for event, fn in pairs(EVENTS) do scope:On(event, fn) end
   followHeader()
+  if ns.ModulesBuilt() then RF.UpdateAll() end
+end
+
+-- Hides every mark of a tile, gives its status text and its opacity back.
+local function clearTile(b)
+  for _, part in ipairs({ b.raidIcon, b.ready, b.ready.shadow, b.rez, b.summon, b.leader, b.leader.shadow }) do part:Hide() end
+  b.status:Show()
+  b.rangeAlpha = nil
+  b:SetAlpha(1)
+end
+
+-- Switched off: the hooks leave the parent's lists and every tile that has marks loses them (the range fade
+-- included); the marks stay for the next start. The range job and the events go with the scope.
+function RS.Disable()
+  RA.RemoveHook(RF.setupHooks, attach)
+  RA.RemoveHook(RF.updateHooks, update)
+  RS.following, RS.readyRunning = false, false
+  for _, b in ipairs(RF.buttons) do
+    if b.raidIcon then clearTile(b) end
+  end
 end
