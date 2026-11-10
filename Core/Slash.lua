@@ -630,7 +630,7 @@ local function missingWindows(names)
   return table.concat(out, ", ")
 end
 
--- The game windows line of /vg status and the report: how many are in each state, and which ones a game patch left
+-- The game windows line of /vg status: how many are in each state, and which ones a game patch left
 -- without their skin.
 local function windowsLine()
   local c = windowCoverage()

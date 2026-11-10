@@ -3072,7 +3072,7 @@ do
     return n, #T.FONT_OBJECTS.standard
   end
 end
-ns.On("PLAYER_LOGIN", function() T.ApplyStandardFonts() end)
+ns.On("PLAYER_LOGIN", T.ApplyStandardFonts)
 
 -- The Vanguard crest (Media/Textures/Icon, the painted shield, pre-colored: the accent and theme don't tint it) at size x size.
 function T.Logo(parent, size)
