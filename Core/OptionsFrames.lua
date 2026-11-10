@@ -93,18 +93,73 @@ O.MANA_BAR_LABEL = ns.ClientData({
   retail = L["Mana under the player frame when your power bar shows another power: druid forms, Shadow, Elemental and Balance (reload)"],
 })
 
+-- The text formats of the health and power numbers (Modules/UnitFrames.lua, UF.FORMATS); a hidden value falls back to
+-- the value, or the percent alone, as the page's note says.
+local TEXT_FORMATS = {
+  { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] },
+  { "both", L["Both (42.8K  84%)"] }, { "deficit", L["Missing (-7.1K)"] },
+}
+
+-- The power text's choices: the same formats, and none (the default).
+local POWER_FORMAT_CHOICES = { { "none", L["Off"] }, TEXT_FORMATS[1], TEXT_FORMATS[2], TEXT_FORMATS[3], TEXT_FORMATS[4] }
+
+-- The frames the sliders size, in the order the page lists them: the settings group (UF.FrameSize) and its caption.
+local SIZED_FRAMES = {
+  { "player", L["Player"] }, { "target", L["Target"] }, { "targettarget", L["Target of target"] },
+  { "focus", L["Focus"] }, { "pet", L["Pet"] }, { "party", L["Party"] },
+}
+
+-- A width or height slider for one frame (range from UnitFrames.RANGES), applied at once, out of combat.
+local function sizeSlider(frame, dimension)
+  local group, caption = frame[1], frame[2]
+  local label = dimension == "width" and L["{frame}: width"] or L["{frame}: height"]
+  local key = group .. (dimension == "width" and "Width" or "Height")
+  local range = ns.GetModule("UnitFrames").RANGES[dimension]
+  return { "slider", ns.Format(label, { frame = caption }), range, liveMethod("UnitFrames", key, "ApplySizes") }
+end
+
+-- The Frame sizes card: a width and a height slider for each frame (the target's height is the one setup's role layouts raise).
+local function sizeRows()
+  local rows = { { "header", L["Frame sizes"] } }
+  for _, frame in ipairs(SIZED_FRAMES) do
+    rows[#rows + 1] = sizeSlider(frame, "width")
+    rows[#rows + 1] = sizeSlider(frame, "height")
+  end
+  return rows
+end
+
+-- The Power text card: its format, and what a format does while the client hides the numbers.
+local function powerTextRows()
+  return {
+    { "header", L["Power text"] },
+    { "cycle", L["Show power as"], POWER_FORMAT_CHOICES, liveMethod("UnitFrames", "powerFormat", "ApplyPowerText") },
+    { "text", L["Where the game hides numbers, Both shows the percent alone and Missing leaves out the minus sign."], "note" },
+  }
+end
+
+-- The Heals and shields card: the bars on the player, target and party frames and the status row (leader, role, resting,
+-- PvP) over their corner, each applied at once.
+local function predictionRows()
+  return {
+    { "header", L["Heals, shields and status marks"] },
+    check(L["Incoming heals on your frames"], liveMethod("UnitFrames", "healPrediction", "ApplyPrediction")),
+    check(L["Shields on your frames"], liveMethod("UnitFrames", "absorbs", "ApplyPrediction")),
+    check(L["Leader, role, resting and PvP marks"], liveMethod("UnitFrames", "statusMarks", "ApplyStatus")),
+  }
+end
+
 -- Unit frames, and the class bars under the player frame.
 local function unitFrameRows()
-  return {
+  return append({
     { "header", L["Unit frames"] },
     check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
-    { "cycle", L["Health as"], { { "value", L["Value (42.8K)"] }, { "percent", L["Percent (84%)"] } }, unitFrameSetting("healthFormat") },
+    { "cycle", L["Health as"], TEXT_FORMATS, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
     check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
     O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
-  }
+  }, append(append(powerTextRows(), predictionRows()), sizeRows()))
 end
 
 -- Cast bars, and the target and focus auras' card (its rows are Modules/FrameAuras.lua's).

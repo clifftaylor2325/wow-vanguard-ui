@@ -106,6 +106,9 @@ Run the sessions in order; within a session, top to bottom. Each line is a step 
 - `7.1` Target and focus auras
 - `7.2` Cast bars
 - `7.2i` Unit frames act like the game's: tooltips, tapped grey, Ghost, raid marks, quiet threat
+- `7.2o` Unit frame sizes (A3-1)
+- `7.2p` Health and power text formats (A3-1)
+- `7.2q` Incoming heals, shields and status marks on the unit frames (A3-1)
 - `7.3` Nameplates in a pull
 - `7.3b` Your debuffs on a plate drawn mid-fight
 - `7.5` Enemy nameplates (#377)
@@ -735,6 +738,24 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: `/vg` → Game windows → Tooltips. Set **Unit tooltips in the world** to "at the cursor", **Unit tooltips on frames** to "client default" and leave **Tooltip position** on "corner (movable)". Hover a mob and a player in the world, your target frame, a party or raid tile, a spell on an action bar, a mailbox, and an item in your bags. Then `/vg unlock`, drag the **Tooltip** handle, lock, and hover the bar spell again. Try the other choices on each row, and hover a buff on a friendly nameplate in a dungeon.
 - Expect: the world mob's and player's tooltips follow the cursor; the unit frames' and tiles' tooltips sit where the game puts its tooltips; the bar spell's and the mailbox's sit in Vanguard's corner, and move with the handle. The bag item's tooltip stays beside its slot whatever is chosen. Each choice takes effect on the next tooltip, with no reload asked for. A profile from an earlier version shows its one position on all three rows. `/vg errors` stays empty, on the nameplate buff too. [Needs in game: that "mouseover" already names the unit when the game anchors a world unit's tooltip and a unit frame's, so each lands on its own row's choice; raid tiles and party frames count as unit frames.]
 - If it fails, paste: which hover landed where, the three rows' choices, and `/vg errors`.
+
+### 7.2o Unit frame sizes (A3-1)
+
+- Do: `/vg` → Unit frames → Frame sizes. Drag Player: width, Target: height, Party: width and Pet: height, then the same sliders to their ends. Do it with the HUD look on Shield, then Tabs, then Plain, with the Versus deck on and off, and with a party of two or more. In a fight drag one, then leave the fight. `/vg errors`.
+- Expect: each frame takes the new size as the slider moves, without a reload: the shield points, the name tab, the texts and the bars follow, the Versus deck's panel keeps its border clear of both frames, the party column stays stacked, and the target's debuff row wraps at the new width a moment after the slider holds still. The old sizes (240 by 36 player and target, 120 by 24 target of target and pet, 160 by 30 focus, 160 by 32 party) are on the sliders. In the fight nothing moves; after it the last value applies. `/vg errors` is empty. [Needs in game: all of it.]
+- If it fails, paste: a screenshot of the frames and `/vg errors`.
+
+### 7.2p Health and power text formats (A3-1)
+
+- Do: `/vg` → Unit frames. Set **Health as** to Value, Percent, Both and Missing in turn, and **Show power as** to Value, Percent, Both, Missing and Off, looking at your player and target frames and a party member at full and at lower health. Shrink Player: height to its least, then back. Do it once in a dungeon or other place where the game hides health values, with a target selected.
+- Expect: the health text follows the choice at once, with no reload: `84%`, `42.8K`, `42.8K  84%` and `-7.1K` (nothing at full health). The power text sits small and outlined at the bottom of the health bar's inner end with the health text on the top line; on a frame too short for both lines it is not drawn, and on a Hairline frame it is mid-bar. Where the game hides the numbers, Both shows the percent alone, Missing shows the amount without its minus sign and a power percent or missing shows the value; nothing errors. Dead and Offline frames show no power text. `/vg errors` is empty. [Needs in game: all of it, above all the hidden-value fallbacks (`UnitHealthMissing`, `UnitHealthPercent`).]
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 7.2q Incoming heals, shields and status marks on the unit frames (A3-1)
+
+- Do: in a party with a healer, have them cast a heal on you and on a party member (and a shield, if a priest is there). Target someone being healed. Look at your player, target and party frames; then `/vg` → Unit frames → Heals, shields and status marks and untick **Incoming heals on your frames**, **Shields on your frames** and **Leader, role, resting and PvP marks** in turn. Repeat on the Shield, Tabs and Plain looks and with the Versus deck on. Be group leader, stand in a city or inn, and flag for PvP (`/pvp`). In a dungeon, look at the bars while the game hides health values. `/vg errors`.
+- Expect: a green bar grows from the end of the health fill for the heals on their way, a striped one after it for the shield, on the player, target and party frames only; they fill the same way the health does (toward the character under Shield and the deck, mirrored on the target), the names, numbers and marks stay readable over them, and each switch hides its bar at once. A small crown, tank shield or healer cross, "Zzz" (player frame, resting) and "PvP" row stands over the frame's outer top corner (over the name tab under the Tabs look, inside the party column's gaps), following each change without a reload and moving only out of combat. Nothing overlaps the raid target icon, the combo points or the target's buff row badly (report where it does). `/vg errors` is empty. [Needs in game: all of it, above all the bars at the shield point corners and the row's room.]
+- If it fails, paste: a screenshot of the frames with a heal incoming and `/vg errors`.
 
 ### 7.3 Nameplates in a pull
 
