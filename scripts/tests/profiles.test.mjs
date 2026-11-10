@@ -854,7 +854,7 @@ it("two long profile names that are cut alike each keep their own backup", () =>
   addon.eval(`VanguardCharDB.profile = "Default" ns.DeleteProfile("${two}")`);
   expect(addon.eval(`return VanguardDB.backupOf["${two}"]`), "deleting a backup frees its name").toBeNull();
   addon.eval("VanguardDB.backupOf = 7");
-  expect(backupFor(b), "a damaged note is ignored: the plain name is free again").toBe(`${"A".repeat(25)} backup`);
+  expect(backupFor(b), "with the notes gone (damaged), the plain name holds an unrecorded profile, which is never overwritten: the next free name").toBe(`${"A".repeat(23)} backup 2`);
 });
 // A profile string made on `maker` ("retail" or "forever") with the saved tables `lua`, then imported whole on the other client;
 // returns the imported profile's UnitFrames and InstancePrep.want.bandages as { levels, health, bandages }.
@@ -907,7 +907,18 @@ it("an import's backup never overwrites a profile another character or a spec us
   const backup = addon.eval('return (select(2, ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "copper" } }))))).backup');
   expect(backup, "the backup takes the next free name").toBe("Default backup 3");
   expect(addon.eval('return { VanguardDB.profiles["Default backup"].marker, VanguardDB.profiles["Default backup 2"].marker }'), "the profiles in use keep their settings").toEqual(["other", "spec"]);
-  expect(addon.eval('VanguardDB.profiles["Default backup 3"] = nil VanguardDB.guard = nil VanguardCharDB.specProfiles = nil return ns.BackupProfile()'), "a file without a guard or spec map backs up as before").toBe("Default backup");
+  expect(addon.eval('VanguardDB.profiles["Default backup 3"] = nil VanguardDB.guard = nil VanguardCharDB.specProfiles = nil return ns.BackupProfile()'), "a file without a guard or spec map: the two names still hold unrecorded profiles, so the next free one").toBe("Default backup 3");
+});
+it("hunt setup: a backup never overwrites a profile that is not a recorded backup of that source, and a recorded one is reused", () => {
+  const addon = loggedIn();
+  addon.eval('VanguardDB.profiles["Default backup"] = { marker = "mine" }');
+  const imported = addon.eval('return (select(2, ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "copper" } }))))).backup');
+  expect(imported, "a hand-made Default backup survives an import: the backup goes to the next name").toBe("Default backup 2");
+  expect(addon.eval('return { VanguardDB.profiles["Default backup"].marker, VanguardDB.backupOf["Default backup 2"] }'), "and it is recorded").toEqual(["mine", "Default"]);
+  addon.eval("VanguardCharDB.profile = 'Default' VanguardCharDB.pendingProfile = nil");
+  expect(addon.eval("return ns.BackupProfile()"), "the recorded backup is reused").toBe("Default backup 2");
+  addon.eval("VanguardDB.setupDone = true VanguardCharDB.setupDone = true");
+  expect(addon.eval("ns.Setup.Open() ns.Setup.Backup() return VanguardDB.profiles['Default backup'].marker"), "a setup backup leaves the hand-made one alone too").toBe("mine");
 });
 it("importing a string that matches a profile here uses that profile instead of making a copy", () => {
   const addon = loggedIn();
