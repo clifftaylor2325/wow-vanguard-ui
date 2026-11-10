@@ -535,6 +535,19 @@ it("one painted frame whose repaint fails leaves every other frame repainted and
   expect(out, "the refresh finished, all twelve good frames took the new accent, the listeners ran and text was recoloured").toEqual([true, 12, true, true]);
 });
 
+it("a frame whose scale the client hides is painted at the screen's pixel, the hidden scale never compared", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    local f = T.Panel(CreateFrame("Frame", nil, UIParent), { inset = true, noSheen = true })
+    f:SetSize(40, 40)
+    f.GetEffectiveScale = function() return __wfgWorld.secret(1) end
+    local ok = pcall(T.RepaintFrame, f)
+    local thick
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then thick = math.min(w.__width or 1e9, w.__height or 1e9) end end
+    return { ok, math.abs(thick - T.Pixel(UIParent)) < 1e-9, T.DrawnScale(__wfgWorld.secret(1)) == UIParent:GetEffectiveScale() }`);
+  expect(out, "the repaint went through, each edge is one screen pixel, and a hidden scale reads as the screen's").toEqual([true, true, true]);
+});
+
 it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
   const addon = loggedIn();
   const out = addon.eval(`

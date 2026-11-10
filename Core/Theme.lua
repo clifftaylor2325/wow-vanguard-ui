@@ -642,15 +642,23 @@ end
 -- once the plate grows, on an aura icon the client has since closed to addons for good.
 T.MIN_SCALE = 0.1
 
--- The scale to size a pixel for: `scale` itself when a frame is drawn at it; the screen's (UIParent's)
--- for a frame held shrunk below T.MIN_SCALE; 1 when it is no positive number.
+-- The screen's (UIParent's) effective scale, or 1 when it has none it can say plainly.
+---@return number
+function T.ScreenScale()
+  local ui = UIParent and UIParent.GetEffectiveScale and ns.PlainNumber(UIParent:GetEffectiveScale())
+  return ui and ui >= T.MIN_SCALE and ui or 1
+end
+
+-- The scale to size a pixel for: `scale` itself when a frame is drawn at it; the screen's (T.ScreenScale)
+-- for a frame held shrunk below T.MIN_SCALE or whose scale the client hides (a plate's: a hidden value is never
+-- compared); 1 when it is no positive number.
 ---@param scale any
 ---@return number
 function T.DrawnScale(scale)
+  if ns.IsSecret(scale) then return T.ScreenScale() end
   if type(scale) ~= "number" or scale <= 0 then return 1 end
   if scale >= T.MIN_SCALE then return scale end
-  local ui = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale()
-  return type(ui) == "number" and ui >= T.MIN_SCALE and ui or 1
+  return T.ScreenScale()
 end
 
 -- A frame's effective scale as a pixel is sized for it (T.DrawnScale; UIParent's, or 1, when it has none).
