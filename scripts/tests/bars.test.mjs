@@ -471,6 +471,7 @@ it("action button cooldowns, the C_ActionBar API and range polling", () => {
     C_ActionBar = nil
     __rangeAsks = 0
     IsActionInRange = function() __rangeAsks = __rangeAsks + 1 return nil end`, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { rangeTint = false } } }" });
+  // How many range questions the bars asked since the last call.
   const asks = () => off.eval("local n = __rangeAsks __rangeAsks = 0 return n");
   asks();
   off.update(0.25);

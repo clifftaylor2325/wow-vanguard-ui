@@ -456,7 +456,8 @@ end
 local function copyProfile(name)
   local into = ns.SelectedProfileName()
   if not VanguardDB.profiles[name] or name == into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
-  confirmProfile(ns.Format(L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."], { into = into, from = name }), L["Copy here"], function()
+  local warning = L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."]
+  confirmProfile(ns.Format(warning, { into = into, from = name }), L["Copy here"], function()
     local copied = ns.CopyProfile(name)
     if not copied then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
     ns.Options.ProfileCopied(copied)
@@ -466,9 +467,11 @@ end
 
 -- /vg profile delete <name>: after asking, deletes a profile that is neither in use nor staged.
 local function deleteProfile(name)
-  if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then return chat(L["Can't delete that one (missing, or in use)."]) end
-  confirmProfile(ns.Format(L["Deletes profile {profile} for every character on this account. It can't be undone."], { profile = name }), L["Delete"], function()
-    chat(ns.DeleteProfile(name) and ns.Format(L["Deleted profile {profile}."], { profile = name }) or L["Can't delete that one (missing, or in use)."])
+  local refused = L["Can't delete that one (missing, or in use)."]
+  if not VanguardDB.profiles[name] or name == ns.ProfileName() or name == ns.SelectedProfileName() then return chat(refused) end
+  local warning = L["Deletes profile {profile} for every character on this account. It can't be undone."]
+  confirmProfile(ns.Format(warning, { profile = name }), L["Delete"], function()
+    chat(ns.DeleteProfile(name) and ns.Format(L["Deleted profile {profile}."], { profile = name }) or refused)
   end)
 end
 

@@ -137,8 +137,11 @@ it("/vg profile <name>: a profile's exact name wins over the verbs, so Copy Raid
   expect(addon.eval("return { ns.PendingProfileName(), VanguardDB.profiles.Default.theme.accent[1], VanguardDB.profiles.Raid.theme.accent[2] }"), "it stages Copy Raid; Default and Raid are untouched")
     .toEqual(["Copy Raid", 1, 1]);
 });
+// Answers the open question Yes.
 const yes = (addon) => addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+// Answers the open question No.
 const no = (addon) => addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+// The open question's title, or false when none shows.
 const asking = (addon) => addon.eval("return Vanguard_Question:IsShown() and Vanguard_Question.title:GetText()");
 it("hunt setup: /vg profile copy and delete ask first with the Profiles page's warning, and No changes nothing", () => {
   const addon = loggedIn();
@@ -177,6 +180,7 @@ it("hunt setup: an old FUI1 string imports once (the second paste matches the pr
   const addon = loggedIn();
   const make = 'local t = ns.Serialize.Encode("profile", { theme = { barTexture = "forever", reduceMotion = false } }):gsub("^VG1:", "FUI1:") return t';
   const text = addon.eval(make);
+  // How many profiles are saved.
   const count = () => addon.eval("local n = 0 for _ in pairs(VanguardDB.profiles) do n = n + 1 end return n");
   addon.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
   const after = count();

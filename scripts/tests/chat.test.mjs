@@ -1425,6 +1425,7 @@ it("faster auto-loot: under master loot the game's loot window keeps every slot"
 it("faster auto-loot: with no plain loot method, a group's slots are left to the game and a solo player's are taken, on both clients", () => {
   for (const client of ["", RETAIL]) {
     const on = loggedIn(LOOT_ENV, { client, savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { loot = true } } }" });
+    // Opens loot in or out of a group after `setup` and returns what fast loot took.
     const looted = (inGroup, setup) => {
       on.eval(`__looted = {} Enum.LootMethod = nil C_PartyInfo.GetLootMethod = nil GetLootMethod = nil IsInGroup = function() return ${inGroup} end ${setup}`);
       on.fire("LOOT_READY", true);

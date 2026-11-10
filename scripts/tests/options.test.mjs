@@ -2335,6 +2335,7 @@ it("dropdowns: a menu opened in a fight puts no click catcher over the screen, o
   const addon = loggedIn();
   addon.eval(`local d = ns.Widgets.Dropdown(UIParent, { { "a", "A" }, { "b", "B" } }, function() return "a" end, function() end)
     d:SetPoint("CENTER") d:Show() __d = d`);
+  // Opens the dropdown and returns whether its menu and its click catcher show.
   const open = () => addon.eval("__d.__scripts.OnClick(__d) local out = { ns.Widgets.MenuOpen(), Vanguard_Menu.catcher:IsShown() } ns.Widgets.CloseMenu() return out");
   expect(open(), "out of a fight: the catcher is up").toEqual([true, true]);
   setCombat(addon, true);

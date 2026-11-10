@@ -288,6 +288,7 @@ it("Edit Mode window: skinned, its panel on a backdrop of Vanguard's own, and Va
 it("a window's backdrop never takes a secret visibility from the game's frame: it counts as hidden, and nothing raises", () => {
   const addon = loggedIn(EDIT_ENV);
   addon.eval("EditModeManagerFrame:Show()");
+  // Whether the Edit Mode window's backdrop shows.
   const backShown = () => addon.eval(`local m = EditModeManagerFrame
     m.IsVisible = function() return { __secret = true } end
     ns.GetModule("Windows").FitBackdrop(m)

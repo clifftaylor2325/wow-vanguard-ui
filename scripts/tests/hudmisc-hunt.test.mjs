@@ -26,6 +26,7 @@ const BANK_ENV = `
 
 it("inventory: a bank answer that is missing or empty never wipes the remembered bank", () => {
   const addon = loggedIn(BANK_ENV);
+  // The bank the inventory remembers for the test character.
   const bank = () => addon.eval('return VanguardDB.inventory["ForeverTest-Alliance"].Tester.bank');
   addon.fire("BANKFRAME_OPENED");
   expect(bank(), "read while open").toEqual({ 2589: 4 });
@@ -97,6 +98,7 @@ const HIDDEN_START_ENV = `
 
 it("info strip: XP and gold counters whose first read was hidden start at the first plain read", () => {
   const addon = loggedIn(UNITS_ENV + STRIP_ENV + HIDDEN_START_ENV);
+  // The info strip's session counters as plain numbers.
   const session = () => addon.eval("local s = ns.GetModule('InfoStrip').session return { s.xp or 0, s.max or 0, s.money or 0, s.last or 0, s.gained }");
   expect(session(), "hidden at the start: nothing counted").toEqual([0, 0, 0, 0, 0]);
   addon.eval("__xp, __xpmax, __m = 1000, 5000, 70000");

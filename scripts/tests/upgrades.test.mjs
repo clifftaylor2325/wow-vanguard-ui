@@ -215,6 +215,7 @@ const BAG_ENV = `
 
 it("upgrades: an item whose stats arrive late gets its arrow when the client sends them, and only that item re-marks", () => {
   const addon = loggedIn(GEAR_ENV + BAG_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Bags = false } } }" });
+  // Whether each of the two bag buttons shows its upgrade arrow.
   const arrows = () => addon.eval("local out = {} for i = 1, 2 do local a = ns.FrameState('vgUpgrade')[__buttons[i]] out[i] = a ~= nil and a:IsShown() end return out");
   addon.eval("__stats = C_Item.GetItemStats __asked = {} C_Item.RequestLoadItemDataByID = function(id) __asked[#__asked + 1] = id end C_Item.GetItemStats = function(link) if __loaded then return __stats(link) end end");
   addon.eval("ContainerFrameCombinedBags:UpdateItems() ContainerFrameCombinedBags:UpdateItems()");
