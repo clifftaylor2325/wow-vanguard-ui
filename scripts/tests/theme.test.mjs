@@ -511,6 +511,30 @@ it("a repaint never reads an edge's shown state back: the client can hold it sec
   expect(addon.eval("return #ns.errors"), "and nothing raised").toBe(0);
 });
 
+it("one painted frame whose repaint fails leaves every other frame repainted and the rest of a theme change done", () => {
+  const addon = loggedIn();
+  expectErrors("repaint: eval:11: TEST-ONLY refused", "re-tint: eval:11: TEST-ONLY refused");
+  const out = addon.eval(`local T = ns.Theme
+    local function edgesOf(f)
+      local out = {}
+      for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then out[#out + 1] = w end end
+      return out
+    end
+    local good = {}
+    for i = 1, 12 do good[i] = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true }) end
+    local bad = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })
+    for _, e in ipairs(edgesOf(bad)) do e.SetVertexColor = function() error("TEST-ONLY refused") end end
+    local fs = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "label", "accentText")
+    local heard = false
+    T.OnChanged(function() heard = true end)
+    T.Settings().accent = { 1, 0, 0 }
+    local ok = pcall(T.Refresh)
+    local repainted = 0
+    for _, f in ipairs(good) do if edgesOf(f)[1].__vertexColor[1] == 1 and edgesOf(f)[1].__vertexColor[2] == 0 then repainted = repainted + 1 end end
+    return { ok, repainted, heard, fs.__textColor and fs.__textColor[2] < 0.5 }`);
+  expect(out, "the refresh finished, all twelve good frames took the new accent, the listeners ran and text was recoloured").toEqual([true, 12, true, true]);
+});
+
 it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
   const addon = loggedIn();
   const out = addon.eval(`
