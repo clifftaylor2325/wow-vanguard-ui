@@ -17,7 +17,7 @@ local UF = ns.Module("UnitFrames", {
   defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true,
     -- Each frame's size (units), on the Unit frames page: the sizes the frames had before they were adjustable.
     playerWidth = 240, playerHeight = 36, targetWidth = 240, targettargetWidth = 120, targettargetHeight = 24,
-    focusWidth = 160, focusHeight = 30, petWidth = 120, petHeight = 24, partyWidth = 160, partyHeight = 32, calm = false, deck = false, targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
+    focusWidth = 160, focusHeight = 30, petWidth = 120, petHeight = 24, partyWidth = 160, partyHeight = 32, calm = false, deck = false, powerFormat = "none", targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
     -- WoW Forever players read levels and health percent on every frame (as its own UI does),
     -- so a profile that hasn't chosen yet starts that way there.
     showLevel = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.showLevel), healthFormat = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.healthFormat),
@@ -203,15 +203,101 @@ function UF.PercentText(unit)
   if formatted then return text end
 end
 
--- The health text: Dead, Offline, else the percent (if chosen) or current
--- health shortened. Either may itself be secret: show it, never compare it. `down` is the unit's DownState when
--- the caller has it already (false for none); nil asks again.
+-- Text formats -----------------------------------------------------------------------------------
+
+-- The health or power text each format gives; a hidden value is never read, added up or compared (Midnight hides
+-- some in instances): the client's own formatters (AbbreviateNumbers, UnitHealthPercent) make the text, and a text
+-- that still comes back hidden can only be handed to the font string whole. So "both" and "deficit" fall back there:
+-- "both" shows the percent alone and "deficit" shows the missing amount without its minus sign.
+UF.FORMATS = { "value", "percent", "both", "deficit" }
+
+-- Two texts side by side ("42.8K  84%"), or the second alone when either is hidden (a hidden text can't be joined).
+function UF.JoinText(first, second)
+  if isSecret(first) or isSecret(second) or not first or not second then return second or first end
+  return first .. "  " .. second
+end
+
+-- A missing amount's text with its minus sign, or the text as it is when hidden; "" for nothing missing.
+-- `missing` may be hidden: only the client's formatter reads it.
+function UF.DeficitText(missing)
+  if isSecret(missing) then return UF.ShortNumber(missing) end
+  if type(missing) ~= "number" or missing <= 0 then return "" end
+  return "-" .. UF.ShortNumber(missing)
+end
+
+-- The unit's health as the client shortens it (12.3K), possibly hidden.
+local function healthValue(unit)
+  return UF.ShortNumber(UnitHealth(unit))
+end
+
+-- Health as a percent, or its value where the client has no percent.
+local function healthPercent(unit)
+  return UF.PercentText(unit) or healthValue(unit)
+end
+
+-- Value and percent together (the percent alone while either is hidden).
+local function healthBoth(unit)
+  return UF.JoinText(healthValue(unit), UF.PercentText(unit))
+end
+
+-- What the unit is missing, from the client's own call (the value on a client without it).
+local function healthDeficit(unit)
+  if type(UnitHealthMissing) ~= "function" then return healthValue(unit) end
+  return UF.DeficitText(UnitHealthMissing(unit))
+end
+
+local HEALTH_FORMATS = { value = healthValue, percent = healthPercent, both = healthBoth, deficit = healthDeficit }
+
+-- The health text: Dead, Offline, else the chosen format of the health. Either may itself be secret: show it,
+-- never compare it. `down` is the unit's DownState when the caller has it already (false for none); nil asks again.
 function UF.HealthText(unit, down)
   if down == nil then down = UF.DownState(unit) end
   if down then return down end
-  local percent = UF.settings and UF.settings.healthFormat == "percent" and UF.PercentText(unit)
-  if isSecret(percent) or type(percent) == "string" then return percent end
-  return UF.ShortNumber(UnitHealth(unit))
+  return (HEALTH_FORMATS[UF.settings and UF.settings.healthFormat] or healthValue)(unit)
+end
+
+-- A power value's percent text from plain numbers ("42%"); nil for a hidden or zero maximum.
+local function powerPercent(cur, max)
+  if not (cur and max and max > 0) then return nil end
+  return string.format("%d%%", math.floor(cur / max * 100))
+end
+
+-- Power as the formats give it: the client's shortened value always; the percent and the missing amount only from
+-- plain numbers (there is no hidden-safe client call for them here), the value while either is hidden.
+local function powerValue(unit)
+  return UF.ShortNumber(UnitPower(unit))
+end
+
+-- The plain current and maximum power of a unit, nil for each hidden one.
+local function plainPower(unit)
+  return ns.PlainNumber(UnitPower(unit)), ns.PlainNumber(UnitPowerMax(unit))
+end
+
+-- Power as a percent; nil while a number is hidden (the caller shows the value then).
+local function powerPercentText(unit)
+  local cur, max = plainPower(unit)
+  return powerPercent(cur, max)
+end
+
+-- The power a unit is missing; nil while a number is hidden.
+local function powerDeficit(unit)
+  local cur, max = plainPower(unit)
+  return cur and max and UF.DeficitText(max - cur) or nil
+end
+
+-- Value and percent together (the value alone while the percent can't be made).
+local function powerBoth(unit)
+  return UF.JoinText(powerValue(unit), powerPercentText(unit))
+end
+
+local POWER_FORMATS = { value = powerValue, percent = powerPercentText, deficit = powerDeficit, both = powerBoth }
+
+-- The power text for the unit's powerFormat: "" for none (the default) or no power; the value where the chosen
+-- format needs plain numbers and they are hidden.
+function UF.PowerText(unit)
+  local format = POWER_FORMATS[UF.settings and UF.settings.powerFormat]
+  if not format or ns.PlainNumber(UnitPowerMax(unit)) == 0 then return "" end
+  return format(unit) or powerValue(unit)
 end
 
 -- The unit's level as text ("??" for a boss or a level too far above you), or "".
@@ -418,11 +504,19 @@ end
 -- How far in from a frame's ends its texts sit (units).
 UF.TEXT_INSET = 4
 
+-- The power text: a small readout over the health bar's inner bottom corner (UF.PlaceParts places it, and shows it only
+-- where the bar is tall enough to hold it under the health text); empty while the powerFormat is none.
+local function addPowerText(f)
+  f.powerText = createText(f, "small", "RIGHT", -UF.TEXT_INSET)
+  f.powerText:Hide()
+end
+
 -- The name (with the level beside it, where shown) and the health text, anchored by UF.PlaceParts: the name stops
 -- short of the health text, so a long one is cut off, not overlapped.
 local function addTexts(f, settings)
   f.name, f.healthText = createText(f, "name", "LEFT", UF.TEXT_INSET), createText(f, "number", "RIGHT", -UF.TEXT_INSET)
   if settings.showLevel then addLevel(f) end
+  addPowerText(f)
   f.name:SetWordWrap(false)
 end
 
@@ -546,13 +640,41 @@ local function placeName(f, side)
   f.name:SetJustifyH(side)
 end
 
--- The health text at the other end from the name, short of the marks on a frame that has them.
+-- How tall the health bar must be (units) to hold the power text under the health text, and how far in from the bar's top
+-- and bottom edges the two sit then.
+UF.POWER_TEXT = { room = 22, pad = 2 }
+
+-- Whether a frame shows power text: its format is not none, and either the frame is drawn bare (its health text then sits
+-- in the name row over the bars) or its health bar is tall enough for two lines.
+local function powerTextOn(f)
+  if not POWER_FORMATS[UF.settings.powerFormat] then return false end
+  return T.BareOf(f) or healthHeight(f, f.vgHeight) >= UF.POWER_TEXT.room
+end
+
+-- The health text at the other end from the name, short of the marks on a frame that has them; on the bar's top line
+-- while the power text takes the bottom one.
 local function placeHealthText(f, side)
   local far = INNER[side]
   local room = (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
   f.healthText:ClearAllPoints()
-  f.healthText:SetPoint(far, f.health, far, inward(far, room), textLift(f))
+  if powerTextOn(f) and not T.BareOf(f) then
+    f.healthText:SetPoint("TOP" .. far, f.health, "TOP" .. far, inward(far, room), -UF.POWER_TEXT.pad)
+  else
+    f.healthText:SetPoint(far, f.health, far, inward(far, room), textLift(f))
+  end
   f.healthText:SetJustifyH(far)
+end
+
+-- The power text at the health bar's inner bottom corner (mid-bar on a bare frame), shown where powerTextOn says.
+local function placePowerText(f, side)
+  local far, on = INNER[side], powerTextOn(f)
+  f.powerText:SetShown(on)
+  if not on then return end
+  f.powerText:ClearAllPoints()
+  if T.BareOf(f) then f.powerText:SetPoint(far, f.health, far, inward(far, UF.TEXT_INSET), 0)
+  else f.powerText:SetPoint("BOTTOM" .. far, f.health, "BOTTOM" .. far, inward(far, UF.TEXT_INSET), UF.POWER_TEXT.pad) end
+  f.powerText:SetJustifyH(far)
+  UF.PaintPowerText(f)
 end
 
 -- The marks (the classification diamond, the tag mark, the swords) over the frame's top corner at the health text's end.
@@ -587,6 +709,7 @@ function UF.TextRoles(f)
   T.Text(f.name, name)
   if f.level then T.Text(f.level, name, false) end
   T.Text(f.healthText, number, T.ColorToken(f.healthText))
+  T.Text(f.powerText, T.HudOutlined() and "barSmall" or "small", "text2")
 end
 
 -- Spans a frame's crown from its bottom corners up to its tab's top while it wears one, else to its own top.
@@ -650,6 +773,13 @@ local function readSide(f)
   return pointedSide(f) or "LEFT"
 end
 
+-- The health text, the power text and the name, which reads toward them.
+local function placeTexts(f, side)
+  placeHealthText(f, side)
+  placePowerText(f, side)
+  placeName(f, side)
+end
+
 -- Lays a frame's parts out for the HUD look: the hairline (the bars step in past it), the bars (under the name row on
 -- a bare frame), the texts' roles, the tab, the name reading from the side its shield points from or its tab sits over
 -- (the left otherwise), the health text and marks at the other end, the raid icon, and the bars filling toward your character.
@@ -659,8 +789,7 @@ function UF.PlaceParts(f)
   UF.TextRoles(f)
   local side = readSide(f)
   placeTab(f)
-  placeHealthText(f, side)
-  placeName(f, side)
+  placeTexts(f, side)
   placeMarks(f, side)
   placeRaidIcon(f, side)
   f.health:SetReverseFill(fillsFromRight(f)) f.power:SetReverseFill(fillsFromRight(f))
@@ -710,8 +839,11 @@ function UF.UpdateHealth(f)
   local unit, down = f.unit, UF.DownState(f.unit)
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
+  f.vgDown = down
   UF.PaintHealth(f, down)
-  if UF.settings.healthText then f.healthText:SetText(UF.HealthText(unit, down or false)) else f.healthText:SetText("") end
+  local text = ""
+  if UF.settings.healthText then text = UF.HealthText(unit, down or false) end
+  f.healthText:SetText(text)
   local token = down and UF.DownToken(down) or "text"
   if T.ColorToken(f.healthText) ~= token then T.Color(f.healthText, token) end
 end
@@ -722,6 +854,19 @@ function UF.UpdatePower(f)
   f.power:SetMinMaxValues(0, UnitPowerMax(unit))
   T.SetBarValue(f.power, UnitPower(unit))
   f.power:SetStatusBarColor(UF.PowerColor(unit))
+  UF.PaintPowerText(f)
+end
+
+-- The power text, while the frame shows one: empty for the dead and the offline (their health text says so).
+function UF.PaintPowerText(f)
+  if not (f.powerText:IsShown() and ns.IsTrue(UnitExists(f.unit))) then return end
+  f.powerText:SetText(f.vgDown and "" or UF.PowerText(f.unit))
+end
+
+-- The power format changed (Unit frames page): every frame lays its texts out again and repaints, out of combat.
+function UF.ApplyPowerText()
+  if not UF.frames.player then return end
+  ns.OutOfCombat(function() UF.ApplyLook() UF.Refresh() end, "unit frame power text")
 end
 
 -- The level asked about for a ?? unit (UnitLevel -1: a boss, or one far above you): so far

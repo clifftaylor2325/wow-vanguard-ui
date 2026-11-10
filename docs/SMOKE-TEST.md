@@ -107,6 +107,7 @@ Run the sessions in order; within a session, top to bottom. Each line is a step 
 - `7.2` Cast bars
 - `7.2i` Unit frames act like the game's: tooltips, tapped grey, Ghost, raid marks, quiet threat
 - `7.2o` Unit frame sizes (A3-1)
+- `7.2p` Health and power text formats (A3-1)
 - `7.3` Nameplates in a pull
 - `7.3b` Your debuffs on a plate drawn mid-fight
 - `7.5` Enemy nameplates (#377)
@@ -736,6 +737,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: `/vg` → Unit frames → Frame sizes. Drag Player: width, Target: height, Party: width and Pet: height, then the same sliders to their ends. Do it with the HUD look on Shield, then Tabs, then Plain, with the Versus deck on and off, and with a party of two or more. In a fight drag one, then leave the fight. `/vg errors`.
 - Expect: each frame takes the new size as the slider moves, without a reload: the shield points, the name tab, the texts and the bars follow, the Versus deck's panel keeps its border clear of both frames, the party column stays stacked, and the target's debuff row wraps at the new width a moment after the slider holds still. The old sizes (240 by 36 player and target, 120 by 24 target of target and pet, 160 by 30 focus, 160 by 32 party) are on the sliders. In the fight nothing moves; after it the last value applies. `/vg errors` is empty. [Needs in game: all of it.]
 - If it fails, paste: a screenshot of the frames and `/vg errors`.
+
+### 7.2p Health and power text formats (A3-1)
+
+- Do: `/vg` → Unit frames. Set **Health as** to Value, Percent, Both and Missing in turn, and **Show power as** to Value, Percent, Both, Missing and Off, looking at your player and target frames and a party member at full and at lower health. Shrink Player: height to its least, then back. Do it once in a dungeon or other place where the game hides health values, with a target selected.
+- Expect: the health text follows the choice at once, with no reload: `84%`, `42.8K`, `42.8K  84%` and `-7.1K` (nothing at full health). The power text sits small and outlined at the bottom of the health bar's inner end with the health text on the top line; on a frame too short for both lines it is not drawn, and on a Hairline frame it is mid-bar. Where the game hides the numbers, Both shows the percent alone, Missing shows the amount without its minus sign and a power percent or missing shows the value; nothing errors. Dead and Offline frames show no power text. `/vg errors` is empty. [Needs in game: all of it, above all the hidden-value fallbacks (`UnitHealthMissing`, `UnitHealthPercent`).]
+- If it fails, paste: a screenshot and `/vg errors`.
 
 ### 7.3 Nameplates in a pull
 
