@@ -15,7 +15,7 @@ local L = ns.L
 
 local T = ns.Theme
 
-local QM = ns.Module("QuestMinimap", { defaults = { show = true } })
+local QM = ns.Module("QuestMinimap", { defaults = { show = true }, live = true })
 ns.QuestMinimap = QM
 
 ns.Options.MODULE_INFO.QuestMinimap = { L["Quest spots on the minimap"], L["A mark on the minimap where each quest in your log has its spot on the map you're on."] }
@@ -30,6 +30,11 @@ QM.TURN_IN = { texture = T.Icon("QuestQuery"), color = "gold", size = 12, sublev
 QM.FOLLOWED = 4
 -- How faint a mark on the edge is (the spot is farther than the minimap shows).
 QM.EDGE_ALPHA = 0.5
+
+-- Whether the module runs now: a stopped one reads and draws nothing (its scope is closed).
+function QM.Running()
+  return QM.scope ~= nil and QM.scope:Running()
+end
 
 -- The spots ---------------------------------------------------------------------------------------
 
@@ -52,8 +57,10 @@ function QM.Spots(mapID)
   return out
 end
 
--- Reads the spots on the map you're on (each second and when the log or the zone changes); nothing while the marks are off.
+-- Reads the spots on the map you're on (each second and when the log or the zone changes); nothing while the marks
+-- are off or the module is stopped (a read queued before the stop does nothing).
 function QM.Read()
+  if not QM.Running() then return end
   if not QM.settings.show then QM.spots = {} return end
   QM.mapID = not ns.Restricted("Map") and ns.PlainNumber(ns.CallIf(C_Map, "GetBestMapForUnit", "player")) or nil
   QM.spots = QM.mapID and QM.Spots(QM.mapID) or {}
@@ -155,7 +162,7 @@ local function getShow() return ns.Settings("QuestMinimap", QM.defaults).show en
 -- Switches the marks, reading and redrawing them at once when the module is on.
 local function setShow(v)
   ns.Settings("QuestMinimap", QM.defaults).show = v
-  if QM.settings then QM.Read() QM.Draw() end
+  if QM.Running() then QM.Read() QM.Draw() end
 end
 
 -- The switch on the Quests page's "Finding your way" card (Core/OptionsQuests.lua places it).
@@ -173,17 +180,32 @@ local function tickDraw()
   if not ns.InCombat() then QM.Draw() end
 end
 
--- Module entry point (Core/Modules.lua): the marks' layer over the minimap, the spots read each second and
--- when the log or zone changes, and the marks redrawn a few times a second as you move (both only while the
--- minimap shows).
-function QM.Enable(settings)
-  QM.settings, QM.marks, QM.spots = settings, {}, {}
+-- The marks' layer over the minimap, made once a session with its marks (a texture is never freed).
+local function layer()
+  if QM.layer then return QM.layer end
   QM.layer = CreateFrame("Frame", "Vanguard_QuestMinimap", Minimap)
   QM.layer:SetAllPoints(Minimap)
-  for _, event in ipairs({ "QUEST_LOG_UPDATE", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }) do
-    ns.On(event, function() ns.Soon("quest minimap", QM.Read) end)
-  end
-  ns.Every("quest minimap read", QM.READ, tickRead, QM.layer)
-  ns.Every("quest minimap", QM.DRAW, tickDraw, QM.layer)
+  QM.marks = {}
+  return QM.layer
+end
+
+-- The events that move the spots: the log, the zone and the quest spots.
+QM.READ_EVENTS = { "QUEST_LOG_UPDATE", "ZONE_CHANGED_NEW_AREA", "QUEST_POI_UPDATE" }
+
+-- A quest event came in: reads the spots on the next frame.
+function QM.OnChange()
+  ns.Soon("quest minimap", QM.Read)
+end
+
+-- Module entry point (Core/Modules.lua): the marks' layer over the minimap, the spots read each second and
+-- when the log or zone changes, and the marks redrawn a few times a second as you move (both only while the
+-- minimap shows). Everything goes through the scope, the two tickers with the layer as owner frame and their
+-- rest in a fight, as before; the layer is the scope's frame, so stopping hides the marks.
+function QM.Enable(settings, scope)
+  QM.settings, QM.spots, QM.mapID = settings, {}, nil
+  scope:Frame(layer()):Show()
+  for _, event in ipairs(QM.READ_EVENTS) do scope:On(event, QM.OnChange) end
+  scope:Every("quest minimap read", QM.READ, tickRead, QM.layer)
+  scope:Every("quest minimap", QM.DRAW, tickDraw, QM.layer)
   QM.Read()
 end

@@ -114,3 +114,15 @@ it("lifecycle: the quest arrow's tickers keep their owner frames after a restart
   addon.eval('local QA = ns.GetModule("QuestArrow") QA.current = 7 ns.SetModuleEnabled("QuestArrow", false)');
   expect(addon.eval("return { ns.QuestArrow.Current() == nil, ns.QuestArrow.Followed() == nil, Vanguard_QuestArrow:IsShown() }")).toEqual([true, true, false]);
 });
+
+// QuestMinimap --------------------------------------------------------------------------------------------------
+
+lifecycleCases("QuestMinimap", loginWith());
+
+it("lifecycle: the quest minimap's tickers keep the layer as owner after a restart, and a stopped one reads nothing", () => {
+  const addon = loginWith()();
+  addon.eval('ns.SetModuleEnabled("QuestMinimap", false) ns.SetModuleEnabled("QuestMinimap", true)');
+  expect(addon.eval('local jobs = ns.ticker.vgJobs return { jobs["quest minimap read"].frame == Vanguard_QuestMinimap, jobs["quest minimap"].frame == Vanguard_QuestMinimap }')).toEqual([true, true]);
+  addon.eval('local QM = ns.GetModule("QuestMinimap") ns.SetModuleEnabled("QuestMinimap", false) QM.spots = { 1 } QM.Read()');
+  expect(addon.eval('return { #ns.GetModule("QuestMinimap").spots, Vanguard_QuestMinimap:IsShown() }')).toEqual([1, false]);
+});

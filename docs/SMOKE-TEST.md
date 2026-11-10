@@ -5433,7 +5433,7 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 
 ### 34.16 Own-frame modules switch off and on without a reload (A4-2b)
 
-- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Group threat (and its row under Unit frames), Fight history (after a fight or two; `/vg fights` still lists them)), Vanguard meter (open a line's spell panel first; target of target moves back to its wide spot), Roll tracker (after a `/roll`; `/vg rolls` still lists it)), Instance prep (with `/vg prep` and the wanted-amounts window open)), Quest arrow (with a quest watched; the tracker's accent line goes with it).
+- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Group threat (and its row under Unit frames), Fight history (after a fight or two; `/vg fights` still lists them)), Vanguard meter (open a line's spell panel first; target of target moves back to its wide spot), Roll tracker (after a `/roll`; `/vg rolls` still lists it)), Instance prep (with `/vg prep` and the wanted-amounts window open)), Quest arrow (with a quest watched; the tracker's accent line goes with it)), Quest spots on the minimap (with a quest on the map you are on).
 - Expect: each goes at once, with nothing of its own left on screen (no panel, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. A switch made in a fight applies when the fight ends. [Needs in-game check.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
