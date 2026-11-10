@@ -83,9 +83,10 @@ local function makeOwnSwitch(r)
   r.ownSwitch:SetJustifyH("LEFT")
 end
 
--- Beside a module's name, a quiet note while the module is on but its own switch inside is off (O.OwnSwitchNote).
+-- Beside a module's name, a quiet note (O.ModuleNote): the module is on but its own switch inside is off, or its
+-- switch waits for the fight to end.
 local function addOwnSwitchNote(r, name)
-  if not O.MODULE_LINKS[name] then return end
+  if not O.HasModuleNote(name) then return end
   makeOwnSwitch(r)
   local refresh = r.Refresh
   -- The switch's own refresh, then the note, read again each time (the own switch is on another page), placed after
@@ -93,7 +94,7 @@ local function addOwnSwitchNote(r, name)
   r.Refresh = function(self)
     refresh(self)
     placeOwnSwitch(self)
-    self.ownSwitch:SetText(O.OwnSwitchNote(name) or "")
+    self.ownSwitch:SetText(O.ModuleNote(name) or "")
   end
   r:Refresh()
 end
@@ -1388,6 +1389,12 @@ local function replaceTabs()
     if view.cards[1] and view.cards[1].tab then placeTabs(view) end
   end
 end
+
+-- A settle of the module switches (Core/Modules.lua) started or stopped modules, or a switch made in a fight applied:
+-- the shown window reads every row again (the notes beside module names, the rows that check a module runs).
+ns.OnModulesChanged(function()
+  if window and window:IsShown() then O.Refresh() end
+end)
 
 -- Accent changes recolor the window's switches, segments and nav at once; font and Text size changes re-lay the tabs.
 T.OnChanged(function()

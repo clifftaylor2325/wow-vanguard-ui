@@ -475,6 +475,20 @@ function O.OwnSwitchNote(name)
   return ns.Format(L["On, but its own switch is off ({page})"], { page = pageTitle(link.page) })
 end
 
+-- Whether a module's row has a note beside its name: one with its own switch inside, and one that goes on and off
+-- live (its switch can wait for a fight).
+function O.HasModuleNote(name)
+  local def = ns.GetModule(name)
+  return O.MODULE_LINKS[name] ~= nil or (def ~= nil and def.live == true)
+end
+
+-- The note beside a module's name, or nil: its switch waits for the fight to end (a live module), else the
+-- own-switch note.
+function O.ModuleNote(name)
+  if ns.ModuleAwaitsFight(name) then return L["Applies after the fight"] end
+  return O.OwnSwitchNote(name)
+end
+
 -- One module's switch, with its name and what it does; it applies on reload (Core/Modules.lua builds modules at login),
 -- so it wears the reload tag.
 local function moduleRow(name)

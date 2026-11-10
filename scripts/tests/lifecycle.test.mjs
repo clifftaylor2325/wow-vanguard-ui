@@ -294,3 +294,41 @@ it("lifecycle: a module whose Enable fails after registering has what it registe
   const plain = lifeAddon();
   expect(footprint(addon).handlers).toEqual(footprint(plain).handlers);
 });
+
+// Combat ---------------------------------------------------------------------------------------------------------
+
+// A TEST-ONLY live module with a secure button of its own: hiding it is protected, so its stop waits for the fight.
+const SECURE = `${MODULES}
+  local B = ns.Module("TestSecure", { defaults = {}, live = true })
+  function B.Enable(settings, scope)
+    B.button = B.button or CreateFrame("Button", "VanguardTest_Secure", UIParent, "SecureActionButtonTemplate")
+    B.button:SetSize(20, 20)
+    B.button:SetPoint("CENTER")
+    scope:Frame(B.button):Show()
+  end
+`;
+
+it("lifecycle: a module with a secure frame switched off in a fight keeps it until the fight ends, then hides it", () => {
+  const addon = lifeAddon("", SECURE);
+  setCombat(addon, true);
+  addon.eval('ns.SetModuleEnabled("TestSecure", false)');
+  expect(addon.eval("return { VanguardTest_Secure:IsShown(), ns.ModuleLive('TestSecure') }")).toEqual([true, true]);
+  setCombat(addon, false);
+  expect(addon.eval("return { VanguardTest_Secure:IsShown(), ns.ModuleLive('TestSecure') }")).toEqual([false, false]);
+});
+
+// The note beside a module's name on the Modules page (the window open there), or null for a row without one.
+const moduleNote = (addon, caption) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do
+  if w.ownSwitch ~= nil and w.label.__text == "${caption}" and ns.Options.RevealRow(w) then return w.ownSwitch.__text end end`);
+
+it("lifecycle: a live module's row says its switch applies after the fight, and stops saying so when it has", () => {
+  const addon = lifeAddon();
+  addon.eval('ns.Options.Show("modules")');
+  expect(moduleNote(addon, "TestParent")).toBe("");
+  setCombat(addon, true);
+  addon.eval('ns.SetModuleEnabled("TestParent", false) ns.Options.Refresh()');
+  expect(moduleNote(addon, "TestParent")).toBe("Applies after the fight");
+  expect(moduleNote(addon, "TestReload")).toBe(null);
+  setCombat(addon, false);
+  expect(moduleNote(addon, "TestParent")).toBe("");
+});
