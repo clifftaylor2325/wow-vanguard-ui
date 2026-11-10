@@ -373,9 +373,19 @@ local function soon()
   end)
 end
 
+-- Whether the learner has anything to watch for: keys set up from a preset (the switch, and what the player changes
+-- for later updates), or the one question still to ask. A player who answered it and never set up keys costs nothing:
+-- no work at a spell, a level or a load screen, and nothing written (L16). Reads the saved state without making it.
+---@return boolean
+function KN.Watching()
+  local s = type(VanguardCharDB) == "table" and VanguardCharDB.keysLearn
+  if type(s) ~= "table" then return true end
+  return s.preset ~= nil or s.asked ~= true
+end
+
 -- A spell learned or a level reached, once login has settled.
 local function onSpells(event)
-  if not KN.settled then return end
+  if not (KN.settled and KN.Watching()) then return end
   if event == "LEARNED_SPELL_IN_SKILL_LINE" then KN.learned = true end
   soon()
 end
@@ -384,23 +394,30 @@ for _, event in ipairs(KN.EVENTS) do ns.On(event, onSpells) end
 -- The game placed a spell on a button by itself: it counts as the game's, so a later update may move it (even on a
 -- button the player had changed or emptied before).
 local function onPushed(_, spellID, slot)
-  local s = type(VanguardCharDB) == "table" and state()
-  if not (s and s.preset) then return end
+  local saved = type(VanguardCharDB) == "table" and VanguardCharDB.keysLearn
+  if not (type(saved) == "table" and saved.preset) then return end
+  local s = state()
   local id, place = ns.PlainNumber(spellID), ns.PlainNumber(slot)
   if id and place and KA.CommandFor(place) then s.slots[place], s.ownSlots[place] = id, nil end
 end
 ns.On("SPELL_PUSHED_TO_ACTIONBAR", onPushed)
 
+-- Whether an update the game refused earlier waits to run, read without making the saved state.
+local function pendingUpdate()
+  local s = type(VanguardCharDB) == "table" and VanguardCharDB.keysLearn
+  return type(s) == "table" and s.pending == true and KN.Watching()
+end
+
 -- Login has settled: spell events count from now, and an update left from an earlier session runs.
 local function settle()
   KN.settled = true
-  if state().pending then soon() end
+  if pendingUpdate() then soon() end
 end
 
 -- The first load screen starts the settling time (a client without timers settles at once); a later one tries a
 -- refused update again.
 local function onWorld()
-  if KN.settled then return state().pending and soon() end
+  if KN.settled then return pendingUpdate() and soon() end
   if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return settle() end
   C_Timer.After(KN.SETTLE, ns.Guard("keys learn settle", settle))
 end

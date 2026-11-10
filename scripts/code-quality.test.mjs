@@ -8,7 +8,7 @@ import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
 import fengari from "fengari";
 import { describe, expect, it } from "vitest";
-import { MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, reportSource, sourceFiles, topLevelLocals } from "./lib/code-quality.mjs";
+import { FILE_SCOPE_ALLOWED, MAX_LINE, MAX_TOP_LOCALS, REPORT_RULES, SECURE_ALLOW, SECURE_RULE, checkSource, compareToBaseline, fileScopeSubscriptions, reportSource, sourceFiles, topLevelLocals } from "./lib/code-quality.mjs";
 import { root } from "./check-zip.mjs";
 
 // n body lines of Lua, or of JS when js is true.
@@ -692,4 +692,33 @@ describe("code quality: top-level locals", () => {
   it("fails an addon file above the limit and passes one at it", topLocalsRule);
   it("a do block frees its locals", topLocalsBlock);
   it("agrees with the compiler on Core/Theme.lua, which stays at or below 170", topLocalsTheme);
+});
+
+// file-scope-subscription (A4-3): no ns.On, ns.OnUnit or ns.Every outside every function in a file outside Core/.
+it("file scope: the reader finds subscriptions outside functions, loops and do blocks included, and none inside one", () => {
+  const src = [
+    'ns.On("A", f)',
+    'for _, e in ipairs(E) do ns.On(e, f) end',
+    'do local sub = ns.OnUnit("UNIT_HEALTH", f, "player") end',
+    "local function enable()",
+    '  ns.On("B", f) ns.Every("k", 1, f)',
+    "end",
+    'if x then ns.Every("tick", 1, f) end',
+    '-- ns.On("C", f) in a comment',
+    'local s = "ns.On(\\"D\\", f)"',
+  ].join("\n");
+  expect(fileScopeSubscriptions(src).map((f) => f.call)).toEqual(["ns.On", "ns.On", "ns.OnUnit", "ns.Every"]);
+});
+
+it("file scope: a module file with an unlisted subscription fails; Core/ and a listed file's own count pass", () => {
+  const src = 'local ADDON, ns = ...\nns.On("PLAYER_LOGIN", function() end)\n';
+  expect(checkSource("Modules/TEST-ONLY.lua", src)).toEqual([{ line: 2, message: expect.stringMatching(/^ns\.On\(\) at file scope: register it in the module's Enable/) }]);
+  expect(checkSource("Core/TEST-ONLY.lua", src)).toEqual([]);
+  expect(checkSource("Modules/HudText.lua", src)).toEqual([]);
+});
+
+it("file scope: every allowed file has exactly its count and a reason, so the list only shrinks", () => {
+  const counts = Object.fromEntries(Object.keys(FILE_SCOPE_ALLOWED).map((file) => [file, fileScopeSubscriptions(fs.readFileSync(path.join(root, file), "utf8")).length]));
+  expect(counts).toEqual(Object.fromEntries(Object.entries(FILE_SCOPE_ALLOWED).map(([file, entry]) => [file, entry.calls])));
+  for (const entry of Object.values(FILE_SCOPE_ALLOWED)) expect(entry.reason.length).toBeGreaterThan(20);
 });

@@ -503,6 +503,69 @@ export function sourceFiles(root) {
   return [...new Set(out.split("\n"))].filter((f) => f && fs.existsSync(path.join(root, f)));
 }
 
+// File-scope subscriptions (A4-3, docs/design/MODULE-LIFECYCLE.md 4.2) --------------------------------------
+// An ns.On, ns.OnUnit or ns.Every outside every function in an addon file outside Core/ runs whether or not its
+// feature is switched on, and the module lifecycle can't take it down. It fails unless FILE_SCOPE_ALLOWED names the
+// file with how many it has and why; a count only goes down (scripts/code-quality.test.mjs holds it exact).
+const SUBSCRIBE_CALLS = new Set(["On", "OnUnit", "Every"]);
+const SUBSCRIBE_SCOPE = /^(Modules|Locales)\/.+\.lua$/;
+const SUBSCRIBE_MESSAGE = "at file scope: register it in the module's Enable (through its scope), or list the file in FILE_SCOPE_ALLOWED (scripts/lib/code-quality.mjs) with its count and reason";
+
+// The allowlist: file -> { calls, reason }. Module files the lifecycle sweep (A4-3) moves into Enable, and files that
+// belong to no module.
+export const FILE_SCOPE_ALLOWED = {
+  "Modules/ActionBarKeybinds.lua": { calls: 1, reason: "keybind mode leaves at combat start; part of ActionBars, which stays reload-only (A4-3 moves it into its Enable)" },
+  "Modules/AuctionCrafting.lua": { calls: 3, reason: "the crafting cost panel follows the game's profession window; each handler checks the auction helper is built (A4-3 moves them into its Enable)" },
+  "Modules/ChatHistory.lua": { calls: 1, reason: "saves the chat at logout, checking its own switch first (A4-2f moves it into the scope)" },
+  "Modules/ClickCastOptions.lua": { calls: 4, reason: "the click-casting page re-reads itself at a fight's start and end and on talent changes, only while the options window is shown (L16; A4-3 moves them behind ClickCast)" },
+  "Modules/ClickCastPresets.lua": { calls: 2, reason: "the starter layouts' blocker cache, cleared when an addon loads, and the better-spell offer on new spells (A4-3 moves them behind ClickCast)" },
+  "Modules/ClickCastSpells.lua": { calls: 3, reason: "the spellbook catalog's cache, cleared when spells change; read by the click-casting page whether or not ClickCast runs" },
+  "Modules/HudText.lua": { calls: 1, reason: "sets the damage-number font at Vanguard's own ADDON_LOADED, before the engine reads it and before any Enable runs; it checks the module's switch first" },
+  "Modules/KeybindsApply.lua": { calls: 5, reason: "key setup belongs to no module: blocked-action watch, refused updates retried, the key backup at logout and its restore at login (the backup only while key setup has a record)" },
+  "Modules/KeybindsLearn.lua": { calls: 3, reason: "key setup's new spells belong to no module; the handlers do nothing unless keys were set up from a preset or the one question is still to ask" },
+  "Modules/KeybindsWizard.lua": { calls: 2, reason: "key setup's wizard belongs to no module: it steps aside at combat start and offers itself once after login" },
+  "Modules/KeysViewCard.lua": { calls: 3, reason: "the Your keys card belongs to no module: it redraws on modifier and binding changes while it is shown" },
+  "Modules/Probe.lua": { calls: 2, reason: "the /vg probe diagnostic belongs to no module: a flight-map answer and a run stopped at combat start" },
+  "Modules/RaidPreview.lua": { calls: 2, reason: "the raid frames preview stops when you join a group or a fight starts; it runs only while the preview is up" },
+  "Modules/RetailDelves.lua": { calls: 1, reason: "Retail only (frozen): the delve widgets follow UPDATE_UI_WIDGET" },
+  "Modules/Situations.lua": { calls: 1, reason: "writes the base profile back at logout so no override is saved as your own (A4-2f moves it into the scope)" },
+  "Modules/WindowsMenus.lua": { calls: 1, reason: "game window skins: watches the dropdown rows from login (Windows stays reload-only)" },
+  "Modules/WindowsSocial.lua": { calls: 1, reason: "game window skins: the raid tab when the game loads its raid window (Windows stays reload-only)" },
+  "Modules/WindowsTabs.lua": { calls: 1, reason: "game window skins: the tab buttons from login (Windows stays reload-only)" },
+  "Modules/WindowsTown.lua": { calls: 1, reason: "game window skins: the merchant window from login (Windows stays reload-only)" },
+};
+
+// How a token changes the block stack: a function opens an "f" level, if/do/repeat a plain one, end/until closes one.
+function stepBlocks(stack, t) {
+  if (t.kind !== "word") return;
+  if (t.text === "function") stack.push("f");
+  else if (LUA_BLOCK_OPEN.has(t.text)) stack.push("b");
+  else if (LUA_BLOCK_CLOSE.has(t.text)) stack.pop();
+}
+
+// The ns.On, ns.OnUnit and ns.Every calls outside every function in Lua source: [{ call, start }] (loops and do
+// blocks at the top of the file count as file scope too).
+export function fileScopeSubscriptions(src) {
+  const tokens = codeTokens(src);
+  const stack = [];
+  const found = [];
+  tokens.forEach((t, i) => {
+    stepBlocks(stack, t);
+    const call = t.text === "ns" && tokens[i + 1]?.text === "." && SUBSCRIBE_CALLS.has(tokens[i + 2]?.text) && tokens[i + 3]?.text === "(";
+    if (call && !stack.includes("f")) found.push({ call: `ns.${tokens[i + 2].text}`, start: t.start });
+  });
+  return found;
+}
+
+// Problems for a file with more file-scope subscriptions than FILE_SCOPE_ALLOWED lets it have: each one is listed.
+function fileScopeProblems(file, src) {
+  if (!SUBSCRIBE_SCOPE.test(file)) return [];
+  const found = fileScopeSubscriptions(src);
+  if (found.length <= (FILE_SCOPE_ALLOWED[file]?.calls ?? 0)) return [];
+  const line = lineIndex(src);
+  return found.map((f) => ({ line: line(f.start), message: `${f.call}() ${SUBSCRIBE_MESSAGE}` }));
+}
+
 // Problems in one file: [{ line, message }].
 export function checkSource(file, src) {
   const lua = file.endsWith(".lua");
@@ -511,7 +574,7 @@ export function checkSource(file, src) {
   const documented = documentedSet(fns, kinds);
   const out = fns.flatMap((fn) => functionProblems(fn, kinds, documented));
   if (!lua) return out;
-  return out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src), topLocalProblems(file, src), unguardedSecureCalls(file, src));
+  return out.concat(colorProblems(file, src), fontProblems(file, src), spacingProblems(file, src), bareCallbackProblems(file, src), lua51Problems(file, src), topLocalProblems(file, src), unguardedSecureCalls(file, src), fileScopeProblems(file, src));
 }
 
 // Report-only rules (#263) -------------------------------------------------------------

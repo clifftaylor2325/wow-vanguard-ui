@@ -1000,9 +1000,20 @@ local function copyStamp(copy)
   return ns.PlainNumber(ns.Client.Call("time")) or 0
 end
 
+-- Whether a logout has key setup's record to keep: the account holds a key record or waiting spells, or this
+-- character kept a copy before (it follows the record, down to an empty one). Key setup never used writes nothing.
+local function hasKeyRecord()
+  for _, name in ipairs(KA.BACKED_UP) do
+    if type(VanguardDB[name]) == "table" then return true end
+  end
+  return VanguardCharDB.keyBackup ~= nil
+end
+
 -- At logout this character keeps a copy of the account's key record and waiting spells (the settings guard's
--- backup carries them), stamped with the time (copyStamp), and the account file notes the stamp of the newest copy.
+-- backup carries them), stamped with the time (copyStamp), and the account file notes the stamp of the newest copy;
+-- only while key setup has a record (L16).
 function KA.BackUp()
+  if not hasKeyRecord() then return end
   local copy = {}
   for _, name in ipairs(KA.BACKED_UP) do
     copy[name] = type(VanguardDB[name]) == "table" and ns.Copy(VanguardDB[name]) or nil
