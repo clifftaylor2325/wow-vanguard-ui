@@ -1,14 +1,14 @@
 # Module lifecycle: dependencies, teardown and late enable (design note, A4-1)
 
-Status: **proposal for Cliff to approve before any code.** Written 2026-11-09 against `48966bb` (0.9.5 notes merged). Plan task A4-1 in `docs/handoff/A-GRADE-PLAN.md`; review items B1 and M9, sections 3.1 ("Module system and lifecycle"), 5.1 and 5.8 of `docs/handoff/VANGUARD-REVIEW-2026-11-09.md`. Nothing here was checked in the game. Counts come from reading and grepping the Lua at that commit; a sibling thread (live apply for the minimap, info strip, chat, raid frame sizes) may move a few of them before this lands.
+Status: **approved by Cliff on 2026-11-10: every recommendation in 5.3 (Q1 to Q11) as recommended.** Written 2026-11-09 against `48966bb` (0.9.5 notes merged); counts corrected on 2026-11-10 against `eaff8c5`. Plan task A4-1 in `docs/handoff/A-GRADE-PLAN.md`; review items B1 and M9, sections 3.1 ("Module system and lifecycle"), 5.1 and 5.8 of `docs/handoff/VANGUARD-REVIEW-2026-11-09.md`. Nothing here was checked in the game. Counts come from reading and grepping the Lua at that commit; a sibling thread (live apply for the minimap, info strip, chat, raid frame sizes) may move a few of them before this lands.
 
 ## 0. The short version
 
-- Today the registry builds modules at login and never takes one down (`Core/Modules.lua:118-127`). Of 77 modules, 4 have a `Disable`, and each of those only stops part of what it does.
+- Today the registry builds modules at login and never takes one down (`Core/Modules.lua:118-127`). Of 74 modules, 4 have a `Disable`, and each of those only stops part of what it does.
 - Proposal: each module gets a **scope**, an object the registry owns and passes to `Enable(settings, scope)`. Events, unit events, tickers, listeners, hooks, frames and movers registered through it are released by the registry when the module goes off. Hooks can't be removed, so they stay installed and do nothing while the module is off.
 - Modules declare `requires = { ... }` and either `live = true` or `reload = L["why"]`. A module that declares neither stays reload-only, as today. Nothing changes behaviour until a module is converted.
 - Every switch, whether a module going on or off or a module being rebuilt, runs out of combat. A switch made in a fight waits for the fight to end.
-- Classification of the 77 modules: **25** toggle live with the scope alone, **29** with a small `Disable`, **23** stay reload-only for a stated reason. Module rows tagged "Reload to apply" go from 77 to 23. Setting rows tagged "(reload)" go from 68 to about 49 on WoW Forever. That does not reach the plan's target of 15 or fewer; section 5 says what else would be needed.
+- Classification of the 74 modules (three were retired after this was written: Pet stable, Legacy helper and Boss docks, all from the first class): **22** toggle live with the scope alone, **29** with a small `Disable`, **23** stay reload-only for a stated reason. Module rows tagged "Reload to apply" go from 74 to 23. Setting rows tagged "(reload)" go from 68 to about 49 on WoW Forever. That does not reach the plan's target of 15 or fewer; section 5 says what else would be needed.
 - Live profile switching (A4-4) runs on top of this, but only when no reload-only module's switch or settings differ between the two profiles. Otherwise it is staged as today, and the dialog names the modules that are waiting.
 - Eleven decisions for Cliff are listed at the end.
 
@@ -173,7 +173,7 @@ function Scope:Close()
 end
 ```
 
-Core needs three small additions for this: an optional spare frame as a sixth argument to `ns.OnUnit`; `ns.ReleaseMover(key)` in `Core/Movers.lua`, which takes the key out of the unlock list, hides its handle and keeps its saved entry; and `V.Release(frame)` in `Core/Visibility.lua`, which calls `UnregisterStateDriver` for `vgvis` and `visibility` and drops `V.tracked[frame]`. `Core/Movers.lua` belongs to draft PR #809 today, so that one addition waits for #809 to merge.
+Core needs three small additions for this: an optional spare frame as a sixth argument to `ns.OnUnit`; `ns.ReleaseMover(key)` in `Core/Movers.lua`, which takes the key out of the unlock list, hides its handle and keeps its saved entry; and `V.Release(frame)` in `Core/Visibility.lua`, which calls `UnregisterStateDriver` for `vgvis` and `visibility` and drops `V.tracked[frame]`. PR #809 has merged since this was written, so `ns.ReleaseMover` no longer waits for it and lands with the core.
 
 ### 2.3 Generic disable for display-only modules
 
@@ -331,11 +331,11 @@ end
 
 Whether re-registering events on those windows from addon code leaves them untainted is not known. It goes on the in-game list (4.4).
 
-## 3. Classification of the 77 modules
+## 3. Classification of the 74 modules
 
 "Live" means: after the switch goes off, the screen and the event load are what a login with it off would give. The one exception is a line the module states with `afterOff`.
 
-### 3.1 Live with the scope alone: 25
+### 3.1 Live with the scope alone: 22
 
 Own frames, subscriptions and gated hooks only.
 
@@ -385,18 +385,18 @@ Some of these could move up later. CastBars, SwingTimer, InfoStrip and PlayerAur
 
 ### 3.4 What happens to the reload tags (WoW Forever)
 
-- **Module switch tags:** 77 to 23. 54 go, all from 3.1 and 3.2.
-- **Setting rows tagged "(reload)":** 68 today, counted as 74 caption strings in `Core/Options*.lua` and `Modules/*.lua` (the old captions in `Core/OptionsNames.lua` are tips, not rows), minus the Retail-only rows and the second client's druid mana strings. 19 go, because their modules are live and the row becomes `O.RestartSetting`: Cooldown gaps (2), flight and boat timers (2), druid mana and totems (2), party pets (1), group threat (1), readouts (3), raid debuffs and indicators (6), the quest dialog (1) and the quest log (1). That leaves about **49**.
+- **Module switch tags:** 74 to 23. 51 go, all from 3.1 and 3.2.
+- **Setting rows tagged "(reload)":** 68 today (recounted on 2026-11-10 at `eaff8c5` from the options pages' rows on WoW Forever: still 68), counted as 74 caption strings in `Core/Options*.lua` and `Modules/*.lua` (the old captions in `Core/OptionsNames.lua` are tips, not rows), minus the Retail-only rows and the second client's druid mana strings. 19 go, because their modules are live and the row becomes `O.RestartSetting`: Cooldown gaps (2), flight and boat timers (2), druid mana and totems (2), party pets (1), group threat (1), readouts (3), raid debuffs and indicators (6), the quest dialog (1) and the quest log (1). That leaves about **49**.
 - Of those 49, 12 are the game-window groups, 3 are theme keys, 9 belong to the bars, map and menu strip, and the rest are spread over reload-only modules.
 
 ## 4. Migration plan
 
 ### 4.1 Batches (one PR each, about ten modules, display-only first)
 
-- **A4-2a, Core.** Scope, `requires`, `live`/`reload`/`afterOff`, `settleAll`, `ns.RestartModule`, `ns.ModulesWaiting`, `O.RestartSetting`, `V.Release`, the spare-frame argument to `ns.OnUnit`, the footer and row text, and `ns.HandlerCounts()` for the harness and `/vg perf`. Also the harness footprint (4.3) and the `requires` check in `scripts/module-registry.test.mjs`. No module is converted, so nothing visible changes. `ns.ReleaseMover` follows here or in the next PR, once #809 has merged.
+- **A4-2a, Core.** Scope, `requires`, `live`/`reload`/`afterOff`, `settleAll`, `ns.RestartModule`, `ns.ModulesWaiting`, `O.RestartSetting`, `V.Release`, the spare-frame argument to `ns.OnUnit`, the footer and row text, and `ns.HandlerCounts()` for the harness and `/vg perf`. Also the harness footprint (4.3) and the `requires` check in `scripts/module-registry.test.mjs`. No module is converted, so nothing visible changes. `ns.ReleaseMover` lands here too (#809 has merged).
 - **A4-2b, own frames.** GroupThreat, FightHistory, Meter, Rolls, InstancePrep, QuestArrow, QuestMinimap, CooldownGaps, ChatWatch.
 - **A4-2c, listeners and data.** AutoAccept, QuestAuto, VendorMemory, Inventory, QuestHistory, SpellRanks, Coexist, GroupBoard, MailTools, CraftQueue.
-- **A4-2d, on the unit frames.** After #809 merges, because it owns FrameAuras, ComboPoints, ClassBars and UnitExtras. Batch: FrameAuras, ComboPoints, ClassBars, PowerTicks, UnitExtras, PartyExtras, MainTanks, RaidTools, AfkScreen.
+- **A4-2d, on the unit frames.** #809, which owned FrameAuras, ComboPoints, ClassBars and UnitExtras, has merged; wait for any open PR that owns the unit-frame files. Batch: FrameAuras, ComboPoints, ClassBars, PowerTicks, UnitExtras, PartyExtras, MainTanks, RaidTools, AfkScreen.
 - **A4-2e, raid and town.** RaidAuras, RaidHealing, RaidStatus, OfficerLoot, Upgrades, CharacterExtras, Errands, Merchant, TalentPlanner, QuestGuide.
 - **A4-2f, chat, quests and the old four.** ChatHistory, ChatFilter, Quiet, ChatExtras, ChatWindows, QuestDialog, QuestLog, CooldownKeys, CooldownGlow, DataBars, BrokerStrip, HudText, Situations. This batch is thirteen; split it if review gets long.
 - **A4-2g (optional, Q5 and Q7).** The reversible-park spike and the setting-level `Apply` for reload-only modules.
@@ -450,12 +450,12 @@ The logins follow `scripts/tests/login-scope.json`, with heavy modules off unles
 - **Cross-module calls into a stopped module.** Helpers stay callable because the code is still loaded. Calls that touch a stopped module's frames must check `ns.ModuleLive`. The per-batch grep in 4.1 and the lifecycle cases catch the ones that don't.
 - **Frames are never freed.** Toggling must not grow memory. The toggle-three-times case enforces that.
 - **Taint.** Re-registering events on game windows (QuestDialog) and showing game frames again (DataBars) is suspected safe out of combat but unverified (4.4).
-- **Overlap with #809.** `Core/Movers.lua` and five unit-frame files belong to #809, so 2.2's `ns.ReleaseMover` and batch A4-2d wait for it.
+- **Overlap with other open PRs.** #809 (`Core/Movers.lua` and five unit-frame files) has merged, so 2.2's `ns.ReleaseMover` no longer waits. Batch A4-2d still waits for any open PR that owns the unit-frame files.
 - **Scope of the change.** The core PR changes `Core/Modules.lua`, `Core/Events.lua`, `Core/Ticker.lua`, `Core/Visibility.lua`, `Core/Options.lua` and `Core/OptionsWindow.lua`. CLAUDE.md puts a cross-module decision like this at Opus; the conversions are Sonnet work.
 
 ### 5.2 Alternatives rejected
 
-- **A hand-written `Disable` in every module.** That is 77 chances to forget an event or a ticker, and no single place to test. The scope does the common part once, and `Disable` covers only what the scope can't see.
+- **A hand-written `Disable` in every module.** That is 74 chances to forget an event or a ticker, and no single place to test. The scope does the common part once, and `Disable` covers only what the scope can't see.
 - **An implicit scope** (ns.On records into "the module whose Enable is running"). It needs no module changes, but it attributes wrongly across modules. For example, `QL.Enable` calls `QT.KeepFoldsOpen`, which would land in QuestLog's scope. It also misses anything registered later from a callback, and it hides one function's dependence on another, which CLAUDE.md asks us not to do. It is kept only as a harness check.
 - **Removing hooks by restoring the original function.** Impossible for `hooksecurefunc`, and replacing game functions or scripts taints them.
 - **Destroying frames.** The client has no call for it. Frames are hidden and reused.
@@ -466,13 +466,24 @@ The logins follow `scripts/tests/login-scope.json`, with heavy modules off unles
 ### 5.3 Decisions for Cliff
 
 - **Q1. Approve the scope API and `Enable(settings, scope)`?** Recommended: yes. It is backward compatible, and unconverted modules ignore the second argument.
+  Decided 2026-11-10: as recommended.
 - **Q2. Is an unconverted module reload-only by default?** Recommended: yes, until it declares `live` or `reload`. Once A4-2 is done, the registry test requires one of the two.
+  Decided 2026-11-10: as recommended.
 - **Q3. Turning on a child whose parent is off.** Recommended: the switch is greyed and says "Needs Unit frames", and the note jumps to the parent's row. The alternative, turning the parent on too after a question, is one more dialog for little gain.
+  Decided 2026-11-10: as recommended.
 - **Q4. Switches made in a fight.** Recommended: let the switch flip, show "Applies after the fight", and apply when the fight ends. Refusing would be the stricter choice.
+  Decided 2026-11-10: as recommended.
 - **Q5. Reversible park for small game frames** (cast bars, swing bars, buffs, clock, calendar button, durability). The game frame keeps its events while hidden, so the module could go off live. Cost: those frames keep handling events while hidden, and there is a taint question to answer in the game. Recommended: not in the main batches. Do a spike on the durability frame in A4-2g, with an in-game look, then decide.
+  Decided 2026-11-10: as recommended.
 - **Q6. The plan's target of 15 or fewer reload-tagged options.** It can't be reached by A4 alone: about 49 setting rows remain. Recommended: keep the target, and get there with Q5, Q7, and one section-level note for the 12 game-window rows ("These apply after a reload") instead of 12 tags. Or relax it to "every display-only module live, and only reasons that can't change still tagged".
+  Decided 2026-11-10: as recommended.
 - **Q7. Setting-level `Apply` for reload-only modules** whose setting only changes the module's own frames: buff timers and size, levels on unit frames, map coordinates, chat place, text-only bubbles, groups as columns or rows. Recommended: yes, in A4-2g, one test each.
+  Decided 2026-11-10: as recommended.
 - **Q8. The live profile rule.** Recommended: all or nothing as in 2.9, with `rebinds = true` audited per module.
+  Decided 2026-11-10: as recommended.
 - **Q9. File-scope handlers in files that are not modules** (key setup, the probe, the keys card). Recommended: an allowlist with a reason per file. Gate key setup's logout backup and learner behind key setup's own switch (L16) in A4-3.
+  Decided 2026-11-10: as recommended.
 - **Q10. Ship the core PR with no module converted?** Recommended: yes. It changes nothing a player sees, so A4-2b is the first visible change and the easiest one to judge.
+  Decided 2026-11-10: as recommended.
 - **Q11. Captions keep " (reload)" in their English `L[]` text after conversion**, since the tag now follows the setter. Recommended: yes for A4. Drop the brackets in one i18n pass after A4-2f, so no translation churns batch by batch.
+  Decided 2026-11-10: as recommended.
