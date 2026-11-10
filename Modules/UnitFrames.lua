@@ -1280,15 +1280,32 @@ end
 
 local hiddenParent
 
--- Hides a game frame and puts it under the hidden frame (protected frames: out of combat only).
+-- True while a parked frame's alpha is being cleared, so the SetAlpha hook doesn't answer its own call.
+local clearingParked = false
+
+-- Makes a parked frame clear (alpha 0) at once. The game's own code can bring a parked frame back in a fight, and
+-- parking waits for its end: the managed-frame containers (ManagedFrameSystem.lua) re-parent a frame they hold to a
+-- visible container and set its alpha to 1 (on a show, after Alt-Z, from Edit Mode). An alpha is never locked in a
+-- fight, on a protected frame too, so this holds where parking can't. Nothing is stored on the game's frame.
+local function clearParked(f)
+  if clearingParked then return end
+  clearingParked = true
+  pcall(f.SetAlpha, f, 0)
+  clearingParked = false
+end
+
+-- Hides a game frame, puts it under the hidden frame and clears it (protected frames: out of combat only).
 local function park(f)
   f:Hide()
   f:SetParent(hiddenParent)
+  clearParked(f)
 end
 
--- Parks a frame the game showed again, unless it is still parked.
+-- Parks a frame the game showed again (clear at once; hidden and parked now, or when the fight ends), unless it is
+-- still parked. Whether it shows is the game's answer, so a hidden one counts as shown.
 local function repark(f)
-  if not f:IsShown() and f:GetParent() == hiddenParent then return end
+  clearParked(f)
+  if not ns.IsTrue(f:IsShown()) and f:GetParent() == hiddenParent then return end
   ns.OutOfCombat(function() park(f) end, f)
 end
 
@@ -1302,20 +1319,29 @@ local function keepParked(f)
   hooksecurefunc(f, "UpdateShownState", ns.Guard("hook UpdateShownState", function() repark(f) end))
 end
 
--- Game frames with no UpdateShownState that the managed-frame system or Edit Mode still moves
--- out of the hidden frame (SetParent) while they are shown.
-UF.REPARENTED = { ObjectiveTrackerFrame = true }
+-- What the game does to bring a parked frame back, and the answer to each: a new parent (the managed-frame system,
+-- Edit Mode) parks it again, an alpha (the containers' fade in) clears it again. No Show hook: a protected frame's
+-- Show can come from secure code, and a hidden frame under the hidden parent draws nothing anyway.
+local PARK_HOOKS = {}
 
--- Parks the frame again whenever the game gives it a parent other than the hidden frame. Its own
--- once-per-frame table, so a frame keepParked has hooked still gets this hook.
-local function keepUnderHidden(f, name)
-  if not UF.REPARENTED[name] or type(hooksecurefunc) ~= "function" then return end
+-- A new parent other than the hidden frame: parked again.
+function PARK_HOOKS.SetParent(f, parent)
+  if parent ~= hiddenParent then repark(f) end
+end
+
+-- A new alpha: clear again.
+function PARK_HOOKS.SetAlpha(f)
+  clearParked(f)
+end
+
+-- Hooks every parked frame's new parent and alpha, once per frame (its own table, so a frame keepParked has hooked
+-- still gets these).
+local function keepUnderHidden(f)
+  if type(hooksecurefunc) ~= "function" then return end
   UF.reparentHooked = UF.reparentHooked or {}
   if UF.reparentHooked[f] then return end
   UF.reparentHooked[f] = true
-  hooksecurefunc(f, "SetParent", ns.Guard("hook SetParent", function(_, parent)
-    if parent ~= hiddenParent then repark(f) end
-  end))
+  for name, answer in pairs(PARK_HOOKS) do hooksecurefunc(f, name, ns.Guard("hook " .. name, answer)) end
 end
 
 -- Hides one of the game's frames for good: no events, parented to a hidden frame.
@@ -1328,7 +1354,7 @@ local function hideBlizzard(name)
   park(f)
   ns.EditModeReplaced(f)
   keepParked(f)
-  keepUnderHidden(f, name)
+  keepUnderHidden(f)
 end
 -- Shared with modules that replace other game frames (PlayerAuras).
 UF.HideBlizzard = hideBlizzard

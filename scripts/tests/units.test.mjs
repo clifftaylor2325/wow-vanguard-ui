@@ -939,9 +939,21 @@ it("Edit Mode re-parenting the game's objective tracker parks it again", () => {
 // TEST-ONLY: a listed frame that also has UpdateShownState, so keepParked hooks it first.
 it("a re-parented game frame with UpdateShownState is parked again after SetParent too", () => {
   const addon = loggedIn(UNITS_ENV + '\nBothFrame = CreateFrame("Frame", "BothFrame", UIParent)\nfunction BothFrame:UpdateShownState() end', NO_RAID);
-  addon.eval("local UF = ns.GetModule('UnitFrames') UF.REPARENTED.BothFrame = true UF.HideBlizzard('BothFrame')");
+  addon.eval("ns.GetModule('UnitFrames').HideBlizzard('BothFrame')");
   addon.eval("BothFrame:Show() BothFrame:SetParent(UIParent)");
   expect(addon.eval("return { BothFrame:IsShown(), BothFrame:GetParent() == UIParent }"), "hidden and parked again").toEqual([false, false]);
+});
+// TEST-ONLY: the managed-frame container bringing a parked frame back in a fight, as ManagedFrameSystem.lua's UpdateFrame
+// and AnimInManagedFrames do (a new parent, then alpha 1).
+it("a parked game frame the game brings back in a fight stays clear until the fight ends, then is parked again", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  setCombat(addon, true);
+  addon.eval("PetFrame:Show() PlayerCastingBarFrame:Show() for _, f in ipairs({ PetFrame, PlayerCastingBarFrame }) do f:SetParent(UIParent) f:SetAlpha(1) end");
+  const state = () => addon.eval("local out = {} for i, f in ipairs({ PetFrame, PlayerCastingBarFrame }) do out[i] = { f:GetAlpha(), f:GetParent() == UIParent, f:IsShown() } end return out");
+  expect(state(), "in the fight: re-parented and shown by the game, but clear").toEqual([[0, true, true], [0, true, true]]);
+  setCombat(addon, false);
+  expect(state(), "after it: hidden and parked again").toEqual([[0, false, false], [0, false, false]]);
+  expect(addon.eval("return #ns.errors"), "nothing raised").toBe(0);
 });
 it("a parked game frame without UpdateShownState, or on a client without hooksecurefunc, is left alone", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
