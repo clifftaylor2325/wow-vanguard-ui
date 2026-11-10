@@ -576,3 +576,31 @@ it("situations: Exit without saving after joining a raid while unlocked leaves t
   raid(addon, false);
   expect([spot(addon), savedSpot(addon)], "leaving puts the base back").toEqual([HOME, null]);
 });
+
+// A raid override that moves the XP bar and hides both bars (DataBars goes on and off live).
+const BARS_OVERRIDE = `VanguardDB.profiles.Default.Situations.overrides.raid = { positions = { xpbar = { point = "TOP", relPoint = "TOP", x = 0, y = -90 } },
+  settings = { DataBars = { visibility = "hidden" } } }`;
+
+it("situations: a module switched off while its override holds gets its own values back in the profile when the situation ends", () => {
+  const addon = situated(saved(BARS_OVERRIDE));
+  const own = addon.eval("return { ns.Settings('positions').xpbar == nil, ns.Settings('DataBars').visibility }");
+  raid(addon);
+  expect(addon.eval("return { ns.Settings('positions').xpbar.point, ns.Settings('DataBars').visibility }"), "in the raid: the override's values").toEqual(["TOP", "hidden"]);
+  addon.eval('ns.SetModuleEnabled("DataBars", false)');
+  raid(addon, false);
+  expect(addon.eval("return { ns.Settings('positions').xpbar == nil, ns.Settings('DataBars').visibility }"), "left with the bars off: the profile's own").toEqual(own);
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("return { VanguardDB.profiles.Default.positions.xpbar == nil, VanguardDB.profiles.Default.DataBars.visibility }"), "and so on disk").toEqual(own);
+  addon.eval('ns.SetModuleEnabled("DataBars", true)');
+  expect(addon.eval("return ns.MoverPoint('xpbar')"), "switched on again: at its own spot").not.toBe("TOP");
+});
+
+it("situations: a module switched on while an override names it comes up with its own values, which stay its own afterwards", () => {
+  const addon = situated(saved(BARS_OVERRIDE), "");
+  addon.eval('ns.SetModuleEnabled("DataBars", false)');
+  const own = addon.eval("return { ns.Settings('positions').xpbar == nil, ns.Settings('DataBars').visibility }");
+  raid(addon);
+  addon.eval('ns.SetModuleEnabled("DataBars", true)');
+  raid(addon, false);
+  expect(addon.eval("return { ns.Settings('positions').xpbar == nil, ns.Settings('DataBars').visibility }")).toEqual(own);
+});

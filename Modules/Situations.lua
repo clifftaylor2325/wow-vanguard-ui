@@ -321,19 +321,23 @@ function SI.ApplyOverride(ov)
   write(ov)
 end
 
--- Puts the base back on screen (what the override replaced) and forgets it.
-function SI.RestoreBase()
-  local base = SI.base
-  SI.base = nil
-  if base then write(base) end
-end
-
 -- Writes a set of values (a snapshot or a part of one) into the tables they were read from, without touching the screen.
 local function putValues(set)
   for key, spot in pairs(set.positions) do set.refs.positions[key] = next(spot) and ns.Copy(spot) or nil end
   for module, values in pairs(set.settings) do
     for key, v in pairs(values) do set.refs[module][key] = value(v) end
   end
+end
+
+-- Puts the base back (what the override replaced) and forgets it: first into the tables the snapshot read, so a
+-- frame or module that went away meanwhile (switched off live: no mover, not running) still gets its own values in
+-- the profile, then on screen for what is there now.
+function SI.RestoreBase()
+  local base = SI.base
+  SI.base = nil
+  if not base then return end
+  putValues(base)
+  write(base)
 end
 
 -- Writes the base's values back into the tables they were read from, without touching the screen:
