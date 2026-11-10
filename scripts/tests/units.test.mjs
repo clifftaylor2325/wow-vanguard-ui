@@ -949,6 +949,7 @@ it("a parked game frame the game brings back in a fight stays clear until the fi
   const addon = loggedIn(UNITS_ENV, NO_RAID);
   setCombat(addon, true);
   addon.eval("PetFrame:Show() PlayerCastingBarFrame:Show() for _, f in ipairs({ PetFrame, PlayerCastingBarFrame }) do f:SetParent(UIParent) f:SetAlpha(1) end");
+  // Each parked frame's alpha, whether the game re-parented it, and whether it is shown.
   const state = () => addon.eval("local out = {} for i, f in ipairs({ PetFrame, PlayerCastingBarFrame }) do out[i] = { f:GetAlpha(), f:GetParent() == UIParent, f:IsShown() } end return out");
   expect(state(), "in the fight: re-parented and shown by the game, but clear").toEqual([[0, true, true], [0, true, true]]);
   setCombat(addon, false);
