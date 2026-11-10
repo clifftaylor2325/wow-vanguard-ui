@@ -5433,7 +5433,7 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 
 ### 34.17 Modules on the unit frames switch off and on without a reload (A4-2d)
 
-- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Target and focus auras, Combo points (on a rogue or druid, with points on a target), Class bars (a shaman's totems or a druid's mana in a form), Power bar sparks (cast a mana spell: the spark crosses the bar), Readouts (threat on a target in a group, the status chip, a hunter pet's mood), Main tank frames (in a raid with a main tank marked, out of combat), Party pets and targets (in a party). Then switch Unit frames off and look at its children's rows.
+- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Target and focus auras, Combo points (on a rogue or druid, with points on a target), Class bars (a shaman's totems or a druid's mana in a form), Power bar sparks (cast a mana spell: the spark crosses the bar), Readouts (threat on a target in a group, the status chip, a hunter pet's mood), Main tank frames (in a raid with a main tank marked, out of combat), Party pets and targets (in a party), Raid tools (as leader in a group; the roster, if it is open, closes with it). Then switch Unit frames off and look at its children's rows.
 - Expect: each goes at once, with nothing of its own left on screen (no icons under the target frame, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. With Unit frames off, a child's switch is greyed and says "Needs Unit frames". A switch made in a fight applies when the fight ends. [Needs in-game check.]
 - If it fails, paste: a screenshot and `/vg errors`.
 

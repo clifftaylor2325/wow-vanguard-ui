@@ -15,7 +15,7 @@ local ADDON, ns = ...
 local T = ns.Theme
 local L = ns.L
 
-local RT = ns.Module("RaidTools", { defaults = {} })
+local RT = ns.Module("RaidTools", { defaults = {}, live = true })
 
 RT.ICON, RT.GAP, RT.PAD = 18, 2, T.SPACE.tight
 -- A text button's usual width, and the width of the bar's icon rows (nine icons).
@@ -188,6 +188,7 @@ end
 -- once however many group events come in the fight.
 function RT.Update()
   ns.OutOfCombat(function()
+    if not RT.scope:Running() then return end
     local raid = RT.bar.actions.ConvertToRaid
     RT.bar:SetShown(RT.CanLead())
     if raid then raid:SetShown(not globalTrue("IsInRaid") and globalTrue("UnitIsGroupLeader", "player")) end
@@ -195,23 +196,37 @@ function RT.Update()
   end, "raidtools")
 end
 
--- The movable bar: three rows (calls, target icons, world markers).
+-- The bar's spot (its mover's default).
+RT.SPOT = { "TOPLEFT", "TOPLEFT", 186, -20 }
+
+-- The bar: three rows (calls, target icons, world markers); made once a session.
 local function build()
   local bar = T.HudPanel(CreateFrame("Frame", "Vanguard_RaidTools", UIParent))
   bar.list = {}
   bar:SetSize(RT.ROW_W, 2 * RT.PAD + 3 * RT.ICON + 2 * RT.GAP)
-  ns.Mover(bar, "raidtools", L["Raid tools"], { "TOPLEFT", "TOPLEFT", 186, -20 })
   addActions(bar)
   addTargetIcons(bar)
   addMarkers(bar)
-  RT.bar = bar
+  return bar
 end
 
--- Module entry point (Core/Modules.lua): build out of combat, then follow the group.
-function RT.Enable()
-  ns.OutOfCombat(function()
-    build()
-    RT.Update()
-  end)
-  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", "PLAYER_ENTERING_WORLD" }) do ns.On(e, RT.Update) end
+-- The movable bar handed to the scope (hidden on stop, its mover out of unlock mode), and shown to who may use it.
+local function show(scope)
+  if not scope:Running() then return end
+  RT.bar = RT.bar or build()
+  scope:Mover(RT.bar, "raidtools", L["Raid tools"], RT.SPOT)
+  RT.Update()
+end
+
+-- Module entry point (Core/Modules.lua): build out of combat, then follow the group, and the roster (Modules/RaidRoster.lua).
+function RT.Enable(_, scope)
+  RT.scope = scope
+  ns.OutOfCombat(function() show(scope) end)
+  for _, e in ipairs({ "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED", "PLAYER_ENTERING_WORLD" }) do scope:On(e, RT.Update) end
+  RT.EnableRoster(scope)
+end
+
+-- Switched off: the roster closes with the bar (the frames, handlers and movers go with the scope).
+function RT.Disable()
+  RT.rosterOpen = false
 end

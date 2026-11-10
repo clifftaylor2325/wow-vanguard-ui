@@ -172,3 +172,24 @@ it("lifecycle: the party pets row switched on builds the column, and off hides i
   addon.eval("local _, set = ns.Options.RestartSetting('PartyExtras', 'show') set(false)");
   expect(addon.eval("return Vanguard_PartyExtras:IsShown()")).toBe(false);
 });
+
+// RaidTools -----------------------------------------------------------------------------------------------------
+
+lifecycleCases("RaidTools", login);
+
+it("lifecycle: raid tools switched off hides the bar and closes the roster, and the roster does not open while it is off", () => {
+  const addon = login();
+  addon.eval('ns.GetModule("RaidTools").ToggleRoster()');
+  expect(addon.eval("return Vanguard_RaidRoster:IsShown()")).toBe(true);
+  addon.eval('ns.SetModuleEnabled("RaidTools", false)');
+  expect(addon.eval("return { Vanguard_RaidTools:IsShown(), Vanguard_RaidRoster:IsShown() }")).toEqual([false, false]);
+  addon.eval('ns.GetModule("RaidTools").ToggleRoster()');
+  expect(addon.eval("return Vanguard_RaidRoster:IsShown()")).toBe(false);
+});
+
+it("lifecycle: raid tools switched on again keep the roster closed and the same bar and roster frames", () => {
+  const addon = login();
+  addon.eval('local RT = ns.GetModule("RaidTools") RT.ToggleRoster() __bar, __roster = RT.bar, RT.rframe');
+  addon.eval('ns.SetModuleEnabled("RaidTools", false) ns.SetModuleEnabled("RaidTools", true)');
+  expect(addon.eval('local RT = ns.GetModule("RaidTools") return { RT.bar == __bar, RT.rframe == __roster, RT.rosterOpen, __roster:IsShown() }')).toEqual([true, true, false, false]);
+});
