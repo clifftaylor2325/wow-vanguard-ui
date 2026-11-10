@@ -278,11 +278,14 @@ function CHH.Enable(settings)
   ns.On("PLAYER_ENTERING_WORLD", CHH.Arrived)
 end
 
--- The first time the world is entered (the game has set its chat windows up by then): the saved lines come back.
-function CHH.Arrived()
+-- The first time the world is entered (the game has set its chat windows up by then): the saved lines come back,
+-- but only after a login or a reload: a module started later in the session meets a zone change, which must not
+-- replay last session's chat into this one.
+function CHH.Arrived(_, isInitialLogin, isReloadingUi)
   if CHH.arrived then return end
   CHH.arrived = true
-  if CHH.settings.on then CHH.Restore() end
+  local fresh = isInitialLogin == true or isReloadingUi == true
+  if CHH.settings.on and fresh then CHH.Restore() end
   CHH.KeepEarly()
 end
 

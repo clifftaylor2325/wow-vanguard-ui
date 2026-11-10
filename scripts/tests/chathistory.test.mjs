@@ -5,7 +5,7 @@
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
+import { CLICK_LUA, chatHas, expectErrors, loggedIn } from "./helpers.mjs";
 
 // A controllable clock for the saved lines' times, and a fixed date text.
 const CLOCK = `__now = 1790000000 time = function() return __now end date = function(_, at) return "Mon " .. tostring(at or 0) end`;
@@ -206,5 +206,38 @@ it("chat history: a line printed at login, before the world is entered, is not r
   expect(shown.filter((l) => l === "SomeAddon loaded").length, "shown once").toBe(1);
   expect(shown.some((l) => /1 lines, until Mon 1790000000/.test(l)), "the block counts and dates only the old line").toBe(true);
   expect(saved(next)[0], "kept after the restored line, for the next session").toEqual(["1790000000|ffffff|old session line", "1790003600|ffffff|SomeAddon loaded"]);
+  expect(next.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+// Logs in again as the same character without the world entered yet (the caller fires PLAYER_ENTERING_WORLD).
+function nextLogin(addon, extra = "", saveEdit = "") {
+  addon.fire("PLAYER_LOGOUT");
+  const sv = addon.savedVariables();
+  const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(sv.account)}\nVanguardCharDB = ${luaValue(sv.char)}\n${saveEdit}` });
+  next.eval(`${CLOCK} ${extra}`);
+  next.fire("ADDON_LOADED", "Vanguard");
+  next.fire("PLAYER_LOGIN");
+  return next;
+}
+
+it("chat history: a module started later in the session meets a zone change, which does not replay the earlier chat", () => {
+  const addon = session();
+  addon.eval(`ChatFrame1:AddMessage("last session")`);
+  const next = nextLogin(addon);
+  next.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(lines(next).some((l) => /earlier chat|last session/.test(l)), "no replay on a zone change").toBe(false);
+  next.eval(`ChatFrame1:AddMessage("this session")`);
+  next.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(saved(next)[0], "the saved lines stay, and the lines shown meanwhile join them once").toEqual(["1790000000|ffffff|last session", "1790000000|ffffff|this session"]);
+  expect(next.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("chat history: saved data from an older version (a string where a table goes, lines that are not lines) is read without an error", () => {
+  const addon = session();
+  addon.eval(`ChatFrame1:AddMessage("keep me")`);
+  const next = nextLogin(addon, "", `VanguardCharDB.chatHistory[2] = "old format" VanguardCharDB.chatHistory[3] = { 5, {}, "x", "1790000000|zzzzzz|bad", "|ffffff|no time" } VanguardCharDB.chatHistory.junk = true\n`);
+  next.fire("PLAYER_ENTERING_WORLD", true, false);
+  expect(lines(next, 1).some((l) => l === "keep me"), "the good window comes back").toBe(true);
+  expect(Object.keys(saved(next)), "the damaged ones are dropped").toEqual(["0"]);
   expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });
