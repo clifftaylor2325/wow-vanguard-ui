@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { TITLE_LUA, loggedIn, setCombat } from "./helpers.mjs";
+import { TITLE_LUA, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY builders for the game's system windows: a frame with a piece of template art, parts
 // added by parentKey, and readers for what the skin did (art alpha, a painted panel, themed text).
@@ -297,6 +297,12 @@ it("a window's backdrop never takes a secret visibility from the game's frame: i
   expect(backShown(), "the window says its visibility is secret: the backdrop is hidden, not shown on a secret").toEqual([false, 0]);
   addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
   expect(addon.eval("return __panelHost(EditModeManagerFrame):IsShown()"), "and a plain answer shows it again").toBe(true);
+  expect(addon.eval(`local m, S = EditModeManagerFrame, __wfgWorld.secret
+    local back = __panelHost(m) local level = back:GetFrameLevel()
+    m.GetFrameLevel, m.GetFrameStrata = function() return S(40) end, function() return S("DIALOG") end
+    ns.GetModule("Windows").FitBackdrop(m)
+    m.GetFrameLevel, m.GetFrameStrata = nil, nil
+    return { back:GetFrameLevel() == level, #ns.errors }`), "a hidden level or strata is not copied onto the backdrop").toEqual([true, 0]);
 });
 
 it("Edit Mode window: switched off it stays the game's (the note still shows), and a bare client is fine", () => {
@@ -1228,4 +1234,39 @@ it("placing a layout window's close button reads the panel's padding without mak
   addon.eval(`ns.Theme.Panel(ns.GetModule("Windows").PanelHost(StaticPopup4), { pad = 12 })`);
   const [padded, afterwards] = placed();
   expect([afterwards, Math.round(padded - bare)], "once the panel is painted, the button sits its 12 padding closer to the window").toEqual([true, 12]);
+});
+
+// The client keeps a secret "aspect" on a game widget fed a secret, and the matching getter answers with a secret from then on
+// (FOREVER-API-FACTS 3): Modules/Windows.lua's shared helpers read the game's state, text and sizes through the plain helpers.
+it("Windows.lua helpers: a hidden shown state, text, height or colour from a game widget is not tested, copied or measured", () => {
+  const addon = loggedIn(SYSTEM_ENV);
+  expect(addon.eval(`local GW, S = ns.GetModule("Windows"), __wfgWorld.secret
+    local pane = CreateFrame("Frame", "CharacterFrame", UIParent) pane.IsShown = function() return S(true) end
+    local slot = CreateFrame("Button", "CharacterHeadSlot", pane) slot:SetID(1)
+    GW.PaintAllDurability()
+    local head = CreateFrame("Frame", nil, UIParent) local fs = head:CreateFontString() fs.GetText = function() return S("Hidden") end
+    GW.SkinSection(fs)
+    local a, b = CreateFrame("Button", nil, UIParent), CreateFrame("Button", nil, UIParent) a:SetHeight(10) b.GetHeight = function() return S(30) end
+    GW.AlignBeside(a, b)
+    local box = CreateFrame("Frame", nil, UIParent) local cap = box:CreateFontString() cap.GetText = function() return S("Next") end
+    GW.TextRegions(box, { "NEXT" }, "small", "text2")
+    return { select("#", slot:GetRegions()), fs.__text == nil, a:GetHeight(), #ns.errors }`), "nothing painted on the hidden pane, no text copied, no height copied, nothing raised").toEqual([0, true, 10, 0]);
+});
+
+// The combat log bar's show and event hooks run inside the game's own frame scripts: a failing dress is reported, not
+// raised there. And WindowsSystem's reads of the game's state (a tab's selection, a pad toggle's check) take a hidden
+// answer as no (FOREVER-API-FACTS 3).
+it("system: the combat log bar's hooks are guarded, and a hidden selection or check is taken as no", () => {
+  const addon = loggedIn(PAD_ENV + `
+    local bar = CreateFrame("Frame", "CombatLogQuickButtonFrame_Custom", UIParent)
+    CreateFrame("Button", "CombatLogQuickButtonFrameButton1", bar)`);
+  addon.fire("ADDON_LOADED", "Blizzard_CombatLog");
+  addon.eval(`ns.Theme.Button = function() error("TEST-ONLY dress", 0) end
+    CombatLogQuickButtonFrame_Custom:Hide() CombatLogQuickButtonFrame_Custom:Show()`);
+  expectErrors("combat log bar OnShow: TEST-ONLY dress", "window CombatLogQuickButtonFrame_Custom: TEST-ONLY dress");
+  const plain = loggedIn(PAD_ENV);
+  plain.eval("MovePadStrafeLeft.GetChecked = function() return __wfgWorld.secret(true) end");
+  plain.fire("ADDON_LOADED", "Blizzard_MovePad");
+  plain.eval("MovePadFrame:Show() MovePadStrafeLeft.GetChecked = nil");
+  expect(plain.eval("return { ns.Theme.RowParts(MovePadStrafeLeft).rail:IsShown(), #ns.errors }"), "a hidden check is not lit, and nothing raises").toEqual([false, 0]);
 });

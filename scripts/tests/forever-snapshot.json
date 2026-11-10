@@ -690,13 +690,13 @@
     "ChatFrame2": {"kind":"ScrollingMessageFrame","shown":true,"visible":true,"size":[0,0],"scale":1,"alpha":1,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"UIParent","events":[],"font":["Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf",12,""]},
     "ChatFrame2EditBox": {"kind":"EditBox","shown":true,"visible":true,"size":[32,24],"scale":1,"alpha":1,"strata":"MEDIUM","level":2,"anchors":[{"point":"TOPLEFT","relativeTo":"(Frame 1 of ChatFrame2)","relativePoint":"BOTTOMLEFT","x":0,"y":-4},{"point":"TOPRIGHT","relativeTo":"(Frame 1 of ChatFrame2)","relativePoint":"BOTTOMRIGHT","x":0,"y":-4}],"texts":[],"parent":"UIParent","events":[],"textColor":[0.91,0.92,0.93,1],"font":["Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf",12,""]},
     "ChatFrame2Tab": {"kind":"Button","shown":true,"visible":true,"size":[24,20],"scale":1,"alpha":1,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"UIParent","events":[]},
-    "FocusFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":1,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]},
+    "FocusFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":0,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]},
     "Minimap": {"kind":"Minimap","shown":true,"visible":true,"size":[180,180],"scale":1,"alpha":1,"strata":"MEDIUM","level":4,"anchors":[{"point":"BOTTOM","relativeTo":"Vanguard_Minimap","relativePoint":"BOTTOM","x":0,"y":1}],"texts":[],"parent":"Vanguard_Minimap","events":[]},
     "MinimapZoomIn": {"kind":"Button","shown":true,"visible":true,"size":[0,0],"scale":1,"alpha":0,"strata":"MEDIUM","level":5,"anchors":[],"texts":[],"parent":"Minimap","events":[]},
     "MinimapZoomOut": {"kind":"Button","shown":true,"visible":true,"size":[0,0],"scale":1,"alpha":0,"strata":"MEDIUM","level":5,"anchors":[],"texts":[],"parent":"Minimap","events":[]},
-    "PetFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":1,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]},
-    "PlayerCastingBarFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":1,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]},
-    "PlayerFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":1,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]},
-    "TargetFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":1,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]}
+    "PetFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":0,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]},
+    "PlayerCastingBarFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":0,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]},
+    "PlayerFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":0,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]},
+    "TargetFrame": {"kind":"Frame","shown":false,"visible":false,"size":[0,0],"scale":1,"alpha":0,"strata":"MEDIUM","level":2,"anchors":[],"texts":[],"parent":"(Frame 17 of nil)","events":[]}
   }
 }

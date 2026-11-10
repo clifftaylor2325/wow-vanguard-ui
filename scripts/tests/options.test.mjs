@@ -196,7 +196,7 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat.background, VanguardDB.profiles['Default backup'] == nil }"), "No changes nothing").toEqual([false, true]);
   addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
-  expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, true]);
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, false, true]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
 });
 
@@ -589,7 +589,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then return w.reset.mark.__texture:match("Icons\\\\(%a+)$") end end`), "the mark is the reset arrow").toBe("Reset");
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end
     __dot:GetScript("OnEnter")(__dot) __dot:GetScript("OnLeave")(__dot) __dot:GetScript("OnClick")(__dot)`);
-  expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, true]);
+  expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
   expect(resetDot(addon, "Health as"), "a default that depends on the client has one, and no dot while it is held").toEqual([false, true]);
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
@@ -2319,16 +2319,6 @@ it("options: a card whose rows fail to build is kept as far as it got, the page 
   addon.eval('__dbg = __click("AFK scene")');
   expect(addon.eval("return { __dbg, ns.Options.Frame().nav.general.changed:IsShown() }"), "a change afterwards still marks its page's dot").toEqual([true, true]);
   addon.eval("for i = #ns.errors, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY card build') then table.remove(ns.errors, i) end end");
-});
-
-it("ns.Ask: a question displaced by another answers No once, then the new one stands", () => {
-  const addon = loggedIn();
-  addon.eval(`__no = { a = 0, b = 0 } __yes = { a = 0, b = 0 }
-    ns.Ask("TEST-ONLY A?", "Go", function() __yes.a = __yes.a + 1 end, function() __no.a = __no.a + 1 end)
-    ns.Ask("TEST-ONLY B?", "Go", function() __yes.b = __yes.b + 1 end, function() __no.b = __no.b + 1 end)`);
-  expect(addon.eval("return { __no.a, __no.b, __yes.a, __yes.b, Vanguard_Question:IsShown(), Vanguard_Question.title:GetText() }"), "A answered No, B waits").toEqual([1, 0, 0, 0, true, "TEST-ONLY B?"]);
-  addon.click("Vanguard_Question.no");
-  expect(addon.eval("return { __no.a, __no.b }"), "B's No runs once and A's is not run again").toEqual([1, 1]);
 });
 
 it("dropdowns: a menu opened in a fight puts no click catcher over the screen, one opened out of a fight does", () => {

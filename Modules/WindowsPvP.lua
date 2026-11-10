@@ -195,9 +195,9 @@ GW.Add("pvp", { "PVPReadyPopup" }, GW.SkinPvPReadyPopup)
 -- How far the panel behind a widget container reaches out past its widgets (units).
 GW.WIDGET_PAD = 4
 
--- Whether a widget container shows any widget now: its own count, else whether it holds any frame.
+-- Whether a widget container shows any widget now: its own count, else whether it holds any frame. A hidden answer is no.
 local function hasWidgets(box)
-  if type(box.HasAnyWidgetsShowing) == "function" then return box:HasAnyWidgetsShowing() == true end
+  if type(box.HasAnyWidgetsShowing) == "function" then return ns.IsTrue(box:HasAnyWidgetsShowing()) end
   return select("#", box:GetChildren()) > 0
 end
 

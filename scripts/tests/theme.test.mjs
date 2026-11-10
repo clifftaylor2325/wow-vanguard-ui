@@ -1037,6 +1037,20 @@ it("ornaments (#238): off by default; /vg ornaments puts a rule on the options w
   expect([shown(), chatHas(addon, /Window ornaments off/)]).toEqual([[0, 0, 0], true]);
 });
 
+// A game window's frame level can be secret (the client's own code may have set it from one): the brackets' holder
+// must not do arithmetic on it. TEST-ONLY: the test window stands in for a game window.
+it("ornaments: a window whose frame level the client hides still gets its brackets, and nothing raises", () => {
+  const addon = loggedIn("", { firstRun: true });
+  addon.slash("ornaments");
+  const out = addon.eval(`local f = CreateFrame("Frame", "TestHiddenLevelWindow", UIParent)
+    f:SetSize(300, 200) f:SetPoint("CENTER")
+    f.GetFrameLevel = function() return __wfgWorld.secret(5) end
+    local ok = pcall(ns.Theme.Ornament, f, "corners")
+    return { ok, #ns.errors }`);
+  expect(out, "no raise, nothing reported").toEqual([true, 0]);
+  expect(artShown(addon, "TestHiddenLevelWindow", "OrnamentCorner"), "four brackets drawn").toBe(4);
+});
+
 it("ornaments (H1): High contrast shows no ornament even with Window ornaments on, and they come back with another variant", () => {
   const addon = loggedIn("", { firstRun: true });
   addon.eval('ns.Options.Show("general") ns.GetModule("QuestLog").Toggle()');

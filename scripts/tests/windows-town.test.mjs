@@ -137,6 +137,15 @@ it("R2.21 the pet stable: scene, experience bar, three slot tiles, rules, money 
   expect(stableState(addon).painted, "a second show paints nothing more").toBe(first.painted);
 });
 
+// A frame level the game set from a secret answers with one (FOREVER-API-FACTS 3), and SetFrameLevel refuses a secret from
+// addon code: the stable's foot panel is made without copying it.
+it("the pet stable: a window level the client hides is not copied onto the foot panel, and nothing raises", () => {
+  // TEST-ONLY: the corner brackets (Core/Theme.lua T.Ornament) measure the level too; that is the theme's, so they are left out here.
+  const addon = loggedIn(STABLE_ENV + " ns.Theme.Ornament = function() end PetStableFrame.GetFrameLevel = function() return __wfgWorld.secret(5) end");
+  addon.eval("PetStableFrame:Show() PetStableFrame.GetFrameLevel = nil");
+  expect(addon.eval("local foot = ns.FrameState('vgStableFoot')[PetStableFrame] return { foot ~= nil, not issecretvalue(foot:GetFrameLevel()), #ns.errors }"), "the foot is made with a plain level, nothing raised").toEqual([true, true, 0]);
+});
+
 it("R2.21 the pet stable: a slot's accent edge follows the mouse", () => {
   const addon = loggedIn(STABLE_ENV);
   addon.eval("PetStableFrame:Show()");

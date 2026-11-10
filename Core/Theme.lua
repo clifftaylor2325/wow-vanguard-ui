@@ -3606,12 +3606,14 @@ function T.OrnamentCornerArt(point)
 end
 
 -- The frame the brackets are drawn on: over the frame's whole panel (its T.Padding out past the frame, where a game
--- window's panel reaches) and T.ORNAMENT_LIFT levels above it, so the window's own child frames never hide them.
+-- window's panel reaches) and T.ORNAMENT_LIFT levels above it, so the window's own child frames never hide them. A
+-- game window's level can be secret; the holder then keeps the level it was made with, one above its window.
 local function cornerHolder(frame)
   local pad, holder = T.Padding(frame), CreateFrame("Frame", nil, frame)
   holder:SetPoint("TOPLEFT", -pad, pad)
   holder:SetPoint("BOTTOMRIGHT", pad, -pad)
-  holder:SetFrameLevel(frame:GetFrameLevel() + T.ORNAMENT_LIFT)
+  local level = ns.PlainNumber(frame:GetFrameLevel())
+  if level then holder:SetFrameLevel(level + T.ORNAMENT_LIFT) end
   return holder
 end
 

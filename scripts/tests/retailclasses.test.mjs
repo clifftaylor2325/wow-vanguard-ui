@@ -40,6 +40,12 @@ it("a warlock below level 10 has no soul shard pips until the level-up to 10", (
   expect(shown(addon, "soulShards"), "level 10: the pips show").toBe(true);
 });
 
+it("the soul shard pips show at the level-up to 10 while the client still gives the old level", () => {
+  const addon = retail("WARLOCK", 1, "__p.powers[7], __p.maxpowers[7] = 2, 5 __p.level = 9");
+  addon.fire("PLAYER_LEVEL_UP", 10);
+  expect(shown(addon, "soulShards"), "the event's level counts, not UnitLevel's 9").toBe(true);
+});
+
 it("soul shards fill by tenths for a Destruction warlock, whole for the others", () => {
   const destro = retail("WARLOCK", 3, "__p.powers[7], __p.maxpowers[7] = 2, 5 __p.rawPowers = { [7] = 27 }");
   expect(fills(destro, "soulShards"), "2.7 shards").toEqual([1, 1, 0.7, 0, 0]);

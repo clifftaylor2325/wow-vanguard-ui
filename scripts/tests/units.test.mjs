@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, FOREVER_ENV, NO_RAID, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
+import { CLICK_LUA, FOREVER_ENV, NO_RAID, expectErrors, RETAIL, SETUP_DONE, SWING_ENV, TICKS_ENV, TOTEMS_ENV, UNITS_ENV, bars, borderOf, button, isTok, key, later, loggedIn, marks, putAway, setCombat, spark, tok, totemCell, unitEvents } from "./helpers.mjs";
 
 // A frame's state for the unit-frame tests.
 const ufState = (addon, key) => addon.eval(`
@@ -751,6 +751,14 @@ it("the pet frame's tooltip adds your hunter pet's mood", () => {
   expect([pet()[1], addon.eval("return GameTooltip:IsShown()")], "a tooltip hidden for the fight stays hidden, with no line added").toEqual([false, false]);
 });
 
+it("a unit tooltip whose shown state the client hides gets no extra line and raises nothing", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + `__units.pet = { name = "TEST-ONLY Wolf", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "FOCUS" }
+    GetPetHappiness = function() return __happy, 125, 0 end`);
+  addon.eval("GameTooltip.IsShown = function() return __wfgStub.world.secret(true) end");
+  const lines = addon.eval("Vanguard_pet:GetScript('OnEnter')(Vanguard_pet) return #GameTooltip.__lines");
+  expect([lines, addon.eval("return #ns.errors")], "a hidden answer counts as not shown: the unit's own line alone").toEqual([1, 0]);
+});
+
 it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + TICKS_ENV + `__units.player.class = "DRUID" __cp = 2
     GetComboPoints = function() return __cp end`, NO_RAID);
@@ -931,9 +939,22 @@ it("Edit Mode re-parenting the game's objective tracker parks it again", () => {
 // TEST-ONLY: a listed frame that also has UpdateShownState, so keepParked hooks it first.
 it("a re-parented game frame with UpdateShownState is parked again after SetParent too", () => {
   const addon = loggedIn(UNITS_ENV + '\nBothFrame = CreateFrame("Frame", "BothFrame", UIParent)\nfunction BothFrame:UpdateShownState() end', NO_RAID);
-  addon.eval("local UF = ns.GetModule('UnitFrames') UF.REPARENTED.BothFrame = true UF.HideBlizzard('BothFrame')");
+  addon.eval("ns.GetModule('UnitFrames').HideBlizzard('BothFrame')");
   addon.eval("BothFrame:Show() BothFrame:SetParent(UIParent)");
   expect(addon.eval("return { BothFrame:IsShown(), BothFrame:GetParent() == UIParent }"), "hidden and parked again").toEqual([false, false]);
+});
+// TEST-ONLY: the managed-frame container bringing a parked frame back in a fight, as ManagedFrameSystem.lua's UpdateFrame
+// and AnimInManagedFrames do (a new parent, then alpha 1).
+it("a parked game frame the game brings back in a fight stays clear until the fight ends, then is parked again", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  setCombat(addon, true);
+  addon.eval("PetFrame:Show() PlayerCastingBarFrame:Show() for _, f in ipairs({ PetFrame, PlayerCastingBarFrame }) do f:SetParent(UIParent) f:SetAlpha(1) end");
+  // Each parked frame's alpha, whether the game re-parented it, and whether it is shown.
+  const state = () => addon.eval("local out = {} for i, f in ipairs({ PetFrame, PlayerCastingBarFrame }) do out[i] = { f:GetAlpha(), f:GetParent() == UIParent, f:IsShown() } end return out");
+  expect(state(), "in the fight: re-parented and shown by the game, but clear").toEqual([[0, true, true], [0, true, true]]);
+  setCombat(addon, false);
+  expect(state(), "after it: hidden and parked again").toEqual([[0, false, false], [0, false, false]]);
+  expect(addon.eval("return #ns.errors"), "nothing raised").toBe(0);
 });
 it("a parked game frame without UpdateShownState, or on a client without hooksecurefunc, is left alone", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
@@ -1021,4 +1042,18 @@ it("H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles
   addon.eval("__units.party1.dead = nil");
   addon.fire("UNIT_HEALTH", "party1");
   expect(token(), "alive again: the plain text colour").toBe("text");
+});
+
+it("one unit frame that fails to paint or lay out is reported, and every other frame still does", () => {
+  const addon = loggedIn(UNITS_ENV, NO_RAID);
+  // The frame the loops reach first breaks; the player frame (or the party's first, when the player is that one) must still paint.
+  const watched = addon.eval(`local UF = ns.GetModule("UnitFrames") local paint, place = UF.UpdateHealth, UF.PlaceParts
+    __broken = next(UF.frames)
+    UF.UpdateHealth = function(f) if f.key == __broken then error("TEST-ONLY broken frame") end return paint(f) end
+    UF.PlaceParts = function(f) if f.key == __broken then error("TEST-ONLY broken layout") end return place(f) end
+    __units.player.hp, __units.party1.hp = 500, 7
+    return __broken == "player" and "party1" or "player"`);
+  addon.eval('ns.GetModule("UnitFrames").Refresh() ns.GetModule("UnitFrames").ApplyLook()');
+  expect(ufState(addon, watched).hp, "a frame past the broken one still paints").toBe(watched === "player" ? 500 : 7);
+  expectErrors(/^unit frame refresh: eval:4: TEST-ONLY broken frame$/, /^unit frame layout: eval:5: TEST-ONLY broken layout$/);
 });

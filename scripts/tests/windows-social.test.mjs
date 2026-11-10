@@ -1904,3 +1904,13 @@ it("guild control: a window with its pages, rows or parts missing or odd loads c
   noHooks.eval("GuildControlUI:Show()");
   expect([bare, odd, tabs, noHooks].map((a) => [windowErrors(a), a.eval("return #ns.errors")]), "parts missing or not frames").toEqual([["none", 0], ["none", 0], ["none", 0], ["none", 0]]);
 });
+
+// A pane's frame level, once the game set it from a secret, answers with one (FOREVER-API-FACTS 3): the fill under the guild
+// window's rows is made without arithmetic on it. A text the client hides on a dialog button counts as a label, never compared.
+it("guild window: a pane level the client hides is not used for the fill under its rows, and a hidden label counts as one", () => {
+  const addon = loggedIn(GUILD_ENV + " CommunitiesFrame.MemberList.GetFrameLevel = function() return __wfgWorld.secret(100) end");
+  addon.eval("CommunitiesFrame:Show()");
+  expect(addon.eval(`local b = CreateFrame("Button", nil, UIParent) b.GetText = function() return __wfgWorld.secret("Close") end
+    local fill = ns.FrameState("vgInsetFill")[CommunitiesFrame.MemberList.InsetFrame]
+    return { fill ~= nil, ns.GetModule("Windows").HasLabel(b), #ns.errors }`), "the fill is made, the hidden label read as a label, nothing raised").toEqual([true, true, 0]);
+});

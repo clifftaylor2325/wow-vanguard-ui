@@ -129,7 +129,7 @@ GW.Add("social", { "OpenMailFrame" }, GW.SkinOpenMail)
 -- the social group is on.
 local function relightOpenMail()
   local frame = _G.OpenMailFrame
-  if GW.GroupOn("social") and type(frame) == "table" and frame:IsShown() then GW.LightMailText() end
+  if GW.GroupOn("social") and type(frame) == "table" and ns.IsTrue(frame:IsShown()) then GW.LightMailText() end
 end
 T.OnChanged(ns.Guard("relight open mail", relightOpenMail))
 GW.AddButtons("OpenMailFrame", { "OpenMailReplyButton", "OpenMailDeleteButton", "OpenMailCancelButton", "OpenMailReportSpamButton" })
@@ -155,7 +155,7 @@ local function insetFill(pane, inset)
   if not vgInsetFill[inset] then
     vgInsetFill[inset] = CreateFrame("Frame", nil, pane)
     vgInsetFill[inset]:SetAllPoints(inset)
-    vgInsetFill[inset]:SetFrameLevel(math.max(0, pane:GetFrameLevel() - 1))
+    vgInsetFill[inset]:SetFrameLevel(math.max(0, (ns.PlainNumber(pane:GetFrameLevel()) or 1) - 1))
   end
   T.Panel(vgInsetFill[inset], { inset = true, noSheen = true, noBorder = true })
 end
@@ -198,7 +198,7 @@ local function widenRankHeader(display, columns)
   local index = rankColumn(columns)
   if not index then return end
   GW.EachActive(display.columnHeaders, function(header)
-    if header:GetID() == index then header:SetWidth((columns[index].width or 0) + GW.GUILD_RANK_EXTRA) end
+    if ns.PlainNumber(header:GetID()) == index then header:SetWidth((columns[index].width or 0) + GW.GUILD_RANK_EXTRA) end
   end)
 end
 
@@ -443,7 +443,7 @@ local function sectionRegions(frame, names, except)
     if type(_G[name]) == "string" then texts[_G[name]] = true end
   end
   for _, region in ipairs({ frame:GetRegions() }) do
-    if region ~= except and region.GetText and texts[region:GetText()] then GW.SkinSection(region) end
+    if region ~= except and region.GetText and texts[ns.PlainText(region:GetText()) or false] then GW.SkinSection(region) end
   end
 end
 
@@ -577,12 +577,18 @@ local function fadeKey(frame, key)
   fadeFrameArt(frame[key])
 end
 
+-- Whether a button shows a label: a text the client hides counts as one (it is there, only unreadable), never compared.
+function GW.HasLabel(button)
+  if type(button.GetText) ~= "function" then return false end
+  local text = button:GetText()
+  return ns.IsSecret(text) or (text ~= nil and text ~= "")
+end
+
 -- A dialog's close control: the game's "Close" text button as a flat button, its X button as the
 -- close glyph in the window's corner (GW.DressClose).
 local function dressClose(frame, button)
   if type(button) ~= "table" or not button.CreateTexture then return end
-  local text = type(button.GetText) == "function" and button:GetText() or ""
-  if text ~= "" then T.Button(button) else GW.DressClose(frame, button) end
+  if GW.HasLabel(button) then T.Button(button) else GW.DressClose(frame, button) end
 end
 
 -- Themes each part of frame named in keys with skin (a guarded skinner: GW.SkinButton, GW.SkinEditBox, GW.SkinDropdown).
@@ -649,7 +655,7 @@ end
 -- only one): the child with a GetText (a button) and no label.
 local function findCross(frame)
   for _, child in ipairs({ frame:GetChildren() }) do
-    if type(child) == "table" and type(child.GetText) == "function" and (child:GetText() or "") == "" then return child end
+    if type(child) == "table" and type(child.GetText) == "function" and not GW.HasLabel(child) then return child end
   end
 end
 
