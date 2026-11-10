@@ -2038,6 +2038,7 @@ L["The bar at the top: Save and lock, or Exit without saving."] = "Die Leiste ob
 L["The calendar"] = "Der Kalender"
 L["The character window"] = "Das Charakterfenster"
 L["The check waits for the end of the fight: try /vg graphics again then."] = "Die Prüfung wartet auf das Ende des Kampfes: versuch /vg graphics dann erneut."
+L["The checks count any buff with one of these names in its name: {names}."] = "Die Prüfungen zählen jeden Buff, dessen Name einen dieser Namen enthält: {names}."
 L["The cooldown gaps row is off. Tick Gaps row under /vg > Cooldowns, then /reload."] = "Die Abklingzeit-Lückenreihe ist aus. Hake „Lückenreihe“ unter /vg > Abklingzeiten an, dann /reload."
 L["The craft queue is empty."] = "Die Herstellungsliste ist leer."
 L["The craft queue is empty. Open a recipe in the profession window and /vg craft add."] = "Die Herstellungsliste ist leer. Öffne ein Rezept im Berufsfenster und /vg craft add."
