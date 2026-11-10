@@ -108,16 +108,18 @@ it("nameplates", () => {
   expect(addon.eval('return __click("Threat colors while you have aggro")') && addon.eval("return VanguardDB.profiles.Default.Nameplates.threat") === false, "the options page works").toBeTruthy();
 });
 it("each nameplate asks the client for its own unit's events, once", () => {
+  // The health subscriptions of the plates alone: the low-health cue (Modules/GameAlerts.lua) listens to the player's.
+  const plateHealth = () => unitEvents(addon, "UNIT_HEALTH").subs.split(" ").filter((unit) => unit.startsWith("nameplate")).join(" ");
   const addon = loggedIn(UNITS_ENV + PLATE_ENV);
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
-  expect(unitEvents(addon, "UNIT_HEALTH").subs, "health: one subscription per plate, for its unit").toBe("nameplate1 nameplate2");
+  expect(plateHealth(), "health: one subscription per plate, for its unit").toBe("nameplate1 nameplate2");
   expect(unitEvents(addon, "UNIT_SPELLCAST_START"), "casts: each plate's own, beside the cast bars' units; nothing takes every unit's").toEqual({ subs: "nameplate1 nameplate2 pet player,target,focus", plain: 0 });
   addon.eval("__units.party1 = { name = 'TEST-ONLY Friend', hp = 120, maxhp = 500, reaction = 5 } __units.nameplate2 = __units.party1");
   addon.fire("UNIT_HEALTH", "nameplate2");
   expect(addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate2]:GetValue()"), "a plate's own unit event repaints it").toBe(120);
   addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate1");
-  expect(unitEvents(addon, "UNIT_HEALTH").subs, "a removed plate stops listening").toBe("nameplate2");
+  expect(plateHealth(), "a removed plate stops listening").toBe("nameplate2");
   addon.eval("__plates.nameplate5, __units.nameplate5 = __plates.nameplate1, __units.target");
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate5");
   expect(unitEvents(addon, "UNIT_FACTION").subs, "the client reuses a plate for another unit: it listens for that one").toBe("nameplate2 nameplate5");

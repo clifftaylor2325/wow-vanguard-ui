@@ -747,7 +747,7 @@ it("unit events: combo points, the druid's mana, power ticks and threat ask the 
   const frameUnits = ["boss1", "boss2", "boss3", "boss4", "boss5", "focus", "focustarget", "party1", "party2", "party3", "party4", "pet", "player", "target", "targettarget"];
   // The unit frames' subscriptions (one per frame, for its unit) sorted in with `own`, as unitEvents lists them.
   const withFrames = (...own) => [...frameUnits, ...own].sort().join(" ");
-  expect(heard("UNIT_HEALTH"), "the unit frames: one per frame for its own unit, and the low-health alert's").toEqual({ subs: withFrames("player"), plain: 0 });
+  expect(heard("UNIT_HEALTH"), "the unit frames: one subscription per frame, for its own unit, and the low-health cue's for the player").toEqual({ subs: withFrames("player"), plain: 0 });
   expect(heard("UNIT_POWER_UPDATE"), "combo points and the mana bar: your power only, nothing takes every unit's").toEqual({ subs: withFrames("player", "player"), plain: 0 });
   expect(heard("UNIT_POWER_FREQUENT"), "the energy tick too").toEqual({ subs: "player player player", plain: 0 });
   expect(heard("UNIT_MAXPOWER")).toEqual({ subs: withFrames("player", "player"), plain: 0 });

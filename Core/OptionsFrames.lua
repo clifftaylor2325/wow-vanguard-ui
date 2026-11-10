@@ -103,10 +103,11 @@ local TEXT_FORMATS = {
 -- The power text's choices: the same formats, and none (the default).
 local POWER_FORMAT_CHOICES = { { "none", L["Off"] }, TEXT_FORMATS[1], TEXT_FORMATS[2], TEXT_FORMATS[3], TEXT_FORMATS[4] }
 
--- The frames the sliders size, in the order the page lists them: the settings group (UF.FrameSize) and its caption.
+-- The frames the sliders size, in the order the page lists them: the settings group (UF.FrameSize), its caption, and
+-- whether its sliders show on the folded card (the frames a player resizes most; the rest sit under More settings).
 local SIZED_FRAMES = {
-  { "player", L["Player"] }, { "target", L["Target"] }, { "targettarget", L["Target of target"] },
-  { "focus", L["Focus"] }, { "focustarget", L["Focus target"] }, { "pet", L["Pet"] }, { "party", L["Party"] },
+  { "player", L["Player"], true }, { "target", L["Target"], true }, { "targettarget", L["Target of target"] },
+  { "focus", L["Focus"] }, { "focustarget", L["Focus target"] }, { "pet", L["Pet"] }, { "party", L["Party"], true },
 }
 
 -- A width or height slider for one frame (range from UnitFrames.RANGES), applied at once, out of combat.
@@ -115,16 +116,8 @@ local function sizeSlider(frame, dimension)
   local label = dimension == "width" and L["{frame}: width"] or L["{frame}: height"]
   local key = group .. (dimension == "width" and "Width" or "Height")
   local range = ns.GetModule("UnitFrames").RANGES[dimension]
-  return { "slider", ns.Format(label, { frame = caption }), range, liveMethod("UnitFrames", key, "ApplySizes") }
-end
-
--- The frames whose sliders stay in view when the Frame sizes card is folded; the rest open under More settings.
-local ESSENTIAL_SIZES = { player = true, target = true }
-
--- A frame's slider, kept in view when the card is folded for the frames in ESSENTIAL_SIZES.
-local function foldedSlider(frame, dimension)
-  local row = sizeSlider(frame, dimension)
-  if ESSENTIAL_SIZES[frame[1]] then return essential(row) end
+  local row = { "slider", ns.Format(label, { frame = caption }), range, liveMethod("UnitFrames", key, "ApplySizes") }
+  row.essential = frame[3] == true
   return row
 end
 
@@ -132,8 +125,8 @@ end
 local function sizeRows()
   local rows = { { "header", L["Frame sizes"] } }
   for _, frame in ipairs(SIZED_FRAMES) do
-    rows[#rows + 1] = foldedSlider(frame, "width")
-    rows[#rows + 1] = foldedSlider(frame, "height")
+    rows[#rows + 1] = sizeSlider(frame, "width")
+    rows[#rows + 1] = sizeSlider(frame, "height")
   end
   return rows
 end
