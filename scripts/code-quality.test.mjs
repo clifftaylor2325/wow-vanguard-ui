@@ -714,7 +714,7 @@ it("file scope: a module file with an unlisted subscription fails; Core/ and a l
   const src = 'local ADDON, ns = ...\nns.On("PLAYER_LOGIN", function() end)\n';
   expect(checkSource("Modules/TEST-ONLY.lua", src)).toEqual([{ line: 2, message: expect.stringMatching(/^ns\.On\(\) at file scope: register it in the module's Enable/) }]);
   expect(checkSource("Core/TEST-ONLY.lua", src)).toEqual([]);
-  expect(checkSource("Modules/HudText.lua", src)).toEqual([]);
+  expect(checkSource("Modules/RetailDelves.lua", src)).toEqual([]);
 });
 
 it("file scope: every allowed file has exactly its count and a reason, so the list only shrinks", () => {
