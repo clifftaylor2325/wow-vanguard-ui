@@ -281,7 +281,7 @@ local cdmKeysSwitch = switchCommand({
 
 -- /vg cdmkeys: the module must be on first (its settings exist only then).
 local function cdmKeysCommand(rest)
-  if not ns.GetModule("CooldownKeys").settings then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."]) end
+  if not ns.ModuleLive("CooldownKeys") then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."]) end
   return cdmKeysSwitch(rest)
 end
 
