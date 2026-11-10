@@ -2181,6 +2181,21 @@ it("best reward: the one reward that sells for most is taken", () => {
   expect(calls(pricedRewards(300, 50))).toEqual(["reward 1"]);
 });
 
+// A1-10 (M5): the gloves (choice 2) sell for less and are an upgrade; Gear upgrades says which rewards are.
+it("A1-10 best reward: with a reward that Gear upgrades marks as an upgrade among the choices, the pick is left to you", () => {
+  const addon = pricedRewards(300, 50);
+  expect(calls(addon), "no upgrade among them: the best seller is taken").toEqual(["reward 1"]);
+  const guarded = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true, bestReward = true } } }" });
+  guarded.eval(`__prices["item:90021"], __prices["item:90022"] = 300, 50
+    ns.GetModule("Upgrades").Compare = function(link) if link == "item:90022" then return 12, false end end`);
+  guarded.fire("QUEST_COMPLETE");
+  expect(calls(guarded), "the cheaper reward is an upgrade: nothing is picked for you").toEqual([]);
+  const off = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { turnIn = true, bestReward = true }, modules = { Upgrades = false } } }" });
+  off.eval(`__prices["item:90021"], __prices["item:90022"] = 300, 50`);
+  off.fire("QUEST_COMPLETE");
+  expect([calls(off), off.eval("return ns.GetModule('Upgrades').IsUpgrade('item:90022')")], "Gear upgrades switched off: no reward is an upgrade, the best seller is taken").toEqual([["reward 1"], false]);
+});
+
 it("best reward: a stack is judged by what the whole stack sells for", () => {
   const addon = pricedRewards(50, 300);
   expect(calls(addon), "boots worth 50 each in a stack of 1 lose to gloves worth 300").toEqual(["reward 2"]);

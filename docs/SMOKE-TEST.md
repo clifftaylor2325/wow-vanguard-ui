@@ -848,6 +848,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: while you run in combat the arrow keeps the turn and distance it had and the minimap spots stay where they were; the kill that changes the quest log redraws the arrow at once; within a second of the fight's end the arrow points the right way with the right distance and the spots are in the right places. No stutter and no Lua error. Say if the held arrow is misleading while you run: the rest in a fight is new in this build and can be limited to the heavier once-a-second work.
 - If it fails, paste: what the arrow and the spots showed and for how long after the fight, and `/vg errors`.
 
+### 8.4f Best-selling reward never picked over an upgrade
+
+- Do: with Turn in finished quests, Pick the reward that sells for most and Gear upgrades all on, hand in a quest whose reward choices include a piece with the green upgrade arrow that is not the one that sells for most. Then hand in one whose choices have no arrow.
+- Expect: with an arrow among the choices the reward page stays open for you to choose and nothing is taken; without one the best seller is taken and chat says `took <item>: sells for most`.
+- If it fails, paste: the rewards, which had the arrow, the chat line, and `/vg errors`.
+
 ### 8.5 Levelling helpers
 
 - Do: watch a quest worth XP, hover the XP bar, kill a few mobs that give XP, turn in nothing yet, then let your food fall under the wanted count (`/vg prep want food 20`) by using or selling some.
