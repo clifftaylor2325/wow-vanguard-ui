@@ -473,7 +473,7 @@ local function redraw(f)
   ns.OutOfCombat(QT.PlaceItems, "questitems")
 end
 
--- Redraws the tracker, once it is built: it isn't while Vanguard's tracker is switched off or Questie's shows
+-- Redraws the tracker, once it is built: it isn't while Vanguard's tracker is switched off or the quest addon's shows
 -- instead, and the options' XP switches still call this then (a timed quest would otherwise tick it every second).
 function QT.Refresh()
   if QT.frame then redraw(QT.frame) end

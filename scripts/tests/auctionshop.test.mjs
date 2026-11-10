@@ -542,7 +542,7 @@ it("a list delete shows the list in use from its top", () => {
   addon.eval(`${HELPER}.DeleteList("TEST-ONLY Gone")`);
   expect([addon.eval("return VanguardDB.ah.list"), addon.eval(`return ${HELPER}.shopCard.body.table.offset`)], "the list in use stays, from its top").toEqual(["TEST-ONLY Herbs", 0]);
 });
-it("import: plain lines and Auctionator's strings, within the caps", () => {
+it("import: plain lines and the common caret-and-semicolon strings, within the caps", () => {
   const addon = atAuctionHouse(DUSTS);
   act(addon, "Import");
   expect(textDialog(addon).slice(0, 2), "no list in use: into Shopping").toEqual([true, "Import into Shopping (names, IDs, links, or a shopping list string)"]);

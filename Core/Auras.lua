@@ -214,7 +214,7 @@ local function texts(f, cd, size, timer)
 end
 
 -- The 1 px theme edge around an icon, on a frame of our own (so a theme
--- repaint never touches a client-owned button); no edge when Masque skins it.
+-- repaint never touches a client-owned button); no edge when a skinning library skins it.
 local function frameEdge(f, masque)
   local skin = CreateFrame("Frame", nil, f)
   skin:SetAllPoints()
@@ -250,7 +250,7 @@ end
 
 -- Dresses an icon frame (an engine button or one of ours). style: size, debuff
 -- (type-colored edge and type badge), dim (desaturated: others' auras), timer, masque (the
--- Masque group that skins it, when Masque is loaded), holder (the container frame it sits in,
+-- skinning group that skins it, when the library is loaded), holder (the container frame it sits in,
 -- for A.Refit). Returns its parts.
 function A.Dress(f, style)
   f:SetSize(style.size, style.size)

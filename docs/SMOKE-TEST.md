@@ -1196,8 +1196,8 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 10.1j Another raid frame or click-casting addon
 
-- Do: with VuhDo, Grid2, Cell or Clique enabled beside Vanguard, `/vg` > Click casting.
-- Expect: the page says "You use <addon> for raid frames. Vanguard's click casting works only on its own frames, so no starter layout is offered." (or "for click casting" for Clique), and there is no Starter layout dropdown; the grid still works on Vanguard's own frames. [Needs in game: the addons' folder names, as in 18.1.]
+- Do: with a raid frame or click-casting addon from Coexist's list enabled beside Vanguard, `/vg` > Click casting.
+- Expect: the page says "You use <addon> for raid frames. Vanguard's click casting works only on its own frames, so no starter layout is offered." (or "for click casting" for a click-casting addon), and there is no Starter layout dropdown; the grid still works on Vanguard's own frames. [Needs in game: the addons' folder names, as in 18.1.]
 - If it fails, paste: the addon's folder name and a screenshot of the page.
 
 ### 10.1k The starter layouts' spell ids
@@ -1275,7 +1275,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 10.4c Equipped items are ringed
 
 - Do: put a weapon or trinket you are wearing on a bar 1 button (drag it from the character window), and another you are not wearing on the next one. Swap the two in the character window.
-- Expect: a thin green ring inside the edge of the worn item's button only; after the swap the ring moves to the other one. With Masque skinning the bars, Vanguard draws no ring.
+- Expect: a thin green ring inside the edge of the worn item's button only; after the swap the ring moves to the other one. With a button-skinning library skinning the bars, Vanguard draws no ring.
 - If it fails, paste: a screenshot of the two buttons and `/vg errors`.
 
 ### 10.4d Keybind banner says what happened
@@ -2108,15 +2108,15 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 18.1 Other addons
 
-- Do: install one bag addon you use (Bagnon, AdiBags, ArkInventory, BetterBags or Baganator; or ElvUI or Tukui, which ask about the action bars, or Auctionator or TradeSkillMaster, which ask about the Auction helper) beside Vanguard and log in. Open `/vg` → Modules. Click **Keep both**, `/reload`, and open Modules again. Then type `/dump C_AddOns.GetAddOnInfo("<the addon>")` and note the folder name it prints.
+- Do: install one bag addon you use (or a whole-UI suite, which asks about the action bars, or an auction addon, which asks about the Auction helper) beside Vanguard and log in. Open `/vg` → Modules. Click **Keep both**, `/reload`, and open Modules again. Then type `/dump C_AddOns.GetAddOnInfo("<the addon>")` and note the folder name it prints.
 - Expect: one chat line at login, `<addon> also does bags. Choose which one does under /vg > Modules (nothing changes until you do).`; an **Other addons** card at the top of the Modules page with **Turn off Bags** and **Keep both**; after Keep both, no card and no chat line. The folder name matches the one Vanguard looks for (`Modules/Coexist.lua`, `CX.OVERLAPS`); a different name is a finding.
-- Also, if EllesmereUI is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones starting with Ellesmere. Vanguard looks for `EllesmereUIUnitFrames`, `EllesmereUIActionBars`, `EllesmereUINameplates` and `EllesmereUIRaidFrames` (retail names, unconfirmed on Forever); a different name is a finding.
+- Also, for an all-in-one suite that is on Forever: run `/dump C_AddOns.GetNumAddOns()` and list its folders (`/dump C_AddOns.GetAddOnInfo(i)` for each) and paste the ones that share its prefix. Vanguard looks for the folder names in Coexist's table (retail names, unconfirmed on Forever); a different name is a finding.
 - If it fails, paste: the folder name, a screenshot of the Modules page and `/vg errors`.
 
 ### 18.1a Other addons you pair with Vanguard
 
-- Do: install one Forever add-on people pair with Vanguard (Platynator or BlizzMove is enough; Aurora or Forevermore Classic UI if you have a window skinner) and log in. Open `/vg` → Modules, click **Turn off …** on its row, take the reload, then open Modules again and click **Turn … back on**.
-- Expect: the card's button names what it turns off (**Turn off Nameplates** for Platynator; **Turn off Vanguard's window moving** for BlizzMove, **Turn off Vanguard's window looks** for a skinner); the reload comes up; after it the card still shows the addon with **Turn … back on**, and that button puts it back (with another reload). With a window skinner, after the reload only one skin shows on the character window, popups and menus, and the windows still drag and show durability. With BlizzMove, only BlizzMove moves windows (no snap-back). `/dump C_AddOns.IsAddOnLoaded("<folder>")` prints true for the folder name Vanguard looks for; false is a finding. [Needs in game.]
+- Do: install one Forever add-on people pair with Vanguard (a nameplate addon or a window mover is enough; a window skinner if you have one) and log in. Open `/vg` → Modules, click **Turn off …** on its row, take the reload, then open Modules again and click **Turn … back on**.
+- Expect: the card's button names what it turns off (**Turn off Nameplates** for a nameplate addon; **Turn off Vanguard's window moving** for a window mover, **Turn off Vanguard's window looks** for a skinner); the reload comes up; after it the card still shows the addon with **Turn … back on**, and that button puts it back (with another reload). With a window skinner, after the reload only one skin shows on the character window, popups and menus, and the windows still drag and show durability. With a window mover, only that addon moves windows (no snap-back). `/dump C_AddOns.IsAddOnLoaded("<folder>")` prints true for the folder name Vanguard looks for; false is a finding. [Needs in game.]
 - If it fails, paste: the addon's folder name, a screenshot of the Modules page before and after the reload, and `/vg errors`.
 
 ### 18.2 Group board
@@ -2293,7 +2293,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 - Do: with the dungeon card on, finish every objective of a quest for a dungeon (do not hand it in yet), then type `/vg prep` inside or near that dungeon.
 - Expect: its line reads "[level] Title · done", the same quest the game's quest log shows as ready to turn in; an unfinished quest has no "· done". [Needs in game: that C_QuestLog.IsComplete or C_QuestLog.ReadyForTurnIn answers true for a finished dungeon quest on Forever.]
-- If it fails, paste: what the card shows, `/run print(C_QuestLog.IsComplete(<questID>), C_QuestLog.ReadyForTurnIn(<questID>))` (the quest ID from Wowhead) and `/vg errors`.
+- If it fails, paste: what the card shows, `/run print(C_QuestLog.IsComplete(<questID>), C_QuestLog.ReadyForTurnIn(<questID>))` (the quest ID from a quest database) and `/vg errors`.
 
 ## 25. Theme experiments (#239)
 
@@ -3276,10 +3276,10 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the icon dims (blue for power) and comes back exactly when the game's own buttons would; range red still works. The gaps row shows no cooldown the manager hides until you add it.
 - If it fails, paste: which button stayed the wrong colour, or which cooldown showed, and `/vg errors`.
 
-### 33.117 Boss timer spots, Clique and SexyMap alongside Vanguard
+### 33.117 Boss timer spots, click casting and minimap addons alongside Vanguard
 
-- Do: open the Combat tools page and then `/vg unlock`. With Clique loaded, look at its row on the Modules page's Other addons card. With SexyMap and Vanguard's Minimap off, look at a LibDBIcon minimap button and a Questie or TomTom minimap pin.
-- Expect: The page has a Boss timers note naming the two spots, and unlock mode shows both handles (Boss timers and Boss timers, soon); a boss timer addon's bars can be dragged onto them. [Needs in-game check: that the handles are where the bars can reach.] Clique's row says its bindings don't reach Vanguard's frames. The buttons and pins sit on SexyMap's (or the game's round) map edge.
+- Do: open the Combat tools page and then `/vg unlock`. With a click-casting addon loaded, look at its row on the Modules page's Other addons card. With another minimap addon and Vanguard's Minimap off, look at a LibDBIcon minimap button and a quest or waypoint addon's minimap pin.
+- Expect: The page has a Boss timers note naming the two spots, and unlock mode shows both handles (Boss timers and Boss timers, soon); a boss timer addon's bars can be dragged onto them. [Needs in-game check: that the handles are where the bars can reach.] The click-casting row says its bindings don't reach Vanguard's frames. The buttons and pins sit on the other addon's (or the game's round) map edge.
 - If it fails, paste: the chat lines, a screenshot of the minimap, and `/vg errors`.
 
 ### 33.118 German, French or Russian client: bag filters, searches in small letters, prices and /way
@@ -3567,8 +3567,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.165 Key setup's window
 
-- Do: on WoW Forever, open /vg, Action bars, the Your keys tab, and press Set up keys. On step 1 pick a role and switch the side buttons off and on, then Show me. On step 2 switch Keys with to Shift, pick another Bar page (warrior, druid or rogue), switch on Show what comes later, hover a few keys, then put the pointer on the keyboard and press F, Shift-W and Escape. On step 3 untick one change and press Apply (with account keys, try Only this character once and All my characters on another character). Open it again and start a fight on step 2; let the fight end. Load Bartender4 (or turn Vanguard's action bars off) and open it once more. Finally, right-click a key key setup changed on the Your keys card and confirm, then press Put everything back.
-- Expect: step 1 asks for your class by name; step 2 draws the new keys with their icons and the rest faint, the list matches the keyboard, a pressed key lights up and says what it will do and casts nothing (F doesn't interrupt, W doesn't move you), and Escape closes the window; step 3 lists each change and the keys that stay; after Apply the ticked keys work, the unticked one is as it was, and Only this character leaves your other characters' keys alone. The fight closes the window and it comes back on step 2. With Bartender4, step 1 says Vanguard won't change your keys and offers only Close. The right-click puts that key back, and Put everything back restores the rest. `/vg errors` stays empty.
+- Do: on WoW Forever, open /vg, Action bars, the Your keys tab, and press Set up keys. On step 1 pick a role and switch the side buttons off and on, then Show me. On step 2 switch Keys with to Shift, pick another Bar page (warrior, druid or rogue), switch on Show what comes later, hover a few keys, then put the pointer on the keyboard and press F, Shift-W and Escape. On step 3 untick one change and press Apply (with account keys, try Only this character once and All my characters on another character). Open it again and start a fight on step 2; let the fight end. Load a bar addon (or turn Vanguard's action bars off) and open it once more. Finally, right-click a key key setup changed on the Your keys card and confirm, then press Put everything back.
+- Expect: step 1 asks for your class by name; step 2 draws the new keys with their icons and the rest faint, the list matches the keyboard, a pressed key lights up and says what it will do and casts nothing (F doesn't interrupt, W doesn't move you), and Escape closes the window; step 3 lists each change and the keys that stay; after Apply the ticked keys work, the unticked one is as it was, and Only this character leaves your other characters' keys alone. The fight closes the window and it comes back on step 2. With a bar addon, step 1 says Vanguard won't change your keys and offers only Close. The right-click puts that key back, and Put everything back restores the rest. `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the step, what chat said, and `/vg errors`.
 
 ### 33.166 Key setup's class layouts and its offer
@@ -3585,8 +3585,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.168 Calm HUD with the game's locked frames
 
-- Do: in retail (where the error was first seen) and on WoW Forever, `/reload`, then open Options → General, switch the Calm HUD on, set every part to Dim, then to Hide, then back to Leave as is; mouse over each part while it is quiet. Do the same in a dungeon. On a character with Bartender4 or Dominos loaded, open key setup.
-- Expect: no "cannot replace a forbidden script handler" or "Lua Taint: Vanguard" entry in `/vg errors`; each part still comes back to full strength under the mouse. Key setup names the bar addon ("You use Bartender4 for your bars…"), never "table: 0x…".
+- Do: in retail (where the error was first seen) and on WoW Forever, `/reload`, then open Options → General, switch the Calm HUD on, set every part to Dim, then to Hide, then back to Leave as is; mouse over each part while it is quiet. Do the same in a dungeon. On a character with a bar addon loaded, open key setup.
+- Expect: no "cannot replace a forbidden script handler" or "Lua Taint: Vanguard" entry in `/vg errors`; each part still comes back to full strength under the mouse. Key setup names the bar addon ("You use <addon> for your bars…"), never "table: 0x…".
 - If it fails, paste: `/vg errors` and which part you had set when it appeared.
 
 ### 33.169 Your buffs' hover with the Calm HUD
@@ -4438,7 +4438,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.308 /way left to another waypoint addon (both)
 
-- Do: with another addon that registers /way (not TomTom) enabled, `/reload`, then type `/way 50 50` and `/vg way 50 50`.
+- Do: with another addon that registers /way (not the waypoint addon Vanguard already yields to) enabled, `/reload`, then type `/way 50 50` and `/vg way 50 50`.
 - Expect: the other addon answers `/way`; `/vg way 50 50` sets Vanguard's waypoint.
 - If it fails, paste: `/run print(SLASH_VANGUARDWAY1, hash_SlashCmdList["/WAY"])`
 
