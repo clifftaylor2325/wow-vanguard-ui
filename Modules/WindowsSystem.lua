@@ -66,7 +66,7 @@ end
 -- game (which may have picked it before the skin ran), later selections come through OnSelected, and the label is set
 -- again after the game restyles it for the mouse.
 local function skinTab(tab)
-  if T.IsChecked(tab) == nil and type(tab.IsSelected) == "function" then T.SetChecked(tab, tab:IsSelected()) end
+  if T.IsChecked(tab) == nil and type(tab.IsSelected) == "function" then T.SetChecked(tab, ns.IsTrue(tab:IsSelected())) end
   T.Tab(tab)
   tabLabel(tab)
   if vgTabWatched[tab] or type(tab.OnSelected) ~= "function" then return end
@@ -225,7 +225,8 @@ end
 local function qualityBox(row)
   local box = part(row, "NineSlice")
   if not box or type(box.SetFrameLevel) ~= "function" then return end
-  box:SetFrameLevel(row:GetFrameLevel())
+  local level = ns.PlainNumber(row:GetFrameLevel())
+  if level then box:SetFrameLevel(level) end
   placeQualityBox(row, box, row.RaidTab)
   GW.InsetPanel(box)
 end
@@ -249,7 +250,7 @@ end
 
 -- Whether a nav entry's plate is the game's selected one (it shows the active atlas).
 local function navLit(plate)
-  return type(plate.GetAtlas) == "function" and plate:GetAtlas() == "Options_List_Active" and plate:IsShown() == true
+  return type(plate.GetAtlas) == "function" and plate:GetAtlas() == "Options_List_Active" and ns.IsTrue(plate:IsShown())
 end
 
 -- A nav entry's selected look, following the game's own state change (UpdateStateInternal(selected), which runs
@@ -425,7 +426,7 @@ end
 -- The window tabs along the top of the chat settings in the theme (the game pools them), the one for the chat
 -- window being set up selected.
 local function chatTabs(manager, selected)
-  GW.EachActive(manager.tabPool, function(tab) tabSelected(tab, selected == tab:GetID()) end)
+  GW.EachActive(manager.tabPool, function(tab) tabSelected(tab, selected ~= nil and selected == ns.PlainNumber(tab:GetID())) end)
 end
 
 -- The chat window tabs, now and each time the game picks one (it also runs when the game rebuilds them).
@@ -633,11 +634,11 @@ local vgMoveClicks = ns.FrameState("vgMoveClicks")
 local function moveButton(button)
   GW.DressRow(button, { "icon" })
   if type(button) ~= "table" or type(button.GetChecked) ~= "function" then return end
-  T.SelectRow(button, button:GetChecked() == true)
+  T.SelectRow(button, ns.IsTrue(button:GetChecked()))
   GW.FollowSelected(button, "SetChecked")
   if vgMoveClicks[button] then return end
   vgMoveClicks[button] = true
-  button:HookScript("OnClick", ns.Guard("move pad click", function(b) T.SelectRow(b, b:GetChecked() == true) end))
+  button:HookScript("OnClick", ns.Guard("move pad click", function(b) T.SelectRow(b, ns.IsTrue(b:GetChecked())) end))
 end
 
 -- The movement pad: the tooltip-style backdrop faded under a HUD panel, the seven buttons and the settings gear on a
@@ -703,7 +704,7 @@ local reportFrame = skinner({
 -- selected look following the game's SetChecked (the choice is many-of-many).
 local function minorButton(button)
   GW.DressRow(button)
-  T.SelectRow(button, button:GetChecked() == true)
+  T.SelectRow(button, ns.IsTrue(button:GetChecked()))
   GW.FollowSelected(button, "SetChecked")
 end
 
@@ -760,7 +761,7 @@ function GW.SkinSplash(frame)
   if not vgBack[frame] then
     vgBack[frame] = CreateFrame("Frame", nil, frame)
     vgBack[frame]:SetAllPoints(frame)
-    vgBack[frame]:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
+    vgBack[frame]:SetFrameLevel(math.max(0, (ns.PlainNumber(frame:GetFrameLevel()) or 1) - 1))
   end
   T.Panel(vgBack[frame], { shadow = true })
   dress(frame, { close = { "TopCloseButton" }, buttons = { "BottomCloseButton" } })
@@ -832,7 +833,7 @@ function GW.SkinCombatLogBar(frame)
   dressQuickButtons()
   if vgQuickButtons[frame] or type(hooksecurefunc) ~= "function" then return end
   vgQuickButtons[frame] = true
-  for _, script in ipairs({ "OnShow", "OnEvent" }) do frame:HookScript(script, dressQuickButtons) end
+  for _, script in ipairs({ "OnShow", "OnEvent" }) do frame:HookScript(script, ns.Guard("combat log bar " .. script, dressQuickButtons)) end
   if type(_G.Blizzard_CombatLog_QuickButton_OnClick) == "function" then hooksecurefunc("Blizzard_CombatLog_QuickButton_OnClick", ns.Guard("hook Blizzard_CombatLog_QuickButton_OnClick", dressQuickButtons)) end
 end
 

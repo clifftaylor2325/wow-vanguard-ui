@@ -2,7 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
-import { TITLE_LUA, loggedIn, setCombat } from "./helpers.mjs";
+import { TITLE_LUA, expectErrors, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY builders for the game's system windows: a frame with a piece of template art, parts
 // added by parentKey, and readers for what the skin did (art alpha, a painted panel, themed text).
@@ -1251,4 +1251,22 @@ it("Windows.lua helpers: a hidden shown state, text, height or colour from a gam
     local box = CreateFrame("Frame", nil, UIParent) local cap = box:CreateFontString() cap.GetText = function() return S("Next") end
     GW.TextRegions(box, { "NEXT" }, "small", "text2")
     return { select("#", slot:GetRegions()), fs.__text == nil, a:GetHeight(), #ns.errors }`), "nothing painted on the hidden pane, no text copied, no height copied, nothing raised").toEqual([0, true, 10, 0]);
+});
+
+// The combat log bar's show and event hooks run inside the game's own frame scripts: a failing dress is reported, not
+// raised there. And WindowsSystem's reads of the game's state (a tab's selection, a pad toggle's check) take a hidden
+// answer as no (FOREVER-API-FACTS 3).
+it("system: the combat log bar's hooks are guarded, and a hidden selection or check is taken as no", () => {
+  const addon = loggedIn(PAD_ENV + `
+    local bar = CreateFrame("Frame", "CombatLogQuickButtonFrame_Custom", UIParent)
+    CreateFrame("Button", "CombatLogQuickButtonFrameButton1", bar)`);
+  addon.fire("ADDON_LOADED", "Blizzard_CombatLog");
+  addon.eval(`ns.Theme.Button = function() error("TEST-ONLY dress", 0) end
+    CombatLogQuickButtonFrame_Custom:Hide() CombatLogQuickButtonFrame_Custom:Show()`);
+  expectErrors("combat log bar OnShow: TEST-ONLY dress", "window CombatLogQuickButtonFrame_Custom: TEST-ONLY dress");
+  const plain = loggedIn(PAD_ENV);
+  plain.eval("MovePadStrafeLeft.GetChecked = function() return __wfgWorld.secret(true) end");
+  plain.fire("ADDON_LOADED", "Blizzard_MovePad");
+  plain.eval("MovePadFrame:Show() MovePadStrafeLeft.GetChecked = nil");
+  expect(plain.eval("return { ns.Theme.RowParts(MovePadStrafeLeft).rail:IsShown(), #ns.errors }"), "a hidden check is not lit, and nothing raises").toEqual([false, 0]);
 });
