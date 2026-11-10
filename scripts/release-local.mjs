@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Local release route, for when GitHub Actions cannot run release.yml (billing block, outage) or
 // a fix has to ship in minutes. It does the same job as the workflow: the checks, the release zip,
-// CurseForge and Wago (through the pinned BigWigs packager, which reads the project IDs from
+// CurseForge and Wago (through the pinned release packager, which reads the project IDs from
 // Vanguard.toc) and the GitHub release.
 //
 //   node scripts/release-local.mjs                      rehearsal: every check and build, nothing uploaded

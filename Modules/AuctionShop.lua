@@ -3,7 +3,7 @@
 -- and their entries (an item ID or a name, with filters: exact name, level,
 -- quality and a max price, set from a row's right-click menu), managed from
 -- the Lists pane's buttons or /vg ah (new, rename, duplicate, delete with a
--- confirm, export as text, import plain lines or Auctionator's `^`/`;`
+-- confirm, export as text, import plain lines or the common `^`/`;`
 -- strings), Search list, which runs the list's searches one after another
 -- (the last 20 terms searched are kept, account-wide, as the Recent
 -- pseudo-list), and each entry's best result. The pane on the left lists the
@@ -279,7 +279,7 @@ function AH.ImportTerm(term)
   return entry, ignored
 end
 
--- An import's entries and how many fields were ignored: Auctionator's terms (`^` between terms,
+-- An import's entries and how many fields were ignored: the common terms (`^` between terms,
 -- `;` between fields) or plain lines (item names, IDs or links), or both.
 function AH.ParseImport(text)
   local entries, ignored = {}, 0

@@ -46,7 +46,7 @@ local function trackerRows()
   return {
     { "header", L["Quest tracker"] },
     check(L["Vanguard's quest tracker (reload)"], reloadSetting("QuestTracker", "own")),
-    { "cycle", L["With Questie loaded (reload)"], { { "questie", L["Questie's tracker"] }, { "vanguard", L["Vanguard's tracker"] } }, reloadSetting("QuestTracker", "withQuestie") },
+    { "cycle", L["With a quest addon loaded (reload)"], { { "questie", L["The quest addon's tracker"] }, { "vanguard", L["Vanguard's tracker"] } }, reloadSetting("QuestTracker", "withQuestie") },
     check(L["Each quest's XP under it"], liveMethod("QuestTracker", "xp", "Refresh")),
     check(L["Quest XP toward your level"], liveMethod("QuestTracker", "levelXp", "Refresh")),
     check(L["Watch a quest when you accept it"], setting("QuestTracker", "autoTrack")),

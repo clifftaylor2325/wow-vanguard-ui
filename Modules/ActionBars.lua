@@ -10,7 +10,7 @@
 -- Each bar has its own button count, row length, button size and
 -- visibility; empty slots stay invisible unless you are dragging a spell
 -- or item (Modules/ActionBarLayout.lua). The right-edge bars start off.
--- With Masque loaded, Masque skins the buttons instead (Core/Masque.lua).
+-- With the skinning library loaded, it skins the buttons instead (Core/Masque.lua).
 
 local ADDON, ns = ...
 
@@ -129,7 +129,7 @@ AB.bars = {}
 -- Where each stacked bar was last stacked (bar number -> its default y) and the stack's top then, so a
 -- re-stack after a scale change moves only what the bars' new rounded heights moved (AB.RestackMoved).
 AB.stacked, AB.stackedTop = {}, nil
--- The Masque group the action buttons are in, when Masque is loaded.
+-- The skinning group the action buttons are in, when the library is loaded.
 AB.MASQUE = "Action bars"
 
 -- Whether bar n sits on the right edge of the screen (bars 4 and 5; the
@@ -701,7 +701,7 @@ local function wireButton(b, action, index)
   wireScripts(b)
 end
 
--- Hands a button and its regions to Masque, when it is loaded.
+-- Hands a button and its regions to the skinning library, when it is loaded.
 local function addToMasque(b)
   local regions = { Icon = b.icon, Flash = b.flash, Cooldown = b.cooldown, Count = b.count, Name = b.macroName, HotKey = b.hotkey,
     Checked = b:GetCheckedTexture() }
@@ -709,7 +709,7 @@ local function addToMasque(b)
 end
 
 -- One secure action button on a bar (sized and placed by AB.LayoutBar), in
--- Vanguard's button skin, or Masque's when it is loaded.
+-- Vanguard's button skin, or the library's when it is loaded.
 local function createButton(bar, n, index, def)
   local name = string.format("Vanguard_Bar%dButton%d", n, index)
   local b = CreateFrame("CheckButton", name, bar, "SecureActionButtonTemplate")
