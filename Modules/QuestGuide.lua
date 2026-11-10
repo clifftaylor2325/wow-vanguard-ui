@@ -182,7 +182,7 @@ end
 -- The quests the open NPC offers, each with the NPC's own fields first.
 local function dumpOffered()
   for _, q in ipairs(ns.CallIf(C_GossipInfo, "GetAvailableQuests") or {}) do
-    ns.Chat("Offered: " .. fields(q))
+    ns.Chat(ns.Format(L["Offered: {fields}"], { fields = fields(q) }))
     if ns.PlainNumber(q.questID) then ns.Chat(QG.Describe(q.questID)) end
   end
 end
