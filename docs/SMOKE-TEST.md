@@ -5431,6 +5431,12 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 - Expect: nothing changed from 33: Situations shows its six situations, the dungeon card is the level-range one, the Modules page's Class bars row names shaman totems above the frame and druid mana in forms under it.
 - If it fails, paste: the `/vg report` block.
 
+### 34.17 Modules on the unit frames switch off and on without a reload (A4-2d)
+
+- Do: in `/vg` → Modules, switch each of these off and on again, one at a time, out of combat: Target and focus auras. Then switch Unit frames off and look at its children's rows.
+- Expect: each goes at once, with nothing of its own left on screen (no icons under the target frame, no handle under `/vg unlock`), and comes back on switching on, in the same spot, with no reload notice. With Unit frames off, a child's switch is greyed and says "Needs Unit frames". A switch made in a fight applies when the fight ends. [Needs in-game check.]
+- If it fails, paste: a screenshot and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

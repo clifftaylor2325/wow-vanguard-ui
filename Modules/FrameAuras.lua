@@ -20,6 +20,7 @@ local UF = ns.GetModule("UnitFrames")
 
 local FA = ns.Module("FrameAuras", {
   defaults = { onlyMine = true, debuffs = 8, buffs = 8, size = 20, timers = false, buffFilter = "all" },
+  live = true, requires = { "UnitFrames" },
 })
 
 -- The skinning group the target and focus auras are in, when the library is loaded (Core/Masque.lua).
@@ -84,11 +85,19 @@ end
 
 -- Building ---------------------------------------------------------------------------
 
+-- A row put away by Disable shows again, on whoever the frame shows now (the container is kept, never made twice).
+local function wake(row, unit)
+  if not row.parked then return end
+  row.parked = nil
+  row.frame:Show()
+  row:SetUnit(unit)
+end
+
 -- Gives a frame the row `spec` describes under `name` (no row for no spec). A row that already reads
 -- the same (its signature, Core/Auras.lua) is kept; one that differs is put away for a new one.
 local function setRow(f, name, spec)
   local old, sig = f[name], spec and ns.Auras.Signature(spec) or nil
-  if (old and old.sig) == sig then return end
+  if (old and old.sig) == sig then return wake(old, f.unit) end
   if old and not ns.Auras.Retire(old) then return end
   f[name] = spec and ns.Auras.Container(f, spec, f.unit) or nil
   if f[name] then f[name].sig = sig end
@@ -116,12 +125,13 @@ local function refreshBoth()
   FA.Update(UF.frames.focus)
 end
 
--- What a client adds to the target and focus frames besides the rows, each fn(frame, key, settings) (Modules/RetailAuras.lua
+-- What a client adds to the target and focus frames besides the rows, each fn(frame, key, settings, scope) (Modules/RetailAuras.lua
 -- on Retail: the target's private aura spot; none on WoW Forever).
 FA.CLIENT_PARTS = {}
 
 -- The rows on the target and focus frames as the settings ask now: a row that needs no change stays.
 local function buildRows()
+  if not FA.settings then return end
   local look = FA.Look(FA.settings)
   for _, key in ipairs(FA.FRAMES) do
     if UF.frames[key] then addContainers(UF.frames[key], look, key) end
@@ -129,12 +139,24 @@ local function buildRows()
 end
 
 -- Adds the containers, and the client's own parts, to the target and focus frames.
-local function build(settings)
+local function build(settings, scope)
   buildRows()
   for _, key in ipairs(FA.FRAMES) do
     local f = UF.frames[key]
-    for _, part in ipairs(f and FA.CLIENT_PARTS or {}) do ns.Try("frame aura part", part, f, key, settings) end
+    for _, part in ipairs(f and FA.CLIENT_PARTS or {}) do ns.Try("frame aura part", part, f, key, settings, scope) end
   end
+end
+
+-- Puts one row away: emptied and hidden (ns.Auras.Retire), marked so the next start shows it again.
+local function parkRow(row)
+  if row and ns.Auras.Retire(row) then row.parked = true end
+end
+
+-- Puts a frame's rows away and the client's parts with them.
+local function park(f, key)
+  parkRow(f.debuffs)
+  parkRow(f.buffs)
+  for _, part in ipairs(FA.CLIENT_OFF) do ns.Try("frame aura part off", part, f, key) end
 end
 
 -- The rows made again after a setting changed, showing whoever the frames show now.
@@ -150,14 +172,37 @@ function FA.Apply()
   ns.AfterStill("frame auras settle", FA.SETTLE, function() ns.OutOfCombat(rebuild, "frame auras") end)
 end
 
+-- The target's refresh, as a function the scope can tell from another module's.
+local function updateTarget()
+  FA.Update(UF.frames.target)
+end
+
+-- The focus's refresh.
+local function updateFocus()
+  FA.Update(UF.frames.focus)
+end
+
 -- Module entry point (Core/Modules.lua): after the unit frames are built.
 -- The containers follow UNIT_AURA themselves; a new target or focus refreshes them.
-function FA.Enable(settings)
+function FA.Enable(settings, scope)
   FA.settings = settings
-  ns.OutOfCombat(function() build(settings) end)
-  ns.On("PLAYER_TARGET_CHANGED", function() FA.Update(UF.frames.target) end)
-  ns.On("PLAYER_FOCUS_CHANGED", function() FA.Update(UF.frames.focus) end)
-  ns.On("PLAYER_ENTERING_WORLD", refreshBoth)
+  ns.OutOfCombat(function() build(settings, scope) end)
+  scope:On("PLAYER_TARGET_CHANGED", updateTarget)
+  scope:On("PLAYER_FOCUS_CHANGED", updateFocus)
+  scope:On("PLAYER_ENTERING_WORLD", refreshBoth)
+end
+
+-- What a client puts away when the module stops, each fn(frame, key) (the Retail target spot hands its private aura back).
+FA.CLIENT_OFF = {}
+
+-- Switched off: the rows on the target and focus frames are emptied and hidden, and kept for the next start (a
+-- container is a frame, and the client never frees one); the client's own parts are put away.
+function FA.Disable()
+  FA.settings = nil
+  for _, key in ipairs(FA.FRAMES) do
+    local f = UF.frames[key]
+    if f then park(f, key) end
+  end
 end
 
 -- Options ------------------------------------------------------------------------------------
