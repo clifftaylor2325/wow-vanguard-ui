@@ -573,6 +573,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: a small tile for that player at the top left, beside the raid tools, with health in their class colour.
 - If it fails, paste: a screenshot and `/vg errors`.
 
+### 6.2c Raid tiles follow their own members' heals, shields, threat and buffs (if you can)
+
+- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf` after a fight with many nameplates up.
+- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf` lists no long UNIT_AURA handler from the raid frames.
+- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf` lines.
+
 ### 6.4 Preview the party and raid frames alone
 
 - Do: on a profile whose frames you haven't moved (for example a new one from `/vg` → Profiles), out of a group and out of combat, type `/vg preview party`, then `/vg preview 25` and `/vg preview 40`. Open `/vg` → Raid frames, change Width, Height, Style, Sort by role and Groups as, then pick Off under Preview. Turn it on again and attack a training dummy.
@@ -847,6 +853,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the whole window is on the screen, its quest list column included (nothing cut at the left edge). [Needs in-game check: that the client moves the clamped, centre-anchored window fully on screen.]
 - If it fails, paste: a screenshot and `/vg frame Vanguard_QuestLog`.
 
+### 8.3c Zones you fold in the game's quest log
+
+- Do: under `/vg` → Quests switch **Open folded zones in the quest log** off (no reload). Open the world map's quest list, fold a zone by its header, close the map, then zone (a boat, a hearth or an instance door) and open the map's quest list again. Then open Vanguard's quest log. Switch the row back on and zone again. Last, switch Vanguard's quest tracker and Vanguard's quest log both off, reload, fold a zone in the game's quest log and zone.
+- Expect: with the row off the zone you folded is still folded after closing the map and after zoning, and its quests are missing from the tracker's `Quests: N% of the XP to level` line until you open it; opening Vanguard's quest log opens every zone. With the row on again every zone is open after the next zone-in. With the tracker and the quest log both off the game's quest log stays exactly as you fold it, whatever the row says.
+- If it fails, paste: which zone opened and when, the state of the three switches, and `/vg errors`.
+
 ### 8.3a Quest history
 
 - Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
@@ -889,6 +901,12 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: with the quest arrow showing and quest spots on the minimap, pull a mob and run about 50 yards while still in combat, turning as you go. Kill a mob a watched quest counts while still in combat. Then leave combat and stand still for two seconds.
 - Expect: while you run in combat the arrow keeps the turn and distance it had and the minimap spots stay where they were; the kill that changes the quest log redraws the arrow at once; within a second of the fight's end the arrow points the right way with the right distance and the spots are in the right places. No stutter and no Lua error. Say if the held arrow is misleading while you run: the rest in a fight is new in this build and can be limited to the heavier once-a-second work.
 - If it fails, paste: what the arrow and the spots showed and for how long after the fight, and `/vg errors`.
+
+### 8.4f Best-selling reward never picked over an upgrade
+
+- Do: with Turn in finished quests, Pick the reward that sells for most and Gear upgrades all on, hand in a quest whose reward choices include a piece with the green upgrade arrow that is not the one that sells for most. Then hand in one whose choices have no arrow.
+- Expect: with an arrow among the choices the reward page stays open for you to choose and nothing is taken; without one the best seller is taken and chat says `took <item>: sells for most`.
+- If it fails, paste: the rewards, which had the arrow, the chat line, and `/vg errors`.
 
 ### 8.5 Levelling helpers
 
@@ -937,6 +955,24 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Do: on Game windows, "Auto-accept", switch on "Accept summons" and "Decline duels", and under "Quiet the game", "Decline group invites from strangers". Have a warlock summon you while you are fighting a mob, and finish the fight before the summon runs out. Then have someone who is not a friend or guildmate invite you to a group three times in a row, and ask you to duel three times.
 - Expect: the summon prompt stays up during the fight; when the fight ends you are taken to the summoner and one chat line says from whom and to where. If you die in the fight, or the summon runs out first, you are not moved. [Needs in game: that the game lets you teleport the moment the fight ends; if the prompt stays up instead, say so.] Each invite and each duel is declined, but chat says "Declined a group invite from <name>." and "Declined a duel from <name>." once each, not three times; after 5 minutes a new one says it again.
 - If it fails, paste: the chat lines and `/vg errors`.
+
+### 8.6d A stranger you whispered may invite you
+
+- Do: with "Decline group invites from strangers" on, whisper a player who is not a friend or guildmate (answer a group advert, say) and have them invite you within ten minutes. Have another stranger you did not whisper invite you. Wait more than ten minutes and have the first invite you again.
+- Expect: the first invite stays up for you to answer; the second is declined with one chat line; after ten minutes the first player's invite is declined again.
+- If it fails, paste: the chat lines, how long after the whisper the invite came, and `/vg errors`.
+
+### 8.6e Combo points and the cooldown gaps row keep up in a fight
+
+- Do: on a rogue or a cat-form druid, fight a target dummy: build and spend combo points several times while energy ticks, then switch targets. With the Gaps row on (`/vg` → Cooldowns), use a trinket, a potion and a pet ability in quick succession.
+- Expect: each pip lights the moment its point lands and clears when spent, as before, with no pip a tick late or stuck; the gaps row's icons start their sweeps at once (within a frame). `/vg errors` is empty.
+- If it fails, paste: what the pips or the row showed, the class and form, and `/vg errors`.
+
+### 8.6f HUD text font has its own switch
+
+- Do: `/vg` → Modules: switch Merchant helpers off and reload; cause a red error line (cast with no target), walk into a new subzone, and hit a mob with floating damage numbers on. Then switch HUD text font off (Map and info) and reload, and do the same. Switch both back on.
+- Expect: with only Merchant helpers off, the error line, the zone names and the damage numbers are still in Vanguard's font. With HUD text font off they are in the game's own font. The damage numbers follow after a relog if a reload alone does not change them.
+- If it fails, paste: which text was in which font after each step, and `/vg errors`.
 
 ## 9. Bags, merchant, trainer
 

@@ -1,5 +1,6 @@
 {
   "GROUP_ROSTER_UPDATE": 1400,
+  "OTHER_UNIT_AURA": 50,
   "OnUpdate": 14850,
   "QUEST_TICK": 5000,
   "UNIT_AURA": 400,

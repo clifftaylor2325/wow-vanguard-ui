@@ -238,10 +238,13 @@ local function hasByName(unit)
   return false
 end
 
--- Whether a unit has any watched buff: one pass over its buffs, from the
--- client's all-at-once list, matched against the watched names.
+-- Whether a unit has any watched buff: by name where the client has that lookup (it builds no list, and this
+-- runs on every aura change of every raid member), else one pass over the client's all-at-once list of its
+-- buffs, matched against the watched names.
 local function hasWatched(unit, w)
-  local list = C_UnitAuras and type(C_UnitAuras.GetUnitAuras) == "function" and C_UnitAuras.GetUnitAuras(unit, "HELPFUL")
+  local auras = C_UnitAuras
+  if auras and type(auras.GetAuraDataBySpellName) == "function" then return hasByName(unit) end
+  local list = auras and type(auras.GetUnitAuras) == "function" and auras.GetUnitAuras(unit, "HELPFUL")
   if type(list) ~= "table" then return hasByName(unit) end
   for _, aura in ipairs(list) do
     if not ns.IsSecret(aura.name) and w.set[aura.name] then return true end
@@ -390,13 +393,6 @@ local function onSpells()
   ns.Soon("raidbuffs", refreshBuffs)
 end
 
--- An event handler that runs fn(b, unit) on the tile showing the event's unit.
-local function onTile(fn)
-  -- Only tiles this module has set up (they have the heal bar).
-  local run = function(b, unit) if b.heal then fn(b, unit) end end
-  return function(_, unit) RF.ForUnit(unit, run) end
-end
-
 -- Whether a UNIT_AURA's update info says auras were only refreshed (none added or removed, no full update):
 -- that can't change whether a watched buff is on, so the buff list isn't read again.
 function RH.RefreshOnly(info)
@@ -404,18 +400,30 @@ function RH.RefreshOnly(info)
   return not (info.addedAuras and info.addedAuras[1]) and not (info.removedAuraInstanceIDs and info.removedAuraInstanceIDs[1])
 end
 
--- The buff marker for the tile showing an aura event's unit.
-RH.OnAura = onTile(updateBuff)
+-- A tile's unit event -> the part it refreshes (a health change refreshes the heal bars through RF.healthHooks:
+-- incoming heals are clamped to the missing health). The buff marker follows the unit's auras and the roster
+-- (RF.Update), not health.
+RH.TILE_EVENTS = {
+  UNIT_HEAL_PREDICTION = updatePrediction, UNIT_ABSORB_AMOUNT_CHANGED = updatePrediction,
+  UNIT_THREAT_SITUATION_UPDATE = updateThreat, UNIT_AURA = updateBuff,
+}
 
--- Event -> which part it refreshes (a health change refreshes the heal bars
--- through RF.healthHooks: incoming heals are clamped to the missing health).
+-- A unit event on a tile: its part, except for an aura event that only refreshed auras.
+local function onTileEvent(b, unit, event, info)
+  if event == "UNIT_AURA" and RH.RefreshOnly(info) then return end
+  RH.TILE_EVENTS[event](b, unit)
+end
+
+-- Has a tile listen for its own unit's events only (RF.OnTileUnit), so a nameplate's or the target's aura, heal
+-- or threat never runs anything here, and nothing is registered while there are no raid tiles.
+local function listen(b)
+  local events = {}
+  for event in pairs(RH.TILE_EVENTS) do events[#events + 1] = event end
+  RF.OnTileUnit(b, events, onTileEvent)
+end
+
+-- The events that are not about one unit -> what each refreshes.
 local EVENTS = {
-  -- Each handler refreshes one part for the unit named in the event.
-  UNIT_HEAL_PREDICTION = onTile(updatePrediction),
-  UNIT_ABSORB_AMOUNT_CHANGED = onTile(updatePrediction),
-  UNIT_THREAT_SITUATION_UPDATE = onTile(updateThreat),
-  -- The buff marker follows the unit's auras and the roster (RF.Update), not health; a refresh is skipped.
-  UNIT_AURA = function(event, unit, info) if not RH.RefreshOnly(info) then RH.OnAura(event, unit) end end,
   SPELLS_CHANGED = onSpells,
   -- Logging in or zoning: read the list and your spells again.
   PLAYER_ENTERING_WORLD = function() RH.Forget() end,
@@ -428,8 +436,9 @@ local EVENTS = {
 -- Module entry point (Core/Modules.lua): hook into raid buttons (existing and new).
 function RH.Enable(settings)
   RH.settings = settings
-  for _, b in ipairs(RF.buttons) do setup(b) end
+  for _, b in ipairs(RF.buttons) do setup(b) listen(b) end
   table.insert(RF.setupHooks, setup)
+  table.insert(RF.setupHooks, listen)
   table.insert(RF.updateHooks, update)
   table.insert(RF.healthHooks, updatePrediction)
   for event, fn in pairs(EVENTS) do ns.On(event, fn) end

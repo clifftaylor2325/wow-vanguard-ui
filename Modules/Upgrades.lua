@@ -398,6 +398,14 @@ local function isUpgrade(link)
   return empty == true or (pct ~= nil and pct >= UP.MIN_PCT)
 end
 
+-- Whether an item is an upgrade for you, for other modules (quest automation never picks a reward over one);
+-- false while Gear upgrades is switched off.
+---@param link string|nil
+---@return boolean
+function UP.IsUpgrade(link)
+  return UP.settings ~= nil and isUpgrade(link)
+end
+
 -- Tooltip --------------------------------------------------------------------------------
 
 -- Whether you wear this very item: its own tooltip gets no line against the pair's other one (a bag copy with the

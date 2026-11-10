@@ -782,3 +782,27 @@ it("ns.PlaceSpell does nothing in a fight, and places the spell once it ends", (
   setCombat(addon, false);
   expect(addon.eval("return { ns.PlaceSpell(7, 133), __wfgWorld.placed }"), "out of combat: placed").toEqual([true, 7]);
 });
+
+// A1-13 (L1): a second upgrade for one settings table used to replace the first.
+it("A1-13: two upgrades registered for one settings table both run, in order, once per table", () => {
+  const addon = loggedIn(`ns.Migrate("TESTONLY_Two", function(saved) saved.order = (saved.order or "") .. "a" end)
+    ns.Migrate("TESTONLY_Two", function(saved) saved.order = saved.order .. "b" end)`);
+  expect(addon.eval('local t = {} ns.MigrateTable("TESTONLY_Two", t) ns.MigrateTable("TESTONLY_Two", t) return { t.order, #ns.migrations.TESTONLY_Two }'), "first then second, and not again on the same table").toEqual(["ab", 2]);
+  expect(addon.eval('local t = {} return ns.MigrateTable("TESTONLY_None", t) == t'), "a table with no upgrade comes back as it is").toBe(true);
+});
+
+it("A1-13: every registered settings upgrade leaves an upgraded table as it is when it runs again", () => {
+  const addon = loggedIn("");
+  const changed = addon.eval(`local out = {}
+    local function text(v) return ns.Serialize.Encode("profile", { v = v }) end
+    for key, list in pairs(ns.migrations) do
+      for _, sample in ipairs({ {}, ns.Copy(VanguardDB.profiles.Default[key] or {}) }) do
+        for _, fn in ipairs(list) do fn(sample) end
+        local once = text(sample)
+        for _, fn in ipairs(list) do fn(sample) end
+        if text(sample) ~= once then out[#out + 1] = key end
+      end
+    end
+    table.sort(out) return { out, next(ns.migrations) ~= nil }`);
+  expect(changed, "no settings table changes on its second upgrade (an empty one, and the profile's own)").toEqual([{}, true]);
+});

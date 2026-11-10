@@ -359,6 +359,7 @@ end
 function QL.Enable(settings)
   QL.settings = settings
   if not settings.own then return end
+  ns.GetModule("QuestTracker").KeepFoldsOpen()
   QL.Build()
   addToggle()
   bindKeys()

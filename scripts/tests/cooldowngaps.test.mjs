@@ -141,8 +141,11 @@ it("keeps at most twenty icons, and updates in combat", () => {
   expect(list(cells(addon)).length, "capped").toBe(20);
   setCombat(addon, true);
   addon.eval("__itemCd[30001] = { 100, 120 }");
-  addon.fire("BAG_UPDATE_COOLDOWN");
-  expect(shown(addon).find((c) => c.icon.includes("Trinket"))?.sweep, "the sweep follows in combat").toEqual([100, 120]);
+  addon.eval("__paints = 0 local CG = ns.GetModule('CooldownGaps') local refresh = CG.Refresh CG.Refresh = function() __paints = __paints + 1 return refresh() end");
+  for (let i = 0; i < 5; i += 1) { addon.fire("BAG_UPDATE_COOLDOWN"); addon.fire("SPELL_UPDATE_COOLDOWN"); addon.fire("PET_BAR_UPDATE"); }
+  expect(addon.eval("return __paints"), "A1-11: fifteen cooldown events in one frame repaint nothing yet").toBe(0);
+  addon.update(0);
+  expect([addon.eval("return __paints"), shown(addon).find((c) => c.icon.includes("Trinket"))?.sweep], "then one repaint on the next frame, and the sweep follows in combat").toEqual([1, [100, 120]]);
 });
 
 it("/vg gaps chooses items by ID, link or name", () => {

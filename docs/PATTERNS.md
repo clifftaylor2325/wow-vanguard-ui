@@ -139,7 +139,7 @@ ns.Migrate("PartyExtras", function(saved)
 end)
 ```
 
-`ns.Settings` fills defaults by type: a saved value of the wrong type is replaced by the default, silently. So a setting never changes type without a migration, and the migration runs before the defaults are filled.
+`ns.Settings` fills defaults by type: a saved value of the wrong type is replaced by the default, silently. So a setting never changes type without a migration, and the migration runs before the defaults are filled. A module may register more than one: they run in the order registered, and each must leave an upgraded table as it is, since they run again every session (`scripts/tests/core.test.mjs` runs every one twice).
 
 ## A harness scenario
 

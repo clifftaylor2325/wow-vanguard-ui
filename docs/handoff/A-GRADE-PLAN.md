@@ -1,11 +1,11 @@
 # Vanguard: the plan from B- to A (handoff)
 
 Repo `clifftaylor2325/wow-vanguard-ui`, written 2026-11-09 against commit `c6853f7` (0.9.3 plus the guided-setup work, #794).
-Status: **in progress**. Phase 1 started 2026-11-09. Revised the same day for two calls Cliff made: the verification sprint is skipped (section 4), and every task is done by Fable 5.2 at high effort.
+Status: **in progress**. Phase 1 started 2026-11-09. Revised the same day for two calls Cliff made: the verification sprint is skipped (section 4), and the model rule changed twice (see the next paragraph).
 Source: the product and code review of the same date (`VANGUARD-REVIEW-2026-11-09.md`, to sit beside this file). Task lines below cite its item ids (Q1 to Q21, N1 to N21, B1 to B10) and its bug ids (H1 to H4, M1 to M16, L1 to L29); the review holds the `file:line` detail and the reasoning, so a thread reads the review entry for its task before it starts. If a line has moved, grep for the identifier quoted there.
 Naming rule for this file and everything made from it: no other addon or competing product is named; patterns are described generically.
 
-`CLAUDE.md` applies in full (working method, one commit per task, one PR per phase, drafts until ready), with one override Cliff set for this plan on 2026-11-09: every task is done by Fable 5.2 at high effort, not by the model-by-task table. Where a task below says "Opus" or "Haiku" it now only marks how much care the task needs.
+`CLAUDE.md` applies in full, including its model-by-task table. Cliff first set every task to Fable 5.2 at high effort (2026-11-09), then the same day went back to the table for everything started after the first five threads (the phase 1 fixes, the 0.9.4 release, tooltips, nameplates and auras, and the code-only look work, which finish on Fable 5.2). From here on: Sonnet at medium effort for fixes and feature work; Opus or Fable at high effort for protected and taint-prone paths, the lifecycle design and harness rules; Haiku for mechanical work; Fable for reviews and the phase 7 re-grade. The per-task notes below ("Opus", "Haiku") follow that table.
 
 Other threads are open on the same repo (section 10). A thread on this plan checks the open PRs before it starts and stays out of files another open PR owns.
 
@@ -76,16 +76,16 @@ Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until th
 - [x] **A1-2** Combat checks on the two panel-manager calls, and add those functions to the quality scan's guarded list. Protected path: Opus. (Q16, M12)
 - [x] **A1-3** Give the four quest tickers an owner frame, stop them in combat, reuse scratch tables, add a bench step. (Q17, M13)
 - [x] **A1-4** First-run setup rows per D4. (Q18, M14)
-- [ ] **A1-5** Quest-log zone expansion registered from `Enable`, with a switch. (Q21, M16)
-- [ ] **A1-6** Per-unit events for the raid add-ons; by-name aura lookup before the full list; bench step. (Q2, M1)
-- [ ] **A1-7** Settings-guard stamp asymmetry, with a no-name-at-logout harness case. (Q3, M2)
+- [x] **A1-5** Quest-log zone expansion registered from `Enable`, with a switch. (Q21, M16)
+- [x] **A1-6** Per-unit events for the raid add-ons; by-name aura lookup before the full list; bench step. (Q2, M1)
+- [x] **A1-7** Settings-guard stamp asymmetry, with a no-name-at-logout harness case. (Q3, M2)
 - [ ] **A1-8** Load only the active locale; keep the in-file guard as the fallback. Needs an in-game check that the directive works on the Forever client. (Q4, M6)
-- [ ] **A1-9** Recent whisper partners count as known for stranger-invite declines. (Q5, M4)
-- [ ] **A1-10** Never auto-pick a quest reward over a flagged upgrade. (Q6, M5)
+- [x] **A1-9** Recent whisper partners count as known for stranger-invite declines. (Q5, M4)
+- [x] **A1-10** Never auto-pick a quest reward over a flagged upgrade. (Q6, M5)
 - [ ] **A1-11** Filter and coalesce the three hot handlers; one shared bag snapshot. (Q19, M15, L13, L17)
 - [ ] **A1-12** Micro-allocations on the hottest paths, except the unit-frame ones, which move to A3-1 to stay out of PR #796's files. (Q7, L4, L6)
-- [ ] **A1-13** `ns.Migrate` keeps a list per key or raises on a duplicate; a test runs every migration twice. (Q8, L1)
-- [ ] **A1-14** HUD font theming out of Merchant into its own switch. (Q9, L2)
+- [x] **A1-13** `ns.Migrate` keeps a list per key or raises on a duplicate; a test runs every migration twice. (Q8, L1)
+- [x] **A1-14** HUD font theming out of Merchant into its own switch. (Q9, L2)
 - [ ] **A1-15** Small correctness batch, one commit each: durability figure, mail attach count and running flag, trainer loop, `/way` across continents, detailed item level. The player-aura re-anchor (L14) is a protected path: Opus. (Q20)
 - [ ] **A1-16** Wrap the last 33 strings and fill the 184 missing keys per locale. Haiku for the fill, through the CSV pipeline. (Q10, L7)
 - [ ] **A1-17** Release again with the above. PR lists every item that needs an in-game check.
@@ -211,7 +211,6 @@ Phase 0 (decisions)
 ## 11. Risks
 
 - **Verification is skipped.** A bug that only the game shows ships to players and comes back as a report, as the nameplate icon error did. Mitigation: the `/vg report` loop, fast patch releases, and A2-1 if the grade matters more than the ten minutes.
-- **Fable 5.2 at high effort for everything.** It uses the usage allowance far faster than the model-by-task table in `CLAUDE.md`. Mitigation: one thread per independent branch, and no thread for a task that waits on another PR.
 - **The lifecycle change regresses stable modules.** Mitigation: design note first, display-only modules first, batches of ten, the full test label on those PRs.
 - **The art pass lands in pieces and looks mixed.** Mitigation: D3 first, the crest and ornament set before any other asset, one icon family in one go.
 - **Scope creeps back in.** Mitigation: D2. A new idea goes in a list for after 1.0.

@@ -9,6 +9,14 @@ local L = ns.L
 local O = ns.Options
 local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
 
+-- The switch for opening the zones the game folds in its quest log (Modules/QuestTracker.lua, QT.KeepFoldsOpen),
+-- with a tip saying what it is for and what off costs. It applies at once.
+local function foldsRow()
+  local row = check(L["Open folded zones in the quest log"], setting("QuestTracker", "openFolds"))
+  row.tip = L["The game folds every zone off your map each time you zone in, and quests under a folded zone are hidden from Vanguard's tracker, quest log and XP lines. Off: a zone stays as you fold it, and its quests are left out until you open it. Vanguard's quest log still opens them when you open it."]
+  return row
+end
+
 -- Quests: the dialog, and the automation (each off until switched on).
 local function questRows()
   return {
@@ -16,6 +24,7 @@ local function questRows()
     check(L["Vanguard's quest dialog (reload)"], reloadSetting("QuestDialog", "dialog")),
     check(L["Vanguard's quest log (reload)"], reloadSetting("QuestLog", "own")),
     check(L["Each quest's XP in the quest log list"], liveSetting("QuestLog", "xp", function() if ns.GetModule("QuestLog").frame then ns.GetModule("QuestLog").Refresh() end end)),
+    foldsRow(),
   }
 end
 

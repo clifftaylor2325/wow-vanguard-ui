@@ -283,6 +283,7 @@ end
 -- At login, before setup decides whether it is owed (and after old notes are folded). A loss is told in
 -- chat once; after that only the General and Profiles pages show it, until it is answered there.
 function G.OnLogin()
+  G.key = G.CharKey()
   local acct = tbl(VanguardDB.guard)
   if acct and tbl(acct.chars) then foldRealmSpellings(acct.chars) end
   local lost, detail = G.Check()
@@ -324,15 +325,25 @@ local function keptBackup()
   return name, backupString(name)
 end
 
+-- This character's stamp for a save at time t: t when the account file notes it under `key` in the same save,
+-- else the stamp it had. The two must move together: a character stamp newer than its account note reads as a
+-- lost account file at the next login.
+local function charStamp(key, t)
+  if key then return t end
+  return (tbl(VanguardCharDB.guard) or {}).stamp
+end
+
 -- Leaves the stamp in both files, the profile each character uses in the account file and
 -- the backup in this character's; not while a loss is unanswered and nothing was imported or picked.
+-- The character's key is the one the client gives now, else the one it gave at login (G.key): the client
+-- may not name the character any more at logout.
 function G.Save()
   if G.lost and not ns.PendingProfileName() then return end
-  local t, key, acct = now(), G.CharKey(), accountGuard()
+  local t, key, acct = now(), G.CharKey() or G.key, accountGuard()
   acct.stamp = t
   if key then acct.chars[key] = { profile = ns.SelectedProfileName(), stamp = t } end
   local profile, backup = keptBackup()
-  VanguardCharDB.guard = { stamp = t, profile = profile, backup = backup }
+  VanguardCharDB.guard = { stamp = charStamp(key, t), profile = profile, backup = backup }
 end
 
 -- Logout's stamp and backup run after every module's own logout work (a situation's recording saved, say), so the backup
