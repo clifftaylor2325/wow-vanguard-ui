@@ -36,9 +36,10 @@ QA.HERE, QA.FAINT, QA.PAD = 15, 0.35, 8
 -- panel's right edge.
 QA.PIN_TOP = 2
 
--- Whether the module runs now: a stopped arrow picks, follows and answers nothing (its scope is closed).
+-- Whether the module runs now: a stopped arrow picks, follows and answers nothing (its scope is closed). Read on
+-- every tick and by the minimap's draw, so the scope's flag is read directly, without a method call.
 function QA.Running()
-  return QA.scope ~= nil and QA.scope:Running()
+  return QA.scope ~= nil and QA.scope.on == true
 end
 
 -- Choosing the quest ------------------------------------------------------------------------------
