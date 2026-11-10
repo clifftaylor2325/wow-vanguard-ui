@@ -237,6 +237,15 @@ it("waypoints: /way recent lists the spots and /way recent <n> goes back to one"
   expect(chatHas(addon, /Can't put a waypoint on TEST-ONLY Duskwood/), "a map that can't hold one now").toBe(true);
 });
 
+it("waypoints: a recent list holding damaged entries (an older version, an import) still lists, goes back and remembers the good ones", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Waypoints = { recent = { 5, 'x', { map = 10 }, { map = 10, x = 'a', y = 1 }, { map = 12, x = 0.5, y = 0.25 } } } } }" });
+  way(addon, "recent");
+  expect(chatHas(addon, /1\. TEST-ONLY Dun Morogh 50\.0, 25\.0/), "the good entry is listed").toBe(true);
+  click(addon, 10, 0.2, 0.3);
+  expect(addon.eval("local r = ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent return { #r, r[1].x, r[2].x }"), "a map click remembers beside it, the damaged ones dropped").toEqual([2, 0.2, 0.5]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("waypoints: the options list the spots as buttons, and Clear waypoint takes it and the arrow away", () => {
   const addon = loggedIn(MAP_ENV + POINT_ENV);
   // Each row as "type|label".

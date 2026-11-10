@@ -1422,6 +1422,23 @@ it("faster auto-loot: under master loot the game's loot window keeps every slot"
   on.fire("LOOT_READY", true);
   expect(on.eval("return __looted"), "a client without GetLootMethod still takes them").toEqual([3, 1]);
 });
+it("faster auto-loot: with no plain loot method, a group's slots are left to the game and a solo player's are taken, on both clients", () => {
+  for (const client of ["", RETAIL]) {
+    const on = loggedIn(LOOT_ENV, { client, savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { loot = true } } }" });
+    const looted = (inGroup, setup) => {
+      on.eval(`__looted = {} Enum.LootMethod = nil C_PartyInfo.GetLootMethod = nil GetLootMethod = nil IsInGroup = function() return ${inGroup} end ${setup}`);
+      on.fire("LOOT_READY", true);
+      return on.eval("return __looted");
+    };
+    expect(looted(false, ""), "alone, with no loot method call at all: taken").toEqual([3, 1]);
+    expect(looted(true, ""), "in a group, with no loot method call at all: left to the game").toEqual({});
+    expect(looted(true, `GetLootMethod = function() return "master" end`), "the old global says master: left").toEqual({});
+    expect(looted(true, `GetLootMethod = function() return "group" end`), "the old global says group: taken").toEqual([3, 1]);
+    expect(looted(true, `Enum.LootMethod = { Masterlooter = 2 } C_PartyInfo.GetLootMethod = function() return __wfgWorld.secret() end`), "a hidden answer in a group: left").toEqual({});
+    expect(looted(true, `Enum.LootMethod = { Masterlooter = 2 } C_PartyInfo.GetLootMethod = function() return 3 end`), "a plain non-master answer: taken").toEqual([3, 1]);
+    expect(on.eval("return #ns.errors"), "no errors").toBe(0);
+  }
+});
 // TEST-ONLY invites and death: every answer is recorded; the world is a battleground, nobody is a friend.
 const INVITE_ENV = `
   __answers = {}
