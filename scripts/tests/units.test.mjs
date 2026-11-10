@@ -751,6 +751,14 @@ it("the pet frame's tooltip adds your hunter pet's mood", () => {
   expect([pet()[1], addon.eval("return GameTooltip:IsShown()")], "a tooltip hidden for the fight stays hidden, with no line added").toEqual([false, false]);
 });
 
+it("a unit tooltip whose shown state the client hides gets no extra line and raises nothing", () => {
+  const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + `__units.pet = { name = "TEST-ONLY Wolf", hp = 1, maxhp = 1, power = 0, maxpower = 0, ptype = "FOCUS" }
+    GetPetHappiness = function() return __happy, 125, 0 end`);
+  addon.eval("GameTooltip.IsShown = function() return __wfgStub.world.secret(true) end");
+  const lines = addon.eval("Vanguard_pet:GetScript('OnEnter')(Vanguard_pet) return #GameTooltip.__lines");
+  expect([lines, addon.eval("return #ns.errors")], "a hidden answer counts as not shown: the unit's own line alone").toEqual([1, 0]);
+});
+
 it("unit events: combo points, the druid's mana, power ticks and threat ask the client for your own units only", () => {
   const addon = loggedIn(UNITS_ENV + EXTRAS_ENV + TICKS_ENV + `__units.player.class = "DRUID" __cp = 2
     GetComboPoints = function() return __cp end`, NO_RAID);

@@ -450,14 +450,15 @@ end
 UF.TOOLTIP_LINES = {}
 
 -- Shows the frame's unit in the game's tooltip, as the game's own unit frames do, then the lines a readout
--- adds. A forbidden tooltip is left alone, and one the Tooltips module hid (its in-combat switch) stays hidden.
+-- adds. A forbidden tooltip is left alone, and one the Tooltips module hid (its in-combat switch) stays hidden. The
+-- tooltip is the game's, so whether it shows may come back hidden: that counts as not shown, never truth-tested.
 function UF.ShowTooltip(f)
   local tt = GameTooltip
   if tt:IsForbidden() then return end
   GameTooltip_SetDefaultAnchor(tt, f)
   tt:SetUnit(f.unit)
   local addLines = UF.TOOLTIP_LINES[f.key]
-  if addLines and tt:IsShown() then addLines(tt) tt:Show() end
+  if addLines and ns.IsTrue(tt:IsShown()) then addLines(tt) tt:Show() end
 end
 
 -- Hides the tooltip when the mouse leaves the frame, if the frame still owns it.
