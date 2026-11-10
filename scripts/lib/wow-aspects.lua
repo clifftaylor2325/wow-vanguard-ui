@@ -82,11 +82,11 @@ local GAME_ASPECTS = {
 
 -- The widget methods that take arguments and refuse a secret from the addon's code (SecretArguments = "AllowedWhenUntainted"
 -- or "NotAllowed" in the docs files above, for the kinds wow-widget-api.lua lists them on; a name TAINTED_OK allows on a
--- kind is allowed there). Methods whose arguments are never values (Create*, scripts, events) are left out.
+-- kind is allowed there). Methods whose arguments are never values (Create*, scripts, events) are left out, and so
+-- are the getters that take one (GetPoint(i), GetWidth, GetAttribute(name)): hot, and never handed a secret.
 local REFUSED = {
   "AddHistoryLine", "AddMaskTexture", "AdjustPointsOffset", "ClearPoint", "Click", "DisableDrawLayer", "EnableDrawLayer",
-  "EnableKeyboard", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel", "GetAttribute", "GetHeight", "GetPoint",
-  "GetPointByName", "GetSize", "GetWidth", "HighlightText", "Insert", "IsMouseOver", "RemoveMaskTexture", "SetAllPoints",
+  "EnableKeyboard", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel", "HighlightText", "Insert", "RemoveMaskTexture", "SetAllPoints",
   "SetAttribute", "SetAutoFocus", "SetBlendMode", "SetButtonState", "SetChecked", "SetCheckedTexture", "SetClampRectInsets",
   "SetClampedToScreen", "SetClipsChildren", "SetCooldown", "SetCooldownDuration", "SetCooldownFromDurationObject",
   "SetCountInvisibleLetters", "SetCountdownAbbrevThreshold", "SetCountdownFont", "SetCountdownFormatter", "SetCursorPosition",
@@ -131,8 +131,12 @@ local INHERITED = { IsVisible = "Shown", GetEffectiveAlpha = "Alpha", GetEffecti
 -- What world.secretAspects("strict") makes every frame of the game's hold.
 local STRICT = { Shown = true, Alpha = true, Text = true, BarValue = true }
 
--- Which aspects any widget holds (so a getter on a parentless chain skips the walk when none does).
+-- Which aspects any widget holds.
 local anyHeld = {}
+
+-- Wraps the getters that read an aspect (below): done the first time a widget holds it, so reads cost nothing extra
+-- in a run where nothing does.
+local watchReads
 
 -- Holding ------------------------------------------------------------------------------------------
 
@@ -143,7 +147,10 @@ local function hold(w, aspects)
     held = {}
     rawset(w, "__aspects", held)
   end
-  for _, name in ipairs(aspects) do held[name], anyHeld[name] = true, true end
+  for _, name in ipairs(aspects) do
+    if not anyHeld[name] then watchReads(name) end
+    held[name], anyHeld[name] = true, true
+  end
 end
 
 -- Marks a widget as having secret values: its anchoring is secret too (wow-taint.lua's geometry getters).
@@ -151,6 +158,7 @@ local function holdValues(w)
   rawset(w, "__secretValues", true)
   rawset(w, "__anchorSecret", true)
   stub.anchorSecrets = true
+  stub.secretGeometry = stub.secretGeometry or "anchors"
 end
 
 -- Whether a widget holds an aspect: its own, or (strict) as one of the game's frames.
@@ -190,6 +198,7 @@ end
 function world.secretAspects(mode)
   assert(mode == nil or mode == false or mode == "strict", "secretAspects: strict or off")
   stub.clientAspects = mode and STRICT or nil
+  for name in pairs(mode and STRICT or {}) do watchReads(name) end
 end
 
 -- Values ---------------------------------------------------------------------------------------------
@@ -199,13 +208,9 @@ local function marked(v)
   return type(v) == "table" and rawget(v, "__secret") == true
 end
 
--- The position (1-based, self not counted) of the first secret argument, or nil.
-local function secretAt(...)
-  for i = 1, select("#", ...) do
-    if marked((select(i, ...))) then return i end
-  end
-  return nil
-end
+-- The position (1-based, self not counted) of the first secret argument, or nil. Every widget setter call asks,
+-- so the scan is the harness's JS (scripts/lib/lua-secret-ops.mjs secretArgAt), not Lua instructions.
+local secretAt = __wfgSecretAt
 
 -- Each value as a secret, a secret left as it is; nil stays nil.
 local function asSecrets(...)
@@ -226,6 +231,13 @@ local function plainValues(...)
 end
 
 -- Wrapping -------------------------------------------------------------------------------------------
+
+-- The geometry getters wow-taint.lua's GEOMETRY leaves out that the docs also mark SecretWhenAnchoringSecret
+-- (SimpleScriptRegionResizingAPIDocumentation.lua:65-69 GetPoint, :91 GetPointByName; SimpleFontStringAPIDocumentation.lua
+-- GetStringHeight, GetNumLines, IsTruncated).
+for _, name in ipairs({ "GetPoint", "GetPointByName", "GetStringHeight", "GetNumLines", "IsTruncated" }) do
+  if methods[name] then methods[name] = stub.secretGetter(methods[name]) end
+end
 
 -- Wraps methods[name] when the stub has it, or gives a listed name the stub leaves to its no-op one of its own.
 -- The wrappers are pass-throughs for wow-taint.lua's callerOf, so the combat and ownership rules still read the caller.
@@ -289,26 +301,44 @@ local function getter(aspects)
   return function(orig)
     -- The method as the client runs it.
     return function(self, ...)
-      if (rawget(self, "__aspects") == nil and stub.clientAspects == nil) or not byAddon(callerOf(1)) then return orig(self, ...) end
-      if not holdsAny(self, aspects) then return orig(self, ...) end
+      if (rawget(self, "__aspects") == nil and stub.clientAspects == nil) or not holdsAny(self, aspects) then return orig(self, ...) end
+      if not byAddon(callerOf(1)) then return orig(self, ...) end
       return asSecrets(orig(self, ...))
     end
   end
 end
-for name, aspects in pairs(GETTERS) do wrap(name, getter(aspects)) end
 
 -- A getter that folds in its parents (IsVisible): secret for the addon when any of the chain holds the aspect.
 local function inherited(name)
   return function(orig)
     -- The method as the client runs it.
     return function(self, ...)
-      if not (anyHeld[name] or stub.clientAspects) or not byAddon(callerOf(1)) then return orig(self, ...) end
-      if not chainHolds(self, name) then return orig(self, ...) end
+      if not chainHolds(self, name) or not byAddon(callerOf(1)) then return orig(self, ...) end
       return asSecrets(orig(self, ...))
     end
   end
 end
-for method, name in pairs(INHERITED) do wrap(method, inherited(name)) end
+
+-- The getters wrapped so far.
+local readsWatched = {}
+
+-- Whether a list of aspect names holds one.
+local function lists(aspects, name)
+  for _, n in ipairs(aspects) do
+    if n == name then return true end
+  end
+  return false
+end
+
+-- Wraps each getter that reads an aspect and is not wrapped yet: its own (GETTERS), then through parents (INHERITED).
+function watchReads(name)
+  for method, aspects in pairs(GETTERS) do
+    if not readsWatched[method] and lists(aspects, name) then readsWatched[method] = true wrap(method, getter(aspects)) end
+  end
+  for method, inheritedName in pairs(INHERITED) do
+    if not readsWatched[method] and inheritedName == name then readsWatched[method] = true wrap(method, inherited(name)) end
+  end
+end
 
 -- Clearing a region's points resets the secret anchoring its own setters gave it.
 wrap("ClearAllPoints", function(orig)

@@ -17,7 +17,7 @@ import fengari from "fengari";
 import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
 import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
-import { markSecretMeta } from "./lua-secret-ops.mjs";
+import { markSecretMeta, secretArgAt } from "./lua-secret-ops.mjs";
 import { lineHook } from "./lua-coverage.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 import { advanceEms } from "./truetype.mjs";
@@ -326,24 +326,27 @@ function loadText(L) {
   runLib(L, "wow-textfit.lua");
 }
 
-// The harness's own functions the stub files call: __wfgUserdata, and __wfgMarkSecretMeta for the VM's secret checks.
+// The harness's own functions the stub files call: __wfgUserdata, and __wfgMarkSecretMeta and __wfgSecretAt for
+// the secret checks (scripts/lib/lua-secret-ops.mjs).
 function setHostFunctions(L) {
-  lua.lua_pushjsfunction(L, newUserdata);
-  lua.lua_setglobal(L, to_luastring("__wfgUserdata"));
-  lua.lua_pushjsfunction(L, markSecretMeta);
-  lua.lua_setglobal(L, to_luastring("__wfgMarkSecretMeta"));
+  const host = { __wfgUserdata: newUserdata, __wfgMarkSecretMeta: markSecretMeta, __wfgSecretAt: secretArgAt };
+  for (const [name, fn] of Object.entries(host)) {
+    lua.lua_pushjsfunction(L, fn);
+    lua.lua_setglobal(L, to_luastring(name));
+  }
 }
 
-// Loads the widget API list, the WoW stub, its layout, the world, its key bindings, the taint rules and secret
-// aspects, and an empty addon namespace.
-function loadStub(L) {
+// Loads the widget API list, the WoW stub, its layout, the world, its key bindings, the taint rules, the secret
+// aspects unless `aspects` is false, and an empty addon namespace.
+function loadStub(L, aspects) {
   setHostFunctions(L);
   runLib(L, "wow-widget-api.lua", 1);
   lua.lua_setglobal(L, to_luastring("__wfgWidgetApi"));
   runLib(L, "wow-stub.lua");
   loadText(L);
   runLib(L, "wow-layout.lua");
-  for (const file of ["wow-world.lua", "wow-keybinds.lua", "wow-taint.lua", "wow-aspects.lua"]) runLib(L, file);
+  for (const file of ["wow-world.lua", "wow-keybinds.lua", "wow-taint.lua"]) runLib(L, file);
+  if (aspects) runLib(L, "wow-aspects.lua");
   run(L, "__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns", false, 0);
 }
 
@@ -558,11 +561,12 @@ function track(addon) {
 // addon finds as it loads, e.g. RETAIL_CLIENT). instructionBudget: the most
 // instructions one call from the tests may run (see Hooks above). textFit: the
 // text-fit audit's client, with the fonts' real widths and every string a third
-// longer, as a translation might be (wow-text.lua, wow-textfit.lua).
-export function createAddon({ savedVariables = "", client = "", instructionBudget = DEFAULT_BUDGET, textFit = false } = {}) {
+// longer, as a translation might be (wow-text.lua, wow-textfit.lua). secretAspects: false leaves the secret
+// aspects out (wow-aspects.lua), so the raid bench's harness instructions are what they were before them.
+export function createAddon({ savedVariables = "", client = "", instructionBudget = DEFAULT_BUDGET, textFit = false, secretAspects = true } = {}) {
   const L = newState();
   attachHooks(L, instructionBudget);
-  loadStub(L);
+  loadStub(L, secretAspects);
   const name = startClient(L, client, textFit);
   loadAddon(L, name, savedVariables, textFit);
   // Runs Lua with `ADDON, ns` in scope and returns the first result as JS.

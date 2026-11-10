@@ -331,9 +331,10 @@ function playStep(L, [event, i, v]) {
   throw new Error(`bench step ${event} raid${i} ${v}: ${message}`);
 }
 
-// The addon logged in on a finished-setup account, with the raid formed and the pull started.
+// The addon logged in on a finished-setup account, with the raid formed and the pull started. The secret aspects'
+// wrappers stay out: they are harness instructions, and the sampler's addon counts move when the harness's do.
 export function raidAddon() {
-  const addon = createAddon({ savedVariables: SETUP_DONE, instructionBudget: Infinity });
+  const addon = createAddon({ savedVariables: SETUP_DONE, instructionBudget: Infinity, secretAspects: false });
   addon.login();
   addon.eval(DRIVER);
   const known = addon.eval("return __vgBenchRaid()");

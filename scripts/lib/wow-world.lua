@@ -36,18 +36,13 @@ local SECRET = {
   __concat = refuse, __len = refuse, __lt = refuse, __le = refuse,
 }
 
--- A hidden boolean refuses the same, and also a truth test and `not` (scripts/lib/lua-secret-ops.mjs
--- checks those in the VM, with `==`, for any secret): a secret number or string tests true in game.
-local SECRET_BOOLEAN = {}
-for k, v in pairs(SECRET) do SECRET_BOOLEAN[k] = v end
-if __wfgMarkSecretMeta then
-  __wfgMarkSecretMeta(SECRET, "value")
-  __wfgMarkSecretMeta(SECRET_BOOLEAN, "boolean")
-end
+-- The VM's checks (scripts/lib/lua-secret-ops.mjs) know a secret by this metatable: a truth test or `not` on one
+-- that hides a boolean, and `==` on any, raise in the addon's code (a secret number or string tests true in game).
+if __wfgMarkSecretMeta then __wfgMarkSecretMeta(SECRET) end
 
 -- A secret value (hides `n`, which only the harness reads, with rawget).
 function world.secret(n)
-  return setmetatable({ __secret = true, n = n }, type(n) == "boolean" and SECRET_BOOLEAN or SECRET)
+  return setmetatable({ __secret = true, n = n }, SECRET)
 end
 
 -- Whether a value is a secret.
@@ -58,8 +53,7 @@ end
 -- Whether a value is a secret world.secret made (a test's plain { __secret = true } stand-in keeps
 -- type() "table", so the test's own issecretvalue, if it has one, still knows it).
 local function madeSecret(v)
-  local meta = type(v) == "table" and getmetatable(v)
-  return meta == SECRET or meta == SECRET_BOOLEAN
+  return type(v) == "table" and getmetatable(v) == SECRET
 end
 
 -- The type the client gives a secret: the hidden value's (a secret of nothing is taken for a number).

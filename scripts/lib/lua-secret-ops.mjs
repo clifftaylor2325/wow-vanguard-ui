@@ -13,12 +13,15 @@
 // instructions, so the bench's counts do not move. Only the addon's own functions (chunks named
 // @Core/, @Modules/ or @Libs/) are refused: the harness's files stand for the client's C side and the
 // tests' Lua for the game's own untainted code, both of which may test and compare secrets.
+// Only secrets world.secret made are checked: a test's plain { __secret = true } stand-in has no metatable.
 
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import Module from "node:module";
 import path from "node:path";
 import ldebug from "fengari/src/ldebug.js";
+import lstring from "fengari/src/lstring.js";
+import ltable from "fengari/src/ltable.js";
 import lvm from "fengari/src/lvm.js";
 import fengari from "fengari";
 
@@ -63,10 +66,15 @@ function installPatchedVm() {
 }
 installPatchedVm();
 
-// What a secret table hides, by its metatable's mark ("boolean" or "value"), or undefined for any other table.
-function secretKind(tv) {
+// Whether a table is a secret world.secret made (its metatable carries the mark markSecretMeta put on it).
+function isSecret(tv) {
   const meta = tv.value.metatable;
-  return meta ? meta.__wfgSecret : undefined;
+  return meta !== null && meta.__wfgSecret === true;
+}
+
+// Whether a secret table hides a boolean (its raw field n).
+function hidesBoolean(L, tv) {
+  return ltable.luaH_getstr(tv.value, lstring.luaS_newliteral(L, "n")).ttisboolean();
 }
 
 // The addon's chunks: "@Core/", "@Modules/" and "@Libs/" as bytes.
@@ -91,24 +99,47 @@ function refuse(L, message) {
 
 // A truth test (if, while, and, or) on a secret boolean.
 OPS.test = (L, tv) => {
-  if (secretKind(tv) === "boolean") refuse(L, "attempt to perform boolean test on a secret value");
+  if (isSecret(tv) && hidesBoolean(L, tv)) refuse(L, "attempt to perform boolean test on a secret value");
 };
 
 // `not` on a secret boolean.
 OPS.negate = (L, tv) => {
-  if (secretKind(tv) === "boolean") refuse(L, "attempt to negate a secret value");
+  if (isSecret(tv) && hidesBoolean(L, tv)) refuse(L, "attempt to negate a secret value");
 };
 
 // `==` or `~=` with a secret on either side.
 OPS.compare = (L, a, b) => {
-  if ((a.ttistable() && secretKind(a)) || (b.ttistable() && secretKind(b))) refuse(L, "attempt to compare a secret value");
+  if ((a.ttistable() && isSecret(a)) || (b.ttistable() && isSecret(b))) refuse(L, "attempt to compare a secret value");
 };
 
-// Marks the metatable on top of the stack as a secret's: `kind` "boolean" for a hidden boolean, else "value".
-// wow-world.lua calls it as __wfgMarkSecretMeta(meta, kind) for each of its two secret metatables.
+// Marks the table given as the secrets' metatable: wow-world.lua calls __wfgMarkSecretMeta(SECRET) once per state.
 export function markSecretMeta(L) {
-  const meta = fengari.lua.lua_topointer(L, 1);
-  meta.__wfgSecret = fengari.lua.lua_tojsstring(L, 2) === "boolean" ? "boolean" : "value";
+  fengari.lua.lua_topointer(L, 1).__wfgSecret = true;
+  return 0;
+}
+
+// Whether the value at a stack index is a secret: a table under a marked metatable, or one with a raw __secret
+// field set to true (a test's plain { __secret = true } stand-in).
+function secretAtIndex(L, i) {
+  if (fengari.lua.lua_type(L, i) !== fengari.lua.LUA_TTABLE) return false;
+  const meta = fengari.lua.lua_topointer(L, i).metatable;
+  if (meta !== null && meta.__wfgSecret === true) return true;
+  fengari.lua.lua_pushliteral(L, "__secret");
+  const marked = fengari.lua.lua_rawget(L, i) === fengari.lua.LUA_TBOOLEAN && fengari.lua.lua_toboolean(L, -1);
+  fengari.lua.lua_pop(L, 1);
+  return marked;
+}
+
+// __wfgSecretAt(...): the position of the first secret argument, or nothing. wow-aspects.lua asks it on every
+// widget setter call, so the scan runs here rather than as Lua instructions.
+export function secretArgAt(L) {
+  const n = fengari.lua.lua_gettop(L);
+  for (let i = 1; i <= n; i++) {
+    if (secretAtIndex(L, i)) {
+      fengari.lua.lua_pushinteger(L, i);
+      return 1;
+    }
+  }
   return 0;
 }
 
