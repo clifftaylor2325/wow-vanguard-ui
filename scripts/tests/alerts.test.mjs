@@ -1,7 +1,7 @@
 // alerts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, RAID_ENV, TIDY_ENV, TOOLS_ENV, UNITS_ENV, chatHas, gridLines, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, RAID_ENV, TIDY_ENV, TOOLS_ENV, UNITS_ENV, chatHas, expectErrors, gridLines, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY extra windows: friends, a book (its page text records the colors it's given), and
 // the game's loss of control and talking head alerts with their parts.
@@ -612,4 +612,12 @@ it("H30-18-1 game alerts: toasts stack from the base anchor, not the moved talki
   expect(addon.eval("return __seen == nil"), "a hidden talking head: the game's chain already skips it, so nothing is laid out again").toBe(true);
   const bare = loggedIn(ALERTS_ENV + "AlertFrame = {}");
   expect(bare.eval("return AlertFrame.UpdateAnchors"), "a client without the call is left alone").toBe(null);
+});
+
+it("game alerts: a Hardcore death notice that can't be styled is reported, and the game's own raid warning handler still ran", () => {
+  const addon = loggedIn(WARNING_ENV);
+  addon.eval("ns.Theme.ApplyRole = function() error('TEST-ONLY broken role') end");
+  addon.fire("HARDCORE_DEATHS", "TEST-ONLY Bob has fallen.");
+  expectErrors("hook raid warning event: eval:2: TEST-ONLY broken role");
+  expect([addon.eval("return RaidWarningFrame.line.__text"), addon.eval("return #ns.errors")], "the game's line is up; the failure is in /vg errors").toEqual(["TEST-ONLY Bob has fallen.", 1]);
 });
