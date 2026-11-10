@@ -189,3 +189,15 @@ it("TalentPlanner: switched off, it reads as off and plan mode ends, so /vg tale
   switchTo(addon, "TalentPlanner", true);
   expect(addon.eval('return ns.GetModule("TalentPlanner").settings ~= nil'), "on again").toBe(true);
 });
+
+lifecycleCases("QuestGuide", login);
+
+it("QuestGuide: switched off, it reads as off (no settings, no New mark, no followed pin) and the pins are not drawn; on again it is back", () => {
+  const addon = loggedIn("");
+  addon.eval('ns.QuestGuide.pointed = 7');
+  switchTo(addon, "QuestGuide", false);
+  expect(addon.eval("local QG = ns.QuestGuide return { QG.settings == nil, QG.pointed == nil, QG.Mark(1) }"), "off").toEqual([true, true, ""]);
+  addon.eval("ns.QuestGuide.RefreshPins()"); // raises nothing while off
+  switchTo(addon, "QuestGuide", true);
+  expect(addon.eval("return ns.QuestGuide.settings ~= nil"), "on again").toBe(true);
+});

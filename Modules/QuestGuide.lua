@@ -16,7 +16,7 @@ local T = ns.Theme
 
 -- WoW Forever only. The quest tracker, arrow and dialog call ns.QuestGuide, so on another client this file still
 -- loads, as if the module were switched off: never built, its settings nil.
-local QG = ns.Module("QuestGuide", { clients = { forever = true }, defaults = { newMark = true, pins = true, arrow = "quest", stepLine = true } })
+local QG = ns.Module("QuestGuide", { clients = { forever = true }, defaults = { newMark = true, pins = true, arrow = "quest", stepLine = true }, live = true })
 ns.QuestGuide = QG
 
 ns.Options.MODULE_INFO.QuestGuide = { L["Quest guidance"], L["A New mark on quests new in WoW Forever (when the client flags them), quest-start pins on the world map, and the arrow on a tracked quest's next step."] }
@@ -224,11 +224,20 @@ function QG.Rows()
 end
 
 -- Module entry point (Core/Modules.lua): the map pins, and the tracker following the arrow (redrawn
--- now: it was built at login before this module, so without its marks).
-function QG.Enable(settings)
-  QG.settings = settings
+-- now: it was built at login before this module, so without its marks). All through the scope.
+function QG.Enable(settings, scope)
+  QG.settings, QG.scope = settings, scope
   QG.pointed = type(VanguardCharDB) == "table" and ns.PlainNumber(VanguardCharDB.questPin) or nil
-  for _, event in ipairs({ "SUPER_TRACKING_CHANGED", "WAYPOINT_UPDATE" }) do ns.On(event, QG.StepsChanged) end
+  for _, event in ipairs({ "SUPER_TRACKING_CHANGED", "WAYPOINT_UPDATE" }) do scope:On(event, QG.StepsChanged) end
   QG.EnableMap()
+  QG.StepsChanged()
+end
+
+-- Switched off: the pins come off the world map, and the module reads as off (no settings: no New mark, no step
+-- line, no pins, as after a login with it off) with the tracker redrawn without them. The world map's hooks go
+-- inert with the scope; nothing is stored on the game's map.
+function QG.Disable()
+  QG.DisableMap()
+  QG.settings, QG.pointed = nil, nil
   QG.StepsChanged()
 end

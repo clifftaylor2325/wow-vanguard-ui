@@ -5489,6 +5489,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, the badges, rings and the bar are gone at once, clicking a talent only does what the game does and the command says the planner is off; nothing is spent. On, the bar and your plan return on the open window.
 - If it fails, paste: a screenshot of the talents window and `/vg errors`.
 
+### 35.10 Quest guidance
+
+- Do: open the world map on a zone with quest starts (pins show). With it open, switch **Quest guidance** off under `/vg` → Modules, then on again; Shift-click a tracked quest in each state.
+- Expect: off, the pins vanish from the open map at once, the tracker loses its New marks and next-step line, and Shift-click does nothing; on, the pins return on the open map. The map itself keeps working.
+- If it fails, paste: a screenshot of the map and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
