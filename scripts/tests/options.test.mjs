@@ -643,13 +643,10 @@ const PAGE_VIEW = "(function() for _, w in ipairs(__wfgStub.frames) do if w.fade
 const rowNamed = (text) => `(function() for _, w in ipairs(__wfgStub.frames) do
   if w.label and w.label.__text == "${text}" and ns.Options.RevealRow(w) then return w end end end)()`;
 
-it("options: a Width the presets don't list shows its value as a dropdown; a preset stays as segments", () => {
-  const preset = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { width = 90 } } } }' });
-  preset.eval('ns.Options.Show("raid")');
-  expect(preset.eval(`local r = ${rowNamed("Width")} return { r.segments ~= nil, r.dropdown == nil }`), "90 is a preset: the four segments").toEqual([true, true]);
+it("options: the raid Width is a slider that shows a value between the old steps, and the old steps sit on it", () => {
   const other = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { width = 84 } } } }' });
   other.eval('ns.Options.Show("raid")');
-  expect([other.eval(`local r = ${rowNamed("Width")} return { r.segments == nil, r.dropdown ~= nil }`), other.texts("84").length > 0], "84 isn't a preset: a dropdown, showing 84").toEqual([[true, true], true]);
+  expect([other.eval(`local r = ${rowNamed("Width")} return { r.segments == nil, r.dropdown == nil }`), other.texts("84").length > 0], "84 is on the slider and shown").toEqual([[true, true], true]);
 });
 
 it("options: the mouse wheel over a slider, a choice or a switch scrolls the page and never changes the value", () => {
