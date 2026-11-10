@@ -146,14 +146,16 @@ do
   -- Lays a frame's backdrop just under it: in its strata, one level below it (the game moves a popup to another
   -- parent and level as it shows one), shown while the frame is visible and has what the backdrop waits for.
   -- The game's frame may answer IsVisible with a secret (a widget container the client drives): it counts as
-  -- hidden (ns.IsTrue), never truth-tested or handed to SetShown, either of which raises from addon code.
+  -- hidden (ns.IsTrue), never truth-tested or handed to SetShown, either of which raises from addon code; a hidden
+  -- strata or level is not copied (SetFrameStrata and SetFrameLevel refuse a secret from addon code).
   -- A frame without a backdrop is skipped.
   ---@param frame table
   function GW.FitBackdrop(frame)
     local back, when = vgBackdrop[frame], vgBackdropWhen[frame]
     if not back then return end
-    back:SetFrameStrata(frame:GetFrameStrata())
-    back:SetFrameLevel(math.max(0, frame:GetFrameLevel() - 1))
+    local strata, level = ns.PlainText(frame:GetFrameStrata()), ns.PlainNumber(frame:GetFrameLevel())
+    if strata then back:SetFrameStrata(strata) end
+    if level then back:SetFrameLevel(math.max(0, level - 1)) end
     back:SetShown(ns.IsTrue(frame:IsVisible()) and (when == nil or ns.IsTrue(when(frame))))
   end
 

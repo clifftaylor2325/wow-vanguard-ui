@@ -297,6 +297,12 @@ it("a window's backdrop never takes a secret visibility from the game's frame: i
   expect(backShown(), "the window says its visibility is secret: the backdrop is hidden, not shown on a secret").toEqual([false, 0]);
   addon.eval("EditModeManagerFrame:Hide() EditModeManagerFrame:Show()");
   expect(addon.eval("return __panelHost(EditModeManagerFrame):IsShown()"), "and a plain answer shows it again").toBe(true);
+  expect(addon.eval(`local m, S = EditModeManagerFrame, __wfgWorld.secret
+    local back = __panelHost(m) local level = back:GetFrameLevel()
+    m.GetFrameLevel, m.GetFrameStrata = function() return S(40) end, function() return S("DIALOG") end
+    ns.GetModule("Windows").FitBackdrop(m)
+    m.GetFrameLevel, m.GetFrameStrata = nil, nil
+    return { back:GetFrameLevel() == level, #ns.errors }`), "a hidden level or strata is not copied onto the backdrop").toEqual([true, 0]);
 });
 
 it("Edit Mode window: switched off it stays the game's (the note still shows), and a bare client is fine", () => {
