@@ -6,25 +6,25 @@
 // test fails the run before any hits are read, and no hits files at all
 // fails too. The floor only goes up; 100 is the goal.
 
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { root } from "./lib/lua-harness.mjs";
 import { anyClientPaths, clientPaths, readToc } from "./lib/toc.mjs";
 import { coverageReport, formatReport, loadHits } from "./lib/lua-coverage.mjs";
 import { appendJobSummary } from "./lib/lua-summary-reporter.mjs";
+import { runInSlot } from "./lib/test-slot.mjs";
 
 const hits = path.join(root, "coverage", "lua-hits");
-const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
 
-fs.rmSync(hits, { recursive: true, force: true });
-fs.mkdirSync(hits, { recursive: true });
-const run = spawnSync(process.execPath, [bin, "run"], {
-  cwd: root,
-  stdio: "inherit",
-  env: { ...process.env, LUA_COVERAGE: "1", LUA_COVERAGE_HITS: hits },
-});
-if ((run.status ?? 1) !== 0) process.exit(run.status ?? 1);
+// Starts the hits folder empty; runs once the slot is ours, so a run waiting for one cannot clear a running run's hits.
+function clearHits() {
+  fs.rmSync(hits, { recursive: true, force: true });
+  fs.mkdirSync(hits, { recursive: true });
+}
+
+// Vitest runs in a machine-wide slot (scripts/lib/test-slot.mjs), so two coverage runs never overlap.
+const status = await runInSlot(process.argv.slice(2), { ...process.env, LUA_COVERAGE: "1", LUA_COVERAGE_HITS: hits }, clearHits);
+if (status !== 0) process.exit(status);
 try {
   loadHits(hits);
 } catch (err) {

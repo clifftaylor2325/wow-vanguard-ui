@@ -6,11 +6,13 @@ How to build, test and release Vanguard from a clone. [CLAUDE.md](../CLAUDE.md) 
 npm install
 npm test          # JS and Lua harness tests under Vitest, once (vitest run, no watch), then a per-area Lua harness summary
 npm run test:quick # the JS tests and the Lua smoke tests (both clients, and secret geometry): the fast run while iterating, and the pre-push hook's
+npm run test:slot -- <vitest args>  # what npm test runs, with your arguments: e.g. --project lua scripts/tests/chat.test.mjs -t "<name>"
 npm run verify    # npm test (real addon Lua in a TEST-ONLY headless WoW client, and the JS tests), then the code-quality scan
                   # (functions of 10 lines or fewer, all documented; colors only from Core/Theme.lua)
 npm run coverage  # every test with line coverage of the addon Lua; fails below scripts/lua-coverage-floor.json (100%)
                   # run it on the branch, with main brought in, before its pull request merges: no pull request runs
                   # a test in CI; CI runs it weekly, before each release and from the Actions tab
+                  # npm test, npm run test:quick, npm run test:slot and npm run coverage each take a machine-wide test slot first (below)
 npm run lint      # luacheck
 npm run timing    # the suite on 2 workers (the hosted runner's size): wall time, per-file table; --budget and --baseline fail it
 npm run profile -- <area>  # where the Lua of one test area (or "login") spends its time, by file, function and line
@@ -20,6 +22,8 @@ npm run package   # dist/Vanguard-<version>.zip from committed files
 npm run preview   # preview/*.png: the default layout and the options window (needs Playwright)
 npm run store-art # dist/store-art/*.png: store, Discord and X banners and logos from the painted crest and the dusk landscape
 ```
+
+**One suite run at a time:** a whole run holds one to three gigabytes and every core it can get, and two at once (two clones, two agents, the pre-push hook and a hand-started run) each take twice as long and can exhaust a small machine. So `npm test`, `npm run test:quick`, `npm run test:slot` and `npm run coverage` first take a slot, a lock file in `vanguard-test-slots` in the OS temp folder, shared by every clone on the machine (`scripts/test-slot.mjs`, `scripts/lib/test-slot.mjs`). A machine under 12 GB of memory has one slot and a larger one two; `VG_TEST_SLOTS=n` sets the number and `VG_TEST_SLOT_DIR` the folder. When every slot is busy the run waits (it does not refuse) and prints one line naming each holder's pid, how long it has held the slot, its folder and its command, then a line when it gets a slot. A slot whose process is gone is taken over by the next run; if a pid was reused by another program, the line names the file to delete. Do not start Vitest by hand (`npx vitest`): it skips the slot. A run started from inside a slot (the environment carries `VG_TEST_SLOT_HELD`) does not wait for itself. `npm run timing` starts Vitest itself and does not take a slot.
 
 **Play from your clone:** `npm run link:wow -- --wow "<Forever folder that has Interface/AddOns>"` links `Interface/AddOns/Vanguard` to this clone (a directory junction on Windows, no admin needed), so an edit plus `/reload` shows in game. The folder is remembered in `~/.wow-forever/config.json`, so after the first time it's just `npm run link:wow`. An installed copy is only moved aside with `--replace` (it becomes `Vanguard.backup-<date>`). `--status` shows what's there; `--unlink` removes the link and never deletes a real folder.
 

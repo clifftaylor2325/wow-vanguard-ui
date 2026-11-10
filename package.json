@@ -5,8 +5,9 @@
   "type": "module",
   "description": "Vanguard: a from-scratch UI suite for WoW Forever.",
   "scripts": {
-    "test": "vitest run",
-    "test:quick": "vitest run --project quick --project hooks",
+    "test": "node scripts/test-slot.mjs",
+    "test:slot": "node scripts/test-slot.mjs",
+    "test:quick": "node scripts/test-slot.mjs --project quick --project hooks",
     "verify": "npm test && npm run quality",
     "snapshot:update": "node scripts/tests/snapshot.test.mjs --update",
     "freeze:update": "node scripts/tests/freeze.test.mjs --update",
