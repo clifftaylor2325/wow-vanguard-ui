@@ -71,3 +71,16 @@ it("info strip: no meter lines are read while the client restricts the fight or 
   }
   expect(meter(addon), "restrictions over: read again").toEqual([1234.5, 2, 0]);
 });
+
+it("bags: a bank window the game makes after login is still watched, once, when a part loads or the bank opens", () => {
+  for (const event of [["ADDON_LOADED", "Blizzard_BankUI"], ["BANKFRAME_OPENED"]]) {
+    const addon = loggedIn("BankFrame = nil BankPanel = nil");
+    addon.eval("__watched = 0 table.insert(ns.GetModule('Bags').BANK_PARTS, function() __watched = __watched + 1 end)");
+    addon.fire(...event);
+    expect(addon.eval("return __watched"), "no bank window yet: nothing watched").toBe(0);
+    addon.eval(`BankFrame = CreateFrame("Frame", "BankFrame", UIParent) BankPanel = CreateFrame("Frame", "BankPanel", BankFrame)`);
+    addon.fire(...event);
+    addon.fire(...event);
+    expect([addon.eval("return __watched"), addon.eval("return #ns.errors")], `${event[0]}: watched once the window exists, not twice`).toEqual([1, 0]);
+  }
+});
