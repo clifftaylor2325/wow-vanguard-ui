@@ -307,7 +307,7 @@ it("chat filter: a game whose new window does not take the selection, or has no 
   expect([noSelect.eval("return ns.GetModule('ChatFilter').window ~= nil"), noSelect.eval("return #ns.errors")], "no select call: no error").toEqual([true, 0]);
 });
 
-it("chat filter: the filter waits for the end of a fight to make the tab; no GetChatWindowInfo means a new tab each time is not tried", () => {
+it("chat filter: the filter waits for the end of a fight to make the tab; with no GetChatWindowInfo the saved window number finds the tab", () => {
   const addon = loggedIn();
   addon.eval("__wfgStub.inCombat = true");
   addon.slash("filter on");
@@ -317,7 +317,7 @@ it("chat filter: the filter waits for the end of a fight to make the tab; no Get
   expect(addon.eval("return ns.GetModule('ChatFilter').window ~= nil"), "made when the fight ends").toBe(true);
   const noInfo = loggedIn("GetChatWindowInfo = nil");
   noInfo.slash("filter on");
-  expect(noInfo.eval("return ns.GetModule('ChatFilter').FindWindow()"), "no way to look for the tab").toBe(null);
+  expect(noInfo.eval("local CF = ns.GetModule('ChatFilter') return CF.FindWindow() == CF.window and CF.window ~= nil"), "no way to look by name: the saved window number finds it").toBe(true);
 });
 
 it("chat filter: the /vg filter command and the keyword limits", () => {
@@ -451,7 +451,7 @@ it("chat filter: a line without an ID is judged once across windows, hide mode c
   expect(tab(addon).length, "one line in the tab").toBe(1);
   expect(deliver(addon, "|Haddon:Vanguard:allow:Victim|h[Victim]|h www.gold.com gold |cffff0000red", "Evil"), "caught").toBe(true);
   expect(tab(addon)[1].includes("|Haddon:Vanguard:allow:Victim") || !tab(addon)[1].endsWith("|r"), "a spammer's own addon link is neutralised and the colour closed").toBe(false);
-  addon.eval("__wfgWorld.chatWindows[3] = nil");
+  addon.eval("ChatFrame3:Hide()");
   deliver(addon, GOLD, "Goldy2");
   addon.eval("__wfgStub.inCombat = false");
   expect(addon.eval("return ns.GetModule('ChatFilter').window:GetName()"), "the closed tab is made again").toBe("ChatFrame4");
@@ -464,4 +464,83 @@ it("chat filter: a line without an ID is judged once across windows, hide mode c
   expect(deliver(addon, GOLD, "Goldy4"), "module off: everything passes").toBe(false);
   addon.eval("ns.GetModule('ChatFilter').Enable(ns.Settings('ChatFilter'))");
   expect(deliver(addon, GOLD, "Goldy5"), "and on again, with one filter registered").toBe(true);
+});
+
+// Whether the options window shows a row with this text (CLICK_LUA's __find).
+const shown = (addon, text) => addon.eval(`return __find(${JSON.stringify(text)}) ~= nil`);
+// The note a locale with some categories missing gets under the switches.
+const NOTE = "Some spam categories have no word list for your language yet, so their switches are not shown. Your own words and repeated lines still work.";
+
+// A logged-in addon on a client of this locale, the filter on.
+const filteringIn = (locale, extra = "") => filtering(`GetLocale = function() return "${locale}" end ${extra}`);
+
+it("chat filter words: a German client catches German recruiting, boosting and gold lines; English-only sale words are not its words", () => {
+  const addon = filteringIn("deDE");
+  expect(deliver(addon, "Wir rekrutieren neue Mitglieder, tritt unserer Gilde bei!", "Recruiter"), "recruiting").toBe(true);
+  expect(deliver(addon, "Boost im Angebot, günstig, flüster mir", "Booster"), "boosting").toBe(true);
+  expect(deliver(addon, "Verkaufe Gold, schnelle Lieferung auf www.goldshop.com", "Goldy"), "gold").toBe(true);
+  expect(deliver(addon, "Suche Heiler für die Todesminen", "Honest"), "an honest line").toBe(false);
+  expect(addon.eval("return ns.GetModule('ChatFilter').Reasons()"), "the card's reasons are the available categories, your words and repeats").toEqual(["Gold selling", "Boosting", "Recruiting", "Your word", "Repeat"]);
+});
+
+it("chat filter words: Russian, French, Spanish, Italian, Portuguese, Korean and Chinese clients each catch a recruiting line of their own language", () => {
+  const lines = {
+    ruRU: "Идёт набор в нашу гильдию, вступай в гильдию!",
+    frFR: "Notre guilde recrute, rejoignez notre guilde",
+    esES: "Reclutando para nuestra hermandad, únete a nuestra hermandad",
+    esMX: "Reclutando para nuestra hermandad, únete a nuestra hermandad",
+    itIT: "Reclutiamo per la gilda, unisciti alla nostra gilda",
+    ptBR: "Recrutando para a guilda, junte-se à nossa guilda",
+    koKR: "길드원 모집합니다 길드 가입 환영",
+    zhCN: "公会招募新人，欢迎加入",
+    zhTW: "公會招募新人，歡迎加入",
+  };
+  for (const [locale, line] of Object.entries(lines)) {
+    expect(deliver(filteringIn(locale), line, "Recruiter"), `${locale} recruiting`).toBe(true);
+  }
+});
+
+it("chat filter words: an enGB client uses the English words", () => {
+  expect(deliver(filteringIn("enGB"), GOLD, "Goldy"), "gold selling").toBe(true);
+});
+
+it("chat filter words: a locale with no word lists catches nothing by category, hides the category switches and says so, while your words and repeats still work", () => {
+  const addon = filteringIn("xxXX", CLICK_LUA);
+  expect(deliver(addon, GOLD, "Goldy"), "English gold selling passes on a client with no list for it").toBe(false);
+  expect(addon.eval("return #ns.GetModule('ChatFilter').Available()"), "no category available").toBe(0);
+  addon.eval('ns.Options.Show("chat")');
+  expect(["Gold selling", "Boosting", "Guild recruiting"].map(shown.bind(null, addon)), "no category switch").toEqual([false, false, false]);
+  expect(shown(addon, "Same line again within a minute"), "the repeat switch stays").toBe(true);
+  expect(addon.texts(NOTE).length, "the note").toBe(1);
+  addon.eval('ns.GetModule("ChatFilter").Add("spamword")');
+  expect(deliver(addon, "buy spamword here", "Spammer"), "your own word").toBe(true);
+  expect(deliver(addon, "this exact line repeated", "Rep"), "first time").toBe(false);
+  expect(deliver(addon, "this exact line repeated", "Rep"), "repeat").toBe(true);
+});
+
+it("chat filter words: an English client shows every category switch and no note", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("chat")');
+  expect(["Gold selling", "Boosting", "Guild recruiting"].map((t) => shown(addon, t)), "three switches").toEqual([true, true, true]);
+  expect(addon.texts(NOTE).length, "no note").toBe(0);
+});
+
+it("chat filter tab: found by its saved window number after the player renames it, not made again; a closed tab forgets the number", () => {
+  const addon = filtering();
+  deliver(addon, GOLD, "Goldy");
+  expect(addon.eval("return VanguardCharDB.filteredTab"), "the number is saved per character").toBe(3);
+  addon.eval("__wfgWorld.chatWindows[3] = 'My spam'");
+  expect(deliver(addon, GOLD, "Goldy2"), "still caught").toBe(true);
+  expect(addon.eval("return { ChatFrame4 == nil, ns.GetModule('ChatFilter').window:GetName() }"), "no second tab").toEqual([true, "ChatFrame3"]);
+  expect(addon.eval("return ns.GetModule('ChatFilter').IsTab(3)"), "chat history sees it as the Filtered tab").toBe(true);
+  addon.eval("ChatFrame3:Hide()");
+  deliver(addon, GOLD, "Goldy3");
+  expect(addon.eval("return { VanguardCharDB.filteredTab, ns.GetModule('ChatFilter').window:GetName() }"), "a closed, renamed tab is let go and a new one saved").toEqual([4, "ChatFrame4"]);
+});
+
+it("chat filter tab: a tab an earlier version made (no saved number) is found by its name and its number saved", () => {
+  const addon = filtering();
+  deliver(addon, GOLD, "Goldy");
+  addon.eval("VanguardCharDB.filteredTab = nil ns.GetModule('ChatFilter').window = nil ns.GetModule('ChatFilter').Prepare()");
+  expect(addon.eval("return { VanguardCharDB.filteredTab, ChatFrame4 == nil }"), "found by name, saved, not made again").toEqual([3, true]);
 });

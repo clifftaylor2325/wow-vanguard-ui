@@ -417,3 +417,43 @@ it("H29-6-R1 a post row lights under the mouse and its tooltip script still runs
   addon.eval(`__row:GetScript("OnLeave")(__row)`);
   expect(addon.eval("return ns.Theme.RowParts(__row).hover:IsShown()"), "left: the wash is off").toBe(false);
 });
+
+// A logged-in addon on a client of this locale.
+const boardIn = (locale) => loggedIn(`GetLocale = function() return "${locale}" end`);
+
+it("group board words: a German client reads German looking-for-more and looking-for-group lines, with the shared acronyms and role words", () => {
+  const addon = boardIn("deDE");
+  expect(parse(addon, "Suche Tank und Heiler für SFK"), "looking for more").toEqual(["LFM", "Shadowfang Keep", "tank,healer"]);
+  expect(parse(addon, "Suche Gruppe für BRD"), "looking for group").toEqual(["LFG", "Blackrock Depths", ""]);
+  expect(parse(addon, "LFM Strat dd"), "the shared acronyms").toEqual(["LFM", "Stratholme", "dps"]);
+});
+
+it("group board words: Russian lines are read, Cyrillic capitals and all", () => {
+  const addon = boardIn("ruRU");
+  expect(parse(addon, "Ищем Хила и ДД в SFK")?.slice(0, 1), "looking for more").toEqual(["LFM"]);
+  expect(parse(addon, "ищу группу в ЛФМ")?.[0], "looking for group").toBe("LFG");
+});
+
+it("group board words: a locale's own dungeon name is read from the name the board shows", () => {
+  const addon = boardIn("deDE");
+  addon.eval("local GB = ns.GetModule('GroupBoard') GB.DUNGEONS[5][1] = 'Burg Schattenfang' GB.LoadWords()");
+  expect(parse(addon, "LFM Burg Schattenfang tank")?.[1], "the translated full name").toBe("Burg Schattenfang");
+});
+
+it("group board words: a Korean or Chinese client reads the shared acronyms, and English phrases are not its words", () => {
+  for (const locale of ["koKR", "zhCN", "zhTW"]) {
+    const addon = boardIn(locale);
+    expect(parse(addon, "LFM SFK tank"), `${locale} acronyms`).toEqual(["LFM", "Shadowfang Keep", "tank"]);
+    expect(parse(addon, "looking for more heals"), `${locale} no English phrases`).toBe(null);
+  }
+});
+
+it("group board words: an English client keeps the English phrases, and an enGB client too", () => {
+  for (const locale of ["enUS", "enGB"]) {
+    expect(parse(boardIn(locale), "looking for more heals for the deadmines"), locale).toEqual(["LFM", "The Deadmines", "healer"]);
+  }
+});
+
+it("group board words: a client of a locale with no list reads the shared acronyms", () => {
+  expect(parse(boardIn("xxXX"), "LFG ubrs"), "shared acronyms only").toEqual(["LFG", "Upper Blackrock Spire", ""]);
+});

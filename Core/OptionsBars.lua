@@ -71,7 +71,8 @@ local BAR_SPACING = { min = 0, max = 10, step = 1, format = function(v) return n
 -- The buttons' macro names, key text and spacing, each applied at once (the spacing out of combat).
 local function buttonRows()
   return {
-    check(L["Macro names"], liveMethod("ActionBars", "macroNames", "RepaintLabels")), check(L["Key text"], liveMethod("ActionBars", "hotkeys", "RepaintLabels")),
+    check(L["Macro names"], liveMethod("ActionBars", "macroNames", "RepaintLabels")),
+    check(L["Key text"], liveMethod("ActionBars", "hotkeys", "RepaintLabels")),
     { "slider", L["Button spacing"], BAR_SPACING, liveMethod("ActionBars", "spacing", "SpacingChanged") },
   }
 end

@@ -617,11 +617,26 @@ local function screenHeight()
   return type(h) == "number" and h > 0 and h or 768
 end
 
--- A frame's effective scale (UIParent's, or 1, when it has none).
+-- The least effective scale a frame is drawn at. Below it the client is only holding the frame shrunk: it
+-- hands a nameplate over at about 0.01, and a pixel sized for that is a dark block tens of units thick
+-- once the plate grows, on an aura icon the client has since closed to addons for good.
+T.MIN_SCALE = 0.1
+
+-- The scale to size a pixel for: `scale` itself when a frame is drawn at it; the screen's (UIParent's)
+-- for a frame held shrunk below T.MIN_SCALE; 1 when it is no positive number.
+---@param scale any
+---@return number
+function T.DrawnScale(scale)
+  if type(scale) ~= "number" or scale <= 0 then return 1 end
+  if scale >= T.MIN_SCALE then return scale end
+  local ui = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale()
+  return type(ui) == "number" and ui >= T.MIN_SCALE and ui or 1
+end
+
+-- A frame's effective scale as a pixel is sized for it (T.DrawnScale; UIParent's, or 1, when it has none).
 local function scaleOf(frame)
   local f = frame and frame.GetEffectiveScale and frame or UIParent
-  local s = f and f.GetEffectiveScale and f:GetEffectiveScale()
-  return type(s) == "number" and s > 0 and s or 1
+  return T.DrawnScale(f and f.GetEffectiveScale and f:GetEffectiveScale())
 end
 
 -- One screen pixel in UI units at scale 1 (768 / screen height): the client's own
@@ -642,12 +657,12 @@ function T.Pixel(frame)
   return pixelFactor() / scaleOf(frame)
 end
 
--- T.Pixel for a frame whose effective scale the caller has read already (`scale`; 1 when it isn't a
--- positive number), so a loop over a holder's icons reads it once.
+-- T.Pixel for a frame whose effective scale the caller has read already (`scale`, as T.DrawnScale
+-- takes it), so a loop over a holder's icons reads it once.
 ---@param scale number
 ---@return number
 function T.PixelAtScale(scale)
-  return pixelFactor() / ((type(scale) == "number" and scale > 0) and scale or 1)
+  return pixelFactor() / T.DrawnScale(scale)
 end
 
 -- The UI scale that makes one UI unit one screen pixel (768 / screen height).
