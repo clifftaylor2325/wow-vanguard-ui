@@ -45,7 +45,7 @@ Every client call is checked before use, and values the client hides from addons
 
 ## Known issues
 
-- Setting names and other text new in 0.9.4 show in English in the other languages until their translations are in.
+- Setting names and other text new in 0.9.4 and 0.9.5 show in English in the other languages until their translations are in.
 - The translations are machine drafts, so some lines read oddly. Report one with `/vg feedback`.
 - Retail support is new: report what looks wrong there with `/vg feedback`.
 

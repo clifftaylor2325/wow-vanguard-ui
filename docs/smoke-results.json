@@ -425,5 +425,194 @@
     "date": "2026-11-09",
     "result": "skip",
     "note": "Not run: Cliff skipped the in-game verification pass for 0.9.4. His reason, 2026-11-09: he has \"been playing with the addon for the last week\" and has \"high confidence that everything essentially is working\"."
+  },
+  {
+    "step": "1.3a",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "2.1i",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "2.1j",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "2.1k",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "2.1l",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "2.1m",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "6.2c",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "7.1b",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "7.2l",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "7.2m",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "7.2n",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "7.5b",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "7.5c",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "7.5d",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "8.3c",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "8.4e",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "8.4f",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "8.6d",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "8.6e",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "8.6f",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "12.1a",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "33.217a",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "33.471",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "33.472",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "33.473",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "33.474",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "33.475",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
   }
 ]
