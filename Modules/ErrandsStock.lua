@@ -84,8 +84,8 @@ local function amountBox(row)
   local box = W.Input(row, SW.AMOUNT_W)
   box:SetNumeric(true)
   box:SetMaxLetters(5)
-  box:SetScript("OnTextChanged", ns.Guard("type stock amount", typeAmount))
-  box:SetScript("OnEditFocusLost", ns.Guard("leave stock amount", SW.LeaveAmount))
+  box:HookScript("OnTextChanged", ns.Guard("type stock amount", typeAmount))
+  box:HookScript("OnEditFocusLost", ns.Guard("leave stock amount", SW.LeaveAmount))
   return box
 end
 

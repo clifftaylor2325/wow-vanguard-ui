@@ -49,8 +49,6 @@ it("RaidAuras: a changed setting makes the tile's rows again at the restart, an 
 
 lifecycleCases("RaidHealing", login);
 
-lifecycleCases("RaidHealing", login);
-
 it("RaidHealing: switched off, every tile loses its heal, shield, aggro and buff marks at once; on again they return", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV);
   addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
