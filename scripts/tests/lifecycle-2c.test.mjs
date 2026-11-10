@@ -178,3 +178,17 @@ it("lifecycle: spell ranks switched off says nothing about your bars, and on aga
   addon.advance(0.5);
   expect(notices(), "said once it listens again").toBe(1);
 });
+
+// Coexist -------------------------------------------------------------------------------------------------------
+
+lifecycleCases("Coexist", loginWith());
+
+it("lifecycle: coexist switched off takes its card off the Modules page, and keeps its answers", () => {
+  const addon = loginWith()();
+  addon.eval("C_AddOns = { IsAddOnLoaded = function(name) return name == 'Bagnon' end }");
+  addon.eval("ns.GetModule('Coexist').Keep({ addon = 'Bagnon', module = 'Bags', what = 'bags' })");
+  expect(addon.eval("return #ns.GetModule('Coexist').Rows() > 0"), "the card shows the answer").toBe(true);
+  addon.eval('ns.SetModuleEnabled("Coexist", false)');
+  expect(addon.eval("return #ns.GetModule('Coexist').Rows()"), "no card while it is off").toBe(0);
+  expect(addon.eval("return ns.Settings('Coexist').answered.Bagnon"), "the answer is kept").toBe("kept");
+});
