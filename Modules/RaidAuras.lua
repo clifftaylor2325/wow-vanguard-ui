@@ -362,16 +362,18 @@ local function reconcile(b)
   if built(b) and b.auraSignature ~= rowsSignature(b) then retireRows(b) end
 end
 
--- Adds fn to a raid tile hook list unless it is there (the module started again).
-local function hook(list, fn)
+-- Adds fn to one of the raid frames' tile hook lists (RF.updateHooks and the others) unless it is there already (the
+-- module started again). The raid modules keep their hooks on the lists only while they run, so a running tile
+-- update pays nothing for the lifecycle and a stopped module costs the tiles nothing.
+function RA.AddHook(list, fn)
   for _, have in ipairs(list) do
     if have == fn then return end
   end
   table.insert(list, fn)
 end
 
--- Takes fn off a raid tile hook list: a stopped module costs the tiles' updates nothing.
-local function unhook(list, fn)
+-- Takes fn off a raid tile hook list (RA.AddHook).
+function RA.RemoveHook(list, fn)
   for i = #list, 1, -1 do
     if list[i] == fn then table.remove(list, i) end
   end
@@ -379,14 +381,14 @@ end
 
 -- Module entry point (Core/Modules.lua): hook into raid tiles (existing and new), and build the
 -- rows ahead now and whenever the group changes. The hooks are on the parent's lists for as long as the
--- module runs (RA.Disable takes them off), so a running tile update pays nothing for the lifecycle.
+-- module runs (RA.Disable takes them off).
 function RA.Enable(settings, scope)
   RA.settings, RA.scope = settings, scope
   for _, b in ipairs(RF.buttons) do reconcile(b) end
-  hook(RF.updateHooks, update)
-  hook(RF.updateHooks, indicatorUpdate)
-  hook(RF.emptyHooks, emptied)
-  hook(RF.emptyHooks, indicatorEmptied)
+  RA.AddHook(RF.updateHooks, update)
+  RA.AddHook(RF.updateHooks, indicatorUpdate)
+  RA.AddHook(RF.emptyHooks, emptied)
+  RA.AddHook(RF.emptyHooks, indicatorEmptied)
   scope:On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
   RA.BuildAhead()
   if ns.ModulesBuilt() then RF.UpdateAll() end
@@ -395,10 +397,10 @@ end
 -- Switched off: the hooks leave the tiles' lists and every tile's rows, indicators and highlight are cleared and
 -- hidden (kept for the next start, which makes them again only if the settings changed their shape).
 function RA.Disable()
-  unhook(RF.updateHooks, update)
-  unhook(RF.updateHooks, indicatorUpdate)
-  unhook(RF.emptyHooks, emptied)
-  unhook(RF.emptyHooks, indicatorEmptied)
+  RA.RemoveHook(RF.updateHooks, update)
+  RA.RemoveHook(RF.updateHooks, indicatorUpdate)
+  RA.RemoveHook(RF.emptyHooks, emptied)
+  RA.RemoveHook(RF.emptyHooks, indicatorEmptied)
   RA.waiting = {}
   for _, b in ipairs(RF.buttons) do
     if built(b) then clearTile(b) end

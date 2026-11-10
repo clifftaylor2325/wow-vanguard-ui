@@ -10,3 +10,4 @@ import { lifecycleCases } from "./lifecycle-helpers.mjs";
 const login = (saved) => loggedIn("", { savedVariables: saved });
 
 lifecycleCases("RaidAuras", login);
+lifecycleCases("RaidHealing", login);

@@ -5441,6 +5441,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Expect: off, every tile loses its debuff and HoT icons, its indicators and the dispel wash at once, and nothing is left drawn; on, they come back on every tile; a changed debuff count or indicator shows on the tiles at once (out of combat), with no reload notice for these rows.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
+### 35.2 Raid healing
+
+- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid healing** off under `/vg` → Modules, then on again.
+- Expect: off, the heal and shield bars, aggro strip and missing-buff marker are gone from every tile at once and stay gone while the heal lands; on, they return on every tile without a reload.
+- If it fails, paste: a screenshot of the tiles and `/vg errors`.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
