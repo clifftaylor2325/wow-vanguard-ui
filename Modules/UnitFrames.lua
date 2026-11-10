@@ -399,11 +399,12 @@ local function healthHeight(f, h)
   return h - barsTop(f) - UF.settings.powerHeight - 2 * barInset(f)
 end
 
--- The width of a frame's health bar (units), from the width the frame was given.
+-- The width of a frame's health bar (units), from the width the frame was given, as the bars were last laid out
+-- (layoutBars keeps it: the frame's width less the bar insets and the portrait's room).
 ---@param f table a unit frame
 ---@return number
 function UF.BarWidth(f)
-  return f.vgWidth - 2 * barInset(f) - UF.Portrait.Room(f)
+  return f.vgBarWidth
 end
 
 -- How far the bars sit inside a frame's edge (units).
@@ -416,8 +417,9 @@ end
 -- Lays out the bars inside a frame: health on top (under the name row on a bare frame), power along the bottom,
 -- each the bar inset from the border (the outer end's also clear of a portrait, UF.Portrait).
 local function layoutBars(f, powerHeight)
-  local inset, room = barInset(f), UF.Portrait.Room(f)
+  local inset, room = barInset(f), UF.Portrait.Measure(f)
   local left, right = inset + (f.outer == "LEFT" and room or 0), inset + (f.outer == "RIGHT" and room or 0)
+  f.vgBarWidth = f.vgWidth - left - right
   f.health:SetPoint("TOPLEFT", left, -barsTop(f))
   f.health:SetPoint("BOTTOMRIGHT", -right, powerHeight + 2 * inset)
   f.power:SetPoint("TOPLEFT", f.health, "BOTTOMLEFT", 0, -inset)
@@ -1035,12 +1037,6 @@ function UF.RefreshRaidIcons()
   for _, f in pairs(UF.frames) do UF.UpdateRaidIcon(f) end
 end
 
--- The status row and the portrait, on the frames that carry them.
-local function updateExtras(f)
-  if f.status then UF.Status.Update(f) end
-  if f.portrait then UF.Portrait.Update(f) end
-end
-
 -- Everything on a frame, if its unit exists.
 function UF.UpdateFrame(f)
   if not ns.IsTrue(UnitExists(f.unit)) then
@@ -1052,7 +1048,7 @@ function UF.UpdateFrame(f)
   UF.UpdateTag(f)
   UF.UpdateRaidIcon(f)
   UF.UpdateCombat(f)
-  updateExtras(f)
+  if f.status then UF.Status.Update(f) end
 end
 
 -- Unit event -> what it updates.
@@ -1116,12 +1112,16 @@ local function pollTargetsOfTargets()
   for _, key in ipairs(POLLED) do ns.Every(UF.frames[key], 0.2, refreshTargetOfTarget, UF.frames[key]) end
 end
 
--- Updates every frame whose key is listed (all frames with no list).
+-- Updates every frame whose key is listed (all frames with no list). A list is walked by its own keys, so an event
+-- for a few frames does not look at the rest.
 function UF.Refresh(keys)
-  for key, f in pairs(UF.frames) do
-    if not keys or keys[key] then
-      UF.UpdateFrame(f)
-    end
+  local frames = UF.frames
+  if not keys then
+    for _, f in pairs(frames) do UF.UpdateFrame(f) end
+    return
+  end
+  for key in pairs(keys) do
+    if frames[key] then UF.UpdateFrame(frames[key]) end
   end
 end
 

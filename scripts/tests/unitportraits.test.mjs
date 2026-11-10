@@ -29,11 +29,14 @@ it("a square-ended look gives the portrait its room: the class icon for a player
 it("a class icon falls back to the portrait for a creature or a hidden class, and a missing portrait call draws nothing wrong", () => {
   const addon = loggedIn(UNITS_ENV, { savedVariables: ROOM().savedVariables.replace('targetPortrait = "portrait"', 'targetPortrait = "class"') });
   expect(read(addon, "target")[1], "a creature has no class icon").toBe("TEST-ONLY-PORTRAIT");
-  addon.eval('__units.target = { name = "TEST-ONLY Friend", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", player = true, class = { __secret = true } } ns.GetModule("UnitFrames").Refresh()');
+  addon.eval('__units.target = { name = "TEST-ONLY Friend", hp = 1, maxhp = 2, power = 0, maxpower = 0, ptype = "MANA", player = true, class = { __secret = true } }');
+  addon.fire("PLAYER_TARGET_CHANGED");
   expect(read(addon, "target")[1], "a hidden class too").toBe("TEST-ONLY-PORTRAIT");
-  addon.eval('__units.target.class = "ROGUE" ns.GetModule("UnitFrames").Refresh()');
+  addon.eval('__units.target.class = "ROGUE"');
+  addon.fire("PLAYER_TARGET_CHANGED");
   expect(read(addon, "target")[1], "a player with a class shows its icon").toBe("Interface\\TargetingFrame\\UI-Classes-Circles");
-  addon.eval("SetPortraitTexture = nil CLASS_ICON_TCOORDS = nil ns.GetModule('UnitFrames').Refresh()");
+  addon.eval("SetPortraitTexture = nil CLASS_ICON_TCOORDS = nil");
+  addon.fire("PLAYER_TARGET_CHANGED");
   expect(read(addon, "target")[0], "a client without either call shows the frame without an error").toBe("shown");
 });
 

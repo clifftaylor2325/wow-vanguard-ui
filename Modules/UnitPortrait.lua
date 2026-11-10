@@ -17,7 +17,7 @@ UF.Portrait = PT
 PT.KEYS = { player = true, target = true, focus = true }
 -- The choices a frame's setting holds ("off" for anything else).
 PT.CHOICES = { portrait = true, class = true }
--- What changes a unit's portrait (the target and focus also repaint when they change, through UF.UpdateFrame).
+-- What changes a unit's portrait (the target and focus also repaint when they change: PT.UNIT_CHANGES).
 PT.EVENTS = { "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED" }
 -- The deepest cut or rounding (units) an outer corner may have and still leave the square its room: Rimmed's four.
 PT.MAX_CORNER = 4
@@ -43,13 +43,24 @@ local function side(f)
   return f.vgHeight - 2 * UF.BarInset(f)
 end
 
--- How much of a frame's width the portrait takes, with its gap to the bars (units); 0 while it is off or hidden by the
--- look. From the size the frame was given: a fight may hide the one it reports.
+-- Works out how much of a frame's width the portrait takes, with its gap to the bars (units; 0 while it is off or
+-- hidden by the look), and keeps it on the frame for PT.Room. Called as the parts are laid out (UF.PlaceParts), the
+-- only time the settings and the look change it. From the size the frame was given: a fight may hide the one it reports.
+---@param f table a unit frame
+---@return number
+function PT.Measure(f)
+  local room = 0
+  if PT.KEYS[f.key] and PT.Choice(f) ~= "off" and fits(f) then room = side(f) + UF.BarInset(f) end
+  f.vgPortraitRoom = room
+  return room
+end
+
+-- How much of a frame's width the portrait takes, as PT.Measure last found it: one field read, so a refresh costs
+-- nothing while the portrait is off.
 ---@param f table a unit frame
 ---@return number
 function PT.Room(f)
-  if not PT.KEYS[f.key] or PT.Choice(f) == "off" or not fits(f) then return 0 end
-  return side(f) + UF.BarInset(f)
+  return f.vgPortraitRoom or 0
 end
 
 -- The unit's class icon square on the client's sheet, or nil (not a player, a hidden class, or no sheet).
@@ -104,6 +115,23 @@ local function add(f)
   f.portrait:Hide()
 end
 
+-- What changes the unit a frame shows (the target, the focus, a new zone): the frames repaint.
+PT.UNIT_CHANGES = { "PLAYER_TARGET_CHANGED", "PLAYER_FOCUS_CHANGED", "PLAYER_ENTERING_WORLD" }
+
+-- Paints the portraits again (a frame with none shown does nothing).
+function PT.Refresh()
+  for key in pairs(PT.KEYS) do
+    if UF.frames[key] then PT.Update(UF.frames[key]) end
+  end
+end
+
+-- Starts hearing the unit changes, once.
+function PT.Listen()
+  if PT.listening then return end
+  PT.listening = true
+  for _, event in ipairs(PT.UNIT_CHANGES) do ns.On(event, PT.Refresh) end
+end
+
 -- Adds the portraits to the frames that carry them (once the unit frames are built) and follows their unit's changes.
 function PT.Attach()
   for key in pairs(PT.KEYS) do
@@ -114,6 +142,7 @@ function PT.Attach()
       PT.Place(f)
     end
   end
+  PT.Listen()
 end
 
 -- The switches changed (Unit frames page): the three frames lay their bars out again and paint, out of combat.
