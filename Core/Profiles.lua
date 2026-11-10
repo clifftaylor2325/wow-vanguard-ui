@@ -127,9 +127,10 @@ local function freeName(base)
 end
 
 -- A profile name base from a character's name: the characters a profile name can hold
--- (short enough for freeName's " 2"), else "Character".
+-- (short enough for freeName's " 2"), else "Character". The client may hide the name (a secret string,
+-- which string functions refuse), so only a plain one is read.
 local function nameBase(name)
-  local base = (type(name) == "string" and name or ""):gsub("[^%w%s%-_]", "")
+  local base = (ns.PlainText(name) or ""):gsub("[^%w%s%-_]", "")
   return base ~= "" and base:sub(1, 29) or "Character"
 end
 

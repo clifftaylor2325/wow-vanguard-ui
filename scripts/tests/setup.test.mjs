@@ -189,6 +189,12 @@ it("first-run setup: a profile of its own copies the shared one without a reload
   const fork = (name) => addon.eval(`return ns.ForkName(${JSON.stringify(name)})`);
   expect([fork("name"), fork("Ælfric"), fork("Ææ"), fork(undefined)], "a taken name is numbered; letters a profile can't hold are dropped").toEqual(["name 2", "lfric", "Character", "Character"]);
 });
+it("hunt setup: a player name the client hides (a secret string) names the fork's profile Character instead of raising", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  addon.world.setUnit("player", { name: addon.world.secret("Tester") });
+  expect(addon.eval("return ns.ForkName(UnitName('player'))"), "the profile step names its own-profile choice without reading the name").toBe("Character");
+  expect(addon.eval("ns.Setup.ApplyProfile('new') return ns.ProfileName()"), "forking for a hidden name works").toBe("Character");
+});
 it("Y8-2 first-run setup: once setup changes the shared profile, Back doesn't reach the Profile step", () => {
   const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
   setupClick(addon, "next");
