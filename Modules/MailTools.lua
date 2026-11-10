@@ -61,12 +61,17 @@ local function deletable(i)
   return not ns.IsSecret(deletes) and deletes == true
 end
 
+-- Whether a header value is plainly missing: a hidden one is there, and is never compared.
+local function absent(v)
+  return not ns.IsSecret(v) and v == nil
+end
+
 -- Mail i as { index, sender, subject, money, items, link, cod, returnable (a player's mail the game sends back, not
 -- one it deletes: a returned mail is not), sale, days (left, or nil), lost (deleted with money or items in it when
 -- it runs out) }; nil when there is none.
 function MT.Read(i)
   local _, _, sender, subject, money, cod, days, count, _, _, _, reply, gm, _, link = GetInboxHeaderInfo(i)
-  if sender == nil and subject == nil then return nil end
+  if absent(sender) and absent(subject) then return nil end
   local m = { index = i, sender = plain(sender), subject = plain(subject), money = ns.PlainNumber(money) or 0,
     items = ns.PlainNumber(count) or 0, link = plain(link), cod = ns.PlainNumber(cod) or 0, days = ns.PlainNumber(days),
     returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true, sale = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i) ~= nil }

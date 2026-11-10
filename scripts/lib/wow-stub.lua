@@ -484,8 +484,9 @@ function methods:GetFrameLevel()
   return self.__level or ((parent and parent.GetFrameLevel and parent:GetFrameLevel() or 0) + 1)
 end
 
--- Textures: desaturation, recorded.
+-- Textures: desaturation, recorded, and read back.
 function methods:SetDesaturated(on) self.__desaturated = on == true end
+function methods:IsDesaturated() return self.__desaturated == true end
 
 -- Frames: where clicks are taken, inset from each edge (left, right, top, bottom), recorded.
 function methods:SetHitRectInsets(l, r, t, b) self.__hitInsets = { l, r, t, b } end

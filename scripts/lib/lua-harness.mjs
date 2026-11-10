@@ -17,6 +17,7 @@ import fengari from "fengari";
 import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
 import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
+import { markSecretMeta, secretArgAt } from "./lua-secret-ops.mjs";
 import { lineHook } from "./lua-coverage.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 import { advanceEms } from "./truetype.mjs";
@@ -235,7 +236,7 @@ function traceback(L) {
   const msg = lua.lua_tojsstring(L, 1) ?? "<non-string error>";
   lauxlib.luaL_traceback(L, L, to_luastring(msg), 1);
   const [first, ...rest] = lua.lua_tojsstring(L, -1).split("\n");
-  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-inspect\.lua|wow-retail-[\w-]+\.lua/.test(l))];
+  const lines = [first, ...rest.filter((l) => !/\[C\]: in \?$|wow-stub\.lua|wow-world\.lua|wow-keybinds\.lua|wow-layout\.lua|wow-taint\.lua|wow-aspects\.lua|wow-inspect\.lua|wow-retail-[\w-]+\.lua/.test(l))];
   lua.lua_pushstring(L, to_luastring(lines.join("\n")));
   return 1;
 }
@@ -325,16 +326,27 @@ function loadText(L) {
   runLib(L, "wow-textfit.lua");
 }
 
-// Loads the widget API list, the WoW stub, its layout, the world, its key bindings, the taint rules, and an empty addon namespace.
-function loadStub(L) {
-  lua.lua_pushjsfunction(L, newUserdata);
-  lua.lua_setglobal(L, to_luastring("__wfgUserdata"));
+// The harness's own functions the stub files call: __wfgUserdata, and __wfgMarkSecretMeta and __wfgSecretAt for
+// the secret checks (scripts/lib/lua-secret-ops.mjs).
+function setHostFunctions(L) {
+  const host = { __wfgUserdata: newUserdata, __wfgMarkSecretMeta: markSecretMeta, __wfgSecretAt: secretArgAt };
+  for (const [name, fn] of Object.entries(host)) {
+    lua.lua_pushjsfunction(L, fn);
+    lua.lua_setglobal(L, to_luastring(name));
+  }
+}
+
+// Loads the widget API list, the WoW stub, its layout, the world, its key bindings, the taint rules, the secret
+// aspects unless `aspects` is false, and an empty addon namespace.
+function loadStub(L, aspects) {
+  setHostFunctions(L);
   runLib(L, "wow-widget-api.lua", 1);
   lua.lua_setglobal(L, to_luastring("__wfgWidgetApi"));
   runLib(L, "wow-stub.lua");
   loadText(L);
   runLib(L, "wow-layout.lua");
   for (const file of ["wow-world.lua", "wow-keybinds.lua", "wow-taint.lua"]) runLib(L, file);
+  if (aspects) runLib(L, "wow-aspects.lua");
   run(L, "__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns", false, 0);
 }
 
@@ -422,6 +434,7 @@ function lifecycle(addon) {
 //   removeUnit(token)
 //   combat(on)                     enters or leaves combat
 //   secretGeometry(mode)           "derived", "strict" or null: geometry getters answer with secrets (scripts/lib/wow-taint.lua)
+//   secretAspects(mode)            "strict" or null: every game frame holds Shown, Alpha, Text and BarValue secret (scripts/lib/wow-aspects.lua)
 //   addAura(unit, aura)            { name, duration, applications, isHarmful, dispelName, sourceUnit }
 //   removeAura(unit, name)
 //   setAction(slot, fields)        a spell (by world spell id) or any action fields; null clears
@@ -436,7 +449,7 @@ function lifecycle(addon) {
 //   openMailWindow()               the mail window shows with the mailbox; showSendMail() its Send Mail tab; closeMailWindow() fires MAIL_CLOSED
 //   openProfession(recipeID), selectRecipe(recipeID), closeProfession()   the profession window and its recipe form
 //   addChatBubble(text, opts)      a chat bubble over a speaker's head (CHAT_MSG_SAY, or opts.event, fires); opts { forbidden, empty, unkeyed, event }; returns its index
-const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "secretGeometry", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
+const WORLD_CALLS = ["unit", "setUnit", "removeUnit", "combat", "secretGeometry", "secretAspects", "addAura", "removeAura", "setAction", "addQuest", "openNpc", "learn", "forgetAll",
   "openAuctionHouse", "closeAuctionHouse", "postFromBag", "finishPost", "fireAuctionEvents", "openMailbox", "openMailWindow", "showSendMail", "closeMailWindow", "openProfession", "selectRecipe", "closeProfession",
   "addChatBubble"];
 
@@ -548,11 +561,12 @@ function track(addon) {
 // addon finds as it loads, e.g. RETAIL_CLIENT). instructionBudget: the most
 // instructions one call from the tests may run (see Hooks above). textFit: the
 // text-fit audit's client, with the fonts' real widths and every string a third
-// longer, as a translation might be (wow-text.lua, wow-textfit.lua).
-export function createAddon({ savedVariables = "", client = "", instructionBudget = DEFAULT_BUDGET, textFit = false } = {}) {
+// longer, as a translation might be (wow-text.lua, wow-textfit.lua). secretAspects: false leaves the secret
+// aspects out (wow-aspects.lua), so the raid bench's harness instructions are what they were before them.
+export function createAddon({ savedVariables = "", client = "", instructionBudget = DEFAULT_BUDGET, textFit = false, secretAspects = true } = {}) {
   const L = newState();
   attachHooks(L, instructionBudget);
-  loadStub(L);
+  loadStub(L, secretAspects);
   const name = startClient(L, client, textFit);
   loadAddon(L, name, savedVariables, textFit);
   // Runs Lua with `ADDON, ns` in scope and returns the first result as JS.

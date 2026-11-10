@@ -837,7 +837,7 @@ function unwrappedText(file, src) {
 }
 
 // Truth tests on client reads that can answer with a secret (the client errors on `if secret then`; the
-// harness's secret is a truthy table and cannot see it). Narrow on purpose: a call to a Unit*, C_UnitAuras.*
+// harness raises too, but only on a path a test drives with a secret boolean). Narrow on purpose: a call to a Unit*, C_UnitAuras.*
 // or GetAction* function tested for truth by if, elseif, while, not, and or or.
 const SECRET_READ = /^(Unit\w+|GetAction\w+)$/;
 const TRUTH_BEFORE = new Set(["if", "elseif", "while", "not", "and", "or"]);

@@ -1,6 +1,7 @@
 import os from "node:os";
 import { configDefaults, defineConfig } from "vitest/config";
 import { luaSummaryReporter } from "./scripts/lib/lua-summary-reporter.mjs";
+import { progressOn, progressReporter } from "./scripts/lib/progress-reporter.mjs";
 
 // Two projects under one config. "quick" is the JS tests (scripts/*.test.mjs,
 // none of which loads the addon), scripts/tests/smoke.test.mjs (one
@@ -18,9 +19,15 @@ import { luaSummaryReporter } from "./scripts/lib/lua-summary-reporter.mjs";
 // changes the environment, and every case builds its own addons.
 // Vitest's own reporters stay; the extra one ends a run with the Lua
 // harness's per-area summary (scripts/lib/lua-summary-reporter.mjs). On GitHub
-// Actions, failures also become annotations on the run, and a JUnit file
-// goes beside the coverage report.
-const ciReporters = process.env.GITHUB_ACTIONS ? ["github-actions", ["junit", { outputFile: "coverage/junit.xml" }]] : [];
+// Actions, failures also become annotations on the run (Vitest's own list
+// already holds that reporter there; naming it again here wrote every
+// annotation twice), and a JUnit file goes beside the coverage report.
+const ciReporters = process.env.GITHUB_ACTIONS ? [["junit", { outputFile: "coverage/junit.xml" }]] : [];
+// In an agent's shell Vitest picks its quiet reporter: failures, then the
+// totals, and nothing while a run that takes most of an hour goes on. There a
+// line prints as each test file finishes (scripts/lib/progress-reporter.mjs);
+// VG_PROGRESS=1 asks for the lines anywhere, VG_PROGRESS=0 turns them off.
+const progress = progressOn(process.env, configDefaults.reporters) ? [progressReporter()] : [];
 
 // Shuffled order. The weekly CI run sets VG_SHUFFLE_SEED (D-05) so a hidden
 // order dependence shows up; Vitest then prints `Running tests with seed "N"`.
@@ -45,7 +52,7 @@ export default defineConfig({
     environment: "node",
     ...shuffle,
     setupFiles: ["scripts/tests/setup.mjs"],
-    reporters: [...configDefaults.reporters, ...ciReporters, luaSummaryReporter()],
+    reporters: [...configDefaults.reporters, ...ciReporters, ...progress, luaSummaryReporter()],
     // Each worker (a forked process) gets this much heap. The suite needs far
     // less; a runaway that allocates then dies in a minute or two instead of
     // after 23 of garbage collection (the harness's instruction budget catches

@@ -43,11 +43,13 @@ local function canTeleport()
 end
 
 -- Whether the summon is still waiting: its time left (a plain number; a hidden one counts as gone), or, on a
--- client without that call, a summoner still named.
+-- client without that call, a summoner still named (a hidden name is one). A secret is never compared, not even with nil.
 local function summonWaiting()
   local left = summon("GetSummonConfirmTimeLeft")
-  if left == nil then return summon("GetSummonConfirmSummoner") ~= nil end
-  return (ns.PlainNumber(left) or 0) > 0
+  if ns.IsSecret(left) then return false end
+  if left ~= nil then return (ns.PlainNumber(left) or 0) > 0 end
+  local summoner = summon("GetSummonConfirmSummoner")
+  return ns.IsSecret(summoner) or summoner ~= nil
 end
 
 -- Whether you are alive, so a summon can take you (a hidden answer counts as not).

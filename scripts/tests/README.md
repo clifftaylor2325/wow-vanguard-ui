@@ -29,9 +29,11 @@ Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 | `scripts/lib/wow-world.lua` | The world: units, auras, actions, spells, quests, bags, the map, timers, Blizzard frames. |
 | `scripts/lib/wow-keybinds.lua` | Key bindings (the Default (a placeholder), Account and Character sets, `GetBinding(i)`, `CLICK`/`SPELL` bindings), the cursor swap on action slots, stances, level and modifier events, and `C_ClickBindings`. |
 | `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, binding and placement calls refused in combat, secret arguments to aura calls, secret geometry. |
+| `scripts/lib/wow-aspects.lua` | Secret aspects: a widget given a secret keeps that aspect and its getters answer the addon with secrets; widget setters that take no secret from addon code raise the client's error (see "Secret aspects" below). |
+| `scripts/lib/lua-secret-ops.mjs` | The VM's refusals Lua has no metamethod for: a truth test or `not` on a secret boolean and `==` / `~=` on any secret raise in the addon's code. |
 | `scripts/lib/wow-inspect.lua` | A widget as a plain snapshot: what it draws, where, and its children. |
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
-| `scripts/tests/smoke.test.mjs` | The harness cases of the fast local run (`npm run test:quick`, and the pre-push hook): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry on. |
+| `scripts/tests/smoke.test.mjs` | The harness cases of the fast local run (`npm run test:quick`, and the pre-push hook): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry and every game frame's aspects held secret (`secretAspects("strict")`). |
 | `scripts/tests/snapshot.test.mjs` | The Forever snapshot (see "The Forever snapshot" below): the frames, events and modules the addon leaves after a login, unlock and lock, compared with `forever-snapshot.json`. Also a `npm run test:quick` case. |
 | `scripts/tests/freeze.test.mjs` | The frozen surface (see "The frozen surface" below): saved settings, `/vg` words and API functions that a release shipped are all still there. A `npm run test:quick` case. |
 
@@ -149,6 +151,12 @@ or label is audited too. `scripts/tests/textfit.test.mjs` is the suite's check; 
 
 ### Timing and profiling
 
+- In an agent's shell Vitest picks its quiet reporter (failures, then the totals), so a full run
+  would print nothing for most of an hour. There a line prints as each test file finishes,
+  `[ 37/188] ok     35.2s  lua    scripts/tests/chat.test.mjs (152 tests)  12m04s in`
+  (`scripts/lib/progress-reporter.mjs`); `VG_PROGRESS=1` asks for the lines anywhere and
+  `VG_PROGRESS=0` turns them off. The longest files run first, so the count moves slowly at the
+  start: the first third of the files is about three quarters of the time.
 - `npm run timing` runs the suite on 2 workers (the hosted runner's size) and
   prints the total wall time, a per-file table and the test counts. `--workers <n>`
   changes the cap, `--budget <seconds>` the limit it fails over (default 300),
@@ -204,8 +212,10 @@ change fires the events the client would.
 | `world.setKeys(held)` (what `keys()` calls), `world.levelUp(level)`, `world.pushSpellToActionBar(spellID, slot)` | MODIFIER_STATE_CHANGED(`LSHIFT`, 1 or 0) for each modifier that changes; UNIT_LEVEL then PLAYER_LEVEL_UP(level); a spell placed and SPELL_PUSHED_TO_ACTIONBAR(spellID, slot). |
 | `world.setStances(forms)` | The stance strip, `{ icon, spellID, active, castable }` per form: `GetNumShapeshiftForms`, `GetShapeshiftFormInfo(i)` (icon, active, castable, spellID) and `GetShapeshiftForm` answer from it, and UPDATE_SHAPESHIFT_FORMS fires. |
 | `C_ClickBindings`, `world.clickProfile` | The game's click profile: plain Left = Target and Right = Open menu by default; `GetProfileInfo` hands out a copy, `SetProfileByInfo` and `ResetCurrentProfile` change it, `GetBindingType`, `CanSpellBeClickBound` and the tutorial flag answer, and `ExecuteBinding` is recorded in `world.clickExecuted`. |
-| `secret(n)` | A secret value (as the client hides numbers in instanced combat): `set("units.player.hp", secret(100))`. It raises on arithmetic, ordering comparison (`<`, `>`), concatenation, length, a call and any field read or write, but not on `==` or `~=` (equality with another value is just false), so a guard that only compares needs reading by eye; `issecretvalue` is the one way to look at it. `type()` answers the type of the value it hides (`"number"` for `secret(100)`, and for `secret()`), as the client keeps a secret's type, so a `type(v) == "number"` gate lets it through; the harness's own files read the raw type with `__wfgRawType`. A test's plain `{ __secret = true }` stand-in keeps `type()` `"table"`. |
+| `secret(n)` | A secret value (as the client hides numbers in instanced combat): `set("units.player.hp", secret(100))`. It raises on arithmetic, ordering comparison (`<`, `>`), concatenation, length, a call and any field read or write; in the addon's own code `==` and `~=` raise too ("attempt to compare a secret value"), and so do a truth test and `not` on a secret boolean (`secret(true)`: "attempt to perform boolean test on a secret value", "attempt to negate a secret value"), while a secret number or string tests true, as in game (scripts/lib/lua-secret-ops.mjs). Test and harness code compare and test secrets freely, and a test's plain `{ __secret = true }` stand-in is not checked this way; `issecretvalue` is the one way to look at one. `type()` answers the type of the value it hides (`"number"` for `secret(100)`, and for `secret()`), as the client keeps a secret's type, so a `type(v) == "number"` gate lets it through; the harness's own files read the raw type with `__wfgRawType`. A test's plain `{ __secret = true }` stand-in keeps `type()` `"table"`. |
 | `secretGeometry(mode)` | Secret positions and sizes, as the client hides them: `"derived"` (a bar's fill while its value is secret, a font string showing secret text, and anything anchored to those), `"strict"` (those, and every frame of the game's but UIParent), or off (`null`). Geometry getters then answer with secrets. |
+| `secretAspects(mode)` | `"strict"`: every frame of the game's but UIParent holds Shown, Alpha, Text and BarValue secret, so the addon reading one back (`IsShown`, `GetAlpha`, `GetText`, `GetValue`) gets a secret; `null` turns it off. |
+| `world.holdSecret(widget, aspect, ...)` (Lua, through `addon.eval`) | The client holds a widget's aspects secret, as its own code does by handing their setters secrets: `"Shown"`, `"Alpha"`, `"Text"`, `"BarValue"` or any other `Enum.SecretAspect` name, or `"Anchoring"` for secret anchoring. The widget's values stay; only the addon's reads turn secret. |
 | `secretReads` (Lua, through `addon.eval`) | A set of client reads that answer with `secret(0)` while on, as the client does in instanced combat: `__wfgWorld.secretReads.UnitOnTaxi = true`. Names: `UnitOnTaxi`, `UnitLevel`, `UnitXP`, `UnitIsDeadOrGhost`, `C_Map.GetPlayerMapPosition`, `C_QuestLog.GetDistanceSqToQuest`. Empty by default. A read the world lacks (`GetPlayerFacing`, `UnitPosition`) is stubbed in the test instead. |
 | `units.<token>.guild`, `.guildRank`, `.guildRankIndex`, `.guildRealm` | What `GetGuildInfo(token)` answers for a unit: the guild's name, the unit's rank name and rank index (0 is the guild master; 0 when unset) and the guild's realm (nil for one of your own realm); nothing for a unit with no `guild`. A unit's own realm is `units.<token>.realm`, `UnitName`'s second answer (none by default). |
 | `units.player.itemLevel`, `.itemLevelEquipped`, `.itemLevelPvp` | What `GetAverageItemLevel()` answers, in that order: your average item level, the equipped one (the overall one when unset) and the PvP one; 0 each when unset. |
@@ -280,7 +290,7 @@ stack. A test that causes an error on purpose names it:
 - `AURA_FALLBACK` (in `helpers.mjs`) names the deliberate aura-container
   fallback notice (D-06).
 
-### Taint, combat and secret geometry
+### Taint, combat, secret geometry and secret aspects
 
 `scripts/lib/wow-taint.lua` holds the addon to rules the real client enforces and a
 line-coverage run can't see. A broken rule is recorded and judged like a caught
@@ -330,7 +340,26 @@ error: the test fails unless `expectErrors` names it.
   accessed when secret while tainted by 'Vanguard'`). A `pcall` only hides
   them. Pass a plain id (`ns.PlainNumber`) and ask `ns.AuraInstanceSecret`
   first. Game and test code may do either.
-- **Secret geometry** is off unless a test calls `world.secretGeometry`.
+- **Secret geometry** is off unless a test calls `world.secretGeometry`, except for anchoring the client
+  made secret (below), which is always on.
+- **Secret aspects** (`scripts/lib/wow-aspects.lua`, from the flags in Blizzard's generated API docs). A
+  setter the client lets addon code hand a secret (`SetAlpha`, `SetAlphaFromBoolean`, `SetVertexColor`,
+  a font string's `SetText` and `SetTextColor`, a status bar's `SetValue`, `SetMinMaxValues` and
+  `SetStatusBarColor`, the texture setters) gives the widget that aspect, and from then on the matching
+  getter answers the addon's code with a fresh secret (`GetAlpha`, `GetVertexColor`, `GetText`,
+  `GetValue`...). Every other widget setter (`SetShown`, `SetPoint`, `SetWidth`, `SetSize`, `SetScale`,
+  `SetParent`, `SetFrameLevel`, a button's or edit box's `SetText`, `SetCooldown`...) raises the client's
+  error when the addon's code hands it a secret: `Modules/X.lua:12: bad argument #1 to 'SetShown' (Secret
+  values are only allowed during untainted execution for this argument.)`, through `pcall` too. Game and
+  test code may hand any setter a secret: it gives the aspect (`SetShown` Shown, `SetScale` Scale...) and
+  the stub keeps the plain value it hides. `IsVisible`, `GetEffectiveAlpha` and `GetEffectiveScale` are
+  secret while the widget or any parent holds the aspect. A secret through a setter with no aspect
+  (`SetTexture`, or the game's `SetPoint` and `SetSize`) makes the widget's anchoring secret: its geometry
+  getters, and those of whatever anchors to it, answer with secrets until `ClearAllPoints`. Nothing clears
+  an aspect. `HasSecretAspect`, `HasAnySecretAspect`, `HasSecretValues` and `IsAnchoringSecret` answer as
+  the client does. Only the addon's own code reads secrets back; test and harness code read the plain
+  value. `world.holdSecret` and `secretAspects("strict")` plant aspects as the client's own code would. `createAddon({ secretAspects: false })`
+  leaves all of this out (the raid bench does, so its sampled instruction counts stay as they were).
 - A test that wraps `CreateFrame` in its own Lua marks the wrapper with
   `__wfgStub.transparent[CreateFrame] = true` after defining it, so ownership is
   read from the code that called the wrapper.

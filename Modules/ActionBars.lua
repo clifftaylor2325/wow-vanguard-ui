@@ -298,11 +298,13 @@ local function sweepsFromObject(b)
   return b.cooldown.SetCooldownFromDurationObject ~= nil and type(api("GetActionCooldownDuration")) == "function"
 end
 
--- The cooldown sweep on an older client: start and duration passed through without being inspected.
+-- The cooldown sweep on an older client: plain start and duration go to the widget; hidden ones clear the sweep,
+-- since SetCooldown takes no secret from the addon (FrameAPICooldownDocumentation: AllowedWhenUntainted).
 local function sweepFromNumbers(b, start, length)
   if type(start) == "table" and not ns.IsSecret(start) then
     start, length = start.startTime, start.duration
   end
+  if ns.IsSecret(start) or ns.IsSecret(length) then return b.cooldown:Clear() end
   ns.Quiet("bar cooldown", b.cooldown.SetCooldown, b.cooldown, start, length)
 end
 
