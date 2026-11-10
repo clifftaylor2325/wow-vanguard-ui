@@ -273,7 +273,7 @@ function hooksecurefunc(t, name, fn)
     fn(...)
     return unpack(results)
   end
-  stub.transparent[hooked] = true
+  stub.transparent[hooked], stub.hooks = true, (stub.hooks or 0) + 1
   t[name] = hooked
 end
 

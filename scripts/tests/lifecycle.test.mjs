@@ -546,3 +546,25 @@ it("lifecycle: a gate whose install could not hook yet is neither kept nor count
   addon.eval('__life.scopes[1]:Gate("later", print, function(gate) __life.later = gate end)');
   expect([gates(), addon.eval("return __life.later ~= nil")]).toEqual([before + 1, true]);
 });
+
+it("lifecycle: a module stopped by the settle at the end of a fight does not get that fight's end itself", () => {
+  const addon = lifeAddon("", `${SCOPED}
+    __life.ended = 0
+    local W = ns.Module("TestFightEnd", { defaults = {}, live = true })
+    function W.Enable(settings, scope) scope:On("PLAYER_REGEN_ENABLED", function() __life.ended = __life.ended + 1 end) end`);
+  setCombat(addon, true);
+  addon.eval('ns.SetModuleEnabled("TestFightEnd", false)');
+  setCombat(addon, false);
+  expect(addon.eval('return { __life.ended, ns.ModuleLive("TestFightEnd") }')).toEqual([0, false]);
+});
+
+it("lifecycle: a mover with a saved opacity, toggled three times, hooks its frame once", () => {
+  const addon = lifeAddon("", SCOPED);
+  addon.eval('ns.SetMoverAlpha("testscoped", 0.5)');
+  // How many hooks the harness has seen installed.
+  const hooks = () => addon.eval("return __wfgStub.hooks");
+  const first = hooks();
+  for (let i = 0; i < 3; i++) addon.eval('ns.SetModuleEnabled("TestScoped", false) ns.SetModuleEnabled("TestScoped", true)');
+  expect(hooks()).toBe(first);
+  expect(addon.eval("return VanguardTest_Scoped:GetAlpha()")).toBe(0.5);
+});

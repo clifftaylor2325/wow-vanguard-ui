@@ -550,6 +550,7 @@ function methods:HookScript(name, fn)
   if self:IsForbidden() or (self.__forbiddenScripts or {})[name] then error(self:GetObjectType() .. ":HookScript(): Cannot assign script handler for '" .. name:lower() .. "' (cannot replace a forbidden script handler)", 2) end
   requireScript(self, name)
   local old = self.__scripts[name]
+  stub.hooks = (stub.hooks or 0) + 1
   self.__scripts[name] = function(...)
     if old then old(...) end
     return fn(...)

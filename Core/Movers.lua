@@ -252,17 +252,21 @@ end
 T.OnScale(reanchor)
 
 -- Gives a mover registered again after its module stopped the handle it had (a frame is never freed).
-local function reclaim(m)
-  local old = released[m.key]
-  released[m.key] = nil
-  m.handle = old and old.handle
+-- The same mover table when it is the same frame, so its hook on the frame's SetAlpha (watchAlpha) comes back with it
+-- and a restart adds no hook; a new table, with the old handle, for another frame.
+local function reclaim(frame, key)
+  local old = released[key]
+  released[key] = nil
+  if old and old.frame == frame then return old end
+  local m = { frame = frame, key = key, handle = old and old.handle }
   if m.handle then m.handle.mover = m end
+  return m
 end
 
 -- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent.
 function ns.Mover(frame, key, label, default)
-  local m = { frame = frame, key = key, label = label or key, default = default }
-  reclaim(m)
+  local m = reclaim(frame, key)
+  m.label, m.default = label or key, default
   if not movers[key] then
     order[#order + 1] = key
   end

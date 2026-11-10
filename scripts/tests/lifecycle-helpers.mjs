@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 
 // Lua run in the addon's state: handler counts per event (ns.HandlerCounts), ticker keys, the events each addon frame
 // listens for, the addon frames shown under a parent (by name or kind; a parentless unit event frame kept as a
-// spare draws nothing), frames with a state driver, mover keys, open gates, and how many frames there are.
+// spare draws nothing), frames with a state driver, mover keys, open gates, and how many frames and hooks (hooksecurefunc, HookScript) there are.
 const FOOTPRINT = `
   local stub = __wfgStub
   local out = { handlers = ns.HandlerCounts(), tickers = {}, events = {}, shown = {}, drivers = 0, movers = {}, gates = 0 }
@@ -25,15 +25,16 @@ const FOOTPRINT = `
     local scope = ns.GetModule(name).scope
     if scope and scope.on then out.gates = out.gates + scope.gateCount end
   end
-  out.frames = #stub.frames
+  out.frames, out.hooks = #stub.frames, stub.hooks or 0
   return out
 `;
 
-// The addon's footprint now; without the frame count unless asked (a stopped module's frames stay: the client never
-// frees one).
+// The addon's footprint now; without the frame and hook counts unless asked (a stopped module's frames and its
+// installed hooks stay: the client never frees a frame or takes a hook off; they count for growth, not for off).
 export function footprint(addon, { frames = false } = {}) {
   const f = addon.eval(FOOTPRINT);
   if (!frames) delete f.frames;
+  if (!frames) delete f.hooks;
   return f;
 }
 
