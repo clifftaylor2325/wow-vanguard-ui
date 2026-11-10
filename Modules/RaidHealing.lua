@@ -335,10 +335,20 @@ end
 -- shield anchored after the heal fill starts at the health edge. It is as wide as the
 -- whole health bar (the button less its 1 px border), so the same max gives the same
 -- scale as the health fill.
+-- An overlay as wide as the tile's health bar; set only when the tile's width changed (this runs on every
+-- health event of every raid member).
+local function fitWidth(b, bar)
+  local width = math.max(0, (b:GetWidth() or 0) - 2)
+  if bar.vgWidth == width then return end
+  bar.vgWidth = width
+  bar:SetWidth(width)
+end
+
+-- Fills an overlay from a value (see above): shown and scaled while on and the value is there.
 local function fill(b, bar, max, value, on)
   bar:SetShown(on and not absent(value))
   if not on or absent(value) then return bar:SetValue(0) end
-  bar:SetWidth(math.max(0, (b:GetWidth() or 0) - 2))
+  fitWidth(b, bar)
   bar:SetMinMaxValues(0, max)
   bar:SetValue(value)
 end
