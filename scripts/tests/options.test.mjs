@@ -196,7 +196,7 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
   addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat.background, VanguardDB.profiles['Default backup'] == nil }"), "No changes nothing").toEqual([false, true]);
   addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
-  expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, false, true]);
+  expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, true]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
 });
 
@@ -588,7 +588,7 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then return w.reset.mark.__texture:match("Icons\\\\(%a+)$") end end`), "the mark is the reset arrow").toBe("Reset");
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.reset and w.reset:IsShown() then __dot = w.reset end end
     __dot:GetScript("OnEnter")(__dot) __dot:GetScript("OnLeave")(__dot) __dot:GetScript("OnClick")(__dot)`);
-  expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, false, true]);
+  expect([addon.eval("return VanguardDB.profiles.Default.UnitFrames.healthText"), ...resetDot(addon, "Show health numbers")], "clicking it puts the default back and hides it").toEqual([true, true]);
   expect(resetDot(addon, "Health as"), "a default that depends on the client has one, and no dot while it is held").toEqual([false, true]);
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
@@ -2273,4 +2273,94 @@ it("T.Forget drops a frame's check box, arrow and divider parts from the theme's
     T.Forget(f) T.Forget(d)
     return { before[1], before[2], before[3], T.CheckParts(c) == nil, T.ArrowParts(a) == nil, T.DividerParts(d) == nil }`);
   expect(parts, "built, then forgotten").toEqual([true, true, true, true, true, true]);
+});
+
+it("options: one row whose refresh fails does not stop the rows after it from refreshing", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  const result = addon.eval(`local rows = {}
+    for _, w in ipairs(__wfgStub.frames) do if w.card and w.Refresh and w.card.child and w.card.child.pageKey == "general" then rows[#rows + 1] = w end end
+    local first, last = rows[1], rows[#rows]
+    first.Refresh = function() error("TEST-ONLY row refresh") end
+    last.Refresh = function() __lastRefreshed = true end
+    local before = #ns.errors
+    ns.Options.Refresh()
+    local out = { __lastRefreshed == true, #ns.errors - before, #rows > 1 }
+    ns.errors[#ns.errors] = nil
+    return out`);
+  expect(result, "the last row refreshed, the failure was kept once").toEqual([true, 1, true]);
+});
+
+it("reload overlays: one that cannot let go at the start of a fight does not leave the others up", () => {
+  const addon = loggedIn();
+  addon.eval(`ns.OfferReload("Changed.")
+    local second = ns.ReloadButton(ns.Widgets.Primary(UIParent, "TEST-ONLY Reload")) second:Show()
+    __overlays = { Vanguard_Reload.accept.reloadOverlay, second.reloadOverlay }
+    for _, o in ipairs(__overlays) do o.ClearAllPoints = function() error("TEST-ONLY locked") end end`);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  expect(addon.eval("return { __overlays[1]:IsShown(), __overlays[2]:IsShown() }"), "both overlays are put away").toEqual([false, false]);
+  addon.eval("local n = #ns.errors for i = n, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY locked') then table.remove(ns.errors, i) end end");
+});
+
+it("options: a card whose rows fail to build is kept as far as it got, the page still opens and the changed dots keep following", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  const out = addon.eval(`local O = ns.Options
+    O.AddRowKind("boom", function() error("TEST-ONLY card build") end, 20)
+    O.AddPage({ key = "zzboom", title = "TEST-ONLY page", icon = "NavProfiles", order = 99, rows = function()
+      return { { "header", "First" }, { "text", "fine" }, { "header", "Second" }, { "boom" } } end })
+    local before = #ns.errors
+    local ok = pcall(O.Show, "zzboom")
+    local failed = #ns.errors - before
+    O.Show("general")
+    return { ok, failed >= 1 }`);
+  expect(out, "the page opens and the failure is kept").toEqual([true, true]);
+  addon.eval('__dbg = __click("AFK scene")');
+  expect(addon.eval("return { __dbg, ns.Options.Frame().nav.general.changed:IsShown() }"), "a change afterwards still marks its page's dot").toEqual([true, true]);
+  addon.eval("for i = #ns.errors, 1, -1 do if tostring(ns.errors[i].text):find('TEST%-ONLY card build') then table.remove(ns.errors, i) end end");
+});
+
+it("ns.Ask: a question displaced by another answers No once, then the new one stands", () => {
+  const addon = loggedIn();
+  addon.eval(`__no = { a = 0, b = 0 } __yes = { a = 0, b = 0 }
+    ns.Ask("TEST-ONLY A?", "Go", function() __yes.a = __yes.a + 1 end, function() __no.a = __no.a + 1 end)
+    ns.Ask("TEST-ONLY B?", "Go", function() __yes.b = __yes.b + 1 end, function() __no.b = __no.b + 1 end)`);
+  expect(addon.eval("return { __no.a, __no.b, __yes.a, __yes.b, Vanguard_Question:IsShown(), Vanguard_Question.title:GetText() }"), "A answered No, B waits").toEqual([1, 0, 0, 0, true, "TEST-ONLY B?"]);
+  addon.click("Vanguard_Question.no");
+  expect(addon.eval("return { __no.a, __no.b }"), "B's No runs once and A's is not run again").toEqual([1, 1]);
+});
+
+it("dropdowns: a menu opened in a fight puts no click catcher over the screen, one opened out of a fight does", () => {
+  const addon = loggedIn();
+  addon.eval(`local d = ns.Widgets.Dropdown(UIParent, { { "a", "A" }, { "b", "B" } }, function() return "a" end, function() end)
+    d:SetPoint("CENTER") d:Show() __d = d`);
+  const open = () => addon.eval("__d.__scripts.OnClick(__d) local out = { ns.Widgets.MenuOpen(), Vanguard_Menu.catcher:IsShown() } ns.Widgets.CloseMenu() return out");
+  expect(open(), "out of a fight: the catcher is up").toEqual([true, true]);
+  setCombat(addon, true);
+  expect(open(), "in a fight: the menu opens, no catcher").toEqual([true, false]);
+  setCombat(addon, false);
+});
+
+it("options: search text of any shape, a page change with a menu open, closing with a question open and reopening leave nothing floating", () => {
+  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  addon.slash("");
+  const out = addon.eval(`local O, res = ns.Options, {}
+    local function try(tag, fn, ...) local ok, err = pcall(fn, ...) if not ok then res[#res + 1] = tag .. ": " .. tostring(err):sub(1, 200) end end
+    for _, text in ipairs({ "", "%", "(", "[", "-", ".", "%d+", ("x"):rep(500), ("snap "):rep(100), "changed" }) do
+      try("search " .. text:sub(1, 12), O.Search, text)
+      try("jump " .. text:sub(1, 12), O.JumpTo, text)
+    end
+    O.Search("")
+    local d = ns.Widgets.Dropdown(UIParent, { { "a", "A" } }, function() return "a" end, function() end)
+    d:SetPoint("CENTER") d:Show() d.__scripts.OnClick(d)
+    O.Show("actionbars") try("tab", O.ShowTab, 2)
+    O.Show("chat")
+    local menuStillUp = ns.Widgets.MenuOpen() and Vanguard_Menu.owner:IsVisible()
+    d:Hide()
+    ns.Ask("TEST-ONLY open question?", "Yes", function() end, function() __no = (__no or 0) + 1 end)
+    O.Hide()
+    O.Show("general")
+    return { table.concat(res, " | "), menuStillUp == true or menuStillUp == false, ns.Widgets.MenuOpen() }`);
+  expect(out[0], "nothing raised").toBe("");
+  expect(out[2], "no menu is left open when its dropdown is hidden and the page changed").toBe(false);
 });

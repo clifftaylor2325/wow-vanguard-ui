@@ -428,9 +428,10 @@ local function pickConfirm(f, kind)
 end
 
 -- Asks a yes/no question: the yes button (labelled yes) runs onYes, No runs onNo; either closes it. Closing it
--- any other way (the X, Escape) answers No. kind is "danger" for a question about something lost for good.
+-- any other way (the X, Escape, another question taking its place) answers No. kind is "danger" for a question about something lost for good.
 function ns.Ask(text, yes, onYes, onNo, kind)
   local f = questionDialog()
+  f:Hide()
   f.title:SetText(text)
   fitTitle(f)
   pickConfirm(f, kind)
@@ -510,12 +511,12 @@ end
 
 -- A fight starts (just before the lockdown): every overlay hides and lets go of its
 -- button, so no frame of the addon holds or hangs on a protected one in combat (the
--- client would protect it too: the options window could not open or close). They come back after.
+-- client would protect it too: the options window could not open or close). They come back after: each one's
+-- return is queued first, so one that fails to let go does not strand the others.
 local function putAway()
   for o in pairs(overlays) do
-    o:Hide()
-    o:ClearAllPoints()
     ns.AfterCombat(function() recover(o) end, o)
+    ns.Try("put away reload overlay", function() o:Hide() o:ClearAllPoints() end)
   end
 end
 
