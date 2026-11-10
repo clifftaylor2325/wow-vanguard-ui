@@ -105,7 +105,7 @@ it("T2-1 cooldown keys: a row that points its icons at other cooldowns in place 
 
 it("cooldown keys: the command says so when the module is off", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS + CLICK_LUA);
-  addon.eval("ns.GetModule('CooldownKeys').settings = nil");
+  addon.eval("ns.SetModuleEnabled('CooldownKeys', false)");
   addon.slash("cdmkeys on");
   expect(chatHas(addon, /keys module is off/)).toBe(true);
 });

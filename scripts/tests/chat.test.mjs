@@ -1006,11 +1006,12 @@ it("character pane durability, the mail's Open All button", () => {
   off.eval("CharacterFrame:Show()");
   expect(off.eval("return ns.FrameState('vgDurability')[CharacterHeadSlot] == nil"), "switched off, no labels").toBe(true);
 });
-// TEST-ONLY chat hooks: the game's message filters and link callback, and the lines the main window holds.
+// TEST-ONLY chat hooks: the game's message filters and link callback (the first per event is kept, which is chat
+// extras': it loads before the chat filter, which registers its own too), and the lines the main window holds.
 const CHAT_EXTRAS_ENV = `
   __filters, __lines = {}, {}
-  ChatFrame_AddMessageEventFilter = function(event, fn) if not ns.GetModule("ChatFilter").registered then __filters[event] = fn end end
-  EventRegistry = { RegisterCallback = function(self, event, fn) if not ns.GetModule("ChatFilter").registered then __linkCallback = fn end end }
+  ChatFrame_AddMessageEventFilter = function(event, fn) __filters[event] = __filters[event] or fn end
+  EventRegistry = { RegisterCallback = function(self, event, fn) __linkCallback = __linkCallback or fn end }
   ChatFrame1.GetNumMessages = function() return #__lines end
   ChatFrame1.GetMessageInfo = function(_, i) return __lines[i] end
 `;
@@ -1161,7 +1162,7 @@ it("chat: short channel names by default, off live and in a profile that turned 
     .toEqual(["|Hchannel:X|h[5]|h hi", "|Hchannel:X|h[1]|h hi", "|Hchannel:X|h[G]|h hi", "|Hchannel:X|h[RL]|h hi", "|Hchannel:X|h[t]|h hi"]);
   expect(addon.eval('ChatFrame2:AddMessage("plain TEST-ONLY line") local m = ChatFrame2.__messages return m[#m]'), "a line without a channel tag is left alone").toBe("plain TEST-ONLY line");
   addon.eval('FCF_OpenTemporaryWindow("WHISPER", "TestOnly")');
-  expect(addon.eval("return ns.FrameState('vgWatched')[ChatFrame11]"), "a whisper window that opens later is followed too").toBe(true);
+  expect(addon.eval("return ns.GetModule('ChatExtras').scope.gates['wheel ' .. tostring(ChatFrame11)] ~= nil"), "a whisper window that opens later is followed too (its hooks are the scope's gates)").toBe(true);
 });
 it("chat: the wheel adds one line to the game's three, Shift too, Ctrl + wheel jumps to the top or bottom", () => {
   const addon = loggedIn(UI_ENV + CHAT_LINES_ENV);
@@ -1624,7 +1625,7 @@ it("quiet the game: picking the game's setting for the camera zoom puts back the
 it("quiet the game: a profile with the game's setting puts back the zoom another profile changed", () => {
   const addon = loggedIn(QUIET_ENV + "SetCVar('cameraDistanceMaxZoomFactor', '1.9')", { savedVariables: "VanguardDB.profiles = { Default = { Quiet = { camera = 2.6 } } }" });
   expect(addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), "the first profile's choice is on").toBe("2.6");
-  addon.eval("ns.GetModule('Quiet').Enable({ camera = 0 })");
+  addon.eval("ns.Settings('Quiet').camera = 0 ns.RestartModule('Quiet')");
   expect([addon.eval("return GetCVar('cameraDistanceMaxZoomFactor')"), addon.eval("return VanguardDB.client.cameraPrior == nil")], "the next profile loads: the player's value is back, forgotten").toEqual(["1.9", true]);
 });
 it("quiet the game: a zoom value an older version kept in the profile moves to the account", () => {

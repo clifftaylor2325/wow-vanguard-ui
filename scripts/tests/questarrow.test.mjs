@@ -245,8 +245,9 @@ it("quest arrow: with the arrow switched off, moving on from a failed quest says
   expect([addon.eval("return ns.QuestArrow.current"), chatHas(addon, /Arrow:/)]).toEqual([90062, false]);
 });
 
-// Simulates a reload: the module's own state is gone, the character's saved data stays, the module enables again.
-const RELOAD = "ns.QuestGuide.pointed = nil ns.QuestGuide.Enable(ns.Settings('QuestGuide')) ns.QuestArrow.Pick()";
+// Simulates a reload: the module's own state is gone, the character's saved data stays, the module is built again
+// (a live module: the registry stops and starts it, handing Enable its scope).
+const RELOAD = "ns.QuestGuide.pointed = nil ns.RestartModule('QuestGuide') ns.QuestArrow.Pick()";
 
 it("quest arrow: a Shift-click hold survives a reload, with the Pin button back", () => {
   const addon = loggedIn(ARROW_ENV);

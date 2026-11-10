@@ -199,7 +199,7 @@ it("upgrades: the wizard names every stat, and says when Gear upgrades is off", 
   off.clearChat();
   off.eval("ns.SetModuleEnabled('Upgrades', true)");
   off.slash("weights wizard");
-  expect([chatHas(off, /Gear upgrades starts after a \/reload\./), chatHas(off, /switched off/)], "switched on under Modules but not reloaded yet: it says it starts after a reload").toEqual([true, false]);
+  expect([chatHas(off, /Gear upgrades starts after a \/reload\./), chatHas(off, /switched off/)], "switched on under Modules it starts at once (a live module), so the wizard opens").toEqual([false, false]);
 });
 
 // TEST-ONLY combined bag holding better bracers (2) and worse ones (3), and a slot that isn't a bag button.

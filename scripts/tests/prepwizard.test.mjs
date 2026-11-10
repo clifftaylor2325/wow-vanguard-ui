@@ -82,7 +82,7 @@ it("prepwizard: a slider sets the wanted amount and the slash command still work
 
 it("prepwizard: waits for combat, and says when Instance prep is off", () => {
   const off = loggedIn();
-  off.eval("ns.GetModule('InstancePrep').settings = nil");
+  off.eval("ns.SetModuleEnabled('InstancePrep', false)");
   off.slash("prep setup");
   expect(off.chat().join("\n"), "off: a line in chat").toContain("Instance prep is off");
   const addon = loggedIn();
