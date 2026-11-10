@@ -18,7 +18,7 @@ const FOREVER_MODULES = [
   "UnitFrames", "CastBars", "FrameAuras", "PlayerAuras", "ComboPoints", "ClassBars", "PowerTicks", "SwingTimer", "UnitExtras",
   "RaidFrames", "RaidAuras", "RaidHealing", "RaidStatus", "RaidTools", "MainTanks", "PartyExtras", "GroupThreat", "ActionBars",
   "SpecialBars", "Minimap", "Waypoints", "MinimapButtons", "Chat", "ChatExtras", "ChatWatch", "ChatFilter", "ChatHistory",
-  "ChatWindows", "ChatBubbles", "Bags", "InfoStrip", "BrokerStrip", "MenuStrip", "Merchant", "Errands", "InstancePrep",
+  "ChatWindows", "ChatBubbles", "Bags", "InfoStrip", "BrokerStrip", "MenuStrip", "HudText", "Merchant", "Errands", "InstancePrep",
   "TalentPlanner", "Legacy", "AutoAccept", "Quiet", "QuestDialog", "QuestAuto", "QuestTracker", "QuestLog", "QuestHistory",
   "QuestGuide", "QuestArrow", "QuestMinimap", "Windows", "CharacterExtras", "AuctionHelper", "GameTools", "CooldownGaps",
   "CooldownGlow", "CooldownKeys", "BossDocks", "FightHistory", "Meter", "Rolls", "CraftQueue", "MailTools", "OfficerLoot",
