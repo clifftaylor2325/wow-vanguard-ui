@@ -744,7 +744,7 @@ it("unit events: combo points, the druid's mana, power ticks and threat ask the 
     GetComboPoints = function() return __cp end`, NO_RAID);
   // Who hears the event (see unitEvents).
   const heard = (event) => unitEvents(addon, event);
-  const frameUnits = ["boss1", "boss2", "boss3", "boss4", "boss5", "focus", "party1", "party2", "party3", "party4", "pet", "player", "target", "targettarget"];
+  const frameUnits = ["boss1", "boss2", "boss3", "boss4", "boss5", "focus", "focustarget", "party1", "party2", "party3", "party4", "pet", "player", "target", "targettarget"];
   // The unit frames' subscriptions (one per frame, for its unit) sorted in with `own`, as unitEvents lists them.
   const withFrames = (...own) => [...frameUnits, ...own].sort().join(" ");
   expect(heard("UNIT_HEALTH"), "the unit frames: one subscription per frame, for its own unit, and the low-health cue's for the player").toEqual({ subs: withFrames("player"), plain: 0 });

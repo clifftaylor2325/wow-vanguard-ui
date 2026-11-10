@@ -107,7 +107,7 @@ local POWER_FORMAT_CHOICES = { { "none", L["Off"] }, TEXT_FORMATS[1], TEXT_FORMA
 -- whether its sliders show on the folded card (the frames a player resizes most; the rest sit under More settings).
 local SIZED_FRAMES = {
   { "player", L["Player"], true }, { "target", L["Target"], true }, { "targettarget", L["Target of target"] },
-  { "focus", L["Focus"] }, { "pet", L["Pet"] }, { "party", L["Party"], true },
+  { "focus", L["Focus"] }, { "focustarget", L["Focus target"] }, { "pet", L["Pet"] }, { "party", L["Party"], true },
 }
 
 -- A width or height slider for one frame (range from UnitFrames.RANGES), applied at once, out of combat.
@@ -140,6 +140,28 @@ local function powerTextRows()
   }
 end
 
+-- The portrait choices of the player, target and focus frames (Modules/UnitPortrait.lua), and what a look that points
+-- or cuts the frame's outer end does to them.
+local PORTRAIT_CHOICES = { { "off", L["Off"] }, { "portrait", L["2D portrait"] }, { "class", L["Class icon"] } }
+local PORTRAIT_TIP =
+  L["Creatures show their portrait. Hidden under the Shield look, Plain with shield corners and the Versus deck: their corners leave no room."]
+
+-- A frame's portrait choice row, applied at once, out of combat.
+local function portraitRow(label, key)
+  local row = { "cycle", label, PORTRAIT_CHOICES, liveMethod("UnitFrames", key, "ApplyPortraits") }
+  row.tip = PORTRAIT_TIP
+  return row
+end
+
+-- The portrait rows: one choice each for the player, target and focus frames.
+local function portraitRows()
+  return {
+    { "header", L["Portraits"] },
+    portraitRow(L["Player portrait"], "playerPortrait"), portraitRow(L["Target portrait"], "targetPortrait"),
+    portraitRow(L["Focus portrait"], "focusPortrait"),
+  }
+end
+
 -- The Heals and shields card: the bars on the player, target and party frames and the status row (leader, role, resting,
 -- PvP) over their corner, each applied at once.
 local function predictionRows()
@@ -162,7 +184,7 @@ local function unitFrameRows()
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
     check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
     O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
-  }, append(append(powerTextRows(), predictionRows()), sizeRows()))
+  }, append(append(append(powerTextRows(), predictionRows()), portraitRows()), sizeRows()))
 end
 
 -- Cast bars, and the target and focus auras' card (its rows are Modules/FrameAuras.lua's).
