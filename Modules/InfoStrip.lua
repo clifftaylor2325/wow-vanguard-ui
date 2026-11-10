@@ -215,19 +215,22 @@ function IS.RestartSession()
   IS.PaintRates()
 end
 
--- Counts the money earned and spent since the last change (for the gold tooltip).
+-- Counts the money earned and spent since the last change (for the gold tooltip). A first plain read (the
+-- client hid it at the session's start) starts the count from there.
 function IS.CountMoney()
   local s, now = IS.session, ns.PlainNumber(ask("GetMoney"))
-  if not (s and now and s.last) then return end
+  if not (s and now) then return end
+  if not s.last then s.money, s.last = now, now return end
   if now > s.last then s.earned = (s.earned or 0) + now - s.last else s.spent = (s.spent or 0) + s.last - now end
   s.last = now
 end
 
--- Counts the XP gained since the last update; after a level-up, the old level's rest too. A new level
+-- Counts the XP gained since the last update (a first plain read starts the count); after a level-up, the old level's rest too. A new level
 -- shows as a new level total, even when one big gain lands at or above the old XP.
 function IS.CountXP()
   local s, cur, max = IS.session, xpNow()
-  if not (s and cur and s.xp) then return end
+  if not (s and cur) then return end
+  if not s.xp then s.xp, s.max = cur, max return end
   local sameLevel = max == s.max
   if sameLevel and cur >= s.xp then s.gained = s.gained + cur - s.xp
   else s.gained = s.gained + (s.max - s.xp) + cur end

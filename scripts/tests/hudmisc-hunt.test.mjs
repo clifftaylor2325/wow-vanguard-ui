@@ -1,7 +1,7 @@
 // hud-misc bug hunt: the bag, minimap, strip and merchant modules against what the live client hands back.
 
 import { expect, it } from "vitest";
-import { UI_ENV, loggedIn } from "./helpers.mjs";
+import { STRIP_ENV, UI_ENV, UNITS_ENV, loggedIn } from "./helpers.mjs";
 
 it("minimap: a shown state the client holds secret is never handed to the map's box", () => {
   const addon = loggedIn(UI_ENV);
@@ -83,4 +83,28 @@ it("bags: a bank window the game makes after login is still watched, once, when 
     addon.fire(...event);
     expect([addon.eval("return __watched"), addon.eval("return #ns.errors")], `${event[0]}: watched once the window exists, not twice`).toEqual([1, 0]);
   }
+});
+
+// TEST-ONLY leveling numbers the client hides at login: XP and money are secret until a first plain read.
+const HIDDEN_START_ENV = `
+  __xp, __xpmax, __level = __wfgWorld.secret(1), __wfgWorld.secret(2), 10
+  __m = __wfgWorld.secret(3)
+  UnitXP = function() return __xp end
+  UnitXPMax = function() return __xpmax end
+  GetMoney = function() return __m end
+  UnitLevel = function() return __level end
+`;
+
+it("info strip: XP and gold counters whose first read was hidden start at the first plain read", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + HIDDEN_START_ENV);
+  const session = () => addon.eval("local s = ns.GetModule('InfoStrip').session return { s.xp or 0, s.max or 0, s.money or 0, s.last or 0, s.gained }");
+  expect(session(), "hidden at the start: nothing counted").toEqual([0, 0, 0, 0, 0]);
+  addon.eval("__xp, __xpmax, __m = 1000, 5000, 70000");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  addon.fire("PLAYER_MONEY");
+  expect(session(), "the first plain read starts both counters").toEqual([1000, 5000, 70000, 70000, 0]);
+  addon.eval("__xp, __m = 1900, 71000");
+  addon.fire("PLAYER_XP_UPDATE", "player");
+  addon.fire("PLAYER_MONEY");
+  expect([session()[4], addon.eval("return ns.GetModule('InfoStrip').session.earned")], "and they count from there").toEqual([900, 1000]);
 });
