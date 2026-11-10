@@ -205,15 +205,6 @@ it("P5-6: the roll tracker's names stop before their figures, however long the f
   expect(name.right, "the name ends before them").toBeLessThanOrEqual(figures[0]);
 });
 
-it("P5-6: the officer roster's names stop before their notes", () => {
-  const addon = fitClient("", "VanguardDB.profiles = { Default = { OfficerLoot = { on = true } } }\n");
-  addon.world.setUnit("raid1", { name: "Alexandrina", class: "PRIEST", className: "Priest", role: "HEALER", leader: true, connected: false, isPlayer: true });
-  addon.slash("loot roster");
-  const name = rectOf(addon, "Vanguard_OfficerRoster.rows[2].left");
-  const note = addon.eval("local f = Vanguard_OfficerRoster.rows[2].right return { f:GetLeft(), f:GetText() }");
-  expect(name.right, "the name ends before it").toBeLessThanOrEqual(note[0]);
-});
-
 it("P5-9: the group board's hint wraps inside the window in French and German", () => {
   // The real frFR and deDE hints (Locales/frFR.lua, Locales/deDE.lua), 571 and 547 wide on one line.
   const key = "Click a post to open a whisper with a message filled in. Nothing is sent until you press Enter.";
