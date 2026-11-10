@@ -276,10 +276,10 @@ function V.Track(frame, reapply)
   V.tracked[frame] = reapply
 end
 
--- A zone change: frames that check In an instance get their drivers again.
+-- A zone change: frames that check In an instance get their drivers again (each under its own guard).
 local function onZone()
   for frame, reapply in pairs(V.tracked) do
-    if frame.vgInstance then ns.OutOfCombat(reapply, frame) end
+    if frame.vgInstance then ns.OutOfCombat(ns.Guard("visibility zone", reapply), frame) end
   end
 end
 ns.On("PLAYER_ENTERING_WORLD", onZone)
@@ -344,10 +344,10 @@ function V.Calm(frame, part)
   ns.OutOfCombat(function() V.CalmNow(frame) end, frame)
 end
 
--- The Calm HUD changed: every frame of a part takes its state again, now or when combat ends.
+-- The Calm HUD changed: every frame of a part takes its state again, now or when combat ends (each under its own guard).
 function V.ApplyCalm()
   for frame, reapply in pairs(V.tracked) do
-    if frame.vgCalm then ns.OutOfCombat(reapply, frame) end
+    if frame.vgCalm then ns.OutOfCombat(ns.Guard("visibility calm", reapply), frame) end
   end
 end
 
