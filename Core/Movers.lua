@@ -199,7 +199,7 @@ end
 
 -- From the first opacity other than 1 on, an alpha the frame's module sets (a
 -- bar fading out on mouseover, say) is kept and multiplied by the opacity, so
--- the module's fades still work. A hidden (secret) alpha, set or read, counts as full.
+-- the module's fades still work. A hidden (secret) alpha it sets is left as it is; one read at the start counts as full.
 local function watchAlpha(m)
   m.ownAlpha = ns.PlainNumber(m.frame:GetAlpha()) or 1
   if type(hooksecurefunc) ~= "function" then return end
@@ -236,16 +236,20 @@ end
 -- After a UI scale or screen change: puts every anchored mover (and its handle) at its link's spot again, since
 -- the frame it follows moved with its edge of the screen, and every mover with no spot of its own at its default
 -- for the new canvas (the narrow-screen spots). Not through place(): that rescales, which runs this again.
-local function reanchor()
-  for _, key in ipairs(order) do
-    local m, p = movers[key], saved()[key]
-    local linked = type(p) == "table" and p.rel ~= nil
-    if linked then ns.MoverLinks.Remember(key, p) end
-    if linked or not ns.MoverSaved(key) then
-      anchor(m.frame, m)
-      if m.handle then anchor(m.handle, m) end
-    end
+-- One mover's part of that, under its own guard in the walk: a frame that fails is reported and the rest still move.
+local function reanchorOne(key)
+  local m, p = movers[key], saved()[key]
+  local linked = type(p) == "table" and p.rel ~= nil
+  if linked then ns.MoverLinks.Remember(key, p) end
+  if linked or not ns.MoverSaved(key) then
+    anchor(m.frame, m)
+    if m.handle then anchor(m.handle, m) end
   end
+end
+
+-- Runs reanchorOne for every mover, in registration order.
+local function reanchor()
+  for _, key in ipairs(order) do ns.Try("reanchor " .. key, reanchorOne, key) end
 end
 T.OnScale(reanchor)
 
@@ -272,7 +276,7 @@ end
 
 -- Sets the profile's HUD layout ("centered" or nil for the modules' own defaults), forgets the saved positions of
 -- the frames the old and new layouts place (so their spots apply), puts every frame at its spot again, and tells
--- the ns.OnLayoutChanged listeners.
+-- the ns.OnLayoutChanged listeners; one frame or listener that fails is reported and the rest still run.
 ---@param layout string|nil
 function ns.SetHudLayout(layout)
   local before = ns.HudLayout()
@@ -280,8 +284,8 @@ function ns.SetHudLayout(layout)
   for _, spots in ipairs({ layoutSpots[before] or {}, layoutSpots[ns.HudLayout()] or {} }) do
     for key in pairs(spots) do saved()[key] = nil end
   end
-  for _, key in ipairs(order) do ns.PlaceMover(key) end
-  for _, fn in ipairs(layoutListeners) do fn(ns.HudLayout()) end
+  for _, key in ipairs(order) do ns.Try("place " .. key, ns.PlaceMover, key) end
+  for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end
 end
 
 -- A copy of a default spot ({ point, relPoint, x, y, ... }) raised dy units (a cast bar's spot over a frame that

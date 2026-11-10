@@ -22,13 +22,14 @@ local BAR = { hint = L["Drag to move Â· right-click for anchor, scale, opacity Â
   pad = 12, gap = 6, edge = 8, save = 110, exit = 140, height = 36 }
 
 -- Puts every saved spot back as it was when unlock started, places every frame again, tells what
--- follows each one (ns.MoverChanged: linked frames, the raid grid's growth) once all are back, and locks.
+-- follows each one (ns.MoverChanged: linked frames, the raid grid's growth) once all are back, and locks. Each frame
+-- runs under its own guard, so one that fails is reported and the rest go back and the frames still lock.
 function ns.ExitWithoutSaving()
   local positions, movers = ns.Settings("positions"), ns.MoverList()
   for key in pairs(positions) do positions[key] = nil end
   for key, spot in pairs(before or {}) do positions[key] = type(spot) == "table" and ns.Copy(spot) or spot end
-  for _, m in ipairs(movers) do ns.PlaceMover(m.key) end
-  for _, m in ipairs(movers) do ns.MoverChanged(m.key) end
+  for _, m in ipairs(movers) do ns.Try("place " .. m.key, ns.PlaceMover, m.key) end
+  for _, m in ipairs(movers) do ns.Try("mover changed " .. m.key, ns.MoverChanged, m.key) end
   ns.Lock()
   ns.Chat(L["Every frame is back where it was when you unlocked."])
 end

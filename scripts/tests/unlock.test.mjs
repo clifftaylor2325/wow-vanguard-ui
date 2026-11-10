@@ -2,7 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { CLICK_LUA, SETUP_DONE, UI_ENV, UP, chatHas, gridLines, isTok, key, loggedIn, px, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, SETUP_DONE, UI_ENV, UP, chatHas, expectErrors, gridLines, isTok, key, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, titleOf } from "./dialogs.mjs";
 
 it("unlock mode", () => {
@@ -427,4 +427,16 @@ it("H34-3-2 a note put away by a lock inside Edit Mode is refitted when /vg unlo
   expect(addon.eval(`local n = Vanguard_EditModeNote
     return n:IsShown() and n:GetHeight() >= n.text:GetStringHeight() + 2 * ns.Theme.SPACE.tight`), "the note is shown as tall as its text").toBe(true);
   expect(addon.textFit("Vanguard_EditModeNote"), "nothing in the note is cut").toEqual([]);
+});
+
+it("Exit without saving puts every frame back and locks, though one frame's follower fails", () => {
+  expectErrors(/^mover changed TEST-ONLY a: eval:\d+: TEST-ONLY follower$/);
+  const addon = loggedIn(`for _, key in ipairs({ "TEST-ONLY a", "TEST-ONLY b" }) do
+      local f = CreateFrame("Frame", nil, UIParent) f:SetSize(50, 20)
+      ns.Mover(f, key, key, { "CENTER", "CENTER", 0, 0 })
+    end
+    ns.OnMoverPlaced(function(key) if key == "TEST-ONLY a" then error("TEST-ONLY follower") end end)`);
+  addon.eval('ns.Unlock() ns.SetMoverPoint("TEST-ONLY b", "TOPLEFT", "TOPLEFT", 5, -5)');
+  addon.eval("ns.ExitWithoutSaving()");
+  expect(addon.eval('return { ns.Unlocked(), ns.MoverSaved("TEST-ONLY b") }'), "locked, and the frame after it is back").toEqual([false, false]);
 });
