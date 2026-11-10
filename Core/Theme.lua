@@ -490,15 +490,31 @@ function T.Closed(region)
   return type(region.IsForbidden) == "function" and region:IsForbidden() == true
 end
 
--- Re-tints every remembered region whose colour is still what T.Tint set (after an accent or variant
--- change); one recoloured by hand since (a class colour, say), or closed to addons, is forgotten instead.
+-- Runs fn(key, value) for every entry of a registry, each under ns.Try (reported as `where`), so one entry that fails
+-- (a frame the client changed under Vanguard: a hidden value, a call it refuses) is reported and every other entry is
+-- still done. The theme's walks over every painted frame, string and texture go through here.
+---@param where string
+---@param registry table
+---@param fn function
+function T.EachTried(where, registry, fn)
+  for key, value in pairs(registry) do ns.Try(where, fn, key, value) end
+end
+
+-- Re-tints a remembered region whose colour is still what T.Tint set; one recoloured by hand since (a class colour,
+-- say), or closed to addons, is forgotten instead.
+local function retint(region, m)
+  if not T.Closed(region) and stillTinted(region, m) then T.Tint(region, m.token, m.alpha) else tinted[region] = nil end
+end
+
+-- Recolours a remembered status bar as retint does a region.
+local function recolorBar(bar, m)
+  if not T.Closed(bar) and stillTinted(bar, m) then T.BarColor(bar, m.token) else T.barColored[bar] = nil end
+end
+
+-- Re-tints every remembered region and bar (after an accent or variant change), each on its own (T.EachTried).
 local function refreshTints()
-  for region, m in pairs(tinted) do
-    if not T.Closed(region) and stillTinted(region, m) then T.Tint(region, m.token, m.alpha) else tinted[region] = nil end
-  end
-  for bar, m in pairs(T.barColored) do
-    if not T.Closed(bar) and stillTinted(bar, m) then T.BarColor(bar, m.token) else T.barColored[bar] = nil end
-  end
+  T.EachTried("re-tint", tinted, retint)
+  T.EachTried("re-colour bar", T.barColored, recolorBar)
 end
 
 -- Colors a status bar's fill with a named color; remembered (weak), so the fill follows the accent and the variant
@@ -595,12 +611,14 @@ function T.Snap(texture, class)
   return texture
 end
 
--- Puts every texture T.Snap has seen under the policy again (after a switch or a profile load); one closed to
--- addons is forgotten (T.Closed).
+-- Puts one texture T.Snap has seen under the policy again, or forgets it once it is closed to addons (T.Closed).
+local function snapOrForget(texture, class)
+  if T.Closed(texture) then snapClass[texture] = nil else applySnap(texture, class) end
+end
+
+-- Puts every texture T.Snap has seen under the policy again (after a switch or a profile load), each on its own.
 local function reSnap()
-  for texture, class in pairs(snapClass) do
-    if T.Closed(texture) then snapClass[texture] = nil else applySnap(texture, class) end
-  end
+  T.EachTried("texel snap", snapClass, snapOrForget)
 end
 
 -- Turns texel snapping for still textures on or off (the A/B test, #226), at once.
@@ -624,15 +642,23 @@ end
 -- once the plate grows, on an aura icon the client has since closed to addons for good.
 T.MIN_SCALE = 0.1
 
--- The scale to size a pixel for: `scale` itself when a frame is drawn at it; the screen's (UIParent's)
--- for a frame held shrunk below T.MIN_SCALE; 1 when it is no positive number.
+-- The screen's (UIParent's) effective scale, or 1 when it has none it can say plainly.
+---@return number
+function T.ScreenScale()
+  local ui = UIParent and UIParent.GetEffectiveScale and ns.PlainNumber(UIParent:GetEffectiveScale())
+  return ui and ui >= T.MIN_SCALE and ui or 1
+end
+
+-- The scale to size a pixel for: `scale` itself when a frame is drawn at it; the screen's (T.ScreenScale)
+-- for a frame held shrunk below T.MIN_SCALE or whose scale the client hides (a plate's: a hidden value is never
+-- compared); 1 when it is no positive number.
 ---@param scale any
 ---@return number
 function T.DrawnScale(scale)
+  if ns.IsSecret(scale) then return T.ScreenScale() end
   if type(scale) ~= "number" or scale <= 0 then return 1 end
   if scale >= T.MIN_SCALE then return scale end
-  local ui = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale()
-  return type(ui) == "number" and ui >= T.MIN_SCALE and ui or 1
+  return T.ScreenScale()
 end
 
 -- A frame's effective scale as a pixel is sized for it (T.DrawnScale; UIParent's, or 1, when it has none).
@@ -701,16 +727,22 @@ function T.PixelSize(frame, w, h, even)
 end
 
 -- Calls fn() (out of combat) after a UI scale, screen or frame scale change, once
--- T.PixelSize frames are rounded again: for layouts that place things on whole pixels.
+-- T.PixelSize frames are rounded again: for layouts that place things on whole pixels. Guarded, so one listener
+-- that fails stops no other.
 function T.OnScale(fn)
-  scaleListeners[#scaleListeners + 1] = fn
+  scaleListeners[#scaleListeners + 1] = ns.Guard("scale change", fn)
 end
 
--- Repaints every painted frame and rounds every T.PixelSize frame again for the scale now,
+-- Rounds one T.PixelSize frame's remembered size again for its scale now.
+local function reround(frame, s)
+  frame:SetSize(T.PixelRound(frame, s[1], s[3]), T.PixelRound(frame, s[2], s[3]))
+end
+
+-- Repaints every painted frame and rounds every T.PixelSize frame again for the scale now (each on its own),
 -- then tells the T.OnScale listeners.
 local function resizeAll()
   T.Repaint()
-  for frame, s in pairs(pixelSized) do frame:SetSize(T.PixelRound(frame, s[1], s[3]), T.PixelRound(frame, s[2], s[3])) end
+  T.EachTried("pixel size", pixelSized, reround)
   for _, fn in ipairs(scaleListeners) do fn() end
 end
 
@@ -1522,12 +1554,15 @@ local function repaint(frame, entry)
   if entry.paint then entry.paint(entry, frame) end
 end
 
--- Repaints every painted frame at its pixel size now (a frame's own scale changed); one closed to addons is
--- forgotten (T.Closed).
+-- Repaints one painted frame, or forgets it once the client has closed it to addons (T.Closed).
+local function repaintOrForget(frame, entry)
+  if T.Closed(frame) then painted[frame] = nil else repaint(frame, entry) end
+end
+
+-- Repaints every painted frame at its pixel size now (a theme, scale or HUD look change), each on its own: one
+-- that fails is reported and leaves every other frame painted (T.EachTried).
 function T.Repaint()
-  for frame, entry in pairs(painted) do
-    if T.Closed(frame) then painted[frame] = nil else repaint(frame, entry) end
-  end
+  T.EachTried("repaint", painted, repaintOrForget)
 end
 
 -- Repaints one painted frame at its pixel size now, after SetScale on it (T.Repaint does every frame); a frame
@@ -1787,12 +1822,15 @@ local function isEnabled(widget)
 end
 
 -- Shows or hides a button's press look; only an enabled button shows it. A shade marked `keepsLabel` (a check
--- box's today) leaves the label where it is; a push button's drops it a pixel.
+-- box's today) leaves the label where it is; a push button's drops it a pixel. Whether it is pressed is kept
+-- (s.pressed), never read back from the shade: the button may be the game's, and the client can hold a texture's
+-- shown state on it secret, as it did a painted edge's (#838).
 function T.PressButton(button, down)
   local s = pressOf[button]
   if not s then return end
-  local on = down == true and isEnabled(button)
-  if on == s.overlay:IsShown() then return end
+  local on = down == true and isEnabled(button) == true
+  if on == (s.pressed == true) then return end
+  s.pressed = on
   if s.fill then T.ShowFill(s.fill, on) else s.overlay:SetShown(on) end
   if not s.keepsLabel then dropLabel(button, s, on) end
 end
@@ -2306,10 +2344,11 @@ T.forgetters[#T.forgetters + 1] = function(r) checkOf[r] = nil end
 function T.CheckParts(button) return checkOf[button] end
 
 -- Whether a check button (or radio) is checked: the game's mark shown, for a plain frame whose mark the
--- game shows and hides (T.CheckBox's `mark`), else its checked state.
+-- game shows and hides (T.CheckBox's `mark`), else its checked state. Both are the game's, so a value the client
+-- hides counts as no and is never compared (ns.IsTrue).
 local function isChecked(button, c)
-  if c.source then return c.source:IsShown() == true end
-  return type(button.GetChecked) == "function" and button:GetChecked() == true
+  if c.source then return ns.IsTrue(c.source:IsShown()) end
+  return type(button.GetChecked) == "function" and ns.IsTrue(button:GetChecked())
 end
 
 -- The mark of a check box or radio for its state: shown while checked, in the disabled tier while
@@ -2504,10 +2543,11 @@ local function dividerLine(region, host, vertical)
   return d
 end
 
--- Shows a texture divider's line while the game shows the texture.
+-- Shows a texture divider's line while the game shows the texture. The texture's shown state is the game's: one the
+-- client hides is never handed to SetShown (from addon code that raises) or compared, and the line stays as it is.
 local function followDivider(region)
-  local d = dividerOf[region]
-  if d then d.holder:SetShown(region:IsShown()) end
+  local d, shown = dividerOf[region], region:IsShown()
+  if d and not ns.IsSecret(shown) then d.holder:SetShown(shown == true) end
 end
 
 -- One of the game's dividers (a texture, or a frame of divider art: Options_HorizontalDivider, the
@@ -3395,15 +3435,21 @@ local function shadowFor(fs, token)
   elseif styled[fs] then fs:SetShadowColor(T.RGB("textShadow")) end
 end
 
+-- Re-fonts one string styled with a role, or forgets it once it is closed to addons (T.Closed).
+local function refont(fs, role)
+  if T.Closed(fs) then styled[fs] = nil else T.ApplyRole(fs, role) end
+end
+
+-- Recolours one string coloured by token, or forgets it once it is closed to addons.
+local function recolor(fs, token)
+  if T.Closed(fs) then colored[fs] = nil else fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
+end
+
 -- Re-fonts every string styled with a role (after a font or text size change) and recolours every
--- string coloured by token (after a variant or accent change); one closed to addons is forgotten (T.Closed).
+-- string coloured by token (after a variant or accent change), each on its own (T.EachTried).
 function T.RefreshText()
-  for fs, role in pairs(styled) do
-    if T.Closed(fs) then styled[fs] = nil else T.ApplyRole(fs, role) end
-  end
-  for fs, token in pairs(colored) do
-    if T.Closed(fs) then colored[fs] = nil else fs:SetTextColor(T.RGB(token)) shadowFor(fs, token) end
-  end
+  T.EachTried("re-font text", styled, refont)
+  T.EachTried("re-colour text", colored, recolor)
 end
 
 -- Colors a font string by token (remembered, so T.RefreshText keeps it current; see shadowFor), or in
@@ -3435,13 +3481,13 @@ function T.OnChanged(fn)
 end
 
 -- Repaints the crests, the ornaments and the game frame primitives (check boxes, radios, arrows,
--- dividers).
+-- dividers), each on its own (T.EachTried).
 local function repaintArt()
-  for t in pairs(crests) do T.PaintCrest(t) end
-  for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
-  for button, c in pairs(checkOf) do c.paint(button, c) end
-  for button in pairs(arrowOf) do paintArrow(button) end
-  for _, d in pairs(dividerOf) do T.Tint(d.line, T.DIVIDER.color) end
+  T.EachTried("repaint crest", crests, T.PaintCrest)
+  T.EachTried("repaint ornament", ornaments, T.PaintOrnament)
+  T.EachTried("repaint check", checkOf, function(button, c) c.paint(button, c) end)
+  T.EachTried("repaint arrow", arrowOf, paintArrow)
+  T.EachTried("repaint divider", dividerOf, function(_, d) T.Tint(d.line, T.DIVIDER.color) end)
 end
 
 do
@@ -3624,7 +3670,7 @@ end
 
 -- A UI scale or screen change can move the brackets and the rule motif to the other bake.
 T.OnScale(function()
-  for frame, o in pairs(ornaments) do T.PaintOrnament(frame, o) end
+  T.EachTried("repaint ornament", ornaments, T.PaintOrnament)
 end)
 
 -- Sets the accent color (0-1 components) and repaints; a picked accent no longer follows the class.

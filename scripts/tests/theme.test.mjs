@@ -511,6 +511,70 @@ it("a repaint never reads an edge's shown state back: the client can hold it sec
   expect(addon.eval("return #ns.errors"), "and nothing raised").toBe(0);
 });
 
+it("one painted frame whose repaint fails leaves every other frame repainted and the rest of a theme change done", () => {
+  const addon = loggedIn();
+  expectErrors("repaint: eval:11: TEST-ONLY refused", "re-tint: eval:11: TEST-ONLY refused");
+  const out = addon.eval(`local T = ns.Theme
+    local function edgesOf(f)
+      local out = {}
+      for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then out[#out + 1] = w end end
+      return out
+    end
+    local good = {}
+    for i = 1, 12 do good[i] = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true }) end
+    local bad = T.Panel(CreateFrame("Frame", nil, UIParent), { accent = true })
+    for _, e in ipairs(edgesOf(bad)) do e.SetVertexColor = function() error("TEST-ONLY refused") end end
+    local fs = T.Text(UIParent:CreateFontString(nil, "OVERLAY"), "label", "accentText")
+    local heard = false
+    T.OnChanged(function() heard = true end)
+    T.Settings().accent = { 1, 0, 0 }
+    local ok = pcall(T.Refresh)
+    local repainted = 0
+    for _, f in ipairs(good) do if edgesOf(f)[1].__vertexColor[1] == 1 and edgesOf(f)[1].__vertexColor[2] == 0 then repainted = repainted + 1 end end
+    return { ok, repainted, heard, fs.__textColor and fs.__textColor[2] < 0.5 }`);
+  expect(out, "the refresh finished, all twelve good frames took the new accent, the listeners ran and text was recoloured").toEqual([true, 12, true, true]);
+});
+
+it("a frame whose scale the client hides is painted at the screen's pixel, the hidden scale never compared", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    local f = T.Panel(CreateFrame("Frame", nil, UIParent), { inset = true, noSheen = true })
+    f:SetSize(40, 40)
+    f.GetEffectiveScale = function() return __wfgWorld.secret(1) end
+    local ok = pcall(T.RepaintFrame, f)
+    local thick
+    for _, w in ipairs(__wfgStub.frames) do if w.__parent == f and w.__layer == "BORDER" and w.__kind == "Texture" then thick = math.min(w.__width or 1e9, w.__height or 1e9) end end
+    return { ok, math.abs(thick - T.Pixel(UIParent)) < 1e-9, T.DrawnScale(__wfgWorld.secret(1)) == UIParent:GetEffectiveScale() }`);
+  expect(out, "the repaint went through, each edge is one screen pixel, and a hidden scale reads as the screen's").toEqual([true, true, true]);
+});
+
+it("a game divider whose shown state the client hides never hands the secret to its line, and a press never reads its shade back", () => {
+  const addon = loggedIn();
+  const divider = addon.eval(`local T = ns.Theme
+    local host = CreateFrame("Frame", nil, UIParent)
+    local tex = host:CreateTexture()
+    T.Divider(tex)
+    local holder, handed = T.DividerParts(tex).holder, {}
+    local set = holder.SetShown
+    holder.SetShown = function(self, v) handed[#handed + 1] = issecretvalue(v) and "secret" or tostring(v) return set(self, v) end
+    tex.IsShown = function() return __wfgWorld.secret(true) end
+    tex:Show()
+    tex.IsShown = nil
+    tex:Hide()
+    return handed`);
+  expect(divider, "a hidden shown state is not passed on; a plain one still is").toEqual(["false"]);
+  const press = addon.eval(`local T = ns.Theme
+    local b = T.Button(CreateFrame("Button", nil, UIParent))
+    local shade, asked = T.PressOverlay(b), 0
+    shade.IsShown = function() asked = asked + 1 return __wfgWorld.secret(true) end
+    T.PressButton(b, true)
+    shade.IsShown = nil
+    local down = shade:IsShown()
+    T.PressButton(b, false)
+    return { asked, down, shade:IsShown() }`);
+  expect(press, "the shade was never asked whether it is shown, and it shows while held and hides after").toEqual([0, true, false]);
+});
+
 it("T.RepaintFrame repaints one painted frame at its new scale, and leaves a frame that was never painted alone", () => {
   const addon = loggedIn();
   const out = addon.eval(`
