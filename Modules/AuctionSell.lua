@@ -529,11 +529,14 @@ local function sending(s, n, price, d)
 end
 
 -- The restricted call for the sale's next stack, without its "Post" or "ConfirmPost": Commodity
--- (location, length, quantity, unit price) or Item (location, length, quantity, bid, buyout).
+-- (location, length, quantity, unit price) or Item (location, length, quantity, bid, buyout). An
+-- item's bid and buyout are the whole auction's (as the card reads a listing's: its buyout over its
+-- quantity), so the card's per-unit figures are multiplied by the quantity; one item is the usual case.
 local function postCall(s, loc, price)
   local d, n = AH.Duration(s), stackSize(s)
   if s.commodity then return "Commodity", { loc, d, n, price, n = 4 } end
-  return "Item", { loc, d, n, bidFor(s), price, n = 5 }
+  local bid = bidFor(s)
+  return "Item", { loc, d, n, bid and bid * n, price * n, n = 5 }
 end
 
 -- A stack went up: counted, and on to the next.

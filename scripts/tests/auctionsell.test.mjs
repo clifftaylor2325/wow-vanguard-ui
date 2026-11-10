@@ -144,6 +144,15 @@ it("posting calls the right function from a click, never from a timer", () => {
   expect(restrictedLog(addon)[1], "one blade, buyout only, for the second length").toEqual(["PostItem", true, "0:2", 2, 1, "nil", 4400]);
   expect(addon.eval("return __wfgWorld.ah.postItem.slotIndex"), "the game's own SetPostItem still ran").toBe(2);
 });
+it("an item posted with a quantity above one sends its bid and buyout for the whole auction", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.bags[0][2] = { itemID = 9999, count = 3 } __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.type(`${CARD}.qty`, "2");
+  addon.type(`${CARD}.stack`, "2");
+  addon.type(`${CARD}.bid`, "10s");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon)[0], "two items at 49s each: buyout 98s, bid 20s, for the pair").toEqual(["PostItem", true, "0:2", 1, 2, 2000, 9800]);
+});
 it("a true return asks for a confirm, and the next click on Post (Confirm) confirms it", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
