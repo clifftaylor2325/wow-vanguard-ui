@@ -36,7 +36,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 
 | Command | What it does |
 | --- | --- |
-| `/vg profile [name]` | Switch, or `new`, `copy`, `delete`, `reset` |
+| `/vg profile [name]` | Switch (the name matches in any case; a name that matches no profile asks before making an empty one), or `new`, `copy`, `delete` (both ask first, as the Profiles page does), `reset` |
 | `/vg preset [name]` | Healer, Damage, Tank and any an addon offers |
 | `/vg export`, `/vg import` | Profile strings, whole or in parts |
 | `/vg spec [profile\|off]` | Use a profile in this specialization (on WoW Forever, in this talent group) |
@@ -118,7 +118,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg modules       the list of modules; /vg enable|disable <module>, then /reload
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it
-/vg profile [name]              switch (or create); profile new|copy|delete <name>, profile reset (asks and backs up first); a profile's exact name wins over these words
+/vg profile [name]              switch (any case; a name that matches nothing asks before creating one); profile new|copy|delete <name> (copy and delete ask first), profile reset (asks and backs up first); a profile's exact name wins over these words
 /vg export [part ...|pick] | import   profile strings: the whole profile, or only some parts (layout, situations, global, a module's name); pick opens a switch for each part
 /vg spec [profile|off]          use a profile whenever you're in this specialization
 /vg binds                       this spec's click-casting and hover-key bindings

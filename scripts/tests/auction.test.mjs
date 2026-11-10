@@ -2,7 +2,7 @@
 // (Modules/AuctionPrices.lua), at the TEST-ONLY auction house of the headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
+import { chatHas, expectErrors, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock (a test moves __now), the tooltip data API the Tooltips module
 // hooks, and a way to show an item's tooltip (the client's own price shown, so only the added
@@ -173,6 +173,12 @@ it("pruning and caps: old prices go at login, and past the cap the oldest items 
   addon.eval("ns.AuctionPrices.Record(200, 7, 1790000100)");
   const after = addon.eval("local p = ns.AuctionPrices.House().prices return { ns.AuctionPrices.House().count, p[101] == nil, p[102] == nil, p[103] ~= nil, p[200] ~= nil }");
   expect(after, "the 11th item keeps the newest 9: the two oldest go").toEqual([9, true, true, true, true]);
+});
+it("a failing price listener doesn't stop the others or the recording", () => {
+  expectErrors("auction price seen: eval:2: TEST-ONLY listener");
+  const addon = loggedIn(AH_ENV);
+  addon.eval("local AP = ns.AuctionPrices AP.OnSeen(function() error('TEST-ONLY listener') end) HEARD = 0 AP.OnSeen(function() HEARD = HEARD + 1 end) AP.Record(7001, 5, __now) AP.Record(7002, 6, __now)");
+  expect(addon.eval("return { HEARD, ns.AuctionPrices.House().prices[7002].min }"), "both items recorded, the later listener heard both").toEqual([2, 6]);
 });
 // History ------------------------------------------------------------------------------------
 

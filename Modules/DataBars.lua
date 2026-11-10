@@ -230,12 +230,19 @@ function DB.XPText(xp)
   return ns.Format(L["Level {level}  {cur} / {max} ({percent}%)"], values)
 end
 
--- "Valdrakken Accord  Honored  1.2K / 2.5K (48%)", or "Valdrakken Accord  Exalted" at the top standing (a major
--- faction's "Renown 12" in place of the standing).
-function DB.ReputationText(rep)
+-- The faction's name and its standing's word ("Valdrakken Accord  Honored"), or the name alone: with no word, or while
+-- the client hides the name (namesFaction takes a hidden one), which can only go to the font string whole, never joined.
+local function repHead(rep)
   local word = rep.word or DB.StandingName(rep.standing)
-  local head = word and rep.name .. "  " .. word or rep.name
-  if rep.noNumbers then return head end
+  if not word or ns.IsSecret(rep.name) then return rep.name end
+  return rep.name .. "  " .. word
+end
+
+-- "Valdrakken Accord  Honored  1.2K / 2.5K (48%)", or "Valdrakken Accord  Exalted" at the top standing (a major
+-- faction's "Renown 12" in place of the standing); a hidden name alone.
+function DB.ReputationText(rep)
+  local head = repHead(rep)
+  if rep.noNumbers or ns.IsSecret(head) then return head end
   return string.format("%s  %s / %s (%d%%)", head, DB.Short(rep.cur), DB.Short(rep.max), math.floor(rep.cur / rep.max * 100))
 end
 

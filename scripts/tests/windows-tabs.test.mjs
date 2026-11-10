@@ -1314,3 +1314,20 @@ it("appearances: the search box, dropdowns, page arrows and the sets tab's rows 
   addon.eval("CollectionsJournal:Hide() CollectionsJournal:Show()");
   expect(addon.eval("return { ns.Theme.PaintedCount(), #ns.errors }"), "showing it again paints nothing new").toEqual([painted, 0]);
 });
+
+// A tab's anchor offsets are secret while its anchoring is (SecretWhenAnchoringSecret), and a widget's checked or shown state
+// once the game set it from a secret (FOREVER-API-FACTS 3): a hidden offset is not handed back to SetPoint, a hidden check
+// is not said again, and nothing raises.
+it("tabs: a tab whose anchor offsets or checked state the client hides keeps its anchor and its state", () => {
+  const addon = loggedIn("");
+  expect(addon.eval(`local S = __wfgWorld.secret
+    local window = CreateFrame("Frame", nil, UIParent) window:SetSize(300, 300) window:SetPoint("CENTER")
+    ns.Theme.Panel(window, { pad = 12 })
+    local tab = CreateFrame("Button", nil, window) tab:SetSize(40, 40) tab:SetPoint("TOPLEFT", window, "TOPRIGHT", 0, -20)
+    local real = tab.GetPoint
+    tab.GetPoint = function(self, i) local p, r, rp, x, y = real(self, i) return p, r, rp, x, S(y) end
+    ns.GetModule("Windows").ClearPadding(tab, window)
+    tab.GetPoint = nil
+    local y = tab.__points.TOPLEFT.y
+    return { issecretvalue(y), y, #ns.errors }`), "the anchor is left as the game set it, no secret handed to SetPoint").toEqual([false, -20, 0]);
+});

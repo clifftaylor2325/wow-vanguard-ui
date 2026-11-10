@@ -525,3 +525,13 @@ it("a call the game blocks from Vanguard is kept for /vg errors; another addon's
   addon.slash("errors clear");
   expect(addon.eval("return #ns.blocked"), "/vg errors clear empties them too").toBe(0);
 });
+
+it("a chat message sent while the client restricts chat (an encounter, a keystone) is not sent, and chat says why", () => {
+  const addon = loggedIn(`__sent = {} C_ChatInfo.SendChatMessage = function(text, channel) __sent[#__sent + 1] = channel end`);
+  addon.eval("C_ChatInfo.InChatMessagingLockdown = function() return true end");
+  addon.clearChat();
+  expect(addon.eval('return { ns.SendChat("TEST-ONLY report", "PARTY"), #__sent }'), "refused: nothing sent").toEqual([false, 0]);
+  expect(chatHas(addon, /can't send to chat while the game restricts it/), "chat says why").toBe(true);
+  addon.eval("C_ChatInfo.InChatMessagingLockdown = function() return false end");
+  expect(addon.eval('ns.SendChat("TEST-ONLY report", "PARTY") return __sent[1]'), "unrestricted: sent").toBe("PARTY");
+});

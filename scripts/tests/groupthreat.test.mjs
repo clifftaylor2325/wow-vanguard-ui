@@ -199,3 +199,14 @@ it("Y1-3 group threat: threat events read the group at most every quarter second
   addon.update(0.01);
   expect(addon.eval("return __reads"), "a new target: read on the next frame").toBe(1);
 });
+
+it("group threat: a hidden 'can attack' answer on your target is checked before it is compared, and shows no panel", () => {
+  const addon = party();
+  addon.eval(`__canAttack, __checked = __wfgWorld.secret(true), 0
+    local real = issecretvalue
+    issecretvalue = function(v) if rawequal(v, __canAttack) then __checked = __checked + 1 end return real(v) end
+    UnitCanAttack = function() return __canAttack end`);
+  addon.fire("ADDON_LOADED", "TEST-ONLY");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect([panel(addon)[0], addon.eval("return __checked") > 0, addon.eval("return #ns.errors")], "no panel, the answer was asked whether it is hidden, no error").toEqual([false, true, 0]);
+});

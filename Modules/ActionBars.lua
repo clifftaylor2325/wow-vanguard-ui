@@ -134,6 +134,11 @@ AB.stacked, AB.stackedTop = {}, nil
 -- The skinning group the action buttons are in, when the library is loaded.
 AB.MASQUE = "Action bars"
 
+-- Whether bar n is one of the bottom stack's bars (a bar dragged away still counts: its default spot is in the stack).
+function AB.InStack(n)
+  return BARS[n] ~= nil and BARS[n].stack == true
+end
+
 -- Whether bar n sits on the right edge of the screen (bars 4 and 5; the
 -- stacked bottom bars have no fixed point).
 function AB.RightEdge(n)
@@ -301,11 +306,23 @@ local function sweepFromNumbers(b, start, length)
   ns.Quiet("bar cooldown", b.cooldown.SetCooldown, b.cooldown, start, length)
 end
 
--- Whether the sweep now running is a real cooldown, not the global one: only when the client plainly says so (a
--- hidden answer or a client without the field is no), so a ready flash never fires on every global cooldown.
-local function sweepIsReal(info)
-  if type(info) ~= "table" or ns.IsSecret(info) or ns.IsSecret(info.isOnGCD) then return false end
-  return info.isOnGCD == false
+-- Whether the slot's cooldown info says a cooldown is running: isActive (never hidden) where the client has it,
+-- else a plain duration above 0; true when it can't say, so isOnGCD decides as before.
+local function sweepRunning(info)
+  if type(info.isActive) == "boolean" and not ns.IsSecret(info.isActive) then return info.isActive end
+  local length = ns.PlainNumber(info.duration)
+  return length == nil or length > 0
+end
+
+-- Whether the sweep on the button is a real cooldown, not the global one, decided as a sweep starts: a read
+-- with nothing running (the one at a global cooldown's end) keeps the answer of the sweep that is ending, so
+-- its OnCooldownDone, before or after that read, never flashes a global cooldown. Only a plain isOnGCD false
+-- is real; a new slot (a page, a stance) starts at no.
+local function noteSweep(b, info)
+  if b.sweepSlot ~= b.action then b.sweepSlot, b.realSweep = b.action, false end
+  if type(info) ~= "table" or ns.IsSecret(info) then b.realSweep = false return end
+  if not sweepRunning(info) then return end
+  b.realSweep = not ns.IsSecret(info.isOnGCD) and info.isOnGCD == false
 end
 
 -- The cooldown sweep: the slot's duration object goes to the widget as is (no object: no sweep), or the
@@ -313,7 +330,7 @@ end
 -- The slot's cooldown is read once, for both the sweep and the ready flash.
 local function updateCooldown(b)
   local start, length = call("GetActionCooldown", b.action)
-  b.realSweep = sweepIsReal(start)
+  noteSweep(b, start)
   if not sweepsFromObject(b) then return sweepFromNumbers(b, start, length) end
   local duration = call("GetActionCooldownDuration", b.action)
   if duration == nil then return b.cooldown:Clear() end
@@ -433,17 +450,19 @@ local function updateHotkey(b)
 end
 
 -- The name the game prints on a slot's button (a macro's), or "" when the game says the action prints none. The
--- name may be hidden: only SetText takes it.
+-- name may be hidden: only SetText takes it, so it is returned, never tested (`x and name or ""` tests it).
 local function actionName(slot)
   local uses = call("UsesActionText", slot)
   if not ns.IsSecret(uses) and uses == false then return "" end
   local text = call("GetActionText", slot)
-  return (ns.IsSecret(text) or type(text) == "string") and text or ""
+  if ns.IsSecret(text) or type(text) == "string" then return text end
+  return ""
 end
 
 -- The macro name along the bottom: only with Macro names on and an action in the slot.
 local function updateName(b)
-  b.macroName:SetText((AB.settings.macroNames and b.hasAction) and actionName(b.action) or "")
+  if AB.settings.macroNames and b.hasAction then return b.macroName:SetText(actionName(b.action)) end
+  b.macroName:SetText("")
 end
 
 -- The count, macro name and hotkey texts.
@@ -521,9 +540,11 @@ local function each(fn)
   end
 end
 
--- Repaints every button's icon tint, for a change to "Red when out of range".
+-- Repaints every button's icon tint, for a change to "Red when out of range", and starts or stops the range
+-- polling it needs on a client without range events.
 function AB.RepaintIcons()
   each(paintIcon)
+  AB.FollowRangeTint()
 end
 
 -- Repaints every button's macro name and key text, for a change to Macro names or Key text.
@@ -992,6 +1013,13 @@ local function pollRange()
   ns.Every("action bar range", 0.2, function() each(updateRange) end)
 end
 
+-- Polls range while "Red when out of range" is on and the client sends no range events; stops otherwise. Run at
+-- enable and whenever the setting changes, so turning it on needs no reload.
+function AB.FollowRangeTint()
+  if AB.settings.rangeTint and not rangeEvents() then return pollRange() end
+  ns.Every("action bar range", nil)
+end
+
 -- What you carry or wear changed: item counts, and whether an item can be used.
 local function refreshCarried()
   each(updateCount)
@@ -1113,7 +1141,8 @@ function AB.Enable(settings)
   for event, fn in pairs(EVENTS) do
     ns.On(event, fn)
   end
-  if settings.rangeTint and not rangeEvents() then pollRange() end
+  AB.FollowRangeTint()
   ns.OnUnit("UNIT_INVENTORY_CHANGED", refreshCarried, "player")
   T.OnChanged(function() ns.OutOfCombat(AB.UpdateBackings, "action bar backings") end)
+  ns.OnMoverPlaced(function(key) if key:match("^bar%d$") then ns.OutOfCombat(AB.UpdateBackings, "action bar backings") end end)
 end

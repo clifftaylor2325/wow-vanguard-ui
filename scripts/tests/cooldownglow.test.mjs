@@ -85,9 +85,12 @@ it("cooldown glow: where the client has curves, the duration object goes to the 
   addon.eval("__hidden = true");
   addon.advance(1);
   expect(lit(addon), "a hidden answer is handed to the ring as it is").toBe(true);
-  addon.eval("BuffIconCooldownViewer.items[1]:Hide()");
+  addon.eval("BuffIconCooldownViewer.items[1].IsShown = function() return { __secret = true } end");
   addon.advance(1);
-  expect(lit(addon), "a hidden item has no ring lit").toBe(false);
+  expect(lit(addon), "the item's shown state is never read (the client may hide it), so the ring stays lit").toBe(true);
+  addon.eval("BuffIconCooldownViewer.items[1].IsShown = nil BuffIconCooldownViewer.items[1]:Hide()");
+  addon.advance(1);
+  expect(addon.eval("return ns.FrameState('vgGlow')[BuffIconCooldownViewer.items[1]][1]:IsVisible()"), "a hidden item hides its ring with it").toBe(false);
 });
 
 it("cooldown glow: an aura whose times are hidden still lights through the client's duration object, a userdata", () => {

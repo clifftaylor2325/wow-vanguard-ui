@@ -395,3 +395,20 @@ it("the debuffs and buffs sliders reach every count a role preset saves", () => 
   // The Healer preset (and setup's Healing layout) saves two debuffs: the slider must be able to show it.
   expect(Object.values(missing ?? {})).toEqual([]);
 });
+
+it("after a fight, a plate the client has since closed keeps its fallback rows untouched, and the other plates still get the client's containers", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "__units.nameplate2 = nil ns.GetModule('Nameplates').POOL = 0");
+  setCombat(addon, true);
+  addon.eval("__units.nameplate2 = __units.party1");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate2");
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  // TEST-ONLY: nameplate2 put away and its plate closed; the row under it still answers no for itself, but is touched.
+  addon.eval(`local fs = ns.FrameState('vgPlate')
+    __closedRow = fs[__plates.nameplate2].debuffs.frame __touches = 0
+    for _, name in ipairs({ "SetUnit", "Hide", "ClearAllPoints" }) do __closedRow[name] = function() __touches = __touches + 1 end end`);
+  addon.fire("NAME_PLATE_UNIT_REMOVED", "nameplate2");
+  addon.eval("__touches = 0 __plates.nameplate2.IsForbidden = function() return true end");
+  setCombat(addon, false);
+  const out = addon.eval("local fs = ns.FrameState('vgPlate') return { __touches, fs[__plates.nameplate2].debuffs.frame == __closedRow, fs[__plates.nameplate1].debuffsOnEngine }");
+  expect(out, "the closed plate's row is left as it was, and the open plate is upgraded").toEqual([0, true, true]);
+});

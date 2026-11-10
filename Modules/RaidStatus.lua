@@ -184,12 +184,14 @@ local function showTexture(t, shown, texture)
 end
 
 -- Shows a mark { texture, color } tinted, with its shadow, or hides both when
--- there's none (or the mark is off).
+-- there's none (or the mark is off). True when shown: callers use this, never the texture's
+-- IsShown, which the client may answer with a secret.
 local function showMark(t, on, spec)
-  local shown = on and spec ~= nil
+  local shown = on == true and spec ~= nil
   showTexture(t, shown, shown and spec[1])
   showTexture(t.shadow, shown, shown and spec[1])
   if shown then T.Tint(t, spec[2]) end
+  return shown
 end
 
 -- Shows raid target icon `index` (1-8, a cell of the 4 x 4 icon sheet) on a texture, or hides it for nil.
@@ -206,9 +208,12 @@ local function updateRaidIcon(b, unit)
   RS.PaintIcon(b.raidIcon, RS.settings.raidIcons and RS.RaidIcon(unit))
 end
 
--- Shows a game atlas on a texture, or hides it for nil or an atlas the client doesn't have (SetAtlas says false).
+-- Shows a game atlas on a texture, or hides it for nil or an atlas the client doesn't have (SetAtlas says
+-- false); true when shown.
 local function showAtlas(t, atlas)
-  t:SetShown(atlas ~= nil and t:SetAtlas(atlas) ~= false)
+  local shown = atlas ~= nil and t:SetAtlas(atlas) ~= false
+  t:SetShown(shown)
+  return shown
 end
 
 -- The answers of the check under way, by player: once it ended, the client no longer says. Kept by player, not
@@ -232,15 +237,15 @@ local function readyMarkFor(unit)
 end
 
 -- The marks that come and go in the center, one at a time: the ready check answer, else the summon,
--- else the resurrection (the last two under one switch). The status text (missing health, Dead) hides while one shows.
+-- else the resurrection (the last two under one switch). The status text (missing health, Dead) hides while
+-- one shows: worked out from what was just set, never read back from the marks (a secret IsShown raises here).
 local function updateCenter(b, unit)
   local s = RS.settings
-  showMark(b.ready, s.readyCheck and RS.readyRunning, readyMarkFor(unit))
-  local readyShown = b.ready:IsShown()
-  local summon = s.resurrect and not readyShown and RS.SummonAtlas(unit) or nil
-  showAtlas(b.summon, summon)
-  b.rez:SetShown(s.resurrect and not readyShown and not summon and RS.Resurrecting(unit))
-  b.status:SetShown(not (readyShown or b.rez:IsShown() or b.summon:IsShown()))
+  local ready = showMark(b.ready, s.readyCheck and RS.readyRunning, readyMarkFor(unit))
+  local summon = showAtlas(b.summon, s.resurrect and not ready and RS.SummonAtlas(unit) or nil)
+  local rez = s.resurrect == true and not ready and not summon and RS.Resurrecting(unit)
+  b.rez:SetShown(rez)
+  b.status:SetShown(not (ready or summon or rez))
 end
 
 -- The leader crown or assistant mark.

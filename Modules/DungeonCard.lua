@@ -67,8 +67,9 @@ DC.Detail = DC.LevelText
 
 -- The heading at a dungeon's door: "Ragefire Chasm · levels 13-18 · 5-player Normal", or nil outside one (outside, the client answers with the zone's name and type "none").
 function DC.Heading()
-  local name, kind, _, difficulty, size = ask("GetInstanceInfo")
-  if not plainText(name) or (kind ~= "party" and kind ~= "raid") then return nil end
+  local name, _, _, difficulty, size = ask("GetInstanceInfo")
+  local where = ns.Where()
+  if not plainText(name) or (where ~= "party" and where ~= "raid") then return nil end
   local parts = { name, DC.Detail(mapNow()) }
   local group = ns.PlainNumber(size)
   local sized = plainText(difficulty) and L["{size}-player {difficulty}"] or L["{size}-player"]

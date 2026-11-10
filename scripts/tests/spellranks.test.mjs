@@ -288,3 +288,12 @@ it("upcoming services come lowest level first, then by name", () => {
     "6TEST-ONLY 5", "6TEST-ONLY 8", "7TEST-ONLY 6", "8TEST-ONLY 7", "9TEST-ONLY 9",
   ]);
 });
+
+it("hunt bars: a slot whose kind the client hides is skipped, never compared", () => {
+  const addon = mage();
+  put(addon, 3, 100);
+  addon.eval(`local get = GetActionInfo
+    GetActionInfo = function(slot) if slot == 3 then return __wfgWorld.secret("spell"), 100 end return get(slot) end`);
+  addon.slash("ranks");
+  expect(chatHas(addon, /Every spell on your bars is at your newest rank\./), "the hidden slot is left out").toBe(true);
+});

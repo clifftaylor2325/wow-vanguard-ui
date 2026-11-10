@@ -36,9 +36,13 @@ end
 
 -- Copies another profile's settings over the one this character uses after the next reload: the
 -- active one, or the one staged while a switch waits (so the profile running until then is never
--- overwritten). Returns the name copied into, or false.
-function ns.CopyProfile(from)
-  local source, into = VanguardDB.profiles[from], ns.SelectedProfileName()
+-- overwritten). `into` names another profile to copy into (setup's Undo puts the profile it backed up
+-- back, which a switch staged since is not). Returns the name copied into, or false.
+---@param from string
+---@param into string|nil
+function ns.CopyProfile(from, into)
+  local source = VanguardDB.profiles[from]
+  into = into or ns.SelectedProfileName()
   if not source or from == into then
     return false
   end
@@ -127,9 +131,10 @@ local function freeName(base)
 end
 
 -- A profile name base from a character's name: the characters a profile name can hold
--- (short enough for freeName's " 2"), else "Character".
+-- (short enough for freeName's " 2"), else "Character". The client may hide the name (a secret string,
+-- which string functions refuse), so only a plain one is read.
 local function nameBase(name)
-  local base = (type(name) == "string" and name or ""):gsub("[^%w%s%-_]", "")
+  local base = (ns.PlainText(name) or ""):gsub("[^%w%s%-_]", "")
   return base ~= "" and base:sub(1, 29) or "Character"
 end
 
@@ -176,19 +181,21 @@ local function backupName(name, n)
   return name:sub(1, 32 - #suffix) .. suffix
 end
 
--- True when the backup profile called candidate was made from a profile other than name (two
--- long names cut alike): VanguardDB.backupOf keeps the source of each backup.
-local function otherBackup(candidate, name)
-  local source = type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf[candidate] or nil
-  return source ~= nil and source ~= name
+-- True when a backup of the profile `name` may be written to the profile called candidate: nothing is
+-- there, or what is there is recorded (VanguardDB.backupOf) as an earlier backup of `name`. A profile that
+-- is not a recorded backup of it (made by hand, another profile's backup, one from before backupOf) is never
+-- overwritten. (A choice the owner can reverse: the old rule replaced any unused profile with that name.)
+local function reusable(candidate, name)
+  if VanguardDB.profiles[candidate] == nil then return true end
+  return type(VanguardDB.backupOf) == "table" and VanguardDB.backupOf[candidate] == name
 end
 
 -- The rolling backup's name for a profile: "<name> backup"; never a profile in use (by this
--- character, now, after the reload or for a spec, or by another character) or another profile's
--- backup: then "<name> backup 2", 3 and on.
+-- character, now, after the reload or for a spec, or by another character) nor any profile that is not
+-- its own recorded backup: then "<name> backup 2", 3 and on.
 function ns.BackupName(name)
   local n = 1
-  while profileInUse(backupName(name, n)) or otherBackup(backupName(name, n), name) do n = n + 1 end
+  while profileInUse(backupName(name, n)) or not reusable(backupName(name, n), name) do n = n + 1 end
   return backupName(name, n)
 end
 

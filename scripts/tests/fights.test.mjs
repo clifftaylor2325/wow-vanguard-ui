@@ -223,3 +223,11 @@ it("a client without the extra meters recaps nothing and raises no error", () =>
   addon.slash("recap");
   expect([chatHas(addon, /No recap to show/), addon.eval("return #ns.errors")]).toEqual([true, 0]);
 });
+
+it("the recap skips a line or a list the client hides, and never reads into one", () => {
+  const addon = loggedIn(RECAP_ENV);
+  addon.eval("__meters[5] = { combatSources = { __wfgWorld.secret(), { isLocalPlayer = true, totalAmount = 3 } } }");
+  addon.eval("__meters[9] = { combatSources = __wfgWorld.secret({}) }");
+  addon.slash("recap");
+  expect([chatHas(addon, /Fight recap: Interrupts 3$/), addon.eval("return #ns.errors")], "your plain line counts; a hidden list is no zero deaths").toEqual([true, 0]);
+});

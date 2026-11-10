@@ -107,10 +107,27 @@ end
 
 -- Whether the group's loot goes through a master looter: the game's own loot window must pick those items,
 -- as its assign menu reads what was clicked (a slot taken from here would open it on no item, or a stale one).
+-- True or false from the call this client has (C_PartyInfo.GetLootMethod with Enum.LootMethod, else the
+-- old global GetLootMethod's "master"); nil when none answers plainly.
 local function masterLoot()
-  local method = ns.CallIf(C_PartyInfo, "GetLootMethod")
-  local methods = type(Enum) == "table" and Enum.LootMethod
-  return methods and not ns.IsSecret(method) and method == methods.Masterlooter
+  local method, methods = ns.CallIf(C_PartyInfo, "GetLootMethod"), type(Enum) == "table" and Enum.LootMethod
+  if ns.IsSecret(method) then return nil end
+  if method ~= nil and methods then return method == methods.Masterlooter end
+  local old = ns.CallIf(_G, "GetLootMethod")
+  if type(old) == "string" and not ns.IsSecret(old) then return old == "master" end
+end
+
+-- Whether the player is in a group; true when this client can't say (master loot needs one).
+local function grouped()
+  return type(IsInGroup) ~= "function" or IsInGroup() ~= false
+end
+
+-- Whether the game's loot window must keep the slots: master loot, or, when the loot method is unknown,
+-- any group (alone there is no master looter).
+local function leaveToGame()
+  local master = masterLoot()
+  if master == nil then return grouped() end
+  return master
 end
 
 -- Loot is ready: when the game is auto-looting (its setting, or its key held),
@@ -118,7 +135,7 @@ end
 -- needs a bind-on-pickup answer still brings up the game's prompt. Under master loot the game's window is left
 -- alone (its own auto-loot still takes what is under the threshold).
 function AA.OnLootReady(_, autoloot)
-  if not AA.settings.loot or not autoloot or type(GetNumLootItems) ~= "function" or masterLoot() then return end
+  if not AA.settings.loot or not autoloot or type(GetNumLootItems) ~= "function" or leaveToGame() then return end
   for slot = GetNumLootItems(), 1, -1 do takeSlot(slot) end
 end
 

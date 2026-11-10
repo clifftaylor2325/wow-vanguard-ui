@@ -189,6 +189,12 @@ it("first-run setup: a profile of its own copies the shared one without a reload
   const fork = (name) => addon.eval(`return ns.ForkName(${JSON.stringify(name)})`);
   expect([fork("name"), fork("Ælfric"), fork("Ææ"), fork(undefined)], "a taken name is numbered; letters a profile can't hold are dropped").toEqual(["name 2", "lfric", "Character", "Character"]);
 });
+it("hunt setup: a player name the client hides (a secret string) names the fork's profile Character instead of raising", () => {
+  const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
+  addon.world.setUnit("player", { name: addon.world.secret("Tester") });
+  expect(addon.eval("return ns.ForkName(UnitName('player'))"), "the profile step names its own-profile choice without reading the name").toBe("Character");
+  expect(addon.eval("ns.Setup.ApplyProfile('new') return ns.ProfileName()"), "forking for a hidden name works").toBe("Character");
+});
 it("Y8-2 first-run setup: once setup changes the shared profile, Back doesn't reach the Profile step", () => {
   const addon = loggedIn(CLICK_LUA, { firstRun: true, savedVariables: SET_UP_ACCOUNT });
   setupClick(addon, "next");
@@ -264,7 +270,7 @@ it("setup again: Keep and Keep change nothing; Run setup in the options; Start o
   expect(after.eval("return { Vanguard_Setup.caption:GetText(), Vanguard_Setup.pages.layout.hint:GetText() }"), "after the reload setup opens on its layouts, Keep picked").toEqual(["Step 1 of 9 · Layout", "Moves nothing: your frames stay where they are."]);
 });
 it("setup after Start over keeps Start over's backup: its first change doesn't copy the reset profile over it", () => {
-  const sv = "VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, ['Default backup'] = { positions = { raid = { point = 'TOP', relPoint = 'TOP', x = 0, y = -300 } } } } }\nVanguardCharDB = { setupDone = false, setupBackup = 'Default backup' }";
+  const sv = "VanguardDB = { version = 2, setupDone = true, backupOf = { ['Default backup'] = 'Default' }, profiles = { Default = {}, ['Default backup'] = { positions = { raid = { point = 'TOP', relPoint = 'TOP', x = 0, y = -300 } } } } }\nVanguardCharDB = { setupDone = false, setupBackup = 'Default backup' }";
   const addon = loggedIn("", { firstRun: true, savedVariables: sv });
   addon.clearChat();
   addon.eval("ns.Setup.Backup()");

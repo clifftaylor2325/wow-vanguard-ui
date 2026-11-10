@@ -117,6 +117,11 @@ it("the sell card suggests an undercut", () => {
   addon.click(`${CARD}.undercut.segments[1]`);
   expect(card(addon)[0].slice(2), "no copper on this client: whole silver up, deposit too").toEqual(["2s 0c · TEST-ONLY 12 Hours", "1s 0c"]);
 });
+it("a listing whose owner flag the client hides is left out of the price to beat and raises nothing", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.commodities[10940] = { { unitPrice = 100, quantity = 5, containsOwnerItem = __wfgWorld.secret(false) }, { unitPrice = 120, quantity = 3 } }");
+  dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect([card(addon)[0][0], addon.eval("return #ns.errors")], "cheapest is the readable 120, no error").toEqual(["1s 20c", 0]);
+});
 it("posting calls the right function from a click, never from a timer", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
   dropAndAnswer(addon, 1, "COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
@@ -139,6 +144,20 @@ it("posting calls the right function from a click, never from a timer", () => {
   expect(restrictedLog(addon)[1], "one blade, buyout only, for the second length").toEqual(["PostItem", true, "0:2", 2, 1, "nil", 4400]);
   expect(addon.eval("return __wfgWorld.ah.postItem.slotIndex"), "the game's own SetPostItem still ran").toBe(2);
 });
+it("a listing with a buyout of 0 is bid-only, never the cheapest price", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 0, quantity = 1 }, { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(card(addon)[0].slice(0, 1).concat(card(addon)[0][3]), "cheapest 50s, asking 49s, not 1c").toEqual(["50s 0c", "49s 0c"]);
+});
+it("an item posted with a quantity above one sends its bid and buyout as the price of each item (the game's sell frame hands over the price box's value)", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.bags[0][2] = { itemID = 9999, count = 3 } __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.type(`${CARD}.qty`, "2");
+  addon.type(`${CARD}.stack`, "2");
+  addon.type(`${CARD}.bid`, "10s");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon)[0], "two items at 49s each: PostItem takes each one's price, not the pair's").toEqual(["PostItem", true, "0:2", 1, 2, 1000, 4900]);
+});
 it("a true return asks for a confirm, and the next click on Post (Confirm) confirms it", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
@@ -152,6 +171,14 @@ it("a true return asks for a confirm, and the next click on Post (Confirm) confi
   addon.click(`${CARD}.post`);
   expect(restrictedLog(addon).map((c) => c.slice(0, 7)), "the click confirms the same post").toEqual([["PostItem", true, "0:2", 1, 1, "nil", 4900], ["ConfirmPostItem", true, "0:2", 1, 1, "nil", 4900]]);
   expect([card(addon)[1], form(addon)[7], asking()[0]], "the blade is listed: the card empties, Post again").toEqual([false, "posted 1 of 1", "Post"]);
+});
+it("Confirm never posts what moved into the held post's bag slot", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][2] = { itemID = 10940, count = 20 }");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => c[0]), "no confirm for the stranger in the slot").toEqual(["PostItem"]);
 });
 it("a price typed after the game asks to confirm turns Confirm back into Post, and the next click posts the new price", () => {
   const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
