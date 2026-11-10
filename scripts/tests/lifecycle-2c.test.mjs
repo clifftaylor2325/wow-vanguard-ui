@@ -213,3 +213,25 @@ it("lifecycle: group board switched off closes its window and mover, refuses to 
   expect(addon.eval("return { Vanguard_GroupBoard:IsShown(), #__wfgStub.frames }"), "the same window opens, nothing new built").toEqual([true, frames]);
   expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return table.concat(out, ',')"), "and its mover is back").toContain("groupboard");
 });
+
+// MailTools -----------------------------------------------------------------------------------------------------
+
+const MAIL_TOOLS = loginWith("\nVanguardDB.profiles.Default.MailTools = { on = true }");
+
+lifecycleCases("MailTools", MAIL_TOOLS);
+
+it("lifecycle: mail tools switched off at the mailbox takes the panel away and keeps it away, and on again brings it back", () => {
+  const addon = MAIL_TOOLS();
+  addon.eval(`__wfgWorld.mail = { { sender = "Mum", subject = "Hello", money = 0, itemCount = 0 } }`);
+  addon.world.openMailWindow();
+  const shown = () => addon.eval("return Vanguard_MailTools ~= nil and Vanguard_MailTools:IsShown()");
+  expect(shown(), "the panel beside the open mailbox").toBe(true);
+  addon.eval('ns.SetModuleEnabled("MailTools", false)');
+  expect(shown(), "gone at once").toBe(false);
+  addon.fire("MAIL_INBOX_UPDATE");
+  expect(shown(), "and not back on a mail update").toBe(false);
+  addon.slash("mail");
+  expect(chatHas(addon, /The mail tools are off/), "the command says so").toBe(true);
+  addon.eval('ns.SetModuleEnabled("MailTools", true)');
+  expect(shown(), "back with the mailbox still open").toBe(true);
+});
