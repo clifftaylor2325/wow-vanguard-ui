@@ -5286,7 +5286,7 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 
 ### 34.1 Retail login, and the parts that stay WoW Forever's
 
-- Do: log in on Retail with Vanguard on, then `/reload`. Run `/vg status`, `/vg modules` and `/vg help`, open `/vg` and look at the Modules, Unit frames, Town and gear, Quests, Action bars and Chat pages, then type `/vg pets`.
+- Do: log in on Retail with Vanguard on, then `/reload`. Run `/vg status`, `/vg modules` and `/vg help`, open `/vg` and look at the Modules, Unit frames, Town and gear, Quests, Action bars and Chat pages, then type `/vg ranks`.
 - Expect: no Lua error and no "not on this client" line; `/vg status` names the Retail client and build 120105. None of the WoW Forever-only parts (spell ranks, the talent planner, quest guidance's data, the group board, the swing timer, power bar sparks, readouts) is listed or has a row, there is no Talents page and no Your keys tab, and `/vg ranks` says Unknown command. The Class bars row on the Modules page names the class resources, and the Quests page's arrow note doesn't mention `/vg questdata`.
 - If it fails, paste: the `/vg report` block and a screenshot of the page.
 

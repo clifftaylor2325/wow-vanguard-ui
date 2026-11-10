@@ -339,7 +339,7 @@ Whether re-registering events on those windows from addon code leaves them untai
 
 Own frames, subscriptions and gated hooks only.
 
-AutoAccept, QuestAuto, PetStable, VendorMemory, Inventory, QuestHistory, SpellRanks, Legacy, Coexist, GroupBoard, ChatWatch, GroupThreat, BossDocks, FightHistory, Meter, Rolls, InstancePrep, QuestArrow, QuestMinimap, CooldownGaps, MailTools, CraftQueue, AfkScreen, FrameAuras (requires UnitFrames), ComboPoints (requires UnitFrames).
+AutoAccept, QuestAuto, VendorMemory, Inventory, QuestHistory, SpellRanks, Coexist, GroupBoard, ChatWatch, GroupThreat, FightHistory, Meter, Rolls, InstancePrep, QuestArrow, QuestMinimap, CooldownGaps, MailTools, CraftQueue, AfkScreen, FrameAuras (requires UnitFrames), ComboPoints (requires UnitFrames).
 
 ### 3.2 Live with a small Disable: 29
 
@@ -394,8 +394,8 @@ Some of these could move up later. CastBars, SwingTimer, InfoStrip and PlayerAur
 ### 4.1 Batches (one PR each, about ten modules, display-only first)
 
 - **A4-2a, Core.** Scope, `requires`, `live`/`reload`/`afterOff`, `settleAll`, `ns.RestartModule`, `ns.ModulesWaiting`, `O.RestartSetting`, `V.Release`, the spare-frame argument to `ns.OnUnit`, the footer and row text, and `ns.HandlerCounts()` for the harness and `/vg perf`. Also the harness footprint (4.3) and the `requires` check in `scripts/module-registry.test.mjs`. No module is converted, so nothing visible changes. `ns.ReleaseMover` follows here or in the next PR, once #809 has merged.
-- **A4-2b, own frames.** GroupThreat, BossDocks, FightHistory, Meter, Rolls, InstancePrep, QuestArrow, QuestMinimap, CooldownGaps, ChatWatch.
-- **A4-2c, listeners and data.** AutoAccept, QuestAuto, PetStable, VendorMemory, Inventory, QuestHistory, SpellRanks, Legacy, Coexist, GroupBoard, MailTools, CraftQueue.
+- **A4-2b, own frames.** GroupThreat, FightHistory, Meter, Rolls, InstancePrep, QuestArrow, QuestMinimap, CooldownGaps, ChatWatch.
+- **A4-2c, listeners and data.** AutoAccept, QuestAuto, VendorMemory, Inventory, QuestHistory, SpellRanks, Coexist, GroupBoard, MailTools, CraftQueue.
 - **A4-2d, on the unit frames.** After #809 merges, because it owns FrameAuras, ComboPoints, ClassBars and UnitExtras. Batch: FrameAuras, ComboPoints, ClassBars, PowerTicks, UnitExtras, PartyExtras, MainTanks, RaidTools, AfkScreen.
 - **A4-2e, raid and town.** RaidAuras, RaidHealing, RaidStatus, OfficerLoot, Upgrades, CharacterExtras, Errands, Merchant, TalentPlanner, QuestGuide.
 - **A4-2f, chat, quests and the old four.** ChatHistory, ChatFilter, Quiet, ChatExtras, ChatWindows, QuestDialog, QuestLog, CooldownKeys, CooldownGlow, DataBars, BrokerStrip, HudText, Situations. This batch is thirteen; split it if review gets long.
