@@ -1488,11 +1488,14 @@ function corner.paintHair(frame, entry, geo, token)
   for _, t in pairs(p.hair.corners) do t:Hide() end
 end
 
--- Shows a painted frame's plate (its background and border), or hides it for a frame the HUD look draws bare.
+-- Shows a painted frame's plate (its background and border), or hides it for a frame the HUD look draws bare. A
+-- shown plate leaves each edge as the paint left it; an edge's own shown state is never read back, since the client
+-- can hold it secret, and a secret passed to SetShown from addon code raises.
 function corner.showPlate(p, shown)
   if p.bg then p.bg:SetShown(shown) end
-  for _, t in pairs(p.edges or NO_PARTS) do t:SetShown(shown and t:IsShown()) end
   for _, t in pairs(p.shadow or NO_PARTS) do t:SetShown(shown) end
+  if shown then return end
+  for _, t in pairs(p.edges or NO_PARTS) do t:Hide() end
 end
 
 -- Whether a painted frame with a role is drawn bare (no plate) by the HUD look (T.HudBare), never one the deck rounds.
