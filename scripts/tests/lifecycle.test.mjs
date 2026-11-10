@@ -586,3 +586,18 @@ it("lifecycle: a frame handed to the scope twice in one run is kept once", () =>
   addon.eval("local s = __life.scopes[1] local n = #s.frames s:Frame(VanguardTest_Scoped) __life.kept = #s.frames - n");
   expect(addon.eval("return __life.kept")).toBe(0);
 });
+
+it("lifecycle: a module switched on while the frames are unlocked shows its handle at once", () => {
+  const addon = lifeAddon(off("TestScoped"), SCOPED);
+  addon.eval("ns.Unlock()");
+  addon.eval('ns.SetModuleEnabled("TestScoped", true)');
+  expect(addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "testscoped" then return w:IsShown() end end return false')).toBe(true);
+  addon.eval("ns.Lock()");
+});
+
+it("lifecycle: a key registered twice keeps one handle", () => {
+  const addon = lifeAddon("", SCOPED);
+  addon.eval('ns.Unlock() local f = CreateFrame("Frame", "VanguardTest_Second", UIParent) f:SetSize(10, 10) ns.Mover(f, "testscoped", "Test scoped", { "CENTER", "CENTER", 0, 0 })');
+  expect(addon.eval('local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "testscoped" and w:IsShown() then n = n + 1 end end return n')).toBe(1);
+  addon.eval("ns.Lock()");
+});

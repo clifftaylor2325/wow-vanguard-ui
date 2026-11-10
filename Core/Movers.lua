@@ -24,6 +24,8 @@ local movers, order = {}, {}
 -- Movers a stopped module let go (ns.ReleaseMover), by key: their handles, for the module's next start.
 local released = {}
 local unlocked = false
+-- Shows a mover's handle (defined with the unlock code below; ns.Mover calls it for a frame registered while unlocked).
+local showHandle
 -- Pins paused (Edit Mode open), the note under Edit Mode's window, and whether Edit Mode unlocked the handles.
 local pinsPaused, editModeNote, editUnlocked = false, nil, false
 local selected
@@ -255,11 +257,11 @@ local function reanchor()
 end
 T.OnScale(reanchor)
 
--- Gives a mover registered again after its module stopped the handle it had (a frame is never freed).
--- The same mover table when it is the same frame, so its hook on the frame's SetAlpha (watchAlpha) comes back with it
--- and a restart adds no hook; a new table, with the old handle, for another frame.
+-- Gives a mover registered again (after its module stopped, or a second registration of a key) the handle it had: a
+-- frame is never freed. The same mover table when it is the same frame, so its hook on the frame's SetAlpha
+-- (watchAlpha) comes back with it and a restart adds no hook; a new table, with the old handle, for another frame.
 local function reclaim(frame, key)
-  local old = released[key]
+  local old = released[key] or movers[key]
   released[key] = nil
   if old and old.frame == frame then return old end
   local m = { frame = frame, key = key, handle = old and old.handle }
@@ -267,7 +269,8 @@ local function reclaim(frame, key)
   return m
 end
 
--- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent.
+-- Registers a placeable frame. default = { point, relPoint, x, y } on UIParent. One registered while the frames are
+-- unlocked (a module switched on meanwhile) gets its handle at once.
 function ns.Mover(frame, key, label, default)
   local m = reclaim(frame, key)
   m.label, m.default = label or key, default
@@ -277,6 +280,7 @@ function ns.Mover(frame, key, label, default)
   movers[key] = m
   place(m)
   ns.MoverLinks.Registered(key)
+  if unlocked then showHandle(m) end
   return m
 end
 
@@ -746,7 +750,7 @@ end
 -- Lock / unlock -----------------------------------------------------------------------
 
 -- Shows a mover's handle on its strata: the one given, else its own (handleStrata).
-local function showHandle(m, strata)
+function showHandle(m, strata)
   local h = handleFor(m)
   h:SetFrameStrata(strata or handleStrata(m.frame))
   h:Show()
