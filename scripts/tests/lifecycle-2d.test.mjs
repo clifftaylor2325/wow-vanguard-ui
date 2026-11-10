@@ -60,3 +60,25 @@ it("lifecycle: combo points switched off hides the row, and on again shows the s
   expect(addon.eval("return __same")).toBe(true);
   expect(addon.eval(shown)).toBe(true);
 });
+
+// ClassBars -----------------------------------------------------------------------------------------------------
+
+const SHAMAN_LOGIN = loginWith("", 'UnitClass = function() return "Shaman", "SHAMAN" end');
+
+lifecycleCases("ClassBars", SHAMAN_LOGIN);
+
+it("lifecycle: class bars switched off hides the totem row and gives the totem cells back to the cooldown gaps, and on again shows the same row", () => {
+  const addon = SHAMAN_LOGIN();
+  const row = 'return ns.GetModule("ClassBars").totems:IsShown()';
+  expect([addon.eval(row), addon.eval('return ns.GetModule("ClassBars").cells ~= nil')]).toEqual([true, true]);
+  addon.eval('ns.SetModuleEnabled("ClassBars", false)');
+  expect([addon.eval(row), addon.eval('return ns.GetModule("ClassBars").cells == nil')]).toEqual([false, true]);
+  addon.eval('local CB = ns.GetModule("ClassBars") local row = CB.totems ns.SetModuleEnabled("ClassBars", true) __same = row == CB.totems');
+  expect([addon.eval("return __same"), addon.eval(row)]).toEqual([true, true]);
+});
+
+it("lifecycle: class bars switched off hides a druid's mana bar", () => {
+  const addon = loginWith("", 'UnitClass = function() return "Druid", "DRUID" end')();
+  addon.eval('ns.SetModuleEnabled("ClassBars", false)');
+  expect(addon.eval('return ns.GetModule("ClassBars").manaHolder:IsShown()')).toBe(false);
+});
