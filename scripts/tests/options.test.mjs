@@ -592,6 +592,12 @@ it("options: a changed setting gets a dot that puts the default back", () => {
   expect(resetDot(addon, "Health as"), "a default that depends on the client has one, and no dot while it is held").toEqual([false, true]);
   addon.eval('__click("General")');
   expect(resetDot(addon, "Snap to other frames"), "a setting with no default has no dot").toEqual([false, false]);
+  addon.eval('__click("Action bars") __click("Bar backing")');
+  expect(resetDot(addon, "Bar backing"), "choices get one too").toEqual([true, true]);
+  addon.eval(`local def = ns.GetModule("ActionBars").defaults.backing
+    for _ = 1, 8 do if ns.Settings("ActionBars").backing == def then break end __click("Bar backing") end`);
+  expect(resetDot(addon, "Bar backing")[0], "and lose it back at the default, once the cycle comes round").toBe(false);
+  addon.eval('__click("Nameplates")');
   addon.eval(`GameTooltip = CreateFrame("Frame", "GameTooltip", UIParent) function GameTooltip:SetOwner(o) self.__owner = o end
     function GameTooltip:SetText(t) self.__tip = t end function GameTooltip:AddLine(t) self.__line = t end`);
   addon.eval('__click("Raid frames")');
@@ -1023,7 +1029,7 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|56", "modules|Modules|20|85", "unitframes|Unit frames|30|41", "raid|Raid frames|40|28",
+    "general|General|10|58", "modules|Modules|20|85", "unitframes|Unit frames|30|41", "raid|Raid frames|40|28",
     "actionbars|Action bars|60|84", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|58", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|26",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",

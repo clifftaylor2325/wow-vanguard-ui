@@ -60,14 +60,14 @@ local function fit(max)
   CP.bar:SetWidth(max * (CP.size + 3))
 end
 
--- The row of pips just above the player frame, hidden until you have points.
+-- The row of pips just above the player frame (over its tab, where the look gives it one: UF.Crown), hidden until you have points.
 local function build(settings)
   local player = UF.frames.player
   if not player then return end
   CP.size, CP.pips = settings.size, {}
   CP.bar = CreateFrame("Frame", nil, player)
   CP.bar:SetSize(CP.MAX * (CP.size + 3), CP.size)
-  CP.bar:SetPoint("BOTTOMLEFT", player, "TOPLEFT", 0, CP.ROW_OFFSET)
+  CP.bar:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, CP.ROW_OFFSET)
   UF.RaiseDeckReach("top", CP.ROW_OFFSET + CP.size)
   CP.Update()
 end

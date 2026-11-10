@@ -262,7 +262,7 @@ AB.BACKING_PAD = T.SPACE.tight
 function AB.WantsBacking()
   local mode = AB.settings.backing
   if mode == "on" or mode == "off" then return mode == "on" end
-  return (T.Variant() or {}).barBacking == true or T.HudLook() == "shield"
+  return (T.Variant() or {}).barBacking == true or T.HudBacking()
 end
 
 -- Makes a bar's backing: a flat panel in the HUD look a level under the buttons, taking no mouse; a tool of the

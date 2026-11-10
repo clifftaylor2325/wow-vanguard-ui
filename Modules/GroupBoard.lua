@@ -8,7 +8,8 @@
 -- Chat is read through ns.On only, never changed or hidden. Where the game
 -- hides chat from addons (instances), the line comes secret and is skipped
 -- before anything reads it. Dungeon names, short names and level ranges are
--- written here by hand (vanilla's), not taken from any addon or database.
+-- written by hand (vanilla's), not taken from any addon or database; the word
+-- lists are per client locale (Core/MatchWords.lua).
 
 local ADDON, ns = ...
 
@@ -36,49 +37,68 @@ ns.Options.MODULE_INFO.GroupBoard = { L["Group board"], L["Looking-for-more and 
 GB.MAX = 40
 -- Chat events -> the channel switch that reads them.
 GB.EVENTS = { CHAT_MSG_CHANNEL = "channel", CHAT_MSG_YELL = "yell", CHAT_MSG_SAY = "say", CHAT_MSG_GUILD = "guild" }
--- The words that make a post one kind or the other; looking for more wins when a line has both.
-GB.LFM = { "lfm", "lf1m", "lf2m", "lf3m", "lf4m", "looking for more", "need tank", "need heals", "need healer", "need dps", "lf tank", "lf heals", "lf healer", "lf dps" }
-GB.LFG = { "lfg", "looking for group", "lf group", "lf grp" }
--- The roles, in the order a row shows them, and the words that name each.
+-- The roles, in the order a row shows them.
 GB.ROLE_ORDER = { "tank", "healer", "dps" }
-GB.ROLE_WORDS = { tank = { "tank", "tanks", "mt" }, healer = { "heal", "heals", "healer", "healers", "healz" }, dps = { "dps", "dd" } }
 GB.ROLE_NAMES = { tank = L["Tank"], healer = L["Healer"], dps = L["DPS"] }
 -- Your group role (ns.PlayerRole) -> the board's name for it, for the Automatic whisper role.
 GB.AUTO_ROLES = { tank = "tank", healer = "healer", damage = "dps" }
 
--- Vanilla's dungeons and raids, the first that a line names wins (so Dire Maul's
--- short names come before the Deadmines' "dm"): name, level range, short names.
+-- Vanilla's dungeons and raids, the first that a line names wins (so Dire Maul's short names come before
+-- the Deadmines' "dm"): name, level range, and the id the word lists (Core/MatchWords.lua) know it by.
 GB.DUNGEONS = {
-  { L["Ragefire Chasm"], 13, 18, { "rfc", "ragefire" } }, { L["Wailing Caverns"], 17, 24, { "wc", "wailing caverns" } },
-  { L["Dire Maul"], 55, 60, { "dire maul", "dme", "dmw", "dmn", "dm e", "dm w", "dm n", "dm east", "dm west", "dm north", "tribute" } },
-  { L["The Deadmines"], 17, 26, { "deadmines", "vc", "dm" } }, { L["Shadowfang Keep"], 22, 30, { "sfk", "shadowfang" } },
-  { L["Blackfathom Deeps"], 24, 32, { "bfd", "blackfathom" } }, { L["The Stockade"], 24, 32, { "stocks", "stockade", "stockades" } },
-  { L["Gnomeregan"], 29, 38, { "gnomer", "gnomeregan" } }, { L["Razorfen Kraul"], 29, 38, { "rfk", "kraul" } },
-  { L["Scarlet Monastery"], 34, 45, { "sm", "scarlet" } },
-  { L["Razorfen Downs"], 37, 46, { "rfd", "downs" } }, { L["Uldaman"], 41, 51, { "ulda", "uld", "uldaman" } },
-  { L["Zul'Farrak"], 44, 54, { "zf", "zul farrak", "zulfarrak" } }, { L["Maraudon"], 46, 55, { "mara", "maraudon" } },
-  { L["Sunken Temple"], 50, 56, { "st", "sunken temple", "atal hakkar" } }, { L["Blackrock Depths"], 52, 60, { "brd", "blackrock depths" } },
-  { L["Upper Blackrock Spire"], 58, 60, { "ubrs", "upper spire" } }, { L["Lower Blackrock Spire"], 55, 60, { "lbrs", "lower spire" } },
-  { L["Stratholme"], 58, 60, { "strat", "strath", "stratholme" } }, { L["Scholomance"], 58, 60, { "scholo", "scholomance" } },
-  { L["Molten Core"], 60, 60, { "mc", "molten core" } }, { L["Onyxia's Lair"], 60, 60, { "ony", "onyxia" } },
-  { L["Zul'Gurub"], 60, 60, { "zg", "zul gurub" } }, { L["Blackwing Lair"], 60, 60, { "bwl", "blackwing" } },
-  { L["Ruins of Ahn'Qiraj"], 60, 60, { "aq20", "aq 20" } }, { L["Temple of Ahn'Qiraj"], 60, 60, { "aq40", "aq 40" } },
-  { L["Naxxramas"], 60, 60, { "naxx", "naxxramas" } },
+  { L["Ragefire Chasm"], 13, 18, "rfc" }, { L["Wailing Caverns"], 17, 24, "wc" }, { L["Dire Maul"], 55, 60, "dmaul" },
+  { L["The Deadmines"], 17, 26, "deadmines" }, { L["Shadowfang Keep"], 22, 30, "sfk" },
+  { L["Blackfathom Deeps"], 24, 32, "bfd" }, { L["The Stockade"], 24, 32, "stockade" },
+  { L["Gnomeregan"], 29, 38, "gnomer" }, { L["Razorfen Kraul"], 29, 38, "rfk" }, { L["Scarlet Monastery"], 34, 45, "sm" },
+  { L["Razorfen Downs"], 37, 46, "rfd" }, { L["Uldaman"], 41, 51, "uld" },
+  { L["Zul'Farrak"], 44, 54, "zf" }, { L["Maraudon"], 46, 55, "mara" },
+  { L["Sunken Temple"], 50, 56, "st" }, { L["Blackrock Depths"], 52, 60, "brd" },
+  { L["Upper Blackrock Spire"], 58, 60, "ubrs" }, { L["Lower Blackrock Spire"], 55, 60, "lbrs" },
+  { L["Stratholme"], 58, 60, "strat" }, { L["Scholomance"], 58, 60, "scholo" },
+  { L["Molten Core"], 60, 60, "mc" }, { L["Onyxia's Lair"], 60, 60, "ony" },
+  { L["Zul'Gurub"], 60, 60, "zg" }, { L["Blackwing Lair"], 60, 60, "bwl" },
+  { L["Ruins of Ahn'Qiraj"], 60, 60, "aq20" }, { L["Temple of Ahn'Qiraj"], 60, 60, "aq40" },
+  { L["Naxxramas"], 60, 60, "naxx" },
 }
--- Scarlet Monastery's wings, which name it when a line names no dungeon of its own.
-GB.SM_WINGS = { "lib", "library", "arms", "armory", "cath", "cathedral", "gy", "graveyard" }
 
 -- The posts on the board, newest first: { kind, dungeon, roles, text, sender, time }.
 GB.entries = {}
 
+-- The words ------------------------------------------------------------------------------------
+
+-- A phrase as the words of a line are written (" word word " trimmed): lower-case, punctuation gone.
+local function phrase(text)
+  return (GB.Words(text):sub(2, -2))
+end
+
+-- The phrases that name one dungeon: the locale's word list for its id, and its name in the client's language
+-- (the name the board shows, which needs no list), so a locale with no list still reads full names.
+local function dungeonPhrases(dungeon, words)
+  local out = { unpack(words.dungeons[dungeon[4]] or {}) }
+  out[#out + 1] = phrase(dungeon[1])
+  return out
+end
+
+-- Reads this client's locale's word lists (Core/MatchWords.lua): the kinds, the roles, Scarlet Monastery's
+-- wings and each dungeon's phrases. The words that make a post one kind or the other: looking for more wins
+-- when a line has both. Run when the module loads and again at Enable (the locale is surely known by then).
+function GB.LoadWords()
+  local words = ns.BoardWords()
+  GB.LFM, GB.LFG, GB.ROLE_WORDS, GB.SM_WINGS, GB.PHRASES = words.lfm, words.lfg, words.roles, words.wings, {}
+  for _, d in ipairs(GB.DUNGEONS) do GB.PHRASES[d] = dungeonPhrases(d, words) end
+end
+
 -- Reading a line --------------------------------------------------------------------------------
 
--- A line as " word word ": lower-case, colour and link codes and punctuation gone, so a short name only matches a whole word.
+-- A line as " word word ": lower-case (accented and Cyrillic letters too), colour and link codes and punctuation gone,
+-- so a short name only matches a whole word.
 -- A line with no escape codes (most of them) skips the three code strips.
 function GB.Words(text)
   local s = text:find("|", 1, true) and text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|[hr]", "") or text
-  return " " .. (s:lower():gsub("[^%w]+", " ")) .. " "
+  return " " .. (ns.Lower(s):gsub("[^%w\128-\255]+", " ")) .. " "
 end
+
+GB.LoadWords()
 
 -- Each phrase on word edges (" tank "), made once: every line asks again, so a new string per phrase per line would be garbage.
 local padded = setmetatable({}, { __index = function(t, p) local v = " " .. p .. " " t[p] = v return v end })
@@ -100,7 +120,7 @@ end
 -- The dungeon whose own short names a line uses, as { name, min, max }, or nil.
 local function namedDungeon(words)
   for _, d in ipairs(GB.DUNGEONS) do
-    if hasAny(words, d[4]) then return { name = d[1], min = d[2], max = d[3] } end
+    if hasAny(words, GB.PHRASES[d]) then return { name = d[1], min = d[2], max = d[3] } end
   end
 end
 
@@ -338,5 +358,6 @@ ns.Options.AddRows("chat", GB.Rows)
 -- Module entry point (Core/Modules.lua): the window is built the first time it opens.
 function GB.Enable(settings)
   GB.settings = settings
+  GB.LoadWords()
   for event in pairs(GB.EVENTS) do ns.On(event, GB.OnChat) end
 end

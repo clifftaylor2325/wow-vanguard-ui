@@ -76,9 +76,9 @@ local function buffGroups(look)
   return groups
 end
 
--- The buff row above a frame, wrapping at its width.
+-- The buff row above a frame (over its tab, where the look gives it one: UF.Crown), wrapping at its width.
 function FA.BuffSpec(f, look)
-  return { point = { "BOTTOMLEFT", f, "TOPLEFT", 0, 3 }, grow = "RIGHT", growY = "UP", lineSize = f:GetWidth(),
+  return { point = { "BOTTOMLEFT", UF.Crown(f), "TOPLEFT", 0, 3 }, grow = "RIGHT", growY = "UP", lineSize = f:GetWidth(),
     gap = 2, timer = look.timers, masque = FA.MASQUE, groups = buffGroups(look) }
 end
 

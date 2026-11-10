@@ -9,8 +9,9 @@
 [files]
 # Vendored libraries (kept as upstream wrote them), generated media and the
 # art sources are not ours to spell-check; the lock file is generated too.
-# Locales/ is ten other languages, which an English spell checker can only misread.
-extend-exclude = ["Libs/", "Media/", "art/", "Locales/", "package-lock.json"]
+# Locales/ is ten other languages, which an English spell checker can only misread; so are the
+# chat filter's and group board's word lists per locale (Core/MatchWords.lua).
+extend-exclude = ["Libs/", "Media/", "art/", "Locales/", "Core/MatchWords.lua", "package-lock.json"]
 
 [default]
 # WoW's texture escape, |T<path>:<size>|t: the path is not prose. The TOC's
@@ -28,6 +29,8 @@ criterias = "criterias" # the achievement window's list of criteria frames (Achi
 strat = "strat" # Stratholme, as LFG chat shortens it (the group board reads it)
 ony = "ony" # Onyxia's Lair, as LFG chat shortens it (the group board reads it)
 maintenant = "maintenant" # French "now", the group board's age cell in a frFR test
+suche = "suche" # German "looking for", in the group board's and chat filter's deDE tests and smoke step
+groupe = "groupe" # French "group", in the group board's frFR test
 paeth = "paeth" # the Paeth predictor, PNG's filter type 4 (scripts/lib/media-scenes.mjs)
 tages = "tages" # German "of the day", the guild message of the day's template in a deDE test
 # Code and test names.

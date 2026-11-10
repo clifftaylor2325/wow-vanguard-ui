@@ -14,6 +14,7 @@ ns.WHATS_NEW = {
     { module = "UnitFrames", label = "The Shield look", items = {
       { text = "Your frames point away from you as shields, bars filling toward you. HUD look: Plain keeps flat frames.", page = "general", row = "HUD look" },
       { text = "The keystone: the crest on a rail between your frame and your target's, swords in a fight.", page = "unitframes", row = "Show the keystone" },
+      { text = "More looks there: Hairline, a line under bare frames; Rimmed, rounded and rimmed; Tabs, names on tabs.", page = "general", row = "HUD look" },
       { text = "A ring round the keystone can sweep with the global cooldown.", page = "unitframes", row = "Global cooldown on the keystone", off = true },
       { text = "A thin line runs inside your frame's rim and your target's, brighter in a fight." },
       { text = "Under Shield the cast bars and action bar backing get cut corners.", page = "general", row = "Shield corners on unit frames" },
@@ -40,7 +41,7 @@ ns.WHATS_NEW = {
     { module = "Other", label = "Look", items = {
       { text = "Window and page titles are a size larger, a step above card headings." },
       { text = "The options header shows the painted crest and the Vanguard wordmark; your faction's crest moves to the footer." },
-      { text = "A class-colour swatch beside the accent presets sets the accent to your class colour.", page = "general", row = "Accent" },
+      { text = "A class-colour swatch beside the accent presets sets the accent to your class colour." },
       { text = "Each character on a shared profile gets its own class colour at login." },
       { text = "The game's own text, in windows Vanguard does not skin, takes the theme font's face.", page = "general", row = "Font" },
       { text = "The Modules page says so when its Show choice leaves nothing to list, with a Show all modules button." },

@@ -100,9 +100,9 @@ end
 
 -- Whether a window is left out: the combat log, and the chat filter's Filtered tab (it holds spam, and its window can move).
 function CHH.Skipped(index)
-  local frame, CF = _G["ChatFrame" .. index], ns.GetModule("ChatFilter")
+  local frame = _G["ChatFrame" .. index]
   if frame ~= nil and frame == _G.COMBATLOG then return true end
-  return type(GetChatWindowInfo) == "function" and GetChatWindowInfo(index) == CF.TAB
+  return ns.GetModule("ChatFilter").IsTab(index)
 end
 
 -- Whether a line may be saved: plain text of a sane length, and a whisper only when asked for.
