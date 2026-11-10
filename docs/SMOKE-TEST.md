@@ -5431,6 +5431,12 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 - Expect: nothing changed from 33: Situations shows its six situations, the dungeon card is the level-range one, the Modules page's Class bars row names shaman totems above the frame and druid mana in forms under it.
 - If it fails, paste: the `/vg report` block.
 
+### 34.17 Listener and data modules switch off and on without a reload (A4-2c)
+
+- Do: in `/vg` -> Modules, switch each of these off and on again, one at a time, out of combat: Auto-accept, Quest automation, Vendor memory, Inventory (alts), Quest history, Spell ranks, Other addons, Group board, Mail tools and Craft queue.
+- Expect: each goes at once, with nothing left on screen (the group board window, the mail panel beside the mailbox and the craft queue panel beside the profession window are gone and do not come back while it is off). Switched off, Auto-accept and Quest automation do nothing at all: a summon, a resurrection, a quest offer or a hand-in is left to you. What was stored stays (`/vg vendors`, `/vg alts`, `/vg quests history`, `/vg trainers`, the craft queue and presets); switched on again, they listen again without a reload.
+- If it fails, paste: the `/vg report` block and which module.
+
 ## When you are done
 
 Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.

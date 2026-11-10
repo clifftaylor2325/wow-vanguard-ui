@@ -10,7 +10,13 @@ local ADDON, ns = ...
 
 local L = ns.L
 
-local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, loot = false } })
+local AA = ns.Module("AutoAccept", { defaults = { summons = false, resurrect = false, loot = false }, live = true })
+
+-- Whether the module runs now. Stopped, it acts for the player in no way at all: not on a prompt that is
+-- already waiting for the end of a fight either (that deferred call checks this too).
+function AA.Active()
+  return AA.scope ~= nil and AA.scope:Running()
+end
 
 -- Calls a function from C_SummonInfo, else the global of that name; nil when neither exists.
 local function summon(name, ...)
@@ -69,7 +75,7 @@ end
 -- would let you (otherwise its prompt stays up, as it does for a summon out of a starting area, which is
 -- yours to decide), and says from whom and to where.
 function AA.AcceptSummon()
-  if not AA.settings.summons or not summonWaiting() or not alive() or not canTeleport() or leavesStart() then return end
+  if not AA.Active() or not AA.settings.summons or not summonWaiting() or not alive() or not canTeleport() or leavesStart() then return end
   local who, where = plain(summon("GetSummonConfirmSummoner"), L["someone"]), plain(summon("GetSummonConfirmAreaName"), L["somewhere"])
   summon("ConfirmSummon")
   closeSummonPrompts()
@@ -78,7 +84,7 @@ end
 
 -- A summon is offered: take it now, or, in a fight, once the fight ends (the game doesn't ask again).
 function AA.OnSummon()
-  if AA.settings.summons then ns.OutOfCombat(AA.AcceptSummon, "accept summon") end
+  if AA.Active() and AA.settings.summons then ns.OutOfCombat(AA.AcceptSummon, "accept summon") end
 end
 
 -- Whether the game still makes you wait before you may come back (its prompt keeps Accept off until the
@@ -90,7 +96,7 @@ end
 -- Someone offers to resurrect you: accept, and say who. During the corpse-recovery delay the game's own
 -- prompt stays up with its countdown, for you to accept when it unlocks.
 function AA.OnResurrect(_, who)
-  if not AA.settings.resurrect or type(AcceptResurrect) ~= "function" or mustWait() then return end
+  if not AA.Active() or not AA.settings.resurrect or type(AcceptResurrect) ~= "function" or mustWait() then return end
   AcceptResurrect()
   closePrompt("RESURRECT")
   closePrompt("RESURRECT_NO_SICKNESS")
@@ -118,14 +124,15 @@ end
 -- needs a bind-on-pickup answer still brings up the game's prompt. Under master loot the game's window is left
 -- alone (its own auto-loot still takes what is under the threshold).
 function AA.OnLootReady(_, autoloot)
-  if not AA.settings.loot or not autoloot or type(GetNumLootItems) ~= "function" or masterLoot() then return end
+  if not AA.Active() or not AA.settings.loot or not autoloot or type(GetNumLootItems) ~= "function" or masterLoot() then return end
   for slot = GetNumLootItems(), 1, -1 do takeSlot(slot) end
 end
 
--- Module entry point (Core/Modules.lua): each switch is read when its prompt comes.
-function AA.Enable(settings)
+-- Module entry point (Core/Modules.lua): each switch is read when its prompt comes; the scope takes the
+-- listeners off when the module stops.
+function AA.Enable(settings, scope)
   AA.settings = settings
-  ns.On("CONFIRM_SUMMON", AA.OnSummon)
-  ns.On("RESURRECT_REQUEST", AA.OnResurrect)
-  ns.On("LOOT_READY", AA.OnLootReady)
+  scope:On("CONFIRM_SUMMON", AA.OnSummon)
+  scope:On("RESURRECT_REQUEST", AA.OnResurrect)
+  scope:On("LOOT_READY", AA.OnLootReady)
 end
