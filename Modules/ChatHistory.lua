@@ -201,9 +201,7 @@ end
 function CHH.Restore()
   CHH.Prune()
   CHH.restoring = true
-  ns.Try("restore chat history", function()
-    for index, list in pairs(CHH.Store()) do restoreWindow(index, list) end
-  end)
+  for index, list in pairs(CHH.Store()) do ns.Try("restore chat window", restoreWindow, index, list) end
   CHH.restoring = false
 end
 

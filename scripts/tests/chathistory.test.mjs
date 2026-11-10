@@ -232,6 +232,16 @@ it("chat history: a module started later in the session meets a zone change, whi
   expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("chat history: a reload restores too, and one window that cannot take its lines does not stop the others", () => {
+  const addon = session();
+  addon.eval(`ChatFrame1:AddMessage("main") ChatFrame2:AddMessage("trade")`);
+  const next = nextLogin(addon, `ChatFrame1.AddMessage = function() error("boom") end`);
+  next.fire("PLAYER_ENTERING_WORLD", false, true);
+  expect(lines(next, 2).some((l) => l === "trade"), "window 2 is back though window 1 raised first").toBe(true);
+  expect(next.eval("return ns.GetModule('ChatHistory').restoring"), "the restore flag is cleared").toBeFalsy();
+  expectErrors("restore chat window: eval:2: boom");
+});
+
 it("chat history: saved data from an older version (a string where a table goes, lines that are not lines) is read without an error", () => {
   const addon = session();
   addon.eval(`ChatFrame1:AddMessage("keep me")`);
