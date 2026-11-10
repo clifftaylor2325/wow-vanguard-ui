@@ -188,3 +188,63 @@ it("status marks: they follow a name tab, and wait for the fight to end to move"
   setCombat(addon, false);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+// The share of a region's rect that the frames clipping it leave showing (1: all of it), by the clip model the text
+// fit test uses: the rect cut to every ancestor with SetClipsChildren(true). Then the visible rect and the whole one.
+const SHOWING = `local function cut(a, b)
+    local l, r = math.max(a.left, b.left), math.min(a.left + a.width, b.left + b.width)
+    local bo, t = math.max(a.bottom, b.bottom), math.min(a.bottom + a.height, b.bottom + b.height)
+    if r <= l or t <= bo then return nil end
+    return { left = l, bottom = bo, width = r - l, height = t - bo }
+  end
+  function __showing(w)
+    local whole = __wfgStub.rectOf(w)
+    local r, p = whole, w:GetParent()
+    while p and r do
+      if p.__clips then r = cut(r, __wfgStub.rectOf(p)) end
+      p = p:GetParent()
+    end
+    return r and math.floor(r.width * r.height / (whole.width * whole.height) * 100 + 0.5) / 100 or 0, r, whole
+  end
+  function __inside(a, b)
+    return a.left >= b.left - 0.01 and a.left + a.width <= b.left + b.width + 0.01
+  end`;
+
+// Every part on a frame's text layer and around it, and how much of each shows: name, level, health text, raid icon,
+// status row (its first mark) and portrait, where the frame has them.
+const partsShowing = (addon, key) => addon.eval(`${SHOWING} local f = _G["Vanguard_${key}"]
+  local out = {}
+  for _, part in ipairs({ "name", "level", "healthText", "raidIcon", "portrait" }) do
+    if f[part] then out[part] = (__showing(f[part])) end
+  end
+  if f.status then out.status = (__showing(f.status.leader)) end
+  return out`);
+
+// You lead the group (a status mark) and every frame that can has a portrait, under a look.
+const CLIP_SAVED = (look) => ({ savedVariables: `VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "${look}" },
+  UnitFrames = { playerPortrait = "class", targetPortrait = "portrait" } }` });
+const CLIP_ENV = PREDICTION_ENV + `__units.player.leader, __units.party1.leader = true, true
+  UnitIsGroupLeader = function(unit) return __units[unit] ~= nil and __units[unit].leader == true end`;
+
+it("heal prediction clips only its own bars: the name row, the values, the marks and the portrait draw in full", () => {
+  for (const look of ["hairline", "tabs"]) {
+    const addon = loggedIn(CLIP_ENV, CLIP_SAVED(look));
+    for (const key of ["player", "target", "party1"]) {
+      const parts = partsShowing(addon, key);
+      expect(Object.keys(parts).length >= 4, `${look}: ${key} has its parts`).toBe(true);
+      expect(parts, `${look}: every part of ${key} shows whole`).toEqual(Object.fromEntries(Object.keys(parts).map((k) => [k, 1])));
+    }
+    expect(addon.eval("return #ns.errors"), `${look}: no errors`).toBe(0);
+  }
+});
+
+it("a heal past a full bar is still cut at the health bar's end", () => {
+  // 900 of 1000 with 200 on its way: the heal bar reaches a tenth of the bar past its end (the player's fills from the
+  // right under the Shield look, so past its left end).
+  const addon = loggedIn(PREDICTION_ENV, NO_RAID);
+  const [share, wholeInside, shownInside] = addon.eval(`${SHOWING} local f = Vanguard_player
+    local share, shown, whole = __showing(f.heal) local h = __wfgStub.rectOf(f.health)
+    return { share, __inside(whole, h), __inside(shown, h) }`);
+  expect(wholeInside, "the heal bar runs past the health bar's end").toBe(false);
+  expect([share < 1, shownInside], "and what shows stops at that end").toEqual([true, true]);
+});
