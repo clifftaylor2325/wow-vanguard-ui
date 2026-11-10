@@ -742,7 +742,7 @@ it("bare subscription: a live module's file fails on its own ns.On, hook or them
   expect(checkSource("Core/TEST-ONLY.lua", src).filter((p) => /live module's file/.test(p.message))).toEqual([]);
 });
 
-it("bare subscription: no module is live yet, so a file that looks a module up is checked against nothing", () => {
-  const src = 'local ADDON, ns = ...\nlocal UF = ns.GetModule("UnitFrames")\nfunction UF.Extra() ns.On("PLAYER_LOGIN", UF.Extra) end\n';
+it("bare subscription: a file that only reads a live module (ns.GetModule) is not that module's file", () => {
+  const src = 'local ADDON, ns = ...\nlocal NP = ns.Module("TestPlates", { defaults = {} })\nlocal RS = ns.GetModule("RaidStatus")\nfunction NP.Enable() ns.On("PLAYER_LOGIN", RS.Mark) end\n';
   expect(checkSource("Modules/TEST-ONLY.lua", src).filter((p) => /live module's file/.test(p.message))).toEqual([]);
 });

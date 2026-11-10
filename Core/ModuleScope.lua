@@ -15,7 +15,7 @@ Scope.__index = Scope
 ---@return table scope
 function ns.NewScope(name)
   local scope = { name = name, on = false, handlers = {}, subs = {}, spare = {}, tickers = {}, frames = {}, movers = {} }
-  scope.gates, scope.latest, scope.gateCount = {}, {}, 0
+  scope.gates, scope.latest, scope.gateCount, scope.adopted = {}, {}, 0, {}
   return setmetatable(scope, Scope)
 end
 
@@ -75,20 +75,33 @@ function Scope:Every(key, seconds, fn, frame, now)
 end
 
 -- The gate for key: one function a session, which calls the latest fn while the module runs and does nothing while it
--- is off. install(gate) runs only the first time (it hooks a game function, adds a theme listener, ...), so a
--- restart never installs a hook twice; a later call only points the gate at its new fn. Returns the gate.
+-- is off. install(gate) runs only until it installs the gate (it hooks a game function, adds a theme listener, ...),
+-- so a restart never installs a hook twice; a later call only points the gate at its new fn. An install that could
+-- not hook anything yet (the game window isn't loaded) returns false: the gate is not kept or counted, and the next
+-- call tries again. Returns the gate.
 ---@param key string
 ---@param fn function
----@param install fun(gate: function)
+---@param install fun(gate: function): boolean|nil
 ---@return function gate
 function Scope:Gate(key, fn, install)
   self.latest[key] = fn
   if self.gates[key] then return self.gates[key] end
-  -- Calls through while the module runs; inert while it is off.
-  local gate = function(...) if self.on then return self.latest[key](...) end end
+  -- Calls through while the module runs and the key points somewhere (Scope:Point); inert otherwise.
+  local gate = function(...)
+    local target = self.on and self.latest[key]
+    if target then return target(...) end
+  end
+  if install(gate) == false then return gate end
   self.gates[key], self.gateCount = gate, self.gateCount + 1
-  install(gate)
   return gate
+end
+
+-- Points the gate for key at another fn, or at nothing (nil: the hook stays installed and does nothing even while the
+-- module runs, until a later Scope:Gate or Scope:Point gives it a fn again).
+---@param key string
+---@param fn function|nil
+function Scope:Point(key, fn)
+  self.latest[key] = fn
 end
 
 -- A frame of the module's own: hidden, and its visibility rules released, when the module stops. Returns the frame.
@@ -109,6 +122,37 @@ end
 function Scope:Mover(f, key, label, default)
   self.movers[#self.movers + 1] = key
   return ns.Mover(self:Frame(f), key, label, default)
+end
+
+-- Gives an adopted frame to the scope for this run: with its mover when it was adopted with a key.
+local function own(self, entry)
+  if entry.key then return self:Mover(entry.frame, entry.key, entry.label, entry.default) end
+  self:Frame(entry.frame)
+end
+
+-- A frame of the module's own built after Enable (when a window first wants it), for the rest of the session: it is the
+-- scope's now and again at every later start (Scope:Open), with its mover when key is given, so Enable need not hand
+-- it over again. Adopting the same frame twice keeps one. Returns the frame.
+---@param f Frame
+---@param key string|nil
+---@param label string|nil
+---@param default table|nil
+---@return Frame f
+function Scope:Adopt(f, key, label, default)
+  for _, entry in ipairs(self.adopted) do
+    if entry.frame == f then return f end
+  end
+  local entry = { frame = f, key = key, label = label, default = default }
+  self.adopted[#self.adopted + 1] = entry
+  own(self, entry)
+  return f
+end
+
+-- The module starts (the registry calls it before Enable): its gates call through again, and every frame it adopted
+-- in an earlier run is its own again.
+function Scope:Open()
+  self.on = true
+  for _, entry in ipairs(self.adopted) do own(self, entry) end
 end
 
 -- Takes off every handler the module registered with Scope:On.

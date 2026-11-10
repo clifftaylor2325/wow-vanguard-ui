@@ -494,3 +494,53 @@ it("lifecycle: a module that fails at a login in a fight has its secure frame pu
   setCombat(addon, false);
   expect(addon.eval("return VanguardTest_HalfSecure:IsShown()")).toBe(false);
 });
+
+// Late-built frames and gates -------------------------------------------------------------------------------------
+
+// A TEST-ONLY live module whose window is built after Enable (__life.build(), as a window first wanting it would) and
+// adopted by its scope, with its mover.
+const LAZY = `${MODULES}
+  local Z = ns.Module("TestLazy", { defaults = {}, live = true })
+  function Z.Enable(settings, scope) Z.scope = scope end
+  function __life.build()
+    Z.frame = Z.frame or CreateFrame("Frame", "VanguardTest_Lazy", UIParent)
+    Z.frame:SetSize(30, 30)
+    Z.scope:Adopt(Z.frame, "testlazy", "Test lazy", { "CENTER", "CENTER", 0, 0 })
+    Z.scope:Adopt(Z.frame, "testlazy", "Test lazy", { "CENTER", "CENTER", 0, 0 })
+    Z.frame:Show()
+  end
+`;
+
+// Whether the TEST-ONLY lazy window's mover is registered now.
+const lazyMover = (addon) => addon.eval('for _, m in ipairs(ns.MoverList()) do if m.key == "testlazy" then return true end end return false');
+
+it("lifecycle: a frame adopted after Enable is the scope's at every later start, with its mover", () => {
+  const addon = lifeAddon("", LAZY);
+  addon.eval("__life.build()");
+  expect([lazyMover(addon), addon.eval('return #ns.GetModule("TestLazy").scope.adopted')]).toEqual([true, 1]);
+  addon.eval('ns.SetModuleEnabled("TestLazy", false)');
+  expect([lazyMover(addon), addon.eval("return VanguardTest_Lazy:IsShown()")]).toEqual([false, false]);
+  addon.eval('ns.SetModuleEnabled("TestLazy", true) VanguardTest_Lazy:Show()');
+  expect(lazyMover(addon), "the next start adopts it again without Enable").toBe(true);
+  addon.eval('ns.SetModuleEnabled("TestLazy", false)');
+  expect(addon.eval("return VanguardTest_Lazy:IsShown()"), "and the next stop puts it away again").toBe(false);
+});
+
+it("lifecycle: a gate pointed at nothing does nothing while the module runs, and calls through when pointed again", () => {
+  const addon = lifeAddon("", SCOPED);
+  const call = () => addon.eval("__life.calls = 0 __life.hooks[1]() return __life.calls");
+  addon.eval('__life.scopes[1]:Point("hook", nil)');
+  expect(call()).toBe(0);
+  addon.eval('__life.scopes[1]:Point("hook", ns.GetModule("TestScoped").Count)');
+  expect(call()).toBe(1);
+});
+
+it("lifecycle: a gate whose install could not hook yet is neither kept nor counted, and the next call installs it", () => {
+  const addon = lifeAddon("", SCOPED);
+  const gates = () => addon.eval("return __life.scopes[1].gateCount");
+  const before = gates();
+  addon.eval('__life.scopes[1]:Gate("later", print, function() return false end)');
+  expect(gates()).toBe(before);
+  addon.eval('__life.scopes[1]:Gate("later", print, function(gate) __life.later = gate end)');
+  expect([gates(), addon.eval("return __life.later ~= nil")]).toEqual([before + 1, true]);
+});

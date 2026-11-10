@@ -169,7 +169,7 @@ end
 local function openScope(def)
   if not (def.live or def.reload) then return end
   def.scope = def.scope or ns.NewScope(def.name)
-  def.scope.on = true
+  def.scope:Open()
 end
 
 -- Releases what a module that failed to build registered through its scope: its gates shut at once, the rest out of

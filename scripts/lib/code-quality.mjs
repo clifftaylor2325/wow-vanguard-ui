@@ -569,12 +569,11 @@ function fileScopeProblems(file, src) {
 // Bare subscriptions in a live module's files (docs/design/MODULE-LIFECYCLE.md 4.2) ---------------------------------
 // A module that declares live = true goes on and off mid-session, so everything it registers goes through the scope
 // its Enable gets: an ns.On, ns.OnUnit, ns.Every, T.OnChanged, ns.OnMoverPlaced, hooksecurefunc or :HookScript of its
-// own fails, except inside a scope:Gate(...) call (the gate's install is where a hook belongs). A file belongs to the
-// module it registers (ns.Module("X", { ... live = true ... })), else to the one a top-level local names
-// (local X = ns.GetModule("X")). Core/ is exempt.
+// own fails, except inside a scope:Gate(...) call (the gate's install is where a hook belongs). The rule keys on the
+// module the file itself defines (ns.Module("X", { ... live = true ... })), never on one it only reads with
+// ns.GetModule (Nameplates reads RaidStatus and stays reload-only). Core/ is exempt.
 const BARE_SCOPE = /^Modules\/.+\.lua$/;
 const BARE_MESSAGE = "in a live module's file: register it through the module's scope (scope:On, scope:OnUnit, scope:Every, scope:Gate)";
-const CODE_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
 
 // The text of the call whose "(" is at `open`, to its matching ")" (or the end of the source).
 function callText(src, open) {
@@ -590,24 +589,6 @@ function callText(src, open) {
 export function liveModulesIn(src) {
   const calls = [...src.matchAll(/\bns\.Module(\()\s*"([A-Za-z0-9_]+)"/g)];
   return calls.filter((m) => /\blive\s*=\s*true\b/.test(callText(src, m.index + m[0].indexOf("(")))).map((m) => m[2]);
-}
-
-let repoLive = null;
-
-// Every module the addon registers as live, read once from Modules/.
-function liveModules() {
-  if (repoLive) return repoLive;
-  const dir = path.join(CODE_ROOT, "Modules");
-  const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(".lua")) : [];
-  repoLive = new Set(files.flatMap((f) => liveModulesIn(fs.readFileSync(path.join(dir, f), "utf8"))));
-  return repoLive;
-}
-
-// Whether a file belongs to a live module: one it registers as live, or one a top-level GetModule local names.
-function inLiveModule(src) {
-  if (liveModulesIn(src).length > 0) return true;
-  const named = [...src.matchAll(/^local\s+\w+\s*=\s*ns\.GetModule\(\s*"([A-Za-z0-9_]+)"\s*\)/gm)].map((m) => m[1]);
-  return named.some((name) => liveModules().has(name));
 }
 
 // The subscription a token starts, or null: "ns.On" and the rest, "T.OnChanged", "hooksecurefunc" or ":HookScript".
@@ -644,7 +625,7 @@ export function bareSubscriptions(src) {
 
 // Problems for each bare subscription in a live module's file.
 function bareSubscriptionProblems(file, src) {
-  if (!BARE_SCOPE.test(file) || !inLiveModule(src)) return [];
+  if (!BARE_SCOPE.test(file) || liveModulesIn(src).length === 0) return [];
   const line = lineIndex(src);
   return bareSubscriptions(src).map((f) => ({ line: line(f.start), message: `${f.call}() ${BARE_MESSAGE}` }));
 }
