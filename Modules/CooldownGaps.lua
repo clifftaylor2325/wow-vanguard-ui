@@ -45,10 +45,11 @@ local function plainSweep(cd, start, duration)
   return true
 end
 
--- Gives the client's duration object to the sweep; false when there is none to give.
+-- Gives the client's duration object to the sweep; false when there is none to give. A call the client refuses
+-- leaves the sweep as it was (kept for /vg errors), so one icon can't stop the row's repaint before it is placed.
 local function objectSweep(cd, object)
   if object == nil or not ns.Client.Has("cooldownObject") then return false end
-  cd:SetCooldownFromDurationObject(object)
+  ns.Quiet("bar cooldown gaps", cd.SetCooldownFromDurationObject, cd, object)
   return true
 end
 
