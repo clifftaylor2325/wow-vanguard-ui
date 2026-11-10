@@ -4780,7 +4780,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.390 Nameplate aura icons in the open world (Forever)
 
 - Do: With nameplates on, quest in a starting zone for ten minutes, putting your debuffs on mobs and walking past friendly NPCs and players, then type `/vg errors`.
-- Expect: no "aura icon pixels" error, and debuff icons on enemy plates keep a thin one-pixel edge.
+- Expect: no "aura icon pixels" line in chat, and debuff icons on enemy plates keep a thin one-pixel edge. `/vg errors` may still list an "aura icon pixels" entry kept quietly; that is not a failure, but paste it.
 - If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
 
 ### 33.391 Versus deck wraps the class rows (Forever)

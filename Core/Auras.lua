@@ -265,20 +265,30 @@ function A.Dress(f, style)
   return remember(f, parts, style.holder)
 end
 
--- Whether the client has closed an icon to addons (an icon on a plate it keeps for itself, as a friendly
--- one in an instance): its own button, or any part hung on it. The client can close an engine button and
--- leave the parts on it answering no, yet refuse them all the same; touching one then is a taint error.
-local function forbidden(f, parts)
-  for _, region in ipairs({ f, parts.icon, parts.cooldown, parts.skin }) do
+-- Whether the client has closed `region` or anything it hangs from to addons. The client refuses every
+-- region under a closed frame while the region's own IsForbidden still says no (an aura button it has moved
+-- into a plate it keeps for itself, say), so each frame up the chain is asked; GetParent is only ever
+-- called on one that answered no.
+local function closedFrom(region)
+  while region do
     if region:IsForbidden() then return true end
+    region = region:GetParent()
   end
   return false
 end
 
+-- Whether the client has closed an icon to addons (an icon on a plate it keeps for itself, as a friendly
+-- one in an instance): its icon and everything above it (its button, the holder, the plate), its sweep or
+-- its edge frame. Touching one then is a taint error.
+local function forbidden(parts)
+  return closedFrom(parts.icon) or parts.cooldown:IsForbidden() or parts.skin:IsForbidden()
+end
+
 -- Puts one icon back on whole pixels. One the client has closed, or that fails to place, is forgotten,
--- so the scale poll doesn't try it again (and report it again) every half second.
+-- so the scale poll doesn't try it again every half second. A refusal the checks above missed is kept for
+-- /vg errors (with its stack) but not printed: the icon is the client's now, and nothing is lost but its edge.
 local function refitIcon(icons, f, parts, scale)
-  if forbidden(f, parts) or not ns.Try("aura icon pixels", place, parts, scale) then icons[f] = nil end
+  if forbidden(parts) or not ns.Quiet("aura icon pixels", place, parts, scale) then icons[f] = nil end
 end
 
 -- Puts the icons a holder holds back on whole pixels where its scale has moved since they were placed,
