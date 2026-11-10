@@ -93,9 +93,33 @@ O.MANA_BAR_LABEL = ns.ClientData({
   retail = L["Mana under the player frame when your power bar shows another power: druid forms, Shadow, Elemental and Balance (reload)"],
 })
 
+-- The frames the sliders size, in the order the page lists them: the settings group (UF.FrameSize) and its caption.
+local SIZED_FRAMES = {
+  { "player", L["Player"] }, { "target", L["Target"] }, { "targettarget", L["Target of target"] },
+  { "focus", L["Focus"] }, { "pet", L["Pet"] }, { "party", L["Party"] },
+}
+
+-- A width or height slider for one frame (range from UnitFrames.RANGES), applied at once, out of combat.
+local function sizeSlider(frame, dimension)
+  local group, caption = frame[1], frame[2]
+  local label = dimension == "width" and L["{frame}: width"] or L["{frame}: height"]
+  local key = group .. (dimension == "width" and "Width" or "Height")
+  return { "slider", ns.Format(label, { frame = caption }), ns.GetModule("UnitFrames").RANGES[dimension], liveMethod("UnitFrames", key, "ApplySizes") }
+end
+
+-- The Frame sizes card: a width and a height slider for each frame (the target's height is the one setup's role layouts raise).
+local function sizeRows()
+  local rows = { { "header", L["Frame sizes"] } }
+  for _, frame in ipairs(SIZED_FRAMES) do
+    rows[#rows + 1] = sizeSlider(frame, "width")
+    rows[#rows + 1] = sizeSlider(frame, "height")
+  end
+  return rows
+end
+
 -- Unit frames, and the class bars under the player frame.
 local function unitFrameRows()
-  return {
+  return append({
     { "header", L["Unit frames"] },
     check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
@@ -104,7 +128,7 @@ local function unitFrameRows()
     check(L["Boss frames, top left (reload)"], reloadSetting("UnitFrames", "boss")), check(L["Party pets and targets, above the party (reload)"], reloadSetting("PartyExtras", "show")),
     check(L["Group threat panel (reload)"], reloadSetting("GroupThreat", "show")), check(L["Shaman totems above the player frame (reload)"], reloadSetting("ClassBars", "totems")),
     O.Renamed(check(O.MANA_BAR_NAME, reloadSetting("ClassBars", "druidMana")), O.MANA_BAR_LABEL),
-  }
+  }, sizeRows())
 end
 
 -- Cast bars, and the target and focus auras' card (its rows are Modules/FrameAuras.lua's).

@@ -14,7 +14,10 @@ local L = ns.L
 local T, V = ns.Theme, ns.Visibility
 
 local UF = ns.Module("UnitFrames", {
-  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true, calm = false, deck = false, targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
+  defaults = { hideBlizzard = true, healthText = true, powerHeight = 6, boss = true,
+    -- Each frame's size (units), on the Unit frames page: the sizes the frames had before they were adjustable.
+    playerWidth = 240, playerHeight = 36, targetWidth = 240, targettargetWidth = 120, targettargetHeight = 24,
+    focusWidth = 160, focusHeight = 30, petWidth = 120, petHeight = 24, partyWidth = 160, partyHeight = 32, calm = false, deck = false, targetHeight = 36, tagMark = true, combatMark = true, keystone = "auto", keystoneSweep = false,
     -- WoW Forever players read levels and health percent on every frame (as its own UI does),
     -- so a profile that hasn't chosen yet starts that way there.
     showLevel = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.showLevel), healthFormat = ns.ClientData(ns.CLIENT_DEFAULTS.UnitFrames.healthFormat),
@@ -59,8 +62,34 @@ local PARTY_SIZE = 4
 -- Party 1 at the top of a column that ends 344 up, just above your player frame and centered on it
 -- (where the raid frames sit too).
 local PARTY = { w = 160, h = 32, gap = 10, label = L["Party"], point = { "BOTTOM", "BOTTOM", -240, 470 } }
+-- The sliders' ranges for a frame's width and height (units); each holds the sizes the frames had before, and a
+-- saved number outside is kept inside (a crafted profile can hold any). Height stays above the bars' own room.
+UF.RANGES = { width = { min = 80, max = 400, step = 2 }, height = { min = 24, max = 80, step = 1 } }
 -- Boss 1-5 in a column down from the empty top-left corner (clear of party and raid below).
 UF.BOSS = { count = 5, w = 150, h = 26, gap = 6, label = L["Boss frames"], point = { "TOPLEFT", "TOPLEFT", 20, -20 } }
+
+-- The settings group and layout row of a frame the sliders size: its own key, or "party" for party1-4; nil for the
+-- boss frames, which keep their size.
+local function sizeBase(key)
+  if key:find("^party%d$") then return "party", PARTY end
+  return key, UF.LAYOUT_BY_KEY[key]
+end
+
+-- A number kept inside a slider's range (the fallback when it isn't a number).
+local function withinRange(range, value, fallback)
+  return math.min(range.max, math.max(range.min, tonumber(value) or fallback))
+end
+
+-- The width and height a frame stands at now, from its sliders (the layout's size where unset); nil for a frame
+-- with no sliders. Setup's role layouts raise the target's height through the same setting (targetHeight).
+---@param key string a unit frame's key
+---@return number|nil width, number|nil height
+function UF.FrameSize(key)
+  local group, base = sizeBase(key)
+  if not base then return nil end
+  local s = UF.settings
+  return withinRange(UF.RANGES.width, s[group .. "Width"], base.w), withinRange(UF.RANGES.height, s[group .. "Height"], base.h)
+end
 
 -- Blizzard frames replaced when hideBlizzard is on (only those this client has).
 local BLIZZARD_FRAMES = { "PlayerFrame", "TargetFrame", "FocusFrame", "PetFrame", "PartyFrame" }
@@ -902,7 +931,8 @@ end
 
 -- Creates and wires one frame, its unit the same as its key. size has w and h (a LAYOUT row, PARTY or UF.BOSS).
 local function addFrame(key, size)
-  local f = createUnitFrame(key, size.w, size.h, size.outer)
+  local w, h = UF.FrameSize(key)
+  local f = createUnitFrame(key, w or size.w, h or size.h, size.outer)
   if key == "target" or key == "focus" then addClassMark(f) end
   if key == "target" then addTagMark(f) end
   if key == "player" then addCombatMark(f) end
@@ -1083,9 +1113,9 @@ function UF.DeckText(f, on)
 end
 
 -- How tall the target frame stands: its targetHeight setting (setup's role layouts raise it, a taller
--- target for damage dealers and tanks), else its layout's height. It grows up from its bottom edge.
+-- target for damage dealers and tanks, and its slider sets it), else its layout's height. It grows up from its bottom edge.
 function UF.TargetHeight()
-  return tonumber(UF.settings.targetHeight) or UF.LAYOUT_BY_KEY.target.h
+  return select(2, UF.FrameSize("target"))
 end
 
 -- Lifts the deck's top edge by the taller of the target frame's extra height and the rows above the player
@@ -1093,23 +1123,36 @@ end
 local function fitDeckTop(player)
   if not UF.deck then return end
   local pad, reach = UF.DECK.pad, UF.DeckReach
-  local taller = math.max(0, UF.TargetHeight() - UF.LAYOUT_BY_KEY.player.h, reach.top)
+  local taller = math.max(0, UF.TargetHeight() - select(2, UF.FrameSize("player")), reach.top)
   UF.deck:SetPoint("TOPLEFT", player, "TOPLEFT", -pad, pad + taller)
   UF.deck:SetPoint("BOTTOMRIGHT", UF.frames.target, "BOTTOMRIGHT", pad, -(pad + reach.bottom))
 end
 
--- Sizes the target frame to UF.TargetHeight (out of combat: it is a secure button), its shield point and texts
--- with it, and the deck too.
+-- Sizes one frame to its sliders (a secure button: out of combat only), its shield point and texts with it.
+local function sizeFrame(f)
+  local w, h = UF.FrameSize(f.key)
+  if not w then return end
+  f.vgWidth, f.vgHeight = w, h
+  T.PixelSize(f, w, h)
+  T.RepaintFrame(f)
+  UF.PlaceParts(f)
+end
+
+-- The target's and focus's aura rows wrap at their frame's width: they are made again for a new one.
+local function refitAuras()
+  local FA = ns.GetModule("FrameAuras")
+  if FA and FA.settings then FA.Apply() end
+end
+
+-- Sizes every frame to its sliders (out of combat, or when it ends; a dragged slider keeps only the last ask), the
+-- deck and the aura rows with them. The party column stacks from its first frame, so it follows.
 function UF.ApplySizes()
-  local target = UF.frames.target
-  if not target then return end
+  if not UF.frames.target then return end
   ns.OutOfCombat(function()
-    target.vgHeight = UF.TargetHeight()
-    T.PixelSize(target, UF.LAYOUT_BY_KEY.target.w, target.vgHeight)
-    T.RepaintFrame(target)
-    UF.PlaceParts(target)
+    for _, f in pairs(UF.frames) do sizeFrame(f) end
     fitDeckTop(UF.frames.player)
-  end)
+    refitAuras()
+  end, "unit frame sizes")
 end
 
 -- Applies the Versus deck setting: now, or when combat ends (a new deck joins the Calm HUD); the keystone steps
