@@ -98,13 +98,10 @@ O.RENAMED = {
   ["Inbox search and send-to-alt presets"] =
     L["Search the inbox and send-to-alt presets beside the mail window (/vg mail)"],
   ["Keep items stocked from merchants"] = L["Keep items stocked from merchants (/vg stock)"],
-  ["Legacy perk planner"] = L["Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)"],
   ["Lists and Posting tabs"] =
     L["Lists and Posting tabs on the auction house (lists, deals, upgrades, sell helper, your auctions, scan)"],
   ["Notice older ranks on bars"] = L["Notice older spell ranks on bar buttons (/vg ranks)"],
   ["Offer to sell your sell list"] = L["Offer to sell the items on your sell list (/vg junk)"],
-  ["Pet count at a stable master"] =
-    L["Say how many pets you have, and the next slot's price, at a stable master (/vg pets)"],
   ["Recheck undercuts after posting"] = L["Check your auctions for undercuts again after each post and cancel"],
   ["Remember what trainers teach"] = L["Remember what trainers teach (/vg trainers)"],
   ["Seconds per craft"] = L["Seconds a craft takes, for the per-hour ranking"],
@@ -123,7 +120,7 @@ O.RENAMED = {
   ["Tag marks"] = L["Tag marks: a green check on mobs you tagged, a grey X and grey bar on another player's"],
   ["Put the list in the party chat box"] = L["Put the list in the chat box for the party"],
   ["Put the list in the raid chat box"] = L["Put the list in the chat box for the raid"],
-  ["Soft-reserve list and roster"] = L["Turn on the soft-reserve list and the roster"],
+  ["Soft-reserve list"] = L["Turn on the soft-reserve list"],
   ["Follow the nearest quest"] = L["Follow the nearest quest (off: only the one you pinned)"],
   ["Mark quests new in WoW Forever"] = L["New mark on quests new in WoW Forever (when the client flags them)"],
   ["Next step in the tracker"] = L["The followed quest's next step in the tracker"],

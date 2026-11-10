@@ -177,7 +177,7 @@ it("/vg probe fight: an unarmed fight records nothing", () => {
 it("/vg probe: anything else prints the usage", () => {
   const addon = loggedIn();
   addon.slash("probe now");
-  expect(chatHas(addon, /Usage: \/vg probe \[chat\|\|fight\|\|last\]/), "the usage line").toBe(true);
+  expect(chatHas(addon, /Usage: \/vg probe \[chat\|\|fight\|\|last\|\|legacy\]/), "the usage line").toBe(true);
 });
 
 // TEST-ONLY quest reads and a log with two quests, one selected.
@@ -366,4 +366,34 @@ it("/vg probe: the client checks say whether the encounter timeline is loaded an
   const bare = loggedIn(PROBE_ENV);
   bare.slash("probe");
   expect(clientRow(reportText(bare), "Blizzard_EncounterTimeline loaded:"), "not loaded in the default world").toBe("Blizzard_EncounterTimeline loaded: false");
+});
+
+it("/vg probe legacy lists the window, its pages, the perk panel and the Legacy globals", () => {
+  const addon = loggedIn("");
+  addon.slash("probe legacy");
+  expect(chatHas(addon, /LegacySystemFrame is not loaded \(open the Legacy window once/), "no window yet").toBe(true);
+  addon.eval(`LegacySystemFrame = { TreePage = { LegacyTreeTraitPanel = { configID = 7, treeID = 9 } }, ChallengesPage = { CategoryList = {}, DetailPane = {} } }
+    C_Traits = { GetTreeNodes = function() return { 1, 2, 3 } end }`);
+  addon.slash("probe legacy");
+  expect(chatHas(addon, /TreePage: 1 keys: LegacyTreeTraitPanel/), "a page's keys").toBe(true);
+  expect(chatHas(addon, /ChallengesPage: 2 keys: CategoryList, DetailPane/), "another page's keys").toBe(true);
+  expect(chatHas(addon, /RewardTrackPage: missing/), "a missing page").toBe(true);
+  expect(chatHas(addon, /perk panel: configID 7, treeID 9, nodes 3/), "the panel's ids and node count").toBe(true);
+  expect(chatHas(addon, /globals with Legacy in the name \(\d+\): .*LegacySystemFrame \(table\)/), "the globals").toBe(true);
+});
+
+it("/vg probe legacy copes with a window without a panel, secret ids, a failing tree call, and combat", () => {
+  const addon = loggedIn("");
+  addon.eval("LegacySystemFrame = { TreePage = {} }");
+  addon.slash("probe legacy");
+  expect(chatHas(addon, /perk panel: not found on TreePage/), "no panel").toBe(true);
+  addon.eval("LegacySystemFrame.TreePage.LegacyTreeTraitPanel = { configID = __wfgWorld.secret(1), treeID = 9 } C_Traits = { GetTreeNodes = function() error('no tree') end }");
+  addon.slash("probe legacy");
+  expect(chatHas(addon, /perk panel: configID hidden, treeID 9, nodes unknown/), "hidden ids and a failing call").toBe(true);
+  addon.eval("C_Traits = nil LegacySystemFrame.TreePage.LegacyTreeTraitPanel.treeID = nil");
+  addon.slash("probe legacy");
+  expect(chatHas(addon, /treeID nil|treeID table|nodes unknown/), "no trait calls").toBe(true);
+  addon.world.combat(true);
+  addon.slash("probe legacy");
+  expect(chatHas(addon, /Not in combat\./), "nothing is read in combat").toBe(true);
 });

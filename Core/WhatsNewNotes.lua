@@ -421,7 +421,7 @@ ns.WHATS_NEW = {
       { text = "A group board (/vg lfg) lists looking-for-more and looking-for-group posts from chat by dungeon, role and level. A click opens a whisper you send yourself.", page = "chat", row = "Open the group board" },
     } },
     { module = "OfficerLoot", label = "Officer loot tools", items = {
-      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "tools", row = "Turn on the soft-reserve list and the roster", off = true },
+      { text = "A soft-reserve list (/vg loot) flags a roll on a reserved item in the roll tracker, and a roster panel lists the group by role. Kept on your character and shared by hand into the chat box; nothing is synced or sent for you.", page = "tools", row = "Turn on the soft-reserve list", off = true },
     } },
     { module = "InstancePrep", label = "Instance prep", items = {
       { text = "Buff checks add a flask, food buff, weapon oil and raid buff rows to the ready-check card. They start off.", page = "town", row = "Buff checks on the card: flask, food, oil or poison, raid buffs", off = true },
@@ -440,9 +440,6 @@ ns.WHATS_NEW = {
     } },
     { module = "Errands", label = "Errands", items = {
       { text = "A boat and zeppelin timer, off until you switch it on, learns each ride's time and counts down the next one.", page = "town", row = "Boat and zeppelin timer", off = true },
-    } },
-    { module = "Legacy", label = "Legacy system", items = {
-      { text = "/vg legacy probe lists what the game has for the Legacy system, and a perk planner (off until you switch it on) keeps a list of perks within the tree's 16 points.", page = "town", row = "Legacy perk planner: a list of perks within the tree's 16 points (/vg legacy plan)", off = true },
     } },
     { label = "Setup", items = {
       { text = "The setup wizard sits above the frame handles on its last step, and its title and step are centred.", page = "general", row = "Run setup" },

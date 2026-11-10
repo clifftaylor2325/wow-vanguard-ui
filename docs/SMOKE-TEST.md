@@ -1958,10 +1958,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: as soon as you change the price or length, Confirm reads Post again and the guide says "Click Post to list stack 1 of 1."; the next click says "Post: sending stack 1 of 1 (... at <the new price> each, ...)" and the item goes up at the new price (the game may ask to confirm again). It never lists at the price you had before the change. [Needs in-game check: that the game takes a second Post after a confirm it was never sent.]
 - If it fails, paste: every chat line starting "Post:", the auction's price on the game's Auctions tab, and `/vg errors`.
 
-### 15.6 Legacy probe and perk plan (planner off until switched on)
+### 15.6 Legacy probe
 
-- Do: type `/vg legacy probe` before opening the Legacy window, open it (the Legacy button on the menu bar), click each of its three tabs, and type `/vg legacy probe` again. Under Town and gear tick "Legacy perk planner", then type `/vg legacy plan add 3 Test perk`, `/vg legacy plan add 14 Other perk`, `/vg legacy plan`, `/vg legacy plan remove test perk`, `/vg legacy plan clear`. Paste the second probe's whole output.
-- Expect: the first probe says LegacySystemFrame is not loaded; the second lists TreePage, ChallengesPage and RewardTrackPage with their keys, a "perk panel" line with ids and a node count (or "not found on TreePage"), and the globals with Legacy in the name. The plan lines say "Planned.", then that 17 points is over the tree's 16, then list "3  Test perk" and "3 of 16 points planned.", then "Perk dropped." and "Legacy plan cleared." [Needs in game: everything the probe prints; it is the data source the challenge tracker waits on.]
+- Do: type `/vg probe legacy` before opening the Legacy window, open it (the Legacy button on the menu bar), click each of its three tabs, and type `/vg probe legacy` again. Paste the second probe's whole output.
+- Expect: the first probe says LegacySystemFrame is not loaded; the second lists TreePage, ChallengesPage and RewardTrackPage with their keys, a "perk panel" line with ids and a node count (or "not found on TreePage"), and the globals with Legacy in the name. [Needs in game: everything the probe prints.]
 - If it fails, paste: the probe's output and `/vg errors`.
 
 ### 15.6a Chat filter (off until switched on)
@@ -2115,12 +2115,6 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - If it fails, paste: the whole `/vg guide probe` output from each place, which lines say `hidden` or `missing`, and `/vg errors`.
 
 ## 19. Roll tracker
-
-### 19.0a Pet stable
-
-- Do: on a hunter with a pet out and one stabled, open `/vg` → Town and gear → Pet stable and click List my pets in chat (or type `/vg pets`); then talk to a stable master. Run `/vg errors`.
-- Expect: `/vg pets` prints "Your pets:" and a line per pet, such as "Rex, level 12 Cat · Loyal · happy · 35% to next level (out)", the pet that is out first; at the stable master one chat line says "Stable: 2 pets (/vg pets lists them)." and the next slot's price (unobserved: the field meanings come from the API docs). On a character with no pets, `/vg pets` says there are none. Turn the line off under Town and gear → Pet stable.
-- If it fails, paste: the `/vg pets` output, the stable master's window and `/vg errors`.
 
 ### 19.1 /roll results
 
@@ -2409,10 +2403,10 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the chat box opens with `/p Soft reserves: ...` (or `/raid`) typed in and nothing is sent until you press Enter; the print shows to you alone. [Needs in game: that the client's ChatFrameUtil.OpenChat opens the chat box with text, and that a line this long is accepted. Without it the part prints to your chat instead.]
 - If it fails, paste: what the chat box showed and `/vg errors`.
 
-### 30.3 Roster
+### 30.3 Raid roster
 
-- Do: type `/vg loot roster` in a party or raid, ask a member to go offline or die, change a role in the game's group tools, then `/vg unlock` and drag the panel.
-- Expect: a small panel lists the group, tanks then healers then damage, names in class colors, with "Lead" or "Asst", "Offline" or "Dead"; it redraws when those change, and keeps its place. [Needs in game: that UNIT_FLAGS or the other listed events fire for another member's death, and that roles and leader marks read plainly in a Forever client.]
+- Do: with the Officer loot tools off, press Show or hide the roster under `/vg` → Raid frames (or type `/vg loot roster`) in a party or raid, ask a member to go offline or die, change a role in the game's group tools, then `/vg unlock` and drag the panel.
+- Expect: a small panel lists the group, tanks then healers then damage, names in class colors, with "Lead" or "Asst", "Offline" or "Dead"; it redraws when those change, and keeps its place (a spot you moved before this version is kept too); closing it stops it listening to the group. [Needs in game: that UNIT_FLAGS or the other listed events fire for another member's death, and that roles and leader marks read plainly in a Forever client.]
 - If it fails, paste: a screenshot and `/vg errors`.
 
 ## 31. Sized icons (#232)
@@ -2835,11 +2829,11 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the panel sits at the bottom right, 16 in from the right edge and above the bags and menu bar, where the game's own meter sits; it does not cover bars 1 to 3. On a wider screen (a 2560 x 1440 monitor at 100%) it sits where it always did, left of the bags and menu bar. [Needs in-game check: the panel's top against the tooltip corner and the quest tracker on a 1365-wide screen.]
 - If it fails, paste: a screenshot of the corner and `/vg frame Vanguard_Meter`.
 
-### 33.52 Officer roster in a 40-player raid on a short screen
+### 33.52 Raid roster in a 40-player raid on a short screen
 
-- Do: with Officer loot tools on (`/vg loot on`), in a raid of 40 on a screen 768 units tall or less (1920 x 1080 at the game's UI scale 100% is 768 tall), open the roster (`/vg loot roster`).
+- Do: in a raid of 40 on a screen 768 units tall or less (1920 x 1080 at the game's UI scale 100% is 768 tall), open the roster (`/vg` → Raid frames → Show or hide the roster).
 - Expect: the panel ends above the bottom edge of the screen and its last line reads "+3 more" (or the number of members it had no room for); on a taller screen every member is listed with no count line. [Needs in-game check: the count at your screen's height, and the panel against the roll tracker at the left edge, which it still overlaps.]
-- If it fails, paste: a screenshot and `/vg frame Vanguard_OfficerRoster`.
+- If it fails, paste: a screenshot and `/vg frame Vanguard_RaidRoster`.
 
 ### 33.53 Group threat panel on a narrow screen
 
@@ -3210,9 +3204,9 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: `/vg frame` prints lines with no Lua error. Both dumps print true (the game's own state is not tainted), and no "Interface action failed because of an AddOn" shows at the start of the fight. [Needs in-game check: if either dump prints false and "Vanguard", say so in the project: the third stability hunt has a fix ready for the layout switch (offer a reload after it), and the nameplate setting would need a decision.]
 - If it fails, paste: both dump lines, any blocked-action line, and `/vg errors`.
 
-### 33.115 A raid of 11 or more: roster changes, the open Officer roster, Group threat and buff refreshes
+### 33.115 A raid of 11 or more: roster changes, the open raid roster, Group threat and buff refreshes
 
-- Do: in a raid of 11 or more (any raid scale; the Healing layout's 115% too), `/vg perf slow` and have members join, leave and move groups out of combat. Then open the Officer roster (`/vg loot roster`), pull a pack of mobs, and switch Group threat on for a boss fight. In a long fight, watch the raid frames' missing-buff marks as buffs are refreshed and fall off.
+- Do: in a raid of 11 or more (any raid scale; the Healing layout's 115% too), `/vg perf slow` and have members join, leave and move groups out of combat. Then open the raid roster (`/vg loot roster`), pull a pack of mobs, and switch Group threat on for a boss fight. In a long fight, watch the raid frames' missing-buff marks as buffs are refreshed and fall off.
 - Expect: no hitch on a roster change, and `/vg perf slow` shows no pixel-size work per change. The roster redraws when the group changes, not with every mob. Group threat follows threat about four times a second and switches at once with your target. A buff falling off still shows its mark. [Needs in-game check: the client stores a frame's scale as a float32; the fix compares scales with a tolerance.]
 - If it fails, paste: the `/vg perf slow` lines and `/vg errors`.
 
@@ -3222,10 +3216,10 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the icon dims (blue for power) and comes back exactly when the game's own buttons would; range red still works. The gaps row shows no cooldown the manager hides until you add it.
 - If it fails, paste: which button stayed the wrong colour, or which cooldown showed, and `/vg errors`.
 
-### 33.117 BigWigs, Clique and SexyMap alongside Vanguard
+### 33.117 Boss timer spots, Clique and SexyMap alongside Vanguard
 
-- Do: with BigWigs only (no DBM), outside an instance, `/vg dock` and open the Combat tools page. With Clique loaded, look at its row on the Modules page's Other addons card. With SexyMap and Vanguard's Minimap off, look at a LibDBIcon minimap button and a Questie or TomTom minimap pin.
-- Expect: `/vg dock` says where to drag BigWigs' bars, and the Boss mods row is there. Clique's row says its bindings don't reach Vanguard's frames. The buttons and pins sit on SexyMap's (or the game's round) map edge.
+- Do: open the Combat tools page and then `/vg unlock`. With Clique loaded, look at its row on the Modules page's Other addons card. With SexyMap and Vanguard's Minimap off, look at a LibDBIcon minimap button and a Questie or TomTom minimap pin.
+- Expect: The page has a Boss timers note naming the two spots, and unlock mode shows both handles (Boss timers and Boss timers, soon); a boss timer addon's bars can be dragged onto them. [Needs in-game check: that the handles are where the bars can reach.] Clique's row says its bindings don't reach Vanguard's frames. The buttons and pins sit on SexyMap's (or the game's round) map edge.
 - If it fails, paste: the chat lines, a screenshot of the minimap, and `/vg errors`.
 
 ### 33.118 German, French or Russian client: bag filters, searches in small letters, prices and /way
@@ -5121,8 +5115,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.453 Buttons for the chat-only commands
 
-- Do: After a few fights, open `/vg` → Combat tools → Fight history and press List this session's fights, then Recap the last fight in chat. Under Town and gear press List my sell list in chat (Merchants), List the craft queue in chat (with the queue on), Put the newest ranks on my bars and What trainers teach next (Spell ranks, Forever), and List the perk plan in chat (Legacy, Forever). Under Town and gear → Merchants press Forget every merchant..., answer No, then press it again and answer Forget.
-- Expect: each button prints what its `/vg` command prints (`/vg fights`, `/vg recap`, `/vg junk`, `/vg craft`, `/vg ranks swap`, `/vg trainers next`, `/vg legacy plan`); in a fight the ranks button says the bars can't change; No forgets nothing, Forget says "Forgot every merchant." and item tooltips stop naming where an item is sold until you visit a merchant.
+- Do: After a few fights, open `/vg` → Combat tools → Fight history and press List this session's fights, then Recap the last fight in chat. Under Town and gear press List my sell list in chat (Merchants), List the craft queue in chat (with the queue on), Put the newest ranks on my bars and What trainers teach next (Spell ranks, Forever). Under Town and gear → Merchants press Forget every merchant..., answer No, then press it again and answer Forget.
+- Expect: each button prints what its `/vg` command prints (`/vg fights`, `/vg recap`, `/vg junk`, `/vg craft`, `/vg ranks swap`, `/vg trainers next`); in a fight the ranks button says the bars can't change; No forgets nothing, Forget says "Forgot every merchant." and item tooltips stop naming where an item is sold until you visit a merchant.
 - If it fails, paste: the chat lines and which button.
 
 ### 33.454 Move frames from Chat and Situations
@@ -5181,14 +5175,14 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.467 The Legacy probe from its new home (Forever)
 
-- Do: open the Legacy window once, close it, then type `/vg legacy probe`; then type it once in a fight.
+- Do: open the Legacy window once, close it, then type `/vg probe legacy`; then type it once in a fight.
 - Expect: the same lines as before: the window loaded, its three pages with their keys, the perk panel's ids and node count, and the globals with Legacy in the name. In the fight it says "Not in combat."
 - If it fails, paste: the chat lines.
 
-### 33.468 Probe and planner still answer (Forever)
+### 33.468 Probe still answers (Forever)
 
-- Do: type `/vg probe`, then `/vg legacy plan add 2 TEST perk` with the Legacy perk planner on, then `/vg legacy plan` and `/vg legacy plan clear`.
-- Expect: the probe's copy box opens as before, and the planner keeps, lists and clears the perk.
+- Do: type `/vg probe`.
+- Expect: the probe's copy box opens as before. (The Legacy perk planner it was once checked beside is retired.)
 - If it fails, paste: the chat lines and `/vg errors`.
 
 ### 33.469 Retail's best-effort note (Retail)
@@ -5254,7 +5248,7 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 ### 34.1 Retail login, and the parts that stay WoW Forever's
 
 - Do: log in on Retail with Vanguard on, then `/reload`. Run `/vg status`, `/vg modules` and `/vg help`, open `/vg` and look at the Modules, Unit frames, Town and gear, Quests, Action bars and Chat pages, then type `/vg pets`.
-- Expect: no Lua error and no "not on this client" line; `/vg status` names the Retail client and build 120105. None of the WoW Forever-only parts (spell ranks, the pet stable, Legacy, the talent planner, quest guidance's data, the group board, the swing timer, power bar sparks, readouts) is listed or has a row, there is no Talents page and no Your keys tab, and `/vg pets` says Unknown command. The Class bars row on the Modules page names the class resources, and the Quests page's arrow note doesn't mention `/vg questdata`.
+- Expect: no Lua error and no "not on this client" line; `/vg status` names the Retail client and build 120105. None of the WoW Forever-only parts (spell ranks, the talent planner, quest guidance's data, the group board, the swing timer, power bar sparks, readouts) is listed or has a row, there is no Talents page and no Your keys tab, and `/vg ranks` says Unknown command. The Class bars row on the Modules page names the class resources, and the Quests page's arrow note doesn't mention `/vg questdata`.
 - If it fails, paste: the `/vg report` block and a screenshot of the page.
 
 ### 34.2 Class resources above the player frame

@@ -75,6 +75,7 @@ Core/Controls.lua
 Core/Chrome.lua
 Core/MoverPopover.lua
 Core/UnlockBar.lua
+Core/BossSpots.lua
 Core/Options.lua
 Core/OptionsFold.lua
 Core/OptionsNames.lua
@@ -128,6 +129,7 @@ Modules/RaidHealing.lua
 Modules/RaidStatus.lua
 Modules/RaidPreview.lua
 Modules/RaidTools.lua
+Modules/RaidRoster.lua
 Modules/MainTanks.lua
 Modules/PartyExtras.lua
 Modules/GroupThreat.lua
@@ -175,7 +177,6 @@ Modules/InstancePrepBuffs.lua
 Modules/InstancePrepWizard.lua
 Modules/DungeonCard.lua
 Modules/TalentPlanner.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
-Modules/Legacy.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/AutoAccept.lua
 Modules/Quiet.lua
 Modules/QuietDeclines.lua
@@ -227,7 +228,6 @@ Modules/GameTools.lua
 Modules/CooldownGaps.lua
 Modules/CooldownGlow.lua
 Modules/CooldownKeys.lua
-Modules/BossDocks.lua
 Modules/FightHistory.lua
 Modules/FightRecap.lua
 Modules/Meter.lua
@@ -236,7 +236,6 @@ Modules/Rolls.lua
 Modules/CraftQueue.lua
 Modules/MailTools.lua
 Modules/OfficerLoot.lua
-Modules/OfficerRoster.lua
 Modules/GameAlerts.lua
 Modules/AfkScreen.lua
 Modules/DataBars.lua
@@ -248,7 +247,6 @@ Modules/UpgradeStrings.lua
 Modules/UpgradeWizard.lua
 Modules/VendorMemory.lua
 Modules/SpellRanks.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
-Modules/PetStable.lua [AllowLoadGameType camelot] [ExcludeLoadGameType standard]
 Modules/Nameplates.lua
 Modules/Situations.lua
 Modules/SituationsBanner.lua
