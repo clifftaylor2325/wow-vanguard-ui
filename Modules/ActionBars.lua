@@ -433,17 +433,19 @@ local function updateHotkey(b)
 end
 
 -- The name the game prints on a slot's button (a macro's), or "" when the game says the action prints none. The
--- name may be hidden: only SetText takes it.
+-- name may be hidden: only SetText takes it, so it is returned, never tested (`x and name or ""` tests it).
 local function actionName(slot)
   local uses = call("UsesActionText", slot)
   if not ns.IsSecret(uses) and uses == false then return "" end
   local text = call("GetActionText", slot)
-  return (ns.IsSecret(text) or type(text) == "string") and text or ""
+  if ns.IsSecret(text) or type(text) == "string" then return text end
+  return ""
 end
 
 -- The macro name along the bottom: only with Macro names on and an action in the slot.
 local function updateName(b)
-  b.macroName:SetText((AB.settings.macroNames and b.hasAction) and actionName(b.action) or "")
+  if AB.settings.macroNames and b.hasAction then return b.macroName:SetText(actionName(b.action)) end
+  b.macroName:SetText("")
 end
 
 -- The count, macro name and hotkey texts.
