@@ -614,5 +614,12 @@
     "date": "2026-11-09",
     "result": "skip",
     "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
+  },
+  {
+    "step": "8.6g",
+    "build": "0.9.5",
+    "date": "2026-11-09",
+    "result": "skip",
+    "note": "Not run. Cliff: has played with the addon for the last week and has high confidence everything essentially works; chose to ship without the in-game pass."
   }
 ]

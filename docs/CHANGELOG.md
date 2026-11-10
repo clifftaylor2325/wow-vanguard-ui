@@ -4,6 +4,76 @@ What changed for players in each release, newest first. In game, the same notes 
 
 Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
+## 0.9.5
+
+<!-- SMOKE steps 1.3a, 2.1i, 2.1j, 2.1k, 2.1l, 2.1m, 6.2c, 7.1b, 7.2l, 7.2m, 7.2n, 7.5b, 7.5c, 7.5d, 8.3c, 8.4e, 8.4f, 8.6d, 8.6e, 8.6f, 8.6g, 12.1a, 33.217a, 33.471, 33.472, 33.473, 33.474, 33.475 -->
+
+The Shield look and the keystone, sliders for nameplates and target auras, more on tooltips, a class-colour accent, and fixes across quests, group play and raid frames.
+
+### The Shield look (0.9.5)
+
+- Your frames point away from you as shields, bars filling toward you. HUD look: Plain keeps flat frames.
+- The keystone: the crest on a rail between your frame and your target's, swords in a fight.
+- A ring round the keystone can sweep with the global cooldown. *(off)*
+- A thin line runs inside your frame's rim and your target's, brighter in a fight.
+- Under Shield the cast bars and action bar backing get cut corners.
+- Setup's Comfort step offers Shield HUD look, recommended.
+
+### Nameplates and target auras (0.9.5)
+
+- Plate width, height, aura counts and icon size are sliders, applied without a reload.
+- Name text size and Health text size set the plate's texts, with no reload.
+- Target plate size draws your target's plate larger, around its centre.
+- A unit you can't attack can show just its name on its plate. *(off)*
+- Target and focus auras get sliders for icon size and counts, all applied without a reload.
+- Target's buffs shows All, Important or Yours.
+- On WoW Forever an aura icon the game has closed to addons is left alone, so no "aura icon pixels" line in chat.
+- `/vg errors` keeps a quiet entry if the game still refuses an aura icon.
+
+### Tooltips (0.9.5)
+
+- A player's tooltip adds their guild and rank, their realm if another, and their role.
+- Your own tooltip shows your equipped item level.
+- One switch adds Item ID and Spell ID to tooltips. *(off)*
+- A profile that had Item IDs on keeps it on.
+- Units in the world, units on frames and other tooltips each get a position.
+- A tooltip position you had saved applies to all three kinds until you change one.
+
+### Look (0.9.5)
+
+- Window and page titles are a size larger, a step above card headings.
+- The options header shows the painted crest and the Vanguard wordmark; your faction's crest moves to the footer.
+- A class-colour swatch beside the accent presets sets the accent to your class colour.
+- Each character on a shared profile gets its own class colour at login.
+- The game's own text, in windows Vanguard does not skin, takes the theme font's face.
+- The Modules page says so when its Show choice leaves nothing to list, with a Show all modules button.
+- A page's card fades in when you change pages.
+
+### Quests (0.9.5)
+
+- Zones folded in the game's quest log stay folded unless Vanguard needs them.
+- Pick the reward that sells for most leaves the choice to you when a reward is a gear upgrade.
+- The quest arrow and minimap spots hold their place in a fight, and are right again within a second of its end.
+
+### Setup and group play (0.9.5)
+
+- On a first run, setup no longer ticks Filter chat or Key setup at your next login for you.
+- Key setup opens by itself at your next login only if you ticked it.
+- A stranger you whispered in the last ten minutes may invite you.
+- Gear upgrades give no upgrade line or arrow to an off-hand item while you wear a two-hander alone.
+- Merchant helpers off no longer drops the HUD text font, now its own module.
+
+### Speed and safety (0.9.5)
+
+- Raid tiles listen for heals, shields, threat and aura changes of their own member only.
+- Combo points ignore other powers' ticks, and the cooldown gaps row redraws once a frame.
+- In a fight the game menu's Vanguard button and the quest log button leave the game's window to close after the fight.
+- Your buff row is no longer moved in a fight when a weapon enchant comes or goes; it settles when the fight ends.
+- The character pane's item levels read the item's detailed level, as its tooltip does.
+- A character's saved-settings stamp no longer moves without its account note, which could bring a needless restore offer.
+- `/vg status` ends with a count of game windows dressed, left as the game's, replaced, off or not made yet.
+- `/vg status windows` names each window under its state.
+
 ## 0.9.4
 
 <!-- SMOKE steps 33.390 to 33.470 -->
