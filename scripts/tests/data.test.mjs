@@ -153,3 +153,9 @@ it("with the XP bar turned off the reputation bar starts in the XP bar's spot", 
   const addon = loggedIn(DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { DataBars = { xp = false } } }" });
   expect(addon.eval("return Vanguard_repbar.__points.BOTTOM.y")).toBe(4);
 });
+
+it("a watched faction whose name the client hides shows that name alone on the bar, never joined to its standing", () => {
+  const addon = loggedIn(DATA_ENV + `__faction.name = __wfgStub.world.secret("TEST-ONLY Faction")`);
+  const text = addon.eval("local t = Vanguard_repbar.text:GetText() return { issecretvalue(t), Vanguard_repbar:IsShown() }");
+  expect([text, addon.eval("return #ns.errors")], "the bar shows, its text the hidden name, and nothing raised").toEqual([[true, true], 0]);
+});

@@ -328,18 +328,21 @@ function CB.UpdateResource()
   CB.UpdateStagger()
 end
 
--- Whether you are high enough for a resource the game shows only from a level.
-local function levelled(def)
-  return def.minLevel == nil or (ns.PlainNumber(UnitLevel("player")) or 0) >= def.minLevel
+-- Whether you are high enough for a resource the game shows only from a level: at `level` when the caller knows it
+-- (a level-up names the new one; UnitLevel may still give the old one then), else at the client's level now.
+local function levelled(def, level)
+  local now = ns.PlainNumber(level) or ns.PlainNumber(UnitLevel("player")) or 0
+  return def.minLevel == nil or now >= def.minLevel
 end
 
--- Shows the resource of your spec now (building it the first time) and hides the others; none below its level.
-function CB.ShowResource()
+-- Shows the resource of your spec now (building it the first time) and hides the others; none below its level
+-- (`level`: the new one, from a level-up).
+function CB.ShowResource(level)
   local player = UF.frames.player
   if not player then return end
   CB.kind = CB.ResourceKind(CB.class)
   local def = CB.kind and CB.RESOURCES[CB.kind]
-  if def and not levelled(def) then CB.kind, def = nil, nil end
+  if def and not levelled(def, level) then CB.kind, def = nil, nil end
   if def and not CB.resourceFrames[CB.kind] then CB.resourceFrames[CB.kind] = buildResource(player, def) end
   for kind, frame in pairs(CB.resourceFrames) do frame:SetShown(kind == CB.kind) end
   CB.UpdateResource()
@@ -354,9 +357,9 @@ local function onSpec(_, unit)
   if unit == nil or unit == "player" then ns.OutOfCombat(CB.ShowResource) end
 end
 
--- A level-up (yours) may bring a resource into view, out of combat.
-local function onLevelUp()
-  ns.OutOfCombat(CB.ShowResource)
+-- A level-up (yours) may bring a resource into view, out of combat: at the level the event names.
+local function onLevelUp(_, level)
+  ns.OutOfCombat(function() CB.ShowResource(level) end, "class resource level")
 end
 
 -- Your class resource (CB.Enable, Modules/ClassBars.lua): built out of combat after the unit frames
