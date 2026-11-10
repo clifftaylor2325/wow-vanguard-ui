@@ -98,7 +98,8 @@ end
 
 -- A new profile ----------------------------------------------------------------------------
 
--- Makes the named profile and stages the switch to it (it applies on reload), or says why it can't.
+-- Makes the named profile and switches to it (at once when nothing waits for a reload, else after the reload), or
+-- says why it can't.
 local function create(r)
   local name = r.input:GetText()
   if not ns.NewProfile(name) then

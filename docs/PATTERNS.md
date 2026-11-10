@@ -18,6 +18,30 @@ end
 
 `ns.Module` registers the name and defaults; `Enable(settings)` gets the profile's table with defaults filled in. Functions the module exports hang on `PX`; everything else is `local`. The file is listed in `Vanguard.toc` after any module it calls `ns.GetModule` on at load time.
 
+## A module that goes on and off live
+
+```lua
+local GT = ns.Module("GroupThreat", { defaults = { show = false }, live = true })
+
+-- Module entry point (Core/Modules.lua): everything goes through the scope, so switching it off needs no Disable.
+function GT.Enable(settings, scope)
+  if not settings.show then return end
+  GT.panel = GT.panel or build() -- built once a session: a second Enable reuses it
+  scope:Mover(GT.panel, "groupthreat", L["Group threat"], GT.SPOT)
+  scope:On("UNIT_THREAT_LIST_UPDATE", GT.Dirty)
+  scope:Every("group threat", GT.EVERY, GT.Tick)
+end
+```
+
+`live = true` lets the registry start and stop the module mid-session, always out of combat (a switch made in a fight applies when it ends), and `requires = { "UnitFrames" }` names a module whose frames it needs (listed before it in `Vanguard.toc`). `reload = L["why"]` says why a module waits for a reload instead; a module that declares neither waits too, and its `Enable` gets no scope. Through the scope (`Core/ModuleScope.lua`) register events (`scope:On`, `scope:OnUnit`), tickers (`scope:Every`), frames of its own (`scope:Frame`) and movers (`scope:Mover`); the registry releases them all on stop: handlers off, tickers stopped, frames hidden with their visibility drivers released, movers out of unlock mode (their saved spots kept). A hook or listener the client can't take back goes through a gate, installed once a session and inert while the module is off:
+
+```lua
+scope:Gate("anchor", TT.Anchor, function(gate) hooksecurefunc("GameTooltip_SetDefaultAnchor", ns.Guard("hook anchor", gate)) end)
+scope:Gate("theme", R.Paint, T.OnChanged)
+```
+
+Build frames once and keep them on the module table (a named frame made twice leaves an orphan), read `settings` from the argument each time, and never assume `Enable` runs at login. What the scope can't see (a CVar, events taken from a game window) goes in a `Disable`, which runs before the scope closes; `afterOff = L["..."]` is the line printed when the module stops with something left until a reload. A setting that changes the module's shape uses `O.RestartSetting(module, key)` (the module is built again, and its row needs no reload tag). Test it with `lifecycleCases(name, login)` from `scripts/tests/lifecycle-helpers.mjs`: off leaves what a login with it off leaves, late equals login, and three toggles make nothing new.
+
 ## A module for one client
 
 ```lua

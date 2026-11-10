@@ -7,6 +7,7 @@ import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
 import { SETUP_DONE, chatHas, expectErrors, setCombat } from "./helpers.mjs";
+import { footprint, lifecycleCases } from "./lifecycle-helpers.mjs";
 
 // TEST-ONLY modules, each logging "on <name>" from Enable and "off <name>" from Disable into __life.log:
 // TestParent and its TestChild are live; TestReload is reload-only, with the live TestKept on it.
@@ -185,37 +186,6 @@ const SCOPED = `${MODULES}
   end
 `;
 
-// TEST-ONLY: what the addon has registered and shows, for comparing two states: handler counts per event, ticker
-// keys, the events each addon frame listens for, the addon frames shown under a parent (by name or kind), frames with a state
-// driver, mover keys, open gates, and how many frames there are.
-const FOOTPRINT = `
-  local stub = __wfgStub
-  local out = { handlers = ns.HandlerCounts(), tickers = {}, events = {}, shown = {}, drivers = 0, movers = {}, gates = 0 }
-  for key in pairs(ns.ticker.vgJobs) do out.tickers[#out.tickers + 1] = tostring(key) end
-  for _, w in ipairs(stub.frames) do
-    if w.__id > stub.firstAddonFrame then
-      for event in pairs(w.__events) do out.events[#out.events + 1] = event end
-      if w.__parent and w:IsVisible() then out.shown[#out.shown + 1] = w.__name or w.__kind end
-      if w.__states and next(w.__states) then out.drivers = out.drivers + 1 end
-    end
-  end
-  for i, m in ipairs(ns.MoverList()) do out.movers[i] = m.key end
-  for _, list in ipairs({ out.tickers, out.events, out.shown, out.movers }) do table.sort(list) end
-  for _, name in ipairs(ns.ModuleNames()) do
-    local scope = ns.GetModule(name).scope
-    if scope and scope.on then out.gates = out.gates + scope.gateCount end
-  end
-  out.frames = #stub.frames
-  return out
-`;
-
-// The footprint now, without the frame count (a stopped module's frames stay: the client never frees one).
-function footprint(addon, { frames = false } = {}) {
-  const f = addon.eval(FOOTPRINT);
-  if (!frames) delete f.frames;
-  return f;
-}
-
 it("lifecycle: a module that declares nothing gets no scope; one that declares live or reload gets one", () => {
   const addon = lifeAddon("", `${MODULES}
     local P = ns.Module("TestPlain", { defaults = {} })
@@ -224,25 +194,12 @@ it("lifecycle: a module that declares nothing gets no scope; one that declares l
   expect(addon.eval('return { ns.GetModule("TestParent").scope ~= nil, ns.GetModule("TestReload").scope ~= nil }')).toEqual([true, true]);
 });
 
-it("lifecycle: switched off live, a module leaves what a login with it off leaves", () => {
-  const offAtLogin = footprint(lifeAddon(off("TestScoped"), SCOPED));
-  const addon = lifeAddon("", SCOPED);
-  addon.eval('ns.SetModuleEnabled("TestScoped", false)');
-  expect(footprint(addon)).toEqual(offAtLogin);
-});
+// The three cases every live module gets (lifecycle-helpers.mjs), on the module that registers one of everything.
+lifecycleCases("TestScoped", (saved) => lifeAddon(saved, SCOPED));
 
-it("lifecycle: switched on late, a module has the footprint of a login with it on", () => {
-  const onAtLogin = footprint(lifeAddon("", SCOPED), { frames: true });
-  const addon = lifeAddon(off("TestScoped"), SCOPED);
-  addon.eval('ns.SetModuleEnabled("TestScoped", true)');
-  expect(footprint(addon, { frames: true })).toEqual(onAtLogin);
-});
-
-it("lifecycle: toggled three times, a module makes no new frame, handler or gate", () => {
+it("lifecycle: toggled, a module installs its gate's hook once", () => {
   const addon = lifeAddon("", SCOPED);
-  const first = footprint(addon, { frames: true });
   for (let i = 0; i < 3; i++) addon.eval('ns.SetModuleEnabled("TestScoped", false) ns.SetModuleEnabled("TestScoped", true)');
-  expect(footprint(addon, { frames: true })).toEqual(first);
   expect(addon.eval("return #__life.hooks")).toBe(1);
 });
 
