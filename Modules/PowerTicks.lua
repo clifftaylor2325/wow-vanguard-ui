@@ -13,7 +13,10 @@ local ADDON, ns = ...
 local T = ns.Theme
 local UF = ns.GetModule("UnitFrames")
 
-local PT = ns.Module("PowerTicks", { clients = { forever = true }, defaults = { mana = true, energy = true } })
+local PT = ns.Module("PowerTicks", {
+  clients = { forever = true }, defaults = { mana = true, energy = true },
+  live = true, requires = { "UnitFrames" },
+})
 
 -- WoW Forever only: on another client the module isn't registered and the rest of this file doesn't load.
 if not ns.ClientAllows(PT) then return end
@@ -107,22 +110,30 @@ local function build(bar)
   PT.bar, PT.driver = bar, CreateFrame("Frame")
   PT.spark = T.Tint(T.Spark(bar, 6), "spark")
   PT.spark:Hide()
-  PT.UpdateMode()
 end
 
--- Builds the spark on the player frame (none, no spark) and follows your casts, power and forms.
-local function attach()
+-- Builds the spark on the player frame (none, no spark), once a session, and follows your casts, power and forms.
+local function attach(scope)
   local player = UF.frames.player
-  if not player then return end
-  build(player.power)
-  ns.OnUnit("UNIT_SPELLCAST_SUCCEEDED", PT.OnCast, "player")
-  ns.OnUnit("UNIT_POWER_FREQUENT", PT.OnPower, "player")
-  ns.OnUnit("UNIT_DISPLAYPOWER", PT.UpdateMode, "player")
-  ns.On("UPDATE_SHAPESHIFT_FORM", PT.UpdateMode)
+  if not (player and scope:Running()) then return end
+  if not PT.spark then build(player.power) end
+  PT.UpdateMode()
+  scope:OnUnit("UNIT_SPELLCAST_SUCCEEDED", PT.OnCast, "player")
+  scope:OnUnit("UNIT_POWER_FREQUENT", PT.OnPower, "player")
+  scope:OnUnit("UNIT_DISPLAYPOWER", PT.UpdateMode, "player")
+  scope:On("UPDATE_SHAPESHIFT_FORM", PT.UpdateMode)
 end
 
 -- Module entry point (Core/Modules.lua): out of combat, once the unit frames are built.
-function PT.Enable(settings)
+function PT.Enable(settings, scope)
   PT.settings = settings
-  ns.OutOfCombat(attach)
+  ns.OutOfCombat(function() attach(scope) end)
+end
+
+-- Switched off: the spark is hidden and its timer stopped, with no sweep left to pick up (the handlers go with the scope).
+function PT.Disable()
+  if not PT.spark then return end
+  PT.mode, PT.from, PT.last = nil, nil, nil
+  PT.spark:Hide()
+  PT.driver:SetScript("OnUpdate", nil)
 end

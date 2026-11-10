@@ -82,3 +82,17 @@ it("lifecycle: class bars switched off hides a druid's mana bar", () => {
   addon.eval('ns.SetModuleEnabled("ClassBars", false)');
   expect(addon.eval('return ns.GetModule("ClassBars").manaHolder:IsShown()')).toBe(false);
 });
+
+// PowerTicks ----------------------------------------------------------------------------------------------------
+
+lifecycleCases("PowerTicks", login);
+
+it("lifecycle: power ticks switched off ends a sweep and hides the spark, and on again starts with none", () => {
+  const addon = login();
+  addon.eval('local PT = ns.GetModule("PowerTicks") PT.mode = "energy" PT.Start()');
+  expect(addon.eval('return ns.GetModule("PowerTicks").spark:IsShown()')).toBe(true);
+  addon.eval('ns.SetModuleEnabled("PowerTicks", false)');
+  expect(addon.eval('local PT = ns.GetModule("PowerTicks") return { PT.spark:IsShown(), PT.from == nil }')).toEqual([false, true]);
+  addon.eval('ns.SetModuleEnabled("PowerTicks", true)');
+  expect(addon.eval('return ns.GetModule("PowerTicks").spark:IsShown()')).toBe(false);
+});
