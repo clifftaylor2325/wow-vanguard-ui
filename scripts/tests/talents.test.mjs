@@ -207,6 +207,20 @@ it("talent planner: Spend planned stops at a rank the game refuses, says which, 
   expect(addon.eval("return __commits"), "nothing bought: nothing to apply").toBe(1);
 });
 
+it("talent planner: Spend planned does not count a rank as bought when the purchase call throws or is missing", () => {
+  const addon = open();
+  addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } } ${TP}.Refresh()`);
+  addon.eval("C_Traits.PurchaseRank = function() error('the game threw') end");
+  addon.eval(`${TP}.SpendPlanned()`);
+  expect(chatHas(addon, /Talent planner: spent/), "no point is reported spent").toBe(false);
+  expect(chatHas(addon, /the game refused Unbreakable Will/), "the pick it could not buy is named").toBe(true);
+  expect(addon.eval("return { #__bought, __commits }"), "nothing bought, so nothing applied").toEqual([0, 0]);
+  addon.eval("C_Traits.PurchaseRank = nil");
+  addon.eval(`${TP}.SpendPlanned()`);
+  expect(chatHas(addon, /Talent planner: spent/), "a client without the call spends nothing either").toBe(false);
+  expect(addon.eval("return __commits"), "and applies nothing").toBe(0);
+});
+
 it("talent planner: Spend planned buys nothing while the talents window holds picks not yet applied", () => {
   const addon = open();
   addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" } } __staged = true ${TP}.SpendPlanned()`);

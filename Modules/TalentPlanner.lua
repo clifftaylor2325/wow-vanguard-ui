@@ -663,11 +663,12 @@ local function pickNames(tree, order, n)
   return table.concat(names, ", ")
 end
 
--- Buys the first count picks of the order, stopping at the first rank the game refuses (PurchaseRank
--- answers false). How many were bought.
+-- Buys the first count picks of the order, stopping at the first rank the game does not confirm (PurchaseRank
+-- answers true; false is a refusal, and nothing at all, which `ask` gives for a call that threw or is missing,
+-- is no purchase either). How many were bought.
 local function buyRanks(tree, order, count)
   for i = 1, count do
-    if ask("C_Traits", "PurchaseRank", tree.configID, order[i]) == false then return i - 1 end
+    if ask("C_Traits", "PurchaseRank", tree.configID, order[i]) ~= true then return i - 1 end
   end
   return count
 end
