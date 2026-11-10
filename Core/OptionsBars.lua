@@ -65,18 +65,38 @@ local function backingSetting()
   return liveSetting("ActionBars", "backing", function() ns.OutOfCombat(ns.GetModule("ActionBars").UpdateBackings) end)
 end
 
--- Action bars, shared: locking, range tint, the default bars, the client's special buttons, keybind mode.
-local function actionBarRows()
+-- Space between buttons: 0 to 10 px.
+local BAR_SPACING = { min = 0, max = 10, step = 1, format = function(v) return ns.Format(L["{size} px"], { size = v }) end }
+
+-- The buttons' macro names, key text and spacing, each applied at once (the spacing out of combat).
+local function buttonRows()
   return {
-    { "header", L["Action bars"] },
-    check(L["Lock buttons"], setting("ActionBars", "lockButtons")), check(L["Red when out of range"], liveMethod("ActionBars", "rangeTint", "RepaintIcons")),
-    { "cycle", L["Bar backing"], { { "auto", L["Follow the theme"] }, { "on", L["Always"] }, { "off", L["Never"] } }, backingSetting() },
+    check(L["Macro names"], liveMethod("ActionBars", "macroNames", "RepaintLabels")),
+    check(L["Key text"], liveMethod("ActionBars", "hotkeys", "RepaintLabels")),
+    { "slider", L["Button spacing"], BAR_SPACING, liveMethod("ActionBars", "spacing", "SpacingChanged") },
+  }
+end
+
+-- The game's own bars and buttons: hidden, restyled, movable; the vehicle exit button.
+local function gameBarRows()
+  return {
     check(L["Hide the default bars"], reloadSetting("ActionBars", "hideBlizzard")),
     check(L["Restyle pet, stance and extra buttons (reload)"], skinSpecial()),
     check(L["Movable pet and stance bars (reload)"], reloadSetting("SpecialBars", "place")),
     check(L["Vehicle exit button (reload)"], reloadSetting("SpecialBars", "vehicleExit")),
-    { "text", L["Empty slots stay hidden until you drag a spell or item onto the bars."] }, { "button", L["Keybind mode"], keybindMode },
   }
+end
+
+-- Action bars, shared: locking, range tint, the backing, the button texts and spacing, the default bars, the
+-- client's special buttons, keybind mode.
+local function actionBarRows()
+  local rows = {
+    { "header", L["Action bars"] },
+    check(L["Lock buttons"], setting("ActionBars", "lockButtons")), check(L["Red when out of range"], liveMethod("ActionBars", "rangeTint", "RepaintIcons")),
+    { "cycle", L["Bar backing"], { { "auto", L["Follow the theme"] }, { "on", L["Always"] }, { "off", L["Never"] } }, backingSetting() },
+  }
+  append(append(rows, buttonRows()), gameBarRows())
+  return append(rows, { { "text", L["Empty slots stay hidden until you drag a spell or item onto the bars."] }, { "button", L["Keybind mode"], keybindMode } })
 end
 
 -- Put everything back asks first: every key key setup changed, and the spells it moved, go back.

@@ -126,8 +126,8 @@ local TOKENS = {
   cast = "e6a93a", channel = "4fc27a", shielded = "8b9099",
   -- Healing overlays
   heal = { "4fc27a", 0.45 }, shield = { "ffffff", 0.35 },
-  -- Action button tints
-  outOfRange = "e64d4d", noPower = "6680ff", unusable = "666666",
+  -- Action button tints, and the attack flash over a button while auto-attack or Auto Shot runs (the state vermilion)
+  outOfRange = "e64d4d", noPower = "6680ff", unusable = "666666", attackFlash = { "e8663f", 0.45 },
   -- Experience and reputation
   xp = "940090", rested = { "0063e0", 0.5 },
   repHostile = "cc2121", repUnfriendly = "bf4500", repNeutral = "e6b300", repFriendly = "00991a",
