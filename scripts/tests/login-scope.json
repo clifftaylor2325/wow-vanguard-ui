@@ -247,7 +247,9 @@
     ],
     "scripts/tests/probe.test.mjs": [],
     "scripts/tests/profileguard.test.mjs": [],
-    "scripts/tests/profiles.test.mjs": [],
+    "scripts/tests/profiles.test.mjs": [
+      "a profile saved with the retired Pet stable, Legacy helper and boss docks loses their settings, and the Legacy perk list goes with them"
+    ],
     "scripts/tests/questarrow.test.mjs": [],
     "scripts/tests/questguide.test.mjs": [],
     "scripts/tests/questminimap.test.mjs": [],

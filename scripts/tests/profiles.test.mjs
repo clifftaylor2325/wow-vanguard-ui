@@ -1036,5 +1036,5 @@ it("a profile saved with the retired Pet stable, Legacy helper and boss docks lo
     return { p.PetStable == nil, p.Legacy == nil, p.BossDocks == nil, p.modules.PetStable == nil, p.modules.Legacy == nil, p.modules.BossDocks == nil, VanguardDB.legacyPlan == nil, p.modules.Meter, p.Meter.x }`);
   expect(left, "the retired tables and switches are gone; another module's stay").toEqual([true, true, true, true, true, true, true, false, 1]);
   const plain = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { modules = 7 } }" });
-  expect(plain.eval("return type(VanguardDB.profiles.Default.modules)"), "a profile whose module switches are not a table is left alone").toBe("number");
+  expect(plain.eval("return #ns.errors"), "a profile whose module switches are not a table: the migration passes it by and the login is clean").toBe(0);
 });
