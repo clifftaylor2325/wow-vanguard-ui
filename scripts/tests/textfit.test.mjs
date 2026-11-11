@@ -104,6 +104,13 @@ it("text fits: the screen at login, and unlock mode's handles", () => {
   expectFits("screen", findings);
 });
 
+it("H44-25-1 text fits: the unlock bar's buttons at Text size 130%", () => {
+  const addon = fitClient();
+  addon.eval("ns.Theme.Settings().textScale = ns.Theme.TEXT_SCALE.max ns.Theme.Refresh()");
+  addon.slash("unlock");
+  expect(lines(addon.textFit("Vanguard_UnlockBar")), "Save and lock and Exit without saving show whole").toEqual([]);
+});
+
 it("text fits: unlock mode's handles while a situation records", () => {
   const addon = fitClient();
   addon.slash("situation record raid");
