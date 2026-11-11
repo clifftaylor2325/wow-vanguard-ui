@@ -1070,3 +1070,17 @@ it("H44-5-7 auras: an icon the client holds back at a scale change goes on whole
   expect(onPixel(insetOf(addon, "__b")), "plain again: the inset is one pixel at the new scale").toBe(true);
   expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
 });
+
+// The first icon a container's first group shows, or false when it shows none.
+const firstIcon = (addon, lua) => addon.eval(`local b = (${lua}).__groups[1].buttons[1] return b.__shown and b.__aura.icon`);
+
+it("H44-5-4 aura containers turn the client's Edit Mode preview off, so a row keeps the unit's auras while Edit Mode is open", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
+  addon.eval(`__raw = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    __raw:AddAuraGroup("x", "HARMFUL|PLAYER", { maxFrameCount = 1, layout = {}, initializeFrame = function(b) b:SetSize(20, 20) end }) __raw:SetUnit("target") __raw:SetEnabled(true)
+    __c = ns.Auras.Container(UIParent, __spec, "target")
+    __wfgStub.editMode = true __raw:UpdateAllAuras() __c.frame:UpdateAllAuras()`);
+  expect(firstIcon(addon, "__raw"), "the template's own preview shows the client's samples in Edit Mode").toBe("TEST-ONLY-EDIT-MODE-SAMPLE");
+  expect(firstIcon(addon, "__c.frame"), "Vanguard's row keeps the unit's auras").toBe("MY-DOT");
+  expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+});

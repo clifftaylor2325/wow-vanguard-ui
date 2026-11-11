@@ -151,11 +151,14 @@ local COOLDOWN = {
 }
 
 -- The client's aura container (12.1+, Blizzard_AuraContainer) and the aura
--- buttons it makes, as their public mixins define them.
+-- buttons it makes, as their public mixins define them. SetEditModePreviewEnabled:
+-- Blizzard_AuraContainer/Blizzard_ManagedAuraContainer.lua:49, on the shared mixin that
+-- ManagedAuraContainerInboundMixin takes (:67), public through CustomAuraContainerInboundMixin
+-- (Blizzard_CustomAuraContainer.lua:574, .xml:7); the same on WoW Forever and Retail.
 local AURA_CONTAINER = {
   "AddAuraGroup", "AddAuraSlot", "AddItemEnchantment", "GetUnit",
-  "SetAuraProcessingPolicy", "SetEnabled", "SetFlowLayoutAnchorPoint",
-  "SetFlowLayoutAxis", "SetFlowLayoutGrowthDirection",
+  "SetAuraProcessingPolicy", "SetEditModePreviewEnabled", "SetEnabled",
+  "SetFlowLayoutAnchorPoint", "SetFlowLayoutAxis", "SetFlowLayoutGrowthDirection",
   "SetFlowLayoutMaximumLineSize", "SetFlowLayoutPadding", "SetUnit",
   "UpdateAllAuras",
 }

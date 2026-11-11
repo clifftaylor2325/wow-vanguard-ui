@@ -5432,6 +5432,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the buff and target debuff icons keep a one-pixel dark edge and inset (no soft or doubled edge), and within a moment of the fight ending the raid tile's icons have them too. [Needs in-game check: all of it, and whether the game's restriction event comes once it lets the icons go.]
 - If it fails, paste: `/vg errors`, and a close screenshot of a buff icon and a raid tile's debuff icon.
 
+### 33.496 Edit Mode leaves Vanguard's aura icons on your real auras
+
+- Do: on either client, with a buff or two up and a target with your debuff on it, open the game's Edit Mode (Esc → Edit Mode), look at your buffs and the target's debuffs, then close it.
+- Expect: while Edit Mode is open your buffs and the target's debuffs show the same icons as before (no row of the game's sample auras), and nothing new in `/vg errors`. [Needs in-game check: all of it; the harness has no Edit Mode of its own.]
+- If it fails, paste: `/vg errors`, and a screenshot of your buffs with Edit Mode open.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

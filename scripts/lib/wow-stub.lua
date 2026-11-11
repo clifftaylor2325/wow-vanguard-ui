@@ -1062,11 +1062,25 @@ local function fillButton(b, aura, harmful)
   paintDispel(b, aura, harmful)
 end
 
--- Fills a group's buttons from C_UnitAuras through its filter.
+-- Edit Mode's preview: the template turns it on (Blizzard_CustomAuraContainer.xml:11 editModePreviewEnabled), and
+-- while Edit Mode is open (stub.editMode: the client's SwitchAuraDataProvider, EditModeManager.lua EnterEditMode) a
+-- container with it on shows sample auras instead of the unit's (Blizzard_ManagedAuraContainer.lua:142-168).
+function methods:SetEditModePreviewEnabled(enabled)
+  self.__editModePreview = enabled == true
+  self:UpdateAllAuras()
+end
+
+-- The sample aura Edit Mode shows in place of index i (TEST-ONLY icon).
+local function editModeSample()
+  return { icon = "TEST-ONLY-EDIT-MODE-SAMPLE", auraInstanceID = 9999 }
+end
+
+-- Fills a group's buttons from C_UnitAuras through its filter (Edit Mode's samples while its preview shows).
 local function fillGroup(c, g)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByIndex
+  local samples = stub.editMode and c.__editModePreview ~= false
   for i, b in ipairs(g.buttons) do
-    local aura = c.__enabled and c.__unit and get and get(c.__unit, i, g.filter) or nil
+    local aura = samples and editModeSample() or c.__enabled and c.__unit and get and get(c.__unit, i, g.filter) or nil
     fillButton(b, aura, g.filter:find("HARMFUL") ~= nil)
   end
 end

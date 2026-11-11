@@ -232,8 +232,11 @@ end
 local Container = {}
 Container.__index = Container
 
--- Lays an engine frame out, adds the spec's groups and makes the container showing `unit`.
+-- Lays an engine frame out, adds the spec's groups and makes the container showing `unit`. Edit Mode's preview is
+-- turned off (the template turns it on, Blizzard_CustomAuraContainer.xml:11), so an open Edit Mode never swaps the
+-- unit's auras for the client's samples; a client that refuses it keeps the engine.
 local function fill(frame, spec, unit)
+  if frame.SetEditModePreviewEnabled then ns.Try("aura container edit mode", frame.SetEditModePreviewEnabled, frame, false) end
   layout(frame, spec)
   -- A filter token this client doesn't know is refused: that group is left out, not the rest.
   for i, def in ipairs(spec.groups) do ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "vg" .. i, def.filter, groupOptions(spec, def, frame)) end
