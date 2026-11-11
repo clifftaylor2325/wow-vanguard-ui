@@ -5426,6 +5426,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the box reads 5 and the row keeps 5; the box did not fill itself with the old number while it was empty, and after you click elsewhere the item's name and icon are up to date.
 - If it fails, paste: what the box showed while it was empty, and `/vg errors`.
 
+### 33.628 Train all does not run twice on a double-click
+
+- Do: at your class trainer with two or more skills you can afford, double-click Train all quickly. [Client: Forever and Retail.]
+- Expect: the button greys out after the first click, one `Trained N skill(s) for X.` line appears (once the trainer has answered), no skill is asked for twice and no red error text shows.
+- If it fails, paste: the chat lines, any red error text, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

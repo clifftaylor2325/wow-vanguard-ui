@@ -148,7 +148,7 @@ function ER.UpdateTrainButton()
   if not b or not ER.settings then return end
   b.text:SetText(plan.count > 0 and ns.Format(L["Train all ({count})"], { count = plan.count }) or L["Train all"])
   ns.WidenToLabel(b)
-  if plan.count > 0 then b:Enable() else b:Disable() end
+  if plan.count > 0 and not ER.training then b:Enable() else b:Disable() end
   b:SetShown(ER.settings.trainAll)
 end
 
@@ -199,6 +199,7 @@ end
 -- Says what a click learned, read from the trainer's list once it has answered (the buying only asks; a
 -- refused service stays on offer). A closed trainer cannot be read, so the summary is what was asked.
 local function reportTrained(run)
+  if ER.training == run then ER.training = nil end
   local got = ER.trainerOpen and learnedOf(run) or { count = run.count, spent = run.spent }
   local fewer = got.count < run.count
   local text = fewer and L["Trained {count} of {asked} skill(s) for {money}."] or L["Trained {count} skill(s) for {money}."]
@@ -208,11 +209,13 @@ end
 
 -- The Train all button was clicked: learn everything affordable in a loop inside
 -- the click (a purchase needs one), re-reading the list each time, and say what the trainer took and what it cost.
+-- A click while the last one waits for the trainer's answer (ER.training) does nothing: the list and the gold the
+-- second would read are still the old ones, so it would buy everything again.
 function ER.TrainAll()
-  if ns.InCombat() then return end
+  if ns.InCombat() or ER.training then return end
   local run = { done = {}, count = 0, spent = 0 }
   while trainOne(run) do end
-  if run.count > 0 then later(ER.TRAIN_SETTLE, function() reportTrained(run) end) end
+  if run.count > 0 then ER.training = run later(ER.TRAIN_SETTLE, function() reportTrained(run) end) end
   ER.UpdateTrainButton()
 end
 
@@ -677,7 +680,7 @@ end
 -- hidden, a run in progress (a purchase run, a flight, a ride) is forgotten, and the module reads as off (no
 -- settings: the stock window refuses to open), as after a login with it off. The hooks go inert with the scope.
 function ER.Disable()
-  ER.stocking, ER.flight, ER.boat = nil, nil, nil
+  ER.stocking, ER.flight, ER.boat, ER.training = nil, nil, nil, nil
   ER.merchantOpen, ER.trainerOpen = false, false
   hideDrawn()
   ER.settings = nil

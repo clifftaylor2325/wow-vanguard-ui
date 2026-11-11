@@ -101,3 +101,32 @@ it("H44-23-R2: Errands switched off inside Train all's settle second raises no e
   expect(addon.eval("return #ns.errors") - before, "no error from the summary of a module that is off").toBe(0);
   expect(chatHas(addon, /Trained 1 skill\(s\) for 5s 0c\./), "the summary still says what was spent").toBe(true);
 });
+
+it("H44-23-150: a second click on Train all before the trainer has answered buys nothing and says nothing", () => {
+  const addon = loggedIn(RANK_TRAINER.replace('{ "TEST-ONLY Fireball", "unavailable", 900, "Rank 2" }', '{ "TEST-ONLY Blast", "available", 2000, "Rank 1" }'));
+  addon.fire("TRAINER_SHOW");
+  trainAll(addon);
+  // Whether the Train all button can be pressed.
+  const button = () => addon.eval('local b = ns.GetModule("Errands").trainButton return b:IsEnabled()');
+  expect(button(), "greyed out while the trainer has not answered").toBe(false);
+  trainAll(addon);
+  expect(addon.eval("return __learned"), "each skill asked for once").toEqual([1, 2]);
+  addon.eval("__services[1][2] = 'used' __services[2][2] = 'used'");
+  addon.advance(1.1);
+  const lines = Array.from(addon.chat()).filter((l) => /Trained/.test(l));
+  expect(lines.length, "one summary line").toBe(1);
+  addon.eval("__services[1][2] = 'available'");
+  addon.fire("TRAINER_UPDATE");
+  expect(button(), "the button works again once the answer is in").toBe(true);
+});
+
+it("H44-23-150: switching Errands off during the wait clears it, so Train all works after it is on again", () => {
+  const addon = loggedIn(RANK_TRAINER);
+  addon.fire("TRAINER_SHOW");
+  trainAll(addon);
+  addon.eval('ns.SetModuleEnabled("Errands", false)');
+  addon.eval('ns.SetModuleEnabled("Errands", true)');
+  addon.fire("TRAINER_SHOW");
+  trainAll(addon);
+  expect(addon.eval("return #__learned"), "the new session trains again at once").toBe(2);
+});
