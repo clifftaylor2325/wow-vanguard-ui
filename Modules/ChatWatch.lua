@@ -92,7 +92,8 @@ end
 -- text), or nil. With no phrases there is nothing to look for, so the line is not even made plain.
 function CW.Match(text)
   if #CW.settings.phrases == 0 then return nil end
-  local line = ns.GetModule("ChatExtras").Matchable(text)
+  local CX = ns.GetModule("ChatExtras")
+  local line = CX.Unmarked(CX.Matchable(text))
   for _, phrase in ipairs(CW.settings.phrases) do
     if type(phrase) == "string" and holds(line, phrase) then return phrase end
   end
@@ -197,11 +198,11 @@ local function present(f, title, line, price)
 end
 
 -- Where a long line starts on the toast: after the space CW.LEAD characters or so before the first
--- match of the word patterns, so it shows (at the match itself when no space is there); 1 when it is
--- near the start or nothing is found.
-local function leadStart(lower, patterns)
+-- match of the word patterns (found in `unmarked`, the line's CX.Unmarked), so it shows (at the match itself when
+-- no space is there); 1 when it is near the start or nothing is found.
+local function leadStart(lower, unmarked, patterns)
   local first = #lower + 1
-  for _, pattern in ipairs(patterns) do first = math.min(first, lower:find(pattern) or first) end
+  for _, pattern in ipairs(patterns) do first = math.min(first, unmarked:find(pattern) or first) end
   if first <= CW.LEAD or first > #lower then return 1 end
   local space = lower:find(" ", first - CW.LEAD, true)
   return space and space < first and space + 1 or first
@@ -212,8 +213,10 @@ end
 function CW.ToastLine(text, phrase)
   local CX, patterns = ns.GetModule("ChatExtras"), patternsOf[phrase]
   local line = CX.Plain(text)
-  local start = leadStart(ns.Lower(line), patterns)
-  return (start > 1 and "\226\128\166" or "") .. CX.Marked(line:sub(start), patterns)
+  local lower = ns.Lower(line)
+  local unmarked = CX.Unmarked(lower)
+  local start = leadStart(lower, unmarked, patterns)
+  return (start > 1 and "\226\128\166" or "") .. CX.MarkedIn(line:sub(start), unmarked:sub(start), patterns)
 end
 
 -- Shows the toast for a line: the sender in the accent, the line under it (CW.ToastLine) with an

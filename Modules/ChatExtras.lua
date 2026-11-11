@@ -212,16 +212,37 @@ local function paintHits(text, hit)
   return table.concat(out)
 end
 
+-- A lower-case line with each Latin-1 mark (guillemets, the no-break space) and each general punctuation character
+-- (dashes, curly and low quotes, bullets, the ellipsis, thin spaces) replaced by as many \1 bytes as it has, so a word
+-- of two-byte letters next to one still has a word start for the pattern's frontier (the last byte of these marks is
+-- in the same range as a letter's). The length is kept, so every offset still fits the shown text.
+---@param lower string
+---@return string
+function CX.Unmarked(lower)
+  if not lower:find("[\194\226]") then return lower end
+  return (lower:gsub("\194[\128-\191]", "\1\1"):gsub("\226\128[\128-\191]", "\1\1\1"))
+end
+
 -- A plain line (CX.Plain's: no codes left in it) with every match of the patterns (lower-case, none
 -- matching empty text: CX.Escape a plain word) in the accent's text colour, for Find in chat and Chat
--- watch's toast. Only lines read as plain text get here: a hidden (secret) line was left out before.
+-- watch's toast. Only lines read as plain text get here: a hidden (secret) line was left out before. The patterns
+-- are matched against `lower`, the same line lower-cased (and possibly CX.Unmarked), the same length as `text`.
+---@param text string
+---@param lower string
+---@param patterns string[]
+---@return string
+function CX.MarkedIn(text, lower, patterns)
+  local hit = {}
+  for _, pattern in ipairs(patterns) do markHits(lower, pattern, hit) end
+  return paintHits(text, hit)
+end
+
+-- The same, matching on the line lower-cased (Find in chat).
 ---@param text string
 ---@param patterns string[]
 ---@return string
 function CX.Marked(text, patterns)
-  local hit, lower = {}, ns.Lower(text)
-  for _, pattern in ipairs(patterns) do markHits(lower, pattern, hit) end
-  return paintHits(text, hit)
+  return CX.MarkedIn(text, ns.Lower(text), patterns)
 end
 
 -- A chat window's last lines as plain text (lines the game hides are left out).
