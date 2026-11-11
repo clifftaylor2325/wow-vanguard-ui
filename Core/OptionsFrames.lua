@@ -300,10 +300,18 @@ local function raidPreviewRows()
   }
 end
 
+-- The dispel highlight's switch. Its tip says that the debuff you can dispel keeps its icon with Debuff icons at none:
+-- on the client's engine the wash and edge are parts of that icon's button.
+local function dispelRow()
+  local row = check(L["Highlight debuffs you can dispel (reload)"], O.RestartSetting("RaidAuras", "dispel"))
+  row.tip = L["With Debuff icons at none, a debuff you can dispel still shows its icon, which carries the highlight."]
+  return row
+end
+
 -- The raid frames' auras: debuffs, the dispel highlight and your HoTs (the tiles' rows are made again at once, out of combat).
 local function raidAuraRows()
   return {
-    check(L["Highlight debuffs you can dispel (reload)"], O.RestartSetting("RaidAuras", "dispel")),
+    dispelRow(),
     { "cycle", L["Debuff icons (reload)"], { { 0, L["none"] }, { 2, "2" }, { 3, "3" } }, O.RestartSetting("RaidAuras", "debuffs") },
     check(L["Show your HoTs (reload)"], O.RestartSetting("RaidAuras", "hots")),
     { "text", L["Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left."], "note" },

@@ -5438,6 +5438,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: while Edit Mode is open your buffs and the target's debuffs show the same icons as before (no row of the game's sample auras), and nothing new in `/vg errors`. [Needs in-game check: all of it; the harness has no Edit Mode of its own.]
 - If it fails, paste: `/vg errors`, and a screenshot of your buffs with Edit Mode open.
 
+### 33.497 With Debuff icons at none, a debuff you can dispel keeps its icon and says why
+
+- Do: on either client, in a party or raid, set `/vg` → Raid frames → Debuff icons to none with Highlight debuffs you can dispel on, and point at that switch; then let a debuff you can dispel land on a group member.
+- Expect: the switch's tooltip says a debuff you can dispel still shows its icon; on the tile that one icon shows bottom left with the type wash and edge, and no other debuff icon shows. [Needs in-game check: the tile's look.]
+- If it fails, paste: `/vg errors`, and a screenshot of the tile and the tooltip.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

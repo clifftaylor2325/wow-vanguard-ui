@@ -1091,3 +1091,15 @@ it("H44-5-5 aura containers leave out a group with no icons, which the client wo
     local out = {} for _, g in ipairs(c.frame.__groups) do out[#out + 1] = g.key .. " " .. g.filter end return out`);
   expect(groups, "only the second group is added, under its own key").toEqual(["vg2 HARMFUL|!PLAYER"]);
 });
+
+it("H44-5-6 raid auras: with Debuff icons at none and the highlight on, the dispellable debuff keeps its icon, and the switch's tip says so", () => {
+  const sv = "VanguardDB = { profiles = { Default = { RaidAuras = { debuffs = 0, dispel = true } } }, chars = {} }";
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV, { savedVariables: sv });
+  addon.eval('__spawn(1, "raid1")');
+  const row = addon.eval(`local f = Vanguard_RaidUnitButton1.debuffRow.frame local g = f.__groups[1] local b = g.buttons[1]
+    return { groups = #f.__groups, filter = g.filter, max = g.opts.maxFrameCount, shown = b.__shown, icon = b.__icon.__texture, wash = b.__dispel[7].texture.__shown }`);
+  expect(row, "one icon, the debuff you can dispel, carrying the wash").toEqual({ groups: 1, filter: "HARMFUL|RAID", max: 1, shown: true, icon: "TEST-ONLY-CURSE", wash: true });
+  const tip = addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then for _, r in ipairs(p.rows()) do
+    if r[2] == ns.L["Highlight debuffs you can dispel (reload)"] then return r.tip end end end end`);
+  expect(tip, "the switch's tip").toMatch(/^With Debuff icons at none, a debuff you can dispel still shows its icon/);
+});
