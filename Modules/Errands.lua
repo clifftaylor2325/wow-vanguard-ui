@@ -197,7 +197,8 @@ end
 -- refused service stays on offer). A closed trainer cannot be read, so the summary is what was asked.
 local function reportTrained(run)
   local got = ER.trainerOpen and learnedOf(run) or { count = run.count, spent = run.spent }
-  local text = got.count < run.count and L["Trained {count} of {asked} skill(s) for {money}."] or L["Trained {count} skill(s) for {money}."]
+  local fewer = got.count < run.count
+  local text = fewer and L["Trained {count} of {asked} skill(s) for {money}."] or L["Trained {count} skill(s) for {money}."]
   ns.Chat(ns.Format(text, { count = got.count, asked = run.count, money = money(got.spent) }))
   ER.UpdateTrainButton()
 end

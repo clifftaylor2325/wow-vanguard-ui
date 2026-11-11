@@ -422,6 +422,7 @@ it("an edited macro repaints its button's cooldown and usable state, and no othe
   addon.eval("GetActionInfo = function(slot) if slot == 1 then return 'macro', 7 end return 'spell', 9 end");
   addon.eval("__actions[1].cd = { 5, 2 } __actions[1].usable = false __actions[2].cd = { 6, 3 }");
   addon.fire("UPDATE_MACROS");
+  // Button n of bar 1's cooldown sweep.
   const sweep = (n) => button(addon, 1, n).cooldown;
   expect(sweep(1), "the macro button shows the new spell's sweep").toEqual([5, 2]);
   expect(button(addon, 1, 1).color.slice(0, 3), "and its new usable state").not.toEqual([1, 1, 1]);

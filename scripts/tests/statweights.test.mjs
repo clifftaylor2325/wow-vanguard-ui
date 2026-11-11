@@ -88,6 +88,7 @@ it("stat weights: changes are kept per class, and weights a profile kept per kin
 
 it("stat weights: moving the per-kind weights a second time changes nothing, and a saved false is kept", () => {
   const old = loggedIn(GEAR, { savedVariables: "VanguardDB.profiles = { Default = { Upgrades = { weights = { caster = { SP = 2, TEST_ONLY_OFF = false } } } } }" });
+  // The profile's saved weights as they stand.
   const weights = () => old.eval("return ns.GetModule('Upgrades').settings.weights");
   const once = weights();
   old.eval("ns.migrations.Upgrades[1](ns.GetModule('Upgrades').settings)");

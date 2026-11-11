@@ -223,12 +223,13 @@ end
 
 -- What the question before a paid cancel says: the item when it is named, and the cost or that the game would not say.
 local function cancelQuestion(cost, name)
-  local item = { item = name }
+  local named = { item = name, money = cost and AP.Money(cost) }
   if not cost then
-    return name and ns.Format(L["Cancel {item}? The game would not say what it costs."], item) or L["Cancel this auction? The game would not say what it costs."]
+    local text = name and L["Cancel {item}? The game would not say what it costs."]
+    return ns.Format(text or L["Cancel this auction? The game would not say what it costs."], named)
   end
-  item.money = AP.Money(cost)
-  return ns.Format(name and L["Cancel {item}? It costs {money}."] or L["Cancel this auction? It costs {money}."], item)
+  local text = name and L["Cancel {item}? It costs {money}."]
+  return ns.Format(text or L["Cancel this auction? It costs {money}."], named)
 end
 
 -- Cancels auction id from a click, then runs onSent. A cancel that costs anything, or whose cost the game
@@ -236,7 +237,8 @@ end
 local function cancelOrAsk(id, onSent)
   local cost = ns.PlainNumber(C_AuctionHouse.GetCancelCost(id))
   if cost == 0 then return sendCancel(id) and onSent() end
-  ns.Irreversible({ question = cancelQuestion(cost, ownedName(id)), yes = L["Cancel auction"], act = function() if sendCancel(id) then onSent() end end })
+  local question = cancelQuestion(cost, ownedName(id))
+  ns.Irreversible({ question = question, yes = L["Cancel auction"], act = function() if sendCancel(id) then onSent() end end })
 end
 
 -- The row of auction id and its place in the list, or nil.
