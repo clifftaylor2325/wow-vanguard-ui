@@ -32,6 +32,7 @@ jobs:
           toc=$(sed -n 's/^## Version:[[:space:]]*//p' Vanguard.toc | tr -d '\r')
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
             test "v$toc" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but TOC says $toc"; exit 1; }
+            git merge-base --is-ancestor HEAD origin/main || { echo "tag $GITHUB_REF_NAME is not on main"; exit 1; }
           else
             test "$GITHUB_REF_NAME" = "main" || { echo "run the release from main, not $GITHUB_REF_NAME"; exit 1; }
             if git rev-parse -q --verify "refs/tags/v$toc" >/dev/null; then
@@ -39,6 +40,14 @@ jobs:
             fi
           fi
           echo "tag=v$toc" >> "$GITHUB_OUTPUT"
+      # The same content refusals as scripts/release-local.mjs (an unreleased changelog heading, no
+      # What's new entry, missing in-game results), on a pushed tag and on a manual run alike.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Release content
+        run: node scripts/release-local.mjs --check-content
 
   suite:
     name: Suite
@@ -69,20 +78,27 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/package.mjs --ref "$GITHUB_SHA"
+      # The release notes are the changelog section, as in the local route.
+      - run: node scripts/release-local.mjs --notes-only
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.version.outputs.tag }}
-        # On a manual run, --target creates the tag at this commit.
-        run: gh release create "$RELEASE_TAG" dist/*.zip --title "$RELEASE_TAG" --target "$GITHUB_SHA" --generate-notes
+        # On a manual run, --target creates the tag at this commit. A version with a "-" in it
+        # (1.0.0-rc1) is a pre-release on GitHub and never reaches the stores (the listings job).
+        run: |
+          case "$RELEASE_TAG" in *-*) pre="--prerelease" ;; *) pre="" ;; esac
+          gh release create "$RELEASE_TAG" dist/*.zip --title "$RELEASE_TAG" --target "$GITHUB_SHA" --notes-file dist/release-notes.md $pre
 
   # After the GitHub release exists, send the same tag to CurseForge and Wago with the BigWigs
   # packager, which builds from .pkgmeta (the files the release zip holds) and reads the project
   # IDs from Vanguard.toc. It needs the repository secrets CF_API_KEY and WAGO_API_TOKEN and skips
-  # itself while either is missing. A failure here leaves the GitHub release as it is.
+  # itself while either is missing, and for a pre-release (a "-" in the tag), which the packager
+  # would otherwise upload as a full release. A failure here leaves the GitHub release as it is.
   listings:
     name: CurseForge and Wago
     needs: [version, release]
+    if: ${{ !contains(needs.version.outputs.tag, '-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -93,6 +109,14 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ needs.version.outputs.tag }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      # dist/pkgmeta.yaml adds the release notes as the stores' changelog, as in the local route.
+      - run: node scripts/release-local.mjs --notes-only
       - name: Upload with the packager
         if: ${{ env.CF_API_KEY != '' && env.WAGO_API_TOKEN != '' }}
         uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
+        with:
+          args: -m dist/pkgmeta.yaml

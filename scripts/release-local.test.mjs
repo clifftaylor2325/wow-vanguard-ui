@@ -8,7 +8,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { afterAll, expect, it } from "vitest";
-import { PACKAGER, buildSteps, changelogHeading, changelogSection, fetchPackager, githubStep, hasWhatsNew, packagerStep, parseArgs, pkgmetaWithNotes, preflightProblems, root, tocFiles, tocVersion } from "./release-local.mjs";
+import { PACKAGER, buildSteps, changelogHeading, changelogSection, fetchPackager, githubStep, hasWhatsNew, isPreRelease, packagerStep, parseArgs, pkgmetaWithNotes, preflightProblems, releaseContentProblems, root, tocFiles, tocVersion } from "./release-local.mjs";
 
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "vg-release-local-"));
 afterAll(() => fs.rmSync(scratch, { recursive: true, force: true }));
@@ -71,6 +71,31 @@ it("a version whose own SMOKE steps have no in-game result for it is refused, ea
 it("a major release whose core path steps have no pass is refused, each step named", () => {
   expect(preflightProblems({ ...READY, coreUnpassed: ["1.3", "6.1"] }).join()).toContain("0.7.0 is a major release: core path steps 1.3, 6.1 have no pass for it");
   expect(preflightProblems({ ...READY, coreUnpassed: [] })).toEqual([]);
+});
+
+it("the release-content half alone is what the workflow checks: no git, token or remote-tag problem in it", () => {
+  const bad = { ...READY, changelog: { version: "0.7.0", rest: "(not released yet)" }, whatsNew: false, unrecorded: ["33.1"], coreUnpassed: ["1.3"], remoteTag: true, tokens: { cf: false, wago: false }, branch: "x" };
+  expect(releaseContentProblems(bad)).toHaveLength(4);
+  expect(releaseContentProblems(READY)).toEqual([]);
+  expect(releaseContentProblems({ ...READY, remoteTag: true, tokens: { cf: false, wago: false }, branch: "x" })).toEqual([]);
+});
+
+it("a pre-release version never goes to the stores: the local route refuses it unless --no-listings, and GitHub marks it", () => {
+  expect(isPreRelease("1.0.0-rc1")).toBe(true);
+  expect(isPreRelease("1.0.0")).toBe(false);
+  expect(preflightProblems({ ...READY, tocVersion: "1.0.0-rc1", changelog: { version: "1.0.0-rc1", rest: "" } }).join()).toContain("is a pre-release: the stores never get one");
+  expect(preflightProblems({ ...READY, listings: false, tocVersion: "1.0.0-rc1", changelog: { version: "1.0.0-rc1", rest: "" } })).toEqual([]);
+  expect(githubStep({ version: "1.0.0-rc1", head: "abc" }).args).toContain("--prerelease");
+  expect(githubStep({ version: "1.0.0", head: "abc" }).args).not.toContain("--prerelease");
+});
+
+it("--check-content exits 0 on this repo's content and --notes-only writes the notes and the pkgmeta, both without git or tokens", () => {
+  // Runs the script with arguments from the repo root.
+  const run = (...args) => execFileSync(process.execPath, [path.join(root, "scripts/release-local.mjs"), ...args], { encoding: "utf8", stdio: "pipe", env: { ...process.env, CF_API_KEY: "", WAGO_API_TOKEN: "" } });
+  expect(() => run("--check-content")).not.toThrow();
+  run("--notes-only");
+  expect(fs.readFileSync(path.join(root, "dist/pkgmeta.yaml"), "utf8")).toContain("manual-changelog:");
+  expect(fs.readFileSync(path.join(root, "dist/release-notes.md"), "utf8").trim()).not.toBe("");
 });
 
 it("tokens are only required when the listings are on", () => {

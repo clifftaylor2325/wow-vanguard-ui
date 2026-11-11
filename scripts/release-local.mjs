@@ -10,6 +10,10 @@
 //   --fast          the whole suite without coverage (`npm test`, about half the time); the output says so
 //   --no-listings   leave out CurseForge and Wago
 //   --no-github     leave out the GitHub release
+//   --check-content only check the release content (changelog, What's new, in-game results); exit 1 on a problem
+//   --notes-only    only write dist/release-notes.md and dist/pkgmeta.yaml (the workflow does, for the stores)
+//
+// A version with a "-" in it (1.0.0-rc1) is a pre-release: a GitHub pre-release, never the stores.
 //
 // CF_API_KEY and WAGO_API_TOKEN are read from the environment by the packager. They are never
 // printed, written to a file or passed on a command line. The script never creates or pushes a
@@ -31,7 +35,10 @@ export const PACKAGER = {
   url: "https://raw.githubusercontent.com/BigWigsMods/packager/e50a250f8705041e40f2fa1ddcb280a686d65aa0/release.sh",
   sha256: "59b15a8d851b09e6d0fdec702aec91331b9b49d84dbe778da6c621b48f268703",
 };
-const KNOWN = ["--fast", "--no-listings", "--no-github", "--help"];
+const KNOWN = ["--fast", "--no-listings", "--no-github", "--help", "--check-content", "--notes-only"];
+
+// Whether a version is a pre-release (1.0.0-rc1): GitHub only, never the stores.
+export const isPreRelease = (version) => version.includes("-");
 
 // The command line as options: publish is the tag typed after --publish= (or null).
 export function parseArgs(argv) {
@@ -39,7 +46,7 @@ export function parseArgs(argv) {
   const rest = argv.filter((a) => !a.startsWith("--publish="));
   // Whether a flag is among the arguments.
   const has = (f) => rest.includes(f);
-  return { publish, fast: has("--fast"), listings: !has("--no-listings"), github: !has("--no-github"), help: has("--help"), unknown: rest.filter((a) => !KNOWN.includes(a)) };
+  return { publish, fast: has("--fast"), listings: !has("--no-listings"), github: !has("--no-github"), help: has("--help"), checkContent: has("--check-content"), notesOnly: has("--notes-only"), unknown: rest.filter((a) => !KNOWN.includes(a)) };
 }
 
 // The ## Version value of a TOC, or null.
@@ -76,16 +83,24 @@ export function preflightProblems(s) {
   return out.concat(contentProblems(s, tag));
 }
 
-// The release-content half of preflightProblems: remote tag, changelog, notes, in-game results, tokens.
-function contentProblems(s, tag) {
+// The release-content half of the refusals: changelog, What's new entry and in-game results. The
+// release workflow runs this half too (--check-content), so both routes refuse the same releases.
+export function releaseContentProblems(s) {
   const out = [];
-  if (s.remoteTag) out.push(`tag ${tag} is already on origin; a published version is never replaced, bump ## Version`);
   if (s.changelog?.version !== s.tocVersion || /not released yet/i.test(s.changelog?.rest ?? "")) out.push(`docs/CHANGELOG.md does not start with a released ${s.tocVersion} section`);
   if (!s.whatsNew) out.push(`Core/WhatsNewNotes.lua has no ${s.tocVersion} entry`);
   if (s.unrecorded?.length) out.push(`docs/smoke-results.json has no ${s.tocVersion} result for SMOKE steps ${s.unrecorded.join(", ")} (record pass, fail, partial or skip for each)`);
   if (s.coreUnpassed?.length) out.push(`${s.tocVersion} is a major release: core path steps ${s.coreUnpassed.join(", ")} have no pass for it in docs/smoke-results.json`);
-  if (s.listings && !(s.tokens.cf && s.tokens.wago)) out.push("CF_API_KEY and WAGO_API_TOKEN must both be set in the environment");
   return out;
+}
+
+// The local-only half: remote tag and tokens, which the workflow's own checkout cannot ask.
+function contentProblems(s, tag) {
+  const out = [];
+  if (s.remoteTag) out.push(`tag ${tag} is already on origin; a published version is never replaced, bump ## Version`);
+  if (s.listings && !(s.tokens.cf && s.tokens.wago)) out.push("CF_API_KEY and WAGO_API_TOKEN must both be set in the environment");
+  if (s.listings && isPreRelease(s.tocVersion)) out.push(`${s.tocVersion} is a pre-release: the stores never get one, run with --no-listings`);
+  return [...releaseContentProblems(s), ...out];
 }
 
 // The checks and builds, in order. Each step: { name, cmd, args }.
@@ -117,6 +132,7 @@ export function packagerStep(opts, ctx) {
 export function githubStep(ctx) {
   const tag = `v${ctx.version}`;
   const args = ["release", "create", tag, path.join("dist", `Vanguard-${ctx.version}.zip`), "--title", tag, "--target", ctx.head, "--notes-file", path.join("dist", "release-notes.md")];
+  if (isPreRelease(ctx.version)) args.push("--prerelease");
   return { name: "GitHub release", cmd: "gh", args };
 }
 
@@ -167,25 +183,31 @@ function gitState(tag) {
   };
 }
 
-// Everything the preflight needs, read from git, the files and the environment.
-function collectState(opts) {
+// The release-content state, read from the files alone (no git, no environment).
+function contentState() {
   const toc = read("Vanguard.toc");
   const version = tocVersion(toc);
   return {
-    ...gitState(`v${version}`), tocVersion: version, listings: opts.listings, toc,
+    tocVersion: version, toc,
     changelog: changelogHeading(read("docs/CHANGELOG.md")),
     whatsNew: hasWhatsNew(read("Core/WhatsNewNotes.lua"), version),
     unrecorded: unrecordedSteps(readLedger(root), changelogSection(read("docs/CHANGELOG.md"), version), version, smokeSteps(read("docs/SMOKE-TEST.md"))),
     coreUnpassed: unpassedCore(readLedger(root), coreSteps(read("docs/SMOKE-TEST.md")), version),
-    tokens: { cf: Boolean(process.env.CF_API_KEY), wago: Boolean(process.env.WAGO_API_TOKEN) },
   };
+}
+
+// Everything the preflight needs, read from git, the files and the environment.
+function collectState(opts) {
+  const content = contentState();
+  const tokens = { cf: Boolean(process.env.CF_API_KEY), wago: Boolean(process.env.WAGO_API_TOKEN) };
+  return { ...gitState(`v${content.tocVersion}`), ...content, listings: opts.listings, tokens };
 }
 
 // The files the TOC loads on any client, in order, without their game-type tags (scripts/lib/toc.mjs).
 export const tocFiles = (toc) => tocPaths(toc);
 
 // Writes dist/release-notes.md and dist/pkgmeta.yaml for the packager and the GitHub release.
-function writeNotes(version) {
+export function writeNotes(version) {
   const md = read("docs/CHANGELOG.md");
   fs.mkdirSync(path.join(root, "dist"), { recursive: true });
   fs.writeFileSync(path.join(root, "dist/release-notes.md"), `${changelogSection(md, version) || `Vanguard ${version}`}\n`);
@@ -214,12 +236,25 @@ function publishAll(opts, ctx) {
 export async function main(argv) {
   const opts = parseArgs(argv);
   if (opts.help || opts.unknown.length) return usage(opts.unknown);
+  if (opts.checkContent || opts.notesOnly) return onlyMode(opts);
   if (sh("git", ["fetch", "origin", "main"]).status !== 0) console.log("git fetch origin main failed; origin/main may be stale");
   const state = collectState(opts);
   if (opts.publish && opts.publish !== `v${state.tocVersion}`) return fail(`--publish=${opts.publish} does not match v${state.tocVersion} (## Version in Vanguard.toc)`);
   const ok = report(preflightProblems(state), Boolean(opts.publish));
   if (opts.publish && !ok) return 1;
   return finish(opts, state);
+}
+
+// The two modes that read the files only, which the release workflow runs on a tag checkout:
+// --check-content prints the release-content problems (exit 1 on any), --notes-only writes
+// dist/release-notes.md and dist/pkgmeta.yaml.
+function onlyMode(opts) {
+  const state = contentState();
+  if (opts.notesOnly) writeNotes(state.tocVersion);
+  if (!opts.checkContent) return 0;
+  const problems = releaseContentProblems(state);
+  if (problems.length) console.error(`Not a releasable ${state.tocVersion}:\n${problems.map((p) => `  - ${p}`).join("\n")}`);
+  return problems.length ? 1 : 0;
 }
 
 // The checks, build and uploads once the preflight allows it.
@@ -250,7 +285,7 @@ function fail(msg) {
 // Prints the usage; 0 for --help, 2 for an unknown option.
 function usage(unknown) {
   if (unknown.length) console.error(`unknown option: ${unknown.join(" ")}`);
-  console.log("usage: node scripts/release-local.mjs [--publish=v<version>] [--fast] [--no-listings] [--no-github]\nRehearsal by default. See docs/RELEASING.md.");
+  console.log("usage: node scripts/release-local.mjs [--publish=v<version>] [--fast] [--no-listings] [--no-github] [--check-content] [--notes-only]\nRehearsal by default. See docs/RELEASING.md.");
   return unknown.length ? 2 : 0;
 }
 

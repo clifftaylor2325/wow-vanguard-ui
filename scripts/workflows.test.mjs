@@ -145,6 +145,30 @@ it("for now the release runs the suite without the tests, and a hand-started ful
   expect(workflow("full-suite.yml")).not.toMatch(/^\s+tests:/m);
 });
 
+it("a pushed tag must be on main, and both release events run the shared content check", () => {
+  const version = jobText(workflow("release.yml"), "version");
+  expect(version).toContain('git merge-base --is-ancestor HEAD origin/main || { echo "tag $GITHUB_REF_NAME is not on main"; exit 1; }');
+  expect(version).toMatch(/^ {10}fetch-depth: 0$/m);
+  expect(runBlocks(stepNamed(version, "Release content"))).toEqual(["node scripts/release-local.mjs --check-content"]);
+  expect(version.indexOf("is-ancestor"), "the ancestry test sits in the push branch").toBeLessThan(version.indexOf("else"));
+});
+
+it("a version with a hyphen is a GitHub pre-release only: Publish adds --prerelease and the stores job is skipped", () => {
+  const text = workflow("release.yml");
+  expect(jobText(text, "listings")).toMatch(/^ {4}if: \$\{\{ !contains\(needs\.version\.outputs\.tag, '-'\) \}\}$/m);
+  const publish = runBlocks(stepNamed(jobText(text, "release"), "Publish")).join("\n");
+  expect(publish).toContain('case "$RELEASE_TAG" in *-*) pre="--prerelease"');
+  expect(publish).toContain("--notes-file dist/release-notes.md $pre");
+  expect(publish).not.toContain("--generate-notes");
+});
+
+it("the store upload gets the local route's release notes through -m dist/pkgmeta.yaml", () => {
+  const listings = jobText(workflow("release.yml"), "listings");
+  expect(runBlocks(listings)).toContain("node scripts/release-local.mjs --notes-only");
+  expect(listings).toMatch(/^ {10}args: -m dist\/pkgmeta\.yaml$/m);
+  expect(jobText(workflow("release.yml"), "release")).toContain("- run: node scripts/release-local.mjs --notes-only");
+});
+
 it("lua-suite keeps read-only permissions", () => {
   expect(workflow("lua-suite.yml")).toMatch(/^permissions:\n {2}contents: read\n/m);
 });
@@ -446,7 +470,7 @@ function setupNodeSteps(text) {
 }
 
 it("every setup-node step reads .nvmrc and keeps the npm cache", () => {
-  const counts = { "verify.yml": 1, "lua-suite.yml": 5, "release.yml": 1, "full-suite.yml": 0 };
+  const counts = { "verify.yml": 1, "lua-suite.yml": 5, "release.yml": 3, "full-suite.yml": 0 };
   for (const [file, count] of Object.entries(counts)) {
     const steps = setupNodeSteps(workflow(file));
     expect(steps.length, `${file} setup-node steps`).toBe(count);

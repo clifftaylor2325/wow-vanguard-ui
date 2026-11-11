@@ -1,6 +1,6 @@
 # Releasing Vanguard when Actions can't (or time is short)
 
-Two routes ship the same files. The normal one is the `release` workflow in GitHub Actions. The local one is `scripts/release-local.mjs`, which needs no Actions minutes and takes the same checks, the same release zip and the same CurseForge and Wago packager. Which version to cut and when is Cliff's call; nothing here tags, pushes or publishes until you say so.
+Two routes ship the same files. The normal one is the `release` workflow in GitHub Actions. The local one is `scripts/release-local.mjs`, which needs no Actions minutes and takes the same release-content checks, the same release zip (the same file names; the store packager rewrites line endings, so the bytes differ), the same release notes and the same CurseForge and Wago packager. Which version to cut and when is Cliff's call; nothing here tags, pushes or publishes until you say so.
 
 **The release is the test gate.** No pull request runs a test in CI (Cliff, 2026-11-10): each one ran the whole suite on its branch before it merged (CLAUDE.md, Tests run locally), and both routes run every test again before anything is uploaded. The workflow's `Suite` job (`lua-suite.yml`: every test on both clients with the coverage floor, the raid benchmark's instruction caps, the quality scan, TOC check, luacheck, Lua 5.1 syntax and the zip) must pass before its `Publish` job starts, and the local script runs its checks before its first upload. A red test stops the release; fix it on a branch, merge, and start again.
 
@@ -29,6 +29,8 @@ Options: `--no-listings` (GitHub only), `--no-github` (stores only), `--fast`, `
 
 Clean working tree; on `main` and equal to `origin/main`; the tag exists locally and points at HEAD; the tag isn't already on `origin` (a published version is never replaced: fix it with a new version); the newest changelog heading is the TOC version and not "not released yet"; `Core/WhatsNewNotes.lua` has the version; every SMOKE step the version's changelog section names has an entry for it in `docs/smoke-results.json`; for a major version (1.0.0, 2.0.0), every step of SMOKE-TEST.md's core path has a `pass` for it; both tokens are set. Then the checks above. Any failure stops the run before anything is uploaded.
 
+The `release` workflow refuses a tag that is not on `origin/main`, and runs the content half of this list (changelog heading, What's new entry, in-game results) with `node scripts/release-local.mjs --check-content` on a pushed tag and on a manual run. The git, remote-tag and token checks are the local route's only. The workflow writes the same release notes as the local route (`--notes-only`): the GitHub release body is the changelog section, and the packager gets `-m dist/pkgmeta.yaml` so CurseForge and Wago show it as their changelog.
+
 ## Version policy
 
 From 1.0.0 on, the version number tells players what an update can do to them:
@@ -39,7 +41,7 @@ From 1.0.0 on, the version number tells players what an update can do to them:
 
 **What is frozen** (`scripts/tests/frozen-surface.json`, checked by `scripts/tests/freeze.test.mjs` in the quick check): the settings a profile saves, the `/vg` words, and the functions other addons call on the global `Vanguard` table (`docs/API.md`). Profile strings follow the settings: a string from any earlier release still imports. Adding to any of these is free. Renaming or removing one needs a migration (`ns.MigrateProfile` or `ns.UpgradeDB`) or a reason, an entry under `retired` in the frozen file (`"settings:Module.key": "renamed to Module.other in 1.2.0, migrated"`), and a changelog line; removing one that can't be migrated needs a major version. The release skill runs `npm run freeze:update` after each release, so what a release shipped is what stays frozen.
 
-**From a release candidate to its release** (`1.0.0-rc1` builds, never published to the stores): fixes only.
+**From a release candidate to its release** (`1.0.0-rc1`: a version with a `-` in it is a GitHub pre-release only. The workflow marks it `--prerelease` and skips the CurseForge and Wago job; the local route refuses it unless you add `--no-listings`): fixes only.
 
 ## If the script itself fails
 
