@@ -90,7 +90,7 @@ it("world.holdAccess holds a frame and what hangs from it back from addon code w
   asAddon(addon, "TestEdge = CreateFrame('Frame', nil, TestRow)");
   addon.eval("__wfgWorld.holdAccess(TestRow)");
   // Whether an addon call raised, and what it returned or raised with.
-  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
   expect(tryAddon("local parent = TestRow:GetParent() return parent"), "the row refuses, GetParent too").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
   expect([tryAddon("TestIcon:SetAlpha(1)")[0], tryAddon("TestEdge:SetAlpha(1)")[0]], "its texture and the addon's own frame on it refuse").toEqual([false, false]);
   expect(tryAddon("return TestRow:IsForbidden() or TestRow:CanBeAccessedInContext()"), "not forbidden, and not reachable").toEqual([true, false]);
