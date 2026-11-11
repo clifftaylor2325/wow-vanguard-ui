@@ -557,7 +557,7 @@ it("aura containers without the engine (the fallback)", () => {
       numbers = g1.icons[1].cooldown.__hideNumbers, font = g1.icons[1].cooldown.__countdown.__font ~= nil,
       p1 = pos(g1.icons[1]), p2 = pos(g1.icons[2]), p3 = pos(g2.icons[1]), events = __c.events.__unitEvents.UNIT_AURA[1] }`);
   expect(c.backend === "fallback", "without AuraContainer, Vanguard's own icons are used").toBeTruthy();
-  expect(c.filter === "HARMFUL", "'!' tokens are dropped for the older reads").toBeTruthy();
+  expect(c.filter === "HARMFUL|!PLAYER", "the filter is read as written, '!' words and all (the client's reads take them: AuraUtil.lua:294-296)").toBeTruthy();
   expect(c.mine[0] === "MY-DOT" && c.mine[1] === "MY-CURSE" && c.theirs === "THEIR-DOT" && c.dup === false, "an aura an earlier group shows isn't shown twice").toBeTruthy();
   expect(c.count === "3*", "stacks use the client's display count (it formats hidden counts)").toBeTruthy();
   expect(c.ringShown && isTok(addon, c.ring, "curse") && c.dim === true, "debuff edges in their type's color; others' auras dimmed").toBeTruthy();
@@ -654,7 +654,8 @@ const REJECTING_AURAS = `__wfgStub.noAuraContainer = true
 `;
 
 it("aura filter words this client rejects are dropped for the session", () => {
-  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER");
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER",
+    "aura filter HARMFUL|PLAYER|!CROWD_CONTROL: this client rejects it; reading HARMFUL|PLAYER");
   const addon = loggedIn(UNITS_ENV + REJECTING_AURAS);
   expect(addon.eval('return ns.Auras.Filter("HARMFUL|CROWD_CONTROL")'), "the unknown word goes").toBe("HARMFUL");
   expect(addon.eval('return ns.Auras.Filter("HELPFUL|PLAYER|RAID_IN_COMBAT")'), "a known qualifier stays").toBe("HELPFUL|PLAYER");
@@ -680,7 +681,8 @@ it("aura filter words this client rejects are dropped for the session", () => {
 
 it("a client that rejects every aura filter word keeps the filter and shows no auras", () => {
   expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client",
-    "aura filter HARMFUL|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client", "aura filter HARMFUL|PLAYER|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client",
+    "aura filter HARMFUL|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client", "aura filter HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client",
+    "aura filter HARMFUL|!PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client",
     "aura filter HARMFUL: no part of it is known to this client", "aura filter HELPFUL: no part of it is known to this client");
   const addon = loggedIn(UNITS_ENV + `__wfgStub.noAuraContainer = true
     C_UnitAuras = { GetAuraDataByIndex = function() error("TEST-ONLY: no filters") end }`);
@@ -714,7 +716,8 @@ it("aura filters pass through on a client without the aura read", () => {
 });
 
 it("the raid dispel highlight reads through the stripped filter on the fallback", () => {
-  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|RAID: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER");
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|RAID: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER",
+    "aura filter HARMFUL|!RAID: this client rejects it; reading HARMFUL");
   const addon = loggedIn(UNITS_ENV + RAID_ENV + `__wfgStub.noAuraContainer = true
     __errors = 0
     C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
@@ -1118,4 +1121,42 @@ it("H44-5-6 raid auras: with Debuff icons at none and the highlight on, the disp
   const tip = addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then for _, r in ipairs(p.rows()) do
     if r[2] == ns.L["Highlight debuffs you can dispel (reload)"] then return r.tip end end end end`);
   expect(tip, "the switch's tip").toMatch(/^With Debuff icons at none, a debuff you can dispel still shows its icon/);
+});
+
+// TEST-ONLY aura read keyed by the exact filter string: your sheep is crowd control, your dot is not. __asked notes
+// every filter read. __legacyRow() makes a fallback row of your debuffs (not crowd control), then a crowd-control
+// slot, as a plate first drawn in a fight has, and returns the icons each group shows.
+const NOT_FILTER_ENV = `__wfgStub.noAuraContainer = true
+  local sheep, dot = { icon = "MY-SHEEP", auraInstanceID = 1 }, { icon = "MY-DOT", auraInstanceID = 2 }
+  __read = { ["HARMFUL|PLAYER|!CROWD_CONTROL"] = { dot }, ["HARMFUL|PLAYER|CROWD_CONTROL"] = { sheep }, ["HARMFUL|PLAYER"] = { sheep, dot } }
+  __asked = {}
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) __asked[filter] = true return (__read[filter] or {})[i] end }
+  function __legacyRow()
+    local c = ns.AuraLegacy.Create(UIParent, { point = { "CENTER" }, lineSize = 200, groups = {
+      { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = 4, size = 20, debuff = true }, { filter = "HARMFUL|PLAYER|CROWD_CONTROL", max = 1, size = 20, debuff = true } } }, "target")
+    local out = {}
+    for g, grp in ipairs(c.groups) do out[g] = {} for _, i in ipairs(grp.icons) do if i:IsShown() then out[g][#out[g] + 1] = i.icon.__texture end end end
+    return out
+  end`;
+
+it("H44-5-51 fallback rows read a filter with a '!' word as written, so your sheep shows once, in the crowd-control slot", () => {
+  const addon = loggedIn(UNITS_ENV + NOT_FILTER_ENV);
+  expect(addon.eval("return __legacyRow()"), "your dot in the debuff row, the sheep in its slot").toEqual([["MY-DOT"], ["MY-SHEEP"]]);
+  expect(addon.eval('return __asked["HARMFUL|PLAYER|!CROWD_CONTROL"] == true'), "the '!' filter is what is read").toBe(true);
+});
+
+it("H44-5-51 with hidden aura ids, a fallback row still shows your sheep once", () => {
+  const addon = loggedIn(UNITS_ENV + NOT_FILTER_ENV + `
+    for _, list in pairs(__read) do for _, a in ipairs(list) do a.auraInstanceID = { __secret = true } end end`);
+  expect(addon.eval("return __legacyRow()"), "the groups don't overlap, so no id is needed to skip a repeat").toEqual([["MY-DOT"], ["MY-SHEEP"]]);
+});
+
+it("H44-5-51 a fallback row probes its filters when it is made, so a first read in a fight is of a filter this client takes", () => {
+  expectErrors("aura filter HARMFUL|PLAYER|!CROWD_CONTROL: this client rejects it; reading HARMFUL|PLAYER");
+  const addon = loggedIn(UNITS_ENV + NOT_FILTER_ENV + `
+    local read = C_UnitAuras.GetAuraDataByIndex
+    C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter) if filter:find("!", 1, true) then error("TEST-ONLY: unknown word") end return read(unit, i, filter) end`);
+  addon.eval(`ns.AuraLegacy.Create(UIParent, { point = { "CENTER" }, lineSize = 200, groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = 1, size = 20 } } }, nil)`);
+  addon.eval("C_Secrets = { ShouldAurasBeSecret = function() return true end }");
+  expect(addon.eval('return ns.Auras.Filter("HARMFUL|PLAYER|!CROWD_CONTROL")'), "probed when made, with no unit to read yet").toBe("HARMFUL|PLAYER");
 });

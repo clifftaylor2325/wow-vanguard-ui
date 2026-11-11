@@ -5450,6 +5450,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: once the fight ends the enchant cell sits in front of your buffs and no buff is under it, with nothing new in `/vg errors`. [Needs in-game check: all of it.]
 - If it fails, paste: `/vg errors`, and a screenshot of your buffs after the fight.
 
+### 33.499 On a plate first drawn in a fight, your crowd control shows once
+
+- Do: on WoW Forever, as a mage, start a fight with one mob, then turn to a second mob whose plate was not on screen before the fight and Polymorph it (or, as another class, put your own crowd control on a mob first seen in the fight).
+- Expect: on that mob's plate the sheep icon shows once, in the crowd-control spot, not again in the row of your debuffs; nothing new in `/vg errors`. [Needs in-game check: whether the game's by-index aura read takes a "!" word; Vanguard drops it and reports it once in `/vg errors` if not.]
+- If it fails, paste: `/vg errors`, and a screenshot of the plate.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
