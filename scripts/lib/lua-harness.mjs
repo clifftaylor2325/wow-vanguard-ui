@@ -1,4 +1,4 @@
-// Run the real addon Lua under Node (fengari, Lua 5.3) inside a TEST-ONLY
+// Run the real addon Lua under Node (Lua 5.1 in WebAssembly, or fengari) inside a TEST-ONLY
 // headless client: the widget stub (wow-stub.lua), its layout (wow-layout.lua)
 // and the game world (wow-world.lua). Files load in TOC order with the same
 // (ADDON, ns) varargs WoW passes. A worker compiles each file once and loads
@@ -277,8 +277,8 @@ function newState() {
 // The engine ------------------------------------------------------------------------------------
 // One seam between the harness and the Lua VM: a state answers run (a chunk, for its effects), value (a chunk's
 // first result as JS) and runFile (a file through the chunk cache), each with the chunk name and whether the chunk
-// gets `ADDON, ns` as WoW passes them. VG_LUA_ENGINE=wasm picks real Lua 5.1 in WebAssembly (lua-wasm.mjs);
-// anything else, fengari (Lua 5.3 in JS), the default.
+// gets `ADDON, ns` as WoW passes them. The default is real Lua 5.1 in WebAssembly (lua-wasm.mjs, Cliff 2026-11-11);
+// VG_LUA_ENGINE=fengari picks fengari (Lua 5.3 in JS), which npm run bench and npm run profile run on.
 export { ENGINE };
 
 // A fengari state behind the seam: the standard libraries, then (unless bare) the harness's hooks and host functions.
@@ -308,7 +308,7 @@ function fengariCalls(L) {
 // functions when bare, as a plain file reader has always run). The profiler has no Lua 5.1 side yet.
 function harnessState(limit, bare = false) {
   if (ENGINE === "fengari") return fengariState(limit, bare);
-  if (process.env.LUA_PROFILE) throw new Error("LUA_PROFILE: the profiler samples on the default engine only (lua-profile.mjs reads fengari's stack); unset VG_LUA_ENGINE");
+  if (process.env.LUA_PROFILE) throw new Error("LUA_PROFILE: the profiler samples on fengari only (lua-profile.mjs reads fengari's stack); set VG_LUA_ENGINE=fengari");
   return newWasmState({ budget: limit, coverage: process.env.LUA_COVERAGE ? addHits : null, addonName: ADDON, secretChecks: process.env.VG_SECRET_OPS !== "off" });
 }
 
