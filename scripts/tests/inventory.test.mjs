@@ -77,6 +77,8 @@ it("inventory: item tooltips list who else has it, in their class color, then th
   expect(addon.eval("local IV = ns.GetModule('Inventory') for _, fn in ipairs(ns.GetModule('Tooltips').itemLines) do if fn == IV.scope.gates['item lines'] then return true end end"), "added to every item tooltip (through its scope's gate)").toBe(true);
 });
 
+// Client rule: UnitName is secret while the unit's name identity is restricted (UnitName carries
+// SecretWhenUnitNameIdentityRestricted in forever Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
 it("H44-22-R1 inventory: with your name hidden by the client, item tooltips list nobody and log no error", () => {
   const addon = loggedIn(BAGS_ENV, { savedVariables: ALTS });
   addon.eval("__wfgWorld.units.player.name = __wfgWorld.secret('Tester')");

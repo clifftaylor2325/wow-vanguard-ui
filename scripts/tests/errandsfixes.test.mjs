@@ -3,6 +3,8 @@
 import { expect, it } from "vitest";
 import { chatHas, loggedIn } from "./helpers.mjs";
 
+// Client rule: Forever's GetTrainerServiceInfo returns five values (the fifth is the rank text), forever
+// Interface/AddOns/Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua:618; live Mainline reads four, same file :205.
 // TEST-ONLY trainer as WoW Forever reports it (name, kind, texture, level, rank text); buying only asks, the
 // test plays the server's answer by changing __services.
 const RANK_TRAINER = `
