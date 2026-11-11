@@ -1320,14 +1320,15 @@ it("appearances: the search box, dropdowns, page arrows and the sets tab's rows 
 // is not said again, and nothing raises.
 it("tabs: a tab whose anchor offsets or checked state the client hides keeps its anchor and its state", () => {
   const addon = loggedIn("");
-  expect(addon.eval(`local S = __wfgWorld.secret
+  expect(addon.eval(`
     local window = CreateFrame("Frame", nil, UIParent) window:SetSize(300, 300) window:SetPoint("CENTER")
     ns.Theme.Panel(window, { pad = 12 })
     local tab = CreateFrame("Button", nil, window) tab:SetSize(40, 40) tab:SetPoint("TOPLEFT", window, "TOPRIGHT", 0, -20)
-    local real = tab.GetPoint
-    tab.GetPoint = function(self, i) local p, r, rp, x, y = real(self, i) return p, r, rp, x, S(y) end
+    -- A tab whose anchoring the client holds secret answers every GetPoint value as a secret, relativeTo too
+    -- (live Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionResizingAPIDocumentation.lua:65-68,
+    -- GetPoint, SecretWhenAnchoringSecret).
+    __wfgWorld.holdSecret(tab, "Anchoring")
     ns.GetModule("Windows").ClearPadding(tab, window)
-    tab.GetPoint = nil
     local y = tab.__points.TOPLEFT.y
     return { issecretvalue(y), y, #ns.errors }`), "the anchor is left as the game set it, no secret handed to SetPoint").toEqual([false, -20, 0]);
 });

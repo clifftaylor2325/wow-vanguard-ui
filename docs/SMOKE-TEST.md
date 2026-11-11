@@ -5428,6 +5428,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the switches read `Gaps row` and `Add the manager's cooldowns` with no `(reload)`, and the gaps row appears at once.
 - If it fails, paste: a screenshot of the step and `/vg errors`.
 
+### 33.553 A window's tabs are dressed even where the game hides their anchoring (H44-15-R1)
+
+- Do: for Forever and Retail: open the character window, the spellbook, the social window and the guild window, and click through each one's tabs.
+- Expect: every tab sits just outside its window's panel edge in Vanguard's tab look, and `/vg errors` has no `attempt to compare a secret value` line from `WindowsTabs.lua`.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
