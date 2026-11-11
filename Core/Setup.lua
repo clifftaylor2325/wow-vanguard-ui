@@ -267,9 +267,13 @@ for _, layout in ipairs({ "fort", "standards" }) do
   end
 end
 
--- Applies a layout preset by key, backing the profile up first unless it is Keep.
+-- Applies a layout preset by key, backing the profile up first unless it is Keep (which applies nothing, so it
+-- leaves the layout this run already applied, for All set to name).
 function S.ApplyLayout(key)
-  if key ~= "keep" then S.Backup() end
+  if key ~= "keep" then
+    S.Backup()
+    state.appliedLayout = key
+  end
   APPLY[key]()
 end
 
@@ -534,6 +538,7 @@ function S.ApplyScreen(key)
   local p = S.ScreenPreset(key)
   if not p then return end
   S.Backup()
+  state.appliedScreen = key
   setScale(p)
   setButtons(p.button)
   setTiles(p.tile)
@@ -683,10 +688,11 @@ local function screenName(key)
 end
 
 -- What this run changed on setup's own steps, as lines for the All set step: a layout, a screen preset, the look.
+-- A layout or screen counts once Next applied it, not by the pick now showing (Back and Keep undo nothing).
 local function ownChanges()
   local out = {}
-  if state.layout ~= "keep" then out[#out + 1] = ns.Format(L["Layout: {name}"], { name = choiceName(S.LAYOUTS, state.layout) }) end
-  if state.screen ~= "keep" then out[#out + 1] = ns.Format(L["Screen: {name}"], { name = screenName(state.screen) }) end
+  if state.appliedLayout then out[#out + 1] = ns.Format(L["Layout: {name}"], { name = choiceName(S.LAYOUTS, state.appliedLayout) }) end
+  if state.appliedScreen then out[#out + 1] = ns.Format(L["Screen: {name}"], { name = screenName(state.appliedScreen) }) end
   if state.look then out[#out + 1] = L["Accent or raid frame style"] end
   return out
 end
@@ -1148,6 +1154,7 @@ local function startRun()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
   state.layout, state.screen, state.backup, state.look, state.undone, state.scale = "keep", "keep", nil, false, false, nil
+  state.appliedLayout, state.appliedScreen = nil, nil
   state.reload, state.paused, state.done, state.role = false, false, false, false
   ns.SetupGuide.Begin(not VanguardDB.setupDone)
   state.before = settingsNow()

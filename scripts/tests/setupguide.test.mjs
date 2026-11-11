@@ -277,3 +277,34 @@ it("guided setup: All set names a picked layout by its key when the list holds n
   nexts(addon, 8);
   expect(allSet(addon)[0][1], "the key stands in for the missing name").toBe("Layout: classic");
 });
+
+it("hunt H44-14-20: a layout applied by Next stays on All set after Back and Keep, with Undo setup, and Undo puts it back", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  setupClick(addon, "next");
+  setupClick(addon, "back");
+  addon.eval('__click("Keep my current layout")');
+  nexts(addon, 8);
+  const [lines, undo] = allSet(addon);
+  expect(lines.slice(0, 2), "All set names the layout this run applied, not the Keep pick now showing").toEqual(["All set. Done closes setup. This run changed:", "Layout: Centered: healing"]);
+  expect(undo, "and offers Undo setup").toBe(true);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b) Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(addon.eval("return ns.Settings('RaidFrames').sortByRole"), "Undo puts the profile from before the layout back").toBe(false);
+});
+
+it("hunt H44-14-20: a screen preset applied by Next stays on All set after Back and Keep, and a new run starts clean", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
+  setupClick(addon, "next");
+  addon.eval('__click("1440p")');
+  setupClick(addon, "next");
+  setupClick(addon, "back");
+  addon.eval('__click("Keep my current sizes")');
+  nexts(addon, 7);
+  const [lines, undo] = allSet(addon);
+  expect(lines.slice(0, 2), "All set names the preset").toEqual(["All set. Done closes setup. This run changed:", "Screen: 1440p"]);
+  expect(undo, "and shows Undo").toBe(true);
+  setupClick(addon, "next");
+  addon.slash("setup");
+  nexts(addon, 8);
+  expect(allSet(addon), "a second run that changes nothing says so").toEqual([["All set. This run changed nothing: Done closes setup."], false]);
+});
