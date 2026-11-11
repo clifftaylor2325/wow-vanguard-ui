@@ -460,7 +460,8 @@
       "unit frames: a hidden health text goes to the text as it is, and with health numbers off it is never asked for",
       "unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows",
       "unit frames: a party member who goes offline or dies loses the power text, and gets it back on return",
-      "unit frames: after a ding the target's level colour is the one for your new level, without a retarget"
+      "unit frames: after a ding the target's level colour is the one for your new level, without a retarget",
+      "unit frames: with power text on, the target's tag mark sits clear of its health number on the top line"
     ],
     "scripts/tests/unlock.test.mjs": [],
     "scripts/tests/upgrades.test.mjs": [],

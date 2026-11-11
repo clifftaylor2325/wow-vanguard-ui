@@ -244,6 +244,18 @@ it("unit frames: a party member who goes offline or dies loses the power text, a
   expect(read()[1], "back alive: the power number returns").toBe("300");
 });
 
+it("unit frames: with power text on, the target's tag mark sits clear of its health number on the top line", () => {
+  const addon = loggedIn(UNITS_ENV + `__units.target.hp = 42800 __units.target.maxhp = 50000
+    UnitCanAttack = function() return true end UnitIsTapDenied = function(u) return u == "target" end UnitPlayerControlled = function() return false end`,
+  { savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, UnitFrames = { powerFormat = 'value' } } }" });
+  addon.fire("PLAYER_TARGET_CHANGED");
+  // A region's rectangle: left, bottom, right, top.
+  const rect = (path) => addon.eval(`local r = ${path} return { r:GetLeft(), r:GetBottom(), r:GetRight(), r:GetTop() }`);
+  const tag = rect("Vanguard_target.tag"), text = rect("Vanguard_target.healthText");
+  expect(addon.eval("return { Vanguard_target.tag:IsShown(), Vanguard_target.powerText:IsShown() }"), "the grey X and the power text both show").toEqual([true, true]);
+  expect(text[2] <= tag[0] || tag[2] <= text[0], "the health number ends short of the tag mark").toBe(true);
+});
+
 it("unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows", () => {
   const addon = loggedIn(UNITS_ENV + FOREVER_ENV + "CurveConstants = { ScaleTo100 = { __curve = true } } UnitHealthPercent = function() return 84 end UnitClassification = function() return 'normal' end", NO_RAID);
   // HealthText with the percent format on, and string.format answering the percent's "%d%%" with `format` (a Lua value) when given.

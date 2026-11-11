@@ -5372,6 +5372,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the Vanguard button is at the top of the game menu, above Options, with the usual gap under it, both times, and chat shows no "Interface action failed" message. [Needs in-game check: the button's place after login without the addon refreshing the menu's layout itself.]
 - If it fails, paste: a screenshot of the menu, and `/vg errors`.
 
+### 33.486 The target's tag mark clears its health number with power text on
+
+- Do: on either client, set Unit frames → Show power as to Value, then target a mob another player has tagged (its bar turns grey) and one you have tagged.
+- Expect: the grey X (and your green check) sits by the diamond at the target frame's inner top corner, clear of the health number on the bar's top line; the number does not move when the mark comes or goes. [Needs in-game check: the gap at your text size.]
+- If it fails, paste: a screenshot of the target frame, your text size, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

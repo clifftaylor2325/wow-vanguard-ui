@@ -486,6 +486,9 @@ end
 
 -- How far from the inner edge the health text ends on a frame with the diamond, so it stays clear.
 UF.CLASS_MARK_ROOM = 10
+-- How far from the inner edge the health text ends while it sits on the top line beside the tag mark (centred 18 in,
+-- 12 wide, and a 2-unit gap): kept on the target, tagged or not, so the number never jumps.
+UF.TAG_ROOM = 26
 
 -- A small diamond (the Vanguard mark) over the top corner at the frame's inner end: elite, rare or boss. The health
 -- text ends short of it (UF.PlaceParts places both).
@@ -718,12 +721,13 @@ local function textEndRoom(f)
 end
 
 -- The health text at the other end from the name, short of the marks on a frame that has them; on the bar's top line
--- while the power text takes the bottom one.
+-- while the power text takes the bottom one, there short of the tag mark too.
 local function placeHealthText(f, side)
   local far = INNER[side]
   local room = textEndRoom(f)
   f.healthText:ClearAllPoints()
   if powerTextOn(f) and not T.BareOf(f) then
+    room = f.tag and math.max(room, UF.TAG_ROOM) or room
     f.healthText:SetPoint("TOP" .. far, f.health, "TOP" .. far, inward(far, room), -UF.POWER_TEXT.pad)
   else
     f.healthText:SetPoint(far, f.health, far, inward(far, room), textLift(f))
