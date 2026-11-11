@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { TONES } from "./lib/media-art.mjs";
 import { contrast, loudness, loudnessTable, overBlack, tintSheet } from "./lib/tint-sheet.mjs";
 import { tonedBracket } from "./fixtures/toned-bracket.mjs";
-import { themeRows } from "./tint-sheet.mjs";
+import { bracketBakes, ruleBakes, themeRows } from "./tint-sheet.mjs";
 
 // A theme row with one grey surface colour and a tint.
 const row = (variant, preset, dim) => ({ variant, preset, panel: [0.1, 0.1, 0.1, 1], raised: [0.2, 0.2, 0.2, 1], inset: [0, 0, 0, 1], muted: [0.65, 0.65, 0.65, 1], accentDim: dim });
@@ -36,11 +36,18 @@ function themeRead() {
   expect([brass.lit, rows.every((r) => loudness(r).pass)]).toEqual(["8a6a2f", true]);
 }
 
+// The bakes the sheet draws are the ones that ship: the bracket's 64 and 32 texel files and the rule's 128 and 64 texel files.
+function shippedBakes() {
+  expect(bracketBakes().map((img) => img.w)).toEqual([64, 32, 64]);
+  expect(ruleBakes().map((img) => img.w)).toEqual([128, 64]);
+}
+
 describe(
   "tint sheet (leonardo-art-plan M0.2)",
   // The sheet's layout, the loudness gate, and the colours read from Core/Theme.lua.
   () => {
     it("the sheet is one row per variant and three surfaces per preset", sheetLaidOut);
+    it("the bracket and rule bakes drawn are the sizes that ship", shippedBakes);
     it("the lit facet's loudness is measured against the panel and muted", loudnessGate);
     it("every variant and preset reads from the addon, and the toned lit facet passes the gate in all of them", themeRead);
   },
