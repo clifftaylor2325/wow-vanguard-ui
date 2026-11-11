@@ -5408,6 +5408,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each section header (Quest, Equipment, Trade goods and the rest) shows its whole name at once, without closing and opening the bag; the items move under the wider headers.
 - If it fails, paste: a screenshot of the bag, the client's language, and `/vg errors`.
 
+### 33.625 Train all tells ranks of one skill apart
+
+- Do: at your class trainer, with a skill whose next rank opens at a level you have just reached (or any skill that has several ranks on offer in turn), press Train all once and wait two seconds. [Client: Forever and Retail.]
+- Expect: one line `Trained N skill(s) for ...` that counts the rank you bought (never `Trained 0 of 1` while the rank is gone from the list), and no red error text.
+- If it fails, paste: the chat line, the trainer's list before and after, and `/dump GetTrainerServiceInfo(1)` (all five answers) with the trainer open, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

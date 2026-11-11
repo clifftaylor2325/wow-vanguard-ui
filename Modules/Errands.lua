@@ -63,10 +63,13 @@ local function available(i)
   return not ns.IsSecret(second) and not ns.IsSecret(third) and (second == "available" or third == "available")
 end
 
--- A service's name, to tell it from the others as the list re-indexes under the buying.
+-- A service's key, to tell it from the others as the list re-indexes under the buying: its name, with the rank text
+-- (the fifth answer on WoW Forever, where a next rank has the same name) when the client gives one plainly.
 local function serviceName(i)
-  local name = ask("GetTrainerServiceInfo", i)
-  return type(name) == "string" and name or tostring(i)
+  local name, _, _, _, rank = ask("GetTrainerServiceInfo", i)
+  if type(name) ~= "string" then return tostring(i) end
+  if type(rank) == "string" and not ns.IsSecret(rank) and rank ~= "" then return name .. " " .. rank end
+  return name
 end
 
 -- Narrow enough to sit between the trainer's money line (bottom left) and its Train button.
