@@ -279,3 +279,12 @@ it("hunt H44-13-1 and H44-13-R2: searching 'changed' lights the pages that hold 
     return { n.general:GetAlpha(), n.chat:GetAlpha(), n.actionbars:GetAlpha(), #ns.Options.hits }`);
   for (const text of ["changed", "changed ", "  Changed "]) expect(search(text), `'${text}': General lit, the others dimmed, one hit`).toEqual([1, 0.35, 0.35, 1]);
 });
+
+it("hunt H44-13-2: on a translated client the English keywords of Safer colours still find it", () => {
+  const addon = loggedIn(CLICK_LUA, { client: 'GetLocale = function() return "zhCN" end' });
+  addon.eval('ns.Options.Show("general")');
+  // The English captions of the settings the search lists for the text.
+  const find = (text) => addon.eval(`local out = {} for _, h in ipairs((ns.Options.FindSettings(${JSON.stringify(text)}))) do out[#out + 1] = h.row.english end return out`);
+  expect(Object.values(find("deuteranopia")), "an English word the translation dropped").toContain("Safer colours");
+  expect(Object.values(find("animations")), "other settings' English keywords still work").toContain("Reduce motion (no fades or flashes)");
+});

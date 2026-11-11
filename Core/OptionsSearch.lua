@@ -12,7 +12,7 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 -- translation gives the words a player of that language types, and the search reads both.
 O.KEYWORDS = {
   ["safer colours"] = L["colour blind colorblind color blind colour vision deuteranopia protanopia tritanopia accessibility"]
-    .. " " .. L["colourblindness colorblindness colour-blindness color-blindness"],
+    .. "\n" .. L["colourblindness colorblindness colour-blindness color-blindness"],
   ["text size"] = L["font size bigger smaller larger readable zoom"],
   ["font"] = L["typeface lettering text"],
   ["reduce motion (no fades or flashes)"] = L["animation animations fades flashes accessibility"],
@@ -39,6 +39,11 @@ function O.BothTongues(text)
   return english == text and text or (text .. " " .. english)
 end
 
+-- Each line of a text with its English after it: a text joined from several translations is no translation itself.
+local function tongues(text)
+  return (text:gsub("[^\n]+", O.BothTongues))
+end
+
 -- A choice row's choice names ("Square", "Jade"), each with its English, as one string.
 local function choiceNames(row)
   if row[1] ~= "cycle" or type(row[3]) ~= "table" then return "" end
@@ -51,14 +56,14 @@ end
 local function keywordsOf(row)
   local english = row.english or ns.English(tostring(row[2]))
   local words = O.KEYWORDS[english:lower()]
-  return words and O.BothTongues(words) or ""
+  return words and tongues(words) or ""
 end
 
 -- The words of a row that a search reads, each as shown and in English: its caption, tip, keywords, choice names,
 -- the note under it and "reload" when it applies on reload, in lower case.
 local function haystack(row, note)
   local reload = row.reload and O.BothTongues(L["reload"]) or ""
-  local words = { tostring(row[2]), row.english or "", O.BothTongues(row.tip or ""), keywordsOf(row), choiceNames(row), O.BothTongues(note or ""), reload }
+  local words = { tostring(row[2]), row.english or "", tongues(row.tip or ""), keywordsOf(row), choiceNames(row), tongues(note or ""), reload }
   return ns.Lower(table.concat(words, " "))
 end
 
