@@ -11,7 +11,7 @@
     },
     {
       "label": "quick tests",
-      "detail": "The JS tests and one Lua smoke test: what a pull request's CI runs",
+      "detail": "The JS tests and one Lua smoke test: what the pre-push hook runs; no pull request runs a test in CI",
       "type": "npm",
       "script": "test:quick",
       "problemMatcher": []

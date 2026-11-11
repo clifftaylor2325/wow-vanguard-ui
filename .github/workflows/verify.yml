@@ -7,8 +7,9 @@ name: verify
 # the test harness, fengari, is Lua 5.3), and the release zip's contents.
 # No tests run here (Cliff, 2026-11-10): the whole suite runs on the
 # branch on the agent's machine before the pull request merges (CLAUDE.md,
-# Working method), weekly on main (full-suite.yml), and as the gate in front
-# of each release (release.yml). Built to finish inside a minute, since a
+# Working method), and from the Actions tab on main (full-suite.yml), which
+# the release's author starts before each release (release.yml runs the raid
+# bench and the checks, not the tests). Built to finish inside a minute, since a
 # job bills by the started minute. Markdown lint is separate and not
 # required (markdown.yml).
 # This check runs on every push of a pull request that is not a draft

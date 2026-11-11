@@ -1,24 +1,25 @@
 name: full suite
 
 # Runs lua-suite.yml (every test with the coverage floor, the checks, and the
-# UI preview when asked) weekly and from the Actions tab. Pull requests never
-# run it (Cliff, 2026-11-10): the tests run on a pull request's branch on the
-# agent's machine before it merges (CLAUDE.md, Working method), as a gate in
-# release.yml before anything is published, and here once a week, so main
-# going red between releases shows up before a release tries to ship it. A
-# red weekly or hand-started run opens an issue labelled ci-failure (later
-# failures comment on it; GitHub's own failure mail for a scheduled run goes
-# to whoever last edited the cron line, which may be nobody), and a green one
-# closes it.
+# UI preview when asked) from the Actions tab, and weekly once the cron line
+# below is switched back on. Pull requests never run it (Cliff, 2026-11-10):
+# the tests run on a pull request's branch on the agent's machine before it
+# merges (CLAUDE.md, Working method). release.yml runs the raid bench and the
+# checks without the tests, so the release's author starts this on main
+# before the tag (or runs scripts/release-local.mjs). A red run on main
+# opens an issue labelled ci-failure (later failures comment on it; GitHub's
+# own failure mail for a scheduled run goes to whoever last edited the cron
+# line, which may be nobody), and a green one closes it. A run on another
+# branch reports nothing: the issue is about main.
 #
-# Only the weekly run is shuffled (D-05): its tests run in a seeded random
-# order and the seed goes to the job summary with the replay command, to
-# show up a case that depends on running after another. Hand-started runs
-# keep the written order. The UI preview renders weekly and on a
-# hand-started run that asks for it.
+# A shuffled run (D-05) runs its tests in a seeded random order and puts the
+# seed in the job summary with the replay command, to show up a case that
+# depends on running after another. The weekly run shuffles; a hand-started
+# run keeps the written order unless it asks for the shuffle input. The UI
+# preview renders weekly and on a hand-started run that asks for it.
 on:
-  # No weekly run for now (Cliff, 2026-11-10): the suite takes 45 to 60 minutes and is out of CI
-  # until it is fast again (sharding and the Lua 5.1 engine are in work). Hand-started runs stay.
+  # No weekly run for now (Cliff, 2026-11-10): the suite took 45 to 60 minutes as one job and stays
+  # out of CI until Cliff says to turn it back on. Sharding and the Lua 5.1 engine have merged. Hand-started runs stay.
   # The weekly run comes back with these lines (Sundays at 10:23 UTC; cron is UTC only; off the
   # hour, since GitHub delays runs scheduled on busy minutes):
   #   schedule:
@@ -29,6 +30,10 @@ on:
         description: "Also render the UI preview (a few minutes more)"
         type: boolean
         default: true
+      shuffle:
+        description: "Run the tests in a seeded random order (the seed and replay command go to the summary)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -46,14 +51,14 @@ jobs:
     uses: ./.github/workflows/lua-suite.yml
     with:
       preview: ${{ github.event_name == 'schedule' || inputs.preview == true }}
-      shuffle: ${{ github.event_name == 'schedule' }}
+      shuffle: ${{ github.event_name == 'schedule' || inputs.shuffle == true }}
 
   report:
     # The ci-failure issue: opened or commented on when the suite is red,
     # closed when it is green again.
     name: Report
     needs: suite
-    if: always() && needs.suite.result != 'cancelled'
+    if: always() && needs.suite.result != 'cancelled' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

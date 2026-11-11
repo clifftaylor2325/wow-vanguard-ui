@@ -30,17 +30,18 @@ name: lua suite
 # This workflow has no triggers of its own: full-suite.yml calls it from the
 # Actions tab, and release.yml before each release with the tests input off.
 # For now nothing in CI runs the tests by itself (Cliff, 2026-11-10): the
-# suite took 45 to 60 minutes as one job, and stays out of CI until it is fast
-# again (the sharding below, and the Lua 5.1 engine, are in work). A hand-started
+# suite took 45 to 60 minutes as one job, and stays out of CI until Cliff says to
+# turn it back on (the sharding below and the Lua 5.1 engine have merged). A hand-started
 # full suite still runs every test with the coverage floor. No pull request runs
 # it; a branch's tests run on the agent's machine before it merges. On Actions, Vitest also writes failures as
 # annotations on the run and a JUnit file (vitest.config.mjs), and the
 # Lua-by-area and coverage tables go to the job summary.
 #
-# With the shuffle input on (the weekly run only, set by full-suite.yml),
+# With the shuffle input on (the weekly run, once it is back, or a hand-started run that asks
+# for it; set by full-suite.yml),
 # a step picks a seed, exports it as VG_SHUFFLE_SEED and writes it with the
 # replay command to the job summary, and Vitest runs files and tests in the
-# order that seed gives (vitest.config.mjs). Hand-started and release runs
+# order that seed gives (vitest.config.mjs). Other hand-started runs and release runs
 # keep the written order. A failing case is fixed at its cause; nothing
 # here runs a failed case again.
 on:

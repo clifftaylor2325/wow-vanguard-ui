@@ -1,11 +1,11 @@
-// The weekly shuffled run (D-05) is wired through three workflow files:
+// The shuffled run (D-05) is wired through three workflow files:
 // lua-suite.yml takes a shuffle input and picks and prints the seed,
-// full-suite.yml turns it on for the schedule event only, and release.yml
+// full-suite.yml turns it on for the schedule event or when a hand-started run asks, and release.yml
 // never shuffles. The files are read as text with small readers (no YAML
 // parser is installed), the way scripts/pkgmeta.test.mjs reads .pkgmeta.
 // No pull request runs a test in CI (Cliff, 2026-11-10): a workflow a pull
 // request triggers runs no test command and never calls lua-suite.yml, and
-// full-suite.yml runs only weekly and by hand. Its concurrency group is
+// full-suite.yml runs only by hand (weekly once its cron is back). Its concurrency group is
 // checked by evaluating it for each event, with a small evaluator for the
 // part of the expression syntax it uses (anything else throws). The hosted run itself cannot be
 // checked here. The file also checks the toolchain pins (D-05): the luacheck
@@ -89,8 +89,10 @@ it("the raid bench appends to the job summary, budgets instructions not time, an
   expect(text).toMatch(/^ {10}path: coverage\/bench\/\*\.json$/m);
 });
 
-it("full-suite shuffles only for the schedule event", () => {
-  expect(workflow("full-suite.yml")).toContain("shuffle: ${{ github.event_name == 'schedule' }}");
+it("full-suite shuffles for the schedule event or when a hand-started run asks, and a hand start defaults to the written order", () => {
+  const text = workflow("full-suite.yml");
+  expect(text).toContain("shuffle: ${{ github.event_name == 'schedule' || inputs.shuffle == true }}");
+  expect(text).toMatch(/^ {6}shuffle:\n {8}description: .*\n {8}type: boolean\n {8}default: false$/m);
 });
 
 it("release never shuffles", () => {
@@ -304,7 +306,7 @@ it("full-suite keeps its hand start, inputs, report job and cancel setting, and 
   expect(text).toContain('#     - cron: "23 10 * * 0"');
   expect(text).toMatch(/^ {2}workflow_dispatch:\n {4}inputs:\n {6}preview:/m);
   expect(text).toContain("preview: ${{ github.event_name == 'schedule' || inputs.preview == true }}");
-  expect(text).toContain("if: always() && needs.suite.result != 'cancelled'");
+  expect(text).toContain("if: always() && needs.suite.result != 'cancelled' && github.ref == 'refs/heads/main'");
   expect(text).toMatch(/^ {2}cancel-in-progress: true$/m);
 });
 

@@ -2,7 +2,7 @@
 // temp "game folder" (TEST-ONLY paths). Every exported function and branch
 // is exercised; the CLI runs as a child process with HOME pointed at the temp dir.
 // Each case builds its own TEST-ONLY folder under one temp root, so the cases
-// pass in any order (the weekly run shuffles them).
+// pass in any order (a shuffled run reorders them).
 
 import fs from "node:fs";
 import os from "node:os";
