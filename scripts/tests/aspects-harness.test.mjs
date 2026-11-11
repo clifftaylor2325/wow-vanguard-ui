@@ -133,6 +133,8 @@ it("secret anchoring: from the game's SetPoint or SetSize, a secret texture or h
   expect(asAddon(addon, "return { issecretvalue(__t:GetWidth()), __t:HasSecretValues() }"), "a secret texture from the addon is taken, and hides the texture's geometry").toEqual([true, true]);
   addon.eval("__wfgWorld.holdSecret(__b, 'Anchoring')");
   expect(asAddon(addon, "return issecretvalue(__b:GetHeight())"), "holdSecret(w, 'Anchoring')").toBe(true);
+  // IsMouseOver is SecretWhenAnchoringSecret (Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua, both clients).
+  expect(asAddon(addon, "return { issecretvalue(__b:IsMouseOver()), issecretvalue(__a:IsMouseOver()) }"), "IsMouseOver hides it too, and not where the anchoring is plain").toEqual([true, false]);
 });
 
 it("secretAspects strict: every frame of the game's holds Shown, Alpha, Text and BarValue for the addon; UIParent and the addon's own frames do not", () => {

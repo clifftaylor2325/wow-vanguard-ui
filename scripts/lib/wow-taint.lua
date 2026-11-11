@@ -452,7 +452,9 @@ for _, name in ipairs(UNTAINTED_ONLY) do C_UnitAuras[name] = untaintedOnly(name,
 
 -- The getters that answer with a secret when a region's geometry is (each SecretWhenAnchoringSecret in
 -- the client's API documentation; wow-aspects.lua adds GetPoint, GetPointByName and the font string's other measures).
-local GEOMETRY = { "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect", "GetStringWidth", "GetUnboundedStringWidth" }
+-- IsMouseOver is one too: Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua (forever :507-509,
+-- live :483-485), so a truth test on it in the addon's code raises while the region's anchoring is secret.
+local GEOMETRY = { "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect", "GetStringWidth", "GetUnboundedStringWidth", "IsMouseOver" }
 
 -- Whether a value is a secret (the global, which a test may replace).
 local function isSecret(v)
