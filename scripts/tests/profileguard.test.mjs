@@ -426,7 +426,7 @@ it("A1-7 settings-loss guard: a logout where the client won't name the character
   const addon = loggedIn(CLICK_LUA);
   addon.eval("UnitName = function() return nil end");
   const next = relog(addon);
-  expect([question(next), next.eval("return ns.SettingsGuard.Lost() == true")], "the name was known at login, so the note and the stamp moved together: no question, no notice").toEqual([null, false]);
+  expect([question(next), next.eval("return ns.SettingsGuard.Lost()")], "the name was known at login, so the note and the stamp moved together: no question, no notice").toEqual([null, null]);
   const sv = next.savedVariables();
   expect(sv.account.guard.chars["Tester-ForeverTest"].stamp, "the account's note carries this character's stamp").toBe(sv.char.guard.stamp);
 });
