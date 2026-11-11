@@ -50,6 +50,9 @@ function issecretvalue(v)
   return type(v) == "table" and rawget(v, "__secret") == true
 end
 
+-- The world's own handle on that check, so its reads still work in a test that removes the global.
+local worldIsSecret = issecretvalue
+
 -- Whether a value is a secret world.secret made (a test's plain { __secret = true } stand-in keeps
 -- type() "table", so the test's own issecretvalue, if it has one, still knows it).
 local function madeSecret(v)
@@ -731,11 +734,11 @@ function UnitGUID(unit) local u = resolveUnit(unit) return u and (u.guid or ("TE
 function UnitHealth(unit) return uf(unit, "hp") or 0 end
 function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
 -- The number inside a value that may be secret (the harness looks; the addon never does).
-local function inside(v) return issecretvalue(v) and rawget(v, "n") or v end
+local function inside(v) return worldIsSecret(v) and rawget(v, "n") or v end
 -- Max health minus health, secret when either is (SecretReturns in Forever's docs).
 function UnitHealthMissing(unit)
   local hp, max = UnitHealth(unit), UnitHealthMax(unit)
-  if not (issecretvalue(hp) or issecretvalue(max)) then return max - hp end
+  if not (worldIsSecret(hp) or worldIsSecret(max)) then return max - hp end
   local h, m = inside(hp), inside(max)
   return world.secret(type(h) == "number" and type(m) == "number" and m - h or nil)
 end
@@ -750,7 +753,7 @@ function UnitHealthPercent(unit, _, curve)
   local fraction = max and max > 0 and hp / max or 0
   local result = fraction * 100
   if type(curve) == "table" and curve.Evaluate then result = curve:Evaluate(fraction) end
-  if not (u and (issecretvalue(u.hp) or issecretvalue(u.maxhp))) then return result end
+  if not (u and (worldIsSecret(u.hp) or worldIsSecret(u.maxhp))) then return result end
   if type(result) == "number" then return world.secret(result) end
   return CreateColor(world.secret(result.r), world.secret(result.g), world.secret(result.b), world.secret(result.a))
 end
@@ -799,7 +802,7 @@ function GetXPExhaustion() return world.units.player.rested end
 -- checked flag: UnitInRange is SecretReturns on both clients (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
 function UnitInRange(unit)
   local u = resolveUnit(unit)
-  if u and issecretvalue(u.inRange) then return u.inRange, world.secret(true) end
+  if u and madeSecret(u.inRange) then return u.inRange, world.secret(true) end
   return u ~= nil and u.inRange ~= false, u ~= nil
 end
 -- A unit's guild, from its guild, guildRank, guildRankIndex and guildRealm fields: guildName, guildRankName,
@@ -876,7 +879,7 @@ end
 -- SecretWhenUnitThreatStateRestricted and UnitDetailedThreatSituation SecretWhenUnitThreatValuesRestricted. The
 -- stored values are read through inside(), so the harness never compares a secret itself.
 local function threatHidden(u)
-  return world.threatSecret or issecretvalue(u.threat) or issecretvalue(u.threatPct)
+  return world.threatSecret or madeSecret(u.threat) or madeSecret(u.threatPct)
 end
 
 -- Each value as a secret when `hide`, else as it is.
@@ -960,7 +963,7 @@ C_Reputation = { GetWatchedFactionData = function() return world.watchedFaction 
 -- A secret interruptible gives a secret notInterruptible: both reads are SecretWhenUnitSpellCastRestricted and
 -- notInterruptible is not among their NeverSecret returns (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
 local function notInterruptible(c)
-  if issecretvalue(c.interruptible) then return world.secret(rawget(c.interruptible, "n") == false) end
+  if madeSecret(c.interruptible) then return world.secret(rawget(c.interruptible, "n") == false) end
   return c.interruptible == false
 end
 -- A cast: name, text, icon, startMs, endMs, isTradeSkill, castID, notInterruptible, spellId.
