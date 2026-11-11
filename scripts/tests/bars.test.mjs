@@ -1042,7 +1042,7 @@ function loggedInWithBarOne(bar) {
 }
 
 it("a bar size that isn't a number, or rows of 0, are dropped at login: the bars build at the shared size, 12 per row", () => {
-  for (const bar of ["{ size = 'big' }", "{ size = {} }", "{ size = 0 }", "{ size = -5 }", "{ size = 1/0 }", "{ size = 0/0 }", "{ perRow = 0, buttons = 'x' }"]) {
+  for (const bar of ["{ size = 'big' }", "{ size = {} }", "{ size = 0 }", "{ size = -5 }", "{ size = 1/0 }", "{ size = 0/0 }", "{ perRow = 0, buttons = 'x' }", "{ buttons = 200 }", "{ buttons = 13 }", "{ perRow = 2.5 }", "{ size = 5000 }"]) {
     const addon = loggedInWithBarOne(bar);
     expect(addon.eval("return #ns.errors"), `${bar}: no error`).toBe(0);
     const shape = addon.eval('local b = ns.GetModule("ActionBars").settings.bars[1] return { b.size == nil, b.perRow, b.buttons }');
@@ -1051,11 +1051,27 @@ it("a bar size that isn't a number, or rows of 0, are dropped at login: the bars
   }
 });
 
+// A full login whose saved bars settings hold `fields` (Lua source), returning the shared size and spacing it keeps.
+function sharedAfterLogin(fields) {
+  const addon = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { ActionBars = { ${fields} } } }\n` });
+  addon.eval(ACTIONS_ENV);
+  addon.login();
+  return addon.eval('local s = ns.GetModule("ActionBars").settings return { s.size, s.spacing, #ns.errors }');
+}
+
+it("H44-8-2 bars: a shared size or spacing outside the sliders' limits is dropped at login, so the defaults fill in", () => {
+  for (const field of ["size = 0", "size = -5", "size = 1/0", "size = 0/0", "size = 100000", "size = 20"]) {
+    expect(sharedAfterLogin(field), field).toEqual([38, 2, 0]);
+  }
+  expect(sharedAfterLogin("spacing = 100000"), "spacing 100000").toEqual([38, 2, 0]);
+  expect(sharedAfterLogin("size = 44, spacing = 6"), "values inside the limits stay").toEqual([44, 6, 0]);
+});
+
 it("an imported string's bar size that isn't a number is dropped before it is saved", () => {
   const addon = loggedIn(ACTIONS_ENV);
-  const size = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, ActionBars = { bars = { { size = "big", perRow = 0 } } } })
-    return { kind, data.ActionBars.bars[1].size == nil, data.ActionBars.bars[1].perRow == nil }`);
-  expect(size, "the payload is cleaned by the migration").toEqual(["parts", true, true]);
+  const size = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, ActionBars = { bars = { { size = "big", perRow = 0, buttons = 200 } } } })
+    return { kind, data.ActionBars.bars[1].size == nil, data.ActionBars.bars[1].perRow == nil, data.ActionBars.bars[1].buttons == nil }`);
+  expect(size, "the payload is cleaned by the migration").toEqual(["parts", true, true, true]);
 });
 
 // TEST-ONLY: runs the setter of the shared Action bars card's row `label` with a Lua value, as its control would.

@@ -24,7 +24,6 @@ local vgHover = ns.FrameState("vgHover")
 local AB = ns.GetModule("ActionBars")
 local T, V = ns.Theme, ns.Visibility
 
-AB.MAX_BUTTONS = 12
 -- True while you drag a spell or item (ACTIONBAR_SHOWGRID until HIDEGRID).
 AB.grid = false
 -- True while In combat bars are shown for a drag that started out of combat.
