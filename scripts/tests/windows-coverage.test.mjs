@@ -4,7 +4,7 @@
 // written from the window registry (Modules/Windows*.lua: GW.ORDER, GW.REGISTERED, GW.ON_DEMAND, GW.NEEDS) for both
 // clients, and the case at the end fails when the registry and the committed page differ.
 //
-//   VG_COVERAGE_WRITE=1 npx vitest run scripts/tests/windows-coverage.test.mjs    writes the page again
+//   VG_COVERAGE_WRITE=1 npm run test:slot -- --project lua scripts/tests/windows-coverage.test.mjs    writes the page again
 
 import fs from "node:fs";
 import path from "node:path";
@@ -106,5 +106,5 @@ function page() {
 it("docs/design/RESKIN-COVERAGE.md is the window registry, for both clients", () => {
   const text = page();
   if (process.env.VG_COVERAGE_WRITE) return void fs.writeFileSync(PAGE, text);
-  expect(fs.existsSync(PAGE) ? fs.readFileSync(PAGE, "utf8") : "", "the page is out of date: VG_COVERAGE_WRITE=1 npx vitest run scripts/tests/windows-coverage.test.mjs").toBe(text);
+  expect(fs.existsSync(PAGE) ? fs.readFileSync(PAGE, "utf8") : "", "the page is out of date: VG_COVERAGE_WRITE=1 npm run test:slot -- --project lua scripts/tests/windows-coverage.test.mjs").toBe(text);
 });
