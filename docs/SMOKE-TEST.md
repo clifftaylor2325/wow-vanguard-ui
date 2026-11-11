@@ -5524,6 +5524,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the spam goes to a new Filtered tab, and the Loot tab keeps its name and holds no spam.
 - If it fails, paste: `/vg filter` and the tab names.
 
+### 33.570 A community invitation toast keeps the community's colour (H44-16-1)
+
+- Do: have a friend invite you to a Battle.net community (or a club finder invitation) while the toast skin is on.
+- Expect: the community name in the toast stands out (blue or gold) from the grey sentence; a friend coming online still reads in secondary text.
+- If it fails, paste: a screenshot, or `name coloured: yes/no`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

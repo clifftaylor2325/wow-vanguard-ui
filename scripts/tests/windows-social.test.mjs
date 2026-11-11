@@ -1186,14 +1186,17 @@ const TOAST_ENV = WINDOWS_ENV + `
   bn.TooltipFrame.Text = bn.TooltipFrame:CreateFontString(nil, "ARTWORK") bn.TooltipFrame.Text:SetFont("TEST-ONLY-FONT", 10, "")
   local time = __toast("TimeAlertFrame")
   time.Text = time:CreateFontString(nil, "ARTWORK") time.Text:SetFont("TEST-ONLY-FONT", 12, "")
-  function bn:ShowToast(online)
-    self.DoubleLine:SetText("|cff7c8489TEST-ONLY single line|r") self.DoubleLine:SetTextColor(0.486, 0.518, 0.541)
+  -- As BNToastMixin:ShowToast sets them (forever and live Blizzard_BNet/Mainline/BNet.lua): DoubleLine is plain text for a friend
+  -- invite (BN_TOAST_NEW_INVITE) and holds a club name wrapped in a colour code for a community invitation; its grey is
+  -- the XML's colour (BNet.xml), never a code. Only BottomLine for a friend coming online is wrapped whole in FRIENDS_GRAY_COLOR.
+  function bn:ShowToast(online, club)
+    self.DoubleLine:SetText(club and "You have been invited to join |cff82c5ffTEST-ONLY Club|r" or "TEST-ONLY single line") self.DoubleLine:SetTextColor(0.486, 0.518, 0.541)
     self.TopLine:SetText("|cff82c5ffTEST-ONLY Friend|r")
     if online then self.BottomLine:SetText("|cff999999TEST-ONLY has come online|r")
     else self.BottomLine:SetText("TEST-ONLY has gone offline") self.BottomLine:SetTextColor(0.5, 0.5, 0.5) end
     self:Show()
   end
-  function __showToast(online) BNToastFrame:ShowToast(online) end
+  function __showToast(online, club) BNToastFrame:ShowToast(online, club) end
 `;
 // What the toasts look like: the Battle.net toast's art alphas, icon alpha, panel, bottom line colour and text, top line
 // text, top and bottom line sizes, close glyph, whether the X kept the game's anchor, its tooltip's NineSlice alpha, panel
@@ -1213,7 +1216,10 @@ it("social toasts: the Battle.net and time-played toasts are flat tooltip panels
   const t = toastLook(addon);
   expect([t.art, t.icon, t.panel, t.glyph, t.anchored], "backdrop and glow at alpha 0, the Battle.net icon kept, a panel, the close glyph on the X, which stays in the toast's corner").toEqual([[0, 0, 0, 0], 1, true, "CloseMark", true]);
   expect([isTok(addon, t.bottom, "text2"), t.bottomText, t.top, t.small], "the bottom line the game greyed by SetTextColor: in secondary text, its words kept; top line at label size, bottom at small").toEqual([true, "TEST-ONLY has gone offline", 12, 10]);
-  expect([isTok(addon, addon.eval("return BNToastFrame.DoubleLine.__textColor"), "text2"), addon.eval("return BNToastFrame.DoubleLine:GetText()")], "the single-line variant's grey in secondary text, the code stripped").toEqual([true, "TEST-ONLY single line"]);
+  expect([isTok(addon, addon.eval("return BNToastFrame.DoubleLine.__textColor"), "text2"), addon.eval("return BNToastFrame.DoubleLine:GetText()")], "the single-line variant's grey in secondary text, its words as the game set them").toEqual([true, "TEST-ONLY single line"]);
+  addon.eval("__showToast(false, true)");
+  expect([isTok(addon, addon.eval("return BNToastFrame.DoubleLine.__textColor"), "text2"), addon.eval("return BNToastFrame.DoubleLine:GetText()")], "a community invitation: the line in secondary text, the community's own colour code kept (H44-16-1)").toEqual([true, "You have been invited to join |cff82c5ffTEST-ONLY Club|r"]);
+  expect(addon.eval("BNToastFrame.BottomLine:SetText('|cff999999own |cffff0000words|r|r') BNToastFrame:Hide() BNToastFrame:Show() return BNToastFrame.BottomLine:GetText()"), "text with codes of its own that is not one whole wrap is left alone").toBe("|cff999999own |cffff0000words|r|r");
   expect([t.tipNine, t.tipPanel, isTok(addon, t.tipText, "text")], "its hover tooltip: NineSlice faded, a panel, light text").toEqual([0, true, true]);
   expect([t.timePanel, t.timeText], "the time-played alert: a panel, its line at label size").toEqual([true, 12]);
   addon.eval("__showToast(true)");
