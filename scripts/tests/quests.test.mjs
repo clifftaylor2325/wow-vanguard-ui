@@ -2532,6 +2532,23 @@ it("H44-17-51 quest dialog: a game handler that keeps failing is called on every
   for (let i = 0; i < 12; i++) addon.fire("QUEST_DETAIL");
   expect(addon.eval("return { __gameSaw, #ns.paused }"), "all twelve reach the game's handler, none is paused").toEqual([12, 0]);
 });
+// The game opens its own window for a gossip with a registered texture kit (CustomGossipManagerMixin:HandleOpenEvent,
+// forever and live Blizzard_UIPanels_Game/Mainline/CustomGossipFrameBase.lua:47-55; GetHandler at line 75).
+it("H8-8-2 quest dialog: a gossip the game has its own window for goes to the game, a plain one to the dialog", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_WINDOW + `CustomGossipFrameManager:SetScript("OnEvent", function(_, event) __gameSaw[#__gameSaw + 1] = "manager " .. event end)
+    CustomGossipFrameManager.handlers = { ["npe-guide"] = function() end }
+    CustomGossipFrameManager.GetHandler = function(self, kit) return (kit and self.handlers) and self.handlers[kit] end`);
+  addon.fire("GOSSIP_SHOW", "npe-guide");
+  expect([gameSaw(addon), quest(addon)[2]], "a kit with a handler: the game's manager has the page, the dialog stays hidden").toEqual(["manager GOSSIP_SHOW", false]);
+  addon.fire("GOSSIP_CLOSED");
+  addon.update(0.5);
+  addon.fire("GOSSIP_SHOW", "plain-kit");
+  expect(quest(addon)[2], "a kit with none: the dialog's").toBe(true);
+  addon.fire("GOSSIP_CLOSED");
+  addon.eval("CustomGossipFrameManager.baseHandler = function() end");
+  addon.fire("GOSSIP_SHOW");
+  expect([quest(addon)[2], addon.eval("return #ns.errors")], "a base handler another addon set takes any page, with no error").toEqual([false, 0]);
+});
 it("quest dialog: a held modifier hands one talk to the game, and the dialog is back for the next", () => {
   const addon = loggedIn(QUEST_ENV + GAME_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
   addon.eval("__shift = true");

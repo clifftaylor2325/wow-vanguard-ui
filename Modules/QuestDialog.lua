@@ -409,11 +409,22 @@ function QD.IsHandedBack()
   return QD.handedBack == true
 end
 
--- A page event while the game has the talk (handed back, or the modifier was held when it began): the game's
--- window answers it, forwarded here when its events are taken. True when the game has it.
+-- Whether the game has a window of its own for this gossip page: a handler registered for its texture kit (the
+-- new-player guide, Torghast's level picker) or a base handler another addon set, as CustomGossipManagerMixin:
+-- HandleOpenEvent chooses (Blizzard_UIPanels_Game/Mainline/CustomGossipFrameBase.lua). Reads the manager, never writes it.
+local function gameGossipWindow(event, kit)
+  local manager = event == "GOSSIP_SHOW" and _G.CustomGossipFrameManager
+  if type(manager) ~= "table" or type(manager.GetHandler) ~= "function" then return false end
+  local handler = ns.PlainText(kit) and manager:GetHandler(kit)
+  return (handler or manager.baseHandler) ~= nil
+end
+
+-- A page event while the game has the talk (handed back, the modifier was held when it began, or the game has a
+-- window of its own for the page): the game's window answers it, forwarded here when its events are taken. True
+-- when the game has it.
 function QD.Bypassed(event, ...)
   if QD.handedBack then return true end
-  if not QD.gameTalk and not QD.BypassHeld() then return false end
+  if not (QD.gameTalk or QD.BypassHeld() or gameGossipWindow(event, ...)) then return false end
   QD.gameTalk = true
   QD.closing = nil
   QD.Forward(event, ...)
