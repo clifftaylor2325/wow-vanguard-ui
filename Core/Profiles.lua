@@ -155,22 +155,41 @@ function ns.ForkProfile(name)
   return new
 end
 
+-- The profile names this character can load without a pick: its own profile and each spec's.
+---@return string[] names
+function ns.ProfilesHeld()
+  local names = { type(VanguardCharDB.ownProfile) == "string" and VanguardCharDB.ownProfile or nil }
+  for _, profile in pairs(type(VanguardCharDB.specProfiles) == "table" and VanguardCharDB.specProfiles or {}) do
+    if type(profile) == "string" then names[#names + 1] = profile end
+  end
+  return names
+end
+
+-- True when a character's guard note says it runs on the profile called name, or can load it (its uses list).
+local function noteUses(note, name)
+  if note.profile == name then return true end
+  for _, used in ipairs(type(note.uses) == "table" and note.uses or {}) do
+    if used == name then return true end
+  end
+  return false
+end
+
 -- True when another character runs on the profile called name, as the account file's guard notes
--- each character's profile at logout (Core/SettingsGuard.lua; a damaged note is skipped).
+-- each character's profile and the profiles it can load at logout (Core/SettingsGuard.lua; a damaged note is skipped).
 local function characterUses(name)
   local guard = type(VanguardDB.guard) == "table" and VanguardDB.guard
   for _, char in pairs(guard and type(guard.chars) == "table" and guard.chars or {}) do
-    if type(char) == "table" and char.profile == name then return true end
+    if type(char) == "table" and noteUses(char, name) then return true end
   end
   return false
 end
 
 -- True when a backup must not replace the profile called name: this character uses it now, after
--- the reload or for a spec, or another character uses it.
+-- the reload, as its own profile or for a spec, or another character uses it.
 local function profileInUse(name)
   if name == ns.ProfileName() or name == ns.SelectedProfileName() then return true end
-  for _, profile in pairs(type(VanguardCharDB.specProfiles) == "table" and VanguardCharDB.specProfiles or {}) do
-    if profile == name then return true end
+  for _, held in ipairs(ns.ProfilesHeld()) do
+    if held == name then return true end
   end
   return characterUses(name)
 end

@@ -29,7 +29,7 @@ it("settings-loss guard: logout leaves the same stamp in both files, the charact
   const sv = addon.savedVariables();
   expect(typeof sv.char.guard.stamp, "a stamp in this character's file").toBe("number");
   expect(sv.account.guard.stamp, "the same stamp in the account file").toBe(sv.char.guard.stamp);
-  expect(sv.account.guard.chars["Tester-ForeverTest"], "the account notes the profile each character uses").toEqual({ profile: "Default", stamp: sv.char.guard.stamp });
+  expect(sv.account.guard.chars["Tester-ForeverTest"], "the account notes the profile each character uses").toEqual({ profile: "Default", uses: {}, stamp: sv.char.guard.stamp });
   expect(sv.char.guard.profile, "the backup names its profile").toBe("Default");
   expect(sv.char.guard.backup.startsWith("VG1:profile:"), "and holds it as a whole-profile string").toBe(true);
   const unnamed = loggedIn("UnitName = function() return nil end");

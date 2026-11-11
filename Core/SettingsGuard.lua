@@ -345,7 +345,7 @@ function G.Save()
   if G.lost and not G.picked then return end
   local t, key, acct = now(), G.CharKey() or G.key, accountGuard()
   acct.stamp = t
-  if key then acct.chars[key] = { profile = ns.SelectedProfileName(), stamp = t } end
+  if key then acct.chars[key] = { profile = ns.SelectedProfileName(), uses = ns.ProfilesHeld(), stamp = t } end
   local profile, backup = keptBackup()
   VanguardCharDB.guard = { stamp = charStamp(key, t), profile = profile, backup = backup }
 end

@@ -1106,3 +1106,32 @@ it("a profile saved with the retired Pet stable, Legacy helper and boss docks lo
   const bare = addon.eval("local p = { modules = 7, PetStable = {} } ns.MigrateProfileTable(p) return { p.PetStable == nil, p.modules }");
   expect(bare, "a profile whose module switches are not a table still loses the retired tables, and keeps what it has").toEqual([true, 7]);
 });
+
+// H44-12-3: the account's logout note lists every profile a character can load, so an import's backup spares them.
+const SHARED_BACKUP = (uses) => `VanguardDB.profiles = { Default = {}, ["Default backup"] = { marker = "B spec 2" } }
+VanguardDB.backupOf = { ["Default backup"] = "Default" }
+VanguardDB.guard = { chars = { ["TEST-ONLY B-Realm"] = { profile = "Default", stamp = 1, uses = ${uses} } } }`;
+const IMPORT_BACKUP = 'return (select(2, ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "copper" } }))))).backup';
+
+it("H44-12-3: a backup is not written over a profile another character lists in its note's uses", () => {
+  const addon = loggedIn("", { savedVariables: SHARED_BACKUP('{ "Default backup" }') });
+  expect(addon.eval(IMPORT_BACKUP), "the shared backup is left alone").toBe("Default backup 2");
+  expect(addon.eval('return VanguardDB.profiles["Default backup"].marker'), "it keeps its data").toBe("B spec 2");
+});
+
+it("H44-12-3: a damaged uses list or entry in a note is skipped, and an old note without one behaves as before", () => {
+  for (const uses of ['"Default backup"', "{ 7, false }", "nil"]) {
+    const addon = loggedIn("", { savedVariables: SHARED_BACKUP(uses) });
+    expect(addon.eval(IMPORT_BACKUP), `uses = ${uses}`).toBe("Default backup");
+  }
+});
+
+it("H44-12-3: this character's own profile behind a spec's is kept, and the logout note lists what it can load", () => {
+  const addon = loggedIn("", { savedVariables: 'VanguardDB.profiles = { Default = {}, ["Default backup"] = {}, Raid = {} }\nVanguardDB.backupOf = { ["Default backup"] = "Default" }\nVanguardCharDB.ownProfile = "Default backup"' });
+  addon.eval('VanguardCharDB.specProfiles = { [2] = "Raid", [3] = 5 }');
+  expect(addon.eval(IMPORT_BACKUP), "ownProfile is in use").toBe("Default backup 2");
+  addon.eval('VanguardCharDB.ownProfile = "Default backup"');
+  addon.fire("PLAYER_LOGOUT");
+  const notes = Object.values(addon.savedVariables().account.guard.chars);
+  expect(notes[0].uses.slice().sort(), "the note's uses").toEqual(["Default backup", "Raid"]);
+});
