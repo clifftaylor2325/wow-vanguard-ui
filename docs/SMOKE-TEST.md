@@ -5438,6 +5438,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the transmute is still listed with its time left after each `/vg craft cd`, whichever window is open.
 - If it fails, paste: the lines, and `/dump C_TradeSkillUI.GetRecipeCooldown(<the recipe id>)` with the window closed (a number, 0 or nil), and `/vg errors`.
 
+### 33.635 A broker feed whose icon the game hides
+
+- Do: `/run VGSecretFeed = LibStub('LibDataBroker-1.1'):NewDataObject('VGSecret', { type = 'data source', text = 'x' })` (with any addon loaded that loads LibDataBroker), pick VGSecret under Map → Data from other addons, then in a dungeon fight `/run local a = C_UnitAuras.GetAuraDataByIndex('player', 1) VGSecretFeed.icon = a and a.icon`. [Client: Forever and Retail.]
+- Expect: no red error text; the VGSecret slot shows its text with no icon, and any feed picked after it still shows.
+- If it fails, paste: any red error text, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
