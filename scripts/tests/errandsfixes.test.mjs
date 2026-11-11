@@ -60,3 +60,33 @@ it("H44-23-101: lowering an amount during a run caps the buying at the new amoun
   const addon = runThenChange("VanguardCharDB.stockList[90011] = 12");
   expect(addon.eval("return { __have[90011], __buys }"), "5 carried, 5 bought, then only 2 more to reach 12").toEqual([12, [5, 2]]);
 });
+
+// Opens the Keep stocked window with bread at 20 and puts the cursor in its amount box.
+const openStockWindow = () => {
+  const addon = loggedIn("");
+  addon.eval("VanguardCharDB.stockList = { [90011] = 20 } ns.GetModule('Errands').StockWindow.Open() Vanguard_StockList.rows[1].amount:SetFocus()");
+  return addon;
+};
+// Types text into the first row's amount box as the player would.
+const typeAmount = (addon, text) => addon.eval(`local b = Vanguard_StockList.rows[1].amount b:SetText(${JSON.stringify(text)}) b.__scripts.OnTextChanged(b, true)`);
+
+it("H44-23-R1: an item's data arriving while you retype a Keep stocked amount leaves the box alone", () => {
+  const addon = openStockWindow();
+  typeAmount(addon, "");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 4242, true);
+  addon.advance(0.1);
+  expect(addon.eval("return Vanguard_StockList.rows[1].amount:GetText()"), "the box the player emptied stays empty").toBe("");
+  typeAmount(addon, "5");
+  expect(addon.eval("return VanguardCharDB.stockList[90011]"), "the next digit is the whole amount").toBe(5);
+});
+
+it("H44-23-R1: the repaint that waited for the amount box runs when you leave it", () => {
+  const addon = openStockWindow();
+  addon.eval("C_Item.GetItemInfo = function() return 'TEST-ONLY Bread' end");
+  addon.fire("GET_ITEM_INFO_RECEIVED", 90011, true);
+  addon.advance(0.1);
+  expect(addon.eval("return Vanguard_StockList.rows[1].name:GetText()"), "still the placeholder while the box is in use").not.toBe("TEST-ONLY Bread");
+  addon.eval("local b = Vanguard_StockList.rows[1].amount b:ClearFocus() b.__scripts.OnEditFocusLost(b)");
+  addon.advance(0.1);
+  expect(addon.eval("return Vanguard_StockList.rows[1].name:GetText()"), "the name that arrived meanwhile is painted").toBe("TEST-ONLY Bread");
+});

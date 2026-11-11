@@ -70,13 +70,15 @@ local function typeAmount(box, user)
 end
 
 -- Leaving a row's box: 0 or nothing takes the item off; anything else shows the amount kept. A box losing
--- focus because a repaint hid it (SW.painting) leaves the list alone: the player didn't leave it.
+-- focus because a repaint hid it (SW.painting) leaves the list alone: the player didn't leave it. A repaint that
+-- waited for the box (SW.Editing) is asked for here.
 function SW.LeaveAmount(box)
   local id = box:GetParent().id
   if SW.painting or not id or not ER.StockList()[id] then return end
   local n = tonumber(box:GetText())
   if not n or n <= 0 then return SW.Remove(id) end
   box:SetText(tostring(ER.StockList()[id]))
+  if SW.waiting then ns.Soon("stock window", SW.Refresh) end
 end
 
 -- A row's amount box: numbers only, saved as you type, checked when you leave it.
@@ -143,7 +145,7 @@ function SW.Refresh()
   local f = SW.frame
   if not f then return end
   local ids = ER.StockIDs()
-  SW.painting = true
+  SW.painting, SW.waiting = true, nil
   f.rows.Reset()
   for i, id in ipairs(ids) do paintRow(f.rows.Next(), i, id) end
   SW.painting = nil
@@ -251,9 +253,20 @@ local function build()
   return f
 end
 
--- Repaints an open window on the next frame, once for a burst (an item's name or icon arriving).
+-- Whether the player is typing in one of the rows' amount boxes (a repaint would put the saved number back).
+function SW.Editing()
+  for i = 1, SW.frame.rows.used do
+    if SW.frame.rows[i].amount:HasFocus() then return true end
+  end
+  return false
+end
+
+-- Repaints an open window on the next frame, once for a burst (an item's name or icon arriving); it waits while
+-- an amount box is in use (SW.waiting), and SW.LeaveAmount asks for it afterwards.
 local function refreshSoon()
-  if SW.frame and SW.frame:IsShown() then ns.Soon("stock window", SW.Refresh) end
+  if not (SW.frame and SW.frame:IsShown()) then return end
+  SW.waiting = SW.Editing()
+  if not SW.waiting then ns.Soon("stock window", SW.Refresh) end
 end
 
 -- Opens the window (Errands must be on), built on first use.

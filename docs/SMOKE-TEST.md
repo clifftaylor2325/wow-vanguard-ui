@@ -5420,6 +5420,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: after Clear list no further purchase of that item is made and chat reports only what arrived; with the amount lowered the run buys up to the new amount and stops, never past it.
 - If it fails, paste: the chat lines, how many you carried before and after, and `/vg errors`.
 
+### 33.627 Keep stocked amount box keeps what you type
+
+- Do: open Keep stocked (Town and gear, Errands, Edit list...) in a city with an item on the list, click its amount box, delete the number, wait two seconds (let the game load item names around you, for example by opening your bags), then type 5. [Client: Forever and Retail.]
+- Expect: the box reads 5 and the row keeps 5; the box did not fill itself with the old number while it was empty, and after you click elsewhere the item's name and icon are up to date.
+- If it fails, paste: what the box showed while it was empty, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
