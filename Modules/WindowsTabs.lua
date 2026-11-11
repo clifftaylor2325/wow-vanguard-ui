@@ -178,19 +178,21 @@ end
 
 -- Moves a tab (or a holder of tabs, which has two anchors) set against an outer edge of its window out to its
 -- panel's padded edge (one pixel in, so their borders meet), once: the panel reaches past the window, and would
--- cover the tab's near end.
-function GW.ClearPadding(tab, window)
-  local pad, count, moved = GW.TabPad(window), tab:GetNumPoints(), {}
+-- cover the tab's near end. `pad` moves it less where the room past the window is short (the social window's side tabs).
+function GW.ClearPadding(tab, window, pad)
+  local count, moved = tab:GetNumPoints(), {}
+  pad = pad or GW.TabPad(window)
   if vgTabPadded[tab] or pad <= 0 or count < 1 or count > 2 then return end
   vgTabPadded[tab] = true
   for i = 1, count do moved[i] = { movedOut(window, pad, tab:GetPoint(i)) } end
   for _, anchor in ipairs(moved) do if anchor[1] then tab:SetPoint(unpack(anchor)) end end
 end
 
--- Pads a tab again after the game re-anchored it (a refreshed tab set): clears its once-flag, then pads it.
-function GW.PadTabAgain(tab, window)
+-- Pads a tab again after the game re-anchored it (a refreshed tab set): clears its once-flag, then pads it (by `pad`
+-- when given, as GW.ClearPadding).
+function GW.PadTabAgain(tab, window, pad)
   vgTabPadded[tab] = nil
-  GW.ClearPadding(tab, window)
+  GW.ClearPadding(tab, window, pad)
 end
 
 -- Takes the game's rounded mask off an icon tab's icon, once (the mask sits a little off the icon's centre, so its

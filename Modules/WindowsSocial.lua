@@ -1236,13 +1236,38 @@ local sideSkins = {
   BattleNetUnavailableNoticeFrame = dialogWith(dressNotice), BattleNetBroadcastFrame = GW.SkinSocialDialog, RaidInfoFrame = dialogWith(dressRaidInfoList),
 }
 
--- How far a side window moves out (units): by what GW.ClearPadding moved the side tabs out (to the window's padded
--- edge, while the tabs group dresses them) and by the side window's own panel padding, so the game's gap between the
--- tab column and the side window (SocialUIFrameMixin:GetTabColumnWidth, 7 past the tab) holds.
+-- The room the game leaves the social window's side windows (units). It reserves the tab column (the tab art plus
+-- tabColumnGap, SocialUIFrameMixin:GetTabColumnWidth) and the side window's width (GetPanelExtraWidth), then the panel
+-- manager's spacing before the next window it pushes (PANEl_SPACING_X, UIPanelLayoutFrame.lua), whose panel reaches its
+-- own padding back into that spacing. `gap` is what Vanguard keeps between a side window's panel and the tabs, and
+-- between it and the next window's panel. The game is never told of more width (a taint path): the side panels stay
+-- inside the room it reserved.
+GW.SOCIAL_SIDE_ROOM = { tabColumnGap = 7, spacing = 32, gap = 1 }
+
+-- How far a side window with `pad` of panel padding may move out before its panel would come within the gap of the
+-- next window's panel (whose padding is the social window's own, as every window's).
+local function sideReach(window, pad)
+  local room = GW.SOCIAL_SIDE_ROOM
+  return room.spacing - T.Padding(window) - pad - room.gap
+end
+
+-- How far the side tabs move out (units): toward the window's padded edge, as other windows' tabs (GW.TabPad), but
+-- only so far that the widest side panel (a framed side window, padded as the window is) still keeps the gap from
+-- them where it may sit. With a 12-unit padding that is 1 unit (other windows' tabs move 11).
+function GW.SocialTabPad(window)
+  local room, pad = GW.SOCIAL_SIDE_ROOM, T.Padding(window)
+  local free = sideReach(window, pad) + room.tabColumnGap - pad - room.gap
+  return math.max(0, math.min(GW.TabPad(window), free))
+end
+
+-- How far a side window moves out (units): past the side tabs' move and its own panel padding, so the game's gap
+-- between the tab column and the side window holds, but never past sideReach. The ignore list (padded 12) moves 7, its
+-- panel ending 1 unit short of the next window's; the side dialogs (unpadded) move as far as the tabs did.
 local function sideShift(window, side)
   local tabs = 0
-  if GW.GroupOn("tabs") then tabs = GW.TabPad(window) end
-  return math.max(tabs, 0) + T.Padding(side)
+  if GW.GroupOn("tabs") then tabs = GW.SocialTabPad(window) end
+  local pad = T.Padding(side)
+  return math.min(tabs + pad, sideReach(window, pad))
 end
 
 -- Moves a side window out by sideShift from the one anchor the game gave it (TOPLEFT on the window's TOPRIGHT, set
@@ -1269,12 +1294,12 @@ local function watchSide(window, frame, skin)
 end
 
 -- The side tabs the window takes from its pool (anchored again on every RefreshTabs): each in the theme
--- with its icon and count kept, out past the window's padding, raised while it is selected and its icon
+-- with its icon and count kept, moved out as far as the side windows leave room (GW.SocialTabPad), raised while it is selected and its icon
 -- greyed while another is selected. Left to the game when the tabs group is off.
 local function dressSocialTabs(frame)
   if not GW.GroupOn("tabs") or type(frame.EnumerateTabs) ~= "function" then return end
   for tab in frame:EnumerateTabs() do
-    GW.PadTabAgain(tab, frame)
+    GW.PadTabAgain(tab, frame, GW.SocialTabPad(frame))
     T.Tab(tab, { dimIcon = true })
   end
 end
