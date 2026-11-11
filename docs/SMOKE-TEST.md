@@ -2049,8 +2049,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 15.6e Chat tabs
 
-- Do: `/vg` → Chat → Chat tabs. Click New chat tab, type `Loot`, Make. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Click General in the chat so Drops is hidden, reopen the page and pick Drops from the Tab choice, then Close this tab. Do the same in combat, making two new tabs in the one fight, then closing both in another.
-- Expect: a new tab appears and is picked; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Drops is in the Tab choice while General's tab is the one shown, and closes; in combat a new tab or close waits until the fight ends, both tabs made in one fight appear, and both closed in one fight close. `/vg errors` is empty. [Needs in game: FCF_OpenNewWindow, FCF_SetWindowName, FCF_Close, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
+- Do: `/vg` → Chat → Chat tabs. Click New chat tab; then right-click a chat tab, choose Create New Window, name it `Loot`, and reopen the page. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops and click Close this tab, then close it from its own right-click menu, Close Chat Window.
+- Expect: New chat tab says in chat to right-click a tab and choose Create New Window; the new tab is in the Tab choice; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Close this tab on Drops makes no change and says to right-click its tab and choose Close Chat Window, which closes it. `/vg errors` is empty. [Needs in game: FCF_SetWindowName, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
 - If it fails, paste: `/vg errors` and what the tab did.
 
 ### 15.6f Chat search
@@ -4922,10 +4922,10 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: with `type:key` the key ring button stays lit; with `q:epic` (no epic key) it dims.
 - If it fails, paste: a screenshot of the bag bar, and the output of `/dump C_Container.GetContainerNumSlots(-1)` and `/dump KeyRingButton:GetBagID()`.
 
-### 33.386 Close this tab gives the tab's chat back to General (Forever)
+### 33.386 Close this tab points to the game's menu, which gives the tab's chat back to General (Forever)
 
-- Do: In the game's chat settings, make a new tab, move Trade onto it and untick Trade on General. Open `/vg`, go to Chat, Chat tabs, pick that tab and press Close this tab.
-- Expect: The tab closes and Trade lines show in General again.
+- Do: In the game's chat settings, make a new tab, move Trade onto it and untick Trade on General. Open `/vg`, go to Chat, Chat tabs, pick that tab and press Close this tab; then right-click the tab and choose Close Chat Window.
+- Expect: Close this tab changes nothing and chat says to right-click the tab and choose Close Chat Window; the game's menu closes the tab and Trade lines show in General again.
 - If it fails, paste: The chat tab's channel list from the game's chat settings for General, and any red error text.
 
 ### 33.387 Quest item buttons in a fight (Forever)
@@ -4997,7 +4997,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.397 Close this tab leaves channel tabs to the game's menu (Forever)
 
 - Do: make a chat tab that shows Trade or LookingForGroup (right-click the tab, Settings, tick the channel). Open the Vanguard options, Chat page, Chat tabs, pick that tab and press Close this tab. Then right-click the tab and choose Close Chat Window. Repeat Close this tab on a floating (undocked) channel window. Next, make a second tab that shows no channel and close it with Close this tab. Without reloading, enter `/console taintLog 1`, go into a dungeon and watch LookingForGroup or a custom channel in the main window for a few minutes.
-- Expect: the channel tab stays open (Vanguard does not select it), and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."; after the game's Close Chat Window the channel shows in the main window. On the floating channel window the main chat window stays visible and the same line shows in it. The tab with no channel closes from Vanguard's button. In the dungeon, channel lines keep showing in the main window with no Lua error and no taint line naming Vanguard.
+- Expect: the channel tab stays open (Vanguard does not select it), and chat says "To close a chat tab, right-click its tab and choose Close Chat Window. The game gives its chat back to the main window."; after the game's Close Chat Window the channel shows in the main window. On the floating channel window the main chat window stays visible and the same line shows in it. The tab with no channel stays open too, and closes from the game's menu. In the dungeon, channel lines keep showing in the main window with no Lua error and no taint line naming Vanguard.
 - If it fails, paste: the chat line shown, any Lua error, and the lines naming Vanguard in Logs/taint.log.
 
 ### 33.398 Restored Discord guild lines offer no Report Chat (Forever)
@@ -5075,7 +5075,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.410 Close this tab in a fight skips a tab that gained a channel (Forever)
 
 - Do: Open `/vg` > Chat > Chat tabs, pick a tab with no channel, enter combat, press Close this tab, then right-click that tab, choose Settings and tick Trade. Leave combat.
-- Expect: The tab stays open and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window." No error appears.
+- Expect: The tab stays open and chat says "To close a chat tab, right-click its tab and choose Close Chat Window. The game gives its chat back to the main window." Nothing is closed when the fight ends. No error appears.
 - If it fails, paste: the chat lines and any Lua error text.
 
 ### 33.420 Action bar cooldown sweeps after the sweep change (Forever)
@@ -5511,6 +5511,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Do: with `/vg` > Chat > Move floating windows on and reloaded, pull a tab (Loot) out of the dock, drag its tab back into the dock, then open and close Edit Mode.
 - Expect: the Loot tab's text stays inside the main chat panel when you click it, and `/vg unlock` shows no `Chat: Loot` handle.
 - If it fails, paste: a screenshot if the text sits elsewhere, and `/vg errors`.
+
+### 33.568 A tab made and closed from the game's menu stays clean for channels (H44-19-2, H44-19-R1)
+
+- Do: make a tab from the game's tab menu (Create New Window); in `/vg` > Chat > Chat tabs pick it and click Close this tab; close it from its own menu, make another, tick LookingForGroup on it in its Settings, enter a dungeon and wait for a channel line (`/console taintLog 1` first). Also click New chat tab.
+- Expect: New chat tab and Close this tab only say how to use the game's tab menu; the new tab's channel line shows with no Lua error and no taint line naming Vanguard.
+- If it fails, paste: `/vg errors` and the lines naming Vanguard in Logs/taint.log.
 
 ## 34. Retail
 

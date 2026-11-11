@@ -185,98 +185,50 @@ it("chat tabs: Show switches add and remove a message group on the picked tab", 
   expect(addon.eval("return #ns.errors") + bare.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-it("chat tabs: New makes a tab and picks it; Rename renames the picked tab; names are cleaned; Close shuts any but the main tab", () => {
-  const addon = loggedIn(ENV + TABS);
-  addon.eval(`${chatRow("New chat tab")} r[3]() local box = Vanguard_TextBox or nil`);
-  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("  Trade|cffff0000 and more words than fit  ")`);
-  expect(addon.eval(`return { __wfgWorld.chatWindows[3], ns.GetModule("ChatWindows").editing }`), "a cleaned, clipped name, and the new tab is picked").toEqual(["Tradecffff0000 a", 3]);
-  addon.eval(`${chatRow("Rename this tab")} r[3]() ns.GetModule("ChatWindows").Rename("Barter")`);
-  expect(addon.eval("return __wfgWorld.chatWindows[3]"), "renamed").toBe("Barter");
-  addon.eval(`ns.GetModule("ChatWindows").Close()`);
-  expect(addon.eval("return { __closed, ns.GetModule('ChatWindows').editing == nil }"), "closed, and the picker goes back").toEqual(["ChatFrame3", true]);
-  addon.eval(`${chatRow("Close this tab")} r[3]()`);
-  expect(addon.eval("return __closed"), "the main tab is not closed").toBe("ChatFrame3");
-  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("") CW.Rename("   ")`);
+// forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua: FCF_OpenNewWindow runs chatFrame:RemoveAllChannels() and FCF_Close
+// ends in RemoveAllMessageGroups/RemoveAllChannels, each writing the window's channel lists from whoever calls it (taint), so
+// Vanguard calls neither and sends the player to the game's own tab menu.
+it("chat tabs: New chat tab makes nothing and points to the game's tab menu; the picker lists a tab once the game makes it (H44-19-2)", () => {
+  const addon = loggedIn(ENV + TABS + "__opened = 0 local open = FCF_OpenNewWindow FCF_OpenNewWindow = function(...) __opened = __opened + 1 return open(...) end");
+  addon.eval(`${chatRow("New chat tab")} r[3]()`);
+  expect(addon.eval("return { __opened, __wfgWorld.chatWindows[3] == nil }"), "Vanguard opened no window").toEqual([0, true]);
+  expect(chatHas(addon, /right-click any chat tab and choose Create New Window/), "chat says how").toBe(true);
+  addon.eval(`FCF_OpenNewWindow("Trade")`);
+  expect(addon.eval(`local out = {} for _, c in ipairs(ns.GetModule("ChatWindows").TabChoices()) do out[#out + 1] = c[2] end return out`), "the game's new tab is a choice").toEqual(["General", "Loot", "Trade"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-it("chat tabs: two new tabs asked for in one fight are both made when it ends", () => {
-  const addon = loggedIn(ENV + TABS);
-  addon.world.combat(true);
-  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("Trade") CW.New("Barter")`);
-  expect(addon.eval("return __wfgWorld.chatWindows[3] == nil"), "nothing made in the fight").toBe(true);
-  addon.world.combat(false);
-  expect(addon.eval("return { __wfgWorld.chatWindows[3], __wfgWorld.chatWindows[4] }"), "both tabs after it").toEqual(["Trade", "Barter"]);
-});
-
-it("chat tabs: the Combat Log and the game's other built-in windows are not closed, a tab of your own still is", () => {
+it("chat tabs: Rename renames the picked tab with a cleaned name; the main tab and the game's own tabs are not closed (H44-19-R1)", () => {
   const addon = loggedIn(ENV + TABS + "IsBuiltinChatWindow = function(frame) return frame == ChatFrame2 end");
-  addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
+  addon.eval(`FCF_OpenNewWindow("Trade") ns.GetModule("ChatWindows").editing = 3`);
+  addon.eval(`${chatRow("Rename this tab")} r[3]() ns.GetModule("ChatWindows").Rename("  Bar|cffff0000 and more words than fit  ")`);
+  expect(addon.eval("return __wfgWorld.chatWindows[3]"), "a cleaned, clipped name").toBe("Barcffff0000 and");
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 1 CW.Close()`);
+  expect(chatHas(addon, /The main chat tab can't be closed\./), "the main tab").toBe(true);
   addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
-  expect(addon.eval("return __closed"), "the Combat Log is not closed").toBe(null);
-  expect(chatHas(addon, /The game's own chat tabs can't be closed\./), "and says why").toBe(true);
-  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 3 CW.Close()`);
-  expect(addon.eval("return __closed"), "a tab you made closes").toBe("ChatFrame3");
+  expect([addon.eval("return __closed"), chatHas(addon, /The game's own chat tabs can't be closed\./)], "the Combat Log: not closed, says why").toEqual([null, true]);
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.Rename("   ")`);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-it("chat tabs: Close this tab hands the tab's chat back to the main window through the game's pop-in", () => {
-  const addon = loggedIn(ENV + TABS + "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end");
-  addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
-  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
-  expect(addon.eval("return __popped"), "the pop-in ran for the tab").toBe("ChatFrame2");
-  expect(addon.eval("return __closed"), "and the tab closed").toBe("ChatFrame2");
-});
-
-it("chat tabs: a tab showing channels is neither closed nor selected by Vanguard; chat points to its tab menu", () => {
+it("chat tabs: Close this tab closes nothing itself, with or without channels, in or out of a fight; chat points to its tab menu (H44-19-R1)", () => {
   const stubs = "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end";
   const addon = loggedIn(ENV + TABS + stubs);
-  addon.eval("GENERAL_CHAT_DOCK = {} FCFDock_SelectWindow = function(dock, frame) __selected = dock == GENERAL_CHAT_DOCK and frame:GetName() end");
-  addon.eval("GetChatWindowInfo = function(i) local name = __wfgWorld.chatWindows[i] if name then return name, 12, 1, 1, 1, 1, 1, 0, 1 end end");
-  addon.eval(`ChatFrame2.channelList = { "Trade" } local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
-  expect(addon.eval("return { __popped == nil, __closed == nil, __selected == nil }"), "not popped in, not closed, not selected").toEqual([true, true, true]);
-  expect(chatHas(addon, /This tab shows channels\. Right-click its tab and choose Close Chat Window/), "and says how").toBe(true);
-  addon.eval(`ChatFrame2.channelList = {} local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
-  expect(addon.eval("return __popped"), "with no channels left it closes through the pop-in").toBe("ChatFrame2");
-});
-
-it("chat tabs: a tab showing channels on a client without the dock calls still points to its tab menu", () => {
-  const addon = loggedIn(ENV + TABS);
-  addon.eval("FCFDock_SelectWindow = nil");
-  addon.eval(`ChatFrame2.channelList = { "Trade" } local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
-  expect([addon.eval("return __closed"), chatHas(addon, /This tab shows channels\./)], "not closed, told").toEqual([null, true]);
+  addon.eval(`FCF_OpenNewWindow("Trade")`);
+  const close = (channels) => addon.eval(`ChatFrame3.channelList = ${channels} local CW = ns.GetModule("ChatWindows") CW.editing = 3 CW.Close() return { __popped == nil, __closed == nil }`);
+  expect(close("{}"), "a tab with no channel: not popped in, not closed").toEqual([true, true]);
+  expect(close('{ "Trade" }'), "a tab with a channel: the same").toEqual([true, true]);
+  addon.world.combat(true);
+  expect(close("{}"), "in a fight: nothing, and nothing waits for its end").toEqual([true, true]);
+  addon.world.combat(false);
+  expect(addon.eval("return { __popped == nil, __closed == nil }"), "after the fight: still nothing").toEqual([true, true]);
+  expect(chatHas(addon, /right-click its tab and choose Close Chat Window/), "chat points to the tab menu").toBe(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
-it("chat tabs: two tabs closed in one fight are both closed when it ends", () => {
-  const addon = loggedIn(ENV + TABS + "local close = FCF_Close __allClosed = {} FCF_Close = function(f) close(f) table.insert(__allClosed, f:GetName()) end");
-  addon.eval(`ns.GetModule("ChatWindows").New("Trade")`);
-  addon.world.combat(true);
-  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close() CW.editing = 3 CW.Close()`);
-  addon.world.combat(false);
-  expect(addon.eval("return __allClosed"), "both closed after the fight").toEqual(["ChatFrame2", "ChatFrame3"]);
-});
-
-it("chat tabs: a tab given a channel while its close waited for the fight is not popped in; chat points to its tab menu", () => {
-  const addon = loggedIn(ENV + TABS + "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end");
-  addon.world.combat(true);
-  addon.eval(`ChatFrame2.channelList = {} local CW = ns.GetModule("ChatWindows") CW.editing = 2 CW.Close()`);
-  addon.eval(`ChatFrame2.channelList = { "Trade" }`);
-  addon.world.combat(false);
-  expect(addon.eval("return { __popped == nil, __closed == nil }"), "not popped in, not closed").toEqual([true, true]);
-  expect(chatHas(addon, /This tab shows channels\./), "the hint shows").toBe(true);
-  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
-});
-
-it("chat tabs: a new tab with every chat window in use says so and keeps the tab being edited", () => {
-  const addon = loggedIn(ENV + "FCF_OpenNewWindow = function() return nil end");
-  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.editing = 1 CW.New("Trade")`);
-  expect(chatHas(addon, /Every chat tab is in use\. Close one to make another\./), "the player is told").toBe(true);
-  expect(addon.eval(`return ns.GetModule("ChatWindows").editing`), "the edited tab is unchanged").toBe(1);
-});
-
-it("chat tabs: a client without the calls says so and changes nothing", () => {
-  const addon = loggedIn(ENV + "FCF_OpenNewWindow = nil");
-  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New("Trade") CW.Rename("Barter") CW.Close()`);
+it("chat tabs: a client without the tab calls says what it can and changes nothing", () => {
+  const addon = loggedIn(ENV + "FCF_OpenNewWindow = nil FCF_Close = nil FCF_PopInWindow = nil");
+  addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New() CW.Rename("Barter") CW.editing = 2 CW.Close()`);
   expect(addon.eval("return __wfgWorld.chatWindows[1]"), "nothing renamed").toBe("General");
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });

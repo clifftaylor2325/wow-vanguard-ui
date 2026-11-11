@@ -167,7 +167,7 @@ local function chatTabRows()
   local CW = ns.GetModule("ChatWindows")
   local rows = { { "header", L["Chat tabs"] }, { "text", L["Pick a tab, then rename or close it, or choose what it shows. Channels: right-click the tab, then Settings."] },
     { "cycle", L["Tab"], CW.TabChoices(), CW.TabSetting() },
-    { "button", L["New chat tab"], function() ns.AskText(L["Name the new tab"], CW.New, L["Make"]) end },
+    { "button", L["New chat tab"], CW.New },
     { "button", L["Rename this tab"], function() ns.AskText(L["New name for this tab"], CW.Rename, L["Rename"]) end },
     { "button", L["Close this tab"], CW.Close } }
   for _, g in ipairs(CW.GROUPS) do rows[#rows + 1] = check(ns.Format(L["Show {channel}"], { channel = g[2] }), CW.GroupSetting(g[1])) end
