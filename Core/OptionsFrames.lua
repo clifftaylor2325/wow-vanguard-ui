@@ -8,7 +8,7 @@ local L = ns.L
 
 local O = ns.Options
 local setting, reloadSetting, liveSetting, liveMethod, check, append = O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
-local essential = O.Essential
+local essential, reloadRow = O.Essential, O.ReloadRow
 
 -- get/set for a raid frame setting that repaints the raid frames at once (look, power bar).
 local function raidSetting(key)
@@ -177,7 +177,7 @@ end
 local function unitFrameRows()
   return append({
     { "header", L["Unit frames"] },
-    check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard")), deckRow(), combatRow(),
+    reloadRow(check(L["Replace the default unit frames"], reloadSetting("UnitFrames", "hideBlizzard"))), deckRow(), combatRow(),
     check(L["Show health numbers"], unitFrameSetting("healthText")), check(L["Tag mark on your target"], unitFrameSetting("tagMark")),
     { "cycle", L["Health as"], TEXT_FORMATS, unitFrameSetting("healthFormat") },
     check(L["Show levels (reload)"], reloadSetting("UnitFrames", "showLevel")),
@@ -191,8 +191,8 @@ end
 local function castRows()
   return append({
     { "header", L["Cast bars"] },
-    check(L["Your cast bar (and your pet's)"], reloadSetting("CastBars", "player")),
-    check(L["Target cast bar"], reloadSetting("CastBars", "target")), check(L["Focus cast bar"], reloadSetting("CastBars", "focus")),
+    reloadRow(check(L["Your cast bar (and your pet's)"], reloadSetting("CastBars", "player"))),
+    reloadRow(check(L["Target cast bar"], reloadSetting("CastBars", "target"))), reloadRow(check(L["Focus cast bar"], reloadSetting("CastBars", "focus"))),
     check(L["Cast ring at the cursor"], liveMethod("CastBars", "ring", "ApplyRing")),
     check(L["Interrupt mark on cast bars"], liveMethod("CastBars", "interruptMark", "RefreshMarks")),
     { "header", L["Target and focus auras"] },
@@ -280,10 +280,10 @@ end
 local function raidRows()
   return {
     { "header", L["Raid frames"] },
-    check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty")), check(L["Include yourself (in a party)"], reloadSetting("RaidFrames", "showPlayer")),
-    essential(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole"))),
+    reloadRow(check(L["Use them for your party too"], reloadSetting("RaidFrames", "showInParty"))), reloadRow(check(L["Include yourself (in a party)"], reloadSetting("RaidFrames", "showPlayer"))),
+    essential(reloadRow(check(L["Sort by role (tanks, healers, damage)"], previewedSetting("sortByRole")))),
     essential({ "cycle", L["Groups as (reload)"], { { "columns", L["Columns"] }, { "rows", L["Rows (wide, for big raids)"] } }, previewedSetting("layout") }),
-    essential(check(L["Stack big raids at the left"], stackSetting())), essential(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard"))),
+    essential(check(L["Stack big raids at the left"], stackSetting())), essential(reloadRow(check(L["Hide the default raid frames"], reloadSetting("RaidFrames", "hideBlizzard")))),
     essential({ "cycle", L["Style"], { { "soft", L["Class colors, softened"] }, { "dark", L["Dark, class-colored names"] }, { "class", L["Class colors, bright"] } }, raidSetting("look") }),
     essential({ "slider", L["Width"], RAID_WIDTHS, sizeSetting("width") }),
     essential({ "slider", L["Height"], RAID_HEIGHTS, sizeSetting("height") }),

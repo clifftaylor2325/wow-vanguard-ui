@@ -41,7 +41,7 @@ local function chatWindowRows()
   local CH = ns.GetModule("Chat")
   return append({
     { "header", L["Chat"] },
-    check(L["Chat background"], reloadSetting("Chat", "background")),
+    O.ReloadRow(check(L["Chat background"], reloadSetting("Chat", "background"))),
     { "cycle", L["Chat background strength"], CH.BACKDROPS, chatLive("backdrop", "Refresh") },
     check(L["Keep chat in its bottom-left spot (reload)"], reloadSetting("Chat", "place")),
     { "cycle", L["Chat window size"], CH.WINDOW_SCALES, chatLive("windowScale", "ApplySize") },

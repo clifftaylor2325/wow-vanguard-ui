@@ -99,6 +99,13 @@ function O.AppliesLive(set)
   return set ~= nil and restartSetters[set] ~= nil
 end
 
+-- Marks a row whose setting applies on reload though its caption does not say so: the window gives it the reload tag
+-- (and its tip, and a hit for the word "reload" in the search). Returns the row.
+function O.ReloadRow(row)
+  row.reload = true
+  return row
+end
+
 -- True when a module was built this session and is still switched on, so its live callbacks have its settings to read.
 local function moduleRunning(module)
   local def = ns.GetModule(module)
@@ -392,7 +399,7 @@ end
 local function barRows()
   return {
     { "header", L["Bars"] },
-    { "cycle", L["Bar texture"], T.SharedChoices("statusbar", BAR_TEXTURES), previewedSetting("barTexture") },
+    O.ReloadRow({ "cycle", L["Bar texture"], T.SharedChoices("statusbar", BAR_TEXTURES), previewedSetting("barTexture") }),
     check(L["Smooth health and power bars"], function() return T.Settings().smoothBars end, function(v) T.Settings().smoothBars = v end),
     check(L["Soft shadows under frames (reload)"], themeSetting("hudShadow")),
   }

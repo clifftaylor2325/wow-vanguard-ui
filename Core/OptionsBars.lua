@@ -9,7 +9,7 @@ local L = ns.L
 
 local O = ns.Options
 local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
-local essential = O.Essential
+local essential, reloadRow = O.Essential, O.ReloadRow
 
 -- Action bar n's default for key (Modules/ActionBars.lua defaults.bars), nil without the module.
 local function barDefault(n, key)
@@ -82,7 +82,7 @@ end
 -- The game's own bars and buttons: hidden, restyled, movable; the vehicle exit button.
 local function gameBarRows()
   return {
-    check(L["Hide the default bars"], reloadSetting("ActionBars", "hideBlizzard")),
+    reloadRow(check(L["Hide the default bars"], reloadSetting("ActionBars", "hideBlizzard"))),
     check(L["Restyle pet, stance and extra buttons (reload)"], skinSpecial()),
     check(L["Movable pet and stance bars (reload)"], reloadSetting("SpecialBars", "place")),
     check(L["Vehicle exit button (reload)"], reloadSetting("SpecialBars", "vehicleExit")),
@@ -177,7 +177,7 @@ end
 local function oneBarRows(n)
   local visibility, showWhen = barVisibilityRows(n)
   return {
-    { "header", barTitle(n) }, check(ns.Format(L["Show bar {n}"], { n = n }), barSetting(n)),
+    { "header", barTitle(n) }, reloadRow(check(ns.Format(L["Show bar {n}"], { n = n }), barSetting(n))),
     visibility,
     { "text", L["Hidden bars keep their keys: a bound key still casts."] },
     showWhen,
