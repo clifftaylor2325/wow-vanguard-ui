@@ -79,10 +79,19 @@ export function backupName(dest, now) {
   return `${dest}.backup-${stamp}`;
 }
 
+// Whether `p` is a folder or a link (symlink or junction) that leads to one; a dangling link is not.
+export function isFolderOrLinkToOne(io, p) {
+  try {
+    return io.fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 // Why the game folder can't be used, or null when it can.
 export function wowDirProblem(io, wowDir) {
   if (!wowDir) return "Tell me the game folder once: npm run link:wow -- --wow \"<folder that has Interface/AddOns>\"";
-  if (kindAt(io, addonsDir(wowDir)) !== "folder") {
+  if (!isFolderOrLinkToOne(io, addonsDir(wowDir))) {
     return `No Interface/AddOns in ${wowDir}. Pick the Forever client's folder (start the game once so it creates AddOns).`;
   }
   return null;
