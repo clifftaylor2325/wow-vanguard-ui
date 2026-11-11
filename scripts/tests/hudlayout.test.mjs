@@ -146,6 +146,18 @@ it("Standards: your frame and your target's stand as 40 x 160 banners, health ri
   expect([size(addon, "Vanguard_player"), across.orient, across.corners, across.masks, across.name !== "hidden", banner(addon, "focus").name !== "hidden", banner(addon, "focus").number, across.crown], "Centered: the frames lie across again, 240 x 36, the shield point back, every name and number shown (the number at the right end), the crown on the frame").toEqual([[240, 36], "HORIZONTAL HORIZONTAL", ["25 point", "0 nil", "25 point", "0 nil"], ["BOTTOMLEFT PointMaskBL", "TOPLEFT PointMask"], true, true, "RIGHT health RIGHT -14 0", "frame"]);
 });
 
+it("Standards: switching to it hides the power number on the banners (as a login under it does), and lying across again shows it", () => {
+  const power = { savedVariables: "VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, UnitFrames = { powerFormat = 'value' } } } }" };
+  const addon = loggedIn(WIDE + UNITS_ENV, power);
+  // Whether your frame and your target's show their power text.
+  const shown = () => addon.eval("return { Vanguard_player.powerText:IsShown(), Vanguard_target.powerText:IsShown() }");
+  expect(shown(), "Centered with power text on: the number shows").toEqual([true, true]);
+  addon.eval("ns.SetHudLayout('standards')");
+  expect(shown(), "switched to Standards: no power number on a banner").toEqual([false, false]);
+  addon.eval("ns.SetHudLayout('centered')");
+  expect(shown(), "back across: the number shows again").toEqual([true, true]);
+});
+
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
 

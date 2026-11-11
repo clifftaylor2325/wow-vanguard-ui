@@ -179,10 +179,12 @@ end
 
 -- Lays a banner's parts out (UF.PlaceParts, while the frame stands, the texts in their roles already): the bars on
 -- end, the name line and health number (big banners), the marks at the inner top corner, the raid target icon over it all.
+-- A banner carries no power number (shown again when the frame lies across).
 function LY.PlaceStandard(f)
   layoutStandard(f)
   placeLabel(f)
   placeNumber(f)
+  f.powerText:Hide()
   UF.PlaceMarks(f, f.outer)
   placeIcon(f)
   placeRiders(f)
