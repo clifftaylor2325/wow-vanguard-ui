@@ -5458,6 +5458,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: each time it reopens where you last let go, and `/vg errors` is empty.
 - If it fails, paste: where it reopened after each drag and `/vg errors`.
 
+### 33.558 Retail dropdowns in the second menu style take Vanguard's panel (H44-15-51)
+
+- Do: for Retail: open a dropdown in the game's settings (Options → Graphics, Display Mode), change its value, then at the barber shop open a customisation option's dropdown.
+- Expect: each list on a flat Vanguard panel with its rows inside the panel, and the new setting takes effect with no `blocked` line in `/vg errors`.
+- If it fails, paste: a screenshot of each open list and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

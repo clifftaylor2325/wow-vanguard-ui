@@ -114,7 +114,7 @@ const RETAIL_MENU_CLIENT = `${RETAIL_CLIENT}
 
 // TEST-ONLY a pooled Retail menu frame, and __openRetailMenu() opening it as live Menu.lua does: SecureGenerate copies the
 // style onto the frame and calls Generate (:2094-2097), then AcquireMenu sets its strata (:2151) and the opener its level
-// (:2404) and shows it, with no event. __retailKeys holds the frame's keys as the game left them before Generate.
+// (:2404) and shows it, with no event. __style picks the menu's style (MenuStyle1Mixin when unset). __retailKeys holds the frame's keys as the game left them before Generate.
 const RETAIL_MENU_ENV = `
   __menu = CreateFrame("Frame", nil, UIParent)
   __menu:SetFrameStrata("MEDIUM") __menu:SetFrameLevel(2)
@@ -122,7 +122,7 @@ const RETAIL_MENU_ENV = `
   __createTexture = __menu.CreateTexture
   __menu.CreateTexture = function() error("TEST-ONLY: the compositor refuses CreateTexture on an open menu") end
   function __openRetailMenu()
-    Mixin(__menu, MenuStyle1Mixin)
+    Mixin(__menu, __style or MenuStyle1Mixin)
     __retailKeys = __menuKeys()
     __menu:Generate()
     __menu:SetFrameStrata("FULLSCREEN_DIALOG") __menu:SetFrameLevel(510) __menu:Show()
@@ -143,6 +143,23 @@ it("H25-2-1 Retail 12.x menus: an open fades the background the style attached a
   expect(retailState(addon), "skinned as Generate runs, before the game places the menu").toMatchObject({ bg: 0, panel: true, level: 2, keys: true });
   addon.advance(0.05);
   expect(retailState(addon), "the next frame the panel is where the game put the menu").toMatchObject({ level: 510, strata: "FULLSCREEN_DIALOG" });
+  expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
+});
+
+// TEST-ONLY Retail's second menu style, with a Generate of its own (live Interface/AddOns/Blizzard_Menu/MenuTemplates.lua:
+// 1133-1140, the common-dropdown-c-bg atlas), the style of WowStyle2DropdownTemplate (MenuTemplates.xml:4-6): the settings
+// panel's dropdowns and the character customisation options use it.
+const STYLE2_CLIENT = `${RETAIL_MENU_CLIENT}
+  MenuStyle2Mixin = {}
+  function MenuStyle2Mixin:Generate()
+    local bg = __createTexture(self, nil, "ARTWORK") bg:SetAtlas("common-dropdown-c-bg") bg:SetAlpha(1)
+    __retailBg = bg
+  end
+`;
+it("H44-15-51 Retail 12.x menus: a dropdown in the second menu style gets the same skin", () => {
+  const addon = loggedIn(RETAIL_MENU_ENV + "__style = MenuStyle2Mixin", { client: STYLE2_CLIENT });
+  addon.eval("__openRetailMenu()");
+  expect(retailState(addon), "its own background faded, Vanguard's panel behind it, nothing written on the menu").toMatchObject({ bg: 0, panel: true, keys: true });
   expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
 });
 
