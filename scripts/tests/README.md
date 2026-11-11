@@ -398,7 +398,7 @@ ButtonFrameTemplate (an art texture marked `TEST-ONLY-ART`, `NineSlice`, `Inset`
 that gives the i-th the game's bar texture back). `windowState(addon, name)` reads one back: `{ art, nine, portrait,
 insetNine, panel, title, painted }`
 (`art` is the marked texture's alpha; `panel` is whether Vanguard painted anything). The `windows-<area>.test.mjs`
-files build on them; see docs/handoff/RESKIN-PLAN.md section 0.
+files build on them; see `WINDOWS_ENV` and `windowState` in `helpers.mjs`, and [Writing a scenario](#writing-a-scenario) above.
 
 ### The frozen surface
 
