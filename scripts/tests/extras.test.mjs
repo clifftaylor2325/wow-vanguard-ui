@@ -128,6 +128,14 @@ it("/vg factionart: which of the game's own faction pictures the client has", ()
   const bare = loggedIn("C_Texture = nil UnitFactionGroup = nil");
   expect(bare.eval("return { ns.FactionArt.HasAtlas('MountJournalIcons-Horde'), ns.FactionArt.Faction() }"), "a client without these calls has none, and no faction").toEqual([false, "none"]);
 });
+it("/vg factionart: its words come from the string table, the neutral faction too", () => {
+  const addon = loggedIn(`C_Texture = { GetAtlasInfo = function(name) if name:find("MountJournal") then return { width = 64 } end end }
+    UnitFactionGroup = function() return "Neutral" end`, { client: '__wfgWorld.locale = "deDE"' });
+  addon.eval('ns.L["atlas"], ns.L["file"], ns.L["yes"] = "TEST-ONLY Atlas", "TEST-ONLY Datei", "TEST-ONLY ja"');
+  addon.slash("factionart");
+  const lines = addon.chat().join("\n");
+  expect([/du bist keine\)/.test(lines), /TEST-ONLY Atlas MountJournalIcons-Horde\s+\|c\w+TEST-ONLY ja/.test(lines), /TEST-ONLY Atlas UI-HUD-UnitFrame-Player-PVP-HordeIcon\s+\|c\w+fehlt/.test(lines), /TEST-ONLY Datei /.test(lines)], "no faction, found, missing and file, each in the client's words").toEqual([true, true, true, true]);
+});
 it("the faction look: the crest only by default, the crest and heading font, and Off", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + '__faction = "Alliance" UnitFactionGroup = function() return __faction end');
   addon.eval('ns.Theme.Settings().faction = "auto" ns.Theme.Refresh()');
