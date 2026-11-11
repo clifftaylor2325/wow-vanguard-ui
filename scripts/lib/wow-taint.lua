@@ -580,6 +580,53 @@ function world.forbid(frame)
   end
 end
 
+-- Access restrictions ----------------------------------------------------------------------
+-- The client also holds some of its frames back for a while: an aura container and its buttons deny tainted
+-- access while aura information is secret (Enum.ScriptObjectAccessRestriction.DenyTaintedAccessWhenAurasAreSecret,
+-- SimpleFrameScriptObjectConstantsDocumentation.lua). IsForbidden still answers false then, every other method
+-- raises as a forbidden object's does, and CanBeAccessedInContext (SimpleFrameScriptObjectAPIDocumentation.lua:45
+-- on both clients) answers false to addon code. world.holdAccess(frame) holds a frame and every widget under
+-- it that way, the addon's own included (a texture it put on a held button hangs from that button);
+-- world.releaseAccess(frame) lets them go again, as the end of a fight does.
+local held = setmetatable({}, { __mode = "k" })
+local ALWAYS_ANSWERED = { IsForbidden = true, CanBeAccessedInContext = true }
+
+-- Whether the current Lua may reach this object: false for addon code while the object is held.
+function methods:CanBeAccessedInContext()
+  return not (held[self] and byAddon(callerOf(1)))
+end
+
+-- A method that refuses addon code while its widget is held, and runs as it was otherwise.
+local function refusingWhileHeld(orig)
+  return function(self, ...)
+    if held[self] and byAddon(callerOf(1)) then error(FORBIDDEN, 2) end
+    return orig(self, ...)
+  end
+end
+
+-- One widget held: every listed method but the two that always answer refuses the addon until it is released.
+local function hold(w)
+  if held[w] ~= nil then held[w] = true return end
+  held[w] = true
+  for name in pairs(listedNames(w.__kind)) do
+    if not ALWAYS_ANSWERED[name] and type(w[name]) == "function" then rawset(w, name, refusingWhileHeld(w[name])) end
+  end
+end
+
+-- Holds a frame and every widget under it back from addons (aura information turned secret).
+function world.holdAccess(frame)
+  for _, w in ipairs(stub.frames) do
+    if under(w, frame) then hold(w) end
+  end
+end
+
+-- Lets a held frame and everything under it go again (aura information is plain again).
+function world.releaseAccess(frame)
+  for w in pairs(held) do
+    if under(w, frame) then held[w] = false end
+  end
+end
+
 -- Moves ------------------------------------------------------------------------------------
 -- Every call addon code makes that moves gold, an item, a mail or an auction is recorded in world.moves as
 -- { call, at } (at: "Modules/MailTools.lua:205"), so a scenario can assert that nothing moved (an answer

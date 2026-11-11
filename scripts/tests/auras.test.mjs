@@ -958,3 +958,39 @@ it("a container under a frame the client has closed is kept by Retire and never 
   expect(addon.eval("return { pcall(ns.Auras.Refit, __c.frame, function() return false end) }"), "Refit leaves it alone").toEqual([true]);
   expect(addon.eval("return __touches"), "no refused call made").toBe(0);
 });
+
+// TEST-ONLY: a fallback aura container whose holder was dressed at scale 1 and has grown to 2. __placed(...) runs
+// one Refit and returns the scale each remembered icon was last placed at (none once an icon is forgotten).
+const HELD_ROW = `
+  __c = ns.AuraLegacy.Create(UIParent, { point = { "CENTER" }, lineSize = 100, groups = { { filter = "HARMFUL", max = 1, size = 20 } } }, "target")
+  __c.frame:SetScale(2)
+  function __placed()
+    local seen = {}
+    local ok = pcall(ns.Auras.Refit, __c.frame, function(_, placed) seen[#seen + 1] = placed return false end)
+    return { ok, unpack(seen) }
+  end
+`;
+
+it("an aura row the client holds back in a fight (not forbidden, every call refused) is left alone, kept, and refit when let go", () => {
+  const addon = loggedIn(HELD_ROW);
+  addon.eval("__wfgWorld.holdAccess(__c.frame)");
+  expect(addon.eval("return { pcall(ns.Auras.Retire, __c) }"), "Retire keeps it (false) and raises nothing").toEqual([true, false]);
+  expect(addon.eval("return __placed()"), "Refit asks nothing of it").toEqual([true]);
+  addon.eval("__wfgWorld.releaseAccess(__c.frame)");
+  expect([addon.eval("return __placed()"), addon.eval("return __placed()")], "let go: its icon is placed again, at the new scale").toEqual([[true, 1], [true, 2]]);
+  expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+});
+
+it("an aura icon held back under a holder that is open is skipped for now, not forgotten", () => {
+  const addon = loggedIn(HELD_ROW);
+  addon.eval("__icon = __c.frame:GetChildren() __wfgWorld.holdAccess(__icon)");
+  expect(addon.eval("return __placed()"), "held: asked about, left at its old scale").toEqual([true, 1]);
+  addon.eval("__wfgWorld.releaseAccess(__icon)");
+  expect([addon.eval("return __placed()"), addon.eval("return __placed()")], "let go: still remembered, then placed").toEqual([[true, 1], [true, 2]]);
+});
+
+it("a client without CanBeAccessedInContext: a refused GetParent reads as held, with no error", () => {
+  const addon = loggedIn(HELD_ROW);
+  addon.eval("__wfgWorld.holdAccess(__c.frame) __c.frame.CanBeAccessedInContext = false");
+  expect([addon.eval("return ns.Auras.ShutFrom(__c.frame)"), addon.eval("return __placed()")], "held, and Refit leaves it").toEqual(["held", [true]]);
+});

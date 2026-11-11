@@ -22,6 +22,7 @@ export const FULL_FILES = [
   "scripts/tests/scenarios.test.mjs", // every top-level frame of the default layout inside a 1920x1080 screen with no overlaps
   "scripts/tests/movers.test.mjs", // moving the frames of every module that has one
   "scripts/login-scope.test.mjs", // its logins test the scoping rules under each mode, so the data must not scope them
+  "scripts/tests/lifecycle-world.test.mjs", // every live module switched off and on in a populated world; a scoped login would switch only some
 ];
 
 // Single cases (`file|case`) that stay on the full login, in files that are otherwise scoped.
@@ -41,6 +42,13 @@ export const FULL_CASES = [
 // The account file version a fresh install is stamped with, read from Core/DB.lua so a scoped
 // brand-new account is made as current and Core/DB.lua runs no upgrade step on it (WR-01).
 const DB_VERSION = Number(/local DB_VERSION = ([0-9]+)/.exec(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../Core/DB.lua"), "utf8"))[1]);
+
+// The scoped map the probe writes: a whole-suite run's own map, else the data's map with the files this run
+// covered replaced (a partial run changes only its files and keeps the rest), sorted by file.
+export function mergeScope(wholeSuite, existing, scoped) {
+  const merged = wholeSuite ? scoped : { ...existing, ...scoped };
+  return Object.fromEntries(Object.entries(merged).sort(([a], [b]) => (a < b ? -1 : 1)));
+}
 
 // Where the data lives, relative to the repo root.
 export const SCOPE_FILE = "scripts/tests/login-scope.json";

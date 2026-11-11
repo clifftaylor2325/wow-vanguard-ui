@@ -113,6 +113,7 @@ Run the sessions in order; within a session, top to bottom. Each line is a step 
 - `7.3b` Your debuffs on a plate drawn mid-fight
 - `7.5` Enemy nameplates (#377)
 - `33.390` Nameplate aura icons in the open world (Forever)
+- `33.390a` Nameplate aura rows the game holds back in a fight (Forever)
 - `8.1` Quest dialog
 - `8.3` Quest log
 - `8.4` Quest tracker overflow
@@ -4951,6 +4952,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "aura icon pixels" line in chat, and debuff icons on enemy plates keep a thin one-pixel edge. `/vg errors` may still list an "aura icon pixels" entry kept quietly; that is not a failure, but paste it.
 - If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
 
+### 33.390a Nameplate aura rows the game holds back in a fight (Forever)
+
+- Do: With nameplates on, fight a mob in the open world with your debuffs on it, pull a second mob while the first plate is up, then type `/vg errors`.
+- Expect: no `nameplate: ... calling 'GetParent' on bad self (Attempt to access forbidden object ...)` line in chat or in `/vg errors`, and after the fight the debuff icons on enemy plates keep a thin one-pixel edge. [Needs in-game check: the fix asks the game's `CanBeAccessedInContext` before touching an aura row; nobody has seen it answer in the game.]
+- If it fails, paste: the `/vg errors` text (its stack) and whether you were in a fight.
+
 ### 33.391 Versus deck wraps the class rows (Forever)
 
 - Do: Switch on Versus deck under Unit frames on a druid, shift into cat form with combo points on a target, and on a shaman drop a totem
@@ -5554,6 +5561,12 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 - Do: type `/vg` → Modules. One at a time, switch off and on again Chat history, Chat filter, Chat extras, Chat windows, Quiet, Quest dialog, Quest log, Cooldown keys, Cooldown glow, Data bars, Broker strip, HUD text and Situations. After each switch off, look at the screen, talk to a quest giver (Quest dialog), press the quest log key (Quest log), and open `/vg errors`.
 - Expect: each goes at once with no reload tag and nothing of it left on screen: no Copy or Find button in the chat tab bar, no Vanguard quest dialog or log (the game's own windows open, and the quest log key is the game's), no key text or glow on the Cooldown Manager icons, no XP or reputation bar and the game's own status bars back in their Edit Mode spot, no broker strip, the game's fonts back on the error line and zone names. Quiet and HUD text print one line each about what stays until a reload (the action bar's own errors; the damage-number font). Switching each on again brings it back. A switch made in a fight waits for the fight to end. `/vg errors` stays empty. [Needs in-game check: that the game's gossip and quest windows open normally after Quest dialog goes off with no taint report, and that the status bars come back in their Edit Mode spot after Data bars goes off.]
 - If it fails, paste: the `/vg errors` text and the module's name.
+
+### 35.12 Data bars off: the game's own status bars, as the game would show them (review M6)
+
+- Do: on a character at the level cap with no faction watched (character pane → Reputation: untick "Show as experience bar" on every faction), switch **Data bars** off under `/vg` → Modules, out of combat, and look at the bottom of the screen where the game's experience and reputation bars sit. Then `/reload` with Data bars still off and look again. Switch Data bars on, watch one faction, switch Data bars off again and look; then `/reload` and look. If you have a character below the cap, do the same there with no faction watched (one bar, experience) and with one watched (two bars).
+- Expect: right after the switch, the game's bar area looks exactly as it does after the `/reload` with Data bars off: at the cap with no faction watched, no empty bar, frame or border is shown; with one bar tracked, one bar and no empty second slot; with two, both. Edit Mode can select and move the game's status bars in each case. `/vg errors` stays empty. [Needs in game: all of it. Vanguard calls `Show()` on StatusTrackingBarManager, MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer when Data bars goes off; whether the game keeps a container hidden in these cases, and so whether that shows an empty one, is not known.]
+- If it fails, paste: a screenshot of the bottom of the screen right after the switch and one after the reload, your level, whether a faction is watched, and `/vg errors`.
 
 ## When you are done
 

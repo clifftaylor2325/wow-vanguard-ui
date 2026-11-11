@@ -84,6 +84,21 @@ it("world.forbid closes a game frame and the game's widgets under it to addon co
   expect(addon.eval("TestPlate:SetAlpha(0.5) return TestPlate:GetAlpha()"), "test code still reaches it").toBe(0.5);
 });
 
+it("world.holdAccess holds a frame and what hangs from it back from addon code while IsForbidden says no, and releaseAccess lets go", () => {
+  const addon = createAddon();
+  addon.eval(`TestRow = CreateFrame("Frame", nil, UIParent) TestIcon = TestRow:CreateTexture()`);
+  asAddon(addon, "TestEdge = CreateFrame('Frame', nil, TestRow)");
+  addon.eval("__wfgWorld.holdAccess(TestRow)");
+  // Whether an addon call raised, and what it returned or raised with.
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
+  expect(tryAddon("local parent = TestRow:GetParent() return parent"), "the row refuses, GetParent too").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
+  expect([tryAddon("TestIcon:SetAlpha(1)")[0], tryAddon("TestEdge:SetAlpha(1)")[0]], "its texture and the addon's own frame on it refuse").toEqual([false, false]);
+  expect(tryAddon("return TestRow:IsForbidden() or TestRow:CanBeAccessedInContext()"), "not forbidden, and not reachable").toEqual([true, false]);
+  expect(addon.eval("return TestRow:CanBeAccessedInContext() and TestRow:GetParent() == UIParent"), "test code still reaches it").toBe(true);
+  addon.eval("__wfgWorld.releaseAccess(TestRow)");
+  expect(tryAddon("return TestRow:CanBeAccessedInContext() and TestRow:GetParent() == UIParent"), "released: open again").toEqual([true, true]);
+});
+
 it("a secret answers type() as the value it hides, to the addon and to test code; the harness reads the raw type", () => {
   const addon = createAddon();
   expect(addon.eval(`local s, t = __wfgWorld.secret(5), __wfgWorld.secret("TEST-ONLY")

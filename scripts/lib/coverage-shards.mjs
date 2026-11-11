@@ -19,13 +19,31 @@ function optionValue(args, name) {
   return value;
 }
 
-// The `--shard i/n` of a Vitest argument list as { index, count }, or null; i and n are whole numbers, 1 <= i <= n.
-export function shardOption(args) {
-  const value = optionValue(args, "shard");
+// The `--<name> i/n` of an argument list as { index, count }, or null; i and n are whole numbers, 1 <= i <= n.
+function indexOfCount(args, name) {
+  const value = optionValue(args, name);
   if (value === null) return null;
   const [index, count] = value.split("/").map(Number);
-  if (!Number.isInteger(index) || !Number.isInteger(count) || index < 1 || index > count) throw new Error(`--shard must be i/n with 1 <= i <= n, not "${value}"`);
+  if (!Number.isInteger(index) || !Number.isInteger(count) || index < 1 || index > count) throw new Error(`--${name} must be i/n with 1 <= i <= n, not "${value}"`);
   return { index, count };
+}
+
+// The `--shard i/n` of a Vitest argument list (Vitest's own split by file count), or null.
+export function shardOption(args) {
+  return indexOfCount(args, "shard");
+}
+
+// The `--balanced i/n` of the coverage command (shard i of n by the planned times, scripts/lib/shard-plan.mjs), or null.
+export function balancedOption(args) {
+  return indexOfCount(args, "balanced");
+}
+
+// The `--plan n` of a merge (the shard count the run was planned for, so every shard's folder is held to its planned files), or null.
+export function planOption(args) {
+  const value = optionValue(args, "plan");
+  if (value === null) return null;
+  if (!/^\d+$/.test(value) || Number(value) < 1) throw new Error(`--plan must be a whole number of 1 or more, not "${value}"`);
+  return Number(value);
 }
 
 // The folder after `--merge`, or null; `--shards n` (how many jobs must be there) comes with it as { dir, shards }.
@@ -96,4 +114,28 @@ export function junitTotals(dir) {
     totals.failures += Number(head.match(/\bfailures="(\d+)"/)?.[1] ?? 0);
   }
   return totals;
+}
+
+// The names of the test files a folder's hits files stand for, one entry per hits file (so a file that ran twice shows twice).
+function ranIn(dir) {
+  return hitsFilesUnder(dir).map(testFileOf).sort();
+}
+
+// What is wrong with one shard's hits against the files its plan gave it: a planned file that left no hits,
+// a file that ran twice, a file that ran in a shard it was not planned for.
+function shardProblems(number, ran, planned) {
+  const problems = planned.filter((name) => !ran.includes(name)).map((name) => `shard ${number} did not run ${name}`);
+  for (const name of new Set(ran)) {
+    if (!planned.includes(name)) problems.push(`shard ${number} ran ${name}, which is not in its plan`);
+    else if (ran.filter((r) => r === name).length > 1) problems.push(`shard ${number} ran ${name} more than once`);
+  }
+  return problems;
+}
+
+// What is wrong with the shard folders (lua-shard-1 ... lua-shard-n under `dir`) against a plan ([{ files }]).
+export function planMergeProblems(dir, plan) {
+  return plan.flatMap((shard, i) => {
+    const folder = path.join(dir, `lua-shard-${i + 1}`);
+    return shardProblems(i + 1, fs.existsSync(folder) ? ranIn(folder) : [], shard.files.map((f) => path.basename(f)));
+  });
 }

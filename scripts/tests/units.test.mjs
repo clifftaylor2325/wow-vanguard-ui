@@ -896,9 +896,9 @@ it("H37-5-1: the deck wraps a shaman's totem row, and a row built after the deck
   const [dTop, , totemTop] = deckAgainst(addon, "ns.GetModule('ClassBars').totems", "Vanguard_player");
   expect(dTop, "the panel's top edge clears the totem cells").toBeGreaterThan(totemTop);
   const before = addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()");
-  addon.eval("ns.GetModule('UnitFrames').RaiseDeckReach('top', 1)");
+  addon.eval("ns.GetModule('UnitFrames').RaiseDeckReach('ClassBars', 'top', 1)");
   expect(addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()"), "a smaller reach changes nothing").toBe(before);
-  addon.eval("ns.GetModule('UnitFrames').RaiseDeckReach('top', 60)");
+  addon.eval("ns.GetModule('UnitFrames').RaiseDeckReach('ClassBars', 'top', 60)");
   expect(addon.eval("return ns.GetModule('UnitFrames').deck:GetTop()"), "a taller row lifts the panel").toBeGreaterThan(before);
 });
 

@@ -9,7 +9,7 @@ Status: **approved by Cliff on 2026-11-10: every recommendation in 5.3 (Q1 to Q1
 - Modules declare `requires = { ... }` and either `live = true` or `reload = L["why"]`. A module that declares neither stays reload-only, as today. Nothing changes behaviour until a module is converted.
 - Every switch, whether a module going on or off or a module being rebuilt, runs out of combat. A switch made in a fight waits for the fight to end.
 - Classification of the 74 modules (three were retired after this was written: Pet stable, Legacy helper and Boss docks, all from the first class): **22** toggle live with the scope alone, **29** with a small `Disable`, **23** stay reload-only for a stated reason. Module rows tagged "Reload to apply" go from 74 to 23. Setting rows tagged "(reload)" go from 68 to about 49 on WoW Forever. That does not reach the plan's target of 15 or fewer; section 5 says what else would be needed.
-- Live profile switching (A4-4) runs on top of this, but only when no reload-only module's switch or settings differ between the two profiles. Otherwise it is staged as today, and the dialog names the modules that are waiting.
+- Live profile switching (A4-4) runs on top of this, but only when no reload-only module's switch or settings differ between the two profiles, and every reload-only module that runs declares `rebinds`. Otherwise it is staged as today, and the dialog names the modules that are waiting. No module declares `rebinds` yet (2.9), so today a switch applies at once only when every reload-only module is off.
 - Eleven decisions for Cliff are listed at the end.
 
 ## 1. What exists today
@@ -262,7 +262,7 @@ end
 
 ### 2.9 Live profile switching (A4-4)
 
-As built in A4-2a: the rule, the switch and the named offer are in (`Core/ProfileSwitch.lua`, `ns.PickProfile`), but no reload-only module declares `rebinds = true` yet (that audit is A4-4) and none declares `reload = L["why"]`, so any running reload-only module blocks every switch and players see today's staged switch. The path is tested with every real module off and TEST-ONLY modules.
+As built in A4-2a: the rule, the switch and the named offer are in (`Core/ProfileSwitch.lua`, `ns.PickProfile`), but no reload-only module declares `rebinds = true` yet (that audit is A4-4) and none declares `reload = L["why"]`, so any running reload-only module blocks every switch and players see today's staged switch, unless every reload-only module is off and the theme's reload keys match. The path is tested with TEST-ONLY modules and every real module off, and with the real live modules running and every reload-only module off (`scripts/tests/lifecycle.test.mjs`).
 
 The rule is all or nothing. A profile switches now when nothing that is reload-only would differ. Otherwise it is staged as today and the dialog says why.
 
@@ -448,7 +448,7 @@ The logins follow `scripts/tests/login-scope.json`, with heavy modules off unles
 
 - **Handler order.** A module started late runs its handlers after the ones already registered for the same event, while at login they run in TOC order. Parents start before children, so the known chains (raid tile hooks, unit frame add-ons) keep their order. An unknown dependency on order shows up as a failed "late equals login" case.
 - **Duplicate registration.** `ns.On` drops a function it already has. The scope keeps that behaviour by keying on event and function, so a module that registers the same function twice still gets one call.
-- **Error budget.** A restart gives handlers new wrappers, so a handler paused by the budget runs again after the module restarts. That is intended (a restart is a retry) and goes in `/vg errors` help.
+- **Error budget.** A handler paused by the budget runs again after its module restarts. That is intended (a restart is a retry). The budget is keyed on the function, which a restart keeps for unit events and tickers, so the scope's close starts the count over (`ns.ForgetFailures`) for every handler, unit event and ticker it takes off; the paused list drops them too, and the dispatch pays nothing for it. The feature page (Options and setup) says so beside the resume button.
 - **Cross-module calls into a stopped module.** Helpers stay callable because the code is still loaded. Calls that touch a stopped module's frames must check `ns.ModuleLive`. The per-batch grep in 4.1 and the lifecycle cases catch the ones that don't.
 - **Frames are never freed.** Toggling must not grow memory. The toggle-three-times case enforces that.
 - **Taint.** Re-registering events on game windows (QuestDialog) and showing game frames again (DataBars) is suspected safe out of combat but unverified (4.4).

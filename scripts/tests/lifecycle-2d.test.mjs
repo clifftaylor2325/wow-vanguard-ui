@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
 import { AFK_ENV, SETUP_DONE, UNITS_ENV } from "./helpers.mjs";
-import { lifecycleCases } from "./lifecycle-helpers.mjs";
+import { lifecycleCases, moduleOff } from "./lifecycle-helpers.mjs";
 
 // The modules these cases need on: the unit frames the others sit on, and the heavy ones this batch converts.
 const KEEP = ["UnitFrames", "FrameAuras", "RaidTools"];
@@ -13,7 +13,7 @@ const KEEP = ["UnitFrames", "FrameAuras", "RaidTools"];
 // What the unit frames make or settle the first time a module builds on the player frame (its lazy tab frame, and the
 // deck's reach raised), done here for every login, so the cases compare the module's own footprint and no layout pass
 // is left pending after a late start.
-const SETTLED = 'local UF = ns.GetModule("UnitFrames") UF.Crown(UF.frames.player) UF.DeckReach.top, UF.DeckReach.bottom = 99, 99';
+const SETTLED = 'local UF = ns.GetModule("UnitFrames") UF.Crown(UF.frames.player) UF.RaiseDeckReach("UnitFrames", "top", 99) UF.RaiseDeckReach("UnitFrames", "bottom", 99)';
 
 // A login with the other heavy modules off, `settings` Lua run on the saved variables, then `saved` (a module
 // switch from moduleOff), `env` Lua run before the login (a class, a unit) and `after` Lua run once it is done.
@@ -66,6 +66,31 @@ it("lifecycle: combo points switched off hides the row, and on again shows the s
   addon.eval('local CP = ns.GetModule("ComboPoints") local bar = CP.bar ns.SetModuleEnabled("ComboPoints", true) __same = bar == CP.bar');
   expect(addon.eval("return __same")).toBe(true);
   expect(addon.eval(shown)).toBe(true);
+});
+
+// A rogue's login with the Versus deck on (its panel reaches over the rows the player frame carries) and none of
+// SETTLED's preset reach, `saved` Lua run after the saved variables.
+function deckLogin(saved = "") {
+  const settings = "\nVanguardDB.profiles.Default.UnitFrames = { deck = true }";
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY.filter((n) => !KEEP.includes(n))) + settings + saved });
+  addon.eval(ROGUE);
+  addon.login();
+  addon.advance(1);
+  return addon;
+}
+
+// The Versus deck panel's top edge.
+const deckTop = (addon) => addon.eval('return ns.GetModule("UnitFrames").deck:GetTop()');
+
+it("lifecycle: combo points switched off lowers the Versus deck to where a login without them has it, and on again raises it", () => {
+  const offAtLogin = deckTop(deckLogin(moduleOff("ComboPoints")));
+  const addon = deckLogin();
+  const on = deckTop(addon);
+  addon.eval('ns.SetModuleEnabled("ComboPoints", false)');
+  const off = deckTop(addon);
+  addon.eval('ns.SetModuleEnabled("ComboPoints", true)');
+  expect([on > offAtLogin, off, deckTop(addon)], "raised over the pips, lowered with them gone, raised again").toEqual([true, offAtLogin, on]);
+  expect(addon.eval("return #ns.errors")).toBe(0);
 });
 
 // ClassBars -----------------------------------------------------------------------------------------------------

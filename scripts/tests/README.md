@@ -111,7 +111,14 @@ full one.
   hand. The probe runs the whole suite with every login scoped; a case that fails
   that way needs a heavy module and goes on its file's keep-full list. It takes a
   few minutes (`--workers <n>` caps Vitest's workers). Without `--write` it only
-  prints how many cases of each file keep the full login.
+  prints how many cases of each file keep the full login. With file filters, or
+  with `--report <file>` (a Vitest JSON report from a run with
+  `VG_LOGIN_SCOPE=probe`, made through the test-slot wrapper on a small machine),
+  `--write` replaces only those files' entries and keeps the rest.
+- A new test file that calls `loggedIn(` must be in the data or on `FULL_FILES`:
+  `scripts/login-scope.test.mjs` fails otherwise. The files still on the full
+  login from before that check are listed there (`UNSCOPED_LOGIN_FILES`); scope
+  one with the probe and take it off the list.
 - `VG_LOGIN_SCOPE=full` runs every login full (the equivalence check);
   `VG_LOGIN_SCOPE=probe` runs every login scoped; any other value throws.
 - A new case in a listed file that needs one of the six modules fails (frames
@@ -130,11 +137,15 @@ A module that declares `live = true` (Core/Modules.lua, `docs/design/MODULE-LIFE
 `lifecycleCases(name, login)` in `scripts/tests/lifecycle-helpers.mjs`, where `login(saved)` logs the addon in with
 `saved` appended to its saved variables: switched off, it leaves the footprint of a login with it off (no handler,
 ticker, subscribed event, shown frame, state driver, mover or open gate of its own); switched on late, it has the
-footprint of a login with it on, frames included; toggled three times, it makes no new frame, handler or gate.
+footprint of a login with it on, frames included; toggled three times, it makes no new frame, handler or gate, and
+leaves the saved variables as they were.
 `footprint(addon)` is the comparison, taken from `ns.HandlerCounts()`, `ns.ticker.vgJobs`, the addon frames in
 `stub.frames`, `ns.MoverList()` and the modules' scopes. `scripts/tests/lifecycle.test.mjs` exercises the registry,
 the scope, combat, the options rows and live profile switching with TEST-ONLY modules, which it runs as an addon
-file (`@Modules/TEST-ONLY.lua`) so the taint rules count their frames as the addon's.
+file (`@Modules/TEST-ONLY.lua`) so the taint rules count their frames as the addon's; it also stops every real live
+module with work queued (in a fight too) and lets time and the game's events pass, and switches a profile live with
+the real live modules. `scripts/tests/lifecycle-world.test.mjs` runs the three cases in a populated world (raid
+tiles, the trainer, a merchant, the mailbox).
 
 ### Text fit
 

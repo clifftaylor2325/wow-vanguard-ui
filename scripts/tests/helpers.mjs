@@ -374,6 +374,24 @@ export const BUFF_NAMES_DE = {
 export const spellNames = (names) => Object.entries(names)
   .map(([id, name]) => `__wfgWorld.spells[${id}] = { name = ${JSON.stringify(name)}, icon = "TEST-ONLY-SPELL-ICON" }`).join("\n");
 
+// TEST-ONLY raid marks for the tiles: a skull on raid1, raid1 the leader, raid3 out of range.
+export const RAID_MARKS_ENV = `
+  __status = { icon = { raid1 = 8 }, ready = {}, rez = {}, range = { raid1 = true, raid3 = false } }
+  GetRaidTargetIndex = function(unit) return __status.icon[unit] end
+  UnitIsGroupLeader = function(unit) return unit == "raid1" end
+  UnitInRange = function(unit) return __status.range[unit], true end
+`;
+
+// TEST-ONLY trainer window with one service to learn.
+export const TRAINER_ONE_SERVICE_ENV = `
+  __services = { { "TEST-ONLY Bolt", "available", 500 } }
+  GetMoney = function() return 2200 end
+  GetNumTrainerServices = function() return #__services end
+  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], "", s[2], false end
+  GetTrainerServiceCost = function(i) return __services[i][3] end
+  ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
+`;
+
 // TEST-ONLY healing data: a prediction calculator, threat, known spells and buffs.
 export const HEALING_ENV = `
   __pred = { raid1 = { max = 1000, heals = 200, shields = 150, over = true }, raid2 = { max = 900, heals = { __secret = true }, shields = 0, over = { __secret = true } },
