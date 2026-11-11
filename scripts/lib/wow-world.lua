@@ -1099,17 +1099,34 @@ local function filtered(unit, filter)
 end
 world.auras = filtered
 
+-- A duration object may hold hidden times: HasSecretValues says so (ReturnsNeverSecret), and the getters then answer
+-- with secrets. Blizzard_APIDocumentationGenerated/LuaDurationObjectAPIDocumentation.lua tags only the Evaluate* and
+-- Format* calls, so secret getters are the stricter guess, not a documented rule.
+
+-- The time inside a value for the object's sums: 0 for a secret that hides nothing (a test's bare stand-in).
+local function timeInside(v)
+  local n = inside(v)
+  if issecretvalue(n) then return 0 end
+  return n or 0
+end
+
+-- A getter's answer: a secret while the object holds hidden times, else as it is.
+local function durationAnswer(d, v)
+  if d:HasSecretValues() then return world.secret(v) end
+  return v
+end
+
 -- A duration object for an aura or cast: the client's "secret-safe" timer. It is a
 -- userdata in the client (LuaDurationObject, ObjectType "Userdata"), so it is one here.
 local function durationObject(start, duration)
   local d = { start = start, duration = duration }
   -- Start, total, end and remaining time; IsZero and HasSecretValues as the client's.
-  function d:GetStartTime() return self.start end
-  function d:GetTotalDuration() return self.duration end
-  function d:GetEndTime() return self.start + self.duration end
-  function d:GetRemainingDuration() return math.max(0, self.start + self.duration - stub.now) end
-  function d:IsZero() return self.duration == 0 end
-  function d:HasSecretValues() return issecretvalue(self.duration) end
+  function d:GetStartTime() return durationAnswer(self, timeInside(self.start)) end
+  function d:GetTotalDuration() return durationAnswer(self, timeInside(self.duration)) end
+  function d:GetEndTime() return durationAnswer(self, timeInside(self.start) + timeInside(self.duration)) end
+  function d:GetRemainingDuration() return durationAnswer(self, math.max(0, timeInside(self.start) + timeInside(self.duration) - stub.now)) end
+  function d:IsZero() return inside(self.duration) == 0 end
+  function d:HasSecretValues() return issecretvalue(self.start) or issecretvalue(self.duration) end
   return __wfgUserdata(d)
 end
 world.durationObject = durationObject
@@ -1142,10 +1159,15 @@ C_UnitAuras = {
     return curve and curve:Evaluate(kind) or world.dispelColors[kind]
   end,
   -- The duration object of an aura.
+  -- An aura with hidden times gives an object that holds them hidden (UnitAuraDocumentation.lua: the call itself
+  -- carries no secret tag), worked out from the values inside so the harness never does sums on a secret.
   GetAuraDuration = function(unit, id)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
     if not aura then return nil end
-    return durationObject((aura.expirationTime or stub.now) - (aura.duration or 0), aura.duration or 0)
+    local expires, duration = aura.expirationTime or stub.now, aura.duration or 0
+    local start = timeInside(expires) - timeInside(duration)
+    if issecretvalue(expires) or issecretvalue(duration) then return durationObject(world.secret(start), duration) end
+    return durationObject(start, duration)
   end,
 }
 world.dispelColors = { Magic = CreateColor(0.2, 0.6, 1), Curse = CreateColor(0.6, 0, 1), Disease = CreateColor(0.6, 0.4, 0), Poison = CreateColor(0, 0.6, 0), None = CreateColor(0.8, 0, 0) }

@@ -177,3 +177,18 @@ it("a secure button's click phase and GetCVarBool read the same ActionButtonUseK
   addon.eval('SetCVar("ActionButtonUseKeyDown", "0")');
   expect(read(), "switched off").toEqual([false, false, true]);
 });
+
+// C_UnitAuras.GetAuraDuration returns a LuaDurationObject with no secret tag of its own
+// (Blizzard_APIDocumentationGenerated/UnitAuraDocumentation.lua); the object's HasSecretValues is ReturnsNeverSecret
+// (LuaDurationObjectAPIDocumentation.lua). Its getters answering with secrets is the stricter guess.
+it("an aura with hidden times gives a duration object that holds them hidden, and plain times give plain answers", () => {
+  const addon = createAddon();
+  addon.world.setUnit("target", { name: "TEST-ONLY Mob", auras: [{ name: "TEST-ONLY Hex", auraInstanceID: 7, duration: 10, expirationTime: 110 }] });
+  // [HasSecretValues, then each getter as [secret, value inside]] for the aura's object at time 100.
+  const read = () => addon.eval(`__wfgStub.now = 100 local d = C_UnitAuras.GetAuraDuration("target", 7)
+    local function look(v) if issecretvalue(v) then return { true, rawget(v, "n") } end return { false, v } end
+    return { d:HasSecretValues(), look(d:GetStartTime()), look(d:GetTotalDuration()), look(d:GetEndTime()), look(d:GetRemainingDuration()), d:IsZero() }`);
+  expect(read(), "plain").toEqual([false, [false, 100], [false, 10], [false, 110], [false, 10], false]);
+  addon.eval(`local a = __wfgWorld.units.target.auras[1] a.duration, a.expirationTime = __wfgWorld.secret(10), __wfgWorld.secret(110)`);
+  expect(read(), "hidden").toEqual([true, [true, 100], [true, 10], [true, 110], [true, 10], false]);
+});
