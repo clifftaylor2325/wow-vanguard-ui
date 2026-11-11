@@ -111,3 +111,19 @@ it("UnitInRange hands a secret range back as a secret, with a secret checked fla
   addon.eval("__wfgWorld.units.party1.inRange = __wfgWorld.secret(false)");
   expect(read(), "secret").toEqual([true, true, false]);
 });
+
+// UnitHealthPercent is SecretReturns and SecretWhenCurveSecret on both clients
+// (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua): with hidden health every answer is hidden.
+it("UnitHealthPercent answers hidden health with a secret percent, a secret number curve result or a hidden color", () => {
+  const addon = createAddon();
+  addon.world.setUnit("target", { name: "TEST-ONLY Mob", hp: 25, maxhp: 100 });
+  // Plain or secret, and the value inside, for no curve, a number curve and a color curve.
+  const read = () => addon.eval(`local num = { Evaluate = function(_, x) return x * 100 end }
+    local col = C_CurveUtil.CreateColorCurve() col:AddPoint(0, CreateColor(1, 0, 0, 1))
+    local function look(v) if issecretvalue(v) then return { true, rawget(v, "n") } end return { false, v } end
+    return { look(UnitHealthPercent("target")), look(UnitHealthPercent("target", true, num)),
+      look(UnitHealthPercent("target", true, col).r) }`);
+  expect(read(), "plain").toEqual([[false, 25], [false, 25], [false, 1]]);
+  addon.eval("__wfgWorld.units.target.hp = __wfgWorld.secret(25)");
+  expect(read(), "hidden health").toEqual([[true, 25], [true, 25], [true, 1]]);
+});

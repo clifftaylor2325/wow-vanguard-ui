@@ -697,15 +697,18 @@ function UnitHealthMissing(unit)
 end
 
 -- A unit's health as a percent (0 to 100); with a curve, what the curve gives at the fraction (0 to 1), as the client
--- evaluates it. With hidden health, a color comes back with hidden components.
+-- evaluates it. With hidden health the answer is hidden: a secret number (the percent, or a number curve's result),
+-- or a color with hidden components. UnitHealthPercent is SecretReturns on both clients
+-- (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
 function UnitHealthPercent(unit, _, curve)
   local u = resolveUnit(unit)
   local hp, max = u and inside(u.hp), u and inside(u.maxhp)
   local fraction = max and max > 0 and hp / max or 0
-  if type(curve) ~= "table" or not curve.Evaluate then return fraction * 100 end
-  local c = curve:Evaluate(fraction)
-  if not (u and (issecretvalue(u.hp) or issecretvalue(u.maxhp))) then return c end
-  return CreateColor(world.secret(c.r), world.secret(c.g), world.secret(c.b), world.secret(c.a))
+  local result = fraction * 100
+  if type(curve) == "table" and curve.Evaluate then result = curve:Evaluate(fraction) end
+  if not (u and (issecretvalue(u.hp) or issecretvalue(u.maxhp))) then return result end
+  if type(result) == "number" then return world.secret(result) end
+  return CreateColor(world.secret(result.r), world.secret(result.g), world.secret(result.b), world.secret(result.a))
 end
 -- A unit's power: its main power, combo points, or another type from unit.powers.
 function UnitPower(unit, kind)
