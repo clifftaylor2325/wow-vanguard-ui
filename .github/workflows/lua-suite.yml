@@ -9,10 +9,13 @@ name: lua suite
 # contents; and, with the preview input on, the UI preview as a second job
 # beside it.
 #
-# This workflow has no triggers of its own: full-suite.yml calls it weekly
-# and from the Actions tab, and release.yml before each release. No pull
-# request runs it (Cliff, 2026-11-10); a branch's tests run on the agent's
-# machine before it merges. On Actions, Vitest also writes failures as
+# This workflow has no triggers of its own: full-suite.yml calls it from the
+# Actions tab, and release.yml before each release with the tests input off.
+# For now nothing in CI runs the tests by itself (Cliff, 2026-11-10): the
+# suite takes 45 to 60 minutes, and it stays out of CI until it is fast again
+# (sharding and the Lua 5.1 engine are in work). A hand-started full suite
+# still runs every test with the coverage floor. No pull request runs it; a
+# branch's tests run on the agent's machine before it merges. On Actions, Vitest also writes failures as
 # annotations on the run and a JUnit file (vitest.config.mjs), and the
 # Lua-by-area and coverage tables go to the job summary.
 #
@@ -33,6 +36,10 @@ on:
         description: "Shuffle the test order and print the seed, so a failure can be replayed"
         type: boolean
         default: false
+      tests:
+        description: "Run the tests with the coverage floor (off: the bench and the checks only)"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -77,7 +84,10 @@ jobs:
           seed=$(date +%s)
           echo "VG_SHUFFLE_SEED=$seed" >> "$GITHUB_ENV"
           printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
+      # Off for a caller that passes tests: false (release.yml, until the suite is fast again: Cliff,
+      # 2026-11-10). The bench and every check below still run.
       - run: npm run coverage
+        if: inputs.tests
       # The raid benchmark (scripts/bench.mjs, issue #255): time and Lua
       # instructions per event under a scripted 40-player raid, a harness
       # measurement until /vg perf confirms it in game. Its tables go to the
