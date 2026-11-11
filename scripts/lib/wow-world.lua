@@ -738,7 +738,6 @@ function UnitIsFeignDeath(unit) return uf(unit, "feign") == true end
 function UnitIsConnected(unit) local u = resolveUnit(unit) return u ~= nil and u.connected ~= false end
 function UnitIsAFK(unit) return uf(unit, "afk") == true end
 function UnitOnTaxi(unit) return uf(unit, "taxi") == true end
-function UnitInRange(unit) local u = resolveUnit(unit) return u ~= nil and u.inRange ~= false, u ~= nil end
 function UnitIsTapDenied(unit) return uf(unit, "tapDenied") == true end
 function UnitAffectingCombat(unit) return uf(unit, "inCombat") == true end
 function UnitClassification(unit) return uf(unit, "classification") or "normal" end
@@ -748,6 +747,13 @@ function UnitHasIncomingResurrection(unit) return uf(unit, "incomingRes") == tru
 function UnitXP(unit) return uf(unit, "xp") or 0 end
 function UnitXPMax(unit) return uf(unit, "xpmax") or 0 end
 function GetXPExhaustion() return world.units.player.rested end
+-- Whether a unit is in range, and whether range was checked. A secret unit.inRange passes through with a secret
+-- checked flag: UnitInRange is SecretReturns on both clients (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
+function UnitInRange(unit)
+  local u = resolveUnit(unit)
+  if u and issecretvalue(u.inRange) then return u.inRange, world.secret(true) end
+  return u ~= nil and u.inRange ~= false, u ~= nil
+end
 -- A unit's guild, from its guild, guildRank, guildRankIndex and guildRealm fields: guildName, guildRankName,
 -- guildRankIndex (0 is the guild master) and the guild's realm (nil for one of your own realm); nothing for a unit
 -- without a guild. The client's docs leave GetGuildInfo out: the forever branch's InstanceDifficulty.lua and

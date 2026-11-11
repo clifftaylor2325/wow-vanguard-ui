@@ -97,3 +97,17 @@ it("a unit watch shows a frame by its unit attribute and ignores a .unit field",
     RegisterUnitWatch(byField) RegisterUnitWatch(byAttribute)
     return { byField:IsShown(), byAttribute:IsShown() }`)).toEqual([false, true]);
 });
+
+// UnitInRange is SecretReturns on both clients (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
+it("UnitInRange hands a secret range back as a secret, with a secret checked flag", () => {
+  const addon = createAddon();
+  addon.world.setUnit("party1", { name: "TEST-ONLY Friend", inRange: false });
+  // Whether each return is a secret, and what it hides.
+  const read = () => addon.eval(`local a, b = UnitInRange("party1")
+    local hidden = a
+    if issecretvalue(a) then hidden = rawget(a, "n") end
+    return { issecretvalue(a), issecretvalue(b), hidden }`);
+  expect(read(), "plain").toEqual([false, false, false]);
+  addon.eval("__wfgWorld.units.party1.inRange = __wfgWorld.secret(false)");
+  expect(read(), "secret").toEqual([true, true, false]);
+});
