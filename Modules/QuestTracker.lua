@@ -530,30 +530,13 @@ local function followItems()
   for _, name in ipairs({ "PlaceMover", "SetMoverDefault" }) do hooksecurefunc(ns, name, ns.Guard("quest items follow", onSpotPlaced)) end
 end
 
--- Keeps the game's tracker clear (alpha 0) wherever the game brings it back: its managed-frame container re-parents it
--- to the visible right-hand container and sets its alpha to 1 as objectives change, and Vanguard's own parking waits
--- for the end of a fight, so its lines drew over ours meanwhile. Alpha is the one thing a fight does not lock.
-local function holdGameTrackerClear()
-  local tracker = _G.ObjectiveTrackerFrame
-  if type(tracker) ~= "table" or type(hooksecurefunc) ~= "function" then return end
-  -- Sets the alpha to 0; the flag stops the SetAlpha hook calling itself.
-  local function clear()
-    if QT.clearing then return end
-    QT.clearing = true
-    tracker:SetAlpha(0)
-    QT.clearing = false
-  end
-  clear()
-  for _, name in ipairs({ "SetAlpha", "SetParent", "Show" }) do hooksecurefunc(tracker, name, ns.Guard("quest tracker keeps the game's clear", clear)) end
-end
-
 -- Builds the tracker (in its spot), parks the game's under a hidden frame, as the unit frames park theirs (hidden
 -- in place, the game showing it in a fight made Vanguard's hide lay out the game's right-side column, boss frames
--- and all, from addon code), and follows the quest log.
+-- and all, from addon code), and follows the quest log. The park helper also holds the game's tracker clear and deaf
+-- to the mouse when its managed-frame container puts it back on screen in a fight, until the fight ends.
 local function build()
   QT.Build(ns.MoverFrame("questtracker"))
   ns.GetModule("UnitFrames").HideBlizzard("ObjectiveTrackerFrame")
-  holdGameTrackerClear()
   QT.ApplyOrder()
 end
 

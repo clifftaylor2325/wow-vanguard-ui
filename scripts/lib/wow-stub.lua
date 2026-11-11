@@ -412,6 +412,11 @@ function methods:IsMouseClickEnabled()
   if self.__mouseClick ~= nil then return self.__mouseClick end
   return self.__mouse == true or (self.__mouse == nil and self.__kind == "Button")
 end
+-- Whether the mouse moving over it lands on it (OnEnter, OnLeave, tooltips): as set, else whether it takes the mouse.
+function methods:IsMouseMotionEnabled()
+  if self.__mouseMotion ~= nil then return self.__mouseMotion end
+  return self.__mouse == true or (self.__mouse == nil and self.__kind == "Button")
+end
 -- The mouse wheel: whether the frame takes it (a frame with an OnMouseWheel script does too, as in game).
 function methods:EnableMouseWheel(on) self.__mouseWheel = on ~= false end
 -- Whether the frame takes the keyboard (EnableKeyboard), and whether a key it takes goes on to the game too.
