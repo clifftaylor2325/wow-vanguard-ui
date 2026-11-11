@@ -748,6 +748,25 @@ it("H44-21-R2: a quantity typed down to what has gone up says so in the guide, n
   const after = addon.eval(`local c = ${CARD} return { c.post:IsEnabled(), c.guide:GetText() }`);
   expect(after, "Post is off and the guide says why").toEqual([false, "Nothing left to post: raise Quantity, or click Stop."]);
 });
+it("H44-21-50: a per-stack price typed with nothing left to post stays finite, and posts at its share once Quantity is raised", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.click(`${CARD}.qtyMax`);
+  addon.click(`${CARD}.perStack`);
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][3] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  const boxes = [];
+  for (const qty of ["20", "10"]) {
+    addon.type(`${CARD}.qty`, qty);
+    addon.type(`${CARD}.price`, "7g");
+    boxes.push(form(addon)[3]);
+  }
+  expect(boxes, "at done and below done the typed 7g stays a number").toEqual(["7g 0s 0c", "7g 0s 0c"]);
+  addon.type(`${CARD}.qty`, "40");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[4], c[5]]).pop(), "20 more at a twentieth of 7g each").toEqual(["PostCommodity", 20, 3500]);
+});
 it("H44-21-51: the card's cheapest and suggestion are those of the sale's random-suffix variant; Up now lists every variant", () => {
   const addon = atAuctionHouse(BAGS + `__wfgWorld.ah.items[9999] = {
     { itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 8 }, buyoutAmount = 1000, quantity = 1 },

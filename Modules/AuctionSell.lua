@@ -168,6 +168,12 @@ local function stackSize(s)
   return math.min(s.stack, s.qty - s.done)
 end
 
+-- The stack a per-stack price is for: the next stack, or a full one when nothing is left to post (never 0 or less).
+local function priceStack(s)
+  local n = stackSize(s)
+  return n >= 1 and n or s.stack
+end
+
 -- How many stacks the sale makes in all: the ones posted or skipped, and those still to go.
 function AH.StackCount(s)
   return s.passed + math.ceil(math.max(0, s.qty - s.done) / s.stack)
@@ -361,7 +367,7 @@ AH.FORM = {
   -- The price, per unit or per stack by the toggle (the stack that goes up next, a short last one included;
   -- a stack price is shared out rounding up, so it never posts for less than was typed); nothing readable
   -- goes back to the suggestion.
-  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.ceil(p / stackSize(s)) or p) end,
+  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.ceil(p / priceStack(s)) or p) end,
   -- A bid per item (items only); nothing for none.
   bid = function(s, text) s.bid = AH.ParseMoney(text) end,
 }
@@ -638,7 +644,7 @@ local function paintBoxes(c, s)
   show(c.qty, s and s.qty)
   show(c.stack, s and s.stack)
   show(c.stacks, s and AH.StackCount(s))
-  show(c.price, price and AP.Money(price * (AH.perStack and stackSize(s) or 1)))
+  show(c.price, price and AP.Money(price * (AH.perStack and priceStack(s) or 1)))
   show(c.bid, s and s.bid and AP.Money(s.bid))
   c.bid:SetShown(s ~= nil and not s.commodity)
 end
