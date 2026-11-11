@@ -5472,7 +5472,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.561 A long meter report goes out as whole lines (H44-20-1)
 
-- Do: in a party after a fight with 6 or more members (cross-realm names if you can), `/vg meter report party 10`.
+- Do: for Forever and Retail: in a party after a fight with 6 or more members (cross-realm names if you can), `/vg meter report party 10`.
 - Expect: one or more party lines, every listed name whole, none cut off; the first line starts with the meter title.
 - If it fails, paste: the party lines, and `/vg errors`.
 
@@ -5484,7 +5484,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.563 Quest dialog hand-back after a module restart (H44-17-50)
 
-- Do: `/vg` > Quests: switch on Use the game's quest windows for now; Modules: Quest dialog off, then on; Quests: switch the hand-back off; talk to a quest giver. Also try: Quest dialog off, hand-back on, Quest dialog on, hand-back off, talk again.
+- Do: for Forever and Retail: `/vg` > Quests: switch on Use the game's quest windows for now; Modules: Quest dialog off, then on; Quests: switch the hand-back off; talk to a quest giver. Also try: Quest dialog off, hand-back on, Quest dialog on, hand-back off, talk again.
 - Expect: only Vanguard's quest dialog opens each time; the game's quest window does not open with it.
 - If it fails, paste: whether the game's quest window also opened, and `/vg errors`.
 
@@ -5502,53 +5502,53 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.566 An item-started quest is not accepted by a key or automation (H20-7-1)
 
-- Do: with the Quest dialog on and Quests > Accept quests on, loot an item that starts a quest while holding Space (or tapping Enter).
+- Do: for Forever and Retail: with the Quest dialog on and Quests > Accept quests on, loot an item that starts a quest while holding Space (or tapping Enter).
 - Expect: Vanguard's dialog opens on the offer and stays open, nothing is accepted until you click Accept; an ordinary quest giver is still accepted by Space and by automation as before.
 - If it fails, paste: whether the quest was accepted, and `/vg errors`.
 
 ### 33.567 A chat window dragged back into the dock stays in the dock (H44-19-1)
 
-- Do: with `/vg` > Chat > Move floating windows on and reloaded, pull a tab (Loot) out of the dock, drag its tab back into the dock, then open and close Edit Mode.
+- Do: for Forever and Retail: with `/vg` > Chat > Move floating windows on and reloaded, pull a tab (Loot) out of the dock, drag its tab back into the dock, then open and close Edit Mode.
 - Expect: the Loot tab's text stays inside the main chat panel when you click it, and `/vg unlock` shows no `Chat: Loot` handle.
 - If it fails, paste: a screenshot if the text sits elsewhere, and `/vg errors`.
 
 ### 33.568 A tab made and closed from the game's menu stays clean for channels (H44-19-2, H44-19-R1)
 
-- Do: make a tab from the game's tab menu (Create New Window); in `/vg` > Chat > Chat tabs pick it and click Close this tab; close it from its own menu, make another, tick LookingForGroup on it in its Settings, enter a dungeon and wait for a channel line (`/console taintLog 1` first). Also click New chat tab.
+- Do: for Forever and Retail: make a tab from the game's tab menu (Create New Window); in `/vg` > Chat > Chat tabs pick it and click Close this tab; close it from its own menu, make another, tick LookingForGroup on it in its Settings, enter a dungeon and wait for a channel line (`/console taintLog 1` first). Also click New chat tab.
 - Expect: New chat tab and Close this tab only say how to use the game's tab menu; the new tab's channel line shows with no Lua error and no taint line naming Vanguard.
 - If it fails, paste: `/vg errors` and the lines naming Vanguard in Logs/taint.log.
 
 ### 33.569 A closed Filtered tab's number is not fed to the next tab (H44-19-52)
 
-- Do: `/vg filter on`, close the Filtered tab from its tab menu, make a new tab named Loot from the game's menu, then wait for a gold seller's line in Trade (or `/vg filter` after one).
+- Do: for Forever and Retail: `/vg filter on`, close the Filtered tab from its tab menu, make a new tab named Loot from the game's menu, then wait for a gold seller's line in Trade (or `/vg filter` after one).
 - Expect: the spam goes to a new Filtered tab, and the Loot tab keeps its name and holds no spam.
 - If it fails, paste: `/vg filter` and the tab names.
 
 ### 33.570 A community invitation toast keeps the community's colour (H44-16-1)
 
-- Do: have a friend invite you to a Battle.net community (or a club finder invitation) while the toast skin is on.
+- Do: for Forever and Retail: have a friend invite you to a Battle.net community (or a club finder invitation) while the toast skin is on.
 - Expect: the community name in the toast stands out (blue or gold) from the grey sentence; a friend coming online still reads in secondary text.
 - If it fails, paste: a screenshot, or `name coloured: yes/no`.
 
 ### 33.571 The guild news filters flyout sits clear of the side tabs and stays put (H44-16-2, H44-16-3)
 
-- Do: open the guild window, Guild Info, Set filters; then open and close the character pane (or another side window) while the flyout is up.
+- Do: for Forever and Retail: open the guild window, Guild Info, Set filters; then open and close the character pane (or another side window) while the flyout is up.
 - Expect: the flyout sits beside the guild window without covering the Chat, Roster, Benefits or Info tabs, and stays beside it after the other window opens and closes.
 - If it fails, paste: a screenshot, and where the flyout ends up.
 
-### 33.572 Combat log filter buttons
+### 33.572 Combat log filter buttons (H44-16-50)
 
-- Do: Open Chat Settings, Combat, add a filter with Show Quick Button ticked.
+- Do: for Forever and Retail: open Chat Settings, Combat, add a filter with Show Quick Button ticked.
 - Expect: The new quick button on the combat log bar is a flat theme button, not the game's art.
 - If it fails, paste: A screenshot of the bar.
 
-### 33.573 Retail group finder page titles
+### 33.573 Retail group finder page titles (H44-16-51)
 
 - Do: On Retail, open the group finder, Premade Groups, then Start a Group.
 - Expect: Both page titles read in the light heading text, not the game's gold.
 - If it fails, paste: A screenshot of each page.
 
-### 33.574 Retail keystone window after taking a key out
+### 33.574 Retail keystone window after taking a key out (H32-4-1)
 
 - Do: On Retail, open the Mythic+ keystone window, put a keystone in the slot, then drag it out.
 - Expect: The panel stays flat; the game's backdrop and divider do not come back.

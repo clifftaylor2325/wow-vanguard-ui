@@ -2360,7 +2360,8 @@ end
 -- FCF_OpenNewWindow(name): takes the first window number neither shown nor docked, as FCF_GetNextOpenChatWindowIndex
 -- does (FCF_IsChatWindowIndexActive: shown or docked; forever Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:5-35),
 -- so a closed window's number goes to the next one made. The window and its tab are made the first time a number is
--- used, and shown each time; returns the window.
+-- used, and shown each time; returns the window. Two approximations: "shown" is frame:IsShown() where the game reads
+-- the saved shown flag, and the harness never docks a window it opens (the game does, FloatingChatFrame.lua:752).
 function FCF_OpenNewWindow(name)
   local i = 3
   while _G["ChatFrame" .. i] and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
