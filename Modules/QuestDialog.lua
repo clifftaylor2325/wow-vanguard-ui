@@ -371,9 +371,11 @@ function QD.Lists(events, event)
 end
 
 -- Runs the game's own handler on one window for an event it would have had (reading a script is not replacing it).
+-- One call per page the player opens, not a handler the client repeats, so it stays out of the error budget
+-- (ns.TryRepeating would pause it for the session, and a module restart never forgets a game function).
 local function forwardTo(f, event, args)
   local run = f.GetScript and f:GetScript("OnEvent")
-  if run then ns.TryRepeating("quest dialog hand-off", run, f, event, unpack(args)) end
+  if run then ns.Try("quest dialog hand-off", run, f, event, unpack(args)) end
 end
 
 -- Runs the game's own handlers for an event their windows would have had.

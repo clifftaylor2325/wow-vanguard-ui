@@ -2,6 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
+import { expectErrors } from "../lib/error-guard.mjs";
 import { CLICK_LUA, DATA_ENV, strips, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, RISE, SETUP_DONE, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
@@ -2503,6 +2504,13 @@ it("H44-17-50 quest dialog: the module restarted while handed back still takes t
   expect(restart(hand), "switch on, module off and on, switch off: the dialog alone shows").toEqual([false, false, true, false]);
   const stopped = "ns.SetModuleEnabled('QuestDialog', false) QD.HandBack(true) ns.SetModuleEnabled('QuestDialog', true) QD.HandBack(false)";
   expect(restart(stopped), "module off, switch on, module on, switch off: the same").toEqual([false, false, true, false]);
+});
+it("H44-17-51 quest dialog: a game handler that keeps failing is called on every hand-off, never paused for the session", () => {
+  expectErrors(/^quest dialog hand-off: eval:\d+: TEST-ONLY game handler$/);
+  const addon = loggedIn(QUEST_ENV + `__gameSaw = 0 QuestFrame:SetScript("OnEvent", function() __gameSaw = __gameSaw + 1 error("TEST-ONLY game handler") end)`, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
+  addon.eval("__shift = true");
+  for (let i = 0; i < 12; i++) addon.fire("QUEST_DETAIL");
+  expect(addon.eval("return { __gameSaw, #ns.paused }"), "all twelve reach the game's handler, none is paused").toEqual([12, 0]);
 });
 it("quest dialog: a held modifier hands one talk to the game, and the dialog is back for the next", () => {
   const addon = loggedIn(QUEST_ENV + GAME_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
