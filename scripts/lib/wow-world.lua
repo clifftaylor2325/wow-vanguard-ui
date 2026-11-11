@@ -410,10 +410,20 @@ function C_Timer.NewTicker(period, fn, iterations)
     if t.cancelled then return end
     fn(t)
     if t.left then t.left = t.left - 1 end
-    if not t.left or t.left > 0 then after(period, tick) end
+    if not t.left or t.left > 0 then after(period, tick).ticker = t end
   end
-  after(period, tick)
+  after(period, tick).ticker = t
   return t
+end
+
+-- How many tickers are still running: scheduled, not cancelled (the lifecycle footprint counts them; a pending
+-- one-shot timer is not counted, since it ends by itself).
+function world.runningTickers()
+  local n = 0
+  for _, entry in ipairs(world.timers) do
+    if entry.ticker and not entry.ticker.cancelled and not entry.done then n = n + 1 end
+  end
+  return n
 end
 
 local rawUpdate = stub.update

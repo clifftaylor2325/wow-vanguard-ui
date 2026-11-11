@@ -104,3 +104,17 @@ it("L a module whose Enable failed is not built again by another module's switch
   addon.eval("for i = #ns.errors, 1, -1 do table.remove(ns.errors, i) end");
   expect(tries).toBe(1);
 });
+
+// H44-2-106: work that keeps running by itself is part of the footprint, so "switched off leaves what a login with it
+// off leaves" fails while a module's every-frame driver or ticker still runs. A pending one-shot timer is not counted.
+it("H44-2-106 the lifecycle footprint counts a running OnUpdate driver and ticker, and not a one-shot timer", () => {
+  const addon = loggedIn();
+  const before = footprint(addon);
+  asAddon(addon, `TestLeak = CreateFrame("Frame") TestLeak:SetScript("OnUpdate", function() end)
+    TestTicker = C_Timer.NewTicker(0.1, function() end) C_Timer.After(5, function() end)`);
+  addon.advance(1);
+  const after = footprint(addon);
+  expect([after.updaters.length - before.updaters.length, after.timers - before.timers], "one driver, one ticker").toEqual([1, 1]);
+  addon.eval("TestLeak:Hide() TestTicker:Cancel()");
+  expect(footprint(addon), "stopped: as before").toEqual(before);
+});
