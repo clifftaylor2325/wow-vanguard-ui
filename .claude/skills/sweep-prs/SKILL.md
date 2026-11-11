@@ -1,6 +1,6 @@
 ---
 name: sweep-prs
-description: The weekly open pull request and CI sweep for Vanguard: what is green, what is red, merge order, bringing main into a branch, the ci-failure issue, and a status line for Cliff. Use on the Monday routine, when Cliff asks "where are we", or before a merge wave.
+description: "The weekly open pull request and CI sweep for Vanguard: what is green, what is red, merge order, bringing main into a branch, the ci-failure issue, and a status line for Cliff. Use on the Monday routine, when Cliff asks \"where are we\", or before a merge wave."
 ---
 
 # Sweep the open PRs

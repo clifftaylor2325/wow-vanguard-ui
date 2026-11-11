@@ -15,7 +15,7 @@ A release is a version bump merged to `main`, then the `release` workflow. Nothi
 
 ## The bump
 
-4. One commit on a branch `work/release-<version>`: `## Version` in `Vanguard.toc` to the new version (and `## Interface` to the real build if `/vg status` reported a different one), nothing else. Subject `release: v<version>`. Open the PR (draft, then ready), let `verify.yml` pass, merge.
+4. One commit on a branch `work/release-<version>`: `## Version` in `Vanguard.toc` to the new version (and the matching `## Interface` value, 16001 for Forever, if the interface number in the `/vg errors` header or on the second line of `/vg report` is different; keep the Retail one), nothing else. Subject `release: v<version>`. Open the PR (draft, then ready), let `verify.yml` pass, merge.
 
 ## The release
 
@@ -25,7 +25,7 @@ A release is a version bump merged to `main`, then the `release` workflow. Nothi
 ## After
 
 7. **The site** (`clifftaylor2325/wow-vanguard-ui-site`): `scripts/lib/changelog-content.mjs` gets the release's lines in player language, each with the PR numbers it came from, and `site.config.json`'s `sourceRef` moves to the released commit when the site should show the new release as current. That is a PR on the site repo (its own `CLAUDE.md` applies: nothing hand-copied from the addon, `npm run check` before the PR).
-8. **CurseForge** (issue #144): upload the zip or let the packager build from the tag with `.pkgmeta`. This is Cliff's step until the listing exists.
+8. **The stores**: the listings job sends the same tag to CurseForge and Wago (it skips itself while either key is missing; then say so in the thread). Open both pages once.
 9. **The frozen surface**: run `npm run freeze:update` on `main` after the release and commit `scripts/tests/frozen-surface.json` in the next PR, so every setting, `/vg` word and API function this release shipped stays frozen (docs/RELEASING.md, Version policy).
 10. Reply in the thread with the release link and what was skipped.
 

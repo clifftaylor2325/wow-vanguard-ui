@@ -25,7 +25,7 @@ Pick by who you are. The behaviour spec for the whole addon is the root [README.
 
 ## Testers
 
-- [SMOKE-TEST.md](SMOKE-TEST.md): the in-game checklist, in crash-risk order. The batch results go on issue #284.
+- [SMOKE-TEST.md](SMOKE-TEST.md): the in-game checklist, in crash-risk order. The results go in [smoke-results.json](smoke-results.json), one entry per step.
 
 ## Addon authors
 

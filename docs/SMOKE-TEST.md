@@ -60,7 +60,7 @@ The report is also saved in `WTF\Account\<account>\SavedVariables\Vanguard.lua` 
 
 If time is short, do these first and stop after any step that throws a Lua error (paste the report block):
 
-1. 1.1 to 1.4: install, first login, `/vg status` (also read the real Interface build from it and put it in `Vanguard.toc` before packaging), `/vg errors`.
+1. 1.1 to 1.4: install, first login, `/vg status` (read the real build from its client line) and `/vg errors` (its header has the interface number; put it in `Vanguard.toc` as the matching `## Interface` value before packaging).
 2. 7 and 3.3: combat with auras, cast bars, nameplates and unlocked frames.
 3. 9.4 and 14.9.2: open the auction house, then Post from the Posting tab. Run `/vg errors` right after.
 4. 14: each skinned game window, opened once in combat and once out of it.
@@ -170,11 +170,11 @@ After the first raid night, steps 6.2, 6.2a and 6.3 (raid frames, raid indicator
 For every failed step, paste all of this (steps below say "If it fails, paste:" for anything extra):
 
 1. The step id (for example `3.3`).
-2. The whole output of `/vg status`. Today it is six lines: the version, profile and module count; the skinned, painted and waiting-on-combat counts; the client line (`Client WoW Forever`, the build, `auras on the engine` or `auras on the fallback`, `aura values readable` or `hidden right now`, and whether secure snippets work); a `Client has: ... lacks: ...` line; a `Game restrictions: none` (or the kinds that are on) line; and the `UI scale ... text ... chat ...` line.
+2. The whole output of `/vg status`. Today it is eight lines: the version, profile and module count; the skinned, painted and waiting-on-combat counts; the client line (`Client WoW Forever`, the build, `auras on the engine` or `auras on the fallback`, `aura values readable` or `hidden right now`, and whether secure snippets work); a `Client has: ... lacks: ...` line; a `Game restrictions: none` (or the kinds that are on) line; the `UI scale ... text ... chat ...` line; a `Game fonts: ...` line; and a `Game windows: ...` line.
 3. The `/vg errors` result: either `No errors caught this session.` in chat, or a copy window (text selected, Ctrl+C works) with a header with the version, interface number and error count, the client line, and each error with `(xN)` and its stack lines.
 4. A screenshot (Print Screen; the files land in the game's Screenshots folder).
 
-Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`### Vanguard report v1 ###` to `### end ###`), with the screen size, the modules turned off and the skins. Press Ctrl+C and paste it whole; it is the same block the feedback form on vanguardui.com reads. `/vg feedback` (or Report a bug on the Feedback page in `/vg`, the last page in the list) goes one further: it asks the form's own questions in game and makes one block, the report inside it, that fills the form when pasted into it.
+Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`### Vanguard report v1 ###` to `### end ###`): the version, interface number, profile and module count; the client, `Client has / lacks`, `Game restrictions` and `UI scale` lines; the screen size, the modules turned off, the skins, what was left off and the error count; then each caught error as `[i] ...  (xN)` with its stack lines. It has no skinned, painted, game fonts or game windows lines; those are only in `/vg status`. Press Ctrl+C and paste it whole; it is the same block the feedback form on vanguardui.com reads. `/vg feedback` (or Report a bug on the Feedback page in `/vg`, the last page in the list) goes one further: it asks the form's own questions in game and makes one block, the report inside it, that fills the form when pasted into it.
 
 ## 1. Install and first login
 
@@ -2820,7 +2820,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.38 [Combat] Accent change with a hidden dispel debuff badge
 
 - Do: with a debuff badge coloured from a hidden dispel type on screen, change the accent colour.
-- Expect: no error in `/vg errors`. This is the probe that issue #284 still needs.
+- Expect: no error in `/vg errors`. This is the probe the in-game record still needs.
 - If it fails, paste: `/vg errors`.
 
 ### 33.39 Chat size and background

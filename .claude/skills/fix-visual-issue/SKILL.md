@@ -1,6 +1,6 @@
 ---
 name: fix-visual-issue
-description: Fix a visual or layout bug reported from the game (a cut-off label, a see-through panel, a wrong colour) in Vanguard, which nobody can see in the game while working. Use for issues like #187 to #204 and any report that quotes /vg frame output.
+description: "Fix a visual or layout bug reported from the game (a cut-off label, a see-through panel, a wrong colour) in Vanguard, which nobody can see in the game while working. Use for a look report from the game and any report that quotes /vg frame output."
 ---
 
 # Fix a visual issue
