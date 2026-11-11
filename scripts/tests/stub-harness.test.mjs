@@ -164,3 +164,16 @@ it("UnitIsUnit answers a secret while comparison is restricted, and nothing for 
   expect(read("target", "boss1"), "restricted, a pair with target").toEqual([true, 1, true, true]);
   expect(read("boss1", "nameplate1"), "restricted, an off-limits pair").toEqual([false, 0, false]);
 });
+
+// SecureActionButton_ShouldUseOnKeyDown decides the phase with GetCVarBool("ActionButtonUseKeyDown")
+// (Blizzard_FrameXML/SecureTemplates.lua, both clients), so the world's own read and a secure button never disagree.
+it("a secure button's click phase and GetCVarBool read the same ActionButtonUseKeyDown value", () => {
+  const addon = createAddon();
+  // [GetCVarBool, acts on down, acts on up] for a fresh secure button.
+  const read = () => addon.eval(`local b = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
+    b:RegisterForClicks("AnyDown", "AnyUp")
+    return { GetCVarBool("ActionButtonUseKeyDown"), __wfgStub.secureActs(b, "LeftButton", true), __wfgStub.secureActs(b, "LeftButton", false) }`);
+  expect(read(), "the default").toEqual([true, true, false]);
+  addon.eval('SetCVar("ActionButtonUseKeyDown", "0")');
+  expect(read(), "switched off").toEqual([false, false, true]);
+});

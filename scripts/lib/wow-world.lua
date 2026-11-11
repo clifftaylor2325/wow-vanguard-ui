@@ -110,7 +110,9 @@ WOW_PROJECT_CAMELOT = 18
 WOW_PROJECT_ID = WOW_PROJECT_CAMELOT
 world.client = "forever"
 world.locale = "enUS"
-world.cvars = {}
+-- ActionButtonUseKeyDown starts on: the default is not in Blizzard's source and is not confirmed in game (the value
+-- docs/SMOKE-TEST.md's totem step expects); stub.secureActs and GetCVarBool both read this one value.
+world.cvars = { ActionButtonUseKeyDown = "1" }
 world.sounds = {}
 world.reloads = 0
 world.keys = {}
@@ -485,13 +487,13 @@ function UnregisterAttributeDriver(frame, attr) if frame.__drivers then frame.__
 
 -- Whether an addon's SecureActionButtonTemplate button runs its action on this click phase, as
 -- SecureActionButton_OnClick decides (SecureTemplates.lua): an addon's OnClick has no isKeyPress or
--- isSecureAction, so the useOnKeyDown attribute, else the ActionButtonUseKeyDown CVar (on, "1", unless
--- world.cvars says otherwise), or pressAndHoldAction picks the down phase; the other phase does nothing.
+-- isSecureAction, so the useOnKeyDown attribute, else GetCVarBool("ActionButtonUseKeyDown") as
+-- SecureActionButton_ShouldUseOnKeyDown reads it, or pressAndHoldAction picks the down phase; the other phase does nothing.
 function stub.secureActs(frame, button, down)
   -- A secure button that never called RegisterForClicks acts on no phase here (stricter than the default).
   if not (frame.__clicks and stub.clickRegistered(frame, button, down == true)) then return false end
   local onDown = frame:GetAttribute("useOnKeyDown")
-  if onDown == nil then onDown = world.cvars.ActionButtonUseKeyDown ~= "0" end
+  if onDown == nil then onDown = GetCVarBool("ActionButtonUseKeyDown") end
   onDown = onDown or frame:GetAttribute("pressAndHoldAction")
   return (down == true) == (not not onDown)
 end

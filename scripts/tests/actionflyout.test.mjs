@@ -15,6 +15,10 @@ const FLYOUTS = `
   C_Spell.GetSpellTexture = function(id) return "TEST-ONLY-ICON-" .. id end
 `;
 
+// TEST-ONLY: "Cast action keybinds on key down" off, so the game acts on a click's release (the edge the click
+// cases below press with, run's default).
+const KEY_UP = "__wfgWorld.cvars.ActionButtonUseKeyDown = '0'\n";
+
 // One frame on, for the flyouts stored on the next frame after a change.
 const nextFrame = (addon) => addon.update(0.01);
 
@@ -86,14 +90,14 @@ it("a flyout's known spells are stored for the snippet, a Call Pet slot without 
   expect(attrs(1, 2), "the unknown spell is skipped").toEqual([2, 11, 13]);
   expect(attrs(2, 1), "the empty pet slot is skipped").toEqual([1, 101]);
   expect(attrs(3, 1)[0], "a flyout of 25 is cut at the 20 buttons").toBe(20);
-  expect(addon.eval("local f = Vanguard_Flyout return { f:GetAttribute('edge'), f:GetAttribute('screen-width') > 0, f:GetAttribute('screen-height') > 0 }"), "the click edge and the screen size are stored").toEqual(["up", true, true]);
-  addon.eval("__wfgWorld.cvars.ActionButtonUseKeyDown = '1'");
+  expect(addon.eval("local f = Vanguard_Flyout return { f:GetAttribute('edge'), f:GetAttribute('screen-width') > 0, f:GetAttribute('screen-height') > 0 }"), "the click edge (key down, the world's default) and the screen size are stored").toEqual(["down", true, true]);
+  addon.eval("__wfgWorld.cvars.ActionButtonUseKeyDown = '0'");
   addon.fire("CVAR_UPDATE", "autoLootDefault", "1");
   nextFrame(addon);
-  expect(addon.eval("return Vanguard_Flyout:GetAttribute('edge')"), "another setting's change reads nothing again").toBe("up");
-  addon.fire("CVAR_UPDATE", "ActionButtonUseKeyDown", "1");
+  expect(addon.eval("return Vanguard_Flyout:GetAttribute('edge')"), "another setting's change reads nothing again").toBe("down");
+  addon.fire("CVAR_UPDATE", "ActionButtonUseKeyDown", "0");
   nextFrame(addon);
-  expect(addon.eval("return Vanguard_Flyout:GetAttribute('edge')"), "key down is read again when its setting changes").toBe("down");
+  expect(addon.eval("return Vanguard_Flyout:GetAttribute('edge')"), "key up is read again when its setting changes").toBe("up");
 });
 
 // TEST-ONLY flyout 7 with ranks, lowest first as the game gives them: two forms, then three ranks of one spell with an
@@ -140,7 +144,7 @@ it("a flyout stored in a fight waits for it to end, and a client without the Cal
 });
 
 it("a first flyout dragged onto a bar in a fight is the list's to open: the click is stopped until the fight ends", () => {
-  const addon = loggedIn(FLYOUTS);
+  const addon = loggedIn(KEY_UP + FLYOUTS);
   setCombat(addon, true);
   place(addon, 1, 1);
   expect(addon.eval("return { Vanguard_Bar1Button1.__wraps.OnClick == ns.GetModule('ActionBars').FLYOUT_PRE, Vanguard_Flyout:GetAttribute('flyout-1-count') == nil }"), "the button's click is wrapped; the spells wait for the fight's end").toEqual([true, true]);
@@ -152,7 +156,7 @@ it("a first flyout dragged onto a bar in a fight is the list's to open: the clic
 });
 
 it("a click on a flyout slot opens the list above a bottom bar's button and stops the game's click", () => {
-  const addon = loggedIn(FLYOUTS);
+  const addon = loggedIn(KEY_UP + FLYOUTS);
   place(addon, 1, 1);
   expect(run(addon, PRE), "the click is stopped").toEqual([false, "nil"]);
   const state = list(addon);
@@ -164,7 +168,7 @@ it("a click on a flyout slot opens the list above a bottom bar's button and stop
 });
 
 it("the list opens toward the middle of the screen: down from the top, right from the left edge, left from the right edge", () => {
-  const addon = loggedIn(FLYOUTS);
+  const addon = loggedIn(KEY_UP + FLYOUTS);
   place(addon, 1, 1);
   // The first spell button's anchor point, after closing the list for the next run.
   const point = () => addon.eval("local c = Vanguard_Flyout.vgChildren[1] Vanguard_Flyout:Hide() return (next(c.__points))");
@@ -179,7 +183,7 @@ it("the list opens toward the middle of the screen: down from the top, right fro
 });
 
 it("a click on anything but a flyout closes the list, a flyout with no known spell opens nothing, and the click's other edge is ignored", () => {
-  const addon = loggedIn(FLYOUTS);
+  const addon = loggedIn(KEY_UP + FLYOUTS);
   place(addon, 1, 1); place(addon, 2, 2);
   run(addon, PRE);
   expect(run(addon, PRE, { button: "Vanguard_Bar1Button3" }), "a plain slot: the click goes on").toEqual(["nil", "nil"]);
@@ -192,7 +196,7 @@ it("a click on anything but a flyout closes the list, a flyout with no known spe
 });
 
 it("the list closes when the button that opened it hides (its bar going away too), not when another button does", () => {
-  const addon = loggedIn(FLYOUTS);
+  const addon = loggedIn(KEY_UP + FLYOUTS);
   place(addon, 1, 1);
   const HIDE = "ns.GetModule('ActionBars').FLYOUT_BUTTON_HIDE";
   run(addon, PRE);
@@ -205,7 +209,7 @@ it("the list closes when the button that opened it hides (its bar going away too
 });
 
 it("a spell button of the list closes it after the click the game acts on, and shows its spell's tooltip", () => {
-  const addon = loggedIn(FLYOUTS);
+  const addon = loggedIn(KEY_UP + FLYOUTS);
   place(addon, 1, 1);
   // The spell button's snippet for a click edge.
   const child = (down) => run(addon, "ns.GetModule('ActionBars').FLYOUT_CHILD_PRE", { down });
