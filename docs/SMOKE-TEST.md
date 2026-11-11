@@ -5456,6 +5456,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: under "Dungeon quests in your log" only the dungeon quest, not the Group quest; the dungeon quest's tag reads Dungeon (tagID 81) or Raid (62).
 - If it fails, paste: the card's lines and both `/dump` answers (a dungeon quest that Forever tags Group, or tags nothing, is the case to report), and `/vg errors`.
 
+### 33.638 A talent apply cut short is undone, and Spend planned buys again
+
+- Do: with a talent plan and a point to spend, press Spend planned on the talents window and jump or run during the Applying talents cast; then press Spend planned again standing still. After that, with "Spend planned points at a level-up" on, level up while running. [Client: Forever.]
+- Expect: when the cast is cut short chat says "Talent planner: the game refused to apply talents just now; try again in a moment." and the point is back; the second Spend planned buys and applies (no "picks you haven't applied" line). The level-up spend behaves the same.
+- If it fails, paste: the chat lines, `/dump C_Traits.ConfigHasStagedChanges(C_SpecializationInfo.GetCombatConfigIDForSpecGroup(C_SpecializationInfo.GetActiveSpecGroup()))` after the failed apply, whether the cast bar showed, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
