@@ -102,6 +102,20 @@ it("modules", () => {
   addon.slash("disable Good");
   expect(addon.eval("return ns.ModuleEnabled('Good')") === false, "/vg disable turns a module off").toBeTruthy();
 });
+it("H44-28-2 /vg enable and disable: a live module's line has no /reload, a reload-only module's keeps it", () => {
+  const addon = loggedIn(`
+    ns.Module("TESTONLY_Live", { live = true, Enable = function() end, Disable = function() end })
+    ns.Module("TESTONLY_Plain", { Enable = function() end })
+  `);
+  addon.slash("disable TESTONLY_Live");
+  addon.slash("enable TESTONLY_Live");
+  expect([chatHas(addon, /TESTONLY_Live disabled\.$/), chatHas(addon, /TESTONLY_Live enabled\.$/)], "a live module says it, with no reload").toEqual([true, true]);
+  addon.slash("disable TESTONLY_Plain");
+  expect(chatHas(addon, /TESTONLY_Plain disabled\. \/reload to apply\./), "a reload-only module still asks for the reload").toBe(true);
+  addon.eval("ns.InCombat = function() return true end");
+  addon.slash("disable TESTONLY_Live");
+  expect(chatHas(addon, /TESTONLY_Live disabled after the fight\./), "a switch made in a fight waits for it").toBe(true);
+});
 it("H26-1-2 modules: ns.ModuleLive answers whether a module's frames are built this session, not its switch", () => {
   const addon = loggedIn(`
     ns.Module("TESTONLY_Early", { Enable = function() __early = { ns.ModuleLive("TESTONLY_Late"), ns.ModuleLive("TESTONLY_Off") } end })
