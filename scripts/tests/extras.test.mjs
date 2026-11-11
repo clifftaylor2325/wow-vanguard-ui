@@ -55,6 +55,16 @@ it("main tank tiles take their handle's scale and opacity (the header sits besid
   expect(look()[0], "and follows once the fight is over").toBe(1);
 });
 
+it("main tank tiles: a new holder scale pins each tile's bar one pixel inside its panel at that scale", () => {
+  const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
+  addon.eval('__mt(1, "raid1")');
+  // The bar's inset over one screen pixel at the tile's scale now.
+  const inset = () => addon.eval("local b = Vanguard_MainTanksUnitButton1 return math.floor(b.bar.__points.TOPLEFT.x / ns.Theme.Pixel(b) * 100 + 0.5) / 100");
+  expect(inset(), "built: one pixel").toBe(1);
+  addon.eval('ns.SetMoverScale("maintanks", 2)');
+  addon.update(0);
+  expect([addon.eval("return Vanguard_MainTanks:GetScale()"), inset()], "at twice the size: still one pixel").toEqual([2, 1]);
+});
 it("main tank frames without secure snippets: the header copies the clicks; tiles are sized and set up out of combat", () => {
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end');
   expect(addon.eval("local h = Vanguard_MainTanks return { h:GetAttribute('initialConfigFunction') == nil, h:GetAttribute('_initialAttributeNames') }"),

@@ -89,14 +89,26 @@ function MT.Drive(frame, state)
   frame.vgStateString = state
 end
 
+-- Pins a tile's health bar one screen pixel (`px`, at the holder's scale now) inside its panel.
+function MT.PlaceBar(b, px)
+  b.bar:SetPoint("TOPLEFT", px, -px)
+  b.bar:SetPoint("BOTTOMRIGHT", -px, px)
+end
+
+-- Pins every tile's bar again for the header's scale now: a T.OnScale listener (the holder's Scale or the UI scale
+-- changed; out of combat, the tiles are secure), and at each start. The tiles share the header's scale.
+function MT.PlaceBars()
+  if not MT.header then return end
+  local px = T.PixelAtScale(MT.header:GetEffectiveScale())
+  for _, b in ipairs(MT.tiles) do MT.PlaceBar(b, px) end
+end
+
 -- Dresses a unit button as a small tile (read while `scope` runs): a flat panel, a health bar one pixel
 -- inside it, the name on the bar (cut off, never wrapped), and its unit's tooltip on hover.
 function MT.Tile(b, scope)
-  local px = T.Pixel(b)
   T.HudPanel(b)
   b.bar = T.StyleBar(CreateFrame("StatusBar", nil, b))
-  b.bar:SetPoint("TOPLEFT", px, -px)
-  b.bar:SetPoint("BOTTOMRIGHT", -px, px)
+  MT.PlaceBar(b, T.Pixel(b))
   b.name = T.Text(b.bar:CreateFontString(nil, "OVERLAY"), "small")
   b.name:SetPoint("LEFT", 4, 0) b.name:SetPoint("RIGHT", -4, 0)
   b.name:SetJustifyH("LEFT") b.name:SetWordWrap(false)
@@ -149,11 +161,14 @@ local function precreate(header)
 end
 
 -- Gives the header the holder's saved Scale and Opacity: it is pinned to the holder but is not its
--- child, so it inherits neither (out of combat: the header is secure).
+-- child, so it inherits neither (out of combat: the header is secure). A new scale has the tiles' borders and
+-- pixel insets worked out again for it (T.Rescale, then the scale listeners).
 function MT.FollowHolder()
   local scale, alpha = ns.MoverLook("maintanks")
-  MT.header:SetScale(scale)
   MT.header:SetAlpha(alpha)
+  if math.abs(MT.header:GetScale() - scale) < ns.GetModule("RaidFrames").SCALE_EPSILON then return end
+  MT.header:SetScale(scale)
+  T.Rescale()
 end
 
 -- The movable holder (room for four tiles and their target lines), the header pinned in it; made once a session.
@@ -175,6 +190,7 @@ local function show(scope)
   MT.holder:Show()
   scope:Frame(MT.header)
   MT.FollowHolder()
+  MT.PlaceBars()
   MT.Drive(MT.header, "[group:raid] show; hide")
   for _, b in ipairs(MT.tiles) do MT.Poll(b, scope) end
   if MT.snippetless then scope:On("GROUP_ROSTER_UPDATE", MT.SetupSoon) end
@@ -211,4 +227,5 @@ function MT.Enable(_, scope)
   MT.scope = scope
   ns.OutOfCombat(function() show(scope) end)
   scope:Gate("mover placed", onPlaced, ns.OnMoverPlaced)
+  scope:Gate("scale", MT.PlaceBars, T.OnScale)
 end
