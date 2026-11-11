@@ -719,7 +719,7 @@ end
 -- client's hidden answer; anything else is true only when it is true.
 local function unitFlag(unit, field)
   local v = uf(unit, field)
-  if issecretvalue(v) then return v end
+  if madeSecret(v) then return v end
   return v == true
 end
 
