@@ -73,10 +73,14 @@ end
 
 -- The switches follow the profile while the panel is open: a reset, an import or a switch that applies at once
 -- changes the parts it lists, and a stale list would export parts the profile no longer has.
+-- A part the player switched off stays off (a part new to the profile comes in on).
 ns.OnProfileChanged(function()
   if not (panel and panel:IsShown()) then return end
+  local was = panel.on
   panel.problem:SetText("")
   fill()
+  for part in pairs(panel.on) do panel.on[part] = was[part] ~= false end
+  for i = 1, #panel.parts do panel.rows[i]:Refresh() end
 end)
 
 -- Turns every switch on or off.

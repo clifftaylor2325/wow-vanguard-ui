@@ -262,12 +262,12 @@ local function abandonOne(id)
   return true
 end
 
--- Abandons each quest of the list that is still in the log (the question was the confirmation), then clears
--- the marks and says how many went.
+-- Abandons each quest of the list that is still marked and still in the log (the question was the confirmation;
+-- a quest unmarked while it was open stays), then clears the marks and says how many went.
 local function abandonAll(list)
   local gone = 0
   for _, e in ipairs(list) do
-    if abandonOne(e.id) then gone = gone + 1 end
+    if QL.marked[e.id] and abandonOne(e.id) then gone = gone + 1 end
   end
   QL.marked = {}
   ns.Chat(ns.Format(L["Abandoned {count} quest(s)."], { count = gone }))

@@ -415,6 +415,14 @@ it("H44-19-51 chat watch: a word of two-byte letters rings next to guillemets, a
   expect([match("непродам épée"), match("продам vépée")], "inside a word it still does not match").toEqual([null, null]);
 });
 
+// Gate three: the phrase goes through the same unmarking as the line, so a mark inside a watched word still matches.
+it("H44-19-51 chat watch: a watched word holding a curly apostrophe or a dash rings", () => {
+  const addon = watching("aujourd’hui porte—clé");
+  // The ChatWatch match for a text, by what it rings for.
+  const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
+  expect(match("je pars aujourd’hui avec la porte—clé"), "both words found").toBe("aujourd’hui porte—clé");
+});
+
 it("H44-19-51 chat watch: the toast finds and marks the word after such a mark, on a line long enough to be cut", () => {
   const addon = watching("продам");
   // The toast line ChatWatch makes of a text for a word.

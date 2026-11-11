@@ -71,10 +71,11 @@ local function wordPattern(word)
   return wordStart(word) .. ns.GetModule("ChatExtras").Escape(word)
 end
 
--- Each phrase's word patterns, made once per phrase (never per line; forgotten when the list changes).
+-- Each phrase's word patterns, made once per phrase (never per line; forgotten when the list changes). The phrase is
+-- CX.Unmarked like the line it is matched in, so a word holding a curly apostrophe or a dash still matches.
 local patternsOf = setmetatable({}, { __index = function(cache, phrase)
-  local patterns = {}
-  for i, word in ipairs(CW.Words(ns.Lower(phrase))) do patterns[i] = wordPattern(word) end
+  local patterns, lower = {}, ns.GetModule("ChatExtras").Unmarked(ns.Lower(phrase))
+  for i, word in ipairs(CW.Words(lower)) do patterns[i] = wordPattern(word) end
   cache[phrase] = patterns
   return patterns
 end })

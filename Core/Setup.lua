@@ -487,11 +487,14 @@ function ns.SetUIScale(scale)
   if ns.SetGameUIScale(scale) then T.Settings().pixelScale = false end
 end
 
--- The game's UI scale settings as they are now ({ use, scale }), or nil where the client can't tell.
+-- The game's UI scale settings as they are now ({ use, scale }), or nil where the client can't tell (no getter, or
+-- one that fails: Graphics' check refuses such a read too).
 local function gameScale()
   local get = (C_CVar and C_CVar.GetCVar) or _G.GetCVar
   if type(get) ~= "function" then return nil end
-  return { use = get("useUiScale"), scale = get("uiScale") }
+  local okUse, use = pcall(get, "useUiScale")
+  local okScale, scale = pcall(get, "uiScale")
+  return okUse and okScale and { use = use, scale = scale } or nil
 end
 
 -- Puts the game's UI scale back to what it was before this run's first preset set it (out of combat); a run that

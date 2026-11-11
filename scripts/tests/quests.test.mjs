@@ -2405,6 +2405,14 @@ it("quest log: a marked quest that left the log before the answer is skipped, ne
   expect(chatHas(addon, /Abandoned 1 quest\(s\)\./), "chat counts only the one abandoned").toBe(true);
 });
 
+// Gate three: a quest unmarked while the question was open stays, though another is still marked.
+it("quest log: a quest unmarked while the abandon question is open is not abandoned", () => {
+  const addon = holdingItems();
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [7] = true, [8] = true } QL.AbandonMarked() QL.marked[8] = nil");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local o = {} for _, q in ipairs(__wfgWorld.quests) do o[#o + 1] = q.questID end return o"), "7 went, 8 (unmarked) stays").toEqual([8]);
+});
+
 it("quest log: a quest the game does not take as the one to abandon is left alone", () => {
   const addon = holdingItems();
   addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [8] = true } QL.AbandonMarked() C_QuestLog.GetAbandonQuest = function() return 7 end");

@@ -1165,14 +1165,22 @@ it("H44-12-2: a live switch before Edit Mode has its layouts leaves the first lo
   expect(layouts(addon), "the first load switches to Raid's layout").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
 });
 
+// Gate three: a part the player switched off stays off when the panel refills.
+it("hunt H44-12-70: a part switched off in the export panel stays off when the profile changes under it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("ns.ExportDialog() local p = Vanguard_ExportDialog __off = p.parts[#p.parts] p.on[__off] = false");
+  addon.eval("ns.ProfileChanged()");
+  expect(addon.eval("local p = Vanguard_ExportDialog return { p.on[__off], p.on[p.parts[1]] }"), "still off; the others on").toEqual([false, true]);
+});
+
 it("hunt H44-12-70: the export panel follows a profile that changed under it, and a nothing-to-export answer stays in the panel", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval("ns.ExportDialog() local p = Vanguard_ExportDialog p.on[p.parts[1]] = false");
   const before = addon.eval("return #Vanguard_ExportDialog.parts");
   addon.eval("ns.ResetProfile()");
-  const after = addon.eval("local p = Vanguard_ExportDialog return { #p.parts, p.on[p.parts[1]] }");
+  const after = addon.eval("local p = Vanguard_ExportDialog local kept = 0 for _, part in ipairs(p.parts) do if p.on[part] then kept = kept + 1 end end return { #p.parts, kept }");
   expect(after[0] < before, "a reset refills the switches from the fewer parts the profile has now").toBe(true);
-  expect(after[1], "all on again").toBe(true);
+  expect(after[1] >= after[0] - 1, "the parts still there keep their switch (only the one switched off may be off)").toBe(true);
   addon.eval("local real = ns.ExportProfile ns.ExportProfile = function() return nil, 'nothing saved for Layout yet' end local b = Vanguard_ExportDialog.export b:GetScript('OnClick')(b) ns.ExportProfile = real");
   expect(addon.eval("return { Vanguard_ExportDialog:IsShown(), Vanguard_ExportDialog.problem:GetText(), Vanguard_TextDialog == nil or not Vanguard_TextDialog:IsShown() }"), "the panel stays open and says why").toEqual([true, "Nothing to export: nothing saved for Layout yet.", true]);
   addon.eval("Vanguard_ExportDialog:Hide() ns.ResetProfile()");
