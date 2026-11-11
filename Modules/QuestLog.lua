@@ -286,14 +286,16 @@ local function closeGameAbandon()
   ns.CallIf(_G, "StaticPopup_Hide", "ABANDON_QUEST_WITH_ITEMS")
 end
 
--- Asks, naming the marked quests (and the items they destroy), then abandons them all.
+-- Asks, naming the marked quests (and the items they destroy), then abandons them all: the one path for a move that
+-- can't be undone, so not in a fight; each quest is checked again as it goes (abandonAll), so a Yes after the marks
+-- changed abandons only what is still marked.
 function QL.AbandonMarked()
   closeGameAbandon()
   local list, names = QL.MarkedQuests(), {}
   for i, e in ipairs(list) do names[i] = markedLine(e) end
   if #list == 0 then return end
   local question = ns.Format(L["Abandon {count} quest(s)?\n{quests}"], { count = #list, quests = table.concat(names, "\n") })
-  ns.Ask(question, L["Abandon"], function() abandonAll(list) end, nil, "danger")
+  ns.Irreversible({ question = question, yes = L["Abandon"], act = function() abandonAll(list) end, still = function() return #QL.MarkedQuests() > 0 end })
 end
 
 -- Shows the chosen quest on the game's map.

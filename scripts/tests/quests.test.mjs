@@ -1781,6 +1781,20 @@ it("quest log: Ctrl-click marks quests, the Abandon button counts them, and one 
   addon.click("Vanguard_Question.confirm");
   expect([addon.eval("return __gone"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "each marked quest abandoned; the marks are cleared").toEqual([[90051, 90053], "Abandon"]);
 });
+it("H44-17-5 quest log: abandoning several quests goes through the irreversible path, so a fight refuses it", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __selected end");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle) __wfgWorld.keys.ctrl = true");
+  logLine(addon, 1); logLine(addon, 3);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  setCombat(addon, true);
+  logButton(addon, "abandon");
+  expect([addon.eval("return Vanguard_Question"), chatHas(addon, /Not in a fight/)], "asked in a fight: refused with the chat line").toEqual([null, true]);
+  setCombat(addon, false);
+  logButton(addon, "abandon");
+  setCombat(addon, true);
+  addon.click("Vanguard_Question.confirm");
+  expect([addon.eval("return __gone"), chatHas(addon, /Nothing moved: a fight began/)], "Yes after a fight began: nothing abandoned").toEqual([{}, true]);
+});
 // H8-1-2: the game's own CanAbandonQuest gates Abandon, Ctrl-click marks and the count.
 it("quest log: Abandon is greyed for a quest the game won't let you abandon, and marks and counts skip it", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __selected end C_QuestLog.CanAbandonQuest = function(id) return id ~= 90052 end");
