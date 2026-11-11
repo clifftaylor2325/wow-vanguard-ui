@@ -306,11 +306,12 @@ local function oldestHomes(houses, keep)
 end
 
 -- Drops price homes, the one with the oldest prices first and never the one in use, while the homes hold
--- more than AP.MAX_ALL_ITEMS items together (`total`, as AP.Prune counted them).
+-- more than AP.MAX_ALL_ITEMS items together (`total`, as AP.Prune counted them). ns.Home.Adopt first moves
+-- an older key's house to this key, so the home kept is the one holding this character's prices.
 function AP.CapHomes(total)
   if total <= AP.MAX_ALL_ITEMS then return end
   local houses = AP.Store().houses
-  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
+  for _, home in ipairs(oldestHomes(houses, ns.Home.Adopt(houses))) do
     if total <= AP.MAX_ALL_ITEMS then return end
     total = total - houses[home.key].count
     houses[home.key] = nil
@@ -338,7 +339,7 @@ end
 -- gives a home's bytes); returns how many it dropped. Reads VanguardDB.ah as it is, so a file without one stays so.
 function AP.DropOldestHomes(free, sizeOf)
   local houses, dropped = savedHomes(), 0
-  for _, home in ipairs(oldestHomes(houses, ns.Home.Key())) do
+  for _, home in ipairs(oldestHomes(houses, ns.Home.Adopt(houses))) do
     if free <= 0 then break end
     free = free - sizeOf(houses[home.key], 1)
     houses[home.key] = nil
