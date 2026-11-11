@@ -5422,6 +5422,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: each row shows the small grey `reload` tag after its name, its tooltip says `Takes effect after /reload.`, and the footer names the module as waiting for a reload.
 - If it fails, paste: a screenshot of both rows and `/vg errors`.
 
+### 33.552 The Set up cooldowns window no longer asks for a reload it does not need (H44-13-R1)
+
+- Do: for Forever and Retail: `/vg cooldowns setup`, Next to the Gaps row step, read the two switches, tick Gaps row.
+- Expect: the switches read `Gaps row` and `Add the manager's cooldowns` with no `(reload)`, and the gaps row appears at once.
+- If it fails, paste: a screenshot of the step and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

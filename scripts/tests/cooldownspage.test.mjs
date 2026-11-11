@@ -65,7 +65,7 @@ it("cooldowns wizard: three steps, the same switches, Back and Done, nothing cha
   expect(addon.frame(`${WZ}.frame.caption`).text, "step 1 of 3").toBe("Step 1 of 3 · Show it");
   expect(shown(addon), "step 1: the manager's two switches").toEqual(["Show the game's manager", "Vanguard look (reload)"]);
   addon.eval(`${WZ}.frame.next:GetScript("OnClick")(${WZ}.frame.next)`);
-  expect(shown(addon), "step 2: the gaps row's two").toEqual(["Gaps row (reload)", "Add the manager's cooldowns (reload)"]);
+  expect(shown(addon), "step 2: the gaps row's two").toEqual(["Gaps row", "Add the manager's cooldowns"]);
   addon.eval(`${WZ}.frame.back:GetScript("OnClick")(${WZ}.frame.back)`);
   addon.eval(`${WZ}.frame.back:GetScript("OnClick")(${WZ}.frame.back)`);
   expect(addon.eval(`return ${WZ}.step`), "Back stops at the first step").toBe(1);

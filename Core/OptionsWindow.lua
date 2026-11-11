@@ -604,6 +604,7 @@ local function withoutReload(caption)
   end
   return caption
 end
+O.WithoutReload = withoutReload
 
 -- Notes a row's English caption (row.english, for the search), moves a setting row's reload bracket from its
 -- caption to row.reload (the tag), and names the row (O.NameRow: a renamed row's old caption is its tip, without the

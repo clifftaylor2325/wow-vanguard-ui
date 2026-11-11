@@ -103,13 +103,19 @@ WZ.STEPS = {
   { name = L["Buff glow"], note = L["Glow a manager buff when it is nearly over."], keys = { "glow", "percent" } },
 }
 
+-- A row's caption in the window: its reload words dropped when the switch applies at once (O.RestartSetting on a live module).
+local function captionOf(row)
+  local set = row[1] == "slider" and row[5] or row[4]
+  return O.AppliesLive(set) and O.WithoutReload(row[2]) or row[2]
+end
+
 -- Builds one row's widget on the window (a switch or a slider), hidden until its step shows.
 local function widget(f, row)
   local w
   if row[1] == "slider" then
-    w = W.Slider(f, row[2], row[3], row[4], row[5], WZ.WIDTH - 2 * WZ.PAD)
+    w = W.Slider(f, captionOf(row), row[3], row[4], row[5], WZ.WIDTH - 2 * WZ.PAD)
   else
-    w = W.Check(f, row[2], row[3], row[4], WZ.WIDTH - 2 * WZ.PAD)
+    w = W.Check(f, captionOf(row), row[3], row[4], WZ.WIDTH - 2 * WZ.PAD)
   end
   w:Hide()
   return w
