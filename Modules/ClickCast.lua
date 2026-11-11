@@ -444,7 +444,9 @@ function CC.ActionText(b)
   return ACTION_NAMES[b.action] or ACTION_NAMES.menu
 end
 
--- What a hover key does off the frames ("Action bar 1 slot 2"), or nil when it's free or the client can't say.
+-- What a hover key does off the frames ("Action bar 1 slot 2", or the binding's name in the client's language, which
+-- the game keeps in BINDING_NAME_<command> as GetBindingName reads it, Blizzard_SharedXML/BindingUtil.lua), or nil when
+-- it's free or the client can't say. A command with no name (a CLICK binding) reads as its lower-case command.
 function CC.Collision(key)
   if CC.MouseParts(key) or type(GetBindingAction) ~= "function" then return nil end
   local action = GetBindingAction(key)
@@ -452,7 +454,9 @@ function CC.Collision(key)
   local bar, slot = action:match("^MULTIACTIONBAR(%d)BUTTON(%d+)$")
   if bar then return ns.Format(L["Action bar {bar} slot {slot}"], { bar = bar + 1, slot = slot }) end
   slot = action:match("^ACTIONBUTTON(%d+)$")
-  return slot and ns.Format(L["Action bar {bar} slot {slot}"], { bar = 1, slot = slot }) or action:lower():gsub("_", " ")
+  if slot then return ns.Format(L["Action bar {bar} slot {slot}"], { bar = 1, slot = slot }) end
+  local name = _G["BINDING_NAME_" .. action]
+  return type(name) == "string" and name or action:lower():gsub("_", " ")
 end
 
 -- The menu click of the old starter layouts ------------------------------------------------------

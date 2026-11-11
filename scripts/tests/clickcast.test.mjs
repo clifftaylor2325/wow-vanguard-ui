@@ -852,3 +852,11 @@ it("H44-9-1 a picked rank saved under a name the client no longer uses still cou
   addon.eval(`__wfgWorld.spells[2061] = nil ${CS}.Invalidate()`);
   expect(addon.eval(`return ${CC}.WontRun(${CC}.Binding("ctrl-BUTTON2"))`), "a rank the spellbook dropped is still gone").toBe("you no longer have that spell rank");
 });
+
+// The game names a binding command through the global BINDING_NAME_<command>, falling back to the command
+// (GetBindingName, /home/user/blizz/{forever,live}/Interface/AddOns/Blizzard_SharedXML/BindingUtil.lua).
+it("H44-9-2 a hover key the game binds to a command is named as the game names that command", () => {
+  const addon = priest();
+  addon.eval('__wfgWorld.bindings.TOGGLEGAMEMENU = { "ESCAPE" } __wfgWorld.bindings.TOGGLEWORLDMAP = { "M" } BINDING_NAME_TOGGLEGAMEMENU = "TEST-ONLY Spielmenü"');
+  expect(addon.eval(`return { ${CC}.Collision("ESCAPE"), ${CC}.Collision("M") }`), "the command's name; one with no name keeps the command").toEqual(["TEST-ONLY Spielmenü", "toggleworldmap"]);
+});

@@ -5510,6 +5510,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: nothing is cleared, chat says "Nothing changed: the list this asked about is no longer the one shown. Ask again.", and both lists are as before. [Needs in-game check: all of it.]
 - If it fails, paste: `/vg binds` on each talent group.
 
+### 33.509 A hover key the game also binds names that binding as the game does
+
+- Do: on either client, open `/vg` → Click casting → Keys while hovering a frame, click Add key, press M and pick Renew.
+- Expect: the row says "also" and the game's own name for the world map key, as in the game's Keybindings settings, not "toggleworldmap". [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of the row and `/vg binds`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
