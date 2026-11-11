@@ -113,6 +113,7 @@ local function switchNow(name)
   VanguardCharDB.profile, VanguardCharDB.pendingProfile = name, nil
   ns.ProfileChanged()
   rebind()
+  ns.ProfileLayoutSwitched()
   for _, mover in ipairs(ns.MoverList()) do ns.PlaceMover(mover.key) end
   ns.Theme.Refresh()
   ns.SettleModules()

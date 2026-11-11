@@ -635,17 +635,31 @@ local function layoutToLoad()
   return canSwitch() and name or nil
 end
 
--- The first time this session Edit Mode has its layouts: switch to the profile's layout when the
--- profile was just loaded (a missing one is reported and stays remembered); afterwards, and
--- otherwise, remember the layout in use.
-local function onLayouts()
-  if layoutsSeen then return rememberLayout() end
-  layoutsSeen = true
+-- Applies the profile in use to Edit Mode: switches to its layout when the profile was just loaded (a missing one
+-- is reported and stays remembered), else remembers the layout in use.
+local function loadProfileLayout()
   local name = layoutToLoad()
   local index = name and layoutIndex(editModeManager(), name)
   if index then return switchLayout(index, name) end
   if name then return ns.Chat(ns.Format(L["Profile {profile} uses Edit Mode layout {layout}, which this account doesn't have."], { profile = ns.ProfileName(), layout = name })) end
   rememberLayout()
+end
+
+-- The first time this session Edit Mode has its layouts: apply the profile's layout; afterwards remember the
+-- layout in use.
+local function onLayouts()
+  if layoutsSeen then return rememberLayout() end
+  layoutsSeen = true
+  loadProfileLayout()
+end
+
+-- A profile now in use after a live switch (Core/ProfileSwitch.lua): Edit Mode goes to its layout and the spec the
+-- session follows is the current one, so the next layout update can't save the old layout into the new profile.
+-- Before the layouts first load, that load does it.
+function ns.ProfileLayoutSwitched()
+  if not layoutsSeen then return end
+  layoutSpec = ns.SpecKey()
+  loadProfileLayout()
 end
 
 -- Follows Edit Mode's layouts from a post-hook on its manager's UpdateLayoutInfo (it runs

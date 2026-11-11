@@ -5380,6 +5380,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: Use recommended on Game settings switches all three rows on; leaving the step turns the game's enemy plates on at once (the V key state) and zooms the camera out further. On Helpers, Use recommended turns the recommended rows on and leaves your quest-automation pick on. All set lists each change with On, and Undo setup's question reads `Undo everything this setup changed and put the profile back as it was? Done then offers the reload that applies it.`; after Undo the enemy plates are off again and the camera zoom back as it was, setup is closed, chat shows no error, and the reload dialog reads `Setup was undone: the profile as it was is back. Reload the UI now to apply it?`. The second run's All set says `This run changed nothing` and shows no Undo setup. [Needs in-game check: all of it.]
 - If it fails, paste: the All set lines, the question text, the V key state before and after, and `/vg errors`.
 
+### 33.545 A profile that switches at once brings its Edit Mode layout (H44-12-2)
+
+- Do: for Forever and Retail: with every module that needs a reload switched off under `/vg` → Modules (the ones tagged for a reload), have two profiles that remember different Edit Mode layouts. Under Profiles, press Use on the other one, then open and close Edit Mode, then `/reload`.
+- Expect: right after Use, Edit Mode is on that profile's layout and chat says `Edit Mode layout X, from profile Y.`; after opening and closing Edit Mode and the reload, the profile is still on its own layout.
+- If it fails, paste: the chat lines, the two profiles' names and layouts, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

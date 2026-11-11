@@ -1135,3 +1135,32 @@ it("H44-12-3: this character's own profile behind a spec's is kept, and the logo
   const notes = Object.values(addon.savedVariables().account.guard.chars);
   expect(notes[0].uses.slice().sort(), "the note's uses").toEqual(["Default backup", "Raid"]);
 });
+
+// H44-12-2: a profile that switches at once takes Edit Mode to its layout and keeps the layout it remembered.
+const OFF_RELOAD_ONLY = `for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+end`;
+// A character on Default with every reload-only module off, so that Raid applies at once.
+function liveEditMode(before = "") {
+  const saved = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {} }, Raid = { modules = {}, editMode = { layout = "TEST-ONLY Raid" } } } }\nVanguardCharDB = { profile = "Default", editModeProfile = "Default" }';
+  const addon = createAddon({ savedVariables: saved });
+  addon.eval(EDIT_MODE_ENV + OFF_RELOAD_ONLY + before);
+  addon.login();
+  return addon;
+}
+it("H44-12-2: a live profile switch moves Edit Mode to the new profile's layout and no later update writes the old one over it", () => {
+  const addon = liveEditMode();
+  addon.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(addon.eval('return ns.PickProfile("Raid")'), "applied at once").toBe(true);
+  expect(layouts(addon), "Edit Mode is on Raid's layout, which Raid keeps").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+  expect(chatHas(addon, /Edit Mode layout TEST-ONLY Raid, from profile Raid\./), "and chat says so").toBe(true);
+  addon.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(addon), "a later update leaves it alone").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+});
+it("H44-12-2: a live switch before Edit Mode has its layouts leaves the first load to apply the layout", () => {
+  const addon = liveEditMode();
+  expect(addon.eval('return ns.PickProfile("Raid")'), "applied at once").toBe(true);
+  expect(layouts(addon), "nothing applied yet").toEqual(["none", "TEST-ONLY Raid", "Default"]);
+  addon.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(addon), "the first load switches to Raid's layout").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+});
