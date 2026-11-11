@@ -441,6 +441,22 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
 });
 
 // TEST-ONLY retail's way of asking: by inventory slot, one TemporaryItemEnchantInfo (or nothing) each.
+it("H44-5-50 your buffs: an enchant that runs out and is put on again in one fight leaves the buffs one cell over", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV);
+  // Where the buffs sit, whether the first enchant cell shows, and the room the module noted.
+  const state = () => addon.eval(`local PA = ns.GetModule("PlayerAuras")
+    return { x = PA.auras.frame.__points.TOPRIGHT.x, cell = PA.cells[1]:IsShown(), placed = PA.placed }`);
+  const before = state();
+  setCombat(addon, true);
+  addon.eval("__kept = __enchants[0] __enchants[0] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  addon.eval("__enchants[0] = __kept");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  setCombat(addon, false);
+  expect(state(), "after the fight the enchant is on and the buffs still one cell over").toEqual(before);
+  expect(before.cell && before.x < 0, "one enchant cell to start with").toBe(true);
+});
+
 const RETAIL_ENCHANTS_ENV = `
   C_Item.GetWeaponEnchantInfo = nil
   __temp = { [16] = { enchantID = 5, remainingTimeMs = 1800000, chargesRemaining = 0, hasExpirationTime = true } }

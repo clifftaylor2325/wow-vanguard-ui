@@ -67,12 +67,12 @@ end
 -- Moves the container over to leave room for n enchant cells at the right, and widens the hover pad (below) by as
 -- much, so it still lies under every row. The container is the client's aura container and may be protected, so
 -- it moves only when the room changes, and a move asked for in a fight (an enchant gained or run out) waits for
--- the fight's end: until then the cells may lie over the first buffs.
+-- the fight's end: until then the cells may lie over the first buffs. Each call replaces the waiting one, which
+-- judges the room when it runs, so an enchant lost and put on again in one fight moves nothing.
 function PA.PlaceAuras(n)
   local shift = n * (PA.settings.size + PA.GAP)
   PA.holder.vgHoverArea:SetWidth(PA.lineSize + shift)
-  if PA.placed == shift then return end
-  ns.OutOfCombat(function() anchorAuras(shift) end, "player auras place")
+  ns.OutOfCombat(function() if PA.placed ~= shift then anchorAuras(shift) end end, "player auras place")
 end
 
 -- Weapon enchants ---------------------------------------------------------------------------

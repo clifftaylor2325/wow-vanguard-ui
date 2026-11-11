@@ -5444,6 +5444,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the switch's tooltip says a debuff you can dispel still shows its icon; on the tile that one icon shows bottom left with the type wash and edge, and no other debuff icon shows. [Needs in-game check: the tile's look.]
 - If it fails, paste: `/vg errors`, and a screenshot of the tile and the tooltip.
 
+### 33.498 A weapon enchant put on again in one fight keeps its cell clear of the buffs
+
+- Do: on WoW Forever, as a rogue or shaman with a poison or imbue on your main hand that is about to run out, start a fight, let the enchant run out and put it on again before the fight ends (or swap the weapon off and back on).
+- Expect: once the fight ends the enchant cell sits in front of your buffs and no buff is under it, with nothing new in `/vg errors`. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`, and a screenshot of your buffs after the fight.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
