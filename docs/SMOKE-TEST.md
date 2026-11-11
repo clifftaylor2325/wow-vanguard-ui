@@ -5440,6 +5440,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: no `blocked` line in `/vg errors`; the map's box follows the map at once, or at the latest when the fight ends, and then matches whether the map is shown.
 - If it fails, paste: `/vg errors` and the name of the addon with the button.
 
+### 33.555 A Shift-click waypoint wins over the quest the game tracked by itself (H44-18-50)
+
+- Do: for Forever: under Quests → Finding your way set Shift-click points to A map waypoint. Accept a new quest A (the game's marker follows it), then Shift-click another watched quest B in Vanguard's tracker.
+- Expect: chat says `Arrow: B.`, Vanguard's arrow names B, and the tracker's `>` step line sits under B, not A.
+- If it fails, paste: the arrow's title, which quest has the `>` line, and `/run print(C_SuperTrack.GetSuperTrackedQuestID(), C_SuperTrack.IsSuperTrackingUserWaypoint())`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
