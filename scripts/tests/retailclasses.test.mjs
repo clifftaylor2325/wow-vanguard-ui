@@ -132,6 +132,16 @@ it("H44-6-51 a Brewmaster who changes spec leaves no stagger ticker behind, and 
   expect([shown(addon, "stagger"), staggerJob(addon)], "Brewmaster again: shown and read").toEqual([true, true]);
 });
 
+// The Versus deck panel's top and bottom, and a resource frame's, for a Retail character with the deck on.
+const deckAround = (cls, spec, lua, kind) => retail(cls, spec, lua, { savedVariables: "VanguardDB.profiles.Default = { UnitFrames = { deck = true } }" })
+  .eval(`local d, r = ns.GetModule("UnitFrames").deck, ns.GetModule("ClassBars").resourceFrames.${kind}
+    return { d:IsShown(), d:GetTop() > r:GetTop(), d:GetBottom() < r:GetBottom() }`);
+
+it("H44-6-52 the Versus deck grows over a Retail resource row above the player frame and a stagger bar under it", () => {
+  expect(deckAround("PALADIN", 1, "__p.powers[9], __p.maxpowers[9] = 3, 5", "holyPower"), "holy power pips inside the panel").toEqual([true, true, true]);
+  expect(deckAround("MONK", 1, "__p.maxhp = 1000 __p.stagger = 0", "stagger"), "the stagger bar inside the panel").toEqual([true, true, true]);
+});
+
 it("runes: ready ones on the left, the others filling as they come back", () => {
   const addon = retail("DEATHKNIGHT", 2, `__wfgWorld.runes = { [2] = { start = GetTime() - 5, duration = 10 },
     [4] = { start = __wfgWorld.secret(1), duration = 10 }, [6] = { start = GetTime(), duration = 0 } }`);

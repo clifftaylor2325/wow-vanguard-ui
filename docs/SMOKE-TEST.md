@@ -5474,6 +5474,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the stagger bar under the player frame keeps rising and falling with your stagger while your energy stays full, and nothing new in `/vg errors`. [Needs in-game check: all of it.]
 - If it fails, paste: `/vg errors`.
 
+### 33.503 On Retail the Versus deck wraps the class resource pips and the stagger bar
+
+- Do: on WoW Retail, as a Paladin, switch on Versus deck under `/vg` → Unit frames; then on a Brewmaster monk do the same.
+- Expect: the holy power pips sit inside the deck's border above your frame, not on it, and the Brewmaster's stagger bar sits inside its border under your frame. [Needs in-game check: the look.]
+- If it fails, paste: a screenshot of the deck.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
