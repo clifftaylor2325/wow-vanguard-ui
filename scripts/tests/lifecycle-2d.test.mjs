@@ -21,7 +21,7 @@ const loginWith = (settings = "", env = "", after = "") => (saved = "") => {
   const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY.filter((n) => !KEEP.includes(n))) + settings + saved });
   if (env) addon.eval(env);
   addon.login();
-  addon.eval(SETTLED + after);
+  addon.eval(`${SETTLED}\n${after}`);
   addon.advance(1);
   return addon;
 };

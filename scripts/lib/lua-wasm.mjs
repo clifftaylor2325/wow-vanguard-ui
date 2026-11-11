@@ -147,6 +147,9 @@ function fileChunk(vm, file, chunkName) {
   return bytes;
 }
 
+// Whether a file's bytecode is in the worker's cache (for the harness's own tests).
+export const hasWasmChunk = (file) => shared.chunks.has(file);
+
 // A NUL-terminated string kept in the instance's memory for good (the addon's name, a global's name), made once.
 function keptString(vm, text) {
   if (vm.kept.has(text)) return vm.kept.get(text);

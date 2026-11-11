@@ -6,15 +6,12 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import fengari from "fengari";
 import { expect, it } from "vitest";
 import { expectErrors } from "./lib/error-guard.mjs";
-import { RETAIL_CLIENT, createAddon, hasCachedChunk, pushFileChunk, retailStubs, root, tocFiles } from "./lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon, hasCachedChunk, retailStubs, root, tocFiles } from "./lib/lua-harness.mjs";
 import { luaValue } from "./lib/lua-emit.mjs";
 import { clientPaths, readToc, tocPaths } from "./lib/toc.mjs";
-import { GAME_CLICKS_LUA, GAME_ENGINE_LUA } from "./tests/helpers.mjs";
-
-const { lua, lauxlib, lualib } = fengari;
+import { GAME_CLICKS_LUA, GAME_ENGINE_LUA, indexedNil } from "./tests/helpers.mjs";
 
 // A logged-in addon on a finished-setup account.
 const loggedIn = () => {
@@ -32,7 +29,7 @@ it("numbers print as the game's Lua 5.1 prints them: whole floats without .0", (
 
 it("a Lua error carries a traceback naming the addon file", () => {
   const addon = createAddon();
-  expectErrors("TEST-ONLY: eval:2: attempt to index a nil value (local 't')");
+  expectErrors(`TEST-ONLY: eval:2: ${indexedNil("local", "t")}`);
   expect(() => addon.eval("ns.Theme.RGB(nil .. 'x')")).toThrow(/eval:2: attempt to concatenate/);
   expect(() => addon.eval("ns.Try('TEST-ONLY', function() local t = nil; return t.x end) return ns.errors[#ns.errors]")).not.toThrow();
   expect(addon.eval("return ns.errors[#ns.errors].text")).toMatch(/TEST-ONLY: eval:2: attempt to index/);
@@ -50,13 +47,11 @@ it("a worker compiles each addon file once: the second addon loads from the chun
 it("an edited file is compiled again, an unchanged one served from the cache", () => {
   const file = path.join(os.tmpdir(), `fui-chunk-${process.pid}.lua`);
   fs.writeFileSync(file, "return 1");
-  // Loads the file as "@TEST-ONLY-cache.lua" in a bare state and returns its result.
+  const addon = createAddon();
+  // Runs the file as "@TEST-ONLY-cache.lua" through the engine's file cache and returns its result.
   const load = () => {
-    const L = lauxlib.luaL_newstate();
-    lualib.luaL_openlibs(L);
-    pushFileChunk(L, file, "@TEST-ONLY-cache.lua");
-    expect(lua.lua_pcall(L, 0, 1, 0)).toBe(lua.LUA_OK);
-    return lua.lua_tonumber(L, -1);
+    addon.state.runFile(file, "@TEST-ONLY-cache.lua", false, "__cacheResult");
+    return addon.eval("return __cacheResult");
   };
   expect(load()).toBe(1);
   expect(hasCachedChunk(file)).toBe(true);

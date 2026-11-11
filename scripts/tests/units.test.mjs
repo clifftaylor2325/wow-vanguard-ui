@@ -1047,9 +1047,9 @@ it("H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles
 
 it("one unit frame that fails to paint or lay out is reported, and every other frame still does", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
-  // The frame the loops reach first breaks; the player frame (or the party's first, when the player is that one) must still paint.
+  // The first frame with a unit that the loops reach breaks; the player frame (or the party's first, when the player is that one) must still paint.
   const watched = addon.eval(`local UF = ns.GetModule("UnitFrames") local paint, place = UF.UpdateHealth, UF.PlaceParts
-    __broken = next(UF.frames)
+    for key, f in pairs(UF.frames) do if not __broken and ns.IsTrue(UnitExists(f.unit)) then __broken = key end end
     UF.UpdateHealth = function(f) if f.key == __broken then error("TEST-ONLY broken frame") end return paint(f) end
     UF.PlaceParts = function(f) if f.key == __broken then error("TEST-ONLY broken layout") end return place(f) end
     __units.player.hp, __units.party1.hp = 500, 7

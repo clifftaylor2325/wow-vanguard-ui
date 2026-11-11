@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { expect } from "vitest";
-import { createAddon, root } from "../lib/lua-harness.mjs";
+import { ENGINE, createAddon, root } from "../lib/lua-harness.mjs";
 import { SCOPE_FILE, modulesOffLua, scopeFor } from "../lib/login-scope.mjs";
 import { relFile } from "../lib/suite-timing.mjs";
 
@@ -15,6 +15,11 @@ export { expectErrors } from "../lib/error-guard.mjs";
 // The deliberate aura-container fallback notice. It stays in ns.errors by the user's
 // decision D-06, so a test whose client lacks AuraContainer names it with expectErrors.
 export const AURA_FALLBACK = /^aura containers \(using Vanguard's own icons\): wow-world\.lua:\d+: CreateFrame: unknown frame type AuraContainer$/;
+
+// The text of Lua's error for indexing a nil `kind` ("field", "local", "global", "upvalue") called `name`, as the
+// engine running words it: the game's Lua 5.1 says "attempt to index field 'x' (a nil value)", the 5.3 VM
+// "attempt to index a nil value (field 'x')".
+export const indexedNil = (kind, name) => (ENGINE === "wasm" ? `attempt to index ${kind} '${name}' (a nil value)` : `attempt to index a nil value (${kind} '${name}')`);
 
 // A length in UI units rounded to whole screen pixels at UIParent's scale now, as the theme
 // rounds sizes and offsets (T.PixelRound; with even, an even number of pixels).

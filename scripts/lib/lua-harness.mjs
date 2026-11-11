@@ -19,7 +19,7 @@ import lstring from "fengari/src/lstring.js";
 import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { markSecretMeta, secretArgAt } from "./lua-secret-ops.mjs";
 import { lineHook } from "./lua-coverage.mjs";
-import { newWasmState } from "./lua-wasm.mjs";
+import { hasWasmChunk, newWasmState } from "./lua-wasm.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 import { advanceEms } from "./truetype.mjs";
 import { clientPaths, readToc, tocPaths } from "./toc.mjs";
@@ -83,7 +83,7 @@ function dumpTop(L) {
 
 // Pushes the compiled chunk of a Lua file, from the cache when the file is
 // unchanged, else by parsing it (and caching the result). Errors throw.
-export function pushFileChunk(L, file, chunkName) {
+function pushFileChunk(L, file, chunkName) {
   const stamp = stampOf(file);
   const cached = chunkCache.get(file);
   if (cached && cached.stamp === stamp) {
@@ -95,8 +95,8 @@ export function pushFileChunk(L, file, chunkName) {
   chunkCache.set(file, { stamp, bytes: dumpTop(L) });
 }
 
-// Whether a file's compiled chunk is in the cache (for the harness's own tests).
-export const hasCachedChunk = (file) => chunkCache.has(file);
+// Whether a file's compiled chunk is in the chosen engine's cache (for the harness's own tests).
+export const hasCachedChunk = (file) => (ENGINE === "wasm" ? hasWasmChunk(file) : chunkCache.has(file));
 
 // The addon's files in TOC load order: the ones a client loads ("forever" or "retail",
 // by the TOC's game-type tags), or every file listed when no client is named.

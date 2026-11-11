@@ -284,7 +284,7 @@ it("keyPreimage: every bound key and its command, CLICK and SPELL keys included,
   const addon = client();
   addon.eval('SetBindingClick("X", "MyBtn", "RightButton") SetBindingSpell("C", "Fireball")');
   expect(addon.eval("return __wfgWorld.keyPreimage()"), "the keys GetBinding(i) lists and those it doesn't")
-    .toEqual({ 1: "ACTIONBUTTON1", 2: "ACTIONBUTTON2", 3: "ACTIONBUTTON3", B: "OPENALLBAGS", X: "CLICK MyBtn:RightButton", C: "SPELL Fireball" });
+    .toEqual({ 1: "ACTIONBUTTON1", 2: "ACTIONBUTTON2", 3: "ACTIONBUTTON3", B: "TOGGLEBACKPACK", X: "CLICK MyBtn:RightButton", C: "SPELL Fireball" });
 });
 
 it("ClearCursor: an action lifted off a bar and cleared is recorded in world.discarded; one that never sat on a bar is not", () => {
