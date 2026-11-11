@@ -38,7 +38,7 @@ local function perClass(weights)
     weights[kind] = nil
     for class in pairs(W.ClassesOf(kind)) do
       weights[class] = weights[class] or {}
-      weights[class][kind] = ns.Copy(changes)
+      weights[class][kind] = weights[class][kind] or ns.Copy(changes)
     end
   end
 end

@@ -278,3 +278,10 @@ it("H44-23-50: saving in the weights wizard keeps the other client's stats in th
   const saved = addon.eval("local w = ns.GetModule('Upgrades').settings.weights.WARRIOR.strength return { w.ILVL, w.STR, w.MASTERY }");
   expect(saved, "Retail's item level and mastery stay for the profile's other client, the strength change stays too").toEqual([1, 2, 0]);
 });
+
+it("H44-23-52: a per-kind entry from an older Vanguard does not replace a class's own entry for that kind", () => {
+  const saved = "VanguardDB.profiles = { Default = { Upgrades = { weights = { strength = { STR = 5 }, WARRIOR = { strength = { STR = 3 } } } } } }";
+  const addon = loggedIn(GEAR, { savedVariables: saved });
+  const w = addon.eval("local w = ns.GetModule('Upgrades').settings.weights return { w.strength == nil, w.WARRIOR.strength.STR, w.PALADIN.strength.STR }");
+  expect(w, "the per-kind key is gone, the warrior keeps its own 3, a class with none takes the per-kind 5").toEqual([true, 3, 5]);
+});
