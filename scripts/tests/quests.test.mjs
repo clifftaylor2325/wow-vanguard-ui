@@ -2261,6 +2261,30 @@ it("A1-10 best reward: with a reward that Gear upgrades marks as an upgrade amon
   expect([calls(off), off.eval("return ns.GetModule('Upgrades').IsUpgrade('item:90022')")], "Gear upgrades switched off: no reward is an upgrade, the best seller is taken").toEqual([["reward 1"], false]);
 });
 
+// H44-23-51: C_Item.GetItemStats may return nothing for an item the client has not loaded
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ItemDocumentation.lua, GetItemStats MayReturnNothing),
+// and a reward taken is for good, so a choice Gear upgrades can't compare yet leaves the pick to you.
+it("H44-23-51 best reward: a reward that can't be compared yet (stats missing) is left to you, as an upgrade is", () => {
+  const addon = pricedRewards(300, 50);
+  addon.eval(`__calls = nil
+    local stats = { ["item:90021"] = { ITEM_MOD_STRENGTH_SHORT = 7 }, ["item:90022"] = { ITEM_MOD_STRENGTH_SHORT = 7 }, ["item:5"] = { ITEM_MOD_STRENGTH_SHORT = 9 } }
+    C_Item.GetItemInfoInstant = function(link) return 1, "Armor", "Plate", "INVTYPE_WAIST" end
+    C_Item.GetItemStats = function(link) return stats[link] end
+    C_Item.IsEquippableItem = function() return true end
+    GetInventoryItemLink = function(unit, slot) if slot == 6 then return "item:5" end end`);
+  // Whether the reward is undecided, and the pick the automation makes (false: none).
+  const choice = () => addon.eval("local UP = ns.GetModule('Upgrades') return { UP.Undecided('item:90022'), ns.GetModule('QuestAuto').RewardChoice() or false }");
+  expect(choice(), "both sides loaded and worse: decided, the best seller is taken").toEqual([false, 1]);
+  addon.eval("ns.GetModule('Upgrades').scores = {} C_Item.GetItemStats = function(link) if link ~= 'item:5' then return { ITEM_MOD_STRENGTH_SHORT = 7 } end end");
+  expect(choice(), "the worn item's stats missing: undecided, nothing is picked").toEqual([true, false]);
+  addon.eval("ns.GetModule('Upgrades').scores = {} C_Item.GetItemStats = function(link) if link == 'item:5' then return { ITEM_MOD_STRENGTH_SHORT = 9 } end end");
+  expect(choice(), "the reward's own stats missing: undecided too").toEqual([true, false]);
+  addon.eval("GetInventoryItemLink = function() end");
+  expect(addon.eval("return ns.GetModule('Upgrades').Undecided('item:90022')"), "an empty slot is an upgrade, not undecided").toBe(false);
+  addon.eval("ns.GetModule('Upgrades').settings = nil");
+  expect(addon.eval("local UP = ns.GetModule('Upgrades') return { UP.Undecided('item:90022'), UP.Undecided(nil) }"), "Gear upgrades off, or no link: nothing is undecided").toEqual([false, false]);
+});
+
 it("best reward: a stack is judged by what the whole stack sells for", () => {
   const addon = pricedRewards(50, 300);
   expect(calls(addon), "boots worth 50 each in a stack of 1 lose to gloves worth 300").toEqual(["reward 2"]);

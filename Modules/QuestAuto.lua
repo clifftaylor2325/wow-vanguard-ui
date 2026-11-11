@@ -61,11 +61,12 @@ function QA.BestChoice()
   return QP.TopSeller(prices, n)
 end
 
--- Whether any of the n reward choices is one Gear upgrades (Modules/Upgrades.lua) calls an upgrade for you.
+-- Whether any of the n reward choices is one Gear upgrades (Modules/Upgrades.lua) calls an upgrade for you, or can't yet say.
 local function anyUpgrade(n)
   local UP = ns.GetModule("Upgrades")
   for i = 1, n do
-    if UP.IsUpgrade(ns.CallIf(_G, "GetQuestItemLink", "choice", i)) then return true end
+    local link = ns.CallIf(_G, "GetQuestItemLink", "choice", i)
+    if UP.IsUpgrade(link) or UP.Undecided(link) then return true end
   end
   return false
 end
