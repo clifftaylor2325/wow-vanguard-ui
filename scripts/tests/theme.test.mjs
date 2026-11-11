@@ -1932,6 +1932,13 @@ for (const [name, client] of [["Forever", FOREVER_CLIENT], ["Retail", RETAIL_CLI
     expect(addon.eval("return __refreshes"), "nothing held back: no more refreshes").toBe(1);
     expect(newErrors(addon), "and no errors").toBe("");
   });
+
+  it(`held aura icons (${name}): one still held when the others are let go is noted again for the next catch-up`, () => {
+    const addon = heldPlate(client);
+    addon.eval("ns.Theme.SetAccent(1, 0, 0) __wfgWorld.combat(false) " + COUNT_REFRESH);
+    addon.eval("__wfgWorld.aurasSecret = false for i = 2, #__rows do __wfgWorld.releaseAccess(__rows[i]) end");
+    expect(addon.eval("ns.Theme.heldBack = true ns.Theme.CatchUpHeld() return { __refreshes, ns.Theme.heldBack }"), "one refresh, and the row still held is noted").toEqual([1, true]);
+  });
 }
 
 it("held aura icons: a region the client closed for good is still forgotten, not kept as held", () => {

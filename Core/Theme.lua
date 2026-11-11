@@ -4204,12 +4204,12 @@ local function onScaleChanged()
   end)
 end
 
--- Refreshes once for what the walks left held (T.Held), once aura information is plain again. A region still
--- refused then (one under a frame the client has closed for good) waits for the next theme change.
+-- Refreshes once for what the walks left held (T.Held), once aura information is plain again. The note is cleared
+-- first, so a region still held during this refresh is noted again for the next catch-up.
 function T.CatchUpHeld()
   if not T.heldBack or ns.AurasSecret() then return end
-  T.Refresh()
   T.heldBack = nil
+  T.Refresh()
 end
 
 -- A restriction on addons changed: looked at on the next frame (during the event the client reports none active,
