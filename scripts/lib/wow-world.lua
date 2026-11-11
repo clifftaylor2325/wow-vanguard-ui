@@ -171,7 +171,9 @@ C_CVar.GetCVarBitfield, C_CVar.SetCVarBitfield = world.cvarBitfield.GetCVarBitfi
 function PlaySound(id) world.sounds[#world.sounds + 1] = id end
 SOUNDKIT = setmetatable({}, { __index = function(_, k) return k end })
 
--- The Forever client refuses ReloadUI from addons; here it is counted.
+-- Taken to be refused from addons on the Forever client (not confirmed in game: Blizzard_SharedXML/InterfaceUtil.lua:1-3
+-- makes ReloadUI plain Lua that calls C_UI.Reload(), on both clients, and UIManagerDocumentation.lua gives C_UI.Reload
+-- no restriction flag); here it is only counted.
 function ReloadUI() world.reloads = world.reloads + 1 end
 
 -- Addon metadata comes from the TOC the harness read.
