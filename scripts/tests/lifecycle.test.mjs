@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
 import { SETUP_DONE, chatHas, expectErrors, setCombat } from "./helpers.mjs";
-import { footprint, lifecycleCases } from "./lifecycle-helpers.mjs";
+import { footprint, lifecycleCases, savedNow } from "./lifecycle-helpers.mjs";
 
 // TEST-ONLY modules, each logging "on <name>" from Enable and "off <name>" from Disable into __life.log:
 // TestParent and its TestChild are live; TestReload is reload-only, with the live TestKept on it.
@@ -219,6 +219,37 @@ it("lifecycle: a stopped module's handlers, unit events, ticker and gate stop ca
   expect(poke()).toBe(0);
   addon.eval('ns.SetModuleEnabled("TestScoped", true)');
   expect(poke()).toBe(running);
+});
+
+// TEST-ONLY TestBudget and TestOther: each fails on every UNIT_HEALTH for the player and on every tick of its ticker,
+// counting its calls in __budget.
+const BUDGET = `${MODULES}
+  __budget = { TestBudget = 0, TestOther = 0 }
+  local function failing(name)
+    local m = ns.Module(name, { defaults = {}, live = true })
+    local function fail() __budget[name] = __budget[name] + 1 error(name .. " fails on purpose", 0) end
+    function m.Enable(_, scope) scope:OnUnit("UNIT_HEALTH", fail, "player") scope:Every(name .. " tick", 0.1, fail) end
+  end
+  failing("TestBudget") failing("TestOther")`;
+
+// Fires UNIT_HEALTH for the player and runs every ticker `times` times.
+function failTimes(addon, times) {
+  for (let i = 0; i < times; i++) {
+    addon.fire("UNIT_HEALTH", "player");
+    addon.advance(0.11);
+  }
+}
+
+it("lifecycle: a unit event handler and a ticker paused by the error budget run again after their module restarts; another module's stay paused", () => {
+  const sites = ["TestBudget", "TestOther"].flatMap((n) => [`event UNIT_HEALTH: ${n} fails on purpose`, `ticker ${n} tick: ${n} fails on purpose`]);
+  expectErrors(...sites);
+  const addon = lifeAddon("", BUDGET);
+  failTimes(addon, 10);
+  expect(addon.eval("return #ns.paused"), "both modules' handler and ticker paused").toBe(4);
+  addon.eval('ns.SetModuleEnabled("TestBudget", false) ns.SetModuleEnabled("TestBudget", true) __budget.TestBudget, __budget.TestOther = 0, 0');
+  failTimes(addon, 1);
+  expect(addon.eval("return { __budget.TestBudget, __budget.TestOther }"), "the restarted module's two run again, the other's do not").toEqual([2, 0]);
+  expect(list(addon.eval("local out = {} for i, p in ipairs(ns.paused) do out[i] = p.where end return out")), "only the other module's are listed").toEqual(["event UNIT_HEALTH", "ticker TestOther tick"]);
 });
 
 it("lifecycle: a scope is kept for the session, and takes one handler off or one ticker away on request", () => {
@@ -622,4 +653,117 @@ it("lifecycle: a key registered twice keeps one handle", () => {
   addon.eval('ns.Unlock() local f = CreateFrame("Frame", "VanguardTest_Second", UIParent) f:SetSize(10, 10) ns.Mover(f, "testscoped", "Test scoped", { "CENTER", "CENTER", 0, 0 })');
   expect(addon.eval('local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "testscoped" and w:IsShown() then n = n + 1 end end return n')).toBe(1);
   addon.eval("ns.Lock()");
+});
+
+// Every real live module stopped, with time and the game's events after it ------------------------------------
+
+// Lua: the frames of every running live module are noted in __owned (before any stops: a parent's stop takes its
+// children down too), then each is switched off.
+const STOP_ALL = `__owned = {}
+  local stopping = {}
+  for _, name in ipairs(ns.ModuleNames()) do
+    local def = ns.GetModule(name)
+    if def.live and ns.ModuleLive(name) then stopping[#stopping + 1] = name end
+    if def.live and ns.ModuleLive(name) then for _, f in ipairs(def.scope.frames) do __owned[#__owned + 1] = f end end
+  end
+  for _, name in ipairs(stopping) do ns.SetModuleEnabled(name, false) end`;
+
+// Lua: the noted frames that are on screen, by name.
+const OWNED_SHOWN = "local out = {} for _, f in ipairs(__owned) do if f:IsVisible() then out[#out + 1] = f:GetName() or f.__kind end end return out";
+
+// The game's events a stopped module might still react to, with the player as the unit where one is needed.
+const LATER_EVENTS = [
+  ["PLAYER_TARGET_CHANGED"], ["UNIT_HEALTH", "player"], ["UNIT_AURA", "player"], ["UNIT_POWER_UPDATE", "player"],
+  ["GROUP_ROSTER_UPDATE"], ["PLAYER_ENTERING_WORLD"], ["ZONE_CHANGED_NEW_AREA"], ["BAG_UPDATE_DELAYED"],
+  ["QUEST_LOG_UPDATE"], ["PLAYER_XP_UPDATE", "player"], ["UPDATE_FACTION"], ["READY_CHECK"],
+];
+
+// The parts of live modules that start off, switched on so the sweep has their frames and timers too.
+const PARTS_ON = `
+  local p = VanguardDB.profiles.Default
+  p.Meter, p.GroupThreat, p.PartyExtras, p.CooldownGaps = { on = true }, { show = true }, { show = true }, { on = true }
+  p.FightHistory, p.UnitExtras, p.CooldownGlow, p.CooldownKeys = { strip = true, recap = true }, { chip = true }, { glow = true }, { keys = true }
+  p.MailTools, p.CraftQueue, p.OfficerLoot, p.ChatWindows = { on = true }, { on = true }, { on = true }, { movers = true }`;
+
+// The addon with every real module on but ActionBars, PlayerAuras and InstancePrep (the heavy ones no live module
+// needs) and the live modules' optional parts on (PARTS_ON), logged in and settled.
+function everyLiveModule() {
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(["ActionBars", "PlayerAuras", "InstancePrep"]) + PARTS_ON });
+  addon.login();
+  addon.advance(1);
+  return addon;
+}
+
+// Fires the events (each module queues its repaints and timers), then stops every live module before any of that runs.
+function stopMidWork(addon) {
+  for (const [event, ...args] of LATER_EVENTS) addon.fire(event, ...args);
+  addon.eval(STOP_ALL);
+}
+
+// Lua: what the visibility rules may still do to a stopped module's frame (Core/Visibility.lua): a linger running out
+// or the client's state driver repaints it (V.Refresh, which calls its owner back), and a Calm HUD change reapplies.
+const LATE_REPAINT = "for _, f in ipairs(__owned) do if f.vgOnState then ns.Visibility.Refresh(f) end end ns.Visibility.ApplyCalm()";
+
+// Ten seconds pass (linger, repaint and retry timers queued before the stop run out), the visibility rules repaint,
+// the events fire again, and a few more seconds pass.
+function timePasses(addon) {
+  addon.advance(10);
+  addon.eval(LATE_REPAINT);
+  for (const [event, ...args] of LATER_EVENTS) addon.fire(event, ...args);
+  addon.advance(5);
+}
+
+it("lifecycle: every live module stopped with work queued stays stopped through ten seconds and the game's events: nothing of theirs shows, nothing is registered again", () => {
+  const addon = everyLiveModule();
+  stopMidWork(addon);
+  const stopped = footprint(addon);
+  expect(addon.eval("return #__owned"), "the live modules had frames").toBeGreaterThan(10);
+  timePasses(addon);
+  expect(list(addon.eval(OWNED_SHOWN)), "none of their frames on screen").toEqual([]);
+  expect(footprint(addon), "no handler, ticker, event, driver, mover or gate came back").toEqual(stopped);
+});
+
+it("lifecycle: every live module switched off in a fight stops when it ends, and nothing of theirs shows or is written after", () => {
+  const addon = everyLiveModule();
+  addon.eval("__wfgStub.inCombat = true");
+  addon.fire("PLAYER_REGEN_DISABLED");
+  stopMidWork(addon);
+  const saved = savedNow(addon);
+  setCombat(addon, false);
+  const stopped = footprint(addon);
+  timePasses(addon);
+  expect(list(addon.eval(OWNED_SHOWN)), "none of their frames on screen").toEqual([]);
+  expect(footprint(addon), "nothing registered again").toEqual(stopped);
+  expect(savedNow(addon), "the saved variables as the switches left them").toEqual(saved);
+});
+
+// A live profile switch with the real live modules ------------------------------------------------------------
+
+// Saved variables with two profiles that differ only in live modules (the meter and group threat on in Raid, the roll
+// panel off), every reload-only module off in both, on the character's profile `profile`.
+const liveProfiles = (profile) => `
+  VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {} }, Raid = { modules = { Rolls = false }, Meter = { on = true }, GroupThreat = { show = true } } } }
+  VanguardCharDB = { profile = "${profile}" }`;
+
+// Lua run once the modules are registered, before login: every module that is not live switched off in both profiles.
+const RELOAD_ONLY_OFF = `for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+end`;
+
+// The addon logged in on `profile` with only real live modules running.
+function liveProfileAddon(profile) {
+  const addon = createAddon({ savedVariables: liveProfiles(profile) });
+  addon.eval(RELOAD_ONLY_OFF);
+  addon.login();
+  return addon;
+}
+
+it("lifecycle: with every reload-only module off, a profile that differs in real live modules switches at once, as a login on it, and leaves the old profile as it was", () => {
+  const onRaid = footprint(liveProfileAddon("Raid"));
+  const addon = liveProfileAddon("Default");
+  const before = addon.eval("return VanguardDB.profiles.Default");
+  expect(addon.eval('return ns.PickProfile("Raid")'), "applied at once").toBe(true);
+  // Frames and installed hooks are left out: the roll panel ran on Default, and the client frees neither.
+  expect(footprint(addon), "the footprint of a login on Raid").toEqual(onRaid);
+  expect(addon.eval("return VanguardDB.profiles.Default"), "Default untouched").toEqual(before);
 });

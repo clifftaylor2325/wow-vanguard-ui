@@ -54,7 +54,7 @@ local function buildTotems(player, size)
   CB.totems = CreateFrame("Frame", nil, player)
   CB.totems:SetSize(CB.SLOTS * (size + 3), size)
   CB.totems:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, CB.ROW_OFFSET)
-  UF.RaiseDeckReach("top", CB.ROW_OFFSET + size)
+  UF.RaiseDeckReach("ClassBars", "top", CB.ROW_OFFSET + size)
   CB.totemCells = {}
   for slot = 1, CB.SLOTS do CB.totemCells[slot] = totemCell(CB.totems, slot, size) end
 end
@@ -128,7 +128,7 @@ local function buildMana(player, height)
   CB.manaHolder:SetPoint("TOPLEFT", player, "BOTTOMLEFT", 0, -CB.ROW_OFFSET)
   CB.manaHolder:SetPoint("TOPRIGHT", player, "BOTTOMRIGHT", 0, -CB.ROW_OFFSET)
   CB.manaHolder:SetHeight(height)
-  UF.RaiseDeckReach("bottom", CB.ROW_OFFSET + height)
+  UF.RaiseDeckReach("ClassBars", "bottom", CB.ROW_OFFSET + height)
   local px = T.Pixel(CB.manaHolder)
   CB.mana = T.BarColor(T.StyleBar(CreateFrame("StatusBar", nil, CB.manaHolder)), "mana")
   CB.mana:SetPoint("TOPLEFT", px, -px); CB.mana:SetPoint("BOTTOMRIGHT", -px, px)

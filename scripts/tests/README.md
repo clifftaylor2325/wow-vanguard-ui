@@ -127,11 +127,15 @@ A module that declares `live = true` (Core/Modules.lua, `docs/design/MODULE-LIFE
 `lifecycleCases(name, login)` in `scripts/tests/lifecycle-helpers.mjs`, where `login(saved)` logs the addon in with
 `saved` appended to its saved variables: switched off, it leaves the footprint of a login with it off (no handler,
 ticker, subscribed event, shown frame, state driver, mover or open gate of its own); switched on late, it has the
-footprint of a login with it on, frames included; toggled three times, it makes no new frame, handler or gate.
+footprint of a login with it on, frames included; toggled three times, it makes no new frame, handler or gate, and
+leaves the saved variables as they were.
 `footprint(addon)` is the comparison, taken from `ns.HandlerCounts()`, `ns.ticker.vgJobs`, the addon frames in
 `stub.frames`, `ns.MoverList()` and the modules' scopes. `scripts/tests/lifecycle.test.mjs` exercises the registry,
 the scope, combat, the options rows and live profile switching with TEST-ONLY modules, which it runs as an addon
-file (`@Modules/TEST-ONLY.lua`) so the taint rules count their frames as the addon's.
+file (`@Modules/TEST-ONLY.lua`) so the taint rules count their frames as the addon's; it also stops every real live
+module with work queued (in a fight too) and lets time and the game's events pass, and switches a profile live with
+the real live modules. `scripts/tests/lifecycle-world.test.mjs` runs the three cases in a populated world (raid
+tiles, the trainer, a merchant, the mailbox).
 
 ### Text fit
 

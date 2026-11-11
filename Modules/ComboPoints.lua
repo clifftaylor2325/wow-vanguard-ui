@@ -66,7 +66,7 @@ local function makeBar(player, settings)
   CP.bar = CreateFrame("Frame", nil, player)
   CP.bar:SetSize(CP.MAX * (CP.size + 3), CP.size)
   CP.bar:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, CP.ROW_OFFSET)
-  UF.RaiseDeckReach("top", CP.ROW_OFFSET + CP.size)
+  UF.RaiseDeckReach("ComboPoints", "top", CP.ROW_OFFSET + CP.size)
 end
 
 -- The row of pips, hidden until you have points. Made once a session: a later start hands the same row to its scope.
