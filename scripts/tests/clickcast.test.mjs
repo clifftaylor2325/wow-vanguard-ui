@@ -319,7 +319,7 @@ it("a starter layout, hover keys with collision notes, and the test tile", () =>
   expect(addon.texts("That's a mouse button: it lives in the Click casting grid.").length).toBe(1);
   for (let i = 1; i <= 9; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
   addon.eval("ns.Options.Refresh()");
-  expect(addon.texts("+3 more (/vg binds)").length, "rows past the list are counted").toBe(1);
+  expect(addon.frames("w.keyText ~= nil and w.remove ~= nil and w:IsShown()").length, "H44-9-53: every key has its row, past the eight in view too").toBe(11);
   addon.eval(`${CC}.Remove("SHIFT-Q")`);
   const q = widget(addon, 'w.key == "1" and w.remove ~= nil and w.keyText ~= nil');
   addon.eval(`__wfgStub.frames[${q}].remove:GetScript("OnClick")()`);
@@ -496,7 +496,7 @@ it("the picker's rows are list rows (T.ROW.height) and a group's name shows in a
   expect([section.slice(0, 5).filter((_, i) => i !== 4), isTok(addon, section[4], "muted"), section[5]], "a group's row holds an 18 high section header in small muted capitals and no text of its own").toEqual([[true, 18, "HEALS", small], true, ""]);
 });
 
-it("the hover keys card: its key rows are list rows; the empty line is label text2, the count small text2, the off note small muted; an empty cell's mark is label disabled", () => {
+it("the hover keys card: its key rows are list rows; the empty line is label text2, the mouse-button note small text2, the off note small muted; an empty cell's mark is label disabled", () => {
   const addon = priest();
   addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
   const [height, label, small] = addon.eval("return { ns.Theme.ROW.height, ns.Theme.RoleSize('label'), ns.Theme.RoleSize('small') }");
@@ -507,10 +507,11 @@ it("the hover keys card: its key rows are list rows; the empty line is label tex
   addon.eval(`${CC}.Add("SHIFT-Q", "target") ns.Options.Refresh()`);
   const row = addon.eval(`local r = __wfgStub.frames[${widget(addon, 'w.key == "SHIFT-Q" and w.remove ~= nil and w.keyText ~= nil')}] return { r.__kind, r:GetHeight(), r.SetSelected ~= nil, r.wash ~= nil }`);
   expect(row, "a key row is a Button of the list row's height with the selected look").toEqual(["Button", height, true, true]);
-  for (let i = 1; i <= 10; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
-  addon.eval("ns.Options.Refresh()");
-  const count = fontOf(addon, "+3 more (/vg binds)");
-  expect([count[0], isTok(addon, count[1], "text2")], "the count: small, text2").toEqual([small, true]);
+  const add = widget(addon, 'w.caption == "Add key" and w.onKey ~= nil');
+  addon.click(add);
+  addon.eval(`local a = __wfgStub.frames[${add}] a:GetScript("OnMouseDown")(a, "RightButton")`);
+  const note = fontOf(addon, "That's a mouse button: it lives in the Click casting grid.");
+  expect([note[0], isTok(addon, note[1], "text2")], "the mouse-button note: small, text2").toEqual([small, true]);
   addon.eval("ns.Client = ns.Client or {} ns.Client.ProbeSnippets = function() return false end ns.Options.Refresh()");
   const off = fontOf(addon, "This client can't compile the secure code hover keys need; mouse bindings still work.");
   expect([off[0], isTok(addon, off[1], "muted")], "the no-snippets note: small, muted").toEqual([small, true]);
@@ -871,4 +872,22 @@ it("H44-9-52 import: a string with three entries for one click asks about the on
   expect(addon.texts("Replace your 1 click-casting bindings with the 2 from this string?").length, "two keys, two bindings").toBe(1);
   addon.click("Vanguard_Question.confirm");
   expect(chatHas(addon, /Imported 2 click-casting bindings\./), "the count the question gave").toBe(true);
+});
+
+it("H44-9-53 the hover-key list scrolls: a ninth key has its row and Remove, and the wheel scrolls the list only while it overflows", () => {
+  const addon = priest();
+  for (let i = 1; i <= 8; i++) addon.eval(`${CC}.Add("F${i}", "target")`);
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Keys while hovering a frame")');
+  // The scroll view holding the hover-key rows: whether the wheel is its own, and how tall its content is.
+  const view = () => addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.rows ~= nil and w.view ~= nil and w.add ~= nil then return { w.view:IsMouseWheelEnabled(), w.view.child:GetHeight() } end end');
+  const height = addon.eval("return ns.Theme.ROW.height");
+  expect(view(), "eight keys fit: the wheel is the page's").toEqual([false, 8 * height]);
+  addon.eval(`${CC}.Add("F9", "target") ns.Options.Refresh()`);
+  expect(view(), "a ninth: the list scrolls").toEqual([true, 9 * height]);
+  const list = widget(addon, "w.rows ~= nil and w.view ~= nil and w.add ~= nil");
+  addon.wheel(widget(addon, `w == __wfgStub.frames[${list}].view`), -1);
+  expect(addon.eval(`return __wfgStub.frames[${list}].view:GetVerticalScroll()`), "the wheel brings the ninth row into view").toBe(height);
+  const nine = widget(addon, 'w.key == "F9" and w.remove ~= nil and w.keyText ~= nil and w:IsShown()');
+  addon.eval(`__wfgStub.frames[${nine}].remove:GetScript("OnClick")()`);
+  expect([bindings(addon).F9, addon.texts("+1 more (/vg binds)").length], "its Remove removes it; no count line").toEqual([undefined, 0]);
 });

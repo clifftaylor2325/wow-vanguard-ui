@@ -28,7 +28,7 @@ local GRID = { head = 28 }
 -- The picker's and the hover-key list's rows are list rows.
 local ROW_H = T.ROW.height
 -- The hover-key list's top line (Add key, a standalone button, with a tight gap over and under it): its height
--- above the rows; and the whole list's height (its rows and a gap under them).
+-- above the rows; and the whole list's height (MAX_KEYS rows in view, the rest scroll, and a gap under them).
 local KEYS_TOP = T.BUTTON_H + 2 * T.SPACE.tight
 local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
 -- The spell picker's width, and where its rows start: the search box (T.CONTROL_H) with a gap over and under it.
@@ -605,11 +605,12 @@ local function keyRowTexts(row)
   row.note:SetPoint("RIGHT", -90, 0)
 end
 
--- One hover-key row (under the Add key line): a list row (W.Row) with the key, the spell's icon and name, the
+-- One hover-key row (in the list's scroll view): a list row (W.Row) with the key, the spell's icon and name, the
 -- collision note, Remove.
 local function keyRow(list, i)
-  local row = W.Row(list, ROW_H, { width = list:GetWidth() - 2 * T.SPACE.tight })
-  row:SetPoint("TOPLEFT", T.SPACE.tight, -(KEYS_TOP + (i - 1) * ROW_H))
+  local child = list.view.child
+  local row = W.Row(child, ROW_H, { width = child:GetWidth() })
+  row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
   keyRowTexts(row)
   row.remove = W.Button(row, L["Remove"], function() CC.Remove(row.key) changed() end, 80)
   row.remove:SetPoint("RIGHT")
@@ -633,29 +634,35 @@ local function fillKeyRow(row, b)
   keyNote(row, b)
 end
 
--- The count beside the Add key button: how many more keys there are than rows, or nothing.
-local function keysNote(count)
-  local extra = count - MAX_KEYS
-  return extra > 0 and ns.Format(L["+{count} more (/vg binds)"], { count = extra }) or ""
-end
-
--- The top line's texts: the empty-state line while there are no keys (and keys can be made), the count after it.
+-- The top line's texts: the empty-state line while there are no keys (and keys can be made); the line after it
+-- (a captured mouse button's note) is cleared.
 local function refreshHead(list, count)
   local on = CC.SnippetsOn()
   list.empty:SetShown(count == 0 and on)
-  list.more:SetText(keysNote(count))
+  list.more:SetText("")
   list.add:SetShown(on)
   list.off:SetShown(not on)
 end
 
--- Re-reads the hover-key rows and the line over them.
+-- Sizes the scroll view's content to a number of rows; the wheel scrolls it only while they don't all fit, so
+-- over a short list it still scrolls the page. The view's wheel script goes too, since a frame with one takes the
+-- wheel (the view is Vanguard's own frame, so its script may change).
+local function fitKeys(view, count)
+  local overflows = count > MAX_KEYS
+  view:Fit(count * ROW_H)
+  view:SetScript("OnMouseWheel", overflows and view.wheel or nil)
+  view:EnableMouseWheel(overflows)
+end
+
+-- Re-reads the hover-key rows (one per key, made as keys come) and the line over them.
 local function refreshKeys(list)
   local bindings = hoverBindings()
-  for i = 1, MAX_KEYS do
-    local b, row = bindings[i], list.rows[i]
-    row:SetShown(b ~= nil)
-    if b then fillKeyRow(row, b) end
+  for i = #list.rows + 1, #bindings do list.rows[i] = keyRow(list, i) end
+  for i, row in ipairs(list.rows) do
+    row:SetShown(bindings[i] ~= nil)
+    if bindings[i] then fillKeyRow(row, bindings[i]) end
   end
+  fitKeys(list.view, #bindings)
   refreshHead(list, #bindings)
 end
 
@@ -693,12 +700,22 @@ local function keysHead(list)
   list.off:SetText(L["This client can't compile the secure code hover keys need; mouse bindings still work."])
 end
 
--- The hover-key list row kind: the Add key capture and its line on top, then the rows.
+-- The scroll view the hover-key rows sit in, under the top line: MAX_KEYS rows tall, its thumb in the gap at the
+-- list's right edge, so every key has its row and Remove however many there are.
+local function keysView(list)
+  local width = list:GetWidth() - 2 * T.SPACE.tight - T.SPACE.col
+  list.view = ns.ScrollView(list, { width = width })
+  list.view.wheel = list.view:GetScript("OnMouseWheel")
+  list.view:SetPoint("TOPLEFT", T.SPACE.tight, -KEYS_TOP)
+  list.view:SetSize(width, MAX_KEYS * ROW_H)
+end
+
+-- The hover-key list row kind: the Add key capture and its line on top, then the rows in their scroll view.
 local function keysBuilder(parent, _, width)
   local list = CreateFrame("Frame", nil, parent)
   list:SetSize(width, KEYS_HEIGHT)
   list.rows, list.Refresh = {}, refreshKeys
-  for i = 1, MAX_KEYS do list.rows[i] = keyRow(list, i) end
+  keysView(list)
   keysHead(list)
   list:Refresh()
   return list
