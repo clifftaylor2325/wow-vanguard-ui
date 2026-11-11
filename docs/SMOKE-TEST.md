@@ -5492,6 +5492,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each time the grid stays centred on its spot at once, and does not jump when someone next joins or leaves. [Needs in-game check: all of it.]
 - If it fails, paste: `/vg errors` and a screenshot before and after someone joins.
 
+### 33.506 One Cooldown Manager icon's buff does not put out the others' glow
+
+- Do: on either client, turn on "Glow a buff near its end" under `/vg` → Cooldowns, keep a target debuff and a self heal-over-time in the Buff row, then fight in an instance and swap targets often.
+- Expect: the heal-over-time's icon still lights near the end of its time, and `/vg errors` has no CooldownGlow line. [Needs in-game check: all of it; whether the game ever refuses the read is unknown.]
+- If it fails, paste: `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
