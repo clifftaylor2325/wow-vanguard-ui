@@ -1079,10 +1079,10 @@ it("social window: the window and its Battle.net bar, panes, side windows and ta
   expect(addon.eval(`local f = SocialUIFrame ${PAINTED}
     local function tab(i) local t = f.tabs[i] return { t.Background.__alpha, t.Icon.__alpha == ns.Theme.TAB_DIM, painted(t) } end
     local _, rel, _, x = f.tabs[1]:GetPoint(1)
-    return { tab(1), tab(2), rel == f, x == ns.Theme.Padding(f) - ns.Theme.Pixel(f), __refreshes }`),
-  "the side tabs: art faded, icons kept (greyed, none selected), flat, the first moved out past the padding").toEqual([[0, true, true], [0, true, true], true, true, 1]);
+    return { tab(1), tab(2), rel == f, x, __refreshes }`),
+  "the side tabs: art faded, icons kept (greyed, none selected), flat, the first moved just out past the window's edge").toEqual([[0, true, true], [0, true, true], true, 1, 1]);
   addon.eval("SocialUIFrame:RefreshTabs()");
-  expect(addon.eval(`local f = SocialUIFrame local _, _, _, x = f.tabs[1]:GetPoint(1) return { __refreshes, x == ns.Theme.Padding(f) - ns.Theme.Pixel(f), f.tabs[1].Background.__alpha }`), "made again: padded and skinned again").toEqual([2, true, 0]);
+  expect(addon.eval(`local f = SocialUIFrame local _, _, _, x = f.tabs[1]:GetPoint(1) return { __refreshes, x, f.tabs[1].Background.__alpha }`), "made again: moved and skinned again").toEqual([2, 1, 0]);
   addon.eval("SocialUIFrame.BattleNetBroadcastFrame:Show() SocialUIFrame.IgnoreListFrame:Show()");
   expect(addon.eval(`local cast, ignore = SocialUIFrame.BattleNetBroadcastFrame, SocialUIFrame.IgnoreListFrame ${PAINTED}
     return { cast.Border.Edge.__alpha, painted(cast), painted(cast.EditBox), cast.EditBox.LeftBorder.__alpha, painted(cast.UpdateButton), painted(cast.CancelButton), __titled(cast.Title),
@@ -1124,24 +1124,36 @@ const sideGaps = (addon) => addon.eval(`local f, T = SocialUIFrame, ns.Theme
   local function gap(side) return math.floor(side:GetLeft() - T.Padding(side) - f.tabs[1]:GetRight() + 0.5) end
   return { gap(f.IgnoreListFrame), gap(f.BattleNetBroadcastFrame) }`);
 
-it("social window: the side windows move out past the tabs, so neither the tabs nor the ignore list's panel cover the other", () => {
-  const addon = loggedIn(SIDE_GEOMETRY_ENV);
-  addon.eval("SocialUIFrame:Show() SocialUIFrame.IgnoreListFrame:Show() SocialUIFrame.BattleNetBroadcastFrame:Show()");
-  expect(sideGaps(addon), "the game's 7-unit gap between the tab column and each side window's panel").toEqual([7, 7]);
+// The gap (units) from each side window's painted panel to the panel of the window the game docks beside the social
+// window while that side window is open: the panel manager reserves the window, the tab column (the tab art plus 7)
+// and the side window's width, then leaves 32 (PANEl_SPACING_X) before the next window, a skinned FriendsFrame here.
+const nextGaps = (addon) => addon.eval(`local f, T, nextWindow = SocialUIFrame, ns.Theme, FriendsFrame
+  local function gap(side)
+    nextWindow:ClearAllPoints() nextWindow:SetPoint("TOPLEFT", f, "TOPRIGHT", 43 + 7 + side:GetWidth() + 32, 0)
+    return math.floor(nextWindow:GetLeft() - T.Padding(nextWindow) - (side:GetRight() + T.Padding(side)) + 0.5)
+  end
+  return { gap(f.IgnoreListFrame), gap(f.BattleNetBroadcastFrame) }`);
+// Shows the social window, both side windows and the docked window beside them.
+const openSide = (addon) => addon.eval("SocialUIFrame:Show() SocialUIFrame.IgnoreListFrame:Show() SocialUIFrame.BattleNetBroadcastFrame:Show() FriendsFrame:SetSize(384, 512) FriendsFrame:Show()");
+it("social window: the side windows' panels stay between the side tabs and the next docked window's panel, tabs group on or off", () => {
+  const addon = loggedIn(SIDE_GEOMETRY_ENV + '__window("FriendsFrame")');
+  openSide(addon);
+  expect(sideGaps(addon), "on: the tabs 1 out, the ignore list's panel 1 past them, the unpadded dialog the game's 7").toEqual([1, 7]);
+  expect(nextGaps(addon), "and 1 short of the next window's panel; the dialog well short").toEqual([1, 19]);
   addon.eval("SocialUIFrame:Hide() SocialUIFrame:Show() SocialUIFrame:RefreshTabs() SocialUIFrame.IgnoreListFrame:Hide() SocialUIFrame.IgnoreListFrame:Show()");
-  expect(sideGaps(addon), "moved once: showing again moves nothing further").toEqual([7, 7]);
-  const noTabs = loggedIn(SIDE_GEOMETRY_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
-  noTabs.eval("SocialUIFrame:Show() SocialUIFrame.IgnoreListFrame:Show() SocialUIFrame.BattleNetBroadcastFrame:Show()");
-  expect(sideGaps(noTabs), "the tabs left where the game puts them: the side windows clear them by the same gap").toEqual([7, 7]);
+  expect([sideGaps(addon), nextGaps(addon)], "moved once: showing again moves nothing further").toEqual([[1, 7], [1, 19]]);
+  const noTabs = loggedIn(SIDE_GEOMETRY_ENV + '__window("FriendsFrame")', { savedVariables: "VanguardDB.profiles = { Default = { Windows = { tabs = false } } }" });
+  openSide(noTabs);
+  expect([sideGaps(noTabs), nextGaps(noTabs)], "off: the game's tabs where it puts them, both side panels still between them and the next window").toEqual([[2, 7], [1, 20]]);
 });
 
 it("social window: a side window that first shows up in a fight moves out once the fight is over; a hidden offset leaves it where it is", () => {
   const addon = loggedIn(SIDE_GEOMETRY_ENV + "__cast, SocialUIFrame.BattleNetBroadcastFrame = SocialUIFrame.BattleNetBroadcastFrame, nil");
   setCombat(addon, true);
   addon.eval("SocialUIFrame.BattleNetBroadcastFrame = __cast SocialUIFrame:Show() SocialUIFrame.IgnoreListFrame:Show() __cast:Show()");
-  expect(sideGaps(addon)[1], "in the fight the broadcast dialog stays where the game put it, under the tabs").toBeLessThan(0);
+  expect(sideGaps(addon)[1], "in the fight the broadcast dialog stays where the game put it (the tab column's 7, less the tabs' 1-unit move)").toBe(6);
   setCombat(addon, false);
-  expect(sideGaps(addon), "after it, both clear the tabs").toEqual([7, 7]);
+  expect(sideGaps(addon), "after it, both clear the tabs").toEqual([1, 7]);
   const hidden = loggedIn(SIDE_GEOMETRY_ENV + `
     local side = SocialUIFrame.IgnoreListFrame __gamePoint = side.GetPoint
     function side:GetPoint(i) local p, r, rp, x, y = __gamePoint(self, i) return p, r, rp, __wfgWorld.secret(x), y end`);

@@ -17,11 +17,12 @@ name: full suite
 # keep the written order. The UI preview renders weekly and on a
 # hand-started run that asks for it.
 on:
-  schedule:
-    # Sundays at 10:23 UTC (cron is UTC only); off the hour, since GitHub
-    # delays runs scheduled on busy minutes. For every other night instead:
-    # "23 10 */2 * *".
-    - cron: "23 10 * * 0"
+  # No weekly run for now (Cliff, 2026-11-10): the suite takes 45 to 60 minutes and is out of CI
+  # until it is fast again (sharding and the Lua 5.1 engine are in work). Hand-started runs stay.
+  # The weekly run comes back with these lines (Sundays at 10:23 UTC; cron is UTC only; off the
+  # hour, since GitHub delays runs scheduled on busy minutes):
+  #   schedule:
+  #     - cron: "23 10 * * 0"
   workflow_dispatch:
     inputs:
       preview:

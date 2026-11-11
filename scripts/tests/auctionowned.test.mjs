@@ -168,7 +168,7 @@ it("a free cancel goes on the click; a paid one or one whose cost is hidden asks
   addon.advance(6);
   addon.eval("__wfgWorld.ah.cancelCost = 100");
   addon.click(cancel);
-  expect([cancelAsk(addon), restrictedLog(addon).length], "paid: the question names the cost, nothing sent yet").toEqual([[true, "Cancel this auction? It costs 1s 0c."], 1]);
+  expect([cancelAsk(addon), restrictedLog(addon).length], "paid: the question names the cost, nothing sent yet").toEqual([[true, "Cancel Strange Dust? It costs 1s 0c."], 1]);
   addon.click("Vanguard_Question.no");
   expect(restrictedLog(addon).length, "No: the auction stays up").toBe(1);
   addon.click(cancel);
@@ -177,10 +177,13 @@ it("a free cancel goes on the click; a paid one or one whose cost is hidden asks
   addon.advance(6);
   addon.eval("__wfgWorld.ah.cancelCost = __wfgWorld.secret(1)");
   addon.click(cancel);
-  expect([cancelAsk(addon), restrictedLog(addon).length], "a hidden cost asks the other question").toEqual([[true, "Cancel this auction? The game would not say what it costs."], 2]);
+  expect([cancelAsk(addon), restrictedLog(addon).length], "a hidden cost asks the other question").toEqual([[true, "Cancel Strange Dust? The game would not say what it costs."], 2]);
   addon.eval("__wfgWorld.ah.noCancel[501] = true");
   addon.click("Vanguard_Question.confirm");
   expect(restrictedLog(addon).length, "the game no longer allows it by the time of Yes: nothing sent").toBe(2);
+  addon.eval("__wfgWorld.ah.noCancel[501] = nil __wfgWorld.ah.cancelCost = 100 C_AuctionHouse.GetItemKeyInfo = function() return nil end");
+  addon.click(cancel);
+  expect(cancelAsk(addon), "an item the client has no name for keeps the old wording").toEqual([true, "Cancel this auction? It costs 1s 0c."]);
 });
 it("a second click on a row's Cancel neither sends nor asks again while the first is on its way", () => {
   const addon = atAuctionHouse(BAGS + OWNED + "\n__wfgWorld.ah.cancelCost = 0");

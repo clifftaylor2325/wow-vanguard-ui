@@ -86,6 +86,16 @@ it("stat weights: changes are kept per class, and weights a profile kept per kin
   expect(none.eval("return type(ns.GetModule('Upgrades').settings.weights)"), "a saved value that isn't a table is left to the defaults").toBe("table");
 });
 
+it("stat weights: moving the per-kind weights a second time changes nothing, and a saved false is kept", () => {
+  const old = loggedIn(GEAR, { savedVariables: "VanguardDB.profiles = { Default = { Upgrades = { weights = { caster = { SP = 2, TEST_ONLY_OFF = false } } } } }" });
+  // The profile's saved weights as they stand.
+  const weights = () => old.eval("return ns.GetModule('Upgrades').settings.weights");
+  const once = weights();
+  old.eval("ns.migrations.Upgrades[1](ns.GetModule('Upgrades').settings)");
+  expect(weights(), "a second run finds no per-kind weights left and changes nothing").toEqual(once);
+  expect(old.eval("return ns.GetModule('Upgrades').settings.weights.MAGE.caster.TEST_ONLY_OFF"), "a false inside a moved change stays false").toBe(false);
+});
+
 // TEST-ONLY item levels for the gear above: worn bracers 1 at 60, and bracers 8 (STR 75) at 200.
 const ITEM_LEVELS = `
   __gear[8] = { "INVTYPE_WRIST", { ITEM_MOD_STRENGTH_SHORT = 75 } }

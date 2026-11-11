@@ -362,6 +362,31 @@ local function reconcile(b)
   if built(b) and b.auraSignature ~= rowsSignature(b) then retireRows(b) end
 end
 
+-- Whether an icon placed at the scale `placed` is still on whole pixels at its holder's scale now (a hidden scale
+-- counts as unchanged).
+local function sameScale(scale, placed)
+  scale = ns.PlainNumber(scale)
+  return scale == nil or math.abs(scale - placed) < RF.SCALE_EPSILON
+end
+
+-- Puts every built tile's aura icons back on whole pixels where the grid's scale moved since they were placed (their
+-- one-pixel inset, sweep and edges): a T.OnScale listener (the raid grid's compact scale, the raid mover's Scale or the
+-- UI scale changed; out of combat), and at each start. Each row's holder scale is read once for its icons.
+function RA.Refit()
+  for _, b in ipairs(RF.buttons) do
+    if built(b) then
+      for _, row in ipairs(tileRows(b)) do ns.Auras.Refit(row.frame, sameScale) end
+    end
+  end
+end
+
+-- Puts the icons on whole pixels for the scale now (a scale change while the module was off) and after each
+-- later scale change while it runs.
+function RA.FollowScale(scope)
+  scope:Gate("scale", RA.Refit, T.OnScale)
+  RA.Refit()
+end
+
 -- Adds fn to one of the raid frames' tile hook lists (RF.updateHooks and the others) unless it is there already (the
 -- module started again). The raid modules keep their hooks on the lists only while they run, so a running tile
 -- update pays nothing for the lifecycle and a stopped module costs the tiles nothing.
@@ -390,6 +415,7 @@ function RA.Enable(settings, scope)
   RA.AddHook(RF.emptyHooks, emptied)
   RA.AddHook(RF.emptyHooks, indicatorEmptied)
   scope:On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
+  RA.FollowScale(scope)
   RA.BuildAhead()
   if ns.ModulesBuilt() then RF.UpdateAll() end
 end

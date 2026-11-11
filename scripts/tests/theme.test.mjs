@@ -575,6 +575,47 @@ it("a game divider whose shown state the client hides never hands the secret to 
   expect(press, "the shade was never asked whether it is shown, and it shows while held and hides after").toEqual([0, true, false]);
 });
 
+it("a press on a game button whose label's anchoring the client hides leaves the label where it is, with no error", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    local b = T.Button(CreateFrame("Button", nil, UIParent))
+    b.text = b:CreateFontString(nil, "OVERLAY") b.text:SetPoint("CENTER", b, "CENTER", 0, 2)
+    __wfgWorld.holdSecret(b.text, "Anchoring")
+    T.PressButton(b, true)
+    local held = b.text.__points.CENTER.y
+    T.PressButton(b, false)
+    return { held, b.text.__points.CENTER.y, T.PlainPoints(b.text) == nil }`);
+  expect(out, "not dropped while held, nor after (the old code counted with the hidden offset and raised)").toEqual([2, 2, true]);
+});
+
+it("fitted text on a box whose width the client hides keeps its size, with no error", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    local box = CreateFrame("Button", nil, UIParent) box:SetSize(40, 20) box:SetPoint("CENTER")
+    local fs = box:CreateFontString(nil, "OVERLAY") fs:SetFont(STANDARD_TEXT_FONT, 12) fs:SetText("TEST-ONLY a label far wider than its box")
+    __wfgWorld.holdSecret(box, "Anchoring")
+    T.FitText(fs, box)
+    return fs:GetTextScale()`);
+  expect(out, "left at full size (the old code counted with the hidden width and raised)").toBe(1);
+});
+
+it("a scale change sizes every rail and divider again, and forgets a row or divider the client has closed", () => {
+  const addon = loggedIn();
+  addon.eval(`local T = ns.Theme
+    __rows = { T.Row(CreateFrame("Button", nil, UIParent)), T.Row(CreateFrame("Button", nil, UIParent)) }
+    local host = CreateFrame("Frame", nil, UIParent)
+    __divs = { host:CreateTexture(), host:CreateTexture() }
+    for _, d in ipairs(__divs) do T.Divider(d) end
+    __wfgWorld.forbid(__rows[2]) __wfgWorld.forbid(__divs[2])
+    UIParent:SetScale(0.8)`);
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  expect(addon.eval(`local T = ns.Theme
+    return { T.RowParts(__rows[1]).rail:GetWidth() == T.SELECT.rail * T.Pixel(__rows[1]), T.RowParts(__rows[2]) == nil,
+      T.DividerParts(__divs[1]).line:GetHeight() == T.Pixel(UIParent), T.DividerParts(__divs[2]) == nil, #ns.errors }`),
+  "the open ones at the new pixel, the closed ones forgotten, nothing raised (the old walk raised on the closed row)").toEqual([true, true, true, true, 0]);
+});
+
 it("a repaint with every region's Shown held secret by the client raises nothing: the #838 line read an edge's back into SetShown", () => {
   const addon = loggedIn();
   addon.eval(`local T = ns.Theme

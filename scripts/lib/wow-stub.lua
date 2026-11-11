@@ -434,6 +434,11 @@ function methods:IsMouseClickEnabled()
   if self.__mouseClick ~= nil then return self.__mouseClick end
   return self.__mouse == true or (self.__mouse == nil and self.__kind == "Button")
 end
+-- Whether the mouse moving over it lands on it (OnEnter, OnLeave, tooltips): as set, else whether it takes the mouse.
+function methods:IsMouseMotionEnabled()
+  if self.__mouseMotion ~= nil then return self.__mouseMotion end
+  return self.__mouse == true or (self.__mouse == nil and self.__kind == "Button")
+end
 -- The mouse wheel: whether the frame takes it (a frame with an OnMouseWheel script does too, as in game).
 function methods:EnableMouseWheel(on) self.__mouseWheel = on ~= false end
 -- Whether the frame takes the keyboard (EnableKeyboard), and whether a key it takes goes on to the game too.
@@ -593,6 +598,9 @@ function methods:GetFont() local f = self.__font or {} return f[1], f[2], f[3] e
 -- Shadow offset and colour, recorded.
 function methods:SetShadowOffset(x, y) self.__shadowOffset = { x, y } end
 function methods:SetShadowColor(r, g, b, a) self.__shadowColor = { r, g, b, a } end
+-- Shadow offset and colour read back: as set, else none (offset 0, 0, a clear black), as a new font string has.
+function methods:GetShadowOffset() local o = self.__shadowOffset or { 0, 0 } return o[1], o[2] end
+function methods:GetShadowColor() local c = self.__shadowColor or { 0, 0, 0, 0 } return c[1], c[2], c[3], c[4] end
 
 -- The minimap mask texture (square or round).
 function methods:SetMaskTexture(t) self.__maskTexture = t end

@@ -69,6 +69,7 @@
       "action buttons cast on yourself, your focus or the mouseover with the game's modifiers",
       "action buttons show their action's tooltip on hover and hide it on leave",
       "an action button marks an item you wear with a thin ring, and drops it when the item comes off",
+      "an edited macro repaints its button's cooldown and usable state, and no other button's",
       "an old profile keeps its right-edge bar on Always; a fresh enable gets On mouseover",
       "bag, equipment, form, macro and charge events refresh the buttons they change",
       "bar 1 pages without secure snippets: the driver sets the bar's own actionpage, the buttons read it",

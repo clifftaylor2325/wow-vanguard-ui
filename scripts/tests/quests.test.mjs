@@ -2563,3 +2563,35 @@ it("quest tracker: the game's tracker stays clear when its managed-frame contain
   setCombat(addon, true);
   expect(addon.eval(back), "in a fight, where the park waits for its end").toBe(0);
 });
+
+// TEST-ONLY: the game's tracker with a quest line (a button), a bar on it that feels the mouse but lets clicks through, a
+// protected part (the client locks its mouse in a fight), and an Update that takes a new line from its pool.
+const TRACKER_PARTS = `
+  __line = CreateFrame("Button", nil, ObjectiveTrackerFrame)
+  __bar = CreateFrame("StatusBar", nil, __line) __bar:SetMouseMotionEnabled(true) __bar:SetMouseClickEnabled(false)
+  __locked = CreateFrame("Button", nil, ObjectiveTrackerFrame) __wfgStub.protect(__locked)
+  function ObjectiveTrackerFrame:Update() __added = __added or CreateFrame("Button", nil, ObjectiveTrackerFrame) end
+`;
+// The managed-frame container putting the tracker back on screen (ManagedFrameSystem.lua UpdateFrame, AnimInManagedFrames).
+const TRACKER_BACK = "ObjectiveTrackerFrame:SetParent(UIParent) ObjectiveTrackerFrame:Show() ObjectiveTrackerFrame:SetAlpha(1)";
+// Whether a click and the mouse moving over each part would land on it: drawn (alpha aside) and taking them.
+const trackerMouse = (addon) => addon.eval(`local function lands(p) return { p:IsVisible() and p:IsMouseClickEnabled(), p:IsVisible() and p:IsMouseMotionEnabled() } end
+  return { line = lands(__line), bar = lands(__bar), locked = lands(__locked), added = __added and lands(__added) or false }`);
+it("quest tracker: the game's tracker put back on screen in a fight takes no click on its lines, and gets its mouse back once parked", () => {
+  const addon = loggedIn(UNITS_ENV + TRACK_ENV + TRACKER_PARTS);
+  setCombat(addon, true);
+  addon.eval(TRACKER_BACK);
+  addon.eval("ObjectiveTrackerFrame:Update()");
+  expect(trackerMouse(addon), "in the fight: no click or tooltip lands on a line, the bar or a line the game adds; the protected part is left").toEqual({
+    line: [false, false], bar: [false, false], locked: [true, true], added: [false, false] });
+  setCombat(addon, false);
+  expect(addon.eval("return { ObjectiveTrackerFrame:IsVisible(), __line:IsMouseClickEnabled(), __line:IsMouseMotionEnabled(), __bar:IsMouseClickEnabled(), __bar:IsMouseMotionEnabled(), __added:IsMouseClickEnabled() }"),
+    "after it: parked out of sight, each part with the mouse it had").toEqual([false, true, true, false, true, true]);
+});
+it("quest tracker: with Vanguard's tracker off, the game's tracker takes clicks on its lines in a fight as before", () => {
+  const off = loggedIn(TRACK_ENV + TRACKER_PARTS, { savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
+  setCombat(off, true);
+  off.eval(TRACKER_BACK);
+  off.eval("ObjectiveTrackerFrame:Update()");
+  expect(trackerMouse(off), "the game's own tracker, untouched").toEqual({ line: [true, true], bar: [false, true], locked: [true, true], added: [true, true] });
+});

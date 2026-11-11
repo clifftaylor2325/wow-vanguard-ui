@@ -183,6 +183,18 @@ it("retail auras: the target frame has a spot right of it, over the target of ta
   expect([second[2] !== first[2], addon.eval(`return __wfgWorld.privateAnchors[${first[2]}] == nil`)], "a new spot for the new target, the old one given back").toEqual([true, true]);
 });
 
+it("retail auras: switching target and focus auras off live gives the target's private aura spot back; on again it is handed again", () => {
+  const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
+  // The target spot's unit and whether the game still holds a spot for the target.
+  const target = () => addon.eval(`local n = 0 for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == "target" then n = n + 1 end end
+    return { ns.PrivateAuras.target.unit or false, n }`);
+  expect(target(), "on: the target's spot handed").toEqual(["target", 1]);
+  addon.eval('ns.SetModuleEnabled("FrameAuras", false)');
+  expect(target(), "off: given back").toEqual([false, 0]);
+  addon.eval('ns.SetModuleEnabled("FrameAuras", true)');
+  expect(target(), "on again: handed again, once").toEqual(["target", 1]);
+});
+
 it("retail auras: your own six private aura spots stand left of your buffs, outside the block Calm fades (H18-7-1)", () => {
   const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
   const own = addon.eval(`local out = {}

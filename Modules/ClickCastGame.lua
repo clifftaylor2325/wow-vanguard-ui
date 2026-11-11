@@ -22,6 +22,7 @@ local WONT_RUN = {
   key = L["the game won't run it from a key"],
   click = L["the game runs it only on a click its own Click Casting window binds"],
   override = L["the game's own Click Casting window binds a spell or macro to this click, and that runs instead"],
+  rank = L["you no longer have that spell rank"],
 }
 CC.WONT_RUN = WONT_RUN
 
@@ -175,12 +176,12 @@ local function remapReason(entry, prefix)
   return ns.Format(interaction.remap, { click = CC.KeyName(prefix .. "BUTTON" .. interaction.button) })
 end
 
--- Why a binding does nothing on this client, or nil when it works (or the client can't say). Where the game has
+-- Why the game's own click bindings stop a binding running, or nil. Where the game has
 -- click bindings of its own, a Spell, Macro or PetAction it binds to the same click runs instead of a mouse binding,
 -- an interaction it moved to the click makes the engine read another button's attribute, and the units' click handler
 -- drops Target and Unit menu on a click its own bindings don't cover (a hover key's virtual button is never covered).
 -- While the game's bindings are in use, Vanguard's rest.
-function CC.WontRun(b)
+local function gameReason(b)
   local profile = not CC.UsesGame() and gameProfile()
   if not profile then return nil end
   local prefix, n = CC.MouseParts(b.key)
@@ -189,6 +190,26 @@ function CC.WontRun(b)
   if verdict == "unbound" and GAME_GATED[b.action] then return WONT_RUN.click end
   if verdict == "remap" then return remapReason(entry, prefix) end
   return verdict == "override" and WONT_RUN.override or nil
+end
+
+-- Whether a binding names a spell rank the spellbook no longer holds (a spell unlearned, or a rank a newer one
+-- replaced). A client that gives no spellbook has an empty catalog and cannot say, so that is no.
+local function rankGone(b)
+  if b.action ~= "spell" or not b.rank or not b.spellID then return false end
+  local catalog = ns.ClickCastSpells.Catalog()
+  local spell = catalog.byName[b.value]
+  if #catalog.spells == 0 then return false end
+  for _, r in ipairs(spell and spell.ranks or {}) do
+    if r.spellID == b.spellID then return false end
+  end
+  return true
+end
+
+-- Why a binding does nothing on this client, or nil when it works (or the client can't say): a spell rank you no
+-- longer have, else the game's click bindings' say (gameReason).
+function CC.WontRun(b)
+  if rankGone(b) then return WONT_RUN.rank end
+  return gameReason(b)
 end
 
 -- The game's interaction id for each action it gates (Target, Open menu).

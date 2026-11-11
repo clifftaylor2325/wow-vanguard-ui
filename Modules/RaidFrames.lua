@@ -444,18 +444,25 @@ end
 
 -- Building ---------------------------------------------------------------------------------
 
+-- Places the role mark at the name row's start and its shadow one screen pixel (`px`, at the grid's scale now) down
+-- and right of it. Again whenever that scale changes (RF.PlaceAllTexts).
+local function placeRoleMark(b, z, px)
+  local x, y = z.name[1], -z.name[2] - 1
+  b.role:SetPoint("TOPLEFT", b, "TOPLEFT", x, y)
+  b.roleShadow:SetPoint("TOPLEFT", b, "TOPLEFT", x + px, y - px)
+end
+
 -- The role mark at the name row's start, as tall as the name's letters, with a
 -- dark copy one pixel down and right under it, so it reads on a bright bar as
 -- the outlined name does.
 local function addRoleMark(b, z)
-  local size, px = T.RoleSize("barName") - 1, T.Pixel(b)
+  local size = T.RoleSize("barName") - 1
   b.roleSize = size
   b.roleShadow = T.Tint(T.Snap(b.texts:CreateTexture(nil, "OVERLAY", nil, 1)), "textShadow")
   b.role = T.Tint(T.Snap(b.texts:CreateTexture(nil, "OVERLAY", nil, 2)), "text2")
-  for i, t in ipairs({ b.role, b.roleShadow }) do
-    t:SetSize(size, size)
-    t:SetPoint("TOPLEFT", b, "TOPLEFT", z.name[1] + (i - 1) * px, -z.name[2] - 1 - (i - 1) * px)
-  end
+  b.role:SetSize(size, size)
+  b.roleShadow:SetSize(size, size)
+  placeRoleMark(b, z, T.Pixel(b))
 end
 
 -- Top row: the role mark, then the name, which stops at its zone's edge
@@ -479,9 +486,8 @@ local function addTopLine(b)
   b.topLine:Hide()
 end
 
--- Pins the health bar one screen pixel in from the tile's edge, at the grid's scale now.
-local function placeInset(b)
-  local px = T.Pixel(b)
+-- Pins the health bar one screen pixel (`px`, at the grid's scale now) in from the tile's edge.
+local function placeInset(b, px)
   b.health:SetPoint("TOPLEFT", px, -px)
   b.health:SetPoint("BOTTOMRIGHT", -px, px)
 end
@@ -510,11 +516,15 @@ local function addTexts(b, z)
   placeTexts(b, z)
 end
 
--- Lays every tile's health inset and texts out again for the grid's current scale (out of combat).
+-- Lays every tile's health inset, role mark and texts out again for the grid's current scale (out of combat: after
+-- a fit, which sets the compact scale, and a theme or UI scale change). The tiles share the header's scale, so a
+-- pixel is worked out once for all of them.
 function RF.PlaceAllTexts()
-  local z = RF.TileZones()
+  if not RF.header then return end
+  local z, px = RF.TileZones(), T.PixelAtScale(RF.header:GetEffectiveScale())
   for _, b in ipairs(RF.buttons) do
-    placeInset(b)
+    placeInset(b, px)
+    placeRoleMark(b, z, px)
     placeTexts(b, z)
   end
 end
@@ -552,7 +562,7 @@ end
 local function addParts(b)
   local z = RF.TileZones()
   b.health = T.StyleBar(CreateFrame("StatusBar", nil, b))
-  placeInset(b)
+  placeInset(b, T.Pixel(b))
   addTextLayer(b)
   addTexts(b, z)
   addPower(b)

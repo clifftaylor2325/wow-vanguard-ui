@@ -199,6 +199,14 @@ it("G7-1 item info that comes in just before the house closes is still priced", 
   addon.advance(1);
   expect(addon.eval("local p = ns.AuctionPrices.House().prices[10945] return p and p.min or false"), "priced as the house closed").toBe(70);
 });
+it("a search asked for while the house is closed is dropped, not sent at the next open", () => {
+  const addon = atAuctionHouse();
+  addon.fire("AUCTION_HOUSE_CLOSED");
+  addon.eval(`${HELPER}.Queue({ page = "x" }) ${HELPER}.QueueFirst({ page = "y" })`);
+  expect(addon.eval(`return #${HELPER}.queue`), "nothing waits behind a closed house").toBe(0);
+  addon.fire("AUCTION_HOUSE_SHOW");
+  expect([addon.eval(`return #${HELPER}.queue`), addon.eval(`return ${HELPER}.pending == nil`)], "and nothing is sent when it opens again").toEqual([0, true]);
+});
 it("a late browse answer for the last entry is not taken by the next one", () => {
   const addon = atAuctionHouse(DUSTS + " __wfgWorld.items[11083] = { name = 'Soul Dust' }");
   makeList(addon, "TEST-ONLY Mats", '{ "Strange Dust", "Soul Dust" }');

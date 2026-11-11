@@ -274,11 +274,13 @@ local function useCount(slot)
 end
 
 -- The client's own count text for a slot (charges of a spell, uses of an item), as its buttons print it;
--- false on a client without the call. The text may be secret: only SetText takes it, so the
--- answer says first whether there is one.
+-- false on a client without the call or when it answers nothing or an empty text (a hunter's Auto Shot, whose
+-- ammo only the use count knows). The text may be secret: only SetText takes it, so a secret answer is
+-- passed on untested.
 local function displayCount(slot)
   local text = call("GetActionDisplayCount", slot)
-  if ns.IsSecret(text) or text ~= nil then return true, text end
+  if ns.IsSecret(text) then return true, text end
+  if text ~= nil and text ~= "" then return true, text end
   return false
 end
 
@@ -1033,10 +1035,26 @@ local function refreshIcons()
   each(updateIcon)
 end
 
--- Macros were edited: their icons and names.
+-- Whether a button's slot holds a macro (a hidden answer counts as no).
+local function holdsMacro(b)
+  local kind = call("GetActionInfo", b.action)
+  return not ns.IsSecret(kind) and kind == "macro"
+end
+
+-- A macro button's cooldown and usable state read afresh: an edited macro may cast another spell, and
+-- the sweep it had belonged to the old one, so its real-or-global answer starts again.
+local function repaintMacro(b)
+  if not holdsMacro(b) then return end
+  b.sweepSlot = nil
+  updateCooldown(b)
+  updateUsable(b)
+end
+
+-- Macros were edited: their icons and names, and the cooldown and usable state of the macro buttons.
 local function refreshMacros()
   refreshIcons()
   each(updateName)
+  each(repaintMacro)
 end
 
 -- Repaints coalesced to one per frame ----------------------------------------------------
