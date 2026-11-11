@@ -2480,6 +2480,19 @@ it("quest dialog: the session switch gives the game its windows back, and takes 
   addon.eval("local QD = ns.GetModule('QuestDialog') QD.HandBack(false)");
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+it("H44-17-50 quest dialog: the module restarted while handed back still takes the game's events when the switch goes off", () => {
+  const restart = (via) => {
+    const addon = loggedIn(QUEST_ENV + GAME_WINDOW);
+    const QD = "ns.GetModule('QuestDialog')";
+    addon.eval(via.replace(/QD/g, QD));
+    addon.fire("QUEST_DETAIL");
+    return [...quest(addon), addon.eval(`return ${QD}.IsHandedBack()`)];
+  };
+  const hand = "QD.HandBack(true) ns.SetModuleEnabled('QuestDialog', false) ns.SetModuleEnabled('QuestDialog', true) QD.HandBack(false)";
+  expect(restart(hand), "switch on, module off and on, switch off: the dialog alone shows").toEqual([false, false, true, false]);
+  const stopped = "ns.SetModuleEnabled('QuestDialog', false) QD.HandBack(true) ns.SetModuleEnabled('QuestDialog', true) QD.HandBack(false)";
+  expect(restart(stopped), "module off, switch on, module on, switch off: the same").toEqual([false, false, true, false]);
+});
 it("quest dialog: a held modifier hands one talk to the game, and the dialog is back for the next", () => {
   const addon = loggedIn(QUEST_ENV + GAME_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
   addon.eval("__shift = true");

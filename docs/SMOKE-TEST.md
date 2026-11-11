@@ -5482,6 +5482,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the Delve layout comes on (or off) within a second without a zone change, and opening `/vg` on Situations does not hitch.
 - If it fails, paste: `/vg situation list`.
 
+### 33.563 Quest dialog hand-back after a module restart (H44-17-50)
+
+- Do: `/vg` > Quests: switch on Use the game's quest windows for now; Modules: Quest dialog off, then on; Quests: switch the hand-back off; talk to a quest giver. Also try: Quest dialog off, hand-back on, Quest dialog on, hand-back off, talk again.
+- Expect: only Vanguard's quest dialog opens each time; the game's quest window does not open with it.
+- If it fails, paste: whether the game's quest window also opened, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

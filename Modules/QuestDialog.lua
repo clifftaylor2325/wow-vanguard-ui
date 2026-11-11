@@ -394,7 +394,8 @@ end
 -- Hands the quest and gossip windows to the game for the session (on), or takes them back (off): the
 -- dialog stops showing, and a talk that is open moves to the game's window. Not saved; a reload starts over.
 -- While the dialog doesn't run (QD.had is cleared when the module stops, and never set while its dialog setting is
--- off) the switch only records the choice: taking the events then would leave no window at all for a talk.
+-- off) the switch only records the choice: taking the events then would leave no window at all for a talk. A
+-- dialog that started while handed back keeps an empty record (the game holds the events), so switching off takes them.
 function QD.HandBack(on)
   if QD.handedBack == on or not QD.had then QD.handedBack = on return end
   QD.handedBack = on
@@ -453,7 +454,7 @@ function QD.Enable(settings, scope)
   if not settings.dialog then return end
   if not QD.frame then QD.Build() end
   scope:Mover(QD.frame, "questdialog", L["Quest dialog"], QD.DefaultPoint())
-  if not QD.handedBack then takeOver() end
+  if QD.handedBack then QD.had = {} else takeOver() end
   for event, key in pairs(QD.EVENTS) do scope:On(event, function(_, ...) QD.Show(key, event, ...) end) end
   for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do scope:On(event, function(_, ...) QD.TalkEnded(event, ...) end) end
   scope:On("PLAYER_REGEN_DISABLED", releaseKeys)
