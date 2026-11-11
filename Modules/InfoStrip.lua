@@ -888,12 +888,21 @@ local function addHit(frame, key)
   return hit
 end
 
+-- A table's keys in sorted order: the strip makes its texts and buttons in this order, so they come out the same
+-- on any Lua (pairs has no order; each one's place on the strip comes from IS.BLOCKS, not from the order).
+local function sortedKeys(t)
+  local keys = {}
+  for key in pairs(t) do keys[#keys + 1] = key end
+  table.sort(keys)
+  return keys
+end
+
 -- The strip's buttons: the calendar at the date row's end, the time's hit area, and every other block's.
 local function addButtons(frame)
   addCalendar(frame)
   addClock(frame)
   IS.hits = {}
-  for key in pairs(IS.TIPS) do IS.hits[key] = addHit(frame, key) end
+  for _, key in ipairs(sortedKeys(IS.TIPS)) do IS.hits[key] = addHit(frame, key) end
 end
 
 -- The strip's timer while it shows: the clock every second, fps and latency every third, the rates every fifth.
@@ -964,7 +973,7 @@ local function build()
   f:SetSize(IS.Width(), IS.Row() * 2 + IS.EDGE)
   ns.Mover(f, "infostrip", L["Info strip"], IS.Home())
   IS.fonts = {}
-  for key in pairs(IS.BLOCKS) do IS.fonts[key] = addText(key) end
+  for _, key in ipairs(sortedKeys(IS.BLOCKS)) do IS.fonts[key] = addText(key) end
   addButtons(f)
   ticker(f)
   IS.UpdateAll()
