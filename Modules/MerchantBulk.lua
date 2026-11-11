@@ -87,7 +87,9 @@ end
 -- CONFIRM_REFUND_TOKEN_ITEM (ContainerFrame_GetExtendedPriceString, Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua
 -- in both clients): a refund time and a money, item or currency cost. A bare use skips that question, so it is never sold here.
 local function refundablePurchase(bag, slot)
-  local info = ns.PlainTable(ns.CallIf(C_Container, "GetContainerItemPurchaseInfo", bag, slot, false))
+  local raw = ns.CallIf(C_Container, "GetContainerItemPurchaseInfo", bag, slot, false)
+  if ns.IsSecret(raw) then return true end
+  local info = ns.PlainTable(raw)
   local window = info ~= nil and (ns.IsSecret(info.refundSeconds) or info.refundSeconds ~= nil)
   return window and (costs(info.money) or costs(info.itemCount) or costs(info.currencyCount))
 end

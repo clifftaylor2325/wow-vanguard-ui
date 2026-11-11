@@ -171,6 +171,9 @@ it("H19-1-3 /vg sell never offers a purchase the merchant would still refund, as
   addon.eval("C_Container.GetContainerItemPurchaseInfo = function(bag, slot) if slot == 1 then return { money = { __secret = true }, itemCount = 0, refundSeconds = { __secret = true }, currencyCount = 0 } end end");
   addon.slash("sell 159");
   expect(ask(addon)[0], "a hidden refund counts as refundable: nothing is left to offer").toBe(false);
+  addon.eval("C_Container.GetContainerItemPurchaseInfo = function(bag, slot) if slot == 1 then return { __secret = true } end end");
+  addon.slash("sell 159");
+  expect(ask(addon)[0], "a wholly hidden answer counts as refundable too").toBe(false);
 });
 
 it("H19-1-3 a sale answered while the merchant shows its Buyback tab sells nothing, as the game's bag click does", () => {
