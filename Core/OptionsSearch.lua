@@ -84,12 +84,13 @@ local function wordsOf(text)
 end
 
 -- The kinds of row the list can show: a switch, choice or slider, a module's switch, and a button (a hit on a
--- button only opens its page and marks it; some buttons reset or delete).
+-- button only opens its page and marks it; some buttons reset or delete). The page's own Reset this page is left out:
+-- every page has one, and they would crowd the list.
 local SETTING_KINDS = { check = true, cycle = true, slider = true, module = true, button = true }
 
 -- Whether a row is one the list can show: a setting with a caption.
 local function isSetting(row)
-  return SETTING_KINDS[row[1]] == true and type(row[2]) == "string"
+  return SETTING_KINDS[row[1]] == true and type(row[2]) == "string" and not row.isReset
 end
 
 -- The note row under row i ({ "text", words, "note" }), if there is one: its words.

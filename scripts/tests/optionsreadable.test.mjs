@@ -299,3 +299,14 @@ it("hunt H44-13-53: Restyle pet, stance and extra buttons counts as changed when
   addon.eval('__click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval(`${row} local s = ns.Settings("SpecialBars") return { ns.Options.RowChanged(row), s.skinPet, s.skinStance, s.skinPossess, s.skinExtra }`), "Reset this page puts all four back").toEqual([false, true, true, true, true]);
 });
+
+it("hunt H44-13-81: searching for reset lists the real reset buttons, not every page's Reset this page", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  // The captions the search lists for the text, "isReset" for a page's Reset this page.
+  const found = (text) => addon.eval(`local out = {} for _, h in ipairs((ns.Options.FindSettings("${text}"))) do out[#out + 1] = h.row.isReset and "isReset" or h.caption end return out`);
+  const reset = Object.values(found("reset"));
+  expect(reset, "the page buttons are left out").not.toContain("isReset");
+  expect(reset, "the settings stay").toEqual(expect.arrayContaining(["Reset theme", "Reset all positions"]));
+  expect(Object.values(found("this page")), "and 'this page' lists nothing").toEqual([]);
+});
