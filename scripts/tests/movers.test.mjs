@@ -652,3 +652,28 @@ it("hunt H44-11-R3: a frame on a high strata registered in plain unlock mode kee
     __m = ns.Mover(__d, "tdialog", "TEST-ONLY dialog", { "CENTER", "CENTER", 0, 0 })`);
   expect(addon.eval("return __m.handle:GetFrameStrata()"), "above the frame").toBe("DIALOG");
 });
+
+// Picks a choice in the open popover's "Anchor to" menu.
+const pickAnchorTo = (addon, choice) => addon.eval(`local d = Vanguard_MoverPopover.target d:GetScript("OnClick")(d)
+  for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "${choice}" then b:GetScript("OnClick")(b) break end end`);
+
+it("hunt H44-11-3: picking Screen under Anchor to when the frame has no link saves nothing", () => {
+  const addon = loggedIn(BOX);
+  addon.slash("unlock");
+  openPopover(addon, "box");
+  pickAnchorTo(addon, "Screen");
+  expect(addon.eval('return { ns.MoverSaved("box"), ns.Settings("positions").box == nil }'), "still the frame's default").toEqual([false, true]);
+  addon.eval('ns.SetMoverDefault("box", { "BOTTOM", "BOTTOM", 0, 300, edge = true })');
+  expect(addon.frame("TESTONLY_Box").rect.bottom, "so a new default still moves it").toBe(300);
+});
+
+it("hunt H44-11-3: picking Screen still lets a linked frame go where it stands", () => {
+  const addon = loggedIn(BOX + `
+    __other = CreateFrame("Frame", "TESTONLY_Other", UIParent) __other:SetSize(100, 40)
+    ns.Mover(__other, "other", "TEST-ONLY other", { "TOP", "TOP", 0, -100 })`);
+  addon.slash("unlock");
+  addon.eval('ns.SetMoverAnchor("box", "other")');
+  openPopover(addon, "box");
+  pickAnchorTo(addon, "Screen");
+  expect(addon.eval('return { ns.MoverAnchor("box") == nil, ns.MoverSaved("box") }'), "detached and saved where it stands").toEqual([true, true]);
+});

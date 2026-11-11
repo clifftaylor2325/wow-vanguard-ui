@@ -324,10 +324,12 @@ local function anchorRefusal(key, to, side)
   end
 end
 
--- Anchors a mover to the screen again, where it is now.
+-- Anchors a mover to the screen again, where it is now; a frame with no link is left as it is (nothing saved, so a
+-- new default still moves it).
 local function detach(key)
-  local p, r = entry(key), K.RectOf(key)
-  remember(p, r)
+  local p = entryOf(key)
+  if not (p and p.rel ~= nil) then return true end
+  remember(p, K.RectOf(key))
   p.rel = nil
   return settle(key)
 end
