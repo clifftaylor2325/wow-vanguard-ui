@@ -457,7 +457,7 @@ const FOREVER_MENU_ENV = `
 `;
 it("a Vanguard button on the game menu opens the options", () => {
   const addon = loggedIn(FOREVER_MENU_ENV);
-  expect(addon.eval("return { __calls.AddButton, __calls.AddSection, __calls.MarkDirty, __hooked == true }"), "no AddButton or AddSection, one MarkDirty; the one InitButtons hook is the Windows skin's").toEqual([0, 0, 1, true]);
+  expect(addon.eval("return { __calls.AddButton, __calls.AddSection, __calls.MarkDirty, __hooked == true }"), "no AddButton, AddSection or MarkDirty from the addon (MarkDirty would set a field and OnUpdate on the game's menu from addon code; OnShow lays it out anyway); the one InitButtons hook is the Windows skin's").toEqual([0, 0, 0, true]);
   expect(addon.eval("local b = ns.gameMenuButton return { b.layoutIndex, b.bottomPadding, b:GetParent() == GameMenuFrame, b.__template, b:GetText(), b:IsShown() }"), "the menu's own template, first index, section gap under it").toEqual([0, 20, true, "GameMenuFrameButtonTemplate", "Vanguard", true]);
   addon.eval("GameMenuFrame:Show()");
   expect(addon.eval("return GameMenuFrame.order"), "first in the menu, above Options").toEqual(["Vanguard", "Options", "Return to Game"]);

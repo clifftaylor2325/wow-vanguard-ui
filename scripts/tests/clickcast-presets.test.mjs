@@ -435,3 +435,20 @@ it("click casting: See all your keys opens the Action bars page on its Your keys
   expect(addon.eval("return ns.Options.current"), "the Action bars page").toBe("actionbars");
   expect(addon.eval(`local v for _, c in ipairs({ Vanguard_Options:GetChildren() }) do if c.cards and c:IsShown() then v = c end end return v.cards[v.tab].tabName`), "on Your keys").toBe("Your keys");
 });
+
+it("H44-9-51 a rank picked on a layout's click is the player's own: the next layout asks first", () => {
+  const addon = priestly(loggedIn(CLICK_LUA));
+  addon.eval(`${CP}.Apply("select") ${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061, 1)`);
+  expect(addon.eval(`return ${CP}.HasOwnClicks()`), "the downrank counts as the player's").toBe(true);
+  addon.eval('ns.Options.Show("clickcast") __click("Starter layout...") __click("Damage or tank")');
+  expect([addon.eval("return Vanguard_Question:IsShown()"), bindings(addon).BUTTON3], "asked, and Middle still holds the rank").toEqual([true, "spell:Flash Heal:2061:1"]);
+});
+
+it("H44-9-51 a layout's record saved in the format before ranks counted still reads as the layout's own", () => {
+  const addon = priestly(loggedIn(CLICK_LUA));
+  addon.eval(`${CP}.Apply("select")`);
+  // The record's text as the version before the fix wrote it: key, action and value of each mouse binding.
+  const old = addon.eval(`local out = {} for _, b in ipairs(${CC}.Bindings()) do if ${CC}.MouseParts(b.key) then out[#out + 1] = table.concat({ b.key, b.action, tostring(b.value) }, "=") end end table.sort(out) return table.concat(out, ";")`);
+  addon.eval(`${CP}.Record().made = ${JSON.stringify(old)}`);
+  expect(addon.eval(`return ${CP}.HasOwnClicks()`)).toBe(false);
+});

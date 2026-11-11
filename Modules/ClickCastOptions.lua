@@ -28,7 +28,7 @@ local GRID = { head = 28 }
 -- The picker's and the hover-key list's rows are list rows.
 local ROW_H = T.ROW.height
 -- The hover-key list's top line (Add key, a standalone button, with a tight gap over and under it): its height
--- above the rows; and the whole list's height (its rows and a gap under them).
+-- above the rows; and the whole list's height (MAX_KEYS rows in view, the rest scroll, and a gap under them).
 local KEYS_TOP = T.BUTTON_H + 2 * T.SPACE.tight
 local KEYS_HEIGHT = KEYS_TOP + MAX_KEYS * ROW_H + T.SPACE.gap
 -- The spell picker's width, and where its rows start: the search box (T.CONTROL_H) with a gap over and under it.
@@ -229,7 +229,7 @@ end
 -- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key.
 local function askText(key, action)
   local what = action == "macro" and L["Macro for {key}"] or L["Spell for {key}"]
-  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), function(text) bindTyped(key, action, text) end, L["Bind"])
+  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), CC.ForThisList(function(text) bindTyped(key, action, text) end), L["Bind"])
 end
 
 -- Binds a plain action to the picker's key, or asks for the macro text or spell name.
@@ -605,11 +605,12 @@ local function keyRowTexts(row)
   row.note:SetPoint("RIGHT", -90, 0)
 end
 
--- One hover-key row (under the Add key line): a list row (W.Row) with the key, the spell's icon and name, the
+-- One hover-key row (in the list's scroll view): a list row (W.Row) with the key, the spell's icon and name, the
 -- collision note, Remove.
 local function keyRow(list, i)
-  local row = W.Row(list, ROW_H, { width = list:GetWidth() - 2 * T.SPACE.tight })
-  row:SetPoint("TOPLEFT", T.SPACE.tight, -(KEYS_TOP + (i - 1) * ROW_H))
+  local child = list.view.child
+  local row = W.Row(child, ROW_H, { width = child:GetWidth() })
+  row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
   keyRowTexts(row)
   row.remove = W.Button(row, L["Remove"], function() CC.Remove(row.key) changed() end, 80)
   row.remove:SetPoint("RIGHT")
@@ -633,29 +634,35 @@ local function fillKeyRow(row, b)
   keyNote(row, b)
 end
 
--- The count beside the Add key button: how many more keys there are than rows, or nothing.
-local function keysNote(count)
-  local extra = count - MAX_KEYS
-  return extra > 0 and ns.Format(L["+{count} more (/vg binds)"], { count = extra }) or ""
-end
-
--- The top line's texts: the empty-state line while there are no keys (and keys can be made), the count after it.
+-- The top line's texts: the empty-state line while there are no keys (and keys can be made); the line after it
+-- (a captured mouse button's note) is cleared.
 local function refreshHead(list, count)
   local on = CC.SnippetsOn()
   list.empty:SetShown(count == 0 and on)
-  list.more:SetText(keysNote(count))
+  list.more:SetText("")
   list.add:SetShown(on)
   list.off:SetShown(not on)
 end
 
--- Re-reads the hover-key rows and the line over them.
+-- Sizes the scroll view's content to a number of rows; the wheel scrolls it only while they don't all fit, so
+-- over a short list it still scrolls the page. The view's wheel script goes too, since a frame with one takes the
+-- wheel (the view is Vanguard's own frame, so its script may change).
+local function fitKeys(view, count)
+  local overflows = count > MAX_KEYS
+  view:Fit(count * ROW_H)
+  view:SetScript("OnMouseWheel", overflows and view.wheel or nil)
+  view:EnableMouseWheel(overflows)
+end
+
+-- Re-reads the hover-key rows (one per key, made as keys come) and the line over them.
 local function refreshKeys(list)
   local bindings = hoverBindings()
-  for i = 1, MAX_KEYS do
-    local b, row = bindings[i], list.rows[i]
-    row:SetShown(b ~= nil)
-    if b then fillKeyRow(row, b) end
+  for i = #list.rows + 1, #bindings do list.rows[i] = keyRow(list, i) end
+  for i, row in ipairs(list.rows) do
+    row:SetShown(bindings[i] ~= nil)
+    if bindings[i] then fillKeyRow(row, bindings[i]) end
   end
+  fitKeys(list.view, #bindings)
   refreshHead(list, #bindings)
 end
 
@@ -693,12 +700,22 @@ local function keysHead(list)
   list.off:SetText(L["This client can't compile the secure code hover keys need; mouse bindings still work."])
 end
 
--- The hover-key list row kind: the Add key capture and its line on top, then the rows.
+-- The scroll view the hover-key rows sit in, under the top line: MAX_KEYS rows tall, its thumb in the gap at the
+-- list's right edge, so every key has its row and Remove however many there are.
+local function keysView(list)
+  local width = list:GetWidth() - 2 * T.SPACE.tight - T.SPACE.col
+  list.view = ns.ScrollView(list, { width = width })
+  list.view.wheel = list.view:GetScript("OnMouseWheel")
+  list.view:SetPoint("TOPLEFT", T.SPACE.tight, -KEYS_TOP)
+  list.view:SetSize(width, MAX_KEYS * ROW_H)
+end
+
+-- The hover-key list row kind: the Add key capture and its line on top, then the rows in their scroll view.
 local function keysBuilder(parent, _, width)
   local list = CreateFrame("Frame", nil, parent)
   list:SetSize(width, KEYS_HEIGHT)
   list.rows, list.Refresh = {}, refreshKeys
-  for i = 1, MAX_KEYS do list.rows[i] = keyRow(list, i) end
+  keysView(list)
   keysHead(list)
   list:Refresh()
   return list
@@ -830,10 +847,10 @@ end
 
 -- Clear all asks first: it empties this spec's bindings for good.
 local function askClear()
-  ns.Ask(clearQuestion(), L["Clear"], function()
+  ns.Ask(clearQuestion(), L["Clear"], CC.ForThisList(function()
     CC.Clear()
     changed()
-  end, nil, "danger")
+  end), nil, "danger")
 end
 
 -- The layout row's starter layout control, in one spot: the presets dropdown on WoW Forever (Modules/ClickCastPresets.lua;
@@ -951,14 +968,23 @@ local function doImport(text)
   if n then ns.HideText() changed() end
 end
 
+-- How many bindings a checked list puts in place: one per key, since Import keeps the last of two for one key.
+local function keyCount(list)
+  local seen, n = {}, 0
+  for _, b in ipairs(list) do
+    if not seen[b.key] then seen[b.key], n = true, n + 1 end
+  end
+  return n
+end
+
 -- Imports the string, asking first when it would replace bindings you have (as Clear all and Copy to do);
 -- a string that can't be imported says why at once, the text dialog still open.
 local function importText(text)
   local list, had = CC.ReadImport(text), #CC.Bindings()
   if not list or had == 0 then return doImport(text) end
   ns.HideText()
-  local question = ns.Format(L["Replace your {old} click-casting bindings with the {new} from this string?"], { old = had, new = #list })
-  ns.Ask(question, L["Replace"], function() doImport(text) end, nil, "danger")
+  local question = ns.Format(L["Replace your {old} click-casting bindings with the {new} from this string?"], { old = had, new = keyCount(list) })
+  ns.Ask(question, L["Replace"], CC.ForThisList(function() doImport(text) end), nil, "danger")
 end
 
 -- The keys bindings are kept under on this client: the talent groups where the lists are kept per group, else the
@@ -1011,7 +1037,7 @@ end
 -- Copies the bindings to another talent group or spec, asking first when that one has bindings of its own.
 local function copyToSpec(key)
   if #CC.Bindings(key) == 0 then return copyAndShow(key) end
-  ns.Ask(replaceQuestion(key), L["Replace"], function() copyAndShow(key) end, nil, "danger")
+  ns.Ask(replaceQuestion(key), L["Replace"], CC.ForThisList(function() copyAndShow(key) end), nil, "danger")
 end
 
 -- Shows the copy dropdown's caption (the group or spec it copies to is in the choices), and the dropdown only while

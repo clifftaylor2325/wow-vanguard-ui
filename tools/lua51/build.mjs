@@ -6,7 +6,8 @@
 // as lua.org/ftp publishes it (2012-02-13, 221213 bytes); fetched as Ubuntu's lua5.1_5.1.5.orig.tar.gz
 // (archive.ubuntu.com), which has the same SHA-256. Its COPYRIGHT and src/ are in lua-5.1.5/ unchanged;
 // lua-5.1.5.sha256 lists each file's SHA-256 from that tarball and this script refuses to build when one
-// differs. The only change to Lua is made here, on a copy: the secret checks in lvm.c (PATCHES below).
+// differs. The only changes to Lua are made here, on a copy: the secret checks in lvm.c (PATCHES below) and no
+// tail calls in the addon's chunks in lparser.c (PARSER_PATCHES).
 //
 // Compiler: zig cc 0.17.1 (pip install ziglang==0.17.1), whose wasm32-wasi target bundles a libc; setjmp/longjmp,
 // which Lua's errors use, compile to WebAssembly exception handling (Node 22 runs it). Another zig version is
@@ -44,6 +45,13 @@ const PATCHES = [
   ["        TValue *rb = RB(i);\n        if (l_isfalse(rb) != GETARG_C(i)) {", "        TValue *rb = RB(i);\n        VG_TRUTH(L, rb, pc, 0);\n        if (l_isfalse(rb) != GETARG_C(i)) {"],
 ];
 
+// The addon's chunks compile without tail calls, so each addon function keeps its stack entry for the guards
+// (scripts/lib/lua-keep-frames.mjs makes the same change to fengari and says why).
+const PARSER_PATCHES = [
+  ['#include "lparser.h"\n', '#include "lparser.h"\n#include "vg_hooks.h"\n'],
+  ["      if (e.k == VCALL && nret == 1) {  /* tail call? */", "      if (e.k == VCALL && nret == 1 && !vg_keep_frames(ls->source)) {  /* tail call? */"],
+];
+
 // Compiler flags: wasm32-wasi as a library (no main), setjmp through exception handling, Lua's %d as long long,
 // and what WASI lacks for os.tmpname and os.clock (the harness uses neither; they must only compile).
 const FLAGS = ["-target", "wasm32-wasi", "-O2", "-mexec-model=reactor", "-mexception-handling", "-mllvm", "-wasm-enable-sjlj",
@@ -65,11 +73,11 @@ export function verifySources() {
   return lines.length;
 }
 
-// lvm.c's source with the checks in; throws naming a patch that no longer matches.
-function patchedVm() {
-  let src = fs.readFileSync(path.join(LUA, "src/lvm.c"), "utf8");
-  for (const [from, to] of PATCHES) {
-    if (src.split(from).length !== 2) throw new Error(`lvm.c: no single match for ${JSON.stringify(from.slice(0, 50))}`);
+// A Lua source file with its patches in; throws naming a patch that no longer matches.
+function patched(file, patches) {
+  let src = fs.readFileSync(path.join(LUA, "src", file), "utf8");
+  for (const [from, to] of patches) {
+    if (src.split(from).length !== 2) throw new Error(`${file}: no single match for ${JSON.stringify(from.slice(0, 50))}`);
     src = src.replace(from, to);
   }
   return src;
@@ -79,7 +87,8 @@ function patchedVm() {
 function stage() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "vg-lua51-"));
   for (const f of fs.readdirSync(path.join(LUA, "src"))) fs.copyFileSync(path.join(LUA, "src", f), path.join(dir, f));
-  fs.writeFileSync(path.join(dir, "lvm.c"), patchedVm());
+  fs.writeFileSync(path.join(dir, "lvm.c"), patched("lvm.c", PATCHES));
+  fs.writeFileSync(path.join(dir, "lparser.c"), patched("lparser.c", PARSER_PATCHES));
   for (const f of ["shim.c", "vg_hooks.h", "tag.s"]) fs.copyFileSync(path.join(here, f), path.join(dir, f));
   return dir;
 }

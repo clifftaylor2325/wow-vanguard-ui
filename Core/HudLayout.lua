@@ -4,7 +4,7 @@
 -- target's frame at the right end over its cast bar and target of target, the chat above the left end; the wall, its
 -- brass parapet and the gatehouse are drawn by Modules/UnitFrameLayouts.lua. "Standards" plants your frame and your
 -- target's as tall banners either side of your character, health rising from the foot to a pointed hem, the focus
--- and pet beside yours, the target of target beside its, the target's cast bar to the right.
+-- (its target beside it) and pet beside yours, the target of target beside its, the target's cast bar to the right.
 -- A layout is its default spots (Core/Movers.lua ns.LayoutSpots: BOTTOM-anchored, so they rise with the block on a
 -- tall canvas; a layout's spot wins over a module's default, a saved position over both) and its frame sizes
 -- (ns.LayoutSize). The keep holds only on a canvas ns.KEEP.under wide: narrower ones take the modules' own spots.
@@ -44,15 +44,19 @@ ns.LayoutSpots("standards", {
   uf_target = { "BOTTOM", "BOTTOM", 140, 196 },
   uf_pet = { "BOTTOM", "BOTTOM", -178, 196 },
   uf_focus = { "BOTTOM", "BOTTOM", -208, 196 },
+  uf_focustarget = { "BOTTOM", "BOTTOM", -238, 196 },
   uf_targettarget = { "BOTTOM", "BOTTOM", 178, 196 },
   cast_target = { "BOTTOM", "BOTTOM", 320, 196 },
 })
 
 -- Each layout's frame sizes by mover key ({ w, h } in units): the keep's wall holds 200 x 40 frames for you and
--- your target over 96 x 24 ones; Standards' banners are 40 x 160, the small ones 24 x 100.
+-- your target over 96 x 24 ones; Standards' banners are 40 x 160, the small ones (the focus target's too) 24 x 100.
 local SIZES = {
   fort = { uf_player = { 200, 40 }, uf_target = { 200, 40 }, uf_focus = { 96, 24 }, uf_pet = { 96, 24 }, uf_targettarget = { 96, 24 } },
-  standards = { uf_player = { 40, 160 }, uf_target = { 40, 160 }, uf_focus = { 24, 100 }, uf_pet = { 24, 100 }, uf_targettarget = { 24, 100 } },
+  standards = {
+    uf_player = { 40, 160 }, uf_target = { 40, 160 },
+    uf_focus = { 24, 100 }, uf_focustarget = { 24, 100 }, uf_pet = { 24, 100 }, uf_targettarget = { 24, 100 },
+  },
 }
 
 -- Whether the HUD layout in force holds on this canvas: the keep needs ns.KEEP.under units of width (a canvas the

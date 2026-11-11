@@ -2445,19 +2445,19 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 29.1 The gap row
 
-- Do: under `/vg` > Cooldowns tick **Gaps row**, reload. Wear an on-use trinket, type `/vg gaps add Healthstone` (or an item ID) with one in your bags, use the trinket and the item. With a pet out, use one of its abilities. As a shaman with the class bars off, drop a totem. Then repeat inside an instance in combat.
+- Do: under `/vg` > Cooldowns tick **Gaps row**. Wear an on-use trinket, type `/vg gaps add Healthstone` (or an item ID) with one in your bags, use the trinket and the item. With a pet out, use one of its abilities. As a shaman with the class bars off, drop a totem. Then repeat inside an instance in combat.
 - Expect: a row of square icons in thin borders appears above the game's Cooldown Manager, each with a sweep and numbers in the theme font while its cooldown runs; `/vg unlock` lets you move it. Where the client hides cooldown values in combat, that icon is simply missing or sweeps from the client's own timer; never a wrong number. `/vg gaps` lists the chosen items, `/vg gaps remove <item>` takes one off. The row is never clickable and `/vg errors` stays empty. [Needs in game: whether the client has C_Item.GetItemCooldown (or C_Container.GetItemCooldown), C_Item.GetItemSpell, C_Spell.GetSpellCooldownDuration and GetPetActionInfo, and what each returns in instanced combat.]
 - If it fails, paste: `/vg gaps`, `/vg status` and `/vg errors`.
 
 ### 29.1a Choosing the gap row's items and spells in the window
 
-- Do: with **Gaps row** on (and reloaded), open `/vg` > Cooldowns. Drag an on-use trinket from your bags onto the "Drag here, or type" row under the Gaps card, then drag a spell from your spellbook onto it. Type `Healthstone` in its box and press **Add item**; type a spell's name and press **Add spell**. Press × on one of the rows.
-- Expect: before anything is chosen the card reads "Nothing chosen yet. Drag an item or spell here, or type its name." Each drop or Add puts a row with the item's or spell's icon and name on the card at once (and a chat line), the dragged thing leaves the cursor, and the gap row shows it (an item only while you carry it). × takes its row off the card and the icon off the gap row. With Gaps row off the card says to tick it and reload. [Needs in game: that a spell dragged from the spellbook gives its spell ID as GetCursorInfo's fourth value on Forever, and that a drop with a click (picking up, then clicking the row) works like a drag.]
+- Do: with **Gaps row** on, open `/vg` > Cooldowns. Drag an on-use trinket from your bags onto the "Drag here, or type" row under the Gaps card, then drag a spell from your spellbook onto it. Type `Healthstone` in its box and press **Add item**; type a spell's name and press **Add spell**. Press × on one of the rows.
+- Expect: before anything is chosen the card reads "Nothing chosen yet. Drag an item or spell here, or type its name." Each drop or Add puts a row with the item's or spell's icon and name on the card at once (and a chat line), the dragged thing leaves the cursor, and the gap row shows it (an item only while you carry it). × takes its row off the card and the icon off the gap row. With Gaps row off the card says to tick it. [Needs in game: that a spell dragged from the spellbook gives its spell ID as GetCursorInfo's fourth value on Forever, and that a drop with a click (picking up, then clicking the row) works like a drag.]
 - If it fails, paste: `/vg gaps`, a screenshot of the card and `/vg errors`.
 
 ### 29.2 Spells in the gap row (the Vanguard cooldown row)
 
-- Do: with the row on, type `/vg gaps spell add <a spell of yours>`, then tick "Cooldown gaps row also draws the Cooldown Manager's essential and utility cooldowns", reload, and turn the game's Cooldown Manager on (Options > Gameplay Enhancements). Use some of those spells, in and out of combat, and in an instance.
+- Do: with the row on, type `/vg gaps spell add <a spell of yours>`, then tick "Cooldown gaps row also draws the Cooldown Manager's essential and utility cooldowns", and turn the game's Cooldown Manager on (Options > Gameplay Enhancements). Use some of those spells, in and out of combat, and in an instance.
 - Expect: an icon for the chosen spell and for each spell in the manager's essential and utility rows, in the manager's order, each sweeping while its cooldown runs and plain when it is ready; the manager itself is unchanged. Spells you have not learned are left out. Inside an instance in combat the sweeps still run; an icon with nothing readable is left out, never guessed; `/vg errors` stays empty and nothing taints. [Needs in game: that Enum.CooldownViewerCategory, C_CooldownViewer.GetCooldownViewerCategorySet and GetCooldownViewerCooldownInfo exist and are readable from addon code, that C_Spell.GetSpellCooldownDuration returns nothing (not a zero-length object) for a ready spell, that its ignoreGCD argument leaves the global cooldown out, and that a ready spell still shows in instanced combat (an icon missing there means the call gives nothing for a ready spell while its numbers are hidden).]
 - If it fails, paste: `/vg gaps`, `/run print(C_CooldownViewer and C_CooldownViewer.GetCooldownViewerCategorySet and #C_CooldownViewer.GetCooldownViewerCategorySet(Enum.CooldownViewerCategory.Essential))` and `/vg errors`.
 
@@ -5365,6 +5365,186 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: (1) Put a spell on a button with a cooldown and watch it across a global cooldown and through its own cooldown. (2) On a hunter, put Auto Shot on a button and look at its count. (3) Pick up a quest item in a fight and watch the quest tracker; click a tracker row. (4) Type `/vg profile` and a name of an existing profile in a different case, then a name that matches none, then `/vg profile copy <name>` and `/vg profile delete <name>`. (5) Run `/vg setup`, change something, then press Undo setup; check the profile you were on. (6) At the auction house, start a post for one item, drag another into the held item's bag slot, and press Confirm. (7) Open the Social window with its side window beside another window. (8) Type `/vg errors` after a look change, a pixel-size change and a dungeon.
 - Expect: (1) no flash at the end of a global cooldown, one flash when a real cooldown ends. (2) Auto Shot shows its ammo count. (3) the game's own tracker text does not show over Vanguard's tracker after the loot, and the tracker's rows still take clicks. (4) the name matches in any case; a name that matches no profile asks before making an empty one; copy and delete ask first. (5) Undo setup puts back the profile it backed up; a backup never replaces a profile that was not made by that backup. (6) Confirm posts the item the sale was set up for, not whatever now sits in the slot. (7) the two windows overlap by about 15 units (known, not fixed). (8) the list is empty. [Needs in-game check: all eight; none was seen in the game.]
 - If it fails, paste: which part, a screenshot where there is one, and `/vg errors`.
+
+### 33.485 The Vanguard button stays first in the game menu
+
+- Do: log in and press Escape. Close the menu and open it again.
+- Expect: the Vanguard button is at the top of the game menu, above Options, with the usual gap under it, both times, and chat shows no "Interface action failed" message. [Needs in-game check: the button's place after login without the addon refreshing the menu's layout itself.]
+- If it fails, paste: a screenshot of the menu, and `/vg errors`.
+
+### 33.486 The target's tag mark clears its health number with power text on
+
+- Do: on either client, set Unit frames → Show power as to Value, then target a mob another player has tagged (its bar turns grey) and one you have tagged.
+- Expect: the grey X (and your green check) sits by the diamond at the target frame's inner top corner, clear of the health number on the bar's top line; the number does not move when the mark comes or goes. [Needs in-game check: the gap at your text size.]
+- If it fails, paste: a screenshot of the target frame, your text size, and `/vg errors`.
+
+### 33.487 Incoming heals and shields stop at the Shield look's point
+
+- Do: on either client, with General → HUD look on Shield and Unit frames → heal prediction and shields on, drop to about 90% health and have a healer cast a large heal on you (or take a shield); look at your frame's pointed end, then a party member's.
+- Expect: the green heal bar and the striped shield bar end on the shield's diagonal edge like the health fill, with nothing square poking past the point. [Needs in-game check: whether the health bar's masks cut the heal bars, which are textures of other frames.]
+- If it fails, paste: a screenshot of the frame with the heal showing, and `/vg errors`.
+
+### 33.488 Hairline banners under Standards show one brass V, no dark wedges
+
+- Do: on either client, set General → HUD look to Hairline and HUD layout → Where the frames stand to Standards; look at the foot of your banner and your target's, then switch the look to Rimmed and back.
+- Expect: under Hairline each banner shows no plate: one brass line along its pointed hem (the V) and no plate-coloured wedges or doubled line at its foot; under Rimmed the plate and its hem come back. [Needs in-game check: the V at UI scale 0.7 and Pixel-perfect.]
+- If it fails, paste: a screenshot of both banners, the UI scale, and `/vg errors`.
+
+### 33.489 Under Standards the focus target stands beside the focus
+
+- Do: on either client, set HUD layout → Where the frames stand to Standards, focus a mob that has a target (or a friend targeting something), at your usual UI scale; then switch back to Centered.
+- Expect: the focus target is a 24 x 100 banner with bars alone, standing just outside the focus banner (the next step left of it), clear of your banner, the focus and the pet; back on Centered it lies across at its own size and spot. [Needs in-game check: whether it meets the chat window's corner on a narrow canvas.]
+- If it fails, paste: a screenshot of the left side of the HUD, the canvas size (`/vg probe`), and `/vg errors`.
+
+### 33.490 Tabs: the party and boss stacks leave room for each tab
+
+- Do: on either client, in a party of five (raid frames not showing the party), set General → HUD look to Tabs, then use `/vg unlock` to show the boss column; switch the look to Plain and back, once in a fight.
+- Expect: each party and boss frame's name tab stands in the gap under the frame above, covering none of its bars; the party column's foot stays just above your frame whichever look is on, and the boss column grows down from the top-left; a look change in a fight moves the stacks when it ends, with no "Interface action failed" line. [Needs in-game check: whether the longer boss column meets the quest tracker or the raid tools.]
+- If it fails, paste: a screenshot of the party and boss columns, and `/vg errors`.
+
+### 33.491 The keep under Tabs: no tab over your frame or the target's cast bar
+
+- Do: on either client, set HUD layout → Where the frames stand to The keep and General → HUD look to Tabs, with a pet, a focus and a target that has a target; let the target cast.
+- Expect: your frame and your target's wear their name tabs; the focus, pet and target of target wear none, their names on their bars, so nothing covers the foot of your frame or the target's cast bar. [Needs in-game check: whether the small frames' names read on the 24-unit bars.]
+- If it fails, paste: a screenshot of the wall, and `/vg errors`.
+
+### 33.492 A shaman's totem row is not blocked when the name tab changes in a fight
+
+- Do: on WoW Forever as a shaman, set General → HUD look to Tabs, drop two totems, start a fight and, in it, type `/run Vanguard_player.tab:SetWidth(60)`; right-click a totem to destroy it; after the fight switch the look to Shield and back to Tabs.
+- Expect: no "Interface action failed because of an AddOn" line and nothing new in `/vg errors`; the totem row stays 3 units over the name tab (over the frame under Shield) and destroys the totem on a right-click. [Needs in-game check: all of it; the client's rule on anchors of protected frames is not in Blizzard's code.]
+- If it fails, paste: `/vg errors`, and a screenshot of the totem row over your frame.
+
+### 33.493 A look change in a fight leaves held plate aura icons alone, and they catch up after
+
+- Do: on either client, in the open world with enemy nameplates showing your debuffs, pull a mob; during the fight pick another accent under General → Look; let the fight end. Then fight again and press Alt+Enter (a window size change) in the fight.
+- Expect: no new "forbidden object" line in `/vg errors` and the error badge stays clear; within a moment of the fight ending the plates' aura icon edges take the new accent. [Needs in-game check: whether the game's hold reaches Vanguard's own parts on an aura button, and whether its restriction event comes after it lets the icons go.]
+- If it fails, paste: `/vg errors`, and a screenshot of a plate's icons after the fight (the old accent still on them means the event came too early).
+
+### 33.494 Raid aura icons follow the tiles' new size
+
+- Do: on either client, in a party or raid out of combat, open `/vg` → Raid frames and drag Width down to 72 and Height down to 36, then let go.
+- Expect: within a moment of letting go each tile's debuff and HoT icons shrink to fit the smaller tile, stay in their bottom corners and draw over neither the name nor each other; on WoW Retail the private aura spot in the middle shrinks with them. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`, and a screenshot of a tile after the drag.
+
+### 33.495 Your buffs' and the target's aura icons keep thin edges after a scale change
+
+- Do: on either client, with a few buffs up and a target with your debuffs on it, type `/vg unlock`, click the buffs' handle and the target frame's handle, set each one's Scale % to 160 and lock again; then in a dungeon fight with debuffs on a raid tile, press Alt+Enter (a window size change) and let the fight end.
+- Expect: the buff and target debuff icons keep a one-pixel dark edge and inset (no soft or doubled edge), and within a moment of the fight ending the raid tile's icons have them too. [Needs in-game check: all of it, and whether the game's restriction event comes once it lets the icons go.]
+- If it fails, paste: `/vg errors`, and a close screenshot of a buff icon and a raid tile's debuff icon.
+
+### 33.496 Edit Mode leaves Vanguard's aura icons on your real auras
+
+- Do: on either client, with a buff or two up and a target with your debuff on it, open the game's Edit Mode (Esc → Edit Mode), look at your buffs and the target's debuffs, then close it.
+- Expect: while Edit Mode is open your buffs and the target's debuffs show the same icons as before (no row of the game's sample auras), and nothing new in `/vg errors`. [Needs in-game check: all of it; the harness has no Edit Mode of its own.]
+- If it fails, paste: `/vg errors`, and a screenshot of your buffs with Edit Mode open.
+
+### 33.497 With Debuff icons at none, a debuff you can dispel keeps its icon and says why
+
+- Do: on either client, in a party or raid, set `/vg` → Raid frames → Debuff icons to none with Highlight debuffs you can dispel on, and point at that switch; then let a debuff you can dispel land on a group member.
+- Expect: the switch's tooltip says a debuff you can dispel still shows its icon; on the tile that one icon shows bottom left with the type wash and edge, and no other debuff icon shows. [Needs in-game check: the tile's look.]
+- If it fails, paste: `/vg errors`, and a screenshot of the tile and the tooltip.
+
+### 33.498 A weapon enchant put on again in one fight keeps its cell clear of the buffs
+
+- Do: on WoW Forever, as a rogue or shaman with a poison or imbue on your main hand that is about to run out, start a fight, let the enchant run out and put it on again before the fight ends (or swap the weapon off and back on).
+- Expect: once the fight ends the enchant cell sits in front of your buffs and no buff is under it, with nothing new in `/vg errors`. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`, and a screenshot of your buffs after the fight.
+
+### 33.499 On a plate first drawn in a fight, your crowd control shows once
+
+- Do: on WoW Forever, as a mage, start a fight with one mob, then turn to a second mob whose plate was not on screen before the fight and Polymorph it (or, as another class, put your own crowd control on a mob first seen in the fight).
+- Expect: on that mob's plate the sheep icon shows once, in the crowd-control spot, not again in the row of your debuffs; nothing new in `/vg errors`. [Needs in-game check: whether the game's by-index aura read takes a "!" word; Vanguard drops it and reports it once in `/vg errors` if not.]
+- If it fails, paste: `/vg errors`, and a screenshot of the plate.
+
+### 33.500 The target's private aura spot follows the Aura icon size slider
+
+- Do: on WoW Retail, open `/vg` → Unit frames and drag Aura icon size under Target and focus auras from 20 to 30, let go, then in a boss fight that puts a private aura on your target (or a dungeon boss with one) look right of the target frame.
+- Expect: the private aura's icon there is about as large as the target's own debuff icons at the new size (34 across, not 24), and nothing new in `/vg errors`. [Needs in-game check: all of it; the game draws the icon itself.]
+- If it fails, paste: `/vg errors`, and a screenshot of the target frame with the private aura showing.
+
+### 33.501 Cast bars keep working where the game hides cast timing
+
+- Do: on either client, in a dungeon or battleground fight, target an enemy that casts and watch its cast on its nameplate and on the target cast bar, and cast a spell yourself.
+- Expect: each bar shows and fills (or shows full with the spell's name), and nothing new in `/vg errors` mentions CastBars. [Needs in-game check: whether the game hides a cast's duration object from addons there.]
+- If it fails, paste: `/vg errors`.
+
+### 33.502 A Brewmaster's stagger bar keeps following stagger after Class bars off and on
+
+- Do: on WoW Retail, as a Brewmaster at full energy, take hits, then in `/vg` → Modules switch Class bars off and on again out of combat, and take hits again.
+- Expect: the stagger bar under the player frame keeps rising and falling with your stagger while your energy stays full, and nothing new in `/vg errors`. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`.
+
+### 33.503 On Retail the Versus deck wraps the class resource pips and the stagger bar
+
+- Do: on WoW Retail, as a Paladin, switch on Versus deck under `/vg` → Unit frames; then on a Brewmaster monk do the same.
+- Expect: the holy power pips sit inside the deck's border above your frame, not on it, and the Brewmaster's stagger bar sits inside its border under your frame. [Needs in-game check: the look.]
+- If it fails, paste: a screenshot of the deck.
+
+### 33.504 Your interrupt leaves no diamond beside the red Interrupted flash
+
+- Do: on either client, as a mage with Interrupt mark on cast bars on (the default), Counterspell your target's cast.
+- Expect: the target cast bar flashes red "Interrupted" and fades with no diamond beside it, though your Counterspell's cooldown starts during the flash. [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of the cast bar while it flashes.
+
+### 33.505 The raid grid stays on its spot when the tiles' Width changes
+
+- Do: on either client, in a raid of 6 or more (two columns) out of combat, set Width to 120 under `/vg` → Raid frames, then press its reset arrow.
+- Expect: each time the grid stays centred on its spot at once, and does not jump when someone next joins or leaves. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors` and a screenshot before and after someone joins.
+
+### 33.506 One Cooldown Manager icon's buff does not put out the others' glow
+
+- Do: on either client, turn on "Glow a buff near its end" under `/vg` → Cooldowns, keep a target debuff and a self heal-over-time in the Buff row, then fight in an instance and swap targets often.
+- Expect: the heal-over-time's icon still lights near the end of its time, and `/vg errors` has no CooldownGlow line. [Needs in-game check: all of it; whether the game ever refuses the read is unknown.]
+- If it fails, paste: `/vg errors`.
+
+### 33.507 An imported hover key with a brace is skipped and the other hover keys still work
+
+- Do: on either client, open `/vg` → Click casting, click Import and paste `VG1:clickcast:14ec:e1siYmluZGluZ3MiXT17WzFdPXtbImFjdGlvbiJdPSJzcGVsbCIsWyJrZXkiXT0iU0hJRlQtUSIsWyJ2YWx1ZSJdPSJSZW5ldyJ9LFsyXT17WyJhY3Rpb24iXT0ic3BlbGwiLFsia2V5Il09IlNISUZULXsiLFsidmFsdWUiXT0iRmxhc2ggSGVhbCJ9fX0=` (say Replace if asked), then rest the pointer on a raid or party tile and press Shift + Q.
+- Expect: chat says 1 binding was imported, no Lua error comes up, the tile's tooltip shows and Shift + Q casts Renew on that player. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors` and `/vg binds`.
+
+### 33.508 A Click casting question answered after a talent group switch changes nothing
+
+- Do: on WoW Forever, on a character with dual spec and different Primary and Secondary click-casting lists, click Activate on the other talent group, and during its cast open `/vg` → Click casting and click Clear all; wait for the cast to end, then click Clear.
+- Expect: nothing is cleared, chat says "Nothing changed: the list this asked about is no longer the one shown. Ask again.", and both lists are as before. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg binds` on each talent group.
+
+### 33.509 A hover key the game also binds names that binding as the game does
+
+- Do: on either client, open `/vg` → Click casting → Keys while hovering a frame, click Add key, press M and pick Renew.
+- Expect: the row says "also" and the game's own name for the world map key, as in the game's Keybindings settings, not "toggleworldmap". [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of the row and `/vg binds`.
+
+### 33.510 Every hover key has its row, past the eighth too
+
+- Do: on either client, open `/vg` → Click casting → Keys while hovering a frame and add nine hover keys (F1 to F9, any spell), then roll the mouse wheel over the list and click Remove on F9's row.
+- Expect: eight rows show, the wheel scrolls the list to F9's row (the thumb shows at the list's right edge), there is no "+1 more" line, and Remove takes F9 away. With eight keys or fewer the wheel over the list scrolls the page. [Needs in-game check: all of it, the thumb's place and the rows' clipping at the list's bottom edge too.]
+- If it fails, paste: a screenshot of the list and `/vg binds`.
+
+### 33.511 A change unticked on key setup's Ready step stays unticked after a fight
+
+- Do: on a WoW Forever character with at least two proposed keys, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick one change, then attack a training dummy and leave combat.
+- Expect: the window comes back on Ready with that change still unticked, and Apply leaves that key as it was. [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of Ready after the fight and `/vg errors`.
+
+### 33.512 Key setup's Ready list shows what Apply will do, after an untick and after a bar change
+
+- Do: on a WoW Forever warrior, put Shield Bash on bar 2 button 2, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick "F: your Shield Bash on bar 2" and read the T line; then drag a macro onto an empty button the list names (or off the one it says it leaves alone) and press Apply.
+- Expect: after the untick the T line has its own tick box and says "T: Hamstring, and Shield Bash moves to bar 3"; after the bar change Apply changes nothing, chat says "Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again.", and the list shows the new plan; Apply then does exactly what it lists. [Needs in-game check: all of it, and with Only this character on a character that had its own keys before.]
+- If it fails, paste: the Ready list before and after, the chat lines, and `/vg errors`.
+
+### 33.513 A new rank of a spell reaches its key
+
+- Do: on a WoW Forever mage with Place new spells as I learn them on (set up keys, tick it on Ready, Apply), train a new rank of Frostbolt at the trainer, then hover Frostbolt's key's button; then put Rank 1 of Frostbolt on that button from the spellbook, open key setup again to Ready and read Frostbolt's line.
+- Expect: after training, the button shows the new rank (if the game already upgraded the button by itself, note that); on Ready the line reads like "2: Frostbolt (Rank 3), in place of Rank 1" with a tick box, and unticking it keeps Rank 1 on Apply. [Needs in-game check: all of it, and whether the game upgrades a button to a new rank by itself.]
+- If it fails, paste: the rank the button shows, the Ready line, the chat lines and `/vg errors`.
+
+### 33.514 Unticking key 1 on one stance page leaves key 1 alone
+
+- Do: on a WoW Forever warrior with Battle and Defensive Stance, bind key 1 to Open All Bags in the game's key bindings, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick "1 in Battle Stance", press Apply, then press 1 in Battle Stance and in Defensive Stance.
+- Expect: unticking "1 in Battle Stance" also unticks "1 in Defensive Stance"; after Apply key 1 opens your bags in both stances. [Needs in-game check: all of it.]
+- If it fails, paste: the step 3 list before and after the untick, what key 1 did, and `/vg errors`.
 
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 

@@ -146,6 +146,59 @@ it("Standards: your frame and your target's stand as 40 x 160 banners, health ri
   expect([size(addon, "Vanguard_player"), across.orient, across.corners, across.masks, across.name !== "hidden", banner(addon, "focus").name !== "hidden", banner(addon, "focus").number, across.crown], "Centered: the frames lie across again, 240 x 36, the shield point back, every name and number shown (the number at the right end), the crown on the frame").toEqual([[240, 36], "HORIZONTAL HORIZONTAL", ["25 point", "0 nil", "25 point", "0 nil"], ["BOTTOMLEFT PointMaskBL", "TOPLEFT PointMask"], true, true, "RIGHT health RIGHT -14 0", "frame"]);
 });
 
+it("Standards: switching to it hides the power number on the banners (as a login under it does), and lying across again shows it", () => {
+  const power = { savedVariables: "VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, UnitFrames = { powerFormat = 'value' } } } }" };
+  const addon = loggedIn(WIDE + UNITS_ENV, power);
+  // Whether your frame and your target's show their power text.
+  const shown = () => addon.eval("return { Vanguard_player.powerText:IsShown(), Vanguard_target.powerText:IsShown() }");
+  expect(shown(), "Centered with power text on: the number shows").toEqual([true, true]);
+  addon.eval("ns.SetHudLayout('standards')");
+  expect(shown(), "switched to Standards: no power number on a banner").toEqual([false, false]);
+  addon.eval("ns.SetHudLayout('centered')");
+  expect(shown(), "back across: the number shows again").toEqual([true, true]);
+});
+
+// Each frame's rectangle (left, bottom, right, top), by unit frame key.
+const rects = (addon, keys) => addon.eval(`local out = {}
+  for _, k in ipairs({ "${keys.join('", "')}" }) do local f = _G["Vanguard_" .. k] out[k] = { f:GetLeft(), f:GetBottom(), f:GetRight(), f:GetTop() } end
+  return out`);
+// Whether two rectangles overlap.
+const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+
+it("Standards: the focus target stands as a small banner beside the focus, clear of your banner, the focus and the pet; Centered gives it its own size back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV, onLayout("standards"));
+  expect([size(addon, "Vanguard_focustarget"), banner(addon, "focustarget").name], "24 x 100, bars alone").toEqual([[24, 100], "hidden"]);
+  const r = rects(addon, ["focustarget", "player", "focus", "pet"]);
+  expect([overlap(r.focustarget, r.player), overlap(r.focustarget, r.focus), overlap(r.focustarget, r.pet), r.focustarget[2] <= r.focus[0]], "beside the focus, on its outer side, clear of every banner").toEqual([false, false, false, true]);
+  addon.eval("ns.SetHudLayout('centered')");
+  expect(size(addon, "Vanguard_focustarget"), "Centered: its own 80 x 24").toEqual([80, 24]);
+});
+
+it("the keep under Tabs: the focus, pet and target of target wear no tab (their name on the bar), your frame and your target's keep theirs; a canvas too narrow for the keep gives the small frames their tabs back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, hudLayout = "fort", theme = { hudLook = "tabs" } } } }' });
+  // Whether each frame wears its tab: player, target, focus, pet, target of target.
+  const tabs = () => addon.eval("local out = {} for _, k in ipairs({ 'player', 'target', 'focus', 'pet', 'targettarget' }) do out[#out + 1] = _G['Vanguard_' .. k].tab:IsShown() end return out");
+  expect(tabs(), "tabs on the big frames only").toEqual([true, true, false, false, false]);
+  expect(addon.eval("local f = Vanguard_focus local rel = select(2, f.name:GetPoint(1)) return rel ~= f.tab"), "the focus's name is not on a tab").toBe(true);
+  canvas(addon, 1000, 768);
+  expect(tabs(), "the keep gone: every frame wears its tab").toEqual([true, true, true, true, true]);
+});
+
+// The shown textures among a frame's own regions, counted by image name.
+const shownArt = (addon, name) => addon.eval(`local out = {}
+  for _, t in ipairs({ ${name}:GetRegions() }) do
+    if t:IsShown() and t.__texture then local n = tostring(t.__texture):match("[^\\\\]+$") out[n] = (out[n] or 0) + 1 end
+  end
+  return out`);
+
+it("Standards under Hairline: a bare banner shows only the hairline's V at its hem, no plate wedges or border pieces; Rimmed brings the plate back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, hudLayout = "standards", theme = { hudLook = "hairline" } } } }' });
+  const bare = shownArt(addon, "Vanguard_player");
+  expect([bare.PointFill ?? 0, bare.PointLine30 ?? 0, bare.WHITE8X8 ?? 0], "Hairline: no fill wedges or side strips, the two hair pieces of the V alone").toEqual([0, 2, 0]);
+  addon.eval('ns.Theme.Settings().hudLook = "rimmed" ns.Theme.Refresh()');
+  expect(shownArt(addon, "Vanguard_player").PointFill, "Rimmed: the plate's hem wedges show again").toBe(2);
+});
+
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
 

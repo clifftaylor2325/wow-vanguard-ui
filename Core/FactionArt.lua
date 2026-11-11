@@ -44,7 +44,7 @@ end
 
 -- One line of the report: a name, and whether the client has it.
 local function line(kind, name, found)
-  ns.Chat(string.format("  %s %s  %s", kind, name, found and T.Paint("yes", "good") or T.Paint("missing", "muted")))
+  ns.Chat(string.format("  %s %s  %s", kind, name, found and T.Paint(L["yes"], "good") or T.Paint(L["missing"], "muted")))
 end
 
 -- A neutral character who just picked a side gets the faction look at once.
@@ -52,7 +52,8 @@ ns.On("NEUTRAL_FACTION_SELECT_RESULT", function() T.Refresh() end)
 
 -- Prints the report: your faction, then each atlas and file and whether it's there.
 function FA.Report()
-  ns.Chat(ns.Format(L["Faction art on this client (you're {faction}):"], { faction = FA.Faction() }))
-  for _, name in ipairs(FA.ATLASES) do line("atlas", name, FA.HasAtlas(name)) end
-  for _, file in ipairs(FA.FILES) do line("file", file, FA.HasFile(file)) end
+  local faction = FA.Faction()
+  ns.Chat(ns.Format(L["Faction art on this client (you're {faction}):"], { faction = faction == "none" and L["none"] or faction }))
+  for _, name in ipairs(FA.ATLASES) do line(L["atlas"], name, FA.HasAtlas(name)) end
+  for _, file in ipairs(FA.FILES) do line(L["file"], file, FA.HasFile(file)) end
 end

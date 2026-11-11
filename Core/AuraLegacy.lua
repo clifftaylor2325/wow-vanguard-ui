@@ -2,9 +2,10 @@
 -- engine's AuraContainer (Core/AuraEngine.lua). Each container reads its
 -- unit's auras through the client's filters on UNIT_AURA, fills its groups in
 -- order (an aura an earlier group shows is skipped) and flows the icons into
--- rows. Filters with a "!" token (not) aren't understood by the older reads,
--- so those tokens are dropped and the earlier groups' auras skipped instead.
--- Values the client hides go to the widgets as they are.
+-- rows. Each group reads its filter as written, "!" (not) words included: the
+-- client's aura reads take them (AuraFilters, Blizzard_FrameXMLUtil/AuraUtil.lua:294-296),
+-- and a word one rejects is dropped by A.Filter's probe. Values the client hides go to
+-- the widgets as they are.
 
 local ADDON, ns = ...
 
@@ -81,11 +82,6 @@ end
 local Container = {}
 Container.__index = Container
 
--- A filter with its "!" (not) tokens dropped: the older reads don't know them.
-function L.BaseFilter(filter)
-  return (filter:gsub("|![%w_]+", ""))
-end
-
 -- One group's icon: its size, and whether it starts a new row (the group's first, when asked), kept on it for the layout.
 local function groupIcon(frame, spec, def, i)
   local icon = A.Icon(frame, def.size, A.Style(spec, def))
@@ -93,11 +89,13 @@ local function groupIcon(frame, spec, def, i)
   return icon
 end
 
--- The icons for each group of a spec.
+-- The icons for each group of a spec. Each filter is probed now (A.Filter), while the container is made: one
+-- first read in a fight, with aura information hidden, would pass unprobed.
 local function build(frame, spec)
   local groups = {}
   for g, def in ipairs(spec.groups) do
-    groups[g] = { def = def, filter = L.BaseFilter(def.filter), icons = {} }
+    A.Filter(def.filter)
+    groups[g] = { def = def, filter = def.filter, icons = {} }
     for i = 1, def.max do groups[g].icons[i] = groupIcon(frame, spec, def, i) end
   end
   return groups

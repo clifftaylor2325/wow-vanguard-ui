@@ -47,6 +47,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import "./lib/engine-fengari.mjs";
 import { formatCompare, formatResult, overBudget, overInstructions, readOptions, resultFile, runBench, writeResult } from "./lib/bench.mjs";
 import { ENGINE, root } from "./lib/lua-harness.mjs";
 
@@ -58,7 +59,7 @@ function stop(message, status) {
 
 // The options, or a stop with the reason and status 2 (also on the Lua 5.1 engine, which the bench does not drive yet).
 function options(argv) {
-  if (ENGINE === "wasm") stop("npm run bench: runs on the default engine only (its instruction counts, and the caps in scripts/bench-budget.json, are fengari's); unset VG_LUA_ENGINE", 2);
+  if (ENGINE === "wasm") stop("npm run bench: runs on fengari only (its instruction counts, and the caps in scripts/bench-budget.json, are fengari's); unset VG_LUA_ENGINE or set it to fengari", 2);
   try {
     return readOptions(argv);
   } catch (err) {

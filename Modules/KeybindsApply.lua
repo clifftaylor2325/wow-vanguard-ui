@@ -22,8 +22,9 @@
 -- add-on restriction, on a client that isn't WoW Forever, while the game's
 -- Settings, Quick Keybind or Click Casting window or Vanguard's keybind mode is
 -- open, and while the cursor holds something. Inside Apply the order is fixed: switch the
--- key set when asked ("Only this character"), work the plan out in that set,
--- take the record, place spells, set keys, save. A step that fails or errors,
+-- key set when asked ("Only this character"), work the plan out in that set
+-- (the wizard's Apply stops there, changing nothing, when it isn't the plan its
+-- list showed), take the record, place spells, set keys, save. A step that fails or errors,
 -- or a write the client blocks, puts back everything this Apply changed (after
 -- the fight, if one began) and saves nothing; a button that can't be put back
 -- then is kept in the record, for "Put everything back".
@@ -76,6 +77,8 @@ KA.MODIFIERS = { "ALT", "CTRL", "SHIFT", "META" }
 KA.WRITES = { bind = true, place = true, move = true, command = true }
 -- The account file's tables this character's file keeps a copy of at logout (VanguardCharDB.keyBackup).
 KA.BACKED_UP = { "keyRestore", "keyPending" }
+-- The fields of a plan row its signature names (KA.Signature): what it does, with which key, button and spells.
+KA.SIGNED = { "key", "kind", "why", "slot", "command", "to", "moved", "over" }
 
 -- Reading the bars ---------------------------------------------------------------------------
 
@@ -192,12 +195,25 @@ local function spellKnown(_, row)
   if not knows(row.spell) then return "unchanged", "unknown" end
 end
 
+-- Whether a plan may put a row's spell over another rank of it on the row's own button: not on a button this plan
+-- already wrote; with `plan.ranks` (KA.Update) only where it answers yes; else always (Apply lists it as a change
+-- of its own, which the player may untick to keep a lower rank).
+local function swapsRank(plan, slot, content)
+  return not plan.taken[slot] and (plan.ranks == nil or plan.ranks(slot, content.id))
+end
+
 -- A spell already on the bars (a spell this plan moved aside too): the key is bound to that button (its slot
--- becomes the row's), unless this plan already gave that button a key.
+-- becomes the row's), unless this plan already gave that button a key. Another rank of it on the row's own button
+-- makes way for the row's rank (`over`, `replaced`) when swapsRank allows it, else stays and gets the key.
 local function alreadyOnBars(plan, row)
   local s = foundAt(plan, row)
   if not s then return nil end
   if plan.claimed[s] then return "unchanged", "used" end
+  local content = viewOf(plan, s)
+  if s == row.slot and content.id ~= row.spell and swapsRank(plan, s, content) then
+    row.over, row.replaced = content.id, true
+    return "place"
+  end
   row.slot = s
   return "bind"
 end
@@ -361,10 +377,10 @@ local function needlessMoves(rows)
   return out
 end
 
--- One pass over the entries, with the slots the player took over (`skip`) and the moves an earlier pass found
--- needless (`needless`, by entry index).
-local function planPass(entries, skip, needless)
-  local plan = { rows = {}, view = {}, keys = {}, added = {}, taken = {}, claimed = {}, skip = skip or {}, needless = needless or {} }
+-- One pass over the entries, with the slots the player took over (`skip`), the rule for rank swaps (`ranks`, see
+-- swapsRank) and the moves an earlier pass found needless (`needless`, by entry index).
+local function planPass(entries, skip, ranks, needless)
+  local plan = { rows = {}, view = {}, keys = {}, added = {}, taken = {}, claimed = {}, skip = skip or {}, ranks = ranks, needless = needless or {} }
   for i, entry in ipairs(entries) do
     plan.index = i
     planEntry(plan, entry)
@@ -376,14 +392,34 @@ end
 -- entry may list the spells it replaces (`replaces`, spell IDs). A known spell moved off its slot is overwritten
 -- instead (kind "place", `over`) when the entry replaces it (`replaced`) or another row places it in reach: the
 -- plan is worked out a second time so no bar 3 slot is held for it. Slots in `skip` (the player's) are never
--- written, searched or moved to.
+-- written, searched or moved to. A lower rank of an entry's spell on its own button gives way to the entry's rank
+-- (kind "place", `over`, `replaced`), on every button, or only where `ranks(slot, spellID)` answers yes.
 ---@param entries table[]  { key, spell, slot, replaces } or { key, command }
 ---@param skip table|nil  { [slot] = true }
+---@param ranks function|nil  (slot, spellID) -> whether that rank on that button may give way
 ---@return table[] rows  { key, spell, slot, command, kind, why, to, moved, over, replaced }; kind: bind, place, move, command, unchanged
-function KA.Plan(entries, skip)
-  local rows = planPass(entries, skip)
+function KA.Plan(entries, skip, ranks)
+  local rows = planPass(entries, skip, ranks)
   local needless = needlessMoves(rows)
-  return needless and planPass(entries, skip, needless) or rows
+  return needless and planPass(entries, skip, ranks, needless) or rows
+end
+
+-- One plan row as one line of a signature, with what its key does now (a key set switch can change only that).
+local function rowSignature(row)
+  local parts = {}
+  for i, field in ipairs(KA.SIGNED) do parts[i] = tostring(row[field]) end
+  parts[#parts + 1] = tostring(row.key and GetBindingAction(row.key))
+  return table.concat(parts, " ")
+end
+
+-- A plan as one string (one line per row, by KA.SIGNED), so Apply can tell whether the plan it works out is the
+-- one a list showed the player.
+---@param rows table[]  KA.Plan's rows
+---@return string
+function KA.Signature(rows)
+  local lines = {}
+  for i, row in ipairs(rows) do lines[i] = rowSignature(row) end
+  return table.concat(lines, "\n")
 end
 
 -- When it can run ------------------------------------------------------------------------------
@@ -607,21 +643,26 @@ ns.On("ADDON_ACTION_FORBIDDEN", onBlocked)
 
 -- Switches to the key set the Apply asked for as the game's own switch does (Settings.SelectCharacterBindings:
 -- save the old, load, save the new), noting the old one for a rollback; nothing when it is the set in use already.
+-- Whether the list a player was shown still held in the old set is noted first (`listHeld`), for Apply's chat line.
 local function switchSet(run)
   local from = GetCurrentBindingSet()
   run.set = run.set or from
   if run.set == from then return true end
   run.from = from
+  run.listHeld = run.shown == KA.Signature(KA.Plan(run.entries, run.skip, run.ranks))
   SaveBindings(from)
   LoadBindings(run.set)
   SaveBindings(run.set)
   return GetCurrentBindingSet() == run.set
 end
 
--- Works the plan out in the key set the run now uses.
+-- Works the plan out in the key set the run now uses. A run given the signature of the plan a list showed (`shown`)
+-- stops quietly when this plan differs (stale: the bars or keys changed since); nothing has been written yet.
 local function planRows(run)
-  run.rows = KA.Plan(run.entries, run.skip)
-  return true
+  run.rows = KA.Plan(run.entries, run.skip, run.ranks)
+  run.stale = run.shown ~= nil and KA.Signature(run.rows) ~= run.shown
+  run.quiet = run.quiet or run.stale
+  return not run.stale
 end
 
 -- Takes the pre-image of every key and slot the rows write, before anything changes (a writing row keeps what its
@@ -767,9 +808,9 @@ local function finish(run, ok)
   ns.OutOfCombat(function() undoRun(run) end)
 end
 
--- A new run of a preset's entries in key set `set` (nil: the one in use).
-local function newRun(entries, set)
-  return { entries = entries, set = set, keys = {}, slots = {}, placed = {} }
+-- A new run of a preset's entries in key set `set` (nil: the one in use), for the plan signed `shown` (nil: any).
+local function newRun(entries, set, shown)
+  return { entries = entries, set = set, shown = shown, keys = {}, slots = {}, placed = {} }
 end
 
 -- Runs a run as one all-or-nothing run (its `skip` slots left out; `quiet`: no chat line when it fails), and
@@ -786,17 +827,30 @@ local function knownSet(set)
   return set == nil or set == Enum.BindingSet.Account or set == Enum.BindingSet.Character
 end
 
+-- Why an Apply whose plan was not the list's changed nothing: the list still held in the key set Apply switched from
+-- but not in this character's own saved keys, or the bars or keys changed since.
+local function staleText(run)
+  if run.listHeld then
+    return L["This character has its own saved keys, which differ from the account's, so this list does not hold for them and nothing was changed. Switch to this character's keys in the game's key bindings, then set up keys again."]
+  end
+  return L["Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again."]
+end
+
 -- Applies a preset's entries as KA.Plan works them out in key set `set` (Enum.BindingSet.Character for "Only this
 -- character", Account for all characters; the set in use when nil). Refused, with a chat line, when KA.Refusal says
--- so, or to switch from this character's own keys back to the account's. True when every change was made and saved.
+-- so, or to switch from this character's own keys back to the account's. With `shown` (KA.Signature of the plan the
+-- player was shown), nothing changes, with a chat line, when the plan worked out in that key set differs from it.
+-- True when every change was made and saved.
 ---@param entries table[]
 ---@param set number|nil
+---@param shown string|nil
 ---@return boolean
-function KA.Apply(entries, set)
+function KA.Apply(entries, set, shown)
   if not knownSet(set) then error("KA.Apply: set is Enum.BindingSet.Account, Character or nil", 2) end
   local why = KA.Refusal() or switchRefusal(set)
   if why then ns.Chat(why) return false end
-  local run = execute(newRun(entries, set), "key setup apply")
+  local run = execute(newRun(entries, set, shown), "key setup apply")
+  if run.stale then ns.Chat(staleText(run)) end
   if run.ok and run.count == 0 then ns.Chat(L["No key needs changing."]) end
   if run.count > 0 then ns.Chat(ns.Format(L["{count} key(s) set. Vanguard kept what the keys did before, so you can put them back."], { count = run.count })) end
   return run.ok
@@ -809,9 +863,17 @@ function KA.Recorded()
   return rec ~= nil and next(rec.keys) ~= nil
 end
 
+-- Whether a button still shows the spell Vanguard last put there (its slot record): only that rank gives way to a
+-- newly learned one; a rank the player or the game put there stays.
+local function placedRank(slot, spellID)
+  local row = slotRecord()[slot]
+  return rowOk(row) and shownBy(row) == spellID
+end
+
 -- Applies entries again in the key set in use, quietly, as new spells are learned (Modules/KeybindsLearn.lua): the
 -- same plan, record and all-or-nothing run as Apply, with no chat line (the caller tells the player), never
--- writing, searching or moving to a slot in `skip` (the player's). Nil, with nothing changed, when KA.Refusal says
+-- writing, searching or moving to a slot in `skip` (the player's), and putting a new rank only over the rank Vanguard
+-- placed (placedRank). Nil, with nothing changed, when KA.Refusal says
 -- no; else the rows (each writing row's old command as `was`) when it succeeded, false when it didn't (and
 -- everything it changed goes back).
 ---@param entries table[]
@@ -820,7 +882,7 @@ end
 function KA.Update(entries, skip)
   if KA.Refusal() then return nil end
   local run = newRun(entries, nil)
-  run.skip, run.quiet = skip, true
+  run.skip, run.quiet, run.ranks = skip, true, placedRank
   execute(run, "key setup update")
   return run.ok and run.rows
 end

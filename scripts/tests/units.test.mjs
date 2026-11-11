@@ -105,9 +105,49 @@ it("class bars: the totem row sits above the player frame, clear of the chat's t
   }
 });
 
+// The totem row's bottom against the player frame's crown top (TEST-ONLY read): the gap in units, and what the row is
+// anchored to.
+const TOTEM_RIDE_LUA = `local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames")
+  local rel = select(2, CB.totems:GetPoint())
+  return { math.floor((CB.totems:GetBottom() - UF.Crown(Vanguard_player):GetTop()) * 100 + 0.5) / 100, rel == Vanguard_player }`;
+
+it("class bars: the totem row stands over the player frame's crown under every look and layout, anchored to the frame itself, and a look change in a fight moves it when the fight ends", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV + TOTEMS_ENV);
+  // Switches the HUD look.
+  const look = (name) => addon.eval(`ns.Theme.Settings().hudLook = "${name}" ns.Theme.Refresh()`);
+  expect(addon.eval(TOTEM_RIDE_LUA), "Shield: 3 units over the frame").toEqual([3, true]);
+  look("tabs");
+  expect(addon.eval(TOTEM_RIDE_LUA), "Tabs: 3 units over the tab, still on the frame").toEqual([3, true]);
+  addon.eval("ns.SetHudLayout('standards')");
+  expect(addon.eval(TOTEM_RIDE_LUA), "Standards: 3 units over the name line").toEqual([3, true]);
+  addon.eval("ns.SetHudLayout('centered')");
+  setCombat(addon, true);
+  addon.eval("Vanguard_player.tab:SetWidth(60)");
+  look("plain");
+  expect(addon.eval("return select(5, ns.GetModule('ClassBars').totems:GetPoint())"), "in a fight the secure row stays where it was").toBeGreaterThan(10);
+  setCombat(addon, false);
+  expect(addon.eval(TOTEM_RIDE_LUA), "after the fight: Plain, 3 units over the frame").toEqual([3, true]);
+});
+
+it("class bars: while the player frame's top reads hidden, the totem row stands a tab's height up under Tabs, and on the frame without one", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV + TOTEMS_ENV);
+  // Switches the HUD look with the player frame's top answering a secret, then puts the real top back.
+  const hiddenTopLook = (name) => addon.eval(`local top = Vanguard_player.GetTop
+    Vanguard_player.GetTop = function() return { __secret = true } end
+    ns.Theme.Settings().hudLook = "${name}" ns.Theme.Refresh()
+    Vanguard_player.GetTop = top`);
+  hiddenTopLook("tabs");
+  const [gap, onFrame] = addon.eval(TOTEM_RIDE_LUA);
+  expect(onFrame, "Tabs: still anchored to the frame itself").toBe(true);
+  expect(gap, "Tabs: the tab's height stands in for the measured rise, so the row clears the tab").toBeGreaterThanOrEqual(3);
+  expect(gap, "and stays within a unit of where the measured rise puts it").toBeLessThan(4);
+  hiddenTopLook("plain");
+  expect(addon.eval(TOTEM_RIDE_LUA), "Plain: no tab, the row sits on the frame").toEqual([3, true]);
+});
+
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
-  expect(addon.eval('local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames") return { #CB.cells, select(2, CB.totems:GetPoint()) == UF.Crown(Vanguard_player) }'), "a shaman gets four totem cells above the player frame (its crown, which rises with a tab)").toEqual([4, true]);
+  expect(addon.eval('local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells above the player frame (anchored to the frame itself, over its crown)").toEqual([4, true]);
   expect(totemCell(addon, 1), "a totem that is down shows its icon, its sweep and the client's numbers").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Totem", sweep: [100, 120], numbers: true, type2: "destroytotem", slot: 1 });
   expect(totemCell(addon, 2).alpha, "an empty slot is see-through (cells are secure, so alpha, not Hide)").toBe(0);
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
@@ -195,8 +235,14 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   addon.eval("UnitLevel = function(unit) return unit == 'player' and 61 or 12 end");
   addon.fire("UNIT_LEVEL", "player");
   expect(addon.eval("return Vanguard_player.level:GetText()"), "when you level, your frame shows the new level").toBe("61");
-  addon.eval("UnitLevel = function(unit) return unit == 'player' and 62 or 14 end");
+  // A ding as the client sends it: PLAYER_LEVEL_UP while the old level still applies, then PLAYER_LEVEL_CHANGED once
+  // the new one does (/home/user/blizz/forever/Interface/AddOns/Blizzard_MicroMenu/Shared/MicroMenuContainer.lua
+  // OnLoad: "PLAYER_LEVEL_UP fires before the new level is applied"; Blizzard_UnitFrame/Shared/CompactUnitFrame.lua
+  // repaints the level difference on PLAYER_LEVEL_CHANGED).
+  addon.eval("UnitLevel = function(unit) return unit == 'player' and 61 or 14 end");
   addon.fire("PLAYER_LEVEL_UP", 62);
+  addon.eval("UnitLevel = function(unit) return unit == 'player' and 62 or 14 end");
+  addon.fire("PLAYER_LEVEL_CHANGED", 61, 62, true);
   expect(addon.eval("return { Vanguard_player.level:GetText(), Vanguard_target.level:GetText() }"), "a level-up refreshes every frame (their level colors are relative to yours)").toEqual(["62", "14"]);
   addon.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
   addon.fire("UNIT_HEALTH", "player");
@@ -205,8 +251,53 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   expect(retail.eval("return Vanguard_player.level == nil") === true && retail.eval("return Vanguard_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
 });
 
+// The client sends PLAYER_LEVEL_UP before it applies the new level and PLAYER_LEVEL_CHANGED after
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_MicroMenu/Shared/MicroMenuContainer.lua MicroMenuContainerMixin:OnLoad;
+// Blizzard_UnitFrame/Shared/CompactUnitFrame.lua: PLAYER_LEVEL_UP hands on the event's level, PLAYER_LEVEL_CHANGED repaints the difference).
+it("unit frames: after a ding the target's level colour is the one for your new level, without a retarget", () => {
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + `
+    __lv = { player = 60, target = 63 }
+    UnitLevel = function(unit) return __lv[unit] or 12 end
+    CurveConstants = { ScaleTo100 = { __curve = true } }
+    UnitHealthPercent = function() return 84 end`, NO_RAID);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.fire("PLAYER_LEVEL_UP", 61, 0, 0);
+  addon.eval("__lv.player = 61");
+  addon.fire("UNIT_LEVEL", "player");
+  addon.fire("PLAYER_LEVEL_CHANGED", 60, 61, true);
+  const [color, fresh] = addon.eval("local c = GetCreatureDifficultyColor(63) return { Vanguard_target.level.__textColor, { c.r, c.g, c.b } }");
+  expect(color.slice(0, 3), "the target's level reads in the colour for level 61 (+2)").toEqual(fresh);
+});
+
+it("unit frames: a party member who goes offline or dies loses the power text, and gets it back on return", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, UnitFrames = { powerFormat = 'value' } } } }" });
+  addon.world.setUnit("party1", { name: "TEST-ONLY Friend", hp: 400, maxhp: 500, power: 300, maxpower: 1000, isPlayer: true, connected: true });
+  addon.fire("GROUP_ROSTER_UPDATE");
+  // The power text's shown state and text, and the health text, of party1's frame.
+  const read = () => addon.eval("local f = Vanguard_party1 return { f.powerText:IsShown(), f.powerText:GetText(), f.healthText:GetText() }");
+  expect(read(), "alive: the power number shows").toEqual([true, "300", "400"]);
+  addon.world.setUnit("party1", { connected: false });
+  expect(read().slice(1), "offline: health says Offline, the power text is empty").toEqual(["", "Offline"]);
+  addon.world.setUnit("party1", { connected: true, dead: true, hp: 0 });
+  expect(read().slice(1), "dead: health says Dead, the power text is empty").toEqual(["", "Dead"]);
+  addon.world.setUnit("party1", { dead: false, hp: 400 });
+  expect(read()[1], "back alive: the power number returns").toBe("300");
+});
+
+it("unit frames: with power text on, the target's tag mark sits clear of its health number on the top line", () => {
+  const addon = loggedIn(UNITS_ENV + `__units.target.hp = 42800 __units.target.maxhp = 50000
+    UnitCanAttack = function() return true end UnitIsTapDenied = function(u) return u == "target" end UnitPlayerControlled = function() return false end`,
+  { savedVariables: "VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, UnitFrames = { powerFormat = 'value' } } }" });
+  addon.fire("PLAYER_TARGET_CHANGED");
+  // A region's rectangle: left, bottom, right, top.
+  const rect = (path) => addon.eval(`local r = ${path} return { r:GetLeft(), r:GetBottom(), r:GetRight(), r:GetTop() }`);
+  const tag = rect("Vanguard_target.tag"), text = rect("Vanguard_target.healthText");
+  expect(addon.eval("return { Vanguard_target.tag:IsShown(), Vanguard_target.powerText:IsShown() }"), "the grey X and the power text both show").toEqual([true, true]);
+  expect(text[2] <= tag[0] || tag[2] <= text[0], "the health number ends short of the tag mark").toBe(true);
+});
+
 it("unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows", () => {
-  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + "CurveConstants = { ScaleTo100 = { __curve = true } } UnitHealthPercent = function() return 84 end", NO_RAID);
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + "CurveConstants = { ScaleTo100 = { __curve = true } } UnitHealthPercent = function() return 84 end UnitClassification = function() return 'normal' end", NO_RAID);
   // HealthText with the percent format on, and string.format answering the percent's "%d%%" with `format` (a Lua value) when given.
   const text = (setup, format) => addon.eval(`local UF = ns.GetModule("UnitFrames") UF.settings.healthFormat = "percent" ${setup}
     __s = __wfgWorld.secret() local real = string.format
@@ -313,9 +404,12 @@ it("combo points that follow you to a new target at the same count show at once"
   expect(lit(), "the points moved to the new target: no power event fires, the pip still lights").toBe(1);
 });
 
+// Where the spark sits a fraction of the way along the power bar. The bar is anchored on both sides, so its width is
+// the laid-out one, as the client's GetWidth answers (Blizzard_SharedXMLBase/AnchorUtil.lua's "calculated size").
+const along = (addon, fraction) => fraction * addon.eval("return ns.GetModule('PowerTicks').bar:GetWidth()");
+
 it("power ticks: the five-second rule after a mana spell", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV);
-  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
   expect(addon.eval("local PT = ns.GetModule('PowerTicks') return { PT.mode, PT.spark:GetParent() == Vanguard_player.power }"), "a mana user gets the mana spark on the player frame's power bar").toEqual(["mana", true]);
   expect(spark(addon), "no spark before a cast").toEqual([false, -1, false]);
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "target", "x", 90001);
@@ -325,7 +419,8 @@ it("power ticks: the five-second rule after a mana spell", () => {
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
   expect(spark(addon), "a mana spell starts the spark at the left").toEqual([true, 0, true]);
   addon.eval("__wfgStub.advance(2.5)");
-  expect(spark(addon)[1], "halfway through the five seconds it's halfway along").toBe(100);
+  expect(along(addon, 1), "the bar is laid out with a width").toBeGreaterThan(0);
+  expect(spark(addon)[1], "halfway through the five seconds it's halfway along").toBe(along(addon, 0.5));
   addon.eval("__wfgStub.advance(3)");
   expect([spark(addon)[0], spark(addon)[2]], "after five seconds it hides and its timer stops").toEqual([false, false]);
   addon.fire("UNIT_POWER_FREQUENT", "player", "MANA");
@@ -338,7 +433,6 @@ it("power ticks: the five-second rule after a mana spell", () => {
 it("power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV);
   addon.eval(`local PT = ns.GetModule('PowerTicks')
-    PT.bar:SetWidth(200)
     __clears, __sets = 0, 0
     local set = PT.spark.SetPoint
     -- TEST-ONLY spies: the spark's anchor calls.
@@ -349,12 +443,11 @@ it("power ticks: the spark moves on one anchor, as tall as the bar, with no anch
   const out = addon.eval(`local PT = ns.GetModule('PowerTicks') local n = 0 for _ in pairs(PT.spark.__points) do n = n + 1 end
     return { __clears, __sets, n, PT.spark:GetHeight() == PT.bar:GetHeight() and PT.bar:GetHeight() > 0 }`);
   expect(out, "the start and 10 frames: 11 moves of its one anchor, none cleared; as tall as the bar").toEqual([0, 11, 1, true]);
-  expect(spark(addon), "and it is where the sweep is (halfway after 2.5 s)").toEqual([true, 100, true]);
+  expect(spark(addon), "and it is where the sweep is (halfway after 2.5 s)").toEqual([true, along(addon, 0.5), true]);
 });
 
 it("power ticks: energy every two seconds, and forms switch", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
-  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   expect(spark(addon)[0], "the first reading is only a starting point").toBe(false);
   addon.eval("__units.player.power = 70");
@@ -362,29 +455,28 @@ it("power ticks: energy every two seconds, and forms switch", () => {
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   expect(spark(addon), "energy going up is a tick: the spark starts").toEqual([true, 0, true]);
   addon.eval("__wfgStub.advance(2.5)");
-  expect(spark(addon), "and keeps crossing every two seconds").toEqual([true, 50, true]);
+  expect(spark(addon), "and keeps crossing every two seconds").toEqual([true, along(addon, 0.25), true]);
   addon.eval("__units.player.power = { __secret = true }");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   addon.eval("__units.player.power = 10");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
-  expect(spark(addon)[1], "a hidden value and a drop (an ability) don't restart it").toBe(50);
+  expect(spark(addon)[1], "a hidden value and a drop (an ability) don't restart it").toBe(along(addon, 0.25));
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
-  expect(spark(addon)[1], "casts don't move the energy spark").toBe(50);
+  expect(spark(addon)[1], "casts don't move the energy spark").toBe(along(addon, 0.25));
   addon.fire("UNIT_DISPLAYPOWER", "player");
   expect(spark(addon)[0], "the same power type keeps it").toBe(true);
   addon.eval("__ptype = 1");
   addon.fire("UPDATE_SHAPESHIFT_FORM");
-  expect([addon.eval("return ns.GetModule('PowerTicks').mode"), ...spark(addon)], "rage (bear form) has no spark").toEqual([null, false, 50, false]);
+  expect([addon.eval("return ns.GetModule('PowerTicks').mode"), ...spark(addon)], "rage (bear form) has no spark").toEqual([null, false, along(addon, 0.25), false]);
 });
 
 it("power ticks: the energy spark stops its timer when no tick comes (full energy)", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
-  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   addon.eval("__units.player.power = 70");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   addon.eval("__wfgStub.advance(5.5)");
-  expect(spark(addon), "two missed sweeps on, the spark still crosses").toEqual([true, 150, true]);
+  expect(spark(addon), "two missed sweeps on, the spark still crosses").toEqual([true, along(addon, 0.75), true]);
   addon.eval("__wfgStub.advance(1)");
   expect([spark(addon)[0], spark(addon)[2]], "after three sweeps with no tick it hides and its timer stops").toEqual([false, false]);
   addon.eval("__units.player.power = 90");

@@ -29,7 +29,7 @@ const settle = (addon) => addon.advance(0.4, 0.1);
 const rows = (addon, key) => addon.eval(`local f = Vanguard_${key}
   local function row(c) if not c then return false end
     local out = { shown = c.frame:IsShown(), unit = c.frame.__enabled and c.frame.__unit or false, max = {}, size = {}, filter = {}, icon = {}, timer = false }
-    for g, grp in ipairs(c.frame.__groups) do local b = grp.buttons[1]
+    for g, grp in ipairs(c.frame.__groups or {}) do local b = grp.buttons[1]
       out.max[g], out.filter[g], out.size[g] = grp.opts.maxFrameCount, grp.filter, b and b:GetWidth() or false
       out.icon[g], out.timer = b and b.__shown and b.__icon.__texture or false, out.timer or (b ~= nil and b.__durationText ~= nil)
     end
@@ -38,9 +38,9 @@ const rows = (addon, key) => addon.eval(`local f = Vanguard_${key}
 
 it("target and focus auras: the icon size and the counts are sliders that make the rows again once they hold still, with no reload", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + FRAME_AURAS);
-  expect(rows(addon, "target"), "the defaults: a crowd-control slot, eight of yours at 20, others' off; eight buffs at 18").toMatchObject({
-    debuffs: { max: [1, 8, 0], size: [22, 20, false], unit: "target", timer: false }, buffs: { max: [8], size: [18] } });
-  expect(rows(addon, "focus"), "the focus: two smaller, debuffs only").toMatchObject({ debuffs: { size: [20, 18, false] }, buffs: false });
+  expect(rows(addon, "target"), "the defaults: a crowd-control slot, eight of yours at 20, others' off (that group not added); eight buffs at 18").toMatchObject({
+    debuffs: { max: [1, 8], size: [22, 20], unit: "target", timer: false }, buffs: { max: [8], size: [18] } });
+  expect(rows(addon, "focus"), "the focus: two smaller, debuffs only").toMatchObject({ debuffs: { size: [20, 18] }, buffs: false });
   addon.eval("__old = Vanguard_target.debuffs.frame");
   const before = addon.eval("return __containers()");
   addon.eval('ns.Options.Show("unitframes") __click("Aura icon size") __click("Aura icon size")');
@@ -48,16 +48,17 @@ it("target and focus auras: the icon size and the counts are sliders that make t
   settle(addon);
   expect(addon.eval("return __containers()") - before, "once it holds still: one new row each (two on the target, one on the focus)").toBe(3);
   expect(rows(addon, "target"), "the target's rows at the new size, on the target, its auras showing").toMatchObject({
-    debuffs: { size: [24, 22, false], unit: "target", shown: true, icon: ["SHEEP", "MY-DOT", false] }, buffs: { size: [20], icon: ["BUFF-A"] } });
-  expect(rows(addon, "focus").debuffs.size, "the focus follows, two smaller").toEqual([22, 20, false]);
+    debuffs: { size: [24, 22], unit: "target", shown: true, icon: ["SHEEP", "MY-DOT"] }, buffs: { size: [20], icon: ["BUFF-A"] } });
+  expect(rows(addon, "focus").debuffs.size, "the focus follows, two smaller").toEqual([22, 20]);
   expect(addon.eval("return { __old:IsShown(), __old.__enabled, __old.__unit }"), "the row it replaced is put away: hidden, switched off, on no unit").toEqual([false, false, "none"]);
   expect(addon.eval("return Vanguard_Options.reload:IsShown() or Vanguard_Options.notice:IsShown()"), "no reload is asked for").toBe(false);
   addon.eval('__faSet("Debuffs shown", 3) __faSet("Target\'s buffs shown", 0) __faSet("Timer numbers on the icons", true)');
   settle(addon);
-  expect(rows(addon, "target"), "three debuffs with timer numbers, and no buff row at a count of 0").toMatchObject({ debuffs: { max: [1, 3, 0], timer: true }, buffs: false });
+  expect(rows(addon, "target"), "three debuffs with timer numbers, and no buff row at a count of 0").toMatchObject({ debuffs: { max: [1, 3], timer: true }, buffs: false });
   addon.eval('__faSet("Debuffs shown", 0) __faSet("Target\'s buffs shown", 4)');
   settle(addon);
-  expect(rows(addon, "target"), "no debuffs at 0, the crowd-control slot too; the buff row back with four").toMatchObject({ debuffs: { max: [0, 0, 0] }, buffs: { max: [4], unit: "target" } });
+  expect(addon.eval("return #(Vanguard_target.debuffs.frame.__groups or {})"), "no debuffs at 0, the crowd-control slot too: no group is added").toBe(0);
+  expect(rows(addon, "target").buffs, "the buff row back with four").toMatchObject({ max: [4], unit: "target" });
 });
 
 it("target and focus auras: which show is a choice among the client's filters, applied without a reload", () => {
@@ -74,7 +75,7 @@ it("target and focus auras: which show is a choice among the client's filters, a
   expect(rows(addon, "target").buffs, "Yours: the buffs you cast").toMatchObject({ filter: ["HELPFUL|PLAYER"], icon: ["MY-BUFF"] });
   const odd = loggedIn(UNITS_ENV + FRAME_AURAS, saved('buffFilter = "TEST-ONLY later choice", size = 500, debuffs = 99, buffs = 3'));
   expect(rows(odd, "target"), "a choice this version doesn't know reads as all, and numbers outside the sliders are kept inside them").toMatchObject({
-    buffs: { filter: ["HELPFUL"], max: [3], size: [38] }, debuffs: { max: [1, 16, 0], size: [42, 40, false] } });
+    buffs: { filter: ["HELPFUL"], max: [3], size: [38] }, debuffs: { max: [1, 16], size: [42, 40] } });
 });
 
 it("target and focus auras: a setting changed in a fight makes the rows after it", () => {
@@ -83,9 +84,9 @@ it("target and focus auras: a setting changed in a fight makes the rows after it
   setCombat(addon, true);
   addon.eval('__faSet("Aura icon size", 30)');
   settle(addon);
-  expect([addon.eval("return __containers()") - before, rows(addon, "target").debuffs.size], "in the fight no row is made or put away").toEqual([0, [22, 20, false]]);
+  expect([addon.eval("return __containers()") - before, rows(addon, "target").debuffs.size], "in the fight no row is made or put away").toEqual([0, [22, 20]]);
   setCombat(addon, false);
-  expect([addon.eval("return __containers()") - before, rows(addon, "target").debuffs.size], "it follows when the fight ends").toEqual([3, [32, 30, false]]);
+  expect([addon.eval("return __containers()") - before, rows(addon, "target").debuffs.size], "it follows when the fight ends").toEqual([3, [32, 30]]);
 });
 
 it("target and focus auras: a row the client has closed is left, and with the module off a setting is only saved", () => {
@@ -96,7 +97,7 @@ it("target and focus auras: a row the client has closed is left, and with the mo
   expect(rows(addon, "target").buffs.size, "the open row beside it follows").toEqual([24]);
   addon.eval('__closed.IsForbidden = nil __faSet("Aura icon size", 27)');
   settle(addon);
-  expect([addon.eval("return __closed:IsShown()"), rows(addon, "target").debuffs.size], "open again: the next change replaces it").toEqual([false, [29, 27, false]]);
+  expect([addon.eval("return __closed:IsShown()"), rows(addon, "target").debuffs.size], "open again: the next change replaces it").toEqual([false, [29, 27]]);
   const off = loggedIn(UNITS_ENV + FRAME_AURAS, { savedVariables: "VanguardDB.profiles = { Default = { modules = { FrameAuras = false } } }" });
   off.eval('__faSet("Aura icon size", 30)');
   off.advance(0.4, 0.1);

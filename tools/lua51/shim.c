@@ -318,12 +318,21 @@ static TString *str_n;
 
 EXPORT("vg_secret_checks") void vg_secret_checks (int on) { vg_secret_on = on; }
 
-/* Whether the Lua function running is one of the addon's (chunks named @Core/, @Modules/, @Libs/). */
-static int addon_running (lua_State *L) {
-  const char *src;
-  if (!isLua(L->ci)) return 0;
-  src = getstr(ci_func(L->ci)->l.p->source);
+/* Whether a chunk name is one of the addon's (@Core/, @Modules/, @Libs/). */
+static int addon_source (const char *src) {
   return strncmp(src, "@Core/", 6) == 0 || strncmp(src, "@Modules/", 9) == 0 || strncmp(src, "@Libs/", 6) == 0;
+}
+
+/* Whether the Lua function running is one of the addon's. */
+static int addon_running (lua_State *L) {
+  if (!isLua(L->ci)) return 0;
+  return addon_source(getstr(ci_func(L->ci)->l.p->source));
+}
+
+/* Whether lparser.c's retstat leaves a call in tail position an ordinary call: in the addon's chunks, so each
+   addon function keeps its stack entry for the guards (scripts/lib/lua-keep-frames.mjs says why). */
+int vg_keep_frames (const TString *source) {
+  return source != NULL && addon_source(getstr(source));
 }
 
 void vg_truth (lua_State *L, const TValue *v, int negate) {

@@ -688,3 +688,71 @@ it("H27-3-1: a class-coloured name in the Dark look keeps its colour through a l
   addon.slash("variant classic");
   expect(addon.eval("return Vanguard_RaidUnitButton1.name.__textColor"), "the class colour, not the look's text colour").toEqual(before);
 });
+
+it("H44-7-1 raid frames: a tile that fails on a roster change leaves the later tiles refreshed, and its error is still reported", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 3 GetNumGroupMembers = function() return __members end");
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');
+  addon.update(0.016);
+  // TEST-ONLY: a module's part that fails on tile 1 only (stands for any per-tile error).
+  addon.eval(`local RF = ns.GetModule("RaidFrames")
+    table.insert(RF.updateHooks, 1, function(b) if b == Vanguard_RaidUnitButton1 then error("TEST-ONLY tile 1 fails") end end)
+    __units.raid3.name = "TEST-ONLY Renamed"`);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0);
+  expect(addon.eval("return Vanguard_RaidUnitButton3.name:GetText()"), "tile 3 got the news past the failing tile 1").toBe("TEST-ONLY Renamed");
+  expectErrors(/^raidtiles: eval:\d+: TEST-ONLY tile 1 fails$/);
+});
+
+// The first preview tile's health inset, one screen pixel at its scale now, and the preview's scale.
+function previewInset(addon) {
+  return addon.eval("local b = Vanguard_RaidPreviewTile1 local _, _, _, x = b.health:GetPoint(1) return { math.abs(x), ns.Theme.Pixel(b), Vanguard_RaidPreview:GetScale() }");
+}
+
+it("H44-7-2 raid preview: a tile drawn again at a new scale keeps its health inset one screen pixel", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  addon.slash("preview 40");
+  const at40 = previewInset(addon);
+  addon.slash("preview party");
+  const atParty = previewInset(addon);
+  expect(at40[2], "the 40-player preview is drawn smaller").toBeLessThan(1);
+  expect(atParty[2], "the party preview at full size").toBe(1);
+  expect(atParty[0], "the inset follows the new scale's pixel").toBeCloseTo(atParty[1], 6);
+});
+
+// Starts recording, for each attribute change on the raid header, its name and tile 1's size at that moment.
+// The client's header sizes itself from its first tile in the update an attribute change triggers
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_RestrictedAddOnEnvironment/SecureGroupHeaders.lua,
+// SecureGroupHeader_OnAttributeChanged -> SecureGroupHeader_Update -> configureChildren: unitButton:GetWidth()).
+function watchHeader(addon) {
+  addon.eval(`__seen = {}
+    Vanguard_Raid:HookScript("OnAttributeChanged", function(_, name) __seen[#__seen + 1] = { name, Vanguard_RaidUnitButton1:GetWidth(), Vanguard_RaidUnitButton1:GetHeight() } end)`);
+}
+
+// The size attribute changes recorded so far, as [name, tile width, tile height].
+function sizeChanges(addon) {
+  return addon.eval(`local out = {}
+    for _, c in ipairs(__seen) do if c[1] == "vg-width" or c[1] == "vg-height" then out[#out + 1] = c end end
+    return out`);
+}
+
+it("H44-7-R1 raid frames: a new tile size reaches the header's attributes after the tiles took it, so the header measures the new size", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');
+  addon.update(0.016);
+  watchHeader(addon);
+  addon.eval('local RF = ns.GetModule("RaidFrames") RF.settings.width, RF.settings.height = 120, 56 RF.ApplySize()');
+  expect(sizeChanges(addon), "both attribute changes see the 120 x 56 tile").toEqual([["vg-width", 120, 56], ["vg-height", 120, 56]]);
+});
+
+it("H44-7-R1 raid frames: a tile size set in a fight touches no secure frame until it ends, then the header measures the new size", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');
+  addon.update(0.016);
+  watchHeader(addon);
+  setCombat(addon, true);
+  addon.eval('local RF = ns.GetModule("RaidFrames") RF.settings.width, RF.settings.height = 72, 36 RF.ApplySize()');
+  expect(addon.eval("return { #__seen, Vanguard_RaidUnitButton1:GetWidth() }"), "in the fight: no attribute change, the tile keeps its width").toEqual([0, 100]);
+  setCombat(addon, false);
+  expect(sizeChanges(addon), "after it, both attribute changes see the 72 x 36 tile").toEqual([["vg-width", 72, 36], ["vg-height", 72, 36]]);
+  expect(addon.eval("return #ns.errors"), "no error").toBe(0);
+});

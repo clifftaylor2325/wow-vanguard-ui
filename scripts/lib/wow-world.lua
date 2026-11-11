@@ -50,6 +50,9 @@ function issecretvalue(v)
   return type(v) == "table" and rawget(v, "__secret") == true
 end
 
+-- The world's own handle on that check, so its reads still work in a test that removes the global.
+local worldIsSecret = issecretvalue
+
 -- Whether a value is a secret world.secret made (a test's plain { __secret = true } stand-in keeps
 -- type() "table", so the test's own issecretvalue, if it has one, still knows it).
 local function madeSecret(v)
@@ -74,6 +77,8 @@ end
 
 world.aurasSecret = false
 world.threatSecret = false
+-- Unit comparison restricted, as on an addon-restricted map (UnitIsUnit below).
+world.unitComparisonSecret = false
 
 -- The client's argument check on a two-unit secret predicate: both units are required.
 local function needUnits(name, unit, mobUnit)
@@ -108,7 +113,9 @@ WOW_PROJECT_CAMELOT = 18
 WOW_PROJECT_ID = WOW_PROJECT_CAMELOT
 world.client = "forever"
 world.locale = "enUS"
-world.cvars = {}
+-- ActionButtonUseKeyDown starts on: the default is not in Blizzard's source and is not confirmed in game (the value
+-- docs/SMOKE-TEST.md's totem step expects); stub.secureActs and GetCVarBool both read this one value.
+world.cvars = { ActionButtonUseKeyDown = "1" }
 world.sounds = {}
 world.reloads = 0
 world.keys = {}
@@ -171,7 +178,9 @@ C_CVar.GetCVarBitfield, C_CVar.SetCVarBitfield = world.cvarBitfield.GetCVarBitfi
 function PlaySound(id) world.sounds[#world.sounds + 1] = id end
 SOUNDKIT = setmetatable({}, { __index = function(_, k) return k end })
 
--- The Forever client refuses ReloadUI from addons; here it is counted.
+-- Taken to be refused from addons on the Forever client (not confirmed in game: Blizzard_SharedXML/InterfaceUtil.lua:1-3
+-- makes ReloadUI plain Lua that calls C_UI.Reload(), on both clients, and UIManagerDocumentation.lua gives C_UI.Reload
+-- no restriction flag); here it is only counted.
 function ReloadUI() world.reloads = world.reloads + 1 end
 
 -- Addon metadata comes from the TOC the harness read.
@@ -234,14 +243,17 @@ function ClearCursor() world.cursor = nil end
 Enum = {
   PowerType = { Mana = 0, Rage = 1, Focus = 2, Energy = 3, ComboPoints = 4, Runes = 5, RunicPower = 6, SoulShards = 7, LunarPower = 8, HolyPower = 9, Maelstrom = 11, Chi = 12, Insanity = 13, ArcaneCharges = 16, Fury = 17, Pain = 18 },
   CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
-  DurationTextBindingProperty = { RemainingDuration = 0, TotalDuration = 1 },
+  -- DurationTextBindingSharedDocumentation.lua (both clients).
+  DurationTextBindingProperty = { RemainingDuration = 0, RemainingPercent = 1, ElapsedDuration = 2, ElapsedPercent = 3, TotalDuration = 4, StartTime = 5, EndTime = 6 },
   LuaCurveType = { Linear = 0, Step = 1 },
   NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
-  NumericRuleFormatRounding = { Down = 0, Up = 1, Nearest = 2 },
+  -- NumericRuleFormatterSharedDocumentation.lua (both clients).
+  NumericRuleFormatRounding = { Nearest = 0, Up = 1, Down = 2 },
   PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 },
   SpellBookSpellBank = { Player = 0, Pet = 1 },
   SpellBookItemType = { None = 0, Spell = 1, FutureSpell = 2, PetAction = 3, Flyout = 4 },
-  StatusBarInterpolation = { Immediate = 0, Smooth = 1 },
+  -- SimpleStatusBarConstantsDocumentation.lua (both clients).
+  StatusBarInterpolation = { Immediate = 0, ExponentialEaseOut = 1 },
   -- A subset of Enum.TooltipDataLineType with the client's values (TooltipInfoSharedDocumentation.lua).
   TooltipDataLineType = { None = 0, Blank = 1, UnitName = 2, UnitThreat = 7, QuestObjective = 8, QuestTitle = 17, QuestPlayer = 18 },
   -- A subset of Enum.TooltipDataType with the client's values (TooltipInfoSharedDocumentation.lua): UnitAura is what
@@ -300,17 +312,49 @@ function StaticPopupSpecial_Show(frame) frame:Show() end
 function ShowUIPanel(frame) if frame and frame.Show and not frame:IsShown() then frame:Show() end end
 function HideUIPanel(frame) if frame and frame.Hide then frame:Hide() end end
 
--- EventRegistry: callbacks by event name, which world.trigger(event, ...) runs.
+-- EventRegistry: callbacks by event name, kept as Blizzard_SharedXMLBase/CallbackRegistry.lua's
+-- CallbackRegistryMixin keeps them (both clients): one callback per owner per event, a generated number owner for
+-- nil, a number owner refused, extra arguments kept for the call, and the owner returned.
 world.callbacks = {}
+world.callbackOwners = 0
+
+-- The owner a registration is kept under: the one given, or the next number for nil (a number owner raises).
+local function callbackOwner(owner)
+  if type(owner) == "number" then error("CallbackRegistryMixin:RegisterCallback 'owner' as number is reserved internally.", 3) end
+  if owner ~= nil then return owner end
+  world.callbackOwners = world.callbackOwners + 1
+  return world.callbackOwners
+end
+
+-- Calls a callback with its owner, the arguments kept at registration, then the event's own (GenerateClosure's
+-- pass-through, Blizzard_SharedXMLBase/FunctionUtil.lua).
+local function runCallback(cb, ...)
+  local args, extra = { cb.owner }, stub.pack(...)
+  for i = 1, cb.args.n do args[i + 1] = cb.args[i] end
+  for i = 1, extra.n do args[cb.args.n + 1 + i] = extra[i] end
+  return cb.fn(stub.unpack(args, 1, cb.args.n + 1 + extra.n))
+end
+
 EventRegistry = {
-  -- Keeps a callback for an event.
-  RegisterCallback = function(_, event, fn, owner)
+  -- Keeps fn for owner on an event, in place of that owner's earlier one; returns the owner.
+  RegisterCallback = function(self, event, fn, owner, ...)
+    owner = callbackOwner(owner)
+    self:UnregisterCallback(event, owner)
     world.callbacks[event] = world.callbacks[event] or {}
-    table.insert(world.callbacks[event], { fn = fn, owner = owner })
+    table.insert(world.callbacks[event], { fn = fn, owner = owner, args = stub.pack(...) })
+    return owner
   end,
-  -- Runs the callbacks for an event.
+  -- Drops the owner's callback for an event; the owner is required.
+  UnregisterCallback = function(_, event, owner)
+    if owner == nil then error("CallbackRegistryMixin:UnregisterCallback 'owner' is required.", 2) end
+    local list = world.callbacks[event] or {}
+    for i = #list, 1, -1 do if list[i].owner == owner then table.remove(list, i) end end
+  end,
+  -- Runs the callbacks for an event: those kept with extra arguments (the client's closures) first, then the rest.
   TriggerEvent = function(_, event, ...)
-    for _, cb in ipairs(world.callbacks[event] or {}) do cb.fn(cb.owner, ...) end
+    local list = { stub.unpack(world.callbacks[event] or {}) }
+    for _, cb in ipairs(list) do if cb.args.n > 0 then runCallback(cb, ...) end end
+    for _, cb in ipairs(list) do if cb.args.n == 0 then runCallback(cb, ...) end end
   end,
 }
 
@@ -407,10 +451,20 @@ function C_Timer.NewTicker(period, fn, iterations)
     if t.cancelled then return end
     fn(t)
     if t.left then t.left = t.left - 1 end
-    if not t.left or t.left > 0 then after(period, tick) end
+    if not t.left or t.left > 0 then after(period, tick).ticker = t end
   end
-  after(period, tick)
+  after(period, tick).ticker = t
   return t
+end
+
+-- How many tickers are still running: scheduled, not cancelled (the lifecycle footprint counts them; a pending
+-- one-shot timer is not counted, since it ends by itself).
+function world.runningTickers()
+  local n = 0
+  for _, entry in ipairs(world.timers) do
+    if entry.ticker and not entry.ticker.cancelled and not entry.done then n = n + 1 end
+  end
+  return n
 end
 
 local rawUpdate = stub.update
@@ -468,24 +522,26 @@ function UnregisterAttributeDriver(frame, attr) if frame.__drivers then frame.__
 
 -- Whether an addon's SecureActionButtonTemplate button runs its action on this click phase, as
 -- SecureActionButton_OnClick decides (SecureTemplates.lua): an addon's OnClick has no isKeyPress or
--- isSecureAction, so the useOnKeyDown attribute, else the ActionButtonUseKeyDown CVar (on, "1", unless
--- world.cvars says otherwise), or pressAndHoldAction picks the down phase; the other phase does nothing.
+-- isSecureAction, so the useOnKeyDown attribute, else GetCVarBool("ActionButtonUseKeyDown") as
+-- SecureActionButton_ShouldUseOnKeyDown reads it, or pressAndHoldAction picks the down phase; the other phase does nothing.
 function stub.secureActs(frame, button, down)
   -- A secure button that never called RegisterForClicks acts on no phase here (stricter than the default).
   if not (frame.__clicks and stub.clickRegistered(frame, button, down == true)) then return false end
   local onDown = frame:GetAttribute("useOnKeyDown")
-  if onDown == nil then onDown = world.cvars.ActionButtonUseKeyDown ~= "0" end
+  if onDown == nil then onDown = GetCVarBool("ActionButtonUseKeyDown") end
   onDown = onDown or frame:GetAttribute("pressAndHoldAction")
   return (down == true) == (not not onDown)
 end
 
 -- Unit watches: a watched frame shows while its unit exists (re-checked on unit changes).
 world.watched = {}
--- Shows a frame while its unit exists (the unit comes from its attribute or .unit).
+-- Shows a frame while its unit exists. The unit is the frame's "unit" attribute only, never a .unit field:
+-- Blizzard_RestrictedAddOnEnvironment/SecureStateDriver.lua's unit watch reads SecureButton_GetUnit(frame), which
+-- reads the attribute (Blizzard_FrameXML/SecureTemplates.lua:201-212), on both clients.
 function RegisterUnitWatch(frame)
   frame.__watched = true
   world.watched[frame] = true
-  frame:SetShown(UnitExists(frame:GetAttribute("unit") or frame.unit))
+  frame:SetShown(UnitExists(frame:GetAttribute("unit")) == true)
 end
 -- Stops watching a frame.
 function UnregisterUnitWatch(frame)
@@ -496,7 +552,7 @@ end
 -- Shows or hides every watched frame by whether its unit exists now.
 local function refreshWatches()
   for frame in pairs(world.watched) do
-    frame:SetShown(UnitExists(frame:GetAttribute("unit") or frame.unit) == true)
+    frame:SetShown(UnitExists(frame:GetAttribute("unit")) == true)
   end
 end
 
@@ -571,19 +627,36 @@ C_CurveUtil = {
   end,
 }
 
--- Numeric rule formatters: a formatter object whose Format rounds a number.
+-- A numeric rule formatter, as Blizzard_APIDocumentationGenerated/StringUtilDocumentation.lua's
+-- C_StringUtil.CreateNumericRuleFormatter makes it (no argument; both clients): an object holding breakpoints, with
+-- NumericRuleFormatterAPIDocumentation.lua's methods only. The client formats with it on its own side (a duration
+-- text binding), so Lua never calls a Format on it.
+local numericRuleFormatter = {}
+numericRuleFormatter.__index = numericRuleFormatter
+
+-- A new formatter with no breakpoints.
+local function newNumericRuleFormatter()
+  return setmetatable({ breakpoints = {} }, numericRuleFormatter)
+end
+
+-- Adds one breakpoint.
+function numericRuleFormatter:AddBreakpoint(b) self.breakpoints[#self.breakpoints + 1] = b end
+-- Drops every breakpoint.
+function numericRuleFormatter:ClearBreakpoints() self.breakpoints = {} end
+-- Replaces the breakpoints with a copy of a list.
+function numericRuleFormatter:SetBreakpoints(list) self.breakpoints = { unpack(list) } end
+-- A copy of the breakpoints.
+function numericRuleFormatter:GetBreakpoints() return { unpack(self.breakpoints) } end
+-- A new formatter with the same breakpoints.
+function numericRuleFormatter:Copy()
+  local copy = newNumericRuleFormatter()
+  copy:SetBreakpoints(self.breakpoints)
+  return copy
+end
+
 C_StringUtil = {
-  -- A formatter object for a rounding rule.
-  CreateNumericRuleFormatter = function(rounding)
-    local f = { rounding = rounding }
-    -- A number rounded by the rule, as text; a secret stays secret.
-    function f:Format(n)
-      if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and self:Format(v)) end
-      local r = rounding == Enum.NumericRuleFormatRounding.Up and math.ceil(n) or math.floor(n)
-      return tostring(r)
-    end
-    return f
-  end,
+  -- A formatter object (newNumericRuleFormatter).
+  CreateNumericRuleFormatter = function() return newNumericRuleFormatter() end,
   -- A number as whole-number text (rounded down), "" for zero; a secret stays secret.
   TruncateWhenZero = function(n)
     if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and C_StringUtil.TruncateWhenZero(v)) end
@@ -645,6 +718,14 @@ local function uf(unit, field)
   return u and u[field]
 end
 
+-- A unit's yes/no field: a secret passes through as it is, so the harness never compares it and the addon sees the
+-- client's hidden answer; anything else is true only when it is true.
+local function unitFlag(unit, field)
+  local v = uf(unit, field)
+  if madeSecret(v) then return v end
+  return v == true
+end
+
 -- The unit API, read from world.units.
 function UnitExists(unit) return resolveUnit(unit) ~= nil end
 function UnitName(unit) local u = resolveUnit(unit) return u and u.name, u and u.realm end
@@ -653,25 +734,28 @@ function UnitGUID(unit) local u = resolveUnit(unit) return u and (u.guid or ("TE
 function UnitHealth(unit) return uf(unit, "hp") or 0 end
 function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
 -- The number inside a value that may be secret (the harness looks; the addon never does).
-local function inside(v) return issecretvalue(v) and rawget(v, "n") or v end
+local function inside(v) return worldIsSecret(v) and rawget(v, "n") or v end
 -- Max health minus health, secret when either is (SecretReturns in Forever's docs).
 function UnitHealthMissing(unit)
   local hp, max = UnitHealth(unit), UnitHealthMax(unit)
-  if not (issecretvalue(hp) or issecretvalue(max)) then return max - hp end
+  if not (worldIsSecret(hp) or worldIsSecret(max)) then return max - hp end
   local h, m = inside(hp), inside(max)
   return world.secret(type(h) == "number" and type(m) == "number" and m - h or nil)
 end
 
 -- A unit's health as a percent (0 to 100); with a curve, what the curve gives at the fraction (0 to 1), as the client
--- evaluates it. With hidden health, a color comes back with hidden components.
+-- evaluates it. With hidden health the answer is hidden: a secret number (the percent, or a number curve's result),
+-- or a color with hidden components. UnitHealthPercent is SecretReturns on both clients
+-- (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
 function UnitHealthPercent(unit, _, curve)
   local u = resolveUnit(unit)
   local hp, max = u and inside(u.hp), u and inside(u.maxhp)
   local fraction = max and max > 0 and hp / max or 0
-  if type(curve) ~= "table" or not curve.Evaluate then return fraction * 100 end
-  local c = curve:Evaluate(fraction)
-  if not (u and (issecretvalue(u.hp) or issecretvalue(u.maxhp))) then return c end
-  return CreateColor(world.secret(c.r), world.secret(c.g), world.secret(c.b), world.secret(c.a))
+  local result = fraction * 100
+  if type(curve) == "table" and curve.Evaluate then result = curve:Evaluate(fraction) end
+  if not (u and (worldIsSecret(u.hp) or worldIsSecret(u.maxhp))) then return result end
+  if type(result) == "number" then return world.secret(result) end
+  return CreateColor(world.secret(result.r), world.secret(result.g), world.secret(result.b), world.secret(result.a))
 end
 -- A unit's power: its main power, combo points, or another type from unit.powers.
 function UnitPower(unit, kind)
@@ -702,9 +786,9 @@ function UnitIsDeadOrGhost(unit) return uf(unit, "dead") == true or uf(unit, "gh
 function UnitIsGhost(unit) return uf(unit, "ghost") == true end
 function UnitIsFeignDeath(unit) return uf(unit, "feign") == true end
 function UnitIsConnected(unit) local u = resolveUnit(unit) return u ~= nil and u.connected ~= false end
-function UnitIsAFK(unit) return uf(unit, "afk") == true end
+-- Away: SecretInChatMessagingLockdown on both clients (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
+function UnitIsAFK(unit) return unitFlag(unit, "afk") end
 function UnitOnTaxi(unit) return uf(unit, "taxi") == true end
-function UnitInRange(unit) local u = resolveUnit(unit) return u ~= nil and u.inRange ~= false, u ~= nil end
 function UnitIsTapDenied(unit) return uf(unit, "tapDenied") == true end
 function UnitAffectingCombat(unit) return uf(unit, "inCombat") == true end
 function UnitClassification(unit) return uf(unit, "classification") or "normal" end
@@ -714,6 +798,13 @@ function UnitHasIncomingResurrection(unit) return uf(unit, "incomingRes") == tru
 function UnitXP(unit) return uf(unit, "xp") or 0 end
 function UnitXPMax(unit) return uf(unit, "xpmax") or 0 end
 function GetXPExhaustion() return world.units.player.rested end
+-- Whether a unit is in range, and whether range was checked. A secret unit.inRange passes through with a secret
+-- checked flag: UnitInRange is SecretReturns on both clients (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
+function UnitInRange(unit)
+  local u = resolveUnit(unit)
+  if u and madeSecret(u.inRange) then return u.inRange, world.secret(true) end
+  return u ~= nil and u.inRange ~= false, u ~= nil
+end
 -- A unit's guild, from its guild, guildRank, guildRankIndex and guildRealm fields: guildName, guildRankName,
 -- guildRankIndex (0 is the guild master) and the guild's realm (nil for one of your own realm); nothing for a unit
 -- without a guild. The client's docs leave GetGuildInfo out: the forever branch's InstanceDifficulty.lua and
@@ -749,11 +840,25 @@ function GetMaxPlayerLevel() return world.maxLevel end
 GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return world.units.player.level >= world.maxLevel end }
 function GetComboPoints(unit) return uf(unit, "combo") or 0 end
 
--- Whether two tokens name the same unit.
-function UnitIsUnit(a, b)
-  local ua, ub = resolveUnit(a), resolveUnit(b)
-  return ua ~= nil and ua == ub
+-- Whether two tokens may be compared. While unit comparison is restricted (world.unitComparisonSecret) only a pair
+-- that holds "player" or "target" may, the example RequiresComparableUnitTokens gives
+-- (Blizzard_APIDocumentationGenerated/SecretPredicatesDocumentation.lua, both clients).
+local function unitsComparable(a, b)
+  return not world.unitComparisonSecret or a == "player" or a == "target" or b == "player" or b == "target"
 end
+
+-- Whether two tokens name the same unit. UnitIsUnit is RequiresComparableUnitTokens (FailureMode ReturnNothing) and
+-- SecretWhenUnitComparisonRestricted on both clients (UnitDocumentation.lua): an off-limits pair answers nothing, and
+-- a restricted comparison answers with a secret.
+function UnitIsUnit(a, b)
+  if not unitsComparable(a, b) then return end
+  local ua, ub = resolveUnit(a), resolveUnit(b)
+  local same = ua ~= nil and ua == ub
+  if world.unitComparisonSecret then return world.secret(same) end
+  return same
+end
+-- C_Secrets.CanCompareUnitTokens: whether UnitIsUnit may compare the pair (SecretPredicateAPIDocumentation.lua).
+C_Secrets.CanCompareUnitTokens = unitsComparable
 
 -- Whether the client shows only a widget on a unit's nameplate (unit.widgetsOnly), as it does for
 -- some friendly NPCs (UnitDocumentation.lua, UnitNameplateShowsWidgetsOnly, both clients).
@@ -769,12 +874,34 @@ function SetUnitCursorTexture(texture, unit)
 end
 
 -- Threat: a unit's status against its target (0-3), from unit.threat.
-function UnitThreatSituation(unit) return uf(unit, "threat") end
+-- Threat answers as secrets while threat is hidden (world.threatSecret) or the stored value is a secret:
+-- Blizzard_APIDocumentationGenerated/UnitDocumentation.lua (both clients) tags UnitThreatSituation
+-- SecretWhenUnitThreatStateRestricted and UnitDetailedThreatSituation SecretWhenUnitThreatValuesRestricted. The
+-- stored values are read through inside(), so the harness never compares a secret itself.
+local function threatHidden(u)
+  return world.threatSecret or madeSecret(u.threat) or madeSecret(u.threatPct)
+end
+
+-- Each value as a secret when `hide`, else as it is.
+local function threatValues(hide, ...)
+  if not hide then return ... end
+  local out = stub.pack(...)
+  for i = 1, out.n do out[i] = world.secret(out[i]) end
+  return stub.unpack(out, 1, out.n)
+end
+
+-- The unit's threat status (0 to 3), or nil.
+function UnitThreatSituation(unit)
+  local u = resolveUnit(unit)
+  if not u or u.threat == nil then return nil end
+  return threatValues(threatHidden(u), inside(u.threat))
+end
 -- isTanking, status, scaled percent, raw percent, threat value.
 function UnitDetailedThreatSituation(unit)
   local u = resolveUnit(unit)
   if not u or u.threat == nil then return nil end
-  return u.threat >= 2, u.threat, u.threatPct or 0, u.threatPct or 0, 0
+  local status, pct = inside(u.threat), inside(u.threatPct) or 0
+  return threatValues(threatHidden(u), status >= 2, status, pct, pct, 0)
 end
 
 -- Heal prediction, absorbs and heal calculators.
@@ -833,16 +960,23 @@ C_Reputation = { GetWatchedFactionData = function() return world.watchedFaction 
 
 -- Casting: a unit's cast or channel from unit.cast = { name, icon, startMs, endMs, channel, interruptible, spellId }.
 -- An unset interruptible means the cast can be interrupted; only interruptible = false sets notInterruptible.
+-- A secret interruptible gives a secret notInterruptible: both reads are SecretWhenUnitSpellCastRestricted and
+-- notInterruptible is not among their NeverSecret returns (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
+local function notInterruptible(c)
+  if madeSecret(c.interruptible) then return world.secret(rawget(c.interruptible, "n") == false) end
+  return c.interruptible == false
+end
+-- A cast: name, text, icon, startMs, endMs, isTradeSkill, castID, notInterruptible, spellId.
 function UnitCastingInfo(unit)
   local c = uf(unit, "cast")
   if not c or c.channel then return nil end
-  return c.name, c.name, c.icon, c.startMs, c.endMs, false, nil, c.interruptible == false, c.spellId
+  return c.name, c.name, c.icon, c.startMs, c.endMs, false, nil, notInterruptible(c), c.spellId
 end
 -- A channel: name, text, icon, startMs, endMs, isTradeSkill, notInterruptible, spellId.
 function UnitChannelInfo(unit)
   local c = uf(unit, "cast")
   if not c or not c.channel then return nil end
-  return c.name, c.name, c.icon, c.startMs, c.endMs, false, c.interruptible == false, c.spellId
+  return c.name, c.name, c.icon, c.startMs, c.endMs, false, notInterruptible(c), c.spellId
 end
 
 -- The group ---------------------------------------------------------------------------------
@@ -867,8 +1001,9 @@ function GetNumGroupMembers()
   return n > 0 and n + 1 or 0
 end
 -- Leader, assistant, assignments, ready checks and raid target marks.
-function UnitIsGroupLeader(unit) return uf(unit, "leader") == true end
-function UnitIsGroupAssistant(unit) return uf(unit, "assistant") == true end
+-- Both are SecretWhenUnitIdentityRestricted on both clients (UnitDocumentation.lua): a secret field passes through.
+function UnitIsGroupLeader(unit) return unitFlag(unit, "leader") end
+function UnitIsGroupAssistant(unit) return unitFlag(unit, "assistant") end
 function IsEveryoneAssistant() return world.everyoneAssistant == true end
 function GetPartyAssignment(role, unit) local u = resolveUnit(unit) return u ~= nil and u.assignment == role end
 function GetReadyCheckStatus(unit) return uf(unit, "readyCheck") end
@@ -999,17 +1134,34 @@ local function filtered(unit, filter)
 end
 world.auras = filtered
 
+-- A duration object may hold hidden times: HasSecretValues says so (ReturnsNeverSecret), and the getters then answer
+-- with secrets. Blizzard_APIDocumentationGenerated/LuaDurationObjectAPIDocumentation.lua tags only the Evaluate* and
+-- Format* calls, so secret getters are the stricter guess, not a documented rule.
+
+-- The time inside a value for the object's sums: 0 for a secret that hides nothing (a test's bare stand-in).
+local function timeInside(v)
+  local n = inside(v)
+  if issecretvalue(n) then return 0 end
+  return n or 0
+end
+
+-- A getter's answer: a secret while the object holds hidden times, else as it is.
+local function durationAnswer(d, v)
+  if d:HasSecretValues() then return world.secret(v) end
+  return v
+end
+
 -- A duration object for an aura or cast: the client's "secret-safe" timer. It is a
 -- userdata in the client (LuaDurationObject, ObjectType "Userdata"), so it is one here.
 local function durationObject(start, duration)
   local d = { start = start, duration = duration }
   -- Start, total, end and remaining time; IsZero and HasSecretValues as the client's.
-  function d:GetStartTime() return self.start end
-  function d:GetTotalDuration() return self.duration end
-  function d:GetEndTime() return self.start + self.duration end
-  function d:GetRemainingDuration() return math.max(0, self.start + self.duration - stub.now) end
-  function d:IsZero() return self.duration == 0 end
-  function d:HasSecretValues() return issecretvalue(self.duration) end
+  function d:GetStartTime() return durationAnswer(self, timeInside(self.start)) end
+  function d:GetTotalDuration() return durationAnswer(self, timeInside(self.duration)) end
+  function d:GetEndTime() return durationAnswer(self, timeInside(self.start) + timeInside(self.duration)) end
+  function d:GetRemainingDuration() return durationAnswer(self, math.max(0, timeInside(self.start) + timeInside(self.duration) - stub.now)) end
+  function d:IsZero() return inside(self.duration) == 0 end
+  function d:HasSecretValues() return issecretvalue(self.start) or issecretvalue(self.duration) end
   return __wfgUserdata(d)
 end
 world.durationObject = durationObject
@@ -1042,10 +1194,15 @@ C_UnitAuras = {
     return curve and curve:Evaluate(kind) or world.dispelColors[kind]
   end,
   -- The duration object of an aura.
+  -- An aura with hidden times gives an object that holds them hidden (UnitAuraDocumentation.lua: the call itself
+  -- carries no secret tag), worked out from the values inside so the harness never does sums on a secret.
   GetAuraDuration = function(unit, id)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
     if not aura then return nil end
-    return durationObject((aura.expirationTime or stub.now) - (aura.duration or 0), aura.duration or 0)
+    local expires, duration = aura.expirationTime or stub.now, aura.duration or 0
+    local start = timeInside(expires) - timeInside(duration)
+    if issecretvalue(expires) or issecretvalue(duration) then return durationObject(world.secret(start), duration) end
+    return durationObject(start, duration)
   end,
 }
 world.dispelColors = { Magic = CreateColor(0.2, 0.6, 1), Curse = CreateColor(0.6, 0, 1), Disease = CreateColor(0.6, 0.4, 0), Poison = CreateColor(0, 0.6, 0), None = CreateColor(0.8, 0, 0) }
@@ -1333,7 +1490,8 @@ C_SwingTimer = {
 -- Items, bags and money ------------------------------------------------------------------------
 -- world.bags[bag] = { [slot] = item }, item = { itemID, name, icon, count,
 -- quality, link, sellPrice, junk }. world.items[itemID] gives GetItemInfo
--- (and GetItemInfoInstant: classID, subClassID; quest = true for a quest item).
+-- (and GetItemInfoInstant: classID, subClassID, which GetItemInfo gives too; quest = true for a quest item; reagent =
+-- true for a crafting reagent).
 
 world.money = 123456
 world.bags = { [0] = {}, {}, {}, {}, {} }
@@ -1357,12 +1515,14 @@ end
 world.item = itemOf
 
 C_Item = C_Item or {}
--- GetItemInfo: name, link, quality, level, minLevel, type, subType, stackCount, equipLoc, icon, sellPrice.
+-- GetItemInfo: name, link, quality, level, minLevel, type, subType, stackCount, equipLoc, icon, sellPrice, classID,
+-- subclassID, bindType, expansionID, setID, isCraftingReagent (Blizzard_APIDocumentationGenerated/ItemDocumentation.lua's
+-- order, both clients); the class and subclass are the item's own, as GetItemInfoInstant gives them.
 function C_Item.GetItemInfo(key)
   local id, item = itemOf(key)
   if not item then return nil end
   local link = "|cffffffff|Hitem:" .. id .. "|h[" .. item.name .. "]|h|r"
-  return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, 15, 0, item.bind or 0, 0, 0, item.quality == 0
+  return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, item.classID or 15, item.subClassID or 0, item.bind or 0, 0, 0, item.reagent == true
 end
 -- itemID, type, subType, equipLoc, icon, classID, subClassID of a known item (nothing for one the client doesn't know).
 function C_Item.GetItemInfoInstant(key)
@@ -2511,22 +2671,26 @@ blizzardFrames()
 -- The client's default tooltip anchor: owned by the frame, placed by the game.
 function GameTooltip_SetDefaultAnchor(tooltip, parent) tooltip:SetOwner(parent, "ANCHOR_NONE") end
 
--- world.secretReads: names of client reads that answer with a secret while on, as the client does
--- in instanced combat (a test sets world.secretReads.UnitOnTaxi = true). Off by default.
+-- world.secretReads: names of client reads that answer with a secret while on (a test sets
+-- world.secretReads.UnitOnTaxi = true). Off by default. Blizzard_APIDocumentationGenerated (UnitDocumentation.lua,
+-- MapDocumentation.lua, QuestLogDocumentation.lua, both clients) tags none of the six with SecretReturns or a
+-- SecretWhen* rule: the switch is a worst case for code that should guard them, not the client's documented model.
 world.secretReads = {}
 
--- Wraps holder[key] so it answers world.secret(0) while world.secretReads[name] is on.
-local function secretRead(name, holder, key)
+-- Wraps holder[key] so it answers world.secret(hidden) while world.secretReads[name] is on: a hidden value of the
+-- read's own type, so a truth test on a yes/no read is refused as the client refuses one on a hidden boolean.
+local function secretRead(name, holder, key, hidden)
   local real = holder[key]
   holder[key] = function(...)
-    if world.secretReads[name] then return world.secret(0) end
+    if world.secretReads[name] then return world.secret(hidden) end
     return real(...)
   end
 end
 
-for _, name in ipairs({ "UnitOnTaxi", "UnitLevel", "UnitXP", "UnitIsDeadOrGhost" }) do secretRead(name, _G, name) end
-secretRead("C_Map.GetPlayerMapPosition", C_Map, "GetPlayerMapPosition")
-secretRead("C_QuestLog.GetDistanceSqToQuest", C_QuestLog, "GetDistanceSqToQuest")
+for _, name in ipairs({ "UnitLevel", "UnitXP" }) do secretRead(name, _G, name, 0) end
+for _, name in ipairs({ "UnitOnTaxi", "UnitIsDeadOrGhost" }) do secretRead(name, _G, name, false) end
+secretRead("C_Map.GetPlayerMapPosition", C_Map, "GetPlayerMapPosition", 0)
+secretRead("C_QuestLog.GetDistanceSqToQuest", C_QuestLog, "GetDistanceSqToQuest", 0)
 
 -- Resets the world to its defaults (units, actions, bags, quests) without touching frames.
 function world.reset()

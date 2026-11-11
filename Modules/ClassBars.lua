@@ -48,12 +48,13 @@ local function totemCell(bar, slot, size)
   return c
 end
 
--- The totem row, just above the player frame, over its tab where the look gives it one (UF.Crown); the chat window
--- reaches up beside it, so under it the cells covered the chat's tiles.
+-- The totem row, just above the player frame, over its tab where the look gives it one (UF.Ride: anchored to the
+-- frame itself, since its cells are secure and the tab is resized in a fight); the chat window reaches up beside it,
+-- so under it the cells covered the chat's tiles.
 local function buildTotems(player, size)
   CB.totems = CreateFrame("Frame", nil, player)
   CB.totems:SetSize(CB.SLOTS * (size + 3), size)
-  CB.totems:SetPoint("BOTTOMLEFT", UF.Crown(player), "TOPLEFT", 0, CB.ROW_OFFSET)
+  UF.Ride(player, CB.totems, CB.ROW_OFFSET)
   UF.RaiseDeckReach("ClassBars", "top", CB.ROW_OFFSET + size)
   CB.totemCells = {}
   for slot = 1, CB.SLOTS do CB.totemCells[slot] = totemCell(CB.totems, slot, size) end

@@ -746,3 +746,40 @@ it("keys backup: a character on an account that never used key setup writes no k
   addon.fire("PLAYER_LOGOUT");
   expect(addon.eval("return { VanguardCharDB.keyBackup == nil, VanguardDB.keyStamp == nil }")).toEqual([true, true]);
 });
+
+it("H44-10-51 Apply given the plan a list showed changes nothing when the bars changed since, and switches the key set back", () => {
+  const addon = rogue();
+  ka(addon, `__shown = KA.Signature(KA.Plan(${PRESET}))`);
+  addon.eval('__wfgWorld.setAction(62, { type = "macro", id = 9 })');
+  const before = state(addon);
+  addon.clearChat();
+  expect(ka(addon, `return KA.Apply(${PRESET}, Enum.BindingSet.Character, __shown)`)).toBe(false);
+  expect(chatHas(addon, /Your bars or keys changed since this list was made, so nothing was changed\. Check the list and press Apply again\.$/)).toBe(true);
+  expect(state(addon), "nothing placed or bound, and the account's key set in use again").toEqual(before);
+  expect(addon.eval("return VanguardCharDB.slotRestore == nil or next(VanguardCharDB.slotRestore) == nil"), "no record").toBe(true);
+});
+
+it("H44-10-51 Apply given the plan a list showed applies it while it still holds, and is refused in combat first", () => {
+  const addon = rogue();
+  const before = state(addon);
+  ka(addon, `__shown = KA.Signature(KA.Plan(${PRESET}))`);
+  setCombat(addon, true);
+  expect(ka(addon, `return KA.Apply(${PRESET}, nil, __shown)`)).toBe(false);
+  expect([state(addon), chatHas(addon, /Keys can't change in combat\. Try again after the fight\.$/)], "a fight refuses it before any plan").toEqual([before, true]);
+  setCombat(addon, false);
+  expect(ka(addon, `return KA.Apply(${PRESET}, nil, __shown)`)).toBe(true);
+  expect([keys(addon, ["F", "2"]), slots(addon, [61, 2, 53])]).toEqual([["MULTIACTIONBAR1BUTTON1", "ACTIONBUTTON2"], [1766, 1776, 6603]]);
+});
+
+it("H44-10-1 Apply puts the top rank over a lower rank on the key's own button, and putting back brings the lower rank back", () => {
+  const addon = rogue();
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank });
+  addon.eval("__wfgWorld.setAction(1, { id = 116 }) __wfgWorld.setAction(62, { id = 205 })");
+  const entries = `{ { key = "1", spell = 837, slot = 1 }, { key = "F", spell = 837, slot = 61 } }`;
+  expect(ka(addon, `local r = KA.Plan(${entries}) return { r[1].kind, r[1].over, r[1].replaced, r[2].kind, r[2].slot }`),
+    "the own button's rank gives way; a rank on another button is bound as it is").toEqual(["place", 116, true, "bind", 62]);
+  expect(ka(addon, `return KA.Apply(${entries})`)).toBe(true);
+  expect([slots(addon, [1, 62, 53]), keys(addon, ["1"])], "nothing moved to bar 3").toEqual([[837, 205, 0], ["ACTIONBUTTON1"]]);
+  ka(addon, "KA.PutBackAll()");
+  expect(slots(addon, [1])).toEqual([116]);
+});

@@ -8,10 +8,11 @@
 
 [files]
 # Vendored libraries (kept as upstream wrote them), generated media and the
-# art sources are not ours to spell-check; the lock file is generated too.
+# art sources are not ours to spell-check; the lock file is generated too. The
+# Lua 5.1.5 sources under tools/lua51/ are lua.org's, checked by hash.
 # Locales/ is ten other languages, which an English spell checker can only misread; so are the
 # chat filter's and group board's word lists per locale (Core/MatchWords.lua).
-extend-exclude = ["Libs/", "Media/", "art/", "Locales/", "Core/MatchWords.lua", "package-lock.json"]
+extend-exclude = ["Libs/", "tools/lua51/lua-5.1.5/", "Media/", "art/", "Locales/", "Core/MatchWords.lua", "package-lock.json"]
 
 [default]
 # WoW's texture escape, |T<path>:<size>|t: the path is not prose. The TOC's

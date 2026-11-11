@@ -13,7 +13,8 @@
 --    taint in game (frame.vgSkinned = true). Keep such state in a weak-keyed
 --    side table instead. Replacing a game widget's script (SetScript) is
 --    recorded the same way: hook it with HookScript.
---  * Combat lockdown: while in combat (world.combat(true)), addon code that
+--  * Combat lockdown: while in combat (world.combat(true)), a run with addon code
+--    in it (the addon's own line, or game or test code the addon called) that
 --    calls a protected method (Show, Hide, SetPoint, SetSize, SetAttribute...)
 --    on a protected frame is blocked as the client blocks it: nothing happens
 --    and ADDON_ACTION_BLOCKED fires. A frame is protected when it is made from
@@ -188,7 +189,12 @@ for _, name in ipairs({ "CreateTexture", "CreateFontString" }) do
 end
 
 -- Regions the stub makes on first use belong to their frame's owner.
-local LAZY = { SetStatusBarTexture = "__barTexture", GetCountdownFontString = "__countdown", SetCheckedTexture = "__checkedTexture", SetThumbTexture = "__thumbTexture" }
+local LAZY = {
+  SetStatusBarTexture = "__barTexture", GetCountdownFontString = "__countdown", SetCheckedTexture = "__checkedTexture",
+  SetThumbTexture = "__thumbTexture", SetNormalTexture = "__normalTexture", SetPushedTexture = "__pushedTexture",
+  SetDisabledTexture = "__disabledTexture", SetHighlightTexture = "__highlightTexture",
+  SetDisabledCheckedTexture = "__disabledCheckedTexture",
+}
 
 -- After the method, the region it made is the game's when its frame is.
 local function lazyRegion(field)
@@ -236,8 +242,15 @@ local PROTECTED_CALLS = {
 -- those templates and a test makes these frames by name as stand-ins, so the name decides; whatever
 -- holds one (a bar, a container) is protected through it.
 -- A nameplate's UnitFrame is left out: the client lets addons hide and move it in a fight.
+-- Also, on both clients: the raid window's RaidGroupButton1..40 (Blizzard_RaidUI/Mainline/Blizzard_RaidUI.xml:75
+-- RaidGroupButtonTemplate inherits SecureUnitButtonTemplate, :769ff), the target's and focus's target-of-target
+-- (Blizzard_UnitFrame/Mainline/TargetFrame.lua CreateTargetofTarget names it <frame>ToT, from TargetFrame.xml's
+-- TargetofTargetFrameTemplate, a SecureUnitButtonTemplate), and the spell flyout and its buttons
+-- (Blizzard_ActionBar/Shared/SpellFlyout.xml: SecureFrameTemplate). ^PartyMemberFrame%d$ matches no 12.1 frame
+-- (Blizzard_UnitFrame's PartyFrame.lua makes its members from a pool, unnamed); it stays for older stand-ins.
 local GAME_PROTECTED = {
-  "^PlayerFrame$", "^TargetFrame$", "^FocusFrame$", "^PetFrame$",
+  "^PlayerFrame$", "^TargetFrame$", "^FocusFrame$", "^PetFrame$", "^TargetFrameToT$", "^FocusFrameToT$",
+  "^RaidGroupButton%d+$", "^SpellFlyout$", "^SpellFlyoutPopupButton%d+$",
   "^PartyMemberFrame%d$", "^PartyFrame$", "^Boss%dTargetFrame$", "^ArenaEnemyMatchFrame%d$", "^ArenaEnemyFrame%d$",
   "^CompactRaidFrame%d+$", "^CompactPartyFrameMember%d$", "^CompactRaidGroup%dMember%d$",
   "^ActionButton%d+$", "^MultiBar%w+Button%d+$", "^PetActionButton%d+$", "^StanceButton%d+$", "^PossessButton%d$",
@@ -282,11 +295,25 @@ function methods:IsProtected()
   return isProtected(self, 0), protectedItself(self)
 end
 
--- True (and recorded) when addon code calls a protected method on a protected
--- frame in combat: the client blocks it and fires ADDON_ACTION_BLOCKED.
+-- The addon's code nearest the top of the stack, or nil: a run with any of it is tainted,
+-- whatever game or test code it called on the way. The client judges the execution, not the
+-- line that makes the call (Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua
+-- CheckProtectedFunctionsAllowed: `InCombatLockdown() and not issecure()`, both clients).
+local function addonOnStack()
+  local level = 3
+  local info = debug.getinfo(level, "Sl")
+  while info and not byAddon(info) do
+    level = level + 1
+    info = debug.getinfo(level, "Sl")
+  end
+  return info
+end
+
+-- True (and recorded) when a run with addon code in it calls a protected method on a
+-- protected frame in combat: the client blocks it and fires ADDON_ACTION_BLOCKED.
 local function blocked(w, name)
   if not stub.inCombat then return false end
-  local at = callerOf(2)
+  local at = addonOnStack()
   if not byAddon(at) or not isProtected(w, 0) then return false end
   violate(string.format("blocked in combat: %s called %s on the protected frame %s", where(at), name, label(w)))
   stub.fire("ADDON_ACTION_BLOCKED", "Vanguard", name .. "()")
@@ -318,16 +345,25 @@ for _, name in ipairs(PROTECTED_CALLS) do
   rewrap(name, lockable(name))
 end
 
--- The addon's code nearest the top of the stack, or nil: a run with any of it is tainted,
--- whatever game or test code it called on the way.
-local function addonOnStack()
-  local level = 3
-  local info = debug.getinfo(level, "Sl")
-  while info and not byAddon(info) do
-    level = level + 1
-    info = debug.getinfo(level, "Sl")
+-- Protected methods whose name another kind also carries unprotected (a ScrollingMessageFrame's Clear is a plain
+-- method): blocked on that kind only. Blizzard_APIDocumentationGenerated/FrameAPICooldownDocumentation.lua marks
+-- these four IsProtectedFunction on both clients.
+local PROTECTED_BY_KIND = { Cooldown = { "Clear", "SetCooldown", "SetCooldownDuration", "SetCooldownFromDurationObject" } }
+
+-- A protected method of one kind: blocked as lockable blocks it, on a widget of that kind.
+local function lockableOn(kind, name)
+  return function(orig)
+    return function(self, ...)
+      if rawget(self, "__kind") == kind and blocked(self, name) then return end
+      return orig(self, ...)
+    end
   end
-  return info
+end
+for kind, names in pairs(PROTECTED_BY_KIND) do
+  for _, name in ipairs(names) do
+    if not methods[name] and listedMethod(name) then methods[name] = function() end end
+    rewrap(name, lockableOn(kind, name))
+  end
 end
 
 -- ShowUIPanel and HideUIPanel refuse a tainted run in combat, for every frame
@@ -351,8 +387,9 @@ for _, name in ipairs({ "ShowUIPanel", "HideUIPanel" }) do _G[name] = panelCall(
 -- SaveBindings, LoadBindings and PlaceAction are blocked the same way, unverified; the click-bindings calls
 -- carry HasRestrictions in ClickBindingsDocumentation.lua). The model: nothing happens, the call answers nothing,
 -- and ADDON_ACTION_BLOCKED fires (what a blocked SetBinding answers, false or nothing, is unverified); the in-game probe in docs/SMOKE-TEST.md settles the unverified ones.
--- Game and test code may call them. Override bindings and a secure handler's own calls are not covered, and a call
--- in tail position (`return SetBinding(...)`) drops the caller's frame, so it reads as the code above it.
+-- Game and test code may call them. Override bindings and a secure handler's own calls are not covered. A call in
+-- tail position (`return SetBinding(...)`) keeps the addon's frame: the addon's chunks compile without tail calls
+-- (scripts/lib/lua-keep-frames.mjs).
 
 -- world.combatAfterCalls(n): the fight starts when the n-th guarded call is made (that call is the first refused), so a
 -- test can start combat in the middle of a sequence of writes.
@@ -368,12 +405,13 @@ local function startFightAfterCalls()
   if left <= 1 then world.combat(true) end
 end
 
--- Wraps a global or namespace function so addon code's call in combat is blocked and recorded.
+-- Wraps a global or namespace function so a call from a run with addon code in it, in combat, is
+-- blocked and recorded (addonOnStack says why the run decides).
 local function refusedInCombat(name, call)
   return function(...)
     startFightAfterCalls()
-    local at = stub.inCombat and callerOf(1) or nil
-    if byAddon(at) then
+    local at = stub.inCombat and addonOnStack() or nil
+    if at then
       violate(string.format("blocked in combat: %s called %s(), which the client refuses addon code in a fight", where(at), name))
       stub.fire("ADDON_ACTION_BLOCKED", "Vanguard", name .. "()")
       return
@@ -447,7 +485,9 @@ for _, name in ipairs(UNTAINTED_ONLY) do C_UnitAuras[name] = untaintedOnly(name,
 
 -- The getters that answer with a secret when a region's geometry is (each SecretWhenAnchoringSecret in
 -- the client's API documentation; wow-aspects.lua adds GetPoint, GetPointByName and the font string's other measures).
-local GEOMETRY = { "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect", "GetStringWidth", "GetUnboundedStringWidth" }
+-- IsMouseOver is one too: Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua (forever :507-509,
+-- live :483-485), so a truth test on it in the addon's code raises while the region's anchoring is secret.
+local GEOMETRY = { "GetLeft", "GetRight", "GetTop", "GetBottom", "GetCenter", "GetRect", "GetWidth", "GetHeight", "GetSize", "GetScaledRect", "GetStringWidth", "GetUnboundedStringWidth", "IsMouseOver" }
 
 -- Whether a value is a secret (the global, which a test may replace).
 local function isSecret(v)

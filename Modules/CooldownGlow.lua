@@ -80,11 +80,14 @@ function CG.FromCurve(id, unit, percent)
   return nil
 end
 
--- The glow's strength from plain numbers (1 or 0); nil when the aura's times are hidden or it has none.
+-- The glow's strength from plain numbers (1 or 0); nil when the aura's times are hidden, it has none, or the
+-- client refuses the read (it raises when aura access is denied, so one icon never stops the others' glow).
 function CG.FromNumbers(id, unit, percent)
   local get = C_UnitAuras and C_UnitAuras.GetAuraDataByAuraInstanceID
-  local aura = type(get) == "function" and not ns.AuraInstanceSecret(unit, id) and get(unit, id)
-  local expires, length = aura and ns.PlainNumber(aura.expirationTime), aura and ns.PlainNumber(aura.duration)
+  if type(get) ~= "function" or ns.AuraInstanceSecret(unit, id) then return nil end
+  local ok, aura = pcall(get, unit, id)
+  if not ok or ns.IsSecret(aura) or type(aura) ~= "table" then return nil end
+  local expires, length = ns.PlainNumber(aura.expirationTime), ns.PlainNumber(aura.duration)
   if not (expires and length and length > 0) then return nil end
   return (expires - GetTime()) / length < percent / 100 and 1 or 0
 end

@@ -46,7 +46,7 @@ it("is off until switched on", () => {
   const addon = loggedIn(GAPS_ENV);
   expect(addon.eval('return Vanguard_CooldownGaps'), "no row").toBeNull();
   addon.slash("gaps");
-  expect(chatHas(addon, /cooldown gaps row is off\. Tick Gaps row under \/vg > Cooldowns, then \/reload\.$/), "the command names the page its switch is on").toBe(true);
+  expect(chatHas(addon, /cooldown gaps row is off\. Tick Gaps row under \/vg > Cooldowns\.$/), "the command names the page its switch is on").toBe(true);
 });
 
 it("shows an on-use trinket with its sweep and skips one with no use", () => {
@@ -339,7 +339,7 @@ it("the Gaps card's add row takes a dragged item or spell, or a typed name", () 
 
 it("the Gaps card says to switch the row on while it is off", () => {
   const addon = loggedIn(GAPS_ENV);
-  expect(cardRows(addon), "only the note: the chosen lists load with the row").toEqual([["text", "The gaps row is off. Tick Gaps row and reload to choose its items and spells."]]);
+  expect(cardRows(addon), "only the note: the chosen lists load with the row").toEqual([["text", "The gaps row is off. Tick Gaps row above to choose its items and spells."]]);
 });
 
 // A string's real translation, read from Locales/<locale>.lua (the line `L["key"] = "text"`).

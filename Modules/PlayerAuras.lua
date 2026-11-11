@@ -5,8 +5,8 @@
 -- Weapon enchants (poisons, stones, oils, and a shaman's imbues on WoW
 -- Forever) are cells in front of the buffs, which move over to make room.
 -- They're read here per weapon (C_Item.GetWeaponEnchantInfo), since the
--- client's own enchant cells miss Forever's imbues. The container's groups
--- are fixed once built, so the settings apply after a reload.
+-- client's own enchant cells miss Forever's imbues. Vanguard never reshapes
+-- the container's groups once built, so the settings apply after a reload.
 
 local ADDON, ns = ...
 
@@ -67,12 +67,12 @@ end
 -- Moves the container over to leave room for n enchant cells at the right, and widens the hover pad (below) by as
 -- much, so it still lies under every row. The container is the client's aura container and may be protected, so
 -- it moves only when the room changes, and a move asked for in a fight (an enchant gained or run out) waits for
--- the fight's end: until then the cells may lie over the first buffs.
+-- the fight's end: until then the cells may lie over the first buffs. Each call replaces the waiting one, which
+-- judges the room when it runs, so an enchant lost and put on again in one fight moves nothing.
 function PA.PlaceAuras(n)
   local shift = n * (PA.settings.size + PA.GAP)
   PA.holder.vgHoverArea:SetWidth(PA.lineSize + shift)
-  if PA.placed == shift then return end
-  ns.OutOfCombat(function() anchorAuras(shift) end, "player auras place")
+  ns.OutOfCombat(function() if PA.placed ~= shift then anchorAuras(shift) end end, "player auras place")
 end
 
 -- Weapon enchants ---------------------------------------------------------------------------
@@ -226,11 +226,13 @@ local function hoverPad(holder, s)
   holder.vgHoverArea = pad
 end
 
--- The aura container on the holder, keeping its row width (PA.lineSize) for the hover pad.
+-- The aura container on the holder, keeping its row width (PA.lineSize) for the hover pad; its icons follow the scale.
 local function container(s)
   local spec = PA.Spec(PA.holder, s)
   PA.lineSize = spec.lineSize
-  return A.Container(PA.holder, spec, "player")
+  local c = A.Container(PA.holder, spec, "player")
+  A.Follow(c.frame)
+  return c
 end
 
 -- The movable holder left of the minimap, the container and the enchant cells.

@@ -6,7 +6,9 @@
 --
 -- The client's rules, which this file keeps:
 --   * containers can only be made out of combat (the probe waits too);
---   * groups are fixed once added: a changed filter needs a new container;
+--   * a group the client adds makes its first ten buttons at once, whatever its count
+--     (Blizzard_CustomAuraContainer.lua AddAuraGroup, Blizzard_AuraContainerShared.lua:105),
+--     so a group with no icons is not added;
 --   * an engine button is dressed only while it is being made
 --     (initializeFrame): afterwards the client may refuse addon calls on it;
 --   * a container the client refuses (a template that gives a frame without
@@ -14,6 +16,10 @@
 --     that container and every later one are built by the fallback.
 -- Every call into a newer option is wrapped, so a client that rejects an
 -- option still gets the icons, only without that extra.
+-- Vanguard's own choice, not the client's rule: a group is never reshaped once
+-- added (the client could: SetAuraGroupFilterString and the others,
+-- Blizzard_CustomAuraContainer.lua:363-389), so a changed filter, count or size
+-- gets a new container.
 
 local ADDON, ns = ...
 
@@ -232,11 +238,17 @@ end
 local Container = {}
 Container.__index = Container
 
--- Lays an engine frame out, adds the spec's groups and makes the container showing `unit`.
+-- Lays an engine frame out, adds the spec's groups and makes the container showing `unit`. Edit Mode's preview is
+-- turned off (the template turns it on, Blizzard_CustomAuraContainer.xml:11), so an open Edit Mode never swaps the
+-- unit's auras for the client's samples; a client that refuses it keeps the engine.
 local function fill(frame, spec, unit)
+  if frame.SetEditModePreviewEnabled then ns.Try("aura container edit mode", frame.SetEditModePreviewEnabled, frame, false) end
   layout(frame, spec)
   -- A filter token this client doesn't know is refused: that group is left out, not the rest.
-  for i, def in ipairs(spec.groups) do ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "vg" .. i, def.filter, groupOptions(spec, def, frame)) end
+  -- A group with no icons is left out (the client would make ten buttons for it); the keys still count every group.
+  for i, def in ipairs(spec.groups) do
+    if def.max > 0 then ns.Try("aura filter " .. def.filter, frame.AddAuraGroup, frame, "vg" .. i, def.filter, groupOptions(spec, def, frame)) end
+  end
   local c = setmetatable({ frame = frame }, Container)
   c:SetUnit(unit)
   return c

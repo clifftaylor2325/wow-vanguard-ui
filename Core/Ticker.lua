@@ -5,7 +5,7 @@
 
 local ADDON, ns = ...
 
--- Key -> its job: { key, period, fn, frame, elapsed, label, stopped }.
+-- Key -> its job: { key, period, fn, frame, elapsed, label, shownLabel, stopped }.
 local jobs = {}
 -- The jobs in the order they were added. Never changed in place (a change
 -- puts a new list in), so a job started or stopped by another mid-frame
@@ -26,11 +26,14 @@ end
 -- Moves a job's time on by dt and runs it once a period is up. A job tied
 -- to a frame counts time only while that frame is visible, as the frame's
 -- own OnUpdate would; a frame the client refuses to answer for (one it closed) fails
--- that job alone, under its label, never the walk over the others.
+-- that job alone, under its label, never the walk over the others. The check runs
+-- under its own site, so /vg perf slow counts a job's runs apart from the frames it waited through.
 local function advance(job, dt)
   if job.stopped then return end
-  local ok, counts = ns.TryRepeating(job.label, counting, job)
-  if not (ok and counts) then return end
+  if job.frame ~= nil then
+    local ok, counts = ns.TryRepeating(job.shownLabel, counting, job)
+    if not (ok and counts) then return end
+  end
   job.elapsed = job.elapsed + dt
   if job.elapsed < job.period then return end
   job.elapsed = 0
@@ -69,7 +72,8 @@ end
 
 -- A new job for key, last in the list, with `elapsed` seconds already counted.
 local function start(key, elapsed)
-  local job = { key = key, elapsed = elapsed, label = labelFor(key) }
+  local label = labelFor(key)
+  local job = { key = key, elapsed = elapsed, label = label, shownLabel = label .. " shown" }
   local list = {}
   for i, other in ipairs(order) do list[i] = other end
   list[#list + 1] = job

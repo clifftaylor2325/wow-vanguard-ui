@@ -178,6 +178,17 @@ function CC.CurrentKey()
   return ns.TalentGroup() or VanguardCharDB.clickcastGroup or CC.TALENT_GROUPS[1]
 end
 
+-- An answer to a question about the list shown now (Clear all, Import, Copy to, a starter layout, Undo, a typed
+-- spell or macro): act runs only while that list is still the one shown. A talent group or spec switch can land while
+-- the question is open, and act reads CC.CurrentKey() again, so it would change the other list; chat says so instead.
+function CC.ForThisList(act)
+  local key = CC.CurrentKey()
+  return function(...)
+    if CC.CurrentKey() == key then return act(...) end
+    ns.Chat(L["Nothing changed: the list this asked about is no longer the one shown. Ask again."])
+  end
+end
+
 -- A sentence about a list, the whole of it in the player's language: the talent group's where the lists are kept per
 -- group ({talents} in sentences.talents), else the specialization's ({spec} in sentences.spec).
 function CC.ListSentence(sentences, key)
@@ -315,10 +326,23 @@ end
 -- The most bindings a string may carry, and the longest text (a macro's, or a spell's name) in one: the game's macro limit.
 CC.MAX_IMPORT, CC.MAX_TEXT = 200, 255
 
--- Whether a decoded binding has the shape CC.Add accepts.
+-- The mouse prefixes the grid has a column for (ClickCastOptions' MODS and MORE_MODS), spelled as the engine builds them.
+CC.MOUSE_PREFIXES = { [""] = true, ["shift-"] = true, ["ctrl-"] = true, ["alt-"] = true, ["ctrl-shift-"] = true, ["alt-shift-"] = true, ["alt-ctrl-"] = true }
+
+-- Whether a key can be bound: a mouse key on one of the grid's columns, or a hover key that could be one of the
+-- client's key names (upper case, no brace, no control character). The client refuses to build a secure snippet whose
+-- text holds "function" or a brace anywhere, inside quotes too (Blizzard_RestrictedAddOnEnvironment/
+-- RestrictedExecution.lua, BuildRestrictedClosure), so one such key would stop every hover key on the frame.
+local function bindable(key)
+  local prefix = CC.MouseParts(key)
+  if prefix then return CC.MOUSE_PREFIXES[prefix] == true end
+  return not key:find("[%l%c{}]")
+end
+
+-- Whether a decoded binding has the shape CC.Add accepts, on a key the frames can bind.
 local function wellFormed(b)
   return type(b) == "table" and type(b.key) == "string" and ACTIONS[b.action] and (b.value == nil or type(b.value) == "string")
-    and not problem(b.key, b.action, b.value)
+    and not problem(b.key, b.action, b.value) and bindable(b.key)
 end
 
 -- A decoded spell id or rank as a whole number the client could hold, else nil (so inf, NaN and text are dropped).
@@ -343,12 +367,23 @@ local function importable(list)
   return out
 end
 
+-- An imported binding's rank, which must say which rank its id casts (spellValue casts the id whenever a rank is set):
+-- none without an id (the binding then reads and casts by name), the spellbook's number where it lists the id, else
+-- as given (a rank not learned yet is flagged by CC.WontRun; dropping it would turn a downrank into a top-rank cast).
+-- ClickCastSpells loads after this file, so it is read at call time.
+local function importedRank(id, rank)
+  rank = wholeNumber(rank)
+  if not (id and rank) then return nil end
+  return ns.ClickCastSpells.RankOf(id) or rank
+end
+
 -- Swaps the current spec's bindings for a checked list (the last of two for one key wins) and applies once.
 local function replaceAll(list)
   local mine = CC.Bindings()
   clearList(mine)
   for _, b in ipairs(list) do
-    put(mine, { key = b.key, action = b.action, value = b.value, spellID = wholeNumber(b.spellID), rank = wholeNumber(b.rank) })
+    local id = wholeNumber(b.spellID)
+    put(mine, { key = b.key, action = b.action, value = b.value, spellID = id, rank = importedRank(id, b.rank) })
   end
   replaced(CC.CurrentKey())
   applySoon()
@@ -420,7 +455,9 @@ function CC.ActionText(b)
   return ACTION_NAMES[b.action] or ACTION_NAMES.menu
 end
 
--- What a hover key does off the frames ("Action bar 1 slot 2"), or nil when it's free or the client can't say.
+-- What a hover key does off the frames ("Action bar 1 slot 2", or the binding's name in the client's language, which
+-- the game keeps in BINDING_NAME_<command> as GetBindingName reads it, Blizzard_SharedXML/BindingUtil.lua), or nil when
+-- it's free or the client can't say. A command with no name (a CLICK binding) reads as its lower-case command.
 function CC.Collision(key)
   if CC.MouseParts(key) or type(GetBindingAction) ~= "function" then return nil end
   local action = GetBindingAction(key)
@@ -428,7 +465,9 @@ function CC.Collision(key)
   local bar, slot = action:match("^MULTIACTIONBAR(%d)BUTTON(%d+)$")
   if bar then return ns.Format(L["Action bar {bar} slot {slot}"], { bar = bar + 1, slot = slot }) end
   slot = action:match("^ACTIONBUTTON(%d+)$")
-  return slot and ns.Format(L["Action bar {bar} slot {slot}"], { bar = 1, slot = slot }) or action:lower():gsub("_", " ")
+  if slot then return ns.Format(L["Action bar {bar} slot {slot}"], { bar = 1, slot = slot }) end
+  local name = _G["BINDING_NAME_" .. action]
+  return type(name) == "string" and name or action:lower():gsub("_", " ")
 end
 
 -- The menu click of the old starter layouts ------------------------------------------------------
@@ -519,11 +558,12 @@ end
 
 -- The secure snippet run on entering a frame: bind each hover key to a
 -- click on the frame's virtual button vg<i>. Built from the bindings; no
--- player input ends up in it except keys, which are quoted.
+-- player input ends up in it except keys, quoted, and only bindable ones: the
+-- client refuses the whole snippet if a key brings "function" or a brace into it.
 function CC.EnterSnippet(bindings)
   local lines = { "self:ClearBindings()" }
   for i, b in ipairs(bindings) do
-    if not CC.MouseParts(b.key) then
+    if not CC.MouseParts(b.key) and bindable(b.key) then
       lines[#lines + 1] = string.format("self:SetBindingClick(true, %q, self, %q)", b.key, "vg" .. i)
     end
   end

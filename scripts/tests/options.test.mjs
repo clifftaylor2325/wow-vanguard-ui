@@ -317,9 +317,10 @@ it("options: search jumps to the row, and the page edges fade", () => {
   expect(addon.eval("return ns.Options.current"), "no match: Enter stays put").toBe("town");
   addon.eval('ns.Options.current = "nowhere" ns.Options.JumpTo("swing")');
   addon.eval('ns.Options.Show("unitframes")');
-  // The page's view: its edges, after scrolling to a place.
+  // The page's view: its edges, after scrolling to a place on a TEST-ONLY page 700 taller than the view (the view is
+  // anchored top and bottom, so its height is the laid-out one).
   const edges = (y) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.fadeTop and ns.Options.RevealRow(w) then
-    w.__height, w.__scrollChild.__height = 100, 800 w:SetVerticalScroll(${y}) w:GetScript("OnMouseWheel")(w, 0) return { w.fadeTop:IsShown(), w.fadeBottom:IsShown() } end end`);
+    w.__scrollChild.__height = w:GetHeight() + 700 w:SetVerticalScroll(${y}) w:GetScript("OnMouseWheel")(w, 0) return { w.fadeTop:IsShown(), w.fadeBottom:IsShown() } end end`);
   expect(edges(0), "at the top: only the bottom edge fades").toEqual([false, true]);
   expect(edges(300), "midway: both").toEqual([true, true]);
   expect(edges(700), "at the bottom: only the top").toEqual([true, false]);
@@ -484,14 +485,16 @@ it("options: a slider drag and a key capture end when their window hides, and a 
   expect(out.during, "mouse down on the track follows the cursor").toEqual([true, true]);
   expect([out.hidden, out.unchanged], "the window closing mid-drag stops the drag: no cursor following, the setting stays").toEqual([[false, true], true]);
   expect([out.capturing, out.caption], "hiding a key capture cancels it and puts its caption back").toEqual([false, "Set key"]);
-  expectErrors("slider drag: eval:7: TEST-ONLY drag");
-  addon.eval(`local row
+  expectErrors("slider drag: eval:8: TEST-ONLY drag");
+  // The row is found once the page shows, among the visible ones: the client runs a drag's OnUpdate only while the
+  // track is visible (SimpleFrameScriptObjectConstantsDocumentation.lua OnUpdateMode RunWhenVisible).
+  addon.eval(`ns.Options.Show("general")
+    local row
     for _, w in ipairs(__wfgStub.frames) do
-      if w.track and w.min and w.label and w.label.__text == "Text size" then row = w end
+      if w.track and w.min and w.label and w.label.__text == "Text size" and w:IsVisible() then row = w end
     end
     row.track.__left, row.track.__width = 0, 100
     GetCursorPosition = function() error("TEST-ONLY drag") end
-    ns.Options.Show("general")
     row.track:GetScript("OnMouseDown")()
     __wfgStub.update(0.05)`);
   expect(addon.eval("return ns.errors[1].text"), "a drag step that fails is caught under its name").toMatch(/^slider drag: .*TEST-ONLY drag$/);
@@ -1008,20 +1011,26 @@ it("options: the scroll thumb drags its page, and the copy box opens above the w
   const out = addon.eval(`
     local view
     for _, w in ipairs(__wfgStub.frames) do if w.__scrollChild and w.__scripts.OnMouseWheel and ns.Options.RevealRow(w) then view = w end end
-    -- TEST-ONLY page taller than its view: the thumb is 24 tall and travels 76.
-    view.__height, view.__scrollChild.__height = 100, 800
+    -- TEST-ONLY page 700 taller than its view (anchored top and bottom, so its height is the laid-out one); the
+    -- thumb travels the view's height less its own.
+    view.__scrollChild.__height = view:GetHeight() + 700
     view:GetScript("OnMouseWheel")(view, 0)
+    local travel = view:GetHeight() - view.thumb:GetHeight()
     local grip, y = view.grip, 500
     GetCursorPosition = function() return 0, y end
     grip:GetScript("OnMouseDown")(grip, "LeftButton")
-    y = 500 - 38 * Vanguard_Options:GetEffectiveScale()
+    y = 500 - travel / 2 * Vanguard_Options:GetEffectiveScale()
     __wfgStub.update(0.05)
     local dragged = view:GetVerticalScroll()
     grip:GetScript("OnMouseUp")(grip, "LeftButton")
     y = 0 __wfgStub.update(0.05)
     ns.ShowText("TEST-ONLY", "TEST-ONLY")
-    return { grip:IsShown(), dragged, view:GetVerticalScroll(), Vanguard_TextDialog.__strata, Vanguard_Options.__strata }`);
-  expect(out, "dragging the thumb half its travel scrolls half the page and stops when let go; the copy box is a layer above the window").toEqual([true, 350, 350, "FULLSCREEN_DIALOG", "DIALOG"]);
+    return { grip:IsShown(), dragged, view:GetVerticalScroll(), Vanguard_TextDialog.__strata, Vanguard_Options.__strata, travel > 0 }`);
+  const [shown, dragged, after, ...rest] = out;
+  expect(shown, "the thumb shows").toBe(true);
+  expect(dragged, "dragging the thumb half its travel scrolls half the page").toBeCloseTo(350, 6);
+  expect(after, "and stops when let go").toBe(dragged);
+  expect(rest, "the copy box is a layer above the window; the thumb has travel").toEqual(["FULLSCREEN_DIALOG", "DIALOG", true]);
 });
 
 it("options: the pages, their nav order and each page's row count stay as they were when Options.lua was split into area files", () => {

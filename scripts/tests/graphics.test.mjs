@@ -1,7 +1,8 @@
 // graphics: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 // Core/Graphics.lua: /vg graphics, which reads the graphics card, the Graphics Quality in use and
 // the one the game recommends, the render scale and the screen, measures the frame rate out of
-// combat, and suggests a Graphics Quality and the setup sizes. It never changes a setting (HUD-10).
+// combat, and suggests a Graphics Quality and the setup sizes. The check itself changes nothing (HUD-10);
+// /vg graphics apply sets what it suggested and /vg graphics undo puts it back.
 
 import { expect, it } from "vitest";
 import { loggedIn } from "./helpers.mjs";

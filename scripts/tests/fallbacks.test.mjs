@@ -17,6 +17,15 @@ it("without issecretvalue nothing is secret, and a failing after-combat update i
   expect(addon.eval("return __ran")).toBe(true);
 });
 
+// H44-2-4 follow-up: the world's own unit reads work in a client without issecretvalue.
+it("without issecretvalue the world's flag, range, threat, cast and health reads still answer", () => {
+  const addon = loggedIn("issecretvalue = nil");
+  addon.eval('__wfgWorld.setUnit("target", { name = "TEST-ONLY Mob", threat = 2, threatPct = 50, cast = { name = "Bolt", startMs = 0, endMs = 1000 } })');
+  const reads = ['UnitIsGroupLeader("player")', 'UnitInRange("player")', 'UnitThreatSituation("target")', 'UnitDetailedThreatSituation("target")', 'UnitCastingInfo("target")', 'UnitHealthPercent("player")'];
+  const ok = addon.eval(`local r = {} for i, src in ipairs({${reads.map((x) => JSON.stringify(x)).join(", ")}}) do r[i] = pcall(loadstring("return " .. src)) end return r`);
+  expect(ok).toEqual(reads.map(() => true));
+});
+
 it("the shared client-call helpers read nothing from a missing call or a hidden answer, and keep every value of a plain call", () => {
   const addon = loggedIn();
   addon.eval("__TwoValues = function() return 1, 2 end __Hidden = function() return __wfgWorld.secret(5) end");

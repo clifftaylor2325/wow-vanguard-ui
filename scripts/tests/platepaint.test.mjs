@@ -247,8 +247,10 @@ it("nameplates show levels in the difficulty color", () => {
   addon.eval("__units.party1.level = nil UnitLevel = function(unit) return unit == 'nameplate2' and 15 or 12 end");
   addon.fire("UNIT_LEVEL", "nameplate2");
   expect(level("nameplate2")[0], "a unit that levels shows its new level").toBe("15");
+  // PLAYER_LEVEL_CHANGED comes once your new level applies; PLAYER_LEVEL_UP comes before it
+  // (/home/user/blizz/forever/Interface/AddOns/Blizzard_MicroMenu/Shared/MicroMenuContainer.lua MicroMenuContainerMixin:OnLoad).
   addon.eval("UnitLevel = function() return 13 end");
-  addon.fire("PLAYER_LEVEL_UP", 61);
+  addon.fire("PLAYER_LEVEL_CHANGED", 60, 61, true);
   expect(level("nameplate1")[0], "your own level up repaints every plate").toBe("13");
   addon.slash("");
   addon.eval('__click("Nameplates")');
