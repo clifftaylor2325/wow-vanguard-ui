@@ -18,8 +18,8 @@ import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
 import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { markSecretMeta, secretArgAt } from "./lua-secret-ops.mjs";
-import { lineHook } from "./lua-coverage.mjs";
-import { hasWasmChunk, newWasmState } from "./lua-wasm.mjs";
+import { addHits, lineHook } from "./lua-coverage.mjs";
+import { ENGINE, hasWasmChunk, newWasmState } from "./lua-wasm.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 import { advanceEms } from "./truetype.mjs";
 import { clientPaths, readToc, tocPaths } from "./toc.mjs";
@@ -278,7 +278,7 @@ function newState() {
 // first result as JS) and runFile (a file through the chunk cache), each with the chunk name and whether the chunk
 // gets `ADDON, ns` as WoW passes them. VG_LUA_ENGINE=wasm picks real Lua 5.1 in WebAssembly (lua-wasm.mjs);
 // anything else, fengari (Lua 5.3 in JS), the default.
-export const ENGINE = process.env.VG_LUA_ENGINE === "wasm" ? "wasm" : "fengari";
+export { ENGINE };
 
 // A fengari state behind the seam: the standard libraries, then (unless bare) the harness's hooks and host functions.
 function fengariState(limit, bare = false) {
@@ -307,7 +307,7 @@ function fengariCalls(L) {
 // functions when bare, as a plain file reader has always run).
 function harnessState(limit, bare = false) {
   if (ENGINE === "fengari") return fengariState(limit, bare);
-  return newWasmState({ budget: limit, coverage: Boolean(process.env.LUA_COVERAGE), addonName: ADDON, secretChecks: process.env.VG_SECRET_OPS !== "off" });
+  return newWasmState({ budget: limit, coverage: process.env.LUA_COVERAGE ? addHits : null, addonName: ADDON, secretChecks: process.env.VG_SECRET_OPS !== "off" });
 }
 
 // Runs a plain Lua file (e.g. a WTF SavedVariables file) in a bare state

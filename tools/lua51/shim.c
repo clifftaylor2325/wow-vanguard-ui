@@ -20,6 +20,8 @@
 #include "lstring.h"
 #include "ltable.h"
 #include "ldebug.h"
+#include "lopcodes.h"
+#include "lfunc.h"
 #include "vg_hooks.h"
 
 #define EXPORT(name) __attribute__((export_name(name)))
@@ -265,22 +267,40 @@ static void on_line (lua_State *L, int line) {
   hit_insert(((uint64_t)(source_index(p->source) + 1) << 24) | (uint32_t)line);
 }
 
-/* Writes the hits as the count of sources, one chunk name per line, then "<source>,<line>" pairs
-   separated by spaces on the last line, and forgets them. */
-EXPORT("vg_take_hits") void vg_take_hits (void) {
-  uint32_t s, i;
-  char b[32];
-  out_len = 0;
-  snprintf(b, sizeof b, "%u\n", (unsigned)source_count);
-  out_s(b);
-  for (s = 0; s < source_count; s++) { out_s(getstr(sources[s])); out_c('\n'); }
-  for (i = 0; i < hit_slots; i++) {
-    if (!hits[i]) continue;
-    snprintf(b, sizeof b, "%u,%u ", (unsigned)(hits[i] >> 24) - 1, (unsigned)(hits[i] & 0xFFFFFF));
-    out_s(b);
-  }
+/* The hits as JS reads them straight from memory: the slot table (a zero slot is empty; a full one holds
+   (source index + 1) << 24 | line), its size, how many are full, and each source's chunk name. */
+EXPORT("vg_hits_ptr") uint64_t *vg_hits_ptr (void) { return hits; }
+EXPORT("vg_hit_slots") uint32_t vg_hit_slots (void) { return hit_slots; }
+EXPORT("vg_hit_count") uint32_t vg_hit_count (void) { return hit_count; }
+EXPORT("vg_source_count") uint32_t vg_source_count (void) { return source_count; }
+EXPORT("vg_source_name") const char *vg_source_name (uint32_t i) { return getstr(sources[i]); }
+
+/* Forgets the hits JS has taken (the sources stay: their indexes name them for the state's life). */
+EXPORT("vg_clear_hits") void vg_clear_hits (void) {
   if (hits) memset(hits, 0, hit_slots * sizeof *hits);
   hit_count = 0;
+}
+
+/* Whether instruction pc never runs as an instruction of its own, as lua-coverage.mjs reckons it on fengari: a
+   RETURN right after a TAILCALL, and (5.1 only) the JMP after a TFORLOOP, which reads its jump from it and skips it
+   (lvm.c's OP_TFORLOOP); 5.1 gives that JMP the line of the token before the loop's `end`. */
+static int never_runs (const Proto *p, int pc) {
+  OpCode op = GET_OPCODE(p->code[pc]), before = pc > 0 ? GET_OPCODE(p->code[pc - 1]) : OP_MOVE;
+  return (op == OP_RETURN && before == OP_TAILCALL) || (op == OP_JMP && before == OP_TFORLOOP);
+}
+
+/* The lines of a compiled function and every function inside it that hold an instruction that can run, as
+   lua-coverage.mjs counts them on fengari: not the implicit final RETURN, nor one never_runs names, nor (5.1 only)
+   the MOVE or GETUPVAL after a CLOSURE per upvalue, which OP_CLOSURE reads and skips; a `function f()` for a local f
+   declared earlier gives the last of them the `function` line (lparser.c's funcstat). */
+static void proto_lines (const Proto *p) {
+  int pc;
+  char b[16];
+  for (pc = 0; pc < p->sizecode - 1; pc++) {
+    if (!never_runs(p, pc)) { snprintf(b, sizeof b, "%d ", p->lineinfo[pc]); out_s(b); }
+    if (GET_OPCODE(p->code[pc]) == OP_CLOSURE) pc += p->p[GETARG_Bx(p->code[pc])]->nups;
+  }
+  for (pc = 0; pc < p->sizep; pc++) proto_lines(p->p[pc]);
 }
 
 static void hook (lua_State *L, lua_Debug *ar) {
@@ -448,6 +468,17 @@ EXPORT("vg_compile") int vg_compile (size_t name_len, size_t len) {
   out_len = 0;
   if (luaL_loadbuffer(L, scratch + name_len + 1, len, scratch) != 0) { put_error(L); lua_pop(L, 1); return 1; }
   lua_dump(L, dump_writer, NULL);
+  lua_pop(L, 1);
+  return 0;
+}
+
+/* Compiles the chunk in scratch (as vg_run lays it out) and writes its executable lines, separated by spaces
+   (proto_lines); returns 0, or 1 and the error text. */
+EXPORT("vg_lines") int vg_lines (size_t name_len, size_t len) {
+  lua_State *L = state;
+  out_len = 0;
+  if (luaL_loadbuffer(L, scratch + name_len + 1, len, scratch) != 0) { put_error(L); lua_pop(L, 1); return 1; }
+  proto_lines(clvalue(L->top - 1)->l.p);
   lua_pop(L, 1);
   return 0;
 }

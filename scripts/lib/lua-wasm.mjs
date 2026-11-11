@@ -12,6 +12,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// The engine the harness runs on: VG_LUA_ENGINE=wasm picks this one; anything else, fengari (lua-harness.mjs).
+export const ENGINE = process.env.VG_LUA_ENGINE === "wasm" ? "wasm" : "fengari";
+
 const WASM = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../tools/lua51/vg-lua51.wasm");
 
 // The compiled module and the compiled chunks, once per worker (Vitest evaluates this module once per test file).
@@ -125,8 +128,43 @@ function call(vm, chunk, chunkName, withAddonArgs, want, into) {
   const [nameLen, len] = writeChunk(vm, chunkName, chunk);
   const intoPtr = into ? keptString(vm, into) : 0;
   const status = vm.exports.vg_run(nameLen, len, withAddonArgs ? vm.addonName : 0, want ? 1 : 0, intoPtr);
+  if (vm.onHits) takeHits(vm);
   if (status !== 0) throw outError(vm, chunkName, status);
   return want ? outValue(vm) : undefined;
+}
+
+// The text of a NUL-terminated string in the instance's memory.
+function cString(vm, ptr) {
+  const mem = new Uint8Array(vm.memory.buffer);
+  return decoder.decode(mem.subarray(ptr, mem.indexOf(0, ptr)));
+}
+
+// Appends the chunk names of sources first seen since the last take to vm.sources (an index names one for the state's life).
+function syncSources(vm) {
+  for (let i = vm.sources.length; i < vm.exports.vg_source_count(); i++) vm.sources.push(cString(vm, vm.exports.vg_source_name(i)));
+}
+
+// The shim's hit slots as source index -> lines. A slot is two words: the low one holds the source's index + 1 in its
+// top 8 bits and the line in the rest, the high one the index's higher bits; an empty slot is zero.
+function hitsBySource(vm) {
+  const words = new Uint32Array(vm.memory.buffer, vm.exports.vg_hits_ptr(), vm.exports.vg_hit_slots() * 2);
+  const out = new Map();
+  for (let i = 0; i < words.length; i += 2) {
+    if (words[i] === 0 && words[i + 1] === 0) continue;
+    const source = ((words[i + 1] << 8) | (words[i] >>> 24)) - 1;
+    if (!out.has(source)) out.set(source, []);
+    out.get(source).push(words[i] & 0xffffff);
+  }
+  return out;
+}
+
+// Hands the lines run since the last take to the coverage record by chunk name, then clears them in the instance, so
+// a state dropped after any call has given all its hits.
+function takeHits(vm) {
+  if (vm.exports.vg_hit_count() === 0) return;
+  syncSources(vm);
+  for (const [source, lines] of hitsBySource(vm)) vm.onHits(vm.sources[source], lines);
+  vm.exports.vg_clear_hits();
 }
 
 // A file's cache stamp: its modification time and size, so an edit recompiles it.
@@ -161,10 +199,12 @@ function keptString(vm, text) {
 }
 
 // A new Lua 5.1 state: { run, value, runFile, memory } over its own instance. budget: the most instructions one call
-// may run (Infinity for none); coverage: the line hook on; addonName: the `ADDON` the addon's files get.
-export function newWasmState({ budget, coverage = false, addonName, secretChecks = true }) {
+// may run (Infinity for none); coverage: null, or the line hook on and (chunk name, lines) handed to this function
+// after each call; addonName: the `ADDON` the addon's files get.
+export function newWasmState({ budget, coverage = null, addonName, secretChecks = true }) {
   const vm = instantiate();
   vm.exports.vg_open(coverage ? 1 : 0);
+  Object.assign(vm, { onHits: coverage, sources: [] });
   vm.exports.vg_set_budget(Number.isFinite(budget) ? budget : -1);
   vm.exports.vg_secret_checks(secretChecks ? 1 : 0);
   vm.kept = new Map();
@@ -184,7 +224,22 @@ function stateApi(vm) {
     runFile: (file, chunkName, withAddonArgs = false, into = null) => call(vm, fileChunk(vm, file, chunkName), chunkName, withAddonArgs, false, into),
     // The instance's linear memory and Lua's own count, in bytes.
     memory: () => ({ linear: vm.memory.buffer.byteLength, lua: vm.exports.vg_memory() }),
-    // The lines run since the last take (the shim's text form; lua-coverage.mjs reads it).
-    takeHits: () => { vm.exports.vg_take_hits(); return decoder.decode(outBytes(vm)); },
   };
+}
+
+// An instance with no budget, hooks or harness, for compiling (lua-coverage.mjs's executable lines).
+function toolVm() {
+  const vm = instantiate();
+  vm.exports.vg_open(0);
+  vm.exports.vg_set_budget(-1);
+  return vm;
+}
+
+// The executable lines of a Lua source as Lua 5.1 compiles it (lua-coverage.mjs's rule, in the shim's proto_lines).
+export function wasmExecutableLines(source, chunkName) {
+  const vm = (shared.tool ??= toolVm());
+  const [nameLen, len] = writeChunk(vm, chunkName, source);
+  if (vm.exports.vg_lines(nameLen, len) !== 0) throw outError(vm, chunkName, 1);
+  const text = decoder.decode(outBytes(vm)).trim();
+  return new Set(text ? text.split(" ").map(Number) : []);
 }
