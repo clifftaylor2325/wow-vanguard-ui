@@ -124,6 +124,18 @@ it("release keeps the checks and skips the preview", () => {
   expect(text).not.toMatch(/^\s+checks:/m);
 });
 
+it("lua-suite takes a boolean tests input that defaults to on, and only the coverage run depends on it", () => {
+  const text = workflow("lua-suite.yml");
+  expect(text).toMatch(/^ {6}tests:\n {8}description: .*\n {8}type: boolean\n {8}default: true$/m);
+  expect(text).toContain("      - run: npm run coverage\n        if: inputs.tests\n");
+  expect(text.match(/inputs\.tests/g)).toHaveLength(1);
+});
+
+it("for now the release runs the suite without the tests, and a hand-started full suite runs them", () => {
+  expect(workflow("release.yml")).toMatch(/^ {6}tests: false$/m);
+  expect(workflow("full-suite.yml")).not.toMatch(/^\s+tests:/m);
+});
+
 it("lua-suite keeps read-only permissions", () => {
   expect(workflow("lua-suite.yml")).toMatch(/^permissions:\n {2}contents: read\n/m);
 });
@@ -232,9 +244,9 @@ function runsOnPullRequests(text) {
   return /^ {2}pull_request:/m.test(triggers(text));
 }
 
-it("full-suite runs weekly and by hand, never for a pull request", () => {
+it("full-suite runs by hand only for now (no weekly run until the suite is fast again), never for a pull request", () => {
   const on = triggers(workflow("full-suite.yml"));
-  expect(on).toMatch(/^ {2}schedule:$/m);
+  expect(on).not.toMatch(/^ {2}schedule:$/m);
   expect(on).toMatch(/^ {2}workflow_dispatch:$/m);
   expect(runsOnPullRequests(workflow("full-suite.yml"))).toBe(false);
   expect(workflow("full-suite.yml")).not.toContain("pull_request");
@@ -254,9 +266,9 @@ it("concurrency: the weekly and the hand-started runs get their own groups", () 
   expect(groupFor(undefined, { name: "workflow_dispatch" })).toBe("full-suite-workflow_dispatch-refs/heads/main");
 });
 
-it("full-suite keeps its schedule, hand start, inputs, report job and cancel setting", () => {
+it("full-suite keeps its hand start, inputs, report job and cancel setting, and the weekly cron waits in a comment", () => {
   const text = workflow("full-suite.yml");
-  expect(text).toContain('- cron: "23 10 * * 0"');
+  expect(text).toContain('#     - cron: "23 10 * * 0"');
   expect(text).toMatch(/^ {2}workflow_dispatch:\n {4}inputs:\n {6}preview:/m);
   expect(text).toContain("preview: ${{ github.event_name == 'schedule' || inputs.preview == true }}");
   expect(text).toContain("if: always() && needs.suite.result != 'cancelled'");
