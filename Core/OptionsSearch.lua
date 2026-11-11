@@ -135,17 +135,29 @@ end
 
 -- Hit lines ------------------------------------------------------------------------------------
 
--- A line's caption (left, one line) and its page's title (muted, right).
-local function lineTexts(line)
+-- A line's caption (left, one line).
+local function captionText(line)
   line.caption = T.Text(line:CreateFontString(nil, "OVERLAY"), "label", "text")
   line.caption:SetPoint("LEFT", T.SPACE.pad, 0)
   line.caption:SetWidth(LIST_WIDTH - PAGE_WIDTH - 4 * T.SPACE.pad)
   line.caption:SetJustifyH("LEFT")
   line.caption:SetWordWrap(false)
-  line.page = T.Text(line:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  line.page:SetPoint("RIGHT", -T.SPACE.pad, 0)
-  line.page:SetWidth(PAGE_WIDTH)
+end
+
+-- A line's page title (muted, right): in a slot of its own, on one line, shrunk to fit it (T.FitText anchors the
+-- string across the box it is given, so that box must not be the line).
+local function pageText(line)
+  local slot = CreateFrame("Frame", nil, line)
+  slot:SetSize(PAGE_WIDTH, T.ROW.height)
+  slot:SetPoint("RIGHT", -T.SPACE.pad, 0)
+  line.page = T.FitText(T.Text(line:CreateFontString(nil, "OVERLAY"), "small", "muted"), slot, 0)
   line.page:SetJustifyH("RIGHT")
+end
+
+-- A line's caption and its page's title.
+local function lineTexts(line)
+  captionText(line)
+  pageText(line)
 end
 
 -- Clicking a line opens its setting.

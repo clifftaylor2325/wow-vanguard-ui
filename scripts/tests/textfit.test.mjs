@@ -80,6 +80,21 @@ it("text fits: the options window, the pages after the tenth", () => {
   expectFits("options window, pages 11 on", optionsPages(11, Infinity));
 });
 
+it("text fits: the options search list, in German at 130%", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: '__wfgWorld.locale = "deDE"' });
+  addon.login();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  addon.slash("");
+  addon.eval('ns.Options.Search("e")');
+  addon.eval('ns.Options.Search("Stadt")');
+  addon.eval("for _, line in ipairs(Vanguard_Options.results.lines) do if line:IsShown() then line.page:SetText('Stadt und Ausrüstung') end end");
+  // Whether the page title of the first line stays on one line, inside its slot (H44-13-82: it wrapped to two in a 110-wide slot).
+  const onOneLine = addon.eval("local p = Vanguard_Options.results.lines[1].page return p:GetStringHeight() <= p:GetLineHeight() * 1.01 and p:GetStringWidth() <= p:GetWidth()");
+  expect(onOneLine, "a long page name stays on one line and inside its slot").toBe(true);
+  addon.eval('ns.Options.Search("e")');
+  expectFits("options search list, German at 130%", addon.textFit("Vanguard_Options.results"));
+});
+
 it("text fits: the screen at login, and unlock mode's handles", () => {
   const addon = fitClient();
   addon.world.setUnit("target", { name: "Defias Pillager", hp: 640, maxhp: 800, reaction: 2, level: 18 });
