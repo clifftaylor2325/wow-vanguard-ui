@@ -61,7 +61,7 @@ Targets marked `[DECIDE]` are proposals for Cliff to confirm or change in phase 
 - [ ] **D3 The crest.** The shipped mark is a shield with a V and no swords; the design chosen in October had two swords crossed behind the shield (L12). Pick one before any art is made: the crest system (A5-9) is built from it.
 - [x] **D4 First-run setup.** Which rows stay pre-ticked. Recommended: untick the chat filter and the key-setup offer until the key data is confirmed and A6-3 lands; keep the rest. (M14, Q18) **Answered 2026-11-09: untick both; every other row stays as it is.**
 - [ ] **D5 Third-party names.** Recommended rule: names only where interoperability needs them (detection tables, the player string that says which addon was found), never in comments, notes or research. (L11, N19)
-- [ ] **D6 The 1.0 gate.** Draft PR #795 makes the release script refuse 1.0.0 until every step of a 74-step core path has a recorded pass. That and the skipped sprint pull in opposite directions: keep the gate (and walk the core path before 1.0), or drop or shorten it.
+- [ ] **D6 The 1.0 gate.** PR #795 (merged 2026-11-09) makes the release script refuse 1.0.0 until every step of a 74-step core path has a recorded pass. That and the skipped sprint pull in opposite directions: keep the gate (and walk the core path before 1.0), or drop or shorten it.
 - [ ] **D7 The numbers.** Confirm or change the three `[DECIDE]` targets in section 1. Memory and login targets are provisional until A4-6 has attributed the 49.3 MB.
 - [ ] **D8 The AFK lore quotations.** Keep or replace the two long quotations shipped as strings (L28).
 
@@ -212,7 +212,7 @@ Phase 0 (decisions)
 ## 11. Risks
 
 - **Verification is skipped.** A bug that only the game shows ships to players and comes back as a report, as the nameplate icon error did. Mitigation: the `/vg report` loop, fast patch releases, and A2-1 if the grade matters more than the ten minutes.
-- **The lifecycle change regresses stable modules.** Mitigation: design note first, display-only modules first, batches of ten, the full test label on those PRs.
+- **The lifecycle change regresses stable modules.** Mitigation: design note first, display-only modules first, batches of ten, a hand-started full suite on those PRs.
 - **The art pass lands in pieces and looks mixed.** Mitigation: D3 first, the crest and ornament set before any other asset, one icon family in one go.
 - **Scope creeps back in.** Mitigation: D2. A new idea goes in a list for after 1.0.
 - **The targets in section 1 are wrong.** They are proposals. D7 fixes them once A4-6 has real numbers.

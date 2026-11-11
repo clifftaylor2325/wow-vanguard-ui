@@ -48,7 +48,7 @@ Still not modelled, so a bug of this kind passes every test:
 - `GetTexCoord` and `GetCooldownTimes` have no implementation in the stub.
 - The checks fire only on paths a test drives with a secret. A getter no test feeds a secret is still unproven.
 - Whether the client holds the addon's own textures on a held button, and how long it holds a row, is the model's guess.
-- The test VM implements Lua 5.3; the game runs 5.1. Draft PR #869 carries a real Lua 5.1 engine behind `VG_LUA_ENGINE=wasm` and its verdict.
+- The test VM implements Lua 5.3; the game runs 5.1. PR #869 (merged) runs the suite on a real Lua 5.1 engine behind `VG_LUA_ENGINE=wasm`.
 
 Treated as raising, unconfirmed: `secret ~= nil`. Concatenating a secret still raises in the harness though the game allows it.
 
@@ -158,6 +158,6 @@ Nothing fixed on 2026-11-10 has been seen in the game. 0.9.5 shipped without an 
 
 - CI runs no tests by itself (Cliff, 2026-11-10): no pull request, schedule or release starts them. The full suite is hand-started (*full suite*, *Run workflow*) and splits the Lua project over 12 shards planned from measured file times (`scripts/shard-times.json`), with coverage merged and the 100% floor judged once: about 6 minutes.
 - A new test file that logs in must be scoped (`node scripts/login-scope-probe.mjs`) or listed in `FULL_FILES` with its reason; a quick test fails otherwise.
-- The last full run is linked from the newest merged PR; before any hunt starts, start one on `main` and read it.
+- The last full run is linked from the newest merged PR; read the last hand-started run if there is one; start one on `main` only when the local run cannot settle a question.
 - Locally, run test files one at a time. Several Vitest runs at once exhaust an 8 GB machine.
 - Read `npm run quality`'s whole output: failures print above the report-only section.

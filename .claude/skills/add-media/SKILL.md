@@ -5,7 +5,7 @@ description: Add or change a texture, icon or piece of art in Vanguard's Media/ 
 
 # Add media
 
-`Media/` is generated. Every texture and icon is code in `scripts/lib/media-sources.mjs` (crests in `scripts/lib/media-crests.mjs`), written out by `npm run media`; `node scripts/build-media.mjs --check` fails CI when a committed file does not match its source. Nothing under `Media/` is ever edited by hand, and a hand-made image is never committed there.
+`Media/` is generated. Every texture and icon is code in `scripts/lib/media-sources.mjs` (crests in `scripts/lib/media-crests.mjs`), written out by `npm run media`; `node scripts/build-media.mjs --check` and `scripts/media.test.mjs` fail when a committed file does not match its source (the hand-started full suite runs the check; no pull request does, so run it locally). Nothing under `Media/` is ever edited by hand, and a hand-made image is never committed there.
 
 ## Steps, in order
 
