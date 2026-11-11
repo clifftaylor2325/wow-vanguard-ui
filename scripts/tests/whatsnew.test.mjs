@@ -199,6 +199,21 @@ it("what's new: a Font change re-lays the lines out, and an unchanged window kee
   expect(addon.eval("return Vanguard_WhatsNew.lines ~= Vanguard_WhatsNew.first"), "a new font: the lines are measured again").toBe(true);
 });
 
+it("hunt H44-14-50: a Text size or Font change while the window is up lays its lines out again at once", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+  addon.login();
+  addon.eval(ENV);
+  addon.eval("ns.WhatsNew.Show(ns.WHATS_NEW[1])");
+  const fitted = `local out = {} for _, l in ipairs(Vanguard_WhatsNew.lines) do out[#out + 1] = l:GetHeight() == l.text:GetStringHeight() end for _, v in ipairs(out) do if not v then return false end end return #out > 0`;
+  addon.eval("ns.Theme.Settings().textScale = 1.4 ns.Theme.Refresh()");
+  expect(addon.eval(fitted), "after a live Text size change every line is as tall as its text").toBe(true);
+  expect(addon.eval("return Vanguard_WhatsNew.textScale"), "stamped with the new size").toBe(1.4);
+  addon.eval("__before = Vanguard_WhatsNew.lines ns.Theme.Settings().font = 'client' ns.Theme.Refresh()");
+  expect(addon.eval("return Vanguard_WhatsNew.lines ~= __before and Vanguard_WhatsNew.font == 'client'"), "a live Font change lays them out again").toBe(true);
+  addon.eval("__before = Vanguard_WhatsNew.lines ns.Theme.Refresh()");
+  expect(addon.eval("return Vanguard_WhatsNew.lines == __before"), "a change that moves no line keeps the list").toBe(true);
+});
+
 it("what's new: a look change keeps the off-by-default tag in the current warn, live and after a reopen", () => {
   const addon = loggedIn(ENV);
   addon.slash("variant contrast");
