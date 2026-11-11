@@ -228,12 +228,29 @@ it("Train all is narrow enough to leave the player's money line clear", () => {
   expect(addon.eval('return ns.GetModule("Errands").trainButton:GetWidth()')).toBeLessThanOrEqual(100);
   expect(addon.eval('return { ns.GetModule("Errands").trainButton:GetHeight(), ClassTrainerTrainButton:GetHeight() }'), "same height as Train").toEqual([25, 25]);
 });
+it("Train all counts what the trainer took, and says when it took fewer than were asked", () => {
+  const addon = loggedIn(FOREVER_TRAINER_ENV);
+  addon.fire("TRAINER_SHOW");
+  addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  expect(chatHas(addon, /Trained/), "nothing is said before the trainer answers").toBe(false);
+  addon.eval("__services[1][2] = 'used'");
+  addon.advance(1.1);
+  expect(chatHas(addon, /Trained 1 of 2 skill\(s\) for 5s 0c\./), "one of two taken: the line says so, and charges only that one").toBe(true);
+  const closed = loggedIn(FOREVER_TRAINER_ENV);
+  closed.fire("TRAINER_SHOW");
+  closed.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
+  closed.fire("TRAINER_CLOSED");
+  closed.advance(1.1);
+  expect(chatHas(closed, /Trained 2 skill\(s\) for 25s 0c\./), "a closed trainer cannot be read: what was asked").toBe(true);
+});
 it("Train all in one click: no purchase twice, the budget counted before the game answers, a list that re-indexes", () => {
   const addon = loggedIn(FOREVER_TRAINER_ENV);
   addon.fire("TRAINER_SHOW");
   addon.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');
   expect(addon.eval("return __learned"), "32s on hand, game still showing everything: Bolt (5s) and Blast (20s), not Gust (10s: only 7s left), none twice").toEqual(["TEST-ONLY Bolt", "TEST-ONLY Blast"]);
-  expect(chatHas(addon, /Trained 2 skill\(s\) for 25s 0c\./), "one line for the whole click").toBe(true);
+  addon.eval("for _, s in ipairs(__services) do if s[1] ~= 'TEST-ONLY Gust' then s[2] = 'used' end end");
+  addon.advance(1.1);
+  expect(chatHas(addon, /Trained 2 skill\(s\) for 25s 0c\./), "one line for the whole click, once the trainer has answered").toBe(true);
   const shrinking = loggedIn(FOREVER_TRAINER_ENV + "__shrink = true __money = 100000");
   shrinking.fire("TRAINER_SHOW");
   shrinking.eval('ns.GetModule("Errands").trainButton.__scripts.OnClick()');

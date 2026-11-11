@@ -22,6 +22,7 @@ const CRAFT_ENV = `
       reagentSlotSchematics = { slot(2589, 3), slot(2320, 1), slot(9999, 1, 0), { reagents = { { currencyID = 7 } }, quantityRequired = 1, reagentType = 1 },
         slot(2592, __wfgWorld.secret(2)) } },
     [101] = { recipeID = 101, name = "TEST-ONLY Enchant Bracer", quantityMin = 1, quantityMax = 1, reagentSlotSchematics = { slot(10940, 2) } },
+    [103] = { recipeID = 103, name = "TEST-ONLY Ten Reagents", reagentSlotSchematics = { slot(2589, 1), slot(2589, 1), slot(2589, 1), slot(2589, 1), slot(2589, 1), slot(2589, 1), slot(2589, 1), slot(2589, 1), slot(2589, 1), slot(2589, 1) } },
     [102] = { recipeID = 102, name = "TEST-ONLY Bandage", outputItemID = 1251, quantityMin = 1, quantityMax = 3, reagentSlotSchematics = { slot(2589, 1) } },
   }
   function __price(id, copper) ns.AuctionPrices.Record(id, copper, __now) end
@@ -63,6 +64,14 @@ it("beside the profession window, a recipe's reagents, what they cost, what it s
   expect([p.left - w.right, p.top, p.width], "right of the window, past its side tabs, from its top").toEqual([52, w.top, 280]);
 });
 
+it("a recipe with more reagents than the panel's first rows shows a row for each, and the totals agree", () => {
+  const addon = crafter();
+  addon.world.openProfession(103);
+  const shown = panel(addon);
+  expect([shown[2].length, shown[3][0]], "ten rows of Linen Cloth, and ten of them in the total").toEqual([10, ["Reagents", "1s 0c"]]);
+  addon.world.openProfession(102);
+  expect(panel(addon)[2].length, "a smaller recipe hides the extra rows again").toBe(1);
+});
 it("the panel is a card: its heading is the card title in its corner, its padding the HUD card's gap, its controls on the control scale", () => {
   const addon = crafter();
   addon.world.openProfession(100);

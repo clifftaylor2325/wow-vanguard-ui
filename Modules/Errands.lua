@@ -168,17 +168,48 @@ local function trainOne(run)
   local s = nextAffordable(run)
   if not s or not ER.trainerOpen or ns.InCombat() or run.count >= ER.TRAIN_STEPS then return false end
   ask("BuyTrainerService", s.index)
-  run.done[s.name], run.count, run.spent = true, run.count + 1, run.spent + s.cost
+  run.done[s.name], run.count, run.spent = s.cost, run.count + 1, run.spent + s.cost
   return true
 end
 
+-- Seconds the trainer gets to answer a click's purchases before the summary reads its list again.
+ER.TRAIN_SETTLE = 1
+
+-- The names of the services on offer right now.
+local function offeredNames()
+  local names = {}
+  for i = 1, ns.PlainNumber(ask("GetNumTrainerServices")) or 0 do
+    if available(i) then names[serviceName(i)] = true end
+  end
+  return names
+end
+
+-- What the trainer took of a click's purchases: the bought services no longer on offer, and what they cost.
+local function learnedOf(run)
+  local offered, got = offeredNames(), { count = 0, spent = 0 }
+  for name, cost in pairs(run.done) do
+    if not offered[name] then got.count, got.spent = got.count + 1, got.spent + cost end
+  end
+  return got
+end
+
+-- Says what a click learned, read from the trainer's list once it has answered (the buying only asks; a
+-- refused service stays on offer). A closed trainer cannot be read, so the summary is what was asked.
+local function reportTrained(run)
+  local got = ER.trainerOpen and learnedOf(run) or { count = run.count, spent = run.spent }
+  local fewer = got.count < run.count
+  local text = fewer and L["Trained {count} of {asked} skill(s) for {money}."] or L["Trained {count} skill(s) for {money}."]
+  ns.Chat(ns.Format(text, { count = got.count, asked = run.count, money = money(got.spent) }))
+  ER.UpdateTrainButton()
+end
+
 -- The Train all button was clicked: learn everything affordable in a loop inside
--- the click (a purchase needs one), re-reading the list each time, and say what it cost.
+-- the click (a purchase needs one), re-reading the list each time, and say what the trainer took and what it cost.
 function ER.TrainAll()
   if ns.InCombat() then return end
   local run = { done = {}, count = 0, spent = 0 }
   while trainOne(run) do end
-  if run.count > 0 then ns.Chat(ns.Format(L["Trained {count} skill(s) for {money}."], { count = run.count, money = money(run.spent) })) end
+  if run.count > 0 then later(ER.TRAIN_SETTLE, function() reportTrained(run) end) end
   ER.UpdateTrainButton()
 end
 
