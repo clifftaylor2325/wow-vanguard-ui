@@ -65,6 +65,15 @@ it("main tank tiles: a new holder scale pins each tile's bar one pixel inside it
   addon.update(0);
   expect([addon.eval("return Vanguard_MainTanks:GetScale()"), inset()], "at twice the size: still one pixel").toEqual([2, 1]);
 });
+it("party pets and targets: a tile's bar stays one pixel inside its panel at a saved handle scale and after a new one", () => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true }, positions = { partyextras = { scale = 2 } } } }" });
+  // The column's scale and the bar's inset in screen pixels.
+  const at = () => addon.eval("local b = Vanguard_partypet1 return { Vanguard_PartyExtras:GetScale(), math.floor(b.bar.__points.TOPLEFT.x / ns.Theme.Pixel(b) * 100 + 0.5) / 100 }");
+  expect(at(), "logged in at a saved scale of 2: one pixel").toEqual([2, 1]);
+  addon.eval('ns.SetMoverScale("partyextras", 0.5)');
+  addon.update(0);
+  expect(at(), "the handle scaled to 0.5: still one pixel").toEqual([0.5, 1]);
+});
 it("main tank frames without secure snippets: the header copies the clicks; tiles are sized and set up out of combat", () => {
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV + 'SecureHandlerExecute = function() error("TEST-ONLY: snippets do not compile") end');
   expect(addon.eval("local h = Vanguard_MainTanks return { h:GetAttribute('initialConfigFunction') == nil, h:GetAttribute('_initialAttributeNames') }"),

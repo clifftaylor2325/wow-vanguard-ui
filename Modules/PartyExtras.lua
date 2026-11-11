@@ -50,12 +50,22 @@ local function build(scope)
   end
 end
 
+-- Pins every tile's bar one screen pixel inside its panel at the column's scale now (MainTanks' PlaceBar): at each
+-- start, after the mover has applied a saved scale, and on a scale change (the handle's or the UI's). The bar is an
+-- unprotected child of its secure tile, so this is safe in a fight too.
+function PX.PlaceBars()
+  if not PX.holder then return end
+  local px = ns.Theme.PixelAtScale(PX.holder:GetEffectiveScale())
+  for _, b in ipairs(PX.tiles) do ns.GetModule("MainTanks").PlaceBar(b, px) end
+end
+
 -- The movable column, shown only in a party (a secure state driver, so it follows the group in combat too): its
 -- mover and driver go to the scope on each start, and the tiles made so far are read again.
 local function show(scope)
   if not scope:Running() then return end
   if not PX.holder then build(scope) end
   scope:Mover(PX.holder, "partyextras", L["Party pets and targets"], PX.SPOT)
+  PX.PlaceBars()
   ns.GetModule("MainTanks").Drive(PX.holder, "[group:raid] hide; [group:party] show; hide")
   for _, b in ipairs(PX.tiles) do ns.GetModule("MainTanks").Poll(b, scope) end
 end
@@ -63,4 +73,5 @@ end
 -- Module entry point (Core/Modules.lua): built out of combat, and only when switched on.
 function PX.Enable(settings, scope)
   if settings.show then ns.OutOfCombat(function() show(scope) end) end
+  scope:Gate("scale", PX.PlaceBars, ns.Theme.OnScale)
 end
