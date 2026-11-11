@@ -799,3 +799,20 @@ it("lifecycle: a paused scope ticker the module stopped itself runs again after 
   expectErrors("ticker test stopstart: TEST-ONLY tick");
   expect(pausedThenRestarted(true), "the close forgot its failures: it runs and the paused list is empty").toEqual([true, 0]);
 });
+
+it("lifecycle: a failed live module is tried again by a live profile switch (H44-1-4)", () => {
+  expectErrors("module TestPicky: TEST-ONLY bad size");
+  const saved = `
+    VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {}, TestPicky = { size = -1 } }, Raid = { modules = {}, TestPicky = { size = 5 } } } }
+    VanguardCharDB = { profile = "Default" }`;
+  const addon = createAddon({ savedVariables: saved });
+  asAddon(addon, `__tries = 0
+    local M = ns.Module("TestPicky", { defaults = { size = 1 }, live = true })
+    function M.Enable(s) __tries = __tries + 1 if s.size < 0 then error("TEST-ONLY bad size", 0) end end
+    for _, name in ipairs(ns.ModuleNames()) do
+      if name ~= "TestPicky" then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+    end`);
+  addon.login();
+  expect(addon.eval('return { ns.PickProfile("Raid"), VanguardCharDB.profile }'), "switched at once").toEqual([true, "Raid"]);
+  expect(addon.eval("return { ns.ModuleLive(\"TestPicky\"), __tries }"), "built on Raid's good settings after one more try").toEqual([true, 2]);
+});
