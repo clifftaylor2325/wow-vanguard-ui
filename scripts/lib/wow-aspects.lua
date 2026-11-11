@@ -83,29 +83,34 @@ local GAME_ASPECTS = {
 
 -- The widget methods that take arguments and refuse a secret from the addon's code (SecretArguments = "AllowedWhenUntainted"
 -- or "NotAllowed" in the docs files above, for the kinds wow-widget-api.lua lists them on; a name TAINTED_OK allows on a
--- kind is allowed there). Methods whose arguments are never values (Create*, scripts, events) are left out, and so
--- are the getters that take one (GetPoint(i), GetWidth, GetAttribute(name)): hot, and never handed a secret.
+-- kind is allowed there; SimpleObjectAPIDocumentation.lua SetParentKey, MinimapFrameAPIDocumentation.lua PingLocation,
+-- SetArchBlobInsideTexture, SetMaskTexture and SetZoom, and SimpleFontAPIDocumentation.lua CopyFontObject among them).
+-- Methods whose arguments are never values (Create*, scripts, events) are left out, and so are the getters that take
+-- one (GetPoint(i), GetWidth, GetAttribute(name)): hot, and never handed a secret.
 local REFUSED = {
-  "AddHistoryLine", "AddMaskTexture", "AdjustPointsOffset", "ClearPoint", "Click", "DisableDrawLayer", "EnableDrawLayer",
-  "EnableKeyboard", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel", "HighlightText", "Insert", "RemoveMaskTexture", "SetAllPoints",
-  "SetAttribute", "SetAutoFocus", "SetBlendMode", "SetButtonState", "SetChecked", "SetCheckedTexture", "SetClampRectInsets",
-  "SetClampedToScreen", "SetClipsChildren", "SetCooldown", "SetCooldownDuration", "SetCooldownFromDurationObject",
-  "SetCountInvisibleLetters", "SetCountdownAbbrevThreshold", "SetCountdownFont", "SetCountdownFormatter", "SetCursorPosition",
-  "SetDisabledCheckedTexture", "SetDisabledFontObject", "SetDisabledTexture", "SetDontSavePosition", "SetDrawLayer",
-  "SetEnabled", "SetFadeDuration", "SetFading", "SetFillStyle", "SetFixedFrameLevel", "SetFixedFrameStrata", "SetFont",
-  "SetFontObject", "SetFontString", "SetFrameLevel", "SetFrameStrata", "SetGradient", "SetHeight", "SetHideCountdownNumbers",
-  "SetHighlightFontObject", "SetHighlightTexture", "SetHistoryLines", "SetHitRectInsets", "SetHorizTile", "SetHorizontalScroll",
+  "AddHistoryLine", "AddMaskTexture", "AdjustPointsOffset", "ClearPoint", "Click", "CopyFontObject",
+  "DisableDrawLayer", "EnableDrawLayer", "EnableKeyboard", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel",
+  "HighlightText", "Insert", "PingLocation", "RemoveMaskTexture", "SetAllPoints", "SetArchBlobInsideTexture",
+  "SetAttribute", "SetAutoFocus", "SetBlendMode", "SetButtonState", "SetChecked", "SetCheckedTexture",
+  "SetClampRectInsets", "SetClampedToScreen", "SetClipsChildren", "SetCooldown", "SetCooldownDuration",
+  "SetCooldownFromDurationObject", "SetCountInvisibleLetters", "SetCountdownAbbrevThreshold", "SetCountdownFont",
+  "SetCountdownFormatter", "SetCursorPosition", "SetDisabledCheckedTexture", "SetDisabledFontObject",
+  "SetDisabledTexture", "SetDontSavePosition", "SetDrawLayer", "SetEnabled", "SetFadeDuration", "SetFading",
+  "SetFillStyle", "SetFixedFrameLevel", "SetFixedFrameStrata", "SetFont", "SetFontObject", "SetFontString",
+  "SetFrameLevel", "SetFrameStrata", "SetGradient", "SetHeight", "SetHideCountdownNumbers", "SetHighlightFontObject",
+  "SetHighlightTexture", "SetHistoryLines", "SetHitRectInsets", "SetHorizTile", "SetHorizontalScroll",
   "SetHyperlinksEnabled", "SetIgnoreParentAlpha", "SetIgnoreParentScale", "SetIndentedWordWrap", "SetIsFrameBuffer",
-  "SetJustifyH", "SetJustifyV", "SetMask", "SetMaxBytes", "SetMaxLetters", "SetMaxLines", "SetMinMaxValues",
-  "SetMinimumCountdownDuration", "SetMotionScriptsWhileDisabled", "SetMouseClickEnabled", "SetMouseMotionEnabled",
-  "SetMovable", "SetMultiLine", "SetNonSpaceWrap", "SetNormalFontObject", "SetNormalTexture", "SetNumeric",
-  "SetObeyStepOnDrag", "SetOrientation", "SetParent", "SetPassThroughButtons", "SetPoint", "SetPropagateKeyboardInput",
-  "SetPushedTexture", "SetResizable", "SetResizeBounds", "SetReverse", "SetReverseFill", "SetRotatesTexture", "SetScale",
-  "SetScrollChild", "SetShadowColor", "SetShadowOffset", "SetShown", "SetSize", "SetSnapToPixelGrid", "SetSpacing",
-  "SetStatusBarTexture", "SetStepsPerPage", "SetSwipeTexture", "SetTexelSnappingBias", "SetText", "SetTextColor",
-  "SetTextHeight", "SetTextInsets", "SetTextScale", "SetTextureSliceMargins", "SetThumbTexture", "SetTimeVisible",
-  "SetToplevel", "SetUserPlaced", "SetValue", "SetValueStep", "SetVertTile", "SetVertexOffset", "SetVerticalScroll",
-  "SetWidth", "SetWordWrap", "StartMoving", "StartSizing",
+  "SetJustifyH", "SetJustifyV", "SetMask", "SetMaskTexture", "SetMaxBytes", "SetMaxLetters", "SetMaxLines",
+  "SetMinMaxValues", "SetMinimumCountdownDuration", "SetMotionScriptsWhileDisabled", "SetMouseClickEnabled",
+  "SetMouseMotionEnabled", "SetMovable", "SetMultiLine", "SetNonSpaceWrap", "SetNormalFontObject", "SetNormalTexture",
+  "SetNumeric", "SetObeyStepOnDrag", "SetOrientation", "SetParent", "SetParentKey", "SetPassThroughButtons",
+  "SetPoint", "SetPropagateKeyboardInput", "SetPushedTexture", "SetResizable", "SetResizeBounds", "SetReverse",
+  "SetReverseFill", "SetRotatesTexture", "SetScale", "SetScrollChild", "SetShadowColor", "SetShadowOffset", "SetShown",
+  "SetSize", "SetSnapToPixelGrid", "SetSpacing", "SetStatusBarTexture", "SetStepsPerPage", "SetSwipeTexture",
+  "SetTexelSnappingBias", "SetText", "SetTextColor", "SetTextHeight", "SetTextInsets", "SetTextScale",
+  "SetTextureSliceMargins", "SetThumbTexture", "SetTimeVisible", "SetToplevel", "SetUserPlaced", "SetValue",
+  "SetValueStep", "SetVertTile", "SetVertexOffset", "SetVerticalScroll", "SetWidth", "SetWordWrap", "SetZoom",
+  "StartMoving", "StartSizing",
 }
 
 -- The getters that answer the addon with secrets while the widget holds one of the aspects (SecretReturnsForAspect:
