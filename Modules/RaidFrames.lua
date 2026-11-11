@@ -522,8 +522,13 @@ local function placeTexts(b, z)
   T.TextSize(b.status, z.statusSize)
   b.topLine:SetHeight(T.Pixel(b))
 end
--- Shared with the preview tiles (Modules/RaidPreview.lua).
-RF.PlaceTexts = placeTexts
+-- Lays one tile out for its zones `z` and one screen pixel `px` at its scale now: the health inset, the role mark and
+-- the texts. Shared with the preview tiles (Modules/RaidPreview.lua), whose scale changes with the size previewed.
+function RF.PlaceTile(b, z, px)
+  placeInset(b, px)
+  placeRoleMark(b, z, px)
+  placeTexts(b, z)
+end
 
 -- The tile's texts: the top row, the status line (Dead / Offline or the
 -- missing health) and the top line, laid out in their zones.
@@ -540,11 +545,7 @@ end
 function RF.PlaceAllTexts()
   if not RF.header then return end
   local z, px = RF.TileZones(), T.PixelAtScale(RF.header:GetEffectiveScale())
-  for _, b in ipairs(RF.buttons) do
-    placeInset(b, px)
-    placeRoleMark(b, z, px)
-    placeTexts(b, z)
-  end
+  for _, b in ipairs(RF.buttons) do RF.PlaceTile(b, z, px) end
 end
 
 -- The layer above everything on the tile (auras included) for marks, and a

@@ -173,7 +173,7 @@ local function lay(k, s, z)
   b:SetSize(set.width, set.height)
   b:ClearAllPoints()
   b:SetPoint("BOTTOMLEFT", RP.frame, "BOTTOMLEFT", place(k, set, RF.LayoutFor(RP.size)))
-  RF.PlaceTexts(b, z)
+  RF.PlaceTile(b, z, T.Pixel(b))
   paint(b, s)
   b:Show()
 end
