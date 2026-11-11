@@ -1095,10 +1095,12 @@ end
 
 -- Steps -----------------------------------------------------------------------------------
 
--- Skip shows on the first step only (Back's slot is empty there), as wide as its label needs (German at 130%).
+-- Skip shows on the first step only (Back's slot is empty there), as wide as its label needs (German at 130%), and
+-- only while this run has changed nothing: after Back from a later step, Skip would end setup with the change kept.
 local function showSkip(n)
-  frame.skip:SetShown(n == 1)
-  if n == 1 then ns.WidenToLabel(frame.skip) end
+  local fresh = n == 1 and not state.backup
+  frame.skip:SetShown(fresh)
+  if fresh then ns.WidenToLabel(frame.skip) end
 end
 
 -- Step n's caption and buttons: Back past the floor, Skip on the first step, Done on the last (All set).

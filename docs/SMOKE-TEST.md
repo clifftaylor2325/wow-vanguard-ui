@@ -5410,6 +5410,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: All set says the run changed something and lists `Frames moved`, with no Undo setup; Done offers the reload.
 - If it fails, paste: the All set text and `/vg errors`.
 
+### 33.550 Skip setup goes once the run has changed something (H44-14-22)
+
+- Do: for Forever and Retail: on a first run, pick Centered: healing, Next, then Back to the first step.
+- Expect: the first step shows Next and no Skip setup.
+- If it fails, paste: a screenshot of the first step's buttons and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
