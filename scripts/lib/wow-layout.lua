@@ -176,6 +176,11 @@ stub.rectOf = rectOf
 -- width and a height. A font string needs neither: an empty one is still
 -- laid out where its anchors put it, and so is text hung on it (the quest
 -- tracker's objective text hangs on its count, empty for most objectives).
+-- Blizzard's own layout relies on it (WoW Forever): Blizzard_ObjectiveTracker/
+-- Blizzard_ObjectiveTrackerShared.xml:220-228 hangs a line's Text LEFT on the
+-- RIGHT of its Dash font string, and Blizzard_ObjectiveTrackerBlock.lua:178-180
+-- (OBJECTIVE_DASH_STYLE_HIDE_AND_COLLAPSE) hides the Dash and sets its text to
+-- nil so the Text collapses onto it. Not seen in the game.
 local function sized(w)
   if w.__kind == "FontString" then return true end
   local r = rectOf(w)
