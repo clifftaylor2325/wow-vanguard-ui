@@ -18,6 +18,7 @@ ignore:
   - art
   - docs
   - scripts
+  - tools
   - README.md
   - CLAUDE.md
   - package.json

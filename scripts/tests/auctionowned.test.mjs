@@ -110,7 +110,8 @@ const OWNED = `__wfgWorld.ah.owned = {
   { auctionID = 505, itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, status = 0, quantity = 1, buyoutAmount = __wfgWorld.secret(1) } }
   __wfgWorld.ah.commodities[10940] = { { unitPrice = 120, quantity = 7 }, { unitPrice = 150, quantity = 5, containsOwnerItem = true } }
   __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }
-  __wfgWorld.ah.cancelCost = 100`;
+  __wfgWorld.ah.cancelCost = 100
+`;
 const OWNED_CARD = `${HELPER}.ownedCard`;
 // Owned row i: [shown, name, price, undercut flag shown].
 const ownedRow = (addon, i) => addon.eval(`local r = ${OWNED_CARD}.table.rows[${i}]

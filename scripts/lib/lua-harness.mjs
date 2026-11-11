@@ -18,7 +18,8 @@ import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
 import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { markSecretMeta, secretArgAt } from "./lua-secret-ops.mjs";
-import { lineHook } from "./lua-coverage.mjs";
+import { addHits, lineHook } from "./lua-coverage.mjs";
+import { ENGINE, hasWasmChunk, newWasmState } from "./lua-wasm.mjs";
 import { profileSampler } from "./lua-profile.mjs";
 import { advanceEms } from "./truetype.mjs";
 import { clientPaths, readToc, tocPaths } from "./toc.mjs";
@@ -82,7 +83,7 @@ function dumpTop(L) {
 
 // Pushes the compiled chunk of a Lua file, from the cache when the file is
 // unchanged, else by parsing it (and caching the result). Errors throw.
-export function pushFileChunk(L, file, chunkName) {
+function pushFileChunk(L, file, chunkName) {
   const stamp = stampOf(file);
   const cached = chunkCache.get(file);
   if (cached && cached.stamp === stamp) {
@@ -94,8 +95,8 @@ export function pushFileChunk(L, file, chunkName) {
   chunkCache.set(file, { stamp, bytes: dumpTop(L) });
 }
 
-// Whether a file's compiled chunk is in the cache (for the harness's own tests).
-export const hasCachedChunk = (file) => chunkCache.has(file);
+// Whether a file's compiled chunk is in the chosen engine's cache (for the harness's own tests).
+export const hasCachedChunk = (file) => (ENGINE === "wasm" ? hasWasmChunk(file) : chunkCache.has(file));
 
 // The addon's files in TOC load order: the ones a client loads ("forever" or "retail",
 // by the TOC's game-type tags), or every file listed when no client is named.
@@ -272,23 +273,57 @@ function newState() {
   return L;
 }
 
+// The engine ------------------------------------------------------------------------------------
+// One seam between the harness and the Lua VM: a state answers run (a chunk, for its effects), value (a chunk's
+// first result as JS) and runFile (a file through the chunk cache), each with the chunk name and whether the chunk
+// gets `ADDON, ns` as WoW passes them. VG_LUA_ENGINE=wasm picks real Lua 5.1 in WebAssembly (lua-wasm.mjs);
+// anything else, fengari (Lua 5.3 in JS), the default.
+export { ENGINE };
+
+// A fengari state behind the seam: the standard libraries, then (unless bare) the harness's hooks and host functions.
+function fengariState(limit, bare = false) {
+  const L = newState();
+  if (!bare) attachHooks(L, limit);
+  if (!bare) setHostFunctions(L);
+  return { L, ...fengariCalls(L) };
+}
+
+// The seam's calls on a fengari state.
+function fengariCalls(L) {
+  return {
+    // A chunk, for its effects.
+    run: (source, chunkName, withAddonArgs = false) => run(L, source, chunkName, withAddonArgs, 0),
+    // A chunk's first result as JS.
+    value: (source, chunkName, withAddonArgs = false) => { run(L, source, chunkName, withAddonArgs, 1); const v = toJs(L, -1); lua.lua_pop(L, 1); return v; },
+    // A file through the chunk cache, its first result put in the global `into` when named.
+    runFile: (file, chunkName, withAddonArgs = false, into = null) => {
+      runFile(L, file, chunkName, withAddonArgs, into ? 1 : 0);
+      if (into) lua.lua_setglobal(L, to_luastring(into));
+    },
+  };
+}
+
+// A new harness state on the chosen engine, with a per-call instruction budget (on fengari, none and no host
+// functions when bare, as a plain file reader has always run). The profiler has no Lua 5.1 side yet.
+function harnessState(limit, bare = false) {
+  if (ENGINE === "fengari") return fengariState(limit, bare);
+  if (process.env.LUA_PROFILE) throw new Error("LUA_PROFILE: the profiler samples on the default engine only (lua-profile.mjs reads fengari's stack); unset VG_LUA_ENGINE");
+  return newWasmState({ budget: limit, coverage: process.env.LUA_COVERAGE ? addHits : null, addonName: ADDON, secretChecks: process.env.VG_SECRET_OPS !== "off" });
+}
+
 // Runs a plain Lua file (e.g. a WTF SavedVariables file) in a bare state
 // and returns the named globals as JS.
 export function readLuaGlobals(source, names) {
-  const L = newState();
-  run(L, source, "=SavedVariables", false, 0);
+  const S = harnessState(DEFAULT_BUDGET, true);
+  S.run(source, "=SavedVariables");
   const out = {};
-  for (const name of names) {
-    lua.lua_getglobal(L, to_luastring(name));
-    out[name] = toJs(L, -1);
-    lua.lua_pop(L, 1);
-  }
+  for (const name of names) out[name] = S.value(`return ${name}`, "=SavedVariables");
   return out;
 }
 
 // Runs one of the client's Lua files (scripts/lib/<name>) as "@<name>".
-function runLib(L, name, nresults = 0) {
-  runFile(L, path.join(root, "scripts/lib", name), `@${name}`, false, nresults);
+function runLib(S, name) {
+  S.runFile(path.join(root, "scripts/lib", name), `@${name}`);
 }
 
 // __wfgUserdata(fields): a full userdata that reads its fields and methods from
@@ -320,10 +355,10 @@ function fontEmsLua() {
 }
 
 // Loads the fonts' advance widths, the text metrics (between the stub and its layout) and the text-fit audit.
-function loadText(L) {
-  run(L, fontEmsLua(), "=fonts", false, 0);
-  runLib(L, "wow-text.lua");
-  runLib(L, "wow-textfit.lua");
+function loadText(S) {
+  S.run(fontEmsLua(), "=fonts");
+  runLib(S, "wow-text.lua");
+  runLib(S, "wow-textfit.lua");
 }
 
 // The harness's own functions the stub files call: __wfgUserdata, and __wfgMarkSecretMeta and __wfgSecretAt for
@@ -338,16 +373,14 @@ function setHostFunctions(L) {
 
 // Loads the widget API list, the WoW stub, its layout, the world, its key bindings, the taint rules, the secret
 // aspects unless `aspects` is false, and an empty addon namespace.
-function loadStub(L, aspects) {
-  setHostFunctions(L);
-  runLib(L, "wow-widget-api.lua", 1);
-  lua.lua_setglobal(L, to_luastring("__wfgWidgetApi"));
-  runLib(L, "wow-stub.lua");
-  loadText(L);
-  runLib(L, "wow-layout.lua");
-  for (const file of ["wow-world.lua", "wow-keybinds.lua", "wow-taint.lua"]) runLib(L, file);
-  if (aspects) runLib(L, "wow-aspects.lua");
-  run(L, "__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns", false, 0);
+function loadStub(S, aspects) {
+  S.runFile(path.join(root, "scripts/lib/wow-widget-api.lua"), "@wow-widget-api.lua", false, "__wfgWidgetApi");
+  runLib(S, "wow-stub.lua");
+  loadText(S);
+  runLib(S, "wow-layout.lua");
+  for (const file of ["wow-world.lua", "wow-keybinds.lua", "wow-taint.lua"]) runLib(S, file);
+  if (aspects) runLib(S, "wow-aspects.lua");
+  S.run("__wfgNs = {}; __wfgStub.firstAddonFrame = #__wfgStub.frames", "=ns");
 }
 
 // The Retail client's own stubs, one file per area (scripts/lib/wow-retail-<area>.lua), in name order.
@@ -356,41 +389,35 @@ export function retailStubs() {
 }
 
 // The client the world has become ("forever" or "retail": wow-world.lua's world.client).
-function worldClient(L) {
-  run(L, "return __wfgWorld.client", "=client", false, 1);
-  const name = toJs(L, -1);
-  lua.lua_pop(L, 1);
-  return name;
+function worldClient(S) {
+  return S.value("return __wfgWorld.client", "=client");
 }
 
 // Runs the client Lua before the addon's files load, with the font metrics on for the text-fit
 // audit, then a Retail world's own stubs, then gives the addon the client's type() for secrets;
 // returns the client the world is.
-function startClient(L, client, textFit) {
-  if (textFit) run(L, '__wfgStub.textMetrics = "font"', "=textFit", false, 0);
-  if (client) run(L, client, "=client", false, 0);
-  const name = worldClient(L);
-  if (name === "retail") for (const file of retailStubs()) runLib(L, file);
-  run(L, "__wfgWorld.secretTypes()", "=secretTypes", false, 0);
+function startClient(S, client, textFit) {
+  if (textFit) S.run('__wfgStub.textMetrics = "font"', "=textFit");
+  if (client) S.run(client, "=client");
+  const name = worldClient(S);
+  if (name === "retail") for (const file of retailStubs()) runLib(S, file);
+  S.run("__wfgWorld.secretTypes()", "=secretTypes");
   return name;
 }
 
 // Loads the TOC files that client loads, in order (the string table made a pseudo-locale as soon
 // as it exists, when pseudoLocale), then the SavedVariables source if any.
-function loadAddon(L, client, savedVariables, pseudoLocale) {
+function loadAddon(S, client, savedVariables, pseudoLocale) {
   for (const file of tocFiles(client)) {
-    runFile(L, path.join(root, file), `@${file}`, true, 0);
-    if (pseudoLocale && file === "Core/Locale.lua") evalIn(L, "__wfgPseudoLocale(ns.L)");
+    S.runFile(path.join(root, file), `@${file}`, true);
+    if (pseudoLocale && file === "Core/Locale.lua") evalIn(S, "__wfgPseudoLocale(ns.L)");
   }
-  if (savedVariables) run(L, savedVariables, "=SavedVariables", false, 0);
+  if (savedVariables) S.run(savedVariables, "=SavedVariables");
 }
 
 // Runs Lua with `ADDON, ns` in scope and returns the first result as JS.
-function evalIn(L, source) {
-  run(L, `local ADDON, ns = ...\n${source}`, "=eval", true, 1);
-  const value = toJs(L, -1);
-  lua.lua_pop(L, 1);
-  return value;
+function evalIn(S, source) {
+  return S.value(`local ADDON, ns = ...\n${source}`, "=eval", true);
 }
 
 // Lua arguments from JS values.
@@ -488,7 +515,7 @@ const list = (value) => (Array.isArray(value) ? value : []);
 
 // Frame inspectors: what a frame draws, as plain JS.
 function inspectors(addon) {
-  runFile(addon.L, INSPECT, "@wow-inspect.lua", false, 0);
+  addon.state.runFile(INSPECT, "@wow-inspect.lua");
   return {
     // A frame's snapshot: { id, name, kind, shown, visible, rect, text, texture, color, alpha, value, children... }; null when missing.
     frame: (ref) => addon.eval(`local f = ${frameRef(ref)}\nreturn f and __wfgInspect(f)`),
@@ -564,13 +591,12 @@ function track(addon) {
 // longer, as a translation might be (wow-text.lua, wow-textfit.lua). secretAspects: false leaves the secret
 // aspects out (wow-aspects.lua), so the raid bench's harness instructions are what they were before them.
 export function createAddon({ savedVariables = "", client = "", instructionBudget = DEFAULT_BUDGET, textFit = false, secretAspects = true } = {}) {
-  const L = newState();
-  attachHooks(L, instructionBudget);
-  loadStub(L, secretAspects);
-  const name = startClient(L, client, textFit);
-  loadAddon(L, name, savedVariables, textFit);
+  const S = harnessState(instructionBudget);
+  loadStub(S, secretAspects);
+  const name = startClient(S, client, textFit);
+  loadAddon(S, name, savedVariables, textFit);
   // Runs Lua with `ADDON, ns` in scope and returns the first result as JS.
-  const addon = { L, eval: (source) => evalIn(L, source) };
+  const addon = { L: S.L, state: S, eval: (source) => evalIn(S, source) };
   Object.assign(addon, drivers(addon), lifecycle(addon), inspectors(addon), input(addon));
   addon.world = worldApi(addon);
   track(addon);

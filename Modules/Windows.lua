@@ -64,13 +64,14 @@ GW.QUEST_WINDOWS = { QuestFrame = true, GossipFrame = true }
 -- Windows that load with their own part of the game: addon name -> window names
 -- (filled by GW.Add; the first ones are registered at the end of this file).
 GW.ON_DEMAND = {}
--- The windows group's own on-demand windows. (Blizzard_EncounterJournal never loads on Forever.)
+-- The windows group's own on-demand windows, { addon, window names } in the order they register (a list, so the
+-- registry's order is the same on any Lua: pairs gives no order). (Blizzard_EncounterJournal never loads on Forever.)
 GW.LATER = {
-  Blizzard_PlayerSpells = { "PlayerSpellsFrame" }, Blizzard_TimeManager = { "TimeManagerFrame" },
-  Blizzard_AuctionHouseUI = { "AuctionHouseFrame" }, Blizzard_Professions = { "ProfessionsFrame" },
-  Blizzard_InspectUI = { "InspectFrame" }, Blizzard_GuildBankUI = { "GuildBankFrame" },
-  Blizzard_Collections = { "CollectionsJournal" }, Blizzard_AchievementUI = { "AchievementFrame" },
-  Blizzard_FlightMap = { "FlightMapFrame" },
+  { "Blizzard_PlayerSpells", { "PlayerSpellsFrame" } }, { "Blizzard_TimeManager", { "TimeManagerFrame" } },
+  { "Blizzard_AuctionHouseUI", { "AuctionHouseFrame" } }, { "Blizzard_Professions", { "ProfessionsFrame" } },
+  { "Blizzard_InspectUI", { "InspectFrame" } }, { "Blizzard_GuildBankUI", { "GuildBankFrame" } },
+  { "Blizzard_Collections", { "CollectionsJournal" } }, { "Blizzard_AchievementUI", { "AchievementFrame" } },
+  { "Blizzard_FlightMap", { "FlightMapFrame" } },
 }
 -- The parchment behind book and letter pages (faded: the page text goes light on the dark panel).
 GW.ITEM_TEXT_ART = { "ItemTextMaterialTopLeft", "ItemTextMaterialTopRight", "ItemTextMaterialBotLeft", "ItemTextMaterialBotRight", "ItemTextFramePageBg" }
@@ -2521,7 +2522,7 @@ GW.Add("windows", GW.FRAMED, GW.SkinFramed)
 GW.Add("windows", { "LootFrame" }, GW.SkinLoot)
 GW.Add("popups", GW.POPUPS, GW.SkinFramed)
 GW.Add("timers", GW.TIMERS, GW.SkinTimerContainer)
-for addon, names in pairs(GW.LATER) do GW.AddOnDemand("windows", addon, names, GW.SkinFramed) end
+for _, later in ipairs(GW.LATER) do GW.AddOnDemand("windows", later[1], later[2], GW.SkinFramed) end
 GW.Needs(GW.TIMERS, { methods = { "SetupTimer" } })
 GW.Needs({ "PlayerSpellsFrame" }, { parts = { "SpellBookFrame.PagedSpellsFrame", "TalentsFrame" } })
 GW.Needs({ "AuctionHouseFrame" }, { parts = { "SearchBar", "CategoriesList" }, game = { "AuctionHouseFilterButton_SetUp" } })

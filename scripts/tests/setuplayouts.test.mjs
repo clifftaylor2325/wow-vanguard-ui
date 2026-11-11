@@ -249,7 +249,7 @@ const NARROW_FRAMES = ["uf_targettarget", "playerauras", "partyextras", "chat"];
 // default chat (296) meets the left end of action bars 1 to 3 and the XP or reputation bar (under 1020 the player's cast bar and swing timer too), and setup's Fit my screen is the answer there.
 const narrowExcused = (p, sw, sh) => / raid\b|raid off screen/.test(p) || (sh < 700 && /questtracker|questdialog/.test(p))
   || (sw < 1020 && /playerauras \/ maintanks/.test(p)) || (sw < 1229 && /chat \/ (bar[123]|repbar|xpbar)|(bar[123]|repbar|xpbar) \/ chat/.test(p))
-  || (sw < 1020 && /(cast_player|swing) \/ chat/.test(p));
+  || (sw < 1020 && /(cast_player|swing) \/ chat|chat \/ (cast_player|swing)/.test(p));
 it("setup layouts: on canvases narrower than 1365 the adapted default spots stay on screen and clear, solo to 40-man", () => {
   for (const [sw, sh] of [[1280, 800], [1229, 768], [1024, 768], [835, 668]]) {
     const addon = wholeHud(`__wfgStub.setScreen(${sw}, ${sh}) `);

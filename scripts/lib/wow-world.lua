@@ -422,7 +422,8 @@ end
 
 -- Bindings and secure drivers -------------------------------------------------------------
 
-world.bindings = { ACTIONBUTTON1 = { "1" }, ACTIONBUTTON2 = { "2" }, ACTIONBUTTON3 = { "3" }, TOGGLEBACKPACK = { "B" }, OPENALLBAGS = { "B" } }
+-- A key is bound to one command at most, as in the game (SetBinding moves it): B opens the backpack.
+world.bindings = { ACTIONBUTTON1 = { "1" }, ACTIONBUTTON2 = { "2" }, ACTIONBUTTON3 = { "3" }, TOGGLEBACKPACK = { "B" } }
 world.overrides = {}
 
 -- The keys bound to a command.

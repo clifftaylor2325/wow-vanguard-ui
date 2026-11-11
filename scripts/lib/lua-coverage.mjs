@@ -14,6 +14,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import fengari from "fengari";
+import { ENGINE, wasmExecutableLines } from "./lua-wasm.mjs";
 
 const { lua, lauxlib, to_luastring, to_jsstring } = fengari;
 
@@ -44,8 +45,10 @@ function protoLines(p, out) {
   return out;
 }
 
-// The executable lines of a Lua source, compiled the same way the harness loads it.
+// The executable lines of a Lua source, compiled the same way the harness loads it (by Lua 5.1 on the wasm engine,
+// whose compiler gives some lines to other instructions than 5.3's does).
 export function executableLines(source, chunkName) {
+  if (ENGINE === "wasm") return wasmExecutableLines(source, chunkName);
   const L = lauxlib.luaL_newstate();
   if (lauxlib.luaL_loadbuffer(L, to_luastring(source), null, to_luastring(chunkName)) !== lua.LUA_OK) {
     throw new Error(`${chunkName}: ${lua.lua_tojsstring(L, -1)}`);
@@ -83,6 +86,13 @@ function fold() {
     p.__wfgHits = undefined;
   }
   protos.length = 0;
+}
+
+// Adds lines run in a chunk ("@<file>") to the record: the wasm engine's hits, which it takes after each call.
+export function addHits(chunkName, lines) {
+  if (!executed.has(chunkName)) executed.set(chunkName, new Set());
+  const set = executed.get(chunkName);
+  for (const line of lines) set.add(line);
 }
 
 // The lines recorded so far for a chunk ("@<file>").

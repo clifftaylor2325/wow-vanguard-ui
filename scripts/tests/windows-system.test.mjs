@@ -1118,7 +1118,7 @@ it("Edit Mode system settings: the check boxes, dropdowns and sliders the game t
   expect(addon.eval(`return ns.Theme.DividerParts(${d}.Buttons.Divider) ~= nil`), "the line between Revert and the extra buttons is a divider").toBe(true);
   addon.eval(`${d}:UpdateSettings()`);
   // The settings made by the last UpdateSettings: { check box, dropdown, dropdown arrow, slider with steppers, the plain frame untouched }.
-  const made = () => addon.eval(`local c, dd, sl = table.unpack(${d}.made)
+  const made = () => addon.eval(`local c, dd, sl = unpack(${d}.made)
     return { ns.Theme.CheckParts(c.Button) ~= nil, __panelled(dd.Dropdown), dd.Dropdown.Arrow.__alpha, __stepper(sl.Slider) }`);
   expect(made(), "each setting is dressed as the game takes it").toEqual([true, true, 0, true]);
   addon.eval(`${d}:Hide() ${d}:Show() ${d}:UpdateSettings()`);

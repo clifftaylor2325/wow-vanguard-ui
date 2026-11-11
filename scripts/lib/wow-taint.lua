@@ -35,6 +35,7 @@ local stub = __wfgStub
 local type = __wfgRawType
 local methods = stub.methods
 local world = stub.world
+local pack, unpackN = stub.pack, stub.unpack
 
 -- Recorded rule breaks: { text, count, stack }, in the order first seen.
 stub.violations = {}
@@ -496,19 +497,19 @@ local rawDepth = 0
 -- Runs a getter with true values inside it.
 local function rawCall(get, w, ...)
   rawDepth = rawDepth + 1
-  local out = table.pack(pcall(get, w, ...))
+  local out = pack(pcall(get, w, ...))
   rawDepth = rawDepth - 1
   if not out[1] then error(out[2], 0) end
-  return table.unpack(out, 2, out.n)
+  return unpackN(out, 2, out.n)
 end
 
 -- Each value as a secret; nil stays nil (a region with no rect has no position).
 local function hidden(...)
-  local out = table.pack(...)
+  local out = pack(...)
   for i = 1, out.n do
     if out[i] ~= nil then out[i] = world.secret(out[i]) end
   end
-  return table.unpack(out, 1, out.n)
+  return unpackN(out, 1, out.n)
 end
 
 -- A geometry getter that answers with secrets while the region's geometry is secret.

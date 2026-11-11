@@ -6,15 +6,12 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import fengari from "fengari";
 import { expect, it } from "vitest";
 import { expectErrors } from "./lib/error-guard.mjs";
-import { RETAIL_CLIENT, createAddon, hasCachedChunk, pushFileChunk, retailStubs, root, tocFiles } from "./lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon, hasCachedChunk, retailStubs, root, tocFiles } from "./lib/lua-harness.mjs";
 import { luaValue } from "./lib/lua-emit.mjs";
 import { clientPaths, readToc, tocPaths } from "./lib/toc.mjs";
-import { GAME_CLICKS_LUA, GAME_ENGINE_LUA } from "./tests/helpers.mjs";
-
-const { lua, lauxlib, lualib } = fengari;
+import { GAME_CLICKS_LUA, GAME_ENGINE_LUA, indexedNil } from "./tests/helpers.mjs";
 
 // A logged-in addon on a finished-setup account.
 const loggedIn = () => {
@@ -32,7 +29,7 @@ it("numbers print as the game's Lua 5.1 prints them: whole floats without .0", (
 
 it("a Lua error carries a traceback naming the addon file", () => {
   const addon = createAddon();
-  expectErrors("TEST-ONLY: eval:2: attempt to index a nil value (local 't')");
+  expectErrors(`TEST-ONLY: eval:2: ${indexedNil("local", "t")}`);
   expect(() => addon.eval("ns.Theme.RGB(nil .. 'x')")).toThrow(/eval:2: attempt to concatenate/);
   expect(() => addon.eval("ns.Try('TEST-ONLY', function() local t = nil; return t.x end) return ns.errors[#ns.errors]")).not.toThrow();
   expect(addon.eval("return ns.errors[#ns.errors].text")).toMatch(/TEST-ONLY: eval:2: attempt to index/);
@@ -50,13 +47,11 @@ it("a worker compiles each addon file once: the second addon loads from the chun
 it("an edited file is compiled again, an unchanged one served from the cache", () => {
   const file = path.join(os.tmpdir(), `fui-chunk-${process.pid}.lua`);
   fs.writeFileSync(file, "return 1");
-  // Loads the file as "@TEST-ONLY-cache.lua" in a bare state and returns its result.
+  const addon = createAddon();
+  // Runs the file as "@TEST-ONLY-cache.lua" through the engine's file cache and returns its result.
   const load = () => {
-    const L = lauxlib.luaL_newstate();
-    lualib.luaL_openlibs(L);
-    pushFileChunk(L, file, "@TEST-ONLY-cache.lua");
-    expect(lua.lua_pcall(L, 0, 1, 0)).toBe(lua.LUA_OK);
-    return lua.lua_tonumber(L, -1);
+    addon.state.runFile(file, "@TEST-ONLY-cache.lua", false, "__cacheResult");
+    return addon.eval("return __cacheResult");
   };
   expect(load()).toBe(1);
   expect(hasCachedChunk(file)).toBe(true);
@@ -306,14 +301,14 @@ it("a call from the tests that runs past its instruction budget fails with a tra
 // Taint rules (scripts/lib/wow-taint.lua) ------------------------------------------------------
 
 // Runs Lua as if it were a line of one of the addon's files (Modules/TEST-ONLY.lua), and returns its result.
-const asAddon = (addon, lua) => addon.eval(`return assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
+const asAddon = (addon, lua) => addon.eval(`return assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
 
 it("taint: frames belong to whoever made them; the addon's files make the addon's", () => {
   const addon = createAddon();
-  addon.eval(`__mine = assert(load("local f = CreateFrame('Frame', nil, UIParent) return f", "@Modules/TEST-ONLY.lua"))()
-    __mineTex = assert(load("local t = ChatFrame1:CreateTexture() return t", "@Modules/TEST-ONLY.lua"))()
+  addon.eval(`__mine = assert(loadstring("local f = CreateFrame('Frame', nil, UIParent) return f", "@Modules/TEST-ONLY.lua"))()
+    __mineTex = assert(loadstring("local t = ChatFrame1:CreateTexture() return t", "@Modules/TEST-ONLY.lua"))()
     __game = CreateFrame("StatusBar", nil, UIParent) __game:SetStatusBarTexture("TEST-ONLY") __gameTex = __game:CreateTexture()
-    __viaPcall = assert(load("local ok, f = pcall(CreateFrame, 'Frame') return f", "@Core/TEST-ONLY.lua"))()`);
+    __viaPcall = assert(loadstring("local ok, f = pcall(CreateFrame, 'Frame') return f", "@Core/TEST-ONLY.lua"))()`);
   expect(addon.eval("return { UIParent.__byGame, ChatFrame1.__byGame, __game.__byGame, __game:GetStatusBarTexture().__byGame, __gameTex.__byGame }"),
     "the client's frames, test code's stand-ins, and regions the stub makes for them are the game's").toEqual([true, true, true, true, true]);
   expect(addon.eval("return { __mine.__byGame == nil, __mineTex.__byGame == nil, __viaPcall.__byGame == nil }"),
@@ -338,7 +333,7 @@ it("taint: addon code storing a field on a game frame fails the test; game, test
 // A TEST-ONLY secure button (the game's), the addon's holder around it, and a listener for blocked actions.
 const SECURE_ENV = `
   __secure = CreateFrame("Button", "TESTONLY_Secure", UIParent, "SecureActionButtonTemplate")
-  __holder = assert(load("local f = CreateFrame('Frame', 'TESTONLY_Holder', UIParent) return f", "@Modules/TEST-ONLY.lua"))()
+  __holder = assert(loadstring("local f = CreateFrame('Frame', 'TESTONLY_Holder', UIParent) return f", "@Modules/TEST-ONLY.lua"))()
   __inner = CreateFrame("Button", nil, __holder, "SecureUnitButtonTemplate")
   __blocked = {}
   __listen = CreateFrame("Frame") __listen:RegisterEvent("ADDON_ACTION_BLOCKED")
@@ -369,14 +364,14 @@ it("taint: a hook in front of a protected method doesn't hide the addon code tha
   addon.eval(SECURE_ENV + "hooksecurefunc(__secure, 'Hide', function() end)");
   addon.world.combat(true);
   expectErrors("blocked in combat: Core/TEST-ONLY.lua:1 called Hide on the protected frame TESTONLY_Secure");
-  addon.eval(`assert(load("__secure:Hide()", "@Core/TEST-ONLY.lua"))()`);
+  addon.eval(`assert(loadstring("__secure:Hide()", "@Core/TEST-ONLY.lua"))()`);
   expect(addon.eval("return __secure:IsShown()"), "still shown").toBe(true);
 });
 
 it("taint: in combat, ShowUIPanel and HideUIPanel refuse a run with addon code in it, as the client's panel manager does", () => {
   const addon = createAddon();
   addon.eval(`__panel = CreateFrame("Frame", "TESTONLY_Panel", UIParent) __panel:Hide()
-    __opener = assert(load("ShowUIPanel(__panel)", "@Interface/TEST-ONLY.lua"))`);
+    __opener = assert(loadstring("ShowUIPanel(__panel)", "@Interface/TEST-ONLY.lua"))`);
   asAddon(addon, "__opener()");
   expect(addon.eval("return __panel:IsShown()"), "out of combat the addon may open a panel").toBe(true);
   addon.world.combat(true);

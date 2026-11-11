@@ -2,13 +2,15 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
-import { AURA_FALLBACK, CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, expectErrors, isTok, key, lacking, loggedIn, putAway, px, setCombat, tooltip, unitEvents } from "./helpers.mjs";
+import { AURA_FALLBACK, CLICK_LUA, ENGINE_ENV, NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, button, chatHas, expectErrors, indexedNil, isTok, key, lacking, loggedIn, putAway, px, setCombat, tooltip, unitEvents } from "./helpers.mjs";
 
+// One notice: its label, then the error indexing the missing style enum (its brackets escaped for the pattern).
+const noDispel = (label) => new RegExp(`^${label}: Core/AuraEngine\\.lua:\\d+: ${indexedNil("field", "CustomAuraButtonDispelTypeTextureStyle").replace(/[()]/g, "\\$&")}$`);
 // The notices a client without the dispel-highlight style leaves: the engine's calls into it are wrapped
 // (Core/AuraEngine.lua), so only the extra is lost. Only the line number of the error varies.
-const NO_DISPEL_STYLE = /^debuff type colors: Core\/AuraEngine\.lua:\d+: attempt to index a nil value \(field 'CustomAuraButtonDispelTypeTextureStyle'\)$/;
-const NO_DISPEL_BADGE = /^debuff type badge: Core\/AuraEngine\.lua:\d+: attempt to index a nil value \(field 'CustomAuraButtonDispelTypeTextureStyle'\)$/;
-const NO_DISPEL_EXTRAS = /^aura icon extras: Core\/AuraEngine\.lua:\d+: attempt to index a nil value \(field 'CustomAuraButtonDispelTypeTextureStyle'\)$/;
+const NO_DISPEL_STYLE = noDispel("debuff type colors");
+const NO_DISPEL_BADGE = noDispel("debuff type badge");
+const NO_DISPEL_EXTRAS = noDispel("aura icon extras");
 
 // TEST-ONLY auras by unit and filter. raid1: a Magic debuff and two of your HoTs.
 const AURA_ENV = `

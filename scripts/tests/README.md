@@ -16,6 +16,16 @@ times) and move its entry in `login-scope.json` with it.
 
 Everything here is TEST-ONLY: nothing in `scripts/lib/wow-*.lua` ships in game.
 
+**Two engines.** `VG_LUA_ENGINE=wasm` runs the same tests on real Lua 5.1.5, the game's Lua, compiled to
+WebAssembly (`scripts/lib/lua-wasm.mjs`; the sources, the C shim and the build in `tools/lua51/`, built by
+`node tools/lua51/build.mjs`); unset, the harness runs on fengari, which is the default. A client builds and logs in
+about ten times faster on the 5.1 engine and takes about a quarter of the memory. Line coverage works on both (on
+the 5.1 engine the executable lines come from the 5.1 compiler); the profiler and `npm run bench` run on fengari only.
+Write tests that read the same on both: fengari's `pairs` walks a table in insertion order and the game's walks it
+in hash order, so don't depend on it (sort, or keep a list); `#` on a table with a gap may give either end; join Lua
+chunks with a newline (5.1 reads `99ns` as a malformed number); and 5.1 words some errors differently
+(`indexedNil` in `helpers.mjs` gives the running engine's text).
+
 ## The pieces
 
 | File | What it is |

@@ -18,11 +18,12 @@ const BULK_ENV = `
     { itemID = { __secret = true } }, { itemID = 159, stackCount = 2 } }
   for n = 1, 7 do __bag[#__bag + 1] = { itemID = 1000 + n } __wfgWorld.items[1000 + n] = { name = "TEST-ONLY Extra " .. n, sellPrice = 1 } end
   C_Container = { GetContainerNumSlots = function(bag) return bag == 0 and #__bag or 0 end,
-    GetContainerItemInfo = function(bag, slot) return __bag[slot] end,
+    GetContainerItemInfo = function(bag, slot) return __bag[slot] or nil end,
     GetContainerNumFreeSlots = function(bag) return bag == 1 and 3 or 0 end,
     UseContainerItem = function(bag, slot)
       __used[#__used + 1] = slot
-      if __sticky > 0 then __sticky = __sticky - 1 else __bag[slot] = nil end
+      -- A sold slot holds false, not nil, so the bag keeps its size (# on a table with a gap may give either end of it).
+      if __sticky > 0 then __sticky = __sticky - 1 else __bag[slot] = false end
     end }
   C_Timer = { After = function(_, fn) fn() end }
 `;

@@ -1,4 +1,4 @@
--- Minimal WoW API stub so addon Lua runs under Node (fengari, Lua 5.3).
+-- Minimal WoW API stub so addon Lua runs under Node (fengari, Lua 5.3, or real Lua 5.1: lua-harness.mjs's ENGINE).
 -- TEST-ONLY. Not listed in the TOC and never shipped in game.
 
 -- The harness's own type(): the addon's is replaced once the client is built (wow-world.lua's
@@ -11,6 +11,7 @@ local type = __wfgRawType
 -- the addon could meet behave as in game: 5.1 names, and numbers that print
 -- as integers when they are whole (5.3 says "3.0" for 6 / 2; 5.1 says "3").
 -- Concatenation (`..`) is patched in the harness (scripts/lib/lua-harness.mjs).
+-- On the Lua 5.1 engine each `x = x or ...` keeps the real one, and the number shims stay out.
 
 math.atan2 = math.atan2 or function(y, x)
   return math.atan(y, x)
@@ -30,12 +31,25 @@ string.gfind = string.gfind or string.gmatch
 -- 5.1's getfenv: every function the addon and its libraries load runs in the
 -- global table (the bundled LibSharedMedia-3.0 reads getfenv(0)).
 getfenv = getfenv or function() return _G end
--- The game's bit library (LibSharedMedia-3.0 reads bit.band).
-bit = bit or { band = function(a, b) return a & b end }
+-- 5.3's bitwise and, compiled only where it parses (5.1 reads `&` as a syntax error).
+local nativeAnd = loadstring("return function(a, b) return a & b end")
 
--- A whole float as the integer 5.1 would print; anything else as is.
+-- Bitwise and of two whole numbers from 0 to 2^53, in arithmetic (for a Lua without the operator).
+local function arithmeticAnd(a, b)
+  local out, bitValue = 0, 1
+  while a > 0 and b > 0 do
+    if a % 2 == 1 and b % 2 == 1 then out = out + bitValue end
+    a, b, bitValue = math.floor(a / 2), math.floor(b / 2), bitValue * 2
+  end
+  return out
+end
+
+-- The game's bit library (LibSharedMedia-3.0 reads bit.band).
+bit = bit or { band = nativeAnd and nativeAnd() or arithmeticAnd }
+
+-- A whole float as the integer 5.1 would print; anything else as is (5.1 has one number type: always as is).
 local function wholeNumber(v)
-  if math.type(v) == "float" and v == math.floor(v) and v > -2^53 and v < 2^53 then
+  if math.type and math.type(v) == "float" and v == math.floor(v) and v > -2^53 and v < 2^53 then
     return math.tointeger(v)
   end
   return v
@@ -43,9 +57,12 @@ end
 __wfgWholeNumber = wholeNumber
 
 local rawtostring = tostring
--- tostring as 5.1 prints numbers: whole floats without ".0".
-function tostring(v)
-  return rawtostring(wholeNumber(v))
+-- tostring as 5.1 prints numbers: whole floats without ".0" (5.1's own tostring already does).
+if math.type then
+  -- 5.1's tostring on 5.3.
+  function tostring(v)
+    return rawtostring(wholeNumber(v))
+  end
 end
 
 -- Truncates toward zero, as 5.1's %d did with a fractional number.
@@ -65,8 +82,8 @@ local function formatSpecs(fmt)
 end
 
 local rawformat = string.format
--- string.format as 5.1 does it: %d truncates a fraction, %s prints whole floats as integers.
-function string.format(fmt, ...)
+-- string.format as 5.1 does it: %d truncates a fraction, %s prints whole floats as integers (5.1's own does).
+local fivePointOneFormat = function(fmt, ...)
   local args, specs = { ... }, formatSpecs(fmt)
   for i, spec in ipairs(specs) do
     if spec:find("[dicxXo]") then args[i] = truncated(args[i])
@@ -74,9 +91,14 @@ function string.format(fmt, ...)
   end
   return rawformat(fmt, unpack(args, 1, math.max(#specs, select("#", ...))))
 end
+if math.type then string.format = fivePointOneFormat end
 
 local stub = { frames = {}, chat = {}, now = 1000, inCombat = false }
 __wfgStub = stub
+
+-- 5.3's table.pack and table.unpack for the harness's own files, which run on both engines (5.1 has only unpack).
+stub.pack = table.pack or function(...) return { n = select("#", ...), ... } end
+stub.unpack = table.unpack or unpack
 
 -- Test clock: only stub.update moves it.
 function GetTime()
@@ -946,10 +968,10 @@ function SecureHandlerSetFrameRef(frame, label, ref)
 end
 
 -- TEST-ONLY: runs a snippet with self bound to the frame, as the client's restricted
--- environment does, without its restrictions (Lua 5.3 load with an env table).
+-- environment does, without its restrictions (5.1's setfenv, or 5.3's load with an env table).
 function SecureHandlerExecute(frame, body)
   local env = setmetatable({ self = frame }, { __index = _G })
-  local fn = assert(load(body, "=snippet", "t", env))
+  local fn = setfenv and setfenv(assert(loadstring(body, "=snippet")), env) or assert(load(body, "=snippet", "t", env))
   fn()
 end
 

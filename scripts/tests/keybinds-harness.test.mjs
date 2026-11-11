@@ -19,7 +19,7 @@ const client = (events = []) => {
 };
 
 // Runs Lua as if it were a line of one of the addon's files (Modules/TEST-ONLY.lua), and returns its result.
-const asAddon = (addon, lua) => addon.eval(`return assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
+const asAddon = (addon, lua) => addon.eval(`return assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
 
 // The events seen so far, then forgotten.
 const seen = (addon) => addon.eval("local out = __seen __seen = {} return out");
@@ -276,7 +276,7 @@ it("combat blocks: a call made through pcall or a hook still counts as the addon
   addon.world.combat(true);
   expectErrors("blocked in combat: Core/TEST-ONLY.lua:1 called PlaceAction(), which the client refuses addon code in a fight");
   addon.eval(`hooksecurefunc("PlaceAction", function() end) __wfgWorld.cursor = { type = 'spell', id = 116 }
-    assert(load("pcall(PlaceAction, 5)", "@Core/TEST-ONLY.lua"))()`);
+    assert(loadstring("pcall(PlaceAction, 5)", "@Core/TEST-ONLY.lua"))()`);
   expect(addon.eval("return HasAction(5)"), "the slot stayed empty").toBe(false);
 });
 
@@ -284,7 +284,7 @@ it("keyPreimage: every bound key and its command, CLICK and SPELL keys included,
   const addon = client();
   addon.eval('SetBindingClick("X", "MyBtn", "RightButton") SetBindingSpell("C", "Fireball")');
   expect(addon.eval("return __wfgWorld.keyPreimage()"), "the keys GetBinding(i) lists and those it doesn't")
-    .toEqual({ 1: "ACTIONBUTTON1", 2: "ACTIONBUTTON2", 3: "ACTIONBUTTON3", B: "OPENALLBAGS", X: "CLICK MyBtn:RightButton", C: "SPELL Fireball" });
+    .toEqual({ 1: "ACTIONBUTTON1", 2: "ACTIONBUTTON2", 3: "ACTIONBUTTON3", B: "TOGGLEBACKPACK", X: "CLICK MyBtn:RightButton", C: "SPELL Fireball" });
 });
 
 it("ClearCursor: an action lifted off a bar and cleared is recorded in world.discarded; one that never sat on a bar is not", () => {
