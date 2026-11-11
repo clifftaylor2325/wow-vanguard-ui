@@ -355,9 +355,10 @@ AH.FORM = {
   stack = function(s, text) s.stack = typedCount(text, 1, s.max) or s.stack end,
   -- How many stacks: the quantity becomes that many stacks (at most what can go up).
   stacks = function(s, text) local n = typedCount(text, 1, s.max) if n then s.qty = math.min(s.max, n * s.stack) end end,
-  -- The price, per unit or per (full) stack by the toggle (a stack price is shared out rounding up, so
-  -- the stack never posts for less than was typed); nothing readable goes back to the suggestion.
-  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.ceil(p / s.stack) or p) end,
+  -- The price, per unit or per stack by the toggle (the stack that goes up next, a short last one included;
+  -- a stack price is shared out rounding up, so it never posts for less than was typed); nothing readable
+  -- goes back to the suggestion.
+  price = function(s, text) local p = AH.ParseMoney(text) s.unit = p and (AH.perStack and math.ceil(p / stackSize(s)) or p) end,
   -- A bid per item (items only); nothing for none.
   bid = function(s, text) s.bid = AH.ParseMoney(text) end,
 }
@@ -377,7 +378,7 @@ function AH.TypeForm(name, text, max)
   AH.PaintSell()
 end
 
--- The price box's toggle: a price typed there is per unit or per (full) stack.
+-- The price box's toggle: a price typed there is per unit or per stack (the one that goes up next).
 function AH.TogglePerStack()
   AH.perStack = not AH.perStack
   AH.PaintSell()
@@ -630,7 +631,7 @@ local function paintBoxes(c, s)
   show(c.qty, s and s.qty)
   show(c.stack, s and s.stack)
   show(c.stacks, s and AH.StackCount(s))
-  show(c.price, price and AP.Money(price * (AH.perStack and s.stack or 1)))
+  show(c.price, price and AP.Money(price * (AH.perStack and stackSize(s) or 1)))
   show(c.bid, s and s.bid and AP.Money(s.bid))
   c.bid:SetShown(s ~= nil and not s.commodity)
 end

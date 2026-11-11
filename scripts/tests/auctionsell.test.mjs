@@ -727,3 +727,13 @@ it("the sell slot's accent edge follows the mouse: brighter on hover, darker hel
   addon.eval(`__wfgStub.runScript(${SLOT}, 'OnMouseUp')`);
   expect([hover !== rest, held !== rest, held !== hover, edges(addon, SLOT)], "hover and pressed repaint the accent edge, and leaving brings it back").toEqual([true, true, true, rest]);
 });
+it("H44-21-50: a per-stack price is for the stack that goes up next, a short one included", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + "__wfgWorld.bags[0][3] = { itemID = 2589, count = 7 }");
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.type(`${CARD}.stack`, "20");
+  addon.click(`${CARD}.perStack`);
+  addon.type(`${CARD}.price`, "7g");
+  expect(form(addon).slice(0, 4), "7 go up as one short stack: the box keeps the 7g typed").toEqual(["7", "20", "1", "7g 0s 0c"]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[4], c[5]]), "7 units at a seventh of 7g each").toEqual([["PostCommodity", 7, 10000]]);
+});

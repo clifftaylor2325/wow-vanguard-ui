@@ -5366,6 +5366,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: (1) no flash at the end of a global cooldown, one flash when a real cooldown ends. (2) Auto Shot shows its ammo count. (3) the game's own tracker text does not show over Vanguard's tracker after the loot, and the tracker's rows still take clicks. (4) the name matches in any case; a name that matches no profile asks before making an empty one; copy and delete ask first. (5) Undo setup puts back the profile it backed up; a backup never replaces a profile that was not made by that backup. (6) Confirm posts the item the sale was set up for, not whatever now sits in the slot. (7) the two windows overlap by about 15 units (known, not fixed). (8) the list is empty. [Needs in-game check: all eight; none was seen in the game.]
 - If it fails, paste: which part, a screenshot where there is one, and `/vg errors`.
 
+### 33.605 A per-stack price is for the stack that goes up next
+
+- Do: at the auction house, drop a stack of 7 of a commodity on the Posting sell card, set Stack to 20, press the per-unit button so it reads per stack, type 7g in Price, then click Post once. Look at the Price box before the click and at the chat line after it. [Client: Forever and Retail.]
+- Expect: the Price box keeps 7g and chat says the 7 go up at 1g each; your auction shows 7 at 1g each. Not 7 at 35s each.
+- If it fails, paste: the chat line, the Price box and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
