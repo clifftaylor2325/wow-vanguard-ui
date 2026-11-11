@@ -5386,6 +5386,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: right after Use, Edit Mode is on that profile's layout and chat says `Edit Mode layout X, from profile Y.`; after opening and closing Edit Mode and the reload, the profile is still on its own layout.
 - If it fails, paste: the chat lines, the two profiles' names and layouts, and `/vg errors`.
 
+### 33.546 Undo setup puts the game's UI scale back (H44-14-R1)
+
+- Do: for Forever and Retail: note Options, Graphics, UI Scale (the checkbox and the slider). `/vg setup`, on the screen step pick 1440p, Next to All set, press Undo setup and Yes, then reload.
+- Expect: the game's UI Scale checkbox and slider are as you noted, and the whole UI is at the scale it had before.
+- If it fails, paste: the UI Scale checkbox and slider values before and after, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

@@ -483,11 +483,32 @@ function ns.SetUIScale(scale)
   if ns.SetGameUIScale(scale) then T.Settings().pixelScale = false end
 end
 
+-- The game's UI scale settings as they are now ({ use, scale }), or nil where the client can't tell.
+local function gameScale()
+  local get = (C_CVar and C_CVar.GetCVar) or _G.GetCVar
+  if type(get) ~= "function" then return nil end
+  return { use = get("useUiScale"), scale = get("uiScale") }
+end
+
+-- Puts the game's UI scale back to what it was before this run's first preset set it (out of combat); a run that
+-- never set it, or a client that could not tell, leaves it.
+local function putScaleBack()
+  local was, set = state.scale, (C_CVar and C_CVar.SetCVar) or _G.SetCVar
+  if not (was and was.use and was.scale and type(set) == "function") then return end
+  ns.OutOfCombat(function()
+    set("useUiScale", was.use)
+    set("uiScale", was.scale)
+  end)
+end
+
 -- Sets a screen preset's scale: Pixel-perfect turns Vanguard's pixel-perfect scale on with the multiple
 -- picked for the screen (0, so a later screen change picks again), else the game's UI scale (which turns
 -- pixel-perfect off).
 local function setScale(p)
-  if not p.pixel then return ns.SetUIScale(S.PresetScale(p)) end
+  if not p.pixel then
+    state.scale = state.scale or gameScale()
+    return ns.SetUIScale(S.PresetScale(p))
+  end
   T.Settings().pixelMultiple = 0
   T.SetPixelScale(true)
 end
@@ -999,7 +1020,7 @@ local function finished()
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done and not state.undone, reloadReason())
-  state.reload, state.retile, state.role, state.backup, state.look, state.undone = false, false, false, nil, false, false
+  state.reload, state.retile, state.role, state.backup, state.look, state.undone, state.scale = false, false, false, nil, false, false, nil
   for _, fn in ipairs(S.onEnd) do fn() end
 end
 
@@ -1016,6 +1037,7 @@ function S.Undo(putBack)
   putBack()
   local restored = not state.backup or ns.CopyProfile(state.backup, state.backupOf) ~= false
   if not restored then ns.Chat(L["The backup profile is gone, so only the guided steps' settings went back."]) end
+  putScaleBack()
   state.undone = restored
   complete(true)
   if hidden then finished() end
@@ -1125,7 +1147,7 @@ end
 local function startRun()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
-  state.layout, state.screen, state.backup, state.look, state.undone = "keep", "keep", nil, false, false
+  state.layout, state.screen, state.backup, state.look, state.undone, state.scale = "keep", "keep", nil, false, false, nil
   state.reload, state.paused, state.done, state.role = false, false, false, false
   ns.SetupGuide.Begin(not VanguardDB.setupDone)
   state.before = settingsNow()
