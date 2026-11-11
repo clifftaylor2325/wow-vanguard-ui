@@ -5414,6 +5414,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: one line `Trained N skill(s) for ...` that counts the rank you bought (never `Trained 0 of 1` while the rank is gone from the list), and no red error text.
 - If it fails, paste: the chat line, the trainer's list before and after, and `/dump GetTrainerServiceInfo(1)` (all five answers) with the trainer open, and `/vg errors`.
 
+### 33.626 Keep stocked stops when you edit the list mid-run
+
+- Do: put an item on Keep stocked with an amount well above what you carry (so the merchant needs several purchases), open a merchant that sells it, and within a second press Clear list in the Keep stocked window (Town and gear, Errands, Edit list...), then once more with the amount lowered to just above what you carry. [Client: Forever and Retail.]
+- Expect: after Clear list no further purchase of that item is made and chat reports only what arrived; with the amount lowered the run buys up to the new amount and stops, never past it.
+- If it fails, paste: the chat lines, how many you carried before and after, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

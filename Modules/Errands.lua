@@ -410,10 +410,14 @@ end
 -- Buys the next chunk (a stack at most, in whole merchant stacks) of the first order if you can pay; false when done.
 -- The game answers a buy later and says nothing when it fails, so the chunk is only noted as pending here
 -- (with how many you carried): settle notes what really arrived. A buy goes by merchant index, so the
--- merchant must still have the order's item there.
+-- merchant must still have the order's item there. The list is read again before every chunk: an item taken off
+-- it, or lowered, mid-run stops being bought (never more than the order asked for: where the client cannot
+-- count items, wanted never falls).
 local function buyChunk(run)
   local order = run.orders[1]
   if not order or not ns.GetModule("Merchant").Sells(order.index, order.id) then return false end
+  order.need = math.min(order.need, (wanted(order.index)))
+  if order.need <= 0 then table.remove(run.orders, 1) return buyChunk(run) end
   local count = chunkSize(order)
   if math.ceil(order.unit * count) > cash() then return false end
   run.pending = { order = order, count = count, before = owned(order.id), checks = 0 }
