@@ -1487,7 +1487,8 @@ C_SwingTimer = {
 -- Items, bags and money ------------------------------------------------------------------------
 -- world.bags[bag] = { [slot] = item }, item = { itemID, name, icon, count,
 -- quality, link, sellPrice, junk }. world.items[itemID] gives GetItemInfo
--- (and GetItemInfoInstant: classID, subClassID; quest = true for a quest item).
+-- (and GetItemInfoInstant: classID, subClassID, which GetItemInfo gives too; quest = true for a quest item; reagent =
+-- true for a crafting reagent).
 
 world.money = 123456
 world.bags = { [0] = {}, {}, {}, {}, {} }
@@ -1511,12 +1512,14 @@ end
 world.item = itemOf
 
 C_Item = C_Item or {}
--- GetItemInfo: name, link, quality, level, minLevel, type, subType, stackCount, equipLoc, icon, sellPrice.
+-- GetItemInfo: name, link, quality, level, minLevel, type, subType, stackCount, equipLoc, icon, sellPrice, classID,
+-- subclassID, bindType, expansionID, setID, isCraftingReagent (Blizzard_APIDocumentationGenerated/ItemDocumentation.lua's
+-- order, both clients); the class and subclass are the item's own, as GetItemInfoInstant gives them.
 function C_Item.GetItemInfo(key)
   local id, item = itemOf(key)
   if not item then return nil end
   local link = "|cffffffff|Hitem:" .. id .. "|h[" .. item.name .. "]|h|r"
-  return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, 15, 0, item.bind or 0, 0, 0, item.quality == 0
+  return item.name, link, item.quality or 1, item.level or 1, 1, item.type or "Miscellaneous", item.subType or "Junk", item.stack or 20, item.equipLoc or "", item.icon, item.sellPrice or 0, item.classID or 15, item.subClassID or 0, item.bind or 0, 0, 0, item.reagent == true
 end
 -- itemID, type, subType, equipLoc, icon, classID, subClassID of a known item (nothing for one the client doesn't know).
 function C_Item.GetItemInfoInstant(key)

@@ -221,3 +221,12 @@ it("EventRegistry keeps one callback per owner, passes the extra arguments, and 
     return { out, mine == me, type(made), ok }`);
   expect(seen).toEqual([["extra:a,b,p", "second:p", "second:q"], true, "number", false]);
 });
+
+// C_Item.GetItemInfo returns ... sellPrice, classID, subclassID, bindType, expansionID, setID, isCraftingReagent
+// (Blizzard_APIDocumentationGenerated/ItemDocumentation.lua, both clients).
+it("GetItemInfo gives the item's own class, subclass and reagent flag, as GetItemInfoInstant does", () => {
+  const addon = createAddon();
+  addon.eval("__wfgWorld.items[2589].reagent = true");
+  expect(addon.eval(`local i = { C_Item.GetItemInfo(2589) } local n = { C_Item.GetItemInfoInstant(2589) }
+    return { i[12], i[13], i[17], n[6], n[7] }`)).toEqual([7, 5, true, 7, 5]);
+});
