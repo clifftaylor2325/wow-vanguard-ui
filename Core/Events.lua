@@ -45,6 +45,29 @@ function ns.SendChat(text, chatType)
   return true
 end
 
+-- Who is told when the game closes a chat window, by key: the one hook on FCF_Close goes in on the first call and stays
+-- (a hook cannot be taken off), so a window closed while a module is switched off is still forgotten by it.
+local closeWatchers = { hooked = false, byKey = {} }
+
+-- Calls each watcher with FCF_Close's arguments (the window, and the fallback window the game closes instead).
+local function chatWindowClosed(...)
+  for _, fn in pairs(closeWatchers.byKey) do fn(...) end
+end
+
+-- Has fn(frame, fallback) called after the game closes a chat window (FCF_Close); a second call with the same key
+-- replaces the first, so a module restart adds nothing. False, with nothing kept, on a client without FCF_Close.
+---@param key string
+---@param fn fun(frame: table|nil, fallback: table|nil)
+---@return boolean watching
+function ns.OnChatWindowClosed(key, fn)
+  if type(hooksecurefunc) ~= "function" or type(FCF_Close) ~= "function" then return false end
+  closeWatchers.byKey[key] = ns.Guard("chat window closed " .. key, fn)
+  if closeWatchers.hooked then return true end
+  closeWatchers.hooked = true
+  hooksecurefunc("FCF_Close", ns.Guard("hook FCF_Close", chatWindowClosed))
+  return true
+end
+
 -- Adds fn as the game's chat message filter for each event. The old global is only an alias of
 -- ChatFrameUtil.AddMessageEventFilter, there while the client loads its deprecation fallbacks
 -- (Deprecated_ChatFrame.lua); false, with nothing added, on a client with neither.

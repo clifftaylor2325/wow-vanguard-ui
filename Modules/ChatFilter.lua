@@ -140,6 +140,15 @@ local function forget()
   if type(VanguardCharDB) == "table" then VanguardCharDB.filteredTab = nil end
 end
 
+-- The game closed a chat window (FCF_Close, through ns.OnChatWindowClosed): the saved number goes when it was the
+-- Filtered tab, since the game gives a closed window's number to the next tab made (the tab Loot would then read
+-- as Filtered). CF.window stays: the next caught line sees it is gone and makes the tab again (reopen).
+function CF.Closed(frame, fallback)
+  frame = fallback or frame
+  local number = savedNumber()
+  if frame ~= nil and (frame == CF.window or (number and frame == _G["ChatFrame" .. number])) then forget() end
+end
+
 -- The open window with the saved number, or nil.
 local function savedWindow()
   local number = savedNumber()
@@ -489,6 +498,7 @@ end
 -- through, so it has no Disable. A start after login makes the Filtered tab at once (the world is entered already).
 function CF.Enable(settings, scope)
   CF.settings, CF.scope = settings, scope
+  ns.OnChatWindowClosed("filter", CF.Closed)
   hookChat(scope)
   scope:On("PLAYER_ENTERING_WORLD", CF.Prepare)
   if ns.ModulesBuilt() then CF.Prepare() end

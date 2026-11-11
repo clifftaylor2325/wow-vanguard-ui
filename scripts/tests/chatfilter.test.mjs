@@ -223,11 +223,11 @@ it("chat filter: a closed Filtered tab is made again on the next caught line, an
   expect(deliver(addon, GOLD, "Goldy2"), "still caught").toBe(true);
   // The Filtered window the filter sends to: its name, shown, and how many lines it holds.
   const window = () => addon.eval("local f = ns.GetModule('ChatFilter').window return { f:GetName(), f:IsShown(), #f.__messages }");
-  expect(window(), "a new, shown Filtered window holds the line").toEqual(["ChatFrame4", true, 1]);
+  expect(window(), "the game gives the closed number to the new window (shown again), which holds both lines").toEqual(["ChatFrame3", true, 2]);
   deliver(addon, GOLD, "Goldy3");
-  expect(window(), "the next line goes to it too, no third window").toEqual(["ChatFrame4", true, 2]);
+  expect(window(), "the next line goes to it too, no second window").toEqual(["ChatFrame3", true, 3]);
   addon.slash("filter hide");
-  addon.eval("ChatFrame4:Hide()");
+  addon.eval("ChatFrame3:Hide()");
   expect([deliver(addon, GOLD, "Goldy4"), addon.eval("return ChatFrame5 == nil")], "in hide mode a closed tab is not made again").toEqual([true, true]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
@@ -272,7 +272,7 @@ it("chat filter: the closed Filtered tab coming back after a fight keeps the sel
   expect(deliver(addon, GOLD, "Goldy"), "in the fight the line passes and the tab is queued").toBe(false);
   addon.eval("__wfgStub.inCombat = false");
   addon.fire("PLAYER_REGEN_ENABLED");
-  expect(addon.eval("return ns.GetModule('ChatFilter').window:GetName()"), "a new Filtered tab is made").toBe("ChatFrame4");
+  expect(addon.eval("return ns.GetModule('ChatFilter').window:GetName()"), "a new Filtered tab is made (on the closed number, as the game gives it)").toBe("ChatFrame3");
   expect(dockState(addon).slice(0, 2), "General is still the tab shown").toEqual(["ChatFrame1", true]);
 });
 
@@ -454,7 +454,7 @@ it("chat filter: a line without an ID is judged once across windows, hide mode c
   addon.eval("ChatFrame3:Hide()");
   deliver(addon, GOLD, "Goldy2");
   addon.eval("__wfgStub.inCombat = false");
-  expect(addon.eval("return ns.GetModule('ChatFilter').window:GetName()"), "the closed tab is made again").toBe("ChatFrame4");
+  expect(addon.eval("return { ns.GetModule('ChatFilter').window:GetName(), ns.GetModule('ChatFilter').window:IsShown() }"), "the closed tab is made again, on the closed number").toEqual(["ChatFrame3", true]);
   addon.slash("filter hide");
   deliver(addon, GOLD, "Goldy3");
   expect(addon.eval("return ns.GetModule('ChatFilter').count"), "a hidden line is counted").toBe(4);
@@ -535,7 +535,7 @@ it("chat filter tab: found by its saved window number after the player renames i
   expect(addon.eval("return ns.GetModule('ChatFilter').IsTab(3)"), "chat history sees it as the Filtered tab").toBe(true);
   addon.eval("ChatFrame3:Hide()");
   deliver(addon, GOLD, "Goldy3");
-  expect(addon.eval("return { VanguardCharDB.filteredTab, ns.GetModule('ChatFilter').window:GetName() }"), "a closed, renamed tab is let go and a new one saved").toEqual([4, "ChatFrame4"]);
+  expect(addon.eval("return { VanguardCharDB.filteredTab, ns.GetModule('ChatFilter').window:GetName(), ns.GetModule('ChatFilter').window:IsShown(), __wfgWorld.chatWindows[3] }"), "a closed, renamed tab is let go and a new one made on the closed number and saved").toEqual([3, "ChatFrame3", true, "Filtered"]);
 });
 
 it("chat filter tab: a tab an earlier version made (no saved number) is found by its name and its number saved", () => {
@@ -560,4 +560,20 @@ it("H44-19-50 chat filter: a saved keyword that is no text is dropped, so add, r
   expect(addon.eval("return ns.Settings('ChatFilter').keywords"), "the broken entries are gone from the save; the new word is kept").toEqual(["newword"]);
   expect(chatHas(addon, /Your words: newword/), "status names it").toBe(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+// The game closes a window (FCF_Close hides and undocks it) and gives its number to the next tab made: the first number
+// neither shown nor docked (forever Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua: FCF_GetNextOpenChatWindowIndex,
+// FCF_IsChatWindowIndexActive), as the harness's FCF_OpenNewWindow does.
+it("H44-19-52 chat filter: a Filtered tab closed and its number given to a new tab is never fed spam; the filter makes another", () => {
+  const addon = filtering("FCF_Close = function(frame, fallback) frame = fallback or frame if frame and frame ~= ChatFrame1 then frame:Hide() end end");
+  deliver(addon, GOLD, "Goldy");
+  expect(addon.eval("return VanguardCharDB.filteredTab"), "the Filtered tab is ChatFrame3").toBe(3);
+  addon.eval("FCF_Close(ChatFrame3) FCF_OpenNewWindow('Loot') ChatFrame3Tab:SetText('Loot') ChatFrame3.__messages = {}");
+  expect(addon.eval("return VanguardCharDB.filteredTab"), "the closed tab's number is forgotten at once").toBe(null);
+  expect(deliver(addon, GOLD, "Goldy2"), "spam is still caught").toBe(true);
+  addon.update(0.1);
+  expect(addon.eval("return { #ChatFrame3.__messages, ChatFrame3Tab:GetText(), ns.GetModule('ChatFilter').window:GetName(), VanguardCharDB.filteredTab }"), "Loot keeps its name and holds no spam; a new Filtered tab has it").toEqual([0, "Loot", "ChatFrame4", 4]);
+  addon.eval("local w = ns.GetModule('ChatFilter').window FCF_Close(ChatFrame1) FCF_Close(nil) FCF_Close({}, w)");
+  expect(addon.eval("return { #ns.errors, VanguardCharDB.filteredTab == nil }"), "the main window, nothing, or a fallback window: no error, and only the Filtered tab's close forgets").toEqual([0, true]);
 });

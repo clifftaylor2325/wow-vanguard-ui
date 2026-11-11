@@ -5518,6 +5518,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: New chat tab and Close this tab only say how to use the game's tab menu; the new tab's channel line shows with no Lua error and no taint line naming Vanguard.
 - If it fails, paste: `/vg errors` and the lines naming Vanguard in Logs/taint.log.
 
+### 33.569 A closed Filtered tab's number is not fed to the next tab (H44-19-52)
+
+- Do: `/vg filter on`, close the Filtered tab from its tab menu, make a new tab named Loot from the game's menu, then wait for a gold seller's line in Trade (or `/vg filter` after one).
+- Expect: the spam goes to a new Filtered tab, and the Loot tab keeps its name and holds no spam.
+- If it fails, paste: `/vg filter` and the tab names.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
