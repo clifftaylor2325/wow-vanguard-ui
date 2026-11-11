@@ -328,14 +328,15 @@ end
 
 -- Search results for item id (a search answered, or a further page of it; AH.OnSearchEvent): the
 -- search s in flight takes them when it is a price check or a page of the sell card's: the sell card
--- its listings and the cheapest, your auctions' check the cheapest; the cheapest also feeds the price store.
+-- its listings (every variant, as the game's Sell tab lists them) and the cheapest of the sale's own random
+-- suffix, your auctions' check the cheapest; the cheapest of all also feeds the price store (kept per item ID).
 function AH.OnSearchResults(event, id, s)
   local commodity = event:find("^COMMODITY") ~= nil
   local key = s and (s.sell or s.more)
   if not (key and key.itemID == id) then return end
   local cheapest = AH.Cheapest(commodity, key)
   AP.RecordSeen(id, cheapest)
-  if (s.card or s.more) and AH.sell and AH.sell.id == id then AH.ReadSale(AH.sell, commodity, cheapest) end
+  if (s.card or s.more) and AH.sell and AH.sell.id == id then AH.ReadSale(AH.sell, commodity, AH.Cheapest(commodity, key, AH.sell.key.itemSuffix)) end
   if s.check then AH.MarkUndercuts(id, commodity, key) end
   AH.Done()
   AH.PaintSell()

@@ -133,7 +133,7 @@ it("posting calls the right function from a click, never from a timer", () => {
   addon.world.fireAuctionEvents({ itemID: 10940 }, 10940);
   addon.advance(5);
   expect(restrictedLog(addon).length, "nothing more without a click").toBe(1);
-  addon.eval("SetCVar('auctionHouseDurationDropdown', 2) __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 }, { buyoutAmount = 9000, quantity = 2 }, { minBid = 10, quantity = 1 }, { buyoutAmount = 10, quantity = 0 } }");
+  addon.eval("SetCVar('auctionHouseDurationDropdown', 2) __wfgWorld.ah.items[9999] = { { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 5000, quantity = 1 }, { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 9000, quantity = 2 }, { itemKey = { itemID = 9999, itemSuffix = 7 }, minBid = 10, quantity = 1 }, { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 10, quantity = 0 } }");
   addon.world.openAuctionHouse();
   addon.update(0);
   addon.advance(1);
@@ -145,7 +145,7 @@ it("posting calls the right function from a click, never from a timer", () => {
   expect(addon.eval("return __wfgWorld.ah.postItem.slotIndex"), "the game's own SetPostItem still ran").toBe(2);
 });
 it("a listing with a buyout of 0 is bid-only, never the cheapest price", () => {
-  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 0, quantity = 1 }, { buyoutAmount = 5000, quantity = 1 } }");
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 0, quantity = 1 }, { itemKey = { itemID = 9999, itemSuffix = 7 }, buyoutAmount = 5000, quantity = 1 } }");
   dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
   expect(card(addon)[0].slice(0, 1).concat(card(addon)[0][3]), "cheapest 50s, asking 49s, not 1c").toEqual(["50s 0c", "49s 0c"]);
 });
@@ -747,4 +747,12 @@ it("H44-21-R2: a quantity typed down to what has gone up says so in the guide, n
   addon.type(`${CARD}.qty`, "20");
   const after = addon.eval(`local c = ${CARD} return { c.post:IsEnabled(), c.guide:GetText() }`);
   expect(after, "Post is off and the guide says why").toEqual([false, "Nothing left to post: raise Quantity, or click Stop."]);
+});
+it("H44-21-51: the card's cheapest and suggestion are those of the sale's random-suffix variant; Up now lists every variant", () => {
+  const addon = atAuctionHouse(BAGS + `__wfgWorld.ah.items[9999] = {
+    { itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 8 }, buyoutAmount = 1000, quantity = 1 },
+    { itemKey = { itemID = 9999, itemLevel = 25, itemSuffix = 7 }, buyoutAmount = 5000, quantity = 1 } }`);
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  const out = addon.eval(`local c = ${CARD} return { c.lines[1].value:GetText(), c.lines[4].value:GetText(), #${HELPER}.sell.rows }`);
+  expect(out, "cheapest and price from the suffix-7 listing; both variants up").toEqual(["50s 0c", "49s 0c", 2]);
 });

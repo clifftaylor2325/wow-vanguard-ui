@@ -5372,6 +5372,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the Price box keeps 7g and chat says the 7 go up at 1g each; your auction shows 7 at 1g each. Not 7 at 35s each.
 - If it fails, paste: the chat line, the Price box and `/vg errors`.
 
+### 33.606 The Sell card's cheapest price is for the item's own variant
+
+- Do: at the auction house, drop on the Posting sell card a piece of gear with a random suffix ("of the Bear") while a different suffix of the same base item is up cheaper. Read Cheapest now and Your price, and the Up now list.
+- Expect: Cheapest now and Your price follow the listings of your suffix; Up now lists every variant. [Client: Forever and Retail.]
+- If it fails, paste: the card's lines, the Up now rows and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
