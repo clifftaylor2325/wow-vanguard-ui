@@ -450,6 +450,14 @@ function once(make) {
   return () => (img ||= make());
 }
 
+// The files under Media/ that no source makes and that ship as they are: the fonts (scripts/fonts/*.py build
+// them by hand), their licenses and the credit texts. scripts/build-media.mjs --check fails on any other file.
+export const FIXED_MEDIA = [
+  "Art/CREDITS.txt", "Icons/CREDITS.txt", "Textures/CREDITS.txt",
+  "Fonts/Cinzel-SemiBold.ttf", "Fonts/FiraSansCondensed-Medium.ttf", "Fonts/FiraSansCondensed-SemiBold.ttf", "Fonts/Metamorphous-Regular.ttf",
+  "Fonts/OFL-Cinzel.txt", "Fonts/OFL-Metamorphous.txt", "Fonts/OFL.txt",
+].map((rel) => `Media/${rel}`);
+
 // Every generated file: path under Media -> image maker (memoised).
 export const MEDIA = Object.fromEntries(Object.entries({
   ...Object.fromEntries(Object.entries(TEXTURES).map(([n, make]) => [`Textures/${n}.tga`, make])),
