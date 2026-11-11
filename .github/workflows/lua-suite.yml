@@ -9,15 +9,21 @@ name: lua suite
 # contents; and, with the preview input on, the UI preview as a second job
 # beside it.
 #
-# The tests are sharded: a plan job reads the shards input (6 by default)
+# The tests are sharded: a plan job reads the shards input (10 by default)
 # and the shuffle seed, then that many jobs each run their share of the test
-# files of the lua project (Vitest's --project lua --shard i/n); the quick and
+# files of the lua project. The shares are balanced by measured time: each
+# file's seconds are in scripts/shard-times.json, and every shard computes the
+# same plan from it (scripts/lib/shard-plan.mjs: longest file first into the
+# lightest shard) and runs its explicit list of files
+# (npm run coverage -- --balanced i/n). Refresh the times from a run with
+# node scripts/shard-times.mjs --run <id> (docs/DEVELOPMENT.md). The quick and
 # hooks projects run in their own job beside the shards, with the checks
-# that need no test, and the benchmark has its own job too. Each upload their coverage hits and
+# that need no test, and the benchmark has its own job too. Each uploads its coverage hits and
 # JUnit file. A shard that fails fails the run, but the others finish
 # (fail-fast: false), so the whole failure list is on the run. When every
 # test job passed, one last job downloads all of the hits, checks that no
-# job and no test file is missing, merges them and applies the coverage floor
+# job and no test file is missing or ran twice (each shard's hits are held to
+# the files its plan gave it), merges them and applies the coverage floor
 # once over the merged data (no job alone sees the whole suite, so none
 # judges the floor).
 #
@@ -55,7 +61,7 @@ on:
       shards:
         description: "How many parallel jobs the Lua tests are split over (1 to 16)"
         type: number
-        default: 6
+        default: 10
 
 permissions:
   contents: read
@@ -136,10 +142,11 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/luacheck" "$LUACHECK_URL" &&
           echo "$LUACHECK_SHA256  $RUNNER_TEMP/luacheck" | sha256sum -c - &&
           sudo install -m 0755 "$RUNNER_TEMP/luacheck" /usr/local/bin/luacheck
-      # Shard i of n of every test file (the Lua harness, the JS tests, the
-      # hooks file) with line coverage on. It dumps one hits file per test file
-      # and judges no floor: that is the last job's, over every shard's hits.
-      - run: npm run coverage -- --project lua --shard "$SHARD/$COUNT"
+      # Shard i of n of the lua project's test files, as planned by their
+      # measured times (an explicit list of files, the same plan in every shard),
+      # with line coverage on. It dumps one hits file per test file and judges no
+      # floor: that is the last job's, over every shard's hits.
+      - run: npm run coverage -- --balanced "$SHARD/$COUNT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -267,9 +274,10 @@ jobs:
       # Merges the hits of every shard and of the quick job, and applies the floor in
       # scripts/lua-coverage-floor.json to the merged data. It fails when a folder is missing or
       # empty, or when a test file Vitest lists has no hits file, so a job cannot lower the total unseen.
-      # The folders are the shards and the quick job: one more than the shard count.
+      # The folders are the shards and the quick job: one more than the shard count. --plan holds each
+      # shard's hits to the files the plan for COUNT shards gave it, so a file never runs twice or not at all.
       - name: Merge the shards' coverage and apply the floor
-        run: npm run coverage -- --merge coverage/shards --shards "$((COUNT + 1))"
+        run: npm run coverage -- --merge coverage/shards --shards "$((COUNT + 1))" --plan "$COUNT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

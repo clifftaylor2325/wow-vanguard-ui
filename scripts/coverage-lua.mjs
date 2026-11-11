@@ -9,23 +9,39 @@
 // CI splits the run over parallel jobs (lua-suite.yml), in two more modes:
 //   npm run coverage -- --shard i/n        runs shard i of n (Vitest's own option) and dumps its
 //                                          hits; no floor, since one shard sees part of the suite
-//   npm run coverage -- --merge <dir> [--shards n]
+//   npm run coverage -- --balanced i/n    the same, but shard i of n of the lua project's test files as
+//                                          planned by their measured times (scripts/shard-times.json,
+//                                          scripts/lib/shard-plan.mjs): an explicit file list, not a count
+//   npm run coverage -- --merge <dir> [--shards n] [--plan n]
 //                                          runs no test: merges the hits of every shard (one
 //                                          subfolder each) and judges the floor once over all of
 //                                          them. It fails when a shard folder is missing or empty
-//                                          or when a test file Vitest lists has no hits file.
+//                                          or when a test file Vitest lists has no hits file; with --plan n it
+//                                          also fails when a lua-shard-i folder's hits differ from the files the
+//                                          plan for n shards gives shard i (a file missing, run twice, or in the wrong shard).
 
 import fs from "node:fs";
 import path from "node:path";
 import { root } from "./lib/lua-harness.mjs";
 import { anyClientPaths, clientPaths, readToc } from "./lib/toc.mjs";
-import { expectedTestFiles, hitsFilesUnder, junitTotals, mergeOption, mergeProblems, shardOption } from "./lib/coverage-shards.mjs";
+import { balancedOption, expectedTestFiles, hitsFilesUnder, junitTotals, mergeOption, mergeProblems, planMergeProblems, planOption, shardOption } from "./lib/coverage-shards.mjs";
+import { currentPlan } from "./lib/shard-plan.mjs";
 import { coverageReport, formatReport, loadHitFiles, loadHits } from "./lib/lua-coverage.mjs";
 import { appendJobSummary } from "./lib/lua-summary-reporter.mjs";
 import { runInSlot } from "./lib/test-slot.mjs";
 
 const hits = path.join(root, "coverage", "lua-hits");
-const args = process.argv.slice(2);
+const balanced = balancedOption(process.argv.slice(2));
+
+// The command line, with `--balanced i/n` turned into the lua project and shard i's planned files (Vitest takes them as filters).
+function commandArgs(argv) {
+  if (!balanced) return argv;
+  const rest = argv.filter((a) => !a.startsWith("--balanced"));
+  const files = currentPlan(root, balanced.count)[balanced.index - 1].files;
+  return [...rest, "--project", "lua", ...files];
+}
+
+const args = commandArgs(process.argv.slice(2));
 
 // Prints a failure and stops.
 function stop(message, status = 1) {
@@ -81,7 +97,9 @@ async function runShard(shard) {
 
 // The merge: checks every shard's hits are there, loads them, prints the shards' test totals and judges the floor once.
 function runMerge({ dir, shards }) {
+  const planned = planOption(args);
   const problems = mergeProblems(dir, shards, expectedTestFiles(root));
+  if (planned) problems.push(...planMergeProblems(dir, currentPlan(root, planned)));
   if (problems.length) stop(`Cannot merge the shards' coverage:\n  ${problems.join("\n  ")}`);
   loadHitFiles(hitsFilesUnder(dir));
   const totals = junitTotals(dir);
@@ -103,7 +121,7 @@ async function runWhole() {
 }
 
 const merge = mergeOption(args);
-const shard = merge ? null : shardOption(args);
+const shard = merge ? null : balanced ?? shardOption(args);
 if (merge) runMerge(merge);
 else if (shard || args.includes("--project")) await runShard(shard);
 else await runWhole();
