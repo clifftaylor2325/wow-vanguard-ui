@@ -792,3 +792,51 @@ it("H29-6-R2 a spell picker row lights under the mouse and clears when it leaves
   addon.eval('local r = Vanguard_SpellPicker.rows[1] r:GetScript("OnLeave")(r)');
   expect(hover(), "left: the wash is off").toBe(false);
 });
+
+// Client rule (forever and live trees identical): Blizzard_RestrictedAddOnEnvironment/RestrictedExecution.lua
+// BuildRestrictedClosure refuses a body when body:match("function") or body:match("[{}]"), over the whole text, quoted
+// strings included, so one such key would make the whole enter snippet one the client won't run.
+const refusedSnippet = (body) => /function/.test(body) || /[{}]/.test(body);
+
+it("H44-9-R1 import: a hover key with a brace or the word function is skipped, and the enter snippet stays one the client builds", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  for (const key of ["SHIFT-{", "function", "SHIFT-}", "F\n1"]) {
+    const text = encoded(addon, `{ { key = "SHIFT-Q", action = "spell", value = "Renew" }, { key = ${JSON.stringify(key)}, action = "spell", value = "Flash Heal" } }`);
+    expect([JSON.stringify(key), addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`)], "only the good key is imported").toEqual([JSON.stringify(key), 1]);
+    expect(refusedSnippet(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)), "the snippet holds nothing the client refuses").toBe(false);
+  }
+  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)).toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg1")');
+});
+
+it("H44-9-R1 a saved hover key with a brace leaves the other hover keys in the snippet and keeps its row", () => {
+  const addon = priest("", {
+    // TEST-ONLY saved bindings imported before the fix: one hover key the client can't take.
+    savedVariables: WITH_FRAMES + ' VanguardCharDB = { clickcast = { [0] = { { key = "SHIFT-{", action = "spell", value = "Renew" }, { key = "SHIFT-Q", action = "spell", value = "Renew" } } } }',
+  });
+  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`)).toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg2")');
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Click casting")');
+  expect(addon.frames('w.keyText ~= nil and w.remove ~= nil and w:IsShown()').length, "both keys keep a row with Remove").toBe(2);
+});
+
+it("H44-9-R1 an import in a fight writes no snippet until the fight ends, and then only bindable keys", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  addon.eval(`${CC}.Add("F1", "target")`);
+  const before = addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`);
+  addon.world.combat(true);
+  const text = encoded(addon, '{ { key = "SHIFT-Q", action = "spell", value = "Renew" }, { key = "SHIFT-{", action = "spell", value = "Renew" } }');
+  expect(addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`)).toBe(1);
+  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`), "in a fight the frames keep the old snippet").toBe(before);
+  addon.world.combat(false);
+  expect(addon.eval(`return ${CC}.frames[1].__wraps.OnEnter`), "the fight ends: the new one, without the brace").toBe('self:ClearBindings()\nself:SetBindingClick(true, "SHIFT-Q", self, "vg1")');
+});
+
+it("H44-9-R1 import: a mouse key on a modifier set the grid has no column for is skipped; the columns are the bindable set", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  const text = encoded(addon, '{ { key = "alt-ctrl-shift-BUTTON1", action = "target" }, { key = "shift-ctrl-BUTTON1", action = "target" }, { key = "alt-ctrl-BUTTON1", action = "target" } }');
+  expect(addon.eval(`return (${CC}.Import(${JSON.stringify(text)}))`), "only the click the grid has a column for").toBe(1);
+  expect(addon.eval(`local f = ${CC}.frames[1] return { f:GetAttribute("alt-ctrl-shift-type1") or false, f:GetAttribute("alt-ctrl-type1") }`)).toEqual([false, "target"]);
+  addon.eval('ns.Options.Show("clickcast") ns.Options.ShowTab("Click casting")');
+  const columns = addon.eval('local out = {} for _, w in ipairs(__wfgStub.frames) do if w.key ~= nil and w.iconFrame ~= nil and w.empty ~= nil and w:IsShown() then local p, n = ns.GetModule("ClickCast").MouseParts(w.key) if n == 1 then out[#out + 1] = p end end end table.sort(out) return out');
+  const prefixes = addon.eval(`local out = {} for p in pairs(${CC}.MOUSE_PREFIXES) do out[#out + 1] = p end table.sort(out) return out`);
+  expect(columns, "every grid column is a bindable prefix, and every bindable prefix has a column").toEqual(prefixes);
+});

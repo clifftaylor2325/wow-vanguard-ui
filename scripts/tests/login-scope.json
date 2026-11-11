@@ -119,6 +119,10 @@
     "scripts/tests/clickcast-presets.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
       "H41-13-1: with the unit frames on, the boss frames keep their clicks to target and the menu",
+      "H44-9-R1 a saved hover key with a brace leaves the other hover keys in the snippet and keeps its row",
+      "H44-9-R1 an import in a fight writes no snippet until the fight ends, and then only bindable keys",
+      "H44-9-R1 import: a hover key with a brace or the word function is skipped, and the enter snippet stays one the client builds",
+      "H44-9-R1 import: a mouse key on a modifier set the grid has no column for is skipped; the columns are the bindable set",
       "a name-bound spell made in another client language casts by the name this client gives its id",
       "bindings carry spell ids and ranks, move, copy, export and import",
       "sharing: export, import, copy to another spec, and the combat notice",

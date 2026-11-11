@@ -5498,6 +5498,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the heal-over-time's icon still lights near the end of its time, and `/vg errors` has no CooldownGlow line. [Needs in-game check: all of it; whether the game ever refuses the read is unknown.]
 - If it fails, paste: `/vg errors`.
 
+### 33.507 An imported hover key with a brace is skipped and the other hover keys still work
+
+- Do: on either client, open `/vg` → Click casting, click Import and paste `VG1:clickcast:14ec:e1siYmluZGluZ3MiXT17WzFdPXtbImFjdGlvbiJdPSJzcGVsbCIsWyJrZXkiXT0iU0hJRlQtUSIsWyJ2YWx1ZSJdPSJSZW5ldyJ9LFsyXT17WyJhY3Rpb24iXT0ic3BlbGwiLFsia2V5Il09IlNISUZULXsiLFsidmFsdWUiXT0iRmxhc2ggSGVhbCJ9fX0=` (say Replace if asked), then rest the pointer on a raid or party tile and press Shift + Q.
+- Expect: chat says 1 binding was imported, no Lua error comes up, the tile's tooltip shows and Shift + Q casts Renew on that player. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors` and `/vg binds`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

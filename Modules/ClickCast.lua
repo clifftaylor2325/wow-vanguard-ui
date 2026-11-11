@@ -315,10 +315,23 @@ end
 -- The most bindings a string may carry, and the longest text (a macro's, or a spell's name) in one: the game's macro limit.
 CC.MAX_IMPORT, CC.MAX_TEXT = 200, 255
 
--- Whether a decoded binding has the shape CC.Add accepts.
+-- The mouse prefixes the grid has a column for (ClickCastOptions' MODS and MORE_MODS), spelled as the engine builds them.
+CC.MOUSE_PREFIXES = { [""] = true, ["shift-"] = true, ["ctrl-"] = true, ["alt-"] = true, ["ctrl-shift-"] = true, ["alt-shift-"] = true, ["alt-ctrl-"] = true }
+
+-- Whether a key can be bound: a mouse key on one of the grid's columns, or a hover key that could be one of the
+-- client's key names (upper case, no brace, no control character). The client refuses to build a secure snippet whose
+-- text holds "function" or a brace anywhere, inside quotes too (Blizzard_RestrictedAddOnEnvironment/
+-- RestrictedExecution.lua, BuildRestrictedClosure), so one such key would stop every hover key on the frame.
+local function bindable(key)
+  local prefix = CC.MouseParts(key)
+  if prefix then return CC.MOUSE_PREFIXES[prefix] == true end
+  return not key:find("[%l%c{}]")
+end
+
+-- Whether a decoded binding has the shape CC.Add accepts, on a key the frames can bind.
 local function wellFormed(b)
   return type(b) == "table" and type(b.key) == "string" and ACTIONS[b.action] and (b.value == nil or type(b.value) == "string")
-    and not problem(b.key, b.action, b.value)
+    and not problem(b.key, b.action, b.value) and bindable(b.key)
 end
 
 -- A decoded spell id or rank as a whole number the client could hold, else nil (so inf, NaN and text are dropped).
@@ -519,11 +532,12 @@ end
 
 -- The secure snippet run on entering a frame: bind each hover key to a
 -- click on the frame's virtual button vg<i>. Built from the bindings; no
--- player input ends up in it except keys, which are quoted.
+-- player input ends up in it except keys, quoted, and only bindable ones: the
+-- client refuses the whole snippet if a key brings "function" or a brace into it.
 function CC.EnterSnippet(bindings)
   local lines = { "self:ClearBindings()" }
   for i, b in ipairs(bindings) do
-    if not CC.MouseParts(b.key) then
+    if not CC.MouseParts(b.key) and bindable(b.key) then
       lines[#lines + 1] = string.format("self:SetBindingClick(true, %q, self, %q)", b.key, "vg" .. i)
     end
   end
