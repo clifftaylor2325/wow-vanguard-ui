@@ -395,6 +395,7 @@ function A.Retire(c)
   if A.ShutFrom(c.frame) then return false end
   c:SetUnit(nil)
   c.frame:Hide()
+  A.followed[c.frame] = nil
   return true
 end
 

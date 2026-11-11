@@ -1014,6 +1014,18 @@ const CLOSED_ABOVE = `
   __plate.IsForbidden = function() return true end
 `;
 
+// Code review: a retired container leaves the follow set, so scale changes stop refitting it.
+it("a retired container's icons no longer follow the scale", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local A = ns.Auras
+    local plate = CreateFrame("Frame", nil, UIParent)
+    local c = ns.AuraLegacy.Create(plate, { point = { "CENTER" }, lineSize = 100, groups = { { filter = "HARMFUL", max = 2, size = 20 } } }, "target")
+    A.Follow(c.frame)
+    local followed = A.followed[c.frame] == true
+    return { followed, A.Retire(c), A.followed[c.frame] == nil }`);
+  expect(out).toEqual([true, true, true]);
+});
+
 it("a container under a frame the client has closed is kept by Retire and never asked its scale by Refit, though it answers no itself", () => {
   const addon = loggedIn(CLOSED_ABOVE);
   expect(addon.eval("return { pcall(ns.Auras.Retire, __c) }"), "Retire keeps it (false), touching nothing").toEqual([true, false]);
