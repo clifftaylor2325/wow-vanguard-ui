@@ -65,14 +65,16 @@ function Scope:OnUnit(events, fn, unit1, unit2, unit3)
   return sub
 end
 
--- As ns.Every; the job stops when the module stops (or now, with no seconds).
+-- As ns.Every; the job stops when the module stops (or now, with no seconds). The scope keeps the job's fn even when
+-- the module stops the job itself, so the close still starts that fn's error count over (a part paused by the error
+-- budget then runs again after a switch off and on).
 ---@param key string
 ---@param seconds number|nil
 ---@param fn function
 ---@param frame Frame|nil
 ---@param now boolean|nil
 function Scope:Every(key, seconds, fn, frame, now)
-  self.tickers[key] = seconds and fn or nil
+  self.tickers[key] = fn or self.tickers[key]
   ns.Every(key, seconds, fn, frame, now)
 end
 

@@ -767,3 +767,35 @@ it("lifecycle: with every reload-only module off, a profile that differs in real
   expect(footprint(addon), "the footprint of a login on Raid").toEqual(onRaid);
   expect(addon.eval("return VanguardDB.profiles.Default"), "Default untouched").toEqual(before);
 });
+
+// A live module with one scope ticker that raises while __h.fail; M.Pause stops the job as a module does when it has
+// nothing to time (CooldownGlow's CG.Apply, RetailClassBars' fillRunes: scope:Every(key, nil)).
+const STOP_START = `
+  __h = { runs = 0, fail = true }
+  local M = ns.Module("TestStopStart", { defaults = {}, live = true })
+  local function tick() if __h.fail then error("TEST-ONLY tick", 0) end __h.runs = __h.runs + 1 end
+  function M.Enable(_, scope) M.scope = scope scope:Every("test stopstart", 0.1, tick) end
+  function M.Pause() M.scope:Every("test stopstart", nil, tick) end
+  __M = M`;
+
+// The addon with STOP_START logged in and its ticker paused by the error budget, then switched off and on with the
+// job mended: { the job ran, rows left on the paused list }.
+function pausedThenRestarted(stopFirst) {
+  const addon = lifeAddon("", STOP_START);
+  addon.advance(1.5, 0.1);
+  expect(addon.eval("local out = {} for _, p in ipairs(ns.paused) do out[#out + 1] = p.where end return out"), "paused at the job's label").toEqual(["ticker test stopstart"]);
+  if (stopFirst) addon.eval("__M.Pause()");
+  addon.eval('__h.fail = false ns.SetModuleEnabled("TestStopStart", false) ns.SetModuleEnabled("TestStopStart", true)');
+  addon.advance(1, 0.1);
+  return addon.eval("return { __h.runs > 0, #ns.paused }");
+}
+
+it("lifecycle: a paused scope ticker still running at the stop runs again after the module is switched off and on", () => {
+  expectErrors("ticker test stopstart: TEST-ONLY tick");
+  expect(pausedThenRestarted(false)).toEqual([true, 0]);
+});
+
+it("lifecycle: a paused scope ticker the module stopped itself runs again after the module is switched off and on (H44-1-R1)", () => {
+  expectErrors("ticker test stopstart: TEST-ONLY tick");
+  expect(pausedThenRestarted(true), "the close forgot its failures: it runs and the paused list is empty").toEqual([true, 0]);
+});
