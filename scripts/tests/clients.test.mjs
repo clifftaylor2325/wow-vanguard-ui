@@ -163,6 +163,26 @@ it("H44-28-350 /vg help: the trainers line names the switch as the Town and gear
   expect(chatHas(forever, /Trainer memory/), "the old name is gone").toBe(false);
 });
 
+// The word -> module pairs of WORD_MODULES in Core/Slash.lua, read from the source so a word added there is checked.
+function wordModules() {
+  const source = fs.readFileSync(path.join(root, "Core", "Slash.lua"), "utf8");
+  const block = source.match(/local WORD_MODULES = \{([\s\S]*?)\n\}/)[1];
+  return [...block.matchAll(/(\w+) = "(\w+)"/g)].map((m) => [m[1], m[2]]);
+}
+
+it("H44-28-451 /vg help: every word of a module one client lacks is out of that client's help and unknown there", () => {
+  const pairs = wordModules();
+  expect(pairs.length, "the table was read").toBeGreaterThan(4);
+  for (const retail of [false, true]) {
+    const addon = on(retail);
+    addon.slash("help");
+    for (const [word, module] of pairs) {
+      if (addon.eval(`return ns.GetModule("${module}") ~= nil`)) continue;
+      expect(chatHas(addon, new RegExp(`\\|r ${word}\\b`)), `${retail ? "Retail" : "Forever"} help has no ${word}`).toBe(false);
+    }
+  }
+});
+
 it("clients: rows added with ns.RetailRows show on the Game windows card, under the window switches", () => {
   const addon = on(true);
   addon.eval('ns.RetailRows(function() return { { "text", "TEST-ONLY Retail window row" } } end)');
