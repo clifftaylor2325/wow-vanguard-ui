@@ -64,13 +64,15 @@ function PR.Place(f)
   PR.Update(f)
 end
 
--- Gives a frame its heal bar, its shield bar and their events, once.
+-- Gives a frame its heal bar, its shield bar and their events, once. Both are cut with the health fill's masks, so
+-- they stop at the frame's shaped corners as the fill does.
 local function add(f)
   f.healClip = clipFrame(f)
   f.heal = overlay(f, f.health, "heal", T.BarTexture())
   f.shield = overlay(f, f.heal, "shield", T.Texture("Stripes"))
   f.shield:GetStatusBarTexture():SetHorizTile(true)
   f.shield:GetStatusBarTexture():SetVertTile(true)
+  T.ShieldMask(f, { f.heal:GetStatusBarTexture(), f.shield:GetStatusBarTexture() }, "TOP", f.health)
   f.vgPredictionEvents = ns.OnUnit(PR.EVENTS, function() PR.Update(f) end, f.unit)
   PR.Place(f)
 end

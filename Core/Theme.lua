@@ -1447,17 +1447,21 @@ end
 
 -- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners on one
 -- side, so nothing pokes past the cut line; they follow the shield setting on every repaint. Each
--- texture is masked once (two masks, under the client's limit of three), however often it is asked.
+-- texture is masked once (two masks, under the client's limit of three), however often it is asked. With holder, the
+-- textures join the mask set holder's textures use (the heal bars over the health fill take the fill's masks; a
+-- texture of another frame takes them too, as Blizzard's PartyMemberFrame.lua masks its heal bar with its health
+-- bar container's mask).
 ---@param frame table a frame painted with opts.shield
 ---@param regions table the textures to cut
 ---@param side string "TOP" or "BOTTOM": the frame's corners these textures reach
-function T.ShieldMask(frame, regions, side)
+---@param holder table|nil the frame whose mask set they join (default: each texture's own parent)
+function T.ShieldMask(frame, regions, side, holder)
   local entry = painted[frame]
   if not entry then return end
   entry.masked, entry.maskSets, entry.maskedBy = entry.masked or {}, entry.maskSets or {}, entry.maskedBy or {}
   for _, region in ipairs(regions) do
-    local key = tostring(region:GetParent()) .. side
-    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(region:GetParent(), side)
+    local key = tostring(holder or region:GetParent()) .. side
+    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(holder or region:GetParent(), side)
     if not entry.maskedBy[region] then corner.addMasked(entry, region, entry.maskSets[key]) end
   end
   corner.paintMasks(frame, entry)

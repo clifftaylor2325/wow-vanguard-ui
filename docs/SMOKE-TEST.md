@@ -5378,6 +5378,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the grey X (and your green check) sits by the diamond at the target frame's inner top corner, clear of the health number on the bar's top line; the number does not move when the mark comes or goes. [Needs in-game check: the gap at your text size.]
 - If it fails, paste: a screenshot of the target frame, your text size, and `/vg errors`.
 
+### 33.487 Incoming heals and shields stop at the Shield look's point
+
+- Do: on either client, with General → HUD look on Shield and Unit frames → heal prediction and shields on, drop to about 90% health and have a healer cast a large heal on you (or take a shield); look at your frame's pointed end, then a party member's.
+- Expect: the green heal bar and the striped shield bar end on the shield's diagonal edge like the health fill, with nothing square poking past the point. [Needs in-game check: whether the health bar's masks cut the heal bars, which are textures of other frames.]
+- If it fails, paste: a screenshot of the frame with the heal showing, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
