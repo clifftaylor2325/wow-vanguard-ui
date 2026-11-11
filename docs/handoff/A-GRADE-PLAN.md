@@ -71,7 +71,7 @@ Targets marked `[DECIDE]` are proposals for Cliff to confirm or change in phase 
 
 Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until this is out.
 
-- [ ] **A1-0 Release what is already on `main`** as the next patch version, today, with the `release` skill. It carries the login spread and the forbidden-icon guard. (Q1; closes H1 and H2 once seen in game)
+- [x] **A1-0 Release what is already on `main`** as the next patch version, today, with the `release` skill. It carries the login spread and the forbidden-icon guard. (Q1; closes H1 and H2 once seen in game) **Done 2026-11-09: #802.** Released as 0.9.4.
 - [x] **A1-1** Off-hand upgrade verdict against a two-hander, with harness cases. (Q15, M11)
 - [x] **A1-2** Combat checks on the two panel-manager calls, and add those functions to the quality scan's guarded list. Protected path: Opus. (Q16, M12)
 - [x] **A1-3** Give the four quest tickers an owner frame, stop them in combat, reuse scratch tables, add a bench step. (Q17, M13)
@@ -82,13 +82,13 @@ Branch `work/a1-stabilise`. One PR. Then a release. Nothing else starts until th
 - [ ] **A1-8** Load only the active locale; keep the in-file guard as the fallback. Needs an in-game check that the directive works on the Forever client. (Q4, M6)
 - [x] **A1-9** Recent whisper partners count as known for stranger-invite declines. (Q5, M4)
 - [x] **A1-10** Never auto-pick a quest reward over a flagged upgrade. (Q6, M5)
-- [ ] **A1-11** Filter and coalesce the three hot handlers; one shared bag snapshot. (Q19, M15, L13, L17)
+- [ ] **A1-11** Filter and coalesce the three hot handlers; one shared bag snapshot. (Q19, M15, L13, L17) Progress: combo points skip other powers' ticks and the gaps row repaints once a frame (#806). Left: the Retail class-resource filter, caching the gaps row's entry list, and the shared bag snapshot.
 - [x] **A1-12** Micro-allocations on the hottest paths, except the unit-frame ones, which move to A3-1 to stay out of PR #796's files. (Q7, L4, L6)
 - [x] **A1-13** `ns.Migrate` keeps a list per key or raises on a duplicate; a test runs every migration twice. (Q8, L1)
 - [x] **A1-14** HUD font theming out of Merchant into its own switch. (Q9, L2)
-- [ ] **A1-15** Small correctness batch, one commit each: durability figure, mail attach count and running flag, trainer loop, `/way` across continents, detailed item level. The player-aura re-anchor (L14) is a protected path: Opus. (Q20)
+- [ ] **A1-15** Small correctness batch, one commit each: durability figure, mail attach count and running flag, trainer loop, `/way` across continents, detailed item level. The player-aura re-anchor (L14) is a protected path: Opus. (Q20) Progress: the player-aura re-anchor out of combat (L14) and the detailed item level (L26) are done (#810); Train all re-reads the trainer after the click (#870); `/way` already searched every continent and now skips unnamed maps (#810, #870). Left: the durability figure (L15, Cliff's call) and the mail attach count and running flag (L18).
 - [x] **A1-16** Wrap the last 33 strings and fill the 184 missing keys per locale. Haiku for the fill, through the CSV pipeline. (Q10, L7)
-- [ ] **A1-17** Release again with the above. PR lists every item that needs an in-game check.
+- [x] **A1-17** Release again with the above. PR lists every item that needs an in-game check. **Done 2026-11-10: #813, #863.** Released as 0.9.5.
 
 **Gate.** H1, H2, M1, M2, M4 to M6 and M11 to M16 closed in code; released; the README's known issues updated.
 
@@ -111,10 +111,10 @@ One branch and one PR per HUD area, so each set of files is opened once and come
 - [x] **A3-1 Unit frames** (`work/a3-unitframes`). The unit-frame micro-allocations from Q7 (L3); width and height sliders per frame; text formats (value, percent, both, deficit); heal prediction and shields on player, target and party; a status row (leader, role, resting, PvP). All settings apply without a reload. (N4, N5, N3)
 - [x] **A3-1b Unit frame portraits and a focus target** (`work/a3-unitframes-b`). The two items A3-1 left out: portraits on the player, target and focus frames (2D portrait or class icon; hidden under the looks whose outer corners are cut or pointed), and a focus-target frame. No 3D model portraits, no party portraits. (N4)
 - [x] **A3-2 Action bars** (`work/a3-actionbars`). Macro names with a switch, attack and auto-shot flash, spacing and hotkey-text controls, coalesced repaint. Secure button work: Opus. (N6, L5)
-- [ ] **A3-3 Nameplates and auras** (`work/a3-plates`). Size sliders, text sizes, friendly name-only mode, target emphasis, aura sizes and filters where the client allows a say. Rebuild rows out of combat. (N5, B5, N3)
-- [ ] **A3-4 Tooltips** (`work/a3-tooltips`). Guild and rank, realm, role, item level where exposed, ids behind a switch, anchor choice per tooltip type. (N7)
+- [x] **A3-3 Nameplates and auras** (`work/a3-plates`). Size sliders, text sizes, friendly name-only mode, target emphasis, aura sizes and filters where the client allows a say. Rebuild rows out of combat. (N5, B5, N3) **Done 2026-11-10: #801, #804.**
+- [x] **A3-4 Tooltips** (`work/a3-tooltips`). Guild and rank, realm, role, item level where exposed, ids behind a switch, anchor choice per tooltip type. (N7) **Done 2026-11-10: #799, #807.**
 - [x] **A3-5 Quest dialog session fallback.** A switch and a modifier that hand the quest and gossip windows back to the game without a reload. (N8, M3)
-- [ ] **A3-6 The rest of live apply, wave one.** Minimap shape and icons, info strip blocks, chat toggles, raid-frame sizes. (N3, N5) Done so far: raid-frame width and height sliders, minimap coordinates. Left: minimap shape and corner icons, the info strip clock, and chat place, bubbles and floating-window movers (each needs a way to give back what the build took: a pin, a mover, a panel).
+- [ ] **A3-6 The rest of live apply, wave one.** Minimap shape and icons, info strip blocks, chat toggles, raid-frame sizes. (N3, N5) Done so far: raid-frame width and height sliders, minimap coordinates. Left: minimap shape and corner icons, the info strip clock, and chat place, bubbles and floating-window movers (each needs a way to give back what the build took: a pin, a mover, a panel). Both done-so-far items merged in #815.
 
 **Gate.** Unit frames and tooltips move from Needs work to Solid or better; reload tags under 40; no fixed-step size choice left on the HUD.
 
@@ -125,9 +125,9 @@ One branch and one PR per HUD area, so each set of files is opened once and come
 Runs after phase 3 has merged, on its own, because A4-1 touches every module. Branches `work/a4-lifecycle`, then `work/a4-split`.
 
 - [x] **A4-1 Module lifecycle design.** Declared dependencies, a subscription scope the registry can tear down, generic disable for display-only modules, late enable. A decision that spans modules: Opus, as a short design note in `docs/design/` for Cliff to approve before code. (B1, M9) **Done 2026-11-09: `docs/design/MODULE-LIFECYCLE.md`; Cliff approved Q1 to Q11 as recommended on 2026-11-10.**
-- [ ] **A4-2 Convert modules in batches** of about ten, display-only first. Sonnet. Each batch removes its reload tags. A4-2a, the core with no module converted (the scope, `requires`, `live`/`reload`, late enable, the options side, live profile switching, the file-scope rule and the lifecycle test helpers), is PR #835; A4-3's scan rule and key setup's quiet logout came with it.
-- [ ] **A4-3 Lifecycle sweep** for work registered outside `Enable`, plus the quality-scan rule that blocks `ns.On` at file scope outside `Core/`. (N20, L16)
-- [ ] **A4-4 Live profile switching** for modules that support it; the rest say so plainly.
+- [x] **A4-2 Convert modules in batches** of about ten, display-only first. Sonnet. Each batch removes its reload tags. A4-2a, the core with no module converted (the scope, `requires`, `live`/`reload`, late enable, the options side, live profile switching, the file-scope rule and the lifecycle test helpers), is PR #835; A4-3's scan rule and key setup's quiet logout came with it. **Done 2026-11-10: #837, #865.** Batches A4-2b to A4-2f converted 51 modules; the 23 that stay reload-only are left for A4-2g (setting-level apply) and A4-4.
+- [x] **A4-3 Lifecycle sweep** for work registered outside `Enable`, plus the quality-scan rule that blocks `ns.On` at file scope outside `Core/`. (N20, L16) **Done 2026-11-10: #837.**
+- [ ] **A4-4 Live profile switching** for modules that support it; the rest say so plainly. Progress: the switch itself is in (all or nothing, naming what differs; A4-2a, #837), but no module declares that it can rebind, so players still get the staged switch. Left: the per-module audit.
 - [ ] **A4-5 Bags in combat.** Settle the sectioned-layout behaviour during a fight with an in-game look, then guard or document it. (M10)
 - [ ] **A4-6 Measure, then split.** Attribute the 49.3 MB with `/vg mem` in game, confirm the D7 targets, then split into load-on-demand companions in payoff order: auction (keeping a small price store in the core), options and setup, diagnostics, key setup, talents, mail, crafting. Record before and after. (B2)
 
@@ -141,14 +141,14 @@ Read with `docs/handoff/leonardo-art-plan.md`. That plan says how the art is mad
 
 **5a, code only** (`work/a5-look-code`)
 
-- [ ] **A5-1** Hero header in the options window. (Q11)
-- [ ] **A5-2** A display tier in the type scale for window and page titles. (Q12)
-- [ ] **A5-3** Class-colour accent option. (Q13)
-- [ ] **A5-4** Reskin coverage report in `/vg status` and as a generated doc. (Q14)
-- [ ] **A5-5** Global font pass, keeping the Korean and Chinese exemption. (N11)
+- [x] **A5-1** Hero header in the options window. (Q11) **Done 2026-11-10: #805.**
+- [x] **A5-2** A display tier in the type scale for window and page titles. (Q12) **Done 2026-11-10: #805.**
+- [x] **A5-3** Class-colour accent option. (Q13) **Done 2026-11-10: #805, #812.**
+- [x] **A5-4** Reskin coverage report in `/vg status` and as a generated doc. (Q14) **Done 2026-11-10: #805.**
+- [x] **A5-5** Global font pass, keeping the Korean and Chinese exemption. (N11) **Done 2026-11-10: #805.**
 - [ ] **A5-6** Depth on by default (shadows, gradient, slate surface, bevel), decided by Cliff from an A and B look in game. (N13)
 - [x] **A5-7** State motion kit: combat start, proc, cooldown ready, low health, all behind Reduce motion. (N16)
-- [ ] **A5-8** Empty states and navigation polish in the menu. (N18)
+- [x] **A5-8** Empty states and navigation polish in the menu. (N18) **Done 2026-11-10: #805.**
 
 **5b, art-led** (`work/a5-look-art`)
 
@@ -160,7 +160,7 @@ Read with `docs/handoff/leonardo-art-plan.md`. That plan says how the art is mad
 **5c, the larger pieces** (one branch each, after phase 4)
 
 - [ ] **A5-13** Preview dock: live sample frames beside the controls on every HUD page. (B3)
-- [ ] **A5-14** HUD looks and layout presets. Already under way in another thread as the HUD signature (PR #796, the first of four); this plan does not duplicate it. Left here: an ultrawide layout and layout-only sharing strings, after those four have merged. (B4)
+- [ ] **A5-14** HUD looks and layout presets. Already under way in another thread as the HUD signature (PR #796, the first of four); this plan does not duplicate it. Left here: an ultrawide layout and layout-only sharing strings, after those four have merged. (B4) Progress: the Shield, Plain, Hairline, Rimmed and Tabs looks, the keystone and the Keep and Standards layouts are merged (#796, #809, #830; polish #855). Left as above.
 - [ ] **A5-15** Window structure pass: one item-slot language, insets and section headers in the large windows, the last stock glyphs. (B8)
 - [ ] **A5-16** Setup as a stage over a live HUD, with the theme studio. (B7)
 
