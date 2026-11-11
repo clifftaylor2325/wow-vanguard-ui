@@ -898,3 +898,32 @@ it("H44-21-R1: a row's Cancel marked after the list was read again does not ask 
   addon.click(cancel);
   expect([questionShown(addon), cancelsSent(addon)], "no second question, one cancel").toEqual([false, [501]]);
 });
+// A named list holding an alerting dust entry, searched (its browse answer waiting), and Recent holding a copy that still alerts (an older save).
+const RECENT_ALERT = `VanguardDB.ah = { list = "TEST-ONLY Mats", recent = { { term = 10940, maxPrice = 600, alert = true } }, lists = { ["TEST-ONLY Mats"] = {
+  { term = 10940, maxPrice = 600, alert = true } } } }`;
+const DUST_CHEAP = "__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 500, totalQuantity = 5 } }";
+it("H44-21-1: a named list's search rings after the pane changed to Recent; Recent's own copy of a deleted list's entry does not", () => {
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV, { savedVariables: RECENT_ALERT });
+  addon.eval(`local AH = ${HELPER} AH.PickEntry("TEST-ONLY Mats") AH.SearchList() AH.PickEntry(AH.RECENT)`);
+  addon.eval(DUST_CHEAP);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+  expect(alertRings(addon), "the named list's search, answered while Recent is shown").toBe(1);
+  addon.advance(3);
+  addon.eval(`local AH = ${HELPER} AH.DeleteList("TEST-ONLY Mats") AH.PickEntry(AH.RECENT) VanguardDB.ah.recent[1] = { term = 10940, maxPrice = 600, alert = true } AH.SearchList()`);
+  addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 400, totalQuantity = 5 } }");
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+  expect(alertRings(addon), "Recent's entry never alerts").toBe(1);
+});
+it("H44-21-1: Recent keeps no alert on what it remembers, and its Filters dialog shows no alert switch", () => {
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV, { savedVariables: RECENT_ALERT });
+  addon.eval(`local AH = ${HELPER} AH.PickEntry("TEST-ONLY Mats") AH.SearchList()`);
+  addon.eval(DUST_CHEAP);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+  const out = addon.eval(`local AH = ${HELPER} AH.EditFilters(AH.RECENT, 1) local r = AH.filterDialog.alert:IsShown()
+    AH.EditFilters("TEST-ONLY Mats", 1)
+    return { VanguardDB.ah.recent[1].alert == nil, r, AH.filterDialog.alert:IsShown() }`);
+  expect(out, "no alert on the copy; the switch is hidden for Recent only").toEqual([true, false, true]);
+});

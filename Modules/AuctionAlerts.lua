@@ -134,11 +134,21 @@ function AH.ListenAlerts(on)
   on("AUCTION_HOUSE_CLOSED", function() AH.alertUnnamed = {} end)
 end
 
+-- Whether entry is one of Recent's own tables (Recent holds copies, never a named list's table), so
+-- the answer does not depend on which pane is shown when a search comes back.
+local function fromRecent(entry)
+  for _, e in ipairs(AH.Recent()) do
+    if e == entry then return true end
+  end
+  return false
+end
+
 -- An entry's own search found its row (AH.TakeBrowse, which leaves out what is over the entry's
--- max price, so a price per stack counts as the shop's row shows it): an alerting entry rings.
+-- max price, so a price per stack counts as the shop's row shows it): an alerting entry of a named
+-- list (alerts come from named lists, not Recent) rings.
 function AH.EntryFound(entry, row)
   local _, f = AH.Term(entry)
-  if row and f and f.alert and f.maxPrice then AH.Alert(row.key.itemID, row.price, f.maxPrice) end
+  if row and f and f.alert and f.maxPrice and not fromRecent(entry) then AH.Alert(row.key.itemID, row.price, f.maxPrice) end
 end
 
 -- The toast's title, line and price: one alert's item, its max price and the price seen; several

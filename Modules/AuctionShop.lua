@@ -353,7 +353,9 @@ function AH.Remember(entry)
   for i = #recent, 1, -1 do
     if ns.Lower(AH.EntryText(recent[i])) == key then table.remove(recent, i) end
   end
-  table.insert(recent, 1, copyEntry(entry))
+  local copy = copyEntry(entry)
+  if type(copy) == "table" then copy.alert = nil end
+  table.insert(recent, 1, copy)
   for i = #recent, AH.MAX_RECENT + 1, -1 do recent[i] = nil end
 end
 
@@ -1102,6 +1104,7 @@ function AH.EditFilters(listName, i)
   if not (list and list[i] ~= nil) then return end
   d.listName, d.entry = listName, list[i]
   fillFilters(d, list[i])
+  d.alert:SetShown(listName ~= AH.RECENT)
   d:ClearAllPoints()
   d:SetPoint("CENTER", type(AuctionHouseFrame) == "table" and AuctionHouseFrame or UIParent, "CENTER", 0, 0)
   d:Show()
