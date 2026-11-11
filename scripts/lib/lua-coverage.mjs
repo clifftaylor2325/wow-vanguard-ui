@@ -112,11 +112,16 @@ function mergeHits(file) {
 // Loads the hits workers dumped: one file, or every .json in a directory.
 // A missing file or an empty directory is a failure, not a pass.
 export function loadHits(target) {
-  fold();
-  executed.clear();
   const isDir = fs.existsSync(target) && fs.statSync(target).isDirectory();
   const files = isDir ? fs.readdirSync(target).filter((f) => f.endsWith(".json")).map((f) => path.join(target, f)) : [target];
   if (files.length === 0 || !fs.existsSync(files[0])) throw new Error(`Lua coverage hits file is missing: ${target}`);
+  loadHitFiles(files);
+}
+
+// Loads exactly these hits files (a merge of several runs' dumps), replacing whatever was loaded.
+export function loadHitFiles(files) {
+  fold();
+  executed.clear();
   for (const file of files) mergeHits(file);
 }
 

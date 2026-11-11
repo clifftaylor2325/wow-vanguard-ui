@@ -16,8 +16,10 @@ Read this before touching anything. README.md and the feature pages in `docs/fea
 npm install           # once; also turns on .githooks/pre-push (test:quick, quality, TOC, luacheck and luac if installed; --no-verify skips)
 npm run test:quick    # JS tests + the Lua smoke tests (both clients, secret geometry); the fast run while iterating
 npm test              # all tests (JS + Lua harness)
+npm run test:slot -- <vitest args>   # npm test is this with no arguments; e.g. --project lua scripts/tests/chat.test.mjs
 npm run verify        # npm test + code-quality scan
 npm run coverage      # all tests with line coverage; floor is 100% (scripts/lua-coverage-floor.json)
+                      # test, test:quick, test:slot and coverage wait for a free machine-wide test slot (1 under 12 GB of memory, else 2; VG_TEST_SLOTS sets it)
 npm run lint          # luacheck (only if installed)
 npm run media         # regenerate Media/ from scripts/lib/media-sources.mjs
 npm run package       # dist/Vanguard-<version>.zip
@@ -102,7 +104,7 @@ Claude usage and CI minutes are both limited. Pick the cheapest model and effort
 - **Model by task.** Haiku for mechanical work: closing issues with a link, ticking plans, renumbering smoke-test steps, bringing `main` into a branch, release-note drafts from merged PR titles, a status summary. Sonnet for everything that changes code: bug fixes, feature phases, harness tests, site generators, docs that need judgement. Opus or above only for a root cause nobody has reproduced, a change to the harness rules (`scripts/lib/wow-taint.lua`, the secret helpers), a secure or protected code path, or a decision that spans modules.
 - **Effort by task.** Low for the Haiku work and for checklists. Medium is the default for code. High only for the Opus cases above. Don't raise effort to make up for a vague brief; sharpen the brief.
 - **Briefs stay lean.** A thread's brief names the issue or phase, the branch, the files it may touch, and the default picked where the ask forks. It does not restate the README, this file or the plan; the thread reads those itself. One thread per independent branch. A task that waits on another PR waits; it does not get a thread yet.
-- **Local runs.** `npm run test:quick` while iterating. `npm run quality` and `npm run coverage` once, before the PR merges (on the branch with `main` brought in), not after every edit.
+- **Local runs.** Tests go through `npm test`, `npm run test:quick`, `npm run test:slot -- <vitest args>` or `npm run coverage`, never `npx vitest` directly: they wait for a machine-wide slot, so two runs never overlap and exhaust the machine's memory. `npm run test:quick` while iterating. `npm run quality` and `npm run coverage` once, before the PR merges (on the branch with `main` brought in), not after every edit.
 - **CI minutes.** Open PRs as drafts and mark them ready once, when they are done; CI skips drafts. No label makes a PR run the tests in CI (the `full-tests` label is retired); a change that is risky gets a hand-started full suite from the Actions tab (*full suite* → *Run workflow*) on its branch, only when the local run can't settle it. Don't push to re-run a green check.
 - **Merging in a wave.** When several PRs are open, merge in the order that keeps `main` moving under the fewest branches (core and harness first, then features), and bring `main` into a branch once, right before it merges, not after every merge.
 - **GSD.** `.planning/config.json` sets `model_profile` to `budget` for the same reason. A phase plan states the model and effort a plan needs only when it is not the default above.
