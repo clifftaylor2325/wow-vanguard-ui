@@ -5392,6 +5392,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the game's UI Scale checkbox and slider are as you noted, and the whole UI is at the scale it had before.
 - If it fails, paste: the UI Scale checkbox and slider values before and after, and `/vg errors`.
 
+### 33.547 A chat window's opacity ends when Chat windows is switched off (H44-11-R1)
+
+- Do: for Forever and Retail: `/vg unlock`, right-click a floating chat window's handle, set Opacity to 50, Save and lock, then switch Chat windows off under `/vg` → Modules.
+- Expect: the chat window is back at full opacity, and fading in and out with the mouse is the game's own again.
+- If it fails, paste: the window's look before and after, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

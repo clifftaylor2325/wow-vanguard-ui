@@ -210,7 +210,7 @@ local function watchAlpha(m)
   hooksecurefunc(m.frame, "SetAlpha", ns.Guard("hook SetAlpha", function(f, a)
     if vgFading[f] or ns.PlainNumber(a) == nil then return end
     m.ownAlpha = a
-    fade(m)
+    if movers[m.key] == m then fade(m) end
   end))
 end
 
@@ -828,6 +828,14 @@ function ns.Lock()
   ns.HideGrid()
 end
 
+-- Gives a let-go mover's frame the alpha its module last gave it, without the mover's opacity on top.
+local function unfade(m)
+  if not m.ownAlpha then return end
+  vgFading[m.frame] = true
+  m.frame:SetAlpha(m.ownAlpha)
+  vgFading[m.frame] = false
+end
+
 -- Takes a stopped module's mover out of unlock mode (Core/ModuleScope.lua): its handle hides and it leaves the
 -- movers the handles, the resets and the Layout card walk. Its saved spot stays in the profile, so the frame comes
 -- back where it was when the module starts again and registers it (ns.Mover gives it its handle back).
@@ -837,6 +845,7 @@ function ns.ReleaseMover(key)
   if not m then return end
   if m.handle then m.handle:Hide() end
   if ns.CloseMoverPopoverFor then ns.CloseMoverPopoverFor(key) end
+  unfade(m)
   if selected == m then selectMover(nil) end
   released[key], movers[key] = m, nil
   local kept = {}

@@ -618,3 +618,19 @@ it("hunt H44-11-1: a mover let go while its popover is open takes the popover aw
   addon.eval('ns.SetModuleEnabled("DataBars", true) ns.SetModuleEnabled("DataBars", false)');
   expect(addon.eval("return { Vanguard_MoverPopover:IsShown(), Vanguard_MoverPopover.key, #ns.errors }"), "another frame's popover stays, with no error").toEqual([true, "box", errors]);
 });
+
+it("hunt H44-11-R1: a released mover's frame gets its own opacity back and no longer multiplies what sets it", () => {
+  const addon = loggedIn(BOX);
+  addon.eval("ns.SetMoverAlpha('box', 0.5)");
+  expect(addon.eval("__box:SetAlpha(1) return __box:GetAlpha()"), "while registered the opacity applies").toBe(0.5);
+  addon.eval("ns.ReleaseMover('box')");
+  expect(addon.eval("return __box:GetAlpha()"), "released: the frame is back at the alpha it was given").toBe(1);
+  expect(addon.eval("__box:SetAlpha(0.8) return __box:GetAlpha()"), "and later sets are not multiplied").toBe(0.8);
+});
+
+it("hunt H44-11-R1: a mover that starts again fades its frame again", () => {
+  const addon = loggedIn(BOX);
+  addon.eval("ns.SetMoverAlpha('box', 0.5) ns.ReleaseMover('box')");
+  addon.eval(`ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100, edge = true }) __box:SetAlpha(1)`);
+  expect(addon.eval("return __box:GetAlpha()"), "registered again: the saved opacity applies").toBe(0.5);
+});
