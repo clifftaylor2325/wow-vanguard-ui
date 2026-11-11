@@ -177,9 +177,15 @@ function CF.FindWindow()
   return windowNamed()
 end
 
--- Whether a chat window number is the Filtered tab (the saved number, or a window with the tab's name).
+-- Whether the module runs now (its scope is open: false from login with it off, and after a switch off).
+local function running()
+  return CF.scope ~= nil and CF.scope:Running()
+end
+
+-- Whether a chat window number is the Filtered tab: the saved number while the module runs (a tab it is not
+-- feeding holds nothing Chat history must skip, whatever number a closed tab left saved), or a window with the tab's name.
 function CF.IsTab(index)
-  if savedNumber() == index then return true end
+  if running() and savedNumber() == index then return true end
   return type(GetChatWindowInfo) == "function" and GetChatWindowInfo(index) == CF.TAB
 end
 
@@ -205,11 +211,6 @@ local function openWindow()
   local frame = FCF_OpenNewWindow(CF.TAB, true)
   keepSelection(before)
   return type(frame) == "table" and remember(frame) or nil
-end
-
--- Whether the module runs now (its scope is open: false from login with it off, and after a switch off).
-local function running()
-  return CF.scope ~= nil and CF.scope:Running()
 end
 
 -- True while caught lines go to a Filtered tab: the module running and still switched on (a switch made in a fight

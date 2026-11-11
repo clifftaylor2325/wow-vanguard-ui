@@ -251,3 +251,13 @@ it("chat history: saved data from an older version (a string where a table goes,
   expect(Object.keys(saved(next)), "the damaged ones are dropped").toEqual(["0"]);
   expect(next.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+it("H44-19-R4 chat history: a tab closed while the module is switched off still loses its saved lines", () => {
+  const addon = loggedIn(`${CLOCK} FCF_Close = function() end`);
+  addon.slash("history on");
+  addon.eval(`ChatFrame2.__frameID = 2 ChatFrame2:AddMessage("old tab line")`);
+  expect(addon.eval("return #(VanguardCharDB.chatHistory[2] or {})"), "saved while on").toBe(1);
+  addon.eval("ns.SetModuleEnabled('ChatHistory', false) FCF_Close(ChatFrame2)");
+  expect(addon.eval("return #(VanguardCharDB.chatHistory[2] or {})"), "closed while off: dropped").toBe(0);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

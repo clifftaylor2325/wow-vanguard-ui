@@ -577,3 +577,22 @@ it("H44-19-52 chat filter: a Filtered tab closed and its number given to a new t
   addon.eval("local w = ns.GetModule('ChatFilter').window FCF_Close(ChatFrame1) FCF_Close(nil) FCF_Close({}, w)");
   expect(addon.eval("return { #ns.errors, VanguardCharDB.filteredTab == nil }"), "the main window, nothing, or a fallback window: no error, and only the Filtered tab's close forgets").toEqual([0, true]);
 });
+
+// As the H44-19-52 test: a closed window's number goes to the next tab made (forever
+// Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua: FCF_GetNextOpenChatWindowIndex).
+it("H44-19-53 chat filter: a tab that takes a closed Filtered tab's number is kept by Chat history, whether the filter is on, off or its module stopped", () => {
+  // ChatFrame3 exists (and is followed by Chat history) but is closed, so the filter's tab takes its number.
+  const addon = filtering("__now = 1790000000 time = function() return __now end FCF_Close = function(frame) frame:Hide() end FCF_OpenNewWindow('old') ChatFrame3:Hide()");
+  expect(addon.eval("return VanguardCharDB.filteredTab"), "the Filtered tab is ChatFrame3").toBe(3);
+  addon.slash("filter off");
+  addon.eval("ns.SetModuleEnabled('ChatFilter', false)");
+  addon.eval("FCF_Close(ChatFrame3) FCF_OpenNewWindow('Loot')");
+  expect(addon.eval("return VanguardCharDB.filteredTab == nil"), "closed while the module is off: the number is forgotten").toBe(true);
+  addon.slash("history on");
+  addon.eval(`ChatFrame1:AddMessage("main line") ChatFrame3:AddMessage("You receive loot: [Linen Cloth].")`);
+  expect(addon.eval("local s = VanguardCharDB.chatHistory or {} return { s[1] and #s[1] or 0, s[3] and #s[3] or 0 }"), "the Loot tab's line is saved").toEqual([1, 1]);
+  addon.eval("VanguardCharDB.filteredTab = 3");
+  expect(addon.eval("return ns.GetModule('ChatFilter').IsTab(3)"), "a number left saved by a session where the filter never ran does not make a tab the Filtered one").toBe(false);
+  addon.eval("ns.SetModuleEnabled('ChatFilter', true)");
+  expect(addon.eval("return ns.GetModule('ChatFilter').IsTab(3)"), "with the filter running it is").toBe(true);
+});
