@@ -39,6 +39,18 @@ it("broker strip: picked feeds show with their text and icon, and follow their c
   expect(strip(addon).shown, "nothing picked: the strip hides").toBe(false);
 });
 
+it("broker strip: switched off live it stops listening to the feeds; on again it follows their changes", () => {
+  const addon = loggedIn(LDB_ENV, { savedVariables: "VanguardDB.profiles = { Default = { BrokerStrip = { feeds = { 'TEST-ONLY Gold' } } } }" });
+  // How many LibDataBroker callbacks the strip has registered.
+  const callbacks = () => addon.eval(`local n, events = 0, LibStub("LibDataBroker-1.1").callbacks.events
+    for _, handlers in pairs(events) do if handlers[ns.GetModule("BrokerStrip")] then n = n + 1 end end return n`);
+  expect(callbacks(), "on: a change and a new feed").toBe(2);
+  addon.eval('ns.SetModuleEnabled("BrokerStrip", false)');
+  expect(callbacks(), "off: taken off the library").toBe(0);
+  addon.eval('ns.SetModuleEnabled("BrokerStrip", true) __set("TEST-ONLY Gold", "text", "14g")');
+  expect([callbacks(), strip(addon).slots[0]], "on again: listening, the change painted").toEqual([2, ["TEST-ONLY Gold", "14g"]]);
+});
+
 it("broker strip: hover shows the feed's tooltip, and clicks reach it", () => {
   const addon = loggedIn(LDB_ENV, { savedVariables: "VanguardDB.profiles = { Default = { BrokerStrip = { feeds = { 'TEST-ONLY Gold', 'TEST-ONLY Guild' } } } }" });
   addon.eval("local s = Vanguard_BrokerSlot1 s.__scripts.OnEnter(s) s.__scripts.OnClick(s, 'RightButton')");

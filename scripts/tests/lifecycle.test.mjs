@@ -526,6 +526,28 @@ it("lifecycle: a frame adopted after Enable is the scope's at every later start,
   expect(addon.eval("return VanguardTest_Lazy:IsShown()"), "and the next stop puts it away again").toBe(false);
 });
 
+// A TEST-ONLY live module whose window is built after Enable and adopted with no mover (no key).
+const LAZY_PLAIN = `${MODULES}
+  local Z = ns.Module("TestLazyPlain", { defaults = {}, live = true })
+  function Z.Enable(settings, scope) Z.scope = scope end
+  function __life.build()
+    Z.frame = Z.frame or CreateFrame("Frame", "VanguardTest_LazyPlain", UIParent)
+    Z.frame:SetSize(30, 30)
+    Z.scope:Adopt(Z.frame)
+    Z.frame:Show()
+  end
+`;
+
+it("lifecycle: a frame adopted without a mover is the scope's at every later start, and hidden at every stop", () => {
+  const addon = lifeAddon("", LAZY_PLAIN);
+  addon.eval("__life.build()");
+  addon.eval('ns.SetModuleEnabled("TestLazyPlain", false)');
+  expect(addon.eval("return VanguardTest_LazyPlain:IsShown()"), "the stop hides it").toBe(false);
+  addon.eval('ns.SetModuleEnabled("TestLazyPlain", true) VanguardTest_LazyPlain:Show() ns.SetModuleEnabled("TestLazyPlain", false)');
+  expect([addon.eval("return VanguardTest_LazyPlain:IsShown()"), addon.eval('return #ns.GetModule("TestLazyPlain").scope.adopted')],
+    "adopted again at the next start without Enable, so the next stop hides it too; no mover, one entry").toEqual([false, 1]);
+});
+
 it("lifecycle: a gate pointed at nothing does nothing while the module runs, and calls through when pointed again", () => {
   const addon = lifeAddon("", SCOPED);
   // Calls the hook's gate and says how many calls reached the module.

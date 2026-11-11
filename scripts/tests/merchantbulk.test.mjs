@@ -226,6 +226,19 @@ it("the quantity window of a merchant's item gets Stack, Max and a cost line; an
   expect(split(addon)[0], "switched off: hidden").toBe(false);
 });
 
+it("the merchant helpers switched off live take the drawer off the open quantity window; on again it comes back", () => {
+  const addon = loggedIn(BUY_ENV);
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Show()");
+  expect(split(addon)[0], "Stack shows on the merchant's item").toBe(true);
+  addon.eval('ns.SetModuleEnabled("Merchant", false)');
+  expect([split(addon), addon.eval("return ns.FrameState('vgSplitBulk')[StackSplitFrame].drawer:IsShown()")], "off: the drawer and its buttons and line hidden").toEqual([[false, false, false, "Max 40 for 0s 80c"], false]);
+  addon.eval('ns.SetModuleEnabled("Merchant", true)');
+  addon.fire("MERCHANT_SHOW");
+  addon.eval("StackSplitFrame:Hide() StackSplitFrame:Show()");
+  expect(split(addon)[0], "on again: the next opening has it").toBe(true);
+});
+
 it("opening the quantity window for another item while it is open refreshes the drawer, and a stale press buys nothing", () => {
   const addon = loggedIn(BUY_ENV);
   addon.fire("MERCHANT_SHOW");

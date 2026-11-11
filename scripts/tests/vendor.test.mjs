@@ -154,6 +154,17 @@ it("the error line and the zone text in the theme font, kept after a Text size c
   expect([some.eval("return select(2, ZoneTextFont:GetFont())"), some.eval("return #ns.errors")], "a client with only some of them gets those, and loads cleanly").toEqual([32, 0]);
 });
 
+it("HUD text font switched off live gives the error line and zone text the game's face and shadow back; on again the theme's", () => {
+  const addon = loggedIn(HUD_FONTS_ENV.replace('_G[name]:SetFont("TEST-ONLY-FRIZQT", 10, "THICK")',
+    '_G[name]:SetFont("TEST-ONLY-FRIZQT", 10, "THICK") _G[name]:SetShadowOffset(2, -2) _G[name]:SetShadowColor(0, 0, 0, 0.5)'));
+  // The error line's font and its shadow offset and colour.
+  const error = () => addon.eval("return { { ErrorFont:GetFont() }, ErrorFont.__shadowOffset, ErrorFont.__shadowColor }");
+  addon.eval('ns.SetModuleEnabled("HudText", false)');
+  expect(error(), "the game's face, outline and shadow").toEqual([["TEST-ONLY-FRIZQT", 10, "THICK"], [2, -2], [0, 0, 0, 0.5]]);
+  addon.eval('ns.SetModuleEnabled("HudText", true)');
+  expect([hudFonts(addon)[0], addon.eval("return #ns.errors")], "on again: the theme's face and shadow, no error").toEqual([[true, 16, [1, -1]], 0]);
+});
+
 // TEST-ONLY the scrolling combat text's font object (GameFontStyles.xml), as a font string the stub can read back,
 // and the engine's floating damage font path.
 const COMBAT_TEXT_ENV = 'CombatTextFont = CreateFrame("Frame"):CreateFontString() CombatTextFont:SetFont("TEST-ONLY-FRIZQT", 64, "") DAMAGE_TEXT_FONT = "TEST-ONLY-DAMAGE"';

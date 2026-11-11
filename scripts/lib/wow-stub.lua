@@ -576,6 +576,9 @@ function methods:GetFont() local f = self.__font or {} return f[1], f[2], f[3] e
 -- Shadow offset and colour, recorded.
 function methods:SetShadowOffset(x, y) self.__shadowOffset = { x, y } end
 function methods:SetShadowColor(r, g, b, a) self.__shadowColor = { r, g, b, a } end
+-- Shadow offset and colour read back: as set, else none (offset 0, 0, a clear black), as a new font string has.
+function methods:GetShadowOffset() local o = self.__shadowOffset or { 0, 0 } return o[1], o[2] end
+function methods:GetShadowColor() local c = self.__shadowColor or { 0, 0, 0, 0 } return c[1], c[2], c[3], c[4] end
 
 -- The minimap mask texture (square or round).
 function methods:SetMaskTexture(t) self.__maskTexture = t end

@@ -94,6 +94,15 @@ it("talent planner: the bar on the talents window, and plan mode's clicks set pl
   expect(mark(addon, 102), "plan mode off: the badge stays, the mouse goes back to the game").toMatchObject({ badge: "2", shown: true, mouse: false });
 });
 
+it("talent planner: switched off live in plan mode, its marks hide and let the mouse go and its bar hides; plan mode ends", () => {
+  const addon = open();
+  addon.eval(`${TP}.SetPlanning(true) __click(101)`);
+  expect(mark(addon, 101), "planning: the mark takes the mouse, its badge shows").toMatchObject({ badge: "1", shown: true, mouse: true });
+  addon.eval('ns.SetModuleEnabled("TalentPlanner", false)');
+  expect(addon.eval(`return { __mark(101):IsShown(), __mark(101).__mouse == true, Vanguard_TalentPlan:IsShown(), ${TP}.planning }`),
+    "off: the mark hidden and letting clicks through to the game, the bar hidden, not planning").toEqual([false, false, false, false]);
+});
+
 it("talent planner: no marks while the window shows another config than the plan's, and a repaint when it changes", () => {
   const addon = open(`
     __shown = 501
