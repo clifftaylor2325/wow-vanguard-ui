@@ -666,6 +666,7 @@ AH.GUIDE = {
   vendor = { 2, L["Raise the price: it's under what a vendor pays."], true },
   bags = { 1, L["It isn't in your bags now: put it on the card again."], true },
   money = { 3, L["You don't have the money for the deposit."], true },
+  sold = { 4, L["Nothing left to post: raise Quantity, or click Stop."], true },
   busy = { 3, L["Waiting for the auction house to be ready..."] },
   sent = { 3, L["Stack {stack} sent: waiting for the auction house..."] },
   ready = { 3, L["Click Post to list stack {stack} of {stacks}."] },

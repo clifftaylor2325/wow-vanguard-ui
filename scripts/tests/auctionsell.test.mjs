@@ -737,3 +737,14 @@ it("H44-21-50: a per-stack price is for the stack that goes up next, a short one
   addon.click(`${CARD}.post`);
   expect(restrictedLog(addon).map((c) => [c[0], c[4], c[5]]), "7 units at a seventh of 7g each").toEqual([["PostCommodity", 7, 10000]]);
 });
+it("H44-21-R2: a quantity typed down to what has gone up says so in the guide, not 'Click Post'", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS);
+  dropAndAnswer(addon, 3, "COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.click(`${CARD}.qtyMax`);
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][3] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  addon.type(`${CARD}.qty`, "20");
+  const after = addon.eval(`local c = ${CARD} return { c.post:IsEnabled(), c.guide:GetText() }`);
+  expect(after, "Post is off and the guide says why").toEqual([false, "Nothing left to post: raise Quantity, or click Stop."]);
+});
