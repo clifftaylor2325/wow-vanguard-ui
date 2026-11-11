@@ -245,3 +245,17 @@ it("the widget lists hold only what each client has: GetEffectiveAlpha on frames
     return { ok, err:match("unknown template") ~= nil, Enum.SecretAspect.FrameStrata == nil, Enum.SecretAspect.RadialProgress }`),
   "Retail").toEqual([false, true, true, 8388608]);
 });
+
+// GetWidth and GetHeight take ignoreRect, Default = false (SimpleScriptRegionAPIDocumentation.lua, both clients), and
+// Blizzard_SharedXMLBase/AnchorUtil.lua's FormatFrame prints GetSize() as the "calculated size" and GetSize(true) as
+// the "explicit size": a frame stretched between two anchored edges answers its laid-out size.
+it("a frame given a size and stretched between two anchors reports the stretched size; ignoreRect gives the one set", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local p = CreateFrame("Frame", nil, UIParent) p:SetSize(300, 200) p:SetPoint("CENTER")
+    local f = CreateFrame("Frame", nil, p) f:SetSize(100, 20)
+    f:SetPoint("TOPLEFT", p, "TOPLEFT") f:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT")
+    local one = CreateFrame("Frame", nil, p) one:SetSize(100, 20) one:SetPoint("LEFT", p, "LEFT")
+    local w, h = f:GetSize()
+    return { w, h, f:GetWidth(true), f:GetHeight(true), f:GetRight() == p:GetRight(), f:GetTop() == p:GetTop(), one:GetWidth(), one:GetHeight() }`);
+  expect(out).toEqual([300, 200, 100, 20, true, true, 100, 20]);
+});

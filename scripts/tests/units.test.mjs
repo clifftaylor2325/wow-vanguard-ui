@@ -388,9 +388,12 @@ it("combo points that follow you to a new target at the same count show at once"
   expect(lit(), "the points moved to the new target: no power event fires, the pip still lights").toBe(1);
 });
 
+// Where the spark sits a fraction of the way along the power bar. The bar is anchored on both sides, so its width is
+// the laid-out one, as the client's GetWidth answers (Blizzard_SharedXMLBase/AnchorUtil.lua's "calculated size").
+const along = (addon, fraction) => fraction * addon.eval("return ns.GetModule('PowerTicks').bar:GetWidth()");
+
 it("power ticks: the five-second rule after a mana spell", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV);
-  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
   expect(addon.eval("local PT = ns.GetModule('PowerTicks') return { PT.mode, PT.spark:GetParent() == Vanguard_player.power }"), "a mana user gets the mana spark on the player frame's power bar").toEqual(["mana", true]);
   expect(spark(addon), "no spark before a cast").toEqual([false, -1, false]);
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "target", "x", 90001);
@@ -400,7 +403,8 @@ it("power ticks: the five-second rule after a mana spell", () => {
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
   expect(spark(addon), "a mana spell starts the spark at the left").toEqual([true, 0, true]);
   addon.eval("__wfgStub.advance(2.5)");
-  expect(spark(addon)[1], "halfway through the five seconds it's halfway along").toBe(100);
+  expect(along(addon, 1), "the bar is laid out with a width").toBeGreaterThan(0);
+  expect(spark(addon)[1], "halfway through the five seconds it's halfway along").toBe(along(addon, 0.5));
   addon.eval("__wfgStub.advance(3)");
   expect([spark(addon)[0], spark(addon)[2]], "after five seconds it hides and its timer stops").toEqual([false, false]);
   addon.fire("UNIT_POWER_FREQUENT", "player", "MANA");
@@ -413,7 +417,6 @@ it("power ticks: the five-second rule after a mana spell", () => {
 it("power ticks: the spark moves on one anchor, as tall as the bar, with no anchors cleared per frame", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV);
   addon.eval(`local PT = ns.GetModule('PowerTicks')
-    PT.bar:SetWidth(200)
     __clears, __sets = 0, 0
     local set = PT.spark.SetPoint
     -- TEST-ONLY spies: the spark's anchor calls.
@@ -424,12 +427,11 @@ it("power ticks: the spark moves on one anchor, as tall as the bar, with no anch
   const out = addon.eval(`local PT = ns.GetModule('PowerTicks') local n = 0 for _ in pairs(PT.spark.__points) do n = n + 1 end
     return { __clears, __sets, n, PT.spark:GetHeight() == PT.bar:GetHeight() and PT.bar:GetHeight() > 0 }`);
   expect(out, "the start and 10 frames: 11 moves of its one anchor, none cleared; as tall as the bar").toEqual([0, 11, 1, true]);
-  expect(spark(addon), "and it is where the sweep is (halfway after 2.5 s)").toEqual([true, 100, true]);
+  expect(spark(addon), "and it is where the sweep is (halfway after 2.5 s)").toEqual([true, along(addon, 0.5), true]);
 });
 
 it("power ticks: energy every two seconds, and forms switch", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
-  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   expect(spark(addon)[0], "the first reading is only a starting point").toBe(false);
   addon.eval("__units.player.power = 70");
@@ -437,29 +439,28 @@ it("power ticks: energy every two seconds, and forms switch", () => {
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   expect(spark(addon), "energy going up is a tick: the spark starts").toEqual([true, 0, true]);
   addon.eval("__wfgStub.advance(2.5)");
-  expect(spark(addon), "and keeps crossing every two seconds").toEqual([true, 50, true]);
+  expect(spark(addon), "and keeps crossing every two seconds").toEqual([true, along(addon, 0.25), true]);
   addon.eval("__units.player.power = { __secret = true }");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   addon.eval("__units.player.power = 10");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
-  expect(spark(addon)[1], "a hidden value and a drop (an ability) don't restart it").toBe(50);
+  expect(spark(addon)[1], "a hidden value and a drop (an ability) don't restart it").toBe(along(addon, 0.25));
   addon.fire("UNIT_SPELLCAST_SUCCEEDED", "player", "x", 90001);
-  expect(spark(addon)[1], "casts don't move the energy spark").toBe(50);
+  expect(spark(addon)[1], "casts don't move the energy spark").toBe(along(addon, 0.25));
   addon.fire("UNIT_DISPLAYPOWER", "player");
   expect(spark(addon)[0], "the same power type keeps it").toBe(true);
   addon.eval("__ptype = 1");
   addon.fire("UPDATE_SHAPESHIFT_FORM");
-  expect([addon.eval("return ns.GetModule('PowerTicks').mode"), ...spark(addon)], "rage (bear form) has no spark").toEqual([null, false, 50, false]);
+  expect([addon.eval("return ns.GetModule('PowerTicks').mode"), ...spark(addon)], "rage (bear form) has no spark").toEqual([null, false, along(addon, 0.25), false]);
 });
 
 it("power ticks: the energy spark stops its timer when no tick comes (full energy)", () => {
   const addon = loggedIn(UNITS_ENV + TICKS_ENV + "__ptype = 3");
-  addon.eval("ns.GetModule('PowerTicks').bar:SetWidth(200)");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   addon.eval("__units.player.power = 70");
   addon.fire("UNIT_POWER_FREQUENT", "player", "ENERGY");
   addon.eval("__wfgStub.advance(5.5)");
-  expect(spark(addon), "two missed sweeps on, the spark still crosses").toEqual([true, 150, true]);
+  expect(spark(addon), "two missed sweeps on, the spark still crosses").toEqual([true, along(addon, 0.75), true]);
   addon.eval("__wfgStub.advance(1)");
   expect([spark(addon)[0], spark(addon)[2]], "after three sweeps with no tick it hides and its timer stops").toEqual([false, false]);
   addon.eval("__units.player.power = 90");
