@@ -269,9 +269,9 @@ end
 local RAID_WIDTHS = { min = 72, max = 120, step = 2 }
 local RAID_HEIGHTS = { min = 36, max = 56, step = 2 }
 
--- get/set for Stack big raids: the real frames and the preview follow at once.
+-- get/set for Stack big raids: the real frames and the preview follow at once, so no reload is waited for.
 local function stackSetting()
-  local get, set, initial = reloadSetting("RaidFrames", "stackBig")
+  local get, set, initial = setting("RaidFrames", "stackBig")
   return get, function(v) set(v); ns.GetModule("RaidFrames").Fit(); ns.RaidPreview.Refresh() end, initial
 end
 
