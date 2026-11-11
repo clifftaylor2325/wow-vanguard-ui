@@ -475,9 +475,27 @@ local LIST_W = CONTENT_W - T.SCROLL.thumb - T.SPACE.gap
 -- Fills step 3's list (defined below, with the list's parts).
 local fillReady
 
--- Ticks or unticks the change of the entry at position i, and lists again what Apply will now do.
+-- Whether the change of the entry at position i, as the plan of every entry has it, would rebind a key that does
+-- something else now (the list says "(now ...)").
+local function rebinds(i)
+  return nowText(state.full[i]) ~= nil
+end
+
+-- The positions of the entries whose change rebinds the same key as the one at position i, i among them: keys 1 to
+-- 6 are one key on every bar 1 page, so leaving one alone leaves them all. Only i when its key needn't be rebound.
+local function siblingsOf(i)
+  local out = { i }
+  if not rebinds(i) then return out end
+  for j in ipairs(state.entries) do
+    if j ~= i and rebinds(j) and state.full[j].key == state.full[i].key then out[#out + 1] = j end
+  end
+  return out
+end
+
+-- Ticks or unticks the change of the entry at position i, with every change that rebinds the same key, and lists
+-- again what Apply will now do.
 local function setTick(i, ticked)
-  state.off[entryId(state.entries[i])] = not ticked or nil
+  for _, j in ipairs(siblingsOf(i)) do state.off[entryId(state.entries[j])] = not ticked or nil end
   planTicks()
   fillReady(WZ.frame.steps.ready)
 end
@@ -629,14 +647,17 @@ function WZ.Show(n)
 end
 
 -- The entries the player kept ticked, for Apply, how many of them change something (a key that stays as it is has
--- no tick box, so it is always kept), and the changes the player unticked.
+-- no tick box, so it is always kept), the changes the player unticked, and the keys those would have rebound (they
+-- stay the player's, on every bar page).
 local function kept()
-  local changes, declined = 0, {}
+  local changes, declined, keys = 0, {}, {}
   for i, entry in ipairs(state.entries) do
-    if unticked(i) then declined[#declined + 1] = entry
+    if unticked(i) then
+      declined[#declined + 1] = entry
+      if rebinds(i) then keys[#keys + 1] = state.full[i].key end
     elseif KA.WRITES[state.rows[i].kind] then changes = changes + 1 end
   end
-  return tickedEntries(), changes, declined
+  return tickedEntries(), changes, declined, keys
 end
 
 -- After an Apply that changed nothing (refused, or the bars or keys changed since the list was made): the plan is
@@ -652,11 +673,11 @@ end
 -- the tick box.
 local function apply()
   local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
-  local entries, changes, declined = kept()
+  local entries, changes, declined, keys = kept()
   if changes == 0 and #declined > 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
   if not KA.Apply(entries, set, KA.Signature(state.live)) then return relist() end
   WZ.frame:Hide()
-  ns.KeybindsLearn.Applied(state.preset, state.placeNew, declined)
+  ns.KeybindsLearn.Applied(state.preset, state.placeNew, declined, keys)
   for _, fn in ipairs(WZ.onApply) do fn(state.preset) end
 end
 

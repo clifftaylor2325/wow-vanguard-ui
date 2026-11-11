@@ -5540,6 +5540,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: after training, the button shows the new rank (if the game already upgraded the button by itself, note that); on Ready the line reads like "2: Frostbolt (Rank 3), in place of Rank 1" with a tick box, and unticking it keeps Rank 1 on Apply. [Needs in-game check: all of it, and whether the game upgrades a button to a new rank by itself.]
 - If it fails, paste: the rank the button shows, the Ready line, the chat lines and `/vg errors`.
 
+### 33.514 Unticking key 1 on one stance page leaves key 1 alone
+
+- Do: on a WoW Forever warrior with Battle and Defensive Stance, bind key 1 to Open All Bags in the game's key bindings, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick "1 in Battle Stance", press Apply, then press 1 in Battle Stance and in Defensive Stance.
+- Expect: unticking "1 in Battle Stance" also unticks "1 in Defensive Stance"; after Apply key 1 opens your bags in both stances. [Needs in-game check: all of it.]
+- If it fails, paste: the step 3 list before and after the untick, what key 1 did, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

@@ -464,3 +464,56 @@ it("H44-10-1 step 3: a lower rank on a key's button is its own change naming bot
   addon.eval('__click("Apply")');
   expect(addon.eval("return { select(2, GetActionInfo(1)), select(2, GetActionInfo(2)) }"), "Fireball placed, Rank 1 kept").toEqual([133, 116]);
 });
+
+// Step 3's key 1 rows, one per stance page.
+const keyOneRows = (addon) => ready(addon).filter((r) => /^\[.\] 1 in /.test(r));
+
+it("H44-10-100 step 3: unticking key 1 on one stance page, while it does something else, leaves key 1 alone on every page", () => {
+  const addon = warrior('SetBinding("1", "TOGGLEBACKPACK") SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^1 in Battle Stance");
+  expect(keyOneRows(addon)).toEqual(["[ ] 1 in Battle Stance: Heroic Strike added to your bar (now TOGGLEBACKPACK)",
+    "[ ] 1 in Defensive Stance: Sunder Armor added to your bar (now TOGGLEBACKPACK)"]);
+  addon.eval('__click("Apply")');
+  expect(addon.eval('return { GetBindingAction("1"), GetActionInfo(73) == nil, GetActionInfo(85) == nil }')).toEqual(["TOGGLEBACKPACK", true, true]);
+});
+
+it("H44-10-100 step 3: ticking key 1 back on one stance page ticks it on every page", () => {
+  const addon = warrior('SetBinding("1", "TOGGLEBACKPACK") SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^1 in Defensive Stance");
+  untick(addon, "^1 in Battle Stance");
+  expect(keyOneRows(addon)).toEqual(["[x] 1 in Battle Stance: Heroic Strike added to your bar (now TOGGLEBACKPACK)",
+    "[x] 1 in Defensive Stance: Sunder Armor added to your bar (now TOGGLEBACKPACK)"]);
+});
+
+it("H44-10-100 step 3: with key 1 on its own button, each stance page's change keeps its own tick box", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^1 in Battle Stance");
+  expect(keyOneRows(addon)).toEqual(["[ ] 1 in Battle Stance: Heroic Strike added to your bar", "[x] 1 in Defensive Stance: Sunder Armor added to your bar"]);
+  addon.eval('__click("Apply")');
+  expect(addon.eval('return { GetBindingAction("1"), GetActionInfo(73) == nil, select(2, GetActionInfo(85)) }')).toEqual(["ACTIONBUTTON1", true, 7386]);
+});
+
+it("H44-10-100 key 1 left alone on Ready stays the player's when a stance page is learned later, in a fight too", () => {
+  const addon = warrior('SetBinding("1", "TOGGLEBACKPACK") SaveBindings(1)');
+  addon.advance(4);
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") local box = Vanguard_KeysWizard.steps.ready.placeNew if not box.get() then box.__scripts.OnClick(box) end');
+  untick(addon, "^1 in Battle Stance");
+  addon.eval('__click("Apply")');
+  expect(addon.eval("return ns.KeybindsLearn.IsOn()")).toBe(true);
+  addon.world.combat(true);
+  addon.world.learn(2458, { name: "Berserker Stance", icon: "TEST-ONLY-2458" });
+  addon.eval('__wfgWorld.setStances({ { spellID = 2457 }, { spellID = 71 }, { spellID = 2458 } })');
+  addon.fire("LEARNED_SPELL_IN_SKILL_LINE", 2458, 1, false);
+  addon.advance(1);
+  addon.world.combat(false);
+  addon.advance(1);
+  expect(addon.eval('return { GetBindingAction("1"), GetActionInfo(97) == nil, GetBindingAction("CTRL-`") }'),
+    "key 1 still opens the bags and Berserker Stance's page gets no key 1 spell; the new stance key is set").toEqual(["TOGGLEBACKPACK", true, "SHAPESHIFTBUTTON3"]);
+});
