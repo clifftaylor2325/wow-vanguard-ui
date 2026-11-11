@@ -112,8 +112,15 @@ const CHECK_STEPS = [
   "The TOC against the files on disk",
   "luacheck",
   "Lua 5.1 syntax of every file the TOC loads",
+  "Media files match their sources",
   "Release zip builds and holds every file it should",
 ];
+
+it("the media check runs build-media.mjs --check in the quick job's checks, ahead of the tests", () => {
+  const quick = jobText(workflow("lua-suite.yml"), "quick");
+  expect(runBlocks(stepNamed(quick, "Media files match their sources"))).toEqual(["node scripts/build-media.mjs --check"]);
+  expect(quick.indexOf("- name: Media files match"), "before the tests").toBeLessThan(quick.indexOf("- run: npm run coverage"));
+});
 
 it("every check step runs on every lua-suite run, and no input can turn the checks off", () => {
   const text = workflow("lua-suite.yml");

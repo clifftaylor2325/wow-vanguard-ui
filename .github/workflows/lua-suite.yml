@@ -5,8 +5,8 @@ name: lua suite
 # the run, and so does coverage below the floor in
 # scripts/lua-coverage-floor.json (only goes up; 100 is the goal). Then the
 # raid benchmark, the code-quality scan, the TOC check
-# (scripts/check-toc.mjs), luacheck, Lua 5.1 syntax and the release zip's
-# contents; and, with the preview input on, the UI preview as a second job
+# (scripts/check-toc.mjs), luacheck, Lua 5.1 syntax, the media check
+# (scripts/build-media.mjs --check) and the release zip's contents; and, with the preview input on, the UI preview as a second job
 # beside it.
 #
 # The tests are sharded: a plan job reads the shards input (12 by default)
@@ -208,6 +208,8 @@ jobs:
             luac5.1 -p "$file" || status=1
           done < Vanguard.toc
           exit $status
+      - name: Media files match their sources
+        run: node scripts/build-media.mjs --check
       - name: Release zip builds and holds every file it should
         run: |
           rm -rf dist

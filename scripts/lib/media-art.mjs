@@ -1,6 +1,6 @@
 // Drawing for Vanguard's artwork, in plain math: the same source gives the
 // same bytes on any machine, so a check can tell the committed files are current
-// (node scripts/build-media.mjs --check and scripts/media.test.mjs; no workflow runs either).
+// (node scripts/build-media.mjs --check, which lua-suite.yml's checks run, and scripts/media.test.mjs).
 // Images are straight-alpha RGBA floats; shapes are drawn with 4x4
 // supersampling. Writers: 32-bit TGA for the game, PNG for the preview.
 // No dependencies.
