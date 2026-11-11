@@ -596,3 +596,17 @@ it("H44-19-53 chat filter: a tab that takes a closed Filtered tab's number is ke
   addon.eval("ns.SetModuleEnabled('ChatFilter', true)");
   expect(addon.eval("return ns.GetModule('ChatFilter').IsTab(3)"), "with the filter running it is").toBe(true);
 });
+
+it("H44-19-54 chat filter: the tab's label is Filtered in the player's language, or the name the player gave the tab, plus the count", () => {
+  const addon = filtering();
+  addon.eval("ns.L['Filtered'] = 'Gefiltert'");
+  deliver(addon, GOLD, "Goldy");
+  addon.update(0.1);
+  expect(tabName(addon), "never renamed: the translated word and the count").toBe("Gefiltert (1)");
+  addon.eval("__wfgWorld.chatWindows[3] = 'Spam'");
+  deliver(addon, GOLD, "Goldy2");
+  addon.update(0.1);
+  expect(tabName(addon), "renamed to Spam: the player's name stays, with the count").toBe("Spam (2)");
+  expect(addon.eval("return { ns.GetModule('ChatFilter').TAB, __wfgWorld.chatWindows[3] }"), "the saved name used to find an old tab is untouched English").toEqual(["Filtered", "Spam"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

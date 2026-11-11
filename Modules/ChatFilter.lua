@@ -229,13 +229,22 @@ function CF.Prepare()
   end, "chatfilter window")
 end
 
--- The tab's text with the count of lines caught, "Filtered (12)", and the tab refit to it (the
--- Chat module sizes every tab to its label; a longer count would otherwise be cut).
+-- The name the tab shows before the count: the player's own name for it, else "Filtered" in the player's language
+-- (the game's saved name stays English, CF.TAB, which is how an old tab is found).
+local function tabName(frame)
+  local number = tonumber((frame:GetName() or ""):match("(%d+)$"))
+  local name = number and type(GetChatWindowInfo) == "function" and GetChatWindowInfo(number)
+  if type(name) ~= "string" or name == "" or name == CF.TAB then return L["Filtered"] end
+  return name
+end
+
+-- The tab's text with the count of lines caught, "Filtered (12)" (or the name you gave it), and the tab refit to
+-- it (the Chat module sizes every tab to its label; a longer count would otherwise be cut).
 function CF.UpdateTab()
   local frame = CF.window
   local tab = frame and _G[frame:GetName() .. "Tab"]
   if not (tab and type(tab.SetText) == "function") then return end
-  tab:SetText(string.format("%s (%d)", CF.TAB, CF.count))
+  tab:SetText(ns.Format(L["{name} ({count})"], { name = tabName(frame), count = CF.count }))
   local CH = ns.GetModule("Chat")
   if CH and CH.RefitTabs then CH.RefitTabs() end
 end
