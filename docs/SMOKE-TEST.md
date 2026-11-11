@@ -5452,6 +5452,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the game's windows on their parchment with the game's own dark text, never light text on the parchment.
 - If it fails, paste: a screenshot of each window and `/vg errors`.
 
+### 33.557 The loot history reopens where its own drag dropped it (H44-15-50)
+
+- Do: for Forever and Retail: open the loot history (the group loot window's history button), drag it by its top edge, close and reopen it; then drag it by the middle of its list, close and reopen it.
+- Expect: each time it reopens where you last let go, and `/vg errors` is empty.
+- If it fails, paste: where it reopened after each drag and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
