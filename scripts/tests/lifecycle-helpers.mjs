@@ -1,7 +1,7 @@
 // TEST-ONLY helpers for the module lifecycle (Core/Modules.lua, docs/design/MODULE-LIFECYCLE.md 4.3): the addon's
 // footprint (what it has registered and shows), and the three cases every live module gets: switched off it leaves
 // what a login with it off leaves, switched on late it equals a login with it on, and toggled three times it makes
-// nothing new. A conversion batch calls lifecycleCases once per module it converts.
+// nothing new and writes nothing to the saved variables. A conversion batch calls lifecycleCases once per module it converts.
 
 import { expect, it } from "vitest";
 
@@ -38,6 +38,9 @@ export function footprint(addon, { frames = false } = {}) {
   return f;
 }
 
+// The saved variables now (the account's and the character's), as plain data.
+export const savedNow = (addon) => addon.eval("return { account = VanguardDB, character = VanguardCharDB }");
+
 // Lua for a saved-variables tail that switches `name` off in the Default profile.
 export const moduleOff = (name) => `\nVanguardDB.profiles = VanguardDB.profiles or {}
 VanguardDB.profiles.Default = VanguardDB.profiles.Default or {}
@@ -68,13 +71,16 @@ function lateCase(name, login) {
   });
 }
 
-// Toggled three times, `name` makes no new frame, handler or gate (the build-once rule).
+// Toggled three times, `name` makes no new frame, handler or gate (the build-once rule), and leaves the saved variables
+// as they were, its own switch written on (a stop or start writes nothing of the player's: settings, spots, data).
 function toggleCase(name, login) {
   it(`lifecycle: ${name} toggled three times makes no new frame, handler or gate`, () => {
     const addon = login("");
-    const first = footprint(addon, { frames: true });
+    addon.eval(`ns.Settings("modules")["${name}"] = true`);
+    const first = footprint(addon, { frames: true }), saved = savedNow(addon);
     for (let i = 0; i < 3; i++) addon.eval(toggle(name));
     expect(footprint(addon, { frames: true })).toEqual(first);
+    expect(savedNow(addon), "the saved variables as they were").toEqual(saved);
   });
 }
 

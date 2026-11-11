@@ -3,18 +3,12 @@
 // cases every live module gets (lifecycle-helpers.mjs), and a case for what its Disable does.
 
 import { expect, it } from "vitest";
-import { HEALING_ENV, RAID_ENV, UNITS_ENV, healing, loggedIn, marks } from "./helpers.mjs";
+import { HEALING_ENV, RAID_ENV, RAID_MARKS_ENV, TRAINER_ONE_SERVICE_ENV, UNITS_ENV, healing, loggedIn, marks } from "./helpers.mjs";
 import { lifecycleCases } from "./lifecycle-helpers.mjs";
 
 // The addon logged in with `saved` Lua appended to its saved variables (the lifecycle cases' login).
 const login = (saved) => loggedIn("", { savedVariables: saved });
 
-const STATUS_ENV = `
-  __status = { icon = { raid1 = 8 }, ready = {}, rez = {}, range = { raid1 = true, raid3 = false } }
-  GetRaidTargetIndex = function(unit) return __status.icon[unit] end
-  UnitIsGroupLeader = function(unit) return unit == "raid1" end
-  UnitInRange = function(unit) return __status.range[unit], true end
-`;
 
 // Switches a module off or on, as the options window does.
 const switchTo = (addon, name, on) => addon.eval(`ns.SetModuleEnabled("${name}", ${on})`);
@@ -65,7 +59,7 @@ it("RaidHealing: switched off, every tile loses its heal, shield, aggro and buff
 lifecycleCases("RaidStatus", login);
 
 it("RaidStatus: switched off, every tile loses its marks and its range fade and the range job stops; on again they return", () => {
-  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV);
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + RAID_MARKS_ENV);
   addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
   expect([marks(addon, 1).leader !== false, marks(addon, 3).alpha], "a leader crown, a faded tile").toEqual([true, 0.4]);
   switchTo(addon, "RaidStatus", false);
@@ -131,18 +125,8 @@ it("CharacterExtras: switched off, the item level on the game's slot goes and th
 
 lifecycleCases("Errands", login);
 
-// TEST-ONLY trainer window with one service to learn.
-const TRAINER = `
-  __services = { { "TEST-ONLY Bolt", "available", 500 } }
-  GetMoney = function() return 2200 end
-  GetNumTrainerServices = function() return #__services end
-  GetTrainerServiceInfo = function(i) local s = __services[i] return s[1], "", s[2], false end
-  GetTrainerServiceCost = function(i) return __services[i][3] end
-  ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
-`;
-
 it("Errands: switched off, the Train all button on the game's trainer window is hidden and stays hidden; on again it returns, not made twice", () => {
-  const addon = loggedIn(TRAINER);
+  const addon = loggedIn(TRAINER_ONE_SERVICE_ENV);
   // Whether the trainer's Train all button shows.
   const button = () => addon.eval('local b = ns.GetModule("Errands").trainButton return b ~= nil and b:IsShown()');
   addon.fire("TRAINER_SHOW");
