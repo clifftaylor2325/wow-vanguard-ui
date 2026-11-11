@@ -687,20 +687,28 @@ local function screenName(key)
   return choiceName(S.SCREENS, key)
 end
 
--- What this run changed on setup's own steps, as lines for the All set step: a layout, a screen preset, the look.
--- A layout or screen counts once Next applied it, not by the pick now showing (Back and Keep undo nothing).
+-- Whether frames were moved since this run began, on the All set step only (an export per step would be wasted work).
+-- A layout this run applied moved them too, and its own line says so.
+local function framesMoved()
+  if state.order[state.step] ~= "done" or state.appliedLayout then return false end
+  return ns.ExportProfile("layout") ~= state.spots
+end
+
+-- What this run changed on setup's own steps, as lines for the All set step: a layout, a screen preset, the look,
+-- frames moved. A layout or screen counts once Next applied it, not by the pick now showing (Back and Keep undo nothing).
 local function ownChanges()
   local out = {}
   if state.appliedLayout then out[#out + 1] = ns.Format(L["Layout: {name}"], { name = choiceName(S.LAYOUTS, state.appliedLayout) }) end
   if state.appliedScreen then out[#out + 1] = ns.Format(L["Screen: {name}"], { name = screenName(state.appliedScreen) }) end
   if state.look then out[#out + 1] = L["Accent or raid frame style"] end
+  if framesMoved() then out[#out + 1] = L["Frames moved"] end
   return out
 end
 
 -- Fits the window, then re-marks the chosen profile, layout and screen (and shows their hints), accent and style
 -- (its tiles redrawn), and the guided steps' switches and list.
 local function refresh()
-  ns.SetupGuide.Refresh(frame.pages, ownChanges())
+  ns.SetupGuide.Refresh(frame.pages, ownChanges(), state.backup ~= nil)
   fit()
   local look = frame.pages.look
   markChoice(frame.pages.profile, state.profile)
@@ -1158,6 +1166,7 @@ local function startRun()
   state.reload, state.paused, state.done, state.role = false, false, false, false
   ns.SetupGuide.Begin(not VanguardDB.setupDone)
   state.before = settingsNow()
+  state.spots = ns.ExportProfile("layout")
 end
 
 -- Opens setup at step 1 (the profile step for a new character); in combat it waits. Keep and Keep

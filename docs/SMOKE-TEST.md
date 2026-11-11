@@ -5404,6 +5404,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: All set says the run changed something, lists `Layout: Centered: healing`, and shows Undo setup; Undo setup puts the profile as it was back.
 - If it fails, paste: the All set text and `/vg errors`.
 
+### 33.549 All set names frames moved, and offers Undo only with a backup (H44-14-21)
+
+- Do: for Forever and Retail: with setup already finished, `/vg setup`, Next to Move things, drag a frame, Next to All set and read it, then Done.
+- Expect: All set says the run changed something and lists `Frames moved`, with no Undo setup; Done offers the reload.
+- If it fails, paste: the All set text and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

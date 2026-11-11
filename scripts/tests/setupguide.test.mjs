@@ -308,3 +308,25 @@ it("hunt H44-14-20: a screen preset applied by Next stays on All set after Back 
   nexts(addon, 8);
   expect(allSet(addon), "a second run that changes nothing says so").toEqual([["All set. This run changed nothing: Done closes setup."], false]);
 });
+
+// A second run to the Move things step (step 8), one frame moved there, then Next to All set.
+const movedOnAllSet = (setup, steps = 7) => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  addon.slash("setup");
+  setup(addon);
+  nexts(addon, steps);
+  addon.eval('ns.SetMoverPoint("uf_player", "CENTER", "CENTER", 10, 10)');
+  setupClick(addon, "next");
+  return allSet(addon);
+};
+
+it("hunt H44-14-21: a frame dragged on Move things is named on All set, with no Undo setup while setup took no backup", () => {
+  expect(movedOnAllSet(() => {}), "named, and nothing to put back").toEqual([["All set. Done closes setup. This run changed:", "Frames moved"], false]);
+});
+
+it("hunt H44-14-21: frames moved after a screen preset keep Undo setup, and a layout applied by the run covers the move", () => {
+  const preset = movedOnAllSet((addon) => { setupClick(addon, "next"); addon.eval('__click("1440p")'); setupClick(addon, "next"); }, 5);
+  expect(preset[1], "the preset took a backup, so Undo shows").toBe(true);
+  const layout = movedOnAllSet((addon) => { addon.eval('__click("Centered: healing")'); setupClick(addon, "next"); setupClick(addon, "back"); });
+  expect(layout[0].filter((line) => line === "Frames moved"), "the layout's own line stands instead").toEqual([]);
+});
