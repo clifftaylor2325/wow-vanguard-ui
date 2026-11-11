@@ -165,3 +165,15 @@ it("a protected cooldown's Clear and SetCooldown calls are blocked in combat; a 
   asAddon(addon, "TestSwipe:SetCooldown(1, 2) TestSwipe:Clear() TestSwipe:SetCooldownDuration(3) TestLog:Clear()");
   expect(violations(addon)).toEqual(["SetCooldown", "Clear", "SetCooldownDuration"].map((n) => `blocked in combat: Modules/TEST-ONLY.lua:1 called ${n} on the protected frame TestSwipe`));
 });
+
+// The game's secure frames by name (wow-taint.lua's GAME_PROTECTED cites each source): Blizzard_RaidUI.xml's
+// RaidGroupButtonTemplate, TargetFrame.lua's <frame>ToT, SpellFlyout.xml's SecureFrameTemplate frames.
+it("the raid window's group buttons, the target-of-target frames and the spell flyout are protected game frames", () => {
+  const addon = createAddon();
+  const names = ["RaidGroupButton12", "TargetFrameToT", "FocusFrameToT", "SpellFlyout", "SpellFlyoutPopupButton3"];
+  addon.eval(names.map((n) => `CreateFrame("Button", "${n}", UIParent)`).join(" "));
+  expect(addon.eval(`return { ${names.map((n) => `(${n}:IsProtected())`).join(", ")} }`)).toEqual(names.map(() => true));
+  addon.world.combat(true);
+  asAddon(addon, "RaidGroupButton12:SetPoint('CENTER')");
+  expect(violations(addon)).toEqual(["blocked in combat: Modules/TEST-ONLY.lua:1 called SetPoint on the protected frame RaidGroupButton12"]);
+});

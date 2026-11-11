@@ -237,8 +237,15 @@ local PROTECTED_CALLS = {
 -- those templates and a test makes these frames by name as stand-ins, so the name decides; whatever
 -- holds one (a bar, a container) is protected through it.
 -- A nameplate's UnitFrame is left out: the client lets addons hide and move it in a fight.
+-- Also, on both clients: the raid window's RaidGroupButton1..40 (Blizzard_RaidUI/Mainline/Blizzard_RaidUI.xml:75
+-- RaidGroupButtonTemplate inherits SecureUnitButtonTemplate, :769ff), the target's and focus's target-of-target
+-- (Blizzard_UnitFrame/Mainline/TargetFrame.lua CreateTargetofTarget names it <frame>ToT, from TargetFrame.xml's
+-- TargetofTargetFrameTemplate, a SecureUnitButtonTemplate), and the spell flyout and its buttons
+-- (Blizzard_ActionBar/Shared/SpellFlyout.xml: SecureFrameTemplate). ^PartyMemberFrame%d$ matches no 12.1 frame
+-- (Blizzard_UnitFrame's PartyFrame.lua makes its members from a pool, unnamed); it stays for older stand-ins.
 local GAME_PROTECTED = {
-  "^PlayerFrame$", "^TargetFrame$", "^FocusFrame$", "^PetFrame$",
+  "^PlayerFrame$", "^TargetFrame$", "^FocusFrame$", "^PetFrame$", "^TargetFrameToT$", "^FocusFrameToT$",
+  "^RaidGroupButton%d+$", "^SpellFlyout$", "^SpellFlyoutPopupButton%d+$",
   "^PartyMemberFrame%d$", "^PartyFrame$", "^Boss%dTargetFrame$", "^ArenaEnemyMatchFrame%d$", "^ArenaEnemyFrame%d$",
   "^CompactRaidFrame%d+$", "^CompactPartyFrameMember%d$", "^CompactRaidGroup%dMember%d$",
   "^ActionButton%d+$", "^MultiBar%w+Button%d+$", "^PetActionButton%d+$", "^StanceButton%d+$", "^PossessButton%d$",
