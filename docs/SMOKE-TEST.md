@@ -902,7 +902,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 8.3a Quest history
 
-- Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember which character finished each quest" and turn in another quest.
+- Do: turn in a quest on one character, then log in on another character on the same account and talk to a quest giver offering that quest (or open it in the quest log if you have it). Type `/vg quests history` and `/vg quests history 3`. Under `/vg` → Quests, switch off "Remember who finished each quest" and turn in another quest.
 - Expect: in Vanguard's quest dialog on the quest's details page, a muted line under the text and objectives, `Done on Name-Realm · today` (then `yesterday`, `3 days ago`; a quest turned in during the evening still says `today` until your computer's midnight, even past midnight UTC); the same line under the objectives in the quest log. For a repeatable quest turned in on the same character, `Done on this character`. `/vg quests history` prints `Latest N quest turn-in(s), of M remembered:` and a line per quest, `Title · Name-Realm · today`, newest first, at most the number you gave (25 at most). Switched off, the lines are gone, nothing new is remembered and the command says `Quest history is off (/vg > Quests).` [Needs in game: that `QUEST_TURNED_IN` fires on Forever with the quest's id first, that a quest's title is still known to `C_QuestLog.GetTitleForQuestID` after it is turned in (else the list reads `Quest 12345`), and how the muted line reads under a long quest text.]
 - Also expect (quests done before Vanguard, and the button): on a character that finished a quest before Vanguard was installed, if the game offers it again (a repeatable one, say), its details read `Done on this character`; say if you never see a quest the game offers again. Under `/vg` → Quests → Quest history, press `List latest turn-ins`: chat prints the same list as `/vg quests history`; switch history off and the button greys. [Needs in game: that `C_QuestLog.IsQuestFlaggedCompleted` is true there, and whether a repeatable quest stays flagged after its reset.]
 - If it fails, paste: a screenshot and `/vg errors`.
@@ -1061,7 +1061,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 9.2a Sell list, sell all and bulk buy
 
-- Do: `/vg junk` with a shift-clicked cheap item you own, then Town and gear → Merchants → "Offer to sell the items on your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
+- Do: `/vg junk` with a shift-clicked cheap item you own, then Town and gear → Merchants → "Offer to sell your sell list"; open a merchant. Then `/vg sell` with a shift-clicked item of which you hold several stacks. Then shift-click an item for sale (a stackable one, with a few bag slots free) and press Stack, then Max.
 - Expect: a question listing the item(s) and what they fetch; answering Sell sells them within a few seconds and the Buyback tab holds them; pressing Enter while the question is up does not answer it (click Sell); an item in an equipment set is not offered; Stack and Max and a "Max N for <money>" line sit under the quantity window for a merchant's item and not for an item in your bags; Max above one stack asks first; the buys finish with `Bought N × <item> for <money>.` and no error; an item that costs tokens or honor shows no buttons.
 - If it fails, paste: the chat lines and `/vg errors`.
 
@@ -2037,7 +2037,7 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 15.6c Chat windows
 
-- Do: open `/vg` → Chat. Drag the Width and Height sliders under Chat windows for the General tab, then `/reload`. With General selected, tick Lock chat windows, click another docked tab (Combat Log) and try to drag it out, untick it. Pull a tab out into its own window, tick Move floating windows with /vg unlock, `/reload`, then `/vg unlock` and drag its handle.
+- Do: open `/vg` → Chat. Drag the Width and Height sliders under Chat windows for the General tab, then `/reload`. With General selected, tick Lock chat windows, click another docked tab (Combat Log) and try to drag it out, untick it. Pull a tab out into its own window, tick Movers for floating windows, `/reload`, then `/vg unlock` and drag its handle.
 - Expect: the window resizes live and keeps its size after the reload; locked windows do not drag, the docked tab that was hidden when you ticked it too; the floating window has a `Chat: <name>` handle and stays where you put it, also after a layout change. `/vg errors` is empty. [Needs in game: that FCF_SetLocked and FCF_SavePositionAndDimensions exist and keep the size, that GetChatWindowInfo returns locked and docked as 8th and 9th values, and that a docked tab is not offered as a handle.]
 - If it fails, paste: `/vg errors` and what the window did.
 
@@ -3011,7 +3011,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.70 Chat handles at the screen's edges
 
-- Do: `/vg unlock`, drag the chat handle against the bottom edge, then into the bottom-right corner and `/reload`. Turn on Chat → Move floating windows with /vg unlock (reload), pull the Combat Log (or a Loot window) out of the dock, and drag its handle to the top-left corner.
+- Do: `/vg unlock`, drag the chat handle against the bottom edge, then into the bottom-right corner and `/reload`. Turn on Chat → Movers for floating windows (reload), pull the Combat Log (or a Loot window) out of the dock, and drag its handle to the top-left corner.
 - Expect: at the bottom edge the handle stops with the edit box's bottom on the screen's edge (press Enter to see it); parked at the right, the side buttons the game moves to the right of the window stay in view after the reload; a floating window's tab bar (and the Combat Log's filter strip above it) and its minimize tile stay on the screen at the top and left edges. [Needs in-game check: that the handle stops there, in the direction the insets use (negative left and bottom, positive right and top).]
 - If it fails, paste: a screenshot with the handle at the edge, and `/vg errors`.
 
@@ -4714,7 +4714,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.351 Sell list is each character's own (both)
 
-- Do: On character A, switch on "Offer to sell the items on your sell list" under Town and gear, Merchants, put a stack of Linen Cloth on the sell list with /vg junk and shift-click, and log out. Log in character B on the same profile with Linen Cloth in its bags and open any merchant.
+- Do: On character A, switch on "Offer to sell your sell list" under Town and gear, Merchants, put a stack of Linen Cloth on the sell list with /vg junk and shift-click, and log out. Log in character B on the same profile with Linen Cloth in its bags and open any merchant.
 - Expect: B is not asked to sell the Linen Cloth and /vg junk on B says the sell list is empty; back on A, the merchant still asks to sell it.
 - If it fails, paste: the /vg junk line from each character and /vg profile from each.
 
