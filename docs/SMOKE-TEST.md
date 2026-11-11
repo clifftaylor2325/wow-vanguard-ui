@@ -5384,6 +5384,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Post is off and the guide says "Checking what it sells for..." until Cheapest now shows a price, then Post is on at the undercut of that price. A typed price posts at once.
 - If it fails, paste: the guide line, Cheapest now and whether "No price found: type one in Price." showed for an item that has listings (the check gave up after 2 seconds).
 
+### 33.608 A refused post stays on the finished card
+
+- Do: at the auction house with too little money for the deposit, or a full list of auctions, post one item from the Posting sell card so the game refuses it. If you can, also post a stack of a commodity and note whether the game's own creation message arrives. [Client: Forever and Retail.]
+- Expect: chat says "Post: the auction house refused it." and the guide line says the same, not only "Finished: posted 1 of 1". The next item you drop clears it.
+- If it fails, paste: the guide line, the chat line and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

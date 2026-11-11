@@ -197,7 +197,7 @@ it("a new undercut rule after the game asks to confirm turns Confirm back into P
   addon.click(`${CARD}.post`);
   addon.eval(`local AH = ${HELPER} AH.settings.undercut = "match" AH.PaintSell()`);
   const asking = addon.eval(`local c = ${CARD} return { c.post.text:GetText(), c.guide:GetText() }`);
-  expect(asking, "the suggestion moved to 50s, so the held 49s confirm no longer applies").toEqual(["Post", "Click Post to list stack 1 of 20."]);
+  expect(asking, "the suggestion moved to 50s, so the held 49s confirm no longer applies").toEqual(["Post", "Click Post to list stack 1 of 1."]);
 });
 it("the addon never writes into the game's auction window", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
@@ -799,4 +799,15 @@ it("H44-21-150: a price typed before the answer posts at once", () => {
   addon.type(`${CARD}.price`, "9c");
   addon.click(`${CARD}.post`);
   expect(restrictedLog(addon).map((c) => [c[0], c[5]])).toEqual([["PostCommodity", 9]]);
+});
+it("H44-21-151: a refusal of the last stack stays on the finished card until the next item is dropped", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.post`);
+  addon.fire("AUCTION_HOUSE_POST_ERROR");
+  expect(addon.eval(`return ${CARD}.guide:GetText()`), "the refusal, not 'Finished'").toBe("The auction house refused it.");
+  addon.eval("__wfgWorld.bags[0][2] = { itemID = 9999, count = 1 }");
+  addon.advance(5);
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  expect(addon.eval(`return ${CARD}.guide:GetText()`), "a new sale starts clean").toBe("Click Post to list stack 1 of 1.");
 });

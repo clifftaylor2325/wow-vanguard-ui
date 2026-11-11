@@ -313,7 +313,7 @@ function AH.TakeItem(loc)
   if not (AH.sellCard and loc and loc:IsValid() and api.IsSellItemValid(loc, false)) then return end
   local status = api.GetItemCommodityStatus(loc)
   if status ~= AH.ITEM and status ~= AH.COMMODITY then return end
-  AH.sell, AH.sellStatus = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil
+  AH.sell, AH.sellStatus, AH.sellAnswer = newSale(loc, api.GetItemKeyFromItem(loc), status == AH.COMMODITY), nil, nil
   AH.upCard.table.offset = 0
   AH.QueueFirst({ sell = AH.sell.search, card = true })
   AH.PaintSell()
@@ -511,7 +511,8 @@ function AH.HideGamePostWarning()
 end
 
 -- An answer from the game (event e, its values ...) within AH.POST_ANSWER_TIME of a click on Post:
--- chat says it ("Post: the game said ..."); a secret value shows as "?".
+-- chat says it ("Post: the game said ..."); a secret value shows as "?". The sale's guide shows it, or
+-- the finished card's (AH.sellAnswer) when the last stack was the one sent.
 function AH.OnPostAnswer(e, ...)
   local a = AH.POST_ANSWERS[e]
   if not (a and AH.postAt and GetTime() - AH.postAt <= AH.POST_ANSWER_TIME) then return end
@@ -520,7 +521,8 @@ function AH.OnPostAnswer(e, ...)
   if ns.IsSecret(v) then v = "?" end
   local text = ns.Format(a[1], { value = a[4] and not ns.IsSecret(v) and AH[a[4]](v) or tostring(v) })
   ns.Chat(ns.Format(L["Post: {answer}."], { answer = text }))
-  if AH.sell then AH.sell.answer = text AH.PaintSell() end
+  if AH.sell then AH.sell.answer = text else AH.sellAnswer = text end
+  AH.PaintSell()
   if e == "AUCTION_HOUSE_POST_WARNING" then AH.HideGamePostWarning() end
 end
 
@@ -688,12 +690,18 @@ function AH.SellCheckEnded(search)
   AH.PaintSell()
 end
 
+-- The guide state for the game's answer text, its first letter capitalised.
+local function answerState(text)
+  return "answer", { answer = (text:gsub("^%l", string.upper)) }
+end
+
 -- Where the sale s stands for the guide (why: AH.PostCheck's answer): an AH.GUIDE key and the
 -- values its line's {slots} take (nil for a line without any).
 function AH.GuideState(s, why)
+  if not s and AH.sellAnswer then return answerState(AH.sellAnswer) end
   if not s then return AH.sellStatus and "done" or "empty", { status = AH.sellStatus } end
   if AH.Pending(s) then return "confirm" end
-  if s.answer then return "answer", { answer = (s.answer:gsub("^%l", string.upper)) } end
+  if s.answer then return answerState(s.answer) end
   if why == "price" and not (s.searched or s.unanswered) then return "checking" end
   if why == "busy" and s.posted > 0 then return "sent", { stack = s.posted } end
   if AH.GUIDE[why] then return why end
