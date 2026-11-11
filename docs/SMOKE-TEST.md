@@ -113,6 +113,7 @@ Run the sessions in order; within a session, top to bottom. Each line is a step 
 - `7.3b` Your debuffs on a plate drawn mid-fight
 - `7.5` Enemy nameplates (#377)
 - `33.390` Nameplate aura icons in the open world (Forever)
+- `33.390a` Nameplate aura rows the game holds back in a fight (Forever)
 - `8.1` Quest dialog
 - `8.3` Quest log
 - `8.4` Quest tracker overflow
@@ -4950,6 +4951,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Do: With nameplates on, quest in a starting zone for ten minutes, putting your debuffs on mobs and walking past friendly NPCs and players, then type `/vg errors`.
 - Expect: no "aura icon pixels" line in chat, and debuff icons on enemy plates keep a thin one-pixel edge. `/vg errors` may still list an "aura icon pixels" entry kept quietly; that is not a failure, but paste it.
 - If it fails, paste: the `/vg errors` text (its stack) and the zone you were in.
+
+### 33.390a Nameplate aura rows the game holds back in a fight (Forever)
+
+- Do: With nameplates on, fight a mob in the open world with your debuffs on it, pull a second mob while the first plate is up, then type `/vg errors`.
+- Expect: no `nameplate: ... calling 'GetParent' on bad self (Attempt to access forbidden object ...)` line in chat or in `/vg errors`, and after the fight the debuff icons on enemy plates keep a thin one-pixel edge. [Needs in-game check: the fix asks the game's `CanBeAccessedInContext` before touching an aura row; nobody has seen it answer in the game.]
+- If it fails, paste: the `/vg errors` text (its stack) and whether you were in a fight.
 
 ### 33.391 Versus deck wraps the class rows (Forever)
 

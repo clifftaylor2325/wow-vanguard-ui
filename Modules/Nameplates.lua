@@ -419,14 +419,10 @@ local function build(parent)
   return f
 end
 
--- Whether the client has closed a frame to addons, it or anything it hangs from: a region under a plate the
--- client has closed still answers no for itself, so each frame up the chain is asked (as Core/Auras.lua does).
+-- Whether the client keeps a frame, or anything it hangs from, from addons: closed for good, or held while
+-- aura information is secret (Core/Auras.lua, A.ShutFrom). Either way it is left alone and tried again later.
 local function closed(frame)
-  while frame do
-    if frame:IsForbidden() then return true end
-    frame = frame:GetParent()
-  end
-  return false
+  return ns.Auras.ShutFrom(frame) ~= nil
 end
 
 -- Swaps one of a plate's rows for the one the layout asks for now (none, for a row switched off). The
