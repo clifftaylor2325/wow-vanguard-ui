@@ -738,6 +738,9 @@ it("a commodity view asks for more with the commodity call; an empty answer says
 });
 it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is over the view; other keys go on", () => {
   const addon = atAuctionHouse(DUSTS + DUST_LISTINGS);
+  // The window opens on the game's Buy page: picking the Lists tab brings the page into view, as a player's click does.
+  const showLists = () => addon.click("AuctionHouseFrame.Tabs[4]");
+  showLists();
   dustFound(addon);
   addon.click(`${TABLE}.rows[1]`);
   addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
@@ -759,6 +762,8 @@ it("keys: Up and Down mark a listing, Enter opens it, only while the mouse is ov
   addon.advance(1);
   press("ENTER");
   expect(sent(addon).at(-1), "Enter opens the marked one in the game's list").toBe("SearchForItemKeys:10940");
+  expect(kb()[0], "Enter shows the game's list: the Lists page leaves view and lets the keys go").toBe(false);
+  showLists();
   press("W");
   expect(kb()[1], "a key the view doesn't use goes on to the game").toBe(true);
   addon.eval("GetCurrentKeyBoardFocus = function() return AuctionHouseFrame end");
