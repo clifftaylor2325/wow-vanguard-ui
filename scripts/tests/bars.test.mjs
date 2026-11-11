@@ -907,6 +907,20 @@ it("keybind mode: out of combat only, ends when a fight starts; from the options
   expect([off.eval("return Vanguard_KeybindMode == nil"), chatHas(off, /Keybind mode needs Vanguard.s action bars/)], "without the bars it says why").toEqual([true, true]);
 });
 
+it("hunt H44-13-52: the Keybind mode button keeps the options window open when keybind mode refuses to start", () => {
+  const addon = loggedIn(BIND_ENV);
+  const press = 'for _, p in ipairs(ns.Options.PAGES) do if p.key == "actionbars" then for _, r in ipairs(p.rows()) do if r[2] == "Keybind mode" then r[3]() end end end end';
+  // Whether the options window shows and keybind mode runs.
+  const state = () => addon.eval('return { Vanguard_Options:IsShown(), ns.GetModule("ActionBars").binding == true }');
+  addon.eval('ns.Options.Show("actionbars")');
+  setCombat(addon, true);
+  addon.eval(press);
+  expect(state(), "in a fight the window stays and nothing starts").toEqual([true, false]);
+  setCombat(addon, false);
+  addon.eval(press);
+  expect(state(), "out of a fight the window steps aside for it").toEqual([false, true]);
+});
+
 // TEST-ONLY reading of a macro-conditional driver, as the client reads it: the value of the first
 // clause one of whose [...] groups has every condition in `holds` (a clause with no group always matches).
 const driverValue = (driver, holds) => {

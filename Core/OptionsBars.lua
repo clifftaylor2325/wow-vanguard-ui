@@ -55,10 +55,12 @@ local function skinSpecial()
   end
 end
 
--- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it.
+-- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it, once it has started (it
+-- refuses in a fight or with no Vanguard bars, and then the window stays).
 local function keybindMode()
-  O.Hide()
-  ns.GetModule("ActionBars").KeybindMode(true)
+  local AB = ns.GetModule("ActionBars")
+  AB.KeybindMode(true)
+  if AB.binding then O.Hide() end
 end
 
 -- get/set for the bar backing, which shows or hides at once (out of combat).
