@@ -478,14 +478,22 @@ function setupNodeSteps(text) {
   return found;
 }
 
-it("every setup-node step reads .nvmrc and keeps the npm cache", () => {
+// The text of each job in a workflow: its two-space-indented key line and everything under it.
+function jobTexts(text) {
+  return text.split(/^(?=  [\w-]+:\s*$)/m);
+}
+
+it("every setup-node step reads .nvmrc, and has cache: npm only in a job that runs npm ci", () => {
   const counts = { "verify.yml": 1, "lua-suite.yml": 5, "release.yml": 3, "full-suite.yml": 0 };
   for (const [file, count] of Object.entries(counts)) {
-    const steps = setupNodeSteps(workflow(file));
-    expect(steps.length, `${file} setup-node steps`).toBe(count);
-    for (const step of steps) {
-      expect(step, file).toMatch(/^\s+node-version-file: \.nvmrc$/m);
-      expect(step, file).toMatch(/^\s+cache: npm$/m);
+    const text = workflow(file);
+    expect(setupNodeSteps(text).length, `${file} setup-node steps`).toBe(count);
+    for (const job of jobTexts(text)) {
+      const runsCi = /^\s*-?\s*(?:run:\s+)?npm ci\b/m.test(job);
+      for (const step of setupNodeSteps(job)) {
+        expect(step, file).toMatch(/^\s+node-version-file: \.nvmrc$/m);
+        expect(/^\s+cache: npm$/m.test(step), `${file}: cache: npm exactly when the job runs npm ci`).toBe(runsCi);
+      }
     }
   }
 });

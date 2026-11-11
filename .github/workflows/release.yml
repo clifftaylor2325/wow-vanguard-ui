@@ -45,7 +45,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: npm
       - name: Release content
         run: node scripts/release-local.mjs --check-content
 
@@ -112,7 +111,6 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-          cache: npm
       # dist/pkgmeta.yaml adds the release notes as the stores' changelog, as in the local route.
       - run: node scripts/release-local.mjs --notes-only
       - name: Upload with the packager
