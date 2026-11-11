@@ -840,3 +840,15 @@ it("H44-9-R1 import: a mouse key on a modifier set the grid has no column for is
   const prefixes = addon.eval(`local out = {} for p in pairs(${CC}.MOUSE_PREFIXES) do out[#out + 1] = p end table.sort(out) return out`);
   expect(columns, "every grid column is a bindable prefix, and every bindable prefix has a column").toEqual(prefixes);
 });
+
+it("H44-9-1 a picked rank saved under a name the client no longer uses still counts as held, found by the rank's id", () => {
+  const addon = priest("__wfgWorld.spec = 1", {
+    // TEST-ONLY a rank bound on an English client.
+    savedVariables: 'VanguardCharDB = { clickcast = { [1] = { { key = "ctrl-BUTTON2", action = "spell", value = "Flash Heal", spellID = 2061, rank = 1 } } } }',
+  });
+  expect(addon.eval(`return ${CC}.WontRun(${CC}.Binding("ctrl-BUTTON2"))`), "before the language change").toBe(null);
+  addon.eval(`__wfgWorld.spells[2061].name = "Blitzheilung" __wfgWorld.spells[9472].name = "Blitzheilung" ${CS}.Invalidate()`);
+  expect(addon.eval(`return ${CC}.WontRun(${CC}.Binding("ctrl-BUTTON2"))`), "after it: the rank is under the client's name").toBe(null);
+  addon.eval(`__wfgWorld.spells[2061] = nil ${CS}.Invalidate()`);
+  expect(addon.eval(`return ${CC}.WontRun(${CC}.Binding("ctrl-BUTTON2"))`), "a rank the spellbook dropped is still gone").toBe("you no longer have that spell rank");
+});
