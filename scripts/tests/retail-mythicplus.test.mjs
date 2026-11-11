@@ -212,6 +212,13 @@ it("retail mythic+: the keystone window sits on a theme panel with its runes and
   expect(alphas(addon, "ChallengesFrame", ["Background"]), "the dungeon's painting stays").toEqual([1]);
 });
 
+it("retail mythic+: the game's Reset (a key taken out of the slot) does not bring the faded art back", () => {
+  const addon = challenges();
+  addon.eval("ChallengesKeystoneFrame:Reset()");
+  expect(alphas(addon, "ChallengesKeystoneFrame", ["InstructionBackground", "Divider", "RuneBG", "SlotBG"]),
+    "the band and divider stay faded, the runes and slot stay").toEqual([0, 0, 1, 1]);
+});
+
 it("retail mythic+: the keystone window has the corner brackets other windows have (H27-6-3)", () => {
   const addon = challenges();
   expect(addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do

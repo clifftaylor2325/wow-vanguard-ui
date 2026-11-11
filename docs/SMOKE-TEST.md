@@ -5548,6 +5548,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: Both page titles read in the light heading text, not the game's gold.
 - If it fails, paste: A screenshot of each page.
 
+### 33.574 Retail keystone window after taking a key out
+
+- Do: On Retail, open the Mythic+ keystone window, put a keystone in the slot, then drag it out.
+- Expect: The panel stays flat; the game's backdrop and divider do not come back.
+- If it fails, paste: A screenshot after taking it out.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

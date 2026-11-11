@@ -96,6 +96,11 @@ function world.loadChallenges()
   art(keystone, nil, "BACKGROUND")
   for _, key in ipairs({ "RuneBG", "InstructionBackground", "Divider", "RunesLarge", "RunesSmall", "SlotBG", "KeystoneFrame" }) do art(keystone, key) end
   keystone.CloseButton, keystone.StartButton = CreateFrame("Button", nil, keystone), CreateFrame("Button", nil, keystone)
+  -- OnLoad records each region's state and Reset puts it back (live Blizzard_ChallengesUI.lua:585-596, 616-638,
+  -- 715-719, 762-766: slotting a key and taking it out calls Reset).
+  keystone.baseStates = {}
+  for _, region in ipairs({ keystone:GetRegions() }) do keystone.baseStates[region] = { alpha = region:GetAlpha() } end
+  function keystone:Reset() for region, state in pairs(self.baseStates) do region:SetAlpha(state.alpha) end end
   tab:Hide()
   keystone:Hide()
 end
