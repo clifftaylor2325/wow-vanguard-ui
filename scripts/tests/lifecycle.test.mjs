@@ -97,7 +97,17 @@ it("lifecycle: a reload-only parent switched off keeps itself and its live child
   expect(live(addon, "TestReload", "TestKept")).toEqual({ TestReload: true, TestKept: true });
   expect(waiting(addon)).toEqual(["TestReload", "TestKept"]);
   addon.eval('ns.SetModuleEnabled("TestReload", true)');
-  expect(waiting(addon)).toEqual([]);
+  expect(waiting(addon), "its Disable ran, so it waits for the reload even switched back on (H44-1-2, pick A)").toEqual(["TestReload"]);
+});
+
+it("lifecycle: a reload-only module with no Disable stops waiting when switched back on", () => {
+  const addon = lifeAddon("", `${MODULES}
+    local P = ns.Module("TestPlain", { defaults = {}, reload = "It replaces a game frame." })
+    function P.Enable() end`);
+  addon.eval('ns.SetModuleEnabled("TestPlain", false)');
+  expect(waiting(addon), "off: waits").toEqual(["TestPlain"]);
+  addon.eval('ns.SetModuleEnabled("TestPlain", true)');
+  expect(waiting(addon), "on again: nothing was undone, nothing waits").toEqual([]);
 });
 
 it("lifecycle: a live child of a reload-only parent that was off at login does not start before the reload", () => {
@@ -368,8 +378,10 @@ it("lifecycle: the reload notice names what waits, and goes when the switches ar
   expect(notice(addon)).toEqual([true, "Waiting for a reload: TestReload, TestKept"]);
   addon.eval('ns.SetModuleEnabled("Chat", false)');
   expect(notice(addon)).toEqual([true, "Waiting for a reload: Chat, TestReload and 1 more"]);
-  addon.eval('ns.SetModuleEnabled("Chat", true) ns.SetModuleEnabled("TestReload", true)');
-  expect(notice(addon)).toEqual([false, ""]);
+  addon.eval('ns.SetModuleEnabled("Chat", true)');
+  expect(notice(addon), "Chat has no Disable: back on, it stops waiting").toEqual([true, "Waiting for a reload: TestReload, TestKept"]);
+  addon.eval('ns.SetModuleEnabled("TestReload", true)');
+  expect(notice(addon), "TestReload's Disable ran, so it is named until the reload (H44-1-2)").toEqual([true, "Waiting for a reload: TestReload"]);
   addon.eval("ns.Options.NeedReload()");
   expect(notice(addon), "a change marked for the reload keeps the usual notice").toEqual([true, "Some changes need a reload"]);
 });
