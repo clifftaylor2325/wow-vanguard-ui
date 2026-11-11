@@ -32,9 +32,11 @@ local function sameKeys(src, a, b, defaults)
   return true
 end
 
--- Whether two settings tables hold the same settings, deep, with defaults filled in on both sides.
+-- Whether two settings tables hold the same settings, deep, with defaults filled in on both sides. A value that is
+-- not a table counts as missing, as ns.Settings reads it when that profile loads (a saved profile may be damaged).
 function same(a, b, defaults)
-  return sameKeys(a or {}, a, b, defaults) and sameKeys(b or {}, a, b, defaults) and sameKeys(defaults or {}, a, b, defaults)
+  a, b = type(a) == "table" and a or nil, type(b) == "table" and b or nil
+  return sameKeys(a or {}, a, b, defaults) and sameKeys(b or {}, a, b, defaults) and sameKeys(type(defaults) == "table" and defaults or {}, a, b, defaults)
 end
 
 -- Whether a profile has a module switched on (on unless turned off).
