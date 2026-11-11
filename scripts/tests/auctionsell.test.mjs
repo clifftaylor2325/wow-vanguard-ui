@@ -197,7 +197,7 @@ it("a new undercut rule after the game asks to confirm turns Confirm back into P
   addon.click(`${CARD}.post`);
   addon.eval(`local AH = ${HELPER} AH.settings.undercut = "match" AH.PaintSell()`);
   const asking = addon.eval(`local c = ${CARD} return { c.post.text:GetText(), c.guide:GetText() }`);
-  expect(asking, "the suggestion moved to 50s, so the held 49s confirm no longer applies").toEqual(["Post", "Click Post to list stack 1 of 1."]);
+  expect(asking, "the suggestion moved to 50s, so the held 49s confirm no longer applies").toEqual(["Post", "Click Post to list stack 1 of 20."]);
 });
 it("the addon never writes into the game's auction window", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
@@ -767,4 +767,36 @@ it("H44-21-52: after Confirm the guide leaves the game's 'wants it confirmed' an
   addon.eval("__wfgWorld.bags[0][2] = nil");
   addon.fire("BAG_UPDATE_DELAYED");
   expect(addon.eval(`return ${CARD}.guide:GetText()`), "stack 2 is next").toBe("Click Post to list stack 2 of 2.");
+});
+// TEST-ONLY: Strange Dust with a recorded 7-day low (50c), the sell card's check not yet answered.
+const dropUnanswered = (addon) => {
+  addon.eval("ns.AuctionPrices.Record(10940, 50, __now)");
+  addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = 1 }`);
+  addon.click(`${CARD}.slot`);
+};
+const postGuide = (addon) => addon.eval(`local c = ${CARD} return { c.lines[4].value:GetText(), c.post:IsEnabled(), c.guide:GetText() }`);
+it("H44-21-150: Post waits for the price check, then posts at the cheapest's undercut", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  dropUnanswered(addon);
+  expect(postGuide(addon).slice(1), "no price from the 7-day low alone").toEqual([false, "Checking what it sells for..."]);
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).length, "a click posts nothing").toBe(0);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  expect(postGuide(addon), "answered: the silver rule never asks under 1s").toEqual(["1s 0c", true, "Click Post to list stack 1 of 20."]);
+});
+it("H44-21-150: a check the game never answers says no price was found, and a typed price still posts", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  dropUnanswered(addon);
+  addon.advance(5);
+  expect(postGuide(addon).slice(1), "Post stays off with the existing line").toEqual([false, "No price found: type one in Price."]);
+  addon.type(`${CARD}.price`, "7c");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[5]]), "the typed price posts").toEqual([["PostCommodity", 7]]);
+});
+it("H44-21-150: a price typed before the answer posts at once", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  dropUnanswered(addon);
+  addon.type(`${CARD}.price`, "9c");
+  addon.click(`${CARD}.post`);
+  expect(restrictedLog(addon).map((c) => [c[0], c[5]])).toEqual([["PostCommodity", 9]]);
 });

@@ -5378,6 +5378,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: Cheapest now and Your price follow the listings of your suffix; Up now lists every variant. [Client: Forever and Retail.]
 - If it fails, paste: the card's lines, the Up now rows and `/vg errors`.
 
+### 33.607 Post waits for the sell card's price check
+
+- Do: scan or search an item so it has a 7-day low, then drop it on the Posting sell card and look at Post and the guide line at once. If the guide says No price found, note whether the item has listings up. [Client: Forever and Retail.]
+- Expect: Post is off and the guide says "Checking what it sells for..." until Cheapest now shows a price, then Post is on at the undercut of that price. A typed price posts at once.
+- If it fails, paste: the guide line, Cheapest now and whether "No price found: type one in Price." showed for an item that has listings (the check gave up after 2 seconds).
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

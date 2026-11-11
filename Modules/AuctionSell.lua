@@ -108,9 +108,11 @@ function AH.Suggest(cheapest, low7)
   return forGame((AH.UNDERCUT[AH.settings.undercut] or AH.UNDERCUT.silver)(base))
 end
 
--- The unit price the card's item goes up at: the one typed, else the suggestion (nil: none yet).
+-- The unit price the card's item goes up at: the one typed, else the suggestion once the price check
+-- has answered (nil: none yet, so Post waits for it).
 function AH.SellPrice(s)
   if s.unit then return forGame(s.unit) end
+  if not s.searched then return nil end
   return AH.Suggest(s.cheapest, AP.Low7(s.id))
 end
 
@@ -677,13 +679,22 @@ AH.GUIDE = {
   answer = { 3, "{answer}.", true },
 }
 
+-- The card's price check ended (AH.Done: answered, or given up on): when it brought no answer the
+-- sale says so, and the guide stops saying it is checking.
+function AH.SellCheckEnded(search)
+  local s = AH.sell
+  if not (search.card and s and s.search == search.sell) or s.searched then return end
+  s.unanswered = true
+  AH.PaintSell()
+end
+
 -- Where the sale s stands for the guide (why: AH.PostCheck's answer): an AH.GUIDE key and the
 -- values its line's {slots} take (nil for a line without any).
 function AH.GuideState(s, why)
   if not s then return AH.sellStatus and "done" or "empty", { status = AH.sellStatus } end
   if AH.Pending(s) then return "confirm" end
   if s.answer then return "answer", { answer = (s.answer:gsub("^%l", string.upper)) } end
-  if why == "price" and not s.searched then return "checking" end
+  if why == "price" and not (s.searched or s.unanswered) then return "checking" end
   if why == "busy" and s.posted > 0 then return "sent", { stack = s.posted } end
   if AH.GUIDE[why] then return why end
   return "ready", { stack = s.passed + 1, stacks = AH.StackCount(s) }
