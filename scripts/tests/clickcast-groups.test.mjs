@@ -2,8 +2,8 @@
 // the menu-click fix across the groups), in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, GAME_CLICKS_LUA, chatHas, loggedIn } from "./helpers.mjs";
-import { CC, MENU_NOTICE, applies, priestly, widget } from "./clickcast-helpers.mjs";
+import { CLICK_LUA, GAME_CLICKS_LUA, RETAIL, chatHas, loggedIn } from "./helpers.mjs";
+import { CC, MENU_NOTICE, applies, bindings, priestly, widget } from "./clickcast-helpers.mjs";
 
 // A logged-in priest with the spellbook above, on the click-casting page when asked.
 const priest = (extra = "", opts = {}) => priestly(loggedIn(CLICK_LUA + extra, opts));
@@ -202,4 +202,101 @@ it("a spec change applies the lists again only when it is the player's, not anot
   const [, party] = applies(addon, () => addon.fire("PLAYER_SPECIALIZATION_CHANGED", "party1"));
   const [, own] = applies(addon, () => addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player"));
   expect([party, own], "a party member's spec leaves the tiles' hover keys alone; yours applies once").toEqual([0, 1]);
+});
+
+// The client switches talent group (Forever: ClassTalentActiveSpecMixin:ActivateSpec starts the ApplyingTalents cast
+// and calls C_SpecializationInfo.SetActiveSpecGroup, /home/user/blizz/forever/Interface/AddOns/Blizzard_PlayerSpells/
+// Camelot/ClassTalents/Blizzard_ClassTalentsFrame.lua; the overlay covers only the talents window), so the switch can
+// land while Vanguard's question is still open.
+const switchGroup = (addon, to, from) => {
+  addon.eval(`__wfgWorld.specGroup = ${to}`);
+  addon.fire("ACTIVE_TALENT_GROUP_CHANGED", to, from);
+};
+
+// How many bindings a list holds.
+const listSize = (addon, key) => addon.eval(`return #${CC}.Bindings(${key})`);
+
+// The chat line an answer gives when the list it asked about is no longer shown.
+const STALE = /Nothing changed: the list this asked about is no longer the one shown\. Ask again\./;
+
+it("H44-9-50 Clear all asked on Primary and answered after a switch to Secondary changes neither list", () => {
+  const addon = priest("__wfgWorld.specGroup = 1");
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061) ${CC}.CopyToSpec(2) ns.Options.Show("clickcast")`);
+  addon.eval('__click("Clear all")');
+  expect(addon.eval("return Vanguard_Question.title:GetText()")).toContain("Primary");
+  switchGroup(addon, 2, 1);
+  addon.click("Vanguard_Question.confirm");
+  expect([listSize(addon, 1), listSize(addon, 2), chatHas(addon, STALE)], "both lists kept, chat says why").toEqual([1, 1, true]);
+  addon.eval('__click("Clear all")');
+  addon.click("Vanguard_Question.confirm");
+  expect([listSize(addon, 1), listSize(addon, 2)], "asked again on Secondary, Clear empties Secondary").toEqual([1, 0]);
+});
+
+it("H44-9-50 Import's Replace asked on Primary and answered after the switch imports nowhere", () => {
+  const addon = priest("__wfgWorld.specGroup = 1");
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061) ${CC}.Add("BUTTON4", "spell", "Renew", 139) ${CC}.CopyToSpec(2)`);
+  const text = addon.eval('return ns.Serialize.Encode("clickcast", { bindings = { { key = "BUTTON1", action = "target" } } })');
+  addon.eval('ns.Options.Show("clickcast") __click("Import")');
+  addon.type("Vanguard_TextEdit", text);
+  addon.click("Vanguard_TextDialog.primary");
+  switchGroup(addon, 2, 1);
+  addon.click("Vanguard_Question.confirm");
+  expect([listSize(addon, 1), listSize(addon, 2), chatHas(addon, STALE), chatHas(addon, /Imported/)]).toEqual([2, 2, true, false]);
+});
+
+it("H44-9-50 a starter layout's Replace asked on Primary and answered after the switch leaves Secondary's own clicks", () => {
+  const addon = priest("__wfgWorld.specGroup = 1");
+  addon.eval(`${CC}.Add("BUTTON4", "spell", "TEST-ONLY PrimaryOwn")`);
+  switchGroup(addon, 2, 1);
+  addon.eval(`${CC}.Add("BUTTON5", "spell", "TEST-ONLY SecondaryOwn")`);
+  switchGroup(addon, 1, 2);
+  addon.eval('ns.Options.RebuildPage("clickcast") ns.Options.Show("clickcast") __click("Starter layout...") __click("Damage or tank")');
+  expect(addon.eval("return Vanguard_Question:IsShown()"), "own clicks: it asks").toBe(true);
+  switchGroup(addon, 2, 1);
+  addon.click("Vanguard_Question.confirm");
+  expect([bindings(addon).BUTTON5, chatHas(addon, STALE)], "Secondary's own click stays").toEqual(["spell:TEST-ONLY SecondaryOwn:nil:nil", true]);
+  switchGroup(addon, 1, 2);
+  expect(bindings(addon).BUTTON4, "and Primary's too").toBe("spell:TEST-ONLY PrimaryOwn:nil:nil");
+});
+
+it("H44-9-50 Undo asked on Primary and answered after the switch puts nothing back", () => {
+  const addon = priest("__wfgWorld.specGroup = 1");
+  addon.eval(`${CC}.Add("BUTTON4", "spell", "TEST-ONLY PrimaryOwn") ns.ClickCastPresets.Apply("select")`);
+  switchGroup(addon, 2, 1);
+  addon.eval(`${CC}.Add("BUTTON5", "spell", "TEST-ONLY SecondaryOwn") ns.ClickCastPresets.Apply("select")`);
+  switchGroup(addon, 1, 2);
+  addon.eval('ns.Options.RebuildPage("clickcast") ns.Options.Show("clickcast") __click("Undo")');
+  const asked = addon.eval("return Vanguard_Question:IsShown()");
+  switchGroup(addon, 2, 1);
+  addon.click("Vanguard_Question.confirm");
+  expect([asked, bindings(addon).BUTTON5, chatHas(addon, STALE)], "Secondary keeps the layout").toEqual([true, undefined, true]);
+});
+
+it("H44-9-50 a typed spell's Bind answered after the switch binds nothing", () => {
+  const addon = priest("__wfgWorld.specGroup = 1");
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.click(widget(addon, 'w.key == "shift-BUTTON2" and w.iconFrame ~= nil and w.empty ~= nil'));
+  addon.wheel("Vanguard_SpellPicker", -9);
+  addon.click(widget(addon, 'w.item ~= nil and w.chevron ~= nil and w:IsShown() and w.text.__text == "Type a spell name..."'));
+  addon.type("Vanguard_TextEdit", "Renew");
+  switchGroup(addon, 2, 1);
+  addon.click("Vanguard_TextDialog.primary");
+  expect([listSize(addon, 1), listSize(addon, 2), chatHas(addon, STALE)]).toEqual([0, 0, true]);
+});
+
+it("H44-9-50 Retail: Copy to spec 3 asked on spec 1 and answered on spec 2 copies nothing; a party member's spec event does not count", () => {
+  const addon = priest(RETAIL + "GetNumSpecializations = function() return 3 end __wfgSpec = 1 GetSpecialization = function() return __wfgSpec end");
+  addon.eval(`__wfgSpec = 3 ${CC}.Add("BUTTON4", "spell", "TEST-ONLY Three") __wfgSpec = 2 ${CC}.Add("BUTTON5", "spell", "TEST-ONLY Two")`);
+  addon.eval(`__wfgSpec = 1 ${CC}.Add("BUTTON3", "spell", "TEST-ONLY One")`);
+  // The keys of spec 3's list.
+  const three = () => addon.eval(`local out = {} for _, b in ipairs(${CC}.Bindings(3)) do out[#out + 1] = b.key end return out`);
+  addon.eval('ns.Options.Show("clickcast") __click("Copy to spec...") __click("Copy to spec 3")');
+  addon.eval("__wfgSpec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  addon.click("Vanguard_Question.confirm");
+  expect([three(), chatHas(addon, STALE)], "spec 3 keeps its own").toEqual([["BUTTON4"], true]);
+  addon.eval('__click("Copy to spec...") __click("Copy to spec 3")');
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "party1");
+  addon.click("Vanguard_Question.confirm");
+  expect(three(), "asked on spec 2: Replace copies spec 2's list").toEqual(["BUTTON5"]);
 });

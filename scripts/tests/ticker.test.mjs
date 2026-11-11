@@ -86,7 +86,7 @@ it("ns.AfterStill runs the work once, a wait after the last time it was asked fo
 });
 
 it("ticker jobs: a job whose frame the client refuses (it raises on IsVisible) costs only that job; the others still run", () => {
-  expectErrors(/^ticker TEST-ONLY refused: eval:\d+: TEST-ONLY forbidden$/);
+  expectErrors(/^ticker TEST-ONLY refused shown: eval:\d+: TEST-ONLY forbidden$/);
   const addon = counting();
   addon.eval(`__refused = CreateFrame("Frame", nil, UIParent)
     __refused.IsVisible = function() error("TEST-ONLY forbidden") end
@@ -103,4 +103,17 @@ it("ticker jobs: a frame whose shown state the client hides counts as hidden, ne
     ns.Every("TEST-ONLY hidden", 0.5, __count("hidden"), __hidden)`);
   addon.advance(2, 0.25);
   expect(addon.eval("return __runs.hidden or 0"), "a hidden answer: the job waits").toBe(0);
+});
+
+it("ticker jobs: /vg perf slow counts a job's runs as its calls, and a framed job's visibility checks under a site of their own", () => {
+  const addon = counting();
+  addon.eval(`debugprofilestop = function() return 0 end
+    __shown = CreateFrame("Frame", nil, UIParent)
+    ns.Every("TEST-ONLY framed", 1, __count("framed"), __shown)
+    ns.Every("TEST-ONLY bare", 1, __count("bare"))`);
+  addon.advance(2.05, 1 / 30);
+  const calls = addon.eval(`local t = ns.timings
+    return { __runs.framed, t['ticker TEST-ONLY framed'].calls, t['ticker TEST-ONLY bare'].calls, t['ticker TEST-ONLY framed shown'].calls }`);
+  expect(calls.slice(0, 3), "two runs in two seconds; each run site counts two calls, not the frames").toEqual([2, 2, 2]);
+  expect(calls[3], "the framed job's check ran every frame, under its own site").toBeGreaterThan(60);
 });

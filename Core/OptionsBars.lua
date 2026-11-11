@@ -69,8 +69,10 @@ local function backingSetting()
   return liveSetting("ActionBars", "backing", function() ns.OutOfCombat(ns.GetModule("ActionBars").UpdateBackings) end)
 end
 
--- Space between buttons: 0 to 10 px.
-local BAR_SPACING = { min = 0, max = 10, step = 1, format = function(v) return ns.Format(L["{size} px"], { size = v }) end }
+-- A px slider over the action bars' limits (Modules/ActionBars.lua AB.LIMITS), read when the rows are built.
+local function pxSlider(limits, step)
+  return { min = limits[1], max = limits[2], step = step, format = function(v) return ns.Format(L["{size} px"], { size = v }) end }
+end
 
 -- The buttons' macro names, key text and spacing, each applied at once (the spacing out of combat); kept in view
 -- when the card is folded.
@@ -78,7 +80,7 @@ local function buttonRows()
   return {
     essential(check(L["Macro names"], liveMethod("ActionBars", "macroNames", "RepaintLabels"))),
     essential(check(L["Key text"], liveMethod("ActionBars", "hotkeys", "RepaintLabels"))),
-    essential({ "slider", L["Button spacing"], BAR_SPACING, liveMethod("ActionBars", "spacing", "SpacingChanged") }),
+    essential({ "slider", L["Button spacing"], pxSlider(ns.GetModule("ActionBars").LIMITS.spacing, 1), liveMethod("ActionBars", "spacing", "SpacingChanged") }),
   }
 end
 
@@ -147,10 +149,10 @@ local function yourKeysRows()
   return append(append(rows, keySetupRows()), newSpellsRows())
 end
 
--- Buttons on a bar, and per row: 1 to 12.
-local BAR_BUTTONS = { min = 1, max = 12, step = 1 }
--- Button size: 24 to 48 px in steps of 2.
-local BAR_SIZES = { min = 24, max = 48, step = 2, format = function(v) return ns.Format(L["{size} px"], { size = v }) end }
+-- Buttons on a bar, and per row: 1 to the most a bar has.
+local function barButtons()
+  return { min = 1, max = ns.GetModule("ActionBars").MAX_BUTTONS, step = 1 }
+end
 
 -- Bar n's card title ("Bar 4, right edge" for the bars on the right edge).
 local function barTitle(n)
@@ -184,9 +186,9 @@ local function oneBarRows(n)
     visibility,
     { "text", L["Hidden bars keep their keys: a bound key still casts."] },
     showWhen,
-    { "slider", L["Buttons"], BAR_BUTTONS, barOption(n, "buttons") },
-    { "slider", L["Buttons per row"], BAR_BUTTONS, barOption(n, "perRow") },
-    { "slider", L["Button size"], BAR_SIZES, barSizeOption(n) },
+    { "slider", L["Buttons"], barButtons(), barOption(n, "buttons") },
+    { "slider", L["Buttons per row"], barButtons(), barOption(n, "perRow") },
+    { "slider", L["Button size"], pxSlider(ns.GetModule("ActionBars").LIMITS.size, 2), barSizeOption(n) },
   }
 end
 

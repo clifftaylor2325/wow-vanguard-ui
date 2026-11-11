@@ -8,19 +8,23 @@ import { expect, it } from "vitest";
 // Lua run in the addon's state: handler counts per event (ns.HandlerCounts), ticker keys, the events each addon frame
 // listens for, the addon frames shown under a parent (by name or kind; a parentless unit event frame kept as a
 // spare draws nothing), frames with a state driver, mover keys, open gates, and how many frames and hooks (hooksecurefunc, HookScript) there are.
+// Also the work that keeps running by itself: the addon frames whose OnUpdate the client runs (visible ones, by name or
+// kind) and the C_Timer tickers still going (world.runningTickers; a pending one-shot ends by itself and is not counted).
 const FOOTPRINT = `
   local stub = __wfgStub
-  local out = { handlers = ns.HandlerCounts(), tickers = {}, events = {}, shown = {}, drivers = 0, movers = {}, gates = 0 }
+  local out = { handlers = ns.HandlerCounts(), tickers = {}, events = {}, shown = {}, updaters = {}, drivers = 0, movers = {}, gates = 0 }
+  out.timers = __wfgWorld.runningTickers()
   for key in pairs(ns.ticker.vgJobs) do out.tickers[#out.tickers + 1] = type(key) == "table" and "table" or tostring(key) end
   for _, w in ipairs(stub.frames) do
     if w.__id > stub.firstAddonFrame then
       for event in pairs(w.__events) do out.events[#out.events + 1] = event end
       if w.__parent and w:IsVisible() then out.shown[#out.shown + 1] = w.__name or w.__kind end
+      if w.__scripts.OnUpdate and w:IsVisible() then out.updaters[#out.updaters + 1] = w.__name or w.__kind end
       if w.__states and next(w.__states) then out.drivers = out.drivers + 1 end
     end
   end
   for i, m in ipairs(ns.MoverList()) do out.movers[i] = m.key end
-  for _, list in ipairs({ out.tickers, out.events, out.shown, out.movers }) do table.sort(list) end
+  for _, list in ipairs({ out.tickers, out.events, out.shown, out.updaters, out.movers }) do table.sort(list) end
   for _, name in ipairs(ns.ModuleNames()) do
     local scope = ns.GetModule(name).scope
     if scope and scope.on then out.gates = out.gates + scope.gateCount end

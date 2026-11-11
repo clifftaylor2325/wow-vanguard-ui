@@ -1,6 +1,7 @@
 // casts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, FAKE_FADES, RISE, bars, isTok, loggedIn, setCombat, spark, unitEvents } from "./helpers.mjs";
 
 // TEST-ONLY casts: __casts[unit] = { kind = "cast"|"channel", start, finish, shielded }.
@@ -438,6 +439,36 @@ it("the cursor ring's cast falls back to plain times, and to nothing when they a
   expect(ring(plain).cast.plain, "a hidden end draws nothing either").toBe(null);
 });
 
+// Client fact (source): UnitCastingDuration carries SecretReturns = true on both clients
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua:811-815,
+// /home/user/blizz/live/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua:800-804), and
+// SetTimerDuration and SetCooldownFromDurationObject refuse a secret argument from addon code
+// (SimpleStatusBarAPIDocumentation.lua:334-336, FrameAPICooldownDocumentation.lua:308-311).
+const HIDDEN_DURATION = `
+  UnitCastingDuration = function() return __wfgWorld.secret() end
+  __timer = false
+`;
+
+for (const [name, client] of [["WoW Forever", ""], ["Retail", RETAIL_CLIENT]]) {
+  it(`H44-6-R1 a cast duration object the client hides counts as none: plain times move the bar (${name})`, () => {
+    const addon = loggedIn(CAST_ENV + HIDDEN_DURATION, { client });
+    addon.eval("Vanguard_CastBar_player.SetTimerDuration = function() __timer = true return true end");
+    addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+    addon.fire("UNIT_SPELLCAST_START", "player");
+    addon.update(1);
+    const b = castBar(addon, "player");
+    expect([addon.eval("return #ns.errors"), addon.eval("return __timer"), b.shown, b.text], "no error, no timer, the bar shows").toEqual([0, false, true, "TEST-ONLY Spell"]);
+    expect(b.value > 0.3 && b.value < 0.4, "and fills from the plain times").toBe(true);
+  });
+
+  it(`H44-6-R1 the cursor ring's cast sweep takes plain times when the client hides the duration object (${name})`, () => {
+    const addon = loggedIn(CAST_ENV + RING_ENV + HIDDEN_DURATION, { ...RING_ON, client });
+    addon.eval('__casts.player = { kind = "cast", start = 1000 * 1000, finish = 1000 * 1000 + 3000 }');
+    addon.fire("UNIT_SPELLCAST_START", "player");
+    expect([addon.eval("return #ns.errors"), ring(addon).cast.object, ring(addon).cast.plain], "no error, no object, the plain start and length").toEqual([0, null, [1000, 3]]);
+  });
+}
+
 it("a client that cannot make cooldown frames gets no ring, and no error when the switch is on", () => {
   const addon = loggedIn(CAST_ENV + RING_ENV + "ns.Client.Has('cooldownObject') ns.Client.has.cooldownObject = false", RING_ON);
   expect(addon.eval("return { Vanguard_CursorRing == nil, ns.ticker.vgJobs['cursor ring'] == nil, #ns.errors }"), "no ring, nothing following the mouse, nothing failed").toEqual([true, true, 0]);
@@ -507,6 +538,18 @@ it("the interrupt mark follows your interrupt's cooldown, only while a cast show
   addon.eval("__casts.target = nil");
   addon.fire("UNIT_SPELLCAST_STOP", "target");
   expect(mark(addon, "target").shown, "the flash at a cast's end takes the mark away at once").toBe(false);
+});
+
+it("H44-6-100 a cooldown update during the flash at a cast's end leaves the mark away", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(Vanguard_CastBar_target)");
+  addon.eval(KNOWS(2139));
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  addon.eval("__casts.target = nil");
+  addon.fire("UNIT_SPELLCAST_INTERRUPTED", "target");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("local b = Vanguard_CastBar_target return { b:IsShown(), b.mark:IsShown(), b.text:GetText() }"), "still flashing, no mark").toEqual([true, false, "Interrupted"]);
 });
 
 it("the interrupt mark: which interrupt, by class and rank", () => {

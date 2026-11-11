@@ -176,6 +176,11 @@ stub.rectOf = rectOf
 -- width and a height. A font string needs neither: an empty one is still
 -- laid out where its anchors put it, and so is text hung on it (the quest
 -- tracker's objective text hangs on its count, empty for most objectives).
+-- Blizzard's own layout relies on it (WoW Forever): Blizzard_ObjectiveTracker/
+-- Blizzard_ObjectiveTrackerShared.xml:220-228 hangs a line's Text LEFT on the
+-- RIGHT of its Dash font string, and Blizzard_ObjectiveTrackerBlock.lua:178-180
+-- (OBJECTIVE_DASH_STYLE_HIDE_AND_COLLAPSE) hides the Dash and sets its text to
+-- nil so the Text collapses onto it. Not seen in the game.
 local function sized(w)
   if w.__kind == "FontString" then return true end
   local r = rectOf(w)
@@ -247,22 +252,40 @@ function methods:GetScaledRect()
   return r.left, r.bottom, r.width, r.height
 end
 
--- Width: the one set, else what the anchors give (a font string: its text's).
-function methods:GetWidth()
-  if self.__width then return self.__width end
+-- Whether the widget's anchors pin both opposite edges of an axis ("L" and "R", or "B" and "T"), so its laid-out
+-- extent there can differ from the size it was given.
+local function stretched(w, lo, hi)
+  local seen = {}
+  for _, p in pairs(w.__points) do
+    local h, v = edgeKinds(p.point)
+    seen[h], seen[v] = true, true
+  end
+  return seen[lo] == true and seen[hi] == true
+end
+
+-- GetWidth and GetHeight take ignoreRect (Default = false: SimpleScriptRegionAPIDocumentation.lua, both clients), and
+-- Blizzard_SharedXMLBase/AnchorUtil.lua's FormatFrame prints GetSize() as the "calculated size" and GetSize(true) as
+-- the "explicit size". So a widget stretched between two anchored edges answers its rect's extent; with ignoreRect,
+-- or when only one edge is pinned, the size it was given. Everything else is as it was.
+
+-- Width: the one set (unless stretched between its left and right edges), else what the anchors give (a font
+-- string: its text's).
+function methods:GetWidth(ignoreRect)
+  if self.__width and (ignoreRect == true or not stretched(self, "L", "R")) then return self.__width end
   if self.__kind == "FontString" and not laidOut(self) then return textWidth(self) end
   return rectOf(self).width / self:GetEffectiveScale()
 end
 
--- Height: the one set, else what the anchors give (a font string: its text's).
-function methods:GetHeight()
-  if self.__height then return self.__height end
+-- Height: the one set (unless stretched between its top and bottom edges), else what the anchors give (a font
+-- string: its text's).
+function methods:GetHeight(ignoreRect)
+  if self.__height and (ignoreRect == true or not stretched(self, "B", "T")) then return self.__height end
   if self.__kind == "FontString" and not laidOut(self) then return textHeight(self) end
   return rectOf(self).height / self:GetEffectiveScale()
 end
 
--- Width and height together.
-function methods:GetSize() return self:GetWidth(), self:GetHeight() end
+-- Width and height together; ignoreRect as GetWidth's.
+function methods:GetSize(ignoreRect) return self:GetWidth(ignoreRect), self:GetHeight(ignoreRect) end
 
 -- The width of a font string's text: rough mode, as the layout sizes it; font mode, its longest line
 -- as drawn (no wider than its set width).

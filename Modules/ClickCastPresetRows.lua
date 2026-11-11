@@ -35,7 +35,7 @@ local function unlessOwn(fn)
   local ok, why = CP.Undoable()
   if not ok then return ns.Chat(ns.Format(L["Can't apply this layout: {why}."], { why = why })) end
   if not CP.HasOwnClicks() then return fn() end
-  ns.Ask(L["Replace your own click-casting mouse bindings with this starter layout? Undo puts them back."], L["Replace"], fn, nil, "danger")
+  ns.Ask(L["Replace your own click-casting mouse bindings with this starter layout? Undo puts them back."], L["Replace"], CC.ForThisList(fn), nil, "danger")
 end
 
 -- Applies a layout now, puts the guide away and builds the page again; nothing when CP.Apply refuses (unlessOwn has
@@ -169,11 +169,11 @@ end
 
 -- Puts back the bindings from before the last starter layout, after asking.
 local function askUndo()
-  ns.Ask(L["Put back the click-casting bindings you had before the starter layouts? Changes made since are lost."], L["Undo"], function()
+  ns.Ask(L["Put back the click-casting bindings you had before the starter layouts? Changes made since are lost."], L["Undo"], CC.ForThisList(function()
     local _, why = CP.Undo()
     if why then ns.Chat(ns.Format(L["Can't undo: {why}."], { why = why })) end
     pageChanged()
-  end, nil, "danger")
+  end), nil, "danger")
 end
 
 -- The Undo row's text (the layout the list was made from) and its button.

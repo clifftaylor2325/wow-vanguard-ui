@@ -390,10 +390,10 @@ local function decked(f)
   return deckOn() and UF.COMBAT.keys[f.key] == true
 end
 
--- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame and it
--- doesn't stand as a banner.
+-- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame, it doesn't
+-- stand as a banner and it isn't one of the keep's small frames (UF.Layouts.Stacked).
 local function tabbed(f)
-  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f)
+  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f) and not UF.Layouts.Stacked(f)
 end
 
 -- How far the bars sit inside a frame's edge: a screen pixel (not one UI unit, which shows a sliver of panel when
@@ -486,6 +486,9 @@ end
 
 -- How far from the inner edge the health text ends on a frame with the diamond, so it stays clear.
 UF.CLASS_MARK_ROOM = 10
+-- How far from the inner edge the health text ends while it sits on the top line beside the tag mark (centred 18 in,
+-- 12 wide, and a 2-unit gap): kept on the target, tagged or not, so the number never jumps.
+UF.TAG_ROOM = 26
 
 -- A small diamond (the Vanguard mark) over the top corner at the frame's inner end: elite, rare or boss. The health
 -- text ends short of it (UF.PlaceParts places both).
@@ -718,12 +721,13 @@ local function textEndRoom(f)
 end
 
 -- The health text at the other end from the name, short of the marks on a frame that has them; on the bar's top line
--- while the power text takes the bottom one.
+-- while the power text takes the bottom one, there short of the tag mark too.
 local function placeHealthText(f, side)
   local far = INNER[side]
   local room = textEndRoom(f)
   f.healthText:ClearAllPoints()
   if powerTextOn(f) and not T.BareOf(f) then
+    room = f.tag and math.max(room, UF.TAG_ROOM) or room
     f.healthText:SetPoint("TOP" .. far, f.health, "TOP" .. far, inward(far, room), -UF.POWER_TEXT.pad)
   else
     f.healthText:SetPoint(far, f.health, far, inward(far, room), textLift(f))
@@ -787,8 +791,30 @@ local function crownTop(f)
   return f
 end
 
--- Spans a frame's crown from its bottom corners up to its tab's or name line's top while it wears one, else to its own top.
+-- How far a frame's crown reaches over its own top (units): measured while its parts are plain, else a tab's height
+-- while it wears one, else nothing.
+local function crownRise(f)
+  local top, own = ns.PlainNumber(crownTop(f):GetTop()), ns.PlainNumber(f:GetTop())
+  if top and own then return top - own end
+  return tabbed(f) and UF.TAB.height or 0
+end
+
+-- Pins a frame's riders (UF.Ride) over its crown's top, on the frame itself, now or when the fight ends.
+local function pinRiders(f)
+  if not f.vgRiders then return end
+  ns.OutOfCombat(function()
+    local rise = crownRise(f)
+    for region, y in pairs(f.vgRiders) do
+      region:ClearAllPoints()
+      region:SetPoint("BOTTOMLEFT", f, "TOPLEFT", 0, rise + y)
+    end
+  end, "crown riders " .. f.key)
+end
+
+-- Spans a frame's crown from its bottom corners up to its tab's or name line's top while it wears one, else to its own
+-- top; its riders follow.
 local function placeCrown(f)
+  pinRiders(f)
   local crown = f.crown
   if not crown then return end
   crown:ClearAllPoints()
@@ -802,6 +828,19 @@ end
 function UF.StatusHome(f)
   if tabbed(f) then return f.tab end
   return f
+end
+
+-- Stands a region y units over a frame's crown, its left edge on the frame's, anchored to the frame itself rather
+-- than to the crown: the crown hangs from the tab or the name line, which change size in a fight (UF.FitTab), and a
+-- protected row (the totems' secure cells) must not depend on a region moved in combat. Pinned out of combat, again
+-- whenever the crown is placed (a look, layout or size change).
+---@param f table a unit frame
+---@param region table the row to stand over it
+---@param y number the gap over the crown's top (units)
+function UF.Ride(f, region, y)
+  f.vgRiders = f.vgRiders or {}
+  f.vgRiders[region] = y
+  pinRiders(f)
 end
 
 -- The frame the rows over a unit frame anchor to (the combo points, the totems, the target's buffs and threat text):
@@ -923,11 +962,28 @@ local function targetOfTargetDefault()
   return spot
 end
 
+-- Stacks frames key2..count under the one before, spec.gap apart and the Tabs look's tab more, so each tab stands in
+-- the gap rather than over the frame above (party2-4, boss2-5; secure buttons: only from UF.ApplyLook, out of combat).
+local function restack(key, count, spec)
+  for i = 2, count do
+    local f = UF.frames[key .. i]
+    if f then
+      f:ClearAllPoints()
+      f:SetPoint("TOPLEFT", UF.frames[key .. (i - 1)], "BOTTOMLEFT", 0, -(spec.gap + UF.TabLift()))
+    end
+  end
+end
+
 -- Lays every frame out for the HUD look again (the look, the deck or a frame's size changed), and moves the target
--- of target's narrow spot with the look. Each frame under its own guard: one that fails is reported, the rest still lay out.
+-- of target's narrow spot with the look. The party and boss stacks spread by the tab under Tabs, party1's default
+-- rising by as much so the column's foot stays put. Each frame under its own guard: one that fails is reported, the
+-- rest still lay out. Always run out of combat (it re-anchors secure frames).
 function UF.ApplyLook()
   for _, f in pairs(UF.frames) do ns.Try("unit frame layout", UF.PlaceParts, f) end
   ns.SetMoverDefault("uf_targettarget", targetOfTargetDefault())
+  ns.SetMoverDefault("uf_party1", ns.RaisedDefault(PARTY.point, (PARTY_SIZE - 1) * UF.TabLift()))
+  restack("party", PARTY_SIZE, PARTY)
+  restack("boss", UF.BOSS.count, UF.BOSS)
 end
 
 -- Updating ------------------------------------------------------------------------------
@@ -964,15 +1020,18 @@ local function paintHealthText(f, down)
 end
 
 -- Health bar value, color and text. Raw values go straight to the bar; the
--- text may be secret, so it goes to the font string untested. A down word keeps its status colour.
+-- text may be secret, so it goes to the font string untested. A down word keeps its status colour. Going down or
+-- coming back repaints the power text too (empty while down): an offline unit sends no power event.
 function UF.UpdateHealth(f)
   local unit, down = f.unit, UF.DownState(f.unit)
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
+  local changed = f.vgDown ~= down
   f.vgDown = down
   if f.heal then UF.Prediction.Update(f) end
   UF.PaintHealth(f, down)
   paintHealthText(f, down)
+  if changed then UF.PaintPowerText(f) end
 end
 
 -- Power bar value and color.
@@ -1206,8 +1265,9 @@ local GLOBAL_EVENTS = {
   -- A boss joined or left the fight, or became attackable.
   INSTANCE_ENCOUNTER_ENGAGE_UNIT = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
   UNIT_TARGETABLE_CHANGED = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
-  -- Your new level changes how hard every other unit is for you (the level colors).
-  PLAYER_LEVEL_UP = false,
+  -- Your new level changes how hard every other unit is for you (the level colors). PLAYER_LEVEL_CHANGED, not
+  -- PLAYER_LEVEL_UP: the client sends PLAYER_LEVEL_UP before it applies the new level.
+  PLAYER_LEVEL_CHANGED = false,
 }
 
 -- Refreshes the frames a global event affects.

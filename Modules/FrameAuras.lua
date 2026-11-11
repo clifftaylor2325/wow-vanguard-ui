@@ -8,9 +8,9 @@
 -- The client picks the auras: each group reads one of its filters ("HARMFUL|PLAYER",
 -- "HELPFUL" ...), and which filter a group reads is all the say an addon has. Timer
 -- numbers are off by default (the sweep shows time left); they can be turned on.
--- A container's groups are fixed once it is made, so a changed setting (a count, the
--- icon size, a filter, the timers) makes that row again, out of combat, and puts the
--- old one away.
+-- Vanguard never reshapes a container's groups once it is made, so a changed setting (a
+-- count, the icon size, a filter, the timers) makes that row again, out of combat, and
+-- puts the old one away.
 
 local ADDON, ns = ...
 
@@ -104,13 +104,16 @@ local function wake(row, unit)
 end
 
 -- Gives a frame the row `spec` describes under `name` (no row for no spec). A row that already reads
--- the same (its signature, Core/Auras.lua) is kept; one that differs is put away for a new one.
+-- the same (its signature, Core/Auras.lua) is kept; one that differs is put away for a new one. A new
+-- row's icons follow the scale (ns.Auras.Follow).
 local function setRow(f, name, spec)
   local old, sig = f[name], spec and ns.Auras.Signature(spec) or nil
   if (old and old.sig) == sig then return wake(old, f.unit) end
   if old and not ns.Auras.Retire(old) then return end
   f[name] = spec and ns.Auras.Container(f, spec, f.unit) or nil
-  if f[name] then f[name].sig = sig end
+  if not f[name] then return end
+  f[name].sig = sig
+  ns.Auras.Follow(f[name].frame)
 end
 
 -- The containers on one frame: debuffs below; buffs above on the target only, unless their count is 0.
@@ -169,9 +172,11 @@ local function park(f, key)
   for _, part in ipairs(FA.CLIENT_OFF) do ns.Try("frame aura part off", part, f, key) end
 end
 
--- The rows made again after a setting changed, showing whoever the frames show now.
+-- The rows made again after a setting changed, showing whoever the frames show now, and the client's own parts
+-- given the new settings (the Retail target spot takes the new icon size).
 local function rebuild()
-  buildRows()
+  if not FA.settings then return end
+  build(FA.settings, FA.scope)
   refreshBoth()
 end
 
@@ -195,7 +200,7 @@ end
 -- Module entry point (Core/Modules.lua): after the unit frames are built.
 -- The containers follow UNIT_AURA themselves; a new target or focus refreshes them.
 function FA.Enable(settings, scope)
-  FA.settings = settings
+  FA.settings, FA.scope = settings, scope
   ns.OutOfCombat(function() build(settings, scope) end)
   scope:On("PLAYER_TARGET_CHANGED", updateTarget)
   scope:On("PLAYER_FOCUS_CHANGED", updateFocus)

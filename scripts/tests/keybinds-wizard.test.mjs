@@ -58,6 +58,14 @@ const ready = (addon) => addon.eval(`local s = Vanguard_KeysWizard.steps.ready l
   for _, fs in ipairs(s.pools.line) do if fs:IsShown() then out[#out + 1] = fs:GetText() end end
   return out`);
 
+// Clicks the tick box of every shown step 3 row whose text matches a Lua pattern, as a player would.
+const untick = (addon, pattern) => addon.eval(`for _, r in ipairs(Vanguard_KeysWizard.steps.ready.pools.check) do
+  if r:IsShown() and r.label:GetText():find(${JSON.stringify(pattern)}) then r.__scripts.OnClick(r) end end`);
+
+// Wraps KeybindsLearn.Applied so a test can read what the wizard handed it (__declined).
+const WATCH_APPLIED = `local applied = ns.KeybindsLearn.Applied
+  ns.KeybindsLearn.Applied = function(preset, placeNew, declined, ...) __declined = declined return applied(preset, placeNew, declined, ...) end`;
+
 // The default tooltip's lines, as one text.
 const tipText = (addon) => JSON.stringify(addon.eval("return GameTooltip.__lines"));
 
@@ -384,4 +392,163 @@ it("step 3: run again with nothing to change, Apply closes and keeps the Place n
   addon.clearChat();
   addon.eval('__click("Apply")');
   expect([win(addon).shown, chatHas(addon, /No key needs changing\.$/), chatHas(addon, /Nothing is ticked/), addon.eval("return ns.KeybindsLearn.IsOn()")]).toEqual([false, true, false, true]);
+});
+
+it("H44-10-50 step 3: a change unticked before a fight stays unticked after it, and Apply leaves that key alone", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval(`__click("Show me") __click("Next") ${WATCH_APPLIED}`);
+  untick(addon, "^F: Shield Bash");
+  addon.world.combat(true);
+  addon.eval("ns.KeybindsWizard.Next()");
+  expect([keys(addon, ["F"])[0], chatHas(addon, /Keys can't change in combat\. Try again after the fight\.$/)], "nothing is written in the fight").toEqual(["", true]);
+  addon.world.combat(false);
+  expect(win(addon)).toMatchObject({ shown: true, step: 3 });
+  expect(ready(addon)).toContain("[ ] F: Shield Bash added to your bar");
+  addon.eval('__click("Apply")');
+  expect([keys(addon, ["F"])[0], addon.eval("return { #__declined, __declined[1].key }")]).toEqual(["", [1, "F"]]);
+});
+
+it("H44-10-R1 step 3: unticking a change lists what the others now do, and Apply does just that", () => {
+  const addon = warrior();
+  addon.world.setAction(62, { id: 72 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  // Step 3's rows for F and T.
+  const ft = () => ready(addon).filter((r) => /^(\[.\] )?[FT]: /.test(r));
+  expect(ft()).toEqual(["[x] F: your Shield Bash on bar 2", "T: unchanged, another key already uses that button"]);
+  untick(addon, "^F: ");
+  expect(ft(), "T now moves Shield Bash, and says so with its own box").toEqual(["[ ] F: your Shield Bash on bar 2", "[x] T: Hamstring, and Shield Bash moves to bar 3"]);
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, keys(addon, ["F", "T"]), addon.eval("return { select(2, GetActionInfo(62)), select(2, GetActionInfo(53)) }")])
+    .toEqual([false, ["", "MULTIACTIONBAR1BUTTON2"], [1715, 72]]);
+});
+
+it("H44-10-R1 step 3: ticking the change back lists the plan as it was", () => {
+  const addon = warrior();
+  addon.world.setAction(62, { id: 72 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^F: ");
+  untick(addon, "^F: ");
+  expect(ready(addon).filter((r) => /^(\[.\] )?[FT]: /.test(r))).toEqual(["[x] F: your Shield Bash on bar 2", "T: unchanged, another key already uses that button"]);
+});
+
+it("H44-10-51 step 3: a key listed as staying is not changed when its button is cleared before Apply; the list is made again", () => {
+  const addon = warrior();
+  addon.world.setAction(62, { type: "macro", id: 3 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon)).toContain("T: unchanged, its button holds something key setup leaves alone (a macro, an item or a mount)");
+  addon.world.setAction(62, null);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(chatHas(addon, /Your bars or keys changed since this list was made, so nothing was changed\. Check the list and press Apply again\.$/)).toBe(true);
+  expect([win(addon), keys(addon, ["T", "F"]), addon.eval("return { GetActionInfo(62) == nil, GetActionInfo(61) == nil, GetCurrentBindingSet() }")],
+    "nothing written, the account's keys in use again, and the window stays on Ready").toEqual([expect.objectContaining({ shown: true, step: 3 }), ["", ""], [true, true, 1]]);
+  expect(ready(addon), "the list now says what T will do").toContain("[x] T: Hamstring added to your bar");
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, keys(addon, ["T"])]).toEqual([false, ["MULTIACTIONBAR1BUTTON2"]]);
+});
+
+it("H44-10-1 step 3: a lower rank on a key's button is its own change naming both ranks; unticked, it stays", () => {
+  const addon = loggedIn(CLICK_LUA, {});
+  addon.eval('__wfgWorld.setUnit("player", { name = "Ilsa", class = "MAGE", className = "Mage", level = 26 })');
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank, icon: `TEST-ONLY-${id}` });
+  addon.world.learn(133, { name: "Fireball" });
+  addon.world.setAction(2, { type: "spell", id: 116 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon)).toContain("[x] 2: Frostbolt (Rank 3), in place of Rank 1");
+  untick(addon, "^2: Frostbolt");
+  addon.eval('__click("Apply")');
+  expect(addon.eval("return { select(2, GetActionInfo(1)), select(2, GetActionInfo(2)) }"), "Fireball placed, Rank 1 kept").toEqual([133, 116]);
+});
+
+// Step 3's key 1 rows, one per stance page.
+const keyOneRows = (addon) => ready(addon).filter((r) => /^\[.\] 1 in /.test(r));
+
+it("H44-10-100 step 3: unticking key 1 on one stance page, while it does something else, leaves key 1 alone on every page", () => {
+  const addon = warrior('SetBinding("1", "TOGGLEBACKPACK") SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^1 in Battle Stance");
+  expect(keyOneRows(addon)).toEqual(["[ ] 1 in Battle Stance: Heroic Strike added to your bar (now TOGGLEBACKPACK)",
+    "[ ] 1 in Defensive Stance: Sunder Armor added to your bar (now TOGGLEBACKPACK)"]);
+  addon.eval('__click("Apply")');
+  expect(addon.eval('return { GetBindingAction("1"), GetActionInfo(73) == nil, GetActionInfo(85) == nil }')).toEqual(["TOGGLEBACKPACK", true, true]);
+});
+
+it("H44-10-100 step 3: ticking key 1 back on one stance page ticks it on every page", () => {
+  const addon = warrior('SetBinding("1", "TOGGLEBACKPACK") SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^1 in Defensive Stance");
+  untick(addon, "^1 in Battle Stance");
+  expect(keyOneRows(addon)).toEqual(["[x] 1 in Battle Stance: Heroic Strike added to your bar (now TOGGLEBACKPACK)",
+    "[x] 1 in Defensive Stance: Sunder Armor added to your bar (now TOGGLEBACKPACK)"]);
+});
+
+it("H44-10-100 step 3: with key 1 on its own button, each stance page's change keeps its own tick box", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^1 in Battle Stance");
+  expect(keyOneRows(addon)).toEqual(["[ ] 1 in Battle Stance: Heroic Strike added to your bar", "[x] 1 in Defensive Stance: Sunder Armor added to your bar"]);
+  addon.eval('__click("Apply")');
+  expect(addon.eval('return { GetBindingAction("1"), GetActionInfo(73) == nil, select(2, GetActionInfo(85)) }')).toEqual(["ACTIONBUTTON1", true, 7386]);
+});
+
+it("H44-10-100 key 1 left alone on Ready stays the player's when a stance page is learned later, in a fight too", () => {
+  const addon = warrior('SetBinding("1", "TOGGLEBACKPACK") SaveBindings(1)');
+  addon.advance(4);
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") local box = Vanguard_KeysWizard.steps.ready.placeNew if not box.get() then box.__scripts.OnClick(box) end');
+  untick(addon, "^1 in Battle Stance");
+  addon.eval('__click("Apply")');
+  expect(addon.eval("return ns.KeybindsLearn.IsOn()")).toBe(true);
+  addon.world.combat(true);
+  addon.world.learn(2458, { name: "Berserker Stance", icon: "TEST-ONLY-2458" });
+  addon.eval('__wfgWorld.setStances({ { spellID = 2457 }, { spellID = 71 }, { spellID = 2458 } })');
+  addon.fire("LEARNED_SPELL_IN_SKILL_LINE", 2458, 1, false);
+  addon.advance(1);
+  addon.world.combat(false);
+  addon.advance(1);
+  expect(addon.eval('return { GetBindingAction("1"), GetActionInfo(97) == nil, GetBindingAction("CTRL-`") }'),
+    "key 1 still opens the bags and Berserker Stance's page gets no key 1 spell; the new stance key is set").toEqual(["TOGGLEBACKPACK", true, "SHAPESHIFTBUTTON3"]);
+});
+
+// The chat line Apply gives when the list, made in the account's keys, does not hold in this character's own saved keys.
+const OWN_KEYS_LINE = /This character has its own saved keys, which differ from the account's, so this list does not hold for them and nothing was changed\. Switch to this character's keys in the game's key bindings, then set up keys again\.$/;
+
+// A warrior using the account's keys, with Shield Bash on bar 2 button 1 and an older character key set of its own
+// (`charSet`, a Lua table of the game's saved bindings), on Ready for Only this character.
+function ownKeysReady(charSet) {
+  const addon = warrior(`__wfgWorld.bindingSets[2] = ${charSet}`);
+  addon.world.setAction(61, { type: "spell", id: 72 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  return addon;
+}
+
+// The character's saved key set's keys for one command (the harness's bindingSets[2]).
+const charKeys = (addon, command) => addon.eval(`return (__wfgWorld.bindingSets[2] or {})["${command}"] or {}`);
+
+it("H44-10-51 step 3: a character key set where a row does another thing: Apply changes nothing and chat says why", () => {
+  const addon = ownKeysReady('{ ACTIONBUTTON1 = { "1" }, MULTIACTIONBAR1BUTTON1 = { "F" } }');
+  expect(ready(addon)).toContain("[x] F: your Shield Bash on bar 2");
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect([chatHas(addon, OWN_KEYS_LINE), chatHas(addon, /Your bars or keys changed since this list was made/)]).toEqual([true, false]);
+  expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), keys(addon, ["F"])]).toEqual([true, 1, [""]]);
+});
+
+it("H44-10-51 step 3: a character key set where only what a key does now differs: Apply rebinds nothing", () => {
+  const addon = ownKeysReady('{ ACTIONBUTTON1 = { "1" }, TOGGLEBACKPACK = { "F" } }');
+  expect(ready(addon), "the list, made in the account's keys, has F free").toContain("[x] F: your Shield Bash on bar 2");
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(chatHas(addon, OWN_KEYS_LINE)).toBe(true);
+  expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), charKeys(addon, "TOGGLEBACKPACK")],
+    "the character's F still opens the bags").toEqual([true, 1, ["F"]]);
 });

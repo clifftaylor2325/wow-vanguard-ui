@@ -120,12 +120,14 @@ local function durationCall(channel, stages)
   return channel and _G.UnitChannelDuration or _G.UnitCastingDuration
 end
 
--- The client's duration object for a cast, where it has one.
+-- The client's duration object for a cast, where it has one. The client may hide it (SecretReturns), and a
+-- hidden one counts as none: it can't be compared, nor handed to a timer or sweep from addon code.
 local function castDuration(unit, channel, stages)
   local get = durationCall(channel, stages)
   if type(get) ~= "function" then return nil end
   local ok, d = pcall(get, unit)
-  return ok and d or nil
+  if not ok or type(d) == "nil" or ns.IsSecret(d) then return nil end
+  return d
 end
 
 -- Showing ----------------------------------------------------------------------------
@@ -447,10 +449,11 @@ function CB.PaintMark(bar, shielded)
   mark:SetAlpha(isTrue(shielded) and 0 or 1)
 end
 
--- Repaints the marks on the bars showing a cast (your interrupt's cooldown changed, or the switch did).
+-- Repaints the marks on the bars showing a cast (your interrupt's cooldown changed, or the switch did); a bar
+-- flashing its cast's end keeps its mark away.
 function CB.RefreshMarks()
   for _, bar in pairs(CB.bars) do
-    if bar.mark and bar:IsShown() then CB.PaintMark(bar, bar.vgShielded) end
+    if bar.mark and bar:IsShown() and not bar.vgFinishing then CB.PaintMark(bar, bar.vgShielded) end
   end
 end
 

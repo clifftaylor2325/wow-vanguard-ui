@@ -133,6 +133,8 @@ it("secret anchoring: from the game's SetPoint or SetSize, a secret texture or h
   expect(asAddon(addon, "return { issecretvalue(__t:GetWidth()), __t:HasSecretValues() }"), "a secret texture from the addon is taken, and hides the texture's geometry").toEqual([true, true]);
   addon.eval("__wfgWorld.holdSecret(__b, 'Anchoring')");
   expect(asAddon(addon, "return issecretvalue(__b:GetHeight())"), "holdSecret(w, 'Anchoring')").toBe(true);
+  // IsMouseOver is SecretWhenAnchoringSecret (Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua, both clients).
+  expect(asAddon(addon, "return { issecretvalue(__b:IsMouseOver()), issecretvalue(__a:IsMouseOver()) }"), "IsMouseOver hides it too, and not where the anchoring is plain").toEqual([true, false]);
 });
 
 it("secretAspects strict: every frame of the game's holds Shown, Alpha, Text and BarValue for the addon; UIParent and the addon's own frames do not", () => {
@@ -156,4 +158,23 @@ it("the #838 shape, with no trick: a plate edge whose Shown the client holds sec
     .toEqual([false, refusedText("SetShown")]);
   expect(tryAddon(addon, "if __edge:IsShown() then return 1 end"), "testing the read-back fails too").toEqual([false, "Modules/TEST-ONLY.lua:1: attempt to perform boolean test on a secret value"]);
   expect(tryAddon(addon, "__edge:Hide() __edge:SetShown(false) __edge:SetAlphaFromBoolean(__edge:IsShown(), 1, 0)"), "hiding it, or handing the secret to SetAlphaFromBoolean, is fine").toEqual([true]);
+});
+
+// SecretArguments = "AllowedWhenUntainted" on both clients: SimpleObjectAPIDocumentation.lua SetParentKey,
+// MinimapFrameAPIDocumentation.lua PingLocation, SetArchBlobInsideTexture, SetMaskTexture and SetZoom,
+// SimpleFontAPIDocumentation.lua CopyFontObject.
+const REFUSED_MORE = [
+  ["__w:SetParentKey(__wfgWorld.secret('x'))", "SetParentKey", 1],
+  ["Minimap:SetZoom(__wfgWorld.secret(1))", "SetZoom", 1],
+  ["Minimap:SetMaskTexture(__wfgWorld.secret(1))", "SetMaskTexture", 1],
+  ["Minimap:PingLocation(0, __wfgWorld.secret(1))", "PingLocation", 2],
+  ["Minimap:SetArchBlobInsideTexture(__wfgWorld.secret(1))", "SetArchBlobInsideTexture", 1],
+  ["CreateFont('TEST_ONLY_Font'):CopyFontObject(__wfgWorld.secret(1))", "CopyFontObject", 1],
+];
+
+it("a frame's parent key, the minimap's zoom, mask, ping and arch blob, and a font's copy refuse the addon's secret", () => {
+  const addon = createAddon();
+  addon.eval("__w = CreateFrame('Frame', nil, UIParent)");
+  for (const [call, name, i] of REFUSED_MORE) expect(tryAddon(addon, call), name).toEqual([false, refusedText(name, i)]);
+  expect(tryAddon(addon, "Minimap:SetZoom(1) __w:SetParentKey('TEST_ONLY') return true"), "plain values set as ever").toEqual([true, true]);
 });

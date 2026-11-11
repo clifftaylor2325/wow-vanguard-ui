@@ -493,14 +493,27 @@ function T.Closed(region)
   return type(region.IsForbidden) == "function" and region:IsForbidden() == true
 end
 
+-- Whether the client holds a region back from addon code for now (an aura button and what hangs from it while aura
+-- information is secret: IsForbidden still says no, every other call raises). A hidden or refused answer counts as held.
+---@param region table
+---@return boolean
+function T.Held(region)
+  if T.Closed(region) or type(region.CanBeAccessedInContext) ~= "function" then return false end
+  local ok, open = pcall(region.CanBeAccessedInContext, region)
+  return not (ok and ns.IsTrue(open))
+end
+
 -- Runs fn(key, value) for every entry of a registry, each under ns.Try (reported as `where`), so one entry that fails
 -- (a frame the client changed under Vanguard: a hidden value, a call it refuses) is reported and every other entry is
--- still done. The theme's walks over every painted frame, string and texture go through here.
+-- still done. The theme's walks over every painted frame, string and texture go through here. A held entry (T.Held)
+-- is left and kept, and noted in T.heldBack, so it takes the new look once the client lets it go (T.CatchUpHeld).
 ---@param where string
 ---@param registry table
 ---@param fn function
 function T.EachTried(where, registry, fn)
-  for key, value in pairs(registry) do ns.Try(where, fn, key, value) end
+  for key, value in pairs(registry) do
+    if T.Held(key) then T.heldBack = true else ns.Try(where, fn, key, value) end
+  end
 end
 
 -- Re-tints a remembered region whose colour is still what T.Tint set; one recoloured by hand since (a class colour,
@@ -1447,17 +1460,21 @@ end
 
 -- Cuts textures inside a shield frame (a status bar's fill and background) to its cut corners on one
 -- side, so nothing pokes past the cut line; they follow the shield setting on every repaint. Each
--- texture is masked once (two masks, under the client's limit of three), however often it is asked.
+-- texture is masked once (two masks, under the client's limit of three), however often it is asked. With holder, the
+-- textures join the mask set holder's textures use (the heal bars over the health fill take the fill's masks; a
+-- texture of another frame takes them too, as Blizzard's PartyMemberFrame.lua masks its heal bar with its health
+-- bar container's mask).
 ---@param frame table a frame painted with opts.shield
 ---@param regions table the textures to cut
 ---@param side string "TOP" or "BOTTOM": the frame's corners these textures reach
-function T.ShieldMask(frame, regions, side)
+---@param holder table|nil the frame whose mask set they join (default: each texture's own parent)
+function T.ShieldMask(frame, regions, side, holder)
   local entry = painted[frame]
   if not entry then return end
   entry.masked, entry.maskSets, entry.maskedBy = entry.masked or {}, entry.maskSets or {}, entry.maskedBy or {}
   for _, region in ipairs(regions) do
-    local key = tostring(region:GetParent()) .. side
-    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(region:GetParent(), side)
+    local key = tostring(holder or region:GetParent()) .. side
+    entry.maskSets[key] = entry.maskSets[key] or corner.maskSet(holder or region:GetParent(), side)
     if not entry.maskedBy[region] then corner.addMasked(entry, region, entry.maskSets[key]) end
   end
   corner.paintMasks(frame, entry)
@@ -1546,13 +1563,20 @@ end
 
 -- Shows a painted frame's plate (its background and border), or hides it for a frame the HUD look draws bare. A
 -- shown plate leaves each edge as the paint left it; an edge's own shown state is never read back, since the client
--- can hold it secret, and a secret passed to SetShown from addon code raises.
+-- can hold it secret, and a secret passed to SetShown from addon code raises. A bare plate hides its shaped corner
+-- pieces too (the fill's and the border's), keeping only the hairline's (paintRound shows them again when it places them).
 function corner.showPlate(p, shown)
   if p.bg then p.bg:SetShown(shown) end
   for _, t in pairs(p.shadow or NO_PARTS) do t:SetShown(shown) end
   if shown then return end
-  for _, t in pairs(p.edges or NO_PARTS) do t:Hide() end
+  for _, key in ipairs(corner.PLATE_PIECES) do
+    for _, t in pairs(p[key] or NO_PARTS) do t:Hide() end
+  end
 end
+
+-- The parts of a painted frame's plate a bare frame hides: its edges and its shaped corners' fill, side strips and
+-- border pieces.
+corner.PLATE_PIECES = { "edges", "roundFill", "roundSides", "roundLine" }
 
 -- Whether a painted frame with a role is drawn bare (no plate) by the HUD look (T.HudBare), never one the deck rounds.
 function corner.bare(entry)
@@ -4180,6 +4204,17 @@ local function onScaleChanged()
   end)
 end
 
+-- Refreshes once for what the walks left held (T.Held), once aura information is plain again. The note is cleared
+-- first, so a region still held during this refresh is noted again for the next catch-up.
+function T.CatchUpHeld()
+  if not T.heldBack or ns.AurasSecret() then return end
+  T.heldBack = nil
+  T.Refresh()
+end
+
+-- A restriction on addons changed: looked at on the next frame (during the event the client reports none active,
+-- RestrictedActionsDocumentation.lua IsAddOnRestrictionActive).
+ns.On("ADDON_RESTRICTION_STATE_CHANGED", function() ns.Soon("theme held", T.CatchUpHeld) end)
 ns.On("PLAYER_LOGIN", T.ApplyScale)
 ns.On("UI_SCALE_CHANGED", onScaleChanged)
 ns.On("DISPLAY_SIZE_CHANGED", onScaleChanged)

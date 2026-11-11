@@ -215,11 +215,20 @@ local function errorText(err)
   return tostring(err)
 end
 
+-- Told of each entry dropped past MAX_ERRORS. Nothing in the game listens; the test harness
+-- collects them, so an error pushed out by later ones is still judged (scripts/lib/lua-harness.mjs).
+---@param _entry table  the dropped { text, count, stack }
+function ns.ErrorDropped(_entry) end
+
 -- A new entry for an error text, at the end of ns.errors; the oldest is dropped past MAX_ERRORS.
 local function keep(text, stackText)
   local e = { text = text, count = 0, stack = stackText }
   byText[text], ns.errors[#ns.errors + 1] = e, e
-  if #ns.errors > ns.MAX_ERRORS then byText[table.remove(ns.errors, 1).text] = nil end
+  if #ns.errors > ns.MAX_ERRORS then
+    local dropped = table.remove(ns.errors, 1)
+    byText[dropped.text] = nil
+    ns.ErrorDropped(dropped)
+  end
   errorsChanged()
   return e
 end
@@ -374,10 +383,11 @@ local function note(where, ms)
   if ms > ns.SLOW_MS then t.slow = t.slow + 1 end
 end
 
--- Puts the outer ns.Try's site back, clears a handler failure and notes the time taken since
--- start (when the client has the clock); passes xpcall's results through.
-local function finished(outer, where, start, ...)
-  current, forwarding = outer, false
+-- Puts the outer ns.Try's site and loop guard back and notes the time taken since start (when the
+-- client has the clock); passes xpcall's results through. An outer Try entered with the guard off, so
+-- it clears a handler failure; a Try that runs inside the game's handler leaves the guard set.
+local function finished(outer, held, where, start, ...)
+  current, forwarding = outer, held
   if start then note(where, debugprofilestop() - start) end
   return ...
 end
@@ -390,10 +400,10 @@ end
 ---@param ... any  arguments for fn
 ---@return boolean ok, ...  as pcall
 function ns.Try(where, fn, ...)
-  local outer, clock = current, debugprofilestop
+  local outer, clock, held = current, debugprofilestop, forwarding
   current = where
   local start = ns.timingOn and type(clock) == "function" and clock() or nil
-  return finished(outer, where, start, xpcall(fn, traced, ...))
+  return finished(outer, held, where, start, xpcall(fn, traced, ...))
 end
 
 -- Error budget ---------------------------------------------------------------------------------

@@ -216,6 +216,7 @@ it("a level-up says what the trainers teach from that level; clear forgets", () 
   addon.eval("__wfgWorld.units.player.level = 60");
   addon.slash("trainers next");
   expect(chatHas(addon, /Nothing remembered for the next levels\./), "nothing near level 60").toBe(true);
+  expect(chatHas(addon, /with Remember what trainers teach on \(\/vg > Town and gear\)\./), "the text names the switch by its caption").toBe(true);
   addon.slash("trainers clear");
   addon.slash("trainers");
   expect([chatHas(addon, /Forgot every trainer\./), chatHas(addon, /0 trainer service\(s\) remembered/)], "cleared").toEqual([true, true]);

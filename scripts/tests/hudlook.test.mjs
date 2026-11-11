@@ -241,6 +241,26 @@ const keystone = (addon) => addon.eval(`local f = Vanguard_Keystone
   return { made = true, shown = f:IsShown(), left = f.__points.LEFT.rel == Vanguard_player, right = f.__points.RIGHT.rel == Vanguard_target, top = f.__points.TOP.rel == Vanguard_player,
     strata = f.__strata, mouse = f.__mouse, rails = #f.rails, crest = math.floor(f.crest:GetWidth() + 0.5), ring = f.ring ~= nil and f.ring:IsShown(), swords = f.swords:IsShown(), sweep = f.ring and f.ring.__durationObject and f.ring.__durationObject.__duration or "none" }`);
 
+// The party and boss stacks (TEST-ONLY reads): party1's and party4's bottoms, party2's and boss2's tab tops, and the
+// bottoms of the frames above them.
+const STACK_LUA = `local p1, p2, p4, b1, b2 = Vanguard_party1, Vanguard_party2, Vanguard_party4, Vanguard_boss1, Vanguard_boss2
+  return { foot = p4:GetBottom(), p1 = p1:GetBottom(), p2tab = p2.tab:GetTop(), p2shown = p2.tab:IsShown(), b1 = b1:GetBottom(), b2tab = b2.tab:GetTop() }`;
+
+it("Tabs: the party and boss stacks spread by the tab's height so each tab stands in the gap, the party column's foot kept; a look change in a fight waits for it to end", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, onLook("plain"));
+  const plainFoot = addon.eval(STACK_LUA).foot;
+  addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
+  const tabs = addon.eval(STACK_LUA);
+  expect([tabs.p2shown, tabs.p2tab <= tabs.p1, tabs.b2tab <= tabs.b1], "party2 and boss2 wear tabs that stay under the frame above").toEqual([true, true, true]);
+  expect(Math.round(tabs.foot), "the party column ends where it did").toBe(Math.round(plainFoot));
+  setCombat(addon, true);
+  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
+  expect(addon.eval(STACK_LUA).p1, "in a fight the secure frames wait").toBe(tabs.p1);
+  setCombat(addon, false);
+  const back = addon.eval(STACK_LUA);
+  expect([back.p1 < tabs.p1, Math.round(back.foot)], "after it, the Plain stack: party1 lower, the foot unchanged").toEqual([true, Math.round(plainFoot)]);
+});
+
 it("the keystone: the crest on a rail between your frame and your target's, under them, taking no mouse, swords lit in a fight, no ring until its switch", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA + GCD_ENV, NO_RAID);
   expect(keystone(addon), "shown by default with the Shield look").toEqual({ made: true, shown: true, left: true, right: true, top: true, strata: "BACKGROUND", mouse: false, rails: 2, crest: 36, ring: false, swords: false, sweep: "none" });

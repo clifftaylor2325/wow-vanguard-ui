@@ -22,7 +22,7 @@ local REGION = {
   "AdjustPointsOffset", "ClearAllPoints", "ClearPoint", "ClearPointsOffset",
   "CreateAnimationGroup", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel",
   "GetAlpha", "GetAnimationGroups", "GetBottom", "GetCenter", "GetDebugName",
-  "GetEffectiveAlpha", "GetEffectiveScale", "GetHeight", "GetLeft", "GetName",
+  "GetEffectiveScale", "GetHeight", "GetLeft", "GetName",
   "GetNumPoints", "GetObjectType", "GetParent", "GetParentKey", "GetPoint",
   "GetPointByName", "GetRect", "GetRight", "GetScale", "GetScaledRect",
   "GetScript", "GetSize", "GetSourceLocation", "GetTop", "GetWidth",
@@ -72,10 +72,12 @@ local FONT_STRING = {
   "SetTextHeight", "SetTextScale", "SetWordWrap",
 }
 
+-- GetEffectiveAlpha is a frame's only: SimpleFrameAPIDocumentation.lua:366 on both clients, in no region, texture or
+-- font string docs file.
 local FRAME = {
   "CreateFontString", "CreateLine", "CreateMaskTexture", "CreateTexture",
   "DisableDrawLayer", "DoesClipChildren", "EnableDrawLayer", "EnableKeyboard",
-  "GetAttribute", "GetChildren", "GetFrameLevel", "GetFrameStrata", "GetID",
+  "GetAttribute", "GetChildren", "GetEffectiveAlpha", "GetFrameLevel", "GetFrameStrata", "GetID",
   "GetNumChildren", "GetRegions", "IsClampedToScreen", "IsEventRegistered",
   "IsKeyboardEnabled", "IsMovable", "IsResizable", "IsToplevel", "IsUserPlaced",
   "Lower", "Raise", "RegisterAllEvents", "RegisterEvent", "RegisterForDrag",
@@ -151,11 +153,14 @@ local COOLDOWN = {
 }
 
 -- The client's aura container (12.1+, Blizzard_AuraContainer) and the aura
--- buttons it makes, as their public mixins define them.
+-- buttons it makes, as their public mixins define them. SetEditModePreviewEnabled:
+-- Blizzard_AuraContainer/Blizzard_ManagedAuraContainer.lua:49, on the shared mixin that
+-- ManagedAuraContainerInboundMixin takes (:67), public through CustomAuraContainerInboundMixin
+-- (Blizzard_CustomAuraContainer.lua:574, .xml:7); the same on WoW Forever and Retail.
 local AURA_CONTAINER = {
   "AddAuraGroup", "AddAuraSlot", "AddItemEnchantment", "GetUnit",
-  "SetAuraProcessingPolicy", "SetEnabled", "SetFlowLayoutAnchorPoint",
-  "SetFlowLayoutAxis", "SetFlowLayoutGrowthDirection",
+  "SetAuraProcessingPolicy", "SetEditModePreviewEnabled", "SetEnabled",
+  "SetFlowLayoutAnchorPoint", "SetFlowLayoutAxis", "SetFlowLayoutGrowthDirection",
   "SetFlowLayoutMaximumLineSize", "SetFlowLayoutPadding", "SetUnit",
   "UpdateAllAuras",
 }
@@ -167,9 +172,10 @@ local AURA_BUTTON = {
   "SetTooltipAnchorPoint",
 }
 
+-- MinimapFrameAPIDocumentation.lua (both clients); it has no SetBlipTexture.
 local MINIMAP = {
   "GetPingPosition", "GetZoom", "GetZoomLevels", "PingLocation",
-  "SetArchBlobInsideTexture", "SetBlipTexture", "SetMaskTexture", "SetZoom",
+  "SetArchBlobInsideTexture", "SetMaskTexture", "SetZoom",
 }
 
 -- ScrollingMessageFrameMixin (Blizzard_SharedXML/ScrollingMessageFrame.lua): the line fade's three
@@ -235,6 +241,7 @@ return {
   templates = {
     BackdropTemplate = { backdrop = true },
     UIPanelButtonTemplate = { kind = "Button" },
+    -- WoW Forever's only (Blizzard_GameMenu/Shared/GameMenuFrame.xml); the Retail stubs drop it (wow-retail-core.lua).
     GameMenuFrameButtonTemplate = { kind = "Button" },
     UIPanelCloseButton = { kind = "Button" },
     AuctionHouseFrameDisplayModeTabTemplate = { kind = "Button" },

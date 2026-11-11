@@ -10,8 +10,8 @@
 -- the client hides debuff types in instanced combat; on the fallback they are
 -- painted here. The client's filters decide what counts: "HARMFUL|RAID" is
 -- what YOU can dispel, "HELPFUL|PLAYER|RAID_IN_COMBAT" your buffs worth
--- showing on raid frames. The groups are fixed once a row is made, so a changed
--- setting makes the rows again (the module restarts, out of combat).
+-- showing on raid frames. Vanguard never reshapes a row's groups once it is made, so a
+-- changed setting makes the rows again (the module restarts, out of combat).
 --
 -- Indicators: up to three small icons down the tile's right edge, under the
 -- missing-buff mark, each showing the first aura the client's filter for the
@@ -248,11 +248,19 @@ local function rowsSignature(b)
   return table.concat(parts, "|")
 end
 
--- Builds a tile's rows and indicators (out of combat).
+-- Every row of a tile that has them: debuffs, HoTs and the indicators.
+local function tileRows(b)
+  local rows = { b.debuffRow, b.hotRow }
+  for _, row in ipairs(b.indRows or {}) do rows[#rows + 1] = row end
+  return rows
+end
+
+-- Builds a tile's rows and indicators (out of combat), their icons kept on whole pixels as the grid's scale moves.
 local function build(b)
   addRows(b)
   addIndicators(b)
   b.auraSignature = rowsSignature(b)
+  for _, row in ipairs(tileRows(b)) do ns.Auras.Follow(row.frame) end
 end
 
 -- How many tiles are kept built ahead: every one in a raid (it can grow in a fight), the first
@@ -275,8 +283,9 @@ local function nextTile()
 end
 
 -- One frame's share: the next tile gets its rows (one that waited is refreshed, so they show its
--- unit). True while another may be left.
+-- unit). True while another may be left; false once the module is off (its next start builds the rest).
 local function buildOne()
+  if not (RA.scope and RA.scope.on) then return false end
   local b = nextTile()
   if not b then return false end
   build(b)
@@ -333,13 +342,6 @@ local function emptied(b)
   if b.dispel then b.dispel:Hide() end
 end
 
--- Every row of a tile that has them: debuffs, HoTs and the indicators.
-local function tileRows(b)
-  local rows = { b.debuffRow, b.hotRow }
-  for _, row in ipairs(b.indRows or {}) do rows[#rows + 1] = row end
-  return rows
-end
-
 -- Hides a tile's rows and highlight and lets go of its unit (the module stopped, or the rows are to be made again).
 local function clearTile(b)
   for _, row in ipairs(tileRows(b)) do
@@ -350,7 +352,7 @@ local function clearTile(b)
   b.auraUnit, b.indUnit = nil, nil
 end
 
--- Puts a tile's rows away for good, so the next update makes them from the settings (a container can't be reshaped).
+-- Puts a tile's rows away for good, so the next update makes them from the settings (Vanguard never reshapes one).
 local function retireRows(b)
   clearTile(b)
   for _, row in ipairs(tileRows(b)) do ns.Auras.Retire(row) end
@@ -360,31 +362,6 @@ end
 -- A tile whose rows were made from other settings than now loses them.
 local function reconcile(b)
   if built(b) and b.auraSignature ~= rowsSignature(b) then retireRows(b) end
-end
-
--- Whether an icon placed at the scale `placed` is still on whole pixels at its holder's scale now (a hidden scale
--- counts as unchanged).
-local function sameScale(scale, placed)
-  scale = ns.PlainNumber(scale)
-  return scale == nil or math.abs(scale - placed) < RF.SCALE_EPSILON
-end
-
--- Puts every built tile's aura icons back on whole pixels where the grid's scale moved since they were placed (their
--- one-pixel inset, sweep and edges): a T.OnScale listener (the raid grid's compact scale, the raid mover's Scale or the
--- UI scale changed; out of combat), and at each start. Each row's holder scale is read once for its icons.
-function RA.Refit()
-  for _, b in ipairs(RF.buttons) do
-    if built(b) then
-      for _, row in ipairs(tileRows(b)) do ns.Auras.Refit(row.frame, sameScale) end
-    end
-  end
-end
-
--- Puts the icons on whole pixels for the scale now (a scale change while the module was off) and after each
--- later scale change while it runs.
-function RA.FollowScale(scope)
-  scope:Gate("scale", RA.Refit, T.OnScale)
-  RA.Refit()
 end
 
 -- Adds fn to one of the raid frames' tile hook lists (RF.updateHooks and the others) unless it is there already (the
@@ -404,18 +381,30 @@ function RA.RemoveHook(list, fn)
   end
 end
 
+-- How long the tiles' size must hold still before their rows are made again for it (a slider drag sets it many
+-- times a second, and every remade row is new client frames).
+RA.SETTLE = 0.3
+
+-- The tiles took a new width or height (RF.sizeHooks): once it holds still the module starts again, which makes
+-- the rows of each tile whose zones changed anew (reconcile) and leaves the rest.
+function RA.Resized()
+  ns.AfterStill("raid aura size", RA.SETTLE, function() ns.RestartModule("RaidAuras") end)
+end
+
+-- The raid frames' tile hook lists this module is on while it runs, each with its function.
+RA.HOOKS = {
+  { RF.updateHooks, update }, { RF.updateHooks, indicatorUpdate }, { RF.emptyHooks, emptied },
+  { RF.emptyHooks, indicatorEmptied }, { RF.sizeHooks, RA.Resized },
+}
+
 -- Module entry point (Core/Modules.lua): hook into raid tiles (existing and new), and build the
 -- rows ahead now and whenever the group changes. The hooks are on the parent's lists for as long as the
 -- module runs (RA.Disable takes them off).
 function RA.Enable(settings, scope)
   RA.settings, RA.scope = settings, scope
   for _, b in ipairs(RF.buttons) do reconcile(b) end
-  RA.AddHook(RF.updateHooks, update)
-  RA.AddHook(RF.updateHooks, indicatorUpdate)
-  RA.AddHook(RF.emptyHooks, emptied)
-  RA.AddHook(RF.emptyHooks, indicatorEmptied)
+  for _, hook in ipairs(RA.HOOKS) do RA.AddHook(hook[1], hook[2]) end
   scope:On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
-  RA.FollowScale(scope)
   RA.BuildAhead()
   if ns.ModulesBuilt() then RF.UpdateAll() end
 end
@@ -423,10 +412,7 @@ end
 -- Switched off: the hooks leave the tiles' lists and every tile's rows, indicators and highlight are cleared and
 -- hidden (kept for the next start, which makes them again only if the settings changed their shape).
 function RA.Disable()
-  RA.RemoveHook(RF.updateHooks, update)
-  RA.RemoveHook(RF.updateHooks, indicatorUpdate)
-  RA.RemoveHook(RF.emptyHooks, emptied)
-  RA.RemoveHook(RF.emptyHooks, indicatorEmptied)
+  for _, hook in ipairs(RA.HOOKS) do RA.RemoveHook(hook[1], hook[2]) end
   RA.waiting = {}
   for _, b in ipairs(RF.buttons) do
     if built(b) then clearTile(b) end

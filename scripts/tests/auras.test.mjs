@@ -118,6 +118,47 @@ it("raid aura rows are built when a tile needs them, not at login", () => {
   expect(builtTiles(), "in a raid, every tile once the fight is over").toEqual([true, true, true, true, true, true, true]);
 });
 
+// Tile 1's debuff row: its first icon's side and the row's wrap width, then the zones' icon side and strip width now.
+const debuffLook = (addon) => addon.eval(`local z = ns.GetModule("RaidFrames").TileZones() local f = Vanguard_RaidUnitButton1.debuffRow.frame
+  return { f.__groups[1].buttons[1]:GetWidth(), f.__flowLine, z.icon, z.debuffs[3] + 1 }`);
+
+// Sets the raid tiles' width and height as the sliders do.
+const resizeTiles = (addon, width, height) => addon.eval(`local RF = ns.GetModule("RaidFrames")
+  RF.settings.width, RF.settings.height = ${width}, ${height} RF.ApplySize()`);
+
+it("H44-5-1 raid auras: a new tile size makes the rows again for the new zones once the sliders settle, once per drag", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  addon.eval("__made = 0 local make = ns.Auras.Container ns.Auras.Container = function(...) __made = __made + 1 return make(...) end");
+  resizeTiles(addon, 86, 42);
+  addon.update(0.1);
+  resizeTiles(addon, 72, 36);
+  addon.update(0.1);
+  expect(addon.eval("return __made"), "nothing is made while the sliders move").toBe(0);
+  for (let i = 0; i < 4; i++) addon.update(0.1);
+  const [icon, line, zoneIcon, zoneLine] = debuffLook(addon);
+  expect([icon, line], "the rows follow the new zones").toEqual([zoneIcon, zoneLine]);
+  expect(addon.eval("return { __made, 2 + #Vanguard_RaidUnitButton1.indRows }"), "the tile's rows are made once: debuffs, HoTs and the indicators that fit").toEqual([2, 2]);
+  expect(addon.eval("return Vanguard_RaidUnitButton1.debuffRow.frame.__unit"), "and show the tile's unit again").toBe("raid1");
+});
+
+it("H44-5-2 raid auras: switching the module off stops the building ahead, and on again builds the rest", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  for (let i = 1; i <= 7; i++) addon.eval(`__spawn(${i}, nil)`);
+  // How many of tiles 1 to 7 have their rows.
+  const built = () => addon.eval(`local n = 0 for i = 1, 7 do if _G["Vanguard_RaidUnitButton" .. i].debuffRow then n = n + 1 end end return n`);
+  addon.eval("IsInGroup = function() return true end IsInRaid = function() return true end");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0.016);
+  expect(built(), "one tile a frame").toBe(1);
+  addon.eval('ns.SetModuleEnabled("RaidAuras", false)');
+  for (let i = 0; i < 10; i++) addon.update(0.016);
+  expect(built(), "no tile gets rows while the module is off").toBe(1);
+  addon.eval('ns.SetModuleEnabled("RaidAuras", true)');
+  for (let i = 0; i < 10; i++) addon.update(0.016);
+  expect(built(), "on again, the rest are built").toBe(7);
+});
+
 it("a login or a join that fills many raid tiles at once builds two tiles' aura rows that frame, then one a frame", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
   addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3") __spawn(4, "raid1")');
@@ -250,8 +291,8 @@ it("target and focus auras", () => {
   expect(t.debuffs.point.point === "TOPLEFT" && t.debuffs.point.relPoint === "BOTTOMLEFT", "debuffs sit under the target frame").toBeTruthy();
   expect(t.buffs.point.point === "BOTTOMLEFT" && t.buffs.point.relPoint === "TOPLEFT", "buffs sit above it, so neither row floats").toBeTruthy();
   expect(t.debuffs.groups[0].icon === "SHEEP" && t.debuffs.groups[1].icon === "MY-DOT" && t.debuffs.groups[1].count === "3", "crowd control first, then your debuffs, with stacks").toBeTruthy();
-  expect(t.debuffs.groups[2].max === 0, "only your debuffs by default").toBeTruthy();
-  expect(t.debuffs.groups.map((g) => g.filter.includes("INCLUDE_NAME_PLATE_ONLY")), "every debuff group also reads the debuffs the game flags for nameplates").toEqual([true, true, true]);
+  expect(t.debuffs.groups.length, "only your debuffs by default: the others' group, with no icons, is not added").toBe(2);
+  expect(t.debuffs.groups.map((g) => g.filter.includes("INCLUDE_NAME_PLATE_ONLY")), "every debuff group also reads the debuffs the game flags for nameplates").toEqual([true, true]);
   expect(t.buffs.groups[0].icon === "BUFF-A" && t.debuffs.groups[1].timer === false, "buffs above; no timer numbers by default (the sweep shows time left)").toBeTruthy();
   const f = frameRows(addon, "focus");
   expect(f.buffs == null && f.debuffs.groups[1].icon === "MY-DOT", "the focus shows your debuffs only").toBeTruthy();
@@ -400,6 +441,22 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
 });
 
 // TEST-ONLY retail's way of asking: by inventory slot, one TemporaryItemEnchantInfo (or nothing) each.
+it("H44-5-50 your buffs: an enchant that runs out and is put on again in one fight leaves the buffs one cell over", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV);
+  // Where the buffs sit, whether the first enchant cell shows, and the room the module noted.
+  const state = () => addon.eval(`local PA = ns.GetModule("PlayerAuras")
+    return { x = PA.auras.frame.__points.TOPRIGHT.x, cell = PA.cells[1]:IsShown(), placed = PA.placed }`);
+  const before = state();
+  setCombat(addon, true);
+  addon.eval("__kept = __enchants[0] __enchants[0] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  addon.eval("__enchants[0] = __kept");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  setCombat(addon, false);
+  expect(state(), "after the fight the enchant is on and the buffs still one cell over").toEqual(before);
+  expect(before.cell && before.x < 0, "one enchant cell to start with").toBe(true);
+});
+
 const RETAIL_ENCHANTS_ENV = `
   C_Item.GetWeaponEnchantInfo = nil
   __temp = { [16] = { enchantID = 5, remainingTimeMs = 1800000, chargesRemaining = 0, hasExpirationTime = true } }
@@ -483,7 +540,9 @@ it("aura container timer options a client refuses, and the engine probe", () => 
   const fresh = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" });
   expect(fresh.eval("__wfgStub.inCombat = true return ns.AuraEngine.Available()") === false, "the probe waits for the end of combat").toBeTruthy();
   expect(fresh.eval("__wfgStub.inCombat = false return ns.AuraEngine.Available()") === true, "then asks once").toBeTruthy();
-  const bareClient = loggedIn(UNITS_ENV + CONTAINER_AURAS);
+  // The default world's formatter is the client's (StringUtilDocumentation.lua, NumericRuleFormatterAPIDocumentation.lua), so
+  // a client without one is made by taking it away.
+  const bareClient = loggedIn(UNITS_ENV + CONTAINER_AURAS + "C_StringUtil.CreateNumericRuleFormatter = nil");
   expect(bareClient.eval('local c = ns.Auras.Container(UIParent, __spec, "target") return c.frame.__groups[1].buttons[1].__durationText.opts.textFormatter') === null, "a client without formatters or curves still gets its timer text").toBeTruthy();
 });
 
@@ -500,7 +559,7 @@ it("aura containers without the engine (the fallback)", () => {
       numbers = g1.icons[1].cooldown.__hideNumbers, font = g1.icons[1].cooldown.__countdown.__font ~= nil,
       p1 = pos(g1.icons[1]), p2 = pos(g1.icons[2]), p3 = pos(g2.icons[1]), events = __c.events.__unitEvents.UNIT_AURA[1] }`);
   expect(c.backend === "fallback", "without AuraContainer, Vanguard's own icons are used").toBeTruthy();
-  expect(c.filter === "HARMFUL", "'!' tokens are dropped for the older reads").toBeTruthy();
+  expect(c.filter === "HARMFUL|!PLAYER", "the filter is read as written, '!' words and all (the client's reads take them: AuraUtil.lua:294-296)").toBeTruthy();
   expect(c.mine[0] === "MY-DOT" && c.mine[1] === "MY-CURSE" && c.theirs === "THEIR-DOT" && c.dup === false, "an aura an earlier group shows isn't shown twice").toBeTruthy();
   expect(c.count === "3*", "stacks use the client's display count (it formats hidden counts)").toBeTruthy();
   expect(c.ringShown && isTok(addon, c.ring, "curse") && c.dim === true, "debuff edges in their type's color; others' auras dimmed").toBeTruthy();
@@ -597,7 +656,8 @@ const REJECTING_AURAS = `__wfgStub.noAuraContainer = true
 `;
 
 it("aura filter words this client rejects are dropped for the session", () => {
-  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER");
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER",
+    "aura filter HARMFUL|PLAYER|!CROWD_CONTROL: this client rejects it; reading HARMFUL|PLAYER");
   const addon = loggedIn(UNITS_ENV + REJECTING_AURAS);
   expect(addon.eval('return ns.Auras.Filter("HARMFUL|CROWD_CONTROL")'), "the unknown word goes").toBe("HARMFUL");
   expect(addon.eval('return ns.Auras.Filter("HELPFUL|PLAYER|RAID_IN_COMBAT")'), "a known qualifier stays").toBe("HELPFUL|PLAYER");
@@ -623,7 +683,8 @@ it("aura filter words this client rejects are dropped for the session", () => {
 
 it("a client that rejects every aura filter word keeps the filter and shows no auras", () => {
   expectErrors(AURA_FALLBACK, "aura filter HARMFUL|CROWD_CONTROL: no part of it is known to this client",
-    "aura filter HARMFUL|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client", "aura filter HARMFUL|PLAYER|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client",
+    "aura filter HARMFUL|CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client", "aura filter HARMFUL|PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client",
+    "aura filter HARMFUL|!PLAYER|!CROWD_CONTROL|INCLUDE_NAME_PLATE_ONLY: no part of it is known to this client",
     "aura filter HARMFUL: no part of it is known to this client", "aura filter HELPFUL: no part of it is known to this client");
   const addon = loggedIn(UNITS_ENV + `__wfgStub.noAuraContainer = true
     C_UnitAuras = { GetAuraDataByIndex = function() error("TEST-ONLY: no filters") end }`);
@@ -657,7 +718,8 @@ it("aura filters pass through on a client without the aura read", () => {
 });
 
 it("the raid dispel highlight reads through the stripped filter on the fallback", () => {
-  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|RAID: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER");
+  expectErrors(AURA_FALLBACK, "aura filter HARMFUL|RAID: this client rejects it; reading HARMFUL", "aura filter HELPFUL|PLAYER|RAID_IN_COMBAT: this client rejects it; reading HELPFUL|PLAYER",
+    "aura filter HARMFUL|!RAID: this client rejects it; reading HARMFUL");
   const addon = loggedIn(UNITS_ENV + RAID_ENV + `__wfgStub.noAuraContainer = true
     __errors = 0
     C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
@@ -952,6 +1014,18 @@ const CLOSED_ABOVE = `
   __plate.IsForbidden = function() return true end
 `;
 
+// Code review: a retired container leaves the follow set, so scale changes stop refitting it.
+it("a retired container's icons no longer follow the scale", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local A = ns.Auras
+    local plate = CreateFrame("Frame", nil, UIParent)
+    local c = ns.AuraLegacy.Create(plate, { point = { "CENTER" }, lineSize = 100, groups = { { filter = "HARMFUL", max = 2, size = 20 } } }, "target")
+    A.Follow(c.frame)
+    local followed = A.followed[c.frame] == true
+    return { followed, A.Retire(c), A.followed[c.frame] == nil }`);
+  expect(out).toEqual([true, true, true]);
+});
+
 it("a container under a frame the client has closed is kept by Retire and never asked its scale by Refit, though it answers no itself", () => {
   const addon = loggedIn(CLOSED_ABOVE);
   expect(addon.eval("return { pcall(ns.Auras.Retire, __c) }"), "Retire keeps it (false), touching nothing").toEqual([true, false]);
@@ -993,4 +1067,110 @@ it("a client without CanBeAccessedInContext: a refused GetParent reads as held, 
   const addon = loggedIn(HELD_ROW);
   addon.eval("__wfgWorld.holdAccess(__c.frame) __c.frame.CanBeAccessedInContext = false");
   expect([addon.eval("return ns.Auras.ShutFrom(__c.frame)"), addon.eval("return __placed()")], "held, and Refit leaves it").toEqual(["held", [true]]);
+});
+
+// An aura button's icon inset (its icon texture's TOPLEFT x) and one pixel at the button's effective scale now.
+const insetOf = (addon, lua) => addon.eval(`local b = ${lua} local p = b.__icon.__points.TOPLEFT
+  return { p.x, ns.Theme.PixelAtScale(b:GetEffectiveScale()) }`);
+
+// Whether an inset is one pixel at its button's scale.
+const onPixel = ([x, px]) => Math.abs(x - px) < 1e-6;
+
+it("H44-5-3 auras: your buffs', the target's and a raid tile's icons go back on whole pixels after a scale change", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  addon.fire("PLAYER_TARGET_CHANGED");
+  const buttons = ["ns.GetModule('PlayerAuras').auras.frame.__groups[1].buttons[1]", "Vanguard_target.debuffs.frame.__groups[2].buttons[1]",
+    "Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]"];
+  addon.eval("ns.GetModule('PlayerAuras').holder:SetScale(1.6) Vanguard_target:SetScale(1.6) Vanguard_RaidUnitButton1:SetScale(1.6) ns.Theme.Rescale()");
+  for (let i = 0; i < 4; i++) addon.update(0.016);
+  expect(buttons.map((b) => onPixel(insetOf(addon, b))), "each icon's inset is one pixel at the new scale").toEqual([true, true, true]);
+});
+
+it("H44-5-7 auras: an icon the client holds back at a scale change goes on whole pixels once it lets go and aura information is plain", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1") __b = Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]');
+  addon.eval("__wfgWorld.aurasSecret = true __wfgWorld.holdAccess(__b)");
+  addon.eval("Vanguard_RaidUnitButton1:SetScale(1.6) ns.Theme.Rescale()");
+  for (let i = 0; i < 4; i++) addon.update(0.016);
+  addon.eval("__wfgWorld.releaseAccess(__b)");
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+  addon.update(0.016);
+  expect(onPixel(insetOf(addon, "__b")), "let go while aura information is still hidden: left for now").toBe(false);
+  addon.eval("__wfgWorld.aurasSecret = false");
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+  addon.update(0.016);
+  expect(onPixel(insetOf(addon, "__b")), "plain again: the inset is one pixel at the new scale").toBe(true);
+  expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+});
+
+// The first icon a container's first group shows, or false when it shows none.
+const firstIcon = (addon, lua) => addon.eval(`local b = (${lua}).__groups[1].buttons[1] return b.__shown and b.__aura.icon`);
+
+it("H44-5-4 aura containers turn the client's Edit Mode preview off, so a row keeps the unit's auras while Edit Mode is open", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
+  addon.eval(`__raw = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    __raw:AddAuraGroup("x", "HARMFUL|PLAYER", { maxFrameCount = 1, layout = {}, initializeFrame = function(b) b:SetSize(20, 20) end }) __raw:SetUnit("target") __raw:SetEnabled(true)
+    __c = ns.Auras.Container(UIParent, __spec, "target")
+    __wfgStub.editMode = true __raw:UpdateAllAuras() __c.frame:UpdateAllAuras()`);
+  expect(firstIcon(addon, "__raw"), "the template's own preview shows the client's samples in Edit Mode").toBe("TEST-ONLY-EDIT-MODE-SAMPLE");
+  expect(firstIcon(addon, "__c.frame"), "Vanguard's row keeps the unit's auras").toBe("MY-DOT");
+  expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+});
+
+it("H44-5-5 aura containers leave out a group with no icons, which the client would make ten buttons for, and keep the others' keys", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
+  const groups = addon.eval(`__spec.groups[1].max = 0 local c = ns.Auras.Container(UIParent, __spec, "target")
+    local out = {} for _, g in ipairs(c.frame.__groups) do out[#out + 1] = g.key .. " " .. g.filter end return out`);
+  expect(groups, "only the second group is added, under its own key").toEqual(["vg2 HARMFUL|!PLAYER"]);
+});
+
+it("H44-5-6 raid auras: with Debuff icons at none and the highlight on, the dispellable debuff keeps its icon, and the switch's tip says so", () => {
+  const sv = "VanguardDB = { profiles = { Default = { RaidAuras = { debuffs = 0, dispel = true } } }, chars = {} }";
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV, { savedVariables: sv });
+  addon.eval('__spawn(1, "raid1")');
+  const row = addon.eval(`local f = Vanguard_RaidUnitButton1.debuffRow.frame local g = f.__groups[1] local b = g.buttons[1]
+    return { groups = #f.__groups, filter = g.filter, max = g.opts.maxFrameCount, shown = b.__shown, icon = b.__icon.__texture, wash = b.__dispel[7].texture.__shown }`);
+  expect(row, "one icon, the debuff you can dispel, carrying the wash").toEqual({ groups: 1, filter: "HARMFUL|RAID", max: 1, shown: true, icon: "TEST-ONLY-CURSE", wash: true });
+  const tip = addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then for _, r in ipairs(p.rows()) do
+    if r[2] == ns.L["Highlight debuffs you can dispel (reload)"] then return r.tip end end end end`);
+  expect(tip, "the switch's tip").toMatch(/^With Debuff icons at none, a debuff you can dispel still shows its icon/);
+});
+
+// TEST-ONLY aura read keyed by the exact filter string: your sheep is crowd control, your dot is not. __asked notes
+// every filter read. __legacyRow() makes a fallback row of your debuffs (not crowd control), then a crowd-control
+// slot, as a plate first drawn in a fight has, and returns the icons each group shows.
+const NOT_FILTER_ENV = `__wfgStub.noAuraContainer = true
+  local sheep, dot = { icon = "MY-SHEEP", auraInstanceID = 1 }, { icon = "MY-DOT", auraInstanceID = 2 }
+  __read = { ["HARMFUL|PLAYER|!CROWD_CONTROL"] = { dot }, ["HARMFUL|PLAYER|CROWD_CONTROL"] = { sheep }, ["HARMFUL|PLAYER"] = { sheep, dot } }
+  __asked = {}
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) __asked[filter] = true return (__read[filter] or {})[i] end }
+  function __legacyRow()
+    local c = ns.AuraLegacy.Create(UIParent, { point = { "CENTER" }, lineSize = 200, groups = {
+      { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = 4, size = 20, debuff = true }, { filter = "HARMFUL|PLAYER|CROWD_CONTROL", max = 1, size = 20, debuff = true } } }, "target")
+    local out = {}
+    for g, grp in ipairs(c.groups) do out[g] = {} for _, i in ipairs(grp.icons) do if i:IsShown() then out[g][#out[g] + 1] = i.icon.__texture end end end
+    return out
+  end`;
+
+it("H44-5-51 fallback rows read a filter with a '!' word as written, so your sheep shows once, in the crowd-control slot", () => {
+  const addon = loggedIn(UNITS_ENV + NOT_FILTER_ENV);
+  expect(addon.eval("return __legacyRow()"), "your dot in the debuff row, the sheep in its slot").toEqual([["MY-DOT"], ["MY-SHEEP"]]);
+  expect(addon.eval('return __asked["HARMFUL|PLAYER|!CROWD_CONTROL"] == true'), "the '!' filter is what is read").toBe(true);
+});
+
+it("H44-5-51 with hidden aura ids, a fallback row still shows your sheep once", () => {
+  const addon = loggedIn(UNITS_ENV + NOT_FILTER_ENV + `
+    for _, list in pairs(__read) do for _, a in ipairs(list) do a.auraInstanceID = { __secret = true } end end`);
+  expect(addon.eval("return __legacyRow()"), "the groups don't overlap, so no id is needed to skip a repeat").toEqual([["MY-DOT"], ["MY-SHEEP"]]);
+});
+
+it("H44-5-51 a fallback row probes its filters when it is made, so a first read in a fight is of a filter this client takes", () => {
+  expectErrors("aura filter HARMFUL|PLAYER|!CROWD_CONTROL: this client rejects it; reading HARMFUL|PLAYER");
+  const addon = loggedIn(UNITS_ENV + NOT_FILTER_ENV + `
+    local read = C_UnitAuras.GetAuraDataByIndex
+    C_UnitAuras.GetAuraDataByIndex = function(unit, i, filter) if filter:find("!", 1, true) then error("TEST-ONLY: unknown word") end return read(unit, i, filter) end`);
+  addon.eval(`ns.AuraLegacy.Create(UIParent, { point = { "CENTER" }, lineSize = 200, groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = 1, size = 20 } } }, nil)`);
+  addon.eval("C_Secrets = { ShouldAurasBeSecret = function() return true end }");
+  expect(addon.eval('return ns.Auras.Filter("HARMFUL|PLAYER|!CROWD_CONTROL")'), "probed when made, with no unit to read yet").toBe("HARMFUL|PLAYER");
 });

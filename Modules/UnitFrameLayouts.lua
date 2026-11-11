@@ -15,6 +15,17 @@ UF.Layouts = LY
 
 -- The keep -------------------------------------------------------------------------------------
 
+-- The keep's small frames: they stand under the big ones, so under the Tabs look they wear no tab (a tab would cover
+-- the frame or cast bar over them) and keep their name on the bar.
+LY.KEEP_SMALL = { focus = true, pet = true, targettarget = true }
+
+-- Whether a frame is one of the keep's small frames while the keep holds.
+---@param f table a unit frame
+---@return boolean
+function LY.Stacked(f)
+  return LY.KEEP_SMALL[f.key] == true and ns.HudLayout() == "fort" and ns.LayoutHolds()
+end
+
 -- Whether the keep's wall shows: the layout in force on a canvas it holds on, with your frame and your target's built.
 local function keepShown()
   return ns.HudLayout() == "fort" and ns.LayoutHolds() and UF.frames.player ~= nil and UF.frames.target ~= nil
@@ -179,10 +190,12 @@ end
 
 -- Lays a banner's parts out (UF.PlaceParts, while the frame stands, the texts in their roles already): the bars on
 -- end, the name line and health number (big banners), the marks at the inner top corner, the raid target icon over it all.
+-- A banner carries no power number (shown again when the frame lies across).
 function LY.PlaceStandard(f)
   layoutStandard(f)
   placeLabel(f)
   placeNumber(f)
+  f.powerText:Hide()
   UF.PlaceMarks(f, f.outer)
   placeIcon(f)
   placeRiders(f)

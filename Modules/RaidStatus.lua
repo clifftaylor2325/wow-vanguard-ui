@@ -122,9 +122,11 @@ end
 
 -- The range of every shown tile, by the unit the raid frames track for it.
 local function checkRange()
+  local failed
   for _, b in ipairs(RF.buttons) do
-    if b.raidIcon and b.tracked and b:IsShown() then RS.UpdateRange(b, b.tracked) end
+    if b.raidIcon and b.tracked and b:IsShown() then failed = RF.TryTile(failed, RS.UpdateRange, b, b.tracked) end
   end
+  RF.EndWalk(failed)
 end
 
 -- Checks range five times a second (range has no dependable event), only while the raid header is
@@ -285,10 +287,12 @@ end
 -- timer asked for before the stop may still come).
 local function each(fn)
   if not RS.scope.on then return end
+  local failed
   for _, b in ipairs(RF.buttons) do
     local unit = b:GetAttribute("unit")
-    if b.raidIcon and b:IsShown() and unit then fn(b, unit) end
+    if b.raidIcon and b:IsShown() and unit then failed = RF.TryTile(failed, fn, b, unit) end
   end
+  RF.EndWalk(failed)
 end
 
 -- Refreshes every mark on every shown button.
@@ -354,6 +358,23 @@ local EVENTS = {
   INCOMING_RESURRECT_CHANGED = onUnit, INCOMING_SUMMON_CHANGED = onUnit,
 }
 
+-- Sizes a tile's center marks (the ready check with its shadow, the resurrection, the summon) `big` square.
+local function sizeCenter(b, big)
+  b.ready:SetSize(big, big)
+  b.ready.shadow:SetSize(big, big)
+  b.rez:SetSize(big, big)
+  b.summon:SetSize(big, big)
+end
+
+-- The tiles took a new width or height (RF.sizeHooks, out of combat): every marked tile's center marks take the
+-- size the zones ask for now, as setup gives a new tile. Our own textures only, no secure call.
+local function resized()
+  local big = RF.TileZones().icon + 4
+  for _, b in ipairs(RF.buttons) do
+    if b.raidIcon then sizeCenter(b, big) end
+  end
+end
+
 -- Gives a raid button its marks, once (a tile made while the module was off gets them at the next start).
 local function attach(b)
   if not b.raidIcon then setup(b) end
@@ -366,6 +387,7 @@ function RS.Enable(settings, scope)
   for _, b in ipairs(RF.buttons) do attach(b) end
   RA.AddHook(RF.setupHooks, attach)
   RA.AddHook(RF.updateHooks, update)
+  RA.AddHook(RF.sizeHooks, resized)
   for event, fn in pairs(EVENTS) do scope:On(event, fn) end
   scope:Gate("scale", RS.PlaceShadows, T.OnScale)
   RS.PlaceShadows()
@@ -386,6 +408,7 @@ end
 function RS.Disable()
   RA.RemoveHook(RF.setupHooks, attach)
   RA.RemoveHook(RF.updateHooks, update)
+  RA.RemoveHook(RF.sizeHooks, resized)
   RS.following, RS.readyRunning = false, false
   for _, b in ipairs(RF.buttons) do
     if b.raidIcon then clearTile(b) end

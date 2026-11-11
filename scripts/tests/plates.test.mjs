@@ -124,6 +124,23 @@ it("each nameplate asks the client for its own unit's events, once", () => {
   addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate5");
   expect(unitEvents(addon, "UNIT_FACTION").subs, "the client reuses a plate for another unit: it listens for that one").toBe("nameplate2 nameplate5");
 });
+it("H44-6-2 a plate whose update keeps failing is paused alone: the other plates keep repainting", () => {
+  expectErrors(/^event UNIT_HEALTH: eval:\d+: TEST-ONLY bad plate$/, /^event PLAYER_ENTERING_WORLD: eval:\d+: TEST-ONLY bad plate$/);
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + `
+    __units.target.hp, __units.target.maxhp = 100, 1000
+    __bad = { nameplate2 = true }
+    local max = UnitHealthMax
+    UnitHealthMax = function(unit) if __bad[unit] then error("TEST-ONLY bad plate") end return max(unit) end`);
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  for (let i = 0; i < 10; i++) addon.fire("UNIT_HEALTH", "nameplate2");
+  addon.eval("__units.target.hp = 700");
+  addon.fire("UNIT_HEALTH", "nameplate1");
+  expect([addon.eval("return ns.FrameState('vgPlate')[__plates.nameplate1]:GetValue()"), addon.eval("return #ns.paused")], "the healthy plate follows its health; one site paused").toEqual([700, 1]);
+  addon.eval("__bad.nameplate1 = true");
+  for (let i = 0; i < 10; i++) addon.fire("UNIT_HEALTH", "nameplate1");
+  expect(addon.eval("return #ns.paused"), "a second plate failing ten times is paused after its own ten").toBe(2);
+});
+
 it("/vg plates reports the game's plate settings and sets the enemy one, out of combat", () => {
   const addon = loggedIn(UNITS_ENV + PLATE_ENV + "UnitCanAttack = function(_, unit) return unit == 'nameplate1' end SetCVar('nameplateShowFriendlyPlayers', 1) SetCVar('nameplateShowFriendlyNPCs', 0)");
   addon.eval("SetCVar('nameplateShowEnemies', 0)");
