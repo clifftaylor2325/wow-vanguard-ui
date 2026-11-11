@@ -1,9 +1,9 @@
 // theme: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { FOREVER_CLIENT, RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { SURFACE_MAX_ALPHA } from "../lib/media-surfaces.mjs";
-import { CLICK_LUA, expectErrors, MICRO_ENV, TIDY_ENV, UI_ENV, WINDOWS_ENV, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
+import { CLICK_LUA, expectErrors, MICRO_ENV, PLATE_ENV, TIDY_ENV, UI_ENV, WINDOWS_ENV, borderOf, button, chatHas, isTok, loggedIn, px, setCombat, tok, UNITS_ENV } from "./helpers.mjs";
 
 it("theme", () => {
   const addon = loggedIn();
@@ -1884,4 +1884,64 @@ it("theme listeners run guarded: one that errors is reported and the listeners a
   expectErrors("theme change: eval:2: TEST-ONLY listener");
   addon.slash("accent jade");
   expect(addon.eval("return __afterBad"), "the next listener ran").toBe(true);
+});
+
+// A plate whose aura rows the client holds back in a fight (aura information secret: Blizzard_AuraContainerShared.lua:108
+// AccessRestrictionFlags, Blizzard_AuraContainerUtil.lua:403 ApplyAccessRestrictions; IsForbidden says no while
+// CanBeAccessedInContext says false, SimpleFrameScriptObjectAPIDocumentation.lua:45), with the errors so far noted.
+function heldPlate(client) {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV, { client });
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.eval(`__rows = {} local plates = ns.GetModule("Nameplates")
+    for _, key in ipairs(plates.ROWS) do local row = plates.plates.nameplate1[key] if row then __rows[#__rows + 1] = row.frame end end`);
+  addon.eval('__wfgWorld.aurasSecret = true __wfgWorld.combat(true) for _, row in ipairs(__rows) do __wfgWorld.holdAccess(row) end __wfgStub.fire("UNIT_AURA", "nameplate1")');
+  addon.advance(1);
+  addon.eval("__before = #ns.errors");
+  return addon;
+}
+
+// The errors caught since heldPlate noted the count, one per line.
+const newErrors = (addon) => addon.eval("local texts = {} for i = __before + 1, #ns.errors do texts[#texts + 1] = tostring(ns.errors[i].text) end return table.concat(texts, '\\n')");
+
+// Counts the theme's refreshes from here on in __refreshes.
+const COUNT_REFRESH = "__refreshes = 0 local refresh = ns.Theme.Refresh ns.Theme.Refresh = function() __refreshes = __refreshes + 1 return refresh() end";
+
+for (const [name, client] of [["Forever", FOREVER_CLIENT], ["Retail", RETAIL_CLIENT]]) {
+  it(`held aura icons (${name}): a theme or scale change in a fight leaves them alone without an error, and keeps them`, () => {
+    const addon = heldPlate(client);
+    expect(addon.eval("return #__rows > 0"), "the plate has aura rows to hold").toBe(true);
+    addon.eval("ns.Theme.SetAccent(1, 0, 0) ns.Theme.SetTexelSnap(true)");
+    addon.fire("UI_SCALE_CHANGED");
+    addon.advance(1);
+    expect(newErrors(addon), "no forbidden-object errors").toBe("");
+    expect(addon.eval("return ns.Theme.heldBack"), "the walks noted what they left").toBe(true);
+  });
+
+  it(`held aura icons (${name}): they take the new look once, when aura information is plain again`, () => {
+    const addon = heldPlate(client);
+    addon.eval("ns.Theme.SetAccent(1, 0, 0) __wfgWorld.combat(false) " + COUNT_REFRESH);
+    addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+    addon.advance(1);
+    expect(addon.eval("return { __refreshes, ns.Theme.heldBack }"), "out of combat in a key, auras still secret: no refresh yet").toEqual([0, true]);
+    addon.eval("__wfgWorld.aurasSecret = false for _, row in ipairs(__rows) do __wfgWorld.releaseAccess(row) end");
+    addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+    addon.advance(1);
+    expect(addon.eval("return { __refreshes, ns.Theme.heldBack == nil }"), "let go: one refresh, nothing held back").toEqual([1, true]);
+    addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+    addon.advance(1);
+    expect(addon.eval("return __refreshes"), "nothing held back: no more refreshes").toBe(1);
+    expect(newErrors(addon), "and no errors").toBe("");
+  });
+}
+
+it("held aura icons: a region the client closed for good is still forgotten, not kept as held", () => {
+  const addon = loggedIn();
+  const out = addon.eval(`local T = ns.Theme
+    __f = CreateFrame("Frame", nil, UIParent) T.Panel(__f)
+    __f.IsForbidden = function() return true end
+    __f.CanBeAccessedInContext = function() return false end
+    T.heldBack = nil
+    T.Repaint()
+    return { T.Held(__f), T.heldBack == nil }`);
+  expect(out).toEqual([false, true]);
 });

@@ -404,6 +404,10 @@
     "scripts/tests/strips.test.mjs": [],
     "scripts/tests/talents.test.mjs": [],
     "scripts/tests/theme.test.mjs": [
+      "held aura icons (Forever): a theme or scale change in a fight leaves them alone without an error, and keeps them",
+      "held aura icons (Forever): they take the new look once, when aura information is plain again",
+      "held aura icons (Retail): a theme or scale change in a fight leaves them alone without an error, and keeps them",
+      "held aura icons (Retail): they take the new look once, when aura information is plain again",
       "shield corners: unit frames are shield frames, their health cut at the top and power at the bottom; cast bars stay square"
     ],
     "scripts/tests/themeparts.test.mjs": [],

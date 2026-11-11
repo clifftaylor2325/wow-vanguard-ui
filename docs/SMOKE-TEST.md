@@ -5414,6 +5414,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no "Interface action failed because of an AddOn" line and nothing new in `/vg errors`; the totem row stays 3 units over the name tab (over the frame under Shield) and destroys the totem on a right-click. [Needs in-game check: all of it; the client's rule on anchors of protected frames is not in Blizzard's code.]
 - If it fails, paste: `/vg errors`, and a screenshot of the totem row over your frame.
 
+### 33.493 A look change in a fight leaves held plate aura icons alone, and they catch up after
+
+- Do: on either client, in the open world with enemy nameplates showing your debuffs, pull a mob; during the fight pick another accent under General → Look; let the fight end. Then fight again and press Alt+Enter (a window size change) in the fight.
+- Expect: no new "forbidden object" line in `/vg errors` and the error badge stays clear; within a moment of the fight ending the plates' aura icon edges take the new accent. [Needs in-game check: whether the game's hold reaches Vanguard's own parts on an aura button, and whether its restriction event comes after it lets the icons go.]
+- If it fails, paste: `/vg errors`, and a screenshot of a plate's icons after the fight (the old accent still on them means the event came too early).
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

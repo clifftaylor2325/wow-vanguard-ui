@@ -493,14 +493,27 @@ function T.Closed(region)
   return type(region.IsForbidden) == "function" and region:IsForbidden() == true
 end
 
+-- Whether the client holds a region back from addon code for now (an aura button and what hangs from it while aura
+-- information is secret: IsForbidden still says no, every other call raises). A hidden or refused answer counts as held.
+---@param region table
+---@return boolean
+function T.Held(region)
+  if T.Closed(region) or type(region.CanBeAccessedInContext) ~= "function" then return false end
+  local ok, open = pcall(region.CanBeAccessedInContext, region)
+  return not (ok and ns.IsTrue(open))
+end
+
 -- Runs fn(key, value) for every entry of a registry, each under ns.Try (reported as `where`), so one entry that fails
 -- (a frame the client changed under Vanguard: a hidden value, a call it refuses) is reported and every other entry is
--- still done. The theme's walks over every painted frame, string and texture go through here.
+-- still done. The theme's walks over every painted frame, string and texture go through here. A held entry (T.Held)
+-- is left and kept, and noted in T.heldBack, so it takes the new look once the client lets it go (T.CatchUpHeld).
 ---@param where string
 ---@param registry table
 ---@param fn function
 function T.EachTried(where, registry, fn)
-  for key, value in pairs(registry) do ns.Try(where, fn, key, value) end
+  for key, value in pairs(registry) do
+    if T.Held(key) then T.heldBack = true else ns.Try(where, fn, key, value) end
+  end
 end
 
 -- Re-tints a remembered region whose colour is still what T.Tint set; one recoloured by hand since (a class colour,
@@ -4191,6 +4204,17 @@ local function onScaleChanged()
   end)
 end
 
+-- Refreshes once for what the walks left held (T.Held), once aura information is plain again. A region still
+-- refused then (one under a frame the client has closed for good) waits for the next theme change.
+function T.CatchUpHeld()
+  if not T.heldBack or ns.AurasSecret() then return end
+  T.Refresh()
+  T.heldBack = nil
+end
+
+-- A restriction on addons changed: looked at on the next frame (during the event the client reports none active,
+-- RestrictedActionsDocumentation.lua IsAddOnRestrictionActive).
+ns.On("ADDON_RESTRICTION_STATE_CHANGED", function() ns.Soon("theme held", T.CatchUpHeld) end)
 ns.On("PLAYER_LOGIN", T.ApplyScale)
 ns.On("UI_SCALE_CHANGED", onScaleChanged)
 ns.On("DISPLAY_SIZE_CHANGED", onScaleChanged)
