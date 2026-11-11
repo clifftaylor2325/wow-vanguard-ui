@@ -230,6 +230,19 @@ it("retail quests: a timed quest counts down from the game's time allowed, once 
   expect(blocks(addon)[0][1], "a hidden timer: no line, no error").toEqual(["TEST-ONLY Parcel 0/1"]);
 });
 
+// Live Blizzard_ObjectiveTracker/Blizzard_QuestObjectiveTracker.lua (lines 319-341) adds the timer bar only after its
+// complete and failed branches, so a ready or failed quest shows no countdown.
+it("H44-17-1 retail quests: a timed quest that is ready to turn in or failed shows no countdown and starts no tick", () => {
+  for (const [state, expected] of [["isComplete", ["Ready to turn in"]], ["failed", ["Failed"]]]) {
+    const addon = retail();
+    addon.world.addQuest({ questID: 93001, title: "TEST-ONLY Hurry", level: 70, watched: true, [state]: true, objectives: [{ text: "1/1 TEST-ONLY Parcel", finished: true }] });
+    addon.eval("__wfgWorld.setTimeAllowed(93001, 300, 28)");
+    addon.update(0);
+    expect(Object.values(blocks(addon)[0][1]).filter((line) => /^(Time left|Ready|Failed)/.test(line)), `${state}: no Time left line`).toEqual(expected);
+    expect(addon.eval("return ns.ticker.vgJobs['quest timers']"), `${state}: nothing ticks`).toBeNull();
+  }
+});
+
 // TEST-ONLY currency reward choice: the second of three choices is a currency (loot type 1) the client names
 // through its currency calls, as Retail's quest frame reads them.
 const CURRENCY_CHOICE = `

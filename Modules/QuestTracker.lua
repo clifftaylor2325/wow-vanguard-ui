@@ -192,13 +192,15 @@ local function questTimers()
 end
 
 -- The same on Retail, which has no GetQuestTimers: each watched quest's (the ids given) C_QuestLog.GetTimeAllowed (its whole
--- time and the seconds gone, as the game's own tracker reads them), while time is left. A hidden value is left out.
+-- time and the seconds gone, as the game's own tracker reads them), while time is left and the quest is neither ready
+-- nor failed (live Blizzard_QuestObjectiveTracker.lua adds the timer bar only in its last branch, after those two).
+-- A hidden value is left out.
 local function timesAllowed(watched)
   local out = {}
   for _, id in ipairs(watched) do
     local total, gone = ns.CallIf(C_QuestLog, "GetTimeAllowed", id)
     total, gone = ns.PlainNumber(total), ns.PlainNumber(gone)
-    if total and gone and gone < total then out[id] = total - gone end
+    if total and gone and gone < total and not (QT.IsReady(id) or QT.IsFailed(id)) then out[id] = total - gone end
   end
   return out
 end
