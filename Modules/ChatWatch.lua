@@ -292,9 +292,9 @@ end
 
 -- Phrases ----------------------------------------------------------------------------------------
 
--- The watched phrases in this profile (also while the module is off, for the options).
+-- The watched phrases in this profile (also while the module is off, for the options), text only.
 local function phrases()
-  return ns.Settings("ChatWatch", CW.defaults).phrases
+  return ns.GetModule("ChatExtras").TextOnly(ns.Settings("ChatWatch", CW.defaults).phrases)
 end
 
 -- The options page lists a Remove button per phrase: built again after a change; the patterns made for

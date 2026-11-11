@@ -358,9 +358,9 @@ end
 
 -- Keywords ------------------------------------------------------------------------------------
 
--- The keywords in this profile (also while the module is off, for the options).
+-- The keywords in this profile (also while the module is off, for the options), text only.
 local function keywords()
-  return ns.Settings("ChatFilter", CF.defaults).keywords
+  return ns.GetModule("ChatExtras").TextOnly(ns.Settings("ChatFilter", CF.defaults).keywords)
 end
 
 -- Why a keyword can't be added, or nil when it can.
@@ -434,7 +434,8 @@ local STATUS = {
 local function status()
   local s = ns.Settings("ChatFilter", CF.defaults)
   ns.Chat(ns.Format(STATUS[s.on == true][s.mode == "tab" and "tab" or "hide"], { count = CF.count }))
-  if #s.keywords > 0 then ns.Chat(ns.Format(L["Your words: {words}"], { words = table.concat(s.keywords, ", ") })) end
+  local words = keywords()
+  if #words > 0 then ns.Chat(ns.Format(L["Your words: {words}"], { words = table.concat(words, ", ") })) end
 end
 
 -- Forgets every keyword; says so.

@@ -159,6 +159,17 @@ function CX.Matchable(text)
   return ns.Lower((s:gsub("[%[%]]", "")))
 end
 
+-- Drops every entry that is no text from a saved word list (an older save or an import may hold numbers or tables),
+-- so the callers that lower-case each entry never meet one; returns the list. The broken entry is gone from the save.
+---@param list table
+---@return table list
+function CX.TextOnly(list)
+  for i = #list, 1, -1 do
+    if type(list[i]) ~= "string" then table.remove(list, i) end
+  end
+  return list
+end
+
 -- Removes the first entry of list equal to value in any case; true when one was removed.
 function CX.RemoveValue(list, value)
   for i, entry in ipairs(list) do

@@ -397,3 +397,11 @@ it("chat watch: a saved phrase list holding an empty or non-text entry still rin
   expect([rings(addon), toast(addon)[1]], "the real phrase rings").toEqual([1, "Lightmend"]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+it("H44-19-50 chat watch: a saved phrase that is no text is dropped, so add and remove answer without an error", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { ChatWatch = { phrases = { 5, 'lfm', true } } } }" });
+  addon.slash("watch add wts");
+  addon.slash("watch remove lfm");
+  expect(addon.eval("return ns.Settings('ChatWatch').phrases"), "the broken entries are gone; the new phrase is kept").toEqual(["wts"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});

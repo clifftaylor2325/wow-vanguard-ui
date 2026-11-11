@@ -551,3 +551,13 @@ it("chat filter: an empty or non-text word in a saved keyword list holds nothing
   expect(deliver(addon, "something with zzz in it", "Spammer"), "the real word still catches").toBe(true);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
+
+it("H44-19-50 chat filter: a saved keyword that is no text is dropped, so add, remove and status answer without an error", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles = { Default = { ChatFilter = { on = true, keywords = { 5, 'zzz', { 1 } } } } }" });
+  addon.slash("filter add newword");
+  addon.slash("filter remove zzz");
+  addon.slash("filter");
+  expect(addon.eval("return ns.Settings('ChatFilter').keywords"), "the broken entries are gone from the save; the new word is kept").toEqual(["newword"]);
+  expect(chatHas(addon, /Your words: newword/), "status names it").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
