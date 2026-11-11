@@ -150,6 +150,12 @@ it("clients: on WoW Forever the same words are commands and in /vg help", () => 
   expect(chatHas(forever, /Unknown command/), "/vg ranks runs").toBe(false);
 });
 
+it("H44-28-4 /vg help: the talents line names the order word the command handles", () => {
+  const forever = on(false);
+  forever.slash("help");
+  expect(chatHas(forever, /\|r talents \[[^\]]*order[^\]]*\]/), "talents syntax has order").toBe(true);
+});
+
 it("clients: rows added with ns.RetailRows show on the Game windows card, under the window switches", () => {
   const addon = on(true);
   addon.eval('ns.RetailRows(function() return { { "text", "TEST-ONLY Retail window row" } } end)');
