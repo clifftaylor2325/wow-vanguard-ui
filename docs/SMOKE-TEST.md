@@ -5396,6 +5396,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the focus target is a 24 x 100 banner with bars alone, standing just outside the focus banner (the next step left of it), clear of your banner, the focus and the pet; back on Centered it lies across at its own size and spot. [Needs in-game check: whether it meets the chat window's corner on a narrow canvas.]
 - If it fails, paste: a screenshot of the left side of the HUD, the canvas size (`/vg probe`), and `/vg errors`.
 
+### 33.490 Tabs: the party and boss stacks leave room for each tab
+
+- Do: on either client, in a party of five (raid frames not showing the party), set General → HUD look to Tabs, then use `/vg unlock` to show the boss column; switch the look to Plain and back, once in a fight.
+- Expect: each party and boss frame's name tab stands in the gap under the frame above, covering none of its bars; the party column's foot stays just above your frame whichever look is on, and the boss column grows down from the top-left; a look change in a fight moves the stacks when it ends, with no "Interface action failed" line. [Needs in-game check: whether the longer boss column meets the quest tracker or the raid tools.]
+- If it fails, paste: a screenshot of the party and boss columns, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

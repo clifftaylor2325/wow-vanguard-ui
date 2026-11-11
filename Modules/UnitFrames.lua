@@ -927,11 +927,28 @@ local function targetOfTargetDefault()
   return spot
 end
 
+-- Stacks frames key2..count under the one before, spec.gap apart and the Tabs look's tab more, so each tab stands in
+-- the gap rather than over the frame above (party2-4, boss2-5; secure buttons: only from UF.ApplyLook, out of combat).
+local function restack(key, count, spec)
+  for i = 2, count do
+    local f = UF.frames[key .. i]
+    if f then
+      f:ClearAllPoints()
+      f:SetPoint("TOPLEFT", UF.frames[key .. (i - 1)], "BOTTOMLEFT", 0, -(spec.gap + UF.TabLift()))
+    end
+  end
+end
+
 -- Lays every frame out for the HUD look again (the look, the deck or a frame's size changed), and moves the target
--- of target's narrow spot with the look. Each frame under its own guard: one that fails is reported, the rest still lay out.
+-- of target's narrow spot with the look. The party and boss stacks spread by the tab under Tabs, party1's default
+-- rising by as much so the column's foot stays put. Each frame under its own guard: one that fails is reported, the
+-- rest still lay out. Always run out of combat (it re-anchors secure frames).
 function UF.ApplyLook()
   for _, f in pairs(UF.frames) do ns.Try("unit frame layout", UF.PlaceParts, f) end
   ns.SetMoverDefault("uf_targettarget", targetOfTargetDefault())
+  ns.SetMoverDefault("uf_party1", ns.RaisedDefault(PARTY.point, (PARTY_SIZE - 1) * UF.TabLift()))
+  restack("party", PARTY_SIZE, PARTY)
+  restack("boss", UF.BOSS.count, UF.BOSS)
 end
 
 -- Updating ------------------------------------------------------------------------------
