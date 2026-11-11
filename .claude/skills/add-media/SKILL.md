@@ -23,4 +23,4 @@ description: Add or change a texture, icon or piece of art in Vanguard's Media/ 
 
 - Commit a PNG, TGA or BLP that no source makes.
 - Ship a font: fonts come from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py` only.
-- Crop a game atlas with `SetTexCoord`; on Forever, atlas coordinates are atlas-relative (size and anchor the art instead; `Core/Skin.lua`).
+- Crop a game atlas with file coordinates: once `SetAtlas` has run, `SetTexCoord` is relative to the atlas member on both clients (Blizzard's cast bar slices its empower tiers that way, `Blizzard_UIPanels_Game/Shared/CastingBarFrame.lua`), and `SetAtlas` takes a `resetTexCoords` argument for earlier coordinates. Size and anchor the art instead.
