@@ -1206,8 +1206,9 @@ local GLOBAL_EVENTS = {
   -- A boss joined or left the fight, or became attackable.
   INSTANCE_ENCOUNTER_ENGAGE_UNIT = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
   UNIT_TARGETABLE_CHANGED = { boss1 = true, boss2 = true, boss3 = true, boss4 = true, boss5 = true },
-  -- Your new level changes how hard every other unit is for you (the level colors).
-  PLAYER_LEVEL_UP = false,
+  -- Your new level changes how hard every other unit is for you (the level colors). PLAYER_LEVEL_CHANGED, not
+  -- PLAYER_LEVEL_UP: the client sends PLAYER_LEVEL_UP before it applies the new level.
+  PLAYER_LEVEL_CHANGED = false,
 }
 
 -- Refreshes the frames a global event affects.

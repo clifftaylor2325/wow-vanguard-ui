@@ -195,8 +195,14 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   addon.eval("UnitLevel = function(unit) return unit == 'player' and 61 or 12 end");
   addon.fire("UNIT_LEVEL", "player");
   expect(addon.eval("return Vanguard_player.level:GetText()"), "when you level, your frame shows the new level").toBe("61");
-  addon.eval("UnitLevel = function(unit) return unit == 'player' and 62 or 14 end");
+  // A ding as the client sends it: PLAYER_LEVEL_UP while the old level still applies, then PLAYER_LEVEL_CHANGED once
+  // the new one does (/home/user/blizz/forever/Interface/AddOns/Blizzard_MicroMenu/Shared/MicroMenuContainer.lua
+  // OnLoad: "PLAYER_LEVEL_UP fires before the new level is applied"; Blizzard_UnitFrame/Shared/CompactUnitFrame.lua
+  // repaints the level difference on PLAYER_LEVEL_CHANGED).
+  addon.eval("UnitLevel = function(unit) return unit == 'player' and 61 or 14 end");
   addon.fire("PLAYER_LEVEL_UP", 62);
+  addon.eval("UnitLevel = function(unit) return unit == 'player' and 62 or 14 end");
+  addon.fire("PLAYER_LEVEL_CHANGED", 61, 62, true);
   expect(addon.eval("return { Vanguard_player.level:GetText(), Vanguard_target.level:GetText() }"), "a level-up refreshes every frame (their level colors are relative to yours)").toEqual(["62", "14"]);
   addon.eval("UnitHealthPercent = function() error('TEST-ONLY') end");
   addon.fire("UNIT_HEALTH", "player");
@@ -205,8 +211,26 @@ it("unit frames on WoW Forever: levels, health percent, classification", () => {
   expect(retail.eval("return Vanguard_player.level == nil") === true && retail.eval("return Vanguard_player.healthText:GetText()") === "900", "elsewhere: no level, health as a value").toBeTruthy();
 });
 
+// The client sends PLAYER_LEVEL_UP before it applies the new level and PLAYER_LEVEL_CHANGED after
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_MicroMenu/Shared/MicroMenuContainer.lua MicroMenuContainerMixin:OnLoad;
+// Blizzard_UnitFrame/Shared/CompactUnitFrame.lua: PLAYER_LEVEL_UP hands on the event's level, PLAYER_LEVEL_CHANGED repaints the difference).
+it("unit frames: after a ding the target's level colour is the one for your new level, without a retarget", () => {
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + `
+    __lv = { player = 60, target = 63 }
+    UnitLevel = function(unit) return __lv[unit] or 12 end
+    CurveConstants = { ScaleTo100 = { __curve = true } }
+    UnitHealthPercent = function() return 84 end`, NO_RAID);
+  addon.fire("PLAYER_TARGET_CHANGED");
+  addon.fire("PLAYER_LEVEL_UP", 61, 0, 0);
+  addon.eval("__lv.player = 61");
+  addon.fire("UNIT_LEVEL", "player");
+  addon.fire("PLAYER_LEVEL_CHANGED", 60, 61, true);
+  const [color, fresh] = addon.eval("local c = GetCreatureDifficultyColor(63) return { Vanguard_target.level.__textColor, { c.r, c.g, c.b } }");
+  expect(color.slice(0, 3), "the target's level reads in the colour for level 61 (+2)").toEqual(fresh);
+});
+
 it("unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows", () => {
-  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + "CurveConstants = { ScaleTo100 = { __curve = true } } UnitHealthPercent = function() return 84 end", NO_RAID);
+  const addon = loggedIn(UNITS_ENV + FOREVER_ENV + "CurveConstants = { ScaleTo100 = { __curve = true } } UnitHealthPercent = function() return 84 end UnitClassification = function() return 'normal' end", NO_RAID);
   // HealthText with the percent format on, and string.format answering the percent's "%d%%" with `format` (a Lua value) when given.
   const text = (setup, format) => addon.eval(`local UF = ns.GetModule("UnitFrames") UF.settings.healthFormat = "percent" ${setup}
     __s = __wfgWorld.secret() local real = string.format

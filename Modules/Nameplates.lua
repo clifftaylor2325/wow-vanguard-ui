@@ -1157,8 +1157,8 @@ local EVENTS = {
   PLAYER_ENTERING_WORLD = scan,
   NAME_PLATE_UNIT_ADDED = onAdded, NAME_PLATE_UNIT_REMOVED = onRemoved,
   PLAYER_TARGET_CHANGED = function() each(NP.UpdateTarget) end, PLAYER_FOCUS_CHANGED = function() each(NP.UpdateTarget) end, RAID_TARGET_UPDATE = function() each(NP.UpdateIcon) end,
-  -- Your new level changes how hard every unit is for you.
-  PLAYER_LEVEL_UP = function() each(NP.UpdateName) end,
+  -- Your new level changes how hard every unit is for you (after it applies: PLAYER_LEVEL_UP comes before).
+  PLAYER_LEVEL_CHANGED = function() each(NP.UpdateName) end,
   -- After a fight: the client's containers for plates first drawn in it, then any plate still behind the layout.
   PLAYER_REGEN_ENABLED = function() upgradeRows() NP.CatchUp() end, UPDATE_MOUSEOVER_UNIT = onMouseover,
   -- Joining or leaving the tagger's group changes who tagged each mob.
