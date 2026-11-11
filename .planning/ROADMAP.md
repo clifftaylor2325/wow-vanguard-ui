@@ -1,6 +1,6 @@
 # Roadmap: Vanguard: Forever launch
 
-> **Closed.** GSD planning stopped being the way work is planned after 2026-10-17; launch (2026-11-04) and releases 0.9.0 to 0.9.3 were planned in `docs/handoff` and the project's threads. This file is no longer kept up to date. It stays because it holds the goal, success criteria, files and checks of the open UI coherence phases (8.3 to 8.6, 8.8, 8.10, 8.11), and the table at the end is as it was left. What ships next is in `docs/CHANGELOG.md` and `Core/WhatsNewNotes.lua`; what has been seen in the game is in `docs/smoke-results.json`.
+> **Closed.** GSD planning stopped being the way work is planned after 2026-10-17; launch (2026-11-04) and releases 0.9.0 to 0.9.3 were planned in `docs/handoff` and the project's threads. The per-phase plan and context files (`.planning/phases/`) and the other closed GSD records were deleted on 2026-11-11. This file is no longer kept up to date. It stays because it holds the goal, success criteria, files and checks of the open UI coherence phases (8.3 to 8.6, 8.8, 8.10, 8.11), and the table at the end is as it was left. What ships next is in `docs/CHANGELOG.md` and `Core/WhatsNewNotes.lua`; what has been seen in the game is in `docs/smoke-results.json`.
 
 ## Overview
 
