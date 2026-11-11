@@ -5486,6 +5486,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the target cast bar flashes red "Interrupted" and fades with no diamond beside it, though your Counterspell's cooldown starts during the flash. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of the cast bar while it flashes.
 
+### 33.505 The raid grid stays on its spot when the tiles' Width changes
+
+- Do: on either client, in a raid of 6 or more (two columns) out of combat, set Width to 120 under `/vg` → Raid frames, then press its reset arrow.
+- Expect: each time the grid stays centred on its spot at once, and does not jump when someone next joins or leaves. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors` and a screenshot before and after someone joins.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

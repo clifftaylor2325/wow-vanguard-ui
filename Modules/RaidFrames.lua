@@ -896,12 +896,14 @@ end
 
 -- Gives the header, its tiles and the holder the width and height now set (the tiles and the header are secure:
 -- out of combat only), lays the grid out again, then tells the tile modules (RF.sizeHooks), each under ns.Try.
+-- The tiles are sized before the header's attributes: each attribute change has the client's header measure its
+-- first tile to size itself (SecureGroupHeaders.lua, configureChildren), so it must see the new size.
 local function resize()
   local s = RF.settings
   RF.builtSize = { width = s.width, height = s.height, spacing = s.spacing }
+  for _, b in ipairs(RF.buttons) do b:SetSize(s.width, s.height) end
   RF.header:SetAttribute("vg-width", s.width)
   RF.header:SetAttribute("vg-height", s.height)
-  for _, b in ipairs(RF.buttons) do b:SetSize(s.width, s.height) end
   RF.SizeHolder(RF.holder, RF.builtSize, RF.layoutKey)
   RF.Fit()
   for _, hook in ipairs(RF.sizeHooks) do ns.Try("raid tile size", hook) end
