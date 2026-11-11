@@ -147,7 +147,8 @@ export const pageBar1 = (addon, n) => addon.eval(`
   local bar, kids = Vanguard_Bar1, {}
   for _, w in ipairs(__wfgStub.frames) do if w.__parent == bar then kids[#kids + 1] = w end end
   local env = { self = { SetAttribute = function() end, GetChildren = function() return unpack(kids) end }, newstate = ${Number(n)}, ipairs = ipairs, newtable = function(...) return { ... } end }
-  load(ns.GetModule("ActionBars").ON_PAGE, "page", "t", env)()`);
+  local page = ns.GetModule("ActionBars").ON_PAGE
+  ;(setfenv and setfenv(loadstring(page, "page"), env) or load(page, "page", "t", env))()`);
 
 // One action button's state.
 export const button = (addon, bar, i) => addon.eval(`

@@ -7,10 +7,10 @@ import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 
 // Runs Lua as if it were a line of one of the addon's files (Modules/TEST-ONLY.lua), and returns its result.
-const asAddon = (addon, lua) => addon.eval(`return assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
+const asAddon = (addon, lua) => addon.eval(`return assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
 
 // The same, under pcall: { ok, result or error text }.
-const tryAddon = (addon, lua) => addon.eval(`return { pcall(assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) }`);
+const tryAddon = (addon, lua) => addon.eval(`return { pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) }`);
 
 // The client's error for a secret handed to a method that takes one only from untainted code.
 const refusedText = (name, i = 1) => `Modules/TEST-ONLY.lua:1: bad argument #${i} to '${name}' (Secret values are only allowed during untainted execution for this argument.)`;

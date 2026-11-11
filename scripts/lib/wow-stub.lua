@@ -96,6 +96,10 @@ if math.type then string.format = fivePointOneFormat end
 local stub = { frames = {}, chat = {}, now = 1000, inCombat = false }
 __wfgStub = stub
 
+-- 5.3's table.pack and table.unpack for the harness's own files, which run on both engines (5.1 has only unpack).
+stub.pack = table.pack or function(...) return { n = select("#", ...), ... } end
+stub.unpack = table.unpack or unpack
+
 -- Test clock: only stub.update moves it.
 function GetTime()
   return stub.now

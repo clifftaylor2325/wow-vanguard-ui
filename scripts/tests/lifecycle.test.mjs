@@ -29,7 +29,7 @@ const MODULES = `
 const off = (...names) => names.map((n) => `\nVanguardDB.profiles.Default.modules.${n} = false`).join("");
 
 // Runs Lua as a file of the addon's (the taint rules count its frames as the addon's, as a module's are).
-const asAddon = (addon, lua) => addon.eval(`assert(load(${JSON.stringify(`local ADDON, ns = ...\n${lua}`)}, "@Modules/TEST-ONLY.lua"))("Vanguard", ns)`);
+const asAddon = (addon, lua) => addon.eval(`assert(loadstring(${JSON.stringify(`local ADDON, ns = ...\n${lua}`)}, "@Modules/TEST-ONLY.lua"))("Vanguard", ns)`);
 
 // The addon logged in with the heavy modules off, the test modules registered, and `saved` Lua run after the
 // saved variables (module switches).

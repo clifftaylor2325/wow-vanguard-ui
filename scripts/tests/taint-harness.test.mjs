@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 
 // Runs Lua as if it were a line of one of the addon's files (Modules/TEST-ONLY.lua).
-const asAddon = (addon, lua) => addon.eval(`assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
+const asAddon = (addon, lua) => addon.eval(`assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
 
 // The rule breaks recorded so far, by text, then forgotten.
 const violations = (addon) => addon.eval(`local out = {} for _, v in ipairs(__wfgStub.violations) do out[#out + 1] = v.text end
@@ -76,7 +76,7 @@ it("world.forbid closes a game frame and the game's widgets under it to addon co
   asAddon(addon, "TestMine = CreateFrame('Frame', nil, TestPlate)");
   addon.eval("__wfgWorld.forbid(TestPlate)");
   // Whether an addon call on that widget raised, and the text it raised with.
-  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) return { ok, ok and "" or tostring(e) }`);
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) return { ok, ok and "" or tostring(e) }`);
   expect(tryAddon("TestPlate:ClearAllPoints()"), "the plate refuses").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
   expect(tryAddon("TestIcon:SetTexture(1)")[0], "its texture refuses").toBe(false);
   expect(tryAddon("return TestPlate:IsForbidden() and TestIcon:IsForbidden()"), "both say so, to the addon too").toEqual([true, ""]);

@@ -306,14 +306,14 @@ it("a call from the tests that runs past its instruction budget fails with a tra
 // Taint rules (scripts/lib/wow-taint.lua) ------------------------------------------------------
 
 // Runs Lua as if it were a line of one of the addon's files (Modules/TEST-ONLY.lua), and returns its result.
-const asAddon = (addon, lua) => addon.eval(`return assert(load(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
+const asAddon = (addon, lua) => addon.eval(`return assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))()`);
 
 it("taint: frames belong to whoever made them; the addon's files make the addon's", () => {
   const addon = createAddon();
-  addon.eval(`__mine = assert(load("local f = CreateFrame('Frame', nil, UIParent) return f", "@Modules/TEST-ONLY.lua"))()
-    __mineTex = assert(load("local t = ChatFrame1:CreateTexture() return t", "@Modules/TEST-ONLY.lua"))()
+  addon.eval(`__mine = assert(loadstring("local f = CreateFrame('Frame', nil, UIParent) return f", "@Modules/TEST-ONLY.lua"))()
+    __mineTex = assert(loadstring("local t = ChatFrame1:CreateTexture() return t", "@Modules/TEST-ONLY.lua"))()
     __game = CreateFrame("StatusBar", nil, UIParent) __game:SetStatusBarTexture("TEST-ONLY") __gameTex = __game:CreateTexture()
-    __viaPcall = assert(load("local ok, f = pcall(CreateFrame, 'Frame') return f", "@Core/TEST-ONLY.lua"))()`);
+    __viaPcall = assert(loadstring("local ok, f = pcall(CreateFrame, 'Frame') return f", "@Core/TEST-ONLY.lua"))()`);
   expect(addon.eval("return { UIParent.__byGame, ChatFrame1.__byGame, __game.__byGame, __game:GetStatusBarTexture().__byGame, __gameTex.__byGame }"),
     "the client's frames, test code's stand-ins, and regions the stub makes for them are the game's").toEqual([true, true, true, true, true]);
   expect(addon.eval("return { __mine.__byGame == nil, __mineTex.__byGame == nil, __viaPcall.__byGame == nil }"),
@@ -338,7 +338,7 @@ it("taint: addon code storing a field on a game frame fails the test; game, test
 // A TEST-ONLY secure button (the game's), the addon's holder around it, and a listener for blocked actions.
 const SECURE_ENV = `
   __secure = CreateFrame("Button", "TESTONLY_Secure", UIParent, "SecureActionButtonTemplate")
-  __holder = assert(load("local f = CreateFrame('Frame', 'TESTONLY_Holder', UIParent) return f", "@Modules/TEST-ONLY.lua"))()
+  __holder = assert(loadstring("local f = CreateFrame('Frame', 'TESTONLY_Holder', UIParent) return f", "@Modules/TEST-ONLY.lua"))()
   __inner = CreateFrame("Button", nil, __holder, "SecureUnitButtonTemplate")
   __blocked = {}
   __listen = CreateFrame("Frame") __listen:RegisterEvent("ADDON_ACTION_BLOCKED")
@@ -369,14 +369,14 @@ it("taint: a hook in front of a protected method doesn't hide the addon code tha
   addon.eval(SECURE_ENV + "hooksecurefunc(__secure, 'Hide', function() end)");
   addon.world.combat(true);
   expectErrors("blocked in combat: Core/TEST-ONLY.lua:1 called Hide on the protected frame TESTONLY_Secure");
-  addon.eval(`assert(load("__secure:Hide()", "@Core/TEST-ONLY.lua"))()`);
+  addon.eval(`assert(loadstring("__secure:Hide()", "@Core/TEST-ONLY.lua"))()`);
   expect(addon.eval("return __secure:IsShown()"), "still shown").toBe(true);
 });
 
 it("taint: in combat, ShowUIPanel and HideUIPanel refuse a run with addon code in it, as the client's panel manager does", () => {
   const addon = createAddon();
   addon.eval(`__panel = CreateFrame("Frame", "TESTONLY_Panel", UIParent) __panel:Hide()
-    __opener = assert(load("ShowUIPanel(__panel)", "@Interface/TEST-ONLY.lua"))`);
+    __opener = assert(loadstring("ShowUIPanel(__panel)", "@Interface/TEST-ONLY.lua"))`);
   asAddon(addon, "__opener()");
   expect(addon.eval("return __panel:IsShown()"), "out of combat the addon may open a panel").toBe(true);
   addon.world.combat(true);

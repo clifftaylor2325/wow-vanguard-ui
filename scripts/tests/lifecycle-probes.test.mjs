@@ -8,7 +8,7 @@ import { CLICK_LUA, HEALING_ENV, RAID_ENV, SETUP_DONE, UNITS_ENV, loggedIn } fro
 import { footprint, moduleOff } from "./lifecycle-helpers.mjs";
 
 // Runs Lua as a file of the addon's (the taint rules count its frames as the addon's).
-const asAddon = (addon, lua) => addon.eval(`assert(load(${JSON.stringify(`local ADDON, ns = ...\n${lua}`)}, "@Modules/TEST-ONLY.lua"))("Vanguard", ns)`);
+const asAddon = (addon, lua) => addon.eval(`assert(loadstring(${JSON.stringify(`local ADDON, ns = ...\n${lua}`)}, "@Modules/TEST-ONLY.lua"))("Vanguard", ns)`);
 // The addon with the heavy modules off, not yet logged in.
 const scoped = () => createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) });
 

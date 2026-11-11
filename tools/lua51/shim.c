@@ -78,8 +78,11 @@ static void put_string (const char *s, size_t n) {
   out_c('"');
 }
 
+/* A number as JSON. -0 goes as 0: Lua's own == does not tell them apart, and Lua 5.1, with no integers, makes
+   -0 where 5.3's integer arithmetic made 0. */
 static void put_number (double d) {
   char b[40];
+  if (d == 0) { out_c('0'); return; }
   if (isfinite(d)) { snprintf(b, sizeof b, "%.17g", d); out_s(b); return; }
   out_special = 1;
   out_s(isnan(d) ? "\"\\u0001NaN\"" : d > 0 ? "\"\\u0001Infinity\"" : "\"\\u0001-Infinity\"");

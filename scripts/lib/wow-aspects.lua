@@ -34,6 +34,7 @@ local stub = __wfgStub
 local type = __wfgRawType
 local methods = stub.methods
 local world = stub.world
+local pack, unpackN = stub.pack, stub.unpack
 local callerOf, byAddon, where = stub.callerOf, stub.byAddon, stub.where
 
 -- Enum.SecretAspect (SecretAspectConstantsDocumentation.lua:6-43; the object aspects share the value 1).
@@ -214,20 +215,20 @@ local secretAt = __wfgSecretAt
 
 -- Each value as a secret, a secret left as it is; nil stays nil.
 local function asSecrets(...)
-  local out = table.pack(...)
+  local out = pack(...)
   for i = 1, out.n do
     if out[i] ~= nil and not marked(out[i]) then out[i] = world.secret(out[i]) end
   end
-  return table.unpack(out, 1, out.n)
+  return unpackN(out, 1, out.n)
 end
 
 -- Each secret as the plain value it hides (what the stub keeps when the game's code sets one).
 local function plainValues(...)
-  local out = table.pack(...)
+  local out = pack(...)
   for i = 1, out.n do
     if marked(out[i]) then out[i] = rawget(out[i], "n") end
   end
-  return table.unpack(out, 1, out.n)
+  return unpackN(out, 1, out.n)
 end
 
 -- Wrapping -------------------------------------------------------------------------------------------

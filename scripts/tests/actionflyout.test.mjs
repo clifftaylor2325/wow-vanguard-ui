@@ -50,7 +50,7 @@ const run = (addon, snippet, { button = "Vanguard_Bar1Button1", rect = "900, 40,
   local r = { ${rect} }
   local self = wrap(${button}, { GetRect = function() if r[1] then return unpack(r) end end, GetEffectiveScale = function() return 1 end })
   local env = { self = self, control = control, down = ${down}, ipairs = ipairs, newtable = function(...) return { ... } end, GetActionInfo = GetActionInfo }
-  local first, second = load(${snippet}, "snippet", "t", env)()
+  local first, second = (setfenv and setfenv(loadstring(${snippet}, "snippet"), env) or load(${snippet}, "snippet", "t", env))()
   return { first == nil and "nil" or first, second == nil and "nil" or second }`);
 
 // The list's state after a run: shown, who opened it, the spells and anchors of its first buttons.

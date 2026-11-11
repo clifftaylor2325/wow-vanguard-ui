@@ -12,7 +12,7 @@ const ARROW_ENV = `
   __titles = { [90061] = "TEST-ONLY Near", [90062] = "TEST-ONLY Far", [90063] = "TEST-ONLY Done" }
   C_QuestLog.GetTitleForQuestID = function(id) return __titles[id] end
   __spots = { [90061] = { 10, 0.6, 0.5 }, [90062] = { 10, 0.3, 0.3 }, [90063] = { 10, 0.5, 0.9 } }
-  C_QuestLog.GetNextWaypoint = function(id) if __spots[id] then return table.unpack(__spots[id]) end end
+  C_QuestLog.GetNextWaypoint = function(id) if __spots[id] then return unpack(__spots[id]) end end
   C_QuestLog.GetQuestsOnMap = function() return {} end
   C_Map.GetBestMapForUnit = function() return 10 end
   C_Map.GetMapWorldSize = function() return 1000, 1000 end
