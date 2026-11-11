@@ -299,11 +299,13 @@ local function takeKeys()
   QD.frame:EnableKeyboard(QD.frame:IsShown())
 end
 
--- Shows a page (unless automation is about to answer it for you, or the game's own window has the talk).
+-- Shows a page (unless automation is about to answer it for you, or the game's own window has the talk). An offer an
+-- item started (QD.itemOffer) shows too, but no key answers it: you were looting, not asking.
 function QD.Show(key, event, ...)
   if QD.Bypassed(event, ...) then return end
   local auto = ns.GetModule("QuestAuto")
-  if auto and auto.Claims and auto.Claims(event) then return end
+  if auto and auto.Claims and auto.Claims(event, ...) then return end
+  QD.itemOffer = QP.StartItem(event, ...)
   if key == "gossip" and QD.SkipGossip() then return end
   QD.key, QD.page, QD.choice, QD.event = key, QD.PAGES[key](), nil, event
   QD.Render(QD.page)

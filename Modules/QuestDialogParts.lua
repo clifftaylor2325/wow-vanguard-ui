@@ -87,6 +87,15 @@ function QP.FlagsPVP()
   return ns.IsTrue(ns.CallIf(_G, "QuestFlagsPVP"))
 end
 
+-- The item that started the offered quest (QUEST_DETAIL's only value, questStartItemID: QuestLogDocumentation.lua), or
+-- nil for an offer no item started or any other event. The game closes such an offer and leaves a tracker popup
+-- (Blizzard_UIPanels_Game/Mainline/QuestFrame.lua, QuestFrame_OnEvent); Vanguard still shows it, but nothing accepts
+-- it for you.
+function QP.StartItem(event, itemID)
+  local id = event == "QUEST_DETAIL" and ns.PlainNumber(itemID) or nil
+  return id and id ~= 0 and id or nil
+end
+
 -- Lines ----------------------------------------------------------------------------------------
 
 -- An objective's text with its count inside it (French kills, "Sanglier : 3/8 personnages tués") as

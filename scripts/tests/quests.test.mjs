@@ -2004,6 +2004,29 @@ it("quest automation: a quest that flags you for PvP is left to you, with the di
   addon.fire("QUEST_DETAIL");
   expect(calls(addon), "a hidden answer counts as no flag").toEqual(["accept nil"]);
 });
+// QUEST_DETAIL's only value is questStartItemID (forever Blizzard_APIDocumentationGenerated/QuestLogDocumentation.lua); the game's
+// own QuestFrame_OnEvent (Blizzard_UIPanels_Game/Mainline/QuestFrame.lua:39-53) closes such an offer and leaves a tracker popup.
+it("H20-7-1 quest automation: a quest an item started is shown, never accepted for you, whatever the switch", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true, acceptShared = true } } }" });
+  addon.fire("QUEST_DETAIL", 6948);
+  expect([dialog(addon).shown, calls(addon)], "an item-started offer: the page open, nothing accepted").toEqual([true, []]);
+  addon.fire("QUEST_DETAIL", 0);
+  expect(calls(addon), "item 0 means none: accepted as before").toEqual(["accept nil"]);
+  addon.fire("QUEST_DETAIL", { __secret: true });
+  expect(calls(addon), "a hidden value counts as none").toEqual(["accept nil"]);
+});
+it("H4-6-4 quest dialog: Space and Enter do not accept a quest an item started; the button does, and an ordinary offer still takes Space", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_DETAIL", 6948);
+  key(addon, "SPACE");
+  key(addon, "ENTER");
+  expect([calls(addon), dialog(addon).shown], "no key accepts it; the dialog stays up").toEqual([[], true]);
+  addon.click("Vanguard_QuestDialog.primary");
+  expect(calls(addon), "the Accept button answers it").toEqual(["accept nil"]);
+  addon.fire("QUEST_DETAIL");
+  key(addon, "SPACE");
+  expect(calls(addon), "an ordinary offer: Space accepts").toEqual(["accept nil"]);
+});
 // The quest dialog on a PvP-flagging quest with Accept pressed.
 const pvpAsked = () => {
   const addon = loggedIn(QUEST_ENV + PVP_ENV);

@@ -5500,6 +5500,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the game's own picker or guide window opens, not Vanguard's plain gossip list; an ordinary quest giver still opens Vanguard's dialog.
 - If it fails, paste: which window opened, and `/vg errors`.
 
+### 33.566 An item-started quest is not accepted by a key or automation (H20-7-1)
+
+- Do: with the Quest dialog on and Quests > Accept quests on, loot an item that starts a quest while holding Space (or tapping Enter).
+- Expect: Vanguard's dialog opens on the offer and stays open, nothing is accepted until you click Accept; an ordinary quest giver is still accepted by Space and by automation as before.
+- If it fails, paste: whether the quest was accepted, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
