@@ -1035,3 +1035,38 @@ it("a client without CanBeAccessedInContext: a refused GetParent reads as held, 
   addon.eval("__wfgWorld.holdAccess(__c.frame) __c.frame.CanBeAccessedInContext = false");
   expect([addon.eval("return ns.Auras.ShutFrom(__c.frame)"), addon.eval("return __placed()")], "held, and Refit leaves it").toEqual(["held", [true]]);
 });
+
+// An aura button's icon inset (its icon texture's TOPLEFT x) and one pixel at the button's effective scale now.
+const insetOf = (addon, lua) => addon.eval(`local b = ${lua} local p = b.__icon.__points.TOPLEFT
+  return { p.x, ns.Theme.PixelAtScale(b:GetEffectiveScale()) }`);
+
+// Whether an inset is one pixel at its button's scale.
+const onPixel = ([x, px]) => Math.abs(x - px) < 1e-6;
+
+it("H44-5-3 auras: your buffs', the target's and a raid tile's icons go back on whole pixels after a scale change", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  addon.fire("PLAYER_TARGET_CHANGED");
+  const buttons = ["ns.GetModule('PlayerAuras').auras.frame.__groups[1].buttons[1]", "Vanguard_target.debuffs.frame.__groups[2].buttons[1]",
+    "Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]"];
+  addon.eval("ns.GetModule('PlayerAuras').holder:SetScale(1.6) Vanguard_target:SetScale(1.6) Vanguard_RaidUnitButton1:SetScale(1.6) ns.Theme.Rescale()");
+  for (let i = 0; i < 4; i++) addon.update(0.016);
+  expect(buttons.map((b) => onPixel(insetOf(addon, b))), "each icon's inset is one pixel at the new scale").toEqual([true, true, true]);
+});
+
+it("H44-5-7 auras: an icon the client holds back at a scale change goes on whole pixels once it lets go and aura information is plain", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1") __b = Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]');
+  addon.eval("__wfgWorld.aurasSecret = true __wfgWorld.holdAccess(__b)");
+  addon.eval("Vanguard_RaidUnitButton1:SetScale(1.6) ns.Theme.Rescale()");
+  for (let i = 0; i < 4; i++) addon.update(0.016);
+  addon.eval("__wfgWorld.releaseAccess(__b)");
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+  addon.update(0.016);
+  expect(onPixel(insetOf(addon, "__b")), "let go while aura information is still hidden: left for now").toBe(false);
+  addon.eval("__wfgWorld.aurasSecret = false");
+  addon.fire("ADDON_RESTRICTION_STATE_CHANGED", 0, 0);
+  addon.update(0.016);
+  expect(onPixel(insetOf(addon, "__b")), "plain again: the inset is one pixel at the new scale").toBe(true);
+  expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+});

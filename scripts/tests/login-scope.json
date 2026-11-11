@@ -26,6 +26,7 @@
     "scripts/tests/auctionshop.test.mjs": [],
     "scripts/tests/auctionupgrades.test.mjs": [],
     "scripts/tests/auras.test.mjs": [
+      "H44-5-3 auras: your buffs', the target's and a raid tile's icons go back on whole pixels after a scale change",
       "a client that rejects every aura filter word keeps the filter and shows no auras",
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",

@@ -226,11 +226,13 @@ local function hoverPad(holder, s)
   holder.vgHoverArea = pad
 end
 
--- The aura container on the holder, keeping its row width (PA.lineSize) for the hover pad.
+-- The aura container on the holder, keeping its row width (PA.lineSize) for the hover pad; its icons follow the scale.
 local function container(s)
   local spec = PA.Spec(PA.holder, s)
   PA.lineSize = spec.lineSize
-  return A.Container(PA.holder, spec, "player")
+  local c = A.Container(PA.holder, spec, "player")
+  A.Follow(c.frame)
+  return c
 end
 
 -- The movable holder left of the minimap, the container and the enchant cells.

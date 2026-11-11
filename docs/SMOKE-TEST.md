@@ -5426,6 +5426,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: within a moment of letting go each tile's debuff and HoT icons shrink to fit the smaller tile, stay in their bottom corners and draw over neither the name nor each other; on WoW Retail the private aura spot in the middle shrinks with them. [Needs in-game check: all of it.]
 - If it fails, paste: `/vg errors`, and a screenshot of a tile after the drag.
 
+### 33.495 Your buffs' and the target's aura icons keep thin edges after a scale change
+
+- Do: on either client, with a few buffs up and a target with your debuffs on it, type `/vg unlock`, click the buffs' handle and the target frame's handle, set each one's Scale % to 160 and lock again; then in a dungeon fight with debuffs on a raid tile, press Alt+Enter (a window size change) and let the fight end.
+- Expect: the buff and target debuff icons keep a one-pixel dark edge and inset (no soft or doubled edge), and within a moment of the fight ending the raid tile's icons have them too. [Needs in-game check: all of it, and whether the game's restriction event comes once it lets the icons go.]
+- If it fails, paste: `/vg errors`, and a close screenshot of a buff icon and a raid tile's debuff icon.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

@@ -248,11 +248,19 @@ local function rowsSignature(b)
   return table.concat(parts, "|")
 end
 
--- Builds a tile's rows and indicators (out of combat).
+-- Every row of a tile that has them: debuffs, HoTs and the indicators.
+local function tileRows(b)
+  local rows = { b.debuffRow, b.hotRow }
+  for _, row in ipairs(b.indRows or {}) do rows[#rows + 1] = row end
+  return rows
+end
+
+-- Builds a tile's rows and indicators (out of combat), their icons kept on whole pixels as the grid's scale moves.
 local function build(b)
   addRows(b)
   addIndicators(b)
   b.auraSignature = rowsSignature(b)
+  for _, row in ipairs(tileRows(b)) do ns.Auras.Follow(row.frame) end
 end
 
 -- How many tiles are kept built ahead: every one in a raid (it can grow in a fight), the first
@@ -334,13 +342,6 @@ local function emptied(b)
   if b.dispel then b.dispel:Hide() end
 end
 
--- Every row of a tile that has them: debuffs, HoTs and the indicators.
-local function tileRows(b)
-  local rows = { b.debuffRow, b.hotRow }
-  for _, row in ipairs(b.indRows or {}) do rows[#rows + 1] = row end
-  return rows
-end
-
 -- Hides a tile's rows and highlight and lets go of its unit (the module stopped, or the rows are to be made again).
 local function clearTile(b)
   for _, row in ipairs(tileRows(b)) do
@@ -361,31 +362,6 @@ end
 -- A tile whose rows were made from other settings than now loses them.
 local function reconcile(b)
   if built(b) and b.auraSignature ~= rowsSignature(b) then retireRows(b) end
-end
-
--- Whether an icon placed at the scale `placed` is still on whole pixels at its holder's scale now (a hidden scale
--- counts as unchanged).
-local function sameScale(scale, placed)
-  scale = ns.PlainNumber(scale)
-  return scale == nil or math.abs(scale - placed) < RF.SCALE_EPSILON
-end
-
--- Puts every built tile's aura icons back on whole pixels where the grid's scale moved since they were placed (their
--- one-pixel inset, sweep and edges): a T.OnScale listener (the raid grid's compact scale, the raid mover's Scale or the
--- UI scale changed; out of combat), and at each start. Each row's holder scale is read once for its icons.
-function RA.Refit()
-  for _, b in ipairs(RF.buttons) do
-    if built(b) then
-      for _, row in ipairs(tileRows(b)) do ns.Auras.Refit(row.frame, sameScale) end
-    end
-  end
-end
-
--- Puts the icons on whole pixels for the scale now (a scale change while the module was off) and after each
--- later scale change while it runs.
-function RA.FollowScale(scope)
-  scope:Gate("scale", RA.Refit, T.OnScale)
-  RA.Refit()
 end
 
 -- Adds fn to one of the raid frames' tile hook lists (RF.updateHooks and the others) unless it is there already (the
@@ -429,7 +405,6 @@ function RA.Enable(settings, scope)
   for _, b in ipairs(RF.buttons) do reconcile(b) end
   for _, hook in ipairs(RA.HOOKS) do RA.AddHook(hook[1], hook[2]) end
   scope:On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
-  RA.FollowScale(scope)
   RA.BuildAhead()
   if ns.ModulesBuilt() then RF.UpdateAll() end
 end
