@@ -681,23 +681,36 @@ local function dressTextEdit(frame)
   GW.DressClose(frame, findCross(frame))
 end
 
--- The news filters dialog as a flyout on the guild window's right edge (a pixel under it, so the shared border hides), out of combat.
+-- The width of the game's side tabs on the guild window (RightSideTab.xml, 32 x 32; CommunitiesFrame.xml hangs them
+-- off the window's right edge).
+GW.SIDE_TAB_WIDTH = 32
+
+-- How far past the guild window's right edge the news filters flyout starts: the side tab column (moved out by the
+-- tabs skin's padding while that runs), the flyout's own panel padding and a pixel, so it sits clear of the tabs.
+local function flyoutReach(window, frame)
+  local tabs = GW.GroupOn("tabs") and GW.TabPad(window) or 0
+  return GW.SIDE_TAB_WIDTH + tabs + T.Padding(frame) + T.Pixel(frame)
+end
+
+-- The news filters dialog as a flyout beside the guild window, past its side tabs, out of combat.
 local function attachNewsFilters(frame)
   local window = _G.CommunitiesFrame
   if type(window) ~= "table" or not frame.SetPoint then return end
   ns.OutOfCombat(function()
     frame:ClearAllPoints()
-    frame:SetPoint("TOPLEFT", window, "TOPRIGHT", -1, -T.SPACE.section)
+    frame:SetPoint("TOPLEFT", window, "TOPRIGHT", flyoutReach(window, frame), -T.SPACE.section)
   end, frame)
 end
 
--- The news filters flyout follows the guild window: attached on each show, and hidden with the window.
+-- The news filters flyout follows the guild window: attached on each show and after each of the game's panel layout
+-- passes while it is up (another window opening or closing re-places it in the manager's slot), and hidden with the window.
 local function watchNewsFilters(frame)
   local window = _G.CommunitiesFrame
   if type(window) ~= "table" or not window.HookScript or vgSocialSide[frame] then return end
   vgSocialSide[frame] = true
   frame:HookScript("OnShow", ns.Guard("news filters attach", attachNewsFilters))
   window:HookScript("OnHide", ns.Guard("news filters close", function() frame:Hide() end))
+  GW.HookGlobalOnce("UpdateUIPanelPositions", "news filters attach", function() if ns.IsTrue(frame:IsShown()) then attachNewsFilters(frame) end end)
 end
 
 -- The news filters dialog: its seven check boxes (frame.GuildNewsFilterButtons) as theme check boxes, attached to the window's side.

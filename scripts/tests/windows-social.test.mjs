@@ -1361,14 +1361,42 @@ it("social dialogs: the guild log's and text edit's boxes, titles and X buttons,
   "log and text edit: boxes sunk, the log's title a title, the X the close glyph, the text buttons not").toEqual([true, true, true, false, true, true, true, false]);
   expect(addon.eval(`local n = 0 for _, c in ipairs(CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons) do if type(c.GetChecked) == "function" and ns.Theme.CheckParts(c) then n = n + 1 end end
     return { n, #CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons }`), "seven news filter checks (the odd entry left alone)").toEqual([7, 8]);
+  // The tab column's 32 (RightSideTab.xml), the tabs skin's padding, the flyout's own padding and a pixel.
+  const reach = addon.eval("local f, w = CommunitiesGuildNewsFiltersFrame, CommunitiesFrame local T = ns.Theme return 32 + T.Padding(w) - T.Pixel(w) + T.Padding(f) + T.Pixel(f)");
   expect(addon.eval(`local f = CommunitiesGuildNewsFiltersFrame
     local function at() local p, rel, rp, x = f:GetPoint() return { p, rel == CommunitiesFrame, rp, x } end
     f:ClearAllPoints() f:Hide() f:Show()
     local shown = at() CommunitiesFrame:Show() CommunitiesFrame:Hide()
-    return { shown, f:IsShown() }`), "the news filters flyout is attached to the guild window's right edge and closes with the window").toEqual([["TOPLEFT", true, "TOPRIGHT", -1], false]);
+    return { shown, f:IsShown() }`), "the news filters flyout is attached beside the guild window (past its side tabs, H44-16-2) and closes with the window").toEqual([["TOPLEFT", true, "TOPRIGHT", reach], false]);
   expect(addon.eval(`return { GuildInviteFrameTabardBackground:GetAlpha(), GuildInviteFrameTabardEmblem:GetAlpha(), GuildInviteFrameTabardBorder:GetAlpha(),
       GuildInviteFrameJoinButton.Art:GetAlpha(), GuildInviteFrameDeclineButton.Art:GetAlpha(), __lit(GuildInviteFrameGuildName) }`),
   "the inviting guild's tabard kept, its border faded, Join and Decline flat, the guild name light").toEqual([1, 1, 0, 0, 0, true]);
+});
+
+// CommunitiesFrame.xml: ChatTab hangs 32 x 32 off the window's TOPRIGHT at y -36, each next tab 20 below the last (RightSideTab.xml
+// is 32 x 32; GuildNews.xml's flyout is 264 x 230). The panel manager re-places a flyout it manages on every layout pass
+// (Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua: UpdateUIPanelPositions clears and sets its points on UIParent).
+it("H44-16-2 social dialogs: the news filters flyout sits clear of the guild window's side tabs, and again after the game lays its panels out", () => {
+  const tabs = `CommunitiesGuildNewsFiltersFrame:SetSize(264, 230)
+    local f = CommunitiesFrame f:SetSize(814, 426) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -100)
+    local prev for _, key in ipairs({ "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab" }) do
+      local tab = CreateFrame("CheckButton", nil, f) tab:SetSize(32, 32) f[key] = tab
+      if prev then tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -20) else tab:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, -36) end
+      prev = tab
+    end
+    UpdateUIPanelPositions = function() local nf = CommunitiesGuildNewsFiltersFrame nf:ClearAllPoints() nf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 900, -100) end`;
+  const addon = loggedIn(DIALOG_PARTS_ENV + tabs);
+  addon.eval("CommunitiesFrame:Show() CommunitiesGuildNewsFiltersFrame:Show()");
+  const covered = () => addon.eval(`local nf, f = CommunitiesGuildNewsFiltersFrame, CommunitiesFrame
+    local function overlaps(a, b) return a:GetLeft() < b:GetRight() and b:GetLeft() < a:GetRight() and a:GetBottom() < b:GetTop() and b:GetBottom() < a:GetTop() end
+    local n = 0 for _, key in ipairs({ "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab" }) do if overlaps(nf, f[key]) then n = n + 1 end end
+    return { n, nf:GetLeft() > f:GetRight() }`);
+  expect(covered(), "no side tab under the flyout, which starts past the window's right edge").toEqual([0, true]);
+  addon.eval("UpdateUIPanelPositions()");
+  expect(addon.eval("local p, rel = CommunitiesGuildNewsFiltersFrame:GetPoint() return rel == CommunitiesFrame"), "after the game's layout pass it is beside the window again").toBe(true);
+  addon.eval("CommunitiesGuildNewsFiltersFrame:Hide() UpdateUIPanelPositions()");
+  expect(addon.eval("local p, rel = CommunitiesGuildNewsFiltersFrame:GetPoint() return rel == UIParent"), "a hidden flyout is left alone").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
 it("social dialogs: the settings dialog's text areas, checks, dropdowns and labels, the avatar picker and the invite manager", () => {

@@ -5530,6 +5530,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the community name in the toast stands out (blue or gold) from the grey sentence; a friend coming online still reads in secondary text.
 - If it fails, paste: a screenshot, or `name coloured: yes/no`.
 
+### 33.571 The guild news filters flyout sits clear of the side tabs and stays put (H44-16-2, H44-16-3)
+
+- Do: open the guild window, Guild Info, Set filters; then open and close the character pane (or another side window) while the flyout is up.
+- Expect: the flyout sits beside the guild window without covering the Chat, Roster, Benefits or Info tabs, and stays beside it after the other window opens and closes.
+- If it fails, paste: a screenshot, and where the flyout ends up.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
