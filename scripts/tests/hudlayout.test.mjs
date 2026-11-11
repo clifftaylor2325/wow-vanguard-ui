@@ -158,6 +158,22 @@ it("Standards: switching to it hides the power number on the banners (as a login
   expect(shown(), "back across: the number shows again").toEqual([true, true]);
 });
 
+// Each frame's rectangle (left, bottom, right, top), by unit frame key.
+const rects = (addon, keys) => addon.eval(`local out = {}
+  for _, k in ipairs({ "${keys.join('", "')}" }) do local f = _G["Vanguard_" .. k] out[k] = { f:GetLeft(), f:GetBottom(), f:GetRight(), f:GetTop() } end
+  return out`);
+// Whether two rectangles overlap.
+const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+
+it("Standards: the focus target stands as a small banner beside the focus, clear of your banner, the focus and the pet; Centered gives it its own size back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV, onLayout("standards"));
+  expect([size(addon, "Vanguard_focustarget"), banner(addon, "focustarget").name], "24 x 100, bars alone").toEqual([[24, 100], "hidden"]);
+  const r = rects(addon, ["focustarget", "player", "focus", "pet"]);
+  expect([overlap(r.focustarget, r.player), overlap(r.focustarget, r.focus), overlap(r.focustarget, r.pet), r.focustarget[2] <= r.focus[0]], "beside the focus, on its outer side, clear of every banner").toEqual([false, false, false, true]);
+  addon.eval("ns.SetHudLayout('centered')");
+  expect(size(addon, "Vanguard_focustarget"), "Centered: its own 80 x 24").toEqual([80, 24]);
+});
+
 // The shown textures among a frame's own regions, counted by image name.
 const shownArt = (addon, name) => addon.eval(`local out = {}
   for _, t in ipairs({ ${name}:GetRegions() }) do

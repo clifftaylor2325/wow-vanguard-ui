@@ -5390,6 +5390,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: under Hairline each banner shows no plate: one brass line along its pointed hem (the V) and no plate-coloured wedges or doubled line at its foot; under Rimmed the plate and its hem come back. [Needs in-game check: the V at UI scale 0.7 and Pixel-perfect.]
 - If it fails, paste: a screenshot of both banners, the UI scale, and `/vg errors`.
 
+### 33.489 Under Standards the focus target stands beside the focus
+
+- Do: on either client, set HUD layout → Where the frames stand to Standards, focus a mob that has a target (or a friend targeting something), at your usual UI scale; then switch back to Centered.
+- Expect: the focus target is a 24 x 100 banner with bars alone, standing just outside the focus banner (the next step left of it), clear of your banner, the focus and the pet; back on Centered it lies across at its own size and spot. [Needs in-game check: whether it meets the chat window's corner on a narrow canvas.]
+- If it fails, paste: a screenshot of the left side of the HUD, the canvas size (`/vg probe`), and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
