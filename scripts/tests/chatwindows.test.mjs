@@ -215,6 +215,7 @@ it("chat tabs: Close this tab closes nothing itself, with or without channels, i
   const stubs = "__popped = nil FCF_PopInWindow = function(frame) __popped = frame:GetName() FCF_Close(frame) end";
   const addon = loggedIn(ENV + TABS + stubs);
   addon.eval(`FCF_OpenNewWindow("Trade")`);
+  // Runs Close on tab 3 with a channel list, and reports whether it popped in or closed anything.
   const close = (channels) => addon.eval(`ChatFrame3.channelList = ${channels} local CW = ns.GetModule("ChatWindows") CW.editing = 3 CW.Close() return { __popped == nil, __closed == nil }`);
   expect(close("{}"), "a tab with no channel: not popped in, not closed").toEqual([true, true]);
   expect(close('{ "Trade" }'), "a tab with a channel: the same").toEqual([true, true]);

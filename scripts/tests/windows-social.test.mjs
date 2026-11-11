@@ -1387,6 +1387,7 @@ it("H44-16-2 social dialogs: the news filters flyout sits clear of the guild win
     UpdateUIPanelPositions = function() local nf = CommunitiesGuildNewsFiltersFrame nf:ClearAllPoints() nf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 900, -100) end`;
   const addon = loggedIn(DIALOG_PARTS_ENV + tabs);
   addon.eval("CommunitiesFrame:Show() CommunitiesGuildNewsFiltersFrame:Show()");
+  // How many side tabs the news filter flyout covers.
   const covered = () => addon.eval(`local nf, f = CommunitiesGuildNewsFiltersFrame, CommunitiesFrame
     local function overlaps(a, b) return a:GetLeft() < b:GetRight() and b:GetLeft() < a:GetRight() and a:GetBottom() < b:GetTop() and b:GetBottom() < a:GetTop() end
     local n = 0 for _, key in ipairs({ "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab" }) do if overlaps(nf, f[key]) then n = n + 1 end end

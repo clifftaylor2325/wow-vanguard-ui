@@ -2536,6 +2536,7 @@ it("quest dialog: the session switch gives the game its windows back, and takes 
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 it("H44-17-50 quest dialog: the module restarted while handed back still takes the game's events when the switch goes off", () => {
+  // A quest dialog restarted while handed back, then the switch turned off by the given route.
   const restart = (via) => {
     const addon = loggedIn(QUEST_ENV + GAME_WINDOW);
     const QD = "ns.GetModule('QuestDialog')";

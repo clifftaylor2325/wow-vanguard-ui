@@ -84,6 +84,15 @@ local function art(parent, key, layer)
   return t
 end
 
+-- OnLoad records each region's state and Reset puts it back (live Blizzard_ChallengesUI.lua:585-596, 616-638,
+-- 715-719, 762-766: slotting a key and taking it out calls Reset).
+local function rememberBaseStates(keystone)
+  keystone.baseStates = {}
+  for _, region in ipairs({ keystone:GetRegions() }) do keystone.baseStates[region] = { alpha = region:GetAlpha() } end
+  -- The game's Reset: every region back to the state OnLoad recorded.
+  function keystone:Reset() for region, state in pairs(self.baseStates) do region:SetAlpha(state.alpha) end end
+end
+
 -- Builds what Blizzard_ChallengesUI makes (Mainline/Blizzard_ChallengesUI.xml, live branch), with the parts the skin
 -- reaches: the Mythic+ tab inside the group finder (its inset and the dungeon's painting) and the keystone window (its
 -- backdrop, the art that fades and the art that stays, the close and Start buttons). A test then fires ADDON_LOADED.
@@ -96,11 +105,6 @@ function world.loadChallenges()
   art(keystone, nil, "BACKGROUND")
   for _, key in ipairs({ "RuneBG", "InstructionBackground", "Divider", "RunesLarge", "RunesSmall", "SlotBG", "KeystoneFrame" }) do art(keystone, key) end
   keystone.CloseButton, keystone.StartButton = CreateFrame("Button", nil, keystone), CreateFrame("Button", nil, keystone)
-  -- OnLoad records each region's state and Reset puts it back (live Blizzard_ChallengesUI.lua:585-596, 616-638,
-  -- 715-719, 762-766: slotting a key and taking it out calls Reset).
-  keystone.baseStates = {}
-  for _, region in ipairs({ keystone:GetRegions() }) do keystone.baseStates[region] = { alpha = region:GetAlpha() } end
-  function keystone:Reset() for region, state in pairs(self.baseStates) do region:SetAlpha(state.alpha) end end
-  tab:Hide()
-  keystone:Hide()
+  rememberBaseStates(keystone)
+  tab:Hide() keystone:Hide()
 end

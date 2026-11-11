@@ -408,6 +408,7 @@ it("H44-19-50 chat watch: a saved phrase that is no text is dropped, so add and 
 
 it("H44-19-51 chat watch: a word of two-byte letters rings next to guillemets, a no-break space, a dash or curly quotes, and still not mid-word", () => {
   const addon = watching("продам épée");
+  // The ChatWatch match for a text, by what it rings for.
   const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
   const lines = ["«продам» «épée»", "épée продам", "vends—épée продам", "“продам” épée", "‘épée’ продам"];
   expect(lines.map(match), "each mark leaves a word start").toEqual(Array(5).fill("продам épée"));
@@ -416,6 +417,7 @@ it("H44-19-51 chat watch: a word of two-byte letters rings next to guillemets, a
 
 it("H44-19-51 chat watch: the toast finds and marks the word after such a mark, on a line long enough to be cut", () => {
   const addon = watching("продам");
+  // The toast line ChatWatch makes of a text for a word.
   const toast = (text) => addon.eval(`return ns.GetModule("ChatWatch").ToastLine(${JSON.stringify(text)}, "продам")`);
   const long = `${"слово ".repeat(12)}«продам»`;
   expect(toast(long), "cut a few words before it, the word marked inside the guillemets").toBe(`…слово «${accent(addon, "продам")}»`);

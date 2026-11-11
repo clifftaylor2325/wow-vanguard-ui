@@ -387,6 +387,7 @@ it("a report holds plain names and figures only, out of combat, to chat or a cha
 
 it("H44-20-1 a report to a channel is cut between names into lines of at most 255 bytes; a short one stays one line", () => {
   const addon = loggedIn(FULL_ENV, METER_ON);
+  // The nth test player name, long enough to fill a report line.
   const name = (i) => `Testplayer${String.fromCharCode(96 + i)}-Argentdawnrealm`;
   setLines(addon, `{ ${Array.from({ length: 10 }, (_, i) => `{ name = '${name(i + 1)}', amountPerSecond = 1234567 }`).join(", ")} }`);
   addon.slash("meter report raid 10");

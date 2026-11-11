@@ -2647,6 +2647,7 @@ it("auto-accept: Forever's own invite windows and the teleport check: a declined
 it("H44-20-50 quiet the game: on Retail the inviter's GUID is the 7th payload value; a stranger is declined and a friend is not", () => {
   const addon = loggedIn(INVITE_ENV, { client: RETAIL, savedVariables: INVITES_ON });
   addon.eval('__friends.pal = "friend"');
+  // Fires a Retail invite from the guid and counts the answers sent.
   const retailInvite = (guid) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false); addon.update(0); return addon.eval("return #__answers"); };
   expect([retailInvite("stranger"), retailInvite("pal")], "a stranger is declined (group, close), a friend is left").toEqual([2, 0]);
 });

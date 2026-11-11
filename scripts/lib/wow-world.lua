@@ -2349,6 +2349,14 @@ local function chatTab(i)
   return tab
 end
 
+-- Makes window i and its tab the first time its number is used.
+local function makeChatWindow(i)
+  if _G["ChatFrame" .. i] then return end
+  _G["ChatFrame" .. i .. "Tab"] = chatTab(i)
+  _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
+  table.insert(CHAT_FRAMES, "ChatFrame" .. i)
+end
+
 -- FCF_OpenNewWindow(name): takes the first window number neither shown nor docked, as FCF_GetNextOpenChatWindowIndex
 -- does (FCF_IsChatWindowIndexActive: shown or docked; forever Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:5-35),
 -- so a closed window's number goes to the next one made. The window and its tab are made the first time a number is
@@ -2358,11 +2366,7 @@ function FCF_OpenNewWindow(name)
   while _G["ChatFrame" .. i] and (_G["ChatFrame" .. i]:IsShown() or _G["ChatFrame" .. i].isDocked) do i = i + 1 end
   world.chatWindows[i] = name
   NUM_CHAT_WINDOWS = math.max(NUM_CHAT_WINDOWS, i)
-  if not _G["ChatFrame" .. i] then
-    _G["ChatFrame" .. i .. "Tab"] = chatTab(i)
-    _G["ChatFrame" .. i] = stub.newWidget("ScrollingMessageFrame", "ChatFrame" .. i, UIParent)
-    table.insert(CHAT_FRAMES, "ChatFrame" .. i)
-  end
+  makeChatWindow(i)
   _G["ChatFrame" .. i]:Show()
   _G["ChatFrame" .. i .. "Tab"]:Show()
   return _G["ChatFrame" .. i]
