@@ -367,12 +367,23 @@ local function importable(list)
   return out
 end
 
+-- An imported binding's rank, which must say which rank its id casts (spellValue casts the id whenever a rank is set):
+-- none without an id (the binding then reads and casts by name), the spellbook's number where it lists the id, else
+-- as given (a rank not learned yet is flagged by CC.WontRun; dropping it would turn a downrank into a top-rank cast).
+-- ClickCastSpells loads after this file, so it is read at call time.
+local function importedRank(id, rank)
+  rank = wholeNumber(rank)
+  if not (id and rank) then return nil end
+  return ns.ClickCastSpells.RankOf(id) or rank
+end
+
 -- Swaps the current spec's bindings for a checked list (the last of two for one key wins) and applies once.
 local function replaceAll(list)
   local mine = CC.Bindings()
   clearList(mine)
   for _, b in ipairs(list) do
-    put(mine, { key = b.key, action = b.action, value = b.value, spellID = wholeNumber(b.spellID), rank = wholeNumber(b.rank) })
+    local id = wholeNumber(b.spellID)
+    put(mine, { key = b.key, action = b.action, value = b.value, spellID = id, rank = importedRank(id, b.rank) })
   end
   replaced(CC.CurrentKey())
   applySoon()

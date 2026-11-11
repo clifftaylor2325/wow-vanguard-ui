@@ -258,6 +258,16 @@ function CS.Spell(name)
   return CS.Catalog().byName[name]
 end
 
+-- The rank number the spellbook lists for a spell id (one of a spell's ranks), or nil when it lists none (a rank not
+-- learned yet, or a client without ranks).
+function CS.RankOf(id)
+  for _, s in ipairs(CS.Catalog().spells) do
+    for _, r in ipairs(s.ranks) do
+      if r.spellID == id then return r.rank end
+    end
+  end
+end
+
 -- Groups --------------------------------------------------------------------------------------
 
 -- The player's class token ("PRIEST"), or nil where the client can't say or hides it.

@@ -617,7 +617,7 @@ it("import: the limits themselves are fine (200 bindings, a 255 character macro)
   expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`), "200 bindings, one with 255 characters").toBe(200);
   const odd = encoded(addon, '{ { key = "BUTTON4", action = "spell", value = "Renew", spellID = 1.5, rank = "x" }, { key = "BUTTON5", action = "spell", value = "Renew", spellID = "139", rank = 2 } }');
   addon.eval(`${CC}.Import(${JSON.stringify(odd)})`);
-  expect([bindings(addon).BUTTON4, bindings(addon).BUTTON5], "a fraction and text are no spell id or rank; a number in text is one").toEqual(["spell:Renew:139:nil", "spell:Renew:139:2"]);
+  expect([bindings(addon).BUTTON4, bindings(addon).BUTTON5], "a fraction and text are no spell id or rank; a number in text is one (H44-9-100: its rank is the spellbook's for 139)").toEqual(["spell:Renew:139:nil", "spell:Renew:139:1"]);
 });
 
 it("import: the options window says why a string was refused, and the layout applies in one pass", () => {
@@ -890,4 +890,29 @@ it("H44-9-53 the hover-key list scrolls: a ninth key has its row and Remove, and
   const nine = widget(addon, 'w.key == "F9" and w.remove ~= nil and w.keyText ~= nil and w:IsShown()');
   addon.eval(`__wfgStub.frames[${nine}].remove:GetScript("OnClick")()`);
   expect([bindings(addon).F9, addon.texts("+1 more (/vg binds)").length], "its Remove removes it; no count line").toEqual([undefined, 0]);
+});
+
+it("H44-9-100 import: a rank without a spell id is dropped, so the binding reads and casts by name", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  const text = encoded(addon, '{ { key = "BUTTON4", action = "spell", value = "Renew", rank = 3 } }');
+  expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`)).toBe(1);
+  expect(addon.eval(`local b = ${CC}.Binding("BUTTON4") return { ${CC}.ActionText(b), ${CC}.frames[1]:GetAttribute("spell4"), b.rank == nil }`), "no rank named, the name cast").toEqual(["Renew", "Renew", true]);
+});
+
+it("H44-9-100 import: a rank the spellbook lists under another number for that id reads as the spellbook's", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  const text = encoded(addon, '{ { key = "BUTTON4", action = "spell", value = "Flash Heal", spellID = 9472, rank = 1 }, { key = "BUTTON5", action = "spell", value = "Flash Heal", spellID = 424242, rank = 4 }, { key = "SHIFT-Q", action = "spell", value = "Flash Heal", spellID = 9472 } }');
+  expect(addon.eval(`return ${CC}.Import(${JSON.stringify(text)})`)).toBe(3);
+  expect(addon.eval(`return { ${CC}.ActionText(${CC}.Binding("BUTTON4")), ${CC}.frames[1]:GetAttribute("spell4") }`), "the rank it casts").toEqual(["Flash Heal (Rank 2)", 9472]);
+  expect([bindings(addon).BUTTON5, bindings(addon)["SHIFT-Q"]], "a rank the book doesn't list stays as given; an id with no rank gets none").toEqual(["spell:Flash Heal:424242:4", "spell:Flash Heal:9472:nil"]);
+});
+
+it("H44-9-100 an exported rank binding imports back unchanged", () => {
+  const addon = priest("", { savedVariables: WITH_FRAMES });
+  addon.eval(`${CC}.Add("ctrl-BUTTON2", "spell", "Flash Heal", 2061, 1) ${CC}.Add("BUTTON3", "spell", "Flash Heal", 9472, 2)`);
+  const before = JSON.stringify(bindings(addon));
+  const text = addon.eval(`return ${CC}.Export()`);
+  addon.eval(`${CC}.Clear()`);
+  addon.eval(`${CC}.Import(${JSON.stringify(text)})`);
+  expect(JSON.stringify(bindings(addon))).toBe(before);
 });

@@ -119,6 +119,8 @@
     "scripts/tests/clickcast-presets.test.mjs": [],
     "scripts/tests/clickcast.test.mjs": [
       "H41-13-1: with the unit frames on, the boss frames keep their clicks to target and the menu",
+      "H44-9-100 import: a rank the spellbook lists under another number for that id reads as the spellbook's",
+      "H44-9-100 import: a rank without a spell id is dropped, so the binding reads and casts by name",
       "H44-9-R1 a saved hover key with a brace leaves the other hover keys in the snippet and keeps its row",
       "H44-9-R1 an import in a fight writes no snippet until the fight ends, and then only bindable keys",
       "H44-9-R1 import: a hover key with a brace or the word function is skipped, and the enter snippet stays one the client builds",
