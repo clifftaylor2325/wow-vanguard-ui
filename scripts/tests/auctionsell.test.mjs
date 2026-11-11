@@ -756,3 +756,15 @@ it("H44-21-51: the card's cheapest and suggestion are those of the sale's random
   const out = addon.eval(`local c = ${CARD} return { c.lines[1].value:GetText(), c.lines[4].value:GetText(), #${HELPER}.sell.rows }`);
   expect(out, "cheapest and price from the suffix-7 listing; both variants up").toEqual(["50s 0c", "49s 0c", 2]);
 });
+it("H44-21-52: after Confirm the guide leaves the game's 'wants it confirmed' answer and shows the next stack", () => {
+  const addon = atAuctionHouse(BAGS + "__wfgWorld.bags[1][1] = { itemID = 9999, count = 1 } __wfgWorld.ah.needsConfirm = true __wfgWorld.ah.items[9999] = { { buyoutAmount = 5000, quantity = 1 } }");
+  dropAndAnswer(addon, 2, "ITEM_SEARCH_RESULTS_UPDATED", { itemID: 9999 });
+  addon.click(`${CARD}.qtyMax`);
+  addon.click(`${CARD}.post`);
+  addon.fire("AUCTION_HOUSE_POST_WARNING");
+  addon.advance(0.1);
+  addon.click(`${CARD}.post`);
+  addon.eval("__wfgWorld.bags[0][2] = nil");
+  addon.fire("BAG_UPDATE_DELAYED");
+  expect(addon.eval(`return ${CARD}.guide:GetText()`), "stack 2 is next").toBe("Click Post to list stack 2 of 2.");
+});
