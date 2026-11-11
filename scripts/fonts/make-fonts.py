@@ -6,6 +6,11 @@ Run by hand when updating the font (needs Python 3 and fonttools):
     python3 scripts/fonts/make-fonts.py <folder with the upstream .ttf files>
 
 Upstream: https://github.com/google/fonts/tree/main/ofl/firasanscondensed
+(a rebuild from today's main reproduces every table of the committed fonts but
+head.modified and checkSumAdjustment; when you rebuild, write the google/fonts
+commit you used here, so the next rebuild starts from the same source).
+The build keeps the source's head.modified (recalcTimestamp is off), so a re-run
+with the same inputs writes the same bytes.
 (SIL Open Font License 1.1, no Reserved Font Name; the license ships
 next to the fonts as Media/Fonts/OFL.txt).
 
@@ -47,7 +52,7 @@ def tabular_digits(font):
 
 def build(src_dir, weight):
     """Writes one weight to Media/Fonts."""
-    font = TTFont(os.path.join(src_dir, f"FiraSansCondensed-{weight}.ttf"))
+    font = TTFont(os.path.join(src_dir, f"FiraSansCondensed-{weight}.ttf"), recalcTimestamp=False)
     tabular_digits(font)
     options = subset.Options()
     options.layout_features = ["kern", "liga", "calt", "ccmp", "locl", "mark", "mkmk"]
