@@ -995,6 +995,7 @@ end
 -- A hide that comes down from UIParent (Alt-Z, a movie or a cinematic) leaves the wizard shown and is no end.
 local function finished()
   if state.paused or frame:IsShown() then return end
+  ns.SetupGuide.CancelUndo()
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done and not state.undone, reloadReason())

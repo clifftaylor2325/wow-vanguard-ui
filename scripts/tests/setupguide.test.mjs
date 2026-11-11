@@ -71,6 +71,24 @@ it("guided setup: Undo setup asks, then puts every row and the profile back and 
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "then the reload that shows the restored profile, with no export question first (nothing new to keep)").toBe("Setup was undone: the profile as it was is back. Reload the UI now to apply it?");
 });
 
+it("hunt H44-14-1: closing setup while the Undo question is open takes the question away without undoing anything", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  nexts(addon, 8);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b)");
+  setupClick(addon, "close");
+  expect(addon.eval("return { Vanguard_Question:IsShown(), ns.Settings('RaidFrames').sortByRole, VanguardDB.setupDone == true }"), "the question is gone, nothing was undone and setup is not marked done").toEqual([false, true, false]);
+});
+
+it("hunt H44-14-1: answering No to the Undo question leaves setup and the profile alone", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  nexts(addon, 8);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b)");
+  addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  expect(addon.eval("return { Vanguard_Question:IsShown(), Vanguard_Setup:IsShown(), ns.Settings('RaidFrames').sortByRole }"), "No closes the question only").toEqual([false, true, true]);
+});
+
 it("hunt setup: Undo setup puts back the profile it backed up, not one staged for the reload since (a spec change or /vg profile mid-setup)", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
   addon.eval('__click("Centered: healing")');

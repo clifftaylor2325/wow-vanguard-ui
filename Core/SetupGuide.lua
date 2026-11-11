@@ -297,10 +297,18 @@ local function addUseButton(page)
   page.choices[#page.choices + 1] = page.use
 end
 
+-- The Undo question's No: nothing to do, it only marks the question as setup's (G.CancelUndo finds it by this).
+local function keepSetup() end
+
+-- Puts the Undo question away unanswered when setup ended under it (its Yes would otherwise read as restored).
+function G.CancelUndo()
+  ns.CancelAsk(keepSetup)
+end
+
 -- Undo setup asks first (what this run changed goes, the profile as it was comes back), then undoes.
 local function askUndo()
   ns.Ask(L["Undo everything this setup changed and put the profile back as it was? Setup then ends and offers the reload that applies it."],
-    L["Undo"], G.Undo, nil, "danger")
+    L["Undo"], G.Undo, keepSetup, "danger")
 end
 
 -- The All set step: its line, the list filled as it shows (G.Refresh) and Undo setup, shown while there is a change.
