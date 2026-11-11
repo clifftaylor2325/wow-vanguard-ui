@@ -66,15 +66,28 @@ local function absent(v)
   return not ns.IsSecret(v) and v == nil
 end
 
+-- The invoice types that are your own sales (GetInboxInvoiceInfo's first return, as OpenMail_Update in
+-- Blizzard_MailFrame/MailFrame.lua reads it; "buyer" is an auction you won).
+MT.SALE_INVOICES = { seller = true, seller_temp_invoice = true }
+
+-- Mail i's invoice type: "" for a mail that is no invoice, "hidden" when the client hides it (an invoice still).
+local function invoiceType(i)
+  local kind = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i)
+  if ns.IsSecret(kind) then return "hidden" end
+  return type(kind) == "string" and kind or ""
+end
+
 -- Mail i as { index, sender, subject, money, items, link, cod, returnable (a player's mail the game sends back, not
--- one it deletes: a returned mail is not), sale, days (left, or nil), lost (deleted with money or items in it when
--- it runs out) }; nil when there is none.
+-- one it deletes: a returned mail is not), invoice (any auction house invoice), sale (one for your own sale), days
+-- (left, or nil), lost (deleted with money or items in it when it runs out) }; nil when there is none.
 function MT.Read(i)
   local _, _, sender, subject, money, cod, days, count, _, _, _, reply, gm, _, link = GetInboxHeaderInfo(i)
   if absent(sender) and absent(subject) then return nil end
+  local kind = invoiceType(i)
   local m = { index = i, sender = plain(sender), subject = plain(subject), money = ns.PlainNumber(money) or 0,
     items = ns.PlainNumber(count) or 0, link = plain(link), cod = ns.PlainNumber(cod) or 0, days = ns.PlainNumber(days),
-    returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true, sale = type(GetInboxInvoiceInfo) == "function" and GetInboxInvoiceInfo(i) ~= nil }
+    returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true,
+    invoice = kind ~= "", sale = MT.SALE_INVOICES[kind] == true }
   local deletes = deletable(i)
   m.lost, m.returnable = deletes and (m.money > 0 or m.items > 0), m.returnable and not deletes
   return m
@@ -263,11 +276,11 @@ local function returnNext(run)
 end
 
 -- The mails Return all sends back, the last in the inbox first so the others keep their places. Only
--- mail from a player that holds something and is not a sale.
+-- mail from a player that holds something and is no auction house invoice (a sale or an auction won).
 function MT.ReturnMails(mails)
   local out = {}
   for _, m in ipairs(mails) do
-    if m.returnable and not m.sale and (m.money > 0 or m.items > 0) then table.insert(out, 1, m) end
+    if m.returnable and not m.invoice and (m.money > 0 or m.items > 0) then table.insert(out, 1, m) end
   end
   return out
 end

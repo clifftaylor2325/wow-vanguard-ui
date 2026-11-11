@@ -600,6 +600,30 @@ it("H44-22-3 Take all goes on with a letter with text that stays after its last 
   expect([chatHas(addon, /Take all: 3 of 3 done\./), chatHas(addon, /could not take/), senders(addon)], "the letter stays, nothing refused").toEqual([true, false, ["Bobalt"]]);
 });
 
+// TEST-ONLY auction house mail: an auction won (a "buyer" invoice) holding the item, a sale, and a sale whose money
+// is still on its way ("seller_temp_invoice"), the types OpenMail_Update in Blizzard_MailFrame/MailFrame.lua reads
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_MailFrame/MailFrame.lua:790-847).
+const INVOICES = `
+  __wfgWorld.mail = {
+    { sender = "Auction House", subject = "Auction won: Iron Bar", money = 0, itemCount = 1, invoice = { type = "buyer", itemName = "Iron Bar", bid = 5000, count = 1 } },
+    { sender = "Auction House", subject = "Auction successful: Iron Ore", money = 900, itemCount = 0, invoice = { type = "seller", itemName = "Iron Ore", bid = 900, count = 1 } },
+    { sender = "Auction House", subject = "Sale pending: Herb", money = 0, itemCount = 0, invoice = { type = "seller_temp_invoice", itemName = "Herb", bid = 50, count = 1 } },
+  }
+`;
+
+it("H44-22-1 the Sales filter lists your sales, not an auction you won", () => {
+  const addon = mailer(INVOICES);
+  addon.eval(`${MT}.filter = "Sales"`);
+  expect(addon.eval(`local out = {} for i, m in ipairs(${MT}.Find("")) do out[i] = m.subject end return out`)).toEqual(["Auction successful: Iron Ore", "Sale pending: Herb"]);
+});
+
+it("H44-22-1 Return all still passes an auction won that holds its item", () => {
+  const addon = mailer(INVOICES);
+  expect(addon.eval(`return #${MT}.ReturnMails(${MT}.Find(""))`), "no invoice is returned").toBe(0);
+  addon.eval("__wfgWorld.mail[2].invoice.type = __wfgWorld.secret('seller')");
+  expect(addon.eval(`local m = ${MT}.Read(2) return { m.invoice, m.sale }`), "a hidden type: an invoice still, not counted a sale").toEqual([true, false]);
+});
+
 it("Take on a row takes the first attachment slot that still holds an item", () => {
   const addon = mailer("__wfgWorld.mail[2].slots = { [3] = true }");
   addon.world.openMailWindow();
