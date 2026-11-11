@@ -517,3 +517,38 @@ it("H44-10-100 key 1 left alone on Ready stays the player's when a stance page i
   expect(addon.eval('return { GetBindingAction("1"), GetActionInfo(97) == nil, GetBindingAction("CTRL-`") }'),
     "key 1 still opens the bags and Berserker Stance's page gets no key 1 spell; the new stance key is set").toEqual(["TOGGLEBACKPACK", true, "SHAPESHIFTBUTTON3"]);
 });
+
+// The chat line Apply gives when the list, made in the account's keys, does not hold in this character's own saved keys.
+const OWN_KEYS_LINE = /This character has its own saved keys, which differ from the account's, so this list does not hold for them and nothing was changed\. Switch to this character's keys in the game's key bindings, then set up keys again\.$/;
+
+// A warrior using the account's keys, with Shield Bash on bar 2 button 1 and an older character key set of its own
+// (`charSet`, a Lua table of the game's saved bindings), on Ready for Only this character.
+function ownKeysReady(charSet) {
+  const addon = warrior(`__wfgWorld.bindingSets[2] = ${charSet}`);
+  addon.world.setAction(61, { type: "spell", id: 72 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  return addon;
+}
+
+// The character's saved key set's keys for one command (the harness's bindingSets[2]).
+const charKeys = (addon, command) => addon.eval(`return (__wfgWorld.bindingSets[2] or {})["${command}"] or {}`);
+
+it("H44-10-51 step 3: a character key set where a row does another thing: Apply changes nothing and chat says why", () => {
+  const addon = ownKeysReady('{ ACTIONBUTTON1 = { "1" }, MULTIACTIONBAR1BUTTON1 = { "F" } }');
+  expect(ready(addon)).toContain("[x] F: your Shield Bash on bar 2");
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect([chatHas(addon, OWN_KEYS_LINE), chatHas(addon, /Your bars or keys changed since this list was made/)]).toEqual([true, false]);
+  expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), keys(addon, ["F"])]).toEqual([true, 1, [""]]);
+});
+
+it("H44-10-51 step 3: a character key set where only what a key does now differs: Apply rebinds nothing", () => {
+  const addon = ownKeysReady('{ ACTIONBUTTON1 = { "1" }, TOGGLEBACKPACK = { "F" } }');
+  expect(ready(addon), "the list, made in the account's keys, has F free").toContain("[x] F: your Shield Bash on bar 2");
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(chatHas(addon, OWN_KEYS_LINE)).toBe(true);
+  expect([win(addon).shown, addon.eval("return GetCurrentBindingSet()"), charKeys(addon, "TOGGLEBACKPACK")],
+    "the character's F still opens the bags").toEqual([true, 1, ["F"]]);
+});

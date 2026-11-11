@@ -404,10 +404,11 @@ function KA.Plan(entries, skip, ranks)
   return needless and planPass(entries, skip, ranks, needless) or rows
 end
 
--- One plan row as one line of a signature.
+-- One plan row as one line of a signature, with what its key does now (a key set switch can change only that).
 local function rowSignature(row)
   local parts = {}
   for i, field in ipairs(KA.SIGNED) do parts[i] = tostring(row[field]) end
+  parts[#parts + 1] = tostring(row.key and GetBindingAction(row.key))
   return table.concat(parts, " ")
 end
 
@@ -642,11 +643,13 @@ ns.On("ADDON_ACTION_FORBIDDEN", onBlocked)
 
 -- Switches to the key set the Apply asked for as the game's own switch does (Settings.SelectCharacterBindings:
 -- save the old, load, save the new), noting the old one for a rollback; nothing when it is the set in use already.
+-- Whether the list a player was shown still held in the old set is noted first (`listHeld`), for Apply's chat line.
 local function switchSet(run)
   local from = GetCurrentBindingSet()
   run.set = run.set or from
   if run.set == from then return true end
   run.from = from
+  run.listHeld = run.shown == KA.Signature(KA.Plan(run.entries, run.skip, run.ranks))
   SaveBindings(from)
   LoadBindings(run.set)
   SaveBindings(run.set)
@@ -824,6 +827,15 @@ local function knownSet(set)
   return set == nil or set == Enum.BindingSet.Account or set == Enum.BindingSet.Character
 end
 
+-- Why an Apply whose plan was not the list's changed nothing: the list still held in the key set Apply switched from
+-- but not in this character's own saved keys, or the bars or keys changed since.
+local function staleText(run)
+  if run.listHeld then
+    return L["This character has its own saved keys, which differ from the account's, so this list does not hold for them and nothing was changed. Switch to this character's keys in the game's key bindings, then set up keys again."]
+  end
+  return L["Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again."]
+end
+
 -- Applies a preset's entries as KA.Plan works them out in key set `set` (Enum.BindingSet.Character for "Only this
 -- character", Account for all characters; the set in use when nil). Refused, with a chat line, when KA.Refusal says
 -- so, or to switch from this character's own keys back to the account's. With `shown` (KA.Signature of the plan the
@@ -838,7 +850,7 @@ function KA.Apply(entries, set, shown)
   local why = KA.Refusal() or switchRefusal(set)
   if why then ns.Chat(why) return false end
   local run = execute(newRun(entries, set, shown), "key setup apply")
-  if run.stale then ns.Chat(L["Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again."]) end
+  if run.stale then ns.Chat(staleText(run)) end
   if run.ok and run.count == 0 then ns.Chat(L["No key needs changing."]) end
   if run.count > 0 then ns.Chat(ns.Format(L["{count} key(s) set. Vanguard kept what the keys did before, so you can put them back."], { count = run.count })) end
   return run.ok
