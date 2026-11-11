@@ -127,3 +127,40 @@ it("UnitHealthPercent answers hidden health with a secret percent, a secret numb
   addon.eval("__wfgWorld.units.target.hp = __wfgWorld.secret(25)");
   expect(read(), "hidden health").toEqual([[true, 25], [true, 25], [true, 1]]);
 });
+
+// UnitIsGroupLeader and UnitIsGroupAssistant are SecretWhenUnitIdentityRestricted, UnitIsAFK
+// SecretInChatMessagingLockdown, UnitCastingInfo and UnitChannelInfo SecretWhenUnitSpellCastRestricted with
+// notInterruptible not NeverSecret (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua, both clients).
+it("leader, assistant, away and not-interruptible pass a secret field through as a secret", () => {
+  const addon = createAddon();
+  addon.world.setUnit("party1", { name: "TEST-ONLY Friend", leader: true, assistant: false, afk: true,
+    cast: { name: "TEST-ONLY Bolt", startMs: 0, endMs: 1000, interruptible: false } });
+  // Each answer as [secret, value inside].
+  const read = () => addon.eval(`local function look(v) if issecretvalue(v) then return { true, rawget(v, "n") } end return { false, v } end
+    return { look(UnitIsGroupLeader("party1")), look(UnitIsGroupAssistant("party1")), look(UnitIsAFK("party1")),
+      look(select(8, UnitCastingInfo("party1"))) }`);
+  expect(read(), "plain").toEqual([[false, true], [false, false], [false, true], [false, true]]);
+  addon.eval(`local u, s = __wfgWorld.units.party1, __wfgWorld.secret
+    u.leader, u.assistant, u.afk, u.cast.interruptible = s(true), s(false), s(true), s(false)`);
+  expect(read(), "secret fields").toEqual([[true, true], [true, false], [true, true], [true, true]]);
+  addon.eval("__wfgWorld.units.party1.cast.channel = true");
+  expect(addon.eval(`local v = select(7, UnitChannelInfo("party1")) return { issecretvalue(v), rawget(v, "n") }`), "a channel too").toEqual([true, true]);
+});
+
+// UnitIsUnit is RequiresComparableUnitTokens (FailureMode ReturnNothing) and SecretWhenUnitComparisonRestricted;
+// C_Secrets.CanCompareUnitTokens says which pairs may be compared (SecretPredicatesDocumentation.lua,
+// SecretPredicateAPIDocumentation.lua, UnitDocumentation.lua, both clients).
+it("UnitIsUnit answers a secret while comparison is restricted, and nothing for a pair that may not be compared", () => {
+  const addon = createAddon();
+  addon.world.setUnit("target", { name: "TEST-ONLY Mob" });
+  addon.world.setUnit("boss1", { name: "TEST-ONLY Mob" });
+  // [CanCompareUnitTokens, number of returns, secret, value inside] for a pair.
+  const read = (a, b) => addon.eval(`local r = { UnitIsUnit("${a}", "${b}") } local v = r[1]
+    return { C_Secrets.CanCompareUnitTokens("${a}", "${b}"), #r, issecretvalue(v), issecretvalue(v) and rawget(v, "n") or v }`);
+  addon.eval("__wfgWorld.units.boss1 = __wfgWorld.units.target");
+  expect(read("target", "boss1"), "open").toEqual([true, 1, false, true]);
+  expect(read("boss1", "nameplate1"), "open, another pair").toEqual([true, 1, false, false]);
+  addon.eval("__wfgWorld.unitComparisonSecret = true");
+  expect(read("target", "boss1"), "restricted, a pair with target").toEqual([true, 1, true, true]);
+  expect(read("boss1", "nameplate1"), "restricted, an off-limits pair").toEqual([false, 0, false]);
+});

@@ -74,6 +74,8 @@ end
 
 world.aurasSecret = false
 world.threatSecret = false
+-- Unit comparison restricted, as on an addon-restricted map (UnitIsUnit below).
+world.unitComparisonSecret = false
 
 -- The client's argument check on a two-unit secret predicate: both units are required.
 local function needUnits(name, unit, mobUnit)
@@ -679,6 +681,14 @@ local function uf(unit, field)
   return u and u[field]
 end
 
+-- A unit's yes/no field: a secret passes through as it is, so the harness never compares it and the addon sees the
+-- client's hidden answer; anything else is true only when it is true.
+local function unitFlag(unit, field)
+  local v = uf(unit, field)
+  if issecretvalue(v) then return v end
+  return v == true
+end
+
 -- The unit API, read from world.units.
 function UnitExists(unit) return resolveUnit(unit) ~= nil end
 function UnitName(unit) local u = resolveUnit(unit) return u and u.name, u and u.realm end
@@ -739,7 +749,8 @@ function UnitIsDeadOrGhost(unit) return uf(unit, "dead") == true or uf(unit, "gh
 function UnitIsGhost(unit) return uf(unit, "ghost") == true end
 function UnitIsFeignDeath(unit) return uf(unit, "feign") == true end
 function UnitIsConnected(unit) local u = resolveUnit(unit) return u ~= nil and u.connected ~= false end
-function UnitIsAFK(unit) return uf(unit, "afk") == true end
+-- Away: SecretInChatMessagingLockdown on both clients (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
+function UnitIsAFK(unit) return unitFlag(unit, "afk") end
 function UnitOnTaxi(unit) return uf(unit, "taxi") == true end
 function UnitIsTapDenied(unit) return uf(unit, "tapDenied") == true end
 function UnitAffectingCombat(unit) return uf(unit, "inCombat") == true end
@@ -792,11 +803,25 @@ function GetMaxPlayerLevel() return world.maxLevel end
 GameRulesUtil = { IsPlayerAtEffectiveMaxLevel = function() return world.units.player.level >= world.maxLevel end }
 function GetComboPoints(unit) return uf(unit, "combo") or 0 end
 
--- Whether two tokens name the same unit.
-function UnitIsUnit(a, b)
-  local ua, ub = resolveUnit(a), resolveUnit(b)
-  return ua ~= nil and ua == ub
+-- Whether two tokens may be compared. While unit comparison is restricted (world.unitComparisonSecret) only a pair
+-- that holds "player" or "target" may, the example RequiresComparableUnitTokens gives
+-- (Blizzard_APIDocumentationGenerated/SecretPredicatesDocumentation.lua, both clients).
+local function unitsComparable(a, b)
+  return not world.unitComparisonSecret or a == "player" or a == "target" or b == "player" or b == "target"
 end
+
+-- Whether two tokens name the same unit. UnitIsUnit is RequiresComparableUnitTokens (FailureMode ReturnNothing) and
+-- SecretWhenUnitComparisonRestricted on both clients (UnitDocumentation.lua): an off-limits pair answers nothing, and
+-- a restricted comparison answers with a secret.
+function UnitIsUnit(a, b)
+  if not unitsComparable(a, b) then return end
+  local ua, ub = resolveUnit(a), resolveUnit(b)
+  local same = ua ~= nil and ua == ub
+  if world.unitComparisonSecret then return world.secret(same) end
+  return same
+end
+-- C_Secrets.CanCompareUnitTokens: whether UnitIsUnit may compare the pair (SecretPredicateAPIDocumentation.lua).
+C_Secrets.CanCompareUnitTokens = unitsComparable
 
 -- Whether the client shows only a widget on a unit's nameplate (unit.widgetsOnly), as it does for
 -- some friendly NPCs (UnitDocumentation.lua, UnitNameplateShowsWidgetsOnly, both clients).
@@ -898,16 +923,23 @@ C_Reputation = { GetWatchedFactionData = function() return world.watchedFaction 
 
 -- Casting: a unit's cast or channel from unit.cast = { name, icon, startMs, endMs, channel, interruptible, spellId }.
 -- An unset interruptible means the cast can be interrupted; only interruptible = false sets notInterruptible.
+-- A secret interruptible gives a secret notInterruptible: both reads are SecretWhenUnitSpellCastRestricted and
+-- notInterruptible is not among their NeverSecret returns (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua).
+local function notInterruptible(c)
+  if issecretvalue(c.interruptible) then return world.secret(rawget(c.interruptible, "n") == false) end
+  return c.interruptible == false
+end
+-- A cast: name, text, icon, startMs, endMs, isTradeSkill, castID, notInterruptible, spellId.
 function UnitCastingInfo(unit)
   local c = uf(unit, "cast")
   if not c or c.channel then return nil end
-  return c.name, c.name, c.icon, c.startMs, c.endMs, false, nil, c.interruptible == false, c.spellId
+  return c.name, c.name, c.icon, c.startMs, c.endMs, false, nil, notInterruptible(c), c.spellId
 end
 -- A channel: name, text, icon, startMs, endMs, isTradeSkill, notInterruptible, spellId.
 function UnitChannelInfo(unit)
   local c = uf(unit, "cast")
   if not c or not c.channel then return nil end
-  return c.name, c.name, c.icon, c.startMs, c.endMs, false, c.interruptible == false, c.spellId
+  return c.name, c.name, c.icon, c.startMs, c.endMs, false, notInterruptible(c), c.spellId
 end
 
 -- The group ---------------------------------------------------------------------------------
@@ -932,8 +964,9 @@ function GetNumGroupMembers()
   return n > 0 and n + 1 or 0
 end
 -- Leader, assistant, assignments, ready checks and raid target marks.
-function UnitIsGroupLeader(unit) return uf(unit, "leader") == true end
-function UnitIsGroupAssistant(unit) return uf(unit, "assistant") == true end
+-- Both are SecretWhenUnitIdentityRestricted on both clients (UnitDocumentation.lua): a secret field passes through.
+function UnitIsGroupLeader(unit) return unitFlag(unit, "leader") end
+function UnitIsGroupAssistant(unit) return unitFlag(unit, "assistant") end
 function IsEveryoneAssistant() return world.everyoneAssistant == true end
 function GetPartyAssignment(role, unit) local u = resolveUnit(unit) return u ~= nil and u.assignment == role end
 function GetReadyCheckStatus(unit) return uf(unit, "readyCheck") end
