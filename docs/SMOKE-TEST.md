@@ -5666,4 +5666,4 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 
 ## When you are done
 
-Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become tasks in `docs/handoff/WORKPLAN.md` before the performance phase starts.
+Paste into the first message of the next Claude session: the `/vg report` block (or the output of `/vg status` and `/vg errors`), the list of failed step ids, your screen resolution and UI scale, and the client build from the status line. Failures become issues, fixed with the `fix-bug` or `fix-visual-issue` skill.

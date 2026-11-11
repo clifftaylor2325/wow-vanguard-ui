@@ -1,5 +1,7 @@
 # Roadmap: Vanguard: Forever launch
 
+> **Closed.** GSD planning stopped being the way work is planned after 2026-10-17; launch (2026-11-04) and releases 0.9.0 to 0.9.3 were planned in `docs/handoff` and the project's threads. This file is no longer kept up to date. It stays because it holds the goal, success criteria, files and checks of the open UI coherence phases (8.3 to 8.6, 8.8, 8.10, 8.11), and the table at the end is as it was left. What ships next is in `docs/CHANGELOG.md` and `Core/WhatsNewNotes.lua`; what has been seen in the game is in `docs/smoke-results.json`.
+
 ## Overview
 
 Vanguard is already a full UI suite. This milestone makes it ready for the WoW: Forever launch on 2026-11-04, 15:00 PST. The phases are grouped by area and follow the author's priority order. Code and CI come first: a green and trustworthy suite, a fast CI gate and a leaner core. Then the auction Post bug, then UI polish, then levelling and group features, which are cut first if time runs short. A final launch phase checks the release against the real Forever build. Nobody can run the game in this environment, so every phase PR carries a needs-in-game-check list for the author.
@@ -464,7 +466,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Theme scale and motion | TBD | Complete | 2026-10-12 |
 | 7. Control states and panel depth | TBD | Complete | 2026-10-12 |
 | 8. Every window styled | TBD | Complete | 2026-10-12 |
-| 8.1 Theme tokens and capsule kit | 0/TBD | Not started | - |
+| 8.1 Theme tokens and capsule kit | TBD | Complete | - |
 | 8.2 Check box primitive | 1/1 | Complete | 2026-10-17 |
 | 8.3 One material per window | 0/TBD | Not started | - |
 | 8.4 Control grid and button kinds | 0/TBD | Not started | - |
@@ -472,7 +474,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 8.6 One yellow, type pairings and empty states | 0/TBD | Not started | - |
 | 8.7 States, keyboard and menus | 1/1 | Complete | 2026-10-17 |
 | 8.8 Dialogs and button order | 0/TBD | Not started | - |
-| 8.9 Spacing sweep | 0/TBD | Not started | - |
+| 8.9 Spacing sweep | TBD | Complete | - |
 | 8.10 Knob and thumb ease | 0/TBD | Not started | - |
 | 8.11 UI batch checklist and probes | 0/TBD | Not started | - |
 | 9. Levelling helpers | TBD | Complete | 2026-10-12 |

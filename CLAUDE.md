@@ -95,7 +95,7 @@ Precedence: where this section and any other rule in this file disagree, the oth
 - Tick the task's checkbox in the work plan in the same commit, when there is one.
 - Check tasks marked `[DECIDE]` with the user before going ahead. For everything else, take the smallest reasonable choice and note it in the commit body.
 - Open one PR per phase. List the tasks, tests added, anything skipped, and a "needs in-game check" list.
-- Plans in `docs/handoff/` refer to the old repo name `wow-forever-ui` and to a commit (`619d5c9`). Line numbers in them have drifted. Grep for the identifier they quote rather than trusting the line.
+- Plans in `docs/handoff/` refer to the old repo name `wow-forever-ui`. Line numbers in them have drifted. Grep for the identifier they quote rather than trusting the line.
 
 ## Usage and cost
 

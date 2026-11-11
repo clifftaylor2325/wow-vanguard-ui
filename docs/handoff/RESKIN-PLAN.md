@@ -1,10 +1,10 @@
 # Reskin plan: the rest of the game's frames, in parallel (handoff)
 
-> **Done.** Every task in this plan is ticked (checked 2026-11-09). It stays here as the record of what was planned and why; new work goes in a new plan.
+> **Done.** Every task in this plan is ticked (checked 2026-11-09). It stays here as the record of what was planned and why; new work goes in a new plan. Its how-to-work rules are superseded by `CLAUDE.md`.
 
 Repo `clifftaylor2325/wow-vanguard-ui`, written 2026-10-06 against commit `757c0c7` (v0.4.0, after PR #125).
 Design: `docs/design/RESKIN.md` (read it first; §5 there is the inventory every task below points at).
-Repo rules: `docs/handoff/WORKPLAN.md` §0 ("How to work") applies word for word except where §0 below overrides it.
+Repo rules: `CLAUDE.md` applies, except where §0 below overrides it.
 Every `file:line` is as of `757c0c7`; if a line has moved, grep for the identifier quoted next to it.
 
 ---
@@ -401,7 +401,7 @@ Paste the block below as the first message of a session opened in a clone (or wo
 on the owner's machine, with `<STREAM>` replaced (`S0`, `S1`, …) and the model and effort set as §0 suggests.
 
 ```text
-You are working in the Vanguard repository (a World of Warcraft addon for WoW Forever, written in Lua 5.1 with a Node/Vitest test harness). Your instructions are in docs/handoff/RESKIN-PLAN.md; the design it carries out is docs/design/RESKIN.md. Read both in full before doing anything else, then README.md, then docs/handoff/WORKPLAN.md section 0 (the repository's rules).
+You are working in the Vanguard repository (a World of Warcraft addon for WoW Forever, written in Lua 5.1 with a Node/Vitest test harness). Your instructions are in docs/handoff/RESKIN-PLAN.md; the design it carries out is docs/design/RESKIN.md. Read both in full before doing anything else, then README.md, then CLAUDE.md (the repository's rules).
 
 Carry out stream <STREAM> of the reskin plan, task by task, in order:
 - Work on the branch the plan names for the stream, started from origin/main (S0 must already be merged unless you are S0). Edit only the files the stream's header lists plus your own README sub-bullet and smoke-test subsection; append to the end of a list when you must add a global to .luacheckrc or a method to scripts/lib/wow-widget-api.lua (only after confirming it exists in Blizzard's Forever source: git clone --depth 1 --branch forever https://github.com/Gethe/wow-ui-source).
