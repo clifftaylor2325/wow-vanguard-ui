@@ -178,8 +178,9 @@ end
 
 -- Notes an item seen at time t: its cheapest unit price (now, and the low of t's day), and from a
 -- scan (scan = { units, market, listings }, nil for a search) its units up, market value and how
--- many listings (the item keeps the last count). A new item past AP.MAX_ITEMS evicts the items
--- priced longest ago. The listeners hear of it on the next frame, AP.OnSeen's at once.
+-- many listings (the item keeps the last count). A new item past AP.MAX_ITEMS from a search evicts the
+-- items priced longest ago; a scan's items all go in first, then AP.Cap ranks them by listings. The
+-- listeners hear of it on the next frame, AP.OnSeen's at once.
 function AP.Record(itemID, unitPrice, t, scan)
   local house, day = AP.House(), AP.Day(t)
   local p = house.prices[itemID]
@@ -188,9 +189,14 @@ function AP.Record(itemID, unitPrice, t, scan)
   local listings = scan and scan.listings
   p.min, p.t, p.listings = unitPrice, t, listings or p.listings
   noteDay(p, day, unitPrice, scan)
-  if house.count > AP.MAX_ITEMS then AP.Evict() end
+  if not scan and house.count > AP.MAX_ITEMS then AP.Evict() end
   ns.Soon("auction prices changed", tellListeners)
   tellSeen(itemID, unitPrice, t)
+end
+
+-- Evicts when the store holds more than AP.MAX_ITEMS (after a scan has recorded all its items together).
+function AP.Cap()
+  if AP.House().count > AP.MAX_ITEMS then AP.Evict() end
 end
 
 -- A price a search saw (not a whole scan): the item's last-seen price and that day's low, never

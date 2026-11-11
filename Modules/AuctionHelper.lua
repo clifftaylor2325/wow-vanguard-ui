@@ -570,6 +570,7 @@ local function recordScan(s, now)
     AP.Record(id, low, now, { units = units, market = market, listings = s.listings[id] })
     n = n + 1
   end
+  AP.Cap()
   return n
 end
 
