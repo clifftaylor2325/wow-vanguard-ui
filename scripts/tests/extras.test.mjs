@@ -731,6 +731,16 @@ it("at a merchant: repair with your own gold, sell junk", () => {
   bare.fire("MERCHANT_SHOW");
   expect(bare.eval("return #ns.GetModule('Quiet').NoisyTypes()"), "a client without these calls does nothing").toBe(0);
 });
+it("H44-22-4 a merchant opened in a fight sells no junk in one step either; out of combat it does", () => {
+  const addon = loggedIn("");
+  addon.world.combat(true);
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __wfgWorld.soldJunk == true"), "in a fight: nothing sold").toBe(false);
+  addon.fire("MERCHANT_CLOSED");
+  addon.world.combat(false);
+  addon.fire("MERCHANT_SHOW");
+  expect(addon.eval("return __wfgWorld.soldJunk == true"), "out of combat: the one-step sale").toBe(true);
+});
 it("selling junk leaves a gray item in an equipment set, and a locked one, alone", () => {
   const addon = loggedIn(MERCHANT_ENV);
   addon.eval(`C_EquipmentSet = { GetEquipmentSetIDs = function() return { 1 } end, GetItemIDs = function() return { [16] = 77 } end }

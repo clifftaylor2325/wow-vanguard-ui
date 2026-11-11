@@ -66,8 +66,10 @@ function MC.SellJunk(tries)
   if tries > 1 and C_Timer and C_Timer.After then C_Timer.After(MC.RETRY_AFTER, ns.Guard("timer sell junk", function() MC.SellJunk(tries - 1) end)) end
 end
 
--- Sells your junk: the client's own one-step sale where it has one and has it turned on, else item by item.
+-- Sells your junk: the client's own one-step sale where it has one and has it turned on, else item by item;
+-- either way only out of combat with the merchant open (a merchant opened in a fight sells no junk that visit).
 function MC.Sell()
+  if not MC.Trading() then return end
   local all = C_MerchantFrame and C_MerchantFrame.SellAllJunkItems
   local enabled = C_MerchantFrame and C_MerchantFrame.IsSellAllJunkEnabled
   if type(all) == "function" and type(enabled) == "function" and enabled() == true then return all() end
