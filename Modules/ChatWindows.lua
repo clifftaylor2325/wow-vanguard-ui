@@ -121,6 +121,9 @@ local function pinTo(frame, key)
   end)
 end
 
+-- The floating windows made handles while the module runs: the game's chat frame -> its mover key.
+CW.floating = {}
+
 -- Makes a floating window a /vg unlock handle, kept where it is put.
 local function floatingMover(window)
   local frame, key = window.frame, "chat" .. window.index
@@ -129,6 +132,17 @@ local function floatingMover(window)
   local m = ns.Mover(frame, key, ns.Format(L["Chat: {tab}"], { tab = window.name }), { point, relPoint, x, y })
   m.insets = ns.GetModule("Chat").ClampInsets(frame)
   pinTo(frame, key)
+  CW.floating[frame] = key
+end
+
+-- Gives the floating windows back to the game: their handles leave unlock mode (their saved spots kept, for the next
+-- start) and their pins let go, so the game places them again. The windows are the game's and are never hidden here.
+local function releaseFloating()
+  for frame, key in pairs(CW.floating) do
+    ns.ReleaseMover(key)
+    ns.Unpin(frame)
+  end
+  CW.floating = {}
 end
 
 -- Tabs ------------------------------------------------------------------------------------
@@ -372,14 +386,15 @@ function CW.ApplyFind()
   CW.findButton = ns.GetModule("Chat").ApplyBarButton(CW.findButton, CW.settings.find == true, addFindButton)
 end
 
--- The module switched off (Core/Modules.lua): the Find button goes from the tab bar. The movers of floating windows stay:
--- their setting is a reload setting, and the windows are the game's own frames, which are never hidden from here.
+-- The module switched off (Core/Modules.lua): the Find button goes from the tab bar, and the floating windows' handles
+-- and pins go with it (the windows are the game's own frames, so the scope, which hides what it holds, never gets them).
 function CW.Disable()
   if CW.findButton then ns.GetModule("Chat").ApplyBarButton(CW.findButton, false, addFindButton) end
+  releaseFloating()
 end
 
 -- Module entry point (Core/Modules.lua): it registers nothing with the scope (the Find button is made once and
--- shown by its switch; the floating-window movers are set at login), so it takes no scope argument.
+-- shown by its switch; the floating windows' movers are the game's frames, let go by Disable), so it takes no scope argument.
 function CW.Enable(settings)
   CW.settings = settings
   CW.ApplyFind()

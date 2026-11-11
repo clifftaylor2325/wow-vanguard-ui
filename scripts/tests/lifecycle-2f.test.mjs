@@ -2,7 +2,7 @@
 // the three cases every live module gets (lifecycle-helpers.mjs), and the ones whose Disable does something the
 // footprint cannot see get a case for it. Written before the suite was run; the first run may need fixes.
 
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
 import { SETUP_DONE } from "./helpers.mjs";
@@ -20,6 +20,30 @@ const MODULES = [
   "CooldownKeys", "CooldownGlow", "DataBars", "BrokerStrip", "HudText", "Situations",
 ];
 for (const name of MODULES) lifecycleCases(name, login);
+
+// Lua for a second chat window in use, pulled out of the dock (a floating window).
+const FLOATING = '__wfgWorld.chatWindows[1], __wfgWorld.chatWindows[2] = "General", "Loot" ChatFrame2:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 50, -60)';
+
+// The addon logged in with a floating chat window and ChatWindows' "Move floating windows" on, then `saved`.
+function floatingLogin(saved = "") {
+  const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) + "\nVanguardDB.profiles.Default.ChatWindows = { movers = true }" + saved });
+  addon.eval(FLOATING);
+  addon.login();
+  return addon;
+}
+
+describe("ChatWindows with Move floating windows on", () => lifecycleCases("ChatWindows", floatingLogin));
+
+it("lifecycle: ChatWindows switched off lets the floating window go: no handle, and the game may move it", () => {
+  const addon = floatingLogin();
+  addon.eval('ns.SetModuleEnabled("ChatWindows", false)');
+  addon.eval('ChatFrame2:ClearAllPoints() ChatFrame2:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 200, -200)');
+  addon.advance(0.1);
+  expect(addon.eval("local p, _, r, x, y = ChatFrame2:GetPoint(1) return { ns.MoverFrame('chat2') == nil, p, x, y }")).toEqual([true, "TOPLEFT", 200, -200]);
+  addon.eval('ns.SetModuleEnabled("ChatWindows", true)');
+  expect(addon.eval("return ns.MoverFrame('chat2') == ChatFrame2"), "on again: its handle back").toBe(true);
+  expect(addon.eval("return #ns.errors")).toBe(0);
+});
 
 it("lifecycle: QuestDialog switched off gives the game's quest and gossip windows their events back", () => {
   const addon = createAddon({ savedVariables: SETUP_DONE + modulesOffLua(HEAVY) });

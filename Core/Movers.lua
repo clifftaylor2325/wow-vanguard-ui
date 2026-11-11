@@ -394,17 +394,20 @@ local hooked = setmetatable({}, { __mode = "k" })
 local pinning = setmetatable({}, { __mode = "k" })
 
 -- Runs a frame's pin, flagged so its own SetPoint calls aren't seen as the
--- game's. A pin that fails is reported (ns.Try) and the flag is cleared all the same.
+-- game's. A pin that fails is reported (ns.Try) and the flag is cleared all the same;
+-- one let go (ns.Unpin) while it waited for the fight to end does nothing.
 local function applyPin(frame)
+  local apply = pinned[frame]
+  if not apply then return end
   pinning[frame] = true
-  ns.Try("pin " .. (frame:GetName() or "frame"), pinned[frame], frame)
+  ns.Try("pin " .. (frame:GetName() or "frame"), apply, frame)
   pinning[frame] = nil
 end
 
 -- Queues a frame's pin for after combat, one entry per frame however often the
--- game moves it; nothing happens while pins are paused (Edit Mode open).
+-- game moves it; nothing happens while pins are paused (Edit Mode open) or for a frame let go.
 local function runPin(frame)
-  if pinsPaused then return end
+  if pinsPaused or not pinned[frame] then return end
   ns.OutOfCombat(runs[frame], frame)
 end
 
@@ -418,6 +421,13 @@ function ns.Pin(frame, apply)
   if hooked[frame] or type(hooksecurefunc) ~= "function" then return end
   hooked[frame] = true
   hooksecurefunc(frame, "SetPoint", ns.Guard("hook SetPoint", function(self) if not pinning[self] then runPin(self) end end))
+end
+
+-- Lets a pinned frame go (the module that pinned it stopped): the game may move it again, and its SetPoint hook,
+-- which can't be taken off, does nothing until a later ns.Pin.
+---@param frame Frame
+function ns.Unpin(frame)
+  pinned[frame] = nil
 end
 
 -- Runs a pinned frame's pin again (the game resized it or laid it out again),

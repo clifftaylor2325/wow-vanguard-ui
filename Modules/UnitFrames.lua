@@ -1455,14 +1455,41 @@ UF.DECK = { crest = 28, pad = 6, text = "title" }
 
 -- How far the rows the player frame carries stand past its top and bottom edges (combo points, totems,
 -- the druid's mana bar, the status chip); the deck's panel reaches that much further so none lies on its
--- border. A row raises it once, when built, and it stays (moving the panel on every shapeshift would lag in a fight).
-UF.DeckReach = { top = 0, bottom = 0 }
+-- border. A row raises its module's reach once, when built, and it stays while that module runs (moving the panel on
+-- every shapeshift would lag in a fight). DeckRows: module name -> { top = n, bottom = n }; DeckReach: the furthest
+-- of the running modules', which the panel is fitted to.
+UF.DeckRows, UF.DeckReach = {}, { top = 0, bottom = 0 }
 
--- Raises the deck's reach on a side ("top" or "bottom") to at least extent and refits a live panel.
-function UF.RaiseDeckReach(side, extent)
-  if extent <= UF.DeckReach[side] then return end
-  UF.DeckReach[side] = extent
+-- The deck's reach on each side now: the furthest row of a module whose frames are on screen.
+local function deckReachNow()
+  local reach = { top = 0, bottom = 0 }
+  for owner, rows in pairs(UF.DeckRows) do
+    if ns.ModuleLive(owner) then
+      reach.top, reach.bottom = math.max(reach.top, rows.top or 0), math.max(reach.bottom, rows.bottom or 0)
+    end
+  end
+  return reach
+end
+
+-- Refits a live panel when the reach changed: a row was built, or its module stopped or started again.
+local function refitDeckReach()
+  local reach = deckReachNow()
+  if reach.top == UF.DeckReach.top and reach.bottom == UF.DeckReach.bottom then return end
+  UF.DeckReach = reach
   UF.ApplySizes()
+end
+ns.OnModulesChanged(refitDeckReach)
+
+-- Raises the reach of the module owner's rows on a side ("top" or "bottom") to at least extent and refits a live panel.
+---@param owner string  the module whose row it is: its reach counts only while it runs
+---@param side string
+---@param extent number
+function UF.RaiseDeckReach(owner, side, extent)
+  local rows = UF.DeckRows[owner] or {}
+  UF.DeckRows[owner] = rows
+  if extent <= (rows[side] or 0) then return end
+  rows[side] = extent
+  refitDeckReach()
 end
 
 -- Makes the deck's panel from the player frame to the target frame, reaching UF.DECK.pad past them,

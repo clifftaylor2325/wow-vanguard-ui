@@ -172,7 +172,7 @@ local function placeChip(chip, player)
   local row = aboveRow(player)
   local lift = math.max(0, (row:GetTop() or 0) - (player:GetTop() or 0))
   chip:SetPoint("BOTTOMLEFT", row, "TOPLEFT", UX.CHIP_ABOVE_X, UX.CHIP_ABOVE_Y)
-  UF.RaiseDeckReach("top", lift + UX.CHIP_ABOVE_Y + UX.CHIP_HEIGHT)
+  UF.RaiseDeckReach("UnitExtras", "top", lift + UX.CHIP_ABOVE_Y + UX.CHIP_HEIGHT)
 end
 
 -- Shows the chip with its icon and text, sized to them, or hides it for no text.
