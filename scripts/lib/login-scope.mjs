@@ -22,6 +22,7 @@ export const FULL_FILES = [
   "scripts/tests/scenarios.test.mjs", // every top-level frame of the default layout inside a 1920x1080 screen with no overlaps
   "scripts/tests/movers.test.mjs", // moving the frames of every module that has one
   "scripts/login-scope.test.mjs", // its logins test the scoping rules under each mode, so the data must not scope them
+  "scripts/tests/lifecycle-world.test.mjs", // every live module switched off and on in a populated world; a scoped login would switch only some
 ];
 
 // Single cases (`file|case`) that stay on the full login, in files that are otherwise scoped.
