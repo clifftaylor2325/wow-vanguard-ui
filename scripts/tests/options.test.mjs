@@ -484,14 +484,16 @@ it("options: a slider drag and a key capture end when their window hides, and a 
   expect(out.during, "mouse down on the track follows the cursor").toEqual([true, true]);
   expect([out.hidden, out.unchanged], "the window closing mid-drag stops the drag: no cursor following, the setting stays").toEqual([[false, true], true]);
   expect([out.capturing, out.caption], "hiding a key capture cancels it and puts its caption back").toEqual([false, "Set key"]);
-  expectErrors("slider drag: eval:7: TEST-ONLY drag");
-  addon.eval(`local row
+  expectErrors("slider drag: eval:8: TEST-ONLY drag");
+  // The row is found once the page shows, among the visible ones: the client runs a drag's OnUpdate only while the
+  // track is visible (SimpleFrameScriptObjectConstantsDocumentation.lua OnUpdateMode RunWhenVisible).
+  addon.eval(`ns.Options.Show("general")
+    local row
     for _, w in ipairs(__wfgStub.frames) do
-      if w.track and w.min and w.label and w.label.__text == "Text size" then row = w end
+      if w.track and w.min and w.label and w.label.__text == "Text size" and w:IsVisible() then row = w end
     end
     row.track.__left, row.track.__width = 0, 100
     GetCursorPosition = function() error("TEST-ONLY drag") end
-    ns.Options.Show("general")
     row.track:GetScript("OnMouseDown")()
     __wfgStub.update(0.05)`);
   expect(addon.eval("return ns.errors[1].text"), "a drag step that fails is caught under its name").toMatch(/^slider drag: .*TEST-ONLY drag$/);

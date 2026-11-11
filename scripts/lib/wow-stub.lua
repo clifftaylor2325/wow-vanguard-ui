@@ -768,15 +768,18 @@ function methods:GetVerticalScrollRange()
   return math.max(0, (child and child:GetHeight() or 0) - self:GetHeight())
 end
 
--- Visible only while it and every parent are shown, as in game.
-function methods:IsVisible()
-  local f = self
+-- Whether a widget and every parent are shown, read raw (a secret Shown aspect does not get in the way).
+local function inView(w)
+  local f = w
   while f do
     if not f.__shown then return false end
     f = f.__parent
   end
   return true
 end
+
+-- Visible only while it and every parent are shown, as in game.
+function methods:IsVisible() return inView(self) end
 
 -- Shows or hides by a flag (nil hides), running OnShow or OnHide as Show and Hide do. It calls the
 -- locals, not self:Show(), so a hooksecurefunc on the frame's Show or Hide does not run, as in the client.
@@ -1156,12 +1159,16 @@ function stub.fire(event, ...)
   end
 end
 
--- Moves the clock by `elapsed` and runs one OnUpdate on each shown frame, in creation order.
+-- Moves the clock by `elapsed` and runs one OnUpdate on each visible frame (it and every parent shown), in creation
+-- order. Blizzard_APIDocumentationGenerated/SimpleFrameScriptObjectConstantsDocumentation.lua:13-17 (both clients)
+-- has OnUpdateMode RunWhenVisible ("Run OnUpdate only while object is visible.") beside RunAlways, and
+-- Blizzard_UnitFrame/Shared/CompactUnitFrame.lua:292 makes a parentless frame "so UpdateAll is called even when the
+-- frame is hidden". SetOnUpdateMode is not modelled (the addon does not call it).
 function stub.update(elapsed)
   stub.now = stub.now + elapsed
   for _, frame in ipairs(inOrder(stub.updaters)) do
     local onUpdate = frame.__scripts.OnUpdate
-    if frame.__shown and onUpdate then
+    if onUpdate and inView(frame) then
       onUpdate(frame, elapsed)
     end
   end

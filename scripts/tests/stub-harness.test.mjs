@@ -59,3 +59,15 @@ it("the world's status bar, rounding and duration enums carry the client's names
     local copy = f:Copy() f:ClearBreakpoints()
     return { #f:GetBreakpoints(), #copy:GetBreakpoints(), copy:GetBreakpoints()[2].threshold, f.Format == nil }`)).toEqual([0, 2, 60, true]);
 });
+
+// OnUpdate runs only while a frame is visible (SimpleFrameScriptObjectConstantsDocumentation.lua OnUpdateMode
+// RunWhenVisible; Blizzard_UnitFrame/Shared/CompactUnitFrame.lua:292 works around it for a hidden frame).
+it("a shown frame under a hidden parent runs no OnUpdate until the parent shows", () => {
+  const addon = createAddon();
+  const ticks = addon.eval(`local p = CreateFrame("Frame") local c = CreateFrame("Frame", nil, p) __ticks = 0
+    c:SetScript("OnUpdate", function() __ticks = __ticks + 1 end)
+    p:Hide() __wfgStub.update(0.1) __wfgStub.update(0.1) local hidden = __ticks
+    p:Show() __wfgStub.update(0.1)
+    return { hidden, __ticks, c:IsShown() }`);
+  expect(ticks).toEqual([0, 1, true]);
+});
