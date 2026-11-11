@@ -1562,6 +1562,15 @@ it("quiet the game: a profile from before 0.9.4 keeps its declines and action-ba
   addon.update(0);
   expect(addon.eval("return #__answers"), "and turning Quiet off stops the declines at once").toBe(0);
 });
+it("quiet the game: moving the older settings a second time changes nothing, and a saved false stays false", () => {
+  const addon = loggedIn(INVITE_ENV, { savedVariables: OLD_PROFILES });
+  // Every saved profile as it stands.
+  const all = () => addon.eval("return VanguardDB.profiles");
+  const once = all();
+  addon.eval("for _, profile in pairs(VanguardDB.profiles) do ns.MigrateProfileTable(profile) end");
+  expect(all(), "a second run over the moved profiles changes nothing (nothing woken, nothing set again)").toEqual(once);
+  expect(addon.eval("local q = VanguardDB.profiles.Default.Quiet return { q.strangerGroups, q.barErrors }"), "the declines and the error switch the player had off are kept as false").toEqual([false, false]);
+});
 it("quiet the game: an older profile string's declines land in Quiet as it is imported", () => {
   const src = loggedIn();
   src.eval("ns.Profile().AutoAccept = { duels = true, summons = true } ns.Profile().Merchant.errors = false ns.Profile().Quiet = nil");
