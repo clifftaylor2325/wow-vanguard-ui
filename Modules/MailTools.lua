@@ -98,10 +98,15 @@ function MT.Matches(m, query)
   return keeps(MT.filter, m)
 end
 
+-- How many mails the inbox holds now (0 when the client lacks the call or hides the count).
+local function inboxCount()
+  return type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0
+end
+
 -- The mails that match, in inbox order.
 function MT.Find(query)
   local out = {}
-  for i = 1, math.min(MT.SCAN, type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0) do
+  for i = 1, math.min(MT.SCAN, inboxCount()) do
     local m = MT.Read(i)
     if m and MT.Matches(m, query) then out[#out + 1] = m end
   end
@@ -210,26 +215,34 @@ local function refused(run, now)
   return true
 end
 
--- A take went out from mail now: noted (so the next read tells a refused one) and counted, never past the steps planned.
-local function took(run, now)
-  run.last = { index = now.index, money = now.money, items = now.items }
+-- A take went out from mail now: noted with the inbox count read before it (so the next read tells a refused
+-- one, and a mail that left) and counted, never past the steps planned.
+local function took(run, now, count)
+  run.last = { index = now.index, money = now.money, items = now.items, count = count }
   run.done = math.min(run.done + 1, run.total)
   return true
 end
 
 -- One take from mail now: "took" after a take, nil when nothing was taken from this mail.
 local function tryTake(run, now)
-  return takeFrom(now) and took(run, now) and "took" or nil
+  local count = inboxCount()
+  return takeFrom(now) and took(run, now, count) and "took" or nil
+end
+
+-- Whether listed mail m was the last one taken from and the inbox count has changed since: it emptied and left
+-- (or a new mail moved the places), so whatever sits at its place now is a mail the run did not list.
+local function movedOn(run, m)
+  return run.last ~= nil and run.last.index == m.index and run.last.count ~= inboxCount()
 end
 
 -- Take all's next step: while the game is still busy with the last take, nothing (and the run waits);
 -- else one take from the first mail left on the run's list that is still itself, passing those that are
--- empty, gone, changed or refused. False once none is left.
+-- empty, gone (another mail took its place), changed or refused. False once none is left.
 local function takeNext(run)
   if C_Mail and C_Mail.IsCommandPending and C_Mail.IsCommandPending() then return true end
   local m = run.mails[1]
   while m do
-    local now = MT.Read(m.index)
+    local now = not movedOn(run, m) and MT.Read(m.index)
     local result = now and sameMail(now, m) and not refused(run, now) and tryTake(run, now)
     if result then return result == "took" end
     table.remove(run.mails, 1)
@@ -495,7 +508,7 @@ end
 
 -- The line shown instead of rows: an empty inbox, no matches, or nothing (rows shown).
 function MT.PaintEmpty(found)
-  local total = type(GetInboxNumItems) == "function" and ns.PlainNumber((GetInboxNumItems())) or 0
+  local total = inboxCount()
   MT.frame.empty:SetShown(found == 0)
   MT.frame.empty:SetText(total == 0 and L["Your inbox is empty."] or L["No mail matches."])
 end

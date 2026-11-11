@@ -5390,6 +5390,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: chat says "Post: the auction house refused it." and the guide line says the same, not only "Finished: posted 1 of 1". The next item you drop clears it.
 - If it fails, paste: the guide line, the chat line and `/vg errors`.
 
+### 33.615 Take all leaves a mail it did not list
+
+- Do: get two mails from one alt with the same subject, the first holding Linen Cloth x2, the second Wool Cloth. At the mailbox, type `linen` in the mail tools' search box and press Take all. [Client: Forever and Retail.]
+- Expect: only the linen mail is emptied, the wool mail stays, and chat says "Take all: 2 of 2 done." with no "could not take" line.
+- If it fails, paste: the chat lines, which mails are left, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

@@ -563,6 +563,43 @@ it("Take all stops once when the game refuses an item take and only a quiver (ba
   expect(chatHas(addon, /could not take/), "no line per mail").toBe(false);
 });
 
+// TEST-ONLY: two mails from Bobalt with one subject, the first holding Linen Cloth, the second Wool Cloth.
+const TWINS = `
+  __wfgWorld.mail = {
+    { sender = "Bobalt", subject = "Mats", money = 0, itemCount = 2, firstItemLink = "|cffffffff|Hitem:2589::::::::60|h[Linen Cloth]|h|r" },
+    { sender = "Bobalt", subject = "Mats", money = 0, itemCount = 2, firstItemLink = "|cffffffff|Hitem:2592::::::::60|h[Wool Cloth]|h|r" },
+  }
+`;
+
+it("H44-22-3 Take all with words leaves the unlisted mail that moves into an emptied mail's place", () => {
+  const addon = mailer(TWINS);
+  addon.world.openMailWindow();
+  addon.type("Vanguard_MailTools.search", "linen");
+  addon.click("Vanguard_MailTools.takeAll");
+  addon.advance(3);
+  expect(taken(addon), "the linen mail's two items only").toEqual([["item", 1, 1], ["item", 1, 2]]);
+  expect([senders(addon), chatHas(addon, /Take all: 2 of 2 done\./)], "the wool mail stays").toEqual([["Bobalt"], true]);
+});
+
+it("H44-22-3 Take all does not read the unlisted mail that moves into an emptied mail's place as a refused take", () => {
+  const addon = mailer(`__wfgWorld.mail = { { sender = "Bobalt", subject = "Ore", money = 100, itemCount = 2 }, { sender = "Bobalt", subject = "Ore", money = 0, itemCount = 1 } }`);
+  addon.world.openMailWindow();
+  addon.eval(`${MT}.filter = "Money"`);
+  addon.slash("mail takeall");
+  addon.advance(3);
+  expect(taken(addon).length, "the listed mail's money and two items").toBe(3);
+  expect([chatHas(addon, /Take all: 3 of 3 done\./), chatHas(addon, /could not take/)], "no false refusal").toEqual([true, false]);
+});
+
+it("H44-22-3 Take all goes on with a letter with text that stays after its last item (the inbox count unchanged)", () => {
+  const addon = mailer(TWINS + "__wfgWorld.mail[1].letter = true __wfgWorld.mail[1].itemCount = 1");
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.takeAll");
+  addon.advance(4);
+  expect(taken(addon), "the wool mail's two items, then the letter's one").toEqual([["item", 2, 1], ["item", 2, 2], ["item", 1, 1]]);
+  expect([chatHas(addon, /Take all: 3 of 3 done\./), chatHas(addon, /could not take/), senders(addon)], "the letter stays, nothing refused").toEqual([true, false, ["Bobalt"]]);
+});
+
 it("Take on a row takes the first attachment slot that still holds an item", () => {
   const addon = mailer("__wfgWorld.mail[2].slots = { [3] = true }");
   addon.world.openMailWindow();
