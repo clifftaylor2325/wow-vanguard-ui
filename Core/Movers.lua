@@ -836,6 +836,7 @@ function ns.ReleaseMover(key)
   local m = movers[key]
   if not m then return end
   if m.handle then m.handle:Hide() end
+  if ns.CloseMoverPopoverFor then ns.CloseMoverPopoverFor(key) end
   if selected == m then selectMover(nil) end
   released[key], movers[key] = m, nil
   local kept = {}

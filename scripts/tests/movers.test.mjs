@@ -603,3 +603,18 @@ it("a screen change moves every unsaved frame to its spot, though one frame fail
   addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(1);
   expect(addon.eval("return __moved > 0"), "the frame after the failing one was placed again").toBe(true);
 });
+
+// Right-clicks the handle of the mover with this key, as the player would, opening its position popover.
+const openPopover = (addon, key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")`);
+
+it("hunt H44-11-1: a mover let go while its popover is open takes the popover away, and a popover for another frame stays", () => {
+  const addon = loggedIn(BOX);
+  addon.slash("unlock");
+  openPopover(addon, "xpbar");
+  addon.eval('ns.SetModuleEnabled("DataBars", false)');
+  expect(addon.eval("return Vanguard_MoverPopover:IsShown()"), "its module stopped: the popover is put away").toBe(false);
+  openPopover(addon, "box");
+  const errors = addon.eval("return #ns.errors");
+  addon.eval('ns.SetModuleEnabled("DataBars", true) ns.SetModuleEnabled("DataBars", false)');
+  expect(addon.eval("return { Vanguard_MoverPopover:IsShown(), Vanguard_MoverPopover.key, #ns.errors }"), "another frame's popover stays, with no error").toEqual([true, "box", errors]);
+});
