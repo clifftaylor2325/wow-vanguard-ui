@@ -968,6 +968,7 @@ it("H44-22-50 section headers refit when the Text size changes while the bag is 
   addon.eval(BAG_ENV);
   addon.login();
   addon.eval("__openBag()");
+  // The quest header's width now.
   const width = () => addon.eval("return ns.GetModule('Bags').headers.quest:GetWidth()");
   const before = width();
   addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
