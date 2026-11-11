@@ -236,6 +236,16 @@ it("events: a game handler that fails inside a failing handler keeps the record,
   expect(out, "the record is kept once, the second handler ran, the broken handler was called once").toEqual({ ran: 1, n: 1, text: expect.stringMatching(/TEST-ONLY first$/), calls: 1 });
   expect(addon.eval('ns.Try("TEST-ONLY again", error, "second") return __calls'), "the next failure is forwarded again (the guard did not stay set)").toBe(2);
 });
+it("events: a guarded call that passes inside the game's handler keeps the loop guard set, so a failing one after it is not forwarded", () => {
+  expectErrors("TEST-ONLY outer: x");
+  const addon = loggedIn(`__calls = 0 geterrorhandler = function() return function()
+      __calls = __calls + 1
+      if __calls > 5 then return end
+      ns.Try("TEST-ONLY handler ok", function() end)
+      ns.Try("TEST-ONLY handler bad", error, "y")
+    end end`);
+  expect(addon.eval('ns.ClearErrors() __calls = 0 ns.Try("TEST-ONLY outer", error, "x") return { __calls, #ns.errors }'), "one error: the handler is entered once, and only the outer error is kept").toEqual([1, 1]);
+});
 it("secret checks: the client's check is chosen once and called bare, with no pcall per value", () => {
   const addon = loggedIn(`__asked = 0
     -- TEST-ONLY check: counts each question.
