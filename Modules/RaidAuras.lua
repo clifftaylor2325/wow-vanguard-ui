@@ -275,8 +275,9 @@ local function nextTile()
 end
 
 -- One frame's share: the next tile gets its rows (one that waited is refreshed, so they show its
--- unit). True while another may be left.
+-- unit). True while another may be left; false once the module is off (its next start builds the rest).
 local function buildOne()
+  if not (RA.scope and RA.scope.on) then return false end
   local b = nextTile()
   if not b then return false end
   build(b)

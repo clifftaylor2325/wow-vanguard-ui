@@ -142,6 +142,23 @@ it("H44-5-1 raid auras: a new tile size makes the rows again for the new zones o
   expect(addon.eval("return Vanguard_RaidUnitButton1.debuffRow.frame.__unit"), "and show the tile's unit again").toBe("raid1");
 });
 
+it("H44-5-2 raid auras: switching the module off stops the building ahead, and on again builds the rest", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  for (let i = 1; i <= 7; i++) addon.eval(`__spawn(${i}, nil)`);
+  // How many of tiles 1 to 7 have their rows.
+  const built = () => addon.eval(`local n = 0 for i = 1, 7 do if _G["Vanguard_RaidUnitButton" .. i].debuffRow then n = n + 1 end end return n`);
+  addon.eval("IsInGroup = function() return true end IsInRaid = function() return true end");
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0.016);
+  expect(built(), "one tile a frame").toBe(1);
+  addon.eval('ns.SetModuleEnabled("RaidAuras", false)');
+  for (let i = 0; i < 10; i++) addon.update(0.016);
+  expect(built(), "no tile gets rows while the module is off").toBe(1);
+  addon.eval('ns.SetModuleEnabled("RaidAuras", true)');
+  for (let i = 0; i < 10; i++) addon.update(0.016);
+  expect(built(), "on again, the rest are built").toBe(7);
+});
+
 it("a login or a join that fills many raid tiles at once builds two tiles' aura rows that frame, then one a frame", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
   addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3") __spawn(4, "raid1")');
