@@ -270,3 +270,12 @@ it("hunt H44-13-50: every options row that waits for a reload wears the reload t
   addon.eval('ns.Options.Show("raid")');
   expect(addon.eval(`${FIND("Sort by role (tanks, healers, damage)")} return { w ~= nil, w.tag and w.tag.__text }`), "Sort by role wears the tag the window gives a marked row").toEqual([true, "reload"]);
 });
+
+it("hunt H44-13-1 and H44-13-R2: searching 'changed' lights the pages that hold a changed setting and dims the rest, with or without a space", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general") __click("AFK scene")');
+  // The nav's alpha for General (holds the change), Chat (does not) and Action bars (a text row there holds the word), and the number of hits.
+  const search = (text) => addon.eval(`ns.Options.Search("${text}") local n = Vanguard_Options.nav
+    return { n.general:GetAlpha(), n.chat:GetAlpha(), n.actionbars:GetAlpha(), #ns.Options.hits }`);
+  for (const text of ["changed", "changed ", "  Changed "]) expect(search(text), `'${text}': General lit, the others dimmed, one hit`).toEqual([1, 0.35, 0.35, 1]);
+});

@@ -113,10 +113,16 @@ function O.RowMatches(rows, i, text)
   return isSetting(rows[i]) and matches(rows[i], wordsOf(text), noteUnder(rows, i))
 end
 
+-- Whether a (lower-case) search text is the word "changed", in English or translated, with spaces round it ignored.
+function O.WantsChanged(text)
+  local word = text:match("^%s*(.-)%s*$")
+  return word == "changed" or word == ns.Lower(L["changed"])
+end
+
 -- The settings that match a (lower-case) search text, and how many more the list has no room for; "changed" is
 -- the ones off their default.
 function O.FindSettings(text)
-  if text == "changed" or text == ns.Lower(L["changed"]) then return collect(function(row) return O.RowChanged(row) end) end
+  if O.WantsChanged(text) then return collect(function(row) return O.RowChanged(row) end) end
   local words = wordsOf(text)
   return collect(function(row, note) return matches(row, words, note) end)
 end
