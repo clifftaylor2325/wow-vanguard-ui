@@ -309,17 +309,49 @@ function StaticPopupSpecial_Show(frame) frame:Show() end
 function ShowUIPanel(frame) if frame and frame.Show and not frame:IsShown() then frame:Show() end end
 function HideUIPanel(frame) if frame and frame.Hide then frame:Hide() end end
 
--- EventRegistry: callbacks by event name, which world.trigger(event, ...) runs.
+-- EventRegistry: callbacks by event name, kept as Blizzard_SharedXMLBase/CallbackRegistry.lua's
+-- CallbackRegistryMixin keeps them (both clients): one callback per owner per event, a generated number owner for
+-- nil, a number owner refused, extra arguments kept for the call, and the owner returned.
 world.callbacks = {}
+world.callbackOwners = 0
+
+-- The owner a registration is kept under: the one given, or the next number for nil (a number owner raises).
+local function callbackOwner(owner)
+  if type(owner) == "number" then error("CallbackRegistryMixin:RegisterCallback 'owner' as number is reserved internally.", 3) end
+  if owner ~= nil then return owner end
+  world.callbackOwners = world.callbackOwners + 1
+  return world.callbackOwners
+end
+
+-- Calls a callback with its owner, the arguments kept at registration, then the event's own (GenerateClosure's
+-- pass-through, Blizzard_SharedXMLBase/FunctionUtil.lua).
+local function runCallback(cb, ...)
+  local args, extra = { cb.owner }, stub.pack(...)
+  for i = 1, cb.args.n do args[i + 1] = cb.args[i] end
+  for i = 1, extra.n do args[cb.args.n + 1 + i] = extra[i] end
+  return cb.fn(stub.unpack(args, 1, cb.args.n + 1 + extra.n))
+end
+
 EventRegistry = {
-  -- Keeps a callback for an event.
-  RegisterCallback = function(_, event, fn, owner)
+  -- Keeps fn for owner on an event, in place of that owner's earlier one; returns the owner.
+  RegisterCallback = function(self, event, fn, owner, ...)
+    owner = callbackOwner(owner)
+    self:UnregisterCallback(event, owner)
     world.callbacks[event] = world.callbacks[event] or {}
-    table.insert(world.callbacks[event], { fn = fn, owner = owner })
+    table.insert(world.callbacks[event], { fn = fn, owner = owner, args = stub.pack(...) })
+    return owner
   end,
-  -- Runs the callbacks for an event.
+  -- Drops the owner's callback for an event; the owner is required.
+  UnregisterCallback = function(_, event, owner)
+    if owner == nil then error("CallbackRegistryMixin:UnregisterCallback 'owner' is required.", 2) end
+    local list = world.callbacks[event] or {}
+    for i = #list, 1, -1 do if list[i].owner == owner then table.remove(list, i) end end
+  end,
+  -- Runs the callbacks for an event: those kept with extra arguments (the client's closures) first, then the rest.
   TriggerEvent = function(_, event, ...)
-    for _, cb in ipairs(world.callbacks[event] or {}) do cb.fn(cb.owner, ...) end
+    local list = { stub.unpack(world.callbacks[event] or {}) }
+    for _, cb in ipairs(list) do if cb.args.n > 0 then runCallback(cb, ...) end end
+    for _, cb in ipairs(list) do if cb.args.n == 0 then runCallback(cb, ...) end end
   end,
 }
 

@@ -203,3 +203,21 @@ it("a yes/no read the secret-read switch hides answers a hidden boolean, so an u
   expect(addon.eval(`return { pcall(assert(loadstring('if UnitOnTaxi("player") then return 1 end', "@Modules/TEST-ONLY.lua"))) }`),
     "a truth test in addon code").toEqual([false, "Modules/TEST-ONLY.lua:1: attempt to perform boolean test on a secret value"]);
 });
+
+// Blizzard_SharedXMLBase/CallbackRegistry.lua's CallbackRegistryMixin (both clients): RegisterCallback keeps one
+// callback per owner per event, generates an owner for nil, refuses a number owner, keeps extra arguments in a
+// closure and returns the owner; UnregisterCallback drops one.
+it("EventRegistry keeps one callback per owner, passes the extra arguments, and unregisters", () => {
+  const addon = createAddon();
+  const seen = addon.eval(`local out, me = {}, {}
+    local function note(tag) return function(...) out[#out + 1] = tag .. ":" .. table.concat({ select(2, ...) }, ",") end end
+    local mine = EventRegistry:RegisterCallback("TEST-ONLY", note("first"), me)
+    EventRegistry:RegisterCallback("TEST-ONLY", note("second"), me)
+    local made = EventRegistry:RegisterCallback("TEST-ONLY", note("extra"), nil, "a", "b")
+    EventRegistry:TriggerEvent("TEST-ONLY", "p")
+    EventRegistry:UnregisterCallback("TEST-ONLY", made)
+    EventRegistry:TriggerEvent("TEST-ONLY", "q")
+    local ok = pcall(EventRegistry.RegisterCallback, EventRegistry, "TEST-ONLY", note("n"), 5)
+    return { out, mine == me, type(made), ok }`);
+  expect(seen).toEqual([["extra:a,b,p", "second:p", "second:q"], true, "number", false]);
+});
