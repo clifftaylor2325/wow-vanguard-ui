@@ -149,14 +149,29 @@ local function mark(b, size, ...)
   return t
 end
 
+-- Puts a mark's shadow one screen pixel (`px`, at the grid's scale now) down and right of the mark.
+local function placeShadow(t, px)
+  t.shadow:SetPoint("TOPLEFT", t, "TOPLEFT", px, -px)
+end
+
 -- A dark copy of a mark one pixel down and right, under it, so a flat icon
 -- reads over a bright bar (showMark shows and hides it with the mark).
 local function addShadow(b, t, size)
-  local px = T.Pixel(b)
   t.shadow = T.Tint(b.overlay:CreateTexture(nil, "OVERLAY", nil, 6), "textShadow")
   t.shadow:SetSize(size, size)
-  t.shadow:SetPoint("TOPLEFT", t, "TOPLEFT", px, -px)
+  placeShadow(t, T.Pixel(b))
   t.shadow:Hide()
+end
+
+-- Places every marked tile's shadows again for the grid's scale now: a T.OnScale listener (the raid grid's compact
+-- scale, the raid mover's Scale or the UI scale changed; out of combat), and at each start. The tiles share the
+-- header's scale, so a pixel is worked out once for all of them.
+function RS.PlaceShadows()
+  if not RF.header then return end
+  local px = T.PixelAtScale(RF.header:GetEffectiveScale())
+  for _, b in ipairs(RF.buttons) do
+    if b.raidIcon then placeShadow(b.ready, px) placeShadow(b.leader, px) end
+  end
 end
 
 -- The marks that come and go, `big`, in the center over everything (as the client's own raid frames do):
@@ -352,6 +367,8 @@ function RS.Enable(settings, scope)
   RA.AddHook(RF.setupHooks, attach)
   RA.AddHook(RF.updateHooks, update)
   for event, fn in pairs(EVENTS) do scope:On(event, fn) end
+  scope:Gate("scale", RS.PlaceShadows, T.OnScale)
+  RS.PlaceShadows()
   followHeader()
   if ns.ModulesBuilt() then RF.UpdateAll() end
 end

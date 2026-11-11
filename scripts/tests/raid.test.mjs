@@ -1,7 +1,7 @@
 // raid: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, expectErrors, HEALING_ENV, RAID_ENV, RISE, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, overlaps, raidButton, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, ENGINE_ENV, expectErrors, HEALING_ENV, RAID_ENV, RISE, UNITS_ENV, borderOf, chatHas, isTok, loggedIn, overlaps, raidButton, setCombat } from "./helpers.mjs";
 
 it("a unit event reaches only the tile showing that unit", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
@@ -133,6 +133,31 @@ it("raid frames: growing the grid within one spot (25 to 40) works the tiles' bo
   expect([addon.eval("return Vanguard_Raid:GetScale()"), x, addon.eval("return __rescales")], "25 to 40 at one spot: scaled, the inset one screen pixel, pixel sizes worked out again once").toEqual([0.72, pixel, 1]);
   grow(40);
   expect(addon.eval("return __rescales"), "a roster change that leaves the scale alone repaints nothing").toBe(0);
+});
+
+// TEST-ONLY: a debuff on raid1, so its tile's debuff row dresses an icon.
+const ONE_DEBUFF_ENV = `
+  __auras = { raid1 = { ["HARMFUL|!RAID"] = { { icon = "TEST-ONLY-BOSS", auraInstanceID = 22 } } } }
+  C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter) return ((__auras[unit] or {})[filter] or {})[i] end }
+`;
+it("raid frames: a new grid scale places the role-mark and status-mark shadows and the aura icons' insets again, on its pixel", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + ENGINE_ENV + ONE_DEBUFF_ENV + "__members = 0 GetNumGroupMembers = function() return __members end");
+  addon.eval(`__spawn(1, "raid1")`);
+  // Each pixel-sized offset on tile 1 over one screen pixel at its scale now: the role shadow from the role mark,
+  // the ready-check and leader shadows from their marks, and the debuff icon's inset in its button.
+  const offsets = () => addon.eval(`local b = Vanguard_RaidUnitButton1 local px = ns.Theme.Pixel(b)
+    local function x(t) local _, _, _, ox = t:GetPoint(1) return ox end
+    local icon = b.debuffRow.frame.__groups[2].buttons[1].__icon
+    local function ratio(v) return math.floor(v / px * 100 + 0.5) / 100 end
+    return { ratio(x(b.roleShadow) - x(b.role)), ratio(x(b.ready.shadow)), ratio(x(b.leader.shadow)), ratio(icon.__points.TOPLEFT.x) }`);
+  expect(offsets(), "built: each one pixel").toEqual([1, 1, 1, 1]);
+  for (const n of [25, 40]) {
+    addon.eval(`__members = ${n}`);
+    addon.fire("GROUP_ROSTER_UPDATE");
+    addon.update(0);
+    expect(offsets(), `${n} players, the grid drawn smaller: each still one pixel at the new scale`).toEqual([1, 1, 1, 1]);
+  }
+  expect(addon.eval("return Vanguard_Raid:GetScale()"), "drawn at the 40-player size").toBe(0.72);
 });
 
 it("raid preview: stepping from 25 to 40 sample players works the tiles' borders out again for the new scale, once", () => {

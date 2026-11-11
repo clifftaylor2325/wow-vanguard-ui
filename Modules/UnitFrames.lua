@@ -1294,18 +1294,63 @@ local function clearParked(f)
   clearingParked = false
 end
 
--- Hides a game frame, puts it under the hidden frame and clears it (protected frames: out of combat only).
+-- What a part of a parked frame took from the mouse before Vanguard turned it off ({ click, motion } by part). A clear
+-- frame still takes the mouse, so while the game holds a parked frame on screen in a fight (the objective tracker, put
+-- back into its managed-frame container) its quest lines and buttons would answer clicks and show tooltips over ours.
+local mutedMouse = ns.FrameState("vgParkMuted")
+
+-- Calls fn on a game frame and on every frame under it (its lines, buttons and bars; textures take no mouse).
+local function eachPart(f, fn)
+  fn(f)
+  for _, part in ipairs({ f:GetChildren() }) do eachPart(part, fn) end
+end
+
+-- Turns one part's mouse off, keeping what it had the first time. Allowed in a fight on a frame that isn't protected;
+-- a protected part (or one holding a protected part) is left, as the client locks its mouse in a fight. None of the
+-- frames the game can bring back in a fight takes the mouse through such a part: PetFrame comes back inside the parked
+-- PlayerFrame, and the boss buttons are parked on their own.
+local function muteMouse(part)
+  if ns.IsTrue(part:IsProtected()) then return end
+  mutedMouse[part] = mutedMouse[part] or { part:IsMouseClickEnabled(), part:IsMouseMotionEnabled() }
+  part:SetMouseClickEnabled(false)
+  part:SetMouseMotionEnabled(false)
+end
+
+-- Gives a part back the mouse it had before muteMouse, if it was muted.
+local function unmuteMouse(part)
+  local had = mutedMouse[part]
+  if not had then return end
+  mutedMouse[part] = nil
+  part:SetMouseClickEnabled(had[1])
+  part:SetMouseMotionEnabled(had[2])
+end
+
+-- Keeps a parked frame the game holds on screen in a fight from taking the mouse, the parts it adds later too (the
+-- Update hook). Nothing while it sits under the hidden frame, where it isn't drawn and takes no mouse.
+local function holdParts(f)
+  if f:GetParent() == hiddenParent or not InCombatLockdown() then return end
+  UF.heldParts = UF.heldParts or {}
+  UF.heldParts[f] = true
+  eachPart(f, muteMouse)
+end
+
+-- Hides a game frame, puts it under the hidden frame and clears it (protected frames: out of combat only). A frame held
+-- on screen in the fight gets its parts' mouse back: under the hidden frame it takes none, and it is the game's again.
 local function park(f)
   f:Hide()
   f:SetParent(hiddenParent)
   clearParked(f)
+  if not (UF.heldParts and UF.heldParts[f]) then return end
+  UF.heldParts[f] = nil
+  eachPart(f, unmuteMouse)
 end
 
--- Parks a frame the game showed again (clear at once; hidden and parked now, or when the fight ends), unless it is
--- still parked. Whether it shows is the game's answer, so a hidden one counts as shown.
+-- Parks a frame the game showed again (clear and deaf to the mouse at once; hidden and parked now, or when the fight
+-- ends), unless it is still parked. Whether it shows is the game's answer, so a hidden one counts as shown.
 local function repark(f)
   clearParked(f)
   if not ns.IsTrue(f:IsShown()) and f:GetParent() == hiddenParent then return end
+  holdParts(f)
   ns.OutOfCombat(function() park(f) end, f)
 end
 
@@ -1334,14 +1379,22 @@ function PARK_HOOKS.SetAlpha(f)
   clearParked(f)
 end
 
--- Hooks every parked frame's new parent and alpha, once per frame (its own table, so a frame keepParked has hooked
--- still gets these).
+-- The game laying a frame out again (the objective tracker's Update, which takes new lines from its pools in a fight
+-- too): while the game holds it on screen, the new parts are kept from the mouse as well.
+function PARK_HOOKS.Update(f)
+  holdParts(f)
+end
+
+-- Hooks every parked frame's new parent, alpha and layout (where it has one), once per frame (its own table, so a
+-- frame keepParked has hooked still gets these).
 local function keepUnderHidden(f)
   if type(hooksecurefunc) ~= "function" then return end
   UF.reparentHooked = UF.reparentHooked or {}
   if UF.reparentHooked[f] then return end
   UF.reparentHooked[f] = true
-  for name, answer in pairs(PARK_HOOKS) do hooksecurefunc(f, name, ns.Guard("hook " .. name, answer)) end
+  for name, answer in pairs(PARK_HOOKS) do
+    if type(f[name]) == "function" then hooksecurefunc(f, name, ns.Guard("hook " .. name, answer)) end
+  end
 end
 
 -- Hides one of the game's frames for good: no events, parented to a hidden frame.

@@ -1825,13 +1825,27 @@ T.PRESS = { token = "shade", alpha = 0.3, drop = 1, rowAlpha = 0.2 }
 -- fill, ys = its label's anchor ys before the press }.
 local pressOf = setmetatable({}, { __mode = "k" })
 
+-- A label's anchors as GetPoint gives them, or nil when the client hides one's offsets (the game button's
+-- anchoring is secret): a secret offset can't be counted with, nor handed back to SetPoint.
+function T.PlainPoints(fs)
+  local points = {}
+  for i = 1, ns.PlainNumber(fs:GetNumPoints()) or 0 do
+    local p = { fs:GetPoint(i) }
+    p[4], p[5] = ns.PlainNumber(p[4]), ns.PlainNumber(p[5])
+    if not (p[4] and p[5]) then return nil end
+    points[i] = p
+  end
+  return points
+end
+
 -- Moves a button's own label (button.text) T.PRESS.drop pixels down (down) or back to where it was,
--- every anchor at once; never on a protected button (its regions can't move in a fight).
+-- every anchor at once; never on a protected button (its regions can't move in a fight), nor on a label whose
+-- offsets the client hides (T.PlainPoints).
 local function dropLabel(button, state, down)
   local fs = button.text
   if type(fs) ~= "table" or not fs.GetNumPoints or button.IsProtected and button:IsProtected() then return end
-  local points, drop = {}, T.PRESS.drop * T.Pixel(button)
-  for i = 1, fs:GetNumPoints() do points[i] = { fs:GetPoint(i) } end
+  local points, drop = T.PlainPoints(fs), T.PRESS.drop * T.Pixel(button)
+  if not points then return end
   if down then state.ys = {} end
   for i, p in ipairs(points) do
     local y = p[5]
@@ -2546,14 +2560,16 @@ local function isTexture(region)
   return type(region.GetObjectType) == "function" and region:GetObjectType() == "Texture"
 end
 
--- Sizes a divider's line to one screen pixel thick at its scale now (again after a scale change).
-local function sizeDivider(d)
+-- Sizes a divider's line to one screen pixel thick at its scale now (again after a scale change); one whose region
+-- the client has closed to addons is forgotten (T.Closed).
+local function sizeDivider(region, d)
+  if T.Closed(region) then dividerOf[region] = nil return end
   if d.vertical then d.line:SetWidth(T.Pixel(d.holder)) else d.line:SetHeight(T.Pixel(d.holder)) end
 end
 
--- Sizes every divider's line again (T.OnScale, after a UI scale or screen change).
+-- Sizes every divider's line again (T.OnScale, after a UI scale or screen change), each on its own.
 local function sizeDividers()
-  for _, d in pairs(dividerOf) do sizeDivider(d) end
+  T.EachTried("divider pixel", dividerOf, sizeDivider)
 end
 T.OnScale(sizeDividers)
 
@@ -2566,7 +2582,7 @@ local function dividerLine(region, host, vertical)
   local d = { holder = holder, line = solid(holder, "ARTWORK", nil, "divider"), vertical = vertical }
   d.line:SetPoint("TOPLEFT")
   d.line:SetPoint(vertical and "BOTTOMLEFT" or "TOPRIGHT")
-  sizeDivider(d)
+  sizeDivider(region, d)
   return d
 end
 
@@ -2948,9 +2964,16 @@ local function rowRail(row)
   return rail
 end
 
--- Sizes every row's rail to T.SELECT.rail screen pixels again (after a UI, screen or frame scale change).
+-- Sizes one row's rail to T.SELECT.rail screen pixels at its scale now; a row the client has closed to addons is
+-- forgotten (T.Closed).
+function T.SizeRail(row, s)
+  if T.Closed(row) then rowOf[row] = nil return end
+  s.rail:SetWidth(T.SELECT.rail * T.Pixel(row))
+end
+
+-- Sizes every row's rail to T.SELECT.rail screen pixels again (after a UI, screen or frame scale change), each on its own.
 function T.SizeRails()
-  for row, s in pairs(rowOf) do s.rail:SetWidth(T.SELECT.rail * T.Pixel(row)) end
+  T.EachTried("row rail", rowOf, T.SizeRail)
 end
 T.OnScale(T.SizeRails)
 
@@ -3424,11 +3447,14 @@ do
   end
 
   -- Shrinks a fitted font string until its text fits its box's width less the inset each side (no smaller than
-  -- T.FIT_FLOOR of its size), or puts it back to full size when it fits; leaves any other string alone.
+  -- T.FIT_FLOOR of its size), or puts it back to full size when it fits; leaves any other string alone, and one whose
+  -- box's width the client hides (a game button with secret anchoring) as it is.
   function T.Refit(fs)
     local fit = fitted[fs]
     if not fit then return end
-    local room, natural = fit.box:GetWidth() - 2 * fit.inset, T.FullWidth(fs)
+    local width = ns.PlainNumber(fit.box:GetWidth())
+    if not width then return end
+    local room, natural = width - 2 * fit.inset, T.FullWidth(fs)
     fs:SetTextScale(room > 0 and natural > room and math.max(T.FIT_FLOOR, room / natural) or 1)
   end
 
