@@ -153,3 +153,15 @@ it("a protected call or a binding write that game code makes for the addon in co
   expect(addon.eval("return #__wfgStub.violations"), "the game's own run is not blocked").toBe(0);
   expect(addon.eval("return TestSecure:GetFrameLevel()")).toBe(9);
 });
+
+// Blizzard_APIDocumentationGenerated/FrameAPICooldownDocumentation.lua marks Clear, SetCooldown, SetCooldownDuration and
+// SetCooldownFromDurationObject IsProtectedFunction (both clients); a chat frame's Clear is a plain method.
+it("a protected cooldown's Clear and SetCooldown calls are blocked in combat; a message frame's Clear is not", () => {
+  const addon = createAddon();
+  addon.eval(`TestHolder = CreateFrame("Frame", "TestHolder", UIParent) __wfgStub.protect(TestHolder)
+    TestSwipe = CreateFrame("Cooldown", "TestSwipe", TestHolder) __wfgStub.protect(TestSwipe)
+    TestLog = CreateFrame("ScrollingMessageFrame", "TestLog", TestHolder) __wfgStub.protect(TestLog)`);
+  addon.world.combat(true);
+  asAddon(addon, "TestSwipe:SetCooldown(1, 2) TestSwipe:Clear() TestSwipe:SetCooldownDuration(3) TestLog:Clear()");
+  expect(violations(addon)).toEqual(["SetCooldown", "Clear", "SetCooldownDuration"].map((n) => `blocked in combat: Modules/TEST-ONLY.lua:1 called ${n} on the protected frame TestSwipe`));
+});

@@ -333,6 +333,27 @@ for _, name in ipairs(PROTECTED_CALLS) do
   rewrap(name, lockable(name))
 end
 
+-- Protected methods whose name another kind also carries unprotected (a ScrollingMessageFrame's Clear is a plain
+-- method): blocked on that kind only. Blizzard_APIDocumentationGenerated/FrameAPICooldownDocumentation.lua marks
+-- these four IsProtectedFunction on both clients.
+local PROTECTED_BY_KIND = { Cooldown = { "Clear", "SetCooldown", "SetCooldownDuration", "SetCooldownFromDurationObject" } }
+
+-- A protected method of one kind: blocked as lockable blocks it, on a widget of that kind.
+local function lockableOn(kind, name)
+  return function(orig)
+    return function(self, ...)
+      if rawget(self, "__kind") == kind and blocked(self, name) then return end
+      return orig(self, ...)
+    end
+  end
+end
+for kind, names in pairs(PROTECTED_BY_KIND) do
+  for _, name in ipairs(names) do
+    if not methods[name] and listedMethod(name) then methods[name] = function() end end
+    rewrap(name, lockableOn(kind, name))
+  end
+end
+
 -- ShowUIPanel and HideUIPanel refuse a tainted run in combat, for every frame
 -- (UIParentPanelManager.lua CheckProtectedFunctionsAllowed: "We no longer allow addons to
 -- show or hide UI panels in combat"). Nothing opens or closes, and the client prints
