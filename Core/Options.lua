@@ -279,7 +279,7 @@ local function hudLayoutRows()
   return {
     { "header", L["HUD layout"] },
     { "cycle", L["Where the frames stand"], ns.HudLayoutChoices(), hudLayoutSetting() },
-    { "text", L["The keep: one wall at the foot of the screen. Standards: tall banners either side of you. A frame you moved stays put."], "note" },
+    { "text", L["The keep: one wall at the foot of the screen. Standards: tall banners either side of you. Picking a layout moves the frames it places to its spots, each keeping its scale, opacity and size; a frame no layout places stays where you put it."], "note" },
   }
 end
 

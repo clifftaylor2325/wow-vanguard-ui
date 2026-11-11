@@ -293,15 +293,26 @@ function ns.OnLayoutChanged(fn)
   layoutListeners[#layoutListeners + 1] = fn
 end
 
--- Sets the profile's HUD layout ("centered" or nil for the modules' own defaults), forgets the saved positions of
--- the frames the old and new layouts place (so their spots apply), puts every frame at its spot again, and tells
--- the ns.OnLayoutChanged listeners; one frame or listener that fails is reported and the rest still run.
+-- Forgets where a frame stands in the profile, its point and offsets and its anchor link (a link is a position too),
+-- and keeps the rest of its entry: its scale, its opacity and a matched or own size. An entry left empty goes.
+local function forgetSpot(key)
+  local p = saved()[key]
+  if type(p) == "table" then
+    for _, field in ipairs({ "point", "relPoint", "x", "y", "rel" }) do p[field] = nil end
+  end
+  if type(p) ~= "table" or next(p) == nil then saved()[key] = nil end
+end
+
+-- Sets the profile's HUD layout ("centered" or nil for the modules' own defaults), forgets the saved spots of the
+-- frames the old and new layouts place (so their spots apply; each keeps its scale, opacity and size), puts every
+-- frame at its spot again, and tells the ns.OnLayoutChanged listeners; one frame or listener that fails is reported
+-- and the rest still run.
 ---@param layout string|nil
 function ns.SetHudLayout(layout)
   local before = ns.HudLayout()
   ns.Profile().hudLayout = layoutSpots[layout] and layout or nil
   for _, spots in ipairs({ layoutSpots[before] or {}, layoutSpots[ns.HudLayout()] or {} }) do
-    for key in pairs(spots) do saved()[key] = nil end
+    for key in pairs(spots) do forgetSpot(key) end
   end
   for _, key in ipairs(order) do ns.Try("place " .. key, ns.PlaceMover, key) end
   for _, fn in ipairs(layoutListeners) do ns.Try("HUD layout changed", fn, ns.HudLayout()) end

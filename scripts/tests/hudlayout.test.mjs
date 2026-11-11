@@ -51,6 +51,20 @@ it("HUD layouts: a layout's spots win over the modules' defaults, a saved spot o
   expect(addon.eval("UIParent.GetWidth = function() return __wfgWorld.secret(1920) end local holds, w = ns.LayoutHolds(), ns.LayoutSize('uf_player') UIParent.GetWidth = nil return { holds, w }"), "Standards holds on any canvas, a hidden one too").toEqual([true, 40]);
 });
 
+it("HUD layouts: picking one forgets where a placed frame stood and what it was anchored to, and keeps its scale, opacity and matched size", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV);
+  const set = addon.eval(`ns.SetMoverScale("cast_target", 1.2) ns.SetMoverAlpha("cast_target", 0.6)
+    return { ns.SetMoverMatch("cast_target", "width", "uf_target"), ns.SetMoverAnchor("cast_target", "uf_target", "BOTTOM") }`);
+  addon.eval("ns.SetMoverPoint('uf_player', 'BOTTOM', 'BOTTOM', -300, 300)");
+  expect([set, addon.eval("return ns.MoverSaved('cast_target')")], "the target's cast bar matched to the target's width and anchored under it").toEqual([[true, true], true]);
+  addon.eval("ns.SetHudLayout('fort')");
+  expect(addon.eval(`local p = VanguardDB.profiles.Default.positions.cast_target
+    return { ns.MoverSaved('cast_target'), p.rel == nil, p.match.width, p.scale, p.alpha, { ns.MoverPoint('cast_target') } }`),
+  "the keep: its spot and its anchor link forgotten (the keep's spot applies), its scale, opacity and matched width kept").toEqual([false, true, "uf_target", 1.2, 0.6, ["BOTTOM", "BOTTOM", 368, 36 + RISE.frames]]);
+  expect(addon.eval("return { ns.MoverLook('cast_target') }"), "still drawn at its scale and opacity").toEqual([1.2, 0.6]);
+  expect(addon.eval("return VanguardDB.profiles.Default.positions.uf_player == nil"), "a frame that had only a spot keeps no entry").toBe(true);
+});
+
 // How many shown one-pixel lines a frame draws (TEST-ONLY reads): its edges and its hairline's.
 const thin = (addon, name) => addon.eval(`local f, T, n = ${name}, ns.Theme, 0
   for _, t in ipairs({ f:GetRegions() }) do if t:IsShown() and (t:GetWidth() == T.Pixel(f) or t:GetHeight() == T.Pixel(f)) then n = n + 1 end end
