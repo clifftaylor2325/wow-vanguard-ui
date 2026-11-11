@@ -136,12 +136,15 @@ it("upgrades: what you wear and the weights change the judgement; kept after clo
   scan(addon, SCAN);
   addon.eval("__wfgWorld.worn[9] = __link(102)");
   addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  addon.update(0.01);
   expect([card(addon)[1], row(addon, 1)[1]], "the better bracers worn now: no longer an upgrade, the rest judged again").toEqual([2, "TEST-ONLY Cheap Helm"]);
   addon.eval("__wfgWorld.worn[9] = __link(103)");
   addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  addon.update(0.01);
   expect([card(addon)[1], row(addon, 1).slice(1, 4)], "the worse bracers worn: the better ones gain 140 %").toEqual([4, ["TEST-ONLY Better Bracers", "Wrist", "+140 %"]]);
   addon.slash("weights set STR 0");
   addon.eval(`${HELPER}.PaintUpgrades()`);
+  addon.update(0.01);
   expect([card(addon)[1], row(addon, 1)[1]], "strength worth nothing: the bracers are no gain; the helm and the sword still fill their slots").toEqual([2, "TEST-ONLY Cheap Helm"]);
   addon.world.closeAuctionHouse();
   addon.world.openAuctionHouse();
@@ -168,7 +171,7 @@ it("upgrades: a big scan is judged a hundred listings a frame, and closing the h
   addon.click(SCAN_BUTTON);
   addon.fire("REPLICATE_ITEM_LIST_UPDATE");
   addon.update(0.01);
-  expect([addon.eval(`return ${HELPER}.scan == nil`), addon.eval(`return ${HELPER}.judging.next`), card(addon)[1]], "the scan read in one frame, and a hundred of its listings judged in the same").toEqual([true, 101, 100]);
+  expect([addon.eval(`return ${HELPER}.scan == nil`), addon.eval(`return ${HELPER}.judging ~= nil`), card(addon)[1]], "the scan read in one frame, and a hundred of its listings judged in the same, the rest still to go").toEqual([true, true, 100]);
   addon.world.closeAuctionHouse();
   addon.update(0.01);
   expect([addon.eval(`return ${HELPER}.judging == nil`), addon.eval(`return next(${HELPER}.upgrades) == nil`), addon.eval(`return ${HELPER}.judge:IsShown()`)], "closed: judging stops, the listings judged are kept").toEqual([true, false, false]);
@@ -232,4 +235,41 @@ it("upgrades: an empty-slot listing whose stats haven't loaded is listed after o
   const addon = warrior("gear(112, 'Unloaded Helm', 'INVTYPE_HEAD', nil)");
   scan(addon, "{ { itemID = 112, count = 1, buyoutPrice = 10 }, { itemID = 105, count = 1, buyoutPrice = 80 } }");
   expect([row(addon, 1)[1], addon.eval("return #ns.errors")], "the helm with stats fills the slot; no error").toEqual(["TEST-ONLY Sturdy Helm", 0]);
+});
+
+// TEST-ONLY: 150 wrist pieces (STR 11) over the worn STR 10 ones, found by a scan.
+const BRACERS_150 = `__rows = {}
+  for i = 1, 150 do
+    __wfgWorld.items[1000 + i] = { name = "TEST-ONLY Bracers " .. i, classID = 4, equipLoc = "INVTYPE_WRIST", stats = { ITEM_MOD_STRENGTH_SHORT = 11 } }
+    __rows[i] = { itemID = 1000 + i, count = 1, buyoutPrice = 100 + i }
+  end
+  __wfgWorld.ah.replicate = __rows`;
+// Counts the AH.Upgrade calls from now on (read with judgedCount).
+const countJudging = (addon) => addon.eval(`__judged = 0 local AH = ${HELPER} local up = AH.Upgrade
+  AH.Upgrade = function(...) __judged = __judged + 1 return up(...) end`);
+const judgedCount = (addon) => addon.eval("return __judged");
+it("H44-21-154: a gear change judges the listings seen on the walker, AH.JUDGE_ROWS a frame, keeping when each was found", () => {
+  const addon = warrior(BRACERS_150);
+  scan(addon, "__rows");
+  for (let i = 0; i < 3; i++) addon.update(0.01);
+  const found = addon.eval(`local f = {} for l, u in pairs(${HELPER}.upgrades) do f[#f + 1] = u.found end return f`);
+  addon.eval("__now = __now + 1000");
+  countJudging(addon);
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  const inEvent = judgedCount(addon);
+  expect(inEvent, "at most a frame's rows in the event's own frame").toBeLessThanOrEqual(100);
+  addon.update(0.01);
+  addon.update(0.01);
+  expect([judgedCount(addon), addon.eval(`return ${HELPER}.judging == nil`)], "all 150, within two more frames").toEqual([150, true]);
+  const after = addon.eval(`local f = {} for l, u in pairs(${HELPER}.upgrades) do f[#f + 1] = u.found end return f`);
+  expect(after.every((t) => found.includes(t)), "found times kept, not reset to the later clock").toBe(true);
+});
+it("H44-21-154: a gear change while a scan is still being judged loses none of its listings, and raises no error", () => {
+  const addon = warrior(BRACERS_150);
+  addon.click(SCAN_BUTTON);
+  addon.fire("REPLICATE_ITEM_LIST_UPDATE");
+  addon.update(0.01);
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  for (let i = 0; i < 4; i++) addon.update(0.01);
+  expect([card(addon)[1], addon.eval("return #ns.errors")], "all 150 judged in the end").toEqual([150, 0]);
 });
