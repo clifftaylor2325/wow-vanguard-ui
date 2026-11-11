@@ -332,19 +332,36 @@ function RF.PaintEdge(b, unit)
   T.SetBorder(b, on and ACCENT or nil)
 end
 
+-- One tile of a walk over the tiles: fn(b, ...) under pcall, so a tile that fails leaves the later ones refreshed.
+-- Gives back the walk's first error so far (`failed`, or this tile's), or nil.
+function RF.TryTile(failed, fn, b, ...)
+  local ok, err = pcall(fn, b, ...)
+  return failed or (not ok and err) or nil
+end
+
+-- Ends a walk over the tiles: its first error goes on to the guard around the walk (same site, same error budget),
+-- once, after every tile had its turn.
+function RF.EndWalk(failed)
+  if failed then error(failed, 0) end
+end
+
 -- Every button currently showing a unit.
 function RF.UpdateAll()
+  local failed
   for _, b in ipairs(RF.buttons) do
-    if b:IsShown() then RF.Update(b) end
+    if b:IsShown() then failed = RF.TryTile(failed, RF.Update, b) end
   end
+  RF.EndWalk(failed)
 end
 
 -- Runs fn(tile, unit) on every shown tile with an existing unit.
 function RF.EachTile(fn)
+  local failed
   for _, b in ipairs(RF.buttons) do
     local unit = b:IsShown() and tileUnit(b)
-    if unit then fn(b, unit) end
+    if unit then failed = RF.TryTile(failed, fn, b, unit) end
   end
+  RF.EndWalk(failed)
 end
 
 -- Runs fn(tile, unit) for the shown tile showing this unit token, if any.

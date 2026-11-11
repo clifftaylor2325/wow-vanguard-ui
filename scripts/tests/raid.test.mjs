@@ -688,3 +688,17 @@ it("H27-3-1: a class-coloured name in the Dark look keeps its colour through a l
   addon.slash("variant classic");
   expect(addon.eval("return Vanguard_RaidUnitButton1.name.__textColor"), "the class colour, not the look's text colour").toEqual(before);
 });
+
+it("H44-7-1 raid frames: a tile that fails on a roster change leaves the later tiles refreshed, and its error is still reported", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + "__members = 3 GetNumGroupMembers = function() return __members end");
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');
+  addon.update(0.016);
+  // TEST-ONLY: a module's part that fails on tile 1 only (stands for any per-tile error).
+  addon.eval(`local RF = ns.GetModule("RaidFrames")
+    table.insert(RF.updateHooks, 1, function(b) if b == Vanguard_RaidUnitButton1 then error("TEST-ONLY tile 1 fails") end end)
+    __units.raid3.name = "TEST-ONLY Renamed"`);
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.update(0);
+  expect(addon.eval("return Vanguard_RaidUnitButton3.name:GetText()"), "tile 3 got the news past the failing tile 1").toBe("TEST-ONLY Renamed");
+  expectErrors(/^raidtiles: eval:\d+: TEST-ONLY tile 1 fails$/);
+});

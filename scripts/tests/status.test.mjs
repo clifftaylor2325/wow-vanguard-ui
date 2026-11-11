@@ -1,7 +1,7 @@
 // status: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { NO_RAID, RAID_ENV, UNITS_ENV, isTok, loggedIn, marks } from "./helpers.mjs";
+import { NO_RAID, RAID_ENV, UNITS_ENV, expectErrors, isTok, loggedIn, marks } from "./helpers.mjs";
 
 // TEST-ONLY group status: raid icons, ready check, resurrection, leader, range.
 const STATUS_ENV = `
@@ -256,4 +256,35 @@ it("raid status: the center marks are never asked whether they show, so a secret
   addon.fire("INCOMING_RESURRECT_CHANGED", "raid3");
   const status = addon.eval("return { Vanguard_RaidUnitButton1.status:IsShown(), Vanguard_RaidUnitButton3.status:IsShown(), __asked, #ns.errors }");
   expect(status, "both tiles' status texts step aside for their center marks, no mark was asked, and nothing raised").toEqual([false, false, 0, 0]);
+});
+
+// TEST-ONLY status calls for the walks below: raid1 and raid3 marked and in range, both changed by the test.
+const WALK_ENV = `
+  __status = { icon = { raid1 = 8, raid3 = 2 }, ready = {}, rez = {}, range = { raid1 = true, raid3 = true } }
+  GetRaidTargetIndex = function(unit) return __status.icon[unit] end
+  GetReadyCheckStatus = function() return nil end
+  UnitHasIncomingResurrection = function() return false end
+  UnitIsGroupLeader = function() return false end
+  UnitIsGroupAssistant = function() return false end
+  UnitInRange = function(unit) return __status.range[unit], true end
+`;
+
+it("H44-7-1 raid status: a tile whose range fade fails leaves the later tiles fading, and its error is still reported", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + WALK_ENV);
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');
+  addon.eval(`Vanguard_RaidUnitButton1.SetAlpha = function() error("TEST-ONLY tile 1 alpha fails") end
+    __status.range.raid1 = false __status.range.raid3 = false`);
+  addon.eval("__wfgStub.advance(0.25)");
+  expect(addon.eval("return Vanguard_RaidUnitButton3:GetAlpha()"), "tile 3 is out of range and fades past the failing tile 1").toBe(0.4);
+  expectErrors("ticker raid range: eval:2: TEST-ONLY tile 1 alpha fails");
+});
+
+it("H44-7-1 raid status: a tile whose raid icon fails leaves the later tiles' icons refreshed, and its error is still reported", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + WALK_ENV);
+  addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3")');
+  addon.eval(`Vanguard_RaidUnitButton1.raidIcon.SetTexCoord = function() error("TEST-ONLY tile 1 icon fails") end
+    __status.icon.raid3 = 5`);
+  addon.fire("RAID_TARGET_UPDATE");
+  expect(addon.eval("return Vanguard_RaidUnitButton3.raidIcon.__texCoord"), "tile 3 shows icon 5 (row 2, cell 1)").toEqual([0, 0.25, 0.25, 0.5]);
+  expectErrors("event RAID_TARGET_UPDATE: eval:2: TEST-ONLY tile 1 icon fails");
 });

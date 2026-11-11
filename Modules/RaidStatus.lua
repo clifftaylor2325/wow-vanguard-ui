@@ -122,9 +122,11 @@ end
 
 -- The range of every shown tile, by the unit the raid frames track for it.
 local function checkRange()
+  local failed
   for _, b in ipairs(RF.buttons) do
-    if b.raidIcon and b.tracked and b:IsShown() then RS.UpdateRange(b, b.tracked) end
+    if b.raidIcon and b.tracked and b:IsShown() then failed = RF.TryTile(failed, RS.UpdateRange, b, b.tracked) end
   end
+  RF.EndWalk(failed)
 end
 
 -- Checks range five times a second (range has no dependable event), only while the raid header is
@@ -285,10 +287,12 @@ end
 -- timer asked for before the stop may still come).
 local function each(fn)
   if not RS.scope.on then return end
+  local failed
   for _, b in ipairs(RF.buttons) do
     local unit = b:GetAttribute("unit")
-    if b.raidIcon and b:IsShown() and unit then fn(b, unit) end
+    if b.raidIcon and b:IsShown() and unit then failed = RF.TryTile(failed, fn, b, unit) end
   end
+  RF.EndWalk(failed)
 end
 
 -- Refreshes every mark on every shown button.
