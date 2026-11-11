@@ -625,7 +625,9 @@ it("H44-21-100: a scan larger than the cap ranks all its items together, so a la
 const RULESET_ENV = `__now = 1790000000 time = function() return __now end
   C_GameRules = C_GameRules or {} C_GameRules.IsHardcoreActive = function() return true end`;
 const RULESET_SAVED = (() => {
+  // A saved price row of one listing, priced at time t.
   const row = (t) => `{ min = 5, t = ${t}, listings = 1, days = {} }`;
+  // A saved house of three items priced at time t.
   const house = (t) => `{ count = 3, lastScan = 0, prices = { [1] = ${row(t)}, [2] = ${row(t)}, [3] = ${row(t)} } }`;
   return `VanguardDB.ah = { houses = { ["ForeverTest-Alliance"] = ${house(1790000000 - 864000)}, ["Other-Horde"] = ${house(1790000000 - 86400)} } }`;
 })();

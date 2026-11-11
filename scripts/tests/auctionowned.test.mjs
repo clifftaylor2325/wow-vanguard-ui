@@ -873,7 +873,9 @@ const PAID_CANCEL = `__wfgWorld.items[10940] = { name = "Strange Dust", icon = "
     { auctionID = 506, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 130 } }
   __wfgWorld.ah.commodities[10940] = { { unitPrice = 120, quantity = 7 } }
   __wfgWorld.ah.cancelCost = 100`;
+// The auction IDs sent to CancelAuction so far.
 const cancelsSent = (addon) => addon.eval("local out = {} for i, c in ipairs(__wfgWorld.ah.restricted) do out[i] = c.args[1] end return out");
+// Whether the game-style question window is showing.
 const questionShown = (addon) => addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()");
 it("H44-21-R1: Cancel next undercut marks the row that is listed when Yes is clicked, so the next click takes the next one", () => {
   const addon = atAuctionHouse(PAID_CANCEL);

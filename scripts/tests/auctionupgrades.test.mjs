@@ -247,6 +247,7 @@ const BRACERS_150 = `__rows = {}
 // Counts the AH.Upgrade calls from now on (read with judgedCount).
 const countJudging = (addon) => addon.eval(`__judged = 0 local AH = ${HELPER} local up = AH.Upgrade
   AH.Upgrade = function(...) __judged = __judged + 1 return up(...) end`);
+// How many AH.Upgrade calls countJudging has seen.
 const judgedCount = (addon) => addon.eval("return __judged");
 it("H44-21-154: a gear change judges the listings seen on the walker, AH.JUDGE_ROWS a frame, keeping when each was found", () => {
   const addon = warrior(BRACERS_150);

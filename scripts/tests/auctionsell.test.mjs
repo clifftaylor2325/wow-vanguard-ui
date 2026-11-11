@@ -774,6 +774,7 @@ const dropUnanswered = (addon) => {
   addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = 1 }`);
   addon.click(`${CARD}.slot`);
 };
+// The sell card: [Your price, Post on, guide line].
 const postGuide = (addon) => addon.eval(`local c = ${CARD} return { c.lines[4].value:GetText(), c.post:IsEnabled(), c.guide:GetText() }`);
 it("H44-21-150: Post waits for the price check, then posts at the cheapest's undercut", () => {
   const addon = atAuctionHouse(BAGS + DUST_UP);
