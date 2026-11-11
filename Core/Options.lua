@@ -79,7 +79,8 @@ local restartSetters = setmetatable({}, { __mode = "k" })
 
 -- get/set for a setting that changes a live module's shape: the module is built again, out of combat
 -- (ns.RestartModule). On a module that is not live it is a reload setting, so a row can move to it before its
--- module is converted. The caption keeps its " (reload)" words; the window tags the row only while it waits.
+-- module is converted. The caption keeps its " (reload)" words; the window tags the row only where the module is not
+-- live (it then waits for a reload). A live rebuild queued by a fight shows no sign on the row.
 ---@param module string
 ---@param key string
 function O.RestartSetting(module, key)
