@@ -5402,6 +5402,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the bought item is never in the question nor sold (no money and no refund came back); `/vg sell` says you have none to sell. Answered on the Buyback tab, nothing is sold; on the merchant tab the other item sells. [Needs in-game check: what a bare use of a refundable purchase does, refund or sale.]
 - If it fails, paste: the question's text, the chat lines, what came back (gold or tokens), and `/vg errors`.
 
+### 33.617 Bag section headers follow a Text size change with the bag open
+
+- Do: with Bag sections on, open your bags (a few kinds of items in them), then without closing them open `/vg` and drag the Text size slider to its largest (130%). Best on a Russian or German client. [Client: Forever and Retail.]
+- Expect: each section header (Quest, Equipment, Trade goods and the rest) shows its whole name at once, without closing and opening the bag; the items move under the wider headers.
+- If it fails, paste: a screenshot of the bag, the client's language, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

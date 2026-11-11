@@ -963,6 +963,19 @@ it("Filter, Groups and Sort refit when the Text size changes while the bag is op
   }
 });
 
+it("H44-22-50 section headers refit when the Text size changes while the bag is open", () => {
+  const addon = createAddon({ textFit: true, client: `__wfgWorld.locale = "ruRU"`, savedVariables: SETUP_DONE });
+  addon.eval(BAG_ENV);
+  addon.login();
+  addon.eval("__openBag()");
+  const width = () => addon.eval("return ns.GetModule('Bags').headers.quest:GetWidth()");
+  const before = width();
+  addon.eval("ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh()");
+  const keys = ["quest", "equipment", "consumables", "trade", "other", "junk", "empty"];
+  expect(keys.flatMap((k) => addon.textFit(`ns.GetModule('Bags').headers.${k}`)), "no header cut at 130%").toEqual([]);
+  expect(width(), "the quest header grew with its text").toBeGreaterThan(before);
+});
+
 it("the sectioned combined bag is clamped to the screen, so a bag taller than a short canvas keeps its title and Sort button; a plain bag is left alone", () => {
   // TEST-ONLY: frames record the clamp they are given (the stub's SetClampedToScreen keeps nothing); the game windows'
   // own clamp (Drag game windows by their title bar) is off, so only the sections' clamp is seen.
