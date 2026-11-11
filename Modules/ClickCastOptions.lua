@@ -229,7 +229,7 @@ end
 -- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key.
 local function askText(key, action)
   local what = action == "macro" and L["Macro for {key}"] or L["Spell for {key}"]
-  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), function(text) bindTyped(key, action, text) end, L["Bind"])
+  ns.AskText(ns.Format(what, { key = CC.KeyText(key) }), CC.ForThisList(function(text) bindTyped(key, action, text) end), L["Bind"])
 end
 
 -- Binds a plain action to the picker's key, or asks for the macro text or spell name.
@@ -830,10 +830,10 @@ end
 
 -- Clear all asks first: it empties this spec's bindings for good.
 local function askClear()
-  ns.Ask(clearQuestion(), L["Clear"], function()
+  ns.Ask(clearQuestion(), L["Clear"], CC.ForThisList(function()
     CC.Clear()
     changed()
-  end, nil, "danger")
+  end), nil, "danger")
 end
 
 -- The layout row's starter layout control, in one spot: the presets dropdown on WoW Forever (Modules/ClickCastPresets.lua;
@@ -958,7 +958,7 @@ local function importText(text)
   if not list or had == 0 then return doImport(text) end
   ns.HideText()
   local question = ns.Format(L["Replace your {old} click-casting bindings with the {new} from this string?"], { old = had, new = #list })
-  ns.Ask(question, L["Replace"], function() doImport(text) end, nil, "danger")
+  ns.Ask(question, L["Replace"], CC.ForThisList(function() doImport(text) end), nil, "danger")
 end
 
 -- The keys bindings are kept under on this client: the talent groups where the lists are kept per group, else the
@@ -1011,7 +1011,7 @@ end
 -- Copies the bindings to another talent group or spec, asking first when that one has bindings of its own.
 local function copyToSpec(key)
   if #CC.Bindings(key) == 0 then return copyAndShow(key) end
-  ns.Ask(replaceQuestion(key), L["Replace"], function() copyAndShow(key) end, nil, "danger")
+  ns.Ask(replaceQuestion(key), L["Replace"], CC.ForThisList(function() copyAndShow(key) end), nil, "danger")
 end
 
 -- Shows the copy dropdown's caption (the group or spec it copies to is in the choices), and the dropdown only while

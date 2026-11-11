@@ -178,6 +178,17 @@ function CC.CurrentKey()
   return ns.TalentGroup() or VanguardCharDB.clickcastGroup or CC.TALENT_GROUPS[1]
 end
 
+-- An answer to a question about the list shown now (Clear all, Import, Copy to, a starter layout, Undo, a typed
+-- spell or macro): act runs only while that list is still the one shown. A talent group or spec switch can land while
+-- the question is open, and act reads CC.CurrentKey() again, so it would change the other list; chat says so instead.
+function CC.ForThisList(act)
+  local key = CC.CurrentKey()
+  return function(...)
+    if CC.CurrentKey() == key then return act(...) end
+    ns.Chat(L["Nothing changed: the list this asked about is no longer the one shown. Ask again."])
+  end
+end
+
 -- A sentence about a list, the whole of it in the player's language: the talent group's where the lists are kept per
 -- group ({talents} in sentences.talents), else the specialization's ({spec} in sentences.spec).
 function CC.ListSentence(sentences, key)

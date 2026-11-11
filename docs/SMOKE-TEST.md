@@ -5504,6 +5504,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: chat says 1 binding was imported, no Lua error comes up, the tile's tooltip shows and Shift + Q casts Renew on that player. [Needs in-game check: all of it.]
 - If it fails, paste: `/vg errors` and `/vg binds`.
 
+### 33.508 A Click casting question answered after a talent group switch changes nothing
+
+- Do: on WoW Forever, on a character with dual spec and different Primary and Secondary click-casting lists, click Activate on the other talent group, and during its cast open `/vg` → Click casting and click Clear all; wait for the cast to end, then click Clear.
+- Expect: nothing is cleared, chat says "Nothing changed: the list this asked about is no longer the one shown. Ask again.", and both lists are as before. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg binds` on each talent group.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
