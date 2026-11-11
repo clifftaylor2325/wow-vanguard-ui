@@ -5488,6 +5488,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: only Vanguard's quest dialog opens each time; the game's quest window does not open with it.
 - If it fails, paste: whether the game's quest window also opened, and `/vg errors`.
 
+### 33.564 A Legacy challenge you earn leaves the tracker (H44-17-2)
+
+- Do: on Forever, track a Legacy challenge one step from done and finish it on this character.
+- Expect: it leaves Vanguard's tracker, as it leaves the game's; the Legacy challenges heading goes when it was the last.
+- If it fails, paste: the tracker's Legacy challenges heading before and after.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

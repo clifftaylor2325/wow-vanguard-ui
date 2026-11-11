@@ -512,11 +512,17 @@ it("quest tracker: tracked Legacy challenges under their own heading", () => {
   expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "good")], "the heading in gold, a challenge's title in the text color").toEqual([true, true, true]);
   expect(tracker(addon).count, "the count still counts quests only").toBe("1");
 });
-it("quest tracker: a Legacy challenge with no criteria shows its description, and an earned one stays Complete", () => {
+// Forever's own tracker drops an achievement you earned: forever Blizzard_ObjectiveTracker/Blizzard_AchievementObjectiveTracker.lua
+// (LayoutContents: "if wasEarnedByMe then showAchievement = false"), the same file as Retail's.
+it("quest tracker: a Legacy challenge with no criteria shows its description, and one earned by you leaves the tracker (H44-17-2)", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST + `
-    GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed, 1, 1, 1, "TEST-ONLY Do it", 0, "", "", false, true end end
+    GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed, 1, 1, 1, "TEST-ONLY Do it", 0, "", "", false, id == 7002 end end
     __achievements[7002].completed = false`);
-  expect(tracker(addon).blocks.slice(3), "Forever lists it with its description; the earned flag changes nothing").toEqual([["TEST-ONLY Legacy Done", ["TEST-ONLY Do it"]]]);
+  expect(tracker(addon).blocks.slice(3), "the one earned by this character is gone, as in the game's tracker").toEqual([]);
+  addon.eval("__achievements[7002].completed = true GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed, 1, 1, 1, '', 0, '', '', false, false end end __tracked = { 7001, 7002 }");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(tracker(addon).blocks.slice(3), "completed by someone else on the account (not earned by you): still Complete").toEqual([["TEST-ONLY Legacy Done", ["Complete"]]]);
 });
 it("quest tracker: right-click stops tracking a challenge; the heading and left-click do nothing", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
