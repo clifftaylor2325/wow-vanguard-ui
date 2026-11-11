@@ -32,9 +32,11 @@ local function sameKeys(src, a, b, defaults)
   return true
 end
 
--- Whether two settings tables hold the same settings, deep, with defaults filled in on both sides.
+-- Whether two settings tables hold the same settings, deep, with defaults filled in on both sides. A value that is
+-- not a table counts as missing, as ns.Settings reads it when that profile loads (a saved profile may be damaged).
 function same(a, b, defaults)
-  return sameKeys(a or {}, a, b, defaults) and sameKeys(b or {}, a, b, defaults) and sameKeys(defaults or {}, a, b, defaults)
+  a, b = type(a) == "table" and a or nil, type(b) == "table" and b or nil
+  return sameKeys(a or {}, a, b, defaults) and sameKeys(b or {}, a, b, defaults) and sameKeys(type(defaults) == "table" and defaults or {}, a, b, defaults)
 end
 
 -- Whether a profile has a module switched on (on unless turned off).
@@ -111,6 +113,7 @@ local function switchNow(name)
   VanguardCharDB.profile, VanguardCharDB.pendingProfile = name, nil
   ns.ProfileChanged()
   rebind()
+  ns.ProfileLayoutSwitched()
   for _, mover in ipairs(ns.MoverList()) do ns.PlaceMover(mover.key) end
   ns.Theme.Refresh()
   ns.SettleModules()
@@ -125,6 +128,7 @@ end
 function ns.PickProfile(name)
   VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
   if ns.SwitchProfileNow(name) then
+    ns.SettingsGuard.Picked()
     VanguardCharDB.ownProfile = name
     ns.WarnSpecWins(name)
     return true

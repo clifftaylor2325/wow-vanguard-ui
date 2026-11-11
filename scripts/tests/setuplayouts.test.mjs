@@ -434,6 +434,7 @@ it("raid frames: up to 10 sit over your player frame, a bigger raid stacks its g
   expect(state(40).slice(0, 4), "a raid of 40 at the left again").toEqual(["BOTTOMLEFT", "BOTTOM", -500, 344 + RISE.frames]);
   addon.eval('ns.Options.Show("raid") __click("Stack big raids at the left")');
   expect([addon.eval(`return ${RF}.settings.stackBig`), addon.eval("return { ns.MoverPoint('raid') }")], "the option turns it off at once, for the real frames").toEqual([false, ["BOTTOM", "BOTTOM", -240, 344 + RISE.frames]]);
+  expect(addon.eval("return #ns.Options.ReloadWaiting()"), "and the footer does not wait for a reload for it (H44-13-51)").toBe(0);
   const moved = loggedIn(UNITS_ENV + RAID_ENV + "__members = 40 GetNumGroupMembers = function() return __members end", { savedVariables: 'VanguardDB = { profiles = { Default = { positions = { raid = { point = "BOTTOMRIGHT", relPoint = "BOTTOMRIGHT", x = -20, y = 344 } } } } }' });
   moved.fire("GROUP_ROSTER_UPDATE");
   expect(moved.eval("return { ns.MoverPoint('raid') }"), "frames you already moved keep their spot at every size").toEqual(["BOTTOMRIGHT", "BOTTOMRIGHT", -20, 344]);

@@ -681,23 +681,36 @@ local function dressTextEdit(frame)
   GW.DressClose(frame, findCross(frame))
 end
 
--- The news filters dialog as a flyout on the guild window's right edge (a pixel under it, so the shared border hides), out of combat.
+-- The width of the game's side tabs on the guild window (RightSideTab.xml, 32 x 32; CommunitiesFrame.xml hangs them
+-- off the window's right edge).
+GW.SIDE_TAB_WIDTH = 32
+
+-- How far past the guild window's right edge the news filters flyout starts: the side tab column (moved out by the
+-- tabs skin's padding while that runs), the flyout's own panel padding and a pixel, so it sits clear of the tabs.
+local function flyoutReach(window, frame)
+  local tabs = GW.GroupOn("tabs") and GW.TabPad(window) or 0
+  return GW.SIDE_TAB_WIDTH + tabs + T.Padding(frame) + T.Pixel(frame)
+end
+
+-- The news filters dialog as a flyout beside the guild window, past its side tabs, out of combat.
 local function attachNewsFilters(frame)
   local window = _G.CommunitiesFrame
   if type(window) ~= "table" or not frame.SetPoint then return end
   ns.OutOfCombat(function()
     frame:ClearAllPoints()
-    frame:SetPoint("TOPLEFT", window, "TOPRIGHT", -1, -T.SPACE.section)
+    frame:SetPoint("TOPLEFT", window, "TOPRIGHT", flyoutReach(window, frame), -T.SPACE.section)
   end, frame)
 end
 
--- The news filters flyout follows the guild window: attached on each show, and hidden with the window.
+-- The news filters flyout follows the guild window: attached on each show and after each of the game's panel layout
+-- passes while it is up (another window opening or closing re-places it in the manager's slot), and hidden with the window.
 local function watchNewsFilters(frame)
   local window = _G.CommunitiesFrame
   if type(window) ~= "table" or not window.HookScript or vgSocialSide[frame] then return end
   vgSocialSide[frame] = true
   frame:HookScript("OnShow", ns.Guard("news filters attach", attachNewsFilters))
   window:HookScript("OnHide", ns.Guard("news filters close", function() frame:Hide() end))
+  GW.HookGlobalOnce("UpdateUIPanelPositions", "news filters attach", function() if ns.IsTrue(frame:IsShown()) then attachNewsFilters(frame) end end)
 end
 
 -- The news filters dialog: its seven check boxes (frame.GuildNewsFilterButtons) as theme check boxes, attached to the window's side.
@@ -1656,31 +1669,35 @@ GW.AddOnDemand("social", "Blizzard_GuildControlUI", { "GuildControlUI" }, GW.Ski
 -- Toasts ----------------------------------------------------------------------------------------
 
 -- The toasts' lines (parentKeys) with their text role and colour. Top and middle lines keep the game's
--- colour (a friend's name in Battle.net blue); the bottom line's grey (and the single-line variant's) is hard to read on
--- the dark panel, so it goes to the theme's secondary text on each show (the game greys it again before every toast,
--- by SetTextColor or, for a friend coming online, by a colour code inside the text itself).
--- Text is the time-played alert's one line, and the voice chat prompts' (Text2 is the second line of a voice channel
--- notification, which keeps the game's colour codes: they colour the channel's name).
+-- colour (a friend's name in Battle.net blue); the bottom line's grey is hard to read on the dark panel, so it goes
+-- to the theme's secondary text on each show (the game greys it again before every toast, by SetTextColor or, for a
+-- friend coming online, by a colour code that wraps the whole line: strip). The single-line variant (DoubleLine) takes
+-- the same colour but keeps the codes the game writes into it: its grey is the XML's colour, never a code, and a
+-- community invitation's name is wrapped in its own (blue or gold), which an inline code keeps over the line's colour
+-- (BNet.lua BNToastMixin:ShowToast). Text is the time-played alert's one line, and the voice chat prompts' (Text2 is
+-- the second line of a voice channel notification, which keeps the game's colour codes: they colour the channel's name).
 GW.TOAST_LINES = {
   TopLine = { role = "label", color = false }, MiddleLine = { role = "small", color = false },
-  BottomLine = { role = "small", color = "text2" }, DoubleLine = { role = "label", color = "text2" },
+  BottomLine = { role = "small", color = "text2", strip = true }, DoubleLine = { role = "label", color = "text2" },
   Text = { role = "label", color = false }, Text2 = { role = "small", color = false },
 }
 
--- A line's text with the game's inline colour codes stripped, so the role colour can show: SetTextColor
--- cannot override a colour the game wrote into the text. Text the client hides is left alone.
+-- A line the game wrapped whole in one colour code, unwrapped, so the role colour can show: SetTextColor cannot
+-- override a colour the game wrote into the text. Any other text (a friend's own words with codes of their own)
+-- and text the client hides are left alone.
 local function uncolourText(fs)
   local text = fs:GetText()
-  if ns.IsSecret(text) or type(text) ~= "string" or not text:find("|c", 1, true) then return end
-  fs:SetText((text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")))
+  if ns.IsSecret(text) or type(text) ~= "string" then return end
+  local inner = text:match("^|c%x%x%x%x%x%x%x%x(.-)|r$")
+  if inner and not inner:find("|c", 1, true) then fs:SetText(inner) end
 end
 
--- A toast's texts in their roles, those this toast has; a line given a role colour loses the game's inline colour first.
+-- A toast's texts in their roles, those this toast has; a line marked strip loses the game's wrapping colour first.
 local function dressToastLines(frame)
   for key, line in pairs(GW.TOAST_LINES) do
     local fs = frame[key]
     if type(fs) == "table" and type(fs.SetFont) == "function" then
-      if line.color then uncolourText(fs) end
+      if line.strip then uncolourText(fs) end
       T.Text(fs, line.role, line.color)
     end
   end

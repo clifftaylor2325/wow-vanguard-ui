@@ -135,11 +135,16 @@ local function declineGroup()
   closePrompt("PARTY_INVITE")
 end
 
+-- Where inviterGUID sits in PARTY_INVITE_REQUEST's payload (PartyInfoDocumentation.lua, PartyInviteRequest):
+-- Forever sends name, isTank, isHealer, isDamage, isNativeRealm, isCrossShard, allowMultipleRoles, inviterGUID,
+-- questSessionActive (8th); Retail has no isCrossShard, so inviterGUID is 7th.
+QU.INVITER_AT = ns.ClientData({ forever = 8, retail = 7 })
+
 -- Someone invites you to a group: decline unless they are a friend, a guildmate or someone you whispered in the
--- last ten minutes, on the next frame
--- (as for a guild invite, once the game has shown its popup). The payload is name, isTank, isHealer,
--- isDamage, isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
-function QU.OnGroupInvite(_, who, _, _, _, _, _, guid)
+-- last ten minutes, on the next frame (as for a guild invite, once the game has shown its popup). The payload
+-- is the client's own (QU.INVITER_AT); the GUID is read by its place in it.
+function QU.OnGroupInvite(_, who, ...)
+  local guid = (select(QU.INVITER_AT - 1, ...))
   if not QU.Switched("strangerGroups") or type(DeclineGroup) ~= "function" then return end
   if knownPlayer(guid) or whisperedLately(who) then return end
   ns.Soon("decline group invite", declineGroup)

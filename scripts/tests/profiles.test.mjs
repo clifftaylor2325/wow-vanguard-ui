@@ -1106,3 +1106,83 @@ it("a profile saved with the retired Pet stable, Legacy helper and boss docks lo
   const bare = addon.eval("local p = { modules = 7, PetStable = {} } ns.MigrateProfileTable(p) return { p.PetStable == nil, p.modules }");
   expect(bare, "a profile whose module switches are not a table still loses the retired tables, and keeps what it has").toEqual([true, 7]);
 });
+
+// H44-12-3: the account's logout note lists every profile a character can load, so an import's backup spares them.
+const SHARED_BACKUP = (uses) => `VanguardDB.profiles = { Default = {}, ["Default backup"] = { marker = "B spec 2" } }
+VanguardDB.backupOf = { ["Default backup"] = "Default" }
+VanguardDB.guard = { chars = { ["TEST-ONLY B-Realm"] = { profile = "Default", stamp = 1, uses = ${uses} } } }`;
+const IMPORT_BACKUP = 'return (select(2, ns.ImportProfile(ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "copper" } }))))).backup';
+
+it("H44-12-3: a backup is not written over a profile another character lists in its note's uses", () => {
+  const addon = loggedIn("", { savedVariables: SHARED_BACKUP('{ "Default backup" }') });
+  expect(addon.eval(IMPORT_BACKUP), "the shared backup is left alone").toBe("Default backup 2");
+  expect(addon.eval('return VanguardDB.profiles["Default backup"].marker'), "it keeps its data").toBe("B spec 2");
+});
+
+it("H44-12-3: a damaged uses list or entry in a note is skipped, and an old note without one behaves as before", () => {
+  for (const uses of ['"Default backup"', "{ 7, false }", "nil"]) {
+    const addon = loggedIn("", { savedVariables: SHARED_BACKUP(uses) });
+    expect(addon.eval(IMPORT_BACKUP), `uses = ${uses}`).toBe("Default backup");
+  }
+});
+
+it("H44-12-3: this character's own profile behind a spec's is kept, and the logout note lists what it can load", () => {
+  const addon = loggedIn("", { savedVariables: 'VanguardDB.profiles = { Default = {}, ["Default backup"] = {}, Raid = {} }\nVanguardDB.backupOf = { ["Default backup"] = "Default" }\nVanguardCharDB.ownProfile = "Default backup"' });
+  addon.eval('VanguardCharDB.specProfiles = { [2] = "Raid", [3] = 5 }');
+  expect(addon.eval(IMPORT_BACKUP), "ownProfile is in use").toBe("Default backup 2");
+  addon.eval('VanguardCharDB.ownProfile = "Default backup"');
+  addon.fire("PLAYER_LOGOUT");
+  const notes = Object.values(addon.savedVariables().account.guard.chars);
+  expect(notes[0].uses.slice().sort(), "the note's uses").toEqual(["Default backup", "Raid"]);
+});
+
+// H44-12-2: a profile that switches at once takes Edit Mode to its layout and keeps the layout it remembered.
+const OFF_RELOAD_ONLY = `for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Raid.modules[name] = false end
+end`;
+// A character on Default with every reload-only module off, so that Raid applies at once.
+function liveEditMode(before = "") {
+  const saved = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {} }, Raid = { modules = {}, editMode = { layout = "TEST-ONLY Raid" } } } }\nVanguardCharDB = { profile = "Default", editModeProfile = "Default" }';
+  const addon = createAddon({ savedVariables: saved });
+  addon.eval(EDIT_MODE_ENV + OFF_RELOAD_ONLY + before);
+  addon.login();
+  return addon;
+}
+it("H44-12-2: a live profile switch moves Edit Mode to the new profile's layout and no later update writes the old one over it", () => {
+  const addon = liveEditMode();
+  addon.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(addon.eval('return ns.PickProfile("Raid")'), "applied at once").toBe(true);
+  expect(layouts(addon), "Edit Mode is on Raid's layout, which Raid keeps").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+  expect(chatHas(addon, /Edit Mode layout TEST-ONLY Raid, from profile Raid\./), "and chat says so").toBe(true);
+  addon.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(addon), "a later update leaves it alone").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+});
+it("H44-12-2: a live switch before Edit Mode has its layouts leaves the first load to apply the layout", () => {
+  const addon = liveEditMode();
+  expect(addon.eval('return ns.PickProfile("Raid")'), "applied at once").toBe(true);
+  expect(layouts(addon), "nothing applied yet").toEqual(["none", "TEST-ONLY Raid", "Default"]);
+  addon.eval("EditModeManagerFrame:UpdateLayoutInfo()");
+  expect(layouts(addon), "the first load switches to Raid's layout").toEqual(["TEST-ONLY Raid", "TEST-ONLY Raid", "Raid"]);
+});
+
+// Gate three: a part the player switched off stays off when the panel refills.
+it("hunt H44-12-70: a part switched off in the export panel stays off when the profile changes under it", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("ns.ExportDialog() local p = Vanguard_ExportDialog __off = p.parts[#p.parts] p.on[__off] = false");
+  addon.eval("ns.ProfileChanged()");
+  expect(addon.eval("local p = Vanguard_ExportDialog return { p.on[__off], p.on[p.parts[1]] }"), "still off; the others on").toEqual([false, true]);
+});
+
+it("hunt H44-12-70: the export panel follows a profile that changed under it, and a nothing-to-export answer stays in the panel", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval("ns.ExportDialog() local p = Vanguard_ExportDialog p.on[p.parts[1]] = false");
+  const before = addon.eval("return #Vanguard_ExportDialog.parts");
+  addon.eval("ns.ResetProfile()");
+  const after = addon.eval("local p = Vanguard_ExportDialog local kept = 0 for _, part in ipairs(p.parts) do if p.on[part] then kept = kept + 1 end end return { #p.parts, kept }");
+  expect(after[0] < before, "a reset refills the switches from the fewer parts the profile has now").toBe(true);
+  expect(after[1] >= after[0] - 1, "the parts still there keep their switch (only the one switched off may be off)").toBe(true);
+  addon.eval("local real = ns.ExportProfile ns.ExportProfile = function() return nil, 'nothing saved for Layout yet' end local b = Vanguard_ExportDialog.export b:GetScript('OnClick')(b) ns.ExportProfile = real");
+  expect(addon.eval("return { Vanguard_ExportDialog:IsShown(), Vanguard_ExportDialog.problem:GetText(), Vanguard_TextDialog == nil or not Vanguard_TextDialog:IsShown() }"), "the panel stays open and says why").toEqual([true, "Nothing to export: nothing saved for Layout yet.", true]);
+  addon.eval("Vanguard_ExportDialog:Hide() ns.ResetProfile()");
+  expect(addon.eval("return Vanguard_ExportDialog:IsShown()"), "a hidden panel is left alone by a profile change").toBe(false);
+});

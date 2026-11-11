@@ -263,7 +263,10 @@ function R.Command(arg)
   if arg == "clear" then R.rolls, R.items = {}, {} R.Paint() return ns.Chat(L["Rolls forgotten."]) end
   if #R.rolls == 0 then return ns.Chat(L["No rolls seen this session yet."]) end
   ns.Chat(L["Rolls this session, newest first:"])
-  for i = #R.rolls, 1, -1 do ns.Chat(R.rolls[i].name .. "  " .. figures(R.rolls[i]) .. "  (" .. R.rolls[i].low .. "-" .. R.rolls[i].high .. ")") end
+  for i = #R.rolls, 1, -1 do
+    local r = R.rolls[i]
+    ns.Chat(r.name .. "  " .. r.roll .. "  (" .. r.low .. "-" .. r.high .. ")")
+  end
 end
 
 -- Drawing ------------------------------------------------------------------------------------

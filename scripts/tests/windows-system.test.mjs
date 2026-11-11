@@ -720,6 +720,8 @@ const RECAP_ENV = SYSTEM_ENV + `
     local f = __frame("CombatLogQuickButtonFrame_Custom")
     function __quickButton(i) local b = CreateFrame("Button", "CombatLogQuickButtonFrameButton" .. i, f) __art(b) return b end
     function Blizzard_CombatLog_QuickButton_OnClick(id) __quickButton(4) end
+    -- The game keeps this as a file-local and copies it to _G (live Blizzard_CombatLog.lua:219, 1568, 1640).
+    function Blizzard_CombatLog_Update_QuickButtons() __quickButton(5) end
     local filter = CreateFrame("Button", "CombatLogQuickButtonFrame_CustomAdditionalFilterButton", f) filter.Art = filter:CreateTexture()
     local bar = CreateFrame("StatusBar", "CombatLogQuickButtonFrame_CustomProgressBar", f) bar:SetStatusBarTexture("TEST-ONLY-ART")
     return f
@@ -778,6 +780,8 @@ it("combat log bar: a panel, its filter buttons themed as the game makes them", 
   expect(addon.eval("return __panelled(CombatLogQuickButtonFrameButton3)"), "a button made later is themed when the bar shows").toBe(true);
   addon.eval(`Blizzard_CombatLog_QuickButton_OnClick(1)`);
   expect(addon.eval("return __panelled(CombatLogQuickButtonFrameButton4)"), "and when a filter is picked").toBe(true);
+  addon.eval("Blizzard_CombatLog_Update_QuickButtons()");
+  expect(addon.eval("return __panelled(CombatLogQuickButtonFrameButton5)"), "and when the game rebuilds the filter buttons").toBe(true);
   const painted = addon.eval("return ns.Theme.PaintedCount()");
   addon.eval(`${bar}:Hide() ${bar}:Show()`);
   expect(addon.eval("return ns.Theme.PaintedCount()"), "showing again paints nothing new").toBe(painted);

@@ -425,6 +425,19 @@ function UP.IsUpgrade(link)
   return UP.settings ~= nil and isUpgrade(link)
 end
 
+-- Whether Compare can't say yet if an item is an upgrade, as when the stats of it or of what you wear haven't loaded
+-- (C_Item.GetItemStats may return nothing): for quest automation, which leaves a reward you may want to you.
+---@param link string|nil
+---@return boolean
+function UP.Undecided(link)
+  if UP.settings == nil or type(link) ~= "string" or not canCompare() then return false end
+  local loc = select(4, C_Item.GetItemInfoInstant(link))
+  local slots = UP.SLOTS[loc]
+  if not slots or not usable(link) then return false end
+  local old, new, empty = scores(link, loc, slots)
+  return not empty and not (old and new)
+end
+
 -- Tooltip --------------------------------------------------------------------------------
 
 -- Whether you wear this very item: its own tooltip gets no line against the pair's other one (a bag copy with the

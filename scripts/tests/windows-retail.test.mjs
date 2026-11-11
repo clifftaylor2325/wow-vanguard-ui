@@ -35,8 +35,9 @@ it("windows-retail: the group finder takes the window skin, and its pages' wells
         and __well(LFGListFrame.CategorySelection.Inset) and __well(LFGListFrame.EntryCreation.Inset) and __well(LFGListFrame.NothingAvailable.Inset),
       card = __card(card, card.icon, card.name), buttons = __button(LFDQueueFrameFindGroupButton) and __button(make.ListGroupButton),
       dropdowns = __button(LFDQueueFrameTypeDropdown) and __button(list.FilterButton), plate = __plate(list.RefreshButton),
-      search = __box(list.SearchBox), edit = __faded(make.Name), label = __looks(make.NameLabel, "label", "text") }`);
-  expect(state).toEqual({ role: 0, raidRole: 0, wells: true, card: true, buttons: true, dropdowns: true, plate: true, search: true, edit: true, label: true });
+      search = __box(list.SearchBox), edit = __faded(make.Name), label = __looks(make.NameLabel, "label", "text"),
+      titles = __looks(LFGListFrame.CategorySelection.Label, "heading", "text") and __looks(make.Label, "heading", "text") }`);
+  expect(state).toEqual({ role: 0, raidRole: 0, wells: true, card: true, buttons: true, dropdowns: true, plate: true, search: true, edit: true, label: true, titles: true });
 });
 
 it("windows-retail: the dungeon and raid finders' reward pages keep the game's parchment (their text is the game's dark quest text)", () => {

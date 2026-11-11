@@ -202,10 +202,17 @@ local function skinKeystoneText(fs, size)
   T.TextSize(fs, size)
 end
 
+-- Fades the keystone window's art but its kept parts. The game's Reset puts every region back to the alpha it had at
+-- load (baseStates, Blizzard_ChallengesUI.lua:585-596, 632-635), which is when the window is emptied, so it runs again after it.
+local function fadeKeystoneArt(frame)
+  T.FadeRegions(frame, GW.KeepKeys(frame, RM.KEYSTONE_KEEP))
+end
+
 -- The keystone window: on a theme panel with the corner brackets every window of its own has, its runes and slot kept,
 -- the close button and Start in the theme.
 function RM.SkinKeystone(frame)
-  T.FadeRegions(frame, GW.KeepKeys(frame, RM.KEYSTONE_KEEP))
+  fadeKeystoneArt(frame)
+  GW.HookAfter(frame, "Reset", fadeKeystoneArt)
   T.Panel(frame, { shadow = true, pad = GW.PAD, alpha = 1 })
   T.Ornament(frame, "corners")
   GW.DressClose(frame, frame.CloseButton)

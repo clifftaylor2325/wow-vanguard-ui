@@ -2369,3 +2369,24 @@ it("options: search text of any shape, a page change with a menu open, closing w
   expect(out[0], "nothing raised").toBe("");
   expect(out[2], "no menu is left open when its dropdown is hidden and the page changed").toBe(false);
 });
+
+it("hunt H44-11-50: a slider held still sets its value once, and again only for a new value or a new press", () => {
+  const addon = loggedIn();
+  addon.eval(`__sets = {} __s = ns.Widgets.Slider(UIParent, "TEST-ONLY", { min = 0, max = 100, step = 1 }, function() return __v or 50 end, function(v) __v = v __sets[#__sets + 1] = v end)
+    __s.track.__left, __s.track.__width = 0, 100 GetCursorPosition = function() return 50 end
+    __s.track:GetScript("OnMouseDown")()`);
+  addon.eval("__wfgStub.update(0.05) __wfgStub.update(0.05) __wfgStub.update(0.05)");
+  expect(addon.eval("return #__sets"), "three frames at one cursor spot, one set").toBe(1);
+  addon.eval("GetCursorPosition = function() return 60 end __wfgStub.update(0.05) __wfgStub.update(0.05)");
+  expect(addon.eval("return #__sets"), "a new value sets again").toBe(2);
+  addon.eval("__s.track:GetScript('OnMouseUp')() GetCursorPosition = function() return 60 end __s.track:GetScript('OnMouseDown')() __wfgStub.update(0.05)");
+  expect(addon.eval("return #__sets"), "a new press sets once more").toBe(3);
+});
+
+it("hunt H44-11-50: a slider whose setter ignores the value still stops setting while the cursor is still", () => {
+  const addon = loggedIn();
+  addon.eval(`__sets = 0 __s = ns.Widgets.Slider(UIParent, "TEST-ONLY", { min = 0, max = 100, step = 1 }, function() return 10 end, function() __sets = __sets + 1 end)
+    __s.track.__left, __s.track.__width = 0, 100 GetCursorPosition = function() return 50 end
+    __s.track:GetScript("OnMouseDown")() __wfgStub.update(0.05) __wfgStub.update(0.05) __wfgStub.update(0.05)`);
+  expect(addon.eval("return __sets"), "a locked slider is set once").toBe(1);
+});

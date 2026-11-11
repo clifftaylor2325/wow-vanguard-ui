@@ -329,6 +329,14 @@ local function dropHidden(frame)
   endDrag(frame)
 end
 
+-- The drop of the window's own drag (the loot history's whole body, LootHistory.xml): its place is saved as after
+-- Vanguard's drags, and a top-edge press the game's drag took over ends here (its mouse-up may never come). Nothing
+-- while a title-bar drag runs: its own drop saves the place.
+local function gameDropped(frame)
+  if vgPress[frame] then return releaseTop(frame) end
+  if not vgDragging[frame] then GW.SavePlace(frame:GetName(), frame) end
+end
+
 -- Makes a window movable and kept on the screen, dragged by its top edge. The clamp counts the panel Vanguard
 -- paints GW.PAD past every side, the tabs that hang below and, for the character pane, the tabs at its right side,
 -- so none of them is dragged off the screen.
@@ -340,6 +348,7 @@ local function makeMovable(frame, name)
   frame:HookScript("OnMouseDown", ns.Guard("press " .. name, pressTop))
   frame:HookScript("OnMouseUp", ns.Guard("release " .. name, releaseTop))
   frame:HookScript("OnHide", ns.Guard("release " .. name, dropHidden))
+  frame:HookScript("OnDragStop", ns.Guard("drop " .. name, gameDropped))
 end
 
 -- Sets a window up once, when the client has it and lets addons touch it (GW.Forbidden): made movable out of combat,

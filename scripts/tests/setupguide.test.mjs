@@ -71,6 +71,49 @@ it("guided setup: Undo setup asks, then puts every row and the profile back and 
   expect(addon.eval("return Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText()"), "then the reload that shows the restored profile, with no export question first (nothing new to keep)").toBe("Setup was undone: the profile as it was is back. Reload the UI now to apply it?");
 });
 
+it("hunt H44-14-1: closing setup while the Undo question is open takes the question away without undoing anything", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  nexts(addon, 8);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b)");
+  setupClick(addon, "close");
+  expect(addon.eval("return { Vanguard_Question:IsShown(), ns.Settings('RaidFrames').sortByRole, VanguardDB.setupDone == true }"), "the question is gone, nothing was undone and setup is not marked done").toEqual([false, true, false]);
+});
+
+it("hunt H44-14-1: answering No to the Undo question leaves setup and the profile alone", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  nexts(addon, 8);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b)");
+  addon.eval("Vanguard_Question.no:GetScript('OnClick')(Vanguard_Question.no)");
+  expect(addon.eval("return { Vanguard_Question:IsShown(), Vanguard_Setup:IsShown(), ns.Settings('RaidFrames').sortByRole }"), "No closes the question only").toEqual([false, true, true]);
+});
+
+// The game's UI scale settings, as the Graphics options hold them.
+const gameScale = (addon) => addon.eval("return { GetCVar('useUiScale'), GetCVar('uiScale') }");
+// A first run on a screen where the game's UI scale was set (useUiScale 0, uiScale 1), a preset picked, then Undo setup, Yes.
+const undoAfterPreset = (preset, screen = "") => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + screen, { firstRun: true });
+  addon.eval("SetCVar('useUiScale', '0') SetCVar('uiScale', '1')");
+  setupClick(addon, "next");
+  addon.eval(`__click(${JSON.stringify(preset)})`);
+  nexts(addon, 7);
+  const applied = gameScale(addon);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b) Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  return [applied, gameScale(addon)];
+};
+
+it("hunt H44-14-R1: Undo setup puts the game's UI scale back after a screen preset", () => {
+  const [applied, after] = undoAfterPreset("1440p");
+  expect(applied, "the preset set the game's scale").toEqual(["1", "0.7"]);
+  expect(after, "Undo gives the game's own scale settings back").toEqual(["0", "1"]);
+});
+
+it("hunt H44-14-R1: Undo setup puts the game's UI scale back after Fit my screen", () => {
+  const [, after] = undoAfterPreset("Fit my screen: UI scale 90%  ·  suggested", "__wfgStub.setScreen(1229, 768)");
+  expect(after, "Fit my screen is undone too").toEqual(["0", "1"]);
+});
+
 it("hunt setup: Undo setup puts back the profile it backed up, not one staged for the reload since (a spec change or /vg profile mid-setup)", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
   addon.eval('__click("Centered: healing")');
@@ -233,4 +276,57 @@ it("guided setup: All set names a picked layout by its key when the list holds n
   addon.eval("for _, l in ipairs(ns.Setup.LAYOUTS) do if l.key == 'classic' then l.key = 'TEST-ONLY gone' end end");
   nexts(addon, 8);
   expect(allSet(addon)[0][1], "the key stands in for the missing name").toBe("Layout: classic");
+});
+
+it("hunt H44-14-20: a layout applied by Next stays on All set after Back and Keep, with Undo setup, and Undo puts it back", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA, { firstRun: true });
+  addon.eval('__click("Centered: healing")');
+  setupClick(addon, "next");
+  setupClick(addon, "back");
+  addon.eval('__click("Keep my current layout")');
+  nexts(addon, 8);
+  const [lines, undo] = allSet(addon);
+  expect(lines.slice(0, 2), "All set names the layout this run applied, not the Keep pick now showing").toEqual(["All set. Done closes setup. This run changed:", "Layout: Centered: healing"]);
+  expect(undo, "and offers Undo setup").toBe(true);
+  addon.eval("local b = Vanguard_Setup.pages.done.undo b:GetScript('OnClick')(b) Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(addon.eval("return ns.Settings('RaidFrames').sortByRole"), "Undo puts the profile from before the layout back").toBe(false);
+});
+
+it("hunt H44-14-20: a screen preset applied by Next stays on All set after Back and Keep, and a new run starts clean", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
+  setupClick(addon, "next");
+  addon.eval('__click("1440p")');
+  setupClick(addon, "next");
+  setupClick(addon, "back");
+  addon.eval('__click("Keep my current sizes")');
+  nexts(addon, 7);
+  const [lines, undo] = allSet(addon);
+  expect(lines.slice(0, 2), "All set names the preset").toEqual(["All set. Done closes setup. This run changed:", "Screen: 1440p"]);
+  expect(undo, "and shows Undo").toBe(true);
+  setupClick(addon, "next");
+  addon.slash("setup");
+  nexts(addon, 8);
+  expect(allSet(addon), "a second run that changes nothing says so").toEqual([["All set. This run changed nothing: Done closes setup."], false]);
+});
+
+// A second run to the Move things step (step 8), one frame moved there, then Next to All set.
+const movedOnAllSet = (setup, steps = 7) => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + CLICK_LUA);
+  addon.slash("setup");
+  setup(addon);
+  nexts(addon, steps);
+  addon.eval('ns.SetMoverPoint("uf_player", "CENTER", "CENTER", 10, 10)');
+  setupClick(addon, "next");
+  return allSet(addon);
+};
+
+it("hunt H44-14-21: a frame dragged on Move things is named on All set, with no Undo setup while setup took no backup", () => {
+  expect(movedOnAllSet(() => {}), "named, and nothing to put back").toEqual([["All set. Done closes setup. This run changed:", "Frames moved"], false]);
+});
+
+it("hunt H44-14-21: frames moved after a screen preset keep Undo setup, and a layout applied by the run covers the move", () => {
+  const preset = movedOnAllSet((addon) => { setupClick(addon, "next"); addon.eval('__click("1440p")'); setupClick(addon, "next"); }, 5);
+  expect(preset[1], "the preset took a backup, so Undo shows").toBe(true);
+  const layout = movedOnAllSet((addon) => { addon.eval('__click("Centered: healing")'); setupClick(addon, "next"); setupClick(addon, "back"); });
+  expect(layout[0].filter((line) => line === "Frames moved"), "the layout's own line stands instead").toEqual([]);
 });

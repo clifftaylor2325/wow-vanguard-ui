@@ -146,11 +146,11 @@ function CHH.Forget(frame, fallback)
   if index then CHH.Store()[index] = nil end
 end
 
--- Follows every permanent chat window, and the game closing one (both through the scope's gates).
+-- Follows every permanent chat window (through the scope's gates), and the game closing one: that watch is installed
+-- once a session and stays, since forgetting a closed window's lines is right whether or not the module runs.
 function CHH.Watch(scope)
   for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i, scope) end
-  if type(hooksecurefunc) ~= "function" or type(FCF_Close) ~= "function" then return end
-  scope:Gate("history close", CHH.Forget, function(gate) hooksecurefunc("FCF_Close", ns.Guard("hook FCF_Close history", gate)) end)
+  ns.OnChatWindowClosed("history", CHH.Forget)
 end
 
 -- Restoring -----------------------------------------------------------------------------------

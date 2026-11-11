@@ -9,7 +9,7 @@ local L = ns.L
 
 local O = ns.Options
 local moduleSettings, setting, reloadSetting, liveSetting, liveMethod, check, append = O.ModuleSettings, O.Setting, O.ReloadSetting, O.LiveSetting, O.LiveMethod, O.Check, O.Append
-local essential = O.Essential
+local essential, reloadRow = O.Essential, O.ReloadRow
 
 -- Action bar n's default for key (Modules/ActionBars.lua defaults.bars), nil without the module.
 local function barDefault(n, key)
@@ -48,17 +48,20 @@ end
 
 -- get/set for restyling the client's special bars (pet, stance, possess, extra) at once (applies on reload).
 local function skinSpecial()
-  return function() return moduleSettings("SpecialBars").skinPet end, function(v)
+  local get, set, initial = reloadSetting("SpecialBars", "skinPet")
+  return get, function(v)
     local s = moduleSettings("SpecialBars")
-    s.skinPet, s.skinStance, s.skinPossess, s.skinExtra = v, v, v, v
-    O.NeedReload()
-  end
+    s.skinStance, s.skinPossess, s.skinExtra = v, v, v
+    set(v)
+  end, initial
 end
 
--- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it.
+-- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it, once it has started (it
+-- refuses in a fight or with no Vanguard bars, and then the window stays).
 local function keybindMode()
-  O.Hide()
-  ns.GetModule("ActionBars").KeybindMode(true)
+  local AB = ns.GetModule("ActionBars")
+  AB.KeybindMode(true)
+  if AB.binding then O.Hide() end
 end
 
 -- get/set for the bar backing, which shows or hides at once (out of combat).
@@ -84,7 +87,7 @@ end
 -- The game's own bars and buttons: hidden, restyled, movable; the vehicle exit button.
 local function gameBarRows()
   return {
-    check(L["Hide the default bars"], reloadSetting("ActionBars", "hideBlizzard")),
+    reloadRow(check(L["Hide the default bars"], reloadSetting("ActionBars", "hideBlizzard"))),
     check(L["Restyle pet, stance and extra buttons (reload)"], skinSpecial()),
     check(L["Movable pet and stance bars (reload)"], reloadSetting("SpecialBars", "place")),
     check(L["Vehicle exit button (reload)"], reloadSetting("SpecialBars", "vehicleExit")),
@@ -179,7 +182,7 @@ end
 local function oneBarRows(n)
   local visibility, showWhen = barVisibilityRows(n)
   return {
-    { "header", barTitle(n) }, check(ns.Format(L["Show bar {n}"], { n = n }), barSetting(n)),
+    { "header", barTitle(n) }, reloadRow(check(ns.Format(L["Show bar {n}"], { n = n }), barSetting(n))),
     visibility,
     { "text", L["Hidden bars keep their keys: a bound key still casts."] },
     showWhen,

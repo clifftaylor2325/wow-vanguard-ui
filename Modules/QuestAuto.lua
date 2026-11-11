@@ -61,11 +61,12 @@ function QA.BestChoice()
   return QP.TopSeller(prices, n)
 end
 
--- Whether any of the n reward choices is one Gear upgrades (Modules/Upgrades.lua) calls an upgrade for you.
+-- Whether any of the n reward choices is one Gear upgrades (Modules/Upgrades.lua) calls an upgrade for you, or can't yet say.
 local function anyUpgrade(n)
   local UP = ns.GetModule("Upgrades")
   for i = 1, n do
-    if UP.IsUpgrade(ns.CallIf(_G, "GetQuestItemLink", "choice", i)) then return true end
+    local link = ns.CallIf(_G, "GetQuestItemLink", "choice", i)
+    if UP.IsUpgrade(link) or UP.Undecided(link) then return true end
   end
   return false
 end
@@ -105,15 +106,17 @@ function QA.TurnsIn()
 end
 
 -- Whether automation accepts the quest on offer: its switch is on (a quest shared by a player follows its
--- own) and it does not flag you for PvP, which the game asks you about.
-function QA.OffersAccept()
-  return QA.settings[fromPlayer() and "acceptShared" or "accept"] and not ns.QuestParts.FlagsPVP()
+-- own), it does not flag you for PvP, which the game asks you about, and no item started it (that offer opened
+-- while you looted, and takes your answer, never automation's). itemID is QUEST_DETAIL's questStartItemID.
+function QA.OffersAccept(itemID)
+  local asked = ns.QuestParts.FlagsPVP() or ns.QuestParts.StartItem("QUEST_DETAIL", itemID)
+  return QA.settings[fromPlayer() and "acceptShared" or "accept"] and not asked
 end
 
 -- What each event's automation would do, or nil when it leaves the page to you.
 QA.ACTIONS = {
   -- A quest offered: accept it (a quest shared by a player follows its own switch), unless it flags you for PvP.
-  QUEST_DETAIL = function() return QA.OffersAccept() and QA.Accept or nil end,
+  QUEST_DETAIL = function(itemID) return QA.OffersAccept(itemID) and QA.Accept or nil end,
   -- A finished quest's hand-in: continue (a quest that costs money is left to you).
   QUEST_PROGRESS = function() return QA.TurnsIn() and ns.CallIf(_G, "IsQuestCompletable") == true and QA.Continue or nil end,
   -- The reward page: finish, when the reward is settled (a quest that costs money is left to you).
@@ -124,16 +127,16 @@ QA.ACTIONS = {
   QUEST_GREETING = function() return QA.settings.skipGossip and QA.OnlyGreeting() or nil end,
 }
 
--- The action automation would take for an event right now, or nil.
-local function actionFor(event)
+-- The action automation would take for an event (with its values) right now, or nil.
+local function actionFor(event, ...)
   local pick = QA.Active() and QA.settings and QA.ACTIONS[event]
   if not pick or skipped() then return nil end
-  return pick()
+  return pick(...)
 end
 
 -- True when automation is about to answer this event (the quest dialog then stays shut).
-function QA.Claims(event)
-  return actionFor(event) ~= nil
+function QA.Claims(event, ...)
+  return actionFor(event, ...) ~= nil
 end
 
 -- Actions ---------------------------------------------------------------------------------------
@@ -206,7 +209,7 @@ function QA.Enable(settings, scope)
   QA.settings = settings
   scope:On("QUEST_DETAIL", dropAccept)
   for event in pairs(QA.ACTIONS) do
-    scope:On(event, function() local act = actionFor(event) if act then act() end end)
+    scope:On(event, function(_, ...) local act = actionFor(event, ...) if act then act() end end)
   end
 end
 

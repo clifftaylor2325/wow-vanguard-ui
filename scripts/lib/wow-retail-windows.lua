@@ -118,7 +118,8 @@ W.MODELS = {
     dropdown = { "LFDQueueFrameTypeDropdown", "RaidFinderQueueFrameSelectionDropdown", "LFGListFrame.SearchPanel.FilterButton", "LFGListFrame.EntryCreation.ActivityDropdown" },
     search = { "LFGListFrame.SearchPanel.SearchBox" },
     edit = { "LFGListFrame.EntryCreation.Name" },
-    text = { "LFDQueueFrameTypeDropdownName", "LFGListFrame.EntryCreation.NameLabel" },
+    -- The two page titles (live Blizzard_GroupFinder/Mainline/LFGList.xml:927-944 and :1559-1574).
+    text = { "LFDQueueFrameTypeDropdownName", "LFGListFrame.EntryCreation.NameLabel", "LFGListFrame.CategorySelection.Label", "LFGListFrame.EntryCreation.Label" },
   } },
   PVPUIFrame = { parts = {
     well = { "PVPQueueFrame.HonorInset", "HonorFrame.Inset", "ConquestFrame.Inset" },

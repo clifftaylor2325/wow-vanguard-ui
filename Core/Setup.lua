@@ -267,9 +267,13 @@ for _, layout in ipairs({ "fort", "standards" }) do
   end
 end
 
--- Applies a layout preset by key, backing the profile up first unless it is Keep.
+-- Applies a layout preset by key, backing the profile up first unless it is Keep (which applies nothing, so it
+-- leaves the layout this run already applied, for All set to name).
 function S.ApplyLayout(key)
-  if key ~= "keep" then S.Backup() end
+  if key ~= "keep" then
+    S.Backup()
+    state.appliedLayout = key
+  end
   APPLY[key]()
 end
 
@@ -483,11 +487,35 @@ function ns.SetUIScale(scale)
   if ns.SetGameUIScale(scale) then T.Settings().pixelScale = false end
 end
 
+-- The game's UI scale settings as they are now ({ use, scale }), or nil where the client can't tell (no getter, or
+-- one that fails: Graphics' check refuses such a read too).
+local function gameScale()
+  local get = (C_CVar and C_CVar.GetCVar) or _G.GetCVar
+  if type(get) ~= "function" then return nil end
+  local okUse, use = pcall(get, "useUiScale")
+  local okScale, scale = pcall(get, "uiScale")
+  return okUse and okScale and { use = use, scale = scale } or nil
+end
+
+-- Puts the game's UI scale back to what it was before this run's first preset set it (out of combat); a run that
+-- never set it, or a client that could not tell, leaves it.
+local function putScaleBack()
+  local was, set = state.scale, (C_CVar and C_CVar.SetCVar) or _G.SetCVar
+  if not (was and was.use and was.scale and type(set) == "function") then return end
+  ns.OutOfCombat(function()
+    set("useUiScale", was.use)
+    set("uiScale", was.scale)
+  end)
+end
+
 -- Sets a screen preset's scale: Pixel-perfect turns Vanguard's pixel-perfect scale on with the multiple
 -- picked for the screen (0, so a later screen change picks again), else the game's UI scale (which turns
 -- pixel-perfect off).
 local function setScale(p)
-  if not p.pixel then return ns.SetUIScale(S.PresetScale(p)) end
+  if not p.pixel then
+    state.scale = state.scale or gameScale()
+    return ns.SetUIScale(S.PresetScale(p))
+  end
   T.Settings().pixelMultiple = 0
   T.SetPixelScale(true)
 end
@@ -513,6 +541,7 @@ function S.ApplyScreen(key)
   local p = S.ScreenPreset(key)
   if not p then return end
   S.Backup()
+  state.appliedScreen = key
   setScale(p)
   setButtons(p.button)
   setTiles(p.tile)
@@ -661,19 +690,28 @@ local function screenName(key)
   return choiceName(S.SCREENS, key)
 end
 
--- What this run changed on setup's own steps, as lines for the All set step: a layout, a screen preset, the look.
+-- Whether frames were moved since this run began, on the All set step only (an export per step would be wasted work).
+-- A layout this run applied moved them too, and its own line says so.
+local function framesMoved()
+  if state.order[state.step] ~= "done" or state.appliedLayout then return false end
+  return ns.ExportProfile("layout") ~= state.spots
+end
+
+-- What this run changed on setup's own steps, as lines for the All set step: a layout, a screen preset, the look,
+-- frames moved. A layout or screen counts once Next applied it, not by the pick now showing (Back and Keep undo nothing).
 local function ownChanges()
   local out = {}
-  if state.layout ~= "keep" then out[#out + 1] = ns.Format(L["Layout: {name}"], { name = choiceName(S.LAYOUTS, state.layout) }) end
-  if state.screen ~= "keep" then out[#out + 1] = ns.Format(L["Screen: {name}"], { name = screenName(state.screen) }) end
+  if state.appliedLayout then out[#out + 1] = ns.Format(L["Layout: {name}"], { name = choiceName(S.LAYOUTS, state.appliedLayout) }) end
+  if state.appliedScreen then out[#out + 1] = ns.Format(L["Screen: {name}"], { name = screenName(state.appliedScreen) }) end
   if state.look then out[#out + 1] = L["Accent or raid frame style"] end
+  if framesMoved() then out[#out + 1] = L["Frames moved"] end
   return out
 end
 
 -- Fits the window, then re-marks the chosen profile, layout and screen (and shows their hints), accent and style
 -- (its tiles redrawn), and the guided steps' switches and list.
 local function refresh()
-  ns.SetupGuide.Refresh(frame.pages, ownChanges())
+  ns.SetupGuide.Refresh(frame.pages, ownChanges(), state.backup ~= nil)
   fit()
   local look = frame.pages.look
   markChoice(frame.pages.profile, state.profile)
@@ -995,10 +1033,11 @@ end
 -- A hide that comes down from UIParent (Alt-Z, a movie or a cinematic) leaves the wizard shown and is no end.
 local function finished()
   if state.paused or frame:IsShown() then return end
+  ns.SetupGuide.CancelUndo()
   if ns.Unlocked() then ns.Lock() end
   if state.complete then markDone() elseif state.owed then ns.Chat(LATER) end
   afterSetup(state.complete and state.owed and state.done and not state.undone, reloadReason())
-  state.reload, state.retile, state.role, state.backup, state.look, state.undone = false, false, false, nil, false, false
+  state.reload, state.retile, state.role, state.backup, state.look, state.undone, state.scale = false, false, false, nil, false, false, nil
   for _, fn in ipairs(S.onEnd) do fn() end
 end
 
@@ -1015,6 +1054,7 @@ function S.Undo(putBack)
   putBack()
   local restored = not state.backup or ns.CopyProfile(state.backup, state.backupOf) ~= false
   if not restored then ns.Chat(L["The backup profile is gone, so only the guided steps' settings went back."]) end
+  putScaleBack()
   state.undone = restored
   complete(true)
   if hidden then finished() end
@@ -1058,10 +1098,12 @@ end
 
 -- Steps -----------------------------------------------------------------------------------
 
--- Skip shows on the first step only (Back's slot is empty there), as wide as its label needs (German at 130%).
+-- Skip shows on the first step only (Back's slot is empty there), as wide as its label needs (German at 130%), and
+-- only while this run has changed nothing: after Back from a later step, Skip would end setup with the change kept.
 local function showSkip(n)
-  frame.skip:SetShown(n == 1)
-  if n == 1 then ns.WidenToLabel(frame.skip) end
+  local fresh = n == 1 and not state.backup
+  frame.skip:SetShown(fresh)
+  if fresh then ns.WidenToLabel(frame.skip) end
 end
 
 -- Step n's caption and buttons: Back past the floor, Skip on the first step, Done on the last (All set).
@@ -1124,10 +1166,12 @@ end
 local function startRun()
   local owe, pick = owed(), VanguardCharDB.pickProfile == true
   state.order, state.floor, state.owed, state.complete, state.profile = pick and PROFILE_STEPS or STEPS, 1, owe, false, "share"
-  state.layout, state.screen, state.backup, state.look, state.undone = "keep", "keep", nil, false, false
+  state.layout, state.screen, state.backup, state.look, state.undone, state.scale = "keep", "keep", nil, false, false, nil
+  state.appliedLayout, state.appliedScreen = nil, nil
   state.reload, state.paused, state.done, state.role = false, false, false, false
   ns.SetupGuide.Begin(not VanguardDB.setupDone)
   state.before = settingsNow()
+  state.spots = ns.ExportProfile("layout")
 end
 
 -- Opens setup at step 1 (the profile step for a new character); in combat it waits. Keep and Keep

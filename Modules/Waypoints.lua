@@ -12,7 +12,7 @@
 -- and the corpse's tombstone stay the game's.
 --
 -- Ctrl-click on the world map puts a waypoint down (the game's own); the game leaves its arrow off for it,
--- so with "Point the arrow at map clicks" on (the default) Vanguard turns the arrow on whenever a waypoint
+-- so with "Arrow to a Ctrl-clicked waypoint" on (the default) Vanguard turns the arrow on whenever a waypoint
 -- appears. The last eight waypoints are kept (account-wide in this profile): the Game map options list them
 -- as buttons, /way recent lists them and /way recent <n> goes back to one. A Clear waypoint button sits on
 -- the world map's bottom edge while there is a waypoint, and in the options. The arrow is the game's floating
@@ -193,13 +193,21 @@ local function pendingTitle(mapID, x, y)
   return pending.title
 end
 
--- The game's waypoint changed (a Ctrl-click on the map, /way): remember it and, with the switch on, point the arrow at it.
+-- Points the arrow at the waypoint, with the switch on and a waypoint still there.
+local function followNow()
+  if not (WP.settings.follow and WP.Current()) then return end
+  if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+end
+
+-- The game's waypoint changed (a Ctrl-click on the map, /way): remember it and, with the switch on, point the arrow
+-- at it a frame later: a Ctrl-click switches the arrow off on the line after it sets the waypoint
+-- (WaypointLocationDataProviderMixin:HandleClick), and the event may come in between, so the arrow goes on last.
 function WP.OnWaypoint()
   local mapID, x, y = WP.Current()
   if not mapID then return end
   WP.Remember(mapID, x, y, pendingTitle(mapID, x, y))
   ns.OutOfCombat(function() ns.Options.RebuildPage("map") end, "map waypoints")
-  if WP.settings.follow and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+  ns.Soon("waypoint follow", followNow)
 end
 
 -- "Elwynn Forest 45.2, 61.8" for a remembered waypoint ("Inn · Elwynn Forest 45.2, 61.8" with a title).

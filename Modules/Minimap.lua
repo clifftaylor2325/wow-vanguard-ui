@@ -393,9 +393,19 @@ end
 -- no tiles) fits in the level between.
 MM.MAP_LEVEL = 2
 
+-- Whether the box must wait for the fight to end: in a fight, unless the client plainly says nothing protected is
+-- inside it (another addon's secure button left on the map makes it protected); a hidden answer counts as protected.
+local function boxWaits()
+  if not ns.InCombat() then return false end
+  local protected = MM.holder:IsProtected()
+  return ns.IsSecret(protected) or protected ~= false
+end
+
 -- The map's box follows the game's own minimap switch (Toggle Minimap, the new-player tutorial): hidden with the
 -- map, back with it. A shown state the client hides (secret) is never handed to the box: it keeps what it shows.
+-- A box that must wait syncs once when the fight ends (keyed, so several toggles in a fight queue one sync).
 local function syncShown()
+  if boxWaits() then return ns.OutOfCombat(syncShown, "minimap shown") end
   local shown = Minimap:IsShown()
   if ns.IsSecret(shown) then return end
   MM.holder:SetShown(shown)

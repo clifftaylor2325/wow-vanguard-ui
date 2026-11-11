@@ -2,6 +2,7 @@
 
 import { expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
+import { expectErrors } from "../lib/error-guard.mjs";
 import { CLICK_LUA, DATA_ENV, strips, PANEL_OPENERS, PLATE_ENV, QUEST_ENV, RISE, SETUP_DONE, TIDY_ENV, UI_ENV, UNITS_ENV, borderOf, calls, chatHas, isTok, key, loggedIn, px, setCombat, WINDOWS_ENV } from "./helpers.mjs";
 
 // The theme's layout numbers the quest windows are built on: { inset, pad, col, gap, tight, buttonH, rowH, watermark, wash }.
@@ -511,11 +512,17 @@ it("quest tracker: tracked Legacy challenges under their own heading", () => {
   expect([isTok(addon, colors[0], "gold"), isTok(addon, colors[1], "text"), isTok(addon, colors[2], "good")], "the heading in gold, a challenge's title in the text color").toEqual([true, true, true]);
   expect(tracker(addon).count, "the count still counts quests only").toBe("1");
 });
-it("quest tracker: a Legacy challenge with no criteria shows its description, and an earned one stays Complete", () => {
+// Forever's own tracker drops an achievement you earned: forever Blizzard_ObjectiveTracker/Blizzard_AchievementObjectiveTracker.lua
+// (LayoutContents: "if wasEarnedByMe then showAchievement = false"), the same file as Retail's.
+it("quest tracker: a Legacy challenge with no criteria shows its description, and one earned by you leaves the tracker (H44-17-2)", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST + `
-    GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed, 1, 1, 1, "TEST-ONLY Do it", 0, "", "", false, true end end
+    GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed, 1, 1, 1, "TEST-ONLY Do it", 0, "", "", false, id == 7002 end end
     __achievements[7002].completed = false`);
-  expect(tracker(addon).blocks.slice(3), "Forever lists it with its description; the earned flag changes nothing").toEqual([["TEST-ONLY Legacy Done", ["TEST-ONLY Do it"]]]);
+  expect(tracker(addon).blocks.slice(3), "the one earned by this character is gone, as in the game's tracker").toEqual([]);
+  addon.eval("__achievements[7002].completed = true GetAchievementInfo = function(id) local a = __achievements[id] if a then return id, a.name, 10, a.completed, 1, 1, 1, '', 0, '', '', false, false end end __tracked = { 7001, 7002 }");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(tracker(addon).blocks.slice(3), "completed by someone else on the account (not earned by you): still Complete").toEqual([["TEST-ONLY Legacy Done", ["Complete"]]]);
 });
 it("quest tracker: right-click stops tracking a challenge; the heading and left-click do nothing", () => {
   const addon = loggedIn(TRACK_ENV + ACH_ENV + ONE_QUEST);
@@ -1045,6 +1052,17 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   addon.fire("QUEST_LOG_UPDATE");
   addon.update(0);
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
+});
+it("H44-17-4 quest log: the quest you are reading leaving the log while it is open shows the first quest at once", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("ns.GetModule('QuestLog').Select(90052)");
+  const gone = addon.eval("return ns.GetModule('QuestLog').selected");
+  addon.eval("__quests[90052] = nil table.remove(__log, 3)");
+  addon.fire("QUEST_REMOVED", 90052);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect([gone, addon.eval("return ns.GetModule('QuestLog').selected"), questLog(addon).detail], "the first quest is chosen and its details show after one redraw").toEqual([90052, 90051, true]);
 });
 it("quest log: hovering a list line shows the quest's whole title, leaving hides it, and a fight shows none (P9-7)", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
@@ -1627,6 +1645,16 @@ it("game windows: quest and gossip text stays readable on the dark panel", () =>
   expect(off.eval("return QuestProgressRequiredMoneyText.__textColor[1]"), "and so does the turn-in money line's").toBe(0);
   expect(loggedIn("").eval("return ns.GetModule('Windows').LightGossip() == nil"), "a client without these windows is fine").toBe(true);
 });
+it("game windows: the game's quest and gossip windows the quest dialog hands back keep the game's text colours", () => {
+  // The game colours this text for its parchment (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/
+  // Mainline/QuestFrame.lua:682-697, QuestFrame_SetTitleTextColor and QuestFrame_SetTextColor); undressed, the
+  // parchment stays, so Vanguard's light text would not read on it.
+  const addon = loggedIn(PARCHMENT_ENV);
+  addon.eval("ns.GetModule('QuestDialog').HandBack(true) QuestFrame:Show() GossipFrame:Show()");
+  addon.eval("__fs = QuestFrame:CreateFontString() QuestFrame_SetTextColor(__fs) QuestFrame_SetTitleTextColor(QuestInfoTitleHeader) GossipFrame.GreetingPanel.ScrollBox:Update()");
+  const colours = addon.eval("return { __fs.__textColor[1], QuestInfoTitleHeader.__textColor[1], __lines[1].GreetingText.__textColor[1], __lines[2].label.__textColor[1] }");
+  expect(colours, "the progress text, a heading, the gossip greeting and an option keep the game's dark colour").toEqual([0.2, 0.2, 0.2, 0.2]);
+});
 // TEST-ONLY the shared quest texts QuestInfo_Display colours for parchment (QuestInfo.xml): the named strings, the keys of
 // QuestInfoRewardsFrame, and the lines of QuestInfoObjectivesFrame.Objectives (the second one marked done by the game with
 // " (Complete)", the third one hidden).
@@ -1752,6 +1780,20 @@ it("quest log: Ctrl-click marks quests, the Abandon button counts them, and one 
   expect(addon.eval("return __gone"), "nothing abandoned before the answer").toEqual({});
   addon.click("Vanguard_Question.confirm");
   expect([addon.eval("return __gone"), addon.eval("return Vanguard_QuestLog.buttons.abandon.text:GetText()")], "each marked quest abandoned; the marks are cleared").toEqual([[90051, 90053], "Abandon"]);
+});
+it("H44-17-5 quest log: abandoning several quests goes through the irreversible path, so a fight refuses it", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + "__gone = {} C_QuestLog.AbandonQuest = function() __gone[#__gone + 1] = __selected end");
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle) __wfgWorld.keys.ctrl = true");
+  logLine(addon, 1); logLine(addon, 3);
+  addon.eval("__wfgWorld.keys.ctrl = false");
+  setCombat(addon, true);
+  logButton(addon, "abandon");
+  expect([addon.eval("return Vanguard_Question"), chatHas(addon, /Not in a fight/)], "asked in a fight: refused with the chat line").toEqual([null, true]);
+  setCombat(addon, false);
+  logButton(addon, "abandon");
+  setCombat(addon, true);
+  addon.click("Vanguard_Question.confirm");
+  expect([addon.eval("return __gone"), chatHas(addon, /Nothing moved: a fight began/)], "Yes after a fight began: nothing abandoned").toEqual([{}, true]);
 });
 // H8-1-2: the game's own CanAbandonQuest gates Abandon, Ctrl-click marks and the count.
 it("quest log: Abandon is greyed for a quest the game won't let you abandon, and marks and counts skip it", () => {
@@ -1961,6 +2003,29 @@ it("quest automation: a quest that flags you for PvP is left to you, with the di
   addon.eval("__pvp = { __secret = true }");
   addon.fire("QUEST_DETAIL");
   expect(calls(addon), "a hidden answer counts as no flag").toEqual(["accept nil"]);
+});
+// QUEST_DETAIL's only value is questStartItemID (forever Blizzard_APIDocumentationGenerated/QuestLogDocumentation.lua); the game's
+// own QuestFrame_OnEvent (Blizzard_UIPanels_Game/Mainline/QuestFrame.lua:39-53) closes such an offer and leaves a tracker popup.
+it("H20-7-1 quest automation: a quest an item started is shown, never accepted for you, whatever the switch", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true, acceptShared = true } } }" });
+  addon.fire("QUEST_DETAIL", 6948);
+  expect([dialog(addon).shown, calls(addon)], "an item-started offer: the page open, nothing accepted").toEqual([true, []]);
+  addon.fire("QUEST_DETAIL", 0);
+  expect(calls(addon), "item 0 means none: accepted as before").toEqual(["accept nil"]);
+  addon.fire("QUEST_DETAIL", { __secret: true });
+  expect(calls(addon), "a hidden value counts as none").toEqual(["accept nil"]);
+});
+it("H4-6-4 quest dialog: Space and Enter do not accept a quest an item started; the button does, and an ordinary offer still takes Space", () => {
+  const addon = loggedIn(QUEST_ENV);
+  addon.fire("QUEST_DETAIL", 6948);
+  key(addon, "SPACE");
+  key(addon, "ENTER");
+  expect([calls(addon), dialog(addon).shown], "no key accepts it; the dialog stays up").toEqual([[], true]);
+  addon.click("Vanguard_QuestDialog.primary");
+  expect(calls(addon), "the Accept button answers it").toEqual(["accept nil"]);
+  addon.fire("QUEST_DETAIL");
+  key(addon, "SPACE");
+  expect(calls(addon), "an ordinary offer: Space accepts").toEqual(["accept nil"]);
 });
 // The quest dialog on a PvP-flagging quest with Accept pressed.
 const pvpAsked = () => {
@@ -2196,6 +2261,30 @@ it("A1-10 best reward: with a reward that Gear upgrades marks as an upgrade amon
   expect([calls(off), off.eval("return ns.GetModule('Upgrades').IsUpgrade('item:90022')")], "Gear upgrades switched off: no reward is an upgrade, the best seller is taken").toEqual([["reward 1"], false]);
 });
 
+// H44-23-51: C_Item.GetItemStats may return nothing for an item the client has not loaded
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ItemDocumentation.lua, GetItemStats MayReturnNothing),
+// and a reward taken is for good, so a choice Gear upgrades can't compare yet leaves the pick to you.
+it("H44-23-51 best reward: a reward that can't be compared yet (stats missing) is left to you, as an upgrade is", () => {
+  const addon = pricedRewards(300, 50);
+  addon.eval(`__calls = nil
+    local stats = { ["item:90021"] = { ITEM_MOD_STRENGTH_SHORT = 7 }, ["item:90022"] = { ITEM_MOD_STRENGTH_SHORT = 7 }, ["item:5"] = { ITEM_MOD_STRENGTH_SHORT = 9 } }
+    C_Item.GetItemInfoInstant = function(link) return 1, "Armor", "Plate", "INVTYPE_WAIST" end
+    C_Item.GetItemStats = function(link) return stats[link] end
+    C_Item.IsEquippableItem = function() return true end
+    GetInventoryItemLink = function(unit, slot) if slot == 6 then return "item:5" end end`);
+  // Whether the reward is undecided, and the pick the automation makes (false: none).
+  const choice = () => addon.eval("local UP = ns.GetModule('Upgrades') return { UP.Undecided('item:90022'), ns.GetModule('QuestAuto').RewardChoice() or false }");
+  expect(choice(), "both sides loaded and worse: decided, the best seller is taken").toEqual([false, 1]);
+  addon.eval("ns.GetModule('Upgrades').scores = {} C_Item.GetItemStats = function(link) if link ~= 'item:5' then return { ITEM_MOD_STRENGTH_SHORT = 7 } end end");
+  expect(choice(), "the worn item's stats missing: undecided, nothing is picked").toEqual([true, false]);
+  addon.eval("ns.GetModule('Upgrades').scores = {} C_Item.GetItemStats = function(link) if link == 'item:5' then return { ITEM_MOD_STRENGTH_SHORT = 9 } end end");
+  expect(choice(), "the reward's own stats missing: undecided too").toEqual([true, false]);
+  addon.eval("GetInventoryItemLink = function() end");
+  expect(addon.eval("return ns.GetModule('Upgrades').Undecided('item:90022')"), "an empty slot is an upgrade, not undecided").toBe(false);
+  addon.eval("ns.GetModule('Upgrades').settings = nil");
+  expect(addon.eval("local UP = ns.GetModule('Upgrades') return { UP.Undecided('item:90022'), UP.Undecided(nil) }"), "Gear upgrades off, or no link: nothing is undecided").toEqual([false, false]);
+});
+
 it("best reward: a stack is judged by what the whole stack sells for", () => {
   const addon = pricedRewards(50, 300);
   expect(calls(addon), "boots worth 50 each in a stack of 1 lose to gloves worth 300").toEqual(["reward 2"]);
@@ -2314,6 +2403,14 @@ it("quest log: a marked quest that left the log before the answer is skipped, ne
   addon.click("Vanguard_Question.confirm");
   expect(addon.eval("local o = {} for _, q in ipairs(__wfgWorld.quests) do o[#o + 1] = q.questID end return o"), "7 had left, 8 went, 9 (on show) stays").toEqual([9]);
   expect(chatHas(addon, /Abandoned 1 quest\(s\)\./), "chat counts only the one abandoned").toBe(true);
+});
+
+// Gate three: a quest unmarked while the question was open stays, though another is still marked.
+it("quest log: a quest unmarked while the abandon question is open is not abandoned", () => {
+  const addon = holdingItems();
+  addon.eval("local QL = ns.GetModule('QuestLog') QL.marked = { [7] = true, [8] = true } QL.AbandonMarked() QL.marked[8] = nil");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local o = {} for _, q in ipairs(__wfgWorld.quests) do o[#o + 1] = q.questID end return o"), "7 went, 8 (unmarked) stays").toEqual([8]);
 });
 
 it("quest log: a quest the game does not take as the one to abandon is left alone", () => {
@@ -2469,6 +2566,44 @@ it("quest dialog: the session switch gives the game its windows back, and takes 
   expect(quest(addon)[2], "the dialog shows again").toBe(true);
   addon.eval("local QD = ns.GetModule('QuestDialog') QD.HandBack(false)");
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("H44-17-50 quest dialog: the module restarted while handed back still takes the game's events when the switch goes off", () => {
+  // A quest dialog restarted while handed back, then the switch turned off by the given route.
+  const restart = (via) => {
+    const addon = loggedIn(QUEST_ENV + GAME_WINDOW);
+    const QD = "ns.GetModule('QuestDialog')";
+    addon.eval(via.replace(/QD/g, QD));
+    addon.fire("QUEST_DETAIL");
+    return [...quest(addon), addon.eval(`return ${QD}.IsHandedBack()`)];
+  };
+  const hand = "QD.HandBack(true) ns.SetModuleEnabled('QuestDialog', false) ns.SetModuleEnabled('QuestDialog', true) QD.HandBack(false)";
+  expect(restart(hand), "switch on, module off and on, switch off: the dialog alone shows").toEqual([false, false, true, false]);
+  const stopped = "ns.SetModuleEnabled('QuestDialog', false) QD.HandBack(true) ns.SetModuleEnabled('QuestDialog', true) QD.HandBack(false)";
+  expect(restart(stopped), "module off, switch on, module on, switch off: the same").toEqual([false, false, true, false]);
+});
+it("H44-17-51 quest dialog: a game handler that keeps failing is called on every hand-off, never paused for the session", () => {
+  expectErrors(/^quest dialog hand-off: eval:\d+: TEST-ONLY game handler$/);
+  const addon = loggedIn(QUEST_ENV + `__gameSaw = 0 QuestFrame:SetScript("OnEvent", function() __gameSaw = __gameSaw + 1 error("TEST-ONLY game handler") end)`, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
+  addon.eval("__shift = true");
+  for (let i = 0; i < 12; i++) addon.fire("QUEST_DETAIL");
+  expect(addon.eval("return { __gameSaw, #ns.paused }"), "all twelve reach the game's handler, none is paused").toEqual([12, 0]);
+});
+// The game opens its own window for a gossip with a registered texture kit (CustomGossipManagerMixin:HandleOpenEvent,
+// forever and live Blizzard_UIPanels_Game/Mainline/CustomGossipFrameBase.lua:47-55; GetHandler at line 75).
+it("H8-8-2 quest dialog: a gossip the game has its own window for goes to the game, a plain one to the dialog", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_WINDOW + `CustomGossipFrameManager:SetScript("OnEvent", function(_, event) __gameSaw[#__gameSaw + 1] = "manager " .. event end)
+    CustomGossipFrameManager.handlers = { ["npe-guide"] = function() end }
+    CustomGossipFrameManager.GetHandler = function(self, kit) return (kit and self.handlers) and self.handlers[kit] end`);
+  addon.fire("GOSSIP_SHOW", "npe-guide");
+  expect([gameSaw(addon), quest(addon)[2]], "a kit with a handler: the game's manager has the page, the dialog stays hidden").toEqual(["manager GOSSIP_SHOW", false]);
+  addon.fire("GOSSIP_CLOSED");
+  addon.update(0.5);
+  addon.fire("GOSSIP_SHOW", "plain-kit");
+  expect(quest(addon)[2], "a kit with none: the dialog's").toBe(true);
+  addon.fire("GOSSIP_CLOSED");
+  addon.eval("CustomGossipFrameManager.baseHandler = function() end");
+  addon.fire("GOSSIP_SHOW");
+  expect([quest(addon)[2], addon.eval("return #ns.errors")], "a base handler another addon set takes any page, with no error").toEqual([false, 0]);
 });
 it("quest dialog: a held modifier hands one talk to the game, and the dialog is back for the next", () => {
   const addon = loggedIn(QUEST_ENV + GAME_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });

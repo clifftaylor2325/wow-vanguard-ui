@@ -71,6 +71,18 @@ local function fill()
   panel.view:Fit(total)
 end
 
+-- The switches follow the profile while the panel is open: a reset, an import or a switch that applies at once
+-- changes the parts it lists, and a stale list would export parts the profile no longer has.
+-- A part the player switched off stays off (a part new to the profile comes in on).
+ns.OnProfileChanged(function()
+  if not (panel and panel:IsShown()) then return end
+  local was = panel.on
+  panel.problem:SetText("")
+  fill()
+  for part in pairs(panel.on) do panel.on[part] = was[part] ~= false end
+  for i = 1, #panel.parts do panel.rows[i]:Refresh() end
+end)
+
 -- Turns every switch on or off.
 local function setAll(on)
   for _, part in ipairs(panel.parts) do panel.on[part] = on end
@@ -87,13 +99,14 @@ local function ticked()
   return list
 end
 
--- Export: the panel closes and the string for the parts switched on is shown to copy; with
--- none on, the line above the buttons says so instead (the title stays the window's name).
+-- Export: the panel closes and the string for the parts switched on is shown to copy; with none on, or with
+-- nothing to export, the line above the buttons says so instead (the title stays the window's name).
 local function export()
   local parts = ticked()
   if #parts == 0 then return panel.problem:SetText(L["Switch on at least one part to export."]) end
   local whole = #parts == #panel.parts
-  local text = ns.ExportProfile(not whole and parts or nil)
+  local text, reason = ns.ExportProfile(not whole and parts or nil)
+  if not text then return panel.problem:SetText(ns.Format(L["Nothing to export: {reason}."], { reason = reason })) end
   panel:Hide()
   ns.ShowText(ns.ExportTitle(not whole and table.concat(parts, ", ") or nil), text)
 end

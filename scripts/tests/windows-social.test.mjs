@@ -1186,14 +1186,17 @@ const TOAST_ENV = WINDOWS_ENV + `
   bn.TooltipFrame.Text = bn.TooltipFrame:CreateFontString(nil, "ARTWORK") bn.TooltipFrame.Text:SetFont("TEST-ONLY-FONT", 10, "")
   local time = __toast("TimeAlertFrame")
   time.Text = time:CreateFontString(nil, "ARTWORK") time.Text:SetFont("TEST-ONLY-FONT", 12, "")
-  function bn:ShowToast(online)
-    self.DoubleLine:SetText("|cff7c8489TEST-ONLY single line|r") self.DoubleLine:SetTextColor(0.486, 0.518, 0.541)
+  -- As BNToastMixin:ShowToast sets them (forever and live Blizzard_BNet/Mainline/BNet.lua): DoubleLine is plain text for a friend
+  -- invite (BN_TOAST_NEW_INVITE) and holds a club name wrapped in a colour code for a community invitation; its grey is
+  -- the XML's colour (BNet.xml), never a code. Only BottomLine for a friend coming online is wrapped whole in FRIENDS_GRAY_COLOR.
+  function bn:ShowToast(online, club)
+    self.DoubleLine:SetText(club and "You have been invited to join |cff82c5ffTEST-ONLY Club|r" or "TEST-ONLY single line") self.DoubleLine:SetTextColor(0.486, 0.518, 0.541)
     self.TopLine:SetText("|cff82c5ffTEST-ONLY Friend|r")
     if online then self.BottomLine:SetText("|cff999999TEST-ONLY has come online|r")
     else self.BottomLine:SetText("TEST-ONLY has gone offline") self.BottomLine:SetTextColor(0.5, 0.5, 0.5) end
     self:Show()
   end
-  function __showToast(online) BNToastFrame:ShowToast(online) end
+  function __showToast(online, club) BNToastFrame:ShowToast(online, club) end
 `;
 // What the toasts look like: the Battle.net toast's art alphas, icon alpha, panel, bottom line colour and text, top line
 // text, top and bottom line sizes, close glyph, whether the X kept the game's anchor, its tooltip's NineSlice alpha, panel
@@ -1213,7 +1216,10 @@ it("social toasts: the Battle.net and time-played toasts are flat tooltip panels
   const t = toastLook(addon);
   expect([t.art, t.icon, t.panel, t.glyph, t.anchored], "backdrop and glow at alpha 0, the Battle.net icon kept, a panel, the close glyph on the X, which stays in the toast's corner").toEqual([[0, 0, 0, 0], 1, true, "CloseMark", true]);
   expect([isTok(addon, t.bottom, "text2"), t.bottomText, t.top, t.small], "the bottom line the game greyed by SetTextColor: in secondary text, its words kept; top line at label size, bottom at small").toEqual([true, "TEST-ONLY has gone offline", 12, 10]);
-  expect([isTok(addon, addon.eval("return BNToastFrame.DoubleLine.__textColor"), "text2"), addon.eval("return BNToastFrame.DoubleLine:GetText()")], "the single-line variant's grey in secondary text, the code stripped").toEqual([true, "TEST-ONLY single line"]);
+  expect([isTok(addon, addon.eval("return BNToastFrame.DoubleLine.__textColor"), "text2"), addon.eval("return BNToastFrame.DoubleLine:GetText()")], "the single-line variant's grey in secondary text, its words as the game set them").toEqual([true, "TEST-ONLY single line"]);
+  addon.eval("__showToast(false, true)");
+  expect([isTok(addon, addon.eval("return BNToastFrame.DoubleLine.__textColor"), "text2"), addon.eval("return BNToastFrame.DoubleLine:GetText()")], "a community invitation: the line in secondary text, the community's own colour code kept (H44-16-1)").toEqual([true, "You have been invited to join |cff82c5ffTEST-ONLY Club|r"]);
+  expect(addon.eval("BNToastFrame.BottomLine:SetText('|cff999999own |cffff0000words|r|r') BNToastFrame:Hide() BNToastFrame:Show() return BNToastFrame.BottomLine:GetText()"), "text with codes of its own that is not one whole wrap is left alone").toBe("|cff999999own |cffff0000words|r|r");
   expect([t.tipNine, t.tipPanel, isTok(addon, t.tipText, "text")], "its hover tooltip: NineSlice faded, a panel, light text").toEqual([0, true, true]);
   expect([t.timePanel, t.timeText], "the time-played alert: a panel, its line at label size").toEqual([true, 12]);
   addon.eval("__showToast(true)");
@@ -1355,14 +1361,43 @@ it("social dialogs: the guild log's and text edit's boxes, titles and X buttons,
   "log and text edit: boxes sunk, the log's title a title, the X the close glyph, the text buttons not").toEqual([true, true, true, false, true, true, true, false]);
   expect(addon.eval(`local n = 0 for _, c in ipairs(CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons) do if type(c.GetChecked) == "function" and ns.Theme.CheckParts(c) then n = n + 1 end end
     return { n, #CommunitiesGuildNewsFiltersFrame.GuildNewsFilterButtons }`), "seven news filter checks (the odd entry left alone)").toEqual([7, 8]);
+  // The tab column's 32 (RightSideTab.xml), the tabs skin's padding, the flyout's own padding and a pixel.
+  const reach = addon.eval("local f, w = CommunitiesGuildNewsFiltersFrame, CommunitiesFrame local T = ns.Theme return 32 + T.Padding(w) - T.Pixel(w) + T.Padding(f) + T.Pixel(f)");
   expect(addon.eval(`local f = CommunitiesGuildNewsFiltersFrame
     local function at() local p, rel, rp, x = f:GetPoint() return { p, rel == CommunitiesFrame, rp, x } end
     f:ClearAllPoints() f:Hide() f:Show()
     local shown = at() CommunitiesFrame:Show() CommunitiesFrame:Hide()
-    return { shown, f:IsShown() }`), "the news filters flyout is attached to the guild window's right edge and closes with the window").toEqual([["TOPLEFT", true, "TOPRIGHT", -1], false]);
+    return { shown, f:IsShown() }`), "the news filters flyout is attached beside the guild window (past its side tabs, H44-16-2) and closes with the window").toEqual([["TOPLEFT", true, "TOPRIGHT", reach], false]);
   expect(addon.eval(`return { GuildInviteFrameTabardBackground:GetAlpha(), GuildInviteFrameTabardEmblem:GetAlpha(), GuildInviteFrameTabardBorder:GetAlpha(),
       GuildInviteFrameJoinButton.Art:GetAlpha(), GuildInviteFrameDeclineButton.Art:GetAlpha(), __lit(GuildInviteFrameGuildName) }`),
   "the inviting guild's tabard kept, its border faded, Join and Decline flat, the guild name light").toEqual([1, 1, 0, 0, 0, true]);
+});
+
+// CommunitiesFrame.xml: ChatTab hangs 32 x 32 off the window's TOPRIGHT at y -36, each next tab 20 below the last (RightSideTab.xml
+// is 32 x 32; GuildNews.xml's flyout is 264 x 230). The panel manager re-places a flyout it manages on every layout pass
+// (Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua: UpdateUIPanelPositions clears and sets its points on UIParent).
+it("H44-16-2 social dialogs: the news filters flyout sits clear of the guild window's side tabs, and again after the game lays its panels out", () => {
+  const tabs = `CommunitiesGuildNewsFiltersFrame:SetSize(264, 230)
+    local f = CommunitiesFrame f:SetSize(814, 426) f:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 20, -100)
+    local prev for _, key in ipairs({ "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab" }) do
+      local tab = CreateFrame("CheckButton", nil, f) tab:SetSize(32, 32) f[key] = tab
+      if prev then tab:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -20) else tab:SetPoint("TOPLEFT", f, "TOPRIGHT", 0, -36) end
+      prev = tab
+    end
+    UpdateUIPanelPositions = function() local nf = CommunitiesGuildNewsFiltersFrame nf:ClearAllPoints() nf:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 900, -100) end`;
+  const addon = loggedIn(DIALOG_PARTS_ENV + tabs);
+  addon.eval("CommunitiesFrame:Show() CommunitiesGuildNewsFiltersFrame:Show()");
+  // How many side tabs the news filter flyout covers.
+  const covered = () => addon.eval(`local nf, f = CommunitiesGuildNewsFiltersFrame, CommunitiesFrame
+    local function overlaps(a, b) return a:GetLeft() < b:GetRight() and b:GetLeft() < a:GetRight() and a:GetBottom() < b:GetTop() and b:GetBottom() < a:GetTop() end
+    local n = 0 for _, key in ipairs({ "ChatTab", "RosterTab", "GuildBenefitsTab", "GuildInfoTab" }) do if overlaps(nf, f[key]) then n = n + 1 end end
+    return { n, nf:GetLeft() > f:GetRight() }`);
+  expect(covered(), "no side tab under the flyout, which starts past the window's right edge").toEqual([0, true]);
+  addon.eval("UpdateUIPanelPositions()");
+  expect(addon.eval("local p, rel = CommunitiesGuildNewsFiltersFrame:GetPoint() return rel == CommunitiesFrame"), "after the game's layout pass it is beside the window again").toBe(true);
+  addon.eval("CommunitiesGuildNewsFiltersFrame:Hide() UpdateUIPanelPositions()");
+  expect(addon.eval("local p, rel = CommunitiesGuildNewsFiltersFrame:GetPoint() return rel == UIParent"), "a hidden flyout is left alone").toBe(true);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
 it("social dialogs: the settings dialog's text areas, checks, dropdowns and labels, the avatar picker and the invite manager", () => {

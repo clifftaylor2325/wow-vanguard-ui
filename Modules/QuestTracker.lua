@@ -192,13 +192,15 @@ local function questTimers()
 end
 
 -- The same on Retail, which has no GetQuestTimers: each watched quest's (the ids given) C_QuestLog.GetTimeAllowed (its whole
--- time and the seconds gone, as the game's own tracker reads them), while time is left. A hidden value is left out.
+-- time and the seconds gone, as the game's own tracker reads them), while time is left and the quest is neither ready
+-- nor failed (live Blizzard_QuestObjectiveTracker.lua adds the timer bar only in its last branch, after those two).
+-- A hidden value is left out.
 local function timesAllowed(watched)
   local out = {}
   for _, id in ipairs(watched) do
     local total, gone = ns.CallIf(C_QuestLog, "GetTimeAllowed", id)
     total, gone = ns.PlainNumber(total), ns.PlainNumber(gone)
-    if total and gone and gone < total then out[id] = total - gone end
+    if total and gone and gone < total and not (QT.IsReady(id) or QT.IsFailed(id)) then out[id] = total - gone end
   end
   return out
 end
@@ -290,10 +292,6 @@ end
 -- The heading over tracked achievements: Forever's "Legacy challenges", Retail's "Achievements".
 QT.ACHIEVEMENT_HEADING = ns.ClientData({ forever = L["Legacy challenges"], retail = L["Achievements"] })
 
--- Whether an achievement you have earned leaves the tracker: on Retail it does, as in the game's own; on Forever it
--- stays and reads "Complete".
-QT.SKIP_EARNED = ns.ClientData({ forever = false, retail = true })
-
 -- A tracked achievement's lines: its criteria, or its description when it has none (as the game's tracker does).
 local function achievementObjectives(id, description)
   local criteria = achievementCriteria(id)
@@ -302,10 +300,12 @@ local function achievementObjectives(id, description)
 end
 
 -- One tracked achievement (a Legacy challenge on Forever): { id, title, ready, objectives, achievement = true },
--- or nil when the client doesn't have it (or, on Retail, you have earned it).
+-- or nil when the client doesn't have it or you have earned it (the game's tracker drops it on both clients: Blizzard_
+-- AchievementObjectiveTracker.lua, "if wasEarnedByMe then showAchievement = false"). One completed on another
+-- character reads "Complete".
 function QT.Achievement(id)
   local _, name, _, completed, _, _, _, description, _, _, _, _, earnedByMe = ns.CallIf(_G, "GetAchievementInfo", id)
-  if type(name) ~= "string" or (QT.SKIP_EARNED and ns.IsTrue(earnedByMe)) then return nil end
+  if type(name) ~= "string" or ns.IsTrue(earnedByMe) then return nil end
   return { id = id, title = name, ready = ns.IsTrue(completed), objectives = achievementObjectives(id, description), achievement = true }
 end
 

@@ -140,6 +140,15 @@ local function forget()
   if type(VanguardCharDB) == "table" then VanguardCharDB.filteredTab = nil end
 end
 
+-- The game closed a chat window (FCF_Close, through ns.OnChatWindowClosed): the saved number goes when it was the
+-- Filtered tab, since the game gives a closed window's number to the next tab made (the tab Loot would then read
+-- as Filtered). CF.window stays: the next caught line sees it is gone and makes the tab again (reopen).
+function CF.Closed(frame, fallback)
+  frame = fallback or frame
+  local number = savedNumber()
+  if frame ~= nil and (frame == CF.window or (number and frame == _G["ChatFrame" .. number])) then forget() end
+end
+
 -- The open window with the saved number, or nil.
 local function savedWindow()
   local number = savedNumber()
@@ -168,9 +177,15 @@ function CF.FindWindow()
   return windowNamed()
 end
 
--- Whether a chat window number is the Filtered tab (the saved number, or a window with the tab's name).
+-- Whether the module runs now (its scope is open: false from login with it off, and after a switch off).
+local function running()
+  return CF.scope ~= nil and CF.scope:Running()
+end
+
+-- Whether a chat window number is the Filtered tab: the saved number while the module runs (a tab it is not
+-- feeding holds nothing Chat history must skip, whatever number a closed tab left saved), or a window with the tab's name.
 function CF.IsTab(index)
-  if savedNumber() == index then return true end
+  if running() and savedNumber() == index then return true end
   return type(GetChatWindowInfo) == "function" and GetChatWindowInfo(index) == CF.TAB
 end
 
@@ -198,11 +213,6 @@ local function openWindow()
   return type(frame) == "table" and remember(frame) or nil
 end
 
--- Whether the module runs now (its scope is open: false from login with it off, and after a switch off).
-local function running()
-  return CF.scope ~= nil and CF.scope:Running()
-end
-
 -- True while caught lines go to a Filtered tab: the module running and still switched on (a switch made in a fight
 -- stops it only when the fight ends, after work queued earlier in it), the filter on, and tab mode.
 local function wantsTab()
@@ -219,13 +229,22 @@ function CF.Prepare()
   end, "chatfilter window")
 end
 
--- The tab's text with the count of lines caught, "Filtered (12)", and the tab refit to it (the
--- Chat module sizes every tab to its label; a longer count would otherwise be cut).
+-- The name the tab shows before the count: the player's own name for it, else "Filtered" in the player's language
+-- (the game's saved name stays English, CF.TAB, which is how an old tab is found).
+local function tabName(frame)
+  local number = tonumber((frame:GetName() or ""):match("(%d+)$"))
+  local name = number and type(GetChatWindowInfo) == "function" and GetChatWindowInfo(number)
+  if type(name) ~= "string" or name == "" or name == CF.TAB then return L["Filtered"] end
+  return name
+end
+
+-- The tab's text with the count of lines caught, "Filtered (12)" (or the name you gave it), and the tab refit to
+-- it (the Chat module sizes every tab to its label; a longer count would otherwise be cut).
 function CF.UpdateTab()
   local frame = CF.window
   local tab = frame and _G[frame:GetName() .. "Tab"]
   if not (tab and type(tab.SetText) == "function") then return end
-  tab:SetText(string.format("%s (%d)", CF.TAB, CF.count))
+  tab:SetText(ns.Format(L["{name} ({count})"], { name = tabName(frame), count = CF.count }))
   local CH = ns.GetModule("Chat")
   if CH and CH.RefitTabs then CH.RefitTabs() end
 end
@@ -358,9 +377,9 @@ end
 
 -- Keywords ------------------------------------------------------------------------------------
 
--- The keywords in this profile (also while the module is off, for the options).
+-- The keywords in this profile (also while the module is off, for the options), text only.
 local function keywords()
-  return ns.Settings("ChatFilter", CF.defaults).keywords
+  return ns.GetModule("ChatExtras").TextOnly(ns.Settings("ChatFilter", CF.defaults).keywords)
 end
 
 -- Why a keyword can't be added, or nil when it can.
@@ -434,7 +453,8 @@ local STATUS = {
 local function status()
   local s = ns.Settings("ChatFilter", CF.defaults)
   ns.Chat(ns.Format(STATUS[s.on == true][s.mode == "tab" and "tab" or "hide"], { count = CF.count }))
-  if #s.keywords > 0 then ns.Chat(ns.Format(L["Your words: {words}"], { words = table.concat(s.keywords, ", ") })) end
+  local words = keywords()
+  if #words > 0 then ns.Chat(ns.Format(L["Your words: {words}"], { words = table.concat(words, ", ") })) end
 end
 
 -- Forgets every keyword; says so.
@@ -488,6 +508,7 @@ end
 -- through, so it has no Disable. A start after login makes the Filtered tab at once (the world is entered already).
 function CF.Enable(settings, scope)
   CF.settings, CF.scope = settings, scope
+  ns.OnChatWindowClosed("filter", CF.Closed)
   hookChat(scope)
   scope:On("PLAYER_ENTERING_WORLD", CF.Prepare)
   if ns.ModulesBuilt() then CF.Prepare() end

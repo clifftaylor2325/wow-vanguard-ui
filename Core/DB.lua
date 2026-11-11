@@ -296,6 +296,7 @@ end
 ---@param name string
 function ns.UseProfile(name)
   ns.StageProfile(name)
+  ns.SettingsGuard.Picked()
   VanguardCharDB.ownProfile = name
   ns.WarnSpecWins(name)
 end

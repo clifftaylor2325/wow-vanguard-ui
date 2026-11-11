@@ -613,7 +613,10 @@ local function dragTo(r)
   local left = r.track:GetLeft()
   if not x or not left then return end
   local share = (x / r.track:GetEffectiveScale() - left) / r.track:GetWidth()
-  r.set(snap(r, r.min + share * (r.max - r.min)))
+  local v = snap(r, r.min + share * (r.max - r.min))
+  if v == r.dragged then return end
+  r.dragged = v
+  r.set(v)
   r:Refresh()
 end
 
@@ -625,7 +628,7 @@ end
 
 -- Ends a drag along the track: the cursor is no longer followed.
 local function endDrag(r)
-  r.dragging = false
+  r.dragging, r.dragged = false, nil
   r.track:SetScript("OnUpdate", nil)
 end
 

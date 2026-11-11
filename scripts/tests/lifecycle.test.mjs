@@ -453,6 +453,12 @@ function profileAddon(raid = "", extra = "") {
 // The rebinding reload-only module: TestReload keeps def.settings and declares rebinds.
 const REBINDS = 'local R = ns.GetModule("TestReload") R.rebinds = true function R.Enable(s) R.settings = s table.insert(__life.log, "on TestReload") end';
 
+it("lifecycle: H44-12-1 a profile whose module settings are not a table is compared as missing, not walked", () => {
+  const addon = profileAddon("", REBINDS);
+  addon.eval("VanguardDB.profiles.Raid.TestReload = 5");
+  expect(addon.eval('local ok, err = pcall(ns.PickProfile, "Raid") return { ok, ns.SelectedProfileName() }'), "no error; staged for the reload").toEqual([true, "Raid"]);
+});
+
 it("lifecycle: a reload-only module that can't take new settings keeps a profile from applying now, unnamed", () => {
   const addon = profileAddon();
   expect(addon.eval('return { ns.SwitchBlockers("Raid") }')).toEqual([["TestReload"], {}]);

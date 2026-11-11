@@ -275,7 +275,14 @@ local function firstQuest(entries)
   end
 end
 
--- Redraws the list, and shows the chosen quest (the first one when none is chosen yet).
+-- The quest to show: the chosen one while the log still has it (a quest under a folded zone is not among the
+-- entries and stays chosen), else the first one listed.
+local function chosen(entries)
+  local kept = QL.selected and ns.GetModule("QuestTracker").LogIndex(QL.selected)
+  return kept and QL.selected or firstQuest(entries)
+end
+
+-- Redraws the list, and shows the chosen quest (the first one when none is chosen yet, or the chosen one has left).
 function QL.Refresh()
   local f, entries = QL.frame, QL.Entries()
   QL.ForgetGoneMarks()
@@ -284,7 +291,7 @@ function QL.Refresh()
   f.lines.Reset()
   f.zones.Reset()
   f.listScroll:Fit(paintList(f, entries))
-  QL.Select(QL.selected or firstQuest(entries))
+  QL.Select(chosen(entries))
 end
 
 -- Details -----------------------------------------------------------------------------------------

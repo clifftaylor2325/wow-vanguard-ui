@@ -2049,8 +2049,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 15.6e Chat tabs
 
-- Do: `/vg` → Chat → Chat tabs. Click New chat tab, type `Loot`, Make. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Click General in the chat so Drops is hidden, reopen the page and pick Drops from the Tab choice, then Close this tab. Do the same in combat, making two new tabs in the one fight, then closing both in another.
-- Expect: a new tab appears and is picked; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Drops is in the Tab choice while General's tab is the one shown, and closes; in combat a new tab or close waits until the fight ends, both tabs made in one fight appear, and both closed in one fight close. `/vg errors` is empty. [Needs in game: FCF_OpenNewWindow, FCF_SetWindowName, FCF_Close, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
+- Do: `/vg` → Chat → Chat tabs. Click New chat tab; then right-click a chat tab, choose Create New Window, name it `Loot`, and reopen the page. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops and click Close this tab, then close it from its own right-click menu, Close Chat Window.
+- Expect: New chat tab says in chat to right-click a tab and choose Create New Window; the new tab is in the Tab choice; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Close this tab on Drops makes no change and says to right-click its tab and choose Close Chat Window, which closes it. `/vg errors` is empty. [Needs in game: FCF_SetWindowName, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
 - If it fails, paste: `/vg errors` and what the tab did.
 
 ### 15.6f Chat search
@@ -4922,10 +4922,10 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: with `type:key` the key ring button stays lit; with `q:epic` (no epic key) it dims.
 - If it fails, paste: a screenshot of the bag bar, and the output of `/dump C_Container.GetContainerNumSlots(-1)` and `/dump KeyRingButton:GetBagID()`.
 
-### 33.386 Close this tab gives the tab's chat back to General (Forever)
+### 33.386 Close this tab points to the game's menu, which gives the tab's chat back to General (Forever)
 
-- Do: In the game's chat settings, make a new tab, move Trade onto it and untick Trade on General. Open `/vg`, go to Chat, Chat tabs, pick that tab and press Close this tab.
-- Expect: The tab closes and Trade lines show in General again.
+- Do: In the game's chat settings, make a new tab, move Trade onto it and untick Trade on General. Open `/vg`, go to Chat, Chat tabs, pick that tab and press Close this tab; then right-click the tab and choose Close Chat Window.
+- Expect: Close this tab changes nothing and chat says to right-click the tab and choose Close Chat Window; the game's menu closes the tab and Trade lines show in General again.
 - If it fails, paste: The chat tab's channel list from the game's chat settings for General, and any red error text.
 
 ### 33.387 Quest item buttons in a fight (Forever)
@@ -4997,7 +4997,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.397 Close this tab leaves channel tabs to the game's menu (Forever)
 
 - Do: make a chat tab that shows Trade or LookingForGroup (right-click the tab, Settings, tick the channel). Open the Vanguard options, Chat page, Chat tabs, pick that tab and press Close this tab. Then right-click the tab and choose Close Chat Window. Repeat Close this tab on a floating (undocked) channel window. Next, make a second tab that shows no channel and close it with Close this tab. Without reloading, enter `/console taintLog 1`, go into a dungeon and watch LookingForGroup or a custom channel in the main window for a few minutes.
-- Expect: the channel tab stays open (Vanguard does not select it), and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."; after the game's Close Chat Window the channel shows in the main window. On the floating channel window the main chat window stays visible and the same line shows in it. The tab with no channel closes from Vanguard's button. In the dungeon, channel lines keep showing in the main window with no Lua error and no taint line naming Vanguard.
+- Expect: the channel tab stays open (Vanguard does not select it), and chat says "To close a chat tab, right-click its tab and choose Close Chat Window. The game gives its chat back to the main window."; after the game's Close Chat Window the channel shows in the main window. On the floating channel window the main chat window stays visible and the same line shows in it. The tab with no channel stays open too, and closes from the game's menu. In the dungeon, channel lines keep showing in the main window with no Lua error and no taint line naming Vanguard.
 - If it fails, paste: the chat line shown, any Lua error, and the lines naming Vanguard in Logs/taint.log.
 
 ### 33.398 Restored Discord guild lines offer no Report Chat (Forever)
@@ -5075,7 +5075,7 @@ The order is the order to play in: looks you can check quickly first, then the g
 ### 33.410 Close this tab in a fight skips a tab that gained a channel (Forever)
 
 - Do: Open `/vg` > Chat > Chat tabs, pick a tab with no channel, enter combat, press Close this tab, then right-click that tab, choose Settings and tick Trade. Leave combat.
-- Expect: The tab stays open and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window." No error appears.
+- Expect: The tab stays open and chat says "To close a chat tab, right-click its tab and choose Close Chat Window. The game gives its chat back to the main window." Nothing is closed when the fight ends. No error appears.
 - If it fails, paste: the chat lines and any Lua error text.
 
 ### 33.420 Action bar cooldown sweeps after the sweep change (Forever)
@@ -5559,6 +5559,186 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Do: with Enemy nameplates off in the game (press V until plates hide), type `/vg setup`, Next to Game settings, press **Use recommended**, Next, then on Helpers switch Accept and turn in quests on and press **Use recommended**; Next through to All set and read it. Press **Undo setup** and answer Undo; answer No to the export question if asked; reload when offered. Then `/vg setup` again and Next through to All set.
 - Expect: Use recommended on Game settings switches all three rows on; leaving the step turns the game's enemy plates on at once (the V key state) and zooms the camera out further. On Helpers, Use recommended turns the recommended rows on and leaves your quest-automation pick on. All set lists each change with On, and Undo setup's question reads `Undo everything this setup changed and put the profile back as it was? Done then offers the reload that applies it.`; after Undo the enemy plates are off again and the camera zoom back as it was, setup is closed, chat shows no error, and the reload dialog reads `Setup was undone: the profile as it was is back. Reload the UI now to apply it?`. The second run's All set says `This run changed nothing` and shows no Undo setup. [Needs in-game check: all of it.]
 - If it fails, paste: the All set lines, the question text, the V key state before and after, and `/vg errors`.
+
+### 33.545 A profile that switches at once brings its Edit Mode layout (H44-12-2)
+
+- Do: for Forever and Retail: with every module that needs a reload switched off under `/vg` → Modules (the ones tagged for a reload), have two profiles that remember different Edit Mode layouts. Under Profiles, press Use on the other one, then open and close Edit Mode, then `/reload`.
+- Expect: right after Use, Edit Mode is on that profile's layout and chat says `Edit Mode layout X, from profile Y.`; after opening and closing Edit Mode and the reload, the profile is still on its own layout.
+- If it fails, paste: the chat lines, the two profiles' names and layouts, and `/vg errors`.
+
+### 33.546 Undo setup puts the game's UI scale back (H44-14-R1)
+
+- Do: for Forever and Retail: note Options, Graphics, UI Scale (the checkbox and the slider). `/vg setup`, on the screen step pick 1440p, Next to All set, press Undo setup and Yes, then reload.
+- Expect: the game's UI Scale checkbox and slider are as you noted, and the whole UI is at the scale it had before.
+- If it fails, paste: the UI Scale checkbox and slider values before and after, and `/vg errors`.
+
+### 33.547 A chat window's opacity ends when Chat windows is switched off (H44-11-R1)
+
+- Do: for Forever and Retail: `/vg unlock`, right-click a floating chat window's handle, set Opacity to 50, Save and lock, then switch Chat windows off under `/vg` → Modules.
+- Expect: the chat window is back at full opacity, and fading in and out with the mouse is the game's own again.
+- If it fails, paste: the window's look before and after, and `/vg errors`.
+
+### 33.548 All set still names a layout after Back and Keep (H44-14-20)
+
+- Do: for Forever and Retail: `/vg setup`, pick Centered: healing, Next, Back, pick Keep my current layout, Next through to All set and read it.
+- Expect: All set says the run changed something, lists `Layout: Centered: healing`, and shows Undo setup; Undo setup puts the profile as it was back.
+- If it fails, paste: the All set text and `/vg errors`.
+
+### 33.549 All set names frames moved, and offers Undo only with a backup (H44-14-21)
+
+- Do: for Forever and Retail: with setup already finished, `/vg setup`, Next to Move things, drag a frame, Next to All set and read it, then Done.
+- Expect: All set says the run changed something and lists `Frames moved`, with no Undo setup; Done offers the reload.
+- If it fails, paste: the All set text and `/vg errors`.
+
+### 33.550 Skip setup goes once the run has changed something (H44-14-22)
+
+- Do: for Forever and Retail: on a first run, pick Centered: healing, Next, then Back to the first step.
+- Expect: the first step shows Next and no Skip setup.
+- If it fails, paste: a screenshot of the first step's buttons and `/vg errors`.
+
+### 33.551 Reload settings wear the grey reload tag (H44-13-50)
+
+- Do: for Forever and Retail: `/vg` > Action bars, untick Hide the default bars; Raid frames, tick Sort by role; hover each row.
+- Expect: each row shows the small grey `reload` tag after its name, its tooltip says `Takes effect after /reload.`, and the footer names the module as waiting for a reload.
+- If it fails, paste: a screenshot of both rows and `/vg errors`.
+
+### 33.552 The Set up cooldowns window no longer asks for a reload it does not need (H44-13-R1)
+
+- Do: for Forever and Retail: `/vg cooldowns setup`, Next to the Gaps row step, read the two switches, tick Gaps row.
+- Expect: the switches read `Gaps row` and `Add the manager's cooldowns` with no `(reload)`, and the gaps row appears at once.
+- If it fails, paste: a screenshot of the step and `/vg errors`.
+
+### 33.553 A window's tabs are dressed even where the game hides their anchoring (H44-15-R1)
+
+- Do: for Forever and Retail: open the character window, the spellbook, the social window and the guild window, and click through each one's tabs.
+- Expect: every tab sits just outside its window's panel edge in Vanguard's tab look, and `/vg errors` has no `attempt to compare a secret value` line from `WindowsTabs.lua`.
+- If it fails, paste: a screenshot of the window and `/vg errors`.
+
+### 33.554 Toggle Minimap in a fight with another addon's secure button on the map (H44-18-1)
+
+- Do: for Forever and Retail: with an addon that puts a secure button on the minimap (skip if you have none), enter a fight, press the Toggle Minimap key twice, then once more and leave the fight.
+- Expect: no `blocked` line in `/vg errors`; the map's box follows the map at once, or at the latest when the fight ends, and then matches whether the map is shown.
+- If it fails, paste: `/vg errors` and the name of the addon with the button.
+
+### 33.555 A Shift-click waypoint wins over the quest the game tracked by itself (H44-18-50)
+
+- Do: for Forever: under Quests → Finding your way set Shift-click points to A map waypoint. Accept a new quest A (the game's marker follows it), then Shift-click another watched quest B in Vanguard's tracker.
+- Expect: chat says `Arrow: B.`, Vanguard's arrow names B, and the tracker's `>` step line sits under B, not A.
+- If it fails, paste: the arrow's title, which quest has the `>` line, and `/run print(C_SuperTrack.GetSuperTrackedQuestID(), C_SuperTrack.IsSuperTrackingUserWaypoint())`.
+
+### 33.556 The game's own quest and gossip windows keep readable text while the quest dialog is handed back (H44-15-1)
+
+- Do: for Forever and Retail: with Vanguard's quest dialog on, tick Use the game's quest windows for now under Quests, then talk to a quest giver with a quest to hand in and to a gossip NPC.
+- Expect: the game's windows on their parchment with the game's own dark text, never light text on the parchment.
+- If it fails, paste: a screenshot of each window and `/vg errors`.
+
+### 33.557 The loot history reopens where its own drag dropped it (H44-15-50)
+
+- Do: for Forever and Retail: open the loot history (the group loot window's history button), drag it by its top edge, close and reopen it; then drag it by the middle of its list, close and reopen it.
+- Expect: each time it reopens where you last let go, and `/vg errors` is empty.
+- If it fails, paste: where it reopened after each drag and `/vg errors`.
+
+### 33.558 Retail dropdowns in the second menu style take Vanguard's panel (H44-15-51)
+
+- Do: for Retail: open a dropdown in the game's settings (Options → Graphics, Display Mode), change its value, then at the barber shop open a customisation option's dropdown.
+- Expect: each list on a flat Vanguard panel with its rows inside the panel, and the new setting takes effect with no `blocked` line in `/vg errors`.
+- If it fails, paste: a screenshot of each open list and `/vg errors`.
+
+### 33.560 Quiet the game declines a stranger's group invite on Forever (H44-20-50)
+
+- Do: on Forever, with Quiet the game > Decline group invites from strangers on, have a character who is not a friend, Battle.net friend or guildmate, and whom you have not whispered, invite you; then have a friend invite you.
+- Expect: the stranger's invite is declined at once with one line `Declined a group invite from <name>.`; the friend's popup stays.
+- If it fails, paste: the chat line, and `/vg errors`.
+
+### 33.561 A long meter report goes out as whole lines (H44-20-1)
+
+- Do: for Forever and Retail: in a party after a fight with 6 or more members (cross-realm names if you can), `/vg meter report party 10`.
+- Expect: one or more party lines, every listed name whole, none cut off; the first line starts with the meter title.
+- If it fails, paste: the party lines, and `/vg errors`.
+
+### 33.562 The Delve layout follows a delve starting or ending in place (H44-20-2)
+
+- Do: on Retail with a Delve layout recorded (`/vg situation record delve`), start a delve from inside its instance, or finish one and stay inside.
+- Expect: the Delve layout comes on (or off) within a second without a zone change, and opening `/vg` on Situations does not hitch.
+- If it fails, paste: `/vg situation list`.
+
+### 33.563 Quest dialog hand-back after a module restart (H44-17-50)
+
+- Do: for Forever and Retail: `/vg` > Quests: switch on Use the game's quest windows for now; Modules: Quest dialog off, then on; Quests: switch the hand-back off; talk to a quest giver. Also try: Quest dialog off, hand-back on, Quest dialog on, hand-back off, talk again.
+- Expect: only Vanguard's quest dialog opens each time; the game's quest window does not open with it.
+- If it fails, paste: whether the game's quest window also opened, and `/vg errors`.
+
+### 33.564 A Legacy challenge you earn leaves the tracker (H44-17-2)
+
+- Do: on Forever, track a Legacy challenge one step from done and finish it on this character.
+- Expect: it leaves Vanguard's tracker, as it leaves the game's; the Legacy challenges heading goes when it was the last.
+- If it fails, paste: the tracker's Legacy challenges heading before and after.
+
+### 33.565 A gossip with a game window of its own opens the game's window (H8-8-2)
+
+- Do: on Retail, with the Quest dialog on and no key held, talk to the Torghast entrance NPC, or to the new-player guide (Exile's Reach).
+- Expect: the game's own picker or guide window opens, not Vanguard's plain gossip list; an ordinary quest giver still opens Vanguard's dialog.
+- If it fails, paste: which window opened, and `/vg errors`.
+
+### 33.566 An item-started quest is not accepted by a key or automation (H20-7-1)
+
+- Do: for Forever and Retail: with the Quest dialog on and Quests > Accept quests on, loot an item that starts a quest while holding Space (or tapping Enter).
+- Expect: Vanguard's dialog opens on the offer and stays open, nothing is accepted until you click Accept; an ordinary quest giver is still accepted by Space and by automation as before.
+- If it fails, paste: whether the quest was accepted, and `/vg errors`.
+
+### 33.567 A chat window dragged back into the dock stays in the dock (H44-19-1)
+
+- Do: for Forever and Retail: with `/vg` > Chat > Move floating windows on and reloaded, pull a tab (Loot) out of the dock, drag its tab back into the dock, then open and close Edit Mode.
+- Expect: the Loot tab's text stays inside the main chat panel when you click it, and `/vg unlock` shows no `Chat: Loot` handle.
+- If it fails, paste: a screenshot if the text sits elsewhere, and `/vg errors`.
+
+### 33.568 A tab made and closed from the game's menu stays clean for channels (H44-19-2, H44-19-R1)
+
+- Do: for Forever and Retail: make a tab from the game's tab menu (Create New Window); in `/vg` > Chat > Chat tabs pick it and click Close this tab; close it from its own menu, make another, tick LookingForGroup on it in its Settings, enter a dungeon and wait for a channel line (`/console taintLog 1` first). Also click New chat tab.
+- Expect: New chat tab and Close this tab only say how to use the game's tab menu; the new tab's channel line shows with no Lua error and no taint line naming Vanguard.
+- If it fails, paste: `/vg errors` and the lines naming Vanguard in Logs/taint.log.
+
+### 33.569 A closed Filtered tab's number is not fed to the next tab (H44-19-52)
+
+- Do: for Forever and Retail: `/vg filter on`, close the Filtered tab from its tab menu, make a new tab named Loot from the game's menu, then wait for a gold seller's line in Trade (or `/vg filter` after one).
+- Expect: the spam goes to a new Filtered tab, and the Loot tab keeps its name and holds no spam.
+- If it fails, paste: `/vg filter` and the tab names.
+
+### 33.570 A community invitation toast keeps the community's colour (H44-16-1)
+
+- Do: for Forever and Retail: have a friend invite you to a Battle.net community (or a club finder invitation) while the toast skin is on.
+- Expect: the community name in the toast stands out (blue or gold) from the grey sentence; a friend coming online still reads in secondary text.
+- If it fails, paste: a screenshot, or `name coloured: yes/no`.
+
+### 33.571 The guild news filters flyout sits clear of the side tabs and stays put (H44-16-2, H44-16-3)
+
+- Do: for Forever and Retail: open the guild window, Guild Info, Set filters; then open and close the character pane (or another side window) while the flyout is up.
+- Expect: the flyout sits beside the guild window without covering the Chat, Roster, Benefits or Info tabs, and stays beside it after the other window opens and closes.
+- If it fails, paste: a screenshot, and where the flyout ends up.
+
+### 33.572 Combat log filter buttons (H44-16-50)
+
+- Do: for Forever and Retail: open Chat Settings, Combat, add a filter with Show Quick Button ticked.
+- Expect: The new quick button on the combat log bar is a flat theme button, not the game's art.
+- If it fails, paste: A screenshot of the bar.
+
+### 33.573 Retail group finder page titles (H44-16-51)
+
+- Do: On Retail, open the group finder, Premade Groups, then Start a Group.
+- Expect: Both page titles read in the light heading text, not the game's gold.
+- If it fails, paste: A screenshot of each page.
+
+### 33.574 Retail keystone window after taking a key out (H32-4-1)
+
+- Do: On Retail, open the Mythic+ keystone window, put a keystone in the slot, then drag it out.
+- Expect: The panel stays flat; the game's backdrop and divider do not come back.
+- If it fails, paste: A screenshot after taking it out.
+
+### 33.575 The minimap drawer's "..." button follows the addon buttons (H44-18-A1; Forever and Retail)
+
+- Do: With the drawer shut and one addon minimap button in it, hide that button in its addon's settings (its "Hide minimap button" switch), then show it again.
+- Expect: The "..." button on the map's left edge goes when the last button is hidden and comes back when one is shown, without opening the drawer or reloading.
+- If it fails, paste: The addon's name and what the "..." button did.
 
 ## 34. Retail
 

@@ -87,10 +87,20 @@ local function questArrow(questID)
   return true
 end
 
+-- Lets the game's tracked quest go when it is another one (0, as QG.Unpin), else the game would keep tracking it
+-- beside the waypoint and the arrow would follow it (QG.Followed prefers the game's tracked quest).
+local function releaseOther(questID)
+  local id = ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID"))
+  if id and id > 0 and id ~= questID then ns.CallIf(C_SuperTrack, "SetSuperTrackedQuestID", 0) end
+end
+
 -- Puts a map waypoint on the quest's next step (the arrow points at it, as /way's does); false when there is none.
+-- The game's other tracked quest goes first, so the waypoint is the last thing tracked.
 local function waypointArrow(questID)
   local mapID, x, y = QG.Target(questID)
-  return mapID ~= nil and ns.GetModule("Waypoints").Set(mapID, x, y)
+  if mapID == nil then return false end
+  releaseOther(questID)
+  return ns.GetModule("Waypoints").Set(mapID, x, y)
 end
 
 -- The quest's title for chat, or "that quest".

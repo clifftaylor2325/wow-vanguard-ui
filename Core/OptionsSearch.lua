@@ -12,7 +12,7 @@ local T, W, O = ns.Theme, ns.Widgets, ns.Options
 -- translation gives the words a player of that language types, and the search reads both.
 O.KEYWORDS = {
   ["safer colours"] = L["colour blind colorblind color blind colour vision deuteranopia protanopia tritanopia accessibility"]
-    .. " " .. L["colourblindness colorblindness colour-blindness color-blindness"],
+    .. "\n" .. L["colourblindness colorblindness colour-blindness color-blindness"],
   ["text size"] = L["font size bigger smaller larger readable zoom"],
   ["font"] = L["typeface lettering text"],
   ["reduce motion (no fades or flashes)"] = L["animation animations fades flashes accessibility"],
@@ -28,7 +28,7 @@ O.KEYWORDS = {
 }
 
 -- The most settings the list shows, and how wide it is and what each line holds (units).
-local MAX_HITS, LIST_WIDTH, PAGE_WIDTH = 8, 360, 110
+local MAX_HITS, LIST_WIDTH, PAGE_WIDTH = 8, 440, 110
 
 -- The settings a search found: { page = key, title = the page's title, caption = the row's, row = the row }.
 O.hits = nil
@@ -37,6 +37,11 @@ O.hits = nil
 function O.BothTongues(text)
   local english = ns.English(text)
   return english == text and text or (text .. " " .. english)
+end
+
+-- Each line of a text with its English after it: a text joined from several translations is no translation itself.
+local function tongues(text)
+  return (text:gsub("[^\n]+", O.BothTongues))
 end
 
 -- A choice row's choice names ("Square", "Jade"), each with its English, as one string.
@@ -51,14 +56,14 @@ end
 local function keywordsOf(row)
   local english = row.english or ns.English(tostring(row[2]))
   local words = O.KEYWORDS[english:lower()]
-  return words and O.BothTongues(words) or ""
+  return words and tongues(words) or ""
 end
 
 -- The words of a row that a search reads, each as shown and in English: its caption, tip, keywords, choice names,
 -- the note under it and "reload" when it applies on reload, in lower case.
 local function haystack(row, note)
   local reload = row.reload and O.BothTongues(L["reload"]) or ""
-  local words = { tostring(row[2]), row.english or "", O.BothTongues(row.tip or ""), keywordsOf(row), choiceNames(row), O.BothTongues(note or ""), reload }
+  local words = { tostring(row[2]), row.english or "", tongues(row.tip or ""), keywordsOf(row), choiceNames(row), tongues(note or ""), reload }
   return ns.Lower(table.concat(words, " "))
 end
 
@@ -79,12 +84,13 @@ local function wordsOf(text)
 end
 
 -- The kinds of row the list can show: a switch, choice or slider, a module's switch, and a button (a hit on a
--- button only opens its page and marks it; some buttons reset or delete).
+-- button only opens its page and marks it; some buttons reset or delete). The page's own Reset this page is left out:
+-- every page has one, and they would crowd the list.
 local SETTING_KINDS = { check = true, cycle = true, slider = true, module = true, button = true }
 
 -- Whether a row is one the list can show: a setting with a caption.
 local function isSetting(row)
-  return SETTING_KINDS[row[1]] == true and type(row[2]) == "string"
+  return SETTING_KINDS[row[1]] == true and type(row[2]) == "string" and not row.isReset
 end
 
 -- The note row under row i ({ "text", words, "note" }), if there is one: its words.
@@ -113,27 +119,45 @@ function O.RowMatches(rows, i, text)
   return isSetting(rows[i]) and matches(rows[i], wordsOf(text), noteUnder(rows, i))
 end
 
+-- Whether a (lower-case) search text is the word "changed", in English or translated, with spaces round it ignored.
+function O.WantsChanged(text)
+  local word = text:match("^%s*(.-)%s*$")
+  return word == "changed" or word == ns.Lower(L["changed"])
+end
+
 -- The settings that match a (lower-case) search text, and how many more the list has no room for; "changed" is
 -- the ones off their default.
 function O.FindSettings(text)
-  if text == "changed" or text == ns.Lower(L["changed"]) then return collect(function(row) return O.RowChanged(row) end) end
+  if O.WantsChanged(text) then return collect(function(row) return O.RowChanged(row) end) end
   local words = wordsOf(text)
   return collect(function(row, note) return matches(row, words, note) end)
 end
 
 -- Hit lines ------------------------------------------------------------------------------------
 
--- A line's caption (left, one line) and its page's title (muted, right).
-local function lineTexts(line)
-  line.caption = T.Text(line:CreateFontString(nil, "OVERLAY"), "label", "text")
-  line.caption:SetPoint("LEFT", T.SPACE.pad, 0)
-  line.caption:SetWidth(LIST_WIDTH - PAGE_WIDTH - 4 * T.SPACE.pad)
+-- A line's caption (left): in a slot of its own, on one line, shrunk to fit it (a long translation would be cut).
+local function captionText(line)
+  local slot = CreateFrame("Frame", nil, line)
+  slot:SetSize(LIST_WIDTH - PAGE_WIDTH - 4 * T.SPACE.pad, T.ROW.height)
+  slot:SetPoint("LEFT", T.SPACE.pad, 0)
+  line.caption = T.FitText(T.Text(line:CreateFontString(nil, "OVERLAY"), "label", "text"), slot, 0)
   line.caption:SetJustifyH("LEFT")
-  line.caption:SetWordWrap(false)
-  line.page = T.Text(line:CreateFontString(nil, "OVERLAY"), "small", "muted")
-  line.page:SetPoint("RIGHT", -T.SPACE.pad, 0)
-  line.page:SetWidth(PAGE_WIDTH)
+end
+
+-- A line's page title (muted, right): in a slot of its own, on one line, shrunk to fit it (T.FitText anchors the
+-- string across the box it is given, so that box must not be the line).
+local function pageText(line)
+  local slot = CreateFrame("Frame", nil, line)
+  slot:SetSize(PAGE_WIDTH, T.ROW.height)
+  slot:SetPoint("RIGHT", -T.SPACE.pad, 0)
+  line.page = T.FitText(T.Text(line:CreateFontString(nil, "OVERLAY"), "small", "muted"), slot, 0)
   line.page:SetJustifyH("RIGHT")
+end
+
+-- A line's caption and its page's title.
+local function lineTexts(line)
+  captionText(line)
+  pageText(line)
 end
 
 -- Clicking a line opens its setting.

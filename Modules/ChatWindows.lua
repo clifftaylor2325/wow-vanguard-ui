@@ -145,6 +145,23 @@ local function releaseFloating()
   CW.floating = {}
 end
 
+-- The game docks a window (its tab dropped into the dock; FCF_DockFrame ends in FCFDock_AddChatFrame, which clears
+-- its anchors and sets them all to the dock's): its handle and pin let go, or the next pin run would pull the
+-- docked window back out to its old spot. The released handle keeps its saved spot.
+local function letDocked(frame)
+  local key = CW.floating[frame]
+  if not key then return end
+  ns.ReleaseMover(key)
+  ns.Unpin(frame)
+  CW.floating[frame] = nil
+end
+
+-- Hooks FCF_DockFrame, through a gate that installs the hook once a session and is inert while the module is off.
+local function watchDocking(scope)
+  if type(hooksecurefunc) ~= "function" or type(FCF_DockFrame) ~= "function" then return end
+  scope:Gate("dock frame", letDocked, function(gate) hooksecurefunc("FCF_DockFrame", ns.Guard("hook FCF_DockFrame", gate)) end)
+end
+
 -- Tabs ------------------------------------------------------------------------------------
 
 -- The message groups a tab can show or hide: each row lists the game groups one switch stands for.
@@ -227,19 +244,11 @@ function CW.CleanName(text)
   return name ~= "" and name or nil
 end
 
--- Makes a new chat tab, out of combat (each name asked for in a fight is made after it), and selects it
--- for editing.
-function CW.New(text)
-  local name = CW.CleanName(text)
-  if not name then return ns.Chat(L["Type a name for the new tab."]) end
-  if type(FCF_OpenNewWindow) ~= "function" then return ns.Chat(L["This client can't make a chat tab."]) end
-  ns.OutOfCombat(function()
-    local frame = FCF_OpenNewWindow(name)
-    if not frame then return ns.Chat(L["Every chat tab is in use. Close one to make another."]) end
-    CW.editing = tonumber((frame:GetName() or ""):match("(%d+)$")) or CW.editing
-    ns.Options.RebuildPage("chat")
-  end, "chat new tab " .. name)
-  ns.HideText()
+-- Points to the game's own tab menu for a new tab. Vanguard does not make the window: the game's FCF_OpenNewWindow
+-- writes the new window's channel lists (and the last active edit box) from whoever calls it, and the game's
+-- channel-message code then reads those fields on every line (taint). The Tab picker lists the window once it exists.
+function CW.New()
+  ns.Chat(L["To make a chat tab, right-click any chat tab and choose Create New Window. It then shows in the Tab picker here."])
 end
 
 -- Renames the edited tab.
@@ -257,42 +266,20 @@ local function isBuiltin(frame)
   return type(IsBuiltinChatWindow) == "function" and IsBuiltinChatWindow(frame) == true
 end
 
--- Closes a permanent chat window that shows no channel as the game's tab menu does: its chat types go back to
--- the main window first (FCF_PopInWindow), else a plain FCF_Close.
-local function closeWindow(frame)
-  if type(FCF_PopInWindow) == "function" then return FCF_PopInWindow(frame) end
-  FCF_Close(frame)
-end
-
--- Whether a tab shows any channel: the game's pop-in would then write those channels into the main window's
--- channel list from Vanguard's code, and the game's channel-message code reads that list on every line (taint).
-local function hasChannels(frame)
-  return type(frame.channelList) == "table" and next(frame.channelList) ~= nil
-end
-
--- Points a tab that shows channels to its own tab menu, whose Close Chat Window gives them back. Vanguard does not
--- select the tab or close it itself: both write the dock's or the main window's channel state from addon code (taint).
+-- Points to the tab's own menu for closing it. Vanguard does not close the window: the game's close calls write the
+-- closed window's chat-type and channel lists (and the main window's) from addon code, and the next tab on that
+-- number then starts out tainted.
 local function sendToTabMenu()
-  ns.Chat(L["This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window."])
+  ns.Chat(L["To close a chat tab, right-click its tab and choose Close Chat Window. The game gives its chat back to the main window."])
 end
 
--- Closes a tab once out of combat unless it gained a channel while the close waited (then its tab menu is the
--- way, as at the press).
-local function closeUnlessChannels(frame)
-  if hasChannels(frame) then return sendToTabMenu() end
-  closeWindow(frame)
-  CW.editing = nil
-  ns.Options.RebuildPage("chat")
-end
-
--- Closes the edited tab (never the main one or another of the game's own, and one showing channels only from
--- its own tab menu), out of combat (each tab closed in a fight is closed after it).
+-- The Close this tab button: never the main tab or another of the game's own, which the game's menu has no Close
+-- for; any other tab is closed from its own tab menu.
 function CW.Close()
   local index, frame = CW.Editing()
-  if not frame or index == 1 or type(FCF_Close) ~= "function" then return ns.Chat(L["The main chat tab can't be closed."]) end
+  if not frame or index == 1 then return ns.Chat(L["The main chat tab can't be closed."]) end
   if isBuiltin(frame) then return ns.Chat(L["The game's own chat tabs can't be closed."]) end
-  if hasChannels(frame) then return sendToTabMenu() end
-  ns.OutOfCombat(function() closeUnlessChannels(frame) end, "chat close tab " .. index)
+  sendToTabMenu()
 end
 
 -- Find ------------------------------------------------------------------------------------
@@ -393,12 +380,13 @@ function CW.Disable()
   releaseFloating()
 end
 
--- Module entry point (Core/Modules.lua): it registers nothing with the scope (the Find button is made once and
--- shown by its switch; the floating windows' movers are the game's frames, let go by Disable), so it takes no scope argument.
-function CW.Enable(settings)
+-- Module entry point (Core/Modules.lua): the scope holds only the docking hook (the Find button is made once and
+-- shown by its switch; the floating windows' movers are the game's frames, let go by Disable).
+function CW.Enable(settings, scope)
   CW.settings = settings
   CW.ApplyFind()
   if not settings.movers then return end
+  watchDocking(scope)
   for _, window in ipairs(CW.Shown()) do
     if floating(window.index) then floatingMover(window) end
   end

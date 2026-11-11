@@ -299,11 +299,13 @@ local function takeKeys()
   QD.frame:EnableKeyboard(QD.frame:IsShown())
 end
 
--- Shows a page (unless automation is about to answer it for you, or the game's own window has the talk).
+-- Shows a page (unless automation is about to answer it for you, or the game's own window has the talk). An offer an
+-- item started (QD.itemOffer) shows too, but no key answers it: you were looting, not asking.
 function QD.Show(key, event, ...)
   if QD.Bypassed(event, ...) then return end
   local auto = ns.GetModule("QuestAuto")
-  if auto and auto.Claims and auto.Claims(event) then return end
+  if auto and auto.Claims and auto.Claims(event, ...) then return end
+  QD.itemOffer = QP.StartItem(event, ...)
   if key == "gossip" and QD.SkipGossip() then return end
   QD.key, QD.page, QD.choice, QD.event = key, QD.PAGES[key](), nil, event
   QD.Render(QD.page)
@@ -371,9 +373,11 @@ function QD.Lists(events, event)
 end
 
 -- Runs the game's own handler on one window for an event it would have had (reading a script is not replacing it).
+-- One call per page the player opens, not a handler the client repeats, so it stays out of the error budget
+-- (ns.TryRepeating would pause it for the session, and a module restart never forgets a game function).
 local function forwardTo(f, event, args)
   local run = f.GetScript and f:GetScript("OnEvent")
-  if run then ns.TryRepeating("quest dialog hand-off", run, f, event, unpack(args)) end
+  if run then ns.Try("quest dialog hand-off", run, f, event, unpack(args)) end
 end
 
 -- Runs the game's own handlers for an event their windows would have had.
@@ -394,7 +398,8 @@ end
 -- Hands the quest and gossip windows to the game for the session (on), or takes them back (off): the
 -- dialog stops showing, and a talk that is open moves to the game's window. Not saved; a reload starts over.
 -- While the dialog doesn't run (QD.had is cleared when the module stops, and never set while its dialog setting is
--- off) the switch only records the choice: taking the events then would leave no window at all for a talk.
+-- off) the switch only records the choice: taking the events then would leave no window at all for a talk. A
+-- dialog that started while handed back keeps an empty record (the game holds the events), so switching off takes them.
 function QD.HandBack(on)
   if QD.handedBack == on or not QD.had then QD.handedBack = on return end
   QD.handedBack = on
@@ -406,11 +411,22 @@ function QD.IsHandedBack()
   return QD.handedBack == true
 end
 
--- A page event while the game has the talk (handed back, or the modifier was held when it began): the game's
--- window answers it, forwarded here when its events are taken. True when the game has it.
+-- Whether the game has a window of its own for this gossip page: a handler registered for its texture kit (the
+-- new-player guide, Torghast's level picker) or a base handler another addon set, as CustomGossipManagerMixin:
+-- HandleOpenEvent chooses (Blizzard_UIPanels_Game/Mainline/CustomGossipFrameBase.lua). Reads the manager, never writes it.
+local function gameGossipWindow(event, kit)
+  local manager = event == "GOSSIP_SHOW" and _G.CustomGossipFrameManager
+  if type(manager) ~= "table" or type(manager.GetHandler) ~= "function" then return false end
+  local handler = ns.PlainText(kit) and manager:GetHandler(kit)
+  return (handler or manager.baseHandler) ~= nil
+end
+
+-- A page event while the game has the talk (handed back, the modifier was held when it began, or the game has a
+-- window of its own for the page): the game's window answers it, forwarded here when its events are taken. True
+-- when the game has it.
 function QD.Bypassed(event, ...)
   if QD.handedBack then return true end
-  if not QD.gameTalk and not QD.BypassHeld() then return false end
+  if not (QD.gameTalk or QD.BypassHeld() or gameGossipWindow(event, ...)) then return false end
   QD.gameTalk = true
   QD.closing = nil
   QD.Forward(event, ...)
@@ -453,7 +469,7 @@ function QD.Enable(settings, scope)
   if not settings.dialog then return end
   if not QD.frame then QD.Build() end
   scope:Mover(QD.frame, "questdialog", L["Quest dialog"], QD.DefaultPoint())
-  if not QD.handedBack then takeOver() end
+  if QD.handedBack then QD.had = {} else takeOver() end
   for event, key in pairs(QD.EVENTS) do scope:On(event, function(_, ...) QD.Show(key, event, ...) end) end
   for _, event in ipairs({ "GOSSIP_CLOSED", "QUEST_FINISHED" }) do scope:On(event, function(_, ...) QD.TalkEnded(event, ...) end) end
   scope:On("PLAYER_REGEN_DISABLED", releaseKeys)

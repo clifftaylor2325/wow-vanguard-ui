@@ -142,6 +142,24 @@ it("quest guidance: Shift-click a tracked quest and the game's quest arrow follo
   expect(tracker(addon)[1][1], "a hidden step text shows nothing").toEqual({});
 });
 
+// The game tracks a quest you accept by itself when nothing is tracked
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_FrameXMLUtil/Mainline/Blizzard_QuestSuperTracking.lua:84 ->
+// QuestUtil.CheckAutoSuperTrackQuest, Mainline/QuestUtils.lua:440), and keeps a tracked quest beside a tracked
+// waypoint (one of each kind, Blizzard_APIDocumentationGenerated/SuperTrackManagerDocumentation.lua
+// GetHighestPrioritySuperTrackingType). TEST-ONLY model: tracking the waypoint leaves the quest's slot as it was.
+const WAYPOINT_ON_90051 = `ns.Settings('QuestGuide').arrow = 'waypoint'
+  C_QuestLog.GetNextWaypoint = function(id) if id == 90051 then return 10, 0.25, 0.5 end end`;
+it("quest guidance: a waypoint on a Shift-clicked quest lets the game's other tracked quest go, so the arrow follows the click", () => {
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV);
+  addon.eval(WAYPOINT_ON_90051 + " __tracked = 90052 ns.QuestGuide.Point(90051)");
+  expect(addon.eval("return { __super, ns.QuestGuide.Followed(), #__set }"), "the other quest let go (0), the waypoint set, the clicked quest followed").toEqual([[0], 90051, 1]);
+  expect(chatHas(addon, /Arrow: TEST-ONLY Wolves\./), "chat names the clicked quest").toBe(true);
+});
+it("quest guidance: a waypoint on the quest the game already tracks leaves its tracking alone", () => {
+  const addon = loggedIn(QUESTS_ENV + ARROW_ENV);
+  addon.eval(WAYPOINT_ON_90051 + " __tracked = 90051 ns.QuestGuide.Point(90051)");
+  expect(addon.eval("return { #__super, ns.QuestGuide.Followed(), #__set }"), "nothing cleared, the waypoint set").toEqual([0, 90051, 1]);
+});
 it("quest guidance: the waypoint arrow goes to the next waypoint, else the quest's spot here, else the quest arrow", () => {
   const addon = loggedIn(QUESTS_ENV + ARROW_ENV + `
     C_QuestLog.GetNextWaypoint = function(id) if id == 90051 then return 10, 0.25, 0.5 end end

@@ -603,3 +603,102 @@ it("a screen change moves every unsaved frame to its spot, though one frame fail
   addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(1);
   expect(addon.eval("return __moved > 0"), "the frame after the failing one was placed again").toBe(true);
 });
+
+// Right-clicks the handle of the mover with this key, as the player would, opening its position popover.
+const openPopover = (addon, key) => addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.mover and w.mover.key == "${key}" then __h = w end end __h:GetScript("OnMouseDown")(__h, "RightButton")`);
+
+it("hunt H44-11-1: a mover let go while its popover is open takes the popover away, and a popover for another frame stays", () => {
+  const addon = loggedIn(BOX);
+  addon.slash("unlock");
+  openPopover(addon, "xpbar");
+  addon.eval('ns.SetModuleEnabled("DataBars", false)');
+  expect(addon.eval("return Vanguard_MoverPopover:IsShown()"), "its module stopped: the popover is put away").toBe(false);
+  openPopover(addon, "box");
+  const errors = addon.eval("return #ns.errors");
+  addon.eval('ns.SetModuleEnabled("DataBars", true) ns.SetModuleEnabled("DataBars", false)');
+  expect(addon.eval("return { Vanguard_MoverPopover:IsShown(), Vanguard_MoverPopover.key, #ns.errors }"), "another frame's popover stays, with no error").toEqual([true, "box", errors]);
+});
+
+it("hunt H44-11-R1: a released mover's frame gets its own opacity back and no longer multiplies what sets it", () => {
+  const addon = loggedIn(BOX);
+  addon.eval("ns.SetMoverAlpha('box', 0.5)");
+  expect(addon.eval("__box:SetAlpha(1) return __box:GetAlpha()"), "while registered the opacity applies").toBe(0.5);
+  addon.eval("ns.ReleaseMover('box')");
+  expect(addon.eval("return __box:GetAlpha()"), "released: the frame is back at the alpha it was given").toBe(1);
+  expect(addon.eval("__box:SetAlpha(0.8) return __box:GetAlpha()"), "and later sets are not multiplied").toBe(0.8);
+});
+
+it("hunt H44-11-R1: a mover that starts again fades its frame again", () => {
+  const addon = loggedIn(BOX);
+  addon.eval("ns.SetMoverAlpha('box', 0.5) ns.ReleaseMover('box')");
+  addon.eval(`ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100, edge = true }) __box:SetAlpha(1)`);
+  expect(addon.eval("return __box:GetAlpha()"), "registered again: the saved opacity applies").toBe(0.5);
+});
+
+it("hunt H44-11-R3: a frame on a high strata registered while Edit Mode has the handles up gets its handle on HIGH", () => {
+  const addon = loggedIn(`
+    EditModeManagerFrame = CreateFrame("Frame", "EditModeManagerFrame", UIParent) EditModeManagerFrame:SetSize(600, 400)
+    EditModeManagerFrame:SetPoint("CENTER") EditModeManagerFrame:Hide()`);
+  addon.eval("EditModeManagerFrame:Show()");
+  addon.eval(`__d = CreateFrame("Frame", "TESTONLY_Dialog", UIParent) __d:SetSize(200, 40) __d:SetFrameStrata("DIALOG")
+    __m = ns.Mover(__d, "tdialog", "TEST-ONLY dialog", { "CENTER", "CENTER", 0, 0 })`);
+  expect(addon.eval("return __m.handle:GetFrameStrata()"), "under Edit Mode's window like the other handles").toBe("HIGH");
+});
+
+it("hunt H44-11-R3: a frame on a high strata registered in plain unlock mode keeps its handle on its own strata", () => {
+  const addon = loggedIn();
+  addon.slash("unlock");
+  addon.eval(`__d = CreateFrame("Frame", "TESTONLY_Dialog", UIParent) __d:SetSize(200, 40) __d:SetFrameStrata("DIALOG")
+    __m = ns.Mover(__d, "tdialog", "TEST-ONLY dialog", { "CENTER", "CENTER", 0, 0 })`);
+  expect(addon.eval("return __m.handle:GetFrameStrata()"), "above the frame").toBe("DIALOG");
+});
+
+// Picks a choice in the open popover's "Anchor to" menu.
+const pickAnchorTo = (addon, choice) => addon.eval(`local d = Vanguard_MoverPopover.target d:GetScript("OnClick")(d)
+  for _, b in ipairs(Vanguard_Menu.items) do if b:IsShown() and b.text:GetText() == "${choice}" then b:GetScript("OnClick")(b) break end end`);
+
+it("hunt H44-11-3: picking Screen under Anchor to when the frame has no link saves nothing", () => {
+  const addon = loggedIn(BOX);
+  addon.slash("unlock");
+  openPopover(addon, "box");
+  pickAnchorTo(addon, "Screen");
+  expect(addon.eval('return { ns.MoverSaved("box"), ns.Settings("positions").box == nil }'), "still the frame's default").toEqual([false, true]);
+  addon.eval('ns.SetMoverDefault("box", { "BOTTOM", "BOTTOM", 0, 300, edge = true })');
+  expect(addon.frame("TESTONLY_Box").rect.bottom, "so a new default still moves it").toBe(300);
+});
+
+it("hunt H44-11-3: picking Screen still lets a linked frame go where it stands", () => {
+  const addon = loggedIn(BOX + `
+    __other = CreateFrame("Frame", "TESTONLY_Other", UIParent) __other:SetSize(100, 40)
+    ns.Mover(__other, "other", "TEST-ONLY other", { "TOP", "TOP", 0, -100 })`);
+  addon.slash("unlock");
+  addon.eval('ns.SetMoverAnchor("box", "other")');
+  openPopover(addon, "box");
+  pickAnchorTo(addon, "Screen");
+  expect(addon.eval('return { ns.MoverAnchor("box") == nil, ns.MoverSaved("box") }'), "detached and saved where it stands").toEqual([true, true]);
+});
+
+it("hunt H44-11-2: the unlock grid is drawn again when the screen size changes while it shows", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)");
+  addon.slash("unlock");
+  // The widest horizontal grid line showing.
+  const widest = () => addon.eval(`local wide = 0 for _, w in ipairs(__wfgStub.frames) do
+    if w.__kind == "Texture" and w:IsVisible() and w.__texture == ns.Theme.WHITE and w:GetHeight() < 2 and w:GetWidth() > 100 then wide = math.max(wide, w:GetWidth()) end end return wide`);
+  expect(widest(), "at first the screen's width").toBe(1920);
+  addon.eval("__wfgStub.setScreen(2560, 1440)");
+  addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(2);
+  expect(widest(), "then the new screen's").toBe(2560);
+});
+
+it("hunt H44-11-2: a screen change with the grid hidden draws no grid", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)");
+  addon.slash("unlock");
+  addon.slash("lock");
+  // The grid lines showing: white hairlines wider than 100.
+  const shown = () => addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__kind == "Texture" and w:IsVisible() and w.__texture == ns.Theme.WHITE and w:GetHeight() < 2 and w:GetWidth() > 100 then n = n + 1 end end return n`);
+  const before = shown();
+  addon.eval("__wfgStub.setScreen(2560, 1440)");
+  addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(2);
+  expect(addon.eval("return ns.Unlocked()"), "locked").toBe(false);
+  expect(shown(), "the lines showing are the same as before").toBe(before);
+});

@@ -193,13 +193,18 @@ local function repaintTags()
   for _, line in ipairs(frame.lines or {}) do line.text:SetText(itemText(line.item)) end
 end
 
+-- Lays the list out again when it is stale, then repaints the tags (what showing and a live look change both need).
+local function relay(entry)
+  if stale(entry) then fill(entry) end
+  repaintTags()
+end
+
 -- Shows the window with these notes (in the current look), fading it in; notes for the
 -- running version count as seen.
 function WN.Show(entry)
   if not frame then build() end
   fit()
-  if stale(entry) then fill(entry) end
-  repaintTags()
+  relay(entry)
   if entry.version == ns.AddonVersion() then VanguardDB.whatsNewSeen = entry.version end
   T.FadeIn(frame)
   frame.view:ScrollTo(frame.view:GetVerticalScroll() or 0)
@@ -235,7 +240,12 @@ ns.On("PLAYER_LOGIN", function()
   showIfOwed()
 end)
 
--- A look change while the window is up reaches the tags too (T.RefreshText has already recoloured the lines).
+-- A look change while the window is up lays the list out again when the text size or font moved (fill scrolls to the
+-- top, so the view's place is kept) and repaints the tags (T.RefreshText has already recoloured the lines).
 T.OnChanged(function()
-  if frame and frame:IsShown() then repaintTags() end
+  local entry = frame and frame:IsShown() and WN.Notes(frame.version)
+  if not entry then return end
+  local top = frame.view:GetVerticalScroll() or 0
+  relay(entry)
+  frame.view:ScrollTo(top)
 end)

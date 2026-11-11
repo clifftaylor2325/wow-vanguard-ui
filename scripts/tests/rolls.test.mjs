@@ -120,6 +120,13 @@ it("the format works where a language reorders its placeholders", () => {
   expect(panel(addon)[2].map((l) => l.slice(0, 2)), "name and figures found by position").toEqual([["Rolls 1-100", ""], ["Thrall", "55"]]);
 });
 
+it("H44-20-51 /vg rolls names a roll outside 1-100 with its range once", () => {
+  const addon = loggedIn(ROLL_ENV);
+  roll(addon, "Thrall", 3, 1, 6);
+  addon.slash("rolls");
+  expect(Array.from(addon.chat()).filter((line) => /Thrall/.test(line)).map((line) => line.replace(/^\S+ /, "")), "one range").toEqual(["Thrall  3  (1-6)"]);
+});
+
 it("G2-1 a Korean roll line parses, with its grammar choice made or left as the format writes it", () => {
   const addon = loggedIn('RANDOM_ROLL_RESULT = "%s 님이 주사위를 굴려 %d|1이;가; 나왔습니다. (%d-%d)"\n');
   addon.fire("CHAT_MSG_SYSTEM", "Thrall 님이 주사위를 굴려 55가 나왔습니다. (1-100)");

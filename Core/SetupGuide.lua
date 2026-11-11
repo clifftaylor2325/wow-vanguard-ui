@@ -297,10 +297,18 @@ local function addUseButton(page)
   page.choices[#page.choices + 1] = page.use
 end
 
+-- The Undo question's No: nothing to do, it only marks the question as setup's (G.CancelUndo finds it by this).
+local function keepSetup() end
+
+-- Puts the Undo question away unanswered when setup ended under it (its Yes would otherwise read as restored).
+function G.CancelUndo()
+  ns.CancelAsk(keepSetup)
+end
+
 -- Undo setup asks first (what this run changed goes, the profile as it was comes back), then undoes.
 local function askUndo()
   ns.Ask(L["Undo everything this setup changed and put the profile back as it was? Setup then ends and offers the reload that applies it."],
-    L["Undo"], G.Undo, nil, "danger")
+    L["Undo"], G.Undo, keepSetup, "danger")
 end
 
 -- The All set step: its line, the list filled as it shows (G.Refresh) and Undo setup, shown while there is a change.
@@ -350,15 +358,15 @@ local function doneLine(page, i)
 end
 
 -- Fills the All set step: its line, one line per change (setup's own first), and Undo setup under them while
--- there is one; spare lines hide.
-local function refreshDone(page, changes)
+-- there is something to put back (undoable); spare lines hide.
+local function refreshDone(page, changes, undoable)
   page.question:SetText(#changes > 0 and DONE_CHANGED or DONE_SAME)
   for i, text in ipairs(changes) do
     doneLine(page, i):SetText(text)
     page.lines[i]:Show()
   end
   for i = #changes + 1, #page.lines do page.lines[i]:Hide() end
-  page.undo:SetShown(#changes > 0)
+  page.undo:SetShown(undoable)
   page.undo:ClearAllPoints()
   page.undo:SetPoint("TOPLEFT", page.lines[#changes] or page.question, "BOTTOMLEFT", 0, -T.SPACE.gap)
 end
@@ -373,10 +381,12 @@ local function joined(a, b)
 end
 
 -- Re-reads every guided page given (by key): the switches and marks, and the All set list (own: setup's own
--- change lines, ahead of the rows').
-function G.Refresh(pages, own)
+-- change lines, ahead of the rows'). Undo setup shows while setup holds a backup or a row changed; frames moved
+-- alone name a change that has nothing to put back.
+function G.Refresh(pages, own, backed)
   for key, page in pairs(pages) do
-    if key == "done" then refreshDone(page, joined(own or {}, G.Changes()))
+    local rows = key == "done" and G.Changes() or {}
+    if key == "done" then refreshDone(page, joined(own or {}, rows), backed or #rows > 0)
     elseif G.ROWS[key] and page.rows then refreshRows(page) end
   end
 end
