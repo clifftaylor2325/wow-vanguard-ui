@@ -291,8 +291,8 @@ it("target and focus auras", () => {
   expect(t.debuffs.point.point === "TOPLEFT" && t.debuffs.point.relPoint === "BOTTOMLEFT", "debuffs sit under the target frame").toBeTruthy();
   expect(t.buffs.point.point === "BOTTOMLEFT" && t.buffs.point.relPoint === "TOPLEFT", "buffs sit above it, so neither row floats").toBeTruthy();
   expect(t.debuffs.groups[0].icon === "SHEEP" && t.debuffs.groups[1].icon === "MY-DOT" && t.debuffs.groups[1].count === "3", "crowd control first, then your debuffs, with stacks").toBeTruthy();
-  expect(t.debuffs.groups[2].max === 0, "only your debuffs by default").toBeTruthy();
-  expect(t.debuffs.groups.map((g) => g.filter.includes("INCLUDE_NAME_PLATE_ONLY")), "every debuff group also reads the debuffs the game flags for nameplates").toEqual([true, true, true]);
+  expect(t.debuffs.groups.length, "only your debuffs by default: the others' group, with no icons, is not added").toBe(2);
+  expect(t.debuffs.groups.map((g) => g.filter.includes("INCLUDE_NAME_PLATE_ONLY")), "every debuff group also reads the debuffs the game flags for nameplates").toEqual([true, true]);
   expect(t.buffs.groups[0].icon === "BUFF-A" && t.debuffs.groups[1].timer === false, "buffs above; no timer numbers by default (the sweep shows time left)").toBeTruthy();
   const f = frameRows(addon, "focus");
   expect(f.buffs == null && f.debuffs.groups[1].icon === "MY-DOT", "the focus shows your debuffs only").toBeTruthy();
@@ -1083,4 +1083,11 @@ it("H44-5-4 aura containers turn the client's Edit Mode preview off, so a row ke
   expect(firstIcon(addon, "__raw"), "the template's own preview shows the client's samples in Edit Mode").toBe("TEST-ONLY-EDIT-MODE-SAMPLE");
   expect(firstIcon(addon, "__c.frame"), "Vanguard's row keeps the unit's auras").toBe("MY-DOT");
   expect(addon.eval("return #ns.errors"), "nothing caught").toBe(0);
+});
+
+it("H44-5-5 aura containers leave out a group with no icons, which the client would make ten buttons for, and keep the others' keys", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + CONTAINER_AURAS);
+  const groups = addon.eval(`__spec.groups[1].max = 0 local c = ns.Auras.Container(UIParent, __spec, "target")
+    local out = {} for _, g in ipairs(c.frame.__groups) do out[#out + 1] = g.key .. " " .. g.filter end return out`);
+  expect(groups, "only the second group is added, under its own key").toEqual(["vg2 HARMFUL|!PLAYER"]);
 });

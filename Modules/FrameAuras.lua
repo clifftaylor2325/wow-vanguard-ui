@@ -8,9 +8,9 @@
 -- The client picks the auras: each group reads one of its filters ("HARMFUL|PLAYER",
 -- "HELPFUL" ...), and which filter a group reads is all the say an addon has. Timer
 -- numbers are off by default (the sweep shows time left); they can be turned on.
--- A container's groups are fixed once it is made, so a changed setting (a count, the
--- icon size, a filter, the timers) makes that row again, out of combat, and puts the
--- old one away.
+-- Vanguard never reshapes a container's groups once it is made, so a changed setting (a
+-- count, the icon size, a filter, the timers) makes that row again, out of combat, and
+-- puts the old one away.
 
 local ADDON, ns = ...
 

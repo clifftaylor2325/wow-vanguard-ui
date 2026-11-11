@@ -10,8 +10,8 @@
 -- the client hides debuff types in instanced combat; on the fallback they are
 -- painted here. The client's filters decide what counts: "HARMFUL|RAID" is
 -- what YOU can dispel, "HELPFUL|PLAYER|RAID_IN_COMBAT" your buffs worth
--- showing on raid frames. The groups are fixed once a row is made, so a changed
--- setting makes the rows again (the module restarts, out of combat).
+-- showing on raid frames. Vanguard never reshapes a row's groups once it is made, so a
+-- changed setting makes the rows again (the module restarts, out of combat).
 --
 -- Indicators: up to three small icons down the tile's right edge, under the
 -- missing-buff mark, each showing the first aura the client's filter for the
@@ -352,7 +352,7 @@ local function clearTile(b)
   b.auraUnit, b.indUnit = nil, nil
 end
 
--- Puts a tile's rows away for good, so the next update makes them from the settings (a container can't be reshaped).
+-- Puts a tile's rows away for good, so the next update makes them from the settings (Vanguard never reshapes one).
 local function retireRows(b)
   clearTile(b)
   for _, row in ipairs(tileRows(b)) do ns.Auras.Retire(row) end

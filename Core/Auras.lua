@@ -376,7 +376,7 @@ function A.Backend()
   return not ns.InCombat() and ns.AuraEngine.Available() and ns.AuraEngine or ns.AuraLegacy
 end
 
--- What of a spec is fixed once its container is made, as one string: the row width, the timer, and each
+-- What of a spec Vanguard keeps fixed once its container is made (it never reshapes a group), as one string: the row width, the timer, and each
 -- group's filter, count and icon size. A container whose signature still reads the same needs no remaking;
 -- where it sits is not part of it (a container can be moved).
 ---@param spec table

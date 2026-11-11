@@ -5,8 +5,8 @@
 -- Weapon enchants (poisons, stones, oils, and a shaman's imbues on WoW
 -- Forever) are cells in front of the buffs, which move over to make room.
 -- They're read here per weapon (C_Item.GetWeaponEnchantInfo), since the
--- client's own enchant cells miss Forever's imbues. The container's groups
--- are fixed once built, so the settings apply after a reload.
+-- client's own enchant cells miss Forever's imbues. Vanguard never reshapes
+-- the container's groups once built, so the settings apply after a reload.
 
 local ADDON, ns = ...
 
