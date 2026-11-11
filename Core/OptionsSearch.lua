@@ -28,7 +28,7 @@ O.KEYWORDS = {
 }
 
 -- The most settings the list shows, and how wide it is and what each line holds (units).
-local MAX_HITS, LIST_WIDTH, PAGE_WIDTH = 8, 360, 110
+local MAX_HITS, LIST_WIDTH, PAGE_WIDTH = 8, 440, 110
 
 -- The settings a search found: { page = key, title = the page's title, caption = the row's, row = the row }.
 O.hits = nil
@@ -135,13 +135,13 @@ end
 
 -- Hit lines ------------------------------------------------------------------------------------
 
--- A line's caption (left, one line).
+-- A line's caption (left): in a slot of its own, on one line, shrunk to fit it (a long translation would be cut).
 local function captionText(line)
-  line.caption = T.Text(line:CreateFontString(nil, "OVERLAY"), "label", "text")
-  line.caption:SetPoint("LEFT", T.SPACE.pad, 0)
-  line.caption:SetWidth(LIST_WIDTH - PAGE_WIDTH - 4 * T.SPACE.pad)
+  local slot = CreateFrame("Frame", nil, line)
+  slot:SetSize(LIST_WIDTH - PAGE_WIDTH - 4 * T.SPACE.pad, T.ROW.height)
+  slot:SetPoint("LEFT", T.SPACE.pad, 0)
+  line.caption = T.FitText(T.Text(line:CreateFontString(nil, "OVERLAY"), "label", "text"), slot, 0)
   line.caption:SetJustifyH("LEFT")
-  line.caption:SetWordWrap(false)
 end
 
 -- A line's page title (muted, right): in a slot of its own, on one line, shrunk to fit it (T.FitText anchors the
