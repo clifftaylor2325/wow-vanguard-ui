@@ -408,3 +408,45 @@ it("H44-10-50 step 3: a change unticked before a fight stays unticked after it, 
   addon.eval('__click("Apply")');
   expect([keys(addon, ["F"])[0], addon.eval("return { #__declined, __declined[1].key }")]).toEqual(["", [1, "F"]]);
 });
+
+it("H44-10-R1 step 3: unticking a change lists what the others now do, and Apply does just that", () => {
+  const addon = warrior();
+  addon.world.setAction(62, { id: 72 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  // Step 3's rows for F and T.
+  const ft = () => ready(addon).filter((r) => /^(\[.\] )?[FT]: /.test(r));
+  expect(ft()).toEqual(["[x] F: your Shield Bash on bar 2", "T: unchanged, another key already uses that button"]);
+  untick(addon, "^F: ");
+  expect(ft(), "T now moves Shield Bash, and says so with its own box").toEqual(["[ ] F: your Shield Bash on bar 2", "[x] T: Hamstring, and Shield Bash moves to bar 3"]);
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, keys(addon, ["F", "T"]), addon.eval("return { select(2, GetActionInfo(62)), select(2, GetActionInfo(53)) }")])
+    .toEqual([false, ["", "MULTIACTIONBAR1BUTTON2"], [1715, 72]]);
+});
+
+it("H44-10-R1 step 3: ticking the change back lists the plan as it was", () => {
+  const addon = warrior();
+  addon.world.setAction(62, { id: 72 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^F: ");
+  untick(addon, "^F: ");
+  expect(ready(addon).filter((r) => /^(\[.\] )?[FT]: /.test(r))).toEqual(["[x] F: your Shield Bash on bar 2", "T: unchanged, another key already uses that button"]);
+});
+
+it("H44-10-51 step 3: a key listed as staying is not changed when its button is cleared before Apply; the list is made again", () => {
+  const addon = warrior();
+  addon.world.setAction(62, { type: "macro", id: 3 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon)).toContain("T: unchanged, its button holds something key setup leaves alone (a macro, an item or a mount)");
+  addon.world.setAction(62, null);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect(chatHas(addon, /Your bars or keys changed since this list was made, so nothing was changed\. Check the list and press Apply again\.$/)).toBe(true);
+  expect([win(addon), keys(addon, ["T", "F"]), addon.eval("return { GetActionInfo(62) == nil, GetActionInfo(61) == nil, GetCurrentBindingSet() }")],
+    "nothing written, the account's keys in use again, and the window stays on Ready").toEqual([expect.objectContaining({ shown: true, step: 3 }), ["", ""], [true, true, 1]]);
+  expect(ready(addon), "the list now says what T will do").toContain("[x] T: Hamstring added to your bar");
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, keys(addon, ["T"])]).toEqual([false, ["MULTIACTIONBAR1BUTTON2"]]);
+});

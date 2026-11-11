@@ -33,9 +33,10 @@ local NOT_NOW = L["Nothing has changed. You can open key setup again from Action
 WZ.onApply = {}
 
 -- State while the window is open: preset { class, role, sides }, step, tab, page, later (show what comes later),
--- entries and rows (the resolver's entries and the apply engine's plan, one row per entry), off ({ [entry id] =
--- true } for an unticked change, by entryId, so a plan worked out again keeps it), scope ("char" or "all"), lit
--- (the chord pressed last), placeNew (step 3's tick box for new spells).
+-- entries and rows (the resolver's entries and what each will do, one row per entry: see planTicks), live and full
+-- (the plans of the ticked entries and of every entry), off ({ [entry id] = true } for an unticked change, by
+-- entryId, so a plan worked out again keeps it), scope ("char" or "all"), lit (the chord pressed last), placeNew
+-- (step 3's tick box for new spells).
 local state = { step = 1, tab = "none", page = 1, later = false, off = {}, scope = "char" }
 WZ.state = state
 
@@ -81,11 +82,31 @@ local function unticked(i)
   return entry ~= nil and state.off[entryId(entry)] == true
 end
 
+-- The entries the player kept ticked, in order: what Apply applies.
+local function tickedEntries()
+  local out = {}
+  for i, entry in ipairs(state.entries) do
+    if not unticked(i) then out[#out + 1] = entry end
+  end
+  return out
+end
+
+-- Works out what Apply will do with the ticks as they are: leaving an entry out changes what later ones do (a button
+-- no longer taken, a spell no longer placed), so a ticked entry's row comes from the plan of the ticked entries
+-- (live, what Apply runs) and an unticked one's from the plan of every entry (full, what it would do).
+local function planTicks()
+  local live, n = KA.Plan(tickedEntries()), 0
+  state.full, state.live, state.rows = KA.Plan(state.entries), live, {}
+  for i in ipairs(state.entries) do
+    if unticked(i) then state.rows[i] = state.full[i] else n = n + 1 state.rows[i] = live[n] end
+  end
+end
+
 -- Works the plan out again for the preset: the entries for what the character knows, and what each would do.
 local function replan()
   state.entries = KL.Resolve(state.preset)
-  state.rows = KA.Plan(state.entries)
   state.laterEntries = state.later and KL.Resolve(state.preset, nil, KL.KnowsLater) or {}
+  planTicks()
 end
 
 -- The bar a slot is on: 2 for 61 to 72, 3 for 49 to 60, else 1.
@@ -438,10 +459,20 @@ end
 -- The list's width: the view's, less the scroll thumb and a gap.
 local LIST_W = CONTENT_W - T.SCROLL.thumb - T.SPACE.gap
 
+-- Fills step 3's list (defined below, with the list's parts).
+local fillReady
+
+-- Ticks or unticks the change of the entry at position i, and lists again what Apply will now do.
+local function setTick(i, ticked)
+  state.off[entryId(state.entries[i])] = not ticked or nil
+  planTicks()
+  fillReady(WZ.frame.steps.ready)
+end
+
 -- A tick box row of the list, for whichever change its slot names (slot.i): ticked unless the player unticked it.
 local function newCheck(child)
   local slot = {}
-  local r = W.Check(child, "", function() return not unticked(slot.i) end, function(v) state.off[entryId(state.entries[slot.i])] = not v or nil end, LIST_W)
+  local r = W.Check(child, "", function() return not unticked(slot.i) end, function(v) setTick(slot.i, v) end, LIST_W)
   r.slot = slot
   return r
 end
@@ -473,9 +504,10 @@ local function keptLine(s, text, y)
   return math.max(2 * SIZE.line, math.ceil(fs:GetStringHeight()) + T.SPACE.tight)
 end
 
--- One listed row y units down: a change with its tick box, or a key that stays. Answers the room it took.
+-- One listed row y units down: a change with its tick box (an unticked one keeps its box), or a key that stays.
+-- Answers the room it took.
 local function listRow(s, i, text, y)
-  if not KA.WRITES[state.rows[i].kind] then return keptLine(s, text, y) end
+  if not (KA.WRITES[state.rows[i].kind] or unticked(i)) then return keptLine(s, text, y) end
   local r = nextPart(s, "check", y)
   r.slot.i = i
   r.label:SetText(text)
@@ -484,7 +516,7 @@ local function listRow(s, i, text, y)
 end
 
 -- Lists every change and every key that stays, and hides the parts left over from a longer list.
-local function fillReady(s)
+function fillReady(s)
   for _, pool in pairs(s.pools) do pool.used = 0 end
   local y = 0
   for i, row in ipairs(state.rows) do
@@ -586,33 +618,30 @@ end
 -- The entries the player kept ticked, for Apply, how many of them change something (a key that stays as it is has
 -- no tick box, so it is always kept), and the changes the player unticked.
 local function kept()
-  local out, changes, declined = {}, 0, {}
+  local changes, declined = 0, {}
   for i, entry in ipairs(state.entries) do
-    local writes = KA.WRITES[state.rows[i].kind]
-    local off = unticked(i)
-    if not off then out[#out + 1] = entry end
-    if not off and writes then changes = changes + 1 end
-    if off and writes then declined[#declined + 1] = entry end
+    if unticked(i) then declined[#declined + 1] = entry
+    elseif KA.WRITES[state.rows[i].kind] then changes = changes + 1 end
   end
-  return out, changes, declined
+  return tickedEntries(), changes, declined
 end
 
--- Whether the plan has any change to tick (a key that stays as it is has no tick box).
-local function hasChanges()
-  for _, row in ipairs(state.rows) do
-    if KA.WRITES[row.kind] then return true end
-  end
-  return false
+-- After an Apply that changed nothing (refused, or the bars or keys changed since the list was made): the plan is
+-- worked out again and step 3 lists what Apply would do now.
+local function relist()
+  replan()
+  WZ.Show(state.step)
 end
 
--- Applies the kept changes in the scope picked; on success the window closes, placing new spells is told of the
--- preset and its tick box, and the listeners hear of it. With every change unticked it says so and stays; with
--- nothing to change it closes and keeps the tick box.
+-- Applies the kept changes in the scope picked, as the list shows them (KA.Apply changes nothing when its plan is
+-- not the list's); on success the window closes, placing new spells is told of the preset and its tick box, and the
+-- listeners hear of it. With every change unticked it says so and stays; with nothing to change it closes and keeps
+-- the tick box.
 local function apply()
   local set = KA.SharesKeys() and state.scope == "char" and Enum.BindingSet.Character or nil
   local entries, changes, declined = kept()
-  if changes == 0 and hasChanges() then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
-  if not KA.Apply(entries, set) then return end
+  if changes == 0 and #declined > 0 then return ns.Chat(L["Nothing is ticked, so no key changes."]) end
+  if not KA.Apply(entries, set, KA.Signature(state.live)) then return relist() end
   WZ.frame:Hide()
   ns.KeybindsLearn.Applied(state.preset, state.placeNew, declined)
   for _, fn in ipairs(WZ.onApply) do fn(state.preset) end

@@ -215,6 +215,8 @@
       "Apply: a spell another row places goes straight there, with no copy on bar 3, and putting back restores both buttons",
       "Apply: places the spells, binds and saves the keys, and the buttons show them",
       "Apply: the record is split, keys with the Account set and slots with the character",
+      "H44-10-51 Apply given the plan a list showed applies it while it still holds, and is refused in combat first",
+      "H44-10-51 Apply given the plan a list showed changes nothing when the bars changed since, and switches the key set back",
       "Only this character: the plan is worked out in the character's own keys",
       "Only this character: the set switches first, Account keeps its keys, and the key rows go in the character's file",
       "Plan: a bar 2 or 3 entry finds its spell on its own bar first, then the other; a bar 1 entry stays on its own button",

@@ -5528,6 +5528,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the window comes back on Ready with that change still unticked, and Apply leaves that key as it was. [Needs in-game check: all of it.]
 - If it fails, paste: a screenshot of Ready after the fight and `/vg errors`.
 
+### 33.512 Key setup's Ready list shows what Apply will do, after an untick and after a bar change
+
+- Do: on a WoW Forever warrior, put Shield Bash on bar 2 button 2, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick "F: your Shield Bash on bar 2" and read the T line; then drag a macro onto an empty button the list names (or off the one it says it leaves alone) and press Apply.
+- Expect: after the untick the T line has its own tick box and says "T: Hamstring, and Shield Bash moves to bar 3"; after the bar change Apply changes nothing, chat says "Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again.", and the list shows the new plan; Apply then does exactly what it lists. [Needs in-game check: all of it, and with Only this character on a character that had its own keys before.]
+- If it fails, paste: the Ready list before and after, the chat lines, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

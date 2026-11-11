@@ -22,8 +22,9 @@
 -- add-on restriction, on a client that isn't WoW Forever, while the game's
 -- Settings, Quick Keybind or Click Casting window or Vanguard's keybind mode is
 -- open, and while the cursor holds something. Inside Apply the order is fixed: switch the
--- key set when asked ("Only this character"), work the plan out in that set,
--- take the record, place spells, set keys, save. A step that fails or errors,
+-- key set when asked ("Only this character"), work the plan out in that set
+-- (the wizard's Apply stops there, changing nothing, when it isn't the plan its
+-- list showed), take the record, place spells, set keys, save. A step that fails or errors,
 -- or a write the client blocks, puts back everything this Apply changed (after
 -- the fight, if one began) and saves nothing; a button that can't be put back
 -- then is kept in the record, for "Put everything back".
@@ -76,6 +77,8 @@ KA.MODIFIERS = { "ALT", "CTRL", "SHIFT", "META" }
 KA.WRITES = { bind = true, place = true, move = true, command = true }
 -- The account file's tables this character's file keeps a copy of at logout (VanguardCharDB.keyBackup).
 KA.BACKED_UP = { "keyRestore", "keyPending" }
+-- The fields of a plan row its signature names (KA.Signature): what it does, with which key, button and spells.
+KA.SIGNED = { "key", "kind", "why", "slot", "command", "to", "moved", "over" }
 
 -- Reading the bars ---------------------------------------------------------------------------
 
@@ -386,6 +389,23 @@ function KA.Plan(entries, skip)
   return needless and planPass(entries, skip, needless) or rows
 end
 
+-- One plan row as one line of a signature.
+local function rowSignature(row)
+  local parts = {}
+  for i, field in ipairs(KA.SIGNED) do parts[i] = tostring(row[field]) end
+  return table.concat(parts, " ")
+end
+
+-- A plan as one string (one line per row, by KA.SIGNED), so Apply can tell whether the plan it works out is the
+-- one a list showed the player.
+---@param rows table[]  KA.Plan's rows
+---@return string
+function KA.Signature(rows)
+  local lines = {}
+  for i, row in ipairs(rows) do lines[i] = rowSignature(row) end
+  return table.concat(lines, "\n")
+end
+
 -- When it can run ------------------------------------------------------------------------------
 
 -- Whether a game window by that name is shown.
@@ -618,10 +638,13 @@ local function switchSet(run)
   return GetCurrentBindingSet() == run.set
 end
 
--- Works the plan out in the key set the run now uses.
+-- Works the plan out in the key set the run now uses. A run given the signature of the plan a list showed (`shown`)
+-- stops quietly when this plan differs (stale: the bars or keys changed since); nothing has been written yet.
 local function planRows(run)
   run.rows = KA.Plan(run.entries, run.skip)
-  return true
+  run.stale = run.shown ~= nil and KA.Signature(run.rows) ~= run.shown
+  run.quiet = run.quiet or run.stale
+  return not run.stale
 end
 
 -- Takes the pre-image of every key and slot the rows write, before anything changes (a writing row keeps what its
@@ -767,9 +790,9 @@ local function finish(run, ok)
   ns.OutOfCombat(function() undoRun(run) end)
 end
 
--- A new run of a preset's entries in key set `set` (nil: the one in use).
-local function newRun(entries, set)
-  return { entries = entries, set = set, keys = {}, slots = {}, placed = {} }
+-- A new run of a preset's entries in key set `set` (nil: the one in use), for the plan signed `shown` (nil: any).
+local function newRun(entries, set, shown)
+  return { entries = entries, set = set, shown = shown, keys = {}, slots = {}, placed = {} }
 end
 
 -- Runs a run as one all-or-nothing run (its `skip` slots left out; `quiet`: no chat line when it fails), and
@@ -788,15 +811,19 @@ end
 
 -- Applies a preset's entries as KA.Plan works them out in key set `set` (Enum.BindingSet.Character for "Only this
 -- character", Account for all characters; the set in use when nil). Refused, with a chat line, when KA.Refusal says
--- so, or to switch from this character's own keys back to the account's. True when every change was made and saved.
+-- so, or to switch from this character's own keys back to the account's. With `shown` (KA.Signature of the plan the
+-- player was shown), nothing changes, with a chat line, when the plan worked out in that key set differs from it.
+-- True when every change was made and saved.
 ---@param entries table[]
 ---@param set number|nil
+---@param shown string|nil
 ---@return boolean
-function KA.Apply(entries, set)
+function KA.Apply(entries, set, shown)
   if not knownSet(set) then error("KA.Apply: set is Enum.BindingSet.Account, Character or nil", 2) end
   local why = KA.Refusal() or switchRefusal(set)
   if why then ns.Chat(why) return false end
-  local run = execute(newRun(entries, set), "key setup apply")
+  local run = execute(newRun(entries, set, shown), "key setup apply")
+  if run.stale then ns.Chat(L["Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again."]) end
   if run.ok and run.count == 0 then ns.Chat(L["No key needs changing."]) end
   if run.count > 0 then ns.Chat(ns.Format(L["{count} key(s) set. Vanguard kept what the keys did before, so you can put them back."], { count = run.count })) end
   return run.ok
