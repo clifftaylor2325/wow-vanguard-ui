@@ -1476,15 +1476,16 @@ const INVITE_ENV = `
   C_BattleNet = { GetAccountInfoByGUID = function(guid) return __friends[guid] == "bnet" and {} or nil end }
   IsGuildMember = function(guid) return __friends[guid] == "guild" end
 `;
-// PARTY_INVITE_REQUEST with the client's payload (PartyInfoDocumentation): name, isTank, isHealer, isDamage,
-// isNativeRealm, allowMultipleRoles, inviterGUID, questSessionActive.
-const invite = (addon, guid) => addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false);
+// PARTY_INVITE_REQUEST with Forever's payload (forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/
+// PartyInfoDocumentation.lua, PartyInviteRequest): name, isTank, isHealer, isDamage, isNativeRealm, isCrossShard,
+// allowMultipleRoles, inviterGUID, questSessionActive.
+const invite = (addon, guid) => addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, false, guid, false);
 const INVITES_ON = "VanguardDB.profiles = { Default = { Quiet = { guildInvites = true, strangerGroups = true, friendRequests = true, pvpRelease = true } } }";
 // A1-9 (M4): a stranger you whispered in the last ten minutes may invite you.
 it("A1-9 quiet the game: a group invite from someone you just whispered is not declined; after ten minutes it is again", () => {
   const addon = loggedIn(INVITE_ENV, { savedVariables: INVITES_ON });
   // An invite from a named stranger, answered on the next frame; how many answers the game got.
-  const invited = (name) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", name, false, false, false, false, false, "stranger", false); addon.update(0); return addon.eval("return #__answers"); };
+  const invited = (name) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", name, false, false, false, false, false, false, "stranger", false); addon.update(0); return addon.eval("return #__answers"); };
   expect(invited("Thrall"), "a stranger: declined, its prompt closed").toBe(2);
   addon.fire("CHAT_MSG_WHISPER_INFORM", "inv pls", "Thrall-ForeverTest");
   addon.fire("CHAT_MSG_WHISPER_INFORM", "hidden", { __secret: true });
@@ -1496,7 +1497,7 @@ it("A1-9 quiet the game: a group invite from someone you just whispered is not d
   const off = loggedIn(INVITE_ENV);
   off.fire("CHAT_MSG_WHISPER_INFORM", "hi", "Thrall");
   off.eval("ns.GetModule('Quiet').settings.strangerGroups = true __answers = {}");
-  off.fire("PARTY_INVITE_REQUEST", "Thrall", false, false, false, false, false, "stranger", false);
+  off.fire("PARTY_INVITE_REQUEST", "Thrall", false, false, false, false, false, false, "stranger", false);
   off.update(0);
   expect(off.eval("return #__answers"), "a whisper sent while the switch was off is not noted").toBe(2);
 });
@@ -2636,23 +2637,32 @@ it("auto-accept: Forever's own invite windows and the teleport check: a declined
 it("auto-accept: Forever's own invite windows and the teleport check: a declined stranger's role invite closes Forever's role popup", () => {
   const addon = loggedIn(FOREVER_INVITES + "StaticPopupSpecial_Hide = nil", { savedVariables: INVITE_SWITCHES_ON });
   addon.eval("LFGInvitePopup:Show()");
-  addon.fire("PARTY_INVITE_REQUEST", "<name>", true, false, true, false, false, "stranger", false);
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", true, false, true, false, false, false, "stranger", false);
   addon.update(0);
   expect(addon.eval("return { LFGInvitePopup:IsShown(), __answers }"), "declined and the popup hidden (a client without StaticPopupSpecial_Hide hides it itself)").toEqual([false, ["group", "close PARTY_INVITE"]]);
 });
 
+// Retail's PartyInviteRequest has no isCrossShard, so inviterGUID is the 7th value
+// (live/Interface/AddOns/Blizzard_APIDocumentationGenerated/PartyInfoDocumentation.lua).
+it("H44-20-50 quiet the game: on Retail the inviter's GUID is the 7th payload value; a stranger is declined and a friend is not", () => {
+  const addon = loggedIn(INVITE_ENV, { client: RETAIL, savedVariables: INVITES_ON });
+  addon.eval('__friends.pal = "friend"');
+  const retailInvite = (guid) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false); addon.update(0); return addon.eval("return #__answers"); };
+  expect([retailInvite("stranger"), retailInvite("pal")], "a stranger is declined (group, close), a friend is left").toEqual([2, 0]);
+});
+
 it("auto-accept: declining a stranger's group invite that carries a quest session closes Retail's Party Sync dialog (H19-2-2)", () => {
   const addon = loggedIn(FOREVER_INVITES + "QuestSessionManager = { ConfirmInviteToGroupReceivedDialog = CreateFrame('Frame', 'QSConfirm', UIParent) } QuestSessionManager.ConfirmInviteToGroupReceivedDialog:Show()", { savedVariables: INVITE_SWITCHES_ON });
-  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, false, "stranger", true);
   expect(addon.eval("return QuestSessionManager.ConfirmInviteToGroupReceivedDialog:IsShown()"), "up until the next frame").toBe(true);
   addon.update(0);
   expect(addon.eval("return { QuestSessionManager.ConfirmInviteToGroupReceivedDialog:IsShown(), __answers }"), "declined and the session dialog hidden").toEqual([false, ["group", "hide QSConfirm", "close PARTY_INVITE"]]);
   addon.eval("QuestSessionManager = nil");
-  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, false, "stranger", true);
   addon.update(0);
   expect(addon.eval("return #ns.errors"), "a client without the manager raises no error").toBe(0);
   addon.eval("QuestSessionManager = { ConfirmInviteToGroupReceivedDialog = CreateFrame('Frame', 'QSConfirm2', UIParent) }");
-  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, "stranger", true);
+  addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, true, false, false, "stranger", true);
   addon.update(0);
   expect(addon.eval("return #ns.errors"), "a dialog that is not up is left alone").toBe(0);
 });
