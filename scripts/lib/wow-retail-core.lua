@@ -13,3 +13,8 @@ GetPetHappiness = nil
 -- Enum.WeaponSlot has no Ranged.
 C_Item.GetWeaponEnchantInfo = nil
 Enum.WeaponSlot = { MainHand = 0, OffHand = 1 }
+
+-- GameMenuFrameButtonTemplate is WoW Forever's only (forever Blizzard_GameMenu/Shared/GameMenuFrame.xml; no such
+-- template under live/Interface/AddOns), and live has no FrameStrata secret aspect (wow-aspects.lua, when loaded).
+__wfgWidgetApi.templates.GameMenuFrameButtonTemplate = nil
+if __wfgWorld.dropFrameStrataAspect then __wfgWorld.dropFrameStrataAspect() end

@@ -22,7 +22,7 @@ local REGION = {
   "AdjustPointsOffset", "ClearAllPoints", "ClearPoint", "ClearPointsOffset",
   "CreateAnimationGroup", "EnableMouse", "EnableMouseMotion", "EnableMouseWheel",
   "GetAlpha", "GetAnimationGroups", "GetBottom", "GetCenter", "GetDebugName",
-  "GetEffectiveAlpha", "GetEffectiveScale", "GetHeight", "GetLeft", "GetName",
+  "GetEffectiveScale", "GetHeight", "GetLeft", "GetName",
   "GetNumPoints", "GetObjectType", "GetParent", "GetParentKey", "GetPoint",
   "GetPointByName", "GetRect", "GetRight", "GetScale", "GetScaledRect",
   "GetScript", "GetSize", "GetSourceLocation", "GetTop", "GetWidth",
@@ -72,10 +72,12 @@ local FONT_STRING = {
   "SetTextHeight", "SetTextScale", "SetWordWrap",
 }
 
+-- GetEffectiveAlpha is a frame's only: SimpleFrameAPIDocumentation.lua:366 on both clients, in no region, texture or
+-- font string docs file.
 local FRAME = {
   "CreateFontString", "CreateLine", "CreateMaskTexture", "CreateTexture",
   "DisableDrawLayer", "DoesClipChildren", "EnableDrawLayer", "EnableKeyboard",
-  "GetAttribute", "GetChildren", "GetFrameLevel", "GetFrameStrata", "GetID",
+  "GetAttribute", "GetChildren", "GetEffectiveAlpha", "GetFrameLevel", "GetFrameStrata", "GetID",
   "GetNumChildren", "GetRegions", "IsClampedToScreen", "IsEventRegistered",
   "IsKeyboardEnabled", "IsMovable", "IsResizable", "IsToplevel", "IsUserPlaced",
   "Lower", "Raise", "RegisterAllEvents", "RegisterEvent", "RegisterForDrag",
@@ -170,9 +172,10 @@ local AURA_BUTTON = {
   "SetTooltipAnchorPoint",
 }
 
+-- MinimapFrameAPIDocumentation.lua (both clients); it has no SetBlipTexture.
 local MINIMAP = {
   "GetPingPosition", "GetZoom", "GetZoomLevels", "PingLocation",
-  "SetArchBlobInsideTexture", "SetBlipTexture", "SetMaskTexture", "SetZoom",
+  "SetArchBlobInsideTexture", "SetMaskTexture", "SetZoom",
 }
 
 -- ScrollingMessageFrameMixin (Blizzard_SharedXML/ScrollingMessageFrame.lua): the line fade's three
@@ -238,6 +241,7 @@ return {
   templates = {
     BackdropTemplate = { backdrop = true },
     UIPanelButtonTemplate = { kind = "Button" },
+    -- WoW Forever's only (Blizzard_GameMenu/Shared/GameMenuFrame.xml); the Retail stubs drop it (wow-retail-core.lua).
     GameMenuFrameButtonTemplate = { kind = "Button" },
     UIPanelCloseButton = { kind = "Button" },
     AuctionHouseFrameDisplayModeTabTemplate = { kind = "Button" },

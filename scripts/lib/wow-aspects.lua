@@ -131,6 +131,15 @@ local GETTERS = {
   GetCursorPosition = { "Cursor", "Text" },
 }
 
+-- Retail 12.1.5 has no FrameStrata aspect: live SecretAspectConstantsDocumentation.lua ends at RadialProgress, live
+-- SimpleFrameAPIDocumentation.lua's SetFrameStrata (NotAllowed) adds no aspect and its GetFrameStrata reads none. The
+-- Retail stubs (wow-retail-core.lua) call this before the addon loads.
+function world.dropFrameStrataAspect()
+  ASPECT_NAME[Enum.SecretAspect.FrameStrata] = nil
+  Enum.SecretAspect.FrameStrata = nil
+  GAME_ASPECTS.SetFrameStrata, GETTERS.GetFrameStrata = nil, nil
+end
+
 -- The getters whose answer folds in every parent's: secret when the widget or any parent holds the aspect.
 local INHERITED = { IsVisible = "Shown", GetEffectiveAlpha = "Alpha", GetEffectiveScale = "Scale" }
 

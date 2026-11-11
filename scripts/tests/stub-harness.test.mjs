@@ -2,7 +2,7 @@
 // shown state, the base every frame test stands on.
 
 import { expect, it } from "vitest";
-import { createAddon } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 
 it("replacing a method a widget kind already resolved reaches new and existing widgets of that kind", () => {
   const addon = createAddon();
@@ -229,4 +229,19 @@ it("GetItemInfo gives the item's own class, subclass and reagent flag, as GetIte
   addon.eval("__wfgWorld.items[2589].reagent = true");
   expect(addon.eval(`local i = { C_Item.GetItemInfo(2589) } local n = { C_Item.GetItemInfoInstant(2589) }
     return { i[12], i[13], i[17], n[6], n[7] }`)).toEqual([7, 5, true, 7, 5]);
+});
+
+// GetEffectiveAlpha is in SimpleFrameAPIDocumentation.lua:366 only; MinimapFrameAPIDocumentation.lua has no
+// SetBlipTexture (both clients); GameMenuFrameButtonTemplate is forever's Blizzard_GameMenu/Shared/GameMenuFrame.xml
+// only; live SecretAspectConstantsDocumentation.lua ends at RadialProgress (no FrameStrata).
+it("the widget lists hold only what each client has: GetEffectiveAlpha on frames, no SetBlipTexture, Forever's game menu template", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local f = CreateFrame("Frame", nil, UIParent)
+    return { type(f.GetEffectiveAlpha), type(f:CreateTexture().GetEffectiveAlpha), type(f:CreateFontString().GetEffectiveAlpha),
+      type(Minimap.SetBlipTexture), CreateFrame("Button", nil, UIParent, "GameMenuFrameButtonTemplate") ~= nil, Enum.SecretAspect.FrameStrata }`),
+  "Forever").toEqual(["function", "nil", "nil", "nil", true, 16777216]);
+  const retail = createAddon({ client: RETAIL_CLIENT });
+  expect(retail.eval(`local ok, err = pcall(CreateFrame, "Button", nil, UIParent, "GameMenuFrameButtonTemplate")
+    return { ok, err:match("unknown template") ~= nil, Enum.SecretAspect.FrameStrata == nil, Enum.SecretAspect.RadialProgress }`),
+  "Retail").toEqual([false, true, true, 8388608]);
 });
