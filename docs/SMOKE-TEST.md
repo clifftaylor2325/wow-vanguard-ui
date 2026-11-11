@@ -5456,6 +5456,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: on that mob's plate the sheep icon shows once, in the crowd-control spot, not again in the row of your debuffs; nothing new in `/vg errors`. [Needs in-game check: whether the game's by-index aura read takes a "!" word; Vanguard drops it and reports it once in `/vg errors` if not.]
 - If it fails, paste: `/vg errors`, and a screenshot of the plate.
 
+### 33.500 The target's private aura spot follows the Aura icon size slider
+
+- Do: on WoW Retail, open `/vg` → Unit frames and drag Aura icon size under Target and focus auras from 20 to 30, let go, then in a boss fight that puts a private aura on your target (or a dungeon boss with one) look right of the target frame.
+- Expect: the private aura's icon there is about as large as the target's own debuff icons at the new size (34 across, not 24), and nothing new in `/vg errors`. [Needs in-game check: all of it; the game draws the icon itself.]
+- If it fails, paste: `/vg errors`, and a screenshot of the target frame with the private aura showing.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

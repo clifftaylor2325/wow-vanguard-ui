@@ -85,10 +85,14 @@ table.insert(RF.sizeHooks, PA.TilesResized)
 
 -- The target's spot right of its frame, raised PA.GAP over the target of target that sits there (Modules/UnitFrames.lua
 -- LAYOUT; both stand on the same line), a debuff and a bit across, handed again on each new target (the token
--- then means someone else). Left of the frame is the Cooldown Manager's row (Modules/GameTools.lua).
+-- then means someone else). Left of the frame is the Cooldown Manager's row (Modules/GameTools.lua). Run again after
+-- a setting changed: the spot takes the icon size now (kept to its slider) before it is handed, as the game takes
+-- the size only then.
 function PA.TargetPart(f, key, settings, scope)
   if key ~= "target" then return end
   PA.target = PA.target or PA.TargetSpot(f, settings)
+  local size = FA.Look(settings).size + PA.GROW
+  PA.target:SetSize(size, size)
   scope:Frame(PA.target):Show()
   PA.Point(PA.target, "target")
   scope:On("PLAYER_TARGET_CHANGED", PA.PointTarget)

@@ -172,9 +172,11 @@ local function park(f, key)
   for _, part in ipairs(FA.CLIENT_OFF) do ns.Try("frame aura part off", part, f, key) end
 end
 
--- The rows made again after a setting changed, showing whoever the frames show now.
+-- The rows made again after a setting changed, showing whoever the frames show now, and the client's own parts
+-- given the new settings (the Retail target spot takes the new icon size).
 local function rebuild()
-  buildRows()
+  if not FA.settings then return end
+  build(FA.settings, FA.scope)
   refreshBoth()
 end
 
@@ -198,7 +200,7 @@ end
 -- Module entry point (Core/Modules.lua): after the unit frames are built.
 -- The containers follow UNIT_AURA themselves; a new target or focus refreshes them.
 function FA.Enable(settings, scope)
-  FA.settings = settings
+  FA.settings, FA.scope = settings, scope
   ns.OutOfCombat(function() build(settings, scope) end)
   scope:On("PLAYER_TARGET_CHANGED", updateTarget)
   scope:On("PLAYER_FOCUS_CHANGED", updateFocus)
