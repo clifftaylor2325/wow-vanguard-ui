@@ -2,7 +2,7 @@
 
 An architecture decision record for the options window (`/vg`) and the other places a player configures Vanguard. Written 2026-11-05 against `main` at `c997aca` (0.8.0 plus the retail build and the twenty bug hunts), from a spike measured in the headless harness: `node scripts/options-inventory.mjs` reproduces every number below. Nothing in it was checked in a game client.
 
-- **Status:** Accepted for S1 (Cliff, 2026-11-05: build the fold, Raid frames first). Calls 2 to 5 in §6 stand on their recommendation unless Cliff says otherwise before each phase starts. Nothing is built yet; S1 is the first build.
+- **Status:** Accepted for S1 (Cliff, 2026-11-05: build the fold, Raid frames first). Calls 2 to 5 in §6 stand on their recommendation unless Cliff says otherwise before each phase starts. S1 and S2's names are built; S2's marks and S3 to S5 wait on the stop rule (§5, "Where it stands").
 - **Deciders:** Cliff. Reviewed in four design-review waves before it was sent (§8).
 - **Relation to earlier work:** the 2026-10-26 options review offered A (folded cards), B (tabs inside a page) and C (essentials first); Cliff chose B, built as PR #690, and it stays. D1 below is A moved inside B, carrying C's essentials without C's mode. Builds on [UI-COHERENCE.md](UI-COHERENCE.md) and [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md) and changes none of their decisions.
 
@@ -85,7 +85,7 @@ Every other row is **more**, and in particular **a part of a feature** is more: 
 
 **Memory.** The fold is remembered per card (the page key and the card's English title) while the game runs, as the tab is and as the quest log's folded zones are. A reload opens every card folded again, which a player following a guide meets after each reload step; the dot on the fold line and the search's unfolding answer that without a new saved-file table.
 
-**Where it lives.** A new `Core/OptionsFold.lua` (listed in the TOC), not in `OptionsWindow.lua`, which holds 160 top-level locals against the scanner's 185.
+**Where it lives.** A new `Core/OptionsFold.lua` (listed in the TOC), not in `OptionsWindow.lua`, which holds 160 top-level locals against the scanner's limit (`MAX_TOP_LOCALS` in `scripts/lib/code-quality.mjs`).
 
 ### D2. One switch per feature, on its page
 
@@ -156,7 +156,7 @@ Five phases, one PR each, in this order so that nothing is renamed and moved in 
 
 **What changes for players:** `/vg` opens on Start here; each tab shows a short list with a fold under it; a module is switched on where its settings are, eleven of the fourteen without a reload; names, not sentences; one Bars tab; pages grouped by what you're doing. **What stays:** every setting, every key, every `/vg` word, every deep link, every page, the search, the dots, the reset.
 
-**What it costs:** 113 captions in English for one release in ten languages; one read of every row to mark its tier and name it (the rule makes it mechanical; the test holds it); the website's Settings page regenerates from the new captions and tiers (the site reads the addon at build time, so it needs no hand edits, but its generator must learn `row.tip`, `essential` and, in S5, a per-bar default); a profile-wide migration for the fourteen inner switches; and a new Core file, since `OptionsWindow.lua` holds 160 top-level locals and `Options.lua` 71 against the scanner's 185.
+**What it costs:** 113 captions in English for one release in ten languages; one read of every row to mark its tier and name it (the rule makes it mechanical; the test holds it); the website's Settings page regenerates from the new captions and tiers (the site reads the addon at build time, so it needs no hand edits, but its generator must learn `row.tip`, `essential` and, in S5, a per-bar default); a profile-wide migration for the fourteen inner switches; and a new Core file, since `OptionsWindow.lua` holds 160 top-level locals and `Options.lua` 71 against the scanner's limit (`MAX_TOP_LOCALS` in `scripts/lib/code-quality.mjs`).
 
 **What it does not do:** cut any setting; change the theme or the controls (UI-COHERENCE owns those); merge pages (call 3's alternative, deferred); touch the reload mechanism. Two follow-ups belong to other records: the 70 reload settings, each a per-module candidate for applying live, and the six surfaces that configure one profile, where only the window shows what changed.
 

@@ -307,7 +307,7 @@ own README sub-bullet, its smoke-test subsection (§14 of docs/SMOKE-TEST.md, nu
 
 - [x] **S5.1 12.x context menus.** `EventRegistry:RegisterCallback("MenuProxy.OnShow", fn, GW)` (guarded on the registry
   and on `RegisterCallback` existing): `fn(_, menu)` fades `menu`'s texture regions (the Compositor's background is a
-  region of the menu frame) and `T.Tooltip(menu)` once per frame (menus are pooled: `menu.vgMenu` flag; fade again every
+  region of the menu frame) and `T.Tooltip(menu)` once per frame (menus are pooled: a flag in an `ns.FrameState` side table; fade again every
   show). On Camelot also fade `FrameGlow`. Nothing on the menu's buttons. **[VERIFY IN GAME]**: right-click a party
   member → Whisper, Set Focus, Leave Party; the minimap tracking menu; a chat tab's menu; no "Interface action failed
   because of an AddOn". If an action is blocked, drop this task and record it. Test: the stub's `world.trigger("MenuProxy.OnShow", frame)`

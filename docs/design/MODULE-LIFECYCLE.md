@@ -1,6 +1,6 @@
 # Module lifecycle: dependencies, teardown and late enable (design note, A4-1)
 
-Status: **approved by Cliff on 2026-11-10: every recommendation in 5.3 (Q1 to Q11) as recommended.** Written 2026-11-09 against `48966bb` (0.9.5 notes merged); counts corrected on 2026-11-10 against `eaff8c5`. Plan task A4-1 in `docs/handoff/A-GRADE-PLAN.md`; review items B1 and M9, sections 3.1 ("Module system and lifecycle"), 5.1 and 5.8 of `docs/handoff/VANGUARD-REVIEW-2026-11-09.md`. Nothing here was checked in the game. Counts come from reading and grepping the Lua at that commit; a sibling thread (live apply for the minimap, info strip, chat, raid frame sizes) may move a few of them before this lands.
+Status: **approved by Cliff on 2026-11-10: every recommendation in 5.3 (Q1 to Q11) as recommended. Built** (A4-2, PRs #835, #837 and #865): sections 0 and 1 describe the code before it, and `docs/PATTERNS.md` ("A module that goes on and off live") describes it now. Written 2026-11-09 against `48966bb` (0.9.5 notes merged); counts corrected on 2026-11-10 against `eaff8c5`. Plan task A4-1 in `docs/handoff/A-GRADE-PLAN.md`; review items B1 and M9, sections 3.1 ("Module system and lifecycle"), 5.1 and 5.8 of `docs/handoff/VANGUARD-REVIEW-2026-11-09.md`. Nothing here was checked in the game. Counts come from reading and grepping the Lua at that commit; a sibling thread (live apply for the minimap, info strip, chat, raid frame sizes) may move a few of them before this lands.
 
 ## 0. The short version
 
