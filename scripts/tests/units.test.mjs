@@ -129,6 +129,22 @@ it("class bars: the totem row stands over the player frame's crown under every l
   expect(addon.eval(TOTEM_RIDE_LUA), "after the fight: Plain, 3 units over the frame").toEqual([3, true]);
 });
 
+it("class bars: while the player frame's top reads hidden, the totem row stands a tab's height up under Tabs, and on the frame without one", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV + TOTEMS_ENV);
+  // Switches the HUD look with the player frame's top answering a secret, then puts the real top back.
+  const hiddenTopLook = (name) => addon.eval(`local top = Vanguard_player.GetTop
+    Vanguard_player.GetTop = function() return { __secret = true } end
+    ns.Theme.Settings().hudLook = "${name}" ns.Theme.Refresh()
+    Vanguard_player.GetTop = top`);
+  hiddenTopLook("tabs");
+  const [gap, onFrame] = addon.eval(TOTEM_RIDE_LUA);
+  expect(onFrame, "Tabs: still anchored to the frame itself").toBe(true);
+  expect(gap, "Tabs: the tab's height stands in for the measured rise, so the row clears the tab").toBeGreaterThanOrEqual(3);
+  expect(gap, "and stays within a unit of where the measured rise puts it").toBeLessThan(4);
+  hiddenTopLook("plain");
+  expect(addon.eval(TOTEM_RIDE_LUA), "Plain: no tab, the row sits on the frame").toEqual([3, true]);
+});
+
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
   expect(addon.eval('local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells above the player frame (anchored to the frame itself, over its crown)").toEqual([4, true]);
