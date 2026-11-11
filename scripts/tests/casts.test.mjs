@@ -540,6 +540,18 @@ it("the interrupt mark follows your interrupt's cooldown, only while a cast show
   expect(mark(addon, "target").shown, "the flash at a cast's end takes the mark away at once").toBe(false);
 });
 
+it("H44-6-100 a cooldown update during the flash at a cast's end leaves the mark away", () => {
+  const addon = loggedIn(CAST_ENV + MARK_ENV + FAKE_FADES);
+  addon.eval("__fakeFader(Vanguard_CastBar_target)");
+  addon.eval(KNOWS(2139));
+  addon.eval('__casts.target = { kind = "cast", start = 1000, finish = 3000, shielded = false }');
+  addon.fire("UNIT_SPELLCAST_START", "target");
+  addon.eval("__casts.target = nil");
+  addon.fire("UNIT_SPELLCAST_INTERRUPTED", "target");
+  addon.fire("SPELL_UPDATE_COOLDOWN");
+  expect(addon.eval("local b = Vanguard_CastBar_target return { b:IsShown(), b.mark:IsShown(), b.text:GetText() }"), "still flashing, no mark").toEqual([true, false, "Interrupted"]);
+});
+
 it("the interrupt mark: which interrupt, by class and rank", () => {
   const addon = loggedIn(CAST_ENV + MARK_ENV);
   // The interrupt a class that has learned these spells would use (false for none).

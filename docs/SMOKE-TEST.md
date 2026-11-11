@@ -5480,6 +5480,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the holy power pips sit inside the deck's border above your frame, not on it, and the Brewmaster's stagger bar sits inside its border under your frame. [Needs in-game check: the look.]
 - If it fails, paste: a screenshot of the deck.
 
+### 33.504 Your interrupt leaves no diamond beside the red Interrupted flash
+
+- Do: on either client, as a mage with Interrupt mark on cast bars on (the default), Counterspell your target's cast.
+- Expect: the target cast bar flashes red "Interrupted" and fades with no diamond beside it, though your Counterspell's cooldown starts during the flash. [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of the cast bar while it flashes.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

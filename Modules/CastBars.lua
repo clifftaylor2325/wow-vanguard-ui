@@ -449,10 +449,11 @@ function CB.PaintMark(bar, shielded)
   mark:SetAlpha(isTrue(shielded) and 0 or 1)
 end
 
--- Repaints the marks on the bars showing a cast (your interrupt's cooldown changed, or the switch did).
+-- Repaints the marks on the bars showing a cast (your interrupt's cooldown changed, or the switch did); a bar
+-- flashing its cast's end keeps its mark away.
 function CB.RefreshMarks()
   for _, bar in pairs(CB.bars) do
-    if bar.mark and bar:IsShown() then CB.PaintMark(bar, bar.vgShielded) end
+    if bar.mark and bar:IsShown() and not bar.vgFinishing then CB.PaintMark(bar, bar.vgShielded) end
   end
 end
 
