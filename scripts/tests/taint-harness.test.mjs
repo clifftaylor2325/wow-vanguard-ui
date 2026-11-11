@@ -106,3 +106,50 @@ it("a secret answers type() as the value it hides, to the addon and to test code
     .toEqual(["number", "string", "number", "table", true, "table", "number"]);
   expect(addon.eval("local ok = pcall(function() local s = __wfgWorld.secret(5) return type(s) == 'number' and s > 0 end) return ok"), "a type gate lets it through to the compare, which errors").toBe(false);
 });
+
+// The addon's chunks compile without tail calls (scripts/lib/lua-keep-frames.mjs), so `return frame:Method()` keeps the
+// addon's stack entry and the guards still see whose line it is (Lua 5.1 manual 2.5.8 drops it otherwise).
+it("a guarded call in tail position from addon code is still the addon's: blocked in combat, from test Lua and from an event", () => {
+  const addon = createAddon();
+  addon.eval('CreateFrame("Button", "TestSecure", UIParent, "SecureActionButtonTemplate") TestSecure:SetFrameLevel(5)');
+  asAddon(addon, `function TestTailCall() return TestSecure:SetFrameLevel(8) end
+    TestEvents = CreateFrame("Frame")
+    TestEvents:SetScript("OnEvent", function() return TestSecure:Hide() end)
+    TestEvents:RegisterEvent("PLAYER_TARGET_CHANGED")`);
+  addon.world.combat(true);
+  addon.eval("TestTailCall()");
+  addon.fire("PLAYER_TARGET_CHANGED");
+  expect(violations(addon)).toEqual([
+    "blocked in combat: Modules/TEST-ONLY.lua:1 called SetFrameLevel on the protected frame TestSecure",
+    "blocked in combat: Modules/TEST-ONLY.lua:3 called Hide on the protected frame TestSecure",
+  ]);
+  expect(addon.eval("return { TestSecure:GetFrameLevel(), TestSecure:IsShown() }"), "neither landed").toEqual([5, true]);
+});
+
+it("a secret getter and a refused secret setter in tail position from addon code answer the addon as a plain call does", () => {
+  const addon = createAddon();
+  addon.eval(`TestGame = CreateFrame("Frame", "TestGame", UIParent) __wfgWorld.holdSecret(TestGame, "Shown") TestTrue = __wfgWorld.secret(true)`);
+  asAddon(addon, `function TestGetTail() return TestGame:IsShown() end
+    function TestSetTail() return TestGame:SetShown(TestTrue) end`);
+  expect(addon.eval("return issecretvalue(TestGetTail())"), "the getter hands the addon a secret").toBe(true);
+  expect(addon.eval("local ok, e = pcall(TestSetTail) return { ok, tostring(e) }")).toEqual([false,
+    "Modules/TEST-ONLY.lua:2: bad argument #1 to 'SetShown' (Secret values are only allowed during untainted execution for this argument.)"]);
+});
+
+// The client judges the run, not the line that makes the call: game Lua the addon calls in combat is tainted by it
+// (Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua CheckProtectedFunctionsAllowed,
+// `InCombatLockdown() and not issecure()`, both clients). Test Lua stands in for the game's.
+it("a protected call or a binding write that game code makes for the addon in combat is blocked, and the addon's line named", () => {
+  const addon = createAddon();
+  addon.eval(`CreateFrame("Button", "TestSecure", UIParent, "SecureActionButtonTemplate") TestSecure:SetFrameLevel(5)
+    function TestGameHelper() TestSecure:SetFrameLevel(9) SetBinding("F", "JUMP") end`);
+  addon.world.combat(true);
+  asAddon(addon, "TestGameHelper()");
+  expect(violations(addon)).toEqual([
+    "blocked in combat: Modules/TEST-ONLY.lua:1 called SetFrameLevel on the protected frame TestSecure",
+    "blocked in combat: Modules/TEST-ONLY.lua:1 called SetBinding(), which the client refuses addon code in a fight",
+  ]);
+  addon.eval("TestGameHelper()");
+  expect(addon.eval("return #__wfgStub.violations"), "the game's own run is not blocked").toBe(0);
+  expect(addon.eval("return TestSecure:GetFrameLevel()")).toBe(9);
+});

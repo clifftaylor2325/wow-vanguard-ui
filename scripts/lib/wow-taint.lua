@@ -13,7 +13,8 @@
 --    taint in game (frame.vgSkinned = true). Keep such state in a weak-keyed
 --    side table instead. Replacing a game widget's script (SetScript) is
 --    recorded the same way: hook it with HookScript.
---  * Combat lockdown: while in combat (world.combat(true)), addon code that
+--  * Combat lockdown: while in combat (world.combat(true)), a run with addon code
+--    in it (the addon's own line, or game or test code the addon called) that
 --    calls a protected method (Show, Hide, SetPoint, SetSize, SetAttribute...)
 --    on a protected frame is blocked as the client blocks it: nothing happens
 --    and ADDON_ACTION_BLOCKED fires. A frame is protected when it is made from
@@ -282,11 +283,25 @@ function methods:IsProtected()
   return isProtected(self, 0), protectedItself(self)
 end
 
--- True (and recorded) when addon code calls a protected method on a protected
--- frame in combat: the client blocks it and fires ADDON_ACTION_BLOCKED.
+-- The addon's code nearest the top of the stack, or nil: a run with any of it is tainted,
+-- whatever game or test code it called on the way. The client judges the execution, not the
+-- line that makes the call (Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua
+-- CheckProtectedFunctionsAllowed: `InCombatLockdown() and not issecure()`, both clients).
+local function addonOnStack()
+  local level = 3
+  local info = debug.getinfo(level, "Sl")
+  while info and not byAddon(info) do
+    level = level + 1
+    info = debug.getinfo(level, "Sl")
+  end
+  return info
+end
+
+-- True (and recorded) when a run with addon code in it calls a protected method on a
+-- protected frame in combat: the client blocks it and fires ADDON_ACTION_BLOCKED.
 local function blocked(w, name)
   if not stub.inCombat then return false end
-  local at = callerOf(2)
+  local at = addonOnStack()
   if not byAddon(at) or not isProtected(w, 0) then return false end
   violate(string.format("blocked in combat: %s called %s on the protected frame %s", where(at), name, label(w)))
   stub.fire("ADDON_ACTION_BLOCKED", "Vanguard", name .. "()")
@@ -318,18 +333,6 @@ for _, name in ipairs(PROTECTED_CALLS) do
   rewrap(name, lockable(name))
 end
 
--- The addon's code nearest the top of the stack, or nil: a run with any of it is tainted,
--- whatever game or test code it called on the way.
-local function addonOnStack()
-  local level = 3
-  local info = debug.getinfo(level, "Sl")
-  while info and not byAddon(info) do
-    level = level + 1
-    info = debug.getinfo(level, "Sl")
-  end
-  return info
-end
-
 -- ShowUIPanel and HideUIPanel refuse a tainted run in combat, for every frame
 -- (UIParentPanelManager.lua CheckProtectedFunctionsAllowed: "We no longer allow addons to
 -- show or hide UI panels in combat"). Nothing opens or closes, and the client prints
@@ -351,8 +354,9 @@ for _, name in ipairs({ "ShowUIPanel", "HideUIPanel" }) do _G[name] = panelCall(
 -- SaveBindings, LoadBindings and PlaceAction are blocked the same way, unverified; the click-bindings calls
 -- carry HasRestrictions in ClickBindingsDocumentation.lua). The model: nothing happens, the call answers nothing,
 -- and ADDON_ACTION_BLOCKED fires (what a blocked SetBinding answers, false or nothing, is unverified); the in-game probe in docs/SMOKE-TEST.md settles the unverified ones.
--- Game and test code may call them. Override bindings and a secure handler's own calls are not covered, and a call
--- in tail position (`return SetBinding(...)`) drops the caller's frame, so it reads as the code above it.
+-- Game and test code may call them. Override bindings and a secure handler's own calls are not covered. A call in
+-- tail position (`return SetBinding(...)`) keeps the addon's frame: the addon's chunks compile without tail calls
+-- (scripts/lib/lua-keep-frames.mjs).
 
 -- world.combatAfterCalls(n): the fight starts when the n-th guarded call is made (that call is the first refused), so a
 -- test can start combat in the middle of a sequence of writes.
@@ -368,12 +372,13 @@ local function startFightAfterCalls()
   if left <= 1 then world.combat(true) end
 end
 
--- Wraps a global or namespace function so addon code's call in combat is blocked and recorded.
+-- Wraps a global or namespace function so a call from a run with addon code in it, in combat, is
+-- blocked and recorded (addonOnStack says why the run decides).
 local function refusedInCombat(name, call)
   return function(...)
     startFightAfterCalls()
-    local at = stub.inCombat and callerOf(1) or nil
-    if byAddon(at) then
+    local at = stub.inCombat and addonOnStack() or nil
+    if at then
       violate(string.format("blocked in combat: %s called %s(), which the client refuses addon code in a fight", where(at), name))
       stub.fire("ADDON_ACTION_BLOCKED", "Vanguard", name .. "()")
       return

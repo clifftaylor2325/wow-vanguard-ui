@@ -18,6 +18,7 @@ import lobject from "fengari/src/lobject.js";
 import lstring from "fengari/src/lstring.js";
 import { LuaSource, luaString, luaValue } from "./lua-emit.mjs";
 import { markSecretMeta, secretArgAt } from "./lua-secret-ops.mjs";
+import "./lua-keep-frames.mjs";
 import { addHits, lineHook } from "./lua-coverage.mjs";
 import { ENGINE, hasWasmChunk, newWasmState } from "./lua-wasm.mjs";
 import { profileSampler } from "./lua-profile.mjs";
