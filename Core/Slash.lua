@@ -63,7 +63,7 @@ local HELP = {
   { "recap [say|party|raid|instance|guild]", L["the last fight's interrupts, dispels, damage taken and deaths from the game's damage meter, in your chat or sent to that channel"] },
   { "vendors [clear]", L["how many merchants Vanguard remembers (for tooltips and the stock list); clear forgets them"] },
   { "ranks [swap]", L["spell ranks: bar buttons holding an older rank than you know; swap puts the newest rank there (out of combat). Off until Spell ranks is switched on"] },
-  { "trainers [next|clear]", L["what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Trainer memory off until switched on)"] },
+  { "trainers [next|clear]", L["what the trainers you've visited teach: how many services are remembered, what the next levels bring and where, or forget them (Remember what trainers teach off until switched on)"] },
   { "gear", L["your gear in chat: average item level, melee damage per second and the worn pieces missing an enchant (the character pane also shows item levels; see Game windows)"] },
   { "alts [<name>]", L["every character's level, money, rested XP and time played; with a name, that character's bags and bank"] },
   { "inventory [forget <name>|clear]", L["your characters remembered here and when their bags were read; forget drops one, clear forgets them all"] },

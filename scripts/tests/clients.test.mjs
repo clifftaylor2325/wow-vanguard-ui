@@ -156,6 +156,13 @@ it("H44-28-4 /vg help: the talents line names the order word the command handles
   expect(chatHas(forever, /\|r talents \[[^\]]*order[^\]]*\]/), "talents syntax has order").toBe(true);
 });
 
+it("H44-28-350 /vg help: the trainers line names the switch as the Town and gear page does", () => {
+  const forever = on(false);
+  forever.slash("help");
+  expect(chatHas(forever, /Remember what trainers teach off until switched on/), "the switch's caption").toBe(true);
+  expect(chatHas(forever, /Trainer memory/), "the old name is gone").toBe(false);
+});
+
 it("clients: rows added with ns.RetailRows show on the Game windows card, under the window switches", () => {
   const addon = on(true);
   addon.eval('ns.RetailRows(function() return { { "text", "TEST-ONLY Retail window row" } } end)');
