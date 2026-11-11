@@ -5450,6 +5450,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the bar's text names the rank as the game's reputation list does ("Level 12" or the rank's word) with that rank's numbers, green; the tooltip says "To the next standing". At the top rank it is a full bar with just the word.
 - If it fails, paste: the bar's text, `/dump C_GossipInfo.GetFriendshipReputation(C_Reputation.GetWatchedFactionData().factionID)`, and `/vg errors`.
 
+### 33.637 Dungeon quests in your log leaves out group quests
+
+- Do: outside any instance, with Dungeon card on (Town and gear) and a dungeon quest and an outdoor elite (Group) quest in your log, type `/vg prep`; then for each of the two quests `/dump C_QuestLog.GetQuestTagInfo(<its quest id>)`. [Client: Forever and Retail.]
+- Expect: under "Dungeon quests in your log" only the dungeon quest, not the Group quest; the dungeon quest's tag reads Dungeon (tagID 81) or Raid (62).
+- If it fails, paste: the card's lines and both `/dump` answers (a dungeon quest that Forever tags Group, or tags nothing, is the case to report), and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
