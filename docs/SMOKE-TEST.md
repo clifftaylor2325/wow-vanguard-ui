@@ -5554,6 +5554,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The panel stays flat; the game's backdrop and divider do not come back.
 - If it fails, paste: A screenshot after taking it out.
 
+### 33.575 The minimap drawer's "..." button follows the addon buttons (H44-18-A1; Forever and Retail)
+
+- Do: With the drawer shut and one addon minimap button in it, hide that button in its addon's settings (its "Hide minimap button" switch), then show it again.
+- Expect: The "..." button on the map's left edge goes when the last button is hidden and comes back when one is shown, without opening the drawer or reloading.
+- If it fails, paste: The addon's name and what the "..." button did.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

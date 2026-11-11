@@ -1311,6 +1311,22 @@ it("minimap drawer: a button its addon has hidden takes no cell and is not count
   addon.eval("LibDBIcon10_TestOnlyOne:Show() Vanguard_MinimapDrawerToggle.__scripts.OnClick(Vanguard_MinimapDrawerToggle)");
   expect(addon.eval("return Vanguard_MinimapDrawer:GetWidth()"), "opening lays it out at once").toBe(39);
 });
+// The client runs a button's OnShow and OnHide only when it comes into or leaves view, and the gathered buttons sit under the
+// shut drawer (Blizzard_EncounterTimeline/EncounterTimelineView.lua:192-203 relies on it), so the test drops those scripts.
+it("H44-18-A1 minimap drawer: a button its addon shows or hides while the drawer is shut still moves the toggle", () => {
+  const addon = loggedIn(UI_ENV + DRAWER_ENV);
+  addon.eval("LibDBIcon10_TestOnlyOne.__scripts.OnShow, LibDBIcon10_TestOnlyOne.__scripts.OnHide = nil, nil");
+  // Whether the toggle shows once the drawer has laid out.
+  const toggle = () => { addon.update(0); return addon.eval("return Vanguard_MinimapDrawerToggle:IsShown()"); };
+  addon.eval("LibDBIcon10_TestOnlyOne:Hide()");
+  expect(toggle(), "every button hidden: nothing to open").toBe(false);
+  addon.eval("LibDBIcon10_TestOnlyOne:SetShown(true)");
+  expect(toggle(), "its addon shows it again: the toggle is back").toBe(true);
+  addon.eval("LibDBIcon10_TestOnlyOne:SetShown(false)");
+  expect(toggle(), "SetShown(false) counts as a hide").toBe(false);
+  addon.eval("LibDBIcon10_TestOnlyOne:Show()");
+  expect(toggle(), "and Show as a show").toBe(true);
+});
 it("minimap drawer: its Modules row says it needs the Minimap module, which it gathers nothing without", () => {
   const addon = loggedIn(UI_ENV + DRAWER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { Minimap = false } } }" });
   expect(addon.eval("return Vanguard_MinimapDrawer == nil and LibDBIcon10_TestOnlyOne:GetParent():GetName()"), "Minimap off: no drawer, the button stays on the map").toBe("Minimap");
