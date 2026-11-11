@@ -12,7 +12,7 @@
 -- and the corpse's tombstone stay the game's.
 --
 -- Ctrl-click on the world map puts a waypoint down (the game's own); the game leaves its arrow off for it,
--- so with "Point the arrow at map clicks" on (the default) Vanguard turns the arrow on whenever a waypoint
+-- so with "Arrow to a Ctrl-clicked waypoint" on (the default) Vanguard turns the arrow on whenever a waypoint
 -- appears. The last eight waypoints are kept (account-wide in this profile): the Game map options list them
 -- as buttons, /way recent lists them and /way recent <n> goes back to one. A Clear waypoint button sits on
 -- the world map's bottom edge while there is a waypoint, and in the options. The arrow is the game's floating
