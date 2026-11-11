@@ -270,3 +270,11 @@ it("H40-12-1: a Forever shaman in the tank role weighs tank stats, as key setup'
   addon.slash("weights");
   expect(chatHas(addon, /Weights for tank \(role tank\)/), "/vg weights names the tank kind").toBe(true);
 });
+
+it("H44-23-50: saving in the weights wizard keeps the other client's stats in the saved set", () => {
+  const addon = loggedIn(GEAR, { savedVariables: warriorWeights("{ ILVL = 1, STR = 2, MASTERY = 0 }") });
+  addon.slash("weights wizard");
+  addon.eval('local b = Vanguard_WeightsWizard.save b:GetScript("OnClick")(b)');
+  const saved = addon.eval("local w = ns.GetModule('Upgrades').settings.weights.WARRIOR.strength return { w.ILVL, w.STR, w.MASTERY }");
+  expect(saved, "Retail's item level and mastery stay for the profile's other client, the strength change stays too").toEqual([1, 2, 0]);
+});
