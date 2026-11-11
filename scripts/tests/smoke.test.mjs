@@ -109,3 +109,28 @@ it("in an instance with the friendly plates closed to addons, nothing errors and
 it("as a Retail client, with the friendly plates closed the same way, nothing errors", () => {
   expect(forbiddenPlates(RETAIL_CLIENT).eval("return #ns.errors"), "nothing caught by ns.Try").toBe(0);
 });
+
+// Logs in as one client in the open world: an enemy plate dressed, then a fight in which the client holds the
+// plate's aura rows back from addons (aura information is secret: IsForbidden says no and every call is refused)
+// while the plate is rescaled and the scale check and aura refits run; then the fight ends and the rows are let go.
+// Returns the errors caught, joined ("" for none).
+function heldAuraRows(client) {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV, { client });
+  addon.fire("NAME_PLATE_UNIT_ADDED", "nameplate1");
+  addon.eval(`__rows = {} local f = ns.GetModule("Nameplates").plates.nameplate1
+    for _, key in ipairs(ns.GetModule("Nameplates").ROWS) do if f[key] then __rows[#__rows + 1] = f[key].frame end end`);
+  expect(addon.eval("return #__rows"), "the plate has aura rows").toBeGreaterThan(0);
+  addon.eval('__wfgWorld.combat(true) for _, row in ipairs(__rows) do __wfgWorld.holdAccess(row) end __plates.nameplate1:SetScale(0.6) __wfgStub.fire("UNIT_AURA", "nameplate1")');
+  addon.advance(2);
+  addon.eval("for _, row in ipairs(__rows) do __wfgWorld.releaseAccess(row) end __wfgWorld.combat(false)");
+  addon.advance(1);
+  return addon.eval("local texts = {} for _, e in ipairs(ns.errors) do texts[#texts + 1] = e.text end return table.concat(texts, '; ')");
+}
+
+it("in a fight with a plate's aura rows held back from addons, nothing errors", () => {
+  expect(heldAuraRows(FOREVER_CLIENT), "nothing caught by ns.Try").toBe("");
+});
+
+it("as a Retail client, with a plate's aura rows held back the same way, nothing errors", () => {
+  expect(heldAuraRows(RETAIL_CLIENT), "nothing caught by ns.Try").toBe("");
+});

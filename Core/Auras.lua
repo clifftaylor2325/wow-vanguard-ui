@@ -265,30 +265,44 @@ function A.Dress(f, style)
   return remember(f, parts, style.holder)
 end
 
--- Whether the client has closed `region` or anything it hangs from to addons. The client refuses every
--- region under a closed frame while the region's own IsForbidden still says no (an aura button it has moved
--- into a plate it keeps for itself, say), so each frame up the chain is asked; GetParent is only ever
--- called on one that answered no.
-local function closedFrom(region)
+-- A region's parent (nil at the top), or false when the client refuses addon code the region for now: it holds
+-- an aura container and its buttons back while aura information is secret (a fight), and their IsForbidden
+-- still says no then. CanBeAccessedInContext is the client's answer; a refused GetParent says the same.
+local function parentOrRefused(region)
+  if region.CanBeAccessedInContext and not ns.IsTrue(region:CanBeAccessedInContext()) then return false end
+  local ok, parent = pcall(region.GetParent, region)
+  return ok and parent
+end
+
+-- How the client keeps `region`, or anything it hangs from, from addons: "closed" for good (IsForbidden: a
+-- plate it keeps for itself), "held" for now (refused while aura information is secret), or nil when addon
+-- code may touch it. Each frame up the chain is asked, and none is called once the client has refused one.
+---@param region table
+---@return string|nil shut
+function A.ShutFrom(region)
   while region do
-    if region:IsForbidden() then return true end
-    region = region:GetParent()
+    if region:IsForbidden() then return "closed" end
+    region = parentOrRefused(region)
   end
-  return false
+  return region == false and "held" or nil
 end
 
--- Whether the client has closed an icon to addons (an icon on a plate it keeps for itself, as a friendly
--- one in an instance): its icon and everything above it (its button, the holder, the plate), its sweep or
--- its edge frame. Touching one then is a taint error.
-local function forbidden(parts)
-  return closedFrom(parts.icon) or parts.cooldown:IsForbidden() or parts.skin:IsForbidden()
+-- How the client keeps a dressed icon from addons (A.ShutFrom's answers): its icon and everything above it
+-- (its button, the holder, the plate), its sweep or its edge frame. Touching one then is a taint error.
+local function shutParts(parts)
+  local shut = A.ShutFrom(parts.icon)
+  if shut then return shut end
+  return (parts.cooldown:IsForbidden() or parts.skin:IsForbidden()) and "closed" or nil
 end
 
--- Puts one icon back on whole pixels. One the client has closed, or that fails to place, is forgotten,
--- so the scale poll doesn't try it again every half second. A refusal the checks above missed is kept for
--- /vg errors (with its stack) but not printed: the icon is the client's now, and nothing is lost but its edge.
+-- Puts one icon back on whole pixels. One the client holds for now is left for the next try (the scale poll
+-- comes round again). One it has closed for good, or that fails to place, is forgotten, so the poll doesn't
+-- try it every half second. A refusal the checks above missed is kept for /vg errors (with its stack) but
+-- not printed: the icon is the client's now, and nothing is lost but its edge.
 local function refitIcon(icons, f, parts, scale)
-  if forbidden(parts) or not ns.Quiet("aura icon pixels", place, parts, scale) then icons[f] = nil end
+  local shut = shutParts(parts)
+  if shut == "held" then return end
+  if shut or not ns.Quiet("aura icon pixels", place, parts, scale) then icons[f] = nil end
 end
 
 -- Puts the icons a holder holds back on whole pixels where its scale has moved since they were placed,
@@ -296,11 +310,11 @@ end
 -- it, at whatever scale it has the holder then: on a nameplate it hands over at about 0.01, a one-pixel
 -- edge placed then is some 50 units thick once the plate grows, a dark square around the icon. The
 -- holder's scale is read once for all its icons (each icon is placed at its holder's scale, as before). A holder
--- under a frame the client has closed is not asked: the client refuses it while its own IsForbidden says no.
+-- the client keeps from addons (A.ShutFrom) is not asked: one held for a fight is refit at the next call after it.
 ---@param holder table
 ---@param holds function
 function A.Refit(holder, holds)
-  if closedFrom(holder) then return end
+  if A.ShutFrom(holder) then return end
   local scale, icons = holder:GetEffectiveScale(), dressed[holder] or {}
   for f, parts in pairs(icons) do
     if not holds(scale, parts.scale) then refitIcon(icons, f, parts, scale) end
@@ -334,13 +348,12 @@ function A.Signature(spec)
   return table.concat(parts, " ")
 end
 
--- Puts a container away for good (a setting asked for other icons): emptied and hidden. One the client has
--- closed to addons, or that hangs from a frame it has closed (on a plate it keeps for itself), is left as it is;
--- false then, so the caller keeps it.
+-- Puts a container away for good (a setting asked for other icons): emptied and hidden. One the client keeps
+-- from addons, for good or for now (A.ShutFrom), is left as it is; false then, so the caller keeps it.
 ---@param c table  a container from A.Container
 ---@return boolean put
 function A.Retire(c)
-  if closedFrom(c.frame) then return false end
+  if A.ShutFrom(c.frame) then return false end
   c:SetUnit(nil)
   c.frame:Hide()
   return true
