@@ -677,3 +677,28 @@ it("hunt H44-11-3: picking Screen still lets a linked frame go where it stands",
   pickAnchorTo(addon, "Screen");
   expect(addon.eval('return { ns.MoverAnchor("box") == nil, ns.MoverSaved("box") }'), "detached and saved where it stands").toEqual([true, true]);
 });
+
+it("hunt H44-11-2: the unlock grid is drawn again when the screen size changes while it shows", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)");
+  addon.slash("unlock");
+  // The widest horizontal grid line showing.
+  const widest = () => addon.eval(`local wide = 0 for _, w in ipairs(__wfgStub.frames) do
+    if w.__kind == "Texture" and w:IsVisible() and w.__texture == ns.Theme.WHITE and w:GetHeight() < 2 and w:GetWidth() > 100 then wide = math.max(wide, w:GetWidth()) end end return wide`);
+  expect(widest(), "at first the screen's width").toBe(1920);
+  addon.eval("__wfgStub.setScreen(2560, 1440)");
+  addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(2);
+  expect(widest(), "then the new screen's").toBe(2560);
+});
+
+it("hunt H44-11-2: a screen change with the grid hidden draws no grid", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080)");
+  addon.slash("unlock");
+  addon.slash("lock");
+  // The grid lines showing: white hairlines wider than 100.
+  const shown = () => addon.eval(`local n = 0 for _, w in ipairs(__wfgStub.frames) do if w.__kind == "Texture" and w:IsVisible() and w.__texture == ns.Theme.WHITE and w:GetHeight() < 2 and w:GetWidth() > 100 then n = n + 1 end end return n`);
+  const before = shown();
+  addon.eval("__wfgStub.setScreen(2560, 1440)");
+  addon.fire("UI_SCALE_CHANGED"); addon.fire("DISPLAY_SIZE_CHANGED"); addon.advance(2);
+  expect(addon.eval("return ns.Unlocked()"), "locked").toBe(false);
+  expect(shown(), "the lines showing are the same as before").toBe(before);
+});
