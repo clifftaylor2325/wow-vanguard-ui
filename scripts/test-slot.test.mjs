@@ -238,3 +238,30 @@ it("a run that finds a free slot prints nothing and never waits", async () => {
   expect(file).toBe(slotFile(dir, 1));
   expect(lines).toEqual([]);
 });
+
+it("a slot folder this run cannot write counts as a busy slot, so the next slot is tried", () => {
+  const dir = folder("unwritable");
+  const real = fs.writeFileSync;
+  // Refuses the first slot's scratch file the way another user's folder would.
+  fs.writeFileSync = (target, ...rest) => {
+    if (String(target).includes("slot1.lock")) throw Object.assign(new Error("denied"), { code: "EACCES" });
+    return real(target, ...rest);
+  };
+  try {
+    expect(takeFreeSlot(dir, 2, run(30), running())).toEqual({ file: slotFile(dir, 2) });
+    expect(takeFreeSlot(dir, 1, run(31), running()).holders[0].info.pid).toBe(0);
+  } finally {
+    fs.writeFileSync = real;
+  }
+});
+
+it("a slot folder this run creates is open to every user, whatever the umask", async () => {
+  const dir = path.join(scratch, "made-open");
+  const mask = process.umask(0o077);
+  try {
+    await acquireSlot({ dir, count: 1, info: run(40), log: () => {}, sleep: async () => {} });
+  } finally {
+    process.umask(mask);
+  }
+  expect(fs.statSync(dir).mode & 0o777).toBe(0o777);
+});

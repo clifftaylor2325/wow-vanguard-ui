@@ -152,12 +152,27 @@ export function releaseLock(file, pid = process.pid) {
   if (readLock(file).info?.pid === pid) fs.rmSync(file, { force: true });
 }
 
+// The stand-in holder for a slot this user may not write (another user's folder): busy, so the next slot is tried.
+function unwritable(file, info) {
+  return { pid: 0, started: info.started, cwd: path.dirname(file), command: "a slot folder this user cannot write (delete or chmod it)" };
+}
+
+// tryTake, with a permission error (a slot folder another user made) read as a busy slot.
+function tryTakeOrSkip(file, info, alive) {
+  try {
+    return tryTake(file, info, alive);
+  } catch (err) {
+    if (err.code === "EACCES" || err.code === "EPERM") return unwritable(file, info);
+    throw err;
+  }
+}
+
 // Tries each slot in turn: { file } for the one taken, or { holders } naming everyone in the way.
 export function takeFreeSlot(dir, count, info, alive = pidAlive) {
   const holders = [];
   for (let n = 1; n <= count; n += 1) {
     const file = slotFile(dir, n);
-    const holder = tryTake(file, info, alive);
+    const holder = tryTakeOrSkip(file, info, alive);
     if (!holder) return { file };
     holders.push({ file, info: holder });
   }
@@ -172,7 +187,7 @@ function gotSlot(file, waited, log) {
 
 // Waits (printing one line, once) until a slot is free and takes it; resolves with the slot file.
 export async function acquireSlot({ dir, count, info, log = console.log, sleep = (ms) => new Promise((done) => setTimeout(done, ms)), alive = pidAlive }) {
-  fs.mkdirSync(dir, { recursive: true, mode: 0o777 });
+  if (fs.mkdirSync(dir, { recursive: true, mode: 0o777 })) fs.chmodSync(dir, 0o777);
   const started = Date.now();
   for (let said = false; ; said = true) {
     const taken = takeFreeSlot(dir, count, { ...info, started: Date.now() }, alive);
