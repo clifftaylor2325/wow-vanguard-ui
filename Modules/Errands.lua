@@ -145,7 +145,7 @@ end
 -- it's off while nothing is affordable.
 function ER.UpdateTrainButton()
   local b, plan = ER.trainButton, ER.TrainPlan()
-  if not b then return end
+  if not b or not ER.settings then return end
   b.text:SetText(plan.count > 0 and ns.Format(L["Train all ({count})"], { count = plan.count }) or L["Train all"])
   ns.WidenToLabel(b)
   if plan.count > 0 then b:Enable() else b:Disable() end

@@ -90,3 +90,14 @@ it("H44-23-R1: the repaint that waited for the amount box runs when you leave it
   addon.advance(0.1);
   expect(addon.eval("return Vanguard_StockList.rows[1].name:GetText()"), "the name that arrived meanwhile is painted").toBe("TEST-ONLY Bread");
 });
+
+it("H44-23-R2: Errands switched off inside Train all's settle second raises no error", () => {
+  const addon = loggedIn(RANK_TRAINER);
+  addon.fire("TRAINER_SHOW");
+  trainAll(addon);
+  const before = addon.eval("return #ns.errors");
+  addon.eval('ns.SetModuleEnabled("Errands", false)');
+  addon.advance(1.1);
+  expect(addon.eval("return #ns.errors") - before, "no error from the summary of a module that is off").toBe(0);
+  expect(chatHas(addon, /Trained 1 skill\(s\) for 5s 0c\./), "the summary still says what was spent").toBe(true);
+});
