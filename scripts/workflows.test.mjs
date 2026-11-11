@@ -553,9 +553,10 @@ it("every lua-suite run keeps the Retail-only tests and the coverage floor", () 
   const text = workflow("lua-suite.yml");
   expect(text, "no input leaves out the Retail-only test files").not.toContain("VG_SKIP_RETAIL");
   expect(text).not.toMatch(/^ {6}(retail|coverage):$/m);
-  expect(runBlocks(jobText(text, "shards"))).toContain('npm run coverage -- --project lua --shard "$SHARD/$COUNT"');
+  expect(runBlocks(jobText(text, "shards"))).toContain('npm run coverage -- --balanced "$SHARD/$COUNT"');
   expect(runBlocks(jobText(text, "quick"))).toContain("npm run coverage -- --project quick --project hooks");
-  expect(runBlocks(jobText(text, "coverage"))).toContain('npm run coverage -- --merge coverage/shards --shards "$((COUNT + 1))"');
+  expect(runBlocks(jobText(text, "coverage"))).toContain('npm run coverage -- --merge coverage/shards --shards "$((COUNT + 1))" --plan "$COUNT"');
+  expect(runBlocks(jobText(text, "shards")).join("\n"), "the shards run planned file lists, not Vitest's own split").not.toContain("--shard ");
   expect(runBlocks(text), "never the plain suite instead").not.toContain("npm test");
   expect(runBlocks(text), "no job runs one whole unsharded coverage run").not.toContain("npm run coverage");
 });
@@ -570,10 +571,10 @@ function jobText(text, name) {
   return [lines[at], ...deeperLines(lines, at + 1, 2)].join("\n");
 }
 
-it("lua-suite takes a shards input, a number defaulting to 6", () => {
+it("lua-suite takes a shards input, a number defaulting to 12 (the count scripts/shard-times.json was balanced for)", () => {
   const input = workflow("lua-suite.yml").match(/^ {6}shards:\n((?: {8}.*\n)+)/m)?.[1] ?? "";
   expect(input).toMatch(/^ {8}type: number$/m);
-  expect(input).toMatch(/^ {8}default: 6$/m);
+  expect(input).toMatch(/^ {8}default: 12$/m);
 });
 
 // Runs the plan step's script with SHARDS as given: { status, output } (what it wrote to GITHUB_OUTPUT).

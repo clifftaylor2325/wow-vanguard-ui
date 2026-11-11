@@ -42,6 +42,13 @@ export const FULL_CASES = [
 // brand-new account is made as current and Core/DB.lua runs no upgrade step on it (WR-01).
 const DB_VERSION = Number(/local DB_VERSION = ([0-9]+)/.exec(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../Core/DB.lua"), "utf8"))[1]);
 
+// The scoped map the probe writes: a whole-suite run's own map, else the data's map with the files this run
+// covered replaced (a partial run changes only its files and keeps the rest), sorted by file.
+export function mergeScope(wholeSuite, existing, scoped) {
+  const merged = wholeSuite ? scoped : { ...existing, ...scoped };
+  return Object.fromEntries(Object.entries(merged).sort(([a], [b]) => (a < b ? -1 : 1)));
+}
+
 // Where the data lives, relative to the repo root.
 export const SCOPE_FILE = "scripts/tests/login-scope.json";
 

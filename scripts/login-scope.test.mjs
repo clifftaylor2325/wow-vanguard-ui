@@ -8,7 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { createAddon, root } from "./lib/lua-harness.mjs";
-import { FULL_CASES, FULL_FILES, HEAVY, SCOPE_FILE, buildScope, dataText, modulesOffLua, probeRows, scopeFor } from "./lib/login-scope.mjs";
+import { FULL_CASES, FULL_FILES, HEAVY, SCOPE_FILE, buildScope, dataText, mergeScope, modulesOffLua, probeRows, scopeFor } from "./lib/login-scope.mjs";
 import { SETUP_DONE, loggedIn, runningCase } from "./tests/helpers.mjs";
 
 // Scope data with one listed file whose keep-full list holds one case.
@@ -222,4 +222,70 @@ it("loggedIn: VG_LOGIN_SCOPE=probe scopes it, and VG_LOGIN_SCOPE=full overrides 
 
 it("loggedIn: any other VG_LOGIN_SCOPE fails loudly, before a login is made", () => {
   expect(() => withMode("nonsense", () => loggedIn())).toThrow(/VG_LOGIN_SCOPE/);
+});
+
+// Test files that log in with `loggedIn(` and are in neither the scope data nor FULL_FILES today: they pay the full
+// login in every case. Scope them with the probe (README, "Scoped logins") and take them off this list; a new file
+// is never added here, it is scoped or put on FULL_FILES with a reason.
+const UNSCOPED_LOGIN_FILES = [
+  "scripts/tests/actionflyout.test.mjs",
+  "scripts/tests/banner.test.mjs",
+  "scripts/tests/calm.test.mjs",
+  "scripts/tests/clients.test.mjs",
+  "scripts/tests/forever-bank.test.mjs",
+  "scripts/tests/frameauras.test.mjs",
+  "scripts/tests/hudlayout.test.mjs",
+  "scripts/tests/hudlook.test.mjs",
+  "scripts/tests/hudmisc-hunt.test.mjs",
+  "scripts/tests/keybinds-layouts.test.mjs",
+  "scripts/tests/keybinds-wizard.test.mjs",
+  "scripts/tests/lifecycle-probes.test.mjs",
+  "scripts/tests/options-budget.test.mjs",
+  "scripts/tests/optionsnames.test.mjs",
+  "scripts/tests/platelayout.test.mjs",
+  "scripts/tests/retail-bank.test.mjs",
+  "scripts/tests/retail-delves.test.mjs",
+  "scripts/tests/retail-mythicplus.test.mjs",
+  "scripts/tests/retail-professions.test.mjs",
+  "scripts/tests/retail-quests.test.mjs",
+  "scripts/tests/retail-vault.test.mjs",
+  "scripts/tests/retailclasses.test.mjs",
+  "scripts/tests/retaildata.test.mjs",
+  "scripts/tests/retailhousing.test.mjs",
+  "scripts/tests/setupguide.test.mjs",
+  "scripts/tests/statecues.test.mjs",
+  "scripts/tests/statweights.test.mjs",
+  "scripts/tests/unitdepth.test.mjs",
+  "scripts/tests/unitportraits.test.mjs",
+  "scripts/tests/windows-coverage.test.mjs",
+  "scripts/tests/windows-retail.test.mjs",
+];
+
+// The test files under scripts/ and scripts/tests/ whose text calls loggedIn( (the probe's own test for a login file), as repo paths.
+function loginFilesOnDisk() {
+  const folders = ["scripts", "scripts/tests"];
+  const files = folders.flatMap((dir) => fs.readdirSync(path.join(root, dir)).filter((f) => f.endsWith(".test.mjs")).map((f) => `${dir}/${f}`));
+  return files.filter((file) => textOf(file).includes("loggedIn(")).sort();
+}
+
+it("every test file that logs in is scoped, kept on the full login on purpose, or a known exception: a new one fails here", () => {
+  const { scoped } = JSON.parse(textOf(SCOPE_FILE));
+  const unlisted = loginFilesOnDisk().filter((file) => !Object.hasOwn(scoped, file) && !FULL_FILES.includes(file));
+  expect(unlisted.filter((file) => !UNSCOPED_LOGIN_FILES.includes(file)), "scope it with node scripts/login-scope-probe.mjs, or add it to FULL_FILES with its reason").toEqual([]);
+});
+
+it("the known exceptions are real login files the data still lacks, so the list only shrinks", () => {
+  const { scoped } = JSON.parse(textOf(SCOPE_FILE));
+  const onDisk = loginFilesOnDisk();
+  expect(UNSCOPED_LOGIN_FILES.filter((file) => !onDisk.includes(file)), "gone, or no longer calls loggedIn(").toEqual([]);
+  expect(UNSCOPED_LOGIN_FILES.filter((file) => Object.hasOwn(scoped, file) || FULL_FILES.includes(file)), "scoped now: take it off the list").toEqual([]);
+  expect(UNSCOPED_LOGIN_FILES, "sorted").toEqual([...UNSCOPED_LOGIN_FILES].sort());
+});
+
+it("mergeScope: a whole-suite run is the data, a partial run replaces only its files, and the result is sorted", () => {
+  const existing = { "b.test.mjs": ["old"], "z.test.mjs": [] };
+  expect(mergeScope(true, existing, { "a.test.mjs": [] })).toEqual({ "a.test.mjs": [] });
+  const partial = mergeScope(false, existing, { "b.test.mjs": [], "a.test.mjs": ["x"] });
+  expect(partial).toEqual({ "a.test.mjs": ["x"], "b.test.mjs": [], "z.test.mjs": [] });
+  expect(Object.keys(partial)).toEqual(["a.test.mjs", "b.test.mjs", "z.test.mjs"]);
 });

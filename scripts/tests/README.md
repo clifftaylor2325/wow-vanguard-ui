@@ -101,7 +101,14 @@ full one.
   hand. The probe runs the whole suite with every login scoped; a case that fails
   that way needs a heavy module and goes on its file's keep-full list. It takes a
   few minutes (`--workers <n>` caps Vitest's workers). Without `--write` it only
-  prints how many cases of each file keep the full login.
+  prints how many cases of each file keep the full login. With file filters, or
+  with `--report <file>` (a Vitest JSON report from a run with
+  `VG_LOGIN_SCOPE=probe`, made through the test-slot wrapper on a small machine),
+  `--write` replaces only those files' entries and keeps the rest.
+- A new test file that calls `loggedIn(` must be in the data or on `FULL_FILES`:
+  `scripts/login-scope.test.mjs` fails otherwise. The files still on the full
+  login from before that check are listed there (`UNSCOPED_LOGIN_FILES`); scope
+  one with the probe and take it off the list.
 - `VG_LOGIN_SCOPE=full` runs every login full (the equivalence check);
   `VG_LOGIN_SCOPE=probe` runs every login scoped; any other value throws.
 - A new case in a listed file that needs one of the six modules fails (frames
