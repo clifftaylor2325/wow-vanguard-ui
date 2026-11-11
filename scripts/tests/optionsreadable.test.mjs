@@ -288,3 +288,14 @@ it("hunt H44-13-2: on a translated client the English keywords of Safer colours 
   expect(Object.values(find("deuteranopia")), "an English word the translation dropped").toContain("Safer colours");
   expect(Object.values(find("animations")), "other settings' English keywords still work").toContain("Reduce motion (no fades or flashes)");
 });
+
+it("hunt H44-13-53: Restyle pet, stance and extra buttons counts as changed when unticked, resets with the page, and names its module in the footer", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("actionbars")');
+  const row = `local row for _, page in ipairs(ns.Options.PAGES) do if page.key == "actionbars" then
+    for _, r in ipairs(ns.Options.RowsOf(page)) do if r.english == "Restyle pet, stance and extra buttons" then row = r end end end end`;
+  addon.eval(`${row} row[4](false)`);
+  expect(addon.eval(`${row} return { ns.Options.RowChanged(row), ns.Settings("SpecialBars").skinStance, table.concat(ns.Options.ReloadWaiting(), ",") }`), "unticked: changed, all four off, the module waits").toEqual([true, false, "Pet, stance and extra buttons"]);
+  addon.eval('__click("Reset this page") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
+  expect(addon.eval(`${row} local s = ns.Settings("SpecialBars") return { ns.Options.RowChanged(row), s.skinPet, s.skinStance, s.skinPossess, s.skinExtra }`), "Reset this page puts all four back").toEqual([false, true, true, true, true]);
+});

@@ -48,11 +48,12 @@ end
 
 -- get/set for restyling the client's special bars (pet, stance, possess, extra) at once (applies on reload).
 local function skinSpecial()
-  return function() return moduleSettings("SpecialBars").skinPet end, function(v)
+  local get, set, initial = reloadSetting("SpecialBars", "skinPet")
+  return get, function(v)
     local s = moduleSettings("SpecialBars")
-    s.skinPet, s.skinStance, s.skinPossess, s.skinExtra = v, v, v, v
-    O.NeedReload()
-  end
+    s.skinStance, s.skinPossess, s.skinExtra = v, v, v
+    set(v)
+  end, initial
 end
 
 -- Keybind mode (Modules/ActionBarKeybinds.lua): the options window steps aside for it, once it has started (it
