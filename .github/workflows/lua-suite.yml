@@ -21,10 +21,13 @@ name: lua suite
 # once over the merged data (no job alone sees the whole suite, so none
 # judges the floor).
 #
-# This workflow has no triggers of its own: full-suite.yml calls it weekly
-# and from the Actions tab, and release.yml before each release. No pull
-# request runs it (Cliff, 2026-11-10); a branch's tests run on the agent's
-# machine before it merges. On Actions, Vitest also writes failures as
+# This workflow has no triggers of its own: full-suite.yml calls it from the
+# Actions tab, and release.yml before each release with the tests input off.
+# For now nothing in CI runs the tests by itself (Cliff, 2026-11-10): the
+# suite took 45 to 60 minutes as one job, and stays out of CI until it is fast
+# again (the sharding below, and the Lua 5.1 engine, are in work). A hand-started
+# full suite still runs every test with the coverage floor. No pull request runs
+# it; a branch's tests run on the agent's machine before it merges. On Actions, Vitest also writes failures as
 # annotations on the run and a JUnit file (vitest.config.mjs), and the
 # Lua-by-area and coverage tables go to the job summary.
 #
@@ -45,6 +48,10 @@ on:
         description: "Shuffle the test order and print the seed, so a failure can be replayed"
         type: boolean
         default: false
+      tests:
+        description: "Run the tests with the coverage floor (off: the bench and the checks only)"
+        type: boolean
+        default: true
       shards:
         description: "How many parallel jobs the Lua tests are split over (1 to 16)"
         type: number
@@ -87,6 +94,9 @@ jobs:
           printf 'Shuffled run, seed %s. Replay: VG_SHUFFLE_SEED=%s npm test (PowerShell: $env:VG_SHUFFLE_SEED=%s; npm test)\n' "$seed" "$seed" "$seed" | tee -a "$GITHUB_STEP_SUMMARY"
 
   shards:
+    # Off for a caller that passes tests: false (release.yml, until the suite is fast again: Cliff,
+    # 2026-11-10); the merge job goes with it. The bench and every check still run.
+    if: inputs.tests
     name: Tests, shard ${{ matrix.shard }} of ${{ needs.plan.outputs.count }}
     needs: plan
     runs-on: ubuntu-latest
@@ -197,6 +207,7 @@ jobs:
           node scripts/check-zip.mjs
       # Like a shard, it dumps its hits and judges no floor: the merge job does.
       - run: npm run coverage -- --project quick --project hooks
+        if: inputs.tests
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -235,6 +246,7 @@ jobs:
           if-no-files-found: ignore
 
   coverage:
+    if: inputs.tests
     name: Merged coverage and floor
     needs: [plan, shards, quick]
     runs-on: ubuntu-latest
