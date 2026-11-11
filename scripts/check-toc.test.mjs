@@ -119,3 +119,8 @@ it("a file whose tags keep it off both clients fails", () => {
   const problems = check({ files: ["Core/Events.lua", "Modules/Bars.lua [AllowLoadGameType vanilla]"] });
   expect(problems).toEqual([expect.stringMatching(/:\d+: Modules\/Bars\.lua loads on no client \(forever, retail\): check its game-type tags$/)]);
 });
+
+it("luacheck skips the agent worktrees under .claude/, whose copies of Libs/ and scripts/ it would otherwise lint", () => {
+  const rc = fs.readFileSync(path.join(root, ".luacheckrc"), "utf8");
+  expect(rc).toMatch(/^exclude_files = \{[^}]*"\.claude\/"[^}]*\}$/m);
+});

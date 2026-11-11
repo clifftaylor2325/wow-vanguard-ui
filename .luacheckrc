@@ -3,7 +3,7 @@
 std = "lua51"
 max_line_length = false
 -- Libs/ holds the shared libraries, unmodified as upstream wrote them.
-exclude_files = { "node_modules/", "scripts/", "Libs/" }
+exclude_files = { "node_modules/", "scripts/", "Libs/", ".claude/" }
 
 -- Every addon file starts `local ADDON, ns = ...`; not all use ADDON.
 ignore = { "211/ADDON" }
