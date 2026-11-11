@@ -153,9 +153,11 @@ local function holding(name, record, id)
   return { name = name, class = record.class, total = bags + bank, text = text }
 end
 
--- The other characters here who have item id, by name.
+-- The other characters here who have item id, by name. None while the client hides your name (a secret that may
+-- not be compared): your own record can't then be told from an alt's, and would count you twice in the total.
 function IV.Others(id)
-  local rows, me = {}, UnitName("player")
+  local rows, me = {}, ns.PlainText(UnitName("player"))
+  if not me then return rows end
   for name, record in pairs(IV.Characters()) do
     local row = name ~= me and type(record) == "table" and holding(name, record, id)
     if row then rows[#rows + 1] = row end
