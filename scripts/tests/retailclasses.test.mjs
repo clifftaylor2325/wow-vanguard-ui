@@ -111,6 +111,27 @@ it("stagger: a thin bar under the player frame, amber past 30% of your health an
   expect(bar().token, "no health to measure against: the colour stays").toBe("bad");
 });
 
+// Whether the stagger bar's ticker job is running.
+const staggerJob = (addon) => addon.eval('return ns.ticker.vgJobs["class stagger"] ~= nil');
+
+it("H44-6-50 the stagger bar keeps reading your stagger after Class bars is switched off and on", () => {
+  const addon = retail("MONK", 1, "__p.maxhp = 1000 __p.stagger = 0");
+  addon.eval("ns.SetModuleEnabled('ClassBars', false) ns.SetModuleEnabled('ClassBars', true)");
+  addon.eval("__wfgWorld.units.player.stagger = 700");
+  addon.advance(0.5);
+  expect([addon.eval('return ns.GetModule("ClassBars").resourceFrames.stagger.bar:GetValue()'), staggerJob(addon)], "read again on its timer, with no power event").toEqual([700, true]);
+});
+
+it("H44-6-51 a Brewmaster who changes spec leaves no stagger ticker behind, and gets it back on the way back", () => {
+  const addon = retail("MONK", 1, "__p.maxhp = 1000 __p.stagger = 0 __p.powers[12], __p.maxpowers[12] = 2, 6");
+  addon.eval("__wfgWorld.spec = 3");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect([shown(addon, "stagger"), staggerJob(addon)], "Windwalker: the bar hidden and not read").toEqual([false, false]);
+  addon.eval("__wfgWorld.spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect([shown(addon, "stagger"), staggerJob(addon)], "Brewmaster again: shown and read").toEqual([true, true]);
+});
+
 it("runes: ready ones on the left, the others filling as they come back", () => {
   const addon = retail("DEATHKNIGHT", 2, `__wfgWorld.runes = { [2] = { start = GetTime() - 5, duration = 10 },
     [4] = { start = __wfgWorld.secret(1), duration = 10 }, [6] = { start = GetTime(), duration = 0 } }`);

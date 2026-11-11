@@ -201,13 +201,6 @@ local function thinBar(player, token)
   return holder
 end
 
--- The stagger bar just under the player frame, read on a timer (the client sends no event for it).
-local function buildStagger(player)
-  local holder = thinBar(player, "good")
-  CB.scope:Every("class stagger", CB.STAGGER_PERIOD, CB.UpdateStagger, holder)
-  return holder
-end
-
 -- The stagger bar's colour for the share of your health it holds (plain numbers only; else it keeps its colour).
 local function staggerToken(amount, health)
   local a, h = ns.PlainNumber(amount), ns.PlainNumber(health)
@@ -303,7 +296,7 @@ end
 
 -- Builds a resource's frame on the player frame: the stagger bar, or a row of pips.
 local function buildResource(player, def)
-  if def.stagger then return buildStagger(player) end
+  if def.stagger then return thinBar(player, "good") end
   return buildPips(player, def)
 end
 
@@ -336,7 +329,8 @@ local function levelled(def, level)
 end
 
 -- Shows the resource of your spec now (building it the first time) and hides the others; none below its level
--- (`level`: the new one, from a level-up).
+-- (`level`: the new one, from a level-up). The stagger bar is read on a timer (the client sends no event for it)
+-- while it shows, started here so it follows a spec change and a restart of the module.
 function CB.ShowResource(level)
   local player = UF.frames.player
   if not (player and CB.scope:Running()) then return end
@@ -345,6 +339,7 @@ function CB.ShowResource(level)
   if def and not levelled(def, level) then CB.kind, def = nil, nil end
   if def and not CB.resourceFrames[CB.kind] then CB.resourceFrames[CB.kind] = buildResource(player, def) end
   for kind, frame in pairs(CB.resourceFrames) do CB.scope:Frame(frame):SetShown(kind == CB.kind) end
+  CB.scope:Every("class stagger", CB.kind == "stagger" and CB.STAGGER_PERIOD or nil, CB.UpdateStagger, CB.resourceFrames.stagger)
   CB.UpdateResource()
   CB.ShowAlt(player)
 end

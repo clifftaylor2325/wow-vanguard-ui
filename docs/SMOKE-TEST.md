@@ -5468,6 +5468,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each bar shows and fills (or shows full with the spell's name), and nothing new in `/vg errors` mentions CastBars. [Needs in-game check: whether the game hides a cast's duration object from addons there.]
 - If it fails, paste: `/vg errors`.
 
+### 33.502 A Brewmaster's stagger bar keeps following stagger after Class bars off and on
+
+- Do: on WoW Retail, as a Brewmaster at full energy, take hits, then in `/vg` → Modules switch Class bars off and on again out of combat, and take hits again.
+- Expect: the stagger bar under the player frame keeps rising and falling with your stagger while your energy stays full, and nothing new in `/vg errors`. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
