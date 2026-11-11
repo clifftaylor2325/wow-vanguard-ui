@@ -447,3 +447,67 @@ it("A1-7 settings-loss guard: a character never named in a session keeps its old
   named.login();
   expect(question(named), "named again at the next login: no loss reported").toBe(null);
 });
+
+// H44-12-50: only the player's own pick ends an unanswered loss at logout (a spec change stages a profile too).
+// TEST-ONLY: the talent group (Forever) and specialization (Retail) both read __spec.
+const SPEC = "__spec = 1 C_SpecializationInfo = C_SpecializationInfo or {} C_SpecializationInfo.GetActiveSpecGroup = function() return __spec end GetSpecialization = function() return __spec end\n";
+// Turns every reload-only module off in both profiles so that a pick applies at once.
+const LIVE_OFF = `for _, name in ipairs(ns.ModuleNames()) do
+  if not ns.GetModule(name).live then for _, p in pairs(VanguardDB.profiles) do p.modules = p.modules or {} p.modules[name] = false end end
+end`;
+// The saved files of a character whose account file comes back older than its own: [account Lua, char Lua, stamp].
+function olderAccount(extra, saved) {
+  const first = createAddon({ savedVariables: saved });
+  first.eval(CLICK_LUA + extra);
+  first.login();
+  first.eval("ns.Profile().theme = { accent = { 0.9, 0.1, 0.1, 1 } }");
+  first.fire("PLAYER_LOGOUT");
+  const sv = first.savedVariables();
+  const stamp = sv.char.guard.stamp;
+  const note = { "Tester-ForeverTest": { profile: "Main", stamp: stamp - 100 } };
+  const old = { ...sv.account, guard: { stamp: stamp - 100, chars: note }, profiles: { ...sv.account.profiles, Main: { theme: { accent: [0.5, 0.5, 0.5, 1] } } } };
+  return [luaValue(old), luaValue(sv.char), stamp];
+}
+// That character logging in, the loss found and the question answered Not now.
+function unanswered(extra, saved) {
+  const [account, char, stamp] = olderAccount(extra, saved);
+  const lost = createAddon({ savedVariables: `VanguardDB = ${account}\nVanguardCharDB = ${char}\n` });
+  lost.eval(CLICK_LUA + extra);
+  lost.login();
+  expect(lost.eval("return ns.SettingsGuard.Lost()"), "the loss is found").toBe("account");
+  answer(lost, false);
+  return { lost, backup: lost.eval("return VanguardCharDB.guard.backup"), stamp };
+}
+const TWO = 'VanguardDB = { version = 2, setupDone = true, profiles = { Main = { modules = {} }, Raid = { modules = {} } } }\nVanguardCharDB = { profile = "Main", setupDone = true }\n';
+
+it("H44-12-50: a spec change staging a profile leaves the unanswered loss, the stamps and the backup alone", () => {
+  const saved = 'VanguardDB = { version = 2, setupDone = true, profiles = { Main = { theme = { accent = { 0.5, 0.5, 0.5, 1 } } }, Heal = { modules = { Minimap = false } } } }\nVanguardCharDB = { profile = "Main", setupDone = true }\n';
+  const { lost, backup } = unanswered(SPEC, saved);
+  lost.eval("VanguardCharDB.specProfiles = { [2] = 'Heal' } __spec = 2");
+  lost.fire("ACTIVE_TALENT_GROUP_CHANGED", 2, 1);
+  expect(lost.eval("return ns.PendingProfileName()"), "the spec change stages Heal; nothing was picked").toBe("Heal");
+  lost.fire("PLAYER_LOGOUT");
+  const after = lost.savedVariables();
+  const next = createAddon({ savedVariables: `VanguardDB = ${luaValue(after.account)}\nVanguardCharDB = ${luaValue(after.char)}\n` });
+  next.eval(CLICK_LUA + SPEC);
+  next.login();
+  expect([after.char.guard.backup === backup, next.eval("return ns.SettingsGuard.Lost()")], "the backup is kept and the loss is still on offer").toEqual([true, "account"]);
+});
+
+it("H44-12-50: a hand pick that stays staged renews both stamps at logout", () => {
+  const { lost, stamp } = unanswered("", TWO);
+  lost.eval("ns.UseProfile('Raid') time = function() return 9000 end");
+  lost.fire("PLAYER_LOGOUT");
+  const after = lost.savedVariables();
+  expect([after.char.guard.stamp, after.account.guard.chars["Tester-ForeverTest"].profile], "the pick answered the loss").toEqual([9000, "Raid"]);
+  expect(stamp).toBeLessThan(9000);
+});
+
+it("H44-12-R2: a pick that applies at once also answers the loss at logout", () => {
+  const { lost } = unanswered(LIVE_OFF, TWO);
+  expect(lost.eval("return ns.PickProfile('Raid')"), "applied at once").toBe(true);
+  lost.eval("time = function() return 9000 end");
+  lost.fire("PLAYER_LOGOUT");
+  const after = lost.savedVariables();
+  expect([after.char.guard.stamp, after.account.guard.chars["Tester-ForeverTest"].profile], "the live pick answered the loss").toEqual([9000, "Raid"]);
+});

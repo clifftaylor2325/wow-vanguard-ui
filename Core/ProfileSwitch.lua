@@ -125,6 +125,7 @@ end
 function ns.PickProfile(name)
   VanguardDB.profiles[name] = VanguardDB.profiles[name] or {}
   if ns.SwitchProfileNow(name) then
+    ns.SettingsGuard.Picked()
     VanguardCharDB.ownProfile = name
     ns.WarnSpecWins(name)
     return true

@@ -333,12 +333,16 @@ local function charStamp(key, t)
   return (tbl(VanguardCharDB.guard) or {}).stamp
 end
 
+-- Notes that the player picked a profile this session (a list pick, an import, a restore): that answers an
+-- unanswered loss at logout. A spec change stages a profile without it. Session state, never saved.
+function G.Picked() G.picked = true end
+
 -- Leaves the stamp in both files, the profile each character uses in the account file and
 -- the backup in this character's; not while a loss is unanswered and nothing was imported or picked.
 -- The character's key is the one the client gives now, else the one it gave at login (G.key): the client
 -- may not name the character any more at logout.
 function G.Save()
-  if G.lost and not ns.PendingProfileName() then return end
+  if G.lost and not G.picked then return end
   local t, key, acct = now(), G.CharKey() or G.key, accountGuard()
   acct.stamp = t
   if key then acct.chars[key] = { profile = ns.SelectedProfileName(), stamp = t } end
