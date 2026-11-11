@@ -192,11 +192,20 @@ local function errorText(err)
   return tostring(err)
 end
 
+-- Told of each entry dropped past MAX_ERRORS. Nothing in the game listens; the test harness
+-- collects them, so an error pushed out by later ones is still judged (scripts/lib/lua-harness.mjs).
+---@param _entry table  the dropped { text, count, stack }
+function ns.ErrorDropped(_entry) end
+
 -- A new entry for an error text, at the end of ns.errors; the oldest is dropped past MAX_ERRORS.
 local function keep(text, stackText)
   local e = { text = text, count = 0, stack = stackText }
   byText[text], ns.errors[#ns.errors + 1] = e, e
-  if #ns.errors > ns.MAX_ERRORS then byText[table.remove(ns.errors, 1).text] = nil end
+  if #ns.errors > ns.MAX_ERRORS then
+    local dropped = table.remove(ns.errors, 1)
+    byText[dropped.text] = nil
+    ns.ErrorDropped(dropped)
+  end
   errorsChanged()
   return e
 end

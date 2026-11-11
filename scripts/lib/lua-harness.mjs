@@ -566,9 +566,11 @@ function input(addon) {
 export const createdAddons = (globalThis[Symbol.for("vanguard.addons")] ??= []);
 
 // Lua that keeps what ns.ClearErrors drops: the entries it is about to forget
-// go into __wfgCleared first, so the error guard still judges them.
+// go into __wfgCleared first, so the error guard still judges them. So do the
+// entries pushed out past ns.MAX_ERRORS (ns.ErrorDropped).
 const HARVEST = `
   __wfgCleared = {}
+  ns.ErrorDropped = function(entry) __wfgCleared[#__wfgCleared + 1] = entry end
   local kept = ns.ClearErrors
   ns.ClearErrors = function(...)
     for i = 1, #ns.errors do __wfgCleared[#__wfgCleared + 1] = ns.errors[i] end

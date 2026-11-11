@@ -2,13 +2,13 @@
 
 import { expect, it } from "vitest";
 import path from "node:path";
-import { CLICK_LUA, FOREVER_ENV, MICRO_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, calls, chatHas, expectErrors, isTok, loggedIn, putAway, setCombat } from "./helpers.mjs";
+import { AURA_FALLBACK, CLICK_LUA, FOREVER_ENV, MICRO_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, calls, chatHas, expectErrors, isTok, loggedIn, putAway, setCombat } from "./helpers.mjs";
 
 // The reload overlay on a button as [type, macro, key-down, sits above the button, template, clicks], or false.
 const reloadOverlay = (addon, path) => addon.eval(`local b = ${path} local o = b.reloadOverlay
   return o and { o:GetAttribute("type"), o:GetAttribute("macrotext"), o:GetAttribute("useOnKeyDown"), o:GetFrameLevel() > b:GetFrameLevel(), o.__template, o.__clicks } or false`);
 it("/vg errors: what Vanguard caught this session", () => {
-  expectErrors(/^TEST-ONLY: \d+$/);
+  expectErrors(/^TEST-ONLY: \d+$/, /^module TEST-ONLY Broken: eval:\d+: TEST-ONLY boom$/, AURA_FALLBACK);
   const addon = loggedIn();
   addon.eval("ns.ClearErrors()");
   addon.slash("errors");
