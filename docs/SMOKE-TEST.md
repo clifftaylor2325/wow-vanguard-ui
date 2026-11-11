@@ -5432,6 +5432,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the button greys out after the first click, one `Trained N skill(s) for X.` line appears (once the trainer has answered), no skill is asked for twice and no red error text shows.
 - If it fails, paste: the chat lines, any red error text, and `/vg errors`.
 
+### 33.629 A noted profession cooldown survives while its profession is closed
+
+- Do: switch the craft queue on, open Alchemy (or any profession with a cooldown), select a transmute and let it note (`/vg craft cd` lists it), close the window, type `/vg craft cd` twice, then open your other profession and type `/vg craft cd` again. [Client: Forever and Retail.]
+- Expect: the transmute is still listed with its time left after each `/vg craft cd`, whichever window is open.
+- If it fails, paste: the lines, and `/dump C_TradeSkillUI.GetRecipeCooldown(<the recipe id>)` with the window closed (a number, 0 or nil), and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

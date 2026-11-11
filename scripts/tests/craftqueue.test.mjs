@@ -178,7 +178,9 @@ it("notes profession cooldowns for each character and says when they are ready",
   expect(chatHas(addon, /TEST-ONLY Linen Bag, ready/), "past its time: ready").toBe(true);
   addon.eval("__wfgWorld.cooldowns = {}");
   addon.fire("TRADE_SKILL_LIST_UPDATE");
-  expect(addon.eval(`return next(${CQ}.Mine().cooldowns)`), "no cooldown: cleared").toBe(null);
+  expect(addon.eval(`return ${CQ}.Mine().cooldowns[100]`), "no cooldown on the recipe on display: cleared").toBe(null);
+  expect(addon.eval(`return ${CQ}.Mine().cooldowns[102] ~= nil`), "a note still running for a recipe that is not on display stays (H40-19-1)").toBe(true);
+  addon.eval(`${CQ}.Mine().cooldowns[102] = nil`);
   addon.world.combat(true);
   addon.eval("__wfgWorld.cooldowns = { [100] = 60 }");
   addon.fire("TRADE_SKILL_LIST_UPDATE");
@@ -200,7 +202,10 @@ it("notes profession cooldowns for each character and says when they are ready",
   expect(spell.eval(`return ${CQ}.Mine().cooldowns[102]`), "a global cooldown is not a recipe cooldown").toBe(null);
   spell.eval("__spellCd[100] = { startTime = __wfgWorld.secret(1), duration = 7600 }");
   spell.slash("craft cd");
-  expect(spell.eval(`return ${CQ}.Mine().cooldowns[100]`), "a hidden start clears it").toBe(null);
+  expect(spell.eval(`return ${CQ}.Mine().cooldowns[100] ~= nil`), "a hidden start says nothing about a recipe that is not on display (H40-19-1)").toBe(true);
+  spell.world.selectRecipe(100);
+  spell.slash("craft cd");
+  expect(spell.eval(`return ${CQ}.Mine().cooldowns[100]`), "on display, a hidden start clears it").toBe(null);
   spell.eval("__spellCd[100] = __wfgWorld.secret({})");
   spell.eval(`${CQ}.Add(100, 1)`);
   spell.slash("craft cd");
@@ -347,4 +352,23 @@ it("docks the panel under the cost panel while that shows, and builds nothing in
   addon.eval("__price(2589, 10) ns.AuctionPrices.Record(4238, 500, __now)");
   addon.world.selectRecipe(100);
   expect(addon.eval(`local _, rel = ${CQ}.frame:GetPoint() return rel:GetName()`), "under the cost panel").toBe("Vanguard_CraftingPanel");
+});
+
+it("H40-19-1: a cooldown noted for a recipe whose profession is not open is not wiped by a scan that finds none", () => {
+  const addon = crafter("C_TradeSkillUI.GetAllRecipeIDs = nil __wfgWorld.cooldowns = { [100] = 72000 }");
+  addon.world.openProfession(100);
+  addon.fire("TRADE_SKILL_LIST_UPDATE");
+  addon.eval("__wfgWorld.cooldowns = {}");
+  addon.world.selectRecipe(102);
+  addon.slash("craft cd");
+  expect(addon.eval(`return ${CQ}.Mine().cooldowns[100] ~= nil`), "the other profession's note stays while the game says nothing").toBe(true);
+  addon.world.selectRecipe(100);
+  addon.slash("craft cd");
+  expect(addon.eval(`return ${CQ}.Mine().cooldowns[100]`), "on display, the game's answer clears it").toBe(null);
+  addon.eval("__wfgWorld.cooldowns = { [100] = 60 }");
+  addon.world.selectRecipe(102);
+  addon.slash("craft cd");
+  addon.eval("__now = __now + 120 __wfgWorld.cooldowns = {}");
+  addon.slash("craft cd");
+  expect(addon.eval(`return ${CQ}.Mine().cooldowns[100]`), "a note that has run out is cleared as before").toBe(null);
 });
