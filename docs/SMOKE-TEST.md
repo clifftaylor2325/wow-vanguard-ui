@@ -5522,6 +5522,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: eight rows show, the wheel scrolls the list to F9's row (the thumb shows at the list's right edge), there is no "+1 more" line, and Remove takes F9 away. With eight keys or fewer the wheel over the list scrolls the page. [Needs in-game check: all of it, the thumb's place and the rows' clipping at the list's bottom edge too.]
 - If it fails, paste: a screenshot of the list and `/vg binds`.
 
+### 33.511 A change unticked on key setup's Ready step stays unticked after a fight
+
+- Do: on a WoW Forever character with at least two proposed keys, open Action bars, Your keys, Set up keys, go to step 3 (Ready), untick one change, then attack a training dummy and leave combat.
+- Expect: the window comes back on Ready with that change still unticked, and Apply leaves that key as it was. [Needs in-game check: all of it.]
+- If it fails, paste: a screenshot of Ready after the fight and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

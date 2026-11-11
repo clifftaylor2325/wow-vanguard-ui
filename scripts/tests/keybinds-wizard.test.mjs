@@ -58,6 +58,14 @@ const ready = (addon) => addon.eval(`local s = Vanguard_KeysWizard.steps.ready l
   for _, fs in ipairs(s.pools.line) do if fs:IsShown() then out[#out + 1] = fs:GetText() end end
   return out`);
 
+// Clicks the tick box of every shown step 3 row whose text matches a Lua pattern, as a player would.
+const untick = (addon, pattern) => addon.eval(`for _, r in ipairs(Vanguard_KeysWizard.steps.ready.pools.check) do
+  if r:IsShown() and r.label:GetText():find(${JSON.stringify(pattern)}) then r.__scripts.OnClick(r) end end`);
+
+// Wraps KeybindsLearn.Applied so a test can read what the wizard handed it (__declined).
+const WATCH_APPLIED = `local applied = ns.KeybindsLearn.Applied
+  ns.KeybindsLearn.Applied = function(preset, placeNew, declined, ...) __declined = declined return applied(preset, placeNew, declined, ...) end`;
+
 // The default tooltip's lines, as one text.
 const tipText = (addon) => JSON.stringify(addon.eval("return GameTooltip.__lines"));
 
@@ -384,4 +392,19 @@ it("step 3: run again with nothing to change, Apply closes and keeps the Place n
   addon.clearChat();
   addon.eval('__click("Apply")');
   expect([win(addon).shown, chatHas(addon, /No key needs changing\.$/), chatHas(addon, /Nothing is ticked/), addon.eval("return ns.KeybindsLearn.IsOn()")]).toEqual([false, true, false, true]);
+});
+
+it("H44-10-50 step 3: a change unticked before a fight stays unticked after it, and Apply leaves that key alone", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval(`__click("Show me") __click("Next") ${WATCH_APPLIED}`);
+  untick(addon, "^F: Shield Bash");
+  addon.world.combat(true);
+  addon.eval("ns.KeybindsWizard.Next()");
+  expect([keys(addon, ["F"])[0], chatHas(addon, /Keys can't change in combat\. Try again after the fight\.$/)], "nothing is written in the fight").toEqual(["", true]);
+  addon.world.combat(false);
+  expect(win(addon)).toMatchObject({ shown: true, step: 3 });
+  expect(ready(addon)).toContain("[ ] F: Shield Bash added to your bar");
+  addon.eval('__click("Apply")');
+  expect([keys(addon, ["F"])[0], addon.eval("return { #__declined, __declined[1].key }")]).toEqual(["", [1, "F"]]);
 });

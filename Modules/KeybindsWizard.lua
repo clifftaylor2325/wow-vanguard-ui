@@ -33,9 +33,9 @@ local NOT_NOW = L["Nothing has changed. You can open key setup again from Action
 WZ.onApply = {}
 
 -- State while the window is open: preset { class, role, sides }, step, tab, page, later (show what comes later),
--- entries and rows (the resolver's entries and the apply engine's plan, one row per entry), off ({ [entry] = true }
--- for an unticked change), scope ("char" or "all"), lit (the chord pressed last), placeNew (step 3's tick box for
--- new spells).
+-- entries and rows (the resolver's entries and the apply engine's plan, one row per entry), off ({ [entry id] =
+-- true } for an unticked change, by entryId, so a plan worked out again keeps it), scope ("char" or "all"), lit
+-- (the chord pressed last), placeNew (step 3's tick box for new spells).
 local state = { step = 1, tab = "none", page = 1, later = false, off = {}, scope = "char" }
 WZ.state = state
 
@@ -67,6 +67,18 @@ end
 -- The class's layout for the preset, or nil for a class key setup has none for.
 local function classData()
   return state.preset and D.CLASSES[state.preset.class]
+end
+
+-- An entry's identity across plans: its key and its slot (key 1 repeats on the bar 1 pages) or its command.
+local function entryId(entry)
+  return entry.key .. "@" .. tostring(entry.slot or entry.command)
+end
+
+-- Whether the player unticked the change of the entry at position i of the plan (a tick box not given a row yet
+-- has no i).
+local function unticked(i)
+  local entry = i and state.entries[i]
+  return entry ~= nil and state.off[entryId(entry)] == true
 end
 
 -- Works the plan out again for the preset: the entries for what the character knows, and what each would do.
@@ -429,7 +441,7 @@ local LIST_W = CONTENT_W - T.SCROLL.thumb - T.SPACE.gap
 -- A tick box row of the list, for whichever change its slot names (slot.i): ticked unless the player unticked it.
 local function newCheck(child)
   local slot = {}
-  local r = W.Check(child, "", function() return not state.off[slot.i] end, function(v) state.off[slot.i] = not v or nil end, LIST_W)
+  local r = W.Check(child, "", function() return not unticked(slot.i) end, function(v) state.off[entryId(state.entries[slot.i])] = not v or nil end, LIST_W)
   r.slot = slot
   return r
 end
@@ -577,9 +589,10 @@ local function kept()
   local out, changes, declined = {}, 0, {}
   for i, entry in ipairs(state.entries) do
     local writes = KA.WRITES[state.rows[i].kind]
-    if not state.off[i] then out[#out + 1] = entry end
-    if not state.off[i] and writes then changes = changes + 1 end
-    if state.off[i] and writes then declined[#declined + 1] = entry end
+    local off = unticked(i)
+    if not off then out[#out + 1] = entry end
+    if not off and writes then changes = changes + 1 end
+    if off and writes then declined[#declined + 1] = entry end
   end
   return out, changes, declined
 end
@@ -665,11 +678,12 @@ end
 
 -- In a fight ----------------------------------------------------------------------------------------
 
--- The fight is over: key setup comes back on the step it was on, its plan worked out again.
+-- The fight is over: key setup comes back on the step it was on, its plan worked out again (the changes the player
+-- unticked stay unticked).
 local function resume()
   if not state.resume then return end
   state.resume = nil
-  if state.step > 1 then state.off = {} replan() end
+  if state.step > 1 then replan() end
   WZ.Show(state.step)
   WZ.frame:Show()
 end
