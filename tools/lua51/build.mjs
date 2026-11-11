@@ -8,9 +8,11 @@
 // lua-5.1.5.sha256 lists each file's SHA-256 from that tarball and this script refuses to build when one
 // differs. The only change to Lua is made here, on a copy: the secret checks in lvm.c (PATCHES below).
 //
-// Compiler: zig cc (pip install ziglang), whose wasm32-wasi target bundles a libc; setjmp/longjmp, which
-// Lua's errors use, compile to WebAssembly exception handling (Node 22 runs it). --check rebuilds into a
-// temporary file and fails unless it matches the committed .wasm byte for byte.
+// Compiler: zig cc 0.17.1 (pip install ziglang==0.17.1), whose wasm32-wasi target bundles a libc; setjmp/longjmp,
+// which Lua's errors use, compile to WebAssembly exception handling (Node 22 runs it). Another zig version is
+// refused: the same sources and version give the same bytes, which is what makes the binary checkable.
+// A build writes vg-lua51.wasm.sha256 beside the binary (scripts/lua51-wasm.test.mjs holds the committed binary to
+// it). --check rebuilds into a temporary file and fails unless it matches the committed .wasm byte for byte.
 
 import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
@@ -22,6 +24,10 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const LUA = path.join(here, "lua-5.1.5");
 export const WASM = path.join(here, "vg-lua51.wasm");
+// The binary's SHA-256 as its last build wrote it.
+export const RECORDED = path.join(here, "vg-lua51.wasm.sha256");
+// The zig release the committed binary was built with.
+const ZIG_VERSION = "0.17.1";
 
 // Lua's library and VM sources (the stand-alone interpreter and compiler left out).
 const SKIP = new Set(["lua.c", "luac.c", "print.c"]);
@@ -45,12 +51,12 @@ const FLAGS = ["-target", "wasm32-wasi", "-O2", "-mexec-model=reactor", "-mexcep
   "-Wl,-z,stack-size=1048576", "-Wl,--strip-debug"];
 
 // The SHA-256 of a file, hex.
-function sha256(file) {
+export function sha256(file) {
   return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 }
 
-// Throws unless every vendored file matches the tarball's (lua-5.1.5.sha256).
-function verifySources() {
+// Throws unless every vendored file matches the tarball's (lua-5.1.5.sha256); returns how many there are.
+export function verifySources() {
   const lines = fs.readFileSync(path.join(here, "lua-5.1.5.sha256"), "utf8").trim().split("\n");
   for (const line of lines) {
     const [want, file] = line.split(/\s+/);
@@ -83,20 +89,23 @@ function zig() {
   return process.env.ZIG ? [process.env.ZIG] : ["python3", "-m", "ziglang"];
 }
 
-// Compiles the staged folder into `target`.
+// Compiles the staged folder into `target`, with the pinned zig only.
 function compile(dir, target) {
-  const sources = fs.readdirSync(dir).filter((f) => (f.endsWith(".c") && !SKIP.has(f)) || f === "tag.s").sort();
   const [cmd, ...pre] = zig();
+  const version = execFileSync(cmd, [...pre, "version"], { encoding: "utf8" }).trim();
+  if (version !== ZIG_VERSION) throw new Error(`zig ${version}: the binary is built with zig ${ZIG_VERSION} (pip install ziglang==${ZIG_VERSION}, or ZIG=<path>)`);
+  const sources = fs.readdirSync(dir).filter((f) => (f.endsWith(".c") && !SKIP.has(f)) || f === "tag.s").sort();
   execFileSync(cmd, [...pre, "cc", ...FLAGS, "-I", dir, "-o", target, ...sources.map((f) => path.join(dir, f))], { cwd: dir, stdio: "inherit" });
 }
 
-// Builds (or, with --check, rebuilds and compares); prints the result's SHA-256.
+// Builds and records the binary's SHA-256 (or, with --check, rebuilds and compares); prints the SHA-256.
 function main(argv) {
   const files = verifySources();
   const dir = stage();
-  const target = argv.includes("--check") ? path.join(dir, "check.wasm") : WASM;
-  compile(dir, target);
-  if (target !== WASM && sha256(target) !== sha256(WASM)) throw new Error("tools/lua51/vg-lua51.wasm is not what its sources build: run node tools/lua51/build.mjs");
+  const check = argv.includes("--check");
+  compile(dir, check ? path.join(dir, "check.wasm") : WASM);
+  if (check && sha256(path.join(dir, "check.wasm")) !== sha256(WASM)) throw new Error("tools/lua51/vg-lua51.wasm is not what its sources build: run node tools/lua51/build.mjs");
+  if (!check) fs.writeFileSync(RECORDED, `${sha256(WASM)}  vg-lua51.wasm\n`);
   fs.rmSync(dir, { recursive: true, force: true });
   console.log(`${files} source files verified; ${path.relative(process.cwd(), WASM)} sha256 ${sha256(WASM)}`);
 }
