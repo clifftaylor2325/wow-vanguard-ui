@@ -425,6 +425,19 @@ it("Return all asks, then sends back the shown mail a player can have returned, 
   expect(chatHas(addon, /Return all: nothing to return/), "nothing to return").toBe(true);
 });
 
+it("H20-7-3 Return all waits while the game is still answering the last command, as Take all does", () => {
+  const addon = mailer(BULK);
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.returnAll");
+  addon.eval("__wfgWorld.mailPending = true");
+  addon.click("Vanguard_Question.confirm");
+  addon.advance(2);
+  expect([returned(addon), chatHas(addon, /Return all:/)], "nothing sent, the run still going").toEqual([{}, false]);
+  addon.eval("__wfgWorld.mailPending = false");
+  addon.advance(2);
+  expect([returned(addon), chatHas(addon, /Return all: 2 of 2 done/)], "then both go back").toEqual([[4, 2], true]);
+});
+
 it("Return all leaves a mail the game deletes when it runs out (one already returned to you) where it is", () => {
   const addon = mailer(BULK + "__wfgWorld.mail[2].deletes = true");
   addon.world.openMailWindow();

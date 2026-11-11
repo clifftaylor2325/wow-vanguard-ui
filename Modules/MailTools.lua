@@ -255,11 +255,17 @@ local function movedOn(run, m)
   return run.last ~= nil and run.last.index == m.index and run.last.count ~= inboxCount()
 end
 
+-- Whether the game is still answering the last mail command; a run sends nothing then and waits, as the game's
+-- Open All does (C_Mail.IsCommandPending in OpenAllMailMixin:OnUpdate, Blizzard_MailFrame/MailFrame.lua).
+local function commandPending()
+  return C_Mail and C_Mail.IsCommandPending and C_Mail.IsCommandPending()
+end
+
 -- Take all's next step: while the game is still busy with the last take, nothing (and the run waits);
 -- else one take from the first mail left on the run's list that is still itself, passing those that are
 -- empty, gone (another mail took its place), changed or refused. False once none is left.
 local function takeNext(run)
-  if C_Mail and C_Mail.IsCommandPending and C_Mail.IsCommandPending() then return true end
+  if commandPending() then return true end
   local m = run.mails[1]
   while m do
     local now = not movedOn(run, m) and MT.Read(m.index)
@@ -271,9 +277,11 @@ local function takeNext(run)
   return false
 end
 
--- Return all's next step: the first mail left on the run's list that is still as listed goes back to its
--- sender, passing those that changed. False once none is left.
+-- Return all's next step: while the game is still busy with the last command, nothing (and the run waits);
+-- else the first mail left on the run's list that is still as listed goes back to its sender, passing those
+-- that changed. False once none is left.
 local function returnNext(run)
+  if commandPending() then return true end
   local m = table.remove(run.mails, 1)
   while m and not unchanged(m) do m = table.remove(run.mails, 1) end
   if not m then return false end
