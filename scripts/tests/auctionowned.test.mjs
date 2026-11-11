@@ -866,3 +866,35 @@ it("Cancel and Cancel next undercut still ease their hover while showing their t
     return { table.concat(seen, ","), table.concat((function() local s = {} for i, v in ipairs(shown) do s[i] = tostring(v) end return s end)(), ",") }`);
   expect(out, "both buttons ease in and out, and the tip shows then hides").toEqual(["true,false,true,false", "true,false,true,false"]);
 });
+// TEST-ONLY: two of your dust auctions and a paid cancel, for the cases where the list is read again while the question is open.
+const PAID_CANCEL = `__wfgWorld.items[10940] = { name = "Strange Dust", icon = "TEST-ONLY-DUST", commodity = true }
+  __wfgWorld.ah.owned = {
+    { auctionID = 501, itemKey = { itemID = 10940, itemLevel = 0, itemSuffix = 0 }, status = 0, quantity = 5, buyoutAmount = 150 },
+    { auctionID = 506, itemKey = { itemID = 10940 }, status = 0, quantity = 2, buyoutAmount = 130 } }
+  __wfgWorld.ah.commodities[10940] = { { unitPrice = 120, quantity = 7 } }
+  __wfgWorld.ah.cancelCost = 100`;
+const cancelsSent = (addon) => addon.eval("local out = {} for i, c in ipairs(__wfgWorld.ah.restricted) do out[i] = c.args[1] end return out");
+const questionShown = (addon) => addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()");
+it("H44-21-R1: Cancel next undercut marks the row that is listed when Yes is clicked, so the next click takes the next one", () => {
+  const addon = atAuctionHouse(PAID_CANCEL);
+  addon.click(`${OWNED_CARD}.check`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.advance(1);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 10940);
+  addon.click(`${OWNED_CARD}.cancelNext`);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.click("Vanguard_Question.confirm");
+  addon.click(`${OWNED_CARD}.cancelNext`);
+  addon.click("Vanguard_Question.confirm");
+  expect(cancelsSent(addon), "the second click cancels the next undercut auction, not the first again").toEqual([501, 506]);
+});
+it("H44-21-R1: a row's Cancel marked after the list was read again does not ask a second time", () => {
+  const addon = atAuctionHouse(PAID_CANCEL);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  const cancel = `${OWNED_CARD}.table.rows[1].cancel`;
+  addon.click(cancel);
+  addon.fire("OWNED_AUCTIONS_UPDATED");
+  addon.click("Vanguard_Question.confirm");
+  addon.click(cancel);
+  expect([questionShown(addon), cancelsSent(addon)], "no second question, one cancel").toEqual([false, [501]]);
+});

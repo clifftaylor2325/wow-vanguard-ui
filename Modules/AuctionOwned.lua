@@ -250,13 +250,21 @@ local function findOwned(id)
   end
 end
 
+-- Marks auction id as on its way (for AH.CANCEL_WAIT). It looks the row up when the cancel is sent, because
+-- the list may have been read again (new row tables) while a question was open.
+local function markSent(id)
+  local a = findOwned(id)
+  if a then a.cancelling = GetTime() end
+  AH.PaintOwned()
+end
+
 -- Cancel (the row's click, never a timer or an event): cancels one of your auctions if the game allows it,
 -- after a question when that costs anything. Marked as on its way (for AH.CANCEL_WAIT) as Cancel next
 -- undercut's is, so a second click on the row cannot send or ask again.
 function AH.Cancel(id)
   local a = findOwned(id)
   if not (id and C_AuctionHouse.CanCancelAuction(id)) or (a and onItsWay(a)) then return end
-  cancelOrAsk(id, function() if a then a.cancelling = GetTime() AH.PaintOwned() end end)
+  cancelOrAsk(id, function() markSent(id) end)
 end
 
 -- Cancel next undercut (the button's click, never a timer or an event): cancels one auction, the
@@ -265,10 +273,7 @@ end
 function AH.CancelNext()
   local a = AH.NextUndercut()
   if not a then return end
-  cancelOrAsk(a.id, function()
-    a.cancelling = GetTime()
-    AH.PaintOwned()
-  end)
+  cancelOrAsk(a.id, function() markSent(a.id) end)
 end
 
 -- An auction was cancelled: its row goes (and with "check again" on, the rest are checked again).
