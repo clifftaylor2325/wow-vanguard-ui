@@ -158,6 +158,21 @@ it("Standards: switching to it hides the power number on the banners (as a login
   expect(shown(), "back across: the number shows again").toEqual([true, true]);
 });
 
+// The shown textures among a frame's own regions, counted by image name.
+const shownArt = (addon, name) => addon.eval(`local out = {}
+  for _, t in ipairs({ ${name}:GetRegions() }) do
+    if t:IsShown() and t.__texture then local n = tostring(t.__texture):match("[^\\\\]+$") out[n] = (out[n] or 0) + 1 end
+  end
+  return out`);
+
+it("Standards under Hairline: a bare banner shows only the hairline's V at its hem, no plate wedges or border pieces; Rimmed brings the plate back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, hudLayout = "standards", theme = { hudLook = "hairline" } } } }' });
+  const bare = shownArt(addon, "Vanguard_player");
+  expect([bare.PointFill ?? 0, bare.PointLine30 ?? 0, bare.WHITE8X8 ?? 0], "Hairline: no fill wedges or side strips, the two hair pieces of the V alone").toEqual([0, 2, 0]);
+  addon.eval('ns.Theme.Settings().hudLook = "rimmed" ns.Theme.Refresh()');
+  expect(shownArt(addon, "Vanguard_player").PointFill, "Rimmed: the plate's hem wedges show again").toBe(2);
+});
+
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
 

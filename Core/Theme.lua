@@ -1550,13 +1550,20 @@ end
 
 -- Shows a painted frame's plate (its background and border), or hides it for a frame the HUD look draws bare. A
 -- shown plate leaves each edge as the paint left it; an edge's own shown state is never read back, since the client
--- can hold it secret, and a secret passed to SetShown from addon code raises.
+-- can hold it secret, and a secret passed to SetShown from addon code raises. A bare plate hides its shaped corner
+-- pieces too (the fill's and the border's), keeping only the hairline's (paintRound shows them again when it places them).
 function corner.showPlate(p, shown)
   if p.bg then p.bg:SetShown(shown) end
   for _, t in pairs(p.shadow or NO_PARTS) do t:SetShown(shown) end
   if shown then return end
-  for _, t in pairs(p.edges or NO_PARTS) do t:Hide() end
+  for _, key in ipairs(corner.PLATE_PIECES) do
+    for _, t in pairs(p[key] or NO_PARTS) do t:Hide() end
+  end
 end
+
+-- The parts of a painted frame's plate a bare frame hides: its edges and its shaped corners' fill, side strips and
+-- border pieces.
+corner.PLATE_PIECES = { "edges", "roundFill", "roundSides", "roundLine" }
 
 -- Whether a painted frame with a role is drawn bare (no plate) by the HUD look (T.HudBare), never one the deck rounds.
 function corner.bare(entry)

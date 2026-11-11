@@ -5384,6 +5384,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the green heal bar and the striped shield bar end on the shield's diagonal edge like the health fill, with nothing square poking past the point. [Needs in-game check: whether the health bar's masks cut the heal bars, which are textures of other frames.]
 - If it fails, paste: a screenshot of the frame with the heal showing, and `/vg errors`.
 
+### 33.488 Hairline banners under Standards show one brass V, no dark wedges
+
+- Do: on either client, set General → HUD look to Hairline and HUD layout → Where the frames stand to Standards; look at the foot of your banner and your target's, then switch the look to Rimmed and back.
+- Expect: under Hairline each banner shows no plate: one brass line along its pointed hem (the V) and no plate-coloured wedges or doubled line at its foot; under Rimmed the plate and its hem come back. [Needs in-game check: the V at UI scale 0.7 and Pixel-perfect.]
+- If it fails, paste: a screenshot of both banners, the UI scale, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
