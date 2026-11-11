@@ -71,3 +71,19 @@ it("a shown frame under a hidden parent runs no OnUpdate until the parent shows"
     return { hidden, __ticks, c:IsShown() }`);
   expect(ticks).toEqual([0, 1, true]);
 });
+
+// UnitThreatSituation is SecretWhenUnitThreatStateRestricted and UnitDetailedThreatSituation
+// SecretWhenUnitThreatValuesRestricted (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua, both clients).
+it("threat reads answer with secrets while the world hides threat or holds a secret value, and plainly otherwise", () => {
+  const addon = createAddon();
+  addon.world.setUnit("target", { name: "TEST-ONLY Mob", threat: 3, threatPct: 100 });
+  // Which of the threat reads are secrets.
+  const read = () => addon.eval(`local s = issecretvalue local a = { UnitDetailedThreatSituation("target") }
+    return { s(UnitThreatSituation("target")), s(a[1]), s(a[2]), s(a[3]), s(a[5]) }`);
+  expect(addon.eval("return { UnitDetailedThreatSituation('target') }"), "plain").toEqual([true, 3, 100, 100, 0]);
+  expect(read(), "plain: no secrets").toEqual([false, false, false, false, false]);
+  addon.eval("__wfgWorld.threatSecret = true");
+  expect(read(), "world.threatSecret: every return").toEqual([true, true, true, true, true]);
+  addon.eval("__wfgWorld.threatSecret = false __wfgWorld.units.target.threat = __wfgWorld.secret(1)");
+  expect([...read(), addon.eval("return rawget(UnitDetailedThreatSituation('target'), 'n')")], "a secret stored value: every return, isTanking from the value inside").toEqual([true, true, true, true, true, false]);
+});

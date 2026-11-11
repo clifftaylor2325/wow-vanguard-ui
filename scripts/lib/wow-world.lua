@@ -799,12 +799,34 @@ function SetUnitCursorTexture(texture, unit)
 end
 
 -- Threat: a unit's status against its target (0-3), from unit.threat.
-function UnitThreatSituation(unit) return uf(unit, "threat") end
+-- Threat answers as secrets while threat is hidden (world.threatSecret) or the stored value is a secret:
+-- Blizzard_APIDocumentationGenerated/UnitDocumentation.lua (both clients) tags UnitThreatSituation
+-- SecretWhenUnitThreatStateRestricted and UnitDetailedThreatSituation SecretWhenUnitThreatValuesRestricted. The
+-- stored values are read through inside(), so the harness never compares a secret itself.
+local function threatHidden(u)
+  return world.threatSecret or issecretvalue(u.threat) or issecretvalue(u.threatPct)
+end
+
+-- Each value as a secret when `hide`, else as it is.
+local function threatValues(hide, ...)
+  if not hide then return ... end
+  local out = stub.pack(...)
+  for i = 1, out.n do out[i] = world.secret(out[i]) end
+  return stub.unpack(out, 1, out.n)
+end
+
+-- The unit's threat status (0 to 3), or nil.
+function UnitThreatSituation(unit)
+  local u = resolveUnit(unit)
+  if not u or u.threat == nil then return nil end
+  return threatValues(threatHidden(u), inside(u.threat))
+end
 -- isTanking, status, scaled percent, raw percent, threat value.
 function UnitDetailedThreatSituation(unit)
   local u = resolveUnit(unit)
   if not u or u.threat == nil then return nil end
-  return u.threat >= 2, u.threat, u.threatPct or 0, u.threatPct or 0, 0
+  local status, pct = inside(u.threat), inside(u.threatPct) or 0
+  return threatValues(threatHidden(u), status >= 2, status, pct, pct, 0)
 end
 
 -- Heal prediction, absorbs and heal calculators.
