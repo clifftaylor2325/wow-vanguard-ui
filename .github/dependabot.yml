@@ -1,5 +1,5 @@
-# Monthly, one grouped pull request per ecosystem: every pull request runs
-# the gate, and a private repository's Actions minutes are counted.
+# Monthly, one grouped pull request per ecosystem, so the gate (verify.yml)
+# runs once a month for all of them.
 version: 2
 updates:
   - package-ecosystem: github-actions
