@@ -87,3 +87,13 @@ it("threat reads answer with secrets while the world hides threat or holds a sec
   addon.eval("__wfgWorld.threatSecret = false __wfgWorld.units.target.threat = __wfgWorld.secret(1)");
   expect([...read(), addon.eval("return rawget(UnitDetailedThreatSituation('target'), 'n')")], "a secret stored value: every return, isTanking from the value inside").toEqual([true, true, true, true, true, false]);
 });
+
+// A unit watch reads SecureButton_GetUnit, the "unit" attribute (Blizzard_RestrictedAddOnEnvironment/SecureStateDriver.lua,
+// Blizzard_FrameXML/SecureTemplates.lua:201-212, both clients), never a .unit field.
+it("a unit watch shows a frame by its unit attribute and ignores a .unit field", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local byField = CreateFrame("Button", nil, UIParent) byField.unit = "player"
+    local byAttribute = CreateFrame("Button", nil, UIParent) byAttribute:SetAttribute("unit", "player")
+    RegisterUnitWatch(byField) RegisterUnitWatch(byAttribute)
+    return { byField:IsShown(), byAttribute:IsShown() }`)).toEqual([false, true]);
+});

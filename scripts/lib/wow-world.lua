@@ -494,11 +494,13 @@ end
 
 -- Unit watches: a watched frame shows while its unit exists (re-checked on unit changes).
 world.watched = {}
--- Shows a frame while its unit exists (the unit comes from its attribute or .unit).
+-- Shows a frame while its unit exists. The unit is the frame's "unit" attribute only, never a .unit field:
+-- Blizzard_RestrictedAddOnEnvironment/SecureStateDriver.lua's unit watch reads SecureButton_GetUnit(frame), which
+-- reads the attribute (Blizzard_FrameXML/SecureTemplates.lua:201-212), on both clients.
 function RegisterUnitWatch(frame)
   frame.__watched = true
   world.watched[frame] = true
-  frame:SetShown(UnitExists(frame:GetAttribute("unit") or frame.unit))
+  frame:SetShown(UnitExists(frame:GetAttribute("unit")) == true)
 end
 -- Stops watching a frame.
 function UnregisterUnitWatch(frame)
@@ -509,7 +511,7 @@ end
 -- Shows or hides every watched frame by whether its unit exists now.
 local function refreshWatches()
   for frame in pairs(world.watched) do
-    frame:SetShown(UnitExists(frame:GetAttribute("unit") or frame.unit) == true)
+    frame:SetShown(UnitExists(frame:GetAttribute("unit")) == true)
   end
 end
 
