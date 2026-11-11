@@ -540,7 +540,9 @@ it("aura container timer options a client refuses, and the engine probe", () => 
   const fresh = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB = { profiles = { Default = { modules = { FrameAuras = false, PlayerAuras = false } } } }" });
   expect(fresh.eval("__wfgStub.inCombat = true return ns.AuraEngine.Available()") === false, "the probe waits for the end of combat").toBeTruthy();
   expect(fresh.eval("__wfgStub.inCombat = false return ns.AuraEngine.Available()") === true, "then asks once").toBeTruthy();
-  const bareClient = loggedIn(UNITS_ENV + CONTAINER_AURAS);
+  // The default world's formatter is the client's (StringUtilDocumentation.lua, NumericRuleFormatterAPIDocumentation.lua), so
+  // a client without one is made by taking it away.
+  const bareClient = loggedIn(UNITS_ENV + CONTAINER_AURAS + "C_StringUtil.CreateNumericRuleFormatter = nil");
   expect(bareClient.eval('local c = ns.Auras.Container(UIParent, __spec, "target") return c.frame.__groups[1].buttons[1].__durationText.opts.textFormatter') === null, "a client without formatters or curves still gets its timer text").toBeTruthy();
 });
 

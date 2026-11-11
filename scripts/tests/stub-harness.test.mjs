@@ -46,3 +46,16 @@ it("SetShown runs OnShow and OnHide as Show and Hide do, but not a hook on the f
     return table.concat(seen, " ")`);
   expect(runs).toBe("hide show hide show");
 });
+
+// Blizzard_APIDocumentationGenerated, both clients: SimpleStatusBarConstantsDocumentation.lua, NumericRuleFormatterSharedDocumentation.lua,
+// DurationTextBindingSharedDocumentation.lua, StringUtilDocumentation.lua and NumericRuleFormatterAPIDocumentation.lua.
+it("the world's status bar, rounding and duration enums carry the client's names and values, and its rule formatter the client's methods", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local e = Enum return { e.StatusBarInterpolation.Immediate, e.StatusBarInterpolation.ExponentialEaseOut,
+    e.NumericRuleFormatRounding.Nearest, e.NumericRuleFormatRounding.Up, e.NumericRuleFormatRounding.Down,
+    e.DurationTextBindingProperty.RemainingDuration, e.DurationTextBindingProperty.RemainingPercent, e.DurationTextBindingProperty.TotalDuration, e.DurationTextBindingProperty.EndTime }`))
+    .toEqual([0, 1, 0, 1, 2, 0, 1, 4, 6]);
+  expect(addon.eval(`local f = C_StringUtil.CreateNumericRuleFormatter() f:SetBreakpoints({ { threshold = 0 } }) f:AddBreakpoint({ threshold = 60 })
+    local copy = f:Copy() f:ClearBreakpoints()
+    return { #f:GetBreakpoints(), #copy:GetBreakpoints(), copy:GetBreakpoints()[2].threshold, f.Format == nil }`)).toEqual([0, 2, 60, true]);
+});

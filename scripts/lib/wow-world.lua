@@ -234,14 +234,17 @@ function ClearCursor() world.cursor = nil end
 Enum = {
   PowerType = { Mana = 0, Rage = 1, Focus = 2, Energy = 3, ComboPoints = 4, Runes = 5, RunicPower = 6, SoulShards = 7, LunarPower = 8, HolyPower = 9, Maelstrom = 11, Chi = 12, Insanity = 13, ArcaneCharges = 16, Fury = 17, Pain = 18 },
   CustomAuraButtonDispelTypeTextureStyle = { Border = 0, BorderWithIcon = 1, Icon = 2, PreserveAsset = 3, CustomAsset = 4 },
-  DurationTextBindingProperty = { RemainingDuration = 0, TotalDuration = 1 },
+  -- DurationTextBindingSharedDocumentation.lua (both clients).
+  DurationTextBindingProperty = { RemainingDuration = 0, RemainingPercent = 1, ElapsedDuration = 2, ElapsedPercent = 3, TotalDuration = 4, StartTime = 5, EndTime = 6 },
   LuaCurveType = { Linear = 0, Step = 1 },
   NamePlateInfoDisplay = { None = 0, CurrentHealthPercent = 1, CurrentHealthValue = 2, RarityIcon = 3 },
-  NumericRuleFormatRounding = { Down = 0, Up = 1, Nearest = 2 },
+  -- NumericRuleFormatterSharedDocumentation.lua (both clients).
+  NumericRuleFormatRounding = { Nearest = 0, Up = 1, Down = 2 },
   PlayerSwingType = { MainHand = 0, OffHand = 1, Ranged = 2 },
   SpellBookSpellBank = { Player = 0, Pet = 1 },
   SpellBookItemType = { None = 0, Spell = 1, FutureSpell = 2, PetAction = 3, Flyout = 4 },
-  StatusBarInterpolation = { Immediate = 0, Smooth = 1 },
+  -- SimpleStatusBarConstantsDocumentation.lua (both clients).
+  StatusBarInterpolation = { Immediate = 0, ExponentialEaseOut = 1 },
   -- A subset of Enum.TooltipDataLineType with the client's values (TooltipInfoSharedDocumentation.lua).
   TooltipDataLineType = { None = 0, Blank = 1, UnitName = 2, UnitThreat = 7, QuestObjective = 8, QuestTitle = 17, QuestPlayer = 18 },
   -- A subset of Enum.TooltipDataType with the client's values (TooltipInfoSharedDocumentation.lua): UnitAura is what
@@ -571,19 +574,36 @@ C_CurveUtil = {
   end,
 }
 
--- Numeric rule formatters: a formatter object whose Format rounds a number.
+-- A numeric rule formatter, as Blizzard_APIDocumentationGenerated/StringUtilDocumentation.lua's
+-- C_StringUtil.CreateNumericRuleFormatter makes it (no argument; both clients): an object holding breakpoints, with
+-- NumericRuleFormatterAPIDocumentation.lua's methods only. The client formats with it on its own side (a duration
+-- text binding), so Lua never calls a Format on it.
+local numericRuleFormatter = {}
+numericRuleFormatter.__index = numericRuleFormatter
+
+-- A new formatter with no breakpoints.
+local function newNumericRuleFormatter()
+  return setmetatable({ breakpoints = {} }, numericRuleFormatter)
+end
+
+-- Adds one breakpoint.
+function numericRuleFormatter:AddBreakpoint(b) self.breakpoints[#self.breakpoints + 1] = b end
+-- Drops every breakpoint.
+function numericRuleFormatter:ClearBreakpoints() self.breakpoints = {} end
+-- Replaces the breakpoints with a copy of a list.
+function numericRuleFormatter:SetBreakpoints(list) self.breakpoints = { unpack(list) } end
+-- A copy of the breakpoints.
+function numericRuleFormatter:GetBreakpoints() return { unpack(self.breakpoints) } end
+-- A new formatter with the same breakpoints.
+function numericRuleFormatter:Copy()
+  local copy = newNumericRuleFormatter()
+  copy:SetBreakpoints(self.breakpoints)
+  return copy
+end
+
 C_StringUtil = {
-  -- A formatter object for a rounding rule.
-  CreateNumericRuleFormatter = function(rounding)
-    local f = { rounding = rounding }
-    -- A number rounded by the rule, as text; a secret stays secret.
-    function f:Format(n)
-      if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and self:Format(v)) end
-      local r = rounding == Enum.NumericRuleFormatRounding.Up and math.ceil(n) or math.floor(n)
-      return tostring(r)
-    end
-    return f
-  end,
+  -- A formatter object (newNumericRuleFormatter).
+  CreateNumericRuleFormatter = function() return newNumericRuleFormatter() end,
   -- A number as whole-number text (rounded down), "" for zero; a secret stays secret.
   TruncateWhenZero = function(n)
     if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and C_StringUtil.TruncateWhenZero(v)) end

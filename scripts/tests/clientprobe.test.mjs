@@ -40,7 +40,6 @@ const CLIENT_KEYS = ["auraContainer", "pixelUtil", "eventValid", "barEase", "coo
 const NO_PROBE_ENUMS = "Enum.StatusBarInterpolation, Enum.PlayerSwingType, Enum.DamageMeterSessionType, Enum.DamageMeterType = nil, nil, nil, nil ";
 // TEST-ONLY: a client that has every optional call the probe asks about.
 const CLIENT_FULL_ENV = `
-  Enum.StatusBarInterpolation.ExponentialEaseOut = 1
   Enum.DamageMeterSessionType, Enum.DamageMeterType = { Current = 1 }, { Dps = 1 }
   PixelUtil = { GetNearestPixelSize = function() return 1 end }
   C_EventUtils = { IsEventValid = function() return true end }
@@ -55,11 +54,11 @@ it("client capability probe: what this client has, and /vg status says so", () =
   full.slash("status");
   expect(chatHas(full, /Client has: auraContainer, pixelUtil, eventValid, barEase, cooldownObject, cooldownMin, countdownText, keyPropagate, damageMeter, cooldownViewer, swingTimer, meterEnums {2}· {2}lacks: none/), "/vg status lists them in a fixed order").toBe(true);
   const bare = loggedIn();
-  expect(bare.eval("return ns.Client.has"), "the default test world: its namespaces are found, the widget flags come from the widget list, what it lacks is false").toEqual({
-    auraContainer: true, pixelUtil: false, eventValid: true, barEase: false, cooldownObject: true, cooldownMin: true, countdownText: true,
+  expect(bare.eval("return ns.Client.has"), "the default test world: its namespaces are found, the widget flags come from the widget list, its Enum.StatusBarInterpolation is the client's (SimpleStatusBarConstantsDocumentation.lua: ExponentialEaseOut), what it lacks is false").toEqual({
+    auraContainer: true, pixelUtil: false, eventValid: true, barEase: true, cooldownObject: true, cooldownMin: true, countdownText: true,
     keyPropagate: true, damageMeter: true, cooldownViewer: true, swingTimer: true, meterEnums: false, secureSnippets: true });
   bare.slash("status");
-  expect(chatHas(bare, /Client has: auraContainer, eventValid, cooldownObject, cooldownMin, countdownText, keyPropagate, damageMeter, cooldownViewer, swingTimer {2}· {2}lacks: pixelUtil, barEase, meterEnums$/), "and the lacking ones are named").toBe(true);
+  expect(chatHas(bare, /Client has: auraContainer, eventValid, barEase, cooldownObject, cooldownMin, countdownText, keyPropagate, damageMeter, cooldownViewer, swingTimer {2}· {2}lacks: pixelUtil, meterEnums$/), "and the lacking ones are named").toBe(true);
   const noCooldown = loggedIn(`local real = CreateFrame
     CreateFrame = function(kind, ...) if kind == "Cooldown" then error("TEST-ONLY: no cooldown frames") end return real(kind, ...) end
     __wfgStub.transparent[CreateFrame] = true`);
@@ -70,12 +69,13 @@ it("client capability probe: what this client has, and /vg status says so", () =
   expect(half("Enum.DamageMeterSessionType, Enum.DamageMeterType = { Current = 1 }, {}"), "the damage meter needs both enum values").toEqual([false, false, false]);
   expect(half("Enum.StatusBarInterpolation = { ExponentialEaseOut = 1 } C_SwingTimer = {}"), "the swing timer needs its enum as well").toEqual([true, false, false]);
 });
-// TEST-ONLY: a client with none of them: no aura container, no cooldown calls, no key propagation.
+// TEST-ONLY: a client with none of them: no aura container, no cooldown calls, no key propagation, no eased bars.
 const CLIENT_NONE_ENV = `
   __wfgStub.noAuraContainer = true
   for _, m in ipairs({ "SetCooldownFromDurationObject", "SetMinimumCountdownDuration", "GetCountdownFontString" }) do __wfgWidgetApi.methods.Cooldown[m] = nil end
   for _, kind in pairs(__wfgWidgetApi.methods) do kind.SetPropagateKeyboardInput = nil end
   C_EventUtils, C_DamageMeter, C_CooldownViewer, C_SwingTimer = nil, nil, nil, nil
+  Enum.StatusBarInterpolation = { Immediate = 0 }
 `;
 it("client capability probe: every flag off, every module still enables", () => {
   expectErrors(AURA_FALLBACK);
