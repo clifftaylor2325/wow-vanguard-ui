@@ -196,10 +196,15 @@ const POINT_ENV = `
   C_Map.SetUserWaypoint = function(p) __point = p end
 `;
 
-// The game puts a waypoint down (a Ctrl-click on the map) and fires its event.
+// The game puts a waypoint down (a Ctrl-click on the map): WaypointLocationDataProviderMixin:HandleClick calls
+// C_Map.SetUserWaypoint, then on its next line C_SuperTrack.SetSuperTrackedUserWaypoint(false)
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_SharedMapDataProviders/WaypointLocationDataProvider.lua:100-101).
+// No source says when USER_WAYPOINT_UPDATED is delivered, so this takes the order that is hard for Vanguard: the
+// event inside SetUserWaypoint, the game's switch-off after it, then the next frame.
 const click = (addon, map, x, y) => {
-  addon.eval(`__point = { ${map}, ${x}, ${y} } __tracked = false`);
+  addon.eval(`__point = { ${map}, ${x}, ${y} }`);
   addon.fire("USER_WAYPOINT_UPDATED");
+  addon.eval("__tracked = false __wfgStub.update(0)");
 };
 
 it("waypoints: a map click turns the arrow on, remembers the spot, and the list keeps eight", () => {
@@ -213,6 +218,14 @@ it("waypoints: a map click turns the arrow on, remembers the spot, and the list 
   addon.eval("__point = nil");
   addon.fire("USER_WAYPOINT_UPDATED");
   expect(addon.eval("return #ns.Settings('Waypoints', ns.GetModule('Waypoints').defaults).recent"), "clearing adds nothing").toBe(8);
+});
+
+it("waypoints: a waypoint cleared before the next frame does not turn the arrow on", () => {
+  const addon = loggedIn(MAP_ENV + POINT_ENV);
+  addon.eval("__point = { 10, 0.2, 0.3 } __tracked = false");
+  addon.fire("USER_WAYPOINT_UPDATED");
+  addon.eval("__point = nil __wfgStub.update(0)");
+  expect(addon.eval("return __tracked"), "no waypoint left to point at").toBe(false);
 });
 
 it("waypoints: with the switch off a map click only remembers; a hidden position is not remembered", () => {

@@ -193,13 +193,21 @@ local function pendingTitle(mapID, x, y)
   return pending.title
 end
 
--- The game's waypoint changed (a Ctrl-click on the map, /way): remember it and, with the switch on, point the arrow at it.
+-- Points the arrow at the waypoint, with the switch on and a waypoint still there.
+local function followNow()
+  if not (WP.settings.follow and WP.Current()) then return end
+  if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+end
+
+-- The game's waypoint changed (a Ctrl-click on the map, /way): remember it and, with the switch on, point the arrow
+-- at it a frame later: a Ctrl-click switches the arrow off on the line after it sets the waypoint
+-- (WaypointLocationDataProviderMixin:HandleClick), and the event may come in between, so the arrow goes on last.
 function WP.OnWaypoint()
   local mapID, x, y = WP.Current()
   if not mapID then return end
   WP.Remember(mapID, x, y, pendingTitle(mapID, x, y))
   ns.OutOfCombat(function() ns.Options.RebuildPage("map") end, "map waypoints")
-  if WP.settings.follow and C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
+  ns.Soon("waypoint follow", followNow)
 end
 
 -- "Elwynn Forest 45.2, 61.8" for a remembered waypoint ("Inn · Elwynn Forest 45.2, 61.8" with a title).
