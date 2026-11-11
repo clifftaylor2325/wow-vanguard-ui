@@ -487,7 +487,7 @@ export function runBench(opts, progress = () => {}) {
   const { reps, byEvent } = playAll(steps, opts, progress);
   const modules = byEvent ? moduleCounts(byEvent, benchSample()) : null;
   const totals = reps.map((rep) => Object.values(rep).reduce((a, b) => a + b, 0));
-  const settings = { seed: opts.seed, scriptEvents: opts.events, steps: steps.length, reps: opts.reps, warmup: opts.warmup, raid: RAID_SIZE, inCombat: true };
+  const settings = { instrPerSample: benchSample(), seed: opts.seed, scriptEvents: opts.events, steps: steps.length, reps: opts.reps, warmup: opts.warmup, raid: RAID_SIZE, inCombat: true };
   return { label: LABEL, ...commitInfo(), date: new Date().toISOString(), node: process.version, ...settings,
     events: eventRows(steps, reps, modules), totalMs: stats(totals), modules };
 }
@@ -565,7 +565,7 @@ function heading(result) {
     "",
     `Commit ${result.commit.slice(0, 12)}${result.dirty ? " with uncommitted changes" : ""} · ${result.raid}-member raid in combat · seed ${result.seed} · ${result.steps} steps per repetition (${result.events ? Object.keys(result.events).length : 0} kinds) · ${result.reps} timed after ${result.warmup} warm-up · Node ${result.node}`,
     "",
-    "Not confirmed in game: compare with `/vg perf` in a raid. Time is the harness's wall time per step (the addon, plus the harness's own world and widget code); instructions are Lua VM instructions from the profiled repetition (1,000 per sample).",
+    `Not confirmed in game: compare with \`/vg perf\` in a raid. Time is the harness's wall time per step (the addon, plus the harness's own world and widget code); instructions are Lua VM instructions from the profiled repetition (${(result.instrPerSample ?? PER_SAMPLE).toLocaleString("en-US")} per sample).`,
     "",
   ];
 }

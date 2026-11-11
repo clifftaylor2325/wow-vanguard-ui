@@ -137,6 +137,8 @@ it("the printed result names the label and settings, ranks events by time, and l
   expect(text).toContain(`### Vanguard raid bench (${LABEL})`);
   expect(text).toContain("Commit 0123456789ab · 40-member raid in combat · seed 255 · 12 steps per repetition");
   expect(text).toContain("compare with `/vg perf` in a raid");
+  expect(text, "a result from before the field was kept says the harness's period").toContain("(1,000 per sample)");
+  expect(formatResult(sampleResult({ instrPerSample: 50 })), "the bench's own period when that is what sampled").toContain("(50 per sample)");
   expect(text.indexOf("| OnUpdate | 2 | 3000.0 | 2900.0–3100.0 | 6.7% | 7.0k | 10.0k |")).toBeLessThan(text.indexOf("| UNIT_HEALTH | 10 | 100.0 |"));
   expect(text).toContain("| all steps (ms per rep) | 12 | 7.00 | 6.50–7.50 | 14.3% |  |  |");
   expect(text).toContain("| Modules/RaidFrames.lua | 6.0k | 75.0% | 2.63 | UNIT_HEALTH |");
