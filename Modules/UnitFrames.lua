@@ -791,8 +791,30 @@ local function crownTop(f)
   return f
 end
 
--- Spans a frame's crown from its bottom corners up to its tab's or name line's top while it wears one, else to its own top.
+-- How far a frame's crown reaches over its own top (units): measured while its parts are plain, else a tab's height
+-- while it wears one, else nothing.
+local function crownRise(f)
+  local top, own = ns.PlainNumber(crownTop(f):GetTop()), ns.PlainNumber(f:GetTop())
+  if top and own then return top - own end
+  return tabbed(f) and UF.TAB.height or 0
+end
+
+-- Pins a frame's riders (UF.Ride) over its crown's top, on the frame itself, now or when the fight ends.
+local function pinRiders(f)
+  if not f.vgRiders then return end
+  ns.OutOfCombat(function()
+    local rise = crownRise(f)
+    for region, y in pairs(f.vgRiders) do
+      region:ClearAllPoints()
+      region:SetPoint("BOTTOMLEFT", f, "TOPLEFT", 0, rise + y)
+    end
+  end, "crown riders " .. f.key)
+end
+
+-- Spans a frame's crown from its bottom corners up to its tab's or name line's top while it wears one, else to its own
+-- top; its riders follow.
 local function placeCrown(f)
+  pinRiders(f)
   local crown = f.crown
   if not crown then return end
   crown:ClearAllPoints()
@@ -806,6 +828,19 @@ end
 function UF.StatusHome(f)
   if tabbed(f) then return f.tab end
   return f
+end
+
+-- Stands a region y units over a frame's crown, its left edge on the frame's, anchored to the frame itself rather
+-- than to the crown: the crown hangs from the tab or the name line, which change size in a fight (UF.FitTab), and a
+-- protected row (the totems' secure cells) must not depend on a region moved in combat. Pinned out of combat, again
+-- whenever the crown is placed (a look, layout or size change).
+---@param f table a unit frame
+---@param region table the row to stand over it
+---@param y number the gap over the crown's top (units)
+function UF.Ride(f, region, y)
+  f.vgRiders = f.vgRiders or {}
+  f.vgRiders[region] = y
+  pinRiders(f)
 end
 
 -- The frame the rows over a unit frame anchor to (the combo points, the totems, the target's buffs and threat text):

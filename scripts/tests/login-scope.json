@@ -431,6 +431,7 @@
       "class bars: an empty totem cell lets clicks through out of combat, and every cell takes clicks in a fight",
       "class bars: druid mana while a form shows rage or energy",
       "class bars: the totem row sits above the player frame, clear of the chat's tab bar and its tiles at 1365 and 1440 wide (B4-1)",
+      "class bars: the totem row stands over the player frame's crown under every look and layout, anchored to the frame itself, and a look change in a fight moves it when the fight ends",
       "class bars: totems for shamans, mana in forms for druids",
       "combo points for rogues and druids",
       "combo points on retail grow to your maximum, and WoW Forever stays at five",

@@ -5408,6 +5408,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: your frame and your target's wear their name tabs; the focus, pet and target of target wear none, their names on their bars, so nothing covers the foot of your frame or the target's cast bar. [Needs in-game check: whether the small frames' names read on the 24-unit bars.]
 - If it fails, paste: a screenshot of the wall, and `/vg errors`.
 
+### 33.492 A shaman's totem row is not blocked when the name tab changes in a fight
+
+- Do: on WoW Forever as a shaman, set General → HUD look to Tabs, drop two totems, start a fight and, in it, type `/run Vanguard_player.tab:SetWidth(60)`; right-click a totem to destroy it; after the fight switch the look to Shield and back to Tabs.
+- Expect: no "Interface action failed because of an AddOn" line and nothing new in `/vg errors`; the totem row stays 3 units over the name tab (over the frame under Shield) and destroys the totem on a right-click. [Needs in-game check: all of it; the client's rule on anchors of protected frames is not in Blizzard's code.]
+- If it fails, paste: `/vg errors`, and a screenshot of the totem row over your frame.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

@@ -105,9 +105,33 @@ it("class bars: the totem row sits above the player frame, clear of the chat's t
   }
 });
 
+// The totem row's bottom against the player frame's crown top (TEST-ONLY read): the gap in units, and what the row is
+// anchored to.
+const TOTEM_RIDE_LUA = `local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames")
+  local rel = select(2, CB.totems:GetPoint())
+  return { math.floor((CB.totems:GetBottom() - UF.Crown(Vanguard_player):GetTop()) * 100 + 0.5) / 100, rel == Vanguard_player }`;
+
+it("class bars: the totem row stands over the player frame's crown under every look and layout, anchored to the frame itself, and a look change in a fight moves it when the fight ends", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV + TOTEMS_ENV);
+  // Switches the HUD look.
+  const look = (name) => addon.eval(`ns.Theme.Settings().hudLook = "${name}" ns.Theme.Refresh()`);
+  expect(addon.eval(TOTEM_RIDE_LUA), "Shield: 3 units over the frame").toEqual([3, true]);
+  look("tabs");
+  expect(addon.eval(TOTEM_RIDE_LUA), "Tabs: 3 units over the tab, still on the frame").toEqual([3, true]);
+  addon.eval("ns.SetHudLayout('standards')");
+  expect(addon.eval(TOTEM_RIDE_LUA), "Standards: 3 units over the name line").toEqual([3, true]);
+  addon.eval("ns.SetHudLayout('centered')");
+  setCombat(addon, true);
+  addon.eval("Vanguard_player.tab:SetWidth(60)");
+  look("plain");
+  expect(addon.eval("return select(5, ns.GetModule('ClassBars').totems:GetPoint())"), "in a fight the secure row stays where it was").toBeGreaterThan(10);
+  setCombat(addon, false);
+  expect(addon.eval(TOTEM_RIDE_LUA), "after the fight: Plain, 3 units over the frame").toEqual([3, true]);
+});
+
 it("class bars: totems for shamans, mana in forms for druids", () => {
   const addon = loggedIn(UNITS_ENV + TOTEMS_ENV);
-  expect(addon.eval('local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames") return { #CB.cells, select(2, CB.totems:GetPoint()) == UF.Crown(Vanguard_player) }'), "a shaman gets four totem cells above the player frame (its crown, which rises with a tab)").toEqual([4, true]);
+  expect(addon.eval('local CB, UF = ns.GetModule("ClassBars"), ns.GetModule("UnitFrames") return { #CB.cells, select(2, CB.totems:GetPoint()) == Vanguard_player }'), "a shaman gets four totem cells above the player frame (anchored to the frame itself, over its crown)").toEqual([4, true]);
   expect(totemCell(addon, 1), "a totem that is down shows its icon, its sweep and the client's numbers").toMatchObject({ alpha: 1, icon: "TEST-ONLY-ICON-Totem", sweep: [100, 120], numbers: true, type2: "destroytotem", slot: 1 });
   expect(totemCell(addon, 2).alpha, "an empty slot is see-through (cells are secure, so alpha, not Hide)").toBe(0);
   addon.eval('GetTotemDuration = function(slot) return { __duration = slot } end __totems[2] = { true, "TEST-ONLY Totem 2", 200, 60, "TEST-ONLY-ICON-Two" }');
