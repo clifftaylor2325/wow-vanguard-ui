@@ -5542,6 +5542,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The new quick button on the combat log bar is a flat theme button, not the game's art.
 - If it fails, paste: A screenshot of the bar.
 
+### 33.573 Retail group finder page titles
+
+- Do: On Retail, open the group finder, Premade Groups, then Start a Group.
+- Expect: Both page titles read in the light heading text, not the game's gold.
+- If it fails, paste: A screenshot of each page.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
