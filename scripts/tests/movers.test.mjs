@@ -634,3 +634,21 @@ it("hunt H44-11-R1: a mover that starts again fades its frame again", () => {
   addon.eval(`ns.Mover(__box, "box", "TEST-ONLY box", { "BOTTOM", "BOTTOM", 0, 100, edge = true }) __box:SetAlpha(1)`);
   expect(addon.eval("return __box:GetAlpha()"), "registered again: the saved opacity applies").toBe(0.5);
 });
+
+it("hunt H44-11-R3: a frame on a high strata registered while Edit Mode has the handles up gets its handle on HIGH", () => {
+  const addon = loggedIn(`
+    EditModeManagerFrame = CreateFrame("Frame", "EditModeManagerFrame", UIParent) EditModeManagerFrame:SetSize(600, 400)
+    EditModeManagerFrame:SetPoint("CENTER") EditModeManagerFrame:Hide()`);
+  addon.eval("EditModeManagerFrame:Show()");
+  addon.eval(`__d = CreateFrame("Frame", "TESTONLY_Dialog", UIParent) __d:SetSize(200, 40) __d:SetFrameStrata("DIALOG")
+    __m = ns.Mover(__d, "tdialog", "TEST-ONLY dialog", { "CENTER", "CENTER", 0, 0 })`);
+  expect(addon.eval("return __m.handle:GetFrameStrata()"), "under Edit Mode's window like the other handles").toBe("HIGH");
+});
+
+it("hunt H44-11-R3: a frame on a high strata registered in plain unlock mode keeps its handle on its own strata", () => {
+  const addon = loggedIn();
+  addon.slash("unlock");
+  addon.eval(`__d = CreateFrame("Frame", "TESTONLY_Dialog", UIParent) __d:SetSize(200, 40) __d:SetFrameStrata("DIALOG")
+    __m = ns.Mover(__d, "tdialog", "TEST-ONLY dialog", { "CENTER", "CENTER", 0, 0 })`);
+  expect(addon.eval("return __m.handle:GetFrameStrata()"), "above the frame").toBe("DIALOG");
+});

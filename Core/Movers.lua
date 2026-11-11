@@ -280,7 +280,7 @@ function ns.Mover(frame, key, label, default)
   movers[key] = m
   place(m)
   ns.MoverLinks.Registered(key)
-  if unlocked then showHandle(m) end
+  if unlocked then showHandle(m, editUnlocked and "HIGH" or nil) end
   return m
 end
 
