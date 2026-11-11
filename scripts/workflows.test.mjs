@@ -130,11 +130,14 @@ it("release keeps the checks and skips the preview", () => {
   expect(text).not.toMatch(/^\s+checks:/m);
 });
 
-it("lua-suite takes a boolean tests input that defaults to on, and only the coverage run depends on it", () => {
+it("lua-suite takes a boolean tests input that defaults to on, and only the test jobs and the quick job's test run depend on it", () => {
   const text = workflow("lua-suite.yml");
   expect(text).toMatch(/^ {6}tests:\n {8}description: .*\n {8}type: boolean\n {8}default: true$/m);
-  expect(text).toContain("      - run: npm run coverage\n        if: inputs.tests\n");
-  expect(text.match(/inputs\.tests/g)).toHaveLength(1);
+  expect(jobText(text, "shards")).toMatch(/^ {4}if: inputs\.tests$/m);
+  expect(jobText(text, "coverage")).toMatch(/^ {4}if: inputs\.tests$/m);
+  expect(jobText(text, "quick")).toContain("      - run: npm run coverage -- --project quick --project hooks\n        if: inputs.tests\n");
+  expect(jobText(text, "bench"), "the bench and the checks never depend on it").not.toContain("inputs.tests");
+  expect(text.match(/if: inputs\.tests/g)).toHaveLength(3);
 });
 
 it("for now the release runs the suite without the tests, and a hand-started full suite runs them", () => {
@@ -628,7 +631,7 @@ it("the merge job needs every test job, downloads their hits and applies the flo
   expect(coverage).toMatch(/^ {6}- uses: actions\/download-artifact@[0-9a-f]{40} # v\d+\.\d+\.\d+$/m);
   expect(coverage).toMatch(/^ {10}pattern: lua-shard-\*$/m);
   expect(coverage).toMatch(/^ {10}path: coverage\/shards$/m);
-  expect(coverage).not.toMatch(/continue-on-error|^\s+if: (?!always\(\))/m);
+  expect(coverage).not.toMatch(/continue-on-error|^\s+if: (?!always\(\)|inputs\.tests$)/m);
 });
 
 it("the quick job runs the checks before its tests and uploads its hits as a shard; the bench runs in a job of its own", () => {
