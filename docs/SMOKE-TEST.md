@@ -5470,6 +5470,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the stranger's invite is declined at once with one line `Declined a group invite from <name>.`; the friend's popup stays.
 - If it fails, paste: the chat line, and `/vg errors`.
 
+### 33.561 A long meter report goes out as whole lines (H44-20-1)
+
+- Do: in a party after a fight with 6 or more members (cross-realm names if you can), `/vg meter report party 10`.
+- Expect: one or more party lines, every listed name whole, none cut off; the first line starts with the meter title.
+- If it fails, paste: the party lines, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
