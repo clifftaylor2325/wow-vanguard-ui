@@ -12,8 +12,8 @@
 --     matching items from your bags, up to 12; you press Send.
 --   * Take all and Return all: the money and items of every mail the panel shows (its filter and words
 --     applied), one step at a time, or those mails sent back to their senders after a question;
---     /vg mail takeall and returnall do the same. Pay-on-delivery mail is never taken, and a sale,
---     system or game master mail is never returned.
+--     /vg mail takeall and returnall do the same. Pay-on-delivery mail is never taken (nor game master
+--     mail by Take all), and a sale, system or game master mail is never returned.
 -- Nothing is taken, attached or sent without your click, and nothing here runs in combat.
 
 local ADDON, ns = ...
@@ -78,7 +78,7 @@ local function invoiceType(i)
 end
 
 -- Mail i as { index, sender, subject, money, items, link, cod, returnable (a player's mail the game sends back, not
--- one it deletes: a returned mail is not), invoice (any auction house invoice), sale (one for your own sale), days
+-- one it deletes: a returned mail is not), gm (from a game master; a hidden answer counts as no), invoice (any auction house invoice), sale (one for your own sale), days
 -- (left, or nil), lost (deleted with money or items in it when it runs out) }; nil when there is none.
 function MT.Read(i)
   local _, _, sender, subject, money, cod, days, count, _, _, _, reply, gm, _, link = GetInboxHeaderInfo(i)
@@ -87,7 +87,7 @@ function MT.Read(i)
   local m = { index = i, sender = plain(sender), subject = plain(subject), money = ns.PlainNumber(money) or 0,
     items = ns.PlainNumber(count) or 0, link = plain(link), cod = ns.PlainNumber(cod) or 0, days = ns.PlainNumber(days),
     returnable = not ns.IsSecret(reply) and reply == true and not ns.IsSecret(gm) and gm ~= true,
-    invoice = kind ~= "", sale = MT.SALE_INVOICES[kind] == true }
+    invoice = kind ~= "", sale = MT.SALE_INVOICES[kind] == true, gm = not ns.IsSecret(gm) and gm == true }
   local deletes = deletable(i)
   m.lost, m.returnable = deletes and (m.money > 0 or m.items > 0), m.returnable and not deletes
   return m
@@ -169,20 +169,27 @@ end
 
 MT.STEP = 0.3
 
--- How many steps empty the mails: each one's money and its items (a mail that asks for payment on delivery
--- is left alone). Only the count: Take all reads each mail again before every step it takes.
+-- Whether Take all takes from a mail: not one that asks for payment on delivery, nor game master mail, which
+-- the game's Open All also leaves to be opened by hand (OpenAllMailMixin:ShouldSkipCurrentMail in
+-- Blizzard_MailFrame/MailFrame.lua: so restored items are not missed).
+local function takeable(m)
+  return m.cod == 0 and not m.gm
+end
+
+-- How many steps empty the mails: each one's money and its items (pay-on-delivery and game master mail
+-- are left alone). Only the count: Take all reads each mail again before every step it takes.
 function MT.TakeCount(mails)
   local n = 0
   for _, m in ipairs(mails) do
-    if m.cod == 0 then n = n + (m.money > 0 and 1 or 0) + math.min(m.items, MT.RECEIVE) end
+    if takeable(m) then n = n + (m.money > 0 and 1 or 0) + math.min(m.items, MT.RECEIVE) end
   end
   return n
 end
 
 -- Whether mail now (read again) can still be the listed mail m as Take all empties it: the same sender and
--- subject, nothing to pay on delivery, and no more money or items than were listed.
+-- subject, still one Take all takes from, and no more money or items than were listed.
 local function sameMail(now, m)
-  return now.sender == m.sender and now.subject == m.subject and now.cod == 0 and now.money <= m.money and now.items <= m.items
+  return now.sender == m.sender and now.subject == m.subject and takeable(now) and now.money <= m.money and now.items <= m.items
 end
 
 -- One take from mail m (read again): its money, else its first item left; false when it holds neither (or
@@ -321,7 +328,7 @@ local function takeMails(mails)
   return out
 end
 
--- Take all: the money and items of every mail the panel shows (its filter and words), COD mail excepted.
+-- Take all: the money and items of every mail the panel shows (its filter and words), COD and game master mail excepted.
 function MT.TakeAll()
   local mails = MT.Find(MT.query)
   start(L["Take all"], takeMails(mails), takeNext, MT.TakeCount(mails))
