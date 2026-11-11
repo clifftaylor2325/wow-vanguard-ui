@@ -229,6 +229,21 @@ it("unit frames: after a ding the target's level colour is the one for your new 
   expect(color.slice(0, 3), "the target's level reads in the colour for level 61 (+2)").toEqual(fresh);
 });
 
+it("unit frames: a party member who goes offline or dies loses the power text, and gets it back on return", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, UnitFrames = { powerFormat = 'value' } } } }" });
+  addon.world.setUnit("party1", { name: "TEST-ONLY Friend", hp: 400, maxhp: 500, power: 300, maxpower: 1000, isPlayer: true, connected: true });
+  addon.fire("GROUP_ROSTER_UPDATE");
+  // The power text's shown state and text, and the health text, of party1's frame.
+  const read = () => addon.eval("local f = Vanguard_party1 return { f.powerText:IsShown(), f.powerText:GetText(), f.healthText:GetText() }");
+  expect(read(), "alive: the power number shows").toEqual([true, "300", "400"]);
+  addon.world.setUnit("party1", { connected: false });
+  expect(read().slice(1), "offline: health says Offline, the power text is empty").toEqual(["", "Offline"]);
+  addon.world.setUnit("party1", { connected: true, dead: true, hp: 0 });
+  expect(read().slice(1), "dead: health says Dead, the power text is empty").toEqual(["", "Dead"]);
+  addon.world.setUnit("party1", { dead: false, hp: 400 });
+  expect(read()[1], "back alive: the power number returns").toBe("300");
+});
+
 it("unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows", () => {
   const addon = loggedIn(UNITS_ENV + FOREVER_ENV + "CurveConstants = { ScaleTo100 = { __curve = true } } UnitHealthPercent = function() return 84 end UnitClassification = function() return 'normal' end", NO_RAID);
   // HealthText with the percent format on, and string.format answering the percent's "%d%%" with `format` (a Lua value) when given.

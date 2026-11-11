@@ -964,15 +964,18 @@ local function paintHealthText(f, down)
 end
 
 -- Health bar value, color and text. Raw values go straight to the bar; the
--- text may be secret, so it goes to the font string untested. A down word keeps its status colour.
+-- text may be secret, so it goes to the font string untested. A down word keeps its status colour. Going down or
+-- coming back repaints the power text too (empty while down): an offline unit sends no power event.
 function UF.UpdateHealth(f)
   local unit, down = f.unit, UF.DownState(f.unit)
   f.health:SetMinMaxValues(0, UnitHealthMax(unit))
   T.SetBarValue(f.health, UnitHealth(unit))
+  local changed = f.vgDown ~= down
   f.vgDown = down
   if f.heal then UF.Prediction.Update(f) end
   UF.PaintHealth(f, down)
   paintHealthText(f, down)
+  if changed then UF.PaintPowerText(f) end
 end
 
 -- Power bar value and color.
