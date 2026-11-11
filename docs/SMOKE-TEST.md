@@ -5536,6 +5536,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: the flyout sits beside the guild window without covering the Chat, Roster, Benefits or Info tabs, and stays beside it after the other window opens and closes.
 - If it fails, paste: a screenshot, and where the flyout ends up.
 
+### 33.572 Combat log filter buttons
+
+- Do: Open Chat Settings, Combat, add a filter with Show Quick Button ticked.
+- Expect: The new quick button on the combat log bar is a flat theme button, not the game's art.
+- If it fails, paste: A screenshot of the bar.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
