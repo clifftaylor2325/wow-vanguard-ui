@@ -259,3 +259,20 @@ it("a frame given a size and stretched between two anchors reports the stretched
     return { w, h, f:GetWidth(true), f:GetHeight(true), f:GetRight() == p:GetRight(), f:GetTop() == p:GetTop(), one:GetWidth(), one:GetHeight() }`);
   expect(out).toEqual([300, 200, 100, 20, true, true, 100, 20]);
 });
+
+// Blizzard_UIPanelTemplates/Shared/UIPanelTemplatesShared.lua:147-151 sets a button's normal and highlight textures and
+// reads each back; SimpleTextureBaseAPIDocumentation.lua's GetTexCoord answers the four corners (both clients).
+it("getters answer what their setter stored, HasScript the kind's script list and IsForbidden false; unset textures stay nil", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local b = CreateFrame("Button", nil, UIParent)
+    local unset = b:GetNormalTexture() == nil and b:GetHighlightTexture() == nil
+    b:SetNormalTexture("TEST-ONLY-UP") b:SetHighlightTexture("TEST-ONLY-LIT")
+    local n, h = b:GetNormalTexture(), b:GetHighlightTexture()
+    local first = n:GetTexture()
+    b:SetNormalTexture("TEST-ONLY-UP2")
+    local t = b:CreateTexture() t:SetTexCoord(0.1, 0.9, 0.2, 0.8)
+    local four = { t:GetTexCoord() }
+    return { unset, n:GetObjectType(), first, h:GetDrawLayer(), b:GetNormalTexture() == n, n:GetTexture(), four,
+      b:HasScript("OnClick"), CreateFrame("Frame"):HasScript("OnClick"), t:HasScript("OnShow"), b:IsForbidden(), b:CreateTexture():GetTexCoord() == nil }`);
+  expect(out).toEqual([true, "Texture", "TEST-ONLY-UP", "HIGHLIGHT", true, "TEST-ONLY-UP2", [0.1, 0.2, 0.1, 0.8, 0.9, 0.2, 0.9, 0.8], true, false, false, false, true]);
+});

@@ -415,6 +415,15 @@ function methods:GetAlpha() return self.__alpha or 1 end
 function methods:SetTexCoord(...) self.__texCoord = { ... } end
 function methods:SetScale(s) self.__scale = s end
 function methods:GetScale() return self.__scale or 1 end
+-- The coordinates SetTexCoord gave, as the client answers them: the four corners ulX, ulY, llX, llY, urX, urY, lrX,
+-- lrY (SimpleTextureBaseAPIDocumentation.lua, both clients), from a left, right, top, bottom set too. Nothing before
+-- a set: what the client answers for an unset texture is not settled by its source.
+function methods:GetTexCoord()
+  local c = self.__texCoord
+  if not c then return end
+  if c[5] == nil then return c[1], c[3], c[1], c[4], c[2], c[3], c[2], c[4] end
+  return stub.unpack(c, 1, 8)
+end
 
 -- Its scale times every parent's, as the client computes it.
 function methods:GetEffectiveScale()
@@ -486,6 +495,27 @@ end
 
 -- The checked highlight texture, if set.
 function methods:GetCheckedTexture() return self.__checkedTexture end
+
+-- A button's state textures and their layers. Set*Texture makes the texture on first use and gives it the asset, and
+-- Get*Texture answers it, as Blizzard's own code relies on (Blizzard_UIPanelTemplates/Shared/UIPanelTemplatesShared.lua
+-- :147-151 sets the normal and highlight textures, then reads each back to set its coordinates). Before a set each
+-- answers nil: what the client answers for an unset one is not settled by its source.
+local STATE_TEXTURES = { Normal = "ARTWORK", Pushed = "ARTWORK", Disabled = "ARTWORK", Highlight = "HIGHLIGHT", DisabledChecked = "OVERLAY" }
+
+-- The setter for one state's texture: a texture given is kept as it is, an asset goes on the state's own texture.
+local function stateTextureSetter(key, layer)
+  return function(self, asset)
+    if type(asset) == "table" then self[key] = asset return end
+    self[key] = self[key] or newWidget("Texture", nil, self, nil, layer)
+    self[key]:SetTexture(asset)
+  end
+end
+
+for state, layer in pairs(STATE_TEXTURES) do
+  local key = "__" .. state:sub(1, 1):lower() .. state:sub(2) .. "Texture"
+  methods["Set" .. state .. "Texture"] = stateTextureSetter(key, layer)
+  methods["Get" .. state .. "Texture"] = function(self) return self[key] end
+end
 
 -- Cooldowns: the last start and duration given, or the duration object.
 function methods:SetCooldown(start, duration) self.__cooldown = { start, duration } end
@@ -562,6 +592,16 @@ function methods:GetDisabledFontObject() return self.__disabledFont end
 function methods:GetHighlightFontObject() return self.__highlightFont end
 -- A font object takes another's face, colour and shadow.
 function methods:CopyFontObject(src) self.__font, self.__textColor, self.__shadowColor = src.__font, src.__textColor, src.__shadowColor end
+
+-- Whether the widget's kind has a script: the list SetScript and HookScript check (wow-widget-api.lua), as the
+-- client's HasScript answers for its widget types.
+function methods:HasScript(name)
+  local scripts = API.scripts[self.__kind]
+  return scripts ~= nil and scripts[name] == true
+end
+
+-- Not forbidden: wow-taint.lua's closing gives the widgets the client keeps from addons their own true.
+function methods:IsForbidden() return false end
 
 -- Errors as the client does on a script the widget's kind lacks, for SetScript and HookScript alike.
 local function requireScript(w, name)
