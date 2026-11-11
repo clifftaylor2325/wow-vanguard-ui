@@ -192,3 +192,14 @@ it("an aura with hidden times gives a duration object that holds them hidden, an
   addon.eval(`local a = __wfgWorld.units.target.auras[1] a.duration, a.expirationTime = __wfgWorld.secret(10), __wfgWorld.secret(110)`);
   expect(read(), "hidden").toEqual([true, [true, 100], [true, 10], [true, 110], [true, 10], false]);
 });
+
+// world.secretReads is the harness's own worst case: Blizzard_APIDocumentationGenerated (UnitDocumentation.lua, both
+// clients) tags neither UnitOnTaxi nor UnitIsDeadOrGhost secret. A hidden boolean is what a truth test is refused on.
+it("a yes/no read the secret-read switch hides answers a hidden boolean, so an unguarded truth test raises", () => {
+  const addon = createAddon();
+  addon.eval("__wfgWorld.secretReads.UnitOnTaxi = true __wfgWorld.secretReads.UnitIsDeadOrGhost = true");
+  expect(addon.eval(`local t, d = UnitOnTaxi("player"), UnitIsDeadOrGhost("player")
+    return { issecretvalue(t), rawget(t, "n"), issecretvalue(d), rawget(d, "n") }`)).toEqual([true, false, true, false]);
+  expect(addon.eval(`return { pcall(assert(loadstring('if UnitOnTaxi("player") then return 1 end', "@Modules/TEST-ONLY.lua"))) }`),
+    "a truth test in addon code").toEqual([false, "Modules/TEST-ONLY.lua:1: attempt to perform boolean test on a secret value"]);
+});

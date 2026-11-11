@@ -2633,22 +2633,26 @@ blizzardFrames()
 -- The client's default tooltip anchor: owned by the frame, placed by the game.
 function GameTooltip_SetDefaultAnchor(tooltip, parent) tooltip:SetOwner(parent, "ANCHOR_NONE") end
 
--- world.secretReads: names of client reads that answer with a secret while on, as the client does
--- in instanced combat (a test sets world.secretReads.UnitOnTaxi = true). Off by default.
+-- world.secretReads: names of client reads that answer with a secret while on (a test sets
+-- world.secretReads.UnitOnTaxi = true). Off by default. Blizzard_APIDocumentationGenerated (UnitDocumentation.lua,
+-- MapDocumentation.lua, QuestLogDocumentation.lua, both clients) tags none of the six with SecretReturns or a
+-- SecretWhen* rule: the switch is a worst case for code that should guard them, not the client's documented model.
 world.secretReads = {}
 
--- Wraps holder[key] so it answers world.secret(0) while world.secretReads[name] is on.
-local function secretRead(name, holder, key)
+-- Wraps holder[key] so it answers world.secret(hidden) while world.secretReads[name] is on: a hidden value of the
+-- read's own type, so a truth test on a yes/no read is refused as the client refuses one on a hidden boolean.
+local function secretRead(name, holder, key, hidden)
   local real = holder[key]
   holder[key] = function(...)
-    if world.secretReads[name] then return world.secret(0) end
+    if world.secretReads[name] then return world.secret(hidden) end
     return real(...)
   end
 end
 
-for _, name in ipairs({ "UnitOnTaxi", "UnitLevel", "UnitXP", "UnitIsDeadOrGhost" }) do secretRead(name, _G, name) end
-secretRead("C_Map.GetPlayerMapPosition", C_Map, "GetPlayerMapPosition")
-secretRead("C_QuestLog.GetDistanceSqToQuest", C_QuestLog, "GetDistanceSqToQuest")
+for _, name in ipairs({ "UnitLevel", "UnitXP" }) do secretRead(name, _G, name, 0) end
+for _, name in ipairs({ "UnitOnTaxi", "UnitIsDeadOrGhost" }) do secretRead(name, _G, name, false) end
+secretRead("C_Map.GetPlayerMapPosition", C_Map, "GetPlayerMapPosition", 0)
+secretRead("C_QuestLog.GetDistanceSqToQuest", C_QuestLog, "GetDistanceSqToQuest", 0)
 
 -- Resets the world to its defaults (units, actions, bags, quests) without touching frames.
 function world.reset()
