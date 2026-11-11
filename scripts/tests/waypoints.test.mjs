@@ -55,6 +55,11 @@ it("waypoints: /way reads guide coordinates, names zones, and points the game's 
   expect(chatHas(addon, /Waypoint cleared/), "and says so").toBe(true);
 });
 
+it("waypoints: a map the client gives no name for is skipped, not an error", () => {
+  const addon = loggedIn(MAP_ENV + "__maps[13] = { mapID = 13, parentMapID = 1 } __maps[14] = { mapID = 14, name = __wfgWorld.secret('x'), parentMapID = 1 }");
+  expect([way(addon, "TEST-ONLY Elwynn 30 30").length, addon.eval("return #ns.errors")], "the named map is still found, with no error").toEqual([1, 0]);
+  expect([way(addon, "Narnia 30 30"), chatHas(addon, /no zone called Narnia/)], "and a name nothing has says so").toEqual([{}, true]);
+});
 it("waypoints: lines it can't use say why and set nothing", () => {
   const addon = loggedIn(MAP_ENV);
   expect([way(addon, "somewhere nice"), chatHas(addon, /give the coordinates as x y/)], "no coordinates").toEqual([{}, true]);

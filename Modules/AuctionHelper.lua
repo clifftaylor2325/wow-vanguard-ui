@@ -195,14 +195,17 @@ function AH.Next()
   C_Timer.After(AH.FALLBACK, ns.Guard("timer search fallback", function() if AH.pending == s then AH.Done() end end))
 end
 
--- Queues a search at the back of the line and sends it if nothing is in flight.
+-- Queues a search at the back of the line and sends it if nothing is in flight. A closed house takes none:
+-- it would be sent at the next open, long after the click that asked for it.
 function AH.Queue(search)
+  if not AH.open then return end
   table.insert(AH.queue, search)
   AH.Next()
 end
 
 -- Queues a search first in line (ahead of the rest) and sends it if nothing is in flight.
 function AH.QueueFirst(search)
+  if not AH.open then return end
   table.insert(AH.queue, 1, search)
   AH.Next()
 end

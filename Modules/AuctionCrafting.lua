@@ -33,7 +33,7 @@ AH.defaults.crafting = true
 -- T.SPACE.gap), row height (reagents: the shop's rows, AH.ROW_H) and line height (totals); its gap from the
 -- window, wide enough to clear the window's side tabs; where the reagent rows start (under the heading).
 CR.WIDTH, CR.PAD, CR.ROW, CR.LINE, CR.GAP, CR.TOP = 280, T.SPACE.gap, AH.ROW_H, 18, 52, -30
--- Reagent rows at most (vanilla recipes have up to six reagents).
+-- Reagent rows built at first (vanilla recipes have up to six reagents); a recipe with more adds rows as it is painted.
 CR.ROWS = 8
 -- Enum.CraftingReagentType.Basic (ProfessionConstantsDocumentation.lua), for a client without the Enum.
 CR.BASIC = 1
@@ -125,6 +125,28 @@ local function paintTotals(f, data, n)
   f:SetHeight(-y + #f.lines * CR.LINE + T.SPACE.gap + T.BUTTON_H + CR.PAD)
 end
 
+-- Reagent row i: the shop's row parts (icon, name, count, price), CR.ROW tall from CR.TOP.
+local function reagentRow(f, i)
+  local r = CreateFrame("Frame", nil, f)
+  r:SetHeight(CR.ROW)
+  r:SetPoint("TOPLEFT", CR.PAD, CR.TOP - (i - 1) * CR.ROW)
+  r:SetPoint("TOPRIGHT", -CR.PAD, CR.TOP - (i - 1) * CR.ROW)
+  AH.RowParts(r)
+  return r
+end
+
+-- Builds the rows a recipe with more reagents than the panel has rows needs, so the rows and the totals agree.
+local function growRows(f, count)
+  for i = #f.rows + 1, count do f.rows[i] = reagentRow(f, i) end
+end
+
+-- The reagent rows (one per reagent) and the totals under them.
+local function paintReagents(f, data)
+  growRows(f, #data.reagents)
+  for i, r in ipairs(f.rows) do paintReagent(r, data.reagents[i]) end
+  paintTotals(f, data, #data.reagents)
+end
+
 -- Paints the panel for the recipe on display, and shows it while the recipe form shows and the
 -- switch is on; hidden for a recipe the client gives no schematic for.
 function CR.Paint()
@@ -135,8 +157,7 @@ function CR.Paint()
   local f = CR.Place(CR.frame or CR.Build())
   CR.data = data
   f.title:SetText(data.name or L["Crafting cost"])
-  for i, r in ipairs(f.rows) do paintReagent(r, data.reagents[i]) end
-  paintTotals(f, data, math.min(#data.reagents, #f.rows))
+  paintReagents(f, data)
   f:Show()
 end
 
@@ -171,16 +192,6 @@ function CR.AddReagents()
 end
 
 -- Building -----------------------------------------------------------------------------------
-
--- Reagent row i: the shop's row parts (icon, name, count, price), CR.ROW tall from CR.TOP.
-local function reagentRow(f, i)
-  local r = CreateFrame("Frame", nil, f)
-  r:SetHeight(CR.ROW)
-  r:SetPoint("TOPLEFT", CR.PAD, CR.TOP - (i - 1) * CR.ROW)
-  r:SetPoint("TOPRIGHT", -CR.PAD, CR.TOP - (i - 1) * CR.ROW)
-  AH.RowParts(r)
-  return r
-end
 
 -- A total line: its label in text2 (placed by paintTotals) and its value at the panel's right.
 local function totalLine(f, line)

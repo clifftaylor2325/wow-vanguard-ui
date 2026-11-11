@@ -421,8 +421,8 @@ lines for the ones after it. A pull request that should change nothing on Foreve
   predicates in `frames()`.
 - Coverage of the addon's Lua is enforced (`npm run coverage`, which runs
   every test with coverage on; run it on the branch before its pull request
-  merges, since no pull request runs a test in CI: CI runs the suite weekly,
-  before a release and from the Actions tab): a new feature comes with the
+  merges, since no pull request runs a test in CI: for now CI runs the suite
+  only when it is started from the Actions tab): a new feature comes with the
   scenario that exercises it. `npm run test:quick` runs only `smoke.test.mjs`,
   `snapshot.test.mjs` and `freeze.test.mjs` from here.
 - `npm run quality` applies to the tests too: every function has a comment

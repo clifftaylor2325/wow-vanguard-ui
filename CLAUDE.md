@@ -16,8 +16,10 @@ Read this before touching anything. README.md and the feature pages in `docs/fea
 npm install           # once; also turns on .githooks/pre-push (test:quick, quality, TOC, luacheck and luac if installed; --no-verify skips)
 npm run test:quick    # JS tests + the Lua smoke tests (both clients, secret geometry); the fast run while iterating
 npm test              # all tests (JS + Lua harness)
+npm run test:slot -- <vitest args>   # npm test is this with no arguments; e.g. --project lua scripts/tests/chat.test.mjs
 npm run verify        # npm test + code-quality scan
 npm run coverage      # all tests with line coverage; floor is 100% (scripts/lua-coverage-floor.json)
+                      # test, test:quick, test:slot and coverage wait for a free machine-wide test slot (1 under 12 GB of memory, else 2; VG_TEST_SLOTS sets it)
 npm run lint          # luacheck (only if installed)
 npm run media         # regenerate Media/ from scripts/lib/media-sources.mjs
 npm run package       # dist/Vanguard-<version>.zip
@@ -27,7 +29,7 @@ npm run link:wow -- --wow "<Forever folder>"   # link the clone into the game fo
 
 Before you say a change is done: `npm run quality` and `npm run coverage` must both pass (coverage runs every test, so `npm run verify` on top of it only runs the suite twice). Every new line of addon Lua needs a test that executes it.
 
-**Tests run locally, not on pull requests** (Cliff, 2026-11-10). No PR runs a test in CI: `verify.yml` ("Quick checks") runs only spelling, the code-quality scan, the TOC check, luacheck, Lua 5.1 syntax and the release zip. Before an agent merges a PR, it brings `main` into the branch and runs the whole suite there, `npm run quality` and `npm run coverage` (every test, 100% floor), and the PR body says they passed and on which commit. A PR whose local suite is red does not merge. In CI the full suite runs weekly on `main` (`full-suite.yml`) and as the gate in front of every release (`release.yml`, and `scripts/release-local.mjs` for the local route), so nothing ships red.
+**Tests run locally, not on pull requests** (Cliff, 2026-11-10). No PR runs a test in CI: `verify.yml` ("Quick checks") runs only spelling, the code-quality scan, the TOC check, luacheck, Lua 5.1 syntax and the release zip. Before an agent merges a PR, it brings `main` into the branch and runs the whole suite there, `npm run quality` and `npm run coverage` (every test, 100% floor), and the PR body says they passed and on which commit. A PR whose local suite is red does not merge. **For now CI runs no tests by itself** (Cliff, 2026-11-10): the suite takes 45 to 60 minutes, so the weekly run is off and `release.yml` runs the raid bench and the checks without the tests, until the suite is fast again (sharded CI and the Lua 5.1 engine are in work). The tests still run on the agent's machine before a merge, and from the Actions tab on demand (*full suite* → *Run workflow*, every test with the coverage floor). Before a release, run that hand-started suite on `main` or `scripts/release-local.mjs`, or say in the release thread that it was not run.
 
 ## Hard rules (the checks and tests enforce these)
 
@@ -102,7 +104,7 @@ Claude usage and CI minutes are both limited. Pick the cheapest model and effort
 - **Model by task.** Haiku for mechanical work: closing issues with a link, ticking plans, renumbering smoke-test steps, bringing `main` into a branch, release-note drafts from merged PR titles, a status summary. Sonnet for everything that changes code: bug fixes, feature phases, harness tests, site generators, docs that need judgement. Opus or above only for a root cause nobody has reproduced, a change to the harness rules (`scripts/lib/wow-taint.lua`, the secret helpers), a secure or protected code path, or a decision that spans modules.
 - **Effort by task.** Low for the Haiku work and for checklists. Medium is the default for code. High only for the Opus cases above. Don't raise effort to make up for a vague brief; sharpen the brief.
 - **Briefs stay lean.** A thread's brief names the issue or phase, the branch, the files it may touch, and the default picked where the ask forks. It does not restate the README, this file or the plan; the thread reads those itself. One thread per independent branch. A task that waits on another PR waits; it does not get a thread yet.
-- **Local runs.** `npm run test:quick` while iterating. `npm run quality` and `npm run coverage` once, before the PR merges (on the branch with `main` brought in), not after every edit.
+- **Local runs.** Tests go through `npm test`, `npm run test:quick`, `npm run test:slot -- <vitest args>` or `npm run coverage`, never `npx vitest` directly: they wait for a machine-wide slot, so two runs never overlap and exhaust the machine's memory. `npm run test:quick` while iterating. `npm run quality` and `npm run coverage` once, before the PR merges (on the branch with `main` brought in), not after every edit.
 - **CI minutes.** Open PRs as drafts and mark them ready once, when they are done; CI skips drafts. No label makes a PR run the tests in CI (the `full-tests` label is retired); a change that is risky gets a hand-started full suite from the Actions tab (*full suite* → *Run workflow*) on its branch, only when the local run can't settle it. Don't push to re-run a green check.
 - **Merging in a wave.** When several PRs are open, merge in the order that keeps `main` moving under the fewest branches (core and harness first, then features), and bring `main` into a branch once, right before it merges, not after every merge.
 - **GSD.** `.planning/config.json` sets `model_profile` to `budget` for the same reason. A phase plan states the model and effort a plan needs only when it is not the default above.

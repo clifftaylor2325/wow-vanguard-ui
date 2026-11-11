@@ -3,8 +3,11 @@ name: release
 # Publish a GitHub release with the addon zip attached, either by pushing a
 # tag like v0.3.0 (matching ## Version in Vanguard.toc) or by running
 # this workflow from the Actions tab on main, which tags the commit
-# v<TOC version> itself. The whole suite (lua-suite.yml: every test with
-# the coverage floor, the checks) runs first, so nothing ships red.
+# v<TOC version> itself. lua-suite.yml runs first: the raid bench and the
+# checks. For now it runs without the tests (Cliff, 2026-11-10: the suite
+# takes 45 to 60 minutes and is out of CI until it is fast again), so the
+# tests are the release's author's to run before the tag: a hand-started
+# full suite on main, or scripts/release-local.mjs.
 on:
   push:
     tags: ["v*"]
@@ -41,8 +44,11 @@ jobs:
     name: Suite
     needs: version
     uses: ./.github/workflows/lua-suite.yml
+    # tests: false for now (Cliff, 2026-11-10): the release runs the raid bench and the checks, not the
+    # tests, until the suite is fast again. Take the line out to put the test gate back.
     with:
       preview: false
+      tests: false
 
   release:
     name: Publish
