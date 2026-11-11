@@ -40,7 +40,6 @@ local function addFirst(menu)
   b.bottomPadding = SECTION_GAP
   b:SetScript("OnClick", ns.Guard("click open options from game menu", ns.OpenFromGameMenu))
   ns.gameMenuButton = b
-  if type(menu.MarkDirty) == "function" then menu:MarkDirty() end
 end
 
 -- A themed button just under a menu that can't take new buttons.

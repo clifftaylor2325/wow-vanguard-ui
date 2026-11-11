@@ -5366,6 +5366,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: (1) no flash at the end of a global cooldown, one flash when a real cooldown ends. (2) Auto Shot shows its ammo count. (3) the game's own tracker text does not show over Vanguard's tracker after the loot, and the tracker's rows still take clicks. (4) the name matches in any case; a name that matches no profile asks before making an empty one; copy and delete ask first. (5) Undo setup puts back the profile it backed up; a backup never replaces a profile that was not made by that backup. (6) Confirm posts the item the sale was set up for, not whatever now sits in the slot. (7) the two windows overlap by about 15 units (known, not fixed). (8) the list is empty. [Needs in-game check: all eight; none was seen in the game.]
 - If it fails, paste: which part, a screenshot where there is one, and `/vg errors`.
 
+### 33.485 The Vanguard button stays first in the game menu
+
+- Do: log in and press Escape. Close the menu and open it again.
+- Expect: the Vanguard button is at the top of the game menu, above Options, with the usual gap under it, both times, and chat shows no "Interface action failed" message. [Needs in-game check: the button's place after login without the addon refreshing the menu's layout itself.]
+- If it fails, paste: a screenshot of the menu, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
