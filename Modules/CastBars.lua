@@ -120,12 +120,14 @@ local function durationCall(channel, stages)
   return channel and _G.UnitChannelDuration or _G.UnitCastingDuration
 end
 
--- The client's duration object for a cast, where it has one.
+-- The client's duration object for a cast, where it has one. The client may hide it (SecretReturns), and a
+-- hidden one counts as none: it can't be compared, nor handed to a timer or sweep from addon code.
 local function castDuration(unit, channel, stages)
   local get = durationCall(channel, stages)
   if type(get) ~= "function" then return nil end
   local ok, d = pcall(get, unit)
-  return ok and d or nil
+  if not ok or type(d) == "nil" or ns.IsSecret(d) then return nil end
+  return d
 end
 
 -- Showing ----------------------------------------------------------------------------

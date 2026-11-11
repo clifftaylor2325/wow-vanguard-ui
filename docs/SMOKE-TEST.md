@@ -5462,6 +5462,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: the private aura's icon there is about as large as the target's own debuff icons at the new size (34 across, not 24), and nothing new in `/vg errors`. [Needs in-game check: all of it; the game draws the icon itself.]
 - If it fails, paste: `/vg errors`, and a screenshot of the target frame with the private aura showing.
 
+### 33.501 Cast bars keep working where the game hides cast timing
+
+- Do: on either client, in a dungeon or battleground fight, target an enemy that casts and watch its cast on its nameplate and on the target cast bar, and cast a spell yourself.
+- Expect: each bar shows and fills (or shows full with the spell's name), and nothing new in `/vg errors` mentions CastBars. [Needs in-game check: whether the game hides a cast's duration object from addons there.]
+- If it fails, paste: `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
