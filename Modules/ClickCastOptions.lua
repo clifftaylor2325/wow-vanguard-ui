@@ -951,13 +951,22 @@ local function doImport(text)
   if n then ns.HideText() changed() end
 end
 
+-- How many bindings a checked list puts in place: one per key, since Import keeps the last of two for one key.
+local function keyCount(list)
+  local seen, n = {}, 0
+  for _, b in ipairs(list) do
+    if not seen[b.key] then seen[b.key], n = true, n + 1 end
+  end
+  return n
+end
+
 -- Imports the string, asking first when it would replace bindings you have (as Clear all and Copy to do);
 -- a string that can't be imported says why at once, the text dialog still open.
 local function importText(text)
   local list, had = CC.ReadImport(text), #CC.Bindings()
   if not list or had == 0 then return doImport(text) end
   ns.HideText()
-  local question = ns.Format(L["Replace your {old} click-casting bindings with the {new} from this string?"], { old = had, new = #list })
+  local question = ns.Format(L["Replace your {old} click-casting bindings with the {new} from this string?"], { old = had, new = keyCount(list) })
   ns.Ask(question, L["Replace"], CC.ForThisList(function() doImport(text) end), nil, "danger")
 end
 

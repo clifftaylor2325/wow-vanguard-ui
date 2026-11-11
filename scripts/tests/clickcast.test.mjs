@@ -860,3 +860,15 @@ it("H44-9-2 a hover key the game binds to a command is named as the game names t
   addon.eval('__wfgWorld.bindings.TOGGLEGAMEMENU = { "ESCAPE" } __wfgWorld.bindings.TOGGLEWORLDMAP = { "M" } BINDING_NAME_TOGGLEGAMEMENU = "TEST-ONLY Spielmenü"');
   expect(addon.eval(`return { ${CC}.Collision("ESCAPE"), ${CC}.Collision("M") }`), "the command's name; one with no name keeps the command").toEqual(["TEST-ONLY Spielmenü", "toggleworldmap"]);
 });
+
+it("H44-9-52 import: a string with three entries for one click asks about the one binding it puts in place", () => {
+  const addon = priest();
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061)`);
+  const text = encoded(addon, '{ { key = "BUTTON1", action = "target" }, { key = "BUTTON1", action = "menu" }, { key = "BUTTON1", action = "focus" }, { key = "BUTTON2", action = "menu" } }');
+  addon.eval('ns.Options.Show("clickcast") __click("Import")');
+  addon.type("Vanguard_TextEdit", text);
+  confirm(addon);
+  expect(addon.texts("Replace your 1 click-casting bindings with the 2 from this string?").length, "two keys, two bindings").toBe(1);
+  addon.click("Vanguard_Question.confirm");
+  expect(chatHas(addon, /Imported 2 click-casting bindings\./), "the count the question gave").toBe(true);
+});
