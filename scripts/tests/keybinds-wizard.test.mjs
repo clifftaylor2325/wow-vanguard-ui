@@ -450,3 +450,17 @@ it("H44-10-51 step 3: a key listed as staying is not changed when its button is 
   addon.eval('__click("Apply")');
   expect([win(addon).shown, keys(addon, ["T"])]).toEqual([false, ["MULTIACTIONBAR1BUTTON2"]]);
 });
+
+it("H44-10-1 step 3: a lower rank on a key's button is its own change naming both ranks; unticked, it stays", () => {
+  const addon = loggedIn(CLICK_LUA, {});
+  addon.eval('__wfgWorld.setUnit("player", { name = "Ilsa", class = "MAGE", className = "Mage", level = 26 })');
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank, icon: `TEST-ONLY-${id}` });
+  addon.world.learn(133, { name: "Fireball" });
+  addon.world.setAction(2, { type: "spell", id: 116 });
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  expect(ready(addon)).toContain("[x] 2: Frostbolt (Rank 3), in place of Rank 1");
+  untick(addon, "^2: Frostbolt");
+  addon.eval('__click("Apply")');
+  expect(addon.eval("return { select(2, GetActionInfo(1)), select(2, GetActionInfo(2)) }"), "Fireball placed, Rank 1 kept").toEqual([133, 116]);
+});

@@ -169,6 +169,8 @@ local CHANGE_TEXT = {
 }
 -- A change that writes over a spell the plan needn't keep (it replaces it, or another key places it in reach).
 local OVER_TEXT = L["{key}: {spell}, in place of {over}"]
+-- A change that puts a spell's top rank over a lower rank of it on its button.
+local RANK_TEXT = L["{key}: {spell} (Rank {rank}), in place of Rank {old}"]
 -- Why a key stays as it was, by the apply engine's reason; a reason not listed isn't shown.
 local KEPT_TEXT = {
   kept = L["{key}: unchanged, its button holds something key setup leaves alone (a macro, an item or a mount)"],
@@ -209,10 +211,21 @@ local function pagedKey(row, entry)
   return ns.Format(L["{key} in {page}"], { key = key, page = pageName(i, page) })
 end
 
+-- A change that puts a spell's rank over another rank of it, in words naming both ranks; nil for any other change,
+-- or when the spellbook lists no rank for one of them (the line then names the spell it replaces).
+local function rankSwap(row, keyName)
+  local CS = ns.ClickCastSpells
+  local rank, old = CS.RankOf(row.spell), CS.RankOf(row.over)
+  if not (rank and old and ns.SpellName(row.over) == ns.SpellName(row.spell)) then return nil end
+  return ns.Format(RANK_TEXT, { key = keyName or KV.KeyText(row.key), spell = spellText(row.spell), rank = rank, old = old })
+end
+
 -- One plan row in words, or nil for a row that needn't be listed (already set, or a spell not known yet). A stance or
 -- pet key's row has no spell and is named by its command. `keyName` is the key as the line names it (the key's own
 -- name when nil).
 local function changeText(row, entry, keyName)
+  local swap = row.over and rankSwap(row, keyName)
+  if swap then return swap end
   local text = row.over and OVER_TEXT or CHANGE_TEXT[row.kind] or KEPT_TEXT[row.why]
   if not text then return nil end
   local spell = row.spell and spellText(row.spell) or commandText(row.command)

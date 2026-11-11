@@ -5534,6 +5534,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: after the untick the T line has its own tick box and says "T: Hamstring, and Shield Bash moves to bar 3"; after the bar change Apply changes nothing, chat says "Your bars or keys changed since this list was made, so nothing was changed. Check the list and press Apply again.", and the list shows the new plan; Apply then does exactly what it lists. [Needs in-game check: all of it, and with Only this character on a character that had its own keys before.]
 - If it fails, paste: the Ready list before and after, the chat lines, and `/vg errors`.
 
+### 33.513 A new rank of a spell reaches its key
+
+- Do: on a WoW Forever mage with Place new spells as I learn them on (set up keys, tick it on Ready, Apply), train a new rank of Frostbolt at the trainer, then hover Frostbolt's key's button; then put Rank 1 of Frostbolt on that button from the spellbook, open key setup again to Ready and read Frostbolt's line.
+- Expect: after training, the button shows the new rank (if the game already upgraded the button by itself, note that); on Ready the line reads like "2: Frostbolt (Rank 3), in place of Rank 1" with a tick box, and unticking it keeps Rank 1 on Apply. [Needs in-game check: all of it, and whether the game upgrades a button to a new rank by itself.]
+- If it fails, paste: the rank the button shows, the Ready line, the chat lines and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

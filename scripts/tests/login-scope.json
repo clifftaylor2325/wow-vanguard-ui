@@ -215,6 +215,7 @@
       "Apply: a spell another row places goes straight there, with no copy on bar 3, and putting back restores both buttons",
       "Apply: places the spells, binds and saves the keys, and the buttons show them",
       "Apply: the record is split, keys with the Account set and slots with the character",
+      "H44-10-1 Apply puts the top rank over a lower rank on the key's own button, and putting back brings the lower rank back",
       "H44-10-51 Apply given the plan a list showed applies it while it still holds, and is refused in combat first",
       "H44-10-51 Apply given the plan a list showed changes nothing when the bars changed since, and switches the key set back",
       "Only this character: the plan is worked out in the character's own keys",
@@ -257,6 +258,8 @@
       "two characters set the same account key: putting it back reaches both"
     ],
     "scripts/tests/keybinds-learn.test.mjs": [
+      "H44-10-1 a new rank learned leaves a rank the player put on the key's button",
+      "H44-10-1 a new rank learned takes the place of the rank Vanguard put on its key, silently, once the fight is over",
       "a bar 3 or bar 2 button the player took over is never moved to, nor bound",
       "a better spell for a key: the old one moves to the next key that lists it, and one chat line says both",
       "a button the player changed is theirs for good: its key's spell goes to the next key",

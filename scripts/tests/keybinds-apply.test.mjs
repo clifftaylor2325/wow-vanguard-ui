@@ -770,3 +770,16 @@ it("H44-10-51 Apply given the plan a list showed applies it while it still holds
   expect(ka(addon, `return KA.Apply(${PRESET}, nil, __shown)`)).toBe(true);
   expect([keys(addon, ["F", "2"]), slots(addon, [61, 2, 53])]).toEqual([["MULTIACTIONBAR1BUTTON1", "ACTIONBUTTON2"], [1766, 1776, 6603]]);
 });
+
+it("H44-10-1 Apply puts the top rank over a lower rank on the key's own button, and putting back brings the lower rank back", () => {
+  const addon = rogue();
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank });
+  addon.eval("__wfgWorld.setAction(1, { id = 116 }) __wfgWorld.setAction(62, { id = 205 })");
+  const entries = `{ { key = "1", spell = 837, slot = 1 }, { key = "F", spell = 837, slot = 61 } }`;
+  expect(ka(addon, `local r = KA.Plan(${entries}) return { r[1].kind, r[1].over, r[1].replaced, r[2].kind, r[2].slot }`),
+    "the own button's rank gives way; a rank on another button is bound as it is").toEqual(["place", 116, true, "bind", 62]);
+  expect(ka(addon, `return KA.Apply(${entries})`)).toBe(true);
+  expect([slots(addon, [1, 62, 53]), keys(addon, ["1"])], "nothing moved to bar 3").toEqual([[837, 205, 0], ["ACTIONBUTTON1"]]);
+  ka(addon, "KA.PutBackAll()");
+  expect(slots(addon, [1])).toEqual([116]);
+});
