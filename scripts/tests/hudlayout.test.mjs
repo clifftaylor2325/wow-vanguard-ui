@@ -174,6 +174,16 @@ it("Standards: the focus target stands as a small banner beside the focus, clear
   expect(size(addon, "Vanguard_focustarget"), "Centered: its own 80 x 24").toEqual([80, 24]);
 });
 
+it("the keep under Tabs: the focus, pet and target of target wear no tab (their name on the bar), your frame and your target's keep theirs; a canvas too narrow for the keep gives the small frames their tabs back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, hudLayout = "fort", theme = { hudLook = "tabs" } } } }' });
+  // Whether each frame wears its tab: player, target, focus, pet, target of target.
+  const tabs = () => addon.eval("local out = {} for _, k in ipairs({ 'player', 'target', 'focus', 'pet', 'targettarget' }) do out[#out + 1] = _G['Vanguard_' .. k].tab:IsShown() end return out");
+  expect(tabs(), "tabs on the big frames only").toEqual([true, true, false, false, false]);
+  expect(addon.eval("local f = Vanguard_focus local rel = select(2, f.name:GetPoint(1)) return rel ~= f.tab"), "the focus's name is not on a tab").toBe(true);
+  canvas(addon, 1000, 768);
+  expect(tabs(), "the keep gone: every frame wears its tab").toEqual([true, true, true, true, true]);
+});
+
 // The shown textures among a frame's own regions, counted by image name.
 const shownArt = (addon, name) => addon.eval(`local out = {}
   for _, t in ipairs({ ${name}:GetRegions() }) do

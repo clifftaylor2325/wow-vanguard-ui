@@ -5402,6 +5402,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: each party and boss frame's name tab stands in the gap under the frame above, covering none of its bars; the party column's foot stays just above your frame whichever look is on, and the boss column grows down from the top-left; a look change in a fight moves the stacks when it ends, with no "Interface action failed" line. [Needs in-game check: whether the longer boss column meets the quest tracker or the raid tools.]
 - If it fails, paste: a screenshot of the party and boss columns, and `/vg errors`.
 
+### 33.491 The keep under Tabs: no tab over your frame or the target's cast bar
+
+- Do: on either client, set HUD layout → Where the frames stand to The keep and General → HUD look to Tabs, with a pet, a focus and a target that has a target; let the target cast.
+- Expect: your frame and your target's wear their name tabs; the focus, pet and target of target wear none, their names on their bars, so nothing covers the foot of your frame or the target's cast bar. [Needs in-game check: whether the small frames' names read on the 24-unit bars.]
+- If it fails, paste: a screenshot of the wall, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

@@ -390,10 +390,10 @@ local function decked(f)
   return deckOn() and UF.COMBAT.keys[f.key] == true
 end
 
--- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame and it
--- doesn't stand as a banner.
+-- Whether a frame wears its name tab now: the look gives one (T.HudTab), the deck doesn't hold the frame, it doesn't
+-- stand as a banner and it isn't one of the keep's small frames (UF.Layouts.Stacked).
 local function tabbed(f)
-  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f)
+  return f.tab ~= nil and T.HudTab() and not decked(f) and not UF.Standing(f) and not UF.Layouts.Stacked(f)
 end
 
 -- How far the bars sit inside a frame's edge: a screen pixel (not one UI unit, which shows a sliver of panel when
