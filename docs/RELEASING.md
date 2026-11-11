@@ -15,7 +15,7 @@ Two routes ship the same files. The normal one is the `release` workflow in GitH
 ## Launch-day hotfix, step by step
 
 1. Merge the fix to `main` (a branch and a PR, never a direct commit). `git checkout main && git pull`.
-2. Bump the version in a release PR of its own (the `release` skill): `## Version` in `Vanguard.toc`, a released heading for the version at the top of `docs/CHANGELOG.md`, and an entry for it at the top of `Core/WhatsNewNotes.lua`. Merge it and pull `main` again.
+2. The notes merge first, in their own PR: a released heading for the version at the top of `docs/CHANGELOG.md` and an entry for it at the top of `Core/WhatsNewNotes.lua`. Then bump the version in a release PR that changes only `## Version` in `Vanguard.toc` (the `release` skill). Merge it and pull `main` again.
 3. Tag the release commit **here only**: `git tag v<version>`. Do not push the tag; the GitHub release step creates it on GitHub.
 4. Rehearse once more: `node scripts/release-local.mjs`. Everything under "Would block a publish" must be empty. This runs `npm run quality`, `npm run test:quick`, `npm run coverage` (every test with the floor, 10 minutes or more), the zip and its check, and the packager without uploading.
 5. In a real hurry, add `--fast`: every test still runs, as `npm test` without coverage (about half the time). The run says so, and the PR or release notes should too.
