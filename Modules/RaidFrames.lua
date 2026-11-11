@@ -75,7 +75,8 @@ RF.buttons = {}
 -- updateHooks(b, unit) on every refresh (Modules/RaidAuras.lua uses both).
 -- healthHooks(b, unit) after a health event (only what follows health).
 -- emptyHooks(b) when a tile's unit goes away (the group shrank).
-RF.setupHooks, RF.updateHooks, RF.healthHooks, RF.emptyHooks = {}, {}, {}, {}
+-- sizeHooks() after the tiles take a new width and height (RF.ApplySize, out of combat).
+RF.setupHooks, RF.updateHooks, RF.healthHooks, RF.emptyHooks, RF.sizeHooks = {}, {}, {}, {}, {}
 -- Tiles by the unit token the group header gave them (see RF.ForUnit).
 RF.byUnit = {}
 
@@ -875,19 +876,23 @@ local function holder(s)
   return f
 end
 
--- Gives the header, its tiles and the holder the width and height now set, out of combat (the tiles and the
--- header are secure), and lays the grid out again; a tile's icons stay at the size they were built with.
+-- Gives the header, its tiles and the holder the width and height now set (the tiles and the header are secure:
+-- out of combat only), lays the grid out again, then tells the tile modules (RF.sizeHooks), each under ns.Try.
+local function resize()
+  local s = RF.settings
+  RF.builtSize = { width = s.width, height = s.height, spacing = s.spacing }
+  RF.header:SetAttribute("vg-width", s.width)
+  RF.header:SetAttribute("vg-height", s.height)
+  for _, b in ipairs(RF.buttons) do b:SetSize(s.width, s.height) end
+  RF.SizeHolder(RF.holder, RF.builtSize, RF.layoutKey)
+  RF.Fit()
+  for _, hook in ipairs(RF.sizeHooks) do ns.Try("raid tile size", hook) end
+end
+
+-- Applies the width and height now set, out of combat (resize); the tiles' icons follow through RF.sizeHooks.
 function RF.ApplySize()
   if not RF.header then return end
-  ns.OutOfCombat(function()
-    local s = RF.settings
-    RF.builtSize = { width = s.width, height = s.height, spacing = s.spacing }
-    RF.header:SetAttribute("vg-width", s.width)
-    RF.header:SetAttribute("vg-height", s.height)
-    for _, b in ipairs(RF.buttons) do b:SetSize(s.width, s.height) end
-    RF.SizeHolder(RF.holder, RF.builtSize, RF.layoutKey)
-    RF.Fit()
-  end, "raidsize")
+  ns.OutOfCombat(resize, "raidsize")
 end
 
 -- Builds the header, precreates its buttons and replaces the default frames.

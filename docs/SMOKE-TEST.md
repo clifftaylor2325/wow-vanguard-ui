@@ -5420,6 +5420,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no new "forbidden object" line in `/vg errors` and the error badge stays clear; within a moment of the fight ending the plates' aura icon edges take the new accent. [Needs in-game check: whether the game's hold reaches Vanguard's own parts on an aura button, and whether its restriction event comes after it lets the icons go.]
 - If it fails, paste: `/vg errors`, and a screenshot of a plate's icons after the fight (the old accent still on them means the event came too early).
 
+### 33.494 Raid aura icons follow the tiles' new size
+
+- Do: on either client, in a party or raid out of combat, open `/vg` → Raid frames and drag Width down to 72 and Height down to 36, then let go.
+- Expect: within a moment of letting go each tile's debuff and HoT icons shrink to fit the smaller tile, stay in their bottom corners and draw over neither the name nor each other; on WoW Retail the private aura spot in the middle shrinks with them. [Needs in-game check: all of it.]
+- If it fails, paste: `/vg errors`, and a screenshot of a tile after the drag.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run

@@ -404,16 +404,29 @@ function RA.RemoveHook(list, fn)
   end
 end
 
+-- How long the tiles' size must hold still before their rows are made again for it (a slider drag sets it many
+-- times a second, and every remade row is new client frames).
+RA.SETTLE = 0.3
+
+-- The tiles took a new width or height (RF.sizeHooks): once it holds still the module starts again, which makes
+-- the rows of each tile whose zones changed anew (reconcile) and leaves the rest.
+function RA.Resized()
+  ns.AfterStill("raid aura size", RA.SETTLE, function() ns.RestartModule("RaidAuras") end)
+end
+
+-- The raid frames' tile hook lists this module is on while it runs, each with its function.
+RA.HOOKS = {
+  { RF.updateHooks, update }, { RF.updateHooks, indicatorUpdate }, { RF.emptyHooks, emptied },
+  { RF.emptyHooks, indicatorEmptied }, { RF.sizeHooks, RA.Resized },
+}
+
 -- Module entry point (Core/Modules.lua): hook into raid tiles (existing and new), and build the
 -- rows ahead now and whenever the group changes. The hooks are on the parent's lists for as long as the
 -- module runs (RA.Disable takes them off).
 function RA.Enable(settings, scope)
   RA.settings, RA.scope = settings, scope
   for _, b in ipairs(RF.buttons) do reconcile(b) end
-  RA.AddHook(RF.updateHooks, update)
-  RA.AddHook(RF.updateHooks, indicatorUpdate)
-  RA.AddHook(RF.emptyHooks, emptied)
-  RA.AddHook(RF.emptyHooks, indicatorEmptied)
+  for _, hook in ipairs(RA.HOOKS) do RA.AddHook(hook[1], hook[2]) end
   scope:On("GROUP_ROSTER_UPDATE", RA.BuildAhead)
   RA.FollowScale(scope)
   RA.BuildAhead()
@@ -423,10 +436,7 @@ end
 -- Switched off: the hooks leave the tiles' lists and every tile's rows, indicators and highlight are cleared and
 -- hidden (kept for the next start, which makes them again only if the settings changed their shape).
 function RA.Disable()
-  RA.RemoveHook(RF.updateHooks, update)
-  RA.RemoveHook(RF.updateHooks, indicatorUpdate)
-  RA.RemoveHook(RF.emptyHooks, emptied)
-  RA.RemoveHook(RF.emptyHooks, indicatorEmptied)
+  for _, hook in ipairs(RA.HOOKS) do RA.RemoveHook(hook[1], hook[2]) end
   RA.waiting = {}
   for _, b in ipairs(RF.buttons) do
     if built(b) then clearTile(b) end

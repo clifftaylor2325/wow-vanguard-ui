@@ -118,6 +118,30 @@ it("raid aura rows are built when a tile needs them, not at login", () => {
   expect(builtTiles(), "in a raid, every tile once the fight is over").toEqual([true, true, true, true, true, true, true]);
 });
 
+// Tile 1's debuff row: its first icon's side and the row's wrap width, then the zones' icon side and strip width now.
+const debuffLook = (addon) => addon.eval(`local z = ns.GetModule("RaidFrames").TileZones() local f = Vanguard_RaidUnitButton1.debuffRow.frame
+  return { f.__groups[1].buttons[1]:GetWidth(), f.__flowLine, z.icon, z.debuffs[3] + 1 }`);
+
+// Sets the raid tiles' width and height as the sliders do.
+const resizeTiles = (addon, width, height) => addon.eval(`local RF = ns.GetModule("RaidFrames")
+  RF.settings.width, RF.settings.height = ${width}, ${height} RF.ApplySize()`);
+
+it("H44-5-1 raid auras: a new tile size makes the rows again for the new zones once the sliders settle, once per drag", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  addon.eval("__made = 0 local make = ns.Auras.Container ns.Auras.Container = function(...) __made = __made + 1 return make(...) end");
+  resizeTiles(addon, 86, 42);
+  addon.update(0.1);
+  resizeTiles(addon, 72, 36);
+  addon.update(0.1);
+  expect(addon.eval("return __made"), "nothing is made while the sliders move").toBe(0);
+  for (let i = 0; i < 4; i++) addon.update(0.1);
+  const [icon, line, zoneIcon, zoneLine] = debuffLook(addon);
+  expect([icon, line], "the rows follow the new zones").toEqual([zoneIcon, zoneLine]);
+  expect(addon.eval("return { __made, 2 + #Vanguard_RaidUnitButton1.indRows }"), "the tile's rows are made once: debuffs, HoTs and the indicators that fit").toEqual([2, 2]);
+  expect(addon.eval("return Vanguard_RaidUnitButton1.debuffRow.frame.__unit"), "and show the tile's unit again").toBe("raid1");
+});
+
 it("a login or a join that fills many raid tiles at once builds two tiles' aura rows that frame, then one a frame", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
   addon.eval('__spawn(1, "raid1") __spawn(2, "raid2") __spawn(3, "raid3") __spawn(4, "raid1")');
