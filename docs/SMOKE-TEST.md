@@ -5396,6 +5396,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: only the linen mail is emptied, the wool mail stays, and chat says "Take all: 2 of 2 done." with no "could not take" line.
 - If it fails, paste: the chat lines, which mails are left, and `/vg errors`.
 
+### 33.616 A refundable purchase is never sold from the sell list
+
+- Do: at a merchant that sells for tokens or honor (or any vendor that refunds, such as a just-bought pricey item), buy one item, add it to the sell list with `/vg junk <item link>`, close and open the merchant, and answer Sell if a question shows; then `/vg sell <item link>`. Next, put any other item on the sell list, open the merchant, click its Buyback tab, and answer Sell. [Client: Forever and Retail.]
+- Expect: the bought item is never in the question nor sold (no money and no refund came back); `/vg sell` says you have none to sell. Answered on the Buyback tab, nothing is sold; on the merchant tab the other item sells. [Needs in-game check: what a bare use of a refundable purchase does, refund or sale.]
+- If it fails, paste: the question's text, the chat lines, what came back (gold or tokens), and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
