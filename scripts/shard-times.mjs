@@ -43,7 +43,7 @@ function measurements() {
 
 // Prints the plan the committed times give for --count shards.
 function printPlan() {
-  const count = Number(valuesOf("count")[0] ?? 10);
+  const count = Number(valuesOf("count")[0] ?? 12);
   const times = readTimes(root);
   const plan = planShards(luaTestFiles(root), times, count);
   for (const [i, shard] of plan.entries()) console.log(`shard ${i + 1}: ${shard.files.length} files, ${shard.seconds} file-seconds, about ${estimateWall(shard.files, times, 4)} s on 4 workers`);

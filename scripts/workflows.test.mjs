@@ -571,10 +571,10 @@ function jobText(text, name) {
   return [lines[at], ...deeperLines(lines, at + 1, 2)].join("\n");
 }
 
-it("lua-suite takes a shards input, a number defaulting to 10 (the count scripts/shard-times.json was balanced for)", () => {
+it("lua-suite takes a shards input, a number defaulting to 12 (the count scripts/shard-times.json was balanced for)", () => {
   const input = workflow("lua-suite.yml").match(/^ {6}shards:\n((?: {8}.*\n)+)/m)?.[1] ?? "";
   expect(input).toMatch(/^ {8}type: number$/m);
-  expect(input).toMatch(/^ {8}default: 10$/m);
+  expect(input).toMatch(/^ {8}default: 12$/m);
 });
 
 // Runs the plan step's script with SHARDS as given: { status, output } (what it wrote to GITHUB_OUTPUT).

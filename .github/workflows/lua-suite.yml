@@ -9,7 +9,7 @@ name: lua suite
 # contents; and, with the preview input on, the UI preview as a second job
 # beside it.
 #
-# The tests are sharded: a plan job reads the shards input (10 by default)
+# The tests are sharded: a plan job reads the shards input (12 by default)
 # and the shuffle seed, then that many jobs each run their share of the test
 # files of the lua project. The shares are balanced by measured time: each
 # file's seconds are in scripts/shard-times.json, and every shard computes the
@@ -61,7 +61,7 @@ on:
       shards:
         description: "How many parallel jobs the Lua tests are split over (1 to 16)"
         type: number
-        default: 10
+        default: 12
 
 permissions:
   contents: read

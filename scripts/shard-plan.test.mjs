@@ -102,7 +102,7 @@ it("the committed timing table is whole seconds-per-file numbers for files that 
 });
 
 it("Vitest, handed one shard's file list, selects exactly those files", () => {
-  const shard = currentPlan(root, 10)[0].files;
+  const shard = currentPlan(root, 12)[0].files;
   const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
   const out = spawnSync(process.execPath, [bin, "list", "--filesOnly", "--project", "lua", ...shard], { cwd: root, encoding: "utf8" });
   const listed = out.stdout.split("\n").map((l) => l.replace(/^\[[^\]]*\]\s*/, "").trim()).filter((l) => l.endsWith(".test.mjs"));
