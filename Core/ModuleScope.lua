@@ -72,7 +72,7 @@ end
 ---@param frame Frame|nil
 ---@param now boolean|nil
 function Scope:Every(key, seconds, fn, frame, now)
-  self.tickers[key] = seconds and true or nil
+  self.tickers[key] = seconds and fn or nil
   ns.Every(key, seconds, fn, frame, now)
 end
 
@@ -161,9 +161,16 @@ function Scope:Open()
   for _, entry in ipairs(self.adopted) do own(self, entry) end
 end
 
+-- A restart is a retry (docs/design/MODULE-LIFECYCLE.md 5.1): each close below starts the error budget over for what
+-- it takes off (ns.ForgetFailures), so a handler the budget paused runs again at the next start and leaves the
+-- paused list meanwhile. The budget is keyed on the function, which a restart keeps; nothing is added per event.
+
 -- Takes off every handler the module registered with Scope:On.
 local function closeHandlers(self)
-  for _, h in pairs(self.handlers) do ns.Off(h[1], h[2]) end
+  for _, h in pairs(self.handlers) do
+    ns.Off(h[1], h[2])
+    ns.ForgetFailures(h[2])
+  end
   self.handlers = {}
 end
 
@@ -171,6 +178,7 @@ end
 local function closeSubs(self)
   for _, sub in ipairs(self.subs) do
     ns.SetUnits(sub, nil)
+    ns.ForgetFailures(sub.vgHandler)
     self.spare[#self.spare + 1] = sub
   end
   self.subs = {}
@@ -178,7 +186,10 @@ end
 
 -- Stops every ticker job.
 local function closeTickers(self)
-  for key in pairs(self.tickers) do ns.Every(key, nil) end
+  for key, fn in pairs(self.tickers) do
+    ns.Every(key, nil)
+    ns.ForgetFailures(fn)
+  end
   self.tickers = {}
 end
 

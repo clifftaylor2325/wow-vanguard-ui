@@ -380,7 +380,7 @@ end
 -- until the player resumes it (the Feedback page, /vg errors resume) or reloads. A site is the pair of
 -- `where` and the function, so one broken handler of an event pauses alone. Plain ns.Try calls (one
 -- helper run over many frames, where one frame failing is expected) are never paused.
--- ns.paused lists them for /vg errors, the badge and the Feedback page: { where, count }, oldest first.
+-- ns.paused lists them for /vg errors, the badge and the Feedback page: { where, count, fn }, oldest first.
 
 ns.ERROR_BUDGET, ns.PAUSED = 10, "paused after repeated errors"
 ns.paused = {}
@@ -404,7 +404,7 @@ end
 local function pause(where, fn, count)
   pausedAt[fn] = pausedAt[fn] or {}
   pausedAt[fn][where] = true
-  ns.paused[#ns.paused + 1] = { where = where, count = count }
+  ns.paused[#ns.paused + 1] = { where = where, count = count, fn = fn }
   local said = L["{site} failed {count} times and is paused until you reload, or resume it on the Feedback page."]
   pcall(ns.Chat, ns.Format(said, { site = where, count = count }))
   errorsChanged()
@@ -416,6 +416,25 @@ local function countFailure(where, fn)
   local sites = failures[fn] or {}
   failures[fn], sites[where] = sites, (sites[where] or 0) + 1
   if sites[where] == ns.ERROR_BUDGET then pause(where, fn, sites[where]) end
+end
+
+-- The paused list without fn's sites.
+local function pausedWithout(fn)
+  local kept = {}
+  for _, p in ipairs(ns.paused) do
+    if p.fn ~= fn then kept[#kept + 1] = p end
+  end
+  return kept
+end
+
+-- Starts fn's count over at every site and runs it again where it was paused: the module that registered it stopped,
+-- and its next start is a retry (Core/ModuleScope.lua; docs/design/MODULE-LIFECYCLE.md 5.1). Nothing runs per event.
+---@param fn function
+function ns.ForgetFailures(fn)
+  failures[fn] = nil
+  if pausedAt[fn] == nil then return end
+  pausedAt[fn], ns.paused = nil, pausedWithout(fn)
+  errorsChanged()
 end
 
 -- Runs every paused site again, each with its count started over (a reload does the same).

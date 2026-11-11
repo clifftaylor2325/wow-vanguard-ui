@@ -221,6 +221,37 @@ it("lifecycle: a stopped module's handlers, unit events, ticker and gate stop ca
   expect(poke()).toBe(running);
 });
 
+// TEST-ONLY TestBudget and TestOther: each fails on every UNIT_HEALTH for the player and on every tick of its ticker,
+// counting its calls in __budget.
+const BUDGET = `${MODULES}
+  __budget = { TestBudget = 0, TestOther = 0 }
+  local function failing(name)
+    local m = ns.Module(name, { defaults = {}, live = true })
+    local function fail() __budget[name] = __budget[name] + 1 error(name .. " fails on purpose", 0) end
+    function m.Enable(_, scope) scope:OnUnit("UNIT_HEALTH", fail, "player") scope:Every(name .. " tick", 0.1, fail) end
+  end
+  failing("TestBudget") failing("TestOther")`;
+
+// Fires UNIT_HEALTH for the player and runs every ticker `times` times.
+function failTimes(addon, times) {
+  for (let i = 0; i < times; i++) {
+    addon.fire("UNIT_HEALTH", "player");
+    addon.advance(0.11);
+  }
+}
+
+it("lifecycle: a unit event handler and a ticker paused by the error budget run again after their module restarts; another module's stay paused", () => {
+  const sites = ["TestBudget", "TestOther"].flatMap((n) => [`event UNIT_HEALTH: ${n} fails on purpose`, `ticker ${n} tick: ${n} fails on purpose`]);
+  expectErrors(...sites);
+  const addon = lifeAddon("", BUDGET);
+  failTimes(addon, 10);
+  expect(addon.eval("return #ns.paused"), "both modules' handler and ticker paused").toBe(4);
+  addon.eval('ns.SetModuleEnabled("TestBudget", false) ns.SetModuleEnabled("TestBudget", true) __budget.TestBudget, __budget.TestOther = 0, 0');
+  failTimes(addon, 1);
+  expect(addon.eval("return { __budget.TestBudget, __budget.TestOther }"), "the restarted module's two run again, the other's do not").toEqual([2, 0]);
+  expect(list(addon.eval("local out = {} for i, p in ipairs(ns.paused) do out[i] = p.where end return out")), "only the other module's are listed").toEqual(["event UNIT_HEALTH", "ticker TestOther tick"]);
+});
+
 it("lifecycle: a scope is kept for the session, and takes one handler off or one ticker away on request", () => {
   const addon = lifeAddon("", SCOPED);
   addon.eval('ns.SetModuleEnabled("TestScoped", false) ns.SetModuleEnabled("TestScoped", true)');
