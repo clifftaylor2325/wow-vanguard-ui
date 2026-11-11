@@ -161,6 +161,23 @@ it("retail situations: Record for offers Mythic+ and Delve, and a key's override
   expect(addon.eval("return { ns.MoverPoint('infostrip') }")[0], "reset: back to the base").toBe("TOPRIGHT");
 });
 
+// The delve data changes while you stand in the scenario: live Blizzard_DelvesDifficultyPicker/Blizzard_DelvesDifficultyPicker.lua
+// and Blizzard_ObjectiveTracker/Blizzard_ScenarioObjectiveTracker.lua re-read it on ACTIVE_DELVE_DATA_UPDATE.
+it("H44-20-2 retail situations: a delve starting or ending inside the instance switches the Delve override on or off", () => {
+  const addon = retail("IsInInstance = function() return true, 'scenario' end", `VanguardDB.profiles = { Default = { Situations = { overrides = {
+    delve = { positions = { infostrip = { point = "TOP", relPoint = "TOP", x = 0, y = -60 } } } } } } }`);
+  addon.advance(0.5);
+  expect(addon.eval("return { ns.MoverPoint('infostrip') }")[0], "inside, no delve yet: the base spot").toBe("TOPRIGHT");
+  addon.eval("__wfgWorld.delveTier = 8");
+  addon.fire("ACTIVE_DELVE_DATA_UPDATE");
+  addon.advance(0.5);
+  expect(addon.eval("return { ns.MoverPoint('infostrip') }"), "the delve starts: the Delve spot").toEqual(["TOP", "TOP", 0, -60]);
+  addon.eval("__wfgWorld.delveTier = nil");
+  addon.fire("ACTIVE_DELVE_DATA_UPDATE");
+  addon.advance(0.5);
+  expect(addon.eval("return { ns.MoverPoint('infostrip') }")[0], "the delve ends: back to the base").toBe("TOPRIGHT");
+});
+
 it("situations on WoW Forever: no Mythic+ or Delve, even where the client answers yes to both", () => {
   const addon = loggedIn(`IsInInstance = function() return true, 'party' end
     C_ChallengeMode = { IsChallengeModeActive = function() return true end } C_DelvesUI = { HasActiveDelve = function() return true end }`);

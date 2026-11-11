@@ -74,11 +74,13 @@ SI.LIVE = {
 -- The live modules in the order the status line names them, and the names it uses.
 SI.ORDER = { "InfoStrip", "MenuStrip", "DataBars", "Nameplates", "UnitFrames" }
 SI.MODULE_LABELS = { InfoStrip = L["info strip"], MenuStrip = L["menu bar"], DataBars = L["XP bars"], Nameplates = L["nameplates"], UnitFrames = L["unit frames"] }
--- The events after which you may be somewhere else (on Retail also a key starting, finishing or being reset).
+-- The events after which you may be somewhere else (on Retail also a key starting, finishing or being reset,
+-- and a delve starting or ending while you stand in it: live Blizzard_DelvesDifficultyPicker re-reads it on
+-- ACTIVE_DELVE_DATA_UPDATE).
 SI.EVENTS = ns.ClientData({
   forever = { "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_UPDATE_RESTING" },
   retail = { "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_UPDATE_RESTING",
-    "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED", "CHALLENGE_MODE_RESET" },
+    "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED", "CHALLENGE_MODE_RESET", "ACTIVE_DELVE_DATA_UPDATE" },
 })
 
 -- module -> { key = true } from SI.LIVE.

@@ -5476,6 +5476,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: one or more party lines, every listed name whole, none cut off; the first line starts with the meter title.
 - If it fails, paste: the party lines, and `/vg errors`.
 
+### 33.562 The Delve layout follows a delve starting or ending in place (H44-20-2)
+
+- Do: on Retail with a Delve layout recorded (`/vg situation record delve`), start a delve from inside its instance, or finish one and stay inside.
+- Expect: the Delve layout comes on (or off) within a second without a zone change, and opening `/vg` on Situations does not hitch.
+- If it fails, paste: `/vg situation list`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
