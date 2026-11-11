@@ -1046,6 +1046,17 @@ it("quest log: zones, a quest's details, and its buttons", () => {
   addon.update(0);
   expect(questLog(addon).title, "the log's next update chooses the first quest showing").toBe("[3] TEST-ONLY Far");
 });
+it("H44-17-4 quest log: the quest you are reading leaving the log while it is open shows the first quest at once", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
+  addon.eval("ns.GetModule('QuestLog').Select(90052)");
+  const gone = addon.eval("return ns.GetModule('QuestLog').selected");
+  addon.eval("__quests[90052] = nil table.remove(__log, 3)");
+  addon.fire("QUEST_REMOVED", 90052);
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect([gone, addon.eval("return ns.GetModule('QuestLog').selected"), questLog(addon).detail], "the first quest is chosen and its details show after one redraw").toEqual([90052, 90051, true]);
+});
 it("quest log: hovering a list line shows the quest's whole title, leaving hides it, and a fight shows none (P9-7)", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV);
   addon.eval("Vanguard_QuestLogToggle.__scripts.OnClick(Vanguard_QuestLogToggle)");
