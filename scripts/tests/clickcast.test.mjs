@@ -517,6 +517,19 @@ it("the hover keys card: its key rows are list rows; the empty line is label tex
   addon.eval("ns.Client.ProbeSnippets = nil");
 });
 
+it("the page marks a bound spell rank the spellbook no longer holds, and says so; a rank you have is left alone", () => {
+  const addon = priest();
+  addon.eval('ns.Options.Show("clickcast")');
+  addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 9472, 2) ${CC}.Add("BUTTON4", "spell", "Flash Heal", 424242, 1) ${CC}.Add("SHIFT-E", "spell", "Flash Heal", 424242, 1) ns.Options.Refresh()`);
+  // A cell's name text and whether it is drawn in the warning colour.
+  const name = (key) => addon.eval(`local c = __wfgStub.frames[${cell(addon, key)}] return { c.name:GetText(), c.name.__textColor }`);
+  expect([isTok(addon, name("BUTTON3")[1], "text"), isTok(addon, name("BUTTON4")[1], "warn")], "the rank in the book is plain; the one that is gone is in the warning colour").toEqual([true, true]);
+  addon.hover(cell(addon, "BUTTON4"));
+  expect(addon.eval("local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text end return out"), "hovering it says why").toEqual(
+    ["Flash Heal (Rank 1)", "Does nothing: you no longer have that spell rank."]);
+  addon.hover(null);
+  expect(addon.eval(`return ${CC}.WontRun({ key = "BUTTON3", action = "spell", value = "Flash Heal", spellID = 9472 })`), "a binding with no rank picked casts the best rank: nothing to flag").toBe(null);
+});
 it("with the game's own click bindings, the page marks a Target or Unit menu binding the game won't run, and says why", () => {
   const addon = priest(GAME_CLICKS_LUA);
   addon.eval('ns.Options.Show("clickcast")');
