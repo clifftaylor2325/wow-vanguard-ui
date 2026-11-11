@@ -163,6 +163,7 @@
       "the card's headings are section headers (small muted capitals), its lines body text",
       "the level range, size and difficulty drop what the client does not give"
     ],
+    "scripts/tests/errandsfixes.test.mjs": [],
     "scripts/tests/errorrail.test.mjs": [],
     "scripts/tests/errors.test.mjs": [
       "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
