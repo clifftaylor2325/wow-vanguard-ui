@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, expect, it } from "vitest";
-import { acquireSlot, createLock, lockText, parseLock, pidAlive, readLock, releaseLock, runInfo, slotCount, slotDir, slotFile, takeFreeSlot, tryTake, waitingLine } from "./lib/test-slot.mjs";
+import { acquireSlot, createLock, holderAlive, lockText, parseLock, pidAlive, readLock, recordChild, releaseLock, runInfo, slotCount, slotDir, slotFile, takeFreeSlot, tryTake, waitingLine } from "./lib/test-slot.mjs";
 
 const GB = 1024 ** 3;
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "vg-slots-"));
@@ -109,6 +109,71 @@ it("a lock that was taken between the check and the takeover is reported busy, n
   expect(tryTake(file, run(11), alive)).toEqual(run(99));
   expect(calls).toBe(1);
   expect(readLock(file).info.pid).toBe(99);
+});
+
+// Runs `racer` just before the first rename or remove of `file`, once, the way a second run
+// taking the dead slot in that instant would.
+function racing(file, racer, body) {
+  const real = { rm: fs.rmSync, rename: fs.renameSync };
+  let fired = false;
+  // Wraps one fs call so the racer runs first.
+  const wrap = (fn) => (target, ...rest) => {
+    if (!fired && target === file) {
+      fired = true;
+      racer();
+    }
+    return fn(target, ...rest);
+  };
+  fs.rmSync = wrap(real.rm);
+  fs.renameSync = wrap(real.rename);
+  try {
+    return body();
+  } finally {
+    fs.rmSync = real.rm;
+    fs.renameSync = real.rename;
+  }
+}
+
+it("two runs taking over the same dead slot at once: one gets it, the other finds it busy and the live lock stays", () => {
+  const file = path.join(folder("takeover-race"), "slot1.lock");
+  fs.writeFileSync(file, lockText(run(10)));
+  const second = () => expect(tryTake(file, run(12), running())).toBeNull();
+  const first = racing(file, second, () => tryTake(file, run(11), running(12)));
+  expect(first).toEqual(run(12));
+  expect(readLock(file).info.pid).toBe(12);
+  expect(fs.readdirSync(path.dirname(file))).toEqual(["slot1.lock"]);
+});
+
+it("a lock whose owner is gone but whose Vitest child still runs is busy; one with neither alive is taken over", () => {
+  const file = path.join(folder("child"), "slot1.lock");
+  fs.writeFileSync(file, lockText({ ...run(10), child: 77 }));
+  expect(holderAlive({ ...run(10), child: 77 }, running(77))).toBe(true);
+  expect(tryTake(file, run(11), running(77))).toEqual({ ...run(10), child: 77 });
+  expect(tryTake(file, run(11), running())).toBeNull();
+  expect(readLock(file).info.pid).toBe(11);
+});
+
+it("a lock from an older clone, with no child field, behaves as before", () => {
+  expect(holderAlive(run(10), running(10))).toBe(true);
+  expect(holderAlive(run(10), running(77))).toBe(false);
+  expect(holderAlive({ ...run(10), child: "x" }, running())).toBe(false);
+});
+
+it("the child's pid is added to this run's own lock only, and the file stays whole", () => {
+  const file = path.join(folder("record"), "slot1.lock");
+  createLock(file, run(process.pid));
+  recordChild(file, 4242);
+  expect(readLock(file).info).toEqual({ ...run(process.pid), child: 4242 });
+  createLock(path.join(path.dirname(file), "slot2.lock"), run(process.pid + 1));
+  recordChild(path.join(path.dirname(file), "slot2.lock"), 1);
+  expect(readLock(path.join(path.dirname(file), "slot2.lock")).info.child).toBeUndefined();
+  expect(fs.readdirSync(path.dirname(file)).sort()).toEqual(["slot1.lock", "slot2.lock"]);
+});
+
+it("a slot is stamped with the time it was taken, not the time the run started waiting", async () => {
+  const dir = folder("stamp");
+  const file = await acquireSlot({ dir, count: 1, info: run(20, 1000), log: () => {}, sleep: async () => {} });
+  expect(readLock(file).info.started).toBeGreaterThan(Date.now() - 60_000);
 });
 
 it("only the owner gives a slot back", () => {

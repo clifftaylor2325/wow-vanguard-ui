@@ -5,9 +5,12 @@
 //
 // A slot is a lock file in a folder of the OS temp directory, shared by every clone on
 // the machine. The file holds the pid, the start time, the folder and the command of the
-// run that owns it. It is created whole and in one step (written beside it, then hard
+// run that owns it, and once Vitest is spawned the child's pid too (`child`, optional, so a
+// clone at an older commit still reads the file). A slot is busy while either pid runs, so
+// killing the owner alone does not free it under a live Vitest. It is created whole and in one step (written beside it, then hard
 // linked), so a reader never sees half a file. A file whose pid is no longer running
-// belongs to a run that died, and the next run takes it over; the waiting line names the
+// belongs to a run that died (owner and child both), and the next run takes it over by
+// renaming it away, so only one of two racing runs gets it; the waiting line names the
 // file to delete when a pid was reused by something else.
 
 import { spawn } from "node:child_process";
@@ -105,15 +108,43 @@ export function readLock(file) {
   }
 }
 
+// True while the run a lock records is alive: its owner, or the Vitest child it spawned.
+export function holderAlive(info, alive = pidAlive) {
+  return alive(info.pid) || (Number.isInteger(info.child) && alive(info.child));
+}
+
+// Moves a dead lock out of the way and drops it; false when another run got there first. Only one of two
+// racing runs can rename the file. If what was moved is not the dead text (a run took the slot a moment
+// ago), it goes back and this run reports the slot busy.
+function claimDead(file, deadText) {
+  const mine = `${file}.${process.pid}.dead`;
+  try {
+    fs.renameSync(file, mine);
+  } catch {
+    return false;
+  }
+  const dead = fs.readFileSync(mine, "utf8") === deadText;
+  if (!dead) restoreLock(mine, file);
+  fs.rmSync(mine, { force: true });
+  return dead;
+}
+
+// Puts a live lock that was moved by mistake back, unless a new one already stands there.
+function restoreLock(mine, file) {
+  try {
+    fs.linkSync(mine, file);
+  } catch {
+    // A newer lock was created meanwhile: it wins.
+  }
+}
+
 // Takes the slot at `file` when it is free or its run is gone; the holder's info when it is busy, else null.
-// The dead lock is removed only if it still reads as it did a moment ago; two runs taking over the same
-// dead file at the same instant can still race, and the loser finds the file taken and waits.
 export function tryTake(file, info, alive = pidAlive) {
   if (createLock(file, info)) return null;
   const held = readLock(file);
-  if (held.info && alive(held.info.pid)) return held.info;
-  if (readLock(file).text === held.text) fs.rmSync(file, { force: true });
-  return createLock(file, info) ? null : (readLock(file).info ?? { pid: 0, started: info.started, cwd: "?", command: "?" });
+  if (held.info && holderAlive(held.info, alive)) return held.info;
+  if (claimDead(file, held.text) && createLock(file, info)) return null;
+  return readLock(file).info ?? { pid: 0, started: info.started, cwd: "?", command: "?" };
 }
 
 // Gives a slot back, only when this run still owns it.
@@ -144,7 +175,7 @@ export async function acquireSlot({ dir, count, info, log = console.log, sleep =
   fs.mkdirSync(dir, { recursive: true, mode: 0o777 });
   const started = Date.now();
   for (let said = false; ; said = true) {
-    const taken = takeFreeSlot(dir, count, info, alive);
+    const taken = takeFreeSlot(dir, count, { ...info, started: Date.now() }, alive);
     if (taken.file) return gotSlot(taken.file, said && `${clock((Date.now() - started) / 1000)}`, log);
     if (!said) log(waitingLine(taken.holders, Date.now()));
     await sleep(POLL_MS);
@@ -152,11 +183,23 @@ export async function acquireSlot({ dir, count, info, log = console.log, sleep =
 }
 
 // Runs Vitest in a child process with the slot's lock set in its environment; resolves with its exit status.
-function runVitest(args, env) {
+// `onSpawn` gets the child's pid at once.
+function runVitest(args, env, onSpawn = () => {}) {
   const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
   const child = spawn(process.execPath, [bin, "run", ...args], { cwd: root, stdio: "inherit", env });
-  process.once("SIGTERM", () => child.kill("SIGTERM"));
+  process.on("SIGTERM", () => child.kill("SIGTERM"));
+  onSpawn(child.pid);
   return new Promise((done) => child.on("exit", (code, signal) => done(code ?? (signal ? 1 : 0))));
+}
+
+// Rewrites this run's lock with the child's pid (written beside it, then renamed over it, so a reader never
+// sees half a file), when the lock is still this run's.
+export function recordChild(file, child) {
+  const held = readLock(file);
+  if (held.info?.pid !== process.pid) return;
+  const scratch = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(scratch, lockText({ ...held.info, child }), { mode: 0o666 });
+  fs.renameSync(scratch, file);
 }
 
 // `vitest run <args>` once a slot is free, and the slot back after. A run already inside a slot (its
@@ -169,7 +212,7 @@ export async function runInSlot(args, env = process.env, ready = () => {}) {
   const release = () => releaseLock(file);
   process.once("exit", release);
   ready();
-  const status = await runVitest(args, { ...env, VG_TEST_SLOT_HELD: file });
+  const status = await runVitest(args, { ...env, VG_TEST_SLOT_HELD: file }, (child) => recordChild(file, child));
   release();
   return status;
 }
