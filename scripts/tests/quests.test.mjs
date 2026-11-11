@@ -1627,6 +1627,16 @@ it("game windows: quest and gossip text stays readable on the dark panel", () =>
   expect(off.eval("return QuestProgressRequiredMoneyText.__textColor[1]"), "and so does the turn-in money line's").toBe(0);
   expect(loggedIn("").eval("return ns.GetModule('Windows').LightGossip() == nil"), "a client without these windows is fine").toBe(true);
 });
+it("game windows: the game's quest and gossip windows the quest dialog hands back keep the game's text colours", () => {
+  // The game colours this text for its parchment (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/
+  // Mainline/QuestFrame.lua:682-697, QuestFrame_SetTitleTextColor and QuestFrame_SetTextColor); undressed, the
+  // parchment stays, so Vanguard's light text would not read on it.
+  const addon = loggedIn(PARCHMENT_ENV);
+  addon.eval("ns.GetModule('QuestDialog').HandBack(true) QuestFrame:Show() GossipFrame:Show()");
+  addon.eval("__fs = QuestFrame:CreateFontString() QuestFrame_SetTextColor(__fs) QuestFrame_SetTitleTextColor(QuestInfoTitleHeader) GossipFrame.GreetingPanel.ScrollBox:Update()");
+  const colours = addon.eval("return { __fs.__textColor[1], QuestInfoTitleHeader.__textColor[1], __lines[1].GreetingText.__textColor[1], __lines[2].label.__textColor[1] }");
+  expect(colours, "the progress text, a heading, the gossip greeting and an option keep the game's dark colour").toEqual([0.2, 0.2, 0.2, 0.2]);
+});
 // TEST-ONLY the shared quest texts QuestInfo_Display colours for parchment (QuestInfo.xml): the named strings, the keys of
 // QuestInfoRewardsFrame, and the lines of QuestInfoObjectivesFrame.Objectives (the second one marked done by the game with
 // " (Complete)", the third one hidden).

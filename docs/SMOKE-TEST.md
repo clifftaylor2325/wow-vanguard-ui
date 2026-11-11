@@ -5446,6 +5446,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: chat says `Arrow: B.`, Vanguard's arrow names B, and the tracker's `>` step line sits under B, not A.
 - If it fails, paste: the arrow's title, which quest has the `>` line, and `/run print(C_SuperTrack.GetSuperTrackedQuestID(), C_SuperTrack.IsSuperTrackingUserWaypoint())`.
 
+### 33.556 The game's own quest and gossip windows keep readable text while the quest dialog is handed back (H44-15-1)
+
+- Do: for Forever and Retail: with Vanguard's quest dialog on, tick Use the game's quest windows for now under Quests, then talk to a quest giver with a quest to hand in and to a gossip NPC.
+- Expect: the game's windows on their parchment with the game's own dark text, never light text on the parchment.
+- If it fails, paste: a screenshot of each window and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.

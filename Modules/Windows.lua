@@ -2045,10 +2045,11 @@ local function lightGossipLine(line)
   if fs then T.Color(fs, "text") end
 end
 
--- Every line the gossip window shows, in light text.
+-- Every line the gossip window shows, in light text, while the window is dressed (one walk up per update: the
+-- box sits in GossipFrame); handed back or bypassed, the game's colours stay on its parchment.
 function GW.LightGossip()
   local box = gossipBox()
-  if type(box) == "table" and box.ForEachFrame then box:ForEachFrame(lightGossipLine) end
+  if type(box) == "table" and box.ForEachFrame and inDressedWindow(box) then box:ForEachFrame(lightGossipLine) end
 end
 
 -- A book or letter page in light text (headings too), its parchment faded
@@ -2084,12 +2085,18 @@ local function relightItemText()
   if type(frame) == "table" and ns.IsTrue(frame:IsShown()) then GW.LightItemText() end
 end
 
+-- A text the game coloured for parchment, in light text when it sits in a dressed window (a quest window handed
+-- back or bypassed keeps its parchment, and the game's colour).
+local function lightIfDressed(fs)
+  if type(fs) == "table" and fs.SetTextColor and inDressedWindow(fs) then T.Color(fs, "text") end
+end
+
 -- Keeps quest and gossip text readable: the game recolors it for parchment as
 -- each page shows, so Vanguard's colors go on after it does, every time.
 local function keepTextReadable()
   after(nil, "QuestFrameProgressItems_Update", lightProgressMoney)
-  after(nil, "QuestFrame_SetTextColor", function(fs) T.Color(fs, "text") end)
-  after(nil, "QuestFrame_SetTitleTextColor", function(fs) T.Color(fs, "text") end)
+  after(nil, "QuestFrame_SetTextColor", lightIfDressed)
+  after(nil, "QuestFrame_SetTitleTextColor", lightIfDressed)
   local box = gossipBox()
   if type(box) == "table" then after(box, "Update", GW.LightGossip) end
   for _, f in ipairs({ _G.QuestFrame, _G.GossipFrame }) do
