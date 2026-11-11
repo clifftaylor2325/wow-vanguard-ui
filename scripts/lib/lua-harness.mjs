@@ -304,9 +304,10 @@ function fengariCalls(L) {
 }
 
 // A new harness state on the chosen engine, with a per-call instruction budget (on fengari, none and no host
-// functions when bare, as a plain file reader has always run).
+// functions when bare, as a plain file reader has always run). The profiler has no Lua 5.1 side yet.
 function harnessState(limit, bare = false) {
   if (ENGINE === "fengari") return fengariState(limit, bare);
+  if (process.env.LUA_PROFILE) throw new Error("LUA_PROFILE: the profiler samples on the default engine only (lua-profile.mjs reads fengari's stack); unset VG_LUA_ENGINE");
   return newWasmState({ budget: limit, coverage: process.env.LUA_COVERAGE ? addHits : null, addonName: ADDON, secretChecks: process.env.VG_SECRET_OPS !== "off" });
 }
 

@@ -15,11 +15,13 @@ import { root } from "../lib/lua-harness.mjs";
 const EARLIER = { label: "harness measurement", commit: "TEST-ONLY-earlier", seed: 11, scriptEvents: 40, raid: 40,
   events: { UNIT_HEALTH: { count: 1, median: 0.001, addonInstr: 1 } }, modules: { "Modules/RaidFrames.lua": { self: 1, byEvent: {} } } };
 
-// Runs the bench command with arguments, without the coverage or profiler switches of the run around it.
-function bench(args) {
-  const env = { ...process.env };
+// Runs the bench command with arguments, without the coverage, profiler or engine switches of the run around it (the
+// bench runs on the default engine), plus `extra` in its environment.
+function bench(args, extra = {}) {
+  const env = { ...process.env, ...extra };
   delete env.LUA_COVERAGE;
   delete env.LUA_PROFILE;
+  if (!extra.VG_LUA_ENGINE) delete env.VG_LUA_ENGINE;
   return spawnSync(process.execPath, [path.join(root, "scripts", "bench.mjs"), ...args], { cwd: root, env, encoding: "utf8" });
 }
 
@@ -50,4 +52,9 @@ it("npm run bench --instr-budget fails a step whose addon instructions pass thei
   expect(run.stderr).toMatch(/Over the instruction budget: OnUpdate \d+ per step \(cap 0\)/);
   fs.writeFileSync(caps, "not json");
   expect(bench(["--events", "1", "--reps", "1", "--warmup", "0", "--out", out, "--instr-budget", caps]).status, "a caps file that isn't JSON stops the run").toBe(2);
+});
+
+it("npm run bench refuses the Lua 5.1 engine, whose instruction counts its caps were not set in", () => {
+  const run = bench(["--events", "1", "--reps", "1", "--warmup", "0"], { VG_LUA_ENGINE: "wasm" });
+  expect([run.status, run.stderr.trim()]).toEqual([2, "npm run bench: runs on the default engine only (its instruction counts, and the caps in scripts/bench-budget.json, are fengari's); unset VG_LUA_ENGINE"]);
 });
