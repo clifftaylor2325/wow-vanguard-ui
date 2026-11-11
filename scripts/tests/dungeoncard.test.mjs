@@ -128,8 +128,16 @@ it("the Keys line lists the keys on the key ring too, whichever way the client g
   expect([text(none).slice(-1), none.eval("return #ns.errors")], "no key ring size from either: the bags' keys only, no error").toEqual([["Keys: TEST-ONLY Skeleton Key, TEST-ONLY Gate Key"], 0]);
 });
 
-// The computer's clock kept at UTC, so a calendar day does not depend on the machine running the test.
-const UTC_DATE = `date = function(format, t) return os.date("!" .. format, t) end`;
+// The computer's clock kept at UTC, so a calendar day does not depend on the machine running the test. The
+// harness's os.date gives the day of the year in the machine's time zone even for a UTC table, so it is counted here.
+const UTC_DATE = `date = function(format, t)
+  local out = os.date("!" .. format, t)
+  if type(out) ~= "table" then return out end
+  local before = out.year - 1
+  local leaps = math.floor(before / 4) - math.floor(before / 100) + math.floor(before / 400) - 477
+  out.yday = math.floor(t / 86400) - ((out.year - 1970) * 365 + leaps) + 1
+  return out
+end`;
 // The wall clock moved to `t` seconds, then a walk through the door (a new world) with the card on.
 const visit = (addon, t) => { addon.eval(`__t = ${t} time = function() return __t end`); addon.fire("PLAYER_ENTERING_WORLD"); addon.advance(0.25); };
 
