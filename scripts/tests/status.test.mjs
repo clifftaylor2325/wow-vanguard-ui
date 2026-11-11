@@ -288,3 +288,20 @@ it("H44-7-1 raid status: a tile whose raid icon fails leaves the later tiles' ic
   expect(addon.eval("return Vanguard_RaidUnitButton3.raidIcon.__texCoord"), "tile 3 shows icon 5 (row 2, cell 1)").toEqual([0, 0.25, 0.25, 0.5]);
   expectErrors("event RAID_TARGET_UPDATE: eval:2: TEST-ONLY tile 1 icon fails");
 });
+
+// Tile 1's center marks' widths (ready check, its shadow, resurrection, summon) and the size the zones ask for now.
+function centerSizes(addon) {
+  return addon.eval(`local RF, b = ns.GetModule("RaidFrames"), Vanguard_RaidUnitButton1
+    return { b.ready:GetWidth(), b.ready.shadow:GetWidth(), b.rez:GetWidth(), b.summon:GetWidth(), RF.TileZones().icon + 4 }`);
+}
+
+it("H44-7-R2 raid status: the ready check, resurrection and summon marks take the size a new tile height asks for", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + WALK_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  addon.update(0.016);
+  const before = centerSizes(addon);
+  addon.eval('local RF = ns.GetModule("RaidFrames") RF.settings.width, RF.settings.height = 72, 36 RF.ApplySize()');
+  const after = centerSizes(addon);
+  expect(after[4], "the zones ask for a smaller mark on the 36-tall tile").toBeLessThan(before[4]);
+  expect(after.slice(0, 4), "every center mark takes it").toEqual([after[4], after[4], after[4], after[4]]);
+});
