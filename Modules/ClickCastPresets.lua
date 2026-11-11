@@ -233,11 +233,18 @@ CC.OnAdded = function(key)
   if rec and rec.open then rec.open[key] = nil end
 end
 
+-- A mouse binding as one text: key, action and value, the value with "#<rank>" where a rank was picked. A binding
+-- without a rank reads as it always did, so the records saved per character before ranks counted still match.
+local function bindingText(b)
+  local value = b.rank and (tostring(b.value) .. "#" .. b.rank) or tostring(b.value)
+  return table.concat({ b.key, b.action, value }, "=")
+end
+
 -- The list shown's mouse bindings as one text, in key order, to tell whether they are still the ones a preset made.
 local function mouseText()
   local out = {}
   for _, b in ipairs(CC.Bindings()) do
-    if CC.MouseParts(b.key) then out[#out + 1] = table.concat({ b.key, b.action, tostring(b.value) }, "=") end
+    if CC.MouseParts(b.key) then out[#out + 1] = bindingText(b) end
   end
   table.sort(out)
   return table.concat(out, ";")
