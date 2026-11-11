@@ -317,6 +317,28 @@ it("minimap: the box goes with the map when the game hides it (Toggle Minimap, t
   const unhooked = loggedIn(UI_ENV + "Minimap:Hide() hooksecurefunc = nil");
   expect(unhooked.eval("return { Vanguard_Minimap:IsShown(), #ns.errors }"), "a client without hooksecurefunc: the box is still built to the map's state, with no error").toEqual([false, 0]);
 });
+// TEST-ONLY: another addon's secure button left on the map makes the box protected through its child (the harness's
+// model, scripts/lib/wow-taint.lua isProtected; the client shows it as IsProtected's two returns, live
+// Interface/AddOns/Blizzard_APIDocumentationGenerated/SimpleScriptRegionAPIDocumentation.lua IsProtected), and the
+// game's Toggle Minimap calls Minimap:Hide() in a fight too (Interface/AddOns/Blizzard_Minimap/Mainline/Minimap.lua
+// ToggleMinimap, both clients).
+const SECURE_ON_MAP = `__wfgStub.protect(CreateFrame("Button", "TestOnlySecureMinimapButton", Minimap))`;
+it("minimap: in a fight, a box holding a protected button follows the map when the fight ends, with no blocked call", () => {
+  const addon = loggedIn(UI_ENV + SECURE_ON_MAP);
+  setCombat(addon, true);
+  addon.eval("Minimap:Hide() Minimap:Show() Minimap:Hide()");
+  expect(addon.eval("return { Vanguard_Minimap:IsShown(), #(__wfgStub.violations or {}) }"), "the box waits, nothing blocked").toEqual([true, 0]);
+  setCombat(addon, false);
+  expect(addon.eval("return Vanguard_Minimap:IsShown()"), "the fight over: the box follows the map's last state").toBe(false);
+});
+it("minimap: in a fight, a box with nothing protected inside follows the map at once", () => {
+  const addon = loggedIn(UI_ENV);
+  setCombat(addon, true);
+  addon.eval("Minimap:Hide()");
+  expect(addon.eval("return Vanguard_Minimap:IsShown()"), "hidden with the map").toBe(false);
+  addon.eval("Minimap:Show()");
+  expect(addon.eval("return Vanguard_Minimap:IsShown()"), "back with it").toBe(true);
+});
 it("minimap: the game's own coordinates line (the container's PlayerCoords) is faded, since Vanguard has its own", () => {
   const addon = loggedIn(UI_ENV + `MinimapCluster.MinimapContainer = CreateFrame("Frame", nil, MinimapCluster)
     MinimapCluster.MinimapContainer.PlayerCoords = CreateFrame("Frame", nil, MinimapCluster.MinimapContainer)`);

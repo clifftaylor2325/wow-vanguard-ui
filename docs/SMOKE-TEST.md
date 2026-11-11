@@ -5434,6 +5434,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: every tab sits just outside its window's panel edge in Vanguard's tab look, and `/vg errors` has no `attempt to compare a secret value` line from `WindowsTabs.lua`.
 - If it fails, paste: a screenshot of the window and `/vg errors`.
 
+### 33.554 Toggle Minimap in a fight with another addon's secure button on the map (H44-18-1)
+
+- Do: for Forever and Retail: with an addon that puts a secure button on the minimap (skip if you have none), enter a fight, press the Toggle Minimap key twice, then once more and leave the fight.
+- Expect: no `blocked` line in `/vg errors`; the map's box follows the map at once, or at the latest when the fight ends, and then matches whether the map is shown.
+- If it fails, paste: `/vg errors` and the name of the addon with the button.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
