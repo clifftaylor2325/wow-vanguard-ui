@@ -145,6 +145,23 @@ local function releaseFloating()
   CW.floating = {}
 end
 
+-- The game docks a window (its tab dropped into the dock; FCF_DockFrame ends in FCFDock_AddChatFrame, which clears
+-- its anchors and sets them all to the dock's): its handle and pin let go, or the next pin run would pull the
+-- docked window back out to its old spot. The released handle keeps its saved spot.
+local function letDocked(frame)
+  local key = CW.floating[frame]
+  if not key then return end
+  ns.ReleaseMover(key)
+  ns.Unpin(frame)
+  CW.floating[frame] = nil
+end
+
+-- Hooks FCF_DockFrame, through a gate that installs the hook once a session and is inert while the module is off.
+local function watchDocking(scope)
+  if type(hooksecurefunc) ~= "function" or type(FCF_DockFrame) ~= "function" then return end
+  scope:Gate("dock frame", letDocked, function(gate) hooksecurefunc("FCF_DockFrame", ns.Guard("hook FCF_DockFrame", gate)) end)
+end
+
 -- Tabs ------------------------------------------------------------------------------------
 
 -- The message groups a tab can show or hide: each row lists the game groups one switch stands for.
@@ -393,12 +410,13 @@ function CW.Disable()
   releaseFloating()
 end
 
--- Module entry point (Core/Modules.lua): it registers nothing with the scope (the Find button is made once and
--- shown by its switch; the floating windows' movers are the game's frames, let go by Disable), so it takes no scope argument.
-function CW.Enable(settings)
+-- Module entry point (Core/Modules.lua): the scope holds only the docking hook (the Find button is made once and
+-- shown by its switch; the floating windows' movers are the game's frames, let go by Disable).
+function CW.Enable(settings, scope)
   CW.settings = settings
   CW.ApplyFind()
   if not settings.movers then return end
+  watchDocking(scope)
   for _, window in ipairs(CW.Shown()) do
     if floating(window.index) then floatingMover(window) end
   end

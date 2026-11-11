@@ -54,6 +54,27 @@ it("chat windows: the floating window becomes a mover and stays where it was put
   expect(addon.eval("return #ns.errors") + docked.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// TEST-ONLY model of the game's docking (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua: FCF_DockFrame returns
+// when already docked, else FCFDock_AddChatFrame does chatFrame:ClearAllPoints() then SetAllPoints(dock.primary)).
+const DOCKING = `
+  FCF_DockFrame = function(frame)
+    if frame.isDocked then return end
+    frame.isDocked = 1
+    frame:ClearAllPoints()
+    frame:SetAllPoints(ChatFrame1)
+  end
+`;
+it("chat windows: a floating window the player drags into the dock lets go of its handle and pin (H44-19-1)", () => {
+  const addon = loggedIn(ENV + DOCKING, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });
+  expect(addon.eval("return ns.MoverPoint('chat2')"), "floating at login: a handle").toBe("TOPLEFT");
+  addon.eval("FCF_DockFrame(ChatFrame2) ns.PausePins(true) ns.PausePins(false) ChatFrame2:ClearAllPoints() ChatFrame2:SetAllPoints(ChatFrame1)");
+  const points = addon.eval("local out = {} for k, p in pairs(ChatFrame2.__points) do out[#out + 1] = k .. '>' .. (p.rel == ChatFrame1 and 'ChatFrame1' or 'other') end table.sort(out) return out");
+  expect(points, "after Edit Mode closes and a game SetPoint, the window is still on the dock").toEqual(["BOTTOMRIGHT>ChatFrame1", "TOPLEFT>ChatFrame1"]);
+  expect(addon.eval("local out = {} for _, m in ipairs(ns.MoverList()) do out[#out + 1] = m.key end return out"), "its handle is gone from /vg unlock").not.toContain("chat2");
+  addon.eval("ChatFrame1.isDocked = 1 FCF_DockFrame(ChatFrame1)");
+  expect(addon.eval("return #ns.errors"), "docking the main window, or one with no handle, raises nothing").toBe(0);
+});
+
 it("chat windows: a floating window's unlock handle has the main chat's clamp insets, with the Combat Log's filter strip above", () => {
   const strip = "ChatFrame2.CombatLogQuickButtonFrame = CreateFrame('Frame') ChatFrame2.CombatLogQuickButtonFrame:SetHeight(24)";
   const addon = loggedIn(ENV + strip, { savedVariables: 'VanguardDB.profiles = { Default = { ChatWindows = { movers = true } } }' });

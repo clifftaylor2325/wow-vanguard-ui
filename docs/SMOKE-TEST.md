@@ -5506,6 +5506,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: Vanguard's dialog opens on the offer and stays open, nothing is accepted until you click Accept; an ordinary quest giver is still accepted by Space and by automation as before.
 - If it fails, paste: whether the quest was accepted, and `/vg errors`.
 
+### 33.567 A chat window dragged back into the dock stays in the dock (H44-19-1)
+
+- Do: with `/vg` > Chat > Move floating windows on and reloaded, pull a tab (Loot) out of the dock, drag its tab back into the dock, then open and close Edit Mode.
+- Expect: the Loot tab's text stays inside the main chat panel when you click it, and `/vg unlock` shows no `Chat: Loot` handle.
+- If it fails, paste: a screenshot if the text sits elsewhere, and `/vg errors`.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
