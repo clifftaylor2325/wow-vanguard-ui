@@ -123,6 +123,42 @@ it("a standing the client hides names no standing, and the bar takes Neutral's c
   expect([bars(addon).repText, repTip(addon), bars(addon).repColor]).toEqual(["TEST-ONLY Faction  0 / 100 (0%)", ["TEST-ONLY Faction", "To the next standing | 100", "Through this standing | 0%", "Click: the reputation list"], bars(neutral).repColor]);
 });
 
+// TEST-ONLY a watched friendship faction (id 2640) and the client's friendship answer for it, as GossipInfoDocumentation.lua
+// gives it (GetFriendshipReputation: friendshipFactionID, reaction, reactionThreshold, nextThreshold, standing; may answer
+// nothing). The game's bar reads it before the reaction thresholds and always draws Friendly's colour:
+// live/Interface/AddOns/Blizzard_ActionBar/Shared/ReputationBar.lua and forever/Interface/AddOns/
+// Blizzard_StatusTrackingBar/Shared/ReputationBar.lua, ReputationStatusBarMixin:Update, the friendshipID > 0 branch.
+const FRIEND_ENV = `
+  __faction = { name = "TEST-ONLY Companion", factionID = 2640, reaction = 5, currentReactionThreshold = 3000, nextReactionThreshold = 9000, currentStanding = 4200 }
+  __friend = { friendshipFactionID = 2640, reaction = "TEST-ONLY Level 7", reactionThreshold = 7000, nextThreshold = 8000, standing = 7250 }
+  C_GossipInfo.GetFriendshipReputation = function(id) __asked = id return __friend end`;
+
+it("a watched friendship shows its rank's word and range in Friendly's colour, as the game's bar does", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV + FRIEND_ENV);
+  const b = bars(addon);
+  expect([b.rep, b.repMax, b.repText, addon.eval("return __asked")]).toEqual([250, 1000, "TEST-ONLY Companion  TEST-ONLY Level 7  250 / 1.0K (25%)", 2640]);
+  expect(repTip(addon), "no reaction standing to name next").toEqual(["TEST-ONLY Companion", "Standing | TEST-ONLY Level 7", "To the next standing | 750", "Through this standing | 25%", "Click: the reputation list"]);
+  const friendly = loggedIn(DATA_ENV + STANDINGS_ENV + `
+  __faction = { name = "TEST-ONLY Faction", reaction = 5, currentReactionThreshold = 0, nextReactionThreshold = 100, currentStanding = 0 }`);
+  expect(b.repColor, "Friendly's colour").toEqual(bars(friendly).repColor);
+});
+
+it("a friendship at its top rank is a full bar with just its word; a hidden value is a full bar with no numbers", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV + FRIEND_ENV + "\n  __friend.nextThreshold = nil");
+  expect([bars(addon).rep, bars(addon).repMax, bars(addon).repText]).toEqual([1, 1, "TEST-ONLY Companion  TEST-ONLY Level 7"]);
+  addon.eval("__friend.nextThreshold = 8000 __friend.standing = __wfgWorld.secret(7250) __friend.reaction = __wfgWorld.secret('x')");
+  addon.fire("UPDATE_FACTION");
+  expect([bars(addon).rep, bars(addon).repText], "the hidden word and range are not read").toEqual([1, "TEST-ONLY Companion"]);
+});
+
+it("a faction that is no friendship, or a friendship answer of nothing, keeps the reaction standing", () => {
+  const addon = loggedIn(DATA_ENV + STANDINGS_ENV + FRIEND_ENV + "\n  __friend.friendshipFactionID = 0");
+  expect(bars(addon).repText, "friendship id 0").toBe("TEST-ONLY Companion  Friendly  1.2K / 6.0K (20%)");
+  addon.eval("__friend = nil");
+  addon.fire("UPDATE_FACTION");
+  expect(bars(addon).repText, "no answer").toBe("TEST-ONLY Companion  Friendly  1.2K / 6.0K (20%)");
+});
+
 it("a left-click on the reputation bar opens the reputation list; a right-click doesn't", () => {
   const addon = loggedIn(DATA_ENV + STANDINGS_ENV);
   for (const button of ["LeftButton", "RightButton"]) addon.eval(`Vanguard_repbar:GetScript("OnMouseUp")(Vanguard_repbar, "${button}")`);

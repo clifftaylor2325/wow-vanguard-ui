@@ -5444,6 +5444,12 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: no red error text; the VGSecret slot shows its text with no icon, and any feed picked after it still shows.
 - If it fails, paste: any red error text, and `/vg errors`.
 
+### 33.636 The reputation bar shows a friendship's rank
+
+- Do: open the reputation list and watch a friendship faction (on Retail Brann Bronzebeard, the delve companion; on WoW Forever any faction whose list entry shows a rank name instead of Friendly or Honored, if there is one), then hover the reputation bar. [Client: Retail, and Forever where such a faction exists.]
+- Expect: the bar's text names the rank as the game's reputation list does ("Level 12" or the rank's word) with that rank's numbers, green; the tooltip says "To the next standing". At the top rank it is a full bar with just the word.
+- If it fails, paste: the bar's text, `/dump C_GossipInfo.GetFriendshipReputation(C_Reputation.GetWatchedFactionData().factionID)`, and `/vg errors`.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
