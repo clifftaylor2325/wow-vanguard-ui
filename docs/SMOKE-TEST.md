@@ -62,7 +62,7 @@ If time is short, do these first and stop after any step that throws a Lua error
 
 1. 1.1 to 1.4: install, first login, `/vg status` (read the real build from its client line) and `/vg errors` (its header has the interface number; put it in `Vanguard.toc` as the matching `## Interface` value before packaging).
 2. 7 and 3.3: combat with auras, cast bars, nameplates and unlocked frames.
-3. 9.4 and 14.9.2: open the auction house, then Post from the Posting tab. Run `/vg errors` right after.
+3. 9.4 and 14.9.5: open the auction house, then Post from the Posting tab. Run `/vg errors` right after.
 4. 14: each skinned game window, opened once in combat and once out of it.
 5. Everything else, in section order.
 6. On Retail: 34.1 first (a login error stops the run), then 34.6 and 34.14 (a key and a raid pull), then the rest of 34.
@@ -129,7 +129,7 @@ Run the sessions in order; within a session, top to bottom. Each line is a step 
 - `9.3` Trainer: Train all
 - `15.6c` Chat windows
 - `15.6e` Chat tabs
-- `33.386` Close this tab gives the tab's chat back to General (Forever)
+- `33.386` Close this tab on a Trade tab leaves it to the game's menu (Forever)
 
 **Session 3: town services, click casting and the game's windows (solo, about 40 minutes)**
 
@@ -187,7 +187,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.1a Slash commands in any capitalisation
 
 - Do: type `/vg` with nothing after it, then `/vg disable actionbars` (then `/vg enable actionbars`), then `/vg skins SomeAddon maybe`.
-- Expect: `/vg` opens (or closes) the options window; the module is found whatever the case and the chat line names it as it is spelled in `/vg modules`; the skins line answers with its usage and changes nothing. [Needs in-game check: the bare `/vg` still opens the window now that it runs under the error guard.]
+- Expect: `/vg` opens (or closes) the options window; the module is found whatever the case and the chat line names it as it is spelled in `/vg modules`; the skins line answers `No skin called SomeAddon. /vg skins lists them.` and changes nothing. [Needs in-game check: the bare `/vg` still opens the window now that it runs under the error guard.]
 - If it fails, paste: `/vg errors`.
 
 ### 1.2 First login opens the setup wizard
@@ -199,7 +199,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.2a Closing early, Skip, and a new character
 
 - Do: on that first login, close the wizard with the X, then `/reload`. Then click **Skip setup** and `/reload` again. Then `/vg setup` and click through to Done. Then log in on a character that has never run Vanguard, pick **A profile of its own**, Next, pick Centered: healing, Next, and finish. Log back to the first character.
-- Expect: after the first reload the wizard is back (chat said `Setup opens again at your next login.`); after Skip it stays away and asks nothing. Finishing the rerun asks nothing either. The new character's wizard reads `Step 1 of 5 · Profile`; with a profile of its own, `/vg` → Profiles says `This character uses <its name>.` with no reload, and the first character's frames haven't moved.
+- Expect: after the first reload the wizard is back (chat said `Setup opens again at your next login.`); after Skip it stays away and asks nothing. Finishing the rerun asks nothing either. The new character's wizard reads `Step 1 of 10 · Profile`; with a profile of its own, `/vg` → Profiles says `This character uses <its name>.` with no reload, and the first character's frames haven't moved.
 - If it fails, paste: the caption you saw, the Profiles page text and `/vg errors`.
 
 ### 1.2b What's new after an update
@@ -211,7 +211,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.3 Status
 
 - Do: type `/vg status`.
-- Expect: the lines described in the Report block. The client line says `Client WoW Forever` and `auras on the engine`. [After P0.3: `auras on the fallback` means the client refused the aura container and Vanguard fell back; `/vg errors` should say so.] [After P0.6 and P0.11: the `Client has:` line and a `secure snippets: yes` part are present; `secure snippets: no (hover keys off)` means the client could not run secure snippets.]
+- Expect: the lines described in the Report block. The client line says `Client WoW Forever` and `auras on the engine`. `auras on the fallback` means the client refused the aura container and Vanguard fell back; `/vg errors` should say so. The `Client has:` line and a `secure snippets: yes` part are present; `secure snippets: no (hover keys off)` means the client could not run secure snippets.
 - Do also: in a dungeon, a battleground and in the open world, type `/vg status` and read the `Game restrictions:` line. [Needs in game: that it is `none` in the open world and names Chat, Encounter or ChallengeMode only where the game restricts add-ons, and that chat watch and the group board go quiet then without errors. Compare with `/vg probe`, section Restrictions and lockdown.]
 - If it fails, paste: the whole `/vg status` output and `/vg errors`.
 
@@ -224,7 +224,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.4 No errors yet
 
 - Do: type `/vg errors`.
-- Expect: `No errors caught this session.` Anything else is the first bug report. [After P0.2: each entry shows a count and a stack.]
+- Expect: `No errors caught this session.` Anything else is the first bug report. Each entry shows a count and a stack.
 - If it fails, paste: the whole `/vg errors` output.
 
 ### 1.5 Memory over a minute
@@ -279,7 +279,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the window is about three quarters of your screen tall (at least as tall as before). The dot's tooltip has a second line, "Default: 100%" or the like. "move frames" lists Move frames, and clicking that line only marks the button (frames do not unlock). "square" lists Corners. "a" lists eight and ends with "N more: type more words". Vanguard meter says "On, but its own switch is off (Combat tools)" beside its name until you switch the meter on under Combat tools. After the UI scale change the window is still tall and fits the screen.
 - If it fails, paste: a screenshot of the window, your screen resolution and UI scale, and `/vg errors`.
 
-### 2.1f2 The options list's long page names and Text size changes
+### 2.1o The options list's long page names and Text size changes
 
 - Do: in a non-English client (Italian, Spanish, Portuguese or Russian) type `/vg` and look at the list of pages on the left, changing a setting on a page with a long name (Combat tools, Town and gear) so its dot shows. Then open Modules, Unit frames and Combat tools, set Text size to 130% under General, and open those pages again.
 - Expect: each page name ends before the page's dot and the list's edge (a name too long is cut short), never over them. After the Text size change, each page you reopen is laid out for the new size: a module's description sits wholly inside its row, a "reload" tag sits after its caption without touching it, and a switch with a wrapped caption has the switch centred on the caption. [Needs in-game check: how far a real translation runs depends on the font's real widths.]
@@ -318,7 +318,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 2.1n The reload notice names what waits
 
 - Do: type `/vg` → Modules. Switch Chat off, then Bags off, then Minimap off. Look at the footer. Switch all three back on. Then on Map switch Clock off and back on. Then pick another profile in the header's picker.
-- Expect: after Chat the footer says "Waiting for a reload: Chat" beside Reload now; after Bags "Waiting for a reload: Chat, Bags"; after Minimap it adds "and 1 more" (the text stays left of the button and clear of the error line). Switching all three back on takes the notice and the button away, and so does Clock off and on again. Picking another profile shows "Some changes need a reload", which stays until the reload. Every module switch still wears "Reload to apply". No error. [Needs in-game check: no module goes on or off live yet; the wording and the notice clearing are the only change a player sees.]
+- Expect: after Chat the footer says "Waiting for a reload: Chat" beside Reload now; after Bags "Waiting for a reload: Chat, Bags"; after Minimap it adds "and 1 more" (the text stays left of the button and clear of the error line). Switching all three back on takes the notice and the button away, and so does Clock off and on again. Picking another profile shows "Some changes need a reload", which stays until the reload. No error. [Needs in-game check: the wording and the notice clearing are the only change a player sees.]
 - If it fails, paste: a screenshot of the footer and `/vg errors`.
 
 ### 2.1h The fold on Raid frames
@@ -348,7 +348,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 2.2 The wizard, start to finish
 
 - Do: drag a frame with `/vg unlock`, then open `/vg` → General → **Run setup**. Click Next eight times, then Done.
-- Expect: `Step 1 of 9 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the choices rest flat on the panel, each lifts only under the mouse, and the picked one alone carries the thin accent rail on its left over a lighter fill (its text stays the plain colour), the same on the Profile and Screen steps [Needs in game]; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 9 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 4 · Look` (the accent swatches, the raid frame style and the Calm HUD switch, off); Next goes to `Step 4 of 4 · Move things` with every frame's handle showing; the button then says Done, and Done hides the handles and the wizard and offers no reload, and no profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
+- Expect: `Step 1 of 9 · Layout` with six choices (Centered: damage, Centered: tanking, Centered: healing, Versus deck, Like the game's, Keep my current layout), Keep picked; the choices rest flat on the panel, each lifts only under the mouse, and the picked one alone carries the thin accent rail on its left over a lighter fill (its text stays the plain colour), the same on the Profile and Screen steps [Needs in game]; the frame you dragged stays where it is at the end. Next goes to `Step 2 of 9 · Screen`, with a choice per screen size (1080p, 1440p, 4K, Ultrawide), the one for your screen marked `your screen`, `Pixel-perfect (sharpest)` and `Keep my current sizes` (picked); under them the hint names who sets your UI scale now (`the game's UI Scale slider` or `Vanguard's pixel-perfect scale`), in full and inside the window, and clicking a preset shows a two-line hint that it moves the game's UI Scale slider; Next goes to `Step 3 of 9 · Look` (the accent swatches and the raid frame style; Calm HUD is on the Comfort step); Comfort and the steps up to Move things are in the line below; `Step 8 of 9 · Move things` has every frame's handle showing, then `Step 9 of 9 · All set` says Done on its button, and Done hides the handles and the wizard and offers no reload, and no profile backup is mentioned in chat, since nothing changed. Escape and the close button close it too. After `/reload` the wizard does not come back by itself.
 - Also after Look: `Step 4 of 9 · Comfort` has the switches **Larger text (115%)**, **Colour vision: Safer colours**, **Calm HUD** and **Reduce motion**, all off, and **Shield HUD look** on and marked `· recommended` (33.471), all inside the window, and a **Use recommended** button under them. Switch Larger text on and press Next: the wizard's own text gets bigger as you leave the step (a switch only picks until then); Back, Off and Next put it back. Safer colours moves hostile and friendly bars apart after the reload. Each first change says where the backup profile went. Steps 5 to 7 (Game settings, Helpers, Combat) are 33.456; Move things is step 8 and All set step 9.
 - If it fails, paste: the step id, the caption you saw, and `/vg errors`.
 
@@ -472,7 +472,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 4.4 Export only the layout
 
-- Do: type `/vg export pick`, click None, switch on Layout (positions and movers) and click Export; copy the string. On another character (or after `/vg profile new Other` and a reload), move one frame with `/vg unlock`, change the accent with `/vg accent fel`, then `/vg import` the string and reload.
+- Do: type `/vg export pick`, click None, switch on Layout (positions and movers) and click Export; copy the string. On another character (or after `/vg profile new Other` and a reload), move one frame with `/vg unlock`, change the accent with `/vg accent jade`, then `/vg import` the string and reload.
 - Expect: the panel lists Layout, Situations overrides, Global settings and your modules, all on at first; the box is titled `Vanguard export (layout)  Ctrl+C to copy` and its string starts `VG1:parts:`. The import says `Imported layout settings into profile <name>.` and `Profile <name> as it was before this import is saved as profile <name> backup.`; after the reload the frames sit where the string put them and the fel accent is still there.
 - If it fails, paste: the chat lines, a screenshot after the reload, and `/vg errors`.
 
@@ -490,13 +490,13 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 4.7 Lost settings come back
 
-- Do: change the accent (`/vg accent fel`), then log out to character select and quit the game. Rename `WTF/Account/<account>/SavedVariables/Vanguard.lua` to `Vanguard.lua.bak` (keep the character's own file), start the game and log in on the same character. Click Restore, then Reload. Afterwards quit, put the `.bak` file back under its own name if you want the old file, and also try once with the character's file renamed instead of the account's.
-- Expect: chat says `Vanguard's saved settings didn't load this session (the account file came back blank). This character kept a backup.`, a question asks `Vanguard's saved settings didn't load. Restore profile <name> from this character's backup?`, the setup wizard stays shut, and `/vg` → General starts with the notice. After Restore and the reload the fel accent is back and nothing is asked again. With only the character's file renamed, chat says `This character's saved Vanguard settings didn't load; it uses profile <name> again.` and setup stays shut.
+- Do: change the accent (`/vg accent jade`), then log out to character select and quit the game. Rename `WTF/Account/<account>/SavedVariables/Vanguard.lua` to `Vanguard.lua.bak` (keep the character's own file), start the game and log in on the same character. Click Restore, then Reload. Afterwards quit, put the `.bak` file back under its own name if you want the old file, and also try once with the character's file renamed instead of the account's.
+- Expect: chat says `Vanguard's saved settings didn't load this session (the account file came back blank). This character kept a backup.`, a question asks `Vanguard's saved settings didn't load. Restore profile <name> from this character's backup?`, the setup wizard stays shut, and `/vg` → General starts with the notice. After Restore and the reload the jade accent is back and nothing is asked again. With only the character's file renamed, chat says `This character's saved Vanguard settings didn't load; it uses profile <name> again.` and setup stays shut.
 - If it fails, paste: the chat lines, whether the question showed, and `/vg errors`.
 
 ### 4.8 Reset asks first and keeps a copy
 
-- Do: `/vg accent fel`, then `/vg` → Profiles. Hover **Delete** and **Copy here** on another profile's row (make one with `/vg profile new Spare` if there is none). Click **Reset profile**, then No; click it again, then Reset.
+- Do: `/vg accent jade`, then `/vg` → Profiles. Hover **Delete** and **Copy here** on another profile's row (make one with `/vg profile new Spare` if there is none). Click **Reset profile**, then No; click it again, then Reset.
 - Expect: the tooltips say what each loses (`Deletes profile Spare for every character on this account. It can't be undone.`, `Replaces every setting in profile <yours> with profile Spare's. It can't be undone.`). Reset asks `Reset this profile? Every setting in profile <yours> goes back to Vanguard's defaults, for every character that uses it. A copy is kept as profile <yours> backup.`; No changes nothing; Reset says `Profile <yours> as it was is saved as profile <yours> backup.` and the list shows that backup. After the reload the accent is brass again, and **Copy here** on the backup brings fel back.
 - If it fails, paste: the question's text, the chat lines and `/vg errors`.
 
@@ -511,7 +511,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 5.1 Border width at 1440p
 
 - Do: set the game to 2560x1440 and UI scale 1.0 (the game's UI Scale setting, usually under Options, System, Advanced; confirm the path in your client). Take a screenshot of the player frame's edge and zoom in. Type `/vg status`.
-- Expect: the border exactly 1 screen pixel wide, and `UI scale 1.00` in the status text line. [After P0.4. Before it the border is 2 px at 1440p, because the old size was one UI unit rounded to whole pixels.]
+- Expect: the border exactly 1 screen pixel wide, and `UI scale 1.00` in the status text line.
 - If it fails, paste: the zoomed crop, your resolution, and the `UI scale` line.
 
 ### 5.2 Pixel-perfect preset
@@ -614,7 +614,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.6 Group threat panel (batch 2)
 
-- Do: `/vg` → Unit frames, switch on "Group threat panel" and `/reload`. In a party with a tank, target a hostile mob out of combat, then pull it. In the open world, then a dungeon, then on a boss, watch the panel; at the same moment type `/run print(C_Secrets.ShouldUnitThreatValuesBeSecret("player", "target"))` and `/vg errors` (this is the threat test of issue #223).
+- Do: `/vg` → Unit frames, switch on "Group threat panel". In a party with a tank, target a hostile mob out of combat, then pull it. In the open world, then a dungeon, then on a boss, watch the panel; at the same moment type `/run print(C_Secrets.ShouldUnitThreatValuesBeSecret("player", "target"))` and `/vg errors` (this is the threat test).
 - Expect: the panel lists the group by threat on your target, highest first, with the tank at the top; it hides when you drop the target or leave the group. If the game prints `true` (threat hidden), the panel must be hidden during the fight, and there must be no Lua error either way. `/vg unlock` lets you move it.
 - If it fails, paste: a screenshot, the printed line, which place you were in (world, dungeon, boss), and `/vg errors`.
 
@@ -624,7 +624,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 - Do: target a mob that has a buff, put a damage-over-time debuff on it, then type `/focus` with it targeted.
 - Expect: debuffs under the target and focus frames, buffs above them, wrapping at the frame width, with timers off by default.
-- If it fails, paste: a screenshot, `/vg status` and `/vg errors`. [After P0.3 and P0.12: a rejected aura filter word is listed in `/vg errors`.]
+- If it fails, paste: a screenshot, `/vg status` and `/vg errors`. A rejected aura filter word is listed in `/vg errors`.
 
 ### 7.1a Weapon enchant sweeps when one runs out
 
@@ -650,7 +650,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: with no fight and no hostile target your player, pet, target of target and focus frames, the action bars, your buffs, the info strip, menu bar and broker strip and the damage meter are faint (about a third), and the XP and reputation bars are gone; the minimap is unchanged. Under the mouse the hovered part is at full strength at once (the XP bar shows again). Targeting a living hostile mob or entering combat brings everything up at once and it stays up through the fight; after the fight with no hostile target it goes quiet again. A friendly target leaves it quiet. Clicking a faint frame still targets, right-clicking opens the menu; the bound key and a click on a dimmed button both cast. Switching Calm HUD off brings every part back to full at once. No error.
 - If it fails, paste: a screenshot and `/vg errors`.
 
-### 7.2a1 Calm HUD choices
+### 7.2s Calm HUD choices
 
 - Do: with Calm HUD on, set **Action bars** to Hide and **Minimap** to Dim on the Calm HUD card, then stand out of combat. Press a key bound to action bar 1. Hover where bar 1 is. Then set the info strip's own visibility (`/vg` → Map, Strip visibility) to In combat. Then click the reputation bar while it shows.
 - Expect: the action bars are gone and come back under the mouse; the bound key still casts with the bar gone. The minimap is faint, and full under the mouse; clicking it still pings. The info strip follows In combat (hidden out of combat), not the Calm HUD. The reputation list opens from the bar. No error.
@@ -662,7 +662,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: one dark panel with rounded corners and an accent-coloured border runs from your player frame's left end to your target frame's right end, behind the cast bar, swing timer and cooldown icons between them (all still visible over it); the Vanguard crest sits centred on the panel's top edge; your target's health and power bars fill from the right. The player and target frames have rounded corners too, with no bar colour showing past the curve (no cut corners anywhere on the deck); switching the deck off gives them their cut shield corners back. With Calm HUD on, the panel dims with the frames. Switching it off removes the panel and the target's bars fill from the left again, at once. In setup, Versus deck turns it on with your role's layout (a healer gets the healing layout and click casting); picking another layout turns it off. No error.
 - If it fails, paste: a screenshot of the bottom centre and `/vg errors`.
 
-### 7.2b1 Pet cast bar
+### 7.2t Pet cast bar
 
 - Do: as a warlock with the Imp out (or any pet that casts), let it cast Firebolt at a mob. Dismiss the pet and summon another. Then `/vg unlock` and look for the pet cast bar's handle.
 - Expect: a small cast bar just left of the pet frame (between the combo points' spot and the focus's debuffs) fills with each of the pet's casts, with the spell's name and icon and no interrupt diamond, and goes when the cast ends or the pet goes; in unlock mode it has its own handle, "Pet cast bar". No error.
@@ -704,7 +704,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the totem you right-clicked is destroyed on the release of the button and its cell clears; the other stays. A left-click does nothing. No error, in combat too. [Needs in-game check: the key-down phase rule was read from the game's SecureTemplates.lua and modelled in the harness, not watched in game.]
 - If it fails, paste: what the CVar printed, what happened to the totem and `/vg errors`.
 
-### 7.2h1 State cues
+### 7.2u State cues
 
 - Do: `/vg` > General > Motion and sound shows **State cues** ticked. Pull a mob and watch the player frame as the fight starts; on a class with a proc (Mage Hot Streak, Warrior Execute) watch the button as the proc lights and goes; use an ability with a cooldown of several seconds and watch its button when the cooldown ends (also a global-cooldown-only ability); take damage below a third of your health. Repeat with State cues unticked, then with Reduce motion ticked.
 - Expect: a brief brass edge pulse round the player frame at the pull; the proc button's glow ring breathing about once a second while the proc lasts; one short flash on the button when its cooldown ends and none at the end of the global cooldown; a slow vermilion pulse round the player frame under a third of your health (in an instance too, where health is hidden), gone when you heal or die. With either switch off none of the four moves (the proc ring still shows, still). [Needs in-game check: all of it; whether `isOnGCD` is plain for action slots in a fight.]
@@ -1071,7 +1071,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: once the merchant window is gone no gray item is equipped or used; nothing is bought for an item that costs honor, badges or other items; with full bags the run stops after one try with `Stopped buying <item>: the last purchase did not arrive in full ...` and no `Bought` line for what did not arrive; switching merchants mid-run ends the run with a `Bought` line for what arrived and buys nothing from the second merchant that is not on your list. [Needs in game: that a right-click on a bag item with no merchant open equips or uses it; that GetMerchantItemCostInfo (or the item table's hasExtendedCost) is set for such items; and that C_Item.GetItemCount shows a purchase within the 0.2 s wait. If a run stops early on a slow server, say so.]
 - If it fails, paste: the chat lines and `/vg errors`.
 
-### 9.2b Item tooltip lines with Tooltips off
+### 9.2h Item tooltip lines with Tooltips off
 
 - Do: turn the Tooltips module off under `/vg` > Modules (and reload if asked); keep Vendor memory and Auction helper on; hover an item you saw at a merchant, or one with an auction price from a scan.
 - Expect: the item tooltip still shows the "Sold by ..." line and the "AH: ..." line (and "Upgrade +N% (estimate)" where it applies), in the game's own tooltip; there is no "Sells for ..." or "You have ..." line from Vanguard, and no unit-tooltip changes. Turn Tooltips back on: those two lines come back, with no line shown twice. [Needs in-game check: the lines on the client's tooltip, with the module off.]
@@ -1138,7 +1138,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the bag window draws over the tracker (no quest text shows through it), and every item picks up and drops. Quest item buttons beside the tracker are also under the window.
 - If it fails, paste: a screenshot of `/fstack` while hovering a slot that won't drag, and `/vg errors`.
 
-### 9.6 Boat and zeppelin timer (off until switched on)
+### 9.6a Boat and zeppelin timer (off until switched on)
 
 - Do: under Town and gear tick "Boat and zeppelin timer (reload)" and `/reload`. Board a boat or zeppelin and ride it to the other dock. Board the same one from the same dock again. Afterwards type `/run print(C_Map.GetPlayerMapPosition(C_Map.GetBestMapForUnit("player"), "player"))` once while standing on a boat and paste what it prints.
 - Expect: about three seconds after you board, a bar at the top centre (the flight timer's spot) says "Timing this ride"; stepping off hides it and saves the time under "where you boarded > where you got off". The second ride from that dock counts down from the saved time, with the place you landed last time. [Needs in game: that the client gives no map position for you on a boat or zeppelin (the code takes that as being aboard), that the sub-zone names at the docks differ from each other, and that the position comes back as soon as you step off.]
@@ -1222,7 +1222,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 10.2 Use it
 
 - Do: out of combat, hover a party or raid tile (or your own frame) and press the key or click.
-- Expect: the spell is cast on that unit. [After P0.11: if `/vg status` says `secure snippets: no`, hover keys are off on purpose and only mouse bindings work; paste that status line.]
+- Expect: the spell is cast on that unit. If `/vg status` says `secure snippets: no`, hover keys are off on purpose and only mouse bindings work; paste that status line.
 - If it fails, paste: `/vg binds`, `/vg status` and `/vg errors`.
 
 ### 10.3 Bar 1 pages with stances and forms
@@ -1285,13 +1285,13 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 - Expect: the hotkey texts read PU, Ins, Cap and ACSDel (or as much as fits), on one line in the button's top right corner, never wrapping onto a second line or running past the button's edge.
 - If it fails, paste: a screenshot of the bar.
 
-### 10.4c Equipped items are ringed
+### 10.4e Equipped items are ringed
 
 - Do: put a weapon or trinket you are wearing on a bar 1 button (drag it from the character window), and another you are not wearing on the next one. Swap the two in the character window.
 - Expect: a thin green ring inside the edge of the worn item's button only; after the swap the ring moves to the other one. With a button-skinning library skinning the bars, Vanguard draws no ring.
 - If it fails, paste: a screenshot of the two buttons and `/vg errors`.
 
-### 10.4d Keybind banner says what happened
+### 10.4f Keybind banner says what happened
 
 - Do: type `/vg keybind`. Hover an empty bar 1 button and press Shift+Q, then press W over it (W moves you forward), then press Backspace twice. Click the banner's **Done** button.
 - Expect: the banner's second line reads "Nothing bound yet." at first, then each result as chat gets it ("SHIFT-Q bound to …", then in the warning colour "W bound to …, taken from Move Forward.", then "… unbound (was W)." and "… has no key."). Done closes the banner like Escape, and W stays bound to the button.
@@ -1328,7 +1328,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 12.1 The Vanguard button
 
 - Do: press Escape, look at the menu, click the Vanguard button.
-- Expect: the Vanguard button first, above Options, with a gap under it; clicking it closes the menu and opens the options window. [After P0.9. If P0.9 did not land, the button is last, under Return to Game, as in your first screenshot.]
+- Expect: the Vanguard button first, above Options, with a gap under it; clicking it closes the menu and opens the options window.
 - If it fails, paste: a screenshot of the menu and `/vg errors`.
 
 ### 12.1a The Vanguard button and the quest log button in a fight
@@ -1354,7 +1354,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 13.2 Every button works
 
 - Do: click every micro button the Forever menu has (Character, Spellbook, Talents, Achievements, Quest log, Guild or Social, group finder, Collections, Adventure guide, Shop, Game menu) and every bag button, including the key ring button if there is one.
-- Expect: each opens its window or bag. [The key ring button is skinned only after P0.14.]
+- Expect: each opens its window or bag.
 - If it fails, paste: which button, a screenshot and `/vg errors`.
 
 ### 13.2a Bags nearly full
@@ -1829,8 +1829,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 14.9.2 Scoreboard and match results
 
-- Do: in a battleground press H (or open the scoreboard), click its tabs (All, Alliance, Horde), scroll the table, then finish the match and look at the results window; click Leave (or Queue again).
-- Expect: both windows are a flat panel with the theme's close button, the table on a darker inset with the rows, column headings and team colour unchanged, a flat scroll bar, flat tabs, and flat Queue again and Leave buttons that work; the reward band under the table has no backdrop art but its burst of light still plays when rewards come in; the faction banner the game hangs over the top edge in a faction match is gone; the title (Victory or Defeat) is in the theme's heading font in the light text colour at its big size, the Rewards and Progress headings and the matchmaking line under the table (Matchmaking rating, in both windows) are light, not gold; each reward item is a square tile without its round shadow and spec ring that keeps its picture and quality ring, with a thin accent edge under the mouse. [Needs in game: the faction border the game lays on at the start of a match must stay faded.]
+- Do: in a battleground press H (or open the scoreboard), click its tabs (All, Alliance, Horde), scroll the table, then finish the match and look at the results window; click Leave (on Retail, or Queue again).
+- Expect: both windows are a flat panel with the theme's close button, the table on a darker inset with the rows, column headings and team colour unchanged, a flat scroll bar, flat tabs, and a flat Leave button that works (Retail: and a flat Queue again button); the title (Victory or Defeat) is in the theme's heading font in the light text colour at its big size. Retail only: the reward band under the table has no backdrop art but its burst of light still plays when rewards come in; the faction banner the game hangs over the top edge in a faction match is gone; the Rewards and Progress headings and the matchmaking line under the table (Matchmaking rating, in both windows) are light, not gold; each reward item is a square tile without its round shadow and spec ring that keeps its picture and quality ring, with a thin accent edge under the mouse. [Needs in game: the faction border the game lays on at the start of a match must stay faded.]
 - If it fails, paste: a screenshot of each window and `/vg errors`.
 
 ### 14.9.3 Objectives and the countdown
@@ -2005,13 +2005,13 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 - Expect: the summary ends before the game's Apply Changes button (at most two lines, the rest cut short) and never runs over it or the buttons beside it; hovering it shows a "Talent plan" tooltip with the whole summary.
 - If it fails, paste: a screenshot of the window's foot and `/vg talents`.
 
-### 14.9.2 Post from the Posting tab
+### 14.9.5 Post from the Posting tab
 
 - Do: on Posting, click a stack of cloth (a commodity) in a bag (the window stays on Posting), set Stack to 5 and Quantity to 10, and click Post twice, the second time as soon as Post lights again; then drop a piece of gear on the sell slot, type a bid under its price and click Post.
 - Expect: the guide under Post lights 1 Item, then 2 Price ("Checking what it sells for..."), then 3 Post ("Click Post to list stack 1 of 2."). Each click says "Post: sending stack 1 of 2 (5 at ... each, ...)" in chat and puts one stack up (the game's "Auction created" line in chat); the guide says "Stack 1 sent: waiting for the auction house..." until the game is ready, then "Click Post to list stack 2 of 2." with Post lit; after the second the card empties, the count keeps "posted 2 of 2" and the guide says "Finished: ...". The gear goes up with its bid and price (both in whole silver if the game takes no copper). If the game asks to confirm a price, Post reads Confirm and the next click lists it. Post never stays lit without posting: when it is off the guide says why. `/vg errors` stays empty.
 - If it fails, paste: a screenshot of the Posting tab, every chat line starting "Post:" (none at all after a click means the click never reached Post), and `/vg errors`.
 
-### 14.9.2a A price changed after the game asks to confirm
+### 14.9.5a A price changed after the game asks to confirm
 
 - Do: on Posting, drop an item the game asks you to confirm (a price far from what it usually sells for), click Post so it reads Confirm, then type a different price in Price (or click a listing on Up now, or pick another auction length) before clicking again.
 - Expect: as soon as you change the price or length, Confirm reads Post again and the guide says "Click Post to list stack 1 of 1."; the next click says "Post: sending stack 1 of 1 (... at <the new price> each, ...)" and the item goes up at the new price (the game may ask to confirm again). It never lists at the price you had before the change. [Needs in-game check: that the game takes a second Post after a confirm it was never sent.]
@@ -2502,7 +2502,7 @@ These steps check what the UI consistency pass changed (docs/THEME.md, Window ch
 ### 32.1 Window titles, the X and Escape
 
 - Do: open each of these and look along its top edge: `/vg` (the options window), `/vg setup`, `/vg whatsnew`, `/vg quests`, `/vg lfg`, `/vg export pick`, `/vg weights wizard`, `/vg prep setup` and `/vg feedback`; then `/vg unlock` and right-click a frame's handle. For each, click the X, open it again and press Escape.
-- Expect: every title is the same bold type in the normal text colour (not gold, not the accent). It sits at the top left in the options window (right of the Vanguard shield, with your faction crest just right of it while Faction look is on), the quest log, the group board and the dialogs; it is centred in setup and What's new, with a small grey line under it (`Step 1 of 4 · Layout`, `Click a line to open its setting.`). The quest log shows its quest count in small grey type beside the title (`12 quests`). The unlock popover's title is a smaller line, `<frame>  ·  <where it is anchored>`, that ends short of its X. Each of these windows has the same X in its top-right corner; the X closes it, and so does Escape. [Needs in game: that every title sits on its X's line at 1080p and 1440p, and that Escape closes the popover while frames are unlocked.]
+- Expect: every title is the same bold type in the normal text colour (not gold, not the accent). It sits at the top left in the options window (right of the Vanguard shield, with your faction crest just right of it while Faction look is on), the quest log, the group board and the dialogs; it is centred in setup and What's new, with a small grey line under it (`Step 1 of 9 · Layout`, `Click a line to open its setting.`). The quest log shows its quest count in small grey type beside the title (`12 quests`). The unlock popover's title is a smaller line, `<frame>  ·  <where it is anchored>`, that ends short of its X. Each of these windows has the same X in its top-right corner; the X closes it, and so does Escape. [Needs in game: that every title sits on its X's line at 1080p and 1440p, and that Escape closes the popover while frames are unlocked.]
 - If it fails, paste: a screenshot of each window's top edge and `/vg errors`.
 
 ### 32.2 Card titles
@@ -3969,9 +3969,9 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.228 Info strip has no Ammo or Soul shards switch (Retail)
 
-- Do: On Retail, open /vg, Map and info, and read the "Strip under the minimap" switches.
+- Do: On Retail, open /vg, Map, and read the "Strip under the minimap" switches.
 - Expect: Neither "Ammo (hunters, warriors, rogues)" nor "Soul shards (warlocks)" is listed; Gold is followed by Clock.
-- If it fails, paste: a screenshot of the Map and info page.
+- If it fails, paste: a screenshot of the Map page.
 
 ### 33.229 Reset this page restores Health as and Show levels (Forever)
 
@@ -4065,8 +4065,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.244 A left-click-only button ignores a right-click (both)
 
-- Do: Type `/vg` to open the Vanguard options window. Right-click its Close button (the X at the top right) once, then left-click it once.
-- Expect: The right-click does nothing and the window stays open; the left-click closes it. This confirms the test client's rule that a button which never called RegisterForClicks takes left-button releases only.
+- Do: open the Vanguard options window (`/vg`). Right-click its Close button (the X at the top right) once, then left-click it once.
+- Expect: The right-click does nothing and the window stays open; the left-click closes it.
 - If it fails, paste: whether the window closed on the right-click, and the client (Forever or Retail).
 
 ### 33.245 Dark backings stay black in the Classic look (Forever)
@@ -4922,10 +4922,10 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: with `type:key` the key ring button stays lit; with `q:epic` (no epic key) it dims.
 - If it fails, paste: a screenshot of the bag bar, and the output of `/dump C_Container.GetContainerNumSlots(-1)` and `/dump KeyRingButton:GetBagID()`.
 
-### 33.386 Close this tab gives the tab's chat back to General (Forever)
+### 33.386 Close this tab on a Trade tab leaves it to the game's menu (Forever)
 
 - Do: In the game's chat settings, make a new tab, move Trade onto it and untick Trade on General. Open `/vg`, go to Chat, Chat tabs, pick that tab and press Close this tab.
-- Expect: The tab closes and Trade lines show in General again.
+- Expect: The tab stays open and chat says "This tab shows channels. Right-click its tab and choose Close Chat Window: the game gives them back to the main window." After you right-click the tab and choose Close Chat Window, Trade lines show in General again.
 - If it fails, paste: The chat tab's channel list from the game's chat settings for General, and any red error text.
 
 ### 33.387 Quest item buttons in a fight (Forever)
@@ -4972,8 +4972,8 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.393 Match results on Forever carry only what the game draws (Forever)
 
-- Do: Finish a Warsong Gulch match and look at the end-of-match results window beside the page text in the smoke steps for the scoreboard and results (14.9.2), which still lists Queue again, the Rewards and Progress headings, the matchmaking line and reward tiles
-- Expect: The results show a flat Leave button and a themed title (Victory or Defeat); there is no Queue again button, rewards band, matchmaking line or reward tile on Forever, and the 14.9.2 step should say those are Retail only
+- Do: Finish a Warsong Gulch match and look at the end-of-match results window.
+- Expect: The results show a flat Leave button and a themed title (Victory or Defeat); there is no Queue again button, rewards band, matchmaking line or reward tile on Forever.
 - If it fails, paste: a screenshot of the results window
 
 ### 33.394 Craft queue with the Auction helper off (Forever)
