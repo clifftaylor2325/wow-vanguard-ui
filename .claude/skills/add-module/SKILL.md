@@ -10,7 +10,7 @@ A module is one file under `Modules/`, registered with `ns.Module`, built at PLA
 ## Steps, in order
 
 1. **Read first**: `CLAUDE.md`, `docs/PATTERNS.md`, the area's feature page in `docs/features/`, and the module you are copying.
-2. **The file** `Modules/<Name>.lua`, starting with a comment that says what the player sees, then `local ADDON, ns = ...`, then `local M = ns.Module("<Name>", { defaults = { ... } })`. `M.Enable(settings)` builds it; add `M.Disable(settings)` only if the module can undo itself without a reload. Every function has a comment on the line above and at most 10 lines of code.
+2. **The file** `Modules/<Name>.lua`, starting with a comment that says what the player sees, then `local ADDON, ns = ...`, then `local M = ns.Module("<Name>", { defaults = { ... } })`. `M.Enable(settings)` builds it. A module that goes on and off during a session declares `live = true` and registers everything through the scope its `Enable` gets (`docs/PATTERNS.md`, "A module that goes on and off live": `scope:On`, `scope:OnUnit`, `scope:Every`, `scope:Mover`, `scope:Gate`); add `M.Disable(settings)` only for what the scope cannot see, and test it with `lifecycleCases(name, login)`. A module without `live` waits for a reload. A module for one client declares `clients = { forever = true }` (or `retail`), wraps its options rows in `O.ModuleRows` and lists its `/vg` words in `WORD_MODULES` in `Core/Slash.lua` (`docs/PATTERNS.md`, "A module for one client"). Every function has a comment on the line above and at most 10 lines of code.
 3. **List it in `Vanguard.toc`** after the modules it reads with `ns.GetModule` at load time (load order is TOC order). `node scripts/check-toc.mjs` passes.
 4. **Settings** live only in `settings` (the table `ns.Module` gives `Enable`). A setting never changes type; a renamed or re-typed one gets an `ns.Migrate("<Name>", fn)` step.
 5. **Options**: add the switch or control to the right page in `Core/Options*.lua` using the existing control helpers; colours and sizes only through `T.*`.
@@ -24,7 +24,7 @@ A module is one file under `Modules/`, registered with `ns.Module`, built at PLA
 - Never read a value that might be hidden: `ns.PlainNumber(v)` for numbers, `ns.IsSecret(v)` before any comparison.
 - Never store a field on a frame the game made, and never `SetScript` on one: keep state in `ns.FrameState("<name>")` and use `HookScript`.
 - Every hook, click handler and timer callback is wrapped in `ns.Guard("<where>", fn)`.
-- Events through `ns.On` / `ns.OnUnit`, periodic work through `ns.Every`, deferred work through `ns.Soon`; no private event frames or `OnUpdate` loops.
+- In a live module, events through `scope:On` / `scope:OnUnit` and periodic work through `scope:Every` (the quality scan fails a bare `ns.On`, `ns.OnUnit` or `ns.Every` in a live module's file); in a reload-only module, `ns.On` / `ns.OnUnit` and `ns.Every`. Deferred work through `ns.Soon`; no private event frames or `OnUpdate` loops.
 
 ## PR
 

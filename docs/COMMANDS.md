@@ -1,6 +1,6 @@
 # Commands
 
-Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help` prints the same list in game. Six words are WoW Forever only: `ranks`, `trainers`, `talents`, `lfg` and `questdata` because their parts are, and `launch` because the beta data went with Forever's launch; on Retail they answer Unknown command and `/vg help` leaves them out. The full wording of each command is in [Every command, word for word](#every-command-word-for-word) at the end of this page, which is the reference the tables are checked against.
+Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help` prints the commands in game with the same command words. Six words are WoW Forever only: `ranks`, `trainers`, `talents`, `lfg` and `questdata` because their parts are, and `launch` because the beta data went with Forever's launch; on Retail they answer Unknown command and `/vg help` leaves them out. The full wording of each command is in [Every command, word for word](#every-command-word-for-word) at the end of this page, which is the reference the tables are checked against.
 
 ## Options and setup
 
@@ -74,7 +74,7 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | `/vg junk`, `/vg sell` | Your sell list; sell every stack of one item at a merchant |
 | `/vg ranks`, `/vg trainers` | Spell ranks, what trainers teach |
 | `/vg copy` | The recent chat of the shown tab as plain text, at its newest line |
-| `/vg talents [plan\|spend\|clear\|export\|import]` | The talent planner on the game's talents window |
+| `/vg talents [plan\|spend\|order\|clear\|export\|import]` | The talent planner on the game's talents window |
 
 ## Help and diagnostics
 
