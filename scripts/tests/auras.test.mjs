@@ -452,9 +452,10 @@ it("your buffs and debuffs replace the game's, with weapon enchants in front", (
   addon.eval("__kept = __enchants[1] __enchants[1] = nil");
   addon.fire("UNIT_INVENTORY_CHANGED", "player");
   const fight = playerAuras(addon);
-  expect([fight.cells[1].shown, fight.x, fight.padReach, addon.eval("return __moves")], "an enchant run out in a fight: its cell goes and the hover pad narrows, the container stays").toEqual([false, -68, 34, 0]);
+  expect([fight.cells[1].shown, fight.x, fight.padReach, addon.eval("return __moves")], "an enchant run out in a fight: its cell goes, the container and the hover pad under it stay (H46-15-50)").toEqual([false, -68, 68, 0]);
   addon.world.combat(false);
-  expect([playerAuras(addon).x, addon.eval("return __moves")], "after the fight: moved back by one cell, once").toEqual([-34, 1]);
+  const after = playerAuras(addon);
+  expect([after.x, after.padReach, addon.eval("return __moves")], "after the fight: moved back by one cell, once, the hover pad with it").toEqual([-34, 34, 1]);
   addon.eval("__enchants[1] = __kept");
   addon.fire("UNIT_INVENTORY_CHANGED", "player");
   addon.eval("__enchants[1] = { { hasEnchant = { __secret = true }, timeLeft = 600000 } } local c = ns.GetModule('PlayerAuras').cells[1] c.cooldown:GetScript('OnCooldownDone')(c.cooldown)");

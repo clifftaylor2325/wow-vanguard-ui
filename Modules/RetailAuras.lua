@@ -130,7 +130,7 @@ local function playerSpot(row, size, index)
 end
 
 -- A row of your private aura spots left of your buffs, debuffs and weapon enchant cells. It hangs on the block's hover
--- pad (PA.PlaceAuras widens it by the enchant cells, so its left edge is the buffs' as they stand) but not under the
+-- pad (widened by the enchant cells as the buffs move, so its left edge is the buffs' as they stand) but not under the
 -- holder, so the Calm HUD's fade of the block never hides a mechanic. The token "player" is fixed: no re-pointing.
 function PA.PlayerPart(holder, settings)
   local size = settings.size + PA.GROW

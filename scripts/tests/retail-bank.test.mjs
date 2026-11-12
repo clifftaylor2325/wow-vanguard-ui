@@ -195,6 +195,27 @@ it("retail auras: with two weapon enchants your private aura spots move left, cl
   expect(r.spot1 < lastBuffLeft, "spot 1's right edge is left of the 12th buff's left edge").toBe(true);
 });
 
+// How far spot 1 of your private aura row reaches over the leftmost column of a full first row of buffs (0 or less:
+// clear). The column's left is the container's right less the row's width; the container is Vanguard's own anchor
+// math, never its size, which the client may hide.
+const spotOverBuffs = (addon) => addon.eval(`local PA = ns.GetModule("PlayerAuras") local spot
+  for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == "player" and a.auraIndex == 1 then spot = a.parent end end
+  local colLeft = PA.holder:GetRight() + PA.auras.frame.__points.TOPRIGHT.x - PA.lineSize + PA.GAP
+  return math.min(spot:GetRight(), colLeft + PA.look.size) - math.max(spot:GetLeft(), colLeft)`);
+
+it("H46-15-50 retail auras: a weapon enchant run out in a fight leaves your private aura spots clear of the buffs", () => {
+  const addon = loggedIn(UNITS_ENV + TWO_ENCHANTS_ENV, { client: RETAIL_CLIENT });
+  addon.eval("__temp[17] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  const before = spotOverBuffs(addon);
+  setCombat(addon, true);
+  addon.eval("__temp[16] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  const fight = spotOverBuffs(addon);
+  setCombat(addon, false);
+  expect([before <= 0, fight <= 0, spotOverBuffs(addon) <= 0], "clear before, in and after the fight").toEqual([true, true, true]);
+});
+
 it("retail auras: the target frame has a spot right of it, over the target of target (H9-1-3), handed again on each new target", () => {
   const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
   // The target spot's unit, whether it sits by the target frame, and its anchor id.
