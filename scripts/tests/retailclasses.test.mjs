@@ -286,7 +286,9 @@ it("soul fragments: a Devourer's bar under the frame counts Dark Heart stacks ag
   addon.eval("__wfgWorld.units.player.auras = { { spellId = 1225789, applications = __wfgWorld.secret(7) } }");
   addon.fire("UNIT_AURA", "player");
   expect(altBar(addon).v, "a hidden count goes to the bar as it is").toBe("secret");
-  addon.eval("__wfgWorld.units.player.auras = { __wfgWorld.secret({ spellId = 1225789 }) }");
+  // The world answers nothing for a hidden aura (RequiresNonSecretAura); the call is SecretWhenUnitAuraRestricted too, so a
+  // test-local stand-in hands one back to run the bar's own guard.
+  addon.eval("C_UnitAuras.GetPlayerAuraBySpellID = function() return __wfgWorld.secret({ spellId = 1225789 }) end");
   addon.fire("UNIT_AURA", "player");
   expect(altBar(addon).v, "a hidden aura reads empty").toBe(0);
 });
@@ -305,7 +307,9 @@ it("Ebon Might: an Augmentation bar counts the seconds left against twenty, and 
   expect(altBar(addon).v, "run out").toBe(0);
   addon.eval("__wfgWorld.addAura('player', { name = 'TEST-ONLY Ebon Might', spellId = 395296, expirationTime = __wfgWorld.secret(99) })");
   expect(altBar(addon).v, "a hidden time reads empty").toBe(0);
-  addon.eval("__wfgWorld.units.player.auras = { __wfgWorld.secret({ spellId = 395296 }) }");
+  // The world answers nothing for a hidden aura (RequiresNonSecretAura); the call is SecretWhenUnitAuraRestricted too, so a
+  // test-local stand-in hands one back to run the bar's own guard.
+  addon.eval("C_UnitAuras.GetPlayerAuraBySpellID = function() return __wfgWorld.secret({ spellId = 395296 }) end");
   addon.fire("UNIT_AURA", "player");
   expect(altBar(addon).v, "a hidden aura reads empty").toBe(0);
 });

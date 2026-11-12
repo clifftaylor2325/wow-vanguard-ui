@@ -377,3 +377,11 @@ it("on Retail, stopping the tracking of a collectable says it is no longer track
     f:SetScript("OnEvent", function(_, _, kind, id, tracked) seen[#seen + 1] = { kind, id, tracked } end)
     __wfgWorld.collectables[0] = { { id = 5, title = "TEST-ONLY" } } C_ContentTracking.StopTracking(0, 5, 2) return seen`)).toEqual([[0, 5, false]]);
 });
+
+// live UnitAuraDocumentation.lua:395-410 GetPlayerAuraBySpellID is RequiresNonSecretAura, and
+// SecretPredicatesDocumentation.lua:28-31 says such a call "will return no values" for a secret aura.
+it("on Retail, asking for one of your auras by spell id answers nothing for a hidden aura", () => {
+  const addon = createAddon({ client: RETAIL_CLIENT });
+  expect(addon.eval(`__wfgWorld.units.player.auras = { __wfgWorld.secret(1), { spellId = 7, name = "TEST-ONLY" } }
+    return { C_UnitAuras.GetPlayerAuraBySpellID(99999) == nil, C_UnitAuras.GetPlayerAuraBySpellID(7).name }`)).toEqual([true, "TEST-ONLY"]);
+});

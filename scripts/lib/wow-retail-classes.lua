@@ -87,11 +87,13 @@ function GetUnitEmpowerHoldAtMaxTime(unit)
   return c.holdMs or 0
 end
 
--- A player aura by spell id (the player's unit.auras entry with that spellId, or a hidden entry as it is; nil without it).
+-- A player aura by spell id: the player's unit.auras entry with that spellId; nil without it. A hidden entry is skipped:
+-- the call is RequiresNonSecretAura, which "will return no values" for a secret aura (live UnitAuraDocumentation.lua:
+-- 395-410, SecretPredicatesDocumentation.lua:28-31).
 function C_UnitAuras.GetPlayerAuraBySpellID(spellID)
   local u = world.unit("player")
   for _, aura in ipairs(u and u.auras or {}) do
-    if issecretvalue(aura) or aura.spellId == spellID then return aura end
+    if not issecretvalue(aura) and aura.spellId == spellID then return aura end
   end
   return nil
 end
