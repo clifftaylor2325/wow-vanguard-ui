@@ -2,7 +2,7 @@
 // addon under a scripted 40-player raid with every module on, no errors caught,
 // the result saved, compared with an earlier one and appended to a summary, and
 // --budget failing the run on a slowdown. The pure logic is tested in
-// scripts/bench.test.mjs.
+// scripts/bench-logic.test.mjs.
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
