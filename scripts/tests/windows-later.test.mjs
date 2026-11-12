@@ -1115,3 +1115,30 @@ it("a scroll box with no view yet waits for its first show; a forbidden money bo
   expect(addon.eval("return { select('#', __own:GetRegions()) > 0, select('#', __locked:GetRegions()) }"), "a forbidden box gets nothing drawn on it").toEqual([true, 0]);
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
+
+// TEST-ONLY SetMoneyFrameColorByFrame as Blizzard_MoneyFrame/Shared/MoneyFrame.lua:311-316 has it (live and forever):
+// a font object put on each denomination button, which puts its face on the figure.
+const MONEY_COLOR_ENV = `${READERS_ENV}
+  __game = CreateFont("TEST_NumberFontNormalRightRed") __game:SetFont("TEST-ONLY-GAME", 12, "")
+  function SetMoneyFrameColorByFrame(f)
+    for _, key in ipairs({ "GoldButton", "SilverButton", "CopperButton" }) do f[key]:SetNormalFontObject(__game) end
+  end
+  __window("QuestFrame")
+  __moneyLine("QuestProgressRequiredMoneyFrame", QuestFrame)
+  __moneyLine("TestOnlyPlainMoney", UIParent)
+  for _, key in ipairs({ "GoldButton", "SilverButton", "CopperButton" }) do
+    QuestProgressRequiredMoneyFrame[key]:SetFontString(QuestProgressRequiredMoneyFrame[key].Text)
+    TestOnlyPlainMoney[key]:SetFontString(TestOnlyPlainMoney[key].Text)
+  end`;
+
+it("keeps a dressed money line in the theme font after the game recolours it, and leaves other lines alone", () => {
+  const addon = loggedIn(MONEY_COLOR_ENV);
+  addon.eval("QuestFrame:Show() ns.GetModule('Windows').SkinMoney(QuestProgressRequiredMoneyFrame)");
+  // The font face of a money line's gold figure.
+  const face = (line) => addon.eval(`return ${line}.GoldButton.Text:GetFont()`);
+  expect(face("QuestProgressRequiredMoneyFrame")).not.toBe("TEST-ONLY-GAME");
+  addon.eval("SetMoneyFrameColorByFrame(QuestProgressRequiredMoneyFrame) SetMoneyFrameColorByFrame(TestOnlyPlainMoney)");
+  expect(face("QuestProgressRequiredMoneyFrame"), "the dressed line is re-fonted").not.toBe("TEST-ONLY-GAME");
+  expect(face("TestOnlyPlainMoney"), "a line no skin dressed stays the game's").toBe("TEST-ONLY-GAME");
+  expect(addon.eval("return #ns.errors")).toBe(0);
+});
