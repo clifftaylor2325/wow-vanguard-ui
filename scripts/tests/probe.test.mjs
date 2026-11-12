@@ -207,6 +207,11 @@ it("H45-34-103 the probe's Enum lines go in value order (10 after 5) and the res
   const names = text.split("\n").map((l) => /^\s*type (\w+):/.exec(l)?.[1]).filter(Boolean);
   expect(names, "by name").toEqual(["ChallengeMode", "Chat", "Combat", "Encounter", "Map", "PvPMatch", "Ten"]);
 });
+it("H45-34-103 the probe's Enum lines put numbers first, then other values by their text, ties by key", () => {
+  const addon = loggedIn(PROBE_ENV + 'Enum.AddOnRestrictionType = { Bx = "x", Ax = "x", One = 1, W = "w", Uno = 1 }');
+  addon.slash("probe");
+  expect(lineOf(reportText(addon), "Enum.AddOnRestrictionType").trim(), "numbers, then text, then key").toBe("Enum.AddOnRestrictionType: One=1, Uno=1, W=w, Ax=x, Bx=x");
+});
 it("/vg probe fight: an unarmed fight records nothing", () => {
   const addon = loggedIn(PROBE_ENV);
   addon.fire("PLAYER_REGEN_DISABLED");
