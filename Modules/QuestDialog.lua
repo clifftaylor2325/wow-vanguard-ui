@@ -373,13 +373,22 @@ local function eachGameWindow(fn)
   end
 end
 
--- Whether the game's quest or gossip window shows a talk now (not the custom gossip manager, a frame that always shows).
+-- Whether the window the game's gossip manager opened for a kit or another addon's handler shows (read only).
+local function customGossipOpen()
+  local manager = _G.CustomGossipFrameManager
+  local f = type(manager) == "table" and manager.customFrame
+  if type(f) ~= "table" or type(f.IsShown) ~= "function" then return false end
+  return not (f.IsForbidden and f:IsForbidden()) and f:IsShown() == true
+end
+
+-- Whether the game's quest or gossip window, or the custom window its manager opened for a kit, shows a talk now
+-- (the manager itself always shows, so it does not count).
 local function gameWindowOpen()
   for _, name in ipairs({ "QuestFrame", "GossipFrame" }) do
     local f = _G[name]
     if type(f) == "table" and f.IsShown and f:IsShown() then return true end
   end
-  return false
+  return customGossipOpen()
 end
 
 -- Takes the gossip and quest events away from the game's windows, noting which of them had each. A talk the game's
