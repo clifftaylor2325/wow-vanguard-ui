@@ -418,11 +418,12 @@ local function keepFound()
 end
 
 -- The auction house opened: the tabs go on the window the first time (unless switched off, or
--- the window has no tab row), and the cards are painted.
+-- the window has no tab row), and the cards are painted. The switch applies at the next reload: tabs
+-- already built stay and keep being painted.
 function AH.OnShow()
   AH.open = true
   keepFound()
-  if not AH.settings.panel or type(AuctionHouseFrame) ~= "table" then return end
+  if not (AH.pages or AH.settings.panel) or type(AuctionHouseFrame) ~= "table" then return end
   if not AH.pages and not AH.Build() then return end
   AH.PaintUpgrades()
   AH.PaintSell()
