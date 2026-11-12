@@ -5642,6 +5642,156 @@ The order is the order to play in: looks you can check quickly first, then the g
 - Expect: when the cast is cut short chat says "Talent planner: the game refused to apply talents just now; try again in a moment." and the point is back; the second Spend planned buys and applies (no "picks you haven't applied" line). The level-up spend behaves the same.
 - If it fails, paste: the chat lines, `/dump C_Traits.ConfigHasStagedChanges(C_SpecializationInfo.GetCombatConfigIDForSpecGroup(C_SpecializationInfo.GetActiveSpecGroup()))` after the failed apply, whether the cast bar showed, and `/vg errors`.
 
+### 33.639 Chat holds (H34-9-1, H41-12-1, H44-19-R2, H44-19-R3)
+
+- Do: with Chat history on and Keep whispers off, receive a whisper the game hides behind "click to show", /reload; watch a party member's and an NPC's bubbles in the same spot; tick a channel on the Filtered tab in its Settings and enter a dungeon (/console taintLog 1 first); pop a whisper out to its own tab, click it, press the Copy tile. [Client: Forever and Retail.]
+- Expect: the hidden whisper does not come back after the reload; each bubble's text keeps its chat type's colour; no taint line naming Vanguard; the copy box opens with no error.
+- If it fails, paste: /vg errors, a bubble screenshot, Logs/taint.log lines naming Vanguard.
+
+### 33.640 Legacy challenges (H35-16-1, H44-17-3)
+
+- Do: track a Legacy challenge made of other challenges and one with a progress criterion. [Client: Forever.]
+- Expect: each criterion line names its sub-challenge; a progress criterion shows its count.
+- If it fails, paste: the tracker lines and the game tracker's lines for the same challenge.
+
+### 33.641 Retail tracker (H32-1-3, H44-17-52, H8-9-1)
+
+- Do: track a quest with a progress-bar objective; stand in a zone with an untracked bonus objective that has no objective lines; run a Mythic+ key with three affixes. [Client: Retail.]
+- Expect: the progress objective shows its percent; the bonus objective is listed; the affix line is whole or its full text readable.
+- If it fails, paste: /vg report and a screenshot of the tracker.
+
+### 33.642 Swing range (H36-7-1, H44-6-53)
+
+- Do: as a warrior with the game's Show Swing Timer on, /reload, untick it under Options > Advanced; attack a mob and walk in and out of melee range without changing target. [Client: Forever.]
+- Expect: Vanguard's main-hand row dims out of range and brightens in range.
+- If it fails, paste: /vg errors.
+
+### 33.643 Movers (H38-5-1, H44-11-R2)
+
+- Do: /vg unlock, drag a handle hard against the right edge, press Left ten times; then right-click a handle, type 1e999 in X offset, Enter, Save and lock, /reload. [Client: Forever and Retail.]
+- Expect: the first Left press moves the frame on screen; no login error after the reload and the frame at the edge.
+- If it fails, paste: /vg errors and the popover's X before and after.
+
+### 33.644 Keys (H40-16-1, H44-10-52)
+
+- Do: on a level-60 warlock with every Create Healthstone rank, run key setup and read Shift-Space on Ready; on a QWERTZ and an AZERTY keyboard /vg probe and copy Key bindings. [Client: Forever.]
+- Expect: Shift-Space names the highest Create Healthstone rank; the Your keys picture shows only keys that keyboard has.
+- If it fails, paste: the Ready line and the probe section.
+
+### 33.645 Raid holds (H41-3-1, H41-4-1, H44-7-3, H44-7-51 with H5-9-1, H44-9-3)
+
+- Do: in a raid fight with two or more boss debuffs on one player, look at that tile's two other-debuff icons; as a warrior shout Battle Shout and look at tiles of other groups; /vg perf reset, take damage 30 s, /vg perf; open the raid roster and have a member die and release; rest the pointer on a tile, press M, press a hover key. [Client: Forever and Retail.]
+- Expect: the boss debuffs are the ones shown; other groups' tiles do not ask for Battle Shout; about one UNIT_HEALTH per change for your tile; the roster line says Dead and loses it; nothing is cast under the map.
+- If it fails, paste: /vg perf lines for RaidFrames, /vg errors, screenshots.
+
+### 33.646 Plate quest marks (H41-11-1)
+
+- Do: in a party, look at the plate of a mob only a party member needs for a quest. [Client: Forever and Retail.]
+- Expect: no quest mark on your screen for it.
+- If it fails, paste: the mob's tooltip lines and a plate screenshot.
+
+### 33.647 Client facts by /run (S3-theme-secret-edge, S3-vgscale, H44-2-12, H44-2-5, H44-2-54, H16-1-2, H8-10-1, H44-28-412)
+
+- Do: type each line in turn: /run print(Vanguard_player.vgEdge and Vanguard_player.vgEdge:HasSecretAspect(Enum.SecretAspect.Shown)); /run local f=C_NamePlate.GetNamePlateForUnit("target") print(f and issecretvalue(f:GetEffectiveScale()), f and f:HasSecretAspect(Enum.SecretAspect.ObjectSecurity)); /run local h=UnitHealth("target") print(issecretvalue(tostring(h)), pcall(function() return tostring(h)=="1" end)); /run local s=C_UnitAuras.GetAuraDataByIndex("target",1,"HARMFUL") print(pcall(UnitIsUnit, s and s.sourceUnit or "target", "player")); /run print(type(UIParent:CreateFontString(nil,nil,"GameFontNormal"):GetText())); /run print(GetAvailableLevel, GetActiveLevel); out of combat on Forever /run ReloadUI(). [Client: Forever and Retail, in an instance boss fight.]
+- Expect: each answer printed.
+- If it fails, paste: every line, and whether the reload happened.
+
+### 33.648 Quiet holds (H2-9-3, H44-20-52)
+
+- Do: pick "2.6 x (furthest)" and /dump GetCVar("cameraDistanceMaxZoomFactor"), zoom fully out, then pick 2 x and zoom out; on a Hardcore realm with Decline duels on, have someone send a duel to the death. [Client: Forever.]
+- Expect: the CVar reads 2.6 and 2.6 x zooms further than 2 x; the duel is declined with one chat line and no prompt left up.
+- If it fails, paste: the dump and whether a prompt stayed.
+
+### 33.649 Retail windows (H23-2-1, H7-2-2)
+
+- Do: open the expansion landing page; open the group finder while one category is unavailable to you, then level or join a group so it becomes available. [Client: Retail.]
+- Expect: no gold border strip over the landing page panel; a disabled card's name reads disabled, an enabled one light.
+- If it fails, paste: screenshots.
+
+### 33.650 Unit frame holds (H3-1-1 with H44-3-56, H44-3-51, H44-3-6, H6-6-2)
+
+- Do: on Forever as a warlock with a pet, hover the pet frame; with status marks on, attack a PvP-flagged player while unflagged; with The keep, /reload in a fight and end it; on Retail log in on a spec with class resources. [Client: as each part of Do says.]
+- Expect: no mood glyph or line for the warlock pet; PvP shows during the fight; the wall and gatehouse appear when the fight ends; the class bar shows right after login.
+- If it fails, paste: /vg errors and screenshots.
+
+### 33.651 Instance prep (H4-10-2, H5-6-2)
+
+- Do: with Dungeon card on, walk to a 20- or 40-player raid door; as a hunter with a thrown weapon in the ranged slot, /vg prep. [Client: Forever.]
+- Expect: the heading says the size once; whether an ammo row shows for the thrown weapon.
+- If it fails, paste: the heading text and the /vg prep lines.
+
+### 33.652 Mail Take (H5-3-3)
+
+- Do: on a letter with gold and an item, press Take once. [Client: Forever and Retail.]
+- Expect: both the gold and the item arrive from the one click.
+- If it fails, paste: what arrived and /vg errors.
+
+### 33.653 Bags (H9-3-R2, H30-11-2, H9-7-2)
+
+- Do: log in, open bags at once and search for an item you have not looked at this session; watch the combined bag's Other section for a new consumable looted; on Retail open the warband bank from afar (no banker), then hover an item kept in your character bank. [Client: Forever and Retail.]
+- Expect: the searched item does not stay dimmed; the new item leaves Other without another bag change; the tooltip still says bank N.
+- If it fails, paste: screenshots and the tooltip line.
+
+### 33.654 Action bars (H30-8-1, H44-8-1 with S3-ongcd)
+
+- Do: get on a quest vehicle with an override bar; with State cues on cast Frostbolt or Heroic Strike five times watching other filled buttons. [Client: Forever and Retail.]
+- Expect: the game's override bar does not show over Vanguard's bars; no accent flash on any button at each global cooldown's end.
+- If it fails, paste: a screenshot of the vehicle bar and /vg errors.
+
+### 33.655 Professions and trainers (H32-5-1, H44-8-53, H5-4-R1)
+
+- Do: /vg craft cd, open a guild member's profession link, /vg craft cd again; with Remember what trainers teach on, open a Tailoring trainer, then on another character of the class without Tailoring /vg trainers next; at a class trainer set the filter to available only and /vg trainers. [Client: Forever.]
+- Expect: craft cd unchanged; no profession rank listed; the count is the trainer's full list.
+- If it fails, paste: the chat lines.
+
+### 33.656 Cast bar finish (S3-cb-finish)
+
+- Do: get a cast interrupted on your target and watch the red flash; watch a channel end. [Client: Retail.]
+- Expect: the flash holds full and fades, it does not keep filling or drain.
+- If it fails, paste: a short recording or screenshot.
+
+### 33.657 Quest log selection (S3-ql-details)
+
+- Do: with /etrace on QUEST_LOG_UPDATE, open Vanguard's quest log and click a quest. [Client: Forever and Retail.]
+- Expect: at most one QUEST_LOG_UPDATE after the click, no stream.
+- If it fails, paste: the etrace lines.
+
+### 33.658 Panel texture edge (H2-6-1)
+
+- Do: pick a panel texture under Look with corners Rounded, and the Shield look; look at a window's edge and a shield frame's cut. [Client: Forever and Retail.]
+- Expect: the texture reaches the border with no plain ring inside it.
+- If it fails, paste: close screenshots.
+
+### 33.659 Auction holds (H44-21-152, 153, 155, 53)
+
+- Do: post 20 of an item 5 at a time from one bag slot and watch the Sell card between posts; Restock a commodity whose cheapest listings run past one page; sell a non-commodity with Stack 3; on a copper-less client use the 1c and 1% undercut rules. [Client: as each part of Do says.]
+- Expect: the card does not say to put the item on again; the Restock price covers the wanted amount; three items posted as the card says; the undercut price is below the one undercut.
+- If it fails, paste: the card and chat lines.
+
+### 33.660 Hunter hit cap (H44-23-53)
+
+- Do: as a hunter with ranged hit from talents, hover a ring with hit rating. [Client: Forever.]
+- Expect: Gear upgrades counts the ring's hit against your ranged hit.
+- If it fails, paste: /vg weights and the tooltip line.
+
+### 33.661 Info strip after a boss (H44-24-2)
+
+- Do: kill a boss whose encounter keeps the restriction after combat ends; look at the DPS and place slots. [Client: Forever and Retail.]
+- Expect: they show the fight's numbers once it ends.
+- If it fails, paste: a screenshot.
+
+### 33.662 Locale words (H44-27-165, H44-27-57, H44-29-105)
+
+- Do: on an Italian Retail client track a recraft order; on a Russian client type 1с50 in a price box (Cyrillic and Latin c); on a German client read the talent planner's auto-spend caption. [Client: Retail (Italian) and either client (Russian, German).]
+- Expect: the recraft title is the game's own word; both silver letters read as silver; the site's quoted caption matches the game.
+- If it fails, paste: screenshots.
+
+### 33.663 Reload in a fight with a failed module (H44-1-100)
+
+- Do: /reload during a fight with any module failing to start (/vg errors shows one); stay in the fight 10 s. [Client: Forever and Retail.]
+- Expect: the failed module raises nothing further during the fight; /vg errors gains no new lines from it.
+- If it fails, paste: /vg errors.
+
 Not built yet: the offer to turn off the game's tutorials in setup (decision 14a, batch 3's R3.6). It waits for a level-1 check in game. Its step will go here, after 33.38, when it lands.
 
 ### 33.456 Guided setup: the recommended settings on a first run
