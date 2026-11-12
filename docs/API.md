@@ -64,11 +64,11 @@ local price = api and api.GetAuctionPriceByItemID("MyAddon", 2589)
 
 ### Shopping lists and searches
 
-Search strings are item names, as you would type them in the game's search box. In the common form, `name;field;field...`, only the name is read (quotes around it are dropped); an item link or an item ID written as text works too. A string that is blank, and anything that isn't a string, is left out. A list holds at most 50 entries and there are at most 20 lists (Vanguard's caps); they are the player's lists, shown on the Shop card at the auction house.
+Search strings are item names, as you would type them in the game's search box. In the common form, `name;field;field...`, only the name is read (quotes around it are dropped); an item link or an item ID written as text works too. A string that is blank, and anything that isn't a string, is left out. A list holds at most 50 entries and there are at most 20 lists (Vanguard's caps); they are the player's lists, shown on the Shopping card on the Lists tab at the auction house.
 
 | Function | Does |
 | --- | --- |
-| `MultiSearch(callerID, terms)` | At the open auction house: the terms become the list "`callerID` search" (made, or replaced), which the Shop card picks and searches one term at a time (one search in flight, at most one a second). Returns `true` when queued, `false` when the auction house is closed, no term is usable or the list can't be made. |
+| `MultiSearch(callerID, terms)` | At the open auction house: the terms become the list "`callerID` search" (made, or replaced), which the Shopping card picks and searches one term at a time (one search in flight, at most one a second). Returns `true` when queued, `false` when the auction house is closed, no term is usable or the list can't be made. |
 | `MultiSearchExact(callerID, terms)` | The same, each name matched exactly: a name the game knows an item by is searched by that item's ID, so only that item comes back. |
 | `CreateShoppingList(callerID, listName, terms)` | Makes the list (replacing one of that name; spaces at either end of the name are dropped). Returns `true`, or `false` for a blank name or a new list past 20. Works with the auction house closed. |
 | `AlterShoppingListItems(callerID, listName, terms)` | Replaces the entries of an existing list. Returns `false` when there is no list of that name. |
