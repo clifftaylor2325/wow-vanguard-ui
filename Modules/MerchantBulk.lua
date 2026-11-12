@@ -149,9 +149,10 @@ end
 
 -- Whether the merchant window shows its Buyback tab, where the game's own bag click sells nothing
 -- (ContainerFrameItemButtonMixin's merchant branch in Blizzard_UIPanels_Game/Mainline/ContainerFrame.lua).
+-- The window's tab stays on Buyback after it closes (only MerchantFrame_OnShow resets it), so a hidden window shows none.
 local function buybackShown()
   local frame = _G.MerchantFrame
-  return type(frame) == "table" and frame.selectedTab == MC.BUYBACK_TAB
+  return type(frame) == "table" and frame.selectedTab == MC.BUYBACK_TAB and frame:IsShown() == true
 end
 
 -- True while a bag item used now sells: trading (a merchant open, no fight) on the merchant tab, not Buyback
@@ -218,13 +219,17 @@ local function soldLine(rows)
   return ns.Format(L["Selling {count} stack(s) for {money}. The merchant's Buyback tab gets the last {slots} back."], values)
 end
 
+-- The chat line when the sale's Yes finds nothing can sell: the Buyback tab is showing, or the merchant is gone.
+local function notSold()
+  ns.Chat(trading() and L["Nothing sold: the merchant shows its Buyback tab."] or L["Nothing sold: the merchant is closed."])
+end
+
 -- Asks (a "danger" question, so Enter alone never answers it), then sells the rows that were shown and
 -- no others; says what the Buyback tab can undo (the last 12 stacks).
 function MC.OfferSale(find)
   local rows = find()
   if #rows == 0 then return false end
-  ns.Irreversible({ question = MC.SellQuestion(rows), yes = L["Sell"], still = trading,
-    gone = function() ns.Chat(L["Nothing sold: the merchant is closed."]) end,
+  ns.Irreversible({ question = MC.SellQuestion(rows), yes = L["Sell"], still = MC.Selling, gone = notSold,
     act = function() MC.SellRows(stillShown(rows), MC.RETRIES) ns.Chat(soldLine(rows)) end })
   return true
 end
