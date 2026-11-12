@@ -9,6 +9,7 @@ const STATUS_ENV = `
   __status = { icon = { raid1 = 8 }, ready = {}, rez = {}, range = { raid1 = true, raid3 = false } }
   GetRaidTargetIndex = function(unit) return __status.icon[unit] end
   GetReadyCheckStatus = function(unit) return __status.ready[unit] end
+  GetReadyCheckTimeLeft = function() return __status.timeLeft or 0 end
   UnitHasIncomingResurrection = function(unit) return __status.rez[unit] == true end
   UnitIsGroupLeader = function(unit) return unit == "raid1" end
   UnitIsGroupAssistant = function(unit) return unit == "raid3" end
@@ -349,13 +350,21 @@ const OFF_ENV = { savedVariables: "VanguardDB.profiles = { Default = { modules =
 it("ready check: Raid status switched on during a check shows its answers, and the cross at the end", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV, OFF_ENV);
   addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
-  addon.eval('__status.ready = { player = "ready", raid1 = "ready", raid3 = "waiting" }');
+  addon.eval('__status.ready = { player = "ready", raid1 = "ready", raid3 = "waiting" } __status.timeLeft = 30');
   addon.fire("READY_CHECK");
   addon.eval('ns.SetModuleEnabled("RaidStatus", true)');
   const shown = [marks(addon, 1).ready, marks(addon, 3).ready].map((tex) => String(tex).replace(/^.*\\/, ""));
   addon.fire("READY_CHECK_FINISHED");
   const finished = [marks(addon, 1).ready, marks(addon, 3).ready].map((tex) => String(tex).replace(/^.*\\/, ""));
   expect({ shown, finished }).toEqual({ shown: ["Check", "Waiting"], finished: ["Check", "Close"] });
+});
+
+it("H46-A-C2 ready check: Raid status switched on just after a finished check (statuses still answer, no time left) does not run one", () => {
+  const addon = loggedIn("C_Timer = nil " + UNITS_ENV + RAID_ENV + STATUS_ENV, OFF_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  addon.eval('__status.ready = { player = "ready", raid1 = "ready", raid3 = "notready" } __status.timeLeft = 0');
+  addon.eval('ns.SetModuleEnabled("RaidStatus", true)');
+  expect([addon.eval("return ns.GetModule('RaidStatus').readyRunning"), marks(addon, 1).ready, marks(addon, 3).status]).toEqual([false, false, true]);
 });
 
 it("ready check: Raid status switched on with no check running shows no marks", () => {
