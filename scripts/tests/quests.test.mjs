@@ -1062,6 +1062,20 @@ it("A1-5: with Vanguard's tracker and quest log both off, a zone folded in the g
   tracker.advance(0.25);
   expect(tracker.eval("return __log[4].isCollapsed"), "the tracker alone is enough to open it").toBe(false);
 });
+it("H45-27-1: with the tracker's own switch off, switching Vanguard's quest log off live stops zones being opened", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + CLICK_LUA, { client: MAP_PANEL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { QuestTracker = { own = false } } }" });
+  addon.advance(0.25);
+  addon.eval("ns.Settings('QuestLog').own = false ns.RestartModule('QuestLog') __expanded = 0 __log[4].isCollapsed = true");
+  addon.fire("PLAYER_ENTERING_WORLD");
+  addon.eval("QuestMapFrame:Show() QuestMapFrame:Hide()");
+  addon.advance(0.25);
+  expect(addon.eval("return { __log[4].isCollapsed, __expanded or 0 }"), "both windows off: the zone stays folded").toEqual([true, 0]);
+});
+it("H45-27-1: a login in a fight with the tracker on still opens the folds once the tracker is built", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + "__wfgStub.inCombat = true", { client: MAP_PANEL_CLIENT });
+  addon.advance(0.25);
+  expect(addon.eval("return { Vanguard_QuestTrackerFrame == nil, __log[4].isCollapsed }"), "tracker not built yet, zone opened").toEqual([true, false]);
+});
 it("A1-5: the switch on the Quests page stops zones being opened by themselves, at once; opening Vanguard's log still opens them", () => {
   const addon = loggedIn(TRACK_ENV + QLOG_ENV + FOLDED_ENV + CLICK_LUA, { client: MAP_PANEL_CLIENT });
   addon.advance(0.25);
