@@ -2510,8 +2510,10 @@ it("options: while the spec's profile overrides a staged pick, Copy here names t
   addon.eval(CLICK_LUA + "GetSpecialization = function() return __spec end __spec = 2");
   addon.login();
   addon.eval('ns.UseProfile("Raid") ns.Options.Show("profiles")');
-  expect(profileRow(addon, "Heal  (in use)").slice(1), "the loading profile has no buttons").toEqual([false, false, false]);
+  expect(profileRow(addon, "Heal  (in use)").slice(1), "the running profile keeps Use, to take the staged pick back").toEqual([true, false, false]);
   expect(profileRow(addon, "Raid")[2], "nor does the staged pick it overrides").toBe(false);
   expect(profileHover(addon, "Default", "copy", "OnEnter")[1], "Copy here names the profile the reload loads")
     .toBe("Replaces every setting in profile Heal with profile Default's. It can't be undone.");
+  profileButton(addon, "Heal  (in use)", "use");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "Use on the running profile clears the staged pick").toBeFalsy();
 });

@@ -59,11 +59,11 @@ local function addEditButtons(r, name)
   ns.WidenToLabel(r.copy)
 end
 
--- Use, Copy here and Delete, right to left. None on the profile that will be in use after the reload;
--- the one running until then (when a switch is staged) only gets Use, to take the switch back. Use is
+-- Use, Copy here and Delete, right to left. None on the profile that will be in use after the reload (unless it
+-- is also the running one); the one running until then (when a switch is staged) only gets Use, to take the switch back. Use is
 -- a plain button: the page's one accent button is Create.
 local function addProfileButtons(r, name)
-  if name == ns.LoadingProfileName() or name == ns.SelectedProfileName() then return end
+  if name == ns.SelectedProfileName() or (name == ns.LoadingProfileName() and name ~= ns.ProfileName()) then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
   r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() if not ns.PickProfile(name) then O.NeedReload() end end, SMALL))
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -T.SPACE.gap, 0) else r.use:SetPoint("RIGHT", -T.SPACE.gap, 0) end
