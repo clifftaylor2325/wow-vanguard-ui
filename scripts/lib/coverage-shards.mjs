@@ -9,6 +9,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { PLAN_ENV } from "./shard-plan.mjs";
 
 // The value of `--name v` or `--name=v` in an argument list, or null when it is not there.
 function optionValue(args, name) {
@@ -80,7 +81,7 @@ export function listedTestFiles(listOutput) {
 // files stay listed even under VG_SKIP_RETAIL: a merge judges a full set of shards.
 export function expectedTestFiles(root) {
   const bin = path.join(root, "node_modules", "vitest", "vitest.mjs");
-  const out = spawnSync(process.execPath, [bin, "list", "--filesOnly"], { cwd: root, encoding: "utf8", maxBuffer: 1 << 26, env: { ...process.env, VG_SKIP_RETAIL: "" } });
+  const out = spawnSync(process.execPath, [bin, "list", "--filesOnly"], { cwd: root, encoding: "utf8", maxBuffer: 1 << 26, env: PLAN_ENV });
   if (out.status !== 0) throw new Error(`vitest list failed:\n${out.stdout}${out.stderr}`);
   return listedTestFiles(out.stdout);
 }
