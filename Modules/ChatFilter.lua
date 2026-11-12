@@ -220,12 +220,20 @@ local function wantsTab()
   return running() and ns.ModuleEnabled("ChatFilter") and s and s.on and s.mode == "tab"
 end
 
+-- Schedules the tab's label to be written again: the game names the tab itself (FCF_OpenNewWindow and every
+-- chat window refresh end in FCF_SetWindowName -> tab:SetText(name)), which drops the translation and the count.
+local function relabel()
+  ns.Soon("chatfilter tab", CF.UpdateTab)
+end
+
 -- Finds or makes the Filtered window when the filter is on and sends to the tab; out of combat only.
 -- Nothing while the module was switched off since: no tab while nothing is filtered.
 function CF.Prepare()
   if not wantsTab() or CF.window then return end
   ns.OutOfCombat(function()
-    if wantsTab() then CF.window = CF.FindWindow() or openWindow() end
+    if not wantsTab() then return end
+    CF.window = CF.FindWindow() or openWindow()
+    relabel()
   end, "chatfilter window")
 end
 
@@ -279,6 +287,7 @@ local function reopen()
     if not wantsTab() then return end
     local found = CF.FindWindow()
     CF.window = found and isOpen(found) and found or openWindow()
+    relabel()
   end, "chatfilter window")
 end
 
@@ -504,12 +513,22 @@ local function hookChat(scope)
   scope:Gate("chat filter link click", ns.Guard("chat filter link click", CF.OnLink), function(gate) registry:RegisterCallback("SetItemRef", gate, CF) end)
 end
 
+-- Hooks FCF_SetWindowName (the game's own tab label, set again on every UPDATE_CHAT_WINDOWS), through a gate that
+-- installs the hook once a session and is inert while the module is off: the Filtered tab's label is written again.
+local function hookTabName(scope)
+  if type(hooksecurefunc) ~= "function" or type(FCF_SetWindowName) ~= "function" then return end
+  -- Writes the label again when the game named the Filtered window's tab.
+  local function named(frame) if frame == CF.window then relabel() end end
+  scope:Gate("filter tab name", named, function(gate) hooksecurefunc("FCF_SetWindowName", ns.Guard("hook FCF_SetWindowName", gate)) end)
+end
+
 -- Module entry point (Core/Modules.lua). Everything goes through the scope: switched off, the filter lets every line
 -- through, so it has no Disable. A start after login makes the Filtered tab at once (the world is entered already).
 function CF.Enable(settings, scope)
   CF.settings, CF.scope = settings, scope
   ns.OnChatWindowClosed("filter", CF.Closed)
   hookChat(scope)
+  hookTabName(scope)
   scope:On("PLAYER_ENTERING_WORLD", CF.Prepare)
   if ns.ModulesBuilt() then CF.Prepare() end
 end

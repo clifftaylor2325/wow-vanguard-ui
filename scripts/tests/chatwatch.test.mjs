@@ -431,3 +431,22 @@ it("H44-19-51 chat watch: the toast finds and marks the word after such a mark, 
   expect(toast(long), "cut a few words before it, the word marked inside the guillemets").toBe(`…слово «${accent(addon, "продам")}»`);
   expect(toast("a —продам"), "after a dash on a short line").toBe(`a —${accent(addon, "продам")}`);
 });
+
+// H45-8-1: CX.Unmarked is one-to-one, so a phrase's own sign is not matched by another sign of the same length.
+it("H45-8-1 chat watch: a phrase holding a sign rings only for that sign, and the toast marks only it", () => {
+  const addon = watching("wts £5");
+  // The ChatWatch match for a text, by what it rings for.
+  const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
+  expect(match("wts £5 each"), "the phrase itself").toBe("wts £5");
+  expect(["¥", "°", "«", "…", "‣"].map((sign) => match(`wts ${sign}5 each`)), "other signs in its place").toEqual(Array(5).fill(null));
+  const line = `${"слово ".repeat(12)}«продам» ¥5 £5`;
+  const toast = addon.eval(`return ns.GetModule("ChatWatch").ToastLine(${JSON.stringify(line)}, "продам £5")`);
+  expect(toast, "only the watched sign is painted").toBe(`…слово «${accent(addon, "продам")}» ¥5 ${accent(addon, "£5")}`);
+});
+
+it("H45-8-1 chat watch: a watched curly apostrophe is not matched by a dash or an ellipsis", () => {
+  const addon = watching("aujourd’hui");
+  // The ChatWatch match for a text, by what it rings for.
+  const match = (text) => addon.eval(`return ns.GetModule("ChatWatch").Match(${JSON.stringify(text)})`);
+  expect([match("aujourd–hui"), match("aujourd…hui"), match("aujourd’hui")]).toEqual([null, null, "aujourd’hui"]);
+});

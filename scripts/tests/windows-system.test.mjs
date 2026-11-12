@@ -1291,3 +1291,19 @@ it("system: the combat log bar's hooks are guarded, and a hidden selection or ch
   plain.eval("MovePadFrame:Show() MovePadStrafeLeft.GetChecked = nil");
   expect(plain.eval("return { ns.Theme.RowParts(MovePadStrafeLeft).rail:IsShown(), #ns.errors }"), "a hidden check is not lit, and nothing raises").toEqual([false, 0]);
 });
+
+// H45-8-51: StaticPopup_Show does dialog:SetParent(GetAppropriateTopLevelParent()) (Blizzard_StaticPopup/StaticPopup.lua), and the
+// housing editor and the barber shop call SetAlternateTopLevelParent(self) on show while their "full" panel hides UIParent
+// (Blizzard_SharedXMLBase/FrameUtil.lua; Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua SetUIPanel). A panel left on
+// the hidden UIParent would not show behind the popup.
+it("H45-8-51 popups: the panel follows the popup to the alternate top-level frame and back to UIParent", () => {
+  const addon = loggedIn(`${LAYOUT_POPUP_ENV} __editor = CreateFrame("Frame", "TestOnlyEditor") __editor:SetAllPoints()`);
+  addon.eval("StaticPopup1:Show() StaticPopup1:Hide()");
+  // The popup's backdrop: whether it is visible, and its parent's name.
+  const panel = () => addon.eval(`local back = ns.GetModule("Windows").MadeBackdrop(StaticPopup1) return { back:IsVisible(), back:GetParent() == UIParent }`);
+  addon.eval("UIParent:Hide() __editor:Show() StaticPopup1:SetParent(__editor) StaticPopup1:Show()");
+  expect(panel(), "visible while UIParent is hidden, on the editor").toEqual([true, false]);
+  addon.eval("StaticPopup1:Hide() __editor:Hide() UIParent:Show() StaticPopup1:SetParent(UIParent) StaticPopup1:Show()");
+  expect(panel(), "back on UIParent once the popup is shown normally").toEqual([true, true]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
