@@ -894,3 +894,17 @@ it("H29-6-1 a list row lights under the mouse and the table's own onEnter still 
   addon.eval(`local r = ${row} r:GetScript("OnLeave")(r)`);
   expect(hover(), "left: the wash is off").toBe(false);
 });
+
+it("H45-31-1 searching a list again while a search is in flight counts only the new run", () => {
+  const addon = atAuctionHouse(DUSTS);
+  makeList(addon, "TEST-ONLY Mats", '{ "Alpha", "Beta", "Gamma" }');
+  addon.click(`${HELPER}.shopCard.search`);
+  addon.click(`${HELPER}.shopCard.search`);
+  const seen = [progress(addon)];
+  for (let i = 0; i < 5; i++) {
+    addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+    seen.push(progress(addon));
+    addon.advance(1.1);
+  }
+  expect(seen, "the old run's answer is not counted: never more than 3 of 3").toEqual(["0 of 3", "0 of 3", "1 of 3", "2 of 3", "3 of 3", "3 of 3"]);
+});

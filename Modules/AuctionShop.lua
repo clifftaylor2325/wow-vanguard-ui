@@ -367,8 +367,9 @@ function AH.SearchList()
   if AH.ListKey() ~= AH.RECENT then for _, entry in ipairs(list) do AH.Remember(entry) end end
   AH.DropQueued("entry")
   AH.DropQueued("cost")
-  AH.found, AH.unnamed, AH.progress = {}, {}, { done = 0, total = #list }
-  for _, entry in ipairs(list) do AH.Queue({ entry = entry }) end
+  local run = { done = 0, total = #list }
+  AH.found, AH.unnamed, AH.progress = {}, {}, run
+  for _, entry in ipairs(list) do AH.Queue({ entry = entry, run = run }) end
   AH.PaintShop()
 end
 

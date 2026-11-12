@@ -222,7 +222,7 @@ function AH.Done()
   local s = AH.pending
   AH.pending = nil
   AH.SellCheckEnded(s)
-  if (s.entry or s.cost) and AH.progress then AH.progress.done = AH.progress.done + 1 end
+  if s.run and s.run == AH.progress then s.run.done = s.run.done + 1 end
   AH.PaintShop()
   AH.Next()
 end
