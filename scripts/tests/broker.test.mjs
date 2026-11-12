@@ -161,11 +161,14 @@ it("broker strip: a feed shared after the Map page was built gets its switch the
   // Whether a switch with this caption is on the Map page (the newest build of it).
   const row = (name) => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.label and w.label.__text == "${name}" then last = w end end return last ~= nil`);
   addon.eval('ns.Options.Show("map")');
-  addon.eval('__feed("TEST-ONLY Late", { type = "data source", text = 7 })');
-  expect(row("TEST-ONLY Late"), "the Map page lists the new feed at once").toBe(true);
+  addon.eval('__rebuilds = 0 local rebuild = ns.Options.RebuildPage ns.Options.RebuildPage = function(...) if debug.traceback():find("BrokerStrip", 1, true) then __rebuilds = __rebuilds + 1 end return rebuild(...) end');
+  addon.eval('__feed("TEST-ONLY Late", { type = "data source", text = 7 }) __feed("TEST-ONLY Late2", { type = "data source", text = 7 })');
+  addon.advance(0.1);
+  expect([row("TEST-ONLY Late"), row("TEST-ONLY Late2"), addon.eval("return __rebuilds")], "the Map page lists a burst of new feeds from one rebuild, on the next frame").toEqual([true, true, 1]);
   addon.world.combat(true);
   addon.eval('__feed("TEST-ONLY Later", { type = "data source", text = 8 }) __feed("TEST-ONLY Latest", { type = "data source", text = 9 })');
   expect(row("TEST-ONLY Later"), "in a fight the page waits").toBe(false);
+  addon.advance(0.1);
   addon.world.combat(false);
   expect([row("TEST-ONLY Later"), row("TEST-ONLY Latest")], "after it both are there, from one rebuild").toEqual([true, true]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);

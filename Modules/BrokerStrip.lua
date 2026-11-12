@@ -234,11 +234,13 @@ function BS.Restyle()
   BS.Layout()
 end
 
--- A feed was created: the strip lays out again, and the Map page, which lists the feeds, is built again (in a fight a
--- burst of feeds shares one key and is one rebuild after it; out of combat each feed builds at once).
+-- A feed was created: the strip lays out again, and the Map page, which lists the feeds, is built again once on the
+-- next frame however many feeds came (a burst is one rebuild), and after the fight when it is in one.
 function BS.OnCreated()
   BS.Layout()
-  ns.OutOfCombat(function() ns.Options.RebuildPage("map") end, "map feeds")
+  ns.Soon("map feeds", function()
+    ns.OutOfCombat(function() ns.Options.RebuildPage("map") end, "map feeds")
+  end)
 end
 
 -- Listens to LibDataBroker once an addon has loaded it: changes repaint, new feeds lay out again.
