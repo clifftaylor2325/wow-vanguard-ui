@@ -750,10 +750,12 @@ local function lightTexts(card)
 end
 
 -- One crest (a texture, or a frame holding them): the bronze taken out of it and tinted in the border colour, so the
--- number on it stays the brightest thing.
+-- number on it stays the brightest thing. A frame with an Icon texture (the game's Shield buttons) is flattened
+-- through that, so its Check and CheckBackground (shown on a completed challenge) keep their own colours.
 local function flattenCrest(part)
   if type(part) ~= "table" then return end
   if part.SetDesaturated then part:SetDesaturated(true) T.Tint(part, "borderHi") end
+  if type(part.Icon) == "table" and part.Icon.SetDesaturated then return flattenCrest(part.Icon) end
   if not part.GetRegions then return end
   for _, region in ipairs({ part:GetRegions() }) do
     if region.SetDesaturated then flattenCrest(region) end
