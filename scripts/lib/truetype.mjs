@@ -58,8 +58,10 @@ export function fontFacts(file) {
   return { digits: [..."0123456789"].map((d) => advance(buf, t, gid(d))), letters: [..."AéŁЖΩ€"].map(gid) };
 }
 
-// The code points the test harness measures text in: printable ASCII, Latin-1 and Latin Extended-A, Cyrillic, and "…".
-const MEASURED = [[32, 126], [160, 383], [1024, 1119], [8230, 8230]];
+// The code points the test harness measures text in: printable ASCII, Latin-1 and Latin Extended-A, Cyrillic, General
+// Punctuation (the spaces, dashes, curly quotes and "…"), "€", "™", the arrows ← ↑ → ↓ and the minus sign, so every
+// such glyph the shipped fonts keep (scripts/fonts/make-fonts.py) is measured at its own width, not wow-text.lua's guess.
+const MEASURED = [[32, 126], [160, 383], [1024, 1119], [8192, 8303], [8364, 8364], [8482, 8482], [8592, 8595], [8722, 8722]];
 
 // Each measured code point's advance width in ems ({ [code]: ems }), leaving out the glyphs the font
 // lacks: the harness's text widths (scripts/lib/wow-text.lua).
