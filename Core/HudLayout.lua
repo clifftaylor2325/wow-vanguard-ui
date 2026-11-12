@@ -89,6 +89,15 @@ local function cornerRoom(width)
   return math.max(0, width - left)
 end
 
+-- The bag and menu bar in the corner changed (it widened or narrowed as the game laid its menu or bags out, or it
+-- was dragged, reset or rescaled): the keep may hold now or no longer, so its frames are placed again and its wall
+-- judged, after the fight (the unit frames are secure).
+local function cornerChanged(key)
+  if key ~= ns.KEEP.corner or ns.HudLayout() ~= "fort" then return end
+  ns.OutOfCombat(ns.RefitHudLayout, "HUD layout refit")
+end
+ns.OnMoverPlaced(ns.Guard("keep corner", cornerChanged))
+
 -- The canvas width the keep needs: the wall's right end (ns.KEEP.reach from the centre, out with the spread) clear of
 -- the bag and menu bar's corner, the left end as far out on its side, and never under ns.KEEP.least.
 ---@param width number the canvas's width

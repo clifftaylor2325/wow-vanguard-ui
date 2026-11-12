@@ -153,6 +153,39 @@ it("H46-13-101 the keep's frames move out with the bars' width, after the fight 
   expect([need, addon.eval("return ns.KeepNeed(1920)") - need], "and the canvas the keep needs (1856 at 38: 500 out, clear of the bag and menu bar's 428) grows by twice the spread").toEqual([1856, 2 * spread]);
 });
 
+// H46-B-G3-2: the keep's need reads the bag and menu bar's left edge, and the bar is built after the unit frames
+// (Vanguard.toc: Modules/MenuStrip.lua loads after Modules/UnitFrames.lua) and widens when the game lays its menu out.
+// Where the keep's frames stand against the layout's judgement now (TEST-ONLY reads): whether it holds, the wall
+// shown, your frame's point against ns.MoverPoint's, and your frame's width against its own layout's size.
+const JUDGED_LUA = `local q, want = Vanguard_player.__points.BOTTOM, { ns.MoverPoint("uf_player") }
+  local w = ns.LayoutSize("uf_player") or ns.GetModule("UnitFrames").FrameSize("player")
+  return { ns.LayoutHolds(), Vanguard_Keep ~= nil and Vanguard_Keep:IsShown(), q ~= nil and math.floor(q.x + 0.5) == math.floor(want[3] + 0.5), math.floor(Vanguard_player:GetWidth() + 0.5) == math.floor(w + 0.5) }`;
+
+it("H46-B-G3-2 the keep is judged again when the bag and menu bar is built, widens or is moved: at 1365 wide your frame stands at its Centered spot and size with no wall, and dragged away the keep holds", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768) " + UNITS_ENV + UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + MENU_LUA, onLayout("fort"));
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "logged in with the game's menu laid out: the keep doesn't hold, your frame at its Centered spot and size, no wall").toEqual([false, false, true, true]);
+  addon.eval("ns.SetMoverPoint('menustrip', 'TOPRIGHT', 'TOPRIGHT', -16, -200)");
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "the bar dragged out of the corner: the keep holds, your frame at its spot and size, the wall up").toEqual([true, true, true, true]);
+  addon.eval("ns.ResetMovers('menustrip')");
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "reset into the corner: Centered again").toEqual([false, false, true, true]);
+});
+
+it("H46-B-G3-2 the keep is judged again when the game lays its menu out after login, and not in a fight", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768) " + UNITS_ENV + UI_ENV + TIDY_ENV + MICRO_ENV + STRIPS_ENV + "__menuButtons(2)", onLayout("fort"));
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "a short menu: the keep holds").toEqual([true, true, true, true]);
+  setCombat(addon, true);
+  addon.eval(MENU_LUA);
+  addon.advance(1);
+  expect(addon.eval("return Vanguard_player.__points.BOTTOM.x < -360"), "the menu laid out in a fight: your frame waits (secure)").toBe(true);
+  setCombat(addon, false);
+  addon.advance(1);
+  expect(addon.eval(JUDGED_LUA), "after the fight: your frame at its Centered spot and size, no wall").toEqual([false, false, true, true]);
+});
+
 // H46-13-100: the wall grows to hold what stands on it, at the game's UI scale and with your role's scale on your
 // frame and your target's (setup's Centered: healing gives both 0.9, so they stand inside the focus and the cast bar).
 it("H46-13-100 the keep's wall holds every frame on it and the bars, at the game's UI scale and with your frames scaled down", () => {
