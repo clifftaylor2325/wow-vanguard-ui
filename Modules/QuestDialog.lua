@@ -299,15 +299,28 @@ local function takeKeys()
   QD.frame:EnableKeyboard(QD.frame:IsShown())
 end
 
--- Whether the game shows no window for this offer, as its own QuestFrame_OnEvent decides on QUEST_DETAIL
--- (Blizzard_UIPanels_Game/Mainline/QuestFrame.lua): an adventure map's offer has the map's own dialog, so nothing
--- is done; a quest the game accepted on its own from an area trigger is already in the log, so the offer is
--- closed (CloseQuest, as the game does) and no dialog opens. The game's tracker popup is not forwarded: that
--- would run its tracker code from here.
-function QD.GameShowsNone(event)
+-- Whether this is an adventure map's offer, which has the map's own dialog (QuestFrame_OnEvent, QUEST_DETAIL branch,
+-- Blizzard_UIPanels_Game/Mainline/QuestFrame.lua): nothing is done for it.
+function QD.IsAdventureMapOffer(event)
+  return event == "QUEST_DETAIL" and ns.CallIf(_G, "QuestIsFromAdventureMap") == true
+end
+
+-- Whether this is a quest the game accepted on its own from an area trigger: it is already in the log, and the game
+-- closes the offer (CloseQuest) and opens no window. The game's tracker popup is not forwarded: that would run its
+-- tracker code from here.
+function QD.IsAutoAcceptedTriggerOffer(event)
   if event ~= "QUEST_DETAIL" then return false end
-  if ns.CallIf(_G, "QuestIsFromAdventureMap") == true then return true end
-  if not (ns.CallIf(_G, "QuestGetAutoAccept") == true and ns.CallIf(_G, "QuestIsFromAreaTrigger") == true) then return false end
+  return ns.CallIf(_G, "QuestGetAutoAccept") == true and ns.CallIf(_G, "QuestIsFromAreaTrigger") == true
+end
+
+-- Handles an offer the game shows no window for, and says whether it did: an adventure map's offer takes down a page
+-- still showing (that page is not this offer's) and is left to the map; an auto-accepted one is closed, as the game does.
+function QD.SkipWindowlessOffer(event)
+  if QD.IsAdventureMapOffer(event) then
+    QD.Quiet()
+    return true
+  end
+  if not QD.IsAutoAcceptedTriggerOffer(event) then return false end
   ns.CallIf(_G, "CloseQuest")
   return true
 end
@@ -319,7 +332,7 @@ function QD.Show(key, event, ...)
   if QD.Bypassed(event, ...) then return end
   local auto = ns.GetModule("QuestAuto")
   if auto and auto.Claims and auto.Claims(event, ...) then return end
-  if QD.GameShowsNone(event) then return end
+  if QD.SkipWindowlessOffer(event) then return end
   QD.itemOffer = QP.StartItem(event, ...)
   if key == "gossip" and QD.SkipGossip() then return end
   QD.key, QD.page, QD.choice, QD.event = key, QD.PAGES[key](), nil, event

@@ -79,6 +79,9 @@ it("H45-27-50: an adventure map's offer opens no dialog and is not closed, as th
   expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), calls(addon)], "the map's own dialog has it").toEqual([false, []]);
   addon.fire("QUEST_PROGRESS");
   expect(addon.eval("return Vanguard_QuestDialog:IsShown()"), "only a QUEST_DETAIL is the map's").toBe(true);
+  addon.eval("__calls = {}");
+  addon.fire("QUEST_DETAIL", 0);
+  expect([addon.eval("return Vanguard_QuestDialog:IsShown()"), calls(addon)], "a page still showing goes down for the map's offer, without ending the talk").toEqual([false, []]);
 });
 // Client rule: QuestFrame_OnEvent hides the window only on QUEST_FINISHED (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua).
 const GAME_TALK_WINDOW = `__gameSaw = {}
