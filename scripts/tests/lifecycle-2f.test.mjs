@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { createAddon } from "../lib/lua-harness.mjs";
 import { HEAVY, modulesOffLua } from "../lib/login-scope.mjs";
-import { SETUP_DONE } from "./helpers.mjs";
+import { SETUP_DONE, chatHas } from "./helpers.mjs";
 import { lifecycleCases, moduleOff } from "./lifecycle-helpers.mjs";
 
 // The addon logged in with the heavy modules off, and `saved` Lua run after the saved variables.
@@ -73,7 +73,9 @@ it("lifecycle: with QuestDialog off, the hand-back switch never takes the game's
 
 it("lifecycle: QuestLog switched off clears its override binding and goes quiet", () => {
   const addon = login();
+  addon.eval('__cleared = {} local old = ClearOverrideBindings ClearOverrideBindings = function(owner) __cleared[#__cleared + 1] = owner return old(owner) end');
   addon.eval('ns.SetModuleEnabled("QuestLog", false)');
+  expect(addon.eval('for _, o in ipairs(__cleared) do if o == ns.GetModule("QuestLog").toggle then return true end end return false'), "the toggle's key handed back").toBe(true);
   expect(addon.eval('return ns.ModuleLive("QuestLog")')).toBe(false);
   expect(addon.eval("return Vanguard_QuestLog:IsShown()")).toBe(false);
   expect(addon.eval("return #ns.errors")).toBe(0);
@@ -89,6 +91,7 @@ it("lifecycle: BrokerStrip switched off hides the strip", () => {
 it("lifecycle: Quiet and HudText say what stays until a reload when they stop", () => {
   const addon = login();
   addon.eval('ns.SetModuleEnabled("Quiet", false) ns.SetModuleEnabled("HudText", false)');
+  expect([chatHas(addon, /stay hidden until you reload/), chatHas(addon, /keep Vanguard's font until you reload/)]).toEqual([true, true]);
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
 
