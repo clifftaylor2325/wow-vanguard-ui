@@ -562,3 +562,25 @@ it("talent planner: the bar's Order button and /vg talents order open the window
   fresh.fire("PLAYER_REGEN_ENABLED");
   expect(fresh.eval(`return ${TP}.orderFrame ~= nil and ${TP}.orderFrame:IsShown()`), "it opens when the fight ends").toBe(true);
 });
+
+// The order window opened with three talents planned (the longest name 26 characters with its place and count) in a
+// shipped translation at a Text size, in the text-fit client: what does not fit there (a cut or crowded label), as
+// "kind | text | other" lines. English is left out: its text-fit run makes the game's talent names a third longer too.
+function orderFitIn(locale, textScale) {
+  const saved = `VanguardDB = { version = 2, profiles = { Default = { theme = { textScale = ${textScale} } } }, setupDone = true }\nVanguardCharDB = {}\n`;
+  const addon = createAddon({ savedVariables: saved, textFit: true, client: `__wfgWorld.locale = "${locale}"` });
+  addon.eval(TRAITS_ENV + WINDOW_ENV);
+  addon.login();
+  addon.eval("__open()");
+  addon.update(0.01);
+  addon.eval(`${TP}.ToggleOrder() ${TP}.SetPlanning(true) __click(101) __click(102) __click(103)`);
+  return [...new Set(addon.textFit("Vanguard_TalentOrder").map((f) => [f.kind, f.text, f.other].filter(Boolean).join(" | ")))];
+}
+
+for (const locale of ["deDE", "ptBR", "ruRU"]) {
+  for (const textScale of [1, 1.3]) {
+    it(`H44-30-101 talent planner: the order window in ${locale} at Text size ${textScale * 100}% shows its rows and buttons whole`, () => {
+      expect(orderFitIn(locale, textScale), "no row name, Move up, Move down or Top row first cut").toEqual([]);
+    });
+  }
+}

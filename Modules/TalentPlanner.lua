@@ -781,8 +781,9 @@ function TP.KeepOrder(plan, nodeID)
   if not priorities(plan)[nodeID] then plan.order[#plan.order + 1] = nodeID end
 end
 
--- The order window: the rows its list shows before it scrolls, its width, and its Move up and Move down buttons' width.
-TP.ORDER_ROWS, TP.ORDER_WIDTH, TP.ORDER_BUTTON = 8, 380, 84
+-- The order window: the rows its list shows before it scrolls, its width, and its Move up and Move down buttons' least
+-- width (each widens to its label).
+TP.ORDER_ROWS, TP.ORDER_WIDTH, TP.ORDER_BUTTON = 8, 444, 84
 
 -- Moves a planned talent one place up (-1) or down (1) in the order; the order is the plan's own from then on.
 function TP.MoveInOrder(nodeID, step)
@@ -804,11 +805,11 @@ function TP.ResetOrder()
   TP.RefreshOrder()
 end
 
--- An order row's text: the place, name and points still to buy, on one line left of the buttons.
+-- An order row's text: the place, name and points still to buy, on one line in whatever room the buttons leave.
 local function orderText(row)
   row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label", "text")
   row.text:SetPoint("LEFT", row, "LEFT", T.SPACE.tight, 0)
-  row.text:SetWidth(TP.ORDER_WIDTH - 2 * T.SPACE.pad - 2 * TP.ORDER_BUTTON - T.SPACE.col)
+  row.text:SetPoint("RIGHT", row.up, "LEFT", -T.SPACE.col, 0)
   row.text:SetJustifyH("LEFT")
   row.text:SetWordWrap(false)
 end
@@ -816,11 +817,11 @@ end
 -- An order row: the talent's place and name, with the points still to buy, and Move up and Move down buttons.
 local function orderRow(parent)
   local row = W.Row(parent, T.ROW.height, { width = TP.ORDER_WIDTH - 2 * T.SPACE.pad })
-  orderText(row)
-  row.down = W.Button(row, L["Move down"], function() TP.MoveInOrder(row.nodeID, 1) end, TP.ORDER_BUTTON)
-  row.up = W.Button(row, L["Move up"], function() TP.MoveInOrder(row.nodeID, -1) end, TP.ORDER_BUTTON)
+  row.down = ns.WidenToLabel(W.Button(row, L["Move down"], function() TP.MoveInOrder(row.nodeID, 1) end, TP.ORDER_BUTTON))
+  row.up = ns.WidenToLabel(W.Button(row, L["Move up"], function() TP.MoveInOrder(row.nodeID, -1) end, TP.ORDER_BUTTON))
   row.down:SetPoint("RIGHT", row, "RIGHT", 0, 0)
   row.up:SetPoint("RIGHT", row.down, "LEFT", -T.SPACE.tight, 0)
+  orderText(row)
   return row
 end
 
@@ -867,7 +868,7 @@ local function orderFoot(f)
   f.hint:SetWidth(TP.ORDER_WIDTH - 2 * T.SPACE.pad - T.SPACE.tight)
   f.hint:SetJustifyH("LEFT")
   f.hint:SetText(L["Spend planned buys in this order, as far as the talent tree allows. Move a talent up to buy it sooner."])
-  f.reset = W.Button(f, L["Top row first"], function() TP.ResetOrder() end, 120)
+  f.reset = ns.WidenToLabel(W.Button(f, L["Top row first"], function() TP.ResetOrder() end, 120))
   f.reset:SetPoint("BOTTOMLEFT", T.SPACE.pad, T.SPACE.pad)
 end
 
