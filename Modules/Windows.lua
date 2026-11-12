@@ -1955,13 +1955,23 @@ local function isBlackText(text)
   return r ~= nil and g ~= nil and b ~= nil and r + g + b < GW.BLACK_TEXT
 end
 
+-- A font string the game repainted a colour of its own (a pooled criterion that was lit and is now green or grey):
+-- that colour kept and the remembered token dropped, so a theme refresh does not repaint it. A colour the client
+-- hides is left alone (SetTextColor refuses a secret from addon code).
+function GW.ForgetToken(fs)
+  if type(fs) ~= "table" or not fs.GetTextColor or not T.ColorToken(fs) then return end
+  local r, g, b = fs:GetTextColor()
+  r, g, b = ns.PlainNumber(r), ns.PlainNumber(g), ns.PlainNumber(b)
+  if r and g and b then T.ColorRGB(fs, r, g, b) end
+end
+
 -- The texts under key of each item in list (the objectives' criteria and meta achievements) that the game made black
 -- in the text colour; green (done) and grey (open) ones keep the meaning the game gave them.
 local function lightBlackTexts(list, key)
   if type(list) ~= "table" then return end
   for _, item in ipairs(list) do
     local text = type(item) == "table" and item[key]
-    if isBlackText(text) then T.Color(text, "text") end
+    if isBlackText(text) then T.Color(text, "text") else GW.ForgetToken(text) end
   end
 end
 

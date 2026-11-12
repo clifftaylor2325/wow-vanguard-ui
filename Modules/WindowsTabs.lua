@@ -638,10 +638,7 @@ end
 -- the client hides is left alone (SetTextColor refuses a secret from addon code).
 local function lightOrForget(fs)
   if isGold(fs) then return colorText(fs, "text") end
-  if type(fs) ~= "table" or not fs.GetTextColor or not T.ColorToken(fs) then return end
-  local r, g, b = fs:GetTextColor()
-  r, g, b = ns.PlainNumber(r), ns.PlainNumber(g), ns.PlainNumber(b)
-  if r and g and b then T.ColorRGB(fs, r, g, b) end
+  GW.ForgetToken(fs)
 end
 
 -- Puts one check box label back in the text colour whenever the game paints it gold (a grey one stays grey). Retail

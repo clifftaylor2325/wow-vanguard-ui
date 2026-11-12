@@ -645,7 +645,7 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
   -- A progress bar of the open achievement ("700/1000"): the game's raw green bar in its pool (AchievementProgressBarTemplate).
   objectives.progressBars = { bar(objectives) }
   function AchievementObjectives_DisplayCriteria(frame)
-    local colours = { { 0, 0, 0 }, { 0, 1, 0 }, { 0.6, 0.6, 0.6 } }
+    local colours = __nextColours or { { 0, 0, 0 }, { 0, 1, 0 }, { 0.6, 0.6, 0.6 } }
     for i, c in ipairs(colours) do
       frame.criterias[i].Name:SetTextColor(c[1], c[2], c[3], 1)
       frame.metas[i].Label:SetTextColor(c[1], c[2], c[3], 1)
@@ -816,6 +816,22 @@ it("R2.19 the achievements window: black criteria and meta labels become light, 
   expect(addon.eval("return __criteriaBar()"), "the open achievement's progress bar is a flat track with the dim accent fill, not the game's raw green").toEqual([true, true]);
   addon.eval("AchievementFrame:Hide() AchievementFrame:Show() AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 2)");
   expect([addon.eval("return __criteriaReds()[1][1][1]"), addon.eval("return #ns.errors")], "the hook is added once however often the window opens, and the next achievement is lit again").toEqual([text, 0]);
+});
+// AchievementObjectives_DisplayCriteria (Blizzard_AchievementUI/Mainline/Blizzard_AchievementUI.lua, live :2043-2051) paints a
+// criterion's Name black, green or 0.6 grey, and a pooled criterion frame comes back for the next achievement.
+// (The model's __nextColours is what the next display paints, so the pooled first criterion comes back grey.)
+it("H46-25-101 a criterion lit for a completed achievement keeps the game's green or grey after a theme refresh", () => {
+  const addon = loggedIn(ACHIEVEMENT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  addon.eval("AchievementFrame:Show()");
+  addon.eval("AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 1)");
+  const text = addon.eval("return (ns.Theme.RGB('text'))");
+  addon.eval("__nextColours = { { 0.6, 0.6, 0.6 }, { 0, 1, 0 }, { 0.6, 0.6, 0.6 } }");
+  addon.eval("AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 2)");
+  addon.eval("ns.Theme.Refresh()");
+  const [names, labels] = addon.eval("return __criteriaReds()");
+  expect([names[0][0], labels[0][0], addon.eval("return ns.Theme.ColorToken(AchievementFrameAchievementsObjectives.criterias[1].Name)")], "the pooled criterion keeps the game's grey and the meta label its grey, with no token").toEqual([0.6, 0.6, null]);
+  expect(addon.eval("return (ns.Theme.RGB('text'))"), "the theme colour itself is unchanged").toBe(text);
 });
 it("R2.19 the achievements window: the windows group off leaves it the game's; a bare or odd window loads cleanly", () => {
   const off = loggedIn(ACHIEVEMENT_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Windows = { windows = false } } }" });
