@@ -47,8 +47,8 @@ extra button, a second frame to dress). So:
 ### 3.1 The registry (`Modules/Windows.lua`)
 
 ```lua
--- Registers windows for a group. kind: "framed" (skinned now and on every show), "onDemand" (the first
--- argument is the Blizzard addon that loads them), "popups". skin: a function(frame) or nil for GW.Skin.
+-- GW.Add registers windows for a group, skinned now and on every show (popups too). GW.AddOnDemand does it
+-- once that part of the game (the Blizzard addon) loads. skin: a function(frame) or nil for GW.Skin.
 -- Called at file scope by Modules/Windows<Area>.lua; Windows.Enable (PLAYER_LOGIN) reads what was registered.
 function GW.Add(group, names, skin)                  -- GW.Add("social", { "OpenMailFrame" })
 function GW.AddOnDemand(group, addon, names, skin)    -- GW.AddOnDemand("map", "Blizzard_LegacySystem", { "LegacySystemFrame" }, GW.SkinLegacy)
@@ -63,7 +63,7 @@ As built; the kind argument was dropped.
   one path.
 - `watch(name, skin)` (:238) gains the group check: a name registered under a group whose setting is false is never
   hooked. `GW.QUEST_WINDOWS` (:27) stays as it is.
-- `onLoaded` (:252) looks up `GW.ON_DEMAND[addon]` as today; `GW.Add("…", "onDemand", …)` appends to it. A window
+- `onLoaded` (:252) looks up `GW.ON_DEMAND[addon]` as today; `GW.AddOnDemand(group, addon, …)` appends to it. A window
   registered on demand whose addon is already loaded (a late registration) is watched at once.
 - Load order: `Modules/Windows.lua` stays at `Vanguard.toc:94`; the area files go right after it in the TOC and open with
   `local GW = ns.GetModule("Windows")` (the pattern `Modules/ActionBarLayout.lua:21` and `Modules/QuestDialogView.lua:11`

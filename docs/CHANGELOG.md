@@ -1,6 +1,6 @@
 # Changelog
 
-What changed for players in each release, newest first. In game, the same notes are the What's new window (`/vg whatsnew`), written in `Core/WhatsNewNotes.lua`; the website's release notes are written from this file's sections. Items marked *(off)* start switched off.
+What changed for players in each release, newest first. In game, the What's new window (`/vg whatsnew`) shows a short form of the newest section, written in `Core/WhatsNewNotes.lua`; the website's release notes are written from this file's sections. Items marked *(off)* start switched off.
 
 Vanguard is made by one person. Every change runs through a headless copy of the game client before it ships, and what has been checked in the game itself is recorded, step by step, in [smoke-results.json](smoke-results.json) against [SMOKE-TEST.md](SMOKE-TEST.md). If something looks wrong, `/vg feedback` writes the report for you.
 
@@ -8,7 +8,7 @@ Vanguard is made by one person. Every change runs through a headless copy of the
 
 <!-- SMOKE steps 2.1n, 2.1o, 7.2s, 7.2t, 7.2u, 9.2h, 9.6a, 10.4e, 10.4f, 14.9.5, 14.9.5a, 33.390a, 33.485, 33.486, 33.487, 33.488, 33.489, 33.490, 33.491, 33.492, 33.493, 33.494, 33.495, 33.496, 33.497, 33.498, 33.499, 33.500, 33.501, 33.502, 33.503, 33.504, 33.505, 33.506, 33.507, 33.508, 33.509, 33.510, 33.511, 33.512, 33.513, 33.514, 33.545, 33.546, 33.547, 33.548, 33.549, 33.550, 33.551, 33.552, 33.553, 33.554, 33.555, 33.556, 33.557, 33.558, 33.560, 33.561, 33.562, 33.563, 33.564, 33.565, 33.566, 33.567, 33.568, 33.568a, 33.569, 33.570, 33.571, 33.572, 33.573, 33.574, 33.575, 33.605, 33.606, 33.607, 33.608, 33.615, 33.616, 33.617, 33.625, 33.626, 33.627, 33.628, 33.629, 33.635, 33.636, 33.637, 33.638, 33.639, 33.640, 33.641, 33.642, 33.643, 33.644, 33.645, 33.646, 33.647, 33.648, 33.649, 33.650, 33.651, 33.652, 33.653, 33.654, 33.655, 33.656, 33.657, 33.658, 33.659, 33.660, 33.661, 33.662, 33.663, 33.664, 33.664a, 33.665, 34.16, 34.17, 34.18, 35.1, 35.2, 35.3, 35.4, 35.5, 35.6, 35.7, 35.8, 35.9, 35.10, 35.11, 35.12 -->
 
-Modules that switch off and on without a reload, a bag fix for profession bags, and fixes from a 30-wave bug hunt across frames, auras, options, setup, quests, chat and the auction house. Nothing new in this release has been checked in the game yet.
+Modules that switch off and on without a reload, a bag fix for profession bags, and fixes across frames, auras, options, setup, quests, chat and the auction house.
 
 ### Bags and town (0.9.6)
 

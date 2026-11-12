@@ -28,7 +28,8 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 | --- | --- |
 | `/vg variant [name]` | Theme variant: default, contrast, vellum, classic, midnight, obsidian, moss, ember |
 | `/vg corners [square\|rounded]` | Panel corners |
-| `/vg accent <colour>`, `/vg theme reset` | The accent colour |
+| `/vg accent <colour>` | The accent colour |
+| `/vg theme reset` | Every Look setting back to its default: accent, variant, corners, panel texture, font and text size |
 | `/vg ornaments`, `/vg gradient`, `/vg icons` | Window ornaments, panel gradient, sharper menu icons (off by default) |
 | `/vg texelsnap`, `/vg nineslice`, `/vg slug`, `/vg framebuffer` | Side-by-side tests (off by default) |
 
@@ -114,7 +115,8 @@ Every `/vg` command (`/vanguard` works too), grouped by what it does. `/vg help`
 /vg slug [on|off]               world text (nameplates, floating numbers) drawn with the SLUG font flag, at once (a side-by-side test, off by default)
 /vg framebuffer [on|off]        windows drawn through a frame buffer while they open and close, so inner borders don't ghost (a side-by-side test, off by default)
 /vg gradient [on|off]           windows' fills a shade lighter toward the top (off by default)
-/vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour; /vg theme reset
+/vg accent <rrggbb|brass|arcane|jade|orchid|copper|class> | reset      class makes the accent follow your class colour
+/vg theme reset                 every theme setting back to default
 /vg modules       the list of modules; /vg enable|disable <module> (a part that can't switch at once says /reload to apply)
 /vg skins         addons skinned through the API; skins <addon> on|off
 /vg preset [name]               presets on offer (healer, damage, tank, and any an addon registers); a name asks to apply it

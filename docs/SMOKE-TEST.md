@@ -229,7 +229,7 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 ### 1.5 Memory over a minute
 
 - Do: stand still in a city out of combat, type `/vg mem`, and wait a minute without opening windows. Then repeat it once.
-- Expect: first `Saved data (estimate): account file X of a 16.0 MB budget; largest: ...` and `This character's file: ...` (note both, and the real size of `WTF\Account\<name>\SavedVariables\Vanguard.lua` on disk, so the estimate can be checked); then the line `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and `After a garbage collection: A MB at the start, B MB at the end (+N KB); ...` (the game may hitch briefly as it starts and ends). If the line is instead a low-point verdict (`The low point held` or `The low point rose`), note it: the client refused the collection. A clean rise of a few hundred KB once is normal; one that rises on every run is not. Note the two clean figures for the report. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`. Without `/vg perf cpu` set, `/vg perf` starts `CPU 0.xx ms a frame now (... on average, peak ... ms, N % of all addons; N frames over 5 ms)`; note the line. If it says `CPU off` instead, the client has no always-on profiler. Then type `/vg perf slow`: expect `Vanguard's slowest handlers since login...` and up to ten lines such as `1. event PLAYER_LOGIN  longest N ms, ...`; paste them into the report, they say what to make faster.
+- Expect: first `Saved data (estimate): account file X of a 16.0 MB budget; largest: ...` and `This character's file: ...` (note both, and the real size of `WTF\Account\<name>\SavedVariables\Vanguard.lua` on disk, so the estimate can be checked); then the line `Measuring Vanguard's memory for 60 s`; after a minute two lines: `Vanguard's memory over 60 s: A MB to B MB (+N KB, +R KB/s), low L, high H MB.` and `After a garbage collection: A MB at the start, B MB at the end (+N KB); ...` (the game may hitch briefly as it starts and ends). If the line is instead a low-point verdict (`The low point held` or `The low point rose`), note it: the client refused the collection. A clean rise of a few hundred KB once is normal; one that rises on every run is not. Note the two clean figures for the report. In combat `/vg mem` says it can't read, and `/vg perf` says `memory: not read in combat`. Without `/vg perf cpu` set, `/vg perf` starts `CPU 0.xx ms a frame now (... on average, ... in boss fights, peak ... ms, N % of all addons; frames over 1 / 5 / 10 ms: N / N / N)`; note the line. If it says `CPU off` instead, the client has no always-on profiler. Then type `/vg perf slow`: expect `Vanguard's slowest handlers, timed through login and from your first /vg perf slow until you reload (calls over N ms):` and up to ten lines such as `1. event PLAYER_LOGIN  longest N ms, ...`; paste them into the report, they say what to make faster.
 - If it fails, paste: both result lines of each run, what you did during the minute, and `/vg errors`.
 
 ## 2. Options window and wizard
@@ -585,9 +585,9 @@ Shortcut: `/vg report` puts items 2 and 3 in one box, selected for copying (`###
 
 ### 6.2c Raid tiles follow their own members' heals, shields, threat and buffs (if you can)
 
-- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf` after a fight with many nameplates up.
-- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf` lists no long UNIT_AURA handler from the raid frames.
-- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf` lines.
+- Do: in a party or raid with Vanguard's raid frames on, have a healer cast a slow heal on one member, shield another, let a third take aggro, and give or cancel your class buff on a fourth. Then have two members swap groups and repeat one of them. Run `/vg perf slow` after a fight with many nameplates up.
+- Expect: each tile's incoming-heal bar, shield stripes, threat strip and missing-buff mark change within a moment of the event, as before, and still do after the swap (the tile follows its new member). `/vg perf slow` lists no `event UNIT_AURA` line with calls over 5 ms.
+- If it fails, paste: which mark lagged or stuck, on which tile, and the `/vg perf slow` lines.
 
 ### 6.4 Preview the party and raid frames alone
 
@@ -5686,9 +5686,9 @@ The order is the order to play in: looks you can check quickly first, then the g
 
 ### 33.645 Raid holds (H41-3-1, H41-4-1, H44-7-3, H44-7-51 with H5-9-1, H44-9-3)
 
-- Do: in a raid fight with two or more boss debuffs on one player, look at that tile's two other-debuff icons; as a warrior shout Battle Shout and look at tiles of other groups; /vg perf reset, take damage 30 s, /vg perf; open the raid roster and have a member die and release; rest the pointer on a tile, press M, press a hover key. [Client: Forever and Retail.]
-- Expect: the boss debuffs are the ones shown; other groups' tiles do not ask for Battle Shout; about one UNIT_HEALTH per change for your tile; the roster line says Dead and loses it; nothing is cast under the map.
-- If it fails, paste: /vg perf lines for RaidFrames, /vg errors, screenshots.
+- Do: in a raid fight with two or more boss debuffs on one player, look at that tile's two other-debuff icons; as a warrior shout Battle Shout and look at tiles of other groups; /vg perf slow reset, take damage 30 s, /vg perf slow; open the raid roster and have a member die and release; rest the pointer on a tile, press M, press a hover key. [Client: Forever and Retail.]
+- Expect: the boss debuffs are the ones shown; other groups' tiles do not ask for Battle Shout; if a line `event UNIT_HEALTH` is listed, note its calls (they count every Vanguard handler of the event, not only your tile); the roster line says Dead and loses it; nothing is cast under the map.
+- If it fails, paste: the /vg perf slow lines, /vg errors, screenshots.
 
 ### 33.646 Plate quest marks (H41-11-1)
 
@@ -6253,7 +6253,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 ### 33.705 The footer reload notice stops before the version line (H45-23-2; WoW Forever)
 
 - Do: in German or French at Text size 130%, switch Unit frames off.
-- Expect: the footer notice ends in "…" before the version line and Reload now is whole.
+- Expect: the footer notice stops before the version line: drawn smaller, and where it is still too long (French) it ends in "…"; Reload now is whole.
 - If it fails, paste: a screenshot of the footer.
 
 ### 33.706 A greyed module row jumps to its parent under Show: On (H45-23-3; WoW Forever and Retail)
@@ -6445,7 +6445,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ## 34. Retail
 
-Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
+Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Every section 33 step marked Retail, or Forever and Retail, also runs on this client.
 
 ### 34.1 Retail login, and the parts that stay WoW Forever's
 
@@ -6559,21 +6559,21 @@ Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Eac
 
 Each step is the same shape: switch the module off under `/vg` → Modules (or its own switch), look; switch it on, look again. Nothing needs a reload, and a switch made in a fight applies when it ends.
 
-### 35.1 Raid auras
+### 35.1 Raid debuffs and HoTs
 
-- Do: in a group (or a raid), with Raid frames on, switch **Raid auras** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
+- Do: in a group (or a raid), with Raid frames on, switch **Raid debuffs and HoTs** off under `/vg` → Modules. Switch it on. Change **Debuff icons** and the right-edge indicators under Raid frames and watch the tiles.
 - Expect: off, every tile loses its debuff and HoT icons, its indicators and the dispel wash at once, and nothing is left drawn; on, they come back on every tile; a changed debuff count or indicator shows on the tiles at once (out of combat), with no reload notice for these rows.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
-### 35.2 Raid healing
+### 35.2 Raid heals and aggro
 
-- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid healing** off under `/vg` → Modules, then on again.
+- Do: in a group with Raid frames on, have a heal incoming (or a shield, or aggro) on a member and watch their tile. Switch **Raid heals and aggro** off under `/vg` → Modules, then on again.
 - Expect: off, the heal and shield bars, aggro strip and missing-buff marker are gone from every tile at once and stay gone while the heal lands; on, they return on every tile without a reload.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
-### 35.3 Raid status
+### 35.3 Raid marks
 
-- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid status** off under `/vg` → Modules, then on again. Run a ready check while it is off.
+- Do: in a raid or party with Raid frames on, with a member out of range, a raid icon set and a leader. Switch **Raid marks** off under `/vg` → Modules, then on again. Run a ready check while it is off.
 - Expect: off, the range fade, raid icons, crown and any ready check, resurrection and summon marks are gone from every tile at once and the status text shows; the ready check draws nothing; on, the marks and the fade return.
 - If it fails, paste: a screenshot of the tiles and `/vg errors`.
 
@@ -6621,14 +6621,14 @@ Each step is the same shape: switch the module off under `/vg` → Modules (or i
 
 ### 35.11 Chat, quest and HUD modules switch off live (A4-2f)
 
-- Do: type `/vg` → Modules. One at a time, switch off and on again Chat history, Chat filter, Chat extras, Chat windows, Quiet, Quest dialog, Quest log, Cooldown keys, Cooldown glow, Data bars, Broker strip, HUD text and Situations. After each switch off, look at the screen, talk to a quest giver (Quest dialog), press the quest log key (Quest log), and open `/vg errors`.
-- Expect: each goes at once with no reload tag and nothing of it left on screen: no Copy or Find button in the chat tab bar, no Vanguard quest dialog or log (the game's own windows open, and the quest log key is the game's), no key text or glow on the Cooldown Manager icons, no XP or reputation bar and the game's own status bars back in their Edit Mode spot, no broker strip, the game's fonts back on the error line and zone names. Quiet and HUD text print one line each about what stays until a reload (the action bar's own errors; the damage-number font). Switching each on again brings it back. A switch made in a fight waits for the fight to end. `/vg errors` stays empty. [Needs in-game check: that the game's gossip and quest windows open normally after Quest dialog goes off with no taint report, and that the status bars come back in their Edit Mode spot after Data bars goes off.]
+- Do: type `/vg` → Modules. One at a time, switch off and on again Chat history, Chat filter, Chat extras, Chat windows, Quiet the game, Quest dialog, Quest log, Cooldown Manager keys, Cooldown Manager glow, XP and reputation, Broker strip, HUD text font and Situations. After each switch off, look at the screen, talk to a quest giver (Quest dialog), press the quest log key (Quest log), and open `/vg errors`.
+- Expect: each goes at once with no reload tag and nothing of it left on screen: no Copy or Find button in the chat tab bar, no Vanguard quest dialog or log (the game's own windows open, and the quest log key is the game's), no key text or glow on the Cooldown Manager icons, no XP or reputation bar and the game's own status bars back in their Edit Mode spot, no broker strip, the game's fonts back on the error line and zone names. Quiet the game and HUD text font print one line each about what stays until a reload (the action bar's own errors; the damage-number font). Switching each on again brings it back. A switch made in a fight waits for the fight to end. `/vg errors` stays empty. [Needs in-game check: that the game's gossip and quest windows open normally after Quest dialog goes off with no taint report, and that the status bars come back in their Edit Mode spot after XP and reputation goes off.]
 - If it fails, paste: the `/vg errors` text and the module's name.
 
-### 35.12 Data bars off: the game's own status bars, as the game would show them (review M6)
+### 35.12 XP and reputation off: the game's own status bars, as the game would show them (review M6)
 
-- Do: on a character at the level cap with no faction watched (character pane → Reputation: untick "Show as experience bar" on every faction), switch **Data bars** off under `/vg` → Modules, out of combat, and look at the bottom of the screen where the game's experience and reputation bars sit. Then `/reload` with Data bars still off and look again. Switch Data bars on, watch one faction, switch Data bars off again and look; then `/reload` and look. If you have a character below the cap, do the same there with no faction watched (one bar, experience) and with one watched (two bars).
-- Expect: right after the switch, the game's bar area looks exactly as it does after the `/reload` with Data bars off: at the cap with no faction watched, no empty bar, frame or border is shown; with one bar tracked, one bar and no empty second slot; with two, both. Edit Mode can select and move the game's status bars in each case. `/vg errors` stays empty. [Needs in game: all of it. Vanguard calls `Show()` on StatusTrackingBarManager, MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer when Data bars goes off; whether the game keeps a container hidden in these cases, and so whether that shows an empty one, is not known.]
+- Do: on a character at the level cap with no faction watched (character pane → Reputation: untick "Show as experience bar" on every faction), switch **XP and reputation** off under `/vg` → Modules, out of combat, and look at the bottom of the screen where the game's experience and reputation bars sit. Then `/reload` with XP and reputation still off and look again. Switch XP and reputation on, watch one faction, switch XP and reputation off again and look; then `/reload` and look. If you have a character below the cap, do the same there with no faction watched (one bar, experience) and with one watched (two bars).
+- Expect: right after the switch, the game's bar area looks exactly as it does after the `/reload` with XP and reputation off: at the cap with no faction watched, no empty bar, frame or border is shown; with one bar tracked, one bar and no empty second slot; with two, both. Edit Mode can select and move the game's status bars in each case. `/vg errors` stays empty. [Needs in game: all of it. Vanguard calls `Show()` on StatusTrackingBarManager, MainStatusTrackingBarContainer and SecondaryStatusTrackingBarContainer when XP and reputation goes off; whether the game keeps a container hidden in these cases, and so whether that shows an empty one, is not known.]
 - If it fails, paste: a screenshot of the bottom of the screen right after the switch and one after the reload, your level, whether a faction is watched, and `/vg errors`.
 
 ## When you are done

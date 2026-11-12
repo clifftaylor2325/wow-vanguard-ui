@@ -13,7 +13,7 @@ Read this before touching anything. README.md and the feature pages in `docs/fea
 ## Commands
 
 ```sh
-npm install           # once; also turns on .githooks/pre-push (test:quick, quality, TOC, luacheck and luac if installed; --no-verify skips)
+npm install           # once; also turns on .githooks/pre-push (test:quick, quality, the baselines check, TOC, luacheck and luac if installed; --no-verify skips)
 npm run test:quick    # JS tests + the Lua smoke tests (both clients, secret geometry); the fast run while iterating
 npm test              # all tests (JS + Lua harness)
 npm run test:slot -- <vitest args>   # npm test is this with no arguments; e.g. --project lua scripts/tests/chat.test.mjs
@@ -42,7 +42,7 @@ Before you say a change is done: `npm run quality` and `npm run coverage` must b
 - **Widget methods:** add a method to `scripts/lib/wow-widget-api.lua` only after confirming it exists in the 12.1 client (Blizzard's wow-ui-source or the API docs). Unlisted methods are nil in tests on purpose.
 - **Libs/:** LibStub, CallbackHandler-1.0 and LibSharedMedia-3.0, kept unmodified. Don't edit them.
 - **Media/:** generated. Change `scripts/lib/media-sources.mjs` and run `npm run media`. Never hand-edit textures or icons. `node scripts/build-media.mjs --check` must pass.
-- **Fonts:** made from upstream Fira Sans Condensed by `scripts/fonts/make-fonts.py`.
+- **Fonts:** Fira Sans Condensed is made from upstream by `scripts/fonts/make-fonts.py`; the faction heading fonts (Cinzel, Metamorphous) by `scripts/fonts/make-heading-fonts.py` from `art/fonts` (`art/CREDITS.md`).
 - **New files:** a file the game loads must be listed in `Vanguard.toc`. A new top-level file or folder that players don't need must be added to the `ignore` list in `.pkgmeta`, or `scripts/pkgmeta.test.mjs` fails.
 - **Lua 5.1 only.** No `goto`, no integer division, no `//`, no bit library from 5.3+.
 

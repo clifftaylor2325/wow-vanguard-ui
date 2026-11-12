@@ -6,7 +6,7 @@ Two routes ship the same files. The normal one is the `release` workflow in GitH
 
 ## One-time setup (do it before launch day)
 
-- Node 22 and `gh` signed in as Cliff (`gh auth status`); `bash`, `git`.
+- Node 24 (`.nvmrc`, the version CI uses) and `gh` signed in as Cliff (`gh auth status`); `bash`, `git`.
 - `lua5.1` (`luac5.1`) on the PATH, so the Lua 5.1 syntax check runs. Without it the script says it skipped it.
 - `CF_API_KEY` (CurseForge, Account → API Tokens) and `WAGO_API_TOKEN` (Wago, Developer tools) in your shell environment. The script never prints them, writes them to a file or puts them on a command line.
 - `npm install` once.
