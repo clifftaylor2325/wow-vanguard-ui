@@ -2131,7 +2131,7 @@ L["The game's rules changed: Vanguard now keeps prices and characters under {key
 L["The game's setting"] = "게임 설정"
 L["The game's tools"] = "게임 도구"
 L["The game's tracker in the Vanguard look (reload)"] = "Vanguard 스타일 게임 추적기 (UI 재시작)"
-L["The game's tracker under the info strip (reload)"] = "정보 줄 아래 게임 추적기 (UI 재시작)"
+L["The game's tracker under the info strip (reload)"] = "정보 띠 아래 게임 추적기 (UI 재시작)"
 L["The gaps row is off. Tick Gaps row above to choose its items and spells."] = "빈칸 줄이 꺼져 있습니다. 위의 '빈칸 줄'을 체크해 아이템과 주문을 고르세요."
 L["The group board is off (/vg > Modules)."] = "파티 게시판이 꺼져 있습니다 (/vg > 모듈)."
 L["The keep"] = "성채"
