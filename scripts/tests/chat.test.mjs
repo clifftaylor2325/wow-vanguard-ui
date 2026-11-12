@@ -840,6 +840,21 @@ it("chat bar tiles follow the shown docked window: Copy and Find ride its bar wh
   expect(tiles("ChatFrame1"), "General shown again: they are back on its bar").toEqual([true, true, true, true, true, -28, true]);
   expect(addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, nil) FCFDock_SelectWindow(GENERAL_CHAT_DOCK, {}) return #ns.errors"), "a window Vanguard hasn't dressed is left alone").toBe(0);
 });
+// TEST-ONLY dock as the game has it: FCFDock_UpdateTabs hides every docked window but the selected one (forever
+// Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua FCFDock_UpdateTabs :2334-2339).
+const SHOWN_DOCK = `function FCFDock_SelectWindow(dock, frame) __selected = frame for _, w in ipairs(dock.DOCKED_CHAT_FRAMES) do w:SetShown(w == frame) end end
+  function FCFDock_GetSelectedWindow() return __selected end`;
+it("H45-29-3 chat bar tiles: Find or Copy switched on while another docked tab is shown lands on that tab's bar, with or without a tile already there", () => {
+  const addon = loggedIn(UI_ENV + CHAT_DOCK_ENV + SHOWN_DOCK, { savedVariables: "VanguardDB.profiles = { Default = { ChatWindows = { find = false } } }" });
+  addon.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, ChatFrame2)");
+  addon.eval("local CW = ns.GetModule('ChatWindows') CW.settings.find = true CW.ApplyFind()");
+  const out = addon.eval(`local F = ns.GetModule('Chat').frames local CX, CW = ns.GetModule('ChatExtras'), ns.GetModule('ChatWindows')
+    return { CX.copyButton:IsVisible(), CX.copyButton:GetParent() == F[ChatFrame2].bar, CW.findButton:IsVisible(), CW.findButton:GetParent() == F[ChatFrame2].bar }`);
+  expect(out, "Find, switched on late, rides the shown bar beside Copy").toEqual([true, true, true, true]);
+  const bare = loggedIn(UI_ENV + CHAT_DOCK_ENV + SHOWN_DOCK, { savedVariables: "VanguardDB.profiles = { Default = { ChatWindows = { find = false }, ChatExtras = { copy = false } } }" });
+  bare.eval("FCFDock_SelectWindow(GENERAL_CHAT_DOCK, ChatFrame2) local CW = ns.GetModule('ChatWindows') CW.settings.find = true CW.ApplyFind()");
+  expect(bare.eval("local F = ns.GetModule('Chat').frames local find = ns.GetModule('ChatWindows').findButton return { find:IsVisible(), find:GetParent() == F[ChatFrame2].bar, #ns.errors }"), "with no other tile on the window, the new one still goes to the shown bar").toEqual([true, true, 0]);
+});
 it("H17-8-1: the first pop-out chat of a session carries Copy and Find onto its own bar, though the game selects it before it is dressed", () => {
   const popOut = `local opened = FCF_OpenTemporaryWindow
     function FCF_OpenTemporaryWindow(...)
