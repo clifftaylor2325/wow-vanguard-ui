@@ -381,6 +381,12 @@ it("minimap: the zone name's tooltip ends with what a click and the wheel do, mu
   const tip = addon.eval("return GameTooltip.__lines").slice(-2);
   expect([tip.map((l) => l.text), tip.every((l) => isTok(addon, [l.r, l.g, l.b], "text2"))], "two hint lines in the muted colour").toEqual([["Click: world map", "Wheel: zoom"], true]);
 });
+it("H45-9-104 minimap: where the realm switches the world map off, the zone tooltip leaves the click hint off", () => {
+  const addon = loggedIn(UI_ENV + "Enum.GameRule = { WorldMapDisabled = 3 } C_GameRules = { IsGameRuleActive = function(rule) return rule == 3 end }");
+  addon.eval("Vanguard_MinimapZone.__scripts.OnEnter(Vanguard_MinimapZone)");
+  expect(addon.eval("return GameTooltip.__lines").slice(-2).map((l) => l.text).includes("Click: world map"), "no click hint").toBe(false);
+  expect(addon.eval("return GameTooltip.__lines").slice(-1)[0].text, "the wheel hint stays").toBe("Wheel: zoom");
+});
 it("minimap: Rotate Minimap's config update puts Vanguard's mask back, square or round", () => {
   const ROTATE = `MinimapCluster.UpdateMinimapConfig = function() Minimap:SetMaskTexture("ui-hud-minimap-frame-generic-mask") end`;
   const square = loggedIn(UI_ENV + TIDY_ENV + ROTATE);
