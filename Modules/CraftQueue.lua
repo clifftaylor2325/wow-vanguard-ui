@@ -2,7 +2,7 @@
 -- own, whatever profile it uses), a tracker for profession cooldowns, and a ranking of the recipes that pay best, all
 -- from the costs the Auction helper already works out (Modules/AuctionCrafting.lua).
 --   * /vg craft add [n]   queues n crafts (1 by default) of the recipe on display in the profession window;
---   * /vg craft           lists the queue, with the reagents it still needs from your bags;
+--   * /vg craft           lists the queue, with the reagents it still needs (bags and banks, as the game counts them for a craft);
 --   * /vg craft next      opens the first recipe in the profession window with its count typed in; you press Create;
 --   * /vg craft stock     raises Keep stocked to what the queue needs and makes the Restock list (you buy);
 --   * /vg craft cd        profession cooldowns of your characters, and when each is ready;
@@ -126,11 +126,18 @@ local function needs()
   return total
 end
 
+-- How many of a reagent you hold the way the game counts it for a craft: Retail through ItemUtil (bags, reagent bank and
+-- warband bank), Forever in the bags and bank, as the Quest tracker counts a reagent.
+local function held(id)
+  if ns.IsForever() then return ns.PlainNumber(ns.CallIf(C_Item, "GetItemCount", id, true)) or 0 end
+  return ns.PlainNumber(ns.CallIf(ItemUtil, "GetCraftingReagentCount", id)) or 0
+end
+
 -- The reagents still short of what the queue needs: { id, short } in item order.
 function CQ.Short()
   local out = {}
   for id, qty in pairs(needs()) do
-    local have = ns.PlainNumber(C_Item.GetItemCount(id, true)) or 0
+    local have = held(id)
     if have < qty then out[#out + 1] = { id = id, short = qty - have } end
   end
   table.sort(out, function(a, b) return a.id < b.id end)

@@ -257,6 +257,21 @@ it("the options switch hides and shows the panel at once, as the Mail tools swit
   expect(addon.eval(`return ${CQ}.frame:IsShown()`), "on: it is back with the profession window open").toBe(true);
 });
 
+// ItemUtil.lua's GetCraftingReagentCount counts the reagent bank and the warband bank on Retail
+// (live Blizzard_FrameXMLUtil/ItemUtil.lua); the harness models it with world.warbandCounts.
+it("on WoW Retail, a reagent held only in the warband bank is not short; on Forever the bags and bank count (H45-33-4)", () => {
+  const retail = crafter("", ON, RETAIL_CLIENT);
+  retail.world.openProfession(100);
+  retail.eval("__wfgWorld.warbandCounts[2589] = 3 __wfgWorld.warbandCounts[2320] = 1 C_Item.GetItemCount = function() return 0 end");
+  retail.slash("craft add");
+  expect(say(retail, "craft", /You have every reagent\./), "Retail: the warband bank's reagents count").toBe(true);
+  const forever = crafter("", ON);
+  forever.world.openProfession(100);
+  forever.eval("C_Item.GetItemCount = function(id, bank) return bank and 99 or 0 end __wfgWorld.warbandCounts = {}");
+  forever.slash("craft add");
+  expect(say(forever, "craft", /You have every reagent\./), "Forever: the bank counts").toBe(true);
+});
+
 it("on WoW Retail, reads the client's recipe list and recipe cooldowns as on Forever", () => {
   const addon = crafter("", ON, RETAIL_CLIENT);
   addon.world.openProfession(100);
