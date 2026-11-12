@@ -385,3 +385,23 @@ it("on Retail, asking for one of your auras by spell id answers nothing for a hi
   expect(addon.eval(`__wfgWorld.units.player.auras = { __wfgWorld.secret(1), { spellId = 7, name = "TEST-ONLY" } }
     return { C_UnitAuras.GetPlayerAuraBySpellID(99999) == nil, C_UnitAuras.GetPlayerAuraBySpellID(7).name }`)).toEqual([true, "TEST-ONLY"]);
 });
+
+// Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua (forever and live identical): AddAuraGroup asserts a
+// non-empty key, a valid filter string and a new key (:286-291), then its options (:1-36, :143-194);
+// Blizzard_FrameXMLUtil/AuraUtil.lua:270-320 lists the filter words and IsValidFilterString's messages.
+it("an aura container refuses a group the client's asserts refuse, with the client's message, and keeps the good ones", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    local function try(key, filter, opts)
+      opts.layout = opts.layout or {} local ok, err = pcall(c.AddAuraGroup, c, key, filter, opts) return ok or err
+    end
+    return { try("a", "HELPFUL|!RAID PLAYER", { maxFrameCount = 2 }), try("a", "HELPFUL", { maxFrameCount = 2 }), try("", "HELPFUL", {}),
+      try("b", "HELPFUL|TEST_ONLY_NO_SUCH", {}), try("b", "HELPFUL|!", {}), try("b", "HELPFUL", { maxFrameCount = 2.5 }),
+      try("b", "HELPFUL", { maxFrameCount = math.huge, layout = { elementSpacing = "2" } }), try("b", "HELPFUL", { layout = { forceNewLine = 1 } }),
+      try("b", "HELPFUL", { layout = { elementWidth = -1 } }), try("b", "HELPFUL", { sortMethod = 99 }), try("b", "HELPFUL", { initializeFrame = 1 }),
+      #c.__groups }`);
+  expect(out).toEqual([true, "aura group 'a' already exists with this key.", "groupKey must be a non-empty string.",
+    "Unknown aura filter component: 'TEST_ONLY_NO_SUCH'", "A negation prefix ('!') must be followed by a filter component.",
+    "maxFrameCount must be a non-negative integer or infinity.", "elementSpacing must be a number.", "forceNewLine must be a boolean.",
+    "elementWidth must be a non-negative number.", "sortMethod must be a valid AuraContainerSortMethod.", "initializeFrame must be a function or nil.", 1]);
+});

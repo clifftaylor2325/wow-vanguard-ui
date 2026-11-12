@@ -1052,8 +1052,77 @@ local function addAuraButtons(c, g, count)
   end
 end
 
--- A group: its first buttons are made now and dressed by initializeFrame, as the client does.
+-- The client's aura filter words (forever Blizzard_FrameXMLUtil/AuraUtil.lua:270-288, AuraUtil.AuraFilters).
+local AURA_FILTER_WORDS = {}
+for _, word in ipairs({ "HELPFUL", "HARMFUL", "PLAYER", "RAID", "CANCELABLE", "INCLUDE_NAME_PLATE_ONLY", "MAW", "EXTERNAL_DEFENSIVE",
+  "CROWD_CONTROL", "RAID_IN_COMBAT", "RAID_PLAYER_DISPELLABLE", "BIG_DEFENSIVE", "IMPORTANT", "DISPELLABLE" }) do
+  AURA_FILTER_WORDS[word] = true
+end
+
+-- Why the client refuses a filter string, nil when it takes it (AuraUtil.lua:298-320 IsValidFilterString: words split on
+-- "|" and spaces, each a known word, a "!" in front allowed but not alone).
+local function filterRefusal(filter)
+  for word in tostring(filter):gmatch("[^| ]+") do
+    local bare = word:gsub("^!", "")
+    if bare == "" then return "A negation prefix ('!') must be followed by a filter component." end
+    if not AURA_FILTER_WORDS[bare] then return string.format("Unknown aura filter component: '%s'", bare) end
+  end
+end
+
+-- The layout fields the client checks and what each must be (Blizzard_CustomAuraContainer.lua:143-181).
+local LAYOUT_KINDS = {
+  elementSpacing = "number", lineSpacing = "number", groupSpacing = "number", groupLineSpacing = "number", layoutIndex = "number",
+  forceNewLine = "boolean", elementWidth = "size", elementHeight = "size",
+}
+local LAYOUT_WORDS = { number = "a number", boolean = "a boolean", size = "a non-negative number" }
+
+-- Why the client refuses a group's layout, nil when it takes it.
+local function layoutRefusal(layout)
+  if layout == nil then return end
+  if type(layout) ~= "table" then return "layout must be a table or nil." end
+  for field, kind in pairs(LAYOUT_KINDS) do
+    local v = layout[field]
+    local ok = v == nil or type(v) == (kind == "size" and "number" or kind) and (kind ~= "size" or v >= 0)
+    if not ok then return field .. " must be " .. LAYOUT_WORDS[kind] .. "." end
+  end
+end
+
+-- Whether a value is one of an enum table's values (nil when the world lacks the enum).
+local function enumHas(enum, v)
+  for _, x in pairs(enum or {}) do if x == v then return true end end
+  return false
+end
+
+-- Whether a frame count is a non-negative whole number or infinity (Blizzard_CustomAuraContainer.lua:1-3).
+local function frameCountOk(n)
+  return n == math.huge or (type(n) == "number" and n >= 0 and n == math.floor(n))
+end
+
+-- Why the client refuses a group's options, nil when it takes them (Blizzard_CustomAuraContainer.lua:23-36, :185-194;
+-- a nil field takes the client's default).
+local function optionsRefusal(opts)
+  if opts.maxFrameCount ~= nil and not frameCountOk(opts.maxFrameCount) then return "maxFrameCount must be a non-negative integer or infinity." end
+  if opts.initializeFrame ~= nil and type(opts.initializeFrame) ~= "function" then return "initializeFrame must be a function or nil." end
+  if opts.sortMethod ~= nil and not enumHas(AuraContainerSortMethod, opts.sortMethod) then return "sortMethod must be a valid AuraContainerSortMethod." end
+  if opts.sortDirection ~= nil and not enumHas(AuraContainerSortDirection, opts.sortDirection) then return "sortDirection must be a valid AuraContainerSortDirection." end
+  return layoutRefusal(opts.layout)
+end
+
+-- Why the client refuses a group, nil when it takes it: the key, the filter, a key already used, then the options, in
+-- the client's order (Blizzard_CustomAuraContainer.lua:286-291).
+local function groupRefusal(c, key, filter, opts)
+  if type(key) ~= "string" or key == "" then return "groupKey must be a non-empty string." end
+  local refused = filterRefusal(filter)
+  if refused then return refused end
+  for _, g in ipairs(c.__groups or {}) do if g.key == key then return string.format("aura group '%s' already exists with this key.", key) end end
+  return optionsRefusal(opts)
+end
+
+-- A group: refused as the client refuses it (its asserts raise the message alone), else its first buttons are made
+-- now and dressed by initializeFrame, as the client does.
 function methods:AddAuraGroup(key, filter, opts)
+  local refused = groupRefusal(self, key, filter, opts)
+  if refused then error(refused, 0) end
   local g = { key = key, filter = filter, opts = opts, buttons = {} }
   self.__groups = self.__groups or {}
   self.__groups[#self.__groups + 1] = g
