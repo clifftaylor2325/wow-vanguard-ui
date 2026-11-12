@@ -35,6 +35,18 @@ PA.LEFT_CLEAR = 640
 -- Never fewer buffs in a row than this, so the block doesn't run down the screen: 32 buffs take 7 rows. Under
 -- 1020 wide that row reaches the main tanks' spot (shown only in a raid).
 PA.MIN_PER_ROW = 5
+-- The numbers' ranges. Only the icon size has a control, so a value outside these comes from a crafted or
+-- hand-edited profile; it is kept inside, as a whole number (the client's aura container takes only whole counts:
+-- Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua ValidateMaxFrameCount).
+PA.RANGES = { size = { min = 16, max = 40 }, perRow = { min = 1, max = 40 }, buffs = { min = 0, max = 40 }, debuffs = { min = 0, max = 16 } }
+
+-- What the block is built from: the settings, with each number of PA.RANGES kept inside its range and rounded.
+function PA.Look(s)
+  local look = {}
+  for key, value in pairs(s) do look[key] = value end
+  for key, range in pairs(PA.RANGES) do look[key] = math.floor(math.max(range.min, math.min(range.max, s[key])) + 0.5) end
+  return look
+end
 
 -- The container -----------------------------------------------------------------------------
 
@@ -70,7 +82,7 @@ end
 -- the fight's end: until then the cells may lie over the first buffs. Each call replaces the waiting one, which
 -- judges the room when it runs, so an enchant lost and put on again in one fight moves nothing.
 function PA.PlaceAuras(n)
-  local shift = n * (PA.settings.size + PA.GAP)
+  local shift = n * (PA.look.size + PA.GAP)
   PA.holder.vgHoverArea:SetWidth(PA.lineSize + shift)
   ns.OutOfCombat(function() if PA.placed ~= shift then anchorAuras(shift) end end, "player auras place")
 end
@@ -199,7 +211,7 @@ end
 
 -- Building ----------------------------------------------------------------------------------
 
--- What a client adds to your auras block once it is built, each fn(holder, settings) (Modules/RetailAuras.lua
+-- What a client adds to your auras block once it is built, each fn(holder, PA.look) (Modules/RetailAuras.lua
 -- on Retail: your private aura spots; none on WoW Forever).
 PA.CLIENT_PARTS = {}
 
@@ -264,11 +276,11 @@ local function replace(settings)
   build(settings)
 end
 
--- Module entry point (Core/Modules.lua): replace the game's buff frames out of
--- combat, and follow weapon changes (the container follows UNIT_AURA itself).
+-- Module entry point (Core/Modules.lua): replace the game's buff frames out of combat, built from the settings
+-- kept in range (PA.look), and follow weapon changes (the container follows UNIT_AURA itself).
 function PA.Enable(settings)
-  PA.settings = settings
-  ns.OutOfCombat(function() replace(settings) end)
+  PA.settings, PA.look = settings, PA.Look(settings)
+  ns.OutOfCombat(function() replace(PA.look) end)
   for _, e in ipairs({ "UNIT_INVENTORY_CHANGED", "WEAPON_ENCHANT_CHANGED", "WEAPON_SLOT_CHANGED" }) do ns.On(e, onWeapons) end
   ns.On("PLAYER_ENTERING_WORLD", onEnterWorld)
 end

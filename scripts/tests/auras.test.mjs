@@ -468,6 +468,15 @@ it("H45-15-2 your buffs: entering the world refreshes the enchant cells", () => 
   expect(shown(), "the enchant the client lists by the loading screen's end shows").toBe(true);
 });
 
+it("H45-15-3 your buffs: numbers out of range in a crafted profile are kept inside, as whole numbers", () => {
+  const sv = "VanguardDB = { profiles = { Default = { PlayerAuras = { perRow = 0, buffs = 2.5, size = -4 } } }, chars = {} }";
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV, { savedVariables: sv });
+  const block = addon.eval(`local PA = ns.GetModule("PlayerAuras") local g = PA.auras.frame.__groups
+    return { lineSize = PA.lineSize, width = PA.holder:GetWidth(), pad = PA.holder.vgHoverArea:GetHeight(), buffs = g[1].opts.maxFrameCount,
+      size = g[1].buttons[1]:GetWidth(), cell = PA.cells[1]:GetWidth() }`);
+  expect(block, "one 16 icon to a row (20 with its gap), three buffs and 16 debuffs: 19 rows").toEqual({ lineSize: 20, width: 20, pad: 380, buffs: 3, size: 16, cell: 16 });
+});
+
 const RETAIL_ENCHANTS_ENV = `
   C_Item.GetWeaponEnchantInfo = nil
   __temp = { [16] = { enchantID = 5, remainingTimeMs = 1800000, chargesRemaining = 0, hasExpirationTime = true } }

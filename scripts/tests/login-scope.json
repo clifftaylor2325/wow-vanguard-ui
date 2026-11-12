@@ -29,6 +29,7 @@
       "H44-5-3 auras: your buffs', the target's and a raid tile's icons go back on whole pixels after a scale change",
       "H44-5-50 your buffs: an enchant that runs out and is put on again in one fight leaves the buffs one cell over",
       "H45-15-2 your buffs: entering the world refreshes the enchant cells",
+      "H45-15-3 your buffs: numbers out of range in a crafted profile are kept inside, as whole numbers",
       "a client that rejects every aura filter word keeps the filter and shows no auras",
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",
