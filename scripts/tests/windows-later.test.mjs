@@ -1244,3 +1244,13 @@ it("keeps a dressed money line in the theme font after the game recolours it, an
   expect(face("TestOnlyPlainMoney"), "a line no skin dressed stays the game's").toBe("TEST-ONLY-GAME");
   expect(addon.eval("return #ns.errors")).toBe(0);
 });
+it("H46-C-G6 a lit criterion keeps its token when the window is shown again, and follows a theme change", () => {
+  const addon = loggedIn(ACHIEVEMENT_ENV);
+  addon.fire("ADDON_LOADED", "Blizzard_AchievementUI");
+  addon.eval("AchievementFrame:Show()");
+  addon.eval("AchievementObjectives_DisplayCriteria(AchievementFrameAchievementsObjectives, 1)");
+  const name = "AchievementFrameAchievementsObjectives.criterias[1].Name";
+  addon.eval("AchievementFrame:Hide() AchievementFrame:Show()");
+  addon.eval("ns.Theme.Settings().variant = 'vellum' ns.Theme.Refresh()");
+  expect([addon.eval(`return ns.Theme.ColorToken(${name})`), addon.eval(`return ${name}.__textColor[1]`)]).toEqual(["text", addon.eval("return (ns.Theme.RGB('text'))")]);
+});

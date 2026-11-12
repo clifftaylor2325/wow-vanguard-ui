@@ -1965,14 +1965,20 @@ function GW.ForgetToken(fs)
   if r and g and b then T.ColorRGB(fs, r, g, b) end
 end
 
--- The texts under key of each item in list (the objectives' criteria and meta achievements) that the game made black
--- in the text colour; green (done) and grey (open) ones keep the meaning the game gave them.
-local function lightBlackTexts(list, key)
+-- Calls fn(text) for the text under key of each item in list (the objectives' criteria and meta achievements).
+local function eachText(list, key, fn)
   if type(list) ~= "table" then return end
-  for _, item in ipairs(list) do
-    local text = type(item) == "table" and item[key]
-    if isBlackText(text) then T.Color(text, "text") else GW.ForgetToken(text) end
-  end
+  for _, item in ipairs(list) do fn(type(item) == "table" and item[key]) end
+end
+
+-- Makes a text the game left black the text colour; green (done) and grey (open) ones keep the meaning the game gave them.
+local function lightIfBlack(text)
+  if isBlackText(text) then T.Color(text, "text") end
+end
+
+-- Drops the token of a text the game just painted a colour of its own (not black), so a theme refresh leaves it be.
+local function forgetIfPainted(text)
+  if not isBlackText(text) then GW.ForgetToken(text) end
 end
 
 -- The progress bars (retail: "700/1000") of an open achievement as flat accent bars; the game's pool makes them again
@@ -1985,15 +1991,25 @@ end
 -- An open achievement's list of criteria and meta achievements, its black names light and its progress bars flat.
 local function lightCriteria(objectives)
   if type(objectives) ~= "table" then return end
-  lightBlackTexts(objectives.criterias, "Name")
-  lightBlackTexts(objectives.metas, "Label")
+  eachText(objectives.criterias, "Name", lightIfBlack)
+  eachText(objectives.metas, "Label", lightIfBlack)
   skinCriteriaBars(objectives)
+end
+
+-- After the game fills the list in for an achievement: what it painted a colour of its own is kept, and the rest lit.
+-- Only here does a text lose its token: the game has just painted it, which a plain pass over a window shown again
+-- has not (a criterion Vanguard lit would be taken for the game's).
+local function lightCriteriaAfterFill(objectives)
+  if type(objectives) ~= "table" then return end
+  eachText(objectives.criterias, "Name", forgetIfPainted)
+  eachText(objectives.metas, "Label", forgetIfPainted)
+  lightCriteria(objectives)
 end
 
 -- The criteria list light now and after the game fills it in for each achievement (it colours a completed criterion
 -- black), the hook added once.
 local function watchCriteria()
-  GW.HookGlobalOnce("AchievementObjectives_DisplayCriteria", "achievement criteria", lightCriteria)
+  GW.HookGlobalOnce("AchievementObjectives_DisplayCriteria", "achievement criteria", lightCriteriaAfterFill)
   lightCriteria(_G.AchievementFrameAchievementsObjectives)
 end
 
