@@ -344,7 +344,8 @@ it("options: search reads each page's rows once per opening; a rebuilt page leav
   expect([shown(), reads()], "a rebuilt page replaces its rows: the page shows as many, the profiles page read again to build it").toEqual([rows, [0, 1]]);
   const stale = addon.eval("local n = 0 for _, w in ipairs(__old) do w.Refresh = function() n = n + 1 end end ns.Options.Refresh() return { #__old > 0, n }");
   expect(stale, "the thrown-away rows are no longer refreshed").toEqual([true, 0]);
-  addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Options.RebuildPage("profiles") ns.Options.Search("tank")');
+  // ns.NewProfile rebuilds the Profiles page itself (H45-23-80).
+  addon.eval('ns.NewProfile("TEST-ONLY Tank") ns.Options.Search("tank")');
   expect([shown(), addon.eval("return ns.Options.matched.profiles"), reads()], "a new profile: one more row, found by the search; only the rebuilt page is read again, once (to build it, mark its dot and search it)").toEqual([rows + 1, true, [0, 1]]);
   addon.eval('ns.Options.Search("tan")');
   expect(reads(), "the next keystroke reads nothing").toEqual([0, 0]);
