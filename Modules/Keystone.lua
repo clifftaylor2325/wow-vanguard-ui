@@ -66,6 +66,7 @@ local function holder()
   f:EnableMouse(false)
   f.inner = CreateFrame("Frame", nil, f)
   f.inner:SetAllPoints()
+  f.inner.vgCalmDeaf = true
   V.Calm(f.inner, "frames")
   return f
 end
