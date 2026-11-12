@@ -305,3 +305,18 @@ it("H44-7-R2 raid status: the ready check, resurrection and summon marks take th
   expect(after[4], "the zones ask for a smaller mark on the 36-tall tile").toBeLessThan(before[4]);
   expect(after.slice(0, 4), "every center mark takes it").toEqual([after[4], after[4], after[4], after[4]]);
 });
+
+it("H45-17-R1 raid status: switching it off and on during a ready check does not show the last check's answers", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  addon.eval('__status.ready = { raid1 = "ready", raid3 = "notready" }');
+  addon.fire("READY_CHECK");
+  addon.fire("READY_CHECK_FINISHED");
+  addon.eval("__wfgStub.advance(7)");
+  addon.eval('ns.SetModuleEnabled("RaidStatus", false)');
+  addon.eval('__status.ready = { raid1 = "waiting", raid3 = "ready" }');
+  addon.fire("READY_CHECK");
+  addon.eval('ns.SetModuleEnabled("RaidStatus", true)');
+  addon.fire("READY_CHECK_CONFIRM", "raid3");
+  expect([/Icons\\Waiting$/.test(String(marks(addon, 1).ready)), /Icons\\Check$/.test(String(marks(addon, 3).ready))], "this check's answers, not the last one's").toEqual([true, true]);
+});

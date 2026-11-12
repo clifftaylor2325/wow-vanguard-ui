@@ -409,7 +409,7 @@ function RS.Disable()
   RA.RemoveHook(RF.setupHooks, attach)
   RA.RemoveHook(RF.updateHooks, update)
   RA.RemoveHook(RF.sizeHooks, resized)
-  RS.following, RS.readyRunning = false, false
+  RS.following, RS.readyRunning, RS.readyFinished, RS.readyAnswers = false, false, false, {}
   for _, b in ipairs(RF.buttons) do
     if b.raidIcon then clearTile(b) end
   end
