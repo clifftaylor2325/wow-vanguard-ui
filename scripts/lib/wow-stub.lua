@@ -878,10 +878,14 @@ end
 function methods:IsEventRegistered(event) return self.__events[event] == true end
 -- Text: a font string made with CreateFontString takes none until it has a font (SetFont, a font
 -- object, or a template it inherits one from), as the client refuses it; the stub's own game font
--- strings have theirs from the game's XML.
+-- strings have theirs from the game's XML. An edit box whose text code changes runs OnTextChanged(self, false)
+-- (forever Blizzard_AutoComplete/AutoComplete.lua:401, Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:530; at once
+-- and only on a change is the stub's guess); stub.type runs it itself, as typed.
 function methods:SetText(text)
   if self.__needsFont and not (self.__font or self.__template or self.__fontObject) then error("FontString:SetText(): Font not set", 2) end
+  local changed = tostring(self.__text or "") ~= tostring(text or "")
   self.__text = text
+  if changed and self.__kind == "EditBox" and not self.__typing then stub.runScript(self, "OnTextChanged", false) end
 end
 -- An edit box's letter limit (0: none). The stub's SetText doesn't cut to it; a test that needs the cut models it.
 function methods:SetMaxLetters(n) self.__maxLetters = n end
@@ -895,10 +899,18 @@ function methods:GetText()
   if self.__kind == "EditBox" then return self.__text or "" end
   return self.__text
 end
+-- Gives an edit box the keyboard focus or takes it off, running its script when the focus changes
+-- (Blizzard_SharedXML/Shared/InputBox/InputBoxTemplates.lua:180-207 leans on OnEditFocusLost after ClearFocus; at once
+-- and only on a change is the stub's guess).
+local function moveFocus(box, focused, script)
+  if (box.__focus == true) == focused then return end
+  box.__focus = focused
+  stub.runScript(box, script)
+end
 -- An edit box's keyboard focus (the client's name suggestions under a box hide when it loses it).
-function methods:SetFocus() self.__focus = true end
+function methods:SetFocus() moveFocus(self, true, "OnEditFocusGained") end
 -- Takes the keyboard focus off the edit box.
-function methods:ClearFocus() self.__focus = false end
+function methods:ClearFocus() moveFocus(self, false, "OnEditFocusLost") end
 -- Whether the edit box has the keyboard focus.
 function methods:HasFocus() return self.__focus == true end
 -- The rotation field.
@@ -1434,9 +1446,11 @@ function stub.drag(frame, point, x, y)
   runScript(frame, "OnDragStop")
 end
 
--- Types into an edit box: sets the text and runs OnTextChanged (as user input).
+-- Types into an edit box: sets the text and runs OnTextChanged once, as user input.
 function stub.type(frame, text)
+  frame.__typing = true
   frame:SetText(text)
+  frame.__typing = nil
   runScript(frame, "OnTextChanged", true)
 end
 

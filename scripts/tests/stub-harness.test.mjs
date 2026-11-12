@@ -412,3 +412,19 @@ it("a click whose handler raises ends its hardware event and passes the error on
   expect(addon.eval(`local b = CreateFrame("Button", nil, UIParent) b:SetScript("OnClick", function() error("TEST-ONLY", 0) end)
     local ok, err = pcall(__wfgStub.click, b) return { ok, err, __wfgStub.hardware }`)).toEqual([false, "TEST-ONLY", 0]);
 });
+
+// Blizzard's own code leans on the client running an edit box's scripts for code-set text and focus:
+// forever Blizzard_AutoComplete/AutoComplete.lua:401 and Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:530
+// ("setting the text programatically which will clear the userInput flag"), and
+// Blizzard_SharedXML/Shared/InputBox/InputBoxTemplates.lua:180-207 (SearchBoxTemplate_ClearText). That they run at
+// once, and only on a change, is the stub's guess.
+it("an edit box runs OnTextChanged for code-set text and its focus scripts when the focus changes; typing runs it once", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local seen = {} local e = CreateFrame("EditBox", nil, UIParent)
+    e:SetScript("OnTextChanged", function(_, user) seen[#seen + 1] = "text:" .. tostring(user) end)
+    e:SetScript("OnEditFocusGained", function() seen[#seen + 1] = "gained" end)
+    e:SetScript("OnEditFocusLost", function() seen[#seen + 1] = "lost" end)
+    e:SetText("a") e:SetText("a") e:SetFocus() e:SetFocus() e:ClearFocus() e:ClearFocus() __wfgStub.type(e, "b")
+    local fs = UIParent:CreateFontString() fs:SetFont("TEST-ONLY", 12, "") fs:SetText("c")
+    return table.concat(seen, " ")`)).toBe("text:false gained lost text:true");
+});
