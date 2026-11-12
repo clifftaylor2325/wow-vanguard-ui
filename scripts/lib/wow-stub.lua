@@ -1388,10 +1388,19 @@ local CLICK_SCRIPTS = {
   mouse = { "OnMouseDown", "OnMouseUp" },
 }
 
+-- The click flips an enabled check button's check before its OnClick, which reads the new state with no SetChecked of
+-- its own (forever Blizzard_Transmog/Blizzard_Transmog.lua:1960-1966, live :1650; Blizzard_ActionBar's PostClick
+-- UpdateState puts an action button's check right after, ActionButton.lua:1567-1569). Where the flip falls between
+-- PreClick and OnClick is engine-side: the stub's guess is just before OnClick.
+local function flipCheck(frame)
+  if frame.__kind == "CheckButton" then frame.__checked = frame.__checked ~= true end
+end
+
 -- Runs one script of a click with the arguments the client gives it; a disabled button's OnClick does not run.
 local function clickScript(frame, name, button, down)
   if name == "OnMouseDown" or name == "OnMouseUp" then return runScript(frame, name, button) end
   if name == "OnClick" and frame.__disabled == true then return end
+  if name == "OnClick" then flipCheck(frame) end
   runScript(frame, name, button, down == true)
 end
 

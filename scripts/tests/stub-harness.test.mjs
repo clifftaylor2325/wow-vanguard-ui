@@ -54,6 +54,25 @@ it("SetEnabled turns a button, check button, edit box or slider off and on, with
   expect(states).toEqual({ Button: on, CheckButton: on, EditBox: on, Slider: on });
 });
 
+// A click flips a check button's check before its OnClick, which reads the new state with no SetChecked of its own
+// (forever Blizzard_Transmog/Blizzard_Transmog.lua:1960-1966, live :1650). A disabled one and a click it did not
+// register leave the check alone.
+it("a click flips an enabled check button's check before its OnClick; a disabled one or an unregistered click does not", () => {
+  const addon = createAddon();
+  addon.eval(`__seen = {} local b = CreateFrame("CheckButton", "TestCheck", UIParent)
+    b:SetScript("OnClick", function(self) __seen[#__seen + 1] = self:GetChecked() end)`);
+  addon.click("TestCheck");
+  addon.click("TestCheck");
+  expect(addon.eval("return { __seen[1], __seen[2], TestCheck:GetChecked() }"), "OnClick reads true, then false").toEqual([true, false, false]);
+  addon.eval("TestCheck:Click()");
+  expect(addon.eval("return TestCheck:GetChecked()"), ":Click() flips it too").toBe(true);
+  addon.click("TestCheck", "RightButton");
+  expect(addon.eval("return TestCheck:GetChecked()"), "an unregistered click leaves it").toBe(true);
+  addon.eval("TestCheck:Disable()");
+  addon.click("TestCheck");
+  expect(addon.eval("return { TestCheck:GetChecked(), #__seen }"), "a disabled button keeps its check").toEqual([true, 3]);
+});
+
 it("SetShown runs OnShow and OnHide as Show and Hide do, but not a hook on the frame's Show", () => {
   const addon = createAddon();
   const runs = addon.eval(`local f, seen = CreateFrame("Frame"), {}
