@@ -874,13 +874,23 @@ local function restackBar(n)
   return true
 end
 
+-- Places the HUD layout's frames again when bar 1's width changed (the keep stands its frames out with it).
+local function refitLayout()
+  local half = AB.Bar1HalfWidth()
+  if half == AB.stackedHalf then return end
+  AB.stackedHalf = half
+  ns.RefitHudLayout()
+end
+
 -- Re-stacks the bottom bars after a bar's buttons, rows or size changed: each stacked bar whose
--- default point moved gets it, and the cast bar follows the stack's top. Only call out of combat.
+-- default point moved gets it, the cast bar follows the stack's top and the HUD layout bar 1's width.
+-- Only call out of combat.
 function AB.Restack()
   for n in pairs(AB.bars) do restackBar(n) end
   AB.stackedTop = AB.StackTop(AB.settings)
   ns.GetModule("CastBars").FitPlayer()
   fitVehicleExit()
+  refitLayout()
 end
 
 -- Re-stacks after a scale change only what the bars' new rounded heights moved, the cast bar following
