@@ -2558,6 +2558,13 @@ end
 GW.Add("windows", GW.FRAMED, GW.SkinFramed)
 GW.Add("windows", { "LootFrame" }, GW.SkinLoot)
 GW.Add("popups", GW.POPUPS, GW.SkinFramed)
+
+-- Refits each popup's panel after the game moves its shown popups to another top-level frame without showing them again
+-- (the report window's screenshot mode), which runs no OnShow.
+local function refitPopups()
+  for _, name in ipairs(GW.POPUPS) do GW.FitBackdrop(_G[name]) end
+end
+GW.HookGlobalOnce("StaticPopup_ReparentDialogs", "popup panels", refitPopups)
 GW.Add("timers", GW.TIMERS, GW.SkinTimerContainer)
 for _, later in ipairs(GW.LATER) do GW.AddOnDemand("windows", later[1], later[2], GW.SkinFramed) end
 GW.Needs(GW.TIMERS, { methods = { "SetupTimer" } })
