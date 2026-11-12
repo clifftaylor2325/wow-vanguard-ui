@@ -389,9 +389,16 @@ it("aura containers on the client's engine", () => {
   expect(c.timer === "%dm" && c.color === 0, "the timer text gets the theme's formatter and time-left colors").toBeTruthy();
   addon.eval("__c:SetUnit(nil)");
   expect(addon.eval("return __c.frame.__enabled == false and __c.frame.__groups[1].buttons[1].__shown == false"), "no unit: the container turns off").toBeTruthy();
-  expect(addon.eval("__wfgStub.inCombat = true local n = ns.Auras.BackendName() __wfgStub.inCombat = false return n") === "fallback", "a container needed in combat (a new nameplate) gets the fallback").toBeTruthy();
+  expect(addon.eval("__wfgStub.inCombat = true local legacy = ns.Auras.Backend() == ns.AuraLegacy __wfgStub.inCombat = false return legacy"), "a container needed in combat (a new nameplate) gets the fallback").toBe(true);
   addon.eval('__c:SetUnit("target") __ca["HARMFUL|PLAYER"] = {} __c:Refresh()');
   expect(addon.eval("return __c.frame.__groups[1].buttons[1].__shown") === false, "Refresh reads the auras again").toBeTruthy();
+});
+
+it("H45-15-51 /vg status in a fight names the aura engine the session uses", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV);
+  setCombat(addon, true);
+  addon.slash("status");
+  expect([chatHas(addon, /auras on the engine/), addon.eval("return ns.Auras.Backend() == ns.AuraLegacy")], "the engine, though a container made now gets the fallback").toEqual([true, true]);
 });
 
 // TEST-ONLY weapons: a shaman's imbue on the main hand (30 minutes left), nothing on the off hand.

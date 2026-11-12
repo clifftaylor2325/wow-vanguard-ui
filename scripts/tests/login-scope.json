@@ -32,6 +32,7 @@
       "H45-15-3 your buffs: numbers out of range in a crafted profile are kept inside, as whole numbers",
       "H45-15-4 a target or raid aura count that is not a whole number is rounded, as the client's aura container takes only whole ones",
       "H45-15-50 auras: your weapon enchant cells go back on whole pixels after a scale change, as the buffs beside them",
+      "H45-15-51 /vg status in a fight names the aura engine the session uses",
       "a client that rejects every aura filter word keeps the filter and shows no auras",
       "target and focus auras",
       "your buffs and debuffs replace the game's, with weapon enchants in front",
