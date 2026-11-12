@@ -703,7 +703,8 @@ function methods:RegisterUnitEvent(event, ...)
 end
 
 -- Reparents a region (the preview and tests read __parent). Like the game, a frame without a
--- fixed strata takes its new parent's strata.
+-- fixed strata takes the strata its new parent has, its own or the one it inherits (forever
+-- Blizzard_UnitFrame/Shared/PlayerFrame.lua:45-46: "Inherit parent strata" before SetParent(PlayerFrame)).
 -- Approximation (H44-30-102): a reparent that takes a shown frame in or out of view runs no OnHide or OnShow here, and
 -- since aa9dd03 a later Hide() under the hidden parent runs none either, so OnHide work after such a reparent goes
 -- unexercised. Whether the client runs them at SetParent is not in Blizzard's source; smoke step 33.664a asks the game.
@@ -712,7 +713,7 @@ function methods:SetParent(parent)
   detach(self.__parent, self)
   self.__parent = parent
   attach(parent, self)
-  if parent and not self.__fixedStrata then self.__strata = parent.__strata or "MEDIUM" end
+  if parent and not self.__fixedStrata then self.__strata = parent.GetFrameStrata and parent:GetFrameStrata() or "MEDIUM" end
 end
 
 -- Strata and scroll child.

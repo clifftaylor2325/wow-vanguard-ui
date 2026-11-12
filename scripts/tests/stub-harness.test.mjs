@@ -73,6 +73,17 @@ it("a click flips an enabled check button's check before its OnClick; a disabled
   expect(addon.eval("return { TestCheck:GetChecked(), #__seen }"), "a disabled button keeps its check").toEqual([true, 3]);
 });
 
+// forever Blizzard_UnitFrame/Shared/PlayerFrame.lua:45-46 (live :40): a frame moved under PlayerFrame inherits the
+// strata its new parent has, though PlayerFrame sets none of its own there.
+it("a frame moved under a parent whose strata is inherited takes that strata, as a frame made there does", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local top = CreateFrame("Frame", nil, UIParent) top:SetFrameStrata("DIALOG")
+    local mid = CreateFrame("Frame", nil, top)
+    local made = CreateFrame("Frame", nil, mid)
+    local moved = CreateFrame("Frame", nil, UIParent) moved:SetParent(mid)
+    return { mid:GetFrameStrata(), made:GetFrameStrata(), moved:GetFrameStrata() }`)).toEqual(["DIALOG", "DIALOG", "DIALOG"]);
+});
+
 it("SetShown runs OnShow and OnHide as Show and Hide do, but not a hook on the frame's Show", () => {
   const addon = createAddon();
   const runs = addon.eval(`local f, seen = CreateFrame("Frame"), {}
