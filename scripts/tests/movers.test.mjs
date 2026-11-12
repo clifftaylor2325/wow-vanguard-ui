@@ -757,3 +757,15 @@ it("H46-4-51 Exit without saving after Reset profile, Copy here or an import int
   expect(addon.eval(spot), "Copy here stays copied").toBe("none");
   expect(addon.eval("ns.ProfileChanged() return #ns.errors"), "a profile change while locked remembers nothing and fails nothing").toBe(0);
 });
+
+it("H46-4-52 after a live profile switch the new profile's links follow their target's size", () => {
+  const addon = loggedIn(LIVE_OFF, { savedVariables: 'VanguardDB.profiles = { Default = {}, Raid = { positions = { h46d = { rel = { to = "h46t", side = "RIGHT", x = 0, y = 0 } } } } }\n' });
+  addon.eval(`__t = CreateFrame("Frame", nil, UIParent) __t:SetSize(100, 20) ns.Mover(__t, "h46t", "T", { "CENTER", "CENTER", 0, 100 })
+    __d = CreateFrame("Frame", nil, UIParent) __d:SetSize(100, 20) ns.Mover(__d, "h46d", "D", { "CENTER", "CENTER", 0, -100 })`);
+  expect(addon.eval('return ns.PickProfile("Raid")'), "the pick applied at once").toBe(true);
+  const out = addon.eval(`local w = __t:GetWidth() + 100 __t:SetWidth(w)
+    local s = __t:GetScript("OnSizeChanged") if s then s(__t, w, __t:GetHeight()) end
+    return { s ~= nil, __t:GetRight(), __d:GetLeft() }`);
+  expect(out[0], "the target's size is watched").toBe(true);
+  expect(out[2], "the dependent stays at the target's right edge").toBeCloseTo(out[1], 0);
+});
