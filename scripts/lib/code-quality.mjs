@@ -26,8 +26,8 @@
 //      override binding, the panel manager's ShowUIPanel or HideUIPanel, the SecureHandler method forms
 //      WrapScript, UnwrapScript, Execute and SetFrameRef on a frame) outside a combat guard (report-only under
 //      #263 until it was quiet on main). A guard is a function run through ns.OutOfCombat (matched by its whole
-//      name), an `if` on InCombat() / InCombatLockdown() (un-negated, not joined by `and`, not compared, not in a
-//      negated bracket) whose branch ends in return and comes before the call in the same blocks (the same
+//      name), an `if` on ns.InCombat() or the bare InCombatLockdown(), called (un-negated, not joined by `and`, not
+//      compared, not in a negated bracket) whose branch ends in return and comes before the call in the same blocks (the same
 //      branch of an enclosing if) of the same function, or a call inside `if not ns.InCombat() then`. Known limit: a function deferred once is trusted for every call of its name.
 // Test cases (the callback passed to it(...)) are exempt from rule 1.
 // More rules are report-only (reportSource below): OnUpdate handlers neither throttled nor
@@ -811,8 +811,6 @@ const SECURE_CALLS = new Set([
 // Files whose secure calls all run where the frame is made and set up, in the same safe
 // window. Add a file only after reading every call in it; empty means none is excused.
 export const SECURE_ALLOW = new Set([]);
-// Words that make a condition a combat check.
-const COMBAT_CHECKS = new Set(["InCombatLockdown", "InCombat"]);
 // Calls that are secure only as a method on a frame (fs:WrapScript(...)): their bare names are common words.
 const SECURE_METHODS = new Set(["WrapScript", "UnwrapScript", "Execute", "SetFrameRef"]);
 
@@ -953,14 +951,24 @@ function senseUnclear(words, head, at) {
   return ["=", "~"].includes(words[checkClose(words, at) + 1]) || insideNot(words, head);
 }
 
+// True when words[k] is a combat lockdown check, called: the game's global InCombatLockdown(), or ns.InCombat() with a
+// "." or ":" (H46-35-1). Another name's InCombat (UF.InCombat(unit), a unit's flag; ns.Combat.InCombat), a field read
+// without a call and C_X.InCombatLockdown() are not.
+function isCombatCheck(words, k) {
+  const owned = [".", ":"].includes(words[k - 1]);
+  const lockdown = words[k] === "InCombatLockdown" && !owned;
+  const addon = words[k] === "InCombat" && owned && words[k - 2] === "ns" && ![".", ":"].includes(words[k - 3]);
+  return words[k + 1] === "(" && (lockdown || addon);
+}
+
 // How an if-condition (tokens[a..b]) tests for combat: "in" when it is true in combat (an un-negated check, not
 // joined by `and`; `or` chains are fine), "out" when it is true out of combat (a negated check, not joined by
-// `or`), else null (also when its sense is unclear: compared, or in a negated bracket).
+// `or`), else null (also when it holds no check, or its sense is unclear: compared, or in a negated bracket).
 function combatSense(tokens, a, b) {
   const words = tokens.slice(a, b).map((t) => t.text);
-  const at = words.findIndex((w) => COMBAT_CHECKS.has(w));
+  const at = words.findIndex((w, k) => isCombatCheck(words, k));
   if (at < 0) return null;
-  const head = words[at - 1] === "." ? at - 2 : at;
+  const head = [".", ":"].includes(words[at - 1]) ? at - 2 : at;
   if (senseUnclear(words, head, at)) return null;
   if (words[head - 1] === "not") return words.includes("or") ? null : "out";
   return words.includes("and") ? null : "in";

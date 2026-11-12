@@ -452,6 +452,11 @@ const WEAK_GUARDS = [
   `if not (x or ns.InCombat()) then return end\n  ${SECURE_CALL_LINE}`,
   `if InCombatLockdown() == false then return end\n  ${SECURE_CALL_LINE}`,
   `if ns.InCombat() ~= true then return end\n  ${SECURE_CALL_LINE}`,
+  // H46-35-1: the wrong sense through a colon or a longer name, a unit's combat flag, and a field that is not called.
+  `if not ns:InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if not ns.Combat.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if state.InCombat then return end\n  ${SECURE_CALL_LINE}`,
+  `if UF.InCombat(u) then return end\n  ${SECURE_CALL_LINE}`,
 ];
 
 // H44-25-2: a combat word read but not tested, or tested the wrong way round, is no guard.
@@ -473,6 +478,9 @@ const STRICT_GUARDS = [
   `if InCombatLockdown() then return else ${SECURE_CALL_LINE} end`,
   `if x then\n    fn()\n  else\n    if ns.InCombat() then return end\n    ${SECURE_CALL_LINE}\n  end`,
   `if ns.InCombat() then return end\n  if x then fn() else ${SECURE_CALL_LINE} end`,
+  // H46-35-1: ns.InCombat called with a colon, and a real check after another name's InCombat in an `or` chain.
+  `if ns:InCombat() then return end\n  ${SECURE_CALL_LINE}`,
+  `if UF.InCombat(u) or ns.InCombat() then return end\n  ${SECURE_CALL_LINE}`,
 ];
 
 // H44-25-2: the shapes of a real guard pass.
