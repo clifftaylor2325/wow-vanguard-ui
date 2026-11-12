@@ -305,11 +305,32 @@ local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step 
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
+-- get/set for the HUD look, applied at once out of combat. A pick made in a fight waits for it to end (the latest wins)
+-- and the row shows it meanwhile, so the plates and the bars change together and a second click steps on from the pick.
+local hudLookSetting
+do
+  local queued
+  local get, set, initial = liveThemeSetting("hudLook")
+
+  -- Applies the pick that waited for the fight.
+  local function applyQueuedLook()
+    local pick = queued
+    queued = nil
+    if pick then set(pick) end
+  end
+
+  -- The row's getter, setter and default: the queued pick (if any) or the look in use.
+  function hudLookSetting()
+    return O.Tag(function() return queued or get() end, "theme", "hudLook"),
+      function(v) queued = v; ns.OutOfCombat(applyQueuedLook, "HUD look") end, initial
+  end
+end
+
 -- HUD, the HUD's shape: the HUD look (three notes: the loud looks, the quiet ones, Tabs) and the shield corners with its note.
 local function hudRows()
   return {
     { "header", L["HUD"] },
-    { "cycle", L["HUD look"], T.HudLookChoices(), liveThemeSetting("hudLook") },
+    { "cycle", L["HUD look"], T.HudLookChoices(), hudLookSetting() },
     { "text", L["Shield: every unit frame a shield pointing away from you, the crest on a rail between your frame and your target's. Plain: flat frames."],
       "note" },
     { "text", L["Hairline: no plates, a brass line under each frame. Rimmed: rounded frames and tools with a two-line rim."], "note" },

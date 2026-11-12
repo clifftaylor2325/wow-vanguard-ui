@@ -643,6 +643,20 @@ it("options: a HUD layout picked in a fight shows on its row at once and a secon
   expect(addon.eval(step.replace('row:GetScript("OnClick")(row, "LeftButton")', 'row:GetScript("OnClick")(row, "LeftButton") ns.Options.Refresh()')), "out of combat a click applies at once").toEqual(["centered", "centered"]);
 });
 
+it("options: a HUD look picked in a fight shows on its row, waits for the fight's end and keeps its default (H45-40-501)", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { hudLook = "plain" } } } }' });
+  addon.eval('ns.Options.Show("general")');
+  const row = `local row for _, w in ipairs(__wfgStub.frames) do if w.caption == "HUD look" and ns.Options.RevealRow(w) then row = w end end`;
+  const click = `${row} row:GetScript("OnClick")(row, "LeftButton") return { row.get(), ns.Theme.Settings().hudLook }`;
+  addon.world.combat(true);
+  expect(addon.eval(click), "the first click: the row shows the pick, the setting waits for the fight").toEqual(["shield", "plain"]);
+  expect(addon.eval(click)[0], "the second steps on from the pick").not.toBe("shield");
+  expect(addon.eval(`${row} return { row.source[6], select(2, ns.Options.SettingOf(row.get)) }`), "the default and the setting tag stay").toEqual(["shield", "hudLook"]);
+  addon.world.combat(false);
+  expect(addon.eval("return ns.Theme.Settings().hudLook"), "after the fight the last pick lands").not.toBe("plain");
+  expect(addon.eval(click)[1], "out of combat a click applies at once").toBe(addon.eval("return ns.Theme.HudLook()"));
+});
+
 it("options: the Your characters lines on Game windows follow the record when the window opens again (H45-23-50)", () => {
   const addon = loggedIn(CLICK_LUA);
   // The page's newest All together line.
