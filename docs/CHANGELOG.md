@@ -255,7 +255,7 @@ A guided setup, one Quiet the game area, a quicker login, and fixes across saved
 - A big raid's rows and the preview stay on the screen when the raid frames sit near the top.
 - The Versus deck grows to wrap the rows your class adds to the player frame (combo points, totems, a druid's mana bar, the status chip), and the status chip sits clear of the totem and combo-point rows.
 - The interrupt mark follows the interrupt you can use in your stance.
-- Click casting's "Also on your unit frames" leaves the boss frames out, so a click there still targets the boss.
+- Click casting's "Also on player, target and focus" leaves the boss frames out, so a click there still targets the boss.
 - A WoW Forever paladin's buff watch counts Blessing of Sanctuary.
 - The meter's Deaths report says when each death happened, not an amount, and the Fights page says that a reload also forgets the fights.
 - The info strip's Clock switch applies at the next reload, since the game puts its own minimap clock away only at login.
