@@ -319,6 +319,9 @@ do
     if pick then set(pick) end
   end
 
+  -- A pick made for one profile is not carried to another that takes over before the fight ends.
+  ns.OnProfileChanged(function() queued = nil end)
+
   -- The row's getter, setter and default: the queued pick (if any) or the look in use.
   function hudLookSetting()
     return O.Tag(function() return queued or get() end, "theme", "hudLook"),
