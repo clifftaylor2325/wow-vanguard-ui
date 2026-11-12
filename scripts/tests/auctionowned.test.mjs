@@ -912,11 +912,20 @@ it("H44-21-1: a named list's search rings after the pane changed to Recent; Rece
   addon.advance(1);
   expect(alertRings(addon), "the named list's search, answered while Recent is shown").toBe(1);
   addon.advance(3);
-  addon.eval(`local AH = ${HELPER} AH.DeleteList("TEST-ONLY Mats") AH.PickEntry(AH.RECENT) VanguardDB.ah.recent[1] = { term = 10940, maxPrice = 600, alert = true } AH.SearchList()`);
+  addon.eval(`local AH = ${HELPER} AH.DeleteList("TEST-ONLY Mats") AH.PickEntry(AH.RECENT) AH.SearchList()`);
   addon.eval("__wfgWorld.ah.browse = { { itemKey = { itemID = 10940 }, minPrice = 400, totalQuantity = 5 } }");
   addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
   addon.advance(1);
   expect(alertRings(addon), "Recent's entry never alerts").toBe(1);
+});
+it("H44-G3-9: an older save's Recent copies lose their alert at login; the named list's entry keeps its own", () => {
+  const addon = atAuctionHouse(DUSTS + ALERT_ENV, { savedVariables: RECENT_ALERT });
+  expect(addon.eval(`return { VanguardDB.ah.recent[1].alert == nil, VanguardDB.ah.lists["TEST-ONLY Mats"][1].alert }`)).toEqual([true, true]);
+  addon.eval(`local AH = ${HELPER} AH.MigrateRecent() AH.DeleteList("TEST-ONLY Mats") AH.PickEntry(AH.RECENT) AH.SearchList()`);
+  addon.eval(DUST_CHEAP);
+  addon.fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED");
+  addon.advance(1);
+  expect(alertRings(addon), "run again it leaves Recent as it is; with the list gone, Recent's search rings nothing").toBe(0);
 });
 it("H44-21-1: Recent keeps no alert on what it remembers, and its Filters dialog shows no alert switch", () => {
   const addon = atAuctionHouse(DUSTS + ALERT_ENV, { savedVariables: RECENT_ALERT });

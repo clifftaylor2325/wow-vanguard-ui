@@ -702,10 +702,11 @@ local function listen()
   for _, each in ipairs({ AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades, AH.ListenAlerts }) do each(on) end
 end
 
--- Module entry point (Core/Modules.lua): prices in tooltips, and the panel at the auction house.
+-- Module entry point (Core/Modules.lua): prices in tooltips, Recent's old alerts dropped (once), and the panel at the auction house.
 function AH.Enable(settings)
   AH.settings = settings
   AP.Enable(settings)
+  AH.MigrateRecent()
   if type(C_AuctionHouse) ~= "table" then return end
   AH.Start()
   listen()
