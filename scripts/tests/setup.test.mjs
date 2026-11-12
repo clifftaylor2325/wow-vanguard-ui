@@ -549,3 +549,20 @@ it("H45-24-3: clicking the accent swatch or style tile that is already chosen ch
   nextTimes(addon, 6);
   expect(allSetLines(addon), "no change listed and no Undo").toEqual([["All set. This run changed nothing: Done closes setup."], false]);
 });
+it("H46-24-3: Tab on the Look step walks the accent swatches and the style tiles, and Enter picks the ringed one", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  nextTimes(addon, 2);
+  // Which swatch or style tile carries the focus ring now.
+  const ringed = () => addon.eval(`local f = Vanguard_Setup
+    local function on(b) local p = ns.Theme.FocusParts(b) return p ~= nil and p.ring.top:IsShown() end
+    for i, s in ipairs(f.pages.look.swatches) do if on(s) then return "swatch" .. i end end
+    for i, s in ipairs(f.pages.look.styles) do if on(s) then return "style" .. i end end
+    return "other"`);
+  const seen = [];
+  for (let i = 0; i < 3; i += 1) { addon.key("Vanguard_Setup", "TAB"); seen.push(ringed()); }
+  expect(seen, "Tab starts on the first swatch and steps along them").toEqual(["swatch1", "swatch2", "swatch3"]);
+  addon.key("Vanguard_Setup", "ENTER");
+  expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS[ns.Theme.PRESET_ORDER[3]][1]"), "Enter picks the ringed swatch's accent").toBe(true);
+  const total = addon.eval("local p = Vanguard_Setup.pages.look return #p.choices == #p.swatches + #p.styles");
+  expect(total, "the style tiles follow the swatches").toBe(true);
+});

@@ -942,6 +942,13 @@ local function swatch(page, i, rgb)
   return s
 end
 
+-- Lets Tab reach the swatches, then the style tiles (what focusList and Enter read from page.choices).
+local function tabbable(page)
+  page.choices = {}
+  for _, b in ipairs(page.swatches) do page.choices[#page.choices + 1] = b end
+  for _, b in ipairs(page.styles) do page.choices[#page.choices + 1] = b end
+end
+
 -- The look step: the accent presets, then the raid frame style (Calm HUD and the readability switches are the
 -- Comfort step's, Core/SetupGuide.lua).
 local function lookPage(page)
@@ -951,6 +958,7 @@ local function lookPage(page)
     page.swatches[i] = swatch(page, i, T.PRESETS[name])
   end
   stylePicker(page)
+  tabbable(page)
 end
 
 -- The last step: how to move frames (they are unlocked while this step shows), a line each, a gap apart
