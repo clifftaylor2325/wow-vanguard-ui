@@ -221,6 +221,7 @@
       "H44-10-51 Apply given the plan a list showed applies it while it still holds, and is refused in combat first",
       "H44-10-51 Apply given the plan a list showed changes nothing when the bars changed since, and switches the key set back",
       "H45-20-1 a second character's Apply of an account key the player rebound keeps the first character's spells in the record",
+      "H45-20-50 Plan: a move row that settles unchanged because its button has two keys carries no move or rank fields",
       "Only this character: the plan is worked out in the character's own keys",
       "Only this character: the set switches first, Account keeps its keys, and the key rows go in the character's file",
       "Plan: a bar 2 or 3 entry finds its spell on its own bar first, then the other; a bar 1 entry stays on its own button",
@@ -263,6 +264,7 @@
     "scripts/tests/keybinds-learn.test.mjs": [
       "H44-10-1 a new rank learned leaves a rank the player put on the key's button",
       "H44-10-1 a new rank learned takes the place of the rank Vanguard put on its key, silently, once the fight is over",
+      "H45-20-R1 a learned spell whose key stays because its button has two keys says nothing",
       "a bar 3 or bar 2 button the player took over is never moved to, nor bound",
       "a better spell for a key: the old one moves to the next key that lists it, and one chat line says both",
       "a button the player changed is theirs for good: its key's spell goes to the next key",

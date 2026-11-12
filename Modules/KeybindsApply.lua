@@ -264,15 +264,22 @@ local function keysFull(plan, row)
   return count >= 2
 end
 
+-- Leaves a row as it is, for `why`, and drops what its change would have written (a rank it would cover, a spell
+-- it would move), so nothing that reads the row tells of a change that is not made.
+local function leave(row, why)
+  row.kind, row.why = "unchanged", why
+  row.over, row.replaced, row.to, row.moved = nil, nil, nil, nil
+end
+
 -- A writing row's last word: a key this plan gave another command stays with that ("used"); a row that writes no
 -- slot and binds a key to the command it already has is "unchanged" ("already"); a command with two other keys
 -- takes no third ("keys").
 local function settle(plan, row)
   if not KA.WRITES[row.kind] then return end
   local taken = plan.keys[row.key]
-  if taken and taken ~= row.command then row.kind, row.why = "unchanged", "used" return end
-  if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then row.kind, row.why = "unchanged", "already" return end
-  if keysFull(plan, row) then row.kind, row.why = "unchanged", "keys" end
+  if taken and taken ~= row.command then return leave(row, "used") end
+  if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then return leave(row, "already") end
+  if keysFull(plan, row) then leave(row, "keys") end
 end
 
 -- Takes a row's key, its command's new key and its button in the plan (an "already" row too, so no later row takes

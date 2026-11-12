@@ -427,6 +427,13 @@ it("H45-20-1 a second character's Apply of an account key the player rebound kee
   expect(second.savedVariables().account.keyPending["Aren-ForeverTest"], "Aren's spells wait").toBeTruthy();
 });
 
+it("H45-20-50 Plan: a move row that settles unchanged because its button has two keys carries no move or rank fields", () => {
+  const addon = rogue();
+  addon.eval('SetBinding("2") SetBinding("NUMPAD2", "ACTIONBUTTON2") SetBinding("F9", "ACTIONBUTTON2") SaveBindings(1)');
+  expect(ka(addon, `local r = KA.Plan({ { key = "2", spell = 1776, slot = 2 } })[1]
+    return { r.kind, r.why, r.to == nil, r.moved == nil, r.over == nil, r.replaced == nil }`)).toEqual(["unchanged", "keys", true, true, true, true]);
+});
+
 it("waiting spells stay waiting while the cursor holds something, and go back at the next load screen", () => {
   const addon = rogue("VanguardDB.keyPending = { ['Aren-ForeverTest'] = { F = true } }\nVanguardCharDB = { slotRestore = { [61] = { before = false, layers = { { key = 'F', after = 1766, set = 1 } } } } }\n");
   addon.eval("__wfgWorld.setAction(61, { id = 1766 }) C_Spell.PickupSpell(1784)");
