@@ -417,7 +417,7 @@ it("a click whose handler raises ends its hardware event and passes the error on
 
 // Blizzard's own code leans on the client running an edit box's scripts for code-set text and focus:
 // forever Blizzard_AutoComplete/AutoComplete.lua:401 and Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:530
-// ("setting the text programatically which will clear the userInput flag"), and
+// (its comment: setting the text from code clears the userInput flag), and
 // Blizzard_SharedXML/Shared/InputBox/InputBoxTemplates.lua:180-207 (SearchBoxTemplate_ClearText). That they run at
 // once, and only on a change, is the stub's guess.
 it("an edit box runs OnTextChanged for code-set text and its focus scripts when the focus changes; typing runs it once", () => {
