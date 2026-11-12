@@ -357,3 +357,8 @@ it("A1-1: on Retail a bow worn alone gives an off-hand item no verdict; a one-ha
   retail.eval("__worn[16] = __link(27)");
   expect(retail.eval("return __line(23)"), "a wand shares the gun's equip location and takes one hand: the off hand is open").toBe("Upgrade: fills an empty slot");
 });
+
+it("H45-22-81 upgrades: per-kind weights next to a class key that is not a table still move to the class", () => {
+  const addon = loggedIn(GEAR_ENV, { savedVariables: "VanguardDB.profiles = { Default = { Upgrades = { weights = { strength = { STR = 2 }, WARRIOR = 'x' } } } }" });
+  expect(addon.eval("local w = ns.GetModule('Upgrades').settings.weights return { tostring(w.strength), w.WARRIOR.strength.STR }"), "the class key is rebuilt, the kind moved").toEqual(["nil", 2]);
+});
