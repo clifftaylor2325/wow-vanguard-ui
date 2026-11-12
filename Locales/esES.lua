@@ -1344,6 +1344,7 @@ L["Nothing remembered for the next levels. Visit your trainer with Remember what
 L["Nothing searched yet."] = "Aún no se ha buscado nada."
 L["Nothing sold: the merchant is closed."] = "No se vendió nada: el mercader está cerrado."
 L["Nothing sold: the merchant shows its Buyback tab."] = "No se vendió nada: el mercader muestra su pestaña de recompra."
+L["Nothing sold: those items are no longer in your bags."] = "No se ha vendido nada: esos objetos ya no están en tus bolsas."
 L["Nothing to export: {reason}."] = "Nada que exportar: {reason}."
 L["Nothing to learn here right now."] = "Ahora mismo no hay nada que aprender aquí."
 L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."] = "Nada que clasificar: abre una profesión, y las recetas necesitan precios (visita la casa de subastas)."

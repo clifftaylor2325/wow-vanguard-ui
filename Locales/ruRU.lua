@@ -1344,6 +1344,7 @@ L["Nothing remembered for the next levels. Visit your trainer with Remember what
 L["Nothing searched yet."] = "Поиска еще не было."
 L["Nothing sold: the merchant is closed."] = "Ничего не продано: торговец закрыт."
 L["Nothing sold: the merchant shows its Buyback tab."] = "Ничего не продано: у торговца открыта вкладка выкупа."
+L["Nothing sold: those items are no longer in your bags."] = "Ничего не продано: этих предметов больше нет в ваших сумках."
 L["Nothing to export: {reason}."] = "Нечего экспортировать: {reason}."
 L["Nothing to learn here right now."] = "Сейчас здесь нечему учиться."
 L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."] = "Нечего оценивать: откройте профессию, а рецептам нужны цены (посетите аукцион)."

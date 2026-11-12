@@ -1344,6 +1344,7 @@ L["Nothing remembered for the next levels. Visit your trainer with Remember what
 L["Nothing searched yet."] = "Aucune recherche pour l’instant."
 L["Nothing sold: the merchant is closed."] = "Rien vendu : le marchand est fermé."
 L["Nothing sold: the merchant shows its Buyback tab."] = "Rien vendu : le marchand affiche son onglet de rachat."
+L["Nothing sold: those items are no longer in your bags."] = "Rien n’a été vendu : ces objets ne sont plus dans vos sacs."
 L["Nothing to export: {reason}."] = "Rien à exporter : {reason}."
 L["Nothing to learn here right now."] = "Rien à apprendre ici pour l’instant."
 L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."] = "Rien à classer : ouvrez un métier, et les recettes ont besoin de prix (passez à l’hôtel des ventes)."

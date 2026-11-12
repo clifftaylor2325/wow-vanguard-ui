@@ -1344,6 +1344,7 @@ L["Nothing remembered for the next levels. Visit your trainer with Remember what
 L["Nothing searched yet."] = "아직 검색하지 않았습니다."
 L["Nothing sold: the merchant is closed."] = "판매 안 함: 상인이 닫혔습니다."
 L["Nothing sold: the merchant shows its Buyback tab."] = "판매 안 함: 상인의 되사기 탭이 열려 있습니다."
+L["Nothing sold: those items are no longer in your bags."] = "판매한 것이 없습니다: 그 아이템들이 더 이상 가방에 없습니다."
 L["Nothing to export: {reason}."] = "내보낼 것이 없음: {reason}."
 L["Nothing to learn here right now."] = "지금 여기서 배울 것이 없습니다."
 L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."] = "순위를 매길 것이 없습니다: 전문 기술을 열고, 제조법에 가격이 필요합니다 (경매장 방문)."

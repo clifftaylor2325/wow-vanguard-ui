@@ -1344,6 +1344,7 @@ L["Nothing remembered for the next levels. Visit your trainer with Remember what
 L["Nothing searched yet."] = "尚未搜尋任何內容。"
 L["Nothing sold: the merchant is closed."] = "未出售：商人已關閉。"
 L["Nothing sold: the merchant shows its Buyback tab."] = "未出售：商人正顯示買回分頁。"
+L["Nothing sold: those items are no longer in your bags."] = "未售出任何物品：這些物品已不在你的背包中。"
 L["Nothing to export: {reason}."] = "沒有可匯出的內容：{reason}。"
 L["Nothing to learn here right now."] = "這裡目前沒有可學的內容。"
 L["Nothing to rank: open a profession, and the recipes need prices (visit the auction house)."] = "沒有可排名的內容：請開啟一個專業技能，並且配方需要價格（請拜訪拍賣場）。"
