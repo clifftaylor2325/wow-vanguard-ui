@@ -460,6 +460,14 @@ local function raiseHybrid(hybrid)
   hybrid:SetFrameLevel(math.max(0, Minimap:GetFrameLevel() - 1))
 end
 
+-- On a square map the hybrid map's circle mask (the game sets its file once, in XML) is a white square, so the
+-- ground-less canvas and its backing fill the map's corners as the map itself does.
+local function squareHybridMask(hybrid)
+  local mask = hybrid.CircleMask
+  if MM.round or type(mask) ~= "table" or type(mask.SetTexture) ~= "function" then return end
+  mask:SetTexture(T.WHITE, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+end
+
 -- Raises the hybrid map, once it is loaded (the game loads it on demand), and again each time it shows.
 function MM.WatchHybrid()
   local hybrid = _G.HybridMinimap
@@ -467,6 +475,7 @@ function MM.WatchHybrid()
   vgHybrid[hybrid] = true
   hybrid:HookScript("OnShow", ns.Guard("show hybrid minimap", raiseHybrid))
   raiseHybrid(hybrid)
+  squareHybridMask(hybrid)
 end
 
 -- A round map's ring from this drawn size (screen pixels across) is the 256 bake, which has the studs; under it the

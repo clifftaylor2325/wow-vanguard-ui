@@ -371,6 +371,16 @@ it("minimap: the hybrid map, already loaded, goes on the map's strata one level 
   expect([strata === mapStrata, level, mapLevel - holderLevel], "the same strata, a level between the holder and the map").toEqual([true, mapLevel - 1, 2]);
   expect(addon.eval("return HybridMinimap:GetParent() == Minimap"), "still the minimap's child").toBe(true);
 });
+// Blizzard_HybridMinimap.xml: a MaskTexture parentKey CircleMask (TempPortraitAlphaMask) masks the canvas and its Background.
+it("H46-28-2 minimap: a square map squares the hybrid map's circle mask, a round map keeps the game's circle", () => {
+  const withMask = `${HYBRID_ENV} HybridMinimap.CircleMask = HybridMinimap:CreateMaskTexture() HybridMinimap.CircleMask:SetTexture("Interface\\\\CharacterFrame\\\\TempPortraitAlphaMask")`;
+  // The mask's texture, its wrap modes and the error count.
+  const mask = (addon) => addon.eval("return { HybridMinimap.CircleMask:GetTexture(), HybridMinimap.CircleMask.__wrap, #ns.errors }");
+  expect(mask(loggedIn(UI_ENV + withMask)), "square: a white square, clamped").toEqual([expect.stringContaining("WHITE8X8"), ["CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE"], 0]);
+  const round = loggedIn(UI_ENV + TIDY_ENV + withMask, { savedVariables: 'VanguardDB.profiles = { Default = { Minimap = { shape = "round" } } }' });
+  expect(mask(round)[1], "round: the game's circle").toContain("TempPortraitAlphaMask");
+  expect(loggedIn(UI_ENV + HYBRID_ENV).eval("return #ns.errors"), "a hybrid map with no mask is fine").toBe(0);
+});
 it("minimap: the hybrid map the game loads later is raised when its part of the game loads, and again when it shows", () => {
   const addon = loggedIn(UI_ENV);
   addon.fire("ADDON_LOADED", "Blizzard_SomethingElse");
