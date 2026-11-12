@@ -6783,7 +6783,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.793 The Grid spacing slider and the Skin for switches (H46-24-53; WoW Forever and Retail)
 
-- Do: Open /vg, General, Layout, open More settings, tick Show a grid while moving and press Move frames (the window closes); type /vg and open General, Layout, More settings again while the frames are unlocked, then drag the Grid spacing slider; then, with an addon that registered a skin, flip its Skin for switch on the Modules page. [Client: Forever and Retail.]
+- Do: Open /vg, General, Layout, open More settings, tick Show a grid while moving and press Move frames (the window closes); open the options window again (type /vg), then General, Layout, More settings while the frames are unlocked, then drag the Grid spacing slider; then, with an addon that registered a skin, flip its Skin for switch on the Modules page. [Client: Forever and Retail.]
 - Expect: The grid redraws at the new spacing at once while unlocked; the skin switch shows the reload notice, and after the reload /vg skins lists that skin as off.
 - If it fails, paste: /vg skins.
 
@@ -7011,7 +7011,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.831 The options page keeps its scroll over a profile change (H46-40-301; WoW Forever and Retail)
 
-- Do: Open /vg on the Modules page, scroll it halfway down, then type /vg profile copy <another profile> and answer Copy here. [Client: Forever and Retail.]
+- Do: Open the options window (/vg) on the Modules page, scroll it halfway down, then type /vg profile copy <another profile> and answer Copy here. [Client: Forever and Retail.]
 - Expect: The Modules page stays on its tab, scrolled where it was; it does not jump to the top.
 - If it fails, paste: whether it jumped to the top, and the tab it showed.
 
