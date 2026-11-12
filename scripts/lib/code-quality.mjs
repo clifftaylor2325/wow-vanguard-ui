@@ -614,7 +614,7 @@ export const FILE_SCOPE_ALLOWED = {
   "Modules/AuctionCrafting.lua": { calls: 3, reason: "the crafting cost panel follows the game's profession window; each handler checks the auction helper is built (A4-3 moves them into its Enable)" },
   "Modules/ClickCastOptions.lua": { calls: 4, reason: "the click-casting page re-reads itself at a fight's start and end and on talent changes, only while the options window is shown (L16; A4-3 moves them behind ClickCast)" },
   "Modules/ClickCastPresets.lua": { calls: 2, reason: "the starter layouts' blocker cache, cleared when an addon loads, and the better-spell offer on new spells (A4-3 moves them behind ClickCast)" },
-  "Modules/ClickCastSpells.lua": { calls: 3, reason: "the spellbook catalog's cache, cleared when spells change; read by the click-casting page whether or not ClickCast runs" },
+  "Modules/ClickCastSpells.lua": { calls: 1, reason: "the spellbook catalog's cache, cleared when spells change; read by the click-casting page whether or not ClickCast runs" },
   "Modules/KeybindsApply.lua": { calls: 5, reason: "key setup belongs to no module: blocked-action watch, refused updates retried, the key backup at logout and its restore at login (the backup only while key setup has a record)" },
   "Modules/KeybindsLearn.lua": { calls: 3, reason: "key setup's new spells belong to no module; the handlers do nothing unless keys were set up from a preset or the one question is still to ask" },
   "Modules/KeybindsWizard.lua": { calls: 2, reason: "key setup's wizard belongs to no module: it steps aside at combat start and offers itself once after login" },

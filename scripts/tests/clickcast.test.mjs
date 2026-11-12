@@ -916,3 +916,14 @@ it("H44-9-100 an exported rank binding imports back unchanged", () => {
   addon.eval(`${CC}.Import(${JSON.stringify(text)})`);
   expect(JSON.stringify(bindings(addon))).toBe(before);
 });
+
+// A spell's rank text can load after the catalog was built (forever Blizzard_APIDocumentationGenerated/
+// SpellDocumentation.lua:1144 SPELL_TEXT_UPDATE, payload spellID; SpellBookDocumentation.lua:1020 subName may be empty).
+it("H45-6-R2 the catalog is rebuilt when a spell's text loads", () => {
+  const addon = priest();
+  const before = addon.eval(`return #${CS}.Catalog().spells`);
+  addon.eval("C_SpellBook.GetNumSpellBookSkillLines = function() return 0 end");
+  expect(addon.eval(`return #${CS}.Catalog().spells`), "the cached catalog is kept until an event").toBe(before);
+  addon.fire("SPELL_TEXT_UPDATE", 9472);
+  expect(addon.eval(`return #${CS}.Catalog().spells`)).toBe(0);
+});
