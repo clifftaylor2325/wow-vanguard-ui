@@ -351,16 +351,15 @@ end
 -- (ScrollUtil's ScrollByAmount(delta * 3), whatever the modifiers): the rest are added here.
 CX.WHEEL_LINES, CX.GAME_WHEEL_LINES = 4, 3
 
--- Ctrl + wheel (switched on): the top of the window (wheel up) or the bottom (wheel down).
+-- Ctrl + wheel: the top of the window (wheel up) or the bottom (wheel down).
 local function jump(frame, delta)
-  if not CX.settings.ctrlScroll then return end
   if delta > 0 then frame:ScrollToTop() else frame:ScrollToBottom() end
 end
 
--- The wheel, after the game's own scroll (its three lines; it reads no modifiers): Ctrl then jumps
+-- The wheel, after the game's own scroll (its three lines; it reads no modifiers): Ctrl (switched on) then jumps
 -- to the end, and any other tick gets the lines that make it CX.WHEEL_LINES in all.
 local function wheel(frame, delta)
-  if IsControlKeyDown() then return jump(frame, delta) end
+  if IsControlKeyDown() and CX.settings.ctrlScroll then return jump(frame, delta) end
   local step = delta > 0 and frame.ScrollUp or frame.ScrollDown
   for _ = CX.GAME_WHEEL_LINES + 1, CX.WHEEL_LINES do step(frame) end
 end

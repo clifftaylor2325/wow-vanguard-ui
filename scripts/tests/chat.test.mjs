@@ -1211,7 +1211,7 @@ it("chat: the wheel adds one line to the game's three, Shift too, Ctrl + wheel j
   addon.keys({ shift: false, ctrl: true });
   expect([wheel(1), wheel(-1)], "with Ctrl: up to the top, down to the bottom, nothing added to the game's lines").toEqual([["top", 3], ["bottom", -3]]);
   addon.eval("ns.GetModule('ChatExtras').settings.ctrlScroll = false");
-  expect(wheel(1), "switched off, nothing jumps").toEqual(["none", 3]);
+  expect(wheel(1), "switched off, nothing jumps and Ctrl is a plain tick (H45-29-53)").toEqual(["none", 4]);
   addon.keys({ ctrl: false });
   expect(wheel(1)[1], "and the plain tick still adds its line").toBe(4);
 });
