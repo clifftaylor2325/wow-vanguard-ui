@@ -1137,6 +1137,17 @@ it("H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles
   expect(token(), "alive again: the plain text colour").toBe("text");
 });
 
+it("H45-13-3: a short Hairline frame keeps its health line at least as tall as its power line; Plain and tall frames keep the setting", () => {
+  const heights = (addon) => addon.eval("local o = {} for _, k in ipairs({ 'pet', 'targettarget', 'player' }) do local f = _G['Vanguard_' .. k] o[k] = { f.health:GetHeight(), f.power:GetHeight() } end return o");
+  const hairline = heights(loggedIn(UNITS_ENV, { savedVariables: 'VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "hairline" } }' }));
+  expect(hairline.pet[0] >= hairline.pet[1], "pet: health keeps its room").toBe(true);
+  expect(hairline.targettarget[0] >= hairline.targettarget[1], "target of target too").toBe(true);
+  expect(hairline.pet[1] < 6, "the power line is thinner there").toBe(true);
+  expect(hairline.player[1], "a 36-unit frame is unchanged").toBe(6);
+  const plain = heights(loggedIn(UNITS_ENV, { savedVariables: 'VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "plain" } }' }));
+  expect([plain.pet[1], plain.pet[0] > 10], "Plain: the setting and a healthy health line").toEqual([6, true]);
+});
+
 it("one unit frame that fails to paint or lay out is reported, and every other frame still does", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
   // The first frame with a unit that the loops reach breaks; the player frame (or the party's first, when the player is that one) must still paint.

@@ -411,10 +411,18 @@ local function barsTop(f)
   return barInset(f)
 end
 
+-- The power bar's height on a frame h units tall: the setting, or on a short bare frame (the name row takes a lot of
+-- it) no more than the health bar keeps beside it.
+local function powerHeightOf(f, h)
+  local height = UF.settings.powerHeight
+  if not T.BareOf(f) then return height end
+  return math.min(height, (h - UF.NAME_ROW - 3 * barInset(f)) / 2)
+end
+
 -- The health bar's height on a frame h units tall (from the height the frame was given: a fight may hide the one it
 -- reports).
 local function healthHeight(f, h)
-  return h - barsTop(f) - UF.settings.powerHeight - 2 * barInset(f)
+  return h - barsTop(f) - powerHeightOf(f, h) - 2 * barInset(f)
 end
 
 -- The width of a frame's health bar (units), from the width the frame was given, as the bars were last laid out
@@ -585,10 +593,10 @@ local function addLayer(f)
 end
 
 -- The health and power bars, laid out and cut to the shield corners.
-local function addBars(f, settings)
+local function addBars(f)
   f.health, f.power = createBar(f), createBar(f)
   addLayer(f)
-  layoutBars(f, settings.powerHeight)
+  layoutBars(f, powerHeightOf(f, f.vgHeight))
   shieldBars(f)
 end
 
@@ -613,7 +621,7 @@ local function createUnitFrame(key, w, h, outer)
   makeSecure(f, key)
   T.HudPanel(f, { shield = true, role = "unit", outer = f.outer })
   addTab(f)
-  addBars(f, UF.settings)
+  addBars(f)
   addTexts(f, UF.settings)
   addRaidIcon(f)
   return f
@@ -921,7 +929,7 @@ end
 -- texts, the name reading from the side its shield points from or its tab sits over (the left otherwise), the health
 -- text and marks at the other end, the raid icon, the bars filling toward your character, and the parts riding them.
 local function placeAcross(f)
-  layoutBars(f, UF.settings.powerHeight)
+  layoutBars(f, powerHeightOf(f, f.vgHeight))
   showTexts(f)
   local side = readSide(f)
   placeTexts(f, side)
