@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, expect, it } from "vitest";
-import { baselineRises, checkBaselines } from "./lib/baselines.mjs";
+import { baselineRises, budgetWritten, checkBaselines } from "./lib/baselines.mjs";
 import { root } from "./check-zip.mjs";
 
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "vg-baselines-"));
@@ -82,4 +82,21 @@ it("a key whose value changed kind fails with a sentence, never a throw", () => 
     "f.json: a: was a number, now a list; a baseline keeps its kind, so put the new kind under a new key",
     "f.json: b: was a list, now a number; a baseline keeps its kind, so put the new kind under a new key",
   ]);
+});
+
+const BUDGET_FILE = "scripts/tests/options-budget-baseline.json";
+
+it("H45-2-55 a new key in the options budget file is a new overflow and fails; in the other two it is a new audit and passes", () => {
+  expect(baselineRises(BUDGET_FILE, { "chat / Chat": 9 }, { "chat / Chat": 9, "bags / New tab": 14 })).toEqual([
+    `${BUDGET_FILE}: bags / New tab: a new key (14); every key here is a tab over the budget, so a new one is a new overflow`,
+  ]);
+  for (const file of ["scripts/code-quality-baseline.json", "scripts/tests/textfit-baseline.json"]) {
+    expect(baselineRises(file, { a: 9 }, { a: 9, b: 14 }), file).toEqual([]);
+  }
+  expect(baselineRises(BUDGET_FILE, { "chat / Chat tabs": 15 }, { "chat / Tabs": 15 }), "a renamed tab at the same number").toEqual([]);
+});
+
+it("H45-2-55 the options budget write keeps only the tabs already listed, and refuses a new one by name", () => {
+  expect(budgetWritten({ "chat / Chat": 9, "chat / Old": 12 }, { "chat / Chat": 8 })).toEqual({ "chat / Chat": 8 });
+  expect(() => budgetWritten({ "chat / Chat": 9 }, { "chat / Chat": 9, "bags / New tab": 14 })).toThrow(/refuses 1 new tab.*bags \/ New tab \(14\)/s);
 });

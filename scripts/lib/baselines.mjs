@@ -5,13 +5,17 @@
 // the pull request's first parent. A number that rose, a line that is new under an existing key, or a key whose value
 // changed kind (a number and a list) fails; a new key is a new audit's starting record and is allowed, unless the same
 // commit drops a key: then the new keys stand in for the dropped ones (a rename), and their numbers may not add up to
-// more than the dropped ones' did, nor their lists hold a line the dropped lists lacked.
+// more than the dropped ones' did, nor their lists hold a line the dropped lists lacked. In a file whose keys are all
+// items of one audit (ONE_AUDIT_FILES: the options budget, one key per tab over it) a new key is a new overflow, so it
+// fails there unless it stands in for a dropped one.
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 export const BASELINE_FILES = ["scripts/code-quality-baseline.json", "scripts/tests/textfit-baseline.json", "scripts/tests/options-budget-baseline.json"];
+// The baseline files whose keys are all items of one audit, where a new key is a rise, not a new audit's record.
+export const ONE_AUDIT_FILES = new Set(["scripts/tests/options-budget-baseline.json"]);
 
 // A baseline value's kind as a word: "list" or "number" (anything else by its typeof).
 const kindOf = (value) => (Array.isArray(value) ? "list" : typeof value);
@@ -39,11 +43,27 @@ function renameRises(file, base, head) {
   return numbers.concat(lines);
 }
 
+// The keys a one-audit file (ONE_AUDIT_FILES) gained with no key dropped to stand in for: each a new item over the
+// audit's limit. Nothing for another file, or when a key was dropped too (renameRises reads that as a rename).
+function newKeyRises(file, base, head) {
+  if (!ONE_AUDIT_FILES.has(file) || keysOnlyIn(base, head).length > 0) return [];
+  return keysOnlyIn(head, base).map(([key, value]) => `${file}: ${key}: a new key (${value}); every key here is a tab over the budget, so a new one is a new overflow`);
+}
+
 // What rose in one baseline file against its base copy (both parsed): one line each for a number that went up and a
 // list line the base's list under that key lacks, or a key whose value is now of another kind. A key the base lacks
-// is new and passes, unless a key was dropped too (renameRises).
+// is new and passes, unless a key was dropped too (renameRises) or the file is one audit's (newKeyRises).
 export function baselineRises(file, base, head) {
-  return keyRises(file, base, head).concat(renameRises(file, base, head));
+  return keyRises(file, base, head).concat(newKeyRises(file, base, head), renameRises(file, base, head));
+}
+
+// The options budget baseline a VG_BUDGET_WRITE run writes (scripts/tests/options-budget.test.mjs): what each tab
+// already listed shows now, a tab that is back within the budget taken out. Throws naming any tab over the budget
+// that is not listed yet: a new overflow never goes in that way (rename a renamed tab's key by hand).
+export function budgetWritten(known, found) {
+  const added = keysOnlyIn(found, known).map(([key, rows]) => `${key} (${rows})`);
+  if (added.length) throw new Error(`VG_BUDGET_WRITE refuses ${added.length} new tab(s) over the budget (fold the parts of the feature, or rename a renamed tab's key by hand):\n  ${added.join("\n  ")}`);
+  return Object.fromEntries(Object.entries(found).filter(([key]) => key in known));
 }
 
 // The rises under the keys the base and the head share (baselineRises).
