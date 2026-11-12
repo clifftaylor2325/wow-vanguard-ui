@@ -455,8 +455,8 @@ local function setupRows()
   return {
     { "header", L["Layout"] },
     { "text", L["Setup walks through layout, screen and look again; it starts on Keep, so it changes only what you pick (/vg setup)."] },
-    { "button", L["Run setup"], function() O.Hide(); ns.Setup.Open() end },
-    { "button", L["What's new"], function() O.Hide(); ns.WhatsNew.Open() end },
+    O.Essential({ "button", L["Run setup"], function() O.Hide(); ns.Setup.Open() end }),
+    O.Essential({ "button", L["What's new"], function() O.Hide(); ns.WhatsNew.Open() end }),
   }
 end
 
@@ -469,10 +469,10 @@ end
 -- General, part three: moving frames.
 local function layoutRows()
   return append(setupRows(), {
-    O.MoveFramesRow(),
-    check(L["Show a grid while moving"], moverOption("grid")),
+    O.Essential(O.MoveFramesRow()),
+    O.Essential(check(L["Show a grid while moving"], moverOption("grid"))),
     { "slider", L["Grid spacing"], GRID_SIZES, gridSpacing() },
-    check(L["Snap to other frames"], moverOption("snap")),
+    O.Essential(check(L["Snap to other frames"], moverOption("snap"))),
     check(L["Handles in the game's Edit Mode too"], moverOption("editMode")),
     { "text", L["While moving frames, right-click one to anchor it to the screen or to another frame's side, for its exact offsets, scale and opacity, or to match its width or height to another frame's."] },
   })
