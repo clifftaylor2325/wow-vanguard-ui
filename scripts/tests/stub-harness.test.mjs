@@ -413,6 +413,17 @@ it("on Retail, asking for one of your auras by spell id answers nothing for a hi
     return { C_UnitAuras.GetPlayerAuraBySpellID(99999) == nil, C_UnitAuras.GetPlayerAuraBySpellID(7).name }`)).toEqual([true, "TEST-ONLY"]);
 });
 
+// Blizzard_APIDocumentationGenerated/UnitAuraDocumentation.lua:128-148 and :264-284 (both clients):
+// GetAuraApplicationDisplayCount and GetAuraDispelTypeColor are RequiresValidUnitAuraInstance, and
+// UnitAuraSharedDocumentation.lua:39-41 gives that precondition FailureMode "ReturnNothing".
+it("the aura-instance reads answer nothing for an aura instance the unit does not have (H46-2-4)", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local curve = C_CurveUtil.CreateColorCurve() curve:AddPoint(0, CreateColor(1, 0, 0))
+    return { select("#", C_UnitAuras.GetAuraDispelTypeColor("player", 424242, curve)),
+      select("#", C_UnitAuras.GetAuraApplicationDisplayCount("player", 424242, 2, 99)) }`);
+  expect(out).toEqual([0, 0]);
+});
+
 // Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua (forever and live identical): AddAuraGroup asserts a
 // non-empty key, a valid filter string and a new key (:286-291), then its options (:1-36, :143-194);
 // Blizzard_FrameXMLUtil/AuraUtil.lua:270-320 lists the filter words and IsValidFilterString's messages.

@@ -1278,21 +1278,25 @@ C_UnitAuras = {
   GetAuraDataByAuraInstanceID = function(unit, id)
     for _, aura in ipairs(uf(unit, "auras") or {}) do if aura.auraInstanceID == id then return aura end end
   end,
-  -- The stack count the client would display, as text: "" under minCount (2 by default) or for no aura, "*" over
-  -- maxCount, else the count; a hidden count stays hidden.
+  -- The stack count the client would display, as text: "" under minCount (2 by default), "*" over maxCount, else
+  -- the count; a hidden count stays hidden. No aura answers nothing (RequiresValidUnitAuraInstance, FailureMode
+  -- ReturnNothing: UnitAuraDocumentation.lua:128-148, UnitAuraSharedDocumentation.lua:39-41).
   GetAuraApplicationDisplayCount = function(unit, id, minCount, maxCount)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    local n = aura and aura.applications or 0
+    if not aura then return end
+    local n = aura.applications or 0
     if seenSecret(n) then return n end
     if n < (minCount or 2) then return "" end
     if maxCount and n > maxCount then return "*" end
     return tostring(n)
   end,
   -- The dispel type color through a curve read at the type's ID (UnitAuraDocumentation.lua GetAuraDispelTypeColor:
-  -- the curve is required), hidden when the aura's type is (SecretWhenUnitAuraRestricted).
+  -- the curve is required), hidden when the aura's type is (SecretWhenUnitAuraRestricted). No aura answers nothing
+  -- (RequiresValidUnitAuraInstance, :264-284, as the stack count above).
   GetAuraDispelTypeColor = function(unit, id, curve)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    local kind = aura and aura.dispelName
+    if not aura then return end
+    local kind = aura.dispelName
     local color = curve:Evaluate(world.dispelTypeIds[inside(kind)] or 0)
     if color and worldIsSecret(kind) then return hiddenColor(color) end
     return color
