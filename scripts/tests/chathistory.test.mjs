@@ -78,6 +78,14 @@ it("chat history: restored lines carry no old chat line numbers, so Report Chat 
     "|Hdiscorduser:12:987654:0:GUILD:|h[Al]|h: gg"]);
 });
 
+it("chat history: a hidden-line placeholder is not saved, and one an older save holds comes back without its show link", () => {
+  const addon = session();
+  addon.eval(`ChatFrame1:AddMessage("|Hcensoredmessage:523|h[Click to show]|h") ChatFrame1:AddMessage("|Hcensoredmessagerewrite:7|h[x]|h") ChatFrame1:AddMessage("kept")
+    VanguardCharDB.chatHistory[1][#VanguardCharDB.chatHistory[1] + 1] = "1790000000|ffffff|old |Hcensoredmessage:524|h[Click to show]|h"`);
+  expect(saved(addon)[0].length, "only the plain line and the old save").toBe(2);
+  expect(lines(relog(addon)).slice(1, 3)).toEqual(["kept", "old [Click to show]"]);
+});
+
 it("chat history: hidden text, other kinds of value and very long lines are never saved", () => {
   const addon = session();
   addon.eval(`ChatFrame1:AddMessage(__wfgWorld.secret(), 1, 1, 1) ChatFrame1:AddMessage(nil) ChatFrame1:AddMessage(42) ChatFrame1:AddMessage("")
