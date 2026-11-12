@@ -133,6 +133,8 @@ it("the editor's globals list holds every global .luacheckrc lets the addon set 
   expect(missing, "add these to Lua.diagnostics.globals in .vscode/settings.json").toEqual([]);
 });
 
-it("the luacheck config lists no game global the addon never reads (ChatFrame_RemoveAllMessageGroups was one)", () => {
-  expect(fs.readFileSync(path.join(root, ".luacheckrc"), "utf8")).not.toContain("ChatFrame_RemoveAllMessageGroups");
+it("the luacheck config lists no game global the addon never reads (ChatFrame_RemoveAllMessageGroups and FCF_PopInWindow were two)", () => {
+  const rc = fs.readFileSync(path.join(root, ".luacheckrc"), "utf8");
+  expect(rc).not.toContain("ChatFrame_RemoveAllMessageGroups");
+  expect(rc).not.toContain("FCF_PopInWindow");
 });
