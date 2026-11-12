@@ -97,6 +97,27 @@ it("the keep: one wall on the background strata from your frame to your target's
   expect(addon.eval("return Vanguard_Keep:IsShown() and Vanguard_player:GetHeight() > 39"), "and back again").toBe(true);
 });
 
+it("the keep answers a frame you dragged per edge: bar 1 moved puts the wall's top on your frame, your cast bar moved hides the gatehouse, your frame, your target's or the focus moved hides the wall; a reset brings each back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV, onLayout("fort"));
+  // The wall's shown state, what its top is pinned to, and the gatehouse's shown state.
+  const keep = () => [addon.eval("return Vanguard_Keep:IsShown()"), pin(addon, "Vanguard_Keep", "TOP"), addon.eval("return Vanguard_Keep.gate:IsShown()")];
+  expect(keep(), "in the layout's spots: the wall on the first bar's top, the gatehouse round your cast bar").toEqual([true, "Vanguard_Bar1 TOP 0 12", true]);
+  addon.eval('ns.SetMoverPoint("bar1", "TOP", "TOP", 0, -40)');
+  expect(keep(), "bar 1 dragged to the top: the wall's top stays on your frame, the gatehouse (which stands on the bar) hides").toEqual([true, "Vanguard_player TOP 0 12", false]);
+  addon.eval('ns.ResetMovers("bar1")');
+  expect(keep(), "bar 1 reset: back on the bar").toEqual([true, "Vanguard_Bar1 TOP 0 12", true]);
+  addon.eval('ns.SetMoverPoint("cast_player", "TOP", "TOP", 0, -100)');
+  expect(keep(), "your cast bar dragged up the middle: the gatehouse hides, the wall stays").toEqual([true, "Vanguard_Bar1 TOP 0 12", false]);
+  addon.eval('ns.ResetMovers("cast_player")');
+  expect(keep()[2], "your cast bar reset: the gatehouse is back").toBe(true);
+  for (const [key, point] of [["uf_focus", '"TOPLEFT", "TOPLEFT", 300, -200'], ["uf_target", '"TOPRIGHT", "TOPRIGHT", -40, -300'], ["uf_player", '"BOTTOMLEFT", "BOTTOMLEFT", 300, 20']]) {
+    addon.eval(`ns.SetMoverPoint("${key}", ${point})`);
+    expect(addon.eval("return { Vanguard_Keep:IsShown(), Vanguard_Keep.gate:IsVisible() }"), `${key} dragged: the wall and gatehouse hide`).toEqual([false, false]);
+    addon.eval(`ns.ResetMovers("${key}")`);
+    expect(keep(), `${key} reset: the keep is back`).toEqual([true, "Vanguard_Bar1 TOP 0 12", true]);
+  }
+});
+
 // A banner as drawn (TEST-ONLY reads): the bars' orientation, the power line's width and pins, the health bar's pins,
 // the corners in pixels and look, the health bar's masks, the shown edges' sizes, and the texts.
 const BANNER_LUA = `local f, T, UF = Vanguard_%KEY%, ns.Theme, ns.GetModule("UnitFrames")

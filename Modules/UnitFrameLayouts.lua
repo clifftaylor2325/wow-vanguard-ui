@@ -26,14 +26,35 @@ function LY.Stacked(f)
   return LY.KEEP_SMALL[f.key] == true and ns.HudLayout() == "fort" and ns.LayoutHolds()
 end
 
--- Whether the keep's wall shows: the layout in force on a canvas it holds on, with your frame and your target's built.
-local function keepShown()
-  return ns.HudLayout() == "fort" and ns.LayoutHolds() and UF.frames.player ~= nil and UF.frames.target ~= nil
+-- The movers the keep is pinned to, by the edge each holds up. A spot you dragged one to answers per edge: your
+-- frame, your target's or the focus moved hides the wall and gatehouse; bar 1 moved puts the wall's top on your
+-- frame (and hides the gatehouse, which stands on the bar); your cast bar moved hides the gatehouse.
+LY.KEEP_PINS = { uf_player = "wall", uf_target = "wall", uf_focus = "wall", bar1 = "parapet", cast_player = "gate" }
+
+-- Whether a frame the wall's sides or foot are pinned to has a spot you dragged it to.
+local function wallMoved()
+  for key, edge in pairs(LY.KEEP_PINS) do
+    if edge == "wall" and ns.MoverSaved(key) then return true end
+  end
+  return false
 end
 
--- The frame the wall's top follows: the bottom bar stack's first bar, else your frame.
+-- Whether the keep's wall shows: the layout in force on a canvas it holds on, with your frame and your target's
+-- built and the frames it stands on in the layout's spots.
+local function keepShown()
+  local built = UF.frames.player ~= nil and UF.frames.target ~= nil
+  return ns.HudLayout() == "fort" and ns.LayoutHolds() and built and not wallMoved()
+end
+
+-- The bottom bar stack's first bar while it stands in its own spot, else nil.
+local function parapetBar()
+  if ns.MoverSaved("bar1") then return nil end
+  return ns.MoverFrame("bar1")
+end
+
+-- The frame the wall's top follows: the first bar in its own spot, else your frame.
 local function parapetFrame()
-  return ns.MoverFrame("bar1") or UF.frames.player
+  return parapetBar() or UF.frames.player
 end
 
 -- The frame the wall's foot follows: the focus frame under yours, else your frame.
@@ -51,10 +72,16 @@ local function anchorWall(w)
   w:SetPoint("BOTTOM", footFrame(), "BOTTOM", 0, -pad)
 end
 
+-- Your cast bar while the gatehouse can hold it: in its own spot over the first bar the wall's top follows; else nil.
+local function gateCast()
+  if ns.MoverSaved("cast_player") or not parapetBar() then return nil end
+  return ns.MoverFrame("cast_player")
+end
+
 -- Pins the gatehouse ns.KEEP.pad around your cast bar, its foot a pixel down over the wall's top border so the two
 -- join; hidden while your cast bar isn't there to hold.
 local function anchorGate(w)
-  local cast, pad, g = ns.MoverFrame("cast_player"), ns.KEEP.pad, w.gate
+  local cast, pad, g = gateCast(), ns.KEEP.pad, w.gate
   g:SetShown(cast ~= nil)
   if not cast then return end
   g:ClearAllPoints()
@@ -209,11 +236,17 @@ local function onScale()
   LY.ApplyKeep()
 end
 
+-- A mover was placed again (a drag, a nudge, a reset): the keep answers when it is one the keep is pinned to.
+local function keepPinMoved(key)
+  if LY.KEEP_PINS[key] then LY.ApplyKeep() end
+end
+
 -- Part entry point (UF.Enable): the layout's shape for the frames, the wall after the world is entered (your cast bar
 -- is a mover by then) and after a canvas change.
 function LY.Enable()
   T.SetLayoutShape(layoutShape)
   ns.On("PLAYER_ENTERING_WORLD", LY.ApplyKeep)
+  ns.OnMoverPlaced(keepPinMoved)
   ns.OnLayoutChanged(UF.ApplyLayout)
   T.OnScale(onScale)
 end
