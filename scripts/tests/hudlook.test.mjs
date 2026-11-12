@@ -148,6 +148,16 @@ const rows = (addon, key) => addon.eval(`local f = Vanguard_${key}
   return { top = { math.floor(h.x * 100 + 0.5) / 100, math.floor(h.y * 100 + 0.5) / 100 }, bottom = math.floor(p.y * 100 + 0.5) / 100,
     name = lift(f.level or f.name), icon = lift(f.raidIcon), outlined = f.name.__font[3] == "OUTLINE" and f.healthText.__font[3] == "OUTLINE" }`);
 
+it("H45-13-3: the capped power line on a short bare frame is never negative, and sits on whole pixels", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, onLook("hairline"));
+  // Sizes the player frame to h and returns the height it got.
+  const set = (h) => addon.eval(`local UF = ns.GetModule("UnitFrames") UF.settings.playerHeight = ${h} UF.ApplySizes() return Vanguard_player.vgHeight`);
+  // Whether the power line is not negative and a whole number of pixels.
+  const line = () => addon.eval("local f = Vanguard_player local px = ns.Theme.Pixel(f) local y = f.health.__points.BOTTOMRIGHT.y - 2 * f.power.__points.BOTTOMRIGHT.y return { y >= 0, math.abs(y / px - math.floor(y / px + 0.5)) < 0.001 }");
+  expect(set(25), "the shortest frames the slider allows").toBe(25);
+  expect(line(), "a half-pixel share is rounded, and never negative").toEqual([true, true]);
+});
+
 it("Hairline: the unit frames lose their plates, the name reads over the lines, one brass line closes each frame at the bottom, the texts are outlined, the cast bar keeps its plate, and High contrast brings the plates back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, onLook("hairline"));
   const px = addon.eval("return ns.Theme.Pixel(Vanguard_player)");

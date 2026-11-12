@@ -412,11 +412,12 @@ local function barsTop(f)
 end
 
 -- The power bar's height on a frame h units tall: the setting, or on a short bare frame (the name row takes a lot of
--- it) no more than the health bar keeps beside it.
+-- it) no more than the health bar keeps beside it, in whole pixels and never below zero.
 local function powerHeightOf(f, h)
   local height = UF.settings.powerHeight
   if not T.BareOf(f) then return height end
-  return math.min(height, (h - UF.NAME_ROW - 3 * barInset(f)) / 2)
+  local beside = T.PixelRound(f, (h - UF.NAME_ROW - 3 * barInset(f)) / 2)
+  return math.max(0, math.min(height, beside))
 end
 
 -- The health bar's height on a frame h units tall (from the height the frame was given: a fight may hide the one it
