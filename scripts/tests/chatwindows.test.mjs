@@ -235,6 +235,17 @@ it("chat tabs: Close this tab closes nothing itself, with or without channels, i
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// Both clients build the tab menu's entries from global strings (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua
+// :601-632, live :433-452: rootDescription:CreateButton(NEW_CHAT_WINDOW ...), CreateButton(CLOSE_CHAT_WINDOW ...)), so the
+// chat lines name the entries by the client's own words; the tests above run without them and get Vanguard's English.
+it("chat tabs: New chat tab and Close this tab name the game's menu entries by the client's own strings (H44-30-51)", () => {
+  const addon = loggedIn(ENV + TABS + `NEW_CHAT_WINDOW, CLOSE_CHAT_WINDOW = "TEST-ONLY Neues Fenster", "TEST-ONLY Fenster zu"`);
+  addon.eval(`FCF_OpenNewWindow("Trade") local CW = ns.GetModule("ChatWindows") CW.New() CW.editing = 3 CW.Close()`);
+  expect([chatHas(addon, /choose TEST-ONLY Neues Fenster\. It then shows/), chatHas(addon, /choose TEST-ONLY Fenster zu\. The game gives/), chatHas(addon, /Create New Window|Close Chat Window/)],
+    "the client's entry names, not Vanguard's English").toEqual([true, true, false]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat tabs: a client without the tab calls says what it can and changes nothing", () => {
   const addon = loggedIn(ENV + "FCF_OpenNewWindow = nil FCF_Close = nil FCF_PopInWindow = nil");
   addon.eval(`local CW = ns.GetModule("ChatWindows") CW.New() CW.Rename("Barter") CW.editing = 2 CW.Close()`);

@@ -244,11 +244,20 @@ function CW.CleanName(text)
   return name ~= "" and name or nil
 end
 
+-- One of the game's tab-menu entries by the name the game's menu shows: both clients build the menu from global
+-- strings (Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua, CreateButton(NEW_CHAT_WINDOW ...) and
+-- CreateButton(CLOSE_CHAT_WINDOW ...)); Vanguard's own words for it on a client without the global.
+local function menuEntry(name, fallback)
+  if type(name) == "string" then return name end
+  return fallback
+end
+
 -- Points to the game's own tab menu for a new tab. Vanguard does not make the window: the game's FCF_OpenNewWindow
 -- writes the new window's channel lists (and the last active edit box) from whoever calls it, and the game's
 -- channel-message code then reads those fields on every line (taint). The Tab picker lists the window once it exists.
 function CW.New()
-  ns.Chat(L["To make a chat tab, right-click any chat tab and choose Create New Window. It then shows in the Tab picker here."])
+  local entry = menuEntry(NEW_CHAT_WINDOW, L["Create New Window"])
+  ns.Chat(ns.Format(L["To make a chat tab, right-click any chat tab and choose {entry}. It then shows in the Tab picker here."], { entry = entry }))
 end
 
 -- Renames the edited tab.
@@ -270,7 +279,8 @@ end
 -- closed window's chat-type and channel lists (and the main window's) from addon code, and the next tab on that
 -- number then starts out tainted.
 local function sendToTabMenu()
-  ns.Chat(L["To close a chat tab, right-click its tab and choose Close Chat Window. The game gives its chat back to the main window."])
+  local entry = menuEntry(CLOSE_CHAT_WINDOW, L["Close Chat Window"])
+  ns.Chat(ns.Format(L["To close a chat tab, right-click its tab and choose {entry}. The game gives its chat back to the main window."], { entry = entry }))
 end
 
 -- The Close this tab button: never the main tab or another of the game's own, which the game's menu has no Close

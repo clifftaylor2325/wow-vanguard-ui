@@ -53,6 +53,8 @@ read_globals = {
   "GetCollapsingStarCost", "GetUnitChargedPowerPoints", "GetUnitEmpowerStageDuration", "GetUnitEmpowerHoldAtMaxTime",
   -- The social window's status dropdown: the game's word for a presence (Available, Away, Busy).
   "SocialUIUtil",
+  -- The chat tab menu's own entry names (Modules/ChatWindows.lua; FloatingChatFrame.lua builds the menu from them).
+  "NEW_CHAT_WINDOW", "CLOSE_CHAT_WINDOW",
   -- Target of target identity and the minimap's still-standing check (P1.13).
   "UnitGUID", "UnitPosition", "C_TaxiMap", "GetPlayerFacing",
   -- /vg perf: the game's CPU and memory counters (P1.14).

@@ -5950,6 +5950,12 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: New chat tab and Close this tab only say how to use the game's tab menu; the new tab's channel line shows with no Lua error and no taint line naming Vanguard.
 - If it fails, paste: `/vg errors` and the lines naming Vanguard in Logs/taint.log.
 
+### 33.568a The chat lines name the tab menu's entries as the menu shows them (H44-30-51)
+
+- Do: on an English client and on a German or French one, press New chat tab and Close this tab under `/vg` > Chat > Chat tabs (with a tab of your own picked), then right-click a chat tab and read the menu. [Client: Forever and Retail.]
+- Expect: the two chat lines quote the entry names exactly as the tab's right-click menu shows them (on English, Create New Window and Close Chat Window, or whatever the menu says), in each language.
+- If it fails, paste: both chat lines, the menu's entries as shown, and the client's language.
+
 ### 33.569 A closed Filtered tab's number is not fed to the next tab (H44-19-52)
 
 - Do: for Forever and Retail: `/vg filter on`, close the Filtered tab from its tab menu, make a new tab named Loot from the game's menu, then wait for a gold seller's line in Trade (or `/vg filter` after one).
