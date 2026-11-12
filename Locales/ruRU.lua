@@ -5,6 +5,7 @@ local ADDON, ns = ...
 local L = ns.NewLocale("ruRU")
 if not L then return end
 
+L["  (probe: {error})"] = "  (проверка: {error})"
 L[" · recording {situation}"] = " · запись: {situation}"
 L["#{place} of {count}"] = "#{place} из {count}"
 L["(does nothing: {why})"] = "(ничего не делает: {why})"
@@ -532,6 +533,8 @@ L["Craft queue"] = "Очередь изготовления"
 L["Craft queue and recipe ranking"] = "Очередь создания и рейтинг рецептов"
 L["Craft queue emptied."] = "Очередь изготовления очищена."
 L["Craft queue, profession cooldowns and recipe ranking (/vg craft)"] = "Очередь изготовления, восстановление профессий и рейтинг рецептов (/vg craft)"
+L["Crafted {recipe}. 1 craft left in the queue."] = "Изготовлено: {recipe}. В очереди осталось: 1 изготовление."
+L["Crafted {recipe}. {count} crafts left in the queue."] = "Изготовлено: {recipe}. В очереди осталось изготовлений: {count}."
 L["Crafting cost"] = "Стоимость изготовления"
 L["Crafting costs and profit"] = "Затраты и прибыль от создания"
 L["Crafting costs and profit beside the profession window"] = "Стоимость изготовления и прибыль рядом с окном профессии"
@@ -2706,6 +2709,7 @@ L["no stat in it that Vanguard weighs"] = "в ней нет характерис
 L["no usable bindings in it"] = "в ней нет пригодных назначений"
 L["none"] = "нет"
 L["none named by the client"] = "клиент не назвал"
+L["none this client knows, so no row"] = "ни одного, который знает этот клиент, поэтому строки нет"
 L["none undercut"] = "никто не перебит"
 L["none up"] = "ничего не выставлено"
 L["none yet"] = "пока нет"

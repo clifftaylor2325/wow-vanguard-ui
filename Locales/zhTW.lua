@@ -5,6 +5,7 @@ local ADDON, ns = ...
 local L = ns.NewLocale("zhTW")
 if not L then return end
 
+L["  (probe: {error})"] = "  （探測：{error}）"
 L[" · recording {situation}"] = " · 正在記錄 {situation}"
 L["#{place} of {count}"] = "第{place}名，共{count}名"
 L["(does nothing: {why})"] = "（無效：{why}）"
@@ -532,6 +533,8 @@ L["Craft queue"] = "製作佇列"
 L["Craft queue and recipe ranking"] = "製造佇列與配方排名"
 L["Craft queue emptied."] = "製作佇列已清空。"
 L["Craft queue, profession cooldowns and recipe ranking (/vg craft)"] = "製作佇列、專業技能冷卻和配方排名（/vg craft）"
+L["Crafted {recipe}. 1 craft left in the queue."] = "已製作{recipe}。佇列中還剩1次製作。"
+L["Crafted {recipe}. {count} crafts left in the queue."] = "已製作{recipe}。佇列中還剩{count}次製作。"
 L["Crafting cost"] = "製作成本"
 L["Crafting costs and profit"] = "製造成本與利潤"
 L["Crafting costs and profit beside the profession window"] = "在專業技能視窗旁顯示製作成本和利潤"
@@ -2706,6 +2709,7 @@ L["no stat in it that Vanguard weighs"] = "其中沒有 Vanguard 計算權重的
 L["no usable bindings in it"] = "其中沒有可用的綁定"
 L["none"] = "無"
 L["none named by the client"] = "客戶端未給出名稱"
+L["none this client knows, so no row"] = "此客戶端不認得任何一個，所以沒有對應列"
 L["none undercut"] = "沒有被壓價"
 L["none up"] = "沒有在售"
 L["none yet"] = "暫無"

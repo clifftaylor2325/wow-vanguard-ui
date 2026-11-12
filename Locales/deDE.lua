@@ -5,6 +5,7 @@ local ADDON, ns = ...
 local L = ns.NewLocale("deDE")
 if not L then return end
 
+L["  (probe: {error})"] = "  (Probe: {error})"
 L[" · recording {situation}"] = " · zeichnet {situation} auf"
 L["#{place} of {count}"] = "#{place} von {count}"
 L["(does nothing: {why})"] = "(bewirkt nichts: {why})"
@@ -532,6 +533,8 @@ L["Craft queue"] = "Herstellungsliste"
 L["Craft queue and recipe ranking"] = "Herstellungswarteschlange und Rezeptrang"
 L["Craft queue emptied."] = "Herstellungsliste geleert."
 L["Craft queue, profession cooldowns and recipe ranking (/vg craft)"] = "Herstellungsliste, Berufsabklingzeiten und Rezeptrangliste (/vg craft)"
+L["Crafted {recipe}. 1 craft left in the queue."] = "{recipe} hergestellt. Noch 1 Herstellung in der Liste."
+L["Crafted {recipe}. {count} crafts left in the queue."] = "{recipe} hergestellt. Noch {count} Herstellungen in der Liste."
 L["Crafting cost"] = "Herstellungskosten"
 L["Crafting costs and profit"] = "Herstellungskosten und Gewinn"
 L["Crafting costs and profit beside the profession window"] = "Herstellungskosten und Gewinn neben dem Berufsfenster"

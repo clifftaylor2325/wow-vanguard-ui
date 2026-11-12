@@ -5,6 +5,7 @@ local ADDON, ns = ...
 local L = ns.NewLocale("frFR")
 if not L then return end
 
+L["  (probe: {error})"] = "  (sonde : {error})"
 L[" · recording {situation}"] = " · enregistre {situation}"
 L["#{place} of {count}"] = "n° {place} sur {count}"
 L["(does nothing: {why})"] = "(sans effet : {why})"
@@ -532,6 +533,8 @@ L["Craft queue"] = "File de fabrication"
 L["Craft queue and recipe ranking"] = "File d’artisanat et classement des recettes"
 L["Craft queue emptied."] = "File de fabrication vidée."
 L["Craft queue, profession cooldowns and recipe ranking (/vg craft)"] = "File de fabrication, temps de recharge de métier et classement des recettes (/vg craft)"
+L["Crafted {recipe}. 1 craft left in the queue."] = "Fabrication de {recipe} terminée. Il reste 1 fabrication dans la file."
+L["Crafted {recipe}. {count} crafts left in the queue."] = "Fabrication de {recipe} terminée. Il reste {count} fabrications dans la file."
 L["Crafting cost"] = "Coût de fabrication"
 L["Crafting costs and profit"] = "Coûts et profits d’artisanat"
 L["Crafting costs and profit beside the profession window"] = "Coûts de fabrication et bénéfice à côté de la fenêtre de métier"
@@ -2706,6 +2709,7 @@ L["no stat in it that Vanguard weighs"] = "aucune caractéristique que Vanguard 
 L["no usable bindings in it"] = "aucun raccourci utilisable dedans"
 L["none"] = "aucun"
 L["none named by the client"] = "aucun nom donné par le client"
+L["none this client knows, so no row"] = "aucun que ce client connaisse, donc aucune ligne"
 L["none undercut"] = "aucune sous-enchère"
 L["none up"] = "aucune en vente"
 L["none yet"] = "pas encore"

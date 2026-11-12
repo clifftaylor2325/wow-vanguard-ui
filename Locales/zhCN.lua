@@ -5,6 +5,7 @@ local ADDON, ns = ...
 local L = ns.NewLocale("zhCN")
 if not L then return end
 
+L["  (probe: {error})"] = "  （探测：{error}）"
 L[" · recording {situation}"] = " · 正在记录 {situation}"
 L["#{place} of {count}"] = "第{place}名，共{count}名"
 L["(does nothing: {why})"] = "（无效：{why}）"
@@ -532,6 +533,8 @@ L["Craft queue"] = "制造队列"
 L["Craft queue and recipe ranking"] = "制造队列与配方排名"
 L["Craft queue emptied."] = "制造队列已清空。"
 L["Craft queue, profession cooldowns and recipe ranking (/vg craft)"] = "制造队列、专业冷却和配方排名（/vg craft）"
+L["Crafted {recipe}. 1 craft left in the queue."] = "已制作{recipe}。队列中还剩1次制作。"
+L["Crafted {recipe}. {count} crafts left in the queue."] = "已制作{recipe}。队列中还剩{count}次制作。"
 L["Crafting cost"] = "制造成本"
 L["Crafting costs and profit"] = "制造成本与利润"
 L["Crafting costs and profit beside the profession window"] = "在专业窗口旁显示制造成本和利润"
@@ -2706,6 +2709,7 @@ L["no stat in it that Vanguard weighs"] = "其中没有 Vanguard 计算权重的
 L["no usable bindings in it"] = "其中没有可用的绑定"
 L["none"] = "无"
 L["none named by the client"] = "客户端未给出名称"
+L["none this client knows, so no row"] = "此客户端不认识任何一个，所以没有对应行"
 L["none undercut"] = "没有被压价"
 L["none up"] = "没有在售"
 L["none yet"] = "暂无"

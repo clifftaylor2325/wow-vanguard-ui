@@ -5,6 +5,7 @@ local ADDON, ns = ...
 local L = ns.NewLocale("koKR")
 if not L then return end
 
+L["  (probe: {error})"] = "  (점검: {error})"
 L[" · recording {situation}"] = " · 기록 중: {situation}"
 L["#{place} of {count}"] = "{count} 중 #{place}"
 L["(does nothing: {why})"] = "(동작 안 함: {why})"
@@ -532,6 +533,8 @@ L["Craft queue"] = "제작 대기열"
 L["Craft queue and recipe ranking"] = "제작 대기열 및 레시피 순위"
 L["Craft queue emptied."] = "제작 대기열을 비웠습니다."
 L["Craft queue, profession cooldowns and recipe ranking (/vg craft)"] = "제작 대기열, 전문 기술 재사용 대기시간, 제조법 순위 (/vg craft)"
+L["Crafted {recipe}. 1 craft left in the queue."] = "{recipe} 제작 완료. 대기열에 1회 남았습니다."
+L["Crafted {recipe}. {count} crafts left in the queue."] = "{recipe} 제작 완료. 대기열에 {count}회 남았습니다."
 L["Crafting cost"] = "제작 비용"
 L["Crafting costs and profit"] = "제작 비용과 이익"
 L["Crafting costs and profit beside the profession window"] = "전문 기술 창 옆에 제작 비용과 이익"
@@ -2706,6 +2709,7 @@ L["no stat in it that Vanguard weighs"] = "Vanguard가 가중치를 두는 능�
 L["no usable bindings in it"] = "쓸 수 있는 지정이 없습니다"
 L["none"] = "없음"
 L["none named by the client"] = "클라이언트가 알려주지 않음"
+L["none this client knows, so no row"] = "이 클라이언트가 아는 항목이 없어 줄 없음"
 L["none undercut"] = "최저가 밀린 것 없음"
 L["none up"] = "등록된 것 없음"
 L["none yet"] = "아직 없음"
