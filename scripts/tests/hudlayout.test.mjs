@@ -2,7 +2,7 @@
 // (Core/HudLayout.lua): the keep's wall and gatehouse and the Standards banners (Modules/UnitFrameLayouts.lua).
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, CLICK_LUA, MICRO_ENV, RISE, STRIPS_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, loggedIn, setCombat } from "./helpers.mjs";
+import { ACTIONS_ENV, CLICK_LUA, MICRO_ENV, RISE, STRIPS_ENV, SWING_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, loggedIn, setCombat } from "./helpers.mjs";
 
 // A 1920 x 1080 canvas with the client's percent curve, so a banner can show its percent.
 const WIDE = "__wfgStub.setScreen(1920, 1080) CurveConstants = { ScaleTo100 = { Evaluate = function(_, x) return x * 100 end } }";
@@ -187,6 +187,20 @@ it("the keep answers a frame you dragged per edge: bar 1 moved puts the wall's t
     addon.eval(`ns.ResetMovers("${key}")`);
     expect(keep(), `${key} reset: the keep is back`).toEqual([true, "Vanguard_Bar1 TOP 0 12", true]);
   }
+});
+
+// H46-13-102: on WoW Forever the swing timer's rows stand SW.ABOVE_CAST (11) over your cast bar, inside the 12 the
+// gatehouse reaches over it, so while the timer is built for you the gatehouse stops a unit under them and wears no crest.
+it("H46-13-102 the keep under the swing timer: the gatehouse stops under its rows and carries no crest; the timer dragged away gives both back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV + SWING_ENV, onLayout("fort"));
+  // The gatehouse's top over your cast bar's, the swing holder's foot over the gatehouse's top, and whether the crest shows.
+  const gate = () => addon.eval(`local g, cast, swing = Vanguard_Keep.gate, ns.MoverFrame("cast_player"), ns.MoverFrame("swing")
+    return { math.floor(g:GetTop() - cast:GetTop() + 0.5), math.floor(swing:GetBottom() - g:GetTop() + 0.5), g.crest:IsShown() }`);
+  expect(gate(), "the gatehouse's top 10 over your cast bar, a unit under the swing rows, no crest").toEqual([10, 1, false]);
+  addon.eval('ns.SetMoverPoint("swing", "TOP", "TOP", 0, -200)');
+  expect(gate().filter((_, i) => i !== 1), "the swing timer dragged up the screen: 12 over your cast bar again, the crest on its peak").toEqual([12, true]);
+  addon.eval('ns.ResetMovers("swing")');
+  expect(gate(), "reset: under the rows again").toEqual([10, 1, false]);
 });
 
 // A banner as drawn (TEST-ONLY reads): the bars' orientation, the power line's width and pins, the health bar's pins,

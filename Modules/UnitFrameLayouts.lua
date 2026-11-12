@@ -1,10 +1,10 @@
 -- The HUD layouts' parts of the unit frames (a part of the UnitFrames module, UF.Layouts; Core/HudLayout.lua names
 -- the layouts and holds their spots and sizes). The keep: one wall (a plate behind your frame, the bars and your
 -- target's frame, on the background strata) with a brass parapet along its top and a gatehouse rising from the
--- middle around your cast bar, the crest on its peak. Standards: your frame and your target's stood on end as
--- banners, health rising from the foot to a pointed hem, power a line down the outer side, the name (and level) on a
--- line over the banner, the health percent at the top inside; the focus, pet and target of target as small banners
--- with their bars alone.
+-- middle around your cast bar, the crest on its peak (not under the swing timer). Standards: your frame and your
+-- target's stood on end as banners, health rising from the foot to a pointed hem, power a line down the outer side,
+-- the name (and level) on a line over the banner, the health percent at the top inside; the focus, pet and target of
+-- target as small banners with their bars alone.
 
 local ADDON, ns = ...
 local T = ns.Theme
@@ -29,10 +29,10 @@ end
 -- The movers the keep is pinned to, by the edge each holds up. A spot you dragged one to answers per edge: your
 -- frame, your target's, the focus, the target of target or the target's cast bar moved hides the wall and gatehouse;
 -- bar 1 moved puts the wall's top on your frame (and hides the gatehouse, which stands on the bar); your cast bar
--- moved hides the gatehouse.
+-- moved hides the gatehouse; the swing timer moved off it gives the gatehouse its full height and crest back.
 LY.KEEP_PINS = {
   uf_player = "wall", uf_target = "wall", uf_focus = "wall", uf_targettarget = "wall", cast_target = "wall",
-  bar1 = "parapet", cast_player = "gate",
+  bar1 = "parapet", cast_player = "gate", swing = "gate",
 }
 
 -- Whether a frame the wall's sides or foot are pinned to has a spot you dragged it to.
@@ -79,16 +79,28 @@ local function gateCast()
   return ns.MoverFrame("cast_player")
 end
 
--- Pins the gatehouse ns.KEEP.pad around your cast bar, its foot a pixel down over the wall's top border so the two
--- join; hidden while your cast bar isn't there to hold.
+-- How far the gatehouse's top stands over your cast bar, and whether it carries its crest: ns.KEEP.pad and the crest,
+-- or (WoW Forever, while the swing timer is built for you in its own spot, SW.ABOVE_CAST over your cast bar) a unit
+-- under the swing rows' foot and no crest, which the rows would cover.
+local function gateTop()
+  local SW = ns.GetModule("SwingTimer")
+  local swingOver = SW ~= nil and SW.holder ~= nil and ns.ModuleLive("SwingTimer") and not ns.MoverSaved("swing")
+  if swingOver then return SW.ABOVE_CAST - 1, false end
+  return ns.KEEP.pad, true
+end
+
+-- Pins the gatehouse ns.KEEP.pad around your cast bar (its top under the swing timer while that stands over it), its
+-- foot a pixel down over the wall's top border so the two join; hidden while your cast bar isn't there to hold.
 local function anchorGate(w)
   local cast, pad, g = gateCast(), ns.KEEP.pad, w.gate
   g:SetShown(cast ~= nil)
   if not cast then return end
+  local top, crest = gateTop()
+  g.crest:SetShown(crest)
   g:ClearAllPoints()
   g:SetPoint("LEFT", cast, "LEFT", -pad, 0)
   g:SetPoint("RIGHT", cast, "RIGHT", pad, 0)
-  g:SetPoint("TOP", cast, "TOP", 0, pad)
+  g:SetPoint("TOP", cast, "TOP", 0, top)
   g:SetPoint("BOTTOM", w, "TOP", 0, -T.Pixel(w))
 end
 
