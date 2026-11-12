@@ -1015,12 +1015,20 @@ local function fightDone()
   ns.Chat(L["Probe: the fight report is ready. /vg probe last shows it after the main report."])
 end
 
+-- The three-second snapshot of one fight: only while that fight is still on, so a short fight, or the next one,
+-- never gets an out-of-combat block labelled "3 s in".
+local function threeSecondSnap(fight)
+  return function()
+    if ns.InCombat() and P.fight == fight then snap("3 s in") end
+  end
+end
+
 -- A fight starts while armed: one snapshot now and one three seconds in, the report kept after it.
 local function fightStarted()
   if not P.armed then return end
   P.armed, P.fight = false, {}
   snap("start")
-  if C_Timer and C_Timer.After then C_Timer.After(3, ns.Guard("probe fight snapshot", function() snap("3 s in") end)) end
+  if C_Timer and C_Timer.After then C_Timer.After(3, ns.Guard("probe fight snapshot", threeSecondSnap(P.fight))) end
   ns.AfterCombat(fightDone, "probefight")
 end
 ns.On("PLAYER_REGEN_DISABLED", fightStarted)

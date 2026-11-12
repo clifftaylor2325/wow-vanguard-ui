@@ -168,6 +168,25 @@ it("/vg probe fight: arms, reads as the fight starts and 3 s in, and keeps the r
   const text = reportText(addon);
   expect(text, "both snapshots are in the saved report").toMatch(/== Fight, start \(in combat: true\)[\s\S]*== Fight, 3 s in/);
 });
+it("H45-34-102 /vg probe fight: a fight under 3 s gets no 3 s block, and a second fight gets exactly one", () => {
+  const addon = loggedIn(PROBE_ENV);
+  // How many "3 s in" blocks the kept fight report holds.
+  const blocks = () => addon.eval("local n = 0 for _, l in ipairs(ns.Probe.fight) do if l:find('3 s in', 1, true) then n = n + 1 end end return n");
+  addon.slash("probe fight");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(1);
+  setCombat(addon, false);
+  addon.advance(3);
+  expect(blocks(), "the fight ended at 1 s: nothing out of combat under a fight label").toBe(0);
+  addon.slash("probe fight");
+  setCombat(addon, true);
+  addon.fire("PLAYER_REGEN_DISABLED");
+  addon.advance(2.5);
+  expect(blocks(), "the first fight's timer lands at 2 s: not in this fight's report").toBe(0);
+  addon.advance(1);
+  expect(blocks(), "its own timer at 3 s").toBe(1);
+});
 it("/vg probe fight: an unarmed fight records nothing", () => {
   const addon = loggedIn(PROBE_ENV);
   addon.fire("PLAYER_REGEN_DISABLED");
