@@ -193,6 +193,32 @@ it("text fits: the dialogs", () => {
   expectFits("dialogs", dialogFindings(fitClient()));
 });
 
+it("the text-fit check flags a label squeezed to no width, or hung on a frame whose right edge is left of its left (H46-2-R1)", () => {
+  const addon = fitClient();
+  // TEST-ONLY labels in a 300-wide host. Squeezed: pinned LEFT and RIGHT to one x; pinned with its right 20 left of its
+  // left; hung on a button pinned that way (the crushed options footer line of H46-4-5); pinned with its bottom 10 above
+  // its top. Hidden, so no finding: hung on a 0 x 0 frame, which the client gives no rect (scripts/lib/wow-layout.lua
+  // laidOut), or on a frame stretched over an unanchored one (no rect up the chain, not a squeeze). How the client draws
+  // an inverted rect is game-only; none of these has room either way.
+  addon.eval(`local host = CreateFrame("Frame", "TEST_SqueezeHost", UIParent) host:SetSize(300, 40) host:SetPoint("CENTER")
+    local function label(parent, text) local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal") fs:SetText(text) return fs end
+    local flat = label(host, "TEST-ONLY flat label") flat:SetPoint("LEFT", host, "LEFT", 100, 0) flat:SetPoint("RIGHT", host, "LEFT", 100, 0)
+    local inverted = label(host, "TEST-ONLY inverted label") inverted:SetPoint("TOPLEFT", host, "TOPLEFT", 200, 0) inverted:SetPoint("TOPRIGHT", host, "TOPLEFT", 180, 0)
+    local button = CreateFrame("Button", nil, host) button:SetHeight(20) button:SetPoint("LEFT", host, "LEFT", 60, 0) button:SetPoint("RIGHT", host, "LEFT", 40, 0)
+    label(button, "TEST-ONLY label on an inverted button"):SetAllPoints()
+    local low = label(host, "TEST-ONLY low label") low:SetPoint("TOPLEFT", host, "BOTTOMLEFT", 0, 0) low:SetPoint("BOTTOMRIGHT", host, "BOTTOMLEFT", 80, 10)
+    local hidden = CreateFrame("Frame", nil, host) hidden:SetSize(0, 0) hidden:SetPoint("BOTTOMLEFT")
+    label(hidden, "TEST-ONLY label on a 0 x 0 frame"):SetPoint("LEFT", hidden, "LEFT")
+    local over = CreateFrame("Frame", nil, host) over:SetAllPoints(CreateFrame("Frame", nil, host))
+    label(over, "TEST-ONLY label over an unanchored frame"):SetPoint("BOTTOM", over, "BOTTOM")`);
+  expect(lines(addon.textFit("TEST_SqueezeHost")), "the four squeezed labels are cut whole; the two hidden ones are no finding").toEqual([
+    "cut | TEST_SqueezeHost | TEST-ONLY flat label | squeezed to no width",
+    "cut | TEST_SqueezeHost | TEST-ONLY inverted label | squeezed to no width",
+    "cut | TEST_SqueezeHost | TEST-ONLY label on an inverted button | squeezed to no width",
+    "cut | TEST_SqueezeHost | TEST-ONLY low label | squeezed to no height",
+  ]);
+});
+
 it("text fits: key setup, every step, with a change listed, a key that stays and the shared-keys choice", () => {
   const addon = fitClient();
   addon.eval(`__wfgWorld.setUnit("player", { class = "WARRIOR", className = "Warrior", level = 12 })
