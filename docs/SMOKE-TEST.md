@@ -6757,6 +6757,144 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: with bar 1 away your frame and your target's step back in to their drawn spots; with it reset they stand out again, clear of the bars.
 - If it fails, paste: /vg frame Vanguard_player before and after.
 
+### 33.789 Escape on an open dropdown closes only the menu (H46-21-50; WoW Forever and Retail)
+
+- Do: Open a dropdown in the options window while a dialog is up (or a bag's Filter list, or the auction house Shopping row menu) and press Escape. [Client: Forever and Retail.]
+- Expect: Only the menu closes; the dialog, bag or window under it stays open.
+- If it fails, paste: what closed.
+
+### 33.790 The Modules page note stays above the tabs with other addons (H46-23-3; WoW Forever and Retail)
+
+- Do: With an addon that shows on the Other addons card loaded, open /vg, then Modules, and click the Combat tools tab. [Client: Forever and Retail.]
+- Expect: The page's note and its Show choice sit above the tabs on every tab, and Other addons is the first tab.
+- If it fails, paste: a screenshot of the page.
+
+### 33.791 Escape closes the options window like its close button (H46-23-4; WoW Forever and Retail)
+
+- Do: With Interface sounds on, open /vg and press Escape. [Client: Forever and Retail.]
+- Expect: The same close sound and short fade as the close button.
+- If it fails, paste: whether you heard the sound and saw the fade.
+
+### 33.792 Tab reaches the accent swatches and style tiles in setup (H46-24-3; WoW Forever and Retail)
+
+- Do: Open /vg setup, press Next to the Look step, press Tab several times, then Enter. [Client: Forever and Retail.]
+- Expect: The focus ring visits each accent swatch and then each raid style tile, and Enter picks the ringed one.
+- If it fails, paste: the step's caption and which swatch or tile was picked.
+
+### 33.793 The Grid spacing slider and the Skin for switches (H46-24-53; WoW Forever and Retail)
+
+- Do: Open /vg, General, Layout, open More settings, press Move frames and drag the Grid spacing slider; then, with an addon that registered a skin, flip its Skin for switch on the Modules page. [Client: Forever and Retail.]
+- Expect: The grid redraws at the new spacing at once while unlocked; the skin switch shows the reload notice, and after the reload /vg skins lists that skin as off.
+- If it fails, paste: /vg skins.
+
+### 33.794 The auction house Buyout Price label keeps its colours (H46-25-100; WoW Forever and Retail)
+
+- Do: At the auction house, Sell tab, put an equippable item in the slot, then type a buyout lower than the bid; then change the accent in /vg. [Client: Forever and Retail.]
+- Expect: The Buyout Price label is light like the other labels after the item goes in, and red while the buyout is too low, also after the accent change.
+- If it fails, paste: a screenshot of the sell form.
+
+### 33.795 One arrow on the auction house Duration dropdown (H46-25-1; WoW Forever and Retail)
+
+- Do: Open the auction house, go to the Sell tab and put an item in. [Client: Forever and Retail.]
+- Expect: The Duration dropdown shows one small arrow at its right edge, not two.
+- If it fails, paste: a screenshot of the Duration dropdown.
+
+### 33.796 The auction house sort arrow follows the sort (H46-25-R1; WoW Forever and Retail)
+
+- Do: Open the auction house, Buy tab, search, then click the Price heading twice. [Client: Forever and Retail.]
+- Expect: Only the sorted column's heading shows an arrow, and it flips when you click the heading again; the other headings show none.
+- If it fails, paste: a screenshot of the heading row.
+
+### 33.797 A greyed reputation check label stays grey (H46-25-50 and H46-C-G2; WoW Forever and Retail)
+
+- Do: Open the reputation pane's detail box for a faction you can't make inactive, then change the accent in /vg, then pick another faction and back. [Client: Forever and Retail.]
+- Expect: The Make inactive label stays the game's grey throughout.
+- If it fails, paste: a screenshot of the box.
+
+### 33.798 An unavailable Guild Finder row reads greyed (H46-26-1; WoW Forever and Retail)
+
+- Do: On a character whose club finder is unavailable (a trial or silenced account), open the guild window (J). [Client: Forever and Retail.]
+- Expect: The Guild Finder or Find a Community row's label is grey like a disabled control, and its tooltip names the reason.
+- If it fails, paste: a screenshot of the list.
+
+### 33.799 Retail lists no pet stable window (H46-26-50; Retail)
+
+- Do: On Retail, as a hunter, type /vg status windows. [Client: Retail.]
+- Expect: PetStableFrame is not listed.
+- If it fails, paste: the windows list.
+
+### 33.800 The quest log switched off hands its button back (H46-27-1; WoW Forever and Retail)
+
+- Do: Switch Vanguard's quest log off under /vg, Quests, then click the quest log button on the micro menu and a quest title in the tracker. [Client: Forever and Retail.]
+- Expect: The game's own quest log opens each time, never Vanguard's.
+- If it fails, paste: what opened each time.
+
+### 33.801 A quest line lights up when it finishes mid-talk (H46-27-54; WoW Forever and Retail)
+
+- Do: Talk to a quest giver with a quest in progress and finish its objective while the dialog is open. [Client: Forever and Retail.]
+- Expect: Its line turns gold without reopening the talk.
+- If it fails, paste: what the line did.
+
+### 33.802 A currency a quest asks for shows on the hand-in page (H46-27-51; Retail)
+
+- Do: Hand in to a quest giver whose quest asks for a currency. [Client: Retail.]
+- Expect: A currency card with the amount under Required items, and its tooltip on hover.
+- If it fails, paste: a screenshot of the page.
+
+### 33.803 The hand-in page hides what the game hides (H46-27-50; WoW Forever and Retail)
+
+- Do: Hand in a quest whose required items the game's own window hides; compare with Vanguard's quest dialog switched off. [Client: Forever and Retail.]
+- Expect: Vanguard lists the same items as the game's window.
+- If it fails, paste: what each shows.
+
+### 33.804 Hidden quest rewards stay hidden (H46-27-52 and H46-27-R1; WoW Forever and Retail)
+
+- Do: Open a quest whose rewards the game's own window hides, in Vanguard's dialog and in its quest log; switch each off to compare. [Client: Forever and Retail.]
+- Expect: Neither shows reward cards, money or XP where the game shows none.
+- If it fails, paste: what each shows.
+
+### 33.805 The round minimap's rim buttons (H46-28-1; WoW Forever)
+
+- Do: With Minimap shape Round, queue for a group so the group finder eye shows, and compare its distance from the map's edge with the tracking button's. [Client: Forever.]
+- Expect: The eye sits as far in from the rim as the other buttons, not nearer the centre.
+- If it fails, paste: a screenshot of the minimap's rim.
+
+### 33.806 The square minimap in a hybrid-map place (H46-28-2; WoW Forever)
+
+- Do: With the square minimap, go to a place where the game draws its hybrid map (no ground tiles). [Client: Forever.]
+- Expect: The map fills the square, with no round disc and empty corners.
+- If it fails, paste: a screenshot of the minimap there.
+
+### 33.807 A Shift-click hold over an auto-tracked quest (H46-28-50 and H46-C-G7; WoW Forever)
+
+- Do: Shift-click a quest in the tracker, stop tracking it in the game, then accept a new quest; later abandon the held quest. [Client: Forever.]
+- Expect: The arrow, the step line and the accent line stay on the Shift-clicked quest until you press Pin; once that quest leaves the log they move to the tracked quest.
+- If it fails, paste: the arrow's title line and the tracker's accent-lined quest.
+
+### 33.808 Find in chat finds a line in a whisper pop-out (H46-29-2; WoW Forever and Retail)
+
+- Do: In the game's Social options set New Whispers to New Window, have someone whisper you a line with the word sword, then open Find in chat from the Chat page and search sword. [Client: Forever and Retail.]
+- Expect: The box says 1 line with "sword" and lists the whisper; after you close the pop-out and search again it is no longer listed (unless Chat history saved it).
+- If it fails, paste: the find box's first line.
+
+### 33.809 The main chat window keeps its size (H46-29-1, H46-C-G1 and H46-C-CR3; WoW Forever and Retail)
+
+- Do: On a character that played before, note the main chat window's size after login (/run print(ChatFrame1:GetSize())); set Chat window size to Larger, /reload and print it; drag the General width slider under Chat windows, /reload and print; then open Edit Mode, drag the chat's corner grip, set its Width in the Edit Mode panel, close Edit Mode, /reload and print. [Client: Forever and Retail.]
+- Expect: After the first login the window takes the Chat window size choice once; each /reload keeps the last size you set, by the slider, the grip or the Edit Mode Width, and never goes back to 430 x 170.
+- If it fails, paste: the printed sizes.
+
+### 33.810 Situations off refuses to record (H46-30-1; WoW Forever)
+
+- Do: Switch Situations off under Modules, then type /vg situation record raid. [Client: Forever.]
+- Expect: Chat says Situations is off under Modules and nothing records.
+- If it fails, paste: the chat line.
+
+### 33.811 The AFK screen comes up when switched on while away (H46-30-52; WoW Forever)
+
+- Do: With the AFK screen off under Modules, type /afk, then switch it on under Modules. [Client: Forever.]
+- Expect: The dimmed AFK screen comes up at once, and any key ends it.
+- If it fails, paste: nothing unless it stays hidden.
+
 ## 34. Retail
 
 Run these on a Retail 12.1.5 client with the same Vanguard folder, after 33. Each step says what the code intends; none of it has been seen in the game. Every step ends with `/vg errors`: an error there is a failure even when the step looks right. Section 33's Retail steps (33.103, 33.147, 33.153 to 33.157) still apply.
