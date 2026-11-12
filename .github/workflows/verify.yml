@@ -4,8 +4,9 @@ name: verify
 # "Quick checks" job in the main branch's ruleset). Spelling (typos), the
 # code-quality scan, the TOC against the files on disk
 # (scripts/check-toc.mjs), luacheck, Lua 5.1 syntax (the game runs Lua 5.1;
-# the test harness runs real Lua 5.1 too, fengari only on request), and the
-# release zip's contents.
+# the test harness runs real Lua 5.1 too, fengari only on request), the
+# release zip's contents, and the baselines against the base commit
+# (scripts/check-baselines.mjs: no ratchet rises).
 # No tests run here (Cliff, 2026-11-10): the whole suite runs on the
 # branch on the agent's machine before the pull request merges (CLAUDE.md,
 # Working method), and from the Actions tab on main (full-suite.yml), which
