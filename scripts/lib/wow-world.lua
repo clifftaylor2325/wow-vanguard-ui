@@ -1212,15 +1212,35 @@ end
 
 local nextAuraId = 100
 
--- Whether an aura passes one filter word (HELPFUL, HARMFUL, PLAYER, RAID, !RAID, ...).
+-- What each filter word asks of an aura (Blizzard_FrameXMLUtil/AuraUtil.lua:270-288). A word left out passes every
+-- aura: INCLUDE_NAME_PLATE_ONLY and MAW among them, as nameplate-only and Torghast auras are not modelled.
+local auraWordTests = {
+  -- Helpful auras only.
+  HELPFUL = function(aura) return not aura.isHarmful end,
+  -- Harmful auras only.
+  HARMFUL = function(aura) return aura.isHarmful == true end,
+  -- Auras cast by the player or the player's pet.
+  PLAYER = function(aura) return aura.sourceUnit == "player" or aura.isFromPlayerOrPlayerPet == true end,
+  -- Auras the player can apply or dispel.
+  RAID = function(aura) return aura.isRaid == true end,
+  -- Auras the player can cancel.
+  CANCELABLE = function(aura) return aura.isHarmful ~= true end,
+}
+-- The narrowing words pass only an aura a test flags with the word in its TEST-ONLY aura.__words set (the client's
+-- AuraData has no such field, so addon code cannot come to rely on one).
+for _, word in ipairs({ "EXTERNAL_DEFENSIVE", "CROWD_CONTROL", "RAID_IN_COMBAT", "RAID_PLAYER_DISPELLABLE", "BIG_DEFENSIVE",
+  "IMPORTANT", "DISPELLABLE" }) do
+  -- Whether a test flagged the aura with this word.
+  auraWordTests[word] = function(aura) return (aura.__words or {})[word] == true end
+end
+
+-- Whether an aura passes one filter word; a leading "!" negates it (AuraUtil.lua:294-295), and on a word that passes
+-- every aura it changes nothing, as the client ignores it on INCLUDE_NAME_PLATE_ONLY and MAW.
 local function passes(aura, word)
-  if word == "HELPFUL" then return not aura.isHarmful end
-  if word == "HARMFUL" then return aura.isHarmful == true end
-  if word == "PLAYER" then return aura.sourceUnit == "player" or aura.isFromPlayerOrPlayerPet == true end
-  if word == "RAID" then return aura.isRaid == true end
-  if word == "!RAID" then return aura.isRaid ~= true end
-  if word == "CANCELABLE" then return aura.isHarmful ~= true end
-  return true
+  local bare = word:gsub("^!", "")
+  local test = auraWordTests[bare]
+  if not test then return true end
+  return test(aura) == (bare == word)
 end
 
 -- The auras of a unit that pass every word of a filter ("HARMFUL|RAID").

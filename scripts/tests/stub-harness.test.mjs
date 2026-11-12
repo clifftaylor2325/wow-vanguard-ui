@@ -424,6 +424,26 @@ it("the aura-instance reads answer nothing for an aura instance the unit does no
   expect(out).toEqual([0, 0]);
 });
 
+// Blizzard_FrameXMLUtil/AuraUtil.lua:270-296 (forever and live identical): a leading "!" negates a filter word
+// ("!PLAYER" gives the auras not cast by the player); EXTERNAL_DEFENSIVE, CROWD_CONTROL, BIG_DEFENSIVE, IMPORTANT and
+// the rest narrow the list; INCLUDE_NAME_PLATE_ONLY and MAW cannot be negated. A test flags an aura for a narrowing
+// word in its TEST-ONLY __words set; nameplate-only and Torghast auras are not modelled, so those two pass every aura.
+it("the world's aura reads apply every '!' word and the narrowing words (H46-2-5)", () => {
+  const addon = createAddon();
+  addon.world.setUnit("target", { name: "TEST-ONLY Dummy" });
+  const out = addon.eval(`__wfgWorld.addAura("target", { name = "TEST-ONLY Mine", isHarmful = true, sourceUnit = "player" })
+    __wfgWorld.addAura("target", { name = "TEST-ONLY Theirs", isHarmful = true, sourceUnit = "target" })
+    __wfgWorld.addAura("player", { name = "TEST-ONLY Buff" })
+    __wfgWorld.addAura("player", { name = "TEST-ONLY Wall", __words = { BIG_DEFENSIVE = true } })
+    local function names(unit, filter)
+      local out = {} for i = 1, 4 do local a = C_UnitAuras.GetAuraDataByIndex(unit, i, filter) if a then out[#out + 1] = a.name end end
+      return table.concat(out, ",")
+    end
+    return { names("target", "HARMFUL|!PLAYER"), names("player", "HELPFUL|BIG_DEFENSIVE"), names("player", "HELPFUL|!BIG_DEFENSIVE"),
+      names("player", "HELPFUL|IMPORTANT"), names("player", "HELPFUL|!MAW|INCLUDE_NAME_PLATE_ONLY") }`);
+  expect(out).toEqual(["TEST-ONLY Theirs", "TEST-ONLY Wall", "TEST-ONLY Buff", "", "TEST-ONLY Buff,TEST-ONLY Wall"]);
+});
+
 // Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua (forever and live identical): AddAuraGroup asserts a
 // non-empty key, a valid filter string and a new key (:286-291), then its options (:1-36, :143-194);
 // Blizzard_FrameXMLUtil/AuraUtil.lua:270-320 lists the filter words and IsValidFilterString's messages.
