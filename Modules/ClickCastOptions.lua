@@ -739,7 +739,7 @@ end
 
 -- What a frame's own plain Left and Right click do where the list binds neither: Vanguard's tiles set *type1 target and
 -- *type2 togglemenu (Modules/RaidFrames.lua RF.INIT), which the game falls back to with no type1 or type2
--- (/home/user/blizz/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua SecureButton_GetModifiedAttribute).
+-- (Blizzard_FrameXML/SecureTemplates.lua SecureButton_GetModifiedAttribute).
 local FRAME_CLICKS = { BUTTON1 = "target", BUTTON2 = "menu" }
 
 -- The binding a key or click would run on a frame: the list's, else the frame's own plain click, else nil.
