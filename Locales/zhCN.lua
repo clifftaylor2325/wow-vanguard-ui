@@ -1425,7 +1425,7 @@ L["Out of combat each part dims, or hides until the mouse is over it. A fight or
 L["Out of stealth"] = "非潜行"
 L["Overall"] = "总计"
 L["Overrides for Solo, Party, Raid, PvP, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."] = "单人、小队、团队、PvP、副本和休息时的覆盖设置：框体位置、缩放、透明度、可见性、信息条区块和姓名板开关，在非战斗中应用。对当前覆盖所设置内容的更改，会持续到你离开该情境。"
-L["Overrides for Solo, Party, Raid, PvP, Mythic+, Delve, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."] = "单人、小队、团队、PvP、史诗钥石、地下堡、副本和休息的覆盖设置：框体位置、缩放、透明度、可见性、信息条模块和姓名板开关，在脱战时应用。对当前覆盖设置所设内容的更改会持续到你离开该情境。"
+L["Overrides for Solo, Party, Raid, PvP, Mythic+, Delve, Instance and Resting: frame spots, scale, opacity, visibility, info strip blocks and nameplate switches, applied out of combat. A change to something the active override sets lasts until you leave the situation."] = "单人、小队、团队、PvP、史诗钥石、地下堡、副本和休息中的覆盖设置：框体位置、缩放、透明度、可见性、信息条模块和姓名板开关，在脱战时应用。对当前覆盖设置所设内容的更改会持续到你离开该情境。"
 L["Page {n}"] = "第 {n} 页"
 L["Panel gradient off."] = "面板渐变已关闭。"
 L["Panel gradient on: windows run a shade lighter toward the top."] = "面板渐变已开启：窗口越往上颜色越浅。"
