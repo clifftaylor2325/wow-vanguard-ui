@@ -322,6 +322,18 @@ do
   -- A pick made for one profile is not carried to another that takes over before the fight ends.
   ns.OnProfileChanged(function() queued = nil end)
 
+  -- A theme reset made in a fight: the look in use is put back in the same frame (the plates and the bars stay
+  -- together) and the reset's look waits for the fight's end, replacing any pick made earlier in it.
+  ---@param look string the look in use before the reset
+  function O.KeepLookInFight(look)
+    queued = nil
+    if not ns.InCombat() or look == initial then return end
+    T.Settings().hudLook = look
+    T.Refresh()
+    queued = initial
+    ns.OutOfCombat(applyQueuedLook, "HUD look")
+  end
+
   -- The row's getter, setter and default: the queued pick (if any) or the look in use.
   function hudLookSetting()
     return O.Tag(function() return queued or get() end, "theme", "hudLook"),
@@ -414,8 +426,9 @@ end
 -- Puts every theme setting back to its default (T.Reset); when that changed a reload-only one, the options
 -- window shows its reload notice. Returns true then.
 function O.ResetTheme()
-  local before = reloadThemeValues()
+  local before, look = reloadThemeValues(), T.Settings().hudLook
   T.Reset()
+  O.KeepLookInFight(look)
   local after = reloadThemeValues()
   for i, value in ipairs(before) do
     if value ~= after[i] then O.NeedReload() return true end

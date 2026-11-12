@@ -116,6 +116,45 @@ it("H45-D-G3A4 a HUD look picked in a fight is dropped when the profile changes 
   expect(addon.eval("return ns.Theme.Settings().hudLook"), "the new profile keeps its own look").toBe("shield");
 });
 
+// A theme reset in a fight (H46-4-1): the frames keep the look in use until the fight ends, then change in one step.
+const LOOK_STATE = `local T = ns.Theme
+  local out = { T.HudLook() }
+  for _, key in ipairs({ "player", "target" }) do
+    local f = _G["Vanguard_" .. key]
+    local p, _, rel = f.healthText:GetPoint(1)
+    out[#out + 1] = key .. " " .. tostring(T.CornerLook(f, "TOPRIGHT")) .. " reverse=" .. tostring(f.health:GetReverseFill() == true) .. " text=" .. p .. ">" .. rel
+  end
+  return out`;
+
+it("H46-4-1 Reset theme in a fight keeps the look in use until the fight ends, then lands it in one step", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "hairline", accent = { 0.1, 0.9, 0.1, 1 } } } } }' });
+  const before = addon.eval(LOOK_STATE);
+  setCombat(addon, true);
+  addon.eval("ns.Options.ResetTheme()");
+  expect(addon.eval(LOOK_STATE), "plates and bars stay together in the fight").toEqual(before);
+  expect(addon.eval("return ns.Theme.Settings().accent[1]"), "the rest of the theme is reset at once").not.toBe(0.1);
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Theme.Settings().hudLook")).toBe("shield");
+  expect(addon.eval(LOOK_STATE)[0]).toBe("shield");
+});
+
+it("H46-4-1 a look picked earlier in the fight gives way to the reset's, and a reset out of a fight only drops a stale pick", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "hairline" } } } }' });
+  addon.slash("");
+  setCombat(addon, true);
+  addon.eval('__click("HUD look")');
+  addon.eval("ns.Options.ResetTheme()");
+  setCombat(addon, false);
+  expect(addon.eval("return ns.Theme.Settings().hudLook"), "the reset's look, not the old pick").toBe("shield");
+  addon.eval('ns.Theme.Settings().hudLook = "plain"');
+  addon.eval("ns.Options.ResetTheme()");
+  expect(addon.eval("return ns.Theme.HudLook()"), "out of a fight it applies at once").toBe("shield");
+  setCombat(addon, true);
+  addon.eval("ns.Options.ResetTheme()");
+  expect(addon.eval("return ns.Theme.HudLook()"), "already the default in a fight: nothing to hold back").toBe("shield");
+  setCombat(addon, false);
+});
+
 it("the point's line is the one baked nearest its depth, cropped to that depth and flipped to its corner", () => {
   const addon = loggedIn();
   expect(addon.eval("return ns.Theme.POINT_DEPTHS")).toEqual([12, 14, 16, 18, 20, 22, 24, 30, 36]);
