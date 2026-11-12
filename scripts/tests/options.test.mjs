@@ -635,6 +635,7 @@ it("options: a HUD layout picked in a fight shows on its row at once and a secon
 
 it("options: the Your characters lines on Game windows follow the record when the window opens again (H45-23-50)", () => {
   const addon = loggedIn(CLICK_LUA);
+  // The page's newest All together line.
   const total = () => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
     if w.GetText and w.source and w.source[1] == "text" and type(w:GetText()) == "string" and w:GetText():find("^All together") then out[#out + 1] = w:GetText() end end
     return out[#out]`);
@@ -650,6 +651,7 @@ it("options: the Your characters lines on Game windows follow the record when th
 
 it("options: the Frame to size choice follows the frames you can move when a module is switched on or off (H45-23-R1)", () => {
   const addon = loggedIn(CLICK_LUA);
+  // Whether the newest Frame to size choice offers the Broker strip.
   const listed = () => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w end end
     for _, c in ipairs(last.choices) do if c[1] == "brokerstrip" then return true end end return false`);
   addon.eval('ns.SetModuleEnabled("BrokerStrip", false) ns.Options.Show("general")');
@@ -664,6 +666,7 @@ it("options: the Frame to size choice follows the frames you can move when a mod
 
 it("options: the Profiles page lists a profile made, backed up or deleted from anywhere while it is built (H45-23-80)", () => {
   const addon = loggedIn(CLICK_LUA);
+  // The profile names the page lists.
   const listed = () => addon.eval(`local out = {} for _, w in ipairs(__wfgStub.frames) do
     if w.label and w.use ~= nil and w.card and ns.Options.RevealRow(w) then out[#out + 1] = w.label.__text end end table.sort(out) return out`);
   addon.eval('ns.NewProfile("TEST-ONLY Raid") ns.Options.Show("profiles")');
@@ -678,6 +681,7 @@ it("options: the Profiles page lists a profile made, backed up or deleted from a
 
 it("options: a bar or panel texture another addon shares later is offered by the General page's choices (H45-23-81)", () => {
   const addon = loggedIn(CLICK_LUA);
+  // The values of the newest choice row with this caption.
   const names = (caption) => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "${caption}" then last = w end end
     local out = {} for _, c in ipairs(last.choices) do out[#out + 1] = c[1] end return out`);
   addon.eval('ns.Options.Show("general")');

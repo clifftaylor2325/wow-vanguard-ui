@@ -158,6 +158,7 @@ it("broker strip: a feed change that fails is caught and named, and other feeds'
 
 it("broker strip: a feed shared after the Map page was built gets its switch there, in a fight after the fight (H45-23-52)", () => {
   const addon = loggedIn(LDB_ENV);
+  // Whether a switch with this caption is on the Map page (the newest build of it).
   const row = (name) => addon.eval(`local last for _, w in ipairs(__wfgStub.frames) do if w.label and w.label.__text == "${name}" then last = w end end return last ~= nil`);
   addon.eval('ns.Options.Show("map")');
   addon.eval('__feed("TEST-ONLY Late", { type = "data source", text = 7 })');
