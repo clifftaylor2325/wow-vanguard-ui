@@ -640,6 +640,16 @@ it("H44-22-1 Return all still passes an auction won that holds its item", () => 
   expect(addon.eval(`local m = ${MT}.Read(2) return { m.invoice, m.sale }`), "a hidden type: an invoice still, not counted a sale").toEqual([true, false]);
 });
 
+it("H44-G3-3 Take all goes on with a mail when the inbox grows under it (the server tops up the inbox)", () => {
+  const addon = mailer(`__wfgWorld.mail = { { sender = "Bobalt", subject = "Mats", money = 0, itemCount = 2 } }
+    local take = TakeInboxItem
+    TakeInboxItem = function(...) take(...) table.insert(__wfgWorld.mail, { sender = "Mum", subject = "Herbs", money = 0, itemCount = 1 }) end`);
+  addon.world.openMailWindow();
+  addon.click("Vanguard_MailTools.takeAll");
+  addon.advance(3);
+  expect([taken(addon), chatHas(addon, /Take all: 2 of 2 done\./)], "both of Bobalt's items, though a mail joined the inbox after each take").toEqual([[["item", 1, 1], ["item", 1, 2]], true]);
+});
+
 it("Take on a row takes the first attachment slot that still holds an item", () => {
   const addon = mailer("__wfgWorld.mail[2].slots = { [3] = true }");
   addon.world.openMailWindow();

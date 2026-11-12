@@ -249,10 +249,11 @@ local function tryTake(run, now)
   return takeFrom(now) and took(run, now, count) and "took" or nil
 end
 
--- Whether listed mail m was the last one taken from and the inbox count has changed since: it emptied and left
--- (or a new mail moved the places), so whatever sits at its place now is a mail the run did not list.
+-- Whether listed mail m was the last one taken from and the inbox holds fewer mails since: it emptied and left,
+-- so whatever sits at its place now is a mail the run did not list (a twin of the same sender and subject too).
+-- An inbox that grew (new mail, the server topping up a full one) leaves m where it was, to be read again.
 local function movedOn(run, m)
-  return run.last ~= nil and run.last.index == m.index and run.last.count ~= inboxCount()
+  return run.last ~= nil and run.last.index == m.index and inboxCount() < run.last.count
 end
 
 -- Whether the game is still answering the last mail command; a run sends nothing then and waits, as the game's
