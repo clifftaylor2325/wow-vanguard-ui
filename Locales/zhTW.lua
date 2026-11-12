@@ -2999,6 +2999,7 @@ L["{module} disabled. /reload to apply."] = "{module}已停用。輸入 /reload 
 L["{module} enabled after the fight."] = "{module}將在戰鬥後啟用。"
 L["{module} enabled."] = "{module}已啟用。"
 L["{module} enabled. /reload to apply."] = "{module}已啟用。輸入 /reload 以套用。"
+L["{module} enabled. It starts once {parent} is on."] = "{module} 已啟用。{parent} 開啟後才會啟動。"
 L["{money}/h"] = "{money}/小時"
 L["{mood}: {damage}% damage"] = "{mood}：{damage}%傷害"
 L["{ms} ms"] = "{ms} ms"

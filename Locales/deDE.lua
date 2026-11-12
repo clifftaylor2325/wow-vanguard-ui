@@ -2999,6 +2999,7 @@ L["{module} disabled. /reload to apply."] = "{module} deaktiviert. /reload zum A
 L["{module} enabled after the fight."] = "{module} nach dem Kampf aktiviert."
 L["{module} enabled."] = "{module} aktiviert."
 L["{module} enabled. /reload to apply."] = "{module} aktiviert. /reload zum Anwenden."
+L["{module} enabled. It starts once {parent} is on."] = "{module} aktiviert. Es startet, sobald {parent} an ist."
 L["{money}/h"] = "{money}/Std."
 L["{mood}: {damage}% damage"] = "{mood}: {damage} % Schaden"
 L["{ms} ms"] = "{ms} ms"

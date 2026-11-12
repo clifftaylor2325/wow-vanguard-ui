@@ -643,14 +643,6 @@ function O.ModuleTitle(name)
   return (O.MODULE_INFO[name] or { name })[1]
 end
 
--- The first module a module requires that is not wanted (its row is greyed and points there), or nil.
-function O.MissingParent(name)
-  local def = ns.GetModule(name)
-  for _, parent in ipairs(def and def.requires or {}) do
-    if not ns.ModuleWanted(parent) then return parent end
-  end
-end
-
 -- Whether a module's row has a note beside its name: one with its own switch inside, one that goes on and off live
 -- (its switch can wait for a fight), and one that needs another module.
 function O.HasModuleNote(name)
@@ -662,7 +654,7 @@ end
 -- with a reload-only parent switched off until the reload; it needs a module that is off; its own switch is off.
 function O.ModuleNote(name)
   if ns.ModuleAwaitsFight(name) then return L["Applies after the fight"] end
-  local parent = O.MissingParent(name)
+  local parent = ns.ModuleMissingParent(name)
   local values = { module = parent and O.ModuleTitle(parent) }
   if parent and ns.ModuleLive(name) then return ns.Format(L["Off with {module} after a reload"], values) end
   if parent then return ns.Format(L["Needs {module}"], values) end

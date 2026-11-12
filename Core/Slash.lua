@@ -378,6 +378,15 @@ local function matchName(names, text)
   end
 end
 
+-- The line after a module switched on: it runs now (a live module that started), starts once a module it needs
+-- is on, or waits for the reload (a reload-only module, or a live one whose reload-only parent is built then).
+local function enabledLine(name)
+  local def = ns.GetModule(name)
+  if def and def.live and ns.ModuleLive(name) then return L["{module} enabled."] end
+  if def and def.live and ns.ModuleMissingParent(name) then return L["{module} enabled. It starts once {parent} is on."] end
+  return L["{module} enabled. /reload to apply."]
+end
+
 -- The line after a module's switch moved: a live module has gone on or off (or will when the fight ends); any
 -- other waits for the reload.
 local function switchedLine(name, on)
@@ -385,8 +394,8 @@ local function switchedLine(name, on)
   if ns.ModuleAwaitsFight(name) then
     return on and L["{module} enabled after the fight."] or L["{module} disabled after the fight."]
   end
-  if def and def.live then return on and L["{module} enabled."] or L["{module} disabled."] end
-  return on and L["{module} enabled. /reload to apply."] or L["{module} disabled. /reload to apply."]
+  if on then return enabledLine(name) end
+  return def and def.live and L["{module} disabled."] or L["{module} disabled. /reload to apply."]
 end
 
 -- /vg enable|disable <module>: the module's name may be typed in any case; with no name, the usage line.
@@ -398,7 +407,7 @@ local function setModule(on)
       return chat(ns.Format(L["No module called {name}. /vg modules lists them."], { name = rest }))
     end
     ns.SetModuleEnabled(name, on)
-    chat(ns.Format(switchedLine(name, on), { module = name }))
+    chat(ns.Format(switchedLine(name, on), { module = name, parent = ns.ModuleMissingParent(name) }))
   end
 end
 

@@ -86,7 +86,7 @@ end
 -- Greys a module's row while a module it requires is off: its name in the disabled tier, its switch faded (a click
 -- jumps to that module's row instead, moduleSetter).
 local function greyIfWaiting(r, name)
-  local waiting = O.MissingParent(name) ~= nil
+  local waiting = ns.ModuleMissingParent(name) ~= nil
   T.Color(r.label, waiting and "disabled" or "text")
   r.track:SetAlpha(waiting and T.ALPHA.unavailable or T.ALPHA.opaque)
 end
@@ -111,7 +111,7 @@ end
 -- A module row's setter: while a module it requires is off, a click jumps to that module's row instead of switching.
 local function moduleSetter(row)
   return function(v)
-    local parent = O.MissingParent(row[7])
+    local parent = ns.ModuleMissingParent(row[7])
     if parent then return O.JumpToModule(parent) end
     row[4](v)
   end
