@@ -26,9 +26,10 @@ function ns.HudLayoutChoices()
 end
 
 -- The keep's measures, in units: the least canvas width the wall holds on (under: narrower canvases fall back to
--- the Centered spots and draw no wall), how far the wall reaches past the frames it holds (pad), and the brass
--- parapet's token.
-ns.KEEP = { under = 1100, pad = 12, parapet = "accentDim" }
+-- the Centered spots and draw no wall; your target's side of the wall reaches 490 right of centre, and the bag and
+-- menu bar's default spot fills the bottom right corner about 430 in, so under 1840 the two meet), how far the wall
+-- reaches past the frames it holds (pad), and the brass parapet's token.
+ns.KEEP = { under = 1840, pad = 12, parapet = "accentDim" }
 
 ns.LayoutSpots("fort", {
   uf_player = { "BOTTOM", "BOTTOM", -378, 86, under = ns.KEEP.under, underFrames = true },

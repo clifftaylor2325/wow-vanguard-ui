@@ -44,9 +44,11 @@ it("HUD layouts: a layout's spots win over the modules' defaults, a saved spot o
   expect([addon.eval("return { ns.HudLayout(), tostring(VanguardDB.profiles.Default.hudLayout), ns.MoverPoint('uf_player') }"), addon.eval("return __layouts")], "a layout no release knows is Centered (nothing saved); every change told the listeners").toEqual([["centered", "nil", "BOTTOM", "BOTTOM", -240, 196 + RISE.frames], "fort standards centered "]);
   addon.eval("ns.SetHudLayout('fort')");
   canvas(addon, 1024, 768);
-  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }"), addon.eval("return ns.LayoutSize('uf_player') == nil")], "on a canvas under 1100 wide the keep doesn't hold: the modules' spots and sizes").toEqual([false, ["BOTTOM", "BOTTOM", -240, 196], true]);
-  canvas(addon, 1100, 768);
-  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }")], "1100 wide holds it").toEqual([true, ["BOTTOM", "BOTTOM", -378, 86]]);
+  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }"), addon.eval("return ns.LayoutSize('uf_player') == nil")], "on a canvas under 1840 wide the keep doesn't hold: the modules' spots and sizes").toEqual([false, ["BOTTOM", "BOTTOM", -240, 196], true]);
+  canvas(addon, 1839, 768);
+  expect(addon.eval("return ns.LayoutHolds()"), "1839 wide: your target's side would meet the bag and menu bar, so it still doesn't hold").toBe(false);
+  canvas(addon, 1840, 768);
+  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }")], "1840 wide holds it").toEqual([true, ["BOTTOM", "BOTTOM", -378, 86]]);
   addon.eval("__wfgStub.setScreen(1920, 1080) ns.SetHudLayout('standards')");
   expect(addon.eval("UIParent.GetWidth = function() return __wfgWorld.secret(1920) end local holds, w = ns.LayoutHolds(), ns.LayoutSize('uf_player') UIParent.GetWidth = nil return { holds, w }"), "Standards holds on any canvas, a hidden one too").toEqual([true, 40]);
 });
@@ -88,7 +90,7 @@ it("the keep: one wall on the background strata from your frame to your target's
   addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
   expect(addon.eval("return { ns.GetModule('UnitFrames').deck == nil, Vanguard_player:GetHeight() > 39 }"), "the deck stays off under the keep (no panel made, the frames at the wall's sizes)").toEqual([true, true]);
   canvas(addon, 1024, 768);
-  expect([addon.eval("return Vanguard_Keep:IsShown()"), size(addon, "Vanguard_player"), addon.eval("return { ns.MoverPoint('uf_player') }")], "on a canvas under 1100 wide the wall goes and the frames take their own sizes and spots").toEqual([false, [240, 36], ["BOTTOM", "BOTTOM", -240, 196]]);
+  expect([addon.eval("return Vanguard_Keep:IsShown()"), size(addon, "Vanguard_player"), addon.eval("return { ns.MoverPoint('uf_player') }")], "on a canvas under 1840 wide the wall goes and the frames take their own sizes and spots").toEqual([false, [240, 36], ["BOTTOM", "BOTTOM", -240, 196]]);
   canvas(addon, 1920, 1080);
   expect([addon.eval("return Vanguard_Keep:IsShown()"), size(addon, "Vanguard_player")], "back on a wide one the wall returns").toEqual([true, [200, 40]]);
   addon.eval("ns.GetModule('UnitFrames').settings.deck = false ns.SetHudLayout(nil)");
@@ -100,7 +102,7 @@ it("the keep: one wall on the background strata from your frame to your target's
 // Under the keep, the frames the wall holds rise with the bars (underFrames, Core/Layout.lua L.HudLift), so on a
 // tall canvas the wall still stands behind them, as it does at the game's own UI scale.
 it("the keep rises with the bars as one block: on every canvas your frame and your target's stand inside the wall with the first two bars", () => {
-  for (const [w, h] of [[1365, 768], [1920, 1080], [2560, 1440]]) {
+  for (const [w, h] of [[1840, 768], [1920, 1080], [2560, 1440]]) {
     const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h}) ` + UNITS_ENV, onLayout("fort"));
     const inside = addon.eval(`local wall = Vanguard_Keep
       local function within(f) return f:GetLeft() >= wall:GetLeft() and f:GetRight() <= wall:GetRight() and f:GetBottom() >= wall:GetBottom() and f:GetTop() <= wall:GetTop() end

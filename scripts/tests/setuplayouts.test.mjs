@@ -241,6 +241,23 @@ it("setup screens: with each screen preset, nothing overlaps or leaves its own s
   }
   expect(addon.eval("return { ns.GetModule('ActionBars').settings.size, ns.GetModule('RaidFrames').settings.width, ns.Theme.Settings().textScale }"), "the last preset (ultrawide) set the buttons, tiles and text").toEqual([38, 110, 1.05]);
 });
+// The keep puts your target's side of the wall 490 units right of centre; the bag and menu bar's default spot is the
+// bottom right corner, 412 wide here, so the keep holds only where the two clear (ns.KEEP.under). The target's aura
+// rows wrap at its frame's width (Modules/FrameAuras.lua lineWidth: 200 under the keep once built there), so they are
+// checked at that width, not ATTACHED's Centered 240.
+const KEEP_RIGHT = ["uf_target", "uf_targettarget", "cast_target", "targetDebuffs", "targetBuffs"];
+it("setup layouts: under The keep the bag and menu bar stays clear of your target's side of the wall on every canvas", () => {
+  const addon = wholeHud();
+  addon.eval('ns.Setup.ApplyLayout("fort")');
+  for (const [sw, sh] of [[1365, 768], [1536, 864], [1600, 900], [1707, 960], [1839, 1035], [1840, 1035], [1920, 1080]]) {
+    canvasAt(addon, sw, sh);
+    const rects = layoutRects(addon, 0, sw, sh);
+    for (const row of ["targetDebuffs", "targetBuffs"]) if (rects[row]) rects[row].r = rects[row].l + (rects.uf_target.r - rects.uf_target.l);
+    const wall = addon.eval("local w = Vanguard_Keep return w and w:IsShown() and { l = w:GetLeft(), b = w:GetBottom(), r = w:GetRight(), t = w:GetTop() } or false");
+    const parts = KEEP_RIGHT.filter((k) => rects[k] && overlaps(rects[k], rects.menustrip));
+    expect([addon.eval("return ns.LayoutHolds()"), wall && overlaps(wall, rects.menustrip), parts], `${sw}x${sh}: the keep holds from 1840 wide, and the wall and your target's side clear the bag and menu bar`).toEqual([sw >= 1840, false, []]);
+  }
+});
 // The frames whose default spots adapt to a canvas narrower than 1365 or shorter than 768 (P3-3 and the
 // narrow-screen fixes): on the canvases below, each is on screen and clear of the rest of the centered layout.
 const NARROW_FRAMES = ["uf_targettarget", "playerauras", "partyextras", "chat"];
