@@ -257,6 +257,36 @@ it("raid indicators on the fallback", () => {
   expect(state().shown === false, "the highlight goes when the debuff does").toBeTruthy();
 });
 
+// Every indicator slot that crosses another zone of its tile, at each width and height the sliders allow (72 to 120,
+// 36 to 56), both text sizes and the grid's scales: the name, a status at the name row's right (a centred status
+// is shared with them, as indicators are hidden on the dead and offline), the missing-buff mark and the icon strips.
+const INDICATOR_CLASHES = `local RF, RA, out = ns.GetModule("RaidFrames"), ns.GetModule("RaidAuras"), {}
+  local tile = { GetFrameLevel = function() return 1 end }
+  local function hit(a, b) return a[1] < b[1] + b[3] and b[1] < a[1] + a[3] and a[2] < b[2] + b[4] and b[2] < a[2] + a[4] end
+  local saved = { RA.settings.indicator1, RA.settings.indicator2, RA.settings.indicator3 }
+  RA.settings.indicator1, RA.settings.indicator2, RA.settings.indicator3 = "cc", "cc", "cc"
+  for _, scale in ipairs({ 1, 1.2 }) do
+    ns.Theme.Settings().textScale = scale
+    for w = 72, 120, 4 do for h = 36, 56 do for _, grid in ipairs({ 1, 0.8, 0.72 }) do
+      local z = RF.Zones(w, h, grid)
+      local others = { name = z.name, missing = z.missing, debuffs = z.debuffs, hots = z.hots, status = z.status[5] == "RIGHT" and z.status or nil }
+      for n = 1, RA.IND_SLOTS do
+        local spec = RA.IndicatorSpec(tile, z, n)
+        local r = spec and { w + spec.point[4] - RA.IND_SIZE, -spec.point[5], RA.IND_SIZE, RA.IND_SIZE }
+        for zone, other in pairs(r and others or {}) do
+          if hit(r, other) then out[#out + 1] = "slot " .. n .. "/" .. zone .. " at " .. w .. "x" .. h .. " text scale " .. scale .. " grid " .. grid end
+        end
+      end
+    end end end
+  end
+  ns.Theme.Settings().textScale = 1
+  RA.settings.indicator1, RA.settings.indicator2, RA.settings.indicator3 = saved[1], saved[2], saved[3]
+  table.sort(out)
+  return table.concat(out, "; ")`;
+
+// Runs INDICATOR_CLASHES on the addon: every clash as one line, or "" when there is none.
+const indicatorClashes = (addon) => addon.eval(INDICATOR_CLASHES);
+
 it("raid tile zones never overlap", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV);
   const clashes = addon.eval(`local RF, out = ns.GetModule("RaidFrames"), {}
@@ -280,6 +310,7 @@ it("raid tile zones never overlap", () => {
     ns.Theme.Settings().textScale = 1
     return table.concat(out, "; ")`);
   expect(clashes, "name, status, missing-buff mark, debuffs, HoTs and power bar each keep their own space").toBe("");
+  expect(indicatorClashes(addon), "and so do the indicator icons, at every width and height the sliders allow (H46-15-3)").toBe("");
   const z = addon.eval('local z = ns.GetModule("RaidFrames").Zones(100, 48) return { icon = z.icon, per = z.per, status = z.status[5] }');
   expect(z.icon === 14 && z.per === 3 && z.status === "CENTER", "at the default 100x48: 14 px icons, three a side, status under the name").toBeTruthy();
   expect(addon.eval('return ns.GetModule("RaidFrames").Zones(72, 36).status[5]') === "RIGHT", "a short tile puts the status at the name row's right").toBeTruthy();
@@ -1019,6 +1050,24 @@ it("raid indicators: small icons down the tile's right edge, from the client's o
   addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", nil)');
   expect(addon.eval("local b = Vanguard_RaidUnitButton1 return { tostring(b.indRows[1].frame.__unit), b.indUnit == nil }"), "an emptied tile lets go of its unit").toEqual(["none", true]);
   expect(addon.eval("local RA = ns.GetModule('RaidAuras') return RA.IndicatorSpec(Vanguard_RaidUnitButton1, { missing = { 0, 3, 10, 10 }, debuffs = { 2, 20 } }, 1)"), "a tile too short for any slot leaves them out").toBeNull();
+});
+
+// Where each indicator slot sits on a w x h tile at 100% text size, as [x in from the right, y down from the top],
+// or false when it is left out.
+const indicatorSlots = (addon, w, h) => Object.values(addon.eval(`local RF, RA = ns.GetModule("RaidFrames"), ns.GetModule("RaidAuras")
+  local z, tile, out = RF.Zones(${w}, ${h}, 1), { GetFrameLevel = function() return 1 end }, {}
+  local saved = { RA.settings.indicator1, RA.settings.indicator2, RA.settings.indicator3 }
+  RA.settings.indicator1, RA.settings.indicator2, RA.settings.indicator3 = "cc", "cc", "cc"
+  for n = 1, RA.IND_SLOTS do local spec = RA.IndicatorSpec(tile, z, n) out[n] = spec and { -spec.point[4], -spec.point[5] } or false end
+  RA.settings.indicator1, RA.settings.indicator2, RA.settings.indicator3 = saved[1], saved[2], saved[3]
+  return out`)).map((s) => (s ? Object.values(s) : s));
+
+it("H46-15-3 raid indicators: a second and third icon in a column to the left start under the name row, or are left out", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  expect(indicatorSlots(addon, 100, 48), "the default tile: the first under the missing-buff mark, the others under the name").toEqual([[2, 14], [12, 18], [22, 18]]);
+  expect(indicatorSlots(addon, 100, 44), "a tile with the status at the name row's right and no room under it: only the first").toEqual([[2, 14], false, false]);
+  expect(indicatorSlots(addon, 100, 46), "46 high: room under the name row and status for one row").toEqual([[2, 14], [12, 18], [22, 18]]);
+  expect(indicatorSlots(addon, 120, 56), "56 high: two down the edge, the third under the name").toEqual([[2, 14], [2, 24], [12, 18]]);
 });
 
 it("H17-10-1: the debuff type badge's backing is black in the Classic look, so the dispel letter keeps its contrast", () => {

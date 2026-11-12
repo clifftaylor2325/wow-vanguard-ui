@@ -653,7 +653,7 @@ it("raid frames: the indicators are named by where they sit, with a note, and th
     if w.__kind == "FontString" and w:GetText() == ${JSON.stringify(text)} then return true end
   end return false`);
   expect(["Right edge, top", "Right edge, second", "Right edge, third"].map(has), "the three captions (each with its reload tag)").toEqual([true, true, true]);
-  expect(has("Small icons down the right edge of each tile, under the missing-buff mark; on short tiles they continue in a column to the left."), "the note").toBe(true);
+  expect(has("Small icons at each tile's right edge under the missing-buff mark; the second and third sit under the name, where they fit."), "the note").toBe(true);
   expect(addon.eval('local out = {} for i, c in ipairs(ns.GetModule("RaidAuras").SOURCE_CHOICES) do out[i] = c[2] end return out'), "sentence case").toEqual(
     ["None", "External defensive", "Big defensive", "Important buff", "Your buffs", "Crowd control", "Dispellable debuff"]);
 });
