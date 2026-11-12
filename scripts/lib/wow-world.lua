@@ -53,6 +53,10 @@ end
 -- The world's own handle on that check, so its reads still work in a test that removes the global.
 local worldIsSecret = issecretvalue
 
+-- Whether a value is secret by the test's own check when it has one (some tests replace issecretvalue to call a
+-- stand-in secret), else by the world's, so a test that removes the global still gets answers.
+local function seenSecret(v) return (issecretvalue or worldIsSecret)(v) end
+
 -- Whether a value is a secret world.secret made (a test's plain { __secret = true } stand-in keeps
 -- type() "table", so the test's own issecretvalue, if it has one, still knows it).
 local function madeSecret(v)
@@ -93,7 +97,7 @@ C_Secrets = {
   -- Whether one aura's values are hidden: every aura's while auras are, else this one's when its times are secrets.
   ShouldUnitAuraInstanceBeSecret = function(unit, id)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    return world.aurasSecret or (aura ~= nil and (issecretvalue(aura.duration) or issecretvalue(aura.expirationTime)))
+    return world.aurasSecret or (aura ~= nil and (seenSecret(aura.duration) or seenSecret(aura.expirationTime)))
   end,
   -- Whether unit's threat values against mobUnit are hidden; both units are required, as in the client.
   ShouldUnitThreatValuesBeSecret = function(unit, mobUnit)
@@ -593,7 +597,7 @@ GetQuestDifficultyColor = GetCreatureDifficultyColor
 
 -- A number as the client abbreviates it (12.3K, 1.2M); secrets stay secret.
 function AbbreviateNumbers(v)
-  if issecretvalue(v) then local n = rawget(v, "n") return world.secret(n and AbbreviateNumbers(n)) end
+  if seenSecret(v) then local n = rawget(v, "n") return world.secret(n and AbbreviateNumbers(n)) end
   if type(v) ~= "number" then return tostring(v) end
   if v >= 1e6 then return string.format("%.1fM", v / 1e6) end
   if v >= 1e3 then return string.format("%.1fK", v / 1e3) end
@@ -622,7 +626,7 @@ C_CurveUtil = {
   end,
   -- One of two colors by a boolean the client may hide (a hidden one is read through the harness's rawget, as a hidden number is).
   EvaluateColorFromBoolean = function(flag, ifTrue, ifFalse)
-    if issecretvalue(flag) then flag = rawget(flag, "n") end
+    if seenSecret(flag) then flag = rawget(flag, "n") end
     return flag and ifTrue or ifFalse
   end,
 }
@@ -659,13 +663,13 @@ C_StringUtil = {
   CreateNumericRuleFormatter = function() return newNumericRuleFormatter() end,
   -- A number as whole-number text (rounded down), "" for zero; a secret stays secret.
   TruncateWhenZero = function(n)
-    if issecretvalue(n) then local v = rawget(n, "n") return world.secret(v and C_StringUtil.TruncateWhenZero(v)) end
+    if seenSecret(n) then local v = rawget(n, "n") return world.secret(v and C_StringUtil.TruncateWhenZero(v)) end
     local whole = math.floor(n)
     return whole == 0 and "" or tostring(whole)
   end,
   -- prefix .. infix .. suffix, or "" when infix is ""; a secret infix gives a secret.
   WrapString = function(infix, prefix, suffix)
-    if issecretvalue(infix) then local v = rawget(infix, "n") return world.secret(v and C_StringUtil.WrapString(v, prefix, suffix)) end
+    if seenSecret(infix) then local v = rawget(infix, "n") return world.secret(v and C_StringUtil.WrapString(v, prefix, suffix)) end
     if infix == "" then return "" end
     return (prefix or "") .. infix .. (suffix or "")
   end,
@@ -1142,7 +1146,7 @@ world.auras = filtered
 -- The time inside a value for the object's sums: 0 for a secret that hides nothing (a test's bare stand-in).
 local function timeInside(v)
   local n = inside(v)
-  if issecretvalue(n) then return 0 end
+  if seenSecret(n) then return 0 end
   return n or 0
 end
 
@@ -1162,7 +1166,7 @@ local function durationObject(start, duration)
   function d:GetEndTime() return durationAnswer(self, timeInside(self.start) + timeInside(self.duration)) end
   function d:GetRemainingDuration() return durationAnswer(self, math.max(0, timeInside(self.start) + timeInside(self.duration) - stub.now)) end
   function d:IsZero() return inside(self.duration) == 0 end
-  function d:HasSecretValues() return issecretvalue(self.start) or issecretvalue(self.duration) end
+  function d:HasSecretValues() return seenSecret(self.start) or seenSecret(self.duration) end
   return __wfgUserdata(d)
 end
 world.durationObject = durationObject
@@ -1183,7 +1187,7 @@ C_UnitAuras = {
   GetAuraApplicationDisplayCount = function(unit, id, minCount, maxCount)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
     local n = aura and aura.applications or 0
-    if issecretvalue(n) then return n end
+    if seenSecret(n) then return n end
     if n < (minCount or 2) then return "" end
     if maxCount and n > maxCount then return "*" end
     return tostring(n)
@@ -1202,7 +1206,7 @@ C_UnitAuras = {
     if not aura then return nil end
     local expires, duration = aura.expirationTime or stub.now, aura.duration or 0
     local start = timeInside(expires) - timeInside(duration)
-    if issecretvalue(expires) or issecretvalue(duration) then return durationObject(world.secret(start), duration) end
+    if seenSecret(expires) or seenSecret(duration) then return durationObject(world.secret(start), duration) end
     return durationObject(start, duration)
   end,
 }
@@ -1732,7 +1736,7 @@ world.questTimers = {}
 
 -- Seconds left on one timed quest: as the clock stands, or the secret as it is.
 local function timerLeft(t)
-  if issecretvalue(t.endsAt) then return t.endsAt end
+  if seenSecret(t.endsAt) then return t.endsAt end
   return math.max(0, t.endsAt - stub.now)
 end
 
@@ -1749,7 +1753,7 @@ end
 function world.setQuestTimer(questID, seconds)
   local kept = {}
   for _, t in ipairs(world.questTimers) do if t.questID ~= questID then kept[#kept + 1] = t end end
-  if seconds ~= nil then kept[#kept + 1] = { questID = questID, endsAt = issecretvalue(seconds) and seconds or stub.now + seconds } end
+  if seconds ~= nil then kept[#kept + 1] = { questID = questID, endsAt = seenSecret(seconds) and seconds or stub.now + seconds } end
   world.questTimers = kept
   stub.fire("QUEST_LOG_UPDATE")
 end
