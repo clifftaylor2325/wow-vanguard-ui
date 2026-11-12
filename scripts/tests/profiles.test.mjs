@@ -1490,3 +1490,19 @@ it("H46-10-11 a take-back leaves a reload offered for another reason up", () => 
   const shown = takenBack((addon) => addon.eval("ns.OfferReload('Something else changed.')") || addon.slash("profile Default"));
   expect(shown, "the other reason's offer stays").toEqual([true, true]);
 });
+// H46-40-F3: Heal (spec 2's own, or with `specProfiles` dropped no spec's) in use, and Mine matches the string imported.
+const importMatching = (saved) => {
+  const addon = createAddon({ savedVariables: saved.replace("Mine = {}", 'Mine = { theme = { accent = "jade" } }') });
+  addon.eval(SPEC_GETTER);
+  addon.login();
+  addon.clearChat();
+  importText(addon, addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade" } }))'));
+  const offered = addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown() and Vanguard_Reload.title:GetText() or false");
+  return [chatHas(addon, /This string matches profile Mine\.$/), offered, addon.eval("return ns.PendingProfileName()")];
+};
+it("H46-40-F3 on a spec with its own profile, a string matching another profile picks it with no reload promise or offer", () => {
+  expect(importMatching(HEAL_SPEC), "said plainly, Mine staged, no reload offered").toEqual([true, false, "Mine"]);
+});
+it("H46-40-F3 with no spec profile, a string matching another profile still promises it after a reload", () => {
+  expect(importMatching(HEAL_SPEC.replace(', specProfiles = { [2] = "Heal" }', "")), "promised and offered").toEqual([false, "This string matches profile Mine; this character will use it after a reload. Reload the UI now to apply it?", "Mine"]);
+});

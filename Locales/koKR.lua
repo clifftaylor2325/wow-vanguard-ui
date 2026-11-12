@@ -2204,6 +2204,7 @@ L["This profile was made at UI scale {scale}% on a {width} x {height} screen (yo
 L["This session"] = "이번 세션"
 L["This spec no longer switches profiles."] = "이 전문화는 더 이상 프로필을 바꾸지 않습니다."
 L["This string matches profile {profile}, which this character already uses: nothing new to import."] = "이 문자열은 이 캐릭터가 이미 사용하는 {profile} 프로필과 같습니다: 새로 가져올 것이 없습니다."
+L["This string matches profile {profile}."] = "이 문자열은 {profile} 프로필과 같습니다."
 L["This string matches profile {profile}; this character will use it after a reload."] = "이 문자열은 {profile} 프로필과 같습니다. 이 캐릭터는 UI 재시작 후 그것을 사용합니다."
 L["This version of Vanguard has no release notes."] = "이 버전의 Vanguard에는 업데이트 내역이 없습니다."
 L["Threat colors while you have aggro"] = "내가 어그로를 가졌을 때 위협 색상"

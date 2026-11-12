@@ -2204,6 +2204,7 @@ L["This profile was made at UI scale {scale}% on a {width} x {height} screen (yo
 L["This session"] = "Questa sessione"
 L["This spec no longer switches profiles."] = "Questa specializzazione non cambia più profilo."
 L["This string matches profile {profile}, which this character already uses: nothing new to import."] = "Questa stringa corrisponde al profilo {profile}, che questo personaggio usa già: nulla di nuovo da importare."
+L["This string matches profile {profile}."] = "Questa stringa corrisponde al profilo {profile}."
 L["This string matches profile {profile}; this character will use it after a reload."] = "Questa stringa corrisponde al profilo {profile}; questo personaggio lo userà dopo una ricarica."
 L["This version of Vanguard has no release notes."] = "Questa versione di Vanguard non ha note di rilascio."
 L["Threat colors while you have aggro"] = "Colori di minaccia mentre hai l'aggro"

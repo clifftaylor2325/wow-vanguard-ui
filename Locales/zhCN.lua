@@ -2204,6 +2204,7 @@ L["This profile was made at UI scale {scale}% on a {width} x {height} screen (yo
 L["This session"] = "本次登录"
 L["This spec no longer switches profiles."] = "此专精不再切换配置文件。"
 L["This string matches profile {profile}, which this character already uses: nothing new to import."] = "此字符串与配置文件{profile}一致，此角色已在使用它：没有新内容可导入。"
+L["This string matches profile {profile}."] = "此字符串与配置文件{profile}一致。"
 L["This string matches profile {profile}; this character will use it after a reload."] = "此字符串与配置文件{profile}一致；此角色将在重载后使用它。"
 L["This version of Vanguard has no release notes."] = "此版本的Vanguard没有更新说明。"
 L["Threat colors while you have aggro"] = "你获得仇恨时显示仇恨颜色"

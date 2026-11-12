@@ -247,12 +247,20 @@ local function takeDisplay(data)
   return display
 end
 
+-- The sentence for a whole string that matches profile `name`, now picked: the reload promise and offer only when it
+-- is the profile that loads (a spec's own profile wins over it, as ns.WarnSpecWins has said), as importedText does.
+local function matchedText(name, result)
+  result.reload = ns.ProfileAfterReload() == name
+  if result.reload then return ns.Format(L["This string matches profile {profile}; this character will use it after a reload."], { profile = name }) end
+  return ns.Format(L["This string matches profile {profile}."], { profile = name })
+end
+
 -- A whole profile whose settings equal one this account has: this character uses that one
 -- (after a reload), and nothing is added; a match with the profile in use changes nothing, a staged pick stays.
 local function importMatch(name, result)
   if name ~= ns.ProfileName() then
     ns.UseProfile(name)
-    return ns.Format(L["This string matches profile {profile}; this character will use it after a reload."], { profile = name })
+    return matchedText(name, result)
   end
   result.reload, result.display = false, nil
   return ns.Format(L["This string matches profile {profile}, which this character already uses: nothing new to import."], { profile = name })
