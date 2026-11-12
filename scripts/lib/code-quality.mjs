@@ -1102,12 +1102,40 @@ const TEXT_SINKS = new Set(["SetText", "AddLine", "AddDoubleLine", "Chat", "chec
 // True when a string token is words a player reads: it has a letter, and no backslash (a path).
 const isWords = (text) => /[A-Za-z]/.test(text) && !text.includes("\\") && !text.startsWith('"|T');
 
+// The sink a `local <name> = <a>.<b>.<Sink>` statement at tokens[i] names (`local chat = ns.Chat`), or null: the value
+// must be the sink itself, not its answer or a field of it.
+function aliasedSink(tokens, i) {
+  if (tokens[i].text !== "local" || tokens[i + 1]?.kind !== "word" || tokens[i + 2]?.text !== "=") return null;
+  let k = i + 3;
+  while ([".", ":"].includes(tokens[k + 1]?.text) && tokens[k + 2]?.kind === "word") k += 2;
+  const next = tokens[k + 1];
+  const value = tokens[k]?.kind === "word" && next?.kind !== "string" && !["(", ".", ":", "[", "{"].includes(next?.text);
+  return value && SHAPE_SINKS.has(tokens[k].text) ? tokens[k].text : null;
+}
+
+// The local names a file gives a sink anywhere in it (Core/Slash.lua's `local chat = ns.Chat`), as a Map from name
+// to sink, so a call through the name is read like the sink's own (H46-35-R1).
+function sinkAliases(tokens) {
+  const aliases = new Map();
+  tokens.forEach((t, i) => aliasedSink(tokens, i) && aliases.set(tokens[i + 1].text, aliasedSink(tokens, i)));
+  return aliases;
+}
+
+// The sink the word at tokens[i] calls: the sink a local name stands for (not when it is another table's field of
+// that name), else the word itself; undefined for a token that is not a word.
+function sinkName(tokens, i, aliases) {
+  if (tokens[i]?.kind !== "word") return undefined;
+  const owned = [".", ":"].includes(tokens[i - 1]?.text);
+  return (!owned && aliases.get(tokens[i].text)) || tokens[i].text;
+}
+
 // English literals handed straight to a text sink, not through L["…"]: [{ rule, line, message }].
 function unwrappedText(file, src) {
   if (!COLOR_SCOPE.test(file)) return [];
   const tokens = codeTokens(src);
   const line = lineIndex(src);
-  const hits = tokens.filter((t, i) => t.kind === "string" && tokens[i - 1]?.text === "(" && TEXT_SINKS.has(tokens[i - 2]?.text) && isWords(t.text));
+  const aliases = sinkAliases(tokens);
+  const hits = tokens.filter((t, i) => t.kind === "string" && tokens[i - 1]?.text === "(" && TEXT_SINKS.has(sinkName(tokens, i - 2, aliases)) && isWords(t.text));
   return hits.map((t) => ({ rule: REPORT_RULES[2], line: line(t.start), message: `English text not in L[…]: ${t.text.slice(0, 48)}` }));
 }
 
@@ -1122,10 +1150,11 @@ const SHAPE_SINKS = new Map(Object.entries({
 }));
 const FORMATTERS = new Set(["format", "Format"]);
 // The /vg diagnostics docs/PATTERNS.md lists as staying English (pasted into a bug report), each with the files that print
-// it: a file that prints one is not read by the wider rule. A test holds this table to that sentence of the doc.
+// it: a file that prints one is not read by the wider rule. In a file that prints other text too, `file:function` names
+// the one function that prints it, and only that function is not read. A test holds this table to that sentence of the doc.
 export const DIAGNOSTIC_FILES = {
-  probe: ["Modules/Probe.lua"], perf: ["Core/Perf.lua"], mem: ["Core/Perf.lua", "Core/SettingsGuard.lua"], status: [], report: [], errors: [],
-  frame: [], realm: ["Core/Home.lua"], factionart: ["Core/FactionArt.lua"],
+  probe: ["Modules/Probe.lua"], perf: ["Core/Perf.lua"], mem: ["Core/Perf.lua", "Core/SettingsGuard.lua"], status: ["Core/Slash.lua:statusCommand"],
+  report: [], errors: [], frame: [], realm: ["Core/Home.lua"], factionart: ["Core/FactionArt.lua"],
 };
 const DIAGNOSTIC_SET = new Set(Object.values(DIAGNOSTIC_FILES).flat());
 // What a literal carries that is not words: format codes, {slots}, |c and |r, |H...|h link markup and the brand.
@@ -1177,11 +1206,22 @@ function shapeLiterals(arg, narrow) {
   });
 }
 
-// The tokens of the text argument of the sink call at tokens[i], or an empty list when tokens[i] is not a sink call.
-function sinkArgument(tokens, i) {
-  const index = tokens[i].kind === "word" ? SHAPE_SINKS.get(tokens[i].text) : undefined;
+// The tokens of the text argument of the sink call at tokens[i] (aliases: sinkAliases), or an empty list when
+// tokens[i] is not a sink call.
+function sinkArgument(tokens, i, aliases) {
+  const index = SHAPE_SINKS.get(sinkName(tokens, i, aliases));
   const call = index !== undefined && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
   return call ? (callArgs(tokens, i + 1)[index] ?? []) : [];
+}
+
+// The files DIAGNOSTIC_FILES names a function of (`file:function`).
+const DIAGNOSTIC_FUNCTION_FILES = new Set([...DIAGNOSTIC_SET].filter((entry) => entry.includes(":")).map((entry) => entry.split(":")[0]));
+
+// The functions of a file that DIAGNOSTIC_FILES names as `file:function`, as function spans (functionSpans); the
+// spans are found only in a file that has one.
+function diagnosticSpans(file, tokens) {
+  if (!DIAGNOSTIC_FUNCTION_FILES.has(file)) return [];
+  return functionSpans(tokens).filter((s) => DIAGNOSTIC_SET.has(`${file}:${s.name}`));
 }
 
 // English in a sink's text argument in a shape the narrow rule does not read (rule unwrapped-text-shapes).
@@ -1189,7 +1229,10 @@ function unwrappedShapes(file, src) {
   if (!COLOR_SCOPE.test(file) || DIAGNOSTIC_SET.has(file)) return [];
   const tokens = codeTokens(src);
   const line = lineIndex(src);
-  const hits = tokens.flatMap((t, i) => shapeLiterals(sinkArgument(tokens, i), TEXT_SINKS.has(t.text)));
+  const [aliases, diagnostic] = [sinkAliases(tokens), diagnosticSpans(file, tokens)];
+  // True when the token at i stands outside every diagnostic function.
+  const read = (i) => !diagnostic.some((s) => s.open < i && i < s.close);
+  const hits = tokens.flatMap((t, i) => (read(i) ? shapeLiterals(sinkArgument(tokens, i, aliases), TEXT_SINKS.has(sinkName(tokens, i, aliases))) : []));
   return hits.map((t) => ({ rule: REPORT_RULES[6], line: line(t.start), message: `English text joined, chosen or formatted outside L[…]: ${t.text.slice(0, 48)}` }));
 }
 
