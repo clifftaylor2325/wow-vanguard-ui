@@ -1,6 +1,6 @@
 # Design: UI coherence plan (one interface, not an assembly)
 
-Written 2026-10-17 against `main` at `8e249a4` (0.6.0 plus PRs #390 to #392) for Cliff's full UI/UX review. It turns the review's three research notes into one target, one build order and one list of questions. The phases are Phases 8.1 to 8.11 in `.planning/ROADMAP.md` (requirements UI-07 to UI-14, whose file `.planning/REQUIREMENTS.md` was deleted on 2026-11-11 with the rest of the closed GSD records); this file is what they build to. Research, not observation: nothing here was seen in a Forever client, and every look it describes goes on the in-game list that Phase 8.11 assembles.
+Written 2026-10-17 against `main` at `8e249a4` (0.6.0 plus PRs #390 to #392) for Cliff's full UI/UX review. It turns the review's three research notes into one target, one build order and one list of questions. The phases were Phases 8.1 to 8.11 of the GSD roadmap (requirements UI-07 to UI-14; the roadmap and its requirements file were deleted with the rest of the closed GSD records and are in git history), all merged on 2026-10-17; this file is what they build to. Research, not observation: nothing here was seen in a Forever client, and every look it describes goes on the in-game list that Phase 8.11 assembles.
 
 The research it draws on: [DESIGN-PRINCIPLES.md](DESIGN-PRINCIPLES.md) (PR #394: twelve principles, a target spec for twenty-one elements, a ranked list and twelve open questions) and two notes in the project's shared folder, `research/ui-ux-review/blizzard-frame-coverage.md` (301 Blizzard addons load on Forever and define 709 top-level frames, 241 of which Vanguard touches; the gaps ranked by how often a player sees them; what should stay Blizzard's) and `research/ui-ux-review/vanguard-ui-audit.md` (the widget inventory and seventeen inconsistencies with `file:line` evidence). Where this file and DESIGN-PRINCIPLES.md give a different number, this file wins: it also carries the decisions the threads already building have taken. Every `file:line` is as of `8e249a4`; grep the identifier next to it if a line has moved.
 
@@ -168,11 +168,11 @@ Outside the phases: D's `work/game-primitives` adds new functions to the game-fr
 
 ### 4.4 Rules every phase follows
 
-One branch named `work/<phase>` from fresh `origin/main`, one draft PR marked ready once, Cliff's attribution only, `npm run quality` and `npm run coverage` (100 %) green, the feature page sentence (`docs/features/`) and `docs/THEME.md` updated in the same commit as the behaviour, every new global in `.luacheckrc`, every new fade in THEME.md's table, a needs-in-game-check list in the PR, and the phase's checkbox ticked in `.planning/ROADMAP.md`. Nothing protected in combat, no secret-value reads, no field on a game frame and no `SetScript` on one: the harness fails both. Nothing is built behind an unanswered [DECIDE].
+One branch named `work/<phase>` from fresh `origin/main`, one draft PR marked ready once, Cliff's attribution only, `npm run quality` and `npm run coverage` (100 %) green, the feature page sentence (`docs/features/`) and `docs/THEME.md` updated in the same commit as the behaviour, every new global in `.luacheckrc`, every new fade in THEME.md's table, a needs-in-game-check list in the PR, and the phase's checkbox ticked in its work plan. Nothing protected in combat, no secret-value reads, no field on a game frame and no `SetScript` on one: the harness fails both. Nothing is built behind an unanswered [DECIDE].
 
 ## 5. Phases in build order
 
-Details (goal, success criteria, files, checks) are in `.planning/ROADMAP.md`. "New" means a thread started when the phase's gate opens; model and effort follow CLAUDE.md's table (Sonnet medium unless noted).
+Details (goal, success criteria, files, checks) were in the GSD roadmap, now in git history. "New" means a thread started when the phase's gate opens; model and effort follow CLAUDE.md's table (Sonnet medium unless noted).
 
 | Phase | Owner | Branch | Goal | Size | Starts after | Decided 2026-10-17 |
 |---|---|---|---|---|---|---|

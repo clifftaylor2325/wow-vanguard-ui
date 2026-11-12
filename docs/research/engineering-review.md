@@ -104,7 +104,7 @@ Where: `.planning/STATE.md:2-5`, `.planning/codebase/CONCERNS.md`, `.planning/RO
 - `CONCERNS.md` (2026-10-09) says seven full-suite cases are red on main and that `npm run coverage` cannot confirm the floor. Phase 1 closed that on 2026-10-09 per the roadmap. It also quotes `Core/Theme.lua (1298 lines)`; it is 1721 now. It quotes `Core/Options.lua (898)`; it is 435 lines (it was split into `Options*.lua` files).
 - CLAUDE.md tells agents to read `docs/handoff/` plans that "refer to the old repo name"; `CONCERNS.md` lists the same plans as stale.
 
-Update, deleted 2026-11-11 (H44-28-100): `CONCERNS.md` and the rest of `.planning/codebase/` are gone, with `.planning/phases/`, `PROJECT.md` and `REQUIREMENTS.md`; `STATE.md`'s closed note moved to `ROADMAP.md`. The drift described here no longer applies.
+Update, deleted 2026-11-11 (H44-28-100): `CONCERNS.md` and the rest of `.planning/codebase/` are gone, with `.planning/phases/`, `PROJECT.md` and `REQUIREMENTS.md`; `STATE.md`'s closed note moved to `ROADMAP.md`. The drift described here no longer applies. Update, 2026-11-12: `STATE.md` and `ROADMAP.md` are deleted too (decision pending with Cliff); only `.planning/config.json` is left.
 
 Why it matters: this repo is worked on by agents that read these files first. Stale state sends them to the wrong phase or tells them the suite is red.
 
