@@ -1142,10 +1142,10 @@ function unwrappedText(file, src) {
 // The wider unwrapped-text rule (report-only, with a baseline of its own; unwrapped-text stays the narrow one). It reads
 // the whole text argument of a sink, not only a literal that comes first: `"a" .. x`, `cond and "a" or "b"`, `x or "a"`,
 // and the pattern handed to string.format, ns.Format or ("..."):format inside it. SHAPE_SINKS gives each sink's text
-// argument, counted from 0. A literal in a deeper call, a table or an index (L["a"], t["key"]) or compared (mode == "tab")
+// argument, counted from 0, or a list of them (AddDoubleLine's left and right text, H46-35-R2). A literal in a deeper call, a table or an index (L["a"], t["key"]) or compared (mode == "tab")
 // is not text, and only words count: format codes, {slots}, color and link escapes and the brand name are stripped first.
 const SHAPE_SINKS = new Map(Object.entries({
-  SetText: 0, SetFormattedText: 0, AddLine: 0, AddDoubleLine: 0, AddMessage: 0, Chat: 0, check: 0, header: 0, cycle: 0, slider: 0,
+  SetText: 0, SetFormattedText: 0, AddLine: 0, AddDoubleLine: [0, 1], AddMessage: 0, Chat: 0, check: 0, header: 0, cycle: 0, slider: 0,
   OfferReload: 0, ShowText: 0, Ask: 0, AskText: 0, DialogButton: 1,
 }));
 const FORMATTERS = new Set(["format", "Format"]);
@@ -1206,12 +1206,20 @@ function shapeLiterals(arg, narrow) {
   });
 }
 
-// The tokens of the text argument of the sink call at tokens[i] (aliases: sinkAliases), or an empty list when
-// tokens[i] is not a sink call.
-function sinkArgument(tokens, i, aliases) {
-  const index = SHAPE_SINKS.get(sinkName(tokens, i, aliases));
-  const call = index !== undefined && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
-  return call ? (callArgs(tokens, i + 1)[index] ?? []) : [];
+// The text arguments of the sink call at tokens[i] (aliases: sinkAliases), each as { arg, index }: its tokens and its
+// place, counted from 0. An empty list when tokens[i] is not a sink call.
+function sinkArguments(tokens, i, aliases) {
+  const indexes = SHAPE_SINKS.get(sinkName(tokens, i, aliases));
+  const call = indexes !== undefined && tokens[i + 1]?.text === "(" && tokens[i - 1]?.text !== "function";
+  const args = call ? callArgs(tokens, i + 1) : [];
+  return call ? [indexes].flat().map((index) => ({ arg: args[index] ?? [], index })) : [];
+}
+
+// The English literals in the text arguments of the sink call at tokens[i] (shapeLiterals). The narrow rule reads only
+// the first argument of a TEXT_SINKS sink, so a later one (AddDoubleLine's right text) is read whole here.
+function sinkLiterals(tokens, i, aliases) {
+  const narrow = TEXT_SINKS.has(sinkName(tokens, i, aliases));
+  return sinkArguments(tokens, i, aliases).flatMap(({ arg, index }) => shapeLiterals(arg, narrow && index === 0));
 }
 
 // The files DIAGNOSTIC_FILES names a function of (`file:function`).
@@ -1232,7 +1240,7 @@ function unwrappedShapes(file, src) {
   const [aliases, diagnostic] = [sinkAliases(tokens), diagnosticSpans(file, tokens)];
   // True when the token at i stands outside every diagnostic function.
   const read = (i) => !diagnostic.some((s) => s.open < i && i < s.close);
-  const hits = tokens.flatMap((t, i) => (read(i) ? shapeLiterals(sinkArgument(tokens, i, aliases), TEXT_SINKS.has(sinkName(tokens, i, aliases))) : []));
+  const hits = tokens.flatMap((t, i) => (read(i) ? sinkLiterals(tokens, i, aliases) : []));
   return hits.map((t) => ({ rule: REPORT_RULES[6], line: line(t.start), message: `English text joined, chosen or formatted outside L[…]: ${t.text.slice(0, 48)}` }));
 }
 

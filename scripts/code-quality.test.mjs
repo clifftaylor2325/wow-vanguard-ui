@@ -731,12 +731,15 @@ const ENGLISH_SHAPES = [
   'fs:SetText(n .. (on and "On" or "Off"))',
   // H46-35-R1: through a local name for the sink.
   'local chat = ns.Chat\n  chat(n .. " is ready")', 'local say = ns.Chat\n  say(on and "Turned on" or "Turned off")',
+  // H46-35-R2: a two-column tooltip line's right-hand text.
+  'tt:AddDoubleLine(L["Name"], "Right side")', 'tt:AddDoubleLine(L["Name"], on and "Turned on" or "Turned off")',
 ];
 // Statements that look alike and are not English text to translate.
 const NOT_ENGLISH = [
   'fs:SetText(L["Level"] .. n)', 'fs:SetText(("%d x %s"):format(n, name))', 'ns.Chat(mode == "tab" and L["a"] or L["b"])', 'ns.DialogButton(parent, "Vanguard", f)',
   'fs:SetText(t["key"])', 'fs:SetText(fmt("Hello"))', 'ns.DialogButton("Hello", L["Reload"], f)', 'ns.Chat(string.format("%d. %s", i, name))', 'fs:SetFormattedText("%.1f", n)',
   'ns.Chat(ns.Format(L["Sold {n}"], { n = n }))', 'fs:SetText(L["x"] .. "|r")', 'fs:SetText(("%s"):rep(2))',
+  'tt:AddDoubleLine(L["Name"], value, 1, 1, 1)',
 ];
 
 // English joined to a value, chosen by and/or, formatted, or handed to a sink the narrow rule lacked is counted under its own key, and does not block.
