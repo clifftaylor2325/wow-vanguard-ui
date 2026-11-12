@@ -184,7 +184,7 @@ ns.errors = {}
 ns.MAX_ERRORS = 20
 local byText = {}  -- error text -> its entry in ns.errors
 local printed = {}  -- error text -> true once chat has heard of it; not dropped with the entry
-local forwarding = false  -- while the game's handler has an error of ours
+local forwarding = false  -- while the game's handler has an error of ours: how many ns.Try calls deep inside it (0: the handler itself)
 local watchers = {}  -- told the count when the kept errors change (Core/ErrorBadge.lua)
 
 -- Runs fn(count) on the frame after the kept errors change: an error kept, the list cleared.
@@ -254,7 +254,7 @@ end
 -- frames, so this is for errors with no failing stack to point at (ns.Report).
 local function forward(text)
   if forwarding then return end
-  forwarding = true
+  forwarding = 0
   pcall(ns.ForwardError, text)
   forwarding = false
 end
@@ -271,6 +271,14 @@ local function record(where, err, level)
   end
   e.count = e.count + 1
   return text
+end
+
+-- Keeps and counts a failure of a ns.Try run inside the game's handler, with the failing stack
+-- (level 4 from traced), loud for the badge; no chat line and no handler call, so it cannot loop.
+local function keepInside(where, err)
+  local text = where .. ": " .. errorText(err)
+  local e = byText[text] or keep(text, stack(4))
+  e.quiet, e.count = false, e.count + 1
 end
 
 -- Reports an error caught at `where` (a short name of the site), with the caller's stack.
@@ -353,12 +361,14 @@ local current
 -- CallErrorHandler (which reports from "the previous function") starts the
 -- popup's stack here, at the failing frames. A handler that fails is not
 -- guarded: the record is already kept, and the failure it raises passes
--- through here silently (forwarding stays set until xpcall returns).
+-- through here silently (forwarding stays set until xpcall returns). A ns.Try
+-- entered inside the handler (forwarding above 0) is kept, never forwarded.
 local function traced(err)
+  if forwarding and forwarding > 0 then keepInside(current, err) end
   if forwarding then return err end
   local text = record(current, err, 4)
   local handler = gameHandler()
-  forwarding = handler ~= nil
+  forwarding = handler ~= nil and 0
   if handler then handler(text) end
   forwarding = false
   return err
@@ -401,7 +411,7 @@ end
 ---@return boolean ok, ...  as pcall
 function ns.Try(where, fn, ...)
   local outer, clock, held = current, debugprofilestop, forwarding
-  current = where
+  current, forwarding = where, held and held + 1
   local start = ns.timingOn and type(clock) == "function" and clock() or nil
   return finished(outer, held, where, start, xpcall(fn, traced, ...))
 end

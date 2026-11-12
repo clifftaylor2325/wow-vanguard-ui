@@ -293,7 +293,7 @@ end
 -- channel-message code then reads those fields on every line (taint). The Tab picker lists the window once it exists.
 function CW.New()
   local entry = menuEntry(NEW_CHAT_WINDOW, L["Create New Window"])
-  ns.Chat(ns.Format(L["To make a chat tab, right-click any chat tab and choose {entry}. It then shows in the Tab picker here."], { entry = entry }))
+  ns.Chat(ns.Format(L["To make a chat tab, right-click the main chat tab and choose {entry}. It then shows in the Tab picker here."], { entry = entry }))
 end
 
 -- Renames the edited tab.

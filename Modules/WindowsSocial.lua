@@ -709,15 +709,22 @@ local function attachNewsFilters(frame)
   end, frame)
 end
 
+-- The game's panel layout calls the flyout follows: UpdateScaleForFitForOpenPanels (a UI scale change) lays the panels
+-- out through the panel delegate's own method, not through the global UpdateUIPanelPositions.
+GW.NEWS_FILTER_LAYOUTS = { "UpdateUIPanelPositions", "UpdateScaleForFitForOpenPanels" }
+
 -- The news filters flyout follows the guild window: attached on each show and after each of the game's panel layout
--- passes while it is up (another window opening or closing re-places it in the manager's slot), and hidden with the window.
+-- passes while it is up (another window opening or closing, a scale change re-places it in the manager's slot), and
+-- hidden with the window.
 local function watchNewsFilters(frame)
   local window = _G.CommunitiesFrame
   if type(window) ~= "table" or not window.HookScript or vgSocialSide[frame] then return end
   vgSocialSide[frame] = true
   frame:HookScript("OnShow", ns.Guard("news filters attach", attachNewsFilters))
   window:HookScript("OnHide", ns.Guard("news filters close", function() frame:Hide() end))
-  GW.HookGlobalOnce("UpdateUIPanelPositions", "news filters attach", function() if ns.IsTrue(frame:IsShown()) then attachNewsFilters(frame) end end)
+  -- Attaches the flyout again while it is shown.
+  local function follow() if ns.IsTrue(frame:IsShown()) then attachNewsFilters(frame) end end
+  for _, layout in ipairs(GW.NEWS_FILTER_LAYOUTS) do GW.HookGlobalOnce(layout, "news filters attach", follow) end
 end
 
 -- The news filters dialog: its seven check boxes (frame.GuildNewsFilterButtons) as theme check boxes, attached to the window's side.

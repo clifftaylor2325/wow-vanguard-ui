@@ -451,6 +451,21 @@ it("text metrics: rough by default; with textFit, the theme font's own widths, b
     .toEqual([true, "a|b\nc"]);
 });
 
+// A font string given width 0 sizes to its text: forever Blizzard_UIPanels_Game/Cata/QuestLogFrame.lua:417-420 sets 0 "to
+// reset the width of the font string to be exactly the width of the quest title text" (also Shared/CastingBarFrame.lua:1082).
+// A frame's width 0 stays 0.
+it("text metrics: a font string set to width 0 measures, lays out and is audited as its text, in both modes", () => {
+  const rough = createAddon();
+  expect(rough.eval(`${FIT_BOX(12)} fs:SetText("A long label") local natural = fs:GetWidth() fs:SetWidth(0)
+    local f = CreateFrame("Frame") f:SetWidth(0)
+    return { natural, fs:GetWidth(), fs:GetStringWidth(), fs:GetHeight(), f:GetWidth() }`)).toEqual([72, 72, 72, 14, 0]);
+  const addon = createAddon({ textFit: true });
+  const fit = addon.eval(`${FIT_BOX(12)} fs:SetText("A caption much wider than its button") local natural = fs:GetStringWidth() fs:SetWidth(0)
+    local out = {} for _, f in ipairs(__wfgTextFit(b)) do out[#out + 1] = f.kind end
+    return { natural == fs:GetStringWidth(), fs:GetWidth() == natural, out }`);
+  expect(fit, "font mode: its own width, and a label wider than its button spills as before").toEqual([true, true, ["spill"]]);
+});
+
 it("text fit: a pseudo-locale makes every string a third longer, padded with its own letters, and finds its English", () => {
   const addon = createAddon({ textFit: true });
   expect(addon.eval('return { ns.L["Save"], ns.L["Open the map"], ns.L["%d"], ns.English(ns.L["Save"]) }')).toEqual(["SaveSa", "Open the mapOpent", "%ddd", "Save"]);

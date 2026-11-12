@@ -1311,7 +1311,7 @@ local function pageMatches(page, text)
   if ns.Lower(O.BothTongues(page.title)):find(text, 1, true) then return true end
   local rows = rowsOf(page)
   for i, row in ipairs(rows) do
-    if row[1] ~= "header" and captionHas(row, text) then return true end
+    if row[1] ~= "header" and not row.isReset and captionHas(row, text) then return true end
     if O.RowMatches(rows, i, text) then return true end
   end
   return false

@@ -3,6 +3,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
+import { TIDY_ENV } from "./helpers.mjs";
 
 it("replacing a method a widget kind already resolved reaches new and existing widgets of that kind", () => {
   const addon = createAddon();
@@ -113,7 +114,9 @@ it("UnitInRange hands a secret range back as a secret, with a secret checked fla
 });
 
 // UnitHealthPercent is SecretReturns and SecretWhenCurveSecret on both clients
-// (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua): with hidden health every answer is hidden.
+// (Blizzard_APIDocumentationGenerated/UnitDocumentation.lua): with hidden health every answer is hidden. Without a
+// curve it answers the percentage the curve would be given, 0 to 1 (Blizzard_SharedXMLBase/CurveConstants.lua:
+// ScaleTo100 "re-scales any percentage value from [0, 1] to [0, 100]", both clients).
 it("UnitHealthPercent answers hidden health with a secret percent, a secret number curve result or a hidden color", () => {
   const addon = createAddon();
   addon.world.setUnit("target", { name: "TEST-ONLY Mob", hp: 25, maxhp: 100 });
@@ -123,9 +126,9 @@ it("UnitHealthPercent answers hidden health with a secret percent, a secret numb
     local function look(v) if issecretvalue(v) then return { true, rawget(v, "n") } end return { false, v } end
     return { look(UnitHealthPercent("target")), look(UnitHealthPercent("target", true, num)),
       look(UnitHealthPercent("target", true, col).r) }`);
-  expect(read(), "plain").toEqual([[false, 25], [false, 25], [false, 1]]);
+  expect(read(), "plain").toEqual([[false, 0.25], [false, 25], [false, 1]]);
   addon.eval("__wfgWorld.units.target.hp = __wfgWorld.secret(25)");
-  expect(read(), "hidden health").toEqual([[true, 25], [true, 25], [true, 1]]);
+  expect(read(), "hidden health").toEqual([[true, 0.25], [true, 25], [true, 1]]);
 });
 
 // UnitIsGroupLeader and UnitIsGroupAssistant are SecretWhenUnitIdentityRestricted, UnitIsAFK
@@ -261,8 +264,11 @@ it("a frame given a size and stretched between two anchors reports the stretched
 });
 
 // Blizzard_UIPanelTemplates/Shared/UIPanelTemplatesShared.lua:147-151 sets a button's normal and highlight textures and
-// reads each back; SimpleTextureBaseAPIDocumentation.lua's GetTexCoord answers the four corners (both clients).
-it("getters answer what their setter stored, HasScript the kind's script list and IsForbidden false; unset textures stay nil", () => {
+// reads each back; SimpleTextureBaseAPIDocumentation.lua's GetTexCoord answers the four corners (both clients), never
+// nothing: Blizzard hands an untouched texture's coordinates straight back to SetTexCoord (forever
+// Blizzard_SharedMapDataProviders/FrameCloneManager.lua:119, Blizzard_SharedXMLBase/AnchorUtil.lua:374-380,
+// TextureUtil.lua:67). The whole-texture corners for an unset one are the stub's guess.
+it("getters answer what their setter stored, HasScript the kind's script list and IsForbidden false; unset textures stay nil and unset coordinates are the whole texture", () => {
   const addon = createAddon();
   const out = addon.eval(`local b = CreateFrame("Button", nil, UIParent)
     local unset = b:GetNormalTexture() == nil and b:GetHighlightTexture() == nil
@@ -273,8 +279,8 @@ it("getters answer what their setter stored, HasScript the kind's script list an
     local t = b:CreateTexture() t:SetTexCoord(0.1, 0.9, 0.2, 0.8)
     local four = { t:GetTexCoord() }
     return { unset, n:GetObjectType(), first, h:GetDrawLayer(), b:GetNormalTexture() == n, n:GetTexture(), four,
-      b:HasScript("OnClick"), CreateFrame("Frame"):HasScript("OnClick"), t:HasScript("OnShow"), b:IsForbidden(), b:CreateTexture():GetTexCoord() == nil }`);
-  expect(out).toEqual([true, "Texture", "TEST-ONLY-UP", "HIGHLIGHT", true, "TEST-ONLY-UP2", [0.1, 0.2, 0.1, 0.8, 0.9, 0.2, 0.9, 0.8], true, false, false, false, true]);
+      b:HasScript("OnClick"), CreateFrame("Frame"):HasScript("OnClick"), t:HasScript("OnShow"), b:IsForbidden(), { b:CreateTexture():GetTexCoord() } }`);
+  expect(out).toEqual([true, "Texture", "TEST-ONLY-UP", "HIGHLIGHT", true, "TEST-ONLY-UP2", [0.1, 0.2, 0.1, 0.8, 0.9, 0.2, 0.9, 0.8], true, false, false, false, [0, 0, 0, 1, 1, 0, 1, 1]]);
 });
 
 // The client runs OnShow when a frame comes into view and OnHide when it leaves it, once each (Blizzard relies on it:
@@ -288,4 +294,206 @@ it("a frame shown or hidden under a hidden parent runs its OnShow or OnHide only
     p:Hide() c:Hide() seen[#seen + 1] = "|" p:Show()
     return table.concat(seen, " ")`);
   expect(runs).toBe("hide | show | hide |");
+});
+
+// Blizzard_APIDocumentationGenerated/UnitAuraDocumentation.lua:264-284 (forever) GetAuraDispelTypeColor: the curve is
+// read "with the dispel type ID used as the 'x' value", the curve is Nilable = false, and the answer is
+// SecretWhenUnitAuraRestricted. The IDs are the world's copy of the addon's own (world.dispelTypeIds), not sourced.
+it("the dispel colour call reads the curve at the debuff's type number, and hides the colour of a hidden type", () => {
+  const addon = createAddon();
+  addon.world.setUnit("target", { name: "TEST-ONLY Mob" });
+  const out = addon.eval(`local s = __wfgWorld.secret
+    __wfgWorld.addAura("target", { name = "TEST-ONLY A", isHarmful = true, dispelName = "Magic", auraInstanceID = 501 })
+    __wfgWorld.addAura("target", { name = "TEST-ONLY B", isHarmful = true, dispelName = s("Curse"), auraInstanceID = 502 })
+    local c = C_CurveUtil.CreateColorCurve() c:AddPoint(0, CreateColor(1, 0, 0)) c:AddPoint(1, CreateColor(0, 0, 1)) c:AddPoint(2, CreateColor(0, 1, 0))
+    local plain = C_UnitAuras.GetAuraDispelTypeColor("target", 501, c)
+    local hidden = C_UnitAuras.GetAuraDispelTypeColor("target", 502, c)
+    return { plain.r, plain.g, plain.b, issecretvalue(hidden.r), issecretvalue(hidden.g), rawget(hidden.g, "n") }`);
+  expect(out).toEqual([0, 0, 1, true, true, 1]);
+});
+
+// Blizzard_FrameXMLUtil/Mainline/DifficultyUtil.lua (forever and live; Forever loads the Mainline file too,
+// Blizzard_FrameXMLUtil.toc:33-36): bands >= 5, >= 3, >= -4, then the trivial range, on UnitEffectiveLevel, two
+// returns; Blizzard_FrameXMLBase/Constants.lua:195-213 the colours. The trivial range itself is the world's guess.
+it("the level colour uses the client's bands and colours and answers its highlight colour too", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local o = {} for _, l in ipairs({ 65, 63, 56, 55, 53, 52 }) do local c = GetCreatureDifficultyColor(l) o[#o + 1] = l .. ":" .. c.r .. "," .. c.g .. "," .. c.b end
+    local _, lit = GetQuestDifficultyColor(56)
+    return { UnitLevel("player"), o, select("#", GetCreatureDifficultyColor(56)), lit.g }`);
+  expect(out).toEqual([60, ["65:1,0.1,0.1", "63:1,0.5,0.25", "56:1,0.82,0", "55:0.25,0.75,0.25", "53:0.25,0.75,0.25", "52:0.5,0.5,0.5"], 2, 1]);
+});
+
+// Blizzard_SharedXMLBase/CvarUtil.lua:9-15 (forever and live, Blizzard_SharedXMLBase.toc:23): the global SetCVar turns
+// a boolean into "1" or "0" before C_CVar.SetCVar; a test's own SetCVar still hears C_CVar.SetCVar.
+it("the global SetCVar stores a boolean as 1 or 0, and C_CVar.SetCVar reaches a test's own SetCVar", () => {
+  const addon = createAddon();
+  const out = addon.eval(`SetCVar("TEST_ONLY_ON", true) SetCVar("TEST_ONLY_OFF", false) C_CVar.SetCVar("TEST_ONLY_RAW", 2)
+    local plain = { GetCVar("TEST_ONLY_ON"), GetCVarBool("TEST_ONLY_ON"), GetCVar("TEST_ONLY_OFF"), GetCVar("TEST_ONLY_RAW") }
+    local orig, heard = SetCVar, nil
+    SetCVar = function(name) heard = name end
+    C_CVar.SetCVar("TEST_ONLY_HEARD", "1") SetCVar = orig
+    return { plain, heard }`);
+  expect(out).toEqual([["1", true, "0", "2"], "TEST_ONLY_HEARD"]);
+});
+
+// Blizzard_AuraContainer (forever and live identical): Blizzard_AuraContainerFrameProviders.lua AcquireFrame makes a
+// batch when no frame is free and CreateFrame runs initializeFrame on each new one; Blizzard_AuraContainerShared.lua:
+// 100-106 FrameCreationBatchSize = 10; Blizzard_AuraContainerGroups.lua:239-254 shows up to maxFrameCount.
+it("an aura group makes another batch of ten buttons when its auras outnumber them, dressing each, in a fight too", () => {
+  const addon = createAddon();
+  const out = addon.eval(`for i = 1, 15 do __wfgWorld.addAura("player", { name = "TEST-ONLY " .. i, isHelpful = true, auraInstanceID = 600 + i }) end
+    local inits, fought = 0, 0
+    local init = function(b) inits = inits + 1 if InCombatLockdown() then fought = fought + 1 end b:SetSize(20, 20) end
+    local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    c:AddAuraGroup("a", "HELPFUL", { maxFrameCount = 32, layout = {}, initializeFrame = init })
+    c:AddAuraGroup("b", "HELPFUL", { maxFrameCount = 12, layout = {}, initializeFrame = init })
+    c:SetUnit("player") c:SetEnabled(true)
+    local function shown(g) local n = 0 for _, b in ipairs(c.__groups[g].buttons) do if b.__shown then n = n + 1 end end return n end
+    local before = { #c.__groups[1].buttons, shown(1), #c.__groups[2].buttons, shown(2), inits }
+    __wfgWorld.combat(true)
+    for i = 16, 21 do __wfgWorld.addAura("player", { name = "TEST-ONLY " .. i, isHelpful = true, auraInstanceID = 600 + i }) end
+    c:UpdateAllAuras()
+    return { before, { #c.__groups[1].buttons, shown(1), inits, fought } }`);
+  expect(out).toEqual([[20, 15, 20, 12, 40], [30, 21, 50, 10]]);
+});
+
+// helpers.mjs's TIDY_ENV and TOOLS_ENV use the world's hooksecurefunc (wow-world.lua), which already hooks methods on
+// tables: a hooked function keeps its results and the hook is counted (stub.hooks), as in a plain client.
+it("a client set up with TIDY_ENV keeps the world's hooksecurefunc: every result kept, every hook counted", () => {
+  const addon = createAddon();
+  addon.eval(TIDY_ENV);
+  expect(addon.eval(`TEST_ONLY_A = function() return 42, 7 end local before = __wfgStub.hooks or 0
+    hooksecurefunc("TEST_ONLY_A", function() end)
+    __t = { m = function() return 1, 2 end } hooksecurefunc(__t, "m", function() end)
+    return { select("#", TEST_ONLY_A()), select("#", __t.m()), __wfgStub.hooks - before }`)).toEqual([2, 2, 2]);
+  expect(addon.eval(`function TEST_ONLY_I() return 1, nil, 3, nil end hooksecurefunc("TEST_ONLY_I", function() end)
+    return { select("#", TEST_ONLY_I()), (select(3, TEST_ONLY_I())) }`), "a nil among the results keeps the ones after it (H44 guess 10)").toEqual([4, 3]);
+});
+
+// live ContentTrackingDocumentation.lua:313-324 CONTENT_TRACKING_UPDATE (type, id, isTracked); the trackers name the third
+// argument "added" and play the new-entry fanfare on it (Blizzard_ObjectiveTracker/Blizzard_AdventureObjectiveTracker.lua:
+// 38-44, Blizzard_AchievementObjectiveTracker.lua:16-22), so a stop says false.
+it("on Retail, stopping the tracking of a collectable says it is no longer tracked", () => {
+  const addon = createAddon({ client: RETAIL_CLIENT });
+  expect(addon.eval(`local seen = {} local f = CreateFrame("Frame") f:RegisterEvent("CONTENT_TRACKING_UPDATE")
+    f:SetScript("OnEvent", function(_, _, kind, id, tracked) seen[#seen + 1] = { kind, id, tracked } end)
+    __wfgWorld.collectables[0] = { { id = 5, title = "TEST-ONLY" } } C_ContentTracking.StopTracking(0, 5, 2) return seen`)).toEqual([[0, 5, false]]);
+});
+
+// live UnitAuraDocumentation.lua:395-410 GetPlayerAuraBySpellID is RequiresNonSecretAura, and
+// SecretPredicatesDocumentation.lua:28-31 says such a call "will return no values" for a secret aura.
+it("on Retail, asking for one of your auras by spell id answers nothing for a hidden aura", () => {
+  const addon = createAddon({ client: RETAIL_CLIENT });
+  expect(addon.eval(`__wfgWorld.units.player.auras = { __wfgWorld.secret(1), { spellId = 7, name = "TEST-ONLY" } }
+    return { C_UnitAuras.GetPlayerAuraBySpellID(99999) == nil, C_UnitAuras.GetPlayerAuraBySpellID(7).name }`)).toEqual([true, "TEST-ONLY"]);
+});
+
+// Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua (forever and live identical): AddAuraGroup asserts a
+// non-empty key, a valid filter string and a new key (:286-291), then its options (:1-36, :143-194);
+// Blizzard_FrameXMLUtil/AuraUtil.lua:270-320 lists the filter words and IsValidFilterString's messages.
+it("an aura container refuses a group the client's asserts refuse, with the client's message, and keeps the good ones", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    local function try(key, filter, opts)
+      opts.layout = opts.layout or {} local ok, err = pcall(c.AddAuraGroup, c, key, filter, opts) return ok or err
+    end
+    return { try("a", "HELPFUL|!RAID PLAYER", { maxFrameCount = 2 }), try("a", "HELPFUL", { maxFrameCount = 2 }), try("", "HELPFUL", {}),
+      try("b", "HELPFUL|TEST_ONLY_NO_SUCH", {}), try("b", "HELPFUL|!", {}), try("b", "HELPFUL", { maxFrameCount = 2.5 }),
+      try("b", "HELPFUL", { maxFrameCount = math.huge, layout = { elementSpacing = "2" } }), try("b", "HELPFUL", { layout = { forceNewLine = 1 } }),
+      try("b", "HELPFUL", { layout = { elementWidth = -1 } }), try("b", "HELPFUL", { sortMethod = 99 }), try("b", "HELPFUL", { initializeFrame = 1 }),
+      #c.__groups }`);
+  expect(out).toEqual([true, "aura group 'a' already exists with this key.", "groupKey must be a non-empty string.",
+    "Unknown aura filter component: 'TEST_ONLY_NO_SUCH'", "A negation prefix ('!') must be followed by a filter component.",
+    "maxFrameCount must be a non-negative integer or infinity.", "elementSpacing must be a number.", "forceNewLine must be a boolean.",
+    "elementWidth must be a non-negative number.", "sortMethod must be a valid AuraContainerSortMethod.", "initializeFrame must be a function or nil.", 1]);
+});
+
+// The harness's own counter (no client rule): a click whose handler raises still ends its hardware event.
+it("a click whose handler raises ends its hardware event and passes the error on", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local b = CreateFrame("Button", nil, UIParent) b:SetScript("OnClick", function() error("TEST-ONLY", 0) end)
+    local ok, err = pcall(__wfgStub.click, b) return { ok, err, __wfgStub.hardware }`)).toEqual([false, "TEST-ONLY", 0]);
+});
+
+// Blizzard's own code leans on the client running an edit box's scripts for code-set text and focus:
+// forever Blizzard_AutoComplete/AutoComplete.lua:401 and Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:530
+// (its comment: setting the text from code clears the userInput flag), and
+// Blizzard_SharedXML/Shared/InputBox/InputBoxTemplates.lua:180-207 (SearchBoxTemplate_ClearText). That they run at
+// once, and only on a change, is the stub's guess.
+it("an edit box runs OnTextChanged for code-set text and its focus scripts when the focus changes; typing runs it once", () => {
+  const addon = createAddon();
+  expect(addon.eval(`local seen = {} local e = CreateFrame("EditBox", nil, UIParent)
+    e:SetScript("OnTextChanged", function(_, user) seen[#seen + 1] = "text:" .. tostring(user) end)
+    e:SetScript("OnEditFocusGained", function() seen[#seen + 1] = "gained" end)
+    e:SetScript("OnEditFocusLost", function() seen[#seen + 1] = "lost" end)
+    e:SetText("a") e:SetText("a") e:SetFocus() e:SetFocus() e:ClearFocus() e:ClearFocus() __wfgStub.type(e, "b")
+    local fs = UIParent:CreateFontString() fs:SetFont("TEST-ONLY", 12, "") fs:SetText("c")
+    return table.concat(seen, " ")`)).toBe("text:false gained lost text:true");
+});
+
+// Blizzard_AuraContainer/Blizzard_ManagedAuraContainer.lua:518-525 ParseAllAuras clears the groups and returns while
+// not IsEnabled(), before any aura source, Edit Mode's included; Blizzard_AuraContainer.lua:24-25 IsEnabled is
+// `self.enabled == true` (both clients).
+it("a switched-off aura container shows nothing in Edit Mode, though its preview is on", () => {
+  const addon = createAddon();
+  const shown = addon.eval(`local c = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    c:AddAuraGroup("x", "HELPFUL", { maxFrameCount = 1, layout = {}, initializeFrame = function(b) b:SetSize(20, 20) end })
+    c:SetUnit("player")
+    __wfgStub.editMode = true c:SetEnabled(false)
+    local off = c.__groups[1].buttons[1].__shown
+    c:SetEnabled(true)
+    return { off, c.__groups[1].buttons[1].__shown }`);
+  expect(shown).toEqual([false, true]);
+});
+
+// FCF_GetNextOpenChatWindowIndex looks only up to Constants.ChatFrameConstants.MaxChatWindows, 10, and answers nil
+// past it (Blizzard_ChatFrameBase/Shared/FloatingChatFrame.lua:26-34, ChatConstantsDocumentation.lua:214); then
+// FCF_OpenNewWindow returns nothing, else `chatFrame, chatFrameIndex` (Mainline/FloatingChatFrame.lua, forever
+// :707-710 and :755, live :522-525 and :570).
+it("FCF_OpenNewWindow gives the window and its number up to the tenth window, then nothing", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local made = {}
+    for n = 1, 8 do local f, i = FCF_OpenNewWindow("TEST-ONLY " .. n) made[n] = f:GetName() .. " " .. i end
+    return { made[1], made[8], select("#", FCF_OpenNewWindow("TEST-ONLY full")) }`);
+  expect(out).toEqual(["ChatFrame3 3", "ChatFrame10 10", 0]);
+});
+
+// ChatFrame1 to ChatFrame10 are declared in Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.xml (forever :709-762,
+// live :698-751), so all ten exist from login, each with its tab and edit box, and NUM_CHAT_WINDOWS is
+// Constants.ChatFrameConstants.MaxChatWindows (Blizzard_DeprecatedChatInfo/Deprecated_ChatFrame.lua:18;
+// ChatConstantsDocumentation.lua:214, Value 10). A fresh character shows only General and Combat Log.
+it("the world starts with the game's ten chat windows, 3 to 10 hidden", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local shown = {}
+    for i = 1, 10 do shown[i] = _G["ChatFrame" .. i]:IsShown() and _G["ChatFrame" .. i .. "Tab"]:IsShown() end
+    return { NUM_CHAT_WINDOWS, #CHAT_FRAMES, CHAT_FRAMES[10], ChatFrame10EditBox ~= nil, ChatFrame11 == nil, shown[1], shown[2], shown[3], shown[10] }`);
+  expect(out).toEqual([10, 10, "ChatFrame10", true, true, true, true, false, false]);
+});
+
+// With all ten windows made at login, FCF_OpenNewWindow shows the first hidden one from 3 instead of making a frame.
+it("FCF_OpenNewWindow shows a window that was there from login", () => {
+  const addon = createAddon();
+  const out = addon.eval(`local before = ChatFrame3 local f = FCF_OpenNewWindow("TEST-ONLY")
+    return { f == before, f:IsShown(), ChatFrame3Tab:IsShown(), #CHAT_FRAMES, NUM_CHAT_WINDOWS }`);
+  expect(out).toEqual([true, true, true, 10, 10]);
+});
+
+// Blizzard_SharedXMLBase/CallbackRegistry.lua (both clients, identical): RegisterCallback raises for a non-string
+// event, then for a non-function func, before the owner rules (:112-117); TriggerEvent (:187-188) and
+// UnregisterCallback (:225-226) raise for a non-string event.
+it("EventRegistry refuses a missing callback and an event name that is not text, with the client's messages", () => {
+  const addon = createAddon();
+  const errs = addon.eval(`local function why(...) local ok, err = pcall(...) return ok and "ok" or err:match("CallbackRegistryMixin.*$") end
+    local R = EventRegistry
+    return { why(R.RegisterCallback, R, "TEST-ONLY", nil, {}), why(R.RegisterCallback, R, 5, function() end, {}),
+      why(R.RegisterCallback, R, 5, nil, 5), why(R.UnregisterCallback, R, 5, nil), why(R.TriggerEvent, R, 5),
+      why(R.TriggerEvent, R, "TEST-ONLY") }`);
+  expect(errs).toEqual([
+    "CallbackRegistryMixin::RegisterCallback 'func' requires function type.",
+    "CallbackRegistryMixin::RegisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin::RegisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin:UnregisterCallback 'event' requires string type.",
+    "CallbackRegistryMixin:TriggerEvent 'event' requires string type.",
+    "ok",
+  ]);
 });

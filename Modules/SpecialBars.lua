@@ -199,26 +199,30 @@ end
 -- least distance from the centre: 260 is half of bar 1 at the default button size of 38, plus the 21.
 SB.EXIT_OFFSET = 21
 SB.EXIT_MIN_X = 260
+-- How far the exit's spot sits above bar 1's bottom edge.
+SB.EXIT_RISE = 14
 
--- The exit's default point for a bar 1 of this half width: today's spot, or clear of bar 1's right end; it rises
--- with the bars, under your frames (Core/Layout.lua, HudLift).
-function SB.ExitPoint(halfWidth)
-  return { "BOTTOM", "BOTTOM", math.max(SB.EXIT_MIN_X, halfWidth + SB.EXIT_OFFSET), 114, underFrames = true }
+-- The exit's default point for a bar 1 of this half width standing this high: today's spot, or clear of bar 1's
+-- right end, beside bar 1; it rises with the bars, under your frames (Core/Layout.lua, HudLift).
+function SB.ExitPoint(halfWidth, bar1Y)
+  local x = math.max(SB.EXIT_MIN_X, halfWidth + SB.EXIT_OFFSET)
+  return { "BOTTOM", "BOTTOM", x, bar1Y + SB.EXIT_RISE, underFrames = true }
 end
 
--- Moves the exit's default spot to bar 1's current width (ActionBars calls it as the bars restack), only when
--- that moved it: placing a frame rounds the pixel-sized frames again, which restacks the bars again.
-function SB.FitExit(halfWidth)
-  local point = SB.ExitPoint(halfWidth)
-  if not SB.exit or point[3] == SB.exitX then return end
-  SB.exitX = point[3]
+-- Moves the exit's default spot to bar 1's current width and height (ActionBars calls it as the bars restack),
+-- only when that moved it: placing a frame rounds the pixel-sized frames again, which restacks the bars again.
+function SB.FitExit(halfWidth, bar1Y)
+  local point = SB.ExitPoint(halfWidth, bar1Y)
+  if not SB.exit or (point[3] == SB.exitX and point[4] == SB.exitY) then return end
+  SB.exitX, SB.exitY = point[3], point[4]
   ns.SetMoverDefault("vehicleexit", point)
 end
 
--- The exit's first default spot, remembered so SB.FitExit moves it only when bar 1's width changes it.
+-- The exit's first default spot, remembered so SB.FitExit moves it only when bar 1's width or height changes it.
 local function exitSpot()
-  local point = SB.ExitPoint(ns.GetModule("ActionBars").Bar1HalfWidth())
-  SB.exitX = point[3]
+  local AB = ns.GetModule("ActionBars")
+  local point = SB.ExitPoint(AB.Bar1HalfWidth(), AB.Bar1Y())
+  SB.exitX, SB.exitY = point[3], point[4]
   return point
 end
 

@@ -79,7 +79,7 @@ it("Shield: fills grow toward the character, the target's texts and marks mirror
   const inset = addon.eval("local px, UF = ns.Theme.Pixel(Vanguard_player), ns.GetModule('UnitFrames') local health = Vanguard_player.vgHeight - UF.settings.powerHeight - 6 * px local v = UF.TEXT_INSET + math.max(0, ns.Theme.CornerAt(Vanguard_player, 'TOPLEFT') - (2 * px + health / 2)) return math.floor(v * 100 + 0.5) / 100");
   expect(inset > 4 && inset < 14, "the name starts past the point's reach at the health bar's middle (more than the plain inset of 4)").toBe(true);
   expect([player.name, player.health, player.justify], "the player's level and name read from the left, the health text ends short of the swords at the right").toEqual([`LEFT LEFT ${inset}`, "RIGHT RIGHT -10", "LEFT"]);
-  expect([target.name, target.health, target.justify], "the target's read from the right, its health text at the left end, short of the diamond").toEqual([`RIGHT RIGHT -${inset}`, "LEFT LEFT 10", "RIGHT"]);
+  expect([target.name, target.health, target.justify], "the target's read from the right, its health text at the left end, short of the diamond").toEqual([`RIGHT RIGHT -${inset}`, "LEFT LEFT 26", "RIGHT"]);
   expect(addon.eval("local t = Vanguard_target return { (select(3, t.class:GetPoint(1))), (select(4, t.class:GetPoint(1))), (select(3, t.tag:GetPoint(1))), (select(4, t.tag:GetPoint(1))), (select(3, Vanguard_player.combat:GetPoint(1))) }"), "the diamond and tag mark sit over the target's top-left corner, the swords over the player's top-right").toEqual(["TOPLEFT", 2, "TOPLEFT", 18, "TOPRIGHT"]);
   expect([hairlines(addon, "player", "accentDim"), hairlines(addon, "target", "accentDim"), hairlines(addon, "focus", "accentDim")], "three hairline edges (not up the point) in the dim accent on your frame and your target's, none on the focus").toEqual([3, 3, 0]);
   setCombat(addon, true);
@@ -96,7 +96,7 @@ it("Plain: the HUD look row under Look gives the flat frames back at once, texts
   expect(addon.eval("return VanguardDB.profiles.Default.theme.hudLook"), "the cycle row (Shield, Hairline, Rimmed, Tabs, Plain) saves Plain").toBe("plain");
   const target = shape(addon, "target");
   expect([target.corners, target.edges, target.reverse, target.name, target.health, target.justify], "the target has 8-pixel cuts on every corner, four edges, fills from the left and reads from the left")
-    .toEqual([["8 cut", "8 cut", "8 cut", "8 cut"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], false, "LEFT LEFT 4", "RIGHT RIGHT -10", "LEFT"]);
+    .toEqual([["8 cut", "8 cut", "8 cut", "8 cut"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], false, "LEFT LEFT 4", "RIGHT RIGHT -26", "LEFT"]);
   expect(shape(addon, "player").half > 12, "the frames are still as tall").toBe(true);
   expect([shape(addon, "player").reverse, hairlines(addon, "player", "accentDim"), addon.eval("return select(3, Vanguard_target.class:GetPoint(1))")], "the player fills from the left, no hairline, the diamond back at the top right").toEqual([false, 0, "TOPRIGHT"]);
   addon.eval('__click("Shield corners on unit frames")');
@@ -147,6 +147,16 @@ const rows = (addon, key) => addon.eval(`local f = Vanguard_${key}
   local function lift(fs) local _, _, _, _, y = fs:GetPoint(1) return math.floor(y * 100 + 0.5) / 100 end
   return { top = { math.floor(h.x * 100 + 0.5) / 100, math.floor(h.y * 100 + 0.5) / 100 }, bottom = math.floor(p.y * 100 + 0.5) / 100,
     name = lift(f.level or f.name), icon = lift(f.raidIcon), outlined = f.name.__font[3] == "OUTLINE" and f.healthText.__font[3] == "OUTLINE" }`);
+
+it("H45-13-3: the capped power line on a short bare frame is never negative, and sits on whole pixels", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA, onLook("hairline"));
+  // Sizes the player frame to h and returns the height it got.
+  const set = (h) => addon.eval(`local UF = ns.GetModule("UnitFrames") UF.settings.playerHeight = ${h} UF.ApplySizes() return Vanguard_player.vgHeight`);
+  // Whether the power line is not negative and a whole number of pixels.
+  const line = () => addon.eval("local f = Vanguard_player local px = ns.Theme.Pixel(f) local y = f.health.__points.BOTTOMRIGHT.y - 2 * f.power.__points.BOTTOMRIGHT.y return { y >= 0, math.abs(y / px - math.floor(y / px + 0.5)) < 0.001 }");
+  expect(set(25), "the shortest frames the slider allows").toBe(25);
+  expect(line(), "a half-pixel share is rounded, and never negative").toEqual([true, true]);
+});
 
 it("Hairline: the unit frames lose their plates, the name reads over the lines, one brass line closes each frame at the bottom, the texts are outlined, the cast bar keeps its plate, and High contrast brings the plates back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA, onLook("hairline"));
@@ -216,7 +226,7 @@ it("Tabs: square frames and tools, each name on a tab over the frame's outer cor
   expect([player.shown, player.at, player.fits, player.width >= 48, player.edges, player.home, player.crown], "your tab stands on the frame's top-left corner a pixel down, sized to your name, open at the bottom, the name in it, the crown risen to its top").toEqual([true, "BOTTOMLEFT TOPLEFT -1", true, true, ["LEFT", "RIGHT", "TOP"], "tab", "tab"]);
   const target = tab(addon, "target");
   const body = shape(addon, "target");
-  expect([target.at, target.home, target.icon, body.corners, body.edges, body.name, body.health, body.justify, body.reverse], "the target's tab sits on its right corner, the name reading from the right in it, the health text and the raid icon at the inner (left) end of a square body with four edges, filling from the left").toEqual(["BOTTOMRIGHT TOPRIGHT -1", "tab", "TOPLEFT 34", ["0 nil", "0 nil", "0 nil", "0 nil"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], "RIGHT RIGHT -4", "LEFT LEFT 10", "RIGHT", false]);
+  expect([target.at, target.home, target.icon, body.corners, body.edges, body.name, body.health, body.justify, body.reverse], "the target's tab sits on its right corner, the name reading from the right in it, the health text and the raid icon at the inner (left) end of a square body with four edges, filling from the left").toEqual(["BOTTOMRIGHT TOPRIGHT -1", "tab", "TOPLEFT 34", ["0 nil", "0 nil", "0 nil", "0 nil"], ["BOTTOM", "LEFT", "RIGHT", "TOP"], "RIGHT RIGHT -4", "LEFT LEFT 26", "RIGHT", false]);
   expect([addon.eval("return ns.Theme.CornerLook(Vanguard_CastBar_player, 'TOPLEFT')"), addon.eval("return ns.GetModule('ActionBars').WantsBacking()"), rows(addon, "player").outlined], "the cast bar is square, no plinth, shadowed text").toEqual([null, false, false]);
   // The cast bars' default y, less the block's rise on this canvas (Core/Layout.lua HudLift).
   const castY = () => addon.eval("local rise = ns.Layout.HudLift({ 'BOTTOM', 'BOTTOM', 0, 0 }, UIParent:GetHeight()) return { select(4, ns.MoverPoint('cast_target')) - rise, select(4, ns.MoverPoint('cast_focus')) - rise }");
@@ -246,19 +256,20 @@ const keystone = (addon) => addon.eval(`local f = Vanguard_Keystone
 const STACK_LUA = `local p1, p2, p4, b1, b2 = Vanguard_party1, Vanguard_party2, Vanguard_party4, Vanguard_boss1, Vanguard_boss2
   return { foot = p4:GetBottom(), p1 = p1:GetBottom(), p2tab = p2.tab:GetTop(), p2shown = p2.tab:IsShown(), b1 = b1:GetBottom(), b2tab = b2.tab:GetTop() }`;
 
-it("Tabs: the party and boss stacks spread by the tab's height so each tab stands in the gap, the party column's foot kept; a look change in a fight waits for it to end", () => {
+it("Tabs: the party and boss stacks spread by the tab's height so each tab stands in the gap, the party column's foot 12 units higher (clear of the focus's cast bar); a look change in a fight waits for it to end", () => {
   const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, onLook("plain"));
   const plainFoot = addon.eval(STACK_LUA).foot;
   addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
   const tabs = addon.eval(STACK_LUA);
   expect([tabs.p2shown, tabs.p2tab <= tabs.p1, tabs.b2tab <= tabs.b1], "party2 and boss2 wear tabs that stay under the frame above").toEqual([true, true, true]);
-  expect(Math.round(tabs.foot), "the party column ends where it did").toBe(Math.round(plainFoot));
+  expect(Math.round(tabs.foot), "the party column ends 12 units higher: the focus's lifted cast bar stands under it").toBe(Math.round(plainFoot) + 12);
+  expect(addon.eval("local bar = Vanguard_CastBar_focus return bar:GetTop() <= Vanguard_party4:GetBottom() + 0.01 or bar:GetLeft() >= Vanguard_party4:GetRight() or bar:GetRight() <= Vanguard_party4:GetLeft()"), "H45-3-R2: the focus's cast bar, lifted by the tab, does not cover the fourth party frame").toBe(true);
   setCombat(addon, true);
   addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
   expect(addon.eval(STACK_LUA).p1, "in a fight the secure frames wait").toBe(tabs.p1);
   setCombat(addon, false);
   const back = addon.eval(STACK_LUA);
-  expect([back.p1 < tabs.p1, Math.round(back.foot)], "after it, the Plain stack: party1 lower, the foot unchanged").toEqual([true, Math.round(plainFoot)]);
+  expect([back.p1 < tabs.p1, Math.round(back.foot)], "after it, the Plain stack: party1 lower, the foot back to its Plain place").toEqual([true, Math.round(plainFoot)]);
 });
 
 it("the keystone: the crest on a rail between your frame and your target's, under them, taking no mouse, swords lit in a fight, no ring until its switch", () => {

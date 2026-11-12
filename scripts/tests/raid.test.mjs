@@ -200,6 +200,59 @@ it("raid role mark: a hidden role shows no mark, no role call or NONE shows none
   expect(addon.eval("return #ns.errors"), "nothing errors").toBe(0);
 });
 
+// The raid header's layout now: { point, groupBy, grouping order, holder width, modules waiting for a reload }.
+const gridLayout = (addon) => addon.eval(`local h = Vanguard_Raid return { h:GetAttribute("point"), h:GetAttribute("groupBy"), h:GetAttribute("groupingOrder"), Vanguard_RaidHolder:GetWidth(), #ns.Options.ReloadWaiting() }`);
+
+// Runs the setter of the Raid frames page's row `label` with a Lua value, as its control would.
+const setRaidRow = (addon, label, lua) => addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then for _, r in ipairs(p.rows()) do
+  if r[2] == ${JSON.stringify(label)} then local i = #r while type(r[i]) ~= "function" do i = i - 1 end r[i](${lua}) end end end end`);
+
+it("H45-5-53 raid frames: Groups as and Sort by role lay the grid out at once, out of combat, with no reload", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  const before = gridLayout(addon);
+  setRaidRow(addon, "Groups as", '"rows"');
+  const rows = gridLayout(addon);
+  expect([rows[0], rows[1], rows[4]], "rows: the point changes, no reload waited for").toEqual(["LEFT", "GROUP", 0]);
+  expect(rows[3], "the holder is one group wide").toBeGreaterThan(before[3]);
+  setRaidRow(addon, "Sort by role (tanks, healers, damage)", "true");
+  expect([gridLayout(addon).slice(1, 3), gridLayout(addon)[4]], "grouped by role").toEqual([["ASSIGNEDROLE", "TANK,HEALER,DAMAGER,NONE"], 0]);
+  setRaidRow(addon, "Groups as", '"columns"');
+  expect(gridLayout(addon)[0], "back to columns").toBe(before[0]);
+});
+
+it("H45-5-53 raid frames: in a fight the new layout waits for the fight to end", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  const before = gridLayout(addon);
+  setCombat(addon, true);
+  setRaidRow(addon, "Groups as", '"rows"');
+  expect(gridLayout(addon).slice(0, 4), "nothing is laid out in the fight").toEqual(before.slice(0, 4));
+  setCombat(addon, false);
+  expect(gridLayout(addon)[0], "laid out when the fight ends").toBe("LEFT");
+});
+
+it("H45-5-52 raid frames: a saved tile width, height or spacing outside the sliders' limits is dropped at login and in an import", () => {
+  for (const field of ["width = 0", "height = 0", "height = -40", "width = 0/0", "height = 1/0", "spacing = -500", "width = 100000", "height = 4", "width = '5'"]) {
+    const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: `VanguardDB.profiles = { Default = { RaidFrames = { ${field} } } }\n` });
+    addon.eval('__spawn(1, "raid1")');
+    expect(addon.eval('local b, s = Vanguard_RaidUnitButton1, ns.GetModule("RaidFrames").settings return { b:GetWidth(), b:GetHeight(), s.spacing, #ns.errors }'), `${field}: the defaults fill in`).toEqual([100, 48, 4, 0]);
+    const kept = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, RaidFrames = { ${field} } })
+      local r = data.RaidFrames return { kind, r.width == nil, r.height == nil, r.spacing == nil }`);
+    expect([kept[0], kept.slice(1).includes(true)], `${field}: an import is read and its bad value dropped`).toEqual(["parts", true]);
+  }
+  const inside = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { RaidFrames = { width = 72, height = 56, spacing = 10 } } }\n' });
+  expect(inside.eval('local s = ns.GetModule("RaidFrames").settings return { s.width, s.height, s.spacing }'), "the limits themselves stay").toEqual([72, 56, 10]);
+});
+
+it("H45-5-52 raid frames: an imported width that is out of range is cleaned, and the sliders read the module's limits", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  const cleaned = addon.eval(`local _, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, RaidFrames = { width = 100000, height = 40, spacing = 0/0 } })
+    local r = data.RaidFrames return { r.width == nil, r.height, r.spacing == nil }`);
+  expect(cleaned, "width and spacing dropped, a height inside the range kept").toEqual([true, 40, true]);
+  const ranges = addon.eval(`local out = {} for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then for _, r in ipairs(p.rows()) do
+    if r[2] == "Width" or r[2] == "Height" then out[#out + 1] = { r[3].min, r[3].max, r[3].step } end end end end return out`);
+  expect(ranges, "Width 72 to 120, Height 36 to 56, in steps of 2").toEqual([[72, 120, 2], [36, 56, 2]]);
+});
+
 it("raid frames: a dark style chosen before 'look' carries over", () => {
   const sv = 'VanguardDB = { profiles = { Default = { RaidFrames = { style = "dark" } } }, chars = {} }';
   const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: sv });
@@ -466,12 +519,12 @@ it("raid preview: sample players in the raid tiles, laid out by the raid frame s
   addon.eval('ns.Options.Show("raid") __click("Sort by role") __click("Style")');
   addon.eval(`for _, p in ipairs(ns.Options.PAGES) do if p.key == "raid" then for _, r in ipairs(p.rows()) do if r[2] == "Width" then r[5](120) end end end end`);
   expect([Math.round(r(1).width / 0.72), addon.eval("return { Vanguard_RaidPreviewTile1.name:GetText(), Vanguard_RaidPreviewTile4.name:GetText(), Vanguard_RaidPreviewTile5.name:GetText() }"), addon.eval("return Vanguard_Options.reload:IsShown()")],
-    "a new width and sorting by role show at once (tanks first, then healers); the reload notice is lit by the sorting").toEqual([120, ["Aldren", "Zelda", "Brielle"], true]);
+    "a new width and sorting by role show at once (tanks first, then healers); sorting applies at once, so no reload notice").toEqual([120, ["Aldren", "Zelda", "Brielle"], false]);
   expect([isTok(addon, previewTile(addon, 1).bar, "darkBar"), previewTile(addon, 1).line], "a new style too").toEqual([true, false]);
   addon.eval('local s = VanguardDB.profiles.Default.RaidFrames s.layout = "rows" s.showPower = false RAID_CLASS_COLORS = nil ns.Theme.Refresh()');
   expect([r(2).bottom === r(1).bottom && r(2).left > r(1).right, r(6).bottom > r(1).top, previewTile(addon, 1).power], "groups as rows; the power bar off; redrawn on a theme change").toEqual([true, true, false]);
   expect(previewTile(addon, 1).name, "with no class colors the tiles still draw").toBe("Aldren");
-  expect([addon.eval("return __secureSets"), addon.eval('return #ns.GetModule("RaidFrames").buttons'), raidButton(addon, 1).name], "the preview never touches the secure buttons; the header's two size attributes are set once each, by the new width").toEqual([2, 1, "TEST-ONLY Tank"]);
+  expect([addon.eval("return __secureSets"), addon.eval('return #ns.GetModule("RaidFrames").buttons'), raidButton(addon, 1).name], "the preview never touches the secure buttons; the header's two size attributes are set once each, by the new width, and the nine layout attributes once, by the sorting").toEqual([11, 1, "TEST-ONLY Tank"]);
   addon.eval('__click("Preview with sample players")');
   expect([shownTiles(addon), chatHas(addon, /Vanguard:\S*\sRaid frames preview off\.$/), addon.eval("return ns.RaidPreview.size")], "the options row steps from Raid (40) to Off").toEqual([0, true, 0]);
 });
@@ -687,6 +740,17 @@ it("H27-3-1: a class-coloured name in the Dark look keeps its colour through a l
   const before = addon.eval("return Vanguard_RaidUnitButton1.name.__textColor");
   addon.slash("variant classic");
   expect(addon.eval("return Vanguard_RaidUnitButton1.name.__textColor"), "the class colour, not the look's text colour").toEqual(before);
+});
+
+it("H45-17-1 raid frames: in the Dark look a reused tile takes the class colour of an offline player, and a look change recolours it", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV, { savedVariables: 'VanguardDB = { profiles = { Default = { RaidFrames = { look = "dark" } } } }' });
+  addon.eval('__spawn(1, "raid1")');
+  const warrior = addon.eval("return Vanguard_RaidUnitButton1.name.__textColor");
+  addon.eval('Vanguard_RaidUnitButton1:SetAttribute("unit", "raid3")');
+  const mage = addon.eval("return { Vanguard_RaidUnitButton1.name:GetText(), Vanguard_RaidUnitButton1.name.__textColor }");
+  expect([mage[0], mage[1]], "the offline mage's name is not left in the warrior's colour").not.toEqual(["TEST-ONLY Gone", warrior]);
+  addon.eval('local RF = ns.GetModule("RaidFrames") RF.settings.look = "soft" RF.UpdateAll()');
+  expect(addon.eval("return Vanguard_RaidUnitButton1.name.__textColor"), "a light look gives a down tile the light name").not.toEqual(mage[1]);
 });
 
 it("H44-7-1 raid frames: a tile that fails on a roster change leaves the later tiles refreshed, and its error is still reported", () => {

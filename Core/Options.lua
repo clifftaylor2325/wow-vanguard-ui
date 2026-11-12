@@ -67,11 +67,23 @@ local function noteReloadChange(module, key, before, after)
   reloadChanges[id] = after ~= first.value and first or nil
 end
 
+-- A setter for a module setting that needs a reload: notes the change (the notice names the module until the
+-- setting is back where the module was built with it), saves it with `set`, and shows the notice. `get` reads the
+-- value now. The one way a reload row's setter is built, so Show bar n and the other rows behave alike.
+---@param module string
+---@param key string
+---@param get function
+---@param set function
+---@return function
+function O.ReloadSetter(module, key, get, set)
+  return function(v) noteReloadChange(module, key, get(), v) set(v) O.ShowReloadNotice() end
+end
+
 -- get/set for a module setting that needs a reload: a change shows the reload notice, which names the module until
 -- the setting is back where the module was built with it.
 local function reloadSetting(module, key)
   local get, set, initial = setting(module, key)
-  return get, function(v) noteReloadChange(module, key, get(), v) set(v) O.ShowReloadNotice() end, initial
+  return get, O.ReloadSetter(module, key, get, set), initial
 end
 
 -- Setters made by O.RestartSetting -> their module (weak keys): such a row applies at once while its module is live.

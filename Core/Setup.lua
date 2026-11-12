@@ -457,17 +457,24 @@ local function grown(size, ratio)
   return math.floor(size * ratio + 0.5)
 end
 
+-- v held inside limits ({ lowest, highest }).
+local function clamped(v, limits)
+  return math.max(limits[1], math.min(limits[2], v))
+end
+
 -- What Pixel-perfect sets on this screen: the scale (768 / height times the whole multiple), this
 -- screen's preset (1080p's on a small screen) with its buttons and text grown by how much smaller
--- that scale is than the preset's (the text in steps of 5%, within the slider's range). Raid tiles
--- keep the preset's size: the grid sits among frames drawn in UI units, so growing it alone crowds them.
+-- that scale is than the preset's (the text in steps of 5%, within the slider's range; the buttons within the
+-- shared size's limits, so a login keeps what setup wrote; ActionBars loads after this file, so they are read
+-- here). Raid tiles keep the preset's size: the grid sits among frames drawn in UI units, so growing it alone crowds them.
 function S.PixelPreset()
   local base, _, h = S.ScreenPreset(S.DetectScreen()) or S.SCREENS[1], screenSize()
   local n = S.PixelMultiple(h > 0 and h or 768)
   local ui = T.PixelPerfectScale() * n
   local r = base.ui / ui
   local text = math.max(T.TEXT_SCALE.min, math.min(T.TEXT_SCALE.max, math.floor(base.textScale * r * 20 + 0.5) / 20))
-  return { key = S.PIXEL.key, ui = ui, pixel = n, button = grown(base.button, r), tile = base.tile, textScale = text }
+  local button = clamped(grown(base.button, r), ns.GetModule("ActionBars").LIMITS.shared)
+  return { key = S.PIXEL.key, ui = ui, pixel = n, button = button, tile = base.tile, textScale = text }
 end
 
 -- Sets the game's UI scale (clamped to its own slider's range), out of combat: the client's

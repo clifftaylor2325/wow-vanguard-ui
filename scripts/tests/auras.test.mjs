@@ -202,6 +202,24 @@ it("raid auras listen for UNIT_AURA only on the fallback, where they paint the h
   fallback.eval('__spawn(1, "raid1") __spawn(2, "raid2")');
   const heard = unitEvents(fallback, "UNIT_AURA");
   expect([heard.plain, /raid1/.test(heard.subs) && /raid2/.test(heard.subs)], "A1-6: on the fallback too nothing takes every unit's UNIT_AURA; each tile hears its own unit's").toEqual([0, true]);
+  // H45-15-52: switched off, no tile hears its unit's UNIT_AURA (RF.PauseTileUnit); back on, each hears it once again.
+  const tiles = () => (unitEvents(fallback, "UNIT_AURA").subs.match(/raid\d/g) || []).length;
+  const on = tiles();
+  fallback.eval('ns.SetModuleEnabled("RaidAuras", false)');
+  const off = tiles();
+  fallback.eval('ns.SetModuleEnabled("RaidAuras", true)');
+  expect({ off, again: tiles() }, "off: none; on again: as many as before").toEqual({ off: 0, again: on });
+});
+
+it("H45-15-4 a target or raid aura count that is not a whole number is rounded, as the client's aura container takes only whole ones", () => {
+  const sv = "VanguardDB.profiles = { Default = { FrameAuras = { debuffs = 2.5 }, RaidAuras = { debuffs = 2.4, maxHots = 1.5 }, modules = { RaidHealing = false } } }";
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV, { savedVariables: sv });
+  addon.eval('__spawn(1, "raid1")');
+  addon.fire("PLAYER_TARGET_CHANGED");
+  // Each group's count in an aura row, in order.
+  const counts = (row) => addon.eval(`local out = {} for i, g in ipairs(${row}.frame.__groups) do out[i] = g.opts.maxFrameCount end return out`);
+  expect(counts("Vanguard_target.debuffs"), "the target's crowd control, then three of yours (the client asserts a whole count)").toEqual([1, 3]);
+  expect([counts("Vanguard_RaidUnitButton1.debuffRow"), counts("Vanguard_RaidUnitButton1.hotRow")], "a tile's dispellable one and one other, two HoTs").toEqual([[1, 1], [2]]);
 });
 
 it("H28-2-2: on the fallback an offline player's tile drops the dispel wash with its icons, in an aura event too", () => {
@@ -378,9 +396,16 @@ it("aura containers on the client's engine", () => {
   expect(c.timer === "%dm" && c.color === 0, "the timer text gets the theme's formatter and time-left colors").toBeTruthy();
   addon.eval("__c:SetUnit(nil)");
   expect(addon.eval("return __c.frame.__enabled == false and __c.frame.__groups[1].buttons[1].__shown == false"), "no unit: the container turns off").toBeTruthy();
-  expect(addon.eval("__wfgStub.inCombat = true local n = ns.Auras.BackendName() __wfgStub.inCombat = false return n") === "fallback", "a container needed in combat (a new nameplate) gets the fallback").toBeTruthy();
+  expect(addon.eval("__wfgStub.inCombat = true local legacy = ns.Auras.Backend() == ns.AuraLegacy __wfgStub.inCombat = false return legacy"), "a container needed in combat (a new nameplate) gets the fallback").toBe(true);
   addon.eval('__c:SetUnit("target") __ca["HARMFUL|PLAYER"] = {} __c:Refresh()');
   expect(addon.eval("return __c.frame.__groups[1].buttons[1].__shown") === false, "Refresh reads the auras again").toBeTruthy();
+});
+
+it("H45-15-51 /vg status in a fight names the aura engine the session uses", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV);
+  setCombat(addon, true);
+  addon.slash("status");
+  expect([chatHas(addon, /auras on the engine/), addon.eval("return ns.Auras.Backend() == ns.AuraLegacy")], "the engine, though a container made now gets the fallback").toEqual([true, true]);
 });
 
 // TEST-ONLY weapons: a shaman's imbue on the main hand (30 minutes left), nothing on the off hand.
@@ -455,6 +480,26 @@ it("H44-5-50 your buffs: an enchant that runs out and is put on again in one fig
   setCombat(addon, false);
   expect(state(), "after the fight the enchant is on and the buffs still one cell over").toEqual(before);
   expect(before.cell && before.x < 0, "one enchant cell to start with").toBe(true);
+});
+
+it("H45-15-2 your buffs: entering the world refreshes the enchant cells", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV + "__enchants[0] = nil");
+  // Whether the first enchant cell shows.
+  const shown = () => addon.eval("return ns.GetModule('PlayerAuras').cells[1]:IsShown()");
+  expect(shown(), "no enchant at login").toBe(false);
+  addon.eval(`__enchants[0] = { { hasEnchant = true, timeLeft = 1800000, enchantIconID = "TEST-ONLY-ICON-Imbue" } }`);
+  // PLAYER_ENTERING_WORLD carries isInitialLogin, isReloadingUi (Blizzard_APIDocumentationGenerated/SystemDocumentation.lua).
+  addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(shown(), "the enchant the client lists by the loading screen's end shows").toBe(true);
+});
+
+it("H45-15-3 your buffs: numbers out of range in a crafted profile are kept inside, as whole numbers", () => {
+  const sv = "VanguardDB = { profiles = { Default = { PlayerAuras = { perRow = 0, buffs = 2.5, size = -4 } } }, chars = {} }";
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV, { savedVariables: sv });
+  const block = addon.eval(`local PA = ns.GetModule("PlayerAuras") local g = PA.auras.frame.__groups
+    return { lineSize = PA.lineSize, width = PA.holder:GetWidth(), pad = PA.holder.vgHoverArea:GetHeight(), buffs = g[1].opts.maxFrameCount,
+      size = g[1].buttons[1]:GetWidth(), cell = PA.cells[1]:GetWidth() }`);
+  expect(block, "one 16 icon to a row (20 with its gap), three buffs and 16 debuffs: 19 rows").toEqual({ lineSize: 20, width: 20, pad: 380, buffs: 3, size: 16, cell: 16 });
 });
 
 const RETAIL_ENCHANTS_ENV = `
@@ -1087,6 +1132,16 @@ it("H44-5-3 auras: your buffs', the target's and a raid tile's icons go back on 
   expect(buttons.map((b) => onPixel(insetOf(addon, b))), "each icon's inset is one pixel at the new scale").toEqual([true, true, true]);
 });
 
+it("H45-15-50 auras: your weapon enchant cells go back on whole pixels after a scale change, as the buffs beside them", () => {
+  const addon = loggedIn(UNITS_ENV + ENGINE_ENV + WEAPONS_ENV);
+  // The first enchant cell's icon inset and one pixel at the cell's scale.
+  const cell = () => addon.eval(`local c = ns.GetModule('PlayerAuras').cells[1] local p = c.icon.__points.TOPLEFT
+    return { p.x, ns.Theme.PixelAtScale(c:GetEffectiveScale()) }`);
+  addon.eval("ns.GetModule('PlayerAuras').holder:SetScale(1.6) ns.Theme.Rescale()");
+  for (let i = 0; i < 4; i++) addon.update(0.016);
+  expect(onPixel(cell()), "the main hand's cell: its inset is one pixel at the new scale").toBe(true);
+});
+
 it("H44-5-7 auras: an icon the client holds back at a scale change goes on whole pixels once it lets go and aura information is plain", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV);
   addon.eval('__spawn(1, "raid1") __b = Vanguard_RaidUnitButton1.debuffRow.frame.__groups[1].buttons[1]');
@@ -1173,4 +1228,26 @@ it("H44-5-51 a fallback row probes its filters when it is made, so a first read 
   addon.eval(`ns.AuraLegacy.Create(UIParent, { point = { "CENTER" }, lineSize = 200, groups = { { filter = "HARMFUL|PLAYER|!CROWD_CONTROL", max = 1, size = 20 } } }, nil)`);
   addon.eval("C_Secrets = { ShouldAurasBeSecret = function() return true end }");
   expect(addon.eval('return ns.Auras.Filter("HARMFUL|PLAYER|!CROWD_CONTROL")'), "probed when made, with no unit to read yet").toBe("HARMFUL|PLAYER");
+});
+
+// Tile 1's indicator rows: where each sits now (TOPRIGHT offsets), and where the zones say slot n goes.
+const indicatorSpots = (addon) => addon.eval(`local RF, RA = ns.GetModule("RaidFrames"), ns.GetModule("RaidAuras")
+  local b, z, out = Vanguard_RaidUnitButton1, RF.TileZones(), {}
+  for n, row in ipairs(b.indRows) do
+    local p, spec = row.frame.__points.TOPRIGHT, RA.IndicatorSpec(b, z, n)
+    out[n] = { p.x, p.y, spec.point[4], spec.point[5] }
+  end
+  return out`);
+
+it("H45-5-2 raid auras: a Height change that keeps the icon size still moves the indicators to the new tile's corners", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + AURA_ENV + ENGINE_ENV, {
+    savedVariables: SETUP_DONE + 'VanguardDB.profiles = { Default = { RaidFrames = { height = 54 }, RaidAuras = { indicator3 = "mine" } } }' });
+  addon.eval('__spawn(1, "raid1")');
+  for (const height of [56, 54]) {
+    addon.eval(`local RF = ns.GetModule("RaidFrames") RF.settings.height = ${height} RF.ApplySize()`);
+    for (let i = 0; i < 6; i++) addon.update(0.1);
+    const spots = indicatorSpots(addon);
+    expect(spots.length, `height ${height}: the indicator rows are there`).toBeGreaterThan(0);
+    expect(spots.map((s) => s.slice(0, 2)), `height ${height}: every slot at the spot the zones give`).toEqual(spots.map((s) => s.slice(2, 4)));
+  }
 });

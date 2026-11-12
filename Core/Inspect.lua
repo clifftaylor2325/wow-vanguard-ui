@@ -156,7 +156,7 @@ end
 -- Every line /vg frame prints for name: the frame's state, anchors and ancestors, and with deep its parts.
 function I.Lines(name, deep)
   local f = I.Resolve(name)
-  if not f then return { string.format("No frame called %s (a global name; dots follow keys: MinimapCluster.Tracking).", name) } end
+  if not f then return { ns.Format(ns.L["No frame called {name} (a global name; dots follow keys: MinimapCluster.Tracking)."], { name = name }) } end
   local out = { I.StateLine(f) }
   I.PointLines(f, out)
   I.AncestorLines(f, out)

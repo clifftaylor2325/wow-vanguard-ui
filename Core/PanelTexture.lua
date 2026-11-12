@@ -63,7 +63,7 @@ local surfaceOf = setmetatable({}, { __mode = "k" })
 -- Places the surface over the fill, `pad` units out past the frame and `r` units in from it, so a
 -- rounded panel's corners (r 0 when square) stay the fill's own.
 local function place(t, frame, pad, r)
-  local d = pad - r
+  local d = T.PixelRound(frame, pad) - r
   t:ClearAllPoints()
   t:SetPoint("TOPLEFT", frame, "TOPLEFT", -d, d)
   t:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", d, -d)
@@ -87,6 +87,7 @@ function T.PaintPanelSurface(frame, entry)
   local opts, path, alpha = entry.opts, T.PanelSurface()
   if opts.noSurface or not (opts.shadow or opts.gradient) or not (path or surfaceOf[frame]) then return end
   local t = surface(frame)
+  entry.parts.surface = t
   t:SetShown(path ~= nil)
   if not path then return end
   t:SetTexture(path, "REPEAT", "REPEAT")

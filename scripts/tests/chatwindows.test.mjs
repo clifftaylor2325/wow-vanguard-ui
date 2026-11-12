@@ -244,7 +244,7 @@ it("chat tabs: New chat tab makes nothing and points to the game's tab menu; the
   const addon = loggedIn(ENV + TABS + "__opened = 0 local open = FCF_OpenNewWindow FCF_OpenNewWindow = function(...) __opened = __opened + 1 return open(...) end");
   addon.eval(`${chatRow("New chat tab")} r[3]()`);
   expect(addon.eval("return { __opened, __wfgWorld.chatWindows[3] == nil }"), "Vanguard opened no window").toEqual([0, true]);
-  expect(chatHas(addon, /right-click any chat tab and choose Create New Window/), "chat says how").toBe(true);
+  expect(chatHas(addon, /right-click the main chat tab and choose Create New Window/), "chat says how").toBe(true);
   addon.eval(`ns.Options.Show("chat")`);
   addon.eval(`FCF_OpenNewWindow("Trade")`);
   addon.advance(0.1);

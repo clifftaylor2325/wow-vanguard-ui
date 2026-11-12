@@ -251,6 +251,15 @@ it("cast bars ask the client for their own units' casts only", () => {
   expect(unitEvents(some, "UNIT_SPELLCAST_STOP").subs, "only the units whose bars are on (your pet's goes with yours)").toBe("target");
 });
 
+it("with your cast bar unticked, the game's own player and pet cast bars stay up (H45-16-50)", () => {
+  // TEST-ONLY the game's pet cast bar, a child of UIParent (forever Blizzard_UnitFrame/Mainline/PetFrame.xml, PetCastingBarFrame).
+  const pet = 'PetCastingBarFrame = CreateFrame("StatusBar", "PetCastingBarFrame", UIParent)';
+  const addon = loggedIn(CAST_ENV + pet, { savedVariables: "VanguardDB.profiles = { Default = { CastBars = { player = false } } }" });
+  const out = addon.eval(`return { Vanguard_CastBar_player ~= nil, PlayerCastingBarFrame:GetParent() == UIParent,
+    PlayerCastingBarFrame:IsEventRegistered("UNIT_SPELLCAST_START") == true, PetCastingBarFrame:GetParent() == UIParent, #ns.errors }`);
+  expect(out, "no Vanguard bar for you, and the game's bars are left where they are, listening").toEqual([false, true, true, true, 0]);
+});
+
 it("a channel the client stops with an interrupter flashes red, one it lets run out flashes green", () => {
   const addon = loggedIn(CAST_ENV + FAKE_FADES);
   addon.eval("__fakeFader(Vanguard_CastBar_target)");

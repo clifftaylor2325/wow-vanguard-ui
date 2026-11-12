@@ -2049,8 +2049,8 @@ Each stream of `docs/handoff/RESKIN-PLAN.md` adds its steps here as `###` subsec
 
 ### 15.6e Chat tabs
 
-- Do: `/vg` → Chat → Chat tabs. Click New chat tab; then right-click a chat tab, choose Create New Window, name it `Loot`, and reopen the page. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops and click Close this tab, then close it from its own right-click menu, Close Chat Window.
-- Expect: New chat tab says in chat to right-click a tab and choose Create New Window; the new tab is in the Tab choice; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Close this tab on Drops makes no change and says to right-click its tab and choose Close Chat Window, which closes it. `/vg errors` is empty. [Needs in game: FCF_SetWindowName, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
+- Do: `/vg` → Chat → Chat tabs. Click New chat tab; then right-click the main chat tab, choose Create New Window, name it `Loot`, and reopen the page. With Loot picked, tick Show Loot and untick Show Say; loot something and say something. Click Rename this tab, type `Drops`. Pick General, try Close this tab. Pick Drops and click Close this tab, then close it from its own right-click menu, Close Chat Window.
+- Expect: New chat tab says in chat to right-click the main chat tab and choose Create New Window; the new tab is in the Tab choice; it shows loot and not say; the rename shows on the tab; closing General does nothing and says so in chat; Close this tab on Drops makes no change and says to right-click its tab and choose Close Chat Window, which closes it. `/vg errors` is empty. [Needs in game: FCF_SetWindowName, ChatFrame_AddMessageGroup / RemoveMessageGroup / ContainsMessageGroup behave as used, and the group names (SAY, YELL, GUILD, PARTY, RAID, WHISPER, LOOT, SYSTEM) match.]
 - If it fails, paste: `/vg errors` and what the tab did.
 
 ### 15.6f Chat search
@@ -6009,157 +6009,361 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Expect: The profession bag's free slots sit under their own header after Empty, such as "EMPTY: HERB BAG", not under Empty; with only those left there is no Empty header, the bag bar's free count reads 0, and the game's "bags are full" message matches what the window shows. The free-space tooltip on the info strip names the bag ("Bag 2 (herb bag)").
 - If it fails, paste: A screenshot of the bag window and the bag bar, and `/vg errors`.
 
-### 33.760 A matched frame follows the other frame's size after a reload (H45-21-1; WoW Forever and Retail)
+### 33.666 Target debuff edges after the aura module comes back (H45-3-1)
+
+- Do: target a mob with your debuff on it, switch Target and focus auras off and then on (`/vg` > Modules), then give the Target frame a Scale of 1.5 (`/vg unlock`, the Scale box on its handle). [Client: Forever and Retail.]
+- Expect: the target's debuff icons keep a crisp one-pixel dark edge at the new scale, not doubled or soft.
+- If it fails, paste: a screenshot of the icons.
+
+### 33.667 Party pets and targets clear the party column under Tabs (H45-3-R1)
+
+- Do: set `/vg` > General > HUD > HUD look to Tabs, give the party frames a Height of 80 and switch on Party pets and targets, then join a party of five (or look at the two handles under `/vg unlock`). Switch the HUD look back to Plain. [Client: Forever and Retail.]
+- Expect: the Party pets and targets column stands wholly above the top party frame's name tab under Tabs, with no overlap, and drops back with Plain; a column you moved yourself stays where you put it.
+- If it fails, paste: a screenshot of the party column and the pets column.
+
+### 33.668 The focus cast bar clears party4 under Tabs (H45-3-R2)
+
+- Do: with the HUD look on Tabs, in a party of five, have your focus cast a spell (a mob or a training dummy you focus). [Client: Forever and Retail.]
+- Expect: the focus's cast bar stands under the fourth party frame without covering its bottom edge, and the focus frame's tab is not covered either.
+- If it fails, paste: a screenshot while the focus casts.
+
+### 33.669 The coin window has the panel texture (H45-4-1)
+
+- Do: set General > Look > Panel texture to Fine grain, then click your money in the bags and pick up part of it so the coin window opens; do it twice. [Client: Forever and Retail.]
+- Expect: the coin window shows the grain like other windows, not a flat fill, each time it opens.
+- If it fails, paste: `/vg frame` on the coin window.
+
+### 33.670 Pixel-perfect buttons keep their size after a reload (H45-5-1)
+
+- Do: on a screen 1300 to 1889 px tall (1440p is one), open `/vg setup`, pick Pixel-perfect on the Screen step and finish, note the shared button size (Action bars, Button size), then `/reload`. [Client: Forever and Retail.]
+- Expect: the buttons are the same size after the reload (about 50 px at 1440p), not smaller, and the Button size slider shows that size; a bar's own size slider still stops at 48.
+- If it fails, paste: `/vg report` and `/vg frame Vanguard_Bar1Button1`.
+
+### 33.671 Groups as and Sort by role apply at once (H45-5-53)
+
+- Do: in a raid group with roles set, out of combat, open `/vg` > Raid frames, change Groups as to Rows, then tick Sort by role (tanks, healers, damage); then make one more change during a fight. [Client: Forever and Retail.]
+- Expect: the real raid frames lay out as rows and then sort tanks, healers, then damage at once, with no reload notice and no "(reload)" in the caption; the change made in the fight shows when it ends.
+- If it fails, paste: `/vg errors` and a screenshot of the raid frames.
+
+### 33.672 Key setup leaves a rank you placed by hand (H45-6-1)
+
+- Do: on a mage with Frostbolt Rank 1 to 3, right after logging in put Rank 3 on button 2 by hand, then open Action bars > Your keys > Set up keys and go to Ready; press Apply. [Client: Forever.]
+- Expect: no "Frostbolt ... in place of ..." line for key 2 unless it puts Rank 3 over a lower rank; after Apply, button 2 still shows Rank 3 in its tooltip.
+- If it fails, paste: the Ready list.
+
+### 33.673 Click casting knows your ranks at login (H45-6-R2)
+
+- Do: right after logging in on a character with a spell of several ranks, open Click casting with a rank picked on one binding. [Client: Forever.]
+- Expect: no "you no longer have that spell rank" mark on a rank you know.
+- If it fails, paste: the `/vg binds` lines.
+
+### 33.674 Apply stops when the key set changed under it (H45-6-101)
+
+- Do: on a character using account keys, open Set up keys to Ready, then open the game's Settings > Keybindings, tick Character Specific Keybindings, close Settings and press Apply. [Client: Forever.]
+- Expect: chat says "Your bars or keys changed since this list was made, so nothing was changed...", no key is bound, and Ready shows again without the "Change keys for" row.
+- If it fails, paste: the chat lines and whether Character Specific Keybindings is still ticked.
+
+### 33.675 Apply stops when the gamepad came on (H45-6-R4)
+
+- Do: with key setup open on Ready, turn on the game's gamepad interface, then press Apply. [Client: Forever; needs a gamepad or the interface style set.]
+- Expect: no key changes; the window goes back to step 1 saying "You play with a gamepad, so Vanguard won't change your keys." with only Close.
+- If it fails, paste: the chat lines and what step 1 shows.
+
+### 33.676 Put everything back after Only this character (H45-6-103)
+
+- Do: on a character using account keys, open Set up keys, keep Change keys for: Only this character and press Apply; then press Put everything back on the Your keys card. [Client: Forever.]
+- Expect: the keys go back, and chat says "This character still uses its own keys. To share your account's keys again, untick Character Specific Keybindings in the game's key bindings."; the game's box stays ticked.
+- If it fails, paste: the chat lines.
+
+### 33.677 Can a character's own keys drift from the list key setup made (H45-6-3, held)
+
+- Do: on character A tick Character Specific Keybindings, bind F to Open All Bags, untick it (accept the popup); on character B (account keys) change any key; back on A, on account keys, open Set up keys, pick Only this character and press Apply. Then tick Character Specific Keybindings and press F. [Client: Forever.]
+- Expect: a fact for the hunt, no right answer: chat names what Apply did, and F either still opens the bags or holds what key setup put there.
+- If it fails, paste: the chat lines and F's binding.
+
+### 33.678 The settings-loss question comes back after Use on the profile in use (H45-7-51)
+
+- Do: on a character whose account file came back older than its own, answer Not now to the settings-loss question, click Use on the profile already in use on the Profiles page, then log out and in again. [Client: Forever.]
+- Expect: the settings-loss question is offered again at the next login, and Restore still brings back the newer settings.
+- If it fails, paste: the General page's settings-loss line and `/vg errors`.
+
+### 33.679 The Filtered tab is translated from the start (H45-8-2)
+
+- Do: on a German or French client, switch Chat > Chat filter on and `/reload` before any spam is caught; then open and close the game's chat settings. [Client: Forever and Retail, German or French.]
+- Expect: the Filtered tab already reads the translated word with its count (for example "Gefiltert (0)"), and still does after the chat settings close.
+- If it fails, paste: the tab's label right after the reload.
+
+### 33.680 Guild News filters stay by the guild window (H45-8-4)
+
+- Do: open the guild window, Guild News, Set filters, then change Interface scale in the game's settings. [Client: Forever and Retail.]
+- Expect: the filters flyout stays beside the guild window, past its side tabs, and does not jump to the screen's left edge.
+- If it fails, paste: a screenshot of where the filters sit.
+
+### 33.681 Popups keep their panel where the game hides the UI (H45-8-51)
+
+- Do: open the barber shop (or, on Retail, the house editor) and bring up a confirm popup there; then leave and bring up any popup in the normal UI. [Client: Forever and Retail; the house editor is Retail only.]
+- Expect: both popups sit on a dark Vanguard panel, not see-through, and no taint message appears.
+- If it fails, paste: a screenshot and `/vg errors`.
+
+### 33.682 Vanguard's dialog gives way to the game's own window (H45-9-1)
+
+- Do: talk to an NPC whose first page shows in Vanguard's dialog and whose next page is the game's own window (or hold the hand-off key as the next page opens). [Client: Forever and Retail.]
+- Expect: Vanguard's dialog is gone and only the game's window shows.
+- If it fails, paste: `/vg report`.
+
+### 33.683 Spend planned after a refusal (H45-9-51)
+
+- Do: on a character with a talent plan, press Spend planned twice fast to get the game to refuse the second, then press it once more. [Client: Forever.]
+- Expect: on a refusal chat says once that the game refused, and the next Spend planned buys again; on success there is no refusal line.
+- If it fails, paste: `/vg report`.
+
+### 33.684 Record for in a fight (H45-9-103)
+
+- Do: during a fight, pick Record for: Raid on the Situations page. [Client: Forever and Retail.]
+- Expect: chat says "Recording can't start in a fight. Try again after it." and nothing records when the fight ends; picking it again after the fight starts recording.
+- If it fails, paste: the chat lines.
+
+### 33.685 Junk sells after a Buyback visit (H45-10-51)
+
+- Do: with a grey item in your bags, open a merchant, click the Buyback tab, close the window, put another grey item in your bags, and open a merchant again. [Client: Forever and Retail.]
+- Expect: chat says "Selling 1 junk item(s)." and the grey item is gone.
+- If it fails, paste: the chat line, or that none came.
+
+### 33.686 Portraits stay off on the Versus deck (H45-13-2)
+
+- Do: under the Hairline HUD look, set Player portrait and Target portrait to 2D portrait, then turn on Unit frames > Versus deck. [Client: Forever and Retail.]
+- Expect: neither frame shows a portrait while the deck is on, and both come back when you turn the deck off.
+- If it fails, paste: a screenshot.
+
+### 33.687 Health line on small Hairline frames (H45-13-3)
+
+- Do: under the Hairline HUD look, look at your pet and target-of-target frames. [Client: Forever and Retail.]
+- Expect: each health line is at least as tall as the thin power line under it, and the name sits on the health line.
+- If it fails, paste: a screenshot.
+
+### 33.688 Target health number clear of the tag mark (H45-13-4)
+
+- Do: under the Hairline HUD look, fight a hostile creature you have tagged and look at the target frame. [Client: Forever and Retail.]
+- Expect: the health number ends clear of the tag mark at the frame's top corner, under Hairline and under Shield.
+- If it fails, paste: a screenshot of the target frame.
+
+### 33.689 Window borders after a UI scale change (H45-14-1)
+
+- Do: open the character window, then move the UI scale slider in the game's System options and close the options. [Client: Forever and Retail.]
+- Expect: the window's one-pixel border stays sharp and dark on every side, with the faint sheen line just inside the top edge.
+- If it fails, paste: a cropped screenshot of one corner.
+
+### 33.690 Enchant cells after a login (H45-15-2)
+
+- Do: as a rogue or shaman, put a poison or imbue on your main hand, log out fully and log back in. [Client: Forever.]
+- Expect: the enchant's cell shows in front of your buffs right after the loading screen, without touching your gear.
+- If it fails, paste: a screenshot of the buff block after login.
+
+### 33.691 Enchant cells after a scale change (H45-15-50)
+
+- Do: put a poison, oil or imbue on your weapon, then change the game's UI scale. [Client: Forever and Retail.]
+- Expect: the enchant cell's one-pixel edge stays as crisp as the buffs' beside it.
+- If it fails, paste: a zoomed screenshot of the enchant cell and the buff beside it.
+
+### 33.692 The game's cast bars while yours is unticked (H45-16-50)
+
+- Do: untick Options > Unit frames > Cast bars > Your cast bar (and your pet's), reload, then as a warlock with the Imp out cast a spell with a cast time and let the Imp cast Firebolt. [Client: Forever and Retail.]
+- Expect: the game's own pet cast bar shows the Imp's cast, and the game's own player cast bar shows yours unless Edit Mode locks it to the player frame.
+- If it fails, paste: /vg errors and /vg frame PlayerCastingBarFrame.
+
+### 33.693 Plate debuff icons after a target change in a fight (H45-16-R1)
+
+- Do: set Nameplates > Target plate size to 115%, put a debuff of yours on two mobs in a dungeon and switch target between them in the fight; after the fight, target one. [Client: Forever and Retail.]
+- Expect: each debuff icon on both plates keeps an even one-pixel dark inset and edge.
+- If it fails, paste: a screenshot and /vg errors.
+
+### 33.694 Clicks through a fading bar (H45-18-1)
+
+- Do: turn on bar 4 (On mouseover) with most of its slots empty; right-drag starting over its empty part, then left-click an NPC behind it. Do the same over an empty slot of bar 3 with the Calm HUD on and Action bars set to Hide, out of combat. [Client: Forever and Retail.]
+- Expect: the camera turns and the NPC is targeted both times, and hovering still fades the bars in.
+- If it fails, paste: what happened and /vg errors.
+
+### 33.695 Each Calm bar shows its own backing (H45-18-2)
+
+- Do: with the Shield HUD look, turn the Calm HUD on with Action bars set to Hide, then out of combat hover bar 3, then bar 1. [Client: Forever and Retail.]
+- Expect: each bar shows with its own backing under it, never a backing under invisible buttons.
+- If it fails, paste: a screenshot.
+
+### 33.696 Bag bar after an item pickup (H45-18-50)
+
+- Do: with the bag and menu bar on, pick up an item from a bag and put it back. [Client: Forever.]
+- Expect: the key ring's slot stays the size of the bag slots and no brass dividers show between the bag slots.
+- If it fails, paste: a screenshot of the bar before and after.
+
+### 33.697 Hover keys after the Calm HUD turns on (H45-19-R1)
+
+- Do: with click casting's "Also on player, target and focus" on and the Calm HUD off, reload; add hover key Shift-Q = Renew, turn the Calm HUD on, remove Shift-Q and add F = Flash Heal; with the pointer on your player frame press Shift-Q, then F, then do the same over a raid frame. [Client: Forever and Retail.]
+- Expect: Shift-Q does its usual job and casts nothing on you, F casts Flash Heal on the frame's unit, the frame still brightens under the pointer, and no Lua error shows.
+- If it fails, paste: /vg binds and /vg errors.
+
+### 33.698 A long buff list in a fight (H45-12-50)
+
+- Do: with 15 or more buffs on you, enter a fight and gain one more buff. [Client: Forever and Retail.]
+- Expect: every buff shows in your buff rows, the new one dressed like the others.
+- If it fails, paste: a screenshot and /vg errors.
+
+### 33.699 Clearing the settings search (H45-12-51)
+
+- Do: open the options window, type a word in Search settings, then click the search box's clear button. [Client: Forever and Retail.]
+- Expect: the list shows every setting again and the clear button hides.
+- If it fails, paste: a screenshot and /vg errors.
+
+### 33.700 A matched frame follows the other frame's size after a reload (H45-21-1; WoW Forever and Retail)
 
 - Do: /vg unlock, right-click the XP bar's handle, set Match width to Action bar 1, Save and lock, /reload, then raise Button spacing under Action bars from 2 to 8.
 - Expect: the XP bar widens along with bar 1.
 - If it fails, paste: /vg frame Vanguard_xpbar and bar 1's width.
 
-### 33.761 A hand-picked profile survives a spec swap and back (H45-22-1; WoW Forever and Retail)
+### 33.701 A hand-picked profile survives a spec swap and back (H45-22-1; WoW Forever and Retail)
 
 - Do: with spec 1 on Default and spec 2 set to Heal, pick Heal in the Profiles list, change to spec 2 and back to spec 1, then reload.
 - Expect: you are still on Heal, not Default.
 - If it fails, paste: the profile name shown on the Profiles page.
 
-### 33.762 Copy here writes into the profile the reload loads (H45-22-2; WoW Forever and Retail)
+### 33.702 Copy here writes into the profile the reload loads (H45-22-2; WoW Forever and Retail)
 
 - Do: with spec 2 using Heal and active, pick Raid by hand, then press Copy here on Default and answer Sure.
 - Expect: the tooltip and warning name Heal, and the Heal row has no Copy here.
 - If it fails, paste: the warning text.
 
-### 33.763 The spec reload offer closes when you swap back (H45-22-3; WoW Forever and Retail)
+### 33.703 The spec reload offer closes when you swap back (H45-22-3; WoW Forever and Retail)
 
 - Do: on spec 1 with Default running, change to spec 2 so the reload offer appears, then change back to spec 1.
 - Expect: the reload offer closes by itself.
 - If it fails, paste: whether the dialog is still up.
 
-### 33.764 General rows show their reset arrow (H45-23-1; WoW Forever and Retail)
+### 33.704 General rows show their reset arrow (H45-23-1; WoW Forever and Retail)
 
 - Do: set Text size to 110% and Interface sounds off on General.
 - Expect: both rows show the reset arrow, the General list entry has its dot, and Reset this page puts both back.
 - If it fails, paste: a screenshot of the General page.
 
-### 33.765 The footer reload notice stops before the version line (H45-23-2; WoW Forever)
+### 33.705 The footer reload notice stops before the version line (H45-23-2; WoW Forever)
 
 - Do: in German or French at Text size 130%, switch Unit frames off.
 - Expect: the footer notice ends in "…" before the version line and Reload now is whole.
 - If it fails, paste: a screenshot of the footer.
 
-### 33.766 A greyed module row jumps to its parent under Show: On (H45-23-3; WoW Forever and Retail)
+### 33.706 A greyed module row jumps to its parent under Show: On (H45-23-3; WoW Forever and Retail)
 
 - Do: switch Unit frames off, set Modules to Show: On, and click the greyed Target and focus auras row.
 - Expect: the list returns to All and Unit frames' row is marked.
 - If it fails, paste: what the page showed.
 
-### 33.767 A HUD layout picked in a fight shows at once (H45-23-4; WoW Forever and Retail)
+### 33.707 A HUD layout picked in a fight shows at once (H45-23-4; WoW Forever and Retail)
 
 - Do: in a fight, click "Where the frames stand" twice, then leave the fight.
 - Expect: the row shows the second pick at once and that layout lands after the fight.
 - If it fails, paste: the layout name shown.
 
-### 33.768 A new chat tab shows in the Chat page's Tab choice (H45-23-51; WoW Forever and Retail)
+### 33.708 A new chat tab shows in the Chat page's Tab choice (H45-23-51; WoW Forever and Retail)
 
 - Do: with the Chat page open, right-click a chat tab and choose Create New Window.
 - Expect: the Tab choice lists the new tab without reopening.
 - If it fails, paste: the Tab choice list.
 
-### 33.769 The Profiles page follows a profile made or reset (H45-23-80; WoW Forever and Retail)
+### 33.709 The Profiles page follows a profile made or reset (H45-23-80; WoW Forever and Retail)
 
 - Do: with Profiles open, run /vg profile new Test, then Reset profile.
 - Expect: Test shows at once, then a "Default backup" row.
 - If it fails, paste: the profile list.
 
-### 33.770 Setup offers no tile reload after /vg graphics apply (H45-24-1; WoW Forever and Retail)
+### 33.710 Setup offers no tile reload after /vg graphics apply (H45-24-1; WoW Forever and Retail)
 
 - Do: on a 1440p screen run /vg graphics apply, then open setup and click Next to the end with Keep everywhere.
 - Expect: Done closes setup with no reload offer.
 - If it fails, paste: the last chat line.
 
-### 33.771 A profile of its own with Keep everywhere offers no reload (H45-24-2; WoW Forever and Retail)
+### 33.711 A profile of its own with Keep everywhere offers no reload (H45-24-2; WoW Forever and Retail)
 
 - Do: on a new character pick "A profile of its own", Keep at every step, answer No to the export question.
 - Expect: no reload offer.
 - If it fails, paste: what Done showed.
 
-### 33.772 Clicking the accent or style already chosen changes nothing (H45-24-3; WoW Forever and Retail)
+### 33.712 Clicking the accent or style already chosen changes nothing (H45-24-3; WoW Forever and Retail)
 
 - Do: on a rerun of setup, on the Look step click the already marked accent swatch and the marked style tile, then Next to All set.
 - Expect: "This run changed nothing" and no Undo setup.
 - If it fails, paste: the All set text.
 
-### 33.773 Required money keeps Vanguard's font (H45-25-1; WoW Forever and Retail)
+### 33.713 Required money keeps Vanguard's font (H45-25-1; WoW Forever and Retail)
 
 - Do: switch Vanguard's quest dialog off on the Modules page and reload; turn in a quest that asks for money from a giver with a greeting page; also open a guild bank tab you can buy (and a bank tab cost).
 - Expect: the money figures and tab cost are in Vanguard's font like the rest of the page, red while you can't pay.
 - If it fails, paste: /vg frame over the gold figure.
 
-### 33.774 Guild Info's first heading stays a section head (H45-26-1; WoW Forever)
+### 33.714 Guild Info's first heading stays a section head (H45-26-1; WoW Forever)
 
 - Do: on a character in a guild with no challenges, open the guild window's Guild Info page.
 - Expect: the first header reads MESSAGE OF THE DAY in small capitals like the other headers, also after the page refreshes.
 - If it fails, paste: pass or fail.
 
-### 33.775 Trainer category headings keep their look after a hover (H45-26-50; WoW Forever)
+### 33.715 Trainer category headings keep their look after a hover (H45-26-50; WoW Forever)
 
 - Do: open a class trainer, hover a category header, then move off it.
 - Expect: its label keeps the small-capitals section look while hovered and after.
 - If it fails, paste: pass or fail.
 
-### 33.776 A pet trainer's training point price uses Vanguard's font (H45-26-R1; WoW Forever)
+### 33.716 A pet trainer's training point price uses Vanguard's font (H45-26-R1; WoW Forever)
 
 - Do: as a hunter with a pet out, open a pet trainer.
 - Expect: each skill's training-point price is in Vanguard's font like the skill's name, red when you have too few.
 - If it fails, paste: pass or fail.
 
-### 33.777 Folded zones stay folded with the quest log off (H45-27-1; WoW Forever and Retail)
+### 33.717 Folded zones stay folded with the quest log off (H45-27-1; WoW Forever and Retail)
 
 - Do: Quests page, Vanguard's quest tracker off, reload; fold a zone in the game's quest log, untick Vanguard's quest log, then zone in (hearth or portal).
 - Expect: the zone stays folded.
 - If it fails, paste: /vg errors.
 
-### 33.778 An area quest the game accepts opens no dialog (H45-27-50; Retail, and WoW Forever where one exists)
+### 33.718 An area quest the game accepts opens no dialog (H45-27-50; Retail, and WoW Forever where one exists)
 
 - Do: with Quest automation's accept switch off, walk into an area that gives an auto-accepted quest.
 - Expect: no Vanguard quest dialog opens and the quest is in your log.
 - If it fails, paste: whether a dialog opened, and /vg errors.
 
-### 33.779 The game's quest window closes after a hand-back toggle (H45-27-R1; WoW Forever and Retail)
+### 33.719 The game's quest window closes after a hand-back toggle (H45-27-R1; WoW Forever and Retail)
 
 - Do: talk to a quest giver so Vanguard's dialog shows an offer, open the Quests page, tick then untick "Use the game's quest windows for now", then accept the quest in the game's window.
 - Expect: the game's window closes with the talk and Vanguard's dialog does not open beside it; the next talk opens Vanguard's dialog.
 - If it fails, paste: /vg errors.
 
-### 33.780 Quest panel zone headers show their fold chevron (H45-28-1; WoW Forever and Retail)
+### 33.720 Quest panel zone headers show their fold chevron (H45-28-1; WoW Forever and Retail)
 
 - Do: open the world map's quest panel, fold and unfold a zone, then close and reopen the panel.
 - Expect: every zone header shows its fold chevron.
 - If it fails, paste: a screenshot.
 
-### 33.781 The minimap drawer closes with its last button (H45-28-2; WoW Forever and Retail)
+### 33.721 The minimap drawer closes with its last button (H45-28-2; WoW Forever and Retail)
 
 - Do: open the minimap addon drawer, then turn off the only addon minimap button from that addon's own setting.
 - Expect: the drawer closes along with its toggle.
 - If it fails, paste: a screenshot.
 
-### 33.782 A dragged floating chat window keeps its spot (H45-29-1; WoW Forever and Retail)
+### 33.722 A dragged floating chat window keeps its spot (H45-29-1; WoW Forever and Retail)
 
 - Do: with Movers for floating windows on, drag a floating chat window by its tab, size another by its corner, then open and close Edit Mode (or /reload).
 - Expect: both stay where you left them.
 - If it fails, paste: the window's spot before and after.
 
-### 33.783 A Find tile switched on late shows on the tab you see (H45-29-3; WoW Forever and Retail)
+### 33.723 A Find tile switched on late shows on the tab you see (H45-29-3; WoW Forever and Retail)
 
 - Do: show a docked tab other than General, then switch the Find button on under Chat.
 - Expect: Find appears at once on the shown tab's bar.
 - If it fails, paste: what you see.
 
-### 33.784 A closed floating chat window gives up its handle (H45-29-R1; WoW Forever and Retail)
+### 33.724 A closed floating chat window gives up its handle (H45-29-R1; WoW Forever and Retail)
 
 - Do: close a floating chat window from its tab menu, then open /vg unlock.
 - Expect: no handle for the closed window.
 - If it fails, paste: the handle list.
 
-### 33.785 The roll tracker shows loot already being rolled for (H45-30-50; WoW Forever)
+### 33.725 The roll tracker shows loot already being rolled for (H45-30-50; WoW Forever)
 
 - Do: with a drop already being rolled for in a group, /reload (or switch Rolls off and on).
 - Expect: the Roll tracker lists that item and its rolls without waiting for a new roll.

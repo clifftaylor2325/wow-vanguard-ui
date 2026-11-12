@@ -412,6 +412,28 @@ it("a second character puts the account's keys back; the first one's spells go b
   expect(again.savedVariables().account.keyPending["Aren-ForeverTest"], "nothing waits").toBe(undefined);
 });
 
+it("H45-20-1 a second character's Apply of an account key the player rebound keeps the first character's spells in the record", () => {
+  const first = rogue();
+  expect(ka(first, 'return KA.Apply({ { key = "F", spell = 1766, slot = 61 } })')).toBe(true);
+  const second = loggedIn('__wfgWorld.setUnit("player", { name = "Thrall" })', { savedVariables: `VanguardDB = ${dump(first, "VanguardDB")}\nVanguardCharDB = {}\n` });
+  second.eval(`__wfgWorld.bindingSets[1] = ${dump(first, "__wfgWorld.bindingSets[1]")} LoadBindings(1)`);
+  second.world.learn(1766, { name: "Kick" });
+  second.eval('SetBinding("F", "TOGGLEWORLDMAP") SaveBindings(1)');
+  expect(ka(second, 'return KA.Apply({ { key = "F", spell = 1766, slot = 61 } })')).toBe(true);
+  expect(Object.keys(second.savedVariables().account.keyRestore.keys.F.by).sort(), "both characters").toEqual(["Aren-ForeverTest", "Thrall-ForeverTest"]);
+  second.clearChat();
+  ka(second, "KA.PutBackAll()");
+  expect(chatHas(second, /Spells moved on Aren's bars go back when you log in as Aren\.$/)).toBe(true);
+  expect(second.savedVariables().account.keyPending["Aren-ForeverTest"], "Aren's spells wait").toBeTruthy();
+});
+
+it("H45-20-50 Plan: a move row that settles unchanged because its button has two keys carries no move or rank fields", () => {
+  const addon = rogue();
+  addon.eval('SetBinding("2") SetBinding("NUMPAD2", "ACTIONBUTTON2") SetBinding("F9", "ACTIONBUTTON2") SaveBindings(1)');
+  expect(ka(addon, `local r = KA.Plan({ { key = "2", spell = 1776, slot = 2 } })[1]
+    return { r.kind, r.why, r.to == nil, r.moved == nil, r.over == nil, r.replaced == nil }`)).toEqual(["unchanged", "keys", true, true, true, true]);
+});
+
 it("waiting spells stay waiting while the cursor holds something, and go back at the next load screen", () => {
   const addon = rogue("VanguardDB.keyPending = { ['Aren-ForeverTest'] = { F = true } }\nVanguardCharDB = { slotRestore = { [61] = { before = false, layers = { { key = 'F', after = 1766, set = 1 } } } } }\n");
   addon.eval("__wfgWorld.setAction(61, { id = 1766 }) C_Spell.PickupSpell(1784)");
@@ -782,4 +804,63 @@ it("H44-10-1 Apply puts the top rank over a lower rank on the key's own button, 
   expect([slots(addon, [1, 62, 53]), keys(addon, ["1"])], "nothing moved to bar 3").toEqual([[837, 205, 0], ["ACTIONBUTTON1"]]);
   ka(addon, "KA.PutBackAll()");
   expect(slots(addon, [1])).toEqual([116]);
+});
+
+// A spellbook item's subName "May be empty ... if spell's data isn't loaded yet" (forever
+// Blizzard_APIDocumentationGenerated/SpellBookDocumentation.lua:1020), so a rank can be unknown to the catalog.
+function frostbolts(withRanks) {
+  const addon = rogue();
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, withRanks ? { name: "Frostbolt", rank } : { name: "Frostbolt" });
+  addon.eval("__wfgWorld.setAction(2, { id = 837 })");
+  return addon;
+}
+
+it("H45-6-1 Apply keeps the rank on the key's button when the spellbook lists no rank for the spells", () => {
+  const addon = frostbolts(false);
+  addon.eval('SetBinding("2", nil) SaveBindings(1)');
+  const entries = `{ { key = "2", spell = 116, slot = 2 } }`;
+  expect(ka(addon, `local r = KA.Plan(${entries}) return { r[1].kind, r[1].over }`), "the key goes to the button as it is").toEqual(["bind"]);
+  expect(ka(addon, `return KA.Apply(${entries})`)).toBe(true);
+  expect([slots(addon, [2]), keys(addon, ["2"])]).toEqual([[837], ["ACTIONBUTTON2"]]);
+});
+
+it("H45-6-1 Update keeps the rank Vanguard placed when the spellbook lists no ranks", () => {
+  const addon = frostbolts(false);
+  addon.eval("VanguardCharDB.slotRestore = { [2] = { before = false, layers = { { key = '2', after = 837, set = 1 } } } }");
+  ka(addon, "KA.Update({ { key = '2', spell = 116, slot = 2 } }, {})");
+  expect(slots(addon, [2])).toEqual([837]);
+});
+
+it("H45-6-1 Apply still puts a known higher rank over a lower one on the key's button", () => {
+  const addon = rogue();
+  for (const [id, rank] of [[116, 1], [205, 2], [837, 3]]) addon.world.learn(id, { name: "Frostbolt", rank });
+  addon.eval("__wfgWorld.setAction(1, { id = 116 }) __wfgWorld.setAction(62, { id = 205 })");
+  const entries = `{ { key = "1", spell = 837, slot = 1 }, { key = "F", spell = 837, slot = 61 } }`;
+  expect(ka(addon, `return KA.Apply(${entries})`)).toBe(true);
+  expect(slots(addon, [1])).toEqual([837]);
+});
+
+const OWN_KEYS_NOTE = /This character still uses its own keys\. To share your account's keys again, untick Character Specific Keybindings in the game's key bindings\.$/;
+
+it("H45-6-103 putting everything back after Only this character says the character keeps its own key set", () => {
+  const addon = rogue();
+  expect(ka(addon, `return KA.Apply(${PRESET}, Enum.BindingSet.Character)`)).toBe(true);
+  addon.clearChat();
+  expect(ka(addon, "return KA.PutBackAll()")).toBe(true);
+  expect(chatHas(addon, OWN_KEYS_NOTE)).toBe(true);
+  expect(addon.eval("return GetCurrentBindingSet()"), "the set is never switched back by a put-back").toBe(2);
+});
+
+it("H45-6-103 the note stays quiet for the account's keys and for a character key set the player made", () => {
+  const account = rogue();
+  expect(ka(account, `return KA.Apply(${PRESET})`)).toBe(true);
+  account.clearChat();
+  ka(account, "return KA.PutBackAll()");
+  expect(chatHas(account, OWN_KEYS_NOTE), "account keys").toBe(false);
+  const own = rogue();
+  own.eval("SaveBindings(1) LoadBindings(2) SaveBindings(2)");
+  expect(ka(own, `return KA.Apply(${PRESET})`)).toBe(true);
+  own.clearChat();
+  ka(own, "return KA.PutBackAll()");
+  expect(chatHas(own, OWN_KEYS_NOTE), "the player's own key set").toBe(false);
 });

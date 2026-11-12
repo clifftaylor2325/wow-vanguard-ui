@@ -204,8 +204,8 @@ function IS.ResumeSession(_, isLogin, isReload)
   IS.PaintRates()
 end
 
--- Starts the rates counting again from now (a right-click on a rate); the gold tooltip's earned and spent
--- still count from the login.
+-- Starts the rates and the auction total counting again from now (a right-click on a rate); the gold tooltip's
+-- earned and spent still count from the login.
 function IS.RestartSession()
   local old = IS.session or {}
   IS.session = nil
@@ -213,6 +213,7 @@ function IS.RestartSession()
   IS.session.earned, IS.session.spent = old.earned or 0, old.spent or 0
   keepSession()
   IS.PaintRates()
+  IS.Paint("ahgold")
 end
 
 -- Counts the money earned and spent since the last change (for the gold tooltip). A first plain read (the
@@ -903,15 +904,16 @@ local function addButtons(frame)
   for _, key in ipairs(sortedKeys(IS.TIPS)) do IS.hits[key] = addHit(frame, key) end
 end
 
--- The strip's timer while it shows: the clock every second, fps and latency every third, the rates every fifth.
+-- The strip's timer while it shows: the clock and date every second, fps and latency every third, the rates
+-- every fifth.
 local function ticker(frame)
   local ticks = 0
   ns.Every("info strip", 1, function()
     ticks = ticks + 1
     IS.Paint("clock")
+    IS.Paint("date")
     if ticks % 3 == 0 then IS.Paint("system") end
     if ticks % 5 == 0 then IS.PaintRates() end
-    if ticks % 60 == 0 then IS.Paint("date") end
   end, frame)
 end
 

@@ -841,3 +841,13 @@ it("H44-G3-6: the game's answer to the last stack goes when the house closes", (
   addon.update(0);
   expect([addon.eval(`return ${HELPER}.sellAnswer == nil`), addon.eval(`return ${CARD}.guide:GetText()`)], "back at the house: the old refusal is gone, the finished line as before").toEqual([true, "Finished: posted 1 of 1. Drop the next item to sell more."]);
 });
+it("H45-10-2: a price check the house never answers says so on the cheapest-now and up-now lines, not '...' and 'searching...'", () => {
+  const addon = atAuctionHouse(BAGS + DUST_UP);
+  addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = 1 }`);
+  addon.click(`${CARD}.slot`);
+  // The sell card's cheapest-now text and the Up now status line.
+  const lines = () => addon.eval(`return { ${CARD}.lines[1].value:GetText(), ${HELPER}.upCard.table.status:GetText() }`);
+  expect(lines(), "while the check runs").toEqual(["...", "searching..."]);
+  addon.advance(2.5);
+  expect(lines(), "given up: the house did not answer").toEqual(["no answer", "no answer"]);
+});

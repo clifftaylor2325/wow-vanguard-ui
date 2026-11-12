@@ -1212,10 +1212,11 @@ local function dress(frame)
 end
 
 -- Whether the tabs of the window of that name are Vanguard's to dress: the switch is on and the
--- window's own group is on if it is registered (a window left to the game keeps the game's tabs).
+-- window's own group is on if it is registered, and its skin was not left off (GW.SKIPPED: a window left to the
+-- game keeps the game's tabs).
 local function wanted(name)
   local entry = GW.REGISTERED[name]
-  return GW.GroupOn("tabs") and (not entry or GW.GroupOn(entry.group)) or false
+  return GW.GroupOn("tabs") and not GW.SKIPPED[name] and (not entry or GW.GroupOn(entry.group)) or false
 end
 
 -- Dresses the tabs of the window of that name again, when they are Vanguard's to dress: for a

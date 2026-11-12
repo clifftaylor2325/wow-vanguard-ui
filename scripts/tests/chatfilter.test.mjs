@@ -233,7 +233,7 @@ it("chat filter: a closed Filtered tab is made again on the next caught line, an
   expect(window(), "the next line goes to it too, no second window").toEqual(["ChatFrame3", true, 3]);
   addon.slash("filter hide");
   addon.eval("ChatFrame3:Hide()");
-  expect([deliver(addon, GOLD, "Goldy4"), addon.eval("return ChatFrame5 == nil")], "in hide mode a closed tab is not made again").toEqual([true, true]);
+  expect([deliver(addon, GOLD, "Goldy4"), addon.eval("local open = 0 for i = 3, 10 do if _G['ChatFrame' .. i]:IsShown() then open = open + 1 end end return open")], "in hide mode a closed tab is not made again: no window from 3 to 10 is shown").toEqual([true, 0]);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
@@ -505,6 +505,17 @@ it("chat filter words: Russian, French, Spanish, Italian, Portuguese, Korean and
   }
 });
 
+it("chat filter words: a Russian or Chinese pick-up raid call is not guild recruiting, a guild line still is", () => {
+  const lines = {
+    ruRU: ["Набор в рейд Огненные Недра, нужны хилы и танк", "Гильдия TEST-ONLY: набор, рейды по выходным"],
+    zhCN: ["熔火之心 团队招募 治疗 坦克", "TEST-ONLY 公会招募 休闲"],
+    zhTW: ["熔火之心 團隊招募 治療 坦克", "TEST-ONLY 公會招募 休閒"],
+  };
+  for (const [locale, [pickup, guild]] of Object.entries(lines)) {
+    expect([deliver(filteringIn(locale), pickup, "Raider"), deliver(filteringIn(locale), guild, "Recruiter")], locale).toEqual([false, true]);
+  }
+});
+
 it("chat filter words: an enGB client uses the English words", () => {
   expect(deliver(filteringIn("enGB"), GOLD, "Goldy"), "gold selling").toBe(true);
 });
@@ -536,7 +547,7 @@ it("chat filter tab: found by its saved window number after the player renames i
   expect(addon.eval("return VanguardCharDB.filteredTab"), "the number is saved per character").toBe(3);
   addon.eval("__wfgWorld.chatWindows[3] = 'My spam'");
   expect(deliver(addon, GOLD, "Goldy2"), "still caught").toBe(true);
-  expect(addon.eval("return { ChatFrame4 == nil, ns.GetModule('ChatFilter').window:GetName() }"), "no second tab").toEqual([true, "ChatFrame3"]);
+  expect(addon.eval("return { not ChatFrame4:IsShown(), ns.GetModule('ChatFilter').window:GetName() }"), "no second tab").toEqual([true, "ChatFrame3"]);
   expect(addon.eval("return ns.GetModule('ChatFilter').IsTab(3)"), "chat history sees it as the Filtered tab").toBe(true);
   addon.eval("ChatFrame3:Hide()");
   deliver(addon, GOLD, "Goldy3");
@@ -547,7 +558,7 @@ it("chat filter tab: a tab an earlier version made (no saved number) is found by
   const addon = filtering();
   deliver(addon, GOLD, "Goldy");
   addon.eval("VanguardCharDB.filteredTab = nil ns.GetModule('ChatFilter').window = nil ns.GetModule('ChatFilter').Prepare()");
-  expect(addon.eval("return { VanguardCharDB.filteredTab, ChatFrame4 == nil }"), "found by name, saved, not made again").toEqual([3, true]);
+  expect(addon.eval("return { VanguardCharDB.filteredTab, not ChatFrame4:IsShown() }"), "found by name, saved, not made again").toEqual([3, true]);
 });
 
 it("chat filter: an empty or non-text word in a saved keyword list holds nothing, instead of catching every line", () => {
@@ -613,5 +624,50 @@ it("H44-19-54 chat filter: the tab's label is Filtered in the player's language,
   addon.update(0.1);
   expect(tabName(addon), "renamed to Spam: the player's name stays, with the count").toBe("Spam (2)");
   expect(addon.eval("return { ns.GetModule('ChatFilter').TAB, __wfgWorld.chatWindows[3] }"), "the saved name used to find an old tab is untouched English").toEqual(["Filtered", "Spam"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+// TEST-ONLY model of the game's tab naming (Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua): FCF_OpenNewWindow
+// calls FCF_SetWindowName(chatFrame, name), which ends in tab:SetText(name); FloatingChatFrame_Update calls it again
+// on every UPDATE_CHAT_WINDOWS (FCF_SetWindowName(chatFrame, name, true)).
+const NAMING_ENV = `
+  function FCF_SetWindowName(frame, name) _G[frame:GetName() .. "Tab"]:SetText(name) end
+  local open = FCF_OpenNewWindow
+  FCF_OpenNewWindow = function(name, ...)
+    local frame = open(name, ...)
+    FCF_SetWindowName(frame, name)
+    return frame
+  end`;
+
+// The module's tab text, once the soon-timer ran.
+const relabelled = (addon) => {
+  addon.update(0.5);
+  return tabName(addon);
+};
+
+it("H45-8-2 chat filter: a new Filtered tab reads the translated word and the count before anything is caught", () => {
+  const addon = loggedIn(NAMING_ENV);
+  addon.eval("ns.L['Filtered'] = 'Gefiltert'");
+  addon.slash("filter on");
+  expect(relabelled(addon), "not the game's English name").toBe("Gefiltert (0)");
+});
+
+it("H45-8-2 chat filter: a tab found again (not made) is labelled too", () => {
+  const addon = filtering(NAMING_ENV);
+  addon.eval("ns.L['Filtered'] = 'Gefiltert'; ns.GetModule('ChatFilter').window = nil; _G.ChatFrame3Tab:SetText('Filtered')");
+  addon.eval("ns.GetModule('ChatFilter').Prepare()");
+  expect(relabelled(addon)).toBe("Gefiltert (0)");
+});
+
+it("H45-8-2 chat filter: the game's own refresh of the chat windows is followed by the label, only for this tab", () => {
+  const addon = filtering(NAMING_ENV);
+  addon.eval("ns.L['Filtered'] = 'Gefiltert'");
+  addon.update(0.5);
+  addon.eval("FCF_SetWindowName(ns.GetModule('ChatFilter').window, 'Filtered', true) FCF_SetWindowName(ChatFrame1, 'General', true)");
+  expect(addon.eval("return _G.ChatFrame3Tab:GetText()"), "the game wrote its saved name").toBe("Filtered");
+  expect(relabelled(addon), "the label is back").toBe("Gefiltert (0)");
+  addon.slash("filter off");
+  addon.eval("FCF_SetWindowName(ns.GetModule('ChatFilter').window, 'Filtered', true)");
+  addon.update(0.5);
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });

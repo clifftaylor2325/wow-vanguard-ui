@@ -103,3 +103,14 @@ it("target and focus auras: a row the client has closed is left, and with the mo
   off.advance(0.4, 0.1);
   expect(off.eval("return { ns.Settings('FrameAuras').size, Vanguard_target.debuffs == nil, #ns.errors }"), "saved for when the module is on; no row made").toEqual([30, true, 0]);
 });
+
+it("target and focus auras: a row woken by switching the module off and on follows the scale again, and is refit for a change made while it slept", () => {
+  const addon = loggedIn(UNITS_ENV + CLICK_LUA + FRAME_AURAS);
+  // Whether the target's debuff row is shown and in the follow set.
+  const followed = () => addon.eval("local f = Vanguard_target.debuffs return ns.Auras.followed[f.frame] == true and f.frame:IsShown()");
+  addon.eval('ns.SetModuleEnabled("FrameAuras", false)');
+  addon.eval("__refits = 0 local refit = ns.Auras.Refit ns.Auras.Refit = function(...) __refits = __refits + 1 return refit(...) end");
+  addon.eval('ns.SetModuleEnabled("FrameAuras", true)');
+  settle(addon);
+  expect([followed(), addon.eval("return __refits > 0")], "shown, followed again, and refit once on waking").toEqual([true, true]);
+});

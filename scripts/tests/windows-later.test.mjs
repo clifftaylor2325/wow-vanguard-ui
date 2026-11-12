@@ -717,7 +717,7 @@ const ACHIEVEMENT_ENV = `${READERS_ENV}
     end
     check(AchievementFrameSummaryCategoriesStatusBar, AchievementFrameSummaryCategoriesStatusBarTitle, AchievementFrameSummaryCategoriesStatusBarText)
     for i = 1, 12 do local b = _G["AchievementFrameSummaryCategoriesCategory" .. i] check(b, b.Label, b.Text) end
-    return { title = { tp, trel == f, trelp, tx, ty, title:GetWidth(), title:GetNumPoints() }, points = { pp, prel == title, prelp, px, points:GetNumPoints() }, bars = ok }
+    return { title = { tp, trel == f, trelp, tx, ty, title:GetWidth() == title:GetUnboundedStringWidth(), title:GetNumPoints() }, points = { pp, prel == title, prelp, px, points:GetNumPoints() }, bars = ok }
   end
   -- TEST-ONLY reader of the open achievement's progress bar: its art faded and its fill the dim accent.
   function __criteriaBar()
@@ -764,7 +764,7 @@ it("R2.19 the achievements window: its title and points sit in the title row, th
   const layout = addon.eval("return __achievementLayout()");
   const drop = addon.eval("return ns.Theme.CONTROL.inset - ns.Theme.Padding(AchievementFrame)");
   const [point, onWindow, relPoint, x, y, width, points] = layout.title;
-  expect([point, onWindow, relPoint, x, width, points], "the title on one line, centred on the window's top (not on the faded plate above it)").toEqual(["CENTER", true, "TOP", 0, 0, 1]);
+  expect([point, onWindow, relPoint, x, width, points], "the title on one line, centred on the window's top (not on the faded plate above it), as wide as its text").toEqual(["CENTER", true, "TOP", 0, true, 1]);
   expect(y, "level with the close button's middle, to the pixel").toBeCloseTo(-drop, 0);
   expect(layout.points, "the points just right of the title (the shield follows them)").toEqual(["LEFT", true, "RIGHT", 8, 1]);
   expect(layout.bars, "all thirteen bars: the dim accent, not the game's raw green, and the name and count centred in the text colour").toBe(13);
@@ -1114,6 +1114,25 @@ it("a scroll box with no view yet waits for its first show; a forbidden money bo
   expect(addon.eval("return __seen"), "the show tries again and skins the rows").toBe(1);
   expect(addon.eval("return { select('#', __own:GetRegions()) > 0, select('#', __locked:GetRegions()) }"), "a forbidden box gets nothing drawn on it").toEqual([true, 0]);
   expect(addon.eval("return #ns.errors")).toBe(0);
+});
+
+// H45-8-52: a window whose skin is left off (GW.SKIPPED, named under Left off) keeps the game's look, its tabs too.
+const BARE_TAB = `
+  function __tab(parent, name)
+    local b = CreateFrame("Button", name, parent)
+    for _, k in ipairs({ "Left", "Middle", "Right" }) do b[k] = b:CreateTexture(nil, "BACKGROUND") end
+    return b
+  end
+`;
+
+it("H45-8-52 windows: a window left off keeps the game's tabs, and a window with all its parts gets Vanguard's", () => {
+  const bare = loggedIn(`${WINDOWS_ENV}${BARE_TAB}__window("AuctionHouseFrame") __tab(AuctionHouseFrame, "AuctionHouseFrameTab1")`);
+  bare.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
+  bare.eval("AuctionHouseFrame:Show()");
+  expect([windowState(bare, "AuctionHouseFrame").panel, bare.eval("return AuctionHouseFrameTab1.Left.__alpha or -1")], "left off: no panel, the tab's art untouched").toEqual([false, -1]);
+  const whole = loggedIn(`${WINDOWS_ENV}${BARE_TAB}__window("CharacterFrame") __tab(CharacterFrame, "CharacterFrameTab1")`);
+  whole.eval("CharacterFrame:Show()");
+  expect(whole.eval("return CharacterFrameTab1.Left.__alpha"), "a whole window's tab art is faded").toBe(0);
 });
 
 // TEST-ONLY SetMoneyFrameColorByFrame as Blizzard_MoneyFrame/Shared/MoneyFrame.lua:311-316 has it (live and forever):

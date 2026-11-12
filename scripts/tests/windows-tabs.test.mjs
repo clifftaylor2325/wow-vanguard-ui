@@ -200,6 +200,12 @@ it("tab buttons: the tabs switch off, or a window's own group off, leaves the ga
 // texture, an icon and its overlay). __sideState reads the raised state, the faded art and the icon:
 // icon = the icon still shows (never faded out) and its overlay is the game's; dim = greyed and faded.
 const SIDE_ENV = TABS_ENV + `
+  -- TEST-ONLY: the parts and method the guild window's skin needs (GW.Needs in WindowsSocial.lua), so its skin and
+  -- tabs are not left off as a window a game patch changed.
+  function __guildParts()
+    CommunitiesFrame.MemberList = CreateFrame("Frame", nil, CommunitiesFrame)
+    CommunitiesFrame.SetDisplayMode = function() end
+  end
   function __side(parent, key)
     local t = CreateFrame("Frame", nil, parent)
     for _, k in ipairs({ "Background", "SelectedTexture", "HighlightTexture", "Mask", "TabGlow" }) do t[k] = t:CreateTexture(nil, "BACKGROUND") end
@@ -256,7 +262,8 @@ it("side tabs: the character pane's mode tabs in the theme, the checked one rais
 it("side tabs: the guild window's, whether or not another group registered it, unless its group is off", () => {
   const guild = WINDOWS_ENV + SIDE_ENV + `
     __window("CommunitiesFrame")
-    __right(CommunitiesFrame, "ChatTab", true) __right(CommunitiesFrame, "RosterTab") __right(CommunitiesFrame, "GuildInfoTab")`;
+    __right(CommunitiesFrame, "ChatTab", true) __right(CommunitiesFrame, "RosterTab") __right(CommunitiesFrame, "GuildInfoTab")
+    __guildParts()`;
   const addon = loggedIn(guild);
   const state = addon.eval("return { __sideState(CommunitiesFrame.ChatTab), __sideState(CommunitiesFrame.RosterTab) }");
   expect(state.map((s) => s.art), "its frame texture (no key) is faded").toEqual([0, 0]);
@@ -278,6 +285,7 @@ it("side tabs: Legacy, inspect and group finder windows are dressed when their p
     LegacySystemFrame.Tabs = {}
     for _, key in ipairs({ "LegacyRewardTrackTab", "LegacyChallengeTab", "LegacyTreeTab" }) do table.insert(LegacySystemFrame.Tabs, __side(LegacySystemFrame, key)) end
     LegacySystemFrame.TabIndicators = CreateFrame("Frame", nil, LegacySystemFrame)
+    for _, key in ipairs({ "TreePage", "ChallengesPage", "RewardTrackPage" }) do LegacySystemFrame[key] = CreateFrame("Frame", nil, LegacySystemFrame) end
     __window("LFGParentFrame")
     __tab(LFGParentFrame, "LFGParentFrameTab1") __tab(LFGParentFrame, "LFGParentFrameTab2") __tab(LFGParentFrame, "LFGParentFrameTab3")
     __side(LFGParentFrame, "ListingTab") __side(LFGParentFrame, "BrowsingTab")
@@ -298,7 +306,7 @@ it("side tabs: a window without the parts, or a tab the client refuses, loads cl
   bare.eval("CharacterFrame:Show() CommunitiesFrame:Show() LFGParentFrame:Show()");
   expect(bare.eval("return ns.errors[1] == nil"), "no ModeTabs, no tabs, an icon-less check button").toBe(true);
   const refuses = loggedIn(WINDOWS_ENV + SIDE_ENV + `__window("CommunitiesFrame") __right(CommunitiesFrame, "RosterTab")
-    CommunitiesFrame.ChatTab = __right(CommunitiesFrame, "ChatTab") CommunitiesFrame.ChatTab.HookScript = function() error("TEST-ONLY: no such script") end`);
+    CommunitiesFrame.ChatTab = __right(CommunitiesFrame, "ChatTab") CommunitiesFrame.ChatTab.HookScript = function() error("TEST-ONLY: no such script") end __guildParts()`);
   expect(refuses.eval("return { __sideState(CommunitiesFrame.ChatTab).art, __sideState(CommunitiesFrame.RosterTab).art, #ns.errors }"), "a tab whose HookScript refuses a script is still dressed (T.Tab guards its hooks), so is the next, nothing reported").toEqual([0, 0, 0]);
 });
 

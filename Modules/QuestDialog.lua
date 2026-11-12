@@ -461,11 +461,13 @@ local function gameGossipWindow(event, kit)
 end
 
 -- A page event while the game has the talk (handed back, the modifier was held when it began, or the game has a
--- window of its own for the page): the game's window answers it, forwarded here when its events are taken. True
--- when the game has it.
+-- window of its own for the page): the game's window answers it, forwarded here when its events are taken. A
+-- dialog still showing the page before is put away, so its old lines cannot pick on the game's new one. True when
+-- the game has it.
 function QD.Bypassed(event, ...)
   if QD.handedBack then return true end
   if not (QD.gameTalk or QD.BypassHeld() or gameGossipWindow(event, ...)) then return false end
+  if QD.frame:IsShown() then QD.Quiet() end
   QD.gameTalk = true
   QD.closing = nil
   QD.Forward(event, ...)

@@ -5,7 +5,7 @@ import { expect, it } from "vitest";
 import { CLICK_LUA, RISE, UNITS_ENV, loggedIn } from "./helpers.mjs";
 
 // A 1920 x 1080 canvas with the client's percent curve, so a banner can show its percent.
-const WIDE = "__wfgStub.setScreen(1920, 1080) CurveConstants = { ScaleTo100 = 1 }";
+const WIDE = "__wfgStub.setScreen(1920, 1080) CurveConstants = { ScaleTo100 = { Evaluate = function(_, x) return x * 100 end } }";
 
 // A profile saved on a HUD layout, the raid frames off (so the unit frames alone stand around your character).
 const onLayout = (layout) => ({ savedVariables: `VanguardDB = { profiles = { Default = { modules = { RaidFrames = false }, hudLayout = "${layout}" } } }` });

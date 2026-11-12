@@ -195,11 +195,18 @@ local function spellKnown(_, row)
   if not knows(row.spell) then return "unchanged", "unknown" end
 end
 
+-- Whether the spellbook lists a rank for both spells and the first's is the higher (a rank whose text hasn't
+-- loaded has none, and a spell of the same name without a rank is never swapped).
+local function outranks(spell, other)
+  local rank, old = ns.ClickCastSpells.RankOf(spell), ns.ClickCastSpells.RankOf(other)
+  return rank ~= nil and old ~= nil and rank > old
+end
+
 -- Whether a plan may put a row's spell over another rank of it on the row's own button: not on a button this plan
 -- already wrote; with `plan.ranks` (KA.Update) only where it answers yes; else always (Apply lists it as a change
 -- of its own, which the player may untick to keep a lower rank).
-local function swapsRank(plan, slot, content)
-  return not plan.taken[slot] and (plan.ranks == nil or plan.ranks(slot, content.id))
+local function swapsRank(plan, row, content)
+  return not plan.taken[row.slot] and outranks(row.spell, content.id) and (plan.ranks == nil or plan.ranks(row.slot, content.id))
 end
 
 -- A spell already on the bars (a spell this plan moved aside too): the key is bound to that button (its slot
@@ -210,7 +217,7 @@ local function alreadyOnBars(plan, row)
   if not s then return nil end
   if plan.claimed[s] then return "unchanged", "used" end
   local content = viewOf(plan, s)
-  if s == row.slot and content.id ~= row.spell and swapsRank(plan, s, content) then
+  if s == row.slot and swapsRank(plan, row, content) then
     row.over, row.replaced = content.id, true
     return "place"
   end
@@ -264,15 +271,22 @@ local function keysFull(plan, row)
   return count >= 2
 end
 
+-- Leaves a row as it is, for `why`, and drops what its change would have written (a rank it would cover, a spell
+-- it would move), so nothing that reads the row tells of a change that is not made.
+local function leave(row, why)
+  row.kind, row.why = "unchanged", why
+  row.over, row.replaced, row.to, row.moved = nil, nil, nil, nil
+end
+
 -- A writing row's last word: a key this plan gave another command stays with that ("used"); a row that writes no
 -- slot and binds a key to the command it already has is "unchanged" ("already"); a command with two other keys
 -- takes no third ("keys").
 local function settle(plan, row)
   if not KA.WRITES[row.kind] then return end
   local taken = plan.keys[row.key]
-  if taken and taken ~= row.command then row.kind, row.why = "unchanged", "used" return end
-  if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then row.kind, row.why = "unchanged", "already" return end
-  if keysFull(plan, row) then row.kind, row.why = "unchanged", "keys" end
+  if taken and taken ~= row.command then return leave(row, "used") end
+  if #changesOf(row) == 0 and GetBindingAction(row.key) == row.command then return leave(row, "already") end
+  if keysFull(plan, row) then leave(row, "keys") end
 end
 
 -- Takes a row's key, its command's new key and its button in the plan (an "already" row too, so no later row takes
@@ -753,15 +767,13 @@ local function undoRun(run)
   ns.Chat(ns.Format(L["No key changed, but {count} button(s) couldn't be put back yet. Put everything back restores them."], { count = #left }))
 end
 
--- Records one applied key: its first pre-image, and every character it placed spells for, while the key still did
--- what Vanguard last set; else the pre-image this run took (the player changed it in between).
+-- Records one applied key: every character it placed spells for, whatever the key did in between, and its first
+-- pre-image while the key still did what Vanguard last set; else the pre-image this run took (the player changed it).
 local function keepKey(run, rec, row)
   local old, now, by = rec.keys[row.key], run.keys[row.key], { [me()] = true }
   local before = now
-  if type(old) == "table" and now == old.after then
-    before = old.before
-    for name in pairs(type(old.by) == "table" and old.by or {}) do by[name] = true end
-  end
+  if type(old) == "table" and now == old.after then before = old.before end
+  for name in pairs(type(old) == "table" and type(old.by) == "table" and old.by or {}) do by[name] = true end
   rec.keys[row.key] = { before = before, after = row.command, by = by }
 end
 
@@ -777,9 +789,11 @@ local function keepSlots(run, slots, row)
   end
 end
 
--- Saves the record of a run that succeeded (each key once); answers how many keys changed.
+-- Saves the record of a run that succeeded (each key once), marked madeSet when the run switched the key set (for the
+-- note a put-back gives); answers how many keys changed.
 local function keep(run)
   local rec, slots, seen, count = ensureRecord(run.set), slotRecord(), {}, 0
+  rec.madeSet = rec.madeSet or run.from ~= nil or nil
   for _, row in ipairs(run.rows) do
     if KA.WRITES[row.kind] then
       if not seen[row.key] then keepKey(run, rec, row) count = count + 1 end
@@ -968,11 +982,22 @@ local function report(result)
   end
 end
 
--- Saves the keys, forgets an emptied record, and says what happened.
+-- Says the character keeps the key set Vanguard's Apply switched it to: putting back never switches it back (the game
+-- warns that the way back overwrites the character's keys).
+local function ownKeysNote()
+  local label = CHARACTER_SPECIFIC_KEYBINDINGS or L["Character Specific Keybindings"]
+  local text = L["This character still uses its own keys. To share your account's keys again, untick {label} in the game's key bindings."]
+  ns.Chat(ns.Format(text, { label = label }))
+end
+
+-- Saves the keys, forgets an emptied record, and says what happened (and, for an emptied record of a key set
+-- Vanguard's Apply made, that the character still has its own keys).
 local function finishPutBack(rec, result)
   SaveBindings(GetCurrentBindingSet())
-  if next(rec.keys) == nil and recordFor(rec.set) then storeFor(rec.set).keyRestore = nil end
+  local emptied = next(rec.keys) == nil and recordFor(rec.set)
+  if emptied then storeFor(rec.set).keyRestore = nil end
   report(result)
+  if emptied and rec.madeSet then ownKeysNote() end
 end
 
 -- Puts one key back as it was before Vanguard changed it ("Put back what I had"), with the spells it placed or moved.

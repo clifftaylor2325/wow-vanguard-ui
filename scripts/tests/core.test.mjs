@@ -279,6 +279,10 @@ it("/vg frame: a frame's state, anchors and parents, and with deep its textures 
   expect(said(addon, "frame ProbeFrame.#1")[0], "#n is the nth child frame, for one with no key").toMatch(/^ProbeChild \(Frame\)/);
   expect(said(addon, "frame ProbeFrame.#9")[0], "a child that isn't there leads nowhere").toMatch(/^No frame called/);
 });
+it("/vg frame with a name that leads nowhere answers in the client's language (H45-16-3)", () => {
+  const addon = loggedIn("", { client: '__wfgWorld.locale = "deDE"' });
+  expect(said(addon, "frame Nope")).toEqual(["Kein Fenster namens Nope (ein globaler Fenstername; Punkte folgen Schlüsseln: MinimapCluster.Tracking)."]);
+});
 it("/vg frame: #0 leads nowhere, and a frame that refuses its parent and parts still prints", () => {
   const addon = loggedIn();
   addon.eval(`local f = CreateFrame("Frame", "ProbeLocked", UIParent)

@@ -561,3 +561,13 @@ it("H44-10-1 a new rank learned leaves a rank the player put on the key's button
   learnRank3(addon);
   expect(slots(addon, [1])).toEqual([116]);
 });
+
+it("H45-20-R1 a learned spell whose key stays because its button has two keys says nothing", () => {
+  const addon = warrior();
+  addon.world.setAction(2, { type: "spell", id: 6673 });
+  addon.eval('SetBinding("2") SetBinding("NUMPAD2", "ACTIONBUTTON2") SetBinding("F9", "ACTIONBUTTON2") SaveBindings(GetCurrentBindingSet())');
+  expect(applyPreset(addon)).toBe(true);
+  learn(addon, 772);
+  expect([slots(addon, [2]), spare(addon), keys(addon, ["2"])], "nothing changed").toEqual([[6673], [], [""]]);
+  expect(said(addon), "nothing moved, so nothing is said").toBe("");
+});

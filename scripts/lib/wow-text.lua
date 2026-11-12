@@ -144,9 +144,17 @@ local function unbounded(fs)
   return stub.textMetrics == "font" and naturalWidth(fs) or roughWidth(fs)
 end
 
+-- The width a font string was given, nil when none: SetWidth(0) resets it to size to its text (forever
+-- Blizzard_UIPanels_Game/Cata/QuestLogFrame.lua:417-420, "we have to explicitly set the font string's width to 0").
+function stub.givenTextWidth(fs)
+  local width = fs.__width
+  if width ~= 0 then return width end
+end
+local givenWidth = stub.givenTextWidth
+
 -- The width a font string's text asks for in its own units: its set width when it has one, else its longest line.
 function stub.textWidth(fs)
-  return fs.__width or unbounded(fs)
+  return givenWidth(fs) or unbounded(fs)
 end
 
 -- The height a font string's text takes, wrapped at width units (font mode; rough mode wraps at the
@@ -157,8 +165,8 @@ function stub.textHeight(fs, width)
   if measured then return measured end
   local text = tostring(fs.__text or "")
   if text == "" then return 0 end
-  if stub.textMetrics ~= "font" then return roughHeight(text, fs.__width or ROUGH.wrap) end
-  return linesHeight(fs, (lineCount(fs, fs.__width or width)))
+  if stub.textMetrics ~= "font" then return roughHeight(text, givenWidth(fs) or ROUGH.wrap) end
+  return linesHeight(fs, (lineCount(fs, givenWidth(fs) or width)))
 end
 
 -- The text's height (stub.textHeight), at the string's width as laid out.

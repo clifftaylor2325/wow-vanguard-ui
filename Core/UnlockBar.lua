@@ -75,10 +75,12 @@ local function addHint()
   bar.text:SetText(BAR.hint)
 end
 
--- Makes the bar as wide as its note and buttons need, at the text size in use now (a button is wider than its
--- BAR width when its label needs it), but no wider than the screen: a long translation wraps onto a second line.
+-- Makes the bar as wide as its note and buttons need, at the text size in use now (a button widens to its label
+-- again here, and never narrows), but no wider than the screen: a long translation wraps onto a second line.
 local function fitBar()
   local u = BAR
+  ns.WidenToLabel(bar.save)
+  ns.WidenToLabel(bar.exit)
   local fixed = u.pad + u.pad + bar.exit:GetWidth() + u.gap + bar.save:GetWidth() + u.edge
   bar.text:SetWidth(math.min(bar.text:GetUnboundedStringWidth(), (UIParent:GetWidth() or math.huge) - fixed))
   bar:SetSize(fixed + bar.text:GetStringWidth(), math.max(u.height, bar.text:GetStringHeight() + 2 * u.edge))

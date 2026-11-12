@@ -653,6 +653,25 @@ it("the info strip's rates carry on through a /reload, start again on a new logi
   reloaded.eval("ns.GetModule('InfoStrip').RestartSession()");
   expect([block(reloaded, "xprate").shown, reloaded.eval("return VanguardCharDB.infoSession.gained")], "started again from now: nothing gained, the rates wait to settle").toEqual([false, 0]);
 });
+it("H45-9-101 the info strip: just after midnight the date changes with the time", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV + `__t, __d = "23:59", "Mon 12 Oct"
+    date = function(f) return f == "%a %d %b" and __d or __t end`);
+  addon.eval(`__t, __d = "00:00", "Tue 13 Oct"`);
+  addon.advance(2);
+  expect([block(addon, "clock").text, block(addon, "date").text], "the new time beside the new date").toEqual(["00:00", "Tue 13 Oct"]);
+});
+
+it("H45-9-102 the info strip: a right-click restart starts the auction total again too", () => {
+  const addon = loggedIn(UNITS_ENV + STRIP_ENV, { savedVariables: "VanguardDB.profiles = { Default = { InfoStrip = { ahgold = true } } }" });
+  addon.eval(`__sold = 50000
+    ns.AuctionLedger.SessionSales = function(since) return since and since < ns.AuctionPrices.Now() - 1 and __sold or 0 end`);
+  later(addon, 120);
+  addon.eval("ns.GetModule('InfoStrip').Paint('ahgold')");
+  expect(block(addon, "ahgold").shown, "this session's sales show").toBe(true);
+  addon.eval("local IS = ns.GetModule('InfoStrip') IS.Click(IS.hits.goldrate, 'RightButton')");
+  expect(block(addon, "ahgold").shown, "started again from now: no sales yet, so no total").toBe(false);
+});
+
 // A block's tooltip on hover, each line "label|value", and whether it goes with the mouse.
 const blockTip = (addon, key) => addon.eval(`local hit = ns.GetModule("InfoStrip").hits.${key} hit.__scripts.OnEnter(hit)
   local out = {} for i, l in ipairs(GameTooltip.__lines) do out[i] = l.text .. (l.right and "|" .. l.right or "") end
@@ -1058,17 +1077,25 @@ it("bag and menu bar: retail's queue eye, which the micro menu container counts 
   addon.eval("MicroMenuContainer:Layout()");
   expect([addon.eval("return MicroMenuContainer:GetWidth()") > 12 * 27 + 5, barSize(addon)], "twelve micro buttons are twelve slots, however wide the container").toEqual([true, [barW(12), BAR_H]]);
 });
-// TEST-ONLY Forever bag bar: its Layout sets the key ring back to its own 33 units and draws two pooled dividers anew, as the game does.
+// TEST-ONLY Forever bag bar: its Layout sets the key ring back to its own 33 units and, last, draws two pooled dividers
+// anew by method, as the game does (Blizzard_MainMenuBarBagButtons/Shared/BagsBar.lua BagsBarMixin:Layout, useDividers
+// true in Camelot/MainMenuBarBagButtons.xml). OnLoad hands its Layout to EventRegistry by value (BagsBarMixin:OnLoad),
+// so a layout from an item pickup's expand change never goes through the frame's Layout key.
 const FOREVER_BAGS_ENV = `
   BagsBar.bagPadding = 2
+  BagsBar.useDividers = true
   BagsBar.HorizontalDividersPool = { active = {} }
   function BagsBar.HorizontalDividersPool:ReleaseAll() for d in pairs(self.active) do d:Hide() end self.active = {} end
   function BagsBar.HorizontalDividersPool:EnumerateActive() return pairs(self.active) end
-  function BagsBar:Layout()
-    self:SetSize(266, 45) KeyRingButton:SetSize(33, 45)
+  function BagsBar:UpdateDividers()
     self.HorizontalDividersPool:ReleaseAll()
     for i = 1, 2 do local d = CreateFrame("Frame", nil, self) d:Show() self.HorizontalDividersPool.active[d] = true end
   end
+  function BagsBar:Layout()
+    self:SetSize(266, 45) KeyRingButton:SetSize(33, 45)
+    if self.useDividers then self:UpdateDividers() end
+  end
+  EventRegistry:RegisterCallback("MainMenuBarManager.OnExpandChanged", BagsBar.Layout, BagsBar)
   BagsBar:Layout()
 `;
 it("bag and menu bar: after each layout the game's key ring is a bag's size again and its brass dividers stay faded", () => {
@@ -1083,6 +1110,13 @@ it("bag and menu bar: after each layout the game's key ring is a bag's size agai
   expect(addon.eval("return KeyRingButton:GetWidth()"), "in combat the key ring waits").toBe(33);
   setCombat(addon, false);
   expect(addon.eval("return KeyRingButton:GetWidth()"), "and is put right when combat ends").toBe(45);
+});
+it("bag and menu bar: a layout the game runs from its expand callback (picking up an item) is put right too", () => {
+  const addon = strips(FOREVER_BAGS_ENV);
+  // The key ring's width and the alpha of each divider the game has drawn.
+  const state = () => addon.eval("local out = {} for d in BagsBar.HorizontalDividersPool:EnumerateActive() do out[#out + 1] = d:GetAlpha() end return { KeyRingButton:GetWidth(), out }");
+  addon.eval('EventRegistry:TriggerEvent("MainMenuBarManager.OnExpandChanged")');
+  expect(state(), "the key ring is a full slot again and the new dividers are faded").toEqual([45, [0, 0]]);
 });
 it("bag and menu bar: a bag padding changed in Edit Mode is read again at the next layout", () => {
   const addon = strips(FOREVER_BAGS_ENV);

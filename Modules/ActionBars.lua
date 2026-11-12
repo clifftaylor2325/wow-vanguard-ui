@@ -107,12 +107,6 @@ local BLIZZARD_BARS = {
   "MainMenuBar", "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight",
   "MultiBarRight", "MultiBarLeft", "MultiBar5", "MultiBar6", "MultiBar7",
 }
--- The game's action buttons on those bars, by name prefix (1 to 12 each), as
--- the client's ActionButtonUtil.ActionBarButtonNames lists them.
-local BLIZZARD_BUTTONS = {
-  "ActionButton", "MultiBarBottomLeftButton", "MultiBarBottomRightButton", "MultiBarLeftButton",
-  "MultiBarRightButton", "MultiBar5Button", "MultiBar6Button", "MultiBar7Button",
-}
 
 -- Short names for the hotkey text: each modifier (Meta, the Mac's Command key, is "Cmd", since M is a mouse
 -- button), a key by its whole name, and the numbered keys (BUTTON4 is M4, NUMPAD1 is N1); any other key as it is.
@@ -159,9 +153,11 @@ local function keepOldRightBars(saved)
 end
 -- Profiles saved before the Centered layout hold the old button size (36) and
 -- spacing (4) as values (ForeverUI 0.3.0 wrote every default in): once, put
--- them back to the new defaults, which match the data bars' new width.
+-- them back to the new defaults, which match the data bars' new width. A stamp that is not a number (a
+-- hand-edited file or a crafted string) counts as no stamp.
 local function centeredSpacing(saved)
-  if (saved.layout or 0) >= 2 then return end
+  local stamp = type(saved.layout) == "number" and saved.layout or 0
+  if stamp >= 2 then return end
   if saved.size == 36 then saved.size = nil end
   if saved.spacing == 4 then saved.spacing = nil end
   saved.layout = 2
@@ -170,7 +166,9 @@ end
 -- The most buttons a bar has, and the shared and per-bar limits the options sliders and the migration below
 -- both read: button size and spacing in px, as { lowest, highest }.
 AB.MAX_BUTTONS = 12
-AB.LIMITS = { size = { 24, 48 }, spacing = { 0, 10 } }
+-- shared is the shared size's own range: the sizes setup's screen presets write (Pixel-perfect grows the
+-- preset's 38 up to 62 on a 2880x1800 screen), wider than the per-bar slider's.
+AB.LIMITS = { size = { 24, 48 }, shared = { 24, 64 }, spacing = { 0, 10 } }
 
 -- Whether v is a number from lo to hi (NaN fails both comparisons, so it is out).
 local function within(v, lo, hi)
@@ -197,9 +195,9 @@ local function cleanBars(saved)
   end
 end
 
--- A saved shared button size outside the slider's limits is dropped, so the default fills it in.
+-- A saved shared button size outside the shared limits is dropped, so the default fills it in.
 local function cleanSize(saved)
-  local limits = AB.LIMITS.size
+  local limits = AB.LIMITS.shared
   if saved.size ~= nil and not within(saved.size, limits[1], limits[2]) then saved.size = nil end
 end
 
@@ -798,6 +796,18 @@ function AB.Bar1HalfWidth()
   return barWidth(AB.settings, bar1, 1) / 2
 end
 
+-- Bar 1's default height above the screen's bottom while bar 1 or the module is off: its spot in the default stack
+-- (bars 1 to 3 on), as the vehicle exit's spot always assumed.
+AB.BAR1_DEFAULT_Y = 100
+
+-- Bar 1's default height above the screen's bottom in UIParent's units, as the bottom stack places it (the bars
+-- under it lift it): the vehicle exit button rises with it.
+function AB.Bar1Y()
+  local bar1 = AB.settings and AB.settings.bars[1]
+  if not (bar1 and bar1.enabled) then return AB.BAR1_DEFAULT_Y end
+  return AB.StackPoint(1, AB.settings)[4]
+end
+
 -- The width of the bottom stack's first bar in UIParent's units (0 before the module has its
 -- settings), for frames that keep clear of it.
 ---@return number
@@ -806,9 +816,9 @@ function AB.StackWidth()
   return bar1 and barWidth(AB.settings, bar1, 1) or 0
 end
 
--- Moves the vehicle exit button's default spot to clear bar 1's current width.
+-- Moves the vehicle exit button's default spot to clear bar 1's current width, beside its current height.
 local function fitVehicleExit()
-  ns.GetModule("SpecialBars").FitExit(AB.Bar1HalfWidth())
+  ns.GetModule("SpecialBars").FitExit(AB.Bar1HalfWidth(), AB.Bar1Y())
 end
 
 -- The room between the right-edge bars and the screen's edge, and between the two.
@@ -943,7 +953,8 @@ local function inPetBattle()
 end
 
 -- Points every default action binding at the matching Vanguard button
--- (only buttons the bar's layout shows). Override bindings are cleared and
+-- (only buttons the bar's layout shows: a button the layout hides gets no override, so its key goes back to the
+-- game's own command, which still casts that slot from the game's hidden bar). Override bindings are cleared and
 -- rebuilt; protected, so out of combat. In a pet battle none are set, so the
 -- keys reach the game's own pet battle abilities.
 function AB.ApplyBindings()
@@ -973,21 +984,9 @@ local function hideBlizzard(name)
   ns.EditModeReplaced(f)
 end
 
--- Silences the game's action buttons (hidden with their bars), so they stop
--- reacting to events of their own (out of combat, from build).
-local function silenceButtons()
-  for _, prefix in ipairs(BLIZZARD_BUTTONS) do
-    for i = 1, 12 do
-      local b = _G[prefix .. i]
-      if type(b) == "table" and b.UnregisterAllEvents then b:UnregisterAllEvents() end
-    end
-  end
-end
-
--- Hides the game's bars and silences their buttons.
+-- Hides the game's bars (the buttons get their events from shared frames, which stay as they are).
 local function hideBlizzardBars()
   for _, name in ipairs(BLIZZARD_BARS) do hideBlizzard(name) end
-  silenceButtons()
 end
 
 -- Events ------------------------------------------------------------------------------

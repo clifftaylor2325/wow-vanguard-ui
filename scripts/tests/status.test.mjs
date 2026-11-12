@@ -1,7 +1,8 @@
 // status: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { NO_RAID, RAID_ENV, UNITS_ENV, expectErrors, isTok, loggedIn, marks } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { NO_RAID, RAID_ENV, SETUP_DONE, UNITS_ENV, expectErrors, isTok, loggedIn, marks, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY group status: raid icons, ready check, resurrection, leader, range.
 const STATUS_ENV = `
@@ -304,4 +305,38 @@ it("H44-7-R2 raid status: the ready check, resurrection and summon marks take th
   const after = centerSizes(addon);
   expect(after[4], "the zones ask for a smaller mark on the 36-tall tile").toBeLessThan(before[4]);
   expect(after.slice(0, 4), "every center mark takes it").toEqual([after[4], after[4], after[4], after[4]]);
+});
+
+it("H45-17-R1 raid status: switching it off and on during a ready check does not show the last check's answers", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + STATUS_ENV);
+  addon.eval('__spawn(1, "raid1"); __spawn(3, "raid3")');
+  addon.eval('__status.ready = { raid1 = "ready", raid3 = "notready" }');
+  addon.fire("READY_CHECK");
+  addon.fire("READY_CHECK_FINISHED");
+  addon.eval("__wfgStub.advance(7)");
+  addon.eval('ns.SetModuleEnabled("RaidStatus", false)');
+  addon.eval('__status.ready = { raid1 = "waiting", raid3 = "ready" }');
+  addon.fire("READY_CHECK");
+  addon.eval('ns.SetModuleEnabled("RaidStatus", true)');
+  addon.fire("READY_CHECK_CONFIRM", "raid3");
+  expect([/Icons\\Waiting$/.test(String(marks(addon, 1).ready)), /Icons\\Check$/.test(String(marks(addon, 3).ready))], "this check's answers, not the last one's").toEqual([true, true]);
+});
+
+it("H45-5-3 raid status: switched on after a tile height change made while it was off, the center marks take the new size", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + WALK_ENV);
+  addon.eval('__spawn(1, "raid1")');
+  addon.update(0.016);
+  addon.eval('ns.SetModuleEnabled("RaidStatus", false)');
+  addon.eval('local RF = ns.GetModule("RaidFrames") RF.settings.width, RF.settings.height = 72, 36 RF.ApplySize()');
+  addon.eval('ns.SetModuleEnabled("RaidStatus", true)');
+  const after = centerSizes(addon);
+  expect(after.slice(0, 4), "every center mark takes the size the zones ask for now").toEqual([after[4], after[4], after[4], after[4]]);
+});
+
+it("H45-5-3 raid status: a login in a fight starts it before the grid is built, with no error", () => {
+  const addon = createAddon({ savedVariables: SETUP_DONE });
+  addon.eval(UNITS_ENV + RAID_ENV);
+  setCombat(addon, true);
+  addon.login();
+  expect(addon.eval('return { ns.ModuleEnabled("RaidStatus"), #ns.errors, ns.GetModule("RaidFrames").header == nil }'), "running, no error, grid not built yet").toEqual([true, 0, true]);
 });

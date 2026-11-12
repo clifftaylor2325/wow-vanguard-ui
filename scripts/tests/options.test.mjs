@@ -412,6 +412,15 @@ it("options: search finds buttons, choice names, the note under a setting and re
   expect(found("backup")[1], "eight or fewer: no last line").toBe("");
 });
 
+it("H45-7-2 options: a search for the words of a Reset this page row lights no page and says no setting matches; reset still finds General", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general")');
+  addon.eval('ns.Options.Search("this page")');
+  expect([addon.eval("return #ns.Options.matches"), addon.eval("return Vanguard_Options.results.none:IsShown()")], "no page matches through a reset row, and the list says so").toEqual([0, true]);
+  addon.eval('ns.Options.Search("reset")');
+  expect(addon.eval("return ns.Options.matched.general"), "Reset theme and Reset all positions are settings rows: General still lights").toBe(true);
+});
+
 it("options: a live row of a module that is off saves its value without an error", () => {
   const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
   addon.eval('ns.Options.Show("cooldowns")');
@@ -1615,13 +1624,13 @@ it("the search box shows a clear glyph only while it has text; clicking it empti
   const addon = loggedIn();
   addon.eval(`__seen = {} __s = ns.Widgets.Search(UIParent, 200, "Find", function(t) __seen[#__seen + 1] = t end)`);
   expect(addon.eval("return __s.clear:IsShown()"), "empty: no glyph").toBe(false);
-  addon.eval(`__s:SetText("abc") __s.__scripts.OnTextChanged(__s)`);
+  addon.eval(`__s:SetText("abc")`);
   expect(addon.eval("return { __s.clear:IsShown(), __s.hint:IsShown() }"), "with text: the glyph shows and the hint is gone").toEqual([true, false]);
   addon.eval("__s.clear.__scripts.OnEnter(__s.clear)");
   expect(isTok(addon, addon.eval("return __s.clear.glyph.__vertexColor"), "text"), "the glyph lights under the mouse").toBe(true);
   addon.eval("__s.clear.__scripts.OnLeave(__s.clear)");
   expect(isTok(addon, addon.eval("return __s.clear.glyph.__vertexColor"), "text2"), "and rests in text2").toBe(true);
-  addon.eval(`__s.clear.__scripts.OnClick(__s.clear) __s.__scripts.OnTextChanged(__s)`);
+  addon.eval(`__s.clear.__scripts.OnClick(__s.clear)`);
   expect(addon.eval("return { __s:GetText(), __s.clear:IsShown(), __seen[#__seen] }"), "a click empties it and tells onChange").toEqual(["", false, ""]);
 });
 

@@ -347,7 +347,7 @@ function CS.ClassName()
   return token:sub(1, 1) .. token:sub(2):lower()
 end
 
--- The spellbook changed: rebuild the catalog next time it's read.
-ns.On("SPELLS_CHANGED", CS.Invalidate)
-ns.On("LEARNED_SPELL_IN_SKILL_LINE", CS.Invalidate)
-ns.On("PLAYER_ENTERING_WORLD", CS.Invalidate)
+-- The spellbook changed, or a spell's text (its rank) loaded late: rebuild the catalog next time it's read.
+for _, event in ipairs({ "SPELLS_CHANGED", "LEARNED_SPELL_IN_SKILL_LINE", "PLAYER_ENTERING_WORLD", "SPELL_TEXT_UPDATE" }) do
+  ns.On(event, CS.Invalidate)
+end

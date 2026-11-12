@@ -2712,6 +2712,23 @@ it("H8-8-2 quest dialog: a gossip the game has its own window for goes to the ga
   addon.fire("GOSSIP_SHOW");
   expect([quest(addon)[2], addon.eval("return #ns.errors")], "a base handler another addon set takes any page, with no error").toEqual([false, 0]);
 });
+// A second page can arrive with no GOSSIP_CLOSED between (GossipFrameSharedMixin:HandleShow only shows the window
+// "if not self:IsShown()", Shared/GossipFrameShared.lua:190-210); in-game confirmation is still needed.
+it("H45-9-1 quest dialog: a page the game takes mid-talk puts the dialog away, so its old lines pick nothing", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_WINDOW + `CustomGossipFrameManager:SetScript("OnEvent", function(_, event) __gameSaw[#__gameSaw + 1] = "manager " .. event end)
+    CustomGossipFrameManager.handlers = { ["skoldushall"] = function() end }
+    CustomGossipFrameManager.GetHandler = function(self, kit) return (kit and self.handlers) and self.handlers[kit] end`);
+  addon.fire("GOSSIP_SHOW");
+  addon.fire("GOSSIP_SHOW", "skoldushall");
+  expect([gameSaw(addon), quest(addon)[2]], "the game has the page and the dialog, whose lines could no longer be clicked, is hidden").toEqual(["manager GOSSIP_SHOW", false]);
+});
+it("H45-9-1 quest dialog: the hand-off key held as the next page opens puts the dialog away", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
+  addon.fire("GOSSIP_SHOW");
+  addon.eval("__shift = true");
+  addon.fire("GOSSIP_SHOW");
+  expect(quest(addon)[2], "the dialog is hidden for the page the game has").toBe(false);
+});
 it("quest dialog: a held modifier hands one talk to the game, and the dialog is back for the next", () => {
   const addon = loggedIn(QUEST_ENV + GAME_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
   addon.eval("__shift = true");
