@@ -367,3 +367,13 @@ it("a client set up with TIDY_ENV keeps the world's hooksecurefunc: every result
   expect(addon.eval(`function TEST_ONLY_I() return 1, nil, 3, nil end hooksecurefunc("TEST_ONLY_I", function() end)
     return { select("#", TEST_ONLY_I()), (select(3, TEST_ONLY_I())) }`), "a nil among the results keeps the ones after it (H44 guess 10)").toEqual([4, 3]);
 });
+
+// live ContentTrackingDocumentation.lua:313-324 CONTENT_TRACKING_UPDATE (type, id, isTracked); the trackers name the third
+// argument "added" and play the new-entry fanfare on it (Blizzard_ObjectiveTracker/Blizzard_AdventureObjectiveTracker.lua:
+// 38-44, Blizzard_AchievementObjectiveTracker.lua:16-22), so a stop says false.
+it("on Retail, stopping the tracking of a collectable says it is no longer tracked", () => {
+  const addon = createAddon({ client: RETAIL_CLIENT });
+  expect(addon.eval(`local seen = {} local f = CreateFrame("Frame") f:RegisterEvent("CONTENT_TRACKING_UPDATE")
+    f:SetScript("OnEvent", function(_, _, kind, id, tracked) seen[#seen + 1] = { kind, id, tracked } end)
+    __wfgWorld.collectables[0] = { { id = 5, title = "TEST-ONLY" } } C_ContentTracking.StopTracking(0, 5, 2) return seen`)).toEqual([[0, 5, false]]);
+});
