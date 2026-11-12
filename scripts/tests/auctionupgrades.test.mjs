@@ -160,8 +160,7 @@ it("upgrades: what you wear and the weights change the judgement; kept after clo
   addon.update(0.01);
   expect([card(addon)[1], row(addon, 1).slice(1, 4)], "the worse bracers worn: the better ones gain 140 %").toEqual([4, ["TEST-ONLY Better Bracers", "Wrist", "+140 %"]]);
   addon.slash("weights set STR 0");
-  addon.eval(`${HELPER}.PaintUpgrades()`);
-  addon.update(0.01);
+  for (let i = 0; i < 10; i++) addon.update(0.01);
   expect([card(addon)[1], row(addon, 1)[1]], "strength worth nothing: the bracers are no gain; the helm and the sword still fill their slots").toEqual([2, "TEST-ONLY Cheap Helm"]);
   addon.world.closeAuctionHouse();
   addon.world.openAuctionHouse();
@@ -178,6 +177,23 @@ it("upgrades: what you wear and the weights change the judgement; kept after clo
   expect(addon.eval("return #ns.errors"), "gear changing with nothing seen: no error").toBe(0);
 });
 
+it("H46-31-102 Gear upgrades switched off at the house empties the list", () => {
+  const addon = warrior();
+  scan(addon, SCAN);
+  addon.eval("ns.SetModuleEnabled('Upgrades', false)");
+  for (let i = 0; i < 10; i++) addon.update(0.01);
+  expect([card(addon)[1], row(addon, 1)[0]], "nothing judged any more").toEqual([0, false]);
+});
+it("H46-31-102 weights changed away from the house are judged at the next visit", () => {
+  const addon = warrior();
+  scan(addon, SCAN);
+  addon.world.closeAuctionHouse();
+  addon.slash("weights set STR 0");
+  addon.world.openAuctionHouse();
+  for (let i = 0; i < 10; i++) addon.update(0.01);
+  addon.click("AuctionHouseFrame.Tabs[4]");
+  expect(row(addon, 1)[1], "the bracers are no gain at the next visit").toBe("TEST-ONLY Cheap Helm");
+});
 it("upgrades: a big scan is judged a hundred listings a frame, and closing the house pauses it", () => {
   const addon = warrior(`__rows = {}
     for i = 1, 150 do

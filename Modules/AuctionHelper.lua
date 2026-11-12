@@ -424,7 +424,7 @@ function AH.OnShow()
   keepFound()
   if not AH.settings.panel or type(AuctionHouseFrame) ~= "table" then return end
   if not AH.pages and not AH.Build() then return end
-  AH.PaintShop()
+  AH.PaintUpgrades()
   AH.PaintSell()
   AH.PaintScan()
   AH.PaintOwned()

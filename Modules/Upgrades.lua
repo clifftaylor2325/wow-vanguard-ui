@@ -187,11 +187,26 @@ function UP.Weights()
   return out, kind
 end
 
+-- What hears of changed weights or of the module going off (UP.OnChanged): functions called with no arguments.
+UP.listeners = {}
+
+-- Adds fn() to the functions told when the weights change or Gear upgrades is switched off (the auction
+-- house's Upgrades list judges again).
+function UP.OnChanged(fn)
+  UP.listeners[#UP.listeners + 1] = fn
+end
+
+-- Tells the listeners, each on its own so one that fails doesn't stop the rest.
+local function tellChanged()
+  for _, fn in ipairs(UP.listeners) do ns.Try("upgrade weights changed listener", fn) end
+end
+
 -- The weights changed (role, a command, login): items are scored afresh, with the
 -- weights read again when next needed (not on the event itself).
 function UP.Changed()
   if not UP.settings then return end
   UP.current, UP.kind, UP.scores = nil, nil, {}
+  tellChanged()
 end
 
 -- The weights in use and their kind, read now if they changed since.
@@ -734,4 +749,5 @@ function UP.Disable()
   for _, arrow in pairs(vgUpgrade) do arrow:Hide() end
   UP.Wizard.Close()
   UP.settings = nil
+  tellChanged()
 end

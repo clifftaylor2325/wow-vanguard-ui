@@ -296,6 +296,12 @@ local function onGearChanged()
   AH.PaintUpgrades()
 end
 
+-- The weights changed or Gear upgrades went off: while the house is open the list is judged again (a burst
+-- is one paint, as for a new listing); a change made away from it waits for the next visit (AH.OnShow).
+local function onUpgradeWeights()
+  if AH.open then ns.Soon("auction upgrades", AH.PaintUpgrades) end
+end
+
 -- The Upgrades entry's events (on: the helper's): item search
 -- results and closing the house (judging paused); your gear
 -- changing, also in combat (the house is closed then, so that only forgets); the judging walker is made here.
@@ -306,6 +312,7 @@ function AH.ListenUpgrades(on)
   on("ITEM_SEARCH_RESULTS_UPDATED", AH.OnGearResults)
   on("ITEM_SEARCH_RESULTS_ADDED", AH.OnGearResults)
   ns.On("PLAYER_EQUIPMENT_CHANGED", onGearChanged)
+  ns.GetModule("Upgrades").OnChanged(onUpgradeWeights)
   ns.On("AUCTION_HOUSE_CLOSED", AH.PauseJudging) -- state only, so also in combat
 end
 
