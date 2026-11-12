@@ -466,6 +466,21 @@ it("text metrics: a font string set to width 0 measures, lays out and is audited
   expect(fit, "font mode: its own width, and a label wider than its button spills as before").toEqual([true, true, ["spill"]]);
 });
 
+// A font string given height 0 sizes to its text: forever Blizzard_ObjectiveTracker/Blizzard_ObjectiveTrackerBlock.lua:140-143
+// sets 0 ("force a clear of internals or GetHeight() might return an incorrect value"), sets the text, then reads GetHeight
+// as the text's height. A frame's height 0 stays 0.
+it("text metrics: a font string set to height 0 measures, lays out and is audited as its text, in both modes", () => {
+  const rough = createAddon();
+  expect(rough.eval(`${FIT_BOX(12)} fs:SetHeight(0) fs:SetText("A label")
+    local f = CreateFrame("Frame") f:SetHeight(0)
+    return { fs:GetHeight(), fs:GetStringHeight(), select(2, fs:GetSize()), f:GetHeight() }`)).toEqual([14, 14, 14, 0]);
+  const addon = createAddon({ textFit: true });
+  const fit = addon.eval(`${FIT_BOX(12)} fs:SetHeight(0) fs:SetText("Short")
+    local out = {} for _, f in ipairs(__wfgTextFit(b)) do out[#out + 1] = f.kind .. " " .. tostring(f.other) end
+    return { fs:GetHeight() == fs:GetStringHeight(), fs:GetHeight() > 0, table.concat(out, "; ") }`);
+  expect(fit, "font mode: its own height, and one short line is not cut").toEqual([true, true, ""]);
+});
+
 it("text fit: a pseudo-locale makes every string a third longer, padded with its own letters, and finds its English", () => {
   const addon = createAddon({ textFit: true });
   expect(addon.eval('return { ns.L["Save"], ns.L["Open the map"], ns.L["%d"], ns.English(ns.L["Save"]) }')).toEqual(["SaveSa", "Open the mapOpent", "%ddd", "Save"]);

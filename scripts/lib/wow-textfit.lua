@@ -106,7 +106,7 @@ local function boxOf(fs)
   return {
     rect = r, scale = scale, width = r.width / scale, height = r.height / scale,
     fixedWidth = stub.givenTextWidth(fs) ~= nil or pinsBoth(fs, "LEFT", "RIGHT"),
-    fixedHeight = fs.__height ~= nil or pinsBoth(fs, "TOP", "BOTTOM"),
+    fixedHeight = stub.givenTextHeight(fs) ~= nil or pinsBoth(fs, "TOP", "BOTTOM"),
   }
 end
 

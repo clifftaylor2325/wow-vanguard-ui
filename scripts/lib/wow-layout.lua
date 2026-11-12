@@ -58,8 +58,7 @@ local textWidth = stub.textWidth
 
 -- The height a font string's text takes (its set height when it has one), wrapped at width units.
 local function textHeight(w, width)
-  if w.__height then return w.__height end
-  return stub.textHeight(w, width)
+  return stub.givenTextHeight(w) or stub.textHeight(w, width)
 end
 
 -- The width a widget asks for, in its own units.
@@ -281,7 +280,9 @@ end
 -- Height: the one set (unless stretched between its top and bottom edges), else what the anchors give (a font
 -- string: its text's).
 function methods:GetHeight(ignoreRect)
-  if self.__height and (ignoreRect == true or not stretched(self, "B", "T")) then return self.__height end
+  local given = self.__height
+  if self.__kind == "FontString" then given = stub.givenTextHeight(self) end
+  if given and (ignoreRect == true or not stretched(self, "B", "T")) then return given end
   if self.__kind == "FontString" and not laidOut(self) then return textHeight(self) end
   return rectOf(self).height / self:GetEffectiveScale()
 end
