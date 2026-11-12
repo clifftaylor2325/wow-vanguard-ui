@@ -1720,6 +1720,31 @@ it("Escape and a click outside close a dropdown menu", () => {
   expect(addon.eval("return Vanguard_Options:IsShown()"), "a second Escape closes the window").toBe(false);
 });
 
+// H46-21-50: the game's own Escape closes every window in its list at once (Blizzard_UIParentPanelManager.lua
+// CloseWindows / CloseSpecialWindows), so the open menu holds the keyboard and takes Escape itself.
+it("H46-21-50 Escape on an open dropdown menu closes the menu alone, and other keys pass on", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  addon.eval("__pass = {}");
+  openDropdown(addon, 4);
+  addon.eval("Vanguard_Menu.SetPropagateKeyboardInput = function(self, v) __pass[#__pass + 1] = v end");
+  addon.eval('__other = CreateFrame("Frame", "TestOnlyOther", UIParent) __other:Show()');
+  expect(addon.eval("return Vanguard_Menu:IsKeyboardEnabled()"), "an open menu holds the keyboard").toBe(true);
+  addon.key("Vanguard_Menu", "A");
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), __pass[#__pass] }"), "another key passes on").toEqual([true, true]);
+  addon.key("Vanguard_Menu", "ESCAPE");
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), __pass[#__pass], __other:IsShown() }"), "Escape closes the menu and stops here").toEqual([false, false, true]);
+  expect(addon.eval("return Vanguard_Menu:IsKeyboardEnabled()"), "a closed menu lets the keyboard go").toBe(false);
+});
+
+it("H46-21-50 a menu opened in a fight holds no keyboard", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  setCombat(addon, true);
+  openDropdown(addon, 4);
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), Vanguard_Menu:IsKeyboardEnabled() }"), "shown, no keys held; Escape closes it through the special frames").toEqual([true, false]);
+  addon.key("Vanguard_Menu", "ESCAPE");
+  expect(addon.eval("return Vanguard_Menu:IsShown()"), "the key script does nothing in a fight").toBe(true);
+});
+
 it("Left and Right step a focused slider by its step", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
