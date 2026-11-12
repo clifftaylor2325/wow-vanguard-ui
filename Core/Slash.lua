@@ -202,7 +202,7 @@ end
 -- /vg grid [size|on|off]
 local function gridCommand(rest)
   local o, word, size = ns.MoverOptions(), rest:lower(), tonumber(rest)
-  if size and size >= 8 and size <= 256 then
+  if size and size >= ns.GRID_SIZE.min and size <= ns.GRID_SIZE.max then
     o.grid, o.gridSize = true, math.floor(size)
   elseif word == "on" or word == "off" or word == "" then
     o.grid = word == "on" or (word == "" and not o.grid)

@@ -314,7 +314,7 @@ end
 local MOVER_SCALES = { min = ns.MOVER_SCALE.min, max = ns.MOVER_SCALE.max, step = 0.05, format = percent }
 local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step = 0.05, format = percent }
 -- The unlock grid's spacing: 8 to 256 screen units (a plain number: a "px" value label overflows its box at 130% text), in steps of 8 (/vg grid takes any whole number in that range).
-local GRID_SIZES = { min = 8, max = 256, step = 8, format = function(v) return tostring(math.floor(v)) end }
+local GRID_SIZES = { min = ns.GRID_SIZE.min, max = ns.GRID_SIZE.max, step = 8, format = function(v) return tostring(math.floor(v)) end }
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 

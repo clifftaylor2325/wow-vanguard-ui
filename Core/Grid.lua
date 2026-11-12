@@ -52,10 +52,13 @@ local function placeAxis(i, vertical, size, half)
   return i
 end
 
+-- The range of the grid's spacing (screen units): /vg grid, the General slider and ShowGrid's clamp all read it.
+ns.GRID_SIZE = { min = 8, max = 256 }
+
 -- Shows the grid with lines every `size` pixels, kept to /vg grid's 8-256 (a
 -- saved size of 0 from a hand-edited profile would never finish drawing).
 function ns.ShowGrid(size)
-  size = math.max(8, math.min(256, tonumber(size) or 32))
+  size = math.max(ns.GRID_SIZE.min, math.min(ns.GRID_SIZE.max, tonumber(size) or 32))
   shownSize = size
   local f = gridFrame()
   local i = placeAxis(1, true, size, (UIParent:GetWidth() or 0) / 2)
