@@ -178,7 +178,7 @@ it("situations: recording over an override starts from it; nothing changed clear
   expect(chatHas(addon, /Situations: solo, party, raid, pvp, instance or resting\.$/), "an unknown situation").toBe(true);
   setCombat(addon, true);
   addon.slash("situation record raid");
-  expect([chatHas(addon, /Recording waits until combat ends\.$/), addon.eval("return ns.GetModule('Situations').recording")], "refused in combat").toEqual([true, null]);
+  expect([chatHas(addon, /Recording can't start in a fight\. Try again after it\.$/), addon.eval("return ns.GetModule('Situations').recording")], "refused in combat").toEqual([true, null]);
 });
 
 it("situations: in combat the apply waits for combat to end", () => {
