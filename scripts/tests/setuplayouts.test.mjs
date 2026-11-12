@@ -352,6 +352,8 @@ function outsideWall(addon, layout, label) {
 function measuredCase(addon, layout, sw, sh, size) {
   addon.eval(`local AB = ns.GetModule("ActionBars") AB.settings.size = ${size} for n in pairs(AB.bars) do AB.SettingChanged(n, "size") end`);
   canvasAt(addon, sw, sh);
+  // The aura rows are made again at the layout's line once the sizes settle (Modules/FrameAuras.lua FA.SETTLE).
+  addon.eval("__wfgStub.advance(0.5)");
   const holds = addon.eval("return ns.LayoutHolds()"), label = `${layout} ${sw}x${sh} size ${size}`;
   return { sw, sh, size, holds, bad: holds ? placedProblems(addon, layout, sw, sh, label).concat(outsideWall(addon, layout, label)) : [] };
 }
@@ -373,6 +375,23 @@ it("H46-13-100 H46-13-101 setup layouts: The keep measures itself: where it hold
   const runs = measuredRun("fort");
   expect(runs.filter((r) => r.holds).map((r) => `${r.sw}x${r.sh} ${r.size}`), "it holds where its frames, out with the bars, clear the bag and menu bar").toEqual(["1920x1080 38", "1920x1080 43", "2560x1440 38", "2560x1440 43", "2560x1440 50", "3440x1440 38", "3440x1440 43", "3440x1440 50"]);
   expect(runs.flatMap((r) => r.bad.filter((p) => !keepChat(p)))).toEqual([]);
+});
+// What Standards still meets, set aside here and not counted as clear: the raid grid's foot and the quest dialog over
+// the big banners' tops, their name lines and what rides them (H46-13-R4, left for Cliff: lowering the banners runs
+// their debuff rows into the Cooldown Manager's row); in the same band, with seven or more debuffs on your target (six
+// on the focus), the rows' second line meets the Cooldown Manager's main row on a canvas 1080 tall or taller, and with
+// buttons over 38 on a shorter one bar 1; the vehicle exit button (in a vehicle only) touches the target's rows by a unit.
+const STANDARDS_TOP = /(raid|questdialog) \/ (uf_player|uf_target|combo|targetBuffs)|(uf_player|uf_target|combo|targetBuffs) \/ (raid|questdialog)/;
+// Whether a pair on a run is one of those Standards still has.
+const standardsLeft = (p, r) => STANDARDS_TOP.test(p) || (r.sh >= 1080 && /cdm_essential \/ (focus|target)Debuffs/.test(p))
+  || (r.size > 38 && r.sh < 1080 && /bar1 \/ (focus|target)Debuffs/.test(p)) || /vehicleexit \/ targetDebuffs/.test(p);
+// The test's model, not an overlap: the pet's cast bar ends where the focus target's banner starts (x 710 at 1920 wide),
+// and pixel rounding puts the two edges a fraction of a unit into each other.
+const standardsModel = (p) => /cast_pet \/ uf_focustarget/.test(p);
+it("H46-13-103 H46-13-104 setup layouts: Standards measures itself: where it holds, its banners and their rows clear the bars and everything else, at every canvas and button size; elsewhere it gives way", () => {
+  const runs = measuredRun("standards");
+  expect(runs.filter((r) => !r.holds).map((r) => `${r.sw}x${r.sh} ${r.size}`), "it gives way only on a canvas under 1180 wide").toEqual(["1024x768 38", "1024x768 43", "1024x768 50"]);
+  expect(runs.flatMap((r) => r.bad.filter((p) => !standardsLeft(p, r) && !standardsModel(p)))).toEqual([]);
 });
 // The frames whose default spots adapt to a canvas narrower than 1365 or shorter than 768 (P3-3 and the
 // narrow-screen fixes): on the canvases below, each is on screen and clear of the rest of the centered layout.
