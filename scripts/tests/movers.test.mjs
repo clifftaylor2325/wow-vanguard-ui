@@ -724,3 +724,10 @@ it("a saved match is watched when the dependent registers before its target (H45
     ns.Mover(__t, "h45t", "T", { "CENTER", "CENTER", 0, 100 })`);
   expect(addon.eval(`return __t:GetScript("OnSizeChanged") ~= nil`), "the target's size is watched").toBe(true);
 });
+
+it("H46-21-2 restoring a spot keeps a frame's own width beside its matched width", () => {
+  const addon = loggedIn();
+  addon.eval("ns.SetMoverSize('xpbar', 'width', 300) ns.SetMoverMatch('xpbar', 'width', 'cast_player')");
+  addon.eval("local spot = ns.Copy(ns.Settings('positions').xpbar) ns.ResetMovers('xpbar') ns.RestoreMoverLinks('xpbar', spot)");
+  expect(addon.eval("local s = ns.Settings('positions').xpbar return { s.w, s.match and s.match.width }"), "own width and match both come back").toEqual([300, "cast_player"]);
+});
