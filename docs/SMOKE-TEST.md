@@ -6723,7 +6723,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 
 ### 33.783 The click casting page after a talent switch (H46-19-50; WoW Forever)
 
-- Do: With dual talents, put a starter layout on Primary and leave Secondary without one; /reload; open /vg on General, switch to Secondary talents with the window open, then click Click casting. [Client: Forever.]
+- Do: With dual talents, put a starter layout on Primary and leave Secondary without one; /reload; open the options window (/vg) on General, switch to Secondary talents with the window open, then click Click casting. [Client: Forever.]
 - Expect: the grid, Starter layout... and Clear all show, and no "These bindings came from" row.
 - If it fails, paste: /vg errors.
 
@@ -6744,6 +6744,18 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 - Do: A level 6 warrior who knows Thunder Clap but not Overpower: open key setup, Show me, tick Show what comes later, hover key 4. [Client: Forever.]
 - Expect: key 4 is not greyed with Thunder Clap's icon and its tooltip has no "Later: Thunder Clap" line.
 - If it fails, paste: the tooltip text.
+
+### 33.787 The keep gives way when the bag and menu bar reaches it (H46-B-G3-2; WoW Forever and Retail)
+
+- Do: On a 1080p screen at the game's own UI scale (no pixel-perfect), HUD layout The keep, /reload; then /vg unlock, drag the bag and menu bar up out of the corner, lock; then reset the bar. [Client: Forever and Retail.]
+- Expect: after the reload your frame and your target's stand at their Centered spots and sizes with no wall; with the bar moved the keep comes up; with it reset the frames go back to Centered.
+- If it fails, paste: /vg frame Vanguard_player and /vg frame Vanguard_Keep after each step.
+
+### 33.788 The keep steps in when bar 1 is dragged away (H46-B-G3-7; WoW Forever and Retail)
+
+- Do: The keep on a 1440p screen with bar 1's own button size at 50; /vg unlock, drag bar 1 to the top of the screen, lock; then reset bar 1. [Client: Forever and Retail.]
+- Expect: with bar 1 away your frame and your target's step back in to their drawn spots; with it reset they stand out again, clear of the bars.
+- If it fails, paste: /vg frame Vanguard_player before and after.
 
 ## 34. Retail
 
