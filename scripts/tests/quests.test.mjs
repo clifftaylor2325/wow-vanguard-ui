@@ -80,6 +80,49 @@ it("H45-27-50: an adventure map's offer opens no dialog and is not closed, as th
   addon.fire("QUEST_PROGRESS");
   expect(addon.eval("return Vanguard_QuestDialog:IsShown()"), "only a QUEST_DETAIL is the map's").toBe(true);
 });
+// Client rule: QuestFrame_OnEvent hides the window only on QUEST_FINISHED (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua).
+const GAME_TALK_WINDOW = `__gameSaw = {}
+  QuestFrame:SetScript("OnEvent", function(self, event) __gameSaw[#__gameSaw + 1] = event if event == "QUEST_FINISHED" then self:Hide() else self:Show() end end)
+  QuestFrame:RegisterEvent("QUEST_FINISHED")`;
+it("H45-27-51: a module switched off during a talk the game has does not make the next talk the game's", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_TALK_WINDOW, { savedVariables: "VanguardDB.profiles = { Default = { QuestDialog = { bypass = 'shift' } } }" });
+  addon.eval("__shift = true");
+  addon.fire("QUEST_DETAIL");
+  addon.eval("__shift = false ns.SetModuleEnabled('QuestDialog', false)");
+  addon.fire("QUEST_FINISHED");
+  addon.update(0.5);
+  addon.eval("ns.SetModuleEnabled('QuestDialog', true)");
+  addon.update(0.5);
+  addon.fire("QUEST_DETAIL");
+  expect(addon.eval("return { Vanguard_QuestDialog:IsShown(), QuestFrame:IsShown() }"), "the dialog shows the next talk").toEqual([true, false]);
+});
+it("H45-27-R1: the dialog taking a talk back while the game's window shows it leaves the talk to the game", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_TALK_WINDOW);
+  addon.fire("QUEST_DETAIL");
+  addon.eval("ns.SetModuleEnabled('QuestDialog', false)");
+  addon.update(0.5);
+  expect(addon.eval("return { Vanguard_QuestDialog:IsShown(), QuestFrame:IsShown() }"), "off: the game's window has the page").toEqual([false, true]);
+  addon.eval("ns.SetModuleEnabled('QuestDialog', true)");
+  addon.update(0.5);
+  addon.fire("QUEST_FINISHED");
+  addon.update(0.5);
+  expect(addon.eval("return QuestFrame:IsShown()"), "the talk's end closes the game's window").toBe(false);
+  addon.fire("QUEST_DETAIL");
+  expect(addon.eval("return Vanguard_QuestDialog:IsShown()"), "the next talk is the dialog's").toBe(true);
+});
+it("H45-27-R1: the session hand-back switched on and off inside a talk keeps the page in the game's window", () => {
+  const addon = loggedIn(QUEST_ENV + GAME_TALK_WINDOW + " GossipFrame = CreateFrame('Frame', 'GossipFrame', UIParent)");
+  addon.fire("QUEST_PROGRESS");
+  addon.eval("ns.GetModule('QuestDialog').HandBack(true)");
+  addon.eval("ns.GetModule('QuestDialog').HandBack(false)");
+  addon.fire("QUEST_COMPLETE");
+  expect(addon.eval("return { Vanguard_QuestDialog:IsShown(), QuestFrame:IsShown() }"), "one window shows the page").toEqual([false, true]);
+  addon.fire("QUEST_FINISHED");
+  addon.update(0.5);
+  expect(addon.eval("return QuestFrame:IsShown()"), "the game's window closes with the talk").toBe(false);
+  addon.eval("GossipFrame:Show() ns.GetModule('QuestDialog').HandBack(true) ns.GetModule('QuestDialog').HandBack(false)");
+  expect(addon.eval("return ns.GetModule('QuestDialog').gameTalk"), "an open game gossip window counts too").toBe(true);
+});
 it("quest dialog: turning in, picking a reward, closing, and handing the windows back", () => {
   const addon = loggedIn(QUEST_ENV);
   addon.eval("__completable = false");

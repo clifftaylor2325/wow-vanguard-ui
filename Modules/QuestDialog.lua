@@ -360,7 +360,17 @@ local function eachGameWindow(fn)
   end
 end
 
--- Takes the gossip and quest events away from the game's windows, noting which of them had each.
+-- Whether the game's quest or gossip window shows a talk now (not the custom gossip manager, a frame that always shows).
+local function gameWindowOpen()
+  for _, name in ipairs({ "QuestFrame", "GossipFrame" }) do
+    local f = _G[name]
+    if type(f) == "table" and f.IsShown and f:IsShown() then return true end
+  end
+  return false
+end
+
+-- Takes the gossip and quest events away from the game's windows, noting which of them had each. A talk the game's
+-- window shows stays the game's until it ends (QD.gameTalk), so its pages and its end still reach that window.
 local function takeOver()
   QD.had = {}
   eachGameWindow(function(f, events, name)
@@ -370,6 +380,7 @@ local function takeOver()
       f:UnregisterEvent(e)
     end
   end)
+  QD.gameTalk, QD.closing = gameWindowOpen() or nil, nil
 end
 
 -- Gives the game's windows back the events they had before takeOver (they come for the next talk).
