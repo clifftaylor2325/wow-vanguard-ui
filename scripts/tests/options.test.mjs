@@ -742,6 +742,19 @@ it("options: the font the profile uses, shared late by its addon, is offered by 
   expect(fonts(), "the one in use is").toContain("TEST-ONLY Font");
 });
 
+it("options: text drawn before the profile's font is shared wears it once its addon shares it, even in a burst of shares", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf";
+  addon.eval(`ns.Theme.Settings().font = "TEST-ONLY Late Font"
+    __fs = ns.Theme.Text(UIParent:CreateFontString(nil, "OVERLAY"), "label")`);
+  expect(addon.eval("return (__fs:GetFont())"), "drawn before the share: Fira").toBe(FIRA);
+  addon.eval(`local lsm = LibStub("LibSharedMedia-3.0")
+    lsm:Register("font", "TEST-ONLY Late Font", [[Interface\\AddOns\\TestOnly\\Late.ttf]])
+    lsm:Register("background", "TEST-ONLY Unrelated", [[Interface\\TEST-ONLY]])`);
+  addon.advance(1);
+  expect(addon.eval("return (__fs:GetFont())"), "the late share repaints it without a pick, though another share came in the same frame").toBe("Interface\\AddOns\\TestOnly\\Late.ttf");
+});
+
 it("options: a changed setting gets a dot that puts the default back", () => {
   const addon = loggedIn(UNITS_ENV + CLICK_LUA);
   addon.slash("");
