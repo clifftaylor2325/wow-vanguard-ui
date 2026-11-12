@@ -252,6 +252,13 @@ it("/vg graphics apply: what it can't do, it says", () => {
   addon.eval("__wfgStub.inCombat = false C_CVar.SetCVar = nil SetCVar = nil");
   expect([said(addon, "graphics apply"), said(addon, "graphics undo")], "no way to set").toEqual([["This client can't change its settings."], ["Nothing to undo: /vg graphics apply hasn't changed anything."]]);
 });
+it("/vg graphics apply: a SetCVar that answers false for Graphics Quality counts as refused", () => {
+  const addon = loggedIn(GFX_ENV + TABLE_ENV);
+  check(addon);
+  addon.eval("local set = SetCVar SetCVar = function(n, v) if n == 'graphicsQuality' then return false end return set(n, v) end C_CVar.SetCVar = SetCVar");
+  expect(said(addon, "graphics apply").pop(), "refused").toBe("Set not Graphics Quality (the client refused it), your screen's sizes. /vg graphics undo puts your settings back.");
+  expect(said(addon, "graphics undo").length, "undo still usable").toBeGreaterThan(0);
+});
 it("/vg graphics apply: a refused Graphics Quality is named, and an unreadable setting is not put back", () => {
   const addon = loggedIn(GFX_ENV + TABLE_ENV);
   check(addon);
