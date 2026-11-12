@@ -1075,13 +1075,19 @@ it("H45-3-R1: under the Tabs look the party pets and targets column's default sp
   expect(plain[0] >= 0 && tabs[0] >= 0, "the column's foot stays clear of the party column's top at Height 80, Plain and Tabs").toBe(true);
   expect(tabs[1] - plain[1], "the spot rises by the party column's rise: four tab heights and the 12 units the focus's cast bar needs").toBe(84);
 });
-it("H45-3-R1: the column's spot follows a change of HUD look at once, and a saved position still wins", () => {
-  const addon = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true } } }" });
-  // The column's default spot's y now.
-  const y = () => addon.eval('return select(4, ns.MoverPoint("partyextras"))');
-  const shield = y();
-  addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
-  expect(y() - shield, "Tabs lifts it by the party column's rise, 84").toBe(84);
-  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
-  expect(y(), "back to Plain: the spot comes down again").toBe(shield);
+// The column's default spot's y under each look in turn, changed live, on a profile whose modules part is `modules`,
+// then whether the unit frames were built and Vanguard's party column with them.
+const spotByLook = (modules, looks) => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: `VanguardDB.profiles = { Default = { modules = { ${modules} }, PartyExtras = { show = true } } }` });
+  const spots = looks.map((look) => addon.eval(`ns.Theme.Settings().hudLook = "${look}" ns.Theme.Refresh() return select(4, ns.MoverPoint("partyextras"))`));
+  return [...spots, addon.eval("return { Vanguard_player ~= nil, Vanguard_party1 ~= nil }")];
+};
+it("H45-3-R1: the column's spot follows a change of HUD look at once", () => {
+  const [shield, tabs, plain] = spotByLook("RaidFrames = false", ["shield", "tabs", "plain"]);
+  expect([tabs - shield, plain], "Tabs lifts it by the party column's rise, 84; back to Plain it comes down again").toEqual([84, shield]);
+});
+it("H46-3-2: with the raid frames showing the party (no party column built), Tabs does not lift the column by the party column's rise", () => {
+  const [shield, tabs, built] = spotByLook("", ["shield", "tabs"]);
+  expect(built, "the unit frames are built, the party column is not").toEqual([true, false]);
+  expect(tabs - shield, "no tabbed party column under it: no 84-unit rise").toBe(0);
 });

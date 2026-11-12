@@ -185,8 +185,9 @@
       "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
     ],
     "scripts/tests/extras.test.mjs": [
-      "H45-3-R1: the column's spot follows a change of HUD look at once, and a saved position still wins",
+      "H45-3-R1: the column's spot follows a change of HUD look at once",
       "H45-3-R1: under the Tabs look the party pets and targets column's default spot rises with the party column, so tall party frames never reach it",
+      "H46-3-2: with the raid frames showing the party (no party column built), Tabs does not lift the column by the party column's rise",
       "raid tools: calls, target icons and world markers for the leader and assistants",
       "raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')"
     ],

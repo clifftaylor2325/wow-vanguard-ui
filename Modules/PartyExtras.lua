@@ -60,11 +60,11 @@ function PX.PlaceBars()
 end
 
 -- Moves the column's default spot up with the party column under the Tabs look (its top rises by the tab's height
--- and the gaps, Modules/UnitFrames.lua UF.PartyRise), so tall party frames never reach it; a dragged spot still wins.
--- The holder is secure, so only out of combat.
+-- and the gaps, Modules/UnitFrames.lua UF.PartyRise), so tall party frames never reach it; with no party column built
+-- (the raid frames show the party) it stays put. A dragged spot still wins. The holder is secure, so only out of combat.
 function PX.FitLook()
   local UF = ns.GetModule("UnitFrames")
-  local rise = UF and UF.PartyRise and UF.PartyRise() or 0
+  local rise = UF and UF.HasPartyColumn() and UF.PartyRise() or 0
   ns.SetMoverDefault("partyextras", ns.RaisedDefault(PX.SPOT, rise))
 end
 

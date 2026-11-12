@@ -1339,6 +1339,13 @@ local function addMovable(key, spec)
   return f
 end
 
+-- True when Vanguard's party column was built this session (the raid frames did not cover the party at the build;
+-- Use them for your party too is a reload setting, so the saved value may differ from what is on screen).
+---@return boolean
+function UF.HasPartyColumn()
+  return UF.frames.party1 ~= nil
+end
+
 -- True when the raid frames module also shows the party, so these party frames aren't built.
 function UF.RaidCoversParty()
   local raid = ns.GetModule("RaidFrames")
