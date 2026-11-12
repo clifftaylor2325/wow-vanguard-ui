@@ -78,6 +78,9 @@ it("chat history: restored lines carry no old chat line numbers, so Report Chat 
     "|Hdiscorduser:12:987654:0:GUILD:|h[Al]|h: gg"]);
 });
 
+// The client's hidden-line links: censoredmessage and censoredmessagerewrite (Blizzard_SharedXML/LinkUtil.lua:14-16); the
+// handler reads the chat line id and uncensors that line (Blizzard_UIPanels_Game/Shared/ItemRefHandlersShared.lua:186-190),
+// so a link saved over a reload points at no line and cannot work.
 it("chat history: a hidden-line placeholder is not saved, and one an older save holds comes back without its show link", () => {
   const addon = session();
   addon.eval(`ChatFrame1:AddMessage("|Hcensoredmessage:523|h[Click to show]|h") ChatFrame1:AddMessage("|Hcensoredmessagerewrite:7|h[x]|h") ChatFrame1:AddMessage("kept")
