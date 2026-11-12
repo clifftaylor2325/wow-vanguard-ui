@@ -2,11 +2,12 @@
 // gets, the slot file's text, taking, waiting for, taking over and giving back a slot, and
 // the one line a waiting run prints. Slots live in a scratch folder; no Vitest run starts.
 
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, expect, it } from "vitest";
-import { acquireSlot, createLock, holderAlive, lockText, parseLock, pidAlive, readLock, recordChild, releaseLock, runInfo, slotCount, slotDir, slotFile, takeFreeSlot, tryTake, waitingLine } from "./lib/test-slot.mjs";
+import { POLL_MS, acquireSlot, createLock, holderAlive, lockText, parseLock, pidAlive, readLock, recordChild, releaseLock, runInfo, slotCount, slotDir, slotFile, takeFreeSlot, tryTake, waitingLine } from "./lib/test-slot.mjs";
 
 const GB = 1024 ** 3;
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "vg-slots-"));
@@ -198,6 +199,26 @@ it("H44-G3-7 the slot file is never missing while two runs race for a dead slot,
   expect(slipped, "the third run never created the slot file").toEqual([]);
   expect(readLock(file).info.pid, "the second run's live lock stands").toBe(12);
   expect(fs.readdirSync(path.dirname(file)), "no claim or scratch file left").toEqual(["slot1.lock"]);
+});
+
+// The claim file a run makes for a dead lock's text (claimFile in scripts/lib/test-slot.mjs), as a run killed
+// between its claim and its rename leaves it.
+function leftClaim(file, deadText) {
+  const claim = `${file}.${createHash("sha1").update(deadText).digest("hex").slice(0, 16)}.claim`;
+  fs.linkSync(file, claim);
+  return claim;
+}
+
+it("H45-2-53 a claim left by a run killed mid-takeover is taken over at a later poll, not at the first sight", () => {
+  const file = path.join(folder("stale-claim"), "slot1.lock");
+  fs.writeFileSync(file, lockText(run(10)));
+  const claim = leftClaim(file, lockText(run(10)));
+  expect(tryTake(file, run(11, 5000), running()), "first sight: busy").toEqual(run(10));
+  expect(tryTake(file, run(11, 5100), running()), "a moment later, the same poll's clock: still busy").toEqual(run(10));
+  expect(fs.existsSync(claim), "the claim is left alone until then").toBe(true);
+  expect(tryTake(file, run(11, 5000 + POLL_MS), running()), "a poll later: taken").toBeNull();
+  expect(readLock(file).info.pid).toBe(11);
+  expect(fs.readdirSync(path.dirname(file)), "no claim left").toEqual(["slot1.lock"]);
 });
 
 it("a lock whose owner is gone but whose Vitest child still runs is busy; one with neither alive is taken over", () => {

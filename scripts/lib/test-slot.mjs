@@ -12,7 +12,8 @@
 // belongs to a run that died (owner and child both), and the next run takes it over in
 // place: one claim per dead lock (a hard link named after its text) lets only one of two
 // racing runs in, and the winner renames its own lock over the dead one, so the slot file
-// is never missing and a live lock is never moved. The waiting line names the file to
+// is never missing and a live lock is never moved. A claim still in the way at a later poll
+// was left by a run killed mid-claim, and is removed. The waiting line names the file to
 // delete when a pid was reused by something else.
 
 import { spawn } from "node:child_process";
@@ -139,13 +140,34 @@ function linked(from, to) {
   }
 }
 
+// When this run first found each claim file in its way, by the clock of the poll that found it.
+const claimsSeen = new Map();
+
+// True when the claim file in the way was left by a run killed mid-claim, and is now removed. A live claim lasts a
+// few system calls, so one still there at a later poll of this run (half a poll or more after it was first found) is
+// stale. Staleness goes by this run's own clock, never by the file's times: the claim is a hard link to the slot
+// file, so it carries the dead lock's mtime, minutes or hours old even while a live run holds it. Left open: two runs
+// that both found the stale claim at an earlier poll and both remove and re-link it within the same two system calls
+// could both take the slot; that needs a run killed mid-claim and two polls landing in the same microseconds.
+function staleClaim(claim, now) {
+  if (!claimsSeen.has(claim)) {
+    claimsSeen.set(claim, now);
+    return false;
+  }
+  if (now - claimsSeen.get(claim) < POLL_MS / 2) return false;
+  claimsSeen.delete(claim);
+  fs.rmSync(claim, { force: true });
+  return true;
+}
+
 // Takes over the dead lock whose text was read, in place; false when another run got there first. The claim is a
 // hard link to the slot file, which only one run can make: the winner checks the claim still holds the dead text
 // (a run that took the slot a moment ago has replaced it), then renames its own lock over the slot file. The claim
-// goes only after that, so a run that read the same dead text later finds the new lock, not the dead one.
+// goes only after that, so a run that read the same dead text later finds the new lock, not the dead one. A claim
+// left by a run killed in between is taken at a later poll (staleClaim), so it cannot keep the slot busy for good.
 function claimDead(file, deadText, info) {
   const claim = claimFile(file, deadText);
-  if (!linked(file, claim)) return false;
+  if (!linked(file, claim) && !(staleClaim(claim, info.started) && linked(file, claim))) return false;
   try {
     return fs.readFileSync(claim, "utf8") === deadText && replaceLock(file, info);
   } finally {
