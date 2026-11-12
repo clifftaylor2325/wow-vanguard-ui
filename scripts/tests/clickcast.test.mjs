@@ -604,6 +604,28 @@ it("H45-19-R3 the frame's own click carries the does-nothing note where the game
   expect(tileSays(addon, "RightButton")).toBe("Right click -> Unit menu on Tester");
 });
 
+// The game's click handler runs a profile Spell, Macro or PetAction itself and returns, and for an Interaction reads
+// the attribute of GetEffectiveInteractionButton's button under the held modifiers
+// (/home/user/blizz/forever/Interface/AddOns/Blizzard_FrameXML/SecureTemplates.lua SecureUnitButton_OnClick).
+it("H46-19-53 a click with no Vanguard binding that the game's profile binds says nothing bound, with the game's reason", () => {
+  const addon = priest(GAME_CLICKS_LUA);
+  addon.eval(`table.insert(__gameClicks, { type = 3, actionID = 1, button = "MiddleButton", modifiers = __wfgWorld.modifierBits.shift })
+    table.insert(__gameClicks, { type = Enum.ClickBindingType.Spell, actionID = 139, button = "Button4", modifiers = 0 })
+    ${CC}.Add("shift-BUTTON1", "spell", "Renew", 139) ns.Options.Show("clickcast")`);
+  // The tile's line without its colour codes.
+  const plain = (text) => text.replace(/\|c[0-9a-f]{8}|\|r/g, "");
+  const button4 = plain(tileSays(addon, "Button4"));
+  const button5 = plain(tileSays(addon, "Button5"));
+  addon.keys({ shift: true });
+  const shiftMiddle = plain(tileSays(addon, "MiddleButton"));
+  addon.keys({ shift: false });
+  expect({ button4, shiftMiddle, button5 }).toEqual({
+    button4: "Button 4 -> nothing bound  (the game's own Click Casting window binds a spell or macro to this click, and that runs instead)",
+    shiftMiddle: "Shift + Middle click -> nothing bound  (the game's own Click Casting window puts Target on this click, so it runs your Shift + Left click binding instead)",
+    button5: "Button 5 -> nothing bound",
+  });
+});
+
 it("H46-19-52 while the game's click bindings are in use, the test tile says so for a click, a key and the wheel", () => {
   const addon = priest(GAME_CLICKS_LUA);
   addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061) ${CC}.Add("SHIFT-Q", "spell", "Renew", 139) ${CC}.SetUseGame(true) ns.Options.Show("clickcast")`);
