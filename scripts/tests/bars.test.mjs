@@ -1011,6 +1011,26 @@ it("bar backing: a stacked bar dragged away keeps a plate of its own, and no two
   expect(shownBackings(addon).map((p) => p.bar), "a bar that fades on its own keeps its own plate").toEqual([1, 2, 3]);
 });
 
+it("bar backing: under the Calm HUD's Hide each bar carries its own plate; Dim and Calm off share the plinth", () => {
+  const addon = loggedIn(ACTIONS_ENV, { savedVariables: 'VanguardDB.profiles.Default = { UnitFrames = { calm = true, calmBars = "hide" } }' });
+  // The bars (of 1 to 3) whose backing is shown; a faded bar's plate is drawn at the bar's alpha.
+  const owners = () => Object.values(addon.eval(`local out = {}
+  for n = 1, 3 do
+    local f = _G["Vanguard_Bar" .. n].vgBacking
+    if f and f:IsShown() then out[#out + 1] = n end
+  end
+  return out`) || {});
+  // Sets the Calm HUD's switch and its Action bars choice, and re-applies every calm frame.
+  const calmBars = (on, choice) => addon.eval(`local s = VanguardDB.profiles.Default.UnitFrames s.calm = ${on} s.calmBars = "${choice}" ns.Visibility.ApplyCalm()`);
+  expect(owners(), "each bar fades under its own mouse, so each has its own plate").toEqual([1, 2, 3]);
+  calmBars(true, "dim");
+  expect(owners(), "Dim keeps the one plinth (the bars dim together)").toEqual([1]);
+  calmBars(true, "hide");
+  expect(owners(), "Hide again: one plate each").toEqual([1, 2, 3]);
+  calmBars(false, "hide");
+  expect(owners(), "Calm HUD off: one plinth on bar 1").toEqual([1]);
+});
+
 it("hotkey text stays on one line inside the button, right-aligned", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const hk = addon.eval(`local h = Vanguard_Bar1Button1.hotkey
