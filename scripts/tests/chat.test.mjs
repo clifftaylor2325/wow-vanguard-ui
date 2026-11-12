@@ -2876,6 +2876,17 @@ it("H46-29-1 chat window size: Vanguard's size comes back after Edit Mode applie
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+// Blizzard_EditMode/Shared/EditModeSystemTemplates.lua:2233 EditModeChatFrameSystemMixin:EditMode_OnResized (the grip's mouse-up).
+it("H46-C-G1 chat window size: the size dragged with Edit Mode's corner grip is kept and comes back after a layout apply", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + " ChatFrame1.EditMode_OnResized = function() end", {
+    savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
+  });
+  addon.eval("ChatFrame1:SetSize(700, 330) ChatFrame1:EditMode_OnResized() ChatFrame1:UpdateSystem({})");
+  expect([size(addon), addon.eval("return { VanguardCharDB.chatSize.width, VanguardCharDB.chatSize.height }")]).toEqual([[700, 330], [700, 330]]);
+  addon.eval("ns.GetModule('Chat').settings.place = false ChatFrame1:SetSize(710, 340) ChatFrame1:EditMode_OnResized()");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "a window Vanguard does not place keeps nothing").toBe(700);
+});
+
 it("H46-29-1 chat window size: after a reload the kept size comes back over the layout's, and the General sliders' size is the one kept", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + " ChatFrame1:UpdateSystem({})", {
     savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
