@@ -99,14 +99,12 @@ function AH.SeeGear(link, price)
 end
 
 -- Every gear listing seen, judged again (what you wear, or the weights, changed) on the judging walker,
--- AH.JUDGE_ROWS a frame. A copy of the listings goes to it, and with them the ones a walk still running
--- had not reached, so none is lost and a listing dropped for a cheaper one mid-walk raises no error.
+-- AH.JUDGE_ROWS a frame: a copy of the listings goes to it, each marked to be judged at the price it is
+-- held at when reached, so a listing dropped for a cheaper one mid-walk raises no error.
 local function judgeAgain()
-  local gear, j = {}, AH.judging
-  for link, price in pairs(AH.gearSeen) do gear[link] = price end
-  for i = j and j.next or 1, j and #j.links or 0 do gear[j.links[i]] = gear[j.links[i]] or j.gear[j.links[i]] end
-  AH.JudgeGear(gear)
-  if AH.judging then AH.judging.again = true end
+  local gear, again = {}, {}
+  for link, price in pairs(AH.gearSeen) do gear[link], again[link] = price, true end
+  AH.JudgeGear(gear, again)
 end
 
 -- The weights in use changed since the listings were judged (your role, /vg weights): judged again.
@@ -183,10 +181,10 @@ function AH.ScanGear(s, i, id, unit)
   if type(link) == "string" then cheapestOfItem(s, link, unit) end
 end
 
--- The price the walker judges a link at: for a walk started by judgeAgain, the price the link is held at
+-- The price the walker judges a link at: for a link judged again (judgeAgain), the price the link is held at
 -- now (a listing seen again since the walk started), else the price it was handed.
 local function walkPrice(j, link)
-  return (j.again and AH.gearSeen[link]) or j.gear[link]
+  return (j.again[link] and AH.gearSeen[link]) or j.gear[link]
 end
 
 -- One frame of judging: the next AH.JUDGE_ROWS of the scan's gear; the walker stops after the last.
@@ -199,14 +197,27 @@ local function judgeStep()
   if j.next > #j.links then AH.StopJudging() end
 end
 
--- The gear a scan found (AH.FinishScan; link -> cheapest unit price), judged AH.JUDGE_ROWS
--- listings a frame on its own walker (by link, so the order holds), so a big scan never stalls a frame.
-function AH.JudgeGear(gear)
+-- The links a walk still running had not reached join the gear to judge next (gear's own price wins, and
+-- with it the link's mark in again), so a new walk drops none of them.
+local function addPending(gear, again)
+  local j = AH.judging
+  for i = j and j.next or 1, j and #j.links or 0 do
+    local link = j.links[i]
+    if not gear[link] then gear[link], again[link] = j.gear[link], j.again[link] end
+  end
+end
+
+-- The gear a scan found (AH.FinishScan; link -> cheapest unit price), or the listings judged again (again:
+-- link -> true), judged AH.JUDGE_ROWS listings a frame on its own walker (by link, so the order holds), so a
+-- big scan never stalls a frame; the links a walk still running had not reached are judged on the new one.
+function AH.JudgeGear(gear, again)
+  again = again or {}
+  addPending(gear, again)
   local links = {}
   for link in pairs(gear) do links[#links + 1] = link end
   table.sort(links)
   if #links == 0 then return end
-  AH.judging = { links = links, gear = gear, next = 1 }
+  AH.judging = { links = links, gear = gear, again = again, next = 1 }
   AH.judge:Show()
 end
 

@@ -274,3 +274,13 @@ it("H44-21-154: a gear change while a scan is still being judged loses none of i
   for (let i = 0; i < 4; i++) addon.update(0.01);
   expect([card(addon)[1], addon.eval("return #ns.errors")], "all 150 judged in the end").toEqual([150, 0]);
 });
+it("H44-G3-1: a scan finishing while a gear change's walk runs drops none of the listings still to judge again", () => {
+  const addon = warrior(BRACERS_150 + `
+    __wfgWorld.items[113] = { name = "TEST-ONLY Best Bracers", classID = 4, equipLoc = "INVTYPE_WRIST", stats = { ITEM_MOD_STRENGTH_SHORT = 20 } }`);
+  scan(addon, "__rows");
+  addon.eval("__now = __now + 1000 __wfgWorld.worn[9] = __link(113)");
+  addon.fire("PLAYER_EQUIPMENT_CHANGED", 9);
+  scan(addon, "{ { itemID = 105, count = 1, buyoutPrice = 80 } }");
+  const kept = addon.eval(`local n = 0 for link in pairs(${HELPER}.upgrades) do n = n + 1 end return n`);
+  expect([kept, row(addon, 1)[1], addon.eval("return #ns.errors")], "the best bracers worn: every bracers judged again and gone, the helm alone").toEqual([1, "TEST-ONLY Sturdy Helm", 0]);
+});
