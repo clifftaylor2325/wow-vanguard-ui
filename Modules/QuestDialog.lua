@@ -242,14 +242,21 @@ local function acceptOffer()
   ns.Ask(CONFIRM_ACCEPT_PVP_QUEST, L["Accept"], accept, QD.asked)
 end
 
+-- A detail page's choices, rewards and money line: none of them where the game hides the quest's rewards.
+local function offerRewards()
+  if QP.RewardsHidden(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))) then return {}, {}, "" end
+  return QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices")), QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")), QD.MoneyLine()
+end
+
 -- A quest's details: accept it (or acknowledge one the game already accepted), or decline.
 function QD.DetailPage()
   local auto = ns.CallIf(_G, "QuestGetAutoAccept") == true
+  local choices, rewards, money = offerRewards()
   return {
     title = QP.WithMark(ns.CallIf(_G, "GetTitleText"), ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))), text = ns.CallIf(_G, "GetQuestText"), objectives = ns.CallIf(_G, "GetObjectiveText"),
     needs = QP.Needs(0, ns.CallIf(_G, "GetSuggestedGroupSize")),
     done = ns.GetModule("QuestHistory").Line(ns.PlainNumber(ns.CallIf(_G, "GetQuestID"))),
-    choices = QD.Items("choice", ns.CallIf(_G, "GetNumQuestChoices")), rewards = QD.Items("reward", ns.CallIf(_G, "GetNumQuestRewards")), money = QD.MoneyLine(),
+    choices = choices, rewards = rewards, money = money,
     extras = QD.PageExtras(), primary = auto and { L["OK"], function() ns.CallIf(_G, "AcknowledgeAutoAcceptQuest") end } or { L["Accept"], acceptOffer },
     secondary = not auto and { L["Decline"], function() ns.CallIf(_G, "DeclineQuest") end } or nil,
   }

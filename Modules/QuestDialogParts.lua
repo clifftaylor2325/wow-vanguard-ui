@@ -75,6 +75,14 @@ function QP.MoneyText(money, xp, extra)
   return table.concat(parts, "  ·  ")
 end
 
+-- Whether the game hides a quest's rewards, money and XP (QuestInfo_ShowRewards reads them outside the reward panel only
+-- when C_QuestLog.ShouldShowQuestRewards(questID)). A missing call, no quest or a secret answer keeps them shown.
+function QP.RewardsHidden(questID)
+  if not questID then return false end
+  local answer = ns.CallIf(C_QuestLog, "ShouldShowQuestRewards", questID)
+  return not ns.IsSecret(answer) and answer == false
+end
+
 -- The money the open quest asks for to hand it in (copper): 0 for none, and 0 when the client can't say or
 -- hides it (the game's own reward button asks before paying when this is above 0).
 function QP.Cost()

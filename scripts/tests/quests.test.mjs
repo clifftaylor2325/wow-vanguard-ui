@@ -2939,3 +2939,29 @@ it("H46-27-50: a quest's hidden required items are not on the progress page", ()
   addon.fire("QUEST_PROGRESS");
   expect(cards(), "a quest that hides them all shows none").toEqual([]);
 });
+// H46-27-52 / H46-27-R1: QuestInfo_ShowRewards (Blizzard_UIPanels_Game/Mainline/QuestInfo.lua:607-650) reads a quest's items, choices, money and XP
+// outside the reward panel (an offer) or in the quest log only when C_QuestLog.ShouldShowQuestRewards(questID); otherwise the rewards frame hides.
+it("H46-27-52: a detail page whose rewards the game hides shows no reward card, money or XP", () => {
+  const addon = loggedIn("");
+  // Opens the offer; the number of cards and the money line.
+  const offer = () => {
+    addon.eval(`__wfgWorld.openNpc({ quest = { title = "TEST-ONLY Secret", questID = 91902, text = "x", money = 500, xp = 100, rewards = { { name = "TEST-ONLY Prize" } } } })`);
+    return [addon.eval("return Vanguard_QuestDialog.cards.used"), addon.eval("return Vanguard_QuestDialog.money:GetText()")];
+  };
+  expect(offer()[0], "the game shows them by default").toBe(1);
+  addon.eval("C_QuestLog.ShouldShowQuestRewards = function() return false end");
+  expect(offer(), "hidden: no card, no money line").toEqual([0, ""]);
+  addon.eval("C_QuestLog.ShouldShowQuestRewards = function() return { __secret = true } end");
+  expect(offer()[0], "a secret answer keeps them shown").toBe(1);
+});
+it("H46-27-R1: the quest log's details show no rewards or money for a quest the game hides them for", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  // The quest log's reward count and money line for the quest.
+  const details = () => addon.eval("local d = ns.GetModule('QuestLog').Details(90051) return { #d.rewards, d.money }");
+  const shown = details();
+  expect(shown[0], "the rewards show by default").toBeGreaterThan(0);
+  addon.eval("C_QuestLog.ShouldShowQuestRewards = function() return false end");
+  expect(details(), "hidden: no cards, no money").toEqual([0, ""]);
+  addon.eval("C_QuestLog.ShouldShowQuestRewards = nil");
+  expect(details(), "a client without the call keeps them").toEqual(shown);
+});

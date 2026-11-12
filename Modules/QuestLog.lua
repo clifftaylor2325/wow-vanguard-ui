@@ -161,9 +161,9 @@ function QL.Details(id)
   local info = index and questLog("GetInfo", index)
   if type(info) ~= "table" then return nil end
   selectInGame(id)
-  local text = ns.CallIf(_G, "GetQuestLogQuestText")
+  local text, hidden = ns.CallIf(_G, "GetQuestLogQuestText"), ns.QuestParts.RewardsHidden(id)
   return requirements(id, { id = id, title = info.title, level = info.level, text = text, objectives = ns.GetModule("QuestTracker").Objectives(id),
-    rewards = rewardItems(id), money = moneyLine(id), watched = QL.IsWatched(id),
+    rewards = not hidden and rewardItems(id) or {}, money = not hidden and moneyLine(id) or "", watched = QL.IsWatched(id),
     shareable = ns.IsTrue(questLog("IsPushableQuest", id)) and ns.IsTrue(ns.CallIf(_G, "IsInGroup")), abandonable = QL.CanAbandon(id), done = ns.GetModule("QuestHistory").Line(id) })
 end
 
