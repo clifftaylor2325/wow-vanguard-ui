@@ -1,11 +1,41 @@
 {
   "dialogs": [],
+  "dialogs @130": [],
   "options search list, German at 130%": [],
+  "options window, German @130": [
+    "cut | Vanguard_Options | Einstellungen durchsuchen | wider than its box",
+    "cut | Vanguard_Options | Leisten und Taschen | wider than its box",
+    "cut | Vanguard_Options | So, wie jeder Chattyp eingestellt ist | wider than its box",
+    "cut | Vanguard_Options | Stadt und Ausrüstung | wider than its box"
+  ],
   "options window, pages 1-10": [],
+  "options window, pages 1-10 @130": [
+    "cut | Vanguard_Options | As each chat type is set | wider than its box",
+    "cut | Vanguard_Options | Game windows | wider than its box",
+    "cut | Vanguard_Options | On, but its own switch is off (CooldownsCool)Onbutitsownswi | wider than its box",
+    "cut | Vanguard_Options | Profile: DefaultProfile | wider than its box",
+    "cut | Vanguard_Options | Search settings | wider than its box",
+    "cut | Vanguard_Options | The quest addon's tracker | wider than its box",
+    "cut | Vanguard_Options | Town and gear | wider than its box",
+    "overlap | Vanguard_Options | 38 pxpxpx | Buttons per row",
+    "spill | Vanguard_Options | 38 pxpxpx"
+  ],
   "options window, pages 11 on": [],
+  "options window, pages 11 on @130": [
+    "cut | Vanguard_Options | Game windows | wider than its box",
+    "cut | Vanguard_Options | Profile: DefaultProfile | wider than its box",
+    "cut | Vanguard_Options | Search settings | wider than its box",
+    "cut | Vanguard_Options | Town and gear | wider than its box"
+  ],
   "preview scenes' windows": [
     "cut | Vanguard_StockList | sold by TEST-ONLY Thomas Miller (TEST-ONLY Goldshire)soldbys | wider than its box"
   ],
   "screen": [],
-  "setup wizard": []
+  "screen @130": [
+    "spill | top level | Vehicle exit"
+  ],
+  "setup wizard": [],
+  "setup wizard @130": [
+    "cut | Vanguard_Setup | Use recommended | wider than its box"
+  ]
 }
