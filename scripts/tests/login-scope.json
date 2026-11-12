@@ -46,6 +46,7 @@
       "A3-2 bars: Auto Shot flashes while it repeats, and a hidden answer flashes nothing",
       "A3-2 bars: Button spacing lays every bar out again without a reload, after the fight in one",
       "A3-2 bars: Key text off takes the key off every button at once, and on puts it back",
+      "A3-2 bars: a burst of usable, cooldown and state events repaints each button once, on the next frame",
       "A3-2 bars: a client that cannot say whether an action prints its name still shows a macro's",
       "A3-2 bars: a macro's name shows along the bottom of its button, live with Macro names",
       "A3-2 bars: a saved spacing that is not a number of 0 or more is dropped at login",

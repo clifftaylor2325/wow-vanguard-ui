@@ -1132,6 +1132,9 @@ const setSharedOption = (addon, label, lua) => addon.eval(`
 
 it("A3-2 bars: a burst of usable, cooldown and state events repaints each button once, on the next frame", () => {
   const addon = loggedIn(ACTIONS_ENV);
+  const buttons = addon.eval('return #ns.GetModule("ActionBars").buttons');
+  // With no buttons every count below is 0 = 0 and the case could not fail (H46-35-101).
+  expect(buttons, "the bars are built").toBeGreaterThan(0);
   addon.eval(`__reads = { usable = 0, cooldown = 0, current = 0 }
     local usable, cooldown, current = IsUsableAction, GetActionCooldown, IsCurrentAction
     IsUsableAction = function(...) __reads.usable = __reads.usable + 1 return usable(...) end
@@ -1140,7 +1143,6 @@ it("A3-2 bars: a burst of usable, cooldown and state events repaints each button
   for (const event of ["ACTIONBAR_UPDATE_USABLE", "SPELL_UPDATE_USABLE", "ACTIONBAR_UPDATE_COOLDOWN", "ACTIONBAR_UPDATE_COOLDOWN", "ACTIONBAR_UPDATE_STATE", "START_AUTOREPEAT_SPELL"]) addon.fire(event);
   expect(addon.eval("return __reads"), "nothing is read while the burst comes in").toEqual({ usable: 0, cooldown: 0, current: 0 });
   addon.update(0);
-  const buttons = addon.eval('return #ns.GetModule("ActionBars").buttons');
   // A state repaint asks IsCurrentAction once a button, for the checked highlight (the flash asks it only of an attack).
   expect(addon.eval("return __reads"), "then each button is read once per part").toEqual({ usable: buttons, cooldown: buttons, current: buttons });
   addon.update(0);
