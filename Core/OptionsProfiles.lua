@@ -48,7 +48,7 @@ end
 -- Delete and Copy here, right to left: they change settings for good, so they ask first and say what they lose.
 local function addEditButtons(r, name)
   local lost = ns.Format(L["Deletes profile {profile} for every character on this account. It can't be undone."], { profile = name })
-  r.delete = W.Danger(r, L["Delete"], function() ns.DeleteProfile(name) O.RebuildPage("profiles") end, SMALL, lost)
+  r.delete = W.Danger(r, L["Delete"], function() if not ns.DeleteProfile(name) then O.RebuildPage("profiles") end end, SMALL, lost)
   r.delete:SetPoint("RIGHT", -T.SPACE.gap, 0)
   ns.WidenToLabel(r.delete)
   -- The page is built again on every staged switch and after setup forks a profile, so {into} is always the profile
