@@ -481,6 +481,25 @@ it("text metrics: a font string set to height 0 measures, lays out and is audite
   expect(fit, "font mode: its own height, and one short line is not cut").toEqual([true, true, ""]);
 });
 
+// A font string's size follows its text scale, font object, spacing, line cap and wrapping at once: forever
+// Blizzard_GamepadSharedUtility/InputPrompts/InputPrompts.lua:45-46 calls SetFontObject, then reads GetWidth as the new width.
+it("text metrics: a font string pinned at one point resizes as soon as its text scale or font object changes", () => {
+  const addon = createAddon({ textFit: true });
+  const out = addon.eval(`local fs = UIParent:CreateFontString(nil, "OVERLAY") fs:SetFont(ns.Theme.FONTS.regular, 12)
+    fs:SetPoint("TOPLEFT") fs:SetText("TEST-ONLY a label of some length")
+    local w, h = fs:GetWidth(), fs:GetHeight()
+    fs:SetTextScale(0.5)
+    local sw, sh = fs:GetWidth(), fs:GetHeight()
+    local small, big = CreateFont("TEST_ONLY_SmallFont"), CreateFont("TEST_ONLY_BigFont")
+    small:SetFont(ns.Theme.FONTS.regular, 12) big:SetFont(ns.Theme.FONTS.regular, 24)
+    local other = UIParent:CreateFontString(nil, "OVERLAY") other:SetFontObject(small)
+    other:SetPoint("TOPLEFT") other:SetText("TEST-ONLY a label of some length")
+    local ow = other:GetWidth()
+    other:SetFontObject(big)
+    return { sw / w, sh / h, other:GetWidth() / ow }`);
+  expect(out).toEqual([0.5, 0.5, 2]);
+});
+
 it("text fit: a pseudo-locale makes every string a third longer, padded with its own letters, and finds its English", () => {
   const addon = createAddon({ textFit: true });
   expect(addon.eval('return { ns.L["Save"], ns.L["Open the map"], ns.L["%d"], ns.English(ns.L["Save"]) }')).toEqual(["SaveSa", "Open the mapOpent", "%ddd", "Save"]);

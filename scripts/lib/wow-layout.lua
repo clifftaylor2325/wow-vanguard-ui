@@ -41,6 +41,9 @@ end
 for _, name in ipairs({
   "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize", "SetWidth", "SetHeight", "SetScale",
   "SetParent", "SetText", "SetFont", "SetScrollChild", "SetValue", "SetMinMaxValues", "SetReverseFill",
+  -- A font string's own size follows these at once too (forever Blizzard_GamepadSharedUtility/InputPrompts/
+  -- InputPrompts.lua:45-46 calls SetFontObject, then reads GetWidth as the new width).
+  "SetFontObject", "SetTextScale", "SetSpacing", "SetMaxLines", "SetWordWrap",
 }) do
   moving(name)
 end
