@@ -1360,3 +1360,12 @@ it("hunt H46-22-2 (decide: built pick A): a whole string that matches a profile 
   expect(r.slice(1), "no backup made and no backup note").toEqual([true, 0]);
   expect(addon.eval("return VanguardDB.profiles['Default backup'].theme.reduceMotion"), "the backup still holds the profile before the partial import").toBe(false);
 });
+it("hunt H46-22-3 (decide: built pick A): importing the profile in use's own export leaves a staged pick staged", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile Raid");
+  expect(addon.eval("return ns.PendingProfileName()"), "Raid is staged").toBe("Raid");
+  const own = addon.eval("return ns.ExportProfile()");
+  expect(addon.eval(`return (ns.ImportProfile(${JSON.stringify(own)}))`)).toMatch(/already uses: nothing new to import/);
+  expect(addon.eval("return ns.PendingProfileName() or 'none'"), "the pick of Raid is still staged").toBe("Raid");
+});

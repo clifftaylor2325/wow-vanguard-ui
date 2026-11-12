@@ -248,12 +248,13 @@ local function takeDisplay(data)
 end
 
 -- A whole profile whose settings equal one this account has: this character uses that one
--- (after a reload, unless it is already the one in use), and nothing is added.
+-- (after a reload), and nothing is added; a match with the profile in use changes nothing, a staged pick stays.
 local function importMatch(name, result)
-  ns.UseProfile(name)
-  result.reload = name ~= ns.ProfileName()
-  if not result.reload then result.display = nil end
-  if result.reload then return ns.Format(L["This string matches profile {profile}; this character will use it after a reload."], { profile = name }) end
+  if name ~= ns.ProfileName() then
+    ns.UseProfile(name)
+    return ns.Format(L["This string matches profile {profile}; this character will use it after a reload."], { profile = name })
+  end
+  result.reload, result.display = false, nil
   return ns.Format(L["This string matches profile {profile}, which this character already uses: nothing new to import."], { profile = name })
 end
 
