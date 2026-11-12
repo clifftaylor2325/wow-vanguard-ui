@@ -296,6 +296,25 @@ it("unit frames: with power text on, the target's tag mark sits clear of its hea
   expect(text[2] <= tag[0] || tag[2] <= text[0], "the health number ends short of the tag mark").toBe(true);
 });
 
+// H45-13-4: the target's health number against its tag mark, in a look and at a height, power text on or off.
+const tagClear = (look, height, power) => {
+  const powerFormat = power ? ", powerFormat = 'value'" : "";
+  const addon = loggedIn(UNITS_ENV + `__units.target.hp = 42800 __units.target.maxhp = 50000
+    UnitCanAttack = function() return true end UnitIsTapDenied = function(u) return u == "target" end UnitPlayerControlled = function() return false end`,
+  { savedVariables: `VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "${look}" }, UnitFrames = { targetHeight = ${height}${powerFormat} } } }` });
+  addon.fire("PLAYER_TARGET_CHANGED");
+  // A region's rectangle: left, bottom, right, top.
+  const rect = (path) => addon.eval(`local r = ${path} return { r:GetLeft(), r:GetBottom(), r:GetRight(), r:GetTop() }`);
+  const tag = rect("Vanguard_target.tag"), text = rect("Vanguard_target.healthText");
+  return [addon.eval("return Vanguard_target.tag:IsShown()"), text[2] <= tag[0] || tag[2] <= text[0]];
+};
+
+it("H45-13-4: the target's health number stays clear of the tag mark in every look, at 36 and 24 units, power text on or off", () => {
+  for (const [look, height, power] of [["hairline", 36, false], ["hairline", 36, true], ["hairline", 24, false], ["rimmed", 24, false], ["shield", 24, false]]) {
+    expect(tagClear(look, height, power), `${look} at ${height}, power text ${power ? "on" : "off"}: tag shown, number short of it`).toEqual([true, true]);
+  }
+});
+
 it("unit frames: a hidden percent text is handed on as it is, Dead wins over it, a plain percent still shows", () => {
   const addon = loggedIn(UNITS_ENV + FOREVER_ENV + "CurveConstants = { ScaleTo100 = { __curve = true } } UnitHealthPercent = function() return 84 end UnitClassification = function() return 'normal' end", NO_RAID);
   // HealthText with the percent format on, and string.format answering the percent's "%d%%" with `format` (a Lua value) when given.
@@ -1138,6 +1157,7 @@ it("H27-3-3: the Dead, Ghost and Offline words are coloured as on the raid tiles
 it("H27-3-3: the Versus deck's restyle of the target's text keeps the Dead and Offline colours", () => {
   const addon = loggedIn(UNITS_ENV + "__units.target.dead = true", NO_RAID);
   addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
+  // The target's health text colour token and role.
   const text = () => addon.eval("local f = Vanguard_target return { ns.Theme.ColorToken(f.healthText), f.healthText.__textRole }");
   expect(addon.eval("return ns.GetModule('UnitFrames').Decked(Vanguard_target)"), "the deck holds the target").toBe(true);
   expect(text()[0], "dead under the deck: the bad state colour").toBe("bad");
@@ -1147,6 +1167,7 @@ it("H27-3-3: the Versus deck's restyle of the target's text keeps the Dead and O
 });
 
 it("H45-13-3: a short Hairline frame keeps its health line at least as tall as its power line; Plain and tall frames keep the setting", () => {
+  // Each frame's health and power bar heights.
   const heights = (addon) => addon.eval("local o = {} for _, k in ipairs({ 'pet', 'targettarget', 'player' }) do local f = _G['Vanguard_' .. k] o[k] = { f.health:GetHeight(), f.power:GetHeight() } end return o");
   const hairline = heights(loggedIn(UNITS_ENV, { savedVariables: 'VanguardDB.profiles.Default = { modules = { RaidFrames = false }, theme = { hudLook = "hairline" } }' }));
   expect(hairline.pet[0] >= hairline.pet[1], "pet: health keeps its room").toBe(true);

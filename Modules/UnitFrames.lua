@@ -729,14 +729,14 @@ local function textEndRoom(f)
   return (f.class or f.combat) and UF.CLASS_MARK_ROOM or UF.TEXT_INSET
 end
 
--- The health text at the other end from the name, short of the marks on a frame that has them; on the bar's top line
--- while the power text takes the bottom one, there short of the tag mark too.
+-- The health text at the other end from the name, short of the marks on a frame that has them and, on the target,
+-- short of the tag mark in every look; on the bar's top line while the power text takes the bottom one.
 local function placeHealthText(f, side)
   local far = INNER[side]
   local room = textEndRoom(f)
+  room = f.tag and math.max(room, UF.TAG_ROOM) or room
   f.healthText:ClearAllPoints()
   if powerTextOn(f) and not T.BareOf(f) then
-    room = f.tag and math.max(room, UF.TAG_ROOM) or room
     f.healthText:SetPoint("TOP" .. far, f.health, "TOP" .. far, inward(far, room), -UF.POWER_TEXT.pad)
   else
     f.healthText:SetPoint(far, f.health, far, inward(far, room), textLift(f))
