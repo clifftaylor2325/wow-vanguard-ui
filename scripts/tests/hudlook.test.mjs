@@ -279,7 +279,7 @@ it("Tabs: square frames and tools, each name on a tab over the frame's outer cor
   expect([addon.eval("return ns.Theme.CornerLook(Vanguard_CastBar_player, 'TOPLEFT')"), addon.eval("return ns.GetModule('ActionBars').WantsBacking()"), rows(addon, "player").outlined], "the cast bar is square, no plinth, shadowed text").toEqual([null, false, false]);
   // The cast bars' default y, less the block's rise on this canvas (Core/Layout.lua HudLift).
   const castY = () => addon.eval("local rise = ns.Layout.HudLift({ 'BOTTOM', 'BOTTOM', 0, 0 }, UIParent:GetHeight()) return { select(4, ns.MoverPoint('cast_target')) - rise, select(4, ns.MoverPoint('cast_focus')) - rise }");
-  expect([castY(), addon.eval("return ns.GetModule('UnitFrames').TabLift()")], "the target's and focus's cast bars' default spots rise by the tab's 18 units").toEqual([[262 + 18, 324 + 18], 18]);
+  expect([castY(), addon.eval("return ns.GetModule('UnitFrames').TabLift(Vanguard_target)")], "the target's and focus's cast bars' default spots rise by the tab's 18 units").toEqual([[262 + 18, 324 + 18], 18]);
   addon.eval('Vanguard_target.name:SetText("TEST-ONLY A very long name that no tab holds") ns.GetModule("UnitFrames").FitTab(Vanguard_target)');
   expect(addon.eval("return Vanguard_target.tab:GetWidth() <= 120 + ns.Theme.Pixel(Vanguard_target)"), "a long name's tab stops at half the frame (whole pixels)").toBe(true);
   addon.eval("__wfgStub.setScreen(1229, 768)");
@@ -292,6 +292,26 @@ it("Tabs: square frames and tools, each name on a tab over the frame's outer cor
   addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = false UF.ApplyDeck()");
   addon.eval('ns.Theme.Settings().hudLook = "shield" ns.Theme.Refresh()');
   expect([tab(addon, "player").shown, tab(addon, "player").home, tab(addon, "player").crown, castY()], "Shield: the tabs go, the name back on the bar, the crown on the frame, the cast bars back down").toEqual([false, "health", "frame", [262, 324]]);
+});
+
+// H46-13-3: the target's and focus's cast bars' default y on a 1920x1080 canvas, less the block's rise there (Core/Layout.lua HudLift).
+const CAST_Y_LUA = "local rise = ns.Layout.HudLift({ 'BOTTOM', 'BOTTOM', 0, 0 }, UIParent:GetHeight()) return { select(4, ns.MoverPoint('cast_target')) - rise, select(4, ns.MoverPoint('cast_focus')) - rise }";
+
+it("H46-13-3: under Tabs a cast bar rises only over a frame that wears its tab: the Versus deck's target drops it, and the bar comes down with it", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, onLook("tabs"));
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
+  expect(addon.eval(CAST_Y_LUA), "deck on: the target's bar at its Plain spot, the focus's (tabbed) 18 up").toEqual([262, 324 + 18]);
+  addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = false UF.ApplyDeck()");
+  expect(addon.eval(CAST_Y_LUA), "deck off: both 18 up again").toEqual([262 + 18, 324 + 18]);
+});
+
+it("H46-13-3: under Tabs the focus's cast bar keeps its Plain spot under The keep and Standards, whose focus wears no tab", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, onLook("tabs"));
+  // The focus's cast bar's default y now.
+  const focusY = () => addon.eval(CAST_Y_LUA)[1];
+  const centered = focusY();
+  const laidOut = ["fort", "standards"].map((layout) => { addon.eval(`ns.SetHudLayout("${layout}")`); return [addon.eval("return Vanguard_focus.tab ~= nil and Vanguard_focus.tab:IsShown()"), focusY()]; });
+  expect([centered, laidOut], "Centered: 18 up; the keep and Standards: no focus tab, no lift").toEqual([324 + 18, [[false, 324], [false, 324]]]);
 });
 
 // The keystone as drawn (TEST-ONLY reads): shown, its anchors, the rail, the ring and the swords.

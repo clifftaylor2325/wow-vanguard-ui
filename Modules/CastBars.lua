@@ -512,12 +512,15 @@ end
 -- The cast bars whose default spot sits over their unit's frame: they rise with the frame's tab under the Tabs look.
 CB.OVER_FRAME = { target = true, focus = true }
 
--- Moves the target's and the focus's cast bars' default spots up by the unit frames' tab (Modules/UnitFrames.lua
--- UF.TabLift, 0 under the other looks); a position you dragged them to still wins.
+-- Moves the target's and the focus's cast bars' default spots up by the tab their unit's frame wears now
+-- (Modules/UnitFrames.lua UF.TabLift: 0 under the other looks, and for a frame the Versus deck holds, a banner or
+-- one of the keep's small frames); a position you dragged them to still wins.
 function CB.FitLook()
   local UF = ns.GetModule("UnitFrames")
-  local lift = UF and UF.TabLift and UF.TabLift() or 0
-  for unit in pairs(CB.OVER_FRAME) do ns.SetMoverDefault("cast_" .. unit, ns.RaisedDefault(LAYOUT[unit].point, lift)) end
+  for unit in pairs(CB.OVER_FRAME) do
+    local lift = UF and UF.TabLift(UF.frames[unit]) or 0
+    ns.SetMoverDefault("cast_" .. unit, ns.RaisedDefault(LAYOUT[unit].point, lift))
+  end
 end
 
 -- A themed cast bar for a unit, hidden until it casts; movable, and Vanguard may set its width. It
