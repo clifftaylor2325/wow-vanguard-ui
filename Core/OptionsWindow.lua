@@ -785,7 +785,7 @@ end
 
 -- The profile picker: picking one switches on reload (the Profiles page follows through ns.OnProfileStaged).
 local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) if not ns.PickProfile(v) then O.NeedReload() end end, PROFILE_WIDTH)
+  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.PickProfile(v) end, PROFILE_WIDTH)
 end
 
 -- Enter in the search box: opens the first page that matches and jumps to the row.
@@ -1251,11 +1251,12 @@ local function takeKeys(previous)
 end
 
 -- Shows the reload notice and button while a change needs a reload: a change marked with O.NeedReload (the notice
--- stays for the session), else the modules whose switch or reload settings wait (O.ReloadWaiting, gone again once
+-- stays for the session) or a profile switch that waits for it (ns.ProfileAfterReload), else the modules whose
+-- switch or reload settings wait (O.ReloadWaiting, gone again once
 -- they are switched back). Nothing before the window is first opened.
 function O.ShowReloadNotice()
   if not window then return end
-  local text = needsReload and reloadNotice or O.WaitingText(O.ReloadWaiting())
+  local text = (needsReload or ns.ProfileAfterReload() ~= nil) and reloadNotice or O.WaitingText(O.ReloadWaiting())
   ns.WidenToLabel(window.reload)
   window.reload:SetShown(text ~= nil)
   window.notice:SetShown(text ~= nil)

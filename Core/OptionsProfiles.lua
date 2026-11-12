@@ -65,7 +65,7 @@ end
 local function addProfileButtons(r, name)
   if name == ns.SelectedProfileName() or (name == ns.LoadingProfileName() and name ~= ns.ProfileName()) then return end
   if name ~= ns.ProfileName() then addEditButtons(r, name) end
-  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() if not ns.PickProfile(name) then O.NeedReload() end end, SMALL))
+  r.use = ns.WidenToLabel(W.Button(r, L["Use"], function() ns.PickProfile(name) end, SMALL))
   if r.copy then r.use:SetPoint("RIGHT", r.copy, "LEFT", -T.SPACE.gap, 0) else r.use:SetPoint("RIGHT", -T.SPACE.gap, 0) end
 end
 
@@ -106,7 +106,7 @@ local function create(r)
     r.label:SetText(L["Name taken or not allowed"])
     return T.Color(r.label, "bad")
   end
-  if not ns.PickProfile(name) then O.NeedReload() end
+  ns.PickProfile(name)
 end
 
 -- Puts the caption back after a refused name.
@@ -134,11 +134,13 @@ local function newProfileRow(parent, _, width)
 end
 
 -- A switch staged from anywhere (a spec change, a command, an import, this page) builds the page again,
--- so its marks and Copy here say which profile the reload brings; the header's picker follows.
+-- so its marks and Copy here say which profile the reload brings; the header's picker and the footer's reload
+-- notice follow.
 ns.OnProfileStaged(function()
   O.RebuildPage("profiles")
   local window = O.Frame()
   if window and window:IsShown() then O.Refresh() end
+  O.ShowReloadNotice()
 end)
 
 O.AddRowKind("profile", profileRow, ROW)

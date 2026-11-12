@@ -200,6 +200,19 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
 });
 
+it("H46-4-4 the footer's reload notice follows the staged profile switch: gone when Use takes it back, shown when a command stages one", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = {}, Raid = {} }\n" });
+  addon.slash("profile Raid");
+  addon.eval('ns.Options.Show("profiles")');
+  // The staged switch, whether the footer's notice and Reload button show, and the notice's text.
+  const notice = () => addon.eval("return { tostring(ns.ProfileAfterReload()), Vanguard_Options.notice:IsShown(), Vanguard_Options.notice:GetText(), Vanguard_Options.reload:IsShown() }");
+  expect(notice(), "a switch staged by /vg shows the notice when the window opens").toEqual(["Raid", true, "Some changes need a reload", true]);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label and w.label.__text:find("^Default") and ns.Options.RevealRow(w) then w.use:GetScript("OnClick")(w.use) end end');
+  expect(notice(), "Use on the running profile takes the switch back and the notice goes").toEqual(["nil", false, "", false]);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label and w.label.__text:find("^Raid") and ns.Options.RevealRow(w) then w.use:GetScript("OnClick")(w.use) end end');
+  expect(notice()[1], "Use on another profile shows it again").toBe(true);
+});
+
 it("options: after Copy here or Reset profile on the profile in use, the footer says to reload before changing more", () => {
   // The footer's reload notice: shown, and its text.
   const notice = (addon) => addon.eval("return { Vanguard_Options.notice:IsShown(), Vanguard_Options.notice:GetText() }");
