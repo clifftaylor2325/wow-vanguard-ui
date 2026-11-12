@@ -626,6 +626,15 @@ it("H46-19-53 a click with no Vanguard binding that the game's profile binds say
   });
 });
 
+it("H46-40-201 on a Chinese client the nothing-bound note sits in the same full-width brackets as the does-nothing note", () => {
+  const addon = priest(GAME_CLICKS_LUA + "__gameClicks = { { type = Enum.ClickBindingType.Spell, actionID = 139, button = \"Button4\", modifiers = 0 } }", { client: 'GetLocale = function() return "zhCN" end' });
+  addon.eval('ns.Options.Show("clickcast")');
+  // The tile's note after its two spaces, without its colour codes.
+  const note = (button) => tileSays(addon, button).replace(/\|c[0-9a-f]{8}|\|r/g, "").split("  ")[1];
+  const [unbound, wontRun] = [note("Button4"), note("LeftButton")];
+  expect([unbound[0], unbound.at(-1), wontRun[0], wontRun.at(-1)], "both open and close with the translation's brackets").toEqual(["（", "）", "（", "）"]);
+});
+
 it("H46-19-52 while the game's click bindings are in use, the test tile says so for a click, a key and the wheel", () => {
   const addon = priest(GAME_CLICKS_LUA);
   addon.eval(`${CC}.Add("BUTTON3", "spell", "Flash Heal", 2061) ${CC}.Add("SHIFT-Q", "spell", "Renew", 139) ${CC}.SetUseGame(true) ns.Options.Show("clickcast")`);

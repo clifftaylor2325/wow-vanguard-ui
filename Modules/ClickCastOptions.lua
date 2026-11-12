@@ -793,7 +793,7 @@ end
 -- or Target or the menu it moved there: CC.WontRun's sentences, asked about the bare click), else "".
 local function unboundNote(key)
   local why = CC.WontRun({ key = key })
-  return why and ("  " .. T.Paint("(" .. why .. ")", "warn")) or ""
+  return why and ("  " .. T.Paint(ns.Format(L["({why})"], { why = why }), "warn")) or ""
 end
 
 -- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", with a note when it does
