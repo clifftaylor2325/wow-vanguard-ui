@@ -358,6 +358,8 @@ it("text fits: the options footer's reload notice naming two modules stays betwe
     const where = `${locale} at ${scale * 100}%: ${text}`;
     expect(noticeLeft, `${where}: the notice starts right of the version line`).toBeGreaterThanOrEqual(versionRight - 1e-6);
     expect(noticeRight, `${where}: and ends before the Reload now button`).toBeLessThan(reloadLeft);
+    const [capWidth] = addon.eval("return { Vanguard_Options.notice:GetWidth() }");
+    if (capWidth > 0) expect(noticeLeft - versionRight, `${where}: a cut notice keeps a column from the version line (H45-40-301)`).toBeGreaterThanOrEqual(addon.eval("return ns.Theme.SPACE.col") - 1);
     expect(addon.textFit("Vanguard_Options").filter((finding) => finding.text === label), `${where}: Reload now is not cut`).toEqual([]);
   }
 });
