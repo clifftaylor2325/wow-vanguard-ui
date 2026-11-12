@@ -144,10 +144,19 @@ function QG.DropPin()
   setPin(nil)
 end
 
+-- Whether the Shift-clicked quest has left the log, which a log that has not arrived yet (empty for a moment after
+-- login) does not say. It is let go here, so it works with the quest arrow module off too.
+local function heldQuestGone()
+  local entries = ns.PlainNumber(ns.CallIf(C_QuestLog, "GetNumQuestLogEntries")) or 0
+  if entries == 0 or ns.GetModule("QuestTracker").LogIndex(QG.pointed) then return false end
+  QG.DropPin()
+  return true
+end
+
 -- The quest the arrow follows: the one Shift-clicked (held until it leaves the log or the Pin button lets it go,
 -- whatever the game auto-tracks after: a quest accepted, a waypoint reached), else the game's super-tracked quest.
 function QG.Followed()
-  if QG.pointed then return QG.pointed end
+  if QG.pointed and not heldQuestGone() then return QG.pointed end
   local id = ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID"))
   return (id and id > 0) and id or nil
 end

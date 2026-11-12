@@ -461,3 +461,9 @@ it("A1-3 quest arrow: a redraw with nothing new sets no text, and a pick fills t
   addon.eval("__wfgWorld.quests = {} ns.QuestArrow.Pick()");
   expect(addon.eval("return ns.QuestArrow.target == nil"), "no quest: no spot").toBe(true);
 });
+it("H46-C-G7 with the arrow module off, a Shift-click hold whose quest left the log is let go by the guide itself", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestArrow = false } } }" });
+  addon.eval("ns.QuestGuide.Point(90062) table.remove(__wfgWorld.quests, 2) __tracked = 90061");
+  addon.fire("QUEST_LOG_UPDATE");
+  expect(addon.eval("return { ns.ModuleLive('QuestArrow'), ns.QuestGuide.Followed(), ns.QuestGuide.pointed == nil }")).toEqual([false, 90061, true]);
+});
