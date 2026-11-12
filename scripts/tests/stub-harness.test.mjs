@@ -3,6 +3,7 @@
 
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
+import { TIDY_ENV } from "./helpers.mjs";
 
 it("replacing a method a widget kind already resolved reaches new and existing widgets of that kind", () => {
   const addon = createAddon();
@@ -352,4 +353,17 @@ it("an aura group makes another batch of ten buttons when its auras outnumber th
     c:UpdateAllAuras()
     return { before, { #c.__groups[1].buttons, shown(1), inits, fought } }`);
   expect(out).toEqual([[20, 15, 20, 12, 40], [30, 21, 50, 10]]);
+});
+
+// helpers.mjs's TIDY_ENV and TOOLS_ENV use the world's hooksecurefunc (wow-world.lua), which already hooks methods on
+// tables: a hooked function keeps its results and the hook is counted (stub.hooks), as in a plain client.
+it("a client set up with TIDY_ENV keeps the world's hooksecurefunc: every result kept, every hook counted", () => {
+  const addon = createAddon();
+  addon.eval(TIDY_ENV);
+  expect(addon.eval(`TEST_ONLY_A = function() return 42, 7 end local before = __wfgStub.hooks or 0
+    hooksecurefunc("TEST_ONLY_A", function() end)
+    __t = { m = function() return 1, 2 end } hooksecurefunc(__t, "m", function() end)
+    return { select("#", TEST_ONLY_A()), select("#", __t.m()), __wfgStub.hooks - before }`)).toEqual([2, 2, 2]);
+  expect(addon.eval(`function TEST_ONLY_I() return 1, nil, 3, nil end hooksecurefunc("TEST_ONLY_I", function() end)
+    return { select("#", TEST_ONLY_I()), (select(3, TEST_ONLY_I())) }`), "a nil among the results keeps the ones after it (H44 guess 10)").toEqual([4, 3]);
 });

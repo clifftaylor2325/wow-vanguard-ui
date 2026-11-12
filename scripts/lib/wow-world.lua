@@ -298,11 +298,11 @@ function hooksecurefunc(t, name, fn)
   if type(t) == "string" then t, name, fn = _G, t, name end
   local orig = t[name]
   if type(orig) ~= "function" then return end
-  -- The original, then the hook, with the original's results.
+  -- The original, then the hook, with every one of the original's results (nils too).
   local function hooked(...)
-    local results = { orig(...) }
+    local results = stub.pack(orig(...))
     fn(...)
-    return unpack(results)
+    return stub.unpack(results, 1, results.n)
   end
   stub.transparent[hooked], stub.hooks = true, (stub.hooks or 0) + 1
   t[name] = hooked
