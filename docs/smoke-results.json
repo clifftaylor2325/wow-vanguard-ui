@@ -761,5 +761,929 @@
     "date": "2026-11-10",
     "result": "skip",
     "note": "Not run. Cliff released 0.9.5 on 2026-11-10 without running this step (\"ship it\"). It passed the test harness and has not been seen in the game."
+  },
+  {
+    "step": "2.1n",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "2.1o",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "7.2s",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "7.2t",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "7.2u",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "9.2h",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "9.6a",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "10.4e",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "10.4f",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "14.9.5",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "14.9.5a",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.390a",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.485",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.486",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.487",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.488",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.489",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.490",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.491",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.492",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.493",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.494",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.495",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.496",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.497",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.498",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.499",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.500",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.501",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.502",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.503",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.504",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.505",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.506",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.507",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.508",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.509",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.510",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.511",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.512",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.513",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.514",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.545",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.546",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.547",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.548",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.549",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.550",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.551",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.552",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.553",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.554",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.555",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.556",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.557",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.558",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.560",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.561",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.562",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.563",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.564",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.565",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.566",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.567",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.568",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.568a",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.569",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.570",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.571",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.572",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.573",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.574",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.575",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.605",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.606",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.607",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.608",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.615",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.616",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.617",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.625",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.626",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.627",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.628",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.629",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.635",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.636",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.637",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.638",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.639",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.640",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.641",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.642",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.643",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.644",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.645",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.646",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.647",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.648",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.649",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.650",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.651",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.652",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.653",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.654",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.655",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.656",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.657",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.658",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.659",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.660",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.661",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.662",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.663",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.664",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.664a",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "33.665",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "34.16",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "34.17",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "34.18",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.1",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.2",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.3",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.4",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.5",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.6",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.7",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.8",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.9",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.10",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.11",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
+  },
+  {
+    "step": "35.12",
+    "build": "0.9.6",
+    "date": "2026-11-12",
+    "result": "skip",
+    "note": "Not run: Cliff shipped 0.9.6 without the in-game pass for the steps added since 0.9.5. His answer, 2026-11-12, to \"Ship 0.9.6 now, before the 132 new steps are checked in game?\": \"ship now\"."
   }
 ]
