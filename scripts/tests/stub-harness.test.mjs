@@ -497,3 +497,15 @@ it("EventRegistry refuses a missing callback and an event name that is not text,
     "ok",
   ]);
 });
+
+// /home/user/blizz/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ActionBarFrameDocumentation.lua
+// (IsEquippedAction carries RequiresValidActionSlot) and ActionBarSharedDocumentation.lua (its FailureMode is
+// ReturnNothing): a slot outside the bars answers nothing instead of raising.
+it("C_ActionBar.IsEquippedAction answers nothing for a slot outside 1 to 180, and a worn item's slot answers true", () => {
+  const addon = createAddon();
+  const out = addon.eval(`__wfgWorld.setAction(7, { id = 133, equipped = true })
+    local function count(...) return select("#", ...) end
+    return { count(C_ActionBar.IsEquippedAction(0)), count(C_ActionBar.IsEquippedAction(181)),
+      C_ActionBar.IsEquippedAction(7), C_ActionBar.IsEquippedAction(8), (pcall(C_ActionBar.IsEquippedAction, "x")) }`);
+  expect(out).toEqual([0, 0, true, false, false]);
+});

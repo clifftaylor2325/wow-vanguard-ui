@@ -1560,10 +1560,12 @@ C_ActionBar = {
   -- deprecation fallbacks' shims over these).
   GetActionTexture = function(slot) return actionOf(slot).icon end,
   GetActionText = function(slot) return actionOf(slot).macro end,
-  -- Whether the slot's action is an item you wear (action.equipped); the client refuses a slot number
-  -- outside the bars (ActionBarFrameDocumentation.lua: RequiresValidActionSlot).
+  -- Whether the slot's action is an item you wear (action.equipped). A slot number outside the bars answers
+  -- nothing (ActionBarFrameDocumentation.lua: RequiresValidActionSlot, whose FailureMode is ReturnNothing in
+  -- ActionBarSharedDocumentation.lua). actionID is not nilable, so a non-number raises; that text is the stub's own.
   IsEquippedAction = function(slot)
-    if type(slot) ~= "number" or slot < 1 or slot > 180 then error("Invalid action slot", 2) end
+    if type(slot) ~= "number" then error("Invalid action slot", 2) end
+    if slot < 1 or slot > 180 then return end
     return actionOf(slot).equipped == true
   end,
 }
