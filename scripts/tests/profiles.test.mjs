@@ -1349,3 +1349,14 @@ it("hunt H46-22-R1: your own export of the profile in use asks nothing about the
   expect(result[0], "it matched the profile in use").toMatch(/already uses/);
   expect(result[1], "nothing was imported, so no UI scale question").toBe(true);
 });
+it("hunt H46-22-2 (decide: built pick A): a whole string that matches a profile here leaves the last import's backup alone", () => {
+  const addon = loggedIn();
+  addon.eval("ns.Theme.Settings().reduceMotion = false");
+  const part = addon.eval('return ns.Serialize.Encode("parts", ns.StampPayload({ parts = { "global" }, theme = { reduceMotion = true } }))');
+  addon.eval(`ns.ImportProfile(${JSON.stringify(part)})`);
+  const own = addon.eval("return ns.ExportProfile()");
+  const r = addon.eval(`local m, r = ns.ImportProfile(${JSON.stringify(own)}) return { m, r.backup == nil, #r.notes }`);
+  expect(r[0], "own export: nothing new").toMatch(/nothing new to import/);
+  expect(r.slice(1), "no backup made and no backup note").toEqual([true, 0]);
+  expect(addon.eval("return VanguardDB.profiles['Default backup'].theme.reduceMotion"), "the backup still holds the profile before the partial import").toBe(false);
+});
