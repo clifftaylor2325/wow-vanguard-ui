@@ -230,6 +230,27 @@ it("retail auras: the target frame has a spot right of it, over the target of ta
   expect([second[2] !== first[2], addon.eval(`return __wfgWorld.privateAnchors[${first[2]}] == nil`)], "a new spot for the new target, the old one given back").toEqual([true, true]);
 });
 
+// Whether the target's private aura spot stands on (or above) the target of target's top, not over it.
+const spotOnTargetOfTarget = (addon) => addon.eval("return ns.PrivateAuras.target:GetBottom() >= Vanguard_targettarget:GetTop()");
+
+it("H46-15-2 retail auras: the target's spot stands on a taller target of target, set at login or live", () => {
+  const tall = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { UnitFrames = { targettargetHeight = 40 } } }" });
+  expect(spotOnTargetOfTarget(tall), "a saved height of 40").toBe(true);
+  const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
+  addon.eval('local UF = ns.GetModule("UnitFrames") UF.settings.targettargetHeight = 40 UF.ApplySizes()');
+  addon.advance(0.4, 0.1);
+  expect(spotOnTargetOfTarget(addon), "Frame sizes moved to 40 live, once the rows are made again").toBe(true);
+});
+
+it("H46-15-R1 retail auras: under the Standards HUD layout the target's spot stands over the target of target's banner", () => {
+  const standards = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT, savedVariables: 'VanguardDB.profiles = { Default = { hudLayout = "standards" } }' });
+  expect(spotOnTargetOfTarget(standards), "Standards from login").toBe(true);
+  const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
+  addon.eval("ns.SetHudLayout('standards')");
+  addon.advance(0.4, 0.1);
+  expect(spotOnTargetOfTarget(addon), "Standards picked live").toBe(true);
+});
+
 it("retail auras: switching target and focus auras off live gives the target's private aura spot back; on again it is handed again", () => {
   const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
   // The target spot's unit and whether the game still holds a spot for the target.

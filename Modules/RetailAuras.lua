@@ -83,27 +83,34 @@ table.insert(RF.sizeHooks, PA.TilesResized)
 
 -- The target frame ---------------------------------------------------------------------------
 
--- The target's spot right of its frame, raised PA.GAP over the target of target that sits there (Modules/UnitFrames.lua
--- LAYOUT; both stand on the same line), a debuff and a bit across, handed again on each new target (the token
--- then means someone else). Left of the frame is the Cooldown Manager's row (Modules/GameTools.lua). Run again after
--- a setting changed: the spot takes the icon size now (kept to its slider) before it is handed, as the game takes
--- the size only then.
+-- Stands the target's spot PA.GAP over the target of target as tall as it is now (its Frame sizes slider, or the
+-- HUD layout's size while a layout sizes it: UF.FrameSize), which sits on the target's line right of it.
+local function standOnTargetOfTarget(spot, f)
+  local _, below = ns.GetModule("UnitFrames").FrameSize("targettarget")
+  spot:ClearAllPoints()
+  spot:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", PA.CLEAR, below + PA.GAP)
+end
+
+-- The target's spot right of its frame, standing on the target of target (Modules/UnitFrames.lua LAYOUT; both stand
+-- on the same line), a debuff and a bit across, handed again on each new target (the token then means someone
+-- else). Left of the frame is the Cooldown Manager's row (Modules/GameTools.lua). Run again after a setting changed
+-- (a frame size and the HUD layout among them, which make the rows again): the spot stands on the target of
+-- target's height now and takes the icon size now (kept to its slider) before it is handed, as the game takes the
+-- size only then.
 function PA.TargetPart(f, key, settings, scope)
   if key ~= "target" then return end
   PA.target = PA.target or PA.TargetSpot(f, settings)
   local size = FA.Look(settings).size + PA.GROW
   PA.target:SetSize(size, size)
+  standOnTargetOfTarget(PA.target, f)
   scope:Frame(PA.target):Show()
   PA.Point(PA.target, "target")
   scope:On("PLAYER_TARGET_CHANGED", PA.PointTarget)
 end
 
--- The spot for the target frame, made once a session.
+-- The spot for the target frame, made once a session (PA.TargetPart places it).
 function PA.TargetSpot(f, settings)
-  local holder = PA.Spot(f, settings.size + PA.GROW, 1)
-  local below = ns.GetModule("UnitFrames").LAYOUT_BY_KEY.targettarget.h
-  holder:SetPoint("BOTTOMLEFT", f, "BOTTOMRIGHT", PA.CLEAR, below + PA.GAP)
-  return holder
+  return PA.Spot(f, settings.size + PA.GROW, 1)
 end
 
 -- A new target: the spot is handed its auras again.
