@@ -343,6 +343,17 @@ it("the keystone hides while the Cooldown Manager's essential row sits across it
   expect([keystone(addon).shown, addon.eval("return #ns.errors")], "a hidden rectangle counts as no overlap, without an error").toEqual([true, 0]);
 });
 
+// GameTools shrinks the row to fit its spot, so its own edges are in its scaled units: the keystone compares screen
+// units (edge times GetEffectiveScale; Blizzard_SharedXMLBase/FrameUtil.lua GetScaledCenter, both clients).
+it("the keystone hides under an essential row wider than its spot, which Vanguard shrinks to fit", () => {
+  const addon = loggedIn(UNITS_ENV + TOOLS_ENV + "EssentialCooldownViewer:SetSize(1200, 32)", NO_RAID);
+  addon.eval('ns.SetMoverPoint("cdm_essential", "BOTTOM", "BOTTOM", 0, 310)');
+  expect(addon.eval("return EssentialCooldownViewer:GetScale() < 1"), "the row runs shrunk").toBe(true);
+  expect(keystone(addon).shown, "the shrunk row across the gap: the keystone waits").toBe(false);
+  addon.eval('__wfgWorld.holdSecret(EssentialCooldownViewer, "Scale") ns.GetModule("UnitFrames").Keystone.Apply()');
+  expect([keystone(addon).shown, addon.eval("return #ns.errors")], "a hidden scale counts as no overlap, without an error").toEqual([true, 0]);
+});
+
 it("the keystone waits for the fight to end before it changes, and is left unmade with the unit frames off", () => {
   const addon = loggedIn(UNITS_ENV, NO_RAID);
   setCombat(addon, true);

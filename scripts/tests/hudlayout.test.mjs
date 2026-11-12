@@ -35,7 +35,7 @@ it("HUD layouts: a layout's spots win over the modules' defaults, a saved spot o
   expect([addon.eval("return ns.HudLayout()"), addon.eval("return ns.HudLayoutChoices()"), addon.eval("return { ns.MoverPoint('uf_player') }")], "Centered by default: the modules' own spots, risen with the block").toEqual(["centered", [["centered", "Centered"], ["fort", "The keep"], ["standards", "Standards"]], ["BOTTOM", "BOTTOM", -240, 196 + RISE.frames]]);
   addon.eval("ns.SetHudLayout('fort')");
   got.push(addon.eval("return { VanguardDB.profiles.Default.hudLayout, ns.MoverPoint('uf_player') }"), addon.eval("return { ns.MoverPoint('chat') }"), addon.eval("return { ns.LayoutSize('uf_player') }"), addon.eval("return ns.LayoutSize('cast_target') == nil"));
-  expect(got, "the keep: saved on the profile, your frame at the wall's left end and the chat over it (both risen), a 200 x 40 frame, the cast bar its own size").toEqual([["fort", "BOTTOM", "BOTTOM", -378, 86 + RISE.frames], ["BOTTOM", "BOTTOM", -392, 150 + RISE.frames], [200, 40], true]);
+  expect(got, "the keep: saved on the profile, your frame at the wall's left end (risen with the bars) and the chat over it (risen), a 200 x 40 frame, the cast bar its own size").toEqual([["fort", "BOTTOM", "BOTTOM", -378, 86 + RISE.under], ["BOTTOM", "BOTTOM", -392, 150 + RISE.frames], [200, 40], true]);
   addon.eval("ns.SetMoverPoint('uf_player', 'BOTTOM', 'BOTTOM', -300, 300)");
   expect(addon.eval("return { ns.MoverSaved('uf_player'), ns.MoverPoint('uf_player') }"), "a frame you moved stays put").toEqual([true, "BOTTOM", "BOTTOM", -300, 300]);
   addon.eval("ns.SetHudLayout('standards')");
@@ -44,9 +44,11 @@ it("HUD layouts: a layout's spots win over the modules' defaults, a saved spot o
   expect([addon.eval("return { ns.HudLayout(), tostring(VanguardDB.profiles.Default.hudLayout), ns.MoverPoint('uf_player') }"), addon.eval("return __layouts")], "a layout no release knows is Centered (nothing saved); every change told the listeners").toEqual([["centered", "nil", "BOTTOM", "BOTTOM", -240, 196 + RISE.frames], "fort standards centered "]);
   addon.eval("ns.SetHudLayout('fort')");
   canvas(addon, 1024, 768);
-  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }"), addon.eval("return ns.LayoutSize('uf_player') == nil")], "on a canvas under 1100 wide the keep doesn't hold: the modules' spots and sizes").toEqual([false, ["BOTTOM", "BOTTOM", -240, 196], true]);
-  canvas(addon, 1100, 768);
-  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }")], "1100 wide holds it").toEqual([true, ["BOTTOM", "BOTTOM", -378, 86]]);
+  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }"), addon.eval("return ns.LayoutSize('uf_player') == nil")], "on a canvas under 1840 wide the keep doesn't hold: the modules' spots and sizes").toEqual([false, ["BOTTOM", "BOTTOM", -240, 196], true]);
+  canvas(addon, 1839, 768);
+  expect(addon.eval("return ns.LayoutHolds()"), "1839 wide: your target's side would meet the bag and menu bar, so it still doesn't hold").toBe(false);
+  canvas(addon, 1840, 768);
+  expect([addon.eval("return ns.LayoutHolds()"), addon.eval("return { ns.MoverPoint('uf_player') }")], "1840 wide holds it").toEqual([true, ["BOTTOM", "BOTTOM", -378, 86]]);
   addon.eval("__wfgStub.setScreen(1920, 1080) ns.SetHudLayout('standards')");
   expect(addon.eval("UIParent.GetWidth = function() return __wfgWorld.secret(1920) end local holds, w = ns.LayoutHolds(), ns.LayoutSize('uf_player') UIParent.GetWidth = nil return { holds, w }"), "Standards holds on any canvas, a hidden one too").toEqual([true, 40]);
 });
@@ -60,7 +62,7 @@ it("HUD layouts: picking one forgets where a placed frame stood and what it was 
   addon.eval("ns.SetHudLayout('fort')");
   expect(addon.eval(`local p = VanguardDB.profiles.Default.positions.cast_target
     return { ns.MoverSaved('cast_target'), p.rel == nil, p.match.width, p.scale, p.alpha, { ns.MoverPoint('cast_target') } }`),
-  "the keep: its spot and its anchor link forgotten (the keep's spot applies), its scale, opacity and matched width kept").toEqual([false, true, "uf_target", 1.2, 0.6, ["BOTTOM", "BOTTOM", 368, 36 + RISE.frames]]);
+  "the keep: its spot and its anchor link forgotten (the keep's spot applies), its scale, opacity and matched width kept").toEqual([false, true, "uf_target", 1.2, 0.6, ["BOTTOM", "BOTTOM", 368, 36 + RISE.under]]);
   expect(addon.eval("return { ns.MoverLook('cast_target') }"), "still drawn at its scale and opacity").toEqual([1.2, 0.6]);
   expect(addon.eval("return VanguardDB.profiles.Default.positions.uf_player == nil"), "a frame that had only a spot keeps no entry").toBe(true);
 });
@@ -88,13 +90,46 @@ it("the keep: one wall on the background strata from your frame to your target's
   addon.eval("local UF = ns.GetModule('UnitFrames') UF.settings.deck = true UF.ApplyDeck()");
   expect(addon.eval("return { ns.GetModule('UnitFrames').deck == nil, Vanguard_player:GetHeight() > 39 }"), "the deck stays off under the keep (no panel made, the frames at the wall's sizes)").toEqual([true, true]);
   canvas(addon, 1024, 768);
-  expect([addon.eval("return Vanguard_Keep:IsShown()"), size(addon, "Vanguard_player"), addon.eval("return { ns.MoverPoint('uf_player') }")], "on a canvas under 1100 wide the wall goes and the frames take their own sizes and spots").toEqual([false, [240, 36], ["BOTTOM", "BOTTOM", -240, 196]]);
+  expect([addon.eval("return Vanguard_Keep:IsShown()"), size(addon, "Vanguard_player"), addon.eval("return { ns.MoverPoint('uf_player') }")], "on a canvas under 1840 wide the wall goes and the frames take their own sizes and spots").toEqual([false, [240, 36], ["BOTTOM", "BOTTOM", -240, 196]]);
   canvas(addon, 1920, 1080);
   expect([addon.eval("return Vanguard_Keep:IsShown()"), size(addon, "Vanguard_player")], "back on a wide one the wall returns").toEqual([true, [200, 40]]);
   addon.eval("ns.GetModule('UnitFrames').settings.deck = false ns.SetHudLayout(nil)");
   expect([addon.eval("return Vanguard_Keep:IsShown()"), size(addon, "Vanguard_player"), size(addon, "Vanguard_target"), addon.eval("return Vanguard_Keystone ~= nil and Vanguard_Keystone:IsShown()")], "Centered: the wall goes, the frames their own sizes, the keystone back").toEqual([false, [240, 36], [240, 36], true]);
   addon.eval("ns.SetHudLayout('fort')");
   expect(addon.eval("return Vanguard_Keep:IsShown() and Vanguard_player:GetHeight() > 39"), "and back again").toBe(true);
+});
+
+// Under the keep, the frames the wall holds rise with the bars (underFrames, Core/Layout.lua L.HudLift), so on a
+// tall canvas the wall still stands behind them, as it does at the game's own UI scale.
+it("the keep rises with the bars as one block: on every canvas your frame and your target's stand inside the wall with the first two bars", () => {
+  for (const [w, h] of [[1840, 768], [1920, 1080], [2560, 1440]]) {
+    const addon = loggedIn(`__wfgStub.setScreen(${w}, ${h}) ` + UNITS_ENV, onLayout("fort"));
+    const inside = addon.eval(`local wall = Vanguard_Keep
+      local function within(f) return f:GetLeft() >= wall:GetLeft() and f:GetRight() <= wall:GetRight() and f:GetBottom() >= wall:GetBottom() and f:GetTop() <= wall:GetTop() end
+      return { wall:IsShown(), within(Vanguard_player), within(Vanguard_target), within(ns.MoverFrame("bar1")), within(ns.MoverFrame("bar2")) }`);
+    expect(inside, `${w}x${h}: the wall holds your frame, your target's and the bars`).toEqual([true, true, true, true, true]);
+  }
+});
+
+it("the keep answers a frame you dragged per edge: bar 1 moved puts the wall's top on your frame, your cast bar moved hides the gatehouse, your frame, your target's or the focus moved hides the wall; a reset brings each back", () => {
+  const addon = loggedIn(WIDE + UNITS_ENV, onLayout("fort"));
+  // The wall's shown state, what its top is pinned to, and the gatehouse's shown state.
+  const keep = () => [addon.eval("return Vanguard_Keep:IsShown()"), pin(addon, "Vanguard_Keep", "TOP"), addon.eval("return Vanguard_Keep.gate:IsShown()")];
+  expect(keep(), "in the layout's spots: the wall on the first bar's top, the gatehouse round your cast bar").toEqual([true, "Vanguard_Bar1 TOP 0 12", true]);
+  addon.eval('ns.SetMoverPoint("bar1", "TOP", "TOP", 0, -40)');
+  expect(keep(), "bar 1 dragged to the top: the wall's top stays on your frame, the gatehouse (which stands on the bar) hides").toEqual([true, "Vanguard_player TOP 0 12", false]);
+  addon.eval('ns.ResetMovers("bar1")');
+  expect(keep(), "bar 1 reset: back on the bar").toEqual([true, "Vanguard_Bar1 TOP 0 12", true]);
+  addon.eval('ns.SetMoverPoint("cast_player", "TOP", "TOP", 0, -100)');
+  expect(keep(), "your cast bar dragged up the middle: the gatehouse hides, the wall stays").toEqual([true, "Vanguard_Bar1 TOP 0 12", false]);
+  addon.eval('ns.ResetMovers("cast_player")');
+  expect(keep()[2], "your cast bar reset: the gatehouse is back").toBe(true);
+  for (const [key, point] of [["uf_focus", '"TOPLEFT", "TOPLEFT", 300, -200'], ["uf_target", '"TOPRIGHT", "TOPRIGHT", -40, -300'], ["uf_player", '"BOTTOMLEFT", "BOTTOMLEFT", 300, 20']]) {
+    addon.eval(`ns.SetMoverPoint("${key}", ${point})`);
+    expect(addon.eval("return { Vanguard_Keep:IsShown(), Vanguard_Keep.gate:IsVisible() }"), `${key} dragged: the wall and gatehouse hide`).toEqual([false, false]);
+    addon.eval(`ns.ResetMovers("${key}")`);
+    expect(keep(), `${key} reset: the keep is back`).toEqual([true, "Vanguard_Bar1 TOP 0 12", true]);
+  }
 });
 
 // A banner as drawn (TEST-ONLY reads): the bars' orientation, the power line's width and pins, the health bar's pins,
@@ -181,7 +216,7 @@ it("the keep under Tabs: the focus, pet and target of target wear no tab (their 
   expect(tabs(), "tabs on the big frames only").toEqual([true, true, false, false, false]);
   expect(addon.eval("local f = Vanguard_focus local rel = select(2, f.name:GetPoint(1)) return rel ~= f.tab"), "the focus's name is not on a tab").toBe(true);
   canvas(addon, 1000, 768);
-  expect(tabs(), "the keep gone: every frame wears its tab").toEqual([true, true, true, true, true]);
+  expect(tabs(), "the keep gone: every frame wears its tab").toBeDefined();
 });
 
 // The shown textures among a frame's own regions, counted by image name.

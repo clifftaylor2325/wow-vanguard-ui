@@ -124,6 +124,17 @@ it("status chip: a long hint sits left of the player frame, clear of the pet fra
   }
 });
 
+// A frame's own edges are in its scaled units (Blizzard_SharedXMLBase/FrameUtil.lua GetScaledCenter, both clients),
+// so the room left of a scaled-down frame is its left edge times its scale.
+it("status chip: beside a scaled-down frame near the left edge it sits above the frame, on the screen", () => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: CHIP });
+  addon.eval('ns.SetMoverScale("uf_player", 0.6) ns.SetMoverPoint("uf_player", "BOTTOMLEFT", "BOTTOMLEFT", 60, 300)');
+  addon.eval('ns.GetModule("UnitExtras").PaintChip("Well Fed", "good", nil)');
+  const r = addon.eval(`local f, player = Vanguard_StatusChip, Vanguard_player
+    return { (f:GetPoint(1)), f:GetLeft() >= 0, f:GetBottom() >= player:GetTop() * player:GetScale() }`);
+  expect(r, "no room left of the frame on screen: above its left end").toEqual(["BOTTOMLEFT", true, true]);
+});
+
 it("status chip: in the Like the game's layout the chip sits above the player frame, not over its level and name (B4-4)", () => {
   const addon = loggedIn(NAMES, { savedVariables: CHIP_AND_PREP });
   addon.eval("ns.Setup.ApplyLayout('classic') ns.GetModule('UnitExtras').PaintChip('Missing: Mark of the Wild +3', 'warn')");

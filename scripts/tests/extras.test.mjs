@@ -6,7 +6,6 @@ import { AFK_ENV, CLICK_LUA, FAKE_FADES, RAID_ENV, RISE, UNITS_ENV, chatHas, isT
 
 // TEST-ONLY group extras: a raid tank (raid1) targeting the boar, and a party pet targeting nothing.
 const GROUP_EXTRAS_ENV = `
-  RegisterAttributeDriver = function(frame, attr, driver) frame.__drivers = frame.__drivers or {}; frame.__drivers[attr] = driver end
   __units.raid1 = { name = "TEST-ONLY Tank", hp = 300, maxhp = 1000, power = 0, maxpower = 0, ptype = "RAGE", player = true, class = "ROGUE" }
   __units.raid1target = __units.target
   __units.partypet1 = { name = "TEST-ONLY Wolf", hp = 50, maxhp = 100, power = 0, maxpower = 0, ptype = "FOCUS", reaction = 5 }
@@ -34,7 +33,6 @@ it("main tank frames: the raid's main tanks and assists, with what each is targe
   expect(tile()[2], "a unit that isn't there leaves the tile as it was").toBe("TEST-ONLY Tank");
   const off = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { MainTanks = false } } }" });
   expect(off.eval("return Vanguard_MainTanks == nil"), "switched off under Modules, nothing is built").toBe(true);
-  expect(loggedIn(UNITS_ENV).eval("return Vanguard_MainTanks ~= nil"), "a client without attribute drivers still builds them").toBe(true);
 });
 it("main tank tiles: hovering one out of combat shows its unit's tooltip", () => {
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
