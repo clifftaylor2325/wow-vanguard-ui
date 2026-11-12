@@ -53,6 +53,13 @@ function exportLocale(keys, locale, file) {
   else process.stdout.write(csv);
 }
 
+// The CSV's text; exits 1 with the reason when it is not a CSV this tool can read (a bad row, a missing column).
+function readCsv(file) {
+  const text = fs.readFileSync(file, "utf8");
+  try { importCsv(text); } catch (e) { (console.error(`${file}: ${e.message}`), process.exit(1)); }
+  return text;
+}
+
 // Exits 1 when the CSV lacks a row for a translation the locale has (a partial CSV would delete it);
 // an emptied cell is a row, so removing a translation on purpose still works.
 function refuseMissingRows(keys, locale, text) {
@@ -65,7 +72,7 @@ function refuseMissingRows(keys, locale, text) {
 // Writes one locale's file from a CSV's translated rows, keeping only rows the code still uses; exits 1 on a
 // bad row (a /vg command typed differently from the English is one) or a CSV that lacks existing translations.
 function importLocale(keys, locale, file) {
-  const text = fs.readFileSync(file, "utf8");
+  const text = readCsv(file);
   refuseMissingRows(keys, localeArg(locale), text);
   const entries = importCsv(text);
   const words = commandWords(fs.readFileSync(path.join(root, "Core/Slash.lua"), "utf8"));
