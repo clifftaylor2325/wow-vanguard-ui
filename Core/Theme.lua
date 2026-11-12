@@ -3816,12 +3816,15 @@ function T.SetClassAccent()
 end
 
 -- Gives an accent that follows the class this character's colour, without repainting: a profile shared by several
--- characters gives each its own. True when the accent changed.
+-- characters gives each its own. It looks at the saved theme first, so a profile that was reset or never chose the
+-- class accent gets no theme table filled in. True when the accent changed.
 ---@return boolean changed
 function T.TakeClassAccent()
-  local s, r, g, b = T.Settings(), T.ClassColor()
+  local saved, r, g, b = ns.Profile().theme, T.ClassColor()
+  if not (type(saved) == "table" and saved.accentClass == true and r) then return false end
+  local s = T.Settings()
   local a = s.accent
-  if not (s.accentClass and r) or (a[1] == r and a[2] == g and a[3] == b) then return false end
+  if a[1] == r and a[2] == g and a[3] == b then return false end
   s.accent = { r, g, b }
   return true
 end
