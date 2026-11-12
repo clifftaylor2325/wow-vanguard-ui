@@ -88,7 +88,7 @@ local function questArrow(questID)
 end
 
 -- Lets the game's tracked quest go when it is another one (0, as QG.Unpin), else the game would keep tracking it
--- beside the waypoint and the arrow would follow it (QG.Followed prefers the game's tracked quest).
+-- beside the waypoint.
 local function releaseOther(questID)
   local id = ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID"))
   if id and id > 0 and id ~= questID then ns.CallIf(C_SuperTrack, "SetSuperTrackedQuestID", 0) end
@@ -144,10 +144,12 @@ function QG.DropPin()
   setPin(nil)
 end
 
--- The quest the arrow follows: the game's super-tracked quest, else the one last pointed at.
+-- The quest the arrow follows: the one Shift-clicked (held until it leaves the log or the Pin button lets it go,
+-- whatever the game auto-tracks after: a quest accepted, a waypoint reached), else the game's super-tracked quest.
 function QG.Followed()
+  if QG.pointed then return QG.pointed end
   local id = ns.PlainNumber(ns.CallIf(C_SuperTrack, "GetSuperTrackedQuestID"))
-  return (id and id > 0) and id or QG.pointed
+  return (id and id > 0) and id or nil
 end
 
 -- The tracker line for the followed quest's next step ("> Take the boat to Menethil"), or nil.
