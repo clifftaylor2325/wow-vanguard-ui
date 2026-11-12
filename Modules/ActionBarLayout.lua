@@ -132,13 +132,15 @@ function AB.BarDriver(n)
   return (ns.IsForever() and "" or AB.PET_BATTLE_CLAUSE) .. AB.Driver(n)
 end
 
--- Registers bar n's secure visibility driver, its state and mouse watching right now.
+-- Registers bar n's secure visibility driver, its state and mouse watching right now. A fading bar feels the
+-- mouse move (to fade in) but takes no clicks, so clicks over its gaps and empty slots reach the world.
 local function visibilityNow(n)
   local bar = AB.bars[n]
   if not bar then return end
   RegisterStateDriver(bar, "visibility", AB.BarDriver(n))
   V.ApplyNow(bar, AB.Visibility(n), AB.settings.bars[n].showWhen)
   bar:EnableMouse(V.Fades(bar))
+  bar:SetMouseClickEnabled(false)
   AB.UpdateAlpha(n)
 end
 
