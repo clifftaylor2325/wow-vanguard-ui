@@ -2075,7 +2075,6 @@ L["That name is taken or not allowed."] = "이미 있거나 쓸 수 없는 이�
 L["That's a mouse button: it lives in the Click casting grid."] = "마우스 버튼입니다: 클릭 시전 격자에 있습니다."
 L["The /way command (reload)"] = "/way 명령 (UI 재시작)"
 L["The Blood Oath of the Horde"] = "호드의 피의 맹세"
-L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."] = "재사용 대기시간 관리자 단축키 모듈이 꺼져 있습니다. /vg > 모듈에서 켠 뒤 /reload."
 L["The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page."] = "재사용 대기시간 관리자, 빈칸 줄, 강화 효과 광채는 재사용 대기시간 페이지에 있습니다."
 L["The Deadmines"] = "죽음의 폐광"
 L["The General and Profiles pages in /vg can still restore them, or keep the settings that loaded; Start fresh there runs setup instead."] = "/vg의 일반 및 프로필 페이지에서 복원하거나 불러온 설정을 유지할 수 있습니다. 거기서 새로 시작을 누르면 설정이 실행됩니다."

@@ -2075,7 +2075,6 @@ L["That name is taken or not allowed."] = "Это имя занято или н�
 L["That's a mouse button: it lives in the Click casting grid."] = "Это кнопка мыши: она находится в сетке «Заклинания по щелчку»."
 L["The /way command (reload)"] = "Команда /way (перезагрузка)"
 L["The Blood Oath of the Horde"] = "Кровавая клятва Орды"
-L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."] = "Модуль клавиш менеджера восстановления выкл. Включите его в /vg > Модули, затем /reload."
 L["The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page."] = "Менеджер восстановления, ряд пропусков и свечение эффектов находятся на странице «Восстановление»."
 L["The Deadmines"] = "Мертвые копи"
 L["The General and Profiles pages in /vg can still restore them, or keep the settings that loaded; Start fresh there runs setup instead."] = "Страницы «Общие» и «Профили» в /vg всё ещё могут восстановить их или оставить загруженные настройки; «Начать заново: запустить настройку» там запускает настройку."

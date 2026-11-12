@@ -2075,7 +2075,6 @@ L["That name is taken or not allowed."] = "Esse nome está em uso ou não é per
 L["That's a mouse button: it lives in the Click casting grid."] = "Isso é um botão do mouse: ele fica na grade de Lançamento por clique."
 L["The /way command (reload)"] = "O comando /way (recarregar)"
 L["The Blood Oath of the Horde"] = "O Juramento de Sangue da Horda"
-L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."] = "O módulo Teclas do Gerenciador de Recarga está desligado. Ligue em /vg > Módulos e depois /reload."
 L["The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page."] = "O Gerenciador de Recarga, a fileira de lacunas e o brilho de bônus ficam na página Recargas."
 L["The Deadmines"] = "Minas Mortas"
 L["The General and Profiles pages in /vg can still restore them, or keep the settings that loaded; Start fresh there runs setup instead."] = "As páginas Geral e Perfis em /vg ainda podem restaurá-los ou manter as configurações carregadas; “Começar do zero” lá executa a configuração."

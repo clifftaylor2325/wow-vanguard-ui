@@ -2075,7 +2075,6 @@ L["That name is taken or not allowed."] = "Dieser Name ist vergeben oder nicht e
 L["That's a mouse button: it lives in the Click casting grid."] = "Das ist eine Maustaste: sie gehört ins Raster unter Klickzauber."
 L["The /way command (reload)"] = "Der Befehl /way (Neu laden)"
 L["The Blood Oath of the Horde"] = "Der Blutschwur der Horde"
-L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."] = "Das Modul Abklingzeit-Manager-Tasten ist aus. Schalte es unter /vg > Module ein, dann /reload."
 L["The Cooldown Manager, the gaps row and the buff glow are on the Cooldowns page."] = "Abklingzeit-Manager, Lückenreihe und Buff-Leuchten sind auf der Seite Abklingzeiten."
 L["The Deadmines"] = "Die Todesminen"
 L["The General and Profiles pages in /vg can still restore them, or keep the settings that loaded; Start fresh there runs setup instead."] = "Die Seiten „Allgemein“ und „Profile“ in /vg können sie weiterhin wiederherstellen oder die geladenen Einstellungen behalten; „Neu beginnen: Einrichtung starten“ dort startet die Einrichtung."
