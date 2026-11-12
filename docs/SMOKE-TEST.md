@@ -6253,7 +6253,7 @@ Not built yet: the offer to turn off the game's tutorials in setup (decision 14a
 ### 33.705 The footer reload notice stops before the version line (H45-23-2; WoW Forever)
 
 - Do: in German or French at Text size 130%, switch Unit frames off.
-- Expect: the footer notice ends in "…" before the version line and Reload now is whole.
+- Expect: the footer notice stops before the version line: drawn smaller, and where it is still too long (French) it ends in "…"; Reload now is whole.
 - If it fails, paste: a screenshot of the footer.
 
 ### 33.706 A greyed module row jumps to its parent under Show: On (H45-23-3; WoW Forever and Retail)
