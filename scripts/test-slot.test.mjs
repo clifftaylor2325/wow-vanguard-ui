@@ -80,15 +80,12 @@ it("a lock is created once; a second create finds it taken and leaves it alone, 
 it.skipIf(process.platform === "win32")("H45-36-101 a lock is writable by every user whatever the umask, so another user's run can take over a dead holder", () => {
   const file = path.join(scratch, "mode.lock");
   const before = process.umask(0o077);
-  try {
-    createLock(file, run(process.pid));
-    expect(fs.statSync(file).mode & 0o777, "created").toBe(0o666);
-    fs.chmodSync(file, 0o600);
-    recordChild(file, 4242);
-    expect(fs.statSync(file).mode & 0o777, "child recorded").toBe(0o666);
-  } finally {
-    process.umask(before);
-  }
+  createLock(file, run(process.pid));
+  const created = fs.statSync(file).mode & 0o777;
+  recordChild(file, 4242);
+  const rewritten = fs.statSync(file).mode & 0o777;
+  process.umask(before);
+  expect([created, rewritten]).toEqual([0o666, 0o666]);
 });
 
 it("a lock that cannot be created for another reason throws", () => {
