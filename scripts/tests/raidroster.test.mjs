@@ -149,14 +149,37 @@ it("H45-17-3: a roster anchored by a bottom point counts its room up from its bo
   expect(shown, "the room above the bottom edge: the whole raid and its heading, not a few lines").toBe(41);
 });
 
-it("H45-17-3: a roster anchored by a middle point counts the smaller of its room above and below, as it grows both ways", () => {
+it("H45-17-3: a roster anchored by a middle point counts twice the smaller of its room above and below its centre, as it grows both ways", () => {
   const addon = loggedIn("__wfgStub.setScreen(1365, 768)");
   say(addon, "loot roster");
   addon.eval("ns.SetMoverPoint('officerroster', 'LEFT', 'LEFT', 6, 250)");
   addon.advance(0.1);
   for (let i = 1; i <= 40; i += 1) addon.world.setUnit(`raid${i}`, { name: `Pal${String(i).padStart(2, "0")}`, class: "MAGE", className: "Mage", isPlayer: true, role: "DAMAGER" });
+  // How many roster lines are showing.
+  const shown = () => addon.eval("local n = 0 for _, row in ipairs(Vanguard_RaidRoster.rows) do if row.left:IsShown() then n = n + 1 end end return n");
   addon.fire("GROUP_ROSTER_UPDATE");
   addon.advance(0.5);
-  const shown = addon.eval("local n = 0 for _, row in ipairs(Vanguard_RaidRoster.rows) do if row.left:IsShown() then n = n + 1 end end return n");
-  expect(shown, "high on the screen the room above is the short one: the raid does not all fit").toBeLessThan(41);
+  const first = shown();
+  addon.fire("GROUP_ROSTER_UPDATE");
+  addon.advance(0.5);
+  expect([first, shown()], "high on the screen the room above is the short one: the same cut on a second repaint").toEqual([18, 18]);
+});
+
+// H45-40-101: a frame held by one middle point grows both ways from it, so its room is twice the smaller half around its
+// centre, not the room from the edges it last painted (which changed with every repaint).
+it("H45-40-101: a roster dropped mid-screen shows the same cut on every repaint of the same raid", () => {
+  const addon = loggedIn("__wfgStub.setScreen(1365, 768)");
+  say(addon, "loot roster");
+  addon.eval("ns.SetMoverPoint('officerroster', 'CENTER', 'CENTER', 0, 0)");
+  addon.advance(0.1);
+  for (let i = 1; i <= 40; i += 1) addon.world.setUnit(`raid${i}`, { name: `Pal${String(i).padStart(2, "0")}`, class: "MAGE", className: "Mage", isPlayer: true, role: "DAMAGER" });
+  // How many roster lines are showing.
+  const shown = () => addon.eval("local n = 0 for _, row in ipairs(Vanguard_RaidRoster.rows) do if row.left:IsShown() then n = n + 1 end end return n");
+  const counts = [];
+  for (let i = 0; i < 3; i += 1) {
+    addon.fire("GROUP_ROSTER_UPDATE");
+    addon.advance(0.5);
+    counts.push(shown());
+  }
+  expect(counts, "three identical roster events, one cut").toEqual([41, 41, 41]);
 });
