@@ -1325,25 +1325,34 @@ function O.Frame()
   return window
 end
 
+-- Throws a built page and its rows away, to be built again when shown.
+function O.DropPage(key)
+  rowCache[key] = nil
+  local old = pages[key]
+  if old then forgetRows(old) dropView(old) pages[key] = nil end
+end
+
 -- Throws a built page away so it's built again from its rows (its list
 -- changed), showing it again if it's the current one, scrolled where it was.
 function O.RebuildPage(key)
-  rowCache[key] = nil
   local old = pages[key]
   local scroll = old and old:GetVerticalScroll() or 0
-  if old then forgetRows(old) dropView(old) pages[key] = nil end
+  O.DropPage(key)
   if not (window and window:IsShown() and O.current == key) then return end
   O.Show(key)
   if pages[key] then pages[key]:ScrollTo(scroll) end
 end
 
--- A profile's settings changed (a live switch, Copy here, a reset or an import): every built page is built again, since
--- a row may hold the old profile's table, and the shown one stays where it was.
+-- A profile's settings changed (a live switch, Copy here, a reset or an import): every built page is thrown away, since
+-- a row may hold the old profile's table. Only the shown page is built again now, and by showPage alone: O.Show would
+-- read every page's rows, which fills tables into the profile just set (a reset one would not stay reset).
 ns.OnProfileChanged(function()
-  local keys = {}
-  for key in pairs(pages) do keys[key] = true end
-  for key in pairs(rowCache) do keys[key] = true end
-  for key in pairs(keys) do O.RebuildPage(key) end
+  local current, scroll = O.current, pages[O.current] and pages[O.current]:GetVerticalScroll() or 0
+  for key in pairs(pages) do O.DropPage(key) end
+  forgetUnbuiltRows()
+  if not (window and window:IsShown() and current) then return end
+  showPage()
+  if pages[current] then pages[current]:ScrollTo(scroll) end
 end)
 
 -- The first row on a page whose caption, as shown or in English, has the (lower-case) text.
