@@ -170,7 +170,9 @@ end
 -- The most buttons a bar has, and the shared and per-bar limits the options sliders and the migration below
 -- both read: button size and spacing in px, as { lowest, highest }.
 AB.MAX_BUTTONS = 12
-AB.LIMITS = { size = { 24, 48 }, spacing = { 0, 10 } }
+-- shared is the shared size's own range: the sizes setup's screen presets write (Pixel-perfect grows the
+-- preset's 38 up to 62 on a 2880x1800 screen), wider than the per-bar slider's.
+AB.LIMITS = { size = { 24, 48 }, shared = { 24, 64 }, spacing = { 0, 10 } }
 
 -- Whether v is a number from lo to hi (NaN fails both comparisons, so it is out).
 local function within(v, lo, hi)
@@ -197,9 +199,9 @@ local function cleanBars(saved)
   end
 end
 
--- A saved shared button size outside the slider's limits is dropped, so the default fills it in.
+-- A saved shared button size outside the shared limits is dropped, so the default fills it in.
 local function cleanSize(saved)
-  local limits = AB.LIMITS.size
+  local limits = AB.LIMITS.shared
   if saved.size ~= nil and not within(saved.size, limits[1], limits[2]) then saved.size = nil end
 end
 

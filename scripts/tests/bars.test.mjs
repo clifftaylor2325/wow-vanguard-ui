@@ -1081,6 +1081,13 @@ it("H44-8-2 bars: a shared size or spacing outside the sliders' limits is droppe
   expect(sharedAfterLogin("size = 44, spacing = 6"), "values inside the limits stay").toEqual([44, 6, 0]);
 });
 
+it("H45-5-1 bars: the shared size keeps what setup's screen presets write (to 64), though a bar's own slider ends at 48", () => {
+  for (const kept of [50, 55, 62, 64]) expect(sharedAfterLogin(`size = ${kept}, layout = 2`), `size ${kept}`).toEqual([kept, 2, 0]);
+  expect(sharedAfterLogin("size = 65, layout = 2"), "65 is past the shared limit").toEqual([38, 2, 0]);
+  const bar = loggedInWithBarOne("{ size = 50 }");
+  expect(bar.eval('return ns.GetModule("ActionBars").settings.bars[1].size == nil'), "a bar's own size of 50 is still dropped").toBe(true);
+});
+
 it("an imported string's bar size that isn't a number is dropped before it is saved", () => {
   const addon = loggedIn(ACTIONS_ENV);
   const size = addon.eval(`local kind, data = ns.ReadPayload("parts", { format = ns.PROFILE_FORMAT, ActionBars = { bars = { { size = "big", perRow = 0, buttons = 200 } } } })

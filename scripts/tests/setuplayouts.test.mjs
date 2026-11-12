@@ -1,7 +1,8 @@
 // setuplayouts: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { ACTIONS_ENV, CLICK_LUA, RISE, MICRO_ENV, RAID_ENV, SPECIAL_BARS_ENV, STRIPS_ENV, STRIP_ENV, SWING_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, borderOf, chatHas, key, loggedIn, overlaps, px, setCombat, tok } from "./helpers.mjs";
+import { createAddon } from "../lib/lua-harness.mjs";
+import { ACTIONS_ENV, CLICK_LUA, RISE, SETUP_DONE, MICRO_ENV, RAID_ENV, SPECIAL_BARS_ENV, STRIPS_ENV, STRIP_ENV, SWING_ENV, TIDY_ENV, TOOLS_ENV, UI_ENV, UNITS_ENV, UP, borderOf, chatHas, key, loggedIn, overlaps, px, setCombat, tok } from "./helpers.mjs";
 
 // Clicks one of the setup wizard's buttons (next, back or close) as the player would.
 const setupClick = (addon, which) => addon.eval(`local b = Vanguard_Setup.${which} b:GetScript("OnClick")(b, "LeftButton")`);
@@ -343,6 +344,24 @@ it("setup screen: Pixel-perfect is a whole-pixel scale, with Vanguard's own size
   expect(pixelPreset(addon, 3840, 2160), "4K: 2 pixels per unit (71%), so a little smaller than the 4K preset").toEqual([0.711111, 2, 35, 110, 48, 1]);
   expect(pixelPreset(addon, 1366, 768)[0], "a small screen: 100%").toBe(1);
   expect([1080, 1200, 1440, 1600, 2160, 2880].map((h) => addon.eval(`return ns.Setup.PixelMultiple(${h})`)), "one pixel per unit up to about 1600 tall, two at 4K").toEqual([1, 1, 1, 1, 2, 2]);
+});
+// The shared button size a login keeps after Pixel-perfect was applied on a w x h screen: { size set, size kept }.
+const pixelSizeAfterLogin = (w, h) => {
+  const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + `__wfgStub.setScreen(${w}, ${h})`, { firstRun: true });
+  addon.eval('ns.Setup.ApplyScreen("pixel")');
+  const set = addon.eval('return ns.Settings("ActionBars").size');
+  const next = createAddon({ savedVariables: `${SETUP_DONE}VanguardDB.profiles = { Default = { ActionBars = { size = ${set} } } }\n` });
+  next.eval(ACTIONS_ENV);
+  next.login();
+  return [set, next.eval('return ns.GetModule("ActionBars").settings.size')];
+};
+it("H45-5-1 setup screen: the button size Pixel-perfect sets survives the next login, on 1440p and on 2880x1800", () => {
+  expect(pixelSizeAfterLogin(2560, 1440), "1440p: 50 kept").toEqual([50, 50]);
+  expect(pixelSizeAfterLogin(2880, 1800), "2880x1800: 62 kept").toEqual([62, 62]);
+});
+it("H45-5-1 setup screen: Pixel-perfect never grows the buttons past the shared size's limit", () => {
+  const addon = loggedIn();
+  expect(pixelPreset(addon, 1920, 1889).slice(2, 3), "a 1920x1889 screen would grow 38 to 65: held at 64").toEqual([64]);
 });
 it("setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)", () => {
   const addon = loggedIn(ACTIONS_ENV + UNITS_ENV + RAID_ENV + CLICK_LUA + "__wfgStub.setScreen(2560, 1440)", { firstRun: true });
