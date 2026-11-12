@@ -735,6 +735,13 @@ function UnitHealth(unit) return uf(unit, "hp") or 0 end
 function UnitHealthMax(unit) return uf(unit, "maxhp") or 0 end
 -- The number inside a value that may be secret (the harness looks; the addon never does).
 local function inside(v) return worldIsSecret(v) and rawget(v, "n") or v end
+-- The client's dispel type IDs by name. TEST-ONLY: neither Blizzard checkout lists them, so these copy the addon's own
+-- DISPEL_INDEXES (Core/Auras.lua): a test through them proves the plumbing, not the numbers (H44 guess 25).
+world.dispelTypeIds = { None = 0, Magic = 1, Curse = 2, Disease = 3, Poison = 4, Enrage = 9, Bleed = 11 }
+-- A copy of a colour with every component hidden, as the client answers for an aura it hides.
+local function hiddenColor(c)
+  return CreateColor(world.secret(c.r), world.secret(c.g), world.secret(c.b), world.secret(c.a))
+end
 -- Max health minus health, secret when either is (SecretReturns in Forever's docs).
 function UnitHealthMissing(unit)
   local hp, max = UnitHealth(unit), UnitHealthMax(unit)
@@ -1187,11 +1194,14 @@ C_UnitAuras = {
     if maxCount and n > maxCount then return "*" end
     return tostring(n)
   end,
-  -- The dispel type color through a curve (nil when the client has none).
+  -- The dispel type color through a curve read at the type's ID (UnitAuraDocumentation.lua GetAuraDispelTypeColor:
+  -- the curve is required), hidden when the aura's type is (SecretWhenUnitAuraRestricted).
   GetAuraDispelTypeColor = function(unit, id, curve)
     local aura = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, id)
-    local kind = aura and aura.dispelName or "None"
-    return curve and curve:Evaluate(kind) or world.dispelColors[kind]
+    local kind = aura and aura.dispelName
+    local color = curve:Evaluate(world.dispelTypeIds[inside(kind)] or 0)
+    if color and worldIsSecret(kind) then return hiddenColor(color) end
+    return color
   end,
   -- The duration object of an aura.
   -- An aura with hidden times gives an object that holds them hidden (UnitAuraDocumentation.lua: the call itself
@@ -1205,7 +1215,6 @@ C_UnitAuras = {
     return durationObject(start, duration)
   end,
 }
-world.dispelColors = { Magic = CreateColor(0.2, 0.6, 1), Curse = CreateColor(0.6, 0, 1), Disease = CreateColor(0.6, 0.4, 0), Poison = CreateColor(0, 0.6, 0), None = CreateColor(0.8, 0, 0) }
 
 -- AuraUtil.FindAuraByName, as FrameXML has it: the aura's fields unpacked.
 AuraUtil = {

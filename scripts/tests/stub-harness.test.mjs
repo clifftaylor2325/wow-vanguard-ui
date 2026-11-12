@@ -289,3 +289,19 @@ it("a frame shown or hidden under a hidden parent runs its OnShow or OnHide only
     return table.concat(seen, " ")`);
   expect(runs).toBe("hide | show | hide |");
 });
+
+// Blizzard_APIDocumentationGenerated/UnitAuraDocumentation.lua:264-284 (forever) GetAuraDispelTypeColor: the curve is
+// read "with the dispel type ID used as the 'x' value", the curve is Nilable = false, and the answer is
+// SecretWhenUnitAuraRestricted. The IDs are the world's copy of the addon's own (world.dispelTypeIds), not sourced.
+it("the dispel colour call reads the curve at the debuff's type number, and hides the colour of a hidden type", () => {
+  const addon = createAddon();
+  addon.world.setUnit("target", { name: "TEST-ONLY Mob" });
+  const out = addon.eval(`local s = __wfgWorld.secret
+    __wfgWorld.addAura("target", { name = "TEST-ONLY A", isHarmful = true, dispelName = "Magic", auraInstanceID = 501 })
+    __wfgWorld.addAura("target", { name = "TEST-ONLY B", isHarmful = true, dispelName = s("Curse"), auraInstanceID = 502 })
+    local c = C_CurveUtil.CreateColorCurve() c:AddPoint(0, CreateColor(1, 0, 0)) c:AddPoint(1, CreateColor(0, 0, 1)) c:AddPoint(2, CreateColor(0, 1, 0))
+    local plain = C_UnitAuras.GetAuraDispelTypeColor("target", 501, c)
+    local hidden = C_UnitAuras.GetAuraDispelTypeColor("target", 502, c)
+    return { plain.r, plain.g, plain.b, issecretvalue(hidden.r), issecretvalue(hidden.g), rawget(hidden.g, "n") }`);
+  expect(out).toEqual([0, 0, 1, true, true, 1]);
+});
