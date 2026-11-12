@@ -652,3 +652,15 @@ it("H45-6-R4 step 3: the gamepad interface switched on while Ready is open stops
   expect([win(addon).shown, win(addon).step, win(addon).left]).toEqual([true, 1, "Close"]);
   expect(addon.texts("You play with a gamepad, so Vanguard won't change your keys.").length).toBe(1);
 });
+
+it("H46-20-50 Show what comes later leaves a spell the character already knows on its own key", () => {
+  const addon = loggedIn(CLICK_LUA, {});
+  addon.eval('__wfgWorld.setUnit("player", { name = "Brakk", class = "WARRIOR", className = "Warrior", level = 6 })');
+  for (const [id, name] of [[78, "Heroic Strike"], [772, "Rend"], [6343, "Thunder Clap"], [2457, "Battle Stance"]]) addon.world.learn(id, { name, icon: `TEST-ONLY-${id}` });
+  addon.eval('__wfgWorld.setStances({ { spellID = 2457, icon = "TEST-ONLY-BS" } })');
+  open(addon);
+  addon.eval('__click("Show me") __click("Show what comes later")');
+  expect(cap(addon, "4").grey, "Thunder Clap is known: key 4 is not greyed for it").toBe(false);
+  addon.eval(`for _, c in ipairs(${BOARD}.caps) do if c.key == "4" then c.__scripts.OnEnter(c) end end`);
+  expect(tipText(addon)).not.toContain("Later: Thunder Clap");
+});
