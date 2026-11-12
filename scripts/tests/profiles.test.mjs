@@ -1066,8 +1066,7 @@ it("importing a string that matches a profile here uses that profile instead of 
   addon.clearChat();
   importText(addon, own);
   expect(chatHas(addon, /This string matches profile Default, which this character already uses: nothing new to import\./), "your own export says it is the profile you use").toBe(true);
-  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
-  expect(addon.eval("return { VanguardDB.profiles.Imported == nil, Vanguard_Reload == nil or not Vanguard_Reload:IsShown(), Vanguard_TextDialog:IsShown() }"), "no copy is made, and after the UI scale question no reload is offered").toEqual([true, true, false]);
+  expect(addon.eval("return { VanguardDB.profiles.Imported == nil, Vanguard_Question == nil or not Vanguard_Question:IsShown(), Vanguard_Reload == nil or not Vanguard_Reload:IsShown(), Vanguard_TextDialog:IsShown() }"), "no copy is made, nothing is asked about the UI scale (nothing was imported) and no reload is offered").toEqual([true, true, true, false]);
   addon.eval("VanguardDB.profiles.Raid = ns.Copy(ns.Profile()) ns.Theme.Settings().reduceMotion = not ns.Theme.Settings().reduceMotion");
   expect(imports(addon, own), "a string matching another profile switches to it").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported == nil }")).toEqual(["Raid", true]);
@@ -1342,4 +1341,11 @@ it("hunt H46-22-51: an emptied list in a partial string empties yours, an empty 
   const empty = mapped.eval("return ns.Serialize.Encode('parts', ns.StampPayload({ parts = { 'layout' }, movers = {} }))");
   mapped.eval(`ns.Profile().movers = { A = { x = 1 } } ns.ImportProfile(${JSON.stringify(empty)})`);
   expect(mapped.eval("return ns.Profile().movers.A.x"), "an empty map keeps your keys").toBe(1);
+});
+it("hunt H46-22-R1: your own export of the profile in use asks nothing about the UI scale", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true } }\n" });
+  const text = addon.eval("return ns.ExportProfile()");
+  const result = addon.eval(`local m, r = ns.ImportProfile(${JSON.stringify(text)}) return { m, r.display == nil }`);
+  expect(result[0], "it matched the profile in use").toMatch(/already uses/);
+  expect(result[1], "nothing was imported, so no UI scale question").toBe(true);
 });
