@@ -706,8 +706,7 @@ local function listen()
   for _, e in ipairs(AH.SELL_EVENTS) do on(e, function() AH.PaintSell() end) end
   -- What the game answers to a post, said in chat.
   for e in pairs(AH.POST_ANSWERS) do on(e, AH.OnPostAnswer) end
-  local listeners = { AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades, AH.ListenAlerts }
-  listeners[#listeners + 1] = AH.ListenCrafting
+  local listeners = { AH.ListenShop, AH.ListenOwned, AH.ListenLedger, AH.ListenDeals, AH.ListenUpgrades, AH.ListenAlerts, AH.ListenCrafting }
   for _, each in ipairs(listeners) do each(on) end
 end
 
