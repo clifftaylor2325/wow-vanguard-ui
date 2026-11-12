@@ -326,6 +326,7 @@ end
 
 -- Sets the raid frame style, repainting the raid frames when they are built.
 function S.SetStyle(look)
+  if raidSettings().look == look then return end
   S.Backup()
   state.look = true
   raidSettings().look = look
@@ -906,9 +907,19 @@ local function stylePicker(page)
   for i, s in ipairs(S.STYLES) do page.styles[i] = styleTile(page, i, s) end
 end
 
+-- Sets the accent to a preset at once; does nothing when it is already that preset (a class-following accent
+-- that matches a preset still switches to it).
+local function pickAccent(rgb)
+  if isAccent(rgb) and not T.Settings().accentClass then return end
+  S.Backup()
+  state.look = true
+  T.SetAccent(rgb[1], rgb[2], rgb[3])
+  refresh()
+end
+
 -- One accent swatch, with a check when chosen: picking it sets the accent at once.
 local function swatch(page, i, rgb)
-  local s = W.Swatch(page, rgb, function() S.Backup(); state.look = true; T.SetAccent(rgb[1], rgb[2], rgb[3]); refresh() end)
+  local s = W.Swatch(page, rgb, function() pickAccent(rgb) end)
   s:SetPoint("TOPLEFT", (i - 1) * STEP.swatchAcross, LOOK_Y.swatches)
   s.rgb = rgb
   s.check = W.IconTexture(s, "Check", 14, "void")

@@ -532,3 +532,13 @@ it("H45-24-2: a profile of its own, kept at every step, ends with no reload offe
   if (addon.eval("return Vanguard_Question ~= nil and Vanguard_Question:IsShown()")) addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
   expect(reloadShown(addon), "forking the profile needs no reload").toBe(false);
 });
+
+it("H45-24-3: clicking the accent swatch or style tile that is already chosen changes nothing", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV);
+  addon.slash("setup");
+  nextTimes(addon, 2);
+  addon.eval("local s = Vanguard_Setup.pages.look.swatches[1] s:GetScript('OnClick')(s)");
+  addon.eval("local look = ns.Settings('RaidFrames').look for _, b in ipairs(Vanguard_Setup.pages.look.styles) do if b.value == look then b:GetScript('OnClick')(b) end end");
+  nextTimes(addon, 6);
+  expect(allSetLines(addon), "no change listed and no Undo").toEqual([["All set. This run changed nothing: Done closes setup."], false]);
+});
