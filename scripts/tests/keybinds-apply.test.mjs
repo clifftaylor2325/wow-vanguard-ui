@@ -817,3 +817,28 @@ it("H45-6-1 Apply still puts a known higher rank over a lower one on the key's b
   expect(ka(addon, `return KA.Apply(${entries})`)).toBe(true);
   expect(slots(addon, [1])).toEqual([837]);
 });
+
+const OWN_KEYS_NOTE = /This character still uses its own keys\. To share your account's keys again, untick Character Specific Keybindings in the game's key bindings\.$/;
+
+it("H45-6-103 putting everything back after Only this character says the character keeps its own key set", () => {
+  const addon = rogue();
+  expect(ka(addon, `return KA.Apply(${PRESET}, Enum.BindingSet.Character)`)).toBe(true);
+  addon.clearChat();
+  expect(ka(addon, "return KA.PutBackAll()")).toBe(true);
+  expect(chatHas(addon, OWN_KEYS_NOTE)).toBe(true);
+  expect(addon.eval("return GetCurrentBindingSet()"), "the set is never switched back by a put-back").toBe(2);
+});
+
+it("H45-6-103 the note stays quiet for the account's keys and for a character key set the player made", () => {
+  const account = rogue();
+  expect(ka(account, `return KA.Apply(${PRESET})`)).toBe(true);
+  account.clearChat();
+  ka(account, "return KA.PutBackAll()");
+  expect(chatHas(account, OWN_KEYS_NOTE), "account keys").toBe(false);
+  const own = rogue();
+  own.eval("SaveBindings(1) LoadBindings(2) SaveBindings(2)");
+  expect(ka(own, `return KA.Apply(${PRESET})`)).toBe(true);
+  own.clearChat();
+  ka(own, "return KA.PutBackAll()");
+  expect(chatHas(own, OWN_KEYS_NOTE), "the player's own key set").toBe(false);
+});

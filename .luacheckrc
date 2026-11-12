@@ -34,6 +34,8 @@ globals = {
 -- WoW API the addon reads. Add a name only when the addon starts using it.
 read_globals = {
   "WOW_PROJECT_ID", "WOW_PROJECT_CAMELOT",
+  -- Modules/KeybindsApply.lua: the game's label for the character key set box.
+  "CHARACTER_SPECIFIC_KEYBINDINGS",
   -- Retail data tables (Modules/DataBars.lua): honor at the level cap and a major faction's renown.
   "UnitHonor", "UnitHonorMax", "UnitHonorLevel", "IsWatchingHonorAsXP", "IsInActiveWorldPVP", "C_MajorFactions",
   "C_DeathRecap", "COMPLETE", "DECIMAL_SEPERATOR", "LARGE_NUMBER_SEPERATOR",

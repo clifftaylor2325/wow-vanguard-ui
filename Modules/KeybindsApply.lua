@@ -784,9 +784,11 @@ local function keepSlots(run, slots, row)
   end
 end
 
--- Saves the record of a run that succeeded (each key once); answers how many keys changed.
+-- Saves the record of a run that succeeded (each key once), marked madeSet when the run switched the key set (for the
+-- note a put-back gives); answers how many keys changed.
 local function keep(run)
   local rec, slots, seen, count = ensureRecord(run.set), slotRecord(), {}, 0
+  rec.madeSet = rec.madeSet or run.from ~= nil or nil
   for _, row in ipairs(run.rows) do
     if KA.WRITES[row.kind] then
       if not seen[row.key] then keepKey(run, rec, row) count = count + 1 end
@@ -975,11 +977,22 @@ local function report(result)
   end
 end
 
--- Saves the keys, forgets an emptied record, and says what happened.
+-- Says the character keeps the key set Vanguard's Apply switched it to: putting back never switches it back (the game
+-- warns that the way back overwrites the character's keys).
+local function ownKeysNote()
+  local label = CHARACTER_SPECIFIC_KEYBINDINGS or L["Character Specific Keybindings"]
+  local text = L["This character still uses its own keys. To share your account's keys again, untick {label} in the game's key bindings."]
+  ns.Chat(ns.Format(text, { label = label }))
+end
+
+-- Saves the keys, forgets an emptied record, and says what happened (and, for an emptied record of a key set
+-- Vanguard's Apply made, that the character still has its own keys).
 local function finishPutBack(rec, result)
   SaveBindings(GetCurrentBindingSet())
-  if next(rec.keys) == nil and recordFor(rec.set) then storeFor(rec.set).keyRestore = nil end
+  local emptied = next(rec.keys) == nil and recordFor(rec.set)
+  if emptied then storeFor(rec.set).keyRestore = nil end
   report(result)
+  if emptied and rec.madeSet then ownKeysNote() end
 end
 
 -- Puts one key back as it was before Vanguard changed it ("Put back what I had"), with the spells it placed or moved.
