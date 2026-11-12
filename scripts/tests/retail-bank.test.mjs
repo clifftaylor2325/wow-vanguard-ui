@@ -195,6 +195,27 @@ it("retail auras: with two weapon enchants your private aura spots move left, cl
   expect(r.spot1 < lastBuffLeft, "spot 1's right edge is left of the 12th buff's left edge").toBe(true);
 });
 
+// How far spot 1 of your private aura row reaches over the leftmost column of a full first row of buffs (0 or less:
+// clear). The column's left is the container's right less the row's width; the container is Vanguard's own anchor
+// math, never its size, which the client may hide.
+const spotOverBuffs = (addon) => addon.eval(`local PA = ns.GetModule("PlayerAuras") local spot
+  for _, a in pairs(__wfgWorld.privateAnchors) do if a.unitToken == "player" and a.auraIndex == 1 then spot = a.parent end end
+  local colLeft = PA.holder:GetRight() + PA.auras.frame.__points.TOPRIGHT.x - PA.lineSize + PA.GAP
+  return math.min(spot:GetRight(), colLeft + PA.look.size) - math.max(spot:GetLeft(), colLeft)`);
+
+it("H46-15-50 retail auras: a weapon enchant run out in a fight leaves your private aura spots clear of the buffs", () => {
+  const addon = loggedIn(UNITS_ENV + TWO_ENCHANTS_ENV, { client: RETAIL_CLIENT });
+  addon.eval("__temp[17] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  const before = spotOverBuffs(addon);
+  setCombat(addon, true);
+  addon.eval("__temp[16] = nil");
+  addon.fire("UNIT_INVENTORY_CHANGED", "player");
+  const fight = spotOverBuffs(addon);
+  setCombat(addon, false);
+  expect([before <= 0, fight <= 0, spotOverBuffs(addon) <= 0], "clear before, in and after the fight").toEqual([true, true, true]);
+});
+
 it("retail auras: the target frame has a spot right of it, over the target of target (H9-1-3), handed again on each new target", () => {
   const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
   // The target spot's unit, whether it sits by the target frame, and its anchor id.
@@ -207,6 +228,27 @@ it("retail auras: the target frame has a spot right of it, over the target of ta
   addon.fire("PLAYER_TARGET_CHANGED");
   const second = target();
   expect([second[2] !== first[2], addon.eval(`return __wfgWorld.privateAnchors[${first[2]}] == nil`)], "a new spot for the new target, the old one given back").toEqual([true, true]);
+});
+
+// Whether the target's private aura spot stands on (or above) the target of target's top, not over it.
+const spotOnTargetOfTarget = (addon) => addon.eval("return ns.PrivateAuras.target:GetBottom() >= Vanguard_targettarget:GetTop()");
+
+it("H46-15-2 retail auras: the target's spot stands on a taller target of target, set at login or live", () => {
+  const tall = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { UnitFrames = { targettargetHeight = 40 } } }" });
+  expect(spotOnTargetOfTarget(tall), "a saved height of 40").toBe(true);
+  const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
+  addon.eval('local UF = ns.GetModule("UnitFrames") UF.settings.targettargetHeight = 40 UF.ApplySizes()');
+  addon.advance(0.4, 0.1);
+  expect(spotOnTargetOfTarget(addon), "Frame sizes moved to 40 live, once the rows are made again").toBe(true);
+});
+
+it("H46-15-R1 retail auras: under the Standards HUD layout the target's spot stands over the target of target's banner", () => {
+  const standards = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT, savedVariables: 'VanguardDB.profiles = { Default = { hudLayout = "standards" } }' });
+  expect(spotOnTargetOfTarget(standards), "Standards from login").toBe(true);
+  const addon = loggedIn(UNITS_ENV, { client: RETAIL_CLIENT });
+  addon.eval("ns.SetHudLayout('standards')");
+  addon.advance(0.4, 0.1);
+  expect(spotOnTargetOfTarget(addon), "Standards picked live").toBe(true);
 });
 
 it("retail auras: switching target and focus auras off live gives the target's private aura spot back; on again it is handed again", () => {

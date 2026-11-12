@@ -16,7 +16,7 @@ const FOOTPRINT = `
   out.timers = __wfgWorld.runningTickers()
   for key in pairs(ns.ticker.vgJobs) do out.tickers[#out.tickers + 1] = type(key) == "table" and "table" or tostring(key) end
   for _, w in ipairs(stub.frames) do
-    if w.__id > stub.firstAddonFrame then
+    if stub.addonMade(w) then
       for event in pairs(w.__events) do out.events[#out.events + 1] = event end
       if w.__parent and w:IsVisible() then out.shown[#out.shown + 1] = w.__name or w.__kind end
       if w.__scripts.OnUpdate and w:IsVisible() then out.updaters[#out.updaters + 1] = w.__name or w.__kind end

@@ -3,10 +3,10 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
-import { BUFF_NAMES, CLICK_LUA, DATA_ENV, FAKE_FADES, RETAIL, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
+import { BUFF_NAMES, CLICK_LUA, DATA_ENV, FAKE_FADES, UI_ENV, UNITS_ENV, bars, borderOf, button, calls, chatHas, expectErrors, isTok, key, loggedIn, marks, px, setCombat, spellNames, tok, tooltip, SETUP_DONE } from "./helpers.mjs";
 
 it("options window", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   expect(addon.eval("return Vanguard_Options:IsShown()") === true, "/vg opens the options window").toBeTruthy();
   expect(addon.eval("return Vanguard_Options.reload:IsShown()") === false, "no reload button until something needs one").toBeTruthy();
@@ -198,6 +198,19 @@ it("options: Delete, Copy here, Reset profile and Start over say what they lose;
   addon.eval('__click("Reset profile") Vanguard_Question.confirm:GetScript("OnClick")(Vanguard_Question.confirm)');
   expect(addon.eval("return { VanguardDB.profiles.Default.Chat == nil, VanguardDB.profiles['Default backup'].Chat.background, Vanguard_Options.reload:IsShown() }"), "Reset backs the profile up, then resets it for the reload").toEqual([true, false, true]);
   expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "and says where the copy went").toBe(true);
+});
+
+it("H46-4-4 the footer's reload notice follows the staged profile switch: gone when Use takes it back, shown when a command stages one", () => {
+  const addon = loggedIn(CLICK_LUA, { savedVariables: "VanguardDB.profiles = { Default = {}, Raid = {} }\n" });
+  addon.slash("profile Raid");
+  addon.eval('ns.Options.Show("profiles")');
+  // The staged switch, whether the footer's notice and Reload button show, and the notice's text.
+  const notice = () => addon.eval("return { tostring(ns.ProfileAfterReload()), Vanguard_Options.notice:IsShown(), Vanguard_Options.notice:GetText(), Vanguard_Options.reload:IsShown() }");
+  expect(notice(), "a switch staged by /vg shows the notice when the window opens").toEqual(["Raid", true, "Some changes need a reload", true]);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label and w.label.__text:find("^Default") and ns.Options.RevealRow(w) then w.use:GetScript("OnClick")(w.use) end end');
+  expect(notice(), "Use on the running profile takes the switch back and the notice goes").toEqual(["nil", false, "", false]);
+  addon.eval('for _, w in ipairs(__wfgStub.frames) do if w.use and w.label and w.label.__text:find("^Raid") and ns.Options.RevealRow(w) then w.use:GetScript("OnClick")(w.use) end end');
+  expect(notice()[1], "Use on another profile shows it again").toBe(true);
 });
 
 it("options: after Copy here or Reset profile on the profile in use, the footer says to reload before changing more", () => {
@@ -422,7 +435,7 @@ it("H45-7-2 options: a search for the words of a Reset this page row lights no p
 });
 
 it("options: a live row of a module that is off saves its value without an error", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles.Default = { modules = { CooldownGlow = false, GameAlerts = false, ActionBars = false } }\n" });
   addon.eval('ns.Options.Show("cooldowns")');
   addon.eval('__click("Glow a buff near its end")');
   addon.eval('ns.Options.Show("tools")');
@@ -643,6 +656,16 @@ it("options: a HUD layout picked in a fight shows on its row at once and a secon
   expect(addon.eval(step.replace('row:GetScript("OnClick")(row, "LeftButton")', 'row:GetScript("OnClick")(row, "LeftButton") ns.Options.Refresh()')), "out of combat a click applies at once").toEqual(["centered", "centered"]);
 });
 
+it("H46-4-2 a HUD layout picked in a fight is dropped when Reset profile replaces the profile before the fight ends", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval('ns.Options.Show("general") ns.Options.ShowTab("HUD layout")');
+  addon.world.combat(true);
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.caption == "Where the frames stand" and ns.Options.RevealRow(w) then w:GetScript("OnClick")(w, "LeftButton") end end`);
+  addon.eval("ns.ResetProfile()");
+  addon.world.combat(false);
+  expect(addon.eval("return { tostring(ns.Profile().hudLayout), ns.HudLayout() }"), "the reset profile keeps its own layout").toEqual(["nil", "centered"]);
+});
+
 it("options: a HUD look picked in a fight shows on its row, waits for the fight's end and keeps its default (H45-40-501)", () => {
   const addon = loggedIn(CLICK_LUA, { savedVariables: 'VanguardDB = { profiles = { Default = { theme = { hudLook = "plain" } } } }' });
   addon.eval('ns.Options.Show("general")');
@@ -698,6 +721,28 @@ it("options: switching a module that has no movable frame does not build the Gen
   expect(rows(), "the first switch with the same frames builds nothing").toBe(before);
 });
 
+it("H46-4-3 the Frame to size choice follows a frame registered or let go of on its own, one rebuild a frame however many", () => {
+  const addon = loggedIn(CLICK_LUA);
+  // The newest Frame to size choice's keys, and how many of them have been built.
+  const state = () => addon.eval(`local last, n = nil, 0 for _, w in ipairs(__wfgStub.frames) do if w.source and w.source.english == "Frame to size" then last = w n = n + 1 end end
+    local keys = {} for _, c in ipairs(last.choices) do keys[#keys + 1] = c[1] end return { table.concat(keys, ","), n }`);
+  addon.eval('ns.Options.Show("general")');
+  const [start, built] = state();
+  addon.eval(`__m1 = CreateFrame("Frame", nil, UIParent) __m1:SetSize(50, 20) ns.Mover(__m1, "h46m1", "M1", { "CENTER", "CENTER", 0, 0 })
+    __m2 = CreateFrame("Frame", nil, UIParent) __m2:SetSize(50, 20) ns.Mover(__m2, "h46m2", "M2", { "CENTER", "CENTER", 0, 0 })`);
+  expect(state()[1], "nothing is rebuilt before the next frame").toBe(built);
+  addon.advance(0.1);
+  const added = state();
+  expect(added[0].includes("h46m1") && added[0].includes("h46m2"), "both are offered").toBe(true);
+  expect(added[1], "two movers, one rebuild").toBe(built + 1);
+  addon.eval('ns.ReleaseMover("h46m1") ns.ReleaseMover("h46m2")');
+  addon.advance(0.1);
+  expect(state()[0], "let go: the choice is as it was").toBe(start);
+  addon.eval('ns.ReleaseMover("h46nothing")');
+  addon.advance(0.1);
+  expect(state()[1], "a key that is not a mover tells no one").toBe(built + 2);
+});
+
 it("options: the Profiles page lists a profile made, backed up or deleted from anywhere while it is built (H45-23-80)", () => {
   const addon = loggedIn(CLICK_LUA);
   // The profile names the page lists.
@@ -740,6 +785,19 @@ it("options: the font the profile uses, shared late by its addon, is offered by 
   addon.eval('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Font", [[Interface\\TEST-ONLY.ttf]])');
   addon.advance(0.1);
   expect(fonts(), "the one in use is").toContain("TEST-ONLY Font");
+});
+
+it("options: text drawn before the profile's font is shared wears it once its addon shares it, even in a burst of shares", () => {
+  const addon = loggedIn(CLICK_LUA);
+  const FIRA = "Interface\\AddOns\\Vanguard\\Media\\Fonts\\FiraSansCondensed-Medium.ttf";
+  addon.eval(`ns.Theme.Settings().font = "TEST-ONLY Late Font"
+    __fs = ns.Theme.Text(UIParent:CreateFontString(nil, "OVERLAY"), "label")`);
+  expect(addon.eval("return (__fs:GetFont())"), "drawn before the share: Fira").toBe(FIRA);
+  addon.eval(`local lsm = LibStub("LibSharedMedia-3.0")
+    lsm:Register("font", "TEST-ONLY Late Font", [[Interface\\AddOns\\TestOnly\\Late.ttf]])
+    lsm:Register("background", "TEST-ONLY Unrelated", [[Interface\\TEST-ONLY]])`);
+  addon.advance(1);
+  expect(addon.eval("return (__fs:GetFont())"), "the late share repaints it without a pick, though another share came in the same frame").toBe("Interface\\AddOns\\TestOnly\\Late.ttf");
 });
 
 it("options: a changed setting gets a dot that puts the default back", () => {
@@ -1199,8 +1257,8 @@ it("options: the pages, their nav order and each page's row count stay as they w
   const pages = addon.eval("local out = {} for i, p in ipairs(ns.Options.PAGES) do out[i] = p.key .. '|' .. p.title .. '|' .. p.order .. '|' .. #p.rows() end return out");
   // Adding or removing a row (or a module, which adds a row under Modules) changes these counts on purpose.
   expect(pages, "the page list and each page's row count (a new row is one more on its page)").toEqual([
-    "general|General|10|62", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
-    "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|58", "profiles|Profiles|90|22",
+    "general|General|10|63", "modules|Modules|20|85", "unitframes|Unit frames|30|67", "raid|Raid frames|40|28",
+    "actionbars|Action bars|60|87", "quests|Quests|70|32", "bars|Bars and bags|80|17", "map|Map|81|36", "chat|Chat|82|83", "windows|Game windows|83|53", "cooldowns|Cooldowns|83.5|13", "tools|Combat tools|84|42", "town|Town and gear|85|59", "profiles|Profiles|90|22",
     "feedback|Feedback|100|11", "healing|Healing|45|44", "talents|Talents|47|7", "nameplates|Nameplates|65|26",
     "situations|Situations|86|17", "clickcast|Click casting|46|16",
   ]);
@@ -1720,6 +1778,31 @@ it("Escape and a click outside close a dropdown menu", () => {
   expect(addon.eval("return Vanguard_Options:IsShown()"), "a second Escape closes the window").toBe(false);
 });
 
+// H46-21-50: the game's own Escape closes every window in its list at once (Blizzard_UIParentPanelManager.lua
+// CloseWindows / CloseSpecialWindows), so the open menu holds the keyboard and takes Escape itself.
+it("H46-21-50 Escape on an open dropdown menu closes the menu alone, and other keys pass on", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  addon.eval("__pass = {}");
+  openDropdown(addon, 4);
+  addon.eval("Vanguard_Menu.SetPropagateKeyboardInput = function(self, v) __pass[#__pass + 1] = v end");
+  addon.eval('__other = CreateFrame("Frame", "TestOnlyOther", UIParent) __other:Show()');
+  expect(addon.eval("return Vanguard_Menu:IsKeyboardEnabled()"), "an open menu holds the keyboard").toBe(true);
+  addon.key("Vanguard_Menu", "A");
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), __pass[#__pass] }"), "another key passes on").toEqual([true, true]);
+  addon.key("Vanguard_Menu", "ESCAPE");
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), __pass[#__pass], __other:IsShown() }"), "Escape closes the menu and stops here").toEqual([false, false, true]);
+  expect(addon.eval("return Vanguard_Menu:IsKeyboardEnabled()"), "a closed menu lets the keyboard go").toBe(false);
+});
+
+it("H46-21-50 a menu opened in a fight holds no keyboard", () => {
+  const addon = loggedIn("UISpecialFrames = {}");
+  setCombat(addon, true);
+  openDropdown(addon, 4);
+  expect(addon.eval("return { Vanguard_Menu:IsShown(), Vanguard_Menu:IsKeyboardEnabled() }"), "shown, no keys held; Escape closes it through the special frames").toEqual([true, false]);
+  addon.key("Vanguard_Menu", "ESCAPE");
+  expect(addon.eval("return Vanguard_Menu:IsShown()"), "the key script does nothing in a fight").toBe(true);
+});
+
 it("Left and Right step a focused slider by its step", () => {
   const addon = loggedIn(CLICK_LUA);
   addon.eval('ns.Options.Show("general")');
@@ -1833,7 +1916,7 @@ it("H17-3-1: on WoW Forever the reload offer's Tab ring stops at Later (a key ca
   expect([ring(forever, "Vanguard_Reload.cancel"), ring(forever, "Vanguard_Reload.accept")], "Forever: the second Tab stays on Later").toEqual([true, false]);
   forever.key("Vanguard_Reload", "ENTER");
   expect([forever.eval("return Vanguard_Reload:IsShown()"), chatHas(forever, /Type \/reload/)], "Enter presses Later: the dialog closes, no chat line").toEqual([false, false]);
-  const retail = loggedIn(RETAIL + "UISpecialFrames = {}");
+  const retail = loggedIn("UISpecialFrames = {}", { client: RETAIL_CLIENT });
   retail.eval(`ns.OfferReload("A change.")`);
   retail.key("Vanguard_Reload", "TAB");
   retail.key("Vanguard_Reload", "TAB");
@@ -2376,7 +2459,7 @@ it("options JumpTo marks the row for a Russian caption typed in small letters", 
 
 
 it("options General: the accent swatch of the chosen preset carries a check, and it moves with the accent", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV);
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT });
   addon.slash("");
   // The presets whose swatch shows the check.
   const checked = () => addon.eval(`local row for _, w in ipairs(__wfgStub.frames) do if w.swatches and w.hex then row = w end end
@@ -2423,9 +2506,25 @@ it("the class accent: /vg accent class sets it, a shared profile gives each char
   const again = loggedIn("__repaints = 0", { savedVariables: shared });
   again.eval("local T = ns.Theme local refresh = T.Refresh T.Refresh = function() __repaints = __repaints + 1 return refresh() end T.FollowClassAccent()");
   expect(again.eval("return __repaints"), "a character whose colour the accent already is repaints nothing").toBe(0);
+  // A live switch to a profile another class saved takes this character's colour at once.
+  const live = createAddon({ savedVariables: `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = {} }, Shared = { modules = {}, theme = { accentClass = true, accent = { 0.78, 0.61, 0.43 } } } } }\nVanguardCharDB = { profile = "Default" }` });
+  live.eval(`for _, name in ipairs(ns.ModuleNames()) do if not ns.GetModule(name).live then VanguardDB.profiles.Default.modules[name] = false VanguardDB.profiles.Shared.modules[name] = false end end`);
+  live.login();
+  live.eval('ns.PickProfile("Shared")');
+  expect(live.eval("local c = RAID_CLASS_COLORS.MAGE local r, g, b = ns.Theme.Accent() return { ns.ProfileName(), r == c.r, g == c.g, b == c.b }"), "switched live to Shared: the mage's colour, not the warrior's").toEqual(["Shared", true, true, true]);
   const hidden = loggedIn("UnitClass = function() return 'Tester', __wfgWorld.secret('MAGE') end");
   hidden.slash("accent class");
   expect([chatHas(hidden, /Your class colour isn't known yet\./), hidden.eval("return ns.Theme.Settings().accentClass")], "a hidden class: said so, nothing changed").toEqual([true, false]);
+});
+
+it("H46-B-G2 the class accent: a profile reset leaves no theme table, and a profile notice adds none", () => {
+  const addon = loggedIn();
+  addon.slash("accent class");
+  expect(addon.eval("return type(ns.Profile().theme)"), "the class accent was chosen, so the profile has a theme").toBe("table");
+  addon.eval("ns.ResetProfile()");
+  expect(addon.eval("return type(ns.Profile().theme)"), "reset: the class accent listener filled nothing back in").toBe("nil");
+  addon.eval("ns.ProfileChanged()");
+  expect(addon.eval("return { type(ns.Profile().theme), #ns.errors }"), "a notice for a profile that never chose it adds no theme").toEqual(["nil", 0]);
 });
 
 it("a page thrown away and rebuilt leaves no frames for the theme's repaint to walk: the refreshed strings stay the same", () => {
@@ -2450,7 +2549,7 @@ it("T.Forget drops a frame's check box, arrow and divider parts from the theme's
 });
 
 it("options: one row whose refresh fails does not stop the rows after it from refreshing", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const result = addon.eval(`local rows = {}
     for _, w in ipairs(__wfgStub.frames) do if w.card and w.Refresh and w.card.child and w.card.child.pageKey == "general" then rows[#rows + 1] = w end end
@@ -2477,7 +2576,7 @@ it("reload overlays: one that cannot let go at the start of a fight does not lea
 });
 
 it("options: a card whose rows fail to build is kept as far as it got, the page still opens and the changed dots keep following", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const out = addon.eval(`local O = ns.Options
     O.AddRowKind("boom", function() error("TEST-ONLY card build") end, 20)
@@ -2507,7 +2606,7 @@ it("dropdowns: a menu opened in a fight puts no click catcher over the screen, o
 });
 
 it("options: search text of any shape, a page change with a menu open, closing with a question open and reopening leave nothing floating", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end");
+  const addon = loggedIn(CLICK_LUA + DATA_ENV + "GetSpecialization = function() return 1 end", { client: RETAIL_CLIENT });
   addon.slash("");
   const out = addon.eval(`local O, res = ns.Options, {}
     local function try(tag, fn, ...) local ok, err = pcall(fn, ...) if not ok then res[#res + 1] = tag .. ": " .. tostring(err):sub(1, 200) end end
@@ -2554,7 +2653,7 @@ it("hunt H44-11-50: a slider whose setter ignores the value still stops setting 
 // H45-40-2: Pixel-perfect can save a shared bar size (24 to 64) past a single bar's Button size slider (24 to 48); a caption
 // click on a value past the slider's end steps it to the end, then wraps as usual.
 it("H45-40-2: a caption click on a value past the slider's end steps it to the end, never wraps to the minimum", () => {
-  const addon = loggedIn(RETAIL + CLICK_LUA + DATA_ENV, { savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 62, layout = 2 } } }" });
+  const addon = loggedIn(CLICK_LUA + DATA_ENV, { client: RETAIL_CLIENT, savedVariables: "VanguardDB.profiles = { Default = { ActionBars = { size = 62, layout = 2 } } }" });
   addon.eval('ns.Options.Show("actionbars")');
   // The shared size and bar 1's own size.
   const sizes = () => addon.eval('local s = ns.GetModule("ActionBars").settings return { s.size, s.bars[1].size or false }');
@@ -2575,4 +2674,56 @@ it("options: while the spec's profile overrides a staged pick, Copy here names t
     .toBe("Replaces every setting in profile Heal with profile Default's. It can't be undone.");
   profileButton(addon, "Heal  (in use)", "use");
   expect(addon.eval("return VanguardCharDB.pendingProfile"), "Use on the running profile clears the staged pick").toBeFalsy();
+});
+
+it("Escape closes the options window with the close sound and the fade, as the close button does (H46-23-4)", () => {
+  const addon = loggedIn(CLICK_LUA);
+  addon.eval(`ns.Options.Show("general")
+    __sounds, __closes = {}, 0
+    local T = ns.Theme local sound, close = T.Sound, T.CloseWindow
+    T.Sound = function(kind, ...) __sounds[#__sounds + 1] = kind return sound(kind, ...) end
+    T.CloseWindow = function(...) __closes = __closes + 1 return close(...) end`);
+  addon.key("Vanguard_Options", "ESCAPE");
+  expect(addon.eval("return { table.concat(__sounds, ','), __closes, Vanguard_Options:IsShown() }"), "the close sound, the fade, the window gone").toEqual(["close", 1, false]);
+});
+
+it("options: the addons button's tooltip counts what the badge counts, not a fallback kept by ns.Quiet (H46-23-5)", () => {
+  const addon = loggedIn();
+  expectErrors("TEST-ONLY fallback: eval:2: TEST-ONLY refused");
+  addon.eval('ns.Quiet("TEST-ONLY fallback", function() error("TEST-ONLY refused") end) ns.ErrorBadge.Update()');
+  // The tooltip lines after pointing at the addons button.
+  const lines = () => addon.eval(`local b = CreateFrame("Button") Vanguard_OnAddonCompartmentEnter("Vanguard", b)
+    local out = {} for _, l in ipairs(GameTooltip.__lines) do out[#out + 1] = l.text end return out`);
+  expect([addon.eval("return { ns.LoudErrorCount(), #ns.errors }"), lines().length], "one quiet entry kept, no error line").toEqual([[0, 1], 2]);
+});
+
+it("options: pages built before a profile change are built again, so the Damage style row and the chat lists follow the new profile (H46-23-50)", () => {
+  const addon = loggedIn('__wfgWorld.units.player.class = "DRUID" __wfgWorld.units.player.className = "Druid"\n' + CLICK_LUA);
+  addon.eval('ns.Settings("ChatWatch").phrases = { "TEST-ONLY old phrase" } ns.Options.Show("town") ns.Options.Show("chat")');
+  const style = `local row for _, page in ipairs(ns.Options.PAGES) do if page.key == "town" then
+    for _, r in ipairs(ns.Options.RowsOf(page)) do if r.english == "Damage style" then row = r end end end end`;
+  addon.eval(`VanguardDB.profiles.Other = { Upgrades = { styles = { DRUID = "balance" } }, ChatWatch = { phrases = { "TEST-ONLY new phrase" } } }`);
+  addon.eval('VanguardDB.profiles.Default = VanguardDB.profiles.Other ns.ProfileChanged() ns.Options.Show("town")');
+  expect(addon.eval(`${style} row[5]("feral") return { row[4](), ns.Settings("Upgrades").styles.DRUID, VanguardDB.profiles.Other.Upgrades.styles.DRUID }`), "the row writes the profile in use")
+    .toEqual(["feral", "feral", "feral"]);
+  addon.eval('ns.Options.Show("chat")');
+  expect([addon.eval('return __click("Remove: TEST-ONLY old phrase")'), addon.eval('return __click("Remove: TEST-ONLY new phrase")')], "the Chat page lists the new profile's phrase, not the old one").toEqual([false, true]);
+});
+
+it("H46-24-53: General has a Grid spacing slider, and the Modules page a switch per registered skin", () => {
+  const addon = loggedIn(CLICK_LUA + 'Vanguard.RegisterSkin("TESTONLY", function() end)');
+  addon.eval('ns.Options.Show("general")');
+  const slider = addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Grid spacing" then
+    local before = w.get() w.set(64) w:Refresh() return { before = before, now = ns.MoverOptions().gridSize, text = w.value:GetText() } end end`);
+  expect(slider, "the slider starts at the 32 px default and sets the spacing the command does").toEqual({ before: 32, now: 64, text: "64" });
+  addon.slash("unlock");
+  addon.eval('ns.MoverOptions().grid = true ns.ShowGrid = function(size) __grid = size end');
+  addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.track and w.value and w.label:GetText() == "Grid spacing" then w.set(96) end end`);
+  expect(addon.eval("return __grid"), "while unlocked the grid is drawn again at once").toBe(96);
+  addon.eval('ns.Options.Show("modules")');
+  expect(addon.eval('return __click("Skin for TESTONLY")') && addon.eval("return ns.Settings('skins').TESTONLY"), "the skin's switch turns it off like /vg skins TESTONLY off").toBe(false);
+  expect(addon.eval("return Vanguard_Options.reload:IsShown()"), "and it waits for the reload").toBe(true);
+  const none = loggedIn(CLICK_LUA);
+  none.eval('ns.Options.Show("modules")');
+  expect(none.eval('return __find("Skins for other addons") == nil'), "no skin registered, no skin rows").toBe(true);
 });

@@ -227,6 +227,14 @@ function MS.RowWidth(row)
   return n > 0 and n * MS.TILE + (n - 1) * MS.GAP + foldRoom(row) or 0
 end
 
+-- Tells what follows the bar that its width changed (the game laid its menu or bags out again with more or fewer
+-- buttons): the HUD layout measures the keep's room against the bar's left edge (Core/HudLayout.lua).
+local function widthChanged(width)
+  if width == MS.fitWidth then return end
+  MS.fitWidth = width
+  ns.MoverChanged("menustrip")
+end
+
 -- Sizes the bar to hug its rows, MS.MARGIN on every side, and places each
 -- row's anchor: the longer row spans the bar inside the margin, the shorter
 -- one is centered under or over it (on the same 4-pixel gaps). The bar's
@@ -237,6 +245,7 @@ function MS.FitStrip()
   local w1, w2 = MS.RowWidth(MS.ROWS[1]), MS.RowWidth(MS.ROWS[2])
   local w = math.max(w1, w2)
   MS.strip:SetSize(w + 2 * MS.MARGIN, MS.HEIGHT)
+  widthChanged(w)
   for i, row in ipairs(MS.ROWS) do
     local rw = i == 1 and w1 or w2
     row.anchor:SetSize(math.max(1, rw), MS.TILE)

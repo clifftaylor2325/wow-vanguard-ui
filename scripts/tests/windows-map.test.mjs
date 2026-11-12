@@ -816,13 +816,17 @@ const LEGACY_PARTS_ENV = LEGACY_ENV + SCROLL_HELPERS + INSIDES_LUA + `
     r.Text = __fs(r)
     r.selected = selected
     function r:SetSelected(on) self.selected = on end
+    -- Blizzard_SharedXML/ListTemplates.lua:48-56 sets the title's colour; Blizzard_LegacyChallengeCategoryList.lua:170-178 calls it from OnEnter and OnLeave.
+    function r:CheckHighlightTitle() self.Text:SetTextColor(1, 0.82, 0) end
+    r:SetScript("OnEnter", function(self) self:CheckHighlightTitle() end)
+    r:SetScript("OnLeave", function(self) self:CheckHighlightTitle() end)
     return r
   end
   function __challenge(selected)
     local c = CreateFrame("Button", nil, LegacySystemFrame.ChallengesPage.DetailPane)
     for _, key in ipairs({ "Background", "BackgroundTop", "BackgroundMiddle", "BackgroundBottom", "SelectedOverlay", "TitleBar", "PlusMinus" }) do c[key] = c:CreateTexture() end
     c.Tracked, c.selected = __check(c), selected
-    c.Title, c.Description, c.Icon, c.IconBorder, c.Shield = __fs(c), __fs(c), c:CreateTexture(), c:CreateTexture(), c:CreateTexture()
+    c.Label, c.Description, c.Icon, c.IconBorder, c.Shield = __fs(c), __fs(c), c:CreateTexture(), c:CreateTexture(), c:CreateTexture()
     function c:IsSelected() return self.selected end
     function c:RefreshStateArt() end
     return c
@@ -992,7 +996,11 @@ it("legacy system: crests lose the bronze, card icons are cropped flat and the c
   // A crest's desaturated flag and whether it was tinted.
   const tint = (expr) => addon.eval(`local r = ${expr} return { r.__desaturated, r.__vertexColor ~= nil }`);
   expect(addon.eval(`return __looks(${list}.ScrollBox.items[1].Text, 'label', 'text')`), "a category's name is in the text colour, not the game's yellow").toBe(true);
-  expect(addon.eval(`local c = ${cards}.items[1] return { __looks(c.Title, 'label', 'text'), __looks(c.Description, 'small', 'text2'), c.Title:GetAlpha(), c.Description:GetAlpha(), c.IconBorder:GetAlpha() }`), "a challenge card's title and description in the text tiers at full strength, the icon frame faded").toEqual([true, true, 1, 1, 0]);
+  addon.eval(`local r = ${list}.ScrollBox.items[1] r:GetScript("OnEnter")(r)`);
+  expect(addon.eval(`return __looks(${list}.ScrollBox.items[1].Text, 'label', 'text')`), "H46-28-5 a hover does not bring the game's yellow back").toBe(true);
+  addon.eval(`local r = ${list}.ScrollBox.items[1] r:GetScript("OnLeave")(r)`);
+  expect(addon.eval(`return __looks(${list}.ScrollBox.items[1].Text, 'label', 'text')`), "nor does leaving it").toBe(true);
+  expect(addon.eval(`local c = ${cards}.items[1] return { __looks(c.Label, 'label', 'text'), __looks(c.Description, 'small', 'text2'), c.Label:GetAlpha(), c.Description:GetAlpha(), c.IconBorder:GetAlpha() }`), "a challenge card's title and description in the text tiers at full strength, the icon frame faded").toEqual([true, true, 1, 1, 0]);
   expect(addon.eval(`return ${cards}.items[1].Icon.__texCoord ~= nil`), "its icon is cropped").toBe(true);
   // A card whose icon is a button and whose crest is a frame holding a texture (and a font string, which is left alone).
   addon.eval(`local c = __challenge(false) c.Icon = CreateFrame("Button", nil, c) c.Icon.Icon = c.Icon:CreateTexture() c.PointsBadge = CreateFrame("Frame", nil, c)
@@ -1002,6 +1010,9 @@ it("legacy system: crests lose the bronze, card icons are cropped flat and the c
   addon.eval(`local c = __challenge(false) c.Icon = CreateFrame("Frame", nil, c) c.Icon.texture, c.Icon.frame = c.Icon:CreateTexture(), c.Icon:CreateTexture() __acquire(${cards}, c)`);
   expect(addon.eval(`local i = ${cards}.items[3].Icon return { i.texture:GetAlpha(), i.texture.__texCoord ~= nil, i.frame:GetAlpha() }`), "a frame icon keeps and crops its picture, its ring is faded").toEqual([1, true, 0]);
   expect([tint(`${cards}.items[1].Shield`), tint("LegacySystemFrame.TreePage.LegacyTreePointSummary.Shield")], "the crests are desaturated and tinted").toEqual([[true, true], [true, true]]);
+  // Blizzard_LegacySystemTemplates.xml:236-278: a Shield button holds Icon, CheckBackground and Check; only the Icon is the bronze crest.
+  addon.eval(`local c = __challenge(false) c.Shield = CreateFrame("Button", nil, c) c.Shield.Icon, c.Shield.CheckBackground, c.Shield.Check = c.Shield:CreateTexture(), c.Shield:CreateTexture(), c.Shield:CreateTexture() __acquire(${cards}, c)`);
+  expect(addon.eval(`local s = ${cards}.items[4].Shield return { s.Icon.__desaturated == true, s.CheckBackground.__desaturated == true, s.Check.__desaturated == true }`), "a Shield button's crest is flattened, its tick and the tick's backing keep their colours").toEqual([true, false, false]);
   expect(addon.eval("local b = LegacySystemFrame.ChallengesPage.LegacyChallengePointSummary.PointsBar return { __looks(b.Text, 'label', 'text'), b:GetStatusBarTexture().__vertexColor ~= nil }"), "the points bar's figures are in the text colour over an accent fill").toEqual([true, true]);
   addon.eval("LegacySystemFrame.RewardTrackPage.LegacyRewardProgressFrame:Init()");
   expect(addon.eval("local c = LegacySystemFrame.RewardTrackPage.LegacyRewardProgressFrame.Elements[1] return { __looks(c.RewardName, 'label', 'text'), __looks(c.Level, 'small', 'text2'), c.RewardName:GetAlpha(), c.Icon.__texCoord ~= nil }"), "a locked reward's name and level are in the text tiers at full strength, its icon cropped").toEqual([true, true, 1, true]);

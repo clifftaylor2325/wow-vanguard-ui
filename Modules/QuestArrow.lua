@@ -9,9 +9,9 @@
 -- A quest on another map is pointed at by the client's next waypoint on this one (the zone exit
 -- or boat), when the client has that call; without it, or a value the client won't give, the
 -- distance reads "no direction" instead of a guess. Nothing here is protected, but the work that repeats as you
--- move (the pick each second, the redraw ten times a second) rests in a fight and while the arrow is hidden: in
--- combat the arrow holds the quest, turn and distance it had, a change in the quest log still redraws it, and it
--- catches up within a second of the fight's end.
+-- move rests in a fight: the pick each second (also where the client restricts the map) and the redraw ten times a
+-- second (which also rests while the arrow is hidden). In combat the arrow holds the quest, turn and distance it
+-- had, a change in the quest log still redraws it, and it catches up within a second of the fight's end.
 
 local ADDON, ns = ...
 local L = ns.L

@@ -1141,13 +1141,15 @@ end
 -- The Chat window size choices: the default size times 1, 1.5 or 2.
 CH.WINDOW_SCALES = { { 1, L["Default"] }, { 1.5, L["Larger"] }, { 2, L["Largest"] } }
 
--- Sets the main chat window to the default size times the Chat window size choice.
+-- Sets the main chat window to the default size times the Chat window size choice, and keeps that size for this
+-- character (CH.KeepSize).
 function CH.ApplySize()
   local frame = _G.ChatFrame1
   if type(frame) ~= "table" then return end
   local w, h = CH.DefaultSize()
   local scale = tonumber(CH.settings.windowScale) or 1
   frame:SetSize(w * scale, h * scale)
+  CH.KeepSize(w * scale, h * scale)
 end
 
 -- The first sizes earlier versions gave the window (0.6's 420 x 140, 0.7.0's 500 x 154 and 420 x 154,
@@ -1179,21 +1181,66 @@ local function isOldDefault(frame)
   return false
 end
 
--- Sizes the main chat window the first time only for each character (when entering the world,
--- after the game's layout has been applied); a resize after that is the player's, except that a
--- window still at an earlier version's first size is set to the new one once.
-function CH.Size()
+-- Keeps the size Vanguard gave the main window (the first size, the Chat window size choice or the General sliders)
+-- for this character, to put back after the game's Edit Mode applies its layout's size (CH.RestoreSize). Nothing
+-- while the module is off (its flags read the profile).
+function CH.KeepSize(width, height)
+  if not CH.settings then return end
+  local flags = sizeFlags()
+  flags.width, flags.height = ns.PlainNumber(width), ns.PlainNumber(height)
+end
+
+-- The main window's kept size (width, height), or nil when none is kept (or the save holds something else).
+local function keptSize()
+  local flags = sizeFlags()
+  if type(flags.width) == "number" and type(flags.height) == "number" then return flags.width, flags.height end
+end
+
+-- Puts the main window back to its kept size: the game's Edit Mode sets it to the layout's size at every UI load
+-- and layout change (and Vanguard writes no Edit Mode setting). Left alone while Edit Mode is open (the player
+-- sizes it there) or when the window is not Vanguard's to place.
+function CH.RestoreSize()
+  local frame, w, h = _G.ChatFrame1, keptSize()
+  if not CH.settings.place or ns.PinsPaused() or not w or type(frame) ~= "table" then return end
+  if ns.PlainNumber(frame:GetWidth()) ~= w or ns.PlainNumber(frame:GetHeight()) ~= h then frame:SetSize(w, h) end
+end
+
+-- Sizes the main chat window when entering the world (after the game's layout has been applied): the first time for
+-- each character, once for a window still at an earlier version's first size, and once for a character with no
+-- size kept yet (one that played before sizes were kept: Edit Mode had put the layout's size back); after a login
+-- or a reload, the kept size goes back (Edit Mode may have applied its layout before Vanguard watched it).
+function CH.Size(_, isInitialLogin, isReloadingUi)
   local frame = _G.ChatFrame1
   if not CH.settings.place or type(frame) ~= "table" then return end
   local flags = sizeFlags()
   local first, old = not flags.sized, not flags.shortened and isOldDefault(frame)
   flags.sized, flags.shortened = true, true
-  if first or old then CH.ApplySize() end
+  if first or old or not keptSize() then return CH.ApplySize() end
+  if isInitialLogin == true or isReloadingUi == true then CH.RestoreSize() end
 end
 
 -- Hooks a client function by name, when this client has it.
 local function after(name, fn)
   if type(hooksecurefunc) == "function" and type(_G[name]) == "function" then hooksecurefunc(name, ns.Guard("hook " .. tostring(name), fn)) end
+end
+
+-- Keeps the size the player gives the main window in Edit Mode, by the corner grip or the dialog's Width and Height:
+-- both reach EditModeManagerFrame:OnSystemSettingChange (Blizzard_EditMode/Shared/EditModeManager.lua:390, called by
+-- EditModeSystemTemplates.lua EditMode_OnResized and EditModeDialogs.lua), never UpdateSystem, so a later layout
+-- apply would put the older kept size back. Not UpdateSystemSettingWidth/Height: every layout apply calls those.
+local function keepEditModeSize(_, systemFrame)
+  if systemFrame == _G.ChatFrame1 and CH.settings.place then CH.KeepSize(systemFrame:GetWidth(), systemFrame:GetHeight()) end
+end
+
+-- Puts the main window's kept size back each time the game's Edit Mode applies a layout to it: ChatFrame1 is an Edit
+-- Mode system, and EditModeChatFrameSystemMixin:UpdateSystem sets its size from the layout after placing it
+-- (same file), so a post-hook sees the layout's size set; a size the player sets in Edit Mode is kept (keepEditModeSize).
+local function watchEditMode()
+  local frame, manager = _G.ChatFrame1, _G.EditModeManagerFrame
+  if type(hooksecurefunc) ~= "function" or type(frame) ~= "table" or type(frame.UpdateSystem) ~= "function" then return end
+  hooksecurefunc(frame, "UpdateSystem", ns.Guard("hook chat edit mode", CH.RestoreSize))
+  if type(manager) ~= "table" or type(manager.OnSystemSettingChange) ~= "function" then return end
+  hooksecurefunc(manager, "OnSystemSettingChange", ns.Guard("hook chat edit mode size", keepEditModeSize))
 end
 
 -- Re-stacks the side buttons after the game's chat alert container re-anchors Quick Join and text
@@ -1239,8 +1286,8 @@ local function skinTemporary()
 end
 
 -- Follows the game's chat code: new windows are skinned, a tab click repaints the tabs, its size menu
--- re-fonts, its layout is put right (hookLayout), and its alert flashes are watched for the
--- hidden-until-hover bar.
+-- re-fonts, its layout is put right (hookLayout), its alert flashes are watched for the
+-- hidden-until-hover bar, and Edit Mode's sizing of the main window is undone (watchEditMode).
 local function hookGame()
   after("FCF_OpenTemporaryWindow", skinTemporary)
   after("FCF_OpenNewWindow", CH.SkinAll)
@@ -1249,6 +1296,7 @@ local function hookGame()
   hookLayout()
   hookAlertFlash()
   watchAlerts()
+  watchEditMode()
 end
 
 -- Module entry point (Core/Modules.lua). Chat frames aren't protected, so

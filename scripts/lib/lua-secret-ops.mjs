@@ -15,6 +15,10 @@
 // tests' Lua for the game's own untainted code, both of which may test and compare secrets without an error;
 // they see the stand-in table (any secret tests true, == is identity), not the value it hides.
 // Only secrets world.secret made are checked: a test's plain { __secret = true } stand-in has no metatable.
+//
+// This file is the fengari engine's half (VG_LUA_ENGINE=fengari). The default engine, real Lua 5.1, never runs it:
+// its truth-test and compare refusals are VG_TRUTH and VG_COMPARE in tools/lua51/vg_hooks.h, and its __wfgSecretAt is
+// h_secret_at in tools/lua51/shim.c. A rule changed here is changed there too, in the same commit.
 
 import fs from "node:fs";
 import { createRequire } from "node:module";
@@ -131,8 +135,9 @@ function secretAtIndex(L, i) {
   return marked;
 }
 
-// __wfgSecretAt(...): the position of the first secret argument, or nothing. wow-aspects.lua asks it on every
-// widget setter call, so the scan runs here rather than as Lua instructions.
+// __wfgSecretAt(...) on fengari: the position of the first secret argument, or nothing. wow-aspects.lua asks it on
+// every widget setter call, so the scan runs here rather than as Lua instructions (the 5.1 engine's twin is
+// h_secret_at in tools/lua51/shim.c).
 export function secretArgAt(L) {
   const n = fengari.lua.lua_gettop(L);
   for (let i = 1; i <= n; i++) {

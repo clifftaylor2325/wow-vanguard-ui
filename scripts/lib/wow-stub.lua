@@ -96,6 +96,10 @@ if math.type then string.format = fivePointOneFormat end
 local stub = { frames = {}, chat = {}, now = 1000, inCombat = false }
 __wfgStub = stub
 
+-- How many aura buttons the client's frame provider makes at a time (Blizzard_AuraContainerShared.lua:105
+-- FrameCreationBatchSize).
+stub.auraFrameBatch = 10
+
 -- 5.3's table.pack and table.unpack for the harness's own files, which run on both engines (5.1 has only unpack).
 stub.pack = table.pack or function(...) return { n = select("#", ...), ... } end
 stub.unpack = table.unpack or unpack
@@ -703,7 +707,8 @@ function methods:RegisterUnitEvent(event, ...)
 end
 
 -- Reparents a region (the preview and tests read __parent). Like the game, a frame without a
--- fixed strata takes its new parent's strata.
+-- fixed strata takes the strata its new parent has, its own or the one it inherits (forever
+-- Blizzard_UnitFrame/Shared/PlayerFrame.lua:45-46: "Inherit parent strata" before SetParent(PlayerFrame)).
 -- Approximation (H44-30-102): a reparent that takes a shown frame in or out of view runs no OnHide or OnShow here, and
 -- since aa9dd03 a later Hide() under the hidden parent runs none either, so OnHide work after such a reparent goes
 -- unexercised. Whether the client runs them at SetParent is not in Blizzard's source; smoke step 33.664a asks the game.
@@ -712,7 +717,7 @@ function methods:SetParent(parent)
   detach(self.__parent, self)
   self.__parent = parent
   attach(parent, self)
-  if parent and not self.__fixedStrata then self.__strata = parent.__strata or "MEDIUM" end
+  if parent and not self.__fixedStrata then self.__strata = parent.GetFrameStrata and parent:GetFrameStrata() or "MEDIUM" end
 end
 
 -- Strata and scroll child.
@@ -887,6 +892,23 @@ function methods:SetText(text)
   self.__text = text
   if changed and self.__kind == "EditBox" and not self.__typing then stub.runScript(self, "OnTextChanged", false) end
 end
+-- A value as the client formats it: a secret's plain value (the harness reads it with rawget), anything else as it is.
+local function formatValue(v)
+  if type(v) == "table" and rawget(v, "__secret") == true then return rawget(v, "n") end
+  return v
+end
+
+-- The text string.format(fmt, ...) makes, set as the client's SetFormattedText sets it (SimpleFontStringAPIDocumentation.lua
+-- SetFormattedText, both clients), through the stub's SetText so its rules hold (a font first, an edit box's change
+-- script); a hook on the widget's own SetText does not run, as SetFormattedText is its own call in game. A secret
+-- argument (wow-aspects.lua lets the addon hand one) makes the text a secret: string.format never meets the secret.
+function methods:SetFormattedText(fmt, ...)
+  local args = { n = select("#", ...), ... }
+  for i = 1, args.n do args[i] = formatValue(args[i]) end
+  local text = string.format(formatValue(fmt), unpack(args, 1, args.n))
+  if __wfgSecretAt(fmt, ...) then text = stub.world.secret(text) end
+  methods.SetText(self, text)
+end
 -- An edit box's letter limit (0: none). The stub's SetText doesn't cut to it; a test that needs the cut models it.
 function methods:SetMaxLetters(n) self.__maxLetters = n end
 -- The edit box's letter limit.
@@ -1051,7 +1073,8 @@ function methods:SetFlowLayoutGrowthDirection(h, v) self.__flowGrow = { h, v } e
 function methods:SetFlowLayoutMaximumLineSize(size) self.__flowLine = size end
 
 -- Makes count more buttons for a group, each dressed by initializeFrame as it is made, as the client's frame provider
--- does (Blizzard_AuraContainerFrameProviders.lua CreateFrame).
+-- does (Blizzard_AuraContainerFrameProviders.lua CreateFrame), then handed to stub.auraButtonMade (wow-taint.lua puts
+-- the container's access hold on it there, after initializeFrame, as the client's :82-86 does).
 local function addAuraButtons(c, g, count)
   for _ = 1, count do
     local b = newWidget("AuraButton", nil, c)
@@ -1061,6 +1084,7 @@ local function addAuraButtons(c, g, count)
     b.__forbiddenScripts = { OnEnter = true, OnLeave = true }
     g.buttons[#g.buttons + 1] = b
     if g.opts.initializeFrame then g.opts.initializeFrame(b) end
+    if stub.auraButtonMade then stub.auraButtonMade(c, b) end
   end
 end
 
@@ -1130,22 +1154,39 @@ local function groupRefusal(c, key, filter, opts)
   return optionsRefusal(opts)
 end
 
--- A group: refused as the client refuses it (its asserts raise the message alone), else its first buttons are made
--- now and dressed by initializeFrame, as the client does.
+-- A group: refused as the client refuses it (its asserts raise the message alone), else a first batch of ten buttons
+-- is made now and dressed by initializeFrame, whatever its maxFrameCount, which caps only how many show
+-- (Blizzard_CustomAuraContainer.lua:286-304 calls CreateFrameBatch before RegisterAuraGroup). No options, or no
+-- layout, take the client's defaults (:228-256); the stub's readers default each field, so it keeps an empty table.
 function methods:AddAuraGroup(key, filter, opts)
+  opts = opts or {}
   local refused = groupRefusal(self, key, filter, opts)
   if refused then error(refused, 0) end
-  local g = { key = key, filter = filter, opts = opts, buttons = {} }
+  local g = { key = key, filter = filter, opts = opts, layout = opts.layout or {}, buttons = {} }
   self.__groups = self.__groups or {}
   self.__groups[#self.__groups + 1] = g
-  addAuraButtons(self, g, math.min(opts.maxFrameCount or 10, 10))
+  addAuraButtons(self, g, stub.auraFrameBatch)
   self:UpdateAllAuras()
 end
 
--- The unit and whether the container is on; either change reads the auras again.
+-- The container's unit; a change reads the auras again.
 function methods:SetUnit(unit) self.__unit = unit self:UpdateAllAuras() end
 function methods:GetUnit() return self.__unit end
-function methods:SetEnabled(on) self.__enabled = on self:UpdateAllAuras() end
+
+-- SetEnabled: an aura container switches on or off and reads its auras again; every other kind that lists it (a
+-- button, an edit box, a slider) enables or disables itself through Enable or Disable, OnEnable, OnDisable and the
+-- label's font included (SimpleButtonAPIDocumentation.lua:336 SetEnabled(enabled), both clients). Plain calls, no tail
+-- call: wow-taint.lua's wrappers read the caller's stack frame.
+function methods:SetEnabled(on)
+  if self.__kind == "AuraContainer" then
+    self.__enabled = on
+    self:UpdateAllAuras()
+  elseif on then
+    self:Enable()
+  else
+    self:Disable()
+  end
+end
 
 -- Aura buttons: the regions the addon hands the client, recorded.
 function methods:SetIcon(t) self.__icon = t end
@@ -1226,7 +1267,7 @@ end
 -- Makes whole batches of ten buttons until the group has one for each aura it shows: the client's AcquireFrame makes a
 -- batch when none is free (Blizzard_AuraContainerShared.lua:100-106 FrameCreationBatchSize = 10).
 local function growGroup(c, g, wanted)
-  while #g.buttons < wanted do addAuraButtons(c, g, 10) end
+  while #g.buttons < wanted do addAuraButtons(c, g, stub.auraFrameBatch) end
 end
 
 -- Fills a group's buttons from C_UnitAuras through its filter (Edit Mode's samples while its preview shows), up to
@@ -1248,7 +1289,7 @@ end
 local function flowButtons(c)
   local grow, anchor, x, y, lineH = c.__flowGrow or { 1, 1 }, c.__flowAnchor or "TOPLEFT", 0, 0, 0
   for _, g in ipairs(c.__groups or {}) do
-    local gap, newLine = g.opts.layout.elementSpacing or 0, g.opts.layout.forceNewLine
+    local gap, newLine = g.layout.elementSpacing or 0, g.layout.forceNewLine
     for i, b in ipairs(g.buttons) do
       if b.__shown and x > 0 and ((i == 1 and newLine) or (c.__flowLine and x + b.__width > c.__flowLine)) then x, y, lineH = 0, y + lineH + gap, 0 end
       if b.__shown then b.__points = { [anchor] = { point = anchor, rel = c, relPoint = anchor, x = x * grow[1], y = y * grow[2] } } end
@@ -1374,10 +1415,19 @@ local CLICK_SCRIPTS = {
   mouse = { "OnMouseDown", "OnMouseUp" },
 }
 
+-- The click flips an enabled check button's check before its OnClick, which reads the new state with no SetChecked of
+-- its own (forever Blizzard_Transmog/Blizzard_Transmog.lua:1960-1966, live :1650; Blizzard_ActionBar's PostClick
+-- UpdateState puts an action button's check right after, ActionButton.lua:1567-1569). Where the flip falls between
+-- PreClick and OnClick is engine-side: the stub's guess is just before OnClick.
+local function flipCheck(frame)
+  if frame.__kind == "CheckButton" then frame.__checked = frame.__checked ~= true end
+end
+
 -- Runs one script of a click with the arguments the client gives it; a disabled button's OnClick does not run.
 local function clickScript(frame, name, button, down)
   if name == "OnMouseDown" or name == "OnMouseUp" then return runScript(frame, name, button) end
   if name == "OnClick" and frame.__disabled == true then return end
+  if name == "OnClick" then flipCheck(frame) end
   runScript(frame, name, button, down == true)
 end
 

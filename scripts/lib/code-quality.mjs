@@ -415,10 +415,15 @@ function colorTables(code) {
   return hits;
 }
 
+// Whether tokens[k] names a table field: a word after a "{", "," or ";" and before a single "=".
+function inFieldPosition(tokens, k) {
+  return [",", ";", "{"].includes(tokens[k - 1]?.text) && tokens[k + 1]?.text === "=" && tokens[k + 2]?.text !== "=";
+}
+
 // The value of the table field named by tokens[k] (`r = 0.82` after a "{", "," or ";") when it is one written
 // number, else NaN.
 function fieldNumber(tokens, k) {
-  if (![",", ";", "{"].includes(tokens[k - 1]?.text) || tokens[k + 1]?.text !== "=" || tokens[k + 2]?.text === "=") return NaN;
+  if (!inFieldPosition(tokens, k)) return NaN;
   let end = k + 2;
   while (/^[\d.]$/.test(tokens[end]?.text ?? "")) end++;
   const text = tokens.slice(k + 2, end).map((t) => t.text).join("");
@@ -440,7 +445,7 @@ function rgbFieldTables(tokens) {
     const table = open.at(-1);
     if (t.kind === "punct" && "{([".includes(t.text)) open.push(t.text === "{" ? {} : null);
     else if (t.kind === "punct" && "})]".includes(t.text)) rgbHit(open.pop(), hits);
-    else if (t.kind === "word" && table && RGB_NAMES.includes(t.text)) table[t.text] ??= { at: t.start, value: fieldNumber(tokens, k) };
+    else if (t.kind === "word" && table && RGB_NAMES.includes(t.text) && inFieldPosition(tokens, k)) table[t.text] ??= { at: t.start, value: fieldNumber(tokens, k) };
   });
   return hits;
 }

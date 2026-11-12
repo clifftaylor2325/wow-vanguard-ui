@@ -159,6 +159,20 @@ it("lifecycle: a live module whose Enable fails is reported and stays off; the n
   expect([addon.eval("return __tries"), live(addon, "TestBroken")]).toEqual([2, { TestBroken: true }]);
 });
 
+it("lifecycle: a live module that failed at login does not read 'Applies after the fight' when another switch moves in a fight", () => {
+  expectErrors("module TestBroken: broken on purpose");
+  const addon = lifeAddon("", `${MODULES}
+    local B = ns.Module("TestBroken", { defaults = {}, live = true })
+    __tries = 0
+    function B.Enable() __tries = __tries + 1 error("broken on purpose", 0) end
+    ns.Module("TestOther", { defaults = {}, live = true }).Enable = function() end`);
+  setCombat(addon, true);
+  addon.eval('ns.SetModuleEnabled("TestOther", false)');
+  expect(addon.eval('return { ns.ModuleAwaitsFight("TestBroken"), ns.ModuleAwaitsFight("TestOther"), ns.Options.ModuleNote("TestBroken") ~= "Applies after the fight" }'), "the failed module waits for nothing; the switched one does").toEqual([false, true, true]);
+  setCombat(addon, false);
+  expect([live(addon, "TestBroken"), addon.eval("return __tries")], "after the fight it is still off and was not tried again").toEqual([{ TestBroken: false }, 1]);
+});
+
 it("lifecycle: a module that requires one not registered before it is reported, and never runs", () => {
   expectErrors(/^module TestEarly: requires TestLater, which is not registered before it$/);
   const addon = lifeAddon("", `${MODULES}
@@ -496,6 +510,17 @@ it("lifecycle: a reload-only module's switch or the theme's reload settings diff
   expect(profileAddon('P.modules.TestReload = false P.theme = { variant = "contrast" }', REBINDS).eval('return ns.SwitchWaitText("Raid")')).toBe("TestReload, the theme differ in Raid, so the switch waits for a reload.");
   expect(profileAddon("P.TestReload = { size = 2, extra = { 1 } }", REBINDS).eval('return { ns.SwitchBlockers("Raid") }')).toEqual([["TestReload"], ["TestReload"]]);
   expect(profileAddon("P.TestReload = { size = 2 }", REBINDS).eval('return { ns.SwitchBlockers("Raid") }')).toEqual([{}, {}]);
+});
+
+it("hunt H46-22-4: another addon's skin that runs, or not, differently in the next profile blocks the switch and is named", () => {
+  const skin = `${REBINDS} Vanguard.RegisterSkin("TestOnlySkin", function() end)`;
+  expect(profileAddon("P.skins = { TestOnlySkin = false }", skin).eval('return { ns.SwitchBlockers("Raid") }'), "a skin on screen the next profile turns off").toEqual([["skins"], ["skins"]]);
+  expect(profileAddon("P.skins = { Unregistered = false }", skin).eval('return { ns.SwitchBlockers("Raid") }'), "a name no addon registered does not block").toEqual([{}, {}]);
+  expect(profileAddon("P.modules.TestReload = true", skin).eval('return { ns.SwitchBlockers("Raid") }'), "the same skin setting switches at once").toEqual([{}, {}]);
+  const off = profileAddon("P.modules.TestReload = true", skin);
+  off.eval('VanguardDB.profiles.Default.skins = { TestOnlySkin = false }');
+  expect(off.eval('return { ns.SwitchBlockers("Raid") }'), "a skin switched off after it ran is still on screen, which an on profile wants").toEqual([{}, {}]);
+  expect(profileAddon("P.skins = { TestOnlySkin = false }", skin).eval('return ns.SwitchWaitText("Raid")')).toBe("another addon's skin differs in Raid, so the switch waits for a reload.");
 });
 
 it("lifecycle: a profile picked in a fight, or the profile in use picked again, is staged as before", () => {

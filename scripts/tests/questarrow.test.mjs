@@ -292,6 +292,25 @@ it("quest arrow: a pin whose quest left the log is let go, so a quest the game t
   expect([addon.eval("return ns.QuestArrow.current"), pinState(addon)[0]], "the game's tracked quest doesn't hold the arrow").toEqual([90061, false]);
 });
 
+// Blizzard_FrameXMLUtil/Mainline/Blizzard_QuestSuperTracking.lua: OnQuestAccepted -> QuestUtil.CheckAutoSuperTrackQuest tracks the
+// accepted quest while nothing is super-tracked (Mainline/QuestUtils.lua:428-443); OnQuestWatchChanged(questID, false) clears the tracked
+// quest; Blizzard_QuestNavigation/SuperTrackedFrame.lua:257-286 clears a waypoint on arrival. The Shift-click hold stays until the quest leaves the log.
+it("H46-28-50 quest arrow: a Shift-clicked quest stays held when the game later tracks another (a quest accepted, a waypoint reached)", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV);
+  addon.eval("ns.QuestGuide.Point(90062) ns.QuestArrow.Pick()");
+  addon.eval("C_QuestLog.RemoveQuestWatch(90062) __tracked = 0 ns.QuestArrow.Pick()");
+  addon.eval(`__wfgWorld.addQuest({ questID = 90063, title = "TEST-ONLY Done", level = 8, watched = true, distanceSq = 250000, objectives = {} })
+    if __tracked == 0 then __tracked = 90063 end ns.QuestArrow.Pick()`);
+  expect(addon.eval("return { ns.QuestArrow.current, ns.QuestArrow.held == true, ns.QuestGuide.Followed(), ns.QuestGuide.pointed, #ns.errors }"), "the accepted quest the game tracks does not take the hold")
+    .toEqual([90062, true, 90062, 90062, 0]);
+  addon.eval("__tracked = 90061 ns.QuestArrow.Pick()");
+  expect(addon.eval("return { ns.QuestArrow.current, ns.QuestGuide.Followed() }"), "nor does another quest the game tracks").toEqual([90062, 90062]);
+  addon.eval("ns.QuestGuide.Unpin() ns.QuestArrow.Pick()");
+  expect(addon.eval("return ns.QuestGuide.Followed()"), "the Pin button lets both go: nothing is followed until a quest is tracked").toBeNull();
+  addon.eval("__tracked = 90061");
+  expect(addon.eval("return ns.QuestGuide.Followed()"), "then the game's tracked quest leads again").toBe(90061);
+});
+
 it("quests page: its cards in the order a player meets them, the arrow, guidance and minimap spots on one card", () => {
   const addon = loggedIn(ARROW_ENV);
   const page = addon.eval(`local out = {}
@@ -441,4 +460,10 @@ it("A1-3 quest arrow: a redraw with nothing new sets no text, and a pick fills t
   expect(addon.eval("local QA = ns.QuestArrow local before = QA.target QA.Pick() return { before == QA.target, QA.target == QA.spot, QA.target[1] }"), "the pick's spot is one table, filled again").toEqual([true, true, 10]);
   addon.eval("__wfgWorld.quests = {} ns.QuestArrow.Pick()");
   expect(addon.eval("return ns.QuestArrow.target == nil"), "no quest: no spot").toBe(true);
+});
+it("H46-C-G7 with the arrow module off, a Shift-click hold whose quest left the log is let go by the guide itself", () => {
+  const addon = loggedIn(ARROW_ENV + SUPER_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { QuestArrow = false } } }" });
+  addon.eval("ns.QuestGuide.Point(90062) table.remove(__wfgWorld.quests, 2) __tracked = 90061");
+  addon.fire("QUEST_LOG_UPDATE");
+  expect(addon.eval("return { ns.ModuleLive('QuestArrow'), ns.QuestGuide.Followed(), ns.QuestGuide.pointed == nil }")).toEqual([false, 90061, true]);
 });

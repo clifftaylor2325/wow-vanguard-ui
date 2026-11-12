@@ -9,7 +9,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { afterAll, expect, it } from "vitest";
 import { root } from "./lib/lua-harness.mjs";
-import { anyClientPaths, readToc } from "./lib/toc.mjs";
+import { anyClientPaths, clientPaths, readToc } from "./lib/toc.mjs";
 import { expectedTestFiles, hitsFilesUnder, junitTotals, listedTestFiles, mergeOption, mergeProblems, shardOption, testFileOf } from "./lib/coverage-shards.mjs";
 import { coverageReport, executableLines, loadHitFiles } from "./lib/lua-coverage.mjs";
 
@@ -102,9 +102,9 @@ function writeShards(name, shards, lines) {
   return path.join(scratch, name);
 }
 
-// Every executable line of every file the TOC loads, as the hits one test file could dump.
-function everyLine() {
-  const files = anyClientPaths(readToc(root)).filter((f) => f.endsWith(".lua") && !f.startsWith("Libs/"));
+// Every executable line of every file the TOC loads (or of the TOC paths given), as the hits one test file could dump.
+function everyLine(tocPaths = anyClientPaths(readToc(root))) {
+  const files = tocPaths.filter((f) => f.endsWith(".lua") && !f.startsWith("Libs/"));
   return Object.fromEntries(files.map((f) => [`@${f}`, [...executableLines(fs.readFileSync(path.join(root, f), "utf8"), `@${f}`)]]));
 }
 
@@ -125,6 +125,17 @@ it("--merge judges the floor once over every shard: 100% passes, a missing shard
   const gone = merge(path.join(scratch, "full"), "--shards", "5");
   expect(gone.status).toBe(1);
   expect(gone.out).toContain("expected the hits of 5 shards, found 4 folder(s)");
+}, 120_000);
+
+// A merge judges a full set of shards, so VG_SKIP_RETAIL in the merging shell changes neither the files counted nor
+// the floor: hits that leave every Retail-only line unrun fail at the 100% floor (H46-2-51).
+it("--merge with VG_SKIP_RETAIL set still counts the Retail-only Lua and holds the 100% floor", () => {
+  const dir = writeShards("forever-lines", 2, everyLine(clientPaths(readToc(root), "forever")));
+  const env = { ...process.env, GITHUB_STEP_SUMMARY: "", VG_SKIP_RETAIL: "1" };
+  const run = spawnSync(process.execPath, ["scripts/coverage-lua.mjs", "--merge", dir, "--shards", "2"], { cwd: root, encoding: "utf8", env });
+  const out = `${run.stdout}${run.stderr}`;
+  expect(out).toMatch(/below the floor of 100%/);
+  expect(run.status, out).toBe(1);
 }, 120_000);
 
 // Every *.test.mjs file under scripts/, repo-relative with forward slashes.

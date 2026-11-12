@@ -33,8 +33,8 @@ local NOT_NOW = L["Nothing has changed. You can open key setup again from Action
 WZ.onApply = {}
 
 -- State while the window is open: preset { class, role, sides }, step, tab, page, later (show what comes later),
--- entries and rows (the resolver's entries and what each will do, one row per entry: see planTicks), live and full
--- (the plans of the ticked entries and of every entry), off ({ [entry id] = true } for an unticked change, by
+-- entries and rows (the resolver's entries and what each will do, one row per entry: see planTicks), live (the plan
+-- of the ticked entries), off ({ [entry id] = true } for an unticked change, by
 -- entryId, so a plan worked out again keeps it), scope ("char" or "all"), lit (the chord pressed last), placeNew
 -- (step 3's tick box for new spells), shown (the signature of the plan the list was last drawn from), shared (whether
 -- the game shared the account's keys when step 3 was drawn, so the scope choice was or was not offered).
@@ -98,14 +98,25 @@ local function tickedEntries()
   return out
 end
 
+-- The row the entry at position i would get were it ticked back, the other ticks as they are: the plan of every
+-- entry would assume the other unticked changes are made (a button they would take, a spell they would move).
+local function rowIfTicked(i)
+  local entries, at = {}, nil
+  for j, entry in ipairs(state.entries) do
+    if j == i or not unticked(j) then entries[#entries + 1] = entry end
+    if j == i then at = #entries end
+  end
+  return KA.Plan(entries)[at]
+end
+
 -- Works out what Apply will do with the ticks as they are: leaving an entry out changes what later ones do (a button
 -- no longer taken, a spell no longer placed), so a ticked entry's row comes from the plan of the ticked entries
--- (live, what Apply runs) and an unticked one's from the plan of every entry (full, what it would do).
+-- (live, what Apply runs) and an unticked one's from what ticking it back would do.
 local function planTicks()
   local live, n = KA.Plan(tickedEntries()), 0
-  state.full, state.live, state.rows = KA.Plan(state.entries), live, {}
+  state.live, state.rows = live, {}
   for i in ipairs(state.entries) do
-    if unticked(i) then state.rows[i] = state.full[i] else n = n + 1 state.rows[i] = live[n] end
+    if unticked(i) then state.rows[i] = rowIfTicked(i) else n = n + 1 state.rows[i] = live[n] end
   end
 end
 
@@ -351,13 +362,20 @@ local function paintAs(cap, icon, grey, color, alpha)
   cap:SetAlpha(alpha)
 end
 
+-- The later entry for a key, when its spell is one the character does not know yet (a known one reads as it is now).
+local function laterAt(chord)
+  local i = indexFor(state.laterEntries, chord)
+  local spell = i and state.laterEntries[i].spell
+  if spell and not KL.KnowsNow(spell) then return i end
+end
+
 -- Paints a key on the preview: a change in full with its new icon; with "Show what comes later", a spell the
 -- character will learn, greyed; otherwise what the key does now, faint.
 local function paintPreview(cap)
   cap.chord = KV.Chord(KV.TabById(state.tab), cap.key)
   local i = indexFor(state.entries, cap.chord)
   if i and changesKey(i) then return paintAs(cap, rowIcon(state.rows[i]), false, "accentText", 1) end
-  local later = not i and indexFor(state.laterEntries, cap.chord)
+  local later = not i and laterAt(cap.chord)
   if later then return paintAs(cap, spellIcon(state.laterEntries[later].spell), true, "muted", FADED) end
   local now = KV.Lookup(cap.chord)
   paintAs(cap, now and now.icon, false, KV.CapColor(now), FADED)
@@ -368,7 +386,7 @@ local function tipPreview(cap)
   GameTooltip:SetText(KV.KeyText(cap.chord))
   local now = KV.Lookup(cap.chord)
   GameTooltip:AddLine(now and now.place or L["Nothing is bound to this key."], T.RGB("text2"))
-  local later = not indexFor(state.entries, cap.chord) and indexFor(state.laterEntries, cap.chord)
+  local later = not indexFor(state.entries, cap.chord) and laterAt(cap.chord)
   local text = later and ns.Format(L["Later: {spell}, once you learn it"], { spell = spellText(state.laterEntries[later].spell) }) or keyText(cap.chord)
   GameTooltip:AddLine(text, T.RGB("accentText"))
 end
@@ -481,10 +499,10 @@ local LIST_W = CONTENT_W - T.SCROLL.thumb - T.SPACE.gap
 -- Fills step 3's list (defined below, with the list's parts).
 local fillReady
 
--- Whether the change of the entry at position i, as the plan of every entry has it, would rebind a key that does
--- something else now (the list says "(now ...)").
+-- Whether the change of the entry at position i, as its row has it, would rebind a key that does something else now
+-- (the list says "(now ...)").
 local function rebinds(i)
-  return nowText(state.full[i]) ~= nil
+  return nowText(state.rows[i]) ~= nil
 end
 
 -- The positions of the entries whose change rebinds the same key as the one at position i, i among them: keys 1 to
@@ -493,7 +511,7 @@ local function siblingsOf(i)
   local out = { i }
   if not rebinds(i) then return out end
   for j in ipairs(state.entries) do
-    if j ~= i and rebinds(j) and state.full[j].key == state.full[i].key then out[#out + 1] = j end
+    if j ~= i and rebinds(j) and state.rows[j].key == state.rows[i].key then out[#out + 1] = j end
   end
   return out
 end
@@ -661,16 +679,16 @@ function WZ.Show(n)
 end
 
 -- The entries the player kept ticked, for Apply, how many of them change something (a key that stays as it is has
--- no tick box, so it is always kept), the changes the player unticked that still are changes (one that stopped
--- being a change has no box left), and the keys those would have rebound (they stay
--- the player's, on every bar page).
+-- no tick box, so it is always kept), the changes the player unticked that ticking back would still make (one that
+-- stopped being a change is no longer the player's to keep), and the keys those would have rebound (they stay the
+-- player's, on every bar page).
 local function kept()
   local changes, declined, keys = 0, {}, {}
   for i, entry in ipairs(state.entries) do
-    local off = unticked(i) and KA.WRITES[state.full[i].kind]
+    local off = unticked(i) and KA.WRITES[state.rows[i].kind]
     if off then
       declined[#declined + 1] = entry
-      if rebinds(i) then keys[#keys + 1] = state.full[i].key end
+      if rebinds(i) then keys[#keys + 1] = state.rows[i].key end
     elseif KA.WRITES[state.rows[i].kind] then changes = changes + 1 end
   end
   return tickedEntries(), changes, declined, keys

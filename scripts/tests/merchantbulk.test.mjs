@@ -1,7 +1,8 @@
 // merchantbulk: the sell list, sell-all and the Stack/Max buttons at a merchant (Modules/MerchantBulk.lua), in the TEST-ONLY headless client.
 
 import { expect, it } from "vitest";
-import { chatHas, isTok, loggedIn, RETAIL, setCombat } from "./helpers.mjs";
+import { FOREVER_CLIENT, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { chatHas, isTok, loggedIn, setCombat } from "./helpers.mjs";
 
 // TEST-ONLY bags: slot 1 holds 5 of item 159 (listed), 2 holds item 4540 (not listed), 3 a set item (listed),
 // 4 a locked listed stack, 5 a hidden item, 6 another stack of item 159, and 7 seven more listed items.
@@ -553,8 +554,8 @@ it("the tenth item on a merchant page gets Stack and Max too", () => {
 });
 
 it("bulk buy reads the 12.x merchant table: Stack, Max and the cost line without the old GetMerchantItemInfo, on Forever and retail (V3-R1)", () => {
-  for (const client of ["", RETAIL]) {
-    const addon = loggedIn(BUY_ENV + client);
+  for (const client of [FOREVER_CLIENT, RETAIL_CLIENT]) {
+    const addon = loggedIn(BUY_ENV, { client });
     addon.world.without("GetMerchantItemInfo");
     addon.fire("MERCHANT_SHOW");
     addon.eval("StackSplitFrame:Show()");

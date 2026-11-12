@@ -895,3 +895,26 @@ it("H45-10-2: a price check the house never answers says so on the cheapest-now 
   addon.advance(2.5);
   expect(lines(), "given up: the house did not answer").toEqual(["no answer", "no answer"]);
 });
+
+// Blizzard_AuctionHouseUtil.lua AggregateSearchResultsByQuantity (forever and live): units for sale =
+// quantity - numOwnerItems, so this 10s row holds 20 units of someone else's and 5 of yours.
+const SHARED_ROW = `__wfgWorld.ah.commodities[2589] = { { unitPrice = 1000, quantity = 25, numOwnerItems = 5, containsOwnerItem = true, timeLeftSeconds = 7200 },
+  { unitPrice = 1500, quantity = 3, timeLeftSeconds = 7200 } }`;
+it("a click on a price row you share with another seller undercuts it like the suggestion does; a row that is all yours is taken as it is", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + SHARED_ROW);
+  addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = 3 }`);
+  addon.click(`${CARD}.slot`);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  const suggested = card(addon)[0][3];
+  addon.click(`${UP}.table.rows[1]`);
+  expect([suggested, card(addon)[0][3], listingRow(addon, 1)[4]], "the shared row is flagged yours but undercut: 9s 0c both ways").toEqual(["9s 0c", "9s 0c", true]);
+});
+it("a click on a price row that is all yours takes its price as it is", () => {
+  const addon = atAuctionHouse(BAGS + LINEN_BAGS + `__wfgWorld.ah.commodities[2589] = { { unitPrice = 1000, quantity = 5, numOwnerItems = 5, containsOwnerItem = true, timeLeftSeconds = 7200 },
+    { unitPrice = 1500, quantity = 3, timeLeftSeconds = 7200 } }`);
+  addon.eval(`__wfgWorld.cursor = { type = "item", id = 0, bag = 0, slot = 3 }`);
+  addon.click(`${CARD}.slot`);
+  addon.fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2589);
+  addon.click(`${UP}.table.rows[1]`);
+  expect(card(addon)[0][3], "all yours: as it is").toBe("10s 0c");
+});

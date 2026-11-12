@@ -6,7 +6,6 @@ import { AFK_ENV, CLICK_LUA, FAKE_FADES, RAID_ENV, RISE, UNITS_ENV, chatHas, isT
 
 // TEST-ONLY group extras: a raid tank (raid1) targeting the boar, and a party pet targeting nothing.
 const GROUP_EXTRAS_ENV = `
-  RegisterAttributeDriver = function(frame, attr, driver) frame.__drivers = frame.__drivers or {}; frame.__drivers[attr] = driver end
   __units.raid1 = { name = "TEST-ONLY Tank", hp = 300, maxhp = 1000, power = 0, maxpower = 0, ptype = "RAGE", player = true, class = "ROGUE" }
   __units.raid1target = __units.target
   __units.partypet1 = { name = "TEST-ONLY Wolf", hp = 50, maxhp = 100, power = 0, maxpower = 0, ptype = "FOCUS", reaction = 5 }
@@ -34,7 +33,6 @@ it("main tank frames: the raid's main tanks and assists, with what each is targe
   expect(tile()[2], "a unit that isn't there leaves the tile as it was").toBe("TEST-ONLY Tank");
   const off = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { modules = { MainTanks = false } } }" });
   expect(off.eval("return Vanguard_MainTanks == nil"), "switched off under Modules, nothing is built").toBe(true);
-  expect(loggedIn(UNITS_ENV).eval("return Vanguard_MainTanks ~= nil"), "a client without attribute drivers still builds them").toBe(true);
 });
 it("main tank tiles: hovering one out of combat shows its unit's tooltip", () => {
   const addon = loggedIn(UNITS_ENV + GROUP_EXTRAS_ENV);
@@ -812,6 +810,17 @@ it("quiet the game: the error line drops what the action bar already shows, and 
   old.fire("UI_ERROR_MESSAGE", 51, "TEST-ONLY not ready");
   expect(old.eval("return UIErrorsFrame.__lines"), "an error line without the per-type switch is left alone").toEqual([["TEST-ONLY not ready", 51]]);
 });
+it("H46-30-52 the AFK screen: switched on while you are away it shows at once, and stays hidden when you are not", () => {
+  const addon = loggedIn(UNITS_ENV + AFK_ENV);
+  addon.eval('ns.SetModuleEnabled("AfkScreen", false)');
+  addon.eval("__afk = true");
+  addon.eval('ns.SetModuleEnabled("AfkScreen", true)');
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "away: the screen is up").toBe(true);
+  addon.eval('ns.SetModuleEnabled("AfkScreen", false)');
+  addon.eval("__afk = false");
+  addon.eval('ns.SetModuleEnabled("AfkScreen", true)');
+  expect(addon.eval("return Vanguard_AfkScreen:IsShown()"), "here: it stays hidden").toBe(false);
+});
 it("the AFK screen: a dimmed screen and a card while you're away", () => {
   const addon = loggedIn(UNITS_ENV + AFK_ENV);
   // The AFK screen and its card's texts.
@@ -1075,13 +1084,46 @@ it("H45-3-R1: under the Tabs look the party pets and targets column's default sp
   expect(plain[0] >= 0 && tabs[0] >= 0, "the column's foot stays clear of the party column's top at Height 80, Plain and Tabs").toBe(true);
   expect(tabs[1] - plain[1], "the spot rises by the party column's rise: four tab heights and the 12 units the focus's cast bar needs").toBe(84);
 });
-it("H45-3-R1: the column's spot follows a change of HUD look at once, and a saved position still wins", () => {
-  const addon = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true } } }" });
-  // The column's default spot's y now.
-  const y = () => addon.eval('return select(4, ns.MoverPoint("partyextras"))');
-  const shield = y();
-  addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
-  expect(y() - shield, "Tabs lifts it by the party column's rise, 84").toBe(84);
-  addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
-  expect(y(), "back to Plain: the spot comes down again").toBe(shield);
+// The column's default spot's y under each look in turn, changed live, on a profile whose modules part is `modules`,
+// then whether the unit frames were built and Vanguard's party column with them.
+const spotByLook = (modules, looks) => {
+  const addon = loggedIn(UNITS_ENV, { savedVariables: `VanguardDB.profiles = { Default = { modules = { ${modules} }, PartyExtras = { show = true } } }` });
+  const spots = looks.map((look) => addon.eval(`ns.Theme.Settings().hudLook = "${look}" ns.Theme.Refresh() return select(4, ns.MoverPoint("partyextras"))`));
+  return [...spots, addon.eval("return { Vanguard_player ~= nil, Vanguard_party1 ~= nil }")];
+};
+it("H45-3-R1: the column's spot follows a change of HUD look at once", () => {
+  const [shield, tabs, plain] = spotByLook("RaidFrames = false", ["shield", "tabs", "plain"]);
+  expect([tabs - shield, plain], "Tabs lifts it by the party column's rise, 84; back to Plain it comes down again").toEqual([84, shield]);
+});
+it("H46-3-2: with the raid frames showing the party (no party column built), Tabs does not lift the column by the party column's rise", () => {
+  const [shield, tabs, built] = spotByLook("", ["shield", "tabs"]);
+  expect(built, "the unit frames are built, the party column is not").toEqual([true, false]);
+  expect(tabs - shield, "no tabbed party column under it: no 84-unit rise, only half the raid grid's 12 (H46-3-1), touching neither the grid nor the raid tools at 1365 x 768").toBe(6);
+});
+// H46-13-2 (decide pick: the column grows up from its foot): party frames of any height leave the column's foot
+// where the default height puts it, party1's top and the pets column over it rising by the growth.
+// Whether two screen positions agree to a pixel's rounding at the harness scale.
+const near = (a, b) => Math.abs(a - b) <= 2;
+// Party4's bottom, party1's top and the pets column's bottom with party frames `height` tall (`extra` Lua runs after login).
+const partyAt = (height, extra = "") => {
+  const saved = `VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, theme = { hudLook = "plain" }, PartyExtras = { show = true }, UnitFrames = { partyHeight = ${height} } } }`;
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, { savedVariables: saved });
+  if (extra) addon.eval(extra);
+  return addon.eval(`return { Vanguard_party4:GetBottom(), Vanguard_party1:GetTop(), Vanguard_PartyExtras:GetBottom() }`);
+};
+it("H46-13-2: the party column grows up from its foot, and the pets column over it with it", () => {
+  const [foot32, top32, extras32] = partyAt(32);
+  const [foot80, top80, extras80] = partyAt(80);
+  const [foot24] = partyAt(24);
+  expect([near(foot80, foot32), near(top80 - top32, 192), near(extras80 - extras32, 192)], "foot stays (to a pixel's rounding); top and pets column rise by 4 x 48 = 192 (party1's own 48 and the three under it)").toEqual([true, true, true]);
+  expect(near(foot24, foot32), "a shorter column keeps its foot too").toBe(true);
+});
+it("H46-13-2: the height goes through the range clamp, a dragged column keeps its spot, and a change out of combat re-places the default", () => {
+  expect(partyAt(500), "a crafted height past the slider's 80 is held to 80").toEqual(partyAt(80));
+  const dragged = partyAt(80, 'ns.SetMoverPoint("uf_party1", "BOTTOM", "BOTTOM", 100, 200) ns.GetModule("UnitFrames").ApplySizes()');
+  expect(Math.abs(dragged[0] - (dragged[1] - 80 - 3 * 90)) <= 2, "party4 hangs 3 x (80 + 10) under party1's bottom at the dragged spot").toBe(true);
+  const addon = loggedIn("__wfgStub.setScreen(1920, 1080) " + UNITS_ENV, { savedVariables: 'VanguardDB.profiles = { Default = { modules = { RaidFrames = false }, PartyExtras = { show = true } } }' });
+  const foot = addon.eval("return Vanguard_party4:GetBottom()");
+  addon.eval('ns.GetModule("UnitFrames").settings.partyHeight = 60 ns.GetModule("UnitFrames").ApplySizes()');
+  expect(Math.abs(addon.eval("return Vanguard_party4:GetBottom()") - foot) <= 2, "a live change keeps the foot").toBe(true);
 });

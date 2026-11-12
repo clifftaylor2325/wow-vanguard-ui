@@ -107,7 +107,10 @@ it("cooldown keys: the command says so when the module is off", () => {
   const addon = loggedIn(UNITS_ENV + TOOLS_ENV + ITEMS + CLICK_LUA);
   addon.eval("ns.SetModuleEnabled('CooldownKeys', false)");
   addon.slash("cdmkeys on");
-  expect(chatHas(addon, /keys module is off/)).toBe(true);
+  expect(chatHas(addon, /The Cooldown Manager keys module is off\. Turn it on under \/vg > Modules\.$/), "the whole line, with no reload asked for").toBe(true);
+  addon.eval("ns.SetModuleEnabled('CooldownKeys', true)");
+  addon.slash("cdmkeys on");
+  expect(chatHas(addon, /Cooldown Manager keys on\./), "and it works at once once the module is on").toBe(true);
 });
 
 it("H25-1-1 cooldown keys: a burst of slot events in one frame scans the buttons once", () => {

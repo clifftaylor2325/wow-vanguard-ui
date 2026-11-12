@@ -340,7 +340,7 @@ Vanguard moves little and quietly. Every fade goes through the theme (`T.FadeIn`
 | What | Kind | Out of combat | In combat | Turned off by |
 | --- | --- | --- | --- | --- |
 | Options window (`/vg`) opens | fade in, rising 4 px into place | 0.13 s | at once | Reduce motion |
-| Options window closes | fade out | 0.1 s | 0.1 s | Reduce motion |
+| Options window closes (close button, `/vg`, Escape out of combat) | fade out | 0.1 s | 0.1 s (Escape in a fight is the game's own bare close) | Reduce motion |
 | A button (`T.Button`) under the mouse | hover eases in / out | 0.1 s / 0.13 s | 0.1 s / 0.13 s | Reduce motion (at once) |
 | A switch's knob, or a slider's thumb and fill, move to a new value (`T.Glide`, `T.KNOB_EASE`) | glide, eased out | 0.1 s | at once | Reduce motion (at once); a slider thumb under the cursor always follows at once |
 | A button (`T.Button`) pressed, or a row's keyboard focus ring | darker fill, label down 1 px / ring on | at once | at once | - |
@@ -393,7 +393,7 @@ All are the client's own interface sounds (`SOUNDKIT`), played with `T.Sound` un
 | When | Sound | Turned off by |
 | --- | --- | --- |
 | The options window opens | `IG_MAINMENU_OPEN` | Interface sounds |
-| The options window closes | `IG_MAINMENU_CLOSE` | Interface sounds |
+| The options window closes (not on Escape in a fight, which the game closes bare) | `IG_MAINMENU_CLOSE` | Interface sounds |
 | Another options page opens, or a tab on one is clicked | `IG_CHARACTER_INFO_TAB` | Interface sounds |
 | A switch is turned on in the options, a visibility condition is ticked or unticked, a click-cast starter layout is applied | `IG_MAINMENU_OPTION_CHECKBOX_ON` | Interface sounds |
 | A switch is turned off in the options, or a row's reset dot is clicked | `IG_MAINMENU_OPTION_CHECKBOX_OFF` | Interface sounds |

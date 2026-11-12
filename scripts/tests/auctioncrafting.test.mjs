@@ -3,6 +3,7 @@
 // reagents, at the TEST-ONLY profession window of the headless client.
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { CLICK_LUA, chatHas, isTok, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY: a wall clock, items, and recipes. 100 makes a TEST-ONLY bag from 3 Linen Cloth and a
@@ -130,6 +131,23 @@ it("Add reagents keeps the reagents for the crafts typed in stock and makes the 
   noErrands.world.openProfession(100);
   noErrands.click("Vanguard_CraftingPanel.add");
   expect(chatHas(noErrands, /Keep stocked is part of Errands, which is off/), "Errands off: said, nothing kept").toBe(true);
+});
+
+it("Add reagents on Retail takes off what the other quality ranks hold and says so when nothing is left to raise (H46-9-2)", () => {
+  // live Blizzard_APIDocumentationGenerated/TradeSkillUITypesDocumentation.lua CraftingReagentSlotSchematic.reagents: one CraftingReagent per quality rank of the slot.
+  const addon = crafter(`
+    __wfgWorld.items[9001] = { name = "TEST-ONLY Ore rank 1" } __wfgWorld.items[9002] = { name = "TEST-ONLY Ore rank 2" }
+    __wfgWorld.recipes[104] = { recipeID = 104, name = "TEST-ONLY Bar", outputItemID = 4238, quantityMin = 1, quantityMax = 1,
+      reagentSlotSchematics = { { reagents = { { itemID = 9001 }, { itemID = 9002 } }, quantityRequired = 3, reagentType = 1 } } }
+    C_Item.GetItemCount = function(id) return id == 9002 and 3 or 0 end`, { client: RETAIL_CLIENT });
+  addon.world.openProfession(104);
+  addon.click("Vanguard_CraftingPanel.add");
+  expect(addon.eval("return VanguardCharDB.stockList[9001] or false"), "three of rank 2 cover the craft: nothing kept for rank 1").toBe(false);
+  expect(chatHas(addon, /You have every reagent\./), "chat says so, not an empty list").toBe(true);
+  expect(addon.eval("return (VanguardDB.ah.lists or {}).Restock and #VanguardDB.ah.lists.Restock or 0"), "nothing to restock").toBe(0);
+  addon.eval("C_Item.GetItemCount = function(id) return id == 9002 and 1 or 0 end");
+  addon.click("Vanguard_CraftingPanel.add");
+  expect(addon.eval("return VanguardCharDB.stockList[9001]"), "one of rank 2 held: two more of rank 1").toBe(2);
 });
 
 it("only post-hooks: the window's fields stay the game's; the helper off hooks nothing; no client schematic API is fine", () => {

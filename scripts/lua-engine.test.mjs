@@ -270,6 +270,18 @@ it("inspectors: a frame's snapshot, text search and the top-level screen", () =>
   }
 });
 
+// scripts/tests/README.md "Who owns a frame": what the world makes is the game's, though it is made after the client's
+// frames at load (wow-taint.lua marks it __byGame), so screen(), textFit(null) and the lifecycle footprint leave it out.
+it("inspectors: a game window the world opens, and Retail's expansion button, are not frames the addon made", () => {
+  const addon = loggedIn();
+  addon.world.openAuctionHouse();
+  const names = addon.screen().map((f) => f.name);
+  expect([names.includes("AuctionHouseFrame"), names.includes("Vanguard_player")], "the auction house is the game's").toEqual([false, true]);
+  const retail = createAddon({ client: RETAIL_CLIENT });
+  expect(retail.eval("return { __wfgStub.addonMade(ExpansionLandingPageMinimapButton), ExpansionLandingPageMinimapButton.__id > __wfgStub.firstAddonFrame }"),
+    "made after the client's frames at load, but the game's").toEqual([false, true]);
+});
+
 it("the auction house: queries recorded, restricted calls logged with the click that made them, 0-based replicate rows", () => {
   const addon = createAddon();
   addon.eval(`__wfgWorld.items[2589].commodity = true __wfgWorld.bags[0][1] = { itemID = 2589, count = 5 }
@@ -285,7 +297,7 @@ it("the auction house: queries recorded, restricted calls logged with the click 
   addon.eval("C_AuctionHouse.SendBrowseQuery({ searchString = 'TEST-ONLY' }) C_AuctionHouse.CancelAuction(7)");
   addon.click("TESTONLY_Post");
   expect(addon.eval("local q = __wfgWorld.ah.queries[1] return { q.fn, q.args[1].searchString }"), "a query is only recorded").toEqual(["SendBrowseQuery", "TEST-ONLY"]);
-  const log = addon.eval("local out = {} for i, c in ipairs(__wfgWorld.ah.restricted) do out[i] = { c.fn, c.clicked, c.path:find('rawClick') ~= nil } end return out");
+  const log = addon.eval("local out = {} for i, c in ipairs(__wfgWorld.ah.restricted) do out[i] = { c.fn, c.clicked, c.path:find('runClick') ~= nil } end return out");
   expect(log, "the cancel came from no click, the post from the button's click (its path runs through the click)").toEqual([["CancelAuction", false, false], ["PostCommodity", true, true]]);
   addon.world.closeAuctionHouse();
   expect(addon.eval("return AuctionHouseFrame:IsShown()")).toBe(false);
@@ -464,6 +476,40 @@ it("text metrics: a font string set to width 0 measures, lays out and is audited
     local out = {} for _, f in ipairs(__wfgTextFit(b)) do out[#out + 1] = f.kind end
     return { natural == fs:GetStringWidth(), fs:GetWidth() == natural, out }`);
   expect(fit, "font mode: its own width, and a label wider than its button spills as before").toEqual([true, true, ["spill"]]);
+});
+
+// A font string given height 0 sizes to its text: forever Blizzard_ObjectiveTracker/Blizzard_ObjectiveTrackerBlock.lua:140-143
+// sets 0 ("force a clear of internals or GetHeight() might return an incorrect value"), sets the text, then reads GetHeight
+// as the text's height. A frame's height 0 stays 0.
+it("text metrics: a font string set to height 0 measures, lays out and is audited as its text, in both modes", () => {
+  const rough = createAddon();
+  expect(rough.eval(`${FIT_BOX(12)} fs:SetHeight(0) fs:SetText("A label")
+    local f = CreateFrame("Frame") f:SetHeight(0)
+    return { fs:GetHeight(), fs:GetStringHeight(), select(2, fs:GetSize()), f:GetHeight() }`)).toEqual([14, 14, 14, 0]);
+  const addon = createAddon({ textFit: true });
+  const fit = addon.eval(`${FIT_BOX(12)} fs:SetHeight(0) fs:SetText("Short")
+    local out = {} for _, f in ipairs(__wfgTextFit(b)) do out[#out + 1] = f.kind .. " " .. tostring(f.other) end
+    return { fs:GetHeight() == fs:GetStringHeight(), fs:GetHeight() > 0, table.concat(out, "; ") }`);
+  expect(fit, "font mode: its own height, and one short line is not cut").toEqual([true, true, ""]);
+});
+
+// A font string's size follows its text scale, font object, spacing, line cap and wrapping at once: forever
+// Blizzard_GamepadSharedUtility/InputPrompts/InputPrompts.lua:45-46 calls SetFontObject, then reads GetWidth as the new width.
+it("text metrics: a font string pinned at one point resizes as soon as its text scale or font object changes", () => {
+  const addon = createAddon({ textFit: true });
+  const out = addon.eval(`local fs = UIParent:CreateFontString(nil, "OVERLAY") fs:SetFont(ns.Theme.FONTS.regular, 12)
+    fs:SetPoint("TOPLEFT") fs:SetText("TEST-ONLY a label of some length")
+    local w, h = fs:GetWidth(), fs:GetHeight()
+    fs:SetTextScale(0.5)
+    local sw, sh = fs:GetWidth(), fs:GetHeight()
+    local small, big = CreateFont("TEST_ONLY_SmallFont"), CreateFont("TEST_ONLY_BigFont")
+    small:SetFont(ns.Theme.FONTS.regular, 12) big:SetFont(ns.Theme.FONTS.regular, 24)
+    local other = UIParent:CreateFontString(nil, "OVERLAY") other:SetFontObject(small)
+    other:SetPoint("TOPLEFT") other:SetText("TEST-ONLY a label of some length")
+    local ow = other:GetWidth()
+    other:SetFontObject(big)
+    return { sw / w, sh / h, other:GetWidth() / ow }`);
+  expect(out).toEqual([0.5, 0.5, 2]);
 });
 
 it("text fit: a pseudo-locale makes every string a third longer, padded with its own letters, and finds its English", () => {

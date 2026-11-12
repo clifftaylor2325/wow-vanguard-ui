@@ -288,6 +288,19 @@ local function replaced(key)
   if CC.OnReplaced then CC.OnReplaced(key) end
 end
 
+-- Replaces every mouse binding of the current spec with a layout's ({ key, action, value, spellID } each, checked as
+-- CC.Add checks one; Modules/ClickCastPresets.lua's starter layouts), hover keys kept, then applies once.
+function CC.ReplaceMouse(list)
+  local mine = CC.Bindings()
+  for i = #mine, 1, -1 do
+    if CC.MouseParts(mine[i].key) then table.remove(mine, i) end
+  end
+  for _, b in ipairs(list) do
+    if not problem(b.key, b.action, b.value) then put(mine, { key = b.key, action = b.action, value = b.value, spellID = b.spellID }) end
+  end
+  applySoon()
+end
+
 -- Removes every binding in the current spec.
 function CC.Clear()
   clearList(CC.Bindings())
@@ -330,9 +343,8 @@ CC.MAX_IMPORT, CC.MAX_TEXT = 200, 255
 CC.MOUSE_PREFIXES = { [""] = true, ["shift-"] = true, ["ctrl-"] = true, ["alt-"] = true, ["ctrl-shift-"] = true, ["alt-shift-"] = true, ["alt-ctrl-"] = true }
 
 -- Whether a key can be bound: a mouse key on one of the grid's columns, or a hover key that could be one of the
--- client's key names (upper case, no brace, no control character). The client refuses to build a secure snippet whose
--- text holds "function" or a brace anywhere, inside quotes too (Blizzard_RestrictedAddOnEnvironment/
--- RestrictedExecution.lua, BuildRestrictedClosure), so one such key would stop every hover key on the frame.
+-- client's key names (upper case, no brace, no control character); a key the client can't name is left out of the
+-- hover keys the tiles bind.
 local function bindable(key)
   local prefix = CC.MouseParts(key)
   if prefix then return CC.MOUSE_PREFIXES[prefix] == true end

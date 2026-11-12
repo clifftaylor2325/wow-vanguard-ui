@@ -10,6 +10,8 @@ local L = ns.L
 local T = ns.Theme
 
 local BADGE_H, BADGE_PAD = 14, 8
+-- The gap between the footer's version line and the errors line.
+local FOOTER_GAP = 16
 local EB = {}
 ns.ErrorBadge = EB
 
@@ -43,24 +45,75 @@ local function show(badge, n, text)
   badge:SetShown(n > 0)
 end
 
+-- The footer line's short form: the bare count the addons button's badge shows (99+ past 99).
+local function shortCount(n)
+  return n > 99 and "99+" or tostring(n)
+end
+
+-- Keeps the footer line's two forms, the full sentence (also its tooltip when only the count fits) and the count,
+-- (counting what the sentence counts: the paused parts when any, else the errors), and both widths: the count's,
+-- which the reload notice leaves free (EB.FooterRoom), and the sentence's, which a fit compares.
+local function setFooterTexts(b, n)
+  local counted = #ns.paused > 0 and #ns.paused or n
+  b.fullText, b.shortText = footerText(n), shortCount(counted)
+  b.text:SetText(b.shortText)
+  b.shortWidth = T.FullWidth(b.text)
+  b.text:SetText(b.fullText)
+  b.fullWidth = T.FullWidth(b.text)
+end
+
 -- Shows the count on both badges (none at zero): the errors kept, but for those ns.Quiet kept for a
 -- fallback that works as designed; the footer also shows while a part is paused.
 function EB.Update()
   local n = ns.LoudErrorCount()
-  show(EB.button, n, n > 99 and "99+" or tostring(n))
-  show(EB.footer, n + #ns.paused, footerText(n))
+  show(EB.button, n, shortCount(n))
+  if EB.footer then setFooterTexts(EB.footer, n) end
+  show(EB.footer, n + #ns.paused, EB.footer and EB.footer.fullText)
+  ns.Options.RefitNotice()
+end
+
+-- The room the footer line keeps at the notice's left: nothing while it is hidden, else its gap and the count.
+---@return number
+function EB.FooterRoom()
+  local b = EB.footer
+  if not (b and b:IsShown()) then return 0 end
+  return FOOTER_GAP + b.shortWidth
+end
+
+-- Shows the full sentence while the line's room holds it, else the count (the sentence then shows as its tooltip).
+-- Waits while an edge is unknown.
+function EB.FitFooter()
+  local b = EB.footer
+  if not (b and b:IsShown() and b:GetLeft() and b:GetRight()) then return end
+  b.short = b.fullWidth > b:GetRight() - b:GetLeft()
+  b.text:SetText(b.short and b.shortText or b.fullText)
+end
+
+-- The footer line's tooltip, only while it shows the count: the sentence the count stands for.
+local function footerTip(b)
+  if not (GameTooltip and b.short) then return end
+  GameTooltip:SetOwner(b, "ANCHOR_TOP")
+  GameTooltip:SetText(b.fullText, nil, nil, nil, nil, true)
+  GameTooltip:Show()
+end
+
+-- A click on the footer line lists the errors in chat (/vg errors); hovering it shows the sentence a count stands for.
+local function wireFooter(b)
+  b:SetScript("OnClick", ns.Guard("click list errors", function() SlashCmdList.VANGUARD("errors") end))
+  b:SetScript("OnEnter", ns.Guard("errors line tooltip", function() footerTip(b) end))
+  b:SetScript("OnLeave", ns.Guard("hide errors line tooltip", function() if GameTooltip then GameTooltip:Hide() end end))
 end
 
 -- The footer line, right of the version: the count in the bad color; a click lists the errors in chat (/vg errors).
 function EB.Footer(window)
   local b = CreateFrame("Button", "Vanguard_OptionsErrors", window.footer)
   b:SetHeight(20)
-  b:SetPoint("LEFT", window.version, "RIGHT", 16, 0)
+  b:SetPoint("LEFT", window.version, "RIGHT", FOOTER_GAP, 0)
   b:SetPoint("RIGHT", window.notice, "LEFT", -T.SPACE.col, 0)
   b.text = T.Text(b:CreateFontString(nil, "OVERLAY"), "small", "bad")
   b.text:SetPoint("LEFT")
   ns.EndAt(b.text, b, 0)
-  b:SetScript("OnClick", ns.Guard("click list errors", function() SlashCmdList.VANGUARD("errors") end))
+  wireFooter(b)
   EB.footer = b
   EB.Update()
 end

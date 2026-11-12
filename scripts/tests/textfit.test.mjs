@@ -201,6 +201,32 @@ it("text fits: the dialogs", () => {
   expectFits("dialogs", dialogFindings(fitClient()));
 });
 
+it("the text-fit check flags a label squeezed to no width, or hung on a frame whose right edge is left of its left (H46-2-R1)", () => {
+  const addon = fitClient();
+  // TEST-ONLY labels in a 300-wide host. Squeezed: pinned LEFT and RIGHT to one x; pinned with its right 20 left of its
+  // left; hung on a button pinned that way (the crushed options footer line of H46-4-5); pinned with its bottom 10 above
+  // its top. Hidden, so no finding: hung on a 0 x 0 frame, which the client gives no rect (scripts/lib/wow-layout.lua
+  // laidOut), or on a frame stretched over an unanchored one (no rect up the chain, not a squeeze). How the client draws
+  // an inverted rect is game-only; none of these has room either way.
+  addon.eval(`local host = CreateFrame("Frame", "TEST_SqueezeHost", UIParent) host:SetSize(300, 40) host:SetPoint("CENTER")
+    local function label(parent, text) local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal") fs:SetText(text) return fs end
+    local flat = label(host, "TEST-ONLY flat label") flat:SetPoint("LEFT", host, "LEFT", 100, 0) flat:SetPoint("RIGHT", host, "LEFT", 100, 0)
+    local inverted = label(host, "TEST-ONLY inverted label") inverted:SetPoint("TOPLEFT", host, "TOPLEFT", 200, 0) inverted:SetPoint("TOPRIGHT", host, "TOPLEFT", 180, 0)
+    local button = CreateFrame("Button", nil, host) button:SetHeight(20) button:SetPoint("LEFT", host, "LEFT", 60, 0) button:SetPoint("RIGHT", host, "LEFT", 40, 0)
+    label(button, "TEST-ONLY label on an inverted button"):SetAllPoints()
+    local low = label(host, "TEST-ONLY low label") low:SetPoint("TOPLEFT", host, "BOTTOMLEFT", 0, 0) low:SetPoint("BOTTOMRIGHT", host, "BOTTOMLEFT", 80, 10)
+    local hidden = CreateFrame("Frame", nil, host) hidden:SetSize(0, 0) hidden:SetPoint("BOTTOMLEFT")
+    label(hidden, "TEST-ONLY label on a 0 x 0 frame"):SetPoint("LEFT", hidden, "LEFT")
+    local over = CreateFrame("Frame", nil, host) over:SetAllPoints(CreateFrame("Frame", nil, host))
+    label(over, "TEST-ONLY label over an unanchored frame"):SetPoint("BOTTOM", over, "BOTTOM")`);
+  expect(lines(addon.textFit("TEST_SqueezeHost")), "the four squeezed labels are cut whole; the two hidden ones are no finding").toEqual([
+    "cut | TEST_SqueezeHost | TEST-ONLY flat label | squeezed to no width",
+    "cut | TEST_SqueezeHost | TEST-ONLY inverted label | squeezed to no width",
+    "cut | TEST_SqueezeHost | TEST-ONLY label on an inverted button | squeezed to no width",
+    "cut | TEST_SqueezeHost | TEST-ONLY low label | squeezed to no height",
+  ]);
+});
+
 it("text fits: key setup, every step, with a change listed, a key that stays and the shared-keys choice", () => {
   const addon = fitClient();
   addon.eval(`__wfgWorld.setUnit("player", { class = "WARRIOR", className = "Warrior", level = 12 })
@@ -236,6 +262,15 @@ it("text fits: the Click casting page's starter layout rows: Click to heal's gui
   const rows = addon.eval('local out = { "" } for _, row in ipairs(ns.ClickCastPresets.PageRows()) do out[#out + 1] = row[1] end return out').slice(1);
   expect(rows, "all three kinds are on the page").toEqual(["bindguide", "bindundo", "bindupgrade"]);
   expect(addon.textFit("Vanguard_Options"), "their texts and buttons fit, with every string a third longer").toEqual([]);
+});
+
+it("text fits: a hover-key row's key name, the longest a row lists (Alt + Ctrl + Shift + a mouse button, H46-19-55)", () => {
+  const addon = fitClient();
+  // TEST-ONLY saved binding from before Import's key check, on modifiers the grid has no column for.
+  addon.eval(`table.insert(ns.GetModule("ClickCast").Bindings(), { key = "alt-ctrl-shift-BUTTON4", action = "spell", value = "Renew", spellID = 139 })
+    ns.Options.Show("clickcast") ns.Options.ShowTab(ns.L["Keys while hovering a frame"])`);
+  expect(addon.frames('w.remove ~= nil and w.key == "alt-ctrl-shift-BUTTON4" and w:IsVisible()').length, "the row is on the page").toBe(1);
+  expect(addon.textFit("Vanguard_Options"), "the key name stays short of the icon, with every string a third longer").toEqual([]);
 });
 
 it("text fits: the key-capture prompt on a French client is not cut short (P1-4)", () => {
@@ -355,6 +390,64 @@ it("text fits: the options footer's error line stops short of the reload notice,
   }
 });
 
+it("H46-4-5 text fits: a long reload notice and the errors line share the footer, the notice shrinking and the line showing its count", () => {
+  expectErrors(/^TEST-ONLY site: failure \d+$/);
+  let counts = 0;
+  for (const [locale, scale] of [["enUS", 1], ["deDE", 1], ["deDE", 1.3], ["frFR", 1.3]]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
+    addon.login();
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh() for i = 1, 3 do ns.Report("TEST-ONLY site", "failure " .. i) end`);
+    addon.advance(0.5);
+    addon.eval('ns.Options.Show("general") ns.SetModuleEnabled("UnitFrames", false) ns.SetModuleEnabled("Minimap", false) ns.SetModuleEnabled("Chat", false)');
+    const [errLeft, errRight, textRight, noticeLeft, versionRight, shown, text, tip] = addon.eval(`local b = Vanguard_OptionsErrors
+      return { b:GetLeft(), b:GetRight(), b.text:GetRight(), Vanguard_Options.notice:GetLeft(), Vanguard_Options.version:GetRight(), b:IsShown(), b.text:GetText(), b.short == true }`);
+    const where = `${locale} at ${scale * 100}%`;
+    expect(shown, `${where}: the errors line stays`).toBe(true);
+    expect(errRight, `${where}: its room is not inverted`).toBeGreaterThan(errLeft);
+    expect(errRight, `${where}: it ends before the notice`).toBeLessThanOrEqual(noticeLeft + 1e-6);
+    expect(textRight, `${where}: its text stays inside its click area`).toBeLessThanOrEqual(errRight + 1e-6);
+    expect(noticeLeft, `${where}: the notice starts right of the version line`).toBeGreaterThanOrEqual(versionRight - 1e-6);
+    counts += tip ? 1 : 0;
+    if (tip) expect(text, `${where}: a line too narrow for the sentence shows the count`).toBe("3");
+    expect(addon.textFit("Vanguard_Options").filter((finding) => finding.text === text), `${where}: the errors line is not cut`).toEqual([]);
+  }
+  expect(counts, "at least one of the long-notice cases is too narrow for the sentence and shows the count").toBeGreaterThan(0);
+});
+
+it("H46-4-5 the errors line shows its count when the notice takes the room, with the sentence as its tooltip, and the sentence again when the notice goes", () => {
+  expectErrors(/^TEST-ONLY site: failure \d+$/);
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "deDE" end' });
+  addon.login();
+  addon.eval('ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.Report("TEST-ONLY site", "failure 1") ns.Report("TEST-ONLY site", "failure 2")');
+  addon.advance(0.5);
+  addon.eval('ns.Options.Show("general") ns.SetModuleEnabled("UnitFrames", false) ns.SetModuleEnabled("Minimap", false) ns.SetModuleEnabled("Chat", false)');
+  const hover = 'local b = Vanguard_OptionsErrors b:GetScript("OnEnter")(b) local shown, line = GameTooltip:IsShown(), (GameTooltip.__lines[1] or {}).text b:GetScript("OnLeave")(b) return { shown, line or false, b.text:GetText(), GameTooltip:IsShown() }';
+  const full = addon.eval('return ns.L["{count} errors caught this session: click to list them"]').replace("{count}", "2");
+  expect(addon.eval(hover), "the count, the sentence as its tooltip, gone on leaving").toEqual([true, full, "2", false]);
+  addon.eval('ns.SetModuleEnabled("UnitFrames", true) ns.SetModuleEnabled("Minimap", true) ns.SetModuleEnabled("Chat", true)');
+  expect(addon.eval(hover), "with no notice the whole sentence shows and the tooltip stays hidden").toEqual([false, full, full, false]);
+  addon.eval("GameTooltip = nil Vanguard_OptionsErrors.short = true");
+  expect(addon.eval('local b = Vanguard_OptionsErrors b:GetScript("OnEnter")(b) b:GetScript("OnLeave")(b) return true'), "a client without the tooltip shows none").toBe(true);
+  addon.eval("ns.ClearErrors()");
+  addon.advance(0.5);
+  expect(addon.eval("return { Vanguard_OptionsErrors:IsShown(), ns.ErrorBadge.FooterRoom() }"), "no errors: no line and no room kept").toEqual([false, 0]);
+});
+
+it("H46-A-G1 the errors line keeps its count through a lone notice fit, which does not put the sentence back into the squeezed room", () => {
+  expectErrors(/^TEST-ONLY site: failure \d+$/);
+  const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: 'GetLocale = function() return "deDE" end' });
+  addon.login();
+  addon.eval('ns.Theme.Settings().textScale = 1.3 ns.Theme.Refresh() ns.Report("TEST-ONLY site", "failure 1") ns.Report("TEST-ONLY site", "failure 2")');
+  addon.advance(0.5);
+  addon.eval('ns.Options.Show("general") ns.SetModuleEnabled("UnitFrames", false) ns.SetModuleEnabled("Minimap", false) ns.SetModuleEnabled("Chat", false)');
+  const state = 'return { Vanguard_OptionsErrors.text:GetText(), Vanguard_OptionsErrors.short == true }';
+  expect(addon.eval(state), "the count while the notice takes the room").toEqual(["2", true]);
+  addon.eval("ns.Options.Refresh()");
+  expect(addon.eval(state), "one refresh fits the notice alone and leaves the count").toEqual(["2", true]);
+  addon.eval("ns.Options.ShowReloadNotice()");
+  expect(addon.eval(state), "so does a lone reload notice").toEqual(["2", true]);
+});
+
 it("text fits: the options footer's reload notice naming two modules stays between the version line and Reload now (H45-23-2)", () => {
   for (const [locale, scale] of [["deDE", 1], ["deDE", 1.3], ["frFR", 1], ["frFR", 1.3]]) {
     const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true, client: `GetLocale = function() return "${locale}" end` });
@@ -401,4 +494,18 @@ it("text fits: the options window's page names fit the nav in Russian (H33-18-2)
   const names = Object.values(addon.eval("local out = {} for _, p in ipairs(ns.Options.PAGES) do out[#out + 1] = p.title end return out"));
   expect(names, "the nav holds the page titles").toContain("Заклинания по щелчку");
   expect(addon.textFit("Vanguard_Options").filter((finding) => finding.kind === "cut" && names.includes(finding.text)), "no page name in the nav is cut").toEqual([]);
+});
+
+it("text fits: a 32-character profile name on the Profiles page stays clear of that row's buttons (H46-23-53)", () => {
+  for (const scale of [1, 1.3]) {
+    const addon = createAddon({ savedVariables: SETUP_DONE, textFit: true });
+    addon.login();
+    addon.eval(`ns.Theme.Settings().textScale = ${scale} ns.Theme.Refresh()
+      VanguardDB.profiles["MAIN TANK WARRIOR RAID SETUP ONE"] = {} VanguardDB.profiles["WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"] = {}
+      ns.Options.Show("profiles")`);
+    for (let tab = 1; addon.eval(`return ns.Options.ShowTab(${tab})`); tab++) {
+      const over = addon.textFit("Vanguard_Options").filter((finding) => finding.kind !== "cut");
+      expect(over, `Profiles tab ${tab} at ${scale * 100}%: a long name ends in an ellipsis and draws over no button`).toEqual([]);
+    }
+  }
 });

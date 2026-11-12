@@ -1,9 +1,9 @@
 // profiles: Vanguard's real Lua in the TEST-ONLY headless client (scripts/lib/lua-harness.mjs).
 
 import { expect, it } from "vitest";
-import { createAddon, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { RETAIL_CLIENT, createAddon } from "../lib/lua-harness.mjs";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, RETAIL, SETUP_DONE, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
+import { CLICK_LUA, SETUP_DONE, UI_ENV, chatHas, expectErrors, isTok, loggedIn, px, setCombat } from "./helpers.mjs";
 import { alphaOf, buttonOf, closeOf, escapes, insets, pressEscape, thumbOf, titleOf, titleSize } from "./dialogs.mjs";
 
 it("profile strings", () => {
@@ -85,7 +85,7 @@ it("export and import", () => {
   src.slash("export");
   const text = src.eval("return Vanguard_TextEdit:GetText()");
   expect(text.startsWith("VG1:profile:") && src.eval("return Vanguard_TextDialog:IsShown()"), "/vg export shows the string, selected to copy").toBeTruthy();
-  const dst = loggedIn(RETAIL);
+  const dst = loggedIn("", { client: RETAIL_CLIENT });
   dst.slash("import");
   dst.eval(`Vanguard_TextEdit:SetText(${JSON.stringify(text)}); Vanguard_TextDialog.primary:GetScript("OnClick")(Vanguard_TextDialog.primary)`);
   expect(dst.eval("return { VanguardCharDB.profile, VanguardCharDB.pendingProfile }"), "a whole-profile import becomes a new profile this character uses after the reload").toEqual(["Default", "Imported"]);
@@ -207,6 +207,30 @@ it("spec profiles", () => {
   expect([relog.eval("return VanguardCharDB.profile"), relog.eval("return VanguardCharDB.pendingProfile"), relog.eval("return Vanguard_Reload:IsShown()")], "changing spec stages its profile and offers a reload").toEqual(["Healer", "Default", true]);
   addon.slash("spec off");
   expect(addon.eval("return VanguardCharDB.specProfiles[2]") === null, "/vg spec off stops switching").toBeTruthy();
+});
+it("/vg spec reads Off in any case unless a profile is called Off (H46-24-50)", () => {
+  const addon = loggedIn("GetSpecialization = function() return __spec end __spec = 2");
+  addon.slash("profile new Healer");
+  addon.slash("spec Healer");
+  addon.slash("spec Off");
+  expect(addon.eval("return VanguardCharDB.specProfiles[2]"), "Off stops switching").toBe(null);
+  addon.slash("profile new Off");
+  addon.slash("spec Off");
+  expect(addon.eval("return VanguardCharDB.specProfiles[2]"), "a profile called Off still maps").toBe("Off");
+});
+it("/vg spec, profile copy and profile delete match a profile name in any case (H46-4-102)", () => {
+  const addon = loggedIn("GetSpecialization = function() return __spec end __spec = 2");
+  addon.slash("profile new Healer");
+  addon.slash("profile new Spare");
+  addon.slash("profile copy SPARE");
+  expect(asking(addon), "copy found it and asks").toMatch(/with profile Spare's/);
+  no(addon);
+  addon.slash("profile delete spare");
+  expect(asking(addon), "delete found it and asks").toMatch(/Deletes profile Spare/);
+  no(addon);
+  addon.slash("spec healer");
+  expect(addon.eval("return VanguardCharDB.specProfiles[2]"), "spec maps the profile that exists").toBe("Healer");
+  expect(addon.eval("return VanguardDB.profiles.healer"), "and makes no profile of its own").toBe(null);
 });
 it("copying a profile over another keeps the craft queue and cooldowns of the characters the destination had", () => {
   // A profile's craft queue holding one queued recipe for the character `key`.
@@ -340,6 +364,31 @@ it("a staged hand pick of another spec's profile survives a swap there and back,
   addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardCharDB.ownProfile }"), "a swap there and back keeps it").toEqual(["Heal", "Heal"]);
 });
+it("H46-4-50 a staged hand pick survives a swap to a spec with its own profile and back to one with none", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Mine = { theme = { accent = { 0.9, 0.1, 0.1, 1 } } }, Heal = { modules = { Bags = false } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  addon.eval("ns.PickProfile('Mine')");
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return VanguardCharDB.pendingProfile"), "spec 2 stages its own profile").toBe("Heal");
+  addon.eval("__spec = 1");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  expect(addon.eval("return { VanguardCharDB.pendingProfile, ns.LoadingProfileName() }"), "back in spec 1 the hand pick is staged again").toEqual(["Mine", "Mine"]);
+});
+it("H46-4-R1 /vg profile copy writes into the profile its question named, though a spec change moved the loading profile", () => {
+  const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { accent = { 0, 1, 0 } } }, Src = { theme = { accent = { 0, 0, 1 } } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
+  const addon = createAddon({ savedVariables: sv });
+  addon.eval("GetSpecialization = function() return __spec end __spec = 1");
+  addon.login();
+  addon.slash("profile copy Src");
+  expect(addon.eval("return Vanguard_Question.title:GetText()"), "it asks about Default").toContain("profile Default with profile Src's");
+  addon.eval("__spec = 2");
+  addon.fire("PLAYER_SPECIALIZATION_CHANGED", "player");
+  addon.eval("Vanguard_Question.confirm:GetScript('OnClick')(Vanguard_Question.confirm)");
+  expect(addon.eval("return { VanguardDB.profiles.Default.theme.accent[3], VanguardDB.profiles.Heal.theme.accent[3] }"), "Default took Src's, Heal is untouched").toEqual([1, 0]);
+});
 // A character on Default whose spec 2 uses Heal (a module switch that differs when `waits`), logged in as spec 1.
 function offerCharacter(waits) {
   const heal = waits ? "{ modules = { Bags = false } }" : "{}";
@@ -372,6 +421,22 @@ it("swapping back leaves a reload offered for another reason up", () => {
 it("ns.WithdrawReload does nothing before any reload was offered", () => {
   const addon = offerCharacter(false);
   expect(addon.eval("ns.WithdrawReload('x') return true")).toBe(true);
+});
+// H46-21-51: the reload dialog's title and whether it is shown, after the Lua `steps` ran.
+const reloadAfter = (steps) => {
+  const addon = loggedIn();
+  return addon.eval(`${steps} return { Vanguard_Reload:IsShown(), (Vanguard_Reload.title:GetText():gsub(" Reload the UI now to apply it%?", "")) }`);
+};
+it("H46-21-51 withdrawing a spec offer brings back the earlier reason still owed", () => {
+  expect(reloadAfter("ns.OfferReload('A.') ns.OfferReload('B.') ns.WithdrawReload('B.')"), "A is offered again").toEqual([true, "A."]);
+  expect(reloadAfter("ns.OfferReload('A.') ns.OfferReload('B.') ns.WithdrawReload('B.') ns.WithdrawReload('B.') ns.OfferReload('A.') ns.WithdrawReload('A.')"), "then nothing more is owed").toEqual([false, "A."]);
+  expect(reloadAfter("ns.OfferReload('A.') ns.OfferReload('B.') ns.OfferReload('C.') ns.WithdrawReload('C.')")[1], "the oldest reason stays").toBe("A.");
+  expect(reloadAfter("ns.OfferReload('B.') ns.WithdrawReload('B.')")[0], "an offer with nothing earlier hides").toBe(false);
+  expect(reloadAfter("ns.OfferReload('A.') Vanguard_Reload:Hide() ns.OfferReload('B.') ns.WithdrawReload('B.')")[0], "a closed dialog starts clean").toBe(false);
+});
+it("H46-C-G5 an offer repeated for the same reason keeps the earlier one, and a withdrawn earlier reason is not offered again", () => {
+  expect(reloadAfter("ns.OfferReload('A.') ns.OfferReload('B.') ns.OfferReload('B.') ns.WithdrawReload('B.')"), "A stays owed").toEqual([true, "A."]);
+  expect(reloadAfter("ns.OfferReload('S.') ns.OfferReload('X.') ns.WithdrawReload('S.') ns.OfferReload('S.') ns.WithdrawReload('S.')"), "X stays, S is not offered again").toEqual([true, "X."]);
 });
 it("Copy here, a partial import and /vg profile copy write into the profile the reload loads, not a hand pick a spec overrides", () => {
   const sv = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { accent = { 0, 1, 0 } } }, Raid = {}, Src = { theme = { accent = { 0, 0, 1 }, reduceMotion = true } } } }\nVanguardCharDB = { profile = "Default", setupDone = true, specProfiles = { [2] = "Heal" } }';
@@ -1054,8 +1119,7 @@ it("importing a string that matches a profile here uses that profile instead of 
   addon.clearChat();
   importText(addon, own);
   expect(chatHas(addon, /This string matches profile Default, which this character already uses: nothing new to import\./), "your own export says it is the profile you use").toBe(true);
-  addon.eval('Vanguard_Question.no:GetScript("OnClick")(Vanguard_Question.no)');
-  expect(addon.eval("return { VanguardDB.profiles.Imported == nil, Vanguard_Reload == nil or not Vanguard_Reload:IsShown(), Vanguard_TextDialog:IsShown() }"), "no copy is made, and after the UI scale question no reload is offered").toEqual([true, true, false]);
+  expect(addon.eval("return { VanguardDB.profiles.Imported == nil, Vanguard_Question == nil or not Vanguard_Question:IsShown(), Vanguard_Reload == nil or not Vanguard_Reload:IsShown(), Vanguard_TextDialog:IsShown() }"), "no copy is made, nothing is asked about the UI scale (nothing was imported) and no reload is offered").toEqual([true, true, true, false]);
   addon.eval("VanguardDB.profiles.Raid = ns.Copy(ns.Profile()) ns.Theme.Settings().reduceMotion = not ns.Theme.Settings().reduceMotion");
   expect(imports(addon, own), "a string matching another profile switches to it").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported == nil }")).toEqual(["Raid", true]);
@@ -1290,4 +1354,121 @@ it("hunt H44-12-70: a nothing-to-export line in the open panel is cleared when t
   expect(addon.eval("return Vanguard_ExportDialog.problem:GetText()"), "the reason shows").toBe("Nothing to export: nothing saved for Layout yet.");
   addon.eval("ns.ResetProfile()");
   expect(addon.eval("return { Vanguard_ExportDialog:IsShown(), Vanguard_ExportDialog.problem:GetText() }"), "after a reset the stale reason is gone").toEqual([true, ""]);
+});
+// A second account's addon, logged in, that imports text and answers { layout, stored hudLayout }.
+const importHud = (text) => {
+  const dst = loggedIn(CLICK_LUA);
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  return dst;
+};
+it("hunt H46-22-50: a Layout string brings the HUD layout, Centered included, and only a string value is taken", () => {
+  const src = loggedIn(CLICK_LUA);
+  src.eval("ns.SetHudLayout('fort')");
+  const dst = importHud(src.eval("return ns.ExportProfile('layout')"));
+  expect(dst.eval("return ns.HudLayout()"), "a partial Layout string sets the HUD layout").toBe("fort");
+  src.eval("ns.SetHudLayout('centered')");
+  const back = loggedIn(CLICK_LUA);
+  back.eval("ns.SetHudLayout('fort')");
+  back.eval(`ns.ImportProfile(${JSON.stringify(src.eval("return ns.ExportProfile('layout')"))})`);
+  expect(back.eval("return { ns.HudLayout(), ns.Profile().hudLayout == nil }"), "Centered goes back to Centered, stored as nothing").toEqual(["centered", true]);
+  const plain = loggedIn(CLICK_LUA);
+  plain.eval("ns.SetHudLayout('standards')");
+  expect(importHud(plain.eval("return ns.ExportProfile('hudLayout')")).eval("return ns.HudLayout()"), "the hudLayout module string works too").toBe("standards");
+  const crafted = loggedIn(CLICK_LUA);
+  crafted.eval("ns.Settings('positions').X = { point = 'CENTER' } ns.Profile().hudLayout = 'fort'");
+  const text = crafted.eval("local S = ns.Serialize return S.Encode('profile', ns.StampPayload({ parts = { 'layout' }, positions = 0, hudLayout = { 1 } }))");
+  crafted.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(crafted.eval("return { type(ns.Profile().positions), ns.Profile().hudLayout }"), "a scalar over a table, or a table over the layout, is dropped").toEqual(["table", "fort"]);
+});
+it("hunt H46-22-51: an emptied list in a partial string empties yours, an empty map keeps your keys", () => {
+  const filter = 'ns.Settings("ChatFilter", ns.GetModule("ChatFilter").defaults)';
+  const src = loggedIn(CLICK_LUA);
+  src.eval(`${filter}.keywords = {}`);
+  const text = src.eval('return ns.ExportProfile("ChatFilter")');
+  const dst = loggedIn(CLICK_LUA);
+  dst.eval(`${filter}.keywords = { "wts" }`);
+  dst.eval(`ns.ImportProfile(${JSON.stringify(text)})`);
+  expect(dst.eval(`return #${filter}.keywords`), "the string's emptied word list replaces yours").toBe(0);
+  const mapped = loggedIn(CLICK_LUA);
+  mapped.eval("ns.Settings('positions').X = { point = 'CENTER' }");
+  const empty = mapped.eval("return ns.Serialize.Encode('parts', ns.StampPayload({ parts = { 'layout' }, movers = {} }))");
+  mapped.eval(`ns.Profile().movers = { A = { x = 1 } } ns.ImportProfile(${JSON.stringify(empty)})`);
+  expect(mapped.eval("return ns.Profile().movers.A.x"), "an empty map keeps your keys").toBe(1);
+});
+it("hunt H46-22-R1: your own export of the profile in use asks nothing about the UI scale", () => {
+  const addon = loggedIn("", { savedVariables: "VanguardDB.profiles.Default = { theme = { pixelScale = true } }\n" });
+  const text = addon.eval("return ns.ExportProfile()");
+  const result = addon.eval(`local m, r = ns.ImportProfile(${JSON.stringify(text)}) return { m, r.display == nil }`);
+  expect(result[0], "it matched the profile in use").toMatch(/already uses/);
+  expect(result[1], "nothing was imported, so no UI scale question").toBe(true);
+});
+it("hunt H46-22-2 (decide: built pick A): a whole string that matches a profile here leaves the last import's backup alone", () => {
+  const addon = loggedIn();
+  addon.eval("ns.Theme.Settings().reduceMotion = false");
+  const part = addon.eval('return ns.Serialize.Encode("parts", ns.StampPayload({ parts = { "global" }, theme = { reduceMotion = true } }))');
+  addon.eval(`ns.ImportProfile(${JSON.stringify(part)})`);
+  const own = addon.eval("return ns.ExportProfile()");
+  const r = addon.eval(`local m, r = ns.ImportProfile(${JSON.stringify(own)}) return { m, r.backup == nil, #r.notes }`);
+  expect(r[0], "own export: nothing new").toMatch(/nothing new to import/);
+  expect(r.slice(1), "no backup made and no backup note").toEqual([true, 0]);
+  expect(addon.eval("return VanguardDB.profiles['Default backup'].theme.reduceMotion"), "the backup still holds the profile before the partial import").toBe(false);
+});
+it("hunt H46-22-3 (decide: built pick A): importing the profile in use's own export leaves a staged pick staged", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  addon.slash("profile Raid");
+  expect(addon.eval("return ns.PendingProfileName()"), "Raid is staged").toBe("Raid");
+  const own = addon.eval("return ns.ExportProfile()");
+  expect(addon.eval(`return (ns.ImportProfile(${JSON.stringify(own)}))`)).toMatch(/already uses: nothing new to import/);
+  expect(addon.eval("return ns.PendingProfileName() or 'none'"), "the pick of Raid is still staged").toBe("Raid");
+});
+// TEST-ONLY saved variables: spec 2 has Heal as its own profile and Heal is in use; Mine is a hand pick.
+const HEAL_SPEC = 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = {}, Mine = {} } }\nVanguardCharDB = { profile = "Heal", setupDone = true, ownProfile = "Default", specProfiles = { [2] = "Heal" } }';
+const SPEC_GETTER = "GetSpecialization = function() return __spec end __spec = 2";
+it("H46-4-100: /vg profile <name> on a spec with a profile of its own does not promise the pick after the reload", () => {
+  const addon = createAddon({ savedVariables: HEAL_SPEC });
+  addon.eval(SPEC_GETTER);
+  addon.login();
+  addon.clearChat();
+  addon.slash("profile Mine");
+  expect(addon.eval("return { ns.ProfileName(), ns.PendingProfileName(), tostring(ns.ProfileAfterReload()), Vanguard_Reload ~= nil and Vanguard_Reload:IsShown() }"), "the pick is staged, the spec's profile loads, no reload is offered").toEqual(["Heal", "Mine", "nil", false]);
+  expect(chatHas(addon, /will use profile Mine/), "no promise").toBe(false);
+  expect(chatHas(addon, /It switches back at the reload/), "the spec's takeover is said").toBe(true);
+  addon.clearChat();
+  addon.slash("profile Heal");
+  expect(chatHas(addon, /already uses profile Heal/), "the profile in use says so").toBe(true);
+});
+it("H46-4-100: a pick staged in a fight on a spec with no profile of its own still offers the reload", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  setCombat(addon, true);
+  addon.slash("profile Raid");
+  expect(addon.eval("return { ns.ProfileAfterReload(), Vanguard_Reload:IsShown() }"), "staged and offered").toEqual(["Raid", true]);
+});
+it("H46-4-R2: /vg profile with no name names the profile the reload loads, not the staged pick the spec overrides", () => {
+  const addon = createAddon({ savedVariables: HEAL_SPEC });
+  addon.eval(SPEC_GETTER);
+  addon.login();
+  addon.slash("profile Mine");
+  addon.clearChat();
+  addon.slash("profile");
+  expect(chatHas(addon, /Profile: Heal {3}\(all: Default, Heal, Mine\)/), "nothing comes after the reload but Heal again").toBe(true);
+  const mapped = createAddon({ savedVariables: 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = {} } }\nVanguardCharDB = { profile = "Default", setupDone = true }' });
+  mapped.eval(SPEC_GETTER);
+  mapped.login();
+  mapped.slash("spec Heal");
+  mapped.clearChat();
+  mapped.slash("profile");
+  expect(chatHas(mapped, /Profile: Default; Heal after a reload/), "a spec mapped to Heal loads it").toBe(true);
+});
+it("H46-4-R3: on a spec with its own profile, Use it turns Pixel-perfect off in the profile that loads and in the imported one, with no reload promise", () => {
+  const addon = createAddon({ savedVariables: 'VanguardDB = { version = 2, setupDone = true, profiles = { Default = {}, Heal = { theme = { pixelScale = true } } } }\nVanguardCharDB = { profile = "Heal", setupDone = true, ownProfile = "Default", specProfiles = { [2] = "Heal" } }' });
+  addon.eval(SPEC_GETTER);
+  addon.login();
+  addon.clearChat();
+  const text = addon.eval('return ns.Serialize.Encode("profile", ns.StampPayload({ theme = { accent = "jade", pixelScale = true }, display = { uiScale = 0.9 } }))');
+  importText(addon, text);
+  addon.eval('Vanguard_Question.yes:GetScript("OnClick")(Vanguard_Question.yes)');
+  expect(addon.eval("return { VanguardDB.profiles.Imported.theme.pixelScale, ns.Theme.Settings().pixelScale, GetCVar('uiScale') }"), "off in the imported profile and in Heal, which the reload loads").toEqual([false, false, "0.9"]);
+  expect([chatHas(addon, /Created profile Imported\./), chatHas(addon, /will use it after a reload/), addon.eval("return Vanguard_Reload ~= nil and Vanguard_Reload:IsShown()")], "no promise and no reload offer").toEqual([true, false, false]);
 });

@@ -308,6 +308,13 @@ local function watchTargets(key)
   end
 end
 
+-- The profile in use was switched or replaced (a live switch, Reset profile, Copy here): the frames its links point
+-- at are watched, as when a mover registers. A profile with no saved spots has no links, and is left without a table.
+ns.OnProfileChanged(ns.Guard("watch the links of the profile in use", function()
+  if not ns.Profile().positions then return end
+  for _, m in ipairs(ns.MoverList()) do watchTargets(m.key) end
+end))
+
 -- A mover was registered (its module built its frame): it watches the frames it links to and, when a
 -- frame is linked to it, its own size; the frames linked to it are placed again (they may have been waiting for it).
 function K.Registered(key)
@@ -426,12 +433,15 @@ function ns.SetMoverSize(key, dim, value)
 end
 
 -- Puts a recorded spot's links back on a mover (Modules/Situations.lua) through the setters, so
--- a link that can't hold now (the frame it names isn't there) is left off.
+-- a link that can't hold now (the frame it names isn't there) is left off. Own sizes go first: a matched
+-- dimension refuses SetMoverSize, and the own size is kept beside the match.
 function ns.RestoreMoverLinks(key, spot)
   local rel, match = part(spot, "rel") or {}, part(spot, "match") or {}
   if rel.to then ns.SetMoverAnchor(key, rel.to, rel.side, tonumber(rel.x) or 0, tonumber(rel.y) or 0) end
   for dim, field in pairs(DIMS) do
-    if match[dim] then ns.SetMoverMatch(key, dim, match[dim]) end
     if tonumber(spot[field]) then ns.SetMoverSize(key, dim, tonumber(spot[field])) end
+  end
+  for dim in pairs(DIMS) do
+    if match[dim] then ns.SetMoverMatch(key, dim, match[dim]) end
   end
 end

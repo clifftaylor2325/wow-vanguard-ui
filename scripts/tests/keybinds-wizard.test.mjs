@@ -4,7 +4,8 @@
 // after first-run setup, and putting keys back from the card. Characters and icons here are test-only.
 
 import { expect, it } from "vitest";
-import { CLICK_LUA, RETAIL, chatHas, loggedIn } from "./helpers.mjs";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, chatHas, loggedIn } from "./helpers.mjs";
 
 // TEST-ONLY spells a level-12 warrior knows, with their icons: { id, name }.
 const WARRIOR_SPELLS = [[78, "Heroic Strike"], [772, "Rend"], [7384, "Overpower"], [6343, "Thunder Clap"],
@@ -276,7 +277,7 @@ it("why it changes nothing: a bar addon, Vanguard's bars off, a gamepad; and ret
   const classless = warrior();
   classless.eval('__wfgWorld.setUnit("player", { class = "TEST-ONLY", className = "Tester" })');
   expect(classless.eval("return ns.KeybindsWizard.Blocked()")).toBe("Key setup has no layout for your class yet.");
-  const retail = loggedIn(CLICK_LUA, { client: RETAIL });
+  const retail = loggedIn(CLICK_LUA, { client: RETAIL_CLIENT });
   expect([open(retail), cardButton(retail, "Put everything back")], "no key setup buttons on retail").toEqual([false, false]);
   retail.eval("ns.KeybindsWizard.Open()");
   expect([retail.eval("return Vanguard_KeysWizard == nil"), chatHas(retail, /Vanguard's key setup is for WoW Forever only\.$/)]).toEqual([true, true]);
@@ -598,6 +599,85 @@ it("H45-6-R1 step 3: a change the player unticked that stops being one (the key 
   expect([win(addon).shown, chatHas(addon, /Nothing is ticked, so no key changes\./), chatHas(addon, /No key needs changing\./)]).toEqual([false, false, true]);
 });
 
+it("H46-6-1 step 3: the same with the change turned into a key that stays, with words (its button has two keys), still closes", () => {
+  const addon = warrior();
+  open(addon);
+  addon.eval('__click("Show me") __click("Next") __click("Apply")');
+  const command = keys(addon, ["F"])[0];
+  addon.eval('SetBinding("F", nil) SaveBindings(1)');
+  open(addon);
+  addon.eval('__click("Show me") __click("Next")');
+  untick(addon, "^F: ");
+  addon.world.combat(true);
+  addon.eval(`SetBinding("F9", "${command}") SetBinding("F10", "${command}") SaveBindings(1)`);
+  addon.world.combat(false);
+  addon.clearChat();
+  addon.eval('__click("Apply")');
+  expect([win(addon).shown, chatHas(addon, /Nothing is ticked, so no key changes\./), chatHas(addon, /No key needs changing\./)]).toEqual([false, false, true]);
+});
+
+// The positions Apply handed key setup's later updates as the player's own, as "key@slot".
+const declinedIds = (addon) => addon.eval("local out = {} for i, e in ipairs(__declined or {}) do out[i] = e.key .. '@' .. tostring(e.slot) end return out");
+
+// Ticks Place new spells as I learn them on step 3.
+const TICK_NEW = 'local box = Vanguard_KeysWizard.steps.ready.placeNew if not box.get() then box.__scripts.OnClick(box) end';
+
+// Has the character learn Berserker Stance, as a later level does (LEARNED_SPELL_IN_SKILL_LINE, forever
+// Blizzard_APIDocumentationGenerated/SpellBookDocumentation.lua:851).
+function learnLater(addon) {
+  addon.clearChat();
+  addon.world.learn(2458, { name: "Berserker Stance", icon: "TEST-ONLY-2458" });
+  addon.eval('__wfgWorld.setStances({ { spellID = 2457 }, { spellID = 71 }, { spellID = 2458 } })');
+  addon.fire("LEARNED_SPELL_IN_SKILL_LINE", 2458, 1, false);
+  addon.advance(2);
+}
+
+// A warrior with Shield Bash on T's button (bar 2 button 2), on Ready with Place new spells ticked, F and then T
+// unticked (T's change only exists once F's is left out).
+function untickFThenT(extra = "") {
+  const addon = warrior(WATCH_APPLIED + extra);
+  addon.advance(4);
+  addon.world.setAction(62, { id: 72 });
+  open(addon);
+  addon.eval(`__click("Show me") __click("Next") ${TICK_NEW}`);
+  untick(addon, "^F: ");
+  untick(addon, "^T: ");
+  return addon;
+}
+
+it("H46-6-1 step 3: a change unticked after another says what ticking it back would do, and both reach later updates", () => {
+  const addon = untickFThenT();
+  expect(ready(addon).filter((r) => /^(\[.\] )?[FT]: /.test(r))).toEqual(["[ ] F: your Shield Bash on bar 2", "[ ] T: Hamstring, and Shield Bash moves to bar 3"]);
+  addon.eval('__click("Apply")');
+  expect(declinedIds(addon)).toEqual(["F@61", "T@62"]);
+});
+
+it("H46-6-1 a change unticked after another stays the player's when a spell is learned later: the key and its button", () => {
+  const addon = untickFThenT(' SetBinding("T", "TOGGLECHARACTER0") SaveBindings(1)');
+  addon.eval('__click("Apply")');
+  learnLater(addon);
+  expect([keys(addon, ["T"]), addon.eval("return { select(2, GetActionInfo(62)) }"), chatHas(addon, /Hamstring is now on T\./)])
+    .toEqual([["TOGGLECHARACTER0"], [72], false]);
+});
+
+it("H46-6-R1 step 3: a change unticked after another keeps its box when the other would have made it needless", () => {
+  const addon = warrior(WATCH_APPLIED);
+  addon.advance(4);
+  addon.eval(`SetBinding("G", "${addon.eval("return ns.KeybindsApply.CommandFor(53)")}") SaveBindings(1)`);
+  addon.world.setAction(61, { id: 2687 });
+  open(addon);
+  addon.eval(`__click("Show me") __click("Next") ${TICK_NEW}`);
+  // Step 3's rows for F and G.
+  const fg = () => ready(addon).filter((r) => /^(\[.\] )?[FG]: /.test(r));
+  untick(addon, "^F: ");
+  expect(fg()).toEqual(["[ ] F: Shield Bash, and Bloodrage moves to bar 3", "[x] G: your Bloodrage on bar 2 (now Bar 3 button 5)"]);
+  untick(addon, "^G: ");
+  expect(fg(), "G's box stays, to tick it back").toEqual(["[ ] F: Shield Bash, and Bloodrage moves to bar 3", "[ ] G: your Bloodrage on bar 2 (now Bar 3 button 5)"]);
+  addon.eval('__click("Apply")');
+  learnLater(addon);
+  expect([declinedIds(addon), keys(addon, ["G"]), chatHas(addon, /Bloodrage is now on G\./)]).toEqual([["F@61", "G@63"], ["MULTIACTIONBAR2BUTTON5"], false]);
+});
+
 // The player's own switch in the game's Settings (forever Blizzard_Settings_Shared/Blizzard_Settings.lua:636-648):
 // Settings.SelectAccountBindings, and Settings.SelectCharacterBindings.
 const SELECT_ACCOUNT = "LoadBindings(1) SaveBindings(1)";
@@ -651,4 +731,16 @@ it("H45-6-R4 step 3: the gamepad interface switched on while Ready is open stops
   expect(keys(addon, ["F"]), "no key changed").toEqual([""]);
   expect([win(addon).shown, win(addon).step, win(addon).left]).toEqual([true, 1, "Close"]);
   expect(addon.texts("You play with a gamepad, so Vanguard won't change your keys.").length).toBe(1);
+});
+
+it("H46-20-50 Show what comes later leaves a spell the character already knows on its own key", () => {
+  const addon = loggedIn(CLICK_LUA, {});
+  addon.eval('__wfgWorld.setUnit("player", { name = "Brakk", class = "WARRIOR", className = "Warrior", level = 6 })');
+  for (const [id, name] of [[78, "Heroic Strike"], [772, "Rend"], [6343, "Thunder Clap"], [2457, "Battle Stance"]]) addon.world.learn(id, { name, icon: `TEST-ONLY-${id}` });
+  addon.eval('__wfgWorld.setStances({ { spellID = 2457, icon = "TEST-ONLY-BS" } })');
+  open(addon);
+  addon.eval('__click("Show me") __click("Show what comes later")');
+  expect(cap(addon, "4").grey, "Thunder Clap is known: key 4 is not greyed for it").toBe(false);
+  addon.eval(`for _, c in ipairs(${BOARD}.caps) do if c.key == "4" then c.__scripts.OnEnter(c) end end`);
+  expect(tipText(addon)).not.toContain("Later: Thunder Clap");
 });

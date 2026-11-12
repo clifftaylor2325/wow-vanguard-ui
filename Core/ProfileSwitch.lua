@@ -65,8 +65,15 @@ local function themeDiffers(now, nxt)
   return not sameValue(valueOf(now.theme, T.DEFAULTS, "variant"), valueOf(nxt.theme, T.DEFAULTS, "variant"))
 end
 
--- What keeps the profile `name` from applying now, in load order: every reload-only module that blocks, and "theme"
--- when its reload settings differ. Returns all of them, and those whose switch or settings differ.
+-- Adds "theme" when its reload settings differ between the profiles, and "skins" when another addon's skin on screen
+-- is not what the next profile wants, to both lists.
+local function coreBlockers(now, nxt, blockers, differing)
+  if themeDiffers(now, nxt) then blockers[#blockers + 1], differing[#differing + 1] = "theme", "theme" end
+  if ns.SkinsWaitFor(nxt) then blockers[#blockers + 1], differing[#differing + 1] = "skins", "skins" end
+end
+
+-- What keeps the profile `name` from applying now, in load order: every reload-only module that blocks, "theme"
+-- when its reload settings differ, and "skins" when another addon's skin would have to change. Returns all of them, and those whose switch or settings differ.
 ---@param name string
 ---@return string[] blockers, string[] differing
 function ns.SwitchBlockers(name)
@@ -78,9 +85,12 @@ function ns.SwitchBlockers(name)
     if def.Enable and not def.live and block then blockers[#blockers + 1] = module end
     if def.Enable and not def.live and differs then differing[#differing + 1] = module end
   end
-  if themeDiffers(now, nxt) then blockers[#blockers + 1], differing[#differing + 1] = "theme", "theme" end
+  coreBlockers(now, nxt, blockers, differing)
   return blockers, differing
 end
+
+-- What the reload offer calls the entries of ns.SwitchBlockers that are not modules.
+local WAIT_NAMES = { theme = L["the theme"], skins = L["another addon's skin"] }
 
 -- The sentence a reload offer adds for a staged profile: which modules differ, when they alone keep it from applying
 -- now (switched back, the profile would apply at once). Nil when nothing differs or other modules block it anyway
@@ -91,7 +101,7 @@ function ns.SwitchWaitText(name)
   local blockers, differing = ns.SwitchBlockers(name)
   if #differing == 0 or #differing < #blockers then return nil end
   local names = {}
-  for i, module in ipairs(differing) do names[i] = module == "theme" and L["the theme"] or ns.Options.ModuleTitle(module) end
+  for i, module in ipairs(differing) do names[i] = WAIT_NAMES[module] or ns.Options.ModuleTitle(module) end
   local values = { modules = table.concat(names, ", "), profile = name }
   if #names == 1 then return ns.Format(L["{modules} differs in {profile}, so the switch waits for a reload."], values) end
   return ns.Format(L["{modules} differ in {profile}, so the switch waits for a reload."], values)

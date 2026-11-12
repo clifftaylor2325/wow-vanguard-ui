@@ -85,6 +85,35 @@ it("the summary is checked as the block writes it: runs of spaces count once, an
   expect(addon.eval(`return ns.Feedback.Check({ kind = "bug", title = "A long enough title", did = ("${wide}"):rep(3), happened = "y" })`), "a text of only wide spaces").toBe("What you did is required.");
 });
 
+// The spaces and line separators the site's JS trim() removes (or its head pattern cannot read past), as Lua escapes.
+const THIN = "\\226\\128\\137";
+const NARROW = "\\226\\128\\175";
+const BOM = "\\239\\187\\191";
+const EN = "\\226\\128\\130";
+const LINE_SEP = "\\226\\128\\168";
+const ZERO_WIDTH = "\\226\\128\\139";
+const SHORT = "The short summary needs at least 8 characters.";
+
+it("the summary check trims every space the site's trim() does, at either end, and keeps the ones it keeps", () => {
+  const addon = loggedIn();
+  // The in-game check's answer for a bug with this Lua title expression.
+  const check = (title) => addon.eval(`return ns.Feedback.Check({ kind = "bug", title = ${title}, did = "x", happened = "y" }) or "pass"`);
+  for (const [name, c] of [["thin", THIN], ["narrow no-break", NARROW], ["byte-order mark", BOM]]) {
+    expect(check(`"Map lag${c}"`), `${name} at the end`).toBe(SHORT);
+  }
+  expect(check(`"${EN}Map lag"`), "an en space at the start").toBe(SHORT);
+  expect(check(`"Map lag${THIN}${NARROW}${BOM} "`), "mixed, in a row").toBe(SHORT);
+  expect(check(`"Map lags${ZERO_WIDTH}"`), "a zero-width space is kept by the site").toBe("pass");
+  expect(addon.eval(`return ns.Feedback.Check({ kind = "bug", title = "A long enough title", did = "${THIN}", happened = "y" })`), "a text of only thin spaces").toBe("What you did is required.");
+});
+
+it("a line separator in the summary becomes a space, so the block's title line stays one line for the site", () => {
+  const addon = loggedIn();
+  expect(titleCheck(addon, "Map lags\u2028in town"), "U+2028").toEqual(["pass", "Map lags in town"]);
+  expect(titleCheck(addon, "Map lags\u2029in town"), "U+2029").toEqual(["pass", "Map lags in town"]);
+  expect(titleCheck(addon, `Map lags${LINE_SEP}`)[0], "at the end it is trimmed away").toBe("pass");
+});
+
 it("Make report says what the site would, in its words, and keeps the form open", () => {
   const addon = loggedIn();
   open(addon);

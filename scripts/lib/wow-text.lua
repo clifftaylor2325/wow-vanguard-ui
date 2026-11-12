@@ -152,6 +152,14 @@ function stub.givenTextWidth(fs)
 end
 local givenWidth = stub.givenTextWidth
 
+-- The height a font string was given, nil when none: SetHeight(0) resets it to size to its text (forever
+-- Blizzard_ObjectiveTracker/Blizzard_ObjectiveTrackerBlock.lua:140-143 sets 0, sets the text, then reads GetHeight as
+-- the text's height).
+function stub.givenTextHeight(fs)
+  local height = fs.__height
+  if height ~= 0 then return height end
+end
+
 -- The width a font string's text asks for in its own units: its set width when it has one, else its longest line.
 function stub.textWidth(fs)
   return givenWidth(fs) or unbounded(fs)

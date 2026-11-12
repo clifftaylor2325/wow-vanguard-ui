@@ -336,14 +336,21 @@ function V.WatchHover(frame)
   hookHover(frame, frame)
 end
 
+-- Makes a calm frame watch the mouse and feel it (for the fade on mouseover), unless it is marked vgCalmDeaf: a
+-- band that takes no mouse at all (the keystone) dims and wakes with the Calm HUD without ever feeling it.
+local function listenForMouse(frame)
+  if frame.vgCalmDeaf then return end
+  if not frame.vgHoverRoot then V.WatchHover(frame) end
+  feelMouse(frame)
+  if frame.vgHoverArea then feelMouse(frame.vgHoverArea) end
+end
+
 -- Gives a frame with no visibility setting of its own its Calm HUD state now (out of combat only):
 -- its part's, or "show" once it was calm. A frame never made calm is left alone.
 function V.CalmNow(frame)
   local state = V.CalmState(frame.vgCalm)
   if not (state or frame.vgStateString) then return end
-  if not frame.vgHoverRoot then V.WatchHover(frame) end
-  feelMouse(frame)
-  if frame.vgHoverArea then feelMouse(frame.vgHoverArea) end
+  listenForMouse(frame)
   V.ApplyState(frame, state or "show")
   V.Refresh(frame)
 end

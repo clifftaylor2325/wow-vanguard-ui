@@ -36,7 +36,7 @@ local PICKER_W, PICKER_TOP = 280, T.CONTROL_H + 2 * T.SPACE.gap
 local PLAIN_ACTIONS = { { "target", L["Target"] }, { "menu", L["Unit menu"] }, { "focus", L["Focus"] }, { "assist", L["Assist"] } }
 
 -- Page state: whether the extra modifier columns show (nil: while a binding uses them, see moreShown), the key the
--- picker is for, and the page's signature (see pageSignature) it was built with (nil until it is built).
+-- picker is for, and the page's signature (see pageSignature) its rows were read with (nil until they are read).
 local state = { more = nil, pickKey = nil, built = nil }
 
 -- Shared pieces -----------------------------------------------------------------------------
@@ -153,13 +153,22 @@ local function windowShown()
   return window ~= nil and window:IsShown() == true
 end
 
--- Re-reads every row on the page after a binding changed; a page built with another signature than the one that
--- applies now (a notice begun or ended, the columns, the starter layout's rows) is built again first; a page not built
--- yet has nothing to rebuild (and the event can come before the saved variables load). The other pages' rows are
+-- Re-reads every row on the page after a binding changed; a page whose rows were read with another signature than the
+-- one that applies now (a talent group switch, a notice begun or ended, the columns, the starter layout's rows) is built
+-- again first, the rows the window keeps for it too; a page whose rows were never read has nothing to rebuild (and the
+-- event can come before the saved variables load). The other pages' rows are
 -- re-read too, while the window is up: a fight's end or a talent group or spec switch with it closed costs no walk.
 local function changed()
   if state.built ~= nil and state.built ~= pageSignature() then O.RebuildPage(PAGE) end
   if windowShown() then O.Refresh() end
+end
+
+-- The player changed a binding on the page: an offer that appears from it (a spell freed by a clear) is shown on the
+-- page, so it is marked told and not news for chat later; then the page is re-read. Events, Clear all, Import, Copy to,
+-- the swap and the game switch use changed() alone.
+local function edited()
+  CP.MarkShown()
+  changed()
 end
 
 -- A hover wash over a button.
@@ -216,7 +225,7 @@ end
 local function pickSpell(s, r)
   CC.Add(state.pickKey, "spell", s.name, r and r.spellID or s.spellID, r and r.rank or nil)
   closePicker()
-  changed()
+  edited()
 end
 
 -- Text without the spaces around it.
@@ -229,7 +238,7 @@ local function bindTyped(key, action, text)
   local ok, why = CC.Add(key, action, trim(text))
   if not ok then return ns.Chat(ns.Format(L["Can't bind: {why}."], { why = why })) end
   ns.HideText()
-  changed()
+  edited()
 end
 
 -- Asks for a macro's text or a spell's name in the text dialog; Bind adds it to the key. A Bind that CC.ForThisList
@@ -247,7 +256,7 @@ local function pickAction(action)
   if action == "macro" then return askText(key, "macro") end
   if action == "typed" then return askText(key, "spell") end
   CC.Add(key, action, nil)
-  changed()
+  edited()
 end
 
 -- What clicking a picker row does: a header nothing, a spell or rank binds, an action binds or asks.
@@ -463,10 +472,10 @@ end
 -- A click on a cell: a dropped spell binds, right-click clears, left opens the picker.
 local function cellClick(c, button)
   pinMore(c.key)
-  if dropSpell(c.key) then return changed() end
+  if dropSpell(c.key) then return edited() end
   if button == "RightButton" then
     CC.Remove(c.key)
-    return changed()
+    return edited()
   end
   openPicker(c, c.key)
 end
@@ -481,19 +490,27 @@ local function wontRunTooltip(f, b, why)
   GameTooltip:Show()
 end
 
+-- The spell id a binding's tooltip shows: the saved one for a picked rank; else, for a spell bound by name (it casts
+-- the highest rank, ClickCast.lua spellValue), the catalog's top rank, which moves on as ranks are learned; a name the
+-- catalog doesn't hold (another client language, a spell not learned) keeps the saved id.
+local function tooltipSpellID(b)
+  local spell = b.action == "spell" and not b.rank and CS.Spell(b.value)
+  return spell and spell.spellID or b.spellID
+end
+
 -- A cell's tooltip: why its binding does nothing when the game won't run it, else its spell's.
 local function cellTooltip(c)
   local b = CC.Binding(c.key)
   local why = b and CC.WontRun(b)
   if why then return wontRunTooltip(c, b, why) end
-  spellTooltip(c, b and b.spellID)
+  spellTooltip(c, b and tooltipSpellID(b))
 end
 
 -- A cell's scripts: clicks, drops and the tooltip.
 local function wireCell(c)
   c:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   c:SetScript("OnClick", ns.Guard("click click-cast cell", cellClick))
-  c:SetScript("OnReceiveDrag", function(self) pinMore(self.key) if dropSpell(self.key) then changed() end end)
+  c:SetScript("OnReceiveDrag", function(self) pinMore(self.key) if dropSpell(self.key) then edited() end end)
   c:SetScript("OnEnter", cellTooltip)
   c:SetScript("OnLeave", hideTooltip)
 end
@@ -562,7 +579,7 @@ local function gridRow(grid, row, cols, cellW)
   end
 end
 
--- Builds the page again on the next frame when it was built with another signature than the one that applies now:
+-- Builds the page again on the next frame when its rows were read with another signature than the one that applies now:
 -- the window shows a page it built earlier and only re-reads it, so a notice that began or ended since (a stamp
 -- cleared, the game's bindings edited in its own window, a spell learned) would otherwise wait for a /reload. Not at
 -- once: this runs inside the window's refresh of its rows.
@@ -585,28 +602,38 @@ local function gridBuilder(parent, _, width)
   grid.cells, grid.Refresh = {}, refreshGrid
   gridHeaders(grid, cols, cellW)
   for row = 1, #MOUSE do gridRow(grid, row, cols, cellW) end
-  state.built = pageSignature()
   grid:Refresh()
   return grid
 end
 
 -- Hover keys ------------------------------------------------------------------------------------
 
--- The current spec's hover-key bindings (not mouse buttons), in order.
+-- The current spec's bindings the grid has no cell for, in order: the hover keys, and a mouse binding saved before
+-- Import's key check on modifiers the grid has no column for (Alt + Ctrl + Shift), so it too has its row and Remove.
 local function hoverBindings()
   local out = {}
   for _, b in ipairs(CC.Bindings()) do
-    if not CC.MouseParts(b.key) then out[#out + 1] = b end
+    local prefix = CC.MouseParts(b.key)
+    if not (prefix and CC.MOUSE_PREFIXES[prefix]) then out[#out + 1] = b end
   end
   return out
 end
 
--- A hover-key row's texts: the key, the binding beside its icon, the collision note.
-local function keyRowTexts(row)
+-- A hover-key row's key name, from the row's start to a gap before the icon, wrapping onto a second line when it is
+-- wider (a mouse key on three modifiers, "Alt + Ctrl + Shift + Button 4", runs long).
+local function keyName(row)
   row.keyText = T.Text(row:CreateFontString(nil, "OVERLAY"), "label")
   row.keyText:SetPoint("LEFT", T.SPACE.tight, 0)
+  row.keyText:SetPoint("RIGHT", row.iconFrame, "LEFT", -T.SPACE.tight, 0)
+  row.keyText:SetJustifyH("LEFT")
+  row.keyText:SetMaxLines(2)
+end
+
+-- A hover-key row's texts: the key, the binding beside its icon, the collision note.
+local function keyRowTexts(row)
   row.iconFrame = bindingIcon(row, 20)
   row.iconFrame:SetPoint("LEFT", 150, 0)
+  keyName(row)
   row.text = T.Text(row:CreateFontString(nil, "OVERLAY"), "label")
   row.text:SetPoint("LEFT", 176, 0)
   row.note = T.Text(row:CreateFontString(nil, "OVERLAY"), "small", "muted")
@@ -620,7 +647,7 @@ local function keyRow(list, i)
   local row = W.Row(child, ROW_H, { width = child:GetWidth() })
   row:SetPoint("TOPLEFT", 0, -(i - 1) * ROW_H)
   keyRowTexts(row)
-  row.remove = W.Button(row, L["Remove"], function() CC.Remove(row.key) changed() end, 80)
+  row.remove = W.Button(row, L["Remove"], function() CC.Remove(row.key) edited() end, 80)
   row.remove:SetPoint("RIGHT")
   return row
 end
@@ -762,11 +789,20 @@ local function nothingBound(name)
   return ns.Format(L["{key} -> nothing bound"], { key = name })
 end
 
+-- The note after "nothing bound" where the game's own click bindings still act on the click (a spell it binds there,
+-- or Target or the menu it moved there: CC.WontRun's sentences, asked about the bare click), else "".
+local function unboundNote(key)
+  local why = CC.WontRun({ key = key })
+  return why and ("  " .. T.Paint("(" .. why .. ")", "warn")) or ""
+end
+
 -- What a key or click would do on the tile: "Shift + Right click -> Renew on Tester", with a note when it does
--- nothing, or that nothing is bound.
+-- nothing, or that nothing is bound; while the game's click bindings are in use, that Vanguard's rest (the frames
+-- carry none of them then: CC.ApplyFrame).
 local function describe(key)
+  if CC.UsesGame() then return L["The game's click bindings are in use: these are kept for when you switch back."] end
   local b = tileBinding(key)
-  if not b then return nothingBound(CC.KeyName(key)) end
+  if not b then return nothingBound(CC.KeyName(key)) .. unboundNote(key) end
   local line = ns.Format(L["{key} -> {action} on {name}"], { key = CC.KeyName(b.key), action = CC.ActionText(b), name = playerName() })
   return line .. wontRunNote(b)
 end
@@ -1199,10 +1235,12 @@ local function leadRows()
   return out
 end
 
--- The page's rows (built again when its signature changes, see pageSignature); the game's click bindings are offered
--- where the client has them.
+-- The page's rows (built again when its signature changes, see pageSignature), with the signature they are read with:
+-- the window keeps them, so that is what a change compares against. The game's click bindings are offered where the
+-- client has them.
 local function rows()
   local base, out = type(C_ClickBindings) == "table" and WITH_GAME or ROWS, {}
+  state.built = pageSignature()
   for _, row in ipairs(base) do
     if row[1] == "bindlayout" then
       for _, lead in ipairs(leadRows()) do out[#out + 1] = lead end

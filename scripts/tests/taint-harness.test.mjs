@@ -29,6 +29,20 @@ it("documented protected methods are blocked on a secure button in combat and ru
   expect(addon.eval("return TestSecure:GetFrameLevel()"), "the level moved").toBe(77);
 });
 
+// SetEnabled is IsProtectedFunction on a button (Blizzard_APIDocumentationGenerated/SimpleButtonAPIDocumentation.lua:336,
+// both clients): blocked in a fight even now that it runs Enable and Disable underneath.
+it("SetEnabled on a secure button is blocked in combat, once, and leaves the button as it was", () => {
+  const addon = createAddon();
+  addon.eval('CreateFrame("Button", "TestSecure", UIParent, "SecureActionButtonTemplate")');
+  addon.world.combat(true);
+  asAddon(addon, "TestSecure:SetEnabled(false)");
+  expect(violations(addon)).toEqual(["blocked in combat: Modules/TEST-ONLY.lua:1 called SetEnabled on the protected frame TestSecure"]);
+  expect(addon.eval("return TestSecure:IsEnabled()")).toBe(true);
+  addon.world.combat(false);
+  asAddon(addon, "TestSecure:SetEnabled(false)");
+  expect(addon.eval("return { #__wfgStub.violations, TestSecure:IsEnabled() }"), "out of combat it lands").toEqual([0, false]);
+});
+
 // A game frame with a field the game set (layoutIndex), as test code stands in for the game's frames.
 const GAME_FRAME = 'CreateFrame("Frame", "TestGameFrame", UIParent).layoutIndex = 3';
 
@@ -90,6 +104,9 @@ it("world.forbid closes a game frame and the game's widgets under it to addon co
   expect(tryAddon("TestPlate:ClearAllPoints()"), "the plate refuses").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
   expect(tryAddon("TestIcon:SetTexture(1)")[0], "its texture refuses").toBe(false);
   expect(tryAddon("return TestPlate:IsForbidden() and TestIcon:IsForbidden()"), "both say so, to the addon too").toEqual([true, ""]);
+  // SimpleFrameScriptObjectAPIDocumentation.lua:43-57 (both clients): false when tainted and the object is forbidden.
+  expect(addon.eval(`local ok, can = pcall(assert(loadstring("return TestPlate:CanBeAccessedInContext()", "@Modules/TEST-ONLY.lua")))
+    return { ok, can, TestPlate:CanBeAccessedInContext() }`), "asked whether it may reach it, the addon hears no; test code yes").toEqual([true, false, true]);
   expect(tryAddon("TestMine:SetAlpha(0.5)"), "the addon's own frame stays open").toEqual([true, ""]);
   expect(addon.eval("TestPlate:SetAlpha(0.5) return TestPlate:GetAlpha()"), "test code still reaches it").toBe(0.5);
 });
@@ -107,6 +124,38 @@ it("world.holdAccess holds a frame and what hangs from it back from addon code w
   expect(addon.eval("return TestRow:CanBeAccessedInContext() and TestRow:GetParent() == UIParent"), "test code still reaches it").toBe(true);
   addon.eval("__wfgWorld.releaseAccess(TestRow)");
   expect(tryAddon("return TestRow:CanBeAccessedInContext() and TestRow:GetParent() == UIParent"), "released: open again").toEqual([true, true]);
+});
+
+it("a frame held and let go takes a secret aspect held later like any other, and holding it again refuses again", () => {
+  const addon = createAddon();
+  addon.eval(`TestBar = CreateFrame("StatusBar", "TestBar", UIParent) __wfgWorld.holdAccess(TestBar) __wfgWorld.releaseAccess(TestBar)
+    __wfgWorld.holdSecret(TestBar, "BarValue") TestBar:SetValue(3)`);
+  // Whether an addon call raised, and what it returned or raised with.
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
+  expect(tryAddon("return issecretvalue(TestBar:GetValue())"), "the bar's value reads back secret to the addon").toEqual([true, true]);
+  addon.eval("__wfgWorld.holdAccess(TestBar)");
+  expect(tryAddon("TestBar:SetAlpha(0.5)"), "held again: refused").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
+});
+
+// Blizzard_AuraContainer/Blizzard_AuraContainerFrameProviders.lua:79-86 (both clients): a new frame gets the container's
+// access restriction right after its (possibly tainted) initializeFrame runs; Blizzard_AuraContainerUtil.lua:403-419
+// applies it at once once logged in.
+it("an aura button a held container makes is held once the addon's initializeFrame has dressed it, and released with the container", () => {
+  const addon = createAddon();
+  asAddon(addon, `TestInit = function(b) b:SetSize(10, 10) b.TestFace = b:CreateTexture() end`);
+  addon.eval(`TestBox = CreateFrame("AuraContainer", nil, UIParent, "CustomAuraContainerTemplate")
+    TestBox:AddAuraGroup("g", "HELPFUL", { maxFrameCount = 40, layout = {}, initializeFrame = TestInit })
+    TestBox:SetUnit("player") TestBox:SetEnabled(true) __wfgWorld.holdAccess(TestBox)
+    for i = 1, 15 do __wfgWorld.addAura("player", { name = "TEST-ONLY " .. i, isHelpful = true, auraInstanceID = 700 + i }) end
+    TestBox:UpdateAllAuras() TestLate = TestBox.__groups[1].buttons[15]`);
+  // Whether an addon call raised, and what it returned or raised with.
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
+  expect(addon.eval("return { #TestBox.__groups[1].buttons, TestLate:GetWidth(), #__wfgStub.violations }"), "a second batch, dressed by the addon without a refusal").toEqual([20, 10, 0]);
+  expect(tryAddon("return TestLate:CanBeAccessedInContext()"), "the new button is held").toEqual([true, false]);
+  expect(tryAddon("TestLate:SetAlpha(0.5)")[0], "and refuses the addon").toBe(false);
+  expect(tryAddon("TestLate.TestFace:SetAlpha(0.5)")[0], "so does the texture initializeFrame put on it").toBe(false);
+  addon.eval("__wfgWorld.releaseAccess(TestBox)");
+  expect(tryAddon("TestLate:SetAlpha(0.5) return TestLate:CanBeAccessedInContext()"), "released with the container").toEqual([true, true]);
 });
 
 it("a secret answers type() as the value it hides, to the addon and to test code; the harness reads the raw type", () => {

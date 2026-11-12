@@ -5,7 +5,9 @@
 -- __wfgTextFit(root) looks at every shown font string under root (every top-level frame the addon
 -- made when root is nil) and returns what it finds, one entry each:
 --   cut      the text is wider or taller than the box it was given, so the client cuts it short
---            (an ellipsis, or lines dropped)
+--            (an ellipsis, or lines dropped), or "squeezed to no width" (or height): the text, or a frame it
+--            hangs on, is pinned on both sides of an axis with no room between them (its right edge on or left
+--            of its left), so the client draws none of it
 --   spill    the text runs out over an edge of the frame it sits in (a label wider than its button)
 --   overlap  the text draws over other text, or over a control that is not its own (wrapped text
 --            with no room left below it, running into the buttons)
@@ -90,10 +92,10 @@ local function clipped(w, r)
   return r
 end
 
--- Whether a font string's anchors pin both sides of an axis (LEFT and RIGHT, or TOP and BOTTOM).
-local function pinsBoth(fs, lo, hi)
+-- Whether a widget's anchors pin both sides of an axis (LEFT and RIGHT, or TOP and BOTTOM).
+local function pinsBoth(w, lo, hi)
   local a, b = false, false
-  for point in pairs(fs.__points) do
+  for point in pairs(w.__points) do
     a = a or point:find(lo) ~= nil
     b = b or point:find(hi) ~= nil
   end
@@ -106,7 +108,7 @@ local function boxOf(fs)
   return {
     rect = r, scale = scale, width = r.width / scale, height = r.height / scale,
     fixedWidth = stub.givenTextWidth(fs) ~= nil or pinsBoth(fs, "LEFT", "RIGHT"),
-    fixedHeight = fs.__height ~= nil or pinsBoth(fs, "TOP", "BOTTOM"),
+    fixedHeight = stub.givenTextHeight(fs) ~= nil or pinsBoth(fs, "TOP", "BOTTOM"),
   }
 end
 
@@ -192,9 +194,38 @@ local function looksLikeControl(w)
   return false
 end
 
--- One text the audit looks at: { fs, box, ink (clipped to what shows), name }; nil when it draws nothing.
+-- The axis a widget's anchors leave no room on: pinned on both sides with its far edge on or before its near one.
+local function squeezedAxis(w)
+  local r = stub.rectOf(w)
+  if r.width <= 0 and pinsBoth(w, "LEFT", "RIGHT") then return "width" end
+  if r.height <= 0 and pinsBoth(w, "TOP", "BOTTOM") then return "height" end
+end
+
+-- The axis a text is squeezed out on: its own, or that of a frame it hangs on through its anchors (the client gives
+-- a rect to nothing anchored to a frame without one). The squeeze is the first frame up the chain whose own anchors
+-- sit on laid-out frames; a chain that ends on a frame with no rect for another reason (unanchored, or 0 x 0 on
+-- purpose) hides the text instead, and gives nil, as does a chain where everything has room.
+local function squeezeOf(w, depth)
+  if depth >= 64 then return nil end
+  for _, p in pairs(w.__points) do
+    local rel = p.rel
+    if rel and rel ~= UIParent and not rel:IsRectValid() then return squeezeOf(rel, depth + 1) end
+  end
+  return squeezedAxis(w)
+end
+
+-- Whether a font string would show some text: shown all the way up, not faded out, and not blank.
+local function showsText(fs)
+  return fs:IsVisible() and drawnAlpha(fs) > FIT.alpha and fs.__text ~= nil and stub.drawnText(fs.__text):find("%S") ~= nil
+end
+
+-- One text the audit looks at: { fs, box, ink (clipped to what shows), name }, or { fs, name, squeezed = axis } for
+-- one squeezed out of sight (no ink); nil when it draws nothing.
 local function measured(fs)
-  if not (drawn(fs) and fs.__text and stub.drawnText(fs.__text):find("%S")) then return nil end
+  if not showsText(fs) then return nil end
+  local axis = squeezeOf(fs, 0)
+  if axis then return { fs = fs, name = textName(fs.__text), squeezed = axis } end
+  if not fs:IsRectValid() then return nil end
   local box = boxOf(fs)
   local ink = clipped(fs, inkRect(fs, box))
   return ink and { fs = fs, box = box, ink = ink, name = textName(fs.__text), scroller = scrollerOf(fs), window = windowOf(fs) }
@@ -216,13 +247,21 @@ local function collect(w, texts, controls)
   for _, child in ipairs({ w:GetChildren() }) do collect(child, texts, controls) end
 end
 
+-- Whether the addon made a widget: made after the client's frames at load (stub.firstAddonFrame) and not the game's.
+-- The world's windows and Retail's stubs are made later but are the game's (wow-taint.lua marks them __byGame;
+-- scripts/tests/README.md "Who owns a frame"). wow-inspect.lua's screen and the lifecycle footprint ask it too.
+function stub.addonMade(w)
+  return w.__id > stub.firstAddonFrame and rawget(w, "__byGame") ~= true
+end
+
 -- Every text and control under root (or under every top-level frame the addon made, when nil).
 local function gather(root)
   local texts, controls = {}, {}
   if root then collect(root, texts, controls) return texts, controls end
   for _, w in ipairs(stub.frames) do
-    if w.__id > stub.firstAddonFrame and w.__kind == "FontString" then texts[#texts + 1] = measured(w) end
-    if w.__id > stub.firstAddonFrame then controls[#controls + 1] = control(w) end
+    local made = stub.addonMade(w)
+    if made and w.__kind == "FontString" then texts[#texts + 1] = measured(w) end
+    if made then controls[#controls + 1] = control(w) end
   end
   return texts, controls
 end
@@ -240,8 +279,9 @@ local function controlName(c)
   return c.__kind
 end
 
--- The cut and spill findings for one text.
+-- The cut and spill findings for one text (a squeezed one is cut whole, and has no ink to spill).
 local function ownFindings(t, out)
+  if t.squeezed then out[#out + 1] = finding("cut", t, "squeezed to no " .. t.squeezed) return end
   local why = cutReason(t.fs, t.box)
   if why then out[#out + 1] = finding("cut", t, why) end
   if spills(t.fs, t.ink, t.box.scale) then out[#out + 1] = finding("spill", t) end
@@ -261,12 +301,14 @@ local function coversControl(t, c)
   return not within(t.fs, c.frame)
 end
 
--- The overlap findings for one text against the texts after it (in the same window and scroll view) and the controls.
+-- The overlap findings for one text against the texts after it (in the same window and scroll view) and the controls;
+-- a squeezed text draws nothing, so it overlaps nothing.
 local function overlapFindings(texts, i, controls, out)
   local t = texts[i]
+  if t.squeezed then return end
   for j = i + 1, #texts do
     local o = texts[j]
-    local together = o.window == t.window and o.scroller == t.scroller
+    local together = not o.squeezed and o.window == t.window and o.scroller == t.scroller
     if together and overlaps(t.ink, o.ink) then out[#out + 1] = finding("overlap", t, o.name) end
   end
   for _, c in ipairs(controls) do

@@ -42,7 +42,7 @@ chunks with a newline (5.1 reads `99ns` as a malformed number); and 5.1 words so
 | `scripts/lib/wow-keybinds.lua` | Key bindings (the Default (a placeholder), Account and Character sets, `GetBinding(i)`, `CLICK`/`SPELL` bindings), the cursor swap on action slots, stances, level and modifier events, and `C_ClickBindings`. |
 | `scripts/lib/wow-taint.lua` | Taint and combat rules: who owns each frame, field writes on the game's frames, protected calls blocked in combat, binding and placement calls refused in combat, secret arguments to aura calls, secret geometry. |
 | `scripts/lib/wow-aspects.lua` | Secret aspects: a widget given a secret keeps that aspect and its getters answer the addon with secrets; widget setters that take no secret from addon code raise the client's error (see "Secret aspects" below). |
-| `scripts/lib/lua-secret-ops.mjs` | The VM's refusals Lua has no metamethod for: a truth test or `not` on a secret boolean and `==` / `~=` on any secret raise in the addon's code. |
+| `scripts/lib/lua-secret-ops.mjs` | The VM's refusals Lua has no metamethod for: a truth test or `not` on a secret boolean and `==` / `~=` on any secret raise in the addon's code. On fengari only: the 5.1 engine's are in `tools/lua51/vg_hooks.h` and `shim.c`; change them together. |
 | `scripts/lib/wow-inspect.lua` | A widget as a plain snapshot: what it draws, where, and its children. |
 | `scripts/lua-engine.test.mjs` | The client's own tests (5.1 printing, layout, events, timers, input, inspectors). |
 | `scripts/tests/smoke.test.mjs` | The harness cases of the fast local run (`npm run test:quick`, and the pre-push hook): load, login, unlock, lock and no errors, once as WoW Forever and once as Retail, then a fight with secret geometry and every game frame's aspects held secret (`secretAspects("strict")`). |
@@ -161,7 +161,10 @@ metrics, so no other test changes.
 returns what does not fit, `{ kind, text, place, other, size }` each (`text` in English):
 
 - `cut`: pinned across its box (a width, or anchors on both sides), the text is wider than one line it can't
-  wrap, needs more lines than its max lines, or is taller than a fixed height: the client cuts it short.
+  wrap, needs more lines than its max lines, or is taller than a fixed height: the client cuts it short. Also
+  `squeezed to no width` (or `height`): the text, or a frame it hangs on through its anchors, is pinned on both
+  sides with its far edge on or before its near one, so none of it draws (H46-2-R1). A text hung on a 0 x 0 frame
+  set that size on purpose is hidden, not squeezed, and is no finding.
 - `spill`: the text is partly inside its parent frame and runs out over an edge (a caption wholly outside, beside
   a check box, is fine).
 - `overlap`: the text draws over another text or a control (a button, check box, edit box or slider that shows
@@ -201,7 +204,7 @@ change fires the events the client would.
 
 | Call | Effect |
 | --- | --- |
-| `setUnit(token, fields)` | Creates or changes a unit (`name, hp, maxhp, power, maxpower, ptypeName, reaction, level, class, isPlayer, controlled (a player's pet: `UnitPlayerControlled`), connected, dead, role, ...`). A new target fires PLAYER_TARGET_CHANGED; changed fields fire their UNIT_* events. |
+| `setUnit(token, fields)` | Creates or changes a unit (`name, hp, maxhp, power, maxpower, ptypeName, reaction, level, class, isPlayer, controlled (a player's pet: `UnitPlayerControlled`), connected, dead, role, ...`). A new target fires PLAYER_TARGET_CHANGED; changed fields fire their UNIT_* events. A `power` change fires UNIT_POWER_UPDATE with the unit's power token (`ptypeName`) and a `combo` change with `COMBO_POINTS`, as the client always names one. |
 | `removeUnit(token)` | The unit is gone (target lost, pet dismissed). |
 | `UnitNameplateShowsWidgetsOnly(unit)`, `SetUnitCursorTexture(texture, unit)` | From the unit's `widgetsOnly` (its nameplate shows only a widget) and `cursorIcon` (the icon the client picks for it): the second puts that icon on the texture and answers true, or false for a unit with none. |
 | `unit(token)` | The unit's fields, or null. |
@@ -283,7 +286,7 @@ a `ns` path (`"ns.GetModule('Minimap').frame"`) or a widget id from a snapshot.
 | --- | --- |
 | `frame(ref)` | A snapshot or null: `{ name, kind, parent, shown, visible, rect: { left, bottom, width, height, right, top }, text, textColor, font, texture, atlas, color, vertexColor, alpha, value, min, max, barColor, checked, enabled, cooldown, scale, strata, level, attributes, mouse, children }`. |
 | `frames(predicate)` | Snapshots of every widget passing a Lua predicate on `w`: `frames('w.__kind == "Cooldown" and w:IsVisible()')`. |
-| `screen()` | The visible top-level frames the addon made, with rects: for on-screen and overlap checks. |
+| `screen()` | The visible top-level frames the addon made, with rects: for on-screen and overlap checks. A frame the world or test code makes is the game's ("Who owns a frame") and is left out, as it is from `textFit(null)` and the lifecycle footprint. |
 | `texts(text)` | Every visible font string reading exactly `text`. |
 | `find(pattern)` | The first visible widget whose name or text matches a Lua pattern. |
 | `eval(lua)` | Anything else, with `ns` (the addon's namespace) in scope; the first result comes back as JS. |

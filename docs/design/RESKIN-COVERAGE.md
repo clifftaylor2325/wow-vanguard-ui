@@ -160,7 +160,7 @@ Not on this page, because they are skinned outside the registry: tooltips, bags 
 
 ## Retail
 
-167 registered windows: 108 looked for at login, 59 when their part of the game loads.
+166 registered windows: 107 looked for at login, 59 when their part of the game loads.
 
 | Group | Window | Made | Its skin needs |
 | --- | --- | --- | --- |
@@ -223,7 +223,6 @@ Not on this page, because they are skinned outside the registry: tooltips, bags 
 | social | `TimeAlertFrame` | at login | - |
 | social | `VoiceChatPromptActivateChannel` | at login | - |
 | social | `VoiceChatChannelActivatedNotification` | at login | - |
-| town | `PetStableFrame` | at login | - |
 | town | `ClassTrainerFrame` | with `Blizzard_TrainerUI` | - |
 | town | `SideDressUpFrame` | at login | - |
 | town | `StackSplitFrame` | at login | - |

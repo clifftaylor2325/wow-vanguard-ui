@@ -2854,3 +2854,177 @@ it("quest tracker: with Vanguard's tracker off, the game's tracker takes clicks 
   off.eval("ObjectiveTrackerFrame:Update()");
   expect(trackerMouse(off), "the game's own tracker, untouched").toEqual({ line: [true, true], bar: [false, true], locked: [true, true], added: [true, true] });
 });
+// H46-27-1: the quest log's own switch turned off live (O.RestartSetting) leaves the earlier run's toggle hook in the gate; it must go quiet.
+it("H46-27-1: with Vanguard's quest log switched off live, the game's button, a tracker title and /vg quests are the game's", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + TOGGLE_ENV);
+  addon.eval("ns.Settings('QuestLog').own = false ns.RestartModule('QuestLog')");
+  addon.update(0.5);
+  addon.eval("ToggleQuestLog()");
+  expect(addon.eval("return { Vanguard_QuestLog:IsShown(), WorldMapFrame:IsShown(), __game }"), "the game's button opens the game's log").toEqual([false, true, 1]);
+  addon.eval("local b = Vanguard_QuestTrackerFrame.blocks[1] b.__scripts.OnClick(b, 'LeftButton')");
+  addon.slash("quests");
+  expect([addon.eval("return Vanguard_QuestLog:IsShown()"), chatHas(addon, /quest log is off/)], "a tracker title and /vg quests leave Vanguard's log shut").toEqual([false, true]);
+  addon.eval("ns.Settings('QuestLog').own = true ns.RestartModule('QuestLog')");
+  addon.update(0.5);
+  addon.eval("WorldMapFrame:Hide() ToggleQuestLog()");
+  expect(addon.eval("return { Vanguard_QuestLog:IsShown(), WorldMapFrame:IsShown() }"), "switched back on, the button opens Vanguard's log again").toEqual([true, false]);
+});
+// H46-27-2: a tracker click opening another quest sets QL.selected before the render, so Select saw no change and kept the old scroll.
+it("H46-27-2: a tracker click opening another quest starts its details at the top", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV + ` GetQuestLogQuestText = function() return "TEST-ONLY " .. string.rep("word ", 600) end`);
+  addon.eval("ns.GetModule('QuestLog').Open(90051)");
+  addon.eval("local s = Vanguard_QuestLog.detailScroll s.__scripts.OnMouseWheel(s, -3)");
+  expect(addon.eval("return Vanguard_QuestLog.detailScroll:GetVerticalScroll()"), "the first quest's text scrolls").toBeGreaterThan(0);
+  addon.eval("ns.GetModule('QuestLog').Open(90052)");
+  expect(addon.eval("return { ns.GetModule('QuestLog').selected, Vanguard_QuestLog.detailScroll:GetVerticalScroll() }"), "another quest starts at the top").toEqual([90052, 0]);
+  addon.eval("local s = Vanguard_QuestLog.detailScroll s.__scripts.OnMouseWheel(s, -3) ns.GetModule('QuestLog').Open(90052)");
+  expect(addon.eval("return Vanguard_QuestLog.detailScroll:GetVerticalScroll()"), "reopening the same quest keeps the scroll").toBeGreaterThan(0);
+});
+// H46-27-54: Blizzard_UIPanels_Game Mainline/GossipFrame.lua:68-72 (GossipFrameMixin:OnEvent) and Mainline/QuestFrame.lua:86-91
+// (QuestFrame_OnEvent) redraw their quest lines on QUEST_LOG_UPDATE; Vanguard's dialog did not.
+it("H46-27-54: a gossip quest that becomes complete mid-talk lights its line; a detail page is not redrawn by the event", () => {
+  const addon = loggedIn();
+  addon.eval(`__wfgWorld.openNpc({ greeting = "x", active = { { title = "TEST-ONLY Speak", questID = 91904, questLevel = 5, isComplete = false } } })`);
+  // Whether the first line's text is gold.
+  const gold = () => isTok(addon, addon.eval("return Vanguard_QuestDialog.lines[1].text.__textColor"), "gold");
+  const before = gold();
+  addon.eval("__wfgWorld.npc.active[1].isComplete = true");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect([before, gold()], "the line turns gold once the quest is complete").toEqual([false, true]);
+  addon.eval(`__wfgWorld.openNpc({ quest = { title = "TEST-ONLY Offer", questID = 91905, text = "x" } })`);
+  addon.eval("__redraws = 0 local QD = ns.GetModule('QuestDialog') local redraw = QD.Redraw QD.Redraw = function(...) __redraws = __redraws + 1 return redraw(...) end");
+  addon.fire("QUEST_LOG_UPDATE");
+  addon.update(0);
+  expect(addon.eval("return __redraws"), "a quest detail page is left alone").toBe(0);
+});
+// H46-27-51: QuestFrameProgressItems_Update (forever and live Blizzard_UIPanels_Game/Mainline/QuestFrame.lua) draws GetNumQuestCurrencies()
+// required currencies from C_QuestOffer.GetQuestRequiredCurrencyInfo(i) (a QuestRequiredCurrencyInfo: texture, name, currencyID, quality,
+// requiredAmount) under the "Required Items" text; their tooltip is GameTooltip:SetQuestCurrency("required", i).
+it("H46-27-51: a quest that asks for a currency shows it on the progress page, with its amount, tooltip and caption", () => {
+  const addon = loggedIn(CAPTIONS_ENV + `
+    C_QuestOffer = C_QuestOffer or {}
+    GetNumQuestCurrencies = function() return 1 end
+    C_QuestOffer.GetQuestRequiredCurrencyInfo = function(i) return { name = "TEST-ONLY Marks", texture = 1, currencyID = 3000, quality = 1, requiredAmount = 10 } end
+    __wfgWorld.npc = { quest = { title = "TEST-ONLY Pay", questID = 91901, progress = "x", complete = false, required = { { name = "TEST-ONLY Bar" } } } }`);
+  addon.fire("QUEST_PROGRESS");
+  // The names drawn on the cards.
+  const names = () => Object.values(addon.eval("local f, out = Vanguard_QuestDialog, {} for i = 1, f.cards.used do out[i] = f.cards[i].name:GetText() end return out"));
+  expect(names(), "the item card, then the currency").toEqual(["TEST-ONLY Bar", "TEST-ONLY Marks"]);
+  expect(addon.eval("local c = Vanguard_QuestDialog.cards[2] return { c.item.count, c.item.currency, c.item.kind, c.item.index }"), "the amount asked for is the count").toEqual([10, true, "required", 1]);
+  expect(addon.eval("return Vanguard_QuestDialog.captions[1]:GetText()"), "one Required items caption").toBe("TEST-ONLY Required items:");
+  addon.eval("__wfgWorld.npc.quest.required = nil");
+  addon.fire("QUEST_PROGRESS");
+  expect([names(), addon.eval("return Vanguard_QuestDialog.captions.used")], "a page whose only required card is a currency keeps the caption").toEqual([["TEST-ONLY Marks"], 1]);
+});
+// H46-27-50: QuestFrameProgressItems_Update (Mainline/QuestFrame.lua) draws no required item while C_QuestOffer.GetHideRequiredItems()
+// is true, and skips a slot with IsQuestItemHidden(i) ~= 0; the shown ones keep their slot number (SetID(i)).
+it("H46-27-50: a quest's hidden required items are not on the progress page", () => {
+  const addon = loggedIn(`
+    C_QuestOffer = C_QuestOffer or {}
+    IsQuestItemHidden = function(i) return i == 2 and 1 or 0 end
+    __wfgWorld.npc = { quest = { title = "TEST-ONLY Hand", questID = 91900, progress = "x", complete = true,
+      required = { { name = "TEST-ONLY Shown" }, { name = "TEST-ONLY Hidden" }, { name = "TEST-ONLY Third" } } } }`);
+  addon.fire("QUEST_PROGRESS");
+  // The cards drawn, as name#slot.
+  const cards = () => Object.values(addon.eval("local f, out = Vanguard_QuestDialog, {} for i = 1, f.cards.used do out[i] = f.cards[i].name:GetText() .. '#' .. f.cards[i].item.index end return out"));
+  expect(cards(), "the hidden slot is skipped, the others keep their slot numbers").toEqual(["TEST-ONLY Shown#1", "TEST-ONLY Third#3"]);
+  addon.eval("IsQuestItemHidden = function() return { __secret = true } end");
+  addon.fire("QUEST_PROGRESS");
+  expect(cards().length, "a secret answer keeps every slot").toBe(3);
+  addon.eval("IsQuestItemHidden = nil");
+  addon.fire("QUEST_PROGRESS");
+  expect(cards().length, "a client without the call keeps every slot").toBe(3);
+  addon.eval("C_QuestOffer.GetHideRequiredItems = function() return true end");
+  addon.fire("QUEST_PROGRESS");
+  expect(cards(), "a quest that hides them all shows none").toEqual([]);
+});
+// H46-27-52 / H46-27-R1: QuestInfo_ShowRewards (Blizzard_UIPanels_Game/Mainline/QuestInfo.lua:607-650) reads a quest's items, choices, money and XP
+// outside the reward panel (an offer) or in the quest log only when C_QuestLog.ShouldShowQuestRewards(questID); otherwise the rewards frame hides.
+it("H46-27-52: a detail page whose rewards the game hides shows no reward card, money or XP", () => {
+  const addon = loggedIn("");
+  // Opens the offer; the number of cards and the money line.
+  const offer = () => {
+    addon.eval(`__wfgWorld.openNpc({ quest = { title = "TEST-ONLY Secret", questID = 91902, text = "x", money = 500, xp = 100, rewards = { { name = "TEST-ONLY Prize" } } } })`);
+    return [addon.eval("return Vanguard_QuestDialog.cards.used"), addon.eval("return Vanguard_QuestDialog.money:GetText()")];
+  };
+  expect(offer()[0], "the game shows them by default").toBe(1);
+  addon.eval("C_QuestLog.ShouldShowQuestRewards = function() return false end");
+  expect(offer(), "hidden: no card, no money line").toEqual([0, ""]);
+  addon.eval("C_QuestLog.ShouldShowQuestRewards = function() return { __secret = true } end");
+  expect(offer()[0], "a secret answer keeps them shown").toBe(1);
+});
+it("H46-27-R1: the quest log's details show no rewards or money for a quest the game hides them for", () => {
+  const addon = loggedIn(TRACK_ENV + QLOG_ENV);
+  // The quest log's reward count and money line for the quest.
+  const details = () => addon.eval("local d = ns.GetModule('QuestLog').Details(90051) return { #d.rewards, d.money }");
+  const shown = details();
+  expect(shown[0], "the rewards show by default").toBeGreaterThan(0);
+  addon.eval("C_QuestLog.ShouldShowQuestRewards = function() return false end");
+  expect(details(), "hidden: no cards, no money").toEqual([0, ""]);
+  addon.eval("C_QuestLog.ShouldShowQuestRewards = nil");
+  expect(details(), "a client without the call keeps them").toEqual(shown);
+});
+
+// Client rule: CustomGossipManagerMixin (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/CustomGossipFrameBase.lua,
+// the same on live: OnEvent 37-44, HandleOpenEvent 46-55, HideOpenedUIPanel 57-64, GetHandler 74-76): a kit's or a base handler's frame is
+// kept as customFrame, and GOSSIP_CLOSED hides it.
+const KIT_MANAGER = `
+  __picker = CreateFrame("Frame", "TEST_ONLY_KitPicker", UIParent) __picker:Hide()
+  CustomGossipFrameManager.handlers = { ["skoldushall"] = function() __picker:Show() return __picker end }
+  CustomGossipFrameManager.GetHandler = function(self, kit) return (kit and self.handlers) and self.handlers[kit] end
+  CustomGossipFrameManager:SetScript("OnEvent", function(self, event, kit)
+    if event == "GOSSIP_SHOW" then
+      local handler = self:GetHandler(kit)
+      if handler then self.customFrame = handler(kit) end
+    elseif event == "GOSSIP_CLOSED" and self.customFrame then
+      self.customFrame:Hide() self.customFrame = nil
+    end
+  end)`;
+it("H46-8-1: the hand-back ticked and unticked during a kit gossip, the talk's end still reaches the game's window", () => {
+  const addon = loggedIn(QUEST_ENV + KIT_MANAGER);
+  addon.fire("GOSSIP_SHOW", "skoldushall");
+  expect(addon.eval("return { __picker:IsShown(), ns.GetModule('QuestDialog').gameTalk }"), "the game's picker has the talk").toEqual([true, true]);
+  addon.eval("ns.GetModule('QuestDialog').HandBack(true) ns.GetModule('QuestDialog').HandBack(false)");
+  addon.fire("GOSSIP_CLOSED");
+  addon.update(0.5);
+  expect(addon.eval("return __picker:IsShown()"), "the talk ended: the game's picker closes").toBe(false);
+});
+it("H46-8-1: the module switched off and on during a kit gossip, the talk's end still reaches the game's window", () => {
+  const addon = loggedIn(QUEST_ENV + KIT_MANAGER);
+  addon.fire("GOSSIP_SHOW", "skoldushall");
+  addon.eval("ns.SetModuleEnabled('QuestDialog', false)");
+  addon.update(0.5);
+  addon.eval("ns.SetModuleEnabled('QuestDialog', true)");
+  addon.update(0.5);
+  addon.fire("GOSSIP_CLOSED");
+  addon.update(0.5);
+  expect(addon.eval("return __picker:IsShown()"), "the talk ended: the game's picker closes").toBe(false);
+});
+it("H46-8-1: a custom frame that is hidden, forbidden or not a frame does not count as a talk the game has", () => {
+  const addon = loggedIn(QUEST_ENV + KIT_MANAGER);
+  // Hands the talk back and takes it again with this custom frame set, and returns whether the game has it.
+  const talk = (frame) => addon.eval(`local manager = _G.CustomGossipFrameManager
+    if manager then manager.customFrame = ${frame} end
+    ns.GetModule('QuestDialog').HandBack(true) ns.GetModule('QuestDialog').HandBack(false)
+    return ns.GetModule('QuestDialog').gameTalk`);
+  expect(talk("__picker"), "hidden").toBeFalsy();
+  expect(talk("{}"), "no IsShown").toBeFalsy();
+  addon.eval("__picker:Show() __picker.IsForbidden = function() return true end");
+  expect(talk("__picker"), "forbidden").toBeFalsy();
+  addon.eval("_G.CustomGossipFrameManager = false");
+  expect(talk("nil"), "no manager").toBeFalsy();
+});
+
+// Client rule: QuestFrame_OnEvent returns at once for an adventure map's QUEST_DETAIL (/home/user/blizz/forever/Interface/AddOns/Blizzard_UIPanels_Game/Mainline/QuestFrame.lua:42-45),
+// and the map's dialog takes the quest with C_AdventureMap.StartQuest, never AcceptQuest (Blizzard_AdventureMap/AM_QuestDialog.lua:257-261).
+it("H46-8-R1: quest automation's accept leaves an adventure map's offer to the map, and still accepts any other", () => {
+  const addon = loggedIn(QUEST_ENV, { savedVariables: "VanguardDB.profiles = { Default = { QuestAuto = { accept = true } } }" });
+  addon.eval("QuestIsFromAdventureMap = function() return true end");
+  calls(addon);
+  addon.fire("QUEST_DETAIL", 0);
+  expect(calls(addon), "nothing is accepted for the player").toEqual([]);
+  addon.eval("QuestIsFromAdventureMap = function() return false end");
+  addon.fire("QUEST_DETAIL", 0);
+  expect(calls(addon), "an ordinary offer is accepted").toEqual(["accept nil"]);
+});

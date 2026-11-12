@@ -103,9 +103,11 @@ function CHH.Skipped(index)
   return ns.GetModule("ChatFilter").IsTab(index)
 end
 
--- Whether a line may be saved: plain text of a sane length, and a whisper only when asked for.
+-- Whether a line may be saved: plain text of a sane length (not a hidden-line placeholder, whose show link
+-- cannot work after a reload), and a whisper only when asked for.
 local function keepable(text)
   if ns.IsSecret(text) or type(text) ~= "string" or text == "" or #text > CHH.MAX_LENGTH then return false end
+  if text:find("|Hcensoredmessage", 1, true) then return false end
   return CHH.settings.whispers or not whisperLine(text)
 end
 
@@ -146,12 +148,15 @@ function CHH.Forget(frame, fallback)
   if index then CHH.Store()[index] = nil end
 end
 
--- Follows every permanent chat window (through the scope's gates), and the game closing one: that watch is installed
--- once a session and stays, since forgetting a closed window's lines is right whether or not the module runs.
+-- Follows every permanent chat window (through the scope's gates).
 function CHH.Watch(scope)
   for i = 1, NUM_CHAT_WINDOWS or 10 do watchWindow(i, scope) end
-  ns.OnChatWindowClosed("history", CHH.Forget)
 end
+
+-- The game closing a chat window, watched from load whether or not the module ever runs (it may be switched off since
+-- login), since forgetting a closed window's lines is always right; CHH.Forget reads only this character's store.
+-- FCF_Close is the game's own (Blizzard_ChatFrameBase, loaded before any addon).
+ns.OnChatWindowClosed("history", CHH.Forget)
 
 -- Restoring -----------------------------------------------------------------------------------
 
@@ -170,13 +175,15 @@ local function rule(text)
 end
 
 -- Each sender link's line-number field, as a pattern and its zeroed form (0 is what the game writes for a link
--- with no line), and the censored-line report link reduced to its text. A Battle.net name is a protected string
+-- with no line), and the censored-line report and show links reduced to its text (the show link's rule cleans only history
+-- saved before keepable refused such lines). A Battle.net name is a protected string
 -- (|K...|k), so its field may hold a bar. A Discord guild line's sender is |Hdiscorduser:account:user:line:...
 CHH.NUMBERED = {
   { "(|Hplayer:[^:|]+):%d+:", "%1:0:" },
   { "(|HBNplayer:[^:]*:[^:|]*):%d+:", "%1:0:" },
   { "(|Hdiscorduser:[^:|]*:[^:|]*):%d+:", "%1:0:" },
   { "|Hreportcensoredmessage:[^|]*|h(.-)|h", "%1" },
+  { "|Hcensoredmessage[^:|]*:[^|]*|h(.-)|h", "%1" },
 }
 
 -- A saved line with the earlier session's chat line numbers zeroed (CHH.NUMBERED): a stale number names someone
@@ -210,11 +217,12 @@ end
 
 -- Commands ------------------------------------------------------------------------------------
 
--- How many lines are saved, in how many windows.
+-- How many lines are saved, in how many windows (an entry that is not a list, from a damaged save, is not counted:
+-- with history off nothing prunes it before logout).
 function CHH.Counts()
   local lines, windows = 0, 0
   for _, list in pairs(CHH.Store()) do
-    lines, windows = lines + #list, windows + 1
+    if type(list) == "table" then lines, windows = lines + #list, windows + 1 end
   end
   return lines, windows
 end

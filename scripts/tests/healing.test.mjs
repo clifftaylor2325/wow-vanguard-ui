@@ -87,6 +87,45 @@ it("buff watch: by-name lookups and no aura list per aura change, nothing on hea
   expect(healing(addon, 1).missing, "a fight that hides auras takes the marker away").toBe(false);
 });
 
+// The mark on raid1's tile once its buffs are `buffs` (Lua) and its aura change is heard.
+const markWith = (addon, buffs) => {
+  addon.eval(`__buffs.raid1 = ${buffs}`);
+  addon.fire("UNIT_AURA", "raid1");
+  return healing(addon, 1).missing;
+};
+
+// A raid tile watching two different buffs (list: by default Arcane Intellect's single and group versions, and Dampen
+// Magic), the client's aura calls changed by `env`.
+const twoBuffs = (env, list = "Arcane Intellect, Arcane Brilliance, Dampen Magic") => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST + `__known["Dampen Magic"] = true ${env}`);
+  addon.eval(`__spawn(1, "raid1") ns.Settings("RaidHealing").buffs = "${list}"
+    ns.GetModule("RaidHealing").Forget() ns.GetModule("RaidFrames").UpdateAll()`);
+  return addon;
+};
+
+it("H46-17-51 buff watch: with two different buffs ticked, a player missing either one is marked with that one", () => {
+  const addon = twoBuffs("");
+  expect(markWith(addon, "{}"), "neither: the first ticked one").toBe("TEST-ONLY-ICON-Arcane Intellect");
+  expect(markWith(addon, "{ ['Arcane Intellect'] = true }"), "Arcane Intellect only: marked for Dampen Magic").toBe("TEST-ONLY-ICON-Dampen Magic");
+  expect(markWith(addon, "{ ['Dampen Magic'] = true }"), "Dampen Magic only: marked for Arcane Intellect").toBe("TEST-ONLY-ICON-Arcane Intellect");
+  expect(markWith(addon, "{ ['Arcane Brilliance'] = true, ['Dampen Magic'] = true }"), "the ticked group version counts for Arcane Intellect: no mark").toBe(false);
+  buffCalls(addon);
+  expect([markWith(addon, "{ ['Arcane Intellect'] = true, ['Dampen Magic'] = true }"), buffCalls(addon)], "both: no mark, one by-name lookup per ticked buff").toEqual([false, { list: 0, byName: 2, spell: 0 }]);
+});
+
+it("H46-17-51 buff watch: without the by-name lookup, one pass over the aura list finds which ticked buff is missing", () => {
+  const addon = twoBuffs("C_UnitAuras.GetAuraDataBySpellName = nil");
+  buffCalls(addon);
+  expect([markWith(addon, "{ ['Arcane Brilliance'] = true }"), buffCalls(addon).list], "the group version on the list: marked for Dampen Magic, one list read").toEqual(["TEST-ONLY-ICON-Dampen Magic", 1]);
+  expect(markWith(addon, "{ ['Arcane Intellect'] = true, ['Dampen Magic'] = true }"), "both on the list: no mark").toBe(false);
+});
+
+it("H46-17-51 buff watch: a ticked buff you can't give marks no one", () => {
+  const addon = twoBuffs("", "Thorns, Arcane Intellect");
+  expect(markWith(addon, "{ ['Arcane Intellect'] = true }"), "missing only Thorns, which a mage can't cast: no mark").toBe(false);
+  expect(markWith(addon, "{ ['Thorns'] = true }"), "missing Arcane Intellect: marked for it").toBe("TEST-ONLY-ICON-Arcane Intellect");
+});
+
 it("Y1-4 buff watch: an aura event that only refreshes auras looks nothing up; one that adds, removes or resets does", () => {
   const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + AURA_LIST);
   addon.eval('__spawn(1, "raid1")');
@@ -194,6 +233,30 @@ it("H40-4-1: a Forever paladin's watch counts Blessing of Sanctuary, normal or g
   addon.eval("__buffs.raid1 = {}");
   addon.fire("UNIT_AURA", "raid1");
   expect(healing(addon, 1).missing, "no blessing: marked").toBe("TEST-ONLY-ICON-Blessing of Might");
+});
+
+it("H46-B-G3-1 buff watch: a version of a watched buff that is not on the list still counts (group version, any blessing)", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + FOREVER_ENV + AURA_LIST + `
+    __names = { [1243] = "Power Word: Fortitude", [21562] = "Prayer of Fortitude", [19740] = "Blessing of Might", [20217] = "Blessing of Kings" }
+    __known = { ["Power Word: Fortitude"] = true, ["Blessing of Might"] = true }`);
+  addon.eval(`__spawn(1, "raid1") ns.Settings("RaidHealing").buffs = "Power Word: Fortitude"
+    ns.GetModule("RaidHealing").Forget() ns.GetModule("RaidFrames").UpdateAll()`);
+  expect(markWith(addon, "{ ['Prayer of Fortitude'] = true }"), "only Fortitude is listed, the player has the group version: it still counts").toBe(false);
+  expect(markWith(addon, "{}"), "neither: marked").toBe("TEST-ONLY-ICON-Power Word: Fortitude");
+  addon.eval(`ns.Settings("RaidHealing").buffs = "Blessing of Might" ns.GetModule("RaidHealing").Forget()`);
+  expect(markWith(addon, "{ ['Blessing of Kings'] = true }"), "any blessing counts for a watched blessing").toBe(false);
+  addon.eval("C_UnitAuras.GetAuraDataBySpellName = nil");
+  expect(markWith(addon, "{ ['Blessing of Kings'] = true }"), "and from the aura list too").toBe(false);
+});
+
+it("H46-B-G3-5 buff watch: Amplify Magic and Dampen Magic replace each other, so a player with one is not missing the other", () => {
+  const addon = loggedIn(UNITS_ENV + RAID_ENV + HEALING_ENV + FOREVER_ENV + AURA_LIST + `
+    __names = { [1008] = "Amplify Magic", [604] = "Dampen Magic" } __known = { ["Amplify Magic"] = true, ["Dampen Magic"] = true }`);
+  addon.eval(`__spawn(1, "raid1") ns.Settings("RaidHealing").buffs = "Amplify Magic, Dampen Magic"
+    ns.GetModule("RaidHealing").Forget() ns.GetModule("RaidFrames").UpdateAll()`);
+  expect(markWith(addon, "{ ['Dampen Magic'] = true }"), "Dampen Magic only: no mark for Amplify Magic").toBe(false);
+  expect(markWith(addon, "{ ['Amplify Magic'] = true }"), "Amplify Magic only: no mark for Dampen Magic").toBe(false);
+  expect(markWith(addon, "{}"), "neither: marked with the first").toBe("TEST-ONLY-ICON-Amplify Magic");
 });
 
 // A1-6 (M1): the raid add-ons' unit events are each tile's own, not every unit's.

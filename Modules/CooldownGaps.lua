@@ -318,18 +318,20 @@ local function list()
   if s.spells ~= "" then ns.Chat(ns.Format(L["Chosen spells: {list}. /vg gaps spell add <spell> adds one."], { list = s.spells })) end
 end
 
--- /vg gaps spell [add <spell> | remove <spell>]: the chosen spells.
+-- /vg gaps spell [add <spell> | remove <spell>]: the chosen spells (the word in any case; the spell as typed).
 local function spellCommand(rest)
   local verb, arg = rest:match("^(%S*)%s*(.-)$")
+  verb = verb:lower()
   if verb == "add" then return CG.Add(arg, "spells") end
   if verb == "remove" then return CG.Remove(arg, "spells") end
   local chosen = CG.settings.spells ~= "" and CG.settings.spells or L["none"]
   ns.Chat(ns.Format(L["Chosen spells: {list}. /vg gaps spell add <spell> adds one."], { list = chosen }))
 end
 
--- /vg gaps [add <item> | remove <item> | spell ... | list | clear].
+-- /vg gaps [add <item> | remove <item> | spell ... | list | clear]: the word in any case, the item as typed.
 function CG.Command(rest)
   local verb, arg = (rest or ""):match("^(%S*)%s*(.-)$")
+  verb = verb:lower()
   if not CG.settings then return ns.Chat(L["The cooldown gaps row is off. Tick Gaps row under /vg > Cooldowns."]) end
   if verb == "add" then return CG.Add(arg) end
   if verb == "remove" then return CG.Remove(arg) end

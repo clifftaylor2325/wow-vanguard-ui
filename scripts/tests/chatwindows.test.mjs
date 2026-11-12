@@ -83,6 +83,34 @@ it("chat windows: a floating window the player drags into the dock lets go of it
   expect(addon.eval("return #ns.errors"), "docking the main window, or one with no handle, raises nothing").toBe(0);
 });
 
+const SAVED_POINT = "local p = VanguardDB.profiles.Default.positions.chat2 or {} return { tostring(p.point), tostring(p.relPoint), tostring(p.x), tostring(p.y), tostring(p.rel), tostring(p.scale), tostring(p.alpha) }";
+const NONE = ["nil", "nil", "nil", "nil", "nil"];
+it("H46-7-50 chat windows: docking a floating window forgets its saved spot, keeping its scale and opacity", () => {
+  const addon = loggedIn(ENV + DOCKING, MOVERS_ON);
+  addon.eval("ns.SetMoverPoint('chat2', 'TOPLEFT', 'TOPLEFT', 90, -70) ns.SetMoverScale('chat2', 1.5) ns.SetMoverAlpha('chat2', 0.5) VanguardDB.profiles.Default.positions.chat2.rel = 'LinkedKey'");
+  addon.eval("FCF_DockFrame(ChatFrame2)");
+  expect(addon.eval(SAVED_POINT), "point, offsets and link gone; scale and opacity stay").toEqual([...NONE, "1.5", "0.5"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("H46-7-50 chat windows: a window pulled out again after a dock stays where the game puts it at the next login", () => {
+  const addon = loggedIn(ENV + DOCKING, MOVERS_ON);
+  addon.eval("ns.SetMoverPoint('chat2', 'TOPLEFT', 'TOPLEFT', 90, -70) FCF_DockFrame(ChatFrame2)");
+  const saved = addon.eval("return VanguardDB.profiles.Default.positions");
+  expect((saved.chat2 || {}).point, "no spot to pin the window back to").toBeUndefined();
+  const next = loggedIn(ENV, { savedVariables: "VanguardDB.profiles = { Default = { ChatWindows = { movers = true }, positions = { chat2 = { alpha = 0.5 } } } }" });
+  expect(next.eval("local p, _, r, x, y = ChatFrame2:GetPoint(1) return { p, x, y }"), "where the game restored it").toEqual(["TOPLEFT", 50, -60]);
+});
+
+it("H46-7-50 chat windows: closing a floating window from its tab menu forgets its saved spot too", () => {
+  const addon = loggedIn(ENV + "FCF_Close = function(frame) frame:Hide() end", MOVERS_ON);
+  addon.eval("ns.SetMoverPoint('chat2', 'TOPLEFT', 'TOPLEFT', 90, -70) FCF_Close(ChatFrame1, ChatFrame2)");
+  expect(addon.eval(SAVED_POINT).slice(0, 5), "the spot is gone with the handle").toEqual(NONE);
+  expect(addon.eval("return VanguardDB.profiles.Default.positions.chat2 == nil"), "H46-A-C3 and the entry left empty goes, as under a layout's forgetting").toBe(true);
+  addon.eval("ns.ForgetMoverPoint('nothing-saved')");
+  expect(addon.eval("return #ns.errors"), "forgetting a key with no spot raises nothing").toBe(0);
+});
+
 // TEST-ONLY model of the tab drop and the resize grip's release: both end in FCF_SavePositionAndDimensions, and the engine
 // (StartMoving / StartSizing) has re-anchored the window without a Lua SetPoint (forever Blizzard_ChatFrameBase/Mainline/
 // FloatingChatFrame.lua FCF_StopDragging :1402-1420; FloatingChatFrame.xml resize grip OnMouseUp :478-497).
@@ -466,4 +494,24 @@ it("chat windows: Find lists a restored player line once, though the window show
   const found = next.eval("return { ns.GetModule('ChatWindows').Find('sword') }");
   expect(found[0], "one line, not the window's copy and the saved copy").toBe('Chat: 1 line with "sword"');
   expect(next.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+// TEST-ONLY: two whisper pop-outs (temporary windows ChatFrame11 and 12, listed in CHAT_FRAMES), each holding one
+// line. The game marks a pop-out in use when it opens it and clears the mark when FCF_Close hides it, keeping the
+// frame for reuse (forever Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.lua FCF_OpenTemporaryWindow :886, :920;
+// FCF_Close :1788-1791); whispers in popout mode go to that window only (FCFManager_ShouldSuppressMessage, :2798).
+const POPOUT_ENV = `
+  __wfgWorld.chatWindows[1] = "General"
+  ChatFrame1.GetNumMessages = function() return 0 end ChatFrame1.GetMessageInfo = function() end
+  for i, line in ipairs({ "TEST-ONLY Name whispers: sword for sale", "TEST-ONLY Other whispers: old sword" }) do
+    local frame = FCF_OpenTemporaryWindow("WHISPER", "TEST-ONLY Name")
+    frame.inUse = true
+    frame.GetNumMessages = function() return 1 end frame.GetMessageInfo = function() return line end
+  end
+  ChatFrame12.inUse = false ChatFrame12:Hide()
+`;
+it("H46-29-2 chat find: a whisper pop-out window's lines are found; a closed pop-out's are not", () => {
+  const addon = loggedIn(POPOUT_ENV);
+  expect(addon.eval("return { ns.GetModule('ChatWindows').Find('sword') }")).toEqual(['Chat: 1 line with "sword"', "TEST-ONLY Name whispers: |cff" + addon.eval("local r, g, b = ns.Theme.RGB('accentText') return string.format('%02x%02x%02x', math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))") + "sword|r for sale"]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });

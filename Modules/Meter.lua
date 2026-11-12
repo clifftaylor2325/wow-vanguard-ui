@@ -311,7 +311,7 @@ end
 
 -- Says how the meter stands and what to type.
 local function status()
-  local state = MT.settings.on and ns.Format(L["Vanguard's meter is on, showing {meter}."], { meter = MT.TitleText():lower() }) or L["Vanguard's meter is off."]
+  local state = MT.settings.on and ns.Format(L["Vanguard's meter is on, showing {meter}."], { meter = MT.TitleText() }) or L["Vanguard's meter is off."]
   ns.Chat(state .. " " .. ns.Literal(L["/vg meter on|off|dps|hps|damage|healing|taken|interrupts|dispels|deaths|this|overall|previous|reset|report. Click the title for the next kind, right-click it for the next segment. The game's own meter stays until you turn it off in the game's settings."]))
 end
 
@@ -364,6 +364,7 @@ end
 -- Row i: a theme bar in a thin border with its rank, name and per-second figure on it.
 local function addRow(f, i)
   local row = T.StyleBar(CreateFrame("StatusBar", nil, f))
+  row.index = i
   row:SetSize(MT.WIDTH - 2 * MT.GAP, MT.ROW)
   row:SetPoint("TOPLEFT", f, "TOPLEFT", MT.GAP, -(MT.HEAD + (i - 1) * (MT.ROW + MT.GAP)))
   T.HudPanel(row, { inset = true })
@@ -376,7 +377,7 @@ end
 
 -- A click on a row opens the spell breakdown of its line (MeterDetail.lua).
 local function clickRow(row)
-  if MT.OpenDetail and row.src then MT.OpenDetail(row.src) end
+  if MT.OpenDetail and row.src then MT.OpenDetail(row.src, row.index) end
 end
 
 -- Makes a meter row answer a click.

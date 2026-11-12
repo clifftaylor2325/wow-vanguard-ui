@@ -33,7 +33,7 @@ it("the meter is off by default and /vg meter on shows it", () => {
   expect(addon.eval("return Vanguard_Meter == nil"), "off until you turn it on: not even built, so no mover").toBe(true);
   addon.slash("meter on");
   expect(addon.frame("Vanguard_Meter").visible, "on at once").toBe(true);
-  expect(chatHas(addon, /Vanguard's meter is on, showing damage per second/), "chat says how it stands").toBe(true);
+  expect(chatHas(addon, /Vanguard's meter is on, showing Damage per second/), "chat says how it stands").toBe(true);
   addon.slash("meter dps");
   addon.slash("meter off");
   expect([addon.frame("Vanguard_Meter").visible, chatHas(addon, /Vanguard's meter is off/)], "and off again").toEqual([false, true]);
@@ -230,7 +230,7 @@ it("the title steps through every kind, a right click through the segments, and 
   expect([heads(addon)[0], rows(addon)[0][2], addon.eval("return __asked[#__asked]")], "overall segment, damage taken: the total, asked with both keys").toEqual(["Damage taken · Overall", "4.5K", "0:7"]);
   addon.slash("meter previous");
   addon.slash("meter nonsense");
-  expect(chatHas(addon, /showing damage taken · previous fight/), "words pick the segment; an unknown one only reports").toBe(true);
+  expect(chatHas(addon, /showing Damage taken · Previous fight/), "words pick the segment; an unknown one only reports").toBe(true);
   addon.slash("meter this");
   addon.slash("meter overall");
   addon.slash("meter current");
@@ -261,6 +261,57 @@ it("reset clears the game's segments out of combat only", () => {
   addon.clearChat();
   addon.slash("meter reset");
   expect(chatHas(addon, /can't be reset now/), "a refusal is caught").toBe(true);
+});
+
+// The spell panel's shown state after clicking meter line 1 twice, a repaint between, for one source line's fields.
+// The game's own source window matches a line by GUID, then by creature ID (Blizzard_DamageMeter/DamageMeterSourceWindow.lua:233-243).
+function clickedTwice(fields) {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  setLines(addon, `{ { name = 'Pet', amountPerSecond = 300, ${fields} } }`);
+  addon.eval(`C_Spell.GetSpellName = function(id) return 'Spell' .. id end
+    C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 1, totalAmount = 900 } } } end`);
+  addon.advance(1);
+  // Clicks meter line 1.
+  const click = () => addon.eval("Vanguard_Meter.rows[1]:GetScript('OnMouseUp')(Vanguard_Meter.rows[1])");
+  click();
+  addon.advance(1);
+  click();
+  return addon.eval("return Vanguard_MeterDetail:IsShown()");
+}
+it("a line with no GUID is matched by its creature ID; a fully hidden line by the row clicked", () => {
+  expect(clickedTwice("sourceCreatureID = 7"), "a creature line clicked again closes").toBe(false);
+  expect(clickedTwice("sourceGUID = __wfgWorld.secret('Player-1'), sourceCreatureID = 7"), "a hidden GUID in a fight: the row is the key").toBe(false);
+  expect(clickedTwice("name = __wfgWorld.secret('x')"), "nothing plain on the line: the row").toBe(false);
+});
+
+it("in a fight, a click on another row switches the panel, and Deaths lines are keyed by their recap ID", () => {
+  const addon = loggedIn(FULL_ENV, METER_ON);
+  const hidden = "sourceGUID = __wfgWorld.secret('Player-1')";
+  setLines(addon, `{ { name = 'Tess', amountPerSecond = 300, ${hidden} }, { name = 'Bo', amountPerSecond = 100, ${hidden}, deathRecapID = 8 } }`);
+  addon.eval(`C_Spell.GetSpellName = function(id) return 'Spell' .. id end
+    C_DeathRecap = { GetRecapLink = function(id) return '[recap' .. id .. ']' end }
+    C_DamageMeter.GetCombatSessionSourceFromType = function() return { combatSpells = { { spellID = 1, totalAmount = 900 } } } end`);
+  addon.advance(1);
+  // Clicks meter line i.
+  const click = (i) => addon.eval(`Vanguard_Meter.rows[${i}]:GetScript('OnMouseUp')(Vanguard_Meter.rows[${i}])`);
+  // Whether the spell panel is shown.
+  const shown = () => addon.eval("return Vanguard_MeterDetail:IsShown()");
+  click(1);
+  addon.advance(1);
+  click(2);
+  expect([shown(), addon.eval("return Vanguard_MeterDetail.title.__text")], "another row switches").toEqual([true, "Bo"]);
+  addon.advance(1);
+  click(1);
+  expect(addon.eval("return Vanguard_MeterDetail.title.__text"), "a keyless line is not the open keyed one").toBe("Tess");
+  addon.slash("meter deaths");
+  addon.advance(1);
+  addon.clearChat();
+  click(2);
+  addon.advance(1);
+  click(2);
+  expect(shown(), "the same death again closes").toBe(false);
+  expect(Array.from(addon.chat()).filter((l) => /Death recap/.test(l)).length, "and says its recap once").toBe(1);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
 it("a click on a line opens that player's spells, in the game's order; again or the title closes it", () => {

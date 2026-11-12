@@ -19,6 +19,7 @@ local ADDON, ns = ...
 local vgCorner = ns.FrameState("vgCorner")
 local vgDurability = ns.FrameState("vgDurability")
 local vgHooked = ns.FrameState("vgHooked")
+local vgFormLabels = ns.FrameState("vgFormLabels")
 local vgDropArrow = ns.FrameState("vgDropArrow")
 local vgLootRows = ns.FrameState("vgLootRows")
 local vgMenuSkinned = ns.FrameState("vgMenuSkinned")
@@ -611,9 +612,11 @@ function GW.Chevron(dropdown)
   vgChevron[dropdown]:SetPoint("RIGHT", -T.SPACE.gap, 0)
 end
 
--- A dropdown button as a theme button with the game's gold arrow box faded and a theme chevron in its place.
+-- A dropdown button as a theme button with the game's gold arrow box faded and one theme chevron in its place (not
+-- GW.SkinDropdown too: its centred arrow would show beside the chevron).
 function GW.SkinDropdownChevron(dropdown)
-  GW.SkinDropdown(dropdown)
+  if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
+  T.Button(dropdown)
   GW.Chevron(dropdown)
 end
 
@@ -1952,14 +1955,30 @@ local function isBlackText(text)
   return r ~= nil and g ~= nil and b ~= nil and r + g + b < GW.BLACK_TEXT
 end
 
--- The texts under key of each item in list (the objectives' criteria and meta achievements) that the game made black
--- in the text colour; green (done) and grey (open) ones keep the meaning the game gave them.
-local function lightBlackTexts(list, key)
+-- A font string the game repainted a colour of its own (a pooled criterion that was lit and is now green or grey):
+-- that colour kept and the remembered token dropped, so a theme refresh does not repaint it. A colour the client
+-- hides is left alone (SetTextColor refuses a secret from addon code).
+function GW.ForgetToken(fs)
+  if type(fs) ~= "table" or not fs.GetTextColor or not T.ColorToken(fs) then return end
+  local r, g, b = fs:GetTextColor()
+  r, g, b = ns.PlainNumber(r), ns.PlainNumber(g), ns.PlainNumber(b)
+  if r and g and b then T.ColorRGB(fs, r, g, b) end
+end
+
+-- Calls fn(text) for the text under key of each item in list (the objectives' criteria and meta achievements).
+local function eachText(list, key, fn)
   if type(list) ~= "table" then return end
-  for _, item in ipairs(list) do
-    local text = type(item) == "table" and item[key]
-    if isBlackText(text) then T.Color(text, "text") end
-  end
+  for _, item in ipairs(list) do fn(type(item) == "table" and item[key]) end
+end
+
+-- Makes a text the game left black the text colour; green (done) and grey (open) ones keep the meaning the game gave them.
+local function lightIfBlack(text)
+  if isBlackText(text) then T.Color(text, "text") end
+end
+
+-- Drops the token of a text the game just painted a colour of its own (not black), so a theme refresh leaves it be.
+local function forgetIfPainted(text)
+  if not isBlackText(text) then GW.ForgetToken(text) end
 end
 
 -- The progress bars (retail: "700/1000") of an open achievement as flat accent bars; the game's pool makes them again
@@ -1972,15 +1991,25 @@ end
 -- An open achievement's list of criteria and meta achievements, its black names light and its progress bars flat.
 local function lightCriteria(objectives)
   if type(objectives) ~= "table" then return end
-  lightBlackTexts(objectives.criterias, "Name")
-  lightBlackTexts(objectives.metas, "Label")
+  eachText(objectives.criterias, "Name", lightIfBlack)
+  eachText(objectives.metas, "Label", lightIfBlack)
   skinCriteriaBars(objectives)
+end
+
+-- After the game fills the list in for an achievement: what it painted a colour of its own is kept, and the rest lit.
+-- Only here does a text lose its token: the game has just painted it, which a plain pass over a window shown again
+-- has not (a criterion Vanguard lit would be taken for the game's).
+local function lightCriteriaAfterFill(objectives)
+  if type(objectives) ~= "table" then return end
+  eachText(objectives.criterias, "Name", forgetIfPainted)
+  eachText(objectives.metas, "Label", forgetIfPainted)
+  lightCriteria(objectives)
 end
 
 -- The criteria list light now and after the game fills it in for each achievement (it colours a completed criterion
 -- black), the hook added once.
 local function watchCriteria()
-  GW.HookGlobalOnce("AchievementObjectives_DisplayCriteria", "achievement criteria", lightCriteria)
+  GW.HookGlobalOnce("AchievementObjectives_DisplayCriteria", "achievement criteria", lightCriteriaAfterFill)
   lightCriteria(_G.AchievementFrameAchievementsObjectives)
 end
 
@@ -2190,12 +2219,20 @@ local function skinListLine(row)
   followSelected(row)
 end
 
+-- A column heading as a theme button that keeps the game's own sort arrow: the game shows it on the sorted column only
+-- and flips it for the direction (Blizzard_AuctionHouseTableBuilder.lua SetArrowState), so no fixed arrow is added.
+local function skinHeader(header)
+  if type(header) ~= "table" or not header.CreateTexture then return end
+  T.Button(header)
+  GW.ShowTexture(header.Arrow)
+end
+
 -- The sort buttons of a list's header row (the table builder makes them as the list lays out): theme buttons that keep
 -- their sort arrow.
 local function skinHeaders(list)
   local row = list.HeaderContainer
   if type(row) ~= "table" or not row.GetChildren then return end
-  for _, header in ipairs({ row:GetChildren() }) do GW.SkinDropdown(header) end
+  for _, header in ipairs({ row:GetChildren() }) do skinHeader(header) end
 end
 
 -- A result list (AuctionHouseItemListTemplate): its dark tile and bronze frame faded for an inset, its empty-state,
@@ -2269,12 +2306,36 @@ local function skinMoneyBar(frame)
   GW.SkinMoneyDisplay(GW.Part(frame, "MoneyFrameBorder.MoneyFrame"))
 end
 
+-- A font string the game recoloured back to a colour of the game's own that the skin keeps: the text colour when it
+-- is the normal gold, else the game's colour with the remembered token dropped, so a theme refresh does not repaint it.
+local function followColor(fs, color)
+  if type(fs) ~= "table" or not fs.SetFont then return end
+  if color == _G.NORMAL_FONT_COLOR then return T.Color(fs, "text") end
+  if type(color) == "table" and color.GetRGB then T.ColorRGB(fs, color:GetRGB()) end
+end
+
+-- After the game's SetLabelColor on a form row (the sell form's price row: red for a buyout under the bid, else
+-- the normal gold): its two labels follow, through the helper above.
+local function followLabelColor(row, color)
+  followColor(row.Label, color)
+  followColor(row.LabelTitle, color)
+end
+
+-- A form row's labels in the text colour (gold in the game), once, with the row's SetLabelColor followed. A later
+-- window show leaves them as the game last painted them (the price label may be red then).
+local function skinFormLabels(row)
+  if vgFormLabels[row] then return end
+  vgFormLabels[row] = true
+  GW.SkinText(row.Label, "label", "text")
+  GW.SkinText(row.LabelTitle, "label", "text")
+  GW.HookAfter(row, "SetLabelColor", followLabelColor)
+end
+
 -- One labelled row of a form: its label in the text colour (gold in the game) and whichever control it holds: a number
 -- box with its Max button, a large money input, the duration dropdown or a money display.
 local function skinFormRow(row)
   if type(row) ~= "table" then return end
-  GW.SkinText(row.Label, "label", "text")
-  GW.SkinText(row.LabelTitle, "label", "text")
+  skinFormLabels(row)
   GW.SkinEditBox(row.InputBox)
   GW.SkinButton(row.MaxButton)
   GW.SkinMoneyInput(row.MoneyInputFrame, GW.LARGE_MONEY_INPUTS, "Icon")

@@ -988,6 +988,11 @@ it("side panes: a check box label the game paints gold turns light even when the
   expect(addon.eval("return __text(ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label)"), "the label is light again at once").toBe(true);
   addon.eval("ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label:SetTextColor(0.5, 0.5, 0.5)");
   expect(addon.eval("return ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label.__textColor[1]"), "a grey one stays grey").toBe(0.5);
+  // Blizzard_UIPanels_Game/Camelot/ReputationFrame.lua:784-787 paints the label gold or grey on each Refresh.
+  addon.eval("ns.Theme.Refresh()");
+  expect(addon.eval("return ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label.__textColor[1]"), "a theme refresh leaves the grey alone").toBe(0.5);
+  addon.eval("ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label:SetTextColor(NORMAL_FONT_COLOR:GetRGB())");
+  expect(addon.eval("return { __text(ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label), ns.Theme.ColorToken(ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label) }"), "gold again: light, and the token is back").toEqual([true, "text"]);
   const bare = loggedIn(SIDE_PANE_ENV + "ReputationFrame.ReputationDetailFrame.WatchFactionCheckbox.Label = nil TokenFrame.DetailFrame.InactiveCheckbox = 5");
   expect(bare.eval("return #ns.errors"), "a check box without a label, or that is not a frame").toBe(0);
 });
@@ -1350,4 +1355,13 @@ it("keeps the game's colour on a reused side pane row through a theme refresh", 
   addon.eval(`tok:ResetRows() second = tok:AddWrappedRow("Account", GREEN_FONT_COLOR) ns.Theme.RefreshText()`);
   expect(addon.eval("return { second == first, second.Label.__textColor[1], second.Label.__textColor[2] }")).toEqual([true, 0.1, 1]);
   expect(addon.eval("return #ns.errors")).toBe(0);
+});
+it("H46-C-G2 a light check label keeps its theme token through Vanguard's own repaint and follows a variant change", () => {
+  const addon = loggedIn(SIDE_PANE_ENV);
+  const label = "ReputationFrame.ReputationDetailFrame.MakeInactiveCheckbox.Label";
+  addon.eval(`${label}:SetTextColor(NORMAL_FONT_COLOR:GetRGB())`);
+  addon.eval("ns.Theme.Refresh()");
+  addon.eval("ns.Theme.Settings().variant = 'vellum' ns.Theme.Refresh()");
+  const want = addon.eval("return (ns.Theme.RGB('text'))");
+  expect(addon.eval(`return { ns.Theme.ColorToken(${label}), ${label}.__textColor[1] }`)).toEqual(["text", want]);
 });

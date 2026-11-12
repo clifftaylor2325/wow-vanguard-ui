@@ -130,3 +130,11 @@ it("Calm HUD: the client's aura buttons, whose tooltip handlers it keeps, are le
     return { n > 0, hooked, #ns.errors }`);
   expect(hooked, "the aura buttons are there, none is hooked, and nothing was caught").toEqual([true, 0, 0]);
 });
+
+it("H46-21-54 the keystone band dims with the Calm HUD without ever feeling the mouse", () => {
+  const addon = loggedIn(ENV);
+  calmOn(addon);
+  expect(calm(addon, "Vanguard_Keystone.inner"), "it takes the dim state and does not feel the mouse").toEqual({ state: DIM, alpha: 0.35, feels: false });
+  addon.hover("Vanguard_Keystone.inner");
+  expect(addon.eval("return math.floor(Vanguard_Keystone.inner:GetAlpha() * 100 + 0.5) / 100"), "pointing at it leaves it at the calm alpha").toBe(0.35);
+});

@@ -147,7 +147,7 @@ end
 -- /vg reset <frame|all>
 local function resetCommand(rest)
   if rest == "" then return chat(L["Usage: /vg reset <frame|all>"]) end
-  local n = ns.ResetMovers(rest)
+  local n = ns.ResetMovers(rest:lower() == "all" and "all" or rest)
   chat(n > 0 and ns.Format(L["Reset {count} frame(s)."], { count = n }) or ns.Format(L["No frame called {name}. /vg frames lists them."], { name = rest }))
 end
 
@@ -182,7 +182,7 @@ end
 -- /vg accent <rrggbb> | <name> | class | reset
 local function accentCommand(rest)
   if rest:lower() == "class" then return classAccent() end
-  if rest == "reset" then
+  if rest:lower() == "reset" then
     return resetAccent()
   end
   local r, g, b = T.ParseColor(rest:lower())
@@ -201,11 +201,11 @@ end
 
 -- /vg grid [size|on|off]
 local function gridCommand(rest)
-  local o, size = ns.MoverOptions(), tonumber(rest)
-  if size and size >= 8 and size <= 256 then
+  local o, word, size = ns.MoverOptions(), rest:lower(), tonumber(rest)
+  if size and size >= ns.GRID_SIZE.min and size <= ns.GRID_SIZE.max then
     o.grid, o.gridSize = true, math.floor(size)
-  elseif rest == "on" or rest == "off" or rest == "" then
-    o.grid = rest == "on" or (rest == "" and not o.grid)
+  elseif word == "on" or word == "off" or word == "" then
+    o.grid = word == "on" or (word == "" and not o.grid)
   else
     return chat(L["Usage: /vg grid [8-256 | on | off]"])
   end
@@ -281,13 +281,13 @@ local cdmKeysSwitch = switchCommand({
 
 -- /vg cdmkeys: the module must be on first (its settings exist only then).
 local function cdmKeysCommand(rest)
-  if not ns.ModuleLive("CooldownKeys") then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules, then /reload."]) end
+  if not ns.ModuleLive("CooldownKeys") then return chat(L["The Cooldown Manager keys module is off. Turn it on under /vg > Modules."]) end
   return cdmKeysSwitch(rest)
 end
 
 -- /vg cooldowns [setup]: the Cooldowns options page, or its setup wizard.
 local function cooldownsCommand(rest)
-  if rest == "setup" then return ns.Options.CooldownWizard.Open() end
+  if rest:lower() == "setup" then return ns.Options.CooldownWizard.Open() end
   ns.Options.Show("cooldowns")
 end
 
@@ -320,6 +320,7 @@ local iconsCommand = switchCommand({
 -- /vg variant [name]: a theme variant (#237), repainted at once.
 local function variantCommand(rest)
   if rest == "" then rest = T.Settings().variant end
+  rest = rest:lower()
   if rest ~= "default" and not T.VARIANTS[rest] then return chat(ns.Literal(L["Usage: /vg variant default|contrast|vellum|classic|midnight|obsidian|moss|ember"])) end
   local assistBefore = T.ColorAssist()
   T.Settings().variant = rest
@@ -331,6 +332,7 @@ end
 -- /vg corners [square|rounded]: panel corners on every theme, repainted at once (no argument shows the current one).
 local function cornersCommand(rest)
   if rest == "" then rest = T.Settings().corners end
+  rest = rest:lower()
   if rest ~= "square" and rest ~= "rounded" then return chat(ns.Literal(L["Usage: /vg corners square|rounded"])) end
   T.Settings().corners = rest
   T.Refresh()
@@ -356,7 +358,7 @@ local frameBufferCommand = switchCommand({
 
 -- /vg theme reset
 local function themeCommand(rest)
-  if rest ~= "reset" then
+  if rest:lower() ~= "reset" then
     return chat(L["Usage: /vg theme reset"])
   end
   chat(ns.Options.ResetTheme() and L["Theme back to defaults (reload to apply)."] or L["Theme back to defaults."])
@@ -378,6 +380,15 @@ local function matchName(names, text)
   end
 end
 
+-- The line after a module switched on: it runs now (a live module that started), starts once a module it needs
+-- is on, or waits for the reload (a reload-only module, or a live one whose reload-only parent is built then).
+local function enabledLine(name)
+  local def = ns.GetModule(name)
+  if def and def.live and ns.ModuleLive(name) then return L["{module} enabled."] end
+  if def and def.live and ns.ModuleMissingParent(name) then return L["{module} enabled. It starts once {parent} is on."] end
+  return L["{module} enabled. /reload to apply."]
+end
+
 -- The line after a module's switch moved: a live module has gone on or off (or will when the fight ends); any
 -- other waits for the reload.
 local function switchedLine(name, on)
@@ -385,8 +396,8 @@ local function switchedLine(name, on)
   if ns.ModuleAwaitsFight(name) then
     return on and L["{module} enabled after the fight."] or L["{module} disabled after the fight."]
   end
-  if def and def.live then return on and L["{module} enabled."] or L["{module} disabled."] end
-  return on and L["{module} enabled. /reload to apply."] or L["{module} disabled. /reload to apply."]
+  if on then return enabledLine(name) end
+  return def and def.live and L["{module} disabled."] or L["{module} disabled. /reload to apply."]
 end
 
 -- /vg enable|disable <module>: the module's name may be typed in any case; with no name, the usage line.
@@ -398,7 +409,7 @@ local function setModule(on)
       return chat(ns.Format(L["No module called {name}. /vg modules lists them."], { name = rest }))
     end
     ns.SetModuleEnabled(name, on)
-    chat(ns.Format(switchedLine(name, on), { module = name }))
+    chat(ns.Format(switchedLine(name, on), { module = name, parent = ns.ModuleMissingParent(name) }))
   end
 end
 
@@ -432,10 +443,12 @@ local function skinsCommand(rest)
 end
 
 -- Switches to a profile: at once when nothing waits for a reload (ns.PickProfile), else staged, with the reload that
--- applies it offered (naming what differs, when that alone waits).
+-- applies it offered (naming what differs, when that alone waits). No offer when the spec's own profile loads instead
+-- (ns.WarnSpecWins has said so).
 local function switchTo(name)
   if ns.PickProfile(name) then return chat(ns.Format(L["This character now uses profile {profile}."], { profile = name })) end
-  if not ns.PendingProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  if name == ns.ProfileName() then return chat(ns.Format(L["This character already uses profile {profile}."], { profile = name })) end
+  if ns.ProfileAfterReload() ~= name then return end
   local why, wait = ns.Format(L["This character will use profile {profile} after the reload."], { profile = name }), ns.SwitchWaitText(name)
   ns.OfferReload(wait and why .. " " .. wait or why)
 end
@@ -467,11 +480,12 @@ end
 
 -- /vg profile copy <from>: after asking, replaces the settings of the profile used after the reload.
 local function copyProfile(name)
+  name = findProfile(name) or name
   local into = ns.LoadingProfileName()
   if not VanguardDB.profiles[name] or name == into then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
   local warning = L["Replaces every setting in profile {into} with profile {from}'s. It can't be undone."]
   confirmProfile(ns.Format(warning, { into = into, from = name }), L["Copy here"], function()
-    local copied = ns.CopyProfile(name)
+    local copied = ns.CopyProfile(name, into)
     if not copied then return chat(ns.Format(L["No other profile called {profile}."], { profile = name })) end
     ns.Options.ProfileCopied(copied)
     ns.OfferReload(ns.Format(L["Copied {from} into {profile}."], { from = name, profile = copied }))
@@ -480,6 +494,7 @@ end
 
 -- /vg profile delete <name>: after asking, deletes a profile that is neither in use, staged nor loaded next.
 local function deleteProfile(name)
+  name = findProfile(name) or name
   local refused = L["Can't delete that one (missing, or in use)."]
   local inUse = name == ns.ProfileName() or name == ns.SelectedProfileName() or name == ns.LoadingProfileName()
   if not VanguardDB.profiles[name] or inUse then return chat(refused) end
@@ -502,8 +517,9 @@ local PROFILE_ACTIONS = {
 -- /vg profile [new|copy|delete <name> | reset | <name>]
 local function profileCommand(rest)
   if rest == "" then
-    local text = ns.PendingProfileName() and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
-    return chat(ns.Format(text, { profile = ns.ProfileName(), next = ns.PendingProfileName(), all = table.concat(ns.ProfileNames(), ", ") }))
+    local later = ns.ProfileAfterReload()
+    local text = later and L["Profile: {profile}; {next} after a reload   (all: {all})"] or L["Profile: {profile}   (all: {all})"]
+    return chat(ns.Format(text, { profile = ns.ProfileName(), next = later, all = table.concat(ns.ProfileNames(), ", ") }))
   end
   -- A profile's exact name wins over a verb, so /vg profile Copy Raid switches to "Copy Raid".
   if VanguardDB.profiles[rest] then return switchTo(rest) end
@@ -605,10 +621,12 @@ local function specCommand(rest)
   local spec = ns.SpecKey()
   if not spec then return chat(L["No specialization on this character yet."]) end
   if rest == "" then return chat(ns.SpecUsesLine(spec, ns.SpecProfile(spec) or L["the character's profile (no spec profile set)"])) end
-  if rest ~= "off" and not VanguardDB.profiles[rest] then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
-  ns.SetSpecProfile(rest ~= "off" and rest or nil, spec)
-  chat(rest == "off" and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, rest))
-  if rest ~= "off" then ns.OfferSpecReload(rest) end
+  local off = rest:lower() == "off" and (rest == "off" or not VanguardDB.profiles[rest])
+  local name = not off and findProfile(rest)
+  if not off and not name then return chat(ns.Format(L["No profile called {profile}. /vg profile new {profile} first."], { profile = rest })) end
+  ns.SetSpecProfile(name or nil, spec)
+  chat(off and L["This spec no longer switches profiles."] or ns.SpecNowLine(spec, name))
+  if name then ns.OfferSpecReload(name) end
 end
 
 -- The addon version from the TOC (Core/WhatsNew.lua reads it).
@@ -772,8 +790,9 @@ end
 -- /vg errors [clear|resume]: the errors Vanguard caught this session, newest last, in the copy window with the
 -- version, client and aura backend a bug report needs; clear empties the list, resume runs paused parts again.
 local function errorsCommand(rest)
-  if rest == "clear" then ns.ClearErrors() return chat(L["Cleared."]) end
-  if rest == "resume" then return resumeCommand() end
+  local word = rest:lower()
+  if word == "clear" then ns.ClearErrors() return chat(L["Cleared."]) end
+  if word == "resume" then return resumeCommand() end
   if #ns.errors + #ns.paused + #ns.blocked + #ns.notes == 0 then return chat(L["No errors caught this session."]) end
   chat(ns.Format(L["{count} error(s), opened in the copy window."], { count = #ns.errors }))
   ns.ShowErrors(L["Vanguard errors: Ctrl+C to copy"], errorsText())
@@ -828,9 +847,12 @@ local function errorLines(i, e, depth)
   return out
 end
 
--- The report with the caught errors from `first` on (newest last), each with `depth` stack lines.
+-- The report with the paused sites and blocked calls (as /vg errors lists them), then the caught errors from `first` on
+-- (newest last), each with `depth` stack lines.
 local function reportText(first, depth)
   local lines = reportHead()
+  for _, line in ipairs(pausedLines()) do lines[#lines + 1] = line end
+  for _, line in ipairs(blockedLines()) do lines[#lines + 1] = line end
   for i = first, #ns.errors do
     for _, line in ipairs(errorLines(i, ns.errors[i], depth)) do lines[#lines + 1] = line end
   end
@@ -880,7 +902,7 @@ end
 local function questsCommand(rest)
   if rest:lower():match("^history") then return ns.GetModule("QuestHistory").Command(rest) end
   local QL = ns.GetModule("QuestLog")
-  if QL.frame and ns.ModuleLive("QuestLog") then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
+  if QL.InUse() then QL.Toggle() else chat(L["Vanguard's quest log is off (/vg > Quests)."]) end
 end
 
 local COMMANDS = {

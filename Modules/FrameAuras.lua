@@ -64,14 +64,15 @@ local function debuffGroups(look, size)
   }
 end
 
--- The width an aura row wraps at: a banner's line (a big one stands too narrow for a row, under the Standards HUD
--- layout: Modules/UnitFrameLayouts.lua), else the frame's own width.
-FA.BANNER_LINE = 160
+-- The width an aura row wraps at under the Standards HUD layout (Modules/UnitFrameLayouts.lua), where a banner stands
+-- too narrow for a row: a big banner's line, and a small one's (the focus's debuffs: five icons a line, in the room
+-- under its banner between the chat and the swing timer); else the frame's own width.
+FA.BANNER_LINE, FA.SMALL_BANNER_LINE = 160, 100
 
 -- The width a frame's aura rows wrap at (when built: a layout change takes a reload to widen them).
 local function lineWidth(f)
-  if UF.Standing(f) and UF.Layouts.Big(f) then return FA.BANNER_LINE end
-  return f:GetWidth()
+  if not UF.Standing(f) then return f:GetWidth() end
+  return UF.Layouts.Big(f) and FA.BANNER_LINE or FA.SMALL_BANNER_LINE
 end
 
 -- The debuff row under a frame, wrapping at its width.

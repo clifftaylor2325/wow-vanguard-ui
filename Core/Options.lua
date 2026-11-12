@@ -142,6 +142,17 @@ local function moverOption(key)
   return function() return ns.MoverOptions()[key] end, function(v) ns.MoverOptions()[key] = v end, ns.MoverDefault(key)
 end
 
+-- get/set for the unlock grid's spacing, redrawn at once while frames are unlocked with the grid on, and its default.
+local function gridSpacing()
+  -- Saves the spacing and redraws the grid when it is showing.
+  local function set(size)
+    local o = ns.MoverOptions()
+    o.gridSize = size
+    if ns.Unlocked() and o.grid then ns.ShowGrid(size) end
+  end
+  return function() return ns.MoverOptions().gridSize end, set, ns.MoverDefault("gridSize")
+end
+
 -- The frame whose scale and opacity the Layout card's sliders set (the first mover until one is picked).
 local function sizedMover()
   local list = ns.MoverList()
@@ -162,7 +173,8 @@ local function moverChoices()
 end
 
 -- The General page is built again when the frames you can move change (a module switched on or off, settled by
--- ns.OnModulesChanged), so the Frame to size choice never offers a frame that is gone or misses a new one.
+-- ns.OnModulesChanged, or a frame registered or let go on its own: ns.OnMoversChanged), so the Frame to size choice
+-- never offers a frame that is gone or misses a new one.
 do
   local listed = ""
 
@@ -176,12 +188,17 @@ do
   -- Records the frames the Frame to size choice was built with, so the first change is compared with them.
   function noteListed() listed = moverKeys() end
 
-  ns.OnModulesChanged(function()
+  -- Builds the General page again when the frames you can move are not the ones it was built with.
+  local function relist()
     local now = moverKeys()
     if now == listed then return end
     listed = now
     if O.Frame() then O.RebuildPage("general") end
-  end)
+  end
+
+  ns.OnModulesChanged(relist)
+  -- A settle pass or a profile switch lets go of and registers many movers in one frame: one rebuild, next frame.
+  ns.OnMoversChanged(function() ns.Soon("frame to size", relist) end)
 end
 
 -- get/set for which frame the sliders size; picking one re-reads the sliders.
@@ -302,6 +319,8 @@ end
 -- A frame's scale (50% to 200%) and opacity (10% to 100%), in steps of 5.
 local MOVER_SCALES = { min = ns.MOVER_SCALE.min, max = ns.MOVER_SCALE.max, step = 0.05, format = percent }
 local MOVER_ALPHAS = { min = ns.MOVER_ALPHA.min, max = ns.MOVER_ALPHA.max, step = 0.05, format = percent }
+-- The unlock grid's spacing: 8 to 256 screen units (a plain number: a "px" value label overflows its box at 130% text), in steps of 8 (/vg grid takes any whole number in that range).
+local GRID_SIZES = { min = ns.GRID_SIZE.min, max = ns.GRID_SIZE.max, step = 8, format = function(v) return tostring(math.floor(v)) end }
 -- Text size: 70% to 130% in steps of 5.
 local TEXT_SIZES = { min = T.TEXT_SCALE.min, max = T.TEXT_SCALE.max, step = 0.05, format = function(v) return string.format("%d%%", math.floor(v * 100 + 0.5)) end }
 
@@ -321,6 +340,18 @@ do
 
   -- A pick made for one profile is not carried to another that takes over before the fight ends.
   ns.OnProfileChanged(function() queued = nil end)
+
+  -- A theme reset made in a fight: the look in use is put back in the same frame (the plates and the bars stay
+  -- together) and the reset's look waits for the fight's end, replacing any pick made earlier in it.
+  ---@param look string the look in use before the reset
+  function O.KeepLookInFight(look)
+    queued = nil
+    if not ns.InCombat() or look == initial then return end
+    T.Settings().hudLook = look
+    T.Refresh()
+    queued = initial
+    ns.OutOfCombat(applyQueuedLook, "HUD look")
+  end
 
   -- The row's getter, setter and default: the queued pick (if any) or the look in use.
   function hudLookSetting()
@@ -355,6 +386,9 @@ do
     queued = nil
     if pick then ns.SetHudLayout(pick) end
   end
+
+  -- A pick made for one profile is not carried to another that takes over (or is reset) before the fight ends.
+  ns.OnProfileChanged(function() queued = nil end)
 
   -- The row's getter and setter: the queued pick (if any) or the layout in use.
   function hudLayoutSetting()
@@ -414,8 +448,9 @@ end
 -- Puts every theme setting back to its default (T.Reset); when that changed a reload-only one, the options
 -- window shows its reload notice. Returns true then.
 function O.ResetTheme()
-  local before = reloadThemeValues()
+  local before, look = reloadThemeValues(), T.Settings().hudLook
   T.Reset()
+  O.KeepLookInFight(look)
   local after = reloadThemeValues()
   for i, value in ipairs(before) do
     if value ~= after[i] then O.NeedReload() return true end
@@ -442,8 +477,8 @@ local function setupRows()
   return {
     { "header", L["Layout"] },
     { "text", L["Setup walks through layout, screen and look again; it starts on Keep, so it changes only what you pick (/vg setup)."] },
-    { "button", L["Run setup"], function() O.Hide(); ns.Setup.Open() end },
-    { "button", L["What's new"], function() O.Hide(); ns.WhatsNew.Open() end },
+    O.Essential({ "button", L["Run setup"], function() O.Hide(); ns.Setup.Open() end }),
+    O.Essential({ "button", L["What's new"], function() O.Hide(); ns.WhatsNew.Open() end }),
   }
 end
 
@@ -456,9 +491,10 @@ end
 -- General, part three: moving frames.
 local function layoutRows()
   return append(setupRows(), {
-    O.MoveFramesRow(),
-    check(L["Show a grid while moving"], moverOption("grid")),
-    check(L["Snap to other frames"], moverOption("snap")),
+    O.Essential(O.MoveFramesRow()),
+    O.Essential(check(L["Show a grid while moving"], moverOption("grid"))),
+    { "slider", L["Grid spacing"], GRID_SIZES, gridSpacing() },
+    O.Essential(check(L["Snap to other frames"], moverOption("snap"))),
     check(L["Handles in the game's Edit Mode too"], moverOption("editMode")),
     { "text", L["While moving frames, right-click one to anchor it to the screen or to another frame's side, for its exact offsets, scale and opacity, or to match its width or height to another frame's."] },
   })
@@ -621,14 +657,6 @@ function O.ModuleTitle(name)
   return (O.MODULE_INFO[name] or { name })[1]
 end
 
--- The first module a module requires that is not wanted (its row is greyed and points there), or nil.
-function O.MissingParent(name)
-  local def = ns.GetModule(name)
-  for _, parent in ipairs(def and def.requires or {}) do
-    if not ns.ModuleWanted(parent) then return parent end
-  end
-end
-
 -- Whether a module's row has a note beside its name: one with its own switch inside, one that goes on and off live
 -- (its switch can wait for a fight), and one that needs another module.
 function O.HasModuleNote(name)
@@ -640,7 +668,7 @@ end
 -- with a reload-only parent switched off until the reload; it needs a module that is off; its own switch is off.
 function O.ModuleNote(name)
   if ns.ModuleAwaitsFight(name) then return L["Applies after the fight"] end
-  local parent = O.MissingParent(name)
+  local parent = ns.ModuleMissingParent(name)
   local values = { module = parent and O.ModuleTitle(parent) }
   if parent and ns.ModuleLive(name) then return ns.Format(L["Off with {module} after a reload"], values) end
   if parent then return ns.Format(L["Needs {module}"], values) end
@@ -745,6 +773,23 @@ local function moduleEmptyRows()
   }
 end
 
+-- One addon's skin switch: on unless /vg skins <addon> off; it applies after the reload (a skin runs once at login).
+local function skinRow(skin)
+  local name = skin.name
+  return O.ReloadRow(check(ns.Format(L["Skin for {addon}"], { addon = name }),
+    function() return ns.Settings("skins")[name] ~= false end, function(v) ns.Settings("skins")[name] = v O.NeedReload() end, true))
+end
+
+-- The skins other addons registered (Vanguard.RegisterSkin), a switch each; nothing when none did.
+local function skinRows()
+  local rows = {}
+  for _, skin in ipairs(ns.SkinList()) do
+    if #rows == 0 then rows[1] = { "header", L["Skins for other addons"] } end
+    rows[#rows + 1] = skinRow(skin)
+  end
+  return rows
+end
+
 -- Modules: a filter, then one switch per module under the group (a nav page's name) it belongs to, or the empty
 -- state when the filter leaves none.
 local function moduleRows()
@@ -752,7 +797,7 @@ local function moduleRows()
   local top = #rows
   for _, group in ipairs(O.MODULE_GROUPS) do rows = append(rows, groupSection(group[1], groupModules(group[2], listed))) end
   rows = append(rows, groupSection(L["More"], otherModules(listed)))
-  return #rows > top and rows or append(rows, moduleEmptyRows())
+  return append(#rows > top and rows or append(rows, moduleEmptyRows()), skinRows())
 end
 
 -- "Spec 2 uses Healer." ("Primary talents use Healer." on WoW Forever) or why there's no spec profile.
@@ -935,14 +980,33 @@ function O.AddPage(page)
   PAGES[#PAGES + 1] = page
 end
 
+-- The rows before a page's first header: its lead, which stays above the tabs.
+local function leadRows(rows)
+  local lead = {}
+  for _, row in ipairs(rows) do
+    if row[1] == "header" then break end
+    lead[#lead + 1] = row
+  end
+  return lead
+end
+
+-- The page's own rows with the added ones after them, or (first) after the page's lead and before its first card.
+local function withAdded(own, added, first)
+  if not first then return append(own, added) end
+  local lead = leadRows(own)
+  for i = #lead + 1, #own do added[#added + 1] = own[i] end
+  return append(lead, added)
+end
+
 -- Adds rows from another file to a page: rowsFn() runs each time the page is built, its rows
--- after the page's own (first: before them). A key with no page is left alone.
+-- after the page's own (first: before its first header, so the page's untitled lead stays above the
+-- tabs and the added card is the first tab). A key with no page is left alone.
 function O.AddRows(key, rowsFn, first)
   for _, page in ipairs(PAGES) do
     if page.key == key then
       local own = page.rows
       -- The page's own rows with the added ones before or after them.
-      page.rows = function() return first and append(rowsFn(), own()) or append(own(), rowsFn()) end
+      page.rows = function() return withAdded(own(), rowsFn(), first) end
     end
   end
 end
@@ -965,7 +1029,7 @@ do
     GameTooltip:SetOwner(button, "ANCHOR_LEFT")
     GameTooltip:SetText(ns.Format(L["Vanguard {version}"], { version = ns.AddonVersion() }))
     GameTooltip:AddLine(L["Left-click: options · Right-click: move frames (out of combat)"], T.RGB("text2"))
-    local n = #ns.errors
+    local n = ns.LoudErrorCount()
     local caught = n == 1 and L["1 error caught this session (/vg errors)"] or L["{count} errors caught this session (/vg errors)"]
     if n > 0 then GameTooltip:AddLine(ns.Format(caught, { count = n }), T.RGB("bad")) end
     GameTooltip:Show()

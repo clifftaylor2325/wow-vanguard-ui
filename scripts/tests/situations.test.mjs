@@ -614,3 +614,73 @@ it("situations: a call made with the profile's own values that raises still gets
   raid(addon, false);
   expect([savedSpot(addon), dps(addon)], "leaving the raid still puts the base back").toEqual([null, false]);
 });
+
+it("H46-30-1 situations: with the module off under Modules, Record for refuses and a logout leaves the profile as an ordinary change", () => {
+  const off = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = { Situations = false } } } }\n`;
+  const addon = loggedIn("", { savedVariables: off });
+  addon.advance(0.5);
+  addon.slash("situation record raid");
+  expect(addon.eval("return ns.GetModule('Situations').recording"), "no recording starts").toBe(null);
+  expect(chatHas(addon, /Situations is off under Modules/), "the chat says why").toBe(true);
+  addon.eval("ns.SetMoverScale('infostrip', 1.25)");
+  addon.fire("PLAYER_LOGOUT");
+  expect(addon.eval("local p = VanguardDB.profiles.Default return { p.positions.infostrip.scale, tostring(p.Situations and p.Situations.overrides and p.Situations.overrides.raid) }"), "an ordinary profile change, no override").toEqual([1.25, "nil"]);
+});
+
+it("H46-30-1 situations: switched off live, the same refusal holds", () => {
+  const addon = situated();
+  addon.eval('ns.SetModuleEnabled("Situations", false)');
+  addon.advance(0.5);
+  expect(addon.eval("return ns.GetModule('Situations').StartRecording('raid')"), "StartRecording refuses").toBe(false);
+  addon.slash("situation record raid");
+  expect(addon.eval("return ns.GetModule('Situations').recording")).toBe(null);
+});
+
+// TEST-ONLY saved profile: the party override holds a meter spot and a bars setting, and the meter and the bars are off.
+const PASS_THROUGH = `VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = { DataBars = false },
+  Situations = { overrides = { party = { positions = { meter = { point = 'TOP', relPoint = 'TOP', x = 0, y = -40 },
+  infostrip = { point = 'TOP', relPoint = 'TOP', x = 0, y = -60 } },
+  settings = { DataBars = { visibility = 'hidden' }, InfoStrip = { dps = true } } } } } } } }\n`;
+
+it("H46-30-2 situations: passing through a situation keeps the spots and settings of what was not there to record", () => {
+  const addon = situated(PASS_THROUGH);
+  const before = addon.eval("return ns.Settings('Situations').overrides.party");
+  addon.slash("situation record party");
+  addon.slash("situation record raid");
+  addon.slash("situation stop");
+  expect(addon.eval("return ns.Settings('Situations').overrides.party"), "nothing changed, so nothing was lost").toEqual(before);
+});
+
+it("H46-30-2 situations: a part kept for a frame that was not there is cleared by /vg situation clear typed while recording", () => {
+  const addon = situated(PASS_THROUGH);
+  addon.slash("situation record party");
+  addon.slash("situation clear party");
+  addon.slash("situation stop");
+  expect(addon.eval("local o = ns.Settings('Situations').overrides.party return { tostring(o.positions.meter), tostring(o.settings.DataBars) }"), "nothing is carried over a clear").toEqual(["nil", "nil"]);
+});
+
+it("H46-30-3 situations: a frame that first appears while recording is not recorded until it is changed", () => {
+  const sv = "VanguardDB = { version = 2, setupDone = true, profiles = { Default = { positions = { meter = { point = 'CENTER', relPoint = 'CENTER', x = 5, y = 5 } } } } }\n";
+  const addon = loggedIn("", { savedVariables: sv });
+  addon.advance(0.5);
+  addon.slash("situation record raid");
+  addon.slash("meter on");
+  addon.slash("situation stop");
+  expect(addon.eval("return tostring(ns.Settings('Situations').overrides.raid)"), "a frame that merely came up is unchanged").toBe("nil");
+  expect(chatHas(addon, /Raid: no overrides saved\./), "and the chat says nothing was saved").toBe(true);
+  addon.slash("situation record raid");
+  addon.eval("ns.SetMoverScale('meter', 1.5)");
+  addon.slash("situation stop");
+  expect(addon.eval("return ns.Settings('Situations').overrides.raid.positions.meter.scale"), "one the player then changes is recorded").toBe(1.5);
+});
+
+it("H46-30-3 situations: a setting changed in a module switched on while recording is not recorded", () => {
+  const sv = "VanguardDB = { version = 2, setupDone = true, profiles = { Default = { modules = { DataBars = false } } } }\n";
+  const addon = loggedIn("", { savedVariables: sv });
+  addon.advance(0.5);
+  addon.slash("situation record raid");
+  addon.eval('ns.SetModuleEnabled("DataBars", true)');
+  addon.eval("ns.GetModule('DataBars').settings.visibility = 'hidden'");
+  addon.slash("situation stop");
+  expect(addon.eval("return tostring(ns.Settings('Situations').overrides.raid)")).toBe("nil");
+});

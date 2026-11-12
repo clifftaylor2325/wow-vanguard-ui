@@ -27,6 +27,8 @@ if Vanguard and Vanguard.RegisterSkin then
 end
 ```
 
+A player can switch a registered skin off with the **Skin for <addon>** switch on the Modules page in `/vg` (under Skins for other addons; it takes effect after a reload), or `/vg skins <addon> off`.
+
 Strings made with `S.Text` and coloured with `S.Color` follow a font, text size, accent or look change by themselves; `S.SetFont` fonts a string once, and `S.RGB`, `S.Accent` and `S.PanelColor` give the colour of the moment, so redo those in an `S.OnChanged` listener.
 
 The callback runs once at login, or immediately if the addon registers after login. Errors in it are reported and don't break anything else. Painted frames follow `/vg accent` changes live, and their borders stay one screen pixel at any UI scale (`S.Pixel(frame)` gives that size). `S.RGB(name)` returns any theme color; the names, text roles and the rest of the look are listed in `docs/THEME.md` (from `Core/Theme.lua`). `S.apiVersion` is 1; the API only grows.

@@ -437,3 +437,44 @@ it("H45-D-G3A2 a slot whose first rank is secret reads the ranks it can (no erro
   addon.eval(`${CQ}.Add(103, 1, "TEST-ONLY Bar")`);
   expect(say(addon, "craft", /You have every reagent\./), "the three held of the readable id count").toBe(true);
 });
+
+// H46-9-2 / H46-9-50: /vg craft stock raises Keep stocked to what the queue still needs in the bags. A TEST-ONLY
+// merchant sells the thread one at a time; the linen bag needs 3 linen and 1 thread.
+const THREAD_MERCHANT = `
+  __buys, __money = {}, 100000
+  GetMoney = function() return __money end
+  GetMerchantNumItems = function() return 1 end
+  GetMerchantItemLink = function() return "|cffffffff|Hitem:2320::|h[TEST-ONLY Coarse Thread]|h|r" end
+  GetMerchantItemMaxStack = function() return 20 end
+  C_MerchantFrame = { GetItemInfo = function() return { price = 10, stackCount = 1, numAvailable = -1 } end }
+  BuyMerchantItem = function(i, n) __buys[#__buys + 1] = n __money = __money - 10 * n end`;
+// Queues one bag, runs /vg craft stock, visits the merchant: [Keep stocked for linen and thread, what the merchant bought].
+function stockThenShop(addon) {
+  addon.eval(`${CQ}.Add(100, 1, 'TEST-ONLY Linen Bag')`);
+  addon.slash("craft stock");
+  const stock = addon.eval("local s = VanguardCharDB.stockList return { s[2589] or 0, s[2320] or 0 }");
+  addon.fire("MERCHANT_SHOW");
+  addon.advance(3);
+  return [stock, addon.eval("return __buys")];
+}
+it("H46-9-50 on WoW Retail, /vg craft stock takes off what the warband bank holds, so Short of and Keep stocked agree and nothing is bought", () => {
+  // live Blizzard_FrameXMLUtil/ItemUtil.lua:242-248 ItemUtil.GetCraftingReagentCount counts the bank, reagent bank and warband bank.
+  const addon = crafter(THREAD_MERCHANT, ON, RETAIL_CLIENT);
+  addon.eval("__wfgWorld.warbandCounts[2589] = 3 __wfgWorld.warbandCounts[2320] = 1 C_Item.GetItemCount = function() return 0 end");
+  expect(stockThenShop(addon), "all held in the bank: goal 0, no buy").toEqual([[0, 0], {}]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+it("H46-9-50 on WoW Forever, /vg craft stock takes off what the bank holds", () => {
+  // ItemDocumentation.lua GetItemCount(itemInfo, includeBank): the bank counts only when asked for.
+  const addon = crafter(THREAD_MERCHANT);
+  addon.eval("C_Item.GetItemCount = function(id, bank) if bank then return id == 2589 and 3 or 1 end return 0 end");
+  expect(stockThenShop(addon), "all held in the bank: goal 0, no buy").toEqual([[0, 0], {}]);
+});
+it("H46-9-50 /vg craft stock still raises the full need when it all sits in the bags, and only the shortfall when the bank holds part", () => {
+  const bags = crafter(THREAD_MERCHANT);
+  bags.eval("C_Item.GetItemCount = function(id) return id == 2589 and 3 or 1 end");
+  expect(stockThenShop(bags)[0], "all in the bags: the full need stays on the list").toEqual([3, 1]);
+  const part = crafter(THREAD_MERCHANT, ON, RETAIL_CLIENT);
+  part.eval("__wfgWorld.warbandCounts[2589] = 2 C_Item.GetItemCount = function() return 0 end");
+  expect(stockThenShop(part), "need 3, bank 2, bags 0: goal 1 linen; the thread is all to buy").toEqual([[1, 1], [1]]);
+});

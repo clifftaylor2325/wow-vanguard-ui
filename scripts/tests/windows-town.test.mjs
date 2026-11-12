@@ -2,6 +2,7 @@
 // TEST-ONLY headless client. Cases follow docs/handoff/RESKIN-PLAN.md section 0 ("Writing a task's test").
 
 import { expect, it } from "vitest";
+import { RETAIL_CLIENT } from "../lib/lua-harness.mjs";
 import { INSIDES_LUA, WINDOWS_ENV, isTok, loggedIn, setCombat, windowState } from "./helpers.mjs";
 
 const OFF = "VanguardDB.profiles = { Default = { Windows = { town = false } } }";
@@ -253,7 +254,7 @@ it("S2.2 the trainer: window, bars, texts and rows in the theme; skill rows foll
   expect(addon.eval(`return ns.Theme.RowParts(${f}.ScrollBox.skill).rail:IsShown()`), "the game fills the row with another skill: the look goes").toBe(false);
   addon.eval(`local b = ${f}.ScrollBox ClassTrainerFrame_InitCategoryButton(b.head)`);
   expect(addon.eval(`return __lit(${f}.ScrollBox.head.Label, "section", "text2")`), "the game puts its gold label font back as it fills the row: the section look returns").toBe(true);
-  // The game's hover handlers (forever and live Blizzard_TrainerUI.lua:188-212) are SetScript'd on every fill and change the
+  // The game's hover handlers (forever Blizzard_TrainerUI/Mainline/Blizzard_TrainerUI.lua:188-212; Retail's trainer has no category rows) are SetScript'd on every fill and change the
   // label only through SetFontObject; whether a SetScript drops a HookScript is game-only, so the skin follows SetFontObject.
   addon.eval(`local b = ${f}.ScrollBox local h = b.head h:SetScript("OnEnter", function() h.Label:SetFont("TEST-ONLY-GAME-HI", 14, "") h.Label:SetFontObject("TEST-ONLY-HI") end)
     h:SetScript("OnLeave", function() h.Label:SetFont("TEST-ONLY-GAME", 14, "") h.Label:SetFontObject("TEST-ONLY-LO") end)`);
@@ -783,4 +784,11 @@ it("R3.4b the auction house multisell progress: group off leaves it the game's; 
   plain.fire("ADDON_LOADED", "Blizzard_AuctionHouseUI");
   plain.eval("AuctionHouseMultisellProgressFrame:Show()");
   expect([windowErrors(bare), windowErrors(plain)], "a frame with no bar, a bar whose icon is not a texture: no error").toEqual(["none", "none"]);
+});
+
+// Retail's stable is StableFrame (live Blizzard_StableUI.xml:236); PetStableFrame is WoW Forever's (forever Blizzard_StableUI/Camelot, H46-26-50).
+it("the pet stable is registered on WoW Forever only", () => {
+  // Whether the client has the stable registered.
+  const registered = (opts) => loggedIn("", opts).eval('return ns.GetModule("Windows").REGISTERED.PetStableFrame ~= nil');
+  expect([registered({}), registered({ client: RETAIL_CLIENT })], "Forever has it, Retail's window list does not").toEqual([true, false]);
 });

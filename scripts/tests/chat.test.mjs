@@ -2,7 +2,8 @@
 
 import { expect, it } from "vitest";
 import { luaValue } from "../lib/lua-emit.mjs";
-import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, RETAIL, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
+import { FOREVER_CLIENT, RETAIL_CLIENT } from "../lib/lua-harness.mjs";
+import { CLICK_LUA, expectErrors, STRIP_ENV, TIDY_ENV, UI_ENV, UNITS_ENV, INSIDES_LUA, borderOf, chatHas, isTok, later, loggedIn, setCombat, tok, WINDOWS_ENV, windowState } from "./helpers.mjs";
 
 it("minimap", () => {
   const addon = loggedIn(UI_ENV);
@@ -302,8 +303,8 @@ it("minimap: the game's emptied cluster takes no mouse and its zone button is hi
 it("minimap: the box goes with the map when the game hides it (Toggle Minimap, the tutorial) and comes back with it, on both clients", () => {
   // Whether the map's box shows.
   const box = (addon) => addon.eval("return Vanguard_Minimap:IsShown()");
-  for (const client of ["", RETAIL]) {
-    const addon = loggedIn(client + UI_ENV);
+  for (const client of [FOREVER_CLIENT, RETAIL_CLIENT]) {
+    const addon = loggedIn(UI_ENV, { client });
     addon.eval("Minimap:Hide()");
     expect(box(addon), "the map hidden: the empty box goes").toBe(false);
     addon.eval("Minimap:Show()");
@@ -345,6 +346,22 @@ it("minimap: the game's own coordinates line (the container's PlayerCoords) is f
   expect(addon.eval("return MinimapCluster.MinimapContainer.PlayerCoords.__alpha"), "faded").toBe(0);
   expect(loggedIn(UI_ENV + "MinimapCluster.MinimapContainer = CreateFrame('Frame', nil, MinimapCluster)").eval("return #ns.errors"), "a container without the line is fine").toBe(0);
 });
+// A frame's SetPoint offsets are in its own scaled units: Blizzard_Minimap/Camelot/Minimap.lua:68-73 (SetHeaderUnderneath) and
+// Diel.lua:49-57 (SetDielFrameTransform) multiply or divide by the scale for it. A scaled leftover still sits on the rim.
+it("H46-28-1 a round minimap: a scaled leftover button (the group finder eye, the mail icon) sits on the rim, not nearer the centre", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + `
+    if not QueueStatusButton then QueueStatusButton = CreateFrame("Button", "QueueStatusButton", UIParent) end
+    MinimapCluster.IndicatorFrame = MinimapCluster.IndicatorFrame or CreateFrame("Frame", nil, MinimapCluster)
+    MinimapCluster.IndicatorFrame.MailFrame = MinimapCluster.IndicatorFrame.MailFrame or CreateFrame("Frame", nil, MinimapCluster.IndicatorFrame)`,
+  { savedVariables: 'VanguardDB.profiles = { Default = { Minimap = { shape = "round" } } }' });
+  const out = addon.eval(`local M = ns.GetModule('Minimap') local out = {}
+    for _, o in ipairs({ QueueStatusButton, MinimapCluster.IndicatorFrame.MailFrame, MinimapCluster.Tracking }) do
+      local p = o.__points.CENTER out[#out + 1] = math.sqrt(p.x * p.x + p.y * p.y) * o:GetScale()
+    end
+    out[#out + 1] = M.rim return out`);
+  const rim = out.pop();
+  out.forEach((d) => expect(d).toBeCloseTo(rim, 3));
+});
 // TEST-ONLY: Blizzard_HybridMinimap's frame (a child of Minimap, BACKGROUND strata, hidden until the game shows it).
 const HYBRID_ENV = `HybridMinimap = CreateFrame("Frame", "HybridMinimap", Minimap) HybridMinimap:SetFrameStrata("BACKGROUND") HybridMinimap:SetFrameLevel(100) HybridMinimap:Hide()`;
 // The hybrid map's strata and level, the minimap's strata and level, the holder's level.
@@ -354,6 +371,16 @@ it("minimap: the hybrid map, already loaded, goes on the map's strata one level 
   const [strata, level, mapStrata, mapLevel, holderLevel] = hybridLevels(addon);
   expect([strata === mapStrata, level, mapLevel - holderLevel], "the same strata, a level between the holder and the map").toEqual([true, mapLevel - 1, 2]);
   expect(addon.eval("return HybridMinimap:GetParent() == Minimap"), "still the minimap's child").toBe(true);
+});
+// Blizzard_HybridMinimap.xml: a MaskTexture parentKey CircleMask (TempPortraitAlphaMask) masks the canvas and its Background.
+it("H46-28-2 minimap: a square map squares the hybrid map's circle mask, a round map keeps the game's circle", () => {
+  const withMask = `${HYBRID_ENV} HybridMinimap.CircleMask = HybridMinimap:CreateMaskTexture() HybridMinimap.CircleMask:SetTexture("Interface\\\\CharacterFrame\\\\TempPortraitAlphaMask")`;
+  // The mask's texture, its wrap modes and the error count.
+  const mask = (addon) => addon.eval("return { HybridMinimap.CircleMask:GetTexture(), HybridMinimap.CircleMask.__wrap, #ns.errors }");
+  expect(mask(loggedIn(UI_ENV + withMask)), "square: a white square, clamped").toEqual([expect.stringContaining("WHITE8X8"), ["CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE"], 0]);
+  const round = loggedIn(UI_ENV + TIDY_ENV + withMask, { savedVariables: 'VanguardDB.profiles = { Default = { Minimap = { shape = "round" } } }' });
+  expect(mask(round)[1], "round: the game's circle").toContain("TempPortraitAlphaMask");
+  expect(loggedIn(UI_ENV + HYBRID_ENV).eval("return #ns.errors"), "a hybrid map with no mask is fine").toBe(0);
 });
 it("minimap: the hybrid map the game loads later is raised when its part of the game loads, and again when it shows", () => {
   const addon = loggedIn(UI_ENV);
@@ -1156,6 +1183,20 @@ it("chat extras: bare addresses with a web ending become links, never inside a l
   expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
 });
 
+it("H46-29-51 chat extras: an http(s):// or www. address after an opening bracket or quote is linked, the bracket and quote left outside", () => {
+  const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CHAT_LINES_ENV);
+  // The say filter's text for a line: linked, or as it was.
+  const said = (line) => { const out = addon.eval(`return { __filters.CHAT_MSG_SAY(nil, "CHAT_MSG_SAY", ${luaValue(line)}, "<name>") }`); return out[1] ?? line; };
+  const linkOf = (url) => `|Haddon:Vanguard:url:${url}|h[${url}]|h|r`;
+  expect(said("see https://example.test/x now"), "after a space, as before").toContain(linkOf("https://example.test/x"));
+  expect(said("see (https://example.test/x) now"), "in brackets").toMatch(/ \(\|c\w{8}\|Haddon:Vanguard:url:https:\/\/example\.test\/x\|h\[https:\/\/example\.test\/x\]\|h\|r\) now$/);
+  expect(said('Gildennachricht des Tages: "https://example.test/x"'), "in quotes, as the German message of the day is").toContain(`"|c`);
+  expect(said('Gildennachricht des Tages: "https://example.test/x"'), "the closing quote left outside").toContain(`${linkOf("https://example.test/x")}"`);
+  expect(said('say "www.example.test" now'), "a quoted www address with any ending").toContain(`${linkOf("www.example.test")}" now`);
+  expect(said("see (discord.gg/abc) now"), "a bare address in brackets, as before").toContain(`${linkOf("discord.gg/abc")}) now`);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
 it("chat extras: a numbered template (German %1$s) still finds the guild message of the day", () => {
   const addon = loggedIn(UI_ENV + CHAT_EXTRAS_ENV + CHAT_LINES_ENV + 'GUILD_MOTD_TEMPLATE = "Gildennachricht des Tages: \\"%1$s\\""');
   addon.eval('ChatFrame1:AddMessage("Gildennachricht des Tages: \\"Raid um 8, discord.gg/abc\\"")');
@@ -1503,7 +1544,7 @@ it("faster auto-loot: under master loot the game's loot window keeps every slot"
   expect(on.eval("return __looted"), "a client without GetLootMethod still takes them").toEqual([3, 1]);
 });
 it("faster auto-loot: with no plain loot method, a group's slots are left to the game and a solo player's are taken, on both clients", () => {
-  for (const client of ["", RETAIL]) {
+  for (const client of [FOREVER_CLIENT, RETAIL_CLIENT]) {
     const on = loggedIn(LOOT_ENV, { client, savedVariables: "VanguardDB.profiles = { Default = { AutoAccept = { loot = true } } }" });
     // Opens loot in or out of a group after `setup` and returns what fast loot took.
     const looted = (inGroup, setup) => {
@@ -2702,7 +2743,7 @@ it("auto-accept: Forever's own invite windows and the teleport check: a declined
 // Retail's PartyInviteRequest has no isCrossShard, so inviterGUID is the 7th value
 // (live/Interface/AddOns/Blizzard_APIDocumentationGenerated/PartyInfoDocumentation.lua).
 it("H44-20-50 quiet the game: on Retail the inviter's GUID is the 7th payload value; a stranger is declined and a friend is not", () => {
-  const addon = loggedIn(INVITE_ENV, { client: RETAIL, savedVariables: INVITES_ON });
+  const addon = loggedIn(INVITE_ENV, { client: RETAIL_CLIENT, savedVariables: INVITES_ON });
   addon.eval('__friends.pal = "friend"');
   // Fires a Retail invite from the guid and counts the answers sent.
   const retailInvite = (guid) => { addon.eval("__answers = {}"); addon.fire("PARTY_INVITE_REQUEST", "<name>", false, false, false, false, false, guid, false); addon.update(0); return addon.eval("return #__answers"); };
@@ -2804,10 +2845,73 @@ it("chat window size: the first size is each character's own: a new alt on a pro
   expect([addon.eval("return ns.NewCharacter()"), size(addon)], "a new character: 524 x 188").toEqual([true, [524, 188]]);
 });
 
-it("chat window size: the first size is each character's own: a character that played before keeps the size it has, and the flags stay out of an export", () => {
+it("chat window size: the first size is each character's own: a character that played before keeps its flags, and the flags stay out of an export", () => {
   const addon = loggedIn(UI_ENV + TIDY_ENV + "ChatFrame1:SetSize(600, 300)", { savedVariables: "VanguardDB.profiles = { Default = { Chat = { sized = true, widened = true } } }" });
-  expect([size(addon), addon.eval("return VanguardCharDB.chatSize.sized")], "the profile's old flags are taken as this character's").toEqual([[600, 300], true]);
+  expect(addon.eval("return VanguardCharDB.chatSize.sized"), "the profile's old flags are taken as this character's (its size: H46-29-1 below)").toBe(true);
   expect(addon.eval("return ns.WithoutClientState({ Chat = { sized = true, widened = true, textSize = 14 } }).Chat"), "a string carries no window flags").toEqual({ textSize: 14 });
+});
+
+// TEST-ONLY: ChatFrame1 as the Edit Mode system it is (forever
+// Interface/AddOns/Blizzard_ChatFrameBase/Mainline/FloatingChatFrame.xml:709 inherits EditModeChatFrameSystemTemplate):
+// applying a layout sets the window to the layout's size, 430 x 170 in the Modern preset
+// (Blizzard_EditMode/Shared/EditModeSystemTemplates.lua EditModeChatFrameSystemMixin:UpdateSystem and
+// UpdateSystemSettingWidth/Height, :2200-2274; Blizzard_EditMode/Mainline/EditModePresetLayouts.lua:502-507). The game
+// applies every setting at each UI load (EditModeSystemMixin:UpdateDirtySettings, :214-223, from
+// EditModeManager.lua EDIT_MODE_LAYOUTS_UPDATED, :193-197) and no longer restores the main window's own saved size
+// (FloatingChatFrame.lua FCF_RestorePositionAndDimensions, :1380-1384).
+const EDIT_MODE_ENV = "ChatFrame1.UpdateSystem = function(self) self:SetSize(430, 170) end";
+
+it("H46-29-1 chat window size: Vanguard's size comes back after Edit Mode applies its layout, and not while Edit Mode is open", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + " ChatFrame1:UpdateSystem({})", {
+    savedVariables: "VanguardDB.profiles = { Default = { Chat = { windowScale = 1.5 } } } VanguardCharDB = { chatSize = { sized = true, shortened = true } }",
+  });
+  expect(size(addon), "a character from before sizes were kept gets its Chat window size choice (Larger) once").toEqual([786, 282]);
+  expect(addon.eval("return { VanguardCharDB.chatSize.width, VanguardCharDB.chatSize.height }"), "and that size is kept for it").toEqual([786, 282]);
+  addon.eval("ChatFrame1:UpdateSystem({})");
+  expect(size(addon), "Edit Mode applying a layout: the kept size comes back").toEqual([786, 282]);
+  addon.eval("ns.PausePins(true) ChatFrame1:UpdateSystem({})");
+  expect(size(addon), "with Edit Mode open the layout's size is left alone").toEqual([430, 170]);
+  addon.eval("ns.PausePins(false) ChatFrame1:SetSize(600, 300)");
+  addon.fire("PLAYER_ENTERING_WORLD", false, false);
+  expect(size(addon), "a zone change leaves the window as it is").toEqual([600, 300]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+// Blizzard_EditMode/Shared/EditModeManager.lua:390 OnSystemSettingChange, reached by the grip (EditModeSystemTemplates.lua:2156) and the dialog (EditModeDialogs.lua:661).
+const MANAGER_ENV = "\nEditModeManagerFrame = { OnSystemSettingChange = function(self, frame, setting, value) frame:SetSize(value, frame:GetHeight()) end }";
+it("H46-C-CR3 chat window size: a size set in Edit Mode (grip or dialog) is kept and survives a layout apply; a layout apply alone keeps nothing", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + MANAGER_ENV, {
+    savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
+  });
+  addon.eval("ChatFrame1:UpdateSystem({}) ns.PausePins(true) ChatFrame1:UpdateSystem({})");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "a layout apply alone changes nothing kept").toBe(600);
+  addon.eval("EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, 700) EditModeManagerFrame:OnSystemSettingChange(ChatFrame2, 1, 250)");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "the dialog's Width is kept, another window's is not").toBe(700);
+  addon.eval("ns.PausePins(false) ChatFrame1:UpdateSystem({})");
+  expect(size(addon)[0], "and comes back after the next layout apply").toBe(700);
+  addon.eval("ns.GetModule('Chat').settings.place = false EditModeManagerFrame:OnSystemSettingChange(ChatFrame1, 1, 710)");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "a window Vanguard does not place keeps nothing").toBe(700);
+});
+
+it("H46-29-1 chat window size: after a reload the kept size comes back over the layout's, and the General sliders' size is the one kept", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV + " ChatFrame1:UpdateSystem({})", {
+    savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 600, height = 300 } }",
+  });
+  expect(size(addon), "Edit Mode applied its layout before Vanguard watched: the kept size at login").toEqual([600, 300]);
+  addon.eval("local CW = ns.GetModule('ChatWindows') select(2, CW.WidthSetting(ChatFrame1))(650) select(2, CW.HeightSetting(ChatFrame1))(320) ChatFrame1:UpdateSystem({})");
+  expect(size(addon), "the sliders' size is what comes back").toEqual([650, 320]);
+  addon.eval("local CW = ns.GetModule('ChatWindows') select(2, CW.WidthSetting(ChatFrame2))(300)");
+  expect(addon.eval("return VanguardCharDB.chatSize.width"), "another window's slider keeps nothing").toBe(650);
+  addon.eval("ns.GetModule('Chat').settings.place = false ChatFrame1:UpdateSystem({})");
+  expect(size(addon), "a window Vanguard does not place keeps the layout's size").toEqual([430, 170]);
+  expect(addon.eval("return #ns.errors"), "no errors").toBe(0);
+});
+
+it("H46-29-1 chat window size: a damaged kept size is taken as none, and the Chat window size choice is applied once", () => {
+  const addon = loggedIn(UI_ENV + TIDY_ENV + EDIT_MODE_ENV, { savedVariables: "VanguardCharDB = { chatSize = { sized = true, shortened = true, width = 'x', height = 300 } }" });
+  expect(size(addon)).toEqual([524, 188]);
+  addon.eval("ns.GetModule('Chat').KeepSize(1, 2) ns.GetModule('Chat').settings = nil ns.GetModule('Chat').KeepSize(3, 4) ns.GetModule('Chat').settings = ns.Settings('Chat', ns.GetModule('Chat').defaults)");
+  expect(addon.eval("return { VanguardCharDB.chatSize.width, VanguardCharDB.chatSize.height }"), "nothing is kept while the module is off").toEqual([1, 2]);
 });
 
 it("H27-4-5: the minimap drawer toggle's icon is text at rest and accent under the mouse, and T.Button's hover is kept", () => {

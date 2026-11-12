@@ -53,6 +53,8 @@
       "A3-2 bars: auto-attack flashes its button on and off every 0.4 s, and the flash stops with it",
       "A3-2 bars: with Reduce motion the attack flash stays lit instead of blinking",
       "Forever's bars carry no pet battle clause (its vanilla content has none)",
+      "H46-18-1 bars: a key held through the start of a cast keeps the button lit after the release",
+      "H46-18-1 bars: a press slid off the button leaves a not-current action unlit",
       "Hidden bar bindings stay intact",
       "In combat bars show during a drag out of combat; a drag that starts in combat leaves secure visibility alone",
       "Y2-4 bars: a usable event repaints only the buttons whose state changed",
@@ -189,8 +191,11 @@
       "Forever fixes: the newer calls for zone color, pet moods, breath bars, the minimap eye, the house icon and the build line"
     ],
     "scripts/tests/extras.test.mjs": [
-      "H45-3-R1: the column's spot follows a change of HUD look at once, and a saved position still wins",
+      "H45-3-R1: the column's spot follows a change of HUD look at once",
       "H45-3-R1: under the Tabs look the party pets and targets column's default spot rises with the party column, so tall party frames never reach it",
+      "H46-13-2: the height goes through the range clamp, a dragged column keeps its spot, and a change out of combat re-places the default",
+      "H46-13-2: the party column grows up from its foot, and the pets column over it with it",
+      "H46-3-2: with the raid frames showing the party (no party column built), Tabs does not lift the column by the party column's rise",
       "raid tools: calls, target icons and world markers for the leader and assistants",
       "raid tools: in a raid the bar is sized by the three buttons showing, not the hidden Raid label (deDE 'Schlachtzug')"
     ],
@@ -409,6 +414,8 @@
     "scripts/tests/setuplayouts.test.mjs": [
       "Centered layout: compact raid grid, one-time migrations, a strip with nothing to show",
       "default sizes for a 1080p screen: 240 x 36 unit frames with 12 px names, 38 px buttons; a saved profile keeps its sizes",
+      "H46-13-103 H46-13-104 setup layouts: Standards measures itself: where it holds, its banners and their rows clear the bars and everything else, at every canvas and button size; elsewhere it gives way",
+      "H46-13-100 H46-13-101 setup layouts: The keep measures itself: where it holds, its frames clear the bars and everything else and stand inside the wall, at every canvas and button size; elsewhere it gives way",
       "meter: target of target takes its narrow spot while the meter is on and goes back when it is off, under 1838 wide only",
       "setup layouts: Like the game's keeps the target cast bar's interrupt mark off the focus frame (B4-5)",
       "setup layouts: Like the game's puts your frames at the top left; another layout puts them back",
@@ -416,6 +423,7 @@
       "setup layouts: each role sizes the frames its own way: a taller target for damage and more for tanking, a larger raid and smaller own frames for healing",
       "setup layouts: nothing overlaps or leaves the screen, solo to 40-man, at UI scale 1 and pixel-perfect",
       "setup layouts: on canvases narrower than 1365 the adapted default spots stay on screen and clear, solo to 40-man",
+      "setup layouts: under The keep the bag and menu bar stays clear of your target's side of the wall on every canvas",
       "setup screen: picking Pixel-perfect turns on Vanguard's pixel-perfect scale and leaves the game's UI scale alone (#225)",
       "setup screen: this screen's preset is picked; Keep changes nothing; a preset sets the UI scale, buttons, tiles and text",
       "setup screens: with each screen preset, nothing overlaps or leaves its own screen, in every layout, solo to 40-man"
@@ -432,6 +440,7 @@
     "scripts/tests/statuschip.test.mjs": [
       "status chip: a client without the aura lookup says nothing, and the switch is on the Unit frames page",
       "status chip: a long hint sits left of the player frame, clear of the pet frame, when there is room, else above its left end, on the screen (P4-5, B4-4)",
+      "status chip: beside a scaled-down frame near the left edge it sits above the frame, on the screen",
       "status chip: gone in a fight and while aura values are hidden or you are dead; back after",
       "status chip: in the Like the game's layout the chip sits above the player frame, not over its level and name (B4-4)",
       "status chip: off until switched on, then it names eating, drinking and being well fed with the buff's icon",

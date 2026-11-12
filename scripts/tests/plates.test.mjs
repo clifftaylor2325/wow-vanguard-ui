@@ -154,6 +154,17 @@ it("/vg plates reports the game's plate settings and sets the enemy one, out of 
   setCombat(addon, false);
   expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "changed once the fight ends").toBe("0");
 });
+it("/vg plates reads enemies on and off in any case and with extra spaces between the words", () => {
+  const addon = loggedIn(UNITS_ENV + PLATE_ENV + "UnitCanAttack = function() return true end");
+  addon.eval("SetCVar('nameplateShowEnemies', 0)");
+  addon.slash("plates Enemies On");
+  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "capital letters still switch it on").toBe("1");
+  addon.slash("plates enemies  off");
+  expect(addon.eval("return GetCVar('nameplateShowEnemies')"), "two spaces still switch it off").toBe("0");
+  addon.clearChat();
+  addon.slash("plates enemies maybe");
+  expect(addon.chat().join("\n"), "another word falls back to the count line").toMatch(/Plates: /);
+});
 it("the Nameplates page switches the game's enemy and friendly plates, out of combat", () => {
   const addon = loggedIn(UI_ENV + CLICK_LUA + "SetCVar('nameplateShowFriendlyPlayers', 1) SetCVar('nameplateShowFriendlyNPCs', 0)");
   addon.eval("SetCVar('nameplateShowEnemies', 0)");

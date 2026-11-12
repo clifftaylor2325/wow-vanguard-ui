@@ -162,7 +162,7 @@ function GW.SkinStable(frame)
   styleStableParts(frame)
 end
 
-GW.Add("town", { "PetStableFrame" }, GW.SkinStable)
+if ns.IsForever() then GW.Add("town", { "PetStableFrame" }, GW.SkinStable) end
 
 -- Trainer -------------------------------------------------------------------------------------------
 

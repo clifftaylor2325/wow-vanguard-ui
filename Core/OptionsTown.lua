@@ -84,6 +84,13 @@ local function mailRows()
   }
 end
 
+-- Asks before forgetting what trainers taught every class on the account (/vg trainers clear), which can't be undone.
+local function askForgetTrainers()
+  local SR = ns.GetModule("SpellRanks")
+  ns.Ask(L["Forget what trainers taught every class on this account? Trainer memory learns them again as you visit them."], L["Forget"],
+    function() SR.TrainersCommand("clear") end, function() end, "danger")
+end
+
 -- Spell ranks: the bar notice and trainer memory, both off until switched on.
 local function spellRankCard()
   return {
@@ -92,6 +99,7 @@ local function spellRankCard()
     check(L["Remember what trainers teach"], setting("SpellRanks", "trainerMemory")),
     { "button", L["Put the newest ranks on my bars"], function() ns.GetModule("SpellRanks").RanksCommand("swap") end },
     { "button", L["What trainers teach next"], function() ns.GetModule("SpellRanks").TrainersCommand("next") end },
+    { "button", L["Forget every class's trainers..."], askForgetTrainers },
   }
 end
 
@@ -142,8 +150,11 @@ local function styleRows()
   if not styles then return {} end
   local choices = {}
   for _, s in ipairs(styles) do choices[#choices + 1] = { s, UP.Word(s) } end
-  local saved = O.ModuleSettings("Upgrades").styles
-  return { { "cycle", L["Damage style"], choices, function() return W.Style(class, saved[class]) end, function(v) saved[class] = v UP.Changed() end } }
+  -- Read on each call: a profile switch that applies at once leaves this row built, and the table is the new profile's.
+  local function savedStyles() return O.ModuleSettings("Upgrades").styles end
+  local function get() return W.Style(class, savedStyles()[class]) end
+  local function set(v) savedStyles()[class] = v UP.Changed() end
+  return { { "cycle", L["Damage style"], choices, get, set } }
 end
 
 -- Gear upgrades: the role (and damage style) the weights are for, and where upgrades show.

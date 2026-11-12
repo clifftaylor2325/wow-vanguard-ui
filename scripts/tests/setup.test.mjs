@@ -252,8 +252,15 @@ it("setup's backup is once per run: /vg graphics apply after setup closed backs 
   addon.advance(5, 1);
   addon.clearChat();
   addon.slash("graphics apply");
-  expect(chatHas(addon, /as it was before setup is saved as profile Default backup/), "chat names the new backup").toBe(true);
+  expect(chatHas(addon, /Profile Default as it was is saved as profile Default backup\./), "chat names the new backup without saying setup").toBe(true);
+  expect(chatHas(addon, /before setup/), "a graphics apply is not setup").toBe(false);
   expect(addon.eval("return VanguardDB.profiles['Default backup'].ActionBars.size"), "which holds the sizes from after setup").toBe(50);
+  addon.eval("ns.Settings('ActionBars').size = 44");
+  addon.slash("graphics undo");
+  addon.slash("graphics");
+  addon.advance(5, 1);
+  addon.slash("graphics apply");
+  expect(addon.eval("return VanguardDB.profiles['Default backup'].ActionBars.size"), "a second apply in the session saves the profile again (H46-24-R2)").toBe(44);
 });
 it("first-run setup: a new character starts on the profile the account's characters used last, and its Profile step offers to share that one", () => {
   const notes = `{ ["Alice-ForeverTest"] = { profile = "Main", stamp = 10 }, ["Carl-ForeverTest"] = { profile = "Gone", stamp = 20 }, ["Dan-ForeverTest"] = { profile = "Default", stamp = 5 } }`;
@@ -541,4 +548,21 @@ it("H45-24-3: clicking the accent swatch or style tile that is already chosen ch
   addon.eval("local look = ns.Settings('RaidFrames').look for _, b in ipairs(Vanguard_Setup.pages.look.styles) do if b.value == look then b:GetScript('OnClick')(b) end end");
   nextTimes(addon, 6);
   expect(allSetLines(addon), "no change listed and no Undo").toEqual([["All set. This run changed nothing: Done closes setup."], false]);
+});
+it("H46-24-3: Tab on the Look step walks the accent swatches and the style tiles, and Enter picks the ringed one", () => {
+  const addon = loggedIn("UISpecialFrames = {}", { firstRun: true });
+  nextTimes(addon, 2);
+  // Which swatch or style tile carries the focus ring now.
+  const ringed = () => addon.eval(`local f = Vanguard_Setup
+    local function on(b) local p = ns.Theme.FocusParts(b) return p ~= nil and p.ring.top:IsShown() end
+    for i, s in ipairs(f.pages.look.swatches) do if on(s) then return "swatch" .. i end end
+    for i, s in ipairs(f.pages.look.styles) do if on(s) then return "style" .. i end end
+    return "other"`);
+  const seen = [];
+  for (let i = 0; i < 3; i += 1) { addon.key("Vanguard_Setup", "TAB"); seen.push(ringed()); }
+  expect(seen, "Tab starts on the first swatch and steps along them").toEqual(["swatch1", "swatch2", "swatch3"]);
+  addon.key("Vanguard_Setup", "ENTER");
+  expect(addon.eval("return select(1, ns.Theme.Accent()) == ns.Theme.PRESETS[ns.Theme.PRESET_ORDER[3]][1]"), "Enter picks the ringed swatch's accent").toBe(true);
+  const total = addon.eval("local p = Vanguard_Setup.pages.look return #p.choices == #p.swatches + #p.styles");
+  expect(total, "the style tiles follow the swatches").toBe(true);
 });

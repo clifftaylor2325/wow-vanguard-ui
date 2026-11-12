@@ -121,7 +121,7 @@ const LUA_RECORDER = `
   function __vgSnap.events()
     local out = {}
     for _, w in ipairs(stub.frames) do
-      if w.__id > stub.firstAddonFrame and next(w.__events) then out[#out + 1] = { label(w), eventsOf(w) } end
+      if stub.addonMade(w) and next(w.__events) then out[#out + 1] = { label(w), eventsOf(w) } end
     end
     return out
   end
@@ -135,7 +135,7 @@ const LUA_RECORDER = `
 // Lua: the widgets whose name starts with Vanguard, and the unnamed frames the addon made that are not regions.
 const ADDON_FRAMES = `return __vgSnap.frames(function(w)
   if w.__name then return w.__name:find("^Vanguard") ~= nil end
-  return w.__id > __wfgStub.firstAddonFrame and w.__kind ~= "Texture" and w.__kind ~= "FontString"
+  return __wfgStub.addonMade(w) and w.__kind ~= "Texture" and w.__kind ~= "FontString"
 end)`;
 
 // Lua: the named widgets the client made before the addon loaded (the ones the addon may move).

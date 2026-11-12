@@ -86,7 +86,7 @@ end
 -- Greys a module's row while a module it requires is off: its name in the disabled tier, its switch faded (a click
 -- jumps to that module's row instead, moduleSetter).
 local function greyIfWaiting(r, name)
-  local waiting = O.MissingParent(name) ~= nil
+  local waiting = ns.ModuleMissingParent(name) ~= nil
   T.Color(r.label, waiting and "disabled" or "text")
   r.track:SetAlpha(waiting and T.ALPHA.unavailable or T.ALPHA.opaque)
 end
@@ -111,7 +111,7 @@ end
 -- A module row's setter: while a module it requires is off, a click jumps to that module's row instead of switching.
 local function moduleSetter(row)
   return function(v)
-    local parent = O.MissingParent(row[7])
+    local parent = ns.ModuleMissingParent(row[7])
     if parent then return O.JumpToModule(parent) end
     row[4](v)
   end
@@ -785,7 +785,7 @@ end
 
 -- The profile picker: picking one switches on reload (the Profiles page follows through ns.OnProfileStaged).
 local function profileDropdown(parent)
-  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) if not ns.PickProfile(v) then O.NeedReload() end end, PROFILE_WIDTH)
+  return W.Dropdown(parent, profileChoices, ns.SelectedProfileName, function(v) ns.PickProfile(v) end, PROFILE_WIDTH)
 end
 
 -- Enter in the search box: opens the first page that matches and jumps to the row.
@@ -842,14 +842,21 @@ end
 
 -- The notice keeps its own width (0, the text's) while it fits with a column free on each side, between the version
 -- line and the Reload now button; a longer one shrinks to T.FIT_FLOOR and only then ends in "...", so a cut notice
--- never starts against the version's last letter. Waits while either edge is unknown.
+-- never starts against the version's last letter. The errors line keeps the room its count needs. Waits while either
+-- edge is unknown.
 function O.FitNotice(f)
   local from, to = f.version:GetRight(), f.reload:GetLeft()
-  local room = from and to and math.floor(to - from - 2 * T.SPACE.col)
+  local room = from and to and math.floor(to - from - 2 * T.SPACE.col - ns.ErrorBadge.FooterRoom())
   local full = T.FullWidth(f.notice)
   local over = room and full > room
   f.notice:SetTextScale(over and math.max(T.FIT_FLOOR, room / full) or 1)
   f.notice:SetWidth(over and math.max(1, room) or 0)
+  ns.ErrorBadge.FitFooter()
+end
+
+-- Fits the notice again (the errors line came or went), once the window is built.
+function O.RefitNotice()
+  if window then O.FitNotice(window) end
 end
 
 -- The footer: your faction's crest (T.CREST.footer, while the faction look is on) and the version on the left; a
@@ -1041,11 +1048,11 @@ end
 
 -- A key while the window is open: the ones it uses stop here, every other one
 -- goes on to the game; none is used while a box (search, a value) has the typing.
--- Escape closes the window itself (the keyboard it holds would otherwise swallow it); a box with the typing clears first.
+-- Escape closes the window itself, with the close sound and fade (the keyboard it holds would otherwise swallow it); a box with the typing clears first.
 local function onKey(f, key)
   local typing = type(GetCurrentKeyBoardFocus) == "function" and GetCurrentKeyBoardFocus() ~= nil
   if key == "ESCAPE" and not typing then
-    if ns.Widgets.MenuOpen() then ns.Widgets.CloseMenu() else f:Hide() end
+    if ns.Widgets.MenuOpen() then ns.Widgets.CloseMenu() else O.Hide() end
     if not ns.InCombat() and ns.Client.Has("keyPropagate") then f:SetPropagateKeyboardInput(false) end
     return
   end
@@ -1251,11 +1258,12 @@ local function takeKeys(previous)
 end
 
 -- Shows the reload notice and button while a change needs a reload: a change marked with O.NeedReload (the notice
--- stays for the session), else the modules whose switch or reload settings wait (O.ReloadWaiting, gone again once
+-- stays for the session) or a profile switch that waits for it (ns.ProfileAfterReload), else the modules whose
+-- switch or reload settings wait (O.ReloadWaiting, gone again once
 -- they are switched back). Nothing before the window is first opened.
 function O.ShowReloadNotice()
   if not window then return end
-  local text = needsReload and reloadNotice or O.WaitingText(O.ReloadWaiting())
+  local text = (needsReload or ns.ProfileAfterReload() ~= nil) and reloadNotice or O.WaitingText(O.ReloadWaiting())
   ns.WidenToLabel(window.reload)
   window.reload:SetShown(text ~= nil)
   window.notice:SetShown(text ~= nil)
@@ -1325,17 +1333,32 @@ function O.Frame()
   return window
 end
 
+-- Throws a built page and its rows away, to be built again when shown.
+function O.DropPage(key)
+  rowCache[key] = nil
+  local old = pages[key]
+  if old then forgetRows(old) dropView(old) pages[key] = nil end
+end
+
 -- Throws a built page away so it's built again from its rows (its list
 -- changed), showing it again if it's the current one, scrolled where it was.
 function O.RebuildPage(key)
-  rowCache[key] = nil
   local old = pages[key]
   local scroll = old and old:GetVerticalScroll() or 0
-  if old then forgetRows(old) dropView(old) pages[key] = nil end
+  O.DropPage(key)
   if not (window and window:IsShown() and O.current == key) then return end
   O.Show(key)
   if pages[key] then pages[key]:ScrollTo(scroll) end
 end
+
+-- A profile's settings changed (a live switch, Copy here, a reset or an import): every built page is thrown away, since
+-- a row may hold the old profile's table. Only the shown page is built again now, and by showPage alone: O.Show would
+-- read every page's rows, which fills tables into the profile just set (a reset one would not stay reset).
+ns.OnProfileChanged(ns.Guard("options pages after a profile change", function()
+  for key in pairs(pages) do O.DropPage(key) end
+  forgetUnbuiltRows()
+  if window and window:IsShown() and O.current then showPage() end
+end))
 
 -- The first row on a page whose caption, as shown or in English, has the (lower-case) text.
 local function firstRow(view, text)

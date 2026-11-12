@@ -47,6 +47,8 @@ local CORE = { theme = true, modules = true, skins = true, positions = true, mov
 -- the local one whole (a frame's spot, a situation's override). Lists are always replaced.
 local MERGE_DEPTH = { positions = 1, Situations = 2 }
 local DEEP = 20
+-- The profile's top-level values that are not tables, and the type each must have to be merged in.
+local SCALARS = { hudLayout = "string" }
 
 -- Parts ------------------------------------------------------------------------------------
 
@@ -136,6 +138,7 @@ function ns.PartsPayload(profile, parts)
   for key, t in pairs(profile) do
     if want[key] or want[partOf(key)] then data[key] = t end
   end
+  if want.layout and data.hudLayout == nil then data.hudLayout = ns.HudLayout() end
   return ns.StampPayload(ns.WithoutClientState(data))
 end
 
@@ -308,18 +311,36 @@ local function copied(v)
   return type(v) == "table" and ns.Copy(v) or v
 end
 
+-- True when the string's table v replaces mine whole: a list (it has [1]), or an emptied list
+-- over a list of yours. An empty table over a map of yours keeps your keys.
+local function replaces(v, mine)
+  if v[1] ~= nil then return true end
+  return next(v) == nil and type(mine) == "table" and mine[1] ~= nil
+end
+
 -- Merges from into into, from's values winning, depth levels deep; a list (it has [1]) is
 -- replaced whole. Keys only into has stay. Returns into.
 local function merge(into, from, depth)
   for k, v in pairs(from) do
     local mine = into[k]
-    if depth > 1 and type(v) == "table" and type(mine) == "table" and v[1] == nil then
+    if depth > 1 and type(v) == "table" and type(mine) == "table" and not replaces(v, mine) then
       merge(mine, v, depth - 1)
     else
       into[k] = copied(v)
     end
   end
   return into
+end
+
+-- Merges one top-level key of a partial payload into the profile: a table key by key, a value
+-- SCALARS names when it has that type (the Centered layout is stored as nothing), anything else is dropped.
+local function mergeKey(profile, key, t)
+  local scalar = SCALARS[key]
+  if scalar then
+    if type(t) == scalar then profile[key] = t ~= "centered" and t or nil end
+  elseif type(t) == "table" then
+    profile[key] = merge(type(profile[key]) == "table" and profile[key] or {}, t, MERGE_DEPTH[key] or DEEP)
+  end
 end
 
 -- Merges a partial payload's tables into the profile, key by key: the string's values win,
@@ -330,9 +351,7 @@ function ns.MergeParts(profile, data)
   local onScreen = profile == ns.Profile()
   if onScreen then ns.ProfileChanged() end
   for key, t in pairs(data) do
-    if not META[key] and type(t) == "table" then
-      profile[key] = merge(type(profile[key]) == "table" and profile[key] or {}, t, MERGE_DEPTH[key] or DEEP)
-    end
+    if not META[key] then mergeKey(profile, key, t) end
   end
   if onScreen then ns.ProfileChanged() end
 end

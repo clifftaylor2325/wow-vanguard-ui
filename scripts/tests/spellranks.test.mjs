@@ -222,6 +222,18 @@ it("a level-up says what the trainers teach from that level; clear forgets", () 
   expect([chatHas(addon, /Forgot every trainer\./), chatHas(addon, /0 trainer service\(s\) remembered/)], "cleared").toEqual([true, true]);
 });
 
+it("H46-18-50 /vg ranks and /vg trainers read their second word in any case", () => {
+  const addon = mage();
+  put(addon, 3, 100);
+  addon.slash("ranks Swap");
+  expect(slots(addon, [3]), "Swap swaps").toEqual([102]);
+  addon.eval('VanguardDB.trainers = { MAGE = { count = 1, list = { ["TEST-ONLY Blink\\1"] = { name = "TEST-ONLY Blink", level = 7 } } } } __wfgWorld.units.player.level = 5');
+  addon.slash("trainers Next");
+  expect(chatHas(addon, /Trainers you've visited teach, in the next levels:/), "Next lists the next levels").toBe(true);
+  addon.slash("trainers CLEAR");
+  expect(addon.eval("return VanguardDB.trainers == nil"), "CLEAR forgets").toBe(true);
+});
+
 it("a service's place text drops what the client hides; a name seen again updates, and a full list takes no new one", () => {
   const addon = mage();
   addon.eval(TRAINER);
