@@ -209,3 +209,14 @@ it("a long run with a way back in every 40 minutes stays one visit: the last run
   addon.slash("prep");
   expect(text(addon)[1], "80 minutes in, 40 after the last way in: the same run").toBe("Last run: 5 days ago");
 });
+it("a reload inside a dungeon more than an hour after the way in is the same visit, not 'Last run: today'", () => {
+  const runs = `VanguardCharDB = { profile = "Default", setupDone = true, dungeonRuns = { [389] = { at = 1000 - 5 * 86400 } } }`;
+  const addon = character(ON + "\n" + runs, "__t = 1000 time = function() return __t end");
+  addon.eval("__t = 1000 + 70 * 60");
+  addon.fire("PLAYER_LOGOUT");
+  addon.fire("PLAYER_ENTERING_WORLD", false, true);
+  addon.advance(0.25);
+  addon.slash("prep");
+  expect(text(addon)[1], "reloaded 70 minutes in: still the same run").toBe("Last run: 5 days ago");
+  expect(addon.eval("return VanguardCharDB.dungeonRuns[389].prior"), "the earlier visit is kept").toBe(1000 - 5 * 86400);
+});
