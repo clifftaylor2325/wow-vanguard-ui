@@ -123,6 +123,17 @@ it("world.holdAccess holds a frame and what hangs from it back from addon code w
   expect(tryAddon("return TestRow:CanBeAccessedInContext() and TestRow:GetParent() == UIParent"), "released: open again").toEqual([true, true]);
 });
 
+it("a frame held and let go takes a secret aspect held later like any other, and holding it again refuses again", () => {
+  const addon = createAddon();
+  addon.eval(`TestBar = CreateFrame("StatusBar", "TestBar", UIParent) __wfgWorld.holdAccess(TestBar) __wfgWorld.releaseAccess(TestBar)
+    __wfgWorld.holdSecret(TestBar, "BarValue") TestBar:SetValue(3)`);
+  // Whether an addon call raised, and what it returned or raised with.
+  const tryAddon = (lua) => addon.eval(`local ok, e = pcall(assert(loadstring(${JSON.stringify(lua)}, "@Modules/TEST-ONLY.lua"))) if ok then return { true, e } end return { false, tostring(e) }`);
+  expect(tryAddon("return issecretvalue(TestBar:GetValue())"), "the bar's value reads back secret to the addon").toEqual([true, true]);
+  addon.eval("__wfgWorld.holdAccess(TestBar)");
+  expect(tryAddon("TestBar:SetAlpha(0.5)"), "held again: refused").toEqual([false, "Modules/TEST-ONLY.lua:1: Attempt to access forbidden object from code tainted by an AddOn"]);
+});
+
 // Blizzard_AuraContainer/Blizzard_AuraContainerFrameProviders.lua:79-86 (both clients): a new frame gets the container's
 // access restriction right after its (possibly tainted) initializeFrame runs; Blizzard_AuraContainerUtil.lua:403-419
 // applies it at once once logged in.

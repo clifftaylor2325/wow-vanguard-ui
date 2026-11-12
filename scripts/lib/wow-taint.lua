@@ -653,13 +653,33 @@ local function refusingWhileHeld(orig)
   end
 end
 
--- One widget held: every listed method but the two that always answer refuses the addon until it is released.
+-- The refusing copies a hold put on each held widget, by name: { fn = the copy, prev = the raw value it covered }.
+local heldCopies = setmetatable({}, { __mode = "k" })
+
+-- One widget held: every listed method but the two that always answer refuses the addon until it is released. The
+-- copies are taken from the methods as they are now, so a release takes them off again (a method wrapped later, as
+-- wow-aspects.lua wraps a getter the first time an aspect is held, then reaches the widget).
 local function hold(w)
-  if held[w] ~= nil then held[w] = true return end
+  if held[w] then return end
   held[w] = true
+  local copies = {}
   for name in pairs(listedNames(w.__kind)) do
-    if not ALWAYS_ANSWERED[name] and type(w[name]) == "function" then rawset(w, name, refusingWhileHeld(w[name])) end
+    if not ALWAYS_ANSWERED[name] and type(w[name]) == "function" then
+      copies[name] = { fn = refusingWhileHeld(w[name]), prev = rawget(w, name) }
+      rawset(w, name, copies[name].fn)
+    end
   end
+  heldCopies[w] = copies
+end
+
+-- One widget let go: each copy its hold put on it comes off, back to what it covered, unless something replaced the
+-- copy since (world.forbid's refusals stay).
+local function release(w)
+  held[w] = nil
+  for name, copy in pairs(heldCopies[w] or {}) do
+    if rawget(w, name) == copy.fn then rawset(w, name, copy.prev) end
+  end
+  heldCopies[w] = nil
 end
 
 -- Holds a frame and every widget under it back from addons (aura information turned secret).
@@ -679,9 +699,11 @@ end
 
 -- Lets a held frame and everything under it go again (aura information is plain again).
 function world.releaseAccess(frame)
+  local let = {}
   for w in pairs(held) do
-    if under(w, frame) then held[w] = false end
+    if under(w, frame) then let[#let + 1] = w end
   end
+  for _, w in ipairs(let) do release(w) end
 end
 
 -- Moves ------------------------------------------------------------------------------------
