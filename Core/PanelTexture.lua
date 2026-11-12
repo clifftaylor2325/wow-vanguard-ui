@@ -63,7 +63,7 @@ local surfaceOf = setmetatable({}, { __mode = "k" })
 -- Places the surface over the fill, `pad` units out past the frame and `r` units in from it, so a
 -- rounded panel's corners (r 0 when square) stay the fill's own.
 local function place(t, frame, pad, r)
-  local d = pad - r
+  local d = T.PixelRound(frame, pad) - r
   t:ClearAllPoints()
   t:SetPoint("TOPLEFT", frame, "TOPLEFT", -d, d)
   t:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", d, -d)

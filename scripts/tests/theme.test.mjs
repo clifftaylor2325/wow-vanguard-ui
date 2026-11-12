@@ -1750,7 +1750,8 @@ it("panel texture (#647): flat by default; a pick draws its surface over floatin
   addon.eval(`for _, w in ipairs(__wfgStub.frames) do if w.dropdown and w.caption == "Panel texture" and w:IsVisible() then w.dropdown.set("stone") end end`);
   expect([surfaceOf(addon, "__win"), surfaceOf(addon, "__plain")], "the options row draws Carved stone, whole and tiled, on a window at once; a plain panel stays flat")
     .toEqual([["PanelStone", 1, 0, ["REPEAT", "REPEAT"]], false]);
-  expect(surfaceOf(addon, "__faint").slice(0, 3), "a panel asking for the gradient takes it too, at its own alpha, out to its pad").toEqual(["PanelStone", 0.5, -2]);
+  expect(surfaceOf(addon, "__faint").slice(0, 3), "a panel asking for the gradient takes it too, at its own alpha, out to its pad rounded to whole pixels, as the fill is")
+    .toEqual(["PanelStone", 0.5, -addon.eval("return ns.Theme.PixelRound(__faint, 2)")]);
   expect(surfaceOf(addon, "Vanguard_Options")[0], "the options window shows it").toBe("PanelStone");
   addon.eval('ns.Theme.Settings().panelTexture = "rock" ns.Theme.Refresh()');
   expect(surfaceOf(addon, "__win").slice(0, 2), "the game's rock, drawn faint").toEqual(["UI-Background-Rock", 0.25]);
@@ -1951,4 +1952,33 @@ it("held aura icons: a region the client closed for good is still forgotten, not
     T.Repaint()
     return { T.Held(__f), T.heldBack == nil }`);
   expect(out).toEqual([false, true]);
+});
+
+// H45-14-1: a padded square panel's fill, edges, surface and shadow are placed again at the scale of the repaint.
+const PAD_OFFSETS = `local k = __p:GetEffectiveScale() * 1080 / 768 local out = {}
+  for _, r in ipairs({ __p:GetRegions() }) do
+    for _, pt in pairs(r.__points or {}) do out[#out + 1] = { pt.x * k, pt.y * k } end
+  end return out`;
+// The offsets with an x or y between screen pixels.
+const offPixel = (offsets) => offsets.filter((o) => o.some((v) => Math.abs(v - Math.round(v)) > 1e-6));
+
+it("a padded square panel's fill, edges, surface and shadow land on whole pixels after a UI scale change (H45-14-1)", () => {
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 1920, 1080 end");
+  addon.eval('__p = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { pad = 12, shadow = true })');
+  addon.eval("UIParent:SetScale(0.8)");
+  addon.fire("UI_SCALE_CHANGED");
+  addon.update(0.1);
+  const after = addon.eval(PAD_OFFSETS);
+  expect(after.length, "the panel's parts are anchored").toBeGreaterThan(10);
+  expect(offPixel(after), "no offset between screen pixels").toEqual([]);
+});
+
+it("a padded square panel stays on whole pixels when Pixel-perfect scale goes on, with the sliced shadow too (H45-14-1)", () => {
+  const saved = "VanguardDB = { profiles = { Default = { theme = { sliceRings = true } } } }";
+  const addon = loggedIn("GetPhysicalScreenSize = function() return 1920, 1080 end", { savedVariables: saved });
+  addon.eval('__p = ns.Theme.Panel(CreateFrame("Frame", nil, UIParent), { pad = 12, shadow = true }) ns.Theme.SetPixelScale(true)');
+  addon.update(0.1);
+  const after = addon.eval(PAD_OFFSETS);
+  expect(after.length, "the panel's parts are anchored").toBeGreaterThan(4);
+  expect(offPixel(after), "no offset between screen pixels").toEqual([]);
 });
