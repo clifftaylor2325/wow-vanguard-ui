@@ -11,6 +11,14 @@ import { expectErrors, INSIDES_LUA, isTok, loggedIn, WINDOWS_ENV, windowState } 
 // string takes the role and the colour.
 const READERS_ENV = `${WINDOWS_ENV}${INSIDES_LUA}
   function __button(b) return ns.Theme.HoverParts(b) ~= nil end
+  -- The shown theme "Down" pictures on a button: a dropdown with a chevron has one, not a chevron and a centred arrow.
+  function __downArrows(b)
+    local n = 0
+    for _, r in ipairs({ b:GetRegions() }) do
+      if r.__kind == "Texture" and type(r.__texture) == "string" and r.__texture:match("Down") and r:IsShown() and r:GetAlpha() > 0 then n = n + 1 end
+    end
+    return n
+  end
   function __arrow(b) return ns.Theme.ArrowParts(b) ~= nil end
   function __plate(b) return select("#", b:GetRegions()) > 0 end
   function __box(b) return __faded(b, b.searchIcon) and b.searchIcon.__alpha == 1 end
@@ -927,7 +935,7 @@ const AH_ENV = `${READERS_ENV}
       out[#out + 1] = { tile = __ahTile(form), item = __ahTile(form.ItemDisplay), head = form.CreateAuctionLabel:GetText() == "CREATE AUCTION" and form.CreateAuctionTabLeft.__alpha == 0,
         labels = __ahLit(form.QuantityInput.Label) and __ahLit(form.SecondaryPriceInput.LabelTitle) and __ahLit(form.Duration.Label),
         quantity = __faded(form.QuantityInput.InputBox) and __button(form.QuantityInput.MaxButton), boxes = boxes,
-        duration = __button(form.Duration.Dropdown) and form.Duration.Dropdown.Arrow.__alpha == 0,
+        duration = __button(form.Duration.Dropdown) and form.Duration.Dropdown.Arrow.__alpha == 0 and __downArrows(form.Duration.Dropdown) == 1,
         money = __ahThemed(form.Deposit.MoneyDisplayFrame) and __ahThemed(form.TotalPrice.MoneyDisplayFrame) and __ahThemed(form.UnitPrice.MoneyDisplayFrame),
         buttons = __button(form.PostButton) and __button(form.BuyButton), check = ns.Theme.CheckParts(form.BuyoutModeCheckButton) ~= nil and __ahLit(form.BuyoutModeCheckButton.Text) }
     end

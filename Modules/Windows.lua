@@ -611,9 +611,11 @@ function GW.Chevron(dropdown)
   vgChevron[dropdown]:SetPoint("RIGHT", -T.SPACE.gap, 0)
 end
 
--- A dropdown button as a theme button with the game's gold arrow box faded and a theme chevron in its place.
+-- A dropdown button as a theme button with the game's gold arrow box faded and one theme chevron in its place (not
+-- GW.SkinDropdown too: its centred arrow would show beside the chevron).
 function GW.SkinDropdownChevron(dropdown)
-  GW.SkinDropdown(dropdown)
+  if type(dropdown) ~= "table" or not dropdown.CreateTexture then return end
+  T.Button(dropdown)
   GW.Chevron(dropdown)
 end
 
