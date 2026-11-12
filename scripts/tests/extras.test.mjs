@@ -1060,7 +1060,7 @@ it("H45-3-R1: under the Tabs look the party pets and targets column's default sp
   const plain = columnGap("plain", 80);
   const tabs = columnGap("tabs", 80);
   expect(plain[0] >= 0 && tabs[0] >= 0, "the column's foot stays clear of the party column's top at Height 80, Plain and Tabs").toBe(true);
-  expect(tabs[1] - plain[1], "the spot rises by the party column's rise: four tab heights").toBe(72);
+  expect(tabs[1] - plain[1], "the spot rises by the party column's rise: four tab heights and the 12 units the focus's cast bar needs").toBe(84);
 });
 it("H45-3-R1: the column's spot follows a change of HUD look at once, and a saved position still wins", () => {
   const addon = loggedIn(UNITS_ENV, { savedVariables: "VanguardDB.profiles = { Default = { PartyExtras = { show = true } } }" });
@@ -1068,7 +1068,7 @@ it("H45-3-R1: the column's spot follows a change of HUD look at once, and a save
   const y = () => addon.eval('return select(4, ns.MoverPoint("partyextras"))');
   const shield = y();
   addon.eval('ns.Theme.Settings().hudLook = "tabs" ns.Theme.Refresh()');
-  expect(y() - shield, "Tabs lifts it by four tabs").toBe(72);
+  expect(y() - shield, "Tabs lifts it by the party column's rise, 84").toBe(84);
   addon.eval('ns.Theme.Settings().hudLook = "plain" ns.Theme.Refresh()');
   expect(y(), "back to Plain: the spot comes down again").toBe(shield);
 });
