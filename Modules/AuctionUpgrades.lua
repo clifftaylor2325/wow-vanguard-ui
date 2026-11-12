@@ -43,8 +43,8 @@ AH.SLOT_NAMES = { INVTYPE_HEAD = L["Head"], INVTYPE_NECK = L["Neck"], INVTYPE_SH
   INVTYPE_HOLDABLE = L["Held In Off-hand"], INVTYPE_RANGED = L["Ranged"], INVTYPE_RANGEDRIGHT = L["Ranged"], INVTYPE_THROWN = L["Thrown"], INVTYPE_RELIC = L["Relic"] }
 -- The Upgrades entry's switch (Town and gear > Auction house): on, as Deals is.
 AH.defaults.upgrades = true
--- The upgrades found lately by link: { link, id, key, price, pct, empty, slot, score, found (when), stale }; and every
--- gear listing seen (link -> price per unit), to judge again when what you wear changes.
+-- The upgrades found lately by link: { link, id, key, price, pct, empty, slot, fill (its inventory slot, to pick
+-- one fill a slot), score, found (when), stale }; and every gear listing seen (link -> price per unit), to judge again when what you wear changes.
 AH.upgrades, AH.gearSeen, AH.gearKeys = {}, {}, {}
 -- The weights the listings were judged with (nil while Gear upgrades is off); false until the first is judged.
 AH.weightsUsed = false
@@ -66,8 +66,9 @@ function AH.Upgrade(link, price, found)
   local pct, empty = UP.Compare(link)
   if not empty and not (pct and pct >= UP.MIN_PCT) then return nil end
   local id, _, _, loc = C_Item.GetItemInfoInstant(link)
+  local slots = UP.SLOTS[loc]
   return { link = link, id = id, key = C_AuctionHouse.MakeItemKey(id), price = price, pct = pct, empty = empty == true,
-    slot = slotName(loc), score = empty and (UP.Score(link, (UP.Current())) or 0) or nil, found = found }
+    slot = slotName(loc), fill = slots and slots[1] or 0, score = empty and (UP.Score(link, (UP.Current())) or 0) or nil, found = found }
 end
 
 -- Which item a gear link is: its ID, enchant, gems and suffix, without the per-listing unique ID
@@ -164,7 +165,7 @@ end
 function AH.SortedUpgrades()
   local gains, fills, slots = {}, {}, {}
   for _, u in ipairs(judgedUpgrades()) do
-    if u.empty then fills[u.slot] = betterFill(fills[u.slot], u) else gains[#gains + 1] = u end
+    if u.empty then fills[u.fill] = betterFill(fills[u.fill], u) else gains[#gains + 1] = u end
   end
   table.sort(gains, byGain)
   for slot in pairs(fills) do slots[#slots + 1] = slot end
@@ -352,7 +353,7 @@ end
 function AH.UpgradeCount()
   local count, filled = 0, {}
   for _, u in ipairs(judgedUpgrades()) do
-    if not u.empty then count = count + 1 elseif not filled[u.slot] then filled[u.slot], count = true, count + 1 end
+    if not u.empty then count = count + 1 elseif not filled[u.fill] then filled[u.fill], count = true, count + 1 end
   end
   return count
 end
