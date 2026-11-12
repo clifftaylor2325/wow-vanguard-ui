@@ -353,6 +353,16 @@ it("talent planner: /vg talents clear and the Talents page's Clear button ask fi
   expect([planned(), chatHas(addon, /Talent plan cleared\./)], "Clear empties it").toEqual([0, true]);
 });
 
+it("talent planner: Clear answered after a spec switch empties the plan it was asked about, not the new spec's (H45-33-1)", () => {
+  const addon = open();
+  addon.eval(`__group = 1 C_SpecializationInfo.GetActiveSpecGroup = function() return __group end
+    VanguardCharDB.talentPlans = { { ranks = { [101] = 5 }, hash = "1-2-3" }, { ranks = { [102] = 2 }, hash = "1-2-3" } }`);
+  addon.slash("talents clear");
+  addon.eval("__group = 2");
+  addon.click("Vanguard_Question.confirm");
+  expect(addon.eval("local p = VanguardCharDB.talentPlans return { next(p[1].ranks) == nil, p[2].ranks[102] }"), "group 1 is emptied, group 2 kept").toEqual([true, 2]);
+});
+
 it("talent planner: a plan made on another tree keeps the talents still there and says what was dropped", () => {
   const addon = open();
   addon.eval(`VanguardCharDB.talentPlans = { { ranks = { [101] = 9, [104] = 1, [999] = 2 }, hash = "old" } } ${TP}.Refresh()`);
