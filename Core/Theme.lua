@@ -4196,7 +4196,7 @@ end
 
 -- Pixel-perfect scale ----------------------------------------------------------------
 
--- The whole multiple that keeps things no smaller than 1080p's: 1 up to about 1600 pixels tall, 2 at 4K.
+-- The whole multiple that keeps things no smaller than 1080p's: 1 below 1890 pixels tall, 2 from 1890 (4K), 3 from 2970.
 function T.AutoPixelMultiple(h)
   return math.max(1, math.floor(h / 1080 + 0.25))
 end
