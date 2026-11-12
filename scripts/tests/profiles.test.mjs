@@ -1050,6 +1050,20 @@ it("importing a string that matches a profile here uses that profile instead of 
   expect(imports(addon, own), "a string matching another profile switches to it").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
   expect(addon.eval("return { VanguardCharDB.pendingProfile, VanguardDB.profiles.Imported == nil }")).toEqual(["Raid", true]);
 });
+it("a whole string exported from another profile matches it although Pixel-perfect differs there, and writes nothing into it", () => {
+  const addon = loggedIn();
+  addon.slash("profile new Raid");
+  const raidText = addon.eval(`VanguardDB.profiles.Raid = ns.Copy(ns.Profile())
+    VanguardDB.profiles.Raid.theme.pixelScale = true
+    VanguardDB.profiles.Raid.theme.reduceMotion = true
+    local keep = VanguardCharDB.profile
+    VanguardCharDB.profile = "Raid"
+    local s = ns.ExportProfile()
+    VanguardCharDB.profile = keep
+    return s`);
+  expect(imports(addon, raidText), "it matches Raid instead of making a copy").toMatchObject({ m: "This string matches profile Raid; this character will use it after a reload.", reload: true });
+  expect(addon.eval("return { VanguardDB.profiles.Imported == nil, VanguardDB.profiles.Raid.theme.pixelScale }"), "Raid's own switch is kept").toEqual([true, true]);
+});
 it("an import names each font, bar and panel texture this client doesn't have, and what it draws instead", () => {
   const addon = loggedIn('LibStub("LibSharedMedia-3.0"):Register("font", "TEST-ONLY Shared", [[Interface\\AddOns\\TestOnly\\Font.ttf]])');
   // TEST-ONLY theme naming a font and a bar texture no addon shares here.
