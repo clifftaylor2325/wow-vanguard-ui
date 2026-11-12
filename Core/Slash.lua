@@ -187,7 +187,7 @@ local function accentCommand(rest)
   end
   local r, g, b = T.ParseColor(rest:lower())
   if not r then
-    return chat(L["Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper"])
+    return chat(ns.Literal(L["Usage: /vg accent rrggbb | brass | arcane | jade | orchid | copper | class | reset"]))
   end
   T.SetAccent(r, g, b)
   chat(ns.Format(L["Accent set to {accent}."], { accent = rest:lower() }))

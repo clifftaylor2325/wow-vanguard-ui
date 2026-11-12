@@ -904,3 +904,9 @@ it("a second word typed with a capital works like its lower-case form (H46-24-50
   addon.slash("cooldowns Setup");
   expect(addon.frame("Vanguard_CooldownWizard").visible, "cooldowns Setup opens the wizard").toBe(true);
 });
+
+it("H46-4-103 /vg accent's usage line names class and reset, its pipes doubled so chat shows them", () => {
+  const addon = loggedIn();
+  addon.slash("accent nonsense");
+  expect(chatHas(addon, /Usage: \/vg accent rrggbb \|\| brass \|\| arcane \|\| jade \|\| orchid \|\| copper \|\| class \|\| reset$/), "every word COMMANDS.md lists").toBe(true);
+});
